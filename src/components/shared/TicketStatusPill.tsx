@@ -3,13 +3,16 @@
 import { useState, useRef, useEffect, useLayoutEffect, type ReactNode } from "react";
 import { useOutsideClick } from "@/hooks/useOutsideClick";
 import { createPortal } from "react-dom";
-import { ExternalLink, FilePen, MessageCircleQuestion, CheckCircle2, Ban, Minus, Copy, ClipboardList, PenLine } from "lucide-react";
+import { ExternalLink, FilePen, MessageCircleQuestion, CheckCircle2, Ban, Minus, Copy, ClipboardList, PenLine, Flag } from "lucide-react";
 import type { JiraStatus, TicketReadiness, IssueType } from "@/types/ticket";
 import {
   JIRA_STATUS_COLORS,
   JIRA_STATUS_ABBREVIATIONS,
   READINESS_CONFIG,
   READINESS_OPTIONS,
+  getBvColor,
+  getEpicColor,
+  getSpColor,
 } from "@/types/ticket";
 import { ISSUE_TYPE_COLORS } from "@/components/shared/IssueTypeIcon";
 import { getJiraUrl } from "@/lib/jira-url";
@@ -323,6 +326,116 @@ function DropdownPortal({
 }
 
 // ---------------------------------------------------------------------------
+// TicketHoverCard — read-only details card shown on pill hover
+// ---------------------------------------------------------------------------
+
+export interface TicketPillHoverData {
+  title: string;
+  storyPoints: number | null;
+  businessValue: number | null;
+  sprintName: string | null;
+  epic: string | null;
+  /** Assignee display name (already resolved by the call-site) */
+  assignee: string | null;
+  /** Creator/reporter display name */
+  reporter: string | null;
+  flagged: boolean;
+}
+
+function ScoreChip({ label, value, colors }: { label: string; value: number | null; colors: { bg: string; text: string } | null }) {
+  return (
+    <span className="flex items-center gap-1.5">
+      <span className="text-label font-medium uppercase tracking-wide text-text-muted">{label}</span>
+      {value != null && colors ? (
+        <span className="rounded px-1.5 py-0.5 text-label font-semibold tabular-nums" style={{ backgroundColor: colors.bg, color: colors.text }}>
+          {value}
+        </span>
+      ) : (
+        <span className="text-body-sm text-text-muted">–</span>
+      )}
+    </span>
+  );
+}
+
+function InfoRow({ label, children }: { label: string; children: ReactNode }) {
+  return (
+    <div className="flex items-baseline justify-between gap-3">
+      <span className="shrink-0 text-label font-medium uppercase tracking-wide text-text-muted">{label}</span>
+      <span className="min-w-0 truncate text-right text-body-sm text-text-secondary">{children}</span>
+    </div>
+  );
+}
+
+function TicketHoverCard({ triggerRef, data }: { triggerRef: { current: HTMLElement | null }; data: TicketPillHoverData }) {
+  const [pos, setPos] = useState<{ left: number; top: number; openUp: boolean } | null>(null);
+  const [shown, setShown] = useState(false);
+
+  useLayoutEffect(() => {
+    const el = triggerRef.current;
+    if (!el) return;
+    const rect = el.getBoundingClientRect();
+    const spaceBelow = window.innerHeight - rect.bottom;
+    const openUp = spaceBelow < 260;
+    setPos({ left: rect.left, top: openUp ? rect.top - 6 : rect.bottom + 6, openUp });
+  }, [triggerRef]);
+
+  useEffect(() => {
+    const id = requestAnimationFrame(() => setShown(true));
+    return () => cancelAnimationFrame(id);
+  }, []);
+
+  if (!pos || typeof document === "undefined") return null;
+
+  const epicColors = data.epic ? getEpicColor(data.epic) : null;
+
+  return createPortal(
+    <div
+      role="tooltip"
+      className="pointer-events-none fixed z-[9999] w-64 rounded-lg border border-border-default bg-[var(--color-surface-floating)] p-3 text-left normal-case tracking-normal shadow-[var(--shadow-popover)] transition-[opacity,transform] duration-150 ease-out"
+      style={{
+        left: pos.left,
+        ...(pos.openUp ? { bottom: window.innerHeight - pos.top } : { top: pos.top }),
+        opacity: shown ? 1 : 0,
+        transform: shown ? "translateY(0)" : `translateY(${pos.openUp ? "4px" : "-4px"})`,
+      }}
+    >
+      <div className="text-body-sm font-medium leading-snug text-text-primary">{data.title}</div>
+
+      <div className="mt-2 flex items-center gap-5 border-t border-border-subtle pt-2">
+        <ScoreChip label="SP" value={data.storyPoints} colors={data.storyPoints != null ? getSpColor(data.storyPoints) : null} />
+        <ScoreChip label="BV" value={data.businessValue} colors={data.businessValue != null ? getBvColor(data.businessValue) : null} />
+      </div>
+
+      <div className="mt-2 flex flex-col gap-1.5">
+        <InfoRow label="Sprint">{data.sprintName ?? <span className="text-text-muted">No sprint</span>}</InfoRow>
+        <InfoRow label="Epic">
+          {data.epic && epicColors ? (
+            <span
+              className="rounded-[3px] border-l-2 px-1.5 py-0.5 text-[10.5px] font-medium tracking-wide"
+              style={{ backgroundColor: epicColors.bg, color: epicColors.text, borderLeftColor: epicColors.text }}
+            >
+              {data.epic}
+            </span>
+          ) : (
+            <span className="text-text-muted">No epic</span>
+          )}
+        </InfoRow>
+        <InfoRow label="Assignee">{data.assignee ?? <span className="text-text-muted">Unassigned</span>}</InfoRow>
+        <InfoRow label="Creator">{data.reporter ?? <span className="text-text-muted">Unassigned</span>}</InfoRow>
+      </div>
+
+      {data.flagged && (
+        <div className="mt-2 flex items-center gap-1.5 border-t border-border-subtle pt-2">
+          <Flag size={11} strokeWidth={0} fill="currentColor" style={{ color: "var(--color-status-error)" }} />
+          <span className="text-label font-medium" style={{ color: "var(--color-status-error)" }}>Flagged</span>
+        </div>
+      )}
+    </div>,
+    document.body,
+  );
+}
+
+// ---------------------------------------------------------------------------
 // TicketStatusPill
 // ---------------------------------------------------------------------------
 
@@ -343,6 +456,10 @@ export interface TicketStatusPillProps {
   showKey?: boolean;
   /** Hide the jira status segment (default: true) */
   showStatus?: boolean;
+  /** Details shown in the hover card. When omitted, no hover card is rendered. */
+  hoverData?: TicketPillHoverData;
+  /** Enable the hover card (default: true). Combined with hoverData being present. */
+  showHoverCard?: boolean;
 }
 
 export function TicketStatusPill({
@@ -359,6 +476,8 @@ export function TicketStatusPill({
   removedFromJira,
   showKey = true,
   showStatus = true,
+  hoverData,
+  showHoverCard = true,
 }: TicketStatusPillProps) {
   const [issueTypeDropdownOpen, setIssueTypeDropdownOpen] = useState(false);
   const [keyDropdownOpen, setKeyDropdownOpen] = useState(false);
@@ -370,6 +489,39 @@ export function TicketStatusPill({
   const keyLinkRef = useRef<HTMLAnchorElement>(null);
   const jiraStatusBtnRef = useRef<HTMLButtonElement>(null);
   const readinessBtnRef = useRef<HTMLButtonElement>(null);
+
+  // Hover card: shown after a short delay while pointer is over the pill.
+  const wrapperRef = useRef<HTMLDivElement>(null);
+  const [hoverCardVisible, setHoverCardVisible] = useState(false);
+  const hoverTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const hoverCardEnabled = showHoverCard && hoverData != null;
+  const anyDropdownOpen = issueTypeDropdownOpen || keyDropdownOpen || jiraDropdownOpen || readinessDropdownOpen;
+
+  const handleHoverEnter = () => {
+    if (!hoverCardEnabled || anyDropdownOpen) return;
+    if (hoverTimerRef.current) clearTimeout(hoverTimerRef.current);
+    hoverTimerRef.current = setTimeout(() => setHoverCardVisible(true), 400);
+  };
+
+  const handleHoverLeave = () => {
+    if (hoverTimerRef.current) {
+      clearTimeout(hoverTimerRef.current);
+      hoverTimerRef.current = null;
+    }
+    setHoverCardVisible(false);
+  };
+
+  useEffect(() => () => { if (hoverTimerRef.current) clearTimeout(hoverTimerRef.current); }, []);
+
+  const hoverProps = hoverCardEnabled
+    ? { onMouseEnter: handleHoverEnter, onMouseLeave: handleHoverLeave, onFocus: handleHoverEnter, onBlur: handleHoverLeave }
+    : {};
+
+  // Hidden while any click dropdown is open so the two never overlap.
+  const hoverCardEl = hoverCardVisible && !anyDropdownOpen && hoverData
+    ? <TicketHoverCard triggerRef={wrapperRef} data={hoverData} />
+    : null;
 
   const jiraUrl = getJiraUrl(ticketKey);
 
@@ -389,7 +541,8 @@ export function TicketStatusPill({
   // ---------------------------------------------------------------------------
   if (isList) {
     return (
-      <div className="flex shrink-0 items-center gap-1.5">
+      <div ref={wrapperRef} {...hoverProps} className="flex shrink-0 items-center gap-1.5">
+        {hoverCardEl}
 
         {/* Issue type */}
         {issueType && (
@@ -525,7 +678,8 @@ export function TicketStatusPill({
   // Default variant — unified pill container with segments and dividers
   // ---------------------------------------------------------------------------
   return (
-    <div className="flex shrink-0 items-center gap-1">
+    <div ref={wrapperRef} {...hoverProps} className="flex shrink-0 items-center gap-1">
+      {hoverCardEl}
       <div className="flex shrink-0 items-stretch overflow-visible rounded-md bg-overlay-default ring-1 ring-inset ring-border-default">
 
         {/* Issue type segment */}

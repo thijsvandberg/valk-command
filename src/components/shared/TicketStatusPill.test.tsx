@@ -1,6 +1,6 @@
-import { render, screen, fireEvent } from "@testing-library/react";
-import { describe, it, expect, vi } from "vitest";
-import { TicketStatusPill } from "./TicketStatusPill";
+import { render, screen, fireEvent, act } from "@testing-library/react";
+import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
+import { TicketStatusPill, type TicketPillHoverData } from "./TicketStatusPill";
 import { JIRA_STATUS_ABBREVIATIONS, READINESS_CONFIG } from "@/types/ticket";
 
 describe("JIRA_STATUS_ABBREVIATIONS", () => {
@@ -177,5 +177,113 @@ describe("TicketStatusPill", () => {
     expect(screen.getByText("IN PROGRESS")).toBeTruthy();
     fireEvent.click(screen.getByText("IN PROGRESS"));
     expect(onChange).toHaveBeenCalledWith("IN PROGRESS");
+  });
+});
+
+describe("TicketStatusPill hover card", () => {
+  beforeEach(() => vi.useFakeTimers());
+  afterEach(() => {
+    act(() => { vi.runOnlyPendingTimers(); });
+    vi.useRealTimers();
+  });
+
+  const fullData: TicketPillHoverData = {
+    title: "Build the onboarding flow",
+    storyPoints: 5,
+    businessValue: 3,
+    sprintName: "Sprint 42",
+    epic: "Onboarding",
+    assignee: "Alice",
+    reporter: "Bob",
+    flagged: true,
+  };
+
+  function openCard(container: HTMLElement) {
+    act(() => { fireEvent.mouseEnter(container.firstChild as Element); });
+    act(() => { vi.advanceTimersByTime(400); });
+    act(() => { vi.runOnlyPendingTimers(); }); // flush the entry-animation rAF
+  }
+
+  it("shows the card with all fields after the hover delay", () => {
+    const { container } = render(
+      <TicketStatusPill ticketKey="VPL-1" jiraStatus="TO DO" hoverData={fullData} />,
+    );
+    // Card is not visible before the delay elapses
+    act(() => { fireEvent.mouseEnter(container.firstChild as Element); });
+    expect(screen.queryByRole("tooltip")).toBeNull();
+
+    act(() => { vi.advanceTimersByTime(400); });
+    act(() => { vi.runOnlyPendingTimers(); });
+
+    const card = screen.getByRole("tooltip");
+    expect(card).toBeTruthy();
+    expect(screen.getByText("Build the onboarding flow")).toBeTruthy();
+    expect(screen.getByText("5")).toBeTruthy();
+    expect(screen.getByText("3")).toBeTruthy();
+    expect(screen.getByText("Sprint 42")).toBeTruthy();
+    expect(screen.getByText("Onboarding")).toBeTruthy();
+    expect(screen.getByText("Alice")).toBeTruthy();
+    expect(screen.getByText("Bob")).toBeTruthy();
+    expect(screen.getByText("Flagged")).toBeTruthy();
+  });
+
+  it("omits the flagged line when the ticket is not flagged", () => {
+    const { container } = render(
+      <TicketStatusPill ticketKey="VPL-1" jiraStatus="TO DO" hoverData={{ ...fullData, flagged: false }} />,
+    );
+    openCard(container);
+    expect(screen.getByRole("tooltip")).toBeTruthy();
+    expect(screen.queryByText("Flagged")).toBeNull();
+  });
+
+  it("renders muted placeholders for null fields", () => {
+    const data: TicketPillHoverData = {
+      title: "Empty ticket",
+      storyPoints: null,
+      businessValue: null,
+      sprintName: null,
+      epic: null,
+      assignee: null,
+      reporter: null,
+      flagged: false,
+    };
+    const { container } = render(
+      <TicketStatusPill ticketKey="VPL-1" jiraStatus="TO DO" hoverData={data} />,
+    );
+    openCard(container);
+    expect(screen.getByText("No sprint")).toBeTruthy();
+    expect(screen.getByText("No epic")).toBeTruthy();
+    expect(screen.getAllByText("Unassigned")).toHaveLength(2);
+  });
+
+  it("does not show the card when showHoverCard is false", () => {
+    const { container } = render(
+      <TicketStatusPill ticketKey="VPL-1" jiraStatus="TO DO" hoverData={fullData} showHoverCard={false} />,
+    );
+    openCard(container);
+    expect(screen.queryByRole("tooltip")).toBeNull();
+    expect(screen.queryByText("Build the onboarding flow")).toBeNull();
+  });
+
+  it("does not show the card when hoverData is omitted", () => {
+    const { container } = render(<TicketStatusPill ticketKey="VPL-1" jiraStatus="TO DO" />);
+    openCard(container);
+    expect(screen.queryByRole("tooltip")).toBeNull();
+  });
+
+  it("hides the card on mouse leave", () => {
+    const { container } = render(
+      <TicketStatusPill ticketKey="VPL-1" jiraStatus="TO DO" hoverData={fullData} />,
+    );
+    openCard(container);
+    expect(screen.getByRole("tooltip")).toBeTruthy();
+    act(() => { fireEvent.mouseLeave(container.firstChild as Element); });
+    expect(screen.queryByRole("tooltip")).toBeNull();
+  });
+
+  it("still opens the key dropdown on click when hoverData is present", () => {
+    render(<TicketStatusPill ticketKey="VPL-1" jiraStatus="TO DO" hoverData={fullData} />);
+    fireEvent.click(screen.getByText("VPL-1"));
+    expect(screen.getByText("Copy Jira URL")).toBeTruthy();
   });
 });

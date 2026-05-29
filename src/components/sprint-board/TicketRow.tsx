@@ -197,6 +197,16 @@ export const TicketRow = memo(forwardRef<HTMLTableRowElement, TicketRowBaseProps
                   variant="list"
                   size="lg"
                   removedFromJira={isRemoved}
+                  hoverData={{
+                    title: ticket.title,
+                    storyPoints: ticket.storyPoints,
+                    businessValue: ticket.businessValue,
+                    sprintName: ticket.sprintId ? (sprintNameMap[ticket.sprintId] ?? ticket.sprintId) : null,
+                    epic: ticket.epic,
+                    assignee: ticket.assignee?.name ?? null,
+                    reporter: null,
+                    flagged: ticket.flagged,
+                  }}
                 />
               </span>
               {!isRemoved && ticket.editState === "draft" && <EditStateDot state="draft" />}

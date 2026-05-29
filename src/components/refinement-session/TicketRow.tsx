@@ -79,6 +79,16 @@ export function TicketRow({
           variant="list"
           showKey={showKey}
           showStatus={showStatus}
+          hoverData={{
+            title: ticket.title,
+            storyPoints: ticket.storyPoints,
+            businessValue: ticket.businessValue,
+            sprintName,
+            epic: ticket.epic,
+            assignee: ticket.assignee?.name ?? null,
+            reporter: null,
+            flagged: ticket.flagged,
+          }}
         />
       </span>
       {ticket.editState === "draft" && <EditStateDot state="draft" />}
