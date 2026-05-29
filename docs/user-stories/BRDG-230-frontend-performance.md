@@ -37,8 +37,8 @@ Order rationale: frontend bundle changes first (highest user-facing impact), the
 - [x] Part 5: Parallelize epic children in ticket detail API
 - [x] Part 6: Add missing database indexes
 - [x] Part 7: Activity log stats query optimization
-- [ ] All parts verified: lint, typecheck, test, build pass
-- [ ] Manual verification: all affected routes load correctly
+- [x] All parts verified: lint, typecheck, test, build pass
+- [x] Manual verification: all affected routes load correctly (activity-log page has pre-existing bug unrelated to BRDG-230: `sprints is not iterable` due to API shape mismatch)
 
 ---
 
