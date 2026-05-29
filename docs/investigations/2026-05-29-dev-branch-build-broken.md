@@ -35,3 +35,16 @@ Last touched in commit `64376ab5` ("feat: improve refinement queue dropdown UX")
 ## Recommendation
 
 Address the build/typecheck breakage as a dedicated cleanup story so CI and `npm run verify` are green again on `dev`.
+
+## Resolution (2026-05-29)
+
+Fixed in the same session. Summary of changes:
+
+- `SessionNavigation.tsx` - the nav dropdown read `navDropdownRef.current` during render to position itself. Moved the measurement into the toggle click handler (an event, not render) and store the offset in `dropdownTop` state.
+- Sprint-board test fixtures (`TicketTable`, `TicketRow`, `SidePanel`, `SprintAnalytics` `makeTicket` helpers) had drifted from the current `Ticket`/`Assignee` types: `issueType` -> `type`, `editState: null` -> a valid `TicketEditState`, `assignee.avatar` -> `initials`, `isRemoved` -> `removedFromJiraAt`, dropped removed fields, added required `epicKey`/`flagged`. `visibleColumns` is now typed `Set<ColumnId>`.
+- `SprintBoardDragDrop.test.tsx` - dnd-kit `ModifierArguments` changed: removed `dragOverlay`, added `scrollableAncestors`; `DroppableContainer` now needs `key`.
+- `SprintBoard.test.tsx` - `mapJiraSprints` mock callback param was narrower than the array element type (`unknown`); cast the array instead.
+- `BusinessValuePicker.test.tsx` - ref mock had both a `current` data property and a `current` setter; replaced the data property with a getter.
+- Other test fixtures (`StakeholderBriefing`, `DiffPane`, `PaneContext`, `WriterContext`, `RelatedStoriesPanel`) corrected to current types.
+
+`npm run lint`, `npm run typecheck`, `npm run build`, and the full `npm run test` (3460 tests) all pass.

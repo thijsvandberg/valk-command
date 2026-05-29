@@ -210,7 +210,7 @@ describe("DiffPane", () => {
     // Find the right chevron button (next)
     const buttons = screen.getAllByRole("button");
     // The right chevron should be enabled since idx=0 and total=3
-    const rightChevron = buttons.find((b) => !b.disabled && b.textContent === "");
+    const rightChevron = buttons.find((b) => !(b as HTMLButtonElement).disabled && b.textContent === "");
     if (rightChevron) fireEvent.click(rightChevron);
 
     expect(onNavigateDraft).toHaveBeenCalledWith(1);

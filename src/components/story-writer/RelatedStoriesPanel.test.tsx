@@ -35,6 +35,7 @@ function makeCandidate(overrides: Partial<RelatedStoryCandidateRow> = {}): Relat
   return {
     id: "c1",
     sessionId: "s1",
+    ticketKey: "VPL-1",
     jiraKey: "VPL-100",
     title: "Related Story Title",
     matchReason: "Shares common theme",
@@ -43,6 +44,7 @@ function makeCandidate(overrides: Partial<RelatedStoryCandidateRow> = {}): Relat
     status: "TO DO",
     issueType: "story",
     jiraUrl: "https://jira.example.com/browse/VPL-100",
+    updatedDate: null,
     createdAt: new Date().toISOString(),
     ...overrides,
   };

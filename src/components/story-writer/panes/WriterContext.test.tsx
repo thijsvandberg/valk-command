@@ -75,7 +75,7 @@ describe("WriterContext", () => {
   });
 
   it("exposes all provided fields unchanged", () => {
-    const msgs = [{ id: "m1", role: "user" as const, content: "hello", status: "sent" as const, createdAt: new Date().toISOString() }];
+    const msgs = [{ id: "m1", conversationId: "c1", role: "user" as const, content: "hello", timestamp: "2026-05-29T10:00:00Z", workspaceTaskId: null, status: "sent" as const }];
     const value = makeWriterValue({ messages: msgs, status: "streaming", model: "claude-3-5-sonnet-latest" });
     let captured: WriterContextValue | null = null;
 

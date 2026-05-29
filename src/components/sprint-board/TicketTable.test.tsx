@@ -2,6 +2,7 @@ import { render, screen, fireEvent } from "@testing-library/react";
 import { describe, it, expect, vi } from "vitest";
 import { TicketTable } from "./TicketTable";
 import type { Ticket } from "@/types/ticket";
+import type { ColumnId } from "./filter-bar-types";
 
 vi.mock("lucide-react", () => {
   // eslint-disable-next-line react/display-name
@@ -77,23 +78,19 @@ function makeTicket(key: string, title: string): Ticket {
   return {
     key,
     title,
-    jiraStatus: "TO DO",
-    issueType: "Story",
-    storyPoints: 3,
-    businessValue: null,
-    assignee: null,
+    type: "story",
     epic: null,
-    sprintId: null,
-    rank: "0|1",
-    qualityScore: null,
+    epicKey: null,
+    jiraStatus: "TO DO",
+    storyPoints: 3,
+    assignee: null,
+    flagged: false,
     readiness: null,
     poStatus: null,
-    labels: [],
-    editState: null,
-    poNotes: null,
+    qualityScore: null,
+    businessValue: null,
+    editState: "clean",
     notes: "",
-    isRemoved: false,
-    lastChanged: null,
   };
 }
 
@@ -102,11 +99,16 @@ describe("TicketTable", () => {
     tickets: [makeTicket("T-1", "First ticket"), makeTicket("T-2", "Second ticket")],
     selectedTicket: null,
     onSelectTicket: vi.fn(),
-    visibleColumns: new Set(["key", "title", "status", "assignee", "points", "bv", "quality", "epic", "readiness", "poStatus", "labels", "sprint", "editState", "type", "lastChanged"]),
+    visibleColumns: new Set<ColumnId>(["key", "title", "jiraStatus", "assignee", "points", "bv", "quality", "epic", "poStatus", "sprint", "type", "flagged", "notes", "pipeline"]),
     checkedTickets: new Set<string>(),
     focusedTicketIdx: -1,
     someChecked: false,
     allChecked: false,
+    onToggleCheck: vi.fn(),
+    onRangeCheck: vi.fn(),
+    onToggleAll: vi.fn(),
+    onPoStatusChange: vi.fn(),
+    onTableKeyDown: vi.fn(),
     poStatuses: {},
     readinessMap: {},
     columnWidths: {},

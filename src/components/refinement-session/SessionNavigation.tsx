@@ -50,6 +50,17 @@ export function SessionNavigation({
 }: SessionNavigationProps) {
   const [navDropdownOpen, setNavDropdownOpen] = useState(false);
   const navDropdownRef = useRef<HTMLDivElement>(null);
+  // Anchor the fixed dropdown just below the trigger. Measured in the toggle
+  // handler (an event, not render) to avoid reading the ref during render.
+  const [dropdownTop, setDropdownTop] = useState(48);
+
+  const toggleNavDropdown = useCallback(() => {
+    if (!navDropdownOpen) {
+      const rect = navDropdownRef.current?.getBoundingClientRect();
+      if (rect) setDropdownTop(rect.bottom + 8);
+    }
+    setNavDropdownOpen((open) => !open);
+  }, [navDropdownOpen]);
 
   const queueSensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
@@ -135,7 +146,7 @@ export function SessionNavigation({
       <div className="relative" ref={navDropdownRef}>
         <button
           type="button"
-          onClick={() => setNavDropdownOpen((v) => !v)}
+          onClick={toggleNavDropdown}
           className={`flex cursor-pointer items-center justify-center rounded-md p-1.5 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)] ${
             navDropdownOpen
               ? "bg-[var(--color-brand-500)]/[0.08] text-[var(--color-brand-400)]"
@@ -149,7 +160,7 @@ export function SessionNavigation({
         {navDropdownOpen && (
           <div
             className="fixed left-1/2 z-50 w-[520px] min-[1200px]:w-[680px] -translate-x-1/2 rounded-xl border border-border-default bg-[var(--color-surface-floating)] py-1 shadow-[var(--shadow-popover)]"
-            style={{ animation: "fadeInUp 0.1s ease", top: (navDropdownRef.current?.getBoundingClientRect().bottom ?? 48) + 8 }}
+            style={{ animation: "fadeInUp 0.1s ease", top: dropdownTop }}
           >
             <div className="px-3 py-2 text-label font-semibold uppercase tracking-wider text-text-muted">
               Queue

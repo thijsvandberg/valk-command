@@ -45,7 +45,7 @@ const DEFAULT_PANE: Record<PaneAppId, 0 | 1 | 2> = {
   meta: 2,
 };
 
-interface PaneContextValue {
+export interface PaneContextValue {
   paneCount: 1 | 2 | 3;
   paneVisible: PaneVisible;
   paneApps: PaneApps;

@@ -57,6 +57,8 @@ function makeAnalysis(overrides: Partial<UseStakeholderAnalysisReturn> = {}): Us
       "deep-dive": makeIdleLiveState(),
     },
     isStale: vi.fn().mockReturnValue(false),
+    generate: vi.fn(),
+    mutate: vi.fn(),
     ...overrides,
   };
 }

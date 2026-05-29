@@ -14,7 +14,7 @@ vi.mock("@/components/shared/BasePicker", () => {
   const usePickerState = () => ({
     open: openState,
     pos: openState ? { top: 0, left: 0 } : null,
-    triggerRef: { current: triggerRefValue, set current(v: HTMLElement | null) { triggerRefValue = v; } } as React.RefObject<HTMLElement | null>,
+    triggerRef: { get current() { return triggerRefValue; }, set current(v: HTMLElement | null) { triggerRefValue = v; } } as React.RefObject<HTMLElement | null>,
     popoverRef: { current: null } as React.RefObject<HTMLDivElement | null>,
     handleOpen: () => { openState = true; },
     handleClose: () => { openState = false; },

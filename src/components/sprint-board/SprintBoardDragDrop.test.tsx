@@ -61,7 +61,7 @@ describe("SprintDropZoneBar", () => {
 describe("snapToPointer", () => {
   it("returns original transform when no activatorEvent", () => {
     const transform = { x: 0, y: 0, scaleX: 1, scaleY: 1 };
-    const result = snapToPointer({ activatorEvent: null, draggingNodeRect: null, transform, containerNodeRect: null, scrollableAncestorRects: [], windowRect: null, over: null, active: null, activeNodeRect: null, overlayNodeRect: null, dragOverlay: { rect: null, nodeRef: { current: null } } });
+    const result = snapToPointer({ activatorEvent: null, draggingNodeRect: null, transform, containerNodeRect: null, scrollableAncestors: [], scrollableAncestorRects: [], windowRect: null, over: null, active: null, activeNodeRect: null, overlayNodeRect: null });
     expect(result).toEqual(transform);
   });
 
@@ -69,7 +69,7 @@ describe("snapToPointer", () => {
     const transform = { x: 10, y: 20, scaleX: 1, scaleY: 1 };
     const event = new MouseEvent("pointerdown", { clientX: 100, clientY: 200 });
     const rect = { left: 50, top: 100, width: 200, height: 40, right: 250, bottom: 140, x: 50, y: 100, toJSON: () => {} };
-    const result = snapToPointer({ activatorEvent: event, draggingNodeRect: rect, transform, containerNodeRect: null, scrollableAncestorRects: [], windowRect: null, over: null, active: null, activeNodeRect: null, overlayNodeRect: null, dragOverlay: { rect: null, nodeRef: { current: null } } });
+    const result = snapToPointer({ activatorEvent: event, draggingNodeRect: rect, transform, containerNodeRect: null, scrollableAncestors: [], scrollableAncestorRects: [], windowRect: null, over: null, active: null, activeNodeRect: null, overlayNodeRect: null });
     expect(result.x).toBe(10 + 100 - 50 + 8);
     expect(result.y).toBe(20 + 200 - 100 + 8);
   });
@@ -81,7 +81,7 @@ describe("boardCollisionDetection", () => {
       active: { id: "ticket-dragging", data: { current: {} }, rect: { current: { initial: null, translated: null } } },
       collisionRect: { top: 0, left: 0, width: 100, height: 40, right: 100, bottom: 40 },
       droppableContainers: [
-        { id: "ticket-1", data: { current: {} }, rect: { current: null }, disabled: false, node: { current: null } },
+        { id: "ticket-1", key: "ticket-1", data: { current: {} }, rect: { current: null }, disabled: false, node: { current: null } },
       ],
       droppableRects: new Map(),
       pointerCoordinates: null,

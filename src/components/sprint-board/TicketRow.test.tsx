@@ -34,23 +34,20 @@ function makeTicket(overrides: Partial<Ticket> = {}): Ticket {
   return {
     key: "PROJ-10",
     title: "Implement feature",
+    type: "story",
+    epicKey: null,
+    flagged: false,
     jiraStatus: "IN PROGRESS",
-    issueType: "Story",
     storyPoints: 5,
     businessValue: 3,
-    assignee: { name: "Alice", avatar: null, color: "#abc" },
+    assignee: { name: "Alice", initials: "A", color: "#abc" },
     epic: "Epic One",
     sprintId: "1",
-    rank: "0|1",
     qualityScore: 80,
     readiness: "drafting",
     poStatus: "Draft",
-    labels: [],
-    editState: null,
-    poNotes: null,
+    editState: "clean",
     notes: "",
-    isRemoved: false,
-    lastChanged: null,
     ...overrides,
   };
 }
@@ -90,7 +87,7 @@ describe("TicketRow", () => {
 
   it("renders row for removed ticket without error", () => {
     const { container } = render(
-      <table><tbody><TicketRow {...defaultProps} ticket={makeTicket({ isRemoved: true })} /></tbody></table>,
+      <table><tbody><TicketRow {...defaultProps} ticket={makeTicket({ removedFromJiraAt: "2026-01-01T00:00:00Z" })} /></tbody></table>,
     );
     const row = container.querySelector("tr");
     expect(row).toBeInTheDocument();

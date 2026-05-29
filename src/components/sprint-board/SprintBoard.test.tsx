@@ -69,7 +69,7 @@ vi.mock("@/lib/api-client", () => ({
 }));
 
 vi.mock("@/components/sprint-board/sprint-board-utils", () => ({
-  mapJiraSprints: (s: unknown[]) => s.map((sp: Record<string, unknown>) => ({ ...sp, id: String(sp.id), dateRange: "", state: sp.state || "active", ticketCount: 0 })),
+  mapJiraSprints: (s: unknown[]) => (s as Record<string, unknown>[]).map((sp) => ({ ...sp, id: String(sp.id), dateRange: "", state: sp.state || "active", ticketCount: 0 })),
   saveSprintSlots: vi.fn(),
   saveTicketMetadata: vi.fn().mockResolvedValue({}),
   bulkReviewStories: vi.fn(),
