@@ -1,0 +1,101 @@
+// @vitest-environment node
+import { describe, it, expect, vi, beforeEach } from "vitest";
+import { createTestDb } from "@/db/test-utils";
+import type { BetterSQLite3Database } from "drizzle-orm/better-sqlite3";
+import type * as schema from "@/db/schema";
+import { ticket, favoriteUser, userTeamAssignment } from "@/db/schema";
+
+let testDb: BetterSQLite3Database<typeof schema>;
+
+vi.mock("@/db", () => ({
+  get db() {
+    return testDb;
+  },
+}));
+
+import { GET } from "./route";
+
+describe("GET /api/jira/assignable-users", () => {
+  beforeEach(() => {
+    testDb = createTestDb();
+  });
+
+  it("returns empty users array when no tickets have assignees", async () => {
+    const res = await GET();
+    const data = await res.json();
+    expect(res.status).toBe(200);
+    expect(data.users).toEqual([]);
+  });
+
+  it("returns distinct assignees sorted case-insensitive with computed initials", async () => {
+    testDb.insert(ticket).values([
+      { jiraKey: "VPL-1", title: "T1", status: "TO DO", assignee: "Alice Smith" },
+      { jiraKey: "VPL-2", title: "T2", status: "TO DO", assignee: "bob" },
+      { jiraKey: "VPL-3", title: "T3", status: "TO DO", assignee: "Alice Smith" },
+    ]).run();
+
+    const res = await GET();
+    const data = await res.json();
+    expect(data.users).toHaveLength(2);
+    expect(data.users[0].displayName).toBe("Alice Smith");
+    expect(data.users[0].initials).toBe("AS");
+    expect(data.users[1].displayName).toBe("bob");
+    expect(data.users[1].initials).toBe("BO");
+  });
+
+  it("computes two-char initials for single-word name", async () => {
+    testDb.insert(ticket).values({
+      jiraKey: "VPL-1", title: "T1", status: "TO DO", assignee: "Alice",
+    }).run();
+
+    const res = await GET();
+    const data = await res.json();
+    expect(data.users[0].initials).toBe("AL");
+  });
+
+  it("enriches with isFavorite from favoriteUser table", async () => {
+    testDb.insert(ticket).values([
+      { jiraKey: "VPL-1", title: "T1", status: "TO DO", assignee: "Alice Smith" },
+      { jiraKey: "VPL-2", title: "T2", status: "TO DO", assignee: "Bob Jones" },
+    ]).run();
+    testDb.insert(favoriteUser).values({ id: "fav-1", displayName: "Alice Smith" }).run();
+
+    const res = await GET();
+    const data = await res.json();
+    const alice = data.users.find((u: { displayName: string }) => u.displayName === "Alice Smith");
+    const bob = data.users.find((u: { displayName: string }) => u.displayName === "Bob Jones");
+    expect(alice.isFavorite).toBe(true);
+    expect(bob.isFavorite).toBe(false);
+  });
+
+  it("enriches with teams from userTeamAssignment table", async () => {
+    testDb.insert(ticket).values({
+      jiraKey: "VPL-1", title: "T1", status: "TO DO", assignee: "Alice Smith",
+    }).run();
+    testDb.insert(userTeamAssignment).values([
+      { id: "uta-1", displayName: "Alice Smith", team: "BT" },
+      { id: "uta-2", displayName: "Alice Smith", team: "BM" },
+    ]).run();
+
+    const res = await GET();
+    const data = await res.json();
+    expect(data.users[0].teams).toEqual(expect.arrayContaining(["BT", "BM"]));
+  });
+
+  it("returns empty users array when tickets table is empty", async () => {
+    const res = await GET();
+    const data = await res.json();
+    expect(data.users).toEqual([]);
+  });
+
+  it("returns 500 with empty users array on exception", async () => {
+    const { sql } = await import("drizzle-orm");
+    testDb.run(sql.raw("DROP TABLE ticket"));
+
+    const res = await GET();
+    const data = await res.json();
+    expect(res.status).toBe(500);
+    expect(data.users).toEqual([]);
+    expect(data.error).toBeDefined();
+  });
+});
