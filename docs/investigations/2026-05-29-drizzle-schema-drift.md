@@ -1,7 +1,9 @@
-# Drizzle schema drift (pre-existing)
+# Drizzle schema drift (pre-existing) — RESOLVED
 
 **Date:** 2026-05-29
 **Found during:** BRDG-231 (dependency vulnerability fix) baseline verification
+**Status:** Resolved 2026-05-29 — migration `drizzle/0057_composite_indexes_brdg230.sql`
+committed; `npx drizzle-kit generate` now reports "No schema changes, nothing to migrate".
 
 ## Summary
 
@@ -33,12 +35,14 @@ the diff is pre-existing, not caused by the upgrade. For BRDG-231 we instead ver
 that drizzle-kit still *functions* (it reads the schema and emits the same pre-existing
 diff before and after the upgrade).
 
-## Recommendation
+## Resolution
 
-Open a separate story to either (a) commit a migration capturing these index changes,
-or (b) revert the schema if the index changes were unintentional. Whoever last edited
-the index definitions in `src/db/schema.ts` should confirm intent before a migration is
-committed.
+The index changes were intentional: commit `7aed8811` ("perf: add composite indexes
+for reviews, story versions, and conversation lookups (BRDG-230)") added them to
+`src/db/schema.ts` but never generated the accompanying migration. The missing
+migration was generated and committed as `drizzle/0057_composite_indexes_brdg230.sql`,
+realigning the migration history with the schema. `npx drizzle-kit generate` now
+reports "No schema changes, nothing to migrate".
 
-The baseline migration artifacts generated during investigation were moved to
+The throwaway migration artifacts generated during investigation were moved to
 `deleted/drizzle-baseline-2026-05-29/` rather than committed.
