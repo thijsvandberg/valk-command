@@ -32,7 +32,7 @@ Order rationale: frontend bundle changes first (highest user-facing impact), the
 
 - [x] Part 1: Dynamic import layout components
 - [x] Part 2: Dynamic import page-level conditional components
-- [ ] Part 3: Add loading.tsx streaming skeletons
+- [x] Part 3: Add loading.tsx streaming skeletons
 - [x] Part 4: Expand optimizePackageImports
 - [ ] Part 5: Parallelize epic children in ticket detail API
 - [ ] Part 6: Add missing database indexes
