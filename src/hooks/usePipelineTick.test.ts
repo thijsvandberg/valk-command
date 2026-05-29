@@ -86,8 +86,7 @@ describe("usePipelineTick", () => {
     expect(pipelinesApi.tick).toHaveBeenCalledTimes(1);
 
     // Complete the first
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    (resolveFirst as any)?.({ ran: false, newRuns: 0, updatedRuns: 0 });
+    if (resolveFirst) (resolveFirst as (v: unknown) => void)({ ran: false, newRuns: 0, updatedRuns: 0 });
     await act(async () => { await Promise.resolve(); });
   });
 

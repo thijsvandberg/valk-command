@@ -1,6 +1,6 @@
 # BRDG-228: Close Remaining Hook and Lib Test Gaps
 
-**Status:** In Progress
+**Status:** Completed
 **Priority:** Medium
 **Type:** Testing
 
@@ -23,7 +23,7 @@ Hooks are at 78% coverage (10 untested) and lib utilities at 87% (9 untested). S
 
 - [x] All Tier 1 and Tier 2 files have tests
 - [x] Tests follow existing patterns (renderHook for hooks, direct imports for libs)
-- [ ] `npm run test` and `npm run build` pass
+- [x] `npm run test` and `npm run build` pass
 
 ---
 
