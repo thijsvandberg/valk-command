@@ -148,8 +148,8 @@ export function SessionNavigation({
         </button>
         {navDropdownOpen && (
           <div
-            className="absolute top-full left-1/2 z-50 mt-2 w-[520px] -translate-x-1/2 rounded-xl border border-border-default bg-[var(--color-surface-floating)] py-1 shadow-[var(--shadow-popover)]"
-            style={{ animation: "fadeInUp 0.1s ease" }}
+            className="fixed left-1/2 z-50 w-[520px] min-[1200px]:w-[680px] -translate-x-1/2 rounded-xl border border-border-default bg-[var(--color-surface-floating)] py-1 shadow-[var(--shadow-popover)]"
+            style={{ animation: "fadeInUp 0.1s ease", top: (navDropdownRef.current?.getBoundingClientRect().bottom ?? 48) + 8 }}
           >
             <div className="px-3 py-2 text-label font-semibold uppercase tracking-wider text-text-muted">
               Queue
@@ -166,6 +166,7 @@ export function SessionNavigation({
                         ticketKey={key}
                         title={meta?.title ?? key}
                         isCurrent={idx === currentIndex}
+                        isRefined={idx < currentIndex}
                         issueType={t?.type}
                         jiraStatus={t?.jiraStatus}
                         onClick={() => { onGoToTicket(idx); setNavDropdownOpen(false); }}

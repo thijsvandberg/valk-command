@@ -1,7 +1,7 @@
 "use client";
 
 import { useSortable } from "@dnd-kit/sortable";
-import { GripVertical } from "lucide-react";
+import { GripVertical, Check } from "lucide-react";
 import { TicketStatusPill } from "@/components/shared/TicketStatusPill";
 import type { JiraStatus } from "@/types/ticket";
 
@@ -9,6 +9,7 @@ export function SessionQueueItem({
   ticketKey,
   title,
   isCurrent,
+  isRefined = false,
   issueType,
   jiraStatus,
   onClick,
@@ -16,6 +17,7 @@ export function SessionQueueItem({
   ticketKey: string;
   title: string;
   isCurrent: boolean;
+  isRefined?: boolean;
   issueType?: string;
   jiraStatus?: JiraStatus;
   onClick: () => void;
@@ -43,7 +45,9 @@ export function SessionQueueItem({
       style={style}
       className={`flex w-full items-center gap-2 px-3 py-2 hover:bg-hover-list-item active:bg-overlay-default ${
         isCurrent ? "bg-overlay-subtle" : ""
-      } ${isDragging ? "bg-[var(--color-surface-elevated)] shadow-[var(--shadow-lg)] rounded-lg" : ""}`}
+      } ${isDragging ? "bg-[var(--color-surface-elevated)] shadow-[var(--shadow-lg)] rounded-lg" : ""} ${
+        isRefined ? "opacity-80" : ""
+      }`}
     >
       <span
         ref={setActivatorNodeRef}
@@ -75,10 +79,12 @@ export function SessionQueueItem({
         ) : (
           <span className="shrink-0 font-mono text-body-sm text-[var(--color-brand-400)]">{ticketKey}</span>
         )}
-        <span className="min-w-0 flex-1 truncate text-body-sm text-text-secondary">{title}</span>
-        {isCurrent && (
+        <span className={`min-w-0 flex-1 truncate text-body-sm ${isRefined ? "text-text-muted line-through decoration-text-muted/30" : "text-text-secondary"}`}>{title}</span>
+        {isRefined ? (
+          <Check size={12} strokeWidth={2} className="shrink-0 text-[var(--color-status-success)]" />
+        ) : isCurrent ? (
           <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-[var(--color-brand-500)]" />
-        )}
+        ) : null}
       </button>
     </div>
   );
