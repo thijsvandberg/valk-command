@@ -1,34 +1,12 @@
 "use client";
 
-import { useEffect, useRef, type ReactNode, type HTMLAttributes } from "react";
-
-/**
- * Hook that fires `onClose` when a mousedown event lands outside of `ref`.
- */
-export function useClickOutside<T extends HTMLElement>(
-  ref: React.RefObject<T | null>,
-  onClose: () => void,
-  enabled = true,
-) {
-  useEffect(() => {
-    if (!enabled) return;
-    function handle(e: MouseEvent) {
-      if (ref.current && !ref.current.contains(e.target as Node)) {
-        onClose();
-      }
-    }
-    document.addEventListener("mousedown", handle);
-    return () => document.removeEventListener("mousedown", handle);
-  }, [ref, onClose, enabled]);
-}
+import { useRef, type ReactNode, type HTMLAttributes } from "react";
+import { useOutsideClick } from "@/hooks/useOutsideClick";
 
 /**
  * Floating panel that handles positioning, click-outside dismissal, and
  * ESC key. Used for dropdowns and popovers that are positioned relative
  * to a trigger element (non-portal mode).
- *
- * For portaled panels (e.g. NotificationBell), keep using createPortal
- * directly and use `useClickOutside` for the click-outside logic.
  */
 interface PopoverProps extends HTMLAttributes<HTMLDivElement> {
   open: boolean;
@@ -48,16 +26,7 @@ export function Popover({
   ...rest
 }: PopoverProps) {
   const ref = useRef<HTMLDivElement>(null);
-  useClickOutside(ref, onClose, open);
-
-  useEffect(() => {
-    if (!open) return;
-    function handleKey(e: KeyboardEvent) {
-      if (e.key === "Escape") onClose();
-    }
-    document.addEventListener("keydown", handleKey);
-    return () => document.removeEventListener("keydown", handleKey);
-  }, [open, onClose]);
+  useOutsideClick(ref, onClose, { enabled: open });
 
   if (!open) return null;
 

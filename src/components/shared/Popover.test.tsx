@@ -1,7 +1,6 @@
 import { render, screen, fireEvent } from "@testing-library/react";
 import { describe, it, expect, vi } from "vitest";
-import { Popover, useClickOutside } from "./Popover";
-import { useRef } from "react";
+import { Popover } from "./Popover";
 
 describe("Popover", () => {
   it("renders nothing when closed", () => {
@@ -71,36 +70,5 @@ describe("Popover", () => {
     );
     const panel = container.querySelector(".absolute.top-full") as HTMLElement;
     expect(panel.className).toContain("w-64");
-  });
-});
-
-describe("useClickOutside", () => {
-  it("calls onClose when clicking outside the ref element", () => {
-    const onClose = vi.fn();
-    function TestComponent() {
-      const ref = useRef<HTMLDivElement>(null);
-      useClickOutside(ref, onClose);
-      return (
-        <div>
-          <div ref={ref} data-testid="inside">Inside</div>
-          <div data-testid="outside">Outside</div>
-        </div>
-      );
-    }
-    render(<TestComponent />);
-    fireEvent.mouseDown(screen.getByTestId("outside"));
-    expect(onClose).toHaveBeenCalledTimes(1);
-  });
-
-  it("does not call onClose when clicking inside the ref element", () => {
-    const onClose = vi.fn();
-    function TestComponent() {
-      const ref = useRef<HTMLDivElement>(null);
-      useClickOutside(ref, onClose);
-      return <div ref={ref} data-testid="inside">Inside</div>;
-    }
-    render(<TestComponent />);
-    fireEvent.mouseDown(screen.getByTestId("inside"));
-    expect(onClose).not.toHaveBeenCalled();
   });
 });
