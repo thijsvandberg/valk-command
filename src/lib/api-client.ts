@@ -4,6 +4,15 @@
 import type { Ticket, TicketDetail, Sprint, StoryVersion, StoredReview, RelatedSuggestionResponse, SubtaskSuggestionResponse } from "@/types/ticket";
 import type { Conversation, ConversationType, Message } from "@/types/chat";
 
+export interface LinkSearchResult {
+  key: string;
+  title: string;
+  type: string;
+  status: string;
+  sprintName: string | null;
+  source: "local" | "jira" | "recent";
+}
+
 // ---------------------------------------------------------------------------
 // Error
 // ---------------------------------------------------------------------------
@@ -228,12 +237,12 @@ export const tickets = {
     apiFetch<void>(`/api/tickets/${enc(key)}/related-suggestions`, { method: "DELETE", signal }),
 
   // Ticket search (for autocomplete)
-  searchForLink: (query: string, excludeKey?: string, signal?: AbortSignal) =>
-    apiFetch<Array<{ key: string; title: string; type: string; status: string; source?: "local" | "jira" }>>(`/api/tickets/search${qs({ q: query, exclude: excludeKey, jira: "0" })}`, { signal }),
-  searchForLinkWithJira: (query: string, excludeKey?: string, signal?: AbortSignal) =>
-    apiFetch<Array<{ key: string; title: string; type: string; status: string; source?: "local" | "jira" }>>(`/api/tickets/search${qs({ q: query, exclude: excludeKey })}`, { signal }),
-  recentLinks: (excludeKey?: string, signal?: AbortSignal) =>
-    apiFetch<Array<{ key: string; title: string; type: string; status: string; source?: "recent" }>>(`/api/tickets/search${qs({ recent: "1", exclude: excludeKey })}`, { signal }),
+  searchForLink: (query: string, excludeKey?: string, offset?: number, signal?: AbortSignal) =>
+    apiFetch<{ results: LinkSearchResult[]; hasMore: boolean }>(`/api/tickets/search${qs({ q: query, exclude: excludeKey, jira: "0", offset: offset ? String(offset) : undefined })}`, { signal }),
+  searchForLinkWithJira: (query: string, excludeKey?: string, offset?: number, signal?: AbortSignal) =>
+    apiFetch<{ results: LinkSearchResult[]; hasMore: boolean }>(`/api/tickets/search${qs({ q: query, exclude: excludeKey, offset: offset ? String(offset) : undefined })}`, { signal }),
+  recentlyUpdated: (excludeKey?: string, signal?: AbortSignal) =>
+    apiFetch<{ results: LinkSearchResult[]; hasMore: boolean }>(`/api/tickets/search${qs({ recent: "1", exclude: excludeKey })}`, { signal }),
 
   suggestSubtasks: (ticketKey: string, signal?: AbortSignal) =>
     apiFetch<{ taskId: string; streamUrl: string }>(

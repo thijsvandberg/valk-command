@@ -15,7 +15,7 @@ const mockSearchForLink = vi.fn();
 const mockSearchForLinkWithJira = vi.fn();
 const mockCreateLink = vi.fn();
 const mockDeleteLink = vi.fn();
-const mockRecentLinks = vi.fn();
+const mockRecentlyUpdated = vi.fn();
 const mockGetRelatedSuggestions = vi.fn();
 vi.mock("@/lib/api-client", () => ({
   tickets: {
@@ -23,7 +23,7 @@ vi.mock("@/lib/api-client", () => ({
     searchForLinkWithJira: (...args: unknown[]) => mockSearchForLinkWithJira(...args),
     createLink: (...args: unknown[]) => mockCreateLink(...args),
     deleteLink: (...args: unknown[]) => mockDeleteLink(...args),
-    recentLinks: (...args: unknown[]) => mockRecentLinks(...args),
+    recentlyUpdated: (...args: unknown[]) => mockRecentlyUpdated(...args),
     getRelatedSuggestions: (...args: unknown[]) => mockGetRelatedSuggestions(...args),
   },
   jira: {
@@ -85,8 +85,8 @@ function renderSection(issues: LinkedIssue[] = []) {
 describe("LinkedIssuesSection", () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    mockRecentLinks.mockResolvedValue([]);
-    mockSearchForLinkWithJira.mockResolvedValue([]);
+    mockRecentlyUpdated.mockResolvedValue({ results: [], hasMore: false });
+    mockSearchForLinkWithJira.mockResolvedValue({ results: [], hasMore: false });
     mockGetRelatedSuggestions.mockResolvedValue({ suggestions: [], cachedAt: null });
   });
 
@@ -102,16 +102,16 @@ describe("LinkedIssuesSection", () => {
   });
 
   it("shows search results after typing", async () => {
-    mockSearchForLink.mockResolvedValue([
+    mockSearchForLink.mockResolvedValue({ results: [
       { key: "VPL-200", title: "Search result issue", type: "task", status: "TO DO" },
-    ]);
+    ], hasMore: false });
 
     renderSection();
     const input = screen.getByPlaceholderText("Link issue...");
     fireEvent.change(input, { target: { value: "VPL" } });
 
     await waitFor(() => {
-      expect(mockSearchForLink).toHaveBeenCalledWith("VPL", "VPL-1", expect.any(AbortSignal));
+      expect(mockSearchForLink).toHaveBeenCalledWith("VPL", "VPL-1", 0, expect.any(AbortSignal));
     });
 
     await waitFor(() => {
@@ -121,9 +121,9 @@ describe("LinkedIssuesSection", () => {
   });
 
   it("creates link on result click", async () => {
-    mockSearchForLink.mockResolvedValue([
+    mockSearchForLink.mockResolvedValue({ results: [
       { key: "VPL-200", title: "Target issue", type: "task", status: "TO DO" },
-    ]);
+    ], hasMore: false });
     mockCreateLink.mockResolvedValue({
       key: "VPL-200",
       title: "Target issue",
@@ -157,9 +157,9 @@ describe("LinkedIssuesSection", () => {
   });
 
   it("shows error when linking already-linked issue", async () => {
-    mockSearchForLink.mockResolvedValue([
+    mockSearchForLink.mockResolvedValue({ results: [
       { key: "VPL-100", title: "Existing linked issue", type: "story", status: "IN PROGRESS" },
-    ]);
+    ], hasMore: false });
 
     renderSection(SAMPLE_ISSUES);
     const input = screen.getByPlaceholderText("Link issue...");
@@ -185,7 +185,7 @@ describe("LinkedIssuesSection", () => {
   });
 
   it("extracts issue key from Jira URL", async () => {
-    mockSearchForLink.mockResolvedValue([]);
+    mockSearchForLink.mockResolvedValue({ results: [], hasMore: false });
 
     renderSection();
     const input = screen.getByPlaceholderText("Link issue...");
@@ -194,7 +194,7 @@ describe("LinkedIssuesSection", () => {
     });
 
     await waitFor(() => {
-      expect(mockSearchForLink).toHaveBeenCalledWith("VPL-999", "VPL-1", expect.any(AbortSignal));
+      expect(mockSearchForLink).toHaveBeenCalledWith("VPL-999", "VPL-1", 0, expect.any(AbortSignal));
     });
   });
 
@@ -216,9 +216,9 @@ describe("LinkedIssuesSection", () => {
   });
 
   it("uses selected relation when creating a link", async () => {
-    mockSearchForLink.mockResolvedValue([
+    mockSearchForLink.mockResolvedValue({ results: [
       { key: "VPL-300", title: "Target", type: "task", status: "TO DO" },
-    ]);
+    ], hasMore: false });
     mockCreateLink.mockResolvedValue({
       key: "VPL-300",
       title: "Target",

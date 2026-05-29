@@ -1,21 +1,27 @@
 import { NextResponse } from "next/server";
 import { db } from "@/db";
-import { ticket, ticketLink } from "@/db/schema";
-import { like, or, ne, and, desc } from "drizzle-orm";
+import { ticket } from "@/db/schema";
+import { like, or, ne, and, desc, isNull, sql } from "drizzle-orm";
 import { jiraClient } from "@/lib/jira-client";
 
 const JIRA_KEY_RE = /^[A-Z][A-Z0-9]+-\d+$/i;
 const SPARSE_THRESHOLD = 5;
-const MAX_RESULTS = 15;
-const RECENT_LIMIT = 5;
+const PAGE_SIZE = 25;
+const RECENT_LIMIT = 10;
 
 interface SearchResult {
   key: string;
   title: string;
   type: string;
   status: string;
-  source: "local" | "jira";
+  sprintName: string | null;
+  source: "local" | "jira" | "recent";
 }
+
+const notDeleted = and(
+  sql`LOWER(${ticket.status}) != 'deleted'`,
+  isNull(ticket.removedFromJiraAt),
+);
 
 export async function GET(request: Request) {
   const url = new URL(request.url);
@@ -23,28 +29,38 @@ export async function GET(request: Request) {
   const exclude = url.searchParams.get("exclude");
   const jiraEnabled = url.searchParams.get("jira") !== "0";
   const recentOnly = url.searchParams.get("recent") === "1";
+  const offset = parseInt(url.searchParams.get("offset") ?? "0", 10) || 0;
 
-  // Recent links mode: return recently linked issues from the local DB
+  // Recently updated tickets mode (empty state)
   if (recentOnly) {
-    const recentLinks = await db
-      .selectDistinct({
-        key: ticketLink.linkedKey,
-        title: ticketLink.title,
-        type: ticketLink.type,
-        status: ticketLink.status,
+    const conditions = [notDeleted];
+    if (exclude) conditions.push(ne(ticket.jiraKey, exclude));
+
+    const recentTickets = await db
+      .select({
+        key: ticket.jiraKey,
+        title: ticket.title,
+        type: ticket.type,
+        status: ticket.status,
+        sprintName: ticket.sprintName,
       })
-      .from(ticketLink)
-      .where(exclude ? ne(ticketLink.linkedKey, exclude) : undefined)
-      .orderBy(desc(ticketLink.id))
+      .from(ticket)
+      .where(and(...conditions))
+      .orderBy(desc(ticket.jiraUpdatedAt))
       .limit(RECENT_LIMIT);
 
-    return NextResponse.json(
-      recentLinks.map((r) => ({ ...r, type: r.type ?? "task", source: "recent" as const })),
-    );
+    return NextResponse.json({
+      results: recentTickets.map((r) => ({
+        ...r,
+        type: r.type ?? "task",
+        source: "recent" as const,
+      })),
+      hasMore: false,
+    });
   }
 
   if (!q || q.length < 2) {
-    return NextResponse.json([]);
+    return NextResponse.json({ results: [], hasMore: false });
   }
 
   const pattern = `%${q}%`;
@@ -53,6 +69,7 @@ export async function GET(request: Request) {
       like(ticket.jiraKey, pattern),
       like(ticket.title, pattern),
     ),
+    notDeleted,
   ];
 
   if (exclude) {
@@ -65,16 +82,25 @@ export async function GET(request: Request) {
       title: ticket.title,
       type: ticket.type,
       status: ticket.status,
+      sprintName: ticket.sprintName,
     })
     .from(ticket)
     .where(and(...conditions))
-    .limit(MAX_RESULTS);
+    .limit(PAGE_SIZE + 1)
+    .offset(offset);
 
-  const results: SearchResult[] = localResults.map((r) => ({ ...r, type: r.type ?? "task", source: "local" as const }));
+  const hasMore = localResults.length > PAGE_SIZE;
+  if (hasMore) localResults.pop();
 
-  // Skip Jira fallback when we have enough local results or jira is disabled
-  if (results.length >= SPARSE_THRESHOLD || !jiraEnabled) {
-    return NextResponse.json(results);
+  const results: SearchResult[] = localResults.map((r) => ({
+    ...r,
+    type: r.type ?? "task",
+    source: "local" as const,
+  }));
+
+  // Skip Jira fallback on paginated requests, when we have enough, or when disabled
+  if (offset > 0 || results.length >= SPARSE_THRESHOLD || !jiraEnabled) {
+    return NextResponse.json({ results, hasMore });
   }
 
   // Fallback to Jira when local results are sparse
@@ -88,6 +114,7 @@ export async function GET(request: Request) {
           title: issue.fields.summary,
           type: issue.fields.issuetype?.name?.toLowerCase() ?? "task",
           status: issue.fields.status?.name ?? "To Do",
+          sprintName: null,
           source: "jira",
         });
       }
@@ -96,12 +123,12 @@ export async function GET(request: Request) {
       const issues = await jiraClient.searchIssues(jql, ["summary", "status", "issuetype"], 10);
       for (const i of issues) {
         if (i.key === exclude || localKeys.has(i.key)) continue;
-        if (results.length >= MAX_RESULTS) break;
         results.push({
           key: i.key,
           title: i.fields.summary,
           type: i.fields.issuetype?.name?.toLowerCase() ?? "task",
           status: i.fields.status?.name ?? "To Do",
+          sprintName: null,
           source: "jira",
         });
       }
@@ -110,5 +137,5 @@ export async function GET(request: Request) {
     // Jira unavailable: return whatever local results we have
   }
 
-  return NextResponse.json(results);
+  return NextResponse.json({ results, hasMore });
 }

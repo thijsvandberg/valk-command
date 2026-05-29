@@ -36,7 +36,7 @@ interface SearchResult {
   title: string;
   type: string;
   status: string;
-  source?: "local" | "jira";
+  source?: "local" | "jira" | "recent";
 }
 
 interface EpicChildrenSectionProps {
@@ -167,7 +167,7 @@ export function EpicChildrenSection({
       const controller = new AbortController();
       searchAbortRef.current = controller;
       try {
-        const data = await tickets.searchForLink(q, ticketKey, controller.signal);
+        const { results: data } = await tickets.searchForLink(q, ticketKey, undefined, controller.signal);
         const filtered = data.filter((r: SearchResult) => r.key !== ticketKey && !existingKeys.has(r.key));
         setSearchResults(filtered);
         setSearchHighlight(-1);
@@ -176,7 +176,7 @@ export function EpicChildrenSection({
         if (filtered.length < 5) {
           setTimeout(async () => {
             try {
-              const fullData = await tickets.searchForLinkWithJira(q, ticketKey, controller.signal);
+              const { results: fullData } = await tickets.searchForLinkWithJira(q, ticketKey, undefined, controller.signal);
               setSearchResults(fullData.filter((r: SearchResult) => r.key !== ticketKey && !existingKeys.has(r.key)));
             } catch { /* ignore aborted */ }
           }, 300);

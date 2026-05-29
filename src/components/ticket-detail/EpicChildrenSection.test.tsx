@@ -55,8 +55,8 @@ function openSearchMode() {
 describe("EpicChildrenSection", () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    mockSearchForLink.mockResolvedValue([]);
-    mockSearchForLinkWithJira.mockResolvedValue([]);
+    mockSearchForLink.mockResolvedValue({ results: [], hasMore: false });
+    mockSearchForLinkWithJira.mockResolvedValue({ results: [], hasMore: false });
     mockGetSectionVisibility.mockResolvedValue({ visible: null });
   });
 
@@ -253,9 +253,9 @@ describe("EpicChildrenSection", () => {
     });
 
     it("shows search results after typing", async () => {
-      mockSearchForLink.mockResolvedValue([
+      mockSearchForLink.mockResolvedValue({ results: [
         { key: "VPL-50", title: "Existing ticket", type: "story", status: "TO DO", source: "local" },
-      ]);
+      ], hasMore: false });
 
       renderSection();
       openSearchMode();
@@ -269,9 +269,9 @@ describe("EpicChildrenSection", () => {
     });
 
     it("links existing ticket on click", async () => {
-      mockSearchForLink.mockResolvedValue([
+      mockSearchForLink.mockResolvedValue({ results: [
         { key: "VPL-50", title: "Existing ticket", type: "story", status: "TO DO", source: "local" },
-      ]);
+      ], hasMore: false });
       mockUpdateEpic.mockResolvedValue({ epic: "Epic VPL-1", epicKey: "VPL-1" });
 
       const { onMutate } = renderSection();
@@ -314,10 +314,10 @@ describe("EpicChildrenSection", () => {
     });
 
     it("excludes already-linked children from results", async () => {
-      mockSearchForLink.mockResolvedValue([
+      mockSearchForLink.mockResolvedValue({ results: [
         { key: "VPL-10", title: "First story", type: "story", status: "TO DO", source: "local" },
         { key: "VPL-50", title: "New ticket", type: "task", status: "TO DO", source: "local" },
-      ]);
+      ], hasMore: false });
 
       renderSection(SAMPLE_CHILDREN);
       openSearchMode();
@@ -336,9 +336,9 @@ describe("EpicChildrenSection", () => {
     });
 
     it("shows error when linking fails", async () => {
-      mockSearchForLink.mockResolvedValue([
+      mockSearchForLink.mockResolvedValue({ results: [
         { key: "VPL-50", title: "Fail ticket", type: "story", status: "TO DO", source: "local" },
-      ]);
+      ], hasMore: false });
       mockUpdateEpic.mockRejectedValue(new Error("API error"));
 
       renderSection();

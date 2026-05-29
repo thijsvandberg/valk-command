@@ -7,27 +7,21 @@ import { ChildIssueRow } from "./ChildIssueRow";
 import { SectionHeader } from "@/components/shared/SectionHeader";
 import { LinkIssueDialog } from "./LinkIssueDialog";
 import { useLinkTypes } from "@/hooks/useLinkTypes";
+import { useLinkIssueSearch } from "@/hooks/useLinkIssueSearch";
+import type { LinkSearchResult } from "@/lib/api-client";
 import { RelatedSuggestions, toRelatedSuggestion, type RelatedSuggestion } from "./RelatedIssueSuggestions";
+import { LinkSearchResultRow } from "./LinkSearchResultRow";
+import { StatusFilterChips } from "./StatusFilterChips";
+import { ScrollSentinel } from "./ScrollSentinel";
 import { tickets } from "@/lib/api-client";
 import { useTaskStream } from "@/hooks/useTaskStream";
 import { friendlyStreamError, isRetryableStreamError } from "@/lib/agent-errors";
-import { StatusBadge as SearchStatusBadge } from "@/components/sprint-board/SearchResultParts";
-import { IssueTypeIcon } from "@/components/shared/IssueTypeIcon";
-import type { IssueType } from "@/types/ticket";
-import { X, Sparkles, Loader2, Link2, Cloud, ChevronDown } from "lucide-react";
+import { X, Sparkles, Loader2, Link2, ChevronDown, Maximize2, Clock } from "lucide-react";
 
 interface LinkedIssuesSectionProps {
   issues: TicketDetail["linkedIssues"];
   ticketKey: string;
   onMutate: () => void;
-}
-
-interface InlineSearchResult {
-  key: string;
-  title: string;
-  type: string;
-  status: string;
-  source?: "local" | "jira";
 }
 
 function DeleteButton({ onClick }: { onClick: () => void }) {
@@ -48,7 +42,7 @@ function DeleteButton({ onClick }: { onClick: () => void }) {
 export function LinkedIssuesSection({ issues, ticketKey, onMutate }: LinkedIssuesSectionProps) {
   const { linkTypes } = useLinkTypes();
   const [showLinkDialog, setShowLinkDialog] = useState(false);
-  const [linkDialogDefaults, setLinkDialogDefaults] = useState<{ targetKey?: string; relation?: string }>({});
+  const [linkDialogDefaults, setLinkDialogDefaults] = useState<{ initialQuery?: string; relation?: string }>({});
 
   // Inline link input state
   const [inlineRelation, setInlineRelation] = useState("relates to");
@@ -57,16 +51,13 @@ export function LinkedIssuesSection({ issues, ticketKey, onMutate }: LinkedIssue
   const [inlineRelationHighlight, setInlineRelationHighlight] = useState(-1);
   const inlineRelationRef = useRef<HTMLDivElement>(null);
   const inlineRelationFilterRef = useRef<HTMLInputElement>(null);
-  const [inlineQuery, setInlineQuery] = useState("");
-  const [inlineResults, setInlineResults] = useState<InlineSearchResult[]>([]);
-  const [inlineHighlight, setInlineHighlight] = useState(-1);
-  const [inlineShowResults, setInlineShowResults] = useState(false);
-  const [inlineSearching, setInlineSearching] = useState(false);
   const [inlinePending, setInlinePending] = useState<LinkedIssue[]>([]);
   const [inlineError, setInlineError] = useState<string | null>(null);
   const [deletingKeys, setDeletingKeys] = useState<Set<string>>(new Set());
   const inlineInputRef = useRef<HTMLInputElement>(null);
-  const inlineDebounceRef = useRef<ReturnType<typeof setTimeout>>(null);
+
+  // Shared search hook
+  const search = useLinkIssueSearch(ticketKey);
 
   // AI suggestions state (managed here, like SubtasksSection)
   const [suggestions, setSuggestions] = useState<RelatedSuggestion[]>([]);
@@ -90,19 +81,14 @@ export function LinkedIssuesSection({ issues, ticketKey, onMutate }: LinkedIssue
     return () => { cancelled = true; };
   }, [ticketKey]);
 
-  // Prune deletingKeys once SWR re-fetch has removed items from issues
-  useEffect(() => {
-    if (deletingKeys.size === 0) return;
+  // Prune deletingKeys: compute the effective set during render
+  const effectiveDeletingKeys = (() => {
+    if (deletingKeys.size === 0) return deletingKeys;
     const issueIds = new Set(issues.map((i) => `${i.key}:${i.relation}`));
-    const stale = [...deletingKeys].filter((id) => !issueIds.has(id));
-    if (stale.length > 0) {
-      setDeletingKeys((prev) => {
-        const next = new Set(prev);
-        stale.forEach((id) => next.delete(id));
-        return next;
-      });
-    }
-  }, [issues, deletingKeys]);
+    const stillPresent = [...deletingKeys].filter((id) => issueIds.has(id));
+    if (stillPresent.length === deletingKeys.size) return deletingKeys;
+    return new Set(stillPresent);
+  })();
 
   // Close relation dropdown on Esc or click outside
   useEffect(() => {
@@ -248,9 +234,7 @@ export function LinkedIssuesSection({ issues, ticketKey, onMutate }: LinkedIssue
         relation: item.relation,
       });
       onMutate();
-      // Keep deleteId in deletingKeys until SWR re-fetch removes it from issues
     } catch (err) {
-      // Restore the item on failure
       setDeletingKeys((prev) => {
         const next = new Set(prev);
         next.delete(deleteId);
@@ -261,78 +245,13 @@ export function LinkedIssuesSection({ issues, ticketKey, onMutate }: LinkedIssue
     }
   }, [ticketKey, onMutate]);
 
-  const openLinkDialog = useCallback((defaults?: { targetKey?: string; relation?: string }) => {
-    setLinkDialogDefaults(defaults ?? {});
-    setShowLinkDialog(true);
-  }, []);
-
   const handleLinkCreated = useCallback(() => {
     setShowLinkDialog(false);
     setLinkDialogDefaults({});
     onMutate();
   }, [onMutate]);
 
-  // Inline search with two-phase Jira fallback
-  const inlineJiraDebounceRef = useRef<ReturnType<typeof setTimeout>>(null);
-  const inlineAbortRef = useRef<AbortController | null>(null);
-  const [inlineSearchingJira, setInlineSearchingJira] = useState(false);
-
-  const doInlineSearch = useCallback((q: string) => {
-    if (inlineDebounceRef.current) clearTimeout(inlineDebounceRef.current);
-    if (inlineJiraDebounceRef.current) clearTimeout(inlineJiraDebounceRef.current);
-    if (inlineAbortRef.current) inlineAbortRef.current.abort();
-
-    if (q.length < 2) {
-      setInlineResults([]);
-      setInlineShowResults(false);
-      setInlineSearchingJira(false);
-      return;
-    }
-    setInlineSearching(true);
-    inlineDebounceRef.current = setTimeout(async () => {
-      const controller = new AbortController();
-      inlineAbortRef.current = controller;
-      try {
-        const data = await tickets.searchForLink(q, ticketKey, controller.signal);
-        if (controller.signal.aborted) return;
-        setInlineResults(data);
-        setInlineShowResults(true);
-        setInlineHighlight(-1);
-        setInlineSearching(false);
-
-        if (data.length < 5) {
-          setInlineSearchingJira(true);
-          inlineJiraDebounceRef.current = setTimeout(async () => {
-            try {
-              const fullData = await tickets.searchForLinkWithJira(q, ticketKey, controller.signal);
-              if (controller.signal.aborted) return;
-              setInlineResults(fullData);
-              setInlineHighlight(-1);
-            } catch {
-              // Keep local results
-            } finally {
-              setInlineSearchingJira(false);
-            }
-          }, 300);
-        }
-      } catch {
-        if (!controller.signal.aborted) {
-          setInlineResults([]);
-          setInlineSearching(false);
-        }
-      }
-    }, 250);
-  }, [ticketKey]);
-
-  const handleInlineQueryChange = useCallback((value: string) => {
-    const urlMatch = value.match(/atlassian\.net\/browse\/([A-Z][A-Z0-9]+-\d+)/i);
-    const cleaned = urlMatch ? urlMatch[1].toUpperCase() : value;
-    setInlineQuery(cleaned);
-    setInlineError(null);
-    doInlineSearch(cleaned);
-  }, [doInlineSearch]);
-
-  const handleInlineLink = useCallback((result: InlineSearchResult) => {
+  const handleInlineLink = useCallback((result: LinkSearchResult) => {
     const alreadyLinked = issues.some((i) => i.key === result.key && i.relation === inlineRelation)
       || inlinePending.some((i) => i.key === result.key && i.relation === inlineRelation);
     if (alreadyLinked) {
@@ -350,9 +269,7 @@ export function LinkedIssuesSection({ issues, ticketKey, onMutate }: LinkedIssue
       jiraLinkId: `pending-${Date.now()}`,
     };
     setInlinePending((prev) => [...prev, placeholder]);
-    setInlineQuery("");
-    setInlineResults([]);
-    setInlineShowResults(false);
+    search.resetSearch();
     setInlineError(null);
 
     const pendingRelation = inlineRelation;
@@ -372,12 +289,21 @@ export function LinkedIssuesSection({ issues, ticketKey, onMutate }: LinkedIssue
         setInlineError(`Failed to link ${result.key}`);
         console.error("Failed to create inline link:", err);
       });
-  }, [ticketKey, issues, inlinePending, inlineRelation, onMutate]);
+  }, [ticketKey, issues, inlinePending, inlineRelation, onMutate, search, linkTypes]);
 
   const handleInlineKeyDown = useCallback((e: React.KeyboardEvent) => {
-    if (!inlineShowResults || inlineResults.length === 0) {
+    // Cmd+Shift+K to expand to modal
+    if ((e.metaKey || e.ctrlKey) && e.shiftKey && e.key === "K") {
+      e.preventDefault();
+      setLinkDialogDefaults({ initialQuery: search.query, relation: inlineRelation });
+      setShowLinkDialog(true);
+      return;
+    }
+
+    const activeList = search.showResults ? search.filteredResults : (search.query.length < 2 ? search.recentResults : []);
+    if (activeList.length === 0) {
       if (e.key === "Escape") {
-        setInlineQuery("");
+        search.resetSearch();
         inlineInputRef.current?.blur();
       }
       return;
@@ -385,26 +311,26 @@ export function LinkedIssuesSection({ issues, ticketKey, onMutate }: LinkedIssue
 
     if (e.key === "ArrowDown") {
       e.preventDefault();
-      setInlineHighlight((i) => Math.min(i + 1, inlineResults.length - 1));
+      search.setHighlightIndex((i) => Math.min(i + 1, activeList.length - 1));
     } else if (e.key === "ArrowUp") {
       e.preventDefault();
-      setInlineHighlight((i) => Math.max(i - 1, 0));
+      search.setHighlightIndex((i) => Math.max(i - 1, 0));
     } else if (e.key === "Enter") {
       e.preventDefault();
-      const idx = inlineHighlight >= 0 ? inlineHighlight : 0;
-      if (idx < inlineResults.length) {
-        handleInlineLink(inlineResults[idx]);
+      const idx = search.highlightIndex >= 0 ? search.highlightIndex : 0;
+      if (idx < activeList.length) {
+        handleInlineLink(activeList[idx]);
       }
     } else if (e.key === "Escape") {
       e.preventDefault();
-      setInlineShowResults(false);
-      setInlineQuery("");
+      search.setShowResults(false);
+      search.resetSearch();
       inlineInputRef.current?.blur();
     }
-  }, [inlineShowResults, inlineResults, inlineHighlight, handleInlineLink]);
+  }, [search, handleInlineLink, inlineRelation]);
 
   const allIssues = [
-    ...issues.filter((i) => !deletingKeys.has(`${i.key}:${i.relation}`)),
+    ...issues.filter((i) => !effectiveDeletingKeys.has(`${i.key}:${i.relation}`)),
     ...inlinePending.filter((p) => !issues.some((i) => i.key === p.key && i.relation === p.relation)),
   ];
 
@@ -413,6 +339,8 @@ export function LinkedIssuesSection({ issues, ticketKey, onMutate }: LinkedIssue
     acc[issue.relation].push(issue);
     return acc;
   }, {});
+
+  const showRecentPicks = search.query.length < 2 && !search.showResults && search.recentResults.length > 0;
 
   const suggestButton = (
     <div className="relative">
@@ -586,61 +514,100 @@ export function LinkedIssuesSection({ issues, ticketKey, onMutate }: LinkedIssue
           <input
             ref={inlineInputRef}
             type="text"
-            value={inlineQuery}
-            onChange={(e) => handleInlineQueryChange(e.target.value)}
+            value={search.query}
+            onChange={(e) => { search.setQuery(e.target.value); setInlineError(null); }}
             onKeyDown={handleInlineKeyDown}
-            onFocus={() => inlineResults.length > 0 && setInlineShowResults(true)}
-            onBlur={() => setTimeout(() => setInlineShowResults(false), 200)}
+            onFocus={() => {
+              if (search.filteredResults.length > 0) search.setShowResults(true);
+            }}
+            onBlur={() => setTimeout(() => search.setShowResults(false), 200)}
             placeholder="Link issue..."
             className="min-w-0 flex-1 bg-transparent text-body-lg text-text-primary placeholder:text-text-muted outline-none"
           />
-          {inlineSearching && <Loader2 size={13} className="shrink-0 animate-spin text-text-muted" />}
+          {search.isSearching && <Loader2 size={13} className="shrink-0 animate-spin text-text-muted" />}
+          <button
+            type="button"
+            onClick={() => {
+              setLinkDialogDefaults({ initialQuery: search.query, relation: inlineRelation });
+              setShowLinkDialog(true);
+            }}
+            className="flex shrink-0 cursor-pointer items-center justify-center rounded-md p-1 text-text-muted hover:bg-overlay-subtle hover:text-text-secondary focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-[var(--color-brand-400)] active:bg-overlay-default"
+            style={{ transition: "background-color 0.15s ease, color 0.15s ease" }}
+            title="Expand search (Cmd+Shift+K)"
+          >
+            <Maximize2 size={13} strokeWidth={1.5} />
+          </button>
         </div>
-        {inlineShowResults && (
+
+        {/* Search results dropdown */}
+        {search.showResults && (
           <div
-            className="absolute left-0 right-0 top-full z-50 mt-1 max-h-56 overflow-y-auto rounded-lg border border-border-strong bg-[var(--color-surface-elevated)] py-1 shadow-[var(--shadow-lg)]"
+            className="absolute left-0 right-0 top-full z-50 mt-1 max-h-72 overflow-y-auto rounded-lg border border-border-strong bg-[var(--color-surface-elevated)] shadow-[var(--shadow-lg)]"
             style={{ scrollbarWidth: "thin", scrollbarColor: "var(--color-overlay-strong) transparent" }}
           >
-            {inlineResults.length > 0 ? inlineResults.map((r, idx) => (
-              <button
-                key={r.key}
-                type="button"
-                onMouseDown={(e) => { e.preventDefault(); handleInlineLink(r); }}
-                onMouseEnter={() => setInlineHighlight(idx)}
-                className="flex w-full cursor-pointer items-center gap-2 px-3 py-2 text-left"
-                style={{
-                  borderLeft: idx === inlineHighlight ? "2px solid var(--color-brand-400)" : "2px solid transparent",
-                  backgroundColor: idx === inlineHighlight ? "var(--color-overlay-subtle)" : undefined,
-                  transition: "background-color 80ms, border-color 80ms",
-                }}
-              >
-                <IssueTypeIcon type={r.type as IssueType} size={13} />
-                <span className="shrink-0 font-mono text-body-sm text-[var(--color-brand-400)]">{r.key}</span>
-                <span className="min-w-0 flex-1 truncate text-body-sm text-text-secondary">{r.title}</span>
-                <SearchStatusBadge status={r.status} />
-                {r.source === "jira" && (
-                  <span
-                    className="inline-flex shrink-0 items-center gap-1 rounded px-1.5 py-0.5 text-[10px] font-medium"
-                    style={{ backgroundColor: "var(--color-status-info-subtle)", color: "var(--color-status-info)" }}
-                  >
-                    <Cloud size={9} strokeWidth={2} />
-                    Jira
-                  </span>
-                )}
-              </button>
-            )) : !inlineSearching ? (
+            <StatusFilterChips
+              statuses={search.availableStatuses}
+              activeStatuses={search.activeStatuses}
+              onToggle={search.toggleStatus}
+              onClear={search.clearStatusFilter}
+            />
+            {search.filteredResults.length > 0 ? (
+              <>
+                {search.filteredResults.map((r, idx) => (
+                  <LinkSearchResultRow
+                    key={r.key}
+                    result={r}
+                    highlighted={idx === search.highlightIndex}
+                    onSelect={handleInlineLink}
+                    onHover={() => search.setHighlightIndex(idx)}
+                  />
+                ))}
+                <ScrollSentinel
+                  onIntersect={search.loadMore}
+                  disabled={!search.hasMore || search.isLoadingMore}
+                />
+              </>
+            ) : !search.isSearching ? (
               <div className="px-3 py-2.5 text-body-sm text-text-muted">
-                No issues found for &ldquo;{inlineQuery}&rdquo;
+                No issues found for &ldquo;{search.query}&rdquo;
               </div>
             ) : null}
-            {inlineSearchingJira && (
+
+            {(search.isSearchingJira || search.isLoadingMore) && (
               <div className="flex items-center gap-2 border-t border-border-default px-3 py-2">
                 <Loader2 size={11} className="animate-spin text-text-muted" />
-                <span className="text-[11px] text-text-muted">Searching Jira...</span>
+                <span className="text-[11px] text-text-muted">
+                  {search.isSearchingJira ? "Searching Jira..." : "Loading more..."}
+                </span>
               </div>
             )}
           </div>
         )}
+
+        {/* Recently updated tickets (empty state) */}
+        {showRecentPicks && (
+          <div
+            className="absolute left-0 right-0 top-full z-50 mt-1 max-h-72 overflow-y-auto rounded-lg border border-border-strong bg-[var(--color-surface-elevated)] py-1 shadow-[var(--shadow-lg)]"
+            style={{ scrollbarWidth: "thin", scrollbarColor: "var(--color-overlay-strong) transparent" }}
+          >
+            <div className="flex items-center gap-1.5 px-3 py-1.5">
+              <Clock size={11} className="text-text-muted" strokeWidth={1.5} />
+              <span className="text-[10px] font-medium uppercase tracking-widest text-text-muted">
+                Recently updated
+              </span>
+            </div>
+            {search.recentResults.map((r, idx) => (
+              <LinkSearchResultRow
+                key={r.key}
+                result={r}
+                highlighted={idx === search.highlightIndex}
+                onSelect={handleInlineLink}
+                onHover={() => search.setHighlightIndex(idx)}
+              />
+            ))}
+          </div>
+        )}
+
         {inlineError && (
           <div className="border-t border-border-default px-3 py-2 text-body-sm text-red-400/80">
             {inlineError}
@@ -667,7 +634,7 @@ export function LinkedIssuesSection({ issues, ticketKey, onMutate }: LinkedIssue
         onClose={() => { setShowLinkDialog(false); setLinkDialogDefaults({}); }}
         ticketKey={ticketKey}
         onLinked={handleLinkCreated}
-        defaultTargetKey={linkDialogDefaults.targetKey}
+        initialQuery={linkDialogDefaults.initialQuery}
         defaultRelation={linkDialogDefaults.relation}
       />
     </div>
