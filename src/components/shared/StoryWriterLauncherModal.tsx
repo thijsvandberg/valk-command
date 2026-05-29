@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useRef, useCallback } from "react";
+import { useOutsideClick } from "@/hooks/useOutsideClick";
 import { createPortal } from "react-dom";
 import { useRouter } from "next/navigation";
 import {
@@ -165,14 +166,7 @@ export function StoryWriterLauncherModal({ open, onClose }: StoryWriterLauncherM
     if (focusedSearch >= 0) searchResultRefs.current[focusedSearch]?.scrollIntoView({ block: "nearest" });
   }, [focusedSearch]);
 
-  useEffect(() => {
-    const fn = (e: MouseEvent) => {
-      if (!dropdownRef.current?.contains(e.target as Node) && !searchRef.current?.contains(e.target as Node))
-        setShowDropdown(false);
-    };
-    document.addEventListener("mousedown", fn);
-    return () => document.removeEventListener("mousedown", fn);
-  }, []);
+  useOutsideClick([dropdownRef, searchRef], () => setShowDropdown(false), { enabled: showDropdown, escapeClose: false });
 
   const handleSearchKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
     if (!showDropdown || searchResults.length === 0) return;

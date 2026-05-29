@@ -11,6 +11,7 @@ import {
   type RefObject,
   type CSSProperties,
 } from "react";
+import { useOutsideClick } from "@/hooks/useOutsideClick";
 import { createPortal } from "react-dom";
 import { Check, Search } from "lucide-react";
 
@@ -78,32 +79,7 @@ export function usePickerState(opts: UsePickerStateOptions = {}): UsePickerState
     onClose?.();
   }, [onClose]);
 
-  // Click outside
-  useEffect(() => {
-    if (!open) return;
-    function onMouseDown(e: MouseEvent) {
-      const target = e.target as Node;
-      if (triggerRef.current?.contains(target)) return;
-      if (popoverRef.current?.contains(target)) return;
-      setOpen(false);
-      onClose?.();
-    }
-    document.addEventListener("mousedown", onMouseDown);
-    return () => document.removeEventListener("mousedown", onMouseDown);
-  }, [open, onClose]);
-
-  // Escape key
-  useEffect(() => {
-    if (!open) return;
-    function onKeyDown(e: KeyboardEvent) {
-      if (e.key === "Escape") {
-        setOpen(false);
-        onClose?.();
-      }
-    }
-    document.addEventListener("keydown", onKeyDown);
-    return () => document.removeEventListener("keydown", onKeyDown);
-  }, [open, onClose]);
+  useOutsideClick([triggerRef, popoverRef], () => { setOpen(false); onClose?.(); }, { enabled: open });
 
   // Scroll repositioning (portal mode only)
   useEffect(() => {

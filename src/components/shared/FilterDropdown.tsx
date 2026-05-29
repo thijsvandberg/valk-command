@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useRef, useEffect, useMemo } from "react";
+import { useOutsideClick } from "@/hooks/useOutsideClick";
 import { createPortal } from "react-dom";
 import { ChevronDown, X, Search } from "lucide-react";
 
@@ -41,21 +42,7 @@ export function FilterDropdown({
   const dropdownRef = useRef<HTMLDivElement>(null);
   const searchRef = useRef<HTMLInputElement>(null);
 
-  useEffect(() => {
-    function handleClickOutside(e: MouseEvent) {
-      const target = e.target as Node;
-      const outsideTrigger = !triggerRef.current?.contains(target);
-      const outsideDropdown = !dropdownRef.current?.contains(target);
-      if (outsideTrigger && outsideDropdown) {
-        setOpen(false);
-        setSearch("");
-      }
-    }
-    if (open) {
-      document.addEventListener("mousedown", handleClickOutside);
-      return () => document.removeEventListener("mousedown", handleClickOutside);
-    }
-  }, [open]);
+  useOutsideClick([triggerRef, dropdownRef], () => { setOpen(false); setSearch(""); }, { enabled: open, escapeClose: false });
 
   useEffect(() => {
     if (open && searchable) {

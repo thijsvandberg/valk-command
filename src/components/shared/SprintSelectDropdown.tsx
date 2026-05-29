@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useRef } from "react";
+import { useOutsideClick } from "@/hooks/useOutsideClick";
 import { ChevronDown, Search, Check } from "lucide-react";
 
 export interface SprintOption { value: string; label: string; section: "next" | "pinned" | "other" }
@@ -49,14 +50,7 @@ export function SprintSelectDropdown({
 
   useEffect(() => { itemRefs.current[focused]?.scrollIntoView({ block: "nearest" }); }, [focused]);
 
-  useEffect(() => {
-    if (!open) return;
-    const fn = (e: MouseEvent) => {
-      if (!panelRef.current?.contains(e.target as Node) && !triggerRef.current?.contains(e.target as Node)) setOpen(false);
-    };
-    document.addEventListener("mousedown", fn);
-    return () => document.removeEventListener("mousedown", fn);
-  }, [open]);
+  useOutsideClick([panelRef, triggerRef], () => setOpen(false), { enabled: open, escapeClose: false });
 
   const nav = (e: React.KeyboardEvent) => {
     if (!open) {

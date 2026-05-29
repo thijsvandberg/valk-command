@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useRef, useCallback } from "react";
+import { useOutsideClick } from "@/hooks/useOutsideClick";
 import { ChevronDown, Check } from "lucide-react";
 
 export interface SelectOption { value: string; label: string; sublabel?: string | null }
@@ -28,14 +29,7 @@ export function SessionSelectDropdown({
 
   useEffect(() => { itemRefs.current[focused]?.scrollIntoView({ block: "nearest" }); }, [focused]);
 
-  useEffect(() => {
-    if (!open) return;
-    const fn = (e: MouseEvent) => {
-      if (!panelRef.current?.contains(e.target as Node) && !triggerRef.current?.contains(e.target as Node)) closePanel();
-    };
-    document.addEventListener("mousedown", fn);
-    return () => document.removeEventListener("mousedown", fn);
-  }, [open, closePanel]);
+  useOutsideClick([panelRef, triggerRef], closePanel, { enabled: open, escapeClose: false });
 
   const nav = (e: React.KeyboardEvent) => {
     if (!open) {
