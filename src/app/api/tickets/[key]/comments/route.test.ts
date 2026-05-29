@@ -4,6 +4,7 @@ import { createTestDb } from "@/db/test-utils";
 import type { BetterSQLite3Database } from "drizzle-orm/better-sqlite3";
 import type * as schema from "@/db/schema";
 import { seedTicket } from "@/test/builders";
+import { jiraComment } from "@/db/schema";
 
 let testDb: BetterSQLite3Database<typeof schema>;
 
@@ -90,5 +91,47 @@ describe("POST /api/tickets/[key]/comments", () => {
     const data = await res.json();
     expect(data.poComments).toHaveLength(1);
     expect(data.poComments[0].content).toBe("First comment");
+  });
+
+  it("rejects content exceeding 10000 characters", async () => {
+    seedTicket(testDb, { jiraKey: "VPL-100" });
+    const longContent = "x".repeat(10001);
+    const res = await POST(
+      postRequest("VPL-100", { content: longContent }),
+      makeParams("VPL-100"),
+    );
+    expect(res.status).toBe(400);
+  });
+});
+
+describe("GET /api/tickets/[key]/comments (with Jira comments)", () => {
+  beforeEach(() => {
+    testDb = createTestDb();
+  });
+
+  it("returns both PO and Jira comments", async () => {
+    seedTicket(testDb, { jiraKey: "VPL-100" });
+
+    // Seed a Jira comment directly
+    testDb.insert(jiraComment).values({
+      id: "jc-1",
+      ticketKey: "VPL-100",
+      jiraCommentId: "12345",
+      authorName: "Alice",
+      content: "Jira comment content",
+      createdAt: "2026-01-01T00:00:00Z",
+    }).run();
+
+    // Create a PO comment via the route
+    await POST(
+      postRequest("VPL-100", { content: "PO comment" }),
+      makeParams("VPL-100"),
+    );
+
+    const res = await GET(getRequest("VPL-100"), makeParams("VPL-100"));
+    const data = await res.json();
+    expect(data.poComments).toHaveLength(1);
+    expect(data.jiraComments).toHaveLength(1);
+    expect(data.jiraComments[0].content).toBe("Jira comment content");
   });
 });
