@@ -217,19 +217,19 @@ Manages bulk suggest flow for refinement sessions.
 #### `useRefinementFilters` (75 lines, SIMPLE)
 Filter state management with computed labels.
 **Test scenarios (~9 tests):**
-- [ ] Initial state (hideEstimated=true)
-- [ ] Toggle sprint filter (add/remove)
-- [ ] Sprint filter labels: "All" / "Pinned" / name / count
-- [ ] lastUpdatedLabel computed correctly
-- [ ] activeFilterCount computed correctly
+- [x] Initial state (hideEstimated=true)
+- [x] Toggle sprint filter (add/remove)
+- [x] Sprint filter labels: "All" / "Pinned" / name / count
+- [x] lastUpdatedLabel computed correctly
+- [x] activeFilterCount computed correctly
 
 #### `useLinkTypes` (31 lines, SIMPLE)
 SWR wrapper with fallback.
 **Test scenarios (~5 tests):**
-- [ ] Returns fallback when data undefined
-- [ ] Returns API data when loaded
-- [ ] Returns error state
-- [ ] Returns loading state
+- [x] Returns fallback when data undefined
+- [x] Returns API data when loaded
+- [x] Returns error state
+- [x] Returns loading state
 
 ### Lib Utilities
 
