@@ -61,6 +61,12 @@ const nextConfig: NextConfig = {
       "@tiptap/extension-text-style",
       "lucide-react",
       "fuse.js",
+      "@dnd-kit/core",
+      "@dnd-kit/sortable",
+      "@dnd-kit/utilities",
+      "prismjs",
+      "react-markdown",
+      "marked",
     ],
   },
   async headers() {
