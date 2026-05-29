@@ -81,17 +81,17 @@ Files not imported anywhere in the codebase:
 ## Checklist
 
 ### Part 1: useOutsideClick adoption
-- [ ] Migrate sprint-board files (14) to useOutsideClick
-- [ ] Migrate ticket-detail files (6) to useOutsideClick
-- [ ] Migrate refinement files (6) to useOutsideClick
-- [ ] Migrate shared files (6) to useOutsideClick
-- [ ] Migrate rich-editor Toolbar (4 instances) to useOutsideClick
-- [ ] Migrate remaining files (6) to useOutsideClick
-- [ ] Verify zero raw mousedown listeners remain (excluding useOutsideClick hook itself)
+- [x] Migrate sprint-board files (15) to useOutsideClick
+- [x] Migrate ticket-detail files (5) to useOutsideClick
+- [x] Migrate refinement files (6) to useOutsideClick
+- [x] Migrate shared files (7, incl. BasePicker) to useOutsideClick
+- [x] Migrate rich-editor files (2 files, 5 instances) to useOutsideClick
+- [x] Migrate remaining files (6) to useOutsideClick
+- [x] Verify zero raw mousedown listeners remain (excluding useOutsideClick hook itself)
 
 ### Part 2: EventSource migration
 - [ ] Refactor `useWorkspaceTask` to use/extend `useTaskStream`
-- [ ] Refactor `useStakeholderAnalysis` to use/extend `useTaskStream`
+- [x] Refactor `useStakeholderAnalysis` to use `attachTaskStreamListeners`
 - [ ] Refactor `useRefinementStream` to use/extend `useTaskStream`
 - [ ] Refactor `useTaskMonitoring` to use/extend `useTaskStream`
 

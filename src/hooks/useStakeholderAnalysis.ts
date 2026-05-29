@@ -4,6 +4,7 @@ import { useState, useEffect, useRef, useCallback } from "react";
 import useSWR from "swr";
 import type { StakeholderAnalysisRow } from "@/db/schema";
 import { swrFetcher, stakeholder as stakeholderApi, workspaceTasks as workspaceTasksApi, apiFetch } from "@/lib/api-client";
+import { attachTaskStreamListeners } from "./useStreamingTask";
 
 export type AnalysisType = "brief" | "deep-dive";
 
@@ -79,45 +80,31 @@ export function useStakeholderAnalysis(sprintId: number | null) {
       failAnalysisRef.current(analysisId, type);
     }, 5 * 60 * 1000);
 
-    es.addEventListener("progress", (e) => {
-      try {
-        const data = JSON.parse((e as MessageEvent).data);
-        setLiveRef.current(type, { progressText: data.message ?? "" });
-      } catch { /* ignore */ }
-    });
-
-    es.addEventListener("tool_call", (e) => {
-      try {
-        const data = JSON.parse((e as MessageEvent).data);
-        const toolName = (data.tool ?? "").replace("mcp__jira__", "").replace("mcp__", "");
+    attachTaskStreamListeners(es, {
+      onProgress: (message) => {
+        setLiveRef.current(type, { progressText: message });
+      },
+      onToolCall: (tool) => {
+        const toolName = tool.replace("mcp__jira__", "").replace("mcp__", "");
         setLiveRef.current(type, { progressText: `Using ${toolName}...` });
-      } catch { /* ignore */ }
-    });
-
-    es.addEventListener("result", async (e) => {
-      clearTimeout(timeout);
-      es.close();
-      esRef.current = null;
-      if (pollRef.current) clearInterval(pollRef.current);
-      try {
-        const data = JSON.parse((e as MessageEvent).data);
-        await completeAnalysisRef.current(analysisId, data.output ?? "", type);
-      } catch {
-        await failAnalysisRef.current(analysisId, type);
-      }
-    });
-
-    es.addEventListener("error", async () => {
-      clearTimeout(timeout);
-      es.close();
-      esRef.current = null;
-      // Don't fail immediately: the polling interval will detect completion
-    });
-
-    es.addEventListener("done", () => {
-      clearTimeout(timeout);
-      es.close();
-      esRef.current = null;
+      },
+      onResult: async (data) => {
+        clearTimeout(timeout);
+        es.close();
+        esRef.current = null;
+        if (pollRef.current) clearInterval(pollRef.current);
+        await completeAnalysisRef.current(analysisId, (data.output as string) ?? "", type);
+      },
+      onNetworkError: () => {
+        clearTimeout(timeout);
+        es.close();
+        esRef.current = null;
+      },
+      onDone: () => {
+        clearTimeout(timeout);
+        es.close();
+        esRef.current = null;
+      },
     });
   }
 
