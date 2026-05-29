@@ -65,7 +65,6 @@ function seedConversation(id: string) {
     id,
     title: "Test",
     createdAt: new Date().toISOString(),
-    updatedAt: new Date().toISOString(),
   }).run();
 }
 

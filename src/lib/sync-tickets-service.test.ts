@@ -65,6 +65,9 @@ function makeIssue(key: string, updated?: string) {
       summary: `Test ${key}`,
       issuetype: { name: "Story" },
       status: { name: "TO DO" },
+      assignee: null,
+      labels: [],
+      created: new Date().toISOString(),
       updated: updated ?? new Date().toISOString(),
     },
   };
@@ -90,7 +93,7 @@ describe("syncIndividualTickets", () => {
   it("marks ticket as removed on 404", async () => {
     seedTicket(testDb, { jiraKey: "VPL-404" });
     vi.mocked(jiraClient.getIssue).mockRejectedValue(
-      new JiraApiError(404, "Not Found"),
+      new JiraApiError(404, "Not Found", "", ""),
     );
 
     const result = await syncIndividualTickets(["VPL-404"]);
@@ -190,7 +193,7 @@ describe("syncSprint", () => {
     seedTicket(testDb, { jiraKey: "VPL-GONE", sprintName: "100" });
     vi.mocked(jiraClient.getSprintIssues).mockResolvedValue([]);
     vi.mocked(jiraClient.getIssue).mockRejectedValue(
-      new JiraApiError(404, "Not Found"),
+      new JiraApiError(404, "Not Found", "", ""),
     );
 
     await syncSprint("100", "full");

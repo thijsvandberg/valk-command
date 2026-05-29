@@ -202,7 +202,6 @@ describe("executeLocalSearch", () => {
       id: "conv-theta",
       title: "Theta discussion about deployments",
       createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString(),
     }).run();
     testDb.insert(message).values({
       id: "msg-1",

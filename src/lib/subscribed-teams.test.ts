@@ -85,9 +85,9 @@ describe("subscribed-teams", () => {
   describe("getAvailableTeams", () => {
     it("extracts team prefixes from sprint name cache", () => {
       testDb.insert(sprintNameCache).values([
-        { sprintId: 1, displayName: "BT: Sprint 1" },
-        { sprintId: 2, displayName: "HT: Sprint 1" },
-        { sprintId: 3, displayName: "BT: Sprint 2" },
+        { sprintId: "1", displayName: "BT: Sprint 1" },
+        { sprintId: "2", displayName: "HT: Sprint 1" },
+        { sprintId: "3", displayName: "BT: Sprint 2" },
       ]).run();
 
       expect(getAvailableTeams()).toEqual(["BT", "HT"]);
@@ -99,8 +99,8 @@ describe("subscribed-teams", () => {
 
     it("ignores sprint names without colon separator", () => {
       testDb.insert(sprintNameCache).values([
-        { sprintId: 1, displayName: "No Prefix Sprint" },
-        { sprintId: 2, displayName: "BT: Sprint 1" },
+        { sprintId: "1", displayName: "No Prefix Sprint" },
+        { sprintId: "2", displayName: "BT: Sprint 1" },
       ]).run();
 
       expect(getAvailableTeams()).toEqual(["BT"]);

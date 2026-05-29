@@ -47,11 +47,10 @@ function seedConversation(id: string) {
     id,
     title: "Test",
     createdAt: new Date().toISOString(),
-    updatedAt: new Date().toISOString(),
   }).run();
 }
 
-function seedTask(id: string, convId: string, output: string | null, status = "completed") {
+function seedTask(id: string, convId: string, output: string | null, status: "queued" | "running" | "completed" | "failed" | "cancelled" = "completed") {
   testDb.insert(workspaceTask).values({
     id,
     skillName: "review-story-json",
