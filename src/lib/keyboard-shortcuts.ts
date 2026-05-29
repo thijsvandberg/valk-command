@@ -19,6 +19,7 @@ export const KEYBOARD_SHORTCUTS: ShortcutGroup[] = [
     shortcuts: [
       { keys: [mod, "K"], action: "Open Command Palette" },
       { keys: [mod, "Shift", "K"], action: "Open Ticket Search" },
+      { keys: [mod, "."], action: "Toggle focus mode" },
     ],
   },
   {

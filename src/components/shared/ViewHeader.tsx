@@ -2,8 +2,10 @@
 
 import { useState, useLayoutEffect, type ReactNode } from "react";
 import { createPortal } from "react-dom";
+import { Minimize2 } from "lucide-react";
 import { BridgeMark } from "@/components/shared/BridgeMark";
 import { NotificationBell } from "@/components/NotificationBell";
+import { useFocusModeContext } from "@/contexts/FocusModeContext";
 
 interface ViewHeaderProps {
   icon?: ReactNode;
@@ -14,6 +16,7 @@ interface ViewHeaderProps {
 }
 
 export function ViewHeader({ icon, children, actions, className, hideNotifications }: ViewHeaderProps) {
+  const { toggleFocusMode } = useFocusModeContext();
   const [target, setTarget] = useState<HTMLElement | null>(null);
 
   // useLayoutEffect fires after DOM commit, before the browser paints, so there
@@ -61,6 +64,14 @@ export function ViewHeader({ icon, children, actions, className, hideNotificatio
       <div className="relative flex items-center gap-2">
         {actions}
         {!hideNotifications && <NotificationBell />}
+        <button
+          onClick={toggleFocusMode}
+          title="Focus mode"
+          aria-label="Toggle focus mode"
+          className="inline-flex h-7 w-7 items-center justify-center rounded-lg cursor-pointer text-text-tertiary bg-transparent border border-transparent hover:bg-hover-interactive hover:text-text-secondary focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)] active:scale-[0.95] transition-[background-color,color,transform] duration-150"
+        >
+          <Minimize2 className="h-3.5 w-3.5" strokeWidth={2} />
+        </button>
       </div>
     </div>,
     target,
