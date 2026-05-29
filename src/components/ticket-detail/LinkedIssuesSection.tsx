@@ -57,6 +57,8 @@ export function LinkedIssuesSection({ issues, ticketKey, onMutate }: LinkedIssue
   const [deletingKeys, setDeletingKeys] = useState<Set<string>>(new Set());
   const [inlineFocused, setInlineFocused] = useState(false);
   const inlineInputRef = useRef<HTMLInputElement>(null);
+  const inlineDropdownRef = useRef<HTMLDivElement>(null);
+  const interactingWithDropdownRef = useRef(false);
 
   // Shared search hook
   const search = useLinkIssueSearch(ticketKey);
@@ -515,7 +517,11 @@ export function LinkedIssuesSection({ issues, ticketKey, onMutate }: LinkedIssue
               setInlineFocused(true);
               if (search.filteredResults.length > 0) search.setShowResults(true);
             }}
-            onBlur={() => setTimeout(() => { search.setShowResults(false); setInlineFocused(false); }, 200)}
+            onBlur={() => setTimeout(() => {
+              if (interactingWithDropdownRef.current) return;
+              search.setShowResults(false);
+              setInlineFocused(false);
+            }, 200)}
             placeholder="Link issue..."
             className="min-w-0 flex-1 bg-transparent text-body-lg text-text-primary placeholder:text-text-muted outline-none"
           />
@@ -537,6 +543,9 @@ export function LinkedIssuesSection({ issues, ticketKey, onMutate }: LinkedIssue
         {/* Search results dropdown */}
         {search.showResults && (
           <div
+            ref={inlineDropdownRef}
+            onMouseDown={() => { interactingWithDropdownRef.current = true; }}
+            onMouseUp={() => { setTimeout(() => { interactingWithDropdownRef.current = false; }, 300); }}
             className="absolute left-0 right-0 top-full z-50 mt-1 max-h-72 overflow-y-auto rounded-lg border border-border-strong bg-[var(--color-surface-elevated)] shadow-[var(--shadow-lg)]"
             style={{ scrollbarWidth: "thin", scrollbarColor: "var(--color-overlay-strong) transparent" }}
           >
@@ -582,6 +591,8 @@ export function LinkedIssuesSection({ issues, ticketKey, onMutate }: LinkedIssue
         {/* Recently updated tickets (empty state) */}
         {showRecentPicks && (
           <div
+            onMouseDown={() => { interactingWithDropdownRef.current = true; }}
+            onMouseUp={() => { setTimeout(() => { interactingWithDropdownRef.current = false; }, 300); }}
             className="absolute left-0 right-0 top-full z-50 mt-1 max-h-72 overflow-y-auto rounded-lg border border-border-strong bg-[var(--color-surface-elevated)] py-1 shadow-[var(--shadow-lg)]"
             style={{ scrollbarWidth: "thin", scrollbarColor: "var(--color-overlay-strong) transparent" }}
           >
