@@ -4,6 +4,7 @@ import { SidePanel } from "./SidePanel";
 import type { Ticket } from "@/types/ticket";
 
 vi.mock("lucide-react", () => {
+  // eslint-disable-next-line react/display-name
   const stub = (name: string) => (props: Record<string, unknown>) => <span data-testid={`icon-${name}`} {...props} />;
   return {
     ArrowUpRight: stub("arrow"),

@@ -4,6 +4,7 @@ import { TicketTable } from "./TicketTable";
 import type { Ticket } from "@/types/ticket";
 
 vi.mock("lucide-react", () => {
+  // eslint-disable-next-line react/display-name
   const stub = (name: string) => (props: Record<string, unknown>) => <span data-testid={`icon-${name}`} {...props} />;
   return { ArrowUp: stub("arrow-up"), ArrowDown: stub("arrow-down"), ArrowUpDown: stub("arrow-updown"), Sheet: stub("sheet") };
 });
@@ -103,6 +104,14 @@ describe("TicketTable", () => {
     onSelectTicket: vi.fn(),
     visibleColumns: new Set(["key", "title", "status", "assignee", "points", "bv", "quality", "epic", "readiness", "poStatus", "labels", "sprint", "editState", "type", "lastChanged"]),
     checkedTickets: new Set<string>(),
+    focusedTicketIdx: -1,
+    someChecked: false,
+    allChecked: false,
+    poStatuses: {},
+    readinessMap: {},
+    columnWidths: {},
+    onColumnResize: vi.fn(),
+    onColumnResetWidth: vi.fn(),
     sortField: "rank" as const,
     sortDir: "asc" as const,
     onSortChange: vi.fn(),

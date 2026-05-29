@@ -4,6 +4,7 @@ import { TicketRow } from "./TicketRow";
 import type { Ticket } from "@/types/ticket";
 
 vi.mock("lucide-react", () => {
+  // eslint-disable-next-line react/display-name
   const stub = (name: string) => (props: Record<string, unknown>) => <span data-testid={`icon-${name}`} {...props} />;
   return {
     Flag: stub("flag"), MessageSquare: stub("msg"), Star: stub("star"), Rocket: stub("rocket"),
