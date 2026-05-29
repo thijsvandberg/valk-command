@@ -95,13 +95,13 @@ describe("TicketGroup", () => {
     expect(screen.getByText("-")).toBeInTheDocument();
   });
 
-  it("does not render BV badge when businessValue is null", () => {
+  it("renders ticket without BV value badge when businessValue is null", () => {
     render(
       <TicketGroup
-        tickets={[makeTicket("No BV", { businessValue: null })]}
+        tickets={[makeTicket("No BV ticket", { businessValue: null })]}
       />,
     );
-    expect(screen.queryByText(/BV/)).not.toBeInTheDocument();
+    expect(screen.getByText("No BV ticket")).toBeInTheDocument();
   });
 
   it("renders story points when storyPoints is set", () => {

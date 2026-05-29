@@ -18,6 +18,7 @@ export interface ActiveSession {
   jiraUpdatedAt: string | null;
   targetTicketKey: string | null;
   targetTitle: string | null;
+  removedFromJira: boolean;
 }
 
 export async function GET() {
@@ -35,6 +36,7 @@ export async function GET() {
       issueType: ticket.type,
       ticketStatus: ticket.status,
       jiraUpdatedAt: ticket.jiraUpdatedAt,
+      removedFromJiraAt: ticket.removedFromJiraAt,
       readiness: ticketMetadata.readiness,
       // Correlated subquery to get the target ticket title without a second join
       targetTitle: sql<string | null>`(SELECT title FROM ticket WHERE jira_key = ${storyWriterSession.targetTicketKey})`,
@@ -65,6 +67,7 @@ export async function GET() {
     jiraUpdatedAt: r.jiraUpdatedAt ?? null,
     targetTicketKey: r.targetTicketKey ?? null,
     targetTitle: r.targetTitle ?? null,
+    removedFromJira: !!r.removedFromJiraAt,
   }));
 
   return NextResponse.json(result);

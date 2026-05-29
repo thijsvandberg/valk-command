@@ -163,15 +163,54 @@ export async function upsertIssue(issue: JiraIssue, sprintName: string, _signal?
     // Keep ticketSubtask rows in sync when this issue IS a subtask.
     // Incremental sync picks up the subtask itself but its parent may not
     // be re-fetched, leaving the parent's ticketSubtask row stale.
-    tx.update(ticketSubtask)
-      .set({
-        title: fields.summary,
-        status: normalizeStatus(fields.status.name),
-        assignee: assigneeName,
-        assigneeAvatar,
-      })
+    const existingSubtaskRow = tx.select({ id: ticketSubtask.id })
+      .from(ticketSubtask)
       .where(eq(ticketSubtask.subtaskKey, issue.key))
-      .run();
+      .get();
+
+    if (existingSubtaskRow) {
+      tx.update(ticketSubtask)
+        .set({
+          title: fields.summary,
+          status: normalizeStatus(fields.status.name),
+          assignee: assigneeName,
+          assigneeAvatar,
+        })
+        .where(eq(ticketSubtask.subtaskKey, issue.key))
+        .run();
+    } else if (fields.parent?.key) {
+      // Subtask synced before its parent: create the relationship row.
+      // The parent field on non-epic children points to the story/task parent.
+      const parentType = (fields.parent.fields?.issuetype?.name ?? "").toLowerCase();
+      if (!parentType.includes("epic")) {
+        // Ensure parent ticket row exists (minimal if not yet synced)
+        const parentExists = tx.select({ jiraKey: ticket.jiraKey })
+          .from(ticket)
+          .where(eq(ticket.jiraKey, fields.parent.key))
+          .get();
+        if (!parentExists) {
+          tx.insert(ticket).values({
+            jiraKey: fields.parent.key,
+            title: fields.parent.fields.summary,
+            type: normalizeIssueType(fields.parent.fields.issuetype?.name ?? "task"),
+            status: "TO DO",
+            sprintName,
+            lastSyncedAt: now,
+          }).run();
+          tx.insert(ticketMetadata).values({ jiraKey: fields.parent.key }).run();
+        }
+        tx.insert(ticketSubtask).values({
+          id: `sub-${fields.parent.key}-${issue.key}`,
+          ticketKey: fields.parent.key,
+          subtaskKey: issue.key,
+          title: fields.summary,
+          type: normalizeIssueType(fields.issuetype.name),
+          status: normalizeStatus(fields.status.name),
+          assignee: assigneeName,
+          assigneeAvatar,
+        }).run();
+      }
+    }
 
     // Record status transition for burnup chart
     if (statusChanged) {

@@ -5,6 +5,7 @@ import type { Ticket, TicketReadiness, TicketDetail } from "@/types/ticket";
 import { READINESS_CONFIG } from "@/types/ticket";
 import Link from "next/link";
 import { ChevronRight, ChevronDown, AlertTriangle, Play, ArrowUpRight, Gem } from "lucide-react";
+import { TicketStatusPill } from "@/components/shared/TicketStatusPill";
 import { JIRA_STATUS_COLORS } from "@/components/shared/StatusBadge";
 import { tickets, jira } from "@/lib/api-client";
 import { Avatar } from "@/components/shared/Avatar";
@@ -391,17 +392,28 @@ export function TicketSidebar({
               </DetailRow>
             )}
             {detail?.parent && (
-              <DetailRow label="Parent">
+              <div className="flex flex-col gap-1.5 py-1.5">
+                <span className="text-body-sm text-text-tertiary">Parent</span>
                 <Link
                   href={`/tickets/${detail.parent.key}`}
-                  className="group/parent inline-flex items-center gap-1.5 text-[var(--color-brand-600)] hover:text-[var(--color-brand-500)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)] cursor-pointer"
-                  style={{ transition: "color 0.15s ease" }}
+                  className="group/parent rounded-lg border border-border-subtle bg-[var(--color-overlay-subtle)] px-3 py-2.5 flex flex-col gap-1.5 cursor-pointer hover:border-border-default hover:bg-overlay-default focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)]"
+                  style={{ transition: "background-color 0.15s ease, border-color 0.15s ease" }}
                   title={detail.parent.title}
                 >
-                  <span className="min-w-0 truncate max-w-[180px]">{detail.parent.key} {detail.parent.title}</span>
-                  <ArrowUpRight size={12} strokeWidth={2} className="shrink-0 opacity-0 group-hover/parent:opacity-100" style={{ transition: "opacity 0.15s ease" }} />
+                  <TicketStatusPill
+                    ticketKey={detail.parent.key}
+                    jiraStatus={detail.parent.status}
+                    issueType={detail.parent.type}
+                    title={detail.parent.title}
+                    variant="list"
+                    showKey
+                    showStatus
+                  />
+                  <span className="min-w-0 truncate text-body-sm text-text-secondary group-hover/parent:text-text-primary" style={{ transition: "color 0.15s ease" }}>
+                    {detail.parent.title}
+                  </span>
                 </Link>
-              </DetailRow>
+              </div>
             )}
             {ticket.type !== "epic" && (
               <DetailRow label="Sprint">

@@ -84,6 +84,8 @@ async function runTicketQueries(key: string) {
     db.select({
       ticketKey: ticketSubtask.ticketKey,
       title: ticket.title,
+      status: ticket.status,
+      type: ticket.type,
     }).from(ticketSubtask)
       .innerJoin(ticket, eq(ticket.jiraKey, ticketSubtask.ticketKey))
       .where(eq(ticketSubtask.subtaskKey, key))
@@ -97,7 +99,12 @@ async function runTicketQueries(key: string) {
   if (!t) return null;
 
   const parentTicket = parentRows.length > 0
-    ? { key: parentRows[0].ticketKey, title: parentRows[0].title }
+    ? {
+        key: parentRows[0].ticketKey,
+        title: parentRows[0].title,
+        status: (parentRows[0].status ?? "TO DO") as import("@/types/ticket").JiraStatus,
+        type: (parentRows[0].type ?? "task") as import("@/types/ticket").IssueType,
+      }
     : null;
 
   return { t, meta, attachmentRows, jiraCommentRows, subtaskRows, linkRows, epicChildRows, localEdits, latestVersion, parentTicket, reviewCountRows, versionCountRows, chatCountRows, suggestionCountRows };

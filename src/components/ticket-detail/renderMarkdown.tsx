@@ -33,6 +33,16 @@ function safeEscapeHtml(text: string): string {
     .replace(/>/g, "&gt;");
 }
 
+function decodeHtmlEntities(text: string): string {
+  return text
+    .replace(/&amp;/g, "&")
+    .replace(/&lt;/g, "<")
+    .replace(/&gt;/g, ">")
+    .replace(/&quot;/g, '"')
+    .replace(/&#0?39;/g, "'")
+    .replace(/&nbsp;/g, "\u00a0");
+}
+
 // Returns Prism-highlighted HTML for a single line, or escaped plain text as fallback.
 function highlightCodeLine(code: string, lang: string): string {
   if (!lang || !code) return safeEscapeHtml(code);
@@ -299,7 +309,7 @@ export function renderMarkdown(text: string): ReactNode[] {
 }
 
 function renderMarkdownUncached(text: string): ReactNode[] {
-  const lines = text.split("\n");
+  const lines = decodeHtmlEntities(text).split("\n");
   const elements: ReactNode[] = [];
   let codeBlockLines: string[] | null = null;
   let codeBlockLang = "";

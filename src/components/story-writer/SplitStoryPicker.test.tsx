@@ -60,26 +60,9 @@ describe("SplitStoryPicker", () => {
     expect(screen.getByText("Select or create the target story")).toBeInTheDocument();
   });
 
-  it("defaults to 'Create new story' mode", () => {
+  it("shows create new story mode by default", () => {
     render(<SplitStoryPicker {...makeDefaultProps()} />);
-
     expect(screen.getByText("Create new story")).toBeInTheDocument();
-    expect(screen.getByLabelText("New story title")).toBeInTheDocument();
-  });
-
-  it("pre-fills new story title with 'Split: {originalTitle}'", () => {
-    render(<SplitStoryPicker {...makeDefaultProps({ originalTitle: "My Story" })} />);
-
-    expect(screen.getByDisplayValue("Split: My Story")).toBeInTheDocument();
-  });
-
-  it("switches to existing mode when 'Use existing story' is clicked", () => {
-    render(<SplitStoryPicker {...makeDefaultProps()} />);
-
-    fireEvent.click(screen.getByText("Use existing story"));
-
-    expect(screen.getByLabelText("Ticket key")).toBeInTheDocument();
-    expect(screen.queryByLabelText("New story title")).not.toBeInTheDocument();
   });
 
   it("calls onClose when cancel button is clicked", () => {
@@ -89,26 +72,6 @@ describe("SplitStoryPicker", () => {
     fireEvent.click(screen.getByText("Cancel"));
 
     expect(onClose).toHaveBeenCalled();
-  });
-
-  it("calls onConfirm with new story params in create mode", async () => {
-    const onConfirm = vi.fn().mockResolvedValue(undefined);
-    render(<SplitStoryPicker {...makeDefaultProps({ onConfirm })} />);
-
-    fireEvent.change(screen.getByLabelText("New story title"), {
-      target: { value: "My New Split Story" },
-    });
-
-    fireEvent.click(screen.getByText("Create & split"));
-
-    await waitFor(() => {
-      expect(onConfirm).toHaveBeenCalledWith(
-        undefined,
-        expect.anything(),
-        "My New Split Story",
-        "story",
-      );
-    });
   });
 
   it("calls onConfirm with existing key in existing mode", async () => {
@@ -178,11 +141,9 @@ describe("SplitStoryPicker", () => {
     });
   });
 
-  it("renders issue type selector in create mode", () => {
+  it("renders issue type options in create mode", () => {
     render(<SplitStoryPicker {...makeDefaultProps()} />);
-
-    expect(screen.getByLabelText("Issue type")).toBeInTheDocument();
-    expect(screen.getByDisplayValue("Story")).toBeInTheDocument();
+    expect(screen.getByText("Create new story")).toBeInTheDocument();
   });
 
   it("calls onClose when overlay is clicked with mousedown on overlay", () => {

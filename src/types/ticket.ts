@@ -174,7 +174,7 @@ export interface JiraComment {
 export interface TicketDetail {
   description: string;
   reporter: Assignee | null;
-  parent: { key: string; title: string } | null;
+  parent: { key: string; title: string; status: JiraStatus; type: IssueType } | null;
   labels: string[];
   components: string[];
   priority: "Highest" | "High" | "Medium" | "Low" | "Lowest";

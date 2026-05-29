@@ -349,5 +349,6 @@ details.expand-block[open] > summary .expand-arrow { transform: rotate(90deg); }
 
 /* Refinement session: fullscreen mode hides app shell */
 body.refinement-session-active #view-header-portal { display: none; }
-body.refinement-session-active [data-testid="sidebar"] { display: none; }
+body.refinement-session-active #sidebar-wrapper,
+body.refinement-session-active div:has(> [data-testid="sidebar"]) { display: none; }
 body.refinement-session-active #main-content { border-radius: 0; }

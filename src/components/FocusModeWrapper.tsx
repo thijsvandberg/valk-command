@@ -31,6 +31,7 @@ function FocusModeLayout({ children }: { children: ReactNode }) {
       <div className="flex flex-1 min-h-0">
         {/* Sidebar wrapper - slides left when focus mode is active */}
         <div
+          id="sidebar-wrapper"
           className={`shrink-0 overflow-hidden transition-[transform,opacity] duration-300 ease-out ${
             focusMode
               ? "-translate-x-full opacity-0 w-0"

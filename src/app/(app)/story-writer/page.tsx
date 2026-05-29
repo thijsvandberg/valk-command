@@ -33,6 +33,7 @@ interface ActiveSession {
   jiraUpdatedAt: string | null;
   targetTicketKey: string | null;
   targetTitle: string | null;
+  removedFromJira: boolean;
 }
 
 function formatTimeAgo(iso: string): string {
@@ -74,6 +75,7 @@ function SessionCard({
             issueType={session.issueType ?? undefined}
             title={session.title}
             size="sm"
+            removedFromJira={session.removedFromJira}
           />
           {isSplit && (
             <>

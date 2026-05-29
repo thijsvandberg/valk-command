@@ -19,6 +19,7 @@ import {
   Gem,
   Copy,
   CloudDownload,
+  CornerLeftUp,
 } from "lucide-react";
 import { ErrorBoundary } from "@/components/shared/ErrorBoundary";
 import { Tooltip } from "@/components/shared/Tooltip";
@@ -207,7 +208,7 @@ export default function TicketDetailPage({
       <ViewHeader
         actions={
           <div className="flex shrink-0 items-center gap-2">
-            {((h.ticketSprintId && ticket.type !== "epic") || ticket.epic || ticket.type === "epic") && (
+            {((h.ticketSprintId && ticket.type !== "epic") || ticket.epic || ticket.type === "epic" || h.detail?.parent) && (
               <nav className="hidden lg:flex shrink-0 items-center gap-1.5">
                 {ticket.type === "epic" && (
                   <span
@@ -247,6 +248,17 @@ export default function TicketDetailPage({
                     )}
                   </Tooltip>
                 )}
+                {h.detail?.parent && (
+                  <Tooltip content={`${h.detail.parent.key} ${h.detail.parent.title}`}>
+                    <Link
+                      href={`/tickets/${h.detail.parent.key}`}
+                      className="flex items-center gap-1.5 rounded-md bg-overlay-default px-2 py-0.5 text-label font-medium text-text-tertiary cursor-pointer hover:bg-overlay-strong hover:text-text-secondary transition-colors duration-150 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)]"
+                    >
+                      <CornerLeftUp size={12} strokeWidth={1.5} />
+                      <span className="max-w-[140px] truncate">{h.detail.parent.key}</span>
+                    </Link>
+                  </Tooltip>
+                )}
               </nav>
             )}
             {h.isFlagged && (
@@ -273,7 +285,7 @@ export default function TicketDetailPage({
                 </button>
               </Tooltip>
             )}
-            {((h.ticketSprintId && ticket.type !== "epic") || ticket.epic || ticket.type === "epic" || h.isFlagged) && (
+            {((h.ticketSprintId && ticket.type !== "epic") || ticket.epic || ticket.type === "epic" || h.detail?.parent || h.isFlagged) && (
               <div className="h-5 w-px shrink-0 bg-overlay-default" />
             )}
             {showPushButton && (
