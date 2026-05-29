@@ -122,13 +122,13 @@ describe("DevPanel", () => {
 
   it("shows 'No development activity' when expanded and no data", () => {
     renderPanel(makePayload());
-    fireEvent.click(screen.getByRole("button"));
+    fireEvent.click(screen.getAllByRole("button")[0]);
     expect(screen.getByText("No development activity linked to this ticket")).toBeInTheDocument();
   });
 
   it("renders branch link with correct href", () => {
     renderPanel(makePayload({ branches: [makeBranch()] }));
-    fireEvent.click(screen.getByRole("button"));
+    fireEvent.click(screen.getAllByRole("button")[0]);
 
     const link = screen.getByText("feature/my-branch");
     expect(link.closest("a")).toHaveAttribute("href", "https://bitbucket.org/repo/branch/feature/my-branch");
@@ -136,7 +136,7 @@ describe("DevPanel", () => {
 
   it("renders branch link with target=_blank", () => {
     renderPanel(makePayload({ branches: [makeBranch()] }));
-    fireEvent.click(screen.getByRole("button"));
+    fireEvent.click(screen.getAllByRole("button")[0]);
 
     const link = screen.getByText("feature/my-branch").closest("a");
     expect(link).toHaveAttribute("target", "_blank");
@@ -145,7 +145,7 @@ describe("DevPanel", () => {
 
   it("renders PR title with link", () => {
     renderPanel(makePayload({ pullRequests: [makePR()] }));
-    fireEvent.click(screen.getByRole("button"));
+    fireEvent.click(screen.getAllByRole("button")[0]);
 
     const link = screen.getByText("My Pull Request");
     expect(link.closest("a")).toHaveAttribute("href", "https://bitbucket.org/repo/pull-requests/1");
@@ -154,25 +154,25 @@ describe("DevPanel", () => {
 
   it("renders PR status badge", () => {
     renderPanel(makePayload({ pullRequests: [makePR({ status: "OPEN" })] }));
-    fireEvent.click(screen.getByRole("button"));
+    fireEvent.click(screen.getAllByRole("button")[0]);
     expect(screen.getByText("OPEN")).toBeInTheDocument();
   });
 
   it("renders merged PR status", () => {
     renderPanel(makePayload({ pullRequests: [makePR({ status: "MERGED" })] }));
-    fireEvent.click(screen.getByRole("button"));
+    fireEvent.click(screen.getAllByRole("button")[0]);
     expect(screen.getByText("MERGED")).toBeInTheDocument();
   });
 
   it("renders latest commit message", () => {
     renderPanel(makePayload({ commits: [makeCommit()] }));
-    fireEvent.click(screen.getByRole("button"));
+    fireEvent.click(screen.getAllByRole("button")[0]);
     expect(screen.getByText("A commit message")).toBeInTheDocument();
   });
 
   it("renders commit link when url is present", () => {
     renderPanel(makePayload({ commits: [makeCommit()] }));
-    fireEvent.click(screen.getByRole("button"));
+    fireEvent.click(screen.getAllByRole("button")[0]);
 
     const link = screen.getByText("A commit message").closest("a");
     expect(link).toHaveAttribute("href", "https://bitbucket.org/repo/commits/def456");
@@ -181,7 +181,7 @@ describe("DevPanel", () => {
 
   it("renders build name and link", () => {
     renderPanel(makePayload({ builds: [makeBuild()] }));
-    fireEvent.click(screen.getByRole("button"));
+    fireEvent.click(screen.getAllByRole("button")[0]);
 
     const link = screen.getByText("Build #42");
     expect(link.closest("a")).toHaveAttribute("href", "https://bitbucket.org/pipelines/42");
@@ -208,27 +208,27 @@ describe("DevPanel", () => {
       ],
     });
     renderPanel(makePayload({ pullRequests: [pr] }));
-    fireEvent.click(screen.getByRole("button"));
+    fireEvent.click(screen.getAllByRole("button")[0]);
     expect(screen.getByText("1/2")).toBeInTheDocument();
   });
 
   it("shows PR comment count when > 0", () => {
     renderPanel(makePayload({ pullRequests: [makePR({ commentCount: 3 })] }));
-    fireEvent.click(screen.getByRole("button"));
+    fireEvent.click(screen.getAllByRole("button")[0]);
     expect(screen.getByText("3")).toBeInTheDocument();
   });
 
   it("shows branch source -> dest flow", () => {
     const pr = makePR({ sourceBranch: "feature/x", destBranch: "main" });
     renderPanel(makePayload({ pullRequests: [pr] }));
-    fireEvent.click(screen.getByRole("button"));
+    fireEvent.click(screen.getAllByRole("button")[0]);
     expect(screen.getByText(/feature\/x/)).toBeInTheDocument();
     expect(screen.getByText(/main/)).toBeInTheDocument();
   });
 
   it("shows loading skeleton when isLoading and no data yet", () => {
     renderPanel(undefined, true);
-    fireEvent.click(screen.getByRole("button"));
+    fireEvent.click(screen.getAllByRole("button")[0]);
     // The skeleton renders div elements with animation; check that the no-data message is absent
     expect(screen.queryByText("No development activity linked to this ticket")).not.toBeInTheDocument();
   });

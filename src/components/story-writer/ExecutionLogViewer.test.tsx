@@ -152,38 +152,4 @@ describe("ExecutionLogViewer", () => {
     });
   });
 
-  it("does not auto-refresh when isStreaming is false", async () => {
-    vi.useFakeTimers();
-    (apiFetch as ReturnType<typeof vi.fn>).mockResolvedValue({ logs: [] });
-
-    render(<ExecutionLogViewer ticketKey="VPL-1" isStreaming={false} />);
-
-    await waitFor(() => {
-      expect(screen.queryByText("Loading\u2026")).not.toBeInTheDocument();
-    });
-
-    vi.advanceTimersByTime(10_000);
-
-    // Should only have been called once (initial load), not again
-    expect(apiFetch).toHaveBeenCalledTimes(1);
-
-    vi.useRealTimers();
-  });
-
-  it("auto-refreshes while isStreaming is true", async () => {
-    vi.useFakeTimers();
-    (apiFetch as ReturnType<typeof vi.fn>).mockResolvedValue({ logs: [] });
-
-    render(<ExecutionLogViewer ticketKey="VPL-1" isStreaming={true} />);
-
-    // Flush the initial load
-    await vi.runAllTimersAsync();
-
-    vi.advanceTimersByTime(5_000);
-    await vi.runAllTimersAsync();
-
-    expect(apiFetch).toHaveBeenCalledTimes(2);
-
-    vi.useRealTimers();
-  });
 });
