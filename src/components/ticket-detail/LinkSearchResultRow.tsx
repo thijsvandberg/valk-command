@@ -20,9 +20,15 @@ export const LinkSearchResultRow = memo(function LinkSearchResultRow({
   onHover,
 }: LinkSearchResultRowProps) {
   return (
-    <button
-      type="button"
-      onMouseDown={(e) => { e.preventDefault(); onSelect(result); }}
+    <div
+      role="option"
+      onMouseDown={(e) => {
+        // Only select if the click is NOT on the pill (key/status area)
+        const target = e.target as HTMLElement;
+        if (target.closest("[data-pill-zone]")) return;
+        e.preventDefault();
+        onSelect(result);
+      }}
       onMouseEnter={onHover}
       className="flex w-full cursor-pointer items-center gap-2 px-3 py-2 text-left"
       style={{
@@ -31,7 +37,7 @@ export const LinkSearchResultRow = memo(function LinkSearchResultRow({
         transition: "background-color 80ms, border-color 80ms",
       }}
     >
-      <span onClick={(e) => e.stopPropagation()} onMouseDown={(e) => e.stopPropagation()}>
+      <span data-pill-zone>
         <TicketStatusPill
           ticketKey={result.key}
           jiraStatus={result.status.toUpperCase() as JiraStatus}
@@ -57,6 +63,6 @@ export const LinkSearchResultRow = memo(function LinkSearchResultRow({
           Jira
         </span>
       )}
-    </button>
+    </div>
   );
 });
