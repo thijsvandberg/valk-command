@@ -70,7 +70,12 @@ describe("Route manifest", () => {
     const pageFiles = await glob.default("src/app/**/page.tsx", { cwd: ROOT });
     const manifestFiles = EXPECTED_ROUTES.map((r) => r.file);
     const missing = pageFiles.filter(
-      (f) => !manifestFiles.includes(f) && !f.includes("page.test"),
+      (f) =>
+        !manifestFiles.includes(f) &&
+        !f.includes("page.test") &&
+        // Pages under (app)/dev are throwaway component showcases, not real
+        // routes, so they are intentionally absent from the manifest.
+        !f.includes("/dev/"),
     );
     expect(missing).toEqual([]);
   });
