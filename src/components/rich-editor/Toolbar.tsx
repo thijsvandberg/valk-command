@@ -9,6 +9,7 @@ import type { Editor } from "@tiptap/react";
 import type { CalloutType } from "./callout-extension";
 import type { EditorMode } from "./RichEditor";
 import { EDITOR_PALETTE } from "@/lib/status-colors";
+import { LinkPopover } from "./LinkPopover";
 
 interface ToolbarProps {
   editor: Editor | null;
@@ -222,35 +223,28 @@ function FormatButton({
 }
 
 function LinkButton({ editor }: { editor: Editor }) {
-  const handleLink = useCallback(() => {
-    const previousUrl = editor.getAttributes("link").href;
-    const url = window.prompt("URL", previousUrl || "https://");
+  const [open, setOpen] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
 
-    if (url === null) return;
-    if (url === "") {
-      editor.chain().focus().extendMarkRange("link").unsetLink().run();
-      return;
-    }
-
-    try {
-      const parsed = new URL(url);
-      if (!["http:", "https:", "mailto:"].includes(parsed.protocol)) return;
-    } catch {
-      return;
-    }
-
-    editor.chain().focus().extendMarkRange("link").setLink({ href: url }).run();
+  // Listen for Cmd+K event from the editor
+  useEffect(() => {
+    const handler = () => setOpen(true);
+    editor.on("openLinkPopover", handler);
+    return () => { editor.off("openLinkPopover", handler); };
   }, [editor]);
 
   return (
-    <FormatButton
-      editor={editor}
-      action={handleLink}
-      active={editor.isActive("link")}
-      label="Insert link"
-    >
-      <Link size={14} strokeWidth={1.5} />
-    </FormatButton>
+    <div ref={ref} className="relative">
+      <FormatButton
+        editor={editor}
+        action={() => setOpen(!open)}
+        active={editor.isActive("link") || open}
+        label="Insert link"
+      >
+        <Link size={14} strokeWidth={1.5} />
+      </FormatButton>
+      <LinkPopover editor={editor} open={open} onClose={() => setOpen(false)} />
+    </div>
   );
 }
 

@@ -4,7 +4,8 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { useEditor, EditorContent } from "@tiptap/react";
 import StarterKit from "@tiptap/starter-kit";
-import Link from "@tiptap/extension-link";
+import LinkExtension from "@tiptap/extension-link";
+import { LinkFloatingToolbar } from "./LinkFloatingToolbar";
 import Image from "@tiptap/extension-image";
 import { Color } from "@tiptap/extension-color";
 import { TextStyle } from "@tiptap/extension-text-style";
@@ -146,7 +147,16 @@ export function RichEditor({
         heading: { levels: [2, 3, 4] },
         codeBlock: { HTMLAttributes: { class: "editor-code-block" } },
       }),
-      Link.configure({
+      LinkExtension.extend({
+        addKeyboardShortcuts() {
+          return {
+            "Mod-k": () => {
+              this.editor.emit("openLinkPopover", {});
+              return true;
+            },
+          };
+        },
+      }).configure({
         openOnClick: false,
         HTMLAttributes: { class: "editor-link" },
       }),
@@ -271,6 +281,7 @@ export function RichEditor({
   return (
     <div className={rootClasses}>
       <SlashCommandMenu editor={editor} />
+      {editor && <LinkFloatingToolbar editor={editor} />}
       {!hideToolbar && (isPortaled ? createPortal(toolbarEl, portalTarget!) : toolbarEl)}
 
       <div className={borderless ? "flex-1 overflow-y-auto" : ""}>
