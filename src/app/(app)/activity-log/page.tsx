@@ -4,6 +4,7 @@ import { useState, useCallback, useMemo, useEffect, useRef } from "react";
 import { usePageTitle } from "@/hooks/usePageTitle";
 import { useActivityContext } from "@/contexts/ActivityContext";
 import { useLocalStorage } from "@/hooks/useLocalStorage";
+import { useJiraSprints } from "@/hooks/useSprintBoard";
 import useSWR from "swr";
 import {
   RefreshCw,
@@ -47,17 +48,15 @@ export default function ActivityLogPage() {
   if (selectedTypes.size > 0) params.set("type", [...selectedTypes].join(","));
   if (statusFilter) params.set("status", statusFilter);
 
-  const { data: sprints } = useSWR<Array<{ id: number; name: string }>>(
-    "/api/jira/sprints",
-    fetcher,
-  );
+  // The /api/jira/sprints endpoint returns a wrapped { sprints, backlogCount }
+  // object; useJiraSprints unwraps it into a guaranteed array so the map below
+  // never iterates a plain object (the cause of the "sprints is not iterable" crash).
+  const { sprints } = useJiraSprints();
 
   const sprintMap = useMemo(() => {
     const map = new Map<string, string>();
-    if (sprints) {
-      for (const s of sprints) {
-        map.set(String(s.id), s.name);
-      }
+    for (const s of sprints) {
+      map.set(String(s.id), s.name);
     }
     return map;
   }, [sprints]);
