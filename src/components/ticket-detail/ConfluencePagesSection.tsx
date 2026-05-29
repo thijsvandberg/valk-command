@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useRef, useEffect, useCallback } from "react";
+import { useOutsideClick } from "@/hooks/useOutsideClick";
 import { sanitizeHtmlClient } from "@/lib/sanitize-client";
 import {
   BookOpen,
@@ -151,13 +152,7 @@ function SearchPopover({
     inputRef.current?.focus();
   }, []);
 
-  useEffect(() => {
-    function handleClickOutside(e: MouseEvent) {
-      if (containerRef.current && !containerRef.current.contains(e.target as Node)) onClose();
-    }
-    document.addEventListener("mousedown", handleClickOutside);
-    return () => document.removeEventListener("mousedown", handleClickOutside);
-  }, [onClose]);
+  useOutsideClick(containerRef, onClose);
 
   return (
     <div

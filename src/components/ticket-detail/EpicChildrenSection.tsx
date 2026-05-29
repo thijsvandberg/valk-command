@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useRef, useCallback, useEffect, useMemo } from "react";
+import { useOutsideClick } from "@/hooks/useOutsideClick";
 import type { TicketDetail, JiraStatus, TicketReadiness, Subtask, EpicChild, IssueType } from "@/types/ticket";
 import { getSpColor } from "@/types/ticket";
 import { IssueTypeIcon } from "@/components/shared/IssueTypeIcon";
@@ -245,16 +246,7 @@ export function EpicChildrenSection({
     setSearchHighlight(-1);
   }, []);
 
-  useEffect(() => {
-    if (!searchMode) return;
-    const handler = (e: MouseEvent) => {
-      if (searchContainerRef.current && !searchContainerRef.current.contains(e.target as Node)) {
-        closeSearch();
-      }
-    };
-    document.addEventListener("mousedown", handler);
-    return () => document.removeEventListener("mousedown", handler);
-  }, [searchMode, closeSearch]);
+  useOutsideClick(searchContainerRef, closeSearch, { enabled: searchMode, escapeClose: false });
 
   useEffect(() => {
     if (searchMode) searchInputRef.current?.focus();

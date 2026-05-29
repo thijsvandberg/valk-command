@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useRef, useCallback, useEffect } from "react";
+import { useOutsideClick } from "@/hooks/useOutsideClick";
 import { Modal } from "@/components/shared/Modal";
 import { Button } from "@/components/ui/Button";
 import { useLinkIssueSearch } from "@/hooks/useLinkIssueSearch";
@@ -64,15 +65,7 @@ export function LinkIssueDialog({
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open]);
 
-  // Close relation dropdown on click outside
-  useEffect(() => {
-    if (!relationOpen) return;
-    function handleClick(e: MouseEvent) {
-      if (!relationRef.current?.contains(e.target as Node)) setRelationOpen(false);
-    }
-    document.addEventListener("mousedown", handleClick);
-    return () => document.removeEventListener("mousedown", handleClick);
-  }, [relationOpen]);
+  useOutsideClick(relationRef, () => setRelationOpen(false), { enabled: relationOpen, escapeClose: false });
 
   const handleSelect = useCallback((result: LinkSearchResult) => {
     setSelected(result);

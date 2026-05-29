@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useCallback, useRef, useEffect } from "react";
+import { useOutsideClick } from "@/hooks/useOutsideClick";
 import type { TicketDetail, LinkedIssue } from "@/types/ticket";
 import { Avatar } from "@/components/shared/Avatar";
 import { ChildIssueRow } from "./ChildIssueRow";
@@ -90,7 +91,8 @@ export function LinkedIssuesSection({ issues, ticketKey, onMutate }: LinkedIssue
     return new Set(stillPresent);
   })();
 
-  // Close relation dropdown on Esc or click outside
+  useOutsideClick(inlineRelationRef, () => setInlineRelationOpen(false), { enabled: inlineRelationOpen, escapeClose: false });
+
   useEffect(() => {
     if (!inlineRelationOpen) return;
     function handleKey(e: KeyboardEvent) {
@@ -99,17 +101,8 @@ export function LinkedIssuesSection({ issues, ticketKey, onMutate }: LinkedIssue
         setInlineRelationOpen(false);
       }
     }
-    function handleClick(e: MouseEvent) {
-      if (inlineRelationRef.current && !inlineRelationRef.current.contains(e.target as Node)) {
-        setInlineRelationOpen(false);
-      }
-    }
     document.addEventListener("keydown", handleKey);
-    document.addEventListener("mousedown", handleClick);
-    return () => {
-      document.removeEventListener("keydown", handleKey);
-      document.removeEventListener("mousedown", handleClick);
-    };
+    return () => document.removeEventListener("keydown", handleKey);
   }, [inlineRelationOpen]);
 
   // Stream handling for AI suggestions

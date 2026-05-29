@@ -1,6 +1,7 @@
 "use client";
 
-import { useRef, useEffect } from "react";
+import { useRef } from "react";
+import { useOutsideClick } from "@/hooks/useOutsideClick";
 import { Check } from "lucide-react";
 import type { JiraStatus } from "@/types/ticket";
 
@@ -39,20 +40,7 @@ export function FieldFilterPopover({
 }: FieldFilterPopoverProps) {
   const ref = useRef<HTMLDivElement>(null);
 
-  useEffect(() => {
-    function handleClickOutside(e: MouseEvent) {
-      if (ref.current && !ref.current.contains(e.target as Node)) onClose();
-    }
-    function handleKeyDown(e: KeyboardEvent) {
-      if (e.key === "Escape") onClose();
-    }
-    document.addEventListener("mousedown", handleClickOutside);
-    document.addEventListener("keydown", handleKeyDown);
-    return () => {
-      document.removeEventListener("mousedown", handleClickOutside);
-      document.removeEventListener("keydown", handleKeyDown);
-    };
-  }, [onClose]);
+  useOutsideClick(ref, onClose);
 
   return (
     <div
