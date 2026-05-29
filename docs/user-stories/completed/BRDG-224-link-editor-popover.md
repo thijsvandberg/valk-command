@@ -1,6 +1,6 @@
 # BRDG-224: Link Editor Popover
 
-**Status:** In Progress
+**Status:** Done
 **Priority:** Medium
 **Type:** Enhancement
 
@@ -92,4 +92,4 @@ As a PO editing story descriptions, I want a proper link editor (like Jira's) so
 - [x] Style both components to match existing editor toolbar tokens
 - [x] Tests for LinkPopover (open, fill, apply, cancel, validation)
 - [x] Tests for LinkFloatingToolbar (edit, unlink, open, copy actions)
-- [ ] Manual test: insert new link, edit existing link, unlink, copy URL
+- [x] Manual test: insert new link, edit existing link, unlink, copy URL
