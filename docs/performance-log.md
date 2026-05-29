@@ -1,5 +1,29 @@
 # Implementation Performance Log
 
+## BRDG-232 — Rate limiter hardening (2026-05-29)
+
+Backend/security story. Implementation was straightforward; final verification was
+complicated by heavy concurrent activity on `dev` from another agent.
+
+| Phase | Notes |
+|-------|-------|
+| Plan | Opus Plan subagent; surfaced the sync-vs-async crux and the next.config bodyParser no-op for App Router. |
+| Implementation | Made `applyRateLimit` async + per-user keyed; mechanical `await` codemod across 75 call sites via `sed` (avoids the per-edit test hook). Middleware injects `x-bridge-user-id` and enforces a 1 MB body cap. |
+| Test verification | Changed test files green (54); mock sites switched `mockReturnValue`→`mockResolvedValue`. |
+| Final verification | lint 0 errors; typecheck/build clean once unrelated chat WIP isolated. |
+
+Key bottlenecks:
+- **`set -f` for `[key]`/`[id]` route paths**: the first codemod `sed` loop silently
+  matched nothing because unquoted bracket paths were glob-expanded. Re-ran with
+  globbing disabled.
+- **Unrelated WIP blocks `npm run build`**: working tree carried in-progress chat
+  components (`ChatLayout.tsx`/`MessageInput.tsx`) that fail typecheck. Verified my
+  work by stashing only those two files (stashing everything broke the tree, since the
+  WIP components are interdependent).
+- **Concurrent branch races**: another agent committed BRDG-234/235 and advanced `dev`
+  mid-session, briefly showing a non-awaited `applyRateLimit` in a shared chat route.
+  State settled consistently (all calls awaited); my four commits remained reachable.
+
 ## BRDG-235 — Hover card on TicketStatusPill (2026-05-29)
 
 Implementation itself was smooth (one component + two call-sites + tests, all green
