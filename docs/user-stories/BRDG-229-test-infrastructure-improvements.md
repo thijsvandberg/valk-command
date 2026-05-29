@@ -22,9 +22,9 @@ The test suite has solid fundamentals (269 test files, 39k lines, CI on GitHub A
 
 ## Acceptance Criteria
 
-- [ ] Test utilities created and usable
-- [ ] At least 5 existing test files migrated to use new utilities as proof of concept
-- [ ] No existing tests broken
+- [x] Test utilities created and usable
+- [x] At least 5 existing test files migrated to use new utilities as proof of concept
+- [x] No existing tests broken
 - [ ] `npm run test` and `npm run build` pass
 
 ## Findings from Audit
@@ -230,8 +230,8 @@ No coverage reporting exists. Regressions are invisible.
 
 ### Implementation
 
-- [ ] Add `--coverage` flag to vitest in CI
-- [ ] Add coverage configuration to `vitest.config.ts`:
+- [x] Add `--coverage` flag to vitest in CI
+- [x] Add coverage configuration to `vitest.config.ts`:
 
 ```typescript
 test: {
@@ -243,8 +243,8 @@ test: {
 }
 ```
 
-- [ ] Add coverage summary output to CI job (just reporting, no threshold enforcement initially)
-- [ ] Document current baseline coverage numbers in a comment on the CI workflow
+- [x] Add coverage summary output to CI job (just reporting, no threshold enforcement initially)
+- [x] Document current baseline coverage numbers in a comment on the CI workflow
 
 ---
 

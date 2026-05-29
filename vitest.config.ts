@@ -10,6 +10,16 @@ export default defineConfig({
     include: ["**/*.test.ts", "**/*.test.tsx"],
     exclude: ["node_modules", "deleted"],
     bail: 5,
+    coverage: {
+      provider: "v8",
+      reporter: ["text-summary", "json-summary"],
+      include: ["src/**/*.ts", "src/**/*.tsx"],
+      exclude: [
+        "src/**/*.test.ts",
+        "src/**/*.test.tsx",
+        "src/test/**",
+      ],
+    },
   },
   resolve: {
     alias: {
