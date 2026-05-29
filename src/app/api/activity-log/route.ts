@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { db } from "@/db";
 import { activityLog, sprintNameCache } from "@/db/schema";
-import { desc, eq, and, lt, gte, inArray } from "drizzle-orm";
+import { desc, eq, and, gte, inArray } from "drizzle-orm";
 import type { SQL } from "drizzle-orm";
 import type { ActivityLogType } from "@/types/ticket";
 import { computeStats } from "./compute-stats";
@@ -78,19 +78,13 @@ export async function GET(request: Request) {
   const fourteenDaysAgo = new Date(now.getTime() - 14 * 24 * 60 * 60 * 1000).toISOString();
   const sevenDaysAgoEnd = sevenDaysAgo;
 
-  const [todayRows, yesterdayRows, sevenDayFailedRows, timelineRows, sevenDaysAgoPeriodRows] = await Promise.all([
-    db.select().from(activityLog).where(gte(activityLog.startedAt, startOfToday)),
-    db.select().from(activityLog).where(
-      and(gte(activityLog.startedAt, startOfYesterday), lt(activityLog.startedAt, startOfToday)),
-    ),
-    db.select().from(activityLog).where(
-      and(gte(activityLog.startedAt, sevenDaysAgo), eq(activityLog.status, "failed")),
-    ),
-    db.select().from(activityLog).where(gte(activityLog.startedAt, twentyFourHoursAgo)),
-    db.select().from(activityLog).where(
-      and(gte(activityLog.startedAt, fourteenDaysAgo), lt(activityLog.startedAt, sevenDaysAgoEnd)),
-    ),
-  ]);
+  const allRecentRows = await db.select().from(activityLog).where(gte(activityLog.startedAt, fourteenDaysAgo));
+
+  const todayRows = allRecentRows.filter((r) => r.startedAt >= startOfToday);
+  const yesterdayRows = allRecentRows.filter((r) => r.startedAt >= startOfYesterday && r.startedAt < startOfToday);
+  const sevenDayFailedRows = allRecentRows.filter((r) => r.startedAt >= sevenDaysAgo && r.status === "failed");
+  const timelineRows = allRecentRows.filter((r) => r.startedAt >= twentyFourHoursAgo);
+  const sevenDaysAgoPeriodRows = allRecentRows.filter((r) => r.startedAt >= fourteenDaysAgo && r.startedAt < sevenDaysAgoEnd);
 
   const stats = computeStats(
     todayRows,

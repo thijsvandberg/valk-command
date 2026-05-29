@@ -278,8 +278,10 @@ export async function buildTicketDetail(key: string): Promise<{ data: TicketDeta
   }
 
   const response = transformQueryData(queryData);
-  const epicChildren = await resolveEpicChildren(queryData.epicChildRows);
-  response.epicChildren = epicChildren;
+
+  if (queryData.epicChildRows.length > 0) {
+    response.epicChildren = await resolveEpicChildren(queryData.epicChildRows);
+  }
 
   return { data: response, durationMs };
 }

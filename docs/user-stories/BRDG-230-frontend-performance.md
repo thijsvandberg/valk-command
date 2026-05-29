@@ -34,9 +34,9 @@ Order rationale: frontend bundle changes first (highest user-facing impact), the
 - [x] Part 2: Dynamic import page-level conditional components
 - [x] Part 3: Add loading.tsx streaming skeletons
 - [x] Part 4: Expand optimizePackageImports
-- [ ] Part 5: Parallelize epic children in ticket detail API
+- [x] Part 5: Parallelize epic children in ticket detail API
 - [ ] Part 6: Add missing database indexes
-- [ ] Part 7: Activity log stats query optimization
+- [x] Part 7: Activity log stats query optimization
 - [ ] All parts verified: lint, typecheck, test, build pass
 - [ ] Manual verification: all affected routes load correctly
 
