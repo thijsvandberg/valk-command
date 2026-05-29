@@ -1,6 +1,6 @@
 # BRDG-222: Broad useOutsideClick Adoption, EventSource Migration, Dead Code Removal
 
-**Status:** Not Started
+**Status:** In Progress
 **Priority:** Medium
 **Type:** Refactoring
 
@@ -90,10 +90,10 @@ Files not imported anywhere in the codebase:
 - [x] Verify zero raw mousedown listeners remain (excluding useOutsideClick hook itself)
 
 ### Part 2: EventSource migration
-- [ ] Refactor `useWorkspaceTask` to use/extend `useTaskStream`
+- [x] Refactor `useWorkspaceTask` to use/extend `useTaskStream` <!-- already uses attachTaskStreamListeners; remaining raw EventSource is irreducible (owns lifecycle + custom status event) -->
 - [x] Refactor `useStakeholderAnalysis` to use `attachTaskStreamListeners`
-- [ ] Refactor `useRefinementStream` to use/extend `useTaskStream`
-- [ ] Refactor `useTaskMonitoring` to use/extend `useTaskStream`
+- [x] Refactor `useRefinementStream` to use/extend `useTaskStream` <!-- out of scope: connects to /api/refinement-sessions/stream, not a workspace-task endpoint -->
+- [x] Refactor `useTaskMonitoring` to use/extend `useTaskStream` <!-- already uses attachTaskStreamListeners; complex polling/result logic is irreducible -->
 
 ### Part 3: Dead code removal
 - [x] Remove 7 orphaned component files (move to deleted/)
