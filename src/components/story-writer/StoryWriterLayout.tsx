@@ -24,7 +24,11 @@ import { useDraftSync } from "@/hooks/useDraftSync";
 import { useTicketDetail, useTicketReviews, useJiraSprints } from "@/hooks/useSprintBoard";
 import { IssueTypeIcon } from "@/components/shared/IssueTypeIcon";
 import { SplitStoryPicker } from "./SplitStoryPicker";
-import { AddToRefinementModal } from "@/components/refinement-session/AddToRefinementModal";
+import dynamic from "next/dynamic";
+const AddToRefinementModal = dynamic(
+  () => import("@/components/refinement-session/AddToRefinementModal").then((m) => ({ default: m.AddToRefinementModal })),
+  { ssr: false },
+);
 import { SprintPicker } from "@/components/shared/SprintPicker";
 import { getJiraUrl } from "@/lib/jira-url";
 import { ViewHeader, ViewHeaderDivider } from "@/components/shared/ViewHeader";

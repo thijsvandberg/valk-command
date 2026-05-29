@@ -11,7 +11,11 @@ import { Card } from "@/components/shared/Card";
 import { ConfirmDialog } from "@/components/shared/ConfirmDialog";
 import { EmptyState } from "@/components/shared/EmptyState";
 import { InlineAlert } from "@/components/shared/InlineAlert";
-import { StoryWriterLauncherModal } from "@/components/shared/StoryWriterLauncherModal";
+import dynamic from "next/dynamic";
+const StoryWriterLauncherModal = dynamic(
+  () => import("@/components/shared/StoryWriterLauncherModal").then((m) => ({ default: m.StoryWriterLauncherModal })),
+  { ssr: false },
+);
 import { apiFetch } from "@/lib/api-client";
 import { useJiraSprints } from "@/hooks/useSprintBoard";
 

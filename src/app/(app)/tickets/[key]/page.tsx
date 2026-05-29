@@ -24,12 +24,26 @@ import { ErrorBoundary } from "@/components/shared/ErrorBoundary";
 import { Tooltip } from "@/components/shared/Tooltip";
 import { ViewHeader, ViewHeaderDivider } from "@/components/shared/ViewHeader";
 import { TicketStatusPill } from "@/components/shared/TicketStatusPill";
+import dynamic from "next/dynamic";
 import { TicketSidebar, SIDEBAR_COLLAPSED_KEY } from "@/components/ticket-detail/TicketSidebar";
-import { TicketPreviewPanel } from "@/components/ticket-detail/TicketPreviewPanel";
-import { TicketChatPane } from "@/components/shared/TicketChatPane";
 import { TicketTabContent, type TicketTab } from "@/components/ticket-detail/TicketTabContent";
-import { AddToRefinementModal } from "@/components/refinement-session/AddToRefinementModal";
-import { SearchModal } from "@/components/sprint-board/SearchModal";
+
+const TicketPreviewPanel = dynamic(
+  () => import("@/components/ticket-detail/TicketPreviewPanel").then((m) => ({ default: m.TicketPreviewPanel })),
+  { ssr: false },
+);
+const TicketChatPane = dynamic(
+  () => import("@/components/shared/TicketChatPane").then((m) => ({ default: m.TicketChatPane })),
+  { ssr: false },
+);
+const AddToRefinementModal = dynamic(
+  () => import("@/components/refinement-session/AddToRefinementModal").then((m) => ({ default: m.AddToRefinementModal })),
+  { ssr: false },
+);
+const SearchModal = dynamic(
+  () => import("@/components/sprint-board/SearchModal").then((m) => ({ default: m.SearchModal })),
+  { ssr: false },
+);
 import { Button } from "@/components/ui/Button";
 import { Popover } from "@/components/shared/Popover";
 import { ConfirmDialog } from "@/components/shared/ConfirmDialog";
