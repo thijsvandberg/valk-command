@@ -26,7 +26,9 @@ interface UseWorkspaceTaskReturn extends WorkspaceTaskState {
   submitAndStream: (
     skill: string,
     args: Record<string, string>,
-    conversationId?: string
+    conversationId?: string,
+    /** Extra top-level fields merged into the task body (e.g. { model }) */
+    extra?: Record<string, unknown>
   ) => Promise<void>;
   /** Connect to an already-created task's SSE stream (used for follow-up messages). */
   streamExistingTask: (taskId: string, skill: string) => void;
@@ -233,7 +235,7 @@ export function useWorkspaceTask(conversationId?: string): UseWorkspaceTaskRetur
   }, [conversationId, safeSetState]);
 
   const submitAndStream = useCallback(
-    async (skill: string, args: Record<string, string>, convId?: string) => {
+    async (skill: string, args: Record<string, string>, convId?: string, extra?: Record<string, unknown>) => {
       // Clean up previous stream
       eventSourceRef.current?.close();
       eventSourceRef.current = null;
@@ -249,6 +251,7 @@ export function useWorkspaceTask(conversationId?: string): UseWorkspaceTaskRetur
           skill,
           args,
           ...(convId ? { conversationId: convId } : {}),
+          ...(extra ?? {}),
         });
         const taskId = task.id;
 

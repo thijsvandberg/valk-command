@@ -3,6 +3,8 @@
 import { useRef, useState } from "react";
 import { Activity } from "lucide-react";
 import type { ActivityLogTimelineEntry } from "@/types/ticket";
+import { Card } from "@/components/shared/Card";
+import { PanelHeader } from "@/components/shared/PanelHeader";
 import { entryTypeLabel, formatTimestamp, formatDuration } from "./activity-helpers";
 
 export function EventTimeline({
@@ -37,16 +39,17 @@ export function EventTimeline({
   }).filter(Boolean) as { label: string; pct: number }[];
 
   return (
-    <div className="mb-5 rounded-xl border border-border-default bg-[var(--color-surface-elevated)] px-4 py-4 shadow-[var(--shadow-sm)]">
-      <div className="flex items-center gap-2 mb-3">
-        <Activity className="h-3.5 w-3.5 text-text-muted" strokeWidth={1.5} />
-        <span className="text-label font-semibold uppercase tracking-wider text-text-muted font-[var(--font-body)]">
-          Last 24 Hours
-        </span>
-        <span className="ml-auto text-caption text-text-muted font-[var(--font-body)]">
-          {entries.length} {entries.length === 1 ? "event" : "events"}
-        </span>
-      </div>
+    <Card className="mb-5 px-4 py-4 shadow-[var(--shadow-sm)]">
+      <PanelHeader
+        icon={<Activity className="h-3.5 w-3.5" strokeWidth={1.5} />}
+        label="Last 24 Hours"
+        meta={
+          <span className="text-caption text-text-muted font-[var(--font-body)]">
+            {entries.length} {entries.length === 1 ? "event" : "events"}
+          </span>
+        }
+        className="mb-3"
+      />
 
       {/* Timeline track */}
       <div
@@ -148,6 +151,6 @@ export function EventTimeline({
           <span className="text-body-sm text-text-muted font-[var(--font-body)]">No events in the last 24 hours</span>
         </div>
       )}
-    </div>
+    </Card>
   );
 }

@@ -20,7 +20,7 @@ function FocusModeLayout({ children }: { children: ReactNode }) {
       {/* Header portal - slides up when focus mode is active */}
       <div
         id="view-header-portal"
-        className={`shrink-0 transition-[transform,opacity] duration-300 ease-out origin-top ${
+        className={`relative z-30 shrink-0 transition-[transform,opacity] duration-300 ease-out origin-top ${
           focusMode
             ? "-translate-y-full opacity-0 max-h-0 overflow-hidden"
             : "translate-y-0 opacity-100"

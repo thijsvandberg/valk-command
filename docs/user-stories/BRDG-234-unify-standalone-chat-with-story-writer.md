@@ -109,15 +109,15 @@ The shared primitives `ChatBubble` and `ChatInput` already exist and are used ac
 
 ## Checklist
 
-- [ ] Extract reusable ModelSelector, CodebaseToggle, and QuickActionsPopover (popover) components into shared location
-- [ ] Migrate Story Writer chat to consume the shared footer controls (remove forked copies)
-- [ ] Route `/chat` input through shared `ChatInput` with footer controls
-- [ ] Align input width with the message column (remove full-bleed input)
+- [x] Extract reusable ModelSelector, CodebaseToggle, and QuickActionsPopover (popover) components into shared location
+- [x] Migrate Story Writer chat to consume the shared footer controls (remove forked copies)
+- [x] Route `/chat` input through shared `ChatInput` with footer controls
+- [x] Align input width with the message column (remove full-bleed input)
 - [ ] Make user bubble lighter and bubble widths consistent in the thread
 - [ ] Align streaming/progress indicator with Story Writer styling
 - [ ] Decide and apply: remove or keep bulk-suggestion "Markdown / Rich text" toggles
 - [ ] Clean up `ConversationList` spacing, status indicators, and pinned/date grouping
-- [ ] Populate `/chat` quick-action popover (settings-driven or default set)
-- [ ] Wire model + Codebase selections into the chat send path (verify/extend `submitAndStream`)
+- [x] Populate `/chat` quick-action popover (settings-driven or default set)
+- [x] Wire model + Codebase selections into the chat send path (verify/extend `submitAndStream`)
 - [ ] Tests for new shared components and changed behavior
 - [ ] All tests pass, build succeeds

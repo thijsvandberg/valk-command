@@ -1,7 +1,8 @@
 "use client";
 
-import { TrendingUp, TrendingDown, Minus } from "lucide-react";
+import { TrendingUp, TrendingDown, Minus, Activity, CheckCircle2, Timer, AlertTriangle } from "lucide-react";
 import { Tooltip } from "@/components/shared/Tooltip";
+import { StatCard } from "@/components/shared/StatCard";
 import type {
   ActivityLogDayStats,
   HealthScore,
@@ -72,10 +73,13 @@ function DeltaChip({
 }
 
 export function StatsBar({ today, yesterday }: { today: ActivityLogDayStats; yesterday: ActivityLogDayStats }) {
+  const iconClass = "h-3.5 w-3.5";
   const metrics = [
     {
       label: "Events today",
       value: today.totalEvents.toString(),
+      icon: <Activity className={`${iconClass} text-[var(--color-brand-400)]`} strokeWidth={1.5} />,
+      accent: "brand" as const,
       delta: (
         <DeltaChip
           current={today.totalEvents}
@@ -88,6 +92,8 @@ export function StatsBar({ today, yesterday }: { today: ActivityLogDayStats; yes
     {
       label: "Success rate",
       value: `${today.successRate}%`,
+      icon: <CheckCircle2 className={`${iconClass} text-emerald-400`} strokeWidth={1.5} />,
+      accent: (today.successRate >= 90 ? "emerald" : today.successRate >= 50 ? "amber" : "red") as "emerald" | "amber" | "red",
       delta: (
         <DeltaChip
           current={today.successRate}
@@ -100,6 +106,8 @@ export function StatsBar({ today, yesterday }: { today: ActivityLogDayStats; yes
     {
       label: "Avg duration",
       value: formatDuration(today.avgDurationMs),
+      icon: <Timer className={`${iconClass} text-amber-400/80`} strokeWidth={1.5} />,
+      accent: "brand" as const,
       delta: (
         <DeltaChip
           current={today.avgDurationMs}
@@ -112,6 +120,8 @@ export function StatsBar({ today, yesterday }: { today: ActivityLogDayStats; yes
     {
       label: "Active errors",
       value: today.activeErrorCount.toString(),
+      icon: <AlertTriangle className={`${iconClass} ${today.activeErrorCount > 0 ? "text-red-400" : "text-text-muted"}`} strokeWidth={1.5} />,
+      accent: (today.activeErrorCount > 0 ? "red" : "brand") as "red" | "brand",
       delta: (
         <DeltaChip
           current={today.activeErrorCount}
@@ -124,20 +134,16 @@ export function StatsBar({ today, yesterday }: { today: ActivityLogDayStats; yes
   ];
 
   return (
-    <div className="grid grid-cols-4 gap-3 mb-5">
+    <div className="grid grid-cols-2 gap-3 mb-5 sm:grid-cols-4">
       {metrics.map((m) => (
-        <div
+        <StatCard
           key={m.label}
-          className="flex flex-col gap-1 rounded-xl border border-border-default bg-[var(--color-surface-elevated)] px-4 py-3 shadow-[var(--shadow-sm)]"
-        >
-          <span className="text-caption uppercase tracking-widest text-text-muted font-semibold font-[var(--font-body)]">
-            {m.label}
-          </span>
-          <span className="text-heading font-bold tabular-nums font-[var(--font-display)] tracking-tight text-text-primary">
-            {m.value}
-          </span>
-          {m.delta}
-        </div>
+          label={m.label}
+          value={m.value}
+          icon={m.icon}
+          accent={m.accent}
+          footer={m.delta}
+        />
       ))}
     </div>
   );

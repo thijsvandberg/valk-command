@@ -22,6 +22,8 @@ interface ChatInputProps {
   sendAriaLabel?: string;
   /** data-testid for the root element */
   testId?: string;
+  /** Class applied to the header and input rows to constrain/center their content (e.g. "mx-auto w-full max-w-3xl") */
+  contentClassName?: string;
   /** Called when the user clicks the cancel/stop button while streaming */
   onCancel?: () => void;
   /** Programmatically fill the input from outside */
@@ -43,6 +45,7 @@ export function ChatInput({
   testId = "chat-input",
   pendingInput,
   onPendingInputConsumed,
+  contentClassName,
 }: ChatInputProps) {
   const [value, setValue] = useState("");
   const [sending, setSending] = useState(false);
@@ -139,12 +142,12 @@ export function ChatInput({
   return (
     <div className="shrink-0 border-t border-border-default" data-testid={testId}>
       {headerSlot && (
-        <div className="px-3 pt-2.5 pb-1.5">
+        <div className={`px-3 pt-2.5 pb-1.5 ${contentClassName ?? ""}`}>
           {headerSlot}
         </div>
       )}
 
-      <div className="px-3 pb-2.5 pt-1">
+      <div className={`px-3 pb-2.5 pt-1 ${contentClassName ?? ""}`}>
         <div className="flex flex-col rounded-2xl border border-border-strong bg-[var(--color-surface-elevated)] focus-within:border-[var(--color-brand-500)]/30 transition-colors duration-150">
           {resizable && (
             <div

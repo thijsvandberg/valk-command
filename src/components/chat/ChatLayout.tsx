@@ -42,6 +42,8 @@ export default function ChatLayout({ conversationId }: ChatLayoutProps) {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [pendingConversationId, setPendingConversationId] = useState<string | null>(null);
   const [filtersVisible, setFiltersVisible] = useState(false);
+  const [model, setModel] = useState("claude-sonnet-4-6");
+  const [codebaseResearch, setCodebaseResearch] = useState(false);
   const sidebar = useSidebarState();
   const resizeRef = useRef<{ startX: number; startWidth: number } | null>(null);
 
@@ -299,15 +301,18 @@ export default function ChatLayout({ conversationId }: ChatLayoutProps) {
         return true;
       }
 
-      // Plain text in a regular chat conversation: forward to workspace
+      // Plain text in a regular chat conversation: forward to workspace.
+      // The codebase-research flag is encoded as an args prefix for the agent;
+      // the user-facing message (saved separately) stays clean.
       const hasAssistantMessage = messages.some((m) => m.role === "assistant");
       if (hasAssistantMessage) {
-        // Follow-up: resume existing workspace session
+        // Follow-up: resume existing workspace session. The server applies the
+        // codebase prefix so the persisted message is not polluted.
         try {
           workspaceTask.reset();
           const res = await apiFetch<{ id: string }>(`/api/conversations/${activeId}/chat-messages`, {
             method: "POST",
-            body: { content: content.trim() },
+            body: { content: content.trim(), model, codebaseResearch },
           });
           lastInvocationRef.current = { skill: "chat", args: content.trim() };
           workspaceTask.streamExistingTask(res.id, "chat");
@@ -319,7 +324,10 @@ export default function ChatLayout({ conversationId }: ChatLayoutProps) {
         // First message: start new chat skill task
         lastInvocationRef.current = { skill: "chat", args: content.trim() };
         workspaceTask.reset();
-        await workspaceTask.submitAndStream("chat", { args: content.trim() }, activeId);
+        const argsText = codebaseResearch
+          ? `[codebase-research: on]\n\n${content.trim()}`
+          : content.trim();
+        await workspaceTask.submitAndStream("chat", { args: argsText }, activeId, { model });
       }
 
       // Update generic conversation title
@@ -333,7 +341,7 @@ export default function ChatLayout({ conversationId }: ChatLayoutProps) {
 
       return true;
     },
-    [activeId, sendMessage, workspaceTask, isInvestigation, isSprintGoal, activeConv, messages, refreshConversations]
+    [activeId, sendMessage, workspaceTask, isInvestigation, isSprintGoal, activeConv, messages, refreshConversations, model, codebaseResearch]
   );
 
   // Track the last skill invocation so we can persist review results from chat
@@ -596,6 +604,10 @@ export default function ChatLayout({ conversationId }: ChatLayoutProps) {
                 onSend={handleSend}
                 disabled={workspaceTask.status === "submitting" || workspaceTask.status === "streaming"}
                 onCancel={(workspaceTask.status === "submitting" || workspaceTask.status === "streaming") ? () => workspaceTask.cancelTask() : undefined}
+                model={model}
+                onModelChange={setModel}
+                codebaseResearch={codebaseResearch}
+                onCodebaseResearchChange={setCodebaseResearch}
               />
             )}
           </>

@@ -24,7 +24,7 @@ interface TaskResponse {
  * Falls back to creating a fresh chat task if the session is lost (410).
  */
 export async function POST(request: Request, { params }: RouteContext) {
-  const limited = applyRateLimit("workspace");
+  const limited = await applyRateLimit("workspace");
   if (limited) return limited;
 
   const { id: conversationId } = await params;
@@ -47,6 +47,14 @@ export async function POST(request: Request, { params }: RouteContext) {
     return errorResponse("content is required", 400);
   }
 
+  const model = typeof body.model === "string" ? body.model : undefined;
+  const codebaseResearch = body.codebaseResearch === true;
+  // The codebase-research hint is sent to the agent only; the persisted user
+  // message stays clean so the prefix never shows up in the conversation.
+  const agentContent = codebaseResearch
+    ? `[codebase-research: on]\n\n${content}`
+    : content;
+
   // Save user message to Bridge DB
   const messageId = randomUUID();
   await db.insert(message).values({
@@ -61,7 +69,7 @@ export async function POST(request: Request, { params }: RouteContext) {
   // Try to resume the existing workspace session
   const result = await agentFetch<TaskResponse>(
     `/api/conversations/${conversationId}/messages`,
-    { method: "POST", body: { content }, retries: 2 },
+    { method: "POST", body: { content: agentContent, ...(model ? { model } : {}) }, retries: 2 },
   );
 
   // Session still active: spawn background capture and return
@@ -87,7 +95,7 @@ export async function POST(request: Request, { params }: RouteContext) {
   if (result.status === 410) {
     const fallbackResult = await agentFetch<TaskResponse>("/api/tasks", {
       method: "POST",
-      body: { skill: "chat", args: { args: content }, conversationId },
+      body: { skill: "chat", args: { args: agentContent }, conversationId, ...(model ? { model } : {}) },
       retries: 2,
     });
 

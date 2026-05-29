@@ -63,15 +63,18 @@ export function ViewHeader({ icon, children, actions, className, hideNotificatio
 
       <div className="relative flex items-center gap-2">
         {actions}
-        {!hideNotifications && <NotificationBell />}
-        <button
-          onClick={toggleFocusMode}
-          title="Focus mode"
-          aria-label="Toggle focus mode"
-          className="inline-flex h-7 w-7 items-center justify-center rounded-lg cursor-pointer text-text-tertiary bg-transparent border border-transparent hover:bg-hover-interactive hover:text-text-secondary focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)] active:scale-[0.95] transition-[background-color,color,transform] duration-150"
-        >
-          <Minimize2 className="h-3.5 w-3.5" strokeWidth={2} />
-        </button>
+        {/* Hovering the top-right corner (bell area) reveals the focus-mode toggle */}
+        <div className="group/corner flex items-center gap-2">
+          {!hideNotifications && <NotificationBell />}
+          <button
+            onClick={toggleFocusMode}
+            title="Focus mode"
+            aria-label="Toggle focus mode"
+            className="hidden h-7 w-7 items-center justify-center rounded-lg cursor-pointer text-text-tertiary bg-transparent border border-transparent group-hover/corner:inline-flex hover:bg-hover-interactive hover:text-text-secondary focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)] active:scale-[0.95] transition-[background-color,color,transform] duration-150"
+          >
+            <Minimize2 className="h-3.5 w-3.5" strokeWidth={2} />
+          </button>
+        </div>
       </div>
     </div>,
     target,

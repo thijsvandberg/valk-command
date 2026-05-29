@@ -319,27 +319,6 @@ export default function TicketDetailPage({
                 }
               />
             </Tooltip>
-            <Tooltip
-              content={h.isFollowed
-                ? "Following this ticket. You will receive PR, pipeline, deployment, and story writer notifications for it. Click to unfollow."
-                : "Follow this ticket to receive notifications about PRs, pipelines, deployments, and story writer updates."
-              }
-            >
-              <Button
-                variant="ghost"
-                size="md"
-                iconOnly
-                onClick={() => h.isFollowed ? h.unfollow(key) : h.follow(key)}
-                aria-label={h.isFollowed ? "Unfollow ticket" : "Follow ticket"}
-                icon={
-                  <Star
-                    size={14}
-                    strokeWidth={1.5}
-                    className={h.isFollowed ? "text-amber-400 fill-amber-400" : ""}
-                  />
-                }
-              />
-            </Tooltip>
             <div className="relative">
               <Button
                 variant="ghost"
@@ -355,6 +334,19 @@ export default function TicketDetailPage({
               />
               <Popover open={moreMenuOpen} onClose={() => setMoreMenuOpen(false)} align="right">
                 <div className="min-w-[220px] py-1">
+                  <button
+                    onClick={() => { setMoreMenuOpen(false); h.isFollowed ? h.unfollow(key) : h.follow(key); }}
+                    className="flex w-full cursor-pointer items-center gap-2.5 px-3 py-2 text-body-sm text-text-secondary hover:bg-overlay-default active:bg-overlay-strong"
+                    style={{ transition: "background-color 0.1s ease" }}
+                  >
+                    <Star
+                      size={13}
+                      strokeWidth={1.5}
+                      className={h.isFollowed ? "text-amber-400 fill-amber-400" : "text-text-muted"}
+                    />
+                    {h.isFollowed ? "Unfollow ticket" : "Follow ticket"}
+                  </button>
+                  <div className="mx-2 my-1 h-px bg-overlay-default" />
                   <button
                     onClick={() => { setMoreMenuOpen(false); h.handleCopyLink(); }}
                     className="flex w-full cursor-pointer items-center gap-2.5 px-3 py-2 text-body-sm text-text-secondary hover:bg-overlay-default active:bg-overlay-strong"

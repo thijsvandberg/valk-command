@@ -1,21 +1,18 @@
 "use client";
 
-import { useRef } from "react";
 import Link from "next/link";
 import {
-  RefreshCw,
-  CheckCircle2,
-  AlertTriangle,
   Clock,
   ChevronDown,
   Square,
-  Ban,
   ChevronRight,
   X,
 } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import { LoadingState } from "@/components/shared/LoadingState";
+import { EmptyState } from "@/components/shared/EmptyState";
 import type { ActivityLogEntry } from "@/types/ticket";
+import { ActivityStatus } from "./ActivityStatus";
 import {
   entryTypeLabel,
   formatDuration,
@@ -25,26 +22,6 @@ import {
   TYPE_OPTIONS,
   STATUS_OPTIONS,
 } from "./activity-helpers";
-
-function StatusIcon({ status }: { status: ActivityLogEntry["status"] }) {
-  if (status === "success") {
-    return <CheckCircle2 className="h-3.5 w-3.5 text-[var(--color-brand-400)]" strokeWidth={2} />;
-  }
-  if (status === "failed") {
-    return <AlertTriangle className="h-3.5 w-3.5 text-amber-400" strokeWidth={2} />;
-  }
-  if (status === "cancelled") {
-    return <Ban className="h-3.5 w-3.5 text-text-tertiary" strokeWidth={2} />;
-  }
-  return <RefreshCw className="h-3.5 w-3.5 text-text-tertiary animate-spin" strokeWidth={2} />;
-}
-
-function statusLabel(status: ActivityLogEntry["status"]): string {
-  if (status === "success") return "Success";
-  if (status === "failed") return "Failed";
-  if (status === "cancelled") return "Cancelled";
-  return "Running";
-}
 
 function ScopeCell({
   scope,
@@ -154,12 +131,12 @@ export function ActivityTable({
     <>
       <div className="rounded-xl border border-border-default bg-[var(--color-surface-elevated)] overflow-hidden shadow-[var(--shadow-sm)]">
         {/* Header row */}
-        <div className="grid grid-cols-[20px_1fr_140px_100px_140px_130px] gap-3 px-4 py-2.5 border-b border-border-default bg-overlay-subtle">
+        <div className="grid grid-cols-[20px_1fr_140px_150px_84px_104px] gap-3 px-4 py-2.5 border-b border-border-default bg-overlay-subtle">
           <span />
           <span className="text-label font-semibold uppercase tracking-wide text-text-muted font-[var(--font-body)]">Type</span>
           <span className="text-label font-semibold uppercase tracking-wide text-text-muted font-[var(--font-body)]">Status</span>
-          <span className="text-label font-semibold uppercase tracking-wide text-text-muted font-[var(--font-body)]">Duration</span>
           <span className="text-label font-semibold uppercase tracking-wide text-text-muted font-[var(--font-body)]">Scope</span>
+          <span className="text-label font-semibold uppercase tracking-wide text-text-muted font-[var(--font-body)] text-right">Duration</span>
           <span className="text-label font-semibold uppercase tracking-wide text-text-muted font-[var(--font-body)] text-right">Time</span>
         </div>
 
@@ -170,10 +147,11 @@ export function ActivityTable({
 
         {/* Empty state */}
         {entries?.length === 0 && (
-          <div className="flex flex-col items-center justify-center py-16 gap-2">
-            <Clock className="h-8 w-8 text-text-muted" strokeWidth={1.5} />
-            <span className="text-body-lg text-text-muted font-[var(--font-body)]">No activity entries found</span>
-          </div>
+          <EmptyState
+            icon={<Clock className="h-5 w-5 text-text-muted" strokeWidth={1.5} />}
+            title="No activity entries found"
+            className="py-16"
+          />
         )}
 
         {/* Rows */}
@@ -185,13 +163,13 @@ export function ActivityTable({
           return (
             <div key={entry.id} ref={(el) => rowRefsCallback(entry.id, el)}>
               <div
-                className={`grid grid-cols-[20px_1fr_140px_100px_140px_130px] gap-3 px-4 py-3 items-start transition-colors duration-100 ${
+                className={`grid grid-cols-[20px_1fr_140px_150px_84px_104px] gap-3 px-4 py-3 items-center transition-colors duration-100 ${
                   i < (entries.length - 1) || isExpanded ? "border-b border-border-subtle" : ""
                 } ${hasExpandableContent ? "hover:bg-overlay-subtle cursor-pointer" : ""}`}
                 onClick={() => hasExpandableContent && onToggleExpanded(entry.id)}
               >
                 {/* Expand chevron */}
-                <div className="flex items-center justify-center pt-0.5">
+                <div className="flex items-center justify-center">
                   {hasExpandableContent && (
                     <ChevronRight
                       className={`h-3 w-3 text-text-muted transition-transform duration-150 ${isExpanded ? "rotate-90" : ""}`}
@@ -219,15 +197,7 @@ export function ActivityTable({
 
                 {/* Status */}
                 <div className="flex items-center gap-1.5" onClick={(e) => e.stopPropagation()}>
-                  <StatusIcon status={entry.status} />
-                  <span className={`text-body-sm font-[var(--font-body)] ${
-                    entry.status === "success" ? "text-[var(--color-brand-400)]/70" :
-                    entry.status === "failed" ? "text-amber-400/70" :
-                    entry.status === "cancelled" ? "text-text-tertiary" :
-                    "text-text-tertiary"
-                  }`}>
-                    {statusLabel(entry.status)}
-                  </span>
+                  <ActivityStatus status={entry.status} />
                   {entry.status === "running" && (
                     <Button
                       variant="destructive"
@@ -252,15 +222,15 @@ export function ActivityTable({
                   )}
                 </div>
 
-                {/* Duration */}
-                <span className="text-body-sm text-text-tertiary font-[var(--font-body)] tabular-nums">
-                  {formatDuration(entry.durationMs)}
-                </span>
-
                 {/* Scope */}
-                <div onClick={(e) => e.stopPropagation()}>
+                <div className="min-w-0" onClick={(e) => e.stopPropagation()}>
                   <ScopeCell scope={entry.scope} type={entry.type} sprintMap={sprintMap} />
                 </div>
+
+                {/* Duration */}
+                <span className="text-body-sm text-text-tertiary font-[var(--font-body)] tabular-nums text-right">
+                  {formatDuration(entry.durationMs)}
+                </span>
 
                 {/* Timestamp */}
                 <span className="text-body-sm text-text-muted font-[var(--font-body)] tabular-nums text-right">
@@ -270,30 +240,32 @@ export function ActivityTable({
 
               {/* Expanded detail panel */}
               {isExpanded && (
-                <div className={`px-10 py-3 bg-overlay-subtle ${i < (entries.length - 1) ? "border-b border-border-subtle" : ""}`}>
-                  {entry.summary && (
-                    <div className="mb-2">
-                      <span className="text-caption uppercase tracking-wide font-semibold text-text-muted font-[var(--font-body)]">Summary</span>
-                      <p className="mt-1 text-body-sm text-text-secondary font-[var(--font-body)] leading-relaxed">{entry.summary}</p>
-                    </div>
-                  )}
-                  {entry.errorDetail && (
-                    <div>
-                      <span className="text-caption uppercase tracking-wide font-semibold text-text-muted font-[var(--font-body)]">Error detail</span>
-                      {structured ? (
-                        <div className="mt-1 flex flex-wrap gap-x-4 gap-y-1">
-                          {Object.entries(structured).map(([k, v]) => (
-                            <span key={k} className="text-label font-[var(--font-body)]">
-                              <span className="text-text-muted">{k}: </span>
-                              <span className="text-amber-400/70">{String(v)}</span>
-                            </span>
-                          ))}
-                        </div>
-                      ) : (
-                        <p className="mt-1 text-body-sm text-amber-400/60 font-[var(--font-body)] leading-relaxed break-all">{entry.errorDetail}</p>
-                      )}
-                    </div>
-                  )}
+                <div className={`px-4 pb-3 bg-overlay-subtle ${i < (entries.length - 1) ? "border-b border-border-subtle" : ""}`}>
+                  <div className="ml-8 rounded-lg border border-border-subtle bg-[var(--color-surface-elevated)] px-4 py-3">
+                    {entry.summary && (
+                      <div className={entry.errorDetail ? "mb-2" : ""}>
+                        <span className="text-caption uppercase tracking-wide font-semibold text-text-muted font-[var(--font-body)]">Summary</span>
+                        <p className="mt-1 text-body-sm text-text-secondary font-[var(--font-body)] leading-relaxed">{entry.summary}</p>
+                      </div>
+                    )}
+                    {entry.errorDetail && (
+                      <div>
+                        <span className="text-caption uppercase tracking-wide font-semibold text-text-muted font-[var(--font-body)]">Error detail</span>
+                        {structured ? (
+                          <div className="mt-1 flex flex-wrap gap-x-4 gap-y-1">
+                            {Object.entries(structured).map(([k, v]) => (
+                              <span key={k} className="text-label font-[var(--font-body)]">
+                                <span className="text-text-muted">{k}: </span>
+                                <span className="text-amber-400/70">{String(v)}</span>
+                              </span>
+                            ))}
+                          </div>
+                        ) : (
+                          <p className="mt-1 text-body-sm text-amber-400/60 font-[var(--font-body)] leading-relaxed break-all">{entry.errorDetail}</p>
+                        )}
+                      </div>
+                    )}
+                  </div>
                 </div>
               )}
             </div>

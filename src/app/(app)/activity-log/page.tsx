@@ -21,6 +21,7 @@ import type {
   ActivityLogStats,
 } from "@/types/ticket";
 import { fetcher, statsFetcher, PAGE_SIZE, TYPE_OPTIONS, STATUS_OPTIONS } from "./activity-helpers";
+import { FilterChip } from "@/components/shared/FilterChip";
 import { StatsBar, HealthScoreBadge } from "./StatsBar";
 import { RecurringFailures } from "./RecurringFailures";
 import { EventTimeline } from "./EventTimeline";
@@ -209,18 +210,13 @@ export default function ActivityLogPage() {
           </div>
           <div className="flex flex-wrap gap-1.5">
             {TYPE_OPTIONS.filter((o) => o.value !== "").map((opt) => (
-              <button
+              <FilterChip
                 key={opt.value}
-                type="button"
+                active={selectedTypes.has(opt.value)}
                 onClick={() => toggleType(opt.value)}
-                className={`px-2.5 py-1 rounded-md text-label font-[var(--font-body)] cursor-pointer border transition-colors duration-150 focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-[var(--color-brand-400)] active:scale-95 ${
-                  selectedTypes.has(opt.value)
-                    ? "border-[var(--color-brand-400)]/30 bg-[var(--color-brand-400)]/10 text-[var(--color-brand-400)]"
-                    : "border-border-default bg-transparent text-text-tertiary hover:border-border-strong hover:text-text-secondary"
-                }`}
               >
                 {opt.label}
-              </button>
+              </FilterChip>
             ))}
             {selectedTypes.size > 0 && (
               <button

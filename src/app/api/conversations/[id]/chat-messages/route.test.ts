@@ -188,4 +188,99 @@ describe("POST /api/conversations/[id]/chat-messages", () => {
     const response = await POST(makeRequest("conv-1", { content: "hello" }), makeParams("conv-1"));
     expect(response.status).toBe(429);
   });
+
+  it("forwards the selected model to the resume endpoint", async () => {
+    vi.mocked(agentFetch).mockResolvedValue({
+      ok: true,
+      data: { id: "task-1", status: "queued" },
+      status: 201,
+      retryCount: 0,
+    });
+
+    await POST(
+      makeRequest("conv-1", { content: "hi", model: "claude-opus-4-6" }),
+      makeParams("conv-1"),
+    );
+
+    expect(vi.mocked(agentFetch)).toHaveBeenCalledWith(
+      "/api/conversations/conv-1/messages",
+      expect.objectContaining({
+        body: expect.objectContaining({ content: "hi", model: "claude-opus-4-6" }),
+      }),
+    );
+  });
+
+  it("prefixes agent content with the codebase-research flag when enabled", async () => {
+    vi.mocked(agentFetch).mockResolvedValue({
+      ok: true,
+      data: { id: "task-1", status: "queued" },
+      status: 201,
+      retryCount: 0,
+    });
+
+    await POST(
+      makeRequest("conv-1", { content: "explain the auth flow", codebaseResearch: true }),
+      makeParams("conv-1"),
+    );
+
+    expect(vi.mocked(agentFetch)).toHaveBeenCalledWith(
+      "/api/conversations/conv-1/messages",
+      expect.objectContaining({
+        body: expect.objectContaining({
+          content: "[codebase-research: on]\n\nexplain the auth flow",
+        }),
+      }),
+    );
+  });
+
+  it("does not prefix agent content when codebase-research is off", async () => {
+    vi.mocked(agentFetch).mockResolvedValue({
+      ok: true,
+      data: { id: "task-1", status: "queued" },
+      status: 201,
+      retryCount: 0,
+    });
+
+    await POST(makeRequest("conv-1", { content: "plain question" }), makeParams("conv-1"));
+
+    expect(vi.mocked(agentFetch)).toHaveBeenCalledWith(
+      "/api/conversations/conv-1/messages",
+      expect.objectContaining({
+        body: expect.objectContaining({ content: "plain question" }),
+      }),
+    );
+    const call = vi.mocked(agentFetch).mock.calls[0];
+    expect((call[1] as { body: { content: string } }).body.content).not.toContain("codebase-research");
+  });
+
+  it("forwards the model to the fallback task on 410", async () => {
+    vi.mocked(agentFetch).mockResolvedValueOnce({
+      ok: false,
+      error: { error: "Session not found", code: "SERVER_ERROR" },
+      status: 410,
+      retryCount: 0,
+    });
+    vi.mocked(agentFetch).mockResolvedValueOnce({
+      ok: true,
+      data: { id: "task-recovered", status: "queued" },
+      status: 201,
+      retryCount: 0,
+    });
+
+    await POST(
+      makeRequest("conv-1", { content: "retry", model: "claude-opus-4-6", codebaseResearch: true }),
+      makeParams("conv-1"),
+    );
+
+    expect(vi.mocked(agentFetch)).toHaveBeenLastCalledWith(
+      "/api/tasks",
+      expect.objectContaining({
+        body: expect.objectContaining({
+          skill: "chat",
+          model: "claude-opus-4-6",
+          args: { args: "[codebase-research: on]\n\nretry" },
+        }),
+      }),
+    );
+  });
 });

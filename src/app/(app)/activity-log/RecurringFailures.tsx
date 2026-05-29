@@ -2,6 +2,9 @@
 
 import { CheckCircle2, RepeatIcon } from "lucide-react";
 import type { RecurringFailure } from "@/types/ticket";
+import { Card } from "@/components/shared/Card";
+import { Badge } from "@/components/shared/Badge";
+import { PanelHeader } from "@/components/shared/PanelHeader";
 import { entryTypeLabel, formatRelativeTime } from "./activity-helpers";
 
 export function RecurringFailures({
@@ -15,33 +18,31 @@ export function RecurringFailures({
 }) {
   if (failures.length === 0) {
     return (
-      <div className="mb-5 rounded-xl border border-border-subtle bg-[var(--color-surface-elevated)] px-4 py-4">
-        <div className="flex items-center gap-2 mb-3">
-          <RepeatIcon className="h-3.5 w-3.5 text-text-muted" strokeWidth={1.5} />
-          <span className="text-label font-semibold uppercase tracking-wider text-text-muted font-[var(--font-body)]">
-            Recurring Failures
-          </span>
-        </div>
+      <Card variant="subtle" className="mb-5 px-4 py-4">
+        <PanelHeader
+          icon={<RepeatIcon className="h-3.5 w-3.5" strokeWidth={1.5} />}
+          label="Recurring Failures"
+          className="mb-3"
+        />
         <div className="flex items-center gap-2 py-2">
           <CheckCircle2 className="h-3.5 w-3.5 text-[var(--color-brand-400)]/50" strokeWidth={1.5} />
           <span className="text-body-sm text-text-muted font-[var(--font-body)]">
             No recurring failures in the last 7 days
           </span>
         </div>
-      </div>
+      </Card>
     );
   }
 
   return (
-    <div className="mb-5 rounded-xl border border-amber-400/[0.12] bg-[var(--color-surface-elevated)] overflow-hidden shadow-[var(--shadow-sm)]">
-      <div className="flex items-center gap-2 px-4 py-3 border-b border-border-subtle bg-amber-400/[0.03]">
-        <RepeatIcon className="h-3.5 w-3.5 text-amber-400/60" strokeWidth={1.5} />
-        <span className="text-label font-semibold uppercase tracking-wider text-amber-400/60 font-[var(--font-body)]">
-          Recurring Failures
-        </span>
-        <span className="ml-auto flex h-4 min-w-4 items-center justify-center rounded-full bg-amber-400/15 px-1.5 text-caption font-bold text-amber-400 font-[var(--font-body)]">
-          {failures.length}
-        </span>
+    <Card className="mb-5 overflow-hidden border-amber-400/[0.12] shadow-[var(--shadow-sm)]">
+      <div className="border-b border-border-subtle bg-amber-400/[0.03] px-4 py-3">
+        <PanelHeader
+          icon={<RepeatIcon className="h-3.5 w-3.5" strokeWidth={1.5} />}
+          label="Recurring Failures"
+          tone="warning"
+          meta={<Badge variant="warning" size="sm">{failures.length}</Badge>}
+        />
       </div>
       <div className="divide-y divide-border-subtle">
         {failures.map((f) => (
@@ -93,6 +94,6 @@ export function RecurringFailures({
           </button>
         ))}
       </div>
-    </div>
+    </Card>
   );
 }
