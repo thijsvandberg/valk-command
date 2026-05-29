@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useRef, useEffect, useCallback, useMemo } from "react";
+import { useOutsideClick } from "@/hooks/useOutsideClick";
 import { X } from "lucide-react";
 import type { Editor } from "@tiptap/react";
 
@@ -67,17 +68,7 @@ export function LinkPopover({ editor, open, onClose }: LinkPopoverProps) {
     return () => clearTimeout(id);
   }, [open]);
 
-  // Outside click dismissal
-  useEffect(() => {
-    if (!open) return;
-    const handleClick = (e: MouseEvent) => {
-      if (ref.current && !ref.current.contains(e.target as Node)) {
-        onClose();
-      }
-    };
-    document.addEventListener("mousedown", handleClick);
-    return () => document.removeEventListener("mousedown", handleClick);
-  }, [open, onClose]);
+  useOutsideClick(ref, onClose, { enabled: open });
 
   const handleApply = useCallback(() => {
     const trimmedUrl = url.trim();

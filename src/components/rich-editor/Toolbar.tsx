@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useState, useRef, useEffect } from "react";
+import { useOutsideClick } from "@/hooks/useOutsideClick";
 import {
   List, ListOrdered, Code2, Link, ChevronDown, Info,
   Strikethrough, Quote, Minus, Table, ChevronRight, Smile, MoreHorizontal,
@@ -271,14 +272,7 @@ function ColorButton({ editor }: { editor: Editor }) {
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
 
-  useEffect(() => {
-    if (!open) return;
-    const handleClick = (e: MouseEvent) => {
-      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
-    };
-    document.addEventListener("mousedown", handleClick);
-    return () => document.removeEventListener("mousedown", handleClick);
-  }, [open]);
+  useOutsideClick(ref, () => setOpen(false), { enabled: open });
 
   const setColor = useCallback(
     (color: string) => {
@@ -343,14 +337,7 @@ function CalloutDropdown({ editor }: { editor: Editor }) {
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
 
-  useEffect(() => {
-    if (!open) return;
-    const handleClick = (e: MouseEvent) => {
-      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
-    };
-    document.addEventListener("mousedown", handleClick);
-    return () => document.removeEventListener("mousedown", handleClick);
-  }, [open]);
+  useOutsideClick(ref, () => setOpen(false), { enabled: open });
 
   const insertCallout = useCallback(
     (type: CalloutType) => {
@@ -402,17 +389,11 @@ function ExpandButton({ editor }: { editor: Editor }) {
 
   useEffect(() => {
     if (!open) return;
-    // Focus the input after the dropdown renders
     const id = setTimeout(() => inputRef.current?.focus(), 0);
-    const handleClick = (e: MouseEvent) => {
-      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
-    };
-    document.addEventListener("mousedown", handleClick);
-    return () => {
-      clearTimeout(id);
-      document.removeEventListener("mousedown", handleClick);
-    };
+    return () => clearTimeout(id);
   }, [open]);
+
+  useOutsideClick(ref, () => setOpen(false), { enabled: open });
 
   const insert = useCallback(() => {
     editor.chain().focus().setExpand({ title: title.trim() || "Details" }).run();
@@ -504,14 +485,7 @@ function EmojiButton({ editor }: { editor: Editor }) {
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
 
-  useEffect(() => {
-    if (!open) return;
-    const handleClick = (e: MouseEvent) => {
-      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
-    };
-    document.addEventListener("mousedown", handleClick);
-    return () => document.removeEventListener("mousedown", handleClick);
-  }, [open]);
+  useOutsideClick(ref, () => setOpen(false), { enabled: open });
 
   const insertEmoji = useCallback(
     (emoji: string) => {
