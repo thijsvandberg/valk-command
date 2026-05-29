@@ -1,6 +1,6 @@
 # BRDG-235: Hover card on TicketStatusPill with ticket details
 
-**Status:** Not Started
+**Status:** Complete
 **Priority:** Medium
 **Source:** PO request
 
