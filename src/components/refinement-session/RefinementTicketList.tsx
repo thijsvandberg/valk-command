@@ -1,6 +1,7 @@
 "use client";
 
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef } from "react";
+import { useOutsideClick } from "@/hooks/useOutsideClick";
 import { Search, SlidersHorizontal, X, ListFilter, Check } from "lucide-react";
 import { TicketRow } from "./TicketRow";
 import { RefinementFilters } from "./RefinementFilters";
@@ -49,23 +50,7 @@ export function RefinementTicketList({
   const [pillSettingsOpen, setPillSettingsOpen] = useState(false);
   const pillSettingsRef = useRef<HTMLDivElement>(null);
 
-  useEffect(() => {
-    if (!pillSettingsOpen) return;
-    function handleClickOutside(e: MouseEvent) {
-      if (pillSettingsRef.current && !pillSettingsRef.current.contains(e.target as Node)) {
-        setPillSettingsOpen(false);
-      }
-    }
-    function handleKeyDown(e: KeyboardEvent) {
-      if (e.key === "Escape") setPillSettingsOpen(false);
-    }
-    document.addEventListener("mousedown", handleClickOutside);
-    document.addEventListener("keydown", handleKeyDown);
-    return () => {
-      document.removeEventListener("mousedown", handleClickOutside);
-      document.removeEventListener("keydown", handleKeyDown);
-    };
-  }, [pillSettingsOpen]);
+  useOutsideClick(pillSettingsRef, () => setPillSettingsOpen(false), { enabled: pillSettingsOpen });
 
   const showIssueType = pillFields.has("issueType");
   const showKey = pillFields.has("key");

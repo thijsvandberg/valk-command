@@ -1,6 +1,7 @@
 "use client";
 
-import { useState, useCallback, useRef, useEffect } from "react";
+import { useState, useCallback, useRef } from "react";
+import { useOutsideClick } from "@/hooks/useOutsideClick";
 import {
   ChevronLeft,
   ChevronRight,
@@ -64,23 +65,7 @@ export function SessionNavigation({
     onReorderQueue(fromIdx, toIdx);
   }, [queue, onReorderQueue]);
 
-  useEffect(() => {
-    if (!navDropdownOpen) return;
-    function handleClickOutside(e: MouseEvent) {
-      if (navDropdownRef.current && !navDropdownRef.current.contains(e.target as Node)) {
-        setNavDropdownOpen(false);
-      }
-    }
-    function handleKeyDown(e: KeyboardEvent) {
-      if (e.key === "Escape") setNavDropdownOpen(false);
-    }
-    document.addEventListener("mousedown", handleClickOutside);
-    document.addEventListener("keydown", handleKeyDown);
-    return () => {
-      document.removeEventListener("mousedown", handleClickOutside);
-      document.removeEventListener("keydown", handleKeyDown);
-    };
-  }, [navDropdownOpen]);
+  useOutsideClick(navDropdownRef, () => setNavDropdownOpen(false), { enabled: navDropdownOpen });
 
   return (
     <div className="relative flex items-center gap-3">

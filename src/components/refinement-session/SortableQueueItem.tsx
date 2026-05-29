@@ -1,6 +1,7 @@
 "use client";
 
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef } from "react";
+import { useOutsideClick } from "@/hooks/useOutsideClick";
 import { useSortable } from "@dnd-kit/sortable";
 import { GripVertical, X, ArrowRightLeft, Sparkles } from "lucide-react";
 import { IssueTypeIcon } from "@/components/shared/IssueTypeIcon";
@@ -30,22 +31,7 @@ export function SortableQueueItem({
   const [menuOpen, setMenuOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
 
-  useEffect(() => {
-    if (!menuOpen) return;
-    function handleClickOutside(e: MouseEvent) {
-      if (menuRef.current && !menuRef.current.contains(e.target as Node)) {
-        setMenuOpen(false);
-      }
-    }
-    // Defer so the click that opened the menu doesn't immediately close it
-    const timer = setTimeout(() => {
-      document.addEventListener("mousedown", handleClickOutside);
-    }, 0);
-    return () => {
-      clearTimeout(timer);
-      document.removeEventListener("mousedown", handleClickOutside);
-    };
-  }, [menuOpen]);
+  useOutsideClick(menuRef, () => setMenuOpen(false), { enabled: menuOpen });
 
   const style = {
     transform: transform ? `translate3d(${transform.x}px, ${transform.y}px, 0)` : undefined,

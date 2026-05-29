@@ -1,6 +1,7 @@
 "use client";
 
-import { useRef, useEffect } from "react";
+import { useRef } from "react";
+import { useOutsideClick } from "@/hooks/useOutsideClick";
 import { ChevronDown, Check } from "lucide-react";
 import { SprintListModal } from "@/components/sprint-board/SprintListModal";
 import { FilterDropdown } from "@/components/shared/FilterDropdown";
@@ -21,17 +22,7 @@ export function RefinementFilters({
 }: RefinementFiltersProps) {
   const lastUpdatedRef = useRef<HTMLDivElement>(null);
 
-  const { lastUpdatedOpen, setLastUpdatedOpen } = filters;
-  useEffect(() => {
-    if (!lastUpdatedOpen) return;
-    function handleClickOutside(e: MouseEvent) {
-      if (lastUpdatedRef.current && !lastUpdatedRef.current.contains(e.target as Node)) {
-        setLastUpdatedOpen(false);
-      }
-    }
-    document.addEventListener("mousedown", handleClickOutside);
-    return () => document.removeEventListener("mousedown", handleClickOutside);
-  }, [lastUpdatedOpen, setLastUpdatedOpen]);
+  useOutsideClick(lastUpdatedRef, () => filters.setLastUpdatedOpen(false), { enabled: filters.lastUpdatedOpen });
 
   return (
     <div className="mb-3 flex flex-wrap items-center gap-2">

@@ -1,6 +1,7 @@
 "use client";
 
-import { useMemo, useRef, useEffect } from "react";
+import { useMemo, useRef } from "react";
+import { useOutsideClick } from "@/hooks/useOutsideClick";
 import { Play, Sparkles, Loader2, MoreHorizontal, Copy, AlertTriangle, RefreshCw, Eye } from "lucide-react";
 import { DndContext, closestCenter } from "@dnd-kit/core";
 import { SortableContext, verticalListSortingStrategy } from "@dnd-kit/sortable";
@@ -52,21 +53,7 @@ export function RefinementQueuePanel({
   const bulkSuggestMenuRef = useRef<HTMLDivElement>(null);
   const { bulkSuggestMenuOpen, setBulkSuggestMenuOpen } = bulk;
 
-  useEffect(() => {
-    if (!bulkSuggestMenuOpen) return;
-    function handleClickOutside(e: MouseEvent) {
-      if (bulkSuggestMenuRef.current && !bulkSuggestMenuRef.current.contains(e.target as Node)) {
-        setBulkSuggestMenuOpen(false);
-      }
-    }
-    const timer = setTimeout(() => {
-      document.addEventListener("mousedown", handleClickOutside);
-    }, 0);
-    return () => {
-      clearTimeout(timer);
-      document.removeEventListener("mousedown", handleClickOutside);
-    };
-  }, [bulkSuggestMenuOpen, setBulkSuggestMenuOpen]);
+  useOutsideClick(bulkSuggestMenuRef, () => setBulkSuggestMenuOpen(false), { enabled: bulkSuggestMenuOpen });
 
   return (
     <div className="sticky top-6">
