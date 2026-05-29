@@ -2,10 +2,11 @@
 
 import { memo } from "react";
 import { IssueTypeIcon } from "@/components/shared/IssueTypeIcon";
-import { StatusBadge } from "@/components/sprint-board/SearchResultParts";
+import { JIRA_STATUS_COLORS } from "@/types/ticket";
+import type { JiraStatus, IssueType } from "@/types/ticket";
+import { TicketKeyPill } from "@/components/shared/TicketKeyPill";
 import { Cloud } from "lucide-react";
 import type { LinkSearchResult } from "@/lib/api-client";
-import type { IssueType } from "@/types/ticket";
 
 interface LinkSearchResultRowProps {
   result: LinkSearchResult;
@@ -20,6 +21,9 @@ export const LinkSearchResultRow = memo(function LinkSearchResultRow({
   onSelect,
   onHover,
 }: LinkSearchResultRowProps) {
+  const upper = result.status.toUpperCase();
+  const statusColor = JIRA_STATUS_COLORS[upper as JiraStatus] ?? { bg: "var(--color-status-neutral-subtle)", text: "var(--color-status-neutral)" };
+
   return (
     <button
       type="button"
@@ -33,16 +37,18 @@ export const LinkSearchResultRow = memo(function LinkSearchResultRow({
       }}
     >
       <IssueTypeIcon type={result.type as IssueType} size={13} />
-      <span className="shrink-0 rounded-md bg-overlay-default px-1.5 py-0.5 font-mono text-label font-medium text-text-secondary">
-        {result.key}
-      </span>
+      <TicketKeyPill
+        ticketKey={result.key}
+        statusLabel={upper}
+        statusBg={statusColor.bg}
+        statusColor={statusColor.text}
+      />
       <span className="min-w-0 flex-1 truncate text-body-sm text-text-secondary">{result.title}</span>
       {result.sprintName && (
-        <span className="hidden shrink-0 truncate text-caption text-text-muted sm:inline" style={{ maxWidth: 120 }}>
+        <span className="hidden shrink-0 truncate text-caption text-text-muted sm:inline" style={{ maxWidth: 140 }}>
           {result.sprintName}
         </span>
       )}
-      <StatusBadge status={result.status} />
       {result.source === "jira" && (
         <span
           className="inline-flex shrink-0 items-center gap-1 rounded px-1.5 py-0.5 text-[10px] font-medium"

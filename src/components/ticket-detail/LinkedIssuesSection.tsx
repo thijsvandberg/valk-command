@@ -55,6 +55,7 @@ export function LinkedIssuesSection({ issues, ticketKey, onMutate }: LinkedIssue
   const [inlinePending, setInlinePending] = useState<LinkedIssue[]>([]);
   const [inlineError, setInlineError] = useState<string | null>(null);
   const [deletingKeys, setDeletingKeys] = useState<Set<string>>(new Set());
+  const [inlineFocused, setInlineFocused] = useState(false);
   const inlineInputRef = useRef<HTMLInputElement>(null);
 
   // Shared search hook
@@ -333,7 +334,7 @@ export function LinkedIssuesSection({ issues, ticketKey, onMutate }: LinkedIssue
     return acc;
   }, {});
 
-  const showRecentPicks = search.query.length < 2 && !search.showResults && search.recentResults.length > 0;
+  const showRecentPicks = inlineFocused && search.query.length < 2 && !search.showResults && search.recentResults.length > 0;
 
   const suggestButton = (
     <div className="relative">
@@ -511,9 +512,10 @@ export function LinkedIssuesSection({ issues, ticketKey, onMutate }: LinkedIssue
             onChange={(e) => { search.setQuery(e.target.value); setInlineError(null); }}
             onKeyDown={handleInlineKeyDown}
             onFocus={() => {
+              setInlineFocused(true);
               if (search.filteredResults.length > 0) search.setShowResults(true);
             }}
-            onBlur={() => setTimeout(() => search.setShowResults(false), 200)}
+            onBlur={() => setTimeout(() => { search.setShowResults(false); setInlineFocused(false); }, 200)}
             placeholder="Link issue..."
             className="min-w-0 flex-1 bg-transparent text-body-lg text-text-primary placeholder:text-text-muted outline-none"
           />

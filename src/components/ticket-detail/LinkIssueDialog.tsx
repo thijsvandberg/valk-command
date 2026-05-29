@@ -132,7 +132,7 @@ export function LinkIssueDialog({
 
   return (
     <Modal open={open} onClose={onClose} aria-label="Link issue">
-      <div className="w-full max-w-lg rounded-xl border border-border-strong bg-[var(--color-surface-elevated)] p-6 shadow-[var(--shadow-2xl)]">
+      <div className="flex w-full max-w-2xl flex-col rounded-xl border border-border-strong bg-[var(--color-surface-elevated)] p-6 shadow-[var(--shadow-2xl)]" style={{ maxHeight: "min(80vh, 700px)" }}>
         <h3 className="font-[var(--font-display)] text-body-lg font-semibold text-text-primary">
           Link issue
         </h3>
@@ -259,82 +259,9 @@ export function LinkIssueDialog({
                 setSelected(null);
               }}
               onKeyDown={handleKeyDown}
-              onFocus={() => {
-                if (search.filteredResults.length > 0 && !selected) search.setShowResults(true);
-              }}
-              onBlur={() => setTimeout(() => search.setShowResults(false), 200)}
               placeholder="Search by key or title..."
               className="w-full rounded-lg border border-border-default bg-[var(--color-surface-default)] py-1.5 pl-9 pr-3 text-body-lg text-text-primary placeholder:text-text-muted outline-none focus:border-[var(--color-brand-500)]/50 focus:ring-1 focus:ring-[var(--color-brand-500)]/25"
             />
-
-            {/* Search results dropdown */}
-            {search.showResults && (
-              <div
-                className="absolute inset-x-0 top-full z-50 mt-1 max-h-72 overflow-y-auto rounded-lg border border-border-strong bg-[var(--color-surface-elevated)] shadow-[var(--shadow-lg)]"
-                style={{ scrollbarWidth: "thin", scrollbarColor: "var(--color-overlay-strong) transparent" }}
-              >
-                <StatusFilterChips
-                  statuses={search.availableStatuses}
-                  activeStatuses={search.activeStatuses}
-                  onToggle={search.toggleStatus}
-                  onClear={search.clearStatusFilter}
-                />
-                {search.filteredResults.length > 0 ? (
-                  <>
-                    {search.filteredResults.map((r, idx) => (
-                      <LinkSearchResultRow
-                        key={r.key}
-                        result={r}
-                        highlighted={idx === search.highlightIndex}
-                        onSelect={handleSelect}
-                        onHover={() => search.setHighlightIndex(idx)}
-                      />
-                    ))}
-                    <ScrollSentinel
-                      onIntersect={search.loadMore}
-                      disabled={!search.hasMore || search.isLoadingMore}
-                    />
-                  </>
-                ) : !search.isSearching ? (
-                  <div className="px-3 py-2.5 text-body-sm text-text-muted">
-                    No issues found for &ldquo;{search.query}&rdquo;
-                  </div>
-                ) : null}
-
-                {(search.isSearchingJira || search.isLoadingMore) && (
-                  <div className="flex items-center gap-2 border-t border-border-default px-3 py-2">
-                    <Loader2 size={11} className="animate-spin text-text-muted" />
-                    <span className="text-[11px] text-text-muted">
-                      {search.isSearchingJira ? "Searching Jira..." : "Loading more..."}
-                    </span>
-                  </div>
-                )}
-              </div>
-            )}
-
-            {/* Recently updated picks dropdown */}
-            {showRecentPicks && !search.showResults && (
-              <div
-                className="absolute inset-x-0 top-full z-50 mt-1 max-h-72 overflow-y-auto rounded-lg border border-border-strong bg-[var(--color-surface-elevated)] py-1 shadow-[var(--shadow-lg)]"
-                style={{ scrollbarWidth: "thin", scrollbarColor: "var(--color-overlay-strong) transparent" }}
-              >
-                <div className="flex items-center gap-1.5 px-3 py-1.5">
-                  <Clock size={11} className="text-text-muted" strokeWidth={1.5} />
-                  <span className="text-[10px] font-medium uppercase tracking-widest text-text-muted">
-                    Recently updated
-                  </span>
-                </div>
-                {search.recentResults.map((r, idx) => (
-                  <LinkSearchResultRow
-                    key={r.key}
-                    result={r}
-                    highlighted={idx === search.highlightIndex}
-                    onSelect={handleSelect}
-                    onHover={() => search.setHighlightIndex(idx)}
-                  />
-                ))}
-              </div>
-            )}
           </div>
 
           {/* Selected issue chip */}
@@ -345,6 +272,75 @@ export function LinkIssueDialog({
               </span>
               <span className="min-w-0 flex-1 truncate text-body-sm text-text-secondary">{selected.title}</span>
             </div>
+          )}
+        </div>
+
+        {/* Inline results list (scrollable within the modal) */}
+        <div
+          className="mt-3 min-h-0 flex-1 overflow-y-auto rounded-lg border border-border-default"
+          style={{ scrollbarWidth: "thin", scrollbarColor: "var(--color-overlay-strong) transparent" }}
+        >
+          {search.showResults || search.filteredResults.length > 0 || search.isSearching ? (
+            <>
+              <StatusFilterChips
+                statuses={search.availableStatuses}
+                activeStatuses={search.activeStatuses}
+                onToggle={search.toggleStatus}
+                onClear={search.clearStatusFilter}
+              />
+              {search.filteredResults.length > 0 ? (
+                <>
+                  {search.filteredResults.map((r, idx) => (
+                    <LinkSearchResultRow
+                      key={r.key}
+                      result={r}
+                      highlighted={idx === search.highlightIndex}
+                      onSelect={handleSelect}
+                      onHover={() => search.setHighlightIndex(idx)}
+                    />
+                  ))}
+                  <ScrollSentinel
+                    onIntersect={search.loadMore}
+                    disabled={!search.hasMore || search.isLoadingMore}
+                  />
+                </>
+              ) : search.query.length >= 2 && !search.isSearching ? (
+                <div className="px-3 py-2.5 text-body-sm text-text-muted">
+                  No issues found for &ldquo;{search.query}&rdquo;
+                </div>
+              ) : null}
+
+              {(search.isSearchingJira || search.isLoadingMore) && (
+                <div className="flex items-center gap-2 border-t border-border-default px-3 py-2">
+                  <Loader2 size={11} className="animate-spin text-text-muted" />
+                  <span className="text-[11px] text-text-muted">
+                    {search.isSearchingJira ? "Searching Jira..." : "Loading more..."}
+                  </span>
+                </div>
+              )}
+            </>
+          ) : (
+            <>
+              {search.recentResults.length > 0 && (
+                <>
+                  <div className="flex items-center gap-1.5 px-3 py-1.5">
+                    <Clock size={11} className="text-text-muted" strokeWidth={1.5} />
+                    <span className="text-[10px] font-medium uppercase tracking-widest text-text-muted">
+                      Recently updated
+                    </span>
+                  </div>
+                  {search.recentResults.map((r, idx) => (
+                    <LinkSearchResultRow
+                      key={r.key}
+                      result={r}
+                      highlighted={idx === search.highlightIndex}
+                      onSelect={handleSelect}
+                      onHover={() => search.setHighlightIndex(idx)}
+                    />
+                  ))}
+                </>
+              )}
+            </>
           )}
         </div>
 
