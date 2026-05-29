@@ -28,9 +28,9 @@ import {
   ChatMessage,
   DraftCard,
   RelatedStoriesInline,
-  QuickActionsPopover,
   formatDuration,
 } from "@/components/story-writer/ChatMessageParts";
+import { ModelSelector, CodebaseToggle, QuickActionsPopover } from "@/components/shared/chat-controls";
 
 interface StoryWriterChatProps {
   messages: Message[];
@@ -72,11 +72,6 @@ interface StoryWriterChatProps {
   pendingInput?: string | null;
   onPendingInputConsumed?: () => void;
 }
-
-const MODEL_OPTIONS = [
-  { value: "claude-sonnet-4-6", label: "Sonnet" },
-  { value: "claude-opus-4-6", label: "Opus" },
-] as const;
 
 const QUICK_ACTIONS: {
   id: string;
@@ -638,35 +633,12 @@ export function StoryWriterChat({
                 )}
               </div>
               <div className="flex items-center gap-1.5">
-                <Button
-                  variant="ghost"
-                  size="md"
-                  onClick={() => {
-                    const current = MODEL_OPTIONS.findIndex((o) => o.value === model);
-                    const next = (current + 1) % MODEL_OPTIONS.length;
-                    onModelChange(MODEL_OPTIONS[next].value);
-                  }}
+                <ModelSelector model={model} onModelChange={onModelChange} disabled={isBusy} />
+                <CodebaseToggle
+                  enabled={codebaseResearch}
+                  onChange={onCodebaseResearchChange}
                   disabled={isBusy}
-                  className="border-border-strong bg-overlay-subtle font-mono text-caption tracking-[0.04em] text-text-secondary hover:text-text-secondary hover:border-border-strong hover:bg-overlay-default"
-                  title="Switch model"
-                >
-                  {MODEL_OPTIONS.find((o) => o.value === model)?.label ?? "Sonnet"}
-                </Button>
-                <Button
-                  variant={codebaseResearch ? "soft" : "ghost"}
-                  size="md"
-                  icon={<Code2 size={11} strokeWidth={1.5} />}
-                  onClick={() => onCodebaseResearchChange(!codebaseResearch)}
-                  disabled={isBusy}
-                  title={codebaseResearch ? "Codebase research on" : "Codebase research off"}
-                  className={`text-caption ${
-                    codebaseResearch
-                      ? ""
-                      : "border-border-strong bg-overlay-subtle text-text-tertiary hover:text-text-secondary hover:border-border-strong hover:bg-overlay-default"
-                  }`}
-                >
-                  Codebase
-                </Button>
+                />
                 {isBusy && onCancel ? (
                   <Button
                     variant="ghost"
