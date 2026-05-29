@@ -3,6 +3,7 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 import { createTestDb } from "@/db/test-utils";
 import type { BetterSQLite3Database } from "drizzle-orm/better-sqlite3";
 import type * as schema from "@/db/schema";
+import { buildJson } from "@/test/request-helpers";
 
 let testDb: BetterSQLite3Database<typeof schema>;
 
@@ -15,11 +16,7 @@ vi.mock("@/db", () => ({
 import { GET, POST } from "./route";
 
 function jsonRequest(body: unknown): Request {
-  return new Request("http://localhost:3100/api/refinement-sessions", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(body),
-  });
+  return buildJson("POST", "/api/refinement-sessions", body);
 }
 
 describe("GET /api/refinement-sessions", () => {

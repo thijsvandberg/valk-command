@@ -79,7 +79,7 @@ API route tests manually construct `new Request()` objects 234+ times with incon
 
 ### Implementation
 
-- [ ] Create `src/test/request-helpers.ts`
+- [x] Create `src/test/request-helpers.ts`
 
 ```typescript
 const BASE_URL = "http://localhost:3100";
@@ -114,8 +114,8 @@ export async function parseResponse<T = unknown>(response: Response, expectedSta
 
 ### Migration proof of concept
 
-- [ ] Migrate 5 existing API test files to use the new helpers
-- [ ] Verify tests still pass after migration
+- [x] Migrate 5 existing API test files to use the new helpers
+- [x] Verify tests still pass after migration
 
 ---
 

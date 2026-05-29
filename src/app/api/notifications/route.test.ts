@@ -3,6 +3,7 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 import { createTestDb } from "@/db/test-utils";
 import type { BetterSQLite3Database } from "drizzle-orm/better-sqlite3";
 import type * as schema from "@/db/schema";
+import { buildGet, buildJson } from "@/test/request-helpers";
 
 let testDb: BetterSQLite3Database<typeof schema>;
 
@@ -27,12 +28,15 @@ import { GET, POST, PATCH, DELETE } from "./route";
 import { alert, ticket, sprintNameCache } from "@/db/schema";
 
 function makeRequest(method: string, body?: unknown, search?: string): Request {
-  const url = `http://localhost:3100/api/notifications${search ?? ""}`;
-  return new Request(url, {
-    method,
-    body: body !== undefined ? JSON.stringify(body) : undefined,
-    headers: body !== undefined ? { "Content-Type": "application/json" } : undefined,
-  });
+  if (method === "GET" || (method === "DELETE" && body === undefined)) {
+    const query: Record<string, string> = {};
+    if (search) {
+      new URLSearchParams(search.replace(/^\?/, "")).forEach((v, k) => { query[k] = v; });
+    }
+    return buildGet(`/api/notifications`, Object.keys(query).length ? query : undefined);
+  }
+  const path = `/api/notifications${search ?? ""}`;
+  return buildJson(method, path, body);
 }
 
 function insertAlert(id: string, read = false, createdAt?: string) {

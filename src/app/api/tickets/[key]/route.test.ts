@@ -7,6 +7,7 @@ import { ticket } from "@/db/schema";
 import { eq } from "drizzle-orm";
 import { cache } from "@/lib/cache";
 import { seedTicket } from "@/test/builders";
+import { buildGet, buildJson, buildParams } from "@/test/request-helpers";
 
 let testDb: BetterSQLite3Database<typeof schema>;
 
@@ -35,10 +36,6 @@ vi.mock("@/lib/activity-logger", () => ({
 
 import { GET, PATCH } from "./route";
 
-function makeParams(key: string): { params: Promise<{ key: string }> } {
-  return { params: Promise.resolve({ key }) };
-}
-
 describe("GET /api/tickets/[key]", () => {
   beforeEach(() => {
     testDb = createTestDb();
@@ -49,8 +46,8 @@ describe("GET /api/tickets/[key]", () => {
     seedTicket(testDb, { jiraKey: "VPL-100" });
 
     const response = await GET(
-      new Request("http://localhost:3100/api/tickets/VPL-100"),
-      makeParams("VPL-100"),
+      buildGet("/api/tickets/VPL-100"),
+      buildParams({ key: "VPL-100" }),
     );
     const data = await response.json();
 
@@ -62,8 +59,8 @@ describe("GET /api/tickets/[key]", () => {
 
   it("returns 404 when ticket not found", async () => {
     const response = await GET(
-      new Request("http://localhost:3100/api/tickets/VPL-999"),
-      makeParams("VPL-999"),
+      buildGet("/api/tickets/VPL-999"),
+      buildParams({ key: "VPL-999" }),
     );
 
     expect(response.status).toBe(404);
@@ -83,8 +80,8 @@ describe("GET /api/tickets/[key]", () => {
       .run();
 
     const response = await GET(
-      new Request("http://localhost:3100/api/tickets/VPL-100"),
-      makeParams("VPL-100"),
+      buildGet("/api/tickets/VPL-100"),
+      buildParams({ key: "VPL-100" }),
     );
     const data = await response.json();
 
@@ -96,8 +93,8 @@ describe("GET /api/tickets/[key]", () => {
     seedTicket(testDb, { jiraKey: "VPL-100" });
 
     const response = await GET(
-      new Request("http://localhost:3100/api/tickets/VPL-100"),
-      makeParams("VPL-100"),
+      buildGet("/api/tickets/VPL-100"),
+      buildParams({ key: "VPL-100" }),
     );
 
     expect(response.headers.get("Cache-Control")).toBe("private, no-cache");
@@ -108,13 +105,13 @@ describe("GET /api/tickets/[key]", () => {
 
     // Prime the cache
     await GET(
-      new Request("http://localhost:3100/api/tickets/VPL-100"),
-      makeParams("VPL-100"),
+      buildGet("/api/tickets/VPL-100"),
+      buildParams({ key: "VPL-100" }),
     );
 
     const response = await GET(
-      new Request("http://localhost:3100/api/tickets/VPL-100"),
-      makeParams("VPL-100"),
+      buildGet("/api/tickets/VPL-100"),
+      buildParams({ key: "VPL-100" }),
     );
 
     expect(response.headers.get("X-Cache")).toBe("HIT");
@@ -133,12 +130,8 @@ describe("PATCH /api/tickets/[key] - story points", () => {
     seedTicket(testDb, { jiraKey: "VPL-200" });
 
     const response = await PATCH(
-      new Request("http://localhost:3100/api/tickets/VPL-200", {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ storyPoints: 5 }),
-      }),
-      makeParams("VPL-200"),
+      buildJson("PATCH", "/api/tickets/VPL-200", { storyPoints: 5 }),
+      buildParams({ key: "VPL-200" }),
     );
     const data = await response.json();
 
@@ -148,8 +141,8 @@ describe("PATCH /api/tickets/[key] - story points", () => {
     // Verify via GET that the DB value is persisted
     cache.flush();
     const getRes = await GET(
-      new Request("http://localhost:3100/api/tickets/VPL-200"),
-      makeParams("VPL-200"),
+      buildGet("/api/tickets/VPL-200"),
+      buildParams({ key: "VPL-200" }),
     );
     const getData = await getRes.json();
     expect(getData.storyPoints).toBe(5);
@@ -160,12 +153,8 @@ describe("PATCH /api/tickets/[key] - story points", () => {
     const { jiraClient } = await import("@/lib/jira-client");
 
     await PATCH(
-      new Request("http://localhost:3100/api/tickets/VPL-201", {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ storyPoints: 8 }),
-      }),
-      makeParams("VPL-201"),
+      buildJson("PATCH", "/api/tickets/VPL-201", { storyPoints: 8 }),
+      buildParams({ key: "VPL-201" }),
     );
 
     expect(jiraClient.updateIssue).toHaveBeenCalledWith(
@@ -179,12 +168,8 @@ describe("PATCH /api/tickets/[key] - story points", () => {
     const { jiraClient } = await import("@/lib/jira-client");
 
     await PATCH(
-      new Request("http://localhost:3100/api/tickets/VPL-202", {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ storyPoints: 0 }),
-      }),
-      makeParams("VPL-202"),
+      buildJson("PATCH", "/api/tickets/VPL-202", { storyPoints: 0 }),
+      buildParams({ key: "VPL-202" }),
     );
 
     expect(jiraClient.updateIssue).toHaveBeenCalledWith(
@@ -198,12 +183,8 @@ describe("PATCH /api/tickets/[key] - story points", () => {
     const { jiraClient } = await import("@/lib/jira-client");
 
     await PATCH(
-      new Request("http://localhost:3100/api/tickets/VPL-203", {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ storyPoints: null }),
-      }),
-      makeParams("VPL-203"),
+      buildJson("PATCH", "/api/tickets/VPL-203", { storyPoints: null }),
+      buildParams({ key: "VPL-203" }),
     );
 
     expect(jiraClient.updateIssue).toHaveBeenCalledWith(
@@ -214,12 +195,8 @@ describe("PATCH /api/tickets/[key] - story points", () => {
 
   it("returns 404 for non-existent ticket", async () => {
     const response = await PATCH(
-      new Request("http://localhost:3100/api/tickets/VPL-999", {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ storyPoints: 3 }),
-      }),
-      makeParams("VPL-999"),
+      buildJson("PATCH", "/api/tickets/VPL-999", { storyPoints: 3 }),
+      buildParams({ key: "VPL-999" }),
     );
 
     expect(response.status).toBe(404);
@@ -229,12 +206,8 @@ describe("PATCH /api/tickets/[key] - story points", () => {
     seedTicket(testDb, { jiraKey: "VPL-204" });
 
     const response = await PATCH(
-      new Request("http://localhost:3100/api/tickets/VPL-204", {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ storyPoints: "abc" }),
-      }),
-      makeParams("VPL-204"),
+      buildJson("PATCH", "/api/tickets/VPL-204", { storyPoints: "abc" }),
+      buildParams({ key: "VPL-204" }),
     );
 
     expect(response.status).toBe(400);
@@ -244,12 +217,8 @@ describe("PATCH /api/tickets/[key] - story points", () => {
     seedTicket(testDb, { jiraKey: "VPL-205" });
 
     const response = await PATCH(
-      new Request("http://localhost:3100/api/tickets/VPL-205", {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ unknownField: true }),
-      }),
-      makeParams("VPL-205"),
+      buildJson("PATCH", "/api/tickets/VPL-205", { unknownField: true }),
+      buildParams({ key: "VPL-205" }),
     );
 
     expect(response.status).toBe(400);
@@ -269,12 +238,8 @@ describe("PATCH /api/tickets/[key] - epic", () => {
     testDb.insert(ticket).values({ jiraKey: "VPL-50", title: "My Epic", status: "TO DO" }).run();
 
     const response = await PATCH(
-      new Request("http://localhost:3100/api/tickets/VPL-300", {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ epicKey: "VPL-50" }),
-      }),
-      makeParams("VPL-300"),
+      buildJson("PATCH", "/api/tickets/VPL-300", { epicKey: "VPL-50" }),
+      buildParams({ key: "VPL-300" }),
     );
     const data = await response.json();
 
@@ -285,8 +250,8 @@ describe("PATCH /api/tickets/[key] - epic", () => {
     // Verify persisted via GET
     cache.flush();
     const getRes = await GET(
-      new Request("http://localhost:3100/api/tickets/VPL-300"),
-      makeParams("VPL-300"),
+      buildGet("/api/tickets/VPL-300"),
+      buildParams({ key: "VPL-300" }),
     );
     const getData = await getRes.json();
     expect(getData.epicKey).toBe("VPL-50");
@@ -298,12 +263,8 @@ describe("PATCH /api/tickets/[key] - epic", () => {
     const { jiraClient } = await import("@/lib/jira-client");
 
     await PATCH(
-      new Request("http://localhost:3100/api/tickets/VPL-301", {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ epicKey: "VPL-50" }),
-      }),
-      makeParams("VPL-301"),
+      buildJson("PATCH", "/api/tickets/VPL-301", { epicKey: "VPL-50" }),
+      buildParams({ key: "VPL-301" }),
     );
 
     expect(jiraClient.updateIssue).toHaveBeenCalledWith(
@@ -323,12 +284,8 @@ describe("PATCH /api/tickets/[key] - epic", () => {
     }).run();
 
     const response = await PATCH(
-      new Request("http://localhost:3100/api/tickets/VPL-302", {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ epicKey: null }),
-      }),
-      makeParams("VPL-302"),
+      buildJson("PATCH", "/api/tickets/VPL-302", { epicKey: null }),
+      buildParams({ key: "VPL-302" }),
     );
     const data = await response.json();
 
@@ -342,12 +299,8 @@ describe("PATCH /api/tickets/[key] - epic", () => {
     const { jiraClient } = await import("@/lib/jira-client");
 
     await PATCH(
-      new Request("http://localhost:3100/api/tickets/VPL-303", {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ epicKey: null }),
-      }),
-      makeParams("VPL-303"),
+      buildJson("PATCH", "/api/tickets/VPL-303", { epicKey: null }),
+      buildParams({ key: "VPL-303" }),
     );
 
     expect(jiraClient.updateIssue).toHaveBeenCalledWith(
@@ -360,12 +313,8 @@ describe("PATCH /api/tickets/[key] - epic", () => {
     seedTicket(testDb, { jiraKey: "VPL-304" });
 
     const response = await PATCH(
-      new Request("http://localhost:3100/api/tickets/VPL-304", {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ epicKey: 123 }),
-      }),
-      makeParams("VPL-304"),
+      buildJson("PATCH", "/api/tickets/VPL-304", { epicKey: 123 }),
+      buildParams({ key: "VPL-304" }),
     );
 
     expect(response.status).toBe(400);
@@ -375,12 +324,8 @@ describe("PATCH /api/tickets/[key] - epic", () => {
     seedTicket(testDb, { jiraKey: "VPL-305" });
 
     const response = await PATCH(
-      new Request("http://localhost:3100/api/tickets/VPL-305", {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ epicKey: "" }),
-      }),
-      makeParams("VPL-305"),
+      buildJson("PATCH", "/api/tickets/VPL-305", { epicKey: "" }),
+      buildParams({ key: "VPL-305" }),
     );
 
     expect(response.status).toBe(400);
@@ -390,12 +335,8 @@ describe("PATCH /api/tickets/[key] - epic", () => {
     seedTicket(testDb, { jiraKey: "VPL-306" });
 
     const response = await PATCH(
-      new Request("http://localhost:3100/api/tickets/VPL-306", {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ epicKey: "VPL-999" }),
-      }),
-      makeParams("VPL-306"),
+      buildJson("PATCH", "/api/tickets/VPL-306", { epicKey: "VPL-999" }),
+      buildParams({ key: "VPL-306" }),
     );
     const data = await response.json();
 
@@ -416,12 +357,8 @@ describe("PATCH /api/tickets/[key] - flagged", () => {
     seedTicket(testDb, { jiraKey: "VPL-400" });
 
     const response = await PATCH(
-      new Request("http://localhost:3100/api/tickets/VPL-400", {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ flagged: true }),
-      }),
-      makeParams("VPL-400"),
+      buildJson("PATCH", "/api/tickets/VPL-400", { flagged: true }),
+      buildParams({ key: "VPL-400" }),
     );
     const data = await response.json();
 
@@ -431,8 +368,8 @@ describe("PATCH /api/tickets/[key] - flagged", () => {
     // Verify persisted via GET
     cache.flush();
     const getRes = await GET(
-      new Request("http://localhost:3100/api/tickets/VPL-400"),
-      makeParams("VPL-400"),
+      buildGet("/api/tickets/VPL-400"),
+      buildParams({ key: "VPL-400" }),
     );
     const getData = await getRes.json();
     expect(getData.flagged).toBe(true);
@@ -448,12 +385,8 @@ describe("PATCH /api/tickets/[key] - flagged", () => {
     }).run();
 
     const response = await PATCH(
-      new Request("http://localhost:3100/api/tickets/VPL-401", {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ flagged: false }),
-      }),
-      makeParams("VPL-401"),
+      buildJson("PATCH", "/api/tickets/VPL-401", { flagged: false }),
+      buildParams({ key: "VPL-401" }),
     );
     const data = await response.json();
 
@@ -466,12 +399,8 @@ describe("PATCH /api/tickets/[key] - flagged", () => {
     const { jiraClient } = await import("@/lib/jira-client");
 
     await PATCH(
-      new Request("http://localhost:3100/api/tickets/VPL-402", {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ flagged: true, flagReason: "Blocked by API" }),
-      }),
-      makeParams("VPL-402"),
+      buildJson("PATCH", "/api/tickets/VPL-402", { flagged: true, flagReason: "Blocked by API" }),
+      buildParams({ key: "VPL-402" }),
     );
 
     // Async Jira sync fires in background IIFE, give it a tick
@@ -492,12 +421,8 @@ describe("PATCH /api/tickets/[key] - flagged", () => {
     const { jiraClient } = await import("@/lib/jira-client");
 
     await PATCH(
-      new Request("http://localhost:3100/api/tickets/VPL-403", {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ flagged: false }),
-      }),
-      makeParams("VPL-403"),
+      buildJson("PATCH", "/api/tickets/VPL-403", { flagged: false }),
+      buildParams({ key: "VPL-403" }),
     );
 
     await new Promise((r) => setTimeout(r, 10));
@@ -511,12 +436,8 @@ describe("PATCH /api/tickets/[key] - flagged", () => {
     const { jiraClient } = await import("@/lib/jira-client");
 
     await PATCH(
-      new Request("http://localhost:3100/api/tickets/VPL-404", {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ flagged: true }),
-      }),
-      makeParams("VPL-404"),
+      buildJson("PATCH", "/api/tickets/VPL-404", { flagged: true }),
+      buildParams({ key: "VPL-404" }),
     );
 
     await new Promise((r) => setTimeout(r, 10));
@@ -528,12 +449,8 @@ describe("PATCH /api/tickets/[key] - flagged", () => {
     seedTicket(testDb, { jiraKey: "VPL-405" });
 
     const response = await PATCH(
-      new Request("http://localhost:3100/api/tickets/VPL-405", {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ flagged: "yes" }),
-      }),
-      makeParams("VPL-405"),
+      buildJson("PATCH", "/api/tickets/VPL-405", { flagged: "yes" }),
+      buildParams({ key: "VPL-405" }),
     );
 
     expect(response.status).toBe(400);
@@ -556,12 +473,8 @@ describe("PATCH /api/tickets/[key] - jiraUpdatedAt sync", () => {
     } as never);
 
     await PATCH(
-      new Request("http://localhost:3100/api/tickets/VPL-500", {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ storyPoints: 5 }),
-      }),
-      makeParams("VPL-500"),
+      buildJson("PATCH", "/api/tickets/VPL-500", { storyPoints: 5 }),
+      buildParams({ key: "VPL-500" }),
     );
 
     await new Promise((r) => setTimeout(r, 50));
@@ -579,12 +492,8 @@ describe("PATCH /api/tickets/[key] - jiraUpdatedAt sync", () => {
     } as never);
 
     await PATCH(
-      new Request("http://localhost:3100/api/tickets/VPL-501", {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ type: "bug" }),
-      }),
-      makeParams("VPL-501"),
+      buildJson("PATCH", "/api/tickets/VPL-501", { type: "bug" }),
+      buildParams({ key: "VPL-501" }),
     );
 
     await new Promise((r) => setTimeout(r, 50));
@@ -602,12 +511,8 @@ describe("PATCH /api/tickets/[key] - jiraUpdatedAt sync", () => {
     } as never);
 
     await PATCH(
-      new Request("http://localhost:3100/api/tickets/VPL-502", {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ flagged: true }),
-      }),
-      makeParams("VPL-502"),
+      buildJson("PATCH", "/api/tickets/VPL-502", { flagged: true }),
+      buildParams({ key: "VPL-502" }),
     );
 
     await new Promise((r) => setTimeout(r, 50));
