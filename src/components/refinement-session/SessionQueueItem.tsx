@@ -71,7 +71,6 @@ export function SessionQueueItem({
               issueType={issueType}
               title={title}
               variant="list"
-              compact
               showKey
               showStatus
             />

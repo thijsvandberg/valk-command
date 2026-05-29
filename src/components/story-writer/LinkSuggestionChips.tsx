@@ -127,7 +127,6 @@ export function LinkSuggestionChips({ suggestions, linkedIssueKeys, onLink }: Li
                     title={info?.title}
                     size="sm"
                     variant="list"
-                    compact
                   />
                   {info ? (
                     <span className="min-w-0 flex-1 truncate text-label text-text-secondary">{info.title}</span>

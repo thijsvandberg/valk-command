@@ -183,14 +183,10 @@ export default function TicketPillsDevPage() {
           title='TicketStatusPill — variant="list"'
           description="No outer container; segments float inline. This is the form in your second screenshot, used in dense table rows. Dropdowns render via a portal to escape the table's overflow."
         >
-          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-            <Specimen label='variant="list"'>
-              <TicketStatusPill variant="list" ticketKey="VPL-45802" jiraStatus="IN PROGRESS" issueType="story" />
-            </Specimen>
-            <Specimen label='variant="list" compact'>
-              <TicketStatusPill variant="list" compact ticketKey="VPL-45803" jiraStatus="DONE" issueType="task" />
-            </Specimen>
-          </div>
+          <Specimen label='variant="list"'>
+            <TicketStatusPill variant="list" ticketKey="VPL-45802" jiraStatus="IN PROGRESS" issueType="story" />
+            <TicketStatusPill variant="list" ticketKey="VPL-45803" jiraStatus="DONE" issueType="task" />
+          </Specimen>
         </Section>
 
         {/* ----------------------------------------------------------------- */}

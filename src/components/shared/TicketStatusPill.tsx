@@ -338,8 +338,6 @@ export interface TicketStatusPillProps {
   size?: "sm" | "md" | "lg";
   // "list" strips the outer container and renders segments inline — for use in dense table rows.
   variant?: "list";
-  // Tighter gap between issue type icon and key in list variant
-  compact?: boolean;
   removedFromJira?: boolean;
   /** Hide the ticket key segment (default: true) */
   showKey?: boolean;
@@ -358,7 +356,6 @@ export function TicketStatusPill({
   title,
   size = "md",
   variant,
-  compact,
   removedFromJira,
   showKey = true,
   showStatus = true,
@@ -392,7 +389,7 @@ export function TicketStatusPill({
   // ---------------------------------------------------------------------------
   if (isList) {
     return (
-      <div className={`flex shrink-0 items-center ${compact ? "gap-0.5" : "gap-1.5"}`}>
+      <div className="flex shrink-0 items-center gap-1.5">
 
         {/* Issue type */}
         {issueType && (
