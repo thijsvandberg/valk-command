@@ -106,4 +106,24 @@ describe("POST /api/conversations", () => {
 
     expect(response.status).toBe(400);
   });
+
+  it("returns 400 when title exceeds 500 characters", async () => {
+    const response = await POST(jsonRequest({ title: "a".repeat(501) }));
+    const data = await response.json();
+
+    expect(response.status).toBe(400);
+    expect(data.error).toContain("500 characters");
+  });
+
+  it("returns 400 when title is a non-string type", async () => {
+    const response = await POST(jsonRequest({ title: 123 }));
+
+    expect(response.status).toBe(400);
+  });
+
+  it("returns 400 when title is whitespace only", async () => {
+    const response = await POST(jsonRequest({ title: "   " }));
+
+    expect(response.status).toBe(400);
+  });
 });

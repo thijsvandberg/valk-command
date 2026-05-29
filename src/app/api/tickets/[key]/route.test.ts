@@ -519,3 +519,48 @@ describe("PATCH /api/tickets/[key] - jiraUpdatedAt sync", () => {
     expect(row?.jiraUpdatedAt).toBe("2024-08-01T10:00:00.000Z");
   });
 });
+
+describe("PATCH /api/tickets/[key] - error paths", () => {
+  beforeEach(() => {
+    testDb = createTestDb();
+    cache.flush();
+    vi.clearAllMocks();
+  });
+
+  it("returns 400 for invalid JSON body", async () => {
+    seedTicket(testDb, { jiraKey: "VPL-600" });
+
+    const response = await PATCH(
+      new Request("http://localhost:3100/api/tickets/VPL-600", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: "not json",
+      }),
+      buildParams({ key: "VPL-600" }),
+    );
+
+    expect(response.status).toBe(400);
+  });
+
+  it("returns 400 for empty JSON body", async () => {
+    seedTicket(testDb, { jiraKey: "VPL-601" });
+
+    const response = await PATCH(
+      buildJson("PATCH", "/api/tickets/VPL-601", {}),
+      buildParams({ key: "VPL-601" }),
+    );
+
+    expect(response.status).toBe(400);
+  });
+
+  it("returns 400 for negative storyPoints", async () => {
+    seedTicket(testDb, { jiraKey: "VPL-602" });
+
+    const response = await PATCH(
+      buildJson("PATCH", "/api/tickets/VPL-602", { storyPoints: -1 }),
+      buildParams({ key: "VPL-602" }),
+    );
+
+    expect(response.status).toBe(400);
+  });
+});

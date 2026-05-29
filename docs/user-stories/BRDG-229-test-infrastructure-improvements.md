@@ -196,7 +196,7 @@ Current ratio: 25% error tests (165/664). Target: 35%.
 
 ### Implementation
 
-- [ ] Define a standard error-path checklist for API routes:
+- [x] Define a standard error-path checklist for API routes:
 
 ```markdown
 ## Error Test Checklist (per API route)
@@ -208,7 +208,7 @@ Current ratio: 25% error tests (165/664). Target: 35%.
 - [ ] Database error returns 500
 ```
 
-- [ ] Apply the checklist to the 10 most critical existing API route tests, adding missing error tests:
+- [x] Apply the checklist to the 10 most critical existing API route tests, adding missing error tests:
   1. `POST /api/jira/sync-tickets`
   2. `PUT /api/tickets/[key]`
   3. `POST /api/conversations`
@@ -220,7 +220,7 @@ Current ratio: 25% error tests (165/664). Target: 35%.
   9. `POST /api/story-writer/send`
   10. `GET /api/activity-log`
 
-- [ ] Add approximately 30 new error-path tests across these 10 files
+- [x] Add approximately 30 new error-path tests across these 10 files
 
 ---
 

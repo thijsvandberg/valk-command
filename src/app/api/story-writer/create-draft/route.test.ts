@@ -99,4 +99,39 @@ describe("POST /api/story-writer/create-draft", () => {
       { title: "Sync test", sprintId: "42", issueType: "story" },
     );
   });
+
+  it("handles invalid JSON body gracefully", async () => {
+    const res = await POST(new Request(BASE, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: "not json",
+    }));
+    expect(res.status).toBe(201);
+    const data = await res.json();
+    expect(data.title).toBe("Untitled draft");
+    expect(data.needsTitle).toBe(true);
+  });
+
+  it("uses client-provided draftKey when valid", async () => {
+    const res = await POST(new Request(BASE, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ title: "Custom key", draftKey: "DRAFT-abc123" }),
+    }));
+    expect(res.status).toBe(201);
+    const data = await res.json();
+    expect(data.key).toBe("DRAFT-abc123");
+  });
+
+  it("generates new draftKey when client key is invalid", async () => {
+    const res = await POST(new Request(BASE, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ title: "Bad key", draftKey: "NOT-A-DRAFT" }),
+    }));
+    expect(res.status).toBe(201);
+    const data = await res.json();
+    expect(data.key).toMatch(/^DRAFT-/);
+    expect(data.key).not.toBe("NOT-A-DRAFT");
+  });
 });

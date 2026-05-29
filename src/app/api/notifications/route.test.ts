@@ -275,3 +275,24 @@ describe("DELETE /api/notifications", () => {
     expect(rows[0].id).toBe("a2");
   });
 });
+
+describe("POST /api/notifications - additional error paths", () => {
+  beforeEach(() => {
+    testDb = createTestDb();
+  });
+
+  it("returns 400 when both type and message are missing", async () => {
+    const response = await POST(makeRequest("POST", {}));
+    expect(response.status).toBe(400);
+  });
+
+  it("returns 400 when type is empty string", async () => {
+    const response = await POST(makeRequest("POST", { type: "", message: "test" }));
+    expect(response.status).toBe(400);
+  });
+
+  it("returns 400 when message is empty string", async () => {
+    const response = await POST(makeRequest("POST", { type: "sync", message: "" }));
+    expect(response.status).toBe(400);
+  });
+});

@@ -101,4 +101,31 @@ describe("POST /api/refinement-sessions", () => {
 
     expect(response.status).toBe(400);
   });
+
+  it("ignores non-string values in ticketKeys array", async () => {
+    const response = await POST(
+      jsonRequest({ ticketKeys: [null, 42, false, undefined] }),
+    );
+    const data = await response.json();
+
+    expect(response.status).toBe(201);
+    expect(data.ticketKeys).toEqual([]);
+    expect(data.ticketCount).toBe(0);
+  });
+
+  it("uses default name when name is empty string", async () => {
+    const response = await POST(jsonRequest({ name: "" }));
+    const data = await response.json();
+
+    expect(response.status).toBe(201);
+    expect(data.name).toMatch(/^Refinement \d{4}-\d{2}-\d{2}$/);
+  });
+
+  it("uses default name when name is whitespace only", async () => {
+    const response = await POST(jsonRequest({ name: "   " }));
+    const data = await response.json();
+
+    expect(response.status).toBe(201);
+    expect(data.name).toMatch(/^Refinement \d{4}-\d{2}-\d{2}$/);
+  });
 });

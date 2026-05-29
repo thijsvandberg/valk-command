@@ -166,4 +166,34 @@ describe("POST /api/jira/sync-tickets", () => {
       expect(count).toBe(1);
     }
   });
+
+  it("returns 400 for invalid ticketKeys in body", async () => {
+    const request = new Request("http://localhost:3100/api/jira/sync-tickets", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ ticketKeys: [123, null] }),
+    });
+    const response = await POST(request);
+    expect(response.status).toBe(400);
+  });
+
+  it("returns 400 for empty ticketKeys array", async () => {
+    const request = new Request("http://localhost:3100/api/jira/sync-tickets", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ ticketKeys: [] }),
+    });
+    const response = await POST(request);
+    expect(response.status).toBe(400);
+  });
+
+  it("returns 500 when sync service throws a generic error", async () => {
+    const { jiraClient } = await import("@/lib/jira-client");
+    vi.mocked(jiraClient.getSprintIssues).mockRejectedValueOnce(new Error("Network failure"));
+
+    const response = await POST(makeRequest("999"));
+    expect(response.status).toBe(500);
+    const data = await response.json();
+    expect(data.error).toBeDefined();
+  });
 });

@@ -290,6 +290,26 @@ describe("GET /api/search/local", () => {
     expect(body.results.some((r: { key: string }) => r.key === "VPL-77")).toBe(true);
   });
 
+  it("returns 400 for invalid custom date range format", async () => {
+    setupDbMock([], [], [], [], []);
+    const res = await GET(makeRequest("test", { dateRange: "custom:notadate..also-bad" }));
+    expect(res.status).toBe(400);
+    const body = await res.json();
+    expect(body.error).toContain("Invalid date range");
+  });
+
+  it("returns 400 when custom date range has invalid from date", async () => {
+    setupDbMock([], [], [], [], []);
+    const res = await GET(makeRequest("test", { dateRange: "custom:bad..2024-01-01" }));
+    expect(res.status).toBe(400);
+  });
+
+  it("returns 400 when custom date range has invalid to date", async () => {
+    setupDbMock([], [], [], [], []);
+    const res = await GET(makeRequest("test", { dateRange: "custom:2024-01-01..bad" }));
+    expect(res.status).toBe(400);
+  });
+
   it("strips ADF JSON from description before indexing", async () => {
     const adfDescription = JSON.stringify({
       type: "doc",

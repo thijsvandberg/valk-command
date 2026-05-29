@@ -102,4 +102,34 @@ describe("PUT /api/settings/quick-prompts", () => {
     const response = await PUT(request);
     expect(response.status).toBe(400);
   });
+
+  it("returns 400 for invalid JSON body on PUT", async () => {
+    const request = new Request("http://localhost:3100/api/settings/quick-prompts", {
+      method: "PUT",
+      body: "not json",
+      headers: { "Content-Type": "application/json" },
+    });
+    const response = await PUT(request);
+    expect(response.status).toBe(400);
+  });
+
+  it("returns 400 when prompts is not an object", async () => {
+    const request = new Request("http://localhost:3100/api/settings/quick-prompts", {
+      method: "PUT",
+      body: JSON.stringify({ prompts: "invalid" }),
+      headers: { "Content-Type": "application/json" },
+    });
+    const response = await PUT(request);
+    expect(response.status).toBe(400);
+  });
+
+  it("returns 400 when prompts category contains non-array", async () => {
+    const request = new Request("http://localhost:3100/api/settings/quick-prompts", {
+      method: "PUT",
+      body: JSON.stringify({ prompts: { story: "not-array" } }),
+      headers: { "Content-Type": "application/json" },
+    });
+    const response = await PUT(request);
+    expect(response.status).toBe(400);
+  });
 });

@@ -137,4 +137,54 @@ describe("GET /api/activity-log", () => {
       },
     });
   });
+
+  it("clamps negative limit to 1", async () => {
+    testDb.insert(activityLog).values({
+      id: "clamp-1",
+      type: "sprint-sync",
+      scope: "sprints",
+      status: "success",
+      startedAt: new Date().toISOString(),
+    }).run();
+
+    const response = await GET(makeRequest({ limit: "-5" }));
+    const data = await response.json();
+    expect(response.status).toBe(200);
+    expect(data.length).toBeLessThanOrEqual(1);
+  });
+
+  it("defaults NaN limit to 20", async () => {
+    const response = await GET(makeRequest({ limit: "abc" }));
+    expect(response.status).toBe(200);
+  });
+
+  it("clamps limit above 500 to 500", async () => {
+    const response = await GET(makeRequest({ limit: "999" }));
+    expect(response.status).toBe(200);
+  });
+
+  it("defaults NaN offset to 0", async () => {
+    const response = await GET(makeRequest({ offset: "abc" }));
+    expect(response.status).toBe(200);
+  });
+
+  it("filters by status parameter", async () => {
+    const now = new Date().toISOString();
+    testDb.insert(activityLog).values({ id: "f1", type: "sprint-sync", scope: "s", status: "failed", startedAt: now }).run();
+    testDb.insert(activityLog).values({ id: "s1", type: "sprint-sync", scope: "s", status: "success", startedAt: now }).run();
+
+    const response = await GET(makeRequest({ status: "failed" }));
+    const data = await response.json();
+    expect(data.every((e: { status: string }) => e.status === "failed")).toBe(true);
+  });
+
+  it("ignores invalid status filter value", async () => {
+    const now = new Date().toISOString();
+    testDb.insert(activityLog).values({ id: "x1", type: "sprint-sync", scope: "s", status: "success", startedAt: now }).run();
+
+    const response = await GET(makeRequest({ status: "INVALID" }));
+    const data = await response.json();
+    expect(response.status).toBe(200);
+    expect(data.length).toBe(1);
+  });
 });
