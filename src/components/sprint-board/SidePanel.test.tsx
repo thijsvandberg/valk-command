@@ -54,8 +54,8 @@ vi.mock("@/components/shared/ReadinessCell", () => ({
   ReadinessCell: () => <span data-testid="readiness-cell" />,
 }));
 
-vi.mock("@/components/shared/TicketKeyPill", () => ({
-  TicketKeyPill: ({ ticketKey }: { ticketKey: string }) => <span data-testid="ticket-key">{ticketKey}</span>,
+vi.mock("@/components/shared/TicketStatusPill", () => ({
+  TicketStatusPill: ({ ticketKey }: { ticketKey: string }) => <span data-testid="ticket-key">{ticketKey}</span>,
 }));
 
 vi.mock("@/components/shared/Tooltip", () => ({

@@ -2,12 +2,12 @@
 
 import { useState, useRef, useEffect, useCallback, useMemo } from "react";
 import type { Ticket, POStatus, TicketReadiness } from "@/types/ticket";
-import { getEpicColor, getBvColor, JIRA_STATUS_COLORS } from "@/types/ticket";
+import { getEpicColor, getBvColor } from "@/types/ticket";
 import Link from "next/link";
 import { Avatar } from "@/components/shared/Avatar";
 import { QualityBadge } from "./TicketTableCells";
 import { ReadinessCell } from "@/components/shared/ReadinessCell";
-import { TicketKeyPill } from "@/components/shared/TicketKeyPill";
+import { TicketStatusPill } from "@/components/shared/TicketStatusPill";
 import { useTicketDetail, useTicketVersions, useJiraSprints, useDevInfo } from "@/hooks/useSprintBoard";
 import { prefetchTicketPage } from "@/lib/prefetch";
 import { relativeDate, formatAbsoluteDate } from "@/lib/date-utils";
@@ -77,7 +77,6 @@ export function SidePanel({
   onShowToast: (message: string) => void;
   adjacentKeys?: { prev: string | null; next: string | null };
 }) {
-  const jiraStatusColor = JIRA_STATUS_COLORS[ticket.jiraStatus] || JIRA_STATUS_COLORS["TO DO"];
   const epicColor = ticket.epic ? getEpicColor(ticket.epic) ?? null : null;
   // Ticket detail data (reporter, parent, labels, timestamps, description)
   const { data: detail } = useTicketDetail(ticket.key);
@@ -193,12 +192,11 @@ export function SidePanel({
       {/* Header */}
       <div className="flex items-center justify-between border-b border-border-default px-4 py-3">
         <div className="flex items-center gap-2">
-          <TicketKeyPill
+          <TicketStatusPill
             ticketKey={ticket.key}
-            statusLabel={ticket.jiraStatus}
-            statusBg={jiraStatusColor.bg}
-            statusColor={jiraStatusColor.text}
-            href={`/tickets/${ticket.key}`}
+            jiraStatus={ticket.jiraStatus}
+            issueType={ticket.type}
+            title={ticket.title}
           />
           {ticket.editState === "draft" && (
             <span className="rounded px-1.5 py-0.5 text-caption" style={{ backgroundColor: "var(--color-status-info-subtle)", color: "var(--color-icon-task)", opacity: 0.5 }} title="Unsaved draft">
