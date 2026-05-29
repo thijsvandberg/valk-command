@@ -1,6 +1,6 @@
 # BRDG-229: Test Infrastructure Improvements
 
-**Status:** In Progress
+**Status:** Completed
 **Priority:** High
 **Type:** Testing / DevEx
 
@@ -25,7 +25,7 @@ The test suite has solid fundamentals (269 test files, 39k lines, CI on GitHub A
 - [x] Test utilities created and usable
 - [x] At least 5 existing test files migrated to use new utilities as proof of concept
 - [x] No existing tests broken
-- [ ] `npm run test` and `npm run build` pass
+- [x] `npm run test` and `npm run build` pass
 
 ## Findings from Audit
 
