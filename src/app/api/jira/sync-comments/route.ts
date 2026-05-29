@@ -19,7 +19,9 @@ export async function POST(request: Request) {
   const limited = applyRateLimit("sync");
   if (limited) return limited;
 
-  const logId = `sync-comments-${Date.now()}`;
+  // Suffix with a random token so two syncs in the same millisecond cannot
+  // collide on the activity_log primary key (matches sync-sprints/sync-epics).
+  const logId = `sync-comments-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
   const startedAt = new Date().toISOString();
 
   try {

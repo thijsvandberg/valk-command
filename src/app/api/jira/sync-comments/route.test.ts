@@ -88,6 +88,32 @@ describe("POST /api/jira/sync-comments", () => {
     expect(rows[0].content).toBe("updated");
   });
 
+  it("does not collide on activity_log id when two syncs share a millisecond", async () => {
+    // Force both syncs to read the same Date.now(), the condition that used to
+    // produce a duplicate activity_log primary key and abort the second sync.
+    const nowSpy = vi.spyOn(Date, "now").mockReturnValue(1_700_000_000_000);
+    try {
+      seedTicket(testDb, { jiraKey: "VPL-100" });
+      vi.mocked(jiraClient.getComments).mockResolvedValueOnce([
+        { id: "c1", body: "original", author: { accountId: "a1", displayName: "Alice", avatarUrls: {} }, created: "2026-01-01T00:00:00Z", updated: "2026-01-01T00:00:00Z" },
+      ]);
+      const first = await POST(makeRequest("VPL-100"));
+      expect(first.status).toBe(200);
+
+      vi.mocked(jiraClient.getComments).mockResolvedValueOnce([
+        { id: "c1", body: "updated", author: { accountId: "a1", displayName: "Alice", avatarUrls: {} }, created: "2026-01-01T00:00:00Z", updated: "2026-01-02T00:00:00Z" },
+      ]);
+      const second = await POST(makeRequest("VPL-100"));
+      expect(second.status).toBe(200);
+
+      const rows = testDb.select().from(jiraComment).all();
+      expect(rows).toHaveLength(1);
+      expect(rows[0].content).toBe("updated");
+    } finally {
+      nowSpy.mockRestore();
+    }
+  });
+
   it("creates activity log entry with success status", async () => {
     seedTicket(testDb, { jiraKey: "VPL-100" });
     vi.mocked(jiraClient.getComments).mockResolvedValue([]);
