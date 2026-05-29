@@ -400,6 +400,13 @@
       "when": 1779813110096,
       "tag": "0056_exotic_paibok",
       "breakpoints": true
+    },
+    {
+      "idx": 57,
+      "version": "6",
+      "when": 1780088754553,
+      "tag": "0057_composite_indexes_brdg230",
+      "breakpoints": true
     }
   ]
 }
