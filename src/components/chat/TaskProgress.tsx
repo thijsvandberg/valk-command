@@ -3,6 +3,7 @@
 import { Square } from "lucide-react";
 import type { TaskStreamStatus } from "@/hooks/useWorkspaceTask";
 import { Tag } from "@/components/shared/Tag";
+import { StreamingIndicator } from "@/components/shared/StreamingIndicator";
 
 interface ToolCallEvent {
   tool: string;
@@ -59,13 +60,7 @@ export default function TaskProgress({
     <div className="border-t border-border-default px-6 py-2.5">
       <div className="mx-auto max-w-3xl space-y-2">
         <div className="flex items-center gap-2.5">
-          <div className="relative flex size-2 items-center justify-center">
-            <span className="absolute inline-flex size-full animate-ping rounded-full bg-[var(--color-brand-400)] opacity-40" />
-            <span className="relative inline-flex size-1.5 rounded-full bg-[var(--color-brand-400)]" />
-          </div>
-          <span className="text-body-sm text-text-secondary truncate flex-1">
-            {label}
-          </span>
+          <StreamingIndicator text={label} className="flex-1" />
           {onCancel && (
             <button
               type="button"

@@ -113,10 +113,10 @@ The shared primitives `ChatBubble` and `ChatInput` already exist and are used ac
 - [x] Migrate Story Writer chat to consume the shared footer controls (remove forked copies)
 - [x] Route `/chat` input through shared `ChatInput` with footer controls
 - [x] Align input width with the message column (remove full-bleed input)
-- [ ] Make user bubble lighter and bubble widths consistent in the thread
-- [ ] Align streaming/progress indicator with Story Writer styling
-- [ ] Decide and apply: remove or keep bulk-suggestion "Markdown / Rich text" toggles
-- [ ] Clean up `ConversationList` spacing, status indicators, and pinned/date grouping
+- [x] Make user bubble lighter and bubble widths consistent in the thread
+- [x] Align streaming/progress indicator with Story Writer styling
+- [x] Decide and apply: remove or keep bulk-suggestion "Markdown / Rich text" toggles <!-- decision: KEEP the copy buttons (useful for copy to Jira/Slack, already tested) but hover-reveal them in the thread to remove the always-on clutter -->
+- [x] Clean up `ConversationList` spacing, status indicators, and pinned/date grouping
 - [x] Populate `/chat` quick-action popover (settings-driven or default set)
 - [x] Wire model + Codebase selections into the chat send path (verify/extend `submitAndStream`)
 - [ ] Tests for new shared components and changed behavior

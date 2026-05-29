@@ -312,7 +312,9 @@ export default function MessageList({ messages, loading, error, conversation, sh
                     <p className="mt-1 text-caption text-text-tertiary">Sending...</p>
                   )}
                   {message.role === "assistant" && !isSending && !showSprintActions && (
-                    <CopyActions content={message.content} />
+                    <div className="opacity-0 transition-opacity duration-150 group-hover/msg:opacity-100 focus-within:opacity-100">
+                      <CopyActions content={message.content} />
+                    </div>
                   )}
                   {showSprintActions && (
                     <>

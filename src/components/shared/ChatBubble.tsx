@@ -40,9 +40,9 @@ export function ChatBubble({
       className={`group/msg flex flex-col ${isUser ? "items-end" : "items-start"}`}
     >
       <div
-        className={`max-w-[80%] overflow-x-auto rounded-2xl px-4 py-3 text-body-lg leading-[1.7] font-[var(--font-body)] shadow-sm ${
+        className={`max-w-[75%] overflow-x-auto rounded-2xl px-4 py-3 text-body-lg leading-[1.7] font-[var(--font-body)] shadow-sm ${
           isUser
-            ? "rounded-br-lg bg-[var(--color-brand-600)] text-white shadow-[0_2px_8px_color-mix(in_srgb,var(--color-brand-600)_18%,transparent)]"
+            ? "rounded-br-lg bg-[var(--color-brand-600)]/[0.18] text-text-primary border border-[var(--color-brand-500)]/[0.18]"
             : "rounded-bl-lg bg-[var(--color-surface-floating)] text-text-primary border border-border-default"
         } ${dimmed ? "opacity-60" : ""} ${cancelled ? "opacity-40" : ""} ${className ?? ""}`}
         data-testid={testId ?? `message-${role}`}

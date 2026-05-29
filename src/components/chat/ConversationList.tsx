@@ -202,7 +202,7 @@ export default function ConversationList({
               <span className="absolute -top-0.5 -right-0.5 h-1.5 w-1.5 rounded-full bg-[var(--color-brand-400)] animate-pulse" aria-label="Task running" />
             )}
             {isUnread && !hasRunningTask && (
-              <span className="absolute -top-0.5 -right-0.5 h-1.5 w-1.5 rounded-full bg-[var(--color-brand-300)]" aria-label="Unread" />
+              <span className="absolute -top-0.5 -right-0.5 h-1.5 w-1.5 rounded-full bg-[var(--color-brand-400)]" aria-label="Unread" />
             )}
             {conversation.pinned && (
               <span className="absolute -bottom-0.5 -right-0.5 h-1.5 w-1.5 rounded-full bg-[var(--color-warning-400)]" />
@@ -252,21 +252,24 @@ export default function ConversationList({
                 className="shrink-0"
                 style={{ color: config.color }}
               />
-              {isUnread && (
-                <span className="shrink-0 h-1.5 w-1.5 rounded-full bg-[var(--color-brand-400)]" aria-label="Unread" />
-              )}
               <span className={`block truncate font-[var(--font-body)] text-body-lg ${isUnread ? "font-semibold text-text-primary" : "font-medium"}`}>
                 {conversation.title}
               </span>
               {conversation.pinned && (
                 <Pin size={10} strokeWidth={1.5} className="shrink-0 text-text-muted" />
               )}
-              {hasRunningTask && (
+              {/* Single right-aligned status dot: running (pulsing) takes precedence over unread */}
+              {hasRunningTask ? (
                 <span
                   className="ml-auto shrink-0 h-1.5 w-1.5 rounded-full bg-[var(--color-brand-400)] animate-pulse"
                   aria-label="Task running"
                 />
-              )}
+              ) : isUnread ? (
+                <span
+                  className="ml-auto shrink-0 h-1.5 w-1.5 rounded-full bg-[var(--color-brand-400)]"
+                  aria-label="Unread"
+                />
+              ) : null}
             </span>
           </button>
           {!multiselectActive && (

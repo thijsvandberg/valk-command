@@ -31,6 +31,7 @@ import {
   formatDuration,
 } from "@/components/story-writer/ChatMessageParts";
 import { ModelSelector, CodebaseToggle, QuickActionsPopover } from "@/components/shared/chat-controls";
+import { StreamingIndicator } from "@/components/shared/StreamingIndicator";
 
 interface StoryWriterChatProps {
   messages: Message[];
@@ -497,15 +498,7 @@ export function StoryWriterChat({
 
       {isStreaming && streamProgress && (
         <div className="border-t border-border-default px-4 py-2.5">
-          <div className="flex items-center gap-2.5 pl-[34px]">
-            <div className="relative flex size-2 items-center justify-center">
-              <span className="absolute inline-flex size-full animate-ping rounded-full bg-[var(--color-brand-400)] opacity-40" />
-              <span className="relative inline-flex size-1.5 rounded-full bg-[var(--color-brand-400)]" />
-            </div>
-            <span className="text-body-sm text-text-secondary truncate">
-              {streamProgress.slice(0, 80)}
-            </span>
-          </div>
+          <StreamingIndicator text={streamProgress.slice(0, 80)} className="pl-[34px]" />
         </div>
       )}
 

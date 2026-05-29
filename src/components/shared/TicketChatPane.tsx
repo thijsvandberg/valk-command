@@ -6,6 +6,7 @@ import { useWorkspaceTask } from "@/hooks/useWorkspaceTask";
 import { ChatBubble } from "@/components/shared/ChatBubble";
 import { ChatInput } from "@/components/shared/ChatInput";
 import { LoadingState } from "@/components/shared/LoadingState";
+import { StreamingIndicator } from "@/components/shared/StreamingIndicator";
 import { apiFetch } from "@/lib/api-client";
 import { MessageSquareText, X, Sparkles } from "lucide-react";
 import ReactMarkdown from "react-markdown";
@@ -219,15 +220,9 @@ export function TicketChatPane({ ticketKey, ticketTitle, onClose }: TicketChatPa
       {/* Streaming progress (same visual as Story Writer) */}
       {isTaskRunning && (
         <div className="border-t border-border-default px-4 py-2.5">
-          <div className="flex items-center gap-2.5">
-            <div className="relative flex size-2 items-center justify-center">
-              <span className="absolute inline-flex size-full animate-ping rounded-full bg-[var(--color-brand-400)] opacity-40" />
-              <span className="relative inline-flex size-1.5 rounded-full bg-[var(--color-brand-400)]" />
-            </div>
-            <span className="text-body-sm text-text-secondary truncate">
-              {workspaceTask.progressText?.slice(0, 80) || (isSubmitting ? "Starting..." : "Working...")}
-            </span>
-          </div>
+          <StreamingIndicator
+            text={workspaceTask.progressText?.slice(0, 80) || (isSubmitting ? "Starting..." : "Working...")}
+          />
         </div>
       )}
 
