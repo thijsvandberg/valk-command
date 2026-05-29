@@ -1,6 +1,6 @@
 # BRDG-234: Unify Standalone Chat with Story Writer Chat
 
-**Status:** Not Started
+**Status:** Completed
 **Priority:** Medium
 **Type:** Enhancement
 
@@ -119,5 +119,5 @@ The shared primitives `ChatBubble` and `ChatInput` already exist and are used ac
 - [x] Clean up `ConversationList` spacing, status indicators, and pinned/date grouping
 - [x] Populate `/chat` quick-action popover (settings-driven or default set)
 - [x] Wire model + Codebase selections into the chat send path (verify/extend `submitAndStream`)
-- [ ] Tests for new shared components and changed behavior
-- [ ] All tests pass, build succeeds
+- [x] Tests for new shared components and changed behavior
+- [x] All tests pass, build succeeds
