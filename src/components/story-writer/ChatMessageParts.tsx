@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState, useCallback } from "react";
+import { useOutsideClick } from "@/hooks/useOutsideClick";
 import type { Message } from "@/types/chat";
 import type { RelatedStoryCandidateRow } from "@/db/schema";
 import {
@@ -181,14 +182,7 @@ export function MessageInfoButton({
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
 
-  useEffect(() => {
-    if (!open) return;
-    function handleClick(e: MouseEvent) {
-      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
-    }
-    document.addEventListener("mousedown", handleClick);
-    return () => document.removeEventListener("mousedown", handleClick);
-  }, [open]);
+  useOutsideClick(ref, () => setOpen(false), { enabled: open });
 
   return (
     <div ref={ref} className="relative shrink-0 self-end mb-0.5 opacity-0 group-hover:opacity-100 transition-opacity duration-150">
@@ -697,14 +691,7 @@ export function QuickActionsPopover({
 }) {
   const popoverRef = useRef<HTMLDivElement>(null);
 
-  useEffect(() => {
-    if (!open) return;
-    function handleClick(e: MouseEvent) {
-      if (popoverRef.current && !popoverRef.current.contains(e.target as Node)) onClose();
-    }
-    document.addEventListener("mousedown", handleClick);
-    return () => document.removeEventListener("mousedown", handleClick);
-  }, [open, onClose]);
+  useOutsideClick(popoverRef, onClose, { enabled: open });
 
   return (
     <div ref={popoverRef} className="relative">

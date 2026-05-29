@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useRef, useEffect, useCallback } from "react";
+import { useOutsideClick } from "@/hooks/useOutsideClick";
 import { createPortal } from "react-dom";
 import { RefreshCw, CheckCircle2, AlertTriangle, ChevronUp, Square, CloudDownload, CheckCheck } from "lucide-react";
 import { useActivityContext, type ActivityState } from "@/contexts/ActivityContext";
@@ -103,23 +104,13 @@ export function SyncIndicator({ collapsed }: { collapsed: boolean }) {
     });
   }, [collapsed]);
 
+  useOutsideClick([triggerRef, panelRef], () => setExpanded(false), { enabled: expanded });
+
   useEffect(() => {
     if (!expanded) return;
-    function handleClick(e: MouseEvent) {
-      if (
-        triggerRef.current && !triggerRef.current.contains(e.target as Node) &&
-        panelRef.current && !panelRef.current.contains(e.target as Node)
-      ) {
-        setExpanded(false);
-      }
-    }
     function handleResize() { computePos(); }
-    document.addEventListener("mousedown", handleClick);
     window.addEventListener("resize", handleResize);
-    return () => {
-      document.removeEventListener("mousedown", handleClick);
-      window.removeEventListener("resize", handleResize);
-    };
+    return () => window.removeEventListener("resize", handleResize);
   }, [expanded, computePos]);
 
   const errorCount = unacknowledgedErrors.length;

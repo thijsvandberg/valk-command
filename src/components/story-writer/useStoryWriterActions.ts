@@ -1,4 +1,5 @@
 import { useState, useRef, useCallback, useEffect, useMemo } from "react";
+import { useOutsideClick } from "@/hooks/useOutsideClick";
 import { useRouter } from "next/navigation";
 import { mutate as globalMutate } from "swr";
 import { useStoryWriter } from "@/hooks/useStoryWriter";
@@ -75,16 +76,7 @@ export function useStoryWriterActions({
 
   useEffect(() => () => { if (savedTimerRef.current) clearTimeout(savedTimerRef.current); }, []);
 
-  useEffect(() => {
-    if (!showMoreMenu) return;
-    function handleClick(e: MouseEvent) {
-      if (moreMenuRef.current && !moreMenuRef.current.contains(e.target as Node)) {
-        setShowMoreMenu(false);
-      }
-    }
-    document.addEventListener("mousedown", handleClick);
-    return () => document.removeEventListener("mousedown", handleClick);
-  }, [showMoreMenu]);
+  useOutsideClick(moreMenuRef, () => setShowMoreMenu(false), { enabled: showMoreMenu });
 
   const targetTicketKey = writer.session?.targetTicketKey ?? null;
 

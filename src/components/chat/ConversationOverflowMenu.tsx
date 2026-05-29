@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useRef, useEffect, useCallback } from "react";
+import { useOutsideClick } from "@/hooks/useOutsideClick";
 import { MoreHorizontal, Pin, Trash2, MailOpen, Mail } from "lucide-react";
 
 interface ConversationOverflowMenuProps {
@@ -41,34 +42,18 @@ export default function ConversationOverflowMenu({
     onOpenChange?.(false);
   }, [onOpenChange]);
 
-  // Click-outside and Escape to close
+  useOutsideClick(ref, close, { enabled: open, escapeClose: false });
+
   useEffect(() => {
     if (!open) return;
-
-    function handleClickOutside(e: MouseEvent) {
-      if (ref.current && !ref.current.contains(e.target as Node)) {
-        close();
-      }
-    }
-
     function handleKeyDown(e: KeyboardEvent) {
       if (e.key === "Escape") {
         e.stopPropagation();
         close();
       }
     }
-
-    // Defer so the originating click finishes propagating
-    const timer = setTimeout(() => {
-      document.addEventListener("mousedown", handleClickOutside);
-      document.addEventListener("keydown", handleKeyDown);
-    }, 0);
-
-    return () => {
-      clearTimeout(timer);
-      document.removeEventListener("mousedown", handleClickOutside);
-      document.removeEventListener("keydown", handleKeyDown);
-    };
+    document.addEventListener("keydown", handleKeyDown);
+    return () => document.removeEventListener("keydown", handleKeyDown);
   }, [open, close]);
 
   const itemClass =

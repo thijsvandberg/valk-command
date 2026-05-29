@@ -1,6 +1,7 @@
 "use client";
 
-import { useState, useEffect, useRef } from "react";
+import { useState, useRef } from "react";
+import { useOutsideClick } from "@/hooks/useOutsideClick";
 import {
   MoreHorizontal,
   CloudDownload,
@@ -51,16 +52,7 @@ export function StakeholderOverflowMenu({
   const [copiedPlain, setCopiedPlain] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
 
-  useEffect(() => {
-    if (!open) return;
-    function outside(e: MouseEvent) {
-      if (containerRef.current && !containerRef.current.contains(e.target as Node)) {
-        setOpen(false);
-      }
-    }
-    document.addEventListener("mousedown", outside);
-    return () => document.removeEventListener("mousedown", outside);
-  }, [open]);
+  useOutsideClick(containerRef, () => setOpen(false), { enabled: open });
 
   async function handleCopy() {
     if (!sprint) return;

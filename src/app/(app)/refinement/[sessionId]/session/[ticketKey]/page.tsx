@@ -1,6 +1,7 @@
 "use client";
 
 import { use, useEffect, useCallback, useState, useRef } from "react";
+import { useOutsideClick } from "@/hooks/useOutsideClick";
 import { useRouter } from "next/navigation";
 import { usePageTitle } from "@/hooks/usePageTitle";
 import { useRefinementSession } from "@/contexts/RefinementSessionContext";
@@ -344,22 +345,7 @@ export default function RefinementSessionTicketPage({
     openEndModal();
   }, [openEndModal]);
 
-  // Close overflow menu on click outside
-  useEffect(() => {
-    if (!overflowOpen) return;
-    function handleClickOutside(e: MouseEvent) {
-      if (overflowRef.current && !overflowRef.current.contains(e.target as Node)) setOverflowOpen(false);
-    }
-    function handleKeyDown(e: KeyboardEvent) {
-      if (e.key === "Escape") setOverflowOpen(false);
-    }
-    document.addEventListener("mousedown", handleClickOutside);
-    document.addEventListener("keydown", handleKeyDown);
-    return () => {
-      document.removeEventListener("mousedown", handleClickOutside);
-      document.removeEventListener("keydown", handleKeyDown);
-    };
-  }, [overflowOpen]);
+  useOutsideClick(overflowRef, () => setOverflowOpen(false), { enabled: overflowOpen });
 
   // Keyboard shortcuts
   useEffect(() => {
