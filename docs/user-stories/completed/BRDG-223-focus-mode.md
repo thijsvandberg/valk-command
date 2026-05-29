@@ -1,6 +1,6 @@
 # BRDG-223: Focus Mode (Hide Navigation)
 
-**Status:** In Progress
+**Status:** Done
 **Priority:** Medium
 **Type:** Enhancement
 
@@ -69,7 +69,7 @@ Architecture: FocusModeProvider wraps layout children (server component stays se
 - [x] Build floating exit-focus-mode button (shown only when focus mode is active)
 - [x] Animate sidebar slide-out and header slide-up transitions
 - [x] Ensure content area expands to fill freed space
-- [ ] Verify focus mode persists across client-side navigations
-- [ ] Verify all views work correctly with nav hidden (no layout breakage)
+- [x] Verify focus mode persists across client-side navigations
+- [x] Verify all views work correctly with nav hidden (no layout breakage)
 - [x] Tests for useFocusMode hook
-- [ ] Manual test on small viewport (laptop-sized screen)
+- [x] Manual test on small viewport (laptop-sized screen)
