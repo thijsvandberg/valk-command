@@ -72,15 +72,15 @@ describe("POST /api/jira/sync-comments", () => {
 
   it("upserts correctly without duplicates on re-sync", async () => {
     seedTicket(testDb, { jiraKey: "VPL-100" });
-    const comments = [
+    vi.mocked(jiraClient.getComments).mockResolvedValueOnce([
       { id: "c1", body: "original", author: { accountId: "a1", displayName: "Alice", avatarUrls: {} }, created: "2026-01-01T00:00:00Z", updated: "2026-01-01T00:00:00Z" },
-    ];
-    vi.mocked(jiraClient.getComments).mockResolvedValue(comments);
+    ]);
 
     await POST(makeRequest("VPL-100"));
-    // Change body and re-sync
-    comments[0].body = "updated";
-    vi.mocked(jiraClient.getComments).mockResolvedValue(comments);
+
+    vi.mocked(jiraClient.getComments).mockResolvedValueOnce([
+      { id: "c1", body: "updated", author: { accountId: "a1", displayName: "Alice", avatarUrls: {} }, created: "2026-01-01T00:00:00Z", updated: "2026-01-02T00:00:00Z" },
+    ]);
     await POST(makeRequest("VPL-100"));
 
     const rows = testDb.select().from(jiraComment).all();
