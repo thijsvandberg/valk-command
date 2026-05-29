@@ -6,6 +6,7 @@ import type * as schema from "@/db/schema";
 import { ticket } from "@/db/schema";
 import { eq } from "drizzle-orm";
 import { cache } from "@/lib/cache";
+import { seedTicket } from "@/test/builders";
 
 let testDb: BetterSQLite3Database<typeof schema>;
 
@@ -34,16 +35,6 @@ vi.mock("@/lib/activity-logger", () => ({
 
 import { GET, PATCH } from "./route";
 
-function seedTicket(db: BetterSQLite3Database<typeof schema>, key: string) {
-  db.insert(ticket)
-    .values({
-      jiraKey: key,
-      title: `Ticket ${key}`,
-      status: "TO DO",
-    })
-    .run();
-}
-
 function makeParams(key: string): { params: Promise<{ key: string }> } {
   return { params: Promise.resolve({ key }) };
 }
@@ -55,7 +46,7 @@ describe("GET /api/tickets/[key]", () => {
   });
 
   it("returns ticket when found", async () => {
-    seedTicket(testDb, "VPL-100");
+    seedTicket(testDb, { jiraKey: "VPL-100" });
 
     const response = await GET(
       new Request("http://localhost:3100/api/tickets/VPL-100"),
@@ -66,7 +57,7 @@ describe("GET /api/tickets/[key]", () => {
     expect(response.status).toBe(200);
     // New shape: `key` field (mapped from jiraKey)
     expect(data.key).toBe("VPL-100");
-    expect(data.title).toBe("Ticket VPL-100");
+    expect(data.title).toBe("Test ticket");
   });
 
   it("returns 404 when ticket not found", async () => {
@@ -79,7 +70,7 @@ describe("GET /api/tickets/[key]", () => {
   });
 
   it("includes PO metadata when available", async () => {
-    seedTicket(testDb, "VPL-100");
+    seedTicket(testDb, { jiraKey: "VPL-100" });
 
     const { ticketMetadata } = await import("@/db/schema");
     testDb
@@ -102,7 +93,7 @@ describe("GET /api/tickets/[key]", () => {
   });
 
   it("sets Cache-Control to no-cache on cache miss", async () => {
-    seedTicket(testDb, "VPL-100");
+    seedTicket(testDb, { jiraKey: "VPL-100" });
 
     const response = await GET(
       new Request("http://localhost:3100/api/tickets/VPL-100"),
@@ -113,7 +104,7 @@ describe("GET /api/tickets/[key]", () => {
   });
 
   it("sets Cache-Control to no-cache on cache hit", async () => {
-    seedTicket(testDb, "VPL-100");
+    seedTicket(testDb, { jiraKey: "VPL-100" });
 
     // Prime the cache
     await GET(
@@ -139,7 +130,7 @@ describe("PATCH /api/tickets/[key] - story points", () => {
   });
 
   it("updates story points in the database", async () => {
-    seedTicket(testDb, "VPL-200");
+    seedTicket(testDb, { jiraKey: "VPL-200" });
 
     const response = await PATCH(
       new Request("http://localhost:3100/api/tickets/VPL-200", {
@@ -165,7 +156,7 @@ describe("PATCH /api/tickets/[key] - story points", () => {
   });
 
   it("pushes numeric story points to Jira", async () => {
-    seedTicket(testDb, "VPL-201");
+    seedTicket(testDb, { jiraKey: "VPL-201" });
     const { jiraClient } = await import("@/lib/jira-client");
 
     await PATCH(
@@ -184,7 +175,7 @@ describe("PATCH /api/tickets/[key] - story points", () => {
   });
 
   it("pushes null to Jira when story points is 0 (N/A)", async () => {
-    seedTicket(testDb, "VPL-202");
+    seedTicket(testDb, { jiraKey: "VPL-202" });
     const { jiraClient } = await import("@/lib/jira-client");
 
     await PATCH(
@@ -203,7 +194,7 @@ describe("PATCH /api/tickets/[key] - story points", () => {
   });
 
   it("pushes null to Jira when story points is null (unset)", async () => {
-    seedTicket(testDb, "VPL-203");
+    seedTicket(testDb, { jiraKey: "VPL-203" });
     const { jiraClient } = await import("@/lib/jira-client");
 
     await PATCH(
@@ -235,7 +226,7 @@ describe("PATCH /api/tickets/[key] - story points", () => {
   });
 
   it("returns 400 for invalid storyPoints value", async () => {
-    seedTicket(testDb, "VPL-204");
+    seedTicket(testDb, { jiraKey: "VPL-204" });
 
     const response = await PATCH(
       new Request("http://localhost:3100/api/tickets/VPL-204", {
@@ -250,7 +241,7 @@ describe("PATCH /api/tickets/[key] - story points", () => {
   });
 
   it("returns 400 when no valid fields provided", async () => {
-    seedTicket(testDb, "VPL-205");
+    seedTicket(testDb, { jiraKey: "VPL-205" });
 
     const response = await PATCH(
       new Request("http://localhost:3100/api/tickets/VPL-205", {
@@ -273,7 +264,7 @@ describe("PATCH /api/tickets/[key] - epic", () => {
   });
 
   it("sets epic in the database when epicKey provided", async () => {
-    seedTicket(testDb, "VPL-300");
+    seedTicket(testDb, { jiraKey: "VPL-300" });
     // Seed the epic ticket so the name can be resolved
     testDb.insert(ticket).values({ jiraKey: "VPL-50", title: "My Epic", status: "TO DO" }).run();
 
@@ -303,7 +294,7 @@ describe("PATCH /api/tickets/[key] - epic", () => {
   });
 
   it("calls jiraClient.updateIssue with parent key", async () => {
-    seedTicket(testDb, "VPL-301");
+    seedTicket(testDb, { jiraKey: "VPL-301" });
     const { jiraClient } = await import("@/lib/jira-client");
 
     await PATCH(
@@ -347,7 +338,7 @@ describe("PATCH /api/tickets/[key] - epic", () => {
   });
 
   it("calls jiraClient.updateIssue with null parent on removal", async () => {
-    seedTicket(testDb, "VPL-303");
+    seedTicket(testDb, { jiraKey: "VPL-303" });
     const { jiraClient } = await import("@/lib/jira-client");
 
     await PATCH(
@@ -366,7 +357,7 @@ describe("PATCH /api/tickets/[key] - epic", () => {
   });
 
   it("returns 400 for invalid epicKey type", async () => {
-    seedTicket(testDb, "VPL-304");
+    seedTicket(testDb, { jiraKey: "VPL-304" });
 
     const response = await PATCH(
       new Request("http://localhost:3100/api/tickets/VPL-304", {
@@ -381,7 +372,7 @@ describe("PATCH /api/tickets/[key] - epic", () => {
   });
 
   it("returns 400 for empty string epicKey", async () => {
-    seedTicket(testDb, "VPL-305");
+    seedTicket(testDb, { jiraKey: "VPL-305" });
 
     const response = await PATCH(
       new Request("http://localhost:3100/api/tickets/VPL-305", {
@@ -396,7 +387,7 @@ describe("PATCH /api/tickets/[key] - epic", () => {
   });
 
   it("falls back to epicKey as name when epic not found locally", async () => {
-    seedTicket(testDb, "VPL-306");
+    seedTicket(testDb, { jiraKey: "VPL-306" });
 
     const response = await PATCH(
       new Request("http://localhost:3100/api/tickets/VPL-306", {
@@ -422,7 +413,7 @@ describe("PATCH /api/tickets/[key] - flagged", () => {
   });
 
   it("flags a ticket and persists to database", async () => {
-    seedTicket(testDb, "VPL-400");
+    seedTicket(testDb, { jiraKey: "VPL-400" });
 
     const response = await PATCH(
       new Request("http://localhost:3100/api/tickets/VPL-400", {
@@ -471,7 +462,7 @@ describe("PATCH /api/tickets/[key] - flagged", () => {
   });
 
   it("calls addFlagComment with reason when flagging with reason", async () => {
-    seedTicket(testDb, "VPL-402");
+    seedTicket(testDb, { jiraKey: "VPL-402" });
     const { jiraClient } = await import("@/lib/jira-client");
 
     await PATCH(
@@ -516,7 +507,7 @@ describe("PATCH /api/tickets/[key] - flagged", () => {
   });
 
   it("does not post a comment when flagging without reason", async () => {
-    seedTicket(testDb, "VPL-404");
+    seedTicket(testDb, { jiraKey: "VPL-404" });
     const { jiraClient } = await import("@/lib/jira-client");
 
     await PATCH(
@@ -534,7 +525,7 @@ describe("PATCH /api/tickets/[key] - flagged", () => {
   });
 
   it("returns 400 when flagged is not a boolean", async () => {
-    seedTicket(testDb, "VPL-405");
+    seedTicket(testDb, { jiraKey: "VPL-405" });
 
     const response = await PATCH(
       new Request("http://localhost:3100/api/tickets/VPL-405", {
@@ -557,7 +548,7 @@ describe("PATCH /api/tickets/[key] - jiraUpdatedAt sync", () => {
   });
 
   it("syncs jiraUpdatedAt after story points push to Jira", async () => {
-    seedTicket(testDb, "VPL-500");
+    seedTicket(testDb, { jiraKey: "VPL-500" });
     const { jiraClient } = await import("@/lib/jira-client");
 
     vi.mocked(jiraClient.getIssue).mockResolvedValue({
@@ -580,7 +571,7 @@ describe("PATCH /api/tickets/[key] - jiraUpdatedAt sync", () => {
   });
 
   it("syncs jiraUpdatedAt after issue type change", async () => {
-    seedTicket(testDb, "VPL-501");
+    seedTicket(testDb, { jiraKey: "VPL-501" });
     const { jiraClient } = await import("@/lib/jira-client");
 
     vi.mocked(jiraClient.getIssue).mockResolvedValue({
@@ -603,7 +594,7 @@ describe("PATCH /api/tickets/[key] - jiraUpdatedAt sync", () => {
   });
 
   it("syncs jiraUpdatedAt after flag toggle", async () => {
-    seedTicket(testDb, "VPL-502");
+    seedTicket(testDb, { jiraKey: "VPL-502" });
     const { jiraClient } = await import("@/lib/jira-client");
 
     vi.mocked(jiraClient.getIssue).mockResolvedValue({

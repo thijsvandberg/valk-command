@@ -3,7 +3,7 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 import { createTestDb } from "@/db/test-utils";
 import type { BetterSQLite3Database } from "drizzle-orm/better-sqlite3";
 import type * as schema from "@/db/schema";
-import { ticket } from "@/db/schema";
+import { seedTicket } from "@/test/builders";
 
 let testDb: BetterSQLite3Database<typeof schema>;
 
@@ -14,10 +14,6 @@ vi.mock("@/db", () => ({
 }));
 
 import { GET, POST } from "./route";
-
-function seedTicket(db: BetterSQLite3Database<typeof schema>, key: string) {
-  db.insert(ticket).values({ jiraKey: key, title: `Ticket ${key}`, status: "TO DO" }).run();
-}
 
 function makeParams(key: string): { params: Promise<{ key: string }> } {
   return { params: Promise.resolve({ key }) };
@@ -55,7 +51,7 @@ describe("POST /api/tickets/[key]/comments", () => {
   });
 
   it("creates a PO comment", async () => {
-    seedTicket(testDb, "VPL-100");
+    seedTicket(testDb, { jiraKey: "VPL-100" });
     const res = await POST(
       postRequest("VPL-100", { content: "Test comment" }),
       makeParams("VPL-100"),
@@ -84,7 +80,7 @@ describe("POST /api/tickets/[key]/comments", () => {
   });
 
   it("comment appears in GET response", async () => {
-    seedTicket(testDb, "VPL-100");
+    seedTicket(testDb, { jiraKey: "VPL-100" });
     await POST(
       postRequest("VPL-100", { content: "First comment" }),
       makeParams("VPL-100"),

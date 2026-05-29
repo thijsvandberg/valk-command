@@ -5,6 +5,7 @@ import type { BetterSQLite3Database } from "drizzle-orm/better-sqlite3";
 import type * as schema from "@/db/schema";
 import { ticket, ticketLink } from "@/db/schema";
 import { eq } from "drizzle-orm";
+import { seedTicket } from "@/test/builders";
 
 let testDb: BetterSQLite3Database<typeof schema>;
 
@@ -60,12 +61,8 @@ function deleteRequest(key: string, body: unknown): Request {
   });
 }
 
-function seedTicket(key: string, title?: string) {
-  testDb.insert(ticket).values({
-    jiraKey: key,
-    title: title ?? `Ticket ${key}`,
-    status: "TO DO",
-  }).run();
+function seed(key: string, title?: string) {
+  seedTicket(testDb, { jiraKey: key, title: title ?? `Ticket ${key}` });
 }
 
 describe("POST /api/tickets/[key]/links", () => {
@@ -75,8 +72,8 @@ describe("POST /api/tickets/[key]/links", () => {
   });
 
   it("creates a link with default relation", async () => {
-    seedTicket("VPL-100");
-    seedTicket("VPL-200", "Target ticket");
+    seed("VPL-100");
+    seed("VPL-200", "Target ticket");
 
     const res = await POST(
       postRequest("VPL-100", { targetKey: "VPL-200", relation: "relates to" }),
@@ -90,8 +87,8 @@ describe("POST /api/tickets/[key]/links", () => {
   });
 
   it("inserts link into local database", async () => {
-    seedTicket("VPL-100");
-    seedTicket("VPL-200");
+    seed("VPL-100");
+    seed("VPL-200");
 
     await POST(
       postRequest("VPL-100", { targetKey: "VPL-200", relation: "blocks" }),
@@ -106,7 +103,7 @@ describe("POST /api/tickets/[key]/links", () => {
   });
 
   it("calls Jira createIssueLink", async () => {
-    seedTicket("VPL-100");
+    seed("VPL-100");
     const { jiraClient } = await import("@/lib/jira-client");
 
     await POST(
@@ -118,7 +115,7 @@ describe("POST /api/tickets/[key]/links", () => {
   });
 
   it("handles inward relations correctly", async () => {
-    seedTicket("VPL-100");
+    seed("VPL-100");
     const { jiraClient } = await import("@/lib/jira-client");
 
     await POST(
@@ -139,7 +136,7 @@ describe("POST /api/tickets/[key]/links", () => {
   });
 
   it("returns 400 for missing targetKey", async () => {
-    seedTicket("VPL-100");
+    seed("VPL-100");
     const res = await POST(
       postRequest("VPL-100", {}),
       makeParams("VPL-100"),
@@ -148,7 +145,7 @@ describe("POST /api/tickets/[key]/links", () => {
   });
 
   it("maps dynamically fetched link types correctly", async () => {
-    seedTicket("VPL-100");
+    seed("VPL-100");
     const { jiraClient } = await import("@/lib/jira-client");
 
     await POST(
@@ -160,7 +157,7 @@ describe("POST /api/tickets/[key]/links", () => {
   });
 
   it("maps inward direction for dynamic link types", async () => {
-    seedTicket("VPL-100");
+    seed("VPL-100");
     const { jiraClient } = await import("@/lib/jira-client");
 
     await POST(
@@ -173,7 +170,7 @@ describe("POST /api/tickets/[key]/links", () => {
   });
 
   it("uses jiraTypeName and direction from request body when provided", async () => {
-    seedTicket("VPL-100");
+    seed("VPL-100");
     const { jiraClient } = await import("@/lib/jira-client");
 
     await POST(
@@ -191,7 +188,7 @@ describe("POST /api/tickets/[key]/links", () => {
   });
 
   it("falls back to default when Jira link types fail", async () => {
-    seedTicket("VPL-100");
+    seed("VPL-100");
     const { jiraClient } = await import("@/lib/jira-client");
     vi.mocked(jiraClient.getIssueLinkTypes).mockRejectedValueOnce(new Error("Jira down"));
 
@@ -211,7 +208,7 @@ describe("DELETE /api/tickets/[key]/links", () => {
   });
 
   it("deletes a link from local DB", async () => {
-    seedTicket("VPL-100");
+    seed("VPL-100");
     testDb.insert(ticketLink).values({
       id: "link-1",
       ticketKey: "VPL-100",
@@ -234,7 +231,7 @@ describe("DELETE /api/tickets/[key]/links", () => {
   });
 
   it("calls Jira deleteIssueLink when jiraLinkId is provided", async () => {
-    seedTicket("VPL-100");
+    seed("VPL-100");
     testDb.insert(ticketLink).values({
       id: "link-1",
       ticketKey: "VPL-100",
@@ -257,7 +254,7 @@ describe("DELETE /api/tickets/[key]/links", () => {
   });
 
   it("skips Jira call when no jiraLinkId", async () => {
-    seedTicket("VPL-100");
+    seed("VPL-100");
     testDb.insert(ticketLink).values({
       id: "link-1",
       ticketKey: "VPL-100",
@@ -295,7 +292,7 @@ describe("jiraUpdatedAt sync after link operations", () => {
   });
 
   it("syncs jiraUpdatedAt after creating a link", async () => {
-    seedTicket("VPL-300");
+    seed("VPL-300");
 
     const { jiraClient } = await import("@/lib/jira-client");
     vi.mocked(jiraClient.getIssue).mockResolvedValue({
@@ -312,7 +309,7 @@ describe("jiraUpdatedAt sync after link operations", () => {
   });
 
   it("syncs jiraUpdatedAt after deleting a link", async () => {
-    seedTicket("VPL-300");
+    seed("VPL-300");
     testDb.insert(ticketLink).values({
       id: "link-sync",
       ticketKey: "VPL-300",

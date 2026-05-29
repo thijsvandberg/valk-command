@@ -3,7 +3,7 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 import { createTestDb } from "@/db/test-utils";
 import type { BetterSQLite3Database } from "drizzle-orm/better-sqlite3";
 import type * as schema from "@/db/schema";
-import { ticket } from "@/db/schema";
+import { seedTicket } from "@/test/builders";
 
 let testDb: BetterSQLite3Database<typeof schema>;
 
@@ -36,16 +36,6 @@ vi.mock("@/lib/logger", () => ({
 import { PUT } from "./route";
 import { jiraClient } from "@/lib/jira-client";
 
-function seedTicket(db: BetterSQLite3Database<typeof schema>, key: string) {
-  db.insert(ticket)
-    .values({
-      jiraKey: key,
-      title: `Ticket ${key}`,
-      status: "TO DO",
-    })
-    .run();
-}
-
 function makeParams(key: string): { params: Promise<{ key: string }> } {
   return { params: Promise.resolve({ key }) };
 }
@@ -65,7 +55,7 @@ describe("PUT /api/tickets/[key]/status", () => {
   });
 
   it("returns 400 for missing status", async () => {
-    seedTicket(testDb, "BRDG-1");
+    seedTicket(testDb, { jiraKey: "BRDG-1" });
 
     const response = await PUT(
       putRequest("BRDG-1", {}),
@@ -78,7 +68,7 @@ describe("PUT /api/tickets/[key]/status", () => {
   });
 
   it("returns 400 for invalid status value", async () => {
-    seedTicket(testDb, "BRDG-1");
+    seedTicket(testDb, { jiraKey: "BRDG-1" });
 
     const response = await PUT(
       putRequest("BRDG-1", { status: "INVALID" }),
@@ -100,7 +90,7 @@ describe("PUT /api/tickets/[key]/status", () => {
   });
 
   it("updates status and returns it", async () => {
-    seedTicket(testDb, "BRDG-1");
+    seedTicket(testDb, { jiraKey: "BRDG-1" });
 
     const response = await PUT(
       putRequest("BRDG-1", { status: "IN PROGRESS" }),
@@ -113,7 +103,7 @@ describe("PUT /api/tickets/[key]/status", () => {
   });
 
   it("returns jiraWarning if Jira transition fails", async () => {
-    seedTicket(testDb, "BRDG-1");
+    seedTicket(testDb, { jiraKey: "BRDG-1" });
     vi.mocked(jiraClient.transitionIssue).mockRejectedValueOnce(
       new Error("Jira unavailable"),
     );

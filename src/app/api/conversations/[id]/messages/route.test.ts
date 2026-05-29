@@ -3,6 +3,8 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 import { createTestDb } from "@/db/test-utils";
 import type { BetterSQLite3Database } from "drizzle-orm/better-sqlite3";
 import type * as schema from "@/db/schema";
+import { seedConversation } from "@/test/builders";
+import { buildJson, buildParams } from "@/test/request-helpers";
 
 let testDb: BetterSQLite3Database<typeof schema>;
 
@@ -13,26 +15,6 @@ vi.mock("@/db", () => ({
 }));
 
 import { POST } from "./route";
-import { POST as createConversation } from "../../route";
-
-function makeParams(id: string) {
-  return { params: Promise.resolve({ id }) };
-}
-
-function jsonRequest(url: string, body: unknown): Request {
-  return new Request(url, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(body),
-  });
-}
-
-async function seedConversation(title = "Test chat") {
-  const response = await createConversation(
-    jsonRequest("http://localhost/api/conversations", { title }),
-  );
-  return response.json();
-}
 
 describe("POST /api/conversations/[id]/messages", () => {
   beforeEach(() => {
@@ -40,35 +22,35 @@ describe("POST /api/conversations/[id]/messages", () => {
   });
 
   it("creates a user message", async () => {
-    const conversation = await seedConversation();
+    const conv = seedConversation(testDb);
 
     const response = await POST(
-      jsonRequest(`http://localhost/api/conversations/${conversation.id}/messages`, {
+      buildJson("POST", `/api/conversations/${conv.id}/messages`, {
         role: "user",
         content: "Hello, world!",
       }),
-      makeParams(conversation.id),
+      buildParams({ id: conv.id! }),
     );
     const data = await response.json();
 
     expect(response.status).toBe(201);
     expect(data.role).toBe("user");
     expect(data.content).toBe("Hello, world!");
-    expect(data.conversationId).toBe(conversation.id);
+    expect(data.conversationId).toBe(conv.id);
     expect(data.id).toBeDefined();
     expect(data.timestamp).toBeDefined();
     expect(data.workspaceTaskId).toBeNull();
   });
 
   it("creates an assistant message", async () => {
-    const conversation = await seedConversation();
+    const conv = seedConversation(testDb);
 
     const response = await POST(
-      jsonRequest(`http://localhost/api/conversations/${conversation.id}/messages`, {
+      buildJson("POST", `/api/conversations/${conv.id}/messages`, {
         role: "assistant",
         content: "I can help with that.",
       }),
-      makeParams(conversation.id),
+      buildParams({ id: conv.id! }),
     );
     const data = await response.json();
 
@@ -77,15 +59,15 @@ describe("POST /api/conversations/[id]/messages", () => {
   });
 
   it("creates a message with workspaceTaskId", async () => {
-    const conversation = await seedConversation();
+    const conv = seedConversation(testDb);
 
     const response = await POST(
-      jsonRequest(`http://localhost/api/conversations/${conversation.id}/messages`, {
+      buildJson("POST", `/api/conversations/${conv.id}/messages`, {
         role: "assistant",
         content: "Task result",
         workspaceTaskId: "task-123",
       }),
-      makeParams(conversation.id),
+      buildParams({ id: conv.id! }),
     );
     const data = await response.json();
 
@@ -93,14 +75,14 @@ describe("POST /api/conversations/[id]/messages", () => {
   });
 
   it("trims whitespace from content", async () => {
-    const conversation = await seedConversation();
+    const conv = seedConversation(testDb);
 
     const response = await POST(
-      jsonRequest(`http://localhost/api/conversations/${conversation.id}/messages`, {
+      buildJson("POST", `/api/conversations/${conv.id}/messages`, {
         role: "user",
         content: "  spaced  ",
       }),
-      makeParams(conversation.id),
+      buildParams({ id: conv.id! }),
     );
     const data = await response.json();
 
@@ -109,11 +91,11 @@ describe("POST /api/conversations/[id]/messages", () => {
 
   it("returns 404 for non-existent conversation", async () => {
     const response = await POST(
-      jsonRequest("http://localhost/api/conversations/does-not-exist/messages", {
+      buildJson("POST", "/api/conversations/does-not-exist/messages", {
         role: "user",
         content: "Hello",
       }),
-      makeParams("does-not-exist"),
+      buildParams({ id: "does-not-exist" }),
     );
     const data = await response.json();
 
@@ -122,13 +104,13 @@ describe("POST /api/conversations/[id]/messages", () => {
   });
 
   it("returns 400 when content is missing", async () => {
-    const conversation = await seedConversation();
+    const conv = seedConversation(testDb);
 
     const response = await POST(
-      jsonRequest(`http://localhost/api/conversations/${conversation.id}/messages`, {
+      buildJson("POST", `/api/conversations/${conv.id}/messages`, {
         role: "user",
       }),
-      makeParams(conversation.id),
+      buildParams({ id: conv.id! }),
     );
     const data = await response.json();
 
@@ -137,27 +119,27 @@ describe("POST /api/conversations/[id]/messages", () => {
   });
 
   it("returns 400 when content is empty", async () => {
-    const conversation = await seedConversation();
+    const conv = seedConversation(testDb);
 
     const response = await POST(
-      jsonRequest(`http://localhost/api/conversations/${conversation.id}/messages`, {
+      buildJson("POST", `/api/conversations/${conv.id}/messages`, {
         role: "user",
         content: "",
       }),
-      makeParams(conversation.id),
+      buildParams({ id: conv.id! }),
     );
 
     expect(response.status).toBe(400);
   });
 
   it("returns 400 when role is missing", async () => {
-    const conversation = await seedConversation();
+    const conv = seedConversation(testDb);
 
     const response = await POST(
-      jsonRequest(`http://localhost/api/conversations/${conversation.id}/messages`, {
+      buildJson("POST", `/api/conversations/${conv.id}/messages`, {
         content: "Hello",
       }),
-      makeParams(conversation.id),
+      buildParams({ id: conv.id! }),
     );
     const data = await response.json();
 
@@ -166,14 +148,14 @@ describe("POST /api/conversations/[id]/messages", () => {
   });
 
   it("returns 400 when role is invalid", async () => {
-    const conversation = await seedConversation();
+    const conv = seedConversation(testDb);
 
     const response = await POST(
-      jsonRequest(`http://localhost/api/conversations/${conversation.id}/messages`, {
+      buildJson("POST", `/api/conversations/${conv.id}/messages`, {
         role: "system",
         content: "Hello",
       }),
-      makeParams(conversation.id),
+      buildParams({ id: conv.id! }),
     );
     const data = await response.json();
 
@@ -182,18 +164,18 @@ describe("POST /api/conversations/[id]/messages", () => {
   });
 
   it("returns 400 for invalid JSON body", async () => {
-    const conversation = await seedConversation();
+    const conv = seedConversation(testDb);
 
     const response = await POST(
       new Request(
-        `http://localhost/api/conversations/${conversation.id}/messages`,
+        `http://localhost:3100/api/conversations/${conv.id}/messages`,
         {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: "not json",
         },
       ),
-      makeParams(conversation.id),
+      buildParams({ id: conv.id! }),
     );
 
     expect(response.status).toBe(400);
