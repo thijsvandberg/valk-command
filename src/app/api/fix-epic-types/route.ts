@@ -3,6 +3,7 @@ import { db } from "@/db";
 import { ticket } from "@/db/schema";
 import { eq, sql } from "drizzle-orm";
 import { cache } from "@/lib/cache";
+import { applyRateLimit } from "@/lib/rate-limiter";
 
 /**
  * One-time fix: identify tickets that are epics (referenced as epicKey by other
@@ -10,6 +11,9 @@ import { cache } from "@/lib/cache";
  * rule. Updates their type to "epic" and clears their sprintName.
  */
 export async function POST() {
+  const limited = await applyRateLimit("write");
+  if (limited) return limited;
+
   // Find all distinct epicKey values that reference existing tickets
   const epicKeys = await db
     .selectDistinct({ epicKey: ticket.epicKey })

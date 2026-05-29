@@ -3,6 +3,7 @@ import { runTaskNow } from "@/lib/scheduler";
 import { registerScheduledTasks } from "@/lib/scheduled-tasks";
 import { runIndependentTaskNow } from "@/lib/task-registry";
 import { validatePathParam } from "@/lib/api-validation";
+import { applyRateLimit } from "@/lib/rate-limiter";
 
 // Ensure all tasks are registered
 registerScheduledTasks();
@@ -17,6 +18,9 @@ export async function POST(
   _req: Request,
   { params }: { params: Promise<{ name: string }> },
 ) {
+  const limited = await applyRateLimit("workspace");
+  if (limited) return limited;
+
   const { name } = await params;
   const invalid = validatePathParam(name);
   if (invalid) return invalid;
