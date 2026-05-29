@@ -90,6 +90,6 @@ As a PO editing story descriptions, I want a proper link editor (like Jira's) so
 - [x] Protocol validation (http, https, mailto only)
 - [x] Ensure popover dismisses on Escape, outside click, and after apply
 - [x] Style both components to match existing editor toolbar tokens
-- [ ] Tests for LinkPopover (open, fill, apply, cancel, validation)
-- [ ] Tests for LinkFloatingToolbar (edit, unlink, open, copy actions)
+- [x] Tests for LinkPopover (open, fill, apply, cancel, validation)
+- [x] Tests for LinkFloatingToolbar (edit, unlink, open, copy actions)
 - [ ] Manual test: insert new link, edit existing link, unlink, copy URL
