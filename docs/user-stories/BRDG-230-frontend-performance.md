@@ -35,7 +35,7 @@ Order rationale: frontend bundle changes first (highest user-facing impact), the
 - [x] Part 3: Add loading.tsx streaming skeletons
 - [x] Part 4: Expand optimizePackageImports
 - [x] Part 5: Parallelize epic children in ticket detail API
-- [ ] Part 6: Add missing database indexes
+- [x] Part 6: Add missing database indexes
 - [x] Part 7: Activity log stats query optimization
 - [ ] All parts verified: lint, typecheck, test, build pass
 - [ ] Manual verification: all affected routes load correctly

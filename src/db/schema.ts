@@ -14,6 +14,7 @@ export const conversation = sqliteTable("conversation", {
   readAt: text("read_at"),
 }, (table) => [
   index("conversation_created_at_idx").on(table.createdAt),
+  index("conversation_related_ticket_idx").on(table.relatedTicket),
 ]);
 
 export const message = sqliteTable("message", {
@@ -155,7 +156,7 @@ export const storyVersion = sqliteTable("story_version", {
     .notNull()
     .default(sql`(datetime('now'))`),
 }, (table) => [
-  index("story_version_jira_key_idx").on(table.jiraKey),
+  index("story_version_jira_key_created_at_idx").on(table.jiraKey, table.createdAt),
 ]);
 
 export const alert = sqliteTable("alert", {
@@ -348,8 +349,7 @@ export const storedReview = sqliteTable("stored_review", {
   summary: text("summary").notNull(),
   suggestions: text("suggestions").notNull(),
 }, (table) => [
-  index("stored_review_ticket_key_idx").on(table.ticketKey),
-  index("stored_review_created_at_idx").on(table.createdAt),
+  index("stored_review_ticket_key_created_at_idx").on(table.ticketKey, table.createdAt),
 ]);
 
 // Pipeline runs: persisted Bitbucket pipeline data for historical tracking and notifications
