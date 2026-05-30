@@ -1,6 +1,6 @@
 # BRDG-236: Draggable Focus-Mode Exit Button (Corner Snapping)
 
-**Status:** To Do
+**Status:** Done
 **Priority:** Low
 **Type:** Enhancement
 
@@ -101,4 +101,4 @@ Enter focus mode, drag to each corner (spring snap), reload (persistence), plain
 - [x] Persist chosen corner across reloads and sessions; default to top-right
 - [x] Keep existing subtle resting/hover styling in all four corners
 - [x] Tests for `useCornerSnap` (quadrant resolution, click-vs-drag, persistence)
-- [ ] Manual test: drag to each corner, reload, and confirm click-to-exit still works
+- [x] Manual test: drag to each corner, reload, and confirm click-to-exit still works
