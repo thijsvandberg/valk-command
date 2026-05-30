@@ -15,12 +15,14 @@ export function StoryPointPicker({
   align = "right",
   subtle = false,
   size = "sm",
+  onOpenChange,
 }: {
   value: number | null;
   onChange: (v: number | null) => void;
   align?: "left" | "right";
   subtle?: boolean;
   size?: "sm" | "lg";
+  onOpenChange?: (open: boolean) => void;
 }) {
   const isLg = size === "lg";
   const [hovered, setHovered] = useState(false);
@@ -34,9 +36,11 @@ export function StoryPointPicker({
     portal: true,
     align,
     popoverHeight: isLg ? 80 : 48,
+    onOpen: () => onOpenChange?.(true),
     onClose: () => {
       setCustomMode(false);
       setCustomInput("");
+      onOpenChange?.(false);
     },
   });
 

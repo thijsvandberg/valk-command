@@ -18,6 +18,8 @@ import { ISSUE_TYPE_COLORS } from "@/components/shared/IssueTypeIcon";
 import { getJiraUrl } from "@/lib/jira-url";
 import { IssueTypeIcon } from "@/components/shared/IssueTypeIcon";
 import { formatTicketShare } from "@/lib/ticket-share";
+import { StoryPointPicker } from "@/components/shared/StoryPointPicker";
+import { BusinessValuePicker } from "@/components/shared/BusinessValuePicker";
 
 // ---------------------------------------------------------------------------
 // Readiness icon helper
@@ -366,7 +368,28 @@ function InfoRow({ label, children }: { label: string; children: ReactNode }) {
   );
 }
 
-function TicketHoverCard({ triggerRef, data }: { triggerRef: { current: HTMLElement | null }; data: TicketPillHoverData }) {
+interface TicketHoverCardProps {
+  triggerRef: { current: HTMLElement | null };
+  data: TicketPillHoverData;
+  onMouseEnter: () => void;
+  onMouseLeave: () => void;
+  /** When provided, Story Points become editable via an inline picker. */
+  onStoryPointsChange?: (value: number | null) => void;
+  /** When provided, Business Value becomes editable via an inline picker. */
+  onBusinessValueChange?: (value: number | null) => void;
+  /** Notifies the parent when an inline picker opens/closes (to keep the card open). */
+  onPickerOpenChange: (open: boolean) => void;
+}
+
+function TicketHoverCard({
+  triggerRef,
+  data,
+  onMouseEnter,
+  onMouseLeave,
+  onStoryPointsChange,
+  onBusinessValueChange,
+  onPickerOpenChange,
+}: TicketHoverCardProps) {
   const [pos, setPos] = useState<{ left: number; top: number; openUp: boolean } | null>(null);
   const [shown, setShown] = useState(false);
 
@@ -391,7 +414,9 @@ function TicketHoverCard({ triggerRef, data }: { triggerRef: { current: HTMLElem
   return createPortal(
     <div
       role="tooltip"
-      className="pointer-events-none fixed z-[9999] w-64 rounded-lg border border-border-default bg-[var(--color-surface-floating)] p-3 text-left normal-case tracking-normal shadow-[var(--shadow-popover)] transition-[opacity,transform] duration-150 ease-out"
+      onMouseEnter={onMouseEnter}
+      onMouseLeave={onMouseLeave}
+      className="fixed z-[9999] w-64 rounded-lg border border-border-default bg-[var(--color-surface-floating)] p-3 text-left normal-case tracking-normal shadow-[var(--shadow-popover)] transition-[opacity,transform] duration-150 ease-out"
       style={{
         left: pos.left,
         ...(pos.openUp ? { bottom: window.innerHeight - pos.top } : { top: pos.top }),
@@ -401,9 +426,17 @@ function TicketHoverCard({ triggerRef, data }: { triggerRef: { current: HTMLElem
     >
       <div className="text-body-sm font-medium leading-snug text-text-primary">{data.title}</div>
 
-      <div className="mt-2 flex items-center gap-5 border-t border-border-subtle pt-2">
-        <ScoreChip label="SP" value={data.storyPoints} colors={data.storyPoints != null ? getSpColor(data.storyPoints) : null} />
-        <ScoreChip label="BV" value={data.businessValue} colors={data.businessValue != null ? getBvColor(data.businessValue) : null} />
+      <div className="mt-2 flex items-center gap-3 border-t border-border-subtle pt-2">
+        {onStoryPointsChange ? (
+          <StoryPointPicker value={data.storyPoints} onChange={onStoryPointsChange} size="lg" align="left" onOpenChange={onPickerOpenChange} />
+        ) : (
+          <ScoreChip label="SP" value={data.storyPoints} colors={data.storyPoints != null ? getSpColor(data.storyPoints) : null} />
+        )}
+        {onBusinessValueChange ? (
+          <BusinessValuePicker value={data.businessValue} onChange={onBusinessValueChange} size="lg" align="left" onOpenChange={onPickerOpenChange} />
+        ) : (
+          <ScoreChip label="BV" value={data.businessValue} colors={data.businessValue != null ? getBvColor(data.businessValue) : null} />
+        )}
       </div>
 
       <div className="mt-2 flex flex-col gap-1.5">
@@ -460,6 +493,10 @@ export interface TicketStatusPillProps {
   hoverData?: TicketPillHoverData;
   /** Enable the hover card (default: true). Combined with hoverData being present. */
   showHoverCard?: boolean;
+  /** When provided, Story Points become editable inside the hover card. */
+  onStoryPointsChange?: (value: number | null) => void;
+  /** When provided, Business Value becomes editable inside the hover card. */
+  onBusinessValueChange?: (value: number | null) => void;
 }
 
 export function TicketStatusPill({
@@ -478,6 +515,8 @@ export function TicketStatusPill({
   showStatus = true,
   hoverData,
   showHoverCard = true,
+  onStoryPointsChange,
+  onBusinessValueChange,
 }: TicketStatusPillProps) {
   const [issueTypeDropdownOpen, setIssueTypeDropdownOpen] = useState(false);
   const [keyDropdownOpen, setKeyDropdownOpen] = useState(false);
@@ -490,29 +529,53 @@ export function TicketStatusPill({
   const jiraStatusBtnRef = useRef<HTMLButtonElement>(null);
   const readinessBtnRef = useRef<HTMLButtonElement>(null);
 
-  // Hover card: shown after a short delay while pointer is over the pill.
+  // Hover card: opens after a short delay on hover and stays open while the
+  // pointer is over the pill OR the card (with a grace period when travelling
+  // between them), or while an inline picker inside the card is open.
   const wrapperRef = useRef<HTMLDivElement>(null);
   const [hoverCardVisible, setHoverCardVisible] = useState(false);
-  const hoverTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const openTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const closeTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const cardPickerOpenRef = useRef(false);
 
   const hoverCardEnabled = showHoverCard && hoverData != null;
   const anyDropdownOpen = issueTypeDropdownOpen || keyDropdownOpen || jiraDropdownOpen || readinessDropdownOpen;
 
+  const clearOpenTimer = () => {
+    if (openTimerRef.current) { clearTimeout(openTimerRef.current); openTimerRef.current = null; }
+  };
+  const clearCloseTimer = () => {
+    if (closeTimerRef.current) { clearTimeout(closeTimerRef.current); closeTimerRef.current = null; }
+  };
+
+  // Grace period before closing, so the pointer can travel from pill to card.
+  const scheduleClose = () => {
+    clearCloseTimer();
+    closeTimerRef.current = setTimeout(() => {
+      if (!cardPickerOpenRef.current) setHoverCardVisible(false);
+    }, 250);
+  };
+
   const handleHoverEnter = () => {
     if (!hoverCardEnabled || anyDropdownOpen) return;
-    if (hoverTimerRef.current) clearTimeout(hoverTimerRef.current);
-    hoverTimerRef.current = setTimeout(() => setHoverCardVisible(true), 400);
+    clearCloseTimer();
+    if (hoverCardVisible) return;
+    clearOpenTimer();
+    openTimerRef.current = setTimeout(() => setHoverCardVisible(true), 400);
   };
 
   const handleHoverLeave = () => {
-    if (hoverTimerRef.current) {
-      clearTimeout(hoverTimerRef.current);
-      hoverTimerRef.current = null;
-    }
-    setHoverCardVisible(false);
+    clearOpenTimer();
+    scheduleClose();
   };
 
-  useEffect(() => () => { if (hoverTimerRef.current) clearTimeout(hoverTimerRef.current); }, []);
+  const handleCardPickerOpenChange = (open: boolean) => {
+    cardPickerOpenRef.current = open;
+    if (open) clearCloseTimer();
+    else scheduleClose();
+  };
+
+  useEffect(() => () => { clearOpenTimer(); clearCloseTimer(); }, []);
 
   const hoverProps = hoverCardEnabled
     ? { onMouseEnter: handleHoverEnter, onMouseLeave: handleHoverLeave, onFocus: handleHoverEnter, onBlur: handleHoverLeave }
@@ -520,7 +583,15 @@ export function TicketStatusPill({
 
   // Hidden while any click dropdown is open so the two never overlap.
   const hoverCardEl = hoverCardVisible && !anyDropdownOpen && hoverData
-    ? <TicketHoverCard triggerRef={wrapperRef} data={hoverData} />
+    ? <TicketHoverCard
+        triggerRef={wrapperRef}
+        data={hoverData}
+        onMouseEnter={clearCloseTimer}
+        onMouseLeave={scheduleClose}
+        onStoryPointsChange={onStoryPointsChange}
+        onBusinessValueChange={onBusinessValueChange}
+        onPickerOpenChange={handleCardPickerOpenChange}
+      />
     : null;
 
   const jiraUrl = getJiraUrl(ticketKey);

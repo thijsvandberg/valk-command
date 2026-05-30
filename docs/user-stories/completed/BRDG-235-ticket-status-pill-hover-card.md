@@ -96,3 +96,12 @@ interface TicketPillHoverData {
 ## Dependencies
 
 None.
+
+## Follow-up enhancement (2026-05-30): interactive popover
+
+Per PO request, the card became an interactive popover instead of a read-only tooltip:
+
+- **Stays open on hover-bridge**: opens on hover (400ms) and stays open while the pointer is over the pill *or* the card, with a 250ms grace period when travelling between them, so you can move the mouse into it.
+- **Editable Story Points & Business Value**: when the pill receives `onStoryPointsChange` / `onBusinessValueChange`, SP and BV render as inline `StoryPointPicker` / `BusinessValuePicker` (size `lg`) instead of static chips. The card stays open while a picker is open (tracked via a new optional `onOpenChange` prop threaded through `usePickerState`). Where no handler is passed (e.g. refinement rows), SP/BV stay read-only chips.
+- **Wiring**: sprint-board `TicketRow` now passes the SP/BV change handlers to the pill. Editing in refinement was left out of scope (those handlers aren't plumbed through the session page).
+- Verified in-app: hovering the pill, moving into the card, and opening the SP picker all keep the card open; SP/BV pickers function. Covered by added tests in `TicketStatusPill.test.tsx` (grace-period close, stays-open-on-card-enter, editable picker fires onChange, stays-open-while-picker-open, read-only fallback).

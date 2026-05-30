@@ -197,6 +197,8 @@ export const TicketRow = memo(forwardRef<HTMLTableRowElement, TicketRowBaseProps
                   variant="list"
                   size="lg"
                   removedFromJira={isRemoved}
+                  onStoryPointsChange={isRemoved ? undefined : (onStoryPointsChange ? (v) => onStoryPointsChange(ticket.key, v) : undefined)}
+                  onBusinessValueChange={isRemoved ? undefined : (onBusinessValueChange ? (v) => onBusinessValueChange(ticket.key, v) : undefined)}
                   hoverData={{
                     title: ticket.title,
                     storyPoints: ticket.storyPoints,

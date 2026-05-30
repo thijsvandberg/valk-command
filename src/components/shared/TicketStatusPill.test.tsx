@@ -271,14 +271,63 @@ describe("TicketStatusPill hover card", () => {
     expect(screen.queryByRole("tooltip")).toBeNull();
   });
 
-  it("hides the card on mouse leave", () => {
+  it("hides the card after the grace period on mouse leave", () => {
     const { container } = render(
       <TicketStatusPill ticketKey="VPL-1" jiraStatus="TO DO" hoverData={fullData} />,
     );
     openCard(container);
     expect(screen.getByRole("tooltip")).toBeTruthy();
     act(() => { fireEvent.mouseLeave(container.firstChild as Element); });
+    // Still open during the grace period...
+    expect(screen.getByRole("tooltip")).toBeTruthy();
+    act(() => { vi.advanceTimersByTime(250); });
+    // ...closed after it elapses.
     expect(screen.queryByRole("tooltip")).toBeNull();
+  });
+
+  it("stays open when the pointer moves from the pill into the card", () => {
+    const { container } = render(
+      <TicketStatusPill ticketKey="VPL-1" jiraStatus="TO DO" hoverData={fullData} />,
+    );
+    openCard(container);
+    const card = screen.getByRole("tooltip");
+    act(() => { fireEvent.mouseLeave(container.firstChild as Element); }); // leaving the pill schedules a close
+    act(() => { fireEvent.mouseEnter(card); }); // entering the card cancels it
+    act(() => { vi.advanceTimersByTime(300); });
+    expect(screen.getByRole("tooltip")).toBeTruthy();
+  });
+
+  it("renders an editable Story Points picker when onStoryPointsChange is provided", () => {
+    const onSp = vi.fn();
+    const { container } = render(
+      <TicketStatusPill ticketKey="VPL-1" jiraStatus="TO DO" hoverData={fullData} onStoryPointsChange={onSp} />,
+    );
+    openCard(container);
+    act(() => { fireEvent.click(screen.getByTitle("Story Points: 5")); });
+    act(() => { fireEvent.click(screen.getByText("8")); });
+    expect(onSp).toHaveBeenCalledWith(8);
+  });
+
+  it("keeps the card open while an inline picker is open, even after leaving the card", () => {
+    const onSp = vi.fn();
+    const { container } = render(
+      <TicketStatusPill ticketKey="VPL-1" jiraStatus="TO DO" hoverData={fullData} onStoryPointsChange={onSp} />,
+    );
+    openCard(container);
+    act(() => { fireEvent.click(screen.getByTitle("Story Points: 5")); }); // opens the picker
+    act(() => { fireEvent.mouseLeave(container.firstChild as Element); });   // leave the pill
+    act(() => { vi.advanceTimersByTime(300); });
+    expect(screen.getByRole("tooltip")).toBeTruthy(); // still open because the picker is active
+  });
+
+  it("renders a read-only score chip when no change handler is provided", () => {
+    const { container } = render(
+      <TicketStatusPill ticketKey="VPL-1" jiraStatus="TO DO" hoverData={fullData} />,
+    );
+    openCard(container);
+    // No picker trigger; the static SP value is shown instead.
+    expect(screen.queryByTitle("Story Points: 5")).toBeNull();
+    expect(screen.getByText("5")).toBeTruthy();
   });
 
   it("still opens the key dropdown on click when hoverData is present", () => {

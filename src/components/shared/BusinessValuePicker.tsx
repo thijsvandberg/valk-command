@@ -14,12 +14,14 @@ export function BusinessValuePicker({
   align = "right",
   subtle = false,
   size = "sm",
+  onOpenChange,
 }: {
   value: number | null;
   onChange: (v: number | null) => void;
   align?: "left" | "right";
   subtle?: boolean;
   size?: "sm" | "lg";
+  onOpenChange?: (open: boolean) => void;
 }) {
   const [hovered, setHovered] = useState(false);
   const handleMouseEnter = useCallback(() => setHovered(true), []);
@@ -29,6 +31,8 @@ export function BusinessValuePicker({
     portal: true,
     align,
     popoverHeight: 48,
+    onOpen: () => onOpenChange?.(true),
+    onClose: () => onOpenChange?.(false),
   });
 
   const isLg = size === "lg";
