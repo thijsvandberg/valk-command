@@ -3,10 +3,15 @@
 import { type ReactNode } from "react";
 import { Maximize2 } from "lucide-react";
 import { FocusModeProvider, useFocusModeContext } from "@/contexts/FocusModeContext";
+import { useCornerSnap, CORNER_CLASSES } from "@/hooks/useCornerSnap";
 import Sidebar from "@/components/Sidebar";
 
 function FocusModeLayout({ children }: { children: ReactNode }) {
   const { focusMode, exitFocusMode } = useFocusModeContext();
+  const { corner, isDragging, style, handlers } = useCornerSnap({
+    enabled: focusMode,
+    onClick: exitFocusMode,
+  });
 
   return (
     <div className="flex flex-col h-screen bg-[var(--color-surface-base)] text-text-primary">
@@ -49,12 +54,13 @@ function FocusModeLayout({ children }: { children: ReactNode }) {
         </main>
       </div>
 
-      {/* Floating exit button - appears in focus mode, top-right to match the toggle position */}
+      {/* Floating exit button - draggable in focus mode; snaps to the nearest corner. */}
       <button
-        onClick={exitFocusMode}
+        {...handlers}
         title="Exit focus mode"
         aria-label="Exit focus mode"
-        className={`fixed top-3 right-3 z-[100] flex h-8 w-8 items-center justify-center rounded-lg cursor-pointer
+        style={style}
+        className={`fixed ${CORNER_CLASSES[corner]} z-[100] flex h-8 w-8 items-center justify-center rounded-lg cursor-pointer touch-none
           bg-[var(--color-surface-floating)] border border-border-default
           text-text-tertiary
           hover:text-text-primary hover:bg-[var(--color-surface-elevated)]
@@ -62,6 +68,7 @@ function FocusModeLayout({ children }: { children: ReactNode }) {
           active:scale-[0.95]
           shadow-[0_2px_8px_rgba(0,0,0,0.15),0_0_1px_rgba(0,0,0,0.1)]
           transition-[opacity,transform] duration-200
+          ${isDragging ? "cursor-grabbing" : ""}
           ${focusMode
             ? "opacity-40 hover:opacity-100 focus-visible:opacity-100 pointer-events-auto delay-300"
             : "opacity-0 pointer-events-none"
