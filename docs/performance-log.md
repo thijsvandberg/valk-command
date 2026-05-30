@@ -79,3 +79,17 @@ Frontend consolidation story. Smooth overall; one environment bottleneck.
 
 Key bottlenecks:
 - **Stale TS build artifacts** (`.tsbuildinfo`, `.next-build/types/**`) produced phantom/cascading `tsc --noEmit` errors (TS18047 in route tests, ghost errors in untouched confluence/workspace-tasks tests) that flip-flopped across runs. Resolved by deleting `*.tsbuildinfo` and `.next-build` before a clean check; `npm run typecheck` then exits 0. Worth clearing these first when typecheck output looks inconsistent.
+
+## BRDG-236 — Draggable Focus-Mode Exit Button (2026-05-31)
+
+Small, self-contained UI enhancement (new `useCornerSnap` hook + wiring in `FocusModeWrapper`). Smooth overall; two minor recurring frictions.
+
+| Phase | Notes |
+|-------|-------|
+| Plan | Opus Plan subagent; flagged the FLIP/anchor-delta snap math as the trickiest visual piece and the jsdom pointer-capture test limits up front. |
+| Implementation | One hook (pointer-events drag, quadrant snap, `useLocalStorage`-backed corner) + button wiring. lint/typecheck clean; 9 new unit tests pass first try. |
+| Verification | Full suite 3529 passed; browser-verified drag-to-corner, reload persistence, and click-to-exit. |
+
+Key bottlenecks (both recurring, neither story-specific):
+- **Stale `.next-build` artifact**: `next build` failed once with `ENOENT _ssgManifest.js` during trace collection despite a clean compile; `rm -rf .next-build` then a rebuild succeeded. Same pattern logged in BRDG-234.
+- **Focus-mode keyboard shortcut after navigation**: `Cmd+.` did not register until clicking into the page to give it keyboard focus. Minor browser-automation quirk, not a product bug.
