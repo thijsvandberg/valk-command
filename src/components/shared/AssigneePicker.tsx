@@ -9,7 +9,7 @@ import { TEAMS } from "@/lib/sprint-utils";
 import useSWR from "swr";
 import { swrFetcher } from "@/lib/api-client";
 
-interface AssignableUser {
+export interface AssignableUser {
   accountId: string;
   displayName: string;
   avatarUrl: string | null;
@@ -34,13 +34,15 @@ export function AssigneePicker({
   value,
   onChange,
   align = "right",
+  onOpenChange,
 }: {
   value: Assignee | null;
   onChange: (user: AssignableUser | null) => void;
   align?: "left" | "right";
+  onOpenChange?: (open: boolean) => void;
 }) {
   return (
-    <BasePicker.Root portal={true} align={align} popoverHeight={440}>
+    <BasePicker.Root portal={true} align={align} popoverHeight={440} onOpenChange={onOpenChange}>
       <AssigneePickerInner value={value} onChange={onChange} />
     </BasePicker.Root>
   );

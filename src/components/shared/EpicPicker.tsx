@@ -39,14 +39,16 @@ export function EpicPicker({
   onChange,
   align = "right",
   ticketKey,
+  onOpenChange,
 }: {
   value: EpicOption | null;
   onChange: (epic: EpicOption | null) => void;
   align?: "left" | "right";
   ticketKey?: string;
+  onOpenChange?: (open: boolean) => void;
 }) {
   return (
-    <BasePicker.Root portal={true} align={align} popoverHeight={300}>
+    <BasePicker.Root portal={true} align={align} popoverHeight={300} onOpenChange={onOpenChange}>
       <EpicPickerInner value={value} onChange={onChange} ticketKey={ticketKey} />
     </BasePicker.Root>
   );

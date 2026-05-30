@@ -2,7 +2,9 @@
 
 import { forwardRef, memo, useRef, useCallback, useState, useMemo } from "react";
 import { useOutsideClick } from "@/hooks/useOutsideClick";
-import type { Ticket, POStatus, TicketReadiness, IssueType, JiraStatus } from "@/types/ticket";
+import type { Ticket, POStatus, TicketReadiness, IssueType, JiraStatus, Sprint } from "@/types/ticket";
+import type { AssignableUser } from "@/components/shared/AssigneePicker";
+import type { EpicOption } from "@/components/shared/EpicPicker";
 import { getEpicColor, JIRA_STATUS_COLORS } from "@/types/ticket";
 import type { ColumnId, ColumnPreset } from "@/components/sprint-board/FilterBar";
 import { COLUMNS, COLUMN_PRESETS } from "@/components/sprint-board/FilterBar";
@@ -57,6 +59,10 @@ export interface TicketRowBaseProps {
   onJiraStatusChange?: (key: string, status: JiraStatus) => void;
   onIssueTypeChange?: (key: string, type: IssueType) => void;
   onTitleChange?: (key: string, title: string) => void;
+  onAssigneeChange?: (key: string, user: AssignableUser | null) => void;
+  onEpicChange?: (key: string, epic: EpicOption | null) => void;
+  onSprintChange?: (key: string, sprintId: string | null) => void;
+  sprints?: Sprint[];
   onCloseSubtasks?: (key: string) => Promise<void>;
   editingTitleKey?: string | null;
   onEditingTitleKeyChange?: (key: string | null) => void;
@@ -101,6 +107,10 @@ export const TicketRow = memo(forwardRef<HTMLTableRowElement, TicketRowBaseProps
     onJiraStatusChange,
     onIssueTypeChange,
     onTitleChange,
+    onAssigneeChange,
+    onEpicChange,
+    onSprintChange,
+    sprints,
     onCloseSubtasks,
     editingTitleKey = null,
     onEditingTitleKeyChange,
@@ -199,14 +209,20 @@ export const TicketRow = memo(forwardRef<HTMLTableRowElement, TicketRowBaseProps
                   removedFromJira={isRemoved}
                   onStoryPointsChange={isRemoved ? undefined : (onStoryPointsChange ? (v) => onStoryPointsChange(ticket.key, v) : undefined)}
                   onBusinessValueChange={isRemoved ? undefined : (onBusinessValueChange ? (v) => onBusinessValueChange(ticket.key, v) : undefined)}
+                  onAssigneeChange={isRemoved ? undefined : (onAssigneeChange ? (u) => onAssigneeChange(ticket.key, u) : undefined)}
+                  onEpicChange={isRemoved ? undefined : (onEpicChange ? (e) => onEpicChange(ticket.key, e) : undefined)}
+                  onSprintChange={isRemoved ? undefined : (onSprintChange ? (s) => onSprintChange(ticket.key, s) : undefined)}
+                  sprints={sprints}
                   hoverData={{
                     title: ticket.title,
                     storyPoints: ticket.storyPoints,
                     businessValue: ticket.businessValue,
+                    sprintId: sprints?.find((s) => s.name === ticket.sprintId)?.id ?? null,
                     sprintName: ticket.sprintId ? (sprintNameMap[ticket.sprintId] ?? ticket.sprintId) : null,
+                    epicKey: ticket.epicKey,
                     epic: ticket.epic,
-                    assignee: ticket.assignee?.name ?? null,
-                    reporter: null,
+                    assignee: ticket.assignee ?? null,
+                    reporter: ticket.reporter ?? null,
                     flagged: ticket.flagged,
                   }}
                 />

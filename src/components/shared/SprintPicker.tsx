@@ -4,11 +4,11 @@ import { Minus, IterationCw } from "lucide-react";
 import { BasePicker } from "@/components/shared/BasePicker";
 
 interface Sprint {
-  id: number;
+  id: string | number;
   name: string;
   state: string;
-  startDate: string | null;
-  endDate: string | null;
+  startDate?: string | null;
+  endDate?: string | null;
   hidden?: boolean;
 }
 
@@ -18,15 +18,17 @@ export function SprintPicker({
   onChange,
   align = "right",
   variant = "default",
+  onOpenChange,
 }: {
   value: string | null;
   sprints: Sprint[];
   onChange: (sprintId: string | null) => void;
   align?: "left" | "right";
   variant?: "default" | "badge";
+  onOpenChange?: (open: boolean) => void;
 }) {
   return (
-    <BasePicker.Root portal={true} align={align} popoverHeight={300}>
+    <BasePicker.Root portal={true} align={align} popoverHeight={300} onOpenChange={onOpenChange}>
       <SprintPickerInner value={value} sprints={sprints} onChange={onChange} variant={variant} />
     </BasePicker.Root>
   );

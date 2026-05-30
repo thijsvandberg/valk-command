@@ -191,10 +191,12 @@ describe("TicketStatusPill hover card", () => {
     title: "Build the onboarding flow",
     storyPoints: 5,
     businessValue: 3,
+    sprintId: "42",
     sprintName: "Sprint 42",
+    epicKey: "VPL-100",
     epic: "Onboarding",
-    assignee: "Alice",
-    reporter: "Bob",
+    assignee: { name: "Alice", initials: "AL", color: "#123456" },
+    reporter: { name: "Bob", initials: "BO", color: "#654321" },
     flagged: true,
   };
 
@@ -241,7 +243,9 @@ describe("TicketStatusPill hover card", () => {
       title: "Empty ticket",
       storyPoints: null,
       businessValue: null,
+      sprintId: null,
       sprintName: null,
+      epicKey: null,
       epic: null,
       assignee: null,
       reporter: null,
@@ -328,6 +332,35 @@ describe("TicketStatusPill hover card", () => {
     // No picker trigger; the static SP value is shown instead.
     expect(screen.queryByTitle("Story Points: 5")).toBeNull();
     expect(screen.getByText("5")).toBeTruthy();
+  });
+
+  it("renders editable Sprint/Epic/Assignee pickers when their handlers are provided", () => {
+    const sprints = [{ id: "42", name: "Sprint 42", dateRange: "", state: "active" as const, ticketCount: 0 }];
+    const { container } = render(
+      <TicketStatusPill
+        ticketKey="VPL-1"
+        jiraStatus="TO DO"
+        hoverData={fullData}
+        sprints={sprints}
+        onSprintChange={vi.fn()}
+        onEpicChange={vi.fn()}
+        onAssigneeChange={vi.fn()}
+      />,
+    );
+    openCard(container);
+    expect(screen.getByTitle("Sprint: Sprint 42")).toBeTruthy();
+    expect(screen.getByTitle("Epic: Onboarding")).toBeTruthy();
+    expect(screen.getByTitle("Assignee: Alice")).toBeTruthy();
+  });
+
+  it("shows Creator read-only even when assignee is editable", () => {
+    const { container } = render(
+      <TicketStatusPill ticketKey="VPL-1" jiraStatus="TO DO" hoverData={fullData} onAssigneeChange={vi.fn()} />,
+    );
+    openCard(container);
+    // Creator has no editor (Jira reporters are immutable); the name shows but no picker title.
+    expect(screen.getByText("Bob")).toBeTruthy();
+    expect(screen.queryByTitle("Assignee: Bob")).toBeNull();
   });
 
   it("still opens the key dropdown on click when hoverData is present", () => {

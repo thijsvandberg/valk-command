@@ -1,9 +1,12 @@
 "use client";
 
 import { useState, useCallback } from "react";
-import type { POStatus, TicketReadiness, Ticket, IssueType, JiraStatus } from "@/types/ticket";
+import type { POStatus, TicketReadiness, Ticket, IssueType, JiraStatus, Assignee } from "@/types/ticket";
 import { saveTicketMetadata, saveStoryPoints } from "@/components/sprint-board/sprint-board-utils";
 import { apiFetch, jira } from "@/lib/api-client";
+import { userInitials, userColor } from "@/lib/user-utils";
+import type { AssignableUser } from "@/components/shared/AssigneePicker";
+import type { EpicOption } from "@/components/shared/EpicPicker";
 
 interface TicketActionsDeps {
   apiTickets: Ticket[] | undefined;
@@ -88,6 +91,46 @@ export function useTicketActions(deps: TicketActionsDeps) {
       }
     }
   }, [apiTickets, mutateTickets]);
+
+  const handleAssigneeChange = useCallback(async (key: string, user: AssignableUser | null) => {
+    const prev = apiTickets?.find((t) => t.key === key)?.assignee ?? null;
+    const optimistic: Assignee | null = user
+      ? { name: user.displayName, initials: userInitials(user.displayName), color: userColor(user.displayName) }
+      : null;
+    mutateTickets((data) => data?.map((t) => t.key === key ? { ...t, assignee: optimistic } : t), { revalidate: false });
+    try {
+      await jira.assign({ issueKey: key, accountId: user?.accountId ?? null, name: user?.displayName ?? null, avatar: user?.avatarUrl ?? null });
+      mutateTickets();
+    } catch {
+      mutateTickets((data) => data?.map((t) => t.key === key ? { ...t, assignee: prev } : t), { revalidate: false });
+      showToast(`Failed to update assignee for ${key}. Change reverted.`);
+    }
+  }, [apiTickets, mutateTickets, showToast]);
+
+  const handleEpicChange = useCallback(async (key: string, epic: EpicOption | null) => {
+    const prevTicket = apiTickets?.find((t) => t.key === key);
+    const prevEpic = prevTicket?.epic ?? null;
+    const prevEpicKey = prevTicket?.epicKey ?? null;
+    mutateTickets((data) => data?.map((t) => t.key === key ? { ...t, epic: epic?.name ?? null, epicKey: epic?.key ?? null } : t), { revalidate: false });
+    try {
+      await apiFetch(`/api/tickets/${encodeURIComponent(key)}`, { method: "PATCH", body: { epicKey: epic?.key ?? null } });
+      mutateTickets();
+    } catch {
+      mutateTickets((data) => data?.map((t) => t.key === key ? { ...t, epic: prevEpic, epicKey: prevEpicKey } : t), { revalidate: false });
+      showToast(`Failed to update epic for ${key}. Change reverted.`);
+    }
+  }, [apiTickets, mutateTickets, showToast]);
+
+  // Sprint move requires a Jira round-trip; revalidate rather than optimistically
+  // rewrite (the board's sprintId field carries the sprint name, not its id).
+  const handleSprintChange = useCallback(async (key: string, sprintId: string | null) => {
+    try {
+      await jira.moveSprint({ issueKeys: [key], targetSprintId: sprintId ?? "__backlog__" });
+      mutateTickets();
+    } catch {
+      showToast(`Failed to move ${key} to sprint.`);
+    }
+  }, [mutateTickets, showToast]);
 
   const handleCloseSubtasks = useCallback(async (key: string) => {
     const prev = apiTickets?.find((t) => t.key === key);
@@ -219,6 +262,9 @@ export function useTicketActions(deps: TicketActionsDeps) {
     handleJiraStatusChange,
     handleIssueTypeChange,
     handleTitleChange,
+    handleAssigneeChange,
+    handleEpicChange,
+    handleSprintChange,
     handleCloseSubtasks,
     syncFromApiTickets,
     handleBulkSetReadiness,

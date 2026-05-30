@@ -83,10 +83,12 @@ export function TicketRow({
             title: ticket.title,
             storyPoints: ticket.storyPoints,
             businessValue: ticket.businessValue,
+            sprintId: null,
             sprintName,
+            epicKey: ticket.epicKey,
             epic: ticket.epic,
-            assignee: ticket.assignee?.name ?? null,
-            reporter: null,
+            assignee: ticket.assignee ?? null,
+            reporter: ticket.reporter ?? null,
             flagged: ticket.flagged,
           }}
         />

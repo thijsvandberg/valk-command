@@ -3,8 +3,8 @@
 import { useState, useRef, useEffect, useLayoutEffect, type ReactNode } from "react";
 import { useOutsideClick } from "@/hooks/useOutsideClick";
 import { createPortal } from "react-dom";
-import { ExternalLink, FilePen, MessageCircleQuestion, CheckCircle2, Ban, Minus, Copy, ClipboardList, PenLine, Flag } from "lucide-react";
-import type { JiraStatus, TicketReadiness, IssueType } from "@/types/ticket";
+import { ExternalLink, FilePen, MessageCircleQuestion, CheckCircle2, Ban, Minus, Copy, ClipboardList, PenLine, Flag, IterationCw, Zap, User, UserRound } from "lucide-react";
+import type { JiraStatus, TicketReadiness, IssueType, Assignee, Sprint } from "@/types/ticket";
 import {
   JIRA_STATUS_COLORS,
   JIRA_STATUS_ABBREVIATIONS,
@@ -20,6 +20,10 @@ import { IssueTypeIcon } from "@/components/shared/IssueTypeIcon";
 import { formatTicketShare } from "@/lib/ticket-share";
 import { StoryPointPicker } from "@/components/shared/StoryPointPicker";
 import { BusinessValuePicker } from "@/components/shared/BusinessValuePicker";
+import { AssigneePicker, type AssignableUser } from "@/components/shared/AssigneePicker";
+import { SprintPicker } from "@/components/shared/SprintPicker";
+import { EpicPicker, type EpicOption } from "@/components/shared/EpicPicker";
+import { Avatar } from "@/components/shared/Avatar";
 
 // ---------------------------------------------------------------------------
 // Readiness icon helper
@@ -335,12 +339,13 @@ export interface TicketPillHoverData {
   title: string;
   storyPoints: number | null;
   businessValue: number | null;
+  sprintId: string | null;
   sprintName: string | null;
+  epicKey: string | null;
   epic: string | null;
-  /** Assignee display name (already resolved by the call-site) */
-  assignee: string | null;
-  /** Creator/reporter display name */
-  reporter: string | null;
+  assignee: Assignee | null;
+  /** Creator/reporter (read-only — Jira reporters are immutable). */
+  reporter: Assignee | null;
   flagged: boolean;
 }
 
@@ -359,16 +364,32 @@ function ScoreChip({ label, value, colors }: { label: string; value: number | nu
   );
 }
 
-function InfoRow({ label, children }: { label: string; children: ReactNode }) {
+// One metadata row: leading icon + label on the left, value (or editor) on the right.
+function InfoRow({ icon, label, children }: { icon: ReactNode; label: string; children: ReactNode }) {
   return (
-    <div className="flex items-baseline justify-between gap-3">
-      <span className="shrink-0 text-label font-medium uppercase tracking-wide text-text-muted">{label}</span>
-      <span className="min-w-0 truncate text-right text-body-sm text-text-secondary">{children}</span>
+    <div className="flex min-h-[26px] items-center justify-between gap-3">
+      <span className="flex shrink-0 items-center gap-2 text-label font-medium uppercase tracking-wide text-text-muted">
+        <span className="flex w-3.5 justify-center text-text-muted/70">{icon}</span>
+        {label}
+      </span>
+      <span className="flex min-w-0 items-center justify-end gap-1.5 text-right text-body-sm text-text-secondary">{children}</span>
     </div>
   );
 }
 
+// Read-only person value: avatar + name (or muted placeholder).
+function PersonValue({ person }: { person: Assignee | null }) {
+  if (!person) return <span className="text-text-muted">Unassigned</span>;
+  return (
+    <>
+      <span className="truncate">{person.name}</span>
+      <Avatar assignee={person} size={18} />
+    </>
+  );
+}
+
 interface TicketHoverCardProps {
+  ticketKey: string;
   triggerRef: { current: HTMLElement | null };
   data: TicketPillHoverData;
   onMouseEnter: () => void;
@@ -377,17 +398,29 @@ interface TicketHoverCardProps {
   onStoryPointsChange?: (value: number | null) => void;
   /** When provided, Business Value becomes editable via an inline picker. */
   onBusinessValueChange?: (value: number | null) => void;
+  /** When provided (with `sprints`), Sprint becomes editable. */
+  onSprintChange?: (sprintId: string | null) => void;
+  sprints?: Sprint[];
+  /** When provided, Epic becomes editable. */
+  onEpicChange?: (epic: EpicOption | null) => void;
+  /** When provided, Assignee becomes editable. */
+  onAssigneeChange?: (user: AssignableUser | null) => void;
   /** Notifies the parent when an inline picker opens/closes (to keep the card open). */
   onPickerOpenChange: (open: boolean) => void;
 }
 
 function TicketHoverCard({
+  ticketKey,
   triggerRef,
   data,
   onMouseEnter,
   onMouseLeave,
   onStoryPointsChange,
   onBusinessValueChange,
+  onSprintChange,
+  sprints,
+  onEpicChange,
+  onAssigneeChange,
   onPickerOpenChange,
 }: TicketHoverCardProps) {
   const [pos, setPos] = useState<{ left: number; top: number; openUp: boolean } | null>(null);
@@ -439,10 +472,25 @@ function TicketHoverCard({
         )}
       </div>
 
-      <div className="mt-2 flex flex-col gap-1.5">
-        <InfoRow label="Sprint">{data.sprintName ?? <span className="text-text-muted">No sprint</span>}</InfoRow>
-        <InfoRow label="Epic">
-          {data.epic && epicColors ? (
+      <div className="mt-2 flex flex-col gap-0.5">
+        <InfoRow icon={<IterationCw size={12} strokeWidth={1.75} />} label="Sprint">
+          {onSprintChange && sprints ? (
+            <SprintPicker value={data.sprintId} sprints={sprints} onChange={onSprintChange} align="right" onOpenChange={onPickerOpenChange} />
+          ) : (
+            data.sprintName ?? <span className="text-text-muted">No sprint</span>
+          )}
+        </InfoRow>
+
+        <InfoRow icon={<Zap size={12} strokeWidth={1.75} />} label="Epic">
+          {onEpicChange ? (
+            <EpicPicker
+              value={data.epicKey && data.epic ? { key: data.epicKey, name: data.epic } : null}
+              onChange={onEpicChange}
+              ticketKey={ticketKey}
+              align="right"
+              onOpenChange={onPickerOpenChange}
+            />
+          ) : data.epic && epicColors ? (
             <span
               className="rounded-[3px] border-l-2 px-1.5 py-0.5 text-[10.5px] font-medium tracking-wide"
               style={{ backgroundColor: epicColors.bg, color: epicColors.text, borderLeftColor: epicColors.text }}
@@ -453,8 +501,18 @@ function TicketHoverCard({
             <span className="text-text-muted">No epic</span>
           )}
         </InfoRow>
-        <InfoRow label="Assignee">{data.assignee ?? <span className="text-text-muted">Unassigned</span>}</InfoRow>
-        <InfoRow label="Creator">{data.reporter ?? <span className="text-text-muted">Unassigned</span>}</InfoRow>
+
+        <InfoRow icon={<User size={12} strokeWidth={1.75} />} label="Assignee">
+          {onAssigneeChange ? (
+            <AssigneePicker value={data.assignee} onChange={onAssigneeChange} align="right" onOpenChange={onPickerOpenChange} />
+          ) : (
+            <PersonValue person={data.assignee} />
+          )}
+        </InfoRow>
+
+        <InfoRow icon={<UserRound size={12} strokeWidth={1.75} />} label="Creator">
+          <PersonValue person={data.reporter} />
+        </InfoRow>
       </div>
 
       {data.flagged && (
@@ -497,6 +555,14 @@ export interface TicketStatusPillProps {
   onStoryPointsChange?: (value: number | null) => void;
   /** When provided, Business Value becomes editable inside the hover card. */
   onBusinessValueChange?: (value: number | null) => void;
+  /** When provided (with `sprints`), Sprint becomes editable inside the hover card. */
+  onSprintChange?: (sprintId: string | null) => void;
+  /** Available sprints, required for the Sprint editor in the hover card. */
+  sprints?: Sprint[];
+  /** When provided, Epic becomes editable inside the hover card. */
+  onEpicChange?: (epic: EpicOption | null) => void;
+  /** When provided, Assignee becomes editable inside the hover card. */
+  onAssigneeChange?: (user: AssignableUser | null) => void;
 }
 
 export function TicketStatusPill({
@@ -517,6 +583,10 @@ export function TicketStatusPill({
   showHoverCard = true,
   onStoryPointsChange,
   onBusinessValueChange,
+  onSprintChange,
+  sprints,
+  onEpicChange,
+  onAssigneeChange,
 }: TicketStatusPillProps) {
   const [issueTypeDropdownOpen, setIssueTypeDropdownOpen] = useState(false);
   const [keyDropdownOpen, setKeyDropdownOpen] = useState(false);
@@ -584,12 +654,17 @@ export function TicketStatusPill({
   // Hidden while any click dropdown is open so the two never overlap.
   const hoverCardEl = hoverCardVisible && !anyDropdownOpen && hoverData
     ? <TicketHoverCard
+        ticketKey={ticketKey}
         triggerRef={wrapperRef}
         data={hoverData}
         onMouseEnter={clearCloseTimer}
         onMouseLeave={scheduleClose}
         onStoryPointsChange={onStoryPointsChange}
         onBusinessValueChange={onBusinessValueChange}
+        onSprintChange={onSprintChange}
+        sprints={sprints}
+        onEpicChange={onEpicChange}
+        onAssigneeChange={onAssigneeChange}
         onPickerOpenChange={handleCardPickerOpenChange}
       />
     : null;

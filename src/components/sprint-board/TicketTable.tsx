@@ -1,7 +1,9 @@
 "use client";
 
 import { useState, useRef, useCallback, useMemo, type MouseEvent as ReactMouseEvent } from "react";
-import type { Ticket, POStatus, TicketReadiness, IssueType, JiraStatus } from "@/types/ticket";
+import type { Ticket, POStatus, TicketReadiness, IssueType, JiraStatus, Sprint } from "@/types/ticket";
+import type { AssignableUser } from "@/components/shared/AssigneePicker";
+import type { EpicOption } from "@/components/shared/EpicPicker";
 import type { ColumnId, SortField, SortDir } from "@/components/sprint-board/FilterBar";
 import { COLUMNS } from "@/components/sprint-board/FilterBar";
 import { IssueTypeIcon } from "@/components/shared/IssueTypeIcon";
@@ -196,6 +198,10 @@ export function TicketTable({
   onJiraStatusChange,
   onIssueTypeChange,
   onTitleChange,
+  onAssigneeChange,
+  onEpicChange,
+  onSprintChange,
+  sprints,
   onCloseSubtasks,
   onTableKeyDown,
   onReorder,
@@ -238,6 +244,10 @@ export function TicketTable({
   onJiraStatusChange?: (key: string, status: JiraStatus) => void;
   onIssueTypeChange?: (key: string, type: IssueType) => void;
   onTitleChange?: (key: string, title: string) => void;
+  onAssigneeChange?: (key: string, user: AssignableUser | null) => void;
+  onEpicChange?: (key: string, epic: EpicOption | null) => void;
+  onSprintChange?: (key: string, sprintId: string | null) => void;
+  sprints?: Sprint[];
   onCloseSubtasks?: (key: string) => Promise<void>;
   onTableKeyDown: (e: React.KeyboardEvent) => void;
   onReorder?: (activeKey: string, overKey: string) => void;
@@ -398,6 +408,10 @@ export function TicketTable({
     onJiraStatusChange,
     onIssueTypeChange,
     onTitleChange,
+    onAssigneeChange,
+    onEpicChange,
+    onSprintChange,
+    sprints,
     onCloseSubtasks,
     editingTitleKey,
     onEditingTitleKeyChange: setEditingTitleKey,
@@ -405,7 +419,7 @@ export function TicketTable({
     onToggleReviewPopover: handleToggleReviewPopover,
     refinementSessions: refinementSessionMap?.get(ticket.key),
     columnOrder: effectiveOrder,
-  }), [checkedTickets, selectedTicket, focusedTicketIdx, someChecked, activeDragId, col, sprintNameMap, poStatuses, readinessMap, inflightKeys, onSelectTicket, handleCheckboxClick, onPoStatusChange, onReadinessChange, onBusinessValueChange, onStoryPointsChange, onJiraStatusChange, onIssueTypeChange, onTitleChange, onCloseSubtasks, editingTitleKey, reviewPopoverKey, handleToggleReviewPopover, effectiveOrder, followedKeys, followTicket, unfollowTicket, lastDeployedMap, healthMap, refinementSessionMap]);
+  }), [checkedTickets, selectedTicket, focusedTicketIdx, someChecked, activeDragId, col, sprintNameMap, poStatuses, readinessMap, inflightKeys, onSelectTicket, handleCheckboxClick, onPoStatusChange, onReadinessChange, onBusinessValueChange, onStoryPointsChange, onJiraStatusChange, onIssueTypeChange, onTitleChange, onAssigneeChange, onEpicChange, onSprintChange, sprints, onCloseSubtasks, editingTitleKey, reviewPopoverKey, handleToggleReviewPopover, effectiveOrder, followedKeys, followTicket, unfollowTicket, lastDeployedMap, healthMap, refinementSessionMap]);
 
   const rh = useMemo(() =>
     onColumnResize && onColumnResetWidth

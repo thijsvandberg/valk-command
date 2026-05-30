@@ -105,3 +105,13 @@ Per PO request, the card became an interactive popover instead of a read-only to
 - **Editable Story Points & Business Value**: when the pill receives `onStoryPointsChange` / `onBusinessValueChange`, SP and BV render as inline `StoryPointPicker` / `BusinessValuePicker` (size `lg`) instead of static chips. The card stays open while a picker is open (tracked via a new optional `onOpenChange` prop threaded through `usePickerState`). Where no handler is passed (e.g. refinement rows), SP/BV stay read-only chips.
 - **Wiring**: sprint-board `TicketRow` now passes the SP/BV change handlers to the pill. Editing in refinement was left out of scope (those handlers aren't plumbed through the session page).
 - Verified in-app: hovering the pill, moving into the card, and opening the SP picker all keep the card open; SP/BV pickers function. Covered by added tests in `TicketStatusPill.test.tsx` (grace-period close, stays-open-on-card-enter, editable picker fires onChange, stays-open-while-picker-open, read-only fallback).
+
+## Follow-up enhancement (2026-05-31): editable Sprint/Epic/Assignee, real Creator, refined design
+
+Per PO request, three more fields became editable and the card layout was refined:
+
+- **Editable Sprint / Epic / Assignee**: when the pill receives `onSprintChange` (+`sprints`), `onEpicChange`, or `onAssigneeChange`, those rows render the existing shared `SprintPicker` / `EpicPicker` / `AssigneePicker` inline. Each picker grows an optional `onOpenChange` (forwarded to `BasePicker.Root`) so the card stays open while it's used.
+- **Board wiring**: `useTicketActions` gained `handleAssigneeChange` (optimistic + `jira.assign`), `handleEpicChange` (optimistic + PATCH `epicKey`), and `handleSprintChange` (`jira.moveSprint` + revalidate — no optimistic rewrite because the board's `sprintId` field carries the sprint *name*). These thread `SprintBoard → TicketTable → TicketRow → pill`, alongside the `sprints` list. Refinement rows stay read-only (handlers not plumbed there).
+- **Real Creator (read-only)**: `Ticket` gained `reporter?: Assignee | null`, populated by `buildAssignee(t.reporter)` in `/api/tickets`. The card now shows the actual reporter name + avatar. Creator remains non-editable (Jira reporters are immutable; no update API exists).
+- **Refined design**: each metadata row gained a leading icon (sprint / epic / person), people render with `Avatar`, and the `hoverData` shape expanded (`sprintId`, `epicKey`, and `assignee`/`reporter` as `Assignee` objects).
+- Verified in-app: the redesigned card shows icons + avatars, the Sprint/Epic/Assignee pickers render and the real creator displays. Tests added for the editable pickers and the read-only Creator.

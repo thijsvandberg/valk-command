@@ -198,6 +198,7 @@ export interface Ticket {
   jiraStatus: JiraStatus;
   storyPoints: number | null;
   assignee: Assignee | null;
+  reporter?: Assignee | null;
   flagged: boolean;
   readiness: TicketReadiness | null;
   poStatus: POStatus;
