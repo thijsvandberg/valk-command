@@ -8,7 +8,9 @@ import { RefinementFilters } from "./RefinementFilters";
 import { useSectionVisibility } from "@/hooks/useSectionVisibility";
 import type { useRefinementFilters } from "@/hooks/useRefinementFilters";
 import type { useRefinementQueue } from "@/hooks/useRefinementQueue";
-import type { Ticket } from "@/types/ticket";
+import type { Ticket, Sprint } from "@/types/ticket";
+import type { AssignableUser } from "@/components/shared/AssigneePicker";
+import type { EpicOption } from "@/components/shared/EpicPicker";
 
 const PILL_FIELDS = [
   { id: "issueType", label: "Type icon" },
@@ -32,6 +34,12 @@ interface RefinementTicketListProps {
   sprintNameMap: Record<string, string>;
   ticketSessionMap: Map<string, { id: string; name: string }[]>;
   resolvedSessionId: string | null;
+  sprints?: Sprint[];
+  onAssigneeChange?: (key: string, user: AssignableUser | null) => void;
+  onEpicChange?: (key: string, epic: EpicOption | null) => void;
+  onSprintChange?: (key: string, sprintId: string | null) => void;
+  onStoryPointsChange?: (key: string, value: number | null) => void;
+  onBusinessValueChange?: (key: string, value: number | null) => void;
 }
 
 export function RefinementTicketList({
@@ -45,6 +53,12 @@ export function RefinementTicketList({
   sprintNameMap,
   ticketSessionMap,
   resolvedSessionId,
+  sprints,
+  onAssigneeChange,
+  onEpicChange,
+  onSprintChange,
+  onStoryPointsChange,
+  onBusinessValueChange,
 }: RefinementTicketListProps) {
   const { visible: pillFields, toggleField: togglePillField } = useSectionVisibility("refinement-pill", ["issueType", "key", "status", "epic", "subtasks", "sp", "bv", "sprint"]);
   const [pillSettingsOpen, setPillSettingsOpen] = useState(false);
@@ -177,6 +191,12 @@ export function RefinementTicketList({
             showSp={showSp}
             showBv={showBv}
             showSprint={showSprint}
+            sprints={sprints}
+            onAssigneeChange={onAssigneeChange}
+            onEpicChange={onEpicChange}
+            onSprintChange={onSprintChange}
+            onStoryPointsChange={onStoryPointsChange}
+            onBusinessValueChange={onBusinessValueChange}
           />
         ))}
         {availableTickets.length === 0 && (

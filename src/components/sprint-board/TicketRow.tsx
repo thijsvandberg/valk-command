@@ -223,6 +223,8 @@ export const TicketRow = memo(forwardRef<HTMLTableRowElement, TicketRowBaseProps
                     epic: ticket.epic,
                     assignee: ticket.assignee ?? null,
                     reporter: ticket.reporter ?? null,
+                    openSubtaskCount: ticket.openSubtaskCount ?? 0,
+                    totalSubtaskCount: ticket.totalSubtaskCount ?? 0,
                     flagged: ticket.flagged,
                   }}
                 />

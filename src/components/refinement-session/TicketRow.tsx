@@ -4,8 +4,10 @@ import { Gem } from "lucide-react";
 import { IssueTypeIcon } from "@/components/shared/IssueTypeIcon";
 import { TicketStatusPill } from "@/components/shared/TicketStatusPill";
 import { EditStateDot } from "@/components/sprint-board/TicketTableCells";
-import type { Ticket } from "@/types/ticket";
+import type { Ticket, Sprint } from "@/types/ticket";
 import { getSpColor, getEpicColor, getBvColor } from "@/types/ticket";
+import type { AssignableUser } from "@/components/shared/AssigneePicker";
+import type { EpicOption } from "@/components/shared/EpicPicker";
 
 export interface TicketRowProps {
   ticket: Ticket;
@@ -23,6 +25,12 @@ export interface TicketRowProps {
   showSp?: boolean;
   showBv?: boolean;
   showSprint?: boolean;
+  sprints?: Sprint[];
+  onAssigneeChange?: (key: string, user: AssignableUser | null) => void;
+  onEpicChange?: (key: string, epic: EpicOption | null) => void;
+  onSprintChange?: (key: string, sprintId: string | null) => void;
+  onStoryPointsChange?: (key: string, value: number | null) => void;
+  onBusinessValueChange?: (key: string, value: number | null) => void;
 }
 
 export function TicketRow({
@@ -41,6 +49,12 @@ export function TicketRow({
   showSp = true,
   showBv = true,
   showSprint = true,
+  sprints,
+  onAssigneeChange,
+  onEpicChange,
+  onSprintChange,
+  onStoryPointsChange,
+  onBusinessValueChange,
 }: TicketRowProps) {
   return (
     <div
@@ -79,16 +93,24 @@ export function TicketRow({
           variant="list"
           showKey={showKey}
           showStatus={showStatus}
+          sprints={sprints}
+          onAssigneeChange={onAssigneeChange ? (u) => onAssigneeChange(ticket.key, u) : undefined}
+          onEpicChange={onEpicChange ? (e) => onEpicChange(ticket.key, e) : undefined}
+          onSprintChange={onSprintChange ? (s) => onSprintChange(ticket.key, s) : undefined}
+          onStoryPointsChange={onStoryPointsChange ? (v) => onStoryPointsChange(ticket.key, v) : undefined}
+          onBusinessValueChange={onBusinessValueChange ? (v) => onBusinessValueChange(ticket.key, v) : undefined}
           hoverData={{
             title: ticket.title,
             storyPoints: ticket.storyPoints,
             businessValue: ticket.businessValue,
-            sprintId: null,
+            sprintId: sprints?.find((s) => s.name === ticket.sprintId)?.id ?? null,
             sprintName,
             epicKey: ticket.epicKey,
             epic: ticket.epic,
             assignee: ticket.assignee ?? null,
             reporter: ticket.reporter ?? null,
+            openSubtaskCount: ticket.openSubtaskCount ?? 0,
+            totalSubtaskCount: ticket.totalSubtaskCount ?? 0,
             flagged: ticket.flagged,
           }}
         />

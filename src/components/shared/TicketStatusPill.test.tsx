@@ -197,6 +197,8 @@ describe("TicketStatusPill hover card", () => {
     epic: "Onboarding",
     assignee: { name: "Alice", initials: "AL", color: "#123456" },
     reporter: { name: "Bob", initials: "BO", color: "#654321" },
+    openSubtaskCount: 2,
+    totalSubtaskCount: 5,
     flagged: true,
   };
 
@@ -249,6 +251,8 @@ describe("TicketStatusPill hover card", () => {
       epic: null,
       assignee: null,
       reporter: null,
+      openSubtaskCount: 0,
+      totalSubtaskCount: 0,
       flagged: false,
     };
     const { container } = render(
@@ -258,6 +262,7 @@ describe("TicketStatusPill hover card", () => {
     expect(screen.getByText("No sprint")).toBeTruthy();
     expect(screen.getByText("No epic")).toBeTruthy();
     expect(screen.getAllByText("Unassigned")).toHaveLength(2);
+    expect(screen.getByText("None")).toBeTruthy(); // subtasks: none
   });
 
   it("does not show the card when showHoverCard is false", () => {
@@ -351,6 +356,19 @@ describe("TicketStatusPill hover card", () => {
     expect(screen.getByTitle("Sprint: Sprint 42")).toBeTruthy();
     expect(screen.getByTitle("Epic: Onboarding")).toBeTruthy();
     expect(screen.getByTitle("Assignee: Alice")).toBeTruthy();
+  });
+
+  it("shows the subtask count and a tooltip", () => {
+    const { container } = render(
+      <TicketStatusPill ticketKey="VPL-1" jiraStatus="TO DO" hoverData={fullData} />,
+    );
+    openCard(container);
+    const count = screen.getByText("2/5");
+    expect(count).toBeTruthy();
+    // Tooltip content appears after hovering the count.
+    act(() => { fireEvent.mouseEnter(count.parentElement as Element); });
+    act(() => { vi.advanceTimersByTime(400); });
+    expect(screen.getByText("2 open of 5 subtasks")).toBeTruthy();
   });
 
   it("shows Creator read-only even when assignee is editable", () => {

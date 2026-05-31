@@ -3,7 +3,7 @@
 import { useState, useRef, useEffect, useLayoutEffect, type ReactNode } from "react";
 import { useOutsideClick } from "@/hooks/useOutsideClick";
 import { createPortal } from "react-dom";
-import { ExternalLink, FilePen, MessageCircleQuestion, CheckCircle2, Ban, Minus, Copy, ClipboardList, PenLine, Flag, IterationCw, Zap, User, UserRound } from "lucide-react";
+import { ExternalLink, FilePen, MessageCircleQuestion, CheckCircle2, Ban, Minus, Copy, ClipboardList, PenLine, Flag, IterationCw, Zap, User, UserRound, ListChecks } from "lucide-react";
 import type { JiraStatus, TicketReadiness, IssueType, Assignee, Sprint } from "@/types/ticket";
 import {
   JIRA_STATUS_COLORS,
@@ -18,6 +18,7 @@ import { ISSUE_TYPE_COLORS } from "@/components/shared/IssueTypeIcon";
 import { getJiraUrl } from "@/lib/jira-url";
 import { IssueTypeIcon } from "@/components/shared/IssueTypeIcon";
 import { formatTicketShare } from "@/lib/ticket-share";
+import { Tooltip } from "@/components/shared/Tooltip";
 import { StoryPointPicker } from "@/components/shared/StoryPointPicker";
 import { BusinessValuePicker } from "@/components/shared/BusinessValuePicker";
 import { AssigneePicker, type AssignableUser } from "@/components/shared/AssigneePicker";
@@ -346,6 +347,8 @@ export interface TicketPillHoverData {
   assignee: Assignee | null;
   /** Creator/reporter (read-only — Jira reporters are immutable). */
   reporter: Assignee | null;
+  openSubtaskCount: number;
+  totalSubtaskCount: number;
   flagged: boolean;
 }
 
@@ -449,7 +452,7 @@ function TicketHoverCard({
       role="tooltip"
       onMouseEnter={onMouseEnter}
       onMouseLeave={onMouseLeave}
-      className="fixed z-[9999] w-64 rounded-lg border border-border-default bg-[var(--color-surface-floating)] p-3 text-left normal-case tracking-normal shadow-[var(--shadow-popover)] transition-[opacity,transform] duration-150 ease-out"
+      className="fixed z-[9999] w-72 rounded-lg border border-border-default bg-[var(--color-surface-floating)] p-3 text-left normal-case tracking-normal shadow-[var(--shadow-popover)] transition-[opacity,transform] duration-150 ease-out"
       style={{
         left: pos.left,
         ...(pos.openUp ? { bottom: window.innerHeight - pos.top } : { top: pos.top }),
@@ -512,6 +515,16 @@ function TicketHoverCard({
 
         <InfoRow icon={<UserRound size={12} strokeWidth={1.75} />} label="Creator">
           <PersonValue person={data.reporter} />
+        </InfoRow>
+
+        <InfoRow icon={<ListChecks size={12} strokeWidth={1.75} />} label="Subtasks">
+          {data.totalSubtaskCount > 0 ? (
+            <Tooltip content={`${data.openSubtaskCount} open of ${data.totalSubtaskCount} subtask${data.totalSubtaskCount === 1 ? "" : "s"}`}>
+              <span className="tabular-nums">{data.openSubtaskCount}/{data.totalSubtaskCount}</span>
+            </Tooltip>
+          ) : (
+            <span className="text-text-muted">None</span>
+          )}
         </InfoRow>
       </div>
 

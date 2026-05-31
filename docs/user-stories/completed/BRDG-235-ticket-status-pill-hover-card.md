@@ -115,3 +115,10 @@ Per PO request, three more fields became editable and the card layout was refine
 - **Real Creator (read-only)**: `Ticket` gained `reporter?: Assignee | null`, populated by `buildAssignee(t.reporter)` in `/api/tickets`. The card now shows the actual reporter name + avatar. Creator remains non-editable (Jira reporters are immutable; no update API exists).
 - **Refined design**: each metadata row gained a leading icon (sprint / epic / person), people render with `Avatar`, and the `hoverData` shape expanded (`sprintId`, `epicKey`, and `assignee`/`reporter` as `Assignee` objects).
 - Verified in-app: the redesigned card shows icons + avatars, the Sprint/Epic/Assignee pickers render and the real creator displays. Tests added for the editable pickers and the read-only Creator.
+
+## Follow-up enhancement (2026-05-31): wider card, subtask count, refinement editing
+
+- **Wider card**: bumped from `w-64` to `w-72`.
+- **Subtask count + tooltip**: new "Subtasks" row showing `{open}/{total}` (muted "None" when there are no subtasks), wrapped in the shared `Tooltip` ("N open of M subtasks"). `hoverData` gained `openSubtaskCount` / `totalSubtaskCount`, sourced from `ticket.openSubtaskCount` / `ticket.totalSubtaskCount`.
+- **Editing on the refinement page**: `RefinementPageContent` now reuses `useTicketActions` (with a local `showToast` + `activeListKey="/api/tickets"` + `mapJiraSprints(sprints)`) and threads the assignee/epic/sprint/SP/BV handlers through `RefinementTicketList → refinement TicketRow → pill`. The refinement card is now fully editable, matching the sprint board. Creator stays read-only everywhere.
+- Verified in-app on the board (wider card, "0/4" subtask row, tooltip); refinement editing covered by typecheck + the refinement test suite (the pill/picker mechanism is identical to the board, already verified).
