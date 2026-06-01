@@ -29,7 +29,7 @@ import { useTicketSessionMap } from "@/hooks/useTicketSessionMap";
 
 function DetailRow({ label, children }: { label: string; children: React.ReactNode }) {
   return (
-    <div className="flex items-center justify-between gap-3 py-1.5">
+    <div className="flex min-h-[40px] items-center justify-between gap-3">
       <span className="shrink-0 text-body-sm text-text-tertiary">{label}</span>
       <div className="min-w-0 text-right text-body-lg text-text-secondary">{children}</div>
     </div>
@@ -474,10 +474,8 @@ export function TicketSidebar({
                 </div>
               </DetailRow>
             )}
-          </div>
 
-          {/* Timestamps & Meta */}
-          <div className="space-y-2">
+            {/* Timestamps & Meta */}
             {detail && (
               <>
                 <DetailRow label="Created">
