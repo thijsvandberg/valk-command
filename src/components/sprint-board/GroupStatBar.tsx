@@ -4,6 +4,7 @@ import { memo } from "react";
 import type { Ticket } from "@/types/ticket";
 import { ChevronRight, ChevronDown, Pin } from "lucide-react";
 import { StatPill, StatusPill } from "./SprintStatPill";
+import { MetricBadge } from "@/components/shared/MetricBadge";
 
 export type StatCriterion = "todo" | "in-progress" | "test" | "done" | "unpointed";
 
@@ -83,10 +84,13 @@ export const GroupStatBar = memo(function GroupStatBar({
         {tickets.length} items
       </StatPill>
       {totalPoints > 0 && (
-        <StatPill size="sm" variant="dim">{totalPoints} pts</StatPill>
+        <MetricBadge metric="sp" value={totalPoints} tinted />
       )}
       {bvTickets.length > 0 && (
-        <StatPill size="sm" variant="dim">BV: {bvTotal}{bvAvg ? ` avg ${bvAvg}` : ""}</StatPill>
+        <span className="inline-flex items-center gap-1.5">
+          <MetricBadge metric="bv" value={bvTotal} tinted />
+          {bvAvg ? <span className="text-caption text-text-muted whitespace-nowrap">avg {bvAvg}</span> : null}
+        </span>
       )}
       {noPointsCount > 0 && (
         <StatPill

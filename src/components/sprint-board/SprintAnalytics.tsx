@@ -5,6 +5,7 @@ import type { Ticket, JiraStatus } from "@/types/ticket";
 import { JIRA_STATUS_COLORS } from "@/types/ticket";
 import { ChevronRight, BarChart2, X } from "lucide-react";
 import { BurnupChart } from "./BurnupChart";
+import { MetricBadge } from "@/components/shared/MetricBadge";
 
 const STATUS_COLORS: Record<JiraStatus, string> = Object.fromEntries(
   Object.entries(JIRA_STATUS_COLORS).map(([k, v]) => [k, v.text])
@@ -138,10 +139,10 @@ export const SprintAnalytics = memo(function SprintAnalytics({ tickets, onClose,
         />
         <BarChart2 className="h-3.5 w-3.5" strokeWidth={1.5} />
         Analytics
-        <span className="text-text-muted">
-          {totalPoints > 0 && <>{totalPoints} pts total</>}
-          {totalPoints > 0 && bvTotal > 0 && " | "}
-          {bvTotal > 0 && <>BV: {bvTotal}{bvAvg ? ` avg ${bvAvg}` : ""}</>}
+        <span className="inline-flex items-center gap-2 text-text-muted">
+          {totalPoints > 0 && <MetricBadge metric="sp" value={totalPoints} />}
+          {bvTotal > 0 && <MetricBadge metric="bv" value={bvTotal} />}
+          {bvTotal > 0 && bvAvg ? <span className="text-caption whitespace-nowrap">avg {bvAvg}</span> : null}
         </span>
       </button>
       {onClose && (

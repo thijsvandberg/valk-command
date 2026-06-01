@@ -383,10 +383,10 @@ export function SidePanel({
           {/* Score cards: SP + BV */}
           <div className="mt-4 grid grid-cols-2 gap-2">
             <ScoreCard label="Story Points" accent={hasPoints} accentColor="var(--color-brand-500)">
-              <StoryPointPicker value={storyPoints} onChange={handleStoryPointsChange} align="left" />
+              <StoryPointPicker value={storyPoints} onChange={handleStoryPointsChange} align="left" showMetricIcon richTooltip />
             </ScoreCard>
             <ScoreCard label="Business Value" accent={hasBV} accentColor={bvColor?.text ?? "var(--color-brand-500)"}>
-              <BusinessValuePicker value={businessValue} onChange={handleBusinessValueChange} align="left" />
+              <BusinessValuePicker value={businessValue} onChange={handleBusinessValueChange} align="left" showMetricIcon richTooltip />
             </ScoreCard>
           </div>
 

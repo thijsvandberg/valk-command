@@ -360,10 +360,11 @@ export function TicketSidebar({
                 value={storyPoints}
                 onChange={handleStoryPointsChange}
                 showMetricIcon
+                richTooltip
               />
             </CompactField>
             <CompactField label="Business Value" accent={hasBV}>
-              <BusinessValuePicker value={businessValue} onChange={handleBusinessValueChange} align="right" showMetricIcon />
+              <BusinessValuePicker value={businessValue} onChange={handleBusinessValueChange} align="right" showMetricIcon richTooltip />
             </CompactField>
           </div>
 

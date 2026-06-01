@@ -3,7 +3,7 @@
 import { useState, useRef, useCallback, useEffect, useMemo } from "react";
 import { useOutsideClick } from "@/hooks/useOutsideClick";
 import type { TicketDetail, JiraStatus, TicketReadiness, Subtask, EpicChild, IssueType } from "@/types/ticket";
-import { getSpColor } from "@/types/ticket";
+import { MetricBadge } from "@/components/shared/MetricBadge";
 import { IssueTypeIcon } from "@/components/shared/IssueTypeIcon";
 import { Avatar } from "@/components/shared/Avatar";
 import { StatusBadge } from "@/components/shared/StatusBadge";
@@ -297,17 +297,7 @@ export function EpicChildrenSection({
     return (
       <>
         {visibleFields.has("storyPoints") && epic?.storyPoints != null && (
-          <Tooltip content={`${epic.storyPoints === 0 ? "N/A" : epic.storyPoints} story point${epic.storyPoints === 1 ? "" : "s"}`}>
-            <span
-              className="shrink-0 rounded-md px-1.5 py-0.5 text-[10px] font-semibold tabular-nums"
-              style={{
-                color: getSpColor(epic.storyPoints).text,
-                backgroundColor: getSpColor(epic.storyPoints).bg,
-              }}
-            >
-              {epic.storyPoints === 0 ? "-" : epic.storyPoints}
-            </span>
-          </Tooltip>
+          <span className="shrink-0"><MetricBadge metric="sp" value={epic.storyPoints} tinted size="xs" /></span>
         )}
         {visibleFields.has("subtaskCount") && epic && epic.subtaskCount > 0 && (
           <Tooltip content={`${epic.subtaskCount} subtask${epic.subtaskCount === 1 ? "" : "s"}`}>

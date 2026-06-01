@@ -18,23 +18,28 @@ describe("MetricBadge", () => {
   it("renders a dash for the N/A value (0)", () => {
     render(<MetricBadge metric="sp" value={0} />);
     expect(screen.getByText("-")).toBeInTheDocument();
-    expect(screen.getByTitle("N/A")).toBeInTheDocument();
+    expect(screen.getByLabelText("N/A")).toBeInTheDocument();
   });
 
-  it("renders an en-dash and 'Set' title when value is null", () => {
+  it("renders an en-dash and 'Set' label when value is null", () => {
     render(<MetricBadge metric="bv" value={null} />);
     expect(screen.getByText("–")).toBeInTheDocument();
-    expect(screen.getByTitle("Set Business Value")).toBeInTheDocument();
+    expect(screen.getByLabelText("Set Business Value")).toBeInTheDocument();
   });
 
-  it("exposes a descriptive native title by default", () => {
+  it("always exposes a descriptive accessible label", () => {
     render(<MetricBadge metric="sp" value={8} />);
-    expect(screen.getByTitle("Story Points: 8")).toBeInTheDocument();
+    expect(screen.getByLabelText("Story Points: 8")).toBeInTheDocument();
   });
 
-  it("omits the native title when tooltip is enabled", () => {
-    const { container } = render(<MetricBadge metric="sp" value={8} tooltip />);
+  it("uses the styled tooltip by default (no native title attribute)", () => {
+    const { container } = render(<MetricBadge metric="sp" value={8} />);
     expect(container.querySelector("[title]")).toBeNull();
+  });
+
+  it("falls back to the native title when tooltip is disabled", () => {
+    render(<MetricBadge metric="sp" value={8} tooltip={false} />);
+    expect(screen.getByTitle("Story Points: 8")).toBeInTheDocument();
   });
 
   it("uses neutral SP color untinted and a value color when tinted", () => {

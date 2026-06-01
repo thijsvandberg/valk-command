@@ -20,7 +20,7 @@ export function MetricBadge({
   metric,
   value,
   tinted = false,
-  tooltip = false,
+  tooltip = true,
   size = "sm",
   className = "",
 }: {
@@ -28,7 +28,7 @@ export function MetricBadge({
   value: number | null;
   // Colored background + (for SP) the green ramp. Untinted = transparent, SP neutral grey.
   tinted?: boolean;
-  // Use the styled Tooltip instead of the native title attribute.
+  // Use the styled Tooltip (default). Set false to fall back to the native title attribute.
   tooltip?: boolean;
   size?: "xs" | "sm";
   className?: string;
@@ -52,6 +52,7 @@ export function MetricBadge({
     <span
       className={`inline-flex items-center rounded-md font-medium tabular-nums ${sz.wrap} ${className}`}
       style={{ color: fg, backgroundColor: bg }}
+      aria-label={title}
       title={tooltip ? undefined : title}
     >
       <Icon size={sz.icon} strokeWidth={2} aria-hidden />

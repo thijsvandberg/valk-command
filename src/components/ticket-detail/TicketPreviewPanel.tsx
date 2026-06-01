@@ -8,6 +8,7 @@ import { IssueTypeIcon } from "@/components/shared/IssueTypeIcon";
 import { Avatar } from "@/components/shared/Avatar";
 import { StatusBadge } from "@/components/shared/StatusBadge";
 import { Button } from "@/components/ui/Button";
+import { MetricBadge } from "@/components/shared/MetricBadge";
 
 const PANEL_STORAGE_KEY = "ticketPreviewPanelWidth";
 const DEFAULT_WIDTH = 420;
@@ -162,9 +163,7 @@ export function TicketPreviewPanel({
               <div className="mt-4 flex flex-wrap items-center gap-2">
                 <StatusBadge status={data.jiraStatus} />
                 {data.storyPoints !== undefined && data.storyPoints !== null && (
-                  <span className="inline-flex items-center rounded-md bg-overlay-default px-2 py-0.5 text-body-sm font-medium text-text-secondary">
-                    {data.storyPoints} pts
-                  </span>
+                  <MetricBadge metric="sp" value={data.storyPoints} tinted />
                 )}
               </div>
 

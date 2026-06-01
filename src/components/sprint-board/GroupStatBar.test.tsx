@@ -41,8 +41,8 @@ describe("GroupStatBar", () => {
 
   it("renders total story points", () => {
     render(<GroupStatBar tickets={TICKETS} />);
-    // 3 + 5 + 2 = 10 pts
-    expect(screen.getByText("10 pts")).toBeTruthy();
+    // 3 + 5 + 2 = 10, shown via the SP MetricBadge
+    expect(screen.getByLabelText("Story Points: 10")).toBeTruthy();
   });
 
   it("renders no-points count for unpointed tickets", () => {
@@ -54,8 +54,8 @@ describe("GroupStatBar", () => {
   it("hides points total when all tickets are unpointed", () => {
     const noPointTickets = TICKETS.map((t) => ({ ...t, storyPoints: null }));
     render(<GroupStatBar tickets={noPointTickets} />);
-    // "X pts" (just the total) should not appear; "X no SP" is still shown
-    expect(screen.queryByText(/^\d+ pts$/)).toBeNull();
+    // The SP total badge should not appear; "X no SP" is still shown
+    expect(screen.queryByLabelText(/Story Points/)).toBeNull();
   });
 
   it("renders status pills for each non-zero status", () => {
