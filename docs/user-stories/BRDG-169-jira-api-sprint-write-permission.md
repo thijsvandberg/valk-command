@@ -1,8 +1,8 @@
 # BRDG-169: Fix Jira API permissions for sprint creation
 
-**Status:** Not Started
+**Status:** Done
 **Priority:** High
-**Blocked by:** Manual Jira admin action
+**Blocked by:** ~~Manual Jira admin action~~ (resolved)
 
 ## Description
 
@@ -12,11 +12,20 @@ Both the API gateway (`api.atlassian.com`) and the direct instance URL (`new-sto
 
 ## Acceptance Criteria
 
-- [ ] Identify which Jira API token or OAuth app is used by Bridge (check `.env.local` `JIRA_EMAIL` / `JIRA_API_TOKEN`)
-- [ ] Determine whether this is a personal API token (Basic auth) or an OAuth 2.0 / Connect app token
-- [ ] For Basic auth (API token): verify the Jira user has "Manage Sprints" permission on the board (Board settings > Permissions). API tokens inherit the user's permissions.
-- [ ] For OAuth / Connect app: add the `write:sprint:jira-software` scope to the app configuration in Atlassian Developer Console
-- [ ] Verify sprint creation works from Bridge after the fix
+- [x] Identify which Jira API token or OAuth app is used by Bridge (check `.env.local` `JIRA_EMAIL` / `JIRA_API_TOKEN`)
+- [x] Determine whether this is a personal API token (Basic auth) or an OAuth 2.0 / Connect app token
+- [x] For Basic auth (API token): verify the Jira user has "Manage Sprints" permission on the board (Board settings > Permissions). API tokens inherit the user's permissions.
+- [x] For OAuth / Connect app: add the `write:sprint:jira-software` scope to the app configuration in Atlassian Developer Console
+- [x] Verify sprint creation works from Bridge after the fix
+
+## Resolution
+
+Two changes were needed:
+
+1. **Scope** — added `write:sprint:jira-software` to the scoped API token.
+2. **Routing fix (code)** — `createSprint` was routed to the direct instance URL (`new-story.atlassian.net`) as a workaround for an old "scope does not match" gateway error. Basic auth on the direct URL is no longer accepted (returns 401 for every endpoint, including `GET /myself`), while the **API gateway** (`api.atlassian.com`) now honors the scoped token. `createSprint` was switched to `jiraPost` (gateway) and the now-dead `jiraPostDirect` helper was removed in `src/lib/jira-client.ts`. Covered by `src/lib/jira-client.create-sprint.test.ts`.
+
+Verified end-to-end through the running app: `POST /api/jira/sprints` returns `201`.
 
 ## Technical Notes
 

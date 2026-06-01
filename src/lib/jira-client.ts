@@ -399,42 +399,6 @@ async function jiraPost<T>(path: string, body: unknown, signal?: AbortSignal): P
   }
 }
 
-/**
- * POST via the direct Jira instance URL (JIRA_BASE_URL) instead of the
- * API gateway. The gateway rejects certain Agile write endpoints with
- * "scope does not match" when using Basic auth.
- */
-async function jiraPostDirect<T>(path: string, body: unknown, signal?: AbortSignal): Promise<T> {
-  const cfg = getConfig();
-  const directUrl = env.JIRA_BASE_URL;
-  if (!directUrl) {
-    throw new Error("JIRA_BASE_URL is required for sprint creation");
-  }
-  const url = `${directUrl}${path}`;
-  const auth = Buffer.from(`${cfg.email}:${cfg.apiToken}`).toString("base64");
-
-  const [timeoutSignal, cleanup] = makeTimeoutSignal(signal);
-  try {
-    return await withRetry(
-      () => fetch(url, {
-        method: "POST",
-        headers: {
-          Authorization: `Basic ${auth}`,
-          Accept: "application/json",
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(body),
-        signal: timeoutSignal,
-      }),
-      (res) => res.json() as Promise<T>,
-      path,
-      timeoutSignal,
-    );
-  } finally {
-    cleanup();
-  }
-}
-
 async function jiraPostNoContent(path: string, body: unknown, signal?: AbortSignal): Promise<void> {
   const cfg = getConfig();
   const url = `${cfg.baseUrl}${path}`;
@@ -1096,8 +1060,9 @@ export class JiraClient {
 
   /**
    * Create a new sprint on a board via the Jira Agile API.
-   * Uses POST /rest/agile/1.0/sprint via the direct instance URL
-   * because the API gateway rejects this endpoint with a scope error.
+   * Routed through the API gateway (api.atlassian.com): Basic auth on the
+   * direct instance URL is no longer accepted, while the gateway honors the
+   * scoped API token's write:sprint:jira-software permission.
    */
   async createSprint(
     params: { name: string; originBoardId: number; startDate?: string; endDate?: string; goal?: string },
@@ -1107,7 +1072,7 @@ export class JiraClient {
       throw new Error("Jira is not configured");
     }
 
-    return jiraPostDirect<JiraSprint>("/rest/agile/1.0/sprint", params, signal);
+    return jiraPost<JiraSprint>("/rest/agile/1.0/sprint", params, signal);
   }
 
   /**
