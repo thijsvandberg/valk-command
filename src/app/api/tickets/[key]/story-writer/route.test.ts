@@ -3,7 +3,7 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 import { createTestDb } from "@/db/test-utils";
 import type { BetterSQLite3Database } from "drizzle-orm/better-sqlite3";
 import type * as schema from "@/db/schema";
-import { ticket, storyVersion, storyWriterDraft } from "@/db/schema";
+import { ticket, storyVersion, storyWriterDraft, storyWriterSession, conversation } from "@/db/schema";
 
 let testDb: BetterSQLite3Database<typeof schema>;
 
@@ -94,6 +94,55 @@ describe("Story Writer Session CRUD", () => {
       expect(data.session.localDraft).toBe("Original description from Jira");
       expect(data.session.baseVersionHash).toBe("abc123");
       expect(data.aiDrafts).toEqual([]);
+    });
+
+    it("heals an empty localDraft from the live ticket description", async () => {
+      // Simulates a session created before the ticket had a description: the
+      // one-time snapshot was empty, and the Jira description arrived later.
+      testDb.insert(ticket).values({
+        jiraKey: "VPL-200",
+        title: "Ticket VPL-200",
+        status: "TO DO",
+        description: "",
+      }).run();
+
+      testDb.insert(conversation).values({
+        id: "conv-200",
+        title: "Story Writer: VPL-200",
+        relatedTicket: "VPL-200",
+      }).run();
+
+      testDb.insert(storyWriterSession).values({
+        id: "sws-200",
+        ticketKey: "VPL-200",
+        conversationId: "conv-200",
+        status: "active",
+        localDraft: "",
+        localTitle: "Ticket VPL-200",
+      }).run();
+
+      // Description arrives later (e.g. via Jira sync)
+      const { eq } = await import("drizzle-orm");
+      testDb.update(ticket)
+        .set({ description: "Description that arrived after the session" })
+        .where(eq(ticket.jiraKey, "VPL-200"))
+        .run();
+
+      const res = await GET(
+        makeRequest(`${BASE}/VPL-200/story-writer`),
+        makeParams("VPL-200"),
+      );
+      const data = await res.json();
+
+      expect(data.session.localDraft).toBe("Description that arrived after the session");
+
+      // The heal is persisted so subsequent loads are instant
+      const persisted = testDb
+        .select()
+        .from(storyWriterSession)
+        .where(eq(storyWriterSession.id, "sws-200"))
+        .get();
+      expect(persisted?.localDraft).toBe("Description that arrived after the session");
     });
   });
 

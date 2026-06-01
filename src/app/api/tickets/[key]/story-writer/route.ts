@@ -48,9 +48,37 @@ export async function GET(request: Request, { params }: RouteContext) {
       return NextResponse.json({ session: null, messages: [], aiDrafts: [], relatedCandidates: [] });
     }
 
+    // If localDraft is empty, recover it from the ticket's local edit or live Jira
+    // description and persist. This heals sessions created before the ticket had a
+    // description (the draft is a one-time snapshot taken at session creation, so a
+    // later-arriving Jira description would otherwise never appear in the editor).
+    let resolvedSession = session;
+    if (!session.localDraft) {
+      const [descEdit, ticketRow] = await Promise.all([
+        db
+          .select()
+          .from(ticketLocalEdit)
+          .where(
+            and(
+              eq(ticketLocalEdit.ticketKey, key),
+              eq(ticketLocalEdit.field, "description"),
+            ),
+          )
+          .get(),
+        db.query.ticket.findFirst({ where: eq(ticket.jiraKey, key) }),
+      ]);
+      const recovered = descEdit?.localValue ?? ticketRow?.description ?? "";
+      if (recovered) {
+        await db
+          .update(storyWriterSession)
+          .set({ localDraft: recovered, updatedAt: new Date().toISOString() })
+          .where(eq(storyWriterSession.id, session.id));
+        resolvedSession = { ...resolvedSession, localDraft: recovered };
+      }
+    }
+
     // If targetLocalDraft is empty but the target ticket has a local edit, recover it and persist
     // so subsequent loads are instant. This heals sessions broken by earlier clearing bugs.
-    let resolvedSession = session;
     if (session.targetTicketKey && !session.targetLocalDraft) {
       const targetEdit = await db
         .select()
@@ -67,7 +95,7 @@ export async function GET(request: Request, { params }: RouteContext) {
           .update(storyWriterSession)
           .set({ targetLocalDraft: targetEdit.localValue, updatedAt: new Date().toISOString() })
           .where(eq(storyWriterSession.id, session.id));
-        resolvedSession = { ...session, targetLocalDraft: targetEdit.localValue };
+        resolvedSession = { ...resolvedSession, targetLocalDraft: targetEdit.localValue };
       }
     }
 
