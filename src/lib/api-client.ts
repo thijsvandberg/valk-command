@@ -213,6 +213,8 @@ export const tickets = {
     apiFetch<{ key: string; title: string }>(`/api/tickets/${enc(key)}/subtasks/${enc(subtaskKey)}`, { method: "PATCH", body: data, signal }),
   deleteSubtask: (key: string, subtaskKey: string, signal?: AbortSignal) =>
     apiFetch<{ ok: boolean }>(`/api/tickets/${enc(key)}/subtasks/${enc(subtaskKey)}`, { method: "DELETE", signal }),
+  closeSubtask: (key: string, subtaskKey: string, signal?: AbortSignal) =>
+    apiFetch<{ ok: boolean }>(`/api/tickets/${enc(key)}/subtasks/${enc(subtaskKey)}/close`, { method: "POST", signal }),
 
   // Epic children
   createChildIssue: (key: string, data: { title: string; issueType?: string }, signal?: AbortSignal) =>
@@ -473,6 +475,8 @@ export const jira = {
     apiFetch<{ id: number; name: string; state: string; startDate: string | null; endDate: string | null; goal: string | null }>(
       "/api/jira/sprints", { method: "POST", body: data, signal },
     ),
+  closeSprint: (sprintId: string, signal?: AbortSignal) =>
+    apiFetch<{ ok: boolean }>(`/api/jira/sprints/${encodeURIComponent(sprintId)}/close`, { method: "POST", signal }),
 };
 
 // ---------------------------------------------------------------------------

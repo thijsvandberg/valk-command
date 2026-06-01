@@ -1059,6 +1059,19 @@ export class JiraClient {
   }
 
   /**
+   * Close (finish) an active sprint via the Jira Agile API.
+   * Uses PUT /rest/agile/1.0/sprint/{sprintId} with { state: "closed" },
+   * routed through the API gateway like updateSprint.
+   */
+  async closeSprint(sprintId: number, signal?: AbortSignal): Promise<void> {
+    if (!isConfigured()) {
+      throw new Error("Jira is not configured");
+    }
+
+    await jiraPut(`/rest/agile/1.0/sprint/${sprintId}`, { state: "closed" }, signal);
+  }
+
+  /**
    * Create a new sprint on a board via the Jira Agile API.
    * Routed through the API gateway (api.atlassian.com): Basic auth on the
    * direct instance URL is no longer accepted, while the gateway honors the
