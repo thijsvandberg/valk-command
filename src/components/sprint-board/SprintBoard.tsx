@@ -217,11 +217,12 @@ export default function SprintBoard() {
   // otherwise act on just that row without disturbing the current selection.
   const handleRowContextMenu = useCallback((key: string, e: React.MouseEvent) => {
     const targets = checkedTickets.has(key) && checkedTickets.size > 0 ? new Set(checkedTickets) : new Set([key]);
-    // Clear the previously selected (side-panel) row so only the context-menu
-    // target carries the active highlight while the menu is open.
-    setSelectedTicket(null);
+    // Clear the previously selected row so only the context-menu target stays
+    // highlighted, but keep the side panel open when right-clicking the row
+    // that is already active.
+    if (key !== selectedTicket) setSelectedTicket(null);
     setRowMenu({ x: e.clientX, y: e.clientY, targets });
-  }, [checkedTickets]);
+  }, [checkedTickets, selectedTicket]);
   const handleReorder = useCallback((activeKey: string, overKey: string) => {
     const order = poPriorityOrder ?? tickets.map((t) => t.key); const oi = order.indexOf(activeKey); const ni = order.indexOf(overKey);
     if (oi === -1 || ni === -1) return; const next = [...order]; next.splice(oi, 1); next.splice(ni, 0, activeKey); setPoPriorityOrder(next);
