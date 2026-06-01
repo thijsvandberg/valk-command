@@ -99,4 +99,4 @@ Order: server detection -> push rebase -> client wiring -> UI -> tests -> docs.
 - [x] Tests: server detection (outdated true/false, null baseline, after-push rebase)
 - [x] Tests: editor banner rendering and the two actions
 - [x] Verify no false "outdated" after a normal push or after accepting an AI draft
-- [ ] Update `docs/architecture/story-writer.md` (note outdated detection surfaced in the editor)
+- [x] Update `docs/architecture/story-writer.md` (note outdated detection surfaced in the editor)

@@ -79,6 +79,18 @@ The PO reviews AI drafts in the editor panel. Accepting a draft merges it into t
 
 `POST /api/tickets/[key]/push-to-jira` pushes local edits (title + description) to Jira. For split mode, both original and target tickets are pushed.
 
+On a successful push, `pushToJira` rebases the active session's `baseVersionHash` onto the just-pushed version, so the draft is not immediately flagged as outdated (see below).
+
+### Outdated-draft detection (BRDG-243)
+
+When the Jira version of a ticket moves on after a draft's baseline was recorded (for example, the same ticket is edited and pushed from the single story view in another tab), the editor surfaces a warning so the PO does not keep editing a stale draft.
+
+- **Detection:** `GET /api/tickets/[key]/story-writer` returns top-level `outdated` and `targetOutdated` booleans alongside `session`. `outdated` is `true` when `session.baseVersionHash` is non-null and differs from the latest `storyVersion.contentHash` for the ticket (null-guarded, mirroring the conflict semantics in `pushToJira`). `targetOutdated` is derived from the target ticket's `ticketLocalEdit` description baseline vs its latest Jira version.
+- **Banner:** `OutdatedBanner` (`panes/OutdatedBanner.tsx`) renders at the top of the editor pane (`EditorApp`, and `SplitTargetApp` for the target) with two actions:
+  - **View difference** opens the diff pane (editor draft vs latest Jira version).
+  - **Take Jira version** pulls the current Jira content into the editor, rebases the baseline (PATCH `rebaseBaseline: true` for the original; local-edits rebase for the target), and refreshes the session so the warning clears.
+- **No false positives:** accepting an AI draft does not change `baseVersionHash` or create a `storyVersion`, so it never flags outdated; a successful push rebases the baseline server-side.
+
 ### Close Session
 
 `DELETE /api/tickets/[key]/story-writer` marks the session as `completed` or `discarded` and optionally deletes the conversation.
@@ -128,7 +140,7 @@ Found tickets are synced into the local DB in the background.
 
 Central hook orchestrating the entire workflow. Located at `src/hooks/useStoryWriter.ts`.
 
-**State:** session, messages, aiDrafts, targetAiDrafts, relatedCandidates, status, streamProgress, usage
+**State:** session, messages, aiDrafts, targetAiDrafts, relatedCandidates, status, streamProgress, usage, outdated, targetOutdated
 
 **Actions:**
 - `sendMessage()` - Send chat message
@@ -171,6 +183,7 @@ Located in `src/components/story-writer/`:
 | `ChatMessageParts` | Message rendering with structured output |
 | `ExecutionLogViewer` | Detailed AI task execution logs |
 | `RelatedStoriesPanel` | Related story candidates with link toggle |
+| `OutdatedBanner` | Warns when the Jira version changed under the draft; offers view-diff / take-Jira |
 | `SplitModeLayout` | Two-pane layout for split editing |
 | `SplitPaneHeader` | Header for each split pane |
 | `SplitStoryPicker` | Target ticket selector for split mode |
