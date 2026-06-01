@@ -693,7 +693,9 @@ export function TicketStatusPill({
   const issueTypePx = size === "sm" ? "pl-1.5 pr-1 py-[3px]" : size === "lg" ? "pl-2.5 pr-2 py-1" : "pl-2 pr-1.5 py-[3px]";
   const textSize = size === "sm" ? "text-[10px]" : size === "lg" ? "text-body-sm" : "text-label";
 
-  const showReadiness = readinessCfg || onReadinessChange;
+  // Always show the readiness indicator: a colored icon when set, or a neutral
+  // gray dot when unset, so "no readiness" stays visible instead of collapsing.
+  const showReadiness = true;
 
   // ---------------------------------------------------------------------------
   // List variant — no outer container, segments float inline with gaps
@@ -706,18 +708,19 @@ export function TicketStatusPill({
         {/* Issue type */}
         {issueType && (
           <div className="relative flex shrink-0">
-            <button
-              ref={issueTypeBtnRef}
-              type="button"
-              onClick={onIssueTypeChange ? () => setIssueTypeDropdownOpen((o) => !o) : undefined}
-              title={onIssueTypeChange ? "Change issue type" : issueType}
-              disabled={!onIssueTypeChange}
-              className={`flex items-center justify-center rounded p-1 transition-colors duration-150 ${
-                onIssueTypeChange ? "cursor-pointer hover:bg-overlay-default" : "cursor-default"
-              }`}
-            >
-              <IssueTypeIcon type={issueType} size={iconSize} />
-            </button>
+            <Tooltip content={onIssueTypeChange ? "Change issue type" : (TYPE_LABELS[issueType as IssueType] ?? issueType)}>
+              <button
+                ref={issueTypeBtnRef}
+                type="button"
+                onClick={onIssueTypeChange ? () => setIssueTypeDropdownOpen((o) => !o) : undefined}
+                disabled={!onIssueTypeChange}
+                className={`flex items-center justify-center rounded p-1 transition-colors duration-150 ${
+                  onIssueTypeChange ? "cursor-pointer hover:bg-overlay-default" : "cursor-default"
+                }`}
+              >
+                <IssueTypeIcon type={issueType} size={iconSize} />
+              </button>
+            </Tooltip>
             {issueTypeDropdownOpen && onIssueTypeChange && (
               <DropdownPortal triggerRef={issueTypeBtnRef} onClose={() => setIssueTypeDropdownOpen(false)}>
                 <IssueTypeDropdown
@@ -733,7 +736,7 @@ export function TicketStatusPill({
 
         {/* Key */}
         {showKey && (
-          <div className="relative flex shrink-0">
+          <div className={`relative flex shrink-0 ${issueType ? "-ml-1" : ""}`}>
             <a
               ref={keyLinkRef}
               href={`/tickets/${ticketKey}`}
@@ -770,20 +773,21 @@ export function TicketStatusPill({
           </span>
         ) : (
           <div className="relative flex shrink-0">
-            <button
-              ref={jiraStatusBtnRef}
-              type="button"
-              onClick={onJiraStatusChange ? () => setJiraDropdownOpen((o) => !o) : undefined}
-              title={onJiraStatusChange ? "Change status" : jiraStatus}
-              disabled={!onJiraStatusChange}
-              className={`flex items-center gap-1 rounded px-1.5 py-0.5 font-mono text-[10px] font-medium tracking-wide transition-colors duration-150 ${
-                onJiraStatusChange ? "cursor-pointer hover:brightness-110" : "cursor-default"
-              }`}
-              style={{ backgroundColor: jiraColors.bg, color: jiraColors.text, opacity: 0.85 }}
-            >
-              <span className="shrink-0 h-1.5 w-1.5 rounded-full opacity-70" style={{ backgroundColor: jiraColors.text }} />
-              {JIRA_STATUS_ABBREVIATIONS[jiraStatus] ?? jiraStatus}
-            </button>
+            <Tooltip content={onJiraStatusChange ? `${jiraStatus} — click to change` : jiraStatus}>
+              <button
+                ref={jiraStatusBtnRef}
+                type="button"
+                onClick={onJiraStatusChange ? () => setJiraDropdownOpen((o) => !o) : undefined}
+                disabled={!onJiraStatusChange}
+                className={`flex items-center gap-1 rounded px-1.5 py-0.5 font-mono text-[10px] font-medium tracking-wide transition-colors duration-150 ${
+                  onJiraStatusChange ? "cursor-pointer hover:brightness-110" : "cursor-default"
+                }`}
+                style={{ backgroundColor: jiraColors.bg, color: jiraColors.text, opacity: 0.85 }}
+              >
+                <span className="shrink-0 h-1.5 w-1.5 rounded-full opacity-70" style={{ backgroundColor: jiraColors.text }} />
+                {JIRA_STATUS_ABBREVIATIONS[jiraStatus] ?? jiraStatus}
+              </button>
+            </Tooltip>
             {jiraDropdownOpen && onJiraStatusChange && (
               <DropdownPortal triggerRef={jiraStatusBtnRef} onClose={() => setJiraDropdownOpen(false)}>
                 <JiraStatusDropdown
@@ -799,24 +803,25 @@ export function TicketStatusPill({
 
         {/* Readiness */}
         {showReadiness && (
-          <div className="relative flex shrink-0">
-            <button
-              ref={readinessBtnRef}
-              type="button"
-              onClick={onReadinessChange ? () => setReadinessDropdownOpen((o) => !o) : undefined}
-              title={readiness ? READINESS_CONFIG[readiness].label : "Ready for Development"}
-              disabled={!onReadinessChange}
-              className={`flex items-center justify-center rounded transition-colors duration-150 ${
-                onReadinessChange ? "cursor-pointer hover:bg-overlay-default" : "cursor-default"
-              }`}
-              style={{ color: readinessCfg?.color ?? "var(--color-text-muted)", width: iconSize + 4, height: iconSize + 4 }}
-            >
-              {readiness ? (
-                <ReadinessIcon value={readiness} size={iconSize} />
-              ) : (
-                <span className="h-1.5 w-1.5 rounded-full bg-overlay-strong" />
-              )}
-            </button>
+          <div className="relative flex shrink-0 -ml-1">
+            <Tooltip content={readiness ? READINESS_CONFIG[readiness].label : "Ready for Development"}>
+              <button
+                ref={readinessBtnRef}
+                type="button"
+                onClick={onReadinessChange ? () => setReadinessDropdownOpen((o) => !o) : undefined}
+                disabled={!onReadinessChange}
+                className={`flex items-center justify-center rounded transition-colors duration-150 ${
+                  onReadinessChange ? "cursor-pointer hover:bg-overlay-default" : "cursor-default"
+                }`}
+                style={{ color: readinessCfg?.color ?? "var(--color-text-muted)", width: iconSize + 8, height: iconSize + 8 }}
+              >
+                {readiness ? (
+                  <ReadinessIcon value={readiness} size={iconSize} />
+                ) : (
+                  <span className="h-1.5 w-1.5 rounded-full bg-overlay-strong" />
+                )}
+              </button>
+            </Tooltip>
             {readinessDropdownOpen && onReadinessChange && (
               <DropdownPortal triggerRef={readinessBtnRef} onClose={() => setReadinessDropdownOpen(false)}>
                 <ReadinessDropdown

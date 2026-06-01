@@ -81,11 +81,14 @@ describe("TicketStatusPill", () => {
     expect(screen.queryByText("Copy with title")).toBeNull();
   });
 
-  it("hides readiness segment when readiness is null and no callback", () => {
+  it("shows the null-state gray dot when readiness is null and no callback, but stays non-interactive", () => {
     const { container } = render(
       <TicketStatusPill ticketKey="VPL-1" jiraStatus="TO DO" readiness={null} />,
     );
-    expect(container.querySelector("[title='Drafting']")).toBeNull();
+    const readinessBtn = screen.getByTitle("Ready for Development");
+    expect(readinessBtn).toBeTruthy();
+    expect((readinessBtn as HTMLButtonElement).disabled).toBe(true);
+    expect(container.querySelector(".bg-overlay-strong")).toBeTruthy();
   });
 
   it("renders readiness dot with icon when readiness is set", () => {
