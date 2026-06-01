@@ -206,8 +206,8 @@ export function FinishSprintModal({
         <div className="min-h-0 flex-1 space-y-3 overflow-y-auto px-5 py-4">
           {earlyClose && (
             <div className="flex items-start gap-2 rounded-lg border border-amber-500/25 bg-amber-500/[0.07] px-3 py-2.5">
-              <AlertTriangle size={14} strokeWidth={1.75} className="mt-px shrink-0 text-amber-400" />
-              <p className="text-body-sm leading-relaxed text-amber-200/90">
+              <AlertTriangle size={14} strokeWidth={1.75} className="mt-px shrink-0 text-[var(--color-status-caution)]" />
+              <p className="text-body-sm leading-relaxed text-text-secondary">
                 This sprint&rsquo;s end date has not passed yet. Finishing now closes it early.
               </p>
             </div>
@@ -217,8 +217,8 @@ export function FinishSprintModal({
           {incompleteStories.length > 0 && (
             <section className="rounded-lg border border-red-500/20 bg-red-500/[0.04]">
               <div className="flex items-center gap-2 border-b border-red-500/15 px-3 py-2">
-                <CircleAlert size={13} strokeWidth={1.75} className="shrink-0 text-red-400" />
-                <span className="text-body-sm font-medium text-red-300">
+                <CircleAlert size={13} strokeWidth={1.75} className="shrink-0 text-[var(--color-status-error)]" />
+                <span className="text-body-sm font-medium text-text-primary">
                   {incompleteStories.length} {incompleteStories.length === 1 ? "story is" : "stories are"} not done
                 </span>
               </div>
@@ -244,8 +244,8 @@ export function FinishSprintModal({
             <section className="rounded-lg border border-amber-500/20 bg-amber-500/[0.04]">
               <div className="flex items-center justify-between gap-2 border-b border-amber-500/15 px-3 py-2">
                 <div className="flex items-center gap-2">
-                  <AlertTriangle size={13} strokeWidth={1.75} className="shrink-0 text-amber-400/90" />
-                  <span className="text-body-sm font-medium text-amber-200/90">
+                  <AlertTriangle size={13} strokeWidth={1.75} className="shrink-0 text-[var(--color-status-caution)]" />
+                  <span className="text-body-sm font-medium text-text-primary">
                     {totalOpenSubtasks > 0
                       ? `${totalOpenSubtasks} open ${totalOpenSubtasks === 1 ? "subtask" : "subtasks"}`
                       : "Subtasks cleared"}
@@ -257,7 +257,7 @@ export function FinishSprintModal({
                     onClick={closeAllSubtasks}
                     disabled={busyStories.size > 0}
                     aria-label="Close all open subtasks"
-                    className="inline-flex items-center gap-1.5 rounded-md bg-amber-500/12 px-2 py-1 text-[11px] font-medium text-amber-300 cursor-pointer hover:bg-amber-500/20 active:bg-amber-500/25 disabled:opacity-50 disabled:cursor-not-allowed transition-colors duration-150"
+                    className="inline-flex items-center gap-1.5 rounded-md bg-amber-500/15 px-2 py-1 text-[11px] font-medium text-text-secondary cursor-pointer hover:bg-amber-500/25 hover:text-text-primary active:bg-amber-500/30 disabled:opacity-50 disabled:cursor-not-allowed transition-colors duration-150"
                   >
                     <CheckCheck size={11} strokeWidth={1.75} />
                     Close all
@@ -279,7 +279,7 @@ export function FinishSprintModal({
                           <span className="text-[10px] text-text-muted">{story.key}</span>
                         </div>
                         {resolved ? (
-                          <span className="inline-flex shrink-0 items-center gap-1 text-[11px] font-medium text-green-400/80">
+                          <span className="inline-flex shrink-0 items-center gap-1 text-[11px] font-medium text-[var(--color-status-success)]">
                             <CircleCheckBig size={12} strokeWidth={1.75} /> Done
                           </span>
                         ) : open.length > 0 ? (
@@ -287,7 +287,7 @@ export function FinishSprintModal({
                             type="button"
                             onClick={() => closeAllForStory(story.key)}
                             disabled={storyBusy}
-                            className="inline-flex shrink-0 items-center gap-1 rounded-md px-1.5 py-1 text-[11px] font-medium text-amber-300/90 cursor-pointer hover:bg-amber-500/15 active:bg-amber-500/20 disabled:opacity-50 disabled:cursor-not-allowed transition-colors duration-150"
+                            className="inline-flex shrink-0 items-center gap-1 rounded-md px-1.5 py-1 text-[11px] font-medium text-text-secondary cursor-pointer hover:bg-amber-500/15 hover:text-text-primary active:bg-amber-500/20 disabled:opacity-50 disabled:cursor-not-allowed transition-colors duration-150"
                           >
                             {storyBusy
                               ? <Loader2 size={11} strokeWidth={1.75} className="animate-spin" />
@@ -303,7 +303,7 @@ export function FinishSprintModal({
                         </div>
                       )}
                       {errored && (
-                        <div className="flex items-center justify-between gap-2 px-2.5 pb-2 text-[11px] text-red-300/80">
+                        <div className="flex items-center justify-between gap-2 px-2.5 pb-2 text-[11px] text-[var(--color-status-error)]">
                           <span>Failed to load subtasks</span>
                           <button
                             type="button"
@@ -353,16 +353,16 @@ export function FinishSprintModal({
           {/* Ready state */}
           {ready && (
             <div className="flex items-center gap-2 rounded-lg border border-green-500/25 bg-green-500/[0.06] px-3 py-2.5">
-              <PartyPopper size={14} strokeWidth={1.75} className="shrink-0 text-green-400" />
-              <p className="text-body-sm text-green-200/90">Everything is done. Ready to finish.</p>
+              <PartyPopper size={14} strokeWidth={1.75} className="shrink-0 text-[var(--color-status-success)]" />
+              <p className="text-body-sm text-text-secondary">Everything is done. Ready to finish.</p>
             </div>
           )}
 
           {/* Finish error */}
           {finishError && (
             <div className="flex items-start gap-2 rounded-lg border border-red-500/20 bg-red-500/[0.06] px-3 py-2.5">
-              <AlertTriangle size={13} strokeWidth={1.5} className="mt-px shrink-0 text-red-400" />
-              <p className="text-body-sm leading-relaxed text-red-300">{finishError}</p>
+              <AlertTriangle size={13} strokeWidth={1.5} className="mt-px shrink-0 text-[var(--color-status-error)]" />
+              <p className="text-body-sm leading-relaxed text-text-primary">{finishError}</p>
             </div>
           )}
         </div>
