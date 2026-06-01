@@ -133,16 +133,24 @@ export function useStoryWriterActions({
 
   const handleSaveDraft = useCallback(async () => {
     setSaving(true);
+    setPushError(null);
     const versionAtSave = editVersionRef.current;
-    await writer.saveDraft();
-    setSaving(false);
-    setHasLocalSave(true);
-    setShowSaved(true);
-    if (savedTimerRef.current) clearTimeout(savedTimerRef.current);
-    savedTimerRef.current = setTimeout(() => {
-      setShowSaved(false);
-      if (editVersionRef.current === versionAtSave) setIsDraftDirty(false);
-    }, 2000);
+    try {
+      await writer.saveDraft();
+      setHasLocalSave(true);
+      setShowSaved(true);
+      if (savedTimerRef.current) clearTimeout(savedTimerRef.current);
+      savedTimerRef.current = setTimeout(() => {
+        setShowSaved(false);
+        if (editVersionRef.current === versionAtSave) setIsDraftDirty(false);
+      }, 2000);
+    } catch (err) {
+      const detail = err instanceof ApiError ? (err.body as { error?: string })?.error : undefined;
+      setPushError(detail ?? "Save failed. Please try again.");
+    } finally {
+      // Always clear the spinner so the button stays usable even after a failure.
+      setSaving(false);
+    }
   }, [writer]);
 
   const handleReadinessChange = useCallback(async (v: TicketReadiness | null) => {

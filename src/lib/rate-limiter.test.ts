@@ -57,8 +57,8 @@ describe("rate-limiter", () => {
   });
 
   describe("write tier", () => {
-    it("allows up to 30 requests", async () => {
-      for (let i = 0; i < 30; i++) {
+    it("allows up to 120 requests", async () => {
+      for (let i = 0; i < 120; i++) {
         expect(await applyRateLimit("write")).toBeNull();
       }
       const result = await applyRateLimit("write");
@@ -67,14 +67,14 @@ describe("rate-limiter", () => {
     });
 
     it("includes Retry-After header on 429", async () => {
-      for (let i = 0; i < 30; i++) await applyRateLimit("write");
+      for (let i = 0; i < 120; i++) await applyRateLimit("write");
       const result = (await applyRateLimit("write"))!;
       expect(result.headers.get("Retry-After")).toBeTruthy();
       expect(Number(result.headers.get("Retry-After"))).toBeGreaterThan(0);
     });
 
     it("includes error message in body", async () => {
-      for (let i = 0; i < 30; i++) await applyRateLimit("write");
+      for (let i = 0; i < 120; i++) await applyRateLimit("write");
       const result = (await applyRateLimit("write"))!;
       const body = await result.json();
       expect(body.error).toMatch(/too many requests/i);
@@ -92,7 +92,7 @@ describe("rate-limiter", () => {
     });
 
     it("uses separate bucket from write tier", async () => {
-      for (let i = 0; i < 30; i++) await applyRateLimit("write");
+      for (let i = 0; i < 120; i++) await applyRateLimit("write");
       expect((await applyRateLimit("write"))!.status).toBe(429);
       expect(await applyRateLimit("delete")).toBeNull();
     });
@@ -100,8 +100,8 @@ describe("rate-limiter", () => {
 
   describe("per-user bucketing", () => {
     it("isolates buckets per user within the same tier", async () => {
-      // User A exhausts the write tier (30/min).
-      for (let i = 0; i < 30; i++) {
+      // User A exhausts the write tier (120/min).
+      for (let i = 0; i < 120; i++) {
         expect(await applyRateLimit("write", "user-a")).toBeNull();
       }
       expect((await applyRateLimit("write", "user-a"))!.status).toBe(429);
@@ -119,7 +119,7 @@ describe("rate-limiter", () => {
 
     it("falls back to a shared global bucket when no user is present", async () => {
       // No user id available (e.g. outside a request scope) maps to "global".
-      for (let i = 0; i < 30; i++) await applyRateLimit("write");
+      for (let i = 0; i < 120; i++) await applyRateLimit("write");
       expect((await applyRateLimit("write"))!.status).toBe(429);
       expect(buckets.has("write:global")).toBe(true);
     });

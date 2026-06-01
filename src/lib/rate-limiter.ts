@@ -61,7 +61,9 @@ const TIER_CONFIG: Record<RateLimitTier, { maxRequests: number; windowMs: number
   "story-writer": { maxRequests: 10, windowMs: 60_000 },
   workspace: { maxRequests: 10, windowMs: 60_000 },
   read: { maxRequests: 120, windowMs: 60_000 },
-  write: { maxRequests: 30, windowMs: 60_000 },
+  // The story writer autosaves on every typing pause (session patch + local edit),
+  // so a single user editing can legitimately produce many writes per minute.
+  write: { maxRequests: 120, windowMs: 60_000 },
   delete: { maxRequests: 15, windowMs: 60_000 },
 };
 
