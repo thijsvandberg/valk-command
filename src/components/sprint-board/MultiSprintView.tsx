@@ -12,6 +12,8 @@ import { saveTicketMetadata, saveStoryPoints } from "./sprint-board-utils";
 import { DroppableSprintColumn, PaneDivider } from "./DroppableSprintColumn";
 import { getJiraUrl } from "./TicketTableCells";
 import { X, Columns2 } from "lucide-react";
+import { Toast } from "@/components/ui/Toast";
+import { useToast } from "@/hooks/useToast";
 import { Button } from "@/components/ui/Button";
 import { useTickets } from "@/hooks/useSprintBoard";
 import { useTicketSessionMap } from "@/hooks/useTicketSessionMap";
@@ -230,19 +232,12 @@ export function MultiSprintView({
     }
   }, [leftTickets, rightTickets, getMutateForKey]);
 
-  const [toast, setToast] = useState<string | null>(null);
-  const toastTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const showToast = useCallback((msg: string) => {
-    setToast(msg);
-    if (toastTimerRef.current) clearTimeout(toastTimerRef.current);
-    toastTimerRef.current = setTimeout(() => setToast(null), 3000);
-  }, []);
-  useEffect(() => () => { if (toastTimerRef.current) clearTimeout(toastTimerRef.current); }, []);
+  const { toast, toastLoading, showToast, dismissToast } = useToast();
 
   const handleCopyToClipboard = useCallback(() => {
     const allTickets = [...leftTickets, ...rightTickets];
     const selected = allTickets.filter((t) => checkedKeys.has(t.key));
-    const text = selected.map((t) => `- ${t.title} - ${getJiraUrl(t.key)}`).join("\n");
+    const text = selected.map((t) => `${t.title} - ${getJiraUrl(t.key)}`).join("\n");
     navigator.clipboard.writeText(text).then(() => {
       showToast(`Copied ${selected.length} ticket${selected.length === 1 ? "" : "s"} to clipboard`);
     }).catch(() => {
@@ -631,14 +626,7 @@ export function MultiSprintView({
           />
         )}
 
-        {toast && (
-          <div
-            className="pointer-events-none absolute bottom-4 left-1/2 -translate-x-1/2 whitespace-nowrap rounded-lg border border-border-strong bg-[var(--color-surface-elevated)] px-4 py-2 text-body-lg text-text-secondary shadow-[var(--shadow-md)]"
-            style={{ zIndex: "var(--z-dropdown)" }}
-          >
-            {toast}
-          </div>
-        )}
+        <Toast toast={toast} loading={toastLoading} onDismiss={dismissToast} />
       </div>
 
       <DragOverlay>

@@ -21,7 +21,9 @@ import WorkspaceStatus from "./WorkspaceStatus";
 import Link from "next/link";
 import { prefetchConversation, cancelAllPrefetches } from "@/lib/prefetch";
 import { apiFetch } from "@/lib/api-client";
-import { MessageCircle, X, PenLine, Check, PanelLeftClose, PanelLeftOpen } from "lucide-react";
+import { MessageCircle, X, PenLine, PanelLeftClose, PanelLeftOpen } from "lucide-react";
+import { Toast } from "@/components/ui/Toast";
+import { useToast } from "@/hooks/useToast";
 import { useSidebarState } from "@/hooks/useSidebarState";
 import { deriveCategory, CATEGORY_CONFIG } from "@/lib/conversation-category";
 import { Button } from "@/components/ui/Button";
@@ -90,13 +92,7 @@ export default function ChatLayout({ conversationId }: ChatLayoutProps) {
   const pageTitle = usePageTitle(activeConv ? `Chat - ${activeConv.title}` : "Chat");
 
   // Toast for inline feedback (sprint goal actions etc.)
-  const [toast, setToast] = useState<string | null>(null);
-  const toastTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const showToast = useCallback((msg: string) => {
-    setToast(msg);
-    if (toastTimerRef.current) clearTimeout(toastTimerRef.current);
-    toastTimerRef.current = setTimeout(() => setToast(null), 3000);
-  }, []);
+  const { toast, toastLoading, showToast, dismissToast } = useToast();
 
   // Investigation-specific config (Tech/Explain toggle, Jira key)
   const investigationConfigRef = useRef<InvestigationConfig>({ explainMode: false });
@@ -622,12 +618,7 @@ export default function ChatLayout({ conversationId }: ChatLayoutProps) {
       </div>
 
       {/* Toast */}
-      {toast && (
-        <div role="status" className="pointer-events-none fixed right-6 bottom-6 z-50 flex items-center gap-2 rounded-lg border border-border-strong bg-[var(--color-surface-floating)] px-4 py-2.5 shadow-[var(--shadow-lg)]" style={{ animation: "fadeInUp 0.2s ease-out" }}>
-          <Check className="h-4 w-4 shrink-0 text-[var(--color-brand-400)]" strokeWidth={1.5} />
-          <span className="text-body-lg text-text-primary">{toast}</span>
-        </div>
-      )}
+      <Toast toast={toast} loading={toastLoading} onDismiss={dismissToast} />
     </div>
     </>
   );

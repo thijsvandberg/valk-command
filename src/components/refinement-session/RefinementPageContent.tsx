@@ -13,7 +13,9 @@ import { useRefinementStream } from "@/hooks/useRefinementStream";
 import { refinementSessions as refinementSessionsApi, jira as jiraApi } from "@/lib/api-client";
 import { useTicketActions } from "@/components/sprint-board/useTicketActions";
 import { mapJiraSprints } from "@/components/sprint-board/sprint-board-utils";
-import { Gem, Plus, Clock, Check } from "lucide-react";
+import { Gem, Plus, Clock } from "lucide-react";
+import { Toast } from "@/components/ui/Toast";
+import { useToast } from "@/hooks/useToast";
 import { ViewHeader, ViewHeaderTitle } from "@/components/shared/ViewHeader";
 import { Button } from "@/components/ui/Button";
 import { SavedSessionList } from "@/components/refinement-session/SavedSessionList";
@@ -101,14 +103,7 @@ export function RefinementPageContent({
   }, [mutateTickets]);
 
   // --- Inline editing (reuses the sprint-board ticket actions) ---
-  const [actionToast, setActionToast] = useState<React.ReactNode | null>(null);
-  const actionToastTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const showToast = useCallback((message: React.ReactNode, durationMs = 3000) => {
-    setActionToast(message);
-    if (actionToastTimerRef.current) clearTimeout(actionToastTimerRef.current);
-    actionToastTimerRef.current = setTimeout(() => setActionToast(null), durationMs);
-  }, []);
-  useEffect(() => () => { if (actionToastTimerRef.current) clearTimeout(actionToastTimerRef.current); }, []);
+  const { toast: actionToast, toastLoading: actionToastLoading, showToast, dismissToast } = useToast();
 
   const editableSprints = useMemo(() => mapJiraSprints(sprints), [sprints]);
   const ta = useTicketActions({ apiTickets: tickets, mutateTickets, activeListKey: "/api/tickets", showToast });
@@ -345,12 +340,7 @@ export function RefinementPageContent({
         </div>
       )}
 
-      {actionToast && (
-        <div role="status" className="pointer-events-auto fixed right-6 bottom-6 z-50 flex items-center gap-2 rounded-lg border border-border-strong bg-[var(--color-surface-floating)] px-4 py-2.5 shadow-[var(--shadow-lg)]" style={{ animation: "fadeInUp 0.2s ease-out" }}>
-          <Check className="h-4 w-4 shrink-0 text-[var(--color-brand-400)]" strokeWidth={1.5} />
-          <span className="text-body-lg text-text-secondary">{actionToast}</span>
-        </div>
-      )}
+      <Toast toast={actionToast} loading={actionToastLoading} onDismiss={dismissToast} />
     </>
   );
 }
