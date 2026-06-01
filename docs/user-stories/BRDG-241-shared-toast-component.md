@@ -20,6 +20,17 @@ The activity/sync toast system (`ActivityContext` + `SyncToast`) is intentionall
 - `src/components/refinement-session/RefinementPageContent.tsx`
 - `src/components/sprint-board/ExportToasts.tsx` (presentational, leans on a passed-in `showToast`)
 
+## Implementation Plan
+
+1. **`src/hooks/useToast.ts`** (superset of story signature). State `toast: ReactNode | null`, `toastLoading: boolean`, `timerRef`. `showToast(message, durationMs = 3000, opts?: { loading?: boolean })`: sets toast + loading, clears any prior timer, schedules auto-dismiss only when `durationMs > 0`. `dismissToast()`: clears timer, hides, resets loading. Unmount effect clears pending timer. Returns `{ toast, toastLoading, showToast, dismissToast }`. `showToast`/`dismissToast` use `useCallback([])` so references stay stable for child dependency arrays. `toastLoading` is an additive field required to migrate SprintBoard without regression.
+2. **`src/components/ui/Toast.tsx`** (presentational). Props `{ toast: ReactNode | null; loading?: boolean; onDismiss: () => void }`. Returns `null` when `toast == null`. Renders the exact SprintBoard block: `role="status"`, `fadeInUp`, layered shadow, `Loader2` when loading else brand-tinted `Check`, `text-body-lg text-text-secondary` content, dismiss `X` button gated by `!loading` (preserves the non-dismissable persistent loading toast).
+3. **Migrate SprintBoard first** (the superset consumer): swap local state/effect for `useToast()`, render `<Toast toast loading={toastLoading} onDismiss={dismissToast} />`. Move-to-sprint persistent loading + link flow stays via the unchanged signature; `ExportToasts` keeps `showToast`.
+4. **Migrate ChatLayout, RefinementPageContent, MultiSprintView**: each swaps local state for `useToast()` and renders `<Toast />`. RefinementPageContent's separate `bulk.copyToast` block is left untouched. ChatLayout gains a dismiss button (`pointer-events-auto`, `text-secondary`). MultiSprintView is the one intended visual change: its centered/elevated toast becomes the standardized bottom-right floating toast.
+5. **Tests**: `useToast.test.ts` (auto-dismiss timing, custom duration, `durationMs <= 0` persistence, loading flag reset, `dismissToast`, timer reset on re-show, unmount cleanup, stable refs); `Toast.test.tsx` (null render, role/content, check + dismiss button, loading shows spinner + hides dismiss, dismiss click calls `onDismiss`, rich ReactNode content).
+6. **Verify**: scan existing view tests for hardcoded old toast classes/positions and update; run `npm run verify` + `npm run build`.
+
+**Decisions:** dismiss button hidden during `loading` (deviates from literal "always-present" to keep the non-dismissable loading toast); `toastLoading` exposed from the hook as an additive field; MultiSprintView restyle accepted per story.
+
 ## Requirements
 
 ### 1. Shared hook
