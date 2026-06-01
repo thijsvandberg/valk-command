@@ -6,6 +6,7 @@ import { RichEditor } from "@/components/rich-editor/RichEditor";
 import { TitleInput } from "@/components/story-writer/TitleInput";
 import { DiffPane, type RightVersion, type DiffViewMode } from "@/components/story-writer/DiffPane";
 import { Button } from "@/components/ui/Button";
+import { Tooltip } from "@/components/shared/Tooltip";
 import type { HunkState } from "@/components/story-diff/StoryDiff";
 import { useWriterContext } from "../WriterContext";
 import { usePaneContext } from "../PaneContext";
@@ -108,38 +109,41 @@ export function EditorApp() {
       contextLabel: inSplitMode ? writer.ticketKey : undefined,
       actions: inSplitMode ? (
         activeViewMode === "editor" ? (
-          <Button
-            variant="ghost"
-            size="sm"
-            icon={<GitCompare size={11} strokeWidth={1.5} />}
-            onClick={() => setViewMode("diff")}
-            title="Show diff"
-            className="border-0 bg-transparent text-text-tertiary hover:text-text-secondary hover:bg-hover-list-item"
-          >
-            Diff
-          </Button>
+          <Tooltip content="Compare with the original version">
+            <Button
+              variant="ghost"
+              size="sm"
+              icon={<GitCompare size={11} strokeWidth={1.5} />}
+              onClick={() => setViewMode("diff")}
+              className="border-0 bg-transparent text-text-tertiary hover:text-text-secondary hover:bg-hover-list-item"
+            >
+              Diff
+            </Button>
+          </Tooltip>
         ) : (
-          <Button
-            variant="ghost"
-            size="sm"
-            icon={<Eye size={11} strokeWidth={1.5} />}
-            onClick={() => setViewMode("editor")}
-            title="Show editor"
-            className="border-0 bg-transparent text-text-tertiary hover:text-text-secondary hover:bg-hover-list-item"
-          >
-            Editor
-          </Button>
+          <Tooltip content="Back to the editor">
+            <Button
+              variant="ghost"
+              size="sm"
+              icon={<Eye size={11} strokeWidth={1.5} />}
+              onClick={() => setViewMode("editor")}
+              className="border-0 bg-transparent text-text-tertiary hover:text-text-secondary hover:bg-hover-list-item"
+            >
+              Editor
+            </Button>
+          </Tooltip>
         )
       ) : undefined,
       rightActions: (
-        <Button
-          variant="ghost"
-          size="sm"
-          icon={<Type size={11} strokeWidth={1.5} />}
-          onClick={() => setToolbarVisible((v) => !v)}
-          title={toolbarVisible ? "Hide formatting toolbar" : "Show formatting toolbar"}
-          className={`border-0 bg-transparent ${toolbarVisible ? "text-[var(--color-brand-400)]" : "text-text-tertiary hover:text-text-secondary hover:bg-hover-list-item"}`}
-        />
+        <Tooltip content={toolbarVisible ? "Hide formatting toolbar" : "Show formatting toolbar"}>
+          <Button
+            variant="ghost"
+            size="sm"
+            icon={<Type size={11} strokeWidth={1.5} />}
+            onClick={() => setToolbarVisible((v) => !v)}
+            className={`border-0 bg-transparent ${toolbarVisible ? "text-[var(--color-brand-400)]" : "text-text-tertiary hover:text-text-secondary hover:bg-hover-list-item"}`}
+          />
+        </Tooltip>
       ),
     });
     return () => unregisterToolbar("editor");

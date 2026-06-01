@@ -20,6 +20,7 @@ import { SelectionDecorationExtension } from "./selection-decoration";
 import { calloutMarkdownToHtml, htmlToCalloutMarkdown } from "./callout-markdown";
 import { expandEmojiShortcodes } from "@/lib/emoji-shortcodes";
 import { Toolbar } from "./Toolbar";
+import { Tooltip } from "@/components/shared/Tooltip";
 import { SlashCommandExtension } from "./slash-commands/slash-command-extension";
 import { SlashCommandMenu } from "./slash-commands/SlashCommandMenu";
 
@@ -324,13 +325,15 @@ function ModeToggle({
 }) {
   const isRich = mode === "rich";
   return (
-    <button
-      type="button"
-      onClick={() => onToggle(isRich ? "markdown" : "rich")}
-      className="cursor-pointer shrink-0 flex items-center rounded h-7 px-2.5 text-body-sm font-medium text-text-tertiary transition-colors duration-150 hover:bg-hover-interactive hover:text-text-secondary active:scale-95"
-    >
-      {isRich ? "Markdown" : "Rich Text"}
-    </button>
+    <Tooltip content={isRich ? "Edit raw Markdown source" : "Switch to rich text editing"}>
+      <button
+        type="button"
+        onClick={() => onToggle(isRich ? "markdown" : "rich")}
+        className="cursor-pointer shrink-0 flex items-center rounded h-7 px-2.5 text-body-sm font-medium text-text-tertiary transition-colors duration-150 hover:bg-hover-interactive hover:text-text-secondary active:scale-95"
+      >
+        {isRich ? "Markdown" : "Rich Text"}
+      </button>
+    </Tooltip>
   );
 }
 

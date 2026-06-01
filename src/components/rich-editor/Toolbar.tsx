@@ -10,6 +10,7 @@ import type { Editor } from "@tiptap/react";
 import type { CalloutType } from "./callout-extension";
 import type { EditorMode } from "./RichEditor";
 import { EDITOR_PALETTE } from "@/lib/status-colors";
+import { Tooltip } from "@/components/shared/Tooltip";
 import { LinkPopover } from "./LinkPopover";
 
 interface ToolbarProps {
@@ -41,6 +42,7 @@ export function Toolbar({ editor, mode, beforeMore, endContent }: ToolbarProps) 
           action={() => editor.chain().focus().setParagraph().run()}
           active={editor.isActive("paragraph")}
           label="Paragraph"
+          shortcut="⌘⌥0"
         >
           P
         </FormatButton>
@@ -50,6 +52,7 @@ export function Toolbar({ editor, mode, beforeMore, endContent }: ToolbarProps) 
           action={() => editor.chain().focus().toggleHeading({ level: 2 }).run()}
           active={editor.isActive("heading", { level: 2 })}
           label="Heading 2"
+          shortcut="⌘⌥2"
         >
           H2
         </FormatButton>
@@ -59,6 +62,7 @@ export function Toolbar({ editor, mode, beforeMore, endContent }: ToolbarProps) 
           action={() => editor.chain().focus().toggleHeading({ level: 3 }).run()}
           active={editor.isActive("heading", { level: 3 })}
           label="Heading 3"
+          shortcut="⌘⌥3"
         >
           H3
         </FormatButton>
@@ -68,6 +72,7 @@ export function Toolbar({ editor, mode, beforeMore, endContent }: ToolbarProps) 
           action={() => editor.chain().focus().toggleHeading({ level: 4 }).run()}
           active={editor.isActive("heading", { level: 4 })}
           label="Heading 4"
+          shortcut="⌘⌥4"
         >
           H4
         </FormatButton>
@@ -79,6 +84,7 @@ export function Toolbar({ editor, mode, beforeMore, endContent }: ToolbarProps) 
           action={() => editor.chain().focus().toggleBulletList().run()}
           active={editor.isActive("bulletList")}
           label="Bullet list"
+          shortcut="⌘⇧8"
         >
           <List size={14} strokeWidth={1.5} />
         </FormatButton>
@@ -88,6 +94,7 @@ export function Toolbar({ editor, mode, beforeMore, endContent }: ToolbarProps) 
           action={() => editor.chain().focus().toggleOrderedList().run()}
           active={editor.isActive("orderedList")}
           label="Numbered list"
+          shortcut="⌘⇧7"
         >
           <ListOrdered size={14} strokeWidth={1.5} />
         </FormatButton>
@@ -104,19 +111,21 @@ export function Toolbar({ editor, mode, beforeMore, endContent }: ToolbarProps) 
 
         {beforeMore}
 
-        <button
-          type="button"
-          onClick={() => setMoreOpen(!moreOpen)}
-          aria-label="More formatting options"
-          aria-expanded={moreOpen}
-          className={`cursor-pointer flex items-center justify-center rounded h-7 min-w-7 px-1.5 text-body transition-colors duration-150 focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-[var(--color-brand-400)] ${
-            moreOpen
-              ? "bg-overlay-strong text-text-primary"
-              : "text-text-secondary hover:bg-hover-interactive hover:text-text-primary active:scale-95"
-          }`}
-        >
-          <MoreHorizontal size={14} strokeWidth={1.5} />
-        </button>
+        <Tooltip content={<TipLabel label={moreOpen ? "Fewer options" : "More options"} />}>
+          <button
+            type="button"
+            onClick={() => setMoreOpen(!moreOpen)}
+            aria-label="More formatting options"
+            aria-expanded={moreOpen}
+            className={`cursor-pointer flex items-center justify-center rounded h-7 min-w-7 px-1.5 text-body transition-colors duration-150 focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-[var(--color-brand-400)] ${
+              moreOpen
+                ? "bg-overlay-strong text-text-primary"
+                : "text-text-secondary hover:bg-hover-interactive hover:text-text-primary active:scale-95"
+            }`}
+          >
+            <MoreHorizontal size={14} strokeWidth={1.5} />
+          </button>
+        </Tooltip>
         {endContent && <div className="ml-auto flex items-center gap-1">{endContent}</div>}
       </div>
 
@@ -127,6 +136,7 @@ export function Toolbar({ editor, mode, beforeMore, endContent }: ToolbarProps) 
             action={() => editor.chain().focus().toggleBold().run()}
             active={editor.isActive("bold")}
             label="Bold"
+            shortcut="⌘B"
           >
             <span className="font-bold">B</span>
           </FormatButton>
@@ -136,6 +146,7 @@ export function Toolbar({ editor, mode, beforeMore, endContent }: ToolbarProps) 
             action={() => editor.chain().focus().toggleStrike().run()}
             active={editor.isActive("strike")}
             label="Strikethrough"
+            shortcut="⌘⇧S"
           >
             <Strikethrough size={14} strokeWidth={1.5} />
           </FormatButton>
@@ -145,6 +156,7 @@ export function Toolbar({ editor, mode, beforeMore, endContent }: ToolbarProps) 
             action={() => editor.chain().focus().toggleItalic().run()}
             active={editor.isActive("italic")}
             label="Italic"
+            shortcut="⌘I"
           >
             <span className="italic">I</span>
           </FormatButton>
@@ -154,6 +166,7 @@ export function Toolbar({ editor, mode, beforeMore, endContent }: ToolbarProps) 
             action={() => editor.chain().focus().toggleCode().run()}
             active={editor.isActive("code")}
             label="Inline code"
+            shortcut="⌘E"
           >
             <Code size={14} strokeWidth={1.5} />
           </FormatButton>
@@ -167,6 +180,7 @@ export function Toolbar({ editor, mode, beforeMore, endContent }: ToolbarProps) 
             action={() => editor.chain().focus().toggleBlockquote().run()}
             active={editor.isActive("blockquote")}
             label="Blockquote"
+            shortcut="⌘⇧B"
           >
             <Quote size={13} strokeWidth={1.5} />
           </FormatButton>
@@ -176,6 +190,7 @@ export function Toolbar({ editor, mode, beforeMore, endContent }: ToolbarProps) 
             action={() => editor.chain().focus().toggleCodeBlock().run()}
             active={editor.isActive("codeBlock")}
             label="Code block"
+            shortcut="⌘⌥C"
           >
             <Code2 size={14} strokeWidth={1.5} />
           </FormatButton>
@@ -202,33 +217,51 @@ export function Toolbar({ editor, mode, beforeMore, endContent }: ToolbarProps) 
   );
 }
 
+// Renders a tooltip label with an optional keyboard-shortcut badge.
+function TipLabel({ label, shortcut }: { label: string; shortcut?: string }) {
+  return (
+    <span className="flex items-center gap-2">
+      <span>{label}</span>
+      {shortcut && (
+        <kbd className="rounded border border-border-default bg-overlay-default px-1.5 py-0.5 text-[11px] font-medium text-text-tertiary">
+          {shortcut}
+        </kbd>
+      )}
+    </span>
+  );
+}
+
 function FormatButton({
   editor,
   action,
   active,
   label,
+  shortcut,
   children,
 }: {
   editor: Editor;
   action: () => void;
   active: boolean;
   label: string;
+  shortcut?: string;
   children: React.ReactNode;
 }) {
   return (
-    <button
-      type="button"
-      onClick={action}
-      aria-label={label}
-      aria-pressed={active}
-      className={`cursor-pointer flex items-center justify-center rounded h-7 min-w-7 px-1.5 text-body transition-colors duration-150 focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-[var(--color-brand-400)] ${
-        active
-          ? "bg-overlay-strong text-text-primary"
-          : "text-text-secondary hover:bg-hover-interactive hover:text-text-primary active:scale-95"
-      }`}
-    >
-      {children}
-    </button>
+    <Tooltip content={<TipLabel label={label} shortcut={shortcut} />}>
+      <button
+        type="button"
+        onClick={action}
+        aria-label={label}
+        aria-pressed={active}
+        className={`cursor-pointer flex items-center justify-center rounded h-7 min-w-7 px-1.5 text-body transition-colors duration-150 focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-[var(--color-brand-400)] ${
+          active
+            ? "bg-overlay-strong text-text-primary"
+            : "text-text-secondary hover:bg-hover-interactive hover:text-text-primary active:scale-95"
+        }`}
+      >
+        {children}
+      </button>
+    </Tooltip>
   );
 }
 
@@ -250,6 +283,7 @@ function LinkButton({ editor }: { editor: Editor }) {
         action={() => setOpen(!open)}
         active={editor.isActive("link") || open}
         label="Insert link"
+        shortcut="⌘K"
       >
         <Link size={14} strokeWidth={1.5} />
       </FormatButton>
@@ -300,18 +334,20 @@ function ColorButton({ editor }: { editor: Editor }) {
 
   return (
     <div ref={ref} className="relative">
-      <button
-        type="button"
-        onClick={() => setOpen(!open)}
-        aria-label="Text color"
-        aria-expanded={open}
-        className={`cursor-pointer flex items-center gap-0.5 rounded h-7 min-w-7 px-1.5 text-body transition-colors duration-150 focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-[var(--color-brand-400)] ${
-          open ? "bg-overlay-strong text-text-primary" : "text-text-secondary hover:bg-hover-interactive hover:text-text-primary"
-        }`}
-      >
-        <span className="font-bold text-body-lg" style={{ color: currentColor ?? "currentColor" }}>A</span>
-        <ChevronDown size={8} strokeWidth={1.5} className={`transition-transform duration-150 ${open ? "rotate-180" : ""}`} />
-      </button>
+      <Tooltip content={<TipLabel label="Text color" />}>
+        <button
+          type="button"
+          onClick={() => setOpen(!open)}
+          aria-label="Text color"
+          aria-expanded={open}
+          className={`cursor-pointer flex items-center gap-0.5 rounded h-7 min-w-7 px-1.5 text-body transition-colors duration-150 focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-[var(--color-brand-400)] ${
+            open ? "bg-overlay-strong text-text-primary" : "text-text-secondary hover:bg-hover-interactive hover:text-text-primary"
+          }`}
+        >
+          <span className="font-bold text-body-lg" style={{ color: currentColor ?? "currentColor" }}>A</span>
+          <ChevronDown size={8} strokeWidth={1.5} className={`transition-transform duration-150 ${open ? "rotate-180" : ""}`} />
+        </button>
+      </Tooltip>
 
       {open && (
         <div className="absolute left-0 top-full z-50 mt-1 w-36 rounded-lg border border-border-strong bg-[var(--color-surface-floating)] p-2 shadow-lg shadow-black/40">
@@ -358,18 +394,20 @@ function CalloutDropdown({ editor }: { editor: Editor }) {
 
   return (
     <div ref={ref} className="relative">
-      <button
-        type="button"
-        onClick={() => setOpen(!open)}
-        aria-label="Insert callout"
-        aria-expanded={open}
-        className={`cursor-pointer flex items-center gap-1 rounded h-7 min-w-7 px-1.5 text-body transition-colors duration-150 focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-[var(--color-brand-400)] ${
-          open ? "bg-overlay-strong text-text-primary" : "text-text-secondary hover:bg-hover-interactive hover:text-text-primary active:scale-95"
-        }`}
-      >
-        <Info size={14} strokeWidth={1.5} />
-        <ChevronDown size={8} strokeWidth={1.5} className={`transition-transform duration-150 ${open ? "rotate-180" : ""}`} />
-      </button>
+      <Tooltip content={<TipLabel label="Insert callout" />}>
+        <button
+          type="button"
+          onClick={() => setOpen(!open)}
+          aria-label="Insert callout"
+          aria-expanded={open}
+          className={`cursor-pointer flex items-center gap-1 rounded h-7 min-w-7 px-1.5 text-body transition-colors duration-150 focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-[var(--color-brand-400)] ${
+            open ? "bg-overlay-strong text-text-primary" : "text-text-secondary hover:bg-hover-interactive hover:text-text-primary active:scale-95"
+          }`}
+        >
+          <Info size={14} strokeWidth={1.5} />
+          <ChevronDown size={8} strokeWidth={1.5} className={`transition-transform duration-150 ${open ? "rotate-180" : ""}`} />
+        </button>
+      </Tooltip>
 
       {open && (
         <div className="absolute left-0 top-full z-50 mt-1 w-40 rounded-lg border border-border-strong bg-[var(--color-surface-floating)] py-1 shadow-lg shadow-black/40">
@@ -412,19 +450,21 @@ function ExpandButton({ editor }: { editor: Editor }) {
 
   return (
     <div ref={ref} className="relative">
-      <button
-        type="button"
-        onClick={() => setOpen(!open)}
-        aria-label="Insert expandable section"
-        aria-expanded={open}
-        className={`cursor-pointer flex items-center justify-center rounded h-7 min-w-7 px-1.5 text-body transition-colors duration-150 focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-[var(--color-brand-400)] ${
-          open || editor.isActive("expand")
-            ? "bg-overlay-strong text-text-primary"
-            : "text-text-secondary hover:bg-hover-interactive hover:text-text-primary active:scale-95"
-        }`}
-      >
-        <ChevronRight size={14} strokeWidth={1.5} />
-      </button>
+      <Tooltip content={<TipLabel label="Insert expandable section" />}>
+        <button
+          type="button"
+          onClick={() => setOpen(!open)}
+          aria-label="Insert expandable section"
+          aria-expanded={open}
+          className={`cursor-pointer flex items-center justify-center rounded h-7 min-w-7 px-1.5 text-body transition-colors duration-150 focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-[var(--color-brand-400)] ${
+            open || editor.isActive("expand")
+              ? "bg-overlay-strong text-text-primary"
+              : "text-text-secondary hover:bg-hover-interactive hover:text-text-primary active:scale-95"
+          }`}
+        >
+          <ChevronRight size={14} strokeWidth={1.5} />
+        </button>
+      </Tooltip>
 
       {open && (
         <div className="absolute left-0 top-full z-50 mt-1 w-52 rounded-lg border border-border-strong bg-[var(--color-surface-floating)] p-3 shadow-lg shadow-black/40">
@@ -506,17 +546,19 @@ function EmojiButton({ editor }: { editor: Editor }) {
 
   return (
     <div ref={ref} className="relative">
-      <button
-        type="button"
-        onClick={() => setOpen(!open)}
-        aria-label="Insert emoji"
-        aria-expanded={open}
-        className={`cursor-pointer flex items-center justify-center rounded h-7 min-w-7 px-1.5 text-body transition-colors duration-150 focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-[var(--color-brand-400)] ${
-          open ? "bg-overlay-strong text-text-primary" : "text-text-secondary hover:bg-hover-interactive hover:text-text-primary active:scale-95"
-        }`}
-      >
-        <Smile size={14} strokeWidth={1.5} />
-      </button>
+      <Tooltip content={<TipLabel label="Insert emoji" />}>
+        <button
+          type="button"
+          onClick={() => setOpen(!open)}
+          aria-label="Insert emoji"
+          aria-expanded={open}
+          className={`cursor-pointer flex items-center justify-center rounded h-7 min-w-7 px-1.5 text-body transition-colors duration-150 focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-[var(--color-brand-400)] ${
+            open ? "bg-overlay-strong text-text-primary" : "text-text-secondary hover:bg-hover-interactive hover:text-text-primary active:scale-95"
+          }`}
+        >
+          <Smile size={14} strokeWidth={1.5} />
+        </button>
+      </Tooltip>
 
       {open && (
         <div className="absolute left-0 top-full z-50 mt-1 w-56 rounded-lg border border-border-strong bg-[var(--color-surface-floating)] p-2 shadow-lg shadow-black/40">

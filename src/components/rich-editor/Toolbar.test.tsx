@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { render, screen, fireEvent } from "@testing-library/react";
+import { render, screen, fireEvent, act } from "@testing-library/react";
 
 // LinkPopover renders a TipTap-driven popover that jsdom can't position; stub it out.
 vi.mock("./LinkPopover", () => ({
@@ -79,5 +79,28 @@ describe("Toolbar inline code button", () => {
 
     expect(screen.getByLabelText("Inline code")).toHaveAttribute("aria-pressed", "true");
     expect(editor.isActive).toHaveBeenCalledWith("code");
+  });
+
+  it("shows a tooltip with the keyboard shortcut on hover", () => {
+    vi.useFakeTimers();
+    try {
+      const editor = createMockEditor();
+      render(<Toolbar editor={editor as any} mode="rich" />);
+
+      // Tooltip content is portaled and only appears after the hover delay.
+      const bold = screen.getByLabelText("More formatting options");
+      fireEvent.click(bold);
+      const inlineCode = screen.getByLabelText("Inline code");
+
+      expect(screen.queryByText("⌘E")).toBeNull();
+      fireEvent.mouseEnter(inlineCode.parentElement as HTMLElement);
+      act(() => {
+        vi.advanceTimersByTime(500);
+      });
+
+      expect(screen.getByText("⌘E")).toBeInTheDocument();
+    } finally {
+      vi.useRealTimers();
+    }
   });
 });
