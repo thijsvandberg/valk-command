@@ -3,7 +3,7 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 import { createTestDb } from "@/db/test-utils";
 import type { BetterSQLite3Database } from "drizzle-orm/better-sqlite3";
 import type * as schema from "@/db/schema";
-import { ticket, storyVersion, ticketLocalEdit } from "@/db/schema";
+import { ticket, storyVersion, ticketLocalEdit, storyWriterSession, conversation } from "@/db/schema";
 import { eq } from "drizzle-orm";
 
 let testDb: BetterSQLite3Database<typeof schema>;
@@ -616,5 +616,43 @@ describe("pushToJira", () => {
     if ("conflict" in result) {
       expect(result.contentChanged).toBe(true);
     }
+  });
+
+  it("rebases an active Story Writer session baseline onto the pushed version", async () => {
+    mockJiraLive = true;
+    seedTicket(testDb, "VPL-1");
+    seedStoryVersion(testDb, "VPL-1", "hash-current", "2024-01-01T00:00:00.000Z");
+    testDb
+      .update(ticket)
+      .set({ jiraUpdatedAt: "2024-01-01T00:00:00Z" })
+      .where(eq(ticket.jiraKey, "VPL-1"))
+      .run();
+
+    // An active session whose baseline is stale relative to the version above
+    testDb.insert(conversation).values({ id: "conv-1", title: "SW", relatedTicket: "VPL-1" }).run();
+    testDb.insert(storyWriterSession).values({
+      id: "sws-1",
+      ticketKey: "VPL-1",
+      conversationId: "conv-1",
+      status: "active",
+      localDraft: "draft",
+      baseVersionHash: "stale-hash",
+    }).run();
+
+    await upsertLocalEdit("VPL-1", { field: "title", localValue: "t", baseJiraVersion: "hash-current" });
+    vi.mocked(jiraClient.getIssue).mockResolvedValue({
+      fields: { updated: "2024-01-01T00:00:00Z" },
+    } as never);
+    vi.mocked(jiraClient.updateIssue).mockResolvedValue(undefined as never);
+
+    const result = await pushToJira("VPL-1", false);
+    expect("success" in result && result.success).toBe(true);
+
+    const session = testDb
+      .select()
+      .from(storyWriterSession)
+      .where(eq(storyWriterSession.id, "sws-1"))
+      .get();
+    expect(session?.baseVersionHash).toBe("hash-current");
   });
 });

@@ -20,6 +20,7 @@ const patchSessionSchema = z.object({
   clearSplit: z.boolean().optional(),
   status: z.enum(["active", "completed", "discarded"]).optional(),
   acceptDraftId: z.string().optional(),
+  rebaseBaseline: z.boolean().optional(),
 });
 
 type RouteContext = { params: Promise<{ key: string }> };
@@ -138,8 +139,45 @@ export async function GET(request: Request, { params }: RouteContext) {
 
     const relatedCandidates = [...sessionCandidates, ...linkCandidates];
 
+    // Outdated detection: the Jira version moved on after this draft's baseline.
+    // Mirrors the conflict semantics in ticket-service.pushToJira (null-guarded).
+    const latestVersion = await db.query.storyVersion.findFirst({
+      where: eq(storyVersion.jiraKey, key),
+      orderBy: [desc(storyVersion.createdAt)],
+    });
+    const outdated =
+      resolvedSession.baseVersionHash != null &&
+      latestVersion?.contentHash != null &&
+      latestVersion.contentHash !== resolvedSession.baseVersionHash;
+
+    // Split target uses its own ticketLocalEdit baseline (the Story Writer persists
+    // target content there), compared against the target ticket's latest Jira version.
+    let targetOutdated = false;
+    if (resolvedSession.targetTicketKey) {
+      const [targetEdit, targetLatest] = await Promise.all([
+        db
+          .select()
+          .from(ticketLocalEdit)
+          .where(
+            and(
+              eq(ticketLocalEdit.ticketKey, resolvedSession.targetTicketKey),
+              eq(ticketLocalEdit.field, "description"),
+            ),
+          )
+          .get(),
+        db.query.storyVersion.findFirst({
+          where: eq(storyVersion.jiraKey, resolvedSession.targetTicketKey),
+          orderBy: [desc(storyVersion.createdAt)],
+        }),
+      ]);
+      targetOutdated =
+        targetEdit?.baseJiraVersion != null &&
+        targetLatest?.contentHash != null &&
+        targetEdit.baseJiraVersion !== targetLatest.contentHash;
+    }
+
     if (draftsOnly) {
-      return NextResponse.json({ session: resolvedSession, messages: [], aiDrafts, relatedCandidates });
+      return NextResponse.json({ session: resolvedSession, messages: [], aiDrafts, relatedCandidates, outdated, targetOutdated });
     }
 
     const messages = await db.select().from(message)
@@ -147,7 +185,7 @@ export async function GET(request: Request, { params }: RouteContext) {
       .orderBy(message.timestamp)
       .all();
 
-    return NextResponse.json({ session: resolvedSession, messages, aiDrafts, relatedCandidates });
+    return NextResponse.json({ session: resolvedSession, messages, aiDrafts, relatedCandidates, outdated, targetOutdated });
   } catch (err) {
     logger.error("story-writer", "GET failed", err);
     return errorResponse("Failed to load story writer session", 500);
@@ -321,6 +359,18 @@ export async function PATCH(request: Request, { params }: RouteContext) {
   }
   if (body.status !== undefined) {
     updates.status = body.status;
+  }
+
+  // Rebase the draft baseline onto the current Jira version so the outdated
+  // warning clears (used by "Take Jira version").
+  if (body.rebaseBaseline === true) {
+    const latest = await db.query.storyVersion.findFirst({
+      where: eq(storyVersion.jiraKey, key),
+      orderBy: [desc(storyVersion.createdAt)],
+    });
+    if (latest?.contentHash) {
+      updates.baseVersionHash = latest.contentHash;
+    }
   }
 
   // Accept a specific AI draft: copy its content to localDraft or targetLocalDraft

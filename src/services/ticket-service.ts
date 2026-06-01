@@ -1,5 +1,5 @@
 import { db } from "@/db";
-import { ticket, ticketLocalEdit, ticketMetadata, storyVersion } from "@/db/schema";
+import { ticket, ticketLocalEdit, ticketMetadata, storyVersion, storyWriterSession } from "@/db/schema";
 import type { TicketLocalEdit, TicketMetadata } from "@/db/schema";
 import { eq, and, desc } from "drizzle-orm";
 import { randomUUID, createHash } from "crypto";
@@ -146,6 +146,15 @@ export async function pushToJira(key: string, force: boolean): Promise<PushToJir
     db.delete(ticketLocalEdit)
       .where(eq(ticketLocalEdit.ticketKey, key))
       .run();
+
+    // Rebase any active Story Writer session onto the just-pushed version so its
+    // draft is not falsely flagged as outdated immediately after a push.
+    if (postPushVersion?.contentHash) {
+      db.update(storyWriterSession)
+        .set({ baseVersionHash: postPushVersion.contentHash, updatedAt: new Date().toISOString() })
+        .where(and(eq(storyWriterSession.ticketKey, key), eq(storyWriterSession.status, "active")))
+        .run();
+    }
 
     cache.invalidate(`/api/tickets/${key}`);
     cache.invalidate(/^\/api\/tickets(\?|$)/);

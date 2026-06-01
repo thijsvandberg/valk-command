@@ -3,7 +3,8 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 import { createTestDb } from "@/db/test-utils";
 import type { BetterSQLite3Database } from "drizzle-orm/better-sqlite3";
 import type * as schema from "@/db/schema";
-import { ticket, storyVersion, storyWriterDraft, storyWriterSession, conversation } from "@/db/schema";
+import { ticket, storyVersion, storyWriterDraft, storyWriterSession, conversation, ticketLocalEdit } from "@/db/schema";
+import { eq } from "drizzle-orm";
 
 let testDb: BetterSQLite3Database<typeof schema>;
 
@@ -322,6 +323,135 @@ describe("Story Writer Session CRUD", () => {
         makeParams("VPL-100"),
       );
       expect(res.status).toBe(201);
+    });
+  });
+
+  describe("outdated detection", () => {
+    function seedVersionAt(key: string, id: string, hash: string, createdAt: string) {
+      testDb.insert(storyVersion).values({
+        id,
+        jiraKey: key,
+        description: `desc-${hash}`,
+        contentHash: hash,
+        createdAt,
+      }).run();
+    }
+
+    async function getData(key: string) {
+      const res = await GET(makeRequest(`${BASE}/${key}/story-writer`), makeParams(key));
+      return res.json();
+    }
+
+    it("returns outdated=false when the latest Jira version matches the draft baseline", async () => {
+      seedTicket(testDb, "VPL-100");
+      seedVersion(testDb, "VPL-100"); // hash abc123
+      await POST(makeRequest(`${BASE}/VPL-100/story-writer`, { method: "POST" }), makeParams("VPL-100"));
+
+      const data = await getData("VPL-100");
+      expect(data.session.baseVersionHash).toBe("abc123");
+      expect(data.outdated).toBe(false);
+    });
+
+    it("returns outdated=true when a newer Jira version diverges from the baseline", async () => {
+      seedTicket(testDb, "VPL-100");
+      seedVersion(testDb, "VPL-100"); // hash abc123, default createdAt
+      await POST(makeRequest(`${BASE}/VPL-100/story-writer`, { method: "POST" }), makeParams("VPL-100"));
+
+      // A newer version arrives (e.g. pushed from another tab)
+      seedVersionAt("VPL-100", "sv-2", "def456", "2099-01-01 00:00:00");
+
+      const data = await getData("VPL-100");
+      expect(data.outdated).toBe(true);
+    });
+
+    it("returns outdated=false when the baseline is null (no recorded baseline)", async () => {
+      // Ticket with no storyVersion -> session.baseVersionHash is null
+      seedTicket(testDb, "VPL-100");
+      await POST(makeRequest(`${BASE}/VPL-100/story-writer`, { method: "POST" }), makeParams("VPL-100"));
+      // Even if a version appears later, a null baseline must not flag outdated
+      seedVersionAt("VPL-100", "sv-late", "zzz999", "2099-01-01 00:00:00");
+
+      const data = await getData("VPL-100");
+      expect(data.session.baseVersionHash).toBeNull();
+      expect(data.outdated).toBe(false);
+    });
+
+    it("does not flag outdated after accepting an AI draft (baseline unchanged)", async () => {
+      seedTicket(testDb, "VPL-100");
+      seedVersion(testDb, "VPL-100");
+      const createRes = await POST(makeRequest(`${BASE}/VPL-100/story-writer`, { method: "POST" }), makeParams("VPL-100"));
+      const { session } = await createRes.json();
+
+      testDb.insert(storyWriterDraft).values({
+        id: "draft-1",
+        sessionId: session.id,
+        draftIndex: 0,
+        content: "AI suggested content",
+      }).run();
+
+      await PATCH(
+        makeRequest(`${BASE}/VPL-100/story-writer`, {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ acceptDraftId: "draft-1" }),
+        }),
+        makeParams("VPL-100"),
+      );
+
+      const data = await getData("VPL-100");
+      expect(data.session.localDraft).toBe("AI suggested content");
+      expect(data.outdated).toBe(false);
+    });
+
+    it("PATCH rebaseBaseline clears the outdated flag", async () => {
+      seedTicket(testDb, "VPL-100");
+      seedVersion(testDb, "VPL-100");
+      await POST(makeRequest(`${BASE}/VPL-100/story-writer`, { method: "POST" }), makeParams("VPL-100"));
+      seedVersionAt("VPL-100", "sv-2", "def456", "2099-01-01 00:00:00");
+
+      expect((await getData("VPL-100")).outdated).toBe(true);
+
+      const patchRes = await PATCH(
+        makeRequest(`${BASE}/VPL-100/story-writer`, {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ rebaseBaseline: true }),
+        }),
+        makeParams("VPL-100"),
+      );
+      const patched = await patchRes.json();
+      expect(patched.session.baseVersionHash).toBe("def456");
+      expect((await getData("VPL-100")).outdated).toBe(false);
+    });
+
+    it("computes targetOutdated from the target ticket's local-edit baseline", async () => {
+      seedTicket(testDb, "VPL-100");
+      seedVersion(testDb, "VPL-100");
+      seedTicket(testDb, "VPL-101");
+      seedVersionAt("VPL-101", "sv-t1", "tgt-old", "2026-01-01 00:00:00");
+      const createRes = await POST(makeRequest(`${BASE}/VPL-100/story-writer`, { method: "POST" }), makeParams("VPL-100"));
+      const { session } = await createRes.json();
+
+      // Link the target and give it a local edit based on an older version
+      testDb.update(storyWriterSession)
+        .set({ targetTicketKey: "VPL-101" })
+        .where(eq(storyWriterSession.id, session.id))
+        .run();
+      testDb.insert(ticketLocalEdit).values({
+        id: "tle-1",
+        ticketKey: "VPL-101",
+        field: "description",
+        localValue: "target draft",
+        baseJiraVersion: "tgt-old",
+        isDraft: true,
+      }).run();
+
+      // No newer target version yet -> not outdated
+      expect((await getData("VPL-100")).targetOutdated).toBe(false);
+
+      // A newer target version diverges from the edit's baseline -> outdated
+      seedVersionAt("VPL-101", "sv-t2", "tgt-new", "2099-01-01 00:00:00");
+      expect((await getData("VPL-100")).targetOutdated).toBe(true);
     });
   });
 });
