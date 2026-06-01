@@ -9,6 +9,7 @@ import { Button } from "@/components/ui/Button";
 import type { HunkState } from "@/components/story-diff/StoryDiff";
 import { useWriterContext } from "../WriterContext";
 import { usePaneContext } from "../PaneContext";
+import { OutdatedBanner } from "../OutdatedBanner";
 
 function stripLeadingH1(markdown: string): string {
   return markdown.replace(/^#\s+[^\n]*\n*/, "");
@@ -146,6 +147,12 @@ export function EditorApp() {
 
   return (
     <div className="flex h-full flex-col overflow-hidden">
+      {writer.outdated && (
+        <OutdatedBanner
+          onViewDifference={() => pane.openApp("diff")}
+          onTakeJiraVersion={() => writer.onTakeJiraVersion("original")}
+        />
+      )}
       {activeViewMode === "editor" ? (
         <RichEditor
           value={stripLeadingH1(writer.session?.localDraft ?? "")}

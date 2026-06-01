@@ -30,6 +30,11 @@ export interface WriterContextValue {
   targetTicketTitle: string | null;
   splitModeVisible: boolean;
   needsTitle: boolean;
+  /** The Jira version changed after this draft's baseline (original / target). */
+  outdated: boolean;
+  targetOutdated: boolean;
+  /** Replace the editor content with the current Jira version and clear the outdated warning. */
+  onTakeJiraVersion: (slot?: "original" | "target") => Promise<void>;
 
   onDraftChange: (content: string) => void;
   onTitleChange: (title: string) => void;

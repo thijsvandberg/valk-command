@@ -23,6 +23,8 @@ export function useStoryWriter(ticketKey: string) {
   const [messages, setMessages] = useState<Message[]>([]);
   const [allDrafts, setAllDrafts] = useState<StoryWriterDraftRow[]>([]);
   const [relatedCandidates, setRelatedCandidates] = useState<RelatedStoryCandidateRow[]>([]);
+  const [outdated, setOutdated] = useState(false);
+  const [targetOutdated, setTargetOutdated] = useState(false);
   const [status, setStatus] = useState<StoryWriterStatus>("loading");
   const [streamProgress, setStreamProgress] = useState("");
   const [streamError, setStreamError] = useState<string | null>(null);
@@ -59,6 +61,8 @@ export function useStoryWriter(ticketKey: string) {
         });
         setAllDrafts(((data as Record<string, unknown>).aiDrafts as StoryWriterDraftRow[] | undefined) ?? []);
         setRelatedCandidates(((data as Record<string, unknown>).relatedCandidates as RelatedStoryCandidateRow[] | undefined) ?? []);
+        setOutdated(((data as Record<string, unknown>).outdated as boolean | undefined) ?? false);
+        setTargetOutdated(((data as Record<string, unknown>).targetOutdated as boolean | undefined) ?? false);
       }
     } catch { /* ignore */ }
   }, [ticketKey, setSession]);
@@ -129,6 +133,8 @@ export function useStoryWriter(ticketKey: string) {
             setMessages(data.messages as Message[]);
             setAllDrafts((data.aiDrafts as StoryWriterDraftRow[] | undefined) ?? []);
             setRelatedCandidates((data.relatedCandidates as RelatedStoryCandidateRow[] | undefined) ?? []);
+            setOutdated((data.outdated as boolean | undefined) ?? false);
+            setTargetOutdated((data.targetOutdated as boolean | undefined) ?? false);
 
             const loadedMsgs: Message[] = (data.messages as Message[]) ?? [];
             const lastUserMsg = [...loadedMsgs].reverse().find((m: Message) => m.role === "user");
@@ -161,6 +167,8 @@ export function useStoryWriter(ticketKey: string) {
                       setMessages(refreshed.messages as Message[]);
                       setAllDrafts((refreshed.aiDrafts as StoryWriterDraftRow[] | undefined) ?? []);
                       setRelatedCandidates((refreshed.relatedCandidates as RelatedStoryCandidateRow[] | undefined) ?? []);
+                      setOutdated((refreshed.outdated as boolean | undefined) ?? false);
+                      setTargetOutdated((refreshed.targetOutdated as boolean | undefined) ?? false);
                     }
                   } catch { /* ignore refresh failure */ }
                   if (!cancelled) {
@@ -424,6 +432,8 @@ export function useStoryWriter(ticketKey: string) {
     aiDrafts,
     targetAiDrafts,
     relatedCandidates,
+    outdated,
+    targetOutdated,
     status,
     streamProgress,
     streamError,

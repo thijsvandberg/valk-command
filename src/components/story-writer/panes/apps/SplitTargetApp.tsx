@@ -9,6 +9,7 @@ import { Button } from "@/components/ui/Button";
 import type { HunkState } from "@/components/story-diff/StoryDiff";
 import { useWriterContext } from "../WriterContext";
 import { usePaneContext } from "../PaneContext";
+import { OutdatedBanner } from "../OutdatedBanner";
 
 export function SplitTargetApp() {
   const writer = useWriterContext();
@@ -132,6 +133,11 @@ export function SplitTargetApp() {
 
   return (
     <div className="flex h-full flex-col overflow-hidden">
+      {writer.targetOutdated && (
+        <OutdatedBanner
+          onTakeJiraVersion={() => writer.onTakeJiraVersion("target")}
+        />
+      )}
       {viewMode === "editor" ? (
         <RichEditor
           value={targetDraft}

@@ -92,11 +92,11 @@ Order: server detection -> push rebase -> client wiring -> UI -> tests -> docs.
 
 - [x] Server: compute and return `outdated` (and `targetOutdated` for split) on the session GET payload, with null-baseline guard
 - [x] Server: rebase `baseVersionHash` after a successful push so a just-pushed draft is not flagged
-- [ ] Client: surface the flag through `useStoryWriter` / `refreshSession`
-- [ ] UI: outdated banner in `EditorApp` (and `SplitTargetApp`) with "View difference" and "Take Jira version" actions
-- [ ] "View difference" opens the diff of current draft vs latest Jira version
-- [ ] "Take Jira version" replaces content + title and clears the warning (reuse accept-jira-version path)
+- [x] Client: surface the flag through `useStoryWriter` / `refreshSession`
+- [x] UI: outdated banner in `EditorApp` (and `SplitTargetApp`) with "View difference" and "Take Jira version" actions <!-- target banner offers "Take Jira version" only; target-vs-Jira diff deferred (split target pane has no Jira-version diff) -->
+- [x] "View difference" opens the diff of current draft vs latest Jira version
+- [x] "Take Jira version" replaces content + title and clears the warning (reuse accept-jira-version path)
 - [x] Tests: server detection (outdated true/false, null baseline, after-push rebase)
-- [ ] Tests: editor banner rendering and the two actions
-- [ ] Verify no false "outdated" after a normal push or after accepting an AI draft
+- [x] Tests: editor banner rendering and the two actions
+- [x] Verify no false "outdated" after a normal push or after accepting an AI draft
 - [ ] Update `docs/architecture/story-writer.md` (note outdated detection surfaced in the editor)

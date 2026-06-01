@@ -1,4 +1,4 @@
-import { render, screen } from "@testing-library/react";
+import { render, screen, fireEvent, waitFor } from "@testing-library/react";
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { EditorApp } from "./EditorApp";
 
@@ -52,6 +52,9 @@ function makeWriterCtx(overrides = {}) {
     onTitleChange: vi.fn(),
     onDismissDraft: vi.fn(),
     ticketData: null,
+    outdated: false,
+    targetOutdated: false,
+    onTakeJiraVersion: vi.fn().mockResolvedValue(undefined),
     ...overrides,
   };
 }
@@ -60,6 +63,7 @@ function makePaneCtx(overrides = {}) {
   return {
     registerToolbar: vi.fn(),
     unregisterToolbar: vi.fn(),
+    openApp: vi.fn(),
     paneCount: 2 as const,
     ...overrides,
   };
@@ -154,5 +158,49 @@ describe("EditorApp", () => {
     render(<EditorApp />);
 
     expect(screen.getByTestId("editor-placeholder")).toHaveTextContent("Story description...");
+  });
+
+  describe("outdated banner", () => {
+    it("is hidden when the draft is not outdated", () => {
+      (useWriterContext as ReturnType<typeof vi.fn>).mockReturnValue(makeWriterCtx({ outdated: false }));
+      (usePaneContext as ReturnType<typeof vi.fn>).mockReturnValue(makePaneCtx());
+
+      render(<EditorApp />);
+
+      expect(screen.queryByText(/Jira changed after this draft started/i)).not.toBeInTheDocument();
+    });
+
+    it("renders when the draft is outdated", () => {
+      (useWriterContext as ReturnType<typeof vi.fn>).mockReturnValue(makeWriterCtx({ outdated: true }));
+      (usePaneContext as ReturnType<typeof vi.fn>).mockReturnValue(makePaneCtx());
+
+      render(<EditorApp />);
+
+      expect(screen.getByText(/Jira changed after this draft started/i)).toBeInTheDocument();
+    });
+
+    it("opens the diff pane when 'View difference' is clicked", () => {
+      const openApp = vi.fn();
+      (useWriterContext as ReturnType<typeof vi.fn>).mockReturnValue(makeWriterCtx({ outdated: true }));
+      (usePaneContext as ReturnType<typeof vi.fn>).mockReturnValue(makePaneCtx({ openApp }));
+
+      render(<EditorApp />);
+      fireEvent.click(screen.getByRole("button", { name: /View difference/i }));
+
+      expect(openApp).toHaveBeenCalledWith("diff");
+    });
+
+    it("calls onTakeJiraVersion('original') when 'Take Jira version' is clicked", async () => {
+      const onTakeJiraVersion = vi.fn().mockResolvedValue(undefined);
+      (useWriterContext as ReturnType<typeof vi.fn>).mockReturnValue(
+        makeWriterCtx({ outdated: true, onTakeJiraVersion }),
+      );
+      (usePaneContext as ReturnType<typeof vi.fn>).mockReturnValue(makePaneCtx());
+
+      render(<EditorApp />);
+      fireEvent.click(screen.getByRole("button", { name: /Take Jira version/i }));
+
+      await waitFor(() => expect(onTakeJiraVersion).toHaveBeenCalledWith("original"));
+    });
   });
 });

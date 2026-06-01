@@ -368,6 +368,40 @@ export function useStoryWriterActions({
     }
   }, [ticketKey, targetTicketKey, handleDraftChange, handleTitleChange, handleTargetDraftChange, handleTargetTitleChange]);
 
+  // "Take Jira version": replace the editor content with the current Jira
+  // version and rebase the draft baseline so the outdated warning clears.
+  const handleTakeJiraVersion = useCallback(async (slot: "original" | "target" = "original") => {
+    try {
+      if (slot === "target") {
+        if (!targetTicketKey) return;
+        const data = await tickets.pullFromJira(targetTicketKey) as Record<string, unknown> | null;
+        if (data) {
+          if (typeof data.description === "string") handleTargetDraftChange(data.description);
+          if (typeof data.title === "string" && data.title) handleTargetTitleChange(data.title);
+        }
+        // Rebase the target's local-edit baseline onto the latest Jira version.
+        await apiFetch(`/api/tickets/${encodeURIComponent(targetTicketKey)}/local-edits`, {
+          method: "PATCH",
+          body: {},
+        }).catch(() => { /* no story version yet; nothing to rebase */ });
+      } else {
+        const data = await tickets.pullFromJira(ticketKey) as Record<string, unknown> | null;
+        if (data) {
+          if (typeof data.description === "string") handleDraftChange(data.description);
+          if (typeof data.title === "string" && data.title) handleTitleChange(data.title);
+        }
+        await writer.saveDraft();
+        await apiFetch(`/api/tickets/${encodeURIComponent(ticketKey)}/story-writer`, {
+          method: "PATCH",
+          body: { rebaseBaseline: true },
+        });
+      }
+      await writer.refreshSession();
+    } catch (err) {
+      console.warn("[story-writer] take Jira version failed", err);
+    }
+  }, [ticketKey, targetTicketKey, writer, handleDraftChange, handleTitleChange, handleTargetDraftChange, handleTargetTitleChange]);
+
   const handleSplitButtonClick = useCallback(() => {
     if (!targetTicketKey) {
       setShowSplitPicker(true);
@@ -466,6 +500,9 @@ export function useStoryWriterActions({
     targetTicketTitle,
     splitModeVisible,
     needsTitle: !draftTitle && !(ticketData?.title) && (!writer.session?.localTitle || writer.session.localTitle === "Untitled draft"),
+    outdated: writer.outdated,
+    targetOutdated: writer.targetOutdated,
+    onTakeJiraVersion: handleTakeJiraVersion,
     onDraftChange: handleDraftChange,
     onTitleChange: handleTitleChange,
     onTargetDraftChange: handleTargetDraftChange,
