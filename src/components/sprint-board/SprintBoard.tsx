@@ -31,7 +31,7 @@ import { SprintBoardHeader } from "@/components/sprint-board/SprintBoardHeader";
 import { DragGhostOverlay } from "@/components/sprint-board/DragGhostOverlay";
 import { SprintDropZoneBar, snapToPointer, boardCollisionDetection } from "@/components/sprint-board/SprintBoardDragDrop";
 import { ExportToasts } from "@/components/sprint-board/ExportToasts";
-import { Check } from "lucide-react";
+import { Check, X } from "lucide-react";
 import { DndContext, DragOverlay } from "@dnd-kit/core";
 const SprintEditModal = dynamic(() => import("@/components/sprint-board/SprintEditModal").then((m) => ({ default: m.SprintEditModal })), { ssr: false });
 const CreateSprintModal = dynamic(() => import("@/components/sprint-board/CreateSprintModal").then((m) => ({ default: m.CreateSprintModal })), { ssr: false });
@@ -109,7 +109,14 @@ export default function SprintBoard() {
   }, [activeSprintId]);
 
   const showToast = useCallback((message: React.ReactNode, durationMs = 3000) => {
-    setToast(message); if (toastTimerRef.current) clearTimeout(toastTimerRef.current); toastTimerRef.current = setTimeout(() => setToast(null), durationMs);
+    setToast(message);
+    if (toastTimerRef.current) clearTimeout(toastTimerRef.current);
+    // durationMs <= 0 keeps the toast until manually dismissed.
+    if (durationMs > 0) toastTimerRef.current = setTimeout(() => setToast(null), durationMs);
+  }, []);
+  const dismissToast = useCallback(() => {
+    if (toastTimerRef.current) clearTimeout(toastTimerRef.current);
+    setToast(null);
   }, []);
 
   // Ticket actions hook (must be before useSprintBoardFilters which needs readinessMap)
@@ -211,7 +218,25 @@ export default function SprintBoard() {
   const handleRefineSelected = useCallback(() => { if (checkedTickets.size > 0) setRefineModalOpen(true); }, [checkedTickets]);
   const handleBulkSetStatus = useCallback(async (status: Parameters<typeof ta.handleBulkSetStatus>[0]) => { await ta.handleBulkSetStatus(status, checkedTickets); }, [ta.handleBulkSetStatus, checkedTickets]);
   const handleBulkSetEpic = useCallback(async (epicKey: string | null) => { await ta.handleBulkSetEpic(epicKey, checkedTickets); }, [ta.handleBulkSetEpic, checkedTickets]);
-  const handleBulkMoveSprint = useCallback(async (sprintId: string) => { await ta.handleBulkMoveSprint(sprintId, checkedTickets); }, [ta.handleBulkMoveSprint, checkedTickets]);
+  const handleBulkMoveSprint = useCallback(async (sprintId: string) => {
+    const { ok, count } = await ta.handleBulkMoveSprint(sprintId, checkedTickets);
+    if (!ok) { showToast("Failed to move tickets to sprint"); return; }
+    const isBacklog = sprintId === "__backlog__";
+    const dest = sprintNameMap[sprintId] ?? (isBacklog ? "backlog" : "sprint");
+    showToast(
+      <span>
+        Moved {count} ticket{count === 1 ? "" : "s"} to {dest}{" "}
+        <a
+          href="#"
+          onClick={(e) => { e.preventDefault(); handleSprintListSelect(sprintId); dismissToast(); }}
+          className="font-medium text-[var(--color-brand-400)] underline underline-offset-2 hover:text-[var(--color-brand-300)]"
+        >
+          {isBacklog ? "View in backlog" : "View on sprint board"}
+        </a>
+      </span>,
+      0,
+    );
+  }, [ta.handleBulkMoveSprint, checkedTickets, sprintNameMap, handleSprintListSelect, showToast, dismissToast]);
   const handleBulkUpdateAssignee = useCallback(async (accountId: string | null, name: string | null) => { await ta.handleBulkUpdateAssignee(accountId, name, checkedTickets); }, [ta.handleBulkUpdateAssignee, checkedTickets]);
   const handleBulkUpdateLabels = useCallback(async (labels: string[], mode: "add" | "set") => { await ta.handleBulkUpdateLabels(labels, mode, checkedTickets); }, [ta.handleBulkUpdateLabels, checkedTickets]);
   const handleBulkGenerateSubtasks = useCallback(async () => { const keys = Array.from(checkedTickets); setBulkGenerating(true); showToast(`Generating subtasks for ${keys.length} ticket${keys.length === 1 ? "" : "s"}...`); try { const { succeeded, failed } = await bulkGenerateSubtasks(keys); if (failed > 0) { showToast(`Generated subtasks for ${succeeded} ticket${succeeded === 1 ? "" : "s"}, ${failed} failed`); } else { showToast(`Subtask suggestions sent for ${succeeded} ticket${succeeded === 1 ? "" : "s"}`); } mutateTickets(); } finally { setBulkGenerating(false); } }, [checkedTickets, showToast, mutateTickets]);
@@ -242,7 +267,9 @@ export default function SprintBoard() {
           <FilterBar statusFilter={f.statusFilter} epicFilter={f.epicFilter} assigneeFilter={f.assigneeFilter} readinessFilter={f.readinessFilter} editStateFilter={f.editStateFilter} issueTypeFilter={f.issueTypeFilter} onStatusFilterChange={f.setStatusFilter} onEpicFilterChange={f.setEpicFilter} onAssigneeFilterChange={f.setAssigneeFilter} onReadinessFilterChange={f.setReadinessFilter} onEditStateFilterChange={f.setEditStateFilter} onIssueTypeFilterChange={f.setIssueTypeFilter} gapsFilter={f.gapsFilter} onGapsFilterChange={f.setGapsFilter} statusOptions={f.statusOptions} epicOptions={f.epicOptions} assigneeOptions={f.assigneeOptions} issueTypeOptions={f.issueTypeOptions} teamFilter={f.teamFilter} onTeamFilterChange={f.setTeamFilter} teamOptions={f.teamOptions} {... (isAllView ? { sprintFilter: f.sprintFilter, onSprintFilterChange: f.setSprintFilter, sprintOptions: f.sprintOptions, sprintNameMap } : {})} noBorder searchQuery={f.searchQuery} onSearchChange={f.setSearchQuery} onSaveView={f.handleSaveView} onDeleteView={f.activeViewId ? () => f.handleDeleteView(f.activeViewId!) : undefined} activeView={f.activeView} />
         </div>
       )}
-      <div ref={contentScrollRef}>
+      {/* min-height keeps the sticky bulk action bar low even with few rows, so its
+          upward menu opens into the list instead of overlapping the header. */}
+      <div ref={contentScrollRef} className="min-h-[480px]">
         {!ticketsLoading && analyticsVisible && <SprintAnalytics tickets={allTickets} onClose={() => setAnalyticsVisible(false)} sprintId={activeSprintId} />}
         {ticketsLoading && <LoadingState variant="spinner" label="Loading tickets..." />}
         {!ticketsLoading && (
@@ -256,7 +283,7 @@ export default function SprintBoard() {
   // overflow over the panel when the list column is narrowed.
   const bulkActionBar = someChecked && (() => {
     const sel = tickets.filter((t) => checkedTickets.has(t.key));
-    return <BulkActionBar count={checkedTickets.size} totalCount={tickets.length} selectedPoints={sel.reduce((s, t) => s + (t.storyPoints ?? 0), 0)} selectedBV={sel.reduce((s, t) => s + (t.businessValue ?? 0), 0)} allChecked={allChecked} onToggleAll={toggleAll} onClear={() => setCheckedTickets(new Set())} onSetReadiness={handleBulkSetReadiness} onSetStatus={handleBulkSetStatus} onSetEpic={handleBulkSetEpic} onMoveSprint={handleBulkMoveSprint} onUpdateAssignee={handleBulkUpdateAssignee} onUpdateLabel={handleBulkUpdateLabels} sprints={sprints} onRefreshFromJira={handleBulkRefresh} onReviewStory={handleBulkReviewStory} onCopyToClipboard={handleCopyToClipboard} onExportForStakeholders={handleExportForStakeholders} isRefreshing={bulkRefreshing} isExporting={exportTask.isActive} onGenerateSubtasks={handleBulkGenerateSubtasks} isGeneratingSubtasks={bulkGenerating} onRefine={handleRefineSelected} />;
+    return <BulkActionBar count={checkedTickets.size} totalCount={tickets.length} selectedPoints={sel.reduce((s, t) => s + (t.storyPoints ?? 0), 0)} selectedBV={sel.reduce((s, t) => s + (t.businessValue ?? 0), 0)} allChecked={allChecked} onToggleAll={toggleAll} onClear={() => setCheckedTickets(new Set())} onSetReadiness={handleBulkSetReadiness} onSetStatus={handleBulkSetStatus} onSetEpic={handleBulkSetEpic} onMoveSprint={handleBulkMoveSprint} onUpdateAssignee={handleBulkUpdateAssignee} onUpdateLabel={handleBulkUpdateLabels} sprints={sprints} pinnedSprintIds={slotSprints} onRefreshFromJira={handleBulkRefresh} onReviewStory={handleBulkReviewStory} onCopyToClipboard={handleCopyToClipboard} onExportForStakeholders={handleExportForStakeholders} isRefreshing={bulkRefreshing} isExporting={exportTask.isActive} onGenerateSubtasks={handleBulkGenerateSubtasks} isGeneratingSubtasks={bulkGenerating} onRefine={handleRefineSelected} />;
   })();
 
   return (
@@ -299,6 +326,7 @@ export default function SprintBoard() {
         <div role="status" className="pointer-events-auto fixed right-6 bottom-6 z-50 flex items-center gap-2 rounded-lg border border-border-strong bg-[var(--color-surface-floating)] px-4 py-2.5 shadow-[var(--shadow-lg)]" style={{ animation: "fadeInUp 0.2s ease-out" }}>
           <Check className="h-4 w-4 shrink-0 text-[var(--color-brand-400)]" strokeWidth={1.5} />
           <span className="text-body-lg text-text-secondary">{toast}</span>
+          <button type="button" onClick={dismissToast} aria-label="Dismiss" className="ml-1 shrink-0 cursor-pointer text-text-muted hover:text-text-secondary"><X className="h-3.5 w-3.5" strokeWidth={2} /></button>
         </div>
       )}
 

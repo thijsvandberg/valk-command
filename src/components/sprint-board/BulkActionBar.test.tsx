@@ -101,6 +101,44 @@ describe("BulkActionBar", () => {
     expect(screen.getByText("Move to Sprint")).toBeTruthy();
   });
 
+  it("lists pinned sprints first, in pinned order, in the Move to Sprint sub-panel", () => {
+    render(
+      <BulkActionBar
+        {...defaultProps}
+        onMoveSprint={vi.fn()}
+        sprints={[
+          { id: "1", name: "Sprint A", dateRange: "", state: "future", ticketCount: 0 },
+          { id: "2", name: "Sprint B", dateRange: "", state: "active", ticketCount: 0 },
+          { id: "3", name: "Sprint C", dateRange: "", state: "future", ticketCount: 0 },
+        ]}
+        pinnedSprintIds={["3", "1"]}
+      />,
+    );
+    fireEvent.click(screen.getByText("Update"));
+    fireEvent.click(screen.getByText("Move to Sprint"));
+    const c = screen.getByText("Sprint C");
+    const a = screen.getByText("Sprint A");
+    const b = screen.getByText("Sprint B");
+    // Expected order: pinned [C, A] first, then the rest [B].
+    expect(c.compareDocumentPosition(a) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(a.compareDocumentPosition(b) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+  });
+
+  it("calls onMoveSprint with the selected sprint id", () => {
+    const onMoveSprint = vi.fn();
+    render(
+      <BulkActionBar
+        {...defaultProps}
+        onMoveSprint={onMoveSprint}
+        sprints={[{ id: "42", name: "Sprint 42", dateRange: "", state: "active", ticketCount: 5 }]}
+      />,
+    );
+    fireEvent.click(screen.getByText("Update"));
+    fireEvent.click(screen.getByText("Move to Sprint"));
+    fireEvent.click(screen.getByText("Sprint 42"));
+    expect(onMoveSprint).toHaveBeenCalledWith("42");
+  });
+
   it("opens AI Assist dropdown and shows menu items", () => {
     const onReview = vi.fn();
     render(

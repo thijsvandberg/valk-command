@@ -126,12 +126,25 @@ function ReadinessSubPanel({ onSelect }: { onSelect: (readiness: TicketReadiness
 
 function SprintSubPanel({
   sprints,
+  pinnedSprintIds,
   onSelect,
 }: {
   sprints: Sprint[];
+  pinnedSprintIds?: string[];
   onSelect: (sprintId: string) => void;
 }) {
   const eligible = sprints.filter((s) => s.state === "active" || s.state === "future");
+  // Show pinned (slot) sprints first, in pinned order, then the rest.
+  const pinnedOrder = pinnedSprintIds ?? [];
+  const sorted = [...eligible].sort((a, b) => {
+    const ai = pinnedOrder.indexOf(a.id);
+    const bi = pinnedOrder.indexOf(b.id);
+    if (ai !== -1 && bi !== -1) return ai - bi;
+    if (ai !== -1) return -1;
+    if (bi !== -1) return 1;
+    return 0;
+  });
+  const lastPinnedIdx = sorted.reduce((acc, s, i) => (pinnedOrder.includes(s.id) ? i : acc), -1);
   return (
     <div className="py-1 max-h-[240px] overflow-y-auto">
       <button
@@ -141,20 +154,24 @@ function SprintSubPanel({
       >
         Backlog
       </button>
-      {eligible.map((s) => (
-        <button
-          key={s.id}
-          type="button"
-          onClick={() => onSelect(s.id)}
-          className="flex w-full items-center gap-2.5 px-3 py-1.5 text-body-sm text-text-secondary cursor-pointer hover:bg-hover-list-item active:bg-overlay-default"
-        >
-          {s.name}
-          {s.state === "active" && (
-            <span className="ml-auto rounded px-1.5 py-0.5 text-[10px] font-medium bg-[var(--color-brand-500)]/10 text-[var(--color-brand-400)]">
-              Active
-            </span>
+      {sorted.map((s, i) => (
+        <div key={s.id}>
+          <button
+            type="button"
+            onClick={() => onSelect(s.id)}
+            className="flex w-full items-center gap-2.5 px-3 py-1.5 text-body-sm text-text-secondary cursor-pointer hover:bg-hover-list-item active:bg-overlay-default"
+          >
+            {s.name}
+            {s.state === "active" && (
+              <span className="ml-auto rounded px-1.5 py-0.5 text-[10px] font-medium bg-[var(--color-brand-500)]/10 text-[var(--color-brand-400)]">
+                Active
+              </span>
+            )}
+          </button>
+          {lastPinnedIdx >= 0 && i === lastPinnedIdx && i < sorted.length - 1 && (
+            <div className="mx-2 my-0.5 h-px bg-overlay-strong" />
           )}
-        </button>
+        </div>
       ))}
       {eligible.length === 0 && (
         <div className="px-3 py-2 text-body-sm text-text-tertiary">No sprints available</div>
@@ -381,6 +398,7 @@ function UpdateDropdown({
   onUpdateAssignee,
   onUpdateLabel,
   sprints,
+  pinnedSprintIds,
 }: {
   onSetStatus?: (status: JiraStatus) => void;
   onSetReadiness?: (readiness: TicketReadiness | null) => void;
@@ -389,6 +407,7 @@ function UpdateDropdown({
   onUpdateAssignee?: (accountId: string | null, name: string | null) => void;
   onUpdateLabel?: (labels: string[], mode: "add" | "set") => void;
   sprints?: Sprint[];
+  pinnedSprintIds?: string[];
 }) {
   const [open, setOpen] = useState(false);
   const [subView, setSubView] = useState<UpdateSubView>("menu");
@@ -480,7 +499,7 @@ function UpdateDropdown({
                 Back
               </button>
               <div className="mx-2 my-0.5 h-px bg-overlay-strong" />
-              <SprintSubPanel sprints={sprints} onSelect={(id) => { onMoveSprint?.(id); close(); }} />
+              <SprintSubPanel sprints={sprints} pinnedSprintIds={pinnedSprintIds} onSelect={(id) => { onMoveSprint?.(id); close(); }} />
             </>
           )}
 
@@ -628,6 +647,7 @@ export function BulkActionBar({
   onUpdateAssignee,
   onUpdateLabel,
   sprints,
+  pinnedSprintIds,
   // AI Assist dropdown actions
   onReviewStory,
   onGenerateSubtasks,
@@ -655,6 +675,8 @@ export function BulkActionBar({
   onUpdateAssignee?: (accountId: string | null, name: string | null) => void;
   onUpdateLabel?: (labels: string[], mode: "add" | "set") => void;
   sprints?: Sprint[];
+  /** Pinned (slot) sprint IDs, in pinned order; shown first in the Move to Sprint list. */
+  pinnedSprintIds?: string[];
   // AI Assist dropdown
   onReviewStory?: () => void;
   onGenerateSubtasks?: () => void;
@@ -668,7 +690,7 @@ export function BulkActionBar({
   isRefreshing?: boolean;
 }) {
   return (
-    <BarContainer borderPosition="top" className="sticky bottom-0 z-40 gap-2 bg-[var(--color-surface-base)] sm:gap-3">
+    <BarContainer borderPosition="top" className="sticky bottom-0 z-50 gap-2 bg-[var(--color-surface-base)] sm:gap-3">
       {/* Select all / deselect all checkbox */}
       {onToggleAll && (
         <button
@@ -723,6 +745,7 @@ export function BulkActionBar({
         onUpdateAssignee={onUpdateAssignee}
         onUpdateLabel={onUpdateLabel}
         sprints={sprints}
+        pinnedSprintIds={pinnedSprintIds}
       />
 
       {/* AI Assist dropdown */}

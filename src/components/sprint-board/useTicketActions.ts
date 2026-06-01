@@ -207,16 +207,18 @@ export function useTicketActions(deps: TicketActionsDeps) {
     }
   }, [mutateTickets, showToast]);
 
-  const handleBulkMoveSprint = useCallback(async (targetSprintId: string, checkedTickets: Set<string>) => {
+  // Returns the outcome so the caller can render richer feedback (sprint name + link),
+  // which needs sprint metadata/navigation only available at the board level.
+  const handleBulkMoveSprint = useCallback(async (targetSprintId: string, checkedTickets: Set<string>): Promise<{ ok: boolean; count: number }> => {
     const keys = [...checkedTickets];
     try {
       await jira.moveSprint({ issueKeys: keys, targetSprintId });
       mutateTickets();
-      showToast(`Moved ${keys.length} ticket${keys.length === 1 ? "" : "s"} to sprint`);
+      return { ok: true, count: keys.length };
     } catch {
-      showToast("Failed to move tickets to sprint");
+      return { ok: false, count: keys.length };
     }
-  }, [mutateTickets, showToast]);
+  }, [mutateTickets]);
 
   const handleBulkUpdateAssignee = useCallback(async (accountId: string | null, name: string | null, checkedTickets: Set<string>) => {
     const keys = [...checkedTickets];
