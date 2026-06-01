@@ -2,9 +2,10 @@
 
 import { memo } from "react";
 import type { Ticket } from "@/types/ticket";
-import { ChevronRight, ChevronDown, Pin } from "lucide-react";
+import { ChevronRight, ChevronDown, Pin, Gauge } from "lucide-react";
 import { StatPill, StatusPill } from "./SprintStatPill";
 import { MetricBadge } from "@/components/shared/MetricBadge";
+import { Tooltip } from "@/components/shared/Tooltip";
 
 export type StatCriterion = "todo" | "in-progress" | "test" | "done" | "unpointed";
 
@@ -89,7 +90,11 @@ export const GroupStatBar = memo(function GroupStatBar({
       {bvTickets.length > 0 && (
         <span className="inline-flex items-center gap-1.5">
           <MetricBadge metric="bv" value={bvTotal} tinted />
-          {bvAvg ? <span className="text-caption text-text-muted whitespace-nowrap">avg {bvAvg}</span> : null}
+          {bvAvg ? (
+            <Tooltip content="Average business value per scored ticket">
+              <span className="text-caption text-text-muted whitespace-nowrap cursor-default">avg {bvAvg}</span>
+            </Tooltip>
+          ) : null}
         </span>
       )}
       {noPointsCount > 0 && (
@@ -100,7 +105,10 @@ export const GroupStatBar = memo(function GroupStatBar({
           onClick={onFilterChange ? (e) => { e.stopPropagation(); toggle("unpointed"); } : undefined}
           title={`${noPointsCount} ${noPointsCount === 1 ? "story" : "stories"} without story point estimate (excludes deprecated and N/A)`}
         >
-          {noPointsCount} no SP
+          <span className="inline-flex items-center gap-1">
+            <Gauge size={11} strokeWidth={2} aria-hidden />
+            {noPointsCount} no SP
+          </span>
         </StatPill>
       )}
       {deprecatedWithSp > 0 && (
