@@ -1,6 +1,7 @@
 "use client";
 
-import { useState, useRef, useMemo, type ReactNode } from "react";
+import { useState, useRef, useMemo, useLayoutEffect, type ReactNode, type RefObject } from "react";
+import { createPortal } from "react-dom";
 import useSWR from "swr";
 import type { TicketReadiness, JiraStatus, Sprint } from "@/types/ticket";
 import { swrFetcher } from "@/lib/api-client";
@@ -26,6 +27,62 @@ import {
   ArrowLeft,
 } from "lucide-react";
 import { BarContainer, BarDivider } from "@/components/shared/BarContainer";
+
+// ---------------------------------------------------------------------------
+// Anchored portal menu
+// ---------------------------------------------------------------------------
+
+/**
+ * Renders dropdown content in a portal on document.body so it escapes the
+ * `<main>` stacking context (which sits below the z-30 view-header portal) and
+ * can paint over the header. Flips above/below the anchor based on free space.
+ */
+function AnchoredMenu({
+  anchorRef,
+  menuRef,
+  width,
+  children,
+}: {
+  anchorRef: RefObject<HTMLElement | null>;
+  menuRef: RefObject<HTMLDivElement | null>;
+  width: string;
+  children: ReactNode;
+}) {
+  const [pos, setPos] = useState<{ left: number; top?: number; bottom?: number; maxHeight: number } | null>(null);
+
+  useLayoutEffect(() => {
+    const el = anchorRef.current;
+    if (!el) return;
+    const update = () => {
+      const r = el.getBoundingClientRect();
+      const spaceAbove = r.top;
+      const spaceBelow = window.innerHeight - r.bottom;
+      const flipUp = spaceAbove >= spaceBelow;
+      setPos({
+        left: r.left,
+        ...(flipUp ? { bottom: window.innerHeight - r.top + 6 } : { top: r.bottom + 6 }),
+        maxHeight: (flipUp ? spaceAbove : spaceBelow) - 16,
+      });
+    };
+    update();
+    window.addEventListener("scroll", update, true);
+    window.addEventListener("resize", update);
+    return () => {
+      window.removeEventListener("scroll", update, true);
+      window.removeEventListener("resize", update);
+    };
+  }, [anchorRef]);
+
+  if (!pos) return null;
+  return createPortal(
+    <div ref={menuRef} className="fixed z-[9999]" style={{ left: pos.left, top: pos.top, bottom: pos.bottom }}>
+      <Card variant="floating" className={`${width} overflow-y-auto py-1`} style={{ maxHeight: pos.maxHeight }}>
+        {children}
+      </Card>
+    </div>,
+    document.body,
+  );
+}
 
 // ---------------------------------------------------------------------------
 // Dropdown menu item
@@ -442,8 +499,9 @@ function UpdateDropdown({
   const [open, setOpen] = useState(false);
   const [subView, setSubView] = useState<UpdateSubView>("menu");
   const ref = useRef<HTMLDivElement>(null);
+  const menuRef = useRef<HTMLDivElement>(null);
 
-  useOutsideClick(ref, () => { setOpen(false); setSubView("menu"); }, { enabled: open });
+  useOutsideClick([ref, menuRef], () => { setOpen(false); setSubView("menu"); }, { enabled: open });
 
   const close = () => { setOpen(false); setSubView("menu"); };
 
@@ -464,7 +522,7 @@ function UpdateDropdown({
       </Button>
 
       {open && (
-        <Card variant="floating" className="absolute bottom-full left-0 z-50 mb-1 w-56 py-1">
+        <AnchoredMenu anchorRef={ref} menuRef={menuRef} width="w-56">
           {subView === "menu" && (
             <>
               {onSetStatus && (
@@ -577,7 +635,7 @@ function UpdateDropdown({
               <LabelSubPanel onSelect={(labels, mode) => { onUpdateLabel?.(labels, mode); close(); }} />
             </>
           )}
-        </Card>
+        </AnchoredMenu>
       )}
     </div>
   );
@@ -602,8 +660,9 @@ function AiAssistDropdown({
 }) {
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
+  const menuRef = useRef<HTMLDivElement>(null);
 
-  useOutsideClick(ref, () => setOpen(false), { enabled: open });
+  useOutsideClick([ref, menuRef], () => setOpen(false), { enabled: open });
 
   const hasAnyAction = onReviewStory || onGenerateSubtasks || onSummarizedList;
   if (!hasAnyAction) return null;
@@ -622,7 +681,7 @@ function AiAssistDropdown({
       </Button>
 
       {open && (
-        <Card variant="floating" className="absolute bottom-full left-0 z-50 mb-1 w-52 py-1">
+        <AnchoredMenu anchorRef={ref} menuRef={menuRef} width="w-52">
           {onReviewStory && (
             <MenuItem onClick={() => { onReviewStory(); setOpen(false); }}>
               Review Story
@@ -651,7 +710,7 @@ function AiAssistDropdown({
               )}
             </MenuItem>
           )}
-        </Card>
+        </AnchoredMenu>
       )}
     </div>
   );
