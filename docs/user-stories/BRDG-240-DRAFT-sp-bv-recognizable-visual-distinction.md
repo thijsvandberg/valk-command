@@ -4,6 +4,13 @@
 **Priority:** Low
 **Type:** Enhancement
 
+## Decision aid: temporary preview page
+
+Rather than picking a direction up front, a throwaway showcase page renders every candidate treatment side by side (in isolation and inside a realistic sprint-board table) so the PO can compare them live before committing.
+
+- Page: `src/app/(app)/dev/sp-bv-styles/page.tsx` (mirrors the existing `dev/ticket-pills` showcase; not linked from navigation; excluded from `routes.test.tsx`; safe to delete).
+- Once a direction is chosen, finalize the Requirements below, productionize the chosen treatment into the shared pickers, and delete the preview page.
+
 ## Description
 
 As a PO, I want the Story Points (SP) and Business Value (BV) values in the Sprint Board ticket table to be instantly recognizable as SP or BV, so that I can tell which metric I'm looking at without having to read the column header.
