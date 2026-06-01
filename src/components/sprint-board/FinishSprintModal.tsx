@@ -7,9 +7,11 @@ import { Button } from "@/components/ui/Button";
 import { jira, tickets as ticketsApi } from "@/lib/api-client";
 import type { Sprint, Ticket } from "@/types/ticket";
 import {
-  Flag, X, AlertTriangle, CircleAlert, Circle, CircleCheckBig,
+  Flag, X, AlertTriangle, CircleAlert, CircleCheckBig,
   CheckCheck, Loader2, PartyPopper,
 } from "lucide-react";
+import { StatusPill } from "@/components/sprint-board/SprintStatPill";
+import { IssueTypeIcon } from "@/components/shared/IssueTypeIcon";
 
 interface SubtaskItem {
   key: string;
@@ -225,14 +227,15 @@ export function FinishSprintModal({
               <p className="px-3 pt-2 text-[11px] leading-relaxed text-text-muted">
                 Complete or move these on the board before finishing. They cannot be closed from here.
               </p>
-              <ul className="max-h-40 space-y-0.5 overflow-y-auto px-2 py-2">
+              <ul className="max-h-44 overflow-y-auto px-1.5 py-1.5">
                 {incompleteStories.map((t) => (
-                  <li key={t.key} className="flex items-start gap-2 rounded-md px-1.5 py-1">
-                    <Circle size={11} strokeWidth={1.5} className="mt-1 shrink-0 text-red-400/60" />
-                    <div className="min-w-0">
-                      <span className="line-clamp-2 text-body-sm leading-snug text-text-primary">{t.title}</span>
-                      <span className="mt-0.5 block text-[10px] text-text-muted">{t.key} · {t.jiraStatus}</span>
+                  <li key={t.key} className="flex items-center gap-2.5 rounded-md px-2 py-1.5 transition-colors duration-100 hover:bg-overlay-subtle">
+                    <IssueTypeIcon type={t.type} size={15} />
+                    <div className="min-w-0 flex-1">
+                      <span className="block truncate text-body-sm leading-snug text-text-primary">{t.title}</span>
+                      <span className="font-mono text-[10px] text-text-muted">{t.key}</span>
                     </div>
+                    <StatusPill size="sm" colorKey={t.jiraStatus} label={t.jiraStatus} showDot />
                   </li>
                 ))}
               </ul>
@@ -273,10 +276,11 @@ export function FinishSprintModal({
                   const storyBusy = busyStories.has(story.key);
                   return (
                     <li key={story.key} className="rounded-md border border-border-subtle bg-[var(--color-surface-elevated)]/40">
-                      <div className="flex items-center justify-between gap-2 px-2.5 py-1.5">
-                        <div className="min-w-0">
-                          <span className="line-clamp-1 text-body-sm leading-snug text-text-primary">{story.title}</span>
-                          <span className="text-[10px] text-text-muted">{story.key}</span>
+                      <div className="flex items-center justify-between gap-2 px-2.5 py-2">
+                        <div className="flex min-w-0 items-center gap-2">
+                          <IssueTypeIcon type={story.type} size={14} />
+                          <span className="truncate text-body-sm leading-snug text-text-primary">{story.title}</span>
+                          <span className="shrink-0 font-mono text-[10px] text-text-muted">{story.key}</span>
                         </div>
                         {resolved ? (
                           <span className="inline-flex shrink-0 items-center gap-1 text-[11px] font-medium text-[var(--color-status-success)]">
@@ -319,19 +323,18 @@ export function FinishSprintModal({
                           {open.map((sub) => {
                             const subBusy = busySubtasks.has(sub.key);
                             return (
-                              <li key={sub.key} className="flex items-center justify-between gap-2 py-1">
-                                <div className="flex min-w-0 items-start gap-1.5">
-                                  <Circle size={10} strokeWidth={1.5} className="mt-1 shrink-0 text-amber-400/70" />
-                                  <div className="min-w-0">
-                                    <span className="line-clamp-1 text-[12px] leading-snug text-text-secondary">{sub.title}</span>
-                                    <span className="text-[10px] text-text-muted">{sub.key} · {sub.status}</span>
-                                  </div>
+                              <li key={sub.key} className="flex items-center gap-2 rounded-md px-1.5 py-1.5 transition-colors duration-100 hover:bg-overlay-subtle">
+                                <IssueTypeIcon type="subtask" size={13} />
+                                <div className="min-w-0 flex-1">
+                                  <span className="block truncate text-[12px] leading-snug text-text-secondary">{sub.title}</span>
+                                  <span className="font-mono text-[10px] text-text-muted">{sub.key}</span>
                                 </div>
+                                <StatusPill size="sm" colorKey={sub.status} label={sub.status} showDot />
                                 <button
                                   type="button"
                                   onClick={() => closeOneSubtask(story.key, sub.key)}
                                   disabled={subBusy || storyBusy}
-                                  className="inline-flex shrink-0 items-center gap-1 rounded-md px-1.5 py-0.5 text-[10px] font-medium text-text-secondary cursor-pointer hover:bg-overlay-default hover:text-text-primary active:bg-overlay-strong disabled:opacity-50 disabled:cursor-not-allowed transition-colors duration-100"
+                                  className="inline-flex shrink-0 items-center gap-1 rounded-md px-1.5 py-1 text-[10px] font-medium text-text-secondary cursor-pointer hover:bg-overlay-default hover:text-text-primary active:bg-overlay-strong disabled:opacity-50 disabled:cursor-not-allowed transition-colors duration-100"
                                 >
                                   {subBusy
                                     ? <Loader2 size={10} strokeWidth={1.75} className="animate-spin" />
