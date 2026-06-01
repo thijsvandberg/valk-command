@@ -11,6 +11,7 @@ import { Button } from "@/components/ui/Button";
 import { StatusCount, SprintCompletionBar, SprintStats as SprintStatsComponent } from "@/components/sprint-board/SprintStatPill";
 import { SprintStatsPopover } from "@/components/sprint-board/SprintStatsPopover";
 import { SprintDetailsPopover } from "@/components/sprint-board/SprintDetailsPopover";
+import { Tooltip } from "@/components/shared/Tooltip";
 import { followedSprints, workspaceTasks } from "@/lib/api-client";
 import { Columns2, Check, LayoutGrid, CalendarRange, NotebookPen, Search, Bookmark, MoreHorizontal, BarChart2, List, Bell, BellOff, Users, AlertTriangle, Inbox, Flag } from "lucide-react";
 import dynamic from "next/dynamic";
@@ -298,31 +299,33 @@ export function SprintBoardHeader(props: SprintBoardHeaderProps) {
                   />
                 </div>
                 {noPointsCount > 0 && (
-                  <button
-                    type="button"
-                    onClick={() => {
-                      const next = new Set(filters.gapsFilter);
-                      if (next.has("no_points")) next.delete("no_points"); else next.add("no_points");
-                      filters.setGapsFilter(next);
-                    }}
-                    className={`flex items-center justify-center h-[18px] min-w-[18px] rounded cursor-pointer transition-[background-color,color,box-shadow] duration-150 ${
-                      filters.gapsFilter.has("no_points")
-                        ? "bg-amber-400/15 text-amber-500 shadow-[0_0_0_1px_color-mix(in_srgb,var(--color-status-caution)_30%,transparent)]"
-                        : "text-amber-400/50 hover:text-amber-500 hover:bg-amber-400/8"
-                    }`}
-                    title={`${noPointsCount} without estimate`}
-                  >
-                    <AlertTriangle size={10} strokeWidth={2.5} />
-                  </button>
+                  <Tooltip content={`${noPointsCount} ticket${noPointsCount === 1 ? "" : "s"} without an estimate`}>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const next = new Set(filters.gapsFilter);
+                        if (next.has("no_points")) next.delete("no_points"); else next.add("no_points");
+                        filters.setGapsFilter(next);
+                      }}
+                      aria-label={`${noPointsCount} ticket${noPointsCount === 1 ? "" : "s"} without an estimate`}
+                      className={`flex items-center justify-center h-[18px] min-w-[18px] rounded cursor-pointer transition-[background-color,color,box-shadow] duration-150 ${
+                        filters.gapsFilter.has("no_points")
+                          ? "bg-amber-400/15 text-amber-500 shadow-[0_0_0_1px_color-mix(in_srgb,var(--color-status-caution)_30%,transparent)]"
+                          : "text-amber-400/50 hover:text-amber-500 hover:bg-amber-400/8"
+                      }`}
+                    >
+                      <AlertTriangle size={10} strokeWidth={2.5} />
+                    </button>
+                  </Tooltip>
                 )}
                 {endReached && (
                   <Button
-                    variant="soft"
+                    variant="primary"
                     size="sm"
-                    icon={<Flag className="h-3 w-3" strokeWidth={1.75} />}
+                    icon={<Flag className="h-3 w-3" strokeWidth={2} />}
                     onClick={() => onFinishSprint(false)}
                     title="Finish this sprint"
-                    className="ml-1 border-amber-500/30 bg-amber-500/10 text-amber-300 hover:bg-amber-500/20"
+                    className="ml-1"
                   >
                     Finish
                   </Button>

@@ -396,7 +396,7 @@ export function SprintCompletionBar(props: SprintCompletionBarProps) {
             />
           </div>
           <span className={`absolute text-[10px] tabular-nums whitespace-nowrap leading-none ${workingDaysRemaining! <= 2 ? "text-amber-400/70" : "text-text-muted"}`} style={{ top: LABEL_TOP, left: 9 }}>
-            {workingDaysRemaining === 0 ? "last day" : `day ${daysElapsed}/${totalWorkingDays}`}
+            {workingDaysRemaining === 0 ? "ended" : workingDaysRemaining === 1 ? "last day" : `day ${daysElapsed}/${totalWorkingDays}`}
           </span>
         </div>
       )}
