@@ -3,7 +3,7 @@
 import { useCallback, useState, useRef, useEffect } from "react";
 import { useOutsideClick } from "@/hooks/useOutsideClick";
 import {
-  List, ListOrdered, Code2, Link, ChevronDown, Info,
+  List, ListOrdered, Code, Code2, Link, ChevronDown, Info,
   Strikethrough, Quote, Minus, Table, ChevronRight, Smile, MoreHorizontal,
 } from "lucide-react";
 import type { Editor } from "@tiptap/react";
@@ -147,6 +147,15 @@ export function Toolbar({ editor, mode, beforeMore, endContent }: ToolbarProps) 
             label="Italic"
           >
             <span className="italic">I</span>
+          </FormatButton>
+
+          <FormatButton
+            editor={editor}
+            action={() => editor.chain().focus().toggleCode().run()}
+            active={editor.isActive("code")}
+            label="Inline code"
+          >
+            <Code size={14} strokeWidth={1.5} />
           </FormatButton>
 
           <ColorButton editor={editor} />
