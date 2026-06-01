@@ -80,5 +80,23 @@ describe("BusinessValuePicker", () => {
       render(<BusinessValuePicker value={3} onChange={vi.fn()} />);
       expect(screen.queryByTestId("goal-icon")).not.toBeInTheDocument();
     });
+
+    it("replaces the BV text label with the goal icon in lg mode when set", () => {
+      render(<BusinessValuePicker value={5} onChange={vi.fn()} size="lg" showMetricIcon />);
+      expect(screen.queryByText("BV")).not.toBeInTheDocument();
+      expect(screen.getByTestId("goal-icon")).toBeInTheDocument();
+    });
+  });
+
+  describe("richTooltip", () => {
+    it("omits the native title attribute when set", () => {
+      render(<BusinessValuePicker value={5} onChange={vi.fn()} richTooltip />);
+      expect(screen.getByRole("button").getAttribute("title")).toBeNull();
+    });
+
+    it("keeps the native title attribute by default", () => {
+      render(<BusinessValuePicker value={5} onChange={vi.fn()} />);
+      expect(screen.getByRole("button").getAttribute("title")).toBe("Business Value: 5");
+    });
   });
 });

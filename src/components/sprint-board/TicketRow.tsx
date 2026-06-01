@@ -434,6 +434,7 @@ export const TicketRow = memo(forwardRef<HTMLTableRowElement, TicketRowBaseProps
               onChange={onStoryPointsChange ? (v) => onStoryPointsChange(ticket.key, v) : () => {}}
               subtle
               showMetricIcon
+              richTooltip
             />
           </td>
         );
@@ -493,6 +494,7 @@ export const TicketRow = memo(forwardRef<HTMLTableRowElement, TicketRowBaseProps
               onChange={onBusinessValueChange ? (v) => onBusinessValueChange(ticket.key, v) : () => {}}
               subtle
               showMetricIcon
+              richTooltip
             />
           </td>
         );

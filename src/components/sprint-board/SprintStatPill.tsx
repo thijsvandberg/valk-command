@@ -6,6 +6,8 @@
 //   stat   - neutral info chip (items, pts, no pts); non-interactive or interactive
 //   status - colored chip with optional dot indicator (IN PROGRESS, DONE, TO DO, TEST)
 
+import { Gauge, Goal } from "lucide-react";
+
 export type PillSize = "md" | "sm";
 export type PillVariant = "stat" | "status";
 
@@ -213,14 +215,14 @@ export function SprintStats({ totalItems, totalSp, totalBv, className = "" }: Sp
       <span className="text-text-tertiary">{totalItems} <span className="text-[10px]">items</span></span>
       {totalSp > 0 && (
         <div className="flex items-center gap-1">
-          <span className="inline-flex items-center gap-1 rounded-md px-1.5 py-0.5" style={{ backgroundColor: "var(--color-overlay-subtle)" }}>
+          <span className="inline-flex items-center gap-1 rounded-md px-1.5 py-0.5" style={{ backgroundColor: "var(--color-overlay-subtle)" }} title="Story Points">
+            <Gauge size={12} strokeWidth={2} className="text-text-muted" aria-hidden />
             <span className="font-semibold text-text-primary">{totalSp}</span>
-            <span className="text-[9px] uppercase text-text-muted tracking-wide font-medium">SP</span>
           </span>
           {totalBv > 0 && (
-            <span className="inline-flex items-center gap-1 rounded-md px-1.5 py-0.5" style={{ backgroundColor: "var(--color-overlay-subtle)" }}>
+            <span className="inline-flex items-center gap-1 rounded-md px-1.5 py-0.5" style={{ backgroundColor: "var(--color-overlay-subtle)" }} title="Business Value">
+              <Goal size={12} strokeWidth={2} className="text-text-muted" aria-hidden />
               <span className="font-semibold text-text-primary">{totalBv}</span>
-              <span className="text-[9px] uppercase text-text-muted tracking-wide font-medium">BV</span>
             </span>
           )}
         </div>

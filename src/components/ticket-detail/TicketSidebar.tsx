@@ -359,10 +359,11 @@ export function TicketSidebar({
               <StoryPointPicker
                 value={storyPoints}
                 onChange={handleStoryPointsChange}
+                showMetricIcon
               />
             </CompactField>
             <CompactField label="Business Value" accent={hasBV}>
-              <BusinessValuePicker value={businessValue} onChange={handleBusinessValueChange} align="right" />
+              <BusinessValuePicker value={businessValue} onChange={handleBusinessValueChange} align="right" showMetricIcon />
             </CompactField>
           </div>
 

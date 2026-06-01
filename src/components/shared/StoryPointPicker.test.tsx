@@ -199,6 +199,24 @@ describe("StoryPointPicker", () => {
       const { container } = render(<StoryPointPicker value={3} onChange={() => {}} />);
       expect(container.querySelector("svg")).not.toBeInTheDocument();
     });
+
+    it("replaces the SP text label with an icon in lg mode when set", () => {
+      const { container } = render(<StoryPointPicker value={5} onChange={() => {}} size="lg" showMetricIcon />);
+      expect(screen.queryByText("SP")).not.toBeInTheDocument();
+      expect(container.querySelector("svg")).toBeInTheDocument();
+    });
+  });
+
+  describe("richTooltip", () => {
+    it("omits the native title attribute when set", () => {
+      render(<StoryPointPicker value={5} onChange={() => {}} richTooltip />);
+      expect(screen.getByRole("button").getAttribute("title")).toBeNull();
+    });
+
+    it("keeps the native title attribute by default", () => {
+      render(<StoryPointPicker value={5} onChange={() => {}} />);
+      expect(screen.getByRole("button").getAttribute("title")).toBe("Story Points: 5");
+    });
   });
 
   describe("size=lg", () => {

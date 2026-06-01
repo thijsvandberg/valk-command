@@ -82,32 +82,33 @@ export function getEpicColor(epic: string): { bg: string; text: string } {
   return EPIC_COLORS[epic] ?? EPIC_COLORS[epic.toUpperCase()] ?? generateEpicColor(epic);
 }
 
-// Business Value color bands: low (1-2) cool/muted, medium (3-4) neutral/warm, high (5-7) warm/accent
-// 0 = not applicable (N/A), excluded from averages
+// Business Value color bands: low (1-2) neutral grey, then a warm amber → orange
+// ramp for medium/high (3-7). 0 = not applicable (N/A), excluded from averages.
 export const BV_COLORS: Record<number, { text: string; bg: string }> = {
   0: { text: "#555a64", bg: "rgba(85, 90, 100, 0.08)" },
-  1: { text: "#6b7a8d", bg: "rgba(107, 122, 141, 0.10)" },
-  2: { text: "#7d8ea0", bg: "rgba(125, 142, 160, 0.10)" },
-  3: { text: "#b0926a", bg: "rgba(176, 146, 106, 0.10)" },
-  4: { text: "#c8a84e", bg: "rgba(200, 168, 78, 0.10)" },
-  5: { text: "#d4a030", bg: "rgba(212, 160, 48, 0.12)" },
-  6: { text: "#e0a030", bg: "rgba(224, 160, 48, 0.12)" },
-  7: { text: "#eab308", bg: "rgba(234, 179, 8, 0.14)" },
+  1: { text: "#6e737c", bg: "rgba(110, 115, 124, 0.10)" },
+  2: { text: "#858a92", bg: "rgba(133, 138, 146, 0.10)" },
+  3: { text: "#c89a44", bg: "rgba(200, 154, 68, 0.11)" },
+  4: { text: "#d4962f", bg: "rgba(212, 150, 47, 0.12)" },
+  5: { text: "#dd8b22", bg: "rgba(221, 139, 34, 0.13)" },
+  6: { text: "#e5811a", bg: "rgba(229, 129, 26, 0.13)" },
+  7: { text: "#ec7614", bg: "rgba(236, 118, 20, 0.14)" },
 };
 
 export function getBvColor(value: number): { text: string; bg: string } {
   return BV_COLORS[value] ?? BV_COLORS[4];
 }
 
-// Story Point color bands: low effort cool/muted, high effort warm/accent
-// 0 = not applicable (N/A), excluded from totals
+// Story Point colors: a single green ramp (light → deep) used only where SP is
+// shown tinted (pickers in detail views, popover swatches). In the dense table
+// SP renders neutral grey (see StoryPointPicker). 0 = N/A, excluded from totals.
 export const SP_COLORS: Record<number, { text: string; bg: string }> = {
   0: { text: "#555a64", bg: "rgba(85, 90, 100, 0.08)" },
-  1: { text: "#5a8a6e", bg: "rgba(90, 138, 110, 0.10)" },
-  2: { text: "#6a9a6a", bg: "rgba(106, 154, 106, 0.10)" },
-  3: { text: "#8a9a50", bg: "rgba(138, 154, 80, 0.10)" },
-  5: { text: "#b89040", bg: "rgba(184, 144, 64, 0.12)" },
-  8: { text: "#c87040", bg: "rgba(200, 112, 64, 0.14)" },
+  1: { text: "#6fa384", bg: "rgba(111, 163, 132, 0.10)" },
+  2: { text: "#5d9871", bg: "rgba(93, 152, 113, 0.10)" },
+  3: { text: "#4d8d5d", bg: "rgba(77, 141, 93, 0.10)" },
+  5: { text: "#3d8050", bg: "rgba(61, 128, 80, 0.12)" },
+  8: { text: "#2e7444", bg: "rgba(46, 116, 68, 0.14)" },
 };
 
 export function getSpColor(value: number): { text: string; bg: string } {

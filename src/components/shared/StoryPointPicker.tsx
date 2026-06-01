@@ -5,6 +5,7 @@ import { createPortal } from "react-dom";
 import { usePickerState } from "@/components/shared/BasePicker";
 import { getSpColor } from "@/types/ticket";
 import { Minus, X, Hash, Gauge } from "lucide-react";
+import { Tooltip } from "@/components/shared/Tooltip";
 
 const SP_PRESET_OPTIONS = [1, 2, 3, 5, 8] as const;
 const SP_PRESET_SET = new Set<number>(SP_PRESET_OPTIONS);
@@ -16,6 +17,7 @@ export function StoryPointPicker({
   subtle = false,
   size = "sm",
   showMetricIcon = false,
+  richTooltip = false,
   onOpenChange,
 }: {
   value: number | null;
@@ -26,6 +28,8 @@ export function StoryPointPicker({
   // Show a leading gauge icon (effort/complexity) so SP is recognizable
   // without the column header. Used in the sprint-board table (BRDG-240).
   showMetricIcon?: boolean;
+  // Replace the native title attribute with the styled Tooltip component.
+  richTooltip?: boolean;
   onOpenChange?: (open: boolean) => void;
 }) {
   const isLg = size === "lg";
@@ -90,6 +94,7 @@ export function StoryPointPicker({
   const showBg = !subtle || hovered || open;
   const displayLabel = value != null ? (isNA ? "-" : String(value)) : null;
   const iconShown = showMetricIcon && displayLabel != null;
+  const titleText = isNA ? "N/A" : value != null ? `Story Points: ${value}` : "Set Story Points";
 
   const btnSize = isLg ? "h-10 w-10" : "h-7 w-7";
   const btnText = isLg ? "text-body-lg font-semibold" : "text-body-sm font-medium";
@@ -98,16 +103,14 @@ export function StoryPointPicker({
   const customInputH = isLg ? "h-10 w-20" : "h-7 w-14";
   const customInputText = isLg ? "text-body-lg font-semibold" : "text-body-sm font-medium";
 
-  return (
-    <>
-      {isLg ? (
+  const trigger = isLg ? (
         <button
           ref={triggerRef}
           type="button"
           onClick={() => open ? handleClose() : handleOpen()}
           onMouseEnter={handleMouseEnter}
           onMouseLeave={handleMouseLeave}
-          title={isNA ? "N/A" : value != null ? `Story Points: ${value}` : "Set Story Points"}
+          title={richTooltip ? undefined : titleText}
           className="flex h-7 items-center gap-1.5 rounded-lg px-2.5 cursor-pointer focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)] active:opacity-60"
           style={{
             color: color?.text ?? "var(--color-text-muted)",
@@ -116,7 +119,7 @@ export function StoryPointPicker({
             transition: "opacity 0.15s ease",
           }}
         >
-          <span className="text-[10px] font-semibold uppercase tracking-wider opacity-60">SP</span>
+          {showMetricIcon ? <Gauge size={13} strokeWidth={2} aria-hidden /> : <span className="text-[10px] font-semibold uppercase tracking-wider opacity-60">SP</span>}
           <span className="text-body-sm font-semibold tabular-nums">{displayLabel ?? "?"}</span>
         </button>
       ) : (
@@ -126,11 +129,13 @@ export function StoryPointPicker({
           onClick={() => open ? handleClose() : handleOpen()}
           onMouseEnter={handleMouseEnter}
           onMouseLeave={handleMouseLeave}
-          title={isNA ? "N/A" : value != null ? `Story Points: ${value}` : "Set Story Points"}
+          title={richTooltip ? undefined : titleText}
           className={`flex h-6 items-center rounded-md cursor-pointer transition-colors duration-150 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)] active:opacity-60 text-body-sm font-medium tabular-nums ${iconShown ? "gap-1 px-1.5" : "min-w-[24px] justify-center"}`}
           style={{
-            color: color?.text ?? "var(--color-text-muted)",
-            backgroundColor: showBg ? (color?.bg ?? "var(--color-overlay-subtle)") : "transparent",
+            // SP has no value color in the dense table (subtle): neutral grey.
+            // Tinted contexts (non-subtle) get the green effort ramp.
+            color: subtle ? "var(--color-text-secondary)" : (color?.text ?? "var(--color-text-muted)"),
+            backgroundColor: showBg ? (subtle ? "var(--color-overlay-subtle)" : (color?.bg ?? "var(--color-overlay-subtle)")) : "transparent",
             opacity: hovered && showBg ? 0.85 : 1,
           }}
         >
@@ -143,7 +148,11 @@ export function StoryPointPicker({
             <span className="h-1.5 w-1.5 rounded-full bg-overlay-strong" />
           )}
         </button>
-      )}
+  );
+
+  return (
+    <>
+      {richTooltip ? <Tooltip content={titleText}>{trigger}</Tooltip> : trigger}
 
       {open && pos && createPortal(
         <div

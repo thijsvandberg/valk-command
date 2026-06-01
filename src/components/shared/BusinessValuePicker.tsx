@@ -5,6 +5,7 @@ import { createPortal } from "react-dom";
 import { usePickerState } from "@/components/shared/BasePicker";
 import { getBvColor } from "@/types/ticket";
 import { Minus, X, Goal } from "lucide-react";
+import { Tooltip } from "@/components/shared/Tooltip";
 
 const BV_SCORE_OPTIONS = [1, 2, 3, 4, 5, 6, 7] as const;
 
@@ -15,6 +16,7 @@ export function BusinessValuePicker({
   subtle = false,
   size = "sm",
   showMetricIcon = false,
+  richTooltip = false,
   onOpenChange,
 }: {
   value: number | null;
@@ -25,6 +27,8 @@ export function BusinessValuePicker({
   // Show a leading goal icon (value/target) so BV is recognizable without the
   // column header. Used in the sprint-board table (BRDG-240).
   showMetricIcon?: boolean;
+  // Replace the native title attribute with the styled Tooltip component.
+  richTooltip?: boolean;
   onOpenChange?: (open: boolean) => void;
 }) {
   const [hovered, setHovered] = useState(false);
@@ -45,17 +49,16 @@ export function BusinessValuePicker({
   const showBg = !subtle || hovered || open;
   const displayLabel = value != null ? (isNA ? "-" : String(value)) : null;
   const iconShown = showMetricIcon && displayLabel != null;
+  const titleText = isNA ? "N/A" : value != null ? `Business Value: ${value}` : "Set Business Value";
 
-  return (
-    <>
-      {isLg ? (
+  const trigger = isLg ? (
         <button
           ref={triggerRef}
           type="button"
           onClick={() => open ? handleClose() : handleOpen()}
           onMouseEnter={handleMouseEnter}
           onMouseLeave={handleMouseLeave}
-          title={isNA ? "N/A" : value != null ? `Business Value: ${value}` : "Set Business Value"}
+          title={richTooltip ? undefined : titleText}
           className="flex h-7 items-center gap-1.5 rounded-lg px-2.5 cursor-pointer focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)] active:opacity-60"
           style={{
             color: color?.text ?? "var(--color-text-muted)",
@@ -64,7 +67,7 @@ export function BusinessValuePicker({
             transition: "opacity 0.15s ease",
           }}
         >
-          <span className="text-[10px] font-semibold uppercase tracking-wider opacity-60">BV</span>
+          {showMetricIcon ? <Goal size={13} strokeWidth={2} aria-hidden /> : <span className="text-[10px] font-semibold uppercase tracking-wider opacity-60">BV</span>}
           <span className="text-body-sm font-semibold tabular-nums">{displayLabel ?? "?"}</span>
         </button>
       ) : (
@@ -74,7 +77,7 @@ export function BusinessValuePicker({
           onClick={() => open ? handleClose() : handleOpen()}
           onMouseEnter={handleMouseEnter}
           onMouseLeave={handleMouseLeave}
-          title={isNA ? "N/A" : value != null ? `Business Value: ${value}` : "Set Business Value"}
+          title={richTooltip ? undefined : titleText}
           className={`flex h-6 items-center rounded-md cursor-pointer transition-colors duration-150 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)] active:opacity-60 text-body-sm font-medium tabular-nums ${iconShown ? "gap-1 px-1.5" : "min-w-[24px] justify-center"}`}
           style={{
             color: color?.text ?? "var(--color-text-muted)",
@@ -91,7 +94,11 @@ export function BusinessValuePicker({
             <span className="h-1.5 w-1.5 rounded-full bg-overlay-strong" />
           )}
         </button>
-      )}
+  );
+
+  return (
+    <>
+      {richTooltip ? <Tooltip content={titleText}>{trigger}</Tooltip> : trigger}
 
       {open && pos && createPortal(
         <div

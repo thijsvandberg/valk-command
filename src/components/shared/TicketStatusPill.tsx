@@ -464,12 +464,12 @@ function TicketHoverCard({
 
       <div className="mt-2 flex items-center gap-3 border-t border-border-subtle pt-2">
         {onStoryPointsChange ? (
-          <StoryPointPicker value={data.storyPoints} onChange={onStoryPointsChange} size="lg" align="left" onOpenChange={onPickerOpenChange} />
+          <StoryPointPicker value={data.storyPoints} onChange={onStoryPointsChange} size="lg" align="left" showMetricIcon onOpenChange={onPickerOpenChange} />
         ) : (
           <ScoreChip label="SP" value={data.storyPoints} colors={data.storyPoints != null ? getSpColor(data.storyPoints) : null} />
         )}
         {onBusinessValueChange ? (
-          <BusinessValuePicker value={data.businessValue} onChange={onBusinessValueChange} size="lg" align="left" onOpenChange={onPickerOpenChange} />
+          <BusinessValuePicker value={data.businessValue} onChange={onBusinessValueChange} size="lg" align="left" showMetricIcon onOpenChange={onPickerOpenChange} />
         ) : (
           <ScoreChip label="BV" value={data.businessValue} colors={data.businessValue != null ? getBvColor(data.businessValue) : null} />
         )}
