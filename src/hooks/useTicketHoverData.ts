@@ -1,19 +1,20 @@
 "use client";
 
 import { useMemo, useCallback } from "react";
-import { useTickets } from "@/hooks/useSprintBoard";
+import { useTickets, useJiraSprints } from "@/hooks/useSprintBoard";
 import type { Ticket } from "@/types/ticket";
 import type { TicketPillHoverData } from "@/components/shared/TicketStatusPill";
 
 // Maps a full board ticket to the read-only hover-card shape. sprintId is left
 // null because editing is not offered in the reference contexts that use this.
-export function buildTicketHoverData(t: Ticket): TicketPillHoverData {
+// sprintNames resolves the raw sprint id to its display name (e.g. "BT: 137").
+export function buildTicketHoverData(t: Ticket, sprintNames: Record<string, string> = {}): TicketPillHoverData {
   return {
     title: t.title,
     storyPoints: t.storyPoints,
     businessValue: t.businessValue,
     sprintId: null,
-    sprintName: t.sprintId ?? null,
+    sprintName: t.sprintId ? (sprintNames[t.sprintId] ?? t.sprintId) : null,
     epicKey: t.epicKey,
     epic: t.epic,
     assignee: t.assignee ?? null,
@@ -33,10 +34,16 @@ export function buildTicketHoverData(t: Ticket): TicketPillHoverData {
  */
 export function useTicketHoverData(): (key: string) => TicketPillHoverData | undefined {
   const { data } = useTickets("__all__");
+  const { sprints } = useJiraSprints();
+  const sprintNames = useMemo(() => {
+    const m: Record<string, string> = {};
+    sprints.forEach((s) => { m[s.id] = s.name; });
+    return m;
+  }, [sprints]);
   const map = useMemo(() => {
     const m = new Map<string, TicketPillHoverData>();
-    (data ?? []).forEach((t) => m.set(t.key, buildTicketHoverData(t)));
+    (data ?? []).forEach((t) => m.set(t.key, buildTicketHoverData(t, sprintNames)));
     return m;
-  }, [data]);
+  }, [data, sprintNames]);
   return useCallback((key: string) => map.get(key), [map]);
 }

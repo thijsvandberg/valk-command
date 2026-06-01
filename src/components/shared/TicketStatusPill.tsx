@@ -3,7 +3,7 @@
 import { useState, useRef, useEffect, useLayoutEffect, type ReactNode } from "react";
 import { useOutsideClick } from "@/hooks/useOutsideClick";
 import { createPortal } from "react-dom";
-import { ExternalLink, FilePen, MessageCircleQuestion, CheckCircle2, Ban, Minus, Copy, ClipboardList, PenLine, Flag, IterationCw, Zap, User, UserRound, ListChecks } from "lucide-react";
+import { ExternalLink, FilePen, MessageCircleQuestion, CheckCircle2, Ban, Minus, Copy, ClipboardList, PenLine, Flag, IterationCw, Zap, User, UserRound, ListChecks, Gauge, Goal } from "lucide-react";
 import type { JiraStatus, TicketReadiness, IssueType, Assignee, Sprint } from "@/types/ticket";
 import {
   JIRA_STATUS_COLORS,
@@ -352,10 +352,11 @@ export interface TicketPillHoverData {
   flagged: boolean;
 }
 
-function ScoreChip({ label, value, colors }: { label: string; value: number | null; colors: { bg: string; text: string } | null }) {
+function ScoreChip({ label, value, colors }: { label: "SP" | "BV"; value: number | null; colors: { bg: string; text: string } | null }) {
+  const Icon = label === "SP" ? Gauge : Goal;
   return (
-    <span className="flex items-center gap-1.5">
-      <span className="text-label font-medium uppercase tracking-wide text-text-muted">{label}</span>
+    <span className="flex items-center gap-1.5" title={label === "SP" ? "Story Points" : "Business Value"}>
+      <Icon size={13} strokeWidth={2} aria-hidden style={{ color: colors?.text ?? "var(--color-text-muted)" }} />
       {value != null && colors ? (
         <span className="rounded px-1.5 py-0.5 text-label font-semibold tabular-nums" style={{ backgroundColor: colors.bg, color: colors.text }}>
           {value}

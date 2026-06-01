@@ -439,6 +439,7 @@ export default function RefinementSessionTicketPage({
                   onChange={handleStoryPointsChange}
                   align="left"
                   size="lg"
+                  showMetricIcon
                 />
               </>
             )}
