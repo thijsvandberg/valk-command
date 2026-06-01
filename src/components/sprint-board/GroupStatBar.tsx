@@ -101,27 +101,29 @@ export const GroupStatBar = memo(function GroupStatBar({
         </span>
       )}
       {noPointsCount > 0 && (
-        <StatPill
-          size="sm"
-          variant="warning"
-          active={activeCriterion === "unpointed"}
-          onClick={onFilterChange ? (e) => { e.stopPropagation(); toggle("unpointed"); } : undefined}
-          title={`${noPointsCount} ${noPointsCount === 1 ? "story" : "stories"} without story point estimate (excludes deprecated and N/A)`}
-        >
-          <span className="inline-flex items-center gap-1">
-            <Gauge size={11} strokeWidth={2} aria-hidden />
-            {noPointsCount} no SP
-          </span>
-        </StatPill>
+        <Tooltip content={`${noPointsCount} ${noPointsCount === 1 ? "story" : "stories"} without story point estimate (excludes deprecated and N/A)`}>
+          <StatPill
+            size="sm"
+            variant="warning"
+            active={activeCriterion === "unpointed"}
+            onClick={onFilterChange ? (e) => { e.stopPropagation(); toggle("unpointed"); } : undefined}
+          >
+            <span className="inline-flex items-center gap-1">
+              <Gauge size={11} strokeWidth={2} aria-hidden />
+              {noPointsCount} no SP
+            </span>
+          </StatPill>
+        </Tooltip>
       )}
       {deprecatedWithSp > 0 && (
-        <StatPill
-          size="sm"
-          variant="warning"
-          title={`${deprecatedWithSp} deprecated ${deprecatedWithSp === 1 ? "ticket still has" : "tickets still have"} story points assigned`}
-        >
-          {deprecatedWithSp} DEPR with SP
-        </StatPill>
+        <Tooltip content={`${deprecatedWithSp} deprecated ${deprecatedWithSp === 1 ? "ticket still has" : "tickets still have"} story points assigned`}>
+          <StatPill size="sm" variant="warning">
+            <span className="inline-flex items-center gap-1">
+              <Gauge size={11} strokeWidth={2} aria-hidden />
+              {deprecatedWithSp} DEPR with SP
+            </span>
+          </StatPill>
+        </Tooltip>
       )}
       {todoCount > 0 && (
         <StatusPill
