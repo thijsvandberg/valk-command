@@ -442,6 +442,7 @@ export function ChatMessage({
             suggestions={linkSuggestions}
             linkedIssueKeys={linkedIssueKeys ?? new Set()}
             onLink={onCreateLink}
+            messageId={message.id}
           />
         )}
         {epicSuggestions.length > 0 && onApplyEpic && (
@@ -449,6 +450,7 @@ export function ChatMessage({
             suggestions={epicSuggestions}
             currentEpicKey={currentEpicKey ?? null}
             onApply={onApplyEpic}
+            messageId={message.id}
           />
         )}
         {contentAfter && (

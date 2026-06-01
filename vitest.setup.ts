@@ -12,6 +12,24 @@ globalThis.ResizeObserver ??= class ResizeObserver {
   disconnect() {}
 } as unknown as typeof globalThis.ResizeObserver;
 
+// The localStorage exposed in the test runtime is an incomplete stub (missing
+// clear()), so install a clean in-memory implementation reset between tests.
+const localStorageMock = (() => {
+  let store: Record<string, string> = {};
+  return {
+    getItem: (key: string) => (key in store ? store[key] : null),
+    setItem: (key: string, value: string) => { store[key] = String(value); },
+    removeItem: (key: string) => { delete store[key]; },
+    clear: () => { store = {}; },
+    key: (index: number) => Object.keys(store)[index] ?? null,
+    get length() { return Object.keys(store).length; },
+  };
+})();
+Object.defineProperty(globalThis, "localStorage", {
+  value: localStorageMock,
+  configurable: true,
+});
+
 // Reset rate limiter state between tests to prevent cross-test interference
 afterEach(async () => {
   try {
@@ -24,6 +42,8 @@ afterEach(async () => {
 
 afterEach(() => {
   cleanup();
+  // Some suites stub localStorage with a partial mock, so guard clear().
+  if (typeof localStorage?.clear === "function") localStorage.clear();
 });
 
 afterAll(() => {

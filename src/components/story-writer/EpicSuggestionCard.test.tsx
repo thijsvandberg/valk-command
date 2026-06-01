@@ -12,6 +12,7 @@ const mockGet = tickets.get as unknown as ReturnType<typeof vi.fn>;
 beforeEach(() => {
   mockGet.mockReset();
   mockGet.mockRejectedValue(new Error("not found"));
+  window.localStorage.clear();
 });
 
 const SUGGESTIONS: EpicSuggestion[] = [
@@ -35,7 +36,7 @@ describe("EpicSuggestionCard", () => {
     expect(screen.getByText("Medium")).toBeInTheDocument();
   });
 
-  it("shows 'Applied' for the epic already set on the ticket", () => {
+  it("shows 'Applied' in the header and auto-collapses when an epic is already set", () => {
     render(
       <EpicSuggestionCard
         suggestions={SUGGESTIONS}
@@ -43,11 +44,28 @@ describe("EpicSuggestionCard", () => {
         onApply={vi.fn()}
       />,
     );
+    // Header badge is visible, but rows are collapsed on reopen.
     expect(screen.getByText("Applied")).toBeInTheDocument();
+    expect(screen.queryByText("Group Reservations")).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /link/i })).toBeNull();
+  });
+
+  it("expands the collapsed applied card when the header is clicked", () => {
+    render(
+      <EpicSuggestionCard
+        suggestions={SUGGESTIONS}
+        currentEpicKey="VPL-10"
+        onApply={vi.fn()}
+      />,
+    );
+    fireEvent.click(screen.getByRole("button", { name: /epic suggestion/i }));
+    expect(screen.getByText("Group Reservations")).toBeInTheDocument();
+    // Applied now shows in both the header badge and the matching row.
+    expect(screen.getAllByText("Applied")).toHaveLength(2);
     expect(screen.getAllByRole("button", { name: /link/i })).toHaveLength(1);
   });
 
-  it("calls onApply and shows 'Applied' on success", async () => {
+  it("calls onApply, shows 'Applied', and keeps the card open", async () => {
     const onApply = vi.fn().mockResolvedValue(undefined);
     render(
       <EpicSuggestionCard
@@ -60,9 +78,65 @@ describe("EpicSuggestionCard", () => {
     fireEvent.click(screen.getByRole("button", { name: /link/i }));
     expect(onApply).toHaveBeenCalledWith("VPL-10");
 
+    // Applying in-session must not collapse the card: header badge + row badge.
     await waitFor(() => {
-      expect(screen.getByText("Applied")).toBeInTheDocument();
+      expect(screen.getAllByText("Applied")).toHaveLength(2);
     });
+    expect(screen.getByText("Group Reservations")).toBeInTheDocument();
+  });
+
+  it("persists a manual collapse across remounts via messageId", () => {
+    const { unmount } = render(
+      <EpicSuggestionCard
+        suggestions={SUGGESTIONS}
+        currentEpicKey={null}
+        onApply={vi.fn()}
+        messageId="msg-1"
+      />,
+    );
+    // Expanded by default (nothing applied); collapse it manually.
+    expect(screen.getByText("Group Reservations")).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: /epic suggestion/i }));
+    expect(screen.queryByText("Group Reservations")).not.toBeInTheDocument();
+
+    unmount();
+    render(
+      <EpicSuggestionCard
+        suggestions={SUGGESTIONS}
+        currentEpicKey={null}
+        onApply={vi.fn()}
+        messageId="msg-1"
+      />,
+    );
+    // Collapse persisted: still collapsed after remount.
+    expect(screen.queryByText("Group Reservations")).not.toBeInTheDocument();
+  });
+
+  it("keeps a manually expanded applied card open across remounts", () => {
+    const { unmount } = render(
+      <EpicSuggestionCard
+        suggestions={SUGGESTIONS}
+        currentEpicKey="VPL-10"
+        onApply={vi.fn()}
+        messageId="msg-2"
+      />,
+    );
+    // Auto-collapsed on reopen, then user expands it.
+    expect(screen.queryByText("Group Reservations")).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: /epic suggestion/i }));
+    expect(screen.getByText("Group Reservations")).toBeInTheDocument();
+
+    unmount();
+    render(
+      <EpicSuggestionCard
+        suggestions={SUGGESTIONS}
+        currentEpicKey="VPL-10"
+        onApply={vi.fn()}
+        messageId="msg-2"
+      />,
+    );
+    // Manual expand wins over the applied default.
+    expect(screen.getByText("Group Reservations")).toBeInTheDocument();
   });
 
   it("shows Retry on apply failure", async () => {

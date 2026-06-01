@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react";
 import { Link2 } from "lucide-react";
 import { TicketStatusPill, type TicketPillHoverData } from "@/components/shared/TicketStatusPill";
-import { SuggestionCard, SuggestionRow, LinkButton } from "@/components/story-writer/SuggestionCard";
+import { SuggestionCard, SuggestionRow, LinkButton, AppliedBadge } from "@/components/story-writer/SuggestionCard";
 import { tickets } from "@/lib/api-client";
 import type { JiraStatus, TicketReadiness } from "@/types/ticket";
 
@@ -24,6 +24,7 @@ interface LinkSuggestionChipsProps {
   suggestions: LinkSuggestion[];
   linkedIssueKeys: Set<string>;
   onLink: (targetKey: string, relation: string) => Promise<void>;
+  messageId?: string;
 }
 
 const RELATION_LABELS: Record<string, string> = {
@@ -36,7 +37,7 @@ const RELATION_LABELS: Record<string, string> = {
   "is duplicated by": "is duplicated by",
 };
 
-export function LinkSuggestionChips({ suggestions, linkedIssueKeys, onLink }: LinkSuggestionChipsProps) {
+export function LinkSuggestionChips({ suggestions, linkedIssueKeys, onLink, messageId }: LinkSuggestionChipsProps) {
   const [linked, setLinked] = useState<Set<string>>(new Set());
   const [linking, setLinking] = useState<Set<string>>(new Set());
   const [errors, setErrors] = useState<Set<string>>(new Set());
@@ -120,10 +121,19 @@ export function LinkSuggestionChips({ suggestions, linkedIssueKeys, onLink }: Li
     }
   };
 
+  // Links already on the ticket (linkedIssueKeys) survive reopening, so they
+  // drive the auto-collapse-on-reopen default. Either a persisted or an
+  // in-session link lights up the header badge.
+  const linkedPersisted = visibleSuggestions.some((s) => linkedIssueKeys.has(s.key));
+  const hasApplied = linkedPersisted || visibleSuggestions.some((s) => linked.has(s.key));
+
   return (
     <SuggestionCard
       icon={<Link2 size={10} strokeWidth={1.5} className="text-text-muted" />}
       title="Link suggestions"
+      headerRight={hasApplied ? <AppliedBadge /> : undefined}
+      defaultCollapsed={linkedPersisted}
+      storageKey={messageId ? `sc:link:${messageId}` : undefined}
     >
       {groupedRelations.map(([relation, items]) => {
         const relationLabel = RELATION_LABELS[relation] ?? relation;

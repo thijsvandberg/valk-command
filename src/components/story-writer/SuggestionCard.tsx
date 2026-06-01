@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, type ReactNode } from "react";
-import { ChevronDown, Loader2 } from "lucide-react";
+import { Check, ChevronDown, Loader2 } from "lucide-react";
 
 /* ------------------------------------------------------------------ */
 /*  Card shell                                                         */
@@ -14,6 +14,7 @@ export function SuggestionCard({
   children,
   className = "",
   defaultCollapsed = false,
+  storageKey,
 }: {
   icon: ReactNode;
   title: string;
@@ -21,14 +22,34 @@ export function SuggestionCard({
   children: ReactNode;
   className?: string;
   defaultCollapsed?: boolean;
+  // When set, the user's collapse toggle is persisted under this key so it
+  // survives reopening the story writer; otherwise falls back to defaultCollapsed.
+  storageKey?: string;
 }) {
-  const [collapsed, setCollapsed] = useState(defaultCollapsed);
+  const [collapsed, setCollapsed] = useState(() => {
+    if (storageKey && typeof window !== "undefined") {
+      const stored = window.localStorage.getItem(storageKey);
+      if (stored === "1") return true;
+      if (stored === "0") return false;
+    }
+    return defaultCollapsed;
+  });
+
+  const toggle = () => {
+    setCollapsed((v) => {
+      const next = !v;
+      if (storageKey && typeof window !== "undefined") {
+        window.localStorage.setItem(storageKey, next ? "1" : "0");
+      }
+      return next;
+    });
+  };
 
   return (
     <div className={`mt-3 rounded-lg border border-border-default overflow-hidden ${className}`}>
       <button
         type="button"
-        onClick={() => setCollapsed((v) => !v)}
+        onClick={toggle}
         className="flex w-full items-center gap-1.5 px-3 py-1.5 bg-overlay-subtle border-b border-border-default cursor-pointer hover:bg-overlay-default transition-colors duration-150"
       >
         {icon}
@@ -44,6 +65,19 @@ export function SuggestionCard({
       </button>
       {!collapsed && <div className="divide-y divide-border-subtle">{children}</div>}
     </div>
+  );
+}
+
+/* ------------------------------------------------------------------ */
+/*  Applied badge (card header)                                        */
+/* ------------------------------------------------------------------ */
+
+export function AppliedBadge() {
+  return (
+    <span className="inline-flex items-center gap-1 text-caption font-medium uppercase tracking-[0.06em] text-text-muted">
+      <Check size={11} strokeWidth={2} className="shrink-0" />
+      Applied
+    </span>
   );
 }
 

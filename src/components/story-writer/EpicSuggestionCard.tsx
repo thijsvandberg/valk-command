@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react";
 import { Zap } from "lucide-react";
 import { TicketStatusPill, type TicketPillHoverData } from "@/components/shared/TicketStatusPill";
-import { SuggestionCard, SuggestionRow, LinkButton } from "@/components/story-writer/SuggestionCard";
+import { SuggestionCard, SuggestionRow, LinkButton, AppliedBadge } from "@/components/story-writer/SuggestionCard";
 import { tickets } from "@/lib/api-client";
 import type { JiraStatus, TicketReadiness } from "@/types/ticket";
 
@@ -31,9 +31,10 @@ interface EpicSuggestionCardProps {
   suggestions: EpicSuggestion[];
   currentEpicKey: string | null | undefined;
   onApply: (epicKey: string) => Promise<void>;
+  messageId?: string;
 }
 
-export function EpicSuggestionCard({ suggestions, currentEpicKey, onApply }: EpicSuggestionCardProps) {
+export function EpicSuggestionCard({ suggestions, currentEpicKey, onApply, messageId }: EpicSuggestionCardProps) {
   const [applied, setApplied] = useState<Set<string>>(new Set());
   const [applying, setApplying] = useState<Set<string>>(new Set());
   const [errors, setErrors] = useState<Set<string>>(new Set());
@@ -102,10 +103,19 @@ export function EpicSuggestionCard({ suggestions, currentEpicKey, onApply }: Epi
     }
   };
 
+  // An epic recorded on the ticket (currentEpicKey) reflects a prior apply that
+  // survives reopening, so it drives the auto-collapse-on-reopen default. Either
+  // a persisted or an in-session apply lights up the header badge.
+  const appliedPersisted = visibleSuggestions.some((s) => s.key === currentEpicKey);
+  const hasApplied = appliedPersisted || visibleSuggestions.some((s) => applied.has(s.key));
+
   return (
     <SuggestionCard
       icon={<Zap size={10} strokeWidth={1.5} className="text-text-muted" />}
       title="Epic suggestion"
+      headerRight={hasApplied ? <AppliedBadge /> : undefined}
+      defaultCollapsed={appliedPersisted}
+      storageKey={messageId ? `sc:epic:${messageId}` : undefined}
     >
       {visibleSuggestions.map((s) => {
         const isCurrent = currentEpicKey === s.key;

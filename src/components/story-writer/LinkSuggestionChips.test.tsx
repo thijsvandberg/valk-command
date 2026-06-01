@@ -1,5 +1,5 @@
 import { render, screen, fireEvent, waitFor } from "@testing-library/react";
-import { describe, it, expect, vi } from "vitest";
+import { describe, it, expect, vi, beforeEach } from "vitest";
 import { LinkSuggestionChips, type LinkSuggestion } from "./LinkSuggestionChips";
 import { tickets } from "@/lib/api-client";
 
@@ -8,6 +8,12 @@ vi.mock("@/lib/api-client", () => ({
 }));
 
 const mockGet = tickets.get as unknown as ReturnType<typeof vi.fn>;
+
+beforeEach(() => {
+  mockGet.mockReset();
+  mockGet.mockResolvedValue(null);
+  window.localStorage.clear();
+});
 
 const SUGGESTIONS: LinkSuggestion[] = [
   { key: "VPL-100", relation: "relates to" },
@@ -29,7 +35,7 @@ describe("LinkSuggestionChips", () => {
     expect(screen.getByText("blocks")).toBeInTheDocument();
   });
 
-  it("shows 'Already linked' for keys in linkedIssueKeys", () => {
+  it("shows 'Applied' in the header and auto-collapses when a key is already linked", () => {
     render(
       <LinkSuggestionChips
         suggestions={SUGGESTIONS}
@@ -37,10 +43,49 @@ describe("LinkSuggestionChips", () => {
         onLink={vi.fn()}
       />,
     );
+    // Header badge visible, rows collapsed on reopen.
+    expect(screen.getByText("Applied")).toBeInTheDocument();
+    expect(screen.queryByText("VPL-100")).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /^link$/i })).toBeNull();
+  });
+
+  it("shows 'Linked' rows after expanding an auto-collapsed card", () => {
+    render(
+      <LinkSuggestionChips
+        suggestions={SUGGESTIONS}
+        linkedIssueKeys={new Set(["VPL-100"])}
+        onLink={vi.fn()}
+      />,
+    );
+    fireEvent.click(screen.getByRole("button", { name: /link suggestions/i }));
     expect(screen.getAllByText("Linked")).toHaveLength(1);
     // VPL-200 should still have a Link button
-    const linkButtons = screen.getAllByRole("button", { name: /^link$/i });
-    expect(linkButtons).toHaveLength(1);
+    expect(screen.getAllByRole("button", { name: /^link$/i })).toHaveLength(1);
+  });
+
+  it("persists a manual collapse across remounts via messageId", () => {
+    const { unmount } = render(
+      <LinkSuggestionChips
+        suggestions={SUGGESTIONS}
+        linkedIssueKeys={new Set()}
+        onLink={vi.fn()}
+        messageId="lmsg-1"
+      />,
+    );
+    expect(screen.getByText("VPL-100")).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: /link suggestions/i }));
+    expect(screen.queryByText("VPL-100")).not.toBeInTheDocument();
+
+    unmount();
+    render(
+      <LinkSuggestionChips
+        suggestions={SUGGESTIONS}
+        linkedIssueKeys={new Set()}
+        onLink={vi.fn()}
+        messageId="lmsg-1"
+      />,
+    );
+    expect(screen.queryByText("VPL-100")).not.toBeInTheDocument();
   });
 
   it("calls onLink and shows 'Linked' on success", async () => {
