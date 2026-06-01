@@ -3,6 +3,7 @@
 import { useSortable } from "@dnd-kit/sortable";
 import { GripVertical, Check } from "lucide-react";
 import { TicketStatusPill } from "@/components/shared/TicketStatusPill";
+import { useTicketHoverData } from "@/hooks/useTicketHoverData";
 import type { JiraStatus } from "@/types/ticket";
 
 export function SessionQueueItem({
@@ -22,6 +23,7 @@ export function SessionQueueItem({
   jiraStatus?: JiraStatus;
   onClick: () => void;
 }) {
+  const getHoverData = useTicketHoverData();
   const {
     attributes,
     listeners,
@@ -73,6 +75,7 @@ export function SessionQueueItem({
               variant="list"
               showKey
               showStatus
+              hoverData={getHoverData(ticketKey)}
             />
           </span>
         ) : (

@@ -122,3 +122,11 @@ Per PO request, three more fields became editable and the card layout was refine
 - **Subtask count + tooltip**: new "Subtasks" row showing `{open}/{total}` (muted "None" when there are no subtasks), wrapped in the shared `Tooltip` ("N open of M subtasks"). `hoverData` gained `openSubtaskCount` / `totalSubtaskCount`, sourced from `ticket.openSubtaskCount` / `ticket.totalSubtaskCount`.
 - **Editing on the refinement page**: `RefinementPageContent` now reuses `useTicketActions` (with a local `showToast` + `activeListKey="/api/tickets"` + `mapJiraSprints(sprints)`) and threads the assignee/epic/sprint/SP/BV handlers through `RefinementTicketList → refinement TicketRow → pill`. The refinement card is now fully editable, matching the sprint board. Creator stays read-only everywhere.
 - Verified in-app on the board (wider card, "0/4" subtask row, tooltip); refinement editing covered by typecheck + the refinement test suite (the pill/picker mechanism is identical to the board, already verified).
+
+## Follow-up enhancement (2026-05-31): read-only card on reference rows
+
+Extended the (read-only) card to the three remaining spots that list *other* tickets: ticket-detail **epic-children / subtask rows** (`ChildIssueRow`), the **link-issue search results** (`LinkSearchResultRow`), and the **refinement session queue items** (`SessionQueueItem`).
+
+- These rows don't carry the rich ticket fields, so rather than fetch per ticket, a new `useTicketHoverData()` hook looks each pill's data up from the shared `/api/tickets` list (SWR-cached, deduped app-wide). The list loads in the background after render; hovers read instantly from cache and SWR revalidates on its own. `buildTicketHoverData(ticket)` maps a board `Ticket` to the read-only hover shape (no edit handlers).
+- Graceful degradation: keys not in that list — **subtasks** and **Jira-only (external) link results** — resolve to `undefined`, so they simply render no card instead of an empty one.
+- Deliberately NOT added where the surrounding screen already shows full ticket info (ticket detail's own pill, sprint-board side panel, story-writer main pill, the fullscreen refinement session's current-ticket pill, the session-end modal) or on the internal `/dev/ticket-pills` page.

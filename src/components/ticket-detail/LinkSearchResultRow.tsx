@@ -2,6 +2,7 @@
 
 import { memo } from "react";
 import { TicketStatusPill } from "@/components/shared/TicketStatusPill";
+import { useTicketHoverData } from "@/hooks/useTicketHoverData";
 import { Cloud } from "lucide-react";
 import type { LinkSearchResult } from "@/lib/api-client";
 import type { IssueType, JiraStatus } from "@/types/ticket";
@@ -19,6 +20,7 @@ export const LinkSearchResultRow = memo(function LinkSearchResultRow({
   onSelect,
   onHover,
 }: LinkSearchResultRowProps) {
+  const getHoverData = useTicketHoverData();
   return (
     <div
       role="option"
@@ -46,6 +48,7 @@ export const LinkSearchResultRow = memo(function LinkSearchResultRow({
           variant="list"
           showKey
           showStatus
+          hoverData={getHoverData(result.key)}
         />
       </span>
       <span className="min-w-0 flex-1 truncate text-body-sm text-text-secondary">{result.title}</span>

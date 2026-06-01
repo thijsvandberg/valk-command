@@ -3,6 +3,7 @@
 import type { Ref } from "react";
 import type { Subtask, TicketReadiness, JiraStatus, IssueType } from "@/types/ticket";
 import { TicketStatusPill } from "@/components/shared/TicketStatusPill";
+import { useTicketHoverData } from "@/hooks/useTicketHoverData";
 import { Loader2 } from "lucide-react";
 
 interface ChildIssueRowProps {
@@ -61,6 +62,8 @@ export function ChildIssueRow({
   className = "",
   dndProps,
 }: ChildIssueRowProps) {
+  const getHoverData = useTicketHoverData();
+
   const handleClick = (e: React.MouseEvent) => {
     if (isPending || !onSelect) return;
     if (e.metaKey || e.ctrlKey) {
@@ -106,6 +109,7 @@ export function ChildIssueRow({
             variant="list"
             showKey={showKey}
             showStatus={showStatus}
+            hoverData={getHoverData(item.key)}
           />
         </span>
       )}
