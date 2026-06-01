@@ -144,6 +144,9 @@ export function StoryPointPicker({
               {showMetricIcon && <Gauge size={12} strokeWidth={2} aria-hidden />}
               {displayLabel}
             </>
+          ) : showMetricIcon ? (
+            // Unset: show a faded gauge so the column still reads as SP.
+            <Gauge size={12} strokeWidth={2} aria-hidden style={{ color: "var(--color-text-muted)" }} />
           ) : (
             <span className="h-1.5 w-1.5 rounded-full bg-overlay-strong" />
           )}

@@ -90,6 +90,9 @@ export function BusinessValuePicker({
               {showMetricIcon && <Goal size={12} strokeWidth={2} aria-hidden />}
               {displayLabel}
             </>
+          ) : showMetricIcon ? (
+            // Unset: show a faded goal icon so the column still reads as BV.
+            <Goal size={12} strokeWidth={2} aria-hidden style={{ color: "var(--color-text-muted)" }} />
           ) : (
             <span className="h-1.5 w-1.5 rounded-full bg-overlay-strong" />
           )}

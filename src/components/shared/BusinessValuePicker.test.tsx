@@ -71,9 +71,9 @@ describe("BusinessValuePicker", () => {
       expect(screen.getByText("3")).toBeInTheDocument();
     });
 
-    it("renders no icon when value is unset", () => {
+    it("renders a faded goal icon when value is unset", () => {
       render(<BusinessValuePicker value={null} onChange={vi.fn()} showMetricIcon />);
-      expect(screen.queryByTestId("goal-icon")).not.toBeInTheDocument();
+      expect(screen.getByTestId("goal-icon")).toBeInTheDocument();
     });
 
     it("renders no icon by default in compact mode", () => {

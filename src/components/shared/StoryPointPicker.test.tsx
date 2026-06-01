@@ -190,9 +190,9 @@ describe("StoryPointPicker", () => {
       expect(screen.getByText("3")).toBeInTheDocument();
     });
 
-    it("renders no icon when value is unset (shows the dot placeholder)", () => {
+    it("renders a faded icon (not a bare dot) when value is unset", () => {
       const { container } = render(<StoryPointPicker value={null} onChange={() => {}} showMetricIcon />);
-      expect(container.querySelector("svg")).not.toBeInTheDocument();
+      expect(container.querySelector("svg")).toBeInTheDocument();
     });
 
     it("renders no icon by default in compact mode", () => {
