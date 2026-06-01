@@ -9,7 +9,7 @@
 
 import { useState } from "react";
 import { usePageTitle } from "@/hooks/usePageTitle";
-import { Gauge, Target, Layers, Zap, SignalHigh, Activity, Dumbbell, Boxes, Sparkles, type LucideIcon } from "lucide-react";
+import { Gauge, CircleGauge, Target, SignalHigh, Dumbbell, Boxes, Mountain, Brain, Sparkles, type LucideIcon } from "lucide-react";
 import { ViewHeader, ViewHeaderTitle } from "@/components/shared/ViewHeader";
 import { StoryPointPicker } from "@/components/shared/StoryPointPicker";
 import { BusinessValuePicker } from "@/components/shared/BusinessValuePicker";
@@ -64,12 +64,12 @@ const BV_PRESETS = [1, 2, 3, 4, 5, 6, 7];
 // SP is about effort / complexity. Candidate leading icons to choose from.
 const SP_ICON_CANDIDATES: { name: string; Icon: LucideIcon; note: string }[] = [
   { name: "Gauge", Icon: Gauge, note: "effort meter" },
-  { name: "Layers", Icon: Layers, note: "stacked = size / complexity" },
-  { name: "Boxes", Icon: Boxes, note: "amount of work" },
+  { name: "CircleGauge", Icon: CircleGauge, note: "effort dial (filled)" },
+  { name: "SignalHigh", Icon: SignalHigh, note: "magnitude / level" },
   { name: "Dumbbell", Icon: Dumbbell, note: "weight / heaviness" },
-  { name: "SignalHigh", Icon: SignalHigh, note: "magnitude bars" },
-  { name: "Activity", Icon: Activity, note: "intensity" },
-  { name: "Zap", Icon: Zap, note: "energy" },
+  { name: "Mountain", Icon: Mountain, note: "difficulty / climb" },
+  { name: "Brain", Icon: Brain, note: "cognitive complexity" },
+  { name: "Boxes", Icon: Boxes, note: "amount of work" },
 ];
 
 // BV is decided: the target icon (value / goal).
