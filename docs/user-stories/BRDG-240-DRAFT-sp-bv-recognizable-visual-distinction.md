@@ -13,6 +13,7 @@ Decided via the throwaway preview page `src/app/(app)/dev/sp-bv-styles/page.tsx`
 - The `SP / BV / #` switcher keeps its text labels (a word reads clearer than an icon on a control).
 - **Color:** SP is neutral grey in the dense table and a green ramp only when tinted. BV is neutral grey at 1-2 and a warm amber → orange ramp at 3-7.
 - The styled `Tooltip` (not the native `title`) labels the SP/BV cells on hover.
+- The display treatment is a single reusable component, `src/components/shared/MetricBadge.tsx` (gauge/goal icon + value + the color rules + optional `tinted`/`tooltip`). It is used by the multiselect bulk bar, the sprint-board header total pills, the read-only hover card, and the refinement ticket/queue lists. The editable cells use `StoryPointPicker` / `BusinessValuePicker` (which share the same icon + color treatment via `showMetricIcon`).
 
 ## Description
 
