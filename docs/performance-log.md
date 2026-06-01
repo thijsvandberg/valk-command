@@ -93,3 +93,16 @@ Small, self-contained UI enhancement (new `useCornerSnap` hook + wiring in `Focu
 Key bottlenecks (both recurring, neither story-specific):
 - **Stale `.next-build` artifact**: `next build` failed once with `ENOENT _ssgManifest.js` during trace collection despite a clean compile; `rm -rf .next-build` then a rebuild succeeded. Same pattern logged in BRDG-234.
 - **Focus-mode keyboard shortcut after navigation**: `Cmd+.` did not register until clicking into the page to give it keyboard focus. Minor browser-automation quirk, not a product bug.
+
+## BRDG-243 — Outdated-draft warning in the Story Writer (2026-06-01)
+
+Self-contained server-detection + editor-banner feature (story-writer GET flag, push-time baseline rebase, `OutdatedBanner`). Implementation smooth; one notable verification blocker from concurrent work in the shared tree.
+
+| Phase | Notes |
+|-------|-------|
+| Plan | Opus Plan subagent; resolved the `targetOutdated` baseline gap (derive from target `ticketLocalEdit.baseJiraVersion`, no migration) and confirmed `openApp("diff")` already defaults to editor-vs-latest-Jira. |
+| Implementation | GET returns `outdated`/`targetOutdated`; `pushToJira` rebases active session `baseVersionHash`; PATCH `rebaseBaseline`; flag wired through `useStoryWriter` -> WriterContext; shared `OutdatedBanner` in EditorApp + SplitTargetApp. |
+| Verification | My changed files all green; full suite (excluding the concurrent-broken file) 372 files / 3583 passed; build clean. |
+
+Key bottlenecks:
+- **Concurrent agent in the same working tree**: another process was actively editing/committing unrelated files (TicketRow, SprintBoard, BusinessValuePicker, a `swrFetcher` change to `useSprintBoard`) and interleaved commits (`edb28e0c`, `db7225fd`) between mine. Its `swrFetcher` change broke `EpicChildrenSection.test.tsx` (5 failures), and `bail: 5` in vitest then halted the suite early, masking all other results. Worked around by re-running with `--exclude '**/EpicChildrenSection.test.tsx'` to let the suite complete. Scoped all `git add` to my own paths to avoid sweeping in the other agent's WIP. Live browser verification skipped (the broken sprint-board nav path + needing real Jira version divergence to trigger the banner); covered by component tests instead.
