@@ -4,7 +4,7 @@ import { useState, useCallback } from "react";
 import { createPortal } from "react-dom";
 import { usePickerState } from "@/components/shared/BasePicker";
 import { getBvColor } from "@/types/ticket";
-import { Minus, X } from "lucide-react";
+import { Minus, X, Goal } from "lucide-react";
 
 const BV_SCORE_OPTIONS = [1, 2, 3, 4, 5, 6, 7] as const;
 
@@ -14,6 +14,7 @@ export function BusinessValuePicker({
   align = "right",
   subtle = false,
   size = "sm",
+  showMetricIcon = false,
   onOpenChange,
 }: {
   value: number | null;
@@ -21,6 +22,9 @@ export function BusinessValuePicker({
   align?: "left" | "right";
   subtle?: boolean;
   size?: "sm" | "lg";
+  // Show a leading goal icon (value/target) so BV is recognizable without the
+  // column header. Used in the sprint-board table (BRDG-240).
+  showMetricIcon?: boolean;
   onOpenChange?: (open: boolean) => void;
 }) {
   const [hovered, setHovered] = useState(false);
@@ -40,6 +44,7 @@ export function BusinessValuePicker({
   const color = value != null ? getBvColor(value) : null;
   const showBg = !subtle || hovered || open;
   const displayLabel = value != null ? (isNA ? "-" : String(value)) : null;
+  const iconShown = showMetricIcon && displayLabel != null;
 
   return (
     <>
@@ -70,14 +75,21 @@ export function BusinessValuePicker({
           onMouseEnter={handleMouseEnter}
           onMouseLeave={handleMouseLeave}
           title={isNA ? "N/A" : value != null ? `Business Value: ${value}` : "Set Business Value"}
-          className="flex h-6 min-w-[24px] items-center justify-center rounded-md cursor-pointer transition-colors duration-150 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)] active:opacity-60 text-body-sm font-medium tabular-nums"
+          className={`flex h-6 items-center rounded-md cursor-pointer transition-colors duration-150 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)] active:opacity-60 text-body-sm font-medium tabular-nums ${iconShown ? "gap-1 px-1.5" : "min-w-[24px] justify-center"}`}
           style={{
             color: color?.text ?? "var(--color-text-muted)",
             backgroundColor: showBg ? (color?.bg ?? "var(--color-overlay-subtle)") : "transparent",
             opacity: hovered && showBg ? 0.85 : 1,
           }}
         >
-          {displayLabel ?? <span className="h-1.5 w-1.5 rounded-full bg-overlay-strong" />}
+          {displayLabel != null ? (
+            <>
+              {showMetricIcon && <Goal size={12} strokeWidth={2} aria-hidden />}
+              {displayLabel}
+            </>
+          ) : (
+            <span className="h-1.5 w-1.5 rounded-full bg-overlay-strong" />
+          )}
         </button>
       )}
 

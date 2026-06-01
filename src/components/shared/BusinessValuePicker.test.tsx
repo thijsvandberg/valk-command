@@ -5,6 +5,7 @@ import { BusinessValuePicker } from "./BusinessValuePicker";
 vi.mock("lucide-react", () => ({
   Minus: (props: Record<string, unknown>) => <span data-testid="minus-icon" {...props} />,
   X: (props: Record<string, unknown>) => <span data-testid="x-icon" {...props} />,
+  Goal: (props: Record<string, unknown>) => <span data-testid="goal-icon" {...props} />,
 }));
 
 vi.mock("@/components/shared/BasePicker", () => {
@@ -61,5 +62,23 @@ describe("BusinessValuePicker", () => {
   it("displays dash for value 0 in lg variant", () => {
     render(<BusinessValuePicker value={0} onChange={vi.fn()} size="lg" />);
     expect(screen.getByText("-")).toBeInTheDocument();
+  });
+
+  describe("showMetricIcon", () => {
+    it("renders the goal icon in compact mode when set and value present", () => {
+      render(<BusinessValuePicker value={3} onChange={vi.fn()} showMetricIcon />);
+      expect(screen.getByTestId("goal-icon")).toBeInTheDocument();
+      expect(screen.getByText("3")).toBeInTheDocument();
+    });
+
+    it("renders no icon when value is unset", () => {
+      render(<BusinessValuePicker value={null} onChange={vi.fn()} showMetricIcon />);
+      expect(screen.queryByTestId("goal-icon")).not.toBeInTheDocument();
+    });
+
+    it("renders no icon by default in compact mode", () => {
+      render(<BusinessValuePicker value={3} onChange={vi.fn()} />);
+      expect(screen.queryByTestId("goal-icon")).not.toBeInTheDocument();
+    });
   });
 });

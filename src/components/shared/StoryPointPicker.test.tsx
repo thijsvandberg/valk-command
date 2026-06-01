@@ -183,6 +183,24 @@ describe("StoryPointPicker", () => {
     expect(screen.getByText("1")).toBeInTheDocument();
   });
 
+  describe("showMetricIcon", () => {
+    it("renders a leading icon in compact mode when set and value present", () => {
+      const { container } = render(<StoryPointPicker value={3} onChange={() => {}} showMetricIcon />);
+      expect(container.querySelector("svg")).toBeInTheDocument();
+      expect(screen.getByText("3")).toBeInTheDocument();
+    });
+
+    it("renders no icon when value is unset (shows the dot placeholder)", () => {
+      const { container } = render(<StoryPointPicker value={null} onChange={() => {}} showMetricIcon />);
+      expect(container.querySelector("svg")).not.toBeInTheDocument();
+    });
+
+    it("renders no icon by default in compact mode", () => {
+      const { container } = render(<StoryPointPicker value={3} onChange={() => {}} />);
+      expect(container.querySelector("svg")).not.toBeInTheDocument();
+    });
+  });
+
   describe("size=lg", () => {
     it("renders SP label with value in trigger", () => {
       render(<StoryPointPicker value={5} onChange={() => {}} size="lg" />);
