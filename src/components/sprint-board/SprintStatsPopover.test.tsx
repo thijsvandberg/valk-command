@@ -97,6 +97,23 @@ describe("SprintStatsPopover", () => {
     expect(screen.getByText("No Epic")).toBeTruthy();
   });
 
+  it("renders the completion breakdown bar with a SP/BV/# mode toggle", () => {
+    const anchorRef = createAnchorRef();
+    render(<SprintStatsPopover allTickets={TICKETS} onClose={vi.fn()} anchorRef={anchorRef} />);
+
+    // Mode toggle buttons from the embedded SprintCompletionBar
+    expect(screen.getByRole("button", { name: "SP" })).toBeTruthy();
+    expect(screen.getByRole("button", { name: "BV" })).toBeTruthy();
+    expect(screen.getByRole("button", { name: "#" })).toBeTruthy();
+
+    // DONE = 4 SP (VPL-1: 3, VPL-5: 1) of 11 total SP -> 36% complete
+    expect(screen.getByText("36%")).toBeTruthy();
+
+    // Switching to items mode recomputes: DONE = 2 items of 5 -> 40%
+    fireEvent.click(screen.getByRole("button", { name: "#" }));
+    expect(screen.getByText("40%")).toBeTruthy();
+  });
+
   it("sorts epics by SP descending", () => {
     const anchorRef = createAnchorRef();
     render(<SprintStatsPopover allTickets={TICKETS} onClose={vi.fn()} anchorRef={anchorRef} />);
@@ -133,9 +150,9 @@ describe("SprintStatsPopover", () => {
   it("calls onClose when clicking the backdrop", () => {
     const onClose = vi.fn();
     const anchorRef = createAnchorRef();
-    const { container } = render(<SprintStatsPopover allTickets={TICKETS} onClose={onClose} anchorRef={anchorRef} />);
+    render(<SprintStatsPopover allTickets={TICKETS} onClose={onClose} anchorRef={anchorRef} />);
 
-    const backdrop = container.querySelector(".fixed.inset-0")!;
+    const backdrop = document.body.querySelector(".fixed.inset-0")!;
     fireEvent.click(backdrop);
     expect(onClose).toHaveBeenCalledOnce();
   });

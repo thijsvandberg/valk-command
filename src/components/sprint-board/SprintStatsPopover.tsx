@@ -1,11 +1,12 @@
 "use client";
 
 import { useMemo, useRef, useEffect, useState, useCallback } from "react";
+import { createPortal } from "react-dom";
 import { useOutsideClick } from "@/hooks/useOutsideClick";
 import useSWR from "swr";
 import type { Ticket, JiraStatus, Sprint } from "@/types/ticket";
 import { getEpicColor } from "@/types/ticket";
-import { STATUS_PILL_COLORS } from "@/components/sprint-board/SprintStatPill";
+import { STATUS_PILL_COLORS, SprintCompletionBar } from "@/components/sprint-board/SprintStatPill";
 import { IssueTypeIcon, ISSUE_TYPE_COLORS } from "@/components/shared/IssueTypeIcon";
 import { useJiraSprints } from "@/hooks/useSprintBoard";
 import { swrFetcher } from "@/lib/api-client";
@@ -213,7 +214,9 @@ export function SprintStatsPopover({
   // Only show filter callbacks when viewing the initial sprint
   const canFilter = isInitialSprint;
 
-  return (
+  if (typeof document === "undefined") return null;
+
+  return createPortal(
     <>
       {/* Backdrop */}
       <div
@@ -325,24 +328,51 @@ export function SprintStatsPopover({
           </div>
         </div>
 
-        {/* Sprint time progress bar */}
-        {timePct != null && totalWorkingDays != null && daysElapsed != null && (
-          <div className="px-6 pt-2 pb-1">
-            <div className="flex items-center gap-3">
-              <div className="flex-1 h-[3px] rounded-full overflow-hidden" style={{ backgroundColor: "var(--color-overlay-default)" }}>
-                <div
-                  className="h-full rounded-full"
-                  style={{
-                    width: `${Math.min(timePct, 100)}%`,
-                    backgroundColor: isLastDays ? "color-mix(in srgb, var(--color-status-caution) 60%, transparent)" : "var(--color-text-muted)",
-                    opacity: 0.5,
-                    transition: "width 400ms ease-out",
-                  }}
-                />
-              </div>
-              <span className={`text-[10px] tabular-nums shrink-0 ${isLastDays ? "text-amber-400/60" : "text-text-muted"}`}>
-                day {daysElapsed}/{totalWorkingDays}
-              </span>
+        {/* Time vs. completion: one shared grid so both bars align and read as equal-length tracks */}
+        {!isLoading && (
+          <div className="px-6 pt-2.5 pb-1.5">
+            <div className="grid grid-cols-[auto_1fr_auto] items-center gap-x-3 gap-y-3">
+              {/* Sprint time progress (top row) */}
+              {timePct != null && totalWorkingDays != null && daysElapsed != null && (
+                <>
+                  <span aria-hidden="true" />
+                  <div className="h-[3px] rounded-full overflow-hidden" style={{ backgroundColor: "var(--color-overlay-default)" }}>
+                    <div
+                      className="h-full rounded-full"
+                      style={{
+                        width: `${Math.min(timePct, 100)}%`,
+                        backgroundColor: isLastDays ? "color-mix(in srgb, var(--color-status-caution) 60%, transparent)" : "var(--color-text-muted)",
+                        opacity: 0.5,
+                        transition: "width 400ms ease-out",
+                      }}
+                    />
+                  </div>
+                  <span className={`text-[10px] tabular-nums text-right ${isLastDays ? "text-amber-400/60" : "text-text-muted"}`}>
+                    day {daysElapsed}/{totalWorkingDays}
+                  </span>
+                </>
+              )}
+
+              {/* Completion breakdown (bottom row) */}
+              <SprintCompletionBar
+                doneSp={stats.statusMap["DONE"]?.sp ?? 0}
+                testSp={stats.statusMap["TEST"]?.sp ?? 0}
+                inProgressSp={stats.statusMap["IN PROGRESS"]?.sp ?? 0}
+                totalSp={stats.totalSp}
+                doneBv={stats.statusMap["DONE"]?.bv ?? 0}
+                testBv={stats.statusMap["TEST"]?.bv ?? 0}
+                inProgressBv={stats.statusMap["IN PROGRESS"]?.bv ?? 0}
+                totalBv={stats.totalBv}
+                doneItems={stats.statusMap["DONE"]?.count ?? 0}
+                testItems={stats.statusMap["TEST"]?.count ?? 0}
+                inProgressItems={stats.statusMap["IN PROGRESS"]?.count ?? 0}
+                totalItems={tickets.length}
+                workingDaysRemaining={workingDaysRemaining ?? null}
+                totalWorkingDays={totalWorkingDays ?? null}
+                gridLayout
+                hideStats
+                hideTime
+              />
             </div>
           </div>
         )}
@@ -475,7 +505,8 @@ export function SprintStatsPopover({
           </>
         )}
       </div>
-    </>
+    </>,
+    document.body
   );
 }
 

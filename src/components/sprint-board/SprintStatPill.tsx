@@ -254,6 +254,12 @@ export interface SprintCompletionBarProps {
   // Sprint time
   workingDaysRemaining: number | null;
   totalWorkingDays: number | null;
+  // Layout overrides for embedding outside the header row (e.g. in the stats modal).
+  // gridLayout makes the toggle / bar / percent render as cells of a parent
+  // `grid-cols-[auto_1fr_auto]` so the bar aligns with a sibling time-progress row.
+  gridLayout?: boolean;
+  hideStats?: boolean;
+  hideTime?: boolean;
 }
 
 function pct(n: number, total: number): number {
@@ -263,7 +269,7 @@ function pct(n: number, total: number): number {
 export function SprintCompletionBar(props: SprintCompletionBarProps) {
   const [mode, setMode] = useState<CompletionMode>("sp");
 
-  const { workingDaysRemaining, totalWorkingDays } = props;
+  const { workingDaysRemaining, totalWorkingDays, gridLayout, hideStats, hideTime } = props;
 
   // Pick values based on mode
   const done = mode === "sp" ? props.doneSp : mode === "bv" ? props.doneBv : props.doneItems;
@@ -312,9 +318,11 @@ export function SprintCompletionBar(props: SprintCompletionBarProps) {
   const LABEL_TOP = BAR_TOP + 9;
 
   return (
-    <div className="flex items-center gap-3 select-none" style={{ height: CONTAINER_H }}>
+    <div className={gridLayout ? "contents select-none" : "flex items-center gap-3 select-none"} style={gridLayout ? undefined : { height: CONTAINER_H }}>
       {/* Stats: items + SP/BV chips -- hidden on narrow screens */}
-      <SprintStats totalItems={props.totalItems} totalSp={props.totalSp} totalBv={props.totalBv} className="hidden xl:flex" />
+      {!hideStats && (
+        <SprintStats totalItems={props.totalItems} totalSp={props.totalSp} totalBv={props.totalBv} className="hidden xl:flex" />
+      )}
 
       {/* Mode toggle */}
       <div className="flex items-center rounded h-[18px] overflow-hidden" style={{ backgroundColor: "var(--color-overlay-subtle)" }}>
@@ -335,7 +343,7 @@ export function SprintCompletionBar(props: SprintCompletionBarProps) {
       </div>
 
       {/* Progress bar with counts below */}
-      <div className="relative self-stretch" style={{ width: BAR_W }}>
+      <div className={gridLayout ? "relative" : "relative self-stretch"} style={gridLayout ? { height: CONTAINER_H } : { width: BAR_W }}>
         <div className="absolute left-0 right-0 h-[5px] overflow-hidden rounded-full" style={{ top: BAR_TOP, backgroundColor: "var(--color-overlay-default)" }}>
           <div
             className="absolute inset-y-0 left-0 rounded-l-full transition-[width] duration-500 ease-out"
@@ -359,29 +367,29 @@ export function SprintCompletionBar(props: SprintCompletionBarProps) {
           {done > 0 && (
             <span className="absolute flex items-center gap-0.5" style={{ left: `${donePct / 2}%`, transform: "translateX(-50%)" }}>
               <span className="h-1 w-1 rounded-full shrink-0" style={{ backgroundColor: doneColor }} />
-              <span>{done}</span>
+              <span>{done}{gridLayout && " done"}</span>
             </span>
           )}
           {test > 0 && (
             <span className="absolute flex items-center gap-0.5" style={{ left: `${donePct + testPct / 2}%`, transform: "translateX(-50%)" }}>
               <span className="h-1 w-1 rounded-full shrink-0" style={{ backgroundColor: testColor, opacity: 0.7 }} />
-              <span>{test}</span>
+              <span>{test}{gridLayout && " test"}</span>
             </span>
           )}
           {prog > 0 && (
             <span className="absolute flex items-center gap-0.5" style={{ left: `${donePct + testPct + progPct / 2}%`, transform: "translateX(-50%)" }}>
               <span className="h-1 w-1 rounded-full shrink-0" style={{ backgroundColor: progColor, opacity: 0.5 }} />
-              <span>{prog}</span>
+              <span>{prog}{gridLayout && " prog"}</span>
             </span>
           )}
         </div>
       </div>
 
       {/* Percentage */}
-      <span className="text-[10px] font-medium tabular-nums text-text-tertiary">{completePct}%</span>
+      <span className={`text-[10px] font-medium tabular-nums text-text-tertiary${gridLayout ? " text-right" : ""}`}>{completePct}%</span>
 
       {/* Time bar + label, hidden on narrow screens */}
-      {hasTime && (
+      {hasTime && !hideTime && (
         <div className="relative self-stretch pl-2 border-l border-border-subtle hidden lg:block" style={{ width: TIME_W }}>
           <div className="absolute left-[9px] right-0 h-[5px] overflow-hidden rounded-full" style={{ top: BAR_TOP, backgroundColor: "var(--color-overlay-default)" }}>
             <div

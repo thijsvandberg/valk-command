@@ -17,7 +17,7 @@ export function SectionLabel({ children }: { children: React.ReactNode }) {
 }
 
 export function FilterRow({ children, onClick, accentColor }: { children: React.ReactNode; onClick?: () => void; accentColor?: string }) {
-  if (!onClick) return <div className="-mx-2 px-2 py-1.5" style={{ borderLeft: "2px solid transparent" }}>{children}</div>;
+  if (!onClick) return <div className="w-full -mx-2 px-2 py-1.5" style={{ borderLeft: "2px solid transparent" }}>{children}</div>;
   return (
     <button
       type="button"
