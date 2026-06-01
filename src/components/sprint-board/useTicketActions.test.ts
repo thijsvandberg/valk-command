@@ -19,7 +19,7 @@ function makeTicket(key: string, flagged: boolean): Ticket {
   return {
     key, title: key, type: "story", epicKey: null, flagged,
     jiraStatus: "TO DO", storyPoints: null, businessValue: null,
-    assignee: null, epic: null, sprintId: null, qualityScore: null,
+    assignee: null, epic: null, sprintId: undefined, qualityScore: null,
     readiness: null, poStatus: "Draft", editState: "clean", notes: "",
   } as Ticket;
 }

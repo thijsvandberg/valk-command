@@ -192,6 +192,7 @@ export function TicketTable({
   onToggleAll,
   onSelectTicket,
   onRowContextMenu,
+  contextMenuKeys,
   onPoStatusChange,
   onReadinessChange,
   onBusinessValueChange,
@@ -241,6 +242,8 @@ export function TicketTable({
   onToggleAll: () => void;
   onSelectTicket: (key: string | null) => void;
   onRowContextMenu?: (key: string, e: React.MouseEvent) => void;
+  /** Keys the open row context menu will act on; highlighted while the menu is open. */
+  contextMenuKeys?: Set<string>;
   onPoStatusChange: (key: string, status: POStatus) => void;
   onReadinessChange?: (key: string, readiness: TicketReadiness | null) => void;
   onBusinessValueChange?: (key: string, value: number | null) => void;
@@ -394,6 +397,7 @@ export function TicketTable({
     isSelected: selectedTicket === ticket.key,
     isFocused: focusedTicketIdx === ticketIdx,
     isInflight: inflightKeys?.has(ticket.key) ?? false,
+    isContextTarget: contextMenuKeys?.has(ticket.key) ?? false,
     someChecked,
     isDragActive: activeDragId !== null,
     col,
@@ -427,7 +431,7 @@ export function TicketTable({
     onToggleReviewPopover: handleToggleReviewPopover,
     refinementSessions: refinementSessionMap?.get(ticket.key),
     columnOrder: effectiveOrder,
-  }), [checkedTickets, selectedTicket, focusedTicketIdx, someChecked, activeDragId, col, sprintNameMap, poStatuses, readinessMap, inflightKeys, onSelectTicket, onRowContextMenu, handleCheckboxClick, onPoStatusChange, onReadinessChange, onBusinessValueChange, onStoryPointsChange, onJiraStatusChange, onIssueTypeChange, onTitleChange, onAssigneeChange, onEpicChange, onSprintChange, sprints, onCloseSubtasks, editingTitleKey, reviewPopoverKey, handleToggleReviewPopover, effectiveOrder, followedKeys, followTicket, unfollowTicket, lastDeployedMap, healthMap, refinementSessionMap]);
+  }), [checkedTickets, selectedTicket, focusedTicketIdx, someChecked, activeDragId, col, sprintNameMap, poStatuses, readinessMap, inflightKeys, contextMenuKeys, onSelectTicket, onRowContextMenu, handleCheckboxClick, onPoStatusChange, onReadinessChange, onBusinessValueChange, onStoryPointsChange, onJiraStatusChange, onIssueTypeChange, onTitleChange, onAssigneeChange, onEpicChange, onSprintChange, sprints, onCloseSubtasks, editingTitleKey, reviewPopoverKey, handleToggleReviewPopover, effectiveOrder, followedKeys, followTicket, unfollowTicket, lastDeployedMap, healthMap, refinementSessionMap]);
 
   const rh = useMemo(() =>
     onColumnResize && onColumnResetWidth

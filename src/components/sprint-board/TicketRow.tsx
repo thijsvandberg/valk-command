@@ -35,6 +35,8 @@ export interface TicketRowBaseProps {
   isSelected: boolean;
   isFocused?: boolean;
   isInflight?: boolean;
+  /** Highlighted because the open row context menu targets this row. */
+  isContextTarget?: boolean;
   someChecked: boolean;
   isDragActive: boolean;
   // Column visibility: either pass `col` + `columnOrder`, or use `preset` for a predefined set
@@ -86,6 +88,7 @@ export const TicketRow = memo(forwardRef<HTMLTableRowElement, TicketRowBaseProps
     isSelected,
     isFocused = false,
     isInflight = false,
+    isContextTarget = false,
     someChecked,
     isDragActive,
     preset,
@@ -575,10 +578,12 @@ export const TicketRow = memo(forwardRef<HTMLTableRowElement, TicketRowBaseProps
       } ${
         isSelected
           ? "bg-[var(--color-brand-600)]/12 border-l-[var(--color-brand-500)]"
+          : isContextTarget
+          ? "bg-[var(--color-brand-600)]/12 border-l-[var(--color-brand-500)]"
           : ticket.flagged
           ? "bg-[color-mix(in_srgb,var(--color-status-error)_6%,transparent)] border-l-transparent hover:bg-[color-mix(in_srgb,var(--color-status-error)_8%,transparent)]"
           : "border-l-transparent hover:bg-overlay-subtle hover:border-l-[var(--color-brand-400)]/25"
-      } ${isFocused && !isSelected ? "outline outline-1 -outline-offset-1 outline-[var(--color-brand-500)]/40" : ""} ${isRemoved ? "opacity-50" : isInflight ? "opacity-70" : ""}`}
+      } ${isContextTarget ? "outline outline-1 -outline-offset-1 outline-[var(--color-brand-500)]/70" : isFocused && !isSelected ? "outline outline-1 -outline-offset-1 outline-[var(--color-brand-500)]/40" : ""} ${isRemoved ? "opacity-50" : isInflight ? "opacity-70" : ""}`}
       {...dragListeners}
       {...dragAttributes}
     >
