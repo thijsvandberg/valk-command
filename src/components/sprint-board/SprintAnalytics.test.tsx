@@ -7,6 +7,8 @@ vi.mock("lucide-react", () => ({
   ChevronRight: (props: Record<string, unknown>) => <span data-testid="chevron-right" {...props} />,
   BarChart2: (props: Record<string, unknown>) => <span data-testid="bar-chart" {...props} />,
   X: (props: Record<string, unknown>) => <span data-testid="x-icon" {...props} />,
+  Gauge: (props: Record<string, unknown>) => <span data-testid="gauge-icon" {...props} />,
+  Goal: (props: Record<string, unknown>) => <span data-testid="goal-icon" {...props} />,
 }));
 
 vi.mock("./BurnupChart", () => ({
@@ -45,12 +47,12 @@ describe("SprintAnalytics", () => {
   it("renders Analytics label with total points", () => {
     render(<SprintAnalytics tickets={[makeTicket({ storyPoints: 5 }), makeTicket({ storyPoints: 3 })]} />);
     expect(screen.getByText("Analytics")).toBeInTheDocument();
-    expect(screen.getByText(/8 pts total/)).toBeInTheDocument();
+    expect(screen.getByLabelText("Story Points: 8")).toBeInTheDocument();
   });
 
   it("shows BV total when tickets have BV", () => {
     render(<SprintAnalytics tickets={[makeTicket({ businessValue: 4 }), makeTicket({ businessValue: 6 })]} />);
-    expect(screen.getByText(/BV: 10/)).toBeInTheDocument();
+    expect(screen.getByLabelText("Business Value: 10")).toBeInTheDocument();
   });
 
   it("renders close button when onClose provided", () => {
