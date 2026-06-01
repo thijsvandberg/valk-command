@@ -1,15 +1,18 @@
 # BRDG-240: Recognizable Visual Distinction for SP and BV
 
-**Status:** Draft (design direction not yet chosen)
+**Status:** Implemented
 **Priority:** Low
 **Type:** Enhancement
 
-## Decision aid: temporary preview page
+## Chosen direction (B — icon + color)
 
-Rather than picking a direction up front, a throwaway showcase page renders every candidate treatment side by side (in isolation and inside a realistic sprint-board table) so the PO can compare them live before committing.
+Decided via the throwaway preview page `src/app/(app)/dev/sp-bv-styles/page.tsx` (not linked from navigation; excluded from `routes.test.tsx`; safe to delete now the treatment is shipped).
 
-- Page: `src/app/(app)/dev/sp-bv-styles/page.tsx` (mirrors the existing `dev/ticket-pills` showcase; not linked from navigation; excluded from `routes.test.tsx`; safe to delete).
-- Once a direction is chosen, finalize the Requirements below, productionize the chosen treatment into the shared pickers, and delete the preview page.
+- **SP** uses a leading **gauge** icon (effort/complexity); **BV** uses a leading **goal** icon (value/target).
+- **Subtle (dense table):** icon + number, no background. **Tinted (emphasis):** icon + number on a tinted pill — hover card, refinement session header, ticket sidebar, and the sprint-board header total pills.
+- The `SP / BV / #` switcher keeps its text labels (a word reads clearer than an icon on a control).
+- **Color:** SP is neutral grey in the dense table and a green ramp only when tinted. BV is neutral grey at 1-2 and a warm amber → orange ramp at 3-7.
+- The styled `Tooltip` (not the native `title`) labels the SP/BV cells on hover.
 
 ## Description
 
@@ -26,16 +29,7 @@ Today both columns render as bare colored numbers (see screenshot below). The co
 
 There is already a precedent worth reusing: the large (`lg`) variant of both pickers renders a small uppercase `SP` / `BV` text label in front of the number. The compact (`subtle` / `sm`) variant used in the table does not.
 
-## Open design direction (to be decided)
-
-This story intentionally leaves the visual approach open. Pick one (or a hybrid) before implementation:
-
-1. **Label-prefix pill** - each cell becomes a compact pill with an `SP` / `BV` text label plus the number, keeping the existing per-value color. Most explicit, reuses the existing `lg` picker pattern, slightly wider.
-2. **Icon + color** - a small leading icon per metric (e.g. an effort/gauge icon for SP, a star for BV) plus the existing color. Compact and low-noise, but the icon meaning has to be learned.
-3. **Combined badge** - SP and BV merged into a single badge where order + color carries the meaning (SP left/green, BV right/gold). Saves a column, but is the least explicit.
-4. **Color-identity only** - no label or icon, but two clearly distinct fixed color families per metric (SP green→orange, BV blue→gold) plus a subtle shape difference. Smallest change, leans entirely on color.
-
-Constraints that apply to any chosen direction:
+## Constraints (met)
 
 - Must work in the dense Sprint Board table without making rows noticeably taller or columns much wider.
 - Must remain inline-editable (the cell is a picker trigger, not just a display badge).
@@ -44,16 +38,15 @@ Constraints that apply to any chosen direction:
 
 ## Requirements
 
-> Finalize once a direction is chosen. Skeleton:
-
-- The Sprint Board ticket table must visually distinguish SP cells from BV cells without relying on the column header.
-- The distinction must be applied consistently to every SP/BV cell in the table.
-- Empty / not-applicable (N/A) and unset states must remain clearly readable under the new treatment.
-- Sorting and inline editing behavior must be unchanged.
+- SP/BV cells in the sprint-board table are distinguishable without the column header (gauge vs goal icon).
+- The treatment is applied consistently across the table and the emphasis spots (hover card, refinement header, sidebar, header total pills).
+- N/A (0 → "-") and unset (dot) states remain clearly readable.
+- Sorting and inline editing behavior are unchanged.
+- A styled tooltip replaces the native `title` on the table cells.
 
 ## Out of scope
 
-- Changing the SP/BV value scales, color bands, or the `getSpColor` / `getBvColor` logic itself.
+- Changing the SP/BV value *scales* (still 1/2/3/5/8 and 1-7). The color *bands* in `getSpColor` / `getBvColor` were re-tuned as part of this story (SP → green ramp; BV → grey at 1-2, amber/orange at 3-7).
 - Reworking the pickers' popover/edit UI.
 - Changing where SP/BV appear (column placement is BRDG-238/239 territory).
 
@@ -67,10 +60,13 @@ Constraints that apply to any chosen direction:
 
 ## Checklist
 
-- [ ] Decide the visual direction (label / icon / combined / color-only) and finalize Requirements
-- [ ] Implement the chosen treatment in the compact picker(s)
-- [ ] Verify N/A and unset states remain readable
-- [ ] Verify inline editing and sorting are unchanged
-- [ ] Check consistency with side panel / refinement / ticket sidebar render sites
-- [ ] Add/extend tests for the new rendering
-- [ ] Verify visually in the Sprint Board table
+- [x] Decide the visual direction (chose B — icon + color: gauge for SP, goal for BV)
+- [x] Implement the icon treatment in the compact picker(s) via a `showMetricIcon` prop (table cells)
+- [x] Apply the tinted icon variant to emphasis spots (hover card, refinement header, sidebar, header total pills)
+- [x] Re-tune colors: SP neutral/green-when-tinted; BV grey at 1-2, amber/orange at 3-7
+- [x] Add a styled `Tooltip` (`richTooltip`) to the table cells, replacing the native title
+- [x] Verify N/A and unset states remain readable
+- [x] Verify inline editing and sorting are unchanged
+- [x] Add/extend tests for the new rendering (`showMetricIcon`, `richTooltip`, lg icon)
+- [x] Verify visually in the Sprint Board table (BT: 137 / BT: 138)
+- [ ] Delete the preview page `dev/sp-bv-styles` once the treatment is signed off
