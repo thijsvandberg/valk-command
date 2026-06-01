@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { Link2 } from "lucide-react";
-import { TicketStatusPill } from "@/components/shared/TicketStatusPill";
+import { TicketStatusPill, type TicketPillHoverData } from "@/components/shared/TicketStatusPill";
 import { SuggestionCard, SuggestionRow, LinkButton } from "@/components/story-writer/SuggestionCard";
 import { tickets } from "@/lib/api-client";
 import type { JiraStatus, TicketReadiness } from "@/types/ticket";
@@ -17,6 +17,7 @@ interface ResolvedInfo {
   type: string;
   status: string;
   readiness: TicketReadiness | null;
+  hover: TicketPillHoverData;
 }
 
 interface LinkSuggestionChipsProps {
@@ -60,6 +61,20 @@ export function LinkSuggestionChips({ suggestions, linkedIssueKeys, onLink }: Li
                 type: data.type,
                 status: data.jiraStatus,
                 readiness: data.readiness,
+                hover: {
+                  title: data.title,
+                  storyPoints: data.storyPoints,
+                  businessValue: data.businessValue,
+                  sprintId: null,
+                  sprintName: data.sprintId ?? null,
+                  epicKey: data.epicKey,
+                  epic: data.epic,
+                  assignee: data.assignee ?? null,
+                  reporter: data.reporter ?? null,
+                  openSubtaskCount: data.openSubtaskCount ?? 0,
+                  totalSubtaskCount: data.totalSubtaskCount ?? 0,
+                  flagged: data.flagged,
+                },
               },
             }));
           }
@@ -71,10 +86,17 @@ export function LinkSuggestionChips({ suggestions, linkedIssueKeys, onLink }: Li
 
   if (suggestions.length === 0) return null;
 
+  // Epics are never valid link targets — drop them once their type resolves.
+  const visibleSuggestions = suggestions.filter(
+    (s) => resolved[s.key]?.type?.toLowerCase() !== "epic",
+  );
+
+  if (visibleSuggestions.length === 0) return null;
+
   // Group suggestions by relation type, preserving order of first appearance
   const groupedRelations: [string, LinkSuggestion[]][] = [];
   const groupMap = new Map<string, LinkSuggestion[]>();
-  for (const s of suggestions) {
+  for (const s of visibleSuggestions) {
     const existing = groupMap.get(s.relation);
     if (existing) {
       existing.push(s);
@@ -127,6 +149,7 @@ export function LinkSuggestionChips({ suggestions, linkedIssueKeys, onLink }: Li
                     title={info?.title}
                     size="sm"
                     variant="list"
+                    hoverData={info?.hover}
                   />
                   {info ? (
                     <span className="min-w-0 flex-1 truncate text-label text-text-secondary">{info.title}</span>

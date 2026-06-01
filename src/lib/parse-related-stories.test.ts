@@ -69,4 +69,16 @@ Some text after`;
     const output = "<related-stories>[]</related-stories>";
     expect(parseRelatedStories(output)).toEqual([]);
   });
+
+  it("excludes epics regardless of casing", () => {
+    const output = `<related-stories>[
+      {"key":"VPL-1","score":0.9,"title":"A story","status":"TO DO","type":"story"},
+      {"key":"VPL-2","score":0.8,"title":"An epic","status":"TO DO","type":"Epic"},
+      {"key":"VPL-3","score":0.7,"title":"Lower epic","status":"TO DO","type":"epic"}
+    ]</related-stories>`;
+
+    const items = parseRelatedStories(output);
+    expect(items).toHaveLength(1);
+    expect(items[0].key).toBe("VPL-1");
+  });
 });

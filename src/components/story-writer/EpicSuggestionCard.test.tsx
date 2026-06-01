@@ -1,10 +1,18 @@
 import { render, screen, fireEvent, waitFor } from "@testing-library/react";
-import { describe, it, expect, vi } from "vitest";
+import { describe, it, expect, vi, beforeEach } from "vitest";
 import { EpicSuggestionCard, type EpicSuggestion } from "./EpicSuggestionCard";
+import { tickets } from "@/lib/api-client";
 
 vi.mock("@/lib/api-client", () => ({
-  tickets: { get: vi.fn().mockRejectedValue(new Error("not found")) },
+  tickets: { get: vi.fn() },
 }));
+
+const mockGet = tickets.get as unknown as ReturnType<typeof vi.fn>;
+
+beforeEach(() => {
+  mockGet.mockReset();
+  mockGet.mockRejectedValue(new Error("not found"));
+});
 
 const SUGGESTIONS: EpicSuggestion[] = [
   { key: "VPL-10", name: "Group Reservations", confidence: "high", reason: "Covers group booking" },
@@ -72,6 +80,27 @@ describe("EpicSuggestionCard", () => {
     await waitFor(() => {
       expect(screen.getByText("Retry")).toBeInTheDocument();
     });
+  });
+
+  it("drops an epic whose status resolves to DEPRECATED", async () => {
+    mockGet.mockImplementation((key: string) =>
+      Promise.resolve((key === "VPL-20"
+        ? { jiraStatus: "DEPRECATED", readiness: null, title: "Online Booking" }
+        : { jiraStatus: "TO DO", readiness: null, title: "Group Reservations" }) as never),
+    );
+
+    render(
+      <EpicSuggestionCard
+        suggestions={SUGGESTIONS}
+        currentEpicKey={null}
+        onApply={vi.fn()}
+      />,
+    );
+
+    await waitFor(() => {
+      expect(screen.queryByText("Online Booking")).not.toBeInTheDocument();
+    });
+    expect(screen.getByText("Group Reservations")).toBeInTheDocument();
   });
 
   it("renders nothing when suggestions array is empty", () => {

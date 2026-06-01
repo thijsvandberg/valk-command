@@ -1,6 +1,6 @@
 import { db } from "@/db";
 import { storyWriterSession, message, ticket, jiraComment } from "@/db/schema";
-import { eq, and, sql } from "drizzle-orm";
+import { eq, and, ne, sql } from "drizzle-orm";
 import { randomUUID, createHash } from "crypto";
 import { agentFetch, type AgentError as AgentFetchError } from "@/lib/agent-fetch";
 import { logActivity } from "@/lib/activity-logger";
@@ -171,7 +171,8 @@ export async function buildFirstMessageBody(
     const epicRows = await db
       .select({ jiraKey: ticket.jiraKey, title: ticket.title })
       .from(ticket)
-      .where(eq(ticket.type, "epic"))
+      // Never offer deprecated epics as suggestion targets.
+      .where(and(eq(ticket.type, "epic"), ne(ticket.status, "DEPRECATED")))
       .all();
     if (epicRows.length > 0) {
       const epicList = epicRows.map((e) => `${e.jiraKey}: ${e.title}`).join("\n");

@@ -1,6 +1,13 @@
 import { render, screen, fireEvent, waitFor } from "@testing-library/react";
 import { describe, it, expect, vi } from "vitest";
 import { LinkSuggestionChips, type LinkSuggestion } from "./LinkSuggestionChips";
+import { tickets } from "@/lib/api-client";
+
+vi.mock("@/lib/api-client", () => ({
+  tickets: { get: vi.fn(() => Promise.resolve(null)) },
+}));
+
+const mockGet = tickets.get as unknown as ReturnType<typeof vi.fn>;
 
 const SUGGESTIONS: LinkSuggestion[] = [
   { key: "VPL-100", relation: "relates to" },
@@ -91,5 +98,29 @@ describe("LinkSuggestionChips", () => {
       />,
     );
     expect(screen.getByText("Link suggestions")).toBeInTheDocument();
+  });
+
+  it("drops a suggestion whose type resolves to epic", async () => {
+    mockGet.mockImplementation((key: string) =>
+      Promise.resolve((key === "VPL-200"
+        ? { title: "An epic", type: "epic", jiraStatus: "TO DO", readiness: null }
+        : { title: "A story", type: "story", jiraStatus: "TO DO", readiness: null }) as any),
+    );
+
+    render(
+      <LinkSuggestionChips
+        suggestions={SUGGESTIONS}
+        linkedIssueKeys={new Set()}
+        onLink={vi.fn()}
+      />,
+    );
+
+    await waitFor(() => {
+      expect(screen.queryByText("VPL-200")).not.toBeInTheDocument();
+    });
+    expect(screen.getByText("VPL-100")).toBeInTheDocument();
+    // The epic's relation group ("blocks") should disappear entirely.
+    expect(screen.queryByText("blocks")).not.toBeInTheDocument();
+    expect(screen.getByText("relates to")).toBeInTheDocument();
   });
 });

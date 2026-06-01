@@ -277,6 +277,10 @@ function TicketDetail({
 }
 
 export function RelatedStoriesPanel({ candidates, onLink, onClose, selectedKey, onSelectedKeyChange, onFindRelated, onPrefillFindRelated }: RelatedStoriesPanelProps) {
+  // Epics are never valid related stories — guard against any stale cached rows.
+  const visibleCandidates = candidates.filter(
+    (c) => (c.issueType ?? "").toLowerCase() !== "epic",
+  );
 
   return (
     <div className="flex h-full flex-col overflow-hidden">
@@ -288,7 +292,7 @@ export function RelatedStoriesPanel({ candidates, onLink, onClose, selectedKey, 
         />
       ) : (
         <div className="min-h-0 flex-1 overflow-y-auto px-2.5 py-2.5">
-          {candidates.length === 0 ? (
+          {visibleCandidates.length === 0 ? (
             <div className="flex flex-col items-center justify-center py-10 text-center">
               <p className="text-body-sm text-text-muted">
                 No related stories found yet.
@@ -319,7 +323,7 @@ export function RelatedStoriesPanel({ candidates, onLink, onClose, selectedKey, 
             </div>
           ) : (
             <div className="space-y-2">
-              {candidates.map((c) => (
+              {visibleCandidates.map((c) => (
                 <CandidateCard
                   key={c.id}
                   candidate={c}

@@ -26,7 +26,8 @@ import { TypeSuggestionChip } from "@/components/story-writer/TypeSuggestionChip
 import { LinkSuggestionChips, type LinkSuggestion } from "@/components/story-writer/LinkSuggestionChips";
 import { EpicSuggestionCard, type EpicSuggestion } from "@/components/story-writer/EpicSuggestionCard";
 import { SuggestionCard, SuggestionRow, ScoreBadge, LinkButton } from "@/components/story-writer/SuggestionCard";
-import { TicketStatusPill } from "@/components/shared/TicketStatusPill";
+import { TicketStatusPill, type TicketPillHoverData } from "@/components/shared/TicketStatusPill";
+import { tickets } from "@/lib/api-client";
 import type { JiraStatus } from "@/types/ticket";
 
 export const SHOW_MORE_WORD_THRESHOLD = 80;
@@ -624,8 +625,48 @@ export function RelatedStoriesInline({
   onOpenPanel?: () => void;
 }) {
   const [linkingId, setLinkingId] = useState<string | null>(null);
+  const [hoverByKey, setHoverByKey] = useState<Record<string, TicketPillHoverData>>({});
 
-  if (candidates.length === 0) return null;
+  useEffect(() => {
+    let cancelled = false;
+    const keysToResolve = candidates
+      .map((c) => c.jiraKey)
+      .filter((k) => !hoverByKey[k]);
+    if (keysToResolve.length === 0) return;
+
+    for (const key of keysToResolve) {
+      tickets.get(key)
+        .then((data) => {
+          if (cancelled || !data) return;
+          setHoverByKey((prev) => ({
+            ...prev,
+            [key]: {
+              title: data.title,
+              storyPoints: data.storyPoints,
+              businessValue: data.businessValue,
+              sprintId: null,
+              sprintName: data.sprintId ?? null,
+              epicKey: data.epicKey,
+              epic: data.epic,
+              assignee: data.assignee ?? null,
+              reporter: data.reporter ?? null,
+              openSubtaskCount: data.openSubtaskCount ?? 0,
+              totalSubtaskCount: data.totalSubtaskCount ?? 0,
+              flagged: data.flagged,
+            },
+          }));
+        })
+        .catch(() => {});
+    }
+    return () => { cancelled = true; };
+  }, [candidates]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Epics are never valid related stories — guard against any stale cached rows.
+  const visibleCandidates = candidates.filter(
+    (c) => (c.issueType ?? "").toLowerCase() !== "epic",
+  );
+
+  if (visibleCandidates.length === 0) return null;
 
   const handleLink = async (id: string, isLinked: boolean) => {
     setLinkingId(id);
@@ -647,7 +688,7 @@ export function RelatedStoriesInline({
         </button>
       ) : undefined}
     >
-      {candidates.map((c) => (
+      {visibleCandidates.map((c) => (
         <SuggestionRow key={c.id} active={c.isLinked}>
           <ScoreBadge score={c.score} />
           <TicketStatusPill
@@ -657,6 +698,7 @@ export function RelatedStoriesInline({
             title={c.title}
             size="sm"
             variant="list"
+            hoverData={hoverByKey[c.jiraKey]}
           />
           <span className="min-w-0 flex-1 truncate text-label text-text-secondary">
             {c.title}

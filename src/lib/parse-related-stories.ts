@@ -26,7 +26,9 @@ export function parseRelatedStories(output: string): RelatedStoryItem[] {
         typeof item.key === "string" &&
         typeof item.score === "number" &&
         typeof item.title === "string" &&
-        typeof item.status === "string",
+        typeof item.status === "string" &&
+        // Epics are never valid related stories — they are containers, not peers.
+        (item.type ?? "").toString().toLowerCase() !== "epic",
     );
   } catch {
     return [];

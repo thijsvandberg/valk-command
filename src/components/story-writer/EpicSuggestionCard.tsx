@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { Zap } from "lucide-react";
-import { TicketStatusPill } from "@/components/shared/TicketStatusPill";
+import { TicketStatusPill, type TicketPillHoverData } from "@/components/shared/TicketStatusPill";
 import { SuggestionCard, SuggestionRow, LinkButton } from "@/components/story-writer/SuggestionCard";
 import { tickets } from "@/lib/api-client";
 import type { JiraStatus, TicketReadiness } from "@/types/ticket";
@@ -24,6 +24,7 @@ interface ResolvedInfo {
   status: string;
   readiness: TicketReadiness | null;
   title: string | null;
+  hover: TicketPillHoverData;
 }
 
 interface EpicSuggestionCardProps {
@@ -56,6 +57,20 @@ export function EpicSuggestionCard({ suggestions, currentEpicKey, onApply }: Epi
                 status: data.jiraStatus,
                 readiness: data.readiness,
                 title: data.title || null,
+                hover: {
+                  title: data.title,
+                  storyPoints: data.storyPoints,
+                  businessValue: data.businessValue,
+                  sprintId: null,
+                  sprintName: data.sprintId ?? null,
+                  epicKey: data.epicKey,
+                  epic: data.epic,
+                  assignee: data.assignee ?? null,
+                  reporter: data.reporter ?? null,
+                  openSubtaskCount: data.openSubtaskCount ?? 0,
+                  totalSubtaskCount: data.totalSubtaskCount ?? 0,
+                  flagged: data.flagged,
+                },
               },
             }));
           }
@@ -66,6 +81,13 @@ export function EpicSuggestionCard({ suggestions, currentEpicKey, onApply }: Epi
   }, [suggestions]); // eslint-disable-line react-hooks/exhaustive-deps
 
   if (suggestions.length === 0) return null;
+
+  // Deprecated epics must never be suggested — drop them once their status resolves.
+  const visibleSuggestions = suggestions.filter(
+    (s) => (resolved[s.key]?.status ?? "").toUpperCase() !== "DEPRECATED",
+  );
+
+  if (visibleSuggestions.length === 0) return null;
 
   const handleApply = async (epicKey: string) => {
     setApplying((prev) => new Set(prev).add(epicKey));
@@ -85,7 +107,7 @@ export function EpicSuggestionCard({ suggestions, currentEpicKey, onApply }: Epi
       icon={<Zap size={10} strokeWidth={1.5} className="text-text-muted" />}
       title="Epic suggestion"
     >
-      {suggestions.map((s) => {
+      {visibleSuggestions.map((s) => {
         const isCurrent = currentEpicKey === s.key;
         const justApplied = applied.has(s.key);
         const isSelected = isCurrent || justApplied;
@@ -106,6 +128,7 @@ export function EpicSuggestionCard({ suggestions, currentEpicKey, onApply }: Epi
                   title={displayName}
                   size="sm"
                   variant="list"
+                  hoverData={info?.hover}
                 />
                 <span className={`min-w-0 flex-1 truncate text-label ${isSelected ? "text-text-primary" : "text-text-secondary"}`}>
                   {displayName}
