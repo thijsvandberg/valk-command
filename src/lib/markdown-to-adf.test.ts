@@ -57,6 +57,43 @@ describe("markdownToAdf", () => {
       expect(text.marks).toContainEqual({ type: "em" });
       expect(text.marks).toContainEqual({ type: "strike" });
     });
+
+    // The ADF `code` mark is exclusive: Jira returns 400 INVALID_INPUT when it
+    // is combined with formatting marks like strong/em/strike/textColor.
+    it("inline code keeps only the code mark", () => {
+      const doc = markdownToAdf("`code`");
+      const text = doc.content![0].content![0];
+      expect(text.text).toBe("code");
+      expect(text.marks).toEqual([{ type: "code" }]);
+    });
+
+    it("bold wrapping inline code does not add strong to the code node", () => {
+      const doc = markdownToAdf("**bold (`code`)**");
+      const nodes = doc.content![0].content!;
+      const codeNode = nodes.find((n) => n.text === "code")!;
+      expect(codeNode.marks).toEqual([{ type: "code" }]);
+      // Surrounding text still gets the strong mark
+      const boldNode = nodes.find((n) => n.text === "bold (")!;
+      expect(boldNode.marks).toContainEqual({ type: "strong" });
+    });
+
+    it("italic wrapping inline code does not add em to the code node", () => {
+      const doc = markdownToAdf("*see `fn()` here*");
+      const codeNode = doc.content![0].content!.find((n) => n.text === "fn()")!;
+      expect(codeNode.marks).toEqual([{ type: "code" }]);
+    });
+
+    it("strikethrough wrapping inline code does not add strike to the code node", () => {
+      const doc = markdownToAdf("~~old `value`~~");
+      const codeNode = doc.content![0].content!.find((n) => n.text === "value")!;
+      expect(codeNode.marks).toEqual([{ type: "code" }]);
+    });
+
+    it("colored text wrapping inline code does not add textColor to the code node", () => {
+      const doc = markdownToAdf("{color:#ff0000}use `x`{color}");
+      const codeNode = doc.content![0].content!.find((n) => n.text === "x")!;
+      expect(codeNode.marks).toEqual([{ type: "code" }]);
+    });
   });
 
   describe("flat bullet list", () => {

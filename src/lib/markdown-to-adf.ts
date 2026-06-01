@@ -357,6 +357,18 @@ function toHexColor(color: string): string {
   return color;
 }
 
+// The ADF `code` mark is exclusive: Jira rejects (INVALID_INPUT) any text node
+// that combines `code` with formatting marks like strong/em/strike/textColor.
+// Apply a formatting mark only to text nodes that are not already code-marked,
+// so e.g. **bold (`code`)** keeps the code segment as plain inline code.
+function applyMark(nodes: AdfNode[], mark: AdfMark, prepend = false): void {
+  for (const node of nodes) {
+    if (node.type !== "text") continue;
+    if (node.marks?.some((m) => m.type === "code")) continue;
+    node.marks = prepend ? [mark, ...(node.marks ?? [])] : [...(node.marks ?? []), mark];
+  }
+}
+
 function parseInline(text: string): AdfNode[] {
   const nodes: AdfNode[] = [];
   let remaining = text;
@@ -368,11 +380,7 @@ function parseInline(text: string): AdfNode[] {
       // Jira ADF textColor requires hex; convert rgb/rgba if needed
       const color = toHexColor(colorMatch[1]);
       const innerNodes = parseInline(colorMatch[2]);
-      for (const node of innerNodes) {
-        if (node.type === "text") {
-          node.marks = [...(node.marks ?? []), { type: "textColor", attrs: { color } }];
-        }
-      }
+      applyMark(innerNodes, { type: "textColor", attrs: { color } });
       nodes.push(...innerNodes);
       remaining = remaining.slice(colorMatch[0].length);
       continue;
@@ -382,11 +390,8 @@ function parseInline(text: string): AdfNode[] {
     const boldItalicMatch = remaining.match(/^\*\*\*(.+?)\*\*\*/);
     if (boldItalicMatch) {
       const innerNodes = parseInline(boldItalicMatch[1]);
-      for (const node of innerNodes) {
-        if (node.type === "text") {
-          node.marks = [{ type: "strong" }, { type: "em" }, ...(node.marks ?? [])];
-        }
-      }
+      applyMark(innerNodes, { type: "em" }, true);
+      applyMark(innerNodes, { type: "strong" }, true);
       nodes.push(...innerNodes);
       remaining = remaining.slice(boldItalicMatch[0].length);
       continue;
@@ -396,11 +401,7 @@ function parseInline(text: string): AdfNode[] {
     const boldMatch = remaining.match(/^\*\*(.+?)\*\*/);
     if (boldMatch) {
       const innerNodes = parseInline(boldMatch[1]);
-      for (const node of innerNodes) {
-        if (node.type === "text") {
-          node.marks = [{ type: "strong" }, ...(node.marks ?? [])];
-        }
-      }
+      applyMark(innerNodes, { type: "strong" }, true);
       nodes.push(...innerNodes);
       remaining = remaining.slice(boldMatch[0].length);
       continue;
@@ -411,11 +412,7 @@ function parseInline(text: string): AdfNode[] {
     if (strikeMatch) {
       // Parse inner content and add strike mark
       const innerNodes = parseInline(strikeMatch[1]);
-      for (const node of innerNodes) {
-        if (node.type === "text") {
-          node.marks = [...(node.marks ?? []), { type: "strike" }];
-        }
-      }
+      applyMark(innerNodes, { type: "strike" });
       nodes.push(...innerNodes);
       remaining = remaining.slice(strikeMatch[0].length);
       continue;
@@ -425,11 +422,7 @@ function parseInline(text: string): AdfNode[] {
     const italicMatch = remaining.match(/^\*(.+?)\*/);
     if (italicMatch) {
       const innerNodes = parseInline(italicMatch[1]);
-      for (const node of innerNodes) {
-        if (node.type === "text") {
-          node.marks = [{ type: "em" }, ...(node.marks ?? [])];
-        }
-      }
+      applyMark(innerNodes, { type: "em" }, true);
       nodes.push(...innerNodes);
       remaining = remaining.slice(italicMatch[0].length);
       continue;
