@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { computeContentHash, ticketNeedsTitle, buildFollowUpContent } from "./story-writer-messages";
+import { computeContentHash, ticketNeedsTitle, buildFollowUpContent, selectCurrentDescription } from "./story-writer-messages";
 
 describe("computeContentHash", () => {
   it("produces consistent hash for same input", () => {
@@ -50,6 +50,28 @@ describe("ticketNeedsTitle", () => {
 
   it("returns false for real title", () => {
     expect(ticketNeedsTitle("Implement login page")).toBe(false);
+  });
+});
+
+describe("selectCurrentDescription", () => {
+  it("prefers the editor draft over the Jira description", () => {
+    expect(selectCurrentDescription("editor content", "jira content")).toBe("editor content");
+  });
+
+  it("uses the editor draft even when Jira description is empty", () => {
+    expect(selectCurrentDescription("editor content", null)).toBe("editor content");
+    expect(selectCurrentDescription("editor content", "")).toBe("editor content");
+  });
+
+  it("falls back to Jira description when editor draft is untouched", () => {
+    expect(selectCurrentDescription(null, "jira content")).toBe("jira content");
+    expect(selectCurrentDescription("", "jira content")).toBe("jira content");
+    expect(selectCurrentDescription("   ", "jira content")).toBe("jira content");
+  });
+
+  it("returns (empty) when neither has content", () => {
+    expect(selectCurrentDescription(null, null)).toBe("(empty)");
+    expect(selectCurrentDescription("", "")).toBe("(empty)");
   });
 });
 

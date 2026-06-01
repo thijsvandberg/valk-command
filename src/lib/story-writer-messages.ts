@@ -61,6 +61,20 @@ export function ticketNeedsTitle(title: string | null | undefined): boolean {
   return !t || t === "Untitled draft";
 }
 
+/**
+ * The editor draft (localDraft) is the content the PO is actively working on and
+ * the source of truth for what to send, even when it hasn't been pushed to Jira yet.
+ * Only fall back to the Jira-synced description when the editor is genuinely untouched.
+ */
+export function selectCurrentDescription(
+  localDraft: string | null | undefined,
+  jiraDescription: string | null | undefined,
+): string {
+  if (localDraft?.trim()) return localDraft;
+  if (jiraDescription?.trim()) return jiraDescription;
+  return "(empty)";
+}
+
 async function markMessageSent(messageId: string, taskId: string) {
   await db
     .update(message)
@@ -138,7 +152,7 @@ export async function buildFirstMessageBody(
   if (ticketRow) {
     contextParts.push(`Ticket: ${key} - ${ticketRow.title}`);
     contextParts.push(`Issue type: ${ticketRow.type ?? "story"}`);
-    contextParts.push(`Current description:\n${ticketRow.description ?? "(empty)"}`);
+    contextParts.push(`Current description:\n${selectCurrentDescription(session.localDraft, ticketRow.description)}`);
   }
   if (comments.length > 0) {
     const formatted = comments
