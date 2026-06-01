@@ -79,11 +79,6 @@ describe("TicketActionMenuContent", () => {
     });
   });
 
-  it("renders the header label (target ticket key) at the top of the menu", () => {
-    render(<TicketActionMenuContent header="VPL-1337" onSetStatus={vi.fn()} close={vi.fn()} />);
-    expect(screen.getByText("VPL-1337")).toBeInTheDocument();
-  });
-
   it("navigates into the Set Status sub-panel and back", () => {
     render(<TicketActionMenuContent onSetStatus={vi.fn()} close={vi.fn()} />);
     fireEvent.click(screen.getByText("Set Status"));

@@ -217,6 +217,9 @@ export default function SprintBoard() {
   // otherwise act on just that row without disturbing the current selection.
   const handleRowContextMenu = useCallback((key: string, e: React.MouseEvent) => {
     const targets = checkedTickets.has(key) && checkedTickets.size > 0 ? new Set(checkedTickets) : new Set([key]);
+    // Clear the previously selected (side-panel) row so only the context-menu
+    // target carries the active highlight while the menu is open.
+    setSelectedTicket(null);
     setRowMenu({ x: e.clientX, y: e.clientY, targets });
   }, [checkedTickets]);
   const handleReorder = useCallback((activeKey: string, overKey: string) => {
@@ -384,7 +387,6 @@ export default function SprintBoard() {
       {rowMenu && (
         <CursorMenu x={rowMenu.x} y={rowMenu.y} onClose={() => setRowMenu(null)}>
           <TicketActionMenuContent
-            header={rowMenu.targets.size === 1 ? [...rowMenu.targets][0] : `${rowMenu.targets.size} tickets`}
             onSetStatus={(s) => handleBulkSetStatus(s, rowMenu.targets)}
             onSetReadiness={(r) => handleBulkSetReadiness(r, rowMenu.targets)}
             onSetEpic={(epicKey) => handleBulkSetEpic(epicKey, rowMenu.targets)}

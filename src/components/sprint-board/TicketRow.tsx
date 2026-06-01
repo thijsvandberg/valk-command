@@ -576,14 +576,12 @@ export const TicketRow = memo(forwardRef<HTMLTableRowElement, TicketRowBaseProps
       className={`group/row border-b border-border-subtle border-l-2 transition-colors duration-100 ${
         dragListeners ? "cursor-grab active:cursor-grabbing select-none" : "cursor-pointer"
       } ${
-        isSelected
-          ? "bg-[var(--color-brand-600)]/12 border-l-[var(--color-brand-500)]"
-          : isContextTarget
+        isSelected || isContextTarget
           ? "bg-[var(--color-brand-600)]/12 border-l-[var(--color-brand-500)]"
           : ticket.flagged
           ? "bg-[color-mix(in_srgb,var(--color-status-error)_6%,transparent)] border-l-transparent hover:bg-[color-mix(in_srgb,var(--color-status-error)_8%,transparent)]"
           : "border-l-transparent hover:bg-overlay-subtle hover:border-l-[var(--color-brand-400)]/25"
-      } ${isContextTarget ? "outline outline-1 -outline-offset-1 outline-[var(--color-brand-500)]/70" : isFocused && !isSelected ? "outline outline-1 -outline-offset-1 outline-[var(--color-brand-500)]/40" : ""} ${isRemoved ? "opacity-50" : isInflight ? "opacity-70" : ""}`}
+      } ${isFocused && !isSelected && !isContextTarget ? "outline outline-1 -outline-offset-1 outline-[var(--color-brand-500)]/40" : ""} ${isRemoved ? "opacity-50" : isInflight ? "opacity-70" : ""}`}
       {...dragListeners}
       {...dragAttributes}
     >

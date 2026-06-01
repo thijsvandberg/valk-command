@@ -553,7 +553,6 @@ type UpdateSubView = "menu" | "status" | "readiness" | "sprint" | "epic" | "assi
 export type FlagState = "flagged" | "unflagged" | "mixed";
 
 export function TicketActionMenuContent({
-  header,
   onSetStatus,
   onSetReadiness,
   onSetEpic,
@@ -569,8 +568,6 @@ export function TicketActionMenuContent({
   pinnedSprintIds,
   close,
 }: {
-  /** Optional non-interactive label shown at the top of the root menu (e.g. the target ticket key). */
-  header?: ReactNode;
   onSetStatus?: (status: JiraStatus) => void;
   onSetReadiness?: (readiness: TicketReadiness | null) => void;
   onSetEpic?: (epicKey: string | null) => void;
@@ -598,14 +595,6 @@ export function TicketActionMenuContent({
   if (subView === "menu") {
     return (
       <>
-        {header && (
-          <>
-            <div className="px-3 py-1.5 text-label font-semibold uppercase tracking-wide text-text-tertiary">
-              {header}
-            </div>
-            <div className="mx-2 mb-1 h-px bg-overlay-strong" />
-          </>
-        )}
         {onSetStatus && <MenuItem onClick={() => setSubView("status")}>Set Status</MenuItem>}
         {onSetReadiness && <MenuItem onClick={() => setSubView("readiness")}>Set Readiness</MenuItem>}
         {onSetEpic && <MenuItem onClick={() => setSubView("epic")}>Set Epic</MenuItem>}
