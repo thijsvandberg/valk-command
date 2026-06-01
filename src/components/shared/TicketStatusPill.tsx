@@ -701,6 +701,11 @@ export function TicketStatusPill({
   // List variant — no outer container, segments float inline with gaps
   // ---------------------------------------------------------------------------
   if (isList) {
+    // Shared labels: used both as the visual tooltip and the button's accessible
+    // name, since these icon-only segments have no visible text.
+    const issueTypeTip = onIssueTypeChange ? "Change issue type" : (TYPE_LABELS[issueType as IssueType] ?? issueType ?? "");
+    const statusTip = onJiraStatusChange ? "Change status" : jiraStatus;
+    const readinessTip = readiness ? READINESS_CONFIG[readiness].label : "Ready for Development";
     return (
       <div ref={wrapperRef} {...hoverProps} className="flex shrink-0 items-center gap-1.5">
         {hoverCardEl}
@@ -708,10 +713,11 @@ export function TicketStatusPill({
         {/* Issue type */}
         {issueType && (
           <div className="relative flex shrink-0">
-            <Tooltip content={onIssueTypeChange ? "Change issue type" : (TYPE_LABELS[issueType as IssueType] ?? issueType)}>
+            <Tooltip content={issueTypeTip}>
               <button
                 ref={issueTypeBtnRef}
                 type="button"
+                aria-label={issueTypeTip}
                 onClick={onIssueTypeChange ? () => setIssueTypeDropdownOpen((o) => !o) : undefined}
                 disabled={!onIssueTypeChange}
                 className={`flex items-center justify-center rounded p-1 transition-colors duration-150 ${
@@ -773,10 +779,11 @@ export function TicketStatusPill({
           </span>
         ) : (
           <div className="relative flex shrink-0">
-            <Tooltip content={onJiraStatusChange ? `${jiraStatus} — click to change` : jiraStatus}>
+            <Tooltip content={statusTip}>
               <button
                 ref={jiraStatusBtnRef}
                 type="button"
+                aria-label={statusTip}
                 onClick={onJiraStatusChange ? () => setJiraDropdownOpen((o) => !o) : undefined}
                 disabled={!onJiraStatusChange}
                 className={`flex items-center gap-1 rounded px-1.5 py-0.5 font-mono text-[10px] font-medium tracking-wide transition-colors duration-150 ${
@@ -804,10 +811,11 @@ export function TicketStatusPill({
         {/* Readiness */}
         {showReadiness && (
           <div className="relative flex shrink-0 -ml-1">
-            <Tooltip content={readiness ? READINESS_CONFIG[readiness].label : "Ready for Development"}>
+            <Tooltip content={readinessTip}>
               <button
                 ref={readinessBtnRef}
                 type="button"
+                aria-label={readinessTip}
                 onClick={onReadinessChange ? () => setReadinessDropdownOpen((o) => !o) : undefined}
                 disabled={!onReadinessChange}
                 className={`flex items-center justify-center rounded transition-colors duration-150 ${
