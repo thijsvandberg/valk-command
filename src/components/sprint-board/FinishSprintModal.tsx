@@ -5,13 +5,13 @@ import { mutate } from "swr";
 import { Modal } from "@/components/shared/Modal";
 import { Button } from "@/components/ui/Button";
 import { jira, tickets as ticketsApi } from "@/lib/api-client";
-import type { Sprint, Ticket } from "@/types/ticket";
+import type { Sprint, Ticket, JiraStatus } from "@/types/ticket";
 import {
   Flag, X, AlertTriangle, CircleAlert, CircleCheckBig,
   CheckCheck, Loader2, PartyPopper,
 } from "lucide-react";
-import { StatusPill } from "@/components/sprint-board/SprintStatPill";
-import { IssueTypeIcon } from "@/components/shared/IssueTypeIcon";
+import { TicketStatusPill } from "@/components/shared/TicketStatusPill";
+import { buildTicketHoverData } from "@/hooks/useTicketHoverData";
 
 interface SubtaskItem {
   key: string;
@@ -218,7 +218,7 @@ export function FinishSprintModal({
           {/* Blocker A: incomplete stories */}
           {incompleteStories.length > 0 && (
             <section className="overflow-hidden rounded-lg border border-red-500/20">
-              <div className="flex items-center gap-2 border-b border-red-500/15 bg-red-500/[0.06] px-3 py-2">
+              <div className="flex min-h-10 items-center gap-2 border-b border-red-500/15 bg-red-500/[0.06] px-3 py-2">
                 <CircleAlert size={13} strokeWidth={1.75} className="shrink-0 text-[var(--color-status-error)]" />
                 <span className="text-body-sm font-medium text-text-primary">
                   {incompleteStories.length} {incompleteStories.length === 1 ? "story is" : "stories are"} not done
@@ -230,12 +230,17 @@ export function FinishSprintModal({
               <ul className="max-h-44 overflow-y-auto px-1.5 py-1.5">
                 {incompleteStories.map((t) => (
                   <li key={t.key} className="flex items-center gap-2.5 rounded-md px-2 py-1.5 transition-colors duration-100 hover:bg-overlay-subtle">
-                    <IssueTypeIcon type={t.type} size={15} />
-                    <div className="min-w-0 flex-1">
-                      <span className="block truncate text-body-sm leading-snug text-text-primary">{t.title}</span>
-                      <span className="font-mono text-[10px] text-text-muted">{t.key}</span>
-                    </div>
-                    <StatusPill size="sm" colorKey={t.jiraStatus} label={t.jiraStatus} showDot />
+                    <span className="min-w-0 flex-1 truncate text-body-sm text-text-primary">{t.title}</span>
+                    <TicketStatusPill
+                      ticketKey={t.key}
+                      jiraStatus={t.jiraStatus}
+                      issueType={t.type}
+                      title={t.title}
+                      variant="list"
+                      showKey
+                      showStatus
+                      hoverData={buildTicketHoverData(t)}
+                    />
                   </li>
                 ))}
               </ul>
@@ -245,7 +250,7 @@ export function FinishSprintModal({
           {/* Blocker B: done stories with open subtasks */}
           {blockerBStories.length > 0 && (
             <section className="overflow-hidden rounded-lg border border-amber-500/20">
-              <div className="flex items-center justify-between gap-2 border-b border-amber-500/15 bg-amber-500/[0.06] px-3 py-2">
+              <div className="flex min-h-10 items-center justify-between gap-2 border-b border-amber-500/15 bg-amber-500/[0.06] px-3 py-1.5">
                 <div className="flex items-center gap-2">
                   <AlertTriangle size={13} strokeWidth={1.75} className="shrink-0 text-[var(--color-status-caution)]" />
                   <span className="text-body-sm font-medium text-text-primary">
@@ -277,10 +282,18 @@ export function FinishSprintModal({
                   return (
                     <li key={story.key} className="rounded-md border border-border-subtle bg-[var(--color-surface-elevated)]/40">
                       <div className="flex items-center justify-between gap-2 px-2.5 py-2">
-                        <div className="flex min-w-0 items-center gap-2">
-                          <IssueTypeIcon type={story.type} size={14} />
-                          <span className="truncate text-body-sm leading-snug text-text-primary">{story.title}</span>
-                          <span className="shrink-0 font-mono text-[10px] text-text-muted">{story.key}</span>
+                        <div className="flex min-w-0 flex-1 items-center gap-2">
+                          <span className="min-w-0 flex-1 truncate text-body-sm text-text-primary">{story.title}</span>
+                          <TicketStatusPill
+                            ticketKey={story.key}
+                            jiraStatus={story.jiraStatus}
+                            issueType={story.type}
+                            title={story.title}
+                            variant="list"
+                            showKey
+                            showStatus
+                            hoverData={buildTicketHoverData(story)}
+                          />
                         </div>
                         {resolved ? (
                           <span className="inline-flex shrink-0 items-center gap-1 text-[11px] font-medium text-[var(--color-status-success)]">
@@ -324,12 +337,16 @@ export function FinishSprintModal({
                             const subBusy = busySubtasks.has(sub.key);
                             return (
                               <li key={sub.key} className="flex items-center gap-2 rounded-md px-1.5 py-1.5 transition-colors duration-100 hover:bg-overlay-subtle">
-                                <IssueTypeIcon type="subtask" size={13} />
-                                <div className="min-w-0 flex-1">
-                                  <span className="block truncate text-[12px] leading-snug text-text-secondary">{sub.title}</span>
-                                  <span className="font-mono text-[10px] text-text-muted">{sub.key}</span>
-                                </div>
-                                <StatusPill size="sm" colorKey={sub.status} label={sub.status} showDot />
+                                <span className="min-w-0 flex-1 truncate text-[12px] text-text-secondary">{sub.title}</span>
+                                <TicketStatusPill
+                                  ticketKey={sub.key}
+                                  jiraStatus={sub.status.toUpperCase() as JiraStatus}
+                                  issueType="subtask"
+                                  title={sub.title}
+                                  variant="list"
+                                  showKey
+                                  showStatus
+                                />
                                 <button
                                   type="button"
                                   onClick={() => closeOneSubtask(story.key, sub.key)}
