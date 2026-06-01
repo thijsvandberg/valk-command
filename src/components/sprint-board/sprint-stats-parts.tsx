@@ -1,7 +1,14 @@
-export function SummaryCard({ label, value, sub }: { label: string; value: number; sub?: string }) {
+import { Gauge, Goal } from "lucide-react";
+import { MetricBadge } from "@/components/shared/MetricBadge";
+
+export function SummaryCard({ label, value, sub, metric }: { label: string; value: number; sub?: string; metric?: "sp" | "bv" }) {
+  const Icon = metric === "sp" ? Gauge : metric === "bv" ? Goal : null;
   return (
     <div className="rounded-lg px-3.5 py-3" style={{ backgroundColor: "var(--color-overlay-subtle)" }}>
-      <div className="text-[10px] uppercase tracking-wider text-text-muted font-medium mb-1.5">{label}</div>
+      <div className="flex items-center gap-1.5 text-[10px] uppercase tracking-wider text-text-muted font-medium mb-1.5">
+        {Icon && <Icon size={12} strokeWidth={2} aria-hidden />}
+        {label}
+      </div>
       <div className="flex items-baseline gap-2">
         <span className="text-heading font-semibold text-text-primary tabular-nums leading-none">{value}</span>
         {sub && <span className="text-[10px] text-text-muted">{sub}</span>}
@@ -43,12 +50,7 @@ export function RowMetrics({ count, sp, bv }: { count: number; sp: number; bv: n
 }
 
 export function MetricChip({ value, unit }: { value: number; unit: string }) {
-  return (
-    <span className="flex items-center gap-0.5">
-      <span className="text-text-tertiary">{value}</span>
-      <span className="text-[9px] uppercase text-text-muted tracking-wide">{unit}</span>
-    </span>
-  );
+  return <MetricBadge metric={unit.toLowerCase() === "sp" ? "sp" : "bv"} value={value} tinted size="xs" />;
 }
 
 export function BarTrack({ children }: { children: React.ReactNode }) {

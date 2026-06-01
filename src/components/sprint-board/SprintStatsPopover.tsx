@@ -390,8 +390,8 @@ export function SprintStatsPopover({
             <div className="px-6 pt-3 pb-5">
               <div className="grid grid-cols-3 gap-3">
                 <SummaryCard label="Items" value={tickets.length} />
-                <SummaryCard label="Story Points" value={stats.totalSp} sub={stats.spAvg ? `avg ${stats.spAvg}` : undefined} />
-                <SummaryCard label="Business Value" value={stats.totalBv} sub={stats.bvAvg ? `avg ${stats.bvAvg}` : undefined} />
+                <SummaryCard label="Story Points" value={stats.totalSp} sub={stats.spAvg ? `avg ${stats.spAvg}` : undefined} metric="sp" />
+                <SummaryCard label="Business Value" value={stats.totalBv} sub={stats.bvAvg ? `avg ${stats.bvAvg}` : undefined} metric="bv" />
               </div>
               {stats.noPointsCount > 0 && (
                 <div className="flex items-center gap-1.5 mt-3 text-[11px]">

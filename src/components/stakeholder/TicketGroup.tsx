@@ -2,7 +2,7 @@
 
 import { ExternalLink } from "lucide-react";
 import type { StakeholderTicket } from "@/lib/stakeholder-data";
-import { getBvColor } from "@/types/ticket";
+import { MetricBadge } from "@/components/shared/MetricBadge";
 import { getJiraUrl } from "@/lib/jira-url";
 
 interface TicketGroupProps {
@@ -52,17 +52,7 @@ function AssigneeAvatar({ assignee }: { assignee: { name: string; initials: stri
 
 function BvBadge({ value }: { value: number | null }) {
   if (value === null) return null;
-  const { text, bg } = getBvColor(value);
-  const label = value === 0 ? "-" : `${value} BV`;
-  return (
-    <span
-      className="shrink-0 inline-flex h-[18px] items-center justify-center rounded px-1.5 text-[10px] font-semibold tabular-nums"
-      style={{ color: text, backgroundColor: bg }}
-      title={`Business value: ${value === 0 ? "N/A" : value}`}
-    >
-      {label}
-    </span>
-  );
+  return <span className="shrink-0"><MetricBadge metric="bv" value={value} tinted size="xs" /></span>;
 }
 
 function TypeBadge({ type }: { type: StakeholderTicket["type"] }) {
@@ -145,7 +135,7 @@ export function TicketGroup({ tickets, showKeys = false, showAssignee = false, c
                   <AssigneeAvatar assignee={t.assignee} />
                 )}
                 {t.storyPoints !== null && (
-                  <span className="shrink-0 text-body-sm tabular-nums text-text-muted">{t.storyPoints} SP</span>
+                  <span className="shrink-0"><MetricBadge metric="sp" value={t.storyPoints} tinted size="xs" /></span>
                 )}
               </li>
             ))}

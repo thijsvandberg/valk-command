@@ -157,13 +157,13 @@ describe("TicketTabContent", () => {
   });
 
   describe("tab bar", () => {
-    it("renders all 5 tabs", () => {
+    it("renders all tabs", () => {
       renderContent();
       expect(screen.getByTestId("tab-content")).toBeInTheDocument();
       expect(screen.getByTestId("tab-history")).toBeInTheDocument();
       expect(screen.getByTestId("tab-review")).toBeInTheDocument();
-      expect(screen.getByTestId("tab-refinement")).toBeInTheDocument();
       expect(screen.getByTestId("tab-development")).toBeInTheDocument();
+      expect(screen.queryByTestId("tab-refinement")).not.toBeInTheDocument();
     });
 
     it("marks active tab as selected", () => {

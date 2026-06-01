@@ -29,16 +29,12 @@ const TicketReview = dynamic(
   () => import("./TicketReview").then((m) => ({ default: m.TicketReview })),
   { loading: TabLoadingFallback },
 );
-const TicketRefinement = dynamic(
-  () => import("./TicketRefinement").then((m) => ({ default: m.TicketRefinement })),
-  { loading: TabLoadingFallback },
-);
 const TicketDevelopment = dynamic(
   () => import("./TicketDevelopment").then((m) => ({ default: m.TicketDevelopment })),
   { loading: TabLoadingFallback },
 );
 
-export type TicketTab = "content" | "history" | "review" | "refinement" | "development";
+export type TicketTab = "content" | "history" | "review" | "development";
 
 export interface TicketTabContentProps {
   ticketKey: string;
@@ -121,7 +117,6 @@ export function TicketTabContent({
             { id: "content" as const, label: "Content", badge: undefined as number | undefined, badgeHighlight: false },
             { id: "history" as const, label: "History", badge: versionCount as number | undefined, badgeHighlight: false },
             { id: "review" as const, label: "Review", badge: (reviewCount || undefined) as number | undefined, badgeHighlight: (reviewCount ?? 0) > 0 },
-            { id: "refinement" as const, label: "Refinement", badge: undefined as number | undefined, badgeHighlight: false },
             { id: "development" as const, label: "Development", badge: undefined as number | undefined, badgeHighlight: false },
           ]).map((tab) => (
             <Tab
@@ -295,7 +290,6 @@ export function TicketTabContent({
             />
           )}
           {activeTab === "review" && <TicketReview ticketKey={ticketKey} />}
-          {activeTab === "refinement" && <TicketRefinement ticketKey={ticketKey} />}
           {activeTab === "development" && <TicketDevelopment ticketKey={ticketKey} />}
 
           {activeTab !== "history" && <div className="h-12" />}

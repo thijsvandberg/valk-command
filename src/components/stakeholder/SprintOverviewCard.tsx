@@ -4,6 +4,7 @@ import { useState, useCallback, useMemo } from "react";
 import { ArrowDownWideNarrow } from "lucide-react";
 import type { StakeholderSprint, StakeholderTicket } from "@/lib/stakeholder-data";
 import { getBvColor } from "@/types/ticket";
+import { MetricBadge } from "@/components/shared/MetricBadge";
 import { ProgressBar } from "./ProgressBar";
 import { TicketGroup } from "./TicketGroup";
 import { SprintHealthBanner } from "./SprintHealthBanner";
@@ -96,12 +97,8 @@ function SectionHeader({
       <span className={`rounded-full px-1.5 py-0.5 text-caption tabular-nums ${styles.badge}`}>
         {count}
       </span>
-      {pts > 0 && (
-        <span className="text-caption tabular-nums opacity-60">{pts} SP</span>
-      )}
-      {bvTotal !== undefined && bvTotal > 0 && (
-        <span className="text-caption tabular-nums opacity-50">{bvTotal} BV</span>
-      )}
+      {pts > 0 && <MetricBadge metric="sp" value={pts} tinted size="xs" />}
+      {bvTotal !== undefined && bvTotal > 0 && <MetricBadge metric="bv" value={bvTotal} tinted size="xs" />}
     </h3>
   );
 }

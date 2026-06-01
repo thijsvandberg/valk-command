@@ -83,7 +83,7 @@ describe("TicketGroup", () => {
         tickets={[makeTicket("High value story", { businessValue: 5 })]}
       />,
     );
-    expect(screen.getByText("5 BV")).toBeInTheDocument();
+    expect(screen.getByLabelText("Business Value: 5")).toBeInTheDocument();
   });
 
   it("renders '-' BV badge when businessValue is 0", () => {
@@ -110,7 +110,7 @@ describe("TicketGroup", () => {
         tickets={[makeTicket("Estimated story", { storyPoints: 8 })]}
       />,
     );
-    expect(screen.getByText("8 SP")).toBeInTheDocument();
+    expect(screen.getByLabelText("Story Points: 8")).toBeInTheDocument();
   });
 
   it("renders bug type badge", () => {
