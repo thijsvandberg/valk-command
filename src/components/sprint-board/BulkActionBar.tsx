@@ -133,49 +133,79 @@ function SprintSubPanel({
   pinnedSprintIds?: string[];
   onSelect: (sprintId: string) => void;
 }) {
-  const eligible = sprints.filter((s) => s.state === "active" || s.state === "future");
-  // Show pinned (slot) sprints first, in pinned order, then the rest.
-  const pinnedOrder = pinnedSprintIds ?? [];
-  const sorted = [...eligible].sort((a, b) => {
-    const ai = pinnedOrder.indexOf(a.id);
-    const bi = pinnedOrder.indexOf(b.id);
-    if (ai !== -1 && bi !== -1) return ai - bi;
-    if (ai !== -1) return -1;
-    if (bi !== -1) return 1;
-    return 0;
-  });
-  const lastPinnedIdx = sorted.reduce((acc, s, i) => (pinnedOrder.includes(s.id) ? i : acc), -1);
+  const [query, setQuery] = useState("");
+  const sorted = useMemo(() => {
+    const eligible = sprints.filter((s) => s.state === "active" || s.state === "future");
+    const pinnedOrder = pinnedSprintIds ?? [];
+    // Show pinned (slot) sprints first, in pinned order, then the rest.
+    const byPinned = [...eligible].sort((a, b) => {
+      const ai = pinnedOrder.indexOf(a.id);
+      const bi = pinnedOrder.indexOf(b.id);
+      if (ai !== -1 && bi !== -1) return ai - bi;
+      if (ai !== -1) return -1;
+      if (bi !== -1) return 1;
+      return 0;
+    });
+    if (!query) return byPinned;
+    const q = query.toLowerCase();
+    return byPinned.filter((s) => s.name.toLowerCase().includes(q));
+  }, [sprints, pinnedSprintIds, query]);
+
+  const showBacklog = !query || "backlog".includes(query.toLowerCase());
+  // Divider only when not searching, since the pinned/rest split is meaningless once filtered.
+  const lastPinnedIdx = query ? -1 : sorted.reduce((acc, s, i) => ((pinnedSprintIds ?? []).includes(s.id) ? i : acc), -1);
+
   return (
-    <div className="py-1 max-h-[240px] overflow-y-auto">
-      <button
-        type="button"
-        onClick={() => onSelect("__backlog__")}
-        className="flex w-full items-center gap-2.5 px-3 py-1.5 text-body-sm text-text-tertiary cursor-pointer hover:bg-hover-list-item active:bg-overlay-default"
-      >
-        Backlog
-      </button>
-      {sorted.map((s, i) => (
-        <div key={s.id}>
+    <div className="py-1">
+      <div className="px-2 pb-1">
+        <div className="flex items-center gap-1.5 rounded-md border border-border-default bg-[var(--color-surface-base)] px-2 py-1">
+          <Search className="h-3 w-3 shrink-0 text-text-muted" strokeWidth={1.5} />
+          <input
+            type="text"
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            placeholder="Search sprints..."
+            className="w-full bg-transparent text-body-sm text-text-primary outline-none placeholder:text-text-muted"
+            autoFocus
+          />
+        </div>
+      </div>
+      <div className="max-h-[240px] overflow-y-auto">
+        {showBacklog && (
           <button
             type="button"
-            onClick={() => onSelect(s.id)}
-            className="flex w-full items-center gap-2.5 px-3 py-1.5 text-body-sm text-text-secondary cursor-pointer hover:bg-hover-list-item active:bg-overlay-default"
+            onClick={() => onSelect("__backlog__")}
+            className="flex w-full items-center gap-2.5 px-3 py-1.5 text-body-sm text-text-tertiary cursor-pointer hover:bg-hover-list-item active:bg-overlay-default"
           >
-            {s.name}
-            {s.state === "active" && (
-              <span className="ml-auto rounded px-1.5 py-0.5 text-[10px] font-medium bg-[var(--color-brand-500)]/10 text-[var(--color-brand-400)]">
-                Active
-              </span>
-            )}
+            Backlog
           </button>
-          {lastPinnedIdx >= 0 && i === lastPinnedIdx && i < sorted.length - 1 && (
-            <div className="mx-2 my-0.5 h-px bg-overlay-strong" />
-          )}
-        </div>
-      ))}
-      {eligible.length === 0 && (
-        <div className="px-3 py-2 text-body-sm text-text-tertiary">No sprints available</div>
-      )}
+        )}
+        {sorted.map((s, i) => (
+          <div key={s.id}>
+            <button
+              type="button"
+              onClick={() => onSelect(s.id)}
+              className="flex w-full items-center gap-2.5 px-3 py-1.5 text-body-sm text-text-secondary cursor-pointer hover:bg-hover-list-item active:bg-overlay-default"
+            >
+              {s.name}
+              {s.state === "active" && (
+                <span className="ml-auto rounded px-1.5 py-0.5 text-[10px] font-medium bg-[var(--color-brand-500)]/10 text-[var(--color-brand-400)]">
+                  Active
+                </span>
+              )}
+            </button>
+            {lastPinnedIdx >= 0 && i === lastPinnedIdx && i < sorted.length - 1 && (
+              <div className="mx-2 my-0.5 h-px bg-overlay-strong" />
+            )}
+          </div>
+        ))}
+        {sorted.length === 0 && !showBacklog && (
+          <div className="px-3 py-2 text-body-sm text-text-tertiary">No sprints found</div>
+        )}
+        {sorted.length === 0 && !query && (
+          <div className="px-3 py-2 text-body-sm text-text-tertiary">No sprints available</div>
+        )}
+      </div>
     </div>
   );
 }

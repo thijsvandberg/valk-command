@@ -124,6 +124,24 @@ describe("BulkActionBar", () => {
     expect(a.compareDocumentPosition(b) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
   });
 
+  it("filters the Move to Sprint list via the search box", () => {
+    render(
+      <BulkActionBar
+        {...defaultProps}
+        onMoveSprint={vi.fn()}
+        sprints={[
+          { id: "1", name: "Sprint Alpha", dateRange: "", state: "future", ticketCount: 0 },
+          { id: "2", name: "Sprint Beta", dateRange: "", state: "future", ticketCount: 0 },
+        ]}
+      />,
+    );
+    fireEvent.click(screen.getByText("Update"));
+    fireEvent.click(screen.getByText("Move to Sprint"));
+    fireEvent.change(screen.getByPlaceholderText("Search sprints..."), { target: { value: "beta" } });
+    expect(screen.queryByText("Sprint Alpha")).toBeNull();
+    expect(screen.getByText("Sprint Beta")).toBeTruthy();
+  });
+
   it("calls onMoveSprint with the selected sprint id", () => {
     const onMoveSprint = vi.fn();
     render(
