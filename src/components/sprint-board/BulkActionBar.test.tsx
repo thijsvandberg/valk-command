@@ -101,6 +101,34 @@ describe("BulkActionBar", () => {
     expect(screen.getByText("Move to Sprint")).toBeTruthy();
   });
 
+  it("shows the Flag item in the Update dropdown when onSetFlagged is provided", () => {
+    const onSetFlagged = vi.fn();
+    render(
+      <BulkActionBar
+        {...defaultProps}
+        onSetStatus={vi.fn()}
+        onSetFlagged={onSetFlagged}
+        flagState="unflagged"
+      />,
+    );
+    fireEvent.click(screen.getByText("Update"));
+    fireEvent.click(screen.getByText("Flag"));
+    expect(onSetFlagged).toHaveBeenCalledWith(true);
+  });
+
+  it("shows Remove flag in the Update dropdown when targets are already flagged", () => {
+    render(
+      <BulkActionBar
+        {...defaultProps}
+        onSetFlagged={vi.fn()}
+        flagState="flagged"
+      />,
+    );
+    fireEvent.click(screen.getByText("Update"));
+    expect(screen.getByText("Remove flag")).toBeTruthy();
+    expect(screen.queryByText("Flag")).toBeNull();
+  });
+
   it("lists pinned sprints first, in pinned order, in the Move to Sprint sub-panel", () => {
     render(
       <BulkActionBar
