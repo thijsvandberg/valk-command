@@ -55,6 +55,7 @@ CRUD operations on locally stored tickets and their metadata.
 | `/api/tickets` | POST | Create a local ticket record |
 | `/api/tickets/[key]` | GET | Get single ticket with metadata, subtasks, links, local edits |
 | `/api/tickets/[key]` | PUT | Update ticket fields |
+| `/api/tickets/[key]` | PATCH | Partial update: `flagged` (+ optional `flagReason`, synced to Jira as a comment), `labels`, `epicKey`, `type`. Bulk flag from the Sprint Board fans out one PATCH per ticket. |
 | `/api/tickets/[key]/metadata` | GET | Get PO metadata |
 | `/api/tickets/[key]/metadata` | PUT | Update PO metadata (readiness, scores, notes) |
 | `/api/tickets/[key]/comments` | GET | List Jira + PO comments |
