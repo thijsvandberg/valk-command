@@ -2,7 +2,7 @@
 
 import type { Sprint } from "@/types/ticket";
 import { Popover } from "@/components/shared/Popover";
-import { Pencil, Sparkles, ExternalLink } from "lucide-react";
+import { Pencil, Sparkles, ExternalLink, Flag } from "lucide-react";
 import Link from "next/link";
 
 interface SprintDetailsPopoverProps {
@@ -12,6 +12,8 @@ interface SprintDetailsPopoverProps {
   onEdit: () => void;
   onSuggestGoal?: () => void;
   goalSuggestionUrl?: string | null;
+  /** When provided and the sprint is active, shows a "Close sprint" action. */
+  onCloseSprint?: () => void;
 }
 
 function fmtDate(iso: string): string {
@@ -26,6 +28,7 @@ export function SprintDetailsPopover({
   onEdit,
   onSuggestGoal,
   goalSuggestionUrl,
+  onCloseSprint,
 }: SprintDetailsPopoverProps) {
   const hasGoal = sprint.goal && sprint.goal.trim().length > 0;
   const hasDates = sprint.startDate && sprint.endDate;
@@ -92,6 +95,18 @@ export function SprintDetailsPopover({
             <Pencil size={11} strokeWidth={1.5} className="shrink-0 opacity-60" />
             <span>Edit details</span>
           </button>
+          {onCloseSprint && sprint.state === "active" && (
+            <button
+              type="button"
+              onClick={() => { onClose(); onCloseSprint(); }}
+              className="flex w-full items-center gap-1.5 rounded-md px-2 py-1.5 text-body-sm text-amber-300/90 cursor-pointer
+                hover:bg-amber-500/10 hover:text-amber-300 active:bg-amber-500/15
+                transition-colors duration-100"
+            >
+              <Flag size={11} strokeWidth={1.5} className="shrink-0 opacity-80" />
+              <span>Close sprint</span>
+            </button>
+          )}
         </div>
       </div>
     </Popover>

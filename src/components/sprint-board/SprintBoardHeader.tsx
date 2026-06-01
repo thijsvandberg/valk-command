@@ -12,7 +12,7 @@ import { StatusCount, SprintCompletionBar, SprintStats as SprintStatsComponent }
 import { SprintStatsPopover } from "@/components/sprint-board/SprintStatsPopover";
 import { SprintDetailsPopover } from "@/components/sprint-board/SprintDetailsPopover";
 import { followedSprints, workspaceTasks } from "@/lib/api-client";
-import { Columns2, Check, LayoutGrid, CalendarRange, NotebookPen, Search, Bookmark, MoreHorizontal, BarChart2, List, Bell, BellOff, Users, AlertTriangle, Inbox } from "lucide-react";
+import { Columns2, Check, LayoutGrid, CalendarRange, NotebookPen, Search, Bookmark, MoreHorizontal, BarChart2, List, Bell, BellOff, Users, AlertTriangle, Inbox, Flag } from "lucide-react";
 import dynamic from "next/dynamic";
 const SprintListModal = dynamic(() => import("@/components/sprint-board/SprintListModal").then((m) => ({ default: m.SprintListModal })), { ssr: false });
 
@@ -49,6 +49,7 @@ interface SprintBoardHeaderProps {
   setCreateSprintModalOpen: (v: boolean) => void;
   handleSprintListSelect: (sprintId: string) => void;
   handleAddSlotWithSprint: (sprintId: string) => void;
+  onFinishSprint: (early: boolean) => void;
 }
 
 export function SprintBoardHeader(props: SprintBoardHeaderProps) {
@@ -57,8 +58,12 @@ export function SprintBoardHeader(props: SprintBoardHeaderProps) {
     stats, sprintWorkDays, slotSprints, activeSlot, showToast,
     activeView, filters, analyticsVisible, setAnalyticsVisible,
     setShowStoryWriterLauncher, setSearchModalOpen, setEditModalOpen,
-    handleSprintListSelect, handleAddSlotWithSprint,
+    handleSprintListSelect, handleAddSlotWithSprint, onFinishSprint,
   } = props;
+
+  // The sprint's end date has effectively passed once no working days remain
+  // (this is the same signal the completion bar surfaces as "last day").
+  const endReached = sprintWorkDays.remaining !== null && sprintWorkDays.remaining <= 0;
 
   const router = useRouter();
   const completionBarRef = useRef<HTMLDivElement>(null);
@@ -252,6 +257,7 @@ export function SprintBoardHeader(props: SprintBoardHeaderProps) {
                 }
               }}
               goalSuggestionUrl={goalSuggestionUrl}
+              onCloseSprint={() => onFinishSprint(!endReached)}
             />
           </span>
           )
@@ -308,6 +314,18 @@ export function SprintBoardHeader(props: SprintBoardHeaderProps) {
                   >
                     <AlertTriangle size={10} strokeWidth={2.5} />
                   </button>
+                )}
+                {endReached && (
+                  <Button
+                    variant="soft"
+                    size="sm"
+                    icon={<Flag className="h-3 w-3" strokeWidth={1.75} />}
+                    onClick={() => onFinishSprint(false)}
+                    title="Finish this sprint"
+                    className="ml-1 border-amber-500/30 bg-amber-500/10 text-amber-300 hover:bg-amber-500/20"
+                  >
+                    Finish
+                  </Button>
                 )}
               </>
             ) : (

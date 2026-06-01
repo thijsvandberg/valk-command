@@ -152,6 +152,23 @@ export const TicketRow = memo(forwardRef<HTMLTableRowElement, TicketRowBaseProps
 
   // Checkbox always visible when checked or when any row is checked (bulk mode)
   const showCheckbox = isChecked || someChecked;
+
+  const checkbox = (
+    <span
+      className={`flex h-3.5 w-3.5 items-center justify-center rounded-sm border transition-[opacity,background-color] duration-150 ease-in-out ${
+        isChecked
+          ? "border-[var(--color-brand-500)]/50 bg-[var(--color-brand-500)]/20"
+          : "border-border-strong bg-overlay-subtle"
+      } ${showCheckbox ? "opacity-100" : `opacity-0 ${!isDragActive ? "group-hover/row:opacity-100" : ""}`}`}
+    >
+      {isChecked && (
+        <svg width="8" height="8" viewBox="0 0 8 8" fill="none">
+          <path d="M1.5 4L3 5.5L6.5 2" stroke="var(--color-brand-400)" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+        </svg>
+      )}
+    </span>
+  );
+
   const isRemoved = Boolean(ticket.removedFromJiraAt);
   const epicColor = ticket.epic ? getEpicColor(ticket.epic) ?? null : null;
   const jiraColor = JIRA_STATUS_COLORS[ticket.jiraStatus] ?? { bg: "var(--color-status-neutral-subtle)", text: "var(--color-status-neutral)" };
@@ -194,13 +211,28 @@ export const TicketRow = memo(forwardRef<HTMLTableRowElement, TicketRowBaseProps
         );
       case "key":
         return (
-          <td key={id} className="py-2 pr-3" style={{ fontVariantNumeric: "tabular-nums" }}>
+          <td key={id} className="relative py-2 pr-3" style={{ fontVariantNumeric: "tabular-nums" }}>
+            {/* Default view: the hover checkbox takes the leading issue-type icon's place (the icon fades
+                via dimTypeOnRowHover), so no extra gutter is reserved and content never shifts. */}
+            {!someChecked && (
+              <span
+                className="absolute left-1 top-1/2 z-10 flex -translate-y-1/2 cursor-pointer items-center"
+                onPointerDown={(e) => e.stopPropagation()}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onCheckboxClick(ticket.key, ticketIdx, e.shiftKey);
+                }}
+              >
+                {checkbox}
+              </span>
+            )}
             <span className="flex items-center gap-1.5">
               <span
                 onPointerDown={(e) => e.stopPropagation()}
                 onClick={(e) => e.stopPropagation()}
               >
                 <TicketStatusPill
+                  dimTypeOnRowHover={!someChecked}
                   ticketKey={ticket.key}
                   jiraStatus={ticket.jiraStatus}
                   title={ticket.title}
@@ -582,6 +614,8 @@ export const TicketRow = memo(forwardRef<HTMLTableRowElement, TicketRowBaseProps
       } ${
         isSelected || isContextTarget
           ? "bg-[var(--color-brand-600)]/12 border-l-[var(--color-brand-500)]"
+          : isChecked
+          ? "bg-[var(--color-brand-500)]/6 border-l-transparent hover:bg-[var(--color-brand-500)]/10"
           : ticket.flagged
           ? "bg-[color-mix(in_srgb,var(--color-status-error)_6%,transparent)] border-l-transparent hover:bg-[color-mix(in_srgb,var(--color-status-error)_8%,transparent)]"
           : "border-l-transparent hover:bg-overlay-subtle hover:border-l-[var(--color-brand-400)]/25"
@@ -589,30 +623,17 @@ export const TicketRow = memo(forwardRef<HTMLTableRowElement, TicketRowBaseProps
       {...dragListeners}
       {...dragAttributes}
     >
-      {/* Checkbox -- stops pointer propagation so drag sensor never activates on checkbox interaction */}
+      {/* Leading cell. Bulk mode shows a dedicated checkbox gutter on every row; the default view keeps
+          only a small breathing gap (the hover checkbox lives in the `type` cell, over the icon). */}
       <td
-        className="cursor-pointer select-none py-2 pl-1 pr-1"
+        className={`cursor-pointer select-none py-2 ${someChecked ? "pl-1 pr-1" : "p-0"}`}
         onPointerDown={(e) => e.stopPropagation()}
         onClick={(e) => {
           e.stopPropagation();
           onCheckboxClick(ticket.key, ticketIdx, e.shiftKey);
         }}
       >
-        <div className="flex items-center justify-center">
-          <span
-            className={`flex h-3.5 w-3.5 items-center justify-center rounded-sm border transition-[opacity,background-color] duration-150 ease-in-out ${
-              isChecked
-                ? "border-[var(--color-brand-500)]/50 bg-[var(--color-brand-500)]/20"
-                : "border-border-strong bg-overlay-subtle"
-            } ${showCheckbox ? "opacity-100" : `opacity-0 ${!isDragActive ? "group-hover/row:opacity-100" : ""}`}`}
-          >
-            {isChecked && (
-              <svg width="8" height="8" viewBox="0 0 8 8" fill="none">
-                <path d="M1.5 4L3 5.5L6.5 2" stroke="var(--color-brand-400)" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
-              </svg>
-            )}
-          </span>
-        </div>
+        {someChecked && <div className="flex items-center justify-center">{checkbox}</div>}
       </td>
 
       {effectiveOrder.map(renderCell)}

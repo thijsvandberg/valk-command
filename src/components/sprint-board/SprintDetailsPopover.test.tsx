@@ -74,4 +74,37 @@ describe("SprintDetailsPopover", () => {
     expect(onClose).toHaveBeenCalled();
     expect(onEdit).toHaveBeenCalled();
   });
+
+  it("shows 'Close sprint' for an active sprint and triggers the callback", () => {
+    const onClose = vi.fn();
+    const onCloseSprint = vi.fn();
+
+    render(
+      <SprintDetailsPopover
+        sprint={makeSprint({ state: "active" })}
+        open={true}
+        onClose={onClose}
+        onEdit={vi.fn()}
+        onCloseSprint={onCloseSprint}
+      />,
+    );
+
+    fireEvent.click(screen.getByText("Close sprint"));
+    expect(onClose).toHaveBeenCalled();
+    expect(onCloseSprint).toHaveBeenCalled();
+  });
+
+  it("hides 'Close sprint' when the sprint is not active", () => {
+    render(
+      <SprintDetailsPopover
+        sprint={makeSprint({ state: "closed" })}
+        open={true}
+        onClose={vi.fn()}
+        onEdit={vi.fn()}
+        onCloseSprint={vi.fn()}
+      />,
+    );
+
+    expect(screen.queryByText("Close sprint")).not.toBeInTheDocument();
+  });
 });

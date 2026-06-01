@@ -30,6 +30,7 @@ Sync engine for pulling Jira data into the local SQLite database. See [jira-sync
 | `/api/jira/health` | GET | Verify Jira connectivity |
 | `/api/jira/sprints` | POST | Create a new sprint in Jira and add to local cache |
 | `/api/jira/sprints/[id]` | PUT | Update sprint metadata (goal, dates) via Jira Agile API |
+| `/api/jira/sprints/[id]/close` | POST | Close (finish) an active sprint via Jira Agile API; flips cached state to `closed` |
 
 ## Epics
 
@@ -80,6 +81,8 @@ CRUD operations on locally stored tickets and their metadata.
 | `/api/tickets/[key]/subtask-suggestions` | GET | Return persisted pending AI subtask suggestions |
 | `/api/tickets/[key]/subtask-suggestions` | PUT | Parse and persist suggestions (replaces existing). Body: `{ suggestions: string[] }` or `{ output: string }` |
 | `/api/tickets/[key]/subtask-suggestions` | DELETE | Remove single suggestion (`{ id }`) or all for ticket |
+| `/api/tickets/[key]/subtasks/close` | POST | Bulk-close all open subtasks (requires parent DONE/DEPRECATED) |
+| `/api/tickets/[key]/subtasks/[subtaskKey]/close` | POST | Close a single subtask (transition to DONE; no parent guard) |
 
 ## Story Writer
 

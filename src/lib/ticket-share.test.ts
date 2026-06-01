@@ -10,18 +10,18 @@ describe("formatTicketShare", () => {
 });
 
 describe("formatTicketsShare", () => {
-  it("formats multiple tickets as list with - prefix", () => {
+  it("formats multiple tickets as one Title - URL per line without bullet", () => {
     const result = formatTicketsShare([
       { title: "Ticket A", key: "VPL-1" },
       { title: "Ticket B", key: "VPL-2" },
     ]);
     expect(result).toBe(
-      "- Ticket A - https://new-story.atlassian.net/browse/VPL-1\n- Ticket B - https://new-story.atlassian.net/browse/VPL-2",
+      "Ticket A - https://new-story.atlassian.net/browse/VPL-1\nTicket B - https://new-story.atlassian.net/browse/VPL-2",
     );
   });
 
   it("returns single-line string (no trailing newline) for one ticket", () => {
     const result = formatTicketsShare([{ title: "Solo", key: "VPL-99" }]);
-    expect(result).toBe("- Solo - https://new-story.atlassian.net/browse/VPL-99");
+    expect(result).toBe("Solo - https://new-story.atlassian.net/browse/VPL-99");
   });
 });

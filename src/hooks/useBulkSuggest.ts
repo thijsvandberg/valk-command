@@ -41,7 +41,7 @@ export function useBulkSuggest(opts: {
 
   const [copyToast, setCopyToast] = useState(false);
   const handleCopyStories = useCallback(() => {
-    const text = queueTickets.map((t) => `- ${t.title} - ${getJiraUrl(t.key)}`).join("\n");
+    const text = queueTickets.map((t) => `${t.title} - ${getJiraUrl(t.key)}`).join("\n");
     navigator.clipboard.writeText(text).then(() => {
       setCopyToast(true);
       setTimeout(() => setCopyToast(false), 1500);

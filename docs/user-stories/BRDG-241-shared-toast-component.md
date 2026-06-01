@@ -65,12 +65,12 @@ The activity/sync toast system (`ActivityContext` + `SyncToast`) is intentionall
 
 ## Checklist
 
-- [ ] Add `useToast` hook (persistent support + dismiss + unmount cleanup)
-- [ ] Add shared `Toast` component (rich content + dismiss button, existing style)
-- [ ] Migrate `SprintBoard` to the shared hook/component (keep move-to-sprint link toast)
-- [ ] Migrate `MultiSprintView`
-- [ ] Migrate `ChatLayout`
-- [ ] Migrate `RefinementPageContent`
-- [ ] Verify `ExportToasts` still works with the shared `showToast`
-- [ ] Add tests for `useToast` and `Toast`
-- [ ] Verify no behavioural regressions across the migrated views
+- [x] Add `useToast` hook (persistent support + dismiss + unmount cleanup)
+- [x] Add shared `Toast` component (rich content + dismiss button, existing style)
+- [x] Migrate `SprintBoard` to the shared hook/component (keep move-to-sprint link toast)
+- [x] Migrate `MultiSprintView` <!-- restyled to the standardized bottom-right floating toast (was centered/elevated); accepted per story -->
+- [x] Migrate `ChatLayout`
+- [x] Migrate `RefinementPageContent`
+- [x] Verify `ExportToasts` still works with the shared `showToast` (signature unchanged; `showToast` passed through as before)
+- [x] Add tests for `useToast` and `Toast`
+- [x] Verify no behavioural regressions across the migrated views

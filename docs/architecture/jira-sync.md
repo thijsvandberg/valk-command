@@ -67,6 +67,7 @@ Low-level HTTP client for the Jira REST API v3 via the Atlassian API gateway (`a
 - `searchIssues(jql, fields?, maxResults?)` -- ad-hoc JQL search, used by `GET /api/search/jira`
 - `getSprintsLightweight()` -- fetch active+future sprints via Agile board endpoint (1 API call) with fallback to JQL
 - `checkJiraHealth()` -- lightweight connectivity check (1-result search, no `/myself`)
+- `updateSprint(id, fields)` / `createSprint(params)` / `closeSprint(id)` -- sprint write operations via the Agile API (`write:sprint:jira-software` scope). `closeSprint` PUTs `{ state: "closed" }`; the route then flips the cached sprint state to `closed` so the board updates without a full sync.
 
 ### Shared Upsert Logic (`src/lib/upsert-issue.ts`)
 
@@ -86,6 +87,7 @@ Extracted upsert function shared between sprint sync and incremental sync. Pre-r
 | `/api/jira/sync-incremental` | POST | Watermark-based incremental sync (background, every 150s) |
 | `/api/jira/sync-tickets` | POST | Sync all tickets for a sprint. Supports `?strategy=bulk\|timestamp-first` |
 | `/api/jira/sync-sprints` | POST | Fetch and cache sprint list |
+| `/api/jira/sprints/[id]/close` | POST | Close (finish) an active sprint; flips cached state to `closed` |
 | `/api/jira/sync-comments` | POST | Sync comments for a ticket |
 | `/api/jira/check-updated` | GET | Lightweight freshness check for a single ticket |
 | `/api/jira/health` | GET | Verify Jira connectivity (lightweight search, not /myself) |

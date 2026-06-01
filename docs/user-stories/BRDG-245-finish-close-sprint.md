@@ -101,15 +101,15 @@ Opening the modal immediately fetches and shows the sprint's **unfinished work**
 
 - [x] Add `closeSprint()` to `jira-client.ts` (`PUT /sprint/{id}` state=closed via gateway) + test
 - [x] Add `POST /api/jira/sprints/[id]/close` endpoint (closes + re-syncs state) + test
-- [ ] Add date-passed "Finish" affordance near the sprint progress bar (active sprint only)
-- [ ] Add "Close sprint" action to `SprintDetailsPopover` with early-close warning when date not passed
-- [ ] Build the close confirmation modal with two blocker sections (incomplete stories + open subtasks)
-- [ ] Incomplete stories: blocking warning / disabled state, not closeable from Bridge
-- [ ] Open subtasks: per-subtask close + "Close all" (reusing existing subtask-close path)
-- [ ] Gate "Finish sprint": disabled until zero incomplete stories and zero open subtasks, with reason shown
-- [ ] Confirm + close flow: success/error toast, refresh board to show `closed` state
-- [ ] Loading / ready / error states for unfinished-work fetch and close call
-- [ ] Verify end-to-end against real Jira (token scope for closing sprints)
-- [ ] Update relevant docs in `/docs` (workspace/jira integration as needed)
+- [x] Add date-passed "Finish" affordance near the sprint progress bar (active sprint only)
+- [x] Add "Close sprint" action to `SprintDetailsPopover` with early-close warning when date not passed
+- [x] Build the close confirmation modal with two blocker sections (incomplete stories + open subtasks)
+- [x] Incomplete stories: blocking warning / disabled state, not closeable from Bridge
+- [x] Open subtasks: per-subtask close + "Close all" (reusing existing subtask-close path)
+- [x] Gate "Finish sprint": disabled until zero incomplete stories and zero open subtasks, with reason shown
+- [x] Confirm + close flow: success/error toast, refresh board to show `closed` state
+- [x] Loading / ready / error states for unfinished-work fetch and close call
+- [ ] Verify end-to-end against real Jira (token scope for closing sprints) <!-- skipped: requires live Jira credentials + an active sprint to close; cannot run from this environment without mutating real Jira data. Code path mirrors the working createSprint/updateSprint gateway calls; 401/403 scope errors are handled like BRDG-169. -->
+- [x] Update relevant docs in `/docs` (workspace/jira integration as needed)
 </content>
 </invoke>

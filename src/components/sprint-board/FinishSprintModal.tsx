@@ -1,0 +1,393 @@
+"use client";
+
+import { useState, useCallback, useEffect, useMemo } from "react";
+import { mutate } from "swr";
+import { Modal } from "@/components/shared/Modal";
+import { Button } from "@/components/ui/Button";
+import { jira, tickets as ticketsApi } from "@/lib/api-client";
+import type { Sprint, Ticket } from "@/types/ticket";
+import {
+  Flag, X, AlertTriangle, CircleAlert, Circle, CircleCheckBig,
+  CheckCheck, Loader2, PartyPopper,
+} from "lucide-react";
+
+interface SubtaskItem {
+  key: string;
+  title: string;
+  status: string;
+}
+
+interface FinishSprintModalProps {
+  sprint: Sprint;
+  tickets: Ticket[];
+  /** True when the sprint's end date has not yet passed (closing early). */
+  earlyClose: boolean;
+  onClose: () => void;
+  /** Closes every open subtask of a DONE story (optimistically zeroes the board count). */
+  onCloseAllSubtasks: (key: string) => Promise<void>;
+  /** Revalidates the board ticket list (used to reconcile counts after closes). */
+  onRefreshTickets: () => void;
+  showToast: (message: React.ReactNode, durationMs?: number, opts?: { loading?: boolean }) => void;
+  /** Called after the sprint is closed so the parent can refresh board state. */
+  onFinished: () => void;
+}
+
+const DONE_STATUSES = new Set(["DONE", "DEPRECATED", "Done", "Closed"]);
+
+function isDone(status: string): boolean {
+  return DONE_STATUSES.has(status);
+}
+
+export function FinishSprintModal({
+  sprint,
+  tickets,
+  earlyClose,
+  onClose,
+  onCloseAllSubtasks,
+  onRefreshTickets,
+  showToast,
+  onFinished,
+}: FinishSprintModalProps) {
+  // Blocker A: parent stories that are not yet DONE. Resolved on the board, not here.
+  const incompleteStories = useMemo(
+    () => tickets.filter((t) => t.jiraStatus !== "DONE" && t.jiraStatus !== "DEPRECATED"),
+    [tickets],
+  );
+
+  // Blocker B: DONE stories that still carry open subtasks. The set of stories to
+  // inspect is captured once so the list stays stable as subtasks get closed.
+  const [blockerBKeys] = useState<string[]>(() =>
+    tickets
+      .filter((t) => (t.jiraStatus === "DONE" || t.jiraStatus === "DEPRECATED") && (t.openSubtaskCount ?? 0) > 0)
+      .map((t) => t.key),
+  );
+  const blockerBStories = useMemo(
+    () => blockerBKeys.map((k) => tickets.find((t) => t.key === k)).filter((t): t is Ticket => Boolean(t)),
+    [blockerBKeys, tickets],
+  );
+
+  // Per-story fetched subtasks + load/error state.
+  const [subtasksByStory, setSubtasksByStory] = useState<Record<string, SubtaskItem[]>>({});
+  const [loadErrors, setLoadErrors] = useState<Record<string, boolean>>({});
+  const [closedSubKeys, setClosedSubKeys] = useState<Set<string>>(new Set());
+  const [busyStories, setBusyStories] = useState<Set<string>>(new Set());
+  const [busySubtasks, setBusySubtasks] = useState<Set<string>>(new Set());
+
+  const [finishing, setFinishing] = useState(false);
+  const [finishError, setFinishError] = useState<string | null>(null);
+
+  const loadStory = useCallback((key: string) => {
+    setLoadErrors((e) => { const n = { ...e }; delete n[key]; return n; });
+    ticketsApi
+      .getSubtasks(key)
+      .then((data) => setSubtasksByStory((m) => ({ ...m, [key]: data })))
+      .catch(() => setLoadErrors((e) => ({ ...e, [key]: true })));
+  }, []);
+
+  useEffect(() => {
+    blockerBKeys.forEach((key) => loadStory(key));
+  }, [blockerBKeys, loadStory]);
+
+  const openSubtasksFor = useCallback(
+    (key: string): SubtaskItem[] => {
+      const all = subtasksByStory[key];
+      if (!all) return [];
+      return all.filter((s) => !isDone(s.status) && !closedSubKeys.has(s.key));
+    },
+    [subtasksByStory, closedSubKeys],
+  );
+
+  // A Blocker-B story is resolved once its subtasks are loaded and none remain open.
+  const storyResolved = useCallback(
+    (key: string): boolean => Boolean(subtasksByStory[key]) && openSubtasksFor(key).length === 0,
+    [subtasksByStory, openSubtasksFor],
+  );
+
+  const totalOpenSubtasks = useMemo(
+    () => blockerBKeys.reduce((sum, k) => sum + openSubtasksFor(k).length, 0),
+    [blockerBKeys, openSubtasksFor],
+  );
+
+  const allLoaded = blockerBKeys.every((k) => Boolean(subtasksByStory[k]));
+  const hasLoadError = Object.keys(loadErrors).length > 0;
+  const subtasksCleared = blockerBKeys.every((k) => storyResolved(k));
+
+  const blocked = incompleteStories.length > 0 || !subtasksCleared || !allLoaded || hasLoadError;
+
+  const closeOneSubtask = useCallback(async (storyKey: string, subtaskKey: string) => {
+    setBusySubtasks((s) => new Set(s).add(subtaskKey));
+    try {
+      await ticketsApi.closeSubtask(storyKey, subtaskKey);
+      setClosedSubKeys((s) => new Set(s).add(subtaskKey));
+      onRefreshTickets();
+    } catch {
+      showToast(`Failed to close ${subtaskKey}`);
+    } finally {
+      setBusySubtasks((s) => { const n = new Set(s); n.delete(subtaskKey); return n; });
+    }
+  }, [onRefreshTickets, showToast]);
+
+  const closeAllForStory = useCallback(async (storyKey: string) => {
+    setBusyStories((s) => new Set(s).add(storyKey));
+    const open = openSubtasksFor(storyKey);
+    try {
+      await onCloseAllSubtasks(storyKey);
+      setClosedSubKeys((s) => { const n = new Set(s); open.forEach((sub) => n.add(sub.key)); return n; });
+    } catch {
+      showToast(`Failed to close subtasks for ${storyKey}`);
+    } finally {
+      setBusyStories((s) => { const n = new Set(s); n.delete(storyKey); return n; });
+    }
+  }, [openSubtasksFor, onCloseAllSubtasks, showToast]);
+
+  const closeAllSubtasks = useCallback(async () => {
+    const pending = blockerBKeys.filter((k) => openSubtasksFor(k).length > 0);
+    await Promise.all(pending.map((k) => closeAllForStory(k)));
+  }, [blockerBKeys, openSubtasksFor, closeAllForStory]);
+
+  const handleFinish = useCallback(async () => {
+    if (blocked) return;
+    setFinishing(true);
+    setFinishError(null);
+    try {
+      await jira.closeSprint(sprint.id);
+      await mutate("/api/jira/sprints");
+      showToast(`Sprint "${sprint.name}" finished`);
+      onFinished();
+      onClose();
+    } catch (err) {
+      setFinishError(err instanceof Error ? err.message : "Failed to finish sprint");
+    } finally {
+      setFinishing(false);
+    }
+  }, [blocked, sprint.id, sprint.name, showToast, onFinished, onClose]);
+
+  const blockReason = (() => {
+    const parts: string[] = [];
+    if (incompleteStories.length > 0) {
+      parts.push(`${incompleteStories.length} ${incompleteStories.length === 1 ? "story" : "stories"} not done`);
+    }
+    if (allLoaded && !hasLoadError && totalOpenSubtasks > 0) {
+      parts.push(`${totalOpenSubtasks} ${totalOpenSubtasks === 1 ? "subtask" : "subtasks"} open`);
+    }
+    if (hasLoadError) parts.push("could not load subtasks");
+    return parts.join(" · ");
+  })();
+
+  const ready = !blocked && !finishing;
+
+  return (
+    <Modal open onClose={onClose} aria-label="Finish sprint">
+      <div className="flex max-h-[82vh] w-full max-w-lg flex-col rounded-xl border border-border-strong bg-[var(--color-surface-floating)] shadow-[var(--shadow-xl)]">
+        {/* Header */}
+        <div className="flex items-center justify-between border-b border-border-default px-5 py-3.5">
+          <div className="flex min-w-0 items-center gap-2.5">
+            <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-[var(--color-brand-500)]/12 text-[var(--color-brand-400)]">
+              <Flag size={14} strokeWidth={1.75} />
+            </span>
+            <div className="min-w-0">
+              <h2 className="font-[var(--font-display)] text-body-lg font-semibold leading-tight text-text-primary">
+                Finish sprint
+              </h2>
+              <p className="truncate text-[11px] text-text-muted">{sprint.name}</p>
+            </div>
+          </div>
+          <button
+            type="button"
+            onClick={onClose}
+            className="rounded-md p-1 text-text-muted cursor-pointer hover:text-text-secondary hover:bg-overlay-default transition-colors duration-100"
+            aria-label="Close dialog"
+          >
+            <X size={14} strokeWidth={1.5} />
+          </button>
+        </div>
+
+        {/* Body */}
+        <div className="min-h-0 flex-1 space-y-3 overflow-y-auto px-5 py-4">
+          {earlyClose && (
+            <div className="flex items-start gap-2 rounded-lg border border-amber-500/25 bg-amber-500/[0.07] px-3 py-2.5">
+              <AlertTriangle size={14} strokeWidth={1.75} className="mt-px shrink-0 text-amber-400" />
+              <p className="text-body-sm leading-relaxed text-amber-200/90">
+                This sprint&rsquo;s end date has not passed yet. Finishing now closes it early.
+              </p>
+            </div>
+          )}
+
+          {/* Blocker A: incomplete stories */}
+          {incompleteStories.length > 0 && (
+            <section className="rounded-lg border border-red-500/20 bg-red-500/[0.04]">
+              <div className="flex items-center gap-2 border-b border-red-500/15 px-3 py-2">
+                <CircleAlert size={13} strokeWidth={1.75} className="shrink-0 text-red-400" />
+                <span className="text-body-sm font-medium text-red-300">
+                  {incompleteStories.length} {incompleteStories.length === 1 ? "story is" : "stories are"} not done
+                </span>
+              </div>
+              <p className="px-3 pt-2 text-[11px] leading-relaxed text-text-muted">
+                Complete or move these on the board before finishing. They cannot be closed from here.
+              </p>
+              <ul className="max-h-40 space-y-0.5 overflow-y-auto px-2 py-2">
+                {incompleteStories.map((t) => (
+                  <li key={t.key} className="flex items-start gap-2 rounded-md px-1.5 py-1">
+                    <Circle size={11} strokeWidth={1.5} className="mt-1 shrink-0 text-red-400/60" />
+                    <div className="min-w-0">
+                      <span className="line-clamp-2 text-body-sm leading-snug text-text-primary">{t.title}</span>
+                      <span className="mt-0.5 block text-[10px] text-text-muted">{t.key} · {t.jiraStatus}</span>
+                    </div>
+                  </li>
+                ))}
+              </ul>
+            </section>
+          )}
+
+          {/* Blocker B: done stories with open subtasks */}
+          {blockerBStories.length > 0 && (
+            <section className="rounded-lg border border-amber-500/20 bg-amber-500/[0.04]">
+              <div className="flex items-center justify-between gap-2 border-b border-amber-500/15 px-3 py-2">
+                <div className="flex items-center gap-2">
+                  <AlertTriangle size={13} strokeWidth={1.75} className="shrink-0 text-amber-400/90" />
+                  <span className="text-body-sm font-medium text-amber-200/90">
+                    {totalOpenSubtasks > 0
+                      ? `${totalOpenSubtasks} open ${totalOpenSubtasks === 1 ? "subtask" : "subtasks"}`
+                      : "Subtasks cleared"}
+                  </span>
+                </div>
+                {totalOpenSubtasks > 0 && (
+                  <button
+                    type="button"
+                    onClick={closeAllSubtasks}
+                    disabled={busyStories.size > 0}
+                    aria-label="Close all open subtasks"
+                    className="inline-flex items-center gap-1.5 rounded-md bg-amber-500/12 px-2 py-1 text-[11px] font-medium text-amber-300 cursor-pointer hover:bg-amber-500/20 active:bg-amber-500/25 disabled:opacity-50 disabled:cursor-not-allowed transition-colors duration-150"
+                  >
+                    <CheckCheck size={11} strokeWidth={1.75} />
+                    Close all
+                  </button>
+                )}
+              </div>
+              <ul className="max-h-56 space-y-1 overflow-y-auto p-2">
+                {blockerBStories.map((story) => {
+                  const open = openSubtasksFor(story.key);
+                  const resolved = storyResolved(story.key);
+                  const errored = loadErrors[story.key];
+                  const loading = !subtasksByStory[story.key] && !errored;
+                  const storyBusy = busyStories.has(story.key);
+                  return (
+                    <li key={story.key} className="rounded-md border border-border-subtle bg-[var(--color-surface-elevated)]/40">
+                      <div className="flex items-center justify-between gap-2 px-2.5 py-1.5">
+                        <div className="min-w-0">
+                          <span className="line-clamp-1 text-body-sm leading-snug text-text-primary">{story.title}</span>
+                          <span className="text-[10px] text-text-muted">{story.key}</span>
+                        </div>
+                        {resolved ? (
+                          <span className="inline-flex shrink-0 items-center gap-1 text-[11px] font-medium text-green-400/80">
+                            <CircleCheckBig size={12} strokeWidth={1.75} /> Done
+                          </span>
+                        ) : open.length > 0 ? (
+                          <button
+                            type="button"
+                            onClick={() => closeAllForStory(story.key)}
+                            disabled={storyBusy}
+                            className="inline-flex shrink-0 items-center gap-1 rounded-md px-1.5 py-1 text-[11px] font-medium text-amber-300/90 cursor-pointer hover:bg-amber-500/15 active:bg-amber-500/20 disabled:opacity-50 disabled:cursor-not-allowed transition-colors duration-150"
+                          >
+                            {storyBusy
+                              ? <Loader2 size={11} strokeWidth={1.75} className="animate-spin" />
+                              : <CheckCheck size={11} strokeWidth={1.75} />}
+                            Close all
+                          </button>
+                        ) : null}
+                      </div>
+
+                      {loading && (
+                        <div className="flex items-center gap-1.5 px-2.5 pb-2 text-[11px] text-text-muted">
+                          <Loader2 size={11} strokeWidth={1.75} className="animate-spin" /> Loading subtasks&hellip;
+                        </div>
+                      )}
+                      {errored && (
+                        <div className="flex items-center justify-between gap-2 px-2.5 pb-2 text-[11px] text-red-300/80">
+                          <span>Failed to load subtasks</span>
+                          <button
+                            type="button"
+                            onClick={() => loadStory(story.key)}
+                            className="rounded px-1.5 py-0.5 font-medium text-[var(--color-brand-400)] cursor-pointer hover:bg-[var(--color-brand-500)]/10 transition-colors duration-100"
+                          >
+                            Retry
+                          </button>
+                        </div>
+                      )}
+                      {open.length > 0 && (
+                        <ul className="border-t border-border-subtle px-2.5 py-1">
+                          {open.map((sub) => {
+                            const subBusy = busySubtasks.has(sub.key);
+                            return (
+                              <li key={sub.key} className="flex items-center justify-between gap-2 py-1">
+                                <div className="flex min-w-0 items-start gap-1.5">
+                                  <Circle size={10} strokeWidth={1.5} className="mt-1 shrink-0 text-amber-400/70" />
+                                  <div className="min-w-0">
+                                    <span className="line-clamp-1 text-[12px] leading-snug text-text-secondary">{sub.title}</span>
+                                    <span className="text-[10px] text-text-muted">{sub.key} · {sub.status}</span>
+                                  </div>
+                                </div>
+                                <button
+                                  type="button"
+                                  onClick={() => closeOneSubtask(story.key, sub.key)}
+                                  disabled={subBusy || storyBusy}
+                                  className="inline-flex shrink-0 items-center gap-1 rounded-md px-1.5 py-0.5 text-[10px] font-medium text-text-secondary cursor-pointer hover:bg-overlay-default hover:text-text-primary active:bg-overlay-strong disabled:opacity-50 disabled:cursor-not-allowed transition-colors duration-100"
+                                >
+                                  {subBusy
+                                    ? <Loader2 size={10} strokeWidth={1.75} className="animate-spin" />
+                                    : <CheckCheck size={10} strokeWidth={1.75} />}
+                                  Close
+                                </button>
+                              </li>
+                            );
+                          })}
+                        </ul>
+                      )}
+                    </li>
+                  );
+                })}
+              </ul>
+            </section>
+          )}
+
+          {/* Ready state */}
+          {ready && (
+            <div className="flex items-center gap-2 rounded-lg border border-green-500/25 bg-green-500/[0.06] px-3 py-2.5">
+              <PartyPopper size={14} strokeWidth={1.75} className="shrink-0 text-green-400" />
+              <p className="text-body-sm text-green-200/90">Everything is done. Ready to finish.</p>
+            </div>
+          )}
+
+          {/* Finish error */}
+          {finishError && (
+            <div className="flex items-start gap-2 rounded-lg border border-red-500/20 bg-red-500/[0.06] px-3 py-2.5">
+              <AlertTriangle size={13} strokeWidth={1.5} className="mt-px shrink-0 text-red-400" />
+              <p className="text-body-sm leading-relaxed text-red-300">{finishError}</p>
+            </div>
+          )}
+        </div>
+
+        {/* Footer */}
+        <div className="flex items-center justify-between gap-3 border-t border-border-default px-5 py-3">
+          <span className="min-w-0 truncate text-[11px] text-text-muted">
+            {blocked && !finishing ? blockReason : ""}
+          </span>
+          <div className="flex shrink-0 items-center gap-2">
+            <Button variant="ghost" size="md" onClick={onClose} disabled={finishing}>
+              Cancel
+            </Button>
+            <Button
+              variant="primary"
+              size="md"
+              onClick={handleFinish}
+              disabled={blocked || finishing}
+              icon={finishing ? <Loader2 size={13} strokeWidth={1.75} className="animate-spin" /> : <Flag size={13} strokeWidth={1.75} />}
+            >
+              {finishing ? "Finishing..." : "Finish sprint"}
+            </Button>
+          </div>
+        </div>
+      </div>
+    </Modal>
+  );
+}

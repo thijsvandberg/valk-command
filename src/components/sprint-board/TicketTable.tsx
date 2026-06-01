@@ -471,7 +471,8 @@ export function TicketTable({
   const theadContent = (
     <thead className="sticky top-0 z-10 bg-[var(--color-surface-elevated)]" style={{ boxShadow: "inset 0 -1px 0 var(--color-border-strong)" }}>
       <tr className="group/thead h-[44px] text-left text-[11px] uppercase tracking-wider font-medium text-text-muted">
-        <th className="w-10 py-2 pl-1 pr-1" />
+        {/* Checkbox gutter: just a small breathing gap by default; widens into a real gutter in bulk mode. */}
+        <th className={someChecked ? "w-10 py-2 pl-1 pr-1" : "w-3 py-2"} />
         {effectiveOrder.map((id) => renderHeaderCell(id))}
       </tr>
     </thead>

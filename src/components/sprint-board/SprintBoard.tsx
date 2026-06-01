@@ -38,6 +38,7 @@ import { useToast } from "@/hooks/useToast";
 import { DndContext, DragOverlay } from "@dnd-kit/core";
 const SprintEditModal = dynamic(() => import("@/components/sprint-board/SprintEditModal").then((m) => ({ default: m.SprintEditModal })), { ssr: false });
 const CreateSprintModal = dynamic(() => import("@/components/sprint-board/CreateSprintModal").then((m) => ({ default: m.CreateSprintModal })), { ssr: false });
+const FinishSprintModal = dynamic(() => import("@/components/sprint-board/FinishSprintModal").then((m) => ({ default: m.FinishSprintModal })), { ssr: false });
 import { LoadingState } from "@/components/shared/LoadingState";
 import { useColumnWidths } from "@/hooks/useColumnWidths";
 import { useColumnConfig } from "@/hooks/useColumnConfig";
@@ -80,6 +81,8 @@ export default function SprintBoard() {
   const [editModalOpen, setEditModalOpen] = useState(false);
   const [autoSuggest, setAutoSuggest] = useState(false);
   const [createSprintModalOpen, setCreateSprintModalOpen] = useState(false);
+  const [finishModalOpen, setFinishModalOpen] = useState(false);
+  const [finishEarlyClose, setFinishEarlyClose] = useState(false);
   const [bulkRefreshing, setBulkRefreshing] = useState(false);
   const [bulkGenerating, setBulkGenerating] = useState(false);
   const [refineModalOpen, setRefineModalOpen] = useState(false);
@@ -191,6 +194,7 @@ export default function SprintBoard() {
     setSlotSprints((prev) => { if (prev.length >= 8 || prev.includes(id)) return prev; const next = [...prev, id]; saveSprintSlots(next, sprints); return next; });
     navigateToSprint(id); setCreateSprintModalOpen(false);
   }, [sprints, navigateToSprint]);
+  const openFinishModal = useCallback((early: boolean) => { setFinishEarlyClose(early); setFinishModalOpen(true); }, []);
   const handleReorderSlots = useCallback((activeId: string, overId: string) => {
     setSlotSprints((prev) => { const oi = prev.indexOf(activeId); const ni = prev.indexOf(overId); if (oi === -1 || ni === -1) return prev; const next = [...prev]; next.splice(oi, 1); next.splice(ni, 0, activeId); saveSprintSlots(next, sprints); return next; });
   }, [sprints]);
@@ -331,6 +335,7 @@ export default function SprintBoard() {
           setShowStoryWriterLauncher={setShowStoryWriterLauncher} setSearchModalOpen={setSearchModalOpen}
           setEditModalOpen={setEditModalOpen} setCreateSprintModalOpen={setCreateSprintModalOpen}
           handleSprintListSelect={handleSprintListSelect} handleAddSlotWithSprint={handleAddSlotWithSprint}
+          onFinishSprint={openFinishModal}
         />
 
         {dnd.jiraRankDndEnabled ? (
@@ -359,6 +364,18 @@ export default function SprintBoard() {
       <StoryWriterLauncherModal open={showStoryWriterLauncher} onClose={() => setShowStoryWriterLauncher(false)} />
       {editModalOpen && activeSprint && <SprintEditModal sprint={activeSprint} tickets={allTickets} onClose={() => { setEditModalOpen(false); setAutoSuggest(false); }} showToast={showToast} autoSuggest={autoSuggest} />}
       {createSprintModalOpen && <CreateSprintModal onClose={() => setCreateSprintModalOpen(false)} onCreated={handleSprintCreated} showToast={showToast} />}
+      {finishModalOpen && activeSprint && (
+        <FinishSprintModal
+          sprint={activeSprint}
+          tickets={allTickets}
+          earlyClose={finishEarlyClose}
+          onClose={() => setFinishModalOpen(false)}
+          onCloseAllSubtasks={ta.handleCloseSubtasks}
+          onRefreshTickets={mutateTickets}
+          showToast={showToast}
+          onFinished={() => { mutateTickets(); }}
+        />
+      )}
       <AddToRefinementModal open={refineModalOpen} onClose={() => { setRefineModalOpen(false); setRefineKeys(null); }} ticketKeys={refineKeys ?? Array.from(checkedTickets)} onAdded={(id, name) => showToast(<span>Added to &ldquo;{name}&rdquo;{" "}<a href={`/refinement/${id}`} onClick={(e) => { e.preventDefault(); router.push(`/refinement/${id}`); }} className="font-medium text-[var(--color-brand-400)] underline underline-offset-2 hover:text-[var(--color-brand-300)]">Open refinement</a></span>, 5000)} />
 
       {rowMenu && (

@@ -205,6 +205,8 @@ export const tickets = {
     `/api/tickets/${enc(key)}/confluence-mentions`,
 
   // Subtasks
+  getSubtasks: (key: string, signal?: AbortSignal) =>
+    apiFetch<{ key: string; title: string; status: string }[]>(`/api/tickets/${enc(key)}/subtasks`, { signal }),
   createSubtask: (key: string, data: { title: string }, signal?: AbortSignal) =>
     apiFetch<import("@/types/ticket").Subtask>(`/api/tickets/${enc(key)}/subtasks`, { method: "POST", body: data, signal }),
   rankSubtasks: (key: string, data: { orderedKeys: string[]; movedKey: string; rankBefore?: string; rankAfter?: string }, signal?: AbortSignal) =>
