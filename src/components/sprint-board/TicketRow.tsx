@@ -193,8 +193,10 @@ export const TicketRow = memo(forwardRef<HTMLTableRowElement, TicketRowBaseProps
     : insertLine === "below"
     ? "inset 0 -2px 0 var(--color-brand-500)"
     : undefined;
+  // The leading accent bar is the row's colored left border (see className) so it sits flush at the
+  // very edge with no gap. Only the drag insert-line stays a box-shadow.
   const style: React.CSSProperties = {
-    ...(ticket.flagged ? { boxShadow: insertLineShadow ? `inset 4px 0 0 var(--color-status-error), ${insertLineShadow}` : "inset 4px 0 0 var(--color-status-error)" } : insertLineShadow ? { boxShadow: insertLineShadow } : {}),
+    ...(insertLineShadow ? { boxShadow: insertLineShadow } : {}),
     ...rowStyle,
   };
 
@@ -609,15 +611,15 @@ export const TicketRow = memo(forwardRef<HTMLTableRowElement, TicketRowBaseProps
         }
         onSelectTicket(ticket.key === selectedTicket ? null : ticket.key);
       }}
-      className={`group/row border-b border-border-subtle border-l-2 transition-colors duration-100 ${
+      className={`group/row border-b border-border-subtle border-l-[3px] transition-colors duration-100 ${
         dragListeners ? "cursor-grab active:cursor-grabbing select-none" : "cursor-pointer"
       } ${
         isSelected || isContextTarget
-          ? "bg-[var(--color-brand-600)]/12 border-l-[var(--color-brand-500)]"
+          ? "bg-[var(--color-brand-600)]/12 border-l-[var(--color-brand-300)]"
           : isChecked
-          ? "bg-[var(--color-brand-500)]/6 border-l-transparent hover:bg-[var(--color-brand-500)]/10"
+          ? "bg-[var(--color-brand-500)]/6 border-l-[var(--color-brand-300)] hover:bg-[var(--color-brand-500)]/10"
           : ticket.flagged
-          ? "bg-[color-mix(in_srgb,var(--color-status-error)_6%,transparent)] border-l-transparent hover:bg-[color-mix(in_srgb,var(--color-status-error)_8%,transparent)]"
+          ? "bg-[color-mix(in_srgb,var(--color-status-error)_6%,transparent)] border-l-[var(--color-status-error)] hover:bg-[color-mix(in_srgb,var(--color-status-error)_8%,transparent)]"
           : "border-l-transparent hover:bg-overlay-subtle hover:border-l-[var(--color-brand-400)]/25"
       } ${isFocused && !isSelected && !isContextTarget ? "outline outline-1 -outline-offset-1 outline-[var(--color-brand-500)]/40" : ""} ${isRemoved ? "opacity-50" : isInflight ? "opacity-70" : ""}`}
       {...dragListeners}

@@ -348,9 +348,10 @@ export function DroppableSprintColumn({
             className="py-16"
           />
         ) : (
-          <table className="w-full table-fixed border-collapse">
+          <table className="w-full table-fixed border-collapse text-body-lg">
             <colgroup>
-              <col style={{ width: 36 }} />
+              {/* Checkbox gutter: a small breathing gap by default; widens into a real gutter in bulk mode. */}
+              <col style={{ width: someChecked ? 36 : 12 }} />
               {activeOrder.map((colId) => {
                 const w = columnWidths[colId] ?? COMPARE_COL_WIDTHS[colId];
                 return <col key={colId} style={w ? { width: w } : undefined} />;
