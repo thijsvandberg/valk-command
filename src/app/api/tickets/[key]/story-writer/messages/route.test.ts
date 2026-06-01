@@ -109,7 +109,10 @@ describe("POST /api/tickets/[key]/story-writer/messages", () => {
     const body = JSON.parse(fetchCall[1].body);
     expect(body.skill).toBe("write-story-draft");
     expect(body.args.args).toContain("Improve the acceptance criteria");
-    expect(body.args.args).toContain("Existing Jira description");
+    // The editor draft is the source of truth and wins over the Jira-synced
+    // description on the first message (see fix: send editor draft as current
+    // description on first story-writer message).
+    expect(body.args.args).toContain("Current local draft");
     expect(body.args.args).toContain("[codebase-research: off]");
   });
 
