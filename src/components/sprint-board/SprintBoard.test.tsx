@@ -168,7 +168,15 @@ vi.mock("@/components/sprint-board/useSprintBoardFilters", () => ({
 }));
 
 vi.mock("@/components/sprint-board/useGroupBy", () => ({
-  useGroupBy: () => ({ groups: null, groupByOption: null, setGroupByOption: vi.fn() }),
+  useGroupBy: () => ({
+    groupBy: "none",
+    setGroupBy: vi.fn(),
+    collapsedGroups: new Set(),
+    toggleCollapse: vi.fn(),
+    allCollapsed: false,
+    toggleAllGroups: vi.fn(),
+    groups: [],
+  }),
 }));
 
 vi.mock("@/components/sprint-board/useSprintBoardDragDrop", () => ({

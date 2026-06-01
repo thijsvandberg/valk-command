@@ -142,11 +142,22 @@ export function useGroupBy(
 
   const effectiveGroupBy = isAllView ? groupBy : "none";
 
+  const allCollapsed = useMemo(
+    () => groups.length > 0 && groups.every((g) => collapsedGroups.has(g.key)),
+    [groups, collapsedGroups],
+  );
+
+  const toggleAllGroups = useCallback(() => {
+    setCollapsedGroupsArr(allCollapsed ? [] : groups.map((g) => g.key));
+  }, [allCollapsed, groups, setCollapsedGroupsArr]);
+
   return {
     groupBy: effectiveGroupBy,
     setGroupBy,
     collapsedGroups,
     toggleCollapse,
+    allCollapsed,
+    toggleAllGroups,
     groups,
   };
 }

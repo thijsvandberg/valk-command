@@ -3,7 +3,7 @@
 import { useState, useRef, useEffect, useCallback } from "react";
 import { useOutsideClick } from "@/hooks/useOutsideClick";
 import type { Sprint } from "@/types/ticket";
-import { ArrowUp, ArrowDown, ListFilter, RefreshCw, Gem, X, Plus, Inbox } from "lucide-react";
+import { ArrowUp, ArrowDown, ListFilter, RefreshCw, Layers, X, Plus, Inbox, ChevronsDownUp, ChevronsUpDown } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import type { SavedView, SortField, SortDir, ColumnId } from "./FilterBar";
 import { ColumnToggle, SortDropdown, SORT_OPTIONS } from "./FilterBar";
@@ -119,7 +119,7 @@ function GroupByDropdown({ value, onChange }: { value: GroupByOption; onChange: 
         onClick={() => setOpen(!open)}
         icon={
           <span className="relative flex items-center justify-center">
-            <Gem className="h-3.5 w-3.5" strokeWidth={1.5} />
+            <Layers className="h-3.5 w-3.5" strokeWidth={1.5} />
             {isActive && (
               <span className="absolute -top-0.5 -right-1 h-[6px] w-[6px] rounded-full bg-[var(--color-brand-400)] ring-2 ring-[var(--color-surface-base)]" />
             )}
@@ -211,6 +211,9 @@ export function SprintSlots({
   groupBy,
   onGroupByChange,
   onCreateSprint,
+  groupCount = 0,
+  allGroupsCollapsed = false,
+  onToggleCollapseAll,
 }: {
   slotSprints: string[];
   activeSlot: number;
@@ -246,6 +249,9 @@ export function SprintSlots({
   groupBy?: GroupByOption;
   onGroupByChange?: (v: GroupByOption) => void;
   onCreateSprint?: () => void;
+  groupCount?: number;
+  allGroupsCollapsed?: boolean;
+  onToggleCollapseAll?: () => void;
 }) {
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 8 } }),
@@ -438,6 +444,24 @@ export function SprintSlots({
         {/* Group by -- only visible in the All view */}
         {allActive && groupBy !== undefined && onGroupByChange && (
           <GroupByDropdown value={groupBy} onChange={onGroupByChange} />
+        )}
+
+        {/* Collapse / expand all groups -- only when grouping is active and groups exist */}
+        {allActive && groupCount > 0 && onToggleCollapseAll && (
+          <Button
+            variant="ghost"
+            size="md"
+            iconOnly
+            onClick={onToggleCollapseAll}
+            title={allGroupsCollapsed ? "Expand all groups" : "Collapse all groups"}
+            aria-label={allGroupsCollapsed ? "Expand all groups" : "Collapse all groups"}
+            icon={
+              allGroupsCollapsed
+                ? <ChevronsUpDown className="h-3.5 w-3.5" strokeWidth={1.5} />
+                : <ChevronsDownUp className="h-3.5 w-3.5" strokeWidth={1.5} />
+            }
+            className="border-0 bg-transparent text-text-tertiary hover:bg-hover-list-item hover:text-text-secondary"
+          />
         )}
 
         {/* Column toggle */}

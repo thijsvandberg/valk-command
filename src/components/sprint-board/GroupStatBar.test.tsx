@@ -129,4 +129,63 @@ describe("GroupStatBar", () => {
     expect(screen.queryByText(/IN PROGRESS/)).toBeNull();
     expect(screen.queryByText(/TEST/)).toBeNull();
   });
+
+  describe("pin toggle", () => {
+    it("does not render the pin button when onPin is not provided", () => {
+      render(<GroupStatBar tickets={TICKETS} label="Sprint Alpha" />);
+      expect(screen.queryByLabelText(/pin to sprint bar/i)).toBeNull();
+      expect(screen.queryByLabelText(/unpin from sprint bar/i)).toBeNull();
+    });
+
+    it("renders a pin button and calls onPin when clicked", () => {
+      const onPin = vi.fn();
+      render(<GroupStatBar tickets={TICKETS} label="Sprint Alpha" onPin={onPin} />);
+      fireEvent.click(screen.getByLabelText("Pin to sprint bar"));
+      expect(onPin).toHaveBeenCalledTimes(1);
+    });
+
+    it("shows the unpin label when already pinned", () => {
+      const onPin = vi.fn();
+      render(<GroupStatBar tickets={TICKETS} label="Sprint Alpha" onPin={onPin} isPinned />);
+      fireEvent.click(screen.getByLabelText("Unpin from sprint bar"));
+      expect(onPin).toHaveBeenCalledTimes(1);
+    });
+
+    it("does not call onPin when pin is disabled and not yet pinned", () => {
+      const onPin = vi.fn();
+      render(
+        <GroupStatBar tickets={TICKETS} label="Sprint Alpha" onPin={onPin} pinDisabled />,
+      );
+      fireEvent.click(screen.getByLabelText("Pin to sprint bar"));
+      expect(onPin).not.toHaveBeenCalled();
+    });
+
+    it("still allows unpinning when pin is disabled but already pinned", () => {
+      const onPin = vi.fn();
+      render(
+        <GroupStatBar
+          tickets={TICKETS}
+          label="Sprint Alpha"
+          onPin={onPin}
+          pinDisabled
+          isPinned
+        />,
+      );
+      fireEvent.click(screen.getByLabelText("Unpin from sprint bar"));
+      expect(onPin).toHaveBeenCalledTimes(1);
+    });
+
+    it("stops click propagation so it does not toggle collapse", () => {
+      const onPin = vi.fn();
+      const onToggleCollapse = vi.fn();
+      render(
+        <div onClick={onToggleCollapse}>
+          <GroupStatBar tickets={TICKETS} label="Sprint Alpha" onPin={onPin} />
+        </div>,
+      );
+      fireEvent.click(screen.getByLabelText("Pin to sprint bar"));
+      expect(onPin).toHaveBeenCalledTimes(1);
+      expect(onToggleCollapse).not.toHaveBeenCalled();
+    });
+  });
 });

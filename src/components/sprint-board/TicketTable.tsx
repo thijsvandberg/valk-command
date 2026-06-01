@@ -219,6 +219,8 @@ export function TicketTable({
   collapsedGroups,
   onToggleCollapse,
   groupBy,
+  pinnedSprintIds,
+  onPinSprint,
   scrollContainerRef,
   refinementSessionMap,
 }: {
@@ -269,6 +271,9 @@ export function TicketTable({
   collapsedGroups?: Set<string>;
   onToggleCollapse?: (groupKey: string) => void;
   groupBy?: GroupByOption;
+  // When grouping by sprint, pin a sprint group to the tab bar. Key is the sprint id.
+  pinnedSprintIds?: Set<string>;
+  onPinSprint?: (sprintId: string) => void;
   // When provided, the table uses this as its scroll container (for shared scroll with analytics).
   // The table will not apply its own overflow-y; the parent scroll container handles vertical scroll.
   scrollContainerRef?: React.RefObject<HTMLElement | null>;
@@ -652,7 +657,7 @@ export function TicketTable({
             )}
             {/* Group header row */}
             <tr
-              className="border-b border-border-strong cursor-pointer select-none"
+              className="group/grouprow border-b border-border-strong cursor-pointer select-none"
               style={{ background: "var(--color-overlay-subtle)" }}
               onClick={() => onToggleCollapse?.(group.key)}
             >
@@ -670,6 +675,13 @@ export function TicketTable({
                   }}
                   isCollapsed={isCollapsed}
                   onToggleCollapse={() => onToggleCollapse?.(group.key)}
+                  {...(groupBy === "sprint" && group.key !== "__backlog__" && onPinSprint
+                    ? {
+                        onPin: () => onPinSprint(group.key),
+                        isPinned: pinnedSprintIds?.has(group.key) ?? false,
+                        pinDisabled: (pinnedSprintIds?.size ?? 0) >= 8,
+                      }
+                    : {})}
                 />
               </td>
             </tr>

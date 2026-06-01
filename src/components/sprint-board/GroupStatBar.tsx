@@ -2,7 +2,7 @@
 
 import { memo } from "react";
 import type { Ticket } from "@/types/ticket";
-import { ChevronRight, ChevronDown } from "lucide-react";
+import { ChevronRight, ChevronDown, Pin } from "lucide-react";
 import { StatPill, StatusPill } from "./SprintStatPill";
 
 export type StatCriterion = "todo" | "in-progress" | "test" | "done" | "unpointed";
@@ -16,6 +16,10 @@ export interface GroupStatBarProps {
   onToggleCollapse?: () => void;
   /** Show only a colored dot + count for status pills, no label text */
   showDot?: boolean;
+  /** When provided, renders a pin toggle next to the label (used to pin a sprint group to the tab bar). */
+  onPin?: () => void;
+  isPinned?: boolean;
+  pinDisabled?: boolean;
 }
 
 export const GroupStatBar = memo(function GroupStatBar({
@@ -26,6 +30,9 @@ export const GroupStatBar = memo(function GroupStatBar({
   isCollapsed,
   onToggleCollapse,
   showDot = false,
+  onPin,
+  isPinned = false,
+  pinDisabled = false,
 }: GroupStatBarProps) {
   const totalPoints = tickets.reduce((sum, t) => sum + (t.storyPoints ?? 0), 0);
   const bvTickets = tickets.filter((t) => t.businessValue != null && t.businessValue >= 1 && t.jiraStatus !== "DEPRECATED");
@@ -53,6 +60,24 @@ export const GroupStatBar = memo(function GroupStatBar({
       )}
       {label && (
         <span className="text-body-sm font-medium text-text-secondary truncate">{label}</span>
+      )}
+      {onPin && (
+        <button
+          type="button"
+          onClick={(e) => { e.stopPropagation(); if (!pinDisabled || isPinned) onPin(); }}
+          disabled={pinDisabled && !isPinned}
+          title={isPinned ? "Unpin from sprint bar" : pinDisabled ? "Maximum 8 pinned sprints" : "Pin to sprint bar"}
+          aria-label={isPinned ? "Unpin from sprint bar" : "Pin to sprint bar"}
+          aria-pressed={isPinned}
+          className={`flex shrink-0 items-center justify-center h-5 w-5 rounded cursor-pointer focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-[var(--color-brand-400)] disabled:cursor-not-allowed disabled:opacity-30 ${
+            isPinned
+              ? "text-[var(--color-brand-400)] hover:bg-overlay-default"
+              : "text-text-muted opacity-0 group-hover/grouprow:opacity-100 hover:text-text-secondary hover:bg-overlay-default"
+          }`}
+          style={{ transition: "opacity 120ms, color 120ms, background-color 120ms" }}
+        >
+          <Pin className="h-3 w-3" strokeWidth={1.5} fill={isPinned ? "currentColor" : "none"} />
+        </button>
       )}
       <StatPill size="sm" variant="default" className={label ? "ml-1" : undefined}>
         {tickets.length} items
