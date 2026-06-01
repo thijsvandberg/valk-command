@@ -85,6 +85,7 @@ export default function SprintBoard() {
   const mainScrollRef = useRef<HTMLElement>(null);
   const exportTask = useExportTask();
   const [toast, setToast] = useState<React.ReactNode | null>(null);
+  const [toastLoading, setToastLoading] = useState(false);
   const toastTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const slotsInitialized = useRef(false);
 
@@ -108,8 +109,9 @@ export default function SprintBoard() {
     return activeSprintId === "__all__" ? "/api/tickets" : `/api/tickets?sprintId=${encodeURIComponent(activeSprintId)}`;
   }, [activeSprintId]);
 
-  const showToast = useCallback((message: React.ReactNode, durationMs = 3000) => {
+  const showToast = useCallback((message: React.ReactNode, durationMs = 3000, opts?: { loading?: boolean }) => {
     setToast(message);
+    setToastLoading(opts?.loading ?? false);
     if (toastTimerRef.current) clearTimeout(toastTimerRef.current);
     // durationMs <= 0 keeps the toast until manually dismissed.
     if (durationMs > 0) toastTimerRef.current = setTimeout(() => setToast(null), durationMs);
@@ -219,13 +221,22 @@ export default function SprintBoard() {
   const handleBulkSetStatus = useCallback(async (status: Parameters<typeof ta.handleBulkSetStatus>[0]) => { await ta.handleBulkSetStatus(status, checkedTickets); }, [ta.handleBulkSetStatus, checkedTickets]);
   const handleBulkSetEpic = useCallback(async (epicKey: string | null) => { await ta.handleBulkSetEpic(epicKey, checkedTickets); }, [ta.handleBulkSetEpic, checkedTickets]);
   const handleBulkMoveSprint = useCallback(async (sprintId: string) => {
-    const { ok, count } = await ta.handleBulkMoveSprint(sprintId, checkedTickets);
-    if (!ok) { showToast("Failed to move tickets to sprint"); return; }
     const isBacklog = sprintId === "__backlog__";
     const dest = sprintNameMap[sprintId] ?? (isBacklog ? "backlog" : "sprint");
+    const count = checkedTickets.size;
+    // Immediate feedback: the move is a remote call and takes a moment.
+    showToast(
+      <span>Moving {count} ticket{count === 1 ? "" : "s"} to <span className="font-semibold text-text-primary">{dest}</span>&hellip;</span>,
+      0,
+      { loading: true },
+    );
+    const { ok } = await ta.handleBulkMoveSprint(sprintId, checkedTickets);
+    if (!ok) { showToast("Failed to move tickets to sprint"); return; }
     showToast(
       <span>
-        Moved {count} ticket{count === 1 ? "" : "s"} to {dest}{" "}
+        Moved {count} ticket{count === 1 ? "" : "s"} to{" "}
+        <span className="font-semibold text-text-primary">{dest}</span>
+        <span className="mx-2 text-text-muted" aria-hidden>&middot;</span>
         <a
           href="#"
           onClick={(e) => { e.preventDefault(); handleSprintListSelect(sprintId); dismissToast(); }}
@@ -322,9 +333,13 @@ export default function SprintBoard() {
 
       {toast && (
         <div role="status" className="pointer-events-auto fixed right-6 bottom-6 z-50 flex items-center gap-2 rounded-lg border border-border-strong bg-[var(--color-surface-floating)] px-4 py-2.5 shadow-[var(--shadow-lg)]" style={{ animation: "fadeInUp 0.2s ease-out" }}>
-          <Check className="h-4 w-4 shrink-0 text-[var(--color-brand-400)]" strokeWidth={1.5} />
+          {toastLoading
+            ? <Loader2 className="h-4 w-4 shrink-0 animate-spin text-text-tertiary" strokeWidth={1.5} />
+            : <Check className="h-4 w-4 shrink-0 text-[var(--color-brand-400)]" strokeWidth={1.5} />}
           <span className="text-body-lg text-text-secondary">{toast}</span>
-          <button type="button" onClick={dismissToast} aria-label="Dismiss" className="ml-1 shrink-0 cursor-pointer text-text-muted hover:text-text-secondary"><X className="h-3.5 w-3.5" strokeWidth={2} /></button>
+          {!toastLoading && (
+            <button type="button" onClick={dismissToast} aria-label="Dismiss" className="ml-1 shrink-0 cursor-pointer text-text-muted hover:text-text-secondary"><X className="h-3.5 w-3.5" strokeWidth={2} /></button>
+          )}
         </div>
       )}
 
