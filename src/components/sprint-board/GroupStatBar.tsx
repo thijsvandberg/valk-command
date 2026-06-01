@@ -2,7 +2,7 @@
 
 import { memo } from "react";
 import type { Ticket } from "@/types/ticket";
-import { ChevronRight, ChevronDown, Pin, Gauge } from "lucide-react";
+import { ChevronRight, ChevronDown, Pin, Gauge, Goal } from "lucide-react";
 import { StatPill, StatusPill } from "./SprintStatPill";
 import { MetricBadge } from "@/components/shared/MetricBadge";
 import { Tooltip } from "@/components/shared/Tooltip";
@@ -92,7 +92,10 @@ export const GroupStatBar = memo(function GroupStatBar({
           <MetricBadge metric="bv" value={bvTotal} tinted />
           {bvAvg ? (
             <Tooltip content="Average business value per scored ticket">
-              <span className="text-caption text-text-muted whitespace-nowrap cursor-default">avg {bvAvg}</span>
+              <span className="inline-flex items-center gap-0.5 text-caption text-text-muted whitespace-nowrap cursor-default">
+                <Goal size={10} strokeWidth={2} aria-hidden />
+                avg {bvAvg}
+              </span>
             </Tooltip>
           ) : null}
         </span>
