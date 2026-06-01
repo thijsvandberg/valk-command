@@ -215,8 +215,8 @@ export function FinishSprintModal({
 
           {/* Blocker A: incomplete stories */}
           {incompleteStories.length > 0 && (
-            <section className="rounded-lg border border-red-500/20 bg-red-500/[0.04]">
-              <div className="flex items-center gap-2 border-b border-red-500/15 px-3 py-2">
+            <section className="overflow-hidden rounded-lg border border-red-500/20">
+              <div className="flex items-center gap-2 border-b border-red-500/15 bg-red-500/[0.06] px-3 py-2">
                 <CircleAlert size={13} strokeWidth={1.75} className="shrink-0 text-[var(--color-status-error)]" />
                 <span className="text-body-sm font-medium text-text-primary">
                   {incompleteStories.length} {incompleteStories.length === 1 ? "story is" : "stories are"} not done
@@ -241,8 +241,8 @@ export function FinishSprintModal({
 
           {/* Blocker B: done stories with open subtasks */}
           {blockerBStories.length > 0 && (
-            <section className="rounded-lg border border-amber-500/20 bg-amber-500/[0.04]">
-              <div className="flex items-center justify-between gap-2 border-b border-amber-500/15 px-3 py-2">
+            <section className="overflow-hidden rounded-lg border border-amber-500/20">
+              <div className="flex items-center justify-between gap-2 border-b border-amber-500/15 bg-amber-500/[0.06] px-3 py-2">
                 <div className="flex items-center gap-2">
                   <AlertTriangle size={13} strokeWidth={1.75} className="shrink-0 text-[var(--color-status-caution)]" />
                   <span className="text-body-sm font-medium text-text-primary">

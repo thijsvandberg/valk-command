@@ -325,9 +325,9 @@ export function SprintBoardHeader(props: SprintBoardHeaderProps) {
                     icon={<Flag className="h-3 w-3" strokeWidth={2} />}
                     onClick={() => onFinishSprint(false)}
                     title="Finish this sprint"
-                    className="ml-1"
+                    className="ml-2 mr-3 shrink-0"
                   >
-                    Finish
+                    Finish sprint
                   </Button>
                 )}
               </>
