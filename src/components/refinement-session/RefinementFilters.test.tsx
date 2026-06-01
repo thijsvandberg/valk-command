@@ -39,10 +39,8 @@ vi.mock("@/components/shared/FilterDropdown", () => ({
   ),
 }));
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
 type AnyFilters = any;
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
 function makeFilters(overrides: Record<string, any> = {}): AnyFilters {
   return {
     filtersOpen: false,

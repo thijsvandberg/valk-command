@@ -43,7 +43,7 @@ export function resolveAttachmentRefs(text: string, filenameToId: Map<string, st
   return resolved;
 }
 
-export interface TicketDetailResponse extends Ticket, TicketDetail {
+export interface TicketDetailResponse extends Omit<Ticket, "reporter">, TicketDetail {
   localEdits: Record<string, { value: string; isDraft: boolean }>;
   reviewCount: number;
   versionCount: number;

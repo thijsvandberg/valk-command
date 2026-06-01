@@ -38,7 +38,6 @@ describe("LinkFloatingToolbar", () => {
 
   it("renders four action buttons", () => {
     const editor = createMockEditor();
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     render(<LinkFloatingToolbar editor={editor as any} />);
 
     expect(screen.getByLabelText("Edit link")).toBeInTheDocument();
@@ -49,7 +48,6 @@ describe("LinkFloatingToolbar", () => {
 
   it("emits openLinkPopover event when edit is clicked", () => {
     const editor = createMockEditor();
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     render(<LinkFloatingToolbar editor={editor as any} />);
 
     fireEvent.click(screen.getByLabelText("Edit link"));
@@ -58,7 +56,6 @@ describe("LinkFloatingToolbar", () => {
 
   it("calls unsetLink when unlink is clicked", () => {
     const editor = createMockEditor();
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     render(<LinkFloatingToolbar editor={editor as any} />);
 
     fireEvent.click(screen.getByLabelText("Unlink"));
@@ -68,7 +65,6 @@ describe("LinkFloatingToolbar", () => {
   it("opens URL in new tab when open button is clicked", () => {
     const editor = createMockEditor();
     const openSpy = vi.spyOn(window, "open").mockImplementation(() => null);
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     render(<LinkFloatingToolbar editor={editor as any} />);
 
     fireEvent.click(screen.getByLabelText("Open in new tab"));
@@ -80,7 +76,6 @@ describe("LinkFloatingToolbar", () => {
     const editor = createMockEditor();
     const writeTextMock = vi.fn().mockResolvedValue(undefined);
     Object.assign(navigator, { clipboard: { writeText: writeTextMock } });
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     render(<LinkFloatingToolbar editor={editor as any} />);
 
     fireEvent.click(screen.getByLabelText("Copy URL"));

@@ -116,11 +116,12 @@ describe("SessionEndModal", () => {
     expect(mockPush).toHaveBeenCalledWith("/refinement/session-abc");
   });
 
-  it("calls finishSession when Complete clicked", () => {
+  it("navigates to the guid-less overview when Complete clicked", () => {
     render(<SessionEndModal />);
     fireEvent.click(screen.getByText("Complete"));
     expect(mockContext.finishSession).toHaveBeenCalled();
-    expect(mockPush).toHaveBeenCalledWith("/refinement/session-abc");
+    // Completed sessions leave the overview, so we must not return to their guid.
+    expect(mockPush).toHaveBeenCalledWith("/refinement");
   });
 
   it("shows note editor when message button clicked", () => {

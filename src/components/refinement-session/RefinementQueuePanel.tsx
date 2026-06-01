@@ -152,7 +152,7 @@ export function RefinementQueuePanel({
       {canStart && (
         <div className="mt-4">
           <Button variant="primary" size="lg" icon={<Play size={14} strokeWidth={2} />} onClick={onBeginRefinement} className="w-full">
-            Start Refinement
+            {activeSession?.status === "in_progress" ? "Continue Refinement" : "Start Refinement"}
           </Button>
         </div>
       )}

@@ -1,21 +1,29 @@
 "use client";
 
 import { useState, useRef, useEffect, useCallback, useMemo } from "react";
-import type { Ticket, POStatus, TicketReadiness } from "@/types/ticket";
-import { getEpicColor, getBvColor } from "@/types/ticket";
+import { useRouter } from "next/navigation";
+import type { Ticket, POStatus, TicketReadiness, Assignee } from "@/types/ticket";
+import { getBvColor } from "@/types/ticket";
 import Link from "next/link";
 import { Avatar } from "@/components/shared/Avatar";
 import { QualityBadge } from "./TicketTableCells";
 import { ReadinessCell } from "@/components/shared/ReadinessCell";
 import { TicketStatusPill } from "@/components/shared/TicketStatusPill";
+import { AssigneePicker } from "@/components/shared/AssigneePicker";
+import { SprintPicker } from "@/components/shared/SprintPicker";
+import { EpicPicker } from "@/components/shared/EpicPicker";
+import type { EpicOption } from "@/components/shared/EpicPicker";
+import { LabelPicker } from "@/components/shared/LabelPicker";
+import { BusinessValuePicker } from "@/components/shared/BusinessValuePicker";
+import { StoryPointPicker } from "@/components/shared/StoryPointPicker";
 import { useTicketDetail, useTicketVersions, useJiraSprints, useDevInfo } from "@/hooks/useSprintBoard";
 import { prefetchTicketPage } from "@/lib/prefetch";
 import { relativeDate, formatAbsoluteDate } from "@/lib/date-utils";
+import { tickets as ticketsApi, jira } from "@/lib/api-client";
 import { Tooltip } from "@/components/shared/Tooltip";
-import { Tag } from "@/components/shared/Tag";
 import { DevPanel } from "@/components/ticket-detail/DevPanel";
 import { ConfluencePagesSection } from "@/components/ticket-detail/ConfluencePagesSection";
-import { renderMarkdown } from "@/components/ticket-detail/renderMarkdown";
+import { EditableDescription } from "@/components/ticket-detail/EditableDescription";
 import {
   ArrowUpRight,
   X,
@@ -33,11 +41,40 @@ import { Button } from "@/components/ui/Button";
 
 function DetailRow({ label, children }: { label: string; children: React.ReactNode }) {
   return (
-    <div className="flex items-center justify-between gap-3 py-1.5">
+    <div className="flex min-h-[40px] items-center justify-between gap-3">
       <span className="shrink-0 text-body-sm text-text-tertiary">{label}</span>
       <div className="min-w-0 text-right text-body-lg text-text-secondary">{children}</div>
     </div>
   );
+}
+
+// A compact, recognizable card for the two headline PO metrics (SP / BV).
+function ScoreCard({ label, accent, accentColor, children }: { label: string; accent?: boolean; accentColor?: string; children: React.ReactNode }) {
+  return (
+    <div
+      className="flex flex-col gap-0.5 rounded-lg border px-3 py-2"
+      style={{
+        borderColor: accent && accentColor ? `color-mix(in srgb, ${accentColor} 35%, transparent)` : "var(--color-border-subtle)",
+        backgroundColor: accent && accentColor
+          ? `color-mix(in srgb, ${accentColor} 8%, var(--color-surface-elevated))`
+          : "var(--color-overlay-subtle)",
+        transition: "background-color 0.15s ease, border-color 0.15s ease",
+      }}
+    >
+      <span className="text-caption uppercase tracking-[0.06em] text-text-muted">{label}</span>
+      <div className="text-body-lg font-medium text-text-secondary">{children}</div>
+    </div>
+  );
+}
+
+// Derive avatar initials/color for optimistic assignee updates.
+function deriveAssignee(name: string): Assignee {
+  const parts = name.trim().split(/\s+/);
+  const initials = parts.length === 1 ? parts[0].slice(0, 2).toUpperCase() : (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
+  let hash = 0;
+  for (let i = 0; i < name.length; i++) hash = name.charCodeAt(i) + ((hash << 5) - hash);
+  const hue = ((hash % 360) + 360) % 360;
+  return { name, initials, color: `hsl(${hue}, 55%, 50%)` };
 }
 
 // -- Completeness labels --
@@ -65,6 +102,7 @@ export function SidePanel({
   onNotesChange,
   onClose,
   onShowToast,
+  onMutate,
   adjacentKeys,
 }: {
   ticket: Ticket;
@@ -75,28 +113,114 @@ export function SidePanel({
   onNotesChange: (notes: string) => void;
   onClose: () => void;
   onShowToast: (message: string) => void;
+  onMutate?: () => void;
   adjacentKeys?: { prev: string | null; next: string | null };
 }) {
-  const epicColor = ticket.epic ? getEpicColor(ticket.epic) ?? null : null;
+  const router = useRouter();
+
   // Ticket detail data (reporter, parent, labels, timestamps, description)
   const { data: detail } = useTicketDetail(ticket.key);
-  const description = detail?.description as string | undefined;
+  const description = (detail?.description as string | undefined) ?? "";
 
-  // Sprint name lookup
+  // Sprint lookup
   const { sprints } = useJiraSprints();
-  const sprintName = useMemo(() => {
-    if (!ticket.sprintId) return null;
-    return sprints?.find((s) => String(s.id) === ticket.sprintId)?.name ?? null;
-  }, [ticket.sprintId, sprints]);
 
   // Dev info for footer
   const { data: devInfo, isLoading: devInfoLoading } = useDevInfo(ticket.key);
 
-  // Completeness checks for readiness progress bar
-  const hasDescription = (description ?? "").trim().length > 20;
-  const hasAcceptanceCriteria = /acceptance\s*criteria/i.test(description ?? "");
-  const hasPoints = ticket.storyPoints !== null;
-  const hasBV = ticket.businessValue !== null;
+  // -- Editable field state (optimistic; persisted via api-client + board refresh) --
+  const [businessValue, setBusinessValue] = useState<number | null>(ticket.businessValue);
+  const [storyPoints, setStoryPoints] = useState<number | null>(ticket.storyPoints);
+  const [assignee, setAssignee] = useState<Assignee | null>(ticket.assignee);
+  const [epicName, setEpicName] = useState<string | null>(ticket.epic);
+  const [epicKey, setEpicKey] = useState<string | null>(ticket.epicKey);
+  const [currentSprintId, setCurrentSprintId] = useState<string | null>(ticket.sprintId ?? null);
+  // Labels arrive async via detail; an override lets edits win until the panel
+  // remounts (keyed on ticket) without a state-sync effect.
+  const [labelsOverride, setLabelsOverride] = useState<string[] | null>(null);
+  const labels = useMemo(() => labelsOverride ?? detail?.labels ?? [], [labelsOverride, detail?.labels]);
+
+  const handleBusinessValueChange = useCallback(async (v: number | null) => {
+    const prev = businessValue;
+    setBusinessValue(v);
+    try {
+      await ticketsApi.updateMetadata(ticket.key, { businessValue: v });
+      onMutate?.();
+    } catch (err) {
+      console.error("Operation failed:", err);
+      setBusinessValue(prev);
+    }
+  }, [ticket.key, businessValue, onMutate]);
+
+  const handleStoryPointsChange = useCallback(async (v: number | null) => {
+    const prev = storyPoints;
+    setStoryPoints(v);
+    try {
+      await ticketsApi.updateStoryPoints(ticket.key, v);
+      onMutate?.();
+    } catch (err) {
+      console.error("Operation failed:", err);
+      setStoryPoints(prev);
+    }
+  }, [ticket.key, storyPoints, onMutate]);
+
+  const handleAssigneeChange = useCallback(async (user: { accountId: string; displayName: string } | null) => {
+    const prev = assignee;
+    setAssignee(user ? deriveAssignee(user.displayName) : null);
+    try {
+      await jira.assign({ issueKey: ticket.key, accountId: user?.accountId ?? null, name: user?.displayName ?? null });
+      onMutate?.();
+    } catch (err) {
+      console.error("Operation failed:", err);
+      setAssignee(prev);
+    }
+  }, [ticket.key, assignee, onMutate]);
+
+  const handleSprintChange = useCallback(async (sprintId: string | null) => {
+    if (!sprintId) return;
+    const prev = currentSprintId;
+    setCurrentSprintId(sprintId);
+    try {
+      await jira.moveSprint({ issueKeys: [ticket.key], targetSprintId: sprintId });
+      onMutate?.();
+    } catch (err) {
+      console.error("Operation failed:", err);
+      setCurrentSprintId(prev);
+    }
+  }, [ticket.key, currentSprintId, onMutate]);
+
+  const handleEpicChange = useCallback(async (epic: EpicOption | null) => {
+    const prevName = epicName;
+    const prevKey = epicKey;
+    setEpicName(epic?.name ?? null);
+    setEpicKey(epic?.key ?? null);
+    try {
+      await ticketsApi.updateEpic(ticket.key, epic?.key ?? null);
+      onMutate?.();
+    } catch (err) {
+      console.error("Operation failed:", err);
+      setEpicName(prevName);
+      setEpicKey(prevKey);
+    }
+  }, [ticket.key, epicName, epicKey, onMutate]);
+
+  const handleLabelsChange = useCallback(async (newLabels: string[]) => {
+    const prev = labels;
+    setLabelsOverride(newLabels);
+    try {
+      await ticketsApi.updateLabels(ticket.key, newLabels);
+      onMutate?.();
+    } catch (err) {
+      console.error("Operation failed:", err);
+      setLabelsOverride(prev);
+    }
+  }, [ticket.key, labels, onMutate]);
+
+  // Completeness checks for readiness progress bar (reflect live local state)
+  const hasDescription = description.trim().length > 20;
+  const hasAcceptanceCriteria = /acceptance\s*criteria/i.test(description);
+  const hasPoints = storyPoints !== null;
+  const hasBV = businessValue !== null;
   const hasReview = ticket.qualityScore !== null;
   const completenessChecks = [
     { label: "Description", done: hasDescription },
@@ -161,7 +285,7 @@ export function SidePanel({
     if (Array.isArray(apiVersions) && apiVersions.length > 0) {
       return apiVersions.map((v, idx) => ({
         versionNumber: idx + 1,
-        date: v.date || new Date().toISOString(),
+        date: v.date || "",
         contentHash: v.contentHash || "",
         content: v.content || "",
         updatedBy: v.updatedBy ?? null,
@@ -173,8 +297,9 @@ export function SidePanel({
 
   const hasVersions = ticketVersions.length > 1;
 
-  // BV color
-  const bvColor = ticket.businessValue !== null ? getBvColor(ticket.businessValue) : null;
+  const bvColor = businessValue !== null ? getBvColor(businessValue) : null;
+
+  const canEditEpic = ticket.type !== "epic" && ticket.type !== "subtask";
 
   return (
     <div
@@ -189,8 +314,8 @@ export function SidePanel({
           style={isDragging ? { backgroundColor: "var(--color-drag-active)" } : {}}
       />
 
-      {/* Header */}
-      <div className="flex items-center justify-between border-b border-border-default px-4 py-3">
+      {/* Header -- h-[44px] keeps its bottom border on the same line as the board toolbar */}
+      <div className="flex h-[44px] shrink-0 items-center justify-between border-b border-border-default px-4">
         <div className="flex items-center gap-2">
           <TicketStatusPill
             ticketKey={ticket.key}
@@ -210,15 +335,14 @@ export function SidePanel({
           )}
         </div>
         <div className="flex items-center gap-1">
-          <a
-            href={`/tickets/${ticket.key}`}
-            target="_blank"
-            rel="noopener noreferrer"
+          <button
+            type="button"
+            onClick={() => router.push(`/tickets/${ticket.key}`)}
             className="inline-flex h-7 w-7 items-center justify-center rounded-lg text-text-muted cursor-pointer hover:bg-overlay-subtle hover:text-text-secondary focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)] active:scale-[0.97] transition-colors duration-150"
-            title="Open in new tab"
+            title="Open full view"
           >
             <ArrowUpRight className="h-3.5 w-3.5" strokeWidth={1.5} />
-          </a>
+          </button>
           <Button
             variant="ghost"
             size="md"
@@ -229,7 +353,7 @@ export function SidePanel({
         </div>
       </div>
 
-      {/* Scrollable content */}
+      {/* Scrollable content -- single scroll for the whole panel */}
       <div className="flex flex-1 flex-col overflow-y-auto">
         <div className="flex-1 px-5 py-5">
 
@@ -256,38 +380,31 @@ export function SidePanel({
             </Link>
           )}
 
-          {/* Badges: Epic + SP + BV */}
-          <div className="mt-3 flex flex-wrap gap-1.5">
-            {epicColor && (
-              <span
-                className="inline-flex items-center rounded-md px-2 py-0.5 text-body-sm font-medium"
-                style={{ backgroundColor: epicColor.bg, color: epicColor.text }}
-              >
-                {ticket.epic}
-              </span>
-            )}
-            {ticket.storyPoints !== null && (
-              <span className="inline-flex items-center rounded-md bg-overlay-default px-2 py-0.5 text-body-sm font-medium text-text-secondary">
-                {ticket.storyPoints} pts
-              </span>
-            )}
-            {bvColor && (
-              <span
-                className="inline-flex items-center rounded-md px-2 py-0.5 text-body-sm font-medium"
-                style={{ backgroundColor: bvColor.bg, color: bvColor.text }}
-              >
-                BV {ticket.businessValue}
-              </span>
-            )}
+          {/* Score cards: SP + BV */}
+          <div className="mt-4 grid grid-cols-2 gap-2">
+            <ScoreCard label="Story Points" accent={hasPoints} accentColor="var(--color-brand-500)">
+              <StoryPointPicker value={storyPoints} onChange={handleStoryPointsChange} align="left" />
+            </ScoreCard>
+            <ScoreCard label="Business Value" accent={hasBV} accentColor={bvColor?.text ?? "var(--color-brand-500)"}>
+              <BusinessValuePicker value={businessValue} onChange={handleBusinessValueChange} align="left" />
+            </ScoreCard>
           </div>
 
-          {/* Metadata grid */}
-          <div className="mt-4 space-y-0.5">
+          {/* Description -- editable, flows in the single panel scroll */}
+          <div className="mt-5">
+            <h3 className="text-body-sm font-medium uppercase tracking-[0.06em] text-text-secondary">Description</h3>
+            <EditableDescription
+              ticketKey={ticket.key}
+              initialDescription={description}
+              onLocalEdit={() => onMutate?.()}
+            />
+          </div>
+
+          {/* Meta grid -- editable, below the description */}
+          <div className="my-5 h-px bg-overlay-default" />
+          <div className="space-y-0.5">
             <DetailRow label="Assignee">
-              <div className="flex items-center justify-end gap-2">
-                <span className="truncate">{ticket.assignee?.name || "Unassigned"}</span>
-                <Avatar assignee={ticket.assignee} size={20} />
-              </div>
+              <AssigneePicker value={assignee} onChange={handleAssigneeChange} align="right" />
             </DetailRow>
             {detail?.reporter && (
               <DetailRow label="Reporter">
@@ -297,9 +414,19 @@ export function SidePanel({
                 </div>
               </DetailRow>
             )}
-            {ticket.type !== "epic" && sprintName && (
+            {ticket.type !== "epic" && (
               <DetailRow label="Sprint">
-                <span className="truncate">{sprintName}</span>
+                <SprintPicker value={currentSprintId} sprints={sprints ?? []} onChange={handleSprintChange} align="right" />
+              </DetailRow>
+            )}
+            {canEditEpic && (
+              <DetailRow label="Epic">
+                <EpicPicker
+                  value={epicKey ? { key: epicKey, name: epicName ?? epicKey } : null}
+                  onChange={handleEpicChange}
+                  align="right"
+                  ticketKey={ticket.key}
+                />
               </DetailRow>
             )}
             {detail?.parent && (
@@ -315,15 +442,9 @@ export function SidePanel({
                 </Link>
               </DetailRow>
             )}
-            {detail?.labels && detail.labels.length > 0 && (
-              <DetailRow label="Labels">
-                <div className="flex flex-wrap justify-end gap-1">
-                  {detail.labels.map((l) => (
-                    <Tag key={l}>{l}</Tag>
-                  ))}
-                </div>
-              </DetailRow>
-            )}
+            <DetailRow label="Labels">
+              <LabelPicker value={labels} onChange={handleLabelsChange} align="right" />
+            </DetailRow>
             {detail && (
               <>
                 <DetailRow label="Created">
@@ -337,19 +458,6 @@ export function SidePanel({
                   </Tooltip>
                 </DetailRow>
               </>
-            )}
-          </div>
-
-          {/* Description */}
-          <div className="my-5 h-px bg-overlay-default" />
-          <div>
-            <h3 className="text-body-sm font-medium uppercase tracking-[0.06em] text-text-secondary">Description</h3>
-            {description ? (
-              <div className="description-content mt-2 max-h-64 overflow-y-auto text-body-lg">
-                {renderMarkdown(description)}
-              </div>
-            ) : (
-              <p className="mt-2 text-body-sm text-text-muted">No description</p>
             )}
           </div>
 

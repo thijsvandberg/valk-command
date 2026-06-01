@@ -72,14 +72,12 @@ describe("LinkPopover", () => {
 
   it("renders nothing when closed", () => {
     const editor = createMockEditor();
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const { container } = render(<LinkPopover editor={editor as any} open={false} onClose={vi.fn()} />);
     expect(container.innerHTML).toBe("");
   });
 
   it("renders URL and display text inputs when open", () => {
     const editor = createMockEditor();
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     render(<LinkPopover editor={editor as any} open={true} onClose={vi.fn()} />);
 
     expect(screen.getByPlaceholderText("https://")).toBeInTheDocument();
@@ -88,7 +86,6 @@ describe("LinkPopover", () => {
 
   it("pre-fills URL from editor link attributes", () => {
     const editor = createMockEditor({ href: "https://example.com" });
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     render(<LinkPopover editor={editor as any} open={true} onClose={vi.fn()} />);
 
     const urlInput = screen.getByPlaceholderText("https://") as HTMLInputElement;
@@ -97,7 +94,6 @@ describe("LinkPopover", () => {
 
   it("shows Apply and Cancel buttons", () => {
     const editor = createMockEditor();
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     render(<LinkPopover editor={editor as any} open={true} onClose={vi.fn()} />);
 
     expect(screen.getByText("Apply")).toBeInTheDocument();
@@ -107,7 +103,6 @@ describe("LinkPopover", () => {
   it("calls onClose when Cancel is clicked", () => {
     const editor = createMockEditor();
     const onClose = vi.fn();
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     render(<LinkPopover editor={editor as any} open={true} onClose={onClose} />);
 
     fireEvent.click(screen.getByText("Cancel"));
@@ -116,7 +111,6 @@ describe("LinkPopover", () => {
 
   it("shows validation error for invalid protocol", () => {
     const editor = createMockEditor();
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     render(<LinkPopover editor={editor as any} open={true} onClose={vi.fn()} />);
 
     const urlInput = screen.getByPlaceholderText("https://");
@@ -128,7 +122,6 @@ describe("LinkPopover", () => {
 
   it("clears URL when clear button is clicked", () => {
     const editor = createMockEditor({ href: "https://example.com" });
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     render(<LinkPopover editor={editor as any} open={true} onClose={vi.fn()} />);
 
     fireEvent.click(screen.getByLabelText("Clear URL"));
@@ -139,7 +132,6 @@ describe("LinkPopover", () => {
   it("closes on Escape key", () => {
     const editor = createMockEditor();
     const onClose = vi.fn();
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     render(<LinkPopover editor={editor as any} open={true} onClose={onClose} />);
 
     const urlInput = screen.getByPlaceholderText("https://");

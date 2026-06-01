@@ -63,16 +63,16 @@ export function ViewHeader({ icon, children, actions, className, hideNotificatio
 
       <div className="relative flex items-center gap-2">
         {actions}
-        {/* Hovering the top-right corner (bell area) reveals the focus-mode toggle */}
-        <div className="group/corner flex items-center gap-2">
+        {/* Hovering the top-right corner (bell area) smoothly expands the focus-mode toggle into view */}
+        <div className="group/corner flex items-center">
           {!hideNotifications && <NotificationBell />}
           <button
             onClick={toggleFocusMode}
             title="Focus mode"
             aria-label="Toggle focus mode"
-            className="hidden h-7 w-7 items-center justify-center rounded-lg cursor-pointer text-text-tertiary bg-transparent border border-transparent group-hover/corner:inline-flex hover:bg-hover-interactive hover:text-text-secondary focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)] active:scale-[0.95] transition-[background-color,color,transform] duration-150"
+            className="inline-flex h-7 w-0 ml-0 shrink-0 items-center justify-center overflow-hidden rounded-lg cursor-pointer text-text-tertiary bg-transparent border border-transparent opacity-0 group-hover/corner:w-7 group-hover/corner:ml-2 group-hover/corner:opacity-100 focus-visible:w-7 focus-visible:ml-2 focus-visible:opacity-100 hover:bg-hover-interactive hover:text-text-secondary focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)] active:scale-[0.95] transition-[width,margin,opacity,background-color,color,transform] duration-200 ease-out"
           >
-            <Minimize2 className="h-3.5 w-3.5" strokeWidth={2} />
+            <Minimize2 className="h-3.5 w-3.5 shrink-0" strokeWidth={2} />
           </button>
         </div>
       </div>

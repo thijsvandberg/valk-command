@@ -78,6 +78,53 @@ vi.mock("@/components/ticket-detail/renderMarkdown", () => ({
   renderMarkdown: (md: string) => md,
 }));
 
+vi.mock("next/navigation", () => ({
+  useRouter: () => ({ push: vi.fn() }),
+}));
+
+vi.mock("@/lib/api-client", () => ({
+  tickets: {
+    updateMetadata: vi.fn(),
+    updateStoryPoints: vi.fn(),
+    updateEpic: vi.fn(),
+    updateLabels: vi.fn(),
+  },
+  jira: {
+    assign: vi.fn(),
+    moveSprint: vi.fn(),
+  },
+}));
+
+vi.mock("@/components/ticket-detail/EditableDescription", () => ({
+  EditableDescription: ({ initialDescription }: { initialDescription: string }) => (
+    <div data-testid="editable-description">{initialDescription}</div>
+  ),
+}));
+
+vi.mock("@/components/shared/StoryPointPicker", () => ({
+  StoryPointPicker: ({ value }: { value: number | null }) => <span data-testid="sp-picker">{value}</span>,
+}));
+
+vi.mock("@/components/shared/BusinessValuePicker", () => ({
+  BusinessValuePicker: ({ value }: { value: number | null }) => <span data-testid="bv-picker">{value}</span>,
+}));
+
+vi.mock("@/components/shared/AssigneePicker", () => ({
+  AssigneePicker: ({ value }: { value: { name: string } | null }) => <span data-testid="assignee-picker">{value?.name}</span>,
+}));
+
+vi.mock("@/components/shared/SprintPicker", () => ({
+  SprintPicker: ({ value }: { value: string | null }) => <span data-testid="sprint-picker">{value}</span>,
+}));
+
+vi.mock("@/components/shared/EpicPicker", () => ({
+  EpicPicker: ({ value }: { value: { name: string } | null }) => <span data-testid="epic-picker">{value?.name}</span>,
+}));
+
+vi.mock("@/components/shared/LabelPicker", () => ({
+  LabelPicker: ({ value }: { value: string[] }) => <span data-testid="label-picker">{value.join(",")}</span>,
+}));
+
 // jsdom localStorage stub
 Object.defineProperty(window, "localStorage", {
   value: {
@@ -130,9 +177,15 @@ describe("SidePanel", () => {
     expect(screen.getByText("Test ticket title")).toBeInTheDocument();
   });
 
-  it("renders story points badge", () => {
+  it("renders story points and business value score cards", () => {
     render(<SidePanel {...defaultProps} />);
-    expect(screen.getByText("5 pts")).toBeInTheDocument();
+    expect(screen.getByTestId("sp-picker")).toHaveTextContent("5");
+    expect(screen.getByTestId("bv-picker")).toHaveTextContent("3");
+  });
+
+  it("renders the editable description", () => {
+    render(<SidePanel {...defaultProps} />);
+    expect(screen.getByTestId("editable-description")).toBeInTheDocument();
   });
 
   it("shows conflict indicator when editState is conflict", () => {

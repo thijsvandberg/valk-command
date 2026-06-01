@@ -125,8 +125,10 @@ export function SessionEndModal() {
 
   const handleFinish = useCallback(() => {
     finishSession(generalComment || null);
-    router.push(savedSessionId ? `/refinement/${savedSessionId}` : "/refinement");
-  }, [finishSession, generalComment, router, savedSessionId]);
+    // Completed sessions leave the overview; navigate without a guid so we
+    // don't land back on the just-finished refinement.
+    router.push("/refinement");
+  }, [finishSession, generalComment, router]);
 
   const handleGoBack = useCallback(() => {
     closeEndModal();

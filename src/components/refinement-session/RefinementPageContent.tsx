@@ -229,16 +229,23 @@ export function RefinementPageContent({
       queueHook.setLocalQueue([]);
       await mutateSessions();
     }
-    refinementSessionsApi.update(sessionId, { status: "in_progress" }).catch(() => {});
-    startSession(queueHook.queue, meta, sessionId);
-    router.push(`/refinement/${sessionId}/session/${encodeURIComponent(queueHook.queue[0])}`);
+    // Resume an already-started session where it was left off; a fresh start begins at the first ticket.
+    const isResuming = activeSession?.status === "in_progress";
+    const startIndex = isResuming
+      ? Math.max(0, Math.min(activeSession?.currentIndex ?? 0, queueHook.queue.length - 1))
+      : 0;
+    if (!isResuming) {
+      refinementSessionsApi.update(sessionId, { status: "in_progress" }).catch(() => {});
+    }
+    startSession(queueHook.queue, meta, sessionId, startIndex);
+    router.push(`/refinement/${sessionId}/session/${encodeURIComponent(queueHook.queue[startIndex])}`);
 
-    // Pre-sync remaining tickets from Jira so they are fresh when navigated to
-    const remaining = queueHook.queue.slice(1);
+    // Pre-sync the remaining tickets from Jira so they are fresh when navigated to
+    const remaining = queueHook.queue.filter((_, i) => i !== startIndex);
     if (remaining.length > 0) {
       jiraApi.syncTickets({ ticketKeys: remaining }).catch(() => {});
     }
-  }, [canStart, queueHook, resolvedSessionId, mutateSessions, startSession, router]);
+  }, [canStart, queueHook, resolvedSessionId, activeSession, mutateSessions, startSession, router]);
 
   const handleSaveAsSession = useCallback(async () => {
     if (queueHook.localQueue.length === 0) return;

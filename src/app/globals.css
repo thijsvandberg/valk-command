@@ -119,11 +119,16 @@
   --shadow-popover: 0 8px 32px rgba(0, 0, 0, 0.5), 0 0 0 1px var(--color-overlay-subtle);
   --shadow-modal: 0 16px 48px rgba(0, 0, 0, 0.7), 0 4px 12px rgba(0, 0, 0, 0.3), 0 0 0 1px var(--color-overlay-subtle);
 
-  /* Z-index scale */
-  --z-dropdown: 50;
-  --z-modal: 60;
-  --z-tooltip: 70;
-  --z-notification: 80;
+  /* Z-index scale. Tailwind v4 generates z-* utilities from the --z-index-*
+     namespace; the bare --z-* aliases are kept for direct var() usage in inline styles. */
+  --z-index-dropdown: 50;
+  --z-index-modal: 60;
+  --z-index-tooltip: 70;
+  --z-index-notification: 80;
+  --z-dropdown: var(--z-index-dropdown);
+  --z-modal: var(--z-index-modal);
+  --z-tooltip: var(--z-index-tooltip);
+  --z-notification: var(--z-index-notification);
 
   /* Status semantic tokens */
   --color-status-success: #4aaa60;

@@ -21,7 +21,6 @@ const defaultProps = {
   onRegenerate: vi.fn(),
 };
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
 function expandedProps(overrides: Record<string, any> = {}) {
   return { ...defaultProps, isExpanded: true, ...overrides };
 }

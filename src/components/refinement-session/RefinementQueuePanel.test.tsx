@@ -181,3 +181,52 @@ describe("RefinementQueuePanel conflict count", () => {
     expect(screen.getByText("1 conflict")).toBeInTheDocument();
   });
 });
+
+function makeSession(status: "draft" | "in_progress" | "completed") {
+  return {
+    id: "session-abc",
+    name: "Refinement 2026-06-02",
+    status,
+    ticketKeys: ["VPL-1"],
+    ticketCount: 1,
+    currentIndex: 0,
+    generalComment: null,
+    createdAt: "2026-06-02T00:00:00.000Z",
+    updatedAt: "2026-06-02T00:00:00.000Z",
+  };
+}
+
+describe("RefinementQueuePanel primary action", () => {
+  it("labels the button 'Start Refinement' for a fresh session", () => {
+    render(
+      <RefinementQueuePanel
+        activeSession={makeSession("draft")}
+        queueHook={makeQueueHook([makeTicket("VPL-1")])}
+        bulk={makeBulk()}
+        otherSessions={[]}
+        canStart={true}
+        onMoveToSession={vi.fn()}
+        onBeginRefinement={vi.fn()}
+        onSaveAsSession={vi.fn()}
+      />,
+    );
+    expect(screen.getByText("Start Refinement")).toBeInTheDocument();
+  });
+
+  it("labels the button 'Continue Refinement' for an in-progress session", () => {
+    render(
+      <RefinementQueuePanel
+        activeSession={makeSession("in_progress")}
+        queueHook={makeQueueHook([makeTicket("VPL-1")])}
+        bulk={makeBulk()}
+        otherSessions={[]}
+        canStart={true}
+        onMoveToSession={vi.fn()}
+        onBeginRefinement={vi.fn()}
+        onSaveAsSession={vi.fn()}
+      />,
+    );
+    expect(screen.getByText("Continue Refinement")).toBeInTheDocument();
+    expect(screen.queryByText("Start Refinement")).not.toBeInTheDocument();
+  });
+});

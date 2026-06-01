@@ -81,9 +81,7 @@ function makeQueueHook(overrides: Record<string, unknown> = {}) {
   };
 }
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
 type AnyFilters = any;
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
 type AnyQueueHook = any;
 
 const defaultProps = {

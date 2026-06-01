@@ -117,7 +117,6 @@ vi.mock("@/hooks/useSectionVisibility", () => ({
 vi.mock("@/hooks/useLocalStorage", () => ({
   useLocalStorage: (_key: string, initial: unknown) => {
     // Use React.useState so filter updates actually re-render
-    // eslint-disable-next-line react-hooks/rules-of-hooks
     const { useState } = require("react");
     return useState(initial);
   },
