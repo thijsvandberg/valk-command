@@ -3,7 +3,7 @@
 import { useState, useCallback } from "react";
 import type { POStatus, TicketReadiness, Ticket, IssueType, JiraStatus, Assignee } from "@/types/ticket";
 import { saveTicketMetadata, saveStoryPoints } from "@/components/sprint-board/sprint-board-utils";
-import { apiFetch, jira } from "@/lib/api-client";
+import { apiFetch, jira, tickets as ticketsApi } from "@/lib/api-client";
 import { userInitials, userColor } from "@/lib/user-utils";
 import type { AssignableUser } from "@/components/shared/AssigneePicker";
 import type { EpicOption } from "@/components/shared/EpicPicker";
@@ -253,6 +253,24 @@ export function useTicketActions(deps: TicketActionsDeps) {
     }
   }, [mutateTickets, showToast]);
 
+  // A reason, when given, is posted as a Jira comment per ticket by the PATCH route.
+  const handleBulkSetFlagged = useCallback(async (flagged: boolean, reason: string | null, checkedTickets: Set<string>) => {
+    const keys = [...checkedTickets];
+    const prevFlagged = Object.fromEntries(keys.map((k) => [k, apiTickets?.find((t) => t.key === k)?.flagged]));
+    mutateTickets((data) => data?.map((t) => checkedTickets.has(t.key) ? { ...t, flagged } : t), { revalidate: false });
+    const results = await Promise.allSettled(keys.map((k) => ticketsApi.toggleFlag(k, flagged, reason ?? undefined)));
+    const failedCount = results.filter((r) => r.status === "rejected").length;
+    if (failedCount > 0) {
+      mutateTickets((data) => data?.map((t) => {
+        const prev = prevFlagged[t.key];
+        return prev !== undefined && checkedTickets.has(t.key) ? { ...t, flagged: prev } : t;
+      }), { revalidate: false });
+      showToast(`Failed to ${flagged ? "flag" : "unflag"} ${failedCount} ticket${failedCount === 1 ? "" : "s"}`);
+    } else {
+      showToast(`${flagged ? "Flagged" : "Unflagged"} ${keys.length} ticket${keys.length === 1 ? "" : "s"}`);
+    }
+  }, [apiTickets, mutateTickets, showToast]);
+
   return {
     poStatuses,
     readinessMap,
@@ -275,5 +293,6 @@ export function useTicketActions(deps: TicketActionsDeps) {
     handleBulkMoveSprint,
     handleBulkUpdateAssignee,
     handleBulkUpdateLabels,
+    handleBulkSetFlagged,
   };
 }

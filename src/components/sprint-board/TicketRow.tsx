@@ -52,6 +52,7 @@ export interface TicketRowBaseProps {
   selectedTicket: string | null;
   onSelectTicket: (key: string | null) => void;
   onCheckboxClick: (key: string, idx: number, shiftKey: boolean) => void;
+  onRowContextMenu?: (key: string, e: React.MouseEvent) => void;
   onPoStatusChange?: (key: string, status: POStatus) => void;
   onReadinessChange?: (key: string, readiness: TicketReadiness | null) => void;
   onBusinessValueChange?: (key: string, value: number | null) => void;
@@ -100,6 +101,7 @@ export const TicketRow = memo(forwardRef<HTMLTableRowElement, TicketRowBaseProps
     selectedTicket,
     onSelectTicket,
     onCheckboxClick,
+    onRowContextMenu,
     onPoStatusChange,
     onReadinessChange,
     onBusinessValueChange,
@@ -553,6 +555,13 @@ export const TicketRow = memo(forwardRef<HTMLTableRowElement, TicketRowBaseProps
       }}
       onMouseEnter={handleMouseEnter}
       onMouseLeave={handleMouseLeave}
+      onContextMenu={(e) => {
+        // Right-click opens the board-level quick-actions menu. Suppressed during
+        // an active drag so the native menu never appears mid-reorder.
+        if (!onRowContextMenu || isDragActive) return;
+        e.preventDefault();
+        onRowContextMenu(ticket.key, e);
+      }}
       onClick={(e) => {
         if (isDragActive) return;
         if (e.metaKey || e.ctrlKey) {

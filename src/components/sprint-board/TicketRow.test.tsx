@@ -102,4 +102,29 @@ describe("TicketRow", () => {
     fireEvent.click(checkboxCell!);
     expect(onCheckboxClick).toHaveBeenCalledWith("PROJ-10", 0, false);
   });
+
+  it("emits onRowContextMenu with the key on right-click and prevents the native menu", () => {
+    const onRowContextMenu = vi.fn();
+    const { container } = render(<table><tbody><TicketRow {...defaultProps} onRowContextMenu={onRowContextMenu} /></tbody></table>);
+    const row = container.querySelector("tr")!;
+    const event = new MouseEvent("contextmenu", { bubbles: true, cancelable: true });
+    fireEvent(row, event);
+    expect(onRowContextMenu).toHaveBeenCalledTimes(1);
+    expect(onRowContextMenu.mock.calls[0][0]).toBe("PROJ-10");
+    expect(event.defaultPrevented).toBe(true);
+  });
+
+  it("does not emit onRowContextMenu during an active drag", () => {
+    const onRowContextMenu = vi.fn();
+    const { container } = render(<table><tbody><TicketRow {...defaultProps} isDragActive onRowContextMenu={onRowContextMenu} /></tbody></table>);
+    fireEvent.contextMenu(container.querySelector("tr")!);
+    expect(onRowContextMenu).not.toHaveBeenCalled();
+  });
+
+  it("does not select the ticket on right-click", () => {
+    const onSelectTicket = vi.fn();
+    const { container } = render(<table><tbody><TicketRow {...defaultProps} onSelectTicket={onSelectTicket} onRowContextMenu={vi.fn()} /></tbody></table>);
+    fireEvent.contextMenu(container.querySelector("tr")!);
+    expect(onSelectTicket).not.toHaveBeenCalled();
+  });
 });

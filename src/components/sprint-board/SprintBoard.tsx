@@ -7,6 +7,8 @@ import { SprintSlots } from "@/components/sprint-board/SprintSlots";
 import { FilterBar } from "@/components/sprint-board/FilterBar";
 import { TicketTable } from "@/components/sprint-board/TicketTable";
 import { BulkActionBar } from "@/components/sprint-board/BulkActionBar";
+import { CursorMenu, TicketActionMenuContent, type FlagState } from "@/components/sprint-board/ticket-action-menu";
+import { ConfirmDialog } from "@/components/shared/ConfirmDialog";
 import { SidePanel } from "@/components/sprint-board/SidePanel";
 import { SprintAnalytics } from "@/components/sprint-board/SprintAnalytics";
 import dynamic from "next/dynamic";
@@ -80,6 +82,11 @@ export default function SprintBoard() {
   const [bulkRefreshing, setBulkRefreshing] = useState(false);
   const [bulkGenerating, setBulkGenerating] = useState(false);
   const [refineModalOpen, setRefineModalOpen] = useState(false);
+  const [refineKeys, setRefineKeys] = useState<string[] | null>(null);
+  // Board-level right-click quick-actions menu (one instance, positioned at the cursor).
+  const [rowMenu, setRowMenu] = useState<{ x: number; y: number; targets: Set<string> } | null>(null);
+  const [flagDialog, setFlagDialog] = useState<{ targets: Set<string> } | null>(null);
+  const [flagReason, setFlagReason] = useState("");
   const headerMenuRef = useRef<HTMLDivElement>(null);
   const contentScrollRef = useRef<HTMLDivElement>(null);
   const mainScrollRef = useRef<HTMLElement>(null);
@@ -206,31 +213,40 @@ export default function SprintBoard() {
   const toggleCheck = useCallback((key: string) => { setCheckedTickets((prev) => { const next = new Set(prev); if (next.has(key)) next.delete(key); else next.add(key); return next; }); }, []);
   const toggleAll = useCallback(() => { setCheckedTickets(allChecked ? new Set() : new Set(tickets.map((t) => t.key))); }, [allChecked, tickets]);
   const handleRangeCheck = useCallback((keys: string[], checked: boolean) => { setCheckedTickets((prev) => { const next = new Set(prev); if (checked) keys.forEach((k) => next.add(k)); else keys.forEach((k) => next.delete(k)); return next; }); }, []);
+  // Selection-aware: act on the whole selection when right-clicking a selected row,
+  // otherwise act on just that row without disturbing the current selection.
+  const handleRowContextMenu = useCallback((key: string, e: React.MouseEvent) => {
+    const targets = checkedTickets.has(key) && checkedTickets.size > 0 ? new Set(checkedTickets) : new Set([key]);
+    setRowMenu({ x: e.clientX, y: e.clientY, targets });
+  }, [checkedTickets]);
   const handleReorder = useCallback((activeKey: string, overKey: string) => {
     const order = poPriorityOrder ?? tickets.map((t) => t.key); const oi = order.indexOf(activeKey); const ni = order.indexOf(overKey);
     if (oi === -1 || ni === -1) return; const next = [...order]; next.splice(oi, 1); next.splice(ni, 0, activeKey); setPoPriorityOrder(next);
   }, [poPriorityOrder, tickets, setPoPriorityOrder]);
 
-  // Bulk actions
-  const handleBulkSetReadiness = useCallback(async (readiness: Parameters<typeof ta.handleBulkSetReadiness>[0]) => { await ta.handleBulkSetReadiness(readiness, checkedTickets); }, [ta.handleBulkSetReadiness, checkedTickets]);
+  // Bulk actions. Each accepts an explicit target set (defaulting to the current
+  // checkbox selection) so the same handlers serve both the toolbar and the
+  // right-click row context menu.
+  const handleBulkSetReadiness = useCallback(async (readiness: Parameters<typeof ta.handleBulkSetReadiness>[0], targets: Set<string> = checkedTickets) => { await ta.handleBulkSetReadiness(readiness, targets); }, [ta.handleBulkSetReadiness, checkedTickets]);
   const handleBulkRefresh = useCallback(async () => { setBulkRefreshing(true); try { await jira.syncTickets({ sprintId: slotSprints[activeSlot] }); showToast(`Refreshed ${checkedTickets.size} ticket${checkedTickets.size === 1 ? "" : "s"} from Jira`); } finally { setBulkRefreshing(false); } }, [slotSprints, activeSlot, checkedTickets.size, showToast]);
-  const handleBulkReviewStory = useCallback(async () => { const keys = Array.from(checkedTickets); showToast(`Reviewing ${keys.length} ticket${keys.length === 1 ? "" : "s"}...`); await bulkReviewStories(keys); mutateTickets(); showToast(`Reviewed ${keys.length} ticket${keys.length === 1 ? "" : "s"}`); }, [checkedTickets, showToast, mutateTickets]);
+  const handleBulkReviewStory = useCallback(async (targets: Set<string> = checkedTickets) => { const keys = Array.from(targets); showToast(`Reviewing ${keys.length} ticket${keys.length === 1 ? "" : "s"}...`); await bulkReviewStories(keys); mutateTickets(); showToast(`Reviewed ${keys.length} ticket${keys.length === 1 ? "" : "s"}`); }, [checkedTickets, showToast, mutateTickets]);
   const handleCopyToClipboard = useCallback(() => { const sel = tickets.filter((t) => checkedTickets.has(t.key)); navigator.clipboard.writeText(sel.map((t) => `- ${t.title} - ${getJiraUrl(t.key)}`).join("\n")).then(() => showToast(`Copied ${sel.length} ticket${sel.length === 1 ? "" : "s"} to clipboard`)).catch(() => showToast("Failed to copy to clipboard")); }, [tickets, checkedTickets, showToast]);
   const handleExportForStakeholders = useCallback(async () => { const sel = tickets.filter((t) => checkedTickets.has(t.key)); if (!sel.length) return; await exportTask.startExport({ sprintName: activeSprint?.name ?? "Selected work", tickets: JSON.stringify(sel.map((t) => ({ key: t.key, summary: t.title, points: t.storyPoints ?? null, epic: t.epic ?? null }))) }); }, [tickets, checkedTickets, activeSprint, exportTask]);
-  const handleRefineSelected = useCallback(() => { if (checkedTickets.size > 0) setRefineModalOpen(true); }, [checkedTickets]);
-  const handleBulkSetStatus = useCallback(async (status: Parameters<typeof ta.handleBulkSetStatus>[0]) => { await ta.handleBulkSetStatus(status, checkedTickets); }, [ta.handleBulkSetStatus, checkedTickets]);
-  const handleBulkSetEpic = useCallback(async (epicKey: string | null) => { await ta.handleBulkSetEpic(epicKey, checkedTickets); }, [ta.handleBulkSetEpic, checkedTickets]);
-  const handleBulkMoveSprint = useCallback(async (sprintId: string) => {
+  const openRefine = useCallback((keys: string[]) => { if (keys.length > 0) { setRefineKeys(keys); setRefineModalOpen(true); } }, []);
+  const handleRefineSelected = useCallback(() => { openRefine(Array.from(checkedTickets)); }, [checkedTickets, openRefine]);
+  const handleBulkSetStatus = useCallback(async (status: Parameters<typeof ta.handleBulkSetStatus>[0], targets: Set<string> = checkedTickets) => { await ta.handleBulkSetStatus(status, targets); }, [ta.handleBulkSetStatus, checkedTickets]);
+  const handleBulkSetEpic = useCallback(async (epicKey: string | null, targets: Set<string> = checkedTickets) => { await ta.handleBulkSetEpic(epicKey, targets); }, [ta.handleBulkSetEpic, checkedTickets]);
+  const handleBulkMoveSprint = useCallback(async (sprintId: string, targets: Set<string> = checkedTickets) => {
     const isBacklog = sprintId === "__backlog__";
     const dest = sprintNameMap[sprintId] ?? (isBacklog ? "backlog" : "sprint");
-    const count = checkedTickets.size;
+    const count = targets.size;
     // Immediate feedback: the move is a remote call and takes a moment.
     showToast(
       <span>Moving {count} ticket{count === 1 ? "" : "s"} to <span className="font-semibold text-text-primary">{dest}</span>&hellip;</span>,
       0,
       { loading: true },
     );
-    const { ok } = await ta.handleBulkMoveSprint(sprintId, checkedTickets);
+    const { ok } = await ta.handleBulkMoveSprint(sprintId, targets);
     if (!ok) { showToast("Failed to move tickets to sprint"); return; }
     showToast(
       <span>
@@ -248,9 +264,23 @@ export default function SprintBoard() {
       0,
     );
   }, [ta.handleBulkMoveSprint, checkedTickets, sprintNameMap, handleSprintListSelect, showToast, dismissToast]);
-  const handleBulkUpdateAssignee = useCallback(async (accountId: string | null, name: string | null) => { await ta.handleBulkUpdateAssignee(accountId, name, checkedTickets); }, [ta.handleBulkUpdateAssignee, checkedTickets]);
-  const handleBulkUpdateLabels = useCallback(async (labels: string[], mode: "add" | "set") => { await ta.handleBulkUpdateLabels(labels, mode, checkedTickets); }, [ta.handleBulkUpdateLabels, checkedTickets]);
-  const handleBulkGenerateSubtasks = useCallback(async () => { const keys = Array.from(checkedTickets); setBulkGenerating(true); showToast(`Generating subtasks for ${keys.length} ticket${keys.length === 1 ? "" : "s"}...`); try { const { succeeded, failed } = await bulkGenerateSubtasks(keys); if (failed > 0) { showToast(`Generated subtasks for ${succeeded} ticket${succeeded === 1 ? "" : "s"}, ${failed} failed`); } else { showToast(`Subtask suggestions sent for ${succeeded} ticket${succeeded === 1 ? "" : "s"}`); } mutateTickets(); } finally { setBulkGenerating(false); } }, [checkedTickets, showToast, mutateTickets]);
+  const handleBulkUpdateAssignee = useCallback(async (accountId: string | null, name: string | null, targets: Set<string> = checkedTickets) => { await ta.handleBulkUpdateAssignee(accountId, name, targets); }, [ta.handleBulkUpdateAssignee, checkedTickets]);
+  const handleBulkUpdateLabels = useCallback(async (labels: string[], mode: "add" | "set", targets: Set<string> = checkedTickets) => { await ta.handleBulkUpdateLabels(labels, mode, targets); }, [ta.handleBulkUpdateLabels, checkedTickets]);
+  const handleBulkGenerateSubtasks = useCallback(async (targets: Set<string> = checkedTickets) => { const keys = Array.from(targets); setBulkGenerating(true); showToast(`Generating subtasks for ${keys.length} ticket${keys.length === 1 ? "" : "s"}...`); try { const { succeeded, failed } = await bulkGenerateSubtasks(keys); if (failed > 0) { showToast(`Generated subtasks for ${succeeded} ticket${succeeded === 1 ? "" : "s"}, ${failed} failed`); } else { showToast(`Subtask suggestions sent for ${succeeded} ticket${succeeded === 1 ? "" : "s"}`); } mutateTickets(); } finally { setBulkGenerating(false); } }, [checkedTickets, showToast, mutateTickets]);
+  // Flag: "Flag" opens a reason dialog (reason synced to Jira as a comment); "Remove flag" is immediate.
+  const handleSetFlagged = useCallback((flagged: boolean, targets: Set<string> = checkedTickets) => {
+    if (targets.size === 0) return;
+    if (flagged) { setFlagReason(""); setFlagDialog({ targets }); }
+    else { void ta.handleBulkSetFlagged(false, null, targets); }
+  }, [ta.handleBulkSetFlagged, checkedTickets]);
+  const computeFlagState = useCallback((keys: Set<string>): FlagState => {
+    const sel = tickets.filter((t) => keys.has(t.key));
+    if (sel.length === 0) return "mixed";
+    const flaggedCount = sel.filter((t) => t.flagged).length;
+    if (flaggedCount === 0) return "unflagged";
+    if (flaggedCount === sel.length) return "flagged";
+    return "mixed";
+  }, [tickets]);
   const handleRefresh = useCallback(async () => { setSyncing(true); try { const data = await jira.syncTickets({ sprintId: slotSprints[activeSlot] }) as { count?: number } | null; showToast(`Refreshed ${data?.count ?? 0} ticket${(data?.count ?? 0) === 1 ? "" : "s"}`); mutateTickets(); } catch { showToast("Failed to refresh tickets"); } finally { setSyncing(false); } }, [slotSprints, activeSlot, showToast, mutateTickets]);
   const handleColumnReorder = useCallback((a: ColumnId, b: ColumnId) => { setColumnOrder((prev) => { const oi = prev.indexOf(a); const ni = prev.indexOf(b); if (oi === -1 || ni === -1) return prev; const next = [...prev]; next.splice(oi, 1); next.splice(ni, 0, a); return next; }); }, [setColumnOrder]);
 
@@ -282,7 +312,7 @@ export default function SprintBoard() {
         {!ticketsLoading && analyticsVisible && <SprintAnalytics tickets={allTickets} onClose={() => setAnalyticsVisible(false)} sprintId={activeSprintId} />}
         {ticketsLoading && <LoadingState variant="spinner" label="Loading tickets..." className="min-h-[200px]" />}
         {!ticketsLoading && (
-          <TicketTable tickets={tickets} checkedTickets={checkedTickets} selectedTicket={selectedTicket} focusedTicketIdx={focusedTicketIdx} someChecked={someChecked} allChecked={allChecked} visibleColumns={effectiveVisibleColumns} sprintNameMap={sprintNameMap} poStatuses={poStatuses} readinessMap={readinessMap} inflightKeys={inflightKeys} onToggleCheck={toggleCheck} onRangeCheck={handleRangeCheck} onToggleAll={toggleAll} onSelectTicket={setSelectedTicket} onPoStatusChange={ta.handlePoStatusChange} onReadinessChange={ta.handleReadinessChange} onBusinessValueChange={ta.handleBusinessValueChange} onStoryPointsChange={ta.handleStoryPointsChange} onJiraStatusChange={ta.handleJiraStatusChange} onIssueTypeChange={ta.handleIssueTypeChange} onTitleChange={ta.handleTitleChange} onAssigneeChange={ta.handleAssigneeChange} onEpicChange={ta.handleEpicChange} onSprintChange={ta.handleSprintChange} sprints={sprints} onCloseSubtasks={ta.handleCloseSubtasks} onTableKeyDown={handleTableKeyDown} sortField={f.sortField} sortDir={f.sortDir} onSortChange={sortChange} columnOrder={columnOrder} columnWidths={columnWidths} onColumnResize={setColumnWidth} onColumnResetWidth={resetColumnWidth} groups={groups} collapsedGroups={collapsedGroups} onToggleCollapse={toggleCollapse} groupBy={groupBy} pinnedSprintIds={slotSprintsSet} onPinSprint={handleAddSlotWithSprint} scrollContainerRef={mainScrollRef} refinementSessionMap={ticketSessionMap} {...(dnd.jiraRankDndEnabled ? { externalDnd: true as const, externalActiveDragId: dnd.boardActiveDragId, dragOverKey: dnd.boardOverId } : { onReorder: f.sortField === "rank" && !f.activeViewId ? handleReorder : undefined })} />
+          <TicketTable tickets={tickets} checkedTickets={checkedTickets} selectedTicket={selectedTicket} focusedTicketIdx={focusedTicketIdx} someChecked={someChecked} allChecked={allChecked} visibleColumns={effectiveVisibleColumns} sprintNameMap={sprintNameMap} poStatuses={poStatuses} readinessMap={readinessMap} inflightKeys={inflightKeys} onToggleCheck={toggleCheck} onRangeCheck={handleRangeCheck} onToggleAll={toggleAll} onSelectTicket={setSelectedTicket} onRowContextMenu={handleRowContextMenu} onPoStatusChange={ta.handlePoStatusChange} onReadinessChange={ta.handleReadinessChange} onBusinessValueChange={ta.handleBusinessValueChange} onStoryPointsChange={ta.handleStoryPointsChange} onJiraStatusChange={ta.handleJiraStatusChange} onIssueTypeChange={ta.handleIssueTypeChange} onTitleChange={ta.handleTitleChange} onAssigneeChange={ta.handleAssigneeChange} onEpicChange={ta.handleEpicChange} onSprintChange={ta.handleSprintChange} sprints={sprints} onCloseSubtasks={ta.handleCloseSubtasks} onTableKeyDown={handleTableKeyDown} sortField={f.sortField} sortDir={f.sortDir} onSortChange={sortChange} columnOrder={columnOrder} columnWidths={columnWidths} onColumnResize={setColumnWidth} onColumnResetWidth={resetColumnWidth} groups={groups} collapsedGroups={collapsedGroups} onToggleCollapse={toggleCollapse} groupBy={groupBy} pinnedSprintIds={slotSprintsSet} onPinSprint={handleAddSlotWithSprint} scrollContainerRef={mainScrollRef} refinementSessionMap={ticketSessionMap} {...(dnd.jiraRankDndEnabled ? { externalDnd: true as const, externalActiveDragId: dnd.boardActiveDragId, dragOverKey: dnd.boardOverId } : { onReorder: f.sortField === "rank" && !f.activeViewId ? handleReorder : undefined })} />
         )}
       </div>
     </>
@@ -292,7 +322,7 @@ export default function SprintBoard() {
   // overflow over the panel when the list column is narrowed.
   const bulkActionBar = someChecked && (() => {
     const sel = tickets.filter((t) => checkedTickets.has(t.key));
-    return <BulkActionBar count={checkedTickets.size} totalCount={tickets.length} selectedPoints={sel.reduce((s, t) => s + (t.storyPoints ?? 0), 0)} selectedBV={sel.reduce((s, t) => s + (t.businessValue ?? 0), 0)} allChecked={allChecked} onToggleAll={toggleAll} onClear={() => setCheckedTickets(new Set())} onSetReadiness={handleBulkSetReadiness} onSetStatus={handleBulkSetStatus} onSetEpic={handleBulkSetEpic} onMoveSprint={handleBulkMoveSprint} onUpdateAssignee={handleBulkUpdateAssignee} onUpdateLabel={handleBulkUpdateLabels} sprints={sprints} pinnedSprintIds={slotSprints} onRefreshFromJira={handleBulkRefresh} onReviewStory={handleBulkReviewStory} onCopyToClipboard={handleCopyToClipboard} onExportForStakeholders={handleExportForStakeholders} isRefreshing={bulkRefreshing} isExporting={exportTask.isActive} onGenerateSubtasks={handleBulkGenerateSubtasks} isGeneratingSubtasks={bulkGenerating} onRefine={handleRefineSelected} />;
+    return <BulkActionBar count={checkedTickets.size} totalCount={tickets.length} selectedPoints={sel.reduce((s, t) => s + (t.storyPoints ?? 0), 0)} selectedBV={sel.reduce((s, t) => s + (t.businessValue ?? 0), 0)} allChecked={allChecked} onToggleAll={toggleAll} onClear={() => setCheckedTickets(new Set())} onSetReadiness={handleBulkSetReadiness} onSetStatus={handleBulkSetStatus} onSetEpic={handleBulkSetEpic} onMoveSprint={handleBulkMoveSprint} onUpdateAssignee={handleBulkUpdateAssignee} onUpdateLabel={handleBulkUpdateLabels} onSetFlagged={(flagged) => handleSetFlagged(flagged)} flagState={computeFlagState(checkedTickets)} sprints={sprints} pinnedSprintIds={slotSprints} onRefreshFromJira={handleBulkRefresh} onReviewStory={handleBulkReviewStory} onCopyToClipboard={handleCopyToClipboard} onExportForStakeholders={handleExportForStakeholders} isRefreshing={bulkRefreshing} isExporting={exportTask.isActive} onGenerateSubtasks={handleBulkGenerateSubtasks} isGeneratingSubtasks={bulkGenerating} onRefine={handleRefineSelected} />;
   })();
 
   return (
@@ -349,7 +379,48 @@ export default function SprintBoard() {
       <StoryWriterLauncherModal open={showStoryWriterLauncher} onClose={() => setShowStoryWriterLauncher(false)} />
       {editModalOpen && activeSprint && <SprintEditModal sprint={activeSprint} tickets={allTickets} onClose={() => { setEditModalOpen(false); setAutoSuggest(false); }} showToast={showToast} autoSuggest={autoSuggest} />}
       {createSprintModalOpen && <CreateSprintModal onClose={() => setCreateSprintModalOpen(false)} onCreated={handleSprintCreated} showToast={showToast} />}
-      <AddToRefinementModal open={refineModalOpen} onClose={() => setRefineModalOpen(false)} ticketKeys={Array.from(checkedTickets)} onAdded={(id, name) => showToast(<span>Added to &ldquo;{name}&rdquo;{" "}<a href={`/refinement/${id}`} onClick={(e) => { e.preventDefault(); router.push(`/refinement/${id}`); }} className="font-medium text-[var(--color-brand-400)] underline underline-offset-2 hover:text-[var(--color-brand-300)]">Open refinement</a></span>, 5000)} />
+      <AddToRefinementModal open={refineModalOpen} onClose={() => { setRefineModalOpen(false); setRefineKeys(null); }} ticketKeys={refineKeys ?? Array.from(checkedTickets)} onAdded={(id, name) => showToast(<span>Added to &ldquo;{name}&rdquo;{" "}<a href={`/refinement/${id}`} onClick={(e) => { e.preventDefault(); router.push(`/refinement/${id}`); }} className="font-medium text-[var(--color-brand-400)] underline underline-offset-2 hover:text-[var(--color-brand-300)]">Open refinement</a></span>, 5000)} />
+
+      {rowMenu && (
+        <CursorMenu x={rowMenu.x} y={rowMenu.y} onClose={() => setRowMenu(null)}>
+          <TicketActionMenuContent
+            onSetStatus={(s) => handleBulkSetStatus(s, rowMenu.targets)}
+            onSetReadiness={(r) => handleBulkSetReadiness(r, rowMenu.targets)}
+            onSetEpic={(epicKey) => handleBulkSetEpic(epicKey, rowMenu.targets)}
+            onMoveSprint={(sprintId) => handleBulkMoveSprint(sprintId, rowMenu.targets)}
+            onUpdateAssignee={(accountId, name) => handleBulkUpdateAssignee(accountId, name, rowMenu.targets)}
+            onUpdateLabel={(labels, mode) => handleBulkUpdateLabels(labels, mode, rowMenu.targets)}
+            onSetFlagged={(flagged) => handleSetFlagged(flagged, rowMenu.targets)}
+            flagState={computeFlagState(rowMenu.targets)}
+            onReviewStory={() => handleBulkReviewStory(rowMenu.targets)}
+            onGenerateSubtasks={() => handleBulkGenerateSubtasks(rowMenu.targets)}
+            onRefine={() => openRefine(Array.from(rowMenu.targets))}
+            sprints={sprints}
+            pinnedSprintIds={slotSprints}
+            close={() => setRowMenu(null)}
+          />
+        </CursorMenu>
+      )}
+
+      <ConfirmDialog
+        open={flagDialog !== null}
+        onClose={() => { setFlagDialog(null); setFlagReason(""); }}
+        title={flagDialog && flagDialog.targets.size > 1 ? `Flag ${flagDialog.targets.size} tickets` : "Flag this ticket"}
+        description="Add an optional reason for flagging. This will be synced to Jira as a comment."
+        confirmLabel="Flag"
+        confirmVariant="destructive"
+        onConfirm={() => { if (flagDialog) void ta.handleBulkSetFlagged(true, flagReason.trim() || null, flagDialog.targets); setFlagDialog(null); setFlagReason(""); }}
+        extra={
+          <textarea
+            value={flagReason}
+            onChange={(e) => setFlagReason(e.target.value)}
+            placeholder="Reason (optional)..."
+            rows={3}
+            maxLength={2000}
+            className="w-full resize-none rounded-lg border border-border-default bg-[var(--color-surface-base)] px-3 py-2 text-body-sm leading-relaxed text-text-primary placeholder:text-text-muted focus:border-[var(--color-brand-400)] focus:outline-none"
+          />
+        }
+      />
     </div>
     </>
   );

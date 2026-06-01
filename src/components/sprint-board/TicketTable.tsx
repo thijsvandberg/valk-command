@@ -191,6 +191,7 @@ export function TicketTable({
   onRangeCheck,
   onToggleAll,
   onSelectTicket,
+  onRowContextMenu,
   onPoStatusChange,
   onReadinessChange,
   onBusinessValueChange,
@@ -239,6 +240,7 @@ export function TicketTable({
   onRangeCheck: (keys: string[], checked: boolean) => void;
   onToggleAll: () => void;
   onSelectTicket: (key: string | null) => void;
+  onRowContextMenu?: (key: string, e: React.MouseEvent) => void;
   onPoStatusChange: (key: string, status: POStatus) => void;
   onReadinessChange?: (key: string, readiness: TicketReadiness | null) => void;
   onBusinessValueChange?: (key: string, value: number | null) => void;
@@ -405,6 +407,7 @@ export function TicketTable({
     healthMap,
     selectedTicket,
     onSelectTicket,
+    onRowContextMenu,
     onCheckboxClick: handleCheckboxClick,
     onPoStatusChange,
     onReadinessChange: onReadinessChange ?? NOOP,
@@ -424,7 +427,7 @@ export function TicketTable({
     onToggleReviewPopover: handleToggleReviewPopover,
     refinementSessions: refinementSessionMap?.get(ticket.key),
     columnOrder: effectiveOrder,
-  }), [checkedTickets, selectedTicket, focusedTicketIdx, someChecked, activeDragId, col, sprintNameMap, poStatuses, readinessMap, inflightKeys, onSelectTicket, handleCheckboxClick, onPoStatusChange, onReadinessChange, onBusinessValueChange, onStoryPointsChange, onJiraStatusChange, onIssueTypeChange, onTitleChange, onAssigneeChange, onEpicChange, onSprintChange, sprints, onCloseSubtasks, editingTitleKey, reviewPopoverKey, handleToggleReviewPopover, effectiveOrder, followedKeys, followTicket, unfollowTicket, lastDeployedMap, healthMap, refinementSessionMap]);
+  }), [checkedTickets, selectedTicket, focusedTicketIdx, someChecked, activeDragId, col, sprintNameMap, poStatuses, readinessMap, inflightKeys, onSelectTicket, onRowContextMenu, handleCheckboxClick, onPoStatusChange, onReadinessChange, onBusinessValueChange, onStoryPointsChange, onJiraStatusChange, onIssueTypeChange, onTitleChange, onAssigneeChange, onEpicChange, onSprintChange, sprints, onCloseSubtasks, editingTitleKey, reviewPopoverKey, handleToggleReviewPopover, effectiveOrder, followedKeys, followTicket, unfollowTicket, lastDeployedMap, healthMap, refinementSessionMap]);
 
   const rh = useMemo(() =>
     onColumnResize && onColumnResetWidth
