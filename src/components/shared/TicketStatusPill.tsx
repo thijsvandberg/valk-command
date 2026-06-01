@@ -3,16 +3,14 @@
 import { useState, useRef, useEffect, useLayoutEffect, type ReactNode } from "react";
 import { useOutsideClick } from "@/hooks/useOutsideClick";
 import { createPortal } from "react-dom";
-import { ExternalLink, FilePen, MessageCircleQuestion, CheckCircle2, Ban, Minus, Copy, ClipboardList, PenLine, Flag, IterationCw, Zap, User, UserRound, ListChecks, Gauge, Goal } from "lucide-react";
+import { ExternalLink, FilePen, MessageCircleQuestion, CheckCircle2, Ban, Minus, Copy, ClipboardList, PenLine, Flag, IterationCw, Zap, User, UserRound, ListChecks } from "lucide-react";
 import type { JiraStatus, TicketReadiness, IssueType, Assignee, Sprint } from "@/types/ticket";
 import {
   JIRA_STATUS_COLORS,
   JIRA_STATUS_ABBREVIATIONS,
   READINESS_CONFIG,
   READINESS_OPTIONS,
-  getBvColor,
   getEpicColor,
-  getSpColor,
 } from "@/types/ticket";
 import { ISSUE_TYPE_COLORS } from "@/components/shared/IssueTypeIcon";
 import { getJiraUrl } from "@/lib/jira-url";
@@ -21,6 +19,7 @@ import { formatTicketShare } from "@/lib/ticket-share";
 import { Tooltip } from "@/components/shared/Tooltip";
 import { StoryPointPicker } from "@/components/shared/StoryPointPicker";
 import { BusinessValuePicker } from "@/components/shared/BusinessValuePicker";
+import { MetricBadge } from "@/components/shared/MetricBadge";
 import { AssigneePicker, type AssignableUser } from "@/components/shared/AssigneePicker";
 import { SprintPicker } from "@/components/shared/SprintPicker";
 import { EpicPicker, type EpicOption } from "@/components/shared/EpicPicker";
@@ -352,21 +351,6 @@ export interface TicketPillHoverData {
   flagged: boolean;
 }
 
-function ScoreChip({ label, value, colors }: { label: "SP" | "BV"; value: number | null; colors: { bg: string; text: string } | null }) {
-  const Icon = label === "SP" ? Gauge : Goal;
-  return (
-    <span className="flex items-center gap-1.5" title={label === "SP" ? "Story Points" : "Business Value"}>
-      <Icon size={13} strokeWidth={2} aria-hidden style={{ color: colors?.text ?? "var(--color-text-muted)" }} />
-      {value != null && colors ? (
-        <span className="rounded px-1.5 py-0.5 text-label font-semibold tabular-nums" style={{ backgroundColor: colors.bg, color: colors.text }}>
-          {value}
-        </span>
-      ) : (
-        <span className="text-body-sm text-text-muted">–</span>
-      )}
-    </span>
-  );
-}
 
 // One metadata row: leading icon + label on the left, value (or editor) on the right.
 function InfoRow({ icon, label, children }: { icon: ReactNode; label: string; children: ReactNode }) {
@@ -465,14 +449,14 @@ function TicketHoverCard({
 
       <div className="mt-2 flex items-center gap-3 border-t border-border-subtle pt-2">
         {onStoryPointsChange ? (
-          <StoryPointPicker value={data.storyPoints} onChange={onStoryPointsChange} size="lg" align="left" showMetricIcon onOpenChange={onPickerOpenChange} />
+          <StoryPointPicker value={data.storyPoints} onChange={onStoryPointsChange} size="lg" align="left" showMetricIcon richTooltip onOpenChange={onPickerOpenChange} />
         ) : (
-          <ScoreChip label="SP" value={data.storyPoints} colors={data.storyPoints != null ? getSpColor(data.storyPoints) : null} />
+          <MetricBadge metric="sp" value={data.storyPoints} tinted tooltip />
         )}
         {onBusinessValueChange ? (
-          <BusinessValuePicker value={data.businessValue} onChange={onBusinessValueChange} size="lg" align="left" showMetricIcon onOpenChange={onPickerOpenChange} />
+          <BusinessValuePicker value={data.businessValue} onChange={onBusinessValueChange} size="lg" align="left" showMetricIcon richTooltip onOpenChange={onPickerOpenChange} />
         ) : (
-          <ScoreChip label="BV" value={data.businessValue} colors={data.businessValue != null ? getBvColor(data.businessValue) : null} />
+          <MetricBadge metric="bv" value={data.businessValue} tinted tooltip />
         )}
       </div>
 
@@ -577,6 +561,9 @@ export interface TicketStatusPillProps {
   onEpicChange?: (epic: EpicOption | null) => void;
   /** When provided, Assignee becomes editable inside the hover card. */
   onAssigneeChange?: (user: AssignableUser | null) => void;
+  /** Fade the leading issue-type icon while the enclosing `group/row` is hovered, so a row-level
+   *  checkbox can take its place (list variant only). */
+  dimTypeOnRowHover?: boolean;
 }
 
 export function TicketStatusPill({
@@ -601,6 +588,7 @@ export function TicketStatusPill({
   sprints,
   onEpicChange,
   onAssigneeChange,
+  dimTypeOnRowHover,
 }: TicketStatusPillProps) {
   const [issueTypeDropdownOpen, setIssueTypeDropdownOpen] = useState(false);
   const [keyDropdownOpen, setKeyDropdownOpen] = useState(false);
@@ -713,7 +701,7 @@ export function TicketStatusPill({
 
         {/* Issue type */}
         {issueType && (
-          <div className="relative flex shrink-0">
+          <div className={`relative flex shrink-0 ${dimTypeOnRowHover ? "transition-opacity duration-150 group-hover/row:opacity-0" : ""}`}>
             <Tooltip content={issueTypeTip}>
               <button
                 ref={issueTypeBtnRef}

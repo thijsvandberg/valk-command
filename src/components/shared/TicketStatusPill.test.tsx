@@ -315,7 +315,7 @@ describe("TicketStatusPill hover card", () => {
       <TicketStatusPill ticketKey="VPL-1" jiraStatus="TO DO" hoverData={fullData} onStoryPointsChange={onSp} />,
     );
     openCard(container);
-    act(() => { fireEvent.click(screen.getByTitle("Story Points: 5")); });
+    act(() => { fireEvent.click(screen.getByText("5")); }); // the SP picker trigger shows its value
     act(() => { fireEvent.click(screen.getByText("8")); });
     expect(onSp).toHaveBeenCalledWith(8);
   });
@@ -326,7 +326,7 @@ describe("TicketStatusPill hover card", () => {
       <TicketStatusPill ticketKey="VPL-1" jiraStatus="TO DO" hoverData={fullData} onStoryPointsChange={onSp} />,
     );
     openCard(container);
-    act(() => { fireEvent.click(screen.getByTitle("Story Points: 5")); }); // opens the picker
+    act(() => { fireEvent.click(screen.getByText("5")); }); // opens the picker (trigger shows its value)
     act(() => { fireEvent.mouseLeave(container.firstChild as Element); });   // leave the pill
     act(() => { vi.advanceTimersByTime(300); });
     expect(screen.getByRole("tooltip")).toBeTruthy(); // still open because the picker is active

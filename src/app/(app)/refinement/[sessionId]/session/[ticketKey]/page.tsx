@@ -440,6 +440,7 @@ export default function RefinementSessionTicketPage({
                   align="left"
                   size="lg"
                   showMetricIcon
+                  richTooltip
                 />
               </>
             )}

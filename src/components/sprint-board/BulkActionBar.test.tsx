@@ -17,29 +17,29 @@ describe("BulkActionBar", () => {
   it("shows SP badge when selectedPoints > 0", () => {
     render(<BulkActionBar {...defaultProps} selectedPoints={5} />);
     expect(screen.getByText("5")).toBeTruthy();
-    expect(screen.getByText("SP")).toBeTruthy();
+    expect(screen.getByTitle("Story Points: 5")).toBeTruthy();
   });
 
   it("shows BV badge when selectedBV > 0", () => {
     render(<BulkActionBar {...defaultProps} selectedBV={7} />);
     expect(screen.getByText("7")).toBeTruthy();
-    expect(screen.getByText("BV")).toBeTruthy();
+    expect(screen.getByTitle("Business Value: 7")).toBeTruthy();
   });
 
   it("shows both SP and BV badges when both > 0", () => {
     render(<BulkActionBar {...defaultProps} selectedPoints={3} selectedBV={7} />);
-    expect(screen.getByText("SP")).toBeTruthy();
-    expect(screen.getByText("BV")).toBeTruthy();
+    expect(screen.getByTitle("Story Points: 3")).toBeTruthy();
+    expect(screen.getByTitle("Business Value: 7")).toBeTruthy();
   });
 
   it("hides SP when 0", () => {
     render(<BulkActionBar {...defaultProps} selectedPoints={0} />);
-    expect(screen.queryByText("SP")).toBeNull();
+    expect(screen.queryByTitle(/Story Points/)).toBeNull();
   });
 
   it("hides BV when 0", () => {
     render(<BulkActionBar {...defaultProps} selectedBV={0} />);
-    expect(screen.queryByText("BV")).toBeNull();
+    expect(screen.queryByTitle(/Business Value/)).toBeNull();
   });
 
   it("renders Copy List button when onCopyToClipboard is provided", () => {

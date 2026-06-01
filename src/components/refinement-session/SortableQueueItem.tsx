@@ -7,7 +7,7 @@ import { GripVertical, X, ArrowRightLeft, Sparkles } from "lucide-react";
 import { IssueTypeIcon } from "@/components/shared/IssueTypeIcon";
 import { EditStateDot } from "@/components/sprint-board/TicketTableCells";
 import type { Ticket } from "@/types/ticket";
-import { getSpColor } from "@/types/ticket";
+import { MetricBadge } from "@/components/shared/MetricBadge";
 import type { RefinementSessionResponse } from "@/lib/api-client";
 
 export interface SortableQueueItemProps {
@@ -65,15 +65,7 @@ export function SortableQueueItem({
       {ticket.editState === "conflict" && <EditStateDot state="conflict" />}
       <span className="min-w-0 flex-1 truncate text-body-lg text-text-secondary">{ticket.title}</span>
       {ticket.storyPoints != null && (
-        <span
-          className="rounded-md px-1.5 py-0.5 text-caption font-medium tabular-nums"
-          style={{
-            color: getSpColor(ticket.storyPoints).text,
-            backgroundColor: getSpColor(ticket.storyPoints).bg,
-          }}
-        >
-          {ticket.storyPoints === 0 ? "-" : ticket.storyPoints}
-        </span>
+        <MetricBadge metric="sp" value={ticket.storyPoints} tinted size="xs" />
       )}
 
       {/* Subtask suggestion count badge */}

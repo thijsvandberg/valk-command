@@ -4,6 +4,7 @@ import { useState, useRef } from "react";
 import type { TicketReadiness, JiraStatus, Sprint } from "@/types/ticket";
 import { useOutsideClick } from "@/hooks/useOutsideClick";
 import { Button } from "@/components/ui/Button";
+import { MetricBadge } from "@/components/shared/MetricBadge";
 import {
   Copy,
   Loader2,
@@ -260,16 +261,10 @@ export function BulkActionBar({
       <span className="shrink-0 flex items-center gap-2 text-body-sm font-medium text-text-secondary whitespace-nowrap tabular-nums">
         <span>{count}{totalCount ? `/${totalCount}` : ""} selected</span>
         {selectedPoints !== undefined && selectedPoints > 0 && (
-          <span className="inline-flex items-center gap-1 rounded-md px-1.5 py-0.5" style={{ backgroundColor: "var(--color-overlay-subtle)" }}>
-            <span className="font-semibold text-text-primary">{selectedPoints}</span>
-            <span className="text-[9px] uppercase text-text-muted tracking-wide font-medium">SP</span>
-          </span>
+          <MetricBadge metric="sp" value={selectedPoints} tinted />
         )}
         {selectedBV !== undefined && selectedBV > 0 && (
-          <span className="inline-flex items-center gap-1 rounded-md px-1.5 py-0.5" style={{ backgroundColor: "var(--color-overlay-subtle)" }}>
-            <span className="font-semibold text-text-primary">{selectedBV}</span>
-            <span className="text-[9px] uppercase text-text-muted tracking-wide font-medium">BV</span>
-          </span>
+          <MetricBadge metric="bv" value={selectedBV} tinted />
         )}
       </span>
 

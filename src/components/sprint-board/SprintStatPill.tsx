@@ -6,7 +6,7 @@
 //   stat   - neutral info chip (items, pts, no pts); non-interactive or interactive
 //   status - colored chip with optional dot indicator (IN PROGRESS, DONE, TO DO, TEST)
 
-import { Gauge, Goal } from "lucide-react";
+import { MetricBadge } from "@/components/shared/MetricBadge";
 
 export type PillSize = "md" | "sm";
 export type PillVariant = "stat" | "status";
@@ -215,16 +215,8 @@ export function SprintStats({ totalItems, totalSp, totalBv, className = "" }: Sp
       <span className="text-text-tertiary">{totalItems} <span className="text-[10px]">items</span></span>
       {totalSp > 0 && (
         <div className="flex items-center gap-1">
-          <span className="inline-flex items-center gap-1 rounded-md px-1.5 py-0.5" style={{ backgroundColor: "var(--color-overlay-subtle)" }} title="Story Points">
-            <Gauge size={12} strokeWidth={2} className="text-text-muted" aria-hidden />
-            <span className="font-semibold text-text-primary">{totalSp}</span>
-          </span>
-          {totalBv > 0 && (
-            <span className="inline-flex items-center gap-1 rounded-md px-1.5 py-0.5" style={{ backgroundColor: "var(--color-overlay-subtle)" }} title="Business Value">
-              <Goal size={12} strokeWidth={2} className="text-text-muted" aria-hidden />
-              <span className="font-semibold text-text-primary">{totalBv}</span>
-            </span>
-          )}
+          <MetricBadge metric="sp" value={totalSp} tinted />
+          {totalBv > 0 && <MetricBadge metric="bv" value={totalBv} tinted />}
         </div>
       )}
     </div>

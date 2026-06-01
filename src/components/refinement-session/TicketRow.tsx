@@ -5,7 +5,8 @@ import { IssueTypeIcon } from "@/components/shared/IssueTypeIcon";
 import { TicketStatusPill } from "@/components/shared/TicketStatusPill";
 import { EditStateDot } from "@/components/sprint-board/TicketTableCells";
 import type { Ticket, Sprint } from "@/types/ticket";
-import { getSpColor, getEpicColor, getBvColor } from "@/types/ticket";
+import { getEpicColor } from "@/types/ticket";
+import { MetricBadge } from "@/components/shared/MetricBadge";
 import type { AssignableUser } from "@/components/shared/AssigneePicker";
 import type { EpicOption } from "@/components/shared/EpicPicker";
 
@@ -152,26 +153,10 @@ export function TicketRow({
         </span>
       )}
       {showBv && ticket.businessValue != null && ticket.businessValue > 0 && (
-        <span
-          className="rounded-md px-1.5 py-0.5 text-caption font-medium tabular-nums"
-          style={{
-            color: getBvColor(ticket.businessValue).text,
-            backgroundColor: getBvColor(ticket.businessValue).bg,
-          }}
-        >
-          BV: {ticket.businessValue}
-        </span>
+        <span className="shrink-0"><MetricBadge metric="bv" value={ticket.businessValue} tinted size="xs" /></span>
       )}
       {showSp && ticket.storyPoints != null && (
-        <span
-          className="rounded-md px-1.5 py-0.5 text-caption font-medium tabular-nums"
-          style={{
-            color: getSpColor(ticket.storyPoints).text,
-            backgroundColor: getSpColor(ticket.storyPoints).bg,
-          }}
-        >
-          {ticket.storyPoints === 0 ? "-" : ticket.storyPoints}
-        </span>
+        <span className="shrink-0"><MetricBadge metric="sp" value={ticket.storyPoints} tinted size="xs" /></span>
       )}
     </div>
   );
