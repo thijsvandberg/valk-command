@@ -2,11 +2,12 @@
 
 import { useState, useEffect, useRef, useCallback } from "react";
 import type { Attachment } from "@/types/ticket";
-import { CloudUpload, Loader2 } from "lucide-react";
+import { CloudUpload, Loader2, ChevronDown } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import { apiFetch, tickets } from "@/lib/api-client";
 import { renderMarkdown } from "./renderMarkdown";
 import { RichEditor } from "@/components/rich-editor/RichEditor";
+import { StoryDiff } from "@/components/story-diff/StoryDiff";
 import { usePrismLanguages } from "@/hooks/usePrismLanguages";
 
 /** Resolve attachment placeholders in a local edit value. */
@@ -80,6 +81,7 @@ export function EditableDescription({
   const [editing, setEditing] = useState(false);
   const [localValue, setLocalValue] = useState<string | null>(resolvedInitial ?? null);
   const [editIsDraft, setEditIsDraft] = useState(serverLocalEdit?.isDraft ?? false);
+  const [showDraftDiff, setShowDraftDiff] = useState(false);
   const autoSaveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const notifiedDescRef = useRef(false);
   // Only call onLocalEdit(true) once per editing session to avoid parent re-renders per keystroke
@@ -221,13 +223,67 @@ export function EditableDescription({
 
   return (
     <div className="mt-6">
-      {/* Draft indicator badge */}
+      {/* Draft indicator badge: click to reveal an inline diff of the unsaved changes */}
       {!editing && hasLocalEdit && editIsDraft && (
-        <div className="mb-3 flex items-center gap-2">
-          <span className="inline-flex items-center gap-1.5 rounded-md border border-[var(--color-icon-task)]/20 bg-[var(--color-icon-task)]/[0.06] px-2.5 py-1 text-body-sm font-medium text-[var(--color-icon-task)]/80">
+        <div className="mb-3">
+          <button
+            type="button"
+            onClick={() => setShowDraftDiff((v) => !v)}
+            aria-expanded={showDraftDiff}
+            className="inline-flex cursor-pointer items-center gap-1.5 rounded-md border border-[var(--color-icon-task)]/20 bg-[var(--color-icon-task)]/[0.06] px-2.5 py-1 text-body-sm font-medium text-[var(--color-icon-task)]/80 hover:bg-[var(--color-icon-task)]/[0.12] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-icon-task)]/50"
+            style={{ transition: "background-color 0.15s ease" }}
+          >
             <span className="inline-block h-1.5 w-1.5 rounded-full bg-[var(--color-icon-task)]/70" />
             Unsaved changes
-          </span>
+            <ChevronDown
+              size={14}
+              strokeWidth={1.5}
+              style={{ transition: "transform 0.15s ease", transform: showDraftDiff ? "rotate(180deg)" : "rotate(0deg)" }}
+            />
+          </button>
+          {showDraftDiff && (
+            <div className="mt-3 overflow-hidden rounded-lg border border-border-strong p-3">
+              <StoryDiff oldText={initialDescription} newText={value} mode="unified" />
+              <div className="mt-3 flex items-center justify-end gap-1 border-t border-border-default pt-3">
+                {pushError && (
+                  <span className="mr-auto text-label text-[var(--color-status-error)]">{pushError}</span>
+                )}
+                {showConflictWarning && showPush && (
+                  <label className="mr-2 flex cursor-pointer items-center gap-1.5">
+                    <input
+                      type="checkbox"
+                      checked={overrideConfirmed}
+                      onChange={(e) => onOverrideChange?.(e.target.checked)}
+                      className="h-3 w-3 rounded border-border-strong bg-overlay-subtle accent-[var(--color-brand-500)] cursor-pointer"
+                    />
+                    <span className="text-caption text-text-tertiary">Override remote</span>
+                  </label>
+                )}
+                <Button
+                  variant="ghost"
+                  size="md"
+                  onClick={handleDiscard}
+                  title="Discard local changes and revert to the Jira version"
+                  className="!text-text-tertiary hover:!text-text-secondary !text-body-sm"
+                >
+                  Discard
+                </Button>
+                {showPush && (
+                  <Button
+                    variant="primary"
+                    size="md"
+                    disabled={isPushing || (showConflictWarning && !overrideConfirmed)}
+                    title={showConflictWarning && !overrideConfirmed ? "Review the diff and confirm before pushing" : undefined}
+                    onClick={handlePushToJira}
+                    icon={isPushing ? <Loader2 size={12} strokeWidth={1.5} className="animate-spin" /> : <CloudUpload size={12} strokeWidth={1.5} />}
+                    className="!text-body-sm"
+                  >
+                    {isPushing ? "Pushing..." : "Push to Jira"}
+                  </Button>
+                )}
+              </div>
+            </div>
+          )}
         </div>
       )}
       {!editing && hasLocalEdit && !editIsDraft && (

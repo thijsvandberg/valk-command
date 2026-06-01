@@ -182,6 +182,64 @@ describe("EditableDescription", () => {
     expect(screen.getByText("Unsaved changes")).toBeInTheDocument();
   });
 
+  it("expands the draft diff with resolve actions when 'Unsaved changes' is clicked", () => {
+    renderDesc({
+      initialDescription: "Original",
+      serverLocalEdit: { value: "Draft value", isDraft: true },
+      onPushToJira: vi.fn().mockResolvedValue(undefined),
+    });
+    fireEvent.click(screen.getByText("Unsaved changes"));
+    expect(screen.getByText("Discard")).toBeInTheDocument();
+    expect(screen.getByText("Push to Jira")).toBeInTheDocument();
+    // Plain Save is not a resolution: it would leave local changes diverged from Jira.
+    expect(screen.queryByText("Save")).not.toBeInTheDocument();
+  });
+
+  it("pushes the draft to Jira from the diff card", async () => {
+    const onPushToJira = vi.fn().mockResolvedValue(undefined);
+    renderDesc({
+      ticketKey: "VPL-1",
+      initialDescription: "Original",
+      serverLocalEdit: { value: "Draft value", isDraft: true },
+      onPushToJira,
+    });
+    fireEvent.click(screen.getByText("Unsaved changes"));
+    fireEvent.click(screen.getByText("Push to Jira"));
+
+    await waitFor(() => {
+      expect(mockSaveLocalEdit).toHaveBeenCalledWith("VPL-1", {
+        field: "description",
+        localValue: "Draft value",
+      });
+    });
+    await waitFor(() => {
+      expect(onPushToJira).toHaveBeenCalled();
+    });
+  });
+
+  it("discards the draft from the diff card", () => {
+    const onDiscard = vi.fn();
+    renderDesc({
+      initialDescription: "Original",
+      serverLocalEdit: { value: "Draft value", isDraft: true },
+      onDiscard,
+    });
+    fireEvent.click(screen.getByText("Unsaved changes"));
+    fireEvent.click(screen.getByText("Discard"));
+    expect(onDiscard).toHaveBeenCalled();
+    expect(mockSaveLocalEdit).not.toHaveBeenCalled();
+  });
+
+  it("shows 'Push to Jira' in the draft diff card when onPushToJira is provided", () => {
+    renderDesc({
+      initialDescription: "Original",
+      serverLocalEdit: { value: "Draft value", isDraft: true },
+      onPushToJira: vi.fn().mockResolvedValue(undefined),
+    });
+    fireEvent.click(screen.getByText("Unsaved changes"));
+    expect(screen.getByText("Push to Jira")).toBeInTheDocument();
+  });
+
   it("renders 'Local edits' badge for non-draft local edits", () => {
     renderDesc({
       initialDescription: "Original",
