@@ -10,13 +10,13 @@ import {
   Loader2,
   SendHorizontal,
   Square,
-  FileText,
   Star,
   Search,
   Zap,
   Code2,
-  GripHorizontal,
   Sparkles,
+  ListChecks,
+  PenLine,
   AlertCircle,
   RotateCcw,
   type LucideIcon,
@@ -74,7 +74,12 @@ interface StoryWriterChatProps {
   onPendingInputConsumed?: () => void;
 }
 
-const QUICK_ACTIONS: {
+/**
+ * Relational actions that aren't part of the editable per-type prompt list.
+ * Always available in the dropdown regardless of story state, so they can be
+ * found even when their context-filtered inline chip is hidden.
+ */
+const SPECIAL_ACTIONS: {
   id: string;
   label: string;
   icon: LucideIcon;
@@ -103,14 +108,16 @@ const QUICK_ACTIONS: {
     prompt: "Suggest the best epic for this story",
     enabled: true,
   },
-  {
-    id: "tech-analysis",
-    label: "Technical Analysis",
-    icon: Code2,
-    prompt: "",
-    enabled: false,
-  },
 ];
+
+/** Pick an icon for an editable quick prompt based on its intent. */
+function iconForPrompt(p: QuickPrompt): LucideIcon {
+  const label = p.label.toLowerCase();
+  if (p.enableCodebase || label.includes("technical") || label.includes("root cause")) return Code2;
+  if (label.includes("test")) return ListChecks;
+  if (label.includes("title")) return PenLine;
+  return Sparkles;
+}
 
 export type ChipContext = {
   hasTitle: boolean;
@@ -234,6 +241,22 @@ export function StoryWriterChat({
   const mergedChips = useMemo(
     () => getVisibleChips(apiPrompts, chipContext),
     [apiPrompts, chipContext]
+  );
+
+  // Dropdown lists every quick suggestion unconditionally (relational actions +
+  // all editable per-type prompts), so nothing is hidden by context filtering.
+  const dropdownActions = useMemo(
+    () => [
+      ...SPECIAL_ACTIONS,
+      ...apiPrompts.map((p) => ({
+        id: p.id,
+        label: p.label,
+        icon: iconForPrompt(p),
+        prompt: p.text,
+        enabled: true,
+      })),
+    ],
+    [apiPrompts]
   );
 
   const [manualInputHeight, setManualInputHeight] = useState<number | null>(null);
@@ -602,16 +625,20 @@ export function StoryWriterChat({
             <div className="flex items-center justify-between px-2 pb-2 pt-0.5">
               <div className="flex items-center gap-2">
                 <QuickActionsPopover
-                  actions={QUICK_ACTIONS}
+                  actions={dropdownActions}
                   onSelect={(prompt, actionId) => {
                     setShowActions(false);
                     if (actionId === "find-related") {
                       onFindRelated?.();
-                    } else if (actionId === "match-epic") {
-                      onSend(prompt, "match-epic");
-                    } else {
-                      fillInput(prompt);
+                      return;
                     }
+                    if (actionId === "match-epic") {
+                      onSend(prompt, "match-epic");
+                      return;
+                    }
+                    const ap = apiPrompts.find((p) => p.id === actionId);
+                    if (ap) onCodebaseResearchChange(ap.enableCodebase === true);
+                    fillInput(prompt);
                   }}
                   open={showActions}
                   onToggle={() => setShowActions((v) => !v)}

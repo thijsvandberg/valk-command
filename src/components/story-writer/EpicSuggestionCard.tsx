@@ -14,10 +14,10 @@ export interface EpicSuggestion {
   reason: string;
 }
 
-const CONFIDENCE_STYLES: Record<string, { bg: string; text: string; label: string }> = {
-  high: { bg: "var(--color-status-success-subtle)", text: "var(--color-status-success)", label: "High" },
-  medium: { bg: "var(--color-status-caution-subtle)", text: "var(--color-status-caution)", label: "Med" },
-  low: { bg: "color-mix(in srgb, var(--color-icon-epic) 10%, transparent)", text: "var(--color-icon-epic)", label: "Low" },
+const CONFIDENCE_STYLES: Record<string, { color: string; label: string }> = {
+  high: { color: "var(--color-status-success)", label: "High" },
+  medium: { color: "var(--color-status-caution)", label: "Medium" },
+  low: { color: "var(--color-icon-epic)", label: "Low" },
 };
 
 interface ResolvedInfo {
@@ -96,44 +96,46 @@ export function EpicSuggestionCard({ suggestions, currentEpicKey, onApply }: Epi
         const displayName = (info?.title) || (s.name !== s.key ? s.name : s.key);
 
         return (
-          <SuggestionRow key={s.key} active={isSelected}>
-            <TicketStatusPill
-              ticketKey={s.key}
-              issueType="epic"
-              jiraStatus={(info?.status ?? "TO DO") as JiraStatus}
-              readiness={info?.readiness ?? undefined}
-              title={displayName}
-              size="sm"
-              variant="list"
-            />
-            <div className="flex min-w-0 flex-1 flex-col">
-              <div className="flex items-center gap-1.5">
+          <SuggestionRow key={s.key} active={isSelected} align="start">
+            <div className="flex w-full flex-col gap-1.5">
+              <div className="flex items-center gap-2">
+                <TicketStatusPill
+                  ticketKey={s.key}
+                  issueType="epic"
+                  jiraStatus={(info?.status ?? "TO DO") as JiraStatus}
+                  title={displayName}
+                  size="sm"
+                  variant="list"
+                />
                 <span className={`min-w-0 flex-1 truncate text-label ${isSelected ? "text-text-primary" : "text-text-secondary"}`}>
                   {displayName}
                 </span>
-                <span
-                  className="shrink-0 rounded-full px-1.5 py-0.5 text-caption font-medium leading-none"
-                  style={{ backgroundColor: conf.bg, color: conf.text }}
-                >
+                <span className="flex shrink-0 items-center gap-1.5 text-caption font-medium text-text-secondary">
+                  <span className="h-1.5 w-1.5 rounded-full" style={{ backgroundColor: conf.color }} />
                   {conf.label}
                 </span>
+                {isSelected ? (
+                  <span className="shrink-0 rounded-md px-2.5 py-1 text-caption font-medium bg-[var(--color-brand-500)]/[0.1] text-[var(--color-brand-500)]">
+                    Applied
+                  </span>
+                ) : (
+                  <LinkButton
+                    linked={false}
+                    loading={isApplying}
+                    error={hasError}
+                    onLink={() => handleApply(s.key)}
+                  />
+                )}
               </div>
-              <span className="text-caption text-text-muted leading-[1.4] truncate">
-                {s.reason}
-              </span>
+              <div
+                className="border-l-2 pl-2.5"
+                style={{ borderColor: "color-mix(in srgb, var(--color-brand-500) 35%, transparent)" }}
+              >
+                <span className="text-caption text-text-muted leading-[1.5]">
+                  {s.reason}
+                </span>
+              </div>
             </div>
-            {isSelected ? (
-              <span className="shrink-0 rounded-md px-2.5 py-1 text-caption font-medium bg-[var(--color-brand-500)]/[0.1] text-[var(--color-brand-500)]">
-                Applied
-              </span>
-            ) : (
-              <LinkButton
-                linked={false}
-                loading={isApplying}
-                error={hasError}
-                onLink={() => handleApply(s.key)}
-              />
-            )}
           </SuggestionRow>
         );
       })}

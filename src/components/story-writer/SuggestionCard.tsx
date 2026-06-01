@@ -53,16 +53,20 @@ export function SuggestionCard({
 
 export function SuggestionRow({
   active,
+  align = "center",
+  className = "",
   children,
 }: {
   active: boolean;
+  align?: "center" | "start";
+  className?: string;
   children: ReactNode;
 }) {
   return (
     <div
-      className={`flex items-center gap-2 px-3 py-1.5 transition-colors duration-150 ${
-        active ? "bg-[var(--color-brand-500)]/[0.04]" : "hover:bg-overlay-subtle"
-      }`}
+      className={`flex gap-2 px-3 transition-colors duration-150 ${
+        align === "start" ? "items-start py-2.5" : "items-center py-1.5"
+      } ${active ? "bg-[var(--color-brand-500)]/[0.04]" : "hover:bg-overlay-subtle"} ${className}`}
     >
       {children}
     </div>

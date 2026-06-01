@@ -24,7 +24,7 @@ describe("EpicSuggestionCard", () => {
     expect(screen.getByText("Group Reservations")).toBeInTheDocument();
     expect(screen.getByText("High")).toBeInTheDocument();
     expect(screen.getByText("Covers group booking")).toBeInTheDocument();
-    expect(screen.getByText("Med")).toBeInTheDocument();
+    expect(screen.getByText("Medium")).toBeInTheDocument();
   });
 
   it("shows 'Applied' for the epic already set on the ticket", () => {
@@ -97,7 +97,7 @@ describe("EpicSuggestionCard", () => {
       />,
     );
     expect(screen.getByText("High")).toBeInTheDocument();
-    expect(screen.getByText("Med")).toBeInTheDocument();
+    expect(screen.getByText("Medium")).toBeInTheDocument();
     expect(screen.getByText("Low")).toBeInTheDocument();
   });
 });
