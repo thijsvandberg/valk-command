@@ -1,13 +1,15 @@
 "use client";
 
 // Temporary dev showcase for BRDG-240: making Story Points (SP) and Business
-// Value (BV) instantly recognizable in the sprint-board table. Renders every
-// candidate treatment in isolation and inside a realistic table so the PO can
-// compare them live and pick a direction. Not linked from navigation,
-// excluded from routes.test.tsx, safe to delete once a direction is chosen.
+// Value (BV) instantly recognizable in the sprint-board table. Direction B
+// (icon + color) is the chosen approach; BV uses the target icon. This page now
+// helps finalize the SP icon (effort/complexity) and shows the subtle vs tinted
+// treatment on the real BT: 138 backlog. Not linked from navigation, excluded
+// from routes.test.tsx, safe to delete once the SP icon is chosen.
 
+import { useState } from "react";
 import { usePageTitle } from "@/hooks/usePageTitle";
-import { Gauge, Star, Layers, Zap, Sparkles, Target } from "lucide-react";
+import { Gauge, Target, Layers, Zap, SignalHigh, Activity, Dumbbell, Boxes, Sparkles, type LucideIcon } from "lucide-react";
 import { ViewHeader, ViewHeaderTitle } from "@/components/shared/ViewHeader";
 import { StoryPointPicker } from "@/components/shared/StoryPointPicker";
 import { BusinessValuePicker } from "@/components/shared/BusinessValuePicker";
@@ -59,109 +61,51 @@ const BT138_ROWS: BoardRow[] = [
 const SP_PRESETS = [1, 2, 3, 5, 8];
 const BV_PRESETS = [1, 2, 3, 4, 5, 6, 7];
 
-// Neutral treatment for the N/A value (0), matching the real pickers' grey.
-const NEUTRAL = { text: "#7d828b", bg: "color-mix(in srgb, #7d828b 10%, transparent)" };
+// SP is about effort / complexity. Candidate leading icons to choose from.
+const SP_ICON_CANDIDATES: { name: string; Icon: LucideIcon; note: string }[] = [
+  { name: "Gauge", Icon: Gauge, note: "effort meter" },
+  { name: "Layers", Icon: Layers, note: "stacked = size / complexity" },
+  { name: "Boxes", Icon: Boxes, note: "amount of work" },
+  { name: "Dumbbell", Icon: Dumbbell, note: "weight / heaviness" },
+  { name: "SignalHigh", Icon: SignalHigh, note: "magnitude bars" },
+  { name: "Activity", Icon: Activity, note: "intensity" },
+  { name: "Zap", Icon: Zap, note: "energy" },
+];
 
-// Distinct fixed color families for the "color identity" direction: SP stays a
-// green family, BV becomes a unified amber/gold family across its whole range
-// (today BV's low values are blue-grey, which is what makes the two columns
-// look alike). Defined here only for the mockup.
-function spIdentityColor(v: number): { text: string; bg: string } {
-  if (v <= 0) return NEUTRAL;
-  const text = v <= 1 ? "#6fa384" : v <= 2 ? "#5d9871" : v <= 3 ? "#4d8d5d" : v <= 5 ? "#3d8050" : "#2e7444";
-  return { text, bg: `color-mix(in srgb, ${text} 12%, transparent)` };
-}
-function bvIdentityColor(v: number): { text: string; bg: string } {
-  if (v <= 0) return NEUTRAL;
-  const map: Record<number, string> = {
-    1: "#c2a878", 2: "#c8a55f", 3: "#cea043", 4: "#d59a2f", 5: "#de9420", 6: "#e79015", 7: "#eab308",
-  };
-  const text = map[v] ?? "#d59a2f";
-  return { text, bg: `color-mix(in srgb, ${text} 12%, transparent)` };
-}
+// BV is decided: the target icon (value / goal).
+const BV_ICON: LucideIcon = Target;
 
 // ---------------------------------------------------------------------------
-// Candidate cell renderers (kind tells SP vs BV)
+// Cell renderer — direction B (icon + color)
 // ---------------------------------------------------------------------------
 
 type Kind = "sp" | "bv";
-const colorFor = (kind: Kind, v: number) => (kind === "sp" ? getSpColor(v) : getBvColor(v));
 
 // The unset (null) placeholder used by the real subtle pickers.
 function EmptyDot() {
   return <span className="inline-block h-1.5 w-1.5 rounded-full bg-overlay-strong align-middle" />;
 }
 
-// A — Label-prefix pill: explicit "SP"/"BV" text + colored number.
-function LabelPillCell({ kind, value }: { kind: Kind; value: number }) {
-  const c = colorFor(kind, value);
-  return (
-    <span
-      className="inline-flex h-6 items-center gap-1 rounded-md px-1.5 text-body-sm font-medium tabular-nums"
-      style={{ color: c.text, backgroundColor: c.bg }}
-    >
-      <span className="text-[9px] font-semibold uppercase tracking-wider opacity-55">{kind}</span>
-      {value}
-    </span>
-  );
-}
-
-// B — Icon + color: a small leading icon identifies the metric.
 function IconCell({
   kind,
   value,
-  spIcon: SpIcon = Gauge,
-  bvIcon: BvIcon = Star,
+  spIcon,
   withBg = false,
 }: {
   kind: Kind;
   value: number | null;
-  spIcon?: typeof Gauge;
-  bvIcon?: typeof Gauge;
+  spIcon: LucideIcon;
   withBg?: boolean;
 }) {
   if (value === null) return <EmptyDot />;
-  const c = colorFor(kind, value);
-  const Icon = kind === "sp" ? SpIcon : BvIcon;
+  const c = kind === "sp" ? getSpColor(value) : getBvColor(value);
+  const Icon = kind === "sp" ? spIcon : BV_ICON;
   return (
     <span
       className="inline-flex h-6 items-center gap-1 rounded-md px-1.5 text-body-sm font-medium tabular-nums"
       style={{ color: c.text, backgroundColor: withBg ? c.bg : "transparent" }}
     >
       <Icon size={12} strokeWidth={2} />
-      {value === 0 ? "-" : value}
-    </span>
-  );
-}
-
-// C — Combined badge: SP and BV in one container; order + color carries meaning.
-function CombinedCell({ sp, bv, withMicroLabels = false }: { sp: number; bv: number; withMicroLabels?: boolean }) {
-  const spC = getSpColor(sp);
-  const bvC = getBvColor(bv);
-  return (
-    <span className="inline-flex h-6 items-center gap-1.5 rounded-md border border-border-default bg-[var(--color-surface-elevated)] px-2 text-body-sm font-medium tabular-nums">
-      <span className="inline-flex items-center gap-0.5" style={{ color: spC.text }}>
-        {withMicroLabels && <span className="text-[9px] font-semibold uppercase opacity-55">S</span>}
-        {sp}
-      </span>
-      <span className="text-text-muted">·</span>
-      <span className="inline-flex items-center gap-0.5" style={{ color: bvC.text }}>
-        {withMicroLabels && <span className="text-[9px] font-semibold uppercase opacity-55">B</span>}
-        {bv}
-      </span>
-    </span>
-  );
-}
-
-// D — Color identity only: distinct fixed color families, no label or icon.
-function ColorIdentityCell({ kind, value }: { kind: Kind; value: number | null }) {
-  if (value === null) return <EmptyDot />;
-  const c = kind === "sp" ? spIdentityColor(value) : bvIdentityColor(value);
-  return (
-    <span
-      className="inline-flex h-6 min-w-[24px] items-center justify-center rounded-md px-1 text-body-sm font-medium tabular-nums"
-      style={{ color: c.text, backgroundColor: c.bg }}
-    >
       {value === 0 ? "-" : value}
     </span>
   );
@@ -194,62 +138,9 @@ function Specimen({ label, children }: { label: string; children: React.ReactNod
   );
 }
 
-// A compact, sprint-board-style table on synthetic rows. The SP and BV cells
-// are rendered by the supplied functions; pass a single `combined` renderer to
-// merge them into one column (direction C).
-function DemoTable({
-  spbvHeader = ["SP", "BV"],
-  renderSp,
-  renderBv,
-  renderCombined,
-}: {
-  spbvHeader?: [string, string] | [string];
-  renderSp?: (v: number) => React.ReactNode;
-  renderBv?: (v: number) => React.ReactNode;
-  renderCombined?: (sp: number, bv: number) => React.ReactNode;
-}) {
-  const combined = !!renderCombined;
-  return (
-    <div className="overflow-hidden rounded-xl border border-border-default bg-[var(--color-surface-elevated)]">
-      <table className="w-full border-collapse">
-        <thead>
-          <tr className="border-b border-border-default text-left">
-            <th className="px-4 py-2.5 text-label font-medium uppercase tracking-wide text-text-muted">Key</th>
-            <th className="px-4 py-2.5 text-label font-medium uppercase tracking-wide text-text-muted">Summary</th>
-            {combined ? (
-              <th className="px-4 py-2.5 text-center text-label font-medium uppercase tracking-wide text-text-muted">{spbvHeader[0]}</th>
-            ) : (
-              <>
-                <th className="px-4 py-2.5 text-center text-label font-medium uppercase tracking-wide text-text-muted">{spbvHeader[0]}</th>
-                <th className="px-4 py-2.5 text-center text-label font-medium uppercase tracking-wide text-text-muted">{spbvHeader[1]}</th>
-              </>
-            )}
-          </tr>
-        </thead>
-        <tbody>
-          {ROWS.map((r) => (
-            <tr key={r.key} className="border-b border-border-subtle last:border-0 hover:bg-[var(--color-surface-elevated-hover)]">
-              <td className="px-4 py-2.5 align-middle font-mono text-body-sm text-text-tertiary whitespace-nowrap">{r.key}</td>
-              <td className="px-4 py-2.5 align-middle text-body-sm text-text-secondary">{r.title}</td>
-              {combined ? (
-                <td className="px-4 py-2.5 text-center align-middle">{renderCombined!(r.sp, r.bv)}</td>
-              ) : (
-                <>
-                  <td className="px-4 py-2.5 text-center align-middle">{renderSp!(r.sp)}</td>
-                  <td className="px-4 py-2.5 text-center align-middle">{renderBv!(r.bv)}</td>
-                </>
-              )}
-            </tr>
-          ))}
-        </tbody>
-      </table>
-    </div>
-  );
-}
-
 // A faithful sprint-board-style table on the real BT: 138 rows: type icon, key,
-// status, title, then SP / BV rendered by the supplied functions.
-function BoardTable({ renderSp, renderBv }: { renderSp: (v: number | null) => React.ReactNode; renderBv: (v: number | null) => React.ReactNode }) {
+// status, title, then SP / BV cells in direction B.
+function BoardTable({ spIcon, tinted }: { spIcon: LucideIcon; tinted: boolean }) {
   return (
     <div className="overflow-hidden rounded-xl border border-border-default bg-[var(--color-surface-elevated)]">
       <table className="w-full border-collapse">
@@ -274,8 +165,8 @@ function BoardTable({ renderSp, renderBv }: { renderSp: (v: number | null) => Re
               <td className="max-w-0 px-4 py-2 align-middle">
                 <span className="block truncate text-body-sm text-text-secondary">{r.title}</span>
               </td>
-              <td className="px-3 py-2 text-center align-middle">{renderSp(r.sp)}</td>
-              <td className="px-3 py-2 text-center align-middle">{renderBv(r.bv)}</td>
+              <td className="px-3 py-2 text-center align-middle"><IconCell kind="sp" value={r.sp} spIcon={spIcon} withBg={tinted} /></td>
+              <td className="px-3 py-2 text-center align-middle"><IconCell kind="bv" value={r.bv} spIcon={spIcon} withBg={tinted} /></td>
             </tr>
           ))}
         </tbody>
@@ -290,6 +181,10 @@ function BoardTable({ renderSp, renderBv }: { renderSp: (v: number | null) => Re
 
 export default function SpBvStylesDevPage() {
   const pageTitle = usePageTitle("Dev · SP / BV Styles");
+  const [spIconName, setSpIconName] = useState(SP_ICON_CANDIDATES[0].name);
+  const [tinted, setTinted] = useState(false);
+
+  const spIcon = (SP_ICON_CANDIDATES.find((c) => c.name === spIconName) ?? SP_ICON_CANDIDATES[0]).Icon;
 
   return (
     <>
@@ -300,159 +195,111 @@ export default function SpBvStylesDevPage() {
 
       <div className="mx-auto max-w-5xl px-8 py-8">
         <p className="mb-10 max-w-2xl text-body-sm text-text-tertiary leading-relaxed">
-          Candidate treatments for <strong className="text-text-secondary">BRDG-240</strong> — making Story Points
-          (SP) and Business Value (BV) instantly recognizable in the sprint-board table, so you can tell which metric a
-          number is without reading the column header. Each direction is shown as a value strip and inside a realistic
-          table. Nothing here is wired into the real board yet; pick a direction and I&apos;ll productionize it.
+          <strong className="text-text-secondary">BRDG-240</strong> — chosen direction: <strong className="text-text-secondary">B (icon + color)</strong>.
+          BV uses the <span className="inline-flex items-center gap-1 text-text-secondary"><Target size={12} strokeWidth={2} /> target</span> icon.
+          The SP icon (effort / complexity) is still open — pick a candidate below to preview it live on the real BT: 138 backlog.
+          The number stays color-coded by value; a tinted background is available for spots that should stand out.
         </p>
 
-        {/* Real data: B vs D --------------------------------------------- */}
+        {/* SP icon picker ------------------------------------------------- */}
         <Section
-          title="B vs D — real data (sprint BT: 138)"
-          description="The two front-runners side by side on the actual BT: 138 backlog (stories and bugs, current SP / BV values, 0 shown as the N/A dash). Same rows, same order as the real board, so you can judge recognizability in context."
+          title="Pick the SP icon (effort / complexity)"
+          description="Click a candidate to apply it to the table below. Each is shown across the SP scale (1, 2, 3, 5, 8) so you can judge legibility at small values."
         >
-          <div className="grid grid-cols-1 gap-6 xl:grid-cols-2">
-            <div>
-              <div className="mb-2 flex items-center gap-2 text-body-sm font-medium text-text-secondary">
-                <Gauge size={14} strokeWidth={2} /> B — Icon + color
-              </div>
-              <BoardTable
-                renderSp={(v) => <IconCell kind="sp" value={v} />}
-                renderBv={(v) => <IconCell kind="bv" value={v} />}
-              />
-            </div>
-            <div>
-              <div className="mb-2 flex items-center gap-2 text-body-sm font-medium text-text-secondary">
-                <span className="inline-flex h-3.5 w-3.5 items-center justify-center rounded-full" style={{ backgroundColor: spIdentityColor(3).text }} />
-                D — Color identity
-              </div>
-              <BoardTable
-                renderSp={(v) => <ColorIdentityCell kind="sp" value={v} />}
-                renderBv={(v) => <ColorIdentityCell kind="bv" value={v} />}
-              />
-            </div>
+          <div className="flex flex-col gap-2">
+            {SP_ICON_CANDIDATES.map(({ name, Icon, note }) => {
+              const selected = name === spIconName;
+              return (
+                <button
+                  key={name}
+                  type="button"
+                  onClick={() => setSpIconName(name)}
+                  className="group flex items-center gap-4 rounded-lg border bg-[var(--color-surface-elevated)] px-4 py-3 text-left cursor-pointer focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)] active:scale-[0.99]"
+                  style={{
+                    borderColor: selected ? "var(--color-brand-400)" : "var(--color-border-default)",
+                    boxShadow: selected ? "0 0 0 1px var(--color-brand-400)" : undefined,
+                    transition: "border-color 0.15s ease, box-shadow 0.15s ease, transform 0.1s ease",
+                  }}
+                >
+                  <span className="flex w-32 items-center gap-2 shrink-0">
+                    <Icon size={15} strokeWidth={2} className={selected ? "text-[var(--color-brand-300)]" : "text-text-secondary"} />
+                    <span className={`text-body-sm font-medium ${selected ? "text-text-primary" : "text-text-secondary"}`}>{name}</span>
+                  </span>
+                  <span className="w-40 shrink-0 text-body-sm text-text-muted">{note}</span>
+                  <span className="flex items-center gap-3">
+                    {SP_PRESETS.map((v) => (
+                      <IconCell key={v} kind="sp" value={v} spIcon={Icon} />
+                    ))}
+                  </span>
+                </button>
+              );
+            })}
           </div>
+        </Section>
+
+        {/* In context ----------------------------------------------------- */}
+        <Section
+          title="In context — sprint BT: 138"
+          description="The real BT: 138 backlog (stories and bugs, current SP / BV, 0 shown as the N/A dash) with the selected SP icon and the target BV icon. Toggle the tinted treatment used for emphasis."
+        >
+          <div className="mb-3 flex items-center gap-3">
+            <button
+              type="button"
+              onClick={() => setTinted((t) => !t)}
+              className="inline-flex items-center gap-2 rounded-lg border border-border-default bg-[var(--color-surface-elevated)] px-3 py-1.5 text-body-sm font-medium text-text-secondary cursor-pointer hover:bg-[var(--color-surface-elevated-hover)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)] active:scale-[0.98]"
+              style={{ transition: "background-color 0.15s ease, transform 0.1s ease" }}
+            >
+              <span
+                className="inline-block h-3.5 w-6 rounded-full p-0.5"
+                style={{ backgroundColor: tinted ? "var(--color-brand-500)" : "var(--color-overlay-strong)", transition: "background-color 0.15s ease" }}
+              >
+                <span
+                  className="block h-2.5 w-2.5 rounded-full bg-white"
+                  style={{ transform: tinted ? "translateX(10px)" : "translateX(0)", transition: "transform 0.15s ease" }}
+                />
+              </span>
+              Tinted background {tinted ? "on" : "off"}
+            </button>
+            <span className="text-body-sm text-text-muted">SP icon: <span className="text-text-secondary">{spIconName}</span></span>
+          </div>
+          <BoardTable spIcon={spIcon} tinted={tinted} />
+        </Section>
+
+        {/* BV icon -------------------------------------------------------- */}
+        <Section title="BV icon — target (decided)" description="Business Value across its full scale with the target icon.">
+          <Specimen label="BV values (target)">
+            {BV_PRESETS.map((v) => (
+              <IconCell key={v} kind="bv" value={v} spIcon={Gauge} />
+            ))}
+          </Specimen>
         </Section>
 
         {/* Baseline ------------------------------------------------------- */}
         <Section
-          title="Today (baseline)"
+          title="Today (baseline, for reference)"
           description="The current table cells: bare colored numbers via the real StoryPointPicker / BusinessValuePicker in subtle mode. Color varies by value, but nothing says which column is SP and which is BV."
         >
-          <DemoTable
-            renderSp={(v) => <StoryPointPicker value={v} onChange={() => {}} subtle />}
-            renderBv={(v) => <BusinessValuePicker value={v} onChange={() => {}} subtle />}
-          />
-        </Section>
-
-        {/* A — Label pill ------------------------------------------------- */}
-        <Section
-          title="A — Label-prefix pill"
-          description="Each cell is a compact pill with an SP / BV text label plus the number, keeping the per-value color. Most explicit, reuses the existing lg-picker pattern. Slightly wider cells."
-        >
-          <Specimen label="SP values">
-            {SP_PRESETS.map((v) => (
-              <LabelPillCell key={v} kind="sp" value={v} />
-            ))}
-          </Specimen>
-          <div className="mt-3">
-            <Specimen label="BV values">
-              {BV_PRESETS.map((v) => (
-                <LabelPillCell key={v} kind="bv" value={v} />
-              ))}
-            </Specimen>
-          </div>
-          <div className="mt-4">
-            <DemoTable
-              renderSp={(v) => <LabelPillCell kind="sp" value={v} />}
-              renderBv={(v) => <LabelPillCell kind="bv" value={v} />}
-            />
-          </div>
-        </Section>
-
-        {/* B — Icon + color ----------------------------------------------- */}
-        <Section
-          title="B — Icon + color"
-          description="A small leading icon identifies the metric (here: gauge = SP effort, star = BV value), plus the existing color. Compact and low-noise; the icon meaning has to be learned. Alternative icon pairs shown below."
-        >
-          <Specimen label="SP values (gauge)">
-            {SP_PRESETS.map((v) => (
-              <IconCell key={v} kind="sp" value={v} />
-            ))}
-          </Specimen>
-          <div className="mt-3">
-            <Specimen label="BV values (star)">
-              {BV_PRESETS.map((v) => (
-                <IconCell key={v} kind="bv" value={v} />
-              ))}
-            </Specimen>
-          </div>
-          <div className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-3">
-            <Specimen label="alt: layers / target">
-              <IconCell kind="sp" value={5} spIcon={Layers} />
-              <IconCell kind="bv" value={5} bvIcon={Target} />
-            </Specimen>
-            <Specimen label="alt: zap / sparkles">
-              <IconCell kind="sp" value={5} spIcon={Zap} />
-              <IconCell kind="bv" value={5} bvIcon={Sparkles} />
-            </Specimen>
-            <Specimen label="with tinted background">
-              <IconCell kind="sp" value={5} withBg />
-              <IconCell kind="bv" value={5} withBg />
-            </Specimen>
-          </div>
-          <div className="mt-4">
-            <DemoTable
-              renderSp={(v) => <IconCell kind="sp" value={v} />}
-              renderBv={(v) => <IconCell kind="bv" value={v} />}
-            />
-          </div>
-        </Section>
-
-        {/* C — Combined badge --------------------------------------------- */}
-        <Section
-          title="C — Combined badge (one column)"
-          description="SP and BV merged into a single badge: SP left (green), BV right (gold/amber). Order plus color carries the meaning. Saves a column, but is the least explicit. Shown with and without micro letters."
-        >
-          <Specimen label="combined (color + order)">
-            {ROWS.map((r) => (
-              <CombinedCell key={r.key} sp={r.sp} bv={r.bv} />
-            ))}
-          </Specimen>
-          <div className="mt-3">
-            <Specimen label="combined with S / B micro-labels">
-              {ROWS.map((r) => (
-                <CombinedCell key={r.key} sp={r.sp} bv={r.bv} withMicroLabels />
-              ))}
-            </Specimen>
-          </div>
-          <div className="mt-4">
-            <DemoTable spbvHeader={["SP · BV"]} renderCombined={(sp, bv) => <CombinedCell sp={sp} bv={bv} />} />
-          </div>
-        </Section>
-
-        {/* D — Color identity --------------------------------------------- */}
-        <Section
-          title="D — Color identity only"
-          description="No label or icon: two clearly distinct fixed color families — SP a green family, BV a unified amber/gold family across its whole range (today BV's low values are blue-grey, which is what makes the columns look alike). Smallest change, leans entirely on color."
-        >
-          <Specimen label="SP family (green)">
-            {SP_PRESETS.map((v) => (
-              <ColorIdentityCell key={v} kind="sp" value={v} />
-            ))}
-          </Specimen>
-          <div className="mt-3">
-            <Specimen label="BV family (amber/gold)">
-              {BV_PRESETS.map((v) => (
-                <ColorIdentityCell key={v} kind="bv" value={v} />
-              ))}
-            </Specimen>
-          </div>
-          <div className="mt-4">
-            <DemoTable
-              renderSp={(v) => <ColorIdentityCell kind="sp" value={v} />}
-              renderBv={(v) => <ColorIdentityCell kind="bv" value={v} />}
-            />
+          <div className="overflow-hidden rounded-xl border border-border-default bg-[var(--color-surface-elevated)]">
+            <table className="w-full border-collapse">
+              <thead>
+                <tr className="border-b border-border-default text-left">
+                  <th className="px-4 py-2.5 text-label font-medium uppercase tracking-wide text-text-muted">Key</th>
+                  <th className="px-4 py-2.5 text-label font-medium uppercase tracking-wide text-text-muted">Summary</th>
+                  <th className="px-4 py-2.5 text-center text-label font-medium uppercase tracking-wide text-text-muted">SP</th>
+                  <th className="px-4 py-2.5 text-center text-label font-medium uppercase tracking-wide text-text-muted">BV</th>
+                </tr>
+              </thead>
+              <tbody>
+                {ROWS.map((r) => (
+                  <tr key={r.key} className="border-b border-border-subtle last:border-0 hover:bg-[var(--color-surface-elevated-hover)]">
+                    <td className="px-4 py-2.5 align-middle font-mono text-body-sm text-text-tertiary whitespace-nowrap">{r.key}</td>
+                    <td className="px-4 py-2.5 align-middle text-body-sm text-text-secondary">{r.title}</td>
+                    <td className="px-4 py-2.5 text-center align-middle"><StoryPointPicker value={r.sp} onChange={() => {}} subtle /></td>
+                    <td className="px-4 py-2.5 text-center align-middle"><BusinessValuePicker value={r.bv} onChange={() => {}} subtle /></td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
           </div>
         </Section>
       </div>
