@@ -24,7 +24,7 @@ export function HistoryApp() {
 
   return (
     <div className="flex h-full flex-col overflow-y-auto">
-      <TicketHistory ticket={writer.ticketData} />
+      <TicketHistory ticket={writer.ticketData} embedded />
     </div>
   );
 }

@@ -23,9 +23,11 @@ export interface TicketHistoryProps {
   resetKey?: number;
   /** Called once versions finish loading, with the total count */
   onVersionsLoaded?: (count: number) => void;
+  /** When true, render for a constrained side pane (no top margin, own padding) instead of the ticket detail tab */
+  embedded?: boolean;
 }
 
-export function TicketHistory({ ticket, showConflictDiff, metadataOnlyConflict, onConflictResolved, resetKey, onVersionsLoaded }: TicketHistoryProps) {
+export function TicketHistory({ ticket, showConflictDiff, metadataOnlyConflict, onConflictResolved, resetKey, onVersionsLoaded, embedded }: TicketHistoryProps) {
   const [ticketVersions, setTicketVersions] = useState<StoryVersion[]>([]);
   const [loading, setLoading] = useState(true);
   const [loadingContent, setLoadingContent] = useState(false);
@@ -333,9 +335,11 @@ export function TicketHistory({ ticket, showConflictDiff, metadataOnlyConflict, 
     [sorted],
   );
 
+  const wrapperClass = embedded ? "p-4" : "mt-8";
+
   if (loading) {
     return (
-      <div className="mt-8">
+      <div className={wrapperClass}>
         <SectionHeader title="History" />
         <div className="mt-3 space-y-3">
           {[1, 2, 3].map((i) => (
@@ -355,7 +359,7 @@ export function TicketHistory({ ticket, showConflictDiff, metadataOnlyConflict, 
 
   if (sorted.length === 0) {
     return (
-      <div className="mt-8">
+      <div className={wrapperClass}>
         <SectionHeader title="History" count={0} />
         <p className="mt-3 text-body-lg text-text-tertiary">No version history yet</p>
       </div>
@@ -367,7 +371,7 @@ export function TicketHistory({ ticket, showConflictDiff, metadataOnlyConflict, 
     : null;
 
   return (
-    <div className="mt-8">
+    <div className={wrapperClass}>
       {previewVersion !== null && previewVersionData ? (
         <VersionPreview
           version={previewVersionData}
