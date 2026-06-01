@@ -33,7 +33,8 @@ import { SprintBoardHeader } from "@/components/sprint-board/SprintBoardHeader";
 import { DragGhostOverlay } from "@/components/sprint-board/DragGhostOverlay";
 import { SprintDropZoneBar, snapToPointer, boardCollisionDetection } from "@/components/sprint-board/SprintBoardDragDrop";
 import { ExportToasts } from "@/components/sprint-board/ExportToasts";
-import { Check, X, Loader2 } from "lucide-react";
+import { Toast } from "@/components/ui/Toast";
+import { useToast } from "@/hooks/useToast";
 import { DndContext, DragOverlay } from "@dnd-kit/core";
 const SprintEditModal = dynamic(() => import("@/components/sprint-board/SprintEditModal").then((m) => ({ default: m.SprintEditModal })), { ssr: false });
 const CreateSprintModal = dynamic(() => import("@/components/sprint-board/CreateSprintModal").then((m) => ({ default: m.CreateSprintModal })), { ssr: false });
@@ -91,9 +92,7 @@ export default function SprintBoard() {
   const contentScrollRef = useRef<HTMLDivElement>(null);
   const mainScrollRef = useRef<HTMLElement>(null);
   const exportTask = useExportTask();
-  const [toast, setToast] = useState<React.ReactNode | null>(null);
-  const [toastLoading, setToastLoading] = useState(false);
-  const toastTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const { toast, toastLoading, showToast, dismissToast } = useToast();
   const slotsInitialized = useRef(false);
 
   const sprintNameMap = useMemo(() => {
@@ -115,18 +114,6 @@ export default function SprintBoard() {
     if (!activeSprintId) return null;
     return activeSprintId === "__all__" ? "/api/tickets" : `/api/tickets?sprintId=${encodeURIComponent(activeSprintId)}`;
   }, [activeSprintId]);
-
-  const showToast = useCallback((message: React.ReactNode, durationMs = 3000, opts?: { loading?: boolean }) => {
-    setToast(message);
-    setToastLoading(opts?.loading ?? false);
-    if (toastTimerRef.current) clearTimeout(toastTimerRef.current);
-    // durationMs <= 0 keeps the toast until manually dismissed.
-    if (durationMs > 0) toastTimerRef.current = setTimeout(() => setToast(null), durationMs);
-  }, []);
-  const dismissToast = useCallback(() => {
-    if (toastTimerRef.current) clearTimeout(toastTimerRef.current);
-    setToast(null);
-  }, []);
 
   // Ticket actions hook (must be before useSprintBoardFilters which needs readinessMap)
   const ta = useTicketActions({ apiTickets, mutateTickets, activeListKey, showToast });
@@ -175,7 +162,6 @@ export default function SprintBoard() {
     if (nextSlot) prefetchTicketList(nextSlot);
   }, [activeSlot, slotSprints, isAllView]);
 
-  useEffect(() => { return () => { if (toastTimerRef.current) clearTimeout(toastTimerRef.current); }; }, []);
   useEffect(() => {
     const main = document.getElementById("main-content");
     if (main) (mainScrollRef as React.MutableRefObject<HTMLElement | null>).current = main;
@@ -234,7 +220,7 @@ export default function SprintBoard() {
   const handleBulkSetReadiness = useCallback(async (readiness: Parameters<typeof ta.handleBulkSetReadiness>[0], targets: Set<string> = checkedTickets) => { await ta.handleBulkSetReadiness(readiness, targets); }, [ta.handleBulkSetReadiness, checkedTickets]);
   const handleBulkRefresh = useCallback(async () => { setBulkRefreshing(true); try { await jira.syncTickets({ sprintId: slotSprints[activeSlot] }); showToast(`Refreshed ${checkedTickets.size} ticket${checkedTickets.size === 1 ? "" : "s"} from Jira`); } finally { setBulkRefreshing(false); } }, [slotSprints, activeSlot, checkedTickets.size, showToast]);
   const handleBulkReviewStory = useCallback(async (targets: Set<string> = checkedTickets) => { const keys = Array.from(targets); showToast(`Reviewing ${keys.length} ticket${keys.length === 1 ? "" : "s"}...`); await bulkReviewStories(keys); mutateTickets(); showToast(`Reviewed ${keys.length} ticket${keys.length === 1 ? "" : "s"}`); }, [checkedTickets, showToast, mutateTickets]);
-  const handleCopyToClipboard = useCallback(() => { const sel = tickets.filter((t) => checkedTickets.has(t.key)); navigator.clipboard.writeText(sel.map((t) => `- ${t.title} - ${getJiraUrl(t.key)}`).join("\n")).then(() => showToast(`Copied ${sel.length} ticket${sel.length === 1 ? "" : "s"} to clipboard`)).catch(() => showToast("Failed to copy to clipboard")); }, [tickets, checkedTickets, showToast]);
+  const handleCopyToClipboard = useCallback(() => { const sel = tickets.filter((t) => checkedTickets.has(t.key)); navigator.clipboard.writeText(sel.map((t) => `${t.title} - ${getJiraUrl(t.key)}`).join("\n")).then(() => showToast(`Copied ${sel.length} ticket${sel.length === 1 ? "" : "s"} to clipboard`)).catch(() => showToast("Failed to copy to clipboard")); }, [tickets, checkedTickets, showToast]);
   const handleExportForStakeholders = useCallback(async () => { const sel = tickets.filter((t) => checkedTickets.has(t.key)); if (!sel.length) return; await exportTask.startExport({ sprintName: activeSprint?.name ?? "Selected work", tickets: JSON.stringify(sel.map((t) => ({ key: t.key, summary: t.title, points: t.storyPoints ?? null, epic: t.epic ?? null }))) }); }, [tickets, checkedTickets, activeSprint, exportTask]);
   const openRefine = useCallback((keys: string[]) => { if (keys.length > 0) { setRefineKeys(keys); setRefineModalOpen(true); } }, []);
   const handleRefineSelected = useCallback(() => { openRefine(Array.from(checkedTickets)); }, [checkedTickets, openRefine]);
@@ -365,17 +351,7 @@ export default function SprintBoard() {
       </div>
       {bulkActionBar}
 
-      {toast && (
-        <div role="status" className="pointer-events-auto fixed right-6 bottom-6 z-50 flex items-center gap-2 rounded-lg border border-border-strong bg-[var(--color-surface-floating)] px-4 py-2.5 shadow-[var(--shadow-lg)]" style={{ animation: "fadeInUp 0.2s ease-out" }}>
-          {toastLoading
-            ? <Loader2 className="h-4 w-4 shrink-0 animate-spin text-text-tertiary" strokeWidth={1.5} />
-            : <Check className="h-4 w-4 shrink-0 text-[var(--color-brand-400)]" strokeWidth={1.5} />}
-          <span className="text-body-lg text-text-secondary">{toast}</span>
-          {!toastLoading && (
-            <button type="button" onClick={dismissToast} aria-label="Dismiss" className="ml-1 shrink-0 cursor-pointer text-text-muted hover:text-text-secondary"><X className="h-3.5 w-3.5" strokeWidth={2} /></button>
-          )}
-        </div>
-      )}
+      <Toast toast={toast} loading={toastLoading} onDismiss={dismissToast} />
 
       <ExportToasts status={exportTask.status} output={exportTask.output} error={exportTask.error} conversationId={exportTask.conversationId} dismiss={exportTask.dismiss} showToast={showToast} />
 
