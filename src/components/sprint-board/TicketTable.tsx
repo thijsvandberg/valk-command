@@ -474,7 +474,7 @@ export function TicketTable({
               style={{ background: "var(--color-overlay-subtle)" }}
               onClick={() => onToggleCollapse?.(group.key)}
             >
-              <td colSpan={TOTAL_COLSPAN} className="py-2 pl-3 pr-4">
+              <td colSpan={TOTAL_COLSPAN} className="py-2 pl-4 pr-4">
                 <GroupStatBar
                   tickets={group.tickets}
                   label={group.label}
