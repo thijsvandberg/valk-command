@@ -1,6 +1,6 @@
 # BRDG-251: Move pipeline & deploy badges into the ticket hover card
 
-**Status:** Draft
+**Status:** Done
 **Priority:** Low
 **Type:** Enhancement
 **Source:** PO request
