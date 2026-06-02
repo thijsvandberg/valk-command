@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, use, useEffect } from "react";
+import { useState, use, useEffect, useRef, useCallback } from "react";
 import { usePageTitle } from "@/hooks/usePageTitle";
 import Link from "next/link";
 import {
@@ -53,6 +53,15 @@ import { useTicketDetailPage } from "@/hooks/useTicketDetailPage";
 import { useRefinementSessions } from "@/hooks/useRefinementSessions";
 
 
+const TICKET_CHAT_STORAGE_KEY = "ticket-chat-width";
+const TICKET_CHAT_DEFAULT_WIDTH = 400;
+const TICKET_CHAT_MIN_WIDTH = 320;
+const TICKET_CHAT_MAX_WIDTH = 600;
+
+function clampChatWidth(width: number): number {
+  return Math.max(TICKET_CHAT_MIN_WIDTH, Math.min(TICKET_CHAT_MAX_WIDTH, width));
+}
+
 export default function TicketDetailPage({
   params,
 }: {
@@ -79,6 +88,55 @@ export default function TicketDetailPage({
   const pageTitle = usePageTitle(h.apiData ? `${key} - ${h.apiData.title}` : key);
 
   const [chatPaneOpen, setChatPaneOpen] = useState(false);
+  const [chatPaneWidth, setChatPaneWidth] = useState(() => {
+    if (typeof window === "undefined") return TICKET_CHAT_DEFAULT_WIDTH;
+    const saved = localStorage.getItem(TICKET_CHAT_STORAGE_KEY);
+    if (!saved) return TICKET_CHAT_DEFAULT_WIDTH;
+    const parsed = parseInt(saved, 10);
+    return !isNaN(parsed) ? clampChatWidth(parsed) : TICKET_CHAT_DEFAULT_WIDTH;
+  });
+  const [isChatResizing, setIsChatResizing] = useState(false);
+  const chatResizeStartX = useRef(0);
+  const chatResizeStartWidth = useRef(0);
+
+  const handleChatResizeMouseDown = useCallback(
+    (e: React.MouseEvent) => {
+      e.preventDefault();
+      chatResizeStartX.current = e.clientX;
+      chatResizeStartWidth.current = chatPaneWidth;
+      setIsChatResizing(true);
+    },
+    [chatPaneWidth],
+  );
+
+  useEffect(() => {
+    if (!isChatResizing) return;
+
+    // Dragging the left edge leftwards grows the sidebar, so width increases as
+    // the cursor moves toward smaller clientX. Delta-from-start keeps the drag
+    // stable regardless of where the pane sits in the row layout.
+    function handleMouseMove(e: MouseEvent) {
+      const delta = chatResizeStartX.current - e.clientX;
+      const newWidth = clampChatWidth(chatResizeStartWidth.current + delta);
+      setChatPaneWidth(newWidth);
+      localStorage.setItem(TICKET_CHAT_STORAGE_KEY, String(newWidth));
+    }
+
+    function handleMouseUp() {
+      setIsChatResizing(false);
+    }
+
+    document.body.style.cursor = "col-resize";
+    document.body.style.userSelect = "none";
+    document.addEventListener("mousemove", handleMouseMove);
+    document.addEventListener("mouseup", handleMouseUp);
+    return () => {
+      document.body.style.cursor = "";
+      document.body.style.userSelect = "";
+      document.removeEventListener("mousemove", handleMouseMove);
+      document.removeEventListener("mouseup", handleMouseUp);
+    };
+  }, [isChatResizing]);
   const [activeTab, setActiveTab] = useState<TicketTab>("content");
   const [historyResetKey, setHistoryResetKey] = useState(0);
   const [openDraftDiff, setOpenDraftDiff] = useState(false);
@@ -549,9 +607,15 @@ export default function TicketDetailPage({
 
       {chatPaneOpen && ticket && (
         <div
-          className="w-80 shrink-0 border-l border-border-subtle bg-[var(--color-surface-elevated)] overflow-hidden"
-          style={{ animation: "fadeInUp 0.15s ease" }}
+          className="relative shrink-0 border-l border-border-subtle bg-[var(--color-surface-elevated)] overflow-hidden"
+          style={{ width: `${chatPaneWidth}px`, animation: "fadeInUp 0.15s ease" }}
         >
+          {/* Resize drag handle on the left edge */}
+          <div
+            onMouseDown={handleChatResizeMouseDown}
+            className="absolute top-0 left-0 z-20 h-full w-1 cursor-col-resize hover:bg-[var(--color-brand-500)]/30 active:bg-[var(--color-brand-500)]/50"
+            style={isChatResizing ? { backgroundColor: "var(--color-drag-active)" } : { transition: "background-color 0.15s ease" }}
+          />
           <TicketChatPane
             ticketKey={key}
             ticketTitle={ticket.title}

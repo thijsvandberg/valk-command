@@ -8,9 +8,9 @@ import { ChatInput } from "@/components/shared/ChatInput";
 import { LoadingState } from "@/components/shared/LoadingState";
 import { StreamingIndicator } from "@/components/shared/StreamingIndicator";
 import { apiFetch } from "@/lib/api-client";
-import { MessageSquareText, X, Sparkles } from "lucide-react";
-import ReactMarkdown from "react-markdown";
-import remarkGfm from "remark-gfm";
+import { Tooltip } from "@/components/shared/Tooltip";
+import { renderMarkdown } from "@/components/ticket-detail/renderMarkdown";
+import { MessageSquareText, X, Sparkles, PenLine } from "lucide-react";
 
 interface TicketChatPaneProps {
   ticketKey: string;
@@ -24,10 +24,11 @@ interface ChatConversation {
 }
 
 function CompactMessageContent({ content }: { content: string }) {
+  const cleaned = content.replace(/<\/?story-draft>/g, "").replace(/<br\s*\/?>/gi, "\n").trim();
   return (
-    <ReactMarkdown remarkPlugins={[remarkGfm]}>
-      {content.replace(/<\/?story-draft>/g, "").replace(/<br\s*\/?>/gi, "\n").trim()}
-    </ReactMarkdown>
+    <div className="description-content chat-markdown">
+      {renderMarkdown(cleaned, { linkifyRefs: true })}
+    </div>
   );
 }
 
@@ -183,15 +184,15 @@ export function TicketChatPane({ ticketKey, ticketTitle, onClose }: TicketChatPa
       <div
         ref={containerRef}
         onScroll={handleScroll}
-        className="min-h-0 flex-1 overflow-y-auto px-3 py-3 space-y-3"
+        className="min-h-0 flex-1 overflow-y-auto px-4 py-4 space-y-4"
         style={{ scrollbarWidth: "thin" }}
       >
         {messages.length === 0 && !msgLoading && !isTaskRunning && (
-          <div className="flex flex-col items-center gap-3 py-12">
-            <div className="flex h-9 w-9 items-center justify-center rounded-full bg-[#a78bfa]/[0.08] border border-[#a78bfa]/[0.12]">
-              <Sparkles size={16} className="text-[#a78bfa] opacity-60" strokeWidth={1.5} />
+          <div className="flex flex-col items-center gap-3 py-16">
+            <div className="flex h-10 w-10 items-center justify-center rounded-full bg-[var(--color-brand-500)]/[0.08] border border-[var(--color-brand-500)]/[0.12]">
+              <Sparkles size={18} className="text-[var(--color-brand-400)] opacity-60" strokeWidth={1.5} />
             </div>
-            <p className="text-body-sm text-text-muted text-center max-w-[180px]">
+            <p className="text-body-sm text-text-muted text-center max-w-[200px]">
               Ask a question about this ticket
             </p>
           </div>
@@ -208,7 +209,6 @@ export function TicketChatPane({ ticketKey, ticketTitle, onClose }: TicketChatPa
               timestamp={msg.timestamp}
               showTimestamp={isLast ? "always" : "hover"}
               dimmed={isSending}
-              className="!max-w-[90%] !text-body-sm"
             >
               <CompactMessageContent content={msg.content} />
             </ChatBubble>
@@ -222,6 +222,7 @@ export function TicketChatPane({ ticketKey, ticketTitle, onClose }: TicketChatPa
         <div className="border-t border-border-default px-4 py-2.5">
           <StreamingIndicator
             text={workspaceTask.progressText?.slice(0, 80) || (isSubmitting ? "Starting..." : "Working...")}
+            className="pl-[34px]"
           />
         </div>
       )}
@@ -236,6 +237,7 @@ export function TicketChatPane({ ticketKey, ticketTitle, onClose }: TicketChatPa
       <ChatInput
         onSend={handleSend}
         disabled={isTaskRunning}
+        resizable
         placeholder="Ask about this ticket..."
         ariaLabel="Ticket chat input"
         sendAriaLabel="Send ticket chat message"
@@ -267,17 +269,29 @@ function PaneHeader({ ticketKey, ticketTitle, onClose, isStreaming }: {
           {ticketTitle}
         </span>
       </div>
-      {onClose && (
-        <button
-          type="button"
-          onClick={onClose}
-          className="shrink-0 rounded-md p-1 cursor-pointer text-text-muted hover:bg-overlay-subtle hover:text-text-secondary focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)]"
-          style={{ transition: "background-color 0.15s ease, color 0.15s ease" }}
-          aria-label="Close chat"
-        >
-          <X size={14} strokeWidth={1.5} />
-        </button>
-      )}
+      <div className="flex shrink-0 items-center gap-1">
+        <Tooltip content="Open in Story Writer">
+          <a
+            href={`/tickets/${encodeURIComponent(ticketKey)}/write`}
+            className="inline-flex h-7 w-7 items-center justify-center rounded-md cursor-pointer text-text-muted hover:bg-overlay-subtle hover:text-text-secondary focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)] active:scale-[0.97]"
+            style={{ transition: "background-color 0.15s ease, color 0.15s ease, transform 0.1s ease" }}
+            aria-label="Open in Story Writer"
+          >
+            <PenLine size={14} strokeWidth={1.5} />
+          </a>
+        </Tooltip>
+        {onClose && (
+          <button
+            type="button"
+            onClick={onClose}
+            className="rounded-md p-1 cursor-pointer text-text-muted hover:bg-overlay-subtle hover:text-text-secondary focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)]"
+            style={{ transition: "background-color 0.15s ease, color 0.15s ease" }}
+            aria-label="Close chat"
+          >
+            <X size={14} strokeWidth={1.5} />
+          </button>
+        )}
+      </div>
     </div>
   );
 }

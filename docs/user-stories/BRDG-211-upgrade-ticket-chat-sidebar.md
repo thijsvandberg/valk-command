@@ -10,6 +10,20 @@ As a PO, I want the ticket chat sidebar to look and behave like the StoryWriter 
 
 Currently the ticket chat sidebar (`TicketChatPane`) is a fixed 320px panel with minimal styling. It should be upgraded to match the StoryWriter chat quality and reuse its components where possible.
 
+## Implementation Plan
+
+**Resize (checklist 1, 2):** Width state lives in the parent `page.tsx` wrapping div (the sidebar is an inline flex child, not a fixed overlay). Constants `TICKET_CHAT_STORAGE_KEY = "ticket-chat-width"`, default 400, min 320, max 600. Lazy-init width from localStorage (clamped). Drag handle on the wrapper's left edge (`absolute top-0 left-0 h-full w-1 cursor-col-resize`); wrapper gets `relative` and `style={{ width }}` (drop `w-80`). Use delta-from-drag-start math (`newWidth = clamp(startWidth + (startX - clientX))`) since it is not flush to the viewport edge. Set `body.userSelect = "none"` + `cursor` during drag, clear on mouseup. Persist on each move.
+
+**Open in Story Writer (checklist 6):** Add an icon `<a href={/tickets/${ticketKey}/write}>` (PenLine) before the close X in `PaneHeader`, wrapped in `Tooltip` with content "Open in Story Writer" and `aria-label`.
+
+**ChatInput (checklist 4):** Pass `resizable` prop to the existing `<ChatInput>`.
+
+**ChatBubble (checklist 3):** Remove the `!max-w-[90%] !text-body-sm` override so bubbles use StoryWriter defaults (`max-w-[75%] text-body-lg leading-[1.7]`).
+
+**Markdown / streaming / empty state (checklist 5):** Replace `CompactMessageContent` (raw ReactMarkdown) with `renderMarkdown(content, { linkifyRefs: true })` inside `<div className="description-content chat-markdown">`, keeping the `<story-draft>`/`<br>` stripping. Add `pl-[34px]` to `StreamingIndicator`. Empty state: `h-10 w-10` circle, Sparkles 18, brand-500 tints, text `max-w-[200px] py-16`; container `space-y-4 px-4 py-4`. Keep ticket-specific copy.
+
+**Tests (checklist 7, 8):** Add PenLine to the lucide mock; mock `renderMarkdown`; assert the "Open in Story Writer" link renders with the correct href. Resize logic is in `page.tsx` (no page test exists) so verified via build + manual.
+
 ## Requirements
 
 ### 1. Reuse StoryWriter chat styling and components
@@ -51,11 +65,11 @@ Currently the ticket chat sidebar (`TicketChatPane`) is a fixed 320px panel with
 
 ## Checklist
 
-- [ ] Make chat sidebar horizontally resizable with drag handle on left edge
-- [ ] Persist sidebar width in localStorage, respect min/max constraints
-- [ ] Update ChatBubble usage to match StoryWriter styling (sizing, spacing, max-width)
-- [ ] Update ChatInput to use resizable textarea matching StoryWriter config
-- [ ] Align markdown rendering, streaming indicator, and empty state with StoryWriter look
-- [ ] Add "Open in Story Writer" button in pane header
+- [x] Make chat sidebar horizontally resizable with drag handle on left edge
+- [x] Persist sidebar width in localStorage, respect min/max constraints
+- [x] Update ChatBubble usage to match StoryWriter styling (sizing, spacing, max-width)
+- [x] Update ChatInput to use resizable textarea matching StoryWriter config
+- [x] Align markdown rendering, streaming indicator, and empty state with StoryWriter look
+- [x] Add "Open in Story Writer" button in pane header
 - [ ] Verify chat works correctly after changes (send, receive, scroll, streaming)
 - [ ] All tests pass, build succeeds
