@@ -113,12 +113,15 @@ export function FilterBar({
         selected={statusFilter}
         onChange={onStatusFilterChange}
         renderOption={(v) => {
-          const color = JIRA_STATUS_COLORS[v as keyof typeof JIRA_STATUS_COLORS];
+          // DELETED is a pseudo-status for tickets removed from Jira; match the red DELETED badge.
+          const dotColor = v === "DELETED"
+            ? "rgb(248 113 113 / 0.7)"
+            : JIRA_STATUS_COLORS[v as keyof typeof JIRA_STATUS_COLORS]?.text ?? "var(--color-status-neutral)";
           return (
             <span className="flex items-center gap-2">
               <span
                 className="inline-block h-2 w-2 rounded-full"
-                style={{ backgroundColor: color?.text ?? "var(--color-status-neutral)" }}
+                style={{ backgroundColor: dotColor }}
               />
               {v}
             </span>

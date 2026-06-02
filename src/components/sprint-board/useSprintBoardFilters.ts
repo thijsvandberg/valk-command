@@ -100,7 +100,13 @@ export function useSprintBoardFilters(
     setStoredColumns((prev) => [...updater(new Set(prev))]);
   }, [setStoredColumns]);
 
-  const statusOptions = useMemo(() => [...new Set(allTickets.map((t) => t.jiraStatus))], [allTickets]);
+  const statusOptions = useMemo(() => {
+    const opts = [...new Set(allTickets.map((t) => t.jiraStatus))] as string[];
+    // DELETED is not a real Jira status; surface it as a pseudo-status so the PO can
+    // opt deleted tickets back into view (they are hidden by default, see coreFiltered).
+    if (allTickets.some((t) => t.removedFromJiraAt)) opts.push("DELETED");
+    return opts;
+  }, [allTickets]);
   const epicOptions = useMemo(() => [...new Set(allTickets.map((t) => t.epic).filter(Boolean) as string[])], [allTickets]);
   const assigneeOptions = useMemo(() => [...new Set(allTickets.map((t) => t.assignee?.name).filter(Boolean) as string[])], [allTickets]);
   const sprintOptions = useMemo(
@@ -126,10 +132,18 @@ export function useSprintBoardFilters(
   // When only the search query changes, only the final search memo reruns.
   const coreFiltered = useMemo(() => {
     const showRemoved = editStateFilter.has("removed");
+    const wantsDeleted = statusFilter.has("DELETED");
     return allTickets.filter((t) => {
       const isRemoved = Boolean(t.removedFromJiraAt);
       if (!isRemoved && editStateFilter.size === 1 && showRemoved) return false;
-      if (statusFilter.size > 0 && !statusFilter.has(t.jiraStatus)) return false;
+      // Deleted tickets are hidden by default. They reappear only when explicitly
+      // requested, either via the DELETED status or the "Removed from Jira" change filter.
+      if (isRemoved && !wantsDeleted && !showRemoved) return false;
+      // A removed ticket's effective status is DELETED, overriding its stale Jira status.
+      if (statusFilter.size > 0) {
+        const effectiveStatus = isRemoved ? "DELETED" : t.jiraStatus;
+        if (!statusFilter.has(effectiveStatus)) return false;
+      }
       if (epicFilter.size > 0 && (!t.epic || !epicFilter.has(t.epic))) return false;
       if (assigneeFilter.size > 0) {
         const name = t.assignee?.name;
