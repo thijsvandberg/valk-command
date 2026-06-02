@@ -98,6 +98,22 @@ export const ticketMetadata = sqliteTable("ticket_metadata", {
   businessValue: integer("business_value"),
 });
 
+// Bridge-owned per-epic metadata, keyed by epicKey. Shared store for PO
+// metadata that Jira does not hold (team assignment now; epic color later).
+// No FK to ticket.jiraKey: an epic may not have a synced epic row yet, and the
+// PO can assign teams before the epic syncs.
+export const epicMetadata = sqliteTable("epic_metadata", {
+  epicKey: text("epic_key").primaryKey(),
+  // JSON array of team codes (BT/BM/BO/GXP/HT).
+  teams: text("teams").notNull().default("[]"),
+  updatedAt: text("updated_at")
+    .notNull()
+    .default(sql`(datetime('now'))`),
+});
+
+export type EpicMetadataRow = typeof epicMetadata.$inferSelect;
+export type NewEpicMetadataRow = typeof epicMetadata.$inferInsert;
+
 export const workspaceTask = sqliteTable("workspace_task", {
   id: text("id").primaryKey(),
   skillName: text("skill_name").notNull(),
