@@ -688,6 +688,9 @@ export function TicketStatusPill({
   const readinessCfg = readiness ? READINESS_CONFIG[readiness] : null;
 
   const iconSize = size === "sm" ? 10 : size === "lg" ? 14 : 12;
+  // The issue-type glyph reads too small next to the key in the compact elevated
+  // pill, so nudge it up there (other contexts keep the standard size).
+  const typeIconSize = elevated && size === "sm" ? 13 : iconSize;
   const px = size === "sm" ? "px-1.5 py-[3px]" : size === "lg" ? "px-2.5 py-1" : "px-2 py-[3px]";
   const issueTypePx = size === "sm" ? "pl-1.5 pr-1 py-[3px]" : size === "lg" ? "pl-2.5 pr-2 py-1" : "pl-2 pr-1.5 py-[3px]";
   const textSize = size === "sm" ? "text-[10px]" : size === "lg" ? "text-body-sm" : "text-label";
@@ -731,7 +734,7 @@ export function TicketStatusPill({
                   onIssueTypeChange ? "cursor-pointer hover:bg-overlay-default" : "cursor-default"
                 }`}
               >
-                <IssueTypeIcon type={issueType} size={iconSize} />
+                <IssueTypeIcon type={issueType} size={typeIconSize} />
               </button>
             </Tooltip>
             {issueTypeDropdownOpen && onIssueTypeChange && (

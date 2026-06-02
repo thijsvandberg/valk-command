@@ -1,8 +1,10 @@
 "use client";
 
+import { useMemo } from "react";
 import useSWR from "swr";
 import { tickets, swrFetcher } from "@/lib/api-client";
 import { buildTicketHoverData } from "@/hooks/useTicketHoverData";
+import { useJiraSprints } from "@/hooks/useSprintBoard";
 import { TicketStatusPill } from "@/components/shared/TicketStatusPill";
 import type { TicketDetailResponse } from "@/lib/ticket-detail-builder";
 
@@ -30,7 +32,16 @@ export function TicketRefPill({ ticketKey }: TicketRefPillProps) {
     { revalidateOnFocus: false, dedupingInterval: 30_000, shouldRetryOnError: false },
   );
 
-  const hoverData = data ? buildTicketHoverData(data) : undefined;
+  // Resolve the sprint id to its display name for the hover card (SWR-cached,
+  // shared across pills). Falls back to the raw id when sprints aren't loaded.
+  const { sprints } = useJiraSprints();
+  const sprintNames = useMemo(() => {
+    const m: Record<string, string> = {};
+    sprints.forEach((s) => { m[s.id] = s.name; });
+    return m;
+  }, [sprints]);
+
+  const hoverData = data ? buildTicketHoverData(data, sprintNames) : undefined;
 
   return (
     // Strip the description's anchor underline (.description-content a) so the
