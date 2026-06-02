@@ -435,6 +435,7 @@ export default function RefinementSessionTicketPage({
                   onIssueTypeChange={handleTypeChange}
                   title={ticketData.title}
                   size="lg"
+                  appearance="elevated"
                 />
                 <StoryPointPicker
                   value={storyPoints}
