@@ -132,8 +132,9 @@ function inlineFormat(text: string, linkify = false): ReactNode {
   //  12,13 = italic *text*
   //  14,15 = inline code `text`
   //  16    = emoji :name:
+  //  17    = autolink <url>
   const regex =
-    /\{color:(#[0-9a-fA-F]{3,8}|rgba?\([^)]+\)|[a-zA-Z]+)\}(.*?)\{color\}|!\[([^\]]*)\]\(([^)]+)\)|\[([^\]]+)\]\(([^)]+)\)|~~(.+?)~~|(\*\*\*(.+?)\*\*\*)|(\*\*(.+?)\*\*)|(\*(.+?)\*)|(`(.+?)`)|:([a-zA-Z0-9_+\-]+):/g;
+    /\{color:(#[0-9a-fA-F]{3,8}|rgba?\([^)]+\)|[a-zA-Z]+)\}(.*?)\{color\}|!\[([^\]]*)\]\(([^)]+)\)|\[([^\]]+)\]\(([^)]+)\)|~~(.+?)~~|(\*\*\*(.+?)\*\*\*)|(\*\*(.+?)\*\*)|(\*(.+?)\*)|(`(.+?)`)|:([a-zA-Z0-9_+\-]+):|<(https?:\/\/[^>\s]+)>/g;
   let lastIndex = 0;
   let match;
 
@@ -225,6 +226,28 @@ function inlineFormat(text: string, linkify = false): ReactNode {
     } else if (match[16] !== undefined) {
       // Emoji shortname :name:
       parts.push(<span key={i++}>{resolveEmoji(match[16])}</span>);
+    } else if (match[17] !== undefined) {
+      // Autolink <url> (e.g. tiptap-markdown serializes a bare URL this way). A
+      // Jira browse link becomes a pill when linkification is on; any other URL
+      // is a plain anchor. Either way the angle brackets are markup, not content.
+      const url = match[17];
+      const refKey = linkify ? browseRefKey(url) : null;
+      if (refKey) {
+        parts.push(<TicketRefPill key={i++} ticketKey={refKey} />);
+      } else {
+        parts.push(
+          <a
+            key={i++}
+            href={url}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="text-[var(--color-brand-400)] underline decoration-[var(--color-brand-400)]/30 underline-offset-2 hover:decoration-[var(--color-brand-400)]/60 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)]"
+            style={{ transition: "text-decoration-color 0.15s ease" }}
+          >
+            {url}
+          </a>
+        );
+      }
     }
     lastIndex = match.index + match[0].length;
   }

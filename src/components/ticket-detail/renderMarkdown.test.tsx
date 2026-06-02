@@ -60,6 +60,23 @@ describe("renderMarkdown — VPL reference linkification", () => {
     expect(container.textContent).toContain("hier");
   });
 
+  it("converts an angle-bracket autolink <browse url> into a pill without stray brackets", () => {
+    const { container } = renderDesc('card - <https://new-story.atlassian.net/browse/VPL-45730>');
+    expect(pillFor(container, "VPL-45730")).toBeTruthy();
+    expect(container.textContent).not.toContain("<");
+    expect(container.textContent).not.toContain(">");
+    expect(container.textContent).not.toContain("/browse/");
+    expect(container.textContent).toContain("card -");
+  });
+
+  it("renders a non-browse autolink <url> as an anchor without stray brackets", () => {
+    const { container } = renderDesc("see <https://example.com/docs> please");
+    const link = container.querySelector('a[href="https://example.com/docs"]');
+    expect(link).toBeTruthy();
+    expect(container.textContent).not.toContain("<");
+    expect(container.textContent).not.toContain(">");
+  });
+
   it("leaves a non-browse link alone, even when its text contains a key", () => {
     const { container } = renderDesc("[VPL-1 docs](https://example.com/page)");
     expect(pillFor(container, "VPL-1")).toBeNull();
