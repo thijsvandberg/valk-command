@@ -75,6 +75,7 @@ function SessionCard({
             issueType={session.issueType ?? undefined}
             title={session.title}
             size="sm"
+            appearance="elevated"
             removedFromJira={session.removedFromJira}
           />
           {isSplit && (

@@ -322,6 +322,7 @@ export function SidePanel({
             jiraStatus={ticket.jiraStatus}
             issueType={ticket.type}
             title={ticket.title}
+            appearance="elevated"
           />
           {ticket.editState === "draft" && (
             <span className="rounded px-1.5 py-0.5 text-caption" style={{ backgroundColor: "var(--color-status-info-subtle)", color: "var(--color-icon-task)", opacity: 0.5 }} title="Unsaved draft">
