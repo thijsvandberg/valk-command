@@ -8,6 +8,7 @@ vi.mock("@/hooks/useEpics", () => ({
   useEpicProgress: () => mockUseEpicProgress(),
   useEpicTickets: (key: string, enabled: boolean) => mockUseEpicTickets(key, enabled),
   useSetEpicTeams: () => vi.fn().mockResolvedValue(undefined),
+  useSetEpicColor: () => vi.fn().mockResolvedValue(undefined),
 }));
 
 vi.mock("@/hooks/useSprintBoard", () => ({
@@ -41,6 +42,7 @@ function makeEpic(overrides: Partial<EpicProgressItem> = {}): EpicProgressItem {
     perSprint: [{ sprintId: "12", total: 4, completed: 2 }],
     pointsBased: true,
     teams: [],
+    color: null,
     status: "IN PROGRESS",
     recentActivity: true,
     ...overrides,

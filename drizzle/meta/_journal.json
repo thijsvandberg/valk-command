@@ -428,6 +428,13 @@
       "when": 1780432748990,
       "tag": "0060_bored_toro",
       "breakpoints": true
+    },
+    {
+      "idx": 61,
+      "version": "6",
+      "when": 1780433159078,
+      "tag": "0061_overconfident_scorpion",
+      "breakpoints": true
     }
   ]
 }

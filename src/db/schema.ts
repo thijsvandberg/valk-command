@@ -106,6 +106,9 @@ export const epicMetadata = sqliteTable("epic_metadata", {
   epicKey: text("epic_key").primaryKey(),
   // JSON array of team codes (BT/BM/BO/GXP/HT).
   teams: text("teams").notNull().default("[]"),
+  // PO-assigned base color (hex from the curated palette). null = use the
+  // deterministic default derived from the epic name/key.
+  color: text("color"),
   updatedAt: text("updated_at")
     .notNull()
     .default(sql`(datetime('now'))`),

@@ -1,6 +1,9 @@
 // Shared ticket and sprint types used across UI components and API responses.
 // All mock-data and story-diff types are now sourced from here.
 
+import { getStoredEpicBase } from "@/lib/epic-color-registry";
+import { deriveEpicColor } from "@/lib/epic-palette";
+
 export type IssueType = "task" | "bug" | "story" | "subtask" | "spike" | "epic";
 export type JiraStatus = "TO DO" | "IN PROGRESS" | "TEST" | "DONE" | "DEPRECATED";
 
@@ -59,13 +62,19 @@ export const JIRA_STATUS_COLORS: Record<JiraStatus, { bg: string; text: string }
   DEPRECATED: { bg: "var(--color-status-deprecated-subtle)", text: "var(--color-status-deprecated)" },
 };
 
-export const EPIC_COLORS: Record<string, { bg: string; text: string }> = {
-  "BT: UPSELL": { bg: "rgba(217, 119, 68, 0.15)", text: "#d97744" },
-  "LOGGING & METRICS": { bg: "rgba(68, 170, 187, 0.15)", text: "#44aabb" },
-  "TECH: GENERAL IMP.": { bg: "rgba(160, 90, 200, 0.15)", text: "#a05ac8" },
+export interface EpicColor {
+  bg: string;
+  text: string;
+  border: string;
+}
+
+export const EPIC_COLORS: Record<string, EpicColor> = {
+  "BT: UPSELL": { bg: "rgba(217, 119, 68, 0.15)", text: "#d97744", border: "color-mix(in srgb, #d97744 40%, transparent)" },
+  "LOGGING & METRICS": { bg: "rgba(68, 170, 187, 0.15)", text: "#44aabb", border: "color-mix(in srgb, #44aabb 40%, transparent)" },
+  "TECH: GENERAL IMP.": { bg: "rgba(160, 90, 200, 0.15)", text: "#a05ac8", border: "color-mix(in srgb, #a05ac8 40%, transparent)" },
 };
 
-function generateEpicColor(epic: string): { bg: string; text: string } {
+function generateEpicColor(epic: string): EpicColor {
   let hash = 0;
   for (let i = 0; i < epic.length; i++) {
     hash = epic.charCodeAt(i) + ((hash << 5) - hash);
@@ -74,11 +83,18 @@ function generateEpicColor(epic: string): { bg: string; text: string } {
   return {
     bg: `hsla(${hue}, 50%, 50%, 0.12)`,
     text: `hsl(${hue}, 45%, 48%)`,
+    border: `hsla(${hue}, 50%, 50%, 0.4)`,
   };
 }
 
-/** Returns a color for any epic. Uses a curated map first, falls back to a deterministic generated color. */
-export function getEpicColor(epic: string): { bg: string; text: string } {
+/**
+ * Returns a color for an epic, accepting either its key or name. A PO-assigned
+ * color (BRDG-250) wins; otherwise a curated map, then a deterministic color
+ * derived from the name so it is stable across reloads.
+ */
+export function getEpicColor(epic: string): EpicColor {
+  const stored = getStoredEpicBase(epic);
+  if (stored) return deriveEpicColor(stored);
   return EPIC_COLORS[epic] ?? EPIC_COLORS[epic.toUpperCase()] ?? generateEpicColor(epic);
 }
 

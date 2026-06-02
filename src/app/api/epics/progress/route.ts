@@ -5,7 +5,7 @@ import { and, eq, inArray, notInArray, sql } from "drizzle-orm";
 import { cache } from "@/lib/cache";
 import { safeJsonParse } from "@/lib/api-validation";
 import { selectRecentSprintIds, type RecentSprintInput } from "@/lib/epic-progress";
-import { getEpicTeamsMap } from "@/lib/epic-metadata";
+import { getEpicTeamsMap, getEpicColorMap } from "@/lib/epic-metadata";
 import { normalizeEpicStatus } from "@/lib/epic-filters";
 import type { JiraStatus } from "@/types/ticket";
 import type { Team } from "@/lib/sprint-utils";
@@ -36,6 +36,8 @@ export interface EpicProgressItem {
   pointsBased: boolean;
   /** PO-assigned teams (Bridge metadata, not from Jira). */
   teams: Team[];
+  /** PO-assigned base color (Bridge metadata). null → derived default. */
+  color: string | null;
   /** The epic's own Jira status, normalized to the standard set. */
   status: JiraStatus;
   /**
@@ -128,6 +130,7 @@ export async function GET() {
   // PO-assigned teams for every epic we might show (recent children + all epic rows).
   const allKeys = Array.from(new Set([...recentKeys, ...epicRows.map((e) => e.jiraKey)]));
   const epicTeamsMap = getEpicTeamsMap(allKeys);
+  const epicColorMap = getEpicColorMap(allKeys);
 
   // Order sprint ids within an epic by the recent-window order (oldest first), backlog last.
   const orderIndex = new Map<string, number>(recentIds.map((id, i) => [id, i]));
@@ -162,6 +165,7 @@ export async function GET() {
         perSprint,
         pointsBased: totalPoints > 0,
         teams: epicTeamsMap.get(key) ?? [],
+        color: epicColorMap.get(key) ?? null,
         status: normalizeEpicStatus(epicStatusMap.get(key)),
         recentActivity: true,
       };
@@ -191,6 +195,7 @@ export async function GET() {
       perSprint: [],
       pointsBased: false,
       teams: epicTeamsMap.get(e.jiraKey) ?? [],
+      color: epicColorMap.get(e.jiraKey) ?? null,
       status: normalizeEpicStatus(e.status),
       recentActivity: false,
     }))

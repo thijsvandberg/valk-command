@@ -98,6 +98,29 @@ describe("GET /api/epics/progress", () => {
     expect(e.status).toBe("DONE");
   });
 
+  it("attaches a PO-assigned color to active and inactive epics, null when unset", async () => {
+    seedSprints();
+    testDb.insert(ticket).values([
+      // Active epic with a colored metadata row.
+      { jiraKey: "VPL-E1", title: "Active Epic", status: "IN PROGRESS", type: "epic" },
+      { jiraKey: "VPL-1", title: "T1", status: "TO DO", type: "story", epicKey: "VPL-E1", epic: "Active Epic", sprintName: "12" },
+      // Inactive epic with a colored metadata row.
+      { jiraKey: "VPL-E2", title: "Old Epic", status: "DONE", type: "epic" },
+      // Active epic with no metadata at all.
+      { jiraKey: "VPL-E3", title: "Plain Epic", status: "TO DO", type: "epic" },
+      { jiraKey: "VPL-2", title: "T2", status: "TO DO", type: "story", epicKey: "VPL-E3", epic: "Plain Epic", sprintName: "12" },
+    ]).run();
+    testDb.insert(epicMetadata).values({ epicKey: "VPL-E1", color: "#e05252" }).run();
+    testDb.insert(epicMetadata).values({ epicKey: "VPL-E2", color: "#9b6cd4" }).run();
+
+    const res = await GET();
+    const data = await res.json();
+    const byKey = Object.fromEntries(data.map((x: { key: string }) => [x.key, x]));
+    expect(byKey["VPL-E1"].color).toBe("#e05252");
+    expect(byKey["VPL-E2"].color).toBe("#9b6cd4");
+    expect(byKey["VPL-E3"].color).toBeNull();
+  });
+
   it("includes synced epics without recent activity as inactive rows", async () => {
     seedSprints();
     testDb.insert(ticket).values([
