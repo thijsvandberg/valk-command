@@ -9,6 +9,8 @@ const mockSearchForLinkWithJira = vi.fn();
 const mockUpdateEpic = vi.fn();
 const mockGetSectionVisibility = vi.fn();
 vi.mock("@/lib/api-client", () => ({
+  // ChildIssueRow → useTicketHoverData → useTickets/useJiraSprints read swrFetcher.
+  swrFetcher: vi.fn(async () => []),
   tickets: {
     createChildIssue: (...args: unknown[]) => mockCreateChildIssue(...args),
     searchForLink: (...args: unknown[]) => mockSearchForLink(...args),
