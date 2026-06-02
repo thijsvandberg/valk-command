@@ -255,10 +255,17 @@ function SprintRow({
 }) {
   const isHidden = sprint.hidden ?? false;
   return (
-    <button
-      type="button"
+    <div
+      role="button"
+      tabIndex={0}
       className="flex w-full items-center justify-between rounded-md px-3 py-1 text-body-lg text-text-secondary cursor-pointer hover:bg-overlay-default hover:text-text-primary focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)]"
       onClick={onSelect}
+      onKeyDown={(e) => {
+        if (e.key === "Enter" || e.key === " ") {
+          e.preventDefault();
+          onSelect();
+        }
+      }}
     >
       <span className="flex items-center gap-2 min-w-0">
         {isChecked !== undefined && (
@@ -326,7 +333,7 @@ function SprintRow({
           </button>
         )}
       </span>
-    </button>
+    </div>
   );
 }
 

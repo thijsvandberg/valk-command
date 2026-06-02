@@ -3,9 +3,11 @@
 import { useState, useCallback, useRef, useEffect } from "react";
 import { mutate } from "swr";
 import { Modal } from "@/components/shared/Modal";
+import { DateTimePicker, formatDateTimeLabel } from "@/components/shared/DateTimePicker";
 import { Button } from "@/components/ui/Button";
 import { jira } from "@/lib/api-client";
-import { Calendar, Target, Type, X, AlertTriangle } from "lucide-react";
+import { sprintEndFromStart } from "@/lib/sprint-dates";
+import { Calendar, Target, Type, X, AlertTriangle, CornerDownRight } from "lucide-react";
 
 interface CreateSprintModalProps {
   onClose: () => void;
@@ -16,12 +18,6 @@ interface CreateSprintModalProps {
 function toIsoDateTime(input: string): string {
   if (!input) return "";
   return new Date(input).toISOString();
-}
-
-function fmtWeekday(input: string): string {
-  if (!input) return "";
-  const d = new Date(input);
-  return d.toLocaleDateString("en-GB", { weekday: "short", day: "numeric", month: "short" });
 }
 
 export function CreateSprintModal({ onClose, onCreated, showToast }: CreateSprintModalProps) {
@@ -67,6 +63,8 @@ export function CreateSprintModal({ onClose, onCreated, showToast }: CreateSprin
     }
   }, [name, startDate, endDate, goal, onClose, onCreated, showToast]);
 
+  const suggestedEnd = sprintEndFromStart(startDate);
+
   return (
     <Modal open onClose={onClose} aria-label="Create sprint">
       <div className="w-full max-w-md rounded-xl border border-border-strong bg-[var(--color-surface-floating)] shadow-[var(--shadow-xl)]">
@@ -108,49 +106,51 @@ export function CreateSprintModal({ onClose, onCreated, showToast }: CreateSprin
 
           {/* Date fields */}
           <div className="grid grid-cols-2 gap-3">
-            <label className="block space-y-1">
-              <div className="flex items-center justify-between">
-                <span className="flex items-center gap-1.5 text-body-sm font-medium text-text-secondary">
-                  <Calendar size={11} strokeWidth={1.5} className="shrink-0 text-text-muted" />
-                  Start date
-                </span>
-                {startDate && (
-                  <span className="text-[10px] text-text-muted">{fmtWeekday(startDate)}</span>
-                )}
-              </div>
-              <input
-                type="datetime-local"
+            <div className="space-y-1">
+              <span className="flex items-center gap-1.5 text-body-sm font-medium text-text-secondary">
+                <Calendar size={11} strokeWidth={1.5} className="shrink-0 text-text-muted" />
+                Start date
+              </span>
+              <DateTimePicker
                 value={startDate}
-                onChange={(e) => setStartDate(e.target.value)}
-                className="w-full rounded-lg border border-border-default bg-[var(--color-surface-elevated)] px-3 py-2 text-body-sm text-text-primary
-                  placeholder:text-text-muted
-                  focus:border-[var(--color-brand-500)]/50 focus:outline-none focus:ring-1 focus:ring-[var(--color-brand-500)]/30
-                  transition-colors duration-100
-                  [color-scheme:dark]"
+                onChange={setStartDate}
+                ariaLabel="Start date"
+                placeholder="Pick a date"
+                closeOnSelect
               />
-            </label>
-            <label className="block space-y-1">
-              <div className="flex items-center justify-between">
-                <span className="flex items-center gap-1.5 text-body-sm font-medium text-text-secondary">
-                  <Calendar size={11} strokeWidth={1.5} className="shrink-0 text-text-muted" />
-                  End date
-                </span>
-                {endDate && (
-                  <span className="text-[10px] text-text-muted">{fmtWeekday(endDate)}</span>
-                )}
-              </div>
-              <input
-                type="datetime-local"
+            </div>
+            <div className="space-y-1">
+              <span className="flex items-center gap-1.5 text-body-sm font-medium text-text-secondary">
+                <Calendar size={11} strokeWidth={1.5} className="shrink-0 text-text-muted" />
+                End date
+              </span>
+              <DateTimePicker
                 value={endDate}
-                onChange={(e) => setEndDate(e.target.value)}
-                className="w-full rounded-lg border border-border-default bg-[var(--color-surface-elevated)] px-3 py-2 text-body-sm text-text-primary
-                  placeholder:text-text-muted
-                  focus:border-[var(--color-brand-500)]/50 focus:outline-none focus:ring-1 focus:ring-[var(--color-brand-500)]/30
-                  transition-colors duration-100
-                  [color-scheme:dark]"
+                onChange={setEndDate}
+                ariaLabel="End date"
+                placeholder="Pick a date"
               />
-            </label>
+            </div>
           </div>
+
+          {/* Conventional sprint-end suggestion (first Thursday after +1 week, 17:00) */}
+          {startDate && suggestedEnd !== endDate && (
+            <div className="-mt-2 flex justify-end">
+              <button
+                type="button"
+                onClick={() => setEndDate(suggestedEnd)}
+                title="Set end date to the conventional sprint end"
+                className="flex items-center gap-1.5 rounded-md px-2 py-1 text-[11px] font-medium cursor-pointer
+                  text-[var(--color-brand-400)]
+                  hover:bg-[var(--color-brand-500)]/10
+                  active:bg-[var(--color-brand-500)]/15
+                  transition-colors duration-100"
+              >
+                <CornerDownRight size={11} strokeWidth={1.5} />
+                End on {formatDateTimeLabel(suggestedEnd)}
+              </button>
+            </div>
+          )}
 
           {/* Goal field */}
           <label className="block space-y-1">

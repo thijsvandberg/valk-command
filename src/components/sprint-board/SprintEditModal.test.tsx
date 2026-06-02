@@ -75,7 +75,7 @@ describe("SprintEditModal", () => {
     );
 
     expect(screen.getByText("Edit Sprint")).toBeInTheDocument();
-    expect(screen.getByText("BT: 137")).toBeInTheDocument();
+    expect(screen.getByDisplayValue("BT: 137")).toBeInTheDocument();
     expect(screen.getByDisplayValue("Existing goal text")).toBeInTheDocument();
     expect(screen.getByText("Save")).toBeInTheDocument();
     expect(screen.getByText("Cancel")).toBeInTheDocument();
@@ -117,6 +117,52 @@ describe("SprintEditModal", () => {
         expect.objectContaining({ goal: "New sprint goal" }),
       );
     });
+  });
+
+  it("saves updated sprint name to Jira", async () => {
+    vi.mocked(jira.updateSprint).mockResolvedValue({ ok: true });
+
+    render(
+      <SprintEditModal
+        sprint={makeSprint()}
+        tickets={[makeTicket()]}
+        onClose={onClose}
+        showToast={showToast}
+      />,
+    );
+
+    const nameInput = screen.getByDisplayValue("BT: 137");
+    fireEvent.change(nameInput, { target: { value: "ARIE Sprint" } });
+    fireEvent.click(screen.getByText("Save"));
+
+    await waitFor(() => {
+      expect(jira.updateSprint).toHaveBeenCalledWith(
+        "100",
+        expect.objectContaining({ name: "ARIE Sprint" }),
+      );
+    });
+  });
+
+  it("does not send name when it is only whitespace", async () => {
+    vi.mocked(jira.updateSprint).mockResolvedValue({ ok: true });
+
+    render(
+      <SprintEditModal
+        sprint={makeSprint()}
+        tickets={[makeTicket()]}
+        onClose={onClose}
+        showToast={showToast}
+      />,
+    );
+
+    const nameInput = screen.getByDisplayValue("BT: 137");
+    fireEvent.change(nameInput, { target: { value: "   " } });
+    fireEvent.click(screen.getByText("Save"));
+
+    await waitFor(() => {
+      expect(onClose).toHaveBeenCalled();
+    });
+    expect(jira.updateSprint).not.toHaveBeenCalled();
   });
 
   it("shows error toast on save failure", async () => {

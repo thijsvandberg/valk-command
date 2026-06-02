@@ -1043,12 +1043,12 @@ export class JiraClient {
   }
 
   /**
-   * Update sprint metadata (goal, dates) via the Jira Agile API.
+   * Update sprint metadata (name, goal, dates) via the Jira Agile API.
    * Uses PUT /rest/agile/1.0/sprint/{sprintId}.
    */
   async updateSprint(
     sprintId: number,
-    fields: { goal?: string; startDate?: string; endDate?: string },
+    fields: { name?: string; goal?: string; startDate?: string; endDate?: string },
     signal?: AbortSignal,
   ): Promise<void> {
     if (!isConfigured()) {

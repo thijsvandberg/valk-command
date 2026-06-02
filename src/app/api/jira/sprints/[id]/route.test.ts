@@ -89,6 +89,28 @@ describe("PUT /api/jira/sprints/[id]", () => {
     expect(updated[0].goal).toBe("Deliver auth module");
   });
 
+  it("updates sprint name and refreshes local cache", async () => {
+    vi.mocked(jiraClient.updateSprint).mockResolvedValue(undefined);
+
+    const sprints = [
+      { id: 123, name: "Sprint 1", state: "active", startDate: null, endDate: null, goal: null },
+    ];
+    testDb.insert(appSetting).values({
+      key: "jira_sprints",
+      value: JSON.stringify(sprints),
+    }).run();
+
+    const [req, ctx] = makeRequest({ name: "ARIE Sprint" });
+    const response = await PUT(req, ctx);
+
+    expect(response.status).toBe(200);
+    expect(jiraClient.updateSprint).toHaveBeenCalledWith(123, { name: "ARIE Sprint" });
+
+    const row = testDb.select().from(appSetting).all().find((r) => r.key === "jira_sprints");
+    const updated = JSON.parse(row!.value);
+    expect(updated[0].name).toBe("ARIE Sprint");
+  });
+
   it("returns 400 for invalid sprint ID", async () => {
     const [req, ctx] = makeRequest({ goal: "test" }, "abc");
     const response = await PUT(req, ctx);

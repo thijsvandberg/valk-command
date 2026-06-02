@@ -22,7 +22,7 @@ interface StoredSprint {
 /**
  * PUT /api/jira/sprints/[id]
  *
- * Updates sprint metadata (goal, dates) via the Jira Agile API,
+ * Updates sprint metadata (name, goal, dates) via the Jira Agile API,
  * then refreshes the local cache.
  */
 export async function PUT(
@@ -43,6 +43,7 @@ export async function PUT(
   const body = parsed.data as Record<string, unknown>;
 
   const fields: Record<string, string> = {};
+  if (body.name !== undefined) fields.name = body.name as string;
   if (body.goal !== undefined) fields.goal = body.goal as string;
   if (body.startDate !== undefined) fields.startDate = body.startDate as string;
   if (body.endDate !== undefined) fields.endDate = body.endDate as string;
@@ -64,6 +65,7 @@ export async function PUT(
         const sprints: StoredSprint[] = JSON.parse(row.value);
         const idx = sprints.findIndex((s) => s.id === sprintId);
         if (idx >= 0) {
+          if (fields.name !== undefined) sprints[idx].name = fields.name;
           if (fields.goal !== undefined) sprints[idx].goal = fields.goal;
           if (fields.startDate !== undefined) sprints[idx].startDate = fields.startDate;
           if (fields.endDate !== undefined) sprints[idx].endDate = fields.endDate;

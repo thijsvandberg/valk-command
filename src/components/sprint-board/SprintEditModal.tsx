@@ -4,10 +4,12 @@ import { useState, useCallback, useRef, useEffect } from "react";
 import { mutate } from "swr";
 import type { Sprint, Ticket } from "@/types/ticket";
 import { Modal } from "@/components/shared/Modal";
+import { DateTimePicker, formatDateTimeLabel } from "@/components/shared/DateTimePicker";
 import { Button } from "@/components/ui/Button";
 import { jira, workspaceTasks } from "@/lib/api-client";
+import { sprintEndFromStart } from "@/lib/sprint-dates";
 import { useTaskStream } from "@/hooks/useTaskStream";
-import { Calendar, Target, Sparkles, Loader2, X, Check } from "lucide-react";
+import { Calendar, Target, Sparkles, Loader2, X, Check, CornerDownRight } from "lucide-react";
 
 interface SprintEditModalProps {
   sprint: Sprint;
@@ -31,12 +33,6 @@ function toInputDateTime(iso: string | null | undefined): string {
 function toIsoDateTime(input: string): string {
   if (!input) return "";
   return new Date(input).toISOString();
-}
-
-function fmtWeekday(input: string): string {
-  if (!input) return "";
-  const d = new Date(input);
-  return d.toLocaleDateString("en-GB", { weekday: "short", day: "numeric", month: "short" });
 }
 
 // Persist suggestion task so it survives navigation
@@ -75,6 +71,7 @@ function clearStoredTask(sprintId: string) {
 }
 
 export function SprintEditModal({ sprint, tickets, onClose, showToast, autoSuggest }: SprintEditModalProps) {
+  const [name, setName] = useState(sprint.name);
   const [startDate, setStartDate] = useState(toInputDateTime(sprint.startDate));
   const [endDate, setEndDate] = useState(toInputDateTime(sprint.endDate));
   const [goal, setGoal] = useState(sprint.goal ?? "");
@@ -175,7 +172,9 @@ export function SprintEditModal({ sprint, tickets, onClose, showToast, autoSugge
       const origStart = toInputDateTime(sprint.startDate);
       const origEnd = toInputDateTime(sprint.endDate);
       const origGoal = sprint.goal ?? "";
+      const trimmedName = name.trim();
 
+      if (trimmedName && trimmedName !== sprint.name) fields.name = trimmedName;
       if (startDate !== origStart) fields.startDate = toIsoDateTime(startDate);
       if (endDate !== origEnd) fields.endDate = toIsoDateTime(endDate);
       if (goal !== origGoal) fields.goal = goal;
@@ -195,7 +194,7 @@ export function SprintEditModal({ sprint, tickets, onClose, showToast, autoSugge
     } finally {
       setSaving(false);
     }
-  }, [sprint, startDate, endDate, goal, onClose, showToast]);
+  }, [sprint, name, startDate, endDate, goal, onClose, showToast]);
 
   const handleSuggestGoal = useCallback(async () => {
     abortRef.current?.abort();
@@ -261,6 +260,8 @@ export function SprintEditModal({ sprint, tickets, onClose, showToast, autoSugge
     setSuggesting(false);
   }, [sprint.id]);
 
+  const suggestedEnd = sprintEndFromStart(startDate);
+
   return (
     <Modal open onClose={onClose} aria-label="Edit sprint details">
       <div className="w-full max-w-md rounded-xl border border-border-strong bg-[var(--color-surface-floating)] shadow-[var(--shadow-xl)]">
@@ -280,56 +281,68 @@ export function SprintEditModal({ sprint, tickets, onClose, showToast, autoSugge
 
         {/* Body */}
         <div className="space-y-4 px-5 py-4">
-          {/* Sprint name (read-only) */}
-          <div className="text-body-sm text-text-muted">
-            {sprint.name}
-          </div>
+          {/* Sprint name */}
+          <label className="block space-y-1.5">
+            <span className="text-body-sm font-medium text-text-secondary">Sprint name</span>
+            <input
+              type="text"
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              placeholder="Sprint name"
+              className="w-full rounded-lg border border-border-default bg-[var(--color-surface-elevated)] px-3 py-2 text-body-sm text-text-primary
+                placeholder:text-text-muted
+                focus:border-[var(--color-brand-500)]/50 focus:outline-none focus:ring-1 focus:ring-[var(--color-brand-500)]/30
+                transition-colors duration-100"
+            />
+          </label>
 
           {/* Date fields */}
           <div className="grid grid-cols-2 gap-3">
-            <label className="space-y-1.5">
-              <div className="flex items-center justify-between">
-                <span className="flex items-center gap-1.5 text-body-sm font-medium text-text-secondary">
-                  <Calendar size={11} strokeWidth={1.5} className="text-text-muted" />
-                  Start date
-                </span>
-                {startDate && (
-                  <span className="text-[10px] text-text-muted">{fmtWeekday(startDate)}</span>
-                )}
-              </div>
-              <input
-                type="datetime-local"
+            <div className="space-y-1.5">
+              <span className="flex items-center gap-1.5 text-body-sm font-medium text-text-secondary">
+                <Calendar size={11} strokeWidth={1.5} className="text-text-muted" />
+                Start date
+              </span>
+              <DateTimePicker
                 value={startDate}
-                onChange={(e) => setStartDate(e.target.value)}
-                className="w-full rounded-lg border border-border-default bg-[var(--color-surface-elevated)] px-3 py-2 text-body-sm text-text-primary
-                  placeholder:text-text-muted
-                  focus:border-[var(--color-brand-500)]/50 focus:outline-none focus:ring-1 focus:ring-[var(--color-brand-500)]/30
-                  transition-colors duration-100
-                  [color-scheme:dark]"
+                onChange={setStartDate}
+                ariaLabel="Start date"
+                placeholder="Pick a date"
+                closeOnSelect
               />
-            </label>
-            <label className="space-y-1.5">
-              <div className="flex items-center justify-between">
-                <span className="flex items-center gap-1.5 text-body-sm font-medium text-text-secondary">
-                  <Calendar size={11} strokeWidth={1.5} className="text-text-muted" />
-                  End date
-                </span>
-                {endDate && (
-                  <span className="text-[10px] text-text-muted">{fmtWeekday(endDate)}</span>
-                )}
-              </div>
-              <input
-                type="datetime-local"
+            </div>
+            <div className="space-y-1.5">
+              <span className="flex items-center gap-1.5 text-body-sm font-medium text-text-secondary">
+                <Calendar size={11} strokeWidth={1.5} className="text-text-muted" />
+                End date
+              </span>
+              <DateTimePicker
                 value={endDate}
-                onChange={(e) => setEndDate(e.target.value)}
-                className="w-full rounded-lg border border-border-default bg-[var(--color-surface-elevated)] px-3 py-2 text-body-sm text-text-primary
-                  placeholder:text-text-muted
-                  focus:border-[var(--color-brand-500)]/50 focus:outline-none focus:ring-1 focus:ring-[var(--color-brand-500)]/30
-                  transition-colors duration-100
-                  [color-scheme:dark]"
+                onChange={setEndDate}
+                ariaLabel="End date"
+                placeholder="Pick a date"
               />
-            </label>
+            </div>
           </div>
+
+          {/* Conventional sprint-end suggestion (first Thursday after +1 week, 17:00) */}
+          {startDate && suggestedEnd !== endDate && (
+            <div className="-mt-2 flex justify-end">
+              <button
+                type="button"
+                onClick={() => setEndDate(suggestedEnd)}
+                title="Set end date to the conventional sprint end"
+                className="flex items-center gap-1.5 rounded-md px-2 py-1 text-[11px] font-medium cursor-pointer
+                  text-[var(--color-brand-400)]
+                  hover:bg-[var(--color-brand-500)]/10
+                  active:bg-[var(--color-brand-500)]/15
+                  transition-colors duration-100"
+              >
+                <CornerDownRight size={11} strokeWidth={1.5} />
+                End on {formatDateTimeLabel(suggestedEnd)}
+              </button>
+            </div>
+          )}
 
           {/* Goal field */}
           <div className="space-y-1.5">
