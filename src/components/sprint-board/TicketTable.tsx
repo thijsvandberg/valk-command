@@ -1,15 +1,13 @@
 "use client";
 
-import { useState, useRef, useCallback, useMemo, type MouseEvent as ReactMouseEvent } from "react";
+import { useState, useRef, useCallback, useMemo } from "react";
 import type { Ticket, POStatus, TicketReadiness, IssueType, JiraStatus, Sprint } from "@/types/ticket";
 import type { AssignableUser } from "@/components/shared/AssigneePicker";
 import type { EpicOption } from "@/components/shared/EpicPicker";
-import type { ColumnId, SortField, SortDir } from "@/components/sprint-board/FilterBar";
-import { COLUMNS } from "@/components/sprint-board/FilterBar";
+import type { SortField, SortDir, InlineTagId } from "@/components/sprint-board/FilterBar";
 import { IssueTypeIcon } from "@/components/shared/IssueTypeIcon";
 import { EmptyState } from "@/components/shared/EmptyState";
-import { Tooltip } from "@/components/shared/Tooltip";
-import { ArrowUp, ArrowDown, ArrowUpDown, Sheet } from "lucide-react";
+import { Sheet } from "lucide-react";
 import { GroupStatBar } from "@/components/sprint-board/GroupStatBar";
 import type { TicketGroup, GroupByOption } from "@/components/sprint-board/useGroupBy";
 import {
@@ -29,11 +27,10 @@ import {
   verticalListSortingStrategy,
 } from "@dnd-kit/sortable";
 import { useVirtualizer } from "@tanstack/react-virtual";
-import { TicketRow, SortableTicketRow } from "@/components/sprint-board/TicketRow";
+import { BoardRow, SortableBoardRow } from "@/components/sprint-board/BoardRow";
 import type { TicketSessionEntry } from "@/hooks/useTicketSessionMap";
 import { useFollowedTickets, useFollowTicket, useLastDeployed, usePipelineHealth } from "@/hooks/usePipelines";
 import { POStatusCell, QualityBadge, POStatusIcon, EditStateDot, getJiraUrl } from "@/components/sprint-board/TicketTableCells";
-import { DEFAULT_COLUMN_WIDTHS } from "@/hooks/useColumnWidths";
 
 export { POStatusCell, QualityBadge, POStatusIcon, EditStateDot, getJiraUrl };
 
@@ -42,67 +39,19 @@ const EMPTY_STRING_MAP: Record<string, string> = {};
 const EMPTY_READINESS_MAP: Record<string, TicketReadiness | null> = {};
 const NOOP = () => {};
 
-// -- Resize handle for column headers --
-
-function ResizeHandle({
-  colId,
-  onResize,
-  onReset,
-}: {
-  colId: string;
-  onResize: (colId: string, width: number) => void;
-  onReset: (colId: string) => void;
-}) {
-  const handleMouseDown = useCallback((e: ReactMouseEvent) => {
-    e.preventDefault();
-    e.stopPropagation();
-    const th = (e.target as HTMLElement).closest("th");
-    if (!th) return;
-    const startX = e.clientX;
-    const startWidth = th.getBoundingClientRect().width;
-
-    function onMouseMove(ev: MouseEvent) {
-      const newWidth = Math.max(24, startWidth + ev.clientX - startX);
-      onResize(colId, Math.round(newWidth));
-    }
-    function onMouseUp() {
-      document.removeEventListener("mousemove", onMouseMove);
-      document.removeEventListener("mouseup", onMouseUp);
-      document.body.style.cursor = "";
-      document.body.style.userSelect = "";
-    }
-    document.body.style.cursor = "col-resize";
-    document.body.style.userSelect = "none";
-    document.addEventListener("mousemove", onMouseMove);
-    document.addEventListener("mouseup", onMouseUp);
-  }, [colId, onResize]);
-
-  const handleDoubleClick = useCallback((e: ReactMouseEvent) => {
-    e.preventDefault();
-    e.stopPropagation();
-    onReset(colId);
-  }, [colId, onReset]);
-
-  return (
-    <div
-      className="absolute right-0 top-0 bottom-0 w-1.5 cursor-col-resize z-10 group/resize"
-      onMouseDown={handleMouseDown}
-      onDoubleClick={handleDoubleClick}
-    >
-      <div className="absolute right-0 top-1 bottom-1 w-px bg-transparent group-hover/resize:bg-overlay-strong transition-colors duration-100" />
-    </div>
-  );
-}
+// Headerless board: every row is a single flex cell, so group header / spacer / drop-zone
+// rows span exactly one column (BRDG-239).
+const TOTAL_COLSPAN = 1;
 
 // Droppable zone rendered inside empty sprint groups during an active drag.
-function DroppableGroupZone({ groupKey, totalColSpan }: { groupKey: string; totalColSpan: number }) {
+function DroppableGroupZone({ groupKey }: { groupKey: string }) {
   const { setNodeRef, isOver } = useDroppable({
     id: `group-zone:${groupKey}`,
     data: { type: "group-zone", sprintId: groupKey },
   });
   return (
     <tr ref={setNodeRef}>
-      <td colSpan={totalColSpan} className={`transition-colors duration-150 ${isOver ? "bg-[var(--color-brand-500)]/[0.04]" : ""}`}>
+      <td colSpan={TOTAL_COLSPAN} className={`transition-colors duration-150 ${isOver ? "bg-[var(--color-brand-500)]/[0.04]" : ""}`}>
         <div className={`mx-3 my-2 flex h-8 items-center justify-center rounded border border-dashed text-body-sm transition-colors duration-150 ${
           isOver
             ? "border-[var(--color-brand-500)]/40 text-[var(--color-brand-300)]"
@@ -118,62 +67,6 @@ function DroppableGroupZone({ groupKey, totalColSpan }: { groupKey: string; tota
 const VIRTUALIZE_THRESHOLD = 40;
 const ROW_HEIGHT_ESTIMATE = 36;
 const VIRTUALIZER_OVERSCAN = 20;
-// Below this width the table scrolls horizontally rather than continuing to compress columns.
-// Chosen between 1024-1200px as a clean breakpoint for typical PO workstation widths.
-const MIN_TABLE_WIDTH = 1100;
-
-function SortIndicator({
-  colId,
-  sortField,
-  sortDir,
-  isSortable,
-}: {
-  colId: ColumnId;
-  sortField?: SortField;
-  sortDir?: SortDir;
-  isSortable: boolean;
-}) {
-  if (!isSortable) return null;
-  const field = COLUMN_SORT_FIELDS[colId];
-  if (!field) return null;
-  if (field !== sortField) {
-    return <ArrowUpDown className="ml-1 h-3 w-3 opacity-0 group-hover/th:opacity-30" strokeWidth={1.5} />;
-  }
-  return sortDir === "asc"
-    ? <ArrowUp className="ml-1 h-3 w-3 text-[var(--color-brand-400)]" strokeWidth={1.5} />
-    : <ArrowDown className="ml-1 h-3 w-3 text-[var(--color-brand-400)]" strokeWidth={1.5} />;
-}
-
-const COLUMN_SORT_FIELDS: Partial<Record<ColumnId, SortField>> = {
-  key: "key",
-  title: "title",
-  epic: "epic",
-  jiraStatus: "jiraStatus",
-  points: "points",
-  assignee: "assignee",
-  poStatus: "readiness",
-  quality: "quality",
-  bv: "bv",
-};
-
-function defaultSortDir(field: SortField): SortDir {
-  return field === "quality" || field === "bv" || field === "points" || field === "lastChanged" ? "desc" : "asc";
-}
-
-const HEADER_LABELS: Record<ColumnId, string> = {
-  type: "", key: "Key", title: "Title", epic: "Epic",
-  jiraStatus: "Status", sprint: "Sprint", points: "SP", assignee: "",
-  flagged: "", poStatus: "RDY", quality: "QS", bv: "BV", notes: "", pipeline: "",
-};
-
-const HEADER_TOOLTIPS: Partial<Record<ColumnId, string>> = {
-  points: "Story Points",
-  quality: "Quality Score",
-  bv: "Business Value",
-};
-
-const SORTABLE_COLUMNS: Set<ColumnId> = new Set(["key", "title", "epic", "jiraStatus", "points", "assignee", "poStatus", "quality", "bv"]);
-const CENTER_COLUMNS: Set<ColumnId> = new Set(["points", "poStatus", "bv"]);
 
 export function TicketTable({
   tickets,
@@ -181,15 +74,16 @@ export function TicketTable({
   selectedTicket,
   focusedTicketIdx,
   someChecked,
-  allChecked,
-  visibleColumns,
+  allChecked: _allChecked,
+  visibleTags,
+  hideEpic = false,
   sprintNameMap,
   poStatuses,
   readinessMap,
   inflightKeys,
   onToggleCheck,
   onRangeCheck,
-  onToggleAll,
+  onToggleAll: _onToggleAll,
   onSelectTicket,
   onRowContextMenu,
   contextMenuKeys,
@@ -209,11 +103,6 @@ export function TicketTable({
   onReorder,
   sortField,
   sortDir,
-  onSortChange,
-  columnOrder,
-  columnWidths,
-  onColumnResize,
-  onColumnResetWidth,
   externalDnd,
   externalActiveDragId,
   dragOverKey,
@@ -232,7 +121,9 @@ export function TicketTable({
   focusedTicketIdx: number;
   someChecked: boolean;
   allChecked: boolean;
-  visibleColumns: Set<ColumnId>;
+  visibleTags: Set<InlineTagId>;
+  /** Suppress the epic chip on every row (e.g. when grouped by epic). */
+  hideEpic?: boolean;
   sprintNameMap?: Record<string, string>;
   poStatuses: Record<string, POStatus>;
   readinessMap?: Record<string, TicketReadiness | null>;
@@ -258,13 +149,10 @@ export function TicketTable({
   onCloseSubtasks?: (key: string) => Promise<void>;
   onTableKeyDown: (e: React.KeyboardEvent) => void;
   onReorder?: (activeKey: string, overKey: string) => void;
+  // Sort is driven entirely by the FilterBar dropdown (BRDG-239); the table keeps
+  // sortField/sortDir only to reset the virtualizer scroll position on change.
   sortField?: SortField;
   sortDir?: SortDir;
-  onSortChange?: (field: SortField, dir: SortDir) => void;
-  columnOrder?: ColumnId[];
-  columnWidths?: Record<string, number>;
-  onColumnResize?: (colId: string, width: number) => void;
-  onColumnResetWidth?: (colId: string) => void;
   // When true, DndContext is owned by a parent component (SprintBoard).
   // The table only renders SortableContext; no internal DndContext or DragOverlay.
   externalDnd?: boolean;
@@ -280,13 +168,9 @@ export function TicketTable({
   pinnedSprintIds?: Set<string>;
   onPinSprint?: (sprintId: string) => void;
   // When provided, the table uses this as its scroll container (for shared scroll with analytics).
-  // The table will not apply its own overflow-y; the parent scroll container handles vertical scroll.
   scrollContainerRef?: React.RefObject<HTMLElement | null>;
   refinementSessionMap?: Map<string, TicketSessionEntry[]>;
 }) {
-  const col = useCallback((id: ColumnId) => visibleColumns.has(id), [visibleColumns]);
-  const DEFAULT_ORDER: ColumnId[] = useMemo(() => COLUMNS.map((c) => c.id), []);
-  const effectiveOrder = columnOrder ?? DEFAULT_ORDER;
   const tableContainerRef = useRef<HTMLDivElement>(null);
 
   // Hoisted pipeline/follow hooks: fetched once instead of per-row
@@ -294,13 +178,6 @@ export function TicketTable({
   const { follow: followTicket, unfollow: unfollowTicket } = useFollowTicket();
   const { data: lastDeployedMap } = useLastDeployed();
   const { data: healthMap } = usePipelineHealth();
-
-  const colW = useCallback((id: string): number | undefined => {
-    return columnWidths?.[id] ?? (DEFAULT_COLUMN_WIDTHS[id] || undefined);
-  }, [columnWidths]);
-
-  // Total colspan for group header rows: checkbox + all visible content columns.
-  const totalColSpan = useMemo(() => 1 + effectiveOrder.filter((id) => col(id)).length, [effectiveOrder, col]);
 
   const lastCheckRef = useRef<{ idx: number; checked: boolean } | null>(null);
 
@@ -310,16 +187,6 @@ export function TicketTable({
   const activeDragId = externalDnd ? externalActiveDragId ?? null : internalActiveDragId;
   const [reviewPopoverKey, setReviewPopoverKey] = useState<string | null>(null);
   const [editingTitleKey, setEditingTitleKey] = useState<string | null>(null);
-
-  const handleColumnSort = useCallback((colId: ColumnId) => {
-    const field = COLUMN_SORT_FIELDS[colId];
-    if (!field || !onSortChange) return;
-    if (field === sortField) {
-      onSortChange(field, sortDir === "asc" ? "desc" : "asc");
-    } else {
-      onSortChange(field, defaultSortDir(field));
-    }
-  }, [sortField, sortDir, onSortChange]);
 
   const handleToggleReviewPopover = useCallback((key: string) => {
     setReviewPopoverKey((prev) => (prev === key ? null : key));
@@ -400,7 +267,8 @@ export function TicketTable({
     isContextTarget: contextMenuKeys?.has(ticket.key) ?? false,
     someChecked,
     isDragActive: activeDragId !== null,
-    col,
+    tags: visibleTags,
+    hideEpic,
     sprintNameMap: sprintNameMap ?? EMPTY_STRING_MAP,
     poStatuses,
     readinessMap: readinessMap ?? EMPTY_READINESS_MAP,
@@ -430,57 +298,10 @@ export function TicketTable({
     reviewPopoverKey,
     onToggleReviewPopover: handleToggleReviewPopover,
     refinementSessions: refinementSessionMap?.get(ticket.key),
-    columnOrder: effectiveOrder,
-  }), [checkedTickets, selectedTicket, focusedTicketIdx, someChecked, activeDragId, col, sprintNameMap, poStatuses, readinessMap, inflightKeys, contextMenuKeys, onSelectTicket, onRowContextMenu, handleCheckboxClick, onPoStatusChange, onReadinessChange, onBusinessValueChange, onStoryPointsChange, onJiraStatusChange, onIssueTypeChange, onTitleChange, onAssigneeChange, onEpicChange, onSprintChange, sprints, onCloseSubtasks, editingTitleKey, reviewPopoverKey, handleToggleReviewPopover, effectiveOrder, followedKeys, followTicket, unfollowTicket, lastDeployedMap, healthMap, refinementSessionMap]);
-
-  const rh = useMemo(() =>
-    onColumnResize && onColumnResetWidth
-      ? (id: string) => <ResizeHandle colId={id} onResize={onColumnResize} onReset={onColumnResetWidth} />
-      : () => null,
-  [onColumnResize, onColumnResetWidth]);
-
-  const renderHeaderCell = useCallback((id: ColumnId) => {
-    if (!col(id)) return null;
-
-    const label = HEADER_LABELS[id];
-    const isSortable = SORTABLE_COLUMNS.has(id);
-    const isCenter = CENTER_COLUMNS.has(id);
-    const tooltip = HEADER_TOOLTIPS[id];
-    // Title is the flex filler when no width is pinned; explicit width when user has resized it.
-    const titleW = colW("title");
-    const widthStyle = id === "title" ? (titleW ? { width: titleW } : undefined) : { width: colW(id) };
-
-    if (!label) {
-      return <th key={id} className="overflow-hidden py-2 pr-2" style={widthStyle} />;
-    }
-
-    const headerContent = isSortable ? (
-      <button type="button" onClick={() => handleColumnSort(id)} className={`flex items-center cursor-pointer hover:text-text-secondary${isCenter ? " justify-center w-full" : ""}`}>
-        {label}<SortIndicator colId={id} sortField={sortField} sortDir={sortDir} isSortable={!!onSortChange} />
-      </button>
-    ) : label;
-
-    return (
-      <th key={id} className={`group/th relative overflow-hidden py-2${isCenter ? " px-1 text-center" : " pr-3"}`} style={widthStyle}>
-        {tooltip ? <Tooltip content={tooltip}>{headerContent}</Tooltip> : headerContent}
-        {rh(id)}
-      </th>
-    );
-  }, [col, colW, handleColumnSort, sortField, sortDir, onSortChange, rh]);
-
-  const theadContent = (
-    <thead className="sticky top-0 z-10 bg-[var(--color-surface-elevated)]" style={{ boxShadow: "inset 0 -1px 0 var(--color-border-strong)" }}>
-      <tr className="group/thead h-[44px] text-left text-[11px] uppercase tracking-wider font-medium text-text-muted">
-        {/* Checkbox gutter: just a small breathing gap by default; widens into a real gutter in bulk mode. */}
-        <th className={someChecked ? "w-10 py-2 pl-1 pr-1" : "w-3 py-2"} />
-        {effectiveOrder.map((id) => renderHeaderCell(id))}
-      </tr>
-    </thead>
-  );
+  }), [checkedTickets, selectedTicket, focusedTicketIdx, someChecked, activeDragId, visibleTags, hideEpic, sprintNameMap, poStatuses, readinessMap, inflightKeys, contextMenuKeys, onSelectTicket, onRowContextMenu, handleCheckboxClick, onPoStatusChange, onReadinessChange, onBusinessValueChange, onStoryPointsChange, onJiraStatusChange, onIssueTypeChange, onTitleChange, onAssigneeChange, onEpicChange, onSprintChange, sprints, onCloseSubtasks, editingTitleKey, reviewPopoverKey, handleToggleReviewPopover, followedKeys, followTicket, unfollowTicket, lastDeployedMap, healthMap, refinementSessionMap]);
 
   const virtualizedTable = (
-    <table className="w-full border-collapse text-body-lg" style={{ tableLayout: "fixed", minWidth: MIN_TABLE_WIDTH }}>
-      {theadContent}
+    <table className="w-full table-fixed border-collapse text-body-lg">
       <tbody>
         {paddingTop > 0 && (
           <tr><td style={{ height: paddingTop, padding: 0, border: "none" }} /></tr>
@@ -488,7 +309,7 @@ export function TicketTable({
         {virtualRows.map((virtualRow) => {
           const ticket = tickets[virtualRow.index];
           return (
-            <TicketRow
+            <BoardRow
               key={ticket.key}
               ref={rowVirtualizer.measureElement}
               data-index={virtualRow.index}
@@ -504,11 +325,10 @@ export function TicketTable({
   );
 
   const plainTable = (
-    <table className="w-full border-collapse text-body-lg" style={{ tableLayout: "fixed", minWidth: MIN_TABLE_WIDTH }}>
-      {theadContent}
+    <table className="w-full table-fixed border-collapse text-body-lg">
       <tbody>
         {tickets.map((ticket, ticketIdx) => (
-          <TicketRow key={ticket.key} {...makeRowProps(ticket, ticketIdx)} />
+          <BoardRow key={ticket.key} {...makeRowProps(ticket, ticketIdx)} />
         ))}
       </tbody>
     </table>
@@ -529,7 +349,7 @@ export function TicketTable({
             insertLine = activeInsertIdx > overInsertIdx ? "above" : "below";
           }
           return (
-            <SortableTicketRow
+            <SortableBoardRow
               key={ticket.key}
               {...makeRowProps(ticket, ticketIdx)}
               insertLine={insertLine}
@@ -543,8 +363,7 @@ export function TicketTable({
   // When externalDnd is true, DndContext + DragOverlay are owned by SprintBoard.
   // We only render SortableContext here so ticket rows register with the parent context.
   const dndTable = externalDnd ? (
-    <table className="w-full border-collapse text-body-lg" style={{ tableLayout: "fixed", minWidth: MIN_TABLE_WIDTH }}>
-      {theadContent}
+    <table className="w-full table-fixed border-collapse text-body-lg">
       {sortableTableBody}
     </table>
   ) : (
@@ -554,8 +373,7 @@ export function TicketTable({
       onDragStart={handleDragStart}
       onDragEnd={handleDragEnd}
     >
-      <table className="w-full border-collapse text-body-lg" style={{ tableLayout: "fixed", minWidth: MIN_TABLE_WIDTH }}>
-        {theadContent}
+      <table className="w-full table-fixed border-collapse text-body-lg">
         {sortableTableBody}
       </table>
       <DragOverlay>
@@ -563,25 +381,13 @@ export function TicketTable({
           <table className="w-full border-collapse text-body-lg">
             <tbody>
               <tr className="bg-[var(--color-surface-elevated)] shadow-[var(--shadow-lg)] rounded-lg border border-border-strong">
-                <td className="w-5 py-2 pl-1" />
-                <td className="py-2 pl-1 pr-1">
-                  <div className="flex h-6 w-6 items-center justify-center" />
-                </td>
-                {col("type") && (
-                  <td className="py-2 pr-2">
+                <td className="p-0">
+                  <div className="flex items-center gap-2 py-2 pl-2 pr-3">
                     <IssueTypeIcon type={activeTicket.type} />
-                  </td>
-                )}
-                {col("key") && (
-                  <td className="py-2 pr-3 font-mono text-body-sm text-text-secondary">
-                    {activeTicket.key}
-                  </td>
-                )}
-                {col("title") && (
-                  <td className="max-w-0 truncate py-2 pr-3 text-text-primary">
-                    {activeTicket.title}
-                  </td>
-                )}
+                    <span className="font-mono text-body-sm text-text-secondary">{activeTicket.key}</span>
+                    <span className="truncate text-text-primary">{activeTicket.title}</span>
+                  </div>
+                </td>
               </tr>
             </tbody>
           </table>
@@ -595,8 +401,7 @@ export function TicketTable({
   const isGrouped = groups && groups.length > 0;
 
   const groupedTable = isGrouped ? (
-    <table className="w-full border-collapse text-body-lg" style={{ tableLayout: "fixed", minWidth: MIN_TABLE_WIDTH }}>
-      {theadContent}
+    <table className="w-full table-fixed border-collapse text-body-lg">
       {groups.map((group, groupIdx) => {
         const isCollapsed = collapsedGroups?.has(group.key) ?? false;
 
@@ -630,13 +435,13 @@ export function TicketTable({
             insertLine = activeInsertIdx > overInsertIdx ? "above" : "below";
           }
           return externalDnd ? (
-            <SortableTicketRow
+            <SortableBoardRow
               key={ticket.key}
               {...makeRowProps(ticket, flatIdx)}
               insertLine={insertLine}
             />
           ) : (
-            <TicketRow
+            <BoardRow
               key={ticket.key}
               {...makeRowProps(ticket, flatIdx)}
             />
@@ -647,7 +452,7 @@ export function TicketTable({
           <SortableContext items={groupTicketIds} strategy={() => null}>
             {ticketRows}
             {!isCollapsed && group.tickets.length === 0 && (
-              <DroppableGroupZone groupKey={group.key} totalColSpan={totalColSpan} />
+              <DroppableGroupZone groupKey={group.key} />
             )}
           </SortableContext>
         ) : ticketRows;
@@ -658,7 +463,7 @@ export function TicketTable({
             {groupIdx > 0 && (
               <tr>
                 <td
-                  colSpan={totalColSpan}
+                  colSpan={TOTAL_COLSPAN}
                   style={{ height: 8, padding: 0, border: "none" }}
                 />
               </tr>
@@ -669,7 +474,7 @@ export function TicketTable({
               style={{ background: "var(--color-overlay-subtle)" }}
               onClick={() => onToggleCollapse?.(group.key)}
             >
-              <td colSpan={totalColSpan} className="py-2 pl-3 pr-4">
+              <td colSpan={TOTAL_COLSPAN} className="py-2 pl-3 pr-4">
                 <GroupStatBar
                   tickets={group.tickets}
                   label={group.label}
@@ -705,7 +510,7 @@ export function TicketTable({
       ref={tableContainerRef}
       className={scrollContainerRef
         ? "min-w-0 focus:outline-none"
-        : "flex-1 min-w-0 min-h-0 overflow-x-auto overflow-y-auto focus:outline-none"}
+        : "flex-1 min-w-0 min-h-0 overflow-y-auto focus:outline-none"}
       tabIndex={0}
       onKeyDown={onTableKeyDown}
     >

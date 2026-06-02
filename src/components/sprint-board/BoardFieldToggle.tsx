@@ -1,0 +1,88 @@
+"use client";
+
+import { useState, useRef } from "react";
+import { useOutsideClick } from "@/hooks/useOutsideClick";
+import { Columns3 } from "lucide-react";
+import { Button } from "@/components/ui/Button";
+import { ROW_FIELDS, type InlineTagId } from "@/components/sprint-board/filter-bar-types";
+
+// Headerless board field show/hide (BRDG-239). Reordering and fixed widths were
+// removed with the table; this is a plain checkbox list over the inline tag set.
+export function BoardFieldToggle({
+  visible,
+  onChange,
+  onReset,
+}: {
+  visible: Set<InlineTagId>;
+  onChange: (id: InlineTagId, show: boolean) => void;
+  onReset?: () => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
+
+  useOutsideClick(ref, () => setOpen(false), { enabled: open });
+
+  return (
+    <div ref={ref} className="relative">
+      <Button
+        variant="ghost"
+        size="md"
+        iconOnly
+        onClick={() => setOpen(!open)}
+        icon={<Columns3 className="h-3.5 w-3.5" strokeWidth={1.5} />}
+        title="Toggle fields"
+        aria-label="Toggle fields"
+        className="border-0 bg-transparent text-text-tertiary hover:bg-hover-list-item hover:text-text-secondary"
+      />
+      {open && (
+        <div className="absolute top-full right-0 z-50 mt-1.5 flex w-56 flex-col overflow-hidden rounded-xl border border-border-strong bg-[var(--color-surface-floating)] shadow-[var(--shadow-xl)]">
+          <div className="max-h-[70vh] overflow-y-auto py-1.5">
+            {ROW_FIELDS.map((field) => {
+              const checked = visible.has(field.id);
+              return (
+                <label
+                  key={field.id}
+                  className="flex w-full cursor-pointer select-none items-center gap-3 px-3.5 py-1 text-body text-text-secondary hover:bg-hover-list-item hover:text-text-primary"
+                >
+                  <span
+                    className="flex h-[15px] w-[15px] shrink-0 items-center justify-center rounded-[4px] border"
+                    style={{
+                      backgroundColor: checked ? "var(--color-brand-500)" : "transparent",
+                      borderColor: checked ? "var(--color-brand-500)" : "var(--color-text-muted)",
+                      transition: "background-color 100ms, border-color 100ms",
+                    }}
+                  >
+                    {checked && (
+                      <svg width="9" height="7" viewBox="0 0 9 7" fill="none">
+                        <path d="M1 3.5L3.5 6L8 1" stroke="white" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+                      </svg>
+                    )}
+                  </span>
+                  <input
+                    type="checkbox"
+                    checked={checked}
+                    onChange={(e) => onChange(field.id, e.target.checked)}
+                    className="sr-only"
+                  />
+                  {field.label}
+                </label>
+              );
+            })}
+          </div>
+          {onReset && (
+            <>
+              <div className="h-px bg-overlay-default" />
+              <button
+                type="button"
+                onClick={() => { onReset(); setOpen(false); }}
+                className="flex w-full cursor-pointer items-center px-3.5 py-1.5 text-body-sm text-text-tertiary hover:bg-hover-list-item hover:text-text-secondary"
+              >
+                Reset to default
+              </button>
+            </>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}

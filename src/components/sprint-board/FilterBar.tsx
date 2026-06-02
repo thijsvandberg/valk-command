@@ -9,10 +9,11 @@ import { BarContainer, BarDivider } from "@/components/shared/BarContainer";
 import { SaveViewPopover } from "@/components/sprint-board/SaveViewPopover";
 import { ExpandableSearch } from "@/components/sprint-board/ExpandableSearch";
 
-export { PO_STATUS_COLORS, EDIT_STATE_OPTIONS, SORT_OPTIONS, GAPS_OPTIONS, COLUMNS, DEFAULT_VISIBLE, COLUMN_PRESETS } from "@/components/sprint-board/filter-bar-types";
-export type { SortField, SortDir, SavedView, ColumnId, ColumnPreset } from "@/components/sprint-board/filter-bar-types";
+export { PO_STATUS_COLORS, EDIT_STATE_OPTIONS, SORT_OPTIONS, GAPS_OPTIONS, COLUMNS, DEFAULT_VISIBLE, COLUMN_PRESETS, ROW_FIELDS, DEFAULT_VISIBLE_TAGS, COLUMN_TO_TAG, columnsToTags, isTagVisibility } from "@/components/sprint-board/filter-bar-types";
+export type { SortField, SortDir, SavedView, ColumnId, ColumnPreset, InlineTagId } from "@/components/sprint-board/filter-bar-types";
 export { SortDropdown } from "@/components/sprint-board/SortControls";
 export { ColumnToggle } from "@/components/sprint-board/ColumnToggle";
+export { BoardFieldToggle } from "@/components/sprint-board/BoardFieldToggle";
 
 import { EDIT_STATE_OPTIONS, GAPS_OPTIONS, READINESS_OPTIONS, READINESS_CONFIG, JIRA_STATUS_COLORS, getEpicColor, type SavedView } from "@/components/sprint-board/filter-bar-types";
 

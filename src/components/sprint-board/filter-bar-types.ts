@@ -47,8 +47,12 @@ export interface SavedView {
   };
   sort: { field: SortField; direction: SortDir };
   columnConfig?: {
-    visible: ColumnId[];
-    order: ColumnId[];
+    /** Headerless board: which inline tags are visible (BRDG-239). */
+    visibleTags?: InlineTagId[];
+    /** @deprecated Legacy column visibility, migrated to `visibleTags`. */
+    visible?: ColumnId[];
+    /** @deprecated Column ordering was removed in BRDG-239. */
+    order?: ColumnId[];
   };
 }
 
@@ -83,6 +87,56 @@ export const COLUMN_PRESETS: Record<ColumnPreset, ColumnId[]> = {
   full: COLUMNS.map((c) => c.id),
   compact: ["key", "title", "points", "assignee"],
 };
+
+// ---------------------------------------------------------------------------
+// Headerless board: toggleable inline row tags (BRDG-239)
+// ---------------------------------------------------------------------------
+// The Jira-style board row has a fixed anatomy (pill, title, epic, SP/BV, assignee)
+// plus a small set of secondary signals the PO can individually show or hide.
+// `poReadiness` maps onto the pill's existing readiness segment; the others render
+// as conditional inline tags. The hover card always shows the full set.
+
+export type InlineTagId = "flag" | "refinement" | "quality" | "notes" | "poReadiness" | "editState";
+
+export const ROW_FIELDS: { id: InlineTagId; label: string }[] = [
+  { id: "flag", label: "Flag" },
+  { id: "refinement", label: "Refinement" },
+  { id: "quality", label: "Quality Score (QS)" },
+  { id: "notes", label: "Notes" },
+  { id: "poReadiness", label: "PO readiness" },
+  { id: "editState", label: "Edit state" },
+];
+
+export const DEFAULT_VISIBLE_TAGS: InlineTagId[] = ROW_FIELDS.map((f) => f.id);
+
+// Migration map from the legacy column ids to the new inline tag ids (BRDG-239).
+export const COLUMN_TO_TAG: Partial<Record<ColumnId, InlineTagId>> = {
+  flagged: "flag",
+  quality: "quality",
+  notes: "notes",
+  poStatus: "poReadiness",
+};
+
+const TAG_ID_SET = new Set<string>(DEFAULT_VISIBLE_TAGS);
+
+/** True when every id is already a valid inline tag (i.e. data is post-migration). */
+export function isTagVisibility(ids: string[]): boolean {
+  return ids.length > 0 && ids.every((id) => TAG_ID_SET.has(id));
+}
+
+/**
+ * Migrate a legacy column-visibility set to the inline tag set (BRDG-239).
+ * Tags without a legacy column equivalent (refinement, poReadiness, editState)
+ * default to visible; tags whose source column was hidden stay hidden.
+ */
+export function columnsToTags(visibleColumns: string[]): InlineTagId[] {
+  const next = new Set<InlineTagId>(DEFAULT_VISIBLE_TAGS);
+  const visible = new Set(visibleColumns);
+  for (const [col, tag] of Object.entries(COLUMN_TO_TAG)) {
+    if (!visible.has(col)) next.delete(tag as InlineTagId);
+  }
+  return [...next];
+}
 
 // ---------------------------------------------------------------------------
 // Sort options

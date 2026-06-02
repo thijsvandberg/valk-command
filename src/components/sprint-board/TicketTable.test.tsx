@@ -1,13 +1,14 @@
-import { render, screen, fireEvent } from "@testing-library/react";
+import { render, screen } from "@testing-library/react";
 import { describe, it, expect, vi } from "vitest";
 import { TicketTable } from "./TicketTable";
 import type { Ticket } from "@/types/ticket";
-import type { ColumnId } from "./filter-bar-types";
+import type { InlineTagId } from "./filter-bar-types";
+import { DEFAULT_VISIBLE_TAGS } from "./filter-bar-types";
 
 vi.mock("lucide-react", () => {
   // eslint-disable-next-line react/display-name
   const stub = (name: string) => (props: Record<string, unknown>) => <span data-testid={`icon-${name}`} {...props} />;
-  return { ArrowUp: stub("arrow-up"), ArrowDown: stub("arrow-down"), ArrowUpDown: stub("arrow-updown"), Sheet: stub("sheet") };
+  return { Sheet: stub("sheet") };
 });
 
 vi.mock("@dnd-kit/core", () => ({
@@ -34,9 +35,10 @@ vi.mock("@tanstack/react-virtual", () => ({
   }),
 }));
 
-vi.mock("./TicketRow", () => ({
-  TicketRow: ({ ticket }: { ticket: Ticket }) => <tr data-testid={`row-${ticket.key}`}><td>{ticket.title}</td></tr>,
-  SortableTicketRow: ({ ticket }: { ticket: Ticket }) => <tr data-testid={`row-${ticket.key}`}><td>{ticket.title}</td></tr>,
+// The headerless board renders a forked flex row (BoardRow), not the legacy TicketRow.
+vi.mock("./BoardRow", () => ({
+  BoardRow: ({ ticket }: { ticket: Ticket }) => <tr data-testid={`row-${ticket.key}`}><td>{ticket.title}</td></tr>,
+  SortableBoardRow: ({ ticket }: { ticket: Ticket }) => <tr data-testid={`row-${ticket.key}`}><td>{ticket.title}</td></tr>,
 }));
 
 vi.mock("@/hooks/usePipelines", () => ({
@@ -63,15 +65,7 @@ vi.mock("@/components/shared/IssueTypeIcon", () => ({
 }));
 
 vi.mock("@/components/shared/EmptyState", () => ({
-  EmptyState: ({ message }: { message: string }) => <div data-testid="empty">{message}</div>,
-}));
-
-vi.mock("@/components/shared/Tooltip", () => ({
-  Tooltip: ({ children }: { children: React.ReactNode }) => <span>{children}</span>,
-}));
-
-vi.mock("@/hooks/useColumnWidths", () => ({
-  DEFAULT_COLUMN_WIDTHS: {},
+  EmptyState: () => <div data-testid="empty" />,
 }));
 
 function makeTicket(key: string, title: string): Ticket {
@@ -94,12 +88,12 @@ function makeTicket(key: string, title: string): Ticket {
   };
 }
 
-describe("TicketTable", () => {
+describe("TicketTable (headerless, BRDG-239)", () => {
   const defaultProps = {
     tickets: [makeTicket("T-1", "First ticket"), makeTicket("T-2", "Second ticket")],
     selectedTicket: null,
     onSelectTicket: vi.fn(),
-    visibleColumns: new Set<ColumnId>(["key", "title", "jiraStatus", "assignee", "points", "bv", "quality", "epic", "poStatus", "sprint", "type", "flagged", "notes", "pipeline"]),
+    visibleTags: new Set<InlineTagId>(DEFAULT_VISIBLE_TAGS),
     checkedTickets: new Set<string>(),
     focusedTicketIdx: -1,
     someChecked: false,
@@ -111,12 +105,8 @@ describe("TicketTable", () => {
     onTableKeyDown: vi.fn(),
     poStatuses: {},
     readinessMap: {},
-    columnWidths: {},
-    onColumnResize: vi.fn(),
-    onColumnResetWidth: vi.fn(),
     sortField: "rank" as const,
     sortDir: "asc" as const,
-    onSortChange: vi.fn(),
   };
 
   it("renders ticket rows for each ticket", () => {
@@ -125,21 +115,14 @@ describe("TicketTable", () => {
     expect(screen.getByTestId("row-T-2")).toBeInTheDocument();
   });
 
-  it("renders table column headers", () => {
+  it("renders no column headers", () => {
     render(<TicketTable {...defaultProps} />);
-    expect(screen.getByText("Title")).toBeInTheDocument();
+    expect(screen.queryByRole("columnheader")).toBeNull();
+    expect(screen.queryByText("Title")).toBeNull();
   });
 
   it("shows empty state when no tickets", () => {
     render(<TicketTable {...defaultProps} tickets={[]} />);
     expect(screen.getByTestId("empty")).toBeInTheDocument();
-  });
-
-  it("calls onSortChange when header clicked", () => {
-    const onSortChange = vi.fn();
-    render(<TicketTable {...defaultProps} onSortChange={onSortChange} />);
-    const titleHeader = screen.getByText("Title");
-    fireEvent.click(titleHeader);
-    expect(onSortChange).toHaveBeenCalled();
   });
 });
