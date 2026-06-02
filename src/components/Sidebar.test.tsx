@@ -66,6 +66,7 @@ describe("Sidebar", () => {
     const hrefs = Array.from(links).map((l) => l.getAttribute("href"));
     expect(hrefs).toEqual([
       "/sprint-board",
+      "/epics",
       "/chat",
       "/story-writer",
       "/pipelines",
