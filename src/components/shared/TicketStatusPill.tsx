@@ -1,9 +1,10 @@
 "use client";
 
 import { useState, useRef, useEffect, useLayoutEffect, type ReactNode } from "react";
+import { usePathname } from "next/navigation";
 import { useOutsideClick } from "@/hooks/useOutsideClick";
 import { createPortal } from "react-dom";
-import { ExternalLink, FilePen, MessageCircleQuestion, CheckCircle2, Ban, Minus, Copy, ClipboardList, PenLine, Flag, IterationCw, Zap, User, UserRound, ListChecks } from "lucide-react";
+import { ExternalLink, FilePen, MessageCircleQuestion, CheckCircle2, Ban, Minus, Copy, ClipboardList, PenLine, Flag, IterationCw, Zap, User, UserRound, ListChecks, Eye } from "lucide-react";
 import type { JiraStatus, TicketReadiness, IssueType, Assignee, Sprint } from "@/types/ticket";
 import {
   JIRA_STATUS_COLORS,
@@ -109,6 +110,13 @@ function KeyDropdown({ jiraUrl, ticketKey, title, onClose, skipRef }: KeyDropdow
   const refs = skipRef ? [ref, skipRef] : [ref];
   useOutsideClick(refs, onClose);
 
+  // Hide the navigation items that point at the page we are already on.
+  const pathname = usePathname();
+  const ticketPath = `/tickets/${ticketKey}`;
+  const writePath = `${ticketPath}/write`;
+  const onTicketView = pathname === ticketPath;
+  const onStoryWriter = pathname === writePath;
+
   useEffect(() => {
     return () => { if (timerRef.current) clearTimeout(timerRef.current); };
   }, []);
@@ -161,14 +169,22 @@ function KeyDropdown({ jiraUrl, ticketKey, title, onClose, skipRef }: KeyDropdow
           {copied === "titled" ? "Copied!" : "Copy with title"}
         </button>
       )}
-      <button
-        type="button"
-        onClick={() => { window.open(`/tickets/${ticketKey}/write`, "_blank"); onClose(); }}
-        className={itemClass}
-      >
-        <PenLine size={12} strokeWidth={1.5} className={iconClass} />
-        Open Story Writer
-      </button>
+      {!onStoryWriter && (
+        <button
+          type="button"
+          onClick={() => { window.open(writePath, "_blank"); onClose(); }}
+          className={itemClass}
+        >
+          <PenLine size={12} strokeWidth={1.5} className={iconClass} />
+          Open Story Writer
+        </button>
+      )}
+      {!onTicketView && (
+        <a href={ticketPath} onClick={onClose} className={itemClass}>
+          <Eye size={12} strokeWidth={1.5} className={iconClass} />
+          View ticket
+        </a>
+      )}
     </div>
   );
 }

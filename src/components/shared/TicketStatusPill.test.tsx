@@ -3,6 +3,12 @@ import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { TicketStatusPill, type TicketPillHoverData } from "./TicketStatusPill";
 import { JIRA_STATUS_ABBREVIATIONS, READINESS_CONFIG } from "@/types/ticket";
 
+vi.mock("next/navigation", () => ({
+  usePathname: vi.fn(() => "/"),
+}));
+import { usePathname } from "next/navigation";
+const mockUsePathname = vi.mocked(usePathname);
+
 describe("JIRA_STATUS_ABBREVIATIONS", () => {
   it("maps all JiraStatus values", () => {
     expect(JIRA_STATUS_ABBREVIATIONS["TO DO"]).toBe("TODO");
@@ -42,6 +48,31 @@ describe("TicketStatusPill", () => {
     fireEvent.click(screen.getByText("VPL-1"));
     expect(screen.getByText("Copy Jira URL")).toBeTruthy();
     expect(screen.getByText("Open in Jira")).toBeTruthy();
+  });
+
+  it("offers a same-tab View ticket link in the key dropdown", () => {
+    mockUsePathname.mockReturnValue("/");
+    render(<TicketStatusPill ticketKey="VPL-1" jiraStatus="TO DO" />);
+    fireEvent.click(screen.getByText("VPL-1"));
+    const link = screen.getByText("View ticket").closest("a");
+    expect(link?.getAttribute("href")).toBe("/tickets/VPL-1");
+    expect(link?.getAttribute("target")).toBeNull();
+  });
+
+  it("hides View ticket when already on that ticket's single view", () => {
+    mockUsePathname.mockReturnValue("/tickets/VPL-1");
+    render(<TicketStatusPill ticketKey="VPL-1" jiraStatus="TO DO" />);
+    fireEvent.click(screen.getByText("VPL-1"));
+    expect(screen.queryByText("View ticket")).toBeNull();
+    expect(screen.getByText("Open Story Writer")).toBeTruthy();
+  });
+
+  it("hides Open Story Writer when already on the story writer", () => {
+    mockUsePathname.mockReturnValue("/tickets/VPL-1/write");
+    render(<TicketStatusPill ticketKey="VPL-1" jiraStatus="TO DO" />);
+    fireEvent.click(screen.getByText("VPL-1"));
+    expect(screen.queryByText("Open Story Writer")).toBeNull();
+    expect(screen.getByText("View ticket")).toBeTruthy();
   });
 
   it("renders issue type icon segment when issueType provided", () => {
