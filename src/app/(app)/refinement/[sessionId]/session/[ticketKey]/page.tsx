@@ -436,6 +436,7 @@ export default function RefinementSessionTicketPage({
                   title={ticketData.title}
                   size="lg"
                   appearance="elevated"
+                  onHeader
                 />
                 <StoryPointPicker
                   value={storyPoints}

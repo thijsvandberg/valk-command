@@ -503,6 +503,7 @@ export default function TicketDetailPage({
           title={ticket.title}
           size="lg"
           appearance="elevated"
+          onHeader
           removedFromJira={Boolean(ticket.removedFromJiraAt)}
         />
         <span className="min-w-0 flex-1 truncate font-[var(--font-display)] text-heading-sm font-semibold tracking-tight text-text-primary">

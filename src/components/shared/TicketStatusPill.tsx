@@ -567,6 +567,9 @@ export interface TicketStatusPillProps {
    *  (surface + shadow + ring) with a rounded-full status pill — used by the
    *  ticket-detail header and inline reference pills. */
   appearance?: "default" | "elevated";
+  /** When true (with appearance="elevated"), the pill sits on header chrome and
+   *  uses a translucent white surface (#ffffff at 75%) instead of the solid one. */
+  onHeader?: boolean;
   /** Details shown in the hover card. When omitted, no hover card is rendered. */
   hoverData?: TicketPillHoverData;
   /** Enable the hover card (default: true). Combined with hoverData being present. */
@@ -604,6 +607,7 @@ export function TicketStatusPill({
   showStatus = true,
   showReadiness = true,
   appearance = "default",
+  onHeader = false,
   hoverData,
   showHoverCard = true,
   onStoryPointsChange,
@@ -726,13 +730,18 @@ export function TicketStatusPill({
         {...hoverProps}
         className={
           elevated
-            ? `inline-flex shrink-0 items-center gap-1.5 rounded-md bg-surface-elevated align-middle ring-1 ring-inset ring-border-subtle ${
+            ? `inline-flex shrink-0 items-center gap-1.5 rounded-md align-middle ring-1 ring-inset ring-border-subtle ${
+                onHeader ? "" : "bg-surface-elevated"
+              } ${
                 size === "lg"
                   ? "px-2.5 py-1.5 shadow-[0_1px_3px_rgba(0,0,0,0.16)]"
                   : "px-1.5 py-[3px] shadow-[0_1px_2px_rgba(0,0,0,0.14)]"
               }`
             : "flex shrink-0 items-center gap-1.5"
         }
+        // On the header chrome the elevated pill uses a translucent white surface
+        // so it reads as a soft chip on the tinted header glass.
+        style={elevated && onHeader ? { backgroundColor: "rgba(255, 255, 255, 0.75)" } : undefined}
       >
         {hoverCardEl}
 
