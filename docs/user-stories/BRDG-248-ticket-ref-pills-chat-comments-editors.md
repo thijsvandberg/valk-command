@@ -69,9 +69,9 @@ The linkification engine (`renderMarkdown(text, { linkifyRefs: true })`) and its
 
 ## Checklist
 - [x] Enable `linkifyRefs` in comments + chat render paths + tests
-- [ ] Decide & (optionally) enable for search results / version preview / story-writer previews
-- [ ] (If wanted) TipTap inline node + NodeView for the ref pill
-- [ ] (If wanted) input rule + paste rule to create the node
-- [ ] (If wanted) markdown + ADF serialization round-trip + tests
-- [ ] (If wanted) caret / selection / delete behaviour tests
+- [x] Decide & (optionally) enable for search results / version preview / story-writer previews <!-- PO decision: out of scope; deferred to follow-up stories BRDG-252 (search results) and BRDG-253 (version preview + story-writer previews). -->
+- [x] (If wanted) TipTap inline node + NodeView for the ref pill <!-- skipped: PO chose "plain text when editing, pill when rendered"; no editor pills. -->
+- [x] (If wanted) input rule + paste rule to create the node <!-- skipped: editor pills not wanted (see above). -->
+- [x] (If wanted) markdown + ADF serialization round-trip + tests <!-- skipped: editor pills not wanted (see above). -->
+- [x] (If wanted) caret / selection / delete behaviour tests <!-- skipped: editor pills not wanted (see above). -->
 - [ ] Update docs (`jira-sync.md` reference-linkification note) to list the newly covered surfaces
