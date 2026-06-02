@@ -8,6 +8,10 @@
 
 As the PO, I want to click on an epic label in the sprint backlog to see detailed information about that epic, filter tickets by epic, and change a ticket's epic assignment, so I can manage epics without leaving the sprint board context.
 
+## Related work
+
+- **BRDG-249** (shipped): the epic picker pill and each picker row in the ticket detail sidebar now link through to the epic's own ticket detail page (`/tickets/[epicKey]`), with Cmd/Ctrl-click for a new tab. This gives a basic "open the epic" path via the existing ticket detail page, and partially answers the "where should epic info appear" question below: the epic's full detail is reachable as a normal ticket page. The epic picker (Phase 3 below) already exists with search + Jira sync. What BRDG-131 still adds on top: epic interaction *from the sprint board pill* (not just the sidebar), inline epic stats/filtering without navigating away, and the epic-context sidebar.
+
 ## Open Questions
 
 - Where should epic info appear: popover, sidebar section, or dedicated panel?
@@ -30,7 +34,7 @@ As the PO, I want to click on an epic label in the sprint backlog to see detaile
 
 ### Phase 3: Epic assignment
 - [ ] Ability to change the epic for a ticket from the sprint board
-- [ ] Epic picker dropdown with search
+- [x] Epic picker dropdown with search <!-- exists: EpicPicker (src/components/shared/EpicPicker.tsx), now also links through to the epic via BRDG-249 -->
 - [ ] Change syncs back to Jira
 
 ### Phase 4: Epic sidebar info
