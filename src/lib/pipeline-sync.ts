@@ -169,14 +169,21 @@ export async function classifyRunDeployment(repoSlug: string, buildNumber: numbe
       return "transient-error";
     }
   }
-  // bbFetch returns null on HTTP error (incl. 429 rate-limit); treat as transient so backfill retries.
+  // bbFetch returns null on HTTP error (incl. 429 rate-limit); treat as transient so backfill
+  // retries (deployCheckedAt is left null, keeping the run eligible for a future scan).
   if (!stepsRes) return "transient-error";
 
+  const now = new Date().toISOString();
   const detectedEnv = classifyStepsForDeployment(stepsRes.values ?? []);
-  if (!detectedEnv) return "not-deployment";
+  if (!detectedEnv) {
+    // Completed-pipeline steps are immutable: mark as scanned so the backfill advances
+    // past it instead of re-fetching the same runs every cycle.
+    db.update(pipelineRun).set({ deployCheckedAt: now }).where(eq(pipelineRun.id, id)).run();
+    return "not-deployment";
+  }
 
   db.update(pipelineRun)
-    .set({ isDeployment: true, environment: detectedEnv.environment, environmentType: detectedEnv.type })
+    .set({ isDeployment: true, environment: detectedEnv.environment, environmentType: detectedEnv.type, deployCheckedAt: now })
     .where(eq(pipelineRun.id, id))
     .run();
   return "flagged";
@@ -629,42 +636,58 @@ async function runDeployDetectionForStateChanges(stateChanges: StateChangeEntry[
 
 const DEPLOY_BACKFILL_BATCH = 20;
 const DEPLOY_BACKFILL_DAYS = 14;
+// Per-tick drain cap. Each scanned run is one Bitbucket steps call; at 12 ticks/hour this
+// stays well under the 1000 req/hour budget while clearing a backlog over a few ticks.
+const DEPLOY_BACKFILL_MAX_PER_TICK = 60;
 const COMPLETED_STATES = ["SUCCESSFUL", "FAILED", "STOPPED"] as const;
 
 /**
- * Re-scans recent completed runs still flagged isDeployment=false and classifies any
- * that are deployments. Bounded by a time window (last N days) and a batch size to
- * respect Bitbucket rate limits. This is the safety net that recovers historical
- * misses and transient-error runs: unclassified runs are naturally retried each cycle
- * until they either get flagged or age out of the window. Idempotent (already-flagged
- * runs are excluded by the WHERE clause and short-circuited in classifyRunDeployment).
+ * Re-scans recent completed runs that have not yet been deploy-checked and classifies any
+ * that are deployments. Bounded by a time window (last N days), a per-batch size, and a
+ * per-tick cap to respect Bitbucket rate limits. The deployCheckedAt marker guarantees
+ * forward progress: each scanned non-deployment run is stamped and excluded from future
+ * batches, so the backfill walks through the whole window instead of re-scanning the same
+ * rows. Transient fetch errors leave the marker null, so those runs are retried next tick.
+ * Idempotent: already-flagged or already-checked runs are excluded by the WHERE clause.
  */
 export async function backfillDeploymentDetection(): Promise<number> {
   if (!isPipelineConfigured()) return 0;
 
   const cutoff = new Date(Date.now() - DEPLOY_BACKFILL_DAYS * 24 * 60 * 60 * 1000).toISOString();
-  const rows = db
-    .select()
-    .from(pipelineRun)
-    .where(and(
-      eq(pipelineRun.isDeployment, false),
-      inArray(pipelineRun.state, [...COMPLETED_STATES]),
-      gte(pipelineRun.createdAt, cutoff),
-    ))
-    .limit(DEPLOY_BACKFILL_BATCH)
-    .all();
+  let totalFlagged = 0;
+  let totalScanned = 0;
 
-  if (rows.length === 0) return 0;
+  while (totalScanned < DEPLOY_BACKFILL_MAX_PER_TICK) {
+    const rows = db
+      .select()
+      .from(pipelineRun)
+      .where(and(
+        eq(pipelineRun.isDeployment, false),
+        isNull(pipelineRun.deployCheckedAt),
+        inArray(pipelineRun.state, [...COMPLETED_STATES]),
+        gte(pipelineRun.createdAt, cutoff),
+      ))
+      .limit(DEPLOY_BACKFILL_BATCH)
+      .all();
 
-  const results = await mapWithConcurrency(rows, DEPLOY_CONCURRENCY, (r) =>
-    classifyRunDeployment(fullRepoSlug(r.repo), r.buildNumber, r.id),
-  );
+    if (rows.length === 0) break;
 
-  const flagged = results.filter((r) => r === "flagged").length;
-  if (flagged > 0) {
-    logger.info("pipeline-sync", `deploy backfill: flagged ${flagged}/${rows.length} runs`);
+    const results = await mapWithConcurrency(rows, DEPLOY_CONCURRENCY, (r) =>
+      classifyRunDeployment(fullRepoSlug(r.repo), r.buildNumber, r.id),
+    );
+
+    totalFlagged += results.filter((r) => r === "flagged").length;
+    totalScanned += rows.length;
+
+    // A transient error leaves the marker null; stop this tick rather than spinning on
+    // the same unmarked rows (they are retried next tick).
+    if (results.some((r) => r === "transient-error")) break;
   }
-  return flagged;
+
+  if (totalFlagged > 0) {
+    logger.info("pipeline-sync", `deploy backfill: flagged ${totalFlagged} of ${totalScanned} scanned runs`);
+  }
+  return totalFlagged;
 }
 
 export function processStateChanges(stateChanges: StateChangeEntry[]) {

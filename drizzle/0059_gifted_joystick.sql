@@ -1,0 +1,1 @@
+ALTER TABLE `pipeline_run` ADD `deploy_checked_at` text;

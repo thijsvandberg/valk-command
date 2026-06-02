@@ -387,6 +387,10 @@ export const pipelineRun = sqliteTable("pipeline_run", {
   environmentType: text("environment_type", {
     enum: ["Production", "Staging", "Test"],
   }),
+  // Timestamp the deploy-detection backfill last scanned this run's steps. A completed
+  // pipeline's steps are immutable, so a non-deployment run is stamped once and excluded
+  // from future scans; left null on transient fetch errors so it is retried (BRDG-255).
+  deployCheckedAt: text("deploy_checked_at"),
   createdAt: text("created_at")
     .notNull()
     .default(sql`(datetime('now'))`),

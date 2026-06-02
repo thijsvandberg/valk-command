@@ -1,7 +1,7 @@
 // @vitest-environment node
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { createTestDb } from "@/db/test-utils";
-import { eq } from "drizzle-orm";
+import { eq, isNull } from "drizzle-orm";
 import type { BetterSQLite3Database } from "drizzle-orm/better-sqlite3";
 import type * as schema from "@/db/schema";
 
@@ -69,6 +69,7 @@ function makePipelineRun(overrides: Partial<typeof schema.pipelineRun.$inferSele
     isDeployment: false,
     environment: null,
     environmentType: null,
+    deployCheckedAt: null,
     createdAt: "2026-04-14T10:00:00.000Z",
     completedAt: "2026-04-14T10:05:00.000Z",
     commitMessage: null,
@@ -474,6 +475,40 @@ describe("backfillDeploymentDetection", () => {
     fetchMock.mockResolvedValue(jsonResponse(stepsPayload(["Deploy to Production"])));
     expect(await backfillDeploymentDetection()).toBe(1);
     expect(testDb.select().from(pipelineRun).where(eq(pipelineRun.id, "valk-repo:7")).get()?.isDeployment).toBe(true);
+  });
+
+  it("marks non-deployment runs as checked so a later pass does not re-fetch them", async () => {
+    insertRun({ id: "valk-repo:8", buildNumber: 8, state: "SUCCESSFUL", isDeployment: false, createdAt: RECENT });
+    fetchMock.mockResolvedValue(jsonResponse(stepsPayload(["Build", "Test"])));
+
+    expect(await backfillDeploymentDetection()).toBe(0);
+    const row = testDb.select().from(pipelineRun).where(eq(pipelineRun.id, "valk-repo:8")).get();
+    expect(row?.isDeployment).toBe(false);
+    expect(row?.deployCheckedAt).not.toBeNull();
+
+    // Second pass must not touch it again (excluded by the deployCheckedAt marker).
+    const callsAfterFirst = fetchMock.mock.calls.length;
+    expect(await backfillDeploymentDetection()).toBe(0);
+    expect(fetchMock.mock.calls.length).toBe(callsAfterFirst);
+  });
+
+  it("walks past a non-deployment batch to reach a later deployment", async () => {
+    // 19 non-deployments then a real deployment: a single fixed batch of 20 would still
+    // include the deployment, but the marker is what lets successive passes progress.
+    for (let i = 1; i <= 25; i++) {
+      insertRun({ id: `valk-repo:${i}`, buildNumber: i, state: "SUCCESSFUL", isDeployment: false, createdAt: RECENT });
+    }
+    fetchMock.mockImplementation(async (url: string) => {
+      // Only build 25 is a deployment; everything else is a plain build.
+      return url.includes("/pipelines/25/") ? jsonResponse(stepsPayload(["Deploy to UAT3"])) : jsonResponse(stepsPayload(["Build"]));
+    });
+
+    const flagged = await backfillDeploymentDetection();
+
+    expect(flagged).toBe(1);
+    expect(testDb.select().from(pipelineRun).where(eq(pipelineRun.id, "valk-repo:25")).get()?.environment).toBe("UAT3");
+    // All 25 scanned and marked in one tick (under the 60/tick cap).
+    expect(testDb.select().from(pipelineRun).where(isNull(pipelineRun.deployCheckedAt)).all()).toHaveLength(0);
   });
 
   it("does not re-scan or flip already-flagged runs (idempotent)", async () => {

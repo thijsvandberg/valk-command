@@ -414,6 +414,13 @@
       "when": 1780424098365,
       "tag": "0058_abnormal_hardball",
       "breakpoints": true
+    },
+    {
+      "idx": 59,
+      "version": "6",
+      "when": 1780428262007,
+      "tag": "0059_gifted_joystick",
+      "breakpoints": true
     }
   ]
 }
