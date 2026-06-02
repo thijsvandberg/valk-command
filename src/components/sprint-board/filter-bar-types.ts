@@ -72,7 +72,10 @@ export const COLUMNS: { id: ColumnId; label: string; alwaysVisible?: boolean }[]
   { id: "quality", label: "Quality Score (QS)" },
 ];
 
-export const DEFAULT_VISIBLE: ColumnId[] = ["key", "title", "epic", "flagged", "points", "bv", "notes", "pipeline", "assignee", "quality"];
+// Pipeline is intentionally absent: its health/deploy badges now live in the
+// ticket hover card (BRDG-251), so the column is hidden by default but still
+// available via the column toggle.
+export const DEFAULT_VISIBLE: ColumnId[] = ["key", "title", "epic", "flagged", "points", "bv", "notes", "assignee", "quality"];
 
 export type ColumnPreset = "full" | "compact";
 

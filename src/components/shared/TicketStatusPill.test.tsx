@@ -322,6 +322,52 @@ describe("TicketStatusPill hover card", () => {
     expect(screen.getByText("None")).toBeTruthy(); // subtasks: none
   });
 
+  it("renders pipeline and deploy rows when that data is present", () => {
+    const { container } = render(
+      <TicketStatusPill
+        ticketKey="VPL-1"
+        jiraStatus="TO DO"
+        hoverData={{
+          ...fullData,
+          pipelineHealth: { status: "red", recentFails: 6, recentTotal: 10 },
+          lastDeploy: { environment: "UAT", state: "SUCCESSFUL", completedAt: null },
+        }}
+      />,
+    );
+    openCard(container);
+    expect(screen.getByText("Pipeline")).toBeTruthy();
+    expect(screen.getByText("6 failed / 10")).toBeTruthy();
+    expect(screen.getByText("Deploy")).toBeTruthy();
+    expect(screen.getByText("UAT")).toBeTruthy();
+  });
+
+  it("omits the pipeline row when health is gray and the deploy row when there is no deploy", () => {
+    const { container } = render(
+      <TicketStatusPill
+        ticketKey="VPL-1"
+        jiraStatus="TO DO"
+        hoverData={{
+          ...fullData,
+          pipelineHealth: { status: "gray", recentFails: 0, recentTotal: 0 },
+          lastDeploy: null,
+        }}
+      />,
+    );
+    openCard(container);
+    expect(screen.getByRole("tooltip")).toBeTruthy();
+    expect(screen.queryByText("Pipeline")).toBeNull();
+    expect(screen.queryByText("Deploy")).toBeNull();
+  });
+
+  it("does not render pipeline or deploy rows when the data is absent", () => {
+    const { container } = render(
+      <TicketStatusPill ticketKey="VPL-1" jiraStatus="TO DO" hoverData={fullData} />,
+    );
+    openCard(container);
+    expect(screen.queryByText("Pipeline")).toBeNull();
+    expect(screen.queryByText("Deploy")).toBeNull();
+  });
+
   it("does not show the card when showHoverCard is false", () => {
     const { container } = render(
       <TicketStatusPill ticketKey="VPL-1" jiraStatus="TO DO" hoverData={fullData} showHoverCard={false} />,

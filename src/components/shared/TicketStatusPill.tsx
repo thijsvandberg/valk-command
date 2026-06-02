@@ -4,8 +4,9 @@ import { useState, useRef, useEffect, useLayoutEffect, type ReactNode } from "re
 import { usePathname } from "next/navigation";
 import { useOutsideClick } from "@/hooks/useOutsideClick";
 import { createPortal } from "react-dom";
-import { ExternalLink, FilePen, MessageCircleQuestion, CheckCircle2, Ban, Minus, Copy, ClipboardList, PenLine, Flag, IterationCw, Zap, User, UserRound, ListChecks, Eye } from "lucide-react";
+import { ExternalLink, FilePen, MessageCircleQuestion, CheckCircle2, Ban, Minus, Copy, ClipboardList, PenLine, Flag, IterationCw, Zap, User, UserRound, ListChecks, Eye, GitBranch, Rocket } from "lucide-react";
 import type { JiraStatus, TicketReadiness, IssueType, Assignee, Sprint } from "@/types/ticket";
+import type { PipelineHealthEntry, LastDeployedInfo } from "@/hooks/usePipelines";
 import {
   JIRA_STATUS_COLORS,
   JIRA_STATUS_ABBREVIATIONS,
@@ -365,6 +366,10 @@ export interface TicketPillHoverData {
   openSubtaskCount: number;
   totalSubtaskCount: number;
   flagged: boolean;
+  /** Pipeline health summary (re-homed from the inline pipeline column, BRDG-251). */
+  pipelineHealth?: PipelineHealthEntry | null;
+  /** Last deployment info (re-homed from the inline pipeline column, BRDG-251). */
+  lastDeploy?: LastDeployedInfo | null;
 }
 
 
@@ -453,7 +458,7 @@ function TicketHoverCard({
       role="tooltip"
       onMouseEnter={onMouseEnter}
       onMouseLeave={onMouseLeave}
-      className="fixed z-[9999] w-72 rounded-lg border border-border-default bg-[var(--color-surface-floating)] p-3 text-left normal-case tracking-normal shadow-[var(--shadow-popover)] transition-[opacity,transform] duration-150 ease-out"
+      className="fixed z-[9999] w-80 rounded-lg border border-border-default bg-[var(--color-surface-floating)] p-3 text-left normal-case tracking-normal shadow-[var(--shadow-popover)] transition-[opacity,transform] duration-150 ease-out"
       style={{
         left: pos.left,
         ...(pos.openUp ? { bottom: window.innerHeight - pos.top } : { top: pos.top }),
@@ -461,7 +466,7 @@ function TicketHoverCard({
         transform: shown ? "translateY(0)" : `translateY(${pos.openUp ? "4px" : "-4px"})`,
       }}
     >
-      <div className="text-body-sm font-medium leading-snug text-text-primary">{data.title}</div>
+      <div className="text-body-lg font-medium leading-snug text-text-primary">{data.title}</div>
 
       <div className="mt-2 flex items-center gap-3 border-t border-border-subtle pt-2">
         {onStoryPointsChange ? (
@@ -479,7 +484,7 @@ function TicketHoverCard({
       <div className="mt-2 flex flex-col gap-0.5">
         <InfoRow icon={<IterationCw size={12} strokeWidth={1.75} />} label="Sprint">
           {onSprintChange && sprints ? (
-            <SprintPicker value={data.sprintId} sprints={sprints} onChange={onSprintChange} align="right" onOpenChange={onPickerOpenChange} />
+            <SprintPicker value={data.sprintId} sprints={sprints} onChange={onSprintChange} align="right" textClass="text-body-sm" onOpenChange={onPickerOpenChange} />
           ) : (
             data.sprintName ?? <span className="text-text-muted">No sprint</span>
           )}
@@ -492,6 +497,7 @@ function TicketHoverCard({
               onChange={onEpicChange}
               ticketKey={ticketKey}
               align="right"
+              textClass="text-body-sm"
               onOpenChange={onPickerOpenChange}
             />
           ) : data.epic && epicColors ? (
@@ -508,7 +514,7 @@ function TicketHoverCard({
 
         <InfoRow icon={<User size={12} strokeWidth={1.75} />} label="Assignee">
           {onAssigneeChange ? (
-            <AssigneePicker value={data.assignee} onChange={onAssigneeChange} align="right" onOpenChange={onPickerOpenChange} />
+            <AssigneePicker value={data.assignee} onChange={onAssigneeChange} align="right" textClass="text-body-sm" onOpenChange={onPickerOpenChange} />
           ) : (
             <PersonValue person={data.assignee} />
           )}
@@ -527,6 +533,44 @@ function TicketHoverCard({
             <span className="text-text-muted">None</span>
           )}
         </InfoRow>
+
+        {data.pipelineHealth && data.pipelineHealth.status !== "gray" && (
+          <InfoRow icon={<GitBranch size={12} strokeWidth={1.75} />} label="Pipeline">
+            <span
+              className={`inline-flex items-center gap-1 rounded px-1.5 py-0.5 text-label font-medium leading-none tabular-nums ${
+                data.pipelineHealth.status === "green"
+                  ? "bg-emerald-500/10 text-emerald-400/80"
+                  : data.pipelineHealth.status === "red"
+                  ? "bg-red-500/10 text-red-400/80"
+                  : "bg-amber-500/10 text-amber-400/80"
+              }`}
+            >
+              {data.pipelineHealth.recentFails > 0
+                ? `${data.pipelineHealth.recentFails} failed / ${data.pipelineHealth.recentTotal}`
+                : `${data.pipelineHealth.recentTotal} green`}
+            </span>
+          </InfoRow>
+        )}
+
+        {data.lastDeploy && (
+          <InfoRow icon={<Rocket size={12} strokeWidth={1.75} />} label="Deploy">
+            <Tooltip
+              content={`${data.lastDeploy.environment ?? "unknown"} — ${data.lastDeploy.state}${data.lastDeploy.completedAt ? ` (${new Date(data.lastDeploy.completedAt).toLocaleString("en-GB")})` : ""}`}
+            >
+              <span
+                className={`inline-flex items-center gap-1 rounded px-1.5 py-0.5 text-label font-medium uppercase leading-none tracking-wide ${
+                  data.lastDeploy.state === "SUCCESSFUL"
+                    ? "bg-emerald-500/10 text-emerald-400/80"
+                    : data.lastDeploy.state === "FAILED"
+                    ? "bg-red-500/10 text-red-400/80"
+                    : "bg-overlay-subtle text-text-muted"
+                }`}
+              >
+                {data.lastDeploy.environment ?? "unknown"}
+              </span>
+            </Tooltip>
+          </InfoRow>
+        )}
       </div>
 
       {data.flagged && (

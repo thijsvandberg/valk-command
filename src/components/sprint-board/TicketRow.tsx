@@ -265,6 +265,8 @@ export const TicketRow = memo(forwardRef<HTMLTableRowElement, TicketRowBaseProps
                     openSubtaskCount: ticket.openSubtaskCount ?? 0,
                     totalSubtaskCount: ticket.totalSubtaskCount ?? 0,
                     flagged: ticket.flagged,
+                    pipelineHealth: health,
+                    lastDeploy,
                   }}
                 />
               </span>
