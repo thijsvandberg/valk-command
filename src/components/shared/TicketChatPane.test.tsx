@@ -72,23 +72,24 @@ beforeEach(() => {
 });
 
 describe("TicketChatPane", () => {
-  it("renders header with ticket key and title", async () => {
-    render(<TicketChatPane ticketKey="PROJ-123" ticketTitle="Fix login bug" />);
+  it("renders a clean Chat header without redundant key/title", async () => {
+    render(<TicketChatPane ticketKey="PROJ-123" />);
     await waitFor(() => {
-      expect(screen.getByText("PROJ-123")).toBeInTheDocument();
+      expect(screen.getByText("Chat")).toBeInTheDocument();
     });
-    expect(screen.getByText("Fix login bug")).toBeInTheDocument();
+    // Key/title are already shown on the page, so they are not repeated here.
+    expect(screen.queryByText("PROJ-123")).not.toBeInTheDocument();
   });
 
   it("renders messages as chat bubbles", async () => {
-    render(<TicketChatPane ticketKey="PROJ-123" ticketTitle="Fix bug" />);
+    render(<TicketChatPane ticketKey="PROJ-123" />);
     await waitFor(() => {
       expect(screen.getAllByTestId("chat-bubble")).toHaveLength(2);
     });
   });
 
   it("renders chat input", async () => {
-    render(<TicketChatPane ticketKey="PROJ-123" ticketTitle="Fix bug" />);
+    render(<TicketChatPane ticketKey="PROJ-123" />);
     await waitFor(() => {
       expect(screen.getByTestId("chat-input")).toBeInTheDocument();
     });
@@ -96,7 +97,7 @@ describe("TicketChatPane", () => {
 
   it("renders close button when onClose provided", async () => {
     const onClose = vi.fn();
-    render(<TicketChatPane ticketKey="PROJ-123" ticketTitle="Fix bug" onClose={onClose} />);
+    render(<TicketChatPane ticketKey="PROJ-123" onClose={onClose} />);
     await waitFor(() => {
       expect(screen.getByLabelText("Close chat")).toBeInTheDocument();
     });
@@ -105,16 +106,16 @@ describe("TicketChatPane", () => {
   });
 
   it("renders Open in Story Writer link pointing at the write page", async () => {
-    render(<TicketChatPane ticketKey="PROJ-123" ticketTitle="Fix bug" />);
+    render(<TicketChatPane ticketKey="PROJ-123" />);
     const link = await screen.findByLabelText("Open in Story Writer");
     expect(link).toBeInTheDocument();
     expect(link).toHaveAttribute("href", "/tickets/PROJ-123/write");
   });
 
   it("does not render close button when onClose not provided", async () => {
-    render(<TicketChatPane ticketKey="PROJ-123" ticketTitle="Fix bug" />);
+    render(<TicketChatPane ticketKey="PROJ-123" />);
     await waitFor(() => {
-      expect(screen.getByText("PROJ-123")).toBeInTheDocument();
+      expect(screen.getByText("Chat")).toBeInTheDocument();
     });
     expect(screen.queryByLabelText("Close chat")).not.toBeInTheDocument();
   });

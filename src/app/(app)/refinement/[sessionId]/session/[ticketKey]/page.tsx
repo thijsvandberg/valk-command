@@ -682,7 +682,6 @@ export default function RefinementSessionTicketPage({
             <SubtasksPaneResizable width={sidebarWidth} onWidthChange={setSidebarWidth} zoom={zoomFactor}>
               <TicketChatPane
                 ticketKey={currentKey}
-                ticketTitle={queueMeta.find((m) => m.key === currentKey)?.title ?? currentKey}
                 onClose={() => toggleSidebarPanel("chat")}
               />
             </SubtasksPaneResizable>

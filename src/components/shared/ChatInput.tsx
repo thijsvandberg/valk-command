@@ -16,6 +16,13 @@ interface ChatInputProps {
   footerRightSlot?: ReactNode;
   /** Enable drag-to-resize on the textarea */
   resizable?: boolean;
+  /**
+   * Compact, controls-free layout: the send button floats inside the input
+   * rather than sitting in a separate footer row. Use when there are no footer
+   * slots (model switcher, toggles), so the input stays tight instead of
+   * showing an empty footer void.
+   */
+  compact?: boolean;
   /** aria-label for the textarea */
   ariaLabel?: string;
   /** aria-label for the send button */
@@ -40,6 +47,7 @@ export function ChatInput({
   footerRightSlot,
   onCancel,
   resizable,
+  compact,
   ariaLabel = "Message input",
   sendAriaLabel = "Send message",
   testId = "chat-input",
@@ -137,7 +145,64 @@ export function ChatInput({
     }
   };
 
-  const hasFooter = footerLeftSlot || footerRightSlot;
+  const sendButton =
+    onCancel && disabled ? (
+      <Button
+        variant="ghost"
+        size="md"
+        iconOnly
+        icon={<Square className="h-3 w-3" strokeWidth={2} fill="currentColor" />}
+        onClick={onCancel}
+        className="text-red-400 hover:text-red-300 hover:bg-red-500/10 cursor-pointer"
+        aria-label="Stop generating"
+        data-testid="cancel-button"
+      />
+    ) : (
+      <Button
+        variant="primary"
+        size="md"
+        iconOnly
+        icon={
+          sending ? (
+            <Loader2 className="h-3 w-3 animate-spin" strokeWidth={2} />
+          ) : (
+            <SendHorizontal className="h-3 w-3" strokeWidth={2} />
+          )
+        }
+        onClick={handleSubmit}
+        disabled={!value.trim() || isBusy}
+        aria-label={sendAriaLabel}
+      />
+    );
+
+  if (compact) {
+    return (
+      <div className="shrink-0 border-t border-border-default" data-testid={testId}>
+        {headerSlot && (
+          <div className={`px-3 pt-2.5 pb-1.5 ${contentClassName ?? ""}`}>
+            {headerSlot}
+          </div>
+        )}
+
+        <div className={`px-3 pb-3 pt-2.5 ${contentClassName ?? ""}`}>
+          <div className="relative flex rounded-2xl border border-border-strong bg-[var(--color-surface-elevated)] focus-within:border-[var(--color-brand-500)]/40 focus-within:shadow-[0_0_0_3px_color-mix(in_srgb,var(--color-brand-500)_8%,transparent)] transition-[border-color,box-shadow] duration-150">
+            <textarea
+              ref={textareaRef}
+              value={value}
+              onChange={handleChange}
+              onKeyDown={handleKeyDown}
+              placeholder={placeholder}
+              disabled={isBusy}
+              rows={1}
+              className="w-full resize-none bg-transparent py-2.5 pl-3.5 pr-12 font-[var(--font-body)] text-body-lg leading-[1.6] text-text-primary placeholder-text-tertiary focus:outline-none disabled:opacity-50"
+              aria-label={ariaLabel}
+            />
+            <div className="absolute bottom-1.5 right-1.5">{sendButton}</div>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="shrink-0 border-t border-border-default" data-testid={testId}>
@@ -182,34 +247,7 @@ export function ChatInput({
             </div>
             <div className="flex items-center gap-1.5">
               {footerRightSlot}
-              {onCancel && disabled ? (
-                <Button
-                  variant="ghost"
-                  size="md"
-                  iconOnly
-                  icon={<Square className="h-3 w-3" strokeWidth={2} fill="currentColor" />}
-                  onClick={onCancel}
-                  className="text-red-400 hover:text-red-300 hover:bg-red-500/10 cursor-pointer"
-                  aria-label="Stop generating"
-                  data-testid="cancel-button"
-                />
-              ) : (
-                <Button
-                  variant="primary"
-                  size="md"
-                  iconOnly
-                  icon={
-                    sending ? (
-                      <Loader2 className="h-3 w-3 animate-spin" strokeWidth={2} />
-                    ) : (
-                      <SendHorizontal className="h-3 w-3" strokeWidth={2} />
-                    )
-                  }
-                  onClick={handleSubmit}
-                  disabled={!value.trim() || isBusy}
-                  aria-label={sendAriaLabel}
-                />
-              )}
+              {sendButton}
             </div>
           </div>
         </div>

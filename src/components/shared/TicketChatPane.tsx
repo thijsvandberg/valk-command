@@ -10,11 +10,10 @@ import { StreamingIndicator } from "@/components/shared/StreamingIndicator";
 import { apiFetch } from "@/lib/api-client";
 import { Tooltip } from "@/components/shared/Tooltip";
 import { renderMarkdown } from "@/components/ticket-detail/renderMarkdown";
-import { MessageSquareText, X, Sparkles, PenLine } from "lucide-react";
+import { X, Sparkles, PenLine } from "lucide-react";
 
 interface TicketChatPaneProps {
   ticketKey: string;
-  ticketTitle: string;
   onClose?: () => void;
 }
 
@@ -32,7 +31,7 @@ function CompactMessageContent({ content }: { content: string }) {
   );
 }
 
-export function TicketChatPane({ ticketKey, ticketTitle, onClose }: TicketChatPaneProps) {
+export function TicketChatPane({ ticketKey, onClose }: TicketChatPaneProps) {
   const [conversationId, setConversationId] = useState<string | null>(null);
   const [ticketContext, setTicketContext] = useState<string | null>(null);
   const [initializing, setInitializing] = useState(true);
@@ -159,7 +158,7 @@ export function TicketChatPane({ ticketKey, ticketTitle, onClose }: TicketChatPa
   if (initializing) {
     return (
       <div className="flex h-full flex-col">
-        <PaneHeader ticketKey={ticketKey} ticketTitle={ticketTitle} onClose={onClose} />
+        <PaneHeader ticketKey={ticketKey} onClose={onClose} />
         <LoadingState label="Loading chat..." />
       </div>
     );
@@ -168,7 +167,7 @@ export function TicketChatPane({ ticketKey, ticketTitle, onClose }: TicketChatPa
   if (initError) {
     return (
       <div className="flex h-full flex-col">
-        <PaneHeader ticketKey={ticketKey} ticketTitle={ticketTitle} onClose={onClose} />
+        <PaneHeader ticketKey={ticketKey} onClose={onClose} />
         <div className="flex flex-1 items-center justify-center px-4">
           <p className="text-body-sm text-red-400">{initError}</p>
         </div>
@@ -178,7 +177,7 @@ export function TicketChatPane({ ticketKey, ticketTitle, onClose }: TicketChatPa
 
   return (
     <div className="flex h-full flex-col">
-      <PaneHeader ticketKey={ticketKey} ticketTitle={ticketTitle} onClose={onClose} isStreaming={isTaskRunning} />
+      <PaneHeader ticketKey={ticketKey} onClose={onClose} isStreaming={isTaskRunning} />
 
       {/* Messages */}
       <div
@@ -237,7 +236,7 @@ export function TicketChatPane({ ticketKey, ticketTitle, onClose }: TicketChatPa
       <ChatInput
         onSend={handleSend}
         disabled={isTaskRunning}
-        resizable
+        compact
         placeholder="Ask about this ticket..."
         ariaLabel="Ticket chat input"
         sendAriaLabel="Send ticket chat message"
@@ -247,27 +246,24 @@ export function TicketChatPane({ ticketKey, ticketTitle, onClose }: TicketChatPa
   );
 }
 
-function PaneHeader({ ticketKey, ticketTitle, onClose, isStreaming }: {
+function PaneHeader({ ticketKey, onClose, isStreaming }: {
   ticketKey: string;
-  ticketTitle: string;
   onClose?: () => void;
   isStreaming?: boolean;
 }) {
   return (
-    <div className="flex shrink-0 items-center gap-2 border-b border-border-subtle px-3 py-2.5">
-      <div className="relative">
-        <MessageSquareText size={14} strokeWidth={1.5} className="shrink-0 text-[#a78bfa]" />
+    <div className="flex shrink-0 items-center justify-between border-b border-border-subtle px-3 py-2.5">
+      <div className="flex items-center gap-2">
+        <div className="relative flex h-6 w-6 items-center justify-center rounded-lg bg-[var(--color-brand-500)]/[0.1] border border-[var(--color-brand-500)]/[0.18]">
+          <Sparkles size={13} strokeWidth={1.5} className="text-[var(--color-brand-400)]" />
+          {isStreaming && (
+            <span className="absolute -top-1 -right-1 h-2 w-2 rounded-full bg-[var(--color-brand-400)] ring-2 ring-[var(--color-surface-elevated)] animate-pulse" />
+          )}
+        </div>
+        <span className="text-body-sm font-medium text-text-primary">Chat</span>
         {isStreaming && (
-          <span className="absolute -top-0.5 -right-0.5 h-2 w-2 rounded-full bg-[var(--color-brand-400)] animate-pulse" />
+          <span className="text-[10px] font-medium uppercase tracking-[0.08em] text-text-muted">thinking</span>
         )}
-      </div>
-      <div className="min-w-0 flex-1">
-        <span className="block truncate text-body-sm font-medium text-text-primary">
-          {ticketKey}
-        </span>
-        <span className="block truncate text-[10px] text-text-muted leading-tight">
-          {ticketTitle}
-        </span>
       </div>
       <div className="flex shrink-0 items-center gap-1">
         <Tooltip content="Open in Story Writer">

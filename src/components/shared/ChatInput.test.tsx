@@ -114,4 +114,24 @@ describe("ChatInput", () => {
     expect(screen.getByLabelText("Send message")).toBeInTheDocument();
     expect(screen.queryByTestId("cancel-button")).not.toBeInTheDocument();
   });
+
+  describe("compact mode", () => {
+    it("renders textarea and send button without a footer drag handle", () => {
+      const { container } = render(<ChatInput onSend={async () => true} compact placeholder="Ask..." />);
+      expect(screen.getByPlaceholderText("Ask...")).toBeInTheDocument();
+      expect(screen.getByLabelText("Send message")).toBeInTheDocument();
+      expect(container.querySelector(".cursor-row-resize")).not.toBeInTheDocument();
+    });
+
+    it("sends on Enter in compact mode", async () => {
+      const onSend = vi.fn().mockResolvedValue(true);
+      render(<ChatInput onSend={onSend} compact />);
+      const textarea = screen.getByLabelText("Message input");
+      fireEvent.change(textarea, { target: { value: "Hi" } });
+      fireEvent.keyDown(textarea, { key: "Enter", shiftKey: false });
+      await waitFor(() => {
+        expect(onSend).toHaveBeenCalledWith("Hi");
+      });
+    });
+  });
 });

@@ -618,7 +618,6 @@ export default function TicketDetailPage({
           />
           <TicketChatPane
             ticketKey={key}
-            ticketTitle={ticket.title}
             onClose={() => setChatPaneOpen(false)}
           />
         </div>
