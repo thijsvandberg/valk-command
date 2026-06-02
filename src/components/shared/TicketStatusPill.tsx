@@ -488,7 +488,7 @@ function TicketHoverCard({
           >
             <span
               aria-label="Pipeline health"
-              className={`inline-flex items-center gap-1 rounded-md px-1.5 py-0.5 text-body-sm font-medium tabular-nums ${
+              className={`inline-flex h-7 items-center gap-1.5 rounded-lg px-2.5 text-body-sm font-medium tabular-nums ${
                 data.pipelineHealth.status === "green"
                   ? "bg-emerald-500/10 text-emerald-500"
                   : data.pipelineHealth.status === "red"
@@ -496,7 +496,7 @@ function TicketHoverCard({
                   : "bg-amber-500/10 text-amber-500"
               }`}
             >
-              <GitBranch size={12} strokeWidth={2} aria-hidden />
+              <GitBranch size={13} strokeWidth={2} aria-hidden />
               {data.pipelineHealth.recentFails > 0
                 ? `${data.pipelineHealth.recentFails}/${data.pipelineHealth.recentTotal}`
                 : data.pipelineHealth.recentTotal}
@@ -510,7 +510,7 @@ function TicketHoverCard({
           >
             <span
               aria-label="Last deploy"
-              className={`inline-flex items-center gap-1 rounded-md px-1.5 py-0.5 text-body-sm font-medium uppercase tracking-wide ${
+              className={`inline-flex h-7 items-center gap-1.5 rounded-lg px-2.5 text-body-sm font-medium uppercase tracking-wide ${
                 data.lastDeploy.state === "SUCCESSFUL"
                   ? "bg-emerald-500/10 text-emerald-500"
                   : data.lastDeploy.state === "FAILED"
@@ -518,7 +518,7 @@ function TicketHoverCard({
                   : "bg-overlay-subtle text-text-secondary"
               }`}
             >
-              <Rocket size={12} strokeWidth={2} aria-hidden />
+              <Rocket size={13} strokeWidth={2} aria-hidden />
               {data.lastDeploy.environment ?? "unknown"}
             </span>
           </Tooltip>
