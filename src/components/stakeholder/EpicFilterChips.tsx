@@ -1,6 +1,7 @@
 "use client";
 
 import type { StakeholderTicket } from "@/lib/stakeholder-data";
+import { useEpicColorResolver } from "@/hooks/useEpicColor";
 
 interface EpicFilterChipsProps {
   tickets: StakeholderTicket[];
@@ -25,6 +26,7 @@ export function EpicFilterChips({
   onClearAll,
 }: EpicFilterChipsProps) {
   const epicCounts = buildEpicCounts(tickets);
+  const epicColor = useEpicColorResolver();
 
   // Only render when sprint has tickets from 2+ distinct epics
   if (epicCounts.length < 2) return null;
@@ -49,23 +51,35 @@ export function EpicFilterChips({
 
       {epicCounts.map(([epic, count]) => {
         const isActive = selectedEpics.has(epic);
+        const color = epicColor(epic);
         return (
           <button
             key={epic}
             type="button"
             onClick={() => onToggle(epic)}
+            style={
+              isActive
+                ? { backgroundColor: color.bg, color: color.text, boxShadow: `inset 0 0 0 1px ${color.border}` }
+                : undefined
+            }
             className={[
               "flex items-center gap-1.5 rounded-full px-2.5 py-1 text-body-sm transition-colors duration-100 cursor-pointer",
               isActive
-                ? "bg-[var(--color-brand-400)]/15 text-[var(--color-brand-400)]/80"
+                ? ""
                 : "bg-overlay-subtle text-text-tertiary hover:bg-hover-interactive hover:text-text-secondary",
             ].join(" ")}
           >
-            <span>{epic}</span>
-            <span className={[
-              "rounded-full px-1 py-px text-caption tabular-nums",
-              isActive ? "bg-[var(--color-brand-400)]/20" : "bg-overlay-default",
-            ].join(" ")}>
+            <span className="flex items-center gap-1.5">
+              <span className="h-2 w-2 shrink-0 rounded-full" style={{ backgroundColor: color.text }} />
+              {epic}
+            </span>
+            <span
+              className={[
+                "rounded-full px-1 py-px text-caption tabular-nums",
+                isActive ? "" : "bg-overlay-default",
+              ].join(" ")}
+              style={isActive ? { backgroundColor: color.border } : undefined}
+            >
               {count}
             </span>
           </button>

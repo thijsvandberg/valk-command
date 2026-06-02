@@ -5,7 +5,7 @@ import { useOutsideClick } from "@/hooks/useOutsideClick";
 import type { Ticket, POStatus, TicketReadiness, IssueType, JiraStatus, Sprint } from "@/types/ticket";
 import type { AssignableUser } from "@/components/shared/AssigneePicker";
 import type { EpicOption } from "@/components/shared/EpicPicker";
-import { getEpicColor } from "@/types/ticket";
+import { useEpicColor } from "@/hooks/useEpicColor";
 import type { InlineTagId } from "@/components/sprint-board/filter-bar-types";
 import { Avatar } from "@/components/shared/Avatar";
 import { Flag, MessageSquare, Pencil, Check, X, Gem } from "lucide-react";
@@ -137,7 +137,9 @@ export const BoardRow = memo(forwardRef<HTMLTableRowElement, BoardRowBaseProps>(
   const lastDeploy = lastDeployedMap?.[ticket.key];
   const health = healthMap?.[ticket.key];
   const isRemoved = Boolean(ticket.removedFromJiraAt);
-  const epicColor = ticket.epic ? getEpicColor(ticket.epic) ?? null : null;
+  // Hook must run unconditionally; the empty-string fallback is ignored when there is no epic.
+  const resolvedEpicColor = useEpicColor(ticket.epic ?? "");
+  const epicColor = ticket.epic ? resolvedEpicColor : null;
 
   // Checkbox always visible when checked or when any row is checked (bulk mode)
   const showCheckbox = isChecked || someChecked;
