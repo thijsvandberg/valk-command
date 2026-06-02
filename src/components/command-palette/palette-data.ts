@@ -6,6 +6,7 @@ import {
   MessageCircle,
   KanbanSquare,
   Gem,
+  Layers,
   Users,
   Settings,
   NotebookPen,
@@ -16,6 +17,7 @@ import type { PageResult, ResultCategory } from "./types";
 
 export const PAGES: PageResult[] = [
   { category: "page", id: "page-sprint-board", label: "Sprint Board", href: "/sprint-board", icon: React.createElement(KanbanSquare, { className: "h-4 w-4", strokeWidth: 1.5 }), aliases: ["board", "kanban", "tickets", "sprint", "backlog", "home"] },
+  { category: "page", id: "page-epics", label: "Epics", href: "/epics", icon: React.createElement(Layers, { className: "h-4 w-4", strokeWidth: 1.5 }), aliases: ["epic", "progress", "features", "roadmap"] },
   { category: "page", id: "page-chat", label: "Chat", href: "/chat", icon: React.createElement(MessageCircle, { className: "h-4 w-4", strokeWidth: 1.5 }), aliases: ["conversations", "messages", "talk"] },
   { category: "page", id: "page-story-writer", label: "Story Writer", href: "/story-writer", icon: React.createElement(NotebookPen, { className: "h-4 w-4", strokeWidth: 1.5 }), aliases: ["write", "stories", "editor"] },
   { category: "page", id: "page-refinement", label: "Refinement", href: "/refinement", icon: React.createElement(Gem, { className: "h-4 w-4", strokeWidth: 1.5 }), aliases: ["refine", "groom", "grooming", "prep"] },

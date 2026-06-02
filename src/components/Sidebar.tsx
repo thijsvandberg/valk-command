@@ -8,6 +8,7 @@ import {
   KanbanSquare,
   GitBranch,
   Gem,
+  Layers,
   NotebookPen,
   Users,
   Menu,
@@ -23,6 +24,11 @@ const navItems = [
     label: "Sprint Board",
     href: "/sprint-board",
     icon: <KanbanSquare className="h-5 w-5" strokeWidth={1.5} />,
+  },
+  {
+    label: "Epics",
+    href: "/epics",
+    icon: <Layers className="h-5 w-5" strokeWidth={1.5} />,
   },
   {
     label: "Chat",
