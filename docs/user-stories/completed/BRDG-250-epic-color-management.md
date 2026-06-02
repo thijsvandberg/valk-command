@@ -57,7 +57,7 @@ schema+migration → palette+lib → progress API → color route+client → reg
 
 ### Phase 3: Apply the color everywhere epics appear
 - [x] Epic pills on the sprint board use the epic's color.
-- [x] Epic picker rows / selected value reflect the color.
+- [x] ~~Epic picker rows / selected value reflect the color.~~ <!-- revised per PO feedback: the epic picker (ticket-detail EPIC field, story-writer sidebar) stays the standard purple `--color-icon-epic`. Per-epic colors are reserved for the table-style epic badges (sprint board pills) and the epic overview. -->
 - [x] Stakeholder epic filter chips (`EpicFilterChips.tsx`) reflect the color.
 - [x] Epic overview progress bars / labels (BRDG-044) use the color.
 - [x] Colors meet contrast requirements in both light and dark themes (derive subtle/strong variants via `color-mix`, consistent with current token usage).

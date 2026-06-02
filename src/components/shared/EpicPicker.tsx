@@ -4,7 +4,6 @@ import { useState, useRef, useEffect, useCallback, useMemo } from "react";
 import Link from "next/link";
 import { Check, Search, Zap, X, RefreshCw, Sparkles, AlertTriangle, ArrowUpRight } from "lucide-react";
 import { BasePicker } from "@/components/shared/BasePicker";
-import { useEpicColorResolver } from "@/hooks/useEpicColor";
 import useSWR from "swr";
 import { apiFetch, swrFetcher, ApiError } from "@/lib/api-client";
 import { useTaskStream } from "@/hooks/useTaskStream";
@@ -72,7 +71,6 @@ function EpicPickerInner({
   textClass: string;
 }) {
   const { open, query, setQuery, searchRef, handleClose } = BasePicker.useContext();
-  const epicColor = useEpicColorResolver();
 
   const [syncing, setSyncing] = useState(false);
   const [suggesting, setSuggesting] = useState(false);
@@ -230,16 +228,8 @@ function EpicPickerInner({
         title={value ? `Epic: ${value.name}` : "Select epic"}
         className={`inline-flex items-center gap-1.5 rounded-md bg-overlay-default px-2 py-0.5 ${textClass} font-medium cursor-pointer hover:bg-overlay-strong transition-colors duration-150 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)] active:scale-[0.98]`}
       >
-        <Zap
-          size={12}
-          strokeWidth={1.5}
-          className={`shrink-0 ${value ? "" : "text-text-muted"}`}
-          style={value ? { color: epicColor(value.key).text } : undefined}
-        />
-        <span
-          className={`truncate max-w-[140px] ${value ? "font-medium" : "text-text-muted"}`}
-          style={value ? { color: epicColor(value.key).text } : undefined}
-        >
+        <Zap size={12} strokeWidth={1.5} className={`shrink-0 ${value ? "text-[var(--color-icon-epic)]" : "text-text-muted"}`} />
+        <span className={`truncate max-w-[140px] ${value ? "text-[var(--color-icon-epic)] font-medium" : "text-text-muted"}`}>
           {value ? value.name : "Select epic"}
         </span>
       </BasePicker.Trigger>
@@ -333,10 +323,7 @@ function EpicPickerInner({
                 onSelect={() => { onChange({ key: epic.key, name: epic.name }); handleClose(); }}
                 style={isSuggested && !query.trim() ? { backgroundColor: "color-mix(in srgb, var(--color-icon-epic) 4%, transparent)" } : undefined}
               >
-                <span
-                  className="flex w-4 items-center justify-center shrink-0"
-                  style={{ color: epicColor(epic.key).text }}
-                >
+                <span className="flex w-4 items-center justify-center shrink-0 text-[var(--color-icon-epic)]">
                   <Zap size={11} strokeWidth={1.5} />
                 </span>
                 <span className={`flex-1 text-left truncate ${isSelected ? "text-text-primary font-medium" : "text-text-secondary"}`}>
