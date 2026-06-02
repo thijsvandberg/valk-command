@@ -2,6 +2,19 @@ import type { ReactNode } from "react";
 import { Check } from "lucide-react";
 import { sanitizePrismOutput } from "@/lib/sanitize-client";
 import { ImageLightbox } from "@/components/shared/ImageLightbox";
+import { TicketRefPill } from "@/components/shared/TicketRefPill";
+
+// Bare project-key references (e.g. "VPL-43237") sitting in plain description
+// text are linkified into interactive pills. The prefix is configurable so a
+// different Jira project keeps working. Linkification is opt-in per render (see
+// renderMarkdown's `linkifyRefs`) so only descriptions get it, and it never
+// reaches text inside other formatted elements (links, code, bold/italic) —
+// those either don't recurse or pass the flag off.
+const PROJECT_KEY = process.env.NEXT_PUBLIC_JIRA_PROJECT_KEY ?? "VPL";
+const TICKET_REF_RE = new RegExp(
+  `\\b${PROJECT_KEY.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}-\\d+\\b`,
+  "g",
+);
 
 const VIDEO_EXTENSIONS = /\.(mp4|webm|mov|ogg)$/i;
 function isVideoAttachment(altOrSrc: string): boolean {
@@ -57,8 +70,29 @@ function highlightCodeLine(code: string, lang: string): string {
 }
 
 
-function inlineFormat(text: string): ReactNode {
+function inlineFormat(text: string, linkify = false): ReactNode {
   const parts: ReactNode[] = [];
+  let i = 0;
+
+  // Pushes a raw plain-text run. When linkification is enabled (top-level
+  // description text only — never recursive emphasis/color), bare project-key
+  // references inside the run become pills; the rest stays plain text.
+  const pushText = (chunk: string) => {
+    if (!chunk) return;
+    if (!linkify) {
+      parts.push(chunk);
+      return;
+    }
+    TICKET_REF_RE.lastIndex = 0;
+    let last = 0;
+    let ref: RegExpExecArray | null;
+    while ((ref = TICKET_REF_RE.exec(chunk)) !== null) {
+      if (ref.index > last) parts.push(chunk.slice(last, ref.index));
+      parts.push(<TicketRefPill key={i++} ticketKey={ref[0]} />);
+      last = ref.index + ref[0].length;
+    }
+    if (last < chunk.length) parts.push(chunk.slice(last));
+  };
   // Match: colored text, images, links, strikethrough, bold+italic, bold, italic, inline code, emoji shortnames
   // Group index map:
   //  1,2   = {color:X}text{color}
@@ -74,11 +108,10 @@ function inlineFormat(text: string): ReactNode {
     /\{color:(#[0-9a-fA-F]{3,8}|rgba?\([^)]+\)|[a-zA-Z]+)\}(.*?)\{color\}|!\[([^\]]*)\]\(([^)]+)\)|\[([^\]]+)\]\(([^)]+)\)|~~(.+?)~~|(\*\*\*(.+?)\*\*\*)|(\*\*(.+?)\*\*)|(\*(.+?)\*)|(`(.+?)`)|:([a-zA-Z0-9_+\-]+):/g;
   let lastIndex = 0;
   let match;
-  let i = 0;
 
   while ((match = regex.exec(text)) !== null) {
     if (match.index > lastIndex) {
-      parts.push(text.slice(lastIndex, match.index));
+      pushText(text.slice(lastIndex, match.index));
     }
 
     if (match[1] !== undefined) {
@@ -162,7 +195,7 @@ function inlineFormat(text: string): ReactNode {
     lastIndex = match.index + match[0].length;
   }
   if (lastIndex < text.length) {
-    parts.push(text.slice(lastIndex));
+    pushText(text.slice(lastIndex));
   }
   return parts.length === 1 ? parts[0] : parts;
 }
@@ -207,7 +240,7 @@ const CALLOUT_STYLES: Record<string, { border: string; bg: string; dot: string; 
 };
 
 // Renders a table from markdown pipe rows
-function renderTable(tableLines: string[], key: string): ReactNode {
+function renderTable(tableLines: string[], key: string, linkify: boolean): ReactNode {
   const parseRow = (line: string): string[] =>
     line.replace(/^\||\|$/g, "").split("|").map((c) => c.trim());
 
@@ -227,7 +260,7 @@ function renderTable(tableLines: string[], key: string): ReactNode {
                 key={hi}
                 className="border border-border-strong bg-overlay-subtle px-3 py-2 text-left text-body-sm font-semibold uppercase tracking-wider text-text-secondary"
               >
-                {inlineFormat(h)}
+                {inlineFormat(h, linkify)}
               </th>
             ))}
           </tr>
@@ -237,7 +270,7 @@ function renderTable(tableLines: string[], key: string): ReactNode {
             <tr key={ri} className="border-b border-border-default transition-colors hover:bg-overlay-subtle">
               {row.map((cell, ci) => (
                 <td key={ci} className="border border-border-default px-3 py-2 text-text-secondary">
-                  {inlineFormat(cell)}
+                  {inlineFormat(cell, linkify)}
                 </td>
               ))}
             </tr>
@@ -293,22 +326,35 @@ function renderCodeBlock(lines: string[], lang: string, key: string): ReactNode 
 const MARKDOWN_CACHE_MAX = 100;
 const markdownCache = new Map<string, ReactNode[]>();
 
-export function renderMarkdown(text: string): ReactNode[] {
-  const cached = markdownCache.get(text);
+export interface RenderMarkdownOptions {
+  /** Linkify bare project-key references (e.g. "VPL-43237") into pills.
+   *  Enabled for ticket descriptions only; off for chat/comments/previews. */
+  linkifyRefs?: boolean;
+}
+
+export function renderMarkdown(text: string, opts?: RenderMarkdownOptions): ReactNode[] {
+  const linkifyRefs = opts?.linkifyRefs ?? false;
+  // Cache key must distinguish the two render modes, since identical text
+  // produces a different tree when references are linkified.
+  const cacheKey = `${linkifyRefs ? "1" : "0"}:${text}`;
+  const cached = markdownCache.get(cacheKey);
   if (cached) return cached;
 
-  const result = renderMarkdownUncached(text);
+  const result = renderMarkdownUncached(text, linkifyRefs);
 
   // Evict oldest entry when cache is full
   if (markdownCache.size >= MARKDOWN_CACHE_MAX) {
     const firstKey = markdownCache.keys().next().value;
     if (firstKey !== undefined) markdownCache.delete(firstKey);
   }
-  markdownCache.set(text, result);
+  markdownCache.set(cacheKey, result);
   return result;
 }
 
-function renderMarkdownUncached(text: string): ReactNode[] {
+function renderMarkdownUncached(text: string, linkifyRefs: boolean): ReactNode[] {
+  // Local shorthand so every block-level inline render carries the doc-level
+  // linkify flag without threading it through each call individually.
+  const fmt = (t: string): ReactNode => inlineFormat(t, linkifyRefs);
   const lines = decodeHtmlEntities(text).split("\n");
   const elements: ReactNode[] = [];
   let codeBlockLines: string[] | null = null;
@@ -366,7 +412,7 @@ function renderMarkdownUncached(text: string): ReactNode[] {
         const content = isOrdered
           ? trimmed.replace(/^\d+\.\s*/, "")
           : trimmed.slice(2);
-        nodes.push({ content: inlineFormat(content), children: [], ordered: isOrdered });
+        nodes.push({ content: fmt(content), children: [], ordered: isOrdered });
       }
 
       i++;
@@ -397,7 +443,7 @@ function renderMarkdownUncached(text: string): ReactNode[] {
           expandDepth--;
           expandLines!.push(line);
         } else {
-          const inner = renderMarkdown((expandLines ?? []).join("\n"));
+          const inner = renderMarkdown((expandLines ?? []).join("\n"), { linkifyRefs });
           const title = expandTitle;
           elements.push(
             <details
@@ -449,7 +495,7 @@ function renderMarkdownUncached(text: string): ReactNode[] {
           calloutLines!.push(line);
         } else {
           const style = CALLOUT_STYLES[calloutType] ?? CALLOUT_STYLES.info;
-          const inner = renderMarkdown((calloutLines ?? []).join("\n"));
+          const inner = renderMarkdown((calloutLines ?? []).join("\n"), { linkifyRefs });
           elements.push(
             <div
               key={`callout-${elements.length}`}
@@ -526,7 +572,7 @@ function renderMarkdownUncached(text: string): ReactNode[] {
         .replace(/<br\s*\/?>/gi, "\n")
         .replace(/<[^>]+>/g, "")
         .trim();
-      const inner = renderMarkdown(stripped);
+      const inner = renderMarkdown(stripped, { linkifyRefs });
       elements.push(
         <details
           key={`expand-${elements.length}`}
@@ -559,22 +605,22 @@ function renderMarkdownUncached(text: string): ReactNode[] {
 
     // Headings (check longer prefixes first)
     if (line.startsWith("#### ")) {
-      elements.push(<h4 key={`h4-${idx}`}>{inlineFormat(line.slice(5))}</h4>);
+      elements.push(<h4 key={`h4-${idx}`}>{fmt(line.slice(5))}</h4>);
       idx++;
       continue;
     }
     if (line.startsWith("### ")) {
-      elements.push(<h3 key={`h3-${idx}`}>{inlineFormat(line.slice(4))}</h3>);
+      elements.push(<h3 key={`h3-${idx}`}>{fmt(line.slice(4))}</h3>);
       idx++;
       continue;
     }
     if (line.startsWith("## ")) {
-      elements.push(<h2 key={`h2-${idx}`}>{inlineFormat(line.slice(3))}</h2>);
+      elements.push(<h2 key={`h2-${idx}`}>{fmt(line.slice(3))}</h2>);
       idx++;
       continue;
     }
     if (line.startsWith("# ")) {
-      elements.push(<h1 key={`h1-${idx}`}>{inlineFormat(line.slice(2))}</h1>);
+      elements.push(<h1 key={`h1-${idx}`}>{fmt(line.slice(2))}</h1>);
       idx++;
       continue;
     }
@@ -586,7 +632,7 @@ function renderMarkdownUncached(text: string): ReactNode[] {
       elements.push(
         <div key={`cb-${idx}`} className="my-1 flex items-start gap-2">
           <span className="mt-0.5 flex h-4 w-4 shrink-0 items-center justify-center rounded border border-border-strong bg-overlay-subtle" />
-          <span>{inlineFormat(content)}</span>
+          <span>{fmt(content)}</span>
         </div>
       );
       idx++;
@@ -599,7 +645,7 @@ function renderMarkdownUncached(text: string): ReactNode[] {
           <span className="mt-0.5 flex h-4 w-4 shrink-0 items-center justify-center rounded border border-[var(--color-brand-500)]/30 bg-[var(--color-brand-500)]/10 text-[var(--color-brand-400)]">
             <Check size={10} strokeWidth={1.5} />
           </span>
-          <span className="line-through opacity-60">{inlineFormat(content)}</span>
+          <span className="line-through opacity-60">{fmt(content)}</span>
         </div>
       );
       idx++;
@@ -644,7 +690,7 @@ function renderMarkdownUncached(text: string): ReactNode[] {
                 {paraLines.map((l, li) => (
                   <span key={li}>
                     {li > 0 && <br />}
-                    {inlineFormat(l)}
+                    {fmt(l)}
                   </span>
                 ))}
               </p>
@@ -662,7 +708,7 @@ function renderMarkdownUncached(text: string): ReactNode[] {
         tableLines.push(lines[idx]);
         idx++;
       }
-      const tableNode = renderTable(tableLines, `table-${elements.length}`);
+      const tableNode = renderTable(tableLines, `table-${elements.length}`, linkifyRefs);
       if (tableNode) elements.push(tableNode);
       continue;
     }
@@ -730,7 +776,7 @@ function renderMarkdownUncached(text: string): ReactNode[] {
     }
 
     if (paraLines.length === 1) {
-      elements.push(<p key={`p-${idx}`}>{inlineFormat(paraLines[0])}</p>);
+      elements.push(<p key={`p-${idx}`}>{fmt(paraLines[0])}</p>);
     } else {
       // Multiple consecutive lines → single paragraph with soft breaks
       elements.push(
@@ -738,7 +784,7 @@ function renderMarkdownUncached(text: string): ReactNode[] {
           {paraLines.map((l, li) => (
             <span key={li}>
               {li > 0 && <br />}
-              {inlineFormat(l)}
+              {fmt(l)}
             </span>
           ))}
         </p>

@@ -46,7 +46,7 @@ describe("TicketStatusPill", () => {
 
   it("renders issue type icon segment when issueType provided", () => {
     render(<TicketStatusPill ticketKey="VPL-1" jiraStatus="TO DO" issueType="story" />);
-    expect(screen.getByTitle("story")).toBeTruthy();
+    expect(screen.getByLabelText("story")).toBeTruthy();
   });
 
   it("opens issue type dropdown when onIssueTypeChange is wired", () => {
@@ -81,11 +81,34 @@ describe("TicketStatusPill", () => {
     expect(screen.queryByText("Copy with title")).toBeNull();
   });
 
+  it("shows the readiness segment by default", () => {
+    const { container } = render(
+      <TicketStatusPill ticketKey="VPL-1" jiraStatus="TO DO" readiness={null} />,
+    );
+    expect(container.querySelector(".bg-overlay-strong")).toBeTruthy();
+  });
+
+  it("omits the readiness segment when showReadiness is false (default variant)", () => {
+    const { container } = render(
+      <TicketStatusPill ticketKey="VPL-1" jiraStatus="TO DO" readiness={null} showReadiness={false} />,
+    );
+    expect(container.querySelector(".bg-overlay-strong")).toBeNull();
+    // The status segment is still present.
+    expect(screen.getByText("TODO")).toBeTruthy();
+  });
+
+  it("omits the readiness segment when showReadiness is false (list variant)", () => {
+    const { container } = render(
+      <TicketStatusPill ticketKey="VPL-1" jiraStatus="TO DO" readiness={null} showReadiness={false} variant="list" />,
+    );
+    expect(container.querySelector(".bg-overlay-strong")).toBeNull();
+  });
+
   it("shows the null-state gray dot when readiness is null and no callback, but stays non-interactive", () => {
     const { container } = render(
       <TicketStatusPill ticketKey="VPL-1" jiraStatus="TO DO" readiness={null} />,
     );
-    const readinessBtn = screen.getByTitle("Ready for Development");
+    const readinessBtn = screen.getByLabelText("Ready for Development");
     expect(readinessBtn).toBeTruthy();
     expect((readinessBtn as HTMLButtonElement).disabled).toBe(true);
     expect(container.querySelector(".bg-overlay-strong")).toBeTruthy();
@@ -95,7 +118,7 @@ describe("TicketStatusPill", () => {
     render(
       <TicketStatusPill ticketKey="VPL-1" jiraStatus="TO DO" readiness="drafting" />,
     );
-    expect(screen.getByTitle("Drafting")).toBeTruthy();
+    expect(screen.getByLabelText("Drafting")).toBeTruthy();
   });
 
   it("shows readiness segment (null state dot) when callback is wired but readiness is null", () => {
@@ -108,7 +131,7 @@ describe("TicketStatusPill", () => {
         onReadinessChange={onChange}
       />,
     );
-    expect(screen.getByTitle("Ready for Development")).toBeTruthy();
+    expect(screen.getByLabelText("Ready for Development")).toBeTruthy();
   });
 
   it("opens readiness dropdown on click when callback provided", () => {
@@ -121,7 +144,7 @@ describe("TicketStatusPill", () => {
         onReadinessChange={onChange}
       />,
     );
-    fireEvent.click(screen.getByTitle("Drafting"));
+    fireEvent.click(screen.getByLabelText("Drafting"));
     expect(screen.getByText("Waiting for Feedback")).toBeTruthy();
     expect(screen.getByText("Ready to Refine")).toBeTruthy();
     expect(screen.getByText("On Hold")).toBeTruthy();
@@ -138,7 +161,7 @@ describe("TicketStatusPill", () => {
         onReadinessChange={onChange}
       />,
     );
-    fireEvent.click(screen.getByTitle("Drafting"));
+    fireEvent.click(screen.getByLabelText("Drafting"));
     fireEvent.click(screen.getByText("On Hold"));
     expect(onChange).toHaveBeenCalledWith("on_hold");
   });
@@ -153,7 +176,7 @@ describe("TicketStatusPill", () => {
         onReadinessChange={onChange}
       />,
     );
-    fireEvent.click(screen.getByTitle("On Hold"));
+    fireEvent.click(screen.getByLabelText("On Hold"));
     fireEvent.click(screen.getByText("Ready for Development"));
     expect(onChange).toHaveBeenCalledWith(null);
   });
@@ -162,7 +185,7 @@ describe("TicketStatusPill", () => {
     render(
       <TicketStatusPill ticketKey="VPL-1" jiraStatus="TO DO" readiness="drafting" />,
     );
-    const btn = screen.getByTitle("Drafting");
+    const btn = screen.getByLabelText("Drafting");
     fireEvent.click(btn);
     expect(screen.queryByText("On Hold")).toBeNull();
   });

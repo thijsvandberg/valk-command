@@ -390,7 +390,7 @@ export function EditableDescription({
           }}
           title="Click to edit"
         >
-          {renderMarkdown(value)}
+          {renderMarkdown(value, { linkifyRefs: true })}
         </div>
       ) : (
         <p

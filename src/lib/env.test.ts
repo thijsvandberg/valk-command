@@ -13,6 +13,7 @@ describe("env validation", () => {
       JIRA_PROJECT_KEY: z.string().default("VPL"),
       JIRA_BOARD_ID: z.string().default(""),
       NEXT_PUBLIC_JIRA_BASE_URL: z.string().default("https://new-story.atlassian.net"),
+      NEXT_PUBLIC_JIRA_PROJECT_KEY: z.string().default("VPL"),
       VALK_AGENT_URL: z.string().url().default("http://localhost:3001"),
       VALK_AGENT_KEY: z.string().default(""),
       BITBUCKET_WORKSPACE: z.string().default(""),
@@ -30,6 +31,7 @@ describe("env validation", () => {
     expect(result.success).toBe(true);
     if (result.success) {
       expect(result.data.JIRA_PROJECT_KEY).toBe("VPL");
+      expect(result.data.NEXT_PUBLIC_JIRA_PROJECT_KEY).toBe("VPL");
       expect(result.data.DB_PATH).toBe("sqlite.db");
       expect(result.data.VALK_AGENT_URL).toBe("http://localhost:3001");
     }

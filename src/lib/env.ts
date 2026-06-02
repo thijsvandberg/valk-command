@@ -12,6 +12,7 @@ const envSchema = z.object({
 
   // Jira UI Links (also available client-side via NEXT_PUBLIC_)
   NEXT_PUBLIC_JIRA_BASE_URL: z.string().default("https://new-story.atlassian.net"),
+  NEXT_PUBLIC_JIRA_PROJECT_KEY: z.string().default("VPL"),
 
   // Workspace Agent
   VALK_AGENT_URL: z.string().url().default("http://localhost:3001"),

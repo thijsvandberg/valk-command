@@ -545,6 +545,8 @@ export interface TicketStatusPillProps {
   showKey?: boolean;
   /** Hide the jira status segment (default: true) */
   showStatus?: boolean;
+  /** Show the readiness segment (default: true). Set false for read-only reference pills. */
+  showReadiness?: boolean;
   /** Details shown in the hover card. When omitted, no hover card is rendered. */
   hoverData?: TicketPillHoverData;
   /** Enable the hover card (default: true). Combined with hoverData being present. */
@@ -580,6 +582,7 @@ export function TicketStatusPill({
   removedFromJira,
   showKey = true,
   showStatus = true,
+  showReadiness = true,
   hoverData,
   showHoverCard = true,
   onStoryPointsChange,
@@ -681,10 +684,6 @@ export function TicketStatusPill({
   const px = size === "sm" ? "px-1.5 py-[3px]" : size === "lg" ? "px-2.5 py-1" : "px-2 py-[3px]";
   const issueTypePx = size === "sm" ? "pl-1.5 pr-1 py-[3px]" : size === "lg" ? "pl-2.5 pr-2 py-1" : "pl-2 pr-1.5 py-[3px]";
   const textSize = size === "sm" ? "text-[10px]" : size === "lg" ? "text-body-sm" : "text-label";
-
-  // Always show the readiness indicator: a colored icon when set, or a neutral
-  // gray dot when unset, so "no readiness" stays visible instead of collapsing.
-  const showReadiness = true;
 
   // ---------------------------------------------------------------------------
   // List variant — no outer container, segments float inline with gaps
@@ -851,7 +850,8 @@ export function TicketStatusPill({
                 ref={issueTypeBtnRef}
                 type="button"
                 onClick={onIssueTypeChange ? () => setIssueTypeDropdownOpen((o) => !o) : undefined}
-                title={onIssueTypeChange ? "Change issue type" : issueType}
+                aria-label={issueType}
+                title={onIssueTypeChange ? "Change issue type" : undefined}
                 disabled={!onIssueTypeChange}
                 className={`${issueTypePx} flex items-center justify-center rounded-l-md transition-colors duration-150 ${
                   onIssueTypeChange
@@ -925,7 +925,7 @@ export function TicketStatusPill({
               ref={jiraStatusBtnRef}
               type="button"
               onClick={onJiraStatusChange ? () => setJiraDropdownOpen((o) => !o) : undefined}
-              title={onJiraStatusChange ? "Change status" : jiraStatus}
+              title={onJiraStatusChange ? "Change status" : undefined}
               disabled={!onJiraStatusChange}
               className={`${px} ${textSize} font-medium transition-colors duration-150 flex items-center gap-1.5 ${
                 onJiraStatusChange
@@ -964,7 +964,8 @@ export function TicketStatusPill({
                 ref={readinessBtnRef}
                 type="button"
                 onClick={onReadinessChange ? () => setReadinessDropdownOpen((o) => !o) : undefined}
-                title={readiness ? READINESS_CONFIG[readiness].label : "Ready for Development"}
+                aria-label={readiness ? READINESS_CONFIG[readiness].label : "Ready for Development"}
+                title={onReadinessChange ? "Change readiness" : undefined}
                 disabled={!onReadinessChange}
                 className={`${px} flex items-center justify-center rounded-r-md transition-colors duration-150 ${
                   onReadinessChange
