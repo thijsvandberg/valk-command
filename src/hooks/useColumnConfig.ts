@@ -8,6 +8,10 @@ import { useDebouncedCallback } from "./useDebouncedCallback";
 
 const DEBOUNCE_MS = 500;
 
+// One-time correction: an earlier migration wrongly dropped PO readiness for existing
+// users. Re-add it once, then respect the user's toggle choice afterwards (BRDG-239).
+const POREADINESS_FIX_KEY = "sprint-board-poreadiness-default-fix";
+
 // Headerless board (BRDG-239): persists only inline tag visibility. Column ordering
 // and fixed widths were removed with the table. Legacy persisted column-visibility
 // sets are migrated to the tag set on first load.
@@ -21,18 +25,31 @@ export function useColumnConfig() {
   }, DEBOUNCE_MS);
 
   useEffect(() => {
+    const fixApplied = typeof window !== "undefined" && localStorage.getItem(POREADINESS_FIX_KEY) === "true";
     settingsApi.getColumnConfig()
       .then((raw) => raw as { order: string[] | null; visible: string[] | null })
       .then((data) => {
+        let next: Set<InlineTagId> | null = null;
+        let needsPersist = false;
         if (data.visible && data.visible.length > 0) {
           if (isTagVisibility(data.visible)) {
-            setVisible(new Set(data.visible as InlineTagId[]));
+            next = new Set(data.visible as InlineTagId[]);
           } else {
             // Legacy column-visibility set -> migrate to tags and persist once.
-            const migrated = columnsToTags(data.visible);
-            setVisible(new Set(migrated));
-            settingsApi.saveColumnConfig({ order: [], visible: migrated })
-              .catch((err) => console.warn("[column-config] headerless migration persist failed", err));
+            next = new Set(columnsToTags(data.visible));
+            needsPersist = true;
+          }
+        }
+        // One-time PO readiness correction (see POREADINESS_FIX_KEY).
+        if (!fixApplied) {
+          if (next && !next.has("poReadiness")) { next.add("poReadiness"); needsPersist = true; }
+          if (typeof window !== "undefined") localStorage.setItem(POREADINESS_FIX_KEY, "true");
+        }
+        if (next) {
+          setVisible(next);
+          if (needsPersist) {
+            settingsApi.saveColumnConfig({ order: [], visible: [...next] })
+              .catch((err) => console.warn("[column-config] persist failed", err));
           }
         }
         setLoaded(true);

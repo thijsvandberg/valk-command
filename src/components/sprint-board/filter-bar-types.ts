@@ -110,11 +110,13 @@ export const ROW_FIELDS: { id: InlineTagId; label: string }[] = [
 export const DEFAULT_VISIBLE_TAGS: InlineTagId[] = ROW_FIELDS.map((f) => f.id);
 
 // Migration map from the legacy column ids to the new inline tag ids (BRDG-239).
+// Note: poReadiness/refinement/editState have no legacy column equivalent, so they are
+// NOT listed here and always default to visible (poStatus was never an actual column,
+// so mapping it here wrongly dropped poReadiness on migration).
 export const COLUMN_TO_TAG: Partial<Record<ColumnId, InlineTagId>> = {
   flagged: "flag",
   quality: "quality",
   notes: "notes",
-  poStatus: "poReadiness",
 };
 
 const TAG_ID_SET = new Set<string>(DEFAULT_VISIBLE_TAGS);

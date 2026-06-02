@@ -303,13 +303,6 @@ export const BoardRow = memo(forwardRef<HTMLTableRowElement, BoardRowBaseProps>(
             {tags.has("editState") && !isRemoved && ticket.editState === "draft" && <EditStateDot state="draft" />}
             {tags.has("editState") && !isRemoved && ticket.editState === "local_edits" && <EditStateDot state="local_edits" />}
             {tags.has("editState") && !isRemoved && ticket.editState === "conflict" && <EditStateDot state="conflict" />}
-            {tags.has("refinement") && refinementSessions && refinementSessions.length > 0 && (
-              <Tooltip content={`In refinement: ${refinementSessions.map((s) => s.name).join(", ")}`} delay={300}>
-                <span className="shrink-0">
-                  <Gem size={11} strokeWidth={1.5} className="text-[var(--color-brand-400)] opacity-60" />
-                </span>
-              </Tooltip>
-            )}
           </div>
 
           {isEditingTitle ? (
@@ -432,6 +425,18 @@ export const BoardRow = memo(forwardRef<HTMLTableRowElement, BoardRowBaseProps>(
                 <span className="shrink-0" title={ticket.notes}>
                   <MessageSquare className="h-3.5 w-3.5 text-text-muted" strokeWidth={1.5} />
                 </span>
+              )}
+              {/* Refinement: a tinted brand badge on the right so it reads as a clear signal
+                  rather than fading into the row (BRDG-239). */}
+              {tags.has("refinement") && refinementSessions && refinementSessions.length > 0 && (
+                <Tooltip content={`In refinement: ${refinementSessions.map((s) => s.name).join(", ")}`} delay={300}>
+                  <span className="inline-flex shrink-0 items-center gap-1 rounded-full bg-[var(--color-brand-500)]/12 px-1.5 py-0.5 text-[var(--color-brand-300)]">
+                    <Gem size={11} strokeWidth={1.75} />
+                    {refinementSessions.length > 1 && (
+                      <span className="text-[10px] font-medium tabular-nums">{refinementSessions.length}</span>
+                    )}
+                  </span>
+                </Tooltip>
               )}
 
               {/* SP / BV — compact, right of the tags. */}

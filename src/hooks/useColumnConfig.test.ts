@@ -35,6 +35,8 @@ describe("useColumnConfig (headerless tags, BRDG-239)", () => {
   });
 
   it("loads an already-migrated tag visibility set as-is", async () => {
+    // Skip the one-time PO readiness correction so this asserts pure load behaviour.
+    localStorage.setItem("sprint-board-poreadiness-default-fix", "true");
     vi.mocked(settingsApi.getColumnConfig).mockResolvedValue({
       order: [],
       visible: ["flag", "quality"],
@@ -80,7 +82,22 @@ describe("useColumnConfig (headerless tags, BRDG-239)", () => {
     expect(result.current.visible.has("flag")).toBe(true);
   });
 
+  it("adds PO readiness once when a persisted set is missing it (one-time fix)", async () => {
+    vi.mocked(settingsApi.getColumnConfig).mockResolvedValue({
+      order: [],
+      visible: ["flag", "quality"], // tag set without poReadiness
+    });
+    const { result } = renderHook(() => useColumnConfig(), { wrapper: swrWrapper });
+    await waitFor(() => expect(result.current.loaded).toBe(true));
+    expect(result.current.visible.has("poReadiness")).toBe(true);
+    expect(settingsApi.saveColumnConfig).toHaveBeenCalledWith(
+      expect.objectContaining({ visible: expect.arrayContaining(["poReadiness"]) }),
+    );
+    expect(localStorage.getItem("sprint-board-poreadiness-default-fix")).toBe("true");
+  });
+
   it("resetToDefaults restores the full default tag set", async () => {
+    localStorage.setItem("sprint-board-poreadiness-default-fix", "true");
     vi.mocked(settingsApi.getColumnConfig).mockResolvedValue({
       order: [],
       visible: ["flag"],
