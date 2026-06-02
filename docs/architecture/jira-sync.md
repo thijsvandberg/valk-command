@@ -216,20 +216,21 @@ References inside inline code, fenced code blocks, or emphasis (bold/italic/colo
 are left untouched; references in plain text inside an expandable block are still
 converted. Linkification is opt-in per render via the `linkifyRefs` flag.
 
-Enabled surfaces (BRDG-247, BRDG-248):
+Enabled surfaces (BRDG-247, BRDG-248, BRDG-253):
 
 - Ticket description (`EditableDescription`) and the ticket-detail header pill.
 - PO comments and Jira comments (`CommentsSection`).
 - Refinement-session Jira comments (`SessionTicketView`).
 - Chat message bodies (`ChatMessageParts` / `ChatMessage`).
+- Version-history preview (`VersionPreview`).
+- Related-stories panel (`RelatedStoriesPanel`).
+- Story preview app (`StoryPreviewApp`) and draft preview app (`DraftPreviewApp`).
+- Story-writer draft previews — chat draft expander + `DraftCard` (`ChatMessageParts`).
 
 Intentionally left **off**:
 
-- Story-writer draft previews (chat draft expander + `DraftCard`) — these render
-  in-progress, still-editable draft content. Deferred to BRDG-253.
+- Diff pane (`DiffPane`) — pills would compete with the textual diff (BRDG-253 PO decision).
 - Search results (`SearchResultParts`) — deferred to BRDG-252.
-- Version preview (`VersionPreview`) and other story-writer previews (`DiffPane`,
-  `RelatedStoriesPanel`, `StoryPreviewApp`, `DraftPreviewApp`) — deferred to BRDG-253.
 - The rich-text editor (TipTap): plain text while editing, pill when rendered. Inline
   pills while editing are intentionally not implemented (BRDG-248 PO decision).
 
