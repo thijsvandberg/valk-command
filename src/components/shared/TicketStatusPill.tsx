@@ -479,6 +479,50 @@ function TicketHoverCard({
         ) : (
           <MetricBadge metric="bv" value={data.businessValue} tinted tooltip />
         )}
+
+        {/* Pipeline health + last deploy as compact badges (BRDG-251), matching
+            the SP/BV pill geometry so the row reads as one set of signals. */}
+        {data.pipelineHealth && data.pipelineHealth.status !== "gray" && (
+          <Tooltip
+            content={`Pipeline: ${data.pipelineHealth.recentFails} failure${data.pipelineHealth.recentFails === 1 ? "" : "s"} in last ${data.pipelineHealth.recentTotal} runs`}
+          >
+            <span
+              aria-label="Pipeline health"
+              className={`inline-flex items-center gap-1 rounded-md px-1.5 py-0.5 text-body-sm font-medium tabular-nums ${
+                data.pipelineHealth.status === "green"
+                  ? "bg-emerald-500/10 text-emerald-500"
+                  : data.pipelineHealth.status === "red"
+                  ? "bg-red-500/10 text-red-500"
+                  : "bg-amber-500/10 text-amber-500"
+              }`}
+            >
+              <GitBranch size={12} strokeWidth={2} aria-hidden />
+              {data.pipelineHealth.recentFails > 0
+                ? `${data.pipelineHealth.recentFails}/${data.pipelineHealth.recentTotal}`
+                : data.pipelineHealth.recentTotal}
+            </span>
+          </Tooltip>
+        )}
+
+        {data.lastDeploy && (
+          <Tooltip
+            content={`Deploy: ${data.lastDeploy.environment ?? "unknown"} — ${data.lastDeploy.state}${data.lastDeploy.completedAt ? ` (${new Date(data.lastDeploy.completedAt).toLocaleString("en-GB")})` : ""}`}
+          >
+            <span
+              aria-label="Last deploy"
+              className={`inline-flex items-center gap-1 rounded-md px-1.5 py-0.5 text-body-sm font-medium uppercase tracking-wide ${
+                data.lastDeploy.state === "SUCCESSFUL"
+                  ? "bg-emerald-500/10 text-emerald-500"
+                  : data.lastDeploy.state === "FAILED"
+                  ? "bg-red-500/10 text-red-500"
+                  : "bg-overlay-subtle text-text-secondary"
+              }`}
+            >
+              <Rocket size={12} strokeWidth={2} aria-hidden />
+              {data.lastDeploy.environment ?? "unknown"}
+            </span>
+          </Tooltip>
+        )}
       </div>
 
       <div className="mt-2 flex flex-col gap-0.5">
@@ -533,44 +577,6 @@ function TicketHoverCard({
             <span className="text-text-muted">None</span>
           )}
         </InfoRow>
-
-        {data.pipelineHealth && data.pipelineHealth.status !== "gray" && (
-          <InfoRow icon={<GitBranch size={12} strokeWidth={1.75} />} label="Pipeline">
-            <span
-              className={`inline-flex items-center gap-1 rounded px-1.5 py-0.5 text-label font-medium leading-none tabular-nums ${
-                data.pipelineHealth.status === "green"
-                  ? "bg-emerald-500/10 text-emerald-400/80"
-                  : data.pipelineHealth.status === "red"
-                  ? "bg-red-500/10 text-red-400/80"
-                  : "bg-amber-500/10 text-amber-400/80"
-              }`}
-            >
-              {data.pipelineHealth.recentFails > 0
-                ? `${data.pipelineHealth.recentFails} failed / ${data.pipelineHealth.recentTotal}`
-                : `${data.pipelineHealth.recentTotal} green`}
-            </span>
-          </InfoRow>
-        )}
-
-        {data.lastDeploy && (
-          <InfoRow icon={<Rocket size={12} strokeWidth={1.75} />} label="Deploy">
-            <Tooltip
-              content={`${data.lastDeploy.environment ?? "unknown"} — ${data.lastDeploy.state}${data.lastDeploy.completedAt ? ` (${new Date(data.lastDeploy.completedAt).toLocaleString("en-GB")})` : ""}`}
-            >
-              <span
-                className={`inline-flex items-center gap-1 rounded px-1.5 py-0.5 text-label font-medium uppercase leading-none tracking-wide ${
-                  data.lastDeploy.state === "SUCCESSFUL"
-                    ? "bg-emerald-500/10 text-emerald-400/80"
-                    : data.lastDeploy.state === "FAILED"
-                    ? "bg-red-500/10 text-red-400/80"
-                    : "bg-overlay-subtle text-text-muted"
-                }`}
-              >
-                {data.lastDeploy.environment ?? "unknown"}
-              </span>
-            </Tooltip>
-          </InfoRow>
-        )}
       </div>
 
       {data.flagged && (

@@ -28,6 +28,11 @@ These add visual noise to every row. The natural home for them is the existing `
 6. **Enlarge the card title** (Image #4) — bump the title from `text-body-sm` (12px) to `text-body-lg` (14px).
 7. **Tests** — hover card renders pipeline/deploy rows from data and omits them when absent; `DEFAULT_VISIBLE` excludes `pipeline`.
 
+### Follow-up refinements (PO feedback after first pass)
+
+- Pipeline/deploy were initially added as their own labelled `InfoRow`s; per PO they now render as **compact badges on the SP/BV metric row** (next to SP/BV), matching the `MetricBadge` pill geometry (`rounded-md px-1.5 py-0.5 gap-1 text-body-sm`, icon size 12 / strokeWidth 2). Pipeline shows `GitBranch` + `fails/total` (or total when healthy); deploy shows `Rocket` + environment. Both carry `aria-label`s and tooltips with full detail. Status colors: green/red/amber for pipeline, green/red/neutral for deploy.
+- Column visibility is persisted **server-side** via `useColumnConfig`, not the `storedColumns` localStorage path in `useSprintBoardFilters` (that path is dead — `externalVisible` always wins). A one-time migration in `useColumnConfig` strips `pipeline` from the loaded visible set so the column hides for existing users; re-adding via the toggle is respected.
+
 ## Acceptance Criteria
 
 - [x] The pipeline-health badge and last-deploy badge no longer appear inline on sprint-board rows by default.
