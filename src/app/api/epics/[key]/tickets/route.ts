@@ -1,8 +1,8 @@
 import { NextResponse } from "next/server";
 import { db } from "@/db";
-import { ticket, appSetting } from "@/db/schema";
+import { ticket, ticketMetadata, appSetting } from "@/db/schema";
 import { and, eq, inArray, notInArray, sql } from "drizzle-orm";
-import type { Assignee, IssueType, JiraStatus } from "@/types/ticket";
+import type { Assignee, IssueType, JiraStatus, TicketReadiness } from "@/types/ticket";
 import { safeJsonParse } from "@/lib/api-validation";
 import { selectRecentSprintIds, type RecentSprintInput } from "@/lib/epic-progress";
 
@@ -31,6 +31,7 @@ export interface EpicChildTicket {
   storyPoints: number | null;
   assignee: Assignee | null;
   sprintId: string;
+  readiness: TicketReadiness | null;
 }
 
 export async function GET(
@@ -56,8 +57,10 @@ export async function GET(
       storyPoints: ticket.storyPoints,
       assignee: ticket.assignee,
       sprintName: ticket.sprintName,
+      readiness: ticketMetadata.readiness,
     })
     .from(ticket)
+    .leftJoin(ticketMetadata, eq(ticketMetadata.jiraKey, ticket.jiraKey))
     .where(
       and(
         eq(ticket.epicKey, key),
@@ -77,6 +80,7 @@ export async function GET(
     storyPoints: r.storyPoints,
     assignee: buildAssignee(r.assignee),
     sprintId: r.sprintName ?? "",
+    readiness: (r.readiness ?? null) as TicketReadiness | null,
   }));
 
   return NextResponse.json(tickets);

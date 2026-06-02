@@ -38,6 +38,12 @@ export interface EpicProgressItem {
   teams: Team[];
   /** The epic's own Jira status, normalized to the standard set. */
   status: JiraStatus;
+  /**
+   * True when the epic has tickets in the recent-sprint window. The view shows
+   * only these by default; epics without recent activity (e.g. done/deprecated)
+   * surface when a filter is active, so old epics can be cleaned up.
+   */
+  recentActivity: boolean;
 }
 
 async function getRecentSprintWindow(): Promise<{ ids: string[]; filter: string[] }> {
@@ -84,11 +90,6 @@ export async function GET() {
     .groupBy(ticket.epicKey)
     .all();
 
-  if (agg.length === 0) {
-    cache.set(cacheKey, [], 300_000);
-    return NextResponse.json([], { headers: { "X-Cache": "MISS" } });
-  }
-
   // Per-sprint breakdown for the timeline (total + completed per epic per sprint).
   const perSprintRows = await db
     .select({
@@ -110,18 +111,23 @@ export async function GET() {
     perSprintByEpic.set(r.epicKey, list);
   }
 
-  // Authoritative epic names from synced epic rows; fall back to the child's epic label.
-  const epicKeys = agg.map((a) => a.epicKey).filter((k): k is string => k != null);
+  // Epics with recent-window activity (full progress stats + timeline).
+  const recentKeys = agg.map((a) => a.epicKey).filter((k): k is string => k != null);
+  const recentKeySet = new Set(recentKeys);
+
+  // All synced epic rows — for authoritative names/status and so done/deprecated
+  // epics (no recent children) can surface when a filter is active.
   const epicRows = await db
     .select({ jiraKey: ticket.jiraKey, title: ticket.title, status: ticket.status })
     .from(ticket)
-    .where(and(eq(ticket.type, "epic"), inArray(ticket.jiraKey, epicKeys)))
+    .where(eq(ticket.type, "epic"))
     .all();
   const epicTitleMap = new Map(epicRows.map((e) => [e.jiraKey, e.title]));
   const epicStatusMap = new Map(epicRows.map((e) => [e.jiraKey, e.status]));
 
-  // PO-assigned teams per epic (Bridge metadata).
-  const epicTeamsMap = getEpicTeamsMap(epicKeys);
+  // PO-assigned teams for every epic we might show (recent children + all epic rows).
+  const allKeys = Array.from(new Set([...recentKeys, ...epicRows.map((e) => e.jiraKey)]));
+  const epicTeamsMap = getEpicTeamsMap(allKeys);
 
   // Order sprint ids within an epic by the recent-window order (oldest first), backlog last.
   const orderIndex = new Map<string, number>(recentIds.map((id, i) => [id, i]));
@@ -157,6 +163,7 @@ export async function GET() {
         pointsBased: totalPoints > 0,
         teams: epicTeamsMap.get(key) ?? [],
         status: normalizeEpicStatus(epicStatusMap.get(key)),
+        recentActivity: true,
       };
     });
 
@@ -166,6 +173,30 @@ export async function GET() {
     return b.completedTickets - a.completedTickets;
   });
 
-  cache.set(cacheKey, items, 300_000);
-  return NextResponse.json(items, { headers: { "X-Cache": "MISS" } });
+  // Epics without recent activity: minimal rows so the filters can reveal them
+  // (e.g. cleaning up old done/deprecated epics). Children aren't necessarily
+  // synced, so progress is left at zero.
+  const inactive: EpicProgressItem[] = epicRows
+    .filter((e) => !recentKeySet.has(e.jiraKey))
+    .map((e) => ({
+      key: e.jiraKey,
+      name: e.title,
+      totalTickets: 0,
+      completedTickets: 0,
+      totalPoints: 0,
+      completedPoints: 0,
+      inProgressPoints: 0,
+      todoPoints: 0,
+      sprintIds: [],
+      perSprint: [],
+      pointsBased: false,
+      teams: epicTeamsMap.get(e.jiraKey) ?? [],
+      status: normalizeEpicStatus(e.status),
+      recentActivity: false,
+    }))
+    .sort((a, b) => a.name.localeCompare(b.name));
+
+  const all = [...items, ...inactive];
+  cache.set(cacheKey, all, 300_000);
+  return NextResponse.json(all, { headers: { "X-Cache": "MISS" } });
 }

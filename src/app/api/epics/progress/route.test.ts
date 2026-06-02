@@ -98,6 +98,29 @@ describe("GET /api/epics/progress", () => {
     expect(e.status).toBe("DONE");
   });
 
+  it("includes synced epics without recent activity as inactive rows", async () => {
+    seedSprints();
+    testDb.insert(ticket).values([
+      // Recent epic with a child in the window.
+      { jiraKey: "VPL-E1", title: "Active Epic", status: "IN PROGRESS", type: "epic" },
+      { jiraKey: "VPL-1", title: "T1", status: "TO DO", type: "story", epicKey: "VPL-E1", epic: "Active Epic", sprintName: "12" },
+      // Done epic with no children in the recent window.
+      { jiraKey: "VPL-E2", title: "Old Done Epic", status: "DONE", type: "epic" },
+    ]).run();
+
+    const res = await GET();
+    const data = await res.json();
+
+    const active = data.find((x: { key: string }) => x.key === "VPL-E1");
+    expect(active.recentActivity).toBe(true);
+
+    const inactive = data.find((x: { key: string }) => x.key === "VPL-E2");
+    expect(inactive).toBeDefined();
+    expect(inactive.recentActivity).toBe(false);
+    expect(inactive.status).toBe("DONE");
+    expect(inactive.totalTickets).toBe(0);
+  });
+
   it("defaults status to TO DO when no synced epic row exists", async () => {
     seedSprints();
     testDb.insert(ticket).values([

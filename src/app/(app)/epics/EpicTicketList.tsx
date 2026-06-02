@@ -28,8 +28,9 @@ function TicketRow({ ticket, sprintName }: { ticket: EpicChildTicket; sprintName
           jiraStatus={ticket.jiraStatus}
           issueType={ticket.type}
           title={ticket.title}
+          readiness={ticket.readiness}
           variant="list"
-          showReadiness={false}
+          showReadiness
         />
         <span className="truncate text-body-sm text-text-secondary">{ticket.title}</span>
       </div>

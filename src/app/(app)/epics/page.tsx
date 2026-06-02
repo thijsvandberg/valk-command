@@ -49,10 +49,15 @@ export default function EpicsPage() {
   const clearStatuses = useCallback(() => setFilters((f) => ({ ...f, statuses: [] })), [setFilters]);
   const clearAll = useCallback(() => setFilters({}), [setFilters]);
 
+  const teamActive = teamFilter.length > 0 || noTeam;
+  const anyFilterActive = teamActive || statusFilter.length > 0;
+
   const filtered = useMemo(() => {
     if (!epics) return epics;
-    const teamActive = teamFilter.length > 0 || noTeam;
     return epics.filter((epic) => {
+      // Default view = recent-activity epics only; any active filter widens the
+      // pool to all epics so old/done/deprecated ones can be found and cleaned up.
+      if (!anyFilterActive && !epic.recentActivity) return false;
       const teamOk =
         !teamActive ||
         teamFilter.some((t) => epic.teams.includes(t)) ||
@@ -60,9 +65,7 @@ export default function EpicsPage() {
       const statusOk = statusFilter.length === 0 || statusFilter.includes(epic.status);
       return teamOk && statusOk;
     });
-  }, [epics, teamFilter, noTeam, statusFilter]);
-
-  const filteredOut = !!epics && epics.length > 0 && !!filtered && filtered.length === 0;
+  }, [epics, teamFilter, noTeam, statusFilter, teamActive, anyFilterActive]);
 
   return (
     <div className="flex h-full flex-col">
@@ -96,15 +99,13 @@ export default function EpicsPage() {
 
           {isLoading ? (
             <EpicListSkeleton />
-          ) : !epics || epics.length === 0 ? (
-            <div className="flex flex-col items-center justify-center rounded-xl border border-dashed border-border-default py-16 text-center">
-              <Zap size={28} strokeWidth={1.5} className="mb-3 text-text-muted" />
-              <p className="text-body text-text-secondary">No epics with tickets in the recent sprints.</p>
-              <p className="mt-1 text-body-sm text-text-muted">
-                Epics appear here once their tickets land in a recent sprint or the backlog.
-              </p>
+          ) : filtered && filtered.length > 0 ? (
+            <div className="flex flex-col gap-2.5">
+              {filtered.map((epic) => (
+                <EpicRow key={epic.key} epic={epic} sprints={sprints} />
+              ))}
             </div>
-          ) : filteredOut ? (
+          ) : anyFilterActive ? (
             <div className="flex flex-col items-center justify-center rounded-xl border border-dashed border-border-default py-16 text-center">
               <Zap size={28} strokeWidth={1.5} className="mb-3 text-text-muted" />
               <p className="text-body text-text-secondary">No epics match the current filters.</p>
@@ -117,10 +118,12 @@ export default function EpicsPage() {
               </button>
             </div>
           ) : (
-            <div className="flex flex-col gap-2.5">
-              {filtered?.map((epic) => (
-                <EpicRow key={epic.key} epic={epic} sprints={sprints} />
-              ))}
+            <div className="flex flex-col items-center justify-center rounded-xl border border-dashed border-border-default py-16 text-center">
+              <Zap size={28} strokeWidth={1.5} className="mb-3 text-text-muted" />
+              <p className="text-body text-text-secondary">No epics with tickets in the recent sprints.</p>
+              <p className="mt-1 text-body-sm text-text-muted">
+                Use the team or status filters to browse all epics, including done and deprecated ones.
+              </p>
             </div>
           )}
         </div>

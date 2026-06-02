@@ -42,6 +42,7 @@ function makeEpic(overrides: Partial<EpicProgressItem> = {}): EpicProgressItem {
     pointsBased: true,
     teams: [],
     status: "IN PROGRESS",
+    recentActivity: true,
     ...overrides,
   };
 }
@@ -114,6 +115,33 @@ describe("EpicsPage", () => {
     render(<EpicsPage />);
     expect(screen.getByText("Alpha")).toBeInTheDocument();
     expect(screen.queryByText("Beta")).not.toBeInTheDocument();
+  });
+
+  it("hides non-recent epics by default", () => {
+    mockUseEpicProgress.mockReturnValue({
+      data: [
+        makeEpic({ key: "VPL-A", name: "Active Epic", recentActivity: true }),
+        makeEpic({ key: "VPL-D", name: "Done Epic", recentActivity: false, status: "DONE" }),
+      ],
+      isLoading: false,
+    });
+    render(<EpicsPage />);
+    expect(screen.getByText("Active Epic")).toBeInTheDocument();
+    expect(screen.queryByText("Done Epic")).not.toBeInTheDocument();
+  });
+
+  it("reveals non-recent epics when a status filter is active", () => {
+    mockUseEpicProgress.mockReturnValue({
+      data: [
+        makeEpic({ key: "VPL-A", name: "Active Epic", recentActivity: true, status: "TO DO" }),
+        makeEpic({ key: "VPL-D", name: "Done Epic", recentActivity: false, status: "DONE" }),
+      ],
+      isLoading: false,
+    });
+    localStorage.setItem("bridge:epic-filters", JSON.stringify({ statuses: ["DONE"] }));
+    render(<EpicsPage />);
+    expect(screen.getByText("Done Epic")).toBeInTheDocument();
+    expect(screen.queryByText("Active Epic")).not.toBeInTheDocument();
   });
 
   it("filters epics with no team via the No team option", () => {

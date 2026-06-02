@@ -18,6 +18,7 @@ function makeEpic(overrides: Partial<EpicProgressItem> = {}): EpicProgressItem {
     pointsBased: true,
     teams: [],
     status: "IN PROGRESS",
+    recentActivity: true,
     ...overrides,
   };
 }
