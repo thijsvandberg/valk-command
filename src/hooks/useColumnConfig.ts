@@ -10,6 +10,12 @@ const DEBOUNCE_MS = 500;
 
 const DEFAULT_ORDER: ColumnId[] = COLUMNS.map((c) => c.id);
 
+// One-time migration (BRDG-251): the pipeline column's health/deploy badges
+// moved into the ticket hover card, so the column is now default-hidden. Drop
+// it once from any previously persisted visible set. Re-adding it via the
+// column toggle still works and is not undone.
+const PIPELINE_MIGRATION_KEY = "sprint-board-pipeline-col-migrated";
+
 export function useColumnConfig() {
   const [order, setOrder] = useState<ColumnId[]>(DEFAULT_ORDER);
   const [visible, setVisible] = useState<Set<ColumnId>>(new Set(DEFAULT_VISIBLE));
@@ -19,17 +25,28 @@ export function useColumnConfig() {
     settingsApi.getColumnConfig()
       .then((raw) => raw as { order: string[] | null; visible: string[] | null })
       .then((data) => {
+        let nextOrder = DEFAULT_ORDER;
         if (data.order && data.order.length > 0) {
           // Merge: keep saved order, append any new columns not yet in the saved order
           const savedSet = new Set(data.order);
-          const merged = [
+          nextOrder = [
             ...data.order.filter((id) => DEFAULT_ORDER.includes(id as ColumnId)),
             ...DEFAULT_ORDER.filter((id) => !savedSet.has(id)),
           ] as ColumnId[];
-          setOrder(merged);
+          setOrder(nextOrder);
         }
         if (data.visible && data.visible.length > 0) {
-          setVisible(new Set(data.visible as ColumnId[]));
+          let nextVisible = data.visible as ColumnId[];
+          const alreadyMigrated = typeof window !== "undefined" && localStorage.getItem(PIPELINE_MIGRATION_KEY) === "true";
+          if (!alreadyMigrated) {
+            if (nextVisible.includes("pipeline")) {
+              nextVisible = nextVisible.filter((id) => id !== "pipeline");
+              settingsApi.saveColumnConfig({ order: nextOrder, visible: nextVisible })
+                .catch((err) => console.warn("[column-config] pipeline migration persist failed", err));
+            }
+            if (typeof window !== "undefined") localStorage.setItem(PIPELINE_MIGRATION_KEY, "true");
+          }
+          setVisible(new Set(nextVisible));
         }
         setLoaded(true);
       })
