@@ -1,10 +1,11 @@
 "use client";
 
-import { useState, useEffect, useRef, useCallback } from "react";
+import { useState, useEffect, useRef, useCallback, useMemo } from "react";
 import type { Attachment } from "@/types/ticket";
 import { CloudUpload, Loader2, ChevronDown } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import { apiFetch, tickets } from "@/lib/api-client";
+import { markdownEqualIgnoringSpacing, normalizeMarkdownForCompare } from "@/lib/normalize-markdown";
 import { renderMarkdown } from "./renderMarkdown";
 import { RichEditor } from "@/components/rich-editor/RichEditor";
 import { StoryDiff } from "@/components/story-diff/StoryDiff";
@@ -78,8 +79,17 @@ export function EditableDescription({
   onViewDiff?: () => void;
 }) {
   const resolvedInitial = resolveLocalValue(serverLocalEdit?.value, initialDescription, attachments);
+  // A server-side edit that differs from the Jira version only in cosmetic
+  // blank-line spacing is a serializer round-trip artifact, not a real edit.
+  // Ignore it so the "Unsaved changes" badge and push button do not appear for
+  // a no-op (the recurring "lots of changed empty lines" complaint).
+  const serverEditIsCosmetic = useMemo(
+    () => resolvedInitial !== undefined && markdownEqualIgnoringSpacing(resolvedInitial, initialDescription),
+    [resolvedInitial, initialDescription],
+  );
+  const effectiveInitial = serverEditIsCosmetic ? undefined : resolvedInitial;
   const [editing, setEditing] = useState(false);
-  const [localValue, setLocalValue] = useState<string | null>(resolvedInitial ?? null);
+  const [localValue, setLocalValue] = useState<string | null>(effectiveInitial ?? null);
   const [editIsDraft, setEditIsDraft] = useState(serverLocalEdit?.isDraft ?? false);
   const [showDraftDiff, setShowDraftDiff] = useState(false);
   const autoSaveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -104,13 +114,21 @@ export function EditableDescription({
     onEditingChange?.(next);
   }, [onEditingChange]);
 
-  // Notify parent once if we have a server-provided local edit
+  // Notify parent once if we have a server-provided local edit. Skip (and clean
+  // up) cosmetic-only drafts so they never surface as pending changes.
   useEffect(() => {
+    if (serverEditIsCosmetic) {
+      apiFetch<void>(
+        `/api/tickets/${encodeURIComponent(ticketKey)}/local-edits?draftsOnly=true`,
+        { method: "DELETE" },
+      ).catch(() => { /* best-effort cleanup */ });
+      return;
+    }
     if (serverLocalEdit && !notifiedDescRef.current) {
       notifiedDescRef.current = true;
       onLocalEdit(true);
     }
-  }, [serverLocalEdit, onLocalEdit]);
+  }, [serverLocalEdit, onLocalEdit, serverEditIsCosmetic, ticketKey]);
 
   // Auto-save draft on change (debounced)
   const autoSaveDraft = useCallback((content: string) => {
@@ -152,7 +170,7 @@ export function EditableDescription({
 
   const handleChange = useCallback((newValue: string) => {
     setLocalValue(newValue);
-    if (newValue.trim() !== initialDescription.trim()) {
+    if (!markdownEqualIgnoringSpacing(newValue, initialDescription)) {
       setEditIsDraft(true);
       if (!localEditNotifiedRef.current) {
         localEditNotifiedRef.current = true;
@@ -163,7 +181,7 @@ export function EditableDescription({
   }, [initialDescription, onLocalEdit, autoSaveDraft]);
 
   const saveLocal = useCallback(async () => {
-    if (value.trim() === initialDescription.trim()) {
+    if (markdownEqualIgnoringSpacing(value, initialDescription)) {
       setLocalValue(null);
       setEditIsDraft(false);
       localEditNotifiedRef.current = false;
@@ -191,7 +209,7 @@ export function EditableDescription({
   const handleDiscard = useCallback(() => {
     setEditingState(false);
     if (autoSaveTimerRef.current) clearTimeout(autoSaveTimerRef.current);
-    if (hasLocalEdit || value.trim() !== initialDescription.trim()) {
+    if (hasLocalEdit || !markdownEqualIgnoringSpacing(value, initialDescription)) {
       onDiscard?.();
     }
   }, [hasLocalEdit, value, initialDescription, onDiscard, setEditingState]);
@@ -218,7 +236,7 @@ export function EditableDescription({
     return () => document.removeEventListener("keydown", handleKeyDown);
   }, [editing, setEditingState]);
 
-  const isDirtyOrLocal = hasLocalEdit || value.trim() !== initialDescription.trim();
+  const isDirtyOrLocal = hasLocalEdit || !markdownEqualIgnoringSpacing(value, initialDescription);
   const showPush = isDirtyOrLocal && !!onPushToJira;
 
   return (
@@ -243,7 +261,11 @@ export function EditableDescription({
           </button>
           {showDraftDiff && (
             <div className="mt-3 overflow-hidden rounded-lg border border-border-strong p-3">
-              <StoryDiff oldText={initialDescription} newText={value} mode="unified" />
+              <StoryDiff
+                oldText={normalizeMarkdownForCompare(initialDescription)}
+                newText={normalizeMarkdownForCompare(value)}
+                mode="unified"
+              />
               <div className="mt-3 flex items-center justify-end gap-1 border-t border-border-default pt-3">
                 {pushError && (
                   <span className="mr-auto text-label text-[var(--color-status-error)]">{pushError}</span>
