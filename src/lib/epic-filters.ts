@@ -1,32 +1,25 @@
 import type { Team } from "@/lib/sprint-utils";
+import type { JiraStatus } from "@/types/ticket";
 
-// Four-bucket lifecycle status for an epic, derived from its own Jira status.
-export type EpicStatusBucket = "open" | "in_progress" | "done" | "deprecated";
-
-export const EPIC_STATUS_BUCKETS: EpicStatusBucket[] = [
-  "open",
-  "in_progress",
-  "done",
-  "deprecated",
+// The epics view filters on the epic's own Jira status, using the standard
+// status set/colors shared across the app (see JIRA_STATUS_COLORS).
+export const EPIC_STATUSES: JiraStatus[] = [
+  "TO DO",
+  "IN PROGRESS",
+  "TEST",
+  "DONE",
+  "DEPRECATED",
 ];
 
-export const EPIC_STATUS_LABELS: Record<EpicStatusBucket, string> = {
-  open: "Open",
-  in_progress: "In progress",
-  done: "Done",
-  deprecated: "Deprecated",
-};
-
-// Collapses the wide range of Jira statuses into the four PO-facing buckets.
-// Unknown / pre-start statuses fall through to "open" so epics stay visible.
-export function mapJiraStatusToBucket(status: string | null | undefined): EpicStatusBucket {
+// Collapses arbitrary stored Jira statuses onto the canonical set so the filter
+// pills and matching stay consistent. Unknown / pre-start statuses → "TO DO".
+export function normalizeEpicStatus(status: string | null | undefined): JiraStatus {
   const s = (status ?? "").trim().toUpperCase();
-  if (s === "DONE" || s === "CLOSED" || s === "RESOLVED") return "done";
-  if (s === "DEPRECATED") return "deprecated";
-  if (s === "IN PROGRESS" || s === "TEST" || s === "IN REVIEW" || s === "REVIEW") {
-    return "in_progress";
-  }
-  return "open";
+  if (s === "DONE" || s === "CLOSED" || s === "RESOLVED") return "DONE";
+  if (s === "DEPRECATED") return "DEPRECATED";
+  if (s === "TEST") return "TEST";
+  if (s === "IN PROGRESS" || s === "IN REVIEW" || s === "REVIEW") return "IN PROGRESS";
+  return "TO DO";
 }
 
 // Persisted shape for the /epics filter bar (localStorage, mirrors the
@@ -35,5 +28,7 @@ export const STORAGE_KEY = "bridge:epic-filters";
 
 export interface PersistedEpicFilters {
   teams?: Team[];
-  statuses?: EpicStatusBucket[];
+  // Separate flag so "no team assigned" can be selected alongside specific teams.
+  noTeam?: boolean;
+  statuses?: JiraStatus[];
 }

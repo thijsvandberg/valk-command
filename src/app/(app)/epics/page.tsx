@@ -7,9 +7,9 @@ import { useEpicProgress } from "@/hooks/useEpics";
 import { useJiraSprints } from "@/hooks/useSprintBoard";
 import { useLocalStorage } from "@/hooks/useLocalStorage";
 import type { Team } from "@/lib/sprint-utils";
+import type { JiraStatus } from "@/types/ticket";
 import {
   STORAGE_KEY,
-  type EpicStatusBucket,
   type PersistedEpicFilters,
 } from "@/lib/epic-filters";
 import { EpicRow } from "./EpicRow";
@@ -23,6 +23,7 @@ export default function EpicsPage() {
   const [filters, setFilters] = useLocalStorage<PersistedEpicFilters>(STORAGE_KEY, {});
   const teamFilter = useMemo(() => filters.teams ?? [], [filters.teams]);
   const statusFilter = useMemo(() => filters.statuses ?? [], [filters.statuses]);
+  const noTeam = filters.noTeam ?? false;
 
   const toggleTeam = useCallback((team: Team) => {
     setFilters((f) => {
@@ -32,7 +33,11 @@ export default function EpicsPage() {
     });
   }, [setFilters]);
 
-  const toggleStatus = useCallback((status: EpicStatusBucket) => {
+  const toggleNoTeam = useCallback(() => {
+    setFilters((f) => ({ ...f, noTeam: !(f.noTeam ?? false) }));
+  }, [setFilters]);
+
+  const toggleStatus = useCallback((status: JiraStatus) => {
     setFilters((f) => {
       const prev = f.statuses ?? [];
       const next = prev.includes(status) ? prev.filter((s) => s !== status) : [...prev, status];
@@ -40,18 +45,22 @@ export default function EpicsPage() {
     });
   }, [setFilters]);
 
-  const clearTeams = useCallback(() => setFilters((f) => ({ ...f, teams: [] })), [setFilters]);
+  const clearTeams = useCallback(() => setFilters((f) => ({ ...f, teams: [], noTeam: false })), [setFilters]);
   const clearStatuses = useCallback(() => setFilters((f) => ({ ...f, statuses: [] })), [setFilters]);
   const clearAll = useCallback(() => setFilters({}), [setFilters]);
 
   const filtered = useMemo(() => {
     if (!epics) return epics;
+    const teamActive = teamFilter.length > 0 || noTeam;
     return epics.filter((epic) => {
-      const teamOk = teamFilter.length === 0 || teamFilter.some((t) => epic.teams.includes(t));
+      const teamOk =
+        !teamActive ||
+        teamFilter.some((t) => epic.teams.includes(t)) ||
+        (noTeam && epic.teams.length === 0);
       const statusOk = statusFilter.length === 0 || statusFilter.includes(epic.status);
       return teamOk && statusOk;
     });
-  }, [epics, teamFilter, statusFilter]);
+  }, [epics, teamFilter, noTeam, statusFilter]);
 
   const filteredOut = !!epics && epics.length > 0 && !!filtered && filtered.length === 0;
 
@@ -74,8 +83,10 @@ export default function EpicsPage() {
             </p>
             <EpicFilterBar
               teamFilter={teamFilter}
+              noTeam={noTeam}
               statusFilter={statusFilter}
               onToggleTeam={toggleTeam}
+              onToggleNoTeam={toggleNoTeam}
               onToggleStatus={toggleStatus}
               onClearTeams={clearTeams}
               onClearStatuses={clearStatuses}

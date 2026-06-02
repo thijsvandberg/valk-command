@@ -1,47 +1,31 @@
 "use client";
 
-import { useState } from "react";
-import { Users, CircleDot, ChevronDown, Check, X } from "lucide-react";
+import { useState, type ReactNode } from "react";
+import { Users, CircleDot, ChevronDown, Check, X, Slash } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import { TEAMS, type Team } from "@/lib/sprint-utils";
+import { EPIC_STATUSES } from "@/lib/epic-filters";
 import {
-  EPIC_STATUS_BUCKETS,
-  EPIC_STATUS_LABELS,
-  type EpicStatusBucket,
-} from "@/lib/epic-filters";
+  JIRA_STATUS_COLORS,
+  JIRA_STATUS_ABBREVIATIONS,
+  type JiraStatus,
+} from "@/types/ticket";
 import { TEAM_COLORS } from "./EpicTeamPicker";
 
-interface Option<T extends string> {
-  value: T;
-  label: string;
-  color?: string;
-}
+// -- Dropdown shell (trigger button + dismiss-on-outside popover) --
 
-function MultiSelect<T extends string>({
+function Dropdown({
   icon,
-  noun,
-  options,
-  selected,
-  onToggle,
-  onClear,
+  label,
+  active,
+  children,
 }: {
-  icon: React.ReactNode;
-  noun: string;
-  options: Option<T>[];
-  selected: T[];
-  onToggle: (value: T) => void;
-  onClear: () => void;
+  icon: ReactNode;
+  label: string;
+  active: boolean;
+  children: (close: () => void) => ReactNode;
 }) {
   const [open, setOpen] = useState(false);
-  const selectedSet = new Set(selected);
-
-  const label =
-    selected.length === 0
-      ? noun
-      : selected.length === 1
-        ? options.find((o) => o.value === selected[0])?.label ?? `1 ${noun.toLowerCase()}`
-        : `${selected.length} ${noun.toLowerCase()}s`;
-
   return (
     <div className="relative">
       <Button
@@ -49,7 +33,7 @@ function MultiSelect<T extends string>({
         size="md"
         icon={icon}
         onClick={() => setOpen(!open)}
-        className={selected.length > 0 ? "border-[var(--color-brand-500)]/30 text-[var(--color-brand-400)]" : ""}
+        className={active ? "border-[var(--color-brand-500)]/30 text-[var(--color-brand-400)]" : ""}
       >
         {label}
         <ChevronDown size={11} strokeWidth={1.5} className="ml-0.5 text-text-muted" />
@@ -58,47 +42,8 @@ function MultiSelect<T extends string>({
       {open && (
         <>
           <div className="fixed inset-0 z-40" onClick={() => setOpen(false)} />
-          <div className="absolute left-0 top-full z-50 mt-1 min-w-[180px] overflow-hidden rounded-lg border border-border-strong bg-[var(--color-surface-floating)] py-1 shadow-[var(--shadow-lg)]">
-            {selected.length > 0 && (
-              <button
-                type="button"
-                onClick={onClear}
-                className="w-full px-3 py-1.5 text-left text-body-sm text-text-tertiary cursor-pointer transition-colors duration-150 hover:bg-hover-list-item hover:text-text-secondary"
-              >
-                Clear selection
-              </button>
-            )}
-            {options.map((opt) => {
-              const checked = selectedSet.has(opt.value);
-              return (
-                <button
-                  key={opt.value}
-                  type="button"
-                  role="menuitemcheckbox"
-                  aria-checked={checked}
-                  onClick={() => onToggle(opt.value)}
-                  className={`flex w-full items-center gap-2 px-3 py-1.5 text-left text-body-sm cursor-pointer transition-colors duration-150 ${
-                    checked
-                      ? "text-[var(--color-brand-400)] bg-[var(--color-brand-500)]/10"
-                      : "text-text-secondary hover:bg-hover-list-item"
-                  }`}
-                >
-                  <span
-                    className={`flex h-3.5 w-3.5 shrink-0 items-center justify-center rounded border text-caption ${
-                      checked
-                        ? "border-[var(--color-brand-400)] bg-[var(--color-brand-500)]/20 text-[var(--color-brand-400)]"
-                        : "border-border-strong"
-                    }`}
-                  >
-                    {checked && <Check size={9} strokeWidth={3} />}
-                  </span>
-                  {opt.color && (
-                    <span className="h-2 w-2 shrink-0 rounded-full" style={{ backgroundColor: opt.color }} />
-                  )}
-                  {opt.label}
-                </button>
-              );
-            })}
+          <div className="absolute left-0 top-full z-50 mt-1 min-w-[200px] overflow-hidden rounded-lg border border-border-strong bg-[var(--color-surface-floating)] py-1 shadow-[var(--shadow-lg)]">
+            {children(() => setOpen(false))}
           </div>
         </>
       )}
@@ -106,43 +51,134 @@ function MultiSelect<T extends string>({
   );
 }
 
+function CheckRow({
+  checked,
+  onClick,
+  children,
+}: {
+  checked: boolean;
+  onClick: () => void;
+  children: ReactNode;
+}) {
+  return (
+    <button
+      type="button"
+      role="menuitemcheckbox"
+      aria-checked={checked}
+      onClick={onClick}
+      className={`flex w-full items-center gap-2 px-3 py-1.5 text-left text-body-sm cursor-pointer transition-colors duration-150 ${
+        checked ? "bg-[var(--color-brand-500)]/10" : "hover:bg-hover-list-item"
+      }`}
+    >
+      <span
+        className={`flex h-3.5 w-3.5 shrink-0 items-center justify-center rounded border text-caption ${
+          checked
+            ? "border-[var(--color-brand-400)] bg-[var(--color-brand-500)]/20 text-[var(--color-brand-400)]"
+            : "border-border-strong"
+        }`}
+      >
+        {checked && <Check size={9} strokeWidth={3} />}
+      </span>
+      {children}
+    </button>
+  );
+}
+
+function ClearRow({ onClick }: { onClick: () => void }) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className="w-full px-3 py-1.5 text-left text-body-sm text-text-tertiary cursor-pointer transition-colors duration-150 hover:bg-hover-list-item hover:text-text-secondary"
+    >
+      Clear selection
+    </button>
+  );
+}
+
 export function EpicFilterBar({
   teamFilter,
+  noTeam,
   statusFilter,
   onToggleTeam,
+  onToggleNoTeam,
   onToggleStatus,
   onClearTeams,
   onClearStatuses,
   onClearAll,
 }: {
   teamFilter: Team[];
-  statusFilter: EpicStatusBucket[];
+  noTeam: boolean;
+  statusFilter: JiraStatus[];
   onToggleTeam: (team: Team) => void;
-  onToggleStatus: (status: EpicStatusBucket) => void;
+  onToggleNoTeam: () => void;
+  onToggleStatus: (status: JiraStatus) => void;
   onClearTeams: () => void;
   onClearStatuses: () => void;
   onClearAll: () => void;
 }) {
-  const anyActive = teamFilter.length > 0 || statusFilter.length > 0;
+  const teamCount = teamFilter.length + (noTeam ? 1 : 0);
+  const teamLabel =
+    teamCount === 0
+      ? "Team"
+      : teamCount === 1
+        ? (noTeam ? "No team" : teamFilter[0])
+        : `${teamCount} teams`;
+
+  const statusLabel =
+    statusFilter.length === 0
+      ? "Status"
+      : statusFilter.length === 1
+        ? statusFilter[0]
+        : `${statusFilter.length} statuses`;
+
+  const anyActive = teamCount > 0 || statusFilter.length > 0;
 
   return (
     <div className="flex flex-wrap items-center gap-2">
-      <MultiSelect<Team>
-        icon={<Users size={12} strokeWidth={1.5} />}
-        noun="Team"
-        options={TEAMS.map((t) => ({ value: t, label: t, color: TEAM_COLORS[t] }))}
-        selected={teamFilter}
-        onToggle={onToggleTeam}
-        onClear={onClearTeams}
-      />
-      <MultiSelect<EpicStatusBucket>
-        icon={<CircleDot size={12} strokeWidth={1.5} />}
-        noun="Status"
-        options={EPIC_STATUS_BUCKETS.map((s) => ({ value: s, label: EPIC_STATUS_LABELS[s] }))}
-        selected={statusFilter}
-        onToggle={onToggleStatus}
-        onClear={onClearStatuses}
-      />
+      <Dropdown icon={<Users size={12} strokeWidth={1.5} />} label={teamLabel} active={teamCount > 0}>
+        {() => (
+          <>
+            {teamCount > 0 && <ClearRow onClick={onClearTeams} />}
+            {TEAMS.map((team) => (
+              <CheckRow key={team} checked={teamFilter.includes(team)} onClick={() => onToggleTeam(team)}>
+                <span className="h-2 w-2 shrink-0 rounded-full" style={{ backgroundColor: TEAM_COLORS[team] }} />
+                <span className={teamFilter.includes(team) ? "text-[var(--color-brand-400)]" : "text-text-secondary"}>
+                  {team}
+                </span>
+              </CheckRow>
+            ))}
+            <div className="mx-3 my-1 border-t border-border-default" />
+            <CheckRow checked={noTeam} onClick={onToggleNoTeam}>
+              <Slash size={11} strokeWidth={1.5} className="shrink-0 text-text-muted" />
+              <span className={noTeam ? "text-[var(--color-brand-400)]" : "text-text-tertiary"}>No team</span>
+            </CheckRow>
+          </>
+        )}
+      </Dropdown>
+
+      <Dropdown icon={<CircleDot size={12} strokeWidth={1.5} />} label={statusLabel} active={statusFilter.length > 0}>
+        {() => (
+          <>
+            {statusFilter.length > 0 && <ClearRow onClick={onClearStatuses} />}
+            {EPIC_STATUSES.map((status) => {
+              const c = JIRA_STATUS_COLORS[status];
+              return (
+                <CheckRow key={status} checked={statusFilter.includes(status)} onClick={() => onToggleStatus(status)}>
+                  <span
+                    className="rounded px-1.5 py-0.5 text-[10px] font-semibold tracking-wide"
+                    style={{ backgroundColor: c.bg, color: c.text }}
+                  >
+                    {JIRA_STATUS_ABBREVIATIONS[status]}
+                  </span>
+                  <span className="text-text-secondary">{status}</span>
+                </CheckRow>
+              );
+            })}
+          </>
+        )}
+      </Dropdown>
+
       {anyActive && (
         <button
           type="button"

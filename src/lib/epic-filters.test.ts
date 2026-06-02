@@ -1,33 +1,33 @@
 import { describe, it, expect } from "vitest";
-import { mapJiraStatusToBucket } from "./epic-filters";
+import { normalizeEpicStatus } from "./epic-filters";
 
-describe("mapJiraStatusToBucket", () => {
-  it("maps DONE-like statuses to done", () => {
-    expect(mapJiraStatusToBucket("DONE")).toBe("done");
-    expect(mapJiraStatusToBucket("Closed")).toBe("done");
-    expect(mapJiraStatusToBucket("resolved")).toBe("done");
+describe("normalizeEpicStatus", () => {
+  it("maps DONE-like statuses to DONE", () => {
+    expect(normalizeEpicStatus("DONE")).toBe("DONE");
+    expect(normalizeEpicStatus("Closed")).toBe("DONE");
+    expect(normalizeEpicStatus("resolved")).toBe("DONE");
   });
 
-  it("maps DEPRECATED to deprecated", () => {
-    expect(mapJiraStatusToBucket("DEPRECATED")).toBe("deprecated");
+  it("maps DEPRECATED", () => {
+    expect(normalizeEpicStatus("DEPRECATED")).toBe("DEPRECATED");
   });
 
-  it("maps in-progress-like statuses to in_progress", () => {
-    expect(mapJiraStatusToBucket("IN PROGRESS")).toBe("in_progress");
-    expect(mapJiraStatusToBucket("TEST")).toBe("in_progress");
-    expect(mapJiraStatusToBucket("In Review")).toBe("in_progress");
+  it("keeps TEST distinct from IN PROGRESS", () => {
+    expect(normalizeEpicStatus("TEST")).toBe("TEST");
+    expect(normalizeEpicStatus("IN PROGRESS")).toBe("IN PROGRESS");
+    expect(normalizeEpicStatus("In Review")).toBe("IN PROGRESS");
   });
 
-  it("defaults TO DO and unknown statuses to open", () => {
-    expect(mapJiraStatusToBucket("TO DO")).toBe("open");
-    expect(mapJiraStatusToBucket("BACKLOG")).toBe("open");
-    expect(mapJiraStatusToBucket("")).toBe("open");
-    expect(mapJiraStatusToBucket(null)).toBe("open");
-    expect(mapJiraStatusToBucket(undefined)).toBe("open");
+  it("defaults TO DO and unknown statuses to TO DO", () => {
+    expect(normalizeEpicStatus("TO DO")).toBe("TO DO");
+    expect(normalizeEpicStatus("BACKLOG")).toBe("TO DO");
+    expect(normalizeEpicStatus("")).toBe("TO DO");
+    expect(normalizeEpicStatus(null)).toBe("TO DO");
+    expect(normalizeEpicStatus(undefined)).toBe("TO DO");
   });
 
   it("is case- and whitespace-insensitive", () => {
-    expect(mapJiraStatusToBucket("  done  ")).toBe("done");
-    expect(mapJiraStatusToBucket("in progress")).toBe("in_progress");
+    expect(normalizeEpicStatus("  done  ")).toBe("DONE");
+    expect(normalizeEpicStatus("in progress")).toBe("IN PROGRESS");
   });
 });

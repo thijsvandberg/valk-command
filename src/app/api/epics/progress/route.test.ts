@@ -78,9 +78,9 @@ describe("GET /api/epics/progress", () => {
     expect(e.inProgressPoints).toBe(5);
     expect(e.todoPoints).toBe(2);
     expect(e.pointsBased).toBe(true);
-    // No metadata assigned yet → empty teams; epic's own IN PROGRESS status → bucket.
+    // No metadata assigned yet → empty teams; epic's own normalized Jira status.
     expect(e.teams).toEqual([]);
-    expect(e.status).toBe("in_progress");
+    expect(e.status).toBe("IN PROGRESS");
   });
 
   it("includes PO-assigned teams and buckets the epic's own status", async () => {
@@ -95,10 +95,10 @@ describe("GET /api/epics/progress", () => {
     const data = await res.json();
     const e = data.find((x: { key: string }) => x.key === "VPL-E1");
     expect(e.teams).toEqual(["BT", "GXP"]);
-    expect(e.status).toBe("done");
+    expect(e.status).toBe("DONE");
   });
 
-  it("defaults status to open when no synced epic row exists", async () => {
+  it("defaults status to TO DO when no synced epic row exists", async () => {
     seedSprints();
     testDb.insert(ticket).values([
       { jiraKey: "VPL-1", title: "T1", status: "TO DO", type: "story", epicKey: "VPL-EX", epic: "Orphan", sprintName: "12" },
@@ -107,7 +107,7 @@ describe("GET /api/epics/progress", () => {
     const res = await GET();
     const data = await res.json();
     const e = data.find((x: { key: string }) => x.key === "VPL-EX");
-    expect(e.status).toBe("open");
+    expect(e.status).toBe("TO DO");
     expect(e.teams).toEqual([]);
   });
 

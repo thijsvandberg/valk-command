@@ -6,7 +6,8 @@ import { cache } from "@/lib/cache";
 import { safeJsonParse } from "@/lib/api-validation";
 import { selectRecentSprintIds, type RecentSprintInput } from "@/lib/epic-progress";
 import { getEpicTeamsMap } from "@/lib/epic-metadata";
-import { mapJiraStatusToBucket, type EpicStatusBucket } from "@/lib/epic-filters";
+import { normalizeEpicStatus } from "@/lib/epic-filters";
+import type { JiraStatus } from "@/types/ticket";
 import type { Team } from "@/lib/sprint-utils";
 
 // Statuses excluded from totals: deprecated work + transient story-writer drafts.
@@ -35,8 +36,8 @@ export interface EpicProgressItem {
   pointsBased: boolean;
   /** PO-assigned teams (Bridge metadata, not from Jira). */
   teams: Team[];
-  /** The epic's own lifecycle status, bucketed for filtering. */
-  status: EpicStatusBucket;
+  /** The epic's own Jira status, normalized to the standard set. */
+  status: JiraStatus;
 }
 
 async function getRecentSprintWindow(): Promise<{ ids: string[]; filter: string[] }> {
@@ -155,7 +156,7 @@ export async function GET() {
         perSprint,
         pointsBased: totalPoints > 0,
         teams: epicTeamsMap.get(key) ?? [],
-        status: mapJiraStatusToBucket(epicStatusMap.get(key)),
+        status: normalizeEpicStatus(epicStatusMap.get(key)),
       };
     });
 

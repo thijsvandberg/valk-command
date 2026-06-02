@@ -41,7 +41,7 @@ function makeEpic(overrides: Partial<EpicProgressItem> = {}): EpicProgressItem {
     perSprint: [{ sprintId: "12", total: 4, completed: 2 }],
     pointsBased: true,
     teams: [],
-    status: "in_progress",
+    status: "IN PROGRESS",
     ...overrides,
   };
 }
@@ -105,15 +105,29 @@ describe("EpicsPage", () => {
   it("filters epics by status, combined with team", () => {
     mockUseEpicProgress.mockReturnValue({
       data: [
-        makeEpic({ key: "VPL-A", name: "Alpha", teams: ["BT"], status: "done" }),
-        makeEpic({ key: "VPL-B", name: "Beta", teams: ["BT"], status: "open" }),
+        makeEpic({ key: "VPL-A", name: "Alpha", teams: ["BT"], status: "DONE" }),
+        makeEpic({ key: "VPL-B", name: "Beta", teams: ["BT"], status: "TO DO" }),
       ],
       isLoading: false,
     });
-    localStorage.setItem("bridge:epic-filters", JSON.stringify({ teams: ["BT"], statuses: ["done"] }));
+    localStorage.setItem("bridge:epic-filters", JSON.stringify({ teams: ["BT"], statuses: ["DONE"] }));
     render(<EpicsPage />);
     expect(screen.getByText("Alpha")).toBeInTheDocument();
     expect(screen.queryByText("Beta")).not.toBeInTheDocument();
+  });
+
+  it("filters epics with no team via the No team option", () => {
+    mockUseEpicProgress.mockReturnValue({
+      data: [
+        makeEpic({ key: "VPL-A", name: "Alpha", teams: ["BT"] }),
+        makeEpic({ key: "VPL-B", name: "Beta", teams: [] }),
+      ],
+      isLoading: false,
+    });
+    localStorage.setItem("bridge:epic-filters", JSON.stringify({ noTeam: true }));
+    render(<EpicsPage />);
+    expect(screen.getByText("Beta")).toBeInTheDocument();
+    expect(screen.queryByText("Alpha")).not.toBeInTheDocument();
   });
 
   it("shows a filtered-empty state distinct from the no-epics state", () => {
