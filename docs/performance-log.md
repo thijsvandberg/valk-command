@@ -106,3 +106,17 @@ Self-contained server-detection + editor-banner feature (story-writer GET flag, 
 
 Key bottlenecks:
 - **Concurrent agent in the same working tree**: another process was actively editing/committing unrelated files (TicketRow, SprintBoard, BusinessValuePicker, a `swrFetcher` change to `useSprintBoard`) and interleaved commits (`edb28e0c`, `db7225fd`) between mine. Its `swrFetcher` change broke `EpicChildrenSection.test.tsx` (5 failures), and `bail: 5` in vitest then halted the suite early, masking all other results. Worked around by re-running with `--exclude '**/EpicChildrenSection.test.tsx'` to let the suite complete. Scoped all `git add` to my own paths to avoid sweeping in the other agent's WIP. Live browser verification skipped (the broken sprint-board nav path + needing real Jira version divergence to trigger the banner); covered by component tests instead.
+
+## BRDG-247 — VPL ticket-ref pills in descriptions (2026-06-02)
+
+Linkify bare project-key refs in plain description text into read-only `TicketRefPill`s (borderless list variant, no readiness, eager per-key hover-data fetch). Threading the linkify flag through the shared `renderMarkdown`/`inlineFormat` (so chat/comments stay opt-out and emphasis/code/links are never touched) was the main design care; implementation otherwise smooth.
+
+| Phase | Notes |
+|-------|-------|
+| Plan | Opus Plan subagent; flagged the bold/italic recursion leak and the shared-parser scope leak up front, both resolved by threading flags (recursion-suppressing default + per-render `linkifyRefs`). |
+| Implementation | New `TicketRefPill` + `showReadiness` prop + `NEXT_PUBLIC_JIRA_PROJECT_KEY`; post-process plain-text slices in `inlineFormat`. lint/typecheck clean; 12 new unit tests. |
+| Verification | Changed-file tests green; build clean; browser-verified pills render, lazy data resolves (status TODO->DONE), hover card shows info. PO feedback (list variant, no underline, eager load) folded in before archive. |
+
+Key bottlenecks:
+- **Dev-server instability during browser verification**: the first backgrounded `npm run dev` exited mid-session (port 3100 went empty), so the ticket page loaded its shell then 404'd on the client fetch — one wasted screenshot attempt before restarting and waiting on the API route to compile. A transient `chrome-extension://` screenshot error also cost one retry.
+- **Pre-existing flaky test**: `activity-log/compute-stats.test.ts` (`affectedScopes` ordering) failed once in the full parallel run but passes in isolation and is unrelated to this story; logged in `docs/investigations/2026-06-02-flaky-compute-stats-test.md`.
