@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useMemo } from "react";
-import { Layers } from "lucide-react";
+import { Zap } from "lucide-react";
 import { ViewHeader, ViewHeaderTitle } from "@/components/shared/ViewHeader";
 import { useEpicProgress } from "@/hooks/useEpics";
 import { useJiraSprints } from "@/hooks/useSprintBoard";
@@ -57,7 +57,7 @@ export default function EpicsPage() {
 
   return (
     <div className="flex h-full flex-col">
-      <ViewHeader icon={<Layers size={16} strokeWidth={1.5} />}>
+      <ViewHeader icon={<Zap size={16} strokeWidth={1.5} />}>
         <ViewHeaderTitle>Epics</ViewHeaderTitle>
         {filtered && filtered.length > 0 && (
           <span className="ml-2 rounded-md bg-overlay-default px-2 py-0.5 text-caption font-medium tabular-nums text-text-tertiary">
@@ -87,7 +87,7 @@ export default function EpicsPage() {
             <EpicListSkeleton />
           ) : !epics || epics.length === 0 ? (
             <div className="flex flex-col items-center justify-center rounded-xl border border-dashed border-border-default py-16 text-center">
-              <Layers size={28} strokeWidth={1.5} className="mb-3 text-text-muted" />
+              <Zap size={28} strokeWidth={1.5} className="mb-3 text-text-muted" />
               <p className="text-body text-text-secondary">No epics with tickets in the recent sprints.</p>
               <p className="mt-1 text-body-sm text-text-muted">
                 Epics appear here once their tickets land in a recent sprint or the backlog.
@@ -95,7 +95,7 @@ export default function EpicsPage() {
             </div>
           ) : filteredOut ? (
             <div className="flex flex-col items-center justify-center rounded-xl border border-dashed border-border-default py-16 text-center">
-              <Layers size={28} strokeWidth={1.5} className="mb-3 text-text-muted" />
+              <Zap size={28} strokeWidth={1.5} className="mb-3 text-text-muted" />
               <p className="text-body text-text-secondary">No epics match the current filters.</p>
               <button
                 type="button"

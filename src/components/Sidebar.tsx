@@ -8,7 +8,7 @@ import {
   KanbanSquare,
   GitBranch,
   Gem,
-  Layers,
+  Zap,
   NotebookPen,
   Users,
   Menu,
@@ -28,7 +28,7 @@ const navItems = [
   {
     label: "Epics",
     href: "/epics",
-    icon: <Layers className="h-5 w-5" strokeWidth={1.5} />,
+    icon: <Zap className="h-5 w-5" strokeWidth={1.5} />,
   },
   {
     label: "Chat",
