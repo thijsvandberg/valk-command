@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useState } from "react";
 import { Plus, Check } from "lucide-react";
 import { TEAMS, type Team } from "@/lib/sprint-utils";
 import { useSetEpicTeams } from "@/hooks/useEpics";
@@ -27,43 +27,35 @@ function chipStyle(team: Team) {
 export function EpicTeamPicker({ epicKey, teams }: { epicKey: string; teams: Team[] }) {
   const setTeams = useSetEpicTeams();
   const [open, setOpen] = useState(false);
-  // Optimistic override so chips update instantly; cleared once the prop catches up.
+  // Optimistic override so chips update instantly; cleared once the write
+  // (and its SWR revalidation) settles and the prop reflects the new value.
   const [pending, setPending] = useState<Team[] | null>(null);
-  const containerRef = useRef<HTMLDivElement>(null);
 
   const current = pending ?? teams;
   const currentSet = new Set(current);
 
-  // Reconcile the optimistic value once revalidated data matches it.
-  useEffect(() => {
-    if (pending && pending.every((t) => teams.includes(t)) && pending.length === teams.length) {
-      setPending(null);
-    }
-  }, [teams, pending]);
-
-  async function toggleTeam(team: Team) {
-    const next = currentSet.has(team)
-      ? current.filter((t) => t !== team)
-      : TEAMS.filter((t) => currentSet.has(t) || t === team);
+  async function commit(next: Team[]) {
     setPending(next);
     try {
       await setTeams(epicKey, next);
-    } catch {
-      setPending(null); // revert on failure; SWR keeps the server truth
-    }
-  }
-
-  async function clearAll() {
-    setPending([]);
-    try {
-      await setTeams(epicKey, []);
-    } catch {
+    } finally {
       setPending(null);
     }
   }
 
+  function toggleTeam(team: Team) {
+    const next = currentSet.has(team)
+      ? current.filter((t) => t !== team)
+      : TEAMS.filter((t) => currentSet.has(t) || t === team);
+    void commit(next);
+  }
+
+  function clearAll() {
+    void commit([]);
+  }
+
   return (
-    <div ref={containerRef} className="relative flex shrink-0 items-center">
+    <div className="relative flex shrink-0 items-center">
       <button
         type="button"
         onClick={(e) => {

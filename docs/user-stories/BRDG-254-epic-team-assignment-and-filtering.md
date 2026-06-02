@@ -54,25 +54,25 @@ No FK on `epic_metadata`; status filter operates on the epic's own row status on
 ## Acceptance Criteria
 
 ### Phase 1: Assign teams to an epic
-- [ ] A multi-select control to set one or more teams (from the fixed set BT/BM/BO/GXP/HT) on an epic.
-- [ ] Persisted as Bridge-owned metadata keyed by `epicKey` (shared with [[BRDG-250]] if built together). No write-back to Jira.
-- [ ] Clear/remove a team assignment.
-- [ ] Control follows the UI guardrails: hover / focus-visible / active states, `cursor: pointer`.
+- [x] A multi-select control to set one or more teams (from the fixed set BT/BM/BO/GXP/HT) on an epic.
+- [x] Persisted as Bridge-owned metadata keyed by `epicKey` (shared with [[BRDG-250]] if built together). No write-back to Jira.
+- [x] Clear/remove a team assignment.
+- [x] Control follows the UI guardrails: hover / focus-visible / active states, `cursor: pointer`.
 
 ### Phase 2: Show team on the epic row
-- [ ] Each epic row in `/epics` shows its assigned team(s) as compact chips.
-- [ ] Epics with no team assigned render an unobtrusive "unassigned" affordance (not noise).
+- [x] Each epic row in `/epics` shows its assigned team(s) as compact chips.
+- [x] Epics with no team assigned render an unobtrusive "unassigned" affordance (not noise).
 
 ### Phase 3: Filter the epics view by team
-- [ ] A team filter on the `/epics` view (multi-select): selecting one or more teams shows only epics assigned to any selected team.
-- [ ] Clear-filter action; filter state is visible (active-filter indicator) and ideally persisted across reloads (localStorage, consistent with the Pipelines view).
-- [ ] An empty-state message when no epics match the active filters.
+- [x] A team filter on the `/epics` view (multi-select): selecting one or more teams shows only epics assigned to any selected team.
+- [x] Clear-filter action; filter state is visible (active-filter indicator) and ideally persisted across reloads (localStorage, consistent with the Pipelines view).
+- [x] An empty-state message when no epics match the active filters.
 
 ### Phase 4: Filter the epics view by status
-- [ ] A status filter on the `/epics` view with options **open / in progress / done / deprecated**, based on the epic's own lifecycle status.
-- [ ] Maps the epic's Jira status to the four buckets (e.g. `TO DO` → open, `IN PROGRESS`/`TEST` → in progress, `DONE` → done, `DEPRECATED` → deprecated).
-- [ ] Combines with the team filter (an epic must match both the selected teams and the selected statuses).
-- [ ] Same clear/active-indicator/persistence behaviour as the team filter.
+- [x] A status filter on the `/epics` view with options **open / in progress / done / deprecated**, based on the epic's own lifecycle status.
+- [x] Maps the epic's Jira status to the four buckets (e.g. `TO DO` → open, `IN PROGRESS`/`TEST` → in progress, `DONE` → done, `DEPRECATED` → deprecated).
+- [x] Combines with the team filter (an epic must match both the selected teams and the selected statuses).
+- [x] Same clear/active-indicator/persistence behaviour as the team filter.
 
 ## Technical Notes
 - Reuse the fixed team list from the existing team model (`userTeamAssignment` / the teams referenced by `/api/settings/user-teams`) rather than hardcoding a new list.

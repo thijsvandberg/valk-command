@@ -49,6 +49,7 @@ function makeEpic(overrides: Partial<EpicProgressItem> = {}): EpicProgressItem {
 describe("EpicsPage", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    localStorage.clear();
     mockUseEpicTickets.mockReturnValue({ data: [], isLoading: false });
   });
 
@@ -85,5 +86,44 @@ describe("EpicsPage", () => {
     mockUseEpicProgress.mockReturnValue({ data: [], isLoading: false });
     render(<EpicsPage />);
     expect(screen.getByText(/no epics with tickets/i)).toBeInTheDocument();
+  });
+
+  it("filters epics by team", () => {
+    mockUseEpicProgress.mockReturnValue({
+      data: [
+        makeEpic({ key: "VPL-A", name: "Alpha", teams: ["BT"] }),
+        makeEpic({ key: "VPL-B", name: "Beta", teams: ["GXP"] }),
+      ],
+      isLoading: false,
+    });
+    localStorage.setItem("bridge:epic-filters", JSON.stringify({ teams: ["BT"] }));
+    render(<EpicsPage />);
+    expect(screen.getByText("Alpha")).toBeInTheDocument();
+    expect(screen.queryByText("Beta")).not.toBeInTheDocument();
+  });
+
+  it("filters epics by status, combined with team", () => {
+    mockUseEpicProgress.mockReturnValue({
+      data: [
+        makeEpic({ key: "VPL-A", name: "Alpha", teams: ["BT"], status: "done" }),
+        makeEpic({ key: "VPL-B", name: "Beta", teams: ["BT"], status: "open" }),
+      ],
+      isLoading: false,
+    });
+    localStorage.setItem("bridge:epic-filters", JSON.stringify({ teams: ["BT"], statuses: ["done"] }));
+    render(<EpicsPage />);
+    expect(screen.getByText("Alpha")).toBeInTheDocument();
+    expect(screen.queryByText("Beta")).not.toBeInTheDocument();
+  });
+
+  it("shows a filtered-empty state distinct from the no-epics state", () => {
+    mockUseEpicProgress.mockReturnValue({
+      data: [makeEpic({ key: "VPL-A", name: "Alpha", teams: ["BT"] })],
+      isLoading: false,
+    });
+    localStorage.setItem("bridge:epic-filters", JSON.stringify({ teams: ["HT"] }));
+    render(<EpicsPage />);
+    expect(screen.getByText(/no epics match the current filters/i)).toBeInTheDocument();
+    expect(screen.queryByText(/no epics with tickets/i)).not.toBeInTheDocument();
   });
 });
