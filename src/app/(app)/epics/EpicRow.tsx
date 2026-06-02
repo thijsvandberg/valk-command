@@ -4,11 +4,12 @@ import { useState } from "react";
 import Link from "next/link";
 import { ChevronRight, ArrowUpRight } from "lucide-react";
 import type { EpicProgressItem } from "@/app/api/epics/progress/route";
-import { getEpicColor } from "@/types/ticket";
+import { useEpicColor } from "@/hooks/useEpicColor";
 import { EpicProgressBar } from "./EpicProgressBar";
 import { EpicTimeline } from "./EpicTimeline";
 import { EpicTicketList } from "./EpicTicketList";
 import { EpicTeamPicker } from "./EpicTeamPicker";
+import { EpicColorPicker } from "./EpicColorPicker";
 
 interface SprintMeta {
   id: number;
@@ -27,7 +28,7 @@ function Stat({ label, value }: { label: string; value: string }) {
 
 export function EpicRow({ epic, sprints }: { epic: EpicProgressItem; sprints: SprintMeta[] }) {
   const [expanded, setExpanded] = useState(false);
-  const color = getEpicColor(epic.name);
+  const color = useEpicColor(epic.key);
 
   return (
     <div
@@ -79,7 +80,8 @@ export function EpicRow({ epic, sprints }: { epic: EpicProgressItem; sprints: Sp
         </div>
       </button>
 
-        <div className="shrink-0 pr-3">
+        <div className="flex shrink-0 items-center gap-0.5 pr-3">
+          <EpicColorPicker epicKey={epic.key} name={epic.name} color={epic.color} />
           <EpicTeamPicker epicKey={epic.key} teams={epic.teams} />
         </div>
       </div>

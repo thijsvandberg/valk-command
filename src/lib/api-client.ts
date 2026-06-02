@@ -360,6 +360,11 @@ export const epics = {
     apiFetch<{ epicKey: string; teams: string[] }>(
       `/api/epics/${enc(key)}/teams`, { method: "PUT", body: { teams }, signal },
     ),
+
+  setColor: (key: string, color: string | null, signal?: AbortSignal) =>
+    apiFetch<{ epicKey: string; color: string | null }>(
+      `/api/epics/${enc(key)}/color`, { method: "PUT", body: { color }, signal },
+    ),
 };
 
 // ---------------------------------------------------------------------------

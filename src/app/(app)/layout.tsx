@@ -3,6 +3,7 @@ import { ActivityProvider } from "@/contexts/ActivityContext";
 import { ActivityToast } from "@/components/sync/SyncToast";
 import { SWRProvider } from "@/components/SWRProvider";
 import { FocusModeWrapper } from "@/components/FocusModeWrapper";
+import { EpicColorProvider } from "@/components/shared/EpicColorProvider";
 
 const CommandPalette = dynamic(
   () => import("@/components/command-palette").then((m) => ({ default: m.CommandPalette })),
@@ -24,9 +25,11 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
   return (
     <SWRProvider>
     <ActivityProvider>
+      <EpicColorProvider>
       <FocusModeWrapper>
         {children}
       </FocusModeWrapper>
+      </EpicColorProvider>
       <ActivityToast />
       <TaskCompletionNotifier />
       <CommandPalette />
