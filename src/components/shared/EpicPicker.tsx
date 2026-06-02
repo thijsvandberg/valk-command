@@ -278,31 +278,31 @@ function EpicPickerInner({
         {/* AI suggestions */}
         {suggestionsSection}
 
-        {/* Actions for the currently-selected epic, kept above and visually
-            separated from the searchable list so "Open epic" does not read as
-            just another selectable option. */}
+        {/* Actions for the currently-selected epic, sitting side-by-side above
+            a divider so they read as actions, not as selectable epic options. */}
         {!query.trim() && value && (
-          <div className="border-b border-border-subtle py-1">
+          <div className="flex items-stretch gap-1.5 border-b border-border-subtle px-2 py-2">
             <Link
               href={`/tickets/${value.key}`}
               onClick={handleClose}
-              title={`Open epic ${value.key}`}
-              aria-label={`Open epic ${value.name}`}
-              className="flex w-full items-center gap-2.5 px-3 py-[7px] text-body-sm font-medium cursor-pointer hover:bg-[color-mix(in_srgb,var(--color-icon-epic)_8%,transparent)] active:bg-[color-mix(in_srgb,var(--color-icon-epic)_12%,transparent)] focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-[var(--color-brand-400)]"
-              style={{ transition: "background-color 0.15s ease" }}
+              title={`View epic ${value.key}`}
+              aria-label={`View epic ${value.name}`}
+              className="flex flex-1 items-center justify-center gap-1.5 rounded-lg px-2.5 py-1.5 text-body-sm font-semibold text-[var(--color-icon-epic)] cursor-pointer hover:bg-[color-mix(in_srgb,var(--color-icon-epic)_16%,transparent)] focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-[var(--color-brand-400)] active:scale-[0.98]"
+              style={{ backgroundColor: "color-mix(in srgb, var(--color-icon-epic) 10%, transparent)", transition: "background-color 0.15s ease, transform 0.15s ease" }}
             >
-              <span className="flex w-4 items-center justify-center shrink-0 text-[var(--color-icon-epic)]">
-                <ArrowUpRight size={12} strokeWidth={2} />
-              </span>
-              <span className="flex-1 text-left truncate text-[var(--color-icon-epic)]">Open epic {value.name}</span>
-              <span className="shrink-0 text-caption text-text-muted">{value.key}</span>
+              <ArrowUpRight size={13} strokeWidth={2.25} className="shrink-0" />
+              <span className="truncate">View epic</span>
             </Link>
-            <BasePicker.Item selected={false} onSelect={() => { onChange(null); handleClose(); }}>
-              <span className="flex w-4 items-center justify-center shrink-0 text-text-muted">
-                <X size={11} strokeWidth={1.5} />
-              </span>
-              <span className="text-text-secondary">Remove epic</span>
-            </BasePicker.Item>
+            <button
+              type="button"
+              onClick={() => { onChange(null); handleClose(); }}
+              title="Unlink this epic from the ticket"
+              className="flex items-center justify-center gap-1.5 rounded-lg px-2.5 py-1.5 text-body-sm text-text-muted cursor-pointer hover:bg-overlay-default hover:text-text-secondary focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-[var(--color-brand-400)] active:scale-[0.98]"
+              style={{ transition: "background-color 0.15s ease, color 0.15s ease, transform 0.15s ease" }}
+            >
+              <X size={12} strokeWidth={1.5} className="shrink-0" />
+              <span className="truncate">Unlink epic</span>
+            </button>
           </div>
         )}
 

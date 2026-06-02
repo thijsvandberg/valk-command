@@ -47,8 +47,11 @@ Alternative (lighter, no new icon): make the **picker rows** navigable. Each epi
 
 ## Decisions (PO)
 
-- Navigation lives **only in the dropdown**: an "Open epic <name>" entry at the top, plus each row's `VPL-…` key as a link. No separate control next to the pill; the pill click still opens the picker.
+- Navigation lives **only in the dropdown**. No separate control next to the pill; the pill click still opens the picker.
+- Final dropdown header (variant E, refined): **"View epic"** (prominent epic-tinted button) and **"Unlink epic"** (muted) sit **side by side** above a divider, clearly separated from the searchable list. No VPL number on the action buttons (the key is still used in the `href`). Each row in the list keeps its `VPL-…` key as a link.
+- Wording: **"Unlink epic"** instead of "Remove epic" — "Remove" implied deleting the epic; "Unlink" correctly means detaching this ticket from it.
 - Navigation is **in-place** by default, with Cmd/Ctrl-click to open the epic in a new tab (matches the parent-ticket card).
+- A temporary preview page (`/dev-epic-variants`) was used to compare separation variants; moved to `deleted/` after the choice.
 
 ## Out of scope
 

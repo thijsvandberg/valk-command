@@ -70,17 +70,17 @@ describe("EpicPicker", () => {
     expect(onChange).toHaveBeenCalledWith({ key: "EPIC-2", name: "Epic Beta" });
   });
 
-  it("shows 'Remove epic' option when value is set", () => {
+  it("shows 'Unlink epic' option when value is set", () => {
     render(<EpicPicker value={{ key: "EPIC-1", name: "Epic Alpha" }} onChange={vi.fn()} />);
     fireEvent.click(screen.getAllByText("Epic Alpha")[0]);
-    expect(screen.getByText("Remove epic")).toBeInTheDocument();
+    expect(screen.getByText("Unlink epic")).toBeInTheDocument();
   });
 
-  it("calls onChange with null when 'Remove epic' clicked", () => {
+  it("calls onChange with null when 'Unlink epic' clicked", () => {
     const onChange = vi.fn();
     render(<EpicPicker value={{ key: "EPIC-1", name: "Epic Alpha" }} onChange={onChange} />);
     fireEvent.click(screen.getAllByText("Epic Alpha")[0]);
-    fireEvent.click(screen.getByText("Remove epic"));
+    fireEvent.click(screen.getByText("Unlink epic"));
     expect(onChange).toHaveBeenCalledWith(null);
   });
 
@@ -99,20 +99,20 @@ describe("EpicPicker", () => {
 
   it("does not render a navigation link on the closed pill", () => {
     render(<EpicPicker value={{ key: "EPIC-1", name: "Epic Alpha" }} onChange={vi.fn()} />);
-    expect(screen.queryByLabelText(/^Open epic/)).not.toBeInTheDocument();
+    expect(screen.queryByLabelText(/^View epic/)).not.toBeInTheDocument();
   });
 
-  it("shows an 'Open epic' link in the dropdown when an epic is selected", () => {
+  it("shows a 'View epic' link in the dropdown when an epic is selected", () => {
     render(<EpicPicker value={{ key: "EPIC-1", name: "Epic Alpha" }} onChange={vi.fn()} />);
     fireEvent.click(screen.getAllByText("Epic Alpha")[0]);
-    const link = screen.getByLabelText("Open epic Epic Alpha");
+    const link = screen.getByLabelText("View epic Epic Alpha");
     expect(link).toHaveAttribute("href", "/tickets/EPIC-1");
   });
 
-  it("does not show the 'Open epic' link when no epic is selected", () => {
+  it("does not show the 'View epic' link when no epic is selected", () => {
     render(<EpicPicker value={null} onChange={vi.fn()} />);
     fireEvent.click(screen.getByText("Select epic"));
-    expect(screen.queryByLabelText(/^Open epic/)).not.toBeInTheDocument();
+    expect(screen.queryByLabelText(/^View epic/)).not.toBeInTheDocument();
   });
 
   it("renders each picker row key as a link to the epic ticket", () => {
