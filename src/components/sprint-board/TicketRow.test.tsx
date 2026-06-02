@@ -26,7 +26,11 @@ vi.mock("@/components/shared/Tooltip", () => ({ Tooltip: ({ children }: { childr
 vi.mock("@/components/sprint-board/OpenSubtasksIndicator", () => ({ OpenSubtasksIndicator: () => null }));
 vi.mock("@/components/shared/BusinessValuePicker", () => ({ BusinessValuePicker: () => <span data-testid="bv-picker" /> }));
 vi.mock("@/components/shared/StoryPointPicker", () => ({ StoryPointPicker: () => <span data-testid="sp-picker" /> }));
-vi.mock("@/components/shared/TicketStatusPill", () => ({ TicketStatusPill: () => <span data-testid="status-pill" /> }));
+vi.mock("@/components/shared/TicketStatusPill", () => ({
+  TicketStatusPill: ({ hoverData }: { hoverData?: { sprintId: string | null } }) => (
+    <span data-testid="status-pill" data-sprint-id={hoverData?.sprintId ?? ""} />
+  ),
+}));
 vi.mock("@/components/shared/ReadinessCell", () => ({ ReadinessCell: () => <span data-testid="readiness" /> }));
 vi.mock("@/lib/prefetch", () => ({ prefetchTicketPage: vi.fn() }));
 
@@ -69,6 +73,13 @@ describe("TicketRow", () => {
   it("renders ticket title", () => {
     render(<table><tbody><TicketRow {...defaultProps} /></tbody></table>);
     expect(screen.getByText("Implement feature")).toBeInTheDocument();
+  });
+
+  it("passes the ticket's sprint id to the hover card so the picker resolves it", () => {
+    // sprintId must be the sprint id (picker matches String(s.id)), not a name
+    // lookup that would fail and render "None" while a sprint exists.
+    render(<table><tbody><TicketRow {...defaultProps} ticket={makeTicket({ sprintId: "1" })} /></tbody></table>);
+    expect(screen.getByTestId("status-pill")).toHaveAttribute("data-sprint-id", "1");
   });
 
   it("shows checked state when isChecked is true", () => {

@@ -104,7 +104,7 @@ export function TicketRow({
             title: ticket.title,
             storyPoints: ticket.storyPoints,
             businessValue: ticket.businessValue,
-            sprintId: sprints?.find((s) => s.name === ticket.sprintId)?.id ?? null,
+            sprintId: ticket.sprintId ?? null,
             sprintName,
             epicKey: ticket.epicKey,
             epic: ticket.epic,
