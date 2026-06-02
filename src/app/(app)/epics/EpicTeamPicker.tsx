@@ -1,9 +1,11 @@
 "use client";
 
 import { useState } from "react";
+import { createPortal } from "react-dom";
 import { Plus, Check } from "lucide-react";
 import { TEAMS, type Team } from "@/lib/sprint-utils";
 import { useSetEpicTeams } from "@/hooks/useEpics";
+import { usePickerState } from "@/components/shared/BasePicker";
 
 // Distinct categorical hues per team, deliberately steering clear of the
 // done/in-progress/todo status colors used in the progress bars.
@@ -26,7 +28,10 @@ function chipStyle(team: Team) {
 
 export function EpicTeamPicker({ epicKey, teams }: { epicKey: string; teams: Team[] }) {
   const setTeams = useSetEpicTeams();
-  const [open, setOpen] = useState(false);
+  // Portal mode so the menu escapes the epic row's `overflow-hidden` clip.
+  const { open, triggerRef, popoverRef, handleOpen, handleClose, getPopoverStyle } =
+    usePickerState({ portal: true, align: "right", popoverHeight: 240 });
+
   // Optimistic override so chips update instantly; cleared once the write
   // (and its SWR revalidation) settles and the prop reflects the new value.
   const [pending, setPending] = useState<Team[] | null>(null);
@@ -55,17 +60,18 @@ export function EpicTeamPicker({ epicKey, teams }: { epicKey: string; teams: Tea
   }
 
   return (
-    <div className="relative flex shrink-0 items-center">
+    <>
       <button
+        ref={triggerRef}
         type="button"
         onClick={(e) => {
           e.stopPropagation();
-          setOpen((o) => !o);
+          open ? handleClose() : handleOpen();
         }}
         aria-haspopup="menu"
         aria-label={current.length > 0 ? `Teams: ${current.join(", ")}. Edit.` : "Assign teams"}
         title={current.length > 0 ? "Edit teams" : "Assign teams"}
-        className="group/teams flex items-center gap-1 rounded-md px-1.5 py-1 cursor-pointer transition-colors duration-150 hover:bg-overlay-default focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-[var(--color-brand-400)] active:scale-[0.97]"
+        className="group/teams flex shrink-0 items-center gap-1 rounded-md px-1.5 py-1 cursor-pointer transition-colors duration-150 hover:bg-overlay-default focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-[var(--color-brand-400)] active:scale-[0.97]"
       >
         {current.length > 0 ? (
           current.map((team) => (
@@ -85,19 +91,14 @@ export function EpicTeamPicker({ epicKey, teams }: { epicKey: string; teams: Tea
         )}
       </button>
 
-      {open && (
-        <>
+      {open &&
+        typeof document !== "undefined" &&
+        createPortal(
           <div
-            className="fixed inset-0 z-40"
-            onClick={(e) => {
-              e.stopPropagation();
-              setOpen(false);
-            }}
-          />
-          <div
+            ref={popoverRef}
             role="menu"
-            onClick={(e) => e.stopPropagation()}
-            className="absolute right-0 top-full z-50 mt-1 min-w-[160px] overflow-hidden rounded-lg border border-border-strong bg-[var(--color-surface-floating)] py-1 shadow-[var(--shadow-lg)]"
+            className="fixed z-[9999] min-w-[160px] overflow-hidden rounded-lg border border-border-strong py-1"
+            style={getPopoverStyle()}
           >
             <div className="px-3 pb-1 pt-1 text-[10px] font-semibold uppercase tracking-wider text-text-muted">
               Teams
@@ -110,10 +111,7 @@ export function EpicTeamPicker({ epicKey, teams }: { epicKey: string; teams: Tea
                   type="button"
                   role="menuitemcheckbox"
                   aria-checked={checked}
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    toggleTeam(team);
-                  }}
+                  onClick={() => toggleTeam(team)}
                   className={`flex w-full items-center gap-2 px-3 py-1.5 text-left text-body-sm cursor-pointer transition-colors duration-150 ${
                     checked
                       ? "text-[var(--color-brand-400)] bg-[var(--color-brand-500)]/10"
@@ -143,19 +141,16 @@ export function EpicTeamPicker({ epicKey, teams }: { epicKey: string; teams: Tea
                 <button
                   type="button"
                   role="menuitem"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    clearAll();
-                  }}
+                  onClick={clearAll}
                   className="w-full px-3 py-1.5 text-left text-body-sm text-text-tertiary cursor-pointer transition-colors duration-150 hover:bg-hover-list-item hover:text-text-secondary"
                 >
                   Clear teams
                 </button>
               </>
             )}
-          </div>
-        </>
-      )}
-    </div>
+          </div>,
+          document.body,
+        )}
+    </>
   );
 }

@@ -14,12 +14,18 @@ export function useEpicProgress() {
   );
 }
 
-// Returns a mutator that replaces an epic's team assignment, then revalidates
-// the progress list so the row chips and any active filter reflect the change.
+// Returns a mutator that replaces an epic's team assignment and patches the
+// cached progress list in place. We patch rather than revalidate because the
+// PUT response is the value we just wrote (authoritative), and a refetch could
+// momentarily return a stale cached aggregate.
 export function useSetEpicTeams() {
   return useCallback(async (epicKey: string, teams: Team[]) => {
     await epics.setTeams(epicKey, teams);
-    await mutate("/api/epics/progress");
+    await mutate<EpicProgressItem[]>(
+      "/api/epics/progress",
+      (prev) => prev?.map((e) => (e.key === epicKey ? { ...e, teams } : e)),
+      { revalidate: false },
+    );
   }, []);
 }
 
