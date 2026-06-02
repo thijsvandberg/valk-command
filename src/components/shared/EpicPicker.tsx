@@ -278,34 +278,35 @@ function EpicPickerInner({
         {/* AI suggestions */}
         {suggestionsSection}
 
-        <BasePicker.List maxHeight="max-h-[280px]">
-          {/* Open the currently selected epic */}
-          {!query.trim() && value && (
+        {/* Actions for the currently-selected epic, kept above and visually
+            separated from the searchable list so "Open epic" does not read as
+            just another selectable option. */}
+        {!query.trim() && value && (
+          <div className="border-b border-border-subtle py-1">
             <Link
               href={`/tickets/${value.key}`}
               onClick={handleClose}
               title={`Open epic ${value.key}`}
               aria-label={`Open epic ${value.name}`}
-              className="flex w-full items-center gap-2.5 px-3 py-[7px] text-body-sm cursor-pointer hover:bg-hover-list-item active:bg-overlay-default focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-[var(--color-brand-400)]"
+              className="flex w-full items-center gap-2.5 px-3 py-[7px] text-body-sm font-medium cursor-pointer hover:bg-[color-mix(in_srgb,var(--color-icon-epic)_8%,transparent)] active:bg-[color-mix(in_srgb,var(--color-icon-epic)_12%,transparent)] focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-[var(--color-brand-400)]"
+              style={{ transition: "background-color 0.15s ease" }}
             >
               <span className="flex w-4 items-center justify-center shrink-0 text-[var(--color-icon-epic)]">
-                <ArrowUpRight size={11} strokeWidth={1.5} />
+                <ArrowUpRight size={12} strokeWidth={2} />
               </span>
-              <span className="flex-1 text-left truncate text-text-secondary">Open epic {value.name}</span>
+              <span className="flex-1 text-left truncate text-[var(--color-icon-epic)]">Open epic {value.name}</span>
               <span className="shrink-0 text-caption text-text-muted">{value.key}</span>
             </Link>
-          )}
-
-          {/* Remove epic option */}
-          {!query.trim() && value && (
             <BasePicker.Item selected={false} onSelect={() => { onChange(null); handleClose(); }}>
               <span className="flex w-4 items-center justify-center shrink-0 text-text-muted">
                 <X size={11} strokeWidth={1.5} />
               </span>
               <span className="text-text-secondary">Remove epic</span>
             </BasePicker.Item>
-          )}
+          </div>
+        )}
 
+        <BasePicker.List maxHeight="max-h-[280px]">
           {!epics && <BasePicker.Empty>Loading...</BasePicker.Empty>}
           {epics && filtered.length === 0 && (
             <BasePicker.Empty>{query.trim() ? "No epics found" : "No epics available"}</BasePicker.Empty>
