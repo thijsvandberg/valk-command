@@ -131,3 +131,15 @@ Key bottlenecks:
 
 Key bottleneck:
 - **Wrong persistence layer on first attempt**: I added the "default-hide for existing users" migration to `useSprintBoardFilters` (the `sprint-board-columns` localStorage key), but that code path is dead — `visibleColumns = externalVisible ?? storedColumns` and `externalVisible` is always supplied by `useColumnConfig`, whose visibility is persisted **server-side**. Caught it during browser verification (column still showed despite localStorage being clean). Reverted and re-implemented the one-time migration in `useColumnConfig` against the loaded server config. Lesson: sprint-board column visibility lives in `useColumnConfig` (server-backed), not the `storedColumns` in the filter hook.
+
+## BRDG-239 — Sprint board headerless Jira-style row layout (2026-06-02)
+
+| Phase | Notes |
+|-------|-------|
+| Plan | Opus Plan subagent surfaced the key risk: `TicketRow` is shared by 4 views (board, compare, epics, refinement). Resolved with PO to scope to the board only → forked a new `BoardRow` instead of mutating the shared row. |
+| Implement | New `BoardRow`/`SortableBoardRow`, headerless `TicketTable`, `BoardFieldToggle`, inline-tag field model, `useColumnConfig` rewrite + legacy migration. Kept the `<table>` shell (single fixed-layout column) so virtualization/dnd/grouping survive unchanged. |
+| Verify | 288 blast-radius tests green. Browser-verified headerless rows, field toggle, hover card follow star + readiness. |
+
+Key bottlenecks:
+- **Layout overflow caught only in the browser**: the first headerless render let the single-column auto-layout table grow past the viewport (epic/SP/BV/assignee clipped off-screen), because the flex title never truncated without a width constraint. Fix was `table-fixed` on the content tables. Unit tests (which mock the row) could not have caught this — visual verification was essential.
+- **Pre-existing broken tree blocked full `npm run verify`/`build`**: committed parallel work on `dev` (BRDG-254 `epics/page.tsx` references a non-existent `EpicStatusBucket`; refinement `SessionEndModal.tsx` has a lint error) fails typecheck/lint independently of this change. Verified this story in isolation (typecheck clean for touched files, targeted + blast-radius tests green) rather than the full gates.
