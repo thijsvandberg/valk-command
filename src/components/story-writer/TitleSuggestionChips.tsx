@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { Check, ChevronDown, Type } from "lucide-react";
+import { AppliedBadge } from "./SuggestionCard";
 
 interface TitleSuggestionChipsProps {
   titles: string[];
@@ -14,6 +15,8 @@ export function TitleSuggestionChips({ titles, onApply, currentTitle }: TitleSug
   const [collapsed, setCollapsed] = useState(false);
 
   if (titles.length === 0) return null;
+
+  const hasApplied = titles.some((t) => clicked === t || currentTitle === t);
 
   const handleApply = (title: string) => {
     setClicked(title);
@@ -31,10 +34,11 @@ export function TitleSuggestionChips({ titles, onApply, currentTitle }: TitleSug
         <span className="text-caption font-medium uppercase tracking-[0.06em] text-text-tertiary">
           Title suggestions
         </span>
+        {hasApplied && <span className="ml-auto flex items-center mr-1.5"><AppliedBadge /></span>}
         <ChevronDown
           size={12}
           strokeWidth={1.5}
-          className={`ml-auto shrink-0 text-text-muted transition-transform duration-150 ${collapsed ? "-rotate-90" : ""}`}
+          className={`${hasApplied ? "" : "ml-auto "}shrink-0 text-text-muted transition-transform duration-150 ${collapsed ? "-rotate-90" : ""}`}
         />
       </button>
       {!collapsed && <div className="divide-y divide-border-subtle">
