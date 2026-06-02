@@ -133,7 +133,7 @@ export function CommentsSection({
                     icon={<Trash2 size={14} strokeWidth={1.2} />}
                   />
                 </div>
-                <div className="description-content mt-1 text-body-lg leading-[1.7] text-text-secondary">{renderMarkdown(comment.content)}</div>
+                <div className="description-content mt-1 text-body-lg leading-[1.7] text-text-secondary">{renderMarkdown(comment.content, { linkifyRefs: true })}</div>
               </div>
             </div>
             );
@@ -223,7 +223,8 @@ function JiraCommentsSection({
                   {renderMarkdown(
                     isFlagComment
                       ? comment.content.replace(/^:?flag_on:?\s*Flag added\s*/i, "").replace(/^:?flag_off:?\s*Flag removed\s*/i, "").trim()
-                      : comment.content
+                      : comment.content,
+                    { linkifyRefs: true }
                   )}
                 </div>
               </div>

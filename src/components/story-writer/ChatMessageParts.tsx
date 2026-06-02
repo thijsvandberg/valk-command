@@ -417,7 +417,7 @@ export function ChatMessage({
               onClick={handleContentClick}
               className="description-content chat-markdown"
             >
-              {renderMarkdown(expanded ? displayContent : truncatedContent)}
+              {renderMarkdown(expanded ? displayContent : truncatedContent, { linkifyRefs: true })}
             </div>
             {isLong && (
               <button
@@ -458,7 +458,7 @@ export function ChatMessage({
             onClick={handleContentClick}
             className={`description-content chat-markdown ${allTitleSuggestions.length > 0 ? "mt-2" : ""}`}
           >
-            {renderMarkdown(contentAfter)}
+            {renderMarkdown(contentAfter, { linkifyRefs: true })}
           </div>
         )}
         {draftId && (

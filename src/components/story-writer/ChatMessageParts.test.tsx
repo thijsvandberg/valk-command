@@ -1,5 +1,56 @@
-import { describe, it, expect } from "vitest";
-import { parseLinkSuggestions, stripLinkSuggestionTags, parseEpicSuggestions, stripEpicSuggestionTags } from "./ChatMessageParts";
+import { describe, it, expect, vi } from "vitest";
+import { render, screen, fireEvent } from "@testing-library/react";
+import type { Message } from "@/types/chat";
+import { parseLinkSuggestions, stripLinkSuggestionTags, parseEpicSuggestions, stripEpicSuggestionTags, ChatMessage, DraftCard } from "./ChatMessageParts";
+
+// Capture the linkifyRefs option so call-site tests can assert the flag is
+// threaded into the body vs. left off the draft preview. The pill rendering
+// itself is covered by renderMarkdown.test.tsx.
+vi.mock("@/components/ticket-detail/renderMarkdown", () => ({
+  renderMarkdown: (content: string, opts?: { linkifyRefs?: boolean }) => (
+    <span data-testid="markdown" data-linkify={opts?.linkifyRefs ? "true" : "false"}>{content}</span>
+  ),
+}));
+
+// Sibling components and the api client drag in SWR/hover data; stub them so
+// these render tests stay focused on the markdown call sites.
+vi.mock("@/lib/api-client", () => ({ tickets: { detailUrl: (k: string) => `/api/tickets/${k}` } }));
+vi.mock("@/components/shared/TicketStatusPill", () => ({ TicketStatusPill: () => <span /> }));
+vi.mock("./TitleSuggestionChips", () => ({ TitleSuggestionChips: () => <div /> }));
+vi.mock("./TypeSuggestionChip", () => ({ TypeSuggestionChip: () => <div /> }));
+vi.mock("./LinkSuggestionChips", () => ({ LinkSuggestionChips: () => <div /> }));
+vi.mock("./EpicSuggestionCard", () => ({ EpicSuggestionCard: () => <div /> }));
+vi.mock("./SuggestionCard", () => ({
+  SuggestionCard: () => <div />,
+  SuggestionRow: () => <div />,
+  ScoreBadge: () => <div />,
+  LinkButton: () => <div />,
+}));
+
+function makeMessage(overrides: Partial<Message> = {}): Message {
+  return {
+    id: "m-1",
+    conversationId: "c-1",
+    role: "assistant",
+    content: "See VPL-123 for context.",
+    timestamp: "2026-01-01T10:00:00Z",
+    workspaceTaskId: null,
+    ...overrides,
+  };
+}
+
+describe("ChatMessage ticket-reference linkification", () => {
+  it("linkifies ticket references in the chat message body", () => {
+    render(<ChatMessage message={makeMessage()} />);
+    expect(screen.getByText("See VPL-123 for context.")).toHaveAttribute("data-linkify", "true");
+  });
+
+  it("does NOT linkify the draft preview (out of scope)", () => {
+    render(<DraftCard content="Draft mentions VPL-456" />);
+    fireEvent.click(screen.getByText("Current draft"));
+    expect(screen.getByText("Draft mentions VPL-456")).toHaveAttribute("data-linkify", "false");
+  });
+});
 
 describe("parseLinkSuggestions", () => {
   it("parses a single link-suggestion tag", () => {

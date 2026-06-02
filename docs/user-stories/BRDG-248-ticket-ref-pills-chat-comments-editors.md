@@ -28,6 +28,25 @@ Yes — naively replacing `VPL-123` text with a pill inside a contenteditable wo
 
 Recommendation: keep the editor showing **plain text** while editing (status quo) and pills only in the rendered view. That sidesteps the tangle entirely — you edit `VPL-123` as text, it renders as a pill. Build the TipTap node as the explicit, well-tested unit of work below only if inline pills *while editing* are actually wanted.
 
+## Implementation Plan
+
+Scope per PO decisions: **chat & comments only**. No TipTap/editor work (plain text when editing, pill when rendered is good enough). The optional surfaces (search results, version preview, story-writer previews) become follow-up stories.
+
+The linkification engine (`renderMarkdown(text, { linkifyRefs: true })`) and its exclusions are already fully built and tested in `renderMarkdown.test.tsx`. This story is purely: thread the flag at four comment/chat body call sites, add call-site tests proving the flag is passed (and NOT passed for draft previews), update docs, and file follow-ups.
+
+1. **Enable `linkifyRefs` at the four in-scope call sites** (one-arg-to-two-arg change passing `{ linkifyRefs: true }`):
+   - `CommentsSection.tsx` line 136 (PO comments) and line 223 (Jira comments — wrap the flag-stripping ternary as first arg).
+   - `SessionTicketView.tsx` line 227 (refinement-session Jira comments).
+   - `ChatMessageParts.tsx` line 420 (message body, expanded/truncated) and line 461 (`contentAfter`).
+2. **Leave draft-preview call sites OFF** (out of scope, deferred): `ChatMessageParts.tsx` line 505 (`draftContent`) and line 605 (`DraftCard`). These render in-progress generated drafts, grouped with the deferred "story-writer previews."
+3. **Tests — spy on `renderMarkdown`, assert the flag is threaded.** Pill rendering/exclusions are already covered in `renderMarkdown.test.tsx`, so call-site tests only verify the second arg.
+   - `CommentsSection.test.tsx`: change mock to capture `opts`; add tests asserting PO + Jira comment renders pass `{ linkifyRefs: true }` (use a non-flag Jira comment for deterministic first arg).
+   - `SessionTicketView.test.tsx`: capture `opts` in mock; assert Jira comment render passes the flag.
+   - `ChatMessageParts.test.tsx`: add render-based tests for `ChatMessage` — positive flag on body (420/461), negative on draft (505/`DraftCard`). This is the main effort (no existing component-render test).
+4. **Fetch-volume:** add no code. `TicketRefPill` already SWR-dedupes per key + server-caches, and `useJiraSprints` is shared. File a speculative investigation follow-up only.
+5. **Docs:** update `docs/architecture/jira-sync.md` linkification note to list the newly covered surfaces (comments + chat) and what stays off (draft previews, editor).
+6. **Follow-up stories:** search results; version preview + story-writer draft previews; (optional) batched ticket-ref lookup investigation.
+
 ## Requirements
 
 ### 1. Chat & comments (read-only)
@@ -49,7 +68,7 @@ Recommendation: keep the editor showing **plain text** while editing (status quo
 - Anything already shipped in BRDG-247 (description view, header pill, `/browse/` link conversion, the elevated pill style).
 
 ## Checklist
-- [ ] Enable `linkifyRefs` in comments + chat render paths + tests
+- [x] Enable `linkifyRefs` in comments + chat render paths + tests
 - [ ] Decide & (optionally) enable for search results / version preview / story-writer previews
 - [ ] (If wanted) TipTap inline node + NodeView for the ref pill
 - [ ] (If wanted) input rule + paste rule to create the node

@@ -224,7 +224,7 @@ function CollapsibleComments({
                   </span>
                 </div>
                 <div className="description-content mt-1 text-body-sm leading-[1.7] text-text-tertiary">
-                  {renderMarkdown(comment.content)}
+                  {renderMarkdown(comment.content, { linkifyRefs: true })}
                 </div>
               </div>
             </div>

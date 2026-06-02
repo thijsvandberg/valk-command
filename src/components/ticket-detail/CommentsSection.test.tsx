@@ -17,8 +17,12 @@ vi.mock("@/lib/api-client", () => ({
   },
 }));
 
+// Capture the linkifyRefs option so call-site tests can assert the flag is
+// threaded. The pill rendering itself is covered by renderMarkdown.test.tsx.
 vi.mock("./renderMarkdown", () => ({
-  renderMarkdown: (content: string) => <span data-testid="markdown">{content}</span>,
+  renderMarkdown: (content: string, opts?: { linkifyRefs?: boolean }) => (
+    <span data-testid="markdown" data-linkify={opts?.linkifyRefs ? "true" : "false"}>{content}</span>
+  ),
 }));
 
 vi.mock("@/hooks/usePrismLanguages", () => ({
@@ -115,6 +119,23 @@ describe("CommentsSection", () => {
     await waitFor(() => {
       expect(screen.getByText("First PO comment")).toBeInTheDocument();
     });
+  });
+
+  it("linkifies ticket references in PO comments", async () => {
+    mockGetComments.mockResolvedValue({
+      poComments: [
+        { id: "po-1", author: "Product Owner", content: "Blocked by VPL-99", createdAt: "2024-01-01T00:00:00Z" },
+      ],
+    });
+    renderSection();
+    await waitFor(() => {
+      expect(screen.getByText("Blocked by VPL-99")).toHaveAttribute("data-linkify", "true");
+    });
+  });
+
+  it("linkifies ticket references in Jira comments", () => {
+    renderSection([makeJiraComment({ content: "Depends on VPL-42" })]);
+    expect(screen.getByText("Depends on VPL-42")).toHaveAttribute("data-linkify", "true");
   });
 
   it("shows 'No comments yet' when no PO comments exist", async () => {

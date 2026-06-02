@@ -82,7 +82,9 @@ vi.mock("@/components/ticket-detail/ConfluencePagesSection", () => ({
 }));
 
 vi.mock("@/components/ticket-detail/renderMarkdown", () => ({
-  renderMarkdown: (v: string) => v,
+  renderMarkdown: (v: string, opts?: { linkifyRefs?: boolean }) => (
+    <span data-testid="markdown" data-linkify={opts?.linkifyRefs ? "true" : "false"}>{v}</span>
+  ),
 }));
 
 vi.mock("@clerk/nextjs", () => ({
@@ -212,6 +214,28 @@ describe("SessionTicketView", () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
+  });
+
+  it("linkifies ticket references in Jira comments", () => {
+    render(
+      <SessionTicketView
+        {...defaultProps}
+        detail={makeDetail({
+          jiraComments: [
+            {
+              id: "jc-1",
+              authorName: "Jane Doe",
+              authorAvatar: null,
+              authorInitials: "JD",
+              authorColor: "#336699",
+              content: "Linked to VPL-77",
+              createdAt: "2026-01-01T10:00:00Z",
+            },
+          ],
+        })}
+      />,
+    );
+    expect(screen.getByText("Linked to VPL-77")).toHaveAttribute("data-linkify", "true");
   });
 
   it("passes serverLocalEdit to EditableDescription when localEdits provided", () => {
