@@ -26,7 +26,7 @@ export function Toolbar({ editor, mode, beforeMore, endContent }: ToolbarProps) 
   if (!editor || mode !== "rich") {
     if (!beforeMore && !endContent) return null;
     return (
-      <div className="flex h-[42.5px] items-center justify-end gap-1 px-2">
+      <div className="flex min-h-[42.5px] flex-wrap items-center justify-end gap-1 gap-y-1.5 px-2">
         {beforeMore}
         {beforeMore && endContent && <div className="h-5 w-px bg-overlay-strong" />}
         {endContent}
@@ -36,7 +36,7 @@ export function Toolbar({ editor, mode, beforeMore, endContent }: ToolbarProps) 
 
   return (
     <div className="flex flex-col" role="toolbar" aria-label="Editor formatting">
-      <div className="flex h-[42.5px] items-center gap-0.5">
+      <div className="flex min-h-[42.5px] flex-wrap items-center gap-0.5 gap-y-1.5">
         <FormatButton
           editor={editor}
           action={() => editor.chain().focus().setParagraph().run()}
@@ -126,7 +126,7 @@ export function Toolbar({ editor, mode, beforeMore, endContent }: ToolbarProps) 
             <MoreHorizontal size={14} strokeWidth={1.5} />
           </button>
         </Tooltip>
-        {endContent && <div className="ml-auto flex items-center gap-1">{endContent}</div>}
+        {endContent && <div className="ml-auto flex shrink-0 flex-wrap items-center justify-end gap-1">{endContent}</div>}
       </div>
 
       {moreOpen && (

@@ -87,6 +87,53 @@ export function SessionEndModal() {
     saveTicketNote(ticketKey, value);
   }, [saveTicketNote]);
 
+  // Mirror of the latest note content so the flush below can read it from a
+  // closure without re-creating the callback on every keystroke.
+  const ticketNotesRef = useRef(ticketNotes);
+  useEffect(() => { ticketNotesRef.current = ticketNotes; }, [ticketNotes]);
+
+  // Seed existing ticket PO notes that have no session-scoped note yet (e.g.
+  // notes added via the in-session Notes panel, which only writes poNotes) so
+  // they are visible and editable here. Runs once after both sources load.
+  const seededPoNotesRef = useRef(false);
+  useEffect(() => {
+    if (seededPoNotesRef.current || !commentLoaded || !allTickets) return;
+    seededPoNotesRef.current = true;
+    const additions: Record<string, string> = {};
+    for (const key of queue) {
+      if (ticketNotesRef.current[key]) continue;
+      const existing = allTickets.find((t) => t.key === key)?.notes;
+      if (existing && existing.trim()) additions[key] = existing;
+    }
+    const seededKeys = Object.keys(additions);
+    if (seededKeys.length === 0) return;
+    setTicketNotes((prev) => ({ ...prev, ...additions }));
+    setExpandedNotes((prev) => {
+      const next = new Set(prev);
+      seededKeys.forEach((k) => next.add(k));
+      return next;
+    });
+  }, [commentLoaded, allTickets, queue]);
+
+  // Notes auto-save on a debounce; saving/completing the session can navigate
+  // away before that timer fires. Flush any pending note saves first so a note
+  // typed right before Save/Complete is never lost.
+  const flushPendingNotes = useCallback(async () => {
+    if (!savedSessionId) return;
+    const timers = noteTimerRef.current;
+    const pendingKeys = Object.keys(timers);
+    if (pendingKeys.length === 0) return;
+    const saves: Promise<unknown>[] = [];
+    for (const key of pendingKeys) {
+      clearTimeout(timers[key]);
+      delete timers[key];
+      const content = ticketNotesRef.current[key] ?? "";
+      saves.push(refinementSessionsApi.upsertTicketNote(savedSessionId, { ticketKey: key, content }).catch(() => {}));
+      saves.push(tickets.updateMetadata(key, { poNotes: content }).catch(() => {}));
+    }
+    await Promise.all(saves);
+  }, [savedSessionId]);
+
   const toggleNoteExpand = useCallback((ticketKey: string) => {
     setExpandedNotes((prev) => {
       const next = new Set(prev);
@@ -118,22 +165,6 @@ export function SessionEndModal() {
     });
   }, [queue, allTickets]);
 
-  const handleSave = useCallback(() => {
-    saveSession(generalComment || null);
-    router.push(savedSessionId ? `/refinement/${savedSessionId}` : "/refinement");
-  }, [saveSession, generalComment, router, savedSessionId]);
-
-  const handleFinish = useCallback(() => {
-    finishSession(generalComment || null);
-    // Completed sessions leave the overview; navigate without a guid so we
-    // don't land back on the just-finished refinement.
-    router.push("/refinement");
-  }, [finishSession, generalComment, router]);
-
-  const handleGoBack = useCallback(() => {
-    closeEndModal();
-  }, [closeEndModal]);
-
   // Resolve ticket info for each queue item
   const ticketRows = useMemo(() => {
     return queue.map((key) => {
@@ -150,6 +181,37 @@ export function SessionEndModal() {
       };
     });
   }, [queue, queueMeta, allTickets]);
+
+  const handleSave = useCallback(async () => {
+    await flushPendingNotes();
+    saveSession(generalComment || null);
+    router.push(savedSessionId ? `/refinement/${savedSessionId}` : "/refinement");
+  }, [flushPendingNotes, saveSession, generalComment, router, savedSessionId]);
+
+  const handleFinish = useCallback(async () => {
+    await flushPendingNotes();
+
+    // Spikes are never estimated, so they miss the "points added -> ready for
+    // development" transition. On completion, promote spikes that were prepped
+    // (Ready to Refine) straight to Ready for Development (readiness = null).
+    const spikesToPromote = ticketRows.filter(
+      (t) => t.isSpike && t.readiness === "ready_to_refine",
+    );
+    await Promise.all(
+      spikesToPromote.map((t) =>
+        tickets.updateMetadata(t.key, { readiness: null }).catch(() => {}),
+      ),
+    );
+
+    finishSession(generalComment || null);
+    // Completed sessions leave the overview; navigate without a guid so we
+    // don't land back on the just-finished refinement.
+    router.push("/refinement");
+  }, [flushPendingNotes, ticketRows, finishSession, generalComment, router]);
+
+  const handleGoBack = useCallback(() => {
+    closeEndModal();
+  }, [closeEndModal]);
 
   // Handlers for inline status changes via the pill
   const handleJiraStatusChange = useCallback(async (key: string, status: JiraStatus) => {

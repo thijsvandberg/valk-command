@@ -109,19 +109,76 @@ describe("SessionEndModal", () => {
     expect(mockContext.closeEndModal).toHaveBeenCalled();
   });
 
-  it("calls saveSession when Save clicked", () => {
+  it("calls saveSession when Save clicked", async () => {
     render(<SessionEndModal />);
     fireEvent.click(screen.getByText("Save"));
-    expect(mockContext.saveSession).toHaveBeenCalled();
+    await waitFor(() => expect(mockContext.saveSession).toHaveBeenCalled());
     expect(mockPush).toHaveBeenCalledWith("/refinement/session-abc");
   });
 
-  it("navigates to the guid-less overview when Complete clicked", () => {
+  it("navigates to the guid-less overview when Complete clicked", async () => {
     render(<SessionEndModal />);
     fireEvent.click(screen.getByText("Complete"));
-    expect(mockContext.finishSession).toHaveBeenCalled();
+    await waitFor(() => expect(mockContext.finishSession).toHaveBeenCalled());
     // Completed sessions leave the overview, so we must not return to their guid.
     expect(mockPush).toHaveBeenCalledWith("/refinement");
+  });
+
+  it("promotes a Ready-to-Refine spike to Ready for Development on Complete", async () => {
+    const original = mockTickets[2].readiness;
+    mockTickets[2].readiness = "ready_to_refine";
+    const { tickets } = await import("@/lib/api-client");
+    try {
+      render(<SessionEndModal />);
+      fireEvent.click(screen.getByText("Complete"));
+      await waitFor(() =>
+        expect(tickets.updateMetadata).toHaveBeenCalledWith("VPL-3", { readiness: null }),
+      );
+    } finally {
+      mockTickets[2].readiness = original;
+    }
+  });
+
+  it("does not change a spike that is not Ready to Refine", async () => {
+    // VPL-3 spike has readiness null in the default mock; stories are never touched.
+    const { tickets } = await import("@/lib/api-client");
+    render(<SessionEndModal />);
+    fireEvent.click(screen.getByText("Complete"));
+    await waitFor(() => expect(mockContext.finishSession).toHaveBeenCalled());
+    expect(tickets.updateMetadata).not.toHaveBeenCalledWith("VPL-3", { readiness: null });
+  });
+
+  it("seeds an existing ticket PO note so it is visible", async () => {
+    const original = (mockTickets[1] as { notes?: string }).notes;
+    (mockTickets[1] as { notes?: string }).notes = "Existing PO note";
+    try {
+      render(<SessionEndModal />);
+      await waitFor(() =>
+        expect(screen.getByDisplayValue("Existing PO note")).toBeInTheDocument(),
+      );
+    } finally {
+      (mockTickets[1] as { notes?: string }).notes = original;
+    }
+  });
+
+  it("flushes a pending ticket note before completing", async () => {
+    const { tickets, refinementSessions } = await import("@/lib/api-client");
+    render(<SessionEndModal />);
+    const noteButtons = screen.getAllByTitle("Add PO message");
+    fireEvent.click(noteButtons[0]);
+    const noteInput = screen.getByPlaceholderText("PO message for this ticket...");
+    fireEvent.change(noteInput, { target: { value: "Discussed scope" } });
+
+    // Click Complete immediately, before the debounce timer fires.
+    fireEvent.click(screen.getByText("Complete"));
+
+    await waitFor(() =>
+      expect(refinementSessions.upsertTicketNote).toHaveBeenCalledWith(
+        "session-abc",
+        { ticketKey: "VPL-1", content: "Discussed scope" },
+      ),
+    );
+    expect(tickets.updateMetadata).toHaveBeenCalledWith("VPL-1", { poNotes: "Discussed scope" });
   });
 
   it("shows note editor when message button clicked", () => {

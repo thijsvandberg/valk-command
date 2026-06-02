@@ -5,17 +5,22 @@ import { useState, useEffect, useRef } from "react";
 const MIN_PANE_WIDTH = 320;
 const MAX_PANE_WIDTH_RATIO = 0.5;
 
-export function SubtasksPaneResizable({ children, width, onWidthChange }: { children: React.ReactNode; width: number; onWidthChange: (w: number) => void }) {
+export function SubtasksPaneResizable({ children, width, onWidthChange, zoom = 1 }: { children: React.ReactNode; width: number; onWidthChange: (w: number) => void; zoom?: number }) {
   const [isDragging, setIsDragging] = useState(false);
   const paneRef = useRef<HTMLDivElement>(null);
+  // Captured on mousedown so the drag tracks cursor movement as a delta. An
+  // absolute getBoundingClientRect() approach breaks under CSS `zoom`, which
+  // scales layout coordinates but not the event's clientX.
+  const dragStartRef = useRef({ x: 0, width: 0 });
 
   useEffect(() => {
     if (!isDragging) return;
     function handleMouseMove(e: MouseEvent) {
-      if (!paneRef.current) return;
-      const rect = paneRef.current.getBoundingClientRect();
-      const maxW = window.innerWidth * MAX_PANE_WIDTH_RATIO;
-      const newW = Math.max(MIN_PANE_WIDTH, Math.min(maxW, rect.right - e.clientX));
+      // Dragging the left-edge handle leftward widens the pane. Divide the raw
+      // cursor delta by the zoom factor to convert visual px back to layout px.
+      const delta = (dragStartRef.current.x - e.clientX) / zoom;
+      const maxW = (window.innerWidth * MAX_PANE_WIDTH_RATIO) / zoom;
+      const newW = Math.max(MIN_PANE_WIDTH, Math.min(maxW, dragStartRef.current.width + delta));
       onWidthChange(newW);
     }
     function handleMouseUp() { setIsDragging(false); }
@@ -29,7 +34,7 @@ export function SubtasksPaneResizable({ children, width, onWidthChange }: { chil
       document.removeEventListener("mousemove", handleMouseMove);
       document.removeEventListener("mouseup", handleMouseUp);
     };
-  }, [isDragging, onWidthChange]);
+  }, [isDragging, onWidthChange, zoom]);
 
   return (
     <div
@@ -43,7 +48,11 @@ export function SubtasksPaneResizable({ children, width, onWidthChange }: { chil
     >
       {/* Resize handle */}
       <div
-        onMouseDown={(e) => { e.preventDefault(); setIsDragging(true); }}
+        onMouseDown={(e) => {
+          e.preventDefault();
+          dragStartRef.current = { x: e.clientX, width };
+          setIsDragging(true);
+        }}
         className="absolute top-0 left-0 z-20 h-full w-1 cursor-col-resize hover:bg-[var(--color-brand-500)]/30 active:bg-[var(--color-brand-500)]/50"
         style={isDragging ? { backgroundColor: "var(--color-drag-active)" } : {}}
       />

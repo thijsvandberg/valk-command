@@ -40,16 +40,20 @@ export function EpicPicker({
   align = "right",
   ticketKey,
   onOpenChange,
+  textClass = "text-label",
 }: {
   value: EpicOption | null;
   onChange: (epic: EpicOption | null) => void;
   align?: "left" | "right";
   ticketKey?: string;
   onOpenChange?: (open: boolean) => void;
+  // Trigger font-size utility. Defaults to the compact pill size; the ticket
+  // detail sidebar overrides this to align with its other 14px values.
+  textClass?: string;
 }) {
   return (
     <BasePicker.Root portal={true} align={align} popoverHeight={300} onOpenChange={onOpenChange}>
-      <EpicPickerInner value={value} onChange={onChange} ticketKey={ticketKey} />
+      <EpicPickerInner value={value} onChange={onChange} ticketKey={ticketKey} textClass={textClass} />
     </BasePicker.Root>
   );
 }
@@ -58,10 +62,12 @@ function EpicPickerInner({
   value,
   onChange,
   ticketKey,
+  textClass,
 }: {
   value: EpicOption | null;
   onChange: (epic: EpicOption | null) => void;
   ticketKey?: string;
+  textClass: string;
 }) {
   const { open, query, setQuery, searchRef, handleClose } = BasePicker.useContext();
 
@@ -219,7 +225,7 @@ function EpicPickerInner({
     <>
       <BasePicker.Trigger
         title={value ? `Epic: ${value.name}` : "Select epic"}
-        className="inline-flex items-center gap-1.5 rounded-md bg-overlay-default px-2 py-0.5 text-label font-medium cursor-pointer hover:bg-overlay-strong transition-colors duration-150 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)] active:scale-[0.98]"
+        className={`inline-flex items-center gap-1.5 rounded-md bg-overlay-default px-2 py-0.5 ${textClass} font-medium cursor-pointer hover:bg-overlay-strong transition-colors duration-150 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)] active:scale-[0.98]`}
       >
         <Zap size={12} strokeWidth={1.5} className={`shrink-0 ${value ? "text-[var(--color-icon-epic)]" : "text-text-muted"}`} />
         <span className={`truncate max-w-[140px] ${value ? "text-[var(--color-icon-epic)] font-medium" : "text-text-muted"}`}>

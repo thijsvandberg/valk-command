@@ -35,15 +35,19 @@ export function AssigneePicker({
   onChange,
   align = "right",
   onOpenChange,
+  textClass = "text-body-lg",
 }: {
   value: Assignee | null;
   onChange: (user: AssignableUser | null) => void;
   align?: "left" | "right";
   onOpenChange?: (open: boolean) => void;
+  // Trigger font-size utility. Defaults to the standard value size; the ticket
+  // detail sidebar overrides this to match its other 12px values.
+  textClass?: string;
 }) {
   return (
     <BasePicker.Root portal={true} align={align} popoverHeight={440} onOpenChange={onOpenChange}>
-      <AssigneePickerInner value={value} onChange={onChange} />
+      <AssigneePickerInner value={value} onChange={onChange} textClass={textClass} />
     </BasePicker.Root>
   );
 }
@@ -51,9 +55,11 @@ export function AssigneePicker({
 function AssigneePickerInner({
   value,
   onChange,
+  textClass,
 }: {
   value: Assignee | null;
   onChange: (user: AssignableUser | null) => void;
+  textClass: string;
 }) {
   const { open, query, handleClose } = BasePicker.useContext();
   const [teamFilter, setTeamFilter] = useState<string | null>(null);
@@ -110,7 +116,7 @@ function AssigneePickerInner({
         className="inline-flex items-center gap-2 rounded-lg px-2 py-1 -mr-2 cursor-pointer hover:bg-overlay-subtle focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)] active:opacity-60"
         style={{ transition: "background-color 0.15s ease" }}
       >
-        <span className="truncate text-body-lg text-text-secondary">{value?.name ?? "Unassigned"}</span>
+        <span className={`truncate ${textClass} text-text-secondary`}>{value?.name ?? "Unassigned"}</span>
         <Avatar assignee={value} size={20} />
       </BasePicker.Trigger>
 

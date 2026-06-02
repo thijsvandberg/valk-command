@@ -50,6 +50,7 @@ import { Popover } from "@/components/shared/Popover";
 import { ConfirmDialog } from "@/components/shared/ConfirmDialog";
 import { useLocalStorage } from "@/hooks/useLocalStorage";
 import { useTicketDetailPage } from "@/hooks/useTicketDetailPage";
+import { useRefinementSessions } from "@/hooks/useRefinementSessions";
 
 
 export default function TicketDetailPage({
@@ -59,6 +60,12 @@ export default function TicketDetailPage({
 }) {
   const { key } = use(params);
   const h = useTicketDetailPage(key);
+  const { sessions: refinementSessions } = useRefinementSessions();
+  // A ticket already in an unfinished refinement should not offer the shortcut;
+  // completed sessions are historical and don't block re-adding it later.
+  const isInRefinementSession = refinementSessions.some(
+    (s) => s.status !== "completed" && s.ticketKeys.includes(key),
+  );
   const pageTitle = usePageTitle(h.apiData ? `${key} - ${h.apiData.title}` : key);
 
   const [chatPaneOpen, setChatPaneOpen] = useState(false);
@@ -319,6 +326,16 @@ export default function TicketDetailPage({
                 }
               />
             </Tooltip>
+            {!ticket.removedFromJiraAt && ticket.jiraStatus !== "DONE" && ticket.jiraStatus !== "DEPRECATED" && ticket.readiness === "ready_to_refine" && !isInRefinementSession && (
+              <button
+                onClick={() => setShowAddToRefinement(true)}
+                className="flex h-7 items-center gap-1.5 rounded-md border border-[var(--color-brand-500)]/25 bg-[var(--color-brand-500)]/10 px-2.5 text-body-sm font-medium text-[var(--color-brand-400)] cursor-pointer hover:bg-[var(--color-brand-500)]/20 hover:border-[var(--color-brand-500)]/40 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)] active:scale-[0.98]"
+                style={{ transition: "background-color 0.15s ease, border-color 0.15s ease, transform 0.1s ease" }}
+              >
+                <Gem size={13} strokeWidth={1.5} />
+                Add to refinement
+              </button>
+            )}
             <div className="relative">
               <Button
                 variant="ghost"

@@ -78,30 +78,28 @@ export function RefinementSessionProvider({ children }: { children: ReactNode })
   const nextTicket = useCallback(() => {
     setState((prev) => {
       const newIndex = Math.min(prev.currentIndex + 1, prev.queue.length - 1);
-      if (prev.savedSessionId && newIndex !== prev.currentIndex) {
-        persistCurrentIndex(prev.savedSessionId, newIndex);
-      }
-      return { ...prev, currentIndex: newIndex };
+      if (newIndex === prev.currentIndex) return prev;
+      if (prev.savedSessionId) persistCurrentIndex(prev.savedSessionId, newIndex);
+      // Collapse the sidebar so each story starts focused on the description.
+      return { ...prev, currentIndex: newIndex, activeSidebarPanel: null };
     });
   }, [persistCurrentIndex]);
 
   const prevTicket = useCallback(() => {
     setState((prev) => {
       const newIndex = Math.max(prev.currentIndex - 1, 0);
-      if (prev.savedSessionId && newIndex !== prev.currentIndex) {
-        persistCurrentIndex(prev.savedSessionId, newIndex);
-      }
-      return { ...prev, currentIndex: newIndex };
+      if (newIndex === prev.currentIndex) return prev;
+      if (prev.savedSessionId) persistCurrentIndex(prev.savedSessionId, newIndex);
+      return { ...prev, currentIndex: newIndex, activeSidebarPanel: null };
     });
   }, [persistCurrentIndex]);
 
   const goToTicket = useCallback((index: number) => {
     setState((prev) => {
       const newIndex = Math.max(0, Math.min(index, prev.queue.length - 1));
-      if (prev.savedSessionId && newIndex !== prev.currentIndex) {
-        persistCurrentIndex(prev.savedSessionId, newIndex);
-      }
-      return { ...prev, currentIndex: newIndex };
+      if (newIndex === prev.currentIndex) return prev;
+      if (prev.savedSessionId) persistCurrentIndex(prev.savedSessionId, newIndex);
+      return { ...prev, currentIndex: newIndex, activeSidebarPanel: null };
     });
   }, [persistCurrentIndex]);
 

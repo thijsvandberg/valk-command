@@ -19,6 +19,7 @@ export function SprintPicker({
   align = "right",
   variant = "default",
   onOpenChange,
+  textClass = "text-body-lg",
 }: {
   value: string | null;
   sprints: Sprint[];
@@ -26,10 +27,13 @@ export function SprintPicker({
   align?: "left" | "right";
   variant?: "default" | "badge";
   onOpenChange?: (open: boolean) => void;
+  // Trigger font-size utility for the default variant. Defaults to the standard
+  // value size; the refinement Info panel overrides this to its 12px values.
+  textClass?: string;
 }) {
   return (
     <BasePicker.Root portal={true} align={align} popoverHeight={300} onOpenChange={onOpenChange}>
-      <SprintPickerInner value={value} sprints={sprints} onChange={onChange} variant={variant} />
+      <SprintPickerInner value={value} sprints={sprints} onChange={onChange} variant={variant} textClass={textClass} />
     </BasePicker.Root>
   );
 }
@@ -39,11 +43,13 @@ function SprintPickerInner({
   sprints,
   onChange,
   variant,
+  textClass,
 }: {
   value: string | null;
   sprints: Sprint[];
   onChange: (sprintId: string | null) => void;
   variant: "default" | "badge";
+  textClass: string;
 }) {
   const { query, handleClose } = BasePicker.useContext();
 
@@ -62,7 +68,7 @@ function SprintPickerInner({
         title={currentSprint ? `Sprint: ${currentSprint.name}` : "No sprint"}
         className={isBadge
           ? "flex items-center gap-1.5 rounded-md bg-overlay-default px-2 py-0.5 text-label font-medium text-text-tertiary cursor-pointer hover:bg-overlay-strong hover:text-text-secondary focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)] active:opacity-60"
-          : "inline-flex items-center gap-1 rounded-lg px-2 py-1 -mr-2 text-body-lg text-text-secondary cursor-pointer hover:bg-overlay-subtle focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)] active:opacity-60"
+          : `inline-flex items-center gap-1 rounded-lg px-2 py-1 -mr-2 ${textClass} text-text-secondary cursor-pointer hover:bg-overlay-subtle focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)] active:opacity-60`
         }
         style={{ transition: "background-color 0.15s, color 0.15s" }}
       >

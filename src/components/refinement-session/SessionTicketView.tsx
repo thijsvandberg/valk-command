@@ -241,9 +241,9 @@ function CollapsibleComments({
 
 function MetadataDetailRow({ label, children }: { label: string; children: React.ReactNode }) {
   return (
-    <div className="flex items-center justify-between gap-3 py-1.5">
+    <div className="flex min-h-[32px] items-center justify-between gap-3">
       <span className="shrink-0 text-body-sm text-text-tertiary">{label}</span>
-      <div className="min-w-0 text-right text-body-lg text-text-secondary">{children}</div>
+      <div className="min-w-0 text-right text-body-sm text-text-secondary">{children}</div>
     </div>
   );
 }
@@ -381,16 +381,16 @@ export function SessionMetadataPanel({
       {/* Story Points + Business Value compact row */}
       <div className="grid grid-cols-2 gap-2">
         <CompactField label="Story Points" accent={storyPoints !== null}>
-          <StoryPointPicker value={storyPoints} onChange={handleStoryPointsChange} />
+          <StoryPointPicker value={storyPoints} onChange={handleStoryPointsChange} showMetricIcon richTooltip />
         </CompactField>
         <CompactField label="Business Value" accent={businessValue !== null}>
-          <BusinessValuePicker value={businessValue} onChange={handleBusinessValueChange} align="right" />
+          <BusinessValuePicker value={businessValue} onChange={handleBusinessValueChange} align="right" showMetricIcon richTooltip />
         </CompactField>
       </div>
 
       {/* Metadata rows */}
       <div className="rounded-xl border border-border-default bg-overlay-subtle/50 px-4 py-3">
-        <div className="space-y-0.5">
+        <div className="space-y-0">
           <MetadataDetailRow label="Status">
             <span
               className="inline-flex items-center rounded-md px-2 py-0.5 text-body-sm font-medium"
@@ -406,6 +406,7 @@ export function SessionMetadataPanel({
                 onChange={handleEpicChange}
                 align="right"
                 ticketKey={ticket.key}
+                textClass="text-body-sm"
               />
             </MetadataDetailRow>
           )}
@@ -427,6 +428,7 @@ export function SessionMetadataPanel({
               sprints={sprints ?? []}
               onChange={handleSprintChange}
               align="right"
+              textClass="text-body-sm"
             />
           </MetadataDetailRow>
           <MetadataDetailRow label="Assignee">
@@ -434,6 +436,7 @@ export function SessionMetadataPanel({
               value={assignee}
               onChange={handleAssigneeChange}
               align="right"
+              textClass="text-body-sm"
             />
           </MetadataDetailRow>
           {detail.reporter && (

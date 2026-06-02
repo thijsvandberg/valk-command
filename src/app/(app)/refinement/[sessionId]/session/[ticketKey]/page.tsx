@@ -68,8 +68,10 @@ export default function RefinementSessionTicketPage({
   // Persisted sidebar width (shared across all sidebar panels and sessions)
   const [sidebarWidth, setSidebarWidth] = useLocalStorage("bridge:refinement-sidebar-width", getDefaultPaneWidth());
 
-  // Persisted zoom level for refinement session content
-  const [zoomLevel, setZoomLevel] = useLocalStorage<100 | 120>("bridge:refinement-zoom", 120);
+  // Persisted zoom level for refinement session content. New key (v2) resets
+  // any legacy 100/120 values to the current 110/130 scale.
+  const [zoomLevel, setZoomLevel] = useLocalStorage<110 | 130>("bridge:refinement-zoom-v2", 110);
+  const zoomFactor = zoomLevel / 100;
 
   // Re-hydrate session from DB when context is empty (page refresh)
   const [rehydrating, setRehydrating] = useState(false);
@@ -623,13 +625,13 @@ export default function RefinementSessionTicketPage({
                   <button
                     type="button"
                     onClick={() => {
-                      setZoomLevel(zoomLevel === 120 ? 100 : 120);
+                      setZoomLevel(zoomLevel === 130 ? 110 : 130);
                       setOverflowOpen(false);
                     }}
                     className="flex w-full cursor-pointer items-center gap-2.5 px-3 py-[7px] text-body-sm text-text-secondary hover:bg-hover-list-item active:bg-overlay-default"
                   >
-                    {zoomLevel === 120 ? <ZoomOut size={13} strokeWidth={1.5} /> : <ZoomIn size={13} strokeWidth={1.5} />}
-                    {zoomLevel === 120 ? "Zoom 100%" : "Zoom 120%"}
+                    {zoomLevel === 130 ? <ZoomOut size={13} strokeWidth={1.5} /> : <ZoomIn size={13} strokeWidth={1.5} />}
+                    {zoomLevel === 130 ? "Zoom 110%" : "Zoom 130%"}
                   </button>
                   <div className="my-1 border-t border-border-default" />
                   <button
@@ -651,7 +653,7 @@ export default function RefinementSessionTicketPage({
         </div>
 
         {/* Main content */}
-        <div className="flex min-h-0 flex-1" style={{ zoom: zoomLevel === 120 ? 1.2 : 1 }}>
+        <div className="flex min-h-0 flex-1" style={{ zoom: zoomFactor }}>
           {/* Content area */}
           <div className="flex-1 overflow-y-auto">
             <div className="mx-auto max-w-3xl px-8 py-8">
@@ -684,7 +686,7 @@ export default function RefinementSessionTicketPage({
 
           {/* Right panel: Chat pane */}
           {activeSidebarPanel === "chat" && currentKey && (
-            <SubtasksPaneResizable width={sidebarWidth} onWidthChange={setSidebarWidth}>
+            <SubtasksPaneResizable width={sidebarWidth} onWidthChange={setSidebarWidth} zoom={zoomFactor}>
               <TicketChatPane
                 ticketKey={currentKey}
                 ticketTitle={queueMeta.find((m) => m.key === currentKey)?.title ?? currentKey}
@@ -695,7 +697,7 @@ export default function RefinementSessionTicketPage({
 
           {/* Right panel: Subtasks pane */}
           {activeSidebarPanel === "subtasks" && ticketData && (
-            <SubtasksPaneResizable width={sidebarWidth} onWidthChange={setSidebarWidth}>
+            <SubtasksPaneResizable width={sidebarWidth} onWidthChange={setSidebarWidth} zoom={zoomFactor}>
               <SubtasksSection
                 subtasks={ticketData.subtasks ?? []}
                 ticketKey={ticketData.key}
@@ -709,7 +711,7 @@ export default function RefinementSessionTicketPage({
 
           {/* Right panel: PO Notes */}
           {activeSidebarPanel === "notes" && (
-            <SubtasksPaneResizable width={sidebarWidth} onWidthChange={setSidebarWidth}>
+            <SubtasksPaneResizable width={sidebarWidth} onWidthChange={setSidebarWidth} zoom={zoomFactor}>
               <div className="flex items-center gap-2">
                 <h3 className="text-label font-semibold uppercase tracking-wider text-text-muted">PO Notes</h3>
                 {poNotes.trim() && (
@@ -730,7 +732,7 @@ export default function RefinementSessionTicketPage({
 
           {/* Right panel: Info / Metadata */}
           {activeSidebarPanel === "info" && ticketData && (
-            <SubtasksPaneResizable width={sidebarWidth} onWidthChange={setSidebarWidth}>
+            <SubtasksPaneResizable width={sidebarWidth} onWidthChange={setSidebarWidth} zoom={zoomFactor}>
               <h3 className="mb-3 text-label font-semibold uppercase tracking-wider text-text-muted">Info</h3>
               <SessionMetadataPanel ticket={ticketData} detail={ticketData} onMutate={() => mutate()} />
             </SubtasksPaneResizable>

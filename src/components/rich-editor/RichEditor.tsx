@@ -274,7 +274,15 @@ export function RichEditor({
   const toolbarEl = (
     <div className={isPortaled ? "border-b border-border-default bg-[var(--color-surface-elevated)]" : toolbarWrapperClasses}>
       {fullWidthToolbar ? (
-        <div className="mx-auto max-w-4xl px-8">{toolbarContent}</div>
+        // A portaled toolbar spans the full viewport, so its controls are
+        // centered to max-w-4xl. Inline, the controls must instead line up with
+        // the editor body, which mirrors the contentMaxWidth wrapper below and
+        // carries no horizontal padding.
+        isPortaled ? (
+          <div className="mx-auto max-w-4xl px-8">{toolbarContent}</div>
+        ) : (
+          <div className={contentMaxWidth ? "mx-auto w-full max-w-4xl" : ""}>{toolbarContent}</div>
+        )
       ) : toolbarContent}
     </div>
   );

@@ -90,6 +90,49 @@ describe("RefinementSessionContext", () => {
     expect(state.activeSidebarPanel).toBe("subtasks");
   });
 
+  it("collapses the sidebar when navigating to a different ticket", () => {
+    let state!: ReturnType<typeof useRefinementSession>;
+    renderWithProvider((s) => { state = s; });
+
+    act(() => { state.startSession(["VPL-1", "VPL-2", "VPL-3"]); });
+
+    act(() => { state.toggleSidebarPanel("notes"); });
+    expect(state.activeSidebarPanel).toBe("notes");
+
+    act(() => { state.nextTicket(); });
+    expect(state.currentIndex).toBe(1);
+    expect(state.activeSidebarPanel).toBe(null);
+
+    act(() => { state.toggleSidebarPanel("chat"); });
+    expect(state.activeSidebarPanel).toBe("chat");
+
+    act(() => { state.prevTicket(); });
+    expect(state.currentIndex).toBe(0);
+    expect(state.activeSidebarPanel).toBe(null);
+
+    act(() => { state.toggleSidebarPanel("info"); });
+    act(() => { state.goToTicket(2); });
+    expect(state.currentIndex).toBe(2);
+    expect(state.activeSidebarPanel).toBe(null);
+  });
+
+  it("keeps the sidebar open when navigation does not change the ticket", () => {
+    let state!: ReturnType<typeof useRefinementSession>;
+    renderWithProvider((s) => { state = s; });
+
+    act(() => { state.startSession(["VPL-1", "VPL-2"]); });
+    act(() => { state.toggleSidebarPanel("notes"); });
+
+    // Already at the first ticket; prevTicket is a no-op and must not collapse.
+    act(() => { state.prevTicket(); });
+    expect(state.currentIndex).toBe(0);
+    expect(state.activeSidebarPanel).toBe("notes");
+
+    // goToTicket to the current index is also a no-op.
+    act(() => { state.goToTicket(0); });
+    expect(state.activeSidebarPanel).toBe("notes");
+  });
+
   it("opens and closes end modal", () => {
     let state!: ReturnType<typeof useRefinementSession>;
     renderWithProvider((s) => { state = s; });
