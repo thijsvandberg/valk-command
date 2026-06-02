@@ -1,6 +1,6 @@
 # BRDG-257: Branch-based UAT deployment detection
 
-**Status:** Done — pending real-world validation (a few days). Kept in `user-stories/` (not archived) until the validation query below is spot-checked. First backfill recovered 79 branch-inferred UAT deployments (56 UAT2, 23 UAT3); VPL-45604 and VPL-45794 now show UAT2.
+**Status:** Done. First backfill recovered 79 branch-inferred UAT deployments (56 UAT2, 23 UAT3); VPL-45604 and VPL-45794 now show UAT2. Real-world validation tracked separately in BRDG-258.
 **Priority:** Medium
 **Type:** Feature / Tech
 **Source:** Follow-up from BRDG-255 verification (see docs/investigations/2026-06-02-vpl-45794-not-a-deployment.md)
@@ -52,7 +52,8 @@ if wrong, the logic can be tightened or reverted without touching step-detected 
 - [x] VPL-45604 shows a UAT2 deployment on its card after the backfill.
 - [x] Tests cover: staging/uat-N inference (incl. uat-4), feature-branch is NOT inferred, step-based still wins where a deploy step exists, FAILED staging run is not inferred, idempotency, and the historical backfill.
 
-## Validation (post-merge, a few days)
+## Validation
 
-- Query `SELECT ticket_key, environment, build_number, completed_at FROM pipeline_run WHERE deployment_source='branch' ORDER BY completed_at DESC` and spot-check against Jira/reality.
-- If false positives appear, tighten the branch convention or restrict to specific repos.
+Tracked in **BRDG-258** (validate branch-based UAT deployment detection). The
+`deployment_source = 'branch'` tag makes the inferred deployments auditable and any rollback
+surgical.
