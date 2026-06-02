@@ -1,9 +1,10 @@
 "use client";
 
 import { useState, useRef, useEffect, useCallback } from "react";
-import { Trash2, Check, Pencil, Play } from "lucide-react";
+import { Check, Play } from "lucide-react";
 import { ConfirmDialog } from "@/components/shared/ConfirmDialog";
 import { BarContainer } from "@/components/shared/BarContainer";
+import { RefinementSessionMenu } from "@/components/refinement-session/RefinementSessionMenu";
 import { refinementSessions, type RefinementSessionResponse } from "@/lib/api-client";
 import type { KeyedMutator } from "swr";
 
@@ -12,6 +13,8 @@ interface SavedSessionListProps {
   mutate: KeyedMutator<RefinementSessionResponse[]>;
   activeSessionId: string | null;
   onSelectSession: (id: string) => void;
+  /** Notifies the parent after a session is marked completed, so it can reset the prep view. */
+  onSessionFinished?: (id: string) => void;
 }
 
 export function SavedSessionList({
@@ -19,10 +22,12 @@ export function SavedSessionList({
   mutate,
   activeSessionId,
   onSelectSession,
+  onSessionFinished,
 }: SavedSessionListProps) {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editValue, setEditValue] = useState("");
   const [deleteTarget, setDeleteTarget] = useState<RefinementSessionResponse | null>(null);
+  const [menuOpenId, setMenuOpenId] = useState<string | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
@@ -43,6 +48,15 @@ export function SavedSessionList({
       await mutate();
     },
     [mutate],
+  );
+
+  const handleFinish = useCallback(
+    async (id: string) => {
+      await refinementSessions.update(id, { status: "completed" });
+      await mutate();
+      onSessionFinished?.(id);
+    },
+    [mutate, onSessionFinished],
   );
 
   const handleDelete = useCallback(
@@ -124,32 +138,23 @@ export function SavedSessionList({
                 {session.ticketCount}
               </span>
 
-              {/* Hover actions */}
+              {/* Overflow actions */}
               {editingId !== session.id && (
-                <span className="flex items-center gap-0.5 opacity-0 group-hover:opacity-100" style={{ transition: "opacity 0.15s ease" }}>
-                  <button
-                    type="button"
-                    onClick={(e) => {
-                      e.stopPropagation();
+                <span
+                  className={`flex items-center ${menuOpenId === session.id ? "opacity-100" : "opacity-0 group-hover:opacity-100"}`}
+                  style={{ transition: "opacity 0.15s ease" }}
+                >
+                  <RefinementSessionMenu
+                    sessionName={session.name}
+                    status={session.status}
+                    onOpenChange={(o) => setMenuOpenId(o ? session.id : null)}
+                    onRename={() => {
                       setEditingId(session.id);
                       setEditValue(session.name);
                     }}
-                    className="cursor-pointer rounded p-0.5 text-text-muted hover:bg-overlay-default hover:text-text-secondary"
-                    aria-label="Rename session"
-                  >
-                    <Pencil size={11} strokeWidth={2} />
-                  </button>
-                  <button
-                    type="button"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      setDeleteTarget(session);
-                    }}
-                    className="cursor-pointer rounded p-0.5 text-text-muted hover:bg-red-500/10 hover:text-red-400"
-                    aria-label="Delete session"
-                  >
-                    <Trash2 size={11} strokeWidth={2} />
-                  </button>
+                    onFinish={() => handleFinish(session.id)}
+                    onDelete={() => setDeleteTarget(session)}
+                  />
                 </span>
               )}
 

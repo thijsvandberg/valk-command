@@ -1,7 +1,7 @@
 import { render, screen, fireEvent, waitFor } from "@testing-library/react";
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { SavedSessionList } from "./SavedSessionList";
-import type { RefinementSessionResponse } from "@/lib/api-client";
+import { refinementSessions, type RefinementSessionResponse } from "@/lib/api-client";
 import type { KeyedMutator } from "swr";
 
 vi.mock("@/lib/api-client", () => ({
@@ -103,7 +103,7 @@ describe("SavedSessionList", () => {
     expect(mockOnSelect).toHaveBeenCalledWith("s2");
   });
 
-  it("shows rename and delete buttons for each session", () => {
+  it("shows an actions menu trigger for each session", () => {
     render(
       <SavedSessionList
         sessions={mockSessions}
@@ -113,11 +113,11 @@ describe("SavedSessionList", () => {
       />,
     );
 
-    expect(screen.getAllByLabelText("Rename session")).toHaveLength(2);
-    expect(screen.getAllByLabelText("Delete session")).toHaveLength(2);
+    expect(screen.getByLabelText("Actions for Sprint 42")).toBeInTheDocument();
+    expect(screen.getByLabelText("Actions for Sprint 43")).toBeInTheDocument();
   });
 
-  it("opens delete confirmation dialog", () => {
+  it("opens delete confirmation dialog from the menu", () => {
     render(
       <SavedSessionList
         sessions={mockSessions}
@@ -127,14 +127,14 @@ describe("SavedSessionList", () => {
       />,
     );
 
-    const deleteButtons = screen.getAllByLabelText("Delete session");
-    fireEvent.click(deleteButtons[0]);
+    fireEvent.click(screen.getByLabelText("Actions for Sprint 42"));
+    fireEvent.click(screen.getByRole("menuitem", { name: "Delete" }));
 
     expect(screen.getByText("Delete session")).toBeInTheDocument();
     expect(screen.getByText(/Delete "Sprint 42"/)).toBeInTheDocument();
   });
 
-  it("enters inline edit mode on rename click", () => {
+  it("enters inline edit mode from the menu rename action", () => {
     render(
       <SavedSessionList
         sessions={mockSessions}
@@ -144,10 +144,61 @@ describe("SavedSessionList", () => {
       />,
     );
 
-    const renameButtons = screen.getAllByLabelText("Rename session");
-    fireEvent.click(renameButtons[0]);
+    fireEvent.click(screen.getByLabelText("Actions for Sprint 42"));
+    fireEvent.click(screen.getByRole("menuitem", { name: "Rename" }));
 
-    const input = screen.getByDisplayValue("Sprint 42");
-    expect(input).toBeInTheDocument();
+    expect(screen.getByDisplayValue("Sprint 42")).toBeInTheDocument();
+  });
+
+  it("marks an active session completed from the menu finish action", async () => {
+    render(
+      <SavedSessionList
+        sessions={mockSessions}
+        mutate={mockMutate}
+        activeSessionId="s1"
+        onSelectSession={mockOnSelect}
+      />,
+    );
+
+    fireEvent.click(screen.getByLabelText("Actions for Sprint 42"));
+    fireEvent.click(screen.getByRole("menuitem", { name: "Finish refinement" }));
+
+    await waitFor(() => {
+      expect(refinementSessions.update).toHaveBeenCalledWith("s1", { status: "completed" });
+    });
+  });
+
+  it("notifies the parent after finishing so the prep view can reset", async () => {
+    const onFinished = vi.fn();
+    render(
+      <SavedSessionList
+        sessions={mockSessions}
+        mutate={mockMutate}
+        activeSessionId="s1"
+        onSelectSession={mockOnSelect}
+        onSessionFinished={onFinished}
+      />,
+    );
+
+    fireEvent.click(screen.getByLabelText("Actions for Sprint 42"));
+    fireEvent.click(screen.getByRole("menuitem", { name: "Finish refinement" }));
+
+    await waitFor(() => {
+      expect(onFinished).toHaveBeenCalledWith("s1");
+    });
+  });
+
+  it("does not offer a finish action for completed sessions", () => {
+    render(
+      <SavedSessionList
+        sessions={mockSessions}
+        mutate={mockMutate}
+        activeSessionId="s1"
+        onSelectSession={mockOnSelect}
+      />,
+    );
+
+    fireEvent.click(screen.getByLabelText("Actions for Sprint 43"));
+    expect(screen.queryByRole("menuitem", { name: "Finish refinement" })).not.toBeInTheDocument();
   });
 });

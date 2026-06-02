@@ -10,7 +10,7 @@ import { RefinementHistoryList } from "@/components/refinement-session/Refinemen
 
 export default function RefinementHistoryPage() {
   const pageTitle = usePageTitle("Refinement History");
-  const { sessions, isLoading } = useRefinementSessions();
+  const { sessions, mutate, isLoading } = useRefinementSessions();
 
   const historySessions = useMemo(
     () => sessions.filter((s) => s.status === "completed" || s.status === "in_progress"),
@@ -42,7 +42,7 @@ export default function RefinementHistoryPage() {
             <span className="text-body-lg text-text-muted">Loading...</span>
           </div>
         ) : (
-          <RefinementHistoryList sessions={historySessions} />
+          <RefinementHistoryList sessions={historySessions} onMutate={mutate} />
         )}
       </div>
     </>

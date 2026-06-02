@@ -1,13 +1,24 @@
-import { render, screen } from "@testing-library/react";
-import { describe, it, expect, vi } from "vitest";
+import { render, screen, fireEvent, waitFor } from "@testing-library/react";
+import { describe, it, expect, vi, beforeEach } from "vitest";
 import { RefinementHistoryList } from "./RefinementHistoryList";
-import type { RefinementSessionResponse } from "@/lib/api-client";
+import { refinementSessions, type RefinementSessionResponse } from "@/lib/api-client";
 
 vi.mock("next/link", () => ({
   default: ({ children, href, ...props }: { children: React.ReactNode; href: string; [k: string]: unknown }) => (
     <a href={href} {...props}>{children}</a>
   ),
 }));
+
+vi.mock("@/lib/api-client", () => ({
+  refinementSessions: {
+    update: vi.fn().mockResolvedValue({}),
+    delete: vi.fn().mockResolvedValue(undefined),
+  },
+}));
+
+beforeEach(() => {
+  vi.clearAllMocks();
+});
 
 const mockSessions: RefinementSessionResponse[] = [
   {
@@ -67,5 +78,36 @@ describe("RefinementHistoryList", () => {
     const links = screen.getAllByRole("link");
     expect(links[0]).toHaveAttribute("href", "/refinement/s1");
     expect(links[1]).toHaveAttribute("href", "/refinement/s2");
+  });
+
+  it("re-opens a completed session from the menu", async () => {
+    const onMutate = vi.fn().mockResolvedValue(undefined);
+    render(<RefinementHistoryList sessions={mockSessions} onMutate={onMutate} />);
+
+    fireEvent.click(screen.getByLabelText("Actions for Sprint 42 Refinement"));
+    fireEvent.click(screen.getByRole("menuitem", { name: "Re-open refinement" }));
+
+    await waitFor(() => {
+      expect(refinementSessions.update).toHaveBeenCalledWith("s1", { status: "in_progress" });
+    });
+  });
+
+  it("does not offer re-open for an in-progress session, but offers finish", () => {
+    const inProgress: RefinementSessionResponse = { ...mockSessions[0], status: "in_progress" };
+    render(<RefinementHistoryList sessions={[inProgress]} />);
+
+    fireEvent.click(screen.getByLabelText("Actions for Sprint 42 Refinement"));
+    expect(screen.queryByRole("menuitem", { name: "Re-open refinement" })).not.toBeInTheDocument();
+    expect(screen.getByRole("menuitem", { name: "Finish refinement" })).toBeInTheDocument();
+  });
+
+  it("opens a delete confirmation from the menu", () => {
+    render(<RefinementHistoryList sessions={mockSessions} />);
+
+    fireEvent.click(screen.getByLabelText("Actions for Sprint 42 Refinement"));
+    fireEvent.click(screen.getByRole("menuitem", { name: "Delete" }));
+
+    expect(screen.getByText("Delete refinement")).toBeInTheDocument();
+    expect(screen.getByText(/Delete "Sprint 42 Refinement"/)).toBeInTheDocument();
   });
 });

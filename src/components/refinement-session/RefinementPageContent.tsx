@@ -46,7 +46,9 @@ export function RefinementPageContent({
   const [userSelectedId, setUserSelectedId] = useState<string | null>(initialSessionId ?? null);
 
   const resolvedSessionId = useMemo(() => {
-    if (userSelectedId && sessions.some((s) => s.id === userSelectedId)) return userSelectedId;
+    if (userSelectedId && sessions.some((s) => s.id === userSelectedId && s.status !== "completed")) {
+      return userSelectedId;
+    }
     const firstDraft = sessions.find((s) => s.status !== "completed");
     return firstDraft?.id ?? null;
   }, [userSelectedId, sessions]);
@@ -210,6 +212,24 @@ export function RefinementPageContent({
     [onSessionChange, flushPersistTimer, router],
   );
 
+  // Finishing the active session must clear the prep view: move to the next
+  // active session, or fall back to a clean /refinement landing when none remain.
+  const handleSessionFinished = useCallback(
+    (finishedId: string) => {
+      if (finishedId !== resolvedSessionId) return;
+      const next = sessions.find((s) => s.id !== finishedId && s.status !== "completed");
+      if (next) {
+        handleSelectSession(next.id);
+        return;
+      }
+      flushPersistTimer();
+      queueHook.setLocalQueue([]);
+      setUserSelectedId(null);
+      router.replace("/refinement");
+    },
+    [resolvedSessionId, sessions, handleSelectSession, flushPersistTimer, queueHook, router],
+  );
+
   const handleBeginRefinement = useCallback(async () => {
     if (!canStart) return;
     const meta = queueHook.queue.map((key) => {
@@ -290,7 +310,7 @@ export function RefinementPageContent({
         <ViewHeaderTitle>Refinement</ViewHeaderTitle>
       </ViewHeader>
 
-      <SavedSessionList sessions={activeSessions} mutate={mutateSessions} activeSessionId={resolvedSessionId} onSelectSession={handleSelectSession} />
+      <SavedSessionList sessions={activeSessions} mutate={mutateSessions} activeSessionId={resolvedSessionId} onSelectSession={handleSelectSession} onSessionFinished={handleSessionFinished} />
 
       <div className="min-h-full">
         <div className="mx-auto flex max-w-6xl gap-6 p-6">
