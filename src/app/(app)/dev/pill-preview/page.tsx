@@ -113,6 +113,20 @@ function V6DotText({ status }: PillProps) {
   );
 }
 
+// C7 — Elevated card (the H4 header treatment, scaled down for inline use).
+function V7Elevated({ status, type = "story" }: PillProps) {
+  const c = JIRA_STATUS_COLORS[status];
+  return (
+    <span className="inline-flex items-center gap-1.5 rounded-md bg-surface-elevated px-1.5 py-[2px] align-middle text-[11px] shadow-[0_1px_2px_rgba(0,0,0,0.14)] ring-1 ring-inset ring-border-subtle">
+      <IssueTypeIcon type={type} size={11} />
+      <span className="font-mono font-medium text-text-primary">{KEY}</span>
+      <span className="rounded-full px-1.5 py-px text-[9px] font-semibold uppercase tracking-wide" style={{ background: tint(c.text, 16), color: c.text }}>
+        {JIRA_STATUS_ABBREVIATIONS[status]}
+      </span>
+    </span>
+  );
+}
+
 const CONTENT_VARIATIONS: { id: string; label: string; note: string; render: (p: PillProps) => React.ReactNode }[] = [
   { id: "C1", label: "Current", note: "Neutral chip + tinted status segment (today's look)", render: (p) => <V1Current {...p} /> },
   { id: "C2", label: "Minimal link", note: "Icon + brand key + status dot, no container", render: (p) => <V2Minimal {...p} /> },
@@ -120,6 +134,7 @@ const CONTENT_VARIATIONS: { id: string; label: string; note: string; render: (p:
   { id: "C4", label: "Ghost outline", note: "Transparent, thin status-coloured ring", render: (p) => <V4Ghost {...p} /> },
   { id: "C5", label: "Underline accent", note: "Brand key with status-coloured underline", render: (p) => <V5Accent {...p} /> },
   { id: "C6", label: "Dot + text", note: "Dot + key + uppercase status, no container", render: (p) => <V6DotText {...p} /> },
+  { id: "C7", label: "Elevated card (small)", note: "The H4 header treatment, scaled down for inline", render: (p) => <V7Elevated {...p} /> },
 ];
 
 // ---------------------------------------------------------------------------
