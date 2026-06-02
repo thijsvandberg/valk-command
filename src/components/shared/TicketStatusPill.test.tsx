@@ -77,7 +77,7 @@ describe("TicketStatusPill", () => {
 
   it("renders issue type icon segment when issueType provided", () => {
     render(<TicketStatusPill ticketKey="VPL-1" jiraStatus="TO DO" issueType="story" />);
-    expect(screen.getByLabelText("story")).toBeTruthy();
+    expect(screen.getByLabelText("Story")).toBeTruthy();
   });
 
   it("opens issue type dropdown when onIssueTypeChange is wired", () => {
@@ -85,7 +85,7 @@ describe("TicketStatusPill", () => {
     render(
       <TicketStatusPill ticketKey="VPL-1" jiraStatus="TO DO" issueType="story" onIssueTypeChange={onChange} />,
     );
-    fireEvent.click(screen.getByTitle("Change issue type"));
+    fireEvent.click(screen.getByLabelText("Change issue type"));
     expect(screen.getByText("Bug")).toBeTruthy();
     expect(screen.getByText("Task")).toBeTruthy();
   });
@@ -95,7 +95,7 @@ describe("TicketStatusPill", () => {
     render(
       <TicketStatusPill ticketKey="VPL-1" jiraStatus="TO DO" issueType="story" onIssueTypeChange={onChange} />,
     );
-    fireEvent.click(screen.getByTitle("Change issue type"));
+    fireEvent.click(screen.getByLabelText("Change issue type"));
     fireEvent.click(screen.getByText("Bug"));
     expect(onChange).toHaveBeenCalledWith("bug");
   });
@@ -230,7 +230,7 @@ describe("TicketStatusPill", () => {
         onJiraStatusChange={onChange}
       />,
     );
-    fireEvent.click(screen.getByTitle("Change status"));
+    fireEvent.click(screen.getByLabelText("Change status"));
     expect(screen.getByText("IN PROGRESS")).toBeTruthy();
     fireEvent.click(screen.getByText("IN PROGRESS"));
     expect(onChange).toHaveBeenCalledWith("IN PROGRESS");

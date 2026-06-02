@@ -53,7 +53,6 @@ export function TicketRefPill({ ticketKey }: TicketRefPillProps) {
         issueType={data?.type}
         title={data?.title}
         size="sm"
-        appearance="elevated"
         showReadiness={false}
         showStatus={!!data}
         hoverData={hoverData}

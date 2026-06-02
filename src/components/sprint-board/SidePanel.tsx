@@ -322,7 +322,6 @@ export function SidePanel({
             jiraStatus={ticket.jiraStatus}
             issueType={ticket.type}
             title={ticket.title}
-            appearance="elevated"
             onHeader
           />
           {ticket.editState === "draft" && (

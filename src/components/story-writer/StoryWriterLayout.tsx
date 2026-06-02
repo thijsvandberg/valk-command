@@ -431,7 +431,6 @@ export function StoryWriterLayout({ ticketKey, draftTitle, draftType }: StoryWri
                     onIssueTypeChange={actions.handleTypeChange}
                     title={displayTitle}
                     size="lg"
-                    appearance="elevated"
                     onHeader
                   />
                   <ViewHeaderDivider />

@@ -563,12 +563,8 @@ export interface TicketStatusPillProps {
   showStatus?: boolean;
   /** Show the readiness segment (default: true). Set false for read-only reference pills. */
   showReadiness?: boolean;
-  /** Visual treatment. "elevated" wraps the floating segments in a soft card
-   *  (surface + shadow + ring) with a rounded-full status pill — used by the
-   *  ticket-detail header and inline reference pills. */
-  appearance?: "default" | "elevated";
-  /** When true (with appearance="elevated"), the pill sits on header chrome and
-   *  uses a translucent white surface (#ffffff at 75%) instead of the solid one. */
+  /** When true, the pill sits on header chrome and uses a translucent, theme-aware
+   *  surface (white 75% in light, a faint lift in dark) instead of the solid one. */
   onHeader?: boolean;
   /** Details shown in the hover card. When omitted, no hover card is rendered. */
   hoverData?: TicketPillHoverData;
@@ -606,7 +602,6 @@ export function TicketStatusPill({
   showKey = true,
   showStatus = true,
   showReadiness = true,
-  appearance = "default",
   onHeader = false,
   hoverData,
   showHoverCard = true,
@@ -701,9 +696,9 @@ export function TicketStatusPill({
 
   const jiraUrl = getJiraUrl(ticketKey);
 
-  // Elevated reuses the list layout (floating segments) but wrapped in a soft card.
-  const elevated = appearance === "elevated";
-  const isList = variant === "list" || elevated;
+  // Two renderings: "list" is the dense, container-less row style; everything
+  // else is the elevated chip (a soft card wrapping the same floating segments).
+  const elevated = variant !== "list";
   const jiraColors = JIRA_STATUS_COLORS[jiraStatus] ?? JIRA_STATUS_COLORS["TO DO"];
   const readinessCfg = readiness ? READINESS_CONFIG[readiness] : null;
 
@@ -711,337 +706,170 @@ export function TicketStatusPill({
   // The issue-type glyph reads too small next to the key in the compact elevated
   // pill, so nudge it up there (other contexts keep the standard size).
   const typeIconSize = elevated && size === "sm" ? 13 : iconSize;
-  const px = size === "sm" ? "px-1.5 py-[3px]" : size === "lg" ? "px-2.5 py-1" : "px-2 py-[3px]";
-  const issueTypePx = size === "sm" ? "pl-1.5 pr-1 py-[3px]" : size === "lg" ? "pl-2.5 pr-2 py-1" : "pl-2 pr-1.5 py-[3px]";
   const textSize = size === "sm" ? "text-[10px]" : size === "lg" ? "text-body-sm" : "text-label";
 
   // ---------------------------------------------------------------------------
   // List variant — no outer container, segments float inline with gaps
   // ---------------------------------------------------------------------------
-  if (isList) {
-    // Shared labels: used both as the visual tooltip and the button's accessible
-    // name, since these icon-only segments have no visible text.
-    const issueTypeTip = onIssueTypeChange ? "Change issue type" : (TYPE_LABELS[issueType as IssueType] ?? issueType ?? "");
-    const statusTip = onJiraStatusChange ? "Change status" : jiraStatus;
-    const readinessTip = readiness ? READINESS_CONFIG[readiness].label : "Ready for Development";
-    return (
-      <div
-        ref={wrapperRef}
-        {...hoverProps}
-        className={
-          elevated
-            ? `inline-flex shrink-0 items-center gap-1.5 rounded-md align-middle ring-1 ring-inset ring-border-subtle ${
-                onHeader ? "" : "bg-surface-elevated"
-              } ${
-                size === "lg"
-                  ? "px-2.5 py-1.5 shadow-[0_1px_3px_rgba(0,0,0,0.16)]"
-                  : "px-1.5 py-[3px] shadow-[0_1px_2px_rgba(0,0,0,0.14)]"
-              }`
-            : "flex shrink-0 items-center gap-1.5"
-        }
-        // On the header chrome the elevated pill uses a translucent, theme-aware
-        // surface (white 75% in light, a faint white lift in dark) so it reads as
-        // a soft chip on the header glass without glaring in dark mode.
-        style={elevated && onHeader ? { backgroundColor: "var(--color-pill-header-surface)" } : undefined}
-      >
-        {hoverCardEl}
-
-        {/* Issue type */}
-        {issueType && (
-          <div className={`relative flex shrink-0 ${dimTypeOnRowHover ? "transition-opacity duration-150 group-hover/row:opacity-0" : ""}`}>
-            <Tooltip content={issueTypeTip}>
-              <button
-                ref={issueTypeBtnRef}
-                type="button"
-                aria-label={issueTypeTip}
-                onClick={onIssueTypeChange ? () => setIssueTypeDropdownOpen((o) => !o) : undefined}
-                disabled={!onIssueTypeChange}
-                className={`flex items-center justify-center rounded p-1 transition-colors duration-150 ${
-                  onIssueTypeChange ? "cursor-pointer hover:bg-overlay-default" : "cursor-default"
-                }`}
-              >
-                <IssueTypeIcon type={issueType} size={typeIconSize} />
-              </button>
-            </Tooltip>
-            {issueTypeDropdownOpen && onIssueTypeChange && (
-              <DropdownPortal triggerRef={issueTypeBtnRef} onClose={() => setIssueTypeDropdownOpen(false)}>
-                <IssueTypeDropdown
-                  currentValue={issueType}
-                  onChange={onIssueTypeChange}
-                  onClose={() => setIssueTypeDropdownOpen(false)}
-                  skipRef={issueTypeBtnRef}
-                />
-              </DropdownPortal>
-            )}
-          </div>
-        )}
-
-        {/* Key */}
-        {showKey && (
-          <div className={`relative flex shrink-0 ${!elevated && issueType ? "-ml-1" : ""}`}>
-            <a
-              ref={keyLinkRef}
-              href={`/tickets/${ticketKey}`}
-              onClick={(e) => {
-                if (!e.metaKey && !e.ctrlKey && !e.shiftKey) {
-                  e.preventDefault();
-                  setKeyDropdownOpen((o) => !o);
-                }
-              }}
-              className={`font-mono ${textSize} font-medium transition-colors duration-150 hover:text-text-primary focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)] ${elevated ? "text-text-primary" : "text-text-secondary"}`}
-              style={{ minWidth: elevated ? undefined : "9ch" }}
-            >
-              {ticketKey}
-            </a>
-            {keyDropdownOpen && (
-              <DropdownPortal triggerRef={keyLinkRef} onClose={() => setKeyDropdownOpen(false)}>
-                <KeyDropdown
-                  jiraUrl={jiraUrl}
-                  ticketKey={ticketKey}
-                  title={title}
-                  onClose={() => setKeyDropdownOpen(false)}
-                  skipRef={keyLinkRef}
-                />
-              </DropdownPortal>
-            )}
-          </div>
-        )}
-
-        {/* Jira status badge */}
-        {!showStatus ? null : removedFromJira ? (
-          <span className="inline-flex items-center gap-1 whitespace-nowrap rounded px-1.5 py-0.5 font-mono text-[10px] font-semibold bg-red-500/10 text-red-400/70">
-            <span className="shrink-0 h-1.5 w-1.5 rounded-full opacity-70 bg-red-400/70" />
-            DELETED
-          </span>
-        ) : (
-          <div className="relative flex shrink-0">
-            <Tooltip content={statusTip}>
-              <button
-                ref={jiraStatusBtnRef}
-                type="button"
-                aria-label={statusTip}
-                onClick={onJiraStatusChange ? () => setJiraDropdownOpen((o) => !o) : undefined}
-                disabled={!onJiraStatusChange}
-                className={`flex items-center gap-1 px-1.5 py-0.5 font-mono text-[10px] font-medium tracking-wide transition-colors duration-150 ${
-                  elevated ? "rounded-full" : "rounded"
-                } ${onJiraStatusChange ? "cursor-pointer hover:brightness-110" : "cursor-default"}`}
-                style={{ backgroundColor: jiraColors.bg, color: jiraColors.text, opacity: elevated ? 1 : 0.85 }}
-              >
-                <span className="shrink-0 h-1.5 w-1.5 rounded-full opacity-70" style={{ backgroundColor: jiraColors.text }} />
-                {JIRA_STATUS_ABBREVIATIONS[jiraStatus] ?? jiraStatus}
-              </button>
-            </Tooltip>
-            {jiraDropdownOpen && onJiraStatusChange && (
-              <DropdownPortal triggerRef={jiraStatusBtnRef} onClose={() => setJiraDropdownOpen(false)}>
-                <JiraStatusDropdown
-                  currentValue={jiraStatus}
-                  onChange={onJiraStatusChange}
-                  onClose={() => setJiraDropdownOpen(false)}
-                  skipRef={jiraStatusBtnRef}
-                />
-              </DropdownPortal>
-            )}
-          </div>
-        )}
-
-        {/* Readiness */}
-        {showReadiness && (
-          <div className={`relative flex shrink-0 ${elevated ? "" : "-ml-1"}`}>
-            <Tooltip content={readinessTip}>
-              <button
-                ref={readinessBtnRef}
-                type="button"
-                aria-label={readinessTip}
-                onClick={onReadinessChange ? () => setReadinessDropdownOpen((o) => !o) : undefined}
-                disabled={!onReadinessChange}
-                className={`flex items-center justify-center rounded transition-colors duration-150 ${
-                  onReadinessChange ? "cursor-pointer hover:bg-overlay-default" : "cursor-default"
-                }`}
-                style={{ color: readinessCfg?.color ?? "var(--color-text-muted)", width: iconSize + 8, height: iconSize + 8 }}
-              >
-                {readiness ? (
-                  <ReadinessIcon value={readiness} size={iconSize} />
-                ) : (
-                  <span className="h-1.5 w-1.5 rounded-full bg-overlay-strong" />
-                )}
-              </button>
-            </Tooltip>
-            {readinessDropdownOpen && onReadinessChange && (
-              <DropdownPortal triggerRef={readinessBtnRef} onClose={() => setReadinessDropdownOpen(false)}>
-                <ReadinessDropdown
-                  currentValue={readiness ?? null}
-                  onChange={onReadinessChange}
-                  onClose={() => setReadinessDropdownOpen(false)}
-                  skipRef={readinessBtnRef}
-                />
-              </DropdownPortal>
-            )}
-          </div>
-        )}
-      </div>
-    );
-  }
-
-  // ---------------------------------------------------------------------------
-  // Default variant — unified pill container with segments and dividers
-  // ---------------------------------------------------------------------------
+  // Shared labels: used both as the visual tooltip and the button's accessible
+  // name, since these icon-only segments have no visible text.
+  const issueTypeTip = onIssueTypeChange ? "Change issue type" : (TYPE_LABELS[issueType as IssueType] ?? issueType ?? "");
+  const statusTip = onJiraStatusChange ? "Change status" : jiraStatus;
+  const readinessTip = readiness ? READINESS_CONFIG[readiness].label : "Ready for Development";
   return (
-    <div ref={wrapperRef} {...hoverProps} className="flex shrink-0 items-center gap-1">
+    <div
+      ref={wrapperRef}
+      {...hoverProps}
+      className={
+        elevated
+          ? `inline-flex shrink-0 items-center gap-1.5 rounded-md align-middle ring-1 ring-inset ring-border-subtle ${
+              onHeader ? "" : "bg-surface-elevated"
+            } ${
+              size === "lg"
+                ? "px-2.5 py-1.5 shadow-[0_1px_3px_rgba(0,0,0,0.16)]"
+                : "px-1.5 py-[3px] shadow-[0_1px_2px_rgba(0,0,0,0.14)]"
+            }`
+          : "flex shrink-0 items-center gap-1.5"
+      }
+      // On the header chrome the elevated pill uses a translucent, theme-aware
+      // surface (white 75% in light, a faint white lift in dark) so it reads as
+      // a soft chip on the header glass without glaring in dark mode.
+      style={elevated && onHeader ? { backgroundColor: "var(--color-pill-header-surface)" } : undefined}
+    >
       {hoverCardEl}
-      <div className="flex shrink-0 items-stretch overflow-visible rounded-md bg-overlay-default ring-1 ring-inset ring-border-default">
 
-        {/* Issue type segment */}
-        {issueType && (
-          <>
-            <div className="relative flex">
-              <button
-                ref={issueTypeBtnRef}
-                type="button"
-                onClick={onIssueTypeChange ? () => setIssueTypeDropdownOpen((o) => !o) : undefined}
-                aria-label={issueType}
-                title={onIssueTypeChange ? "Change issue type" : undefined}
-                disabled={!onIssueTypeChange}
-                className={`${issueTypePx} flex items-center justify-center rounded-l-md transition-colors duration-150 ${
-                  onIssueTypeChange
-                    ? "cursor-pointer hover:bg-overlay-default focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)]"
-                    : "cursor-default"
-                }`}
-              >
-                <IssueTypeIcon type={issueType} size={iconSize} />
-              </button>
-              {issueTypeDropdownOpen && onIssueTypeChange && (
-                <DropdownPortal triggerRef={issueTypeBtnRef} onClose={() => setIssueTypeDropdownOpen(false)}>
-                  <IssueTypeDropdown
-                    currentValue={issueType}
-                    onChange={onIssueTypeChange}
-                    onClose={() => setIssueTypeDropdownOpen(false)}
-                    skipRef={issueTypeBtnRef}
-                  />
-                </DropdownPortal>
-              )}
-            </div>
-            <span className="w-px self-stretch bg-overlay-default shrink-0" />
-          </>
-        )}
+      {/* Issue type */}
+      {issueType && (
+        <div className={`relative flex shrink-0 ${dimTypeOnRowHover ? "transition-opacity duration-150 group-hover/row:opacity-0" : ""}`}>
+          <Tooltip content={issueTypeTip}>
+            <button
+              ref={issueTypeBtnRef}
+              type="button"
+              aria-label={issueTypeTip}
+              onClick={onIssueTypeChange ? () => setIssueTypeDropdownOpen((o) => !o) : undefined}
+              disabled={!onIssueTypeChange}
+              className={`flex items-center justify-center rounded p-1 transition-colors duration-150 ${
+                onIssueTypeChange ? "cursor-pointer hover:bg-overlay-default" : "cursor-default"
+              }`}
+            >
+              <IssueTypeIcon type={issueType} size={typeIconSize} />
+            </button>
+          </Tooltip>
+          {issueTypeDropdownOpen && onIssueTypeChange && (
+            <DropdownPortal triggerRef={issueTypeBtnRef} onClose={() => setIssueTypeDropdownOpen(false)}>
+              <IssueTypeDropdown
+                currentValue={issueType}
+                onChange={onIssueTypeChange}
+                onClose={() => setIssueTypeDropdownOpen(false)}
+                skipRef={issueTypeBtnRef}
+              />
+            </DropdownPortal>
+          )}
+        </div>
+      )}
 
-        {/* Key segment — regular click opens dropdown, cmd+click navigates to ticket */}
-        {showKey && (
-          <>
-            <div className="relative flex">
-              <a
-                ref={keyLinkRef}
-                href={`/tickets/${ticketKey}`}
-                onClick={(e) => {
-                  if (!e.metaKey && !e.ctrlKey && !e.shiftKey) {
-                    e.preventDefault();
-                    setKeyDropdownOpen((o) => !o);
-                  }
-                }}
-                className={`${px} font-mono ${textSize} font-medium transition-colors duration-150 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)] flex items-center gap-1 text-text-secondary hover:bg-overlay-default hover:text-text-secondary ${!issueType ? "rounded-l-md" : ""}`}
-                style={{ minWidth: "9ch" }}
-              >
-                {ticketKey}
-              </a>
-              {keyDropdownOpen && (
-                <DropdownPortal triggerRef={keyLinkRef} onClose={() => setKeyDropdownOpen(false)}>
-                  <KeyDropdown
-                    jiraUrl={jiraUrl}
-                    ticketKey={ticketKey}
-                    title={title}
-                    onClose={() => setKeyDropdownOpen(false)}
-                    skipRef={keyLinkRef}
-                  />
-                </DropdownPortal>
-              )}
-            </div>
-            {showStatus && <span className="w-px self-stretch bg-overlay-default shrink-0" />}
-          </>
-        )}
-
-        {/* Jira status segment */}
-        {!showStatus ? null : removedFromJira ? (
-          <span
-            className={`${px} ${textSize} font-medium flex items-center gap-1.5 rounded-r-md`}
-            style={{ backgroundColor: "var(--color-status-error-subtle)", color: "var(--color-status-error)", opacity: 0.7 }}
+      {/* Key */}
+      {showKey && (
+        <div className={`relative flex shrink-0 ${!elevated && issueType ? "-ml-1" : ""}`}>
+          <a
+            ref={keyLinkRef}
+            href={`/tickets/${ticketKey}`}
+            onClick={(e) => {
+              if (!e.metaKey && !e.ctrlKey && !e.shiftKey) {
+                e.preventDefault();
+                setKeyDropdownOpen((o) => !o);
+              }
+            }}
+            className={`font-mono ${textSize} font-medium transition-colors duration-150 hover:text-text-primary focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)] ${elevated ? "text-text-primary" : "text-text-secondary"}`}
+            style={{ minWidth: elevated ? undefined : "9ch" }}
           >
-            <span className="shrink-0 h-1.5 w-1.5 rounded-full opacity-70" style={{ backgroundColor: "var(--color-status-error)" }} />
-            DELETED
-          </span>
-        ) : (
-          <div className="relative flex">
+            {ticketKey}
+          </a>
+          {keyDropdownOpen && (
+            <DropdownPortal triggerRef={keyLinkRef} onClose={() => setKeyDropdownOpen(false)}>
+              <KeyDropdown
+                jiraUrl={jiraUrl}
+                ticketKey={ticketKey}
+                title={title}
+                onClose={() => setKeyDropdownOpen(false)}
+                skipRef={keyLinkRef}
+              />
+            </DropdownPortal>
+          )}
+        </div>
+      )}
+
+      {/* Jira status badge */}
+      {!showStatus ? null : removedFromJira ? (
+        <span className="inline-flex items-center gap-1 whitespace-nowrap rounded px-1.5 py-0.5 font-mono text-[10px] font-semibold bg-red-500/10 text-red-400/70">
+          <span className="shrink-0 h-1.5 w-1.5 rounded-full opacity-70 bg-red-400/70" />
+          DELETED
+        </span>
+      ) : (
+        <div className="relative flex shrink-0">
+          <Tooltip content={statusTip}>
             <button
               ref={jiraStatusBtnRef}
               type="button"
+              aria-label={statusTip}
               onClick={onJiraStatusChange ? () => setJiraDropdownOpen((o) => !o) : undefined}
-              title={onJiraStatusChange ? "Change status" : undefined}
               disabled={!onJiraStatusChange}
-              className={`${px} ${textSize} font-medium transition-colors duration-150 flex items-center gap-1.5 ${
-                onJiraStatusChange
-                  ? "cursor-pointer hover:brightness-110 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)]"
-                  : "cursor-default"
-              } ${showReadiness ? "" : "rounded-r-md"}`}
-              style={{ backgroundColor: jiraColors.bg, color: jiraColors.text }}
+              className={`flex items-center gap-1 px-1.5 py-0.5 font-mono text-[10px] font-medium tracking-wide transition-colors duration-150 ${
+                elevated ? "rounded-full" : "rounded"
+              } ${onJiraStatusChange ? "cursor-pointer hover:brightness-110" : "cursor-default"}`}
+              style={{ backgroundColor: jiraColors.bg, color: jiraColors.text, opacity: elevated ? 1 : 0.85 }}
             >
-              {onJiraStatusChange && (
-                <span
-                  className="shrink-0 h-1.5 w-1.5 rounded-full opacity-60"
-                  style={{ backgroundColor: jiraColors.text }}
-                />
-              )}
+              <span className="shrink-0 h-1.5 w-1.5 rounded-full opacity-70" style={{ backgroundColor: jiraColors.text }} />
               {JIRA_STATUS_ABBREVIATIONS[jiraStatus] ?? jiraStatus}
             </button>
-            {jiraDropdownOpen && onJiraStatusChange && (
-              <DropdownPortal triggerRef={jiraStatusBtnRef} onClose={() => setJiraDropdownOpen(false)}>
-                <JiraStatusDropdown
-                  currentValue={jiraStatus}
-                  onChange={onJiraStatusChange}
-                  onClose={() => setJiraDropdownOpen(false)}
-                  skipRef={jiraStatusBtnRef}
-                />
-              </DropdownPortal>
-            )}
-          </div>
-        )}
+          </Tooltip>
+          {jiraDropdownOpen && onJiraStatusChange && (
+            <DropdownPortal triggerRef={jiraStatusBtnRef} onClose={() => setJiraDropdownOpen(false)}>
+              <JiraStatusDropdown
+                currentValue={jiraStatus}
+                onChange={onJiraStatusChange}
+                onClose={() => setJiraDropdownOpen(false)}
+                skipRef={jiraStatusBtnRef}
+              />
+            </DropdownPortal>
+          )}
+        </div>
+      )}
 
-        {/* Readiness segment */}
-        {showReadiness && (
-          <>
-            <span className="w-px self-stretch bg-overlay-default shrink-0" />
-            <div className="relative flex">
-              <button
-                ref={readinessBtnRef}
-                type="button"
-                onClick={onReadinessChange ? () => setReadinessDropdownOpen((o) => !o) : undefined}
-                aria-label={readiness ? READINESS_CONFIG[readiness].label : "Ready for Development"}
-                title={onReadinessChange ? "Change readiness" : undefined}
-                disabled={!onReadinessChange}
-                className={`${px} flex items-center justify-center rounded-r-md transition-colors duration-150 ${
-                  onReadinessChange
-                    ? "cursor-pointer hover:bg-overlay-default focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)]"
-                    : "cursor-default"
-                }`}
-                style={{ color: readinessCfg?.color ?? "var(--color-text-muted)" }}
-              >
-                {readiness ? (
-                  <ReadinessIcon value={readiness} size={iconSize} />
-                ) : (
-                  <span className="h-1.5 w-1.5 rounded-full bg-overlay-strong" />
-                )}
-              </button>
-              {readinessDropdownOpen && onReadinessChange && (
-                <DropdownPortal triggerRef={readinessBtnRef} onClose={() => setReadinessDropdownOpen(false)}>
-                  <ReadinessDropdown
-                    currentValue={readiness ?? null}
-                    onChange={onReadinessChange}
-                    onClose={() => setReadinessDropdownOpen(false)}
-                    skipRef={readinessBtnRef}
-                  />
-                </DropdownPortal>
+      {/* Readiness */}
+      {showReadiness && (
+        <div className={`relative flex shrink-0 ${elevated ? "" : "-ml-1"}`}>
+          <Tooltip content={readinessTip}>
+            <button
+              ref={readinessBtnRef}
+              type="button"
+              aria-label={readinessTip}
+              onClick={onReadinessChange ? () => setReadinessDropdownOpen((o) => !o) : undefined}
+              disabled={!onReadinessChange}
+              className={`flex items-center justify-center rounded transition-colors duration-150 ${
+                onReadinessChange ? "cursor-pointer hover:bg-overlay-default" : "cursor-default"
+              }`}
+              style={{ color: readinessCfg?.color ?? "var(--color-text-muted)", width: iconSize + 8, height: iconSize + 8 }}
+            >
+              {readiness ? (
+                <ReadinessIcon value={readiness} size={iconSize} />
+              ) : (
+                <span className="h-1.5 w-1.5 rounded-full bg-overlay-strong" />
               )}
-            </div>
-          </>
-        )}
-      </div>
+            </button>
+          </Tooltip>
+          {readinessDropdownOpen && onReadinessChange && (
+            <DropdownPortal triggerRef={readinessBtnRef} onClose={() => setReadinessDropdownOpen(false)}>
+              <ReadinessDropdown
+                currentValue={readiness ?? null}
+                onChange={onReadinessChange}
+                onClose={() => setReadinessDropdownOpen(false)}
+                skipRef={readinessBtnRef}
+              />
+            </DropdownPortal>
+          )}
+        </div>
+      )}
     </div>
   );
 }

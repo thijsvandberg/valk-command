@@ -502,7 +502,6 @@ export default function TicketDetailPage({
           onIssueTypeChange={ticket.removedFromJiraAt ? undefined : h.handleTypeChange}
           title={ticket.title}
           size="lg"
-          appearance="elevated"
           onHeader
           removedFromJira={Boolean(ticket.removedFromJiraAt)}
         />
