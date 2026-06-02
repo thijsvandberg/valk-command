@@ -355,6 +355,11 @@ export const epics = {
     apiFetch<{ taskId: string; streamUrl: string }>(
       `/api/tickets/${enc(ticketKey)}/suggest-epic`, { method: "POST", signal },
     ),
+
+  setTeams: (key: string, teams: string[], signal?: AbortSignal) =>
+    apiFetch<{ epicKey: string; teams: string[] }>(
+      `/api/epics/${enc(key)}/teams`, { method: "PUT", body: { teams }, signal },
+    ),
 };
 
 // ---------------------------------------------------------------------------
@@ -471,7 +476,7 @@ export const jira = {
     apiFetch<unknown>("/api/jira/move-sprint", { method: "POST", body: data, signal }),
   assign: (data: Record<string, unknown>, signal?: AbortSignal) =>
     apiFetch<unknown>("/api/jira/assign", { method: "POST", body: data, signal }),
-  updateSprint: (sprintId: string, data: { goal?: string; startDate?: string; endDate?: string }, signal?: AbortSignal) =>
+  updateSprint: (sprintId: string, data: { name?: string; goal?: string; startDate?: string; endDate?: string }, signal?: AbortSignal) =>
     apiFetch<{ ok: boolean }>(`/api/jira/sprints/${encodeURIComponent(sprintId)}`, { method: "PUT", body: data, signal }),
   createSprint: (data: { name: string; startDate?: string; endDate?: string; goal?: string }, signal?: AbortSignal) =>
     apiFetch<{ id: number; name: string; state: string; startDate: string | null; endDate: string | null; goal: string | null }>(
