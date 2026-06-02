@@ -9,7 +9,6 @@ import { useTicketDetail, useTickets } from "@/hooks/useSprintBoard";
 import { refinementSessions as refinementSessionsApi } from "@/lib/api-client";
 import { SessionTicketView, SessionMetadataPanel } from "@/components/refinement-session/SessionTicketView";
 import { TicketStatusPill } from "@/components/shared/TicketStatusPill";
-import { StoryPointPicker } from "@/components/shared/StoryPointPicker";
 import { SessionEndModal } from "@/components/refinement-session/SessionEndModal";
 import { SessionNavigation } from "@/components/refinement-session/SessionNavigation";
 import { SubtasksPaneResizable } from "@/components/refinement-session/SubtasksPaneResizable";
@@ -435,16 +434,7 @@ export default function RefinementSessionTicketPage({
                   onIssueTypeChange={handleTypeChange}
                   title={ticketData.title}
                   size="lg"
-                  appearance="elevated"
                   onHeader
-                />
-                <StoryPointPicker
-                  value={storyPoints}
-                  onChange={handleStoryPointsChange}
-                  align="left"
-                  size="lg"
-                  showMetricIcon
-                  richTooltip
                 />
               </>
             )}
@@ -458,6 +448,7 @@ export default function RefinementSessionTicketPage({
             allTickets={allTickets}
             isLastTicket={isLastTicket}
             storyPoints={storyPoints}
+            onStoryPointsChange={handleStoryPointsChange}
             onPrev={() => prevTicket()}
             onNext={handleNext}
             onGoToTicket={goToTicket}

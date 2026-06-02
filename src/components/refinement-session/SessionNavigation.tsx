@@ -21,6 +21,7 @@ import {
   verticalListSortingStrategy,
 } from "@dnd-kit/sortable";
 import { SessionQueueItem } from "./SessionQueueItem";
+import { StoryPointPicker } from "@/components/shared/StoryPointPicker";
 import type { Ticket } from "@/types/ticket";
 
 export interface SessionNavigationProps {
@@ -30,6 +31,7 @@ export interface SessionNavigationProps {
   allTickets: Ticket[] | undefined;
   isLastTicket: boolean;
   storyPoints: number | null;
+  onStoryPointsChange: (value: number | null) => void;
   onPrev: () => void;
   onNext: () => void;
   onGoToTicket: (idx: number) => void;
@@ -43,6 +45,7 @@ export function SessionNavigation({
   allTickets,
   isLastTicket,
   storyPoints,
+  onStoryPointsChange,
   onPrev,
   onNext,
   onGoToTicket,
@@ -115,6 +118,14 @@ export function SessionNavigation({
           </button>
         ))}
       </div>
+      <StoryPointPicker
+        value={storyPoints}
+        onChange={onStoryPointsChange}
+        align="left"
+        size="lg"
+        showMetricIcon
+        richTooltip
+      />
       <button
         type="button"
         onClick={onNext}
