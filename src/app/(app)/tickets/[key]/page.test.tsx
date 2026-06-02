@@ -128,11 +128,11 @@ vi.mock("@/components/shared/TicketChatPane", () => ({
 
 // use(params) suspends on first render; flushing microtasks inside act lets
 // the resolved params promise commit before we query the DOM.
-async function renderPage() {
+async function renderPage(key = "VPL-100") {
   await act(async () => {
     render(
       <Suspense fallback={null}>
-        <TicketDetailPage params={Promise.resolve({ key: "VPL-100" })} />
+        <TicketDetailPage params={Promise.resolve({ key })} />
       </Suspense>,
     );
   });
@@ -218,4 +218,44 @@ describe("TicketDetailPage header - Add to refinement button", () => {
       expect(screen.queryByText("Add to refinement")).not.toBeInTheDocument();
     },
   );
+});
+
+describe("TicketDetailPage - finalized draft key swap", () => {
+  let replaceStateSpy: ReturnType<typeof vi.spyOn>;
+
+  beforeEach(() => {
+    mockSessions = [];
+    replaceStateSpy = vi.spyOn(window.history, "replaceState");
+  });
+
+  afterEach(() => {
+    cleanup();
+    replaceStateSpy.mockRestore();
+  });
+
+  it("swaps the URL to the real Jira key when a finalized DRAFT resolves", async () => {
+    // The API resolves a finalized DRAFT key to its real key via apiData.key.
+    resetHook(null, {
+      ticket: { ...baseTicket, key: "VPL-46190" },
+      apiData: { key: "VPL-46190", title: baseTicket.title },
+    });
+    await renderPage("DRAFT-35f135df");
+    expect(replaceStateSpy).toHaveBeenCalledWith(null, "", "/tickets/VPL-46190");
+  });
+
+  it("does not touch the URL for a regular (non-draft) ticket", async () => {
+    resetHook(null, {
+      ticket: { ...baseTicket, key: "VPL-100" },
+      apiData: { key: "VPL-100", title: baseTicket.title },
+    });
+    await renderPage("VPL-100");
+    expect(replaceStateSpy).not.toHaveBeenCalled();
+  });
+
+  it("leaves the URL on the draft key while the draft is still resolving", async () => {
+    // apiData not yet loaded (Jira creation still pending) -> no real key.
+    resetHook(null, { apiData: undefined });
+    await renderPage("DRAFT-35f135df");
+    expect(replaceStateSpy).not.toHaveBeenCalled();
+  });
 });

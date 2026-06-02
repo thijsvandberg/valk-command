@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, use } from "react";
+import { useState, use, useEffect } from "react";
 import { usePageTitle } from "@/hooks/usePageTitle";
 import Link from "next/link";
 import {
@@ -58,8 +58,18 @@ export default function TicketDetailPage({
 }: {
   params: Promise<{ key: string }>;
 }) {
-  const { key } = use(params);
-  const h = useTicketDetailPage(key);
+  const { key: routeKey } = use(params);
+  const h = useTicketDetailPage(routeKey);
+  // A DRAFT-xxx key that has been finalized resolves server-side to its real
+  // Jira key (exposed as apiData.key). Adopt that key for display, navigation
+  // and the URL so the page reflects the real ticket instead of the dead draft
+  // key. Mirrors the silent URL swap the /write page does via useDraftSync.
+  const key = h.apiData?.key ?? routeKey;
+  useEffect(() => {
+    if (routeKey.startsWith("DRAFT-") && key !== routeKey) {
+      window.history.replaceState(null, "", `/tickets/${encodeURIComponent(key)}`);
+    }
+  }, [routeKey, key]);
   const { sessions: refinementSessions } = useRefinementSessions();
   // A ticket already in an unfinished refinement should not offer the shortcut;
   // completed sessions are historical and don't block re-adding it later.
@@ -495,7 +505,6 @@ export default function TicketDetailPage({
           appearance="elevated"
           removedFromJira={Boolean(ticket.removedFromJiraAt)}
         />
-        <ViewHeaderDivider />
         <span className="min-w-0 flex-1 truncate font-[var(--font-display)] text-heading-sm font-semibold tracking-tight text-text-primary">
           {ticket.title}
         </span>
