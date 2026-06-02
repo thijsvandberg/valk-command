@@ -2,6 +2,7 @@ import { render, screen, fireEvent, waitFor } from "@testing-library/react";
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { RelatedStoriesPanel } from "./RelatedStoriesPanel";
 import type { RelatedStoryCandidateRow } from "@/db/schema";
+import { tickets } from "@/lib/api-client";
 
 vi.mock("@/lib/api-client", () => ({
   apiFetch: vi.fn(),
@@ -22,7 +23,9 @@ vi.mock("@/components/shared/StatusBadge", () => ({
 }));
 
 vi.mock("@/components/ticket-detail/renderMarkdown", () => ({
-  renderMarkdown: (text: string) => <span data-testid="rendered-markdown">{text}</span>,
+  renderMarkdown: (text: string, opts?: { linkifyRefs?: boolean }) => (
+    <span data-testid="rendered-markdown" data-linkify={opts?.linkifyRefs ? "true" : "false"}>{text}</span>
+  ),
 }));
 
 vi.mock("@/components/ui/Button", () => ({
@@ -175,6 +178,25 @@ describe("RelatedStoriesPanel", () => {
     );
 
     expect(screen.getByText("Find more")).toBeInTheDocument();
+  });
+
+  it("linkifies ticket references in the selected story's description (BRDG-253)", async () => {
+    vi.mocked(tickets.get).mockResolvedValue({
+      title: "Selected Story",
+      description: "Relates to VPL-77",
+      type: "story",
+      jiraStatus: "TO DO",
+    } as Awaited<ReturnType<typeof tickets.get>>);
+
+    render(
+      <RelatedStoriesPanel
+        {...makeDefaultProps({ selectedKey: "VPL-100", candidates: [] })}
+      />
+    );
+
+    await waitFor(() => {
+      expect(screen.getByText("Relates to VPL-77")).toHaveAttribute("data-linkify", "true");
+    });
   });
 
   it("score badge renders with score value", () => {

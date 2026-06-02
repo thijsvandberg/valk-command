@@ -71,7 +71,7 @@ export function DraftPreviewApp() {
   return (
     <div className="flex h-full flex-col overflow-y-auto p-4">
       <div className={`description-content ${isFocused ? "mx-auto w-full max-w-4xl" : ""}`}>
-        {renderMarkdown(draftPreviewContent.content)}
+        {renderMarkdown(draftPreviewContent.content, { linkifyRefs: true })}
       </div>
     </div>
   );

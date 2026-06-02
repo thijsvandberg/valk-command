@@ -45,10 +45,16 @@ describe("ChatMessage ticket-reference linkification", () => {
     expect(screen.getByText("See VPL-123 for context.")).toHaveAttribute("data-linkify", "true");
   });
 
-  it("does NOT linkify the draft preview (out of scope)", () => {
+  it("linkifies the 'Current draft' card preview (BRDG-253)", () => {
     render(<DraftCard content="Draft mentions VPL-456" />);
     fireEvent.click(screen.getByText("Current draft"));
-    expect(screen.getByText("Draft mentions VPL-456")).toHaveAttribute("data-linkify", "false");
+    expect(screen.getByText("Draft mentions VPL-456")).toHaveAttribute("data-linkify", "true");
+  });
+
+  it("linkifies the chat draft expander preview (BRDG-253)", () => {
+    render(<ChatMessage message={makeMessage({ content: "" })} draftId="d-1" draftContent="Draft mentions VPL-789" />);
+    fireEvent.click(screen.getByText("Draft updated"));
+    expect(screen.getByText("Draft mentions VPL-789")).toHaveAttribute("data-linkify", "true");
   });
 });
 

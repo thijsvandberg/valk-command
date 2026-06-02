@@ -107,7 +107,7 @@ export function VersionPreview({
         </div>
       ) : version.content ? (
         <div className="description-content">
-          {renderMarkdown(version.content)}
+          {renderMarkdown(version.content, { linkifyRefs: true })}
         </div>
       ) : (
         <p className="text-body-lg text-text-muted">No content available for this version.</p>

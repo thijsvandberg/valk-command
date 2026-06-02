@@ -502,7 +502,7 @@ export function ChatMessage({
                   }}
                 >
                   <div className="description-content chat-markdown text-body-sm leading-[1.7] text-text-secondary">
-                    {renderMarkdown(draftContent)}
+                    {renderMarkdown(draftContent, { linkifyRefs: true })}
                   </div>
                 </div>
                 {onAcceptDraft && draftId && (
@@ -602,7 +602,7 @@ export function DraftCard({ content }: { content: string }) {
               }`}
               style={isOverflowing ? { maxHeight: "none" } : undefined}
             >
-              {renderMarkdown(content)}
+              {renderMarkdown(content, { linkifyRefs: true })}
             </div>
           </div>
         </div>

@@ -249,7 +249,7 @@ function TicketDetail({
             </h3>
             {data.description ? (
               <div className="description-content text-body-sm leading-[1.7] text-text-secondary">
-                {renderMarkdown(data.description)}
+                {renderMarkdown(data.description, { linkifyRefs: true })}
               </div>
             ) : (
               <p className="text-body-sm text-text-muted italic">No description</p>

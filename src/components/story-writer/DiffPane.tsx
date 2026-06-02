@@ -170,6 +170,7 @@ export function DiffPane({
           <>
             {diffViewMode === "plain" && (
               <div className="description-content px-1 py-2">
+                {/* linkifyRefs intentionally OFF (BRDG-253): pills would compete with the textual diff. */}
                 {renderMarkdown(selected.content)}
               </div>
             )}

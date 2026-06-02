@@ -28,7 +28,7 @@ export function StoryPreviewApp() {
         </h1>
       )}
       <div className="description-content">
-        {content ? renderMarkdown(content) : (
+        {content ? renderMarkdown(content, { linkifyRefs: true }) : (
           <p className="text-body-sm text-text-muted">No content yet.</p>
         )}
       </div>
