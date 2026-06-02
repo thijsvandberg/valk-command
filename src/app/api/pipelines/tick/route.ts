@@ -32,7 +32,7 @@ async function runPipelineSync(): Promise<Record<string, unknown>> {
     let result = await syncPipelines();
     let rounds = 1;
 
-    while ((result.remaining > 0 || result.backfilled > 0) && rounds < 5) {
+    while ((result.remaining > 0 || result.backfilled > 0 || result.backfilledDeployments > 0) && rounds < 5) {
       const more = await syncPipelines();
       result = {
         newRuns: result.newRuns + more.newRuns,
@@ -40,6 +40,7 @@ async function runPipelineSync(): Promise<Record<string, unknown>> {
         stateChanges: result.stateChanges + more.stateChanges,
         remaining: more.remaining,
         backfilled: result.backfilled + more.backfilled,
+        backfilledDeployments: result.backfilledDeployments + more.backfilledDeployments,
       };
       rounds++;
     }

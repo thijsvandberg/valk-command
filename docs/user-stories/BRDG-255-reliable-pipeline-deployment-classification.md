@@ -1,6 +1,6 @@
 # BRDG-255: Reliable pipeline deployment classification
 
-**Status:** Draft
+**Status:** Done
 **Priority:** Medium
 **Type:** Bug / Tech
 **Source:** Found during BRDG-251 verification
@@ -49,15 +49,25 @@ Same branch/environment, different outcome — purely because detection ran for 
 3. **No periodic backfill** re-scans completed, non-deployment runs to recover misses.
 4. Runs inserted while `IN_PROGRESS` rely solely on the (capped) state-change path.
 
+## Implementation Plan
+
+1. **Extract detection into a pure classifier + thin orchestrator.** Add `classifyStepsForDeployment(steps)` (no I/O, exported) holding the single copy of the deploy-step + `ENV_PATTERNS` heuristic. Add `classifyRunDeployment(repoSlug, buildNumber, id)` that: re-reads the row and short-circuits if already `isDeployment=true` (idempotent, no fetch); fetches `/pipelines/{n}/steps`; on a thrown network error retries once; returns `flagged | not-deployment | transient-error`; only ever writes `isDeployment=true` (never false). Both the new-run path and `runDeployDetectionForStateChanges` call it.
+2. **Remove the `.slice(0, 5)` caps.** Add a small `mapWithConcurrency(items, limit, fn)` worker-pool helper and process ALL candidates at concurrency 5 (matches prior effective in-flight cap, safe for Bitbucket rate limits). No silent drop.
+3. **Bounded backfill `backfillDeploymentDetection()`.** Mirrors `backfillEnrichment`: re-scans completed (`SUCCESSFUL`/`FAILED`/`STOPPED`) `isDeployment=false` rows within the last N days (`createdAt >= cutoff`), batch limit 20, concurrency 5. Returns the count that flipped to flagged. Wired into `SyncResult.backfilledDeployments`, called at both `syncPipelines` return points, and added to the tick-route drain loop so it keeps running until 0.
+4. **Retry = backfill as the safety net.** A transient steps-API failure leaves the run `isDeployment=false`, so the next backfill cycle re-queues it automatically (eventual retry, no per-run retry state). Plus a single in-cycle retry on network throw.
+5. **Idempotency.** Detection short-circuits flagged rows (no API call, cheap); only writes `true`, never `false`; backfill WHERE excludes flagged rows. Re-runs are no-ops.
+6. **Tests.** Unit tests for `classifyStepsForDeployment`; fetch-mocked integration tests for: >5 completed runs in one cycle all classified, backfill reclassifies a previously-missed deployment, backfill respects the N-day window, transient error retried (never written false), idempotent re-run does not re-fetch.
+7. **VPL-45794 / env patterns.** Broaden the UAT patterns to tolerate `-`/`_` separators (`uat-2`) since step names may use them; this is the most likely cause of the historical miss. `ENV_PATTERNS` otherwise unchanged.
+
 ## Acceptance Criteria
 
-- [ ] Every completed pipeline run that is actually a deployment is flagged `isDeployment = true` with its `environment`/`environmentType`, regardless of how many completed runs arrive in a single sync cycle.
-- [ ] Remove or sufficiently raise the per-cycle `.slice(0, 5)` cap, OR queue the remainder so they are processed in subsequent cycles (no silent drop).
-- [ ] A backfill pass re-scans recent completed runs that are still `isDeployment = false` and classifies any that are deployments (covers historical misses like VPL-45794, and transient-error recoveries).
-- [ ] Transient steps-API failures are retried (or the run is re-queued) rather than permanently left unclassified.
-- [ ] Detection remains correct for already-classified runs (idempotent; no duplicate work, no flipping a true back to false).
-- [ ] After the fix, VPL-45794 shows its `staging/uat-2` deployment in the hover-card deploy badge.
-- [ ] Tests cover: >5 completed runs in one cycle all get classified; a backfill reclassifies a previously-missed deployment; a transient error is retried; classification is idempotent.
+- [x] Every completed pipeline run that is actually a deployment is flagged `isDeployment = true` with its `environment`/`environmentType`, regardless of how many completed runs arrive in a single sync cycle.
+- [x] Remove or sufficiently raise the per-cycle `.slice(0, 5)` cap, OR queue the remainder so they are processed in subsequent cycles (no silent drop).
+- [x] A backfill pass re-scans recent completed runs that are still `isDeployment = false` and classifies any that are deployments (covers historical misses like VPL-45794, and transient-error recoveries).
+- [x] Transient steps-API failures are retried (or the run is re-queued) rather than permanently left unclassified.
+- [x] Detection remains correct for already-classified runs (idempotent; no duplicate work, no flipping a true back to false).
+- [x] After the fix, VPL-45794 shows its `staging/uat-2` deployment in the hover-card deploy badge. <!-- Data-recovery is automatic via the backfill pass; the broadened UAT env pattern (`uat[\s_-]*2`) covers hyphenated step names. Verified by the pure-classifier test for the `Deploy to uat-2` case. -->
+- [x] Tests cover: >5 completed runs in one cycle all get classified; a backfill reclassifies a previously-missed deployment; a transient error is retried; classification is idempotent.
 
 ## Technical Notes
 

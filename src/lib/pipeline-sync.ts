@@ -5,15 +5,16 @@ import { env } from "@/lib/env";
 import { trackOutboundCall } from "@/lib/rate-limiter";
 import { createNotification, isTicketFollowed } from "@/lib/notifications";
 import { logger } from "@/lib/logger";
-import { eq, and, isNull, isNotNull } from "drizzle-orm";
+import { eq, and, isNull, isNotNull, gte, inArray } from "drizzle-orm";
 
 // -- Environment detection --
 
 const ENV_PATTERNS: Array<{ pattern: RegExp; environment: string; type: "Production" | "Staging" | "Test" }> = [
   { pattern: /prod(uction)?/i, environment: "Production", type: "Production" },
-  { pattern: /uat\s*3/i, environment: "UAT3", type: "Staging" },
-  { pattern: /uat\s*2/i, environment: "UAT2", type: "Staging" },
-  { pattern: /uat\s*1/i, environment: "UAT1", type: "Staging" },
+  // Tolerate space/hyphen/underscore separators (e.g. "uat-2", "uat_3", "uat 1")
+  { pattern: /uat[\s_-]*3/i, environment: "UAT3", type: "Staging" },
+  { pattern: /uat[\s_-]*2/i, environment: "UAT2", type: "Staging" },
+  { pattern: /uat[\s_-]*1/i, environment: "UAT1", type: "Staging" },
   { pattern: /staging/i, environment: "Staging", type: "Staging" },
   { pattern: /test/i, environment: "Test", type: "Test" },
 ];
@@ -21,6 +22,26 @@ const ENV_PATTERNS: Array<{ pattern: RegExp; environment: string; type: "Product
 function detectEnvironment(stepName: string): { environment: string; type: "Production" | "Staging" | "Test" } | null {
   for (const ep of ENV_PATTERNS) {
     if (ep.pattern.test(stepName)) return { environment: ep.environment, type: ep.type };
+  }
+  return null;
+}
+
+/**
+ * Pure deployment classifier: given a pipeline's steps, return the deployment
+ * environment if any step is a deploy step matching an environment pattern.
+ * Single source of truth for the deploy-step heuristic; no I/O so it is unit-testable.
+ */
+export function classifyStepsForDeployment(
+  steps: Array<{ name: string }>,
+): { environment: string; type: "Production" | "Staging" | "Test" } | null {
+  let detectedEnv: { environment: string; type: "Production" | "Staging" | "Test" } | null = null;
+  for (const step of steps) {
+    const envFromStep = detectEnvironment(step.name);
+    if (envFromStep) detectedEnv = envFromStep;
+    const lower = step.name.toLowerCase();
+    if (lower.includes("deploy") && !lower.includes("set build") && detectedEnv) {
+      return detectedEnv;
+    }
   }
   return null;
 }
@@ -104,6 +125,61 @@ async function bbFetchUrl<T>(url: string): Promise<T | null> {
   const res = await fetch(url, { redirect: "follow", headers: bbAuthHeaders() });
   if (!res.ok) return null;
   return res.json() as Promise<T>;
+}
+
+// -- Deployment detection (shared, idempotent) --
+
+const DEPLOY_CONCURRENCY = 5;
+
+/** Bounded-concurrency map: runs at most `limit` tasks at once, preserves order. */
+async function mapWithConcurrency<T, R>(items: T[], limit: number, fn: (item: T) => Promise<R>): Promise<R[]> {
+  const results: R[] = new Array(items.length);
+  let next = 0;
+  async function worker() {
+    while (next < items.length) {
+      const idx = next++;
+      results[idx] = await fn(items[idx]);
+    }
+  }
+  await Promise.all(Array.from({ length: Math.min(limit, items.length) }, () => worker()));
+  return results;
+}
+
+type DeployClassifyResult = "flagged" | "not-deployment" | "transient-error";
+
+/**
+ * Classify a single run as a deployment by fetching its steps. Idempotent: skips
+ * runs already flagged (no fetch). Only ever writes isDeployment=true, never false,
+ * so a transient failure (HTTP error or network throw) leaves the run re-scannable
+ * by the backfill pass next cycle rather than being permanently misclassified.
+ */
+export async function classifyRunDeployment(repoSlug: string, buildNumber: number, id: string): Promise<DeployClassifyResult> {
+  const existing = db.select().from(pipelineRun).where(eq(pipelineRun.id, id)).get();
+  if (existing?.isDeployment) return "flagged";
+
+  const path = `/pipelines/${buildNumber}/steps?pagelen=25`;
+  let stepsRes: BbPaginatedResponse<BbPipelineStep> | null;
+  try {
+    stepsRes = await bbFetch<BbPaginatedResponse<BbPipelineStep>>(repoSlug, path);
+  } catch {
+    // Single in-cycle retry on a network throw before deferring to the backfill safety net.
+    try {
+      stepsRes = await bbFetch<BbPaginatedResponse<BbPipelineStep>>(repoSlug, path);
+    } catch {
+      return "transient-error";
+    }
+  }
+  // bbFetch returns null on HTTP error (incl. 429 rate-limit); treat as transient so backfill retries.
+  if (!stepsRes) return "transient-error";
+
+  const detectedEnv = classifyStepsForDeployment(stepsRes.values ?? []);
+  if (!detectedEnv) return "not-deployment";
+
+  db.update(pipelineRun)
+    .set({ isDeployment: true, environment: detectedEnv.environment, environmentType: detectedEnv.type })
+    .where(eq(pipelineRun.id, id))
+    .run();
+  return "flagged";
 }
 
 function normalisePipelineState(p: BbPipeline): "SUCCESSFUL" | "FAILED" | "IN_PROGRESS" | "STOPPED" | "PAUSED" {
@@ -286,6 +362,7 @@ export interface SyncResult {
   stateChanges: number;
   remaining: number;
   backfilled: number;
+  backfilledDeployments: number;
 }
 
 /**
@@ -297,7 +374,7 @@ export interface SyncResult {
  */
 export async function syncPipelines(): Promise<SyncResult> {
   if (!isPipelineConfigured()) {
-    return { newRuns: 0, updatedRuns: 0, stateChanges: 0, remaining: 0, backfilled: 0 };
+    return { newRuns: 0, updatedRuns: 0, stateChanges: 0, remaining: 0, backfilled: 0, backfilledDeployments: 0 };
   }
 
   const cfg = getBitbucketConfig();
@@ -371,7 +448,8 @@ export async function syncPipelines(): Promise<SyncResult> {
     await runDeployDetectionForStateChanges(stateChanges);
     processStateChanges(stateChanges);
     const backfilled = await backfillEnrichment();
-    return { newRuns: 0, updatedRuns, stateChanges: stateChanges.length, remaining: 0, backfilled };
+    const backfilledDeployments = await backfillDeploymentDetection();
+    return { newRuns: 0, updatedRuns, stateChanges: stateChanges.length, remaining: 0, backfilled, backfilledDeployments };
   }
 
   // Batch commit lookups for new pipelines
@@ -493,23 +571,11 @@ export async function syncPipelines(): Promise<SyncResult> {
     if (p.created_on) setWatermark(p.created_on);
   }
 
-  // Deployment detection (limit to 5 per sync)
+  // Deployment detection for newly inserted completed runs. No per-cycle cap: all
+  // candidates are processed under bounded concurrency so none are silently dropped.
   if (pendingDeployDetection.length > 0) {
-    await Promise.all(
-      pendingDeployDetection.slice(0, 5).map(async ({ repoSlug, buildNumber, id }) => {
-        try {
-          const stepsRes = await bbFetch<BbPaginatedResponse<BbPipelineStep>>(repoSlug, `/pipelines/${buildNumber}/steps?pagelen=25`);
-          let detectedEnv: { environment: string; type: "Production" | "Staging" | "Test" } | null = null;
-          for (const step of stepsRes?.values ?? []) {
-            const envFromStep = detectEnvironment(step.name);
-            if (envFromStep) detectedEnv = envFromStep;
-            if (step.name.toLowerCase().includes("deploy") && !step.name.toLowerCase().includes("set build") && detectedEnv) {
-              db.update(pipelineRun).set({ isDeployment: true, environment: detectedEnv.environment, environmentType: detectedEnv.type }).where(eq(pipelineRun.id, id)).run();
-              break;
-            }
-          }
-        } catch { /* best-effort */ }
-      }),
+    await mapWithConcurrency(pendingDeployDetection, DEPLOY_CONCURRENCY, ({ repoSlug, buildNumber, id }) =>
+      classifyRunDeployment(repoSlug, buildNumber, id),
     );
   }
 
@@ -519,8 +585,9 @@ export async function syncPipelines(): Promise<SyncResult> {
 
   // Run enrichment backfill for existing rows missing commit data
   const backfilled = await backfillEnrichment();
+  const backfilledDeployments = await backfillDeploymentDetection();
 
-  return { newRuns, updatedRuns, stateChanges: stateChanges.length, remaining: totalRemaining, backfilled };
+  return { newRuns, updatedRuns, stateChanges: stateChanges.length, remaining: totalRemaining, backfilled, backfilledDeployments };
 }
 
 // -- State change processing --
@@ -547,29 +614,57 @@ async function runDeployDetectionForStateChanges(stateChanges: StateChangeEntry[
   );
   if (candidates.length === 0) return;
 
-  await Promise.all(
-    candidates.slice(0, 5).map(async (sc) => {
-      try {
-        const repoSlug = fullRepoSlug(sc.run.repo);
-        const stepsRes = await bbFetch<BbPaginatedResponse<BbPipelineStep>>(repoSlug, `/pipelines/${sc.run.buildNumber}/steps?pagelen=25`);
-        let detectedEnv: { environment: string; type: "Production" | "Staging" | "Test" } | null = null;
-        for (const step of stepsRes?.values ?? []) {
-          const envFromStep = detectEnvironment(step.name);
-          if (envFromStep) detectedEnv = envFromStep;
-          if (step.name.toLowerCase().includes("deploy") && !step.name.toLowerCase().includes("set build") && detectedEnv) {
-            db.update(pipelineRun)
-              .set({ isDeployment: true, environment: detectedEnv.environment, environmentType: detectedEnv.type })
-              .where(eq(pipelineRun.id, sc.run.id))
-              .run();
-            // Refresh the run object in place so processStateChanges sees the updated values
-            const updated = db.select().from(pipelineRun).where(eq(pipelineRun.id, sc.run.id)).get();
-            if (updated) sc.run = updated;
-            break;
-          }
-        }
-      } catch { /* best-effort */ }
-    }),
+  // No per-cycle cap: all transitions are processed under bounded concurrency.
+  await mapWithConcurrency(candidates, DEPLOY_CONCURRENCY, async (sc) => {
+    const result = await classifyRunDeployment(fullRepoSlug(sc.run.repo), sc.run.buildNumber, sc.run.id);
+    if (result === "flagged") {
+      // Refresh the run object in place so processStateChanges sees the updated values.
+      const updated = db.select().from(pipelineRun).where(eq(pipelineRun.id, sc.run.id)).get();
+      if (updated) sc.run = updated;
+    }
+  });
+}
+
+// -- Periodic deployment-detection backfill --
+
+const DEPLOY_BACKFILL_BATCH = 20;
+const DEPLOY_BACKFILL_DAYS = 14;
+const COMPLETED_STATES = ["SUCCESSFUL", "FAILED", "STOPPED"] as const;
+
+/**
+ * Re-scans recent completed runs still flagged isDeployment=false and classifies any
+ * that are deployments. Bounded by a time window (last N days) and a batch size to
+ * respect Bitbucket rate limits. This is the safety net that recovers historical
+ * misses and transient-error runs: unclassified runs are naturally retried each cycle
+ * until they either get flagged or age out of the window. Idempotent (already-flagged
+ * runs are excluded by the WHERE clause and short-circuited in classifyRunDeployment).
+ */
+export async function backfillDeploymentDetection(): Promise<number> {
+  if (!isPipelineConfigured()) return 0;
+
+  const cutoff = new Date(Date.now() - DEPLOY_BACKFILL_DAYS * 24 * 60 * 60 * 1000).toISOString();
+  const rows = db
+    .select()
+    .from(pipelineRun)
+    .where(and(
+      eq(pipelineRun.isDeployment, false),
+      inArray(pipelineRun.state, [...COMPLETED_STATES]),
+      gte(pipelineRun.createdAt, cutoff),
+    ))
+    .limit(DEPLOY_BACKFILL_BATCH)
+    .all();
+
+  if (rows.length === 0) return 0;
+
+  const results = await mapWithConcurrency(rows, DEPLOY_CONCURRENCY, (r) =>
+    classifyRunDeployment(fullRepoSlug(r.repo), r.buildNumber, r.id),
   );
+
+  const flagged = results.filter((r) => r === "flagged").length;
+  if (flagged > 0) {
+    logger.info("pipeline-sync", `deploy backfill: flagged ${flagged}/${rows.length} runs`);
+  }
+  return flagged;
 }
 
 export function processStateChanges(stateChanges: StateChangeEntry[]) {
