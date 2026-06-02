@@ -54,7 +54,9 @@ export interface TicketTabContentProps {
   // Conflict
   showConflictWarning: boolean;
   showConflictDiff: boolean;
+  autoOpenDraftDiff: boolean;
   metadataOnlyConflict: boolean;
+  onViewDiff: () => void;
   isDiscarding: boolean;
   discardError: string | null;
   // Push
@@ -91,7 +93,9 @@ export function TicketTabContent({
   onDescLocalEdit,
   showConflictWarning,
   showConflictDiff,
+  autoOpenDraftDiff,
   metadataOnlyConflict,
+  onViewDiff,
   isDiscarding,
   discardError,
   isPushing,
@@ -191,7 +195,7 @@ export function TicketTabContent({
                   serverLocalEdit={localEdits?.title}
                   onLocalEdit={onTitleLocalEdit}
                   onEditingChange={onTitleEditingChange}
-                  onViewDiff={() => onActiveTabChange("history")}
+                  onViewDiff={onViewDiff}
                 />
               </div>
               {ticket.assignee && (
@@ -259,7 +263,6 @@ export function TicketTabContent({
                 showConflictWarning={showConflictWarning}
                 overrideConfirmed={overrideConfirmed}
                 onOverrideChange={onOverrideChange}
-                onViewDiff={() => onActiveTabChange("history")}
               />
               {detail && <AttachmentsSection attachments={detail.attachments} />}
               {ticket?.type === "epic"
@@ -281,6 +284,7 @@ export function TicketTabContent({
             <TicketHistory
               ticket={ticket}
               showConflictDiff={showConflictDiff}
+              autoOpenDraftDiff={autoOpenDraftDiff}
               metadataOnlyConflict={metadataOnlyConflict}
               resetKey={historyResetKey}
               onConflictResolved={async (): Promise<void> => {

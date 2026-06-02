@@ -15,6 +15,8 @@ export interface TicketHistoryProps {
   ticket: Ticket;
   /** When set, auto-open the conflict diff (local draft vs latest Jira) */
   showConflictDiff?: boolean;
+  /** When set, auto-open the draft diff (local edits vs latest Jira) without conflict framing */
+  autoOpenDraftDiff?: boolean;
   /** When true, the remote change was metadata-only (no content diff). Shows push button in diff view. */
   metadataOnlyConflict?: boolean;
   /** Called when user resolves the conflict. Action is "keep" or "discard". */
@@ -27,7 +29,7 @@ export interface TicketHistoryProps {
   embedded?: boolean;
 }
 
-export function TicketHistory({ ticket, showConflictDiff, metadataOnlyConflict, onConflictResolved, resetKey, onVersionsLoaded, embedded }: TicketHistoryProps) {
+export function TicketHistory({ ticket, showConflictDiff, autoOpenDraftDiff, metadataOnlyConflict, onConflictResolved, resetKey, onVersionsLoaded, embedded }: TicketHistoryProps) {
   const [ticketVersions, setTicketVersions] = useState<StoryVersion[]>([]);
   const [loading, setLoading] = useState(true);
   const [loadingContent, setLoadingContent] = useState(false);
@@ -178,9 +180,9 @@ export function TicketHistory({ ticket, showConflictDiff, metadataOnlyConflict, 
     setCompareNew(s[0].versionNumber);
   }, [ticketVersions, compareOld, compareNew]);
 
-  // Auto-open conflict diff; uses ticketVersions (stable state) not the derived sorted array.
+  // Auto-open draft/conflict diff; uses ticketVersions (stable state) not the derived sorted array.
   useEffect(() => {
-    if (!showConflictDiff || ticketVersions.length < 2) return;
+    if ((!showConflictDiff && !autoOpenDraftDiff) || ticketVersions.length < 2) return;
     const d = ticketVersions.find((v) => v.label === "draft");
     const jc = ticketVersions.find((v) => v.label === "current");
     if (d && jc) {
@@ -188,7 +190,7 @@ export function TicketHistory({ ticket, showConflictDiff, metadataOnlyConflict, 
       setCompareNew(d.versionNumber);
       setShowingDiff(true);
     }
-  }, [showConflictDiff, ticketVersions]);
+  }, [showConflictDiff, autoOpenDraftDiff, ticketVersions]);
 
   const compareOldVersion = sorted.find((v) => v.versionNumber === compareOld) ?? null;
   const compareNewVersion = sorted.find((v) => v.versionNumber === compareNew) ?? null;

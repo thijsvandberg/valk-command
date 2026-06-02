@@ -61,7 +61,6 @@ export function EditableDescription({
   showConflictWarning,
   overrideConfirmed,
   onOverrideChange,
-  onViewDiff,
 }: {
   ticketKey: string;
   initialDescription: string;
@@ -76,7 +75,6 @@ export function EditableDescription({
   showConflictWarning?: boolean;
   overrideConfirmed?: boolean;
   onOverrideChange?: (val: boolean) => void;
-  onViewDiff?: () => void;
 }) {
   const resolvedInitial = resolveLocalValue(serverLocalEdit?.value, initialDescription, attachments);
   // A server-side edit that differs from the Jira version only in cosmetic
@@ -240,19 +238,23 @@ export function EditableDescription({
   const showPush = isDirtyOrLocal && !!onPushToJira;
 
   return (
-    <div className="mt-6">
-      {/* Draft indicator badge: click to reveal an inline diff of the unsaved changes */}
-      {!editing && hasLocalEdit && editIsDraft && (
+    <div className={!editing && hasLocalEdit ? "mt-2" : "mt-6"}>
+      {/* Local-edit indicator badge: click to reveal an inline diff of the changes. */}
+      {!editing && hasLocalEdit && (
         <div className="mb-3">
           <button
             type="button"
             onClick={() => setShowDraftDiff((v) => !v)}
             aria-expanded={showDraftDiff}
-            className="inline-flex cursor-pointer items-center gap-1.5 rounded-md border border-[var(--color-icon-task)]/20 bg-[var(--color-icon-task)]/[0.06] px-2.5 py-1 text-body-sm font-medium text-[var(--color-icon-task)]/80 hover:bg-[var(--color-icon-task)]/[0.12] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-icon-task)]/50"
+            className={`inline-flex cursor-pointer items-center gap-1.5 rounded-md border px-2.5 py-1 text-body-sm font-medium focus-visible:outline-2 focus-visible:outline-offset-2 ${
+              editIsDraft
+                ? "border-[var(--color-icon-task)]/20 bg-[var(--color-icon-task)]/[0.06] text-[var(--color-icon-task)]/80 hover:bg-[var(--color-icon-task)]/[0.12] focus-visible:outline-[var(--color-icon-task)]/50"
+                : "border-[var(--color-brand-500)]/20 bg-[var(--color-brand-500)]/[0.06] text-[var(--color-brand-400)] hover:bg-[var(--color-brand-500)]/[0.12] focus-visible:outline-[var(--color-brand-500)]/50"
+            }`}
             style={{ transition: "background-color 0.15s ease" }}
           >
-            <span className="inline-block h-1.5 w-1.5 rounded-full bg-[var(--color-icon-task)]/70" />
-            Unsaved changes
+            <span className={`inline-block h-1.5 w-1.5 rounded-full ${editIsDraft ? "bg-[var(--color-icon-task)]/70" : "bg-[var(--color-brand-500)]/70"}`} />
+            {editIsDraft ? "Unsaved changes" : "Local edits"}
             <ChevronDown
               size={14}
               strokeWidth={1.5}
@@ -260,13 +262,16 @@ export function EditableDescription({
             />
           </button>
           {showDraftDiff && (
-            <div className="mt-3 overflow-hidden rounded-lg border border-border-strong p-3">
-              <StoryDiff
-                oldText={normalizeMarkdownForCompare(initialDescription)}
-                newText={normalizeMarkdownForCompare(value)}
-                mode="unified"
-              />
-              <div className="mt-3 flex items-center justify-end gap-1 border-t border-border-default pt-3">
+            <div className="mt-3 rounded-lg border border-border-strong">
+              <div className="p-3 pb-0">
+                <StoryDiff
+                  oldText={normalizeMarkdownForCompare(initialDescription)}
+                  newText={normalizeMarkdownForCompare(value)}
+                  mode="unified"
+                />
+              </div>
+              {/* Sticky so the resolve actions stay reachable while scrolling a long diff. */}
+              <div className="sticky bottom-0 z-10 flex items-center justify-end gap-1 rounded-b-lg border-t border-border-default bg-[var(--color-surface-elevated)]/95 px-3 py-3 backdrop-blur-sm">
                 {pushError && (
                   <span className="mr-auto text-label text-[var(--color-status-error)]">{pushError}</span>
                 )}
@@ -308,20 +313,6 @@ export function EditableDescription({
           )}
         </div>
       )}
-      {!editing && hasLocalEdit && !editIsDraft && (
-        <div className="mb-3 flex items-center gap-2">
-          <button
-            type="button"
-            onClick={onViewDiff}
-            className={`inline-flex items-center gap-1.5 rounded-md border border-[var(--color-brand-500)]/20 bg-[var(--color-brand-500)]/[0.06] px-2.5 py-1 text-body-sm font-medium text-[var(--color-brand-400)]${onViewDiff ? " cursor-pointer hover:bg-[var(--color-brand-500)]/[0.12] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-500)]/50" : ""}`}
-            style={{ transition: "background-color 0.15s ease" }}
-          >
-            <span className="inline-block h-1.5 w-1.5 rounded-full bg-[var(--color-brand-500)]/70" />
-            Local edits
-          </button>
-        </div>
-      )}
-
       {/* Content */}
       {editing ? (
         <RichEditor

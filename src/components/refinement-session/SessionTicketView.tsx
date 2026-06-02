@@ -618,7 +618,6 @@ export function SessionTicketView({
         showConflictWarning={showConflictWarning}
         overrideConfirmed={overrideConfirmed}
         onOverrideChange={onOverrideChange}
-        onViewDiff={onViewDiff}
       />
 
       {/* Subtasks (hidden when in side pane mode) */}

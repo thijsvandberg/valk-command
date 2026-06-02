@@ -218,6 +218,36 @@ describe("TicketHistory", () => {
     });
   });
 
+  it("auto-opens the draft diff when autoOpenDraftDiff is set", async () => {
+    mockApiFetch.mockResolvedValueOnce(makeVersionData(2)); // includes a "current"
+    mockApiFetch.mockResolvedValueOnce({ aiDrafts: [] });
+    mockGetLocalEdits.mockResolvedValue([
+      { field: "description", localValue: "My draft", modifiedAt: new Date().toISOString() },
+    ]);
+
+    render(<TicketHistory ticket={makeTicket()} autoOpenDraftDiff />);
+
+    await waitFor(() => {
+      expect(screen.getByTestId("diff-viewer")).toBeInTheDocument();
+    });
+    expect(screen.queryByTestId("version-list")).not.toBeInTheDocument();
+  });
+
+  it("shows the version list (no auto-open) without autoOpenDraftDiff", async () => {
+    mockApiFetch.mockResolvedValueOnce(makeVersionData(2));
+    mockApiFetch.mockResolvedValueOnce({ aiDrafts: [] });
+    mockGetLocalEdits.mockResolvedValue([
+      { field: "description", localValue: "My draft", modifiedAt: new Date().toISOString() },
+    ]);
+
+    render(<TicketHistory ticket={makeTicket()} />);
+
+    await waitFor(() => {
+      expect(screen.getByTestId("version-list")).toBeInTheDocument();
+    });
+    expect(screen.queryByTestId("diff-viewer")).not.toBeInTheDocument();
+  });
+
   it("shows History section header", async () => {
     mockApiFetch.mockResolvedValueOnce([]);
     mockApiFetch.mockResolvedValueOnce({ aiDrafts: [] });

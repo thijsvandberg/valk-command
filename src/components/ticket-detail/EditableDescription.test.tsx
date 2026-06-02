@@ -70,7 +70,6 @@ function renderDesc(overrides: Partial<React.ComponentProps<typeof EditableDescr
       showConflictWarning={overrides.showConflictWarning}
       overrideConfirmed={overrides.overrideConfirmed}
       onOverrideChange={overrides.onOverrideChange}
-      onViewDiff={overrides.onViewDiff}
     />,
   );
   return { ...result, onLocalEdit, onEditingChange };
@@ -256,15 +255,15 @@ describe("EditableDescription", () => {
     expect(onLocalEdit).toHaveBeenCalledTimes(1);
   });
 
-  it("calls onViewDiff when 'Local edits' badge is clicked", () => {
-    const onViewDiff = vi.fn();
+  it("expands an inline diff with resolve actions when 'Local edits' is clicked", () => {
     renderDesc({
       initialDescription: "Original",
-      serverLocalEdit: { value: "Final", isDraft: false },
-      onViewDiff,
+      serverLocalEdit: { value: "Final local value", isDraft: false },
+      onPushToJira: vi.fn().mockResolvedValue(undefined),
     });
     fireEvent.click(screen.getByText("Local edits"));
-    expect(onViewDiff).toHaveBeenCalled();
+    expect(screen.getByText("Discard")).toBeInTheDocument();
+    expect(screen.getByText("Push to Jira")).toBeInTheDocument();
   });
 
   it("shows 'Push to Jira' button when onPushToJira is provided and there are local edits", () => {

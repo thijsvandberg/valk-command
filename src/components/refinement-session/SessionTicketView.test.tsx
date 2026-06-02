@@ -377,7 +377,7 @@ describe("SessionTicketView", () => {
     expect(onLocalDescEdit).toHaveBeenCalledWith(true);
   });
 
-  it("passes onViewDiff to EditableTitle and EditableDescription", () => {
+  it("passes onViewDiff to EditableTitle (description shows its own inline diff)", () => {
     const onViewDiff = vi.fn();
     render(
       <SessionTicketView
@@ -387,8 +387,8 @@ describe("SessionTicketView", () => {
     );
     fireEvent.click(screen.getByTestId("title-view-diff"));
     expect(onViewDiff).toHaveBeenCalledTimes(1);
-    fireEvent.click(screen.getByTestId("desc-view-diff"));
-    expect(onViewDiff).toHaveBeenCalledTimes(2);
+    // EditableDescription no longer receives onViewDiff: it expands an inline diff itself.
+    expect(screen.queryByTestId("desc-view-diff")).not.toBeInTheDocument();
   });
 });
 
