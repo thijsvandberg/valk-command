@@ -8,9 +8,8 @@ import { ChatInput } from "@/components/shared/ChatInput";
 import { LoadingState } from "@/components/shared/LoadingState";
 import { StreamingIndicator } from "@/components/shared/StreamingIndicator";
 import { apiFetch } from "@/lib/api-client";
-import { Tooltip } from "@/components/shared/Tooltip";
 import { renderMarkdown } from "@/components/ticket-detail/renderMarkdown";
-import { X, Sparkles, PenLine } from "lucide-react";
+import { X, Sparkles, MessageSquareText } from "lucide-react";
 
 interface TicketChatPaneProps {
   ticketKey: string;
@@ -158,7 +157,7 @@ export function TicketChatPane({ ticketKey, onClose }: TicketChatPaneProps) {
   if (initializing) {
     return (
       <div className="flex h-full flex-col">
-        <PaneHeader ticketKey={ticketKey} onClose={onClose} />
+        <PaneHeader onClose={onClose} />
         <LoadingState label="Loading chat..." />
       </div>
     );
@@ -167,7 +166,7 @@ export function TicketChatPane({ ticketKey, onClose }: TicketChatPaneProps) {
   if (initError) {
     return (
       <div className="flex h-full flex-col">
-        <PaneHeader ticketKey={ticketKey} onClose={onClose} />
+        <PaneHeader onClose={onClose} />
         <div className="flex flex-1 items-center justify-center px-4">
           <p className="text-body-sm text-red-400">{initError}</p>
         </div>
@@ -177,7 +176,7 @@ export function TicketChatPane({ ticketKey, onClose }: TicketChatPaneProps) {
 
   return (
     <div className="flex h-full flex-col">
-      <PaneHeader ticketKey={ticketKey} onClose={onClose} isStreaming={isTaskRunning} />
+      <PaneHeader onClose={onClose} isStreaming={isTaskRunning} />
 
       {/* Messages */}
       <div
@@ -246,16 +245,15 @@ export function TicketChatPane({ ticketKey, onClose }: TicketChatPaneProps) {
   );
 }
 
-function PaneHeader({ ticketKey, onClose, isStreaming }: {
-  ticketKey: string;
+function PaneHeader({ onClose, isStreaming }: {
   onClose?: () => void;
   isStreaming?: boolean;
 }) {
   return (
-    <div className="flex shrink-0 items-center justify-between border-b border-border-subtle px-3 py-2.5">
+    <div className="flex h-[44px] shrink-0 items-center justify-between border-b border-border-subtle px-3">
       <div className="flex items-center gap-2">
         <div className="relative flex h-6 w-6 items-center justify-center rounded-lg bg-[var(--color-brand-500)]/[0.1] border border-[var(--color-brand-500)]/[0.18]">
-          <Sparkles size={13} strokeWidth={1.5} className="text-[var(--color-brand-400)]" />
+          <MessageSquareText size={13} strokeWidth={1.5} className="text-[var(--color-brand-400)]" />
           {isStreaming && (
             <span className="absolute -top-1 -right-1 h-2 w-2 rounded-full bg-[var(--color-brand-400)] ring-2 ring-[var(--color-surface-elevated)] animate-pulse" />
           )}
@@ -265,29 +263,17 @@ function PaneHeader({ ticketKey, onClose, isStreaming }: {
           <span className="text-[10px] font-medium uppercase tracking-[0.08em] text-text-muted">thinking</span>
         )}
       </div>
-      <div className="flex shrink-0 items-center gap-1">
-        <Tooltip content="Open in Story Writer">
-          <a
-            href={`/tickets/${encodeURIComponent(ticketKey)}/write`}
-            className="inline-flex h-7 w-7 items-center justify-center rounded-md cursor-pointer text-text-muted hover:bg-overlay-subtle hover:text-text-secondary focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)] active:scale-[0.97]"
-            style={{ transition: "background-color 0.15s ease, color 0.15s ease, transform 0.1s ease" }}
-            aria-label="Open in Story Writer"
-          >
-            <PenLine size={14} strokeWidth={1.5} />
-          </a>
-        </Tooltip>
-        {onClose && (
-          <button
-            type="button"
-            onClick={onClose}
-            className="rounded-md p-1 cursor-pointer text-text-muted hover:bg-overlay-subtle hover:text-text-secondary focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)]"
-            style={{ transition: "background-color 0.15s ease, color 0.15s ease" }}
-            aria-label="Close chat"
-          >
-            <X size={14} strokeWidth={1.5} />
-          </button>
-        )}
-      </div>
+      {onClose && (
+        <button
+          type="button"
+          onClick={onClose}
+          className="shrink-0 rounded-md p-1 cursor-pointer text-text-muted hover:bg-overlay-subtle hover:text-text-secondary focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)]"
+          style={{ transition: "background-color 0.15s ease, color 0.15s ease" }}
+          aria-label="Close chat"
+        >
+          <X size={14} strokeWidth={1.5} />
+        </button>
+      )}
     </div>
   );
 }

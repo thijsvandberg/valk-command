@@ -70,7 +70,7 @@ Currently the ticket chat sidebar (`TicketChatPane`) is a fixed 320px panel with
 - [x] Update ChatBubble usage to match StoryWriter styling (sizing, spacing, max-width)
 - [x] Update ChatInput to use resizable textarea matching StoryWriter config
 - [x] Align markdown rendering, streaming indicator, and empty state with StoryWriter look
-- [x] Add "Open in Story Writer" button in pane header
+- [x] Add "Open in Story Writer" button in pane header <!-- Later REMOVED per PO follow-up (deemed unnecessary). Header also restyled: chat-bubble icon in a brand-tinted chip, height matched to the ticket tab bar (h-[44px]), redundant ticket key/title dropped. Input made compact (send button inside the field). Conversation switching split out to BRDG-256. -->
 - [x] Verify chat works correctly after changes (send, receive, scroll, streaming)
 - [x] All tests pass, build succeeds <!-- All 3840 tests pass. BRDG-211 files lint and typecheck clean and TypeScript compiles successfully. The full `npm run build` is blocked by a PRE-EXISTING, UNRELATED lint error in src/components/refinement-session/SessionEndModal.tsx (present at commit b0c8eba1, before this work; already documented in docs/investigations/2026-06-02-build-blocked-sessionendmodal-lint.md). Out of scope for this story. -->
 

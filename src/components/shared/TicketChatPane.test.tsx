@@ -6,7 +6,6 @@ vi.mock("lucide-react", () => ({
   MessageSquareText: (props: Record<string, unknown>) => <span data-testid="msg-icon" {...props} />,
   X: (props: Record<string, unknown>) => <span data-testid="x-icon" {...props} />,
   Sparkles: (props: Record<string, unknown>) => <span data-testid="sparkles" {...props} />,
-  PenLine: (props: Record<string, unknown>) => <span data-testid="pen-line" {...props} />,
   Send: (props: Record<string, unknown>) => <span data-testid="send" {...props} />,
   Paperclip: (props: Record<string, unknown>) => <span data-testid="paperclip" {...props} />,
   AtSign: (props: Record<string, unknown>) => <span data-testid="at-sign" {...props} />,
@@ -103,13 +102,6 @@ describe("TicketChatPane", () => {
     });
     fireEvent.click(screen.getByLabelText("Close chat"));
     expect(onClose).toHaveBeenCalledOnce();
-  });
-
-  it("renders Open in Story Writer link pointing at the write page", async () => {
-    render(<TicketChatPane ticketKey="PROJ-123" />);
-    const link = await screen.findByLabelText("Open in Story Writer");
-    expect(link).toBeInTheDocument();
-    expect(link).toHaveAttribute("href", "/tickets/PROJ-123/write");
   });
 
   it("does not render close button when onClose not provided", async () => {
