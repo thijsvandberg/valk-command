@@ -73,6 +73,10 @@
   --color-surface-toolbar: #0b1316;
   --color-surface-floating: #111d22;
 
+  /* Translucent surface for elevated pills sitting on header chrome (theme-aware).
+     Dark: a faint white lift over the near-black header. Light: #ffffff at 75%. */
+  --color-pill-header-surface: rgba(255, 255, 255, 0.08);
+
   /* Semantic text tokens */
   --color-text-primary: rgba(255, 255, 255, 0.95);
   --color-text-secondary: rgba(255, 255, 255, 0.72);
@@ -192,6 +196,7 @@
   --color-surface-chrome: #e0edec;
   --color-surface-toolbar: #eef4f3;
   --color-surface-floating: #ffffff;
+  --color-pill-header-surface: rgba(255, 255, 255, 0.75);
 
   --color-text-primary: rgba(0, 0, 0, 0.90);
   --color-text-secondary: rgba(0, 0, 0, 0.66);

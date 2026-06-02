@@ -739,9 +739,10 @@ export function TicketStatusPill({
               }`
             : "flex shrink-0 items-center gap-1.5"
         }
-        // On the header chrome the elevated pill uses a translucent white surface
-        // so it reads as a soft chip on the tinted header glass.
-        style={elevated && onHeader ? { backgroundColor: "rgba(255, 255, 255, 0.75)" } : undefined}
+        // On the header chrome the elevated pill uses a translucent, theme-aware
+        // surface (white 75% in light, a faint white lift in dark) so it reads as
+        // a soft chip on the header glass without glaring in dark mode.
+        style={elevated && onHeader ? { backgroundColor: "var(--color-pill-header-surface)" } : undefined}
       >
         {hoverCardEl}
 
