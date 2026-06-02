@@ -41,8 +41,8 @@ export function TicketRefPill({ ticketKey }: TicketRefPillProps) {
         jiraStatus={data?.jiraStatus ?? "TO DO"}
         issueType={data?.type}
         title={data?.title}
-        variant="list"
         size="sm"
+        borderless
         showReadiness={false}
         showStatus={!!data}
         hoverData={hoverData}

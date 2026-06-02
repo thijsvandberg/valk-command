@@ -547,6 +547,9 @@ export interface TicketStatusPillProps {
   showStatus?: boolean;
   /** Show the readiness segment (default: true). Set false for read-only reference pills. */
   showReadiness?: boolean;
+  /** Drop the outer border ring on the default variant, keeping the tinted
+   *  background — a softer chip for inline use (e.g. reference pills in text). */
+  borderless?: boolean;
   /** Details shown in the hover card. When omitted, no hover card is rendered. */
   hoverData?: TicketPillHoverData;
   /** Enable the hover card (default: true). Combined with hoverData being present. */
@@ -583,6 +586,7 @@ export function TicketStatusPill({
   showKey = true,
   showStatus = true,
   showReadiness = true,
+  borderless = false,
   hoverData,
   showHoverCard = true,
   onStoryPointsChange,
@@ -840,7 +844,7 @@ export function TicketStatusPill({
   return (
     <div ref={wrapperRef} {...hoverProps} className="flex shrink-0 items-center gap-1">
       {hoverCardEl}
-      <div className="flex shrink-0 items-stretch overflow-visible rounded-md bg-overlay-default ring-1 ring-inset ring-border-default">
+      <div className={`flex shrink-0 items-stretch overflow-visible rounded-md bg-overlay-default ${borderless ? "" : "ring-1 ring-inset ring-border-default"}`}>
 
         {/* Issue type segment */}
         {issueType && (
