@@ -3,7 +3,7 @@
 **Status:** Draft
 **Priority:** Medium
 **Type:** Bug / Tech
-**Source:** Found during BRDG-251 verification (see `docs/investigations/2026-06-02-pipeline-deployment-classification-gap.md`)
+**Source:** Found during BRDG-251 verification
 
 ## Description
 
@@ -11,15 +11,42 @@ As a Product Owner, I want every deployment pipeline run to be correctly flagged
 
 Today, deployment detection in `src/lib/pipeline-sync.ts` is unreliable. A run is flagged `isDeployment = true` only if, at ingest or state-transition time, a best-effort scan of its pipeline steps finds a `deploy`-named step matching an environment pattern. That scan is **capped at 5 runs per sync cycle** on both code paths, **swallows errors with no retry**, and is **never backfilled**. As a result, real deployments are silently missed.
 
-### Evidence
+### Evidence (from the local `sqlite.db`)
 
-VPL-45794 has two successful `staging/uat-2` runs but **none** flagged as deployments, so it shows no deploy badge. VPL-45152 has an equivalent `staging/uat-2` run that **was** flagged (`UAT2`). Same branch/environment, different outcome — purely because detection ran for one and not the other. Full evidence in the investigation doc.
+VPL-45794 — 7 runs, **none** flagged as a deployment despite two successful `staging/uat-2` runs:
 
-## Root causes (from investigation)
+| build | branch | state | is_deployment | env |
+|-------|--------|-------|---------------|-----|
+| 29663 | master | FAILED | 0 | |
+| 29659 | | SUCCESSFUL | 0 | |
+| 29610 | staging/uat-2 | SUCCESSFUL | **0** | |
+| 29605 | | SUCCESSFUL | 0 | |
+| 29602 | | FAILED | 0 | |
+| 29601 | | FAILED | 0 | |
+| 29596 | staging/uat-2 | SUCCESSFUL | **0** | |
 
-1. Both detection paths process only `.slice(0, 5)` candidates per cycle; the remainder are never re-queued.
-2. The steps-API fetch is wrapped in `catch { /* best-effort */ }` with no retry.
-3. No periodic backfill re-scans completed, non-deployment runs.
+VPL-45152 — an equivalent `staging/uat-2` run **was** flagged:
+
+| build | branch | state | is_deployment | env |
+|-------|--------|-------|---------------|-----|
+| 25432 | staging/uat-2 | SUCCESSFUL | **1** | **UAT2** |
+| (others) | master / uat-3 / … | mixed | 0 | |
+
+Same branch/environment, different outcome — purely because detection ran for one and not the other. So this is a data-classification bug, not a rendering bug, and not a branch/environment difference.
+
+### How `isDeployment` gets set (`src/lib/pipeline-sync.ts`)
+
+- On insert, every run is created with `isDeployment: false, environment: null` (lines ~474-484).
+- Deployment detection runs in two places, both of which fetch `/pipelines/{buildNumber}/steps` and set `isDeployment = true` only when a step matches:
+  `step.name.toLowerCase().includes("deploy") && !step.name.includes("set build") && detectEnvironment(step.name)` (lines ~506 and ~559).
+- `detectEnvironment` matches step names against `ENV_PATTERNS` (`prod`, `uat 1/2/3`, `staging`, `test`) (lines ~12-26).
+- The `last-deployed` API (`src/app/api/pipelines/last-deployed/route.ts`) only returns runs WHERE `isDeployment = true AND ticketKey IS NOT NULL AND completedAt IS NOT NULL`.
+
+## Root causes
+
+1. **Per-cycle cap with no backfill.** Both detection paths process only `.slice(0, 5)` candidates per cycle (`pendingDeployDetection.slice(0, 5)` ~line 498; `candidates.slice(0, 5)` ~line 553); the remainder are never re-queued, so a burst of >5 completed runs silently drops the rest's classification.
+2. **Errors swallowed.** The steps-API fetch is wrapped in `catch { /* best-effort */ }` with no retry — a transient Bitbucket error permanently leaves the run unclassified.
+3. **No periodic backfill** re-scans completed, non-deployment runs to recover misses.
 4. Runs inserted while `IN_PROGRESS` rely solely on the (capped) state-change path.
 
 ## Acceptance Criteria
