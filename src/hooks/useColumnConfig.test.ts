@@ -21,108 +21,76 @@ function swrWrapper({ children }: { children: ReactNode }) {
   );
 }
 
-describe("useColumnConfig", () => {
+describe("useColumnConfig (headerless tags, BRDG-239)", () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    vi.useFakeTimers();
     localStorage.clear();
   });
 
-  it("loads with defaults when API returns null", async () => {
-    vi.useRealTimers();
-    const { result } = renderHook(() => useColumnConfig(), {
-      wrapper: swrWrapper,
-    });
+  it("loads with default tags when API returns null", async () => {
+    const { result } = renderHook(() => useColumnConfig(), { wrapper: swrWrapper });
     await waitFor(() => expect(result.current.loaded).toBe(true));
-    expect(result.current.order.length).toBeGreaterThan(0);
     expect(result.current.visible.size).toBeGreaterThan(0);
+    expect(result.current.visible.has("flag")).toBe(true);
   });
 
-  it("loads saved column config from API", async () => {
-    vi.useRealTimers();
+  it("loads an already-migrated tag visibility set as-is", async () => {
     vi.mocked(settingsApi.getColumnConfig).mockResolvedValue({
-      order: ["key", "title", "type"],
-      visible: ["key", "title"],
-    });
-    const { result } = renderHook(() => useColumnConfig(), {
-      wrapper: swrWrapper,
-    });
-    await waitFor(() => expect(result.current.loaded).toBe(true));
-    expect(result.current.order[0]).toBe("key");
-    expect(result.current.visible.has("key" as never)).toBe(true);
-    expect(result.current.visible.has("title" as never)).toBe(true);
-  });
-
-  it("strips the pipeline column once from a previously persisted visible set (BRDG-251)", async () => {
-    vi.useRealTimers();
-    vi.mocked(settingsApi.getColumnConfig).mockResolvedValue({
-      order: ["key", "title", "pipeline", "assignee"],
-      visible: ["key", "title", "pipeline", "assignee"],
+      order: [],
+      visible: ["flag", "quality"],
     });
     const { result } = renderHook(() => useColumnConfig(), { wrapper: swrWrapper });
     await waitFor(() => expect(result.current.loaded).toBe(true));
-
-    expect(result.current.visible.has("pipeline" as never)).toBe(false);
-    expect(result.current.visible.has("assignee" as never)).toBe(true);
-    // The cleaned set is persisted back so the change sticks.
-    expect(settingsApi.saveColumnConfig).toHaveBeenCalledWith(
-      expect.objectContaining({ visible: expect.not.arrayContaining(["pipeline"]) }),
-    );
-    expect(localStorage.getItem("sprint-board-pipeline-col-migrated")).toBe("true");
-  });
-
-  it("does not re-strip pipeline once the migration has already run", async () => {
-    vi.useRealTimers();
-    localStorage.setItem("sprint-board-pipeline-col-migrated", "true");
-    vi.mocked(settingsApi.getColumnConfig).mockResolvedValue({
-      order: ["key", "title", "pipeline"],
-      visible: ["key", "title", "pipeline"],
-    });
-    const { result } = renderHook(() => useColumnConfig(), { wrapper: swrWrapper });
-    await waitFor(() => expect(result.current.loaded).toBe(true));
-
-    // User re-added pipeline after migration; it must be respected.
-    expect(result.current.visible.has("pipeline" as never)).toBe(true);
+    expect(result.current.visible.has("flag")).toBe(true);
+    expect(result.current.visible.has("quality")).toBe(true);
+    expect(result.current.visible.has("notes")).toBe(false);
+    // No migration write needed for an already-tag set.
     expect(settingsApi.saveColumnConfig).not.toHaveBeenCalled();
   });
 
-  it("toggleColumn adds/removes from visible set", async () => {
-    vi.useRealTimers();
-    const { result } = renderHook(() => useColumnConfig(), {
-      wrapper: swrWrapper,
+  it("migrates a legacy column-visibility set to tags and persists once", async () => {
+    // Legacy set with "notes" hidden -> the notes tag must end up hidden.
+    vi.mocked(settingsApi.getColumnConfig).mockResolvedValue({
+      order: ["key", "title", "flagged", "quality"],
+      visible: ["key", "title", "flagged", "quality"],
     });
+    const { result } = renderHook(() => useColumnConfig(), { wrapper: swrWrapper });
     await waitFor(() => expect(result.current.loaded).toBe(true));
 
-    const firstCol = result.current.order[0];
+    expect(result.current.visible.has("flag")).toBe(true);   // flagged -> flag
+    expect(result.current.visible.has("quality")).toBe(true);
+    expect(result.current.visible.has("notes")).toBe(false);  // notes column absent -> hidden
+    // Tags without a legacy column equivalent default to visible.
+    expect(result.current.visible.has("refinement")).toBe(true);
+    expect(result.current.visible.has("editState")).toBe(true);
 
-    act(() => {
-      result.current.toggleColumn(firstCol, false);
-    });
-    expect(result.current.visible.has(firstCol)).toBe(false);
-
-    act(() => {
-      result.current.toggleColumn(firstCol, true);
-    });
-    expect(result.current.visible.has(firstCol)).toBe(true);
+    expect(settingsApi.saveColumnConfig).toHaveBeenCalledWith(
+      expect.objectContaining({ visible: expect.arrayContaining(["flag", "quality"]) }),
+    );
   });
 
-  it("resetToDefaults restores default config", async () => {
-    vi.useRealTimers();
-    vi.mocked(settingsApi.getColumnConfig).mockResolvedValue({
-      order: ["type", "key"],
-      visible: ["type"],
-    });
-    const { result } = renderHook(() => useColumnConfig(), {
-      wrapper: swrWrapper,
-    });
+  it("toggleColumn adds/removes from the visible set", async () => {
+    const { result } = renderHook(() => useColumnConfig(), { wrapper: swrWrapper });
     await waitFor(() => expect(result.current.loaded).toBe(true));
 
-    const initialOrderLength = result.current.order.length;
+    act(() => { result.current.toggleColumn("flag", false); });
+    expect(result.current.visible.has("flag")).toBe(false);
 
-    act(() => {
-      result.current.resetToDefaults();
+    act(() => { result.current.toggleColumn("flag", true); });
+    expect(result.current.visible.has("flag")).toBe(true);
+  });
+
+  it("resetToDefaults restores the full default tag set", async () => {
+    vi.mocked(settingsApi.getColumnConfig).mockResolvedValue({
+      order: [],
+      visible: ["flag"],
     });
+    const { result } = renderHook(() => useColumnConfig(), { wrapper: swrWrapper });
+    await waitFor(() => expect(result.current.loaded).toBe(true));
+    expect(result.current.visible.size).toBe(1);
 
-    expect(result.current.order.length).toBeGreaterThanOrEqual(initialOrderLength);
+    act(() => { result.current.resetToDefaults(); });
+    expect(result.current.visible.has("notes")).toBe(true);
+    expect(result.current.visible.size).toBeGreaterThan(1);
   });
 });

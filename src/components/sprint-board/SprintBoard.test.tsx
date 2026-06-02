@@ -50,12 +50,8 @@ vi.mock("@/hooks/usePageTitle", () => ({
   usePageTitle: vi.fn(),
 }));
 
-vi.mock("@/hooks/useColumnWidths", () => ({
-  useColumnWidths: () => ({ widths: {}, setWidth: vi.fn(), resetWidth: vi.fn() }),
-}));
-
 vi.mock("@/hooks/useColumnConfig", () => ({
-  useColumnConfig: () => ({ order: [], visible: new Set(["key", "title"]), setColumnOrder: vi.fn(), toggleColumn: vi.fn(), resetTo: vi.fn(), resetToDefaults: vi.fn() }),
+  useColumnConfig: () => ({ visible: new Set(["flag", "quality"]), loaded: true, toggleColumn: vi.fn(), applyVisible: vi.fn(), resetToDefaults: vi.fn() }),
 }));
 
 vi.mock("@/lib/prefetch", () => ({
@@ -159,7 +155,7 @@ vi.mock("@/components/sprint-board/useSprintBoardFilters", () => ({
     sortDir: "asc",
     setSortField: vi.fn(),
     setSortDir: vi.fn(),
-    visibleColumns: new Set(["key", "title"]),
+    visibleTags: new Set(["flag", "quality"]),
     resetFilters: vi.fn(),
     saveView: vi.fn(),
     deleteView: vi.fn(),

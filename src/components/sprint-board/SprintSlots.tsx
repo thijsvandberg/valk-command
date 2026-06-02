@@ -5,8 +5,8 @@ import { useOutsideClick } from "@/hooks/useOutsideClick";
 import type { Sprint } from "@/types/ticket";
 import { ArrowUp, ArrowDown, ListFilter, RefreshCw, Layers, X, Plus, Inbox, ChevronsDownUp, ChevronsUpDown } from "lucide-react";
 import { Button } from "@/components/ui/Button";
-import type { SavedView, SortField, SortDir, ColumnId } from "./FilterBar";
-import { ColumnToggle, SortDropdown, SORT_OPTIONS } from "./FilterBar";
+import type { SavedView, SortField, SortDir, InlineTagId } from "./FilterBar";
+import { BoardFieldToggle, SortDropdown, SORT_OPTIONS } from "./FilterBar";
 import type { GroupByOption } from "./useGroupBy";
 import { SprintSelector } from "./SprintSelector";
 import { BarContainer } from "@/components/shared/BarContainer";
@@ -204,9 +204,7 @@ export function SprintSlots({
   sortDir,
   onSortChange,
   columnVisible,
-  columnOrder,
   onColumnToggle,
-  onColumnReorder,
   onColumnReset,
   groupBy,
   onGroupByChange,
@@ -241,10 +239,8 @@ export function SprintSlots({
   sortField?: SortField;
   sortDir?: SortDir;
   onSortChange?: (field: SortField, dir: SortDir) => void;
-  columnVisible?: Set<ColumnId>;
-  columnOrder?: ColumnId[];
-  onColumnToggle?: (id: ColumnId, show: boolean) => void;
-  onColumnReorder?: (activeId: ColumnId, overId: ColumnId) => void;
+  columnVisible?: Set<InlineTagId>;
+  onColumnToggle?: (id: InlineTagId, show: boolean) => void;
   onColumnReset?: () => void;
   groupBy?: GroupByOption;
   onGroupByChange?: (v: GroupByOption) => void;
@@ -464,13 +460,11 @@ export function SprintSlots({
           />
         )}
 
-        {/* Column toggle */}
-        {columnVisible && columnOrder && onColumnToggle && onColumnReorder && (
-          <ColumnToggle
+        {/* Field show/hide (BRDG-239) */}
+        {columnVisible && onColumnToggle && (
+          <BoardFieldToggle
             visible={columnVisible}
-            order={columnOrder}
             onChange={onColumnToggle}
-            onReorder={onColumnReorder}
             onReset={onColumnReset}
           />
         )}

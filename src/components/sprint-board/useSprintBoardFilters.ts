@@ -2,8 +2,8 @@
 
 import { useState, useCallback, useMemo } from "react";
 import type { Ticket, TicketReadiness } from "@/types/ticket";
-import type { SortField, SortDir, ColumnId, SavedView } from "@/components/sprint-board/FilterBar";
-import { DEFAULT_VISIBLE } from "@/components/sprint-board/FilterBar";
+import type { SortField, SortDir, InlineTagId, SavedView } from "@/components/sprint-board/FilterBar";
+import { DEFAULT_VISIBLE_TAGS, columnsToTags } from "@/components/sprint-board/FilterBar";
 import { useLocalStorage } from "@/hooks/useLocalStorage";
 import { useSearchParams, useRouter } from "next/navigation";
 import { extractTeamPrefix } from "@/lib/sprint-utils";
@@ -32,9 +32,8 @@ export function useSprintBoardFilters(
   readinessMap: Record<string, TicketReadiness | null>,
   isAllView: boolean,
   poPriorityOrder: string[] | null,
-  externalVisible?: Set<ColumnId>,
-  externalOrder?: ColumnId[],
-  onApplyColumnConfig?: (visible: ColumnId[], order: ColumnId[]) => void,
+  externalVisible?: Set<InlineTagId>,
+  onApplyColumnConfig?: (visibleTags: InlineTagId[]) => void,
   sprintNameMap?: Record<string, string>,
 ) {
   const searchParams = useSearchParams();
@@ -42,7 +41,7 @@ export function useSprintBoardFilters(
 
   const [storedFilters, setStoredFilters] = useLocalStorage<StoredFilters>("sprint-board-filters", defaultFilters);
   const [storedSort, setStoredSort] = useLocalStorage<StoredSort>("sprint-board-sort", { field: "rank", direction: "asc" });
-  const [storedColumns, setStoredColumns] = useLocalStorage<ColumnId[]>("sprint-board-columns", [...DEFAULT_VISIBLE]);
+  const [storedColumns, setStoredColumns] = useLocalStorage<InlineTagId[]>("sprint-board-row-fields", [...DEFAULT_VISIBLE_TAGS]);
   const [savedViews, setSavedViews] = useLocalStorage<SavedView[]>("sprint-board-saved-views", []);
   const [searchQuery, setSearchQuery] = useState("");
 
@@ -96,8 +95,8 @@ export function useSprintBoardFilters(
     setStoredSort((prev) => ({ ...prev, direction: d }));
   }, [setStoredSort]);
 
-  const visibleColumns = useMemo(() => externalVisible ?? new Set(storedColumns), [externalVisible, storedColumns]);
-  const setVisibleColumns = useCallback((updater: (prev: Set<ColumnId>) => Set<ColumnId>) => {
+  const visibleTags = useMemo(() => externalVisible ?? new Set(storedColumns), [externalVisible, storedColumns]);
+  const setVisibleTags = useCallback((updater: (prev: Set<InlineTagId>) => Set<InlineTagId>) => {
     setStoredColumns((prev) => [...updater(new Set(prev))]);
   }, [setStoredColumns]);
 
@@ -249,14 +248,14 @@ export function useSprintBoardFilters(
 
   const hasActiveFilters = statusFilter.size > 0 || epicFilter.size > 0 || assigneeFilter.size > 0 || readinessFilter.size > 0 || editStateFilter.size > 0 || issueTypeFilter.size > 0 || sprintFilter.size > 0 || teamFilter.size > 0 || gapsFilter.size > 0;
 
-  const handleColumnToggle = useCallback((id: ColumnId, show: boolean) => {
-    setVisibleColumns((prev) => {
+  const handleColumnToggle = useCallback((id: InlineTagId, show: boolean) => {
+    setVisibleTags((prev) => {
       const next = new Set(prev);
       if (show) next.add(id);
       else next.delete(id);
       return next;
     });
-  }, [setVisibleColumns]);
+  }, [setVisibleTags]);
 
   const currentFiltersSnapshot = useCallback(() => ({
     status: [...statusFilter],
@@ -275,8 +274,8 @@ export function useSprintBoardFilters(
   }, [setStoredFilters]);
 
   const handleSaveView = useCallback((title: string) => {
-    const columnConfig = externalVisible && externalOrder
-      ? { visible: [...externalVisible], order: [...externalOrder] }
+    const columnConfig = externalVisible
+      ? { visibleTags: [...externalVisible] }
       : undefined;
     if (activeViewId) {
       setSavedViews((prev) => prev.map((v) =>
@@ -291,7 +290,7 @@ export function useSprintBoardFilters(
       params.set("view", id);
       router.replace(`?${params.toString()}`, { scroll: false });
     }
-  }, [activeViewId, currentFiltersSnapshot, sortField, sortDir, externalVisible, externalOrder, setSavedViews, searchParams, router]);
+  }, [activeViewId, currentFiltersSnapshot, sortField, sortDir, externalVisible, setSavedViews, searchParams, router]);
 
   const handleViewClick = useCallback((view: SavedView) => {
     setStoredFilters({
@@ -308,7 +307,9 @@ export function useSprintBoardFilters(
     });
     setStoredSort({ field: view.sort.field, direction: view.sort.direction });
     if (view.columnConfig && onApplyColumnConfig) {
-      onApplyColumnConfig(view.columnConfig.visible, view.columnConfig.order);
+      const tags = view.columnConfig.visibleTags
+        ?? (view.columnConfig.visible ? columnsToTags(view.columnConfig.visible) : undefined);
+      if (tags) onApplyColumnConfig(tags);
     }
     const params = new URLSearchParams(searchParams.toString());
     params.set("view", view.id);
@@ -359,8 +360,8 @@ export function useSprintBoardFilters(
     sortDir,
     setSortField,
     setSortDir,
-    visibleColumns,
-    setVisibleColumns,
+    visibleTags,
+    setVisibleTags,
     handleColumnToggle,
     statusOptions,
     epicOptions,
