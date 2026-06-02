@@ -197,8 +197,23 @@ Queries live Jira data via `jiraClient.searchIssues()`.
 | `JIRA_EMAIL` | Yes | Email for Basic auth |
 | `JIRA_API_TOKEN` | Yes | API token for Basic auth |
 | `JIRA_PROJECT_KEY` | No | Defaults to "VPL" |
+| `NEXT_PUBLIC_JIRA_PROJECT_KEY` | No | Client-side copy of the project key (defaults to "VPL"). Used to linkify ticket references in descriptions (see below). |
 | `JIRA_BOARD_ID` | No | Defaults to 233 |
 | `JIRA_BASE_URL` | No | Fallback if JIRA_CLOUD_ID is not set |
+
+### Ticket reference linkification in descriptions
+
+Ticket descriptions are converted from Jira ADF to a markdown string at sync time
+(`src/lib/adf-to-markdown.ts`) and rendered by `renderMarkdown()`
+(`src/components/ticket-detail/renderMarkdown.tsx`). When rendered on the ticket
+detail page (`EditableDescription`, via `renderMarkdown(value, { linkifyRefs: true })`),
+a bare project-key reference in **plain text** (e.g. `VPL-43237`) becomes an
+interactive `TicketRefPill` linking to `/tickets/<KEY>`, with a hover card whose
+data is fetched lazily (`GET /api/tickets/[key]`) on first hover. The prefix comes
+from `NEXT_PUBLIC_JIRA_PROJECT_KEY`. References inside links, inline code, fenced
+code blocks, or emphasis (bold/italic/color) are left untouched; references in
+plain text inside an expandable block are still converted. Linkification is opt-in
+per render, so chat and comments (which share `renderMarkdown`) are unaffected.
 
 ## Data Flow Diagram
 
