@@ -14,6 +14,7 @@ vi.mock("lucide-react", () => {
     Check: stub("check"),
     X: stub("x"),
     Gem: stub("gem"),
+    IterationCw: stub("iteration"),
   };
 });
 
@@ -142,6 +143,23 @@ describe("BoardRow (headerless, BRDG-239)", () => {
     renderRow({ tags: new Set<InlineTagId>(["flag"]) });
     const pills = screen.getAllByTestId("pill");
     expect(pills[pills.length - 1].getAttribute("data-show-readiness")).toBe("false");
+  });
+
+  it("shows the sprint name only when showSprint is set", () => {
+    renderRow({
+      ticket: makeTicket({ sprintId: "42" } as Partial<Ticket>),
+      sprintNameMap: { "42": "BT: 138" },
+      showSprint: true,
+    });
+    expect(screen.getByText("BT: 138")).toBeInTheDocument();
+
+    renderRow({
+      ticket: makeTicket({ sprintId: "42" } as Partial<Ticket>),
+      sprintNameMap: { "42": "BT: 138" },
+      showSprint: false,
+    });
+    // Still only the one occurrence from the first render.
+    expect(screen.getAllByText("BT: 138")).toHaveLength(1);
   });
 
   it("does not render a follow star, pipeline or deploy badge inline", () => {

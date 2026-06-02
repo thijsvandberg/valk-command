@@ -8,7 +8,8 @@ import type { EpicOption } from "@/components/shared/EpicPicker";
 import { useEpicColor } from "@/hooks/useEpicColor";
 import type { InlineTagId } from "@/components/sprint-board/filter-bar-types";
 import { Avatar } from "@/components/shared/Avatar";
-import { Flag, MessageSquare, Pencil, Check, X, Gem } from "lucide-react";
+import { Flag, MessageSquare, Pencil, Check, X, Gem, IterationCw } from "lucide-react";
+import { OpenSubtasksIndicator } from "@/components/sprint-board/OpenSubtasksIndicator";
 import type { TicketSessionEntry } from "@/hooks/useTicketSessionMap";
 import type { PipelineHealthEntry, LastDeployedInfo } from "@/hooks/usePipelines";
 import { useSortable } from "@dnd-kit/sortable";
@@ -37,6 +38,8 @@ export interface BoardRowBaseProps {
   tags?: Set<InlineTagId>;
   /** Suppress the epic chip (e.g. when the board is grouped by epic). */
   hideEpic?: boolean;
+  /** Show the sprint name inline (when multiple sprints are visible: All view / saved view). */
+  showSprint?: boolean;
   sprintNameMap?: Record<string, string>;
   poStatuses?: Record<string, POStatus>;
   readinessMap?: Record<string, TicketReadiness | null>;
@@ -86,6 +89,7 @@ export const BoardRow = memo(forwardRef<HTMLTableRowElement, BoardRowBaseProps>(
     isDragActive,
     tags = ALL_TAGS,
     hideEpic = false,
+    showSprint = false,
     sprintNameMap = {},
     readinessMap = {},
     followedKeys,
@@ -107,7 +111,7 @@ export const BoardRow = memo(forwardRef<HTMLTableRowElement, BoardRowBaseProps>(
     onEpicChange,
     onSprintChange,
     sprints,
-    onCloseSubtasks: _onCloseSubtasks,
+    onCloseSubtasks,
     editingTitleKey = null,
     onEditingTitleKeyChange,
     reviewPopoverKey = null,
@@ -348,6 +352,14 @@ export const BoardRow = memo(forwardRef<HTMLTableRowElement, BoardRowBaseProps>(
             <>
               {/* Title — the only element that yields space (BRDG-239). */}
               <div className="flex min-w-0 flex-1 items-center gap-1.5 text-text-primary">
+                {/* Warning: open subtasks on an otherwise-done ticket. Self-hides in every other case. */}
+                <OpenSubtasksIndicator
+                  ticketKey={ticket.key}
+                  jiraStatus={ticket.jiraStatus}
+                  openCount={ticket.openSubtaskCount ?? 0}
+                  totalCount={ticket.totalSubtaskCount ?? 0}
+                  onCloseSubtasks={onCloseSubtasks}
+                />
                 <span className="min-w-0 truncate text-body-lg">{ticket.title}</span>
                 {onTitleChange && !isRemoved && (
                   <button
@@ -377,6 +389,18 @@ export const BoardRow = memo(forwardRef<HTMLTableRowElement, BoardRowBaseProps>(
                   style={{ backgroundColor: epicColor.bg, color: epicColor.text, borderLeftColor: epicColor.text }}
                 >
                   {ticket.epic}
+                </span>
+              )}
+
+              {/* Sprint name — only when several sprints are visible at once (All view / saved view). */}
+              {showSprint && ticket.sprintId && (
+                <span
+                  className="inline-flex min-w-0 shrink items-center gap-1 truncate whitespace-nowrap rounded px-1.5 py-0.5 text-[10.5px] text-text-tertiary"
+                  style={{ backgroundColor: "var(--color-overlay-subtle)" }}
+                  title={sprintNameMap[ticket.sprintId] ?? ticket.sprintId}
+                >
+                  <IterationCw size={9} strokeWidth={1.75} className="shrink-0 opacity-70" />
+                  {sprintNameMap[ticket.sprintId] ?? ticket.sprintId}
                 </span>
               )}
 

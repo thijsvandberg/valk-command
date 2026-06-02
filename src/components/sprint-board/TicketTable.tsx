@@ -79,6 +79,7 @@ export function TicketTable({
   allChecked: _allChecked,
   visibleTags,
   hideEpic = false,
+  showSprint = false,
   sprintNameMap,
   poStatuses,
   readinessMap,
@@ -126,6 +127,8 @@ export function TicketTable({
   visibleTags: Set<InlineTagId>;
   /** Suppress the epic chip on every row (e.g. when grouped by epic). */
   hideEpic?: boolean;
+  /** Show the sprint name on each row (when multiple sprints are visible). */
+  showSprint?: boolean;
   sprintNameMap?: Record<string, string>;
   poStatuses: Record<string, POStatus>;
   readinessMap?: Record<string, TicketReadiness | null>;
@@ -271,6 +274,7 @@ export function TicketTable({
     isDragActive: activeDragId !== null,
     tags: visibleTags,
     hideEpic,
+    showSprint,
     sprintNameMap: sprintNameMap ?? EMPTY_STRING_MAP,
     poStatuses,
     readinessMap: readinessMap ?? EMPTY_READINESS_MAP,
@@ -300,7 +304,7 @@ export function TicketTable({
     reviewPopoverKey,
     onToggleReviewPopover: handleToggleReviewPopover,
     refinementSessions: refinementSessionMap?.get(ticket.key),
-  }), [checkedTickets, selectedTicket, focusedTicketIdx, someChecked, activeDragId, visibleTags, hideEpic, sprintNameMap, poStatuses, readinessMap, inflightKeys, contextMenuKeys, onSelectTicket, onRowContextMenu, handleCheckboxClick, onPoStatusChange, onReadinessChange, onBusinessValueChange, onStoryPointsChange, onJiraStatusChange, onIssueTypeChange, onTitleChange, onAssigneeChange, onEpicChange, onSprintChange, sprints, onCloseSubtasks, editingTitleKey, reviewPopoverKey, handleToggleReviewPopover, followedKeys, followTicket, unfollowTicket, lastDeployedMap, healthMap, refinementSessionMap]);
+  }), [checkedTickets, selectedTicket, focusedTicketIdx, someChecked, activeDragId, visibleTags, hideEpic, showSprint, sprintNameMap, poStatuses, readinessMap, inflightKeys, contextMenuKeys, onSelectTicket, onRowContextMenu, handleCheckboxClick, onPoStatusChange, onReadinessChange, onBusinessValueChange, onStoryPointsChange, onJiraStatusChange, onIssueTypeChange, onTitleChange, onAssigneeChange, onEpicChange, onSprintChange, sprints, onCloseSubtasks, editingTitleKey, reviewPopoverKey, handleToggleReviewPopover, followedKeys, followTicket, unfollowTicket, lastDeployedMap, healthMap, refinementSessionMap]);
 
   const virtualizedTable = (
     <table className="w-full table-fixed border-collapse text-body-lg">
