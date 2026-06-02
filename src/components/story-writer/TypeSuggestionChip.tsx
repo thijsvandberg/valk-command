@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { ArrowRight, ChevronDown } from "lucide-react";
 import { IssueTypeIcon } from "@/components/shared/IssueTypeIcon";
+import { AppliedBadge } from "@/components/story-writer/SuggestionCard";
 
 interface TypeSuggestionChipProps {
   type: string;
@@ -40,10 +41,11 @@ export function TypeSuggestionChip({ type, onApply, currentType }: TypeSuggestio
         <span className="text-caption font-medium uppercase tracking-[0.06em] text-text-tertiary">
           Type change
         </span>
+        {applied && <span className="ml-auto"><AppliedBadge /></span>}
         <ChevronDown
           size={12}
           strokeWidth={1.5}
-          className={`ml-auto shrink-0 text-text-muted transition-transform duration-150 ${collapsed ? "-rotate-90" : ""}`}
+          className={`shrink-0 text-text-muted transition-transform duration-150 ${applied ? "ml-1.5" : "ml-auto"} ${collapsed ? "-rotate-90" : ""}`}
         />
       </button>
       {!collapsed && <div

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useMemo, useRef } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { ScrollText } from "lucide-react";
 import type { IssueType } from "@/types/ticket";
 import { StoryWriterChat } from "@/components/story-writer/StoryWriterChat";
@@ -64,23 +64,6 @@ export function ChatApp() {
   const handleStoryKeyClick = (key: string) => {
     pane.openRelated(key);
   };
-
-  // Auto-trigger title suggestions for untitled drafts
-  const titleSuggestSent = useRef(false);
-  useEffect(() => {
-    if (
-      writer.needsTitle &&
-      writer.status === "ready" &&
-      writer.messages.length === 0 &&
-      writer.session &&
-      !titleSuggestSent.current
-    ) {
-      titleSuggestSent.current = true;
-      writer.onSend(
-        "This is a new draft with no title yet. Please suggest 3 concise, descriptive title options using a <title-suggestions> tag. Do not write a story draft yet."
-      );
-    }
-  }, [writer.needsTitle, writer.status, writer.messages.length, writer.session, writer.onSend]);
 
   // Register toolbar slot — re-register when showLogs or counts change
   useEffect(() => {

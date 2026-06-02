@@ -153,7 +153,7 @@ describe("ChatApp", () => {
     expect(screen.getByTestId("story-writer-chat")).toBeInTheDocument();
   });
 
-  it("auto-triggers title suggestion when needsTitle is true with no messages", () => {
+  it("does not auto-send a title-suggestion message for an untitled draft with no messages", () => {
     const onSend = vi.fn().mockResolvedValue(true);
     (useWriterContext as ReturnType<typeof vi.fn>).mockReturnValue(
       makeWriterCtx({
@@ -168,23 +168,7 @@ describe("ChatApp", () => {
 
     render(<ChatApp />);
 
-    expect(onSend).toHaveBeenCalledWith(
-      expect.stringContaining("title-suggestions"),
-    );
-  });
-
-  it("does not auto-trigger title suggestion when messages already exist", () => {
-    const onSend = vi.fn().mockResolvedValue(true);
-    const messages = [
-      { id: "m1", role: "user" as const, content: "existing", status: "sent" as const, createdAt: new Date().toISOString() },
-    ];
-    (useWriterContext as ReturnType<typeof vi.fn>).mockReturnValue(
-      makeWriterCtx({ needsTitle: true, status: "ready", messages, onSend })
-    );
-    (usePaneContext as ReturnType<typeof vi.fn>).mockReturnValue(makePaneCtx());
-
-    render(<ChatApp />);
-
+    // Title suggestions are driven by the user's first prompt, not auto-sent on open.
     expect(onSend).not.toHaveBeenCalled();
   });
 });
