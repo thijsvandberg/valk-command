@@ -216,9 +216,10 @@ export const BoardRow = memo(forwardRef<HTMLTableRowElement, BoardRowBaseProps>(
       {...dragAttributes}
     >
       <td className="p-0">
-        {/* Horizontal gutters match the toolbar/filter bar (BarContainer px-4) so rows
-            don't hug the window edges on wide screens (BRDG-239). */}
-        <div className="flex items-center gap-2 py-2 pl-4 pr-4">
+        {/* Horizontal gutters: pl-4 + the issue-icon's internal padding reads as ~24px on the
+            left, so the right uses pr-6 (24px) to make the assignee sit the same distance from
+            the edge as the issue icon does on the left (BRDG-239). */}
+        <div className="flex items-center gap-2 py-2 pl-4 pr-[23px]">
           {/* Bulk mode: dedicated checkbox gutter on every row. */}
           {someChecked && (
             <div
