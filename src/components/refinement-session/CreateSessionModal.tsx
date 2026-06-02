@@ -4,8 +4,8 @@ import { useState, useRef, useEffect } from "react";
 import { Modal } from "@/components/shared/Modal";
 import { Button } from "@/components/ui/Button";
 
-function defaultSessionName(): string {
-  return `Refinement ${new Date().toISOString().slice(0, 10)}`;
+function todayDate(): string {
+  return new Date().toISOString().slice(0, 10);
 }
 
 interface CreateSessionModalProps {
@@ -31,7 +31,8 @@ function CreateSessionForm({
   onClose: () => void;
   onCreate: (name: string) => void;
 }) {
-  const [name, setName] = useState(defaultSessionName);
+  const [prefill] = useState(todayDate);
+  const [name, setName] = useState(prefill);
   const inputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
@@ -42,9 +43,10 @@ function CreateSessionForm({
   }, []);
 
   function handleSubmit() {
-    const trimmed = name.trim();
-    if (!trimmed) return;
-    onCreate(trimmed);
+    // An empty field falls back to today's date so "just click Create" still
+    // yields a sensible name.
+    const finalName = name.trim() || prefill;
+    onCreate(finalName);
     onClose();
   }
 
@@ -68,7 +70,7 @@ function CreateSessionForm({
             handleSubmit();
           }
         }}
-        placeholder="Session name"
+        placeholder={prefill}
         className="mt-4 w-full rounded-lg border border-border-default bg-overlay-subtle px-3 py-2 text-body-lg text-text-primary placeholder:text-text-muted outline-none focus:border-[var(--color-brand-500)] focus:ring-1 focus:ring-[var(--color-brand-500)]/30"
         style={{ transition: "border-color 0.15s ease, box-shadow 0.15s ease" }}
         data-testid="create-session-name-input"
@@ -82,7 +84,6 @@ function CreateSessionForm({
           variant="primary"
           size="md"
           onClick={handleSubmit}
-          disabled={!name.trim()}
         >
           Create
         </Button>

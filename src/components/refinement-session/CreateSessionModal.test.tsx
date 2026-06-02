@@ -10,13 +10,24 @@ describe("CreateSessionModal", () => {
     expect(screen.queryByText("New refinement session")).not.toBeInTheDocument();
   });
 
-  it("renders with pre-filled name when open", () => {
+  it("opens with today's date prefilled, without a Refinement prefix", () => {
     render(
       <CreateSessionModal open={true} onClose={vi.fn()} onCreate={vi.fn()} />,
     );
     expect(screen.getByText("New refinement session")).toBeInTheDocument();
     const input = screen.getByTestId("create-session-name-input") as HTMLInputElement;
-    expect(input.value).toMatch(/^Refinement \d{4}-\d{2}-\d{2}$/);
+    expect(input.value).toMatch(/^\d{4}-\d{2}-\d{2}$/);
+  });
+
+  it("falls back to today's date when submitted empty", () => {
+    const onCreate = vi.fn();
+    render(
+      <CreateSessionModal open={true} onClose={vi.fn()} onCreate={onCreate} />,
+    );
+    const input = screen.getByTestId("create-session-name-input");
+    fireEvent.change(input, { target: { value: "   " } });
+    fireEvent.click(screen.getByText("Create"));
+    expect(onCreate).toHaveBeenCalledWith(expect.stringMatching(/^\d{4}-\d{2}-\d{2}$/));
   });
 
   it("calls onCreate with trimmed name on submit", () => {
@@ -47,7 +58,7 @@ describe("CreateSessionModal", () => {
     expect(onCreate).toHaveBeenCalledWith("Sprint 44");
   });
 
-  it("disables Create button when input is empty", () => {
+  it("keeps Create enabled when input is empty so the suggestion can be accepted", () => {
     render(
       <CreateSessionModal open={true} onClose={vi.fn()} onCreate={vi.fn()} />,
     );
@@ -55,7 +66,7 @@ describe("CreateSessionModal", () => {
     const input = screen.getByTestId("create-session-name-input");
     fireEvent.change(input, { target: { value: "   " } });
 
-    expect(screen.getByText("Create")).toBeDisabled();
+    expect(screen.getByText("Create")).toBeEnabled();
   });
 
   it("calls onClose when Cancel is clicked", () => {

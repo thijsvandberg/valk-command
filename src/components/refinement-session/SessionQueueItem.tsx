@@ -60,9 +60,16 @@ export function SessionQueueItem({
       >
         <GripVertical size={12} strokeWidth={1.5} />
       </span>
-      <button
-        type="button"
+      <div
+        role="button"
+        tabIndex={0}
         onClick={onClick}
+        onKeyDown={(e) => {
+          if (e.key === "Enter" || e.key === " ") {
+            e.preventDefault();
+            onClick();
+          }
+        }}
         className="flex min-w-0 flex-1 cursor-pointer items-center gap-2.5 text-left"
       >
         {jiraStatus ? (
@@ -87,7 +94,7 @@ export function SessionQueueItem({
         ) : isCurrent ? (
           <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-[var(--color-brand-500)]" />
         ) : null}
-      </button>
+      </div>
     </div>
   );
 }
