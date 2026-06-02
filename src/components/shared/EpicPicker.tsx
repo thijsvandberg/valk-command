@@ -224,28 +224,15 @@ function EpicPickerInner({
 
   return (
     <>
-      <span className="inline-flex items-center gap-0.5">
-        <BasePicker.Trigger
-          title={value ? `Epic: ${value.name}` : "Select epic"}
-          className={`inline-flex items-center gap-1.5 rounded-md bg-overlay-default px-2 py-0.5 ${textClass} font-medium cursor-pointer hover:bg-overlay-strong transition-colors duration-150 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)] active:scale-[0.98]`}
-        >
-          <Zap size={12} strokeWidth={1.5} className={`shrink-0 ${value ? "text-[var(--color-icon-epic)]" : "text-text-muted"}`} />
-          <span className={`truncate max-w-[140px] ${value ? "text-[var(--color-icon-epic)] font-medium" : "text-text-muted"}`}>
-            {value ? value.name : "Select epic"}
-          </span>
-        </BasePicker.Trigger>
-        {value && (
-          <Link
-            href={`/tickets/${value.key}`}
-            aria-label={`Open epic ${value.name}`}
-            title={`Open epic ${value.key}`}
-            className="inline-flex shrink-0 items-center justify-center rounded-md p-1 text-text-muted cursor-pointer hover:text-[var(--color-icon-epic)] hover:bg-overlay-default focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)] active:scale-[0.96]"
-            style={{ transition: "color 0.15s ease, background-color 0.15s ease, transform 0.15s ease" }}
-          >
-            <ArrowUpRight size={12} strokeWidth={1.5} className="shrink-0" />
-          </Link>
-        )}
-      </span>
+      <BasePicker.Trigger
+        title={value ? `Epic: ${value.name}` : "Select epic"}
+        className={`inline-flex items-center gap-1.5 rounded-md bg-overlay-default px-2 py-0.5 ${textClass} font-medium cursor-pointer hover:bg-overlay-strong transition-colors duration-150 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)] active:scale-[0.98]`}
+      >
+        <Zap size={12} strokeWidth={1.5} className={`shrink-0 ${value ? "text-[var(--color-icon-epic)]" : "text-text-muted"}`} />
+        <span className={`truncate max-w-[140px] ${value ? "text-[var(--color-icon-epic)] font-medium" : "text-text-muted"}`}>
+          {value ? value.name : "Select epic"}
+        </span>
+      </BasePicker.Trigger>
 
       <BasePicker.Popover width="w-[280px]" footer={staleFooter}>
         {/* Custom search row with action buttons */}
@@ -292,6 +279,23 @@ function EpicPickerInner({
         {suggestionsSection}
 
         <BasePicker.List maxHeight="max-h-[280px]">
+          {/* Open the currently selected epic */}
+          {!query.trim() && value && (
+            <Link
+              href={`/tickets/${value.key}`}
+              onClick={handleClose}
+              title={`Open epic ${value.key}`}
+              aria-label={`Open epic ${value.name}`}
+              className="flex w-full items-center gap-2.5 px-3 py-[7px] text-body-sm cursor-pointer hover:bg-hover-list-item active:bg-overlay-default focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-[var(--color-brand-400)]"
+            >
+              <span className="flex w-4 items-center justify-center shrink-0 text-[var(--color-icon-epic)]">
+                <ArrowUpRight size={11} strokeWidth={1.5} />
+              </span>
+              <span className="flex-1 text-left truncate text-text-secondary">Open epic {value.name}</span>
+              <span className="shrink-0 text-caption text-text-muted">{value.key}</span>
+            </Link>
+          )}
+
           {/* Remove epic option */}
           {!query.trim() && value && (
             <BasePicker.Item selected={false} onSelect={() => { onChange(null); handleClose(); }}>

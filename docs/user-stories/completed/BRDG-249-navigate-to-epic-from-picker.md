@@ -24,15 +24,15 @@ The pill is a single element that today opens the picker on click. We need to ad
 
 Alternative (lighter, no new icon): make the **picker rows** navigable. Each epic row already shows its `VPL-…` key on the right; that key could become a link to `/tickets/[key]` (Cmd/Ctrl-click to open in a new tab), leaving the row body to select the epic. This adds navigation in the dropdown but not on the pill itself.
 
-**Decision (PO):** do **both** — the arrow control on the pill *and* the `VPL-…` key in the picker rows navigate to the epic.
+**Decision (PO, revised):** keep the pill itself unchanged (click = open picker — no separate button beside it). Put navigation **only in the dropdown**: an "Open epic <name>" entry at the top of the list, plus the `VPL-…` key in each row as a link. (An earlier iteration added an arrow icon next to the pill; the PO rejected the separate button.)
 
-## Implementation Plan
+## Implementation Plan (as shipped)
 
 1. **`BasePicker.Item` — add opt-in `asDiv` prop.** `Item` is a shared `<button>` used by Assignee/Label/Sprint/Epic pickers. A nested `<a>` (the row key link) is invalid inside a `<button>`. Add an opt-in `asDiv` prop that renders the item as `<div role="button" tabIndex={0}>` with `onClick` + Enter/Space `onKeyDown`, preserving identical styling. Default (false) leaves every other picker unchanged. (`src/components/shared/BasePicker.tsx`)
-2. **Pill affordance.** In `EpicPicker.tsx`, import `next/link` and add `ArrowUpRight` to the lucide import. Wrap `BasePicker.Trigger` and a new sibling `<Link href={/tickets/${value.key}}>` (arrow icon) in an `inline-flex` container. The link renders only when `value` is set, with full hover/focus-visible/active states + `aria-label`/`title`. Native `<a>` gives in-place nav and Cmd/Ctrl-click new-tab for free.
+2. **"Open epic" dropdown entry.** In `EpicPicker.tsx`, import `next/link` and `ArrowUpRight`. At the top of `BasePicker.List` (before "Remove epic"), when an epic is selected and there's no active query, render a `<Link href={/tickets/${value.key}}>` styled like a picker item, with `ArrowUpRight` icon, "Open epic <name>" label, and the key. `onClick={handleClose}` closes the popover; native `<a>` gives in-place nav + Cmd/Ctrl-click new-tab. The pill (`BasePicker.Trigger`) is left exactly as before.
 3. **Picker-row key link.** Make each epic row use `asDiv`, and turn the `{epic.key}` span into a `<Link href={/tickets/${epic.key}}>` with `onClick={e => e.stopPropagation()}` so clicking the key navigates instead of selecting the epic. Same hover/focus/active states.
-4. **Verify unchanged behaviour** — pill body still opens picker (sibling link, not nested); select/remove/suggest/sync untouched; `stopPropagation` isolates the key link from row select.
-5. **Tests** (`EpicPicker.test.tsx`) — add `next/link` mock + `ArrowUpRight` to lucide mock; assert pill link href when epic set, hidden when null, row key links resolve to `/tickets/<key>`, clicking key link does not call `onChange`, picker still opens.
+4. **Verify unchanged behaviour** — pill body still opens picker; select/remove/suggest/sync untouched; `stopPropagation` isolates the key link from row select.
+5. **Tests** (`EpicPicker.test.tsx`) — add `next/link` mock + `ArrowUpRight` to lucide mock; assert the "Open epic" link appears in the open dropdown with the right href (and not when no epic / on the closed pill), row key links resolve to `/tickets/<key>`, clicking a key link does not call `onChange`, picker still opens.
 
 ## Requirements
 
@@ -47,7 +47,7 @@ Alternative (lighter, no new icon): make the **picker rows** navigable. Each epi
 
 ## Decisions (PO)
 
-- **Both** surfaces get the click-through: an arrow / external-link icon on the pill, and the `VPL-…` key in each picker row becomes a link.
+- Navigation lives **only in the dropdown**: an "Open epic <name>" entry at the top, plus each row's `VPL-…` key as a link. No separate control next to the pill; the pill click still opens the picker.
 - Navigation is **in-place** by default, with Cmd/Ctrl-click to open the epic in a new tab (matches the parent-ticket card).
 
 ## Out of scope
