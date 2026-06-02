@@ -124,6 +124,11 @@ describe("BoardRow (headerless, BRDG-239)", () => {
     expect(screen.getByTestId("icon-gem")).toBeInTheDocument();
   });
 
+  it("hides the quality badge when the ticket has no score (BRDG-239)", () => {
+    renderRow({ ticket: makeTicket({ qualityScore: null }), tags: ALL_TAGS });
+    expect(screen.queryByTestId("quality")).toBeNull();
+  });
+
   it("hides quality/notes/edit-state/refinement when their tags are off", () => {
     renderRow({
       ticket: makeTicket({ qualityScore: 80, notes: "check", editState: "draft" }),

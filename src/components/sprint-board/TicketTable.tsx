@@ -104,6 +104,7 @@ export function TicketTable({
   onCloseSubtasks,
   onTableKeyDown,
   onReorder,
+  onRunReview,
   sortField,
   sortDir,
   externalDnd,
@@ -154,6 +155,8 @@ export function TicketTable({
   onCloseSubtasks?: (key: string) => Promise<void>;
   onTableKeyDown: (e: React.KeyboardEvent) => void;
   onReorder?: (activeKey: string, overKey: string) => void;
+  /** Request a quality review for a ticket (surfaced in the hover card when unscored). */
+  onRunReview?: (key: string) => void | Promise<void>;
   // Sort is driven entirely by the FilterBar dropdown (BRDG-239); the table keeps
   // sortField/sortDir only to reset the virtualizer scroll position on change.
   sortField?: SortField;
@@ -303,8 +306,9 @@ export function TicketTable({
     onEditingTitleKeyChange: setEditingTitleKey,
     reviewPopoverKey,
     onToggleReviewPopover: handleToggleReviewPopover,
+    onRunReview,
     refinementSessions: refinementSessionMap?.get(ticket.key),
-  }), [checkedTickets, selectedTicket, focusedTicketIdx, someChecked, activeDragId, visibleTags, hideEpic, showSprint, sprintNameMap, poStatuses, readinessMap, inflightKeys, contextMenuKeys, onSelectTicket, onRowContextMenu, handleCheckboxClick, onPoStatusChange, onReadinessChange, onBusinessValueChange, onStoryPointsChange, onJiraStatusChange, onIssueTypeChange, onTitleChange, onAssigneeChange, onEpicChange, onSprintChange, sprints, onCloseSubtasks, editingTitleKey, reviewPopoverKey, handleToggleReviewPopover, followedKeys, followTicket, unfollowTicket, lastDeployedMap, healthMap, refinementSessionMap]);
+  }), [checkedTickets, selectedTicket, focusedTicketIdx, someChecked, activeDragId, visibleTags, hideEpic, showSprint, sprintNameMap, poStatuses, readinessMap, inflightKeys, contextMenuKeys, onSelectTicket, onRowContextMenu, handleCheckboxClick, onPoStatusChange, onReadinessChange, onBusinessValueChange, onStoryPointsChange, onJiraStatusChange, onIssueTypeChange, onTitleChange, onAssigneeChange, onEpicChange, onSprintChange, sprints, onCloseSubtasks, editingTitleKey, reviewPopoverKey, handleToggleReviewPopover, onRunReview, followedKeys, followTicket, unfollowTicket, lastDeployedMap, healthMap, refinementSessionMap]);
 
   const virtualizedTable = (
     <table className="w-full table-fixed border-collapse text-body-lg">

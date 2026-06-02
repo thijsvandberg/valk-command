@@ -91,7 +91,6 @@ export default function SprintBoard() {
   const [flagReason, setFlagReason] = useState("");
   const headerMenuRef = useRef<HTMLDivElement>(null);
   const contentScrollRef = useRef<HTMLDivElement>(null);
-  const mainScrollRef = useRef<HTMLElement>(null);
   const exportTask = useExportTask();
   const { toast, toastLoading, showToast, dismissToast } = useToast();
   const slotsInitialized = useRef(false);
@@ -164,10 +163,6 @@ export default function SprintBoard() {
     if (nextSlot) prefetchTicketList(nextSlot);
   }, [activeSlot, slotSprints, isAllView]);
 
-  useEffect(() => {
-    const main = document.getElementById("main-content");
-    if (main) (mainScrollRef as React.MutableRefObject<HTMLElement | null>).current = main;
-  }, []);
   const selected = tickets.find((t) => t.key === selectedTicket);
   const allChecked = checkedTickets.size === tickets.length && tickets.length > 0;
   const someChecked = checkedTickets.size > 0;
@@ -299,14 +294,14 @@ export default function SprintBoard() {
           <FilterBar statusFilter={f.statusFilter} epicFilter={f.epicFilter} assigneeFilter={f.assigneeFilter} readinessFilter={f.readinessFilter} editStateFilter={f.editStateFilter} issueTypeFilter={f.issueTypeFilter} onStatusFilterChange={f.setStatusFilter} onEpicFilterChange={f.setEpicFilter} onAssigneeFilterChange={f.setAssigneeFilter} onReadinessFilterChange={f.setReadinessFilter} onEditStateFilterChange={f.setEditStateFilter} onIssueTypeFilterChange={f.setIssueTypeFilter} gapsFilter={f.gapsFilter} onGapsFilterChange={f.setGapsFilter} statusOptions={f.statusOptions} epicOptions={f.epicOptions} assigneeOptions={f.assigneeOptions} issueTypeOptions={f.issueTypeOptions} teamFilter={f.teamFilter} onTeamFilterChange={f.setTeamFilter} teamOptions={f.teamOptions} {... (isAllView ? { sprintFilter: f.sprintFilter, onSprintFilterChange: f.setSprintFilter, sprintOptions: f.sprintOptions, sprintNameMap } : {})} noBorder searchQuery={f.searchQuery} onSearchChange={f.setSearchQuery} onSaveView={f.handleSaveView} onDeleteView={f.activeViewId ? () => f.handleDeleteView(f.activeViewId!) : undefined} activeView={f.activeView} />
         </div>
       )}
-      <div ref={contentScrollRef}>
+      <div ref={contentScrollRef} className="min-h-0 flex-1 overflow-y-auto">
         {!ticketsLoading && analyticsVisible && <SprintAnalytics tickets={allTickets} onClose={() => setAnalyticsVisible(false)} sprintId={activeSprintId} />}
         {ticketsLoading && <LoadingState variant="spinner" label="Loading tickets..." className="min-h-[200px]" />}
         {!ticketsLoading && (
           // B+C: the ticket list sits on its own elevated surface, lifted off the toolbar chrome (BRDG-239)
           <div className="min-h-full bg-[var(--color-surface-base)] px-4 pb-4 pt-3">
             <div className="overflow-hidden rounded-xl border border-[var(--color-border-default)] bg-[var(--color-surface-elevated)]" style={{ boxShadow: "0 8px 24px -14px rgba(0,0,0,0.30), 0 2px 6px -2px rgba(0,0,0,0.09)" }}>
-          <TicketTable tickets={tickets} checkedTickets={checkedTickets} selectedTicket={selectedTicket} focusedTicketIdx={focusedTicketIdx} someChecked={someChecked} allChecked={allChecked} visibleTags={f.visibleTags} hideEpic={hideEpicChip} showSprint={showSprintOnRow} sprintNameMap={sprintNameMap} poStatuses={poStatuses} readinessMap={readinessMap} inflightKeys={inflightKeys} onToggleCheck={toggleCheck} onRangeCheck={handleRangeCheck} onToggleAll={toggleAll} onSelectTicket={setSelectedTicket} onRowContextMenu={handleRowContextMenu} contextMenuKeys={rowMenu?.targets} onPoStatusChange={ta.handlePoStatusChange} onReadinessChange={ta.handleReadinessChange} onBusinessValueChange={ta.handleBusinessValueChange} onStoryPointsChange={ta.handleStoryPointsChange} onJiraStatusChange={ta.handleJiraStatusChange} onIssueTypeChange={ta.handleIssueTypeChange} onTitleChange={ta.handleTitleChange} onAssigneeChange={ta.handleAssigneeChange} onEpicChange={ta.handleEpicChange} onSprintChange={ta.handleSprintChange} sprints={sprints} onCloseSubtasks={ta.handleCloseSubtasks} onTableKeyDown={handleTableKeyDown} sortField={f.sortField} sortDir={f.sortDir} groups={groups} collapsedGroups={collapsedGroups} onToggleCollapse={toggleCollapse} groupBy={groupBy} pinnedSprintIds={slotSprintsSet} onPinSprint={handleAddSlotWithSprint} scrollContainerRef={mainScrollRef} refinementSessionMap={ticketSessionMap} {...(dnd.jiraRankDndEnabled ? { externalDnd: true as const, externalActiveDragId: dnd.boardActiveDragId, dragOverKey: dnd.boardOverId } : { onReorder: f.sortField === "rank" && !f.activeViewId ? handleReorder : undefined })} />
+          <TicketTable tickets={tickets} checkedTickets={checkedTickets} selectedTicket={selectedTicket} focusedTicketIdx={focusedTicketIdx} someChecked={someChecked} allChecked={allChecked} visibleTags={f.visibleTags} hideEpic={hideEpicChip} showSprint={showSprintOnRow} sprintNameMap={sprintNameMap} poStatuses={poStatuses} readinessMap={readinessMap} inflightKeys={inflightKeys} onToggleCheck={toggleCheck} onRangeCheck={handleRangeCheck} onToggleAll={toggleAll} onSelectTicket={setSelectedTicket} onRowContextMenu={handleRowContextMenu} contextMenuKeys={rowMenu?.targets} onPoStatusChange={ta.handlePoStatusChange} onReadinessChange={ta.handleReadinessChange} onBusinessValueChange={ta.handleBusinessValueChange} onStoryPointsChange={ta.handleStoryPointsChange} onJiraStatusChange={ta.handleJiraStatusChange} onIssueTypeChange={ta.handleIssueTypeChange} onTitleChange={ta.handleTitleChange} onAssigneeChange={ta.handleAssigneeChange} onEpicChange={ta.handleEpicChange} onSprintChange={ta.handleSprintChange} sprints={sprints} onCloseSubtasks={ta.handleCloseSubtasks} onTableKeyDown={handleTableKeyDown} onRunReview={(key) => handleBulkReviewStory(new Set([key]))} sortField={f.sortField} sortDir={f.sortDir} groups={groups} collapsedGroups={collapsedGroups} onToggleCollapse={toggleCollapse} groupBy={groupBy} pinnedSprintIds={slotSprintsSet} onPinSprint={handleAddSlotWithSprint} scrollContainerRef={contentScrollRef} refinementSessionMap={ticketSessionMap} {...(dnd.jiraRankDndEnabled ? { externalDnd: true as const, externalActiveDragId: dnd.boardActiveDragId, dragOverKey: dnd.boardOverId } : { onReorder: f.sortField === "rank" && !f.activeViewId ? handleReorder : undefined })} />
             </div>
           </div>
         )}
@@ -324,9 +319,9 @@ export default function SprintBoard() {
   return (
     <>
       {pageTitle}
-      <div className="flex min-h-0 flex-col">
-      <div className="flex min-h-0">
-      <div className="flex min-w-0 flex-1 flex-col">
+      <div className="flex h-full min-h-0 flex-col">
+      <div className="flex min-h-0 flex-1 overflow-hidden">
+      <div className="flex min-w-0 min-h-0 flex-1 flex-col overflow-hidden">
         <SprintBoardHeader
           isAllView={isAllView} activeSprint={activeSprint} activeSprintId={activeSprintId}
           allTickets={allTickets} tickets={tickets} ticketsLoading={ticketsLoading}

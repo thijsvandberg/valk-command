@@ -4,7 +4,7 @@ import { useState, useRef, useEffect, useLayoutEffect, type ReactNode } from "re
 import { usePathname } from "next/navigation";
 import { useOutsideClick } from "@/hooks/useOutsideClick";
 import { createPortal } from "react-dom";
-import { ExternalLink, FilePen, MessageCircleQuestion, CheckCircle2, Ban, Minus, Copy, ClipboardList, PenLine, Flag, IterationCw, Zap, User, UserRound, ListChecks, Eye, GitBranch, Rocket, Star, Gem, MessageSquare, Gauge } from "lucide-react";
+import { ExternalLink, FilePen, MessageCircleQuestion, CheckCircle2, Ban, Minus, Copy, ClipboardList, PenLine, Flag, IterationCw, Zap, User, UserRound, ListChecks, Eye, GitBranch, Rocket, Star, Gem, MessageSquare, Gauge, Sparkles, RefreshCw } from "lucide-react";
 import type { JiraStatus, TicketReadiness, IssueType, Assignee, Sprint } from "@/types/ticket";
 import type { PipelineHealthEntry, LastDeployedInfo } from "@/hooks/usePipelines";
 import {
@@ -444,6 +444,8 @@ interface TicketHoverCardProps {
   onAssigneeChange?: (user: AssignableUser | null) => void;
   /** When provided, the follow star in the card becomes an interactive toggle. */
   onToggleFollow?: () => void;
+  /** When provided, the Quality row offers a "Run Review" action for unscored tickets. */
+  onRunReview?: () => void | Promise<void>;
   /** Notifies the parent when an inline picker opens/closes (to keep the card open). */
   onPickerOpenChange: (open: boolean) => void;
 }
@@ -461,8 +463,21 @@ function TicketHoverCard({
   onEpicChange,
   onAssigneeChange,
   onToggleFollow,
+  onRunReview,
   onPickerOpenChange,
 }: TicketHoverCardProps) {
+  const [reviewing, setReviewing] = useState(false);
+  const reviewMountedRef = useRef(true);
+  useEffect(() => () => { reviewMountedRef.current = false; }, []);
+  const handleRunReview = async () => {
+    if (!onRunReview || reviewing) return;
+    setReviewing(true);
+    try {
+      await onRunReview();
+    } finally {
+      if (reviewMountedRef.current) setReviewing(false);
+    }
+  };
   const [pos, setPos] = useState<{ left: number; top: number; openUp: boolean } | null>(null);
   const [shown, setShown] = useState(false);
 
@@ -650,6 +665,25 @@ function TicketHoverCard({
               <span className="h-1.5 w-1.5 rounded-full" style={{ backgroundColor: qualityColor(data.qualityScore) }} />
               {data.qualityScore}/100
             </span>
+          ) : onRunReview ? (
+            <button
+              type="button"
+              onClick={handleRunReview}
+              disabled={reviewing}
+              className="flex items-center gap-1.5 rounded-md border border-border-default px-2 py-1 text-label font-medium text-text-secondary transition-colors duration-150 hover:bg-overlay-default hover:text-text-primary disabled:cursor-not-allowed disabled:opacity-60"
+            >
+              {reviewing ? (
+                <>
+                  <RefreshCw size={11} strokeWidth={1.5} className="animate-spin" />
+                  Reviewing…
+                </>
+              ) : (
+                <>
+                  <Sparkles size={11} strokeWidth={1.5} className="text-[var(--color-brand-400)]" />
+                  Run Review
+                </>
+              )}
+            </button>
           ) : (
             <span className="text-text-muted">Not scored</span>
           )}
@@ -735,6 +769,8 @@ export interface TicketStatusPillProps {
   onAssigneeChange?: (user: AssignableUser | null) => void;
   /** When provided, the follow star in the hover card becomes an interactive toggle. */
   onToggleFollow?: () => void;
+  /** When provided, the hover card's Quality row offers a "Run Review" action when unscored. */
+  onRunReview?: () => void | Promise<void>;
   /** Fade the leading issue-type icon while the enclosing `group/row` is hovered, so a row-level
    *  checkbox can take its place (list variant only). */
   dimTypeOnRowHover?: boolean;
@@ -765,6 +801,7 @@ export function TicketStatusPill({
   onEpicChange,
   onAssigneeChange,
   onToggleFollow,
+  onRunReview,
   dimTypeOnRowHover,
 }: TicketStatusPillProps) {
   const [issueTypeDropdownOpen, setIssueTypeDropdownOpen] = useState(false);
@@ -845,6 +882,7 @@ export function TicketStatusPill({
         onEpicChange={onEpicChange}
         onAssigneeChange={onAssigneeChange}
         onToggleFollow={onToggleFollow}
+        onRunReview={onRunReview}
         onPickerOpenChange={handleCardPickerOpenChange}
       />
     : null;

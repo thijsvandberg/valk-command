@@ -68,6 +68,8 @@ export interface BoardRowBaseProps {
   onEditingTitleKeyChange?: (key: string | null) => void;
   reviewPopoverKey?: string | null;
   onToggleReviewPopover?: (key: string) => void;
+  /** Request a quality review for this ticket (offered in the hover card when unscored). */
+  onRunReview?: (key: string) => void | Promise<void>;
   refinementSessions?: TicketSessionEntry[];
   insertLine?: "above" | "below";
   rowStyle?: React.CSSProperties;
@@ -116,6 +118,7 @@ export const BoardRow = memo(forwardRef<HTMLTableRowElement, BoardRowBaseProps>(
     onEditingTitleKeyChange,
     reviewPopoverKey = null,
     onToggleReviewPopover,
+    onRunReview,
     refinementSessions,
     insertLine,
     rowStyle,
@@ -271,6 +274,7 @@ export const BoardRow = memo(forwardRef<HTMLTableRowElement, BoardRowBaseProps>(
                 onEpicChange={isRemoved ? undefined : (onEpicChange ? (e) => onEpicChange(ticket.key, e) : undefined)}
                 onSprintChange={isRemoved ? undefined : (onSprintChange ? (s) => onSprintChange(ticket.key, s) : undefined)}
                 onToggleFollow={isRemoved ? undefined : (() => (isFollowed ? unfollow?.(ticket.key) : follow?.(ticket.key)))}
+                onRunReview={isRemoved || !onRunReview ? undefined : () => onRunReview(ticket.key)}
                 sprints={sprints}
                 hoverData={{
                   title: ticket.title,
@@ -408,7 +412,9 @@ export const BoardRow = memo(forwardRef<HTMLTableRowElement, BoardRowBaseProps>(
               {tags.has("flag") && ticket.flagged && (
                 <Flag className="h-3.5 w-3.5 shrink-0" style={{ color: "var(--color-status-error)" }} fill="currentColor" strokeWidth={0} />
               )}
-              {tags.has("quality") && (
+              {/* Quality Score: only shown once a review exists. Unscored tickets show nothing
+                  here; a review can be requested from the hover card instead (BRDG-239). */}
+              {tags.has("quality") && ticket.qualityScore != null && (
                 <span
                   className="shrink-0 leading-none"
                   onPointerDown={(e) => e.stopPropagation()}

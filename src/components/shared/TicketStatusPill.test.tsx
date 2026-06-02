@@ -319,6 +319,22 @@ describe("TicketStatusPill hover card", () => {
     expect(screen.getByText("82/100")).toBeTruthy();
   });
 
+  it("offers Run Review in the card when the ticket has no score (BRDG-239)", () => {
+    const onRunReview = vi.fn();
+    const { container } = render(
+      <TicketStatusPill
+        ticketKey="VPL-1"
+        jiraStatus="TO DO"
+        hoverData={{ ...fullData, qualityScore: null }}
+        onRunReview={onRunReview}
+      />,
+    );
+    openCard(container);
+    const btn = screen.getByRole("button", { name: /run review/i });
+    act(() => { fireEvent.click(btn); });
+    expect(onRunReview).toHaveBeenCalledTimes(1);
+  });
+
   it("omits the flagged line when the ticket is not flagged", () => {
     const { container } = render(
       <TicketStatusPill ticketKey="VPL-1" jiraStatus="TO DO" hoverData={{ ...fullData, flagged: false }} />,
