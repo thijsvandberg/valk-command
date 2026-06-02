@@ -74,4 +74,4 @@ The linkification engine (`renderMarkdown(text, { linkifyRefs: true })`) and its
 - [x] (If wanted) input rule + paste rule to create the node <!-- skipped: editor pills not wanted (see above). -->
 - [x] (If wanted) markdown + ADF serialization round-trip + tests <!-- skipped: editor pills not wanted (see above). -->
 - [x] (If wanted) caret / selection / delete behaviour tests <!-- skipped: editor pills not wanted (see above). -->
-- [ ] Update docs (`jira-sync.md` reference-linkification note) to list the newly covered surfaces
+- [x] Update docs (`jira-sync.md` reference-linkification note) to list the newly covered surfaces

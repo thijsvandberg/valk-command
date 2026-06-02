@@ -201,7 +201,7 @@ Queries live Jira data via `jiraClient.searchIssues()`.
 | `JIRA_BOARD_ID` | No | Defaults to 233 |
 | `JIRA_BASE_URL` | No | Fallback if JIRA_CLOUD_ID is not set |
 
-### Ticket reference linkification in descriptions
+### Ticket reference linkification in descriptions, comments, and chat
 
 Ticket descriptions are converted from Jira ADF to a markdown string at sync time
 (`src/lib/adf-to-markdown.ts`) and rendered by `renderMarkdown()`
@@ -214,9 +214,24 @@ fetched after mount (`GET /api/tickets/[key]`). The same elevated style is used 
 the ticket-detail header pill. The prefix comes from `NEXT_PUBLIC_JIRA_PROJECT_KEY`.
 References inside inline code, fenced code blocks, or emphasis (bold/italic/color)
 are left untouched; references in plain text inside an expandable block are still
-converted. Linkification is opt-in per render, so chat and comments (which share
-`renderMarkdown`) are currently unaffected — extending to them and to the rich
-editor is tracked in BRDG-248.
+converted. Linkification is opt-in per render via the `linkifyRefs` flag.
+
+Enabled surfaces (BRDG-247, BRDG-248):
+
+- Ticket description (`EditableDescription`) and the ticket-detail header pill.
+- PO comments and Jira comments (`CommentsSection`).
+- Refinement-session Jira comments (`SessionTicketView`).
+- Chat message bodies (`ChatMessageParts` / `ChatMessage`).
+
+Intentionally left **off**:
+
+- Story-writer draft previews (chat draft expander + `DraftCard`) — these render
+  in-progress, still-editable draft content. Deferred to BRDG-253.
+- Search results (`SearchResultParts`) — deferred to BRDG-252.
+- Version preview (`VersionPreview`) and other story-writer previews (`DiffPane`,
+  `RelatedStoriesPanel`, `StoryPreviewApp`, `DraftPreviewApp`) — deferred to BRDG-253.
+- The rich-text editor (TipTap): plain text while editing, pill when rendered. Inline
+  pills while editing are intentionally not implemented (BRDG-248 PO decision).
 
 ## Data Flow Diagram
 
