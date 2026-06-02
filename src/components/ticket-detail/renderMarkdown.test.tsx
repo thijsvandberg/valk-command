@@ -44,6 +44,20 @@ describe("renderMarkdown — VPL reference linkification", () => {
   it("converts a bare /browse/ link (text == url) into a pill", () => {
     const { container } = renderDesc("https://new-story.atlassian.net/browse/VPL-39873");
     expect(pillFor(container, "VPL-39873")).toBeTruthy();
+    // The whole URL is replaced — no leftover scheme/host/path text.
+    expect(container.textContent).not.toContain("https://");
+    expect(container.textContent).not.toContain("/browse/");
+  });
+
+  it("replaces the whole bare /browse/ URL (with surrounding text) by a single pill", () => {
+    const { container } = renderDesc("lijkt op de card - https://new-story.atlassian.net/browse/VPL-45730 hier");
+    expect(pillFor(container, "VPL-45730")).toBeTruthy();
+    // The URL prefix must not linger as plain text next to the pill.
+    expect(container.textContent).not.toContain("atlassian.net");
+    expect(container.textContent).not.toContain("/browse/");
+    // Surrounding prose is preserved.
+    expect(container.textContent).toContain("lijkt op de card -");
+    expect(container.textContent).toContain("hier");
   });
 
   it("leaves a non-browse link alone, even when its text contains a key", () => {

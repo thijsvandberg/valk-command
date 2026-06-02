@@ -23,6 +23,11 @@ function browseRefKey(url: string): string | null {
   return m ? m[1].toUpperCase() : null;
 }
 
+// A bare (non-markdown) Jira browse URL sitting in plain text, e.g.
+// https://your-org.atlassian.net/browse/VPL-45730. The whole URL — not just the
+// trailing key — is replaced by a single pill when linkification is on.
+const BARE_BROWSE_URL_RE = new RegExp(`https?://\\S*?/browse/(${ESCAPED_KEY}-\\d+)(?:[/?#]\\S*)?`, "gi");
+
 const VIDEO_EXTENSIONS = /\.(mp4|webm|mov|ogg)$/i;
 function isVideoAttachment(altOrSrc: string): boolean {
   return VIDEO_EXTENSIONS.test(altOrSrc);
@@ -84,21 +89,37 @@ function inlineFormat(text: string, linkify = false): ReactNode {
   // Pushes a raw plain-text run. When linkification is enabled (top-level
   // description text only — never recursive emphasis/color), bare project-key
   // references inside the run become pills; the rest stays plain text.
+  // Linkifies bare project-key references within a segment that is known to
+  // contain no bare browse URL.
+  const pushKeys = (seg: string) => {
+    TICKET_REF_RE.lastIndex = 0;
+    let last = 0;
+    let ref: RegExpExecArray | null;
+    while ((ref = TICKET_REF_RE.exec(seg)) !== null) {
+      if (ref.index > last) parts.push(seg.slice(last, ref.index));
+      parts.push(<TicketRefPill key={i++} ticketKey={ref[0]} />);
+      last = ref.index + ref[0].length;
+    }
+    if (last < seg.length) parts.push(seg.slice(last));
+  };
   const pushText = (chunk: string) => {
     if (!chunk) return;
     if (!linkify) {
       parts.push(chunk);
       return;
     }
-    TICKET_REF_RE.lastIndex = 0;
+    // First replace whole bare browse URLs with a pill, then linkify bare keys
+    // in the surrounding text. Doing URLs first stops the embedded key from
+    // being pilled on its own and leaving the URL prefix as stray text.
+    BARE_BROWSE_URL_RE.lastIndex = 0;
     let last = 0;
-    let ref: RegExpExecArray | null;
-    while ((ref = TICKET_REF_RE.exec(chunk)) !== null) {
-      if (ref.index > last) parts.push(chunk.slice(last, ref.index));
-      parts.push(<TicketRefPill key={i++} ticketKey={ref[0]} />);
-      last = ref.index + ref[0].length;
+    let url: RegExpExecArray | null;
+    while ((url = BARE_BROWSE_URL_RE.exec(chunk)) !== null) {
+      if (url.index > last) pushKeys(chunk.slice(last, url.index));
+      parts.push(<TicketRefPill key={i++} ticketKey={url[1].toUpperCase()} />);
+      last = url.index + url[0].length;
     }
-    if (last < chunk.length) parts.push(chunk.slice(last));
+    if (last < chunk.length) pushKeys(chunk.slice(last));
   };
   // Match: colored text, images, links, strikethrough, bold+italic, bold, italic, inline code, emoji shortnames
   // Group index map:
