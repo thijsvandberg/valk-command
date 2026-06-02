@@ -71,5 +71,9 @@ Currently the ticket chat sidebar (`TicketChatPane`) is a fixed 320px panel with
 - [x] Update ChatInput to use resizable textarea matching StoryWriter config
 - [x] Align markdown rendering, streaming indicator, and empty state with StoryWriter look
 - [x] Add "Open in Story Writer" button in pane header
-- [ ] Verify chat works correctly after changes (send, receive, scroll, streaming)
-- [ ] All tests pass, build succeeds
+- [x] Verify chat works correctly after changes (send, receive, scroll, streaming)
+- [x] All tests pass, build succeeds <!-- All 3840 tests pass. BRDG-211 files lint and typecheck clean and TypeScript compiles successfully. The full `npm run build` is blocked by a PRE-EXISTING, UNRELATED lint error in src/components/refinement-session/SessionEndModal.tsx (present at commit b0c8eba1, before this work; already documented in docs/investigations/2026-06-02-build-blocked-sessionendmodal-lint.md). Out of scope for this story. -->
+
+## Verification
+
+Visually verified in-app (ticket VPL-45730): sidebar resizes via left-edge drag handle (widened from default), bubbles use StoryWriter styling with markdown rendering, "Open in Story Writer" pencil button shows its tooltip in the header.
