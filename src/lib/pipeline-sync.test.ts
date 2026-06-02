@@ -31,6 +31,8 @@ import {
   classifyStepsForDeployment,
   classifyRunDeployment,
   backfillDeploymentDetection,
+  inferEnvironmentFromBranch,
+  backfillBranchInferredDeployments,
 } from "./pipeline-sync";
 import { alert, followedTicket, followedSprint, ticket, pipelineRun } from "@/db/schema";
 
@@ -70,6 +72,7 @@ function makePipelineRun(overrides: Partial<typeof schema.pipelineRun.$inferSele
     environment: null,
     environmentType: null,
     deployCheckedAt: null,
+    deploymentSource: null,
     createdAt: "2026-04-14T10:00:00.000Z",
     completedAt: "2026-04-14T10:05:00.000Z",
     commitMessage: null,
@@ -520,5 +523,97 @@ describe("backfillDeploymentDetection", () => {
     expect(flagged).toBe(0);
     expect(fetchMock).not.toHaveBeenCalled();
     expect(testDb.select().from(pipelineRun).where(eq(pipelineRun.id, "valk-repo:1")).get()?.isDeployment).toBe(true);
+  });
+});
+
+describe("inferEnvironmentFromBranch (pure, BRDG-257)", () => {
+  it("infers UAT2/UAT3 from staging/uat-N branches", () => {
+    expect(inferEnvironmentFromBranch("staging/uat-2")).toEqual({ environment: "UAT2", type: "Staging" });
+    expect(inferEnvironmentFromBranch("staging/uat-3")).toEqual({ environment: "UAT3", type: "Staging" });
+  });
+
+  it("matches uat-N generically (covers uat-4)", () => {
+    expect(inferEnvironmentFromBranch("staging/uat-4")).toEqual({ environment: "UAT4", type: "Staging" });
+  });
+
+  it("defaults a bare staging branch to Staging", () => {
+    expect(inferEnvironmentFromBranch("staging")).toEqual({ environment: "Staging", type: "Staging" });
+    expect(inferEnvironmentFromBranch("staging/acceptance")).toEqual({ environment: "Staging", type: "Staging" });
+  });
+
+  it("does NOT infer from feature branches that merely contain uat/test", () => {
+    expect(inferEnvironmentFromBranch("feature/VPL-1-uat-2-fix")).toBeNull();
+    expect(inferEnvironmentFromBranch("bugfix/test-harness")).toBeNull();
+    expect(inferEnvironmentFromBranch("master")).toBeNull();
+  });
+});
+
+describe("branch-based deployment detection (BRDG-257)", () => {
+  let fetchMock: ReturnType<typeof vi.fn>;
+
+  beforeEach(() => {
+    testDb = createTestDb();
+    fetchMock = vi.fn();
+    vi.stubGlobal("fetch", fetchMock);
+  });
+
+  it("flags a SUCCESSFUL staging/uat-2 run without calling the steps API", async () => {
+    insertRun({ id: "valk-repo:1", buildNumber: 1, state: "SUCCESSFUL", branchName: "staging/uat-2", isDeployment: false });
+
+    const result = await classifyRunDeployment("valk-repo", 1, "valk-repo:1");
+
+    expect(result).toBe("flagged");
+    expect(fetchMock).not.toHaveBeenCalled();
+    const row = testDb.select().from(pipelineRun).where(eq(pipelineRun.id, "valk-repo:1")).get();
+    expect(row?.environment).toBe("UAT2");
+    expect(row?.deploymentSource).toBe("branch");
+  });
+
+  it("does NOT branch-infer a FAILED staging/uat-2 run (falls through to step detection)", async () => {
+    insertRun({ id: "valk-repo:1", buildNumber: 1, state: "FAILED", branchName: "staging/uat-2", isDeployment: false });
+    fetchMock.mockResolvedValue(jsonResponse(stepsPayload(["build snapshot images"])));
+
+    const result = await classifyRunDeployment("valk-repo", 1, "valk-repo:1");
+
+    expect(result).toBe("not-deployment");
+    expect(fetchMock).toHaveBeenCalled(); // fell through to the steps API
+    expect(testDb.select().from(pipelineRun).where(eq(pipelineRun.id, "valk-repo:1")).get()?.isDeployment).toBe(false);
+  });
+
+  it("keeps step-based detection authoritative (deploymentSource=step) for non-staging branches", async () => {
+    insertRun({ id: "valk-repo:1", buildNumber: 1, state: "SUCCESSFUL", branchName: "master", isDeployment: false });
+    fetchMock.mockResolvedValue(jsonResponse(stepsPayload(["Set build vars to UAT 2", "AWS Deployment"])));
+
+    const result = await classifyRunDeployment("valk-repo", 1, "valk-repo:1");
+
+    expect(result).toBe("flagged");
+    expect(fetchMock).toHaveBeenCalled();
+    const row = testDb.select().from(pipelineRun).where(eq(pipelineRun.id, "valk-repo:1")).get();
+    expect(row?.environment).toBe("UAT2");
+    expect(row?.deploymentSource).toBe("step");
+  });
+
+  it("backfills historical SUCCESSFUL staging/uat runs even when already deploy-checked", () => {
+    // Simulates a run BRDG-255 scanned and marked not-a-deployment (deployCheckedAt set).
+    insertRun({ id: "valk-repo:10", buildNumber: 10, state: "SUCCESSFUL", branchName: "staging/uat-2", isDeployment: false, deployCheckedAt: RECENT, createdAt: RECENT });
+    insertRun({ id: "valk-repo:11", buildNumber: 11, state: "FAILED", branchName: "staging/uat-2", isDeployment: false, createdAt: RECENT });
+    insertRun({ id: "valk-repo:12", buildNumber: 12, state: "SUCCESSFUL", branchName: "feature/x", isDeployment: false, createdAt: RECENT });
+
+    const flagged = backfillBranchInferredDeployments();
+
+    expect(flagged).toBe(1);
+    expect(testDb.select().from(pipelineRun).where(eq(pipelineRun.id, "valk-repo:10")).get()?.environment).toBe("UAT2");
+    // FAILED and non-staging runs are untouched.
+    expect(testDb.select().from(pipelineRun).where(eq(pipelineRun.id, "valk-repo:11")).get()?.isDeployment).toBe(false);
+    expect(testDb.select().from(pipelineRun).where(eq(pipelineRun.id, "valk-repo:12")).get()?.isDeployment).toBe(false);
+  });
+
+  it("branch backfill is idempotent and ignores runs outside the window", () => {
+    insertRun({ id: "valk-repo:20", buildNumber: 20, state: "SUCCESSFUL", branchName: "staging/uat-3", isDeployment: false, createdAt: RECENT });
+    insertRun({ id: "valk-repo:21", buildNumber: 21, state: "SUCCESSFUL", branchName: "staging/uat-3", isDeployment: false, createdAt: OLD });
+
+    expect(backfillBranchInferredDeployments()).toBe(1);
+    expect(backfillBranchInferredDeployments()).toBe(0); // idempotent: nothing left
+    expect(testDb.select().from(pipelineRun).where(eq(pipelineRun.id, "valk-repo:21")).get()?.isDeployment).toBe(false);
   });
 });

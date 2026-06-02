@@ -5,25 +5,34 @@ import { env } from "@/lib/env";
 import { trackOutboundCall } from "@/lib/rate-limiter";
 import { createNotification, isTicketFollowed } from "@/lib/notifications";
 import { logger } from "@/lib/logger";
-import { eq, and, isNull, isNotNull, gte, inArray } from "drizzle-orm";
+import { eq, and, isNull, isNotNull, gte, inArray, like } from "drizzle-orm";
 
 // -- Environment detection --
 
-const ENV_PATTERNS: Array<{ pattern: RegExp; environment: string; type: "Production" | "Staging" | "Test" }> = [
-  { pattern: /prod(uction)?/i, environment: "Production", type: "Production" },
-  // Tolerate space/hyphen/underscore separators (e.g. "uat-2", "uat_3", "uat 1")
-  { pattern: /uat[\s_-]*3/i, environment: "UAT3", type: "Staging" },
-  { pattern: /uat[\s_-]*2/i, environment: "UAT2", type: "Staging" },
-  { pattern: /uat[\s_-]*1/i, environment: "UAT1", type: "Staging" },
-  { pattern: /staging/i, environment: "Staging", type: "Staging" },
-  { pattern: /test/i, environment: "Test", type: "Test" },
-];
+type EnvType = "Production" | "Staging" | "Test";
 
-function detectEnvironment(stepName: string): { environment: string; type: "Production" | "Staging" | "Test" } | null {
-  for (const ep of ENV_PATTERNS) {
-    if (ep.pattern.test(stepName)) return { environment: ep.environment, type: ep.type };
-  }
+// Order matters: production wins, then a specific UAT number (any N, space/-/_ separators,
+// covers uat-4), then generic staging, then test.
+function detectEnvironment(text: string): { environment: string; type: EnvType } | null {
+  if (/prod(uction)?/i.test(text)) return { environment: "Production", type: "Production" };
+  const uat = text.match(/uat[\s_-]*(\d+)/i);
+  if (uat) return { environment: `UAT${uat[1]}`, type: "Staging" };
+  if (/staging/i.test(text)) return { environment: "Staging", type: "Staging" };
+  if (/test/i.test(text)) return { environment: "Test", type: "Test" };
   return null;
+}
+
+/**
+ * Infer a deployment environment from a branch name, restricted to the staging deploy
+ * convention (`staging/...` or exactly `staging`). Some repos auto-deploy on these branches
+ * via GitOps with no `deploy` step in the pipeline, so the branch is the only signal. The
+ * restriction prevents ordinary feature branches that merely contain "uat"/"test" from being
+ * misread as deployments (BRDG-257).
+ */
+export function inferEnvironmentFromBranch(branch: string): { environment: string; type: EnvType } | null {
+  const b = branch.toLowerCase();
+  if (b !== "staging" && !b.startsWith("staging/")) return null;
+  return detectEnvironment(branch) ?? { environment: "Staging", type: "Staging" };
 }
 
 /**
@@ -157,6 +166,19 @@ export async function classifyRunDeployment(repoSlug: string, buildNumber: numbe
   const existing = db.select().from(pipelineRun).where(eq(pipelineRun.id, id)).get();
   if (existing?.isDeployment) return "flagged";
 
+  // Branch-first: a SUCCESSFUL run on a staging/uat-N branch is a deployment even when the
+  // pipeline has no deploy step (GitOps auto-deploy). No steps API call needed (BRDG-257).
+  if (existing?.state === "SUCCESSFUL") {
+    const branchEnv = inferEnvironmentFromBranch(existing.branchName ?? "");
+    if (branchEnv) {
+      db.update(pipelineRun)
+        .set({ isDeployment: true, environment: branchEnv.environment, environmentType: branchEnv.type, deploymentSource: "branch", deployCheckedAt: new Date().toISOString() })
+        .where(eq(pipelineRun.id, id))
+        .run();
+      return "flagged";
+    }
+  }
+
   const path = `/pipelines/${buildNumber}/steps?pagelen=25`;
   let stepsRes: BbPaginatedResponse<BbPipelineStep> | null;
   try {
@@ -183,7 +205,7 @@ export async function classifyRunDeployment(repoSlug: string, buildNumber: numbe
   }
 
   db.update(pipelineRun)
-    .set({ isDeployment: true, environment: detectedEnv.environment, environmentType: detectedEnv.type, deployCheckedAt: now })
+    .set({ isDeployment: true, environment: detectedEnv.environment, environmentType: detectedEnv.type, deploymentSource: "step", deployCheckedAt: now })
     .where(eq(pipelineRun.id, id))
     .run();
   return "flagged";
@@ -455,7 +477,7 @@ export async function syncPipelines(): Promise<SyncResult> {
     await runDeployDetectionForStateChanges(stateChanges);
     processStateChanges(stateChanges);
     const backfilled = await backfillEnrichment();
-    const backfilledDeployments = await backfillDeploymentDetection();
+    const backfilledDeployments = (await backfillDeploymentDetection()) + backfillBranchInferredDeployments();
     return { newRuns: 0, updatedRuns, stateChanges: stateChanges.length, remaining: 0, backfilled, backfilledDeployments };
   }
 
@@ -592,7 +614,7 @@ export async function syncPipelines(): Promise<SyncResult> {
 
   // Run enrichment backfill for existing rows missing commit data
   const backfilled = await backfillEnrichment();
-  const backfilledDeployments = await backfillDeploymentDetection();
+  const backfilledDeployments = (await backfillDeploymentDetection()) + backfillBranchInferredDeployments();
 
   return { newRuns, updatedRuns, stateChanges: stateChanges.length, remaining: totalRemaining, backfilled, backfilledDeployments };
 }
@@ -688,6 +710,45 @@ export async function backfillDeploymentDetection(): Promise<number> {
     logger.info("pipeline-sync", `deploy backfill: flagged ${totalFlagged} of ${totalScanned} scanned runs`);
   }
   return totalFlagged;
+}
+
+/**
+ * Pure (no-API) backfill that flags historical SUCCESSFUL runs on staging/uat-N branches as
+ * branch-inferred deployments. Needed because BRDG-255 already stamped these runs
+ * deployCheckedAt, so the steps-based backfill skips them; this pass ignores that marker and
+ * relies solely on the branch convention. Idempotent: already-flagged runs are excluded.
+ * Flips data only (no state transition), so it never emits notifications (BRDG-257).
+ */
+export function backfillBranchInferredDeployments(): number {
+  if (!isPipelineConfigured()) return 0;
+
+  const cutoff = new Date(Date.now() - DEPLOY_BACKFILL_DAYS * 24 * 60 * 60 * 1000).toISOString();
+  const rows = db
+    .select()
+    .from(pipelineRun)
+    .where(and(
+      eq(pipelineRun.isDeployment, false),
+      eq(pipelineRun.state, "SUCCESSFUL"),
+      like(pipelineRun.branchName, "staging/%"),
+      gte(pipelineRun.createdAt, cutoff),
+    ))
+    .all();
+
+  let flagged = 0;
+  for (const r of rows) {
+    const env = inferEnvironmentFromBranch(r.branchName);
+    if (!env) continue;
+    db.update(pipelineRun)
+      .set({ isDeployment: true, environment: env.environment, environmentType: env.type, deploymentSource: "branch" })
+      .where(eq(pipelineRun.id, r.id))
+      .run();
+    flagged++;
+  }
+
+  if (flagged > 0) {
+    logger.info("pipeline-sync", `branch-inferred deploy backfill: flagged ${flagged} staging/uat runs`);
+  }
+  return flagged;
 }
 
 export function processStateChanges(stateChanges: StateChangeEntry[]) {

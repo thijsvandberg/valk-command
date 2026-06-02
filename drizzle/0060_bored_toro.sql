@@ -1,0 +1,1 @@
+ALTER TABLE `pipeline_run` ADD `deployment_source` text;

@@ -391,6 +391,10 @@ export const pipelineRun = sqliteTable("pipeline_run", {
   // pipeline's steps are immutable, so a non-deployment run is stamped once and excluded
   // from future scans; left null on transient fetch errors so it is retried (BRDG-255).
   deployCheckedAt: text("deploy_checked_at"),
+  // How the deployment was detected: "step" (a deploy step in the pipeline) or "branch"
+  // (inferred from a staging/uat-N branch with no deploy step). Null for legacy/non-deploys.
+  // Used to audit branch-inferred deployments during validation (BRDG-257).
+  deploymentSource: text("deployment_source", { enum: ["step", "branch"] }),
   createdAt: text("created_at")
     .notNull()
     .default(sql`(datetime('now'))`),
