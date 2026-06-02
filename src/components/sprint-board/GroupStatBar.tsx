@@ -55,33 +55,37 @@ export const GroupStatBar = memo(function GroupStatBar({
 
   return (
     <div className="flex items-center gap-2">
-      {isCollapsible && (
-        isCollapsed
-          ? <ChevronRight className="h-3 w-3 shrink-0 text-text-tertiary" strokeWidth={1.5} />
-          : <ChevronDown className="h-3 w-3 shrink-0 text-text-tertiary" strokeWidth={1.5} />
-      )}
-      {label && (
-        <span className="text-body-sm font-medium text-text-secondary truncate">{label}</span>
-      )}
-      {onPin && (
-        <button
-          type="button"
-          onClick={(e) => { e.stopPropagation(); if (!pinDisabled || isPinned) onPin(); }}
-          disabled={pinDisabled && !isPinned}
-          title={isPinned ? "Unpin from sprint bar" : pinDisabled ? "Maximum 8 pinned sprints" : "Pin to sprint bar"}
-          aria-label={isPinned ? "Unpin from sprint bar" : "Pin to sprint bar"}
-          aria-pressed={isPinned}
-          className={`flex shrink-0 items-center justify-center h-5 w-5 rounded cursor-pointer focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-[var(--color-brand-400)] disabled:cursor-not-allowed disabled:opacity-30 ${
-            isPinned
-              ? "text-[var(--color-brand-400)] hover:bg-overlay-default"
-              : "text-text-muted opacity-0 group-hover/grouprow:opacity-100 hover:text-text-secondary hover:bg-overlay-default"
-          }`}
-          style={{ transition: "opacity 120ms, color 120ms, background-color 120ms" }}
-        >
-          <Pin className="h-3 w-3" strokeWidth={1.5} fill={isPinned ? "currentColor" : "none"} />
-        </button>
-      )}
-      <StatPill size="sm" variant="default" className={label ? "ml-1" : undefined}>
+      {/* Fixed-width label zone so the stats (item count onward) start at the same x
+          across every group row, regardless of sprint name length (BRDG-239). */}
+      <div className={`flex shrink-0 items-center gap-2 ${label ? "w-48 min-w-0" : ""}`}>
+        {isCollapsible && (
+          isCollapsed
+            ? <ChevronRight className="h-3 w-3 shrink-0 text-text-tertiary" strokeWidth={1.5} />
+            : <ChevronDown className="h-3 w-3 shrink-0 text-text-tertiary" strokeWidth={1.5} />
+        )}
+        {label && (
+          <span className="truncate text-body-sm font-medium text-text-secondary">{label}</span>
+        )}
+        {onPin && (
+          <button
+            type="button"
+            onClick={(e) => { e.stopPropagation(); if (!pinDisabled || isPinned) onPin(); }}
+            disabled={pinDisabled && !isPinned}
+            title={isPinned ? "Unpin from sprint bar" : pinDisabled ? "Maximum 8 pinned sprints" : "Pin to sprint bar"}
+            aria-label={isPinned ? "Unpin from sprint bar" : "Pin to sprint bar"}
+            aria-pressed={isPinned}
+            className={`ml-auto flex h-5 w-5 shrink-0 cursor-pointer items-center justify-center rounded focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-[var(--color-brand-400)] disabled:cursor-not-allowed disabled:opacity-30 ${
+              isPinned
+                ? "text-[var(--color-brand-400)] hover:bg-overlay-default"
+                : "text-text-muted opacity-0 group-hover/grouprow:opacity-100 hover:text-text-secondary hover:bg-overlay-default"
+            }`}
+            style={{ transition: "opacity 120ms, color 120ms, background-color 120ms" }}
+          >
+            <Pin className="h-3 w-3" strokeWidth={1.5} fill={isPinned ? "currentColor" : "none"} />
+          </button>
+        )}
+      </div>
+      <StatPill size="sm" variant="default">
         {tickets.length} items
       </StatPill>
       {totalPoints > 0 && (

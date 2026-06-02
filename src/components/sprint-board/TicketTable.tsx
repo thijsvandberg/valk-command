@@ -469,19 +469,21 @@ export function TicketTable({
 
         return (
           <tbody key={group.key}>
-            {/* Spacer row between groups (not before the first group) */}
+            {/* Spacer row between groups. Uses the recessed base tint (not the white panel
+                surface) so consecutive sprint groups read as separate sections (BRDG-239). */}
             {groupIdx > 0 && (
               <tr>
                 <td
                   colSpan={TOTAL_COLSPAN}
-                  style={{ height: 8, padding: 0, border: "none" }}
+                  style={{ height: 10, padding: 0, border: "none", backgroundColor: "var(--color-surface-base)" }}
                 />
               </tr>
             )}
-            {/* Group header row */}
+            {/* Group header row. The 3px left edge matches the data rows' accent gutter and is
+                tinted like the header itself, so the white panel never shows through (BRDG-239). */}
             <tr
-              className="group/grouprow border-b border-border-strong cursor-pointer select-none"
-              style={{ background: "var(--color-overlay-subtle)" }}
+              className="group/grouprow border-l-[3px] border-b border-border-strong cursor-pointer select-none"
+              style={{ background: "var(--color-overlay-subtle)", borderLeftColor: "var(--color-overlay-subtle)" }}
               onClick={() => onToggleCollapse?.(group.key)}
             >
               <td colSpan={TOTAL_COLSPAN} className="py-2 pl-4 pr-4">

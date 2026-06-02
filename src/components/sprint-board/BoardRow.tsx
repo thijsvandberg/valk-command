@@ -430,10 +430,10 @@ export const BoardRow = memo(forwardRef<HTMLTableRowElement, BoardRowBaseProps>(
                   rather than fading into the row (BRDG-239). */}
               {tags.has("refinement") && refinementSessions && refinementSessions.length > 0 && (
                 <Tooltip content={`In refinement: ${refinementSessions.map((s) => s.name).join(", ")}`} delay={300}>
-                  <span className="inline-flex shrink-0 items-center gap-1 rounded-full bg-[var(--color-brand-500)]/12 px-1.5 py-0.5 text-[var(--color-brand-300)]">
-                    <Gem size={11} strokeWidth={1.75} />
+                  <span className="inline-flex h-5 shrink-0 items-center gap-1 rounded-full bg-[var(--color-brand-500)]/12 px-2 text-[var(--color-brand-300)] ring-1 ring-inset ring-[var(--color-brand-500)]/15">
+                    <Gem size={12} strokeWidth={1.75} className="shrink-0" />
                     {refinementSessions.length > 1 && (
-                      <span className="text-[10px] font-medium tabular-nums">{refinementSessions.length}</span>
+                      <span className="text-[11px] font-medium leading-none tabular-nums">{refinementSessions.length}</span>
                     )}
                   </span>
                 </Tooltip>
