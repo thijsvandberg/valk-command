@@ -1,4 +1,4 @@
-import { render, screen, fireEvent, waitFor } from "@testing-library/react";
+import { render, screen, waitFor } from "@testing-library/react";
 import { describe, it, expect, vi, beforeEach } from "vitest";
 
 // Mock the API client so we control the lazy hover-data fetch. detailUrl stays
@@ -18,30 +18,26 @@ describe("TicketRefPill", () => {
     mockFetcher.mockReset();
   });
 
-  it("renders a link to the internal ticket view immediately, before any fetch", () => {
+  it("renders a link to the internal ticket view immediately on first paint", () => {
+    mockFetcher.mockResolvedValue(undefined);
     render(<TicketRefPill ticketKey="VPL-99" />);
     const link = screen.getByText("VPL-99").closest("a");
     expect(link?.getAttribute("href")).toBe("/tickets/VPL-99");
-    // Non-blocking: nothing is fetched until the user hovers.
-    expect(mockFetcher).not.toHaveBeenCalled();
   });
 
-  it("lazily fetches hover data from the per-key endpoint on first hover", async () => {
+  it("fetches ticket detail from the per-key endpoint after mount (no hover needed)", async () => {
     mockFetcher.mockResolvedValue({ title: "A ticket", jiraStatus: "TO DO", type: "story" });
-    const { container } = render(<TicketRefPill ticketKey="VPL-99" />);
-
-    fireEvent.mouseEnter(container.firstChild as HTMLElement);
+    // Distinct key per test so SWR's global cache doesn't dedupe the call away.
+    render(<TicketRefPill ticketKey="VPL-200" />);
 
     await waitFor(() =>
-      expect(mockFetcher).toHaveBeenCalledWith("/api/tickets/VPL-99"),
+      expect(mockFetcher).toHaveBeenCalledWith("/api/tickets/VPL-200"),
     );
   });
 
   it("still renders a working link when the lookup fails (graceful fallback)", async () => {
     mockFetcher.mockRejectedValue(new Error("404"));
-    const { container } = render(<TicketRefPill ticketKey="VPL-404" />);
-
-    fireEvent.mouseEnter(container.firstChild as HTMLElement);
+    render(<TicketRefPill ticketKey="VPL-404" />);
 
     await waitFor(() => expect(mockFetcher).toHaveBeenCalled());
     const link = screen.getByText("VPL-404").closest("a");

@@ -1,6 +1,5 @@
 "use client";
 
-import { useState } from "react";
 import useSWR from "swr";
 import { tickets, swrFetcher } from "@/lib/api-client";
 import { buildTicketHoverData } from "@/hooks/useTicketHoverData";
@@ -13,17 +12,20 @@ interface TicketRefPillProps {
 
 /**
  * Inline, read-only ticket reference rendered from a bare key found in plain
- * description text (see renderMarkdown linkification). The pill paints
- * immediately with just the key + link; the richer hover-card data is fetched
- * lazily on first hover so a description with many refs never blocks on a fan
- * of ticket lookups. Unresolved keys (Jira-only / not synced) still render a
- * working link, just without a hover card.
+ * description text (see renderMarkdown linkification). The key + link paint
+ * immediately; once the description has rendered, each pill fetches its own
+ * ticket so the issue-type icon, status and hover-card fill in (deferred to a
+ * post-mount effect so it never blocks the page's first paint). Fetches dedupe
+ * per key via SWR and the per-key endpoint is cached server-side, so many refs
+ * in one description stay cheap. Unresolved keys (Jira-only / not synced) still
+ * render a working link, just without the extra detail.
  */
 export function TicketRefPill({ ticketKey }: TicketRefPillProps) {
-  const [hovered, setHovered] = useState(false);
-
+  // SWR fetches in a post-mount effect, so the key + link paint first and the
+  // ticket detail (issue-type icon, status, hover card) fills in right after,
+  // without blocking the description's first render.
   const { data } = useSWR<TicketDetailResponse>(
-    hovered ? tickets.detailUrl(ticketKey) : null,
+    tickets.detailUrl(ticketKey),
     swrFetcher,
     { revalidateOnFocus: false, dedupingInterval: 30_000, shouldRetryOnError: false },
   );
@@ -31,18 +33,18 @@ export function TicketRefPill({ ticketKey }: TicketRefPillProps) {
   const hoverData = data ? buildTicketHoverData(data) : undefined;
 
   return (
-    <span
-      className="inline-flex align-middle"
-      onMouseEnter={() => setHovered(true)}
-      onFocus={() => setHovered(true)}
-    >
+    // Strip the description's anchor underline (.description-content a) so the
+    // pill reads as a chip; !important beats that equal-specificity rule.
+    <span className="inline-flex align-middle [&_a]:!no-underline">
       <TicketStatusPill
         ticketKey={ticketKey}
         jiraStatus={data?.jiraStatus ?? "TO DO"}
         issueType={data?.type}
         title={data?.title}
+        variant="list"
         size="sm"
         showReadiness={false}
+        showStatus={!!data}
         hoverData={hoverData}
       />
     </span>

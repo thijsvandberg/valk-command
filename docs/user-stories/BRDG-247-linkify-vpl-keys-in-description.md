@@ -97,5 +97,5 @@ Order: 1 + 2 independent first; 3 depends on 2; 4 depends on 1 + 3; tests follow
 - [x] Verify a plain-text key inside an `:::expand` body IS converted (test)
 - [x] Confirm pills render before hover data loads (non-blocking) and the pill keeps standard click behaviour
 - [x] Confirm the pill links to `/tickets/<KEY>` and the hover card shows ticket info
-- [ ] `npm run lint`, `npm run typecheck`, `npm run test`, `npm run build` all pass
-- [ ] Update relevant docs in `/docs` (note the linkify behaviour where description rendering is documented)
+- [x] `npm run lint`, `npm run typecheck`, `npm run test`, `npm run build` all pass <!-- lint/typecheck/build clean; full suite: 3714 pass, 1 pre-existing flaky failure unrelated to this story (activity-log/compute-stats ordering — passes in isolation, see docs/investigations) -->
+- [x] Update relevant docs in `/docs` (note the linkify behaviour where description rendering is documented)

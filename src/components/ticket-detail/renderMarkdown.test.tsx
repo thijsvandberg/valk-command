@@ -1,5 +1,13 @@
 import { render } from "@testing-library/react";
-import { describe, it, expect } from "vitest";
+import { describe, it, expect, vi } from "vitest";
+
+// TicketRefPill (rendered for linkified refs) fetches ticket detail after mount.
+// Stub the fetcher so these tests stay focused on linkification, not network.
+vi.mock("@/lib/api-client", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("@/lib/api-client")>();
+  return { ...actual, swrFetcher: vi.fn().mockResolvedValue(undefined) };
+});
+
 import { renderMarkdown } from "./renderMarkdown";
 
 // Renders markdown with reference linkification enabled (the ticket-description
