@@ -120,3 +120,14 @@ Linkify bare project-key refs in plain description text into read-only `TicketRe
 Key bottlenecks:
 - **Dev-server instability during browser verification**: the first backgrounded `npm run dev` exited mid-session (port 3100 went empty), so the ticket page loaded its shell then 404'd on the client fetch — one wasted screenshot attempt before restarting and waiting on the API route to compile. A transient `chrome-extension://` screenshot error also cost one retry.
 - **Pre-existing flaky test**: `activity-log/compute-stats.test.ts` (`affectedScopes` ordering) failed once in the full parallel run but passes in isolation and is unrelated to this story; logged in `docs/investigations/2026-06-02-flaky-compute-stats-test.md`.
+
+## BRDG-251 — Move pipeline/deploy badges to hover card (2026-06-02)
+
+| Phase | Notes |
+|-------|-------|
+| Plan | Skipped the heavyweight Opus Plan subagent; scope was small and already investigated. Wrote the plan inline into the story. |
+| Implement | Hover-card rows, font equalization, width/title tweaks, default-hide column. Smooth. |
+| Verify | Browser-verified column hidden + hover card rows/fonts/title. Full suite (3805) + build (compiles; only pre-existing SessionEndModal lint error) green. |
+
+Key bottleneck:
+- **Wrong persistence layer on first attempt**: I added the "default-hide for existing users" migration to `useSprintBoardFilters` (the `sprint-board-columns` localStorage key), but that code path is dead — `visibleColumns = externalVisible ?? storedColumns` and `externalVisible` is always supplied by `useColumnConfig`, whose visibility is persisted **server-side**. Caught it during browser verification (column still showed despite localStorage being clean). Reverted and re-implemented the one-time migration in `useColumnConfig` against the loaded server config. Lesson: sprint-board column visibility lives in `useColumnConfig` (server-backed), not the `storedColumns` in the filter hook.
