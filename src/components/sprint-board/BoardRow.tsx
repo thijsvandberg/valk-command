@@ -203,7 +203,7 @@ export const BoardRow = memo(forwardRef<HTMLTableRowElement, BoardRowBaseProps>(
         }
         onSelectTicket(ticket.key === selectedTicket ? null : ticket.key);
       }}
-      className={`group/row border-b border-border-subtle border-l-[3px] transition-colors duration-100 ${
+      className={`group/row border-l-[3px] transition-colors duration-100 ${
         dragListeners ? "cursor-grab active:cursor-grabbing select-none" : "cursor-pointer"
       } ${
         isSelected || isContextTarget
@@ -219,9 +219,10 @@ export const BoardRow = memo(forwardRef<HTMLTableRowElement, BoardRowBaseProps>(
     >
       <td className="p-0">
         {/* Horizontal gutters: pl-4 + the issue-icon's internal padding reads as ~24px on the
-            left, so the right uses pr-6 (24px) to make the assignee sit the same distance from
-            the edge as the issue icon does on the left (BRDG-239). */}
-        <div className="flex items-center gap-2 py-2 pl-4 pr-[23px]">
+            left, so the right uses pr-[23px] to make the assignee sit the same distance from
+            the edge as the issue icon does on the left. Rows are line-less and use py-3 for an
+            airier rhythm (BRDG-239, "B+C"). */}
+        <div className="flex items-center gap-2 py-3 pl-4 pr-[23px]">
           {/* Bulk mode: dedicated checkbox gutter on every row. */}
           {someChecked && (
             <div

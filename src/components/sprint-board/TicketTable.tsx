@@ -65,7 +65,9 @@ function DroppableGroupZone({ groupKey }: { groupKey: string }) {
 }
 
 const VIRTUALIZE_THRESHOLD = 40;
-const ROW_HEIGHT_ESTIMATE = 36;
+// Line-less py-3 rows measure ~44px; the virtualizer still measures real heights, this is
+// only the pre-measurement estimate (BRDG-239 "B+C").
+const ROW_HEIGHT_ESTIMATE = 44;
 const VIRTUALIZER_OVERSCAN = 20;
 
 export function TicketTable({
