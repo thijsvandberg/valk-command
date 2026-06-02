@@ -314,20 +314,46 @@ interface ItemProps {
   onSelect: () => void;
   className?: string;
   style?: CSSProperties;
+  // Render as a div with button semantics instead of a real <button>. Use when
+  // the item embeds its own interactive elements (e.g. a link), since a nested
+  // <a> inside a <button> is invalid HTML.
+  asDiv?: boolean;
 }
 
-function Item({ children, selected, onSelect, className, style }: ItemProps) {
-  return (
-    <button
-      type="button"
-      onClick={onSelect}
-      className={`flex w-full items-center gap-2.5 px-3 py-[7px] text-body-sm cursor-pointer hover:bg-hover-list-item active:bg-overlay-default${className ? ` ${className}` : ""}`}
-      style={style}
-    >
+function Item({ children, selected, onSelect, className, style, asDiv }: ItemProps) {
+  const cls = `flex w-full items-center gap-2.5 px-3 py-[7px] text-body-sm cursor-pointer hover:bg-hover-list-item active:bg-overlay-default${className ? ` ${className}` : ""}`;
+  const inner = (
+    <>
       {children}
       {selected && (
         <Check size={11} strokeWidth={1.5} className="shrink-0 ml-auto text-[var(--color-brand-400)]" />
       )}
+    </>
+  );
+
+  if (asDiv) {
+    return (
+      <div
+        role="button"
+        tabIndex={0}
+        onClick={onSelect}
+        onKeyDown={(e) => {
+          if (e.key === "Enter" || e.key === " ") {
+            e.preventDefault();
+            onSelect();
+          }
+        }}
+        className={cls}
+        style={style}
+      >
+        {inner}
+      </div>
+    );
+  }
+
+  return (
+    <button type="button" onClick={onSelect} className={cls} style={style}>
+      {inner}
     </button>
   );
 }

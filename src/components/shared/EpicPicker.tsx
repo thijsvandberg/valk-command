@@ -1,7 +1,8 @@
 "use client";
 
 import { useState, useRef, useEffect, useCallback, useMemo } from "react";
-import { Check, Search, Zap, X, RefreshCw, Sparkles, AlertTriangle } from "lucide-react";
+import Link from "next/link";
+import { Check, Search, Zap, X, RefreshCw, Sparkles, AlertTriangle, ArrowUpRight } from "lucide-react";
 import { BasePicker } from "@/components/shared/BasePicker";
 import useSWR from "swr";
 import { apiFetch, swrFetcher, ApiError } from "@/lib/api-client";
@@ -223,15 +224,28 @@ function EpicPickerInner({
 
   return (
     <>
-      <BasePicker.Trigger
-        title={value ? `Epic: ${value.name}` : "Select epic"}
-        className={`inline-flex items-center gap-1.5 rounded-md bg-overlay-default px-2 py-0.5 ${textClass} font-medium cursor-pointer hover:bg-overlay-strong transition-colors duration-150 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)] active:scale-[0.98]`}
-      >
-        <Zap size={12} strokeWidth={1.5} className={`shrink-0 ${value ? "text-[var(--color-icon-epic)]" : "text-text-muted"}`} />
-        <span className={`truncate max-w-[140px] ${value ? "text-[var(--color-icon-epic)] font-medium" : "text-text-muted"}`}>
-          {value ? value.name : "Select epic"}
-        </span>
-      </BasePicker.Trigger>
+      <span className="inline-flex items-center gap-0.5">
+        <BasePicker.Trigger
+          title={value ? `Epic: ${value.name}` : "Select epic"}
+          className={`inline-flex items-center gap-1.5 rounded-md bg-overlay-default px-2 py-0.5 ${textClass} font-medium cursor-pointer hover:bg-overlay-strong transition-colors duration-150 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)] active:scale-[0.98]`}
+        >
+          <Zap size={12} strokeWidth={1.5} className={`shrink-0 ${value ? "text-[var(--color-icon-epic)]" : "text-text-muted"}`} />
+          <span className={`truncate max-w-[140px] ${value ? "text-[var(--color-icon-epic)] font-medium" : "text-text-muted"}`}>
+            {value ? value.name : "Select epic"}
+          </span>
+        </BasePicker.Trigger>
+        {value && (
+          <Link
+            href={`/tickets/${value.key}`}
+            aria-label={`Open epic ${value.name}`}
+            title={`Open epic ${value.key}`}
+            className="inline-flex shrink-0 items-center justify-center rounded-md p-1 text-text-muted cursor-pointer hover:text-[var(--color-icon-epic)] hover:bg-overlay-default focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)] active:scale-[0.96]"
+            style={{ transition: "color 0.15s ease, background-color 0.15s ease, transform 0.15s ease" }}
+          >
+            <ArrowUpRight size={12} strokeWidth={1.5} className="shrink-0" />
+          </Link>
+        )}
+      </span>
 
       <BasePicker.Popover width="w-[280px]" footer={staleFooter}>
         {/* Custom search row with action buttons */}
@@ -299,6 +313,7 @@ function EpicPickerInner({
             return (
               <BasePicker.Item
                 key={epic.key}
+                asDiv
                 selected={isSelected}
                 onSelect={() => { onChange({ key: epic.key, name: epic.name }); handleClose(); }}
                 style={isSuggested && !query.trim() ? { backgroundColor: "color-mix(in srgb, var(--color-icon-epic) 4%, transparent)" } : undefined}
@@ -314,7 +329,15 @@ function EpicPickerInner({
                     <AlertTriangle size={9} strokeWidth={1.5} className="text-[var(--color-status-warning)]" style={{ opacity: 0.5 }} />
                   </span>
                 )}
-                <span className="shrink-0 text-caption text-text-muted">{epic.key}</span>
+                <Link
+                  href={`/tickets/${epic.key}`}
+                  onClick={(e) => e.stopPropagation()}
+                  title={`Open ${epic.key}`}
+                  className="shrink-0 rounded text-caption text-text-muted cursor-pointer hover:text-[var(--color-icon-epic)] hover:underline focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-[var(--color-brand-400)] active:opacity-70"
+                  style={{ transition: "color 0.15s ease" }}
+                >
+                  {epic.key}
+                </Link>
               </BasePicker.Item>
             );
           })}
