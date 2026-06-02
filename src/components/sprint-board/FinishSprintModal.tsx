@@ -180,7 +180,7 @@ export function FinishSprintModal({
 
   return (
     <Modal open onClose={onClose} aria-label="Finish sprint">
-      <div className="flex max-h-[82vh] w-full max-w-lg flex-col rounded-xl border border-border-strong bg-[var(--color-surface-floating)] shadow-[var(--shadow-xl)]">
+      <div className="flex max-h-[82vh] w-full max-w-2xl flex-col rounded-xl border border-border-strong bg-[var(--color-surface-floating)] shadow-[var(--shadow-xl)]">
         {/* Header */}
         <div className="flex items-center justify-between border-b border-border-default px-5 py-3.5">
           <div className="flex min-w-0 items-center gap-2.5">
@@ -230,7 +230,6 @@ export function FinishSprintModal({
               <ul className="max-h-44 overflow-y-auto px-1.5 py-1.5">
                 {incompleteStories.map((t) => (
                   <li key={t.key} className="flex items-center gap-2.5 rounded-md px-2 py-1.5 transition-colors duration-100 hover:bg-overlay-subtle">
-                    <span className="min-w-0 flex-1 truncate text-body-sm text-text-primary">{t.title}</span>
                     <TicketStatusPill
                       ticketKey={t.key}
                       jiraStatus={t.jiraStatus}
@@ -241,6 +240,7 @@ export function FinishSprintModal({
                       showStatus
                       hoverData={buildTicketHoverData(t)}
                     />
+                    <span className="min-w-0 flex-1 truncate text-body-sm text-text-primary">{t.title}</span>
                   </li>
                 ))}
               </ul>
@@ -283,7 +283,6 @@ export function FinishSprintModal({
                     <li key={story.key} className="rounded-md border border-border-subtle bg-[var(--color-surface-elevated)]/40">
                       <div className="flex items-center justify-between gap-2 px-2.5 py-2">
                         <div className="flex min-w-0 flex-1 items-center gap-2">
-                          <span className="min-w-0 flex-1 truncate text-body-sm text-text-primary">{story.title}</span>
                           <TicketStatusPill
                             ticketKey={story.key}
                             jiraStatus={story.jiraStatus}
@@ -294,6 +293,7 @@ export function FinishSprintModal({
                             showStatus
                             hoverData={buildTicketHoverData(story)}
                           />
+                          <span className="min-w-0 flex-1 truncate text-body-sm text-text-primary">{story.title}</span>
                         </div>
                         {resolved ? (
                           <span className="inline-flex shrink-0 items-center gap-1 text-[11px] font-medium text-[var(--color-status-success)]">
@@ -332,12 +332,11 @@ export function FinishSprintModal({
                         </div>
                       )}
                       {open.length > 0 && (
-                        <ul className="border-t border-border-subtle px-2.5 py-1">
+                        <ul className="mb-1.5 ml-5 space-y-0.5 border-l-2 border-border-strong pl-2">
                           {open.map((sub) => {
                             const subBusy = busySubtasks.has(sub.key);
                             return (
                               <li key={sub.key} className="flex items-center gap-2 rounded-md px-1.5 py-1.5 transition-colors duration-100 hover:bg-overlay-subtle">
-                                <span className="min-w-0 flex-1 truncate text-[12px] text-text-secondary">{sub.title}</span>
                                 <TicketStatusPill
                                   ticketKey={sub.key}
                                   jiraStatus={sub.status.toUpperCase() as JiraStatus}
@@ -347,6 +346,7 @@ export function FinishSprintModal({
                                   showKey
                                   showStatus
                                 />
+                                <span className="min-w-0 flex-1 truncate text-[12px] text-text-secondary">{sub.title}</span>
                                 <button
                                   type="button"
                                   onClick={() => closeOneSubtask(story.key, sub.key)}
