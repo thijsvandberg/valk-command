@@ -18,6 +18,13 @@ Today the board is a true table with sticky column headers (`Key`, `Title`, `Epi
 - **Target feel** (Image 2): Jira sprint list — checkbox, type icon, key, title, subtask icon, epic chip, status, SP, assignee avatar, no column headers.
 - **Hover card** (Image 3): the existing `TicketStatusPill` hover card (BRDG-235) already shows SP/BV, Sprint, Epic, Assignee, Creator, Subtasks — the natural home for anything we strip off the row.
 
+### Progress since this draft was written
+
+The board is still a fixed `<table>` (`<thead>`, `tableLayout: fixed`, `MIN_TABLE_WIDTH = 1100`, header-click sorting) — the core restructure below is still open. But two improvements have shipped inside the current table that this story should build on rather than redo:
+
+- **Hover-only checkbox (done).** The bulk-select checkbox is now default-hidden (`opacity-0`) and fades in on row hover, sitting over the leading issue-type icon (`TicketRow.tsx:156-162, 217-228`). In bulk mode a dedicated checkbox gutter shows on every row. The new layout must preserve this exact behaviour.
+- **SP/BV are now recognizable (BRDG-240, done).** SP (gauge icon) and BV (goal icon) render via the shared `MetricBadge` component with per-value color ramps — subtle (icon + number) inline, tinted (pill) in the hover card and header totals. This already resolves the "make SP vs BV self-evident" need, so SP/BV no longer have to move into the hover card for legibility reasons; they can stay inline as the proposed layout shows.
+
 ## Proposed row layout
 
 Left to right, single flex row that adapts to width:
@@ -36,7 +43,7 @@ The grouped sprint headers (the per-sprint stat bar / `GroupStatBar`) stay — t
 
 ## Open decisions (to resolve before implementation)
 
-**OPEN #1 — Row vs hover card.** Which secondary signals stay as conditional inline tags on the row (only shown when applicable), and which move entirely into the hover card? Candidates currently on the row: flag, refinement indicator (`Gem`), open-subtasks indicator, Quality Score badge, notes icon, pipeline/deploy badges, PO readiness, edit-state dot (draft/local/conflict), follow star. The PO's note: "misschien het eea opschonen en enkel tonen in de ticket tooltip."
+**OPEN #1 — Row vs hover card.** Which secondary signals stay as conditional inline tags on the row (only shown when applicable), and which move entirely into the hover card? Candidates currently on the row: flag, refinement indicator (`Gem`), open-subtasks indicator, Quality Score badge, notes icon, pipeline/deploy badges, PO readiness, edit-state dot (draft/local/conflict), follow star. The PO's note: "misschien het eea opschonen en enkel tonen in de ticket tooltip." *Note: SP/BV are settled — they stay inline (now recognizable via `MetricBadge`, BRDG-240) and are not part of this clean-up question.*
 
 **OPEN #2 — Column customization.** The board currently supports show/hide + reorder of columns (`ColumnToggle`, `useColumnWidths`, `COLUMNS`, `DEFAULT_VISIBLE`, saved views). With a fixed Jira-style layout this largely disappears. Decide: drop the toggle entirely for one clean fixed layout, or keep a reduced set of optional fields (e.g. toggle SP/BV/QS). This affects saved views and the `visibleColumns`/`columnOrder` plumbing throughout `SprintBoard → TicketTable → TicketRow`.
 
@@ -51,7 +58,7 @@ The grouped sprint headers (the per-sprint stat bar / `GroupStatBar`) stay — t
 - Replace the `<table>` / `<thead>` / `<td>`-per-column structure in `TicketTable.tsx` and `TicketRow.tsx` with a flex (or CSS grid) row. Keep the `<tbody>`-per-group grouping and `GroupStatBar` headers.
 - Remove `theadContent`, `renderHeaderCell`, `ResizeHandle`, `SortIndicator`, `COLUMN_SORT_FIELDS`, `HEADER_LABELS` (and dependent header-click sorting) — superseded by the sort dropdown.
 - Re-home stripped fields into the `TicketStatusPill` hover card (mostly already present from BRDG-235), adding any missing ones.
-- Preserve existing behaviours: drag-and-drop reorder (`SortableTicketRow`, dnd-kit), virtualization for large lists (`useVirtualizer`), row selection / side panel, checkbox bulk-select + shift-range, inline title edit, prefetch-on-hover, keyboard navigation, flagged-row left border.
+- Preserve existing behaviours: drag-and-drop reorder (`SortableTicketRow`, dnd-kit), virtualization for large lists (`useVirtualizer`), row selection / side panel, the hover-only checkbox (default-hidden, fades in over the type icon on hover; dedicated gutter in bulk mode) + shift-range, inline title edit, prefetch-on-hover, keyboard navigation, flagged-row left border, and the `MetricBadge` SP/BV treatment.
 - Reconcile or remove the column-customization surface per **OPEN #2** (`ColumnToggle`, `useColumnWidths`, `DEFAULT_VISIBLE`, `COLUMN_PRESETS`, saved-view column state).
 
 ## Acceptance Criteria (draft — expand after OPEN items)
