@@ -207,13 +207,16 @@ Ticket descriptions are converted from Jira ADF to a markdown string at sync tim
 (`src/lib/adf-to-markdown.ts`) and rendered by `renderMarkdown()`
 (`src/components/ticket-detail/renderMarkdown.tsx`). When rendered on the ticket
 detail page (`EditableDescription`, via `renderMarkdown(value, { linkifyRefs: true })`),
-a bare project-key reference in **plain text** (e.g. `VPL-43237`) becomes an
-interactive `TicketRefPill` linking to `/tickets/<KEY>`, with a hover card whose
-data is fetched lazily (`GET /api/tickets/[key]`) on first hover. The prefix comes
-from `NEXT_PUBLIC_JIRA_PROJECT_KEY`. References inside links, inline code, fenced
-code blocks, or emphasis (bold/italic/color) are left untouched; references in
-plain text inside an expandable block are still converted. Linkification is opt-in
-per render, so chat and comments (which share `renderMarkdown`) are unaffected.
+a bare project-key reference in **plain text** (e.g. `VPL-43237`) — and a full Jira
+`/browse/<KEY>` link — becomes an interactive `TicketRefPill` (the elevated chip
+style, `appearance="elevated"`) linking to `/tickets/<KEY>`, with ticket detail
+fetched after mount (`GET /api/tickets/[key]`). The same elevated style is used for
+the ticket-detail header pill. The prefix comes from `NEXT_PUBLIC_JIRA_PROJECT_KEY`.
+References inside inline code, fenced code blocks, or emphasis (bold/italic/color)
+are left untouched; references in plain text inside an expandable block are still
+converted. Linkification is opt-in per render, so chat and comments (which share
+`renderMarkdown`) are currently unaffected — extending to them and to the rich
+editor is tracked in BRDG-248.
 
 ## Data Flow Diagram
 

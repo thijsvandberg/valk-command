@@ -34,10 +34,22 @@ describe("renderMarkdown — VPL reference linkification", () => {
     expect(pillFor(container, "VPL-2")).toBeTruthy();
   });
 
-  it("does NOT convert a key that is already a markdown link", () => {
-    const { container } = renderDesc("[VPL-1](https://example.com/browse/VPL-1)");
+  it("converts a full Jira /browse/ link into a pill", () => {
+    const { container } = renderDesc("See [VPL-39873](https://new-story.atlassian.net/browse/VPL-39873) for context.");
+    expect(pillFor(container, "VPL-39873")).toBeTruthy();
+    // The original external anchor is replaced by the pill.
+    expect(container.querySelector('a[href*="atlassian.net/browse"]')).toBeNull();
+  });
+
+  it("converts a bare /browse/ link (text == url) into a pill", () => {
+    const { container } = renderDesc("https://new-story.atlassian.net/browse/VPL-39873");
+    expect(pillFor(container, "VPL-39873")).toBeTruthy();
+  });
+
+  it("leaves a non-browse link alone, even when its text contains a key", () => {
+    const { container } = renderDesc("[VPL-1 docs](https://example.com/page)");
     expect(pillFor(container, "VPL-1")).toBeNull();
-    const link = container.querySelector('a[href="https://example.com/browse/VPL-1"]');
+    const link = container.querySelector('a[href="https://example.com/page"]');
     expect(link).toBeTruthy();
     expect(link?.textContent).toContain("VPL-1");
   });

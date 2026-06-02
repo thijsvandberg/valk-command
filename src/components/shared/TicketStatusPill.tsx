@@ -547,9 +547,10 @@ export interface TicketStatusPillProps {
   showStatus?: boolean;
   /** Show the readiness segment (default: true). Set false for read-only reference pills. */
   showReadiness?: boolean;
-  /** Drop the outer border ring on the default variant, keeping the tinted
-   *  background — a softer chip for inline use (e.g. reference pills in text). */
-  borderless?: boolean;
+  /** Visual treatment. "elevated" wraps the floating segments in a soft card
+   *  (surface + shadow + ring) with a rounded-full status pill — used by the
+   *  ticket-detail header and inline reference pills. */
+  appearance?: "default" | "elevated";
   /** Details shown in the hover card. When omitted, no hover card is rendered. */
   hoverData?: TicketPillHoverData;
   /** Enable the hover card (default: true). Combined with hoverData being present. */
@@ -586,7 +587,7 @@ export function TicketStatusPill({
   showKey = true,
   showStatus = true,
   showReadiness = true,
-  borderless = false,
+  appearance = "default",
   hoverData,
   showHoverCard = true,
   onStoryPointsChange,
@@ -680,7 +681,9 @@ export function TicketStatusPill({
 
   const jiraUrl = getJiraUrl(ticketKey);
 
-  const isList = variant === "list";
+  // Elevated reuses the list layout (floating segments) but wrapped in a soft card.
+  const elevated = appearance === "elevated";
+  const isList = variant === "list" || elevated;
   const jiraColors = JIRA_STATUS_COLORS[jiraStatus] ?? JIRA_STATUS_COLORS["TO DO"];
   const readinessCfg = readiness ? READINESS_CONFIG[readiness] : null;
 
@@ -699,7 +702,19 @@ export function TicketStatusPill({
     const statusTip = onJiraStatusChange ? "Change status" : jiraStatus;
     const readinessTip = readiness ? READINESS_CONFIG[readiness].label : "Ready for Development";
     return (
-      <div ref={wrapperRef} {...hoverProps} className="flex shrink-0 items-center gap-1.5">
+      <div
+        ref={wrapperRef}
+        {...hoverProps}
+        className={
+          elevated
+            ? `inline-flex shrink-0 items-center gap-1.5 rounded-md bg-surface-elevated align-middle ring-1 ring-inset ring-border-subtle ${
+                size === "lg"
+                  ? "px-2.5 py-1.5 shadow-[0_1px_3px_rgba(0,0,0,0.16)]"
+                  : "px-1.5 py-[3px] shadow-[0_1px_2px_rgba(0,0,0,0.14)]"
+              }`
+            : "flex shrink-0 items-center gap-1.5"
+        }
+      >
         {hoverCardEl}
 
         {/* Issue type */}
@@ -734,7 +749,7 @@ export function TicketStatusPill({
 
         {/* Key */}
         {showKey && (
-          <div className={`relative flex shrink-0 ${issueType ? "-ml-1" : ""}`}>
+          <div className={`relative flex shrink-0 ${!elevated && issueType ? "-ml-1" : ""}`}>
             <a
               ref={keyLinkRef}
               href={`/tickets/${ticketKey}`}
@@ -744,8 +759,8 @@ export function TicketStatusPill({
                   setKeyDropdownOpen((o) => !o);
                 }
               }}
-              className={`font-mono ${textSize} font-medium text-text-secondary transition-colors duration-150 hover:text-text-primary focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)]`}
-              style={{ minWidth: "9ch" }}
+              className={`font-mono ${textSize} font-medium transition-colors duration-150 hover:text-text-primary focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)] ${elevated ? "text-text-primary" : "text-text-secondary"}`}
+              style={{ minWidth: elevated ? undefined : "9ch" }}
             >
               {ticketKey}
             </a>
@@ -778,10 +793,10 @@ export function TicketStatusPill({
                 aria-label={statusTip}
                 onClick={onJiraStatusChange ? () => setJiraDropdownOpen((o) => !o) : undefined}
                 disabled={!onJiraStatusChange}
-                className={`flex items-center gap-1 rounded px-1.5 py-0.5 font-mono text-[10px] font-medium tracking-wide transition-colors duration-150 ${
-                  onJiraStatusChange ? "cursor-pointer hover:brightness-110" : "cursor-default"
-                }`}
-                style={{ backgroundColor: jiraColors.bg, color: jiraColors.text, opacity: 0.85 }}
+                className={`flex items-center gap-1 px-1.5 py-0.5 font-mono text-[10px] font-medium tracking-wide transition-colors duration-150 ${
+                  elevated ? "rounded-full" : "rounded"
+                } ${onJiraStatusChange ? "cursor-pointer hover:brightness-110" : "cursor-default"}`}
+                style={{ backgroundColor: jiraColors.bg, color: jiraColors.text, opacity: elevated ? 1 : 0.85 }}
               >
                 <span className="shrink-0 h-1.5 w-1.5 rounded-full opacity-70" style={{ backgroundColor: jiraColors.text }} />
                 {JIRA_STATUS_ABBREVIATIONS[jiraStatus] ?? jiraStatus}
@@ -802,7 +817,7 @@ export function TicketStatusPill({
 
         {/* Readiness */}
         {showReadiness && (
-          <div className="relative flex shrink-0 -ml-1">
+          <div className={`relative flex shrink-0 ${elevated ? "" : "-ml-1"}`}>
             <Tooltip content={readinessTip}>
               <button
                 ref={readinessBtnRef}
@@ -844,7 +859,7 @@ export function TicketStatusPill({
   return (
     <div ref={wrapperRef} {...hoverProps} className="flex shrink-0 items-center gap-1">
       {hoverCardEl}
-      <div className={`flex shrink-0 items-stretch overflow-visible rounded-md bg-overlay-default ${borderless ? "" : "ring-1 ring-inset ring-border-default"}`}>
+      <div className="flex shrink-0 items-stretch overflow-visible rounded-md bg-overlay-default ring-1 ring-inset ring-border-default">
 
         {/* Issue type segment */}
         {issueType && (

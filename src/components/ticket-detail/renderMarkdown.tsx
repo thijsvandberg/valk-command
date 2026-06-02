@@ -11,10 +11,17 @@ import { TicketRefPill } from "@/components/shared/TicketRefPill";
 // reaches text inside other formatted elements (links, code, bold/italic) —
 // those either don't recurse or pass the flag off.
 const PROJECT_KEY = process.env.NEXT_PUBLIC_JIRA_PROJECT_KEY ?? "VPL";
-const TICKET_REF_RE = new RegExp(
-  `\\b${PROJECT_KEY.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}-\\d+\\b`,
-  "g",
-);
+const ESCAPED_KEY = PROJECT_KEY.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+const TICKET_REF_RE = new RegExp(`\\b${ESCAPED_KEY}-\\d+\\b`, "g");
+
+// A Jira "browse" link to a project ticket, e.g.
+// https://your-org.atlassian.net/browse/VPL-39873(?query/#hash). When linkify is
+// on, such a link becomes a pill instead of a plain anchor.
+const BROWSE_REF_RE = new RegExp(`/browse/(${ESCAPED_KEY}-\\d+)(?:[/?#]|$)`, "i");
+function browseRefKey(url: string): string | null {
+  const m = url.match(BROWSE_REF_RE);
+  return m ? m[1].toUpperCase() : null;
+}
 
 const VIDEO_EXTENSIONS = /\.(mp4|webm|mov|ogg)$/i;
 function isVideoAttachment(altOrSrc: string): boolean {
@@ -160,19 +167,25 @@ function inlineFormat(text: string, linkify = false): ReactNode {
         );
       }
     } else if (match[6] !== undefined) {
-      // Link: [text](url)
-      parts.push(
-        <a
-          key={i++}
-          href={match[6]}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="text-[var(--color-brand-400)] underline decoration-[var(--color-brand-400)]/30 underline-offset-2 hover:decoration-[var(--color-brand-400)]/60 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)]"
-          style={{ transition: "text-decoration-color 0.15s ease" }}
-        >
-          {match[5]}
-        </a>
-      );
+      // Link: [text](url). A Jira browse link to a project ticket becomes a pill
+      // (only when linkification is enabled); every other link stays an anchor.
+      const refKey = linkify ? browseRefKey(match[6]) : null;
+      if (refKey) {
+        parts.push(<TicketRefPill key={i++} ticketKey={refKey} />);
+      } else {
+        parts.push(
+          <a
+            key={i++}
+            href={match[6]}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="text-[var(--color-brand-400)] underline decoration-[var(--color-brand-400)]/30 underline-offset-2 hover:decoration-[var(--color-brand-400)]/60 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)]"
+            style={{ transition: "text-decoration-color 0.15s ease" }}
+          >
+            {match[5]}
+          </a>
+        );
+      }
     } else if (match[7] !== undefined) {
       // Strikethrough: ~~text~~
       parts.push(<s key={i++}>{inlineFormat(match[7])}</s>);
