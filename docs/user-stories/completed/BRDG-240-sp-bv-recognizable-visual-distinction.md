@@ -1,6 +1,6 @@
 # BRDG-240: Recognizable Visual Distinction for SP and BV
 
-**Status:** Implemented
+**Status:** Done
 **Priority:** Low
 **Type:** Enhancement
 
@@ -70,4 +70,4 @@ There is already a precedent worth reusing: the large (`lg`) variant of both pic
 - [x] Verify inline editing and sorting are unchanged
 - [x] Add/extend tests for the new rendering (`showMetricIcon`, `richTooltip`, lg icon)
 - [x] Verify visually in the Sprint Board table (BT: 137 / BT: 138)
-- [ ] Delete the preview page `dev/sp-bv-styles` once the treatment is signed off
+- [x] Delete the preview page `dev/sp-bv-styles` once the treatment is signed off (moved to `deleted/`)
