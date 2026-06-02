@@ -249,31 +249,35 @@ function PaneHeader({ onClose, isStreaming }: {
   onClose?: () => void;
   isStreaming?: boolean;
 }) {
+  // Mirror the ticket tab bar exactly (border on the wrapper, h-[44px] inner
+  // row) so the bottom border lines up in both height and color.
   return (
-    <div className="flex h-[44px] shrink-0 items-center justify-between border-b border-border-subtle px-3">
-      <div className="flex items-center gap-2">
-        <div className="relative flex h-6 w-6 items-center justify-center rounded-lg bg-[var(--color-brand-500)]/[0.1] border border-[var(--color-brand-500)]/[0.18]">
-          <MessageSquareText size={13} strokeWidth={1.5} className="text-[var(--color-brand-400)]" />
+    <div className="shrink-0 border-b border-border-default">
+      <div className="flex h-[44px] items-center justify-between px-3">
+        <div className="flex items-center gap-2">
+          <div className="relative flex h-6 w-6 items-center justify-center rounded-lg bg-[var(--color-brand-500)]/[0.1] border border-[var(--color-brand-500)]/[0.18]">
+            <MessageSquareText size={13} strokeWidth={1.5} className="text-[var(--color-brand-400)]" />
+            {isStreaming && (
+              <span className="absolute -top-1 -right-1 h-2 w-2 rounded-full bg-[var(--color-brand-400)] ring-2 ring-[var(--color-surface-elevated)] animate-pulse" />
+            )}
+          </div>
+          <span className="text-body-sm font-medium text-text-primary">Chat</span>
           {isStreaming && (
-            <span className="absolute -top-1 -right-1 h-2 w-2 rounded-full bg-[var(--color-brand-400)] ring-2 ring-[var(--color-surface-elevated)] animate-pulse" />
+            <span className="text-[10px] font-medium uppercase tracking-[0.08em] text-text-muted">thinking</span>
           )}
         </div>
-        <span className="text-body-sm font-medium text-text-primary">Chat</span>
-        {isStreaming && (
-          <span className="text-[10px] font-medium uppercase tracking-[0.08em] text-text-muted">thinking</span>
+        {onClose && (
+          <button
+            type="button"
+            onClick={onClose}
+            className="shrink-0 rounded-md p-1 cursor-pointer text-text-muted hover:bg-overlay-subtle hover:text-text-secondary focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)]"
+            style={{ transition: "background-color 0.15s ease, color 0.15s ease" }}
+            aria-label="Close chat"
+          >
+            <X size={14} strokeWidth={1.5} />
+          </button>
         )}
       </div>
-      {onClose && (
-        <button
-          type="button"
-          onClick={onClose}
-          className="shrink-0 rounded-md p-1 cursor-pointer text-text-muted hover:bg-overlay-subtle hover:text-text-secondary focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)]"
-          style={{ transition: "background-color 0.15s ease, color 0.15s ease" }}
-          aria-label="Close chat"
-        >
-          <X size={14} strokeWidth={1.5} />
-        </button>
-      )}
     </div>
   );
 }

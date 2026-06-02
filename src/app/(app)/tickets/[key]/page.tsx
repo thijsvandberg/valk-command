@@ -607,7 +607,7 @@ export default function TicketDetailPage({
 
       {chatPaneOpen && ticket && (
         <div
-          className="relative shrink-0 border-l border-border-subtle bg-[var(--color-surface-elevated)] overflow-hidden"
+          className="relative shrink-0 border-l border-border-default bg-[var(--color-surface-elevated)] overflow-hidden"
           style={{ width: `${chatPaneWidth}px`, animation: "fadeInUp 0.15s ease" }}
         >
           {/* Resize drag handle on the left edge */}
