@@ -1,5 +1,18 @@
 # Implementation Performance Log
 
+## BRDG-250 — Epic color management (2026-06-02)
+
+Smooth run overall. The one notable item is a recurring foreign-breakage blocker.
+
+| Phase | Notes |
+|-------|-------|
+| Plan | Opus Plan subagent picked the registry + `useSyncExternalStore` approach so the pure `getEpicColor(name)` (~10 call sites) resolves a stored color with zero call-site churn, reactive only on the 4 named surfaces. |
+| Implement | Reused the BRDG-254 `epic_metadata` store (added a nullable `color` column); curated 9-swatch palette deriving bg/border/text via `color-mix`; name+key indexed registry so name-only surfaces (stakeholder chips) resolve too. |
+| Verify | All touched tests green (route, lib, registry, picker, progress + fixtures); browser-verified epic-overview chip/picker, instant + persisted apply, matching sprint-board pills, and reset-to-default. |
+
+Key bottlenecks:
+- **Recurring pre-existing broken tree blocks `npm run build`/`npm run verify`**: the same `SessionEndModal.tsx:110` lint error noted previously still fails the build's lint gate, and an untracked foreign `src/app/preview-board-transition/page.tsx` fails `routes.test.tsx`. Both are independent of this story. Verified in isolation instead (typecheck clean, my code "compiled successfully", 3909 suite tests pass with only the foreign route test failing).
+
 ## BRDG-232 — Rate limiter hardening (2026-05-29)
 
 Backend/security story. Implementation was straightforward; final verification was
