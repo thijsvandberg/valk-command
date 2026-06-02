@@ -8,6 +8,7 @@ import { getEpicColor } from "@/types/ticket";
 import { EpicProgressBar } from "./EpicProgressBar";
 import { EpicTimeline } from "./EpicTimeline";
 import { EpicTicketList } from "./EpicTicketList";
+import { EpicTeamPicker } from "./EpicTeamPicker";
 
 interface SprintMeta {
   id: number;
@@ -33,12 +34,13 @@ export function EpicRow({ epic, sprints }: { epic: EpicProgressItem; sprints: Sp
       className="overflow-hidden rounded-xl border border-border-default bg-surface-elevated shadow-[0_1px_3px_rgba(0,0,0,0.18)] transition-colors duration-150"
       style={{ borderLeft: `3px solid ${color.text}` }}
     >
-      {/* Header row — click to expand */}
+      {/* Header row — expand button + team picker as siblings (no nested buttons) */}
+      <div className="flex items-center transition-colors duration-150 hover:bg-surface-elevated-hover">
       <button
         type="button"
         onClick={() => setExpanded((e) => !e)}
         aria-expanded={expanded}
-        className="group flex w-full items-center gap-4 px-4 py-3 text-left cursor-pointer transition-colors duration-150 hover:bg-surface-elevated-hover focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-[var(--color-brand-400)] active:bg-overlay-default"
+        className="group flex min-w-0 flex-1 items-center gap-4 px-4 py-3 text-left cursor-pointer focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-[var(--color-brand-400)] active:bg-overlay-default"
       >
         <ChevronRight
           size={16}
@@ -76,6 +78,11 @@ export function EpicRow({ epic, sprints }: { epic: EpicProgressItem; sprints: Sp
           <EpicProgressBar epic={epic} />
         </div>
       </button>
+
+        <div className="shrink-0 pr-3">
+          <EpicTeamPicker epicKey={epic.key} teams={epic.teams} />
+        </div>
+      </div>
 
       {/* Expanded detail */}
       {expanded && (

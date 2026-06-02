@@ -7,6 +7,7 @@ const mockUseEpicTickets = vi.fn();
 vi.mock("@/hooks/useEpics", () => ({
   useEpicProgress: () => mockUseEpicProgress(),
   useEpicTickets: (key: string, enabled: boolean) => mockUseEpicTickets(key, enabled),
+  useSetEpicTeams: () => vi.fn().mockResolvedValue(undefined),
 }));
 
 vi.mock("@/hooks/useSprintBoard", () => ({
