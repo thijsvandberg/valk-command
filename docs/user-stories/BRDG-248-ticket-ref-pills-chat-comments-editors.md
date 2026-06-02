@@ -33,6 +33,7 @@ Recommendation: keep the editor showing **plain text** while editing (status quo
 ### 1. Chat & comments (read-only)
 - Enable `renderMarkdown(..., { linkifyRefs: true })` in `CommentsSection` and `ChatMessageParts` (and decide on search results / version preview / story-writer previews).
 - Confirm the same exclusions hold (no conversion in code/links/emphasis); reuse BRDG-247 tests as a template.
+- **Fetch volume:** each `TicketRefPill` lazily fetches `GET /api/tickets/[key]` (SWR-deduped per key) and calls `useJiraSprints` for the hover-card sprint name. Fine for a description's handful of refs, but chat/comments can contain many. For high-volume surfaces, prefer a shared lookup over the SWR-cached `/api/tickets` list (cf. `useTicketHoverData`) or batch the per-key calls, rather than one request per pill.
 
 ### 2. Editor pills (TipTap node) — only if inline-while-editing is wanted
 - Custom atomic inline node + NodeView rendering `TicketRefPill` (read-only inside the editor).
