@@ -3,7 +3,7 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 import { createTestDb } from "@/db/test-utils";
 import type { BetterSQLite3Database } from "drizzle-orm/better-sqlite3";
 import type * as schema from "@/db/schema";
-import { ticket, appSetting } from "@/db/schema";
+import { ticket, appSetting, epicMetadata } from "@/db/schema";
 
 let testDb: BetterSQLite3Database<typeof schema>;
 
@@ -78,6 +78,37 @@ describe("GET /api/epics/progress", () => {
     expect(e.inProgressPoints).toBe(5);
     expect(e.todoPoints).toBe(2);
     expect(e.pointsBased).toBe(true);
+    // No metadata assigned yet → empty teams; epic's own IN PROGRESS status → bucket.
+    expect(e.teams).toEqual([]);
+    expect(e.status).toBe("in_progress");
+  });
+
+  it("includes PO-assigned teams and buckets the epic's own status", async () => {
+    seedSprints();
+    testDb.insert(ticket).values([
+      { jiraKey: "VPL-E1", title: "Epic One", status: "DONE", type: "epic" },
+      { jiraKey: "VPL-1", title: "T1", status: "TO DO", type: "story", epicKey: "VPL-E1", epic: "Epic One", sprintName: "12" },
+    ]).run();
+    testDb.insert(epicMetadata).values({ epicKey: "VPL-E1", teams: JSON.stringify(["BT", "GXP"]) }).run();
+
+    const res = await GET();
+    const data = await res.json();
+    const e = data.find((x: { key: string }) => x.key === "VPL-E1");
+    expect(e.teams).toEqual(["BT", "GXP"]);
+    expect(e.status).toBe("done");
+  });
+
+  it("defaults status to open when no synced epic row exists", async () => {
+    seedSprints();
+    testDb.insert(ticket).values([
+      { jiraKey: "VPL-1", title: "T1", status: "TO DO", type: "story", epicKey: "VPL-EX", epic: "Orphan", sprintName: "12" },
+    ]).run();
+
+    const res = await GET();
+    const data = await res.json();
+    const e = data.find((x: { key: string }) => x.key === "VPL-EX");
+    expect(e.status).toBe("open");
+    expect(e.teams).toEqual([]);
   });
 
   it("prefers the synced epic title over the child epic label", async () => {

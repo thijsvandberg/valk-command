@@ -16,6 +16,8 @@ function makeEpic(overrides: Partial<EpicProgressItem> = {}): EpicProgressItem {
     sprintIds: ["12"],
     perSprint: [{ sprintId: "12", total: 4, completed: 1 }],
     pointsBased: true,
+    teams: [],
+    status: "in_progress",
     ...overrides,
   };
 }

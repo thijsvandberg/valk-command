@@ -5,6 +5,9 @@ import { and, eq, inArray, notInArray, sql } from "drizzle-orm";
 import { cache } from "@/lib/cache";
 import { safeJsonParse } from "@/lib/api-validation";
 import { selectRecentSprintIds, type RecentSprintInput } from "@/lib/epic-progress";
+import { getEpicTeamsMap } from "@/lib/epic-metadata";
+import { mapJiraStatusToBucket, type EpicStatusBucket } from "@/lib/epic-filters";
+import type { Team } from "@/lib/sprint-utils";
 
 // Statuses excluded from totals: deprecated work + transient story-writer drafts.
 // Mirrors EXCLUDED_STATUSES in @/lib/epic-progress (kept in sync intentionally).
@@ -30,6 +33,10 @@ export interface EpicProgressItem {
   perSprint: EpicSprintProgress[];
   /** True when points-based progress is meaningful; false → ticket-count fallback. */
   pointsBased: boolean;
+  /** PO-assigned teams (Bridge metadata, not from Jira). */
+  teams: Team[];
+  /** The epic's own lifecycle status, bucketed for filtering. */
+  status: EpicStatusBucket;
 }
 
 async function getRecentSprintWindow(): Promise<{ ids: string[]; filter: string[] }> {
@@ -105,11 +112,15 @@ export async function GET() {
   // Authoritative epic names from synced epic rows; fall back to the child's epic label.
   const epicKeys = agg.map((a) => a.epicKey).filter((k): k is string => k != null);
   const epicRows = await db
-    .select({ jiraKey: ticket.jiraKey, title: ticket.title })
+    .select({ jiraKey: ticket.jiraKey, title: ticket.title, status: ticket.status })
     .from(ticket)
     .where(and(eq(ticket.type, "epic"), inArray(ticket.jiraKey, epicKeys)))
     .all();
   const epicTitleMap = new Map(epicRows.map((e) => [e.jiraKey, e.title]));
+  const epicStatusMap = new Map(epicRows.map((e) => [e.jiraKey, e.status]));
+
+  // PO-assigned teams per epic (Bridge metadata).
+  const epicTeamsMap = getEpicTeamsMap(epicKeys);
 
   // Order sprint ids within an epic by the recent-window order (oldest first), backlog last.
   const orderIndex = new Map<string, number>(recentIds.map((id, i) => [id, i]));
@@ -143,6 +154,8 @@ export async function GET() {
         sprintIds,
         perSprint,
         pointsBased: totalPoints > 0,
+        teams: epicTeamsMap.get(key) ?? [],
+        status: mapJiraStatusToBucket(epicStatusMap.get(key)),
       };
     });
 
