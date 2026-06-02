@@ -288,6 +288,37 @@ describe("TicketStatusPill hover card", () => {
     expect(screen.getByText("Flagged")).toBeTruthy();
   });
 
+  it("renders an interactive follow star in the card and toggles it (BRDG-239)", () => {
+    const onToggleFollow = vi.fn();
+    const { container } = render(
+      <TicketStatusPill
+        ticketKey="VPL-1"
+        jiraStatus="TO DO"
+        hoverData={{ ...fullData, followed: false }}
+        onToggleFollow={onToggleFollow}
+      />,
+    );
+    openCard(container);
+    const star = screen.getByRole("button", { name: "Follow ticket" });
+    expect(star).toBeTruthy();
+    act(() => { fireEvent.click(star); });
+    expect(onToggleFollow).toHaveBeenCalledTimes(1);
+  });
+
+  it("surfaces readiness and quality signals in the card (BRDG-239)", () => {
+    const { container } = render(
+      <TicketStatusPill
+        ticketKey="VPL-1"
+        jiraStatus="TO DO"
+        hoverData={{ ...fullData, readiness: "ready_to_refine", qualityScore: 82 }}
+      />,
+    );
+    openCard(container);
+    expect(screen.getByText("Readiness")).toBeTruthy();
+    expect(screen.getByText("Quality")).toBeTruthy();
+    expect(screen.getByText("82/100")).toBeTruthy();
+  });
+
   it("omits the flagged line when the ticket is not flagged", () => {
     const { container } = render(
       <TicketStatusPill ticketKey="VPL-1" jiraStatus="TO DO" hoverData={{ ...fullData, flagged: false }} />,

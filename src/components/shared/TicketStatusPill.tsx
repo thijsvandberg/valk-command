@@ -4,7 +4,7 @@ import { useState, useRef, useEffect, useLayoutEffect, type ReactNode } from "re
 import { usePathname } from "next/navigation";
 import { useOutsideClick } from "@/hooks/useOutsideClick";
 import { createPortal } from "react-dom";
-import { ExternalLink, FilePen, MessageCircleQuestion, CheckCircle2, Ban, Minus, Copy, ClipboardList, PenLine, Flag, IterationCw, Zap, User, UserRound, ListChecks, Eye, GitBranch, Rocket } from "lucide-react";
+import { ExternalLink, FilePen, MessageCircleQuestion, CheckCircle2, Ban, Minus, Copy, ClipboardList, PenLine, Flag, IterationCw, Zap, User, UserRound, ListChecks, Eye, GitBranch, Rocket, Star, Gem, MessageSquare, Gauge } from "lucide-react";
 import type { JiraStatus, TicketReadiness, IssueType, Assignee, Sprint } from "@/types/ticket";
 import type { PipelineHealthEntry, LastDeployedInfo } from "@/hooks/usePipelines";
 import {
@@ -40,6 +40,22 @@ function ReadinessIcon({ value, size = 12 }: { value: TicketReadiness; size?: nu
     case "on_hold":              return <Ban {...props} />;
   }
 }
+
+// Quality Score color ramp, mirroring QualityBadge so the card reads consistently (BRDG-239).
+function qualityColor(score: number): string {
+  if (score < 60) return "var(--color-status-error)";
+  if (score < 75) return "var(--color-status-warning)";
+  if (score < 90) return "var(--color-status-caution)";
+  return "var(--color-status-success)";
+}
+
+// Local edit-state display config. Kept here (not imported from sprint-board cells) so the shared
+// pill stays decoupled from the board module (BRDG-239).
+const EDIT_STATE_CONFIG: Record<"draft" | "local_edits" | "conflict", { dotClass: string; accent: string; label: string }> = {
+  draft: { dotClass: "bg-[var(--color-icon-task)]/40", accent: "var(--color-icon-task)", label: "Unsaved draft" },
+  local_edits: { dotClass: "bg-[var(--color-icon-task)]/70", accent: "var(--color-icon-task)", label: "Local changes" },
+  conflict: { dotClass: "bg-[var(--color-status-warning)]/70", accent: "var(--color-status-warning)", label: "Conflict" },
+};
 
 // ---------------------------------------------------------------------------
 // IssueTypeDropdown
@@ -370,6 +386,18 @@ export interface TicketPillHoverData {
   pipelineHealth?: PipelineHealthEntry | null;
   /** Last deployment info (re-homed from the inline pipeline column, BRDG-251). */
   lastDeploy?: LastDeployedInfo | null;
+  /** PO readiness state. The card always shows this even when the inline pill segment is hidden (BRDG-239). */
+  readiness?: TicketReadiness | null;
+  /** Quality Score (0-100), re-homed alongside the row tags so the card is the full signal set (BRDG-239). */
+  qualityScore?: number | null;
+  /** Free-text PO notes (BRDG-239). */
+  notes?: string | null;
+  /** Whether the PO follows this ticket. The follow star now lives only in the card (BRDG-239). */
+  followed?: boolean;
+  /** Local edit state (draft/local_edits/conflict), surfaced in the card (BRDG-239). */
+  editState?: "draft" | "local_edits" | "conflict" | null;
+  /** Names of active refinement sessions containing this ticket (BRDG-239). */
+  refinementNames?: string[];
 }
 
 
@@ -414,6 +442,8 @@ interface TicketHoverCardProps {
   onEpicChange?: (epic: EpicOption | null) => void;
   /** When provided, Assignee becomes editable. */
   onAssigneeChange?: (user: AssignableUser | null) => void;
+  /** When provided, the follow star in the card becomes an interactive toggle. */
+  onToggleFollow?: () => void;
   /** Notifies the parent when an inline picker opens/closes (to keep the card open). */
   onPickerOpenChange: (open: boolean) => void;
 }
@@ -430,6 +460,7 @@ function TicketHoverCard({
   sprints,
   onEpicChange,
   onAssigneeChange,
+  onToggleFollow,
   onPickerOpenChange,
 }: TicketHoverCardProps) {
   const [pos, setPos] = useState<{ left: number; top: number; openUp: boolean } | null>(null);
@@ -466,7 +497,29 @@ function TicketHoverCard({
         transform: shown ? "translateY(0)" : `translateY(${pos.openUp ? "4px" : "-4px"})`,
       }}
     >
-      <div className="text-body-lg font-medium leading-snug text-text-primary">{data.title}</div>
+      <div className="flex items-start justify-between gap-2">
+        <div className="text-body-lg font-medium leading-snug text-text-primary">{data.title}</div>
+        {data.followed !== undefined && (
+          <Tooltip content={data.followed ? "Following. Click to unfollow." : "Follow for PR, pipeline, and deployment notifications."}>
+            <button
+              type="button"
+              aria-label={data.followed ? "Unfollow ticket" : "Follow ticket"}
+              aria-pressed={data.followed}
+              onClick={onToggleFollow}
+              disabled={!onToggleFollow}
+              className={`-mr-0.5 -mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-md transition-colors duration-150 ${
+                onToggleFollow ? "cursor-pointer hover:bg-overlay-default" : "cursor-default"
+              }`}
+            >
+              <Star
+                size={14}
+                strokeWidth={1.5}
+                className={data.followed ? "text-amber-400 fill-amber-400" : "text-text-muted"}
+              />
+            </button>
+          </Tooltip>
+        )}
+      </div>
 
       <div className="mt-2 flex items-center gap-3 border-t border-border-subtle pt-2">
         {onStoryPointsChange ? (
@@ -577,12 +630,60 @@ function TicketHoverCard({
             <span className="text-text-muted">None</span>
           )}
         </InfoRow>
+
+        {/* Readiness, Quality and Notes are re-homed here so the card is always the full signal set,
+            even when their inline row tags are hidden (BRDG-239). */}
+        <InfoRow icon={<CheckCircle2 size={12} strokeWidth={1.75} />} label="Readiness">
+          {data.readiness ? (
+            <span className="flex items-center gap-1.5" style={{ color: READINESS_CONFIG[data.readiness].color }}>
+              <ReadinessIcon value={data.readiness} size={12} />
+              {READINESS_CONFIG[data.readiness].label}
+            </span>
+          ) : (
+            <span className="text-text-muted">Ready for development</span>
+          )}
+        </InfoRow>
+
+        <InfoRow icon={<Gauge size={12} strokeWidth={1.75} />} label="Quality">
+          {data.qualityScore != null ? (
+            <span className="flex items-center gap-1.5 tabular-nums" style={{ color: qualityColor(data.qualityScore) }}>
+              <span className="h-1.5 w-1.5 rounded-full" style={{ backgroundColor: qualityColor(data.qualityScore) }} />
+              {data.qualityScore}/100
+            </span>
+          ) : (
+            <span className="text-text-muted">Not scored</span>
+          )}
+        </InfoRow>
+
+        {data.notes != null && data.notes.trim() !== "" && (
+          <InfoRow icon={<MessageSquare size={12} strokeWidth={1.75} />} label="Notes">
+            <span className="truncate" title={data.notes}>{data.notes}</span>
+          </InfoRow>
+        )}
       </div>
 
-      {data.flagged && (
-        <div className="mt-2 flex items-center gap-1.5 border-t border-border-subtle pt-2">
-          <Flag size={11} strokeWidth={0} fill="currentColor" style={{ color: "var(--color-status-error)" }} />
-          <span className="text-label font-medium" style={{ color: "var(--color-status-error)" }}>Flagged</span>
+      {(data.flagged || data.editState || (data.refinementNames && data.refinementNames.length > 0)) && (
+        <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1.5 border-t border-border-subtle pt-2">
+          {data.flagged && (
+            <span className="flex items-center gap-1.5">
+              <Flag size={11} strokeWidth={0} fill="currentColor" style={{ color: "var(--color-status-error)" }} />
+              <span className="text-label font-medium" style={{ color: "var(--color-status-error)" }}>Flagged</span>
+            </span>
+          )}
+          {data.editState && (
+            <span className="flex items-center gap-1.5" style={{ color: EDIT_STATE_CONFIG[data.editState].accent }}>
+              <span className={`inline-block h-1.5 w-1.5 shrink-0 rounded-full ${EDIT_STATE_CONFIG[data.editState].dotClass}`} />
+              <span className="text-label font-medium">{EDIT_STATE_CONFIG[data.editState].label}</span>
+            </span>
+          )}
+          {data.refinementNames && data.refinementNames.length > 0 && (
+            <Tooltip content={`In refinement: ${data.refinementNames.join(", ")}`}>
+              <span className="flex items-center gap-1.5 text-[var(--color-brand-300)]">
+                <Gem size={11} strokeWidth={1.5} />
+                <span className="text-label font-medium">In refinement</span>
+              </span>
+            </Tooltip>
+          )}
         </div>
       )}
     </div>,
@@ -632,6 +733,8 @@ export interface TicketStatusPillProps {
   onEpicChange?: (epic: EpicOption | null) => void;
   /** When provided, Assignee becomes editable inside the hover card. */
   onAssigneeChange?: (user: AssignableUser | null) => void;
+  /** When provided, the follow star in the hover card becomes an interactive toggle. */
+  onToggleFollow?: () => void;
   /** Fade the leading issue-type icon while the enclosing `group/row` is hovered, so a row-level
    *  checkbox can take its place (list variant only). */
   dimTypeOnRowHover?: boolean;
@@ -661,6 +764,7 @@ export function TicketStatusPill({
   sprints,
   onEpicChange,
   onAssigneeChange,
+  onToggleFollow,
   dimTypeOnRowHover,
 }: TicketStatusPillProps) {
   const [issueTypeDropdownOpen, setIssueTypeDropdownOpen] = useState(false);
@@ -740,6 +844,7 @@ export function TicketStatusPill({
         sprints={sprints}
         onEpicChange={onEpicChange}
         onAssigneeChange={onAssigneeChange}
+        onToggleFollow={onToggleFollow}
         onPickerOpenChange={handleCardPickerOpenChange}
       />
     : null;
