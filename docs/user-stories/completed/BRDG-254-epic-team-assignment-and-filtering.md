@@ -85,3 +85,11 @@ No FK on `epic_metadata`; status filter operates on the epic's own row status on
 - Creating or editing epics from Bridge.
 - Auto-deriving a team from child tickets (deferred to a later story).
 - Filters other than team and status.
+
+## Follow-up enhancements (post-completion, PO-directed)
+
+- **Epic icon:** standardized on `Zap` (canonical epic icon) in the epics view header and sidebar nav.
+- **"No team" filter:** added to the team filter so epics without any assigned team can be isolated.
+- **Standard status display:** the status filter uses the shared status pills/colors (`JIRA_STATUS_COLORS`/`JIRA_STATUS_ABBREVIATIONS`) and the five real Jira statuses (TO DO / IN PROGRESS / TEST / DONE / DEPRECATED) instead of four custom buckets.
+- **Cleanup workflow:** the view defaults to recent-activity epics, but any active filter widens the pool to all synced epics (incl. done/deprecated) so old epics can be found and cleaned up (`recentActivity` flag on `EpicProgressItem`). Ran the epic sync (170 VPL epics, all statuses).
+- **Expanded ticket list:** child rows now show the readiness segment and info-on-hover tooltips (readiness sourced from `ticket_metadata` via `/api/epics/[key]/tickets`).
