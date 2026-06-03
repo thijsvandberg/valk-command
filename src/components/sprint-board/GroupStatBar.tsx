@@ -63,9 +63,7 @@ export const GroupStatBar = memo(function GroupStatBar({
             ? <ChevronRight className="h-3 w-3 shrink-0 text-text-tertiary" strokeWidth={1.5} />
             : <ChevronDown className="h-3 w-3 shrink-0 text-text-tertiary" strokeWidth={1.5} />
         )}
-        {label && (
-          <span className="truncate text-body-sm font-medium text-text-secondary">{label}</span>
-        )}
+        {/* Pin sits before the label (BRDG-239); it reserves its slot so labels stay aligned. */}
         {onPin && (
           <button
             type="button"
@@ -74,7 +72,7 @@ export const GroupStatBar = memo(function GroupStatBar({
             title={isPinned ? "Unpin from sprint bar" : pinDisabled ? "Maximum 8 pinned sprints" : "Pin to sprint bar"}
             aria-label={isPinned ? "Unpin from sprint bar" : "Pin to sprint bar"}
             aria-pressed={isPinned}
-            className={`ml-auto flex h-5 w-5 shrink-0 cursor-pointer items-center justify-center rounded focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-[var(--color-brand-400)] disabled:cursor-not-allowed disabled:opacity-30 ${
+            className={`flex h-5 w-5 shrink-0 cursor-pointer items-center justify-center rounded focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-[var(--color-brand-400)] disabled:cursor-not-allowed disabled:opacity-30 ${
               isPinned
                 ? "text-[var(--color-brand-400)] hover:bg-overlay-default"
                 : "text-text-muted opacity-0 group-hover/grouprow:opacity-100 hover:text-text-secondary hover:bg-overlay-default"
@@ -83,6 +81,9 @@ export const GroupStatBar = memo(function GroupStatBar({
           >
             <Pin className="h-3 w-3" strokeWidth={1.5} fill={isPinned ? "currentColor" : "none"} />
           </button>
+        )}
+        {label && (
+          <span className="truncate text-body-sm font-medium text-text-secondary">{label}</span>
         )}
       </div>
       <StatPill size="sm" variant="default">
