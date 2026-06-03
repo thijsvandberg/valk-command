@@ -36,6 +36,7 @@ vi.mock("@/hooks/useTicketSessionMap", () => ({ useTicketSessionMap: () => ({ ti
 
 vi.mock("@/components/shared/TicketStatusPill", () => ({ TicketStatusPill: ({ ticketKey }: { ticketKey: string }) => <span>{ticketKey}</span> }));
 vi.mock("@/components/shared/Avatar", () => ({ Avatar: () => <span data-testid="avatar" /> }));
+vi.mock("@/components/shared/WatchersRow", () => ({ WatchersRow: ({ ticketKey }: { ticketKey: string }) => <span data-testid="watchers-row">{ticketKey}</span> }));
 vi.mock("@/components/shared/Tooltip", () => ({ Tooltip: ({ children }: { children: React.ReactNode }) => <span>{children}</span> }));
 vi.mock("@/components/shared/Tag", () => ({ Tag: ({ children }: { children: React.ReactNode }) => <span>{children}</span> }));
 vi.mock("@/components/shared/ReadinessCell", () => ({ ReadinessCell: () => <span data-testid="readiness-cell" /> }));

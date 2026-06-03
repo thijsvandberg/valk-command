@@ -86,6 +86,12 @@ vi.mock("@/components/shared/AssigneePicker", () => ({
   ),
 }));
 
+vi.mock("@/components/shared/WatchersRow", () => ({
+  WatchersRow: ({ ticketKey }: { ticketKey: string }) => (
+    <span data-testid="watchers-row">{ticketKey}</span>
+  ),
+}));
+
 vi.mock("@/components/shared/EpicPicker", () => ({
   EpicPicker: ({ value }: { value: unknown }) => (
     <span data-testid="epic-picker">{value ? (value as { name: string }).name : "No epic"}</span>
