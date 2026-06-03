@@ -15,7 +15,14 @@
 // markdown semantics (e.g. a following paragraph could be absorbed into a list).
 
 const LIST_LINE = /^\s*(?:[-*+]|\d+[.)])\s+/;
+// A list marker with no content after it ("- ", "*", "1."). The rich editor
+// keeps an accidental empty bullet and re-serializes it, while the original
+// markdown may have dropped it; treating it as nothing keeps the two equal.
+const EMPTY_LIST_LINE = /^\s*(?:[-*+]|\d+[.)])\s*$/;
 const FENCE = /^\s*(?:```|~~~)/;
+// Callout/expand panel fence (:::info, :::, :::expand ...). adfToMarkdown emits
+// a blank line hugging the closing fence that the source markdown lacks.
+const PANEL_FENCE = /^\s*:::/;
 
 /**
  * Returns a canonical form where blank lines adjacent to list items are removed
@@ -46,6 +53,9 @@ export function normalizeMarkdownForCompare(md: string): string {
 
     const line = stripEnd(original);
     if (line !== "") {
+      // Drop empty list markers entirely so an accidental empty bullet does not
+      // register as a real content difference between serializers.
+      if (EMPTY_LIST_LINE.test(line)) continue;
       out.push(line);
       continue;
     }
@@ -53,11 +63,18 @@ export function normalizeMarkdownForCompare(md: string): string {
     // Blank line: decide whether to keep a single collapsed separator.
     const prev = out.length ? out[out.length - 1] : "";
     let k = i + 1;
-    while (k < raw.length && !FENCE.test(raw[k]) && stripEnd(raw[k]) === "") k++;
+    while (
+      k < raw.length &&
+      !FENCE.test(raw[k]) &&
+      (stripEnd(raw[k]) === "" || EMPTY_LIST_LINE.test(stripEnd(raw[k])))
+    )
+      k++;
     const next = k < raw.length && !FENCE.test(raw[k]) ? stripEnd(raw[k]) : "";
 
     // Drop blank lines hugging a list (tight/loose normalization).
     if (LIST_LINE.test(prev) || LIST_LINE.test(next)) continue;
+    // Drop blank lines hugging a panel fence (adfToMarkdown adds one).
+    if (PANEL_FENCE.test(prev) || PANEL_FENCE.test(next)) continue;
     // Collapse consecutive blanks and trim leading blanks.
     if (out.length === 0 || out[out.length - 1] === "") continue;
     out.push("");

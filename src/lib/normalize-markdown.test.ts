@@ -70,4 +70,28 @@ describe("normalizeMarkdownForCompare", () => {
     const fromEditor = "- Spike moet ook inzicht geven in:\n\n  - Welke data\n  - Wat een termijn";
     expect(markdownEqualIgnoringSpacing(fromAdf, fromEditor)).toBe(true);
   });
+
+  // Regression: a synced-back description differing only by an accidental empty
+  // bullet kept re-triggering a phantom "Unsaved changes" draft after pushing.
+  it("ignores an empty bullet that one serializer keeps and the other drops", () => {
+    const withEmpty = "- real item\n- \n\n---";
+    const without = "- real item\n\n---";
+    expect(markdownEqualIgnoringSpacing(withEmpty, without)).toBe(true);
+  });
+
+  it("ignores an empty ordered marker", () => {
+    expect(markdownEqualIgnoringSpacing("1. first\n2. \n3. third", "1. first\n3. third")).toBe(true);
+  });
+
+  it("does not treat a horizontal rule as an empty list item", () => {
+    expect(normalizeMarkdownForCompare("a\n\n---\n\nb")).toContain("---");
+  });
+
+  // Regression: adfToMarkdown emits a blank line hugging the closing panel
+  // fence that the source markdown lacks; treat it as cosmetic.
+  it("ignores a blank line inside a panel fence", () => {
+    const fromEditor = ":::info\n**Timebox**: 2h\n\n:::\n\n### Summary";
+    const source = ":::info\n**Timebox**: 2h\n:::\n\n### Summary";
+    expect(markdownEqualIgnoringSpacing(fromEditor, source)).toBe(true);
+  });
 });
