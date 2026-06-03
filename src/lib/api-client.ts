@@ -482,6 +482,7 @@ export const jira = {
   assign: (data: Record<string, unknown>, signal?: AbortSignal) =>
     apiFetch<unknown>("/api/jira/assign", { method: "POST", body: data, signal }),
   watcherCandidatesUrl: () => "/api/jira/watcher-candidates" as const,
+  watchersUrl: (issueKey: string) => `/api/jira/watchers${qs({ issueKey })}`,
   getWatchers: (issueKey: string, signal?: AbortSignal) =>
     apiFetch<{ watchers: { accountId: string; displayName: string; avatarUrl: string | null }[] }>(
       `/api/jira/watchers${qs({ issueKey })}`, { signal },

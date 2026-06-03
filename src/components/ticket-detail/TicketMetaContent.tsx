@@ -15,6 +15,7 @@ import { BusinessValuePicker } from "@/components/shared/BusinessValuePicker";
 import { StoryPointPicker } from "@/components/shared/StoryPointPicker";
 import { SprintListModal } from "@/components/sprint-board/SprintListModal";
 import { AssigneePicker } from "@/components/shared/AssigneePicker";
+import { WatchersRow } from "@/components/shared/WatchersRow";
 import { EpicPicker } from "@/components/shared/EpicPicker";
 import type { EpicOption } from "@/components/shared/EpicPicker";
 import { Tooltip } from "@/components/shared/Tooltip";
@@ -381,6 +382,9 @@ export function TicketMetaContent({
               align="right"
               textClass="text-body-sm"
             />
+          </DetailRow>
+          <DetailRow label="Watchers">
+            <WatchersRow ticketKey={ticket.key} align="right" />
           </DetailRow>
           {detail?.reporter && (
             <DetailRow label="Reporter">

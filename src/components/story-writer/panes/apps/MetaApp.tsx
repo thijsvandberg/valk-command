@@ -4,6 +4,7 @@ import { useEffect, useRef, useState, useCallback } from "react";
 import { useWriterContext } from "../WriterContext";
 import { usePaneContext } from "../PaneContext";
 import { AssigneePicker } from "@/components/shared/AssigneePicker";
+import { WatchersRow } from "@/components/shared/WatchersRow";
 import { SprintPicker } from "@/components/shared/SprintPicker";
 import { EpicPicker } from "@/components/shared/EpicPicker";
 import type { EpicOption } from "@/components/shared/EpicPicker";
@@ -113,6 +114,9 @@ export function MetaApp() {
             onChange={handleAssigneeChange}
             align="right"
           />
+        </MetaRow>
+        <MetaRow label="Watchers">
+          <WatchersRow ticketKey={writer.ticketKey} align="right" />
         </MetaRow>
         <MetaRow label="Reporter">
           {reporter ? (

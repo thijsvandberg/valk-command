@@ -145,12 +145,12 @@ do not affect rendering; only `displayName` is needed to derive initials/color.
 - [x] Add `/api/jira/watchers` route (GET/POST/DELETE) mirroring `assign`
 - [x] Add `/api/jira/watcher-candidates` route (real Jira accountIds, enriched with favorites/teams)
 - [x] Wire watcher methods into `api-client.ts`
-- [ ] Build the `WatcherPicker` (multi-select toggle wrapping `BasePicker`)
-- [ ] Build the `WatchersRow` (avatar stack + overflow, empty state, optimistic add/remove)
-- [ ] Render the Watchers row in `TicketMetaContent` (single view)
-- [ ] Render the Watchers control in the Story Writer `MetaApp` meta pane
-- [ ] Optimistic add/remove with rollback + toast on failure
-- [ ] Empty state when there are no watchers
-- [ ] Tests: jira-client methods, both API routes, and the picker/row interaction (add, remove, error rollback)
+- [x] Build the `WatcherPicker` (multi-select toggle wrapping `BasePicker`)
+- [x] Build the `WatchersRow` (avatar stack + overflow, empty state, optimistic add/remove)
+- [x] Render the Watchers row in `TicketMetaContent` (single view)
+- [x] Render the Watchers control in the Story Writer `MetaApp` meta pane
+- [x] Optimistic add/remove with rollback + toast on failure
+- [x] Empty state when there are no watchers
+- [x] Tests: jira-client methods, both API routes, and the picker/row interaction (add, remove, error rollback)
 - [ ] Verify visually in both the single view and the Story Writer meta pane
 - [ ] Update relevant docs (`docs/architecture/jira-sync.md`)
