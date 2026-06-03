@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback, useRef, useMemo } from "react";
+import { useState, useCallback, useRef, useMemo, useEffect } from "react";
 import type { Ticket, TicketReadiness, TicketDetail } from "@/types/ticket";
 import { READINESS_CONFIG } from "@/types/ticket";
 import Link from "next/link";
@@ -105,6 +105,32 @@ export function TicketMetaContent({
   // Labels arrive async via detail; an override lets edits win until the host
   // remounts (keyed on ticket) without a state-sync effect.
   const [labelsOverride, setLabelsOverride] = useState<string[] | null>(null);
+
+  // Hosts key this component on ticket.key, so switching tickets remounts and
+  // re-initializes the field state above. But when the *same* ticket is updated
+  // in place (e.g. a streamed/external change from Jira), no remount happens and
+  // the local copies go stale. Re-sync them from the prop. Optimistic edits
+  // converge because the prop only changes once the edit persists and the host
+  // refetches; deps are primitives so a new assignee object identity per render
+  // does not retrigger this.
+  useEffect(() => {
+    setBusinessValue(ticket.businessValue);
+    setStoryPoints(ticket.storyPoints);
+    setPoNotes(ticket.notes);
+    setAssignee(ticket.assignee);
+    setEpicName(ticket.epic);
+    setEpicKey(ticket.epicKey);
+    setCurrentSprintId(ticket.sprintId ?? null);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [
+    ticket.businessValue,
+    ticket.storyPoints,
+    ticket.notes,
+    ticket.assignee?.name,
+    ticket.epic,
+    ticket.epicKey,
+    ticket.sprintId,
+  ]);
   const labels = useMemo(() => labelsOverride ?? detail?.labels ?? [], [labelsOverride, detail?.labels]);
   const [showMore, setShowMore] = useState(ticket.qualityScore !== null);
   const [poNoteExpanded, setPoNoteExpanded] = useState(false);

@@ -48,4 +48,4 @@ Decisions: use `overflow-wrap: anywhere` (not `word-break: break-all`, which bre
 - [x] Verify user and assistant bubbles, expanded and truncated ("Show more") states
 - [x] Verify standalone chat / `MessageList` are also correct
 - [x] Tests: rendering a message with a long unbroken string stays within container constraints
-- [ ] All tests pass, build succeeds
+- [x] All tests pass, build succeeds

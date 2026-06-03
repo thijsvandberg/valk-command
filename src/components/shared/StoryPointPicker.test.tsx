@@ -228,6 +228,48 @@ describe("StoryPointPicker", () => {
     });
   });
 
+  describe("revealWhenEmpty", () => {
+    it("hides an empty trigger until the row is hovered", () => {
+      const { container } = render(
+        <StoryPointPicker value={null} onChange={() => {}} revealWhenEmpty />,
+      );
+      const wrapper = container.firstChild as HTMLElement;
+      expect(wrapper.className).toContain("opacity-0");
+      expect(wrapper.className).toContain("group-hover:opacity-100");
+    });
+
+    it("keeps a filled trigger always visible", () => {
+      const { container } = render(
+        <StoryPointPicker value={3} onChange={() => {}} revealWhenEmpty />,
+      );
+      const wrapper = container.firstChild as HTMLElement;
+      expect(wrapper.className).not.toContain("opacity-0");
+    });
+
+    it("follows the row-scoped group when revealGroup is row", () => {
+      const { container } = render(
+        <StoryPointPicker value={null} onChange={() => {}} revealWhenEmpty revealGroup="row" />,
+      );
+      const wrapper = container.firstChild as HTMLElement;
+      expect(wrapper.className).toContain("group-hover/row:opacity-100");
+    });
+
+    it("does not hide an empty trigger when revealWhenEmpty is off", () => {
+      const { container } = render(<StoryPointPicker value={null} onChange={() => {}} />);
+      const wrapper = container.firstChild as HTMLElement;
+      expect(wrapper.className).not.toContain("opacity-0");
+    });
+
+    it("reveals the trigger while its popover is open", () => {
+      const { container } = render(
+        <StoryPointPicker value={null} onChange={() => {}} revealWhenEmpty />,
+      );
+      fireEvent.click(screen.getByRole("button"));
+      const wrapper = container.firstChild as HTMLElement;
+      expect(wrapper.className || "").not.toContain("opacity-0");
+    });
+  });
+
   describe("size=lg", () => {
     it("renders SP label with value in trigger", () => {
       render(<StoryPointPicker value={5} onChange={() => {}} size="lg" />);

@@ -80,6 +80,11 @@ export function EpicChildrenSection({
   // Optimistic sprint reassignments (childKey -> new sprint name, or null for backlog),
   // applied to the by-sprint view until the refetched children reflect the move.
   const [localMoves, setLocalMoves] = useState<Record<string, string | null>>({});
+  // Optimistic SP/BV edits (childKey -> overridden metrics), applied immediately so
+  // the badge appears on click instead of waiting for the refetch round-trip.
+  const [localMetrics, setLocalMetrics] = useState<
+    Record<string, { storyPoints?: number | null; businessValue?: number | null }>
+  >({});
   // Multiselect: checked child keys for the bulk-action toolbar.
   const [checkedKeys, setCheckedKeys] = useState<Set<string>>(new Set());
   const [refineModalOpen, setRefineModalOpen] = useState(false);
@@ -109,7 +114,10 @@ export function EpicChildrenSection({
   const mergedItems: (EpicChild | Subtask)[] = [
     ...items,
     ...locallyAdded.filter((la) => !items.some((i) => i.key === la.key)),
-  ];
+  ].map((item) => {
+    const override = localMetrics[item.key];
+    return override ? ({ ...item, ...override } as EpicChild | Subtask) : item;
+  });
 
   const filtered = filter === "all"
     ? mergedItems
@@ -319,26 +327,44 @@ export function EpicChildrenSection({
     }
   }, [onMutate]);
 
+  // Drop one optimistic metric override, removing the child entry when empty.
+  const revertLocalMetric = useCallback((childKey: string, field: "storyPoints" | "businessValue") => {
+    setLocalMetrics((prev) => {
+      const entry = prev[childKey];
+      if (!entry || !(field in entry)) return prev;
+      const next = { ...prev };
+      const updated = { ...entry };
+      delete updated[field];
+      if (Object.keys(updated).length === 0) delete next[childKey];
+      else next[childKey] = updated;
+      return next;
+    });
+  }, []);
+
   const handleStoryPointsChange = useCallback(async (childKey: string, value: number | null) => {
     setJiraWarning(null);
+    setLocalMetrics((prev) => ({ ...prev, [childKey]: { ...prev[childKey], storyPoints: value } }));
     try {
       await tickets.updateStoryPoints(childKey, value);
       onMutate();
     } catch (err) {
       console.error("Failed to update story points:", err);
+      revertLocalMetric(childKey, "storyPoints");
       setJiraWarning(`Failed to update story points for ${childKey}`);
     }
-  }, [onMutate]);
+  }, [onMutate, revertLocalMetric]);
 
   const handleBusinessValueChange = useCallback(async (childKey: string, value: number | null) => {
+    setLocalMetrics((prev) => ({ ...prev, [childKey]: { ...prev[childKey], businessValue: value } }));
     try {
       await tickets.updateMetadata(childKey, { businessValue: value });
       onMutate();
     } catch (err) {
       console.error("Failed to update business value:", err);
+      revertLocalMetric(childKey, "businessValue");
       setJiraWarning(`Failed to update business value for ${childKey}`);
     }
-  }, [onMutate]);
+  }, [onMutate, revertLocalMetric]);
 
   // Move a child to another sprint (drag-drop or context menu). Optimistically
   // re-groups the row, then reverts and warns if the Jira round-trip fails.
@@ -376,6 +402,33 @@ export function EpicChildrenSection({
             changed = true;
           }
         }
+      }
+      return changed ? next : prev;
+    });
+  }, [items]);
+
+  // Drop optimistic SP/BV overrides once the refetched children confirm the value,
+  // so a stale override never masks server truth on later syncs.
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- guarded reconcile once server confirms the edit
+    setLocalMetrics((prev) => {
+      if (Object.keys(prev).length === 0) return prev;
+      let changed = false;
+      const next = { ...prev };
+      for (const item of items) {
+        const entry = next[item.key];
+        if (!entry || !isEpicChild(item)) continue;
+        const updated = { ...entry };
+        if ("storyPoints" in updated && item.storyPoints === updated.storyPoints) {
+          delete updated.storyPoints;
+          changed = true;
+        }
+        if ("businessValue" in updated && item.businessValue === updated.businessValue) {
+          delete updated.businessValue;
+          changed = true;
+        }
+        if (Object.keys(updated).length === 0) delete next[item.key];
+        else next[item.key] = updated;
       }
       return changed ? next : prev;
     });

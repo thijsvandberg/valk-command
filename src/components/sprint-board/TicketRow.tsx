@@ -480,6 +480,8 @@ export const TicketRow = memo(forwardRef<HTMLTableRowElement, TicketRowBaseProps
               subtle
               showMetricIcon
               richTooltip
+              revealWhenEmpty
+              revealGroup="row"
             />
           </td>
         );
@@ -554,6 +556,8 @@ export const TicketRow = memo(forwardRef<HTMLTableRowElement, TicketRowBaseProps
               subtle
               showMetricIcon
               richTooltip
+              revealWhenEmpty
+              revealGroup="row"
             />
           </td>
         );

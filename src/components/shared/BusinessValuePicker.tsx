@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback } from "react";
+import { useState, useCallback, useEffect } from "react";
 import { createPortal } from "react-dom";
 import { usePickerState } from "@/components/shared/BasePicker";
 import { getBvColor, BV_COLORS } from "@/types/ticket";
@@ -17,6 +17,8 @@ export function BusinessValuePicker({
   size = "sm",
   showMetricIcon = false,
   richTooltip = false,
+  revealWhenEmpty = false,
+  revealGroup = "default",
   onOpenChange,
 }: {
   value: number | null;
@@ -29,6 +31,11 @@ export function BusinessValuePicker({
   showMetricIcon?: boolean;
   // Replace the native title attribute with the styled Tooltip component.
   richTooltip?: boolean;
+  // When the value is empty, keep the trigger hidden until the enclosing row is
+  // hovered (or the popover is open/focused), so unscored rows stay calm. The
+  // row must be a Tailwind group; revealGroup selects which named group to follow.
+  revealWhenEmpty?: boolean;
+  revealGroup?: "default" | "row";
   onOpenChange?: (open: boolean) => void;
 }) {
   const [hovered, setHovered] = useState(false);
@@ -42,6 +49,20 @@ export function BusinessValuePicker({
     onOpen: () => onOpenChange?.(true),
     onClose: () => onOpenChange?.(false),
   });
+
+  // Keyboard shortcuts while open: 1-7 set a score, 0/- mark N/A, Backspace/Delete clear.
+  useEffect(() => {
+    if (!open) return;
+    function handleKeyDown(e: KeyboardEvent) {
+      if (e.key === "Escape") return;
+      const num = parseInt(e.key, 10);
+      if (num >= 1 && num <= 7) { onChange(num); handleClose(); return; }
+      if (e.key === "0" || e.key === "-") { onChange(0); handleClose(); return; }
+      if (e.key === "Backspace" || e.key === "Delete") { onChange(null); handleClose(); }
+    }
+    document.addEventListener("keydown", handleKeyDown);
+    return () => document.removeEventListener("keydown", handleKeyDown);
+  }, [open, onChange, handleClose]);
 
   const isLg = size === "lg";
   const isNA = value === 0;
@@ -58,6 +79,7 @@ export function BusinessValuePicker({
           onMouseEnter={handleMouseEnter}
           onMouseLeave={handleMouseLeave}
           title={richTooltip ? undefined : titleText}
+          aria-label={titleText}
           className="flex h-7 items-center gap-1.5 rounded-lg px-2.5 cursor-pointer focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)] active:opacity-60"
           style={{
             color: color?.text ?? "var(--color-text-muted)",
@@ -77,6 +99,7 @@ export function BusinessValuePicker({
           onMouseEnter={handleMouseEnter}
           onMouseLeave={handleMouseLeave}
           title={richTooltip ? undefined : titleText}
+          aria-label={titleText}
           className={`flex h-6 items-center rounded-md cursor-pointer transition-colors duration-150 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)] active:opacity-60 text-body-sm font-medium tabular-nums ${showMetricIcon ? "gap-1 px-1.5 min-w-[2.25rem] justify-start" : "min-w-[24px] justify-center"}`}
           style={{
             color: color?.text ?? "var(--color-text-muted)",
@@ -101,8 +124,18 @@ export function BusinessValuePicker({
         </button>
   );
 
+  // Reveal-on-hover wrapper for empty cells. Opacity composites across the
+  // nesting, so the wrapper hides the trigger regardless of its own inline
+  // opacity. Stays visible while focused or while the popover is open.
+  const revealCls =
+    revealWhenEmpty && value == null && !open
+      ? revealGroup === "row"
+        ? "opacity-0 transition-opacity duration-150 group-hover/row:opacity-100 focus-within:opacity-100"
+        : "opacity-0 transition-opacity duration-150 group-hover:opacity-100 focus-within:opacity-100"
+      : "";
+
   return (
-    <>
+    <span className={revealCls || undefined}>
       {richTooltip ? <Tooltip content={titleText}>{trigger}</Tooltip> : trigger}
 
       {open && pos && createPortal(
@@ -135,6 +168,6 @@ export function BusinessValuePicker({
         </div>,
         document.body,
       )}
-    </>
+    </span>
   );
 }

@@ -27,7 +27,7 @@ vi.mock("@/lib/api-client", () => ({
 }));
 
 vi.mock("@/hooks/useSprintBoard", () => ({
-  useJiraSprints: () => ({ sprints: [{ id: 1, name: "Sprint 1" }] }),
+  useJiraSprints: () => ({ sprints: [{ id: 1, name: "Sprint 1" }, { id: 2, name: "Sprint 2" }] }),
   useSprintSlots: () => ({ data: [] }),
   useDevInfo: () => ({ data: null, isLoading: false }),
 }));
@@ -110,6 +110,31 @@ describe("TicketMetaContent", () => {
     render(<TicketMetaContent ticket={makeTicket({ qualityScore: null })} detail={detail} />);
     fireEvent.click(screen.getByText("More details"));
     expect(screen.getByTestId("readiness-cell")).toBeInTheDocument();
+  });
+
+  it("re-syncs sidebar fields when the same ticket is updated in place (e.g. streamed)", () => {
+    const { rerender } = render(<TicketMetaContent ticket={makeTicket()} detail={detail} />);
+    expect(screen.getByText("Sprint 1")).toBeInTheDocument();
+    expect(screen.getByTestId("sp-picker")).toHaveTextContent("5");
+    expect(screen.getByTestId("bv-picker")).toHaveTextContent("3");
+    expect(screen.getByTestId("assignee-picker")).toHaveTextContent("Alice");
+
+    rerender(
+      <TicketMetaContent
+        ticket={makeTicket({
+          sprintId: "2",
+          storyPoints: 13,
+          businessValue: 8,
+          assignee: { name: "Bob", initials: "B", color: "#123" },
+        })}
+        detail={detail}
+      />,
+    );
+
+    expect(screen.getByText("Sprint 2")).toBeInTheDocument();
+    expect(screen.getByTestId("sp-picker")).toHaveTextContent("13");
+    expect(screen.getByTestId("bv-picker")).toHaveTextContent("8");
+    expect(screen.getByTestId("assignee-picker")).toHaveTextContent("Bob");
   });
 
   it("notifies the host via onMutate after a field edit persists", async () => {

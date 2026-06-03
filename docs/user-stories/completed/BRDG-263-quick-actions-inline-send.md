@@ -54,4 +54,4 @@ Today, clicking a quick action (e.g. "Improve my story", "Add test scenarios", "
 - [x] Confirm standalone chat usage still works with the new optional prop
 - [x] Interactive states: hover, focus-visible, active, `cursor: pointer` on the send icon
 - [x] Tests: clicking the inline send sends the prompt directly (and closes the popover); clicking the label still fills the input; busy/disabled states block sending
-- [ ] All tests pass, build succeeds
+- [x] All tests pass, build succeeds

@@ -348,6 +348,63 @@ describe("EpicChildrenSection", () => {
       expect(screen.getByLabelText("Set Story Points")).toBeInTheDocument();
       expect(screen.getByLabelText("Set Business Value")).toBeInTheDocument();
     });
+
+    it("sets story points via keyboard while the popover is open", async () => {
+      renderSection(SAMPLE_CHILDREN);
+      fireEvent.click(screen.getByLabelText("Set Story Points"));
+      // 8 is a preset; typing it commits without clicking.
+      fireEvent.keyDown(document, { key: "8" });
+
+      await waitFor(() => {
+        expect(mockUpdateStoryPoints).toHaveBeenCalledWith("VPL-11", 8);
+      });
+    });
+
+    it("sets business value via keyboard while the popover is open", async () => {
+      renderSection(SAMPLE_CHILDREN);
+      fireEvent.click(screen.getByLabelText("Set Business Value"));
+      fireEvent.keyDown(document, { key: "4" });
+
+      await waitFor(() => {
+        expect(mockUpdateMetadata).toHaveBeenCalledWith("VPL-11", { businessValue: 4 });
+      });
+    });
+
+    it("shows the chosen story points immediately, before the refetch resolves", async () => {
+      // onMutate never feeds new items back, so a visible value can only come from
+      // the optimistic override.
+      renderSection(SAMPLE_CHILDREN);
+      fireEvent.click(screen.getByLabelText("Set Story Points"));
+      fireEvent.click(screen.getByText("8"));
+
+      await waitFor(() => {
+        expect(screen.getByLabelText("Story Points: 8")).toBeInTheDocument();
+      });
+    });
+
+    it("shows the chosen business value immediately, before the refetch resolves", async () => {
+      renderSection(SAMPLE_CHILDREN);
+      fireEvent.click(screen.getByLabelText("Set Business Value"));
+      fireEvent.click(screen.getByText("4"));
+
+      await waitFor(() => {
+        expect(screen.getByLabelText("Business Value: 4")).toBeInTheDocument();
+      });
+    });
+
+    it("reverts the optimistic story points if the save fails", async () => {
+      mockUpdateStoryPoints.mockRejectedValue(new Error("boom"));
+      renderSection(SAMPLE_CHILDREN);
+      fireEvent.click(screen.getByLabelText("Set Story Points"));
+      fireEvent.click(screen.getByText("8"));
+
+      await waitFor(() => {
+        expect(screen.getByText(/Failed to update story points/)).toBeInTheDocument();
+      });
+      // The override is rolled back, so the child is settable (empty) again.
+      expect(screen.getByLabelText("Set Story Points")).toBeInTheDocument();
+      expect(screen.queryByLabelText("Story Points: 8")).not.toBeInTheDocument();
+    });
   });
 
   describe("link existing (search mode)", () => {
@@ -605,6 +662,26 @@ describe("EpicChildrenSection", () => {
       switchToSprintView();
       expect(screen.getByPlaceholderText("Create child issue...")).toBeInTheDocument();
       expect(screen.queryByText("Unscheduled")).not.toBeInTheDocument();
+    });
+
+    it("filters a sprint group to its unpointed stories when the warning icon is clicked", async () => {
+      const children: EpicChild[] = [
+        { key: "VPL-30", title: "Estimated story", type: "story", jiraStatus: "TO DO", assignee: null, storyPoints: 3, businessValue: null, sprintName: "Sprint 1", subtaskCount: 0, readiness: null },
+        { key: "VPL-31", title: "Unestimated story", type: "story", jiraStatus: "TO DO", assignee: null, storyPoints: null, businessValue: null, sprintName: "Sprint 1", subtaskCount: 0, readiness: null },
+      ];
+      renderSection(children);
+      switchToSprintView();
+
+      // Sprint 1 is active, so the unpointed-estimate warning appears and is clickable.
+      const warning = await screen.findByLabelText(/without a story point estimate/);
+      expect(screen.getByText("Estimated story")).toBeInTheDocument();
+      expect(screen.getByText("Unestimated story")).toBeInTheDocument();
+
+      fireEvent.click(warning);
+
+      // Only the unpointed story stays visible once the filter is active.
+      expect(screen.queryByText("Estimated story")).not.toBeInTheDocument();
+      expect(screen.getByText("Unestimated story")).toBeInTheDocument();
     });
 
     function moveViaContextMenu(rowTitle: string, sprintLabel: string) {
