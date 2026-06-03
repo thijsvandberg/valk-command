@@ -18,6 +18,7 @@ import { pipelineRun } from "@/db/schema";
 function insertDeployment(opts: {
   id: string;
   ticketKey: string | null;
+  ticketKeys?: string[] | null;
   environment: string;
   state: "SUCCESSFUL" | "FAILED" | "IN_PROGRESS" | "STOPPED" | "PAUSED";
   completedAt: string;
@@ -28,6 +29,7 @@ function insertDeployment(opts: {
     branchName: "main",
     pipelineUrl: `https://bitbucket.org/build/${opts.id}`,
     ticketKey: opts.ticketKey,
+    ticketKeys: opts.ticketKeys ? JSON.stringify(opts.ticketKeys) : null,
     state: opts.state,
     buildNumber: 1,
     createdAt: opts.completedAt,
@@ -81,5 +83,29 @@ describe("GET /api/pipelines/last-deployed", () => {
     const response = await GET();
     const data = await response.json();
     expect(data["VPL-3"]).toBeUndefined();
+  });
+
+  it("returns a deployment for a ticket present only in ticketKeys (BRDG-269)", async () => {
+    // A bundled UAT deploy attributed to several tickets: VPL-46189 triggered it, VPL-45823 was
+    // swept in. Only the latter lives in ticketKeys.
+    insertDeployment({ id: "d1", ticketKey: "VPL-46189", ticketKeys: ["VPL-46189", "VPL-45823"], environment: "UAT2", state: "SUCCESSFUL", completedAt: new Date().toISOString() });
+
+    const response = await GET();
+    const data = await response.json();
+    expect(data["VPL-46189"]?.environment).toBe("UAT2"); // triggering ticket
+    expect(data["VPL-45823"]?.environment).toBe("UAT2"); // range-attributed ticket
+  });
+
+  it("keeps latest-per-ticket dedupe across primary and secondary keys", async () => {
+    const older = new Date(Date.now() - 5000).toISOString();
+    const newer = new Date(Date.now() - 1000).toISOString();
+    // VPL-45823 first appears via ticketKeys (older), then as a primary key (newer).
+    insertDeployment({ id: "old", ticketKey: "VPL-1", ticketKeys: ["VPL-1", "VPL-45823"], environment: "UAT2", state: "SUCCESSFUL", completedAt: older });
+    insertDeployment({ id: "new", ticketKey: "VPL-45823", environment: "Production", state: "SUCCESSFUL", completedAt: newer });
+
+    const response = await GET();
+    const data = await response.json();
+    expect(data["VPL-45823"].environment).toBe("Production");
+    expect(data["VPL-45823"].completedAt).toBe(newer);
   });
 });
