@@ -1,8 +1,26 @@
 # BRDG-264: Add a Watcher to a Story (from Single View / Story Writer)
 
-**Status:** Not Started
+**Status:** Implemented — BLOCKED on Jira token scope (end-to-end test pending)
 **Priority:** Medium
 **Type:** Feature
+
+> ## ⚠️ ACTION REQUIRED BEFORE THIS WORKS: add a Jira scope
+>
+> Adding a watcher needs Bridge to look up Jira users, and the current Jira API
+> token is **not allowed** to do that (`401 Unauthorized; scope does not match`
+> on `/rest/api/3/user/assignable/search`).
+>
+> **What to add:** the user-read scope on the Jira API token / app Bridge uses.
+> - **Scoped API token** (most likely — Bridge authenticates with a Jira API token):
+>   recreate the token at <https://id.atlassian.com/manage-profile/security/api-tokens>
+>   and include the scope **`read:jira-user`** (granular equivalent: **`read:user:jira`**).
+>   Put the new token in `.env.local` as `JIRA_API_TOKEN`.
+> - **Or** use a classic (unscoped) API token whose Atlassian account has the
+>   **"Browse users and groups"** global permission in Jira.
+>
+> After adding the scope, reopen the watcher "+" picker on any ticket: the people
+> list should load (instead of "Couldn't load people"), and add/remove should work.
+> Then this story can be closed.
 
 ## Description
 
@@ -152,7 +170,8 @@ do not affect rendering; only `displayName` is needed to derive initials/color.
 - [x] Optimistic add/remove with rollback + toast on failure
 - [x] Empty state when there are no watchers
 - [x] Tests: jira-client methods, both API routes, and the picker/row interaction (add, remove, error rollback)
-- [x] Verify visually in both the single view and the Story Writer meta pane <!-- row + existing watcher render in both surfaces; picker degrades gracefully. Add/remove blocked by Jira token scope, see below -->
+- [x] Verify rendering in both the single view and the Story Writer meta pane <!-- row + existing watcher render in both surfaces; picker degrades gracefully -->
+- [ ] End-to-end test add/remove against live Jira <!-- PENDING: requires the read:jira-user scope, see the ACTION REQUIRED box at the top. User will test later. -->
 
 ## Known limitation / blocker (Jira token scope)
 
