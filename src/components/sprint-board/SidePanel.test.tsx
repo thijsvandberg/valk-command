@@ -232,11 +232,14 @@ describe("SidePanel", () => {
       expect(screen.queryByLabelText("Collapse sidebar")).not.toBeInTheDocument();
     });
 
-    it("hides the meta entirely (not stacked) when collapsed, even when narrow", () => {
-      seed({ sprintBoardPanelWidth: "400", sprintBoardMetaCollapsed: "true" });
+    it("stacks the meta below the content when collapsed (instead of hiding it), even when wide", () => {
+      seed({ sprintBoardPanelWidth: "900", sprintBoardMetaCollapsed: "true" });
       render(<SidePanel {...defaultProps} />);
-      expect(screen.queryByTestId("meta-content")).not.toBeInTheDocument();
-      expect(screen.queryByTestId("tab-has-meta")).not.toBeInTheDocument();
+      // Collapsed: no side column, but the meta is still rendered, stacked
+      // under the Content tab in a single scroll.
+      expect(screen.queryByLabelText("Collapse sidebar")).not.toBeInTheDocument();
+      expect(screen.getByTestId("tab-has-meta")).toBeInTheDocument();
+      expect(screen.getByTestId("meta-content")).toBeInTheDocument();
     });
 
     it("shows a 'Show sidebar' header button only when collapsed", () => {
@@ -249,22 +252,27 @@ describe("SidePanel", () => {
       expect(screen.getByLabelText("Show sidebar")).toBeInTheDocument();
     });
 
-    it("collapsing via the divider button persists the collapsed state and hides the meta", () => {
+    it("collapsing via the divider button persists the state and stacks the meta below content", () => {
       seed({ sprintBoardPanelWidth: "900" });
       render(<SidePanel {...defaultProps} />);
       fireEvent.click(screen.getByLabelText("Collapse sidebar"));
       expect(window.localStorage.getItem("sprintBoardMetaCollapsed")).toBe("true");
-      expect(screen.queryByTestId("meta-content")).not.toBeInTheDocument();
+      // No longer a side column, but stacked under the content (still visible).
+      expect(screen.queryByLabelText("Collapse sidebar")).not.toBeInTheDocument();
+      expect(screen.getByTestId("tab-has-meta")).toBeInTheDocument();
       expect(screen.getByLabelText("Show sidebar")).toBeInTheDocument();
     });
 
-    it("the header 'Show sidebar' button re-opens the meta and persists the state", () => {
+    it("the header 'Show sidebar' button restores the side column and persists the state", () => {
       seed({ sprintBoardPanelWidth: "900", sprintBoardMetaCollapsed: "true" });
       render(<SidePanel {...defaultProps} />);
-      expect(screen.queryByTestId("meta-content")).not.toBeInTheDocument();
+      // Collapsed -> stacked, so no side column yet.
+      expect(screen.queryByLabelText("Collapse sidebar")).not.toBeInTheDocument();
       fireEvent.click(screen.getByLabelText("Show sidebar"));
       expect(window.localStorage.getItem("sprintBoardMetaCollapsed")).toBe("false");
-      expect(screen.getByTestId("meta-content")).toBeInTheDocument();
+      // Restored as a resizable side column (no longer stacked under content).
+      expect(screen.getByLabelText("Collapse sidebar")).toBeInTheDocument();
+      expect(screen.queryByTestId("tab-has-meta")).not.toBeInTheDocument();
     });
 
     // The meta resize handle is scoped via the collapse button's parent so it is

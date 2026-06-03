@@ -83,6 +83,13 @@ collapse/re-open persistence, header button, and resize clamp-floor persistence.
   narrows the panel, the meta should stay hidden (respect the explicit collapse) rather than
   reappearing stacked. Stacking only applies when the meta is *not* collapsed.
 
+> **Post-release amendment (per PO):** collapsing the meta no longer *hides* it.
+> Collapse now relocates the meta **below the content** (the stacked layout) instead of
+> removing it, so it stays visible in a single scroll. The "show sidebar" header button
+> remains and restores the side-column layout. Effectively the layout is a two-way
+> `column` vs `stacked` decision: `column` only when not collapsed AND there is room for
+> both; otherwise `stacked`.
+
 ### 4. Persistence
 
 - Persist the meta-sidebar **width** and **collapsed** state in `localStorage` under

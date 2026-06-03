@@ -169,13 +169,14 @@ export function SidePanel({
     Math.min(panelWidth - CONTENT_MIN_WIDTH, metaWidth),
   );
 
-  // Column when there is room for both; stacked when too narrow; hidden when
-  // the user has explicitly collapsed the meta (collapse wins over stacking).
-  const metaMode: "column" | "stacked" | "hidden" = metaCollapsed
-    ? "hidden"
-    : panelWidth - clampedMetaWidth >= CONTENT_MIN_WIDTH
-      ? "column"
-      : "stacked";
+  // Column only when not collapsed and there is room for both; otherwise the
+  // meta drops below the content in a single scroll. Collapsing the meta (the
+  // divider control / header button) and a too-narrow panel both fall back to
+  // the stacked layout, so a collapsed meta stays visible under the content
+  // rather than disappearing.
+  const metaMode: "column" | "stacked" = !metaCollapsed && panelWidth - clampedMetaWidth >= CONTENT_MIN_WIDTH
+    ? "column"
+    : "stacked";
 
   const handleMetaMouseDown = useCallback((e: React.MouseEvent) => {
     e.preventDefault();
@@ -542,8 +543,8 @@ export function SidePanel({
         </div>
       </div>
 
-      {/* Body: tabbed content (+ meta column when wide; meta stacks under the
-          Content tab when narrow; hidden entirely when the user collapses it) */}
+      {/* Body: tabbed content (+ meta column when wide and not collapsed; the
+          meta stacks under the Content tab when narrow or when collapsed) */}
       {metaMode === "column" ? (
         <div className="flex min-h-0 flex-1 overflow-hidden">
           {tabContent}
