@@ -6,8 +6,10 @@ import { useTicketDetail, useJiraSprints, useTicketReviews, useActiveWriterSessi
 import { useFollowedTickets, useFollowTicket } from "@/hooks/usePipelines";
 import { apiFetch, jira, tickets } from "@/lib/api-client";
 import { getJiraUrl } from "@/components/sprint-board/TicketTableCells";
+import { useToast } from "@/hooks/useToast";
 
 export function useTicketDetailPage(key: string) {
+  const { toast, toastLoading, showToast, dismissToast } = useToast();
   const { data: apiData, isLoading: ticketLoading, mutate: mutateTicket } = useTicketDetail(key);
   const handleMutate = useCallback(() => { mutateTicket(); }, [mutateTicket]);
 
@@ -219,6 +221,7 @@ export function useTicketDetailPage(key: string) {
         setOverrideConfirmed(false);
         await mutateTicket();
         setDraftDiscardKey((k) => k + 1);
+        showToast("Pushed to Jira");
       } else {
         setPushError(data.error ?? "Push failed");
       }
@@ -227,7 +230,7 @@ export function useTicketDetailPage(key: string) {
     } finally {
       setIsPushing(false);
     }
-  }, [key, handleRemoteChanged, mutateTicket]);
+  }, [key, handleRemoteChanged, mutateTicket, showToast]);
 
   const handleRefreshFromJira = useCallback(async () => {
     setIsRefreshing(true);
@@ -326,6 +329,11 @@ export function useTicketDetailPage(key: string) {
     draftDiscardKey,
     handleDiscardDraft,
     handlePushToJira,
+
+    // Transient feedback
+    toast,
+    toastLoading,
+    dismissToast,
 
     // Copy
     linkCopied,

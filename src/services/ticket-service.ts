@@ -8,7 +8,7 @@ import { markdownToAdf } from "@/lib/markdown-to-adf";
 import { adfToMarkdown } from "@/lib/adf-to-markdown";
 import { logActivity } from "@/lib/activity-logger";
 import { sanitizeText } from "@/lib/sanitize";
-import { env } from "@/lib/env";
+import { syncIndividualTickets } from "@/lib/sync-tickets-service";
 import { logger } from "@/lib/logger";
 import { cache } from "@/lib/cache";
 import {
@@ -76,13 +76,11 @@ export async function pushToJira(key: string, force: boolean): Promise<PushToJir
     const baseHash = localEdits[0].baseJiraVersion;
 
     if (localTicket.jiraUpdatedAt !== remoteUpdated) {
-      // Remote changed since our mirror; refresh the mirror then check content
-      const appUrl = env.NEXT_PUBLIC_APP_URL;
-      await fetch(new URL("/api/jira/sync-tickets", appUrl), {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ ticketKeys: [key] }),
-      });
+      // Remote changed since our mirror; refresh the mirror then check content.
+      // Call the sync service directly rather than via an HTTP request to our
+      // own server: a self-fetch in next dev can stall indefinitely and, unlike
+      // the Jira client, carries no request timeout, which hung the push.
+      await syncIndividualTickets([key]);
 
       // Only check for conflicts when we have a previous sync baseline.
       // Tickets created via Bridge start with jiraUpdatedAt=null and no

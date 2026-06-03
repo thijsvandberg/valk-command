@@ -24,6 +24,7 @@ import {
 import { ErrorBoundary } from "@/components/shared/ErrorBoundary";
 import { Tooltip } from "@/components/shared/Tooltip";
 import { ViewHeader, ViewHeaderDivider } from "@/components/shared/ViewHeader";
+import { Toast } from "@/components/ui/Toast";
 import { TicketStatusPill } from "@/components/shared/TicketStatusPill";
 import dynamic from "next/dynamic";
 import { TicketSidebar, SIDEBAR_COLLAPSED_KEY } from "@/components/ticket-detail/TicketSidebar";
@@ -664,6 +665,7 @@ export default function TicketDetailPage({
       onClose={() => setShowAddToRefinement(false)}
       ticketKeys={[key]}
     />
+    <Toast toast={h.toast} loading={h.toastLoading} onDismiss={h.dismissToast} />
     </>
   );
 }

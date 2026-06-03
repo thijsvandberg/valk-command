@@ -52,6 +52,10 @@ vi.mock("@/lib/cache", () => ({
   },
 }));
 
+vi.mock("@/lib/sync-tickets-service", () => ({
+  syncIndividualTickets: vi.fn().mockResolvedValue(undefined),
+}));
+
 // fetch is not available in test env, so stub globally
 const fetchMock = vi.fn().mockResolvedValue({ ok: true });
 vi.stubGlobal("fetch", fetchMock);
@@ -75,6 +79,7 @@ import {
   JiraOperationError,
 } from "./errors";
 import { jiraClient } from "@/lib/jira-client";
+import { syncIndividualTickets } from "@/lib/sync-tickets-service";
 
 function seedTicket(db: BetterSQLite3Database<typeof schema>, key: string) {
   db.insert(ticket)
@@ -416,6 +421,8 @@ describe("pushToJira", () => {
     vi.mocked(jiraClient.updateIssue).mockReset();
     fetchMock.mockReset();
     fetchMock.mockResolvedValue({ ok: true });
+    vi.mocked(syncIndividualTickets).mockReset();
+    vi.mocked(syncIndividualTickets).mockResolvedValue(undefined as never);
   });
 
   it("throws JiraUnavailableError when jiraClient is not live", async () => {
@@ -543,9 +550,9 @@ describe("pushToJira", () => {
     } as never);
 
     // After sync, content hash is unchanged (metadata-only change in Jira)
-    fetchMock.mockImplementationOnce(async () => {
+    vi.mocked(syncIndividualTickets).mockImplementationOnce(async () => {
       seedStoryVersion(testDb, "VPL-1", "hash-current", "2024-07-01T00:00:00.000Z");
-      return { ok: true };
+      return undefined as never;
     });
 
     const result = await pushToJira("VPL-1", false);
@@ -576,9 +583,9 @@ describe("pushToJira", () => {
     } as never);
 
     // Sync creates the first storyVersion
-    fetchMock.mockImplementationOnce(async () => {
+    vi.mocked(syncIndividualTickets).mockImplementationOnce(async () => {
       seedStoryVersion(testDb, "VPL-1", "hash-from-jira", "2024-07-01T00:00:00.000Z");
-      return { ok: true };
+      return undefined as never;
     });
     vi.mocked(jiraClient.updateIssue).mockResolvedValue(undefined as never);
 
@@ -606,10 +613,10 @@ describe("pushToJira", () => {
     vi.mocked(jiraClient.getIssue).mockResolvedValue({
       fields: { updated: "2024-12-01T00:00:00Z" },
     } as never);
-    // After sync-tickets fetch, a new story version row appears with a newer timestamp and different hash
-    fetchMock.mockImplementationOnce(async () => {
+    // After sync-tickets runs, a new story version row appears with a newer timestamp and different hash
+    vi.mocked(syncIndividualTickets).mockImplementationOnce(async () => {
       seedStoryVersion(testDb, "VPL-1", "hash-new", "2024-12-01T00:00:00.000Z");
-      return { ok: true };
+      return undefined as never;
     });
     const result = await pushToJira("VPL-1", false);
     expect("conflict" in result && result.conflict).toBe(true);
