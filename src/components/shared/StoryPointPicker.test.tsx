@@ -195,6 +195,15 @@ describe("StoryPointPicker", () => {
       expect(container.querySelector("svg")).toBeInTheDocument();
     });
 
+    it("reserves the same trigger width whether the value is set or empty", () => {
+      const empty = render(<StoryPointPicker value={null} onChange={() => {}} showMetricIcon />);
+      const filled = render(<StoryPointPicker value={3} onChange={() => {}} showMetricIcon />);
+      const emptyBtn = empty.container.querySelector("button")!;
+      const filledBtn = filled.container.querySelector("button")!;
+      expect(emptyBtn.className).toContain("min-w-[2.25rem]");
+      expect(filledBtn.className).toContain("min-w-[2.25rem]");
+    });
+
     it("renders no icon by default in compact mode", () => {
       const { container } = render(<StoryPointPicker value={3} onChange={() => {}} />);
       expect(container.querySelector("svg")).not.toBeInTheDocument();

@@ -191,6 +191,29 @@ describe("AssigneePicker", () => {
     expect(onChange).toHaveBeenCalledWith(expect.objectContaining({ displayName: "Bob" }));
   });
 
+  describe("avatar variant", () => {
+    it("renders an avatar-only trigger without the assignee name", () => {
+      render(
+        <AssigneePicker
+          value={{ name: "Alice", initials: "AL", color: "red" }}
+          onChange={onChange}
+          variant="avatar"
+        />,
+      );
+      // Name is not rendered in the compact trigger; initials stand in for it.
+      expect(screen.queryByText("Alice")).not.toBeInTheDocument();
+      expect(screen.getByText("AL")).toBeInTheDocument();
+    });
+
+    it("opens the picker and assigns from the avatar trigger", () => {
+      render(<AssigneePicker value={null} onChange={onChange} variant="avatar" />);
+      fireEvent.click(screen.getByRole("button"));
+
+      fireEvent.click(screen.getByText("Bob"));
+      expect(onChange).toHaveBeenCalledWith(expect.objectContaining({ displayName: "Bob" }));
+    });
+  });
+
   it("calls onChange with null when Unassigned is clicked", () => {
     render(
       <AssigneePicker

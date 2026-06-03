@@ -3,7 +3,7 @@
 import { useState, useCallback } from "react";
 import { createPortal } from "react-dom";
 import { usePickerState } from "@/components/shared/BasePicker";
-import { getBvColor } from "@/types/ticket";
+import { getBvColor, BV_COLORS } from "@/types/ticket";
 import { Minus, X, Goal } from "lucide-react";
 import { Tooltip } from "@/components/shared/Tooltip";
 
@@ -48,7 +48,6 @@ export function BusinessValuePicker({
   const color = value != null ? getBvColor(value) : null;
   const showBg = !subtle || hovered || open;
   const displayLabel = value != null ? (isNA ? "-" : String(value)) : null;
-  const iconShown = showMetricIcon && displayLabel != null;
   const titleText = isNA ? "N/A" : value != null ? `Business Value: ${value}` : "Set Business Value";
 
   const trigger = isLg ? (
@@ -78,21 +77,24 @@ export function BusinessValuePicker({
           onMouseEnter={handleMouseEnter}
           onMouseLeave={handleMouseLeave}
           title={richTooltip ? undefined : titleText}
-          className={`flex h-6 items-center rounded-md cursor-pointer transition-colors duration-150 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)] active:opacity-60 text-body-sm font-medium tabular-nums ${iconShown ? "gap-1 px-1.5" : "min-w-[24px] justify-center"}`}
+          className={`flex h-6 items-center rounded-md cursor-pointer transition-colors duration-150 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)] active:opacity-60 text-body-sm font-medium tabular-nums ${showMetricIcon ? "gap-1 px-1.5 min-w-[2.25rem] justify-start" : "min-w-[24px] justify-center"}`}
           style={{
             color: color?.text ?? "var(--color-text-muted)",
             backgroundColor: showBg ? (color?.bg ?? "var(--color-overlay-subtle)") : "transparent",
             opacity: hovered && showBg ? 0.85 : 1,
           }}
         >
-          {displayLabel != null ? (
+          {showMetricIcon ? (
+            // Always reserve the icon + value footprint so empty and filled cells
+            // share one width and the column reads as a calm, aligned BV gutter.
+            // A scored cell inherits its BV-ramp color; an unset cell uses the
+            // lightest tint in the ramp (value 2) so it reads as a faint placeholder.
             <>
-              {showMetricIcon && <Goal size={12} strokeWidth={2} aria-hidden />}
-              {displayLabel}
+              <Goal size={12} strokeWidth={2} aria-hidden style={displayLabel == null ? { color: BV_COLORS[2].text } : undefined} />
+              {displayLabel != null && displayLabel}
             </>
-          ) : showMetricIcon ? (
-            // Unset: show a faded goal icon so the column still reads as BV.
-            <Goal size={12} strokeWidth={2} aria-hidden style={{ color: "var(--color-text-muted)" }} />
+          ) : displayLabel != null ? (
+            displayLabel
           ) : (
             <span className="h-1.5 w-1.5 rounded-full bg-overlay-strong" />
           )}

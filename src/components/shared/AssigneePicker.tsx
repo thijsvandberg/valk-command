@@ -36,6 +36,8 @@ export function AssigneePicker({
   align = "right",
   onOpenChange,
   textClass = "text-body-lg",
+  variant = "default",
+  avatarSize = 18,
 }: {
   value: Assignee | null;
   onChange: (user: AssignableUser | null) => void;
@@ -44,10 +46,14 @@ export function AssigneePicker({
   // Trigger font-size utility. Defaults to the standard value size; the ticket
   // detail sidebar overrides this to match its other 12px values.
   textClass?: string;
+  // "avatar" renders a compact avatar-only trigger for dense table cells; the
+  // default trigger shows the assignee name alongside the avatar.
+  variant?: "default" | "avatar";
+  avatarSize?: number;
 }) {
   return (
     <BasePicker.Root portal={true} align={align} popoverHeight={440} onOpenChange={onOpenChange}>
-      <AssigneePickerInner value={value} onChange={onChange} textClass={textClass} />
+      <AssigneePickerInner value={value} onChange={onChange} textClass={textClass} variant={variant} avatarSize={avatarSize} />
     </BasePicker.Root>
   );
 }
@@ -56,10 +62,14 @@ function AssigneePickerInner({
   value,
   onChange,
   textClass,
+  variant,
+  avatarSize,
 }: {
   value: Assignee | null;
   onChange: (user: AssignableUser | null) => void;
   textClass: string;
+  variant: "default" | "avatar";
+  avatarSize: number;
 }) {
   const { open, query, handleClose } = BasePicker.useContext();
   const [teamFilter, setTeamFilter] = useState<string | null>(null);
@@ -111,14 +121,24 @@ function AssigneePickerInner({
 
   return (
     <>
-      <BasePicker.Trigger
-        title={value ? `Assignee: ${value.name}` : "Unassigned"}
-        className="inline-flex items-center gap-2 rounded-lg px-2 py-1 -mr-2 cursor-pointer hover:bg-overlay-subtle focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)] active:opacity-60"
-        style={{ transition: "background-color 0.15s ease" }}
-      >
-        <span className={`truncate ${textClass} text-text-secondary`}>{value?.name ?? "Unassigned"}</span>
-        <Avatar assignee={value} size={20} />
-      </BasePicker.Trigger>
+      {variant === "avatar" ? (
+        <BasePicker.Trigger
+          title={value ? `Assignee: ${value.name}` : "Unassigned. Click to assign."}
+          className="inline-flex items-center justify-center rounded-full cursor-pointer hover:opacity-80 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)] active:opacity-60"
+          style={{ transition: "opacity 0.15s ease" }}
+        >
+          <Avatar assignee={value} size={avatarSize} />
+        </BasePicker.Trigger>
+      ) : (
+        <BasePicker.Trigger
+          title={value ? `Assignee: ${value.name}` : "Unassigned"}
+          className="inline-flex items-center gap-2 rounded-lg px-2 py-1 -mr-2 cursor-pointer hover:bg-overlay-subtle focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)] active:opacity-60"
+          style={{ transition: "background-color 0.15s ease" }}
+        >
+          <span className={`truncate ${textClass} text-text-secondary`}>{value?.name ?? "Unassigned"}</span>
+          <Avatar assignee={value} size={20} />
+        </BasePicker.Trigger>
+      )}
 
       <BasePicker.Popover width="w-[280px]">
         <BasePicker.Search placeholder="Search people..." />

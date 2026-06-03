@@ -93,7 +93,6 @@ export function StoryPointPicker({
   const color = value != null ? getSpColor(value) : null;
   const showBg = !subtle || hovered || open;
   const displayLabel = value != null ? (isNA ? "-" : String(value)) : null;
-  const iconShown = showMetricIcon && displayLabel != null;
   const titleText = isNA ? "N/A" : value != null ? `Story Points: ${value}` : "Set Story Points";
 
   const btnSize = isLg ? "h-10 w-10" : "h-7 w-7";
@@ -130,7 +129,7 @@ export function StoryPointPicker({
           onMouseEnter={handleMouseEnter}
           onMouseLeave={handleMouseLeave}
           title={richTooltip ? undefined : titleText}
-          className={`flex h-6 items-center rounded-md cursor-pointer transition-colors duration-150 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)] active:opacity-60 text-body-sm font-medium tabular-nums ${iconShown ? "gap-1 px-1.5" : "min-w-[24px] justify-center"}`}
+          className={`flex h-6 items-center rounded-md cursor-pointer transition-colors duration-150 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)] active:opacity-60 text-body-sm font-medium tabular-nums ${showMetricIcon ? "gap-1 px-1.5 min-w-[2.25rem] justify-start" : "min-w-[24px] justify-center"}`}
           style={{
             // SP has no value color in the dense table (subtle): neutral grey.
             // Tinted contexts (non-subtle) get the green effort ramp.
@@ -139,14 +138,16 @@ export function StoryPointPicker({
             opacity: hovered && showBg ? 0.85 : 1,
           }}
         >
-          {displayLabel != null ? (
+          {showMetricIcon ? (
+            // Always reserve the icon + value footprint so empty and filled cells
+            // share one width and the column reads as a calm, aligned SP gutter.
+            // The icon keeps the same size and color whether or not a value is set.
             <>
-              {showMetricIcon && <Gauge size={12} strokeWidth={2} aria-hidden />}
-              {displayLabel}
+              <Gauge size={12} strokeWidth={2} aria-hidden />
+              {displayLabel != null && displayLabel}
             </>
-          ) : showMetricIcon ? (
-            // Unset: show a faded gauge so the column still reads as SP.
-            <Gauge size={12} strokeWidth={2} aria-hidden style={{ color: "var(--color-text-muted)" }} />
+          ) : displayLabel != null ? (
+            displayLabel
           ) : (
             <span className="h-1.5 w-1.5 rounded-full bg-overlay-strong" />
           )}

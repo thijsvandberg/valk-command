@@ -31,6 +31,10 @@ vi.mock("@/types/ticket", () => ({
     if (v <= 5) return { text: "#eab308", bg: "#eab30820" };
     return { text: "#ef4444", bg: "#ef444420" };
   },
+  BV_COLORS: {
+    1: { text: "#6e737c", bg: "rgba(110, 115, 124, 0.10)" },
+    2: { text: "#858a92", bg: "rgba(133, 138, 146, 0.10)" },
+  },
 }));
 
 beforeEach(() => {
