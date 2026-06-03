@@ -8,11 +8,15 @@ const MOCK_USERS = [
   { accountId: "acc-charlie", displayName: "Charlie", avatarUrl: null, isFavorite: false, teams: ["BO"] },
 ];
 
+const swrState = vi.hoisted(() => ({ mode: "data" as "data" | "loading" | "error" }));
+
 vi.mock("swr", () => ({
   __esModule: true,
   default: (key: string | null) => {
-    if (!key) return { data: undefined };
-    return { data: { users: MOCK_USERS } };
+    if (!key) return { data: undefined, isLoading: false, error: undefined };
+    if (swrState.mode === "loading") return { data: undefined, isLoading: true, error: undefined };
+    if (swrState.mode === "error") return { data: undefined, isLoading: false, error: new Error("500") };
+    return { data: { users: MOCK_USERS }, isLoading: false, error: undefined };
   },
 }));
 
@@ -32,6 +36,7 @@ describe("WatcherPicker", () => {
   beforeEach(() => {
     onAdd.mockClear();
     onRemove.mockClear();
+    swrState.mode = "data";
   });
 
   it("renders an add-watcher trigger", () => {
@@ -82,5 +87,13 @@ describe("WatcherPicker", () => {
     fireEvent.change(screen.getByPlaceholderText("Search people..."), { target: { value: "char" } });
     expect(screen.getByText("Charlie")).toBeInTheDocument();
     expect(screen.queryByText("Bob")).not.toBeInTheDocument();
+  });
+
+  it("shows an error state when candidates fail to load (does not hang on Loading)", () => {
+    swrState.mode = "error";
+    render(<WatcherPicker watchers={[]} onAdd={onAdd} onRemove={onRemove} />);
+    openPicker();
+    expect(screen.getByText("Couldn't load people")).toBeInTheDocument();
+    expect(screen.queryByText("Loading...")).not.toBeInTheDocument();
   });
 });

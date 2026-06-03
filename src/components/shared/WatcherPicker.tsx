@@ -47,10 +47,10 @@ function WatcherPickerInner({
   const { open, query } = BasePicker.useContext();
   const [teamFilter, setTeamFilter] = useState<string | null>(null);
 
-  const { data } = useSWR<{ users: AssignableUser[] }>(
+  const { data, error, isLoading } = useSWR<{ users: AssignableUser[] }>(
     open ? jira.watcherCandidatesUrl() : null,
     swrFetcher,
-    { revalidateOnFocus: false, dedupingInterval: 60000 },
+    { revalidateOnFocus: false, dedupingInterval: 60000, shouldRetryOnError: false },
   );
 
   const users = data?.users ?? [];
@@ -138,9 +138,9 @@ function WatcherPickerInner({
         )}
 
         <BasePicker.List maxHeight="max-h-[300px]">
-          {users.length === 0 && !data && <BasePicker.Empty>Loading...</BasePicker.Empty>}
-          {users.length === 0 && data && <BasePicker.Empty>No people found</BasePicker.Empty>}
-          {favorites.length === 0 && regular.length === 0 && query.trim() && (
+          {isLoading && <BasePicker.Empty>Loading...</BasePicker.Empty>}
+          {error && <BasePicker.Empty>Couldn&apos;t load people</BasePicker.Empty>}
+          {!isLoading && !error && favorites.length === 0 && regular.length === 0 && (
             <BasePicker.Empty>No people found</BasePicker.Empty>
           )}
 
