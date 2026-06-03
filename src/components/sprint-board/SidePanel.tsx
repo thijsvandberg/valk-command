@@ -15,7 +15,7 @@ import { TicketTabContent, type TicketTab } from "@/components/ticket-detail/Tic
 import { TicketMetaContent } from "@/components/ticket-detail/TicketMetaContent";
 import { useLocalStorage } from "@/hooks/useLocalStorage";
 import {
-  SquareArrowOutUpRight,
+  Maximize2,
   X,
   Gem,
   NotebookPen,
@@ -397,6 +397,30 @@ export function SidePanel({
             </Tooltip>
           )}
 
+          {metaCollapsed && (
+            <Tooltip content="Show sidebar">
+              <button
+                type="button"
+                onClick={() => setMetaCollapsed(false)}
+                aria-label="Show sidebar"
+                className={iconBtnClass}
+              >
+                <PanelRightClose size={14} strokeWidth={1.5} />
+              </button>
+            </Tooltip>
+          )}
+
+          <Tooltip content="Open full view">
+            <button
+              type="button"
+              onClick={() => router.push(`/tickets/${ticket.key}`)}
+              aria-label="Open full view"
+              className={iconBtnClass}
+            >
+              <Maximize2 size={14} strokeWidth={1.5} />
+            </button>
+          </Tooltip>
+
           <div className="relative">
             <button
               type="button"
@@ -510,29 +534,6 @@ export function SidePanel({
             </Popover>
           </div>
 
-          {metaCollapsed && (
-            <Tooltip content="Show sidebar">
-              <button
-                type="button"
-                onClick={() => setMetaCollapsed(false)}
-                aria-label="Show sidebar"
-                className={iconBtnClass}
-              >
-                <PanelRightClose size={14} strokeWidth={1.5} />
-              </button>
-            </Tooltip>
-          )}
-
-          <Tooltip content="Open full view">
-            <button
-              type="button"
-              onClick={() => router.push(`/tickets/${ticket.key}`)}
-              aria-label="Open full view"
-              className={iconBtnClass}
-            >
-              <SquareArrowOutUpRight size={14} strokeWidth={1.5} />
-            </button>
-          </Tooltip>
           <Tooltip content="Close panel">
             <button
               type="button"
