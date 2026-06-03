@@ -122,6 +122,8 @@ export function TicketTable({
   groupBy,
   pinnedSprintIds,
   onPinSprint,
+  onEditSprint,
+  onCloseSprint,
   scrollContainerRef,
   refinementSessionMap,
   onRemoveFromRefinement,
@@ -183,6 +185,9 @@ export function TicketTable({
   // When grouping by sprint, pin a sprint group to the tab bar. Key is the sprint id.
   pinnedSprintIds?: Set<string>;
   onPinSprint?: (sprintId: string) => void;
+  // When grouping by sprint, open the goal/dates editor or close (finish) a sprint group. Key is the sprint id.
+  onEditSprint?: (sprintId: string) => void;
+  onCloseSprint?: (sprintId: string) => void;
   // When provided, the table uses this as its scroll container (for shared scroll with analytics).
   scrollContainerRef?: React.RefObject<HTMLElement | null>;
   refinementSessionMap?: Map<string, TicketSessionEntry[]>;
@@ -449,6 +454,8 @@ export function TicketTable({
     <div className="flex flex-col gap-3">
       {groups.map((group) => {
         const isCollapsed = collapsedGroups?.has(group.key) ?? false;
+        const isSprintGroup = groupBy === "sprint" && group.key !== "__backlog__";
+        const groupSprint = isSprintGroup ? sprints?.find((s) => s.id === group.key) : undefined;
 
         const activeCriterion = groupFilter?.groupKey === group.key ? groupFilter.criterion : null;
         const visibleGroupTickets = activeCriterion === "todo"
@@ -460,7 +467,11 @@ export function TicketTable({
               : activeCriterion === "done"
                 ? group.tickets.filter((t) => t.jiraStatus === "DONE")
                 : activeCriterion === "unpointed"
-                  ? group.tickets.filter((t) => !t.storyPoints)
+                  // Must match GroupStatBar's noPointsCount: only genuinely
+                  // unpointed stories (storyPoints null), excluding deprecated
+                  // tickets, spikes, and SP=0 (N/A), so the filter shows exactly
+                  // the items the warning counted.
+                  ? group.tickets.filter((t) => t.storyPoints == null && t.jiraStatus !== "DEPRECATED" && t.type !== "spike")
                   : group.tickets;
 
         function toggleGroupFilter(criterion: "todo" | "in-progress" | "test" | "done" | "unpointed") {
@@ -523,11 +534,18 @@ export function TicketTable({
                 }}
                 isCollapsed={isCollapsed}
                 onToggleCollapse={() => onToggleCollapse?.(group.key)}
-                {...(groupBy === "sprint" && group.key !== "__backlog__" && onPinSprint
+                {...(isSprintGroup && onPinSprint
                   ? {
                       onPin: () => onPinSprint(group.key),
                       isPinned: pinnedSprintIds?.has(group.key) ?? false,
                       pinDisabled: (pinnedSprintIds?.size ?? 0) >= 8,
+                    }
+                  : {})}
+                {...(groupSprint
+                  ? {
+                      sprint: groupSprint,
+                      onEditSprintDetails: onEditSprint ? () => onEditSprint(group.key) : undefined,
+                      onCloseSprint: onCloseSprint && groupSprint.state === "active" ? () => onCloseSprint(group.key) : undefined,
                     }
                   : {})}
               />

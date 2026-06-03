@@ -1,5 +1,5 @@
-import { render, screen } from "@testing-library/react";
-import { describe, it, expect } from "vitest";
+import { render, screen, fireEvent, act } from "@testing-library/react";
+import { describe, it, expect, vi } from "vitest";
 import { MetricBadge } from "./MetricBadge";
 
 describe("MetricBadge", () => {
@@ -40,6 +40,23 @@ describe("MetricBadge", () => {
   it("falls back to the native title when tooltip is disabled", () => {
     render(<MetricBadge metric="sp" value={8} tooltip={false} />);
     expect(screen.getByTitle("Story Points: 8")).toBeInTheDocument();
+  });
+
+  it("keeps the plain title as the accessible label even with custom tooltipContent", () => {
+    render(<MetricBadge metric="bv" value={6} tooltipContent="Business value: 6 · avg 2.0 per scored ticket" />);
+    expect(screen.getByLabelText("Business Value: 6")).toBeInTheDocument();
+  });
+
+  it("shows custom tooltipContent on hover when provided", () => {
+    vi.useFakeTimers();
+    try {
+      render(<MetricBadge metric="bv" value={6} tooltipContent="Business value: 6 · avg 2.0 per scored ticket" />);
+      fireEvent.mouseEnter(screen.getByLabelText("Business Value: 6").parentElement!);
+      act(() => { vi.advanceTimersByTime(400); });
+      expect(screen.getByText("Business value: 6 · avg 2.0 per scored ticket")).toBeInTheDocument();
+    } finally {
+      vi.useRealTimers();
+    }
   });
 
   it("uses neutral SP color untinted and a value color when tinted", () => {

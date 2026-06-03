@@ -8,6 +8,7 @@
 // This is display-only; the editable trigger lives in StoryPointPicker /
 // BusinessValuePicker (which share the same icon + color treatment).
 
+import type { ReactNode } from "react";
 import { Gauge, Goal } from "lucide-react";
 import { getSpColor, getBvColor } from "@/types/ticket";
 import { Tooltip } from "@/components/shared/Tooltip";
@@ -21,6 +22,7 @@ export function MetricBadge({
   value,
   tinted = false,
   tooltip = true,
+  tooltipContent,
   size = "sm",
   className = "",
 }: {
@@ -30,6 +32,8 @@ export function MetricBadge({
   tinted?: boolean;
   // Use the styled Tooltip (default). Set false to fall back to the native title attribute.
   tooltip?: boolean;
+  // Overrides the default tooltip text (e.g. to append a group average). aria-label stays the plain title.
+  tooltipContent?: ReactNode;
   size?: "xs" | "sm";
   className?: string;
 }) {
@@ -60,5 +64,5 @@ export function MetricBadge({
     </span>
   );
 
-  return tooltip ? <Tooltip content={title}>{badge}</Tooltip> : badge;
+  return tooltip ? <Tooltip content={tooltipContent ?? title}>{badge}</Tooltip> : badge;
 }

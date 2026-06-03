@@ -1,7 +1,7 @@
-import { render, screen, fireEvent } from "@testing-library/react";
+import { render, screen, fireEvent, act } from "@testing-library/react";
 import { describe, it, expect, vi } from "vitest";
 import { GroupStatBar } from "./GroupStatBar";
-import type { Ticket } from "@/types/ticket";
+import type { Ticket, Sprint } from "@/types/ticket";
 
 function makeTicket(overrides: Partial<Ticket> = {}): Ticket {
   return {
@@ -142,15 +142,105 @@ describe("GroupStatBar", () => {
     expect(onFilterChange).toHaveBeenCalledWith(null);
   });
 
-  it("hides the BV average when showBvAvg is false", () => {
+  it("no longer renders the average inline (only on hover)", () => {
     const bvTickets = [
       makeTicket({ key: "VPL-1", businessValue: 4, storyPoints: 3 }),
       makeTicket({ key: "VPL-2", businessValue: 2, storyPoints: 3 }),
     ];
-    const { rerender } = render(<GroupStatBar tickets={bvTickets} />);
-    expect(screen.getByText(/avg/)).toBeTruthy();
-    rerender(<GroupStatBar tickets={bvTickets} showBvAvg={false} />);
+    render(<GroupStatBar tickets={bvTickets} />);
+    // The standalone "avg N" pill is gone; the average now lives in the badge tooltip.
     expect(screen.queryByText(/avg/)).toBeNull();
+  });
+
+  it("surfaces the BV and SP averages in the badge tooltips on hover", () => {
+    vi.useFakeTimers();
+    try {
+      const bvTickets = [
+        makeTicket({ key: "VPL-1", businessValue: 4, storyPoints: 3 }),
+        makeTicket({ key: "VPL-2", businessValue: 2, storyPoints: 5 }),
+      ];
+      render(<GroupStatBar tickets={bvTickets} />);
+      // BV total 6 over 2 scored tickets -> avg 3.0 (split across two tidy rows)
+      fireEvent.mouseEnter(screen.getByLabelText("Business Value: 6").parentElement!);
+      act(() => { vi.advanceTimersByTime(400); });
+      expect(screen.getByText("Business value: 6")).toBeInTheDocument();
+      expect(screen.getByText("Average 3.0 per scored ticket")).toBeInTheDocument();
+      fireEvent.mouseLeave(screen.getByLabelText("Business Value: 6").parentElement!);
+      // SP total 8 over 2 estimated tickets -> avg 4.0
+      fireEvent.mouseEnter(screen.getByLabelText("Story Points: 8").parentElement!);
+      act(() => { vi.advanceTimersByTime(400); });
+      expect(screen.getByText("Story points: 8")).toBeInTheDocument();
+      expect(screen.getByText("Average 4.0 per estimated ticket")).toBeInTheDocument();
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it("omits the average from the tooltip when showBvAvg is false", () => {
+    vi.useFakeTimers();
+    try {
+      const bvTickets = [
+        makeTicket({ key: "VPL-1", businessValue: 4, storyPoints: 3 }),
+        makeTicket({ key: "VPL-2", businessValue: 2, storyPoints: 3 }),
+      ];
+      render(<GroupStatBar tickets={bvTickets} showBvAvg={false} />);
+      fireEvent.mouseEnter(screen.getByLabelText("Business Value: 6").parentElement!);
+      act(() => { vi.advanceTimersByTime(400); });
+      expect(screen.queryByText(/avg/)).toBeNull();
+      expect(screen.getByText("Business Value: 6")).toBeInTheDocument();
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  describe("sprint menu", () => {
+    const SPRINT: Sprint = {
+      id: "s1",
+      name: "BT: 138",
+      dateRange: "22 May - 4 Jun",
+      state: "active",
+      ticketCount: 2,
+      startDate: "2026-05-22",
+      endDate: "2026-06-04",
+      goal: "Ship the thing",
+    };
+
+    it("does not render the menu without a sprint", () => {
+      render(<GroupStatBar tickets={TICKETS} label="BT: 138" />);
+      expect(screen.queryByLabelText("Sprint goal and dates")).toBeNull();
+    });
+
+    it("opens the details popover and triggers edit", () => {
+      const onEditSprintDetails = vi.fn();
+      render(
+        <GroupStatBar
+          tickets={TICKETS}
+          label="BT: 138"
+          sprint={SPRINT}
+          onEditSprintDetails={onEditSprintDetails}
+        />,
+      );
+      fireEvent.click(screen.getByLabelText("Sprint goal and dates"));
+      expect(screen.getByText("Ship the thing")).toBeInTheDocument();
+      fireEvent.click(screen.getByText("Edit details"));
+      expect(onEditSprintDetails).toHaveBeenCalledTimes(1);
+    });
+
+    it("shows Close sprint only for active sprints with the callback", () => {
+      const onCloseSprint = vi.fn();
+      render(
+        <GroupStatBar
+          tickets={TICKETS}
+          label="BT: 138"
+          sprint={SPRINT}
+          onEditSprintDetails={vi.fn()}
+          onCloseSprint={onCloseSprint}
+        />,
+      );
+      fireEvent.click(screen.getByLabelText("Sprint goal and dates"));
+      fireEvent.click(screen.getByText("Close sprint"));
+      expect(onCloseSprint).toHaveBeenCalledTimes(1);
+    });
   });
 
   it("renders label when provided", () => {

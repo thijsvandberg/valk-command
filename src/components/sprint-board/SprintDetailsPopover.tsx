@@ -1,7 +1,10 @@
 "use client";
 
+import { useLayoutEffect, useRef, useState, type RefObject } from "react";
+import { createPortal } from "react-dom";
 import type { Sprint } from "@/types/ticket";
 import { Popover } from "@/components/shared/Popover";
+import { useOutsideClick } from "@/hooks/useOutsideClick";
 import { Pencil, Sparkles, ExternalLink, Flag } from "lucide-react";
 import Link from "next/link";
 
@@ -14,6 +17,14 @@ interface SprintDetailsPopoverProps {
   goalSuggestionUrl?: string | null;
   /** When provided and the sprint is active, shows a "Close sprint" action. */
   onCloseSprint?: () => void;
+  /** Horizontal alignment relative to the trigger. Defaults to "left". */
+  align?: "left" | "right";
+  /**
+   * When provided, the panel renders in a portal positioned (fixed) relative to this
+   * trigger element instead of as an absolute child. This escapes ancestor
+   * `overflow-hidden` clipping (e.g. a sprint group card) which would otherwise hide it.
+   */
+  anchorRef?: RefObject<HTMLElement | null>;
 }
 
 function fmtDate(iso: string): string {
@@ -29,12 +40,22 @@ export function SprintDetailsPopover({
   onSuggestGoal,
   goalSuggestionUrl,
   onCloseSprint,
+  align = "left",
+  anchorRef,
 }: SprintDetailsPopoverProps) {
   const hasGoal = sprint.goal && sprint.goal.trim().length > 0;
   const hasDates = sprint.startDate && sprint.endDate;
 
-  return (
-    <Popover open={open} onClose={onClose} align="left" offsetClass="mt-2" className="w-64">
+  const panelRef = useRef<HTMLDivElement>(null);
+  const [coords, setCoords] = useState<{ top: number; right: number } | null>(null);
+  useOutsideClick(anchorRef ? [panelRef, anchorRef] : panelRef, onClose, { enabled: open && anchorRef != null });
+  useLayoutEffect(() => {
+    if (!open || !anchorRef?.current) return;
+    const rect = anchorRef.current.getBoundingClientRect();
+    setCoords({ top: rect.bottom + 8, right: window.innerWidth - rect.right });
+  }, [open, anchorRef]);
+
+  const inner = (
       <div className="px-3.5 py-3 space-y-2">
         {/* Date range row */}
         {hasDates && (
@@ -109,6 +130,27 @@ export function SprintDetailsPopover({
           )}
         </div>
       </div>
+  );
+
+  // Portal mode: fixed-positioned panel anchored to the trigger, so an ancestor
+  // card's `overflow-hidden` cannot clip it (BRDG group-row menu).
+  if (anchorRef) {
+    if (!open || !coords || typeof document === "undefined") return null;
+    return createPortal(
+      <div
+        ref={panelRef}
+        className="fixed z-[9999] w-64 overflow-hidden rounded-xl border border-border-strong bg-[var(--color-surface-floating)] shadow-[var(--shadow-xl)]"
+        style={{ top: coords.top, right: coords.right }}
+      >
+        {inner}
+      </div>,
+      document.body,
+    );
+  }
+
+  return (
+    <Popover open={open} onClose={onClose} align={align} offsetClass="mt-2" className="w-64">
+      {inner}
     </Popover>
   );
 }

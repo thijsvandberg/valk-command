@@ -81,6 +81,10 @@ export default function SprintBoard() {
   const [createSprintModalOpen, setCreateSprintModalOpen] = useState(false);
   const [finishModalOpen, setFinishModalOpen] = useState(false);
   const [finishEarlyClose, setFinishEarlyClose] = useState(false);
+  // In the All view there is no single active sprint, so the edit/finish modals target a
+  // sprint chosen from a group row's "..." menu. Null falls back to the active sprint.
+  const [editSprintId, setEditSprintId] = useState<string | null>(null);
+  const [finishSprintId, setFinishSprintId] = useState<string | null>(null);
   const [bulkRefreshing, setBulkRefreshing] = useState(false);
   const [bulkGenerating, setBulkGenerating] = useState(false);
   const [refineModalOpen, setRefineModalOpen] = useState(false);
@@ -145,6 +149,12 @@ export default function SprintBoard() {
   const showSprintOnRow = (isAllView || !!f.activeViewId) && groupBy !== "sprint";
 
   const activeSprint = isAllView ? null : sprints.find((s) => s.id === activeSprintId) ?? null;
+  // Modal targets: an explicit group-row choice (All view) takes precedence over the active sprint.
+  // In the All view allTickets spans every sprint, so narrow to the target sprint's tickets.
+  const editSprint = editSprintId ? sprints.find((s) => s.id === editSprintId) ?? null : activeSprint;
+  const finishSprint = finishSprintId ? sprints.find((s) => s.id === finishSprintId) ?? null : activeSprint;
+  const editSprintTickets = editSprintId ? allTickets.filter((t) => t.sprintId === editSprintId) : allTickets;
+  const finishSprintTickets = finishSprintId ? allTickets.filter((t) => t.sprintId === finishSprintId) : allTickets;
   const stats = useMemo(() => computeSprintStats(allTickets), [allTickets]);
   const sprintWorkDays = useMemo(() => computeSprintWorkDays(activeSprint), [activeSprint]);
   const pageTitle = usePageTitle(isAllView ? "Sprint Board - All" : activeSprint ? `${activeSprint.name} - Sprint Board` : "Sprint Board");
@@ -200,6 +210,19 @@ export default function SprintBoard() {
     navigateToSprint(id); setCreateSprintModalOpen(false);
   }, [sprints, navigateToSprint]);
   const openFinishModal = useCallback((early: boolean) => { setFinishEarlyClose(early); setFinishModalOpen(true); }, []);
+  // Edit goal/dates or close a sprint from a group row's "..." menu in the All view.
+  const handleEditSprintFromGroup = useCallback((sprintId: string) => {
+    setEditSprintId(sprintId);
+    setEditModalOpen(true);
+  }, []);
+  const handleCloseSprintFromGroup = useCallback((sprintId: string) => {
+    const target = sprints.find((s) => s.id === sprintId) ?? null;
+    const workDays = computeSprintWorkDays(target);
+    const endReached = workDays.remaining !== null && workDays.remaining <= 0;
+    setFinishSprintId(sprintId);
+    setFinishEarlyClose(!endReached);
+    setFinishModalOpen(true);
+  }, [sprints]);
   const handleReorderSlots = useCallback((activeId: string, overId: string) => {
     setSlotSprints((prev) => { const oi = prev.indexOf(activeId); const ni = prev.indexOf(overId); if (oi === -1 || ni === -1) return prev; const next = [...prev]; next.splice(oi, 1); next.splice(ni, 0, activeId); saveSprintSlots(next, sprints); return next; });
   }, [sprints]);
@@ -333,7 +356,7 @@ export default function SprintBoard() {
           // The list sits on a white surface; TicketTable renders the bordered card(s) itself —
           // one card when ungrouped, one per group when grouped (BRDG-239, BRDG-267).
           <div className="min-h-full bg-[var(--color-surface-elevated)] px-4 pb-4 pt-3">
-          <TicketTable tickets={tickets} checkedTickets={checkedTickets} selectedTicket={selectedTicket} focusedTicketIdx={focusedTicketIdx} someChecked={someChecked} allChecked={allChecked} visibleTags={f.visibleTags} hideEpic={hideEpicChip} showSprint={showSprintOnRow} sprintNameMap={sprintNameMap} poStatuses={poStatuses} readinessMap={readinessMap} inflightKeys={inflightKeys} onToggleCheck={toggleCheck} onRangeCheck={handleRangeCheck} onToggleAll={toggleAll} onSelectTicket={setSelectedTicket} onRowContextMenu={handleRowContextMenu} contextMenuKeys={rowMenu?.targets} onPoStatusChange={ta.handlePoStatusChange} onReadinessChange={ta.handleReadinessChange} onBusinessValueChange={ta.handleBusinessValueChange} onStoryPointsChange={ta.handleStoryPointsChange} onJiraStatusChange={ta.handleJiraStatusChange} onIssueTypeChange={ta.handleIssueTypeChange} onTitleChange={ta.handleTitleChange} onAssigneeChange={ta.handleAssigneeChange} onEpicChange={ta.handleEpicChange} onSprintChange={ta.handleSprintChange} sprints={sprints} onCloseSubtasks={ta.handleCloseSubtasks} onTableKeyDown={handleTableKeyDown} onRunReview={(key) => handleBulkReviewStory(new Set([key]))} sortField={f.sortField} sortDir={f.sortDir} groups={groups} collapsedGroups={collapsedGroups} onToggleCollapse={toggleCollapse} groupBy={groupBy} pinnedSprintIds={slotSprintsSet} onPinSprint={handleAddSlotWithSprint} scrollContainerRef={contentScrollRef} refinementSessionMap={ticketSessionMap} onRemoveFromRefinement={handleRemoveFromRefinement} onViewRefinement={handleViewRefinement} {...(dnd.jiraRankDndEnabled ? { externalDnd: true as const, externalActiveDragId: dnd.boardActiveDragId, dragOverKey: dnd.boardOverId } : { onReorder: f.sortField === "rank" && !f.activeViewId ? handleReorder : undefined })} />
+          <TicketTable tickets={tickets} checkedTickets={checkedTickets} selectedTicket={selectedTicket} focusedTicketIdx={focusedTicketIdx} someChecked={someChecked} allChecked={allChecked} visibleTags={f.visibleTags} hideEpic={hideEpicChip} showSprint={showSprintOnRow} sprintNameMap={sprintNameMap} poStatuses={poStatuses} readinessMap={readinessMap} inflightKeys={inflightKeys} onToggleCheck={toggleCheck} onRangeCheck={handleRangeCheck} onToggleAll={toggleAll} onSelectTicket={setSelectedTicket} onRowContextMenu={handleRowContextMenu} contextMenuKeys={rowMenu?.targets} onPoStatusChange={ta.handlePoStatusChange} onReadinessChange={ta.handleReadinessChange} onBusinessValueChange={ta.handleBusinessValueChange} onStoryPointsChange={ta.handleStoryPointsChange} onJiraStatusChange={ta.handleJiraStatusChange} onIssueTypeChange={ta.handleIssueTypeChange} onTitleChange={ta.handleTitleChange} onAssigneeChange={ta.handleAssigneeChange} onEpicChange={ta.handleEpicChange} onSprintChange={ta.handleSprintChange} sprints={sprints} onCloseSubtasks={ta.handleCloseSubtasks} onTableKeyDown={handleTableKeyDown} onRunReview={(key) => handleBulkReviewStory(new Set([key]))} sortField={f.sortField} sortDir={f.sortDir} groups={groups} collapsedGroups={collapsedGroups} onToggleCollapse={toggleCollapse} groupBy={groupBy} pinnedSprintIds={slotSprintsSet} onPinSprint={handleAddSlotWithSprint} onEditSprint={handleEditSprintFromGroup} onCloseSprint={handleCloseSprintFromGroup} scrollContainerRef={contentScrollRef} refinementSessionMap={ticketSessionMap} onRemoveFromRefinement={handleRemoveFromRefinement} onViewRefinement={handleViewRefinement} {...(dnd.jiraRankDndEnabled ? { externalDnd: true as const, externalActiveDragId: dnd.boardActiveDragId, dragOverKey: dnd.boardOverId } : { onReorder: f.sortField === "rank" && !f.activeViewId ? handleReorder : undefined })} />
           </div>
         )}
       </div>
@@ -390,14 +413,14 @@ export default function SprintBoard() {
 
       <SearchModal open={searchModalOpen} initialQuery={f.searchQuery} onClose={() => setSearchModalOpen(false)} onSelectTicket={(key: string) => setSelectedTicket(key)} sprintNameMap={sprintNameMap} />
       <StoryWriterLauncherModal open={showStoryWriterLauncher} onClose={() => setShowStoryWriterLauncher(false)} />
-      {editModalOpen && activeSprint && <SprintEditModal sprint={activeSprint} tickets={allTickets} onClose={() => { setEditModalOpen(false); setAutoSuggest(false); }} showToast={showToast} autoSuggest={autoSuggest} />}
+      {editModalOpen && editSprint && <SprintEditModal sprint={editSprint} tickets={editSprintTickets} onClose={() => { setEditModalOpen(false); setAutoSuggest(false); setEditSprintId(null); }} showToast={showToast} autoSuggest={autoSuggest} />}
       {createSprintModalOpen && <CreateSprintModal onClose={() => setCreateSprintModalOpen(false)} onCreated={handleSprintCreated} showToast={showToast} />}
-      {finishModalOpen && activeSprint && (
+      {finishModalOpen && finishSprint && (
         <FinishSprintModal
-          sprint={activeSprint}
-          tickets={allTickets}
+          sprint={finishSprint}
+          tickets={finishSprintTickets}
           earlyClose={finishEarlyClose}
-          onClose={() => setFinishModalOpen(false)}
+          onClose={() => { setFinishModalOpen(false); setFinishSprintId(null); }}
           onCloseAllSubtasks={ta.handleCloseSubtasks}
           onRefreshTickets={mutateTickets}
           showToast={showToast}
