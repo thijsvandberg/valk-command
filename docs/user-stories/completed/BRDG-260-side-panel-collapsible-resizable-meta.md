@@ -1,6 +1,6 @@
 # BRDG-260: Side Panel -- Collapsible & Resizable Meta Sidebar
 
-**Status:** Not Started
+**Status:** Completed
 **Priority:** Medium
 **Type:** Enhancement
 
@@ -129,4 +129,4 @@ collapse/re-open persistence, header button, and resize clamp-floor persistence.
 - [x] Auto-stack the meta below content when the panel is too narrow (width-driven, respects collapse)
 - [x] Consider extracting a shared `MetaSidebarShell` reused by `TicketSidebar` and `SidePanel` <!-- decided AGAINST: the two shells diverge in load-bearing ways (resize-against-window vs resize-against-panel + content-floor + auto-stack) and extraction would touch the out-of-scope TicketSidebar; shell logic kept inline with a documenting comment -->
 - [x] Tests for resize/collapse/persistence and the stacked vs column decision
-- [ ] Verify visually at narrow, medium, and wide panel widths, collapsed and expanded
+- [x] Verify visually at narrow, medium, and wide panel widths, collapsed and expanded
