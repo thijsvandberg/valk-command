@@ -280,6 +280,10 @@ html.theme-transition *::after {
 }
 
 /* Chat markdown: tighter spacing for chat bubbles */
+/* Break long unbreakable strings (URLs, GUIDs) so they wrap inside the bubble
+   instead of overflowing. `anywhere` also shrinks min-content sizing, which is
+   what lets the text stay within the bubble's max-width cap. */
+.chat-markdown { overflow-wrap: anywhere; }
 .chat-markdown h3 { margin-top: 0.75rem; margin-bottom: 0.25rem; }
 .chat-markdown h4 { margin-top: 0.5rem; margin-bottom: 0.125rem; }
 .chat-markdown ul,

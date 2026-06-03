@@ -401,7 +401,7 @@ export function ChatMessage({
 
       <div
         ref={containerRef}
-        className={`text-body-lg leading-[1.75] ${
+        className={`text-body-lg leading-[1.75] min-w-0 ${
           allTitleSuggestions.length > 0 || draftId ? "max-w-[92%]" : isUser ? "max-w-[70%]" : "max-w-[75%]"
         } ${
           draftOnly

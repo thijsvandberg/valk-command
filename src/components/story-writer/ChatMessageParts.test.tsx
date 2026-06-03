@@ -58,6 +58,29 @@ describe("ChatMessage ticket-reference linkification", () => {
   });
 });
 
+describe("ChatMessage long-text overflow (BRDG-261)", () => {
+  const LONG_URL =
+    "https://uat1-booking-v5.vandervalkonline.com/hotelluxembourgarlon/configuration?occupancy=%5B%7B%22adults%22:1%7D%5D&dealGUID=c1d0f0ca-3828-4389-9b0e-9a9948637b05";
+
+  it("renders a long unbreakable string inside the min-w-0 bubble wrapper so it can wrap", () => {
+    const { container } = render(<ChatMessage message={makeMessage({ content: LONG_URL })} />);
+    // The bubble wrapper must allow shrinking below its content's intrinsic
+    // width (min-w-0); otherwise the long token pushes past the max-w cap.
+    const wrapper = container.querySelector(".min-w-0");
+    expect(wrapper).not.toBeNull();
+    const markdown = screen.getByTestId("markdown");
+    expect(markdown).toHaveTextContent(LONG_URL);
+    expect(wrapper).toContainElement(markdown);
+  });
+
+  it("places the content in a chat-markdown block (which wraps long strings via CSS)", () => {
+    const { container } = render(<ChatMessage message={makeMessage({ content: LONG_URL })} />);
+    const markup = container.querySelector(".chat-markdown");
+    expect(markup).not.toBeNull();
+    expect(markup).toContainElement(screen.getByTestId("markdown"));
+  });
+});
+
 describe("parseLinkSuggestions", () => {
   it("parses a single link-suggestion tag", () => {
     const content = 'Some text <link-suggestion key="VPL-123" relation="relates to" /> more text';
