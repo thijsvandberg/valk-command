@@ -387,6 +387,29 @@ export const BoardRow = memo(forwardRef<HTMLTableRowElement, BoardRowBaseProps>(
                 )}
               </div>
 
+              {/* Notes + refinement signals, placed just left of the epic chip. */}
+              {tags.has("notes") && ticket.notes && (
+                <span className="shrink-0" title={ticket.notes}>
+                  <MessageSquare className="h-3.5 w-3.5 text-text-muted" strokeWidth={1.5} />
+                </span>
+              )}
+              {tags.has("refinement") && refinementSessions && refinementSessions.length > 0 && (
+                <RefinementGemTrigger
+                  sessions={refinementSessions}
+                  currentKey={ticket.key}
+                  ticketInfoMap={ticketInfoMap}
+                  onRemoveFromRefinement={onRemoveFromRefinement}
+                  onViewRefinement={onViewRefinement}
+                >
+                  <span className="inline-flex h-5 shrink-0 items-center gap-1 rounded-full bg-[var(--color-brand-500)]/12 px-2 text-[var(--color-brand-300)] ring-1 ring-inset ring-[var(--color-brand-500)]/15">
+                    <Gem size={12} strokeWidth={1.75} className="shrink-0" />
+                    {refinementSessions.length > 1 && (
+                      <span className="text-[11px] font-medium leading-none tabular-nums">{refinementSessions.length}</span>
+                    )}
+                  </span>
+                </RefinementGemTrigger>
+              )}
+
               {/* Epic chip — shrinks with the title when space is tight. */}
               {!hideEpic && epicColor && (
                 <span
@@ -429,30 +452,6 @@ export const BoardRow = memo(forwardRef<HTMLTableRowElement, BoardRowBaseProps>(
                   />
                 </span>
               )}
-              {tags.has("notes") && ticket.notes && (
-                <span className="shrink-0" title={ticket.notes}>
-                  <MessageSquare className="h-3.5 w-3.5 text-text-muted" strokeWidth={1.5} />
-                </span>
-              )}
-              {/* Refinement: a tinted brand badge on the right so it reads as a clear signal
-                  rather than fading into the row (BRDG-239). */}
-              {tags.has("refinement") && refinementSessions && refinementSessions.length > 0 && (
-                <RefinementGemTrigger
-                  sessions={refinementSessions}
-                  currentKey={ticket.key}
-                  ticketInfoMap={ticketInfoMap}
-                  onRemoveFromRefinement={onRemoveFromRefinement}
-                  onViewRefinement={onViewRefinement}
-                >
-                  <span className="inline-flex h-5 shrink-0 items-center gap-1 rounded-full bg-[var(--color-brand-500)]/12 px-2 text-[var(--color-brand-300)] ring-1 ring-inset ring-[var(--color-brand-500)]/15">
-                    <Gem size={12} strokeWidth={1.75} className="shrink-0" />
-                    {refinementSessions.length > 1 && (
-                      <span className="text-[11px] font-medium leading-none tabular-nums">{refinementSessions.length}</span>
-                    )}
-                  </span>
-                </RefinementGemTrigger>
-              )}
-
               {/* SP / BV — compact, right of the tags. */}
               <div
                 className="flex shrink-0 items-center gap-2"
