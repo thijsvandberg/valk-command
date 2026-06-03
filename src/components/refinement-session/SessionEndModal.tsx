@@ -107,7 +107,7 @@ export function SessionEndModal() {
     }
     const seededKeys = Object.keys(additions);
     if (seededKeys.length === 0) return;
-    setTicketNotes((prev) => ({ ...prev, ...additions }));
+    setTicketNotes((prev) => ({ ...prev, ...additions })); // eslint-disable-line react-hooks/set-state-in-effect -- one-time seed of existing PO notes once both sources have loaded
     setExpandedNotes((prev) => {
       const next = new Set(prev);
       seededKeys.forEach((k) => next.add(k));
