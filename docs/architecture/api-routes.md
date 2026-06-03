@@ -28,6 +28,10 @@ Sync engine for pulling Jira data into the local SQLite database. See [jira-sync
 | `/api/jira/sync-comments` | POST | Sync comments for a specific ticket |
 | `/api/jira/check-updated` | GET | Lightweight freshness check for a single ticket |
 | `/api/jira/health` | GET | Verify Jira connectivity |
+| `/api/jira/watchers` | GET | List the current watchers of an issue (`?issueKey=X`). Fetched on demand; not persisted locally |
+| `/api/jira/watchers` | POST | Add a watcher. Body: `{ issueKey, accountId }` |
+| `/api/jira/watchers` | DELETE | Remove a watcher (`?issueKey=X&accountId=Y`) |
+| `/api/jira/watcher-candidates` | GET | Assignable users from Jira (real accountIds) for the watcher picker, enriched with favorites/teams |
 | `/api/jira/sprints` | POST | Create a new sprint in Jira and add to local cache |
 | `/api/jira/sprints/[id]` | PUT | Update sprint metadata (goal, dates) via Jira Agile API |
 | `/api/jira/sprints/[id]/close` | POST | Close (finish) an active sprint via Jira Agile API; flips cached state to `closed` |

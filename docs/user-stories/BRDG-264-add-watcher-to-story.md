@@ -153,4 +153,4 @@ do not affect rendering; only `displayName` is needed to derive initials/color.
 - [x] Empty state when there are no watchers
 - [x] Tests: jira-client methods, both API routes, and the picker/row interaction (add, remove, error rollback)
 - [ ] Verify visually in both the single view and the Story Writer meta pane
-- [ ] Update relevant docs (`docs/architecture/jira-sync.md`)
+- [x] Update relevant docs (`docs/architecture/jira-sync.md`)

@@ -189,6 +189,21 @@ Queries live Jira data via `jiraClient.searchIssues()`.
 - Returns up to 25 results: `key`, `summary`, `status`, `assignee`, `sprintName`, `url`
 - Rate-limit guard: aborts previous in-flight request on new call
 
+## Watchers
+
+Issue watchers are read and written straight through to Jira; they are **not**
+persisted in the local SQLite database. The `WatchersRow` component fetches them
+on demand for the open ticket and mutates optimistically (rollback + toast on
+failure), mirroring the assignee change pattern.
+
+- `jiraClient.getWatchers / addWatcher / removeWatcher` wrap the Jira REST v3
+  `/issue/{key}/watchers` endpoints (add takes the bare `accountId` as the JSON body).
+- **accountId source:** the local `assignable-users` route keys users by display
+  name (no real Atlassian accountIds are stored locally), but the add-watcher call
+  requires a real `accountId`. So the watcher picker is fed by a separate
+  `/api/jira/watcher-candidates` route backed by `jiraClient.getAssignableUsers`,
+  which returns real accountIds, enriched with favorites/teams matched by display name.
+
 ## Environment Variables
 
 | Variable | Required | Purpose |
