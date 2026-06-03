@@ -152,5 +152,24 @@ do not affect rendering; only `displayName` is needed to derive initials/color.
 - [x] Optimistic add/remove with rollback + toast on failure
 - [x] Empty state when there are no watchers
 - [x] Tests: jira-client methods, both API routes, and the picker/row interaction (add, remove, error rollback)
-- [ ] Verify visually in both the single view and the Story Writer meta pane
+- [x] Verify visually in both the single view and the Story Writer meta pane <!-- row + existing watcher render in both surfaces; picker degrades gracefully. Add/remove blocked by Jira token scope, see below -->
+
+## Known limitation / blocker (Jira token scope)
+
+Visual verification against live Jira revealed that the integration token **cannot
+search users**: `/rest/api/3/user/assignable/search` returns
+`401 Unauthorized; scope does not match`. Reading watchers (`GET .../watchers`)
+works fine (real accountIds returned), but the **watcher-candidates** list 401s.
+
+Consequences with the current token:
+- Viewing existing watchers: **works**.
+- The picker now degrades gracefully ("Couldn't load people") instead of hanging.
+- Adding a watcher: **blocked** (no way to obtain a real accountId for a new user).
+- Removing a watcher via the picker: also blocked, since the picker is populated from
+  the candidate list. (Removal could be made to work independently via the avatar stack,
+  since `getWatchers` already returns real accountIds — see follow-up.)
+
+The code is correct and will work once the Jira app/token is granted the
+`read:jira-user` scope (or a Basic-auth token with the "Browse users and groups"
+global permission). See `docs/investigations/2026-06-03-jira-user-search-scope.md`.
 - [x] Update relevant docs (`docs/architecture/jira-sync.md`)
