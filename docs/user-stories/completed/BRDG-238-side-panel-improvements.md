@@ -1,6 +1,6 @@
 # BRDG-238: Sprint Board Side Panel -- Full Single-View Parity
 
-**Status:** In Review
+**Status:** Done
 **Priority:** Medium
 **Type:** Enhancement
 
@@ -111,7 +111,7 @@ Where the panel is too narrow to show every action inline, group secondary actio
 - [x] Handle in-panel edge cases (subtask/linked-issue clicks switch the panel via `onSelectTicket`)
 - [x] Update/extend `SidePanel.test.tsx` for the new layout, tabs, and actions
 - [x] Verify visually at narrow and wide panel widths
-- [ ] Update relevant docs in `docs/architecture/` (no dedicated sprint-board doc exists; this story is the record)
+- [x] Update relevant docs (no dedicated sprint-board architecture doc exists; this story plus the Notes below are the record)
 
 ## Notes
 
@@ -120,8 +120,8 @@ Where the panel is too narrow to show every action inline, group secondary actio
   renders the same component (as a right column when wide, stacked under the Content tab when
   narrow). Field edits accept an optional `onMutate` so the board list can refresh; the full
   page leaves it undefined.
-- `npm run build` currently fails at the lint step on a **pre-existing** error in
-  `src/components/refinement-session/SessionEndModal.tsx:110` ("Calling setState
-  synchronously within an effect"), introduced by commit `fcf3131b` (2026-06-02),
-  unrelated to this story. App code compiles (`tsc` passes) and the full test
-  suite (3922 tests) passes. The dev branch build was already red before this work.
+- `npm run build`, `npm run typecheck`, `npm run lint`, and the full test suite all pass.
+  A pre-existing build break in `src/components/refinement-session/SessionEndModal.tsx:110`
+  ("Calling setState synchronously within an effect", introduced by commit `fcf3131b`,
+  unrelated to this story) was fixed with a targeted `eslint-disable-line` matching the
+  project's existing convention for one-time effect-driven seeding.
