@@ -5,7 +5,7 @@ import type { Ticket } from "@/types/ticket";
 
 vi.mock("lucide-react", () => {
   const stub = () => null;
-  const names = ["ArrowUpRight", "X", "Gem", "NotebookPen", "MoreHorizontal", "Star", "Copy", "Check", "CloudDownload", "CloudUpload", "Flag", "MessageSquare", "Loader2", "Trash2"];
+  const names = ["ArrowUpRight", "X", "Gem", "NotebookPen", "MoreHorizontal", "Star", "Copy", "Check", "CloudDownload", "CloudUpload", "Flag", "MessageSquare", "Loader2", "Trash2", "ChevronRight", "PanelRightClose"];
   return Object.fromEntries(names.map((n) => [n, stub]));
 });
 
@@ -94,10 +94,12 @@ vi.mock("@/hooks/useRefinementSessions", () => ({
 vi.mock("@/lib/prefetch", () => ({ prefetchTicketPage: vi.fn() }));
 
 // Render the tab content stub so we can assert tabs + the injected meta block.
+// `tab-has-meta` marks the stacked layout (meta injected under the Content tab).
 vi.mock("@/components/ticket-detail/TicketTabContent", () => ({
   TicketTabContent: ({ activeTab, metaContent }: { activeTab: string; metaContent?: React.ReactNode }) => (
     <div data-testid="tab-content">
       <span data-testid="active-tab">{activeTab}</span>
+      {metaContent != null && <span data-testid="tab-has-meta" />}
       {metaContent}
     </div>
   ),
@@ -161,6 +163,7 @@ describe("SidePanel", () => {
 
   beforeEach(() => {
     hookValue = makeHook();
+    window.localStorage.clear();
   });
 
   it("renders the ticket key in the header pill", () => {
@@ -198,5 +201,98 @@ describe("SidePanel", () => {
     hookValue = makeHook({ ticket: undefined });
     render(<SidePanel {...defaultProps} />);
     expect(screen.getByTestId("ticket-key")).toHaveTextContent("PROJ-42");
+  });
+
+  describe("meta sidebar (collapse / resize / auto-stack)", () => {
+    function seed(values: Record<string, string>) {
+      for (const [k, v] of Object.entries(values)) window.localStorage.setItem(k, v);
+    }
+
+    it("renders the meta as its own column (not stacked) when the panel is wide", () => {
+      seed({ sprintBoardPanelWidth: "900" });
+      render(<SidePanel {...defaultProps} />);
+      // Column mode: meta rendered with its collapse control, and NOT injected
+      // under the Content tab.
+      expect(screen.getByTestId("meta-content")).toBeInTheDocument();
+      expect(screen.getByLabelText("Collapse sidebar")).toBeInTheDocument();
+      expect(screen.queryByTestId("tab-has-meta")).not.toBeInTheDocument();
+    });
+
+    it("stacks the meta under the content when the panel is too narrow", () => {
+      seed({ sprintBoardPanelWidth: "400" });
+      render(<SidePanel {...defaultProps} />);
+      expect(screen.getByTestId("tab-has-meta")).toBeInTheDocument();
+      expect(screen.queryByLabelText("Collapse sidebar")).not.toBeInTheDocument();
+    });
+
+    it("stacks when content + chosen meta width no longer fit side by side", () => {
+      seed({ sprintBoardPanelWidth: "600", sprintBoardMetaWidth: "340" });
+      render(<SidePanel {...defaultProps} />);
+      expect(screen.getByTestId("tab-has-meta")).toBeInTheDocument();
+      expect(screen.queryByLabelText("Collapse sidebar")).not.toBeInTheDocument();
+    });
+
+    it("hides the meta entirely (not stacked) when collapsed, even when narrow", () => {
+      seed({ sprintBoardPanelWidth: "400", sprintBoardMetaCollapsed: "true" });
+      render(<SidePanel {...defaultProps} />);
+      expect(screen.queryByTestId("meta-content")).not.toBeInTheDocument();
+      expect(screen.queryByTestId("tab-has-meta")).not.toBeInTheDocument();
+    });
+
+    it("shows a 'Show sidebar' header button only when collapsed", () => {
+      render(<SidePanel {...defaultProps} />);
+      expect(screen.queryByLabelText("Show sidebar")).not.toBeInTheDocument();
+
+      window.localStorage.clear();
+      seed({ sprintBoardMetaCollapsed: "true" });
+      render(<SidePanel {...defaultProps} />);
+      expect(screen.getByLabelText("Show sidebar")).toBeInTheDocument();
+    });
+
+    it("collapsing via the divider button persists the collapsed state and hides the meta", () => {
+      seed({ sprintBoardPanelWidth: "900" });
+      render(<SidePanel {...defaultProps} />);
+      fireEvent.click(screen.getByLabelText("Collapse sidebar"));
+      expect(window.localStorage.getItem("sprintBoardMetaCollapsed")).toBe("true");
+      expect(screen.queryByTestId("meta-content")).not.toBeInTheDocument();
+      expect(screen.getByLabelText("Show sidebar")).toBeInTheDocument();
+    });
+
+    it("the header 'Show sidebar' button re-opens the meta and persists the state", () => {
+      seed({ sprintBoardPanelWidth: "900", sprintBoardMetaCollapsed: "true" });
+      render(<SidePanel {...defaultProps} />);
+      expect(screen.queryByTestId("meta-content")).not.toBeInTheDocument();
+      fireEvent.click(screen.getByLabelText("Show sidebar"));
+      expect(window.localStorage.getItem("sprintBoardMetaCollapsed")).toBe("false");
+      expect(screen.getByTestId("meta-content")).toBeInTheDocument();
+    });
+
+    // The meta resize handle is scoped via the collapse button's parent so it is
+    // never confused with the panel's own outer-edge resize handle.
+    function metaHandle() {
+      const column = screen.getByLabelText("Collapse sidebar").parentElement as HTMLElement;
+      return column.querySelector(".cursor-col-resize") as HTMLElement;
+    }
+
+    it("double-clicking the resize handle collapses the meta", () => {
+      seed({ sprintBoardPanelWidth: "900" });
+      render(<SidePanel {...defaultProps} />);
+      const handle = metaHandle();
+      expect(handle).toBeTruthy();
+      fireEvent.doubleClick(handle);
+      expect(window.localStorage.getItem("sprintBoardMetaCollapsed")).toBe("true");
+    });
+
+    it("dragging the resize handle persists a (clamped) meta width", () => {
+      seed({ sprintBoardPanelWidth: "900" });
+      render(<SidePanel {...defaultProps} />);
+      const handle = metaHandle();
+      fireEvent.mouseDown(handle);
+      // jsdom getBoundingClientRect is all-zero, so the computed width clamps to
+      // the floor; the assertion verifies the persisted value, not the exact px.
+      fireEvent.mouseMove(document, { clientX: 100 });
+      fireEvent.mouseUp(document);
+      expect(window.localStorage.getItem("sprintBoardMetaWidth")).toBe("280");
+    });
   });
 });

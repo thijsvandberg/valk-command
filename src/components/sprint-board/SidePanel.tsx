@@ -14,6 +14,7 @@ import { useRefinementSessions } from "@/hooks/useRefinementSessions";
 import { prefetchTicketPage } from "@/lib/prefetch";
 import { TicketTabContent, type TicketTab } from "@/components/ticket-detail/TicketTabContent";
 import { TicketMetaContent } from "@/components/ticket-detail/TicketMetaContent";
+import { useLocalStorage } from "@/hooks/useLocalStorage";
 import {
   ArrowUpRight,
   X,
@@ -29,6 +30,8 @@ import {
   MessageSquare,
   Loader2,
   Trash2,
+  ChevronRight,
+  PanelRightClose,
 } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 
@@ -40,9 +43,16 @@ const AddToRefinementModal = dynamic(
 const PANEL_STORAGE_KEY = "sprintBoardPanelWidth";
 const DEFAULT_PANEL_WIDTH = 400;
 const MIN_PANEL_WIDTH = 320;
-// At/above this panel width the meta block gets its own column beside the
-// tabbed content; below it stacks under the Content tab in a single scroll.
-const TWO_COL_THRESHOLD = 720;
+
+// Meta sidebar (interior column) persistence + bounds. Distinct keys from the
+// full ticket page (`ticket-sidebar-*`) so the panel and page never clash.
+const META_WIDTH_KEY = "sprintBoardMetaWidth";
+const META_COLLAPSED_KEY = "sprintBoardMetaCollapsed";
+const DEFAULT_META_WIDTH = 340;
+const MIN_META_WIDTH = 280;
+// The tabbed content keeps at least this width; below it the meta drops below
+// the content (stacked) instead of sitting in its own column.
+const CONTENT_MIN_WIDTH = 360;
 
 export function SidePanel({
   ticket,
@@ -143,7 +153,62 @@ export function SidePanel({
     };
   }, [isDragging]);
 
-  const twoCol = panelWidth >= TWO_COL_THRESHOLD;
+  // -- Meta sidebar (interior column) width / collapse --
+  // Mirrors the full ticket page's `TicketSidebar` shell, but the resize is
+  // measured against the panel's right edge (not the window) and feeds an
+  // auto-stack decision, so the shell logic lives here rather than in a shared
+  // component (which would have to touch the out-of-scope `TicketSidebar`).
+  const [metaWidth, setMetaWidth] = useLocalStorage(META_WIDTH_KEY, DEFAULT_META_WIDTH);
+  const [metaCollapsed, setMetaCollapsed] = useLocalStorage(META_COLLAPSED_KEY, false);
+  const [isMetaDragging, setIsMetaDragging] = useState(false);
+
+  // Bound the persisted meta width so a stale value can never starve the
+  // content column below its minimum.
+  const clampedMetaWidth = Math.max(
+    MIN_META_WIDTH,
+    Math.min(panelWidth - CONTENT_MIN_WIDTH, metaWidth),
+  );
+
+  // Column when there is room for both; stacked when too narrow; hidden when
+  // the user has explicitly collapsed the meta (collapse wins over stacking).
+  const metaMode: "column" | "stacked" | "hidden" = metaCollapsed
+    ? "hidden"
+    : panelWidth - clampedMetaWidth >= CONTENT_MIN_WIDTH
+      ? "column"
+      : "stacked";
+
+  const handleMetaMouseDown = useCallback((e: React.MouseEvent) => {
+    e.preventDefault();
+    setIsMetaDragging(true);
+  }, []);
+
+  const handleMetaDoubleClick = useCallback(() => {
+    setMetaCollapsed(true);
+  }, [setMetaCollapsed]);
+
+  useEffect(() => {
+    if (!isMetaDragging) return;
+    function handleMouseMove(e: MouseEvent) {
+      if (!panelRef.current) return;
+      const rect = panelRef.current.getBoundingClientRect();
+      const maxWidth = panelWidth - CONTENT_MIN_WIDTH;
+      const newWidth = Math.max(MIN_META_WIDTH, Math.min(maxWidth, rect.right - e.clientX));
+      setMetaWidth(newWidth);
+    }
+    function handleMouseUp() {
+      setIsMetaDragging(false);
+    }
+    document.body.style.cursor = "col-resize";
+    document.body.style.userSelect = "none";
+    document.addEventListener("mousemove", handleMouseMove);
+    document.addEventListener("mouseup", handleMouseUp);
+    return () => {
+      document.body.style.cursor = "";
+      document.body.style.userSelect = "";
+      document.removeEventListener("mousemove", handleMouseMove);
+      document.removeEventListener("mouseup", handleMouseUp);
+    };
+  }, [isMetaDragging, panelWidth, setMetaWidth]);
 
   // -- Tabs + conflict/diff plumbing (mirrors /tickets/[key]) --
   const [activeTab, setActiveTab] = useState<TicketTab>("content");
@@ -181,8 +246,10 @@ export function SidePanel({
     else router.push(`/tickets/${key}`);
   }, [onSelectTicket, router]);
 
-  // The shared meta panel (identical to the full ticket page's sidebar).
-  const meta = (
+  // The shared meta panel (identical to the full ticket page's sidebar). In
+  // stacked mode it renders bare and is injected under the Content tab; in
+  // column mode it is wrapped in the resizable/collapsible shell below.
+  const metaContent = (
     <TicketMetaContent
       ticket={t}
       detail={detail}
@@ -191,16 +258,50 @@ export function SidePanel({
       onNavigateToReview={() => setActiveTab("review")}
       onNavigateToDev={() => setActiveTab("development")}
       onMutate={handleMutate}
-      className={twoCol
-        ? "w-[340px] shrink-0 h-full overflow-y-auto border-l border-border-default bg-[var(--color-surface-elevated)] py-5 px-5"
+      className={metaMode === "column"
+        ? "h-full overflow-y-auto bg-[var(--color-surface-elevated)] py-5 px-5"
         : ""}
+      style={metaMode === "column"
+        ? { opacity: isMetaDragging ? 0.7 : 1, transition: isMetaDragging ? "none" : "opacity 150ms ease" }
+        : undefined}
     />
+  );
+
+  const metaColumn = (
+    <div
+      className="group/meta relative shrink-0"
+      style={{
+        width: clampedMetaWidth,
+        height: "100%",
+        transition: isMetaDragging ? "none" : "width 200ms cubic-bezier(0.34, 1.56, 0.64, 1)",
+      }}
+    >
+      {/* Resize drag handle (content/meta divider). Double-click collapses. */}
+      <div
+        onMouseDown={handleMetaMouseDown}
+        onDoubleClick={handleMetaDoubleClick}
+        className="absolute top-0 left-0 z-20 h-full w-1 cursor-col-resize hover:bg-[var(--color-brand-500)]/30 active:bg-[var(--color-brand-500)]/50"
+        style={isMetaDragging ? { backgroundColor: "var(--color-drag-active)" } : {}}
+      />
+      <div className="absolute top-0 left-0 h-full w-px bg-border-default" />
+      <button
+        type="button"
+        onClick={() => setMetaCollapsed(true)}
+        className="absolute left-0 top-1/2 z-30 -translate-x-1/2 -translate-y-1/2 flex h-6 w-6 items-center justify-center rounded-full border border-border-default bg-[var(--color-surface-elevated)] text-text-muted cursor-pointer opacity-0 group-hover/meta:opacity-100 hover:text-text-secondary hover:border-[var(--color-brand-500)]/40 focus-visible:opacity-100 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)]"
+        style={{ transition: "opacity 0.15s ease, color 0.15s ease, border-color 0.15s ease" }}
+        aria-label="Collapse sidebar"
+        title="Collapse sidebar"
+      >
+        <ChevronRight className="h-3 w-3" strokeWidth={2} />
+      </button>
+      {metaContent}
+    </div>
   );
 
   const tabContent = (
     <TicketTabContent
       layout="panel"
-      metaContent={twoCol ? undefined : meta}
+      metaContent={metaMode === "stacked" ? metaContent : undefined}
       ticketKey={ticket.key}
       ticket={t}
       detail={detail}
@@ -408,6 +509,19 @@ export function SidePanel({
             </Popover>
           </div>
 
+          {metaCollapsed && (
+            <Tooltip content="Show sidebar">
+              <Button
+                variant="ghost"
+                size="md"
+                iconOnly
+                onClick={() => setMetaCollapsed(false)}
+                aria-label="Show sidebar"
+                icon={<PanelRightClose size={14} strokeWidth={1.5} />}
+              />
+            </Tooltip>
+          )}
+
           <button
             type="button"
             onClick={() => router.push(`/tickets/${ticket.key}`)}
@@ -428,11 +542,12 @@ export function SidePanel({
         </div>
       </div>
 
-      {/* Body: tabbed content (+ meta column when wide) */}
-      {twoCol ? (
+      {/* Body: tabbed content (+ meta column when wide; meta stacks under the
+          Content tab when narrow; hidden entirely when the user collapses it) */}
+      {metaMode === "column" ? (
         <div className="flex min-h-0 flex-1 overflow-hidden">
           {tabContent}
-          {meta}
+          {metaColumn}
         </div>
       ) : (
         tabContent

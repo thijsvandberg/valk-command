@@ -16,6 +16,43 @@ This builds on BRDG-238, which gave the side panel full single-view parity and a
 (`340px`) that only switches to a stacked layout at a hard width threshold; it cannot be
 collapsed or resized by the user.
 
+## Implementation Plan
+
+### Design decisions
+- **Do NOT extract a shared `MetaSidebarShell`.** The shell logic stays inline in
+  `SidePanel.tsx`. The two shells diverge in their load-bearing parts: `TicketSidebar`
+  resizes against `window.innerWidth`; the panel's meta column resizes against the
+  *panel's* right edge with a content-floor constraint, plus owns an auto-stack decision
+  and a header re-open button that lives outside the shell. The genuinely shared piece
+  (`TicketMetaContent`) is already extracted. Extracting the ~40 lines of diverging drag
+  wiring would be a leaky abstraction and would touch the out-of-scope `TicketSidebar`.
+- **Use `useLocalStorage`** for the two new keys (`sprintBoardMetaWidth`,
+  `sprintBoardMetaCollapsed`); leave the existing raw `panelWidth` state untouched.
+- **Layout mode** is a 3-way decision: `hidden` when collapsed; `column` when
+  `panelWidth - clampedMetaWidth >= CONTENT_MIN_WIDTH`; otherwise `stacked`.
+- **Meta drag math**: `newMetaWidth = clamp(MIN_META_WIDTH, panelWidth - CONTENT_MIN_WIDTH,
+  panelRef.rect.right - e.clientX)`. Handle sits on the content/meta divider (interior),
+  distinct from the panel's own outer-left resize handle.
+
+### Steps (production changes all in `SidePanel.tsx`)
+1. Add constants (`META_WIDTH_KEY`, `META_COLLAPSED_KEY`, `DEFAULT_META_WIDTH=340`,
+   `MIN_META_WIDTH=280`, `CONTENT_MIN_WIDTH=360`); remove `TWO_COL_THRESHOLD`; import
+   `useLocalStorage`, `ChevronRight`, `PanelRightClose`.
+2. Add meta state: `metaWidth`, `metaCollapsed` via `useLocalStorage`; `isMetaDragging`.
+3. Compute `clampedMetaWidth` and `metaMode: "column" | "stacked" | "hidden"`.
+4. Add meta resize drag handler + effect (clamp against `panelRef`), and a double-click
+   handler that collapses.
+5. Wrap `TicketMetaContent` in a `group/meta` shell with resize handle, edge line, and
+   collapse button (only for `column` mode); pass the unwrapped meta into
+   `TicketTabContent` for `stacked` mode.
+6. Body render switches on `metaMode` (column row / stacked / hidden).
+7. Add a `PanelRightClose` "Show sidebar" header button gated on `metaCollapsed`.
+8. Skip the `[` keyboard shortcut in the panel (avoid global-listener collision).
+
+### Tests (`SidePanel.test.tsx`)
+Seed `localStorage` keys to drive width/collapse; assert column vs stacked vs hidden,
+collapse/re-open persistence, header button, and resize clamp-floor persistence.
+
 ## Requirements
 
 ### 1. Resizable meta sidebar (two-column mode)
@@ -84,12 +121,12 @@ collapsed or resized by the user.
 
 ## Checklist
 
-- [ ] Make the meta column resizable via a left-edge drag handle (two-column mode)
-- [ ] Persist and restore the meta-column width (`sprintBoardMetaWidth`)
-- [ ] Add a collapse control on the divider (drag handle double-click + button)
-- [ ] Add a "show sidebar" button in the panel header when collapsed
-- [ ] Persist and restore the collapsed state (`sprintBoardMetaCollapsed`)
-- [ ] Auto-stack the meta below content when the panel is too narrow (width-driven, respects collapse)
-- [ ] Consider extracting a shared `MetaSidebarShell` reused by `TicketSidebar` and `SidePanel`
-- [ ] Tests for resize/collapse/persistence and the stacked vs column decision
+- [x] Make the meta column resizable via a left-edge drag handle (two-column mode)
+- [x] Persist and restore the meta-column width (`sprintBoardMetaWidth`)
+- [x] Add a collapse control on the divider (drag handle double-click + button)
+- [x] Add a "show sidebar" button in the panel header when collapsed
+- [x] Persist and restore the collapsed state (`sprintBoardMetaCollapsed`)
+- [x] Auto-stack the meta below content when the panel is too narrow (width-driven, respects collapse)
+- [x] Consider extracting a shared `MetaSidebarShell` reused by `TicketSidebar` and `SidePanel` <!-- decided AGAINST: the two shells diverge in load-bearing ways (resize-against-window vs resize-against-panel + content-floor + auto-stack) and extraction would touch the out-of-scope TicketSidebar; shell logic kept inline with a documenting comment -->
+- [x] Tests for resize/collapse/persistence and the stacked vs column decision
 - [ ] Verify visually at narrow, medium, and wide panel widths, collapsed and expanded
