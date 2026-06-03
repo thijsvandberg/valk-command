@@ -167,3 +167,14 @@ Key bottlenecks:
 
 Key bottleneck:
 - **Concurrent-agent git race**: another agent was committing to `dev` in the same working tree throughout the run. Twice my `git add`/`git commit` (issued as separate calls) had my staged files swept into the other agent's `git commit -a`-style commit, and a subsequent history rewrite on their side dropped my files back to the working tree. Recovered by committing with an explicit pathspec (`git commit -- <paths>`) so only my files land regardless of what else is staged. Lesson on a shared tree: never rely on index state across two tool calls; stage and commit in one step with explicit paths. Also note a Bash-tool quirk where an unquoted shell variable holding a space-separated pathspec list was passed to git as a single argument — list paths inline instead.
+
+## BRDG-268 — Move epic children between sprints (drag-drop + right-click) (2026-06-03)
+
+| Phase | Notes |
+|-------|-------|
+| Plan | Opus Plan subagent confirmed the testable split: a pure `epic-children-move.ts` resolver (targetSprintId / no-op / closed-rejected) plus an optimistic `localMoves` override applied before grouping, reconciled when the refetch lands. |
+| Implement | New move util + `onMoveChild`/`onMoveError` props on `EpicChildrenBySprint`; whole-row `useDraggable` + per-group `useDroppable` + DragOverlay; reused `CursorMenu`/`TicketActionMenuContent` for the right-click move; optimistic state + revert in `EpicChildrenSection`. Reused `jira.moveSprint` unchanged. |
+| Verify | 4061 tests green; clean build; browser-verified the by-sprint view, right-click menu, and searchable sprint sub-panel (Backlog + all active/future sprints) on epic VPL-7752. No Jira write performed (avoided mutating real data without permission). |
+
+Key bottleneck:
+- **Stale `.next` cache from the running dev server failed the production build**: the first `npm run build` reported a phantom `Cannot find name 'MERGE_BRANCH_REGEX'` in an untouched file (`pipeline-sync.ts`) at a line offset that did not match the on-disk source, while `tsc --noEmit` passed. Cause: the backgrounded `next dev` server writes `.next` concurrently, so `next build` read a stale/partial artifact (and `rm -rf .next` raced the live writes). Fix: stop the dev server, clear `.next`, build clean, then restart dev. Lesson: for a trustworthy production build, stop the dev server first rather than building alongside it.
