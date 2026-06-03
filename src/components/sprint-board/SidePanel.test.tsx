@@ -5,7 +5,7 @@ import type { Ticket } from "@/types/ticket";
 
 vi.mock("lucide-react", () => {
   const stub = () => null;
-  const names = ["ArrowUpRight", "X", "Gem", "NotebookPen", "MoreHorizontal", "Star", "Copy", "Check", "CloudDownload", "CloudUpload", "Flag", "MessageSquare", "Loader2", "Trash2", "ChevronRight", "PanelRightClose"];
+  const names = ["SquareArrowOutUpRight", "X", "Gem", "NotebookPen", "MoreHorizontal", "Star", "Copy", "Check", "CloudDownload", "CloudUpload", "Flag", "MessageSquare", "Loader2", "Trash2", "ChevronRight", "PanelRightClose"];
   return Object.fromEntries(names.map((n) => [n, stub]));
 });
 
@@ -166,9 +166,26 @@ describe("SidePanel", () => {
     window.localStorage.clear();
   });
 
-  it("renders the ticket key in the header pill", () => {
+  it("renders the tabs in the merged header bar (no separate ticket pill)", () => {
     render(<SidePanel {...defaultProps} />);
-    expect(screen.getByTestId("ticket-key")).toHaveTextContent("PROJ-42");
+    expect(screen.getByText("Content")).toBeInTheDocument();
+    expect(screen.getByText("History")).toBeInTheDocument();
+    expect(screen.getByText("Review")).toBeInTheDocument();
+    expect(screen.getByText("Development")).toBeInTheDocument();
+    // The interactive status pill is no longer shown in the panel header.
+    expect(screen.queryByTestId("ticket-key")).not.toBeInTheDocument();
+  });
+
+  it("exposes the open-full and close actions in the bar", () => {
+    render(<SidePanel {...defaultProps} />);
+    expect(screen.getByLabelText("Open full view")).toBeInTheDocument();
+    expect(screen.getByLabelText("Close panel")).toBeInTheDocument();
+  });
+
+  it("offers the story writer from the more menu (not a standalone bar button)", () => {
+    render(<SidePanel {...defaultProps} />);
+    fireEvent.click(screen.getByLabelText("More actions"));
+    expect(screen.getByTestId("more-menu")).toHaveTextContent("Open story writer");
   });
 
   it("renders the tabbed content area on the content tab", () => {
@@ -197,10 +214,11 @@ describe("SidePanel", () => {
     expect(screen.getByLabelText("Push to Jira")).toBeInTheDocument();
   });
 
-  it("uses the ticket prop as a fallback before the hook's detail resolves", () => {
+  it("renders without crashing using the ticket prop fallback before the hook resolves", () => {
     hookValue = makeHook({ ticket: undefined });
     render(<SidePanel {...defaultProps} />);
-    expect(screen.getByTestId("ticket-key")).toHaveTextContent("PROJ-42");
+    expect(screen.getByText("Content")).toBeInTheDocument();
+    expect(screen.getByTestId("tab-content")).toBeInTheDocument();
   });
 
   describe("meta sidebar (collapse / resize / auto-stack)", () => {

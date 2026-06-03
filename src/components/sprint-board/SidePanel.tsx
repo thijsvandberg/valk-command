@@ -3,9 +3,8 @@
 import { useState, useRef, useEffect, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import dynamic from "next/dynamic";
-import type { Ticket, POStatus, TicketReadiness, IssueType, JiraStatus } from "@/types/ticket";
-import Link from "next/link";
-import { TicketStatusPill } from "@/components/shared/TicketStatusPill";
+import type { Ticket, POStatus, TicketReadiness } from "@/types/ticket";
+import { Tab } from "@/components/shared/TabBar";
 import { Tooltip } from "@/components/shared/Tooltip";
 import { Popover } from "@/components/shared/Popover";
 import { ConfirmDialog } from "@/components/shared/ConfirmDialog";
@@ -16,7 +15,7 @@ import { TicketTabContent, type TicketTab } from "@/components/ticket-detail/Tic
 import { TicketMetaContent } from "@/components/ticket-detail/TicketMetaContent";
 import { useLocalStorage } from "@/hooks/useLocalStorage";
 import {
-  ArrowUpRight,
+  SquareArrowOutUpRight,
   X,
   Gem,
   NotebookPen,
@@ -102,16 +101,6 @@ export function SidePanel({
     onReadinessChange?.(v);
     h.mutateTicket();
   }, [onReadinessChange, h]);
-
-  const handleJiraStatusChange = useCallback(async (status: JiraStatus) => {
-    await h.handleJiraStatusChange(status);
-    onMutate?.();
-  }, [h, onMutate]);
-
-  const handleTypeChange = useCallback(async (type: IssueType) => {
-    await h.handleTypeChange(type);
-    onMutate?.();
-  }, [h, onMutate]);
 
   // Prefetch adjacent ticket details when this panel opens.
   useEffect(() => {
@@ -238,7 +227,6 @@ export function SidePanel({
   const isDraftOnly = t.editState === "draft";
   const showPushButton = hasLocalEdits && !h.showConflictWarning && !isEditing && !isDraftOnly;
 
-  const isReadOnly = Boolean(t.removedFromJiraAt);
   const refineEligible = !t.removedFromJiraAt && t.jiraStatus !== "DONE" && t.jiraStatus !== "DEPRECATED"
     && t.readiness === "ready_to_refine" && !isInRefinementSession;
 
@@ -306,6 +294,7 @@ export function SidePanel({
   const tabContent = (
     <TicketTabContent
       layout="panel"
+      renderTabBar={false}
       metaContent={metaMode === "stacked" ? metaContent : undefined}
       ticketKey={ticket.key}
       ticket={t}
@@ -356,21 +345,25 @@ export function SidePanel({
         style={isDragging ? { backgroundColor: "var(--color-drag-active)" } : {}}
       />
 
-      {/* Header */}
-      <div className="flex h-[44px] shrink-0 items-center justify-between gap-2 border-b border-border-default px-4">
-        <div className="flex min-w-0 items-center gap-2">
-          <TicketStatusPill
-            ticketKey={ticket.key}
-            jiraStatus={t.jiraStatus}
-            readiness={isReadOnly ? null : t.readiness}
-            onJiraStatusChange={isReadOnly ? undefined : handleJiraStatusChange}
-            onReadinessChange={isReadOnly ? undefined : handleReadinessChange}
-            issueType={t.type}
-            onIssueTypeChange={isReadOnly ? undefined : handleTypeChange}
-            title={t.title}
-            removedFromJira={isReadOnly}
-            onHeader
+      {/* Header: tabs and actions share a single bar */}
+      <div className="flex h-[44px] shrink-0 items-stretch gap-1 border-b border-border-default pl-4 pr-2">
+        {([
+          { id: "content" as const, label: "Content", badge: undefined as number | undefined, badgeHighlight: false },
+          { id: "history" as const, label: "History", badge: h.versionCount as number | undefined, badgeHighlight: false },
+          { id: "review" as const, label: "Review", badge: (h.reviewCount || undefined) as number | undefined, badgeHighlight: (h.reviewCount ?? 0) > 0 },
+          { id: "development" as const, label: "Development", badge: undefined as number | undefined, badgeHighlight: false },
+        ]).map((tab) => (
+          <Tab
+            key={tab.id}
+            active={activeTab === tab.id}
+            onClick={() => handleTabChange(tab.id)}
+            label={tab.label}
+            badge={tab.badge}
+            badgeHighlight={tab.badgeHighlight}
           />
+        ))}
+
+        <div className="ml-auto flex shrink-0 items-center gap-1">
           {t.editState === "draft" && (
             <span className="rounded px-1.5 py-0.5 text-caption" style={{ backgroundColor: "var(--color-status-info-subtle)", color: "var(--color-icon-task)", opacity: 0.5 }} title="Unsaved draft">
               draft
@@ -381,9 +374,6 @@ export function SidePanel({
               local changes
             </span>
           )}
-        </div>
-
-        <div className="flex shrink-0 items-center gap-1">
           {showPushButton && (
             <Tooltip content="Push local edits to Jira">
               <Button
@@ -400,22 +390,6 @@ export function SidePanel({
             </Tooltip>
           )}
 
-          <Tooltip content={h.hasActiveSession ? "Resume story writer session" : "Open story writer"}>
-            <Link
-              href={`/tickets/${ticket.key}/write`}
-              aria-label={h.hasActiveSession ? "Resume story writer session" : "Open story writer"}
-              className="relative inline-flex h-7 w-7 items-center justify-center rounded-lg text-[var(--color-brand-400)] cursor-pointer hover:bg-overlay-subtle focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)] active:scale-[0.97] transition-colors duration-150"
-            >
-              <NotebookPen className="h-3.5 w-3.5" strokeWidth={1.5} />
-              {h.hasActiveSession && (
-                <span className="absolute -right-0.5 -top-0.5 flex h-2 w-2">
-                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-[var(--color-brand-400)] opacity-75" />
-                  <span className="relative inline-flex h-2 w-2 rounded-full bg-[var(--color-brand-500)]" />
-                </span>
-              )}
-            </Link>
-          </Tooltip>
-
           <div className="relative">
             <Button
               variant="ghost"
@@ -430,6 +404,21 @@ export function SidePanel({
             />
             <Popover open={moreMenuOpen} onClose={() => setMoreMenuOpen(false)} align="right">
               <div className="min-w-[220px] py-1">
+                <a
+                  href={`/tickets/${ticket.key}/write`}
+                  className="flex w-full cursor-pointer items-center gap-2.5 px-3 py-2 text-body-sm text-text-secondary hover:bg-overlay-default active:bg-overlay-strong"
+                  style={{ transition: "background-color 0.1s ease" }}
+                >
+                  <NotebookPen size={13} strokeWidth={1.5} className="text-[var(--color-brand-400)]" />
+                  {h.hasActiveSession ? "Resume story writer session" : "Open story writer"}
+                  {h.hasActiveSession && (
+                    <span className="relative ml-auto flex h-2 w-2">
+                      <span className="animate-ping absolute inline-flex h-2 w-2 rounded-full bg-[var(--color-brand-400)] opacity-75" />
+                      <span className="relative inline-flex h-2 w-2 rounded-full bg-[var(--color-brand-500)]" />
+                    </span>
+                  )}
+                </a>
+                <div className="mx-2 my-1 h-px bg-overlay-default" />
                 <button
                   onClick={() => { setMoreMenuOpen(false); h.isFollowed ? h.unfollow(ticket.key) : h.follow(ticket.key); }}
                   className="flex w-full cursor-pointer items-center gap-2.5 px-3 py-2 text-body-sm text-text-secondary hover:bg-overlay-default active:bg-overlay-strong"
@@ -527,23 +516,26 @@ export function SidePanel({
             </Tooltip>
           )}
 
-          <button
-            type="button"
-            onClick={() => router.push(`/tickets/${ticket.key}`)}
-            className="inline-flex h-7 w-7 items-center justify-center rounded-lg text-text-muted cursor-pointer hover:bg-overlay-subtle hover:text-text-secondary focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)] active:scale-[0.97] transition-colors duration-150"
-            title="Open full view"
-            aria-label="Open full view"
-          >
-            <ArrowUpRight className="h-3.5 w-3.5" strokeWidth={1.5} />
-          </button>
-          <Button
-            variant="ghost"
-            size="md"
-            iconOnly
-            icon={<X className="h-3.5 w-3.5" strokeWidth={1.5} />}
-            onClick={onClose}
-            aria-label="Close panel"
-          />
+          <Tooltip content="Open full view">
+            <Button
+              variant="ghost"
+              size="md"
+              iconOnly
+              onClick={() => router.push(`/tickets/${ticket.key}`)}
+              aria-label="Open full view"
+              icon={<SquareArrowOutUpRight size={14} strokeWidth={1.5} />}
+            />
+          </Tooltip>
+          <Tooltip content="Close panel">
+            <Button
+              variant="ghost"
+              size="md"
+              iconOnly
+              icon={<X className="h-3.5 w-3.5" strokeWidth={1.5} />}
+              onClick={onClose}
+              aria-label="Close panel"
+            />
+          </Tooltip>
         </div>
       </div>
 

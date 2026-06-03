@@ -40,6 +40,9 @@ export interface TicketTabContentProps {
   // Layout context: "page" centers content in a max-w-4xl column with wide
   // padding; "panel" fills the narrow side panel with tighter padding.
   layout?: "page" | "panel";
+  // When false, the internal tab bar is not rendered; the host renders its own
+  // (e.g. the side panel merges the tabs into its full-width header bar).
+  renderTabBar?: boolean;
   // Extra content rendered at the end of the Content tab, inside the same
   // scroll. Used by the side panel to stack the meta block below the content
   // when too narrow for a separate meta column.
@@ -86,6 +89,7 @@ export interface TicketTabContentProps {
 
 export function TicketTabContent({
   layout = "page",
+  renderTabBar = true,
   metaContent,
   ticketKey,
   ticket,
@@ -125,26 +129,28 @@ export function TicketTabContent({
   const railClass = isPanel ? "w-full px-5" : "mx-auto w-full max-w-4xl px-8";
   return (
     <div className="min-w-0 flex-1 flex flex-col overflow-hidden">
-      {/* Tab bar */}
-      <div className="border-b border-border-default">
-        <div className={`flex h-[44px] items-stretch gap-1 ${railClass}`}>
-          {([
-            { id: "content" as const, label: "Content", badge: undefined as number | undefined, badgeHighlight: false },
-            { id: "history" as const, label: "History", badge: versionCount as number | undefined, badgeHighlight: false },
-            { id: "review" as const, label: "Review", badge: (reviewCount || undefined) as number | undefined, badgeHighlight: (reviewCount ?? 0) > 0 },
-            { id: "development" as const, label: "Development", badge: undefined as number | undefined, badgeHighlight: false },
-          ]).map((tab) => (
-            <Tab
-              key={tab.id}
-              active={activeTab === tab.id}
-              onClick={() => onActiveTabChange(tab.id)}
-              label={tab.label}
-              badge={tab.badge}
-              badgeHighlight={tab.badgeHighlight}
-            />
-          ))}
+      {/* Tab bar (the side panel renders its own merged bar instead) */}
+      {renderTabBar && (
+        <div className="border-b border-border-default">
+          <div className={`flex h-[44px] items-stretch gap-1 ${railClass}`}>
+            {([
+              { id: "content" as const, label: "Content", badge: undefined as number | undefined, badgeHighlight: false },
+              { id: "history" as const, label: "History", badge: versionCount as number | undefined, badgeHighlight: false },
+              { id: "review" as const, label: "Review", badge: (reviewCount || undefined) as number | undefined, badgeHighlight: (reviewCount ?? 0) > 0 },
+              { id: "development" as const, label: "Development", badge: undefined as number | undefined, badgeHighlight: false },
+            ]).map((tab) => (
+              <Tab
+                key={tab.id}
+                active={activeTab === tab.id}
+                onClick={() => onActiveTabChange(tab.id)}
+                label={tab.label}
+                badge={tab.badge}
+                badgeHighlight={tab.badgeHighlight}
+              />
+            ))}
+          </div>
         </div>
-      </div>
+      )}
 
       {/* Portal target for editor toolbar */}
       <div id="ticket-toolbar-portal" className="relative z-10 shrink-0" />
