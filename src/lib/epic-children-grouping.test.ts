@@ -10,6 +10,7 @@ function child(key: string, sprintName: string | null, storyPoints: number | nul
     jiraStatus: "TO DO",
     assignee: null,
     storyPoints,
+    businessValue: null,
     sprintName,
     subtaskCount: 0,
     readiness: null,

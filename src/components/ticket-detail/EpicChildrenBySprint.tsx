@@ -51,6 +51,19 @@ function isEpicChild(child: EpicChild | Subtask): child is EpicChild {
   return "storyPoints" in child;
 }
 
+// Matches GroupStatBar's noPointsCount: genuinely unpointed stories only, so the
+// warning's click-to-filter shows exactly the items the warning counted.
+function isUnpointedChild(child: EpicChild | Subtask): boolean {
+  const sp = isEpicChild(child) ? child.storyPoints : null;
+  return sp == null && child.jiraStatus !== "DEPRECATED" && child.type !== "spike";
+}
+
+// Matches GroupStatBar's deprecatedWithSp: deprecated tickets that still carry points.
+function isDeprecatedWithSpChild(child: EpicChild | Subtask): boolean {
+  const sp = isEpicChild(child) ? child.storyPoints : null;
+  return child.jiraStatus === "DEPRECATED" && sp != null && sp > 0;
+}
+
 // GroupStatBar reads storyPoints / businessValue / jiraStatus / type off a Ticket.
 // Epic children carry no businessValue, so the BV pill and average simply do not
 // render for these groups, which is acceptable for this view.
@@ -213,6 +226,8 @@ export function EpicChildrenBySprint({
   const [activeDragKey, setActiveDragKey] = useState<string | null>(null);
   const [rowMenu, setRowMenu] = useState<{ x: number; y: number; childKey: string } | null>(null);
   const draggingRef = useRef(false);
+  // The unpointed-warning filter is scoped to the group whose warning was clicked.
+  const [unpointedFilterKey, setUnpointedFilterKey] = useState<string | null>(null);
 
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 8 } }),
@@ -261,10 +276,10 @@ export function EpicChildrenBySprint({
 
   const selectable = !!onCheckboxClick;
 
-  const renderRow = (child: EpicChild | Subtask, group: ChildGroup, idx: number) => {
+  const renderRow = (child: EpicChild | Subtask, group: ChildGroup, idx: number, total: number) => {
     const epic = isEpicChild(child) ? child : null;
     const isPending = child.key.startsWith("pending-");
-    const isLast = idx === group.items.length - 1;
+    const isLast = idx === total - 1;
     const isChecked = !!checkedKeys?.has(child.key);
     const checkboxClick = onCheckboxClick ? (e: React.MouseEvent) => onCheckboxClick(child.key, e) : undefined;
 
@@ -324,6 +339,12 @@ export function EpicChildrenBySprint({
   const groupCards = groups.map((group) => {
     const isCollapsed = !!collapsed[group.key];
     const isUnscheduled = group.sprintName === null;
+    const filterActive = unpointedFilterKey === group.key;
+    // Match the warning: unpointed stories only when this is the active sprint,
+    // plus any deprecated-with-points tickets.
+    const visibleItems = filterActive
+      ? group.items.filter((c) => (group.isActive && isUnpointedChild(c)) || isDeprecatedWithSpChild(c))
+      : group.items;
     const header = (
       <GroupStatBar
         tickets={group.items.map(toStatTicket)}
@@ -333,6 +354,12 @@ export function EpicChildrenBySprint({
         onToggleCollapse={() => toggle(group.key)}
         showStatusCounts={false}
         showBvAvg={false}
+        activeCriterion={filterActive ? "unpointed" : null}
+        onFilterChange={(c) => {
+          setUnpointedFilterKey(c ? group.key : null);
+          // Expand the group so the filtered rows are actually visible.
+          if (c) setCollapsed((prev) => ({ ...prev, [group.key]: false }));
+        }}
         leadingIcon={
           isUnscheduled
             ? <CircleDot size={12} />
@@ -351,7 +378,7 @@ export function EpicChildrenBySprint({
           )}
         </>
       ) : undefined;
-    const body = group.items.map((child, idx) => renderRow(child, group, idx));
+    const body = visibleItems.map((child, idx) => renderRow(child, group, idx, visibleItems.length));
 
     if (!dndEnabled) {
       return (

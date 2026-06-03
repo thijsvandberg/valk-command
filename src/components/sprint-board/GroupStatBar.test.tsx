@@ -75,6 +75,17 @@ describe("GroupStatBar", () => {
     expect(screen.queryByLabelText(/without a story point estimate/)).toBeNull();
   });
 
+  it("makes the warning clickable for deprecated-with-points even when not active", () => {
+    const onFilterChange = vi.fn();
+    const tickets = [
+      makeTicket({ key: "VPL-1", jiraStatus: "DEPRECATED", storyPoints: 3 }),
+      makeTicket({ key: "VPL-2", jiraStatus: "TO DO", storyPoints: null }),
+    ];
+    render(<GroupStatBar tickets={tickets} onFilterChange={onFilterChange} />);
+    fireEvent.click(screen.getByLabelText(/deprecated ticket still with story points/));
+    expect(onFilterChange).toHaveBeenCalledWith("unpointed");
+  });
+
   it("filters unpointed when clicking the warning icon", () => {
     const onFilterChange = vi.fn();
     render(<GroupStatBar tickets={TICKETS} isActive onFilterChange={onFilterChange} />);

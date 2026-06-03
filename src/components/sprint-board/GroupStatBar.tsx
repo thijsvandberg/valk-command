@@ -111,7 +111,9 @@ export const GroupStatBar = memo(function GroupStatBar({
     warningParts.push(`${deprecatedWithSp} deprecated ${deprecatedWithSp === 1 ? "ticket" : "tickets"} still with story points`);
   }
   const warningLabel = warningParts.join(" · ");
-  const canFilterUnpointed = showNoPointsWarning && onFilterChange !== undefined;
+  // The warning is clickable whenever it shows anything (unpointed and/or
+  // deprecated-with-points); the consumer filters to the matching items.
+  const canFilterWarnings = warningLabel !== "" && onFilterChange !== undefined;
 
   function toggle(criterion: StatCriterion) {
     onFilterChange?.(activeCriterion === criterion ? null : criterion);
@@ -248,9 +250,9 @@ export const GroupStatBar = memo(function GroupStatBar({
             <button
               type="button"
               aria-label={warningParts.join("; ")}
-              onClick={canFilterUnpointed ? (e) => { e.stopPropagation(); toggle("unpointed"); } : undefined}
+              onClick={canFilterWarnings ? (e) => { e.stopPropagation(); toggle("unpointed"); } : undefined}
               className={`flex h-6 w-6 shrink-0 items-center justify-center rounded-md text-[var(--color-status-warning)] focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-[var(--color-brand-400)] ${
-                canFilterUnpointed ? "cursor-pointer" : "cursor-default"
+                canFilterWarnings ? "cursor-pointer" : "cursor-default"
               } ${
                 activeCriterion === "unpointed"
                   ? "bg-[var(--color-status-warning-subtle)]"

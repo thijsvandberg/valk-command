@@ -467,11 +467,14 @@ export function TicketTable({
               : activeCriterion === "done"
                 ? group.tickets.filter((t) => t.jiraStatus === "DONE")
                 : activeCriterion === "unpointed"
-                  // Must match GroupStatBar's noPointsCount: only genuinely
-                  // unpointed stories (storyPoints null), excluding deprecated
-                  // tickets, spikes, and SP=0 (N/A), so the filter shows exactly
-                  // the items the warning counted.
-                  ? group.tickets.filter((t) => t.storyPoints == null && t.jiraStatus !== "DEPRECATED" && t.type !== "spike")
+                  // Matches the GroupStatBar warning exactly: unpointed stories
+                  // (only for the active sprint, where that warning shows) plus any
+                  // deprecated-with-points tickets, so clicking the warning reveals
+                  // precisely the items it flagged.
+                  ? group.tickets.filter((t) =>
+                      (groupBy === "sprint" && activeSprintIds.has(group.key)
+                        && t.storyPoints == null && t.jiraStatus !== "DEPRECATED" && t.type !== "spike")
+                      || (t.jiraStatus === "DEPRECATED" && t.storyPoints != null && t.storyPoints > 0))
                   : group.tickets;
 
         function toggleGroupFilter(criterion: "todo" | "in-progress" | "test" | "done" | "unpointed") {
