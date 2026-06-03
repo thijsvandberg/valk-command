@@ -24,6 +24,8 @@ export interface GroupStatBarProps {
   onPin?: () => void;
   isPinned?: boolean;
   pinDisabled?: boolean;
+  /** Marks the group's sprint as the currently running (active) Jira sprint with a live dot. */
+  isActive?: boolean;
 }
 
 export const GroupStatBar = memo(function GroupStatBar({
@@ -38,6 +40,7 @@ export const GroupStatBar = memo(function GroupStatBar({
   onPin,
   isPinned = false,
   pinDisabled = false,
+  isActive = false,
 }: GroupStatBarProps) {
   const totalPoints = tickets.reduce((sum, t) => sum + (t.storyPoints ?? 0), 0);
   const bvTickets = tickets.filter((t) => t.businessValue != null && t.businessValue >= 1 && t.jiraStatus !== "DEPRECATED");
@@ -86,6 +89,15 @@ export const GroupStatBar = memo(function GroupStatBar({
           </button>
         )}
         {leadingIcon && <span className="flex shrink-0 items-center text-text-tertiary">{leadingIcon}</span>}
+        {isActive && (
+          <Tooltip content="Active sprint">
+            <span
+              aria-label="Active sprint"
+              className="flex h-2 w-2 shrink-0 rounded-full bg-[var(--color-status-success)]"
+              style={{ boxShadow: "0 0 6px color-mix(in srgb, var(--color-status-success) 60%, transparent)" }}
+            />
+          </Tooltip>
+        )}
         {label && (
           <span className="truncate text-body-sm font-medium text-text-secondary">{label}</span>
         )}

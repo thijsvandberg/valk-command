@@ -21,6 +21,11 @@ export interface FilterDropdownProps {
   widthClass?: string;
   /** Align dropdown: "left" (default) or "right" */
   align?: "left" | "right";
+  /** Special options shown in a distinct section above the regular list (e.g. state buckets).
+   *  They share the same selection set; each gets a colored dot. Hidden while searching. */
+  leadingOptions?: { value: string; label: string; dot?: string }[];
+  /** Small section heading rendered above the leading options. */
+  leadingLabel?: string;
 }
 
 export function FilterDropdown({
@@ -34,6 +39,8 @@ export function FilterDropdown({
   labelMap,
   widthClass = "w-60",
   align = "left",
+  leadingOptions,
+  leadingLabel,
 }: FilterDropdownProps) {
   const [open, setOpen] = useState(false);
   const [search, setSearch] = useState("");
@@ -121,6 +128,61 @@ export function FilterDropdown({
           <X className="h-2.5 w-2.5" strokeWidth={2} />
           Clear filter
         </button>
+      )}
+
+      {/* Leading section: special meta-options (e.g. sprint-state buckets) above the
+          regular list, hidden while searching so name search stays focused on real items. */}
+      {leadingOptions && leadingOptions.length > 0 && !search.trim() && (
+        <div className="border-b border-border-default py-1">
+          {leadingLabel && (
+            <div className="px-3 pb-1 pt-1.5 text-caption font-semibold uppercase tracking-wide text-text-muted">
+              {leadingLabel}
+            </div>
+          )}
+          {leadingOptions.map((opt) => {
+            const checked = selected.has(opt.value);
+            return (
+              <label
+                key={opt.value}
+                className={`flex w-full items-center gap-2.5 px-3 py-[7px] text-body cursor-pointer hover:bg-hover-list-item ${
+                  checked ? "text-text-primary" : "text-text-secondary hover:text-text-secondary"
+                }`}
+                style={{ transition: "background-color 80ms, color 80ms" }}
+              >
+                <span
+                  className="flex h-[14px] w-[14px] shrink-0 items-center justify-center rounded-[3px] border"
+                  style={{
+                    backgroundColor: checked ? "var(--color-brand-500)" : "transparent",
+                    borderColor: checked ? "var(--color-brand-500)" : "var(--color-text-muted)",
+                    transition: "background-color 100ms, border-color 100ms",
+                  }}
+                >
+                  {checked && (
+                    <svg width="8" height="6" viewBox="0 0 9 7" fill="none">
+                      <path d="M1 3.5L3.5 6L8 1" stroke="white" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+                    </svg>
+                  )}
+                </span>
+                <input
+                  type="checkbox"
+                  checked={checked}
+                  onChange={(e) => {
+                    const next = new Set(selected);
+                    if (e.target.checked) next.add(opt.value);
+                    else next.delete(opt.value);
+                    onChange(next);
+                  }}
+                  className="sr-only"
+                />
+                <span
+                  className="inline-block h-2 w-2 shrink-0 rounded-full"
+                  style={{ backgroundColor: opt.dot ?? "var(--color-status-neutral)" }}
+                />
+                <span className="font-medium">{opt.label}</span>
+              </label>
+            );
+          })}
+        </div>
       )}
 
       {/* Options list */}

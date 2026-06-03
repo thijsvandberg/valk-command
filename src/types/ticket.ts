@@ -225,6 +225,9 @@ export interface Ticket {
   notes: string;
   jiraRank?: number | null;
   sprintId?: string;
+  // Human-readable sprint name from the sprint_name_cache, resolved at sync time.
+  // Used to label sprints (e.g. closed ones) that are absent from the cached sprint list.
+  sprintDisplayName?: string | null;
   jiraUpdatedAt?: string | null;
   removedFromJiraAt?: string | null;
   openSubtaskCount?: number;

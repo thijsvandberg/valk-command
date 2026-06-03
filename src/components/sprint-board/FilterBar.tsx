@@ -15,7 +15,7 @@ export { SortDropdown } from "@/components/sprint-board/SortControls";
 export { ColumnToggle } from "@/components/sprint-board/ColumnToggle";
 export { BoardFieldToggle } from "@/components/sprint-board/BoardFieldToggle";
 
-import { EDIT_STATE_OPTIONS, GAPS_OPTIONS, READINESS_OPTIONS, READINESS_CONFIG, JIRA_STATUS_COLORS, getEpicColor, type SavedView } from "@/components/sprint-board/filter-bar-types";
+import { EDIT_STATE_OPTIONS, GAPS_OPTIONS, READINESS_OPTIONS, READINESS_CONFIG, JIRA_STATUS_COLORS, getEpicColor, SPRINT_STATE_FILTER_OPTIONS, type SavedView } from "@/components/sprint-board/filter-bar-types";
 
 export function FilterBar({
   statusFilter,
@@ -246,6 +246,8 @@ export function FilterBar({
           searchPlaceholder="Search sprints..."
           labelMap={sprintNameMap}
           widthClass="w-64"
+          leadingOptions={SPRINT_STATE_FILTER_OPTIONS.map((o) => ({ value: o.value, label: o.label, dot: o.dot }))}
+          leadingLabel="By state"
           renderOption={(id) => <span>{sprintNameMap[id] ?? id}</span>}
         />
       )}

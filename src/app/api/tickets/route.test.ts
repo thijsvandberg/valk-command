@@ -93,6 +93,22 @@ describe("GET /api/tickets", () => {
     expect(data[0].qualityScore).toBe(85);
   });
 
+  it("resolves sprintDisplayName from the sprint name cache", async () => {
+    seedTicket(testDb, "VPL-100", "4238");
+    seedTicket(testDb, "VPL-101", "9999"); // no cache entry
+
+    const { sprintNameCache } = await import("@/db/schema");
+    testDb.insert(sprintNameCache).values({ sprintId: "4238", displayName: "BT: 142" }).run();
+
+    const request = new Request("http://localhost:3100/api/tickets");
+    const response = await GET(request);
+    const data = await response.json();
+
+    const byKey = Object.fromEntries(data.map((t: { key: string; sprintDisplayName: string | null }) => [t.key, t.sprintDisplayName]));
+    expect(byKey["VPL-100"]).toBe("BT: 142");
+    expect(byKey["VPL-101"]).toBeNull();
+  });
+
   it("returns null poStatus when no metadata exists", async () => {
     seedTicket(testDb, "VPL-100");
 

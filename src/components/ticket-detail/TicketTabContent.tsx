@@ -37,6 +37,13 @@ const TicketDevelopment = dynamic(
 export type TicketTab = "content" | "history" | "review" | "development";
 
 export interface TicketTabContentProps {
+  // Layout context: "page" centers content in a max-w-4xl column with wide
+  // padding; "panel" fills the narrow side panel with tighter padding.
+  layout?: "page" | "panel";
+  // Extra content rendered at the end of the Content tab, inside the same
+  // scroll. Used by the side panel to stack the meta block below the content
+  // when too narrow for a separate meta column.
+  metaContent?: React.ReactNode;
   ticketKey: string;
   ticket: Ticket;
   detail: TicketDetail | undefined;
@@ -78,6 +85,8 @@ export interface TicketTabContentProps {
 }
 
 export function TicketTabContent({
+  layout = "page",
+  metaContent,
   ticketKey,
   ticket,
   detail,
@@ -112,11 +121,13 @@ export function TicketTabContent({
   historyResetKey,
   isFlagged,
 }: TicketTabContentProps) {
+  const isPanel = layout === "panel";
+  const railClass = isPanel ? "w-full px-5" : "mx-auto w-full max-w-4xl px-8";
   return (
     <div className="min-w-0 flex-1 flex flex-col overflow-hidden">
       {/* Tab bar */}
       <div className="border-b border-border-default">
-        <div className="mx-auto flex h-[44px] max-w-4xl items-stretch gap-1 px-8">
+        <div className={`flex h-[44px] items-stretch gap-1 ${railClass}`}>
           {([
             { id: "content" as const, label: "Content", badge: undefined as number | undefined, badgeHighlight: false },
             { id: "history" as const, label: "History", badge: versionCount as number | undefined, badgeHighlight: false },
@@ -139,7 +150,7 @@ export function TicketTabContent({
       <div id="ticket-toolbar-portal" className="relative z-10 shrink-0" />
 
       <div className="flex flex-1 flex-col overflow-y-auto" style={{ overflowX: "hidden", scrollbarGutter: "stable" }}>
-        <div className={`mx-auto w-full max-w-4xl px-8 ${activeTab === "history" ? "pt-6 pb-4" : "py-6"}`}>
+        <div className={`${railClass} ${activeTab === "history" ? "pt-6 pb-4" : "py-6"}`}>
 
           {/* Conflict warning */}
           {showConflictWarning && (
@@ -277,6 +288,7 @@ export function TicketTabContent({
                 jiraComments={detail?.jiraComments ?? []}
                 onMutate={onMutate}
               />
+              {metaContent && <div className="mt-6">{metaContent}</div>}
             </>
           )}
 

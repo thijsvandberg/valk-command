@@ -1,6 +1,7 @@
 import { renderHook, act } from "@testing-library/react";
 import { describe, it, expect, beforeEach, vi } from "vitest";
 import { useSprintBoardFilters } from "./useSprintBoardFilters";
+import { SPRINT_STATE_CLOSED, SPRINT_STATE_FILTER_PREFIX } from "./filter-bar-types";
 import type { Ticket } from "@/types/ticket";
 
 vi.mock("next/navigation", () => ({
@@ -87,5 +88,67 @@ describe("useSprintBoardFilters - DELETED status handling", () => {
     act(() => result.current.setEditStateFilter(new Set(["removed"])));
     const keys = result.current.sortedTickets.map((t) => t.key);
     expect(keys).toEqual(["VPL-3"]);
+  });
+});
+
+describe("useSprintBoardFilters - sprint-state quick filters (BRDG-259)", () => {
+  const STORAGE_KEY = "sprint-board-filters";
+  const A = makeTicket({ key: "A", sprintId: "act" });
+  const F = makeTicket({ key: "F", sprintId: "fut" });
+  const C = makeTicket({ key: "C", sprintId: "clo" });
+  const B = makeTicket({ key: "B", sprintId: "" }); // backlog (no sprint)
+  const STATE_MAP = { act: "active", fut: "future", clo: "closed" };
+  const STATE_ACTIVE = `${SPRINT_STATE_FILTER_PREFIX}active`;
+  const STATE_FUTURE = `${SPRINT_STATE_FILTER_PREFIX}future`;
+
+  function setupAll() {
+    return renderHook(() => useSprintBoardFilters([A, F, C, B], {}, true, null, undefined, undefined, undefined, STATE_MAP));
+  }
+
+  beforeEach(() => {
+    localStorage.clear();
+  });
+
+  it("shows every sprint state by default (no sprint filter active)", () => {
+    const { result } = setupAll();
+    expect(result.current.sortedTickets.map((t) => t.key).sort()).toEqual(["A", "B", "C", "F"]);
+    expect(result.current.includeClosedSprints).toBe(false);
+  });
+
+  it("shows only closed-sprint tickets when the Closed bucket is selected", () => {
+    const { result } = setupAll();
+    act(() => result.current.setSprintFilter(new Set([SPRINT_STATE_CLOSED])));
+    expect(result.current.sortedTickets.map((t) => t.key)).toEqual(["C"]);
+    expect(result.current.includeClosedSprints).toBe(true);
+  });
+
+  it("shows active and future together when both buckets are selected, excluding closed and backlog", () => {
+    const { result } = setupAll();
+    act(() => result.current.setSprintFilter(new Set([STATE_ACTIVE, STATE_FUTURE])));
+    expect(result.current.sortedTickets.map((t) => t.key).sort()).toEqual(["A", "F"]);
+    expect(result.current.includeClosedSprints).toBe(false);
+  });
+
+  it("always shows a sprint selected by id, even a closed one, regardless of state buckets", () => {
+    const { result } = setupAll();
+    act(() => result.current.setSprintFilter(new Set(["clo"])));
+    expect(result.current.sortedTickets.map((t) => t.key)).toEqual(["C"]);
+    // The closed sprint is force-shown in the grouped view via its id, not the Closed bucket.
+    expect(result.current.forceShowSprintIds).toEqual(["clo"]);
+    expect(result.current.includeClosedSprints).toBe(false);
+  });
+
+  it("unions an individual sprint id with a state bucket", () => {
+    const { result } = setupAll();
+    act(() => result.current.setSprintFilter(new Set([STATE_FUTURE, "act"])));
+    expect(result.current.sortedTickets.map((t) => t.key).sort()).toEqual(["A", "F"]);
+    expect(result.current.forceShowSprintIds).toEqual(["act"]);
+  });
+
+  it("persists state buckets in the sprint filter (localStorage)", () => {
+    const { result } = setupAll();
+    act(() => result.current.setSprintFilter(new Set([SPRINT_STATE_CLOSED])));
+    const stored = JSON.parse(localStorage.getItem(STORAGE_KEY) ?? "{}");
+    expect(stored.sprint).toContain(SPRINT_STATE_CLOSED);
   });
 });

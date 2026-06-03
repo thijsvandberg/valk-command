@@ -10,10 +10,18 @@ vi.mock("lucide-react", () => ({
 }));
 
 vi.mock("@/components/shared/FilterDropdown", () => ({
-  FilterDropdown: ({ label, onChange }: { label: string; onChange: (s: Set<string>) => void }) => (
-    <button data-testid={`filter-${label.toLowerCase()}`} onClick={() => onChange(new Set(["test"]))}>
-      {label}
-    </button>
+  FilterDropdown: ({ label, onChange, leadingOptions, leadingLabel }: { label: string; onChange: (s: Set<string>) => void; leadingOptions?: { value: string; label: string }[]; leadingLabel?: string }) => (
+    <div data-testid={`filter-${label.toLowerCase()}-wrap`}>
+      <button data-testid={`filter-${label.toLowerCase()}`} onClick={() => onChange(new Set(["test"]))}>
+        {label}
+      </button>
+      {leadingLabel && <span data-testid={`leading-label-${label.toLowerCase()}`}>{leadingLabel}</span>}
+      {leadingOptions?.map((o) => (
+        <button key={o.value} data-testid={`leading-${o.value}`} onClick={() => onChange(new Set([o.value]))}>
+          {o.label}
+        </button>
+      ))}
+    </div>
   ),
 }));
 
@@ -115,5 +123,35 @@ describe("FilterBar", () => {
     render(<FilterBar {...defaultProps} />);
     fireEvent.click(screen.getByTestId("filter-status"));
     expect(defaultProps.onStatusFilterChange).toHaveBeenCalledWith(new Set(["test"]));
+  });
+
+  describe("sprint-state quick filters (BRDG-259)", () => {
+    const sprintProps = {
+      sprintFilter: new Set<string>(),
+      onSprintFilterChange: vi.fn(),
+      sprintOptions: ["5995", "6001"],
+      sprintNameMap: { "5995": "BT: 138", "6001": "BT: 139" },
+    };
+
+    it("does not render the Sprint filter (or its state options) outside the All view", () => {
+      render(<FilterBar {...defaultProps} />);
+      expect(screen.queryByTestId("filter-sprint")).not.toBeInTheDocument();
+      expect(screen.queryByTestId("leading-label-sprint")).not.toBeInTheDocument();
+    });
+
+    it("renders the state buckets as leading options inside the Sprint filter", () => {
+      render(<FilterBar {...defaultProps} {...sprintProps} />);
+      expect(screen.getByTestId("leading-label-sprint")).toHaveTextContent("By state");
+      expect(screen.getByTestId("leading-__sprint-state__:active")).toHaveTextContent("Active sprints");
+      expect(screen.getByTestId("leading-__sprint-state__:future")).toHaveTextContent("Future sprints");
+      expect(screen.getByTestId("leading-__sprint-state__:closed")).toHaveTextContent("Closed sprints");
+    });
+
+    it("selects the closed-state bucket via the Sprint filter onChange", () => {
+      const onSprintFilterChange = vi.fn();
+      render(<FilterBar {...defaultProps} {...sprintProps} onSprintFilterChange={onSprintFilterChange} />);
+      fireEvent.click(screen.getByTestId("leading-__sprint-state__:closed"));
+      expect(onSprintFilterChange).toHaveBeenCalledWith(new Set(["__sprint-state__:closed"]));
+    });
   });
 });

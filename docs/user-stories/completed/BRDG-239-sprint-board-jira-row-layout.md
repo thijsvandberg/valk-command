@@ -119,3 +119,11 @@ The grouped sprint headers (the per-sprint stat bar / `GroupStatBar`) stay — t
 
 - Builds on BRDG-235 (hover card) as the destination for stripped fields.
 - Touches the customizable-columns work (BRDG-071) and saved views — see resolved decision #2 (show/hide kept, reorder removed).
+
+## Follow-up tweaks (All view grouped by sprint)
+
+Small refinements to the grouped All view that build on the row/grouping work above:
+
+- **Pinned sprints hoisted to the top.** When the All view is grouped by sprint, the sprints pinned in the sprint bar now lead the list as a block (in sprint-bar order), ahead of the status-based ordering. `useGroupBy` takes the pinned sprint ids and `groupBySprintFn` assigns them a sort order below the natural minimum. Tests in `useGroupBy.test.ts`.
+- **Group headers/row labels show sprint names, not raw ids.** Older closed sprints are missing from the cached Jira sprint list, so their groups previously fell back to the numeric Jira sprint id. `/api/tickets` now left-joins `sprint_name_cache` and returns `sprintDisplayName` per ticket; `SprintBoard` merges those into `sprintNameMap`. Names resolve for any sprint already in the cache (populated during ticket sync); a sprint whose tickets have never been individually synced will still show its id until the next sync. Tests in `tickets/route.test.ts`.
+- **Fixed Backlog group hoisted; active-sprint dot.** The grouped All view orders headers as: pinned sprints (sprint-bar order), then the fixed Backlog group, then the status-sorted remainder. `useGroupBy` gives `__backlog__` a sort order just below the pinned block and excludes it from the pinned hoist. Each header whose sprint is currently running shows a green "live" dot (`--color-status-success`) via a new `isActive` prop on `GroupStatBar`, fed from the active sprints in `TicketTable`. The Backlog group keeps its inbox icon. Tests in `useGroupBy.test.ts` and `GroupStatBar.test.tsx`.

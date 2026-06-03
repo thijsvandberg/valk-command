@@ -39,6 +39,13 @@ describe("GroupStatBar", () => {
     expect(screen.getByText("5 items")).toBeTruthy();
   });
 
+  it("renders the active-sprint dot only when isActive", () => {
+    const { rerender } = render(<GroupStatBar tickets={TICKETS} label="BT: 138" />);
+    expect(screen.queryByLabelText("Active sprint")).toBeNull();
+    rerender(<GroupStatBar tickets={TICKETS} label="BT: 138" isActive />);
+    expect(screen.getByLabelText("Active sprint")).toBeTruthy();
+  });
+
   it("renders total story points", () => {
     render(<GroupStatBar tickets={TICKETS} />);
     // 3 + 5 + 2 = 10, shown via the SP MetricBadge

@@ -23,10 +23,21 @@ function sprintSortOrder(sprint: Sprint | undefined, sortIndex: number): number 
   return 2000 + (1000 - sortIndex);
 }
 
+// Pinned groups are hoisted ahead of every status-sorted group. The base is far
+// below any natural sortOrder (active=0) so pinned sprints always lead, kept in
+// the order they appear in the sprint bar.
+const PINNED_SORT_BASE = -1_000_000;
+// The fixed Backlog group sits directly below the pinned block and above every
+// status-sorted sprint group (active=0): pinned, then Backlog, then the rest.
+const BACKLOG_SORT_ORDER = -1;
+
 function groupBySprintFn(
   tickets: Ticket[],
   sprints: Sprint[],
   sprintNameMap: Record<string, string>,
+  pinnedOrder: string[],
+  includeClosedSprints: boolean,
+  forceShow: Set<string>,
 ): TicketGroup[] {
   const groupMap = new Map<string, Ticket[]>();
 
@@ -45,6 +56,10 @@ function groupBySprintFn(
   for (const sprint of sprints) {
     if (sprint.id === "__backlog__") continue;
     if (!groupMap.has(sprint.id)) continue;
+    // Closed sprints are noise on the All view by default; they stay visible when the PO
+    // pinned the sprint, selected the Closed bucket (includeClosedSprints), or selected this
+    // sprint by id in the Sprint filter (forceShow).
+    if (sprint.state === "closed" && !includeClosedSprints && !pinnedOrder.includes(sprint.id) && !forceShow.has(sprint.id)) continue;
     seenSprintIds.add(sprint.id);
     groups.push({
       key: sprint.id,
@@ -54,9 +69,12 @@ function groupBySprintFn(
     });
   }
 
-  // Second pass: sprintIds in tickets that don't match any known sprint
+  // Second pass: sprintIds in tickets that don't match any known sprint. These are older
+  // sprints dropped from the cached list, so they are effectively closed and hidden by
+  // default unless explicitly pinned.
   for (const [sid, ticketList] of groupMap) {
     if (sid === "__backlog__" || seenSprintIds.has(sid)) continue;
+    if (!includeClosedSprints && !pinnedOrder.includes(sid) && !forceShow.has(sid)) continue;
     groups.push({
       key: sid,
       label: sprintNameMap[sid] ?? sid,
@@ -65,14 +83,23 @@ function groupBySprintFn(
     });
   }
 
-  // Backlog group always last
+  // Fixed Backlog group, hoisted to sit just below the pinned block.
   if (groupMap.has("__backlog__")) {
     groups.push({
       key: "__backlog__",
       label: "Backlog",
       tickets: groupMap.get("__backlog__")!,
-      sortOrder: Infinity,
+      sortOrder: BACKLOG_SORT_ORDER,
     });
+  }
+
+  // Hoist pinned sprints (from the sprint bar) to the top, in pin order. The
+  // Backlog group keeps its fixed slot right after the pinned block, so it is
+  // never pulled into the pinned region even if it appears in the sprint bar.
+  for (const g of groups) {
+    if (g.key === "__backlog__") continue;
+    const pinIdx = pinnedOrder.indexOf(g.key);
+    if (pinIdx !== -1) g.sortOrder = PINNED_SORT_BASE + pinIdx;
   }
 
   groups.sort((a, b) => a.sortOrder - b.sortOrder);
@@ -121,6 +148,9 @@ export function useGroupBy(
   sprints: Sprint[],
   sprintNameMap: Record<string, string>,
   isAllView: boolean,
+  pinnedSprintIds: string[] = [],
+  includeClosedSprints: boolean = false,
+  forceShowSprintIds: string[] = [],
 ) {
   const [groupBy, setGroupBy] = useSessionStorage<GroupByOption>("sprint-board-group-by", "none");
   const [collapsedGroupsArr, setCollapsedGroupsArr] = useSessionStorage<string[]>("sprint-board-collapsed-groups", []);
@@ -136,11 +166,13 @@ export function useGroupBy(
     });
   }, [setCollapsedGroupsArr]);
 
+  const forceShow = useMemo(() => new Set(forceShowSprintIds), [forceShowSprintIds]);
+
   const groups = useMemo<TicketGroup[]>(() => {
     if (!isAllView || groupBy === "none") return [];
-    if (groupBy === "sprint") return groupBySprintFn(tickets, sprints, sprintNameMap);
+    if (groupBy === "sprint") return groupBySprintFn(tickets, sprints, sprintNameMap, pinnedSprintIds, includeClosedSprints, forceShow);
     return groupByEpicFn(tickets);
-  }, [tickets, sprints, sprintNameMap, isAllView, groupBy]);
+  }, [tickets, sprints, sprintNameMap, isAllView, groupBy, pinnedSprintIds, includeClosedSprints, forceShow]);
 
   const effectiveGroupBy = isAllView ? groupBy : "none";
 

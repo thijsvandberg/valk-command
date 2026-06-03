@@ -4,6 +4,7 @@ import { useState, useCallback, useMemo } from "react";
 import type { Ticket, TicketReadiness } from "@/types/ticket";
 import type { SortField, SortDir, InlineTagId, SavedView } from "@/components/sprint-board/FilterBar";
 import { DEFAULT_VISIBLE_TAGS, columnsToTags } from "@/components/sprint-board/FilterBar";
+import { SPRINT_STATE_FILTER_PREFIX, SPRINT_STATE_CLOSED, isSprintStateFilter } from "@/components/sprint-board/filter-bar-types";
 import { useLocalStorage } from "@/hooks/useLocalStorage";
 import { useSearchParams, useRouter } from "next/navigation";
 import { extractTeamPrefix } from "@/lib/sprint-utils";
@@ -35,6 +36,7 @@ export function useSprintBoardFilters(
   externalVisible?: Set<InlineTagId>,
   onApplyColumnConfig?: (visibleTags: InlineTagId[]) => void,
   sprintNameMap?: Record<string, string>,
+  sprintStateMap?: Record<string, string>,
 ) {
   const searchParams = useSearchParams();
   const router = useRouter();
@@ -174,10 +176,33 @@ export function useSprintBoardFilters(
     });
   }, [coreFiltered, readinessFilter, readinessMap, gapsFilter]);
 
+  // The Sprint filter mixes two kinds of values: individual sprint ids and special
+  // sprint-state buckets (active/future/closed, BRDG-259). A ticket is in scope when its
+  // sprint is explicitly selected by id, OR its sprint's state matches a selected bucket.
+  // The id and state selections are a union, so an explicitly chosen sprint is always shown
+  // regardless of the state buckets.
+  const selectedSprintStates = useMemo(
+    () => new Set([...sprintFilter].filter(isSprintStateFilter).map((v) => v.slice(SPRINT_STATE_FILTER_PREFIX.length))),
+    [sprintFilter],
+  );
+  const selectedSprintIds = useMemo(
+    () => new Set([...sprintFilter].filter((v) => !isSprintStateFilter(v))),
+    [sprintFilter],
+  );
+
   const scopeFiltered = useMemo(() => {
-    if ((!isAllView || sprintFilter.size === 0) && teamFilter.size === 0) return metaFiltered;
+    const sprintScopeActive = isAllView && sprintFilter.size > 0;
+    if (!sprintScopeActive && teamFilter.size === 0) return metaFiltered;
     return metaFiltered.filter((t) => {
-      if (isAllView && sprintFilter.size > 0 && !sprintFilter.has(t.sprintId ?? "")) return false;
+      if (sprintScopeActive) {
+        const sid = t.sprintId ?? "";
+        // Cache-dropped sprints carry no state, so they are treated as closed to match the
+        // grouped view (older sprints surface only under the Closed bucket).
+        const state = sid ? (sprintStateMap?.[sid] ?? "closed") : "";
+        const idMatch = selectedSprintIds.has(sid);
+        const stateMatch = Boolean(sid) && selectedSprintStates.has(state);
+        if (!idMatch && !stateMatch) return false;
+      }
       if (teamFilter.size > 0) {
         const sprintName = t.sprintId ? sprintNameMap?.[t.sprintId] : undefined;
         const prefix = sprintName ? extractTeamPrefix(sprintName) : null;
@@ -185,7 +210,13 @@ export function useSprintBoardFilters(
       }
       return true;
     });
-  }, [metaFiltered, isAllView, sprintFilter, teamFilter, sprintNameMap]);
+  }, [metaFiltered, isAllView, sprintFilter, teamFilter, sprintNameMap, sprintStateMap, selectedSprintIds, selectedSprintStates]);
+
+  // Grouped-view visibility (BRDG-259): closed sprint groups are hidden by default but
+  // revealed when the Closed bucket is selected; explicitly selected sprint ids are always
+  // shown even if closed (they survive the hide-closed default in the grouping layer).
+  const includeClosedSprints = sprintFilter.has(SPRINT_STATE_CLOSED);
+  const forceShowSprintIds = useMemo(() => [...selectedSprintIds], [selectedSprintIds]);
 
   const filteredTickets = useMemo(() => {
     if (searchQuery.trim().length < 2) return scopeFiltered;
@@ -359,6 +390,8 @@ export function useSprintBoardFilters(
     setIssueTypeFilter,
     sprintFilter,
     setSprintFilter,
+    includeClosedSprints,
+    forceShowSprintIds,
     teamFilter,
     setTeamFilter,
     teamOptions,

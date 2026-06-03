@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { db } from "@/db";
-import { ticket, ticketMetadata, ticketLocalEdit, storyVersion, ticketSubtask } from "@/db/schema";
+import { ticket, ticketMetadata, ticketLocalEdit, storyVersion, ticketSubtask, sprintNameCache } from "@/db/schema";
 import { eq, inArray, asc, isNull, sql, and, notInArray } from "drizzle-orm";
 import type { Ticket, IssueType, JiraStatus, POStatus, TicketReadiness, Assignee, TicketEditState } from "@/types/ticket";
 import { computeTicketEditState } from "@/lib/ticket-state";
@@ -54,9 +54,10 @@ export async function GET(request: Request) {
     async () => {
       const draftFilter = notInArray(ticket.status, ["DRAFTING", "REPLACED", "DRAFT_FAILED"]);
       const mainQuery = db
-        .select({ t: ticket, meta: ticketMetadata })
+        .select({ t: ticket, meta: ticketMetadata, sprintDisplayName: sprintNameCache.displayName })
         .from(ticket)
-        .leftJoin(ticketMetadata, eq(ticket.jiraKey, ticketMetadata.jiraKey));
+        .leftJoin(ticketMetadata, eq(ticket.jiraKey, ticketMetadata.jiraKey))
+        .leftJoin(sprintNameCache, eq(ticket.sprintName, sprintNameCache.sprintId));
 
       // Backlog = tickets with empty sprintName
       const sprintFilter = isBacklog
@@ -131,7 +132,7 @@ export async function GET(request: Request) {
     subtaskCountByKey.set(row.ticketKey, { total: row.total, open: row.open ?? 0 });
   }
 
-  const result: Ticket[] = rows.filter(({ t }) => t.type !== "subtask" && t.type !== "epic").map(({ t, meta }) => {
+  const result: Ticket[] = rows.filter(({ t }) => t.type !== "subtask" && t.type !== "epic").map(({ t, meta, sprintDisplayName }) => {
     const edits = editsByKey.get(t.jiraKey) ?? [];
     const latestHash = latestHashByKey.get(t.jiraKey) ?? null;
     const editState: TicketEditState = computeTicketEditState(edits, latestHash);
@@ -155,6 +156,7 @@ export async function GET(request: Request) {
       notes: meta?.poNotes ?? "",
       jiraRank: t.jiraRank ?? null,
       sprintId: t.sprintName || undefined,
+      sprintDisplayName: sprintDisplayName ?? null,
       jiraUpdatedAt: t.jiraUpdatedAt ?? null,
       removedFromJiraAt: t.removedFromJiraAt ?? null,
       openSubtaskCount: subtaskCountByKey.get(t.jiraKey)?.open ?? 0,

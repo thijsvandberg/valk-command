@@ -415,6 +415,9 @@ export function TicketTable({
   // Virtualization is disabled when groups are active since multiple tbodies are incompatible with virtual row indices.
   const isGrouped = groups && groups.length > 0;
 
+  // Sprint ids that are currently running, surfaced as a live dot on the group header.
+  const activeSprintIds = new Set((sprints ?? []).filter((s) => s.state === "active").map((s) => s.id));
+
   const groupedTable = isGrouped ? (
     // Each group is its own elevated card on the recessed base background, separated by the
     // flex gap, so consecutive sprints read as distinct sections (BRDG-239).
@@ -486,6 +489,7 @@ export function TicketTable({
                 tickets={group.tickets}
                 label={group.label}
                 leadingIcon={group.key === "__backlog__" ? <Inbox className="h-3.5 w-3.5" strokeWidth={1.5} /> : undefined}
+                isActive={groupBy === "sprint" && activeSprintIds.has(group.key)}
                 activeCriterion={activeCriterion}
                 onFilterChange={(criterion) => {
                   if (criterion === null) {

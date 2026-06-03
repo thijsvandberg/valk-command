@@ -2,9 +2,10 @@
 
 import { useState, useEffect, useCallback, useMemo } from "react";
 import { useRouter } from "next/navigation";
-import { NotebookPen, Plus, ArrowRight, AlertTriangle, Scissors } from "lucide-react";
+import { NotebookPen, Plus, ArrowRight, AlertTriangle, Scissors, Clock, Trash2 } from "lucide-react";
 import { TicketStatusPill } from "@/components/shared/TicketStatusPill";
 import type { JiraStatus, TicketReadiness } from "@/types/ticket";
+import { getEpicColor } from "@/types/ticket";
 import { ViewHeader, ViewHeaderTitle } from "@/components/shared/ViewHeader";
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/shared/Card";
@@ -49,6 +50,20 @@ function hasJiraChanges(session: ActiveSession): boolean {
   return new Date(session.jiraUpdatedAt).getTime() > new Date(session.updatedAt).getTime();
 }
 
+// Epic chip mirrors the treatment used in the TicketStatusPill hover card so
+// the epic reads consistently across the app.
+function EpicChip({ epic }: { epic: string }) {
+  const c = getEpicColor(epic);
+  return (
+    <span
+      className="inline-flex min-w-0 items-center truncate rounded-[4px] border-l-2 px-1.5 py-0.5 text-[10.5px] font-medium tracking-wide"
+      style={{ backgroundColor: c.bg, color: c.text, borderLeftColor: c.text }}
+    >
+      {epic}
+    </span>
+  );
+}
+
 function SessionCard({
   session,
   sprintLabel,
@@ -64,7 +79,7 @@ function SessionCard({
 }) {
   const isSplit = !!session.targetTicketKey;
   return (
-    <Card className="group relative flex flex-col justify-between p-4 transition-colors hover:bg-hover-list-item" style={{ minHeight: isSplit ? 140 : 120 }}>
+    <div className="group flex flex-col gap-3 rounded-xl border border-border-default bg-surface-elevated p-4 shadow-[var(--shadow-sm)] transition-[transform,box-shadow,border-color] duration-200 ease-out hover:-translate-y-0.5 hover:border-border-strong hover:shadow-[var(--shadow-md)]">
       {/* Top row: ticket key(s) + badges */}
       <div className="flex items-center justify-between gap-2">
         <div className="flex items-center gap-1.5 min-w-0 flex-wrap">
@@ -87,7 +102,7 @@ function SessionCard({
           )}
         </div>
         {jiraChanged && (
-          <span className="shrink-0 flex items-center gap-1 rounded-md bg-amber-500/10 px-1.5 py-0.5 text-caption font-medium text-amber-400/80">
+          <span className="shrink-0 flex items-center gap-1 rounded-md bg-amber-500/10 px-1.5 py-0.5 text-caption font-medium text-amber-400/90">
             <AlertTriangle size={10} strokeWidth={2} />
             Jira changed
           </span>
@@ -105,38 +120,34 @@ function SessionCard({
           </p>
         </div>
       ) : (
-        <p className="font-[var(--font-display)] text-body font-semibold leading-snug text-text-primary line-clamp-2">
+        <p className="font-[var(--font-display)] text-body-lg font-semibold leading-snug tracking-[-0.01em] text-text-primary line-clamp-2">
           {session.title}
         </p>
       )}
 
       {/* Bottom row: metadata + actions */}
-      <div className="flex items-center justify-between gap-3">
-        <div className="flex items-center gap-2 text-label text-text-tertiary min-w-0 truncate">
+      <div className="mt-auto flex items-center justify-between gap-3 pt-1">
+        <div className="flex min-w-0 items-center gap-2 text-label text-text-tertiary">
           {sprintLabel && (
-            <span className="truncate">{sprintLabel}</span>
+            <span className="shrink-0 truncate">{sprintLabel}</span>
           )}
-          {sprintLabel && session.epic && (
-            <span className="text-text-muted">|</span>
-          )}
-          {session.epic && (
-            <span className="truncate">{session.epic}</span>
-          )}
-          {(sprintLabel || session.epic) && session.updatedAt && (
-            <span className="text-text-muted">|</span>
-          )}
+          {session.epic && <EpicChip epic={session.epic} />}
           {session.updatedAt && (
-            <span className="shrink-0">{formatTimeAgo(session.updatedAt)}</span>
+            <span className="flex shrink-0 items-center gap-1">
+              <Clock size={10} strokeWidth={1.75} className="text-text-muted" />
+              {formatTimeAgo(session.updatedAt)}
+            </span>
           )}
         </div>
-        <div className="flex items-center gap-1.5 shrink-0">
-          <Button
-            variant="destructive"
-            size="sm"
+        <div className="flex items-center gap-1 shrink-0">
+          <button
+            type="button"
+            aria-label="Discard session"
             onClick={onDiscard}
+            className="flex h-7 w-7 items-center justify-center rounded-lg text-text-muted transition-[color,background-color] duration-150 hover:bg-red-500/10 hover:text-red-400 cursor-pointer"
           >
-            Discard
-          </Button>
+            <Trash2 size={13} strokeWidth={1.75} />
+          </button>
           <Button
             variant="soft"
             size="sm"
@@ -147,7 +158,7 @@ function SessionCard({
           </Button>
         </div>
       </div>
-    </Card>
+    </div>
   );
 }
 

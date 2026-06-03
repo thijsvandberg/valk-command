@@ -98,6 +98,39 @@ describe("FilterDropdown", () => {
     expect(screen.getByText("No matches")).toBeInTheDocument();
   });
 
+  describe("leadingOptions (BRDG-259)", () => {
+    const LEADING = [
+      { value: "__state:active", label: "Active sprints", dot: "green" },
+      { value: "__state:closed", label: "Closed sprints", dot: "gray" },
+    ];
+
+    it("renders leading options with the section label above the regular list", () => {
+      render(<FilterDropdown label="Sprint" options={OPTIONS} selected={new Set()} onChange={vi.fn()} leadingOptions={LEADING} leadingLabel="By state" />);
+      fireEvent.click(screen.getByText("Sprint"));
+      expect(screen.getByText("By state")).toBeInTheDocument();
+      expect(screen.getByText("Active sprints")).toBeInTheDocument();
+      expect(screen.getByText("Closed sprints")).toBeInTheDocument();
+      // Regular options still render alongside the leading section.
+      expect(screen.getByText("alpha")).toBeInTheDocument();
+    });
+
+    it("selecting a leading option calls onChange with its value", () => {
+      const onChange = vi.fn();
+      render(<FilterDropdown label="Sprint" options={OPTIONS} selected={new Set()} onChange={onChange} leadingOptions={LEADING} leadingLabel="By state" />);
+      fireEvent.click(screen.getByText("Sprint"));
+      fireEvent.click(screen.getByText("Closed sprints"));
+      expect(onChange).toHaveBeenCalledWith(new Set(["__state:closed"]));
+    });
+
+    it("hides the leading section while searching", () => {
+      render(<FilterDropdown label="Sprint" options={OPTIONS} selected={new Set()} onChange={vi.fn()} searchable leadingOptions={LEADING} leadingLabel="By state" />);
+      fireEvent.click(screen.getByText("Sprint"));
+      fireEvent.change(screen.getByPlaceholderText("Search..."), { target: { value: "alp" } });
+      expect(screen.queryByText("By state")).not.toBeInTheDocument();
+      expect(screen.queryByText("Active sprints")).not.toBeInTheDocument();
+    });
+  });
+
   it("uses custom renderOption when provided", () => {
     render(
       <FilterDropdown

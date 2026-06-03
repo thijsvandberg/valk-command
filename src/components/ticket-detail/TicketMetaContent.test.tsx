@@ -1,0 +1,123 @@
+import { render, screen, fireEvent, waitFor } from "@testing-library/react";
+import { describe, it, expect, vi } from "vitest";
+import { TicketMetaContent } from "./TicketMetaContent";
+import type { Ticket, TicketDetail } from "@/types/ticket";
+
+vi.mock("lucide-react", () => {
+  const stub = () => null;
+  return Object.fromEntries(["ChevronDown", "AlertTriangle", "Play", "Gem"].map((n) => [n, stub]));
+});
+
+vi.mock("next/link", () => ({
+  default: ({ href, children, ...rest }: Record<string, unknown>) => (
+    <a href={href as string} {...rest}>{children as React.ReactNode}</a>
+  ),
+}));
+
+const updateStoryPoints = vi.fn().mockResolvedValue({});
+const updateMetadata = vi.fn().mockResolvedValue({});
+vi.mock("@/lib/api-client", () => ({
+  tickets: {
+    updateStoryPoints: (...args: unknown[]) => updateStoryPoints(...args),
+    updateMetadata: (...args: unknown[]) => updateMetadata(...args),
+    updateEpic: vi.fn().mockResolvedValue({}),
+    updateLabels: vi.fn().mockResolvedValue({}),
+  },
+  jira: { assign: vi.fn().mockResolvedValue({}), moveSprint: vi.fn().mockResolvedValue({}) },
+}));
+
+vi.mock("@/hooks/useSprintBoard", () => ({
+  useJiraSprints: () => ({ sprints: [{ id: 1, name: "Sprint 1" }] }),
+  useSprintSlots: () => ({ data: [] }),
+  useDevInfo: () => ({ data: null, isLoading: false }),
+}));
+
+vi.mock("@/hooks/useTicketSessionMap", () => ({ useTicketSessionMap: () => ({ ticketSessionMap: new Map() }) }));
+
+vi.mock("@/components/shared/TicketStatusPill", () => ({ TicketStatusPill: ({ ticketKey }: { ticketKey: string }) => <span>{ticketKey}</span> }));
+vi.mock("@/components/shared/Avatar", () => ({ Avatar: () => <span data-testid="avatar" /> }));
+vi.mock("@/components/shared/Tooltip", () => ({ Tooltip: ({ children }: { children: React.ReactNode }) => <span>{children}</span> }));
+vi.mock("@/components/shared/Tag", () => ({ Tag: ({ children }: { children: React.ReactNode }) => <span>{children}</span> }));
+vi.mock("@/components/shared/ReadinessCell", () => ({ ReadinessCell: () => <span data-testid="readiness-cell" /> }));
+vi.mock("@/components/shared/BusinessValuePicker", () => ({ BusinessValuePicker: ({ value }: { value: number | null }) => <span data-testid="bv-picker">{value}</span> }));
+vi.mock("@/components/shared/StoryPointPicker", () => ({ StoryPointPicker: ({ value, onChange }: { value: number | null; onChange: (v: number | null) => void }) => <button data-testid="sp-picker" onClick={() => onChange(8)}>{value}</button> }));
+vi.mock("@/components/shared/AssigneePicker", () => ({ AssigneePicker: ({ value }: { value: { name: string } | null }) => <span data-testid="assignee-picker">{value?.name}</span> }));
+vi.mock("@/components/shared/EpicPicker", () => ({ EpicPicker: ({ value }: { value: { name: string } | null }) => <span data-testid="epic-picker">{value?.name}</span> }));
+vi.mock("@/components/shared/LabelPicker", () => ({ LabelPicker: ({ value }: { value: string[] }) => <span data-testid="label-picker">{value.join(",")}</span> }));
+vi.mock("@/components/sprint-board/TicketTable", () => ({ QualityBadge: ({ score }: { score: number | null }) => <span data-testid="quality-badge">{score}</span> }));
+vi.mock("@/components/sprint-board/SprintListModal", () => ({ SprintListModal: () => null }));
+vi.mock("@/components/ticket-detail/DevPanel", () => ({ DevPanel: () => <div data-testid="dev-panel" /> }));
+vi.mock("@/components/ticket-detail/ConfluencePagesSection", () => ({ ConfluencePagesSection: () => <div data-testid="confluence-section" /> }));
+vi.mock("@/lib/date-utils", () => ({ relativeDate: () => "14d ago", formatAbsoluteDate: () => "1 Jan 2026" }));
+vi.mock("@/components/shared/StatusBadge", () => ({ JIRA_STATUS_COLORS: { "IN PROGRESS": { bg: "#eee", text: "#111" }, "TO DO": { bg: "#eee", text: "#111" } } }));
+
+function makeTicket(overrides: Partial<Ticket> = {}): Ticket {
+  return {
+    key: "PROJ-42",
+    title: "Test ticket title",
+    type: "story",
+    epicKey: null,
+    flagged: false,
+    jiraStatus: "IN PROGRESS",
+    storyPoints: 5,
+    businessValue: 3,
+    assignee: { name: "Alice", initials: "A", color: "#abc" },
+    epic: "Epic One",
+    sprintId: "1",
+    qualityScore: 85,
+    readiness: "drafting",
+    poStatus: "Draft",
+    editState: "clean",
+    notes: "PO notes here",
+    ...overrides,
+  };
+}
+
+const detail: TicketDetail = {
+  description: "A description with an acceptance criteria section",
+  reporter: { name: "Bob", initials: "B", color: "#123" },
+  parent: null,
+  labels: ["frontend"],
+  components: ["booking"],
+  priority: "Medium",
+  createdAt: "2026-01-01",
+  updatedAt: "2026-01-02",
+  attachments: [],
+  subtasks: [],
+  linkedIssues: [],
+  jiraComments: [],
+  epicChildren: [],
+};
+
+describe("TicketMetaContent", () => {
+  it("renders story points and business value", () => {
+    render(<TicketMetaContent ticket={makeTicket()} detail={detail} />);
+    expect(screen.getByTestId("sp-picker")).toHaveTextContent("5");
+    expect(screen.getByTestId("bv-picker")).toHaveTextContent("3");
+  });
+
+  it("renders the Jira status, assignee, quality badge, confluence and dev panel", () => {
+    render(<TicketMetaContent ticket={makeTicket()} detail={detail} />);
+    expect(screen.getByText("IN PROGRESS")).toBeInTheDocument();
+    expect(screen.getByTestId("assignee-picker")).toHaveTextContent("Alice");
+    expect(screen.getByTestId("quality-badge")).toBeInTheDocument();
+    expect(screen.getByTestId("confluence-section")).toBeInTheDocument();
+    expect(screen.getByTestId("dev-panel")).toBeInTheDocument();
+  });
+
+  it("reveals readiness controls behind the More details toggle", () => {
+    render(<TicketMetaContent ticket={makeTicket({ qualityScore: null })} detail={detail} />);
+    fireEvent.click(screen.getByText("More details"));
+    expect(screen.getByTestId("readiness-cell")).toBeInTheDocument();
+  });
+
+  it("notifies the host via onMutate after a field edit persists", async () => {
+    const onMutate = vi.fn();
+    render(<TicketMetaContent ticket={makeTicket()} detail={detail} onMutate={onMutate} />);
+    fireEvent.click(screen.getByTestId("sp-picker"));
+    await waitFor(() => {
+      expect(updateStoryPoints).toHaveBeenCalledWith("PROJ-42", 8);
+      expect(onMutate).toHaveBeenCalled();
+    });
+  });
+});

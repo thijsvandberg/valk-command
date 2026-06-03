@@ -95,12 +95,6 @@ export default function SprintBoard() {
   const { toast, toastLoading, showToast, dismissToast } = useToast();
   const slotsInitialized = useRef(false);
 
-  const sprintNameMap = useMemo(() => {
-    const map: Record<string, string> = {};
-    sprints.forEach((s) => { map[s.id] = s.name; });
-    return map;
-  }, [sprints]);
-
   const activeSprintId = (isAllView || searchParams.get("view")) ? "__all__" : ephemeralIsActive ? ephemeralSprintId! : slotSprints[activeSlot];
   const poPriorityOrder = activeSprintId ? (poPriorityMap[activeSprintId] ?? null) : null;
   const setPoPriorityOrder = useCallback((order: string[] | null) => {
@@ -115,17 +109,34 @@ export default function SprintBoard() {
     return activeSprintId === "__all__" ? "/api/tickets" : `/api/tickets?sprintId=${encodeURIComponent(activeSprintId)}`;
   }, [activeSprintId]);
 
+  // Sprint id -> display name. The cached sprint list omits older closed sprints,
+  // so fall back to the per-ticket name resolved from the sprint_name_cache; this
+  // keeps group headers and row labels from showing raw numeric sprint ids (BRDG-239).
+  const sprintNameMap = useMemo(() => {
+    const map: Record<string, string> = {};
+    allTickets.forEach((t) => { if (t.sprintId && t.sprintDisplayName) map[t.sprintId] = t.sprintDisplayName; });
+    sprints.forEach((s) => { map[s.id] = s.name; });
+    return map;
+  }, [sprints, allTickets]);
+
+  // Sprint id -> state, for the sprint-state quick filters (BRDG-259).
+  const sprintStateMap = useMemo(() => {
+    const map: Record<string, string> = {};
+    sprints.forEach((s) => { map[s.id] = s.state; });
+    return map;
+  }, [sprints]);
+
   // Ticket actions hook (must be before useSprintBoardFilters which needs readinessMap)
   const ta = useTicketActions({ apiTickets, mutateTickets, activeListKey, showToast });
   const { poStatuses, readinessMap, inflightKeys } = ta;
 
   const { visible: columnVisible, toggleColumn, applyVisible, resetToDefaults } = useColumnConfig();
-  const f = useSprintBoardFilters(allTickets, readinessMap, isAllView, poPriorityOrder, columnVisible, applyVisible, sprintNameMap);
+  const f = useSprintBoardFilters(allTickets, readinessMap, isAllView, poPriorityOrder, columnVisible, applyVisible, sprintNameMap, sprintStateMap);
   const tickets = f.sortedTickets;
   const activeFilterCount = useMemo(() =>
     [f.statusFilter, f.epicFilter, f.assigneeFilter, f.readinessFilter, f.editStateFilter, f.issueTypeFilter, f.gapsFilter, f.teamFilter].filter((s) => s.size > 0).length + (f.searchQuery ? 1 : 0),
   [f.statusFilter, f.epicFilter, f.assigneeFilter, f.readinessFilter, f.editStateFilter, f.issueTypeFilter, f.gapsFilter, f.teamFilter, f.searchQuery]);
-  const { groupBy, setGroupBy, collapsedGroups, toggleCollapse, allCollapsed, toggleAllGroups, groups } = useGroupBy(tickets, sprints, sprintNameMap, isAllView);
+  const { groupBy, setGroupBy, collapsedGroups, toggleCollapse, allCollapsed, toggleAllGroups, groups } = useGroupBy(tickets, sprints, sprintNameMap, isAllView, slotSprints, f.includeClosedSprints, f.forceShowSprintIds);
   // When grouping by epic, the epic chip is redundant on every row (the group header
   // already names it), so suppress it. Other groupings keep the chip (BRDG-239).
   const hideEpicChip = groupBy === "epic";

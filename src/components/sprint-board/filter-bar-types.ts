@@ -166,5 +166,21 @@ export const GAPS_OPTIONS: { value: string; label: string; dotClass: string }[] 
   { value: "no_bv", label: "No business value", dotClass: "bg-[var(--color-status-caution)]/50" },
 ];
 
+// Sprint-state quick filters (BRDG-259). These live inside the Sprint filter as
+// special, prefixed values so they persist and serialize exactly like a selected
+// sprint id, while staying distinguishable from real sprint ids.
+export const SPRINT_STATE_FILTER_PREFIX = "__sprint-state__:";
+export const SPRINT_STATE_CLOSED = `${SPRINT_STATE_FILTER_PREFIX}closed`;
+
+export const SPRINT_STATE_FILTER_OPTIONS: { value: string; state: "active" | "future" | "closed"; label: string; dot: string }[] = [
+  { value: `${SPRINT_STATE_FILTER_PREFIX}active`, state: "active", label: "Active sprints", dot: "var(--color-status-success)" },
+  { value: `${SPRINT_STATE_FILTER_PREFIX}future`, state: "future", label: "Future sprints", dot: "var(--color-status-info)" },
+  { value: SPRINT_STATE_CLOSED, state: "closed", label: "Closed sprints", dot: "var(--color-status-neutral)" },
+];
+
+export function isSprintStateFilter(value: string): boolean {
+  return value.startsWith(SPRINT_STATE_FILTER_PREFIX);
+}
+
 // Re-export ticket utilities used by filter renderers
 export { getEpicColor, READINESS_OPTIONS, READINESS_CONFIG, JIRA_STATUS_COLORS };
