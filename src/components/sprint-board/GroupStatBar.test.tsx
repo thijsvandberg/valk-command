@@ -52,15 +52,32 @@ describe("GroupStatBar", () => {
     expect(screen.getByLabelText("Story Points: 10")).toBeTruthy();
   });
 
-  it("surfaces unpointed tickets via the warning icon", () => {
-    render(<GroupStatBar tickets={TICKETS} />);
+  it("surfaces unpointed tickets via the warning icon for the active sprint", () => {
+    render(<GroupStatBar tickets={TICKETS} isActive />);
     // VPL-3 and VPL-5 have no points; collapsed into the warning icon's label.
     expect(screen.getByLabelText(/2 stories without a story point estimate/)).toBeTruthy();
   });
 
+  it("does not warn about unpointed stories for non-active sprints", () => {
+    // Future/backlog work is expected to be un-estimated, so no warning is shown.
+    render(<GroupStatBar tickets={TICKETS} />);
+    expect(screen.queryByLabelText(/without a story point estimate/)).toBeNull();
+  });
+
+  it("still warns about deprecated tickets with story points when not active", () => {
+    const tickets = [
+      makeTicket({ key: "VPL-1", jiraStatus: "DEPRECATED", storyPoints: 3 }),
+      makeTicket({ key: "VPL-2", jiraStatus: "TO DO", storyPoints: null }),
+    ];
+    render(<GroupStatBar tickets={tickets} />);
+    expect(screen.getByLabelText(/1 deprecated ticket still with story points/)).toBeTruthy();
+    // The unpointed-story warning is suppressed (not the active sprint).
+    expect(screen.queryByLabelText(/without a story point estimate/)).toBeNull();
+  });
+
   it("filters unpointed when clicking the warning icon", () => {
     const onFilterChange = vi.fn();
-    render(<GroupStatBar tickets={TICKETS} onFilterChange={onFilterChange} />);
+    render(<GroupStatBar tickets={TICKETS} isActive onFilterChange={onFilterChange} />);
     fireEvent.click(screen.getByLabelText(/without a story point estimate/));
     expect(onFilterChange).toHaveBeenCalledWith("unpointed");
   });
@@ -116,6 +133,7 @@ describe("GroupStatBar", () => {
     render(
       <GroupStatBar
         tickets={TICKETS}
+        isActive
         activeCriterion="unpointed"
         onFilterChange={onFilterChange}
       />,
@@ -154,7 +172,7 @@ describe("GroupStatBar", () => {
       makeTicket({ key: "VPL-2", storyPoints: null }),
       makeTicket({ key: "VPL-3", storyPoints: null, type: "spike" }),
     ];
-    render(<GroupStatBar tickets={tickets} />);
+    render(<GroupStatBar tickets={tickets} isActive />);
     expect(screen.getByLabelText(/1 story without a story point estimate/)).toBeTruthy();
   });
 

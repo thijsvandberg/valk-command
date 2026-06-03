@@ -63,15 +63,19 @@ export const GroupStatBar = memo(function GroupStatBar({
 
   // Estimate-hygiene alerts (unpointed stories, deprecated-but-pointed) collapse
   // into a single warning icon on the far right rather than inline pills.
+  // Unpointed stories only matter for the active sprint: future/backlog work is
+  // expected to be un-estimated, so that warning is suppressed there. The
+  // deprecated-with-points warning always applies.
+  const showNoPointsWarning = noPointsCount > 0 && isActive;
   const warningParts: string[] = [];
-  if (noPointsCount > 0) {
+  if (showNoPointsWarning) {
     warningParts.push(`${noPointsCount} ${noPointsCount === 1 ? "story" : "stories"} without a story point estimate`);
   }
   if (deprecatedWithSp > 0) {
     warningParts.push(`${deprecatedWithSp} deprecated ${deprecatedWithSp === 1 ? "ticket" : "tickets"} still with story points`);
   }
   const warningLabel = warningParts.join(" · ");
-  const canFilterUnpointed = noPointsCount > 0 && onFilterChange !== undefined;
+  const canFilterUnpointed = showNoPointsWarning && onFilterChange !== undefined;
 
   function toggle(criterion: StatCriterion) {
     onFilterChange?.(activeCriterion === criterion ? null : criterion);
