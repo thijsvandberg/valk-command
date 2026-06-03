@@ -62,6 +62,17 @@ describe("useGroupBy collapse/expand all", () => {
     expect(result.current.collapsedGroups.has("s2")).toBe(true);
   });
 
+  it("does not duplicate the backlog group when the backlog pseudo-sprint is present (BRDG-239)", () => {
+    const sprintsWithBacklog = [...SPRINTS, makeSprint("__backlog__", "Backlog", "backlog")];
+    const ticketsWithBacklog = [...TICKETS, makeTicket({ key: "VPL-3", sprintId: "" })];
+    const { result } = renderHook(() => useGroupBy(ticketsWithBacklog, sprintsWithBacklog, NAME_MAP, true));
+    act(() => result.current.setGroupBy("sprint"));
+    const keys = result.current.groups.map((g) => g.key);
+    expect(keys.filter((k) => k === "__backlog__")).toHaveLength(1);
+    expect(new Set(keys).size).toBe(keys.length); // all group keys unique
+    expect(keys[keys.length - 1]).toBe("__backlog__"); // backlog stays last
+  });
+
   it("expands every group when toggled from a fully-collapsed state", () => {
     const { result } = setup();
     act(() => result.current.setGroupBy("sprint"));

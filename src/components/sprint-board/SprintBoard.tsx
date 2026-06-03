@@ -298,11 +298,10 @@ export default function SprintBoard() {
         {!ticketsLoading && analyticsVisible && <SprintAnalytics tickets={allTickets} onClose={() => setAnalyticsVisible(false)} sprintId={activeSprintId} />}
         {ticketsLoading && <LoadingState variant="spinner" label="Loading tickets..." className="min-h-[200px]" />}
         {!ticketsLoading && (
-          // B+C: the ticket list sits on its own elevated surface, lifted off the toolbar chrome (BRDG-239)
+          // B+C: the list sits on the recessed base surface; TicketTable renders the elevated
+          // card(s) itself — one card when ungrouped, one per group when grouped (BRDG-239).
           <div className="min-h-full bg-[var(--color-surface-base)] px-4 pb-4 pt-3">
-            <div className="overflow-hidden rounded-xl border border-[var(--color-border-default)] bg-[var(--color-surface-elevated)]" style={{ boxShadow: "0 8px 24px -14px rgba(0,0,0,0.30), 0 2px 6px -2px rgba(0,0,0,0.09)" }}>
           <TicketTable tickets={tickets} checkedTickets={checkedTickets} selectedTicket={selectedTicket} focusedTicketIdx={focusedTicketIdx} someChecked={someChecked} allChecked={allChecked} visibleTags={f.visibleTags} hideEpic={hideEpicChip} showSprint={showSprintOnRow} sprintNameMap={sprintNameMap} poStatuses={poStatuses} readinessMap={readinessMap} inflightKeys={inflightKeys} onToggleCheck={toggleCheck} onRangeCheck={handleRangeCheck} onToggleAll={toggleAll} onSelectTicket={setSelectedTicket} onRowContextMenu={handleRowContextMenu} contextMenuKeys={rowMenu?.targets} onPoStatusChange={ta.handlePoStatusChange} onReadinessChange={ta.handleReadinessChange} onBusinessValueChange={ta.handleBusinessValueChange} onStoryPointsChange={ta.handleStoryPointsChange} onJiraStatusChange={ta.handleJiraStatusChange} onIssueTypeChange={ta.handleIssueTypeChange} onTitleChange={ta.handleTitleChange} onAssigneeChange={ta.handleAssigneeChange} onEpicChange={ta.handleEpicChange} onSprintChange={ta.handleSprintChange} sprints={sprints} onCloseSubtasks={ta.handleCloseSubtasks} onTableKeyDown={handleTableKeyDown} onRunReview={(key) => handleBulkReviewStory(new Set([key]))} sortField={f.sortField} sortDir={f.sortDir} groups={groups} collapsedGroups={collapsedGroups} onToggleCollapse={toggleCollapse} groupBy={groupBy} pinnedSprintIds={slotSprintsSet} onPinSprint={handleAddSlotWithSprint} scrollContainerRef={contentScrollRef} refinementSessionMap={ticketSessionMap} {...(dnd.jiraRankDndEnabled ? { externalDnd: true as const, externalActiveDragId: dnd.boardActiveDragId, dragOverKey: dnd.boardOverId } : { onReorder: f.sortField === "rank" && !f.activeViewId ? handleReorder : undefined })} />
-            </div>
           </div>
         )}
       </div>
@@ -348,7 +347,7 @@ export default function SprintBoard() {
       {selected && (() => {
         const idx = tickets.findIndex((t) => t.key === selected.key);
         const adjacentKeys = { prev: idx > 0 ? tickets[idx - 1].key : null, next: idx < tickets.length - 1 ? tickets[idx + 1].key : null };
-        return <SidePanel key={selected.key} ticket={selected} poStatus={poStatuses[selected.key] ?? null} readiness={readinessMap[selected.key] ?? null} onPoStatusChange={(v) => ta.handlePoStatusChange(selected.key, v)} onReadinessChange={(v) => ta.handleReadinessChange(selected.key, v)} onNotesChange={(notes) => { saveTicketMetadata(selected.key, { poNotes: notes }, activeListKey); }} onClose={() => setSelectedTicket(null)} onShowToast={showToast} onMutate={mutateTickets} adjacentKeys={adjacentKeys} />;
+        return <SidePanel key={selected.key} ticket={selected} poStatus={poStatuses[selected.key] ?? null} readiness={readinessMap[selected.key] ?? null} onPoStatusChange={(v) => ta.handlePoStatusChange(selected.key, v)} onReadinessChange={(v) => ta.handleReadinessChange(selected.key, v)} onNotesChange={(notes) => { saveTicketMetadata(selected.key, { poNotes: notes }, activeListKey); }} onClose={() => setSelectedTicket(null)} onShowToast={showToast} onMutate={mutateTickets} onSelectTicket={setSelectedTicket} adjacentKeys={adjacentKeys} />;
       })()}
       </div>
       {bulkActionBar}

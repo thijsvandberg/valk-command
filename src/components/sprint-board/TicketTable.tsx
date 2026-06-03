@@ -43,6 +43,11 @@ const NOOP = () => {};
 // rows span exactly one column (BRDG-239).
 const TOTAL_COLSPAN = 1;
 
+// Elevated surface for the list (single card when ungrouped, one card per group when grouped),
+// sitting on the recessed base background (BRDG-239).
+const CARD_CLASS = "overflow-hidden rounded-xl border border-[var(--color-border-default)] bg-[var(--color-surface-elevated)]";
+const CARD_SHADOW = "0 8px 24px -14px rgba(0,0,0,0.30), 0 2px 6px -2px rgba(0,0,0,0.09)";
+
 // Droppable zone rendered inside empty sprint groups during an active drag.
 function DroppableGroupZone({ groupKey }: { groupKey: string }) {
   const { setNodeRef, isOver } = useDroppable({
@@ -411,8 +416,10 @@ export function TicketTable({
   const isGrouped = groups && groups.length > 0;
 
   const groupedTable = isGrouped ? (
-    <table className="w-full table-fixed border-collapse text-body-lg">
-      {groups.map((group, groupIdx) => {
+    // Each group is its own elevated card on the recessed base background, separated by the
+    // flex gap, so consecutive sprints read as distinct sections (BRDG-239).
+    <div className="flex flex-col gap-3">
+      {groups.map((group) => {
         const isCollapsed = collapsedGroups?.has(group.key) ?? false;
 
         const activeCriterion = groupFilter?.groupKey === group.key ? groupFilter.criterion : null;
@@ -468,53 +475,44 @@ export function TicketTable({
         ) : ticketRows;
 
         return (
-          <tbody key={group.key}>
-            {/* Spacer row between groups. Uses the recessed base tint (not the white panel
-                surface) so consecutive sprint groups read as separate sections (BRDG-239). */}
-            {groupIdx > 0 && (
-              <tr>
-                <td
-                  colSpan={TOTAL_COLSPAN}
-                  style={{ height: 10, padding: 0, border: "none", backgroundColor: "var(--color-surface-base)" }}
-                />
-              </tr>
-            )}
-            {/* Group header row. The 3px left edge matches the data rows' accent gutter and is
-                tinted like the header itself, so the white panel never shows through (BRDG-239). */}
-            <tr
-              className="group/grouprow border-l-[3px] border-b border-border-strong cursor-pointer select-none"
-              style={{ background: "var(--color-overlay-subtle)", borderLeftColor: "var(--color-overlay-subtle)" }}
+          <div key={group.key} className={CARD_CLASS} style={{ boxShadow: CARD_SHADOW }}>
+            {/* Group header — the card's top section; only divides from rows when expanded. */}
+            <div
+              className={`group/grouprow flex cursor-pointer select-none items-center py-2 pl-4 pr-4 ${isCollapsed ? "" : "border-b border-border-strong"}`}
+              style={{ background: "var(--color-overlay-subtle)" }}
               onClick={() => onToggleCollapse?.(group.key)}
             >
-              <td colSpan={TOTAL_COLSPAN} className="py-2 pl-4 pr-4">
-                <GroupStatBar
-                  tickets={group.tickets}
-                  label={group.label}
-                  activeCriterion={activeCriterion}
-                  onFilterChange={(criterion) => {
-                    if (criterion === null) {
-                      setGroupFilter(null);
-                    } else {
-                      toggleGroupFilter(criterion);
+              <GroupStatBar
+                tickets={group.tickets}
+                label={group.label}
+                activeCriterion={activeCriterion}
+                onFilterChange={(criterion) => {
+                  if (criterion === null) {
+                    setGroupFilter(null);
+                  } else {
+                    toggleGroupFilter(criterion);
+                  }
+                }}
+                isCollapsed={isCollapsed}
+                onToggleCollapse={() => onToggleCollapse?.(group.key)}
+                {...(groupBy === "sprint" && group.key !== "__backlog__" && onPinSprint
+                  ? {
+                      onPin: () => onPinSprint(group.key),
+                      isPinned: pinnedSprintIds?.has(group.key) ?? false,
+                      pinDisabled: (pinnedSprintIds?.size ?? 0) >= 8,
                     }
-                  }}
-                  isCollapsed={isCollapsed}
-                  onToggleCollapse={() => onToggleCollapse?.(group.key)}
-                  {...(groupBy === "sprint" && group.key !== "__backlog__" && onPinSprint
-                    ? {
-                        onPin: () => onPinSprint(group.key),
-                        isPinned: pinnedSprintIds?.has(group.key) ?? false,
-                        pinDisabled: (pinnedSprintIds?.size ?? 0) >= 8,
-                      }
-                    : {})}
-                />
-              </td>
-            </tr>
-            {groupRows}
-          </tbody>
+                  : {})}
+              />
+            </div>
+            {!isCollapsed && (
+              <table className="w-full table-fixed border-collapse text-body-lg">
+                <tbody>{groupRows}</tbody>
+              </table>
+            )}
+          </div>
         );
       })}
-    </table>
+    </div>
   ) : null;
 
   return (
@@ -526,7 +524,11 @@ export function TicketTable({
       tabIndex={0}
       onKeyDown={onTableKeyDown}
     >
-      {isGrouped ? groupedTable : (enableVirtualization ? virtualizedTable : ((externalDnd || onReorder) ? dndTable : plainTable))}
+      {isGrouped ? groupedTable : (tickets.length > 0 && (
+        <div className={CARD_CLASS} style={{ boxShadow: CARD_SHADOW }}>
+          {enableVirtualization ? virtualizedTable : ((externalDnd || onReorder) ? dndTable : plainTable)}
+        </div>
+      ))}
       {tickets.length === 0 && !isGrouped && (
         <EmptyState
           icon={<Sheet className="h-6 w-6 text-text-muted" strokeWidth={1} />}

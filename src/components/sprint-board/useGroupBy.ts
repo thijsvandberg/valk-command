@@ -40,8 +40,10 @@ function groupBySprintFn(
   let sprintIndex = 0;
   const seenSprintIds = new Set<string>();
 
-  // First pass: known sprints in order
+  // First pass: known sprints in order. The Backlog pseudo-sprint is skipped here and
+  // handled by the dedicated block below, so it is added exactly once and stays last.
   for (const sprint of sprints) {
+    if (sprint.id === "__backlog__") continue;
     if (!groupMap.has(sprint.id)) continue;
     seenSprintIds.add(sprint.id);
     groups.push({
