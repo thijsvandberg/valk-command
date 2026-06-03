@@ -261,10 +261,14 @@ export function SidePanel({
       onMutate={handleMutate}
       className={metaMode === "column"
         ? "h-full overflow-y-auto bg-[var(--color-surface-elevated)] py-5 px-5"
-        : ""}
+        // Stacked: a self-contained card lifts the meta off the surrounding
+        // content/comments. The card bg matches the panel surface so the meta's
+        // full-bleed footer (PO Note / Confluence / Development) reads as the
+        // card's own footer rather than poking past the rounded corners.
+        : "rounded-2xl border border-border-default bg-[var(--color-surface-elevated)] px-5 pt-5 pb-4"}
       style={metaMode === "column"
         ? { opacity: isMetaDragging ? 0.7 : 1, transition: isMetaDragging ? "none" : "opacity 150ms ease" }
-        : undefined}
+        : { boxShadow: "var(--shadow-md)" }}
     />
   );
 
