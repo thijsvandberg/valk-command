@@ -151,6 +151,30 @@ async function bbFetchUrl<T>(url: string): Promise<T | null> {
   return res.json() as Promise<T>;
 }
 
+/**
+ * Status-aware fetch used where a 404 must be distinguished from a transient error. The range
+ * walk anchors on a commit hash, but staging branches are force-pushed (GitOps), so historical
+ * deploy commits get orphaned and 404 permanently; a network blip or 429/5xx is transient.
+ * status === 0 means the request threw.
+ */
+async function bbFetchStatus<T>(repoSlug: string, path: string): Promise<{ status: number; data: T | null }> {
+  const cfg = getBitbucketConfig();
+  const url = `https://api.bitbucket.org/2.0/repositories/${cfg.workspace}/${repoSlug}${path}`;
+  trackOutboundCall("bitbucket");
+  try {
+    const res = await fetch(url, { redirect: "follow", headers: bbAuthHeaders() });
+    if (!res.ok) return { status: res.status, data: null };
+    return { status: res.status, data: (await res.json()) as T };
+  } catch {
+    return { status: 0, data: null };
+  }
+}
+
+/** A non-ok status worth retrying later (network throw, auth blip, rate limit, server error). */
+function isTransientStatus(status: number): boolean {
+  return status === 0 || status === 401 || status === 403 || status === 429 || status >= 500;
+}
+
 // -- Deployment detection (shared, idempotent) --
 
 const DEPLOY_CONCURRENCY = 5;
@@ -795,24 +819,30 @@ export async function attributeDeployRange(repoSlug: string, runId: string): Pro
   const run = db.select().from(pipelineRun).where(eq(pipelineRun.id, runId)).get();
   if (!run || run.rangeAttributedAt) return false;
 
+  const stamp = () => db.update(pipelineRun).set({ rangeAttributedAt: new Date().toISOString() }).where(eq(pipelineRun.id, runId)).run();
+
   // Only staging-type branch deploys are bundled this way. Anything else is stamped and skipped.
   const env = inferEnvironmentFromBranch(run.branchName);
   if (!run.isDeployment || !env || run.environmentType !== "Staging") {
-    db.update(pipelineRun).set({ rangeAttributedAt: new Date().toISOString() }).where(eq(pipelineRun.id, runId)).run();
+    stamp();
     return false;
   }
 
-  // Resolve the deploy head commit (fetch + persist if missing). Without it we cannot anchor the
-  // walk, so leave the marker null to retry.
+  // Resolve the deploy head commit (fetch + persist if missing). A transient error keeps the row
+  // re-scannable; a permanent miss (build gone) is stamped so the backfill advances.
   let headHash = run.commitHash;
   if (!headHash) {
-    const p = await bbFetch<BbPipeline>(repoSlug, `/pipelines/${run.buildNumber}`, true);
-    headHash = p?.target?.commit?.hash ?? null;
+    const r = await bbFetchStatus<BbPipeline>(repoSlug, `/pipelines/${run.buildNumber}`);
+    if (isTransientStatus(r.status)) return false;
+    headHash = r.data?.target?.commit?.hash ?? null;
     if (headHash) db.update(pipelineRun).set({ commitHash: headHash }).where(eq(pipelineRun.id, runId)).run();
   }
-  if (!headHash) return false;
+  if (!headHash) { stamp(); return false; }
 
-  // Previous successful deploy on the same repo+branch is the stop anchor for the walk.
+  // Previous successful deploy on the same repo+branch anchors the walk by its head commit. Its
+  // commit may not be persisted yet (older row), so fetch and persist it when missing. The build's
+  // completion time cannot be used as a stop signal: a build finishes minutes after its commit was
+  // authored, so it is later than commits that belong in this deploy's range (including the head).
   const prev = db.select().from(pipelineRun)
     .where(and(
       eq(pipelineRun.repo, run.repo),
@@ -824,20 +854,34 @@ export async function attributeDeployRange(repoSlug: string, runId: string): Pro
     .orderBy(desc(pipelineRun.completedAt))
     .limit(1)
     .get();
-  const anchorHash = prev?.commitHash ?? null;
+  let anchorHash = prev?.commitHash ?? null;
+  if (prev && !anchorHash) {
+    const r = await bbFetchStatus<BbPipeline>(repoSlug, `/pipelines/${prev.buildNumber}`);
+    if (isTransientStatus(r.status)) return false;
+    anchorHash = r.data?.target?.commit?.hash ?? null;
+    if (anchorHash) db.update(pipelineRun).set({ commitHash: anchorHash }).where(eq(pipelineRun.id, prev.id)).run();
+  }
 
-  // Walk commits newest-first from the deploy head, stopping at the anchor or the page cap. If no
-  // anchor exists (first deploy on this branch), the cap bounds it to just the recent range.
+  // Walk commits newest-first from the deploy head, stopping at the previous deploy's commit or the
+  // page cap (which bounds the first-ever-deploy case where there is no anchor).
   const collected: string[] = [];
   let url: string | null = `/commits/${headHash}?pagelen=${RANGE_WALK_PAGELEN}`;
   let pages = 0;
   let reachedAnchor = false;
-  let fetchFailed = false;
   while (url && pages < RANGE_WALK_MAX_PAGES && !reachedAnchor) {
-    const page: BbPaginatedResponse<BbCommit> | null = pages === 0
-      ? await bbFetch<BbPaginatedResponse<BbCommit>>(repoSlug, url)
-      : await bbFetchUrl<BbPaginatedResponse<BbCommit>>(url);
-    if (!page) { fetchFailed = true; break; }
+    let page: BbPaginatedResponse<BbCommit>;
+    if (pages === 0) {
+      const r = await bbFetchStatus<BbPaginatedResponse<BbCommit>>(repoSlug, url);
+      if (isTransientStatus(r.status)) return false; // retry the whole row next tick
+      // A non-ok, non-transient status (404/410/400) means the commit was force-pushed away.
+      // Nothing to attribute and never will be: stamp so the backfill advances.
+      if (!r.data) { stamp(); return false; }
+      page = r.data;
+    } else {
+      const nextPage = await bbFetchUrl<BbPaginatedResponse<BbCommit>>(url);
+      if (!nextPage) break; // later-page transient error: stop and use what we collected
+      page = nextPage;
+    }
     for (const c of page.values ?? []) {
       if (anchorHash && c.hash.startsWith(anchorHash.slice(0, 12))) { reachedAnchor = true; break; }
       const msg = c.message ?? "";
@@ -851,8 +895,6 @@ export async function attributeDeployRange(repoSlug: string, runId: string): Pro
     url = page.next ?? null;
     pages++;
   }
-  // First page failed outright: nothing to attribute and no anchor reached, so retry next tick.
-  if (fetchFailed && collected.length === 0) return false;
 
   // Union with the run's existing keys; never touch the primary ticketKey.
   const existing: string[] = [];
@@ -890,6 +932,7 @@ export async function backfillDeployRangeAttribution(): Promise<number> {
       like(pipelineRun.branchName, "staging/%"),
       gte(pipelineRun.createdAt, cutoff),
     ))
+    .orderBy(desc(pipelineRun.createdAt))
     .limit(RANGE_BACKFILL_BATCH)
     .all();
 

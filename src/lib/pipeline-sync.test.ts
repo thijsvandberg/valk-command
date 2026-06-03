@@ -664,8 +664,13 @@ describe("ticket key extraction (hyphen-tolerant, BRDG-269)", () => {
 });
 
 /** Commits payload shape returned by the Bitbucket /commits endpoint. */
-function commitsPayload(commits: Array<{ hash: string; message: string }>, next?: string) {
+function commitsPayload(commits: Array<{ hash: string; message: string; date?: string }>, next?: string) {
   return { values: commits, ...(next ? { next } : {}) };
+}
+
+/** A bare HTTP response with a specific status and no body (404 vs transient tests). */
+function httpStatus(status: number) {
+  return { ok: status >= 200 && status < 300, status, json: async () => null };
 }
 
 describe("attributeDeployRange (BRDG-269)", () => {
@@ -729,12 +734,57 @@ describe("attributeDeployRange (BRDG-269)", () => {
 
   it("leaves the marker null on a transient walk failure so it retries", async () => {
     insertRun({ id: "valk-repo:5", buildNumber: 5, branchName: "staging/uat-2", isDeployment: true, environmentType: "Staging", commitHash: "head", completedAt: RECENT, createdAt: RECENT });
-    fetchMock.mockResolvedValue(jsonResponse(null, false));
+    fetchMock.mockResolvedValue(jsonResponse(null, false)); // status 500 -> transient
 
     const grew = await attributeDeployRange("valk-repo", "valk-repo:5");
 
     expect(grew).toBe(false);
     expect(testDb.select().from(pipelineRun).where(eq(pipelineRun.id, "valk-repo:5")).get()?.rangeAttributedAt).toBeNull();
+  });
+
+  it("stamps and gives up when the deploy commit was force-pushed away (404)", async () => {
+    // Staging branches are force-pushed, so historical deploy commits 404 permanently. The row
+    // must be stamped so the backfill batch advances instead of re-fetching it forever.
+    insertRun({ id: "valk-repo:6", buildNumber: 6, branchName: "staging/uat-2", isDeployment: true, environmentType: "Staging", commitHash: "goneHash0000", completedAt: RECENT, createdAt: RECENT });
+    fetchMock.mockResolvedValue(httpStatus(404));
+
+    const grew = await attributeDeployRange("valk-repo", "valk-repo:6");
+
+    expect(grew).toBe(false);
+    expect(testDb.select().from(pipelineRun).where(eq(pipelineRun.id, "valk-repo:6")).get()?.rangeAttributedAt).toBeTruthy();
+  });
+
+  it("resolves the previous deploy's commit hash when missing and anchors the walk on it", async () => {
+    // Previous deploy has no persisted commit_hash; its hash is fetched from /pipelines and used
+    // as the stop anchor. A build's completion time must NOT be used as a stop (it is later than
+    // the commits in this deploy's range), so the head commit itself is never wrongly excluded.
+    insertRun({ id: "valk-repo:1", buildNumber: 1, branchName: "staging/uat-2", isDeployment: true, environmentType: "Staging", commitHash: null, completedAt: "2026-06-02T14:16:00.000Z", createdAt: "2026-06-02T14:05:00.000Z", rangeAttributedAt: RECENT });
+    insertRun({ id: "valk-repo:2", buildNumber: 2, branchName: "staging/uat-2", isDeployment: true, environmentType: "Staging", ticketKey: "VPL-46189", commitHash: "head00000000", completedAt: "2026-06-02T14:20:00.000Z", createdAt: "2026-06-02T14:10:00.000Z" });
+
+    fetchMock.mockImplementation(async (url: string) => {
+      // Previous deploy's pipeline -> its head commit (the anchor).
+      if (url.includes("/pipelines/1")) return jsonResponse({ target: { commit: { hash: "anchor000000" } } });
+      if (url.includes("/commits/head00000000")) {
+        return jsonResponse(commitsPayload([
+          { hash: "head00000000", message: "Merge 'feature/VPL-46189' into staging/uat-2" },
+          { hash: "mid000000000", message: "Merge 'feature/VPL45823' into staging/uat-2" },
+          { hash: "anchor000000", message: "[VPL-45729] previous deploy commit" },
+          { hash: "old000000000", message: "[VPL-99999] work before the previous deploy" },
+        ]));
+      }
+      return httpStatus(404);
+    });
+
+    const grew = await attributeDeployRange("valk-repo", "valk-repo:2");
+
+    expect(grew).toBe(true);
+    const keys = JSON.parse(testDb.select().from(pipelineRun).where(eq(pipelineRun.id, "valk-repo:2")).get()?.ticketKeys ?? "[]");
+    expect(keys).toContain("VPL-46189"); // head commit
+    expect(keys).toContain("VPL-45823"); // bundled merge before the anchor
+    expect(keys).not.toContain("VPL-45729"); // the anchor commit itself -> excluded
+    expect(keys).not.toContain("VPL-99999"); // beyond the anchor -> not walked
+    // The previous deploy's resolved commit hash is persisted.
+    expect(testDb.select().from(pipelineRun).where(eq(pipelineRun.id, "valk-repo:1")).get()?.commitHash).toBe("anchor000000");
   });
 });
 
