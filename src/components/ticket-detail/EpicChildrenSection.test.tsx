@@ -10,7 +10,19 @@ const mockUpdateEpic = vi.fn();
 const mockGetSectionVisibility = vi.fn();
 vi.mock("@/lib/api-client", () => ({
   // ChildIssueRow → useTicketHoverData → useTickets/useJiraSprints read swrFetcher.
-  swrFetcher: vi.fn(async () => []),
+  // The by-sprint view reads sprint metadata (state/dates) from /api/jira/sprints.
+  swrFetcher: vi.fn(async (url: string) => {
+    if (typeof url === "string" && url.startsWith("/api/jira/sprints")) {
+      return {
+        sprints: [
+          { id: 1, name: "Sprint 1", state: "active", startDate: "2026-06-01", endDate: "2026-06-14", goal: null },
+          { id: 2, name: "Sprint 2", state: "closed", startDate: "2026-05-01", endDate: "2026-05-14", goal: null },
+        ],
+        backlogCount: 0,
+      };
+    }
+    return [];
+  }),
   tickets: {
     createChildIssue: (...args: unknown[]) => mockCreateChildIssue(...args),
     searchForLink: (...args: unknown[]) => mockSearchForLink(...args),
@@ -57,6 +69,8 @@ function openSearchMode() {
 describe("EpicChildrenSection", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    localStorage.clear();
+    sessionStorage.clear();
     mockSearchForLink.mockResolvedValue({ results: [], hasMore: false });
     mockSearchForLinkWithJira.mockResolvedValue({ results: [], hasMore: false });
     mockGetSectionVisibility.mockResolvedValue({ visible: null });
@@ -366,6 +380,103 @@ describe("EpicChildrenSection", () => {
       const { onSelectTicket } = renderSection(SAMPLE_CHILDREN);
       fireEvent.click(screen.getByText("First story"));
       expect(onSelectTicket).toHaveBeenCalledWith("VPL-10");
+    });
+  });
+
+  describe("by-sprint view", () => {
+    function switchToSprintView() {
+      fireEvent.click(screen.getByRole("radio", { name: "By sprint" }));
+    }
+
+    it("renders the List / By sprint toggle", () => {
+      renderSection(SAMPLE_CHILDREN);
+      expect(screen.getByRole("radio", { name: "List" })).toBeInTheDocument();
+      expect(screen.getByRole("radio", { name: "By sprint" })).toBeInTheDocument();
+    });
+
+    it("defaults to list view and persists the choice to localStorage", () => {
+      renderSection(SAMPLE_CHILDREN);
+      expect(screen.getByRole("radio", { name: "List" })).toHaveAttribute("aria-checked", "true");
+
+      switchToSprintView();
+
+      expect(screen.getByRole("radio", { name: "By sprint" })).toHaveAttribute("aria-checked", "true");
+      expect(localStorage.getItem("epic-children-view")).toBe('"sprint"');
+    });
+
+    it("restores the persisted view on mount", () => {
+      localStorage.setItem("epic-children-view", '"sprint"');
+      renderSection(SAMPLE_CHILDREN);
+      expect(screen.getByRole("radio", { name: "By sprint" })).toHaveAttribute("aria-checked", "true");
+    });
+
+    it("groups children under per-sprint headers and an Unscheduled group", async () => {
+      renderSection(SAMPLE_CHILDREN);
+      switchToSprintView();
+
+      await waitFor(() => {
+        // Active sprint chip from the Sprint 1 metadata.
+        expect(screen.getByText("Active")).toBeInTheDocument();
+      });
+      // The null-sprint child collects into the Unscheduled group.
+      expect(screen.getByText("Unscheduled")).toBeInTheDocument();
+      // Active sprint live dot from GroupStatBar.
+      expect(screen.getByLabelText("Active sprint")).toBeInTheDocument();
+    });
+
+    it("orders sprint groups closed -> active (chronological)", async () => {
+      const children: EpicChild[] = [
+        { key: "VPL-20", title: "Active item", type: "story", jiraStatus: "TO DO", assignee: null, storyPoints: 1, sprintName: "Sprint 1", subtaskCount: 0, readiness: null },
+        { key: "VPL-21", title: "Closed item", type: "story", jiraStatus: "DONE", assignee: null, storyPoints: 2, sprintName: "Sprint 2", subtaskCount: 0, readiness: null },
+      ];
+      renderSection(children);
+      switchToSprintView();
+
+      await waitFor(() => {
+        expect(screen.getByText("Closed")).toBeInTheDocument();
+      });
+      const closedChip = screen.getByText("Closed");
+      const activeChip = screen.getByText("Active");
+      // Closed sprint group precedes the active one in document order.
+      expect(closedChip.compareDocumentPosition(activeChip) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    });
+
+    it("shares the status filter with the list view", () => {
+      renderSection(SAMPLE_CHILDREN);
+      openFilterPopover();
+      fireEvent.click(screen.getByText("Done"));
+
+      switchToSprintView();
+
+      expect(screen.getByText("Done story")).toBeInTheDocument();
+      expect(screen.queryByText("First story")).not.toBeInTheDocument();
+      expect(screen.queryByText("Second task")).not.toBeInTheDocument();
+    });
+
+    it("shares column visibility with the list view", () => {
+      renderSection(SAMPLE_CHILDREN);
+      openFilterPopover();
+      // Hide the issue keys column.
+      fireEvent.click(screen.getByText("Issue keys"));
+      openFilterPopover();
+
+      switchToSprintView();
+
+      expect(screen.queryByText("VPL-10")).not.toBeInTheDocument();
+      expect(screen.queryByText("VPL-12")).not.toBeInTheDocument();
+    });
+
+    it("keeps the create child input available in sprint view", () => {
+      renderSection(SAMPLE_CHILDREN);
+      switchToSprintView();
+      expect(screen.getByPlaceholderText("Create child issue...")).toBeInTheDocument();
+    });
+
+    it("renders only the create input when the epic has no children", () => {
+      renderSection([]);
+      switchToSprintView();
+      expect(screen.getByPlaceholderText("Create child issue...")).toBeInTheDocument();
+      expect(screen.queryByText("Unscheduled")).not.toBeInTheDocument();
     });
   });
 });

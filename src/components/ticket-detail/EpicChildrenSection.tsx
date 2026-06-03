@@ -9,9 +9,13 @@ import { Avatar } from "@/components/shared/Avatar";
 import { StatusBadge } from "@/components/shared/StatusBadge";
 import { Tooltip } from "@/components/shared/Tooltip";
 import { ChildIssueRow } from "./ChildIssueRow";
-import { ChildIssueListHeader } from "./ChildIssueListHeader";
+import { ChildIssueListHeader, type ChildIssueViewMode } from "./ChildIssueListHeader";
+import { EpicChildrenBySprint } from "./EpicChildrenBySprint";
 import type { StatusFilter } from "./FieldFilterPopover";
 import { useSectionVisibility } from "@/hooks/useSectionVisibility";
+import { useLocalStorage } from "@/hooks/useLocalStorage";
+import { useJiraSprints } from "@/hooks/useSprintBoard";
+import { mapJiraSprints } from "@/components/sprint-board/sprint-board-utils";
 import { tickets, ApiError } from "@/lib/api-client";
 import { Loader2, ChevronDown, Search, AlertTriangle } from "lucide-react";
 
@@ -79,6 +83,10 @@ export function EpicChildrenSection({
   const searchContainerRef = useRef<HTMLDivElement>(null);
 
   const { visible: visibleFields, toggleField } = useSectionVisibility("epic-children", DEFAULT_VISIBLE);
+  const [viewMode, setViewMode] = useLocalStorage<ChildIssueViewMode>("epic-children-view", "list");
+
+  const { sprints: rawSprints } = useJiraSprints();
+  const sprints = useMemo(() => mapJiraSprints(rawSprints), [rawSprints]);
 
   const mergedItems: (EpicChild | Subtask)[] = [
     ...items,
@@ -343,7 +351,7 @@ export function EpicChildrenSection({
   const inlineInput = (
     <div
       ref={searchMode ? searchContainerRef : undefined}
-      className={`relative flex items-center gap-3 px-3 py-2 ${filtered.length > 0 ? "border-t border-border-subtle" : ""}`}
+      className={`relative flex items-center gap-3 px-3 py-2 ${viewMode === "list" && filtered.length > 0 ? "border-t border-border-subtle" : ""}`}
       onClick={(e) => e.stopPropagation()}
     >
       {searchMode ? (
@@ -464,6 +472,26 @@ export function EpicChildrenSection({
     </div>
   );
 
+  const sprintContent = (
+    <div className="mt-3 flex flex-col gap-3">
+      <EpicChildrenBySprint
+        items={filtered}
+        sprints={sprints}
+        ticketKey={ticketKey}
+        visibleFields={visibleFields}
+        renderMetadata={renderMetadata}
+        onJiraStatusChange={handleJiraStatusChange}
+        onReadinessChange={handleReadinessChange}
+        onSelect={onSelectTicket}
+      />
+      <div className="overflow-hidden rounded-lg border border-border-default">
+        {inlineInput}
+      </div>
+    </div>
+  );
+
+  const content = viewMode === "sprint" ? sprintContent : listContent;
+
   return (
     <div className="mt-8">
       <ChildIssueListHeader
@@ -477,6 +505,8 @@ export function EpicChildrenSection({
         fields={EPIC_CHILD_FIELDS}
         visibleFields={visibleFields}
         onToggleField={(id, show) => toggleField(id, show)}
+        viewMode={viewMode}
+        onViewModeChange={setViewMode}
       />
 
       {error && (
@@ -494,14 +524,14 @@ export function EpicChildrenSection({
       )}
 
       {filtered.length > 0 ? (
-        listContent
+        content
       ) : mergedItems.length > 0 ? (
         <>
           <p className="mt-3 text-body-lg text-text-muted">No child issues matching this filter</p>
-          {listContent}
+          {content}
         </>
       ) : (
-        listContent
+        content
       )}
     </div>
   );
