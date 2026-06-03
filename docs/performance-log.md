@@ -156,3 +156,14 @@ Key bottleneck:
 Key bottlenecks:
 - **Layout overflow caught only in the browser**: the first headerless render let the single-column auto-layout table grow past the viewport (epic/SP/BV/assignee clipped off-screen), because the flex title never truncated without a width constraint. Fix was `table-fixed` on the content tables. Unit tests (which mock the row) could not have caught this — visual verification was essential.
 - **Pre-existing broken tree blocked full `npm run verify`/`build`**: committed parallel work on `dev` (BRDG-254 `epics/page.tsx` references a non-existent `EpicStatusBucket`; refinement `SessionEndModal.tsx` has a lint error) fails typecheck/lint independently of this change. Verified this story in isolation (typecheck clean for touched files, targeted + blast-radius tests green) rather than the full gates.
+
+## BRDG-267 — Group epic child issues by sprint (2026-06-03)
+
+| Phase | Notes |
+|-------|-------|
+| Plan | Opus Plan subagent + Explore subagent mapped the data flow. Confirmed the cleanest Phase 2 approach: join sprint metadata client-side from `useJiraSprints` by matching `sprintName === sprint.name`, avoiding any API/DB/schema change. |
+| Implement | New pure `epic-children-grouping.ts` util, `EpicChildrenBySprint.tsx` card view, List/By-sprint toggle in `ChildIssueListHeader`, wired into `EpicChildrenSection` with shared filter/columns. |
+| Verify | Full suite green (4032 tests); production build clean (dev sketch route removed). |
+
+Key bottleneck:
+- **Concurrent-agent git race**: another agent was committing to `dev` in the same working tree throughout the run. Twice my `git add`/`git commit` (issued as separate calls) had my staged files swept into the other agent's `git commit -a`-style commit, and a subsequent history rewrite on their side dropped my files back to the working tree. Recovered by committing with an explicit pathspec (`git commit -- <paths>`) so only my files land regardless of what else is staged. Lesson on a shared tree: never rely on index state across two tool calls; stage and commit in one step with explicit paths. Also note a Bash-tool quirk where an unquoted shell variable holding a space-separated pathspec list was passed to git as a single argument — list paths inline instead.
