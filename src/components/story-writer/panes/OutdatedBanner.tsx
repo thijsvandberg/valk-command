@@ -30,33 +30,41 @@ export function OutdatedBanner({ onViewDifference, onTakeJiraVersion }: Outdated
   return (
     <div
       role="status"
-      className="flex shrink-0 items-center gap-3 border-b border-amber-500/20 bg-amber-500/[0.06] px-4 py-2"
+      className="flex shrink-0 flex-wrap items-center gap-x-4 gap-y-2 border-b border-amber-200 bg-amber-50 px-4 py-2.5"
     >
-      <AlertTriangle size={14} strokeWidth={1.75} className="shrink-0 text-amber-400" />
-      <span className="min-w-0 flex-1 text-body-sm text-amber-300/90">
-        Jira changed after this draft started. Your draft may be based on an older version.
-      </span>
-      {onViewDifference && (
+      <div className="flex min-w-0 flex-1 items-center gap-2.5">
+        <AlertTriangle
+          size={15}
+          strokeWidth={2}
+          className="shrink-0 text-amber-600"
+        />
+        <span className="min-w-0 text-body-sm leading-snug text-amber-900">
+          Jira changed after this draft started; your draft may be out of date.
+        </span>
+      </div>
+      <div className="flex shrink-0 items-center gap-2">
+        {onViewDifference && (
+          <button
+            type="button"
+            onClick={onViewDifference}
+            className="flex shrink-0 items-center gap-1.5 rounded-md border border-amber-300 bg-white px-2.5 py-1.5 text-body-sm font-medium text-amber-800 cursor-pointer transition-colors duration-150 hover:bg-amber-100 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-amber-500 active:scale-[0.98]"
+          >
+            <GitCompare size={13} strokeWidth={1.75} />
+            View difference
+          </button>
+        )}
         <button
           type="button"
-          onClick={onViewDifference}
-          className="flex shrink-0 items-center gap-1.5 rounded-md border border-amber-500/20 bg-transparent px-2.5 py-1 text-body-sm font-medium text-amber-300/90 cursor-pointer transition-colors duration-150 hover:bg-amber-500/10 hover:text-amber-200 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-amber-400 active:scale-[0.98]"
+          onClick={handleTake}
+          disabled={taking}
+          className="flex shrink-0 items-center gap-1.5 rounded-md border border-amber-600 bg-amber-600 px-2.5 py-1.5 text-body-sm font-medium text-white cursor-pointer transition-colors duration-150 hover:bg-amber-700 hover:border-amber-700 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-amber-500 active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-60"
         >
-          <GitCompare size={12} strokeWidth={1.5} />
-          View difference
+          {taking
+            ? <Loader2 size={13} className="animate-spin" />
+            : <CloudDownload size={13} strokeWidth={1.75} />}
+          Take Jira version
         </button>
-      )}
-      <button
-        type="button"
-        onClick={handleTake}
-        disabled={taking}
-        className="flex shrink-0 items-center gap-1.5 rounded-md border border-amber-500/30 bg-amber-500/15 px-2.5 py-1 text-body-sm font-medium text-amber-200 cursor-pointer transition-colors duration-150 hover:bg-amber-500/25 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-amber-400 active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-60"
-      >
-        {taking
-          ? <Loader2 size={12} className="animate-spin" />
-          : <CloudDownload size={12} strokeWidth={1.5} />}
-        Take Jira version
-      </button>
+      </div>
     </div>
   );
 }
