@@ -7,7 +7,7 @@ import type { EpicOption } from "@/components/shared/EpicPicker";
 import type { SortField, SortDir, InlineTagId } from "@/components/sprint-board/FilterBar";
 import { IssueTypeIcon } from "@/components/shared/IssueTypeIcon";
 import { EmptyState } from "@/components/shared/EmptyState";
-import { Sheet } from "lucide-react";
+import { Sheet, Inbox } from "lucide-react";
 import { GroupStatBar } from "@/components/sprint-board/GroupStatBar";
 import type { TicketGroup, GroupByOption } from "@/components/sprint-board/useGroupBy";
 import {
@@ -485,6 +485,7 @@ export function TicketTable({
               <GroupStatBar
                 tickets={group.tickets}
                 label={group.label}
+                leadingIcon={group.key === "__backlog__" ? <Inbox className="h-3.5 w-3.5" strokeWidth={1.5} /> : undefined}
                 activeCriterion={activeCriterion}
                 onFilterChange={(criterion) => {
                   if (criterion === null) {

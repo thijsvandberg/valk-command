@@ -1,6 +1,6 @@
 "use client";
 
-import { memo } from "react";
+import { memo, type ReactNode } from "react";
 import type { Ticket } from "@/types/ticket";
 import { ChevronRight, ChevronDown, Pin, Gauge, Goal } from "lucide-react";
 import { StatPill, StatusPill } from "./SprintStatPill";
@@ -12,6 +12,8 @@ export type StatCriterion = "todo" | "in-progress" | "test" | "done" | "unpointe
 export interface GroupStatBarProps {
   tickets: Ticket[];
   label?: string;
+  /** Optional icon rendered just before the label (e.g. the backlog icon). */
+  leadingIcon?: ReactNode;
   activeCriterion?: StatCriterion | null;
   onFilterChange?: (criterion: StatCriterion | null) => void;
   isCollapsed?: boolean;
@@ -27,6 +29,7 @@ export interface GroupStatBarProps {
 export const GroupStatBar = memo(function GroupStatBar({
   tickets,
   label,
+  leadingIcon,
   activeCriterion = null,
   onFilterChange,
   isCollapsed,
@@ -82,6 +85,7 @@ export const GroupStatBar = memo(function GroupStatBar({
             <Pin className="h-3 w-3" strokeWidth={1.5} fill={isPinned ? "currentColor" : "none"} />
           </button>
         )}
+        {leadingIcon && <span className="flex shrink-0 items-center text-text-tertiary">{leadingIcon}</span>}
         {label && (
           <span className="truncate text-body-sm font-medium text-text-secondary">{label}</span>
         )}
