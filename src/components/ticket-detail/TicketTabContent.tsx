@@ -283,12 +283,15 @@ export function TicketTabContent({
                     {detail && <LinkedIssuesSection issues={detail.linkedIssues} ticketKey={ticketKey} onMutate={onMutate} />}
                   </>
               }
+              {/* Stacked meta (panel only) sits above the comments so the PO
+                  metadata stays close to the content rather than below the
+                  Jira conversation. */}
+              {metaContent && <div className="mt-6">{metaContent}</div>}
               <CommentsSection
                 ticketKey={ticketKey}
                 jiraComments={detail?.jiraComments ?? []}
                 onMutate={onMutate}
               />
-              {metaContent && <div className="mt-6">{metaContent}</div>}
             </>
           )}
 
