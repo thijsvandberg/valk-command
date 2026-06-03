@@ -4,22 +4,27 @@ import type { Ticket } from "@/types/ticket";
 import { useTicketActions } from "./useTicketActions";
 
 const toggleFlag = vi.fn();
+const moveSprint = vi.fn();
+const globalMutate = vi.fn();
 
 vi.mock("@/lib/api-client", () => ({
   apiFetch: vi.fn(),
-  jira: {},
+  jira: { moveSprint: (...args: unknown[]) => moveSprint(...args) },
   tickets: { toggleFlag: (...args: unknown[]) => toggleFlag(...args) },
 }));
 vi.mock("@/components/sprint-board/sprint-board-utils", () => ({
   saveTicketMetadata: vi.fn(),
   saveStoryPoints: vi.fn(),
 }));
+vi.mock("swr", () => ({
+  mutate: (...args: unknown[]) => globalMutate(...args),
+}));
 
-function makeTicket(key: string, flagged: boolean): Ticket {
+function makeTicket(key: string, flagged: boolean, sprintId?: string): Ticket {
   return {
     key, title: key, type: "story", epicKey: null, flagged,
     jiraStatus: "TO DO", storyPoints: null, businessValue: null,
-    assignee: null, epic: null, sprintId: undefined, qualityScore: null,
+    assignee: null, epic: null, sprintId, qualityScore: null,
     readiness: null, poStatus: "Draft", editState: "clean", notes: "",
   } as Ticket;
 }
@@ -88,5 +93,123 @@ describe("useTicketActions - handleBulkSetFlagged", () => {
     // Optimistic write + revert write
     expect(mutateTickets.mock.calls.length).toBeGreaterThanOrEqual(2);
     expect(showToast).toHaveBeenLastCalledWith("Failed to flag 1 ticket");
+  });
+});
+
+describe("useTicketActions - handleBulkMoveSprint", () => {
+  beforeEach(() => {
+    moveSprint.mockReset();
+    globalMutate.mockReset();
+  });
+
+  function setup(apiTickets: Ticket[], activeListKey: string | null) {
+    const mutateTickets = vi.fn();
+    const showToast = vi.fn();
+    const { result } = renderHook(() =>
+      useTicketActions({ apiTickets, mutateTickets, activeListKey, showToast }),
+    );
+    return { result, mutateTickets, showToast };
+  }
+
+  // The cache updater is the first arg to a (key, updater, opts) mutate call.
+  function runGlobalUpdater(call: unknown[], current: Ticket[] | undefined): Ticket[] {
+    const updater = call[1] as (c: Ticket[] | undefined) => Ticket[];
+    return updater(current);
+  }
+
+  it("removes moved tickets from a per-sprint source and injects them into the destination", async () => {
+    moveSprint.mockResolvedValue(undefined);
+    const source = [makeTicket("A-1", false, "100"), makeTicket("A-2", false, "100"), makeTicket("A-3", false, "100")];
+    const { result } = setup(source, "/api/tickets?sprintId=100");
+
+    let outcome: { ok: boolean; count: number } | undefined;
+    await act(async () => {
+      outcome = await result.current.handleBulkMoveSprint("200", new Set(["A-1", "A-2"]));
+    });
+
+    expect(outcome).toEqual({ ok: true, count: 2 });
+    expect(moveSprint).toHaveBeenCalledWith({ issueKeys: ["A-1", "A-2"], targetSprintId: "200" });
+
+    // Destination injection into the 200 key, with the new sprintId.
+    const destCall = globalMutate.mock.calls.find((c) => c[0] === "/api/tickets?sprintId=200");
+    expect(destCall).toBeDefined();
+    const injected = runGlobalUpdater(destCall!, undefined);
+    expect(injected.map((t) => t.key)).toEqual(["A-1", "A-2"]);
+    expect(injected.every((t) => t.sprintId === "200")).toBe(true);
+  });
+
+  it("removes moved tickets from the source list cache", async () => {
+    moveSprint.mockResolvedValue(undefined);
+    const source = [makeTicket("A-1", false, "100"), makeTicket("A-2", false, "100"), makeTicket("A-3", false, "100")];
+    const { result, mutateTickets } = setup(source, "/api/tickets?sprintId=100");
+
+    await act(async () => {
+      await result.current.handleBulkMoveSprint("200", new Set(["A-1", "A-2"]));
+    });
+
+    const updater = mutateTickets.mock.calls[0][0] as (d: Ticket[]) => Ticket[];
+    expect(updater(source).map((t) => t.key)).toEqual(["A-3"]);
+  });
+
+  it("updates sprintId in place (no removal) in the All view", async () => {
+    moveSprint.mockResolvedValue(undefined);
+    const all = [makeTicket("A-1", false, "100"), makeTicket("A-2", false, "300")];
+    const { result, mutateTickets } = setup(all, "/api/tickets");
+
+    await act(async () => {
+      await result.current.handleBulkMoveSprint("200", new Set(["A-1"]));
+    });
+
+    const updater = mutateTickets.mock.calls[0][0] as (d: Ticket[]) => Ticket[];
+    const next = updater(all);
+    expect(next.map((t) => t.key)).toEqual(["A-1", "A-2"]); // nothing removed
+    expect(next.find((t) => t.key === "A-1")?.sprintId).toBe("200");
+    expect(next.find((t) => t.key === "A-2")?.sprintId).toBe("300"); // untouched
+  });
+
+  it("targets the backlog key and clears sprintId when moving to backlog", async () => {
+    moveSprint.mockResolvedValue(undefined);
+    const source = [makeTicket("A-1", false, "100")];
+    const { result } = setup(source, "/api/tickets?sprintId=100");
+
+    await act(async () => {
+      await result.current.handleBulkMoveSprint("__backlog__", new Set(["A-1"]));
+    });
+
+    expect(moveSprint).toHaveBeenCalledWith({ issueKeys: ["A-1"], targetSprintId: "__backlog__" });
+    const destCall = globalMutate.mock.calls.find((c) => c[0] === "/api/tickets?sprintId=__backlog__");
+    expect(destCall).toBeDefined();
+    const injected = runGlobalUpdater(destCall!, undefined);
+    expect(injected[0].sprintId).toBeUndefined();
+  });
+
+  it("does not duplicate a ticket already present in the destination cache", async () => {
+    moveSprint.mockResolvedValue(undefined);
+    const source = [makeTicket("A-1", false, "100")];
+    const { result } = setup(source, "/api/tickets?sprintId=100");
+
+    await act(async () => {
+      await result.current.handleBulkMoveSprint("200", new Set(["A-1"]));
+    });
+
+    const destCall = globalMutate.mock.calls.find((c) => c[0] === "/api/tickets?sprintId=200");
+    const existing = [makeTicket("A-1", false, "200")];
+    const merged = runGlobalUpdater(destCall!, existing);
+    expect(merged.filter((t) => t.key === "A-1")).toHaveLength(1);
+  });
+
+  it("writes no optimistic cache state when the move fails", async () => {
+    moveSprint.mockRejectedValue(new Error("boom"));
+    const source = [makeTicket("A-1", false, "100")];
+    const { result, mutateTickets } = setup(source, "/api/tickets?sprintId=100");
+
+    let outcome: { ok: boolean; count: number } | undefined;
+    await act(async () => {
+      outcome = await result.current.handleBulkMoveSprint("200", new Set(["A-1"]));
+    });
+
+    expect(outcome).toEqual({ ok: false, count: 1 });
+    expect(mutateTickets).not.toHaveBeenCalled();
+    expect(globalMutate).not.toHaveBeenCalled();
   });
 });

@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useCallback } from "react";
+import { mutate as globalMutate } from "swr";
 import type { POStatus, TicketReadiness, Ticket, IssueType, JiraStatus, Assignee } from "@/types/ticket";
 import { saveTicketMetadata, saveStoryPoints } from "@/components/sprint-board/sprint-board-utils";
 import { apiFetch, jira, tickets as ticketsApi } from "@/lib/api-client";
@@ -209,16 +210,60 @@ export function useTicketActions(deps: TicketActionsDeps) {
 
   // Returns the outcome so the caller can render richer feedback (sprint name + link),
   // which needs sprint metadata/navigation only available at the board level.
+  //
+  // Caches are patched client-side instead of relying on the server-side
+  // cache.invalidate in the move route: in next dev the move route and the
+  // tickets route hold separate cache instances, so a bare mutateTickets()
+  // revalidation returns stale data and the moved tickets stay in their old
+  // sprint (BRDG-271). All cache writes happen after the move resolves, so the
+  // failure path leaves no stale optimistic state.
   const handleBulkMoveSprint = useCallback(async (targetSprintId: string, checkedTickets: Set<string>): Promise<{ ok: boolean; count: number }> => {
     const keys = [...checkedTickets];
+    const isBacklog = targetSprintId === "__backlog__";
+    // Mirror the route's `t.sprintName || undefined`: backlog clears the sprint.
+    const newSprintId = isBacklog ? undefined : targetSprintId;
+    const destKey = `/api/tickets?sprintId=${encodeURIComponent(targetSprintId)}`;
+    const movedTickets = (apiTickets ?? [])
+      .filter((t) => checkedTickets.has(t.key))
+      .map((t) => ({ ...t, sprintId: newSprintId }));
     try {
       await jira.moveSprint({ issueKeys: keys, targetSprintId });
-      mutateTickets();
+
+      // Update the current list. In the All view the moved rows stay but get
+      // the new sprintId (so grouping/labels follow them); in a per-sprint or
+      // backlog source view they leave the list. Skip removal when the active
+      // list IS the destination (a no-op move within the same view).
+      if (activeListKey === "/api/tickets") {
+        mutateTickets(
+          (data) => data?.map((t) => checkedTickets.has(t.key) ? { ...t, sprintId: newSprintId } : t),
+          { revalidate: false },
+        );
+      } else if (activeListKey !== destKey) {
+        mutateTickets(
+          (data) => data?.filter((t) => !checkedTickets.has(t.key)),
+          { revalidate: false },
+        );
+      }
+
+      // Inject the moved tickets into the destination cache (de-duplicated) so
+      // they are already there when the user opens that sprint/backlog view.
+      if (destKey !== activeListKey) {
+        globalMutate<Ticket[]>(
+          destKey,
+          (current) => {
+            const base = current ?? [];
+            const existing = new Set(base.map((t) => t.key));
+            return [...base, ...movedTickets.filter((t) => !existing.has(t.key))];
+          },
+          { revalidate: false },
+        );
+      }
+
       return { ok: true, count: keys.length };
     } catch {
       return { ok: false, count: keys.length };
     }
-  }, [mutateTickets]);
+  }, [apiTickets, mutateTickets, activeListKey]);
 
   const handleBulkUpdateAssignee = useCallback(async (accountId: string | null, name: string | null, checkedTickets: Set<string>) => {
     const keys = [...checkedTickets];
