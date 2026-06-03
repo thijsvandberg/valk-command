@@ -18,6 +18,8 @@ interface ChildIssueRowProps {
   onJiraStatusChange?: (status: JiraStatus) => void;
   onReadinessChange?: (readiness: TicketReadiness | null) => void;
   onSelect?: (key: string) => void;
+  /** Right-click handler (e.g. to open a move-to-sprint context menu). */
+  onContextMenu?: (e: React.MouseEvent) => void;
   /** Inline editing support */
   isEditing?: boolean;
   editValue?: string;
@@ -50,6 +52,7 @@ export function ChildIssueRow({
   onJiraStatusChange,
   onReadinessChange,
   onSelect,
+  onContextMenu,
   isEditing = false,
   editValue = "",
   onEditChange,
@@ -86,6 +89,7 @@ export function ChildIssueRow({
         isPending ? "opacity-50" : ""
       } ${className}`}
       onClick={handleClick}
+      onContextMenu={onContextMenu}
       {...(dndProps ?? {})}
     >
       {dragHandleSlot}

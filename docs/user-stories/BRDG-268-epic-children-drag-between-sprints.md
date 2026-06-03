@@ -1,6 +1,6 @@
 # BRDG-268: Move epic child issues between sprints — drag-and-drop + right-click menu
 
-**Status:** Not Started
+**Status:** Completed
 **Priority:** Medium
 **Type:** Feature
 **Depends on:** BRDG-267 (the "By sprint" grouped view — already present in the codebase as `EpicChildrenBySprint`)
@@ -68,23 +68,23 @@ Both interactions are scoped to the "By sprint" view only (the flat `list` view 
 ## Requirements
 
 ### Drag-and-drop
-- [ ] Wrap `EpicChildrenBySprint` in a `DndContext` (sensors mirrored from the board) — active only in `sprint` view
-- [ ] Child rows draggable; the rendered sprint groups (incl. Unscheduled) droppable, keyed by sprint id / `"__backlog__"`
-- [ ] On drop to a different sprint, call `jira.moveSprint({ issueKeys: [key], targetSprintId })` and `onMutate()` to refetch
-- [ ] Optimistic move with revert + warning toast on failure
-- [ ] Drag overlay + hovered-group highlight; keyboard-accessible drag
-- [ ] Dropping on the source group is a no-op; dropping on a closed-sprint group is rejected
+- [x] Wrap `EpicChildrenBySprint` in a `DndContext` (sensors mirrored from the board) — active only in `sprint` view
+- [x] Child rows draggable; the rendered sprint groups (incl. Unscheduled) droppable, keyed by sprint id / `"__backlog__"` <!-- droppables keyed by group key (sprint name / UNSCHEDULED); resolved to the sprint id / "__backlog__" in resolveMove on drop -->
+- [x] On drop to a different sprint, call `jira.moveSprint({ issueKeys: [key], targetSprintId })` and `onMutate()` to refetch
+- [x] Optimistic move with revert + warning toast on failure
+- [x] Drag overlay + hovered-group highlight; keyboard-accessible drag
+- [x] Dropping on the source group is a no-op; dropping on a closed-sprint group is rejected
 
 ### Right-click context menu
-- [ ] `onContextMenu` on each child row opens the existing `ticket-action-menu` at the cursor (reuse `AnchoredMenu` + `SprintSubPanel`)
-- [ ] `Move to Sprint` lists active/future sprints (searchable) + an Unscheduled/backlog option, including sprints not currently shown as groups
-- [ ] Selecting a sprint calls `jira.moveSprint` (or `useTicketActions.handleMoveSprint`) + `onMutate()`, with the same optimistic + revert handling
-- [ ] Context menu does not fire while a drag is active (mirror `TicketRow.tsx:627`)
+- [x] `onContextMenu` on each child row opens the existing `ticket-action-menu` at the cursor (reuse `CursorMenu` + `TicketActionMenuContent`/`SprintSubPanel`)
+- [x] `Move to Sprint` lists active/future sprints (searchable) + an Unscheduled/backlog option, including sprints not currently shown as groups
+- [x] Selecting a sprint calls `jira.moveSprint` + `onMutate()`, with the same optimistic + revert handling
+- [x] Context menu does not fire while a drag is active (mirror `TicketRow.tsx:627`)
 
 ### Shared
-- [ ] `GroupStatBar` totals (items / Σ SP / Σ BV / status counts) update for both source and target groups after a move
-- [ ] No drag affordance and no context menu change in the flat `list` view (confirm whether the list view should get the same right-click menu — see Open questions)
-- [ ] Tests: move computes the correct `targetSprintId` (incl. `"__backlog__"`), no-op on source group, closed sprints rejected, optimistic revert on API error, context-menu move into a sprint with no current children
+- [x] `GroupStatBar` totals (items / Σ SP / Σ BV / status counts) update for both source and target groups after a move
+- [x] No drag affordance and no context menu change in the flat `list` view (kept exclusive to the "By sprint" view; the list view passes no `onMoveChild`)
+- [x] Tests: move computes the correct `targetSprintId` (incl. `"__backlog__"`), no-op on source group, closed sprints rejected, optimistic revert on API error, context-menu move into a sprint with no current children
 
 ## Decisions (resolved)
 - **Two ways to move:** drag-and-drop between visible sprint groups, plus a right-click context menu — both in this story.

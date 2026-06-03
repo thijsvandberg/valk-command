@@ -8,6 +8,7 @@ const mockSearchForLink = vi.fn();
 const mockSearchForLinkWithJira = vi.fn();
 const mockUpdateEpic = vi.fn();
 const mockGetSectionVisibility = vi.fn();
+const mockMoveSprint = vi.fn();
 vi.mock("@/lib/api-client", () => ({
   // ChildIssueRow → useTicketHoverData → useTickets/useJiraSprints read swrFetcher.
   // The by-sprint view reads sprint metadata (state/dates) from /api/jira/sprints.
@@ -17,6 +18,8 @@ vi.mock("@/lib/api-client", () => ({
         sprints: [
           { id: 1, name: "Sprint 1", state: "active", startDate: "2026-06-01", endDate: "2026-06-14", goal: null },
           { id: 2, name: "Sprint 2", state: "closed", startDate: "2026-05-01", endDate: "2026-05-14", goal: null },
+          // A future sprint with no children: only reachable via the move menu.
+          { id: 3, name: "Sprint 3", state: "future", startDate: "2026-07-01", endDate: "2026-07-14", goal: null },
         ],
         backlogCount: 0,
       };
@@ -28,6 +31,9 @@ vi.mock("@/lib/api-client", () => ({
     searchForLink: (...args: unknown[]) => mockSearchForLink(...args),
     searchForLinkWithJira: (...args: unknown[]) => mockSearchForLinkWithJira(...args),
     updateEpic: (...args: unknown[]) => mockUpdateEpic(...args),
+  },
+  jira: {
+    moveSprint: (...args: unknown[]) => mockMoveSprint(...args),
   },
   settings: {
     getSectionVisibility: (...args: unknown[]) => mockGetSectionVisibility(...args),
@@ -74,6 +80,7 @@ describe("EpicChildrenSection", () => {
     mockSearchForLink.mockResolvedValue({ results: [], hasMore: false });
     mockSearchForLinkWithJira.mockResolvedValue({ results: [], hasMore: false });
     mockGetSectionVisibility.mockResolvedValue({ visible: null });
+    mockMoveSprint.mockResolvedValue({});
   });
 
   describe("inline creation", () => {
@@ -494,6 +501,44 @@ describe("EpicChildrenSection", () => {
       switchToSprintView();
       expect(screen.getByPlaceholderText("Create child issue...")).toBeInTheDocument();
       expect(screen.queryByText("Unscheduled")).not.toBeInTheDocument();
+    });
+
+    function moveViaContextMenu(rowTitle: string, sprintLabel: string) {
+      fireEvent.contextMenu(screen.getByText(rowTitle));
+      fireEvent.click(screen.getByText("Move to Sprint"));
+      fireEvent.click(screen.getByText(sprintLabel));
+    }
+
+    it("optimistically re-groups a child moved into a sprint with no current group", async () => {
+      renderSection(SAMPLE_CHILDREN);
+      switchToSprintView();
+      // VPL-11 is the only Unscheduled child.
+      expect(screen.getByText("Unscheduled")).toBeInTheDocument();
+
+      // Sprint 3 (future, no children) is offered only by the menu.
+      moveViaContextMenu("Second task", "Sprint 3");
+
+      await waitFor(() => {
+        expect(mockMoveSprint).toHaveBeenCalledWith({ issueKeys: ["VPL-11"], targetSprintId: "3" });
+      });
+      // Optimistically the row leaves Unscheduled and a Sprint 3 group appears.
+      expect(screen.queryByText("Unscheduled")).not.toBeInTheDocument();
+      expect(screen.getByText("Sprint 3")).toBeInTheDocument();
+    });
+
+    it("reverts the optimistic move and warns when the Jira move fails", async () => {
+      mockMoveSprint.mockRejectedValue(new Error("Jira rejected"));
+      renderSection(SAMPLE_CHILDREN);
+      switchToSprintView();
+
+      moveViaContextMenu("Second task", "Sprint 3");
+
+      await waitFor(() => {
+        expect(screen.getByText(/Failed to move VPL-11 to sprint/)).toBeInTheDocument();
+      });
+      // Reverted: the row is back under Unscheduled and the Sprint 3 group is gone.
+      expect(screen.getByText("Unscheduled")).toBeInTheDocument();
+      expect(screen.queryByText("Sprint 3")).not.toBeInTheDocument();
     });
   });
 });

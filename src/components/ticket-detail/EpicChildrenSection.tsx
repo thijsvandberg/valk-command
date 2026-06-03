@@ -16,7 +16,8 @@ import { useSectionVisibility } from "@/hooks/useSectionVisibility";
 import { useLocalStorage } from "@/hooks/useLocalStorage";
 import { useJiraSprints } from "@/hooks/useSprintBoard";
 import { mapJiraSprints } from "@/components/sprint-board/sprint-board-utils";
-import { tickets, ApiError } from "@/lib/api-client";
+import { tickets, jira, ApiError } from "@/lib/api-client";
+import { applyLocalMoves, sprintNameForTarget } from "@/lib/epic-children-move";
 import { Loader2, ChevronDown, Search, AlertTriangle } from "lucide-react";
 
 const CHILD_ISSUE_TYPES: { value: IssueType; label: string; jiraType: string }[] = [
@@ -69,6 +70,9 @@ export function EpicChildrenSection({
   const [error, setError] = useState<string | null>(null);
   const [jiraWarning, setJiraWarning] = useState<string | null>(null);
   const [locallyAdded, setLocallyAdded] = useState<Subtask[]>([]);
+  // Optimistic sprint reassignments (childKey -> new sprint name, or null for backlog),
+  // applied to the by-sprint view until the refetched children reflect the move.
+  const [localMoves, setLocalMoves] = useState<Record<string, string | null>>({});
   const inputRef = useRef<HTMLInputElement>(null);
   const typePickerRef = useRef<HTMLDivElement>(null);
 
@@ -300,6 +304,47 @@ export function EpicChildrenSection({
     }
   }, [onMutate]);
 
+  // Move a child to another sprint (drag-drop or context menu). Optimistically
+  // re-groups the row, then reverts and warns if the Jira round-trip fails.
+  const handleMoveChild = useCallback((childKey: string, targetSprintId: string) => {
+    const newName = sprintNameForTarget(targetSprintId, sprints);
+    setJiraWarning(null);
+    setLocalMoves((prev) => ({ ...prev, [childKey]: newName }));
+    jira.moveSprint({ issueKeys: [childKey], targetSprintId })
+      .then(() => onMutate())
+      .catch((err) => {
+        setLocalMoves((prev) => {
+          const next = { ...prev };
+          delete next[childKey];
+          return next;
+        });
+        const detail = err instanceof ApiError ? err.message : "Jira API error";
+        setJiraWarning(`Failed to move ${childKey} to sprint: ${detail}`);
+        console.error("Failed to move child to sprint:", err);
+      });
+  }, [sprints, onMutate]);
+
+  // Drop optimistic overrides once the refetched children confirm the new sprint,
+  // so a stale override never masks server truth on later syncs.
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- guarded reconcile once server confirms the move
+    setLocalMoves((prev) => {
+      if (Object.keys(prev).length === 0) return prev;
+      let changed = false;
+      const next = { ...prev };
+      for (const item of items) {
+        if (item.key in next) {
+          const serverName = isEpicChild(item) ? item.sprintName : null;
+          if (serverName === next[item.key]) {
+            delete next[item.key];
+            changed = true;
+          }
+        }
+      }
+      return changed ? next : prev;
+    });
+  }, [items]);
+
   // --- Render metadata slot for a child issue ---
   // hideSprint drops the sprint pill where the surrounding group already names the
   // sprint (the by-sprint view), avoiding a redundant per-row badge.
@@ -481,7 +526,7 @@ export function EpicChildrenSection({
   const sprintContent = (
     <div className="mt-3 flex flex-col gap-3">
       <EpicChildrenBySprint
-        items={filtered}
+        items={applyLocalMoves(filtered, localMoves)}
         sprints={sprints}
         ticketKey={ticketKey}
         visibleFields={visibleFields}
@@ -489,6 +534,8 @@ export function EpicChildrenSection({
         onJiraStatusChange={handleJiraStatusChange}
         onReadinessChange={handleReadinessChange}
         onSelect={onSelectTicket}
+        onMoveChild={handleMoveChild}
+        onMoveError={setJiraWarning}
       />
       <div className="overflow-hidden rounded-lg border border-border-default">
         {inlineInput}
