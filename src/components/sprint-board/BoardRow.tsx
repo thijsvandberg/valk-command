@@ -11,6 +11,7 @@ import { Avatar } from "@/components/shared/Avatar";
 import { Flag, MessageSquare, Pencil, Check, X, Gem, IterationCw } from "lucide-react";
 import { OpenSubtasksIndicator } from "@/components/sprint-board/OpenSubtasksIndicator";
 import type { TicketSessionEntry } from "@/hooks/useTicketSessionMap";
+import { RefinementGemTrigger } from "@/components/sprint-board/RefinementGemHoverCard";
 import type { PipelineHealthEntry, LastDeployedInfo } from "@/hooks/usePipelines";
 import { useSortable } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
@@ -71,6 +72,10 @@ export interface BoardRowBaseProps {
   /** Request a quality review for this ticket (offered in the hover card when unscored). */
   onRunReview?: (key: string) => void | Promise<void>;
   refinementSessions?: TicketSessionEntry[];
+  /** Titles for sibling tickets in the gem hover card, from already-loaded board data. */
+  ticketTitleMap?: Map<string, string>;
+  onRemoveFromRefinement?: (sessionId: string, ticketKey: string) => void;
+  onViewRefinement?: (sessionId: string) => void;
   insertLine?: "above" | "below";
   rowStyle?: React.CSSProperties;
   dragListeners?: ReturnType<typeof useSortable>["listeners"];
@@ -120,6 +125,9 @@ export const BoardRow = memo(forwardRef<HTMLTableRowElement, BoardRowBaseProps>(
     onToggleReviewPopover,
     onRunReview,
     refinementSessions,
+    ticketTitleMap,
+    onRemoveFromRefinement,
+    onViewRefinement,
     insertLine,
     rowStyle,
     dragListeners,
@@ -429,14 +437,20 @@ export const BoardRow = memo(forwardRef<HTMLTableRowElement, BoardRowBaseProps>(
               {/* Refinement: a tinted brand badge on the right so it reads as a clear signal
                   rather than fading into the row (BRDG-239). */}
               {tags.has("refinement") && refinementSessions && refinementSessions.length > 0 && (
-                <Tooltip content={`In refinement: ${refinementSessions.map((s) => s.name).join(", ")}`} delay={300}>
+                <RefinementGemTrigger
+                  sessions={refinementSessions}
+                  currentKey={ticket.key}
+                  ticketTitleMap={ticketTitleMap}
+                  onRemoveFromRefinement={onRemoveFromRefinement}
+                  onViewRefinement={onViewRefinement}
+                >
                   <span className="inline-flex h-5 shrink-0 items-center gap-1 rounded-full bg-[var(--color-brand-500)]/12 px-2 text-[var(--color-brand-300)] ring-1 ring-inset ring-[var(--color-brand-500)]/15">
                     <Gem size={12} strokeWidth={1.75} className="shrink-0" />
                     {refinementSessions.length > 1 && (
                       <span className="text-[11px] font-medium leading-none tabular-nums">{refinementSessions.length}</span>
                     )}
                   </span>
-                </Tooltip>
+                </RefinementGemTrigger>
               )}
 
               {/* SP / BV — compact, right of the tags. */}

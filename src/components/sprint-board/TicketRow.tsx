@@ -3,7 +3,7 @@
 import { forwardRef, memo, useRef, useCallback, useState, useMemo } from "react";
 import { useOutsideClick } from "@/hooks/useOutsideClick";
 import type { Ticket, POStatus, TicketReadiness, IssueType, JiraStatus, Sprint } from "@/types/ticket";
-import type { AssignableUser } from "@/components/shared/AssigneePicker";
+import { AssigneePicker, type AssignableUser } from "@/components/shared/AssigneePicker";
 import type { EpicOption } from "@/components/shared/EpicPicker";
 import { getEpicColor, JIRA_STATUS_COLORS } from "@/types/ticket";
 import type { ColumnId, ColumnPreset } from "@/components/sprint-board/FilterBar";
@@ -12,6 +12,7 @@ import { IssueTypeIcon } from "@/components/shared/IssueTypeIcon";
 import { Avatar } from "@/components/shared/Avatar";
 import { Flag, MessageSquare, Star, Rocket, GitBranch, Pencil, Check, X, Gem } from "lucide-react";
 import type { TicketSessionEntry } from "@/hooks/useTicketSessionMap";
+import { RefinementGemTrigger } from "@/components/sprint-board/RefinementGemHoverCard";
 import type { PipelineHealthEntry, LastDeployedInfo } from "@/hooks/usePipelines";
 import { useSortable } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
@@ -72,6 +73,10 @@ export interface TicketRowBaseProps {
   reviewPopoverKey?: string | null;
   onToggleReviewPopover?: (key: string) => void;
   refinementSessions?: TicketSessionEntry[];
+  /** Titles for sibling tickets in the gem hover card, from already-loaded board data. */
+  ticketTitleMap?: Map<string, string>;
+  onRemoveFromRefinement?: (sessionId: string, ticketKey: string) => void;
+  onViewRefinement?: (sessionId: string) => void;
   columnOrder?: ColumnId[];
   insertLine?: "above" | "below";
   rowStyle?: React.CSSProperties;
@@ -122,6 +127,9 @@ export const TicketRow = memo(forwardRef<HTMLTableRowElement, TicketRowBaseProps
     reviewPopoverKey = null,
     onToggleReviewPopover,
     refinementSessions,
+    ticketTitleMap,
+    onRemoveFromRefinement,
+    onViewRefinement,
     columnOrder,
     insertLine,
     rowStyle,
@@ -301,18 +309,19 @@ export const TicketRow = memo(forwardRef<HTMLTableRowElement, TicketRowBaseProps
                 </Tooltip>
               )}
               {refinementSessions && refinementSessions.length > 0 && (
-                <Tooltip
-                  content={`In refinement: ${refinementSessions.map((s) => s.name).join(", ")}`}
-                  delay={300}
+                <RefinementGemTrigger
+                  sessions={refinementSessions}
+                  currentKey={ticket.key}
+                  ticketTitleMap={ticketTitleMap}
+                  onRemoveFromRefinement={onRemoveFromRefinement}
+                  onViewRefinement={onViewRefinement}
                 >
-                  <span className="shrink-0">
-                    <Gem
-                      size={10}
-                      strokeWidth={1.5}
-                      className="text-[var(--color-brand-400)] opacity-60"
-                    />
-                  </span>
-                </Tooltip>
+                  <Gem
+                    size={10}
+                    strokeWidth={1.5}
+                    className="text-[var(--color-brand-400)] opacity-60"
+                  />
+                </RefinementGemTrigger>
               )}
             </span>
           </td>
@@ -476,8 +485,22 @@ export const TicketRow = memo(forwardRef<HTMLTableRowElement, TicketRowBaseProps
         );
       case "assignee":
         return (
-          <td key={id} className="overflow-hidden py-2 pr-3">
-            <Avatar assignee={ticket.assignee} size={18} />
+          <td
+            key={id}
+            className="overflow-hidden py-2 pr-3"
+            onPointerDown={(e) => e.stopPropagation()}
+            onClick={(e) => e.stopPropagation()}
+          >
+            {!isRemoved && onAssigneeChange ? (
+              <AssigneePicker
+                value={ticket.assignee ?? null}
+                onChange={(u) => onAssigneeChange(ticket.key, u)}
+                variant="avatar"
+                avatarSize={18}
+              />
+            ) : (
+              <Avatar assignee={ticket.assignee} size={18} />
+            )}
           </td>
         );
       case "flagged":

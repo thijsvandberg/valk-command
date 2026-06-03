@@ -4,6 +4,9 @@ import { useRefinementSessions } from "@/hooks/useRefinementSessions";
 export interface TicketSessionEntry {
   id: string;
   name: string;
+  /** Full member list of the session, so the gem hover card can list siblings without a refetch. */
+  ticketKeys: string[];
+  ticketCount: number;
 }
 
 /**
@@ -19,7 +22,13 @@ export function useTicketSessionMap() {
       if (session.status === "completed") continue;
       for (const key of session.ticketKeys) {
         const existing = map.get(key);
-        const entry = { id: session.id, name: session.name };
+        // ticketKeys is shared by reference across every member's entry (read-only).
+        const entry: TicketSessionEntry = {
+          id: session.id,
+          name: session.name,
+          ticketKeys: session.ticketKeys,
+          ticketCount: session.ticketCount,
+        };
         if (existing) {
           existing.push(entry);
         } else {

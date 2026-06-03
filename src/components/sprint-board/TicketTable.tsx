@@ -123,6 +123,8 @@ export function TicketTable({
   onPinSprint,
   scrollContainerRef,
   refinementSessionMap,
+  onRemoveFromRefinement,
+  onViewRefinement,
 }: {
   tickets: Ticket[];
   checkedTickets: Set<string>;
@@ -183,8 +185,20 @@ export function TicketTable({
   // When provided, the table uses this as its scroll container (for shared scroll with analytics).
   scrollContainerRef?: React.RefObject<HTMLElement | null>;
   refinementSessionMap?: Map<string, TicketSessionEntry[]>;
+  /** Remove a ticket from a refinement session (from the gem hover card). */
+  onRemoveFromRefinement?: (sessionId: string, ticketKey: string) => void;
+  /** Navigate to a refinement session (from the gem hover card). */
+  onViewRefinement?: (sessionId: string) => void;
 }) {
   const tableContainerRef = useRef<HTMLDivElement>(null);
+
+  // Title lookup for the gem hover card, built from the already-loaded board
+  // tickets so sibling rows show titles without an extra fetch (BRDG-265).
+  const ticketTitleMap = useMemo(() => {
+    const map = new Map<string, string>();
+    for (const t of tickets) map.set(t.key, t.title);
+    return map;
+  }, [tickets]);
 
   // Hoisted pipeline/follow hooks: fetched once instead of per-row
   const { data: followedKeys } = useFollowedTickets();
@@ -313,7 +327,10 @@ export function TicketTable({
     onToggleReviewPopover: handleToggleReviewPopover,
     onRunReview,
     refinementSessions: refinementSessionMap?.get(ticket.key),
-  }), [checkedTickets, selectedTicket, focusedTicketIdx, someChecked, activeDragId, visibleTags, hideEpic, showSprint, sprintNameMap, poStatuses, readinessMap, inflightKeys, contextMenuKeys, onSelectTicket, onRowContextMenu, handleCheckboxClick, onPoStatusChange, onReadinessChange, onBusinessValueChange, onStoryPointsChange, onJiraStatusChange, onIssueTypeChange, onTitleChange, onAssigneeChange, onEpicChange, onSprintChange, sprints, onCloseSubtasks, editingTitleKey, reviewPopoverKey, handleToggleReviewPopover, onRunReview, followedKeys, followTicket, unfollowTicket, lastDeployedMap, healthMap, refinementSessionMap]);
+    ticketTitleMap,
+    onRemoveFromRefinement,
+    onViewRefinement,
+  }), [checkedTickets, selectedTicket, focusedTicketIdx, someChecked, activeDragId, visibleTags, hideEpic, showSprint, sprintNameMap, poStatuses, readinessMap, inflightKeys, contextMenuKeys, onSelectTicket, onRowContextMenu, handleCheckboxClick, onPoStatusChange, onReadinessChange, onBusinessValueChange, onStoryPointsChange, onJiraStatusChange, onIssueTypeChange, onTitleChange, onAssigneeChange, onEpicChange, onSprintChange, sprints, onCloseSubtasks, editingTitleKey, reviewPopoverKey, handleToggleReviewPopover, onRunReview, followedKeys, followTicket, unfollowTicket, lastDeployedMap, healthMap, refinementSessionMap, ticketTitleMap, onRemoveFromRefinement, onViewRefinement]);
 
   const virtualizedTable = (
     <table className="w-full table-fixed border-collapse text-body-lg">
