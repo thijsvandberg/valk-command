@@ -12,7 +12,7 @@ import { IssueTypeIcon } from "@/components/shared/IssueTypeIcon";
 import { Avatar } from "@/components/shared/Avatar";
 import { Flag, MessageSquare, Star, Rocket, GitBranch, Pencil, Check, X, Gem } from "lucide-react";
 import type { TicketSessionEntry } from "@/hooks/useTicketSessionMap";
-import { RefinementGemTrigger } from "@/components/sprint-board/RefinementGemHoverCard";
+import { RefinementGemTrigger, type RefinementCardTicketInfo } from "@/components/sprint-board/RefinementGemHoverCard";
 import type { PipelineHealthEntry, LastDeployedInfo } from "@/hooks/usePipelines";
 import { useSortable } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
@@ -73,8 +73,8 @@ export interface TicketRowBaseProps {
   reviewPopoverKey?: string | null;
   onToggleReviewPopover?: (key: string) => void;
   refinementSessions?: TicketSessionEntry[];
-  /** Titles for sibling tickets in the gem hover card, from already-loaded board data. */
-  ticketTitleMap?: Map<string, string>;
+  /** Sibling ticket detail for the gem hover card pills, from already-loaded board data. */
+  ticketInfoMap?: Map<string, RefinementCardTicketInfo>;
   onRemoveFromRefinement?: (sessionId: string, ticketKey: string) => void;
   onViewRefinement?: (sessionId: string) => void;
   columnOrder?: ColumnId[];
@@ -127,7 +127,7 @@ export const TicketRow = memo(forwardRef<HTMLTableRowElement, TicketRowBaseProps
     reviewPopoverKey = null,
     onToggleReviewPopover,
     refinementSessions,
-    ticketTitleMap,
+    ticketInfoMap,
     onRemoveFromRefinement,
     onViewRefinement,
     columnOrder,
@@ -312,7 +312,7 @@ export const TicketRow = memo(forwardRef<HTMLTableRowElement, TicketRowBaseProps
                 <RefinementGemTrigger
                   sessions={refinementSessions}
                   currentKey={ticket.key}
-                  ticketTitleMap={ticketTitleMap}
+                  ticketInfoMap={ticketInfoMap}
                   onRemoveFromRefinement={onRemoveFromRefinement}
                   onViewRefinement={onViewRefinement}
                 >

@@ -12,34 +12,33 @@ import { createPortal } from "react-dom";
 import { Gem, X, ArrowRight } from "lucide-react";
 import { useOutsideClick } from "@/hooks/useOutsideClick";
 import type { TicketSessionEntry } from "@/hooks/useTicketSessionMap";
+import { TicketStatusPill } from "@/components/shared/TicketStatusPill";
+import { Button } from "@/components/ui/Button";
+import type { IssueType, JiraStatus, TicketReadiness } from "@/types/ticket";
 
 // Past this many members we cap the visible rows and surface a "+N more" link
 // to the session, rather than silently truncating the list.
 const MAX_VISIBLE_ROWS = 8;
 
+const CARD_WIDTH = 480;
+
+/** Just enough of a sibling ticket to paint the list-variant pill, from already-loaded board data. */
+export interface RefinementCardTicketInfo {
+  title: string;
+  type: IssueType;
+  jiraStatus: JiraStatus;
+  readiness: TicketReadiness | null;
+}
+
 interface CardActions {
   /** The ticket whose gem opened the card (highlighted in each section). */
   currentKey: string;
-  /** Resolve a sibling ticket title from already-loaded board data (key-only fallback). */
-  ticketTitleMap?: Map<string, string>;
+  /** Resolve sibling ticket detail from already-loaded board data (key-only fallback). */
+  ticketInfoMap?: Map<string, RefinementCardTicketInfo>;
   /** Remove a ticket from a session (optimistic PATCH lives in the parent). */
   onRemoveFromRefinement?: (sessionId: string, ticketKey: string) => void;
   /** Navigate to a refinement session (client-side router lives in the parent). */
   onViewRefinement?: (sessionId: string) => void;
-}
-
-function KeyPill({ k, current }: { k: string; current: boolean }) {
-  return (
-    <span
-      className={`shrink-0 rounded px-1.5 py-0.5 font-mono text-[11px] font-medium tabular-nums ${
-        current
-          ? "bg-[var(--color-brand-500)]/20 text-[var(--color-brand-300)] ring-1 ring-[var(--color-brand-400)]/40"
-          : "bg-overlay-default text-text-tertiary"
-      }`}
-    >
-      {k}
-    </span>
-  );
 }
 
 function stop(e: React.SyntheticEvent) {
@@ -49,7 +48,7 @@ function stop(e: React.SyntheticEvent) {
 function SessionSection({
   session,
   currentKey,
-  ticketTitleMap,
+  ticketInfoMap,
   onRemoveFromRefinement,
   onViewRefinement,
 }: { session: TicketSessionEntry } & CardActions) {
@@ -69,16 +68,28 @@ function SessionSection({
       <ul className="max-h-[260px] overflow-y-auto pb-1">
         {visible.map((key) => {
           const current = key === currentKey;
-          const title = ticketTitleMap?.get(key);
+          const info = ticketInfoMap?.get(key);
           return (
             <li
               key={key}
               className={`group/refrow flex items-center gap-2 px-3 py-1.5 ${current ? "bg-[var(--color-brand-500)]/[0.06]" : "hover:bg-overlay-subtle"} [transition:background-color_.15s_ease]`}
             >
-              <KeyPill k={key} current={current} />
-              <span className="min-w-0 flex-1 truncate text-[12px] text-text-secondary">
-                {title ?? <span className="text-text-muted">{key}</span>}
+              <span className="shrink-0" onPointerDown={stop} onClick={stop}>
+                <TicketStatusPill
+                  ticketKey={key}
+                  jiraStatus={info?.jiraStatus ?? "TO DO"}
+                  issueType={info?.type}
+                  title={info?.title}
+                  readiness={info?.readiness ?? null}
+                  variant="list"
+                  size="sm"
+                  showStatus={!!info}
+                  showReadiness={!!info}
+                />
               </span>
+              {info?.title && (
+                <span className="min-w-0 flex-1 truncate text-[12px] text-text-secondary">{info.title}</span>
+              )}
               {onRemoveFromRefinement && (
                 <button
                   type="button"
@@ -88,7 +99,7 @@ function SessionSection({
                     onRemoveFromRefinement(session.id, key);
                   }}
                   aria-label={`Remove ${key} from ${session.name}`}
-                  className="shrink-0 cursor-pointer rounded p-0.5 text-text-muted opacity-0 hover:bg-overlay-strong hover:text-rose-400 focus-visible:opacity-100 focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-[var(--color-brand-400)] group-hover/refrow:opacity-100 [transition:opacity_.12s_ease,color_.12s_ease,background-color_.12s_ease]"
+                  className="ml-auto shrink-0 cursor-pointer rounded p-0.5 text-text-muted opacity-0 hover:bg-overlay-strong hover:text-rose-400 focus-visible:opacity-100 focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-[var(--color-brand-400)] group-hover/refrow:opacity-100 [transition:opacity_.12s_ease,color_.12s_ease,background-color_.12s_ease]"
                 >
                   <X size={13} />
                 </button>
@@ -117,22 +128,19 @@ function SessionSection({
         )}
       </ul>
 
-      <div className="flex items-center justify-end px-1.5 py-1.5">
-        <a
-          href={href}
+      <div className="flex items-center justify-end px-2 py-2">
+        <Button
+          variant="secondary"
+          size="sm"
           onPointerDown={stop}
           onClick={(e) => {
             stop(e);
-            if (onViewRefinement) {
-              e.preventDefault();
-              onViewRefinement(session.id);
-            }
+            onViewRefinement?.(session.id);
           }}
-          className="flex cursor-pointer items-center gap-1.5 rounded-lg bg-[var(--color-brand-500)] px-3 py-2 text-[12px] font-semibold text-white hover:bg-[var(--color-brand-400)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)] [transition:background-color_.15s_ease]"
         >
           View refinement
-          <ArrowRight size={14} />
-        </a>
+          <ArrowRight size={13} />
+        </Button>
       </div>
     </div>
   );
@@ -167,7 +175,6 @@ function HoverCard({
     const spaceBelow = window.innerHeight - rect.bottom;
     const openUp = spaceBelow < 280;
     // Right-align the card to the trigger so a card wider than the gem stays on screen.
-    const CARD_WIDTH = 440;
     const left = Math.max(8, Math.min(rect.right - CARD_WIDTH, window.innerWidth - CARD_WIDTH - 8));
     setPos({ left, top: openUp ? rect.top - 6 : rect.bottom + 6, openUp });
   }, [triggerRef]);
@@ -199,8 +206,9 @@ function HoverCard({
       onMouseLeave={onMouseLeave}
       onPointerDown={stop}
       onClick={stop}
-      className="fixed z-[9999] w-[440px] overflow-hidden rounded-xl border border-border-strong bg-[var(--color-surface-floating)] text-left normal-case tracking-normal shadow-[var(--shadow-popover)] [transition:opacity_.15s_ease,transform_.15s_ease]"
+      className="fixed z-[9999] overflow-hidden rounded-xl border border-border-strong bg-[var(--color-surface-floating)] text-left normal-case tracking-normal shadow-[var(--shadow-popover)] [transition:opacity_.15s_ease,transform_.15s_ease]"
       style={{
+        width: CARD_WIDTH,
         left: pos.left,
         ...(pos.openUp ? { bottom: window.innerHeight - pos.top } : { top: pos.top }),
         opacity: shown ? 1 : 0,

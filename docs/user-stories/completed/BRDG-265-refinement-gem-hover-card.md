@@ -38,8 +38,11 @@ ticket belongs to. Each section has:
 
 - A **header**: the gem + the session name + a right-aligned item **count** (e.g. "5 items").
   The header is a plain title (it is *not* the open affordance; see req. 4).
-- The **list of items (tickets)** in that session: ticket key pill + title (truncated), with the
-  hovered ticket clearly highlighted (brand-tinted row + accented key pill).
+- The **list of items (tickets)** in that session: the **list-variant `TicketStatusPill`**
+  (issue-type icon + key + status + readiness segment, matching the sprint-board row pill) followed
+  by the title (truncated), with the hovered ticket's row brand-tinted. Pill data (incl. readiness)
+  is threaded from already-loaded board tickets (`ticketInfoMap`); off-board siblings fall back to a
+  key-only pill. Card width is ~480px.
 - If the list is long, cap the visible rows (e.g. show first N) and indicate the remainder
   ("+3 more"), linking to the session for the full view. Log/note the cap rather than silently
   truncating.
@@ -56,9 +59,11 @@ ticket belongs to. Each section has:
 
 ### 4. View / link to the refinement
 
-- Each session section has a primary **"View refinement"** button (filled, brand-coloured,
-  with a trailing arrow) that navigates to `/refinement/{id}`. This is the clear, deliberate
-  open action (the subtle header-link affordance tested poorly).
+- Each session section has a **"View refinement"** button (the shared `Button` `secondary` variant —
+  a neutral, low-emphasis button used elsewhere in the app — with a trailing arrow) that navigates
+  to `/refinement/{id}`. This is the clear, deliberate open action (the subtle header-link affordance
+  tested poorly; a filled brand button and then a brand-tinted `soft` button both read as too
+  prominent, so the neutral `secondary` was chosen).
 - Where a long list is capped, the "+N more" affordance also links to `/refinement/{id}`.
 - Navigation uses the app router (client-side), matching how `TicketMetaContent` and the
   add-to-refinement toast already link to sessions.

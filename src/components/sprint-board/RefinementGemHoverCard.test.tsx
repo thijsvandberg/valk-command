@@ -1,7 +1,11 @@
 import { render, screen, fireEvent, act } from "@testing-library/react";
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
-import { RefinementGemTrigger } from "./RefinementGemHoverCard";
+import { RefinementGemTrigger, type RefinementCardTicketInfo } from "./RefinementGemHoverCard";
 import type { TicketSessionEntry } from "@/hooks/useTicketSessionMap";
+
+vi.mock("next/navigation", () => ({
+  usePathname: vi.fn(() => "/sprint-board"),
+}));
 
 function session(over: Partial<TicketSessionEntry> = {}): TicketSessionEntry {
   const ticketKeys = over.ticketKeys ?? ["VPL-482", "VPL-483", "VPL-484"];
@@ -14,9 +18,9 @@ function session(over: Partial<TicketSessionEntry> = {}): TicketSessionEntry {
   };
 }
 
-const TITLES = new Map<string, string>([
-  ["VPL-482", "Hold inventory on quote"],
-  ["VPL-483", "Deposit and payment split"],
+const INFO = new Map<string, RefinementCardTicketInfo>([
+  ["VPL-482", { title: "Hold inventory on quote", type: "story", jiraStatus: "TO DO", readiness: "ready_to_refine" }],
+  ["VPL-483", { title: "Deposit and payment split", type: "story", jiraStatus: "TO DO", readiness: null }],
 ]);
 
 function renderTrigger(props: Partial<React.ComponentProps<typeof RefinementGemTrigger>> = {}) {
@@ -24,7 +28,7 @@ function renderTrigger(props: Partial<React.ComponentProps<typeof RefinementGemT
     <RefinementGemTrigger
       sessions={[session()]}
       currentKey="VPL-482"
-      ticketTitleMap={TITLES}
+      ticketInfoMap={INFO}
       {...props}
     >
       <span data-testid="gem">gem</span>
@@ -57,10 +61,10 @@ describe("RefinementGemTrigger", () => {
 
     expect(screen.getByText("In refinement: 2026-06-02")).toBeInTheDocument();
     expect(screen.getByText("3 items")).toBeInTheDocument();
-    // Titles from the map, key-only fallback otherwise.
+    // Title shown next to the standard pill when board data resolves it.
     expect(screen.getByText("Hold inventory on quote")).toBeInTheDocument();
-    // No title in the map -> the key appears twice: once in the pill, once as the fallback label.
-    expect(screen.getAllByText("VPL-484")).toHaveLength(2);
+    // No board info for VPL-484 -> the pill still renders the key (once), no title text.
+    expect(screen.getAllByText("VPL-484")).toHaveLength(1);
   });
 
   it("opens on keyboard focus too", () => {
@@ -112,13 +116,11 @@ describe("RefinementGemTrigger", () => {
     expect(onRemove).toHaveBeenCalledWith("s1", "VPL-483");
   });
 
-  it("renders View refinement linking to the session and calls onViewRefinement", () => {
+  it("calls onViewRefinement from the View refinement button", () => {
     const onView = vi.fn();
     const { trigger } = renderTrigger({ onViewRefinement: onView });
     open(trigger);
-    const link = screen.getByText("View refinement").closest("a")!;
-    expect(link.getAttribute("href")).toBe("/refinement/s1");
-    fireEvent.click(link);
+    fireEvent.click(screen.getByRole("button", { name: /view refinement/i }));
     expect(onView).toHaveBeenCalledWith("s1");
   });
 

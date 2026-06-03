@@ -29,6 +29,7 @@ import {
 import { useVirtualizer } from "@tanstack/react-virtual";
 import { BoardRow, SortableBoardRow } from "@/components/sprint-board/BoardRow";
 import type { TicketSessionEntry } from "@/hooks/useTicketSessionMap";
+import type { RefinementCardTicketInfo } from "@/components/sprint-board/RefinementGemHoverCard";
 import { useFollowedTickets, useFollowTicket, useLastDeployed, usePipelineHealth } from "@/hooks/usePipelines";
 import { POStatusCell, QualityBadge, POStatusIcon, EditStateDot, getJiraUrl } from "@/components/sprint-board/TicketTableCells";
 
@@ -192,13 +193,20 @@ export function TicketTable({
 }) {
   const tableContainerRef = useRef<HTMLDivElement>(null);
 
-  // Title lookup for the gem hover card, built from the already-loaded board
-  // tickets so sibling rows show titles without an extra fetch (BRDG-265).
-  const ticketTitleMap = useMemo(() => {
-    const map = new Map<string, string>();
-    for (const t of tickets) map.set(t.key, t.title);
+  // Sibling lookup for the gem hover card, built from the already-loaded board
+  // tickets so its pills paint without an extra fetch (BRDG-265).
+  const ticketInfoMap = useMemo(() => {
+    const map = new Map<string, RefinementCardTicketInfo>();
+    for (const t of tickets) {
+      map.set(t.key, {
+        title: t.title,
+        type: t.type,
+        jiraStatus: t.jiraStatus,
+        readiness: readinessMap?.[t.key] ?? null,
+      });
+    }
     return map;
-  }, [tickets]);
+  }, [tickets, readinessMap]);
 
   // Hoisted pipeline/follow hooks: fetched once instead of per-row
   const { data: followedKeys } = useFollowedTickets();
@@ -327,10 +335,10 @@ export function TicketTable({
     onToggleReviewPopover: handleToggleReviewPopover,
     onRunReview,
     refinementSessions: refinementSessionMap?.get(ticket.key),
-    ticketTitleMap,
+    ticketInfoMap,
     onRemoveFromRefinement,
     onViewRefinement,
-  }), [checkedTickets, selectedTicket, focusedTicketIdx, someChecked, activeDragId, visibleTags, hideEpic, showSprint, sprintNameMap, poStatuses, readinessMap, inflightKeys, contextMenuKeys, onSelectTicket, onRowContextMenu, handleCheckboxClick, onPoStatusChange, onReadinessChange, onBusinessValueChange, onStoryPointsChange, onJiraStatusChange, onIssueTypeChange, onTitleChange, onAssigneeChange, onEpicChange, onSprintChange, sprints, onCloseSubtasks, editingTitleKey, reviewPopoverKey, handleToggleReviewPopover, onRunReview, followedKeys, followTicket, unfollowTicket, lastDeployedMap, healthMap, refinementSessionMap, ticketTitleMap, onRemoveFromRefinement, onViewRefinement]);
+  }), [checkedTickets, selectedTicket, focusedTicketIdx, someChecked, activeDragId, visibleTags, hideEpic, showSprint, sprintNameMap, poStatuses, readinessMap, inflightKeys, contextMenuKeys, onSelectTicket, onRowContextMenu, handleCheckboxClick, onPoStatusChange, onReadinessChange, onBusinessValueChange, onStoryPointsChange, onJiraStatusChange, onIssueTypeChange, onTitleChange, onAssigneeChange, onEpicChange, onSprintChange, sprints, onCloseSubtasks, editingTitleKey, reviewPopoverKey, handleToggleReviewPopover, onRunReview, followedKeys, followTicket, unfollowTicket, lastDeployedMap, healthMap, refinementSessionMap, ticketInfoMap, onRemoveFromRefinement, onViewRefinement]);
 
   const virtualizedTable = (
     <table className="w-full table-fixed border-collapse text-body-lg">
