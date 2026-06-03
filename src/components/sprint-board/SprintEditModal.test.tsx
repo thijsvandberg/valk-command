@@ -117,6 +117,9 @@ describe("SprintEditModal", () => {
         expect.objectContaining({ goal: "New sprint goal" }),
       );
     });
+    await waitFor(() => {
+      expect(onClose).toHaveBeenCalled();
+    });
   });
 
   it("saves updated sprint name to Jira", async () => {

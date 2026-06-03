@@ -185,9 +185,10 @@ export function SprintEditModal({ sprint, tickets, onClose, showToast, autoSugge
       }
 
       await jira.updateSprint(sprint.id, fields);
-      await mutate("/api/jira/sprints");
       showToast("Sprint updated");
       onClose();
+      // Revalidate in the background; a failed/slow refetch must not keep the modal open.
+      void mutate("/api/jira/sprints");
     } catch (err) {
       const msg = err instanceof Error ? err.message : "Failed to update sprint";
       showToast(msg);
