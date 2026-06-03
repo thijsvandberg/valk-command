@@ -9,6 +9,7 @@ import { IssueTypeIcon } from "@/components/shared/IssueTypeIcon";
 import { EmptyState } from "@/components/shared/EmptyState";
 import { Sheet, Inbox } from "lucide-react";
 import { GroupStatBar } from "@/components/sprint-board/GroupStatBar";
+import { GroupCard, GROUP_CARD_CLASS } from "@/components/sprint-board/GroupCard";
 import type { TicketGroup, GroupByOption } from "@/components/sprint-board/useGroupBy";
 import {
   DndContext,
@@ -44,10 +45,9 @@ const NOOP = () => {};
 // rows span exactly one column (BRDG-239).
 const TOTAL_COLSPAN = 1;
 
-// Elevated surface for the list (single card when ungrouped, one card per group when grouped),
-// sitting on the recessed base background (BRDG-239).
-const CARD_CLASS = "overflow-hidden rounded-xl border border-[var(--color-border-default)] bg-[var(--color-surface-elevated)]";
-const CARD_SHADOW = "0 8px 24px -14px rgba(0,0,0,0.30), 0 2px 6px -2px rgba(0,0,0,0.09)";
+// Elevated surface for the ungrouped list. Grouped cards use the shared GroupCard
+// component so the board and the epic "By sprint" view stay visually in sync.
+const CARD_CLASS = GROUP_CARD_CLASS;
 
 // Droppable zone rendered inside empty sprint groups during an active drag.
 function DroppableGroupZone({ groupKey }: { groupKey: string }) {
@@ -503,13 +503,11 @@ export function TicketTable({
         ) : ticketRows;
 
         return (
-          <div key={group.key} className={CARD_CLASS} style={{ boxShadow: CARD_SHADOW }}>
-            {/* Group header — the card's top section; only divides from rows when expanded. */}
-            <div
-              className={`group/grouprow flex cursor-pointer select-none items-center py-2 pl-4 pr-4 ${isCollapsed ? "" : "border-b border-border-strong"}`}
-              style={{ background: "var(--color-overlay-subtle)" }}
-              onClick={() => onToggleCollapse?.(group.key)}
-            >
+          <GroupCard
+            key={group.key}
+            isCollapsed={isCollapsed}
+            onToggleCollapse={() => onToggleCollapse?.(group.key)}
+            header={
               <GroupStatBar
                 tickets={group.tickets}
                 label={group.label}
@@ -533,13 +531,12 @@ export function TicketTable({
                     }
                   : {})}
               />
-            </div>
-            {!isCollapsed && (
-              <table className="w-full table-fixed border-collapse text-body-lg">
-                <tbody>{groupRows}</tbody>
-              </table>
-            )}
-          </div>
+            }
+          >
+            <table className="w-full table-fixed border-collapse text-body-lg">
+              <tbody>{groupRows}</tbody>
+            </table>
+          </GroupCard>
         );
       })}
     </div>
@@ -555,7 +552,7 @@ export function TicketTable({
       onKeyDown={onTableKeyDown}
     >
       {isGrouped ? groupedTable : (tickets.length > 0 && (
-        <div className={CARD_CLASS} style={{ boxShadow: CARD_SHADOW }}>
+        <div className={CARD_CLASS}>
           {enableVirtualization ? virtualizedTable : ((externalDnd || onReorder) ? dndTable : plainTable)}
         </div>
       ))}

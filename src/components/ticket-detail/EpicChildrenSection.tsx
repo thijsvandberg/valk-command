@@ -30,11 +30,12 @@ const EPIC_CHILD_FIELDS = [
   { id: "assignee", label: "assignees" },
   { id: "status", label: "status" },
   { id: "storyPoints", label: "story points" },
+  { id: "businessValue", label: "business value" },
   { id: "sprint", label: "sprint" },
   { id: "subtaskCount", label: "subtask count" },
 ];
 
-const DEFAULT_VISIBLE = ["issueKey", "status", "storyPoints", "sprint", "subtaskCount"];
+const DEFAULT_VISIBLE = ["issueKey", "status", "storyPoints", "businessValue", "sprint", "subtaskCount"];
 
 interface SearchResult {
   key: string;
@@ -300,12 +301,17 @@ export function EpicChildrenSection({
   }, [onMutate]);
 
   // --- Render metadata slot for a child issue ---
-  function renderMetadata(child: EpicChild | Subtask) {
+  // hideSprint drops the sprint pill where the surrounding group already names the
+  // sprint (the by-sprint view), avoiding a redundant per-row badge.
+  function renderMetadata(child: EpicChild | Subtask, hideSprint = false) {
     const epic = isEpicChild(child) ? child : null;
     return (
       <>
         {visibleFields.has("storyPoints") && epic?.storyPoints != null && (
           <span className="shrink-0"><MetricBadge metric="sp" value={epic.storyPoints} tinted size="xs" /></span>
+        )}
+        {visibleFields.has("businessValue") && epic?.businessValue != null && epic.businessValue >= 1 && (
+          <span className="shrink-0"><MetricBadge metric="bv" value={epic.businessValue} tinted size="xs" /></span>
         )}
         {visibleFields.has("subtaskCount") && epic && epic.subtaskCount > 0 && (
           <Tooltip content={`${epic.subtaskCount} subtask${epic.subtaskCount === 1 ? "" : "s"}`}>
@@ -315,7 +321,7 @@ export function EpicChildrenSection({
             </span>
           </Tooltip>
         )}
-        {visibleFields.has("sprint") && epic?.sprintName && (
+        {!hideSprint && visibleFields.has("sprint") && epic?.sprintName && (
           <Tooltip content={epic.sprintName}>
             <span className="shrink-0 max-w-[100px] truncate rounded-md bg-overlay-subtle px-1.5 py-0.5 text-[10px] font-medium text-text-muted">
               {epic.sprintName}

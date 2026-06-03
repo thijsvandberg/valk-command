@@ -163,6 +163,7 @@ export interface Subtask {
 
 export interface EpicChild extends Subtask {
   storyPoints: number | null;
+  businessValue: number | null;
   sprintName: string | null;
   subtaskCount: number;
   readiness: TicketReadiness | null;

@@ -20,6 +20,8 @@ export interface GroupStatBarProps {
   onToggleCollapse?: () => void;
   /** Show only a colored dot + count for status pills, no label text */
   showDot?: boolean;
+  /** When false, the per-status (TO DO / IN PROGRESS / TEST / DONE) count pills are hidden. */
+  showStatusCounts?: boolean;
   /** When provided, renders a pin toggle next to the label (used to pin a sprint group to the tab bar). */
   onPin?: () => void;
   isPinned?: boolean;
@@ -37,6 +39,7 @@ export const GroupStatBar = memo(function GroupStatBar({
   isCollapsed,
   onToggleCollapse,
   showDot = false,
+  showStatusCounts = true,
   onPin,
   isPinned = false,
   pinDisabled = false,
@@ -146,7 +149,7 @@ export const GroupStatBar = memo(function GroupStatBar({
           </StatPill>
         </Tooltip>
       )}
-      {todoCount > 0 && (
+      {showStatusCounts && todoCount > 0 && (
         <StatusPill
           size="sm"
           colorKey="TO DO"
@@ -157,7 +160,7 @@ export const GroupStatBar = memo(function GroupStatBar({
           onClick={onFilterChange ? (e) => { e.stopPropagation(); toggle("todo"); } : undefined}
         />
       )}
-      {inProgressCount > 0 && (
+      {showStatusCounts && inProgressCount > 0 && (
         <StatusPill
           size="sm"
           colorKey="IN PROGRESS"
@@ -168,7 +171,7 @@ export const GroupStatBar = memo(function GroupStatBar({
           onClick={onFilterChange ? (e) => { e.stopPropagation(); toggle("in-progress"); } : undefined}
         />
       )}
-      {testCount > 0 && (
+      {showStatusCounts && testCount > 0 && (
         <StatusPill
           size="sm"
           colorKey="TEST"
@@ -179,7 +182,7 @@ export const GroupStatBar = memo(function GroupStatBar({
           onClick={onFilterChange ? (e) => { e.stopPropagation(); toggle("test"); } : undefined}
         />
       )}
-      {doneCount > 0 && (
+      {showStatusCounts && doneCount > 0 && (
         <StatusPill
           size="sm"
           colorKey="DONE"

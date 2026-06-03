@@ -37,9 +37,9 @@ vi.mock("@/lib/api-client", () => ({
 }));
 
 const SAMPLE_CHILDREN: EpicChild[] = [
-  { key: "VPL-10", title: "First story", type: "story", jiraStatus: "TO DO", assignee: null, storyPoints: 3, sprintName: "Sprint 1", subtaskCount: 2, readiness: null },
-  { key: "VPL-11", title: "Second task", type: "task", jiraStatus: "IN PROGRESS", assignee: null, storyPoints: null, sprintName: null, subtaskCount: 0, readiness: "drafting" },
-  { key: "VPL-12", title: "Done story", type: "story", jiraStatus: "DONE", assignee: null, storyPoints: 5, sprintName: "Sprint 1", subtaskCount: 1, readiness: null },
+  { key: "VPL-10", title: "First story", type: "story", jiraStatus: "TO DO", assignee: null, storyPoints: 3, businessValue: 7, sprintName: "Sprint 1", subtaskCount: 2, readiness: null },
+  { key: "VPL-11", title: "Second task", type: "task", jiraStatus: "IN PROGRESS", assignee: null, storyPoints: null, businessValue: null, sprintName: null, subtaskCount: 0, readiness: "drafting" },
+  { key: "VPL-12", title: "Done story", type: "story", jiraStatus: "DONE", assignee: null, storyPoints: 5, businessValue: 6, sprintName: "Sprint 1", subtaskCount: 1, readiness: null },
 ];
 
 function renderSection(items: EpicChild[] = []) {
@@ -254,6 +254,12 @@ describe("EpicChildrenSection", () => {
       const badges = screen.getAllByText("2");
       expect(badges.length).toBeGreaterThanOrEqual(1);
     });
+
+    it("shows business value for children that have it", () => {
+      renderSection(SAMPLE_CHILDREN);
+      expect(screen.getByLabelText("Business Value: 7")).toBeInTheDocument();
+      expect(screen.getByLabelText("Business Value: 6")).toBeInTheDocument();
+    });
   });
 
   describe("link existing (search mode)", () => {
@@ -426,8 +432,8 @@ describe("EpicChildrenSection", () => {
 
     it("orders sprint groups closed -> active (chronological)", async () => {
       const children: EpicChild[] = [
-        { key: "VPL-20", title: "Active item", type: "story", jiraStatus: "TO DO", assignee: null, storyPoints: 1, sprintName: "Sprint 1", subtaskCount: 0, readiness: null },
-        { key: "VPL-21", title: "Closed item", type: "story", jiraStatus: "DONE", assignee: null, storyPoints: 2, sprintName: "Sprint 2", subtaskCount: 0, readiness: null },
+        { key: "VPL-20", title: "Active item", type: "story", jiraStatus: "TO DO", assignee: null, storyPoints: 1, businessValue: 4, sprintName: "Sprint 1", subtaskCount: 0, readiness: null },
+        { key: "VPL-21", title: "Closed item", type: "story", jiraStatus: "DONE", assignee: null, storyPoints: 2, businessValue: 6, sprintName: "Sprint 2", subtaskCount: 0, readiness: null },
       ];
       renderSection(children);
       switchToSprintView();
@@ -464,6 +470,17 @@ describe("EpicChildrenSection", () => {
 
       expect(screen.queryByText("VPL-10")).not.toBeInTheDocument();
       expect(screen.queryByText("VPL-12")).not.toBeInTheDocument();
+    });
+
+    it("does not repeat the sprint name as a per-row pill in the by-sprint view", () => {
+      renderSection(SAMPLE_CHILDREN);
+      // List view: "Sprint 1" shows as a pill on each of the two Sprint 1 rows.
+      expect(screen.getAllByText("Sprint 1")).toHaveLength(2);
+
+      switchToSprintView();
+
+      // By-sprint view: "Sprint 1" appears only once, as the group header label.
+      expect(screen.getAllByText("Sprint 1")).toHaveLength(1);
     });
 
     it("keeps the create child input available in sprint view", () => {

@@ -3,6 +3,7 @@
 import { useCallback, type ReactNode } from "react";
 import type { EpicChild, Subtask, Sprint, Ticket, JiraStatus, TicketReadiness } from "@/types/ticket";
 import { GroupStatBar } from "@/components/sprint-board/GroupStatBar";
+import { GroupCard } from "@/components/sprint-board/GroupCard";
 import { ChildIssueRow } from "./ChildIssueRow";
 import { groupChildrenBySprint } from "@/lib/epic-children-grouping";
 import { useSessionStorage } from "@/hooks/useSessionStorage";
@@ -16,7 +17,8 @@ interface EpicChildrenBySprintProps {
   /** Epic key, namespaces the per-session collapse state so epics do not collide. */
   ticketKey: string;
   visibleFields: Set<string>;
-  renderMetadata: (child: EpicChild | Subtask) => ReactNode;
+  /** The sprint group already labels the sprint, so the per-row pill is suppressed. */
+  renderMetadata: (child: EpicChild | Subtask, hideSprint?: boolean) => ReactNode;
   onJiraStatusChange: (childKey: string, status: JiraStatus) => void;
   onReadinessChange: (childKey: string, readiness: TicketReadiness | null) => void;
   onSelect?: (key: string) => void;
@@ -33,7 +35,7 @@ function toStatTicket(child: EpicChild | Subtask): Ticket {
   const epic = isEpicChild(child) ? child : null;
   return {
     storyPoints: epic?.storyPoints ?? null,
-    businessValue: null,
+    businessValue: epic?.businessValue ?? null,
     jiraStatus: child.jiraStatus,
     type: child.type,
   } as unknown as Ticket;
@@ -85,65 +87,58 @@ export function EpicChildrenBySprint({
         const isCollapsed = !!collapsed[group.key];
         const isUnscheduled = group.sprintName === null;
         return (
-          <div
+          <GroupCard
             key={group.key}
-            className="overflow-hidden rounded-xl border border-border-subtle bg-[var(--color-surface-elevated)] shadow-[var(--shadow-sm)]"
-          >
-            <div
-              onClick={() => toggle(group.key)}
-              className={`group/grouprow flex cursor-pointer items-center gap-3 bg-[var(--color-surface-chrome)]/30 px-3 py-2.5 hover:bg-[var(--color-surface-chrome)]/50 [transition:background-color_.12s_ease] ${
-                isCollapsed ? "" : "border-b border-border-subtle"
-              }`}
-            >
-              <div className="min-w-0 flex-1">
-                <GroupStatBar
-                  tickets={group.items.map(toStatTicket)}
-                  label={group.label}
-                  isActive={group.isActive}
-                  isCollapsed={isCollapsed}
-                  onToggleCollapse={() => toggle(group.key)}
-                  leadingIcon={
-                    isUnscheduled
-                      ? <CircleDot size={12} />
-                      : <Zap size={12} style={{ color: "var(--color-icon-sprint)" }} />
-                  }
-                />
-              </div>
-              {(group.state || group.dateRange) && (
-                <div className="flex shrink-0 items-center gap-3">
+            isCollapsed={isCollapsed}
+            onToggleCollapse={() => toggle(group.key)}
+            header={
+              <GroupStatBar
+                tickets={group.items.map(toStatTicket)}
+                label={group.label}
+                isActive={group.isActive}
+                isCollapsed={isCollapsed}
+                onToggleCollapse={() => toggle(group.key)}
+                showStatusCounts={false}
+                leadingIcon={
+                  isUnscheduled
+                    ? <CircleDot size={12} />
+                    : <Zap size={12} style={{ color: "var(--color-icon-sprint)" }} />
+                }
+              />
+            }
+            headerExtras={
+              (group.state || group.dateRange) ? (
+                <>
                   {group.state && <SprintStateChip state={group.state} />}
                   {group.dateRange && (
                     <span className="flex items-center gap-1 text-[11px] text-text-muted">
                       <CalendarRange size={11} strokeWidth={1.5} /> {group.dateRange}
                     </span>
                   )}
-                </div>
-              )}
-            </div>
-            {!isCollapsed && (
-              <div>
-                {group.items.map((child, idx) => {
-                  const epic = isEpicChild(child) ? child : null;
-                  return (
-                    <ChildIssueRow
-                      key={child.key}
-                      item={child}
-                      isLast={idx === group.items.length - 1}
-                      isPending={child.key.startsWith("pending-")}
-                      showTypeIcon
-                      showKey={visibleFields.has("issueKey")}
-                      showStatus={visibleFields.has("status")}
-                      readiness={epic?.readiness}
-                      onJiraStatusChange={(s) => onJiraStatusChange(child.key, s)}
-                      onReadinessChange={(r) => onReadinessChange(child.key, r)}
-                      onSelect={onSelect}
-                      metadataSlot={renderMetadata(child)}
-                    />
-                  );
-                })}
-              </div>
-            )}
-          </div>
+                </>
+              ) : undefined
+            }
+          >
+            {group.items.map((child, idx) => {
+              const epic = isEpicChild(child) ? child : null;
+              return (
+                <ChildIssueRow
+                  key={child.key}
+                  item={child}
+                  isLast={idx === group.items.length - 1}
+                  isPending={child.key.startsWith("pending-")}
+                  showTypeIcon
+                  showKey={visibleFields.has("issueKey")}
+                  showStatus={visibleFields.has("status")}
+                  readiness={epic?.readiness}
+                  onJiraStatusChange={(s) => onJiraStatusChange(child.key, s)}
+                  onReadinessChange={(r) => onReadinessChange(child.key, r)}
+                  onSelect={onSelect}
+                  metadataSlot={renderMetadata(child, true)}
+                />
+              );
+            })}
+          </GroupCard>
         );
       })}
     </div>

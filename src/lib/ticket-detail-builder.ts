@@ -216,6 +216,7 @@ async function resolveEpicChildren(epicChildRows: Awaited<ReturnType<typeof runT
   const subtaskCountMap = new Map<string, number>();
   const sprintIdToName = new Map<string, string>();
   const readinessMap = new Map<string, TicketReadiness | null>();
+  const businessValueMap = new Map<string, number | null>();
 
   if (epicChildKeys.length > 0) {
     const [subtaskCountResult, metaRows] = await Promise.all([
@@ -233,6 +234,7 @@ async function resolveEpicChildren(epicChildRows: Awaited<ReturnType<typeof runT
     }
     for (const row of metaRows) {
       readinessMap.set(row.jiraKey, (row.readiness as TicketReadiness) ?? null);
+      businessValueMap.set(row.jiraKey, row.businessValue ?? null);
     }
 
     const sprintIds = [...new Set(epicChildRows.map((c) => c.sprintName).filter(Boolean))] as string[];
@@ -254,6 +256,7 @@ async function resolveEpicChildren(epicChildRows: Awaited<ReturnType<typeof runT
     jiraStatus: (c.status ?? "TO DO") as JiraStatus,
     assignee: buildAssignee(c.assignee),
     storyPoints: c.storyPoints ?? null,
+    businessValue: businessValueMap.get(c.jiraKey) ?? null,
     sprintName: c.sprintName ? (sprintIdToName.get(c.sprintName) ?? c.sprintName) : null,
     subtaskCount: subtaskCountMap.get(c.jiraKey) ?? 0,
     readiness: readinessMap.get(c.jiraKey) ?? null,

@@ -73,6 +73,17 @@ describe("GroupStatBar", () => {
     expect(screen.getByText(/DONE/)).toBeTruthy();
   });
 
+  it("hides the per-status count pills when showStatusCounts is false", () => {
+    render(<GroupStatBar tickets={TICKETS} showStatusCounts={false} />);
+    expect(screen.queryByText(/TO DO/)).toBeNull();
+    expect(screen.queryByText(/IN PROGRESS/)).toBeNull();
+    expect(screen.queryByText(/TEST/)).toBeNull();
+    expect(screen.queryByText(/DONE/)).toBeNull();
+    // Item count and SP total remain.
+    expect(screen.getByText("5 items")).toBeTruthy();
+    expect(screen.getByLabelText("Story Points: 10")).toBeTruthy();
+  });
+
   it("calls onFilterChange with criterion when clicking an inactive pill", () => {
     const onFilterChange = vi.fn();
     render(<GroupStatBar tickets={TICKETS} onFilterChange={onFilterChange} />);
