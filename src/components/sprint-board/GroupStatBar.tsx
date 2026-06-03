@@ -78,7 +78,7 @@ export const GroupStatBar = memo(function GroupStatBar({
   }
 
   return (
-    <div className="flex items-center gap-2">
+    <div className="flex w-full items-center gap-2">
       {/* Fixed-width label zone so the stats (item count onward) start at the same x
           across every group row, regardless of sprint name length (BRDG-239). */}
       <div className={`flex shrink-0 items-center gap-2 ${label ? "w-48 min-w-0" : ""}`}>
@@ -184,10 +184,21 @@ export const GroupStatBar = memo(function GroupStatBar({
         />
       )}
       {warningLabel && (
-        <Tooltip content={warningLabel}>
+        <Tooltip
+          content={
+            <div className="flex flex-col gap-1.5">
+              {warningParts.map((part) => (
+                <span key={part} className="flex items-center gap-2 whitespace-nowrap">
+                  <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-[var(--color-status-warning)]" aria-hidden />
+                  {part}
+                </span>
+              ))}
+            </div>
+          }
+        >
           <button
             type="button"
-            aria-label={warningLabel}
+            aria-label={warningParts.join("; ")}
             onClick={canFilterUnpointed ? (e) => { e.stopPropagation(); toggle("unpointed"); } : undefined}
             className={`ml-auto flex h-6 w-6 shrink-0 items-center justify-center rounded-md text-[var(--color-status-warning)] focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-[var(--color-brand-400)] ${
               canFilterUnpointed ? "cursor-pointer" : "cursor-default"
