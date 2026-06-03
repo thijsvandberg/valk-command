@@ -235,6 +235,11 @@ export function SidePanel({
     else router.push(`/tickets/${key}`);
   }, [onSelectTicket, router]);
 
+  // Transparent icon buttons keep the header bar light; the boxed "ghost"
+  // Button (persistent bg + border) reads as cluttered when several sit
+  // side by side.
+  const iconBtnClass = "inline-flex h-7 w-7 items-center justify-center rounded-lg text-text-muted cursor-pointer hover:bg-overlay-subtle hover:text-text-secondary focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)] active:scale-[0.97] transition-colors duration-150";
+
   // The shared meta panel (identical to the full ticket page's sidebar). In
   // stacked mode it renders bare and is injected under the Content tab; in
   // column mode it is wrapped in the resizable/collapsible shell below.
@@ -393,17 +398,17 @@ export function SidePanel({
           )}
 
           <div className="relative">
-            <Button
-              variant="ghost"
-              size="md"
-              iconOnly
+            <button
+              type="button"
               onClick={() => setMoreMenuOpen((v) => !v)}
               aria-label="More actions"
               title="More actions"
-              icon={h.isRefreshing
+              className={iconBtnClass}
+            >
+              {h.isRefreshing
                 ? <Loader2 size={14} strokeWidth={1.5} className="animate-spin" />
                 : <MoreHorizontal size={14} strokeWidth={1.5} />}
-            />
+            </button>
             <Popover open={moreMenuOpen} onClose={() => setMoreMenuOpen(false)} align="right">
               <div className="min-w-[220px] py-1">
                 <a
@@ -507,36 +512,36 @@ export function SidePanel({
 
           {metaCollapsed && (
             <Tooltip content="Show sidebar">
-              <Button
-                variant="ghost"
-                size="md"
-                iconOnly
+              <button
+                type="button"
                 onClick={() => setMetaCollapsed(false)}
                 aria-label="Show sidebar"
-                icon={<PanelRightClose size={14} strokeWidth={1.5} />}
-              />
+                className={iconBtnClass}
+              >
+                <PanelRightClose size={14} strokeWidth={1.5} />
+              </button>
             </Tooltip>
           )}
 
           <Tooltip content="Open full view">
-            <Button
-              variant="ghost"
-              size="md"
-              iconOnly
+            <button
+              type="button"
               onClick={() => router.push(`/tickets/${ticket.key}`)}
               aria-label="Open full view"
-              icon={<SquareArrowOutUpRight size={14} strokeWidth={1.5} />}
-            />
+              className={iconBtnClass}
+            >
+              <SquareArrowOutUpRight size={14} strokeWidth={1.5} />
+            </button>
           </Tooltip>
           <Tooltip content="Close panel">
-            <Button
-              variant="ghost"
-              size="md"
-              iconOnly
-              icon={<X className="h-3.5 w-3.5" strokeWidth={1.5} />}
+            <button
+              type="button"
               onClick={onClose}
               aria-label="Close panel"
-            />
+              className={iconBtnClass}
+            >
+              <X className="h-3.5 w-3.5" strokeWidth={1.5} />
+            </button>
           </Tooltip>
         </div>
       </div>
