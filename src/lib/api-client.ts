@@ -481,6 +481,15 @@ export const jira = {
     apiFetch<unknown>("/api/jira/move-sprint", { method: "POST", body: data, signal }),
   assign: (data: Record<string, unknown>, signal?: AbortSignal) =>
     apiFetch<unknown>("/api/jira/assign", { method: "POST", body: data, signal }),
+  watcherCandidatesUrl: () => "/api/jira/watcher-candidates" as const,
+  getWatchers: (issueKey: string, signal?: AbortSignal) =>
+    apiFetch<{ watchers: { accountId: string; displayName: string; avatarUrl: string | null }[] }>(
+      `/api/jira/watchers${qs({ issueKey })}`, { signal },
+    ),
+  addWatcher: (data: { issueKey: string; accountId: string }, signal?: AbortSignal) =>
+    apiFetch<{ ok: boolean }>("/api/jira/watchers", { method: "POST", body: data, signal }),
+  removeWatcher: (data: { issueKey: string; accountId: string }, signal?: AbortSignal) =>
+    apiFetch<{ ok: boolean }>(`/api/jira/watchers${qs({ issueKey: data.issueKey, accountId: data.accountId })}`, { method: "DELETE", signal }),
   updateSprint: (sprintId: string, data: { name?: string; goal?: string; startDate?: string; endDate?: string }, signal?: AbortSignal) =>
     apiFetch<{ ok: boolean }>(`/api/jira/sprints/${encodeURIComponent(sprintId)}`, { method: "PUT", body: data, signal }),
   createSprint: (data: { name: string; startDate?: string; endDate?: string; goal?: string }, signal?: AbortSignal) =>

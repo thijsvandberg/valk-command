@@ -52,6 +52,19 @@ describe("JiraClient (unconfigured mode)", () => {
     const changes = await client.getDescriptionChangelog("VPL-100");
     expect(changes).toEqual([]);
   });
+
+  it("getWatchers returns empty array when not configured", async () => {
+    const watchers = await client.getWatchers("VPL-100");
+    expect(watchers).toEqual([]);
+  });
+
+  it("addWatcher throws when not configured", async () => {
+    await expect(client.addWatcher("VPL-100", "acc-1")).rejects.toThrow("not configured");
+  });
+
+  it("removeWatcher throws when not configured", async () => {
+    await expect(client.removeWatcher("VPL-100", "acc-1")).rejects.toThrow("not configured");
+  });
 });
 
 describe("filterDescriptionChanges", () => {

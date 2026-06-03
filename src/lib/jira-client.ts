@@ -1122,6 +1122,53 @@ export class JiraClient {
   }
 
   /**
+   * Get the watchers of an issue. Returns real Jira accountIds, which the
+   * add/remove calls require (unlike the local assignable-users source, which
+   * keys users by display name).
+   */
+  async getWatchers(key: string, signal?: AbortSignal): Promise<{ accountId: string; displayName: string; avatarUrl: string | null }[]> {
+    if (!isConfigured()) {
+      return [];
+    }
+
+    const data = await jiraFetch<{ watchers?: { accountId: string; displayName: string; avatarUrls?: Record<string, string> }[] }>(
+      `/rest/api/3/issue/${key}/watchers`,
+      signal,
+    );
+
+    return (data.watchers ?? [])
+      .filter((u) => u.accountId && u.displayName)
+      .map((u) => ({
+        accountId: u.accountId,
+        displayName: u.displayName,
+        avatarUrl: u.avatarUrls?.["48x48"] ?? null,
+      }));
+  }
+
+  /**
+   * Add a watcher to an issue. The Jira endpoint expects the bare accountId as
+   * the JSON body (a JSON string), which jiraPostNoContent produces.
+   */
+  async addWatcher(key: string, accountId: string, signal?: AbortSignal): Promise<void> {
+    if (!isConfigured()) {
+      throw new Error("Jira is not configured");
+    }
+
+    await jiraPostNoContent(`/rest/api/3/issue/${key}/watchers`, accountId, signal);
+  }
+
+  /**
+   * Remove a watcher from an issue by accountId.
+   */
+  async removeWatcher(key: string, accountId: string, signal?: AbortSignal): Promise<void> {
+    if (!isConfigured()) {
+      throw new Error("Jira is not configured");
+    }
+
+    await jiraDelete(`/rest/api/3/issue/${key}/watchers?accountId=${encodeURIComponent(accountId)}`, signal);
+  }
+
+  /**
    * Create a new issue in Jira. Returns the new issue key and id.
    */
   async createIssue(params: {
