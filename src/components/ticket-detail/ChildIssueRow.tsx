@@ -20,6 +20,12 @@ interface ChildIssueRowProps {
   onSelect?: (key: string) => void;
   /** Right-click handler (e.g. to open a move-to-sprint context menu). */
   onContextMenu?: (e: React.MouseEvent) => void;
+  /** Multiselect: renders a leading checkbox when set. */
+  selectable?: boolean;
+  isChecked?: boolean;
+  /** True when any row in the surrounding list is checked (pins the gutter open). */
+  someChecked?: boolean;
+  onCheckboxClick?: (e: React.MouseEvent) => void;
   /** Inline editing support */
   isEditing?: boolean;
   editValue?: string;
@@ -53,6 +59,10 @@ export function ChildIssueRow({
   onReadinessChange,
   onSelect,
   onContextMenu,
+  selectable = false,
+  isChecked = false,
+  someChecked = false,
+  onCheckboxClick,
   isEditing = false,
   editValue = "",
   onEditChange,
@@ -78,6 +88,7 @@ export function ChildIssueRow({
   };
 
   const hasPill = (showKey || showStatus) && !isPending;
+  const showCheckbox = selectable && !isPending;
 
   return (
     <div
@@ -87,11 +98,39 @@ export function ChildIssueRow({
         onSelect && !isPending ? "cursor-pointer hover:bg-overlay-subtle" : ""
       } ${!isLast ? "border-b border-border-subtle" : ""} ${
         isPending ? "opacity-50" : ""
-      } ${className}`}
+      } ${isChecked ? "bg-[var(--color-brand-500)]/[0.06]" : ""} ${className}`}
       onClick={handleClick}
       onContextMenu={onContextMenu}
       {...(dndProps ?? {})}
     >
+      {showCheckbox && (
+        <span
+          onPointerDown={(e) => e.stopPropagation()}
+          onClick={(e) => { e.stopPropagation(); onCheckboxClick?.(e); }}
+          className={`flex shrink-0 cursor-pointer items-center justify-center ${
+            someChecked || isChecked ? "opacity-100" : "opacity-0 group-hover:opacity-100"
+          }`}
+          style={{ transition: "opacity 0.15s ease" }}
+          role="checkbox"
+          aria-checked={isChecked}
+          aria-label={`Select ${item.key}`}
+        >
+          <span
+            className={`flex h-3.5 w-3.5 items-center justify-center rounded-sm border ${
+              isChecked
+                ? "border-[var(--color-brand-500)]/50 bg-[var(--color-brand-500)]/20"
+                : "border-border-default"
+            }`}
+          >
+            {isChecked && (
+              <svg width="8" height="8" viewBox="0 0 8 8" fill="none">
+                <path d="M1.5 4L3 5.5L6.5 2" stroke="var(--color-brand-400)" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+              </svg>
+            )}
+          </span>
+        </span>
+      )}
+
       {dragHandleSlot}
 
       {isPending && (showKey || showStatus) && (

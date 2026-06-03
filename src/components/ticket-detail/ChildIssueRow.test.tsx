@@ -105,6 +105,38 @@ describe("ChildIssueRow", () => {
     expect(screen.getByTestId("drag-handle")).toBeInTheDocument();
   });
 
+  describe("multiselect checkbox", () => {
+    it("renders a checkbox when selectable", () => {
+      render(<ChildIssueRow item={baseSub} isLast={false} selectable />);
+      expect(screen.getByRole("checkbox", { name: "Select VPL-100" })).toBeInTheDocument();
+    });
+
+    it("does not render a checkbox when not selectable", () => {
+      render(<ChildIssueRow item={baseSub} isLast={false} />);
+      expect(screen.queryByRole("checkbox")).not.toBeInTheDocument();
+    });
+
+    it("does not render a checkbox on pending rows", () => {
+      const pending = { ...baseSub, key: "pending-1" };
+      render(<ChildIssueRow item={pending} isLast={false} isPending selectable />);
+      expect(screen.queryByRole("checkbox")).not.toBeInTheDocument();
+    });
+
+    it("reflects the checked state", () => {
+      render(<ChildIssueRow item={baseSub} isLast={false} selectable isChecked />);
+      expect(screen.getByRole("checkbox", { name: "Select VPL-100" })).toHaveAttribute("aria-checked", "true");
+    });
+
+    it("calls onCheckboxClick and not onSelect when the checkbox is clicked", () => {
+      const onCheckboxClick = vi.fn();
+      const onSelect = vi.fn();
+      render(<ChildIssueRow item={baseSub} isLast={false} selectable onCheckboxClick={onCheckboxClick} onSelect={onSelect} />);
+      fireEvent.click(screen.getByRole("checkbox", { name: "Select VPL-100" }));
+      expect(onCheckboxClick).toHaveBeenCalledTimes(1);
+      expect(onSelect).not.toHaveBeenCalled();
+    });
+  });
+
   describe("inline editing", () => {
     it("shows input when isEditing is true", () => {
       render(

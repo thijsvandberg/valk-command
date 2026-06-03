@@ -7,8 +7,15 @@ const mockCreateChildIssue = vi.fn();
 const mockSearchForLink = vi.fn();
 const mockSearchForLinkWithJira = vi.fn();
 const mockUpdateEpic = vi.fn();
+const mockUpdateStoryPoints = vi.fn();
+const mockUpdateMetadata = vi.fn();
 const mockGetSectionVisibility = vi.fn();
 const mockMoveSprint = vi.fn();
+const mockApiFetch = vi.fn();
+const mockAssign = vi.fn();
+const mockToggleFlag = vi.fn();
+const mockUpdateLabels = vi.fn();
+const mockGet = vi.fn();
 vi.mock("@/lib/api-client", () => ({
   // ChildIssueRow → useTicketHoverData → useTickets/useJiraSprints read swrFetcher.
   // The by-sprint view reads sprint metadata (state/dates) from /api/jira/sprints.
@@ -26,14 +33,25 @@ vi.mock("@/lib/api-client", () => ({
     }
     return [];
   }),
+  apiFetch: (...args: unknown[]) => mockApiFetch(...args),
   tickets: {
     createChildIssue: (...args: unknown[]) => mockCreateChildIssue(...args),
     searchForLink: (...args: unknown[]) => mockSearchForLink(...args),
     searchForLinkWithJira: (...args: unknown[]) => mockSearchForLinkWithJira(...args),
     updateEpic: (...args: unknown[]) => mockUpdateEpic(...args),
+    updateStoryPoints: (...args: unknown[]) => mockUpdateStoryPoints(...args),
+    updateMetadata: (...args: unknown[]) => mockUpdateMetadata(...args),
+    toggleFlag: (...args: unknown[]) => mockToggleFlag(...args),
+    updateLabels: (...args: unknown[]) => mockUpdateLabels(...args),
+    get: (...args: unknown[]) => mockGet(...args),
   },
   jira: {
     moveSprint: (...args: unknown[]) => mockMoveSprint(...args),
+    assign: (...args: unknown[]) => mockAssign(...args),
+  },
+  refinementSessions: {
+    listUrl: () => "/api/refinement-sessions",
+    update: vi.fn().mockResolvedValue({}),
   },
   settings: {
     getSectionVisibility: (...args: unknown[]) => mockGetSectionVisibility(...args),
@@ -81,6 +99,14 @@ describe("EpicChildrenSection", () => {
     mockSearchForLinkWithJira.mockResolvedValue({ results: [], hasMore: false });
     mockGetSectionVisibility.mockResolvedValue({ visible: null });
     mockMoveSprint.mockResolvedValue({});
+    mockUpdateStoryPoints.mockResolvedValue({ storyPoints: null });
+    mockUpdateMetadata.mockResolvedValue({});
+    mockApiFetch.mockResolvedValue({});
+    mockAssign.mockResolvedValue({});
+    mockToggleFlag.mockResolvedValue({ flagged: true });
+    mockUpdateLabels.mockResolvedValue({ labels: [] });
+    mockGet.mockResolvedValue({ labels: [] });
+    mockUpdateEpic.mockResolvedValue({ epic: null, epicKey: null });
   });
 
   describe("inline creation", () => {
@@ -144,6 +170,25 @@ describe("EpicChildrenSection", () => {
 
       await waitFor(() => {
         expect(screen.getByText(/Failed to create child issue/)).toBeInTheDocument();
+      });
+    });
+
+    it("shows a confirmation toast after creating a child", async () => {
+      mockCreateChildIssue.mockResolvedValue({
+        key: "VPL-999",
+        title: "New child",
+        type: "story",
+        jiraStatus: "TO DO",
+        assignee: null,
+      });
+
+      renderSection();
+      const input = screen.getByPlaceholderText("Create child issue...");
+      fireEvent.change(input, { target: { value: "New child" } });
+      fireEvent.keyDown(input, { key: "Enter" });
+
+      await waitFor(() => {
+        expect(screen.getByText("VPL-999 created")).toBeInTheDocument();
       });
     });
 
@@ -269,6 +314,42 @@ describe("EpicChildrenSection", () => {
     });
   });
 
+  describe("inline metric editing", () => {
+    it("sets story points on a child that has none yet", async () => {
+      const { onMutate, onSelectTicket } = renderSection(SAMPLE_CHILDREN);
+      // VPL-11 is the only child without story points.
+      fireEvent.click(screen.getByLabelText("Set Story Points"));
+      // 8 is not a value any sample child carries, so it is unambiguous.
+      fireEvent.click(screen.getByText("8"));
+
+      await waitFor(() => {
+        expect(mockUpdateStoryPoints).toHaveBeenCalledWith("VPL-11", 8);
+      });
+      await waitFor(() => expect(onMutate).toHaveBeenCalled());
+      // Editing the metric must not open the ticket.
+      expect(onSelectTicket).not.toHaveBeenCalled();
+    });
+
+    it("sets business value on a child that has none yet", async () => {
+      const { onMutate } = renderSection(SAMPLE_CHILDREN);
+      fireEvent.click(screen.getByLabelText("Set Business Value"));
+      // 4 is carried by no sample child.
+      fireEvent.click(screen.getByText("4"));
+
+      await waitFor(() => {
+        expect(mockUpdateMetadata).toHaveBeenCalledWith("VPL-11", { businessValue: 4 });
+      });
+      await waitFor(() => expect(onMutate).toHaveBeenCalled());
+    });
+
+    it("renders editable metric pickers for every child, including empty ones", () => {
+      renderSection(SAMPLE_CHILDREN);
+      // VPL-11 carries neither metric yet but still exposes settable pickers.
+      expect(screen.getByLabelText("Set Story Points")).toBeInTheDocument();
+      expect(screen.getByLabelText("Set Business Value")).toBeInTheDocument();
+    });
+  });
+
   describe("link existing (search mode)", () => {
     it("shows search button in create row", () => {
       renderSection();
@@ -321,6 +402,29 @@ describe("EpicChildrenSection", () => {
 
       await waitFor(() => {
         expect(onMutate).toHaveBeenCalled();
+      });
+    });
+
+    it("shows a confirmation toast after linking an existing ticket", async () => {
+      mockSearchForLink.mockResolvedValue({ results: [
+        { key: "VPL-50", title: "Existing ticket", type: "story", status: "TO DO", source: "local" },
+      ], hasMore: false });
+      mockUpdateEpic.mockResolvedValue({ epic: "Epic VPL-1", epicKey: "VPL-1" });
+
+      renderSection();
+      openSearchMode();
+
+      const searchInput = screen.getByPlaceholderText("Search by key or title...");
+      fireEvent.change(searchInput, { target: { value: "VPL-50" } });
+
+      await waitFor(() => {
+        expect(screen.getByText("Existing ticket")).toBeInTheDocument();
+      });
+
+      fireEvent.click(screen.getByText("Existing ticket"));
+
+      await waitFor(() => {
+        expect(screen.getByText("VPL-50 linked")).toBeInTheDocument();
       });
     });
 
@@ -539,6 +643,75 @@ describe("EpicChildrenSection", () => {
       // Reverted: the row is back under Unscheduled and the Sprint 3 group is gone.
       expect(screen.getByText("Unscheduled")).toBeInTheDocument();
       expect(screen.queryByText("Sprint 3")).not.toBeInTheDocument();
+    });
+  });
+
+  describe("multiselect bulk actions", () => {
+    function selectRow(key: string) {
+      fireEvent.click(screen.getByLabelText(`Select ${key}`));
+    }
+    function openBulkMenu(label: string) {
+      fireEvent.click(screen.getByText("Update"));
+      fireEvent.click(screen.getByText(label));
+    }
+    function switchToSprintView() {
+      fireEvent.click(screen.getByRole("radio", { name: "By sprint" }));
+    }
+
+    it("shows the bulk toolbar with a count after checking a row", () => {
+      renderSection(SAMPLE_CHILDREN);
+      expect(screen.queryByText(/selected/)).not.toBeInTheDocument();
+      selectRow("VPL-10");
+      expect(screen.getByText(/1\/3 selected/)).toBeInTheDocument();
+      expect(screen.getByText("Update")).toBeInTheDocument();
+    });
+
+    it("select-all checks every visible row and Clear deselects", () => {
+      renderSection(SAMPLE_CHILDREN);
+      selectRow("VPL-10");
+      // The toolbar's select-all toggle is titled "Select all".
+      fireEvent.click(screen.getByTitle("Select all"));
+      expect(screen.getByText(/3\/3 selected/)).toBeInTheDocument();
+      fireEvent.click(screen.getByText("Clear"));
+      expect(screen.queryByText(/selected/)).not.toBeInTheDocument();
+    });
+
+    it("bulk-moves all checked issues to a sprint in one call", async () => {
+      renderSection(SAMPLE_CHILDREN);
+      selectRow("VPL-10");
+      selectRow("VPL-12");
+      openBulkMenu("Move to Sprint");
+      fireEvent.click(screen.getByText("Sprint 3"));
+      await waitFor(() => {
+        expect(mockMoveSprint).toHaveBeenCalledWith({ issueKeys: ["VPL-10", "VPL-12"], targetSprintId: "3" });
+      });
+    });
+
+    it("bulk-flags every checked issue", async () => {
+      renderSection(SAMPLE_CHILDREN);
+      selectRow("VPL-10");
+      selectRow("VPL-11");
+      openBulkMenu("Flag");
+      await waitFor(() => {
+        expect(mockToggleFlag).toHaveBeenCalledTimes(2);
+      });
+      expect(mockToggleFlag).toHaveBeenCalledWith("VPL-10", true);
+      expect(mockToggleFlag).toHaveBeenCalledWith("VPL-11", true);
+    });
+
+    it("shift-click selects a contiguous range", () => {
+      renderSection(SAMPLE_CHILDREN);
+      selectRow("VPL-10");
+      fireEvent.click(screen.getByLabelText("Select VPL-12"), { shiftKey: true });
+      // VPL-10 through VPL-12 (all three rows) get selected.
+      expect(screen.getByText(/3\/3 selected/)).toBeInTheDocument();
+    });
+
+    it("supports selection in the by-sprint view", () => {
+      renderSection(SAMPLE_CHILDREN);
+      switchToSprintView();
+      selectRow("VPL-10");
+      expect(screen.getByText(/1\/3 selected/)).toBeInTheDocument();
     });
   });
 });

@@ -3,21 +3,28 @@
 import { useState, useRef, useCallback, useEffect, useMemo } from "react";
 import { useOutsideClick } from "@/hooks/useOutsideClick";
 import type { TicketDetail, JiraStatus, TicketReadiness, Subtask, EpicChild, IssueType } from "@/types/ticket";
-import { MetricBadge } from "@/components/shared/MetricBadge";
+import { StoryPointPicker } from "@/components/shared/StoryPointPicker";
+import { BusinessValuePicker } from "@/components/shared/BusinessValuePicker";
 import { IssueTypeIcon } from "@/components/shared/IssueTypeIcon";
 import { Avatar } from "@/components/shared/Avatar";
 import { StatusBadge } from "@/components/shared/StatusBadge";
 import { Tooltip } from "@/components/shared/Tooltip";
+import { Toast } from "@/components/ui/Toast";
+import { useToast } from "@/hooks/useToast";
 import { ChildIssueRow } from "./ChildIssueRow";
 import { ChildIssueListHeader, type ChildIssueViewMode } from "./ChildIssueListHeader";
 import { EpicChildrenBySprint } from "./EpicChildrenBySprint";
 import type { StatusFilter } from "./FieldFilterPopover";
+import { BulkActionBar } from "@/components/sprint-board/BulkActionBar";
+import { AddToRefinementModal } from "@/components/refinement-session/AddToRefinementModal";
 import { useSectionVisibility } from "@/hooks/useSectionVisibility";
 import { useLocalStorage } from "@/hooks/useLocalStorage";
 import { useJiraSprints } from "@/hooks/useSprintBoard";
-import { mapJiraSprints } from "@/components/sprint-board/sprint-board-utils";
-import { tickets, jira, ApiError } from "@/lib/api-client";
+import { mapJiraSprints, bulkReviewStories, bulkGenerateSubtasks } from "@/components/sprint-board/sprint-board-utils";
+import { tickets, jira, apiFetch, ApiError } from "@/lib/api-client";
+import { getJiraUrl } from "@/lib/jira-url";
 import { applyLocalMoves, sprintNameForTarget } from "@/lib/epic-children-move";
+import { groupChildrenBySprint } from "@/lib/epic-children-grouping";
 import { Loader2, ChevronDown, Search, AlertTriangle } from "lucide-react";
 
 const CHILD_ISSUE_TYPES: { value: IssueType; label: string; jiraType: string }[] = [
@@ -73,6 +80,11 @@ export function EpicChildrenSection({
   // Optimistic sprint reassignments (childKey -> new sprint name, or null for backlog),
   // applied to the by-sprint view until the refetched children reflect the move.
   const [localMoves, setLocalMoves] = useState<Record<string, string | null>>({});
+  // Multiselect: checked child keys for the bulk-action toolbar.
+  const [checkedKeys, setCheckedKeys] = useState<Set<string>>(new Set());
+  const [refineModalOpen, setRefineModalOpen] = useState(false);
+  const [bulkGenerating, setBulkGenerating] = useState(false);
+  const lastCheckedRef = useRef<string | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const typePickerRef = useRef<HTMLDivElement>(null);
 
@@ -89,6 +101,7 @@ export function EpicChildrenSection({
 
   const { visible: visibleFields, toggleField } = useSectionVisibility("epic-children", DEFAULT_VISIBLE);
   const [viewMode, setViewMode] = useLocalStorage<ChildIssueViewMode>("epic-children-view", "list");
+  const { toast, toastLoading, showToast, dismissToast } = useToast();
 
   const { sprints: rawSprints } = useJiraSprints();
   const sprints = useMemo(() => mapJiraSprints(rawSprints), [rawSprints]);
@@ -135,6 +148,7 @@ export function EpicChildrenSection({
         setLocallyAdded((prev) =>
           prev.map((i) => i.key === placeholderKey ? created : i),
         );
+        showToast(`${created.key} created`);
         onMutate();
       })
       .catch((err) => {
@@ -143,7 +157,7 @@ export function EpicChildrenSection({
         setError(`Failed to create child issue: ${detail}`);
         console.error("Failed to create child issue:", err);
       });
-  }, [newTitle, selectedType, ticketKey, currentTypeConfig.jiraType, onMutate]);
+  }, [newTitle, selectedType, ticketKey, currentTypeConfig.jiraType, onMutate, showToast]);
 
   const handleKeyDown = useCallback((e: React.KeyboardEvent) => {
     if (e.key === "Enter") {
@@ -225,6 +239,7 @@ export function EpicChildrenSection({
 
     tickets.updateEpic(result.key, ticketKey)
       .then(() => {
+        showToast(`${result.key} linked`);
         onMutate();
       })
       .catch((err) => {
@@ -233,7 +248,7 @@ export function EpicChildrenSection({
         setError(`Failed to link ${result.key}: ${detail}`);
         console.error("Failed to link existing issue:", err);
       });
-  }, [ticketKey, onMutate]);
+  }, [ticketKey, onMutate, showToast]);
 
   const handleSearchKeyDown = useCallback((e: React.KeyboardEvent) => {
     if (e.key === "ArrowDown") {
@@ -304,6 +319,27 @@ export function EpicChildrenSection({
     }
   }, [onMutate]);
 
+  const handleStoryPointsChange = useCallback(async (childKey: string, value: number | null) => {
+    setJiraWarning(null);
+    try {
+      await tickets.updateStoryPoints(childKey, value);
+      onMutate();
+    } catch (err) {
+      console.error("Failed to update story points:", err);
+      setJiraWarning(`Failed to update story points for ${childKey}`);
+    }
+  }, [onMutate]);
+
+  const handleBusinessValueChange = useCallback(async (childKey: string, value: number | null) => {
+    try {
+      await tickets.updateMetadata(childKey, { businessValue: value });
+      onMutate();
+    } catch (err) {
+      console.error("Failed to update business value:", err);
+      setJiraWarning(`Failed to update business value for ${childKey}`);
+    }
+  }, [onMutate]);
+
   // Move a child to another sprint (drag-drop or context menu). Optimistically
   // re-groups the row, then reverts and warns if the Jira round-trip fails.
   const handleMoveChild = useCallback((childKey: string, targetSprintId: string) => {
@@ -345,6 +381,139 @@ export function EpicChildrenSection({
     });
   }, [items]);
 
+  // --- Multiselect (bulk actions) ---
+  // The visible order differs between views (groups reorder rows), so range-select
+  // walks the rendered order of the active view.
+  const orderedVisibleKeys = useMemo(() => {
+    const base = applyLocalMoves(filtered, localMoves).filter((i) => !i.key.startsWith("pending-"));
+    if (viewMode === "sprint") {
+      return groupChildrenBySprint(base, sprints).flatMap((g) => g.items.map((i) => i.key));
+    }
+    return base.map((i) => i.key);
+  }, [filtered, localMoves, viewMode, sprints]);
+
+  const someChecked = checkedKeys.size > 0;
+  const allChecked = orderedVisibleKeys.length > 0 && orderedVisibleKeys.every((k) => checkedKeys.has(k));
+
+  const handleCheckboxClick = useCallback((key: string, e: React.MouseEvent) => {
+    if (e.shiftKey && lastCheckedRef.current) {
+      const a = orderedVisibleKeys.indexOf(lastCheckedRef.current);
+      const b = orderedVisibleKeys.indexOf(key);
+      if (a !== -1 && b !== -1) {
+        const [lo, hi] = a < b ? [a, b] : [b, a];
+        const range = orderedVisibleKeys.slice(lo, hi + 1);
+        setCheckedKeys((prev) => { const next = new Set(prev); range.forEach((k) => next.add(k)); return next; });
+        lastCheckedRef.current = key;
+        return;
+      }
+    }
+    setCheckedKeys((prev) => { const next = new Set(prev); if (next.has(key)) next.delete(key); else next.add(key); return next; });
+    lastCheckedRef.current = key;
+  }, [orderedVisibleKeys]);
+
+  const toggleAll = useCallback(() => {
+    setCheckedKeys(allChecked ? new Set() : new Set(orderedVisibleKeys));
+  }, [allChecked, orderedVisibleKeys]);
+
+  const clearSelection = useCallback(() => {
+    setCheckedKeys(new Set());
+    lastCheckedRef.current = null;
+  }, []);
+
+  const checkedItems = mergedItems.filter((i) => checkedKeys.has(i.key));
+  const selectedPoints = checkedItems.reduce((s, i) => s + (isEpicChild(i) ? (i.storyPoints ?? 0) : 0), 0);
+  const selectedBV = checkedItems.reduce((s, i) => s + (isEpicChild(i) ? (i.businessValue ?? 0) : 0), 0);
+
+  // Runs an async op per checked key, refetches, and reports a single toast.
+  const runBulk = useCallback(async (verb: string, fn: (key: string) => Promise<unknown>) => {
+    const keys = [...checkedKeys];
+    if (keys.length === 0) return;
+    const results = await Promise.allSettled(keys.map(fn));
+    onMutate();
+    const failed = results.filter((r) => r.status === "rejected").length;
+    showToast(failed
+      ? `Failed for ${failed} issue${failed === 1 ? "" : "s"}${failed < keys.length ? ` (${keys.length - failed} updated)` : ""}`
+      : `${verb} ${keys.length} issue${keys.length === 1 ? "" : "s"}`);
+  }, [checkedKeys, onMutate, showToast]);
+
+  const handleBulkStatus = useCallback((status: JiraStatus) =>
+    runBulk("Status set for", (k) => apiFetch(`/api/tickets/${encodeURIComponent(k)}/status`, { method: "PUT", body: { status } })),
+    [runBulk]);
+
+  const handleBulkReadiness = useCallback((readiness: TicketReadiness | null) =>
+    runBulk("Readiness set for", (k) => tickets.updateMetadata(k, { readiness })),
+    [runBulk]);
+
+  const handleBulkEpic = useCallback((epicKey: string | null) =>
+    runBulk("Epic updated for", (k) => tickets.updateEpic(k, epicKey)),
+    [runBulk]);
+
+  const handleBulkAssignee = useCallback((accountId: string | null, name: string | null) =>
+    runBulk("Assignee updated for", (k) => jira.assign({ issueKey: k, accountId, name })),
+    [runBulk]);
+
+  const handleBulkFlag = useCallback((flagged: boolean) =>
+    runBulk(flagged ? "Flagged" : "Unflagged", (k) => tickets.toggleFlag(k, flagged)),
+    [runBulk]);
+
+  const handleBulkLabels = useCallback((labels: string[], mode: "add" | "set") =>
+    runBulk("Labels updated for", async (k) => {
+      let finalLabels = labels;
+      if (mode === "add") {
+        const detail = await tickets.get(k);
+        finalLabels = [...new Set([...(detail.labels ?? []), ...labels])];
+      }
+      return tickets.updateLabels(k, finalLabels);
+    }),
+    [runBulk]);
+
+  // Sprint moves go through one bulk call with optimistic re-grouping for every key.
+  const handleBulkMoveSprint = useCallback((targetSprintId: string) => {
+    const keys = [...checkedKeys];
+    if (keys.length === 0) return;
+    const newName = sprintNameForTarget(targetSprintId, sprints);
+    setJiraWarning(null);
+    setLocalMoves((prev) => { const next = { ...prev }; keys.forEach((k) => { next[k] = newName; }); return next; });
+    jira.moveSprint({ issueKeys: keys, targetSprintId })
+      .then(() => { onMutate(); showToast(`Moved ${keys.length} issue${keys.length === 1 ? "" : "s"} to sprint`); })
+      .catch((err) => {
+        setLocalMoves((prev) => { const next = { ...prev }; keys.forEach((k) => delete next[k]); return next; });
+        const detail = err instanceof ApiError ? err.message : "Jira API error";
+        setJiraWarning(`Failed to move ${keys.length} issue${keys.length === 1 ? "" : "s"} to sprint: ${detail}`);
+      });
+  }, [checkedKeys, sprints, onMutate, showToast]);
+
+  const handleBulkReview = useCallback(async () => {
+    const keys = [...checkedKeys];
+    if (!keys.length) return;
+    showToast(`Reviewing ${keys.length} issue${keys.length === 1 ? "" : "s"}...`);
+    await bulkReviewStories(keys);
+    onMutate();
+    showToast(`Reviewed ${keys.length} issue${keys.length === 1 ? "" : "s"}`);
+  }, [checkedKeys, onMutate, showToast]);
+
+  const handleBulkGenerate = useCallback(async () => {
+    const keys = [...checkedKeys];
+    if (!keys.length) return;
+    setBulkGenerating(true);
+    showToast(`Generating subtasks for ${keys.length} issue${keys.length === 1 ? "" : "s"}...`);
+    try {
+      const { succeeded, failed } = await bulkGenerateSubtasks(keys);
+      showToast(failed ? `Generated for ${succeeded}, ${failed} failed` : `Subtask suggestions sent for ${succeeded} issue${succeeded === 1 ? "" : "s"}`);
+      onMutate();
+    } finally {
+      setBulkGenerating(false);
+    }
+  }, [checkedKeys, onMutate, showToast]);
+
+  const handleCopySelected = useCallback(() => {
+    const sel = mergedItems.filter((i) => checkedKeys.has(i.key));
+    if (!sel.length) return;
+    navigator.clipboard.writeText(sel.map((i) => `${i.title} - ${getJiraUrl(i.key)}`).join("\n"))
+      .then(() => showToast(`Copied ${sel.length} issue${sel.length === 1 ? "" : "s"} to clipboard`))
+      .catch(() => showToast("Failed to copy to clipboard"));
+  }, [mergedItems, checkedKeys, showToast]);
+
   // --- Render metadata slot for a child issue ---
   // hideSprint drops the sprint pill where the surrounding group already names the
   // sprint (the by-sprint view), avoiding a redundant per-row badge.
@@ -352,11 +521,35 @@ export function EpicChildrenSection({
     const epic = isEpicChild(child) ? child : null;
     return (
       <>
-        {visibleFields.has("storyPoints") && epic?.storyPoints != null && (
-          <span className="shrink-0"><MetricBadge metric="sp" value={epic.storyPoints} tinted size="xs" /></span>
+        {visibleFields.has("storyPoints") && epic && (
+          <span
+            className="shrink-0"
+            onClick={(e) => e.stopPropagation()}
+            onPointerDown={(e) => e.stopPropagation()}
+          >
+            <StoryPointPicker
+              value={epic.storyPoints}
+              onChange={(v) => handleStoryPointsChange(child.key, v)}
+              showMetricIcon
+              richTooltip
+              revealWhenEmpty
+            />
+          </span>
         )}
-        {visibleFields.has("businessValue") && epic?.businessValue != null && epic.businessValue >= 1 && (
-          <span className="shrink-0"><MetricBadge metric="bv" value={epic.businessValue} tinted size="xs" /></span>
+        {visibleFields.has("businessValue") && epic && (
+          <span
+            className="shrink-0"
+            onClick={(e) => e.stopPropagation()}
+            onPointerDown={(e) => e.stopPropagation()}
+          >
+            <BusinessValuePicker
+              value={epic.businessValue}
+              onChange={(v) => handleBusinessValueChange(child.key, v)}
+              showMetricIcon
+              richTooltip
+              revealWhenEmpty
+            />
+          </span>
         )}
         {visibleFields.has("subtaskCount") && epic && epic.subtaskCount > 0 && (
           <Tooltip content={`${epic.subtaskCount} subtask${epic.subtaskCount === 1 ? "" : "s"}`}>
@@ -393,6 +586,10 @@ export function EpicChildrenSection({
         onJiraStatusChange={(s) => handleJiraStatusChange(child.key, s)}
         onReadinessChange={(r) => handleReadinessChange(child.key, r)}
         onSelect={onSelectTicket}
+        selectable
+        isChecked={checkedKeys.has(child.key)}
+        someChecked={someChecked}
+        onCheckboxClick={(e) => handleCheckboxClick(child.key, e)}
         metadataSlot={renderMetadata(child)}
       />
     );
@@ -536,6 +733,9 @@ export function EpicChildrenSection({
         onSelect={onSelectTicket}
         onMoveChild={handleMoveChild}
         onMoveError={setJiraWarning}
+        checkedKeys={checkedKeys}
+        someChecked={someChecked}
+        onCheckboxClick={handleCheckboxClick}
       />
       <div className="overflow-hidden rounded-lg border border-border-default">
         {inlineInput}
@@ -586,6 +786,41 @@ export function EpicChildrenSection({
       ) : (
         content
       )}
+
+      {someChecked && (
+        <BulkActionBar
+          count={checkedKeys.size}
+          totalCount={orderedVisibleKeys.length}
+          selectedPoints={selectedPoints}
+          selectedBV={selectedBV}
+          allChecked={allChecked}
+          onToggleAll={toggleAll}
+          onClear={clearSelection}
+          onSetStatus={handleBulkStatus}
+          onSetReadiness={handleBulkReadiness}
+          onSetEpic={handleBulkEpic}
+          onMoveSprint={handleBulkMoveSprint}
+          onUpdateAssignee={handleBulkAssignee}
+          onUpdateLabel={handleBulkLabels}
+          onSetFlagged={handleBulkFlag}
+          flagState="mixed"
+          sprints={sprints}
+          onReviewStory={handleBulkReview}
+          onGenerateSubtasks={handleBulkGenerate}
+          isGeneratingSubtasks={bulkGenerating}
+          onCopyToClipboard={handleCopySelected}
+          onRefine={() => setRefineModalOpen(true)}
+        />
+      )}
+
+      <AddToRefinementModal
+        open={refineModalOpen}
+        onClose={() => setRefineModalOpen(false)}
+        ticketKeys={[...checkedKeys]}
+        onAdded={(_id, name) => showToast(`Added ${checkedKeys.size} issue${checkedKeys.size === 1 ? "" : "s"} to "${name}"`)}
+      />
+
+      <Toast toast={toast} loading={toastLoading} onDismiss={dismissToast} />
     </div>
   );
 }

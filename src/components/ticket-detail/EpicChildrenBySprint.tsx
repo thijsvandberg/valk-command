@@ -41,6 +41,10 @@ interface EpicChildrenBySprintProps {
   onMoveChild?: (childKey: string, targetSprintId: string) => void;
   /** Surfaces a move rejection (e.g. closed sprint) to the parent's toast. */
   onMoveError?: (message: string) => void;
+  /** Multiselect: when supplied, rows render a leading checkbox. */
+  checkedKeys?: Set<string>;
+  someChecked?: boolean;
+  onCheckboxClick?: (key: string, e: React.MouseEvent) => void;
 }
 
 function isEpicChild(child: EpicChild | Subtask): child is EpicChild {
@@ -90,6 +94,10 @@ function DraggableChildRow({
   onReadinessChange,
   onSelect,
   onContextMenu,
+  selectable,
+  isChecked,
+  someChecked,
+  onCheckboxClick,
 }: {
   child: EpicChild | Subtask;
   isLast: boolean;
@@ -100,6 +108,10 @@ function DraggableChildRow({
   onReadinessChange: (childKey: string, readiness: TicketReadiness | null) => void;
   onSelect?: (key: string) => void;
   onContextMenu?: (e: React.MouseEvent) => void;
+  selectable?: boolean;
+  isChecked?: boolean;
+  someChecked?: boolean;
+  onCheckboxClick?: (e: React.MouseEvent) => void;
 }) {
   const epic = isEpicChild(child) ? child : null;
   const { attributes, listeners, setNodeRef, setActivatorNodeRef, isDragging } = useDraggable({
@@ -120,6 +132,10 @@ function DraggableChildRow({
       onReadinessChange={(r) => onReadinessChange(child.key, r)}
       onSelect={onSelect}
       onContextMenu={onContextMenu}
+      selectable={selectable}
+      isChecked={isChecked}
+      someChecked={someChecked}
+      onCheckboxClick={onCheckboxClick}
       metadataSlot={renderMetadata(child, true)}
       className={isDragging ? "opacity-40" : ""}
       dndProps={{ ...attributes }}
@@ -185,6 +201,9 @@ export function EpicChildrenBySprint({
   onSelect,
   onMoveChild,
   onMoveError,
+  checkedKeys,
+  someChecked,
+  onCheckboxClick,
 }: EpicChildrenBySprintProps) {
   const [collapsed, setCollapsed] = useSessionStorage<Record<string, boolean>>(
     `epic-children-collapse-${ticketKey}`,
@@ -240,10 +259,14 @@ export function EpicChildrenBySprint({
 
   if (groups.length === 0) return null;
 
+  const selectable = !!onCheckboxClick;
+
   const renderRow = (child: EpicChild | Subtask, group: ChildGroup, idx: number) => {
     const epic = isEpicChild(child) ? child : null;
     const isPending = child.key.startsWith("pending-");
     const isLast = idx === group.items.length - 1;
+    const isChecked = !!checkedKeys?.has(child.key);
+    const checkboxClick = onCheckboxClick ? (e: React.MouseEvent) => onCheckboxClick(child.key, e) : undefined;
 
     const contextMenu =
       onMoveChild && !isPending
@@ -267,6 +290,10 @@ export function EpicChildrenBySprint({
           onReadinessChange={onReadinessChange}
           onSelect={onSelect}
           onContextMenu={contextMenu}
+          selectable={selectable}
+          isChecked={isChecked}
+          someChecked={someChecked}
+          onCheckboxClick={checkboxClick}
         />
       );
     }
@@ -285,6 +312,10 @@ export function EpicChildrenBySprint({
         onReadinessChange={(r) => onReadinessChange(child.key, r)}
         onSelect={onSelect}
         onContextMenu={contextMenu}
+        selectable={selectable}
+        isChecked={isChecked}
+        someChecked={someChecked}
+        onCheckboxClick={checkboxClick}
         metadataSlot={renderMetadata(child, true)}
       />
     );
