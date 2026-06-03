@@ -14,6 +14,48 @@ so a refresh loses the panel and there is no shareable link to a ticket-in-conte
 This is about the **side panel** on the Sprint Board (`/sprint-board`), not the full
 ticket page (`/tickets/[key]`), which already has its own route.
 
+## Implementation Plan
+
+**Scope decision (PO):** full path-based routing — board URL becomes `/sprint-board/<sprint-slug>/<ticket>`.
+
+### URL scheme
+- `/sprint-board` — no sprint resolved yet (default behaviour).
+- `/sprint-board/<sprint-slug>` — sprint selected, panel closed.
+- `/sprint-board/<sprint-slug>/<ticket>` — panel open on `<ticket>`.
+- `/sprint-board/all` and `/sprint-board/backlog` — reserved slugs for the All view (`__all__`) and backlog (`__backlog__`).
+- `?view=<uuid>` (saved views) and filters STAY query params. A saved view renders the sprint slug as `all`.
+- Route becomes an optional catch-all: `src/app/(app)/sprint-board/[[...slug]]/page.tsx` (precedent: `login/[[...rest]]`).
+
+### Slug <-> id mapping (`src/lib/sprint-utils.ts`)
+- Reserved: `all` <-> `__all__`, `backlog` <-> `__backlog__` (checked first, both directions).
+- `slugifySprint(name)`: lowercase, non-alphanumeric -> single hyphens, trim. `"BT: 134"` -> `bt-134`.
+- `sprintToSlug` / `slugToSprintId(slug, sprints)`: collision-safe (append numeric id when two sprints slugify the same); returns `null` for unknown slug.
+- Unknown slug -> fall back to the existing default sprint resolution (active sprint / first slot), no hard error.
+
+### Shallow updates (no remount / scroll loss)
+- `selectedTicket` stays React state; seed it from the path once on mount.
+- Ticket open/close writes the URL with `window.history.pushState` (push = back/forward history entries, req #5) — no Next navigation, list + scroll preserved.
+- A `popstate` listener re-syncs `selectedTicket` from the URL for back/forward.
+- Sprint switching keeps `router.replace(path, { scroll: false })` (same `[[...slug]]` route, re-renders without remount).
+- All URL writes go through a `buildBoardUrl(sprintSlug, ticketKey | null, searchParams)` helper that threads existing query params (`view`, etc.) through unchanged.
+
+### Per-checkbox mapping
+1. Open writes URL — effect on `selectedTicket` -> `history.pushState` (guarded against the mount seed). All existing `onSelectTicket={setSelectedTicket}` call sites unchanged.
+2. Restore on load — parse `useParams().slug`, seed `selectedTicket`, derive sprint id from slug into existing `activeSprintId` logic.
+3. Row active state — `TicketTable` already highlights the `selectedTicket` row once it is seeded.
+4. Close clears URL — `setSelectedTicket(null)` flows through the same effect, dropping the ticket segment.
+5. Back/forward — `pushState` + `popstate` listener.
+6. Path-based route — move page into `[[...slug]]/`.
+7. Slug<->id map — new helpers in `sprint-utils.ts`.
+8. Deep-link fallback — when `selectedTicket` is set but not in `tickets`, fetch via `useTicketDetail(selectedTicket)` and feed the result to `SidePanel`.
+9. Tests — slug helpers (unit) + page-level write/restore/clear/active-row.
+
+### Risks / mitigations
+- Saved views & All view stay query-driven; route every URL write through `buildBoardUrl` so `view` is preserved.
+- Async sprint load: resolve slug in a `useMemo`/effect keyed on `sprints`; seed the ticket independently of `sprints`.
+- Guard the open/close effect against the initial mount (ref) so the URL seed does not double-push.
+- Update the `next/navigation` mock in `page.test.tsx` (add `usePathname`/`useParams`, `push`, stub `pushState`) or the suite breaks.
+
 ## Requirements
 
 ### 1. Opening a ticket updates the URL
