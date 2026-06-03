@@ -265,15 +265,20 @@ function parseListBlock(
     }
 
     const lineIndent = line.length - line.trimStart().length;
+    // Match the marker followed by whitespace OR end-of-line. After trim() an
+    // empty item ("- ") collapses to just the marker ("-"), so requiring a
+    // trailing \s here would reject it. The outer parser detects the raw line
+    // (with its trailing space) as a list, so a stricter test here would leave
+    // i unadvanced and spin forever. Treat a bare marker as an empty item.
     const isOurItem =
       lineIndent === baseIndent &&
-      (isBullet ? /^[-*]\s/.test(trimmed) : /^\d+\.\s/.test(trimmed));
+      (isBullet ? /^[-*](\s|$)/.test(trimmed) : /^\d+\.(\s|$)/.test(trimmed));
 
     if (!isOurItem) break;
 
     const itemText = isBullet
-      ? trimmed.replace(/^[-*]\s/, "")
-      : trimmed.replace(/^\d+\.\s/, "");
+      ? trimmed.replace(/^[-*]\s*/, "")
+      : trimmed.replace(/^\d+\.\s*/, "");
 
     i++;
 

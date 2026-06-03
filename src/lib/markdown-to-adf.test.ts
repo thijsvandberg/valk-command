@@ -107,6 +107,35 @@ describe("markdownToAdf", () => {
     });
   });
 
+  describe("empty list items", () => {
+    // Regression: an empty bullet ("- " with a trailing space and nothing else)
+    // used to hang the converter. The outer parser detected the raw line as a
+    // list, but parseListBlock trimmed it to "-" and refused to consume it,
+    // leaving the cursor stuck and spinning forever.
+    it("does not hang on an empty bullet and produces an empty list item", () => {
+      const doc = markdownToAdf("- one\n\n- \n\n- three");
+      const list = doc.content![0];
+      expect(list.type).toBe("bulletList");
+      expect(list.content).toHaveLength(3);
+      expect(list.content![0].content![0].content![0].text).toBe("one");
+      expect(list.content![2].content![0].content![0].text).toBe("three");
+    });
+
+    it("does not hang on a trailing empty bullet", () => {
+      const doc = markdownToAdf("- one\n- ");
+      const list = doc.content![0];
+      expect(list.type).toBe("bulletList");
+      expect(list.content).toHaveLength(2);
+    });
+
+    it("does not hang on an empty ordered item", () => {
+      const doc = markdownToAdf("1. first\n2. \n3. third");
+      const list = doc.content![0];
+      expect(list.type).toBe("orderedList");
+      expect(list.content).toHaveLength(3);
+    });
+  });
+
   describe("flat ordered list", () => {
     it("produces an orderedList with listItems", () => {
       const doc = markdownToAdf("1. first\n2. second");
