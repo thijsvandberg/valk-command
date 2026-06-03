@@ -398,6 +398,12 @@ export const pipelineRun = sqliteTable("pipeline_run", {
   // (inferred from a staging/uat-N branch with no deploy step). Null for legacy/non-deploys.
   // Used to audit branch-inferred deployments during validation (BRDG-257).
   deploymentSource: text("deployment_source", { enum: ["step", "branch"] }),
+  // Target commit of the pipeline build. Anchors the commit-range walk used to attribute a
+  // staging/uat-N deploy to every ticket merged in since the previous deploy (BRDG-269).
+  commitHash: text("commit_hash"),
+  // Timestamp the range-attribution pass last walked this deploy's commit range. Mirrors the
+  // deploy_checked_at marker: set once for forward progress, left null so it can be retried.
+  rangeAttributedAt: text("range_attributed_at"),
   createdAt: text("created_at")
     .notNull()
     .default(sql`(datetime('now'))`),

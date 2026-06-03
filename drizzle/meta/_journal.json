@@ -435,6 +435,13 @@
       "when": 1780433159078,
       "tag": "0061_overconfident_scorpion",
       "breakpoints": true
+    },
+    {
+      "idx": 62,
+      "version": "6",
+      "when": 1780519641614,
+      "tag": "0062_right_thing",
+      "breakpoints": true
     }
   ]
 }
