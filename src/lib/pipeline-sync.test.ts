@@ -33,6 +33,10 @@ import {
   backfillDeploymentDetection,
   inferEnvironmentFromBranch,
   backfillBranchInferredDeployments,
+  attributeDeployRange,
+  backfillDeployRangeAttribution,
+  extractTicketKey,
+  extractAllTicketKeys,
 } from "./pipeline-sync";
 import { alert, followedTicket, followedSprint, ticket, pipelineRun } from "@/db/schema";
 
@@ -73,6 +77,8 @@ function makePipelineRun(overrides: Partial<typeof schema.pipelineRun.$inferSele
     environmentType: null,
     deployCheckedAt: null,
     deploymentSource: null,
+    commitHash: null,
+    rangeAttributedAt: null,
     createdAt: "2026-04-14T10:00:00.000Z",
     completedAt: "2026-04-14T10:05:00.000Z",
     commitMessage: null,
@@ -206,6 +212,21 @@ describe("processStateChanges - deployment notifications", () => {
     const alerts = testDb.select().from(alert).all();
     expect(alerts).toHaveLength(1);
     expect(alerts[0].message).toBe("Deployed VPL-123 to UAT2");
+  });
+
+  it("range-attributed ticket_keys do not add extra notifications (BRDG-269, badge-only)", () => {
+    testDb.insert(followedTicket).values({ id: "ft-1", ticketKey: "VPL-123" }).run();
+
+    // A bundled deploy attributed to three tickets via ticketKeys. Only the primary ticketKey
+    // (VPL-123) should ever produce a notification.
+    processStateChanges([{
+      run: makePipelineRun({ state: "SUCCESSFUL", isDeployment: true, environment: "UAT2", environmentType: "Staging", ticketKey: "VPL-123", ticketKeys: JSON.stringify(["VPL-123", "VPL-45823", "VPL-46189"]) }),
+      oldState: "IN_PROGRESS",
+    }]);
+
+    const alerts = testDb.select().from(alert).all();
+    expect(alerts).toHaveLength(1);
+    expect(alerts[0].jiraKey).toBe("VPL-123");
   });
 
   it("notifies for UAT deployment when ticket sprint is followed", () => {
@@ -615,5 +636,139 @@ describe("branch-based deployment detection (BRDG-257)", () => {
     expect(backfillBranchInferredDeployments()).toBe(1);
     expect(backfillBranchInferredDeployments()).toBe(0); // idempotent: nothing left
     expect(testDb.select().from(pipelineRun).where(eq(pipelineRun.id, "valk-repo:21")).get()?.isDeployment).toBe(false);
+  });
+});
+
+describe("ticket key extraction (hyphen-tolerant, BRDG-269)", () => {
+  it("normalises a hyphenless branch key (the VPL45823 case)", () => {
+    expect(extractTicketKey("feature/VPL45823-filter-unknown-extras")).toBe("VPL-45823");
+    expect(extractTicketKey("Merge branch 'feature/VPL45823-x' into staging/uat-2")).toBe("VPL-45823");
+  });
+
+  it("still matches canonical hyphenated keys unchanged", () => {
+    expect(extractTicketKey("[VPL-46189] cleanup")).toBe("VPL-46189");
+    expect(extractTicketKey("Merge 'feature/VPL-45075-add-filters' into staging/uat-3")).toBe("VPL-45075");
+  });
+
+  it("does not misread arbitrary tokens as ticket keys", () => {
+    expect(extractTicketKey("bump to UTF8 and S3S3 buckets")).toBeNull();
+    expect(extractTicketKey("plain commit, no key")).toBeNull();
+  });
+
+  it("collects both hyphenated and hyphenless keys, deduped", () => {
+    const keys = extractAllTicketKeys("Merge 'feature/VPL45823-x' resolves VPL-46189 and VPL45823 again");
+    expect(keys).toContain("VPL-45823");
+    expect(keys).toContain("VPL-46189");
+    expect(keys.filter((k) => k === "VPL-45823")).toHaveLength(1);
+  });
+});
+
+/** Commits payload shape returned by the Bitbucket /commits endpoint. */
+function commitsPayload(commits: Array<{ hash: string; message: string }>, next?: string) {
+  return { values: commits, ...(next ? { next } : {}) };
+}
+
+describe("attributeDeployRange (BRDG-269)", () => {
+  let fetchMock: ReturnType<typeof vi.fn>;
+
+  beforeEach(() => {
+    testDb = createTestDb();
+    fetchMock = vi.fn();
+    vi.stubGlobal("fetch", fetchMock);
+  });
+
+  it("attributes a bundled UAT deploy to every ticket merged since the previous deploy", async () => {
+    // Previous deploy on the branch is the stop anchor.
+    insertRun({ id: "valk-repo:1", buildNumber: 1, branchName: "staging/uat-2", state: "SUCCESSFUL", isDeployment: true, environment: "UAT2", environmentType: "Staging", commitHash: "anchor000000", completedAt: "2026-06-02T13:00:00.000Z", createdAt: "2026-06-02T13:00:00.000Z", rangeAttributedAt: RECENT });
+    // Current deploy: build ran on the VPL-46189 merge (triggering ticket); the VPL-45823 merge
+    // in between never got its own build.
+    insertRun({ id: "valk-repo:2", buildNumber: 2, branchName: "staging/uat-2", state: "SUCCESSFUL", isDeployment: true, environment: "UAT2", environmentType: "Staging", ticketKey: "VPL-46189", commitHash: "head00000000", completedAt: "2026-06-02T14:10:00.000Z", createdAt: "2026-06-02T14:10:00.000Z" });
+
+    fetchMock.mockImplementation(async (url: string) => {
+      if (url.includes("/commits/head00000000")) {
+        return jsonResponse(commitsPayload([
+          { hash: "head00000000", message: "Merge branch 'feature/VPL-46189-cleanup' into staging/uat-2" },
+          { hash: "mid000000000", message: "Merge branch 'feature/VPL45823-filter' into staging/uat-2" },
+          { hash: "anchor000000", message: "[VPL-45729] previous deploy commit" },
+        ]));
+      }
+      return jsonResponse(null, false);
+    });
+
+    const grew = await attributeDeployRange("valk-repo", "valk-repo:2");
+
+    expect(grew).toBe(true);
+    const row = testDb.select().from(pipelineRun).where(eq(pipelineRun.id, "valk-repo:2")).get();
+    const keys = JSON.parse(row?.ticketKeys ?? "[]");
+    expect(keys).toContain("VPL-46189"); // triggering ticket retained
+    expect(keys).toContain("VPL-45823"); // bundled ticket now attributed
+    expect(keys).not.toContain("VPL-45729"); // anchor commit excluded (stop boundary)
+    expect(row?.ticketKey).toBe("VPL-46189"); // primary key untouched -> badge-only
+    expect(row?.rangeAttributedAt).toBeTruthy();
+  });
+
+  it("is idempotent: an already-attributed deploy is not re-walked", async () => {
+    insertRun({ id: "valk-repo:3", buildNumber: 3, branchName: "staging/uat-2", isDeployment: true, environmentType: "Staging", commitHash: "h", rangeAttributedAt: RECENT });
+
+    const grew = await attributeDeployRange("valk-repo", "valk-repo:3");
+
+    expect(grew).toBe(false);
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
+
+  it("does not attribute (or walk) non-staging deploys", async () => {
+    insertRun({ id: "valk-repo:4", buildNumber: 4, branchName: "feature/VPL-1", state: "SUCCESSFUL", isDeployment: false });
+
+    const grew = await attributeDeployRange("valk-repo", "valk-repo:4");
+
+    expect(grew).toBe(false);
+    expect(fetchMock).not.toHaveBeenCalled();
+    // Stamped so the backfill advances past it.
+    expect(testDb.select().from(pipelineRun).where(eq(pipelineRun.id, "valk-repo:4")).get()?.rangeAttributedAt).toBeTruthy();
+  });
+
+  it("leaves the marker null on a transient walk failure so it retries", async () => {
+    insertRun({ id: "valk-repo:5", buildNumber: 5, branchName: "staging/uat-2", isDeployment: true, environmentType: "Staging", commitHash: "head", completedAt: RECENT, createdAt: RECENT });
+    fetchMock.mockResolvedValue(jsonResponse(null, false));
+
+    const grew = await attributeDeployRange("valk-repo", "valk-repo:5");
+
+    expect(grew).toBe(false);
+    expect(testDb.select().from(pipelineRun).where(eq(pipelineRun.id, "valk-repo:5")).get()?.rangeAttributedAt).toBeNull();
+  });
+});
+
+describe("backfillDeployRangeAttribution (BRDG-269)", () => {
+  let fetchMock: ReturnType<typeof vi.fn>;
+
+  beforeEach(() => {
+    testDb = createTestDb();
+    fetchMock = vi.fn();
+    vi.stubGlobal("fetch", fetchMock);
+  });
+
+  it("range-attributes recent un-attributed staging deploys and is idempotent", async () => {
+    insertRun({ id: "valk-repo:1", buildNumber: 1, branchName: "staging/uat-2", state: "SUCCESSFUL", isDeployment: true, environmentType: "Staging", ticketKey: "VPL-100", commitHash: "head00000000", createdAt: RECENT, completedAt: RECENT });
+
+    fetchMock.mockImplementation(async (url: string) => {
+      if (url.includes("/commits/head00000000")) {
+        return jsonResponse(commitsPayload([
+          { hash: "head00000000", message: "Merge branch 'feature/VPL-100-a' into staging/uat-2" },
+          { hash: "x00000000000", message: "Merge branch 'feature/VPL45823-b' into staging/uat-2" },
+        ]));
+      }
+      return jsonResponse(null, false);
+    });
+
+    const first = await backfillDeployRangeAttribution();
+    expect(first).toBe(1);
+    const keys = JSON.parse(testDb.select().from(pipelineRun).where(eq(pipelineRun.id, "valk-repo:1")).get()?.ticketKeys ?? "[]");
+    expect(keys).toContain("VPL-100");
+    expect(keys).toContain("VPL-45823");
+
+    fetchMock.mockClear();
+    const second = await backfillDeployRangeAttribution();
+    expect(second).toBe(0); // marker set -> nothing left
+    expect(fetchMock).not.toHaveBeenCalled();
   });
 });

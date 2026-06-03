@@ -5,7 +5,7 @@ import { env } from "@/lib/env";
 import { trackOutboundCall } from "@/lib/rate-limiter";
 import { createNotification, isTicketFollowed } from "@/lib/notifications";
 import { logger } from "@/lib/logger";
-import { eq, and, isNull, isNotNull, gte, inArray, like } from "drizzle-orm";
+import { eq, and, isNull, isNotNull, gte, lt, inArray, like, desc } from "drizzle-orm";
 
 // -- Environment detection --
 
@@ -59,16 +59,31 @@ export function classifyStepsForDeployment(
 
 const TICKET_KEY_REGEX = /([A-Z][A-Z0-9]+-\d+)/;
 const TICKET_KEY_REGEX_G = /([A-Z][A-Z0-9]+-\d+)/g;
+// Hyphenless safety net for non-conforming branch names like `feature/VPL45823-...`.
+// Restricted to known active project prefixes so arbitrary tokens (UTF8, S3, HTTP2) are not
+// misread as ticket keys; word-boundary anchored and normalised to the canonical `PREFIX-NNN`.
+const HYPHENLESS_KEY_REGEX_G = /\b(VPL|SDESK|VDVF|FPL|PL)(\d+)\b/gi;
 const MERGE_BRANCH_REGEX = /Merged in ([^\s(]+)/i;
 const MERGE_PR_REGEX = /\(pull request #(\d+)\)/i;
 
-function extractTicketKey(text: string): string | null {
-  return text.match(TICKET_KEY_REGEX)?.[1] ?? null;
+export function extractTicketKey(text: string): string | null {
+  const hyphenated = text.match(TICKET_KEY_REGEX)?.[1];
+  if (hyphenated) return hyphenated.toUpperCase();
+  HYPHENLESS_KEY_REGEX_G.lastIndex = 0;
+  const m = HYPHENLESS_KEY_REGEX_G.exec(text);
+  return m ? `${m[1].toUpperCase()}-${m[2]}` : null;
 }
 
-function extractAllTicketKeys(text: string): string[] {
-  const matches = text.match(TICKET_KEY_REGEX_G);
-  return matches ? [...new Set(matches)] : [];
+export function extractAllTicketKeys(text: string): string[] {
+  const keys: string[] = [];
+  const hyphenated = text.match(TICKET_KEY_REGEX_G);
+  if (hyphenated) for (const k of hyphenated) keys.push(k.toUpperCase());
+  HYPHENLESS_KEY_REGEX_G.lastIndex = 0;
+  let m: RegExpExecArray | null;
+  while ((m = HYPHENLESS_KEY_REGEX_G.exec(text)) !== null) {
+    keys.push(`${m[1].toUpperCase()}-${m[2]}`);
+  }
+  return [...new Set(keys)];
 }
 
 function extractMergeInfo(msg: string) {
@@ -325,6 +340,7 @@ export async function backfillEnrichment(): Promise<number> {
     db.update(pipelineRun)
       .set({
         commitMessage: firstLine,
+        ...(commitHash && !row.commitHash ? { commitHash } : {}),
         ...(primaryKey && !row.ticketKey ? { ticketKey: primaryKey } : {}),
         ...(allKeys.length > 1 ? { ticketKeys: JSON.stringify(allKeys) } : {}),
         ...(mergeInfo.sourceBranch ? { sourceBranch: mergeInfo.sourceBranch } : {}),
@@ -477,7 +493,8 @@ export async function syncPipelines(): Promise<SyncResult> {
     await runDeployDetectionForStateChanges(stateChanges);
     processStateChanges(stateChanges);
     const backfilled = await backfillEnrichment();
-    const backfilledDeployments = (await backfillDeploymentDetection()) + backfillBranchInferredDeployments();
+    // Range attribution runs after branch-inference so newly-flagged deploys are picked up.
+    const backfilledDeployments = (await backfillDeploymentDetection()) + backfillBranchInferredDeployments() + (await backfillDeployRangeAttribution());
     return { newRuns: 0, updatedRuns, stateChanges: stateChanges.length, remaining: 0, backfilled, backfilledDeployments };
   }
 
@@ -583,6 +600,7 @@ export async function syncPipelines(): Promise<SyncResult> {
           id, repo: shortRepoName(repoSlug), buildNumber: p.build_number, branchName,
           ticketKey: rd.ticketKey, ticketKeys: rd.ticketKeys ? JSON.stringify(rd.ticketKeys) : null,
           state, creator, durationSeconds: p.duration_in_seconds ?? null, pipelineUrl,
+          commitHash: p.target?.commit?.hash ?? null,
           isDeployment: false, environment: null, environmentType: null,
           createdAt: p.created_on ?? new Date().toISOString(), completedAt: p.completed_on ?? null,
           commitMessage: rd.commitMessage, sourceBranch: rd.sourceBranch,
@@ -614,7 +632,8 @@ export async function syncPipelines(): Promise<SyncResult> {
 
   // Run enrichment backfill for existing rows missing commit data
   const backfilled = await backfillEnrichment();
-  const backfilledDeployments = (await backfillDeploymentDetection()) + backfillBranchInferredDeployments();
+  // Range attribution runs after branch-inference so newly-flagged deploys are picked up.
+  const backfilledDeployments = (await backfillDeploymentDetection()) + backfillBranchInferredDeployments() + (await backfillDeployRangeAttribution());
 
   return { newRuns, updatedRuns, stateChanges: stateChanges.length, remaining: totalRemaining, backfilled, backfilledDeployments };
 }
@@ -749,6 +768,143 @@ export function backfillBranchInferredDeployments(): number {
     logger.info("pipeline-sync", `branch-inferred deploy backfill: flagged ${flagged} staging/uat runs`);
   }
   return flagged;
+}
+
+// -- Range-based deploy attribution (BRDG-269) --
+
+interface BbCommit { hash: string; message?: string }
+
+const RANGE_WALK_PAGELEN = 50;
+// Safety cap so a missing/unmatched anchor can never walk the whole history.
+const RANGE_WALK_MAX_PAGES = 4;
+const RANGE_BACKFILL_BATCH = 10;
+const RANGE_BACKFILL_DAYS = 14;
+
+/**
+ * Attribute a staging/uat-N deploy to every ticket merged into the branch since the previous
+ * deploy. A deploy build is recorded against only the single commit that triggered it, so tickets
+ * whose intermediate merge commits never got their own build are deployed but unattributed
+ * (BRDG-269). This walks the commit range between this deploy's head commit and the previous
+ * successful deploy's head commit, collects ticket keys from each commit message, and unions them
+ * into the run's ticket_keys. Badge-only: the primary ticket_key is never changed, so
+ * processStateChanges still emits exactly one deploy notification. Idempotent via
+ * range_attributed_at; a transient fetch error leaves the marker null so it is retried next tick.
+ * Returns true when new keys were added.
+ */
+export async function attributeDeployRange(repoSlug: string, runId: string): Promise<boolean> {
+  const run = db.select().from(pipelineRun).where(eq(pipelineRun.id, runId)).get();
+  if (!run || run.rangeAttributedAt) return false;
+
+  // Only staging-type branch deploys are bundled this way. Anything else is stamped and skipped.
+  const env = inferEnvironmentFromBranch(run.branchName);
+  if (!run.isDeployment || !env || run.environmentType !== "Staging") {
+    db.update(pipelineRun).set({ rangeAttributedAt: new Date().toISOString() }).where(eq(pipelineRun.id, runId)).run();
+    return false;
+  }
+
+  // Resolve the deploy head commit (fetch + persist if missing). Without it we cannot anchor the
+  // walk, so leave the marker null to retry.
+  let headHash = run.commitHash;
+  if (!headHash) {
+    const p = await bbFetch<BbPipeline>(repoSlug, `/pipelines/${run.buildNumber}`, true);
+    headHash = p?.target?.commit?.hash ?? null;
+    if (headHash) db.update(pipelineRun).set({ commitHash: headHash }).where(eq(pipelineRun.id, runId)).run();
+  }
+  if (!headHash) return false;
+
+  // Previous successful deploy on the same repo+branch is the stop anchor for the walk.
+  const prev = db.select().from(pipelineRun)
+    .where(and(
+      eq(pipelineRun.repo, run.repo),
+      eq(pipelineRun.branchName, run.branchName),
+      eq(pipelineRun.isDeployment, true),
+      isNotNull(pipelineRun.completedAt),
+      lt(pipelineRun.completedAt, run.completedAt ?? run.createdAt),
+    ))
+    .orderBy(desc(pipelineRun.completedAt))
+    .limit(1)
+    .get();
+  const anchorHash = prev?.commitHash ?? null;
+
+  // Walk commits newest-first from the deploy head, stopping at the anchor or the page cap. If no
+  // anchor exists (first deploy on this branch), the cap bounds it to just the recent range.
+  const collected: string[] = [];
+  let url: string | null = `/commits/${headHash}?pagelen=${RANGE_WALK_PAGELEN}`;
+  let pages = 0;
+  let reachedAnchor = false;
+  let fetchFailed = false;
+  while (url && pages < RANGE_WALK_MAX_PAGES && !reachedAnchor) {
+    const page: BbPaginatedResponse<BbCommit> | null = pages === 0
+      ? await bbFetch<BbPaginatedResponse<BbCommit>>(repoSlug, url)
+      : await bbFetchUrl<BbPaginatedResponse<BbCommit>>(url);
+    if (!page) { fetchFailed = true; break; }
+    for (const c of page.values ?? []) {
+      if (anchorHash && c.hash.startsWith(anchorHash.slice(0, 12))) { reachedAnchor = true; break; }
+      const msg = c.message ?? "";
+      for (const k of extractAllTicketKeys(msg)) if (!collected.includes(k)) collected.push(k);
+      const sb = extractMergeInfo(msg).sourceBranch;
+      if (sb) {
+        const sbKey = extractTicketKey(sb);
+        if (sbKey && !collected.includes(sbKey)) collected.push(sbKey);
+      }
+    }
+    url = page.next ?? null;
+    pages++;
+  }
+  // First page failed outright: nothing to attribute and no anchor reached, so retry next tick.
+  if (fetchFailed && collected.length === 0) return false;
+
+  // Union with the run's existing keys; never touch the primary ticketKey.
+  const existing: string[] = [];
+  if (run.ticketKey) existing.push(run.ticketKey);
+  if (run.ticketKeys) {
+    try { for (const k of JSON.parse(run.ticketKeys) as string[]) if (!existing.includes(k)) existing.push(k); } catch { /* malformed JSON: ignore */ }
+  }
+  const union = [...new Set([...existing, ...collected])];
+
+  db.update(pipelineRun)
+    .set({
+      ...(union.length > 1 ? { ticketKeys: JSON.stringify(union) } : {}),
+      rangeAttributedAt: new Date().toISOString(),
+    })
+    .where(eq(pipelineRun.id, runId))
+    .run();
+  return union.length > existing.length;
+}
+
+/**
+ * Walks recent staging/uat-N deploys that have not yet been range-attributed and unions in the
+ * tickets merged since the previous deploy. Bounded by a time window and a per-tick batch; the
+ * range_attributed_at marker guarantees forward progress. Runs after branch-inference flags
+ * deploys, so freshly-flagged rows are picked up the same cycle. Flips data only, so it emits no
+ * notifications (BRDG-269).
+ */
+export async function backfillDeployRangeAttribution(): Promise<number> {
+  if (!isPipelineConfigured()) return 0;
+
+  const cutoff = new Date(Date.now() - RANGE_BACKFILL_DAYS * 24 * 60 * 60 * 1000).toISOString();
+  const rows = db.select().from(pipelineRun)
+    .where(and(
+      eq(pipelineRun.isDeployment, true),
+      isNull(pipelineRun.rangeAttributedAt),
+      like(pipelineRun.branchName, "staging/%"),
+      gte(pipelineRun.createdAt, cutoff),
+    ))
+    .limit(RANGE_BACKFILL_BATCH)
+    .all();
+
+  if (rows.length === 0) return 0;
+
+  let attributed = 0;
+  for (const r of rows) {
+    const grew = await attributeDeployRange(fullRepoSlug(r.repo), r.id);
+    if (grew) attributed++;
+  }
+
+  if (attributed > 0) {
+    logger.info("pipeline-sync", `range attribution: expanded ${attributed} of ${rows.length} deploys`);
+  }
+  return attributed;
 }
 
 export function processStateChanges(stateChanges: StateChangeEntry[]) {
