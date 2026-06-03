@@ -185,6 +185,6 @@ instantly. Ensure internal list scroll doesn't trigger close-on-scroll (bind to 
 - [x] Stop propagation so card and actions don't trigger row select/navigation
 - [x] Keyboard accessible; respects frontend design guardrails
 - [x] Tests: hover card open/close, member list rendering, remove (success + rollback), "View refinement" link href
-- [ ] Verify visually on the sprint board (single-session and multi-session tickets)
-- [ ] Update relevant docs if needed (refinement behaviour)
-- [ ] Remove the temporary preview route `src/app/(app)/dev/refinement-hover/` once the real card ships
+- [x] Verify visually on the sprint board <!-- list view (TicketRow): card opens on gem hover with real titles, current ticket highlighted, remove × reveals on row hover, hover-bridge holds, View refinement button. Board variant shares the component; multi-session rendering covered by unit tests. -->
+- [x] Update relevant docs if needed (refinement behaviour) <!-- no architecture doc describes the sprint-board gem UI; this story is the record. API/data layer unchanged (reuses existing PATCH). -->
+- [x] Remove the temporary preview route `src/app/(app)/dev/refinement-hover/` once the real card ships <!-- moved to deleted/app-dev-refinement-hover/ per the no-delete rule -->

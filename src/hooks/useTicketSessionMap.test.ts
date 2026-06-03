@@ -52,8 +52,12 @@ describe("useTicketSessionMap", () => {
     const { result } = renderHook(() => useTicketSessionMap());
     const map = result.current.ticketSessionMap;
 
-    expect(map.get("VPL-100")).toEqual([{ id: "s1", name: "Sprint 42 Prep" }]);
-    expect(map.get("VPL-200")).toEqual([{ id: "s2", name: "Backlog Refinement" }]);
+    expect(map.get("VPL-100")).toEqual([
+      { id: "s1", name: "Sprint 42 Prep", ticketKeys: ["VPL-100", "VPL-101"], ticketCount: 2 },
+    ]);
+    expect(map.get("VPL-200")).toEqual([
+      { id: "s2", name: "Backlog Refinement", ticketKeys: ["VPL-101", "VPL-200"], ticketCount: 2 },
+    ]);
   });
 
   it("lists multiple sessions for a ticket in multiple drafts", () => {
@@ -61,8 +65,8 @@ describe("useTicketSessionMap", () => {
     const map = result.current.ticketSessionMap;
 
     expect(map.get("VPL-101")).toEqual([
-      { id: "s1", name: "Sprint 42 Prep" },
-      { id: "s2", name: "Backlog Refinement" },
+      { id: "s1", name: "Sprint 42 Prep", ticketKeys: ["VPL-100", "VPL-101"], ticketCount: 2 },
+      { id: "s2", name: "Backlog Refinement", ticketKeys: ["VPL-101", "VPL-200"], ticketCount: 2 },
     ]);
   });
 
