@@ -2,7 +2,7 @@
 
 import { memo, type ReactNode } from "react";
 import type { Ticket } from "@/types/ticket";
-import { ChevronRight, ChevronDown, Pin, Gauge, Goal } from "lucide-react";
+import { ChevronRight, ChevronDown, Pin, Goal, AlertTriangle } from "lucide-react";
 import { StatPill, StatusPill } from "./SprintStatPill";
 import { MetricBadge } from "@/components/shared/MetricBadge";
 import { Tooltip } from "@/components/shared/Tooltip";
@@ -22,6 +22,8 @@ export interface GroupStatBarProps {
   showDot?: boolean;
   /** When false, the per-status (TO DO / IN PROGRESS / TEST / DONE) count pills are hidden. */
   showStatusCounts?: boolean;
+  /** When false, the "avg N" business-value average next to the BV total is hidden. */
+  showBvAvg?: boolean;
   /** When provided, renders a pin toggle next to the label (used to pin a sprint group to the tab bar). */
   onPin?: () => void;
   isPinned?: boolean;
@@ -40,6 +42,7 @@ export const GroupStatBar = memo(function GroupStatBar({
   onToggleCollapse,
   showDot = false,
   showStatusCounts = true,
+  showBvAvg = true,
   onPin,
   isPinned = false,
   pinDisabled = false,
@@ -57,6 +60,18 @@ export const GroupStatBar = memo(function GroupStatBar({
   const deprecatedWithSp = tickets.filter((t) => t.jiraStatus === "DEPRECATED" && t.storyPoints != null && t.storyPoints > 0).length;
 
   const isCollapsible = onToggleCollapse !== undefined;
+
+  // Estimate-hygiene alerts (unpointed stories, deprecated-but-pointed) collapse
+  // into a single warning icon on the far right rather than inline pills.
+  const warningParts: string[] = [];
+  if (noPointsCount > 0) {
+    warningParts.push(`${noPointsCount} ${noPointsCount === 1 ? "story" : "stories"} without a story point estimate`);
+  }
+  if (deprecatedWithSp > 0) {
+    warningParts.push(`${deprecatedWithSp} deprecated ${deprecatedWithSp === 1 ? "ticket" : "tickets"} still with story points`);
+  }
+  const warningLabel = warningParts.join(" · ");
+  const canFilterUnpointed = noPointsCount > 0 && onFilterChange !== undefined;
 
   function toggle(criterion: StatCriterion) {
     onFilterChange?.(activeCriterion === criterion ? null : criterion);
@@ -114,7 +129,7 @@ export const GroupStatBar = memo(function GroupStatBar({
       {bvTickets.length > 0 && (
         <span className="inline-flex items-center gap-1.5">
           <MetricBadge metric="bv" value={bvTotal} tinted />
-          {bvAvg ? (
+          {showBvAvg && bvAvg ? (
             <Tooltip content="Average business value per scored ticket">
               <span className="inline-flex items-center gap-0.5 text-caption text-text-muted whitespace-nowrap cursor-default">
                 <Goal size={10} strokeWidth={2} aria-hidden />
@@ -123,31 +138,6 @@ export const GroupStatBar = memo(function GroupStatBar({
             </Tooltip>
           ) : null}
         </span>
-      )}
-      {noPointsCount > 0 && (
-        <Tooltip content={`${noPointsCount} ${noPointsCount === 1 ? "story" : "stories"} without story point estimate (excludes deprecated and N/A)`}>
-          <StatPill
-            size="sm"
-            variant="warning"
-            active={activeCriterion === "unpointed"}
-            onClick={onFilterChange ? (e) => { e.stopPropagation(); toggle("unpointed"); } : undefined}
-          >
-            <span className="inline-flex items-center gap-1">
-              <Gauge size={11} strokeWidth={2} aria-hidden />
-              {noPointsCount} no SP
-            </span>
-          </StatPill>
-        </Tooltip>
-      )}
-      {deprecatedWithSp > 0 && (
-        <Tooltip content={`${deprecatedWithSp} deprecated ${deprecatedWithSp === 1 ? "ticket still has" : "tickets still have"} story points assigned`}>
-          <StatPill size="sm" variant="warning">
-            <span className="inline-flex items-center gap-1">
-              <Gauge size={11} strokeWidth={2} aria-hidden />
-              {deprecatedWithSp} DEPR with SP
-            </span>
-          </StatPill>
-        </Tooltip>
       )}
       {showStatusCounts && todoCount > 0 && (
         <StatusPill
@@ -192,6 +182,25 @@ export const GroupStatBar = memo(function GroupStatBar({
           active={activeCriterion === "done"}
           onClick={onFilterChange ? (e) => { e.stopPropagation(); toggle("done"); } : undefined}
         />
+      )}
+      {warningLabel && (
+        <Tooltip content={warningLabel}>
+          <button
+            type="button"
+            aria-label={warningLabel}
+            onClick={canFilterUnpointed ? (e) => { e.stopPropagation(); toggle("unpointed"); } : undefined}
+            className={`ml-auto flex h-6 w-6 shrink-0 items-center justify-center rounded-md text-[var(--color-status-warning)] focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-[var(--color-brand-400)] ${
+              canFilterUnpointed ? "cursor-pointer" : "cursor-default"
+            } ${
+              activeCriterion === "unpointed"
+                ? "bg-[var(--color-status-warning-subtle)]"
+                : "hover:bg-[var(--color-status-warning-subtle)]"
+            }`}
+            style={{ transition: "background-color 0.12s ease" }}
+          >
+            <AlertTriangle size={14} strokeWidth={2} aria-hidden />
+          </button>
+        </Tooltip>
       )}
     </div>
   );

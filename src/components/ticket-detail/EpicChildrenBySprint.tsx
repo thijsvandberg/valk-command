@@ -99,6 +99,7 @@ export function EpicChildrenBySprint({
                 isCollapsed={isCollapsed}
                 onToggleCollapse={() => toggle(group.key)}
                 showStatusCounts={false}
+                showBvAvg={false}
                 leadingIcon={
                   isUnscheduled
                     ? <CircleDot size={12} />

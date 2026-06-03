@@ -52,16 +52,23 @@ describe("GroupStatBar", () => {
     expect(screen.getByLabelText("Story Points: 10")).toBeTruthy();
   });
 
-  it("renders no-points count for unpointed tickets", () => {
+  it("surfaces unpointed tickets via the warning icon", () => {
     render(<GroupStatBar tickets={TICKETS} />);
-    // VPL-3 and VPL-5 have no points
-    expect(screen.getByText("2 no SP")).toBeTruthy();
+    // VPL-3 and VPL-5 have no points; collapsed into the warning icon's label.
+    expect(screen.getByLabelText(/2 stories without a story point estimate/)).toBeTruthy();
+  });
+
+  it("filters unpointed when clicking the warning icon", () => {
+    const onFilterChange = vi.fn();
+    render(<GroupStatBar tickets={TICKETS} onFilterChange={onFilterChange} />);
+    fireEvent.click(screen.getByLabelText(/without a story point estimate/));
+    expect(onFilterChange).toHaveBeenCalledWith("unpointed");
   });
 
   it("hides points total when all tickets are unpointed", () => {
     const noPointTickets = TICKETS.map((t) => ({ ...t, storyPoints: null }));
     render(<GroupStatBar tickets={noPointTickets} />);
-    // The SP total badge should not appear; "X no SP" is still shown
+    // The SP total badge should not appear; the unpointed warning icon still is
     expect(screen.queryByLabelText(/Story Points/)).toBeNull();
   });
 
@@ -104,7 +111,7 @@ describe("GroupStatBar", () => {
     expect(onFilterChange).toHaveBeenCalledWith(null);
   });
 
-  it("calls onFilterChange with null when clicking active unpointed pill", () => {
+  it("calls onFilterChange with null when clicking the active warning icon", () => {
     const onFilterChange = vi.fn();
     render(
       <GroupStatBar
@@ -113,8 +120,19 @@ describe("GroupStatBar", () => {
         onFilterChange={onFilterChange}
       />,
     );
-    fireEvent.click(screen.getByText("2 no SP"));
+    fireEvent.click(screen.getByLabelText(/without a story point estimate/));
     expect(onFilterChange).toHaveBeenCalledWith(null);
+  });
+
+  it("hides the BV average when showBvAvg is false", () => {
+    const bvTickets = [
+      makeTicket({ key: "VPL-1", businessValue: 4, storyPoints: 3 }),
+      makeTicket({ key: "VPL-2", businessValue: 2, storyPoints: 3 }),
+    ];
+    const { rerender } = render(<GroupStatBar tickets={bvTickets} />);
+    expect(screen.getByText(/avg/)).toBeTruthy();
+    rerender(<GroupStatBar tickets={bvTickets} showBvAvg={false} />);
+    expect(screen.queryByText(/avg/)).toBeNull();
   });
 
   it("renders label when provided", () => {
@@ -137,7 +155,7 @@ describe("GroupStatBar", () => {
       makeTicket({ key: "VPL-3", storyPoints: null, type: "spike" }),
     ];
     render(<GroupStatBar tickets={tickets} />);
-    expect(screen.getByText("1 no SP")).toBeTruthy();
+    expect(screen.getByLabelText(/1 story without a story point estimate/)).toBeTruthy();
   });
 
   it("does not render pills for zero-count statuses", () => {
