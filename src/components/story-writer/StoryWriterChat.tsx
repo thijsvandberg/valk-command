@@ -30,7 +30,7 @@ import {
   RelatedStoriesInline,
   formatDuration,
 } from "@/components/story-writer/ChatMessageParts";
-import { ModelSelector, CodebaseToggle, QuickActionsPopover } from "@/components/shared/chat-controls";
+import { ModelSelector, CodebaseToggle, QuickActionsPopover, type QuickAction } from "@/components/shared/chat-controls";
 import { StreamingIndicator } from "@/components/shared/StreamingIndicator";
 
 interface StoryWriterChatProps {
@@ -79,13 +79,7 @@ interface StoryWriterChatProps {
  * Always available in the dropdown regardless of story state, so they can be
  * found even when their context-filtered inline chip is hidden.
  */
-const SPECIAL_ACTIONS: {
-  id: string;
-  label: string;
-  icon: LucideIcon;
-  prompt: string;
-  enabled: boolean;
-}[] = [
+const SPECIAL_ACTIONS: QuickAction[] = [
   {
     id: "review",
     label: "Review Story",
@@ -100,6 +94,9 @@ const SPECIAL_ACTIONS: {
     icon: Search,
     prompt: "Find related stories",
     enabled: true,
+    // Opens the related-stories panel instead of sending a message, so the
+    // inline "send now" affordance does not apply here.
+    sendable: false,
   },
   {
     id: "match-epic",
@@ -639,6 +636,15 @@ export function StoryWriterChat({
                     const ap = apiPrompts.find((p) => p.id === actionId);
                     if (ap) onCodebaseResearchChange(ap.enableCodebase === true);
                     fillInput(prompt);
+                  }}
+                  onSend={(prompt, actionId) => {
+                    setShowActions(false);
+                    if (actionId === "match-epic") {
+                      onSend(prompt, "match-epic");
+                      return;
+                    }
+                    const ap = apiPrompts.find((p) => p.id === actionId);
+                    handleDirectSend(prompt, ap?.enableCodebase === true);
                   }}
                   open={showActions}
                   onToggle={() => setShowActions((v) => !v)}
