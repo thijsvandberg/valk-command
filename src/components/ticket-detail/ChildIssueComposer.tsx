@@ -27,6 +27,9 @@ interface ChildIssueComposerProps {
   trailing?: ReactNode;
   /** Extra classes on the row container (border, etc.). */
   className?: string;
+  /** Open the type dropdown upward. Needed inside a sprint card, whose overflow-clip
+   *  would otherwise hide a downward menu at the card's bottom edge. */
+  dropUp?: boolean;
 }
 
 // The create row: an issue-type dropdown plus a title input. Enter creates and
@@ -40,6 +43,7 @@ export function ChildIssueComposer({
   autoFocus,
   trailing,
   className = "",
+  dropUp,
 }: ChildIssueComposerProps) {
   const [title, setTitle] = useState("");
   const [selectedType, setSelectedType] = useState<IssueType>("story");
@@ -84,7 +88,7 @@ export function ChildIssueComposer({
           <ChevronDown size={10} className="text-text-muted" />
         </button>
         {showTypePicker && (
-          <div className="absolute top-full left-0 z-20 mt-1 overflow-hidden rounded-lg border border-border-default bg-[var(--color-surface-elevated)] shadow-[0_4px_12px_rgba(0,0,0,0.12),0_1px_3px_rgba(0,0,0,0.08)]">
+          <div className={`absolute left-0 z-20 overflow-hidden rounded-lg border border-border-default bg-[var(--color-surface-elevated)] shadow-[0_4px_12px_rgba(0,0,0,0.12),0_1px_3px_rgba(0,0,0,0.08)] ${dropUp ? "bottom-full mb-1" : "top-full mt-1"}`}>
             {CHILD_ISSUE_TYPES.map((opt) => (
               <button
                 key={opt.value}

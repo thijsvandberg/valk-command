@@ -436,6 +436,7 @@ export function EpicChildrenBySprint({
             placeholder={isUnscheduled ? "Create unscheduled issue..." : `Create issue in ${group.label}...`}
             alignKey={visibleFields.has("issueKey")}
             className={visibleItems.length > 0 ? "border-t border-border-subtle" : ""}
+            dropUp
           />
         )}
       </>
