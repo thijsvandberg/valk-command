@@ -66,6 +66,16 @@ function isEpicChild(child: EpicChild | Subtask): child is EpicChild {
   return "storyPoints" in child;
 }
 
+// True when the dragged row's center sits below the hovered row's center, i.e. the
+// cursor is in the row's bottom half, so a drop should land after it. Lets a target
+// with a single item be dropped onto from either side.
+function isBelowOverRow(active: DragOverEvent["active"], over: DragOverEvent["over"]): boolean {
+  const a = active.rect.current.translated;
+  const o = over?.rect;
+  if (!a || !o) return false;
+  return a.top + a.height / 2 > o.top + o.height / 2;
+}
+
 // Matches GroupStatBar's noPointsCount: genuinely unpointed stories only, so the
 // warning's click-to-filter shows exactly the items the warning counted.
 function isUnpointedChild(child: EpicChild | Subtask): boolean {
@@ -259,6 +269,8 @@ export function EpicChildrenBySprint({
   const [activeDragKey, setActiveDragKey] = useState<string | null>(null);
   // Key of the row currently hovered during a drag, used to render the drop-indicator bar.
   const [dragOverKey, setDragOverKey] = useState<string | null>(null);
+  // Whether the hovered row's drop lands after it (cursor in its bottom half).
+  const [dragInsertAfter, setDragInsertAfter] = useState(false);
   const [rowMenu, setRowMenu] = useState<{ x: number; y: number; childKey: string } | null>(null);
   // Which group has its inline create composer open (only one at a time).
   const [composerGroupKey, setComposerGroupKey] = useState<string | null>(null);
@@ -294,13 +306,16 @@ export function EpicChildrenBySprint({
     draggingRef.current = true;
     setActiveDragKey(String(e.active.id));
     setDragOverKey(null);
+    setDragInsertAfter(false);
   }, []);
 
   // Track only row hovers (not group cards) so the drop bar shows on a target row.
   const handleDragOver = useCallback((e: DragOverEvent) => {
-    const { over } = e;
+    const { active, over } = e;
     const overData = over?.data.current as { type?: "child" | "group" } | undefined;
-    setDragOverKey(over && overData?.type === "child" ? String(over.id) : null);
+    const onRow = !!over && overData?.type === "child";
+    setDragOverKey(onRow ? String(over!.id) : null);
+    setDragInsertAfter(onRow ? isBelowOverRow(active, over) : false);
   }, []);
 
   const handleDragEnd = useCallback(
@@ -308,6 +323,7 @@ export function EpicChildrenBySprint({
       draggingRef.current = false;
       setActiveDragKey(null);
       setDragOverKey(null);
+      setDragInsertAfter(false);
       const { active, over } = e;
       if (!over) return;
 
@@ -324,6 +340,7 @@ export function EpicChildrenBySprint({
         overType: overData?.type,
         overSprintName: overData?.sprintName ?? null,
         overState: overData?.state ?? null,
+        insertAfter: overData?.type === "child" ? isBelowOverRow(active, over) : false,
         groups,
         sprints,
       });
@@ -340,6 +357,7 @@ export function EpicChildrenBySprint({
     draggingRef.current = false;
     setActiveDragKey(null);
     setDragOverKey(null);
+    setDragInsertAfter(false);
   }, []);
 
   if (groups.length === 0) return null;
@@ -370,7 +388,7 @@ export function EpicChildrenBySprint({
           isLast={isLast}
           sprintName={group.sprintName}
           state={group.state}
-          insertLine={insertLineForRow({ rowKey: child.key, activeKey: activeDragKey, overKey: dragOverKey, groups })}
+          insertLine={insertLineForRow({ rowKey: child.key, activeKey: activeDragKey, overKey: dragOverKey, insertAfter: dragInsertAfter, groups })}
           visibleFields={visibleFields}
           renderMetadata={renderMetadata}
           onJiraStatusChange={onJiraStatusChange}

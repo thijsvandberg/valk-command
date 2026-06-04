@@ -137,3 +137,7 @@ Two refinements requested after the initial implementation, both mirroring the s
   above), fed by a new `onDragOver` that tracks `dragOverKey`.
 - [x] Tests: `resolveDragEnd` move-to-position + closed rejection, `insertLineForRow`
   above/below/cross-group/none, and the `handleMoveChildToPosition` move→rank ordering + revert.
+- [x] **Drop below a single-item target.** A cross-sprint drop's side (above/below) now follows
+  the cursor's half of the hovered row (`insertAfter`, from the dragged vs over rect centers)
+  instead of always inserting before, so a sprint holding one item can be dropped onto from
+  either side. Threaded through `resolveDragEnd` (rankBefore vs rankAfter) and `insertLineForRow`.

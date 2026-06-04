@@ -125,7 +125,7 @@ describe("resolveDragEnd", () => {
     });
   });
 
-  it("moves to a position when dropped onto a row in another group", () => {
+  it("moves to a position above the hovered row when the cursor is in its top half", () => {
     const res = resolveDragEnd({
       ...base,
       activeKey: "VPL-10",
@@ -133,6 +133,7 @@ describe("resolveDragEnd", () => {
       overType: "child",
       overSprintName: "Sprint 2",
       overState: "future",
+      insertAfter: false,
     });
     expect(res).toEqual({
       kind: "move-to-position",
@@ -143,6 +144,29 @@ describe("resolveDragEnd", () => {
         targetSprintName: "Sprint 2",
         newOrder: ["VPL-10", "VPL-12"],
         rankBeforeKey: "VPL-12",
+      },
+    });
+  });
+
+  it("moves to a position below the hovered row when the cursor is in its bottom half", () => {
+    const res = resolveDragEnd({
+      ...base,
+      activeKey: "VPL-10",
+      overId: "VPL-12",
+      overType: "child",
+      overSprintName: "Sprint 2",
+      overState: "future",
+      insertAfter: true,
+    });
+    expect(res).toEqual({
+      kind: "move-to-position",
+      move: {
+        activeKey: "VPL-10",
+        targetSprintId: "2",
+        targetGroupKey: "Sprint 2",
+        targetSprintName: "Sprint 2",
+        newOrder: ["VPL-12", "VPL-10"],
+        rankAfterKey: "VPL-12",
       },
     });
   });
@@ -226,8 +250,9 @@ describe("insertLineForRow", () => {
     expect(insertLineForRow({ rowKey: "VPL-10", activeKey: "VPL-11", overKey: "VPL-10", groups })).toBe("above");
   });
 
-  it("shows the bar above the target for a cross-group drag", () => {
-    expect(insertLineForRow({ rowKey: "VPL-12", activeKey: "VPL-10", overKey: "VPL-12", groups })).toBe("above");
+  it("shows the bar above or below the target for a cross-group drag per cursor half", () => {
+    expect(insertLineForRow({ rowKey: "VPL-12", activeKey: "VPL-10", overKey: "VPL-12", insertAfter: false, groups })).toBe("above");
+    expect(insertLineForRow({ rowKey: "VPL-12", activeKey: "VPL-10", overKey: "VPL-12", insertAfter: true, groups })).toBe("below");
   });
 
   it("returns undefined for rows that are not the hovered one", () => {

@@ -83,6 +83,7 @@ export function resolveDragEnd({
   overType,
   overSprintName,
   overState,
+  insertAfter = false,
   groups,
   sprints,
 }: {
@@ -92,6 +93,8 @@ export function resolveDragEnd({
   overType: "child" | "group" | undefined;
   overSprintName: string | null;
   overState: Sprint["state"] | null;
+  /** True when the cursor is in the bottom half of the hovered row (insert below it). */
+  insertAfter?: boolean;
   groups: ChildGroup[];
   sprints: Sprint[];
 }): DragEndResolution {
@@ -112,17 +115,18 @@ export function resolveDragEnd({
   const move = resolveMove({ childSprintName, targetGroup: { sprintName: overSprintName, state: overState }, sprints });
   if (!move.ok) return move.reason === "closed" ? { kind: "move-rejected", reason: "closed" } : { kind: "noop" };
 
-  // Dropped onto a row in another group: move AND land at that row's position (insert
-  // before it). Dropped onto a group card: plain move, appended at the end.
+  // Dropped onto a row in another group: move AND land at that row's position. The
+  // cursor's half of the row decides above (insert before) vs below (insert after),
+  // so a single-item target can be dropped onto from either side. Dropped onto a
+  // group card: plain move, appended at the end.
   if (overType === "child") {
     const targetGroup = groups.find((g) => g.sprintName === overSprintName);
     const targetKeys = targetGroup
       ? targetGroup.items.filter((i) => !i.key.startsWith("pending-")).map((i) => i.key)
       : [];
     const idx = targetKeys.indexOf(overId);
-    const newOrder = idx === -1
-      ? [...targetKeys, activeKey]
-      : [...targetKeys.slice(0, idx), activeKey, ...targetKeys.slice(idx)];
+    const insertIdx = idx === -1 ? targetKeys.length : insertAfter ? idx + 1 : idx;
+    const newOrder = [...targetKeys.slice(0, insertIdx), activeKey, ...targetKeys.slice(insertIdx)];
     return {
       kind: "move-to-position",
       move: {
@@ -131,7 +135,7 @@ export function resolveDragEnd({
         targetGroupKey: targetGroup?.key ?? (overSprintName ?? UNSCHEDULED_GROUP_KEY),
         targetSprintName: overSprintName,
         newOrder,
-        rankBeforeKey: overId,
+        ...(insertAfter ? { rankAfterKey: overId } : { rankBeforeKey: overId }),
       },
     };
   }
@@ -142,19 +146,21 @@ export function resolveDragEnd({
 /**
  * Decides whether the drop-indicator bar sits above or below a given row while a
  * drag is in progress. Within the same group the side follows the drag direction
- * (dragging up inserts above, down inserts below); a cross-group drag always
- * inserts before the hovered row (matching the move-to-position rank anchor).
- * Returns undefined for every row except the currently hovered one.
+ * (dragging up inserts above, down inserts below); a cross-group drag follows the
+ * cursor's half of the row (`insertAfter`), so a single-item target can be dropped
+ * onto from either side. Returns undefined for every row except the hovered one.
  */
 export function insertLineForRow({
   rowKey,
   activeKey,
   overKey,
+  insertAfter = false,
   groups,
 }: {
   rowKey: string;
   activeKey: string | null;
   overKey: string | null;
+  insertAfter?: boolean;
   groups: ChildGroup[];
 }): "above" | "below" | undefined {
   if (!activeKey || !overKey || rowKey !== overKey || rowKey === activeKey) return undefined;
@@ -172,7 +178,7 @@ export function insertLineForRow({
     return activeIdx > overIdx ? "above" : "below";
   }
 
-  return "above";
+  return insertAfter ? "below" : "above";
 }
 
 /**
