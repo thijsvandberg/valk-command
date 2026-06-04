@@ -1,10 +1,11 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useMemo, useState, useCallback } from "react";
 import useSWR from "swr";
 import dynamic from "next/dynamic";
-import { Trash2 } from "lucide-react";
+import { Trash2, Telescope, Clock, Flame } from "lucide-react";
 import { usePageTitle } from "@/hooks/usePageTitle";
+import { Button } from "@/components/ui/Button";
 import { ViewHeader, ViewHeaderTitle } from "@/components/shared/ViewHeader";
 import { relativeDate, formatAbsoluteDate } from "@/lib/date-utils";
 import { useTicketDetail } from "@/hooks/useSprintBoard";
@@ -64,6 +65,36 @@ const DISPOSITION_BADGE: Record<NonNullable<Disposition>, { label: string; color
 const selectClass =
   "h-8 cursor-pointer rounded-lg border border-border-default bg-[var(--color-surface-elevated)] px-2.5 text-label font-medium text-text-secondary hover:border-[var(--color-brand-500)]/40 focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-[var(--color-brand-400)]";
 
+// Default batch size for the quick "top X" selection actions. Kept modest to
+// honour the epic's "small batches, never all at once" constraint.
+const QUICK_TOP_X = 10;
+
+interface QueueCounts {
+  pending: number;
+  running: number;
+  done: number;
+  error: number;
+}
+
+// Brand-tinted select checkbox matching the sprint board BulkActionBar control.
+function SelectBox({ checked }: { checked: boolean }) {
+  return (
+    <span
+      className={`flex h-3.5 w-3.5 items-center justify-center rounded-sm border transition-colors duration-150 ${
+        checked
+          ? "border-[var(--color-brand-500)]/50 bg-[var(--color-brand-500)]/20"
+          : "border-[var(--color-brand-500)]/30 bg-[var(--color-brand-500)]/10"
+      }`}
+    >
+      {checked && (
+        <svg width="8" height="8" viewBox="0 0 8 8" fill="none">
+          <path d="M1.5 4L3 5.5L6.5 2" stroke="var(--color-brand-400)" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+        </svg>
+      )}
+    </span>
+  );
+}
+
 function ScoreBar({ score }: { score: number | null }) {
   const heat = scoreHeat(score);
   if (score == null) {
@@ -115,6 +146,10 @@ export default function CleanupPage() {
     minOverall: 0,
   });
   const [selectedKey, setSelectedKey] = useState<string | null>(null);
+  // Multi-select for deep-scan enqueue (distinct from the single-row side-panel
+  // selection above): a set of ticket keys chosen via the row checkboxes.
+  const [checkedKeys, setCheckedKeys] = useState<Set<string>>(new Set());
+  const [enqueuing, setEnqueuing] = useState(false);
 
   const params = new URLSearchParams({ sort });
   if (filters.scanned !== "all") params.set("scanned", filters.scanned);
@@ -125,6 +160,37 @@ export default function CleanupPage() {
 
   const { data, isLoading } = useSWR<CleanupResponse>(`/api/cleanup?${params.toString()}`);
 
+  // Poll the deep-dive queue so batch progress (queued/running/done) stays live
+  // while the background runner drains it. 4s is responsive without hammering.
+  const { data: queue, mutate: mutateQueue } = useSWR<QueueCounts>(
+    "/api/cleanup/deep-scan",
+    { refreshInterval: 4000 },
+  );
+
+  const enqueue = useCallback(
+    async (body: Record<string, unknown>) => {
+      setEnqueuing(true);
+      try {
+        await fetch("/api/cleanup/deep-scan", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(body),
+        });
+        await mutateQueue();
+      } finally {
+        setEnqueuing(false);
+      }
+    },
+    [mutateQueue],
+  );
+
+  const deepScanSelected = useCallback(async () => {
+    const keys = [...checkedKeys];
+    if (keys.length === 0) return;
+    await enqueue({ method: "keys", keys });
+    setCheckedKeys(new Set());
+  }, [checkedKeys, enqueue]);
+
   // Re-apply sort/filter client-side so the loaded list re-orders instantly when
   // controls change, without waiting on a refetch.
   const rows = useMemo(() => {
@@ -133,6 +199,15 @@ export default function CleanupPage() {
   }, [data, filters, sort]);
 
   const topics = data?.topics ?? [];
+
+  const toggleRow = useCallback((key: string) => {
+    setCheckedKeys((prev) => {
+      const next = new Set(prev);
+      if (next.has(key)) next.delete(key);
+      else next.add(key);
+      return next;
+    });
+  }, []);
 
   // Build the panel ticket from the row so the panel opens without a fetch round
   // trip; fall back to a fetch only if the key is somehow not in the list.
@@ -209,6 +284,42 @@ export default function CleanupPage() {
                   <option key={o.value} value={o.value}>{o.label}</option>
                 ))}
               </select>
+
+              <span className="mx-1 h-5 w-px bg-overlay-default" />
+
+              {/* Deep-dive quick actions: queue a small batch by ranked method. */}
+              <Button
+                variant="soft"
+                size="md"
+                disabled={enqueuing}
+                onClick={() => void enqueue({ method: "worst-staleness", topX: QUICK_TOP_X })}
+                title={`Queue the ${QUICK_TOP_X} most-likely-stale tickets for deep scan`}
+              >
+                <Flame className="h-3.5 w-3.5 shrink-0" strokeWidth={1.5} />
+                Worst staleness (top {QUICK_TOP_X})
+              </Button>
+              <Button
+                variant="soft"
+                size="md"
+                disabled={enqueuing}
+                onClick={() => void enqueue({ method: "oldest", topX: QUICK_TOP_X })}
+                title={`Queue the ${QUICK_TOP_X} least-recently-scanned tickets for deep scan`}
+              >
+                <Clock className="h-3.5 w-3.5 shrink-0" strokeWidth={1.5} />
+                Oldest (top {QUICK_TOP_X})
+              </Button>
+
+              {queue && (queue.pending > 0 || queue.running > 0) && (
+                <span className="ml-auto flex items-center gap-2 text-label tabular-nums text-text-tertiary">
+                  <Telescope size={13} strokeWidth={1.5} className="text-[var(--color-brand-400)]" />
+                  <span title="Waiting in the deep-scan queue">{queue.pending} queued</span>
+                  {queue.running > 0 && <span title="Currently being deep-scanned">{queue.running} running</span>}
+                  <span title="Deep scans completed">{queue.done} done</span>
+                  {queue.error > 0 && (
+                    <span className="text-[var(--color-status-error)]" title="Deep scans that errored">{queue.error} error</span>
+                  )}
+                </span>
+              )}
             </div>
 
             {/* Table */}
@@ -225,6 +336,7 @@ export default function CleanupPage() {
                 <table className="w-full border-separate border-spacing-y-1.5">
                   <thead>
                     <tr className="text-left text-label uppercase tracking-wider text-text-muted">
+                      <th className="w-8 px-3 py-2" />
                       <th className="px-3 py-2 font-medium">Ticket</th>
                       <th className="px-3 py-2 font-medium">Status</th>
                       <th className="px-3 py-2 font-medium">Last scanned</th>
@@ -240,6 +352,7 @@ export default function CleanupPage() {
                   <tbody>
                     {rows.map((row) => {
                       const active = row.key === selectedKey;
+                      const isChecked = checkedKeys.has(row.key);
                       const badge = row.disposition ? DISPOSITION_BADGE[row.disposition] : null;
                       return (
                         <tr
@@ -250,6 +363,17 @@ export default function CleanupPage() {
                           }`}
                         >
                           <td className="rounded-l-xl border-y border-l border-border-subtle px-3 py-2.5">
+                            <button
+                              type="button"
+                              onClick={(e) => { e.stopPropagation(); toggleRow(row.key); }}
+                              className="flex cursor-pointer items-center justify-center focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)]"
+                              title={isChecked ? "Deselect" : "Select for deep scan"}
+                              aria-pressed={isChecked}
+                            >
+                              <SelectBox checked={isChecked} />
+                            </button>
+                          </td>
+                          <td className="border-y border-border-subtle px-3 py-2.5">
                             <div className="flex items-center gap-2.5">
                               <span className="shrink-0 font-mono text-label font-semibold text-[var(--color-brand-300)]">{row.key}</span>
                               <span className="min-w-0 truncate text-text-secondary group-hover:text-text-primary">{row.title}</span>
@@ -290,6 +414,31 @@ export default function CleanupPage() {
                 </table>
               )}
             </div>
+
+            {checkedKeys.size > 0 && (
+              <div className="sticky bottom-0 z-40 flex items-center gap-3 border-t border-border-default bg-[var(--color-surface-base)] px-8 py-3">
+                <span className="text-body-sm font-medium text-text-secondary tabular-nums">
+                  {checkedKeys.size} selected
+                </span>
+                <Button
+                  variant="primary"
+                  size="md"
+                  disabled={enqueuing}
+                  onClick={() => void deepScanSelected()}
+                >
+                  <Telescope className="h-3.5 w-3.5 shrink-0" strokeWidth={1.5} />
+                  Deep-scan selected
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="border-0 bg-transparent text-text-tertiary hover:bg-transparent hover:text-text-secondary"
+                  onClick={() => setCheckedKeys(new Set())}
+                >
+                  Clear
+                </Button>
+              </div>
+            )}
           </div>
 
           {selectedKey && panelTicket && (
