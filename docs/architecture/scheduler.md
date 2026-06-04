@@ -16,6 +16,7 @@ Scheduler (src/lib/scheduler.ts)
     | Check each registered task: elapsed >= intervalMs?
     |
     +-- incremental-sync (every 150s)
+    +-- deprecation-staleness-scan (every 5m)
     +-- revalidate-deleted-tickets (every 10m)
     +-- cleanup-removed-tickets (every 24h)
     |
@@ -63,6 +64,21 @@ See [jira-sync.md](jira-sync.md) for details. Key behavior:
 - Syncs up to 50 stale tickets per run
 - Advances watermark per ticket for crash resilience
 - Logs to `activity_log` only when tickets are actually synced
+
+#### Backlog Staleness Scan (every 5m)
+
+Tier-1 of the [Backlog Deprecation Review epic](../plans/2026-06-04-backlog-deprecation-review-epic.md) (BRDG-282). A cheap, local, no-AI pass that ranks how likely each backlog ticket is obsolete and records when it was last scanned. It only writes the local-only scan-state fields on `ticketMetadata` (`scanScores.staleness`, `scanOverall`, `scanRationale`, `lastScannedAt`); it never writes to Jira.
+
+**Scope**: backlog tickets only — those with no sprint (`sprint_name = ''`, the canonical local backlog marker) and not removed from Jira. This covers both board backlogs.
+
+**Scorer** (`src/lib/deprecation-staleness.ts`): pure, deterministic `scoreStaleness()` over `jiraUpdatedAt` (age ramp), sprint membership (never scheduled), backlog-like status, and empty PO metadata. Returns a normalized 0..1 score plus a plain English rationale.
+
+**Task flow**:
+1. Loads in-scope backlog tickets joined with their metadata
+2. Selects the 25 with the oldest `lastScannedAt` (never-scanned first) via `selectScanBatch()` (`src/lib/deprecation-scan-batch.ts`)
+3. Scores each and upserts the staleness fields, stamping `lastScannedAt = now` so the batch rotates to the back of the queue (continuous re-evaluation, wraps around)
+4. Writes a rolling cursor to `app_setting` key `scheduler:deprecation-staleness-scan:cursor` (informational; the authoritative rotation state is each ticket's own `lastScannedAt`, so it resumes cleanly across restarts)
+5. Logs a run summary to `activity_log` (`type = deprecation-scan`)
 
 #### Revalidate Deleted Tickets (every 10m)
 

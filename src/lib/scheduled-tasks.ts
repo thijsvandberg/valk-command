@@ -13,7 +13,7 @@ import {
   ticketLocalEdit, poComment, jiraComment, storyVersion, storedReview,
   storyWriterSession,
 } from "@/db/schema";
-import { eq, inArray, and, isNotNull, lt, desc, notInArray } from "drizzle-orm";
+import { eq, inArray, and, isNotNull, isNull, lt, desc, notInArray } from "drizzle-orm";
 import { jiraClient, JiraApiError, extractSprint } from "@/lib/jira-client";
 import { upsertIssue, cacheSprintName } from "@/lib/upsert-issue";
 import { invalidateSearchCache } from "@/lib/search-index-cache";
@@ -24,6 +24,11 @@ import { registerSync, unregisterSync } from "@/lib/sync-abort";
 import { createNotification } from "@/lib/notifications";
 import { refreshSprintMetadata } from "@/lib/refresh-sprint-metadata";
 import { dequeue, markChecked, remove as removeFromQueue, stats as queueStats } from "@/lib/revalidation-queue";
+import { logActivity } from "@/lib/activity-logger";
+import {
+  scoreStaleness, isPoMetadataEmpty, STALENESS_CANDIDATE_THRESHOLD,
+} from "@/lib/deprecation-staleness";
+import { selectScanBatch } from "@/lib/deprecation-scan-batch";
 
 // ---------------------------------------------------------------------------
 // Constants
@@ -33,6 +38,14 @@ const WATERMARK_KEY = "jira_sync_watermark";
 const BATCH_LIMIT = 50;
 const REMOVED_TICKET_TTL_MS = 7 * 24 * 60 * 60 * 1000; // 7 days
 const REVALIDATION_BATCH_SIZE = 25;
+
+// Tier-1 deprecation staleness scan (BRDG-282).
+const STALENESS_SCAN_BATCH_SIZE = 25;
+// Rolling cursor: the highest lastScannedAt stamped by the most recent batch.
+// State lives in app_setting so progress is observable and resumes across
+// restarts; the authoritative rotation state is each ticket's own
+// lastScannedAt, so this cursor is informational and never gates selection.
+const STALENESS_SCAN_CURSOR_KEY = "scheduler:deprecation-staleness-scan:cursor";
 
 // ---------------------------------------------------------------------------
 // Task: Incremental Jira Sync (every 120s)
@@ -307,6 +320,109 @@ export async function cleanupOldNotifications(): Promise<TaskResult> {
 }
 
 // ---------------------------------------------------------------------------
+// Task: Tier-1 deprecation staleness scan (every 5 minutes)
+// ---------------------------------------------------------------------------
+
+/**
+ * Scores a rotating batch of backlog tickets on local staleness heuristics and
+ * records when each was last scanned. No AI, no Jira writes: it only fills the
+ * local scan-state fields on ticketMetadata. Picks the oldest-scanned tickets
+ * first (never-scanned first) and stamps them, so the queue rotates and wraps
+ * for continuous re-evaluation.
+ *
+ * Backlog scope: a ticket is in scope when it has no sprint (sprintName is "" or
+ * null, the canonical local backlog marker used by the sync service and tickets
+ * API) and has not been removed from Jira. This covers both board backlogs.
+ */
+export async function runDeprecationStalenessScan(): Promise<TaskResult> {
+  const startedAt = new Date().toISOString();
+
+  const backlogTickets = await db
+    .select({
+      jiraKey: ticket.jiraKey,
+      jiraUpdatedAt: ticket.jiraUpdatedAt,
+      sprintName: ticket.sprintName,
+      status: ticket.status,
+      lastScannedAt: ticketMetadata.lastScannedAt,
+      scanScores: ticketMetadata.scanScores,
+      readiness: ticketMetadata.readiness,
+      poStatus: ticketMetadata.poStatus,
+      qualityScore: ticketMetadata.qualityScore,
+      effortScores: ticketMetadata.effortScores,
+      poNotes: ticketMetadata.poNotes,
+      poPriority: ticketMetadata.poPriority,
+      businessValue: ticketMetadata.businessValue,
+    })
+    .from(ticket)
+    .leftJoin(ticketMetadata, eq(ticket.jiraKey, ticketMetadata.jiraKey))
+    .where(and(eq(ticket.sprintName, ""), isNull(ticket.removedFromJiraAt)));
+
+  if (backlogTickets.length === 0) {
+    return { scanned: 0, candidates: 0, backlogSize: 0 };
+  }
+
+  const batch = selectScanBatch(backlogTickets, STALENESS_SCAN_BATCH_SIZE);
+  const now = Date.now();
+  const scannedAt = new Date(now).toISOString();
+
+  let candidates = 0;
+  for (const row of batch) {
+    const result = scoreStaleness(
+      {
+        jiraUpdatedAt: row.jiraUpdatedAt,
+        sprintName: row.sprintName,
+        status: row.status,
+        hasPoMetadata: !isPoMetadataEmpty(row),
+      },
+      now,
+    );
+
+    if (result.score >= STALENESS_CANDIDATE_THRESHOLD) candidates++;
+
+    // Preserve any future deep-dive topic scores; only overwrite staleness.
+    let scores: Record<string, unknown> = {};
+    if (row.scanScores) {
+      try {
+        const parsed = JSON.parse(row.scanScores);
+        if (parsed && typeof parsed === "object") scores = parsed;
+      } catch {
+        // Corrupt JSON is discarded; the scan recomputes from scratch.
+      }
+    }
+    scores.staleness = { score: result.score, rationale: result.rationale };
+
+    const fields = {
+      scanScores: JSON.stringify(scores),
+      scanOverall: result.score,
+      scanRationale: result.rationale,
+      lastScannedAt: scannedAt,
+    };
+
+    // The ticket may have no metadata row yet; upsert keyed on jiraKey.
+    await db
+      .insert(ticketMetadata)
+      .values({ jiraKey: row.jiraKey, ...fields })
+      .onConflictDoUpdate({ target: ticketMetadata.jiraKey, set: fields });
+  }
+
+  await upsertSetting(STALENESS_SCAN_CURSOR_KEY, scannedAt);
+
+  await logActivity({
+    type: "deprecation-scan",
+    scope: `${batch.length} tickets`,
+    summary: `Staleness scan: ${batch.length} scanned, ${candidates} candidate${candidates === 1 ? "" : "s"} (${backlogTickets.length} in backlog)`,
+    startedAt,
+  });
+
+  return {
+    scanned: batch.length,
+    candidates,
+    backlogSize: backlogTickets.length,
+    cursor: scannedAt,
+  };
+}
+
+// ---------------------------------------------------------------------------
 // Register all tasks
 // ---------------------------------------------------------------------------
 
@@ -325,6 +441,14 @@ export function registerScheduledTasks() {
     "Checks a rotating batch of 25 local tickets against Jira to detect deletions. Uses a cursor to cycle through all tickets over time. Marks confirmed 404s as removed.",
     10 * 60 * 1000,
     revalidateDeletedTickets,
+  );
+
+  defineTask(
+    "deprecation-staleness-scan",
+    "Backlog Staleness Scan",
+    "Tier-1 of the Backlog Deprecation Review: scores a rotating batch of 25 backlog tickets on local staleness heuristics (age, never-in-sprint, backlog status, empty PO metadata) and records lastScannedAt. No AI and no Jira writes; oldest-scanned tickets first, looping for continuous re-evaluation.",
+    5 * 60 * 1000,
+    runDeprecationStalenessScan,
   );
 
   defineTask(

@@ -54,6 +54,28 @@ these ever enter the Jira write path (they live in `ticketMetadata`, which is lo
 - Logs a run summary to `activityLog`; no notifications in this story.
 - Only scans the two configured backlogs.
 
+## Implementation Plan
+
+1. **Schema + migration.** Add the seven local-only fields to `ticketMetadata` in `src/db/schema.ts`
+   (`scanScores`, `scanOverall`, `scanRationale`, `lastScannedAt`, `lastDeepScannedAt`, `disposition`,
+   `dispositionUntil`), all nullable. Generate via `npm run db:generate`. They live on the local-only
+   metadata table, so no Jira write path touches them (verified: Jira payloads are built from explicit
+   `ticket` fields in `jira-client.ts`/`draft-sync.ts`, never from `ticketMetadata`).
+2. **Staleness scorer.** Pure function `scoreStaleness()` in `src/lib/deprecation-staleness.ts` over
+   already-synced data (`jiraUpdatedAt`, `sprintName`, `status`, PO metadata emptiness). Returns a
+   normalized 0..1 score + a plain English rationale. Deterministic; injectable `now` for tests.
+3. **Backlog definition.** A backlog ticket is one with no sprint (`sprintName === ""`, matching the
+   existing backlog convention in `sync-tickets-service`/`tickets` route) and not removed from Jira.
+   This covers both board backlogs (BT and regular), which differ only by team-prefixed sprints, not by
+   backlog identity. <!-- choice: sprintName === "" is the canonical local backlog marker -->
+4. **Scheduler task.** `deprecation-staleness-scan` in `scheduled-tasks.ts`, modeled on
+   `revalidate-deleted-tickets`: a batch (~25) per tick selecting OLDEST `lastScannedAt` (nulls first)
+   across the backlog, scoring each, writing `scanScores.staleness`/`scanOverall`/`scanRationale`/
+   `lastScannedAt`, looping for continuous re-scan. Rolling cursor watermark in `app_setting`.
+5. **Activity log.** One run summary per tick via `logActivity()`.
+6. **Tests + docs.** Co-located tests for the scorer and the batch selection/cursor; update
+   `docs/architecture/scheduler.md`.
+
 ## Testing
 
 - Staleness scorer: candidate vs not, boundary ages, never-in-sprint, populated-metadata cases.
@@ -62,13 +84,13 @@ these ever enter the Jira write path (they live in `ticketMetadata`, which is lo
 
 ## Checklist
 
-- [ ] Schema migration: add `scanScores`, `scanOverall`, `scanRationale`, `lastScannedAt`,
+- [x] Schema migration: add `scanScores`, `scanOverall`, `scanRationale`, `lastScannedAt`,
       `lastDeepScannedAt`, `disposition`, `dispositionUntil` to `ticketMetadata` (local-only)
-- [ ] Confirm none of the new fields enter any Jira write/sync path
-- [ ] Tier-1 staleness scorer (pure, local, no AI) with rationale string
-- [ ] `deprecation-staleness-scan` scheduler task: batched (≈25), oldest-`lastScannedAt`-first, both backlogs
-- [ ] Rolling cursor in `app_setting`; resumes across restarts; loops for continuous re-scan
-- [ ] Run summary logged to `activityLog`
-- [ ] Tests (scorer, batch selection/cursor, writes)
-- [ ] Run `npm run lint`, `npm run typecheck`, `npm run test`, `npm run build`
-- [ ] Update `docs/architecture/scheduler.md` (new task) and reference the epic
+- [x] Confirm none of the new fields enter any Jira write/sync path
+- [x] Tier-1 staleness scorer (pure, local, no AI) with rationale string
+- [x] `deprecation-staleness-scan` scheduler task: batched (≈25), oldest-`lastScannedAt`-first, both backlogs
+- [x] Rolling cursor in `app_setting`; resumes across restarts; loops for continuous re-scan
+- [x] Run summary logged to `activityLog`
+- [x] Tests (scorer, batch selection/cursor, writes)
+- [x] Run `npm run lint`, `npm run typecheck`, `npm run test` <!-- skipped: npm run build deferred to orchestrator per task instructions -->
+- [x] Update `docs/architecture/scheduler.md` (new task) and reference the epic
