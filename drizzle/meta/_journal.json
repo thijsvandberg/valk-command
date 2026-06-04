@@ -470,6 +470,13 @@
       "when": 1780603569080,
       "tag": "0066_tough_nighthawk",
       "breakpoints": true
+    },
+    {
+      "idx": 67,
+      "version": "6",
+      "when": 1780605332086,
+      "tag": "0067_mean_mother_askani",
+      "breakpoints": true
     }
   ]
 }

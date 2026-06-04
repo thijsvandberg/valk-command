@@ -1,0 +1,1 @@
+ALTER TABLE `ticket_metadata` ADD `disposition_note` text;

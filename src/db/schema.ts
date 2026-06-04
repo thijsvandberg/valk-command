@@ -111,8 +111,11 @@ export const ticketMetadata = sqliteTable("ticket_metadata", {
   lastDeepScannedAt: text("last_deep_scanned_at"),
   // null | "candidate" | "dismissed" | "confirmed".
   disposition: text("disposition"),
-  // Dismiss cooldown; unused until BRDG-289.
+  // Dismiss cooldown; set when a candidate is dismissed (BRDG-289).
   dispositionUntil: text("disposition_until"),
+  // Optional free-text note the PO leaves when confirming/dismissing a scan
+  // candidate (BRDG-289). Local-only, like the rest of the scan state.
+  dispositionNote: text("disposition_note"),
 });
 
 // Backlog Deprecation Review (BRDG-284): persisted Tier-2 deep-dive queue.
