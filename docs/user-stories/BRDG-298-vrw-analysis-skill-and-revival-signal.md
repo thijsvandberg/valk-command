@@ -81,3 +81,22 @@ find-related does.
 - The consolidated analyzer is the primary path; per-topic scorers are intentionally kept as a
   graceful fallback (not removed) so the deep scan still works if the new skill is unavailable.
 - Revival has no fallback path: it is an analyzer-only idea.
+
+## Follow-up: `/cleanup` UI refresh (PO feedback)
+
+Refactored the `/cleanup` view so the revival signal is visible and the surface matches the rest of
+the app:
+
+- The bespoke ~9-column wide table (which overflowed and forced horizontal scroll) was replaced with
+  the app-standard `ChildIssueRow` + `TicketStatusPill` (same row/pill as the refinement select list
+  and epic children). The list now fits the viewport — no horizontal scroll.
+- The per-topic score columns collapsed into one compact **deprecation-score badge** on each row
+  (overall score on the existing heat ramp). The full per-topic breakdown stays in the
+  `DispositionPanel` drawer.
+- Added a distinct **revival badge** (upward arrow, positive/green treatment) on rows where
+  `revivalScore >= REVIVAL_CANDIDATE_THRESHOLD` (0.6), a **Revival candidates** filter, and a
+  **Revival score** sort. The drawer now also shows the revival score + rationale.
+- The `/api/cleanup/[key]/disposition` GET now returns `revivalScore` + `revivalRationale` so the
+  drawer can explain why a ticket is worth pulling up.
+- Selection, bulk confirm/dismiss, deep-scan selection, the Auto toggle, and the quick actions all
+  continue to work unchanged.

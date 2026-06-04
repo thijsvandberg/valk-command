@@ -3,14 +3,16 @@
 import { useMemo, useState, useCallback, useRef } from "react";
 import useSWR, { mutate as globalMutate } from "swr";
 import dynamic from "next/dynamic";
-import { Trash2, Telescope, Clock, Flame, Check, BellOff } from "lucide-react";
+import { Trash2, Telescope, Clock, Flame, Check, BellOff, TrendingUp } from "lucide-react";
 import { usePageTitle } from "@/hooks/usePageTitle";
 import { Button } from "@/components/ui/Button";
 import { ViewHeader, ViewHeaderTitle } from "@/components/shared/ViewHeader";
+import { Tooltip } from "@/components/shared/Tooltip";
+import { ChildIssueRow } from "@/components/ticket-detail/ChildIssueRow";
 import { relativeDate, formatAbsoluteDate } from "@/lib/date-utils";
 import { useTicketDetail } from "@/hooks/useSprintBoard";
 import { saveTicketMetadata } from "@/components/sprint-board/sprint-board-utils";
-import type { Ticket, JiraStatus, IssueType } from "@/types/ticket";
+import type { Ticket, JiraStatus, IssueType, Subtask } from "@/types/ticket";
 import {
   type CleanupResponse,
   type CleanupRow,
@@ -18,7 +20,7 @@ import {
   type Disposition,
   type ScannedFilter,
 } from "@/lib/cleanup-types";
-import { filterRows, sortRows, scoreHeat, type CleanupFilters } from "./cleanup-utils";
+import { filterRows, sortRows, scoreHeat, isRevivalCandidate, type CleanupFilters } from "./cleanup-utils";
 import { type AutoScanSettings, autoScanSettings } from "@/lib/api-client";
 
 // The selected ticket opens in the same rich panel the sprint board uses, so
@@ -37,6 +39,7 @@ const DispositionPanel = dynamic(
 
 const SORT_OPTIONS: { value: CleanupSort; label: string }[] = [
   { value: "overall", label: "Overall score" },
+  { value: "revival", label: "Revival score" },
   { value: "staleness", label: "Staleness" },
   { value: "lastScanned-oldest", label: "Last scanned (oldest)" },
   { value: "lastScanned-newest", label: "Last scanned (newest)" },
@@ -64,12 +67,6 @@ const THRESHOLD_OPTIONS = [
   { value: 0.75, label: "≥ 0.75" },
 ];
 
-const DISPOSITION_BADGE: Record<NonNullable<Disposition>, { label: string; color: string; bg: string }> = {
-  candidate: { label: "Candidate", color: "var(--color-status-warning)", bg: "var(--color-status-warning-subtle)" },
-  confirmed: { label: "Confirmed", color: "var(--color-status-error)", bg: "var(--color-status-error-subtle)" },
-  dismissed: { label: "Dismissed", color: "var(--color-status-neutral)", bg: "var(--color-status-neutral-subtle)" },
-};
-
 const selectClass =
   "h-8 cursor-pointer rounded-lg border border-border-default bg-[var(--color-surface-elevated)] px-2.5 text-label font-medium text-text-secondary hover:border-[var(--color-brand-500)]/40 focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-[var(--color-brand-400)]";
 
@@ -84,42 +81,66 @@ interface QueueCounts {
   error: number;
 }
 
-// Brand-tinted select checkbox matching the sprint board BulkActionBar control.
-function SelectBox({ checked }: { checked: boolean }) {
+// Shared 18px-high chip geometry, matching IssueMetaBadges so the trailing
+// cleanup badges line up with the rest of the app's list rows.
+const CLEANUP_CHIP = "inline-flex h-5 shrink-0 items-center gap-1 rounded-md px-1.5 text-[11px] font-medium leading-none tabular-nums";
+
+// Compact deprecation-likelihood badge: collapses the former per-topic score
+// columns into one chip on the row (full breakdown lives in the drawer). Uses the
+// existing heat ramp so colour reads as "how likely this can go".
+function DeprecationScoreBadge({ score }: { score: number | null }) {
+  if (score == null) {
+    return (
+      <span className={`${CLEANUP_CHIP} bg-overlay-subtle text-text-muted`} title="Not scored yet">
+        —
+      </span>
+    );
+  }
+  const heat = scoreHeat(score);
   return (
-    <span
-      className={`flex h-3.5 w-3.5 items-center justify-center rounded-sm border transition-colors duration-150 ${
-        checked
-          ? "border-[var(--color-brand-500)]/50 bg-[var(--color-brand-500)]/20"
-          : "border-[var(--color-brand-500)]/30 bg-[var(--color-brand-500)]/10"
-      }`}
-    >
-      {checked && (
-        <svg width="8" height="8" viewBox="0 0 8 8" fill="none">
-          <path d="M1.5 4L3 5.5L6.5 2" stroke="var(--color-brand-400)" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
-        </svg>
-      )}
-    </span>
+    <Tooltip content={`Deprecation likelihood ${score.toFixed(2)}`}>
+      <span className={CLEANUP_CHIP} style={{ color: heat.color, backgroundColor: heat.track }}>
+        <Trash2 size={11} strokeWidth={1.75} className="opacity-80" />
+        {score.toFixed(2)}
+      </span>
+    </Tooltip>
   );
 }
 
-function ScoreBar({ score }: { score: number | null }) {
-  const heat = scoreHeat(score);
-  if (score == null) {
-    return <span className="text-label text-text-muted">—</span>;
-  }
-  const pct = Math.round(score * 100);
+// Revival badge: the opposite read. Upward arrow + positive/green treatment so
+// it is unmistakably distinct from the deprecation badge. Only shown when the row
+// crosses the backend revival threshold (BRDG-298).
+function RevivalBadge({ score }: { score: number }) {
   return (
-    <div className="flex items-center gap-2" title={score.toFixed(2)}>
-      <div className="h-1.5 w-14 overflow-hidden rounded-full" style={{ backgroundColor: heat.track }}>
-        <div
-          className="h-full rounded-full"
-          style={{ width: `${pct}%`, backgroundColor: heat.color }}
-        />
-      </div>
-      <span className="tabular-nums text-label text-text-tertiary">{(score).toFixed(2)}</span>
-    </div>
+    <Tooltip content={`Worth pulling up — revival ${score.toFixed(2)}`}>
+      <span
+        className={CLEANUP_CHIP}
+        style={{ color: "var(--color-status-success)", backgroundColor: "var(--color-status-success-subtle)" }}
+      >
+        <TrendingUp size={11} strokeWidth={2} />
+        {score.toFixed(2)}
+      </span>
+    </Tooltip>
   );
+}
+
+const DISPOSITION_ROW_BADGE: Record<NonNullable<Disposition>, { label: string; color: string; bg: string }> = {
+  candidate: { label: "Candidate", color: "var(--color-status-warning)", bg: "var(--color-status-warning-subtle)" },
+  confirmed: { label: "Confirmed", color: "var(--color-status-error)", bg: "var(--color-status-error-subtle)" },
+  dismissed: { label: "Dismissed", color: "var(--color-status-neutral)", bg: "var(--color-status-neutral-subtle)" },
+};
+
+// ChildIssueRow renders the shared ticket pill from a Subtask-shaped item; map the
+// cleanup row onto that shape so /cleanup uses the same row/pill as the rest of
+// the app and naturally fits the viewport (no bespoke wide table).
+function rowToSubtask(row: CleanupRow): Subtask {
+  return {
+    key: row.key,
+    title: row.title,
+    type: "story" as IssueType,
+    jiraStatus: (row.status as JiraStatus) ?? "TO DO",
+    assignee: null,
+  };
 }
 
 function rowToTicket(row: CleanupRow): Ticket {
@@ -152,6 +173,7 @@ export default function CleanupPage() {
     scanned: "all",
     disposition: "all",
     minOverall: 0,
+    revivalOnly: false,
   });
   // Ticket open in the score-breakdown / disposition drawer (BRDG-289). Row
   // click opens this review drawer; the drawer can escalate to the full ticket
@@ -283,8 +305,6 @@ export default function CleanupPage() {
     return sortRows(filterRows(data.rows, filters), sort);
   }, [data, filters, sort]);
 
-  const topics = data?.topics ?? [];
-
   const toggleRow = useCallback((key: string) => {
     setCheckedKeys((prev) => {
       const next = new Set(prev);
@@ -369,6 +389,27 @@ export default function CleanupPage() {
                   <option key={o.value} value={o.value}>{o.label}</option>
                 ))}
               </select>
+
+              {/* Revival filter (BRDG-298): isolate "worth pulling up" tickets, the
+                  opposite read from deprecation. Toggle, on the positive/green
+                  treatment to match the row badge. */}
+              <button
+                type="button"
+                aria-pressed={filters.revivalOnly}
+                onClick={() => setFilters((f) => ({ ...f, revivalOnly: !f.revivalOnly }))}
+                title="Show only revival candidates (worth pulling up)"
+                className={[
+                  "flex h-8 cursor-pointer items-center gap-1.5 rounded-lg border px-2.5 text-label font-medium transition-colors duration-150",
+                  "focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-[var(--color-status-success)]",
+                  filters.revivalOnly
+                    ? "border-[var(--color-status-success)]/50 text-[var(--color-status-success)]"
+                    : "border-border-default text-text-secondary hover:border-[var(--color-status-success)]/40",
+                ].join(" ")}
+                style={filters.revivalOnly ? { backgroundColor: "var(--color-status-success-subtle)" } : undefined}
+              >
+                <TrendingUp size={13} strokeWidth={2} />
+                Revival candidates
+              </button>
 
               <span className="mx-1 h-5 w-px bg-overlay-default" />
 
@@ -476,7 +517,12 @@ export default function CleanupPage() {
               )}
             </div>
 
-            {/* Table */}
+            {/* Ticket list. Reuses the app's standard ChildIssueRow (and its
+                TicketStatusPill) so /cleanup matches every other ticket list and
+                fits the viewport width: the former per-topic score columns are
+                collapsed into trailing badges in the row's metadata slot, so there
+                is no horizontal scroll. The full per-topic breakdown lives in the
+                DispositionPanel drawer. */}
             <div className="flex-1 overflow-y-auto px-8 py-5">
               {isLoading && !data ? (
                 <div className="space-y-2">
@@ -487,109 +533,51 @@ export default function CleanupPage() {
               ) : rows.length === 0 ? (
                 <EmptyState hasData={Boolean(data && data.total > 0)} />
               ) : (
-                <table className="w-full border-separate border-spacing-y-1.5">
-                  <thead>
-                    <tr className="text-left text-label uppercase tracking-wider text-text-muted">
-                      <th className="w-8 px-3 py-2" />
-                      <th className="px-3 py-2 font-medium">Ticket</th>
-                      <th className="px-3 py-2 font-medium">Status</th>
-                      <th className="px-3 py-2 font-medium">Last scanned</th>
-                      {topics.map((t) => (
-                        <th
-                          key={t.key}
-                          className="px-3 py-2 font-medium"
-                          title={
-                            t.key === "relevance"
-                              ? "AI judgement call — lower trust than objective topics. Score is capped and needs corroboration to flag a ticket."
-                              : t.live ? undefined : "Not scored yet"
-                          }
+                <div className="overflow-clip rounded-xl border border-border-subtle bg-[var(--color-surface-elevated)] shadow-[var(--shadow-sm)]">
+                  {rows.map((row, idx) => {
+                    const active = row.key === reviewKey || row.key === selectedKey;
+                    const isChecked = checkedKeys.has(row.key);
+                    const badge = row.disposition ? DISPOSITION_ROW_BADGE[row.disposition] : null;
+                    const revival = isRevivalCandidate(row);
+                    const metadata = (
+                      <div className="flex shrink-0 items-center gap-1.5">
+                        {revival && row.revivalScore != null && <RevivalBadge score={row.revivalScore} />}
+                        <DeprecationScoreBadge score={row.scanOverall} />
+                        {badge && (
+                          <span
+                            className="inline-flex h-5 shrink-0 items-center rounded-md px-1.5 text-[11px] font-medium leading-none"
+                            style={{ color: badge.color, backgroundColor: badge.bg }}
+                          >
+                            {badge.label}
+                          </span>
+                        )}
+                        <span
+                          className="shrink-0 text-[11px] tabular-nums text-text-muted"
+                          title={row.lastScannedAt ? `Last scanned ${formatAbsoluteDate(row.lastScannedAt)}` : "Never scanned"}
                         >
-                          {t.key === "relevance" ? (
-                            <span className="inline-flex items-center gap-1">
-                              {t.label}
-                              {/* Tilde marks this column as approximate / AI-subjective, consistent
-                                  with the mathematical "approximately" convention. Kept at low opacity
-                                  so it reads as a footnote, not a warning. */}
-                              <span
-                                className="font-normal text-text-muted opacity-50"
-                                style={{ fontSize: "10px", fontStyle: "italic", letterSpacing: 0 }}
-                                aria-label="AI judgement call"
-                              >
-                                ~
-                              </span>
-                            </span>
-                          ) : (
-                            t.label
-                          )}
-                        </th>
-                      ))}
-                      <th className="px-3 py-2 font-medium">Overall</th>
-                      <th className="px-3 py-2 font-medium">Disposition</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {rows.map((row) => {
-                      const active = row.key === reviewKey || row.key === selectedKey;
-                      const isChecked = checkedKeys.has(row.key);
-                      const badge = row.disposition ? DISPOSITION_BADGE[row.disposition] : null;
-                      return (
-                        <tr
-                          key={row.key}
-                          onClick={() => setReviewKey(row.key)}
-                          className={`group cursor-pointer text-body-sm transition-colors duration-150 ${
-                            active ? "[&>td]:bg-[var(--color-brand-600)]/12" : "[&>td]:hover:bg-hover-list-item"
-                          }`}
-                        >
-                          <td className="rounded-l-xl border-y border-l border-border-subtle px-3 py-2.5">
-                            <button
-                              type="button"
-                              onClick={(e) => { e.stopPropagation(); toggleRow(row.key); }}
-                              className="flex cursor-pointer items-center justify-center focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)]"
-                              title={isChecked ? "Deselect" : "Select for deep scan"}
-                              aria-pressed={isChecked}
-                            >
-                              <SelectBox checked={isChecked} />
-                            </button>
-                          </td>
-                          <td className="border-y border-border-subtle px-3 py-2.5">
-                            <div className="flex items-center gap-2.5">
-                              <span className="shrink-0 font-mono text-label font-semibold text-[var(--color-brand-300)]">{row.key}</span>
-                              <span className="min-w-0 truncate text-text-secondary group-hover:text-text-primary">{row.title}</span>
-                            </div>
-                          </td>
-                          <td className="border-y border-border-subtle px-3 py-2.5 text-label text-text-tertiary">{row.status}</td>
-                          <td className="border-y border-border-subtle px-3 py-2.5 text-label text-text-tertiary">
-                            {row.lastScannedAt ? (
-                              <span title={formatAbsoluteDate(row.lastScannedAt)}>{relativeDate(row.lastScannedAt)}</span>
-                            ) : (
-                              <span className="text-text-muted">never</span>
-                            )}
-                          </td>
-                          {topics.map((t) => (
-                            <td key={t.key} className="border-y border-border-subtle px-3 py-2.5">
-                              {t.live ? <ScoreBar score={row.topicScores[t.key] ?? null} /> : <span className="text-label text-text-muted">—</span>}
-                            </td>
-                          ))}
-                          <td className="border-y border-border-subtle px-3 py-2.5">
-                            <ScoreBar score={row.scanOverall} />
-                          </td>
-                          <td className="rounded-r-xl border-y border-r border-border-subtle px-3 py-2.5">
-                            {badge ? (
-                              <span
-                                className="inline-flex items-center rounded-full px-2 py-0.5 text-label font-medium"
-                                style={{ color: badge.color, backgroundColor: badge.bg }}
-                              >
-                                {badge.label}
-                              </span>
-                            ) : (
-                              <span className="text-label text-text-muted">—</span>
-                            )}
-                          </td>
-                        </tr>
-                      );
-                    })}
-                  </tbody>
-                </table>
+                          {row.lastScannedAt ? relativeDate(row.lastScannedAt) : "never"}
+                        </span>
+                      </div>
+                    );
+                    return (
+                      <ChildIssueRow
+                        key={row.key}
+                        item={rowToSubtask(row)}
+                        isLast={idx === rows.length - 1}
+                        spacious
+                        inlineCheckbox
+                        showStatus
+                        selectable
+                        isChecked={isChecked}
+                        someChecked={checkedKeys.size > 0}
+                        onCheckboxClick={() => toggleRow(row.key)}
+                        onSelect={(key) => setReviewKey(key)}
+                        className={active ? "bg-[var(--color-brand-600)]/12" : ""}
+                        metadataSlot={metadata}
+                      />
+                    );
+                  })}
+                </div>
               )}
             </div>
 

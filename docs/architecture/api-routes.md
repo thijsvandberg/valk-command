@@ -232,13 +232,14 @@ same definition the Tier-1 staleness scanner uses). Never writes; never touches 
 | `/api/cleanup/deprecated-areas` | POST | Add an area `{ term, aliases?, note? }`. Returns the created row (201). |
 | `/api/cleanup/deprecated-areas` | PUT | Edit an area `{ id, term, aliases?, note? }`. 404 if unknown id. |
 | `/api/cleanup/deprecated-areas` | DELETE | Remove an area `{ id }` (204). Managed at `/settings/deprecated-areas`; feeds the "replaced area" scan topic. |
-| `/api/cleanup/[key]/disposition` | GET | Full per-ticket score breakdown (BRDG-289): every topic's score + evidence + rationale, the assembled `scanRationale`, overall, and current disposition/cooldown/note. |
+| `/api/cleanup/[key]/disposition` | GET | Full per-ticket score breakdown (BRDG-289): every topic's score + evidence + rationale, the assembled `scanRationale`, overall, current disposition/cooldown/note, and the revival signal `revivalScore` + `revivalRationale` (BRDG-298). |
 | `/api/cleanup/[key]/disposition` | POST | Apply a disposition `{ action: "confirm" \| "dismiss" \| "reset", note? }`. Local-only, never writes Jira. |
 | `/api/cleanup/disposition` | POST | Bulk disposition `{ action, keys: string[], note? }` (max 200). De-dupes keys; returns `{ action, requested, applied, appliedKeys, skipped }`. |
 
-Query params: `sort` (`overall` \| `staleness` \| `lastScanned-oldest` \| `lastScanned-newest` \| `key`),
+Query params: `sort` (`overall` \| `revival` \| `staleness` \| `lastScanned-oldest` \| `lastScanned-newest` \| `key`),
 `scanned` (`all` \| `scanned` \| `never`), `disposition` (`all` \| `candidate` \| `confirmed` \| `dismissed` \| `none`),
-`minOverall` (0..1 threshold on the overall score).
+`minOverall` (0..1 threshold on the overall score). The `/cleanup` view additionally applies a client-side
+**revival candidates** filter (`revivalScore >= REVIVAL_CANDIDATE_THRESHOLD`, 0.6) and the `revival` sort.
 
 Response shape (`CleanupResponse` in `src/lib/cleanup-types.ts`):
 ```
@@ -248,12 +249,23 @@ Response shape (`CleanupResponse` in `src/lib/cleanup-types.ts`):
     lastScannedAt: string | null,
     topicScores: { staleness?: number | null, ... }, // 0..1 per topic, parsed from scanScores
     scanOverall: number | null,
-    disposition: "candidate" | "dismissed" | "confirmed" | null
+    disposition: "candidate" | "dismissed" | "confirmed" | null,
+    revivalScore: number | null,      // 0..1 "worth pulling up" signal (BRDG-298), opposite of deprecation
+    revivalRationale: string | null
   }>,
   total: number,
   topics: Array<{ key, label, live }> // dormant topics (live:false) render "—" until their scorer ships
 }
 ```
+
+**`/cleanup` view (BRDG-283 → BRDG-298 UI refresh).** Each ticket renders via the app-standard
+`ChildIssueRow` + `TicketStatusPill` (the same row/pill used by the refinement select list and epic
+children), so the surface matches the rest of the app and fits the viewport — the former per-topic
+score columns are gone, eliminating the horizontal scroll. Per row, trailing metadata badges show: a
+compact **deprecation-score badge** (the overall score on the existing heat ramp), a **revival badge**
+(upward arrow + positive/green treatment) when `revivalScore >= 0.6`, the disposition badge, and the
+last-scanned relative time. The full per-topic breakdown plus the revival rationale live in the
+`DispositionPanel` drawer.
 `POST /api/cleanup/deep-scan` body is a discriminated union on `method`:
 - `{ method: "keys", keys: string[] }` — hand-picked tickets (filtered to the eligible backlog).
 - `{ method: "worst-staleness", topX: number }` — top-X by combined Tier-1 score.

@@ -1,3 +1,4 @@
+import type { ReactNode } from "react";
 import { render, screen, fireEvent, within } from "@testing-library/react";
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import CleanupPage from "./page";
@@ -49,6 +50,40 @@ vi.mock("./DispositionPanel", () => ({
   ),
 }));
 
+// The cleanup list reuses the app-standard ChildIssueRow (which renders the
+// TicketStatusPill). Stub it so the test asserts the wiring contract — the ticket
+// item it receives, its checkbox/selection callbacks, and the trailing badges
+// supplied in metadataSlot — without mounting the full ticket-detail pill tree.
+vi.mock("@/components/ticket-detail/ChildIssueRow", () => ({
+  ChildIssueRow: ({
+    item,
+    isChecked,
+    onSelect,
+    onCheckboxClick,
+    metadataSlot,
+  }: {
+    item: { key: string; title: string };
+    isChecked: boolean;
+    onSelect?: (key: string) => void;
+    onCheckboxClick?: (e: unknown) => void;
+    metadataSlot?: ReactNode;
+  }) => (
+    <div data-testid={`row-${item.key}`}>
+      <button data-testid={`open-${item.key}`} onClick={() => onSelect?.(item.key)}>
+        {item.key} {item.title}
+      </button>
+      <button
+        data-testid={`check-${item.key}`}
+        aria-pressed={isChecked}
+        onClick={() => onCheckboxClick?.({})}
+      >
+        select
+      </button>
+      <div data-testid={`meta-${item.key}`}>{metadataSlot}</div>
+    </div>
+  ),
+}));
+
 vi.mock("@/hooks/useSprintBoard", () => ({
   useTicketDetail: () => ({ data: undefined }),
 }));
@@ -62,7 +97,7 @@ vi.mock("@/hooks/usePageTitle", () => ({
 }));
 
 const RESPONSE: CleanupResponse = {
-  total: 2,
+  total: 3,
   topics: [
     { key: "staleness", label: "Staleness", live: true },
     { key: "replaced", label: "Replaced area", live: false },
@@ -90,6 +125,17 @@ const RESPONSE: CleanupResponse = {
       revivalScore: null,
       revivalRationale: null,
     },
+    {
+      key: "BT-3",
+      title: "Worth pulling up",
+      status: "TO DO",
+      lastScannedAt: "2026-06-02T00:00:00Z",
+      topicScores: {},
+      scanOverall: 0.2,
+      disposition: null,
+      revivalScore: 0.78,
+      revivalRationale: "Complements active payments work",
+    },
   ],
 };
 
@@ -107,23 +153,58 @@ describe("CleanupPage", () => {
     expect(screen.getByText(/Tier-1 staleness runs in the background/i)).toBeInTheDocument();
   });
 
-  it("renders a row per ticket with the live staleness score and a placeholder for dormant topics", () => {
+  it("renders one standard row per ticket via ChildIssueRow", () => {
     swrData = RESPONSE;
     render(<CleanupPage />);
-    expect(screen.getByText("BT-1")).toBeInTheDocument();
-    expect(screen.getByText("Ancient ticket")).toBeInTheDocument();
-    expect(screen.getByText("BT-2")).toBeInTheDocument();
-    // The staleness column header is live; the replaced column is a placeholder.
-    // "Staleness" also appears in the sort dropdown, so scope to the table head.
-    const head = screen.getByRole("table").querySelector("thead")!;
-    expect(within(head).getByText("Staleness")).toBeInTheDocument();
-    expect(within(head).getByText("Replaced area")).toBeInTheDocument();
-    // Candidate disposition badge renders ("Candidate" is also a dropdown option,
-    // so scope to the table body).
-    const tableBody = screen.getByRole("table").querySelector("tbody")!;
-    expect(within(tableBody).getByText("Candidate")).toBeInTheDocument();
-    // Never-scanned ticket shows "never".
-    expect(screen.getByText("never")).toBeInTheDocument();
+    expect(screen.getByTestId("row-BT-1")).toBeInTheDocument();
+    expect(screen.getByTestId("row-BT-2")).toBeInTheDocument();
+    expect(screen.getByTestId("row-BT-3")).toBeInTheDocument();
+    expect(within(screen.getByTestId("row-BT-1")).getByText(/Ancient ticket/)).toBeInTheDocument();
+  });
+
+  it("shows a deprecation-score badge from the overall score in the row metadata", () => {
+    swrData = RESPONSE;
+    render(<CleanupPage />);
+    // BT-1 has a 0.82 overall; the compact badge renders that value on the row.
+    expect(within(screen.getByTestId("meta-BT-1")).getByText("0.82")).toBeInTheDocument();
+    // Candidate disposition badge renders on the row ("Candidate" is also a
+    // dropdown option, so scope to the row metadata).
+    expect(within(screen.getByTestId("meta-BT-1")).getByText("Candidate")).toBeInTheDocument();
+    // Never-scanned ticket shows "never" in its metadata.
+    expect(within(screen.getByTestId("meta-BT-2")).getByText("never")).toBeInTheDocument();
+  });
+
+  it("shows a revival badge only on rows at/above the 0.6 threshold", () => {
+    swrData = RESPONSE;
+    render(<CleanupPage />);
+    // BT-3 has revivalScore 0.78 -> revival badge with its score.
+    expect(within(screen.getByTestId("meta-BT-3")).getByText("0.78")).toBeInTheDocument();
+    // BT-1 (no revival score) shows no 0.78-style revival chip; its only score is
+    // the deprecation 0.82 badge.
+    expect(within(screen.getByTestId("meta-BT-1")).queryByText("0.78")).not.toBeInTheDocument();
+  });
+
+  it("filters to revival candidates when the revival filter is toggled", () => {
+    swrData = RESPONSE;
+    render(<CleanupPage />);
+    // All three rows visible by default.
+    expect(screen.getByTestId("row-BT-1")).toBeInTheDocument();
+    expect(screen.getByTestId("row-BT-3")).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: /Revival candidates/i }));
+
+    // Only the revival candidate (BT-3) survives the filter.
+    expect(screen.getByTestId("row-BT-3")).toBeInTheDocument();
+    expect(screen.queryByTestId("row-BT-1")).not.toBeInTheDocument();
+    expect(screen.queryByTestId("row-BT-2")).not.toBeInTheDocument();
+  });
+
+  it("toggles row selection for bulk actions via the row checkbox", () => {
+    swrData = RESPONSE;
+    render(<CleanupPage />);
+    expect(screen.queryByText(/selected/)).not.toBeInTheDocument();
+    fireEvent.click(screen.getByTestId("check-BT-1"));
+    expect(screen.getByText(/1 selected/)).toBeInTheDocument();
   });
 
   it("opens the breakdown drawer for the clicked ticket and closes it", async () => {
@@ -131,7 +212,7 @@ describe("CleanupPage", () => {
     render(<CleanupPage />);
     expect(screen.queryByTestId("disposition-panel")).not.toBeInTheDocument();
 
-    fireEvent.click(screen.getByText("Ancient ticket"));
+    fireEvent.click(screen.getByTestId("open-BT-1"));
     // The drawer loads via next/dynamic, so it mounts on a later tick.
     const panel = await screen.findByTestId("disposition-panel");
     expect(within(panel).getByText("review:BT-1")).toBeInTheDocument();
@@ -144,7 +225,7 @@ describe("CleanupPage", () => {
     swrData = RESPONSE;
     render(<CleanupPage />);
 
-    fireEvent.click(screen.getByText("Ancient ticket"));
+    fireEvent.click(screen.getByTestId("open-BT-1"));
     await screen.findByTestId("disposition-panel");
     fireEvent.click(screen.getByText("open-ticket"));
 

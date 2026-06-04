@@ -14,10 +14,11 @@
 
 import { useState, useCallback } from "react";
 import useSWR from "swr";
-import { X, Check, BellOff, RotateCcw, ExternalLink, ArrowRight } from "lucide-react";
+import { X, Check, BellOff, RotateCcw, ExternalLink, ArrowRight, TrendingUp } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import { relativeDate, formatAbsoluteDate } from "@/lib/date-utils";
-import { scoreHeat } from "./cleanup-utils";
+import { scoreHeat, revivalHeat } from "./cleanup-utils";
+import { REVIVAL_CANDIDATE_THRESHOLD } from "@/lib/deprecation-topics";
 import { DISMISS_COOLDOWN_DAYS } from "@/lib/cleanup-disposition";
 import type { ScanTopicKey, Disposition } from "@/lib/cleanup-types";
 
@@ -42,6 +43,8 @@ interface DispositionDetail {
   dispositionUntil: string | null;
   dispositionNote: string | null;
   topics: TopicBreakdown[];
+  revivalScore: number | null;
+  revivalRationale: string | null;
 }
 
 interface DispositionPanelProps {
@@ -315,6 +318,50 @@ export function DispositionPanel({
                 >
                   {data.scanRationale}
                 </p>
+              </div>
+            )}
+
+            {/* Revival signal (BRDG-298): opposite read from deprecation. Rendered on
+                the positive/green treatment with an upward marker so it never reads
+                as another deprecation reason. */}
+            {(data.revivalScore != null || data.revivalRationale) && (
+              <div className="mt-4">
+                <h3 className="mb-2 flex items-center gap-1.5 text-label uppercase tracking-wider text-text-muted">
+                  <TrendingUp size={12} strokeWidth={2} style={{ color: "var(--color-status-success)" }} />
+                  Worth pulling up
+                  {data.revivalScore != null && data.revivalScore >= REVIVAL_CANDIDATE_THRESHOLD && (
+                    <span
+                      className="rounded-full px-1.5 py-0.5 text-[10px] font-semibold tabular-nums"
+                      style={{ color: "var(--color-status-success)", backgroundColor: "var(--color-status-success-subtle)" }}
+                    >
+                      Revival candidate
+                    </span>
+                  )}
+                </h3>
+                {data.revivalScore != null && (
+                  <div className="mb-2">
+                    <div className="flex items-center gap-2" title={data.revivalScore.toFixed(2)}>
+                      <div
+                        className="h-1.5 w-16 overflow-hidden rounded-full"
+                        style={{ backgroundColor: revivalHeat(data.revivalScore).track }}
+                      >
+                        <div
+                          className="h-full rounded-full"
+                          style={{ width: `${Math.round(data.revivalScore * 100)}%`, backgroundColor: revivalHeat(data.revivalScore).color }}
+                        />
+                      </div>
+                      <span className="tabular-nums text-label text-text-tertiary">{data.revivalScore.toFixed(2)}</span>
+                    </div>
+                  </div>
+                )}
+                {data.revivalRationale && (
+                  <p
+                    className="rounded-xl border-l-2 px-4 py-3 text-body-sm leading-relaxed text-text-secondary"
+                    style={{ borderColor: "var(--color-status-success)", backgroundColor: "var(--color-surface-elevated)" }}
+                  >
+                    {data.revivalRationale}
+                  </p>
+                )}
               </div>
             )}
 
