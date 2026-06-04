@@ -33,8 +33,14 @@ export interface ScheduledTaskDef {
   intervalMs: number;
   /** The work to perform */
   handler: () => Promise<TaskResult>;
-  /** Whether this task is currently enabled */
-  enabled: boolean;
+  /**
+   * The enabled state to use when no persisted override exists in app_setting.
+   * WHY: the deprecation scans (Backlog Deprecation Review epic) must NOT run
+   * out of the box — they cost agent time and the PO wants them off until
+   * explicitly turned on. Those tasks register with `enabledByDefault: false`;
+   * everything else defaults to true so existing behavior is unchanged.
+   */
+  enabledByDefault: boolean;
 }
 
 export interface TaskStatus {
@@ -65,6 +71,7 @@ export function defineTask(
   description: string,
   intervalMs: number,
   handler: () => Promise<TaskResult>,
+  enabledByDefault = true,
 ) {
   const existing = tasks.find((t) => t.name === name);
   if (existing) {
@@ -72,9 +79,10 @@ export function defineTask(
     existing.description = description;
     existing.intervalMs = intervalMs;
     existing.handler = handler;
+    existing.enabledByDefault = enabledByDefault;
     return;
   }
-  tasks.push({ name, label, description, intervalMs, handler, enabled: true });
+  tasks.push({ name, label, description, intervalMs, handler, enabledByDefault });
 }
 
 export function getRegisteredTasks(): ScheduledTaskDef[] {
@@ -112,6 +120,38 @@ async function setLastResult(taskName: string, result: TaskResult): Promise<void
     .onConflictDoUpdate({ target: appSetting.key, set: { value } });
 }
 
+/**
+ * Effective enabled state for a task: the persisted override in app_setting
+ * (key "scheduler:<name>:enabled" = "true"/"false") if present, otherwise the
+ * task's `enabledByDefault`. WHY persisted: in-memory `enabled` was lost on
+ * every restart, so the PO's on/off choice never stuck. The DB value is the
+ * source of truth and survives restarts.
+ */
+async function isTaskEnabled(task: ScheduledTaskDef): Promise<boolean> {
+  const row = await db.query.appSetting.findFirst({
+    where: (r, { eq: eqFn }) => eqFn(r.key, settingKey(task.name, "enabled")),
+  });
+  if (row?.value === "true") return true;
+  if (row?.value === "false") return false;
+  return task.enabledByDefault;
+}
+
+/**
+ * Persist a task's enabled override. Returns false when the task name is not
+ * registered so callers (the toggle API) can return a 404 instead of silently
+ * creating orphan settings rows.
+ */
+export async function setTaskEnabled(name: string, enabled: boolean): Promise<boolean> {
+  const task = tasks.find((t) => t.name === name);
+  if (!task) return false;
+  const key = settingKey(name, "enabled");
+  const value = enabled ? "true" : "false";
+  await db.insert(appSetting)
+    .values({ key, value })
+    .onConflictDoUpdate({ target: appSetting.key, set: { value } });
+  return true;
+}
+
 // ---------------------------------------------------------------------------
 // Tick: check all tasks and run overdue ones
 // ---------------------------------------------------------------------------
@@ -130,7 +170,7 @@ export async function tick(): Promise<TickResult> {
 
   try {
     for (const task of tasks) {
-      if (!task.enabled) continue;
+      if (!(await isTaskEnabled(task))) continue;
 
       const lastRun = await getLastRun(task.name);
       const elapsed = Date.now() - lastRun;
@@ -198,7 +238,9 @@ export async function getTaskStatuses(): Promise<TaskStatus[]> {
       label: task.label,
       description: task.description,
       intervalMs: task.intervalMs,
-      enabled: task.enabled,
+      // Report the effective (persisted-or-default) value so the UI renders the
+      // toggle in its real state, not the transient in-memory flag.
+      enabled: await isTaskEnabled(task),
       lastRunAt: lastRunRow?.value ?? null,
       lastResult: lastResultRow ? JSON.parse(lastResultRow.value) : null,
     });

@@ -776,12 +776,18 @@ export function registerScheduledTasks() {
     revalidateDeletedTickets,
   );
 
+  // The three deprecation scans default to DISABLED (enabledByDefault: false).
+  // WHY: they run continuously and consume agent/scan budget; the PO wants to
+  // opt in from the Cleanup page rather than have them running out of the box.
+  // The persisted app_setting override (set via the task-toggle API) wins once
+  // the PO enables them.
   defineTask(
     "deprecation-staleness-scan",
     "Backlog Staleness Scan",
     "Tier-1 of the Backlog Deprecation Review: scores a rotating batch of 25 backlog tickets on local staleness heuristics (age, never-in-sprint, backlog status, empty PO metadata) and records lastScannedAt. No AI and no Jira writes; oldest-scanned tickets first, looping for continuous re-evaluation.",
     5 * 60 * 1000,
     runDeprecationStalenessScan,
+    false,
   );
 
   defineTask(
@@ -790,6 +796,7 @@ export function registerScheduledTasks() {
     "Tier-2 of the Backlog Deprecation Review: drains the persisted deep-dive queue 5 tickets per tick, running every registered topic scorer, recomputing the combined score, and promoting tickets to candidate on threshold. Respects the dismiss cooldown and resumes across restarts.",
     2 * 60 * 1000,
     runDeprecationDeepScan,
+    false,
   );
 
   defineTask(
@@ -822,5 +829,6 @@ export function registerScheduledTasks() {
     "When enabled, automatically queues up to N tickets per day into the Tier-2 deep-dive queue using worst-staleness ordering. Respects the dismiss cooldown and the per-day budget. Configure on the Cleanup page.",
     10 * 60 * 1000,
     runAutoEnqueue,
+    false,
   );
 }
