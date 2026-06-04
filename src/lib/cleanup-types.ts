@@ -17,7 +17,7 @@ export const SCAN_TOPICS = [
   { key: "replaced", label: "Replaced area", live: true },
   { key: "duplicate", label: "Duplicate", live: true },
   { key: "alreadyBuilt", label: "Already built", live: true },
-  { key: "relevance", label: "Relevance decay", live: false },
+  { key: "relevance", label: "Relevance decay", live: true },
 ] as const;
 
 export type ScanTopicKey = (typeof SCAN_TOPICS)[number]["key"];

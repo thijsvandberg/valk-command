@@ -10,3 +10,4 @@
 import "@/lib/topics/replaced-area-topic";
 import "@/lib/topics/superseded-topic";
 import "@/lib/topics/already-built-topic";
+import "@/lib/topics/relevance-decay-topic";
