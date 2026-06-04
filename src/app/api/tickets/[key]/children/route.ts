@@ -3,7 +3,7 @@ import { errorResponse } from "@/lib/api-response";
 import { parseJsonBody } from "@/lib/request-parser";
 import { validatePathParam } from "@/lib/api-validation";
 import { db } from "@/db";
-import { ticket } from "@/db/schema";
+import { ticket, ticketMetadata } from "@/db/schema";
 import { jiraClient } from "@/lib/jira-client";
 import { logActivity } from "@/lib/activity-logger";
 import { logger } from "@/lib/logger";
@@ -93,6 +93,14 @@ export async function POST(request: Request, { params }: RouteContext) {
     ...(assignedSprintId ? { sprintName: assignedSprintId } : {}),
     flagged: false,
   });
+
+  // New child issues start in the PO "drafting" stage so they surface for
+  // refinement. Readiness is Bridge-only metadata (ticket_metadata), which the
+  // epic children view reads, so it persists across the refetch.
+  await db
+    .insert(ticketMetadata)
+    .values({ jiraKey: jiraResult.key, readiness: "drafting" })
+    .onConflictDoUpdate({ target: ticketMetadata.jiraKey, set: { readiness: "drafting" } });
 
   cache.invalidate(`/api/tickets/${key}`);
   cache.invalidate(/^\/api\/tickets(\?|$)/);

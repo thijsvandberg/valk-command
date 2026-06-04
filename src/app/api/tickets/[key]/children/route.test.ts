@@ -3,7 +3,7 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 import { createTestDb } from "@/db/test-utils";
 import type { BetterSQLite3Database } from "drizzle-orm/better-sqlite3";
 import type * as schema from "@/db/schema";
-import { ticket } from "@/db/schema";
+import { ticket, ticketMetadata } from "@/db/schema";
 
 let testDb: BetterSQLite3Database<typeof schema>;
 
@@ -92,6 +92,17 @@ describe("POST /api/tickets/[key]/children", () => {
     expect(child!.epicKey).toBe("VPL-100");
     expect(child!.epic).toBe("Epic VPL-100");
     expect(child!.type).toBe("task");
+  });
+
+  it("starts new children at readiness drafting", async () => {
+    seedEpic("VPL-100");
+    await POST(
+      postRequest("VPL-100", { title: "Fresh story" }),
+      makeParams("VPL-100"),
+    );
+
+    const meta = testDb.select().from(ticketMetadata).all().find((r) => r.jiraKey === "VPL-999");
+    expect(meta!.readiness).toBe("drafting");
   });
 
   it("calls Jira createIssue with correct params", async () => {
