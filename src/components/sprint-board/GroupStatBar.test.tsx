@@ -135,6 +135,16 @@ describe("GroupStatBar", () => {
     expect(screen.getByText(/DONE/)).toBeTruthy();
   });
 
+  it("wraps the status pills in a container-query group so they hide when the bar is cramped", () => {
+    render(<GroupStatBar tickets={TICKETS} />);
+    // The four status pills live inside a wrapper that is `hidden` until the bar's
+    // container query (@4xl) has room; below that width the whole breakdown drops.
+    const wrapper = screen.getByText(/TO DO/).closest(".\\@4xl\\:contents");
+    expect(wrapper).toBeTruthy();
+    expect(wrapper?.className).toContain("hidden");
+    expect(wrapper).toContainElement(screen.getByText(/DONE/) as HTMLElement);
+  });
+
   it("hides the status breakdown when every ticket shares the same status", () => {
     const allTodo = [
       makeTicket({ key: "VPL-1", jiraStatus: "TO DO", storyPoints: 3 }),

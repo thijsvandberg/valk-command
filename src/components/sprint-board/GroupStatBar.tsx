@@ -131,7 +131,7 @@ export const GroupStatBar = memo(function GroupStatBar({
   }
 
   return (
-    <div className="flex w-full items-center gap-2">
+    <div className="@container flex w-full items-center gap-2">
       {/* Fixed-width label zone so the stats (item count onward) start at the same x
           across every group row, regardless of sprint name length (BRDG-239). */}
       <div className={`flex shrink-0 items-center gap-2 ${label ? "w-48 min-w-0" : ""}`}>
@@ -201,49 +201,57 @@ export const GroupStatBar = memo(function GroupStatBar({
           }
         />
       )}
-      {showStatusBreakdown && todoCount > 0 && (
-        <StatusPill
-          size="sm"
-          colorKey="TO DO"
-          label="TO DO"
-          count={todoCount}
-          showDot={showDot}
-          active={activeCriterion === "todo"}
-          onClick={onFilterChange ? (e) => { e.stopPropagation(); toggle("todo"); } : undefined}
-        />
-      )}
-      {showStatusBreakdown && inProgressCount > 0 && (
-        <StatusPill
-          size="sm"
-          colorKey="IN PROGRESS"
-          label="IN PROGRESS"
-          count={inProgressCount}
-          showDot={showDot}
-          active={activeCriterion === "in-progress"}
-          onClick={onFilterChange ? (e) => { e.stopPropagation(); toggle("in-progress"); } : undefined}
-        />
-      )}
-      {showStatusBreakdown && testCount > 0 && (
-        <StatusPill
-          size="sm"
-          colorKey="TEST"
-          label="TEST"
-          count={testCount}
-          showDot={showDot}
-          active={activeCriterion === "test"}
-          onClick={onFilterChange ? (e) => { e.stopPropagation(); toggle("test"); } : undefined}
-        />
-      )}
-      {showStatusBreakdown && doneCount > 0 && (
-        <StatusPill
-          size="sm"
-          colorKey="DONE"
-          label="DONE"
-          count={doneCount}
-          showDot={showDot}
-          active={activeCriterion === "done"}
-          onClick={onFilterChange ? (e) => { e.stopPropagation(); toggle("done"); } : undefined}
-        />
+      {/* The per-status breakdown is the first thing to drop when the bar gets cramped:
+          below the container-query width it hides as a group (items/SP/BV/warning stay).
+          `contents` keeps the pills as direct flex children so the gap spacing is unchanged
+          when shown. */}
+      {showStatusBreakdown && (
+        <div className="hidden @4xl:contents">
+          {todoCount > 0 && (
+            <StatusPill
+              size="sm"
+              colorKey="TO DO"
+              label="TO DO"
+              count={todoCount}
+              showDot={showDot}
+              active={activeCriterion === "todo"}
+              onClick={onFilterChange ? (e) => { e.stopPropagation(); toggle("todo"); } : undefined}
+            />
+          )}
+          {inProgressCount > 0 && (
+            <StatusPill
+              size="sm"
+              colorKey="IN PROGRESS"
+              label="IN PROGRESS"
+              count={inProgressCount}
+              showDot={showDot}
+              active={activeCriterion === "in-progress"}
+              onClick={onFilterChange ? (e) => { e.stopPropagation(); toggle("in-progress"); } : undefined}
+            />
+          )}
+          {testCount > 0 && (
+            <StatusPill
+              size="sm"
+              colorKey="TEST"
+              label="TEST"
+              count={testCount}
+              showDot={showDot}
+              active={activeCriterion === "test"}
+              onClick={onFilterChange ? (e) => { e.stopPropagation(); toggle("test"); } : undefined}
+            />
+          )}
+          {doneCount > 0 && (
+            <StatusPill
+              size="sm"
+              colorKey="DONE"
+              label="DONE"
+              count={doneCount}
+              showDot={showDot}
+              active={activeCriterion === "done"}
+              onClick={onFilterChange ? (e) => { e.stopPropagation(); toggle("done"); } : undefined}
+            />
+          )}
+        </div>
       )}
       <div className="ml-auto flex shrink-0 items-center gap-1">
         {warningLabel && (
