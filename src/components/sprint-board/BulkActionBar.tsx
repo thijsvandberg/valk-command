@@ -197,6 +197,7 @@ export function BulkActionBar({
   onCopyToClipboard,
   onRefine,
   isRefreshing,
+  floating,
 }: {
   count: number;
   selectedPoints?: number;
@@ -228,9 +229,25 @@ export function BulkActionBar({
   onCopyToClipboard?: () => void;
   onRefine?: () => void;
   isRefreshing?: boolean;
+  /**
+   * Renders the bar as a self-contained, rounded, elevated pill that floats a
+   * few px above the content. Used inside contained panels (e.g. the epic
+   * detail "Child Issues" view) so the bar matches the rounded-card language
+   * instead of reading as a flat full-bleed strip. Page-level views keep the
+   * default full-bleed footer.
+   */
+  floating?: boolean;
 }) {
   return (
-    <BarContainer borderPosition="top" className="sticky bottom-0 z-50 gap-2 bg-[var(--color-surface-base)] sm:gap-3">
+    <BarContainer
+      border={!floating}
+      borderPosition="top"
+      className={
+        floating
+          ? "sticky bottom-3 z-50 -mx-3 mt-3 gap-2 rounded-xl border border-border-default bg-[var(--color-surface-floating)] shadow-[var(--shadow-lg)] sm:-mx-4 sm:gap-3"
+          : "sticky bottom-0 z-50 gap-2 bg-[var(--color-surface-base)] sm:gap-3"
+      }
+    >
       {/* Select all / deselect all checkbox */}
       {onToggleAll && (
         <button
