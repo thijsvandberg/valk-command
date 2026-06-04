@@ -30,11 +30,21 @@ import {
 } from "@/lib/deprecation-staleness";
 import { selectScanBatch } from "@/lib/deprecation-scan-batch";
 import {
-  claimPendingBatch, markDone, markError, requeueStuckRunning,
+  claimPendingBatch, markDone, markError, requeueStuckRunning, enqueueDeepScan,
 } from "@/lib/deprecation-scan-queue";
 import { runDeepScan } from "@/lib/deprecation-topics";
 // Side-effect import: registers every Tier-2 topic scorer before runDeepScan runs.
 import "@/lib/topics";
+import {
+  AUTO_SCAN_ENABLED_KEY,
+  AUTO_SCAN_DAILY_COUNT_KEY,
+  AUTO_SCAN_BUDGET_KEY_PREFIX,
+  AUTO_SCAN_DEFAULT_DAILY_COUNT,
+} from "@/app/api/cleanup/auto-scan-settings/route";
+import {
+  selectDeepScanKeys,
+  type SelectableTicket,
+} from "@/lib/deprecation-deep-scan-selection";
 
 // ---------------------------------------------------------------------------
 // Constants
@@ -522,6 +532,126 @@ export async function runDeprecationDeepScan(): Promise<TaskResult> {
 }
 
 // ---------------------------------------------------------------------------
+// Task: Auto background deep-scan enqueue (every 10 minutes) (BRDG-290)
+// ---------------------------------------------------------------------------
+
+/**
+ * Returns the UTC calendar date as YYYY-MM-DD, used to key the daily budget
+ * counter in app_setting. UTC date is stable across timezones so the budget
+ * resets consistently at midnight UTC rather than varying by server locale.
+ */
+export function utcDateKey(now: number = Date.now()): string {
+  return new Date(now).toISOString().slice(0, 10);
+}
+
+/**
+ * Auto-enqueues tickets for deep scanning up to the remaining daily budget.
+ *
+ * When auto mode is disabled the task does nothing. When enabled it:
+ *   1. Reads the enabled flag and daily-count setting from app_setting.
+ *   2. Reads today's enqueue counter to determine remaining budget.
+ *   3. Loads the eligible backlog (no sprint, not removed) and applies
+ *      worst-staleness ordering (highest Tier-1 score first, unscored last)
+ *      after excluding tickets still inside their dismiss cooldown.
+ *   4. Enqueues up to (dailyCount - usedToday) tickets idempotently.
+ *   5. Increments the day counter and logs the run.
+ *
+ * WHY worst-staleness as default: it surfaces the most actionable candidates
+ * first — the same tickets the PO would manually pick via the top-10 button —
+ * which makes the auto mode immediately useful without extra configuration.
+ *
+ * The budget counter key is `deprecation-auto-scan:budget:<YYYY-MM-DD>`. A
+ * new key is created each day and old keys are never cleaned up (they are
+ * small text rows and accumulate at one per day; negligible). Resets happen
+ * naturally because the date suffix rolls over.
+ */
+export async function runAutoEnqueue(): Promise<TaskResult> {
+  // Read enabled flag; bail out fast when off to avoid unnecessary DB reads.
+  const enabledRow = await db
+    .select({ value: appSetting.value })
+    .from(appSetting)
+    .where(eq(appSetting.key, AUTO_SCAN_ENABLED_KEY))
+    .get();
+  const enabled = enabledRow?.value === "true";
+
+  if (!enabled) {
+    return { skipped: true, reason: "auto scan disabled" };
+  }
+
+  // Read daily count setting.
+  const countRow = await db
+    .select({ value: appSetting.value })
+    .from(appSetting)
+    .where(eq(appSetting.key, AUTO_SCAN_DAILY_COUNT_KEY))
+    .get();
+  const dailyCount =
+    countRow?.value !== undefined
+      ? Math.max(1, parseInt(countRow.value, 10) || AUTO_SCAN_DEFAULT_DAILY_COUNT)
+      : AUTO_SCAN_DEFAULT_DAILY_COUNT;
+
+  // Read today's budget counter.
+  const todayKey = `${AUTO_SCAN_BUDGET_KEY_PREFIX}:${utcDateKey()}`;
+  const budgetRow = await db
+    .select({ value: appSetting.value })
+    .from(appSetting)
+    .where(eq(appSetting.key, todayKey))
+    .get();
+  const usedToday = budgetRow?.value !== undefined ? parseInt(budgetRow.value, 10) || 0 : 0;
+
+  const remaining = dailyCount - usedToday;
+  if (remaining <= 0) {
+    return { skipped: true, reason: "daily budget exhausted", usedToday, dailyCount };
+  }
+
+  // Load eligible backlog (same definition as the manual enqueue API).
+  const rows = await db
+    .select({
+      jiraKey: ticket.jiraKey,
+      scanOverall: ticketMetadata.scanOverall,
+      lastScannedAt: ticketMetadata.lastScannedAt,
+      disposition: ticketMetadata.disposition,
+      dispositionUntil: ticketMetadata.dispositionUntil,
+    })
+    .from(ticket)
+    .leftJoin(ticketMetadata, eq(ticket.jiraKey, ticketMetadata.jiraKey))
+    .where(and(eq(ticket.sprintName, ""), isNull(ticket.removedFromJiraAt)));
+
+  const eligible: SelectableTicket[] = rows.map((r) => ({
+    jiraKey: r.jiraKey,
+    scanOverall: r.scanOverall ?? null,
+    lastScannedAt: r.lastScannedAt ?? null,
+    disposition: r.disposition ?? null,
+    dispositionUntil: r.dispositionUntil ?? null,
+  }));
+
+  const keys = selectDeepScanKeys("worst-staleness", eligible, remaining);
+  if (keys.length === 0) {
+    return { enqueued: 0, usedToday, dailyCount };
+  }
+
+  const startedAt = new Date().toISOString();
+  const enqueuedKeys = await enqueueDeepScan(keys, "auto");
+  const newUsedToday = usedToday + enqueuedKeys.length;
+
+  // Persist updated budget counter for today.
+  await db
+    .insert(appSetting)
+    .values({ key: todayKey, value: String(newUsedToday) })
+    .onConflictDoUpdate({ target: appSetting.key, set: { value: String(newUsedToday) } });
+
+  if (enqueuedKeys.length > 0) {
+    await logActivity({
+      type: "deprecation-scan",
+      scope: `${enqueuedKeys.length} tickets`,
+      summary: `Auto deep-scan: enqueued ${enqueuedKeys.length} ticket${enqueuedKeys.length === 1 ? "" : "s"} (${newUsedToday}/${dailyCount} today)`,
+      startedAt,
+    });
+  }
+
+  return { enqueued: enqueuedKeys.length, usedToday: newUsedToday, dailyCount };
+}
+
+// ---------------------------------------------------------------------------
 // Register all tasks
 // ---------------------------------------------------------------------------
 
@@ -580,5 +710,13 @@ export function registerScheduledTasks() {
     "Removes read and unread notifications older than 30 days to keep the notification list manageable.",
     60 * 60 * 1000,
     cleanupOldNotifications,
+  );
+
+  defineTask(
+    "deprecation-auto-enqueue",
+    "Auto Background Deep Scan",
+    "When enabled, automatically queues up to N tickets per day into the Tier-2 deep-dive queue using worst-staleness ordering. Respects the dismiss cooldown and the per-day budget. Configure on the Cleanup page.",
+    10 * 60 * 1000,
+    runAutoEnqueue,
   );
 }
