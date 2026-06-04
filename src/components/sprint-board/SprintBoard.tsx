@@ -2,7 +2,7 @@
 
 import { useState, useRef, useEffect, useCallback, useMemo } from "react";
 import { useSearchParams, useRouter, useParams } from "next/navigation";
-import type { Sprint } from "@/types/ticket";
+import type { Sprint, Ticket, IssueType } from "@/types/ticket";
 import { SprintSlots } from "@/components/sprint-board/SprintSlots";
 import { FilterBar } from "@/components/sprint-board/FilterBar";
 import { TicketTable } from "@/components/sprint-board/TicketTable";
@@ -24,7 +24,7 @@ import { mapJiraSprints, saveSprintSlots, saveTicketMetadata, bulkReviewStories,
 import { sprintToSlug, slugToSprintId, buildBoardUrl } from "@/lib/sprint-utils";
 import { prefetchTicketList, setRouterPrefetch } from "@/lib/prefetch";
 import { getJiraUrl } from "@/components/sprint-board/TicketTableCells";
-import { apiFetch, jira, refinementSessions as refinementSessionsApi } from "@/lib/api-client";
+import { apiFetch, jira, tickets as ticketsApi, refinementSessions as refinementSessionsApi } from "@/lib/api-client";
 import { useSprintBoardFilters } from "@/components/sprint-board/useSprintBoardFilters";
 import { useGroupBy } from "@/components/sprint-board/useGroupBy";
 import { useSprintBoardDragDrop } from "@/components/sprint-board/useSprintBoardDragDrop";
@@ -191,6 +191,64 @@ export default function SprintBoard() {
   const stats = useMemo(() => computeSprintStats(allTickets), [allTickets]);
   const sprintWorkDays = useMemo(() => computeSprintWorkDays(activeSprint), [activeSprint]);
   const pageTitle = usePageTitle(isAllView ? "Sprint Board - All" : activeSprint ? `${activeSprint.name} - Sprint Board` : "Sprint Board");
+
+  // The flat (ungrouped) list creates into one concrete target: the open sprint, or
+  // the backlog. Suppressed for the All view and saved views, where the flat list spans
+  // multiple sprints (those create per group instead), and for closed sprints Jira rejects.
+  const flatCreateTarget = useMemo((): { sprintId: string | null } | undefined => {
+    if (isAllView || activeSprintId === "__all__" || f.activeViewId) return undefined;
+    if (activeSprintId === "__backlog__") return { sprintId: null };
+    if (activeSprint && activeSprint.state !== "closed") return { sprintId: activeSprintId };
+    return undefined;
+  }, [isAllView, activeSprintId, f.activeViewId, activeSprint]);
+
+  // Optimistically add the new ticket to the active list, then reconcile with the
+  // created Jira key. Caches are patched client-side rather than via the POST route's
+  // cache.invalidate, which is unreliable across routes in next dev (see [[project_turbopack_cache_invalidate]]).
+  const handleCreateTicket = useCallback((sprintId: string | null, title: string, jiraType: string) => {
+    const trimmed = title.trim();
+    if (!trimmed) return;
+    const placeholderKey = `pending-${Date.now()}`;
+    const placeholder: Ticket = {
+      key: placeholderKey,
+      title: trimmed,
+      type: jiraType.toLowerCase() as IssueType,
+      epic: null,
+      epicKey: null,
+      jiraStatus: "TO DO",
+      storyPoints: null,
+      assignee: null,
+      reporter: null,
+      flagged: false,
+      readiness: "drafting",
+      poStatus: null,
+      qualityScore: null,
+      businessValue: null,
+      editState: "clean",
+      notes: "",
+      jiraRank: null,
+      sprintId: sprintId ?? undefined,
+      sprintDisplayName: null,
+      jiraUpdatedAt: null,
+      removedFromJiraAt: null,
+      openSubtaskCount: 0,
+      totalSubtaskCount: 0,
+    };
+    mutateTickets((data) => [...(data ?? []), placeholder], { revalidate: false });
+    ticketsApi
+      .createTicket({ title: trimmed, issueType: jiraType, ...(sprintId ? { sprintId } : {}) })
+      .then((created) => {
+        mutateTickets(
+          (data) => data?.map((t) => (t.key === placeholderKey ? { ...placeholder, key: created.key } : t)),
+          { revalidate: false },
+        );
+        showToast(`${created.key} created`);
+      })
+      .catch(() => {
+        mutateTickets((data) => data?.filter((t) => t.key !== placeholderKey), { revalidate: false });
+        showToast("Failed to create story");
+      });
+  }, [mutateTickets, showToast]);
 
   // Sync PO data from API
   useEffect(() => { if (apiTickets && apiTickets.length > 0) ta.syncFromApiTickets(apiTickets); }, [apiTickets, ta.syncFromApiTickets]);
@@ -399,7 +457,7 @@ export default function SprintBoard() {
           // The list sits on a white surface; TicketTable renders the bordered card(s) itself —
           // one card when ungrouped, one per group when grouped (BRDG-239, BRDG-267).
           <div className="min-h-full bg-[var(--color-surface-elevated)] px-4 pb-4 pt-3">
-          <TicketTable tickets={tickets} checkedTickets={checkedTickets} selectedTicket={selectedTicket} focusedTicketIdx={focusedTicketIdx} someChecked={someChecked} allChecked={allChecked} visibleTags={f.visibleTags} hideEpic={hideEpicChip} showSprint={showSprintOnRow} sprintNameMap={sprintNameMap} poStatuses={poStatuses} readinessMap={readinessMap} inflightKeys={inflightKeys} onToggleCheck={toggleCheck} onRangeCheck={handleRangeCheck} onToggleAll={toggleAll} onSelectTicket={setSelectedTicket} onRowContextMenu={handleRowContextMenu} contextMenuKeys={rowMenu?.targets} onPoStatusChange={ta.handlePoStatusChange} onReadinessChange={ta.handleReadinessChange} onBusinessValueChange={ta.handleBusinessValueChange} onStoryPointsChange={ta.handleStoryPointsChange} onJiraStatusChange={ta.handleJiraStatusChange} onIssueTypeChange={ta.handleIssueTypeChange} onTitleChange={ta.handleTitleChange} onAssigneeChange={ta.handleAssigneeChange} onEpicChange={ta.handleEpicChange} onSprintChange={ta.handleSprintChange} sprints={sprints} onCloseSubtasks={ta.handleCloseSubtasks} onTableKeyDown={handleTableKeyDown} onRunReview={(key) => handleBulkReviewStory(new Set([key]))} sortField={f.sortField} sortDir={f.sortDir} groups={groups} collapsedGroups={collapsedGroups} onToggleCollapse={toggleCollapse} groupBy={groupBy} pinnedSprintIds={slotSprintsSet} onPinSprint={handleAddSlotWithSprint} onEditSprint={handleEditSprintFromGroup} onCloseSprint={handleCloseSprintFromGroup} scrollContainerRef={contentScrollRef} refinementSessionMap={ticketSessionMap} onRemoveFromRefinement={handleRemoveFromRefinement} onViewRefinement={handleViewRefinement} {...(dnd.jiraRankDndEnabled ? { externalDnd: true as const, externalActiveDragId: dnd.boardActiveDragId, dragOverKey: dnd.boardOverId } : { onReorder: f.sortField === "rank" && !f.activeViewId ? handleReorder : undefined })} />
+          <TicketTable tickets={tickets} checkedTickets={checkedTickets} selectedTicket={selectedTicket} focusedTicketIdx={focusedTicketIdx} someChecked={someChecked} allChecked={allChecked} visibleTags={f.visibleTags} hideEpic={hideEpicChip} showSprint={showSprintOnRow} sprintNameMap={sprintNameMap} poStatuses={poStatuses} readinessMap={readinessMap} inflightKeys={inflightKeys} onToggleCheck={toggleCheck} onRangeCheck={handleRangeCheck} onToggleAll={toggleAll} onSelectTicket={setSelectedTicket} onRowContextMenu={handleRowContextMenu} contextMenuKeys={rowMenu?.targets} onPoStatusChange={ta.handlePoStatusChange} onReadinessChange={ta.handleReadinessChange} onBusinessValueChange={ta.handleBusinessValueChange} onStoryPointsChange={ta.handleStoryPointsChange} onJiraStatusChange={ta.handleJiraStatusChange} onIssueTypeChange={ta.handleIssueTypeChange} onTitleChange={ta.handleTitleChange} onAssigneeChange={ta.handleAssigneeChange} onEpicChange={ta.handleEpicChange} onSprintChange={ta.handleSprintChange} sprints={sprints} onCloseSubtasks={ta.handleCloseSubtasks} onTableKeyDown={handleTableKeyDown} onRunReview={(key) => handleBulkReviewStory(new Set([key]))} sortField={f.sortField} sortDir={f.sortDir} groups={groups} collapsedGroups={collapsedGroups} onToggleCollapse={toggleCollapse} groupBy={groupBy} pinnedSprintIds={slotSprintsSet} onPinSprint={handleAddSlotWithSprint} onEditSprint={handleEditSprintFromGroup} onCloseSprint={handleCloseSprintFromGroup} onCreateTicket={handleCreateTicket} flatCreateTarget={flatCreateTarget} scrollContainerRef={contentScrollRef} refinementSessionMap={ticketSessionMap} onRemoveFromRefinement={handleRemoveFromRefinement} onViewRefinement={handleViewRefinement} {...(dnd.jiraRankDndEnabled ? { externalDnd: true as const, externalActiveDragId: dnd.boardActiveDragId, dragOverKey: dnd.boardOverId } : { onReorder: f.sortField === "rank" && !f.activeViewId ? handleReorder : undefined })} />
           </div>
         )}
       </div>

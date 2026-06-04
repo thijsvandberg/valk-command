@@ -7,6 +7,14 @@ import { computeTicketEditState } from "@/lib/ticket-state";
 import { timedQuery } from "@/lib/query-timer";
 import { cache } from "@/lib/cache";
 import { enqueue as enqueueForRevalidation } from "@/lib/revalidation-queue";
+import { errorResponse } from "@/lib/api-response";
+import { parseJsonBody } from "@/lib/request-parser";
+import { jiraClient } from "@/lib/jira-client";
+import { logActivity } from "@/lib/activity-logger";
+import { logger } from "@/lib/logger";
+import { env } from "@/lib/env";
+
+const CREATABLE_TYPES = ["Story", "Task", "Bug"];
 
 function userInitials(name: string): string {
   return name
@@ -173,5 +181,108 @@ export async function GET(request: Request) {
       "X-Cache": "MISS",
       "Cache-Control": "private, max-age=10, stale-while-revalidate=20",
     },
+  });
+}
+
+// Create a standalone story/task/bug directly from the sprint board, optionally
+// landing it in a sprint and/or under an epic. Mirrors the epic-children create
+// route, minus the epic-parent requirement, so the board can create tickets that
+// are not children of an epic.
+export async function POST(request: Request) {
+  const parsed = await parseJsonBody(request);
+  if ("error" in parsed) return parsed.error;
+  const body = parsed.data as { title?: string; issueType?: string; sprintId?: string; epicKey?: string };
+
+  const title = body.title?.trim();
+  if (!title) {
+    return errorResponse("title is required", 400);
+  }
+
+  const issueType = body.issueType ?? "Story";
+  if (!CREATABLE_TYPES.includes(issueType)) {
+    return errorResponse(`issueType must be one of: ${CREATABLE_TYPES.join(", ")}`, 400);
+  }
+
+  // Optional target sprint. Absent/blank keeps the issue in the backlog (Jira default).
+  const sprintId = typeof body.sprintId === "string" && body.sprintId.trim() ? body.sprintId.trim() : undefined;
+  const epicKey = typeof body.epicKey === "string" && body.epicKey.trim() ? body.epicKey.trim() : undefined;
+
+  // Resolve the epic title so the local row carries the same epic label the board
+  // groups and chips by. A missing epic is tolerated: the link still goes to Jira.
+  let epicTitle: string | null = null;
+  if (epicKey) {
+    const epic = await db.query.ticket.findFirst({
+      where: (row, { eq: eqFn }) => eqFn(row.jiraKey, epicKey),
+    });
+    epicTitle = epic?.title ?? null;
+  }
+
+  let jiraResult: { key: string; id: string };
+  try {
+    jiraResult = await jiraClient.createIssue({
+      summary: title,
+      issueType,
+      projectKey: env.JIRA_PROJECT_KEY,
+      ...(epicKey ? { parentKey: epicKey } : {}),
+    });
+  } catch (err) {
+    logger.error("ticket-create", `Jira create failed: ${err}`);
+    const message = err instanceof Error ? err.message : "Jira API error";
+    return errorResponse(message, 502);
+  }
+
+  // Assign the sprint via the same field-edit path as drag-to-sprint. Jira Cloud
+  // silently ignores the sprint field on create, so the issue must already exist.
+  // Only persist the local sprint when Jira confirms the move, so the board never
+  // shows the new ticket in a sprint it is not actually in.
+  let assignedSprintId: string | undefined;
+  if (sprintId) {
+    const sprintIdNum = parseInt(sprintId, 10);
+    if (!Number.isNaN(sprintIdNum)) {
+      try {
+        await jiraClient.moveToSprint([jiraResult.key], sprintIdNum);
+        assignedSprintId = sprintId;
+      } catch (err) {
+        logger.error("ticket-create", `Created ${jiraResult.key} but sprint assignment to ${sprintId} failed: ${err}`);
+      }
+    }
+  }
+
+  await db.insert(ticket).values({
+    jiraKey: jiraResult.key,
+    jiraId: jiraResult.id,
+    title,
+    type: issueType.toLowerCase(),
+    status: "TO DO",
+    ...(epicKey ? { epic: epicTitle, epicKey } : {}),
+    // The sprint_name column stores the sprint id; the detail builder resolves it
+    // to a display name via sprintNameCache (same convention as the Jira sync).
+    ...(assignedSprintId ? { sprintName: assignedSprintId } : {}),
+    flagged: false,
+  });
+
+  // New tickets start in the PO "drafting" stage so they surface for refinement.
+  await db
+    .insert(ticketMetadata)
+    .values({ jiraKey: jiraResult.key, readiness: "drafting" })
+    .onConflictDoUpdate({ target: ticketMetadata.jiraKey, set: { readiness: "drafting" } });
+
+  cache.invalidate(/^\/api\/tickets(\?|$)/);
+
+  await logActivity({
+    type: "metadata-update",
+    scope: jiraResult.key,
+    summary: `Created ${issueType.toLowerCase()} ${jiraResult.key}: ${title}`,
+  });
+
+  return NextResponse.json({
+    key: jiraResult.key,
+    title,
+    type: issueType.toLowerCase(),
+    jiraStatus: "TO DO",
+    sprintId: assignedSprintId ?? null,
+    epic: epicKey ? epicTitle : null,
+    epicKey: epicKey ?? null,
+    assignee: null,
   });
 }

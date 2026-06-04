@@ -7,7 +7,8 @@ import type { EpicOption } from "@/components/shared/EpicPicker";
 import type { SortField, SortDir, InlineTagId } from "@/components/sprint-board/FilterBar";
 import { IssueTypeIcon } from "@/components/shared/IssueTypeIcon";
 import { EmptyState } from "@/components/shared/EmptyState";
-import { Sheet, Inbox } from "lucide-react";
+import { ChildIssueComposer } from "@/components/ticket-detail/ChildIssueComposer";
+import { Sheet, Inbox, Plus } from "lucide-react";
 import { GroupStatBar } from "@/components/sprint-board/GroupStatBar";
 import { matchesWarningFilter } from "@/components/sprint-board/warning-filter";
 import { GroupCard, GROUP_CARD_CLASS } from "@/components/sprint-board/GroupCard";
@@ -129,6 +130,8 @@ export function TicketTable({
   refinementSessionMap,
   onRemoveFromRefinement,
   onViewRefinement,
+  onCreateTicket,
+  flatCreateTarget,
 }: {
   tickets: Ticket[];
   checkedTickets: Set<string>;
@@ -196,6 +199,10 @@ export function TicketTable({
   onRemoveFromRefinement?: (sessionId: string, ticketKey: string) => void;
   /** Navigate to a refinement session (from the gem hover card). */
   onViewRefinement?: (sessionId: string) => void;
+  /** Create a story/task/bug into a sprint (id), or the backlog (null). Enables the inline composer. */
+  onCreateTicket?: (sprintId: string | null, title: string, jiraType: string) => void;
+  /** Target for the ungrouped list's composer. When set, a "+ Add story" row shows under the flat list. */
+  flatCreateTarget?: { sprintId: string | null };
 }) {
   const tableContainerRef = useRef<HTMLDivElement>(null);
 
@@ -223,6 +230,10 @@ export function TicketTable({
   const lastCheckRef = useRef<{ idx: number; checked: boolean } | null>(null);
 
   const [groupFilter, setGroupFilter] = useState<{ groupKey: string; criterion: "todo" | "in-progress" | "test" | "done" | "unpointed" } | null>(null);
+
+  // Inline create composer: the flat (single-sprint) list shows it inline at all
+  // times; grouped sprints reveal it per group via the header "+", one at a time.
+  const [composerGroupKey, setComposerGroupKey] = useState<string | null>(null);
 
   const [internalActiveDragId, setInternalActiveDragId] = useState<string | null>(null);
   const activeDragId = externalDnd ? externalActiveDragId ?? null : internalActiveDragId;
@@ -456,7 +467,15 @@ export function TicketTable({
       {groups.map((group) => {
         const isCollapsed = collapsedGroups?.has(group.key) ?? false;
         const isSprintGroup = groupBy === "sprint" && group.key !== "__backlog__";
+        const isBacklogGroup = groupBy === "sprint" && group.key === "__backlog__";
         const groupSprint = isSprintGroup ? sprints?.find((s) => s.id === group.key) : undefined;
+
+        // Creating into a group only makes sense when grouped by sprint: the backlog
+        // (no sprint) or any non-closed sprint. Jira rejects creating into closed sprints.
+        const canCreateInGroup =
+          !!onCreateTicket && (isBacklogGroup || (!!groupSprint && groupSprint.state !== "closed"));
+        const createTargetSprintId = isBacklogGroup ? null : group.key;
+        const isComposerOpen = composerGroupKey === group.key;
 
         const activeCriterion = groupFilter?.groupKey === group.key ? groupFilter.criterion : null;
         const visibleGroupTickets = activeCriterion === "todo"
@@ -511,11 +530,29 @@ export function TicketTable({
           </SortableContext>
         ) : ticketRows;
 
+        const headerExtras = canCreateInGroup ? (
+          <button
+            type="button"
+            aria-label={`Create story in ${group.label}`}
+            onClick={(e) => {
+              e.stopPropagation();
+              setComposerGroupKey((cur) => (cur === group.key ? null : group.key));
+              if (collapsedGroups?.has(group.key)) onToggleCollapse?.(group.key);
+            }}
+            className={`flex shrink-0 cursor-pointer items-center justify-center rounded-md p-1 text-text-muted [transition:opacity_.12s_ease,color_.12s_ease,background-color_.12s_ease] hover:bg-overlay-subtle hover:text-text-secondary focus-visible:opacity-100 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)] ${
+              isComposerOpen ? "opacity-100" : "opacity-0 group-hover/grouprow:opacity-100"
+            }`}
+          >
+            <Plus size={14} strokeWidth={1.75} />
+          </button>
+        ) : undefined;
+
         return (
           <GroupCard
             key={group.key}
             isCollapsed={isCollapsed}
             onToggleCollapse={() => onToggleCollapse?.(group.key)}
+            headerExtras={headerExtras}
             header={
               <GroupStatBar
                 tickets={group.tickets}
@@ -552,6 +589,17 @@ export function TicketTable({
             <table className="w-full table-fixed border-collapse text-body-lg">
               <tbody>{groupRows}</tbody>
             </table>
+            {isComposerOpen && canCreateInGroup && onCreateTicket && (
+              <ChildIssueComposer
+                autoFocus
+                onCreate={(title, jiraType) => onCreateTicket(createTargetSprintId, title, jiraType)}
+                onEscapeEmpty={() => setComposerGroupKey(null)}
+                placeholder={isBacklogGroup ? "Create story in the backlog..." : `Create story in ${group.label}...`}
+                alignKey
+                dropUp
+                className={visibleGroupTickets.length > 0 ? "border-t border-border-subtle" : ""}
+              />
+            )}
           </GroupCard>
         );
       })}
@@ -567,12 +615,21 @@ export function TicketTable({
       tabIndex={0}
       onKeyDown={onTableKeyDown}
     >
-      {isGrouped ? groupedTable : (tickets.length > 0 && (
+      {isGrouped ? groupedTable : ((tickets.length > 0 || (flatCreateTarget && onCreateTicket)) && (
         <div className={CARD_CLASS}>
-          {enableVirtualization ? virtualizedTable : ((externalDnd || onReorder) ? dndTable : plainTable)}
+          {tickets.length > 0 && (enableVirtualization ? virtualizedTable : ((externalDnd || onReorder) ? dndTable : plainTable))}
+          {flatCreateTarget && onCreateTicket && (
+            <ChildIssueComposer
+              onCreate={(title, jiraType) => onCreateTicket(flatCreateTarget.sprintId, title, jiraType)}
+              placeholder={flatCreateTarget.sprintId === null ? "Create story in the backlog..." : "Create story in this sprint..."}
+              alignKey
+              dropUp
+              className={tickets.length > 0 ? "border-t border-border-subtle" : ""}
+            />
+          )}
         </div>
       ))}
-      {tickets.length === 0 && !isGrouped && (
+      {tickets.length === 0 && !isGrouped && !(flatCreateTarget && onCreateTicket) && (
         <EmptyState
           icon={<Sheet className="h-6 w-6 text-text-muted" strokeWidth={1} />}
           title="No tickets in this sprint"

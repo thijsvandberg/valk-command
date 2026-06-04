@@ -222,6 +222,10 @@ export const tickets = {
   createChildIssue: (key: string, data: { title: string; issueType?: string; sprintId?: string }, signal?: AbortSignal) =>
     apiFetch<import("@/types/ticket").Subtask>(`/api/tickets/${enc(key)}/children`, { method: "POST", body: data, signal }),
 
+  // Standalone create (sprint board): a story/task/bug not tied to an epic, optionally landed in a sprint.
+  createTicket: (data: { title: string; issueType?: string; sprintId?: string; epicKey?: string }, signal?: AbortSignal) =>
+    apiFetch<{ key: string; title: string; type: string; jiraStatus: string; sprintId: string | null; epic: string | null; epicKey: string | null; assignee: null }>("/api/tickets", { method: "POST", body: data, signal }),
+
   // Issue links
   createLink: (key: string, data: { targetKey: string; relation: string; jiraTypeName?: string; direction?: "inward" | "outward" }, signal?: AbortSignal) =>
     apiFetch<import("@/types/ticket").LinkedIssue>(`/api/tickets/${enc(key)}/links`, { method: "POST", body: data, signal }),

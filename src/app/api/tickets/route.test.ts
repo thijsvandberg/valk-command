@@ -3,7 +3,7 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 import { createTestDb } from "@/db/test-utils";
 import type { BetterSQLite3Database } from "drizzle-orm/better-sqlite3";
 import type * as schema from "@/db/schema";
-import { ticket } from "@/db/schema";
+import { ticket, ticketMetadata } from "@/db/schema";
 import { cache } from "@/lib/cache";
 
 let testDb: BetterSQLite3Database<typeof schema>;
@@ -14,7 +14,18 @@ vi.mock("@/db", () => ({
   },
 }));
 
-import { GET } from "./route";
+vi.mock("@/lib/jira-client", () => ({
+  jiraClient: {
+    createIssue: vi.fn().mockResolvedValue({ key: "VPL-999", id: "99999" }),
+    moveToSprint: vi.fn().mockResolvedValue(undefined),
+  },
+}));
+
+vi.mock("@/lib/activity-logger", () => ({
+  logActivity: vi.fn().mockResolvedValue(undefined),
+}));
+
+import { GET, POST } from "./route";
 
 function seedTicket(
   db: BetterSQLite3Database<typeof schema>,
@@ -117,5 +128,123 @@ describe("GET /api/tickets", () => {
     const data = await response.json();
 
     expect(data[0].poStatus).toBeNull();
+  });
+});
+
+function postRequest(body: unknown): Request {
+  return new Request("http://localhost:3100/api/tickets", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(body),
+  });
+}
+
+describe("POST /api/tickets", () => {
+  beforeEach(() => {
+    testDb = createTestDb();
+    cache.flush();
+    vi.clearAllMocks();
+  });
+
+  it("creates a story and returns it", async () => {
+    const res = await POST(postRequest({ title: "New story", sprintId: "42" }));
+    expect(res.status).toBe(200);
+    const data = await res.json();
+    expect(data.key).toBe("VPL-999");
+    expect(data.title).toBe("New story");
+    expect(data.type).toBe("story");
+    expect(data.jiraStatus).toBe("TO DO");
+    expect(data.sprintId).toBe("42");
+  });
+
+  it("inserts the new ticket into the ticket table", async () => {
+    await POST(postRequest({ title: "Board story", issueType: "Task" }));
+    const row = testDb.select().from(ticket).all().find((r) => r.jiraKey === "VPL-999");
+    expect(row).toBeDefined();
+    expect(row!.type).toBe("task");
+    expect(row!.status).toBe("TO DO");
+  });
+
+  it("creates without an epic parent by default", async () => {
+    const { jiraClient } = await import("@/lib/jira-client");
+    await POST(postRequest({ title: "Standalone" }));
+    expect((jiraClient.createIssue as ReturnType<typeof vi.fn>).mock.calls[0][0]).not.toHaveProperty("parentKey");
+    const row = testDb.select().from(ticket).all().find((r) => r.jiraKey === "VPL-999");
+    expect(row!.epicKey).toBeNull();
+  });
+
+  it("links to an epic and stores its title when epicKey is given", async () => {
+    testDb.insert(ticket).values({ jiraKey: "VPL-1", title: "Group Reservations", type: "epic", status: "TO DO" }).run();
+    const { jiraClient } = await import("@/lib/jira-client");
+
+    await POST(postRequest({ title: "Under epic", epicKey: "VPL-1" }));
+
+    expect(jiraClient.createIssue).toHaveBeenCalledWith(expect.objectContaining({ parentKey: "VPL-1" }));
+    const row = testDb.select().from(ticket).all().find((r) => r.jiraKey === "VPL-999");
+    expect(row!.epicKey).toBe("VPL-1");
+    expect(row!.epic).toBe("Group Reservations");
+  });
+
+  it("uses the configured project key", async () => {
+    const { jiraClient } = await import("@/lib/jira-client");
+    await POST(postRequest({ title: "Project check" }));
+    expect(jiraClient.createIssue).toHaveBeenCalledWith(expect.objectContaining({ projectKey: "VPL" }));
+  });
+
+  it("starts new tickets at readiness drafting", async () => {
+    await POST(postRequest({ title: "Fresh" }));
+    const meta = testDb.select().from(ticketMetadata).all().find((r) => r.jiraKey === "VPL-999");
+    expect(meta!.readiness).toBe("drafting");
+  });
+
+  it("assigns the sprint via moveToSprint, not on create", async () => {
+    const { jiraClient } = await import("@/lib/jira-client");
+    await POST(postRequest({ title: "Into sprint", sprintId: "42" }));
+    expect((jiraClient.createIssue as ReturnType<typeof vi.fn>).mock.calls[0][0]).not.toHaveProperty("sprintId");
+    expect(jiraClient.moveToSprint).toHaveBeenCalledWith(["VPL-999"], 42);
+    const row = testDb.select().from(ticket).all().find((r) => r.jiraKey === "VPL-999");
+    expect(row!.sprintName).toBe("42");
+  });
+
+  it("does not persist a sprint locally when the assignment fails", async () => {
+    const { jiraClient } = await import("@/lib/jira-client");
+    (jiraClient.moveToSprint as ReturnType<typeof vi.fn>).mockRejectedValueOnce(new Error("sprint closed"));
+
+    const res = await POST(postRequest({ title: "Into sprint", sprintId: "42" }));
+
+    expect(res.status).toBe(200);
+    const row = testDb.select().from(ticket).all().find((r) => r.jiraKey === "VPL-999");
+    expect(row!.sprintName).toBeNull();
+  });
+
+  it("does not assign a sprint when absent or blank", async () => {
+    const { jiraClient } = await import("@/lib/jira-client");
+    await POST(postRequest({ title: "No sprint", sprintId: "  " }));
+    expect(jiraClient.moveToSprint).not.toHaveBeenCalled();
+    const row = testDb.select().from(ticket).all().find((r) => r.jiraKey === "VPL-999");
+    expect(row!.sprintName).toBeNull();
+  });
+
+  it("defaults issueType to Story", async () => {
+    const { jiraClient } = await import("@/lib/jira-client");
+    await POST(postRequest({ title: "Default type" }));
+    expect(jiraClient.createIssue).toHaveBeenCalledWith(expect.objectContaining({ issueType: "Story" }));
+  });
+
+  it("returns 400 for missing title", async () => {
+    const res = await POST(postRequest({}));
+    expect(res.status).toBe(400);
+  });
+
+  it("returns 400 for empty title", async () => {
+    const res = await POST(postRequest({ title: "  " }));
+    expect(res.status).toBe(400);
+  });
+
+  it("returns 400 for invalid issueType", async () => {
+    const res = await POST(postRequest({ title: "Test", issueType: "Epic" }));
+    expect(res.status).toBe(400);
+    const data = await res.json();
+    expect(data.error).toContain("issueType must be one of");
   });
 });

@@ -59,7 +59,7 @@ CRUD operations on locally stored tickets and their metadata.
 | Route | Method | Purpose |
 |-------|--------|---------|
 | `/api/tickets` | GET | List tickets. `?sprintId=X` filters by sprint |
-| `/api/tickets` | POST | Create a local ticket record |
+| `/api/tickets` | POST | Create a story/task/bug in Jira and mirror it locally. Body: `{ title, issueType?, sprintId?, epicKey? }`. `issueType` defaults to `Story`; `sprintId` lands it in a sprint (via the same field-edit path as drag-to-sprint, applied after create); `epicKey` links it under an epic. New tickets start at readiness `drafting`. Used by the Sprint Board inline "Add story" composer (single sprint and per-sprint group in the All view). |
 | `/api/tickets/[key]` | GET | Get single ticket with metadata, subtasks, links, local edits |
 | `/api/tickets/[key]` | PUT | Update ticket fields |
 | `/api/tickets/[key]` | PATCH | Partial update: `flagged` (+ optional `flagReason`, synced to Jira as a comment), `labels`, `epicKey`, `type`. Bulk flag from the Sprint Board fans out one PATCH per ticket. |
