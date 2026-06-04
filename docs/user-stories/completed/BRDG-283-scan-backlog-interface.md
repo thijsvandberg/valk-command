@@ -79,3 +79,14 @@ topics render as placeholders).
 - [x] Tests (rendering, sort/filter, states)
 - [x] Run `npm run lint`, `npm run typecheck`, `npm run test` (build skipped per task instructions — do NOT run `npm run build`)
 - [x] Document the view in `docs/architecture/` and reference the epic
+
+## Post-implementation refinement (2026-06-05)
+
+**Subtask exclusion** (Backlog Deprecation Review epic): Added `EXCLUDED_SCAN_TYPES` constant and
+`isScannableType` helper in `src/lib/ticket-status.ts`. Applied `or(isNull(ticket.type), notInArray(ticket.type, EXCLUDED_SCAN_TYPES))` at all four eligibility query sites:
+`runDeprecationStalenessScan` and `runAutoEnqueue` in `src/lib/scheduled-tasks.ts`,
+`loadEligible()` in `src/app/api/cleanup/deep-scan/route.ts`, and the GET handler in
+`src/app/api/cleanup/route.ts`. Subtasks (stored as `"subtask"` after `normalizeIssueType`) are
+cleaned up with their parent and must never appear as their own row in the cleanup overview.
+Null-type tickets are retained (the `or(isNull)` guard prevents SQLite NULL semantics from
+accidentally dropping unknown types). Tests updated at all four sites.

@@ -1,8 +1,8 @@
 import { NextResponse } from "next/server";
 import { db } from "@/db";
 import { ticket, ticketMetadata, ticketSubtask } from "@/db/schema";
-import { eq, and, isNull, notInArray, sql } from "drizzle-orm";
-import { FINISHED_STATUSES, isFinishedStatus } from "@/lib/ticket-status";
+import { eq, and, isNull, or, notInArray, sql } from "drizzle-orm";
+import { FINISHED_STATUSES, EXCLUDED_SCAN_TYPES, isFinishedStatus } from "@/lib/ticket-status";
 import { userInitials, userColor } from "@/lib/user-utils";
 import {
   SCAN_TOPICS,
@@ -102,6 +102,11 @@ export async function GET(request: Request) {
         eq(ticket.sprintName, ""),
         isNull(ticket.removedFromJiraAt),
         notInArray(ticket.status, FINISHED_STATUSES as string[]),
+        // Subtasks are excluded: they are cleaned up together with their parent
+        // and must never appear as their own row in the deprecation review.
+        // or(isNull) ensures tickets with a null type are not silently dropped
+        // (NULL NOT IN (...) evaluates to NULL/false in SQL).
+        or(isNull(ticket.type), notInArray(ticket.type, EXCLUDED_SCAN_TYPES as string[])),
       ),
     );
 

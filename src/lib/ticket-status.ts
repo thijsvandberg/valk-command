@@ -38,3 +38,27 @@ export function isFinishedStatus(status: string | null | undefined): boolean {
   if (!status) return false;
   return FINISHED_STATUSES_SET.has(status.toUpperCase().trim());
 }
+
+/**
+ * Issue types excluded from deprecation scanning.
+ *
+ * Only Subtask is excluded: subtasks are cleaned up together with their parent,
+ * so they must never appear as their own row in the cleanup overview or be
+ * scored individually. Epic, Story, Spike, Task, and Bug are all scannable.
+ *
+ * The value "subtask" is stored lowercase after normalizeIssueType() runs on
+ * ingest (upsert-issue.ts: `if (lower.includes("sub")) return "subtask"`).
+ */
+export const EXCLUDED_SCAN_TYPES: readonly string[] = ["subtask"] as const;
+
+const EXCLUDED_SCAN_TYPES_SET = new Set<string>(EXCLUDED_SCAN_TYPES);
+
+/**
+ * Returns true when a ticket type is a parent-level work item that should be
+ * included in deprecation scanning. Subtasks return false; all other types
+ * (story, task, bug, spike, epic) return true.
+ */
+export function isScannableType(type: string | null | undefined): boolean {
+  if (!type) return true; // unknown/null types are included to avoid silently hiding work
+  return !EXCLUDED_SCAN_TYPES_SET.has(type.toLowerCase().trim());
+}

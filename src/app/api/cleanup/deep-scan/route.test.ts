@@ -25,12 +25,14 @@ function seed(
     lastScannedAt?: string | null;
     disposition?: string | null;
     dispositionUntil?: string | null;
+    type?: string | null;
   } = {},
 ) {
   testDb.insert(ticket).values({
     jiraKey: key,
     title: `Ticket ${key}`,
     status: "Backlog",
+    type: opts.type ?? null,
     sprintName: opts.sprintName === undefined ? "" : opts.sprintName,
     removedFromJiraAt: opts.removedFromJiraAt ?? null,
   }).run();
@@ -111,6 +113,23 @@ describe("POST /api/cleanup/deep-scan", () => {
     });
     const data = await (await post({ method: "worst-staleness", topX: 5 })).json();
     expect(data.enqueuedKeys).toEqual(["BT-OK"]);
+  });
+
+  it("excludes subtasks from enqueue eligibility (subtasks are cleaned up with their parent)", async () => {
+    seed("BT-STORY", { type: "story" });
+    seed("BT-BUG", { type: "bug" });
+    // Subtasks must not be queued for deep scanning.
+    seed("BT-SUB", { type: "subtask" });
+
+    const data = await (await post({ method: "keys", keys: ["BT-STORY", "BT-BUG", "BT-SUB"] })).json();
+    expect(data.enqueuedKeys.sort()).toEqual(["BT-BUG", "BT-STORY"]);
+    expect(data.enqueuedKeys).not.toContain("BT-SUB");
+  });
+
+  it("includes tickets with null type in enqueue eligibility (unknown types are not silently hidden)", async () => {
+    seed("BT-NULL", { type: null });
+    const data = await (await post({ method: "keys", keys: ["BT-NULL"] })).json();
+    expect(data.enqueuedKeys).toEqual(["BT-NULL"]);
   });
 });
 

@@ -58,10 +58,10 @@ vi.mock("@/db", () => ({
   },
 }));
 
-import { cleanupActivityLog, cleanupOldNotifications, revalidateDeletedTickets } from "./scheduled-tasks";
+import { cleanupActivityLog, cleanupOldNotifications, revalidateDeletedTickets, runDeprecationStalenessScan, runAutoEnqueue } from "./scheduled-tasks";
 import { jiraClient, JiraApiError } from "@/lib/jira-client";
 import { enqueue, _reset as resetQueue } from "@/lib/revalidation-queue";
-import { activityLog, alert, ticket } from "@/db/schema";
+import { activityLog, alert, ticket, appSetting } from "@/db/schema";
 import { eq } from "drizzle-orm";
 
 describe("cleanupActivityLog", () => {
@@ -284,5 +284,83 @@ describe("revalidateDeletedTickets", () => {
     const result = await revalidateDeletedTickets();
 
     expect(result).toMatchObject({ checked: 3, removed: 0, queueSize: 0 });
+  });
+});
+
+describe("runDeprecationStalenessScan — subtask exclusion", () => {
+  function insertTicket(key: string, type: string | null, sprintName = "", status = "TO DO") {
+    testDb.insert(ticket).values({
+      jiraKey: key,
+      title: `Ticket ${key}`,
+      status,
+      type,
+      sprintName,
+    }).run();
+  }
+
+  beforeEach(() => {
+    testDb = createTestDb();
+  });
+
+  it("reports backlogSize: 0 when the only backlog ticket is a subtask", async () => {
+    // Subtasks must never be eligible for scanning; the scan should see an empty backlog.
+    insertTicket("BT-SUB", "subtask");
+    const result = await runDeprecationStalenessScan();
+    expect(result).toMatchObject({ scanned: 0, candidates: 0, backlogSize: 0 });
+  });
+
+  it("counts parent-level types as eligible (story, task, bug, spike, epic)", async () => {
+    insertTicket("BT-STORY", "story");
+    insertTicket("BT-TASK", "task");
+    insertTicket("BT-BUG", "bug");
+    insertTicket("BT-SPIKE", "spike");
+    insertTicket("BT-EPIC", "epic");
+    // The scan batch processes up to STALENESS_SCAN_BATCH_SIZE tickets; all five
+    // are eligible so backlogSize should be 5 (scanned may be less if batched).
+    const result = await runDeprecationStalenessScan();
+    expect((result as { backlogSize: number }).backlogSize).toBe(5);
+  });
+
+  it("does not count a subtask alongside eligible parent types", async () => {
+    insertTicket("BT-STORY", "story");
+    insertTicket("BT-SUB", "subtask"); // must not be counted
+    const result = await runDeprecationStalenessScan();
+    expect((result as { backlogSize: number }).backlogSize).toBe(1);
+  });
+});
+
+describe("runAutoEnqueue — subtask exclusion", () => {
+  function insertTicket(key: string, type: string | null, sprintName = "", status = "TO DO") {
+    testDb.insert(ticket).values({
+      jiraKey: key,
+      title: `Ticket ${key}`,
+      status,
+      type,
+      sprintName,
+    }).run();
+  }
+
+  function enableAutoScan() {
+    testDb.insert(appSetting).values({ key: "deprecation-auto-scan:enabled", value: "true" }).run();
+    testDb.insert(appSetting).values({ key: "deprecation-auto-scan:daily-count", value: "100" }).run();
+  }
+
+  beforeEach(() => {
+    testDb = createTestDb();
+  });
+
+  it("skips when auto scan is disabled (baseline)", async () => {
+    const result = await runAutoEnqueue();
+    expect(result).toMatchObject({ skipped: true });
+  });
+
+  it("does not enqueue subtasks when selecting worst-staleness candidates", async () => {
+    enableAutoScan();
+    // Subtask should not appear in the eligible set that drives enqueue selection.
+    insertTicket("BT-STORY", "story");
+    insertTicket("BT-SUB", "subtask");
+    const result = await runAutoEnqueue();
+    // Enqueued count must not include BT-SUB; only BT-STORY is eligible.
+    expect((result as { enqueued: number }).enqueued).toBe(1);
   });
 });

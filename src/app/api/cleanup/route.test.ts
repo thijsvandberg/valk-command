@@ -129,6 +129,27 @@ describe("GET /api/cleanup", () => {
     expect(data.total).toBe(1);
   });
 
+  it("excludes subtasks from the cleanup list (subtasks are cleaned up with their parent)", async () => {
+    seed("BT-STORY", { type: "story" });
+    seed("BT-TASK", { type: "task" });
+    seed("BT-BUG", { type: "bug" });
+    seed("BT-SPIKE", { type: "spike" });
+    seed("BT-EPIC", { type: "epic" });
+    // Subtasks must be excluded regardless of their status.
+    seed("BT-SUB", { type: "subtask" });
+
+    const data = await (await call()).json();
+    const keys = data.rows.map((r: { key: string }) => r.key).sort();
+    expect(keys).toEqual(["BT-BUG", "BT-EPIC", "BT-SPIKE", "BT-STORY", "BT-TASK"]);
+    expect(keys).not.toContain("BT-SUB");
+  });
+
+  it("includes tickets with null type in the cleanup list (unknown types are not silently hidden)", async () => {
+    seed("BT-NULL-TYPE", { type: null });
+    const data = await (await call()).json();
+    expect(data.rows.map((r: { key: string }) => r.key)).toContain("BT-NULL-TYPE");
+  });
+
   it("parses scanScores into a per-topic map and surfaces overall + disposition", async () => {
     seed("BT-10", {
       lastScannedAt: "2026-06-01T00:00:00Z",

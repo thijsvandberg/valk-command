@@ -14,8 +14,8 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 import { db } from "@/db";
 import { ticket, ticketMetadata } from "@/db/schema";
-import { and, eq, isNull, notInArray } from "drizzle-orm";
-import { FINISHED_STATUSES } from "@/lib/ticket-status";
+import { and, eq, isNull, or, notInArray } from "drizzle-orm";
+import { FINISHED_STATUSES, EXCLUDED_SCAN_TYPES } from "@/lib/ticket-status";
 import { applyRateLimit } from "@/lib/rate-limiter";
 import { errorResponse } from "@/lib/api-response";
 import { parseJsonBody } from "@/lib/request-parser";
@@ -61,6 +61,11 @@ async function loadEligible(): Promise<SelectableTicket[]> {
         eq(ticket.sprintName, ""),
         isNull(ticket.removedFromJiraAt),
         notInArray(ticket.status, FINISHED_STATUSES as string[]),
+        // Subtasks are excluded: they are cleaned up together with their parent
+        // and must never appear as their own row in the deprecation review.
+        // or(isNull) ensures tickets with a null type are not silently dropped
+        // (NULL NOT IN (...) evaluates to NULL/false in SQL).
+        or(isNull(ticket.type), notInArray(ticket.type, EXCLUDED_SCAN_TYPES as string[])),
       ),
     );
   return rows.map((r) => ({

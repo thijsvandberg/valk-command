@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { FINISHED_STATUSES, isFinishedStatus } from "./ticket-status";
+import { FINISHED_STATUSES, isFinishedStatus, EXCLUDED_SCAN_TYPES, isScannableType } from "./ticket-status";
 
 describe("FINISHED_STATUSES", () => {
   it("includes DONE and DEPRECATED", () => {
@@ -45,5 +45,50 @@ describe("isFinishedStatus", () => {
 
   it("returns false for empty string", () => {
     expect(isFinishedStatus("")).toBe(false);
+  });
+});
+
+describe("EXCLUDED_SCAN_TYPES", () => {
+  it("contains exactly 'subtask'", () => {
+    expect(EXCLUDED_SCAN_TYPES).toContain("subtask");
+    // Only subtask is excluded; all other parent-level types must NOT be in this list.
+    expect(EXCLUDED_SCAN_TYPES).not.toContain("story");
+    expect(EXCLUDED_SCAN_TYPES).not.toContain("task");
+    expect(EXCLUDED_SCAN_TYPES).not.toContain("bug");
+    expect(EXCLUDED_SCAN_TYPES).not.toContain("spike");
+    expect(EXCLUDED_SCAN_TYPES).not.toContain("epic");
+  });
+});
+
+describe("isScannableType", () => {
+  it("returns false for 'subtask' (exact lowercase)", () => {
+    expect(isScannableType("subtask")).toBe(false);
+  });
+
+  it("returns false for 'subtask' regardless of case", () => {
+    // After normalizeIssueType() the stored value is always "subtask" (lowercase);
+    // the case-insensitive check is defensive for any caller that bypasses normalization.
+    expect(isScannableType("Subtask")).toBe(false);
+    expect(isScannableType("SUBTASK")).toBe(false);
+    // "Sub-task" is the raw Jira label; normalizeIssueType already converts it to
+    // "subtask" before storage, so we don't test it here — isScannableType only
+    // sees post-normalized values in production.
+  });
+
+  it("returns true for all parent-level work item types", () => {
+    expect(isScannableType("story")).toBe(true);
+    expect(isScannableType("task")).toBe(true);
+    expect(isScannableType("bug")).toBe(true);
+    expect(isScannableType("spike")).toBe(true);
+    expect(isScannableType("epic")).toBe(true);
+  });
+
+  it("returns true for null and undefined (unknown types are included)", () => {
+    expect(isScannableType(null)).toBe(true);
+    expect(isScannableType(undefined)).toBe(true);
+  });
+
+  it("returns true for empty string (unknown types are included)", () => {
+    expect(isScannableType("")).toBe(true);
   });
 });
