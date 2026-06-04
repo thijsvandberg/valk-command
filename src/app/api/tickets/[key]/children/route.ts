@@ -32,7 +32,7 @@ export async function POST(request: Request, { params }: RouteContext) {
 
   const parsed = await parseJsonBody(request);
   if ("error" in parsed) return parsed.error;
-  const body = parsed.data as { title?: string; issueType?: string };
+  const body = parsed.data as { title?: string; issueType?: string; sprintId?: string };
 
   const title = body.title?.trim();
   if (!title) {
@@ -44,6 +44,9 @@ export async function POST(request: Request, { params }: RouteContext) {
     return errorResponse(`issueType must be one of: ${ALLOWED_TYPES.join(", ")}`, 400);
   }
 
+  // Optional target sprint. Absent/blank keeps the issue in the backlog (Jira default).
+  const sprintId = typeof body.sprintId === "string" && body.sprintId.trim() ? body.sprintId.trim() : undefined;
+
   const projectKey = key.split("-")[0];
 
   let jiraResult: { key: string; id: string };
@@ -53,6 +56,7 @@ export async function POST(request: Request, { params }: RouteContext) {
       issueType,
       parentKey: key,
       projectKey,
+      ...(sprintId ? { sprintId } : {}),
     });
   } catch (err) {
     logger.error("child-create", `Jira create failed for epic ${key}: ${err}`);

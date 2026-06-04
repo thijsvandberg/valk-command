@@ -112,6 +112,33 @@ describe("POST /api/tickets/[key]/children", () => {
     );
   });
 
+  it("forwards sprintId to Jira createIssue when provided", async () => {
+    seedEpic("VPL-100");
+    const { jiraClient } = await import("@/lib/jira-client");
+
+    await POST(
+      postRequest("VPL-100", { title: "Into sprint", sprintId: "42" }),
+      makeParams("VPL-100"),
+    );
+
+    expect(jiraClient.createIssue).toHaveBeenCalledWith(
+      expect.objectContaining({ summary: "Into sprint", sprintId: "42" }),
+    );
+  });
+
+  it("omits sprintId when absent or blank", async () => {
+    seedEpic("VPL-100");
+    const { jiraClient } = await import("@/lib/jira-client");
+
+    await POST(
+      postRequest("VPL-100", { title: "No sprint", sprintId: "  " }),
+      makeParams("VPL-100"),
+    );
+
+    const call = (jiraClient.createIssue as ReturnType<typeof vi.fn>).mock.calls[0][0];
+    expect(call).not.toHaveProperty("sprintId");
+  });
+
   it("defaults issueType to Story", async () => {
     seedEpic("VPL-100");
     const { jiraClient } = await import("@/lib/jira-client");

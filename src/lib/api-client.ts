@@ -219,7 +219,7 @@ export const tickets = {
     apiFetch<{ ok: boolean }>(`/api/tickets/${enc(key)}/subtasks/${enc(subtaskKey)}/close`, { method: "POST", signal }),
 
   // Epic children
-  createChildIssue: (key: string, data: { title: string; issueType?: string }, signal?: AbortSignal) =>
+  createChildIssue: (key: string, data: { title: string; issueType?: string; sprintId?: string }, signal?: AbortSignal) =>
     apiFetch<import("@/types/ticket").Subtask>(`/api/tickets/${enc(key)}/children`, { method: "POST", body: data, signal }),
 
   // Issue links
