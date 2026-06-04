@@ -11,6 +11,10 @@ export function SWRProvider({ children }: { children: React.ReactNode }) {
         fetcher,
         revalidateOnFocus: false,
         dedupingInterval: 30000,
+        // Keep the previously loaded data visible while a new key fetches, so
+        // switching between tickets/sprints swaps content in place instead of
+        // flashing a loading state. Background revalidation still keeps it fresh.
+        keepPreviousData: true,
       }}
     >
       {children}
