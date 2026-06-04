@@ -214,6 +214,43 @@ CI/CD pipeline feed with Bitbucket integration, notifications, and deploy tracki
 | `/api/notifications` | GET | List notifications. `?unread=true&limit=N` |
 | `/api/notifications` | PATCH | Mark read. Body: `{ id }` or `{ markAll: true }` |
 
+## Cleanup / Backlog Deprecation Review (BRDG-283)
+
+Read surface for the [Backlog Deprecation Review epic](../plans/2026-06-04-backlog-deprecation-review-epic.md).
+Lists scan-eligible backlog tickets joined with their local-only `ticketMetadata` scan
+fields (BRDG-282). Scan-eligible = `sprintName === "" AND removedFromJiraAt IS NULL` (the
+same definition the Tier-1 staleness scanner uses). Never writes; never touches Jira.
+
+| Route | Method | Purpose |
+|-------|--------|---------|
+| `/api/cleanup` | GET | List scan-eligible backlog tickets with scan state. Query params below. |
+
+Query params: `sort` (`overall` \| `staleness` \| `lastScanned-oldest` \| `lastScanned-newest` \| `key`),
+`scanned` (`all` \| `scanned` \| `never`), `disposition` (`all` \| `candidate` \| `confirmed` \| `dismissed` \| `none`),
+`minOverall` (0..1 threshold on the overall score).
+
+Response shape (`CleanupResponse` in `src/lib/cleanup-types.ts`):
+```
+{
+  rows: Array<{
+    key, title, status,
+    lastScannedAt: string | null,
+    topicScores: { staleness?: number | null, ... }, // 0..1 per topic, parsed from scanScores
+    scanOverall: number | null,
+    disposition: "candidate" | "dismissed" | "confirmed" | null
+  }>,
+  total: number,
+  topics: Array<{ key, label, live }> // dormant topics (live:false) render "—" until their scorer ships
+}
+```
+Later epic stories (BRDG-284 selection, BRDG-289 disposition) extend this same route.
+
+The view lives at `/cleanup` (`src/app/(app)/cleanup/page.tsx`, nav entry "Cleanup" in
+`src/components/Sidebar.tsx`). It renders the table (key+title, status, relative last-scanned
+with absolute on hover, a heat bar per topic, overall, disposition badge), with client-side
+sort/filter mirrored from the API (`cleanup-utils.ts`). Row click opens the ticket in the
+shared `SidePanel` overlay (the same component the sprint board uses, per BRDG-281/275).
+
 ## Confluence
 
 | Route | Method | Purpose |

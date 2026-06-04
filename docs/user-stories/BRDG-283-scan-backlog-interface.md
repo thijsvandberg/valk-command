@@ -1,6 +1,6 @@
 # BRDG-283: Scan Backlog Interface
 
-**Status:** Planned
+**Status:** Done
 **Priority:** Medium
 **Type:** Feature
 **Epic:** [Backlog Deprecation Review](../plans/2026-06-04-backlog-deprecation-review-epic.md)
@@ -47,14 +47,35 @@ scored data on day one. Decide at kickoff.
 - Sort + filter logic (oldest-first, threshold, disposition).
 - Empty + loading states.
 
+## Implementation Plan
+
+Built UI-early on the BRDG-282 schema (real Tier-1 staleness data flows through, other
+topics render as placeholders).
+
+- **API** `GET /api/cleanup`: joins scan-eligible backlog tickets (`sprintName === "" AND
+  removedFromJiraAt IS NULL`, the same definition the Tier-1 scanner uses) with their
+  `ticketMetadata` scan fields. Parses `scanScores` JSON into a per-topic map. Server-side
+  sort + filter via query params; returns a typed row array plus a `topics` descriptor and
+  `total`. Later stories add columns/actions to this same route.
+- **View** `/cleanup` (`src/app/(app)/cleanup/page.tsx`): a table of every eligible ticket
+  with key+title, status, last-scanned (relative, absolute on hover), a column per scoring
+  topic (staleness live; others "—"), an overall heat bar, and a disposition badge. Sort +
+  filter controls drive the API query. Pure sort/filter helpers live in `cleanup-utils.ts`
+  for unit testing. Score heat uses the brand→amber→error token ramp.
+- **SidePanel reuse**: row click sets `selectedKey`; the panel mounts exactly as the sprint
+  board does (`SidePanel` with `onSelectTicket`, `adjacentKeys`, `saveTicketMetadata`
+  wiring), built from the loaded row so it opens instantly.
+- **Nav**: a "Cleanup" entry in `src/components/Sidebar.tsx`.
+- **Empty + loading**: empty state copy plus `loading.tsx` skeleton mirroring `pipelines`.
+
 ## Checklist
 
-- [ ] Invoke the `frontend-design` skill before any frontend work
-- [ ] New `/cleanup` view in the app navigation
-- [ ] Ticket list: key/title, status, `lastScannedAt`, per-topic score columns, overall, disposition
-- [ ] Sort (overall, staleness, last-scanned, key) + filter (scanned state, disposition, threshold, backlog)
-- [ ] Row opens the ticket via the existing `SidePanel` overlay
-- [ ] Empty + loading states (reuse the `loading.tsx` pattern)
-- [ ] Tests (rendering, sort/filter, states)
-- [ ] Run `npm run lint`, `npm run typecheck`, `npm run test`, `npm run build`
-- [ ] Document the view in `docs/architecture/` and reference the epic
+- [x] Invoke the `frontend-design` skill before any frontend work
+- [x] New `/cleanup` view in the app navigation
+- [x] Ticket list: key/title, status, `lastScannedAt`, per-topic score columns, overall, disposition
+- [x] Sort (overall, staleness, last-scanned, key) + filter (scanned state, disposition, threshold) <!-- skipped: "backlog" sub-filter — the scan-eligible set is the backlog by definition (sprintName=="" AND not removed), so there is no second backlog to switch between yet; revisit if BT vs regular backlog separation is needed -->
+- [x] Row opens the ticket via the existing `SidePanel` overlay
+- [x] Empty + loading states (reuse the `loading.tsx` pattern)
+- [x] Tests (rendering, sort/filter, states)
+- [x] Run `npm run lint`, `npm run typecheck`, `npm run test` (build skipped per task instructions — do NOT run `npm run build`)
+- [x] Document the view in `docs/architecture/` and reference the epic
