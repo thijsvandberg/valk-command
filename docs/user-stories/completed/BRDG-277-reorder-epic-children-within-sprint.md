@@ -120,3 +120,20 @@ behaviour.
 - [x] Tests: children load in rank order; same-group drop calls `jira.rank` with correct anchor; cross-group drop still moves sprint; closed-sprint drop rejected
 - [x] Update relevant docs in `/docs` (documented `/api/jira/rank` and `/api/jira/move-sprint` in api-routes.md)
 - [x] `npm run lint`, `npm run typecheck`, `npm run test`, `npm run build` all pass
+
+## Follow-up enhancements (post-archive)
+
+Two refinements requested after the initial implementation, both mirroring the sprint board:
+
+- [x] **Drop at position on cross-sprint drag.** Dropping a child onto a row in another
+  sprint now moves AND lands it at that row's position (insert before it) in one drop, via
+  `move-sprint` then `rank`. Dropping on the group card still appends. New `resolveDragEnd`
+  outcome `move-to-position` + `ChildMoveToPosition`; parent `handleMoveChildToPosition`
+  optimistically applies both the move (`localMoves`) and the target order (`localOrder`),
+  reverting both on failure.
+- [x] **Colored drop-indicator bar.** During a drag, the hovered row shows a 2px brand line
+  (`boxShadow: inset 0 ±2px 0 var(--color-brand-500)`), matching the sprint board. Direction
+  comes from the pure `insertLineForRow` helper (within-group: drag direction; cross-group:
+  above), fed by a new `onDragOver` that tracks `dragOverKey`.
+- [x] Tests: `resolveDragEnd` move-to-position + closed rejection, `insertLineForRow`
+  above/below/cross-group/none, and the `handleMoveChildToPosition` move→rank ordering + revert.

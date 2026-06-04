@@ -52,10 +52,22 @@ export interface ChildReorder extends ReorderResult {
   sprintName: string | null;
 }
 
+/** Payload for moving a child into another sprint at a specific position in one drop. */
+export interface ChildMoveToPosition extends ReorderResult {
+  activeKey: string;
+  /** Move target understood by the move API (sprint id or the backlog sentinel). */
+  targetSprintId: string;
+  /** Target group bucket key, for the local order override. */
+  targetGroupKey: string;
+  /** Target sprint name (null for the backlog), for the local move override. */
+  targetSprintName: string | null;
+}
+
 export type DragEndResolution =
   | { kind: "noop" }
   | { kind: "reorder"; reorder: ChildReorder }
   | { kind: "move"; targetSprintId: string }
+  | { kind: "move-to-position"; move: ChildMoveToPosition }
   | { kind: "move-rejected"; reason: "closed" };
 
 /**
@@ -95,11 +107,72 @@ export function resolveDragEnd({
     return { kind: "reorder", reorder: { activeKey, groupKey: group.key, sprintName: group.sprintName, ...res } };
   }
 
-  // Dropped onto a row in another group, or onto a group card: move sprints.
+  // Anything else is a cross-group move. Resolve the target sprint first so a closed
+  // sprint (or unknown group) is rejected before we compute a position.
   const move = resolveMove({ childSprintName, targetGroup: { sprintName: overSprintName, state: overState }, sprints });
-  if (move.ok) return { kind: "move", targetSprintId: move.targetSprintId };
-  if (move.reason === "closed") return { kind: "move-rejected", reason: "closed" };
-  return { kind: "noop" };
+  if (!move.ok) return move.reason === "closed" ? { kind: "move-rejected", reason: "closed" } : { kind: "noop" };
+
+  // Dropped onto a row in another group: move AND land at that row's position (insert
+  // before it). Dropped onto a group card: plain move, appended at the end.
+  if (overType === "child") {
+    const targetGroup = groups.find((g) => g.sprintName === overSprintName);
+    const targetKeys = targetGroup
+      ? targetGroup.items.filter((i) => !i.key.startsWith("pending-")).map((i) => i.key)
+      : [];
+    const idx = targetKeys.indexOf(overId);
+    const newOrder = idx === -1
+      ? [...targetKeys, activeKey]
+      : [...targetKeys.slice(0, idx), activeKey, ...targetKeys.slice(idx)];
+    return {
+      kind: "move-to-position",
+      move: {
+        activeKey,
+        targetSprintId: move.targetSprintId,
+        targetGroupKey: targetGroup?.key ?? (overSprintName ?? UNSCHEDULED_GROUP_KEY),
+        targetSprintName: overSprintName,
+        newOrder,
+        rankBeforeKey: overId,
+      },
+    };
+  }
+
+  return { kind: "move", targetSprintId: move.targetSprintId };
+}
+
+/**
+ * Decides whether the drop-indicator bar sits above or below a given row while a
+ * drag is in progress. Within the same group the side follows the drag direction
+ * (dragging up inserts above, down inserts below); a cross-group drag always
+ * inserts before the hovered row (matching the move-to-position rank anchor).
+ * Returns undefined for every row except the currently hovered one.
+ */
+export function insertLineForRow({
+  rowKey,
+  activeKey,
+  overKey,
+  groups,
+}: {
+  rowKey: string;
+  activeKey: string | null;
+  overKey: string | null;
+  groups: ChildGroup[];
+}): "above" | "below" | undefined {
+  if (!activeKey || !overKey || rowKey !== overKey || rowKey === activeKey) return undefined;
+
+  const groupOf = (key: string) => groups.find((g) => g.items.some((i) => i.key === key));
+  const activeGroup = groupOf(activeKey);
+  const overGroup = groupOf(overKey);
+  if (!overGroup) return undefined;
+
+  if (activeGroup && activeGroup.key === overGroup.key) {
+    const keys = overGroup.items.filter((i) => !i.key.startsWith("pending-")).map((i) => i.key);
+    const activeIdx = keys.indexOf(activeKey);
+    const overIdx = keys.indexOf(overKey);
+    if (activeIdx === -1 || overIdx === -1) return undefined;
+    return activeIdx > overIdx ? "above" : "below";
+  }
+
+  return "above";
 }
 
 /**

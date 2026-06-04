@@ -14,7 +14,7 @@ import { useToast } from "@/hooks/useToast";
 import { ChildIssueRow } from "./ChildIssueRow";
 import { ChildIssueComposer } from "./ChildIssueComposer";
 import { ChildIssueListHeader, type ChildIssueViewMode } from "./ChildIssueListHeader";
-import { EpicChildrenBySprint, type ChildReorder } from "./EpicChildrenBySprint";
+import { EpicChildrenBySprint, type ChildReorder, type ChildMoveToPosition } from "./EpicChildrenBySprint";
 import type { StatusFilter } from "./FieldFilterPopover";
 import { BulkActionBar } from "@/components/sprint-board/BulkActionBar";
 import { AddToRefinementModal } from "@/components/refinement-session/AddToRefinementModal";
@@ -414,6 +414,38 @@ export function EpicChildrenSection({
     [sprints, onMutate],
   );
 
+  // Move a child into another sprint AND land it at a specific position in one drop
+  // (drag onto a row in another sprint group). Optimistically re-groups the row and
+  // sets the target group's order, then persists move + rank, reverting both on error.
+  const handleMoveChildToPosition = useCallback(
+    ({ activeKey, targetSprintId, targetGroupKey, targetSprintName, newOrder, rankBeforeKey, rankAfterKey }: ChildMoveToPosition) => {
+      setJiraWarning(null);
+      setLocalMoves((prev) => ({ ...prev, [activeKey]: targetSprintName }));
+      setLocalOrder((prev) => ({ ...prev, [targetGroupKey]: newOrder }));
+      // The backlog has no sprint id to refresh local ranks against, so omit it there.
+      const rankSprintId = targetSprintName === null ? undefined : targetSprintId;
+      jira.moveSprint({ issueKeys: [activeKey], targetSprintId })
+        .then(() => jira.rank({ issueKeys: [activeKey], rankBeforeKey, rankAfterKey, ...(rankSprintId ? { sprintId: rankSprintId } : {}) }))
+        .then(() => onMutate())
+        .catch((err) => {
+          setLocalMoves((prev) => {
+            const next = { ...prev };
+            delete next[activeKey];
+            return next;
+          });
+          setLocalOrder((prev) => {
+            const next = { ...prev };
+            delete next[targetGroupKey];
+            return next;
+          });
+          const detail = err instanceof ApiError ? err.message : "Jira API error";
+          setJiraWarning(`Failed to move ${activeKey} to sprint: ${detail}`);
+          console.error("Failed to move child to position:", err);
+        });
+    },
+    [onMutate],
+  );
+
   // Drop optimistic overrides once the refetched children confirm the new sprint,
   // so a stale override never masks server truth on later syncs.
   useEffect(() => {
@@ -796,6 +828,7 @@ export function EpicChildrenSection({
         onSelect={onSelectTicket}
         onMoveChild={handleMoveChild}
         onReorderChild={handleReorderChild}
+        onMoveChildToPosition={handleMoveChildToPosition}
         onMoveError={setJiraWarning}
         onCreateChild={(target, title, jiraType) => handleCreate(title, jiraType, target)}
         checkedKeys={checkedKeys}

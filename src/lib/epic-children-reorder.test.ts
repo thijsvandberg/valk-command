@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { computeReorder, applyLocalOrder, groupKeyForItem, resolveDragEnd } from "./epic-children-reorder";
+import { computeReorder, applyLocalOrder, groupKeyForItem, resolveDragEnd, insertLineForRow } from "./epic-children-reorder";
 import { groupChildrenBySprint, UNSCHEDULED_GROUP_KEY } from "./epic-children-grouping";
 import type { EpicChild, Sprint } from "@/types/ticket";
 
@@ -125,7 +125,7 @@ describe("resolveDragEnd", () => {
     });
   });
 
-  it("moves when dropped onto a row in another group", () => {
+  it("moves to a position when dropped onto a row in another group", () => {
     const res = resolveDragEnd({
       ...base,
       activeKey: "VPL-10",
@@ -134,7 +134,31 @@ describe("resolveDragEnd", () => {
       overSprintName: "Sprint 2",
       overState: "future",
     });
-    expect(res).toEqual({ kind: "move", targetSprintId: "2" });
+    expect(res).toEqual({
+      kind: "move-to-position",
+      move: {
+        activeKey: "VPL-10",
+        targetSprintId: "2",
+        targetGroupKey: "Sprint 2",
+        targetSprintName: "Sprint 2",
+        newOrder: ["VPL-10", "VPL-12"],
+        rankBeforeKey: "VPL-12",
+      },
+    });
+  });
+
+  it("rejects a move-to-position into a closed sprint", () => {
+    const closedItems = [...items, child("VPL-90", "Old Sprint", 0)];
+    const res = resolveDragEnd({
+      ...base,
+      groups: groupChildrenBySprint(closedItems, SPRINTS),
+      activeKey: "VPL-10",
+      overId: "VPL-90",
+      overType: "child",
+      overSprintName: "Old Sprint",
+      overState: "closed",
+    });
+    expect(res).toEqual({ kind: "move-rejected", reason: "closed" });
   });
 
   it("moves when dropped onto a group card", () => {
@@ -183,5 +207,35 @@ describe("resolveDragEnd", () => {
       overState: "active",
     });
     expect(res).toEqual({ kind: "noop" });
+  });
+});
+
+describe("insertLineForRow", () => {
+  const items = [
+    child("VPL-10", "Sprint 1", 0),
+    child("VPL-11", "Sprint 1", 1),
+    child("VPL-12", "Sprint 2", 0),
+  ];
+  const groups = groupChildrenBySprint(items, SPRINTS);
+
+  it("shows the bar below the target when dragging down within a group", () => {
+    expect(insertLineForRow({ rowKey: "VPL-11", activeKey: "VPL-10", overKey: "VPL-11", groups })).toBe("below");
+  });
+
+  it("shows the bar above the target when dragging up within a group", () => {
+    expect(insertLineForRow({ rowKey: "VPL-10", activeKey: "VPL-11", overKey: "VPL-10", groups })).toBe("above");
+  });
+
+  it("shows the bar above the target for a cross-group drag", () => {
+    expect(insertLineForRow({ rowKey: "VPL-12", activeKey: "VPL-10", overKey: "VPL-12", groups })).toBe("above");
+  });
+
+  it("returns undefined for rows that are not the hovered one", () => {
+    expect(insertLineForRow({ rowKey: "VPL-10", activeKey: "VPL-11", overKey: "VPL-12", groups })).toBeUndefined();
+  });
+
+  it("returns undefined for the dragged row itself and when nothing is hovered", () => {
+    expect(insertLineForRow({ rowKey: "VPL-10", activeKey: "VPL-10", overKey: "VPL-10", groups })).toBeUndefined();
+    expect(insertLineForRow({ rowKey: "VPL-10", activeKey: "VPL-10", overKey: null, groups })).toBeUndefined();
   });
 });

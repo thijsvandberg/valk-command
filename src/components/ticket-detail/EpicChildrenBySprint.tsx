@@ -8,7 +8,7 @@ import { CursorMenu, TicketActionMenuContent } from "@/components/sprint-board/t
 import { ChildIssueRow } from "./ChildIssueRow";
 import { ChildIssueComposer } from "./ChildIssueComposer";
 import { groupChildrenBySprint, type ChildGroup } from "@/lib/epic-children-grouping";
-import { resolveDragEnd, type ChildReorder } from "@/lib/epic-children-reorder";
+import { resolveDragEnd, insertLineForRow, type ChildReorder, type ChildMoveToPosition } from "@/lib/epic-children-reorder";
 import { useSessionStorage } from "@/hooks/useSessionStorage";
 import {
   DndContext,
@@ -21,12 +21,13 @@ import {
   useDroppable,
   type DragStartEvent,
   type DragEndEvent,
+  type DragOverEvent,
 } from "@dnd-kit/core";
 import { SortableContext, useSortable, verticalListSortingStrategy } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import { Zap, CircleDot, CalendarRange, GripVertical, Plus } from "lucide-react";
 
-export type { ChildReorder };
+export type { ChildReorder, ChildMoveToPosition };
 
 interface EpicChildrenBySprintProps {
   /** Already filtered child issues (status filter applied by the parent). */
@@ -45,6 +46,8 @@ interface EpicChildrenBySprintProps {
   onMoveChild?: (childKey: string, targetSprintId: string) => void;
   /** Reorder a child within its own sprint group via Jira rank. Enables drag-to-reorder. */
   onReorderChild?: (reorder: ChildReorder) => void;
+  /** Move a child into another sprint and land it at a specific position in one drop. */
+  onMoveChildToPosition?: (move: ChildMoveToPosition) => void;
   /** Surfaces a move rejection (e.g. closed sprint) to the parent's toast. */
   onMoveError?: (message: string) => void;
   /**
@@ -116,6 +119,7 @@ function SortableChildRow({
   isLast,
   sprintName,
   state,
+  insertLine,
   visibleFields,
   renderMetadata,
   onJiraStatusChange,
@@ -131,6 +135,7 @@ function SortableChildRow({
   isLast: boolean;
   sprintName: string | null;
   state: Sprint["state"] | null;
+  insertLine?: "above" | "below";
   visibleFields: Set<string>;
   renderMetadata: (child: EpicChild | Subtask, hideSprint?: boolean) => ReactNode;
   onJiraStatusChange: (childKey: string, status: JiraStatus) => void;
@@ -147,6 +152,15 @@ function SortableChildRow({
     id: child.key,
     data: { type: "child", sprintName, state },
   });
+
+  // The drop-indicator bar is a 2px inset brand line on the hovered row, matching
+  // the sprint board's reorder cue (above when inserting before, below when after).
+  const insertLineShadow =
+    insertLine === "above"
+      ? "inset 0 2px 0 var(--color-brand-500)"
+      : insertLine === "below"
+        ? "inset 0 -2px 0 var(--color-brand-500)"
+        : undefined;
 
   return (
     <ChildIssueRow
@@ -167,7 +181,7 @@ function SortableChildRow({
       onCheckboxClick={onCheckboxClick}
       metadataSlot={renderMetadata(child, true)}
       className={isDragging ? "opacity-40" : ""}
-      style={{ transform: CSS.Translate.toString(transform), transition }}
+      style={{ transform: CSS.Translate.toString(transform), transition, ...(insertLineShadow ? { boxShadow: insertLineShadow } : {}) }}
       dndProps={{ ...attributes }}
       dragHandleSlot={
         <span
@@ -230,6 +244,7 @@ export function EpicChildrenBySprint({
   onSelect,
   onMoveChild,
   onReorderChild,
+  onMoveChildToPosition,
   onMoveError,
   onCreateChild,
   checkedKeys,
@@ -242,6 +257,8 @@ export function EpicChildrenBySprint({
   );
 
   const [activeDragKey, setActiveDragKey] = useState<string | null>(null);
+  // Key of the row currently hovered during a drag, used to render the drop-indicator bar.
+  const [dragOverKey, setDragOverKey] = useState<string | null>(null);
   const [rowMenu, setRowMenu] = useState<{ x: number; y: number; childKey: string } | null>(null);
   // Which group has its inline create composer open (only one at a time).
   const [composerGroupKey, setComposerGroupKey] = useState<string | null>(null);
@@ -276,12 +293,21 @@ export function EpicChildrenBySprint({
   const handleDragStart = useCallback((e: DragStartEvent) => {
     draggingRef.current = true;
     setActiveDragKey(String(e.active.id));
+    setDragOverKey(null);
+  }, []);
+
+  // Track only row hovers (not group cards) so the drop bar shows on a target row.
+  const handleDragOver = useCallback((e: DragOverEvent) => {
+    const { over } = e;
+    const overData = over?.data.current as { type?: "child" | "group" } | undefined;
+    setDragOverKey(over && overData?.type === "child" ? String(over.id) : null);
   }, []);
 
   const handleDragEnd = useCallback(
     (e: DragEndEvent) => {
       draggingRef.current = false;
       setActiveDragKey(null);
+      setDragOverKey(null);
       const { active, over } = e;
       if (!over) return;
 
@@ -303,15 +329,17 @@ export function EpicChildrenBySprint({
       });
 
       if (res.kind === "reorder") onReorderChild?.(res.reorder);
+      else if (res.kind === "move-to-position") onMoveChildToPosition?.(res.move);
       else if (res.kind === "move") onMoveChild?.(activeKey, res.targetSprintId);
       else if (res.kind === "move-rejected") onMoveError?.("Cannot move into a closed sprint.");
     },
-    [groups, onMoveChild, onReorderChild, onMoveError, sprints],
+    [groups, onMoveChild, onReorderChild, onMoveChildToPosition, onMoveError, sprints],
   );
 
   const handleDragCancel = useCallback(() => {
     draggingRef.current = false;
     setActiveDragKey(null);
+    setDragOverKey(null);
   }, []);
 
   if (groups.length === 0) return null;
@@ -342,6 +370,7 @@ export function EpicChildrenBySprint({
           isLast={isLast}
           sprintName={group.sprintName}
           state={group.state}
+          insertLine={insertLineForRow({ rowKey: child.key, activeKey: activeDragKey, overKey: dragOverKey, groups })}
           visibleFields={visibleFields}
           renderMetadata={renderMetadata}
           onJiraStatusChange={onJiraStatusChange}
@@ -518,6 +547,7 @@ export function EpicChildrenBySprint({
           sensors={sensors}
           collisionDetection={pointerWithin}
           onDragStart={handleDragStart}
+          onDragOver={handleDragOver}
           onDragEnd={handleDragEnd}
           onDragCancel={handleDragCancel}
         >

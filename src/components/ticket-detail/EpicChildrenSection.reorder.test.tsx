@@ -24,24 +24,50 @@ vi.mock("./EpicChildrenBySprint", () => ({
       rankBeforeKey?: string;
       rankAfterKey?: string;
     }) => void;
+    onMoveChildToPosition?: (m: {
+      activeKey: string;
+      targetSprintId: string;
+      targetGroupKey: string;
+      targetSprintName: string | null;
+      newOrder: string[];
+      rankBeforeKey?: string;
+      rankAfterKey?: string;
+    }) => void;
   }) => {
     lastItems = props.items;
     lastSprints = props.sprints;
     return (
-      <button
-        type="button"
-        onClick={() =>
-          props.onReorderChild?.({
-            activeKey: "VPL-41",
-            groupKey: "Sprint 1",
-            sprintName: "Sprint 1",
-            newOrder: ["VPL-41", "VPL-40"],
-            rankBeforeKey: "VPL-40",
-          })
-        }
-      >
-        trigger-reorder
-      </button>
+      <>
+        <button
+          type="button"
+          onClick={() =>
+            props.onReorderChild?.({
+              activeKey: "VPL-41",
+              groupKey: "Sprint 1",
+              sprintName: "Sprint 1",
+              newOrder: ["VPL-41", "VPL-40"],
+              rankBeforeKey: "VPL-40",
+            })
+          }
+        >
+          trigger-reorder
+        </button>
+        <button
+          type="button"
+          onClick={() =>
+            props.onMoveChildToPosition?.({
+              activeKey: "VPL-41",
+              targetSprintId: "2",
+              targetGroupKey: "Sprint 2",
+              targetSprintName: "Sprint 2",
+              newOrder: ["VPL-41"],
+              rankBeforeKey: "VPL-50",
+            })
+          }
+        >
+          trigger-move-to-position
+        </button>
+      </>
     );
   },
 }));
@@ -103,6 +129,7 @@ describe("EpicChildrenSection reorder handler", () => {
     sessionStorage.clear();
     lastItems = [];
     mockRank.mockResolvedValue({});
+    mockMoveSprint.mockResolvedValue({});
     mockGetSectionVisibility.mockResolvedValue({ visible: null });
   });
 
@@ -144,5 +171,36 @@ describe("EpicChildrenSection reorder handler", () => {
     });
     // Reverted back to the server order.
     expect(lastItems.map((i) => i.key)).toEqual(["VPL-40", "VPL-41"]);
+  });
+
+  it("moves to a position by persisting the sprint move then the rank", async () => {
+    renderSection();
+    switchToSprintView();
+    await waitFor(() => expect(lastSprints.length).toBeGreaterThan(0));
+
+    fireEvent.click(screen.getByText("trigger-move-to-position"));
+
+    await waitFor(() => {
+      expect(mockMoveSprint).toHaveBeenCalledWith({ issueKeys: ["VPL-41"], targetSprintId: "2" });
+    });
+    await waitFor(() => {
+      expect(mockRank).toHaveBeenCalledWith({ issueKeys: ["VPL-41"], rankBeforeKey: "VPL-50", sprintId: "2" });
+    });
+    // Rank runs only after the move resolves.
+    expect(mockMoveSprint.mock.invocationCallOrder[0]).toBeLessThan(mockRank.mock.invocationCallOrder[0]);
+  });
+
+  it("reverts the optimistic move-to-position and warns when the move fails", async () => {
+    mockMoveSprint.mockRejectedValue(new Error("Jira rejected"));
+    renderSection();
+    switchToSprintView();
+    await waitFor(() => expect(lastSprints.length).toBeGreaterThan(0));
+
+    fireEvent.click(screen.getByText("trigger-move-to-position"));
+
+    await waitFor(() => {
+      expect(screen.getByText(/Failed to move VPL-41 to sprint/)).toBeInTheDocument();
+    });
+    expect(mockRank).not.toHaveBeenCalled();
   });
 });
