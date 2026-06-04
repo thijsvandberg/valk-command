@@ -4,7 +4,6 @@ import { useState, useRef, useEffect, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import dynamic from "next/dynamic";
 import type { Ticket, POStatus, TicketReadiness } from "@/types/ticket";
-import { Tab } from "@/components/shared/TabBar";
 import { Tooltip } from "@/components/shared/Tooltip";
 import { Popover } from "@/components/shared/Popover";
 import { ConfirmDialog } from "@/components/shared/ConfirmDialog";
@@ -221,6 +220,9 @@ export function SidePanel({
   const [moreMenuOpen, setMoreMenuOpen] = useState(false);
   const [showAddToRefinement, setShowAddToRefinement] = useState(false);
   const [showFlagDialog, setShowFlagDialog] = useState(false);
+  // The merged tab/action bar scrolls away with the content; once it clears the
+  // top a floating close button takes over so the panel is always dismissable.
+  const [scrolled, setScrolled] = useState(false);
 
   const hasLocalEdits = h.hasLocalTitleEdit || h.hasLocalDescEdit;
   const isEditing = h.isTitleEditing || h.isDescEditing;
@@ -298,10 +300,192 @@ export function SidePanel({
     </div>
   );
 
+  // Action buttons live on the right of the (scrolling) tab bar. They scroll
+  // away with it; the floating close below keeps the panel dismissable.
+  const headerActions = (
+    <>
+      {t.editState === "draft" && (
+        <span className="rounded px-1.5 py-0.5 text-caption" style={{ backgroundColor: "var(--color-status-info-subtle)", color: "var(--color-icon-task)", opacity: 0.5 }} title="Unsaved draft">
+          draft
+        </span>
+      )}
+      {t.editState === "local_edits" && (
+        <span className="rounded px-1.5 py-0.5 text-caption" style={{ backgroundColor: "var(--color-status-info-subtle)", color: "var(--color-icon-task)", opacity: 0.7 }} title="Has local changes not yet pushed to Jira">
+          local changes
+        </span>
+      )}
+      {showPushButton && (
+        <Tooltip content="Push local edits to Jira">
+          <Button
+            variant="primary"
+            size="md"
+            iconOnly
+            onClick={h.handlePushToJira}
+            disabled={h.isPushing}
+            aria-label="Push to Jira"
+            icon={h.isPushing
+              ? <Loader2 size={13} strokeWidth={1.5} className="animate-spin" />
+              : <CloudUpload size={13} strokeWidth={1.5} />}
+          />
+        </Tooltip>
+      )}
+
+      {metaCollapsed && (
+        <Tooltip content="Show sidebar">
+          <button
+            type="button"
+            onClick={() => setMetaCollapsed(false)}
+            aria-label="Show sidebar"
+            className={iconBtnClass}
+          >
+            <PanelRightClose size={14} strokeWidth={1.5} />
+          </button>
+        </Tooltip>
+      )}
+
+      <Tooltip content="Open full view">
+        <button
+          type="button"
+          onClick={() => router.push(`/tickets/${ticket.key}`)}
+          aria-label="Open full view"
+          className={iconBtnClass}
+        >
+          <Maximize2 size={14} strokeWidth={1.5} />
+        </button>
+      </Tooltip>
+
+      <div className="relative">
+        <button
+          type="button"
+          onClick={() => setMoreMenuOpen((v) => !v)}
+          aria-label="More actions"
+          title="More actions"
+          className={iconBtnClass}
+        >
+          {h.isRefreshing
+            ? <Loader2 size={14} strokeWidth={1.5} className="animate-spin" />
+            : <MoreHorizontal size={14} strokeWidth={1.5} />}
+        </button>
+        <Popover open={moreMenuOpen} onClose={() => setMoreMenuOpen(false)} align="right">
+          <div className="min-w-[220px] py-1">
+            <a
+              href={`/tickets/${ticket.key}/write`}
+              className="flex w-full cursor-pointer items-center gap-2.5 px-3 py-2 text-body-sm text-text-secondary hover:bg-overlay-default active:bg-overlay-strong"
+              style={{ transition: "background-color 0.1s ease" }}
+            >
+              <NotebookPen size={13} strokeWidth={1.5} className="text-[var(--color-brand-400)]" />
+              {h.hasActiveSession ? "Resume story writer session" : "Open story writer"}
+              {h.hasActiveSession && (
+                <span className="relative ml-auto flex h-2 w-2">
+                  <span className="animate-ping absolute inline-flex h-2 w-2 rounded-full bg-[var(--color-brand-400)] opacity-75" />
+                  <span className="relative inline-flex h-2 w-2 rounded-full bg-[var(--color-brand-500)]" />
+                </span>
+              )}
+            </a>
+            <div className="mx-2 my-1 h-px bg-overlay-default" />
+            <button
+              onClick={() => { setMoreMenuOpen(false); h.isFollowed ? h.unfollow(ticket.key) : h.follow(ticket.key); }}
+              className="flex w-full cursor-pointer items-center gap-2.5 px-3 py-2 text-body-sm text-text-secondary hover:bg-overlay-default active:bg-overlay-strong"
+              style={{ transition: "background-color 0.1s ease" }}
+            >
+              <Star size={13} strokeWidth={1.5} className={h.isFollowed ? "text-amber-400 fill-amber-400" : "text-text-muted"} />
+              {h.isFollowed ? "Unfollow ticket" : "Follow ticket"}
+            </button>
+            <div className="mx-2 my-1 h-px bg-overlay-default" />
+            <button
+              onClick={() => { setMoreMenuOpen(false); h.handleCopyLink(); }}
+              className="flex w-full cursor-pointer items-center gap-2.5 px-3 py-2 text-body-sm text-text-secondary hover:bg-overlay-default active:bg-overlay-strong"
+              style={{ transition: "background-color 0.1s ease" }}
+            >
+              {h.linkCopied
+                ? <Check size={13} strokeWidth={1.5} className="text-[var(--color-brand-400)]" />
+                : <Copy size={13} strokeWidth={1.5} className="text-text-muted" />}
+              {h.linkCopied ? "Copied!" : "Copy title and Jira link"}
+            </button>
+            <button
+              onClick={() => { setMoreMenuOpen(false); h.handleRefreshFromJira(); }}
+              disabled={h.isRefreshing}
+              className="flex w-full cursor-pointer items-center gap-2.5 px-3 py-2 text-body-sm text-text-secondary hover:bg-overlay-default active:bg-overlay-strong disabled:opacity-50 disabled:cursor-not-allowed"
+              style={{ transition: "background-color 0.1s ease" }}
+            >
+              <CloudDownload size={13} strokeWidth={1.5} className="text-text-muted" />
+              Pull from Jira
+            </button>
+            {!h.isFlagged ? (
+              <button
+                onClick={() => { setMoreMenuOpen(false); setShowFlagDialog(true); }}
+                className="flex w-full cursor-pointer items-center gap-2.5 px-3 py-2 text-body-sm text-text-secondary hover:bg-overlay-default active:bg-overlay-strong"
+                style={{ transition: "background-color 0.1s ease" }}
+              >
+                <Flag size={13} strokeWidth={1.5} className="text-text-muted" />
+                Flag this ticket
+              </button>
+            ) : (
+              <button
+                onClick={() => { setMoreMenuOpen(false); h.handleUnflag(); }}
+                className="flex w-full cursor-pointer items-center gap-2.5 px-3 py-2 text-body-sm text-text-secondary hover:bg-overlay-default active:bg-overlay-strong"
+                style={{ transition: "background-color 0.1s ease" }}
+              >
+                <Flag size={13} strokeWidth={1.5} className="text-[var(--color-status-error)]" fill="var(--color-status-error)" />
+                Remove flag
+              </button>
+            )}
+            {refineEligible && (
+              <>
+                <div className="mx-2 my-1 h-px bg-overlay-default" />
+                <button
+                  onClick={() => { setMoreMenuOpen(false); setShowAddToRefinement(true); }}
+                  className="flex w-full cursor-pointer items-center gap-2.5 px-3 py-2 text-body-sm text-text-secondary hover:bg-overlay-default active:bg-overlay-strong"
+                  style={{ transition: "background-color 0.1s ease" }}
+                >
+                  <Gem size={13} strokeWidth={1.5} className="text-text-muted" />
+                  Add to refinement
+                </button>
+              </>
+            )}
+            {h.hasActiveSession && (
+              <button
+                onClick={(e) => { setMoreMenuOpen(false); h.handleDeleteSession(e); }}
+                disabled={h.isDeletingSession}
+                className="flex w-full cursor-pointer items-center gap-2.5 px-3 py-2 text-body-sm text-text-secondary hover:bg-overlay-default active:bg-overlay-strong disabled:opacity-50"
+                style={{ transition: "background-color 0.1s ease" }}
+              >
+                <Trash2 size={13} strokeWidth={1.5} className="text-text-muted" />
+                Delete writer session
+              </button>
+            )}
+            <div className="mx-2 my-1 h-px bg-overlay-default" />
+            <a
+              href={`/chat?ticket=${ticket.key}`}
+              className="flex w-full cursor-pointer items-center gap-2.5 px-3 py-2 text-body-sm text-text-secondary hover:bg-overlay-default active:bg-overlay-strong"
+              style={{ transition: "background-color 0.1s ease" }}
+            >
+              <MessageSquare size={13} strokeWidth={1.5} className="text-text-muted" />
+              Chat about this ticket
+            </a>
+          </div>
+        </Popover>
+      </div>
+
+      <Tooltip content="Close panel">
+        <button
+          type="button"
+          onClick={onClose}
+          aria-label="Close panel"
+          className={iconBtnClass}
+        >
+          <X className="h-3.5 w-3.5" strokeWidth={1.5} />
+        </button>
+      </Tooltip>
+    </>
+  );
+
   const tabContent = (
     <TicketTabContent
       layout="panel"
-      renderTabBar={false}
+      renderTabBar={true}
+      tabBarActions={headerActions}
+      onScrolledChange={setScrolled}
       metaContent={metaMode === "stacked" ? metaContent : undefined}
       ticketKey={ticket.key}
       ticket={t}
@@ -352,200 +536,20 @@ export function SidePanel({
         style={isDragging ? { backgroundColor: "var(--color-drag-active)" } : {}}
       />
 
-      {/* Header: tabs and actions share a single bar */}
-      <div className="flex h-[44px] shrink-0 items-stretch gap-1 border-b border-border-default pl-4 pr-2">
-        {([
-          { id: "content" as const, label: "Content", badge: undefined as number | undefined, badgeHighlight: false },
-          { id: "history" as const, label: "History", badge: h.versionCount as number | undefined, badgeHighlight: false },
-          { id: "review" as const, label: "Review", badge: (h.reviewCount || undefined) as number | undefined, badgeHighlight: (h.reviewCount ?? 0) > 0 },
-          { id: "development" as const, label: "Development", badge: undefined as number | undefined, badgeHighlight: false },
-        ]).map((tab) => (
-          <Tab
-            key={tab.id}
-            active={activeTab === tab.id}
-            onClick={() => handleTabChange(tab.id)}
-            label={tab.label}
-            badge={tab.badge}
-            badgeHighlight={tab.badgeHighlight}
-          />
-        ))}
-
-        <div className="ml-auto flex shrink-0 items-center gap-1">
-          {t.editState === "draft" && (
-            <span className="rounded px-1.5 py-0.5 text-caption" style={{ backgroundColor: "var(--color-status-info-subtle)", color: "var(--color-icon-task)", opacity: 0.5 }} title="Unsaved draft">
-              draft
-            </span>
-          )}
-          {t.editState === "local_edits" && (
-            <span className="rounded px-1.5 py-0.5 text-caption" style={{ backgroundColor: "var(--color-status-info-subtle)", color: "var(--color-icon-task)", opacity: 0.7 }} title="Has local changes not yet pushed to Jira">
-              local changes
-            </span>
-          )}
-          {showPushButton && (
-            <Tooltip content="Push local edits to Jira">
-              <Button
-                variant="primary"
-                size="md"
-                iconOnly
-                onClick={h.handlePushToJira}
-                disabled={h.isPushing}
-                aria-label="Push to Jira"
-                icon={h.isPushing
-                  ? <Loader2 size={13} strokeWidth={1.5} className="animate-spin" />
-                  : <CloudUpload size={13} strokeWidth={1.5} />}
-              />
-            </Tooltip>
-          )}
-
-          {metaCollapsed && (
-            <Tooltip content="Show sidebar">
-              <button
-                type="button"
-                onClick={() => setMetaCollapsed(false)}
-                aria-label="Show sidebar"
-                className={iconBtnClass}
-              >
-                <PanelRightClose size={14} strokeWidth={1.5} />
-              </button>
-            </Tooltip>
-          )}
-
-          <Tooltip content="Open full view">
-            <button
-              type="button"
-              onClick={() => router.push(`/tickets/${ticket.key}`)}
-              aria-label="Open full view"
-              className={iconBtnClass}
-            >
-              <Maximize2 size={14} strokeWidth={1.5} />
-            </button>
-          </Tooltip>
-
-          <div className="relative">
-            <button
-              type="button"
-              onClick={() => setMoreMenuOpen((v) => !v)}
-              aria-label="More actions"
-              title="More actions"
-              className={iconBtnClass}
-            >
-              {h.isRefreshing
-                ? <Loader2 size={14} strokeWidth={1.5} className="animate-spin" />
-                : <MoreHorizontal size={14} strokeWidth={1.5} />}
-            </button>
-            <Popover open={moreMenuOpen} onClose={() => setMoreMenuOpen(false)} align="right">
-              <div className="min-w-[220px] py-1">
-                <a
-                  href={`/tickets/${ticket.key}/write`}
-                  className="flex w-full cursor-pointer items-center gap-2.5 px-3 py-2 text-body-sm text-text-secondary hover:bg-overlay-default active:bg-overlay-strong"
-                  style={{ transition: "background-color 0.1s ease" }}
-                >
-                  <NotebookPen size={13} strokeWidth={1.5} className="text-[var(--color-brand-400)]" />
-                  {h.hasActiveSession ? "Resume story writer session" : "Open story writer"}
-                  {h.hasActiveSession && (
-                    <span className="relative ml-auto flex h-2 w-2">
-                      <span className="animate-ping absolute inline-flex h-2 w-2 rounded-full bg-[var(--color-brand-400)] opacity-75" />
-                      <span className="relative inline-flex h-2 w-2 rounded-full bg-[var(--color-brand-500)]" />
-                    </span>
-                  )}
-                </a>
-                <div className="mx-2 my-1 h-px bg-overlay-default" />
-                <button
-                  onClick={() => { setMoreMenuOpen(false); h.isFollowed ? h.unfollow(ticket.key) : h.follow(ticket.key); }}
-                  className="flex w-full cursor-pointer items-center gap-2.5 px-3 py-2 text-body-sm text-text-secondary hover:bg-overlay-default active:bg-overlay-strong"
-                  style={{ transition: "background-color 0.1s ease" }}
-                >
-                  <Star size={13} strokeWidth={1.5} className={h.isFollowed ? "text-amber-400 fill-amber-400" : "text-text-muted"} />
-                  {h.isFollowed ? "Unfollow ticket" : "Follow ticket"}
-                </button>
-                <div className="mx-2 my-1 h-px bg-overlay-default" />
-                <button
-                  onClick={() => { setMoreMenuOpen(false); h.handleCopyLink(); }}
-                  className="flex w-full cursor-pointer items-center gap-2.5 px-3 py-2 text-body-sm text-text-secondary hover:bg-overlay-default active:bg-overlay-strong"
-                  style={{ transition: "background-color 0.1s ease" }}
-                >
-                  {h.linkCopied
-                    ? <Check size={13} strokeWidth={1.5} className="text-[var(--color-brand-400)]" />
-                    : <Copy size={13} strokeWidth={1.5} className="text-text-muted" />}
-                  {h.linkCopied ? "Copied!" : "Copy title and Jira link"}
-                </button>
-                <button
-                  onClick={() => { setMoreMenuOpen(false); h.handleRefreshFromJira(); }}
-                  disabled={h.isRefreshing}
-                  className="flex w-full cursor-pointer items-center gap-2.5 px-3 py-2 text-body-sm text-text-secondary hover:bg-overlay-default active:bg-overlay-strong disabled:opacity-50 disabled:cursor-not-allowed"
-                  style={{ transition: "background-color 0.1s ease" }}
-                >
-                  <CloudDownload size={13} strokeWidth={1.5} className="text-text-muted" />
-                  Pull from Jira
-                </button>
-                {!h.isFlagged ? (
-                  <button
-                    onClick={() => { setMoreMenuOpen(false); setShowFlagDialog(true); }}
-                    className="flex w-full cursor-pointer items-center gap-2.5 px-3 py-2 text-body-sm text-text-secondary hover:bg-overlay-default active:bg-overlay-strong"
-                    style={{ transition: "background-color 0.1s ease" }}
-                  >
-                    <Flag size={13} strokeWidth={1.5} className="text-text-muted" />
-                    Flag this ticket
-                  </button>
-                ) : (
-                  <button
-                    onClick={() => { setMoreMenuOpen(false); h.handleUnflag(); }}
-                    className="flex w-full cursor-pointer items-center gap-2.5 px-3 py-2 text-body-sm text-text-secondary hover:bg-overlay-default active:bg-overlay-strong"
-                    style={{ transition: "background-color 0.1s ease" }}
-                  >
-                    <Flag size={13} strokeWidth={1.5} className="text-[var(--color-status-error)]" fill="var(--color-status-error)" />
-                    Remove flag
-                  </button>
-                )}
-                {refineEligible && (
-                  <>
-                    <div className="mx-2 my-1 h-px bg-overlay-default" />
-                    <button
-                      onClick={() => { setMoreMenuOpen(false); setShowAddToRefinement(true); }}
-                      className="flex w-full cursor-pointer items-center gap-2.5 px-3 py-2 text-body-sm text-text-secondary hover:bg-overlay-default active:bg-overlay-strong"
-                      style={{ transition: "background-color 0.1s ease" }}
-                    >
-                      <Gem size={13} strokeWidth={1.5} className="text-text-muted" />
-                      Add to refinement
-                    </button>
-                  </>
-                )}
-                {h.hasActiveSession && (
-                  <button
-                    onClick={(e) => { setMoreMenuOpen(false); h.handleDeleteSession(e); }}
-                    disabled={h.isDeletingSession}
-                    className="flex w-full cursor-pointer items-center gap-2.5 px-3 py-2 text-body-sm text-text-secondary hover:bg-overlay-default active:bg-overlay-strong disabled:opacity-50"
-                    style={{ transition: "background-color 0.1s ease" }}
-                  >
-                    <Trash2 size={13} strokeWidth={1.5} className="text-text-muted" />
-                    Delete writer session
-                  </button>
-                )}
-                <div className="mx-2 my-1 h-px bg-overlay-default" />
-                <a
-                  href={`/chat?ticket=${ticket.key}`}
-                  className="flex w-full cursor-pointer items-center gap-2.5 px-3 py-2 text-body-sm text-text-secondary hover:bg-overlay-default active:bg-overlay-strong"
-                  style={{ transition: "background-color 0.1s ease" }}
-                >
-                  <MessageSquare size={13} strokeWidth={1.5} className="text-text-muted" />
-                  Chat about this ticket
-                </a>
-              </div>
-            </Popover>
-          </div>
-
-          <Tooltip content="Close panel">
-            <button
-              type="button"
-              onClick={onClose}
-              aria-label="Close panel"
-              className={iconBtnClass}
-            >
-              <X className="h-3.5 w-3.5" strokeWidth={1.5} />
-            </button>
-          </Tooltip>
-        </div>
-      </div>
+      {/* Floating close: the in-bar close scrolls away with the merged tab bar,
+          so this fades in once the bar clears the top to keep the panel
+          dismissable. */}
+      <Tooltip content="Close panel">
+        <button
+          type="button"
+          onClick={onClose}
+          aria-label="Close panel"
+          className={`absolute right-3 top-3 z-30 flex h-7 w-7 items-center justify-center rounded-full border border-border-default bg-[var(--color-surface-elevated)] text-text-muted cursor-pointer hover:text-text-secondary hover:border-[var(--color-brand-500)]/40 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)] ${scrolled ? "opacity-100" : "pointer-events-none opacity-0"}`}
+          style={{ transition: "opacity 0.2s ease, color 0.15s ease, border-color 0.15s ease", boxShadow: "0 6px 16px -4px rgba(15, 23, 42, 0.20)" }}
+        >
+          <X className="h-3.5 w-3.5" strokeWidth={1.5} />
+        </button>
+      </Tooltip>
 
       {/* Body: tabbed content (+ meta column when wide and not collapsed; the
           meta stacks under the Content tab when narrow or when collapsed) */}

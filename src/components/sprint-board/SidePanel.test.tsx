@@ -95,10 +95,15 @@ vi.mock("@/lib/prefetch", () => ({ prefetchTicketPage: vi.fn() }));
 
 // Render the tab content stub so we can assert tabs + the injected meta block.
 // `tab-has-meta` marks the stacked layout (meta injected under the Content tab).
+// The tabs and the header action buttons now scroll with the content, so they
+// live inside this component and only render when SidePanel passes them via
+// `renderTabBar` / `tabBarActions`.
 vi.mock("@/components/ticket-detail/TicketTabContent", () => ({
-  TicketTabContent: ({ activeTab, metaContent }: { activeTab: string; metaContent?: React.ReactNode }) => (
+  TicketTabContent: ({ activeTab, metaContent, renderTabBar, tabBarActions }: { activeTab: string; metaContent?: React.ReactNode; renderTabBar?: boolean; tabBarActions?: React.ReactNode }) => (
     <div data-testid="tab-content">
       <span data-testid="active-tab">{activeTab}</span>
+      {renderTabBar && ["Content", "History", "Review", "Development"].map((label) => <span key={label}>{label}</span>)}
+      {renderTabBar && tabBarActions}
       {metaContent != null && <span data-testid="tab-has-meta" />}
       {metaContent}
     </div>
@@ -166,7 +171,7 @@ describe("SidePanel", () => {
     window.localStorage.clear();
   });
 
-  it("renders the tabs in the merged header bar (no separate ticket pill)", () => {
+  it("renders the tabs in the scrolling content area (no separate ticket pill)", () => {
     render(<SidePanel {...defaultProps} />);
     expect(screen.getByText("Content")).toBeInTheDocument();
     expect(screen.getByText("History")).toBeInTheDocument();
@@ -179,7 +184,8 @@ describe("SidePanel", () => {
   it("exposes the open-full and close actions in the bar", () => {
     render(<SidePanel {...defaultProps} />);
     expect(screen.getByLabelText("Open full view")).toBeInTheDocument();
-    expect(screen.getByLabelText("Close panel")).toBeInTheDocument();
+    // Two closes exist: the in-bar one (scrolls away) and the floating fallback.
+    expect(screen.getAllByLabelText("Close panel").length).toBeGreaterThan(0);
   });
 
   it("offers the story writer from the more menu (not a standalone bar button)", () => {

@@ -1,5 +1,6 @@
 "use client";
 
+import { useRef } from "react";
 import { Loader2, AlertTriangle, Flag } from "lucide-react";
 import type { Ticket, TicketDetail } from "@/types/ticket";
 import { Avatar } from "@/components/shared/Avatar";
@@ -43,6 +44,14 @@ export interface TicketTabContentProps {
   // When false, the internal tab bar is not rendered; the host renders its own
   // (e.g. the side panel merges the tabs into its full-width header bar).
   renderTabBar?: boolean;
+  // Optional actions rendered on the right of the tab bar row. The side panel
+  // passes its header buttons here so the whole bar (tabs + actions) scrolls
+  // with the content instead of staying pinned.
+  tabBarActions?: React.ReactNode;
+  // Fires when the scroll container crosses the tab-bar height, i.e. once the
+  // tab bar has scrolled out of view. The side panel uses this to reveal a
+  // floating close button.
+  onScrolledChange?: (scrolled: boolean) => void;
   // Extra content rendered at the end of the Content tab, inside the same
   // scroll. Used by the side panel to stack the meta block below the content
   // when too narrow for a separate meta column.
@@ -90,6 +99,8 @@ export interface TicketTabContentProps {
 export function TicketTabContent({
   layout = "page",
   renderTabBar = true,
+  tabBarActions,
+  onScrolledChange,
   metaContent,
   ticketKey,
   ticket,
@@ -133,35 +144,52 @@ export function TicketTabContent({
   // the first match in the document.
   const toolbarPortalId = isPanel ? "ticket-toolbar-portal-panel" : "ticket-toolbar-portal";
   const diffFooterPortalId = isPanel ? "diff-footer-portal-panel" : "diff-footer-portal";
+
+  // Track whether the tab bar has scrolled out of view (bar is h-[44px]).
+  const wasScrolledRef = useRef(false);
+  const handleScroll = (e: React.UIEvent<HTMLDivElement>) => {
+    if (!onScrolledChange) return;
+    const next = e.currentTarget.scrollTop > 44;
+    if (next !== wasScrolledRef.current) {
+      wasScrolledRef.current = next;
+      onScrolledChange(next);
+    }
+  };
+
   return (
     <div className="min-w-0 flex-1 flex flex-col overflow-hidden">
-      {/* Tab bar (the side panel renders its own merged bar instead) */}
-      {renderTabBar && (
-        <div className="border-b border-border-default">
-          <div className={`flex h-[44px] items-stretch gap-1 ${railClass}`}>
-            {([
-              { id: "content" as const, label: "Content", badge: undefined as number | undefined, badgeHighlight: false },
-              { id: "history" as const, label: "History", badge: versionCount as number | undefined, badgeHighlight: false },
-              { id: "review" as const, label: "Review", badge: (reviewCount || undefined) as number | undefined, badgeHighlight: (reviewCount ?? 0) > 0 },
-              { id: "development" as const, label: "Development", badge: undefined as number | undefined, badgeHighlight: false },
-            ]).map((tab) => (
-              <Tab
-                key={tab.id}
-                active={activeTab === tab.id}
-                onClick={() => onActiveTabChange(tab.id)}
-                label={tab.label}
-                badge={tab.badge}
-                badgeHighlight={tab.badgeHighlight}
-              />
-            ))}
-          </div>
-        </div>
-      )}
-
       {/* Portal target for editor toolbar */}
       <div id={toolbarPortalId} className="relative z-10 shrink-0" />
 
-      <div className="flex flex-1 flex-col overflow-y-auto" style={{ overflowX: "hidden", scrollbarGutter: "stable" }}>
+      <div onScroll={handleScroll} className="flex flex-1 flex-col overflow-y-auto" style={{ overflowX: "hidden", scrollbarGutter: "stable" }}>
+        {/* Tab bar scrolls with the content rather than staying pinned. The side
+            panel passes its header buttons via tabBarActions so the whole merged
+            bar scrolls away, leaving a floating close behind. */}
+        {renderTabBar && (
+          <div className="border-b border-border-default">
+            <div className={`flex h-[44px] items-stretch gap-1 ${railClass}`}>
+              {([
+                { id: "content" as const, label: "Content", badge: undefined as number | undefined, badgeHighlight: false },
+                { id: "history" as const, label: "History", badge: versionCount as number | undefined, badgeHighlight: false },
+                { id: "review" as const, label: "Review", badge: (reviewCount || undefined) as number | undefined, badgeHighlight: (reviewCount ?? 0) > 0 },
+                { id: "development" as const, label: "Development", badge: undefined as number | undefined, badgeHighlight: false },
+              ]).map((tab) => (
+                <Tab
+                  key={tab.id}
+                  active={activeTab === tab.id}
+                  onClick={() => onActiveTabChange(tab.id)}
+                  label={tab.label}
+                  badge={tab.badge}
+                  badgeHighlight={tab.badgeHighlight}
+                />
+              ))}
+              {tabBarActions && (
+                <div className="ml-auto flex shrink-0 items-center gap-1">{tabBarActions}</div>
+              )}
+            </div>
+          </div>
+        )}
+
         <div className={`${railClass} ${activeTab === "history" ? "pt-6 pb-4" : "py-6"}`}>
 
           {/* Conflict warning */}
