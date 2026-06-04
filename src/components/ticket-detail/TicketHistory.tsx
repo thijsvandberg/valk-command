@@ -27,9 +27,12 @@ export interface TicketHistoryProps {
   onVersionsLoaded?: (count: number) => void;
   /** When true, render for a constrained side pane (no top margin, own padding) instead of the ticket detail tab */
   embedded?: boolean;
+  /** Id of the portal the diff footer renders into. Override so a panel instance
+   * does not target the full page's footer when both render at once. */
+  diffFooterPortalId?: string;
 }
 
-export function TicketHistory({ ticket, showConflictDiff, autoOpenDraftDiff, metadataOnlyConflict, onConflictResolved, resetKey, onVersionsLoaded, embedded }: TicketHistoryProps) {
+export function TicketHistory({ ticket, showConflictDiff, autoOpenDraftDiff, metadataOnlyConflict, onConflictResolved, resetKey, onVersionsLoaded, embedded, diffFooterPortalId }: TicketHistoryProps) {
   const [ticketVersions, setTicketVersions] = useState<StoryVersion[]>([]);
   const [loading, setLoading] = useState(true);
   const [loadingContent, setLoadingContent] = useState(false);
@@ -385,6 +388,7 @@ export function TicketHistory({ ticket, showConflictDiff, autoOpenDraftDiff, met
         />
       ) : showingDiff && compareOldVersion && compareNewVersion && compareOld !== compareNew ? (
         <DiffViewer
+          portalId={diffFooterPortalId}
           compareOldVersion={compareOldVersion}
           compareNewVersion={compareNewVersion}
           compareOld={compareOld}

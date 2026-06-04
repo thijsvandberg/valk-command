@@ -49,6 +49,10 @@ interface RichEditorProps {
   hideToolbar?: boolean;
   /** Constrains the scroll content to max-w-4xl, centered — matches draft preview and ticket single view */
   contentMaxWidth?: boolean;
+  /** Id of the element the full-width toolbar portals into. Override when more
+   * than one editor renders on the same page (e.g. the ticket side panel) so the
+   * toolbar lands in its own surface instead of the first match in the document. */
+  toolbarPortalId?: string;
 }
 
 // Exported for testing only. Normalizes markdown delimiter edge cases before
@@ -130,12 +134,13 @@ export function RichEditor({
   slotBeforeContent,
   hideToolbar = false,
   contentMaxWidth = false,
+  toolbarPortalId = "ticket-toolbar-portal",
 }: RichEditorProps) {
   const [mode, setMode] = useState<EditorMode>(getInitialMode);
   const suppressRef = useRef(false);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const portalTarget = fullWidthToolbar && stickyToolbar && typeof document !== "undefined"
-    ? document.getElementById("ticket-toolbar-portal")
+    ? document.getElementById(toolbarPortalId)
     : null;
   // Stable ref so the TipTap keydown handler never needs to be re-registered
   const onSaveRef = useRef(onSave);

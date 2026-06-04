@@ -127,6 +127,12 @@ export function TicketTabContent({
 }: TicketTabContentProps) {
   const isPanel = layout === "panel";
   const railClass = isPanel ? "w-full px-5" : "mx-auto w-full max-w-4xl px-8";
+  // The toolbar and diff footer render into these portals by id. When a panel
+  // instance shares the page with the full ticket page (the child preview side
+  // panel), the ids must differ so each editor finds its own surface instead of
+  // the first match in the document.
+  const toolbarPortalId = isPanel ? "ticket-toolbar-portal-panel" : "ticket-toolbar-portal";
+  const diffFooterPortalId = isPanel ? "diff-footer-portal-panel" : "diff-footer-portal";
   return (
     <div className="min-w-0 flex-1 flex flex-col overflow-hidden">
       {/* Tab bar (the side panel renders its own merged bar instead) */}
@@ -153,7 +159,7 @@ export function TicketTabContent({
       )}
 
       {/* Portal target for editor toolbar */}
-      <div id="ticket-toolbar-portal" className="relative z-10 shrink-0" />
+      <div id={toolbarPortalId} className="relative z-10 shrink-0" />
 
       <div className="flex flex-1 flex-col overflow-y-auto" style={{ overflowX: "hidden", scrollbarGutter: "stable" }}>
         <div className={`${railClass} ${activeTab === "history" ? "pt-6 pb-4" : "py-6"}`}>
@@ -280,6 +286,7 @@ export function TicketTabContent({
                 showConflictWarning={showConflictWarning}
                 overrideConfirmed={overrideConfirmed}
                 onOverrideChange={onOverrideChange}
+                toolbarPortalId={toolbarPortalId}
               />
               {detail && <AttachmentsSection attachments={detail.attachments} />}
               {ticket?.type === "epic"
@@ -304,6 +311,7 @@ export function TicketTabContent({
           {activeTab === "history" && (
             <TicketHistory
               ticket={ticket}
+              diffFooterPortalId={diffFooterPortalId}
               showConflictDiff={showConflictDiff}
               autoOpenDraftDiff={autoOpenDraftDiff}
               metadataOnlyConflict={metadataOnlyConflict}
@@ -319,7 +327,7 @@ export function TicketTabContent({
 
           {activeTab !== "history" && <div className="h-12" />}
         </div>
-        <div id="diff-footer-portal" className="sticky bottom-0 z-10 mt-auto empty:hidden" />
+        <div id={diffFooterPortalId} className="sticky bottom-0 z-10 mt-auto empty:hidden" />
       </div>
     </div>
   );

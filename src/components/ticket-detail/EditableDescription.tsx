@@ -61,6 +61,7 @@ export function EditableDescription({
   showConflictWarning,
   overrideConfirmed,
   onOverrideChange,
+  toolbarPortalId,
 }: {
   ticketKey: string;
   initialDescription: string;
@@ -75,6 +76,7 @@ export function EditableDescription({
   showConflictWarning?: boolean;
   overrideConfirmed?: boolean;
   onOverrideChange?: (val: boolean) => void;
+  toolbarPortalId?: string;
 }) {
   const resolvedInitial = resolveLocalValue(serverLocalEdit?.value, initialDescription, attachments);
   // A server-side edit that differs from the Jira version only in cosmetic
@@ -323,6 +325,7 @@ export function EditableDescription({
           minHeight={300}
           stickyToolbar
           fullWidthToolbar
+          toolbarPortalId={toolbarPortalId}
           actions={
             <div className="flex items-center gap-1">
               {pushError && (

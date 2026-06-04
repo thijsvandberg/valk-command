@@ -40,6 +40,8 @@ export interface DiffViewerProps {
   onSaveMerge: () => void;
   onRevertTo: (version: StoryVersion) => void;
   onPreview: (versionNumber: number) => void;
+  /** Id of the sticky footer portal. Override for a panel instance sharing the page. */
+  portalId?: string;
 }
 
 export function DiffViewer({
@@ -66,11 +68,12 @@ export function DiffViewer({
   onSaveMerge,
   onRevertTo,
   onPreview,
+  portalId = "diff-footer-portal",
 }: DiffViewerProps) {
   const [portalTarget, setPortalTarget] = useState<HTMLElement | null>(null);
   useEffect(() => {
-    setPortalTarget(document.getElementById("diff-footer-portal")); // eslint-disable-line react-hooks/set-state-in-effect -- DOM lookup on mount
-  }, []);
+    setPortalTarget(document.getElementById(portalId)); // eslint-disable-line react-hooks/set-state-in-effect -- DOM lookup on mount
+  }, [portalId]);
 
   const compareBar = (
     <div className="flex items-center gap-2">
