@@ -94,6 +94,9 @@ export const GroupStatBar = memo(function GroupStatBar({
   const doneCount = tickets.filter((t) => t.jiraStatus === "DONE").length;
   const noPointsCount = tickets.filter((t) => t.storyPoints == null && t.jiraStatus !== "DEPRECATED" && t.type !== "spike").length;
   const deprecatedWithSp = tickets.filter((t) => t.jiraStatus === "DEPRECATED" && t.storyPoints != null && t.storyPoints > 0).length;
+  // When every ticket shares the same status, the per-status pill just echoes the "X items"
+  // count, so suppress the breakdown to cut noise (e.g. an all-TO DO sprint).
+  const showStatusBreakdown = showStatusCounts && new Set(tickets.map((t) => t.jiraStatus)).size > 1;
 
   const isCollapsible = onToggleCollapse !== undefined;
 
@@ -148,7 +151,8 @@ export const GroupStatBar = memo(function GroupStatBar({
             <Pin className="h-3 w-3" strokeWidth={1.5} fill={isPinned ? "currentColor" : "none"} />
           </button>
         )}
-        {leadingIcon && <span className="flex shrink-0 items-center text-text-tertiary">{leadingIcon}</span>}
+        {/* Same fixed-width box as the pin button so the backlog label lines up with pinned sprint labels. */}
+        {leadingIcon && <span className="flex h-5 w-5 shrink-0 items-center justify-center text-text-tertiary">{leadingIcon}</span>}
         {isActive && (
           <Tooltip content="Active sprint">
             <span
@@ -189,7 +193,7 @@ export const GroupStatBar = memo(function GroupStatBar({
           }
         />
       )}
-      {showStatusCounts && todoCount > 0 && (
+      {showStatusBreakdown && todoCount > 0 && (
         <StatusPill
           size="sm"
           colorKey="TO DO"
@@ -200,7 +204,7 @@ export const GroupStatBar = memo(function GroupStatBar({
           onClick={onFilterChange ? (e) => { e.stopPropagation(); toggle("todo"); } : undefined}
         />
       )}
-      {showStatusCounts && inProgressCount > 0 && (
+      {showStatusBreakdown && inProgressCount > 0 && (
         <StatusPill
           size="sm"
           colorKey="IN PROGRESS"
@@ -211,7 +215,7 @@ export const GroupStatBar = memo(function GroupStatBar({
           onClick={onFilterChange ? (e) => { e.stopPropagation(); toggle("in-progress"); } : undefined}
         />
       )}
-      {showStatusCounts && testCount > 0 && (
+      {showStatusBreakdown && testCount > 0 && (
         <StatusPill
           size="sm"
           colorKey="TEST"
@@ -222,7 +226,7 @@ export const GroupStatBar = memo(function GroupStatBar({
           onClick={onFilterChange ? (e) => { e.stopPropagation(); toggle("test"); } : undefined}
         />
       )}
-      {showStatusCounts && doneCount > 0 && (
+      {showStatusBreakdown && doneCount > 0 && (
         <StatusPill
           size="sm"
           colorKey="DONE"

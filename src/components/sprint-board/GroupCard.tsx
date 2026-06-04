@@ -5,8 +5,11 @@ import { type ReactNode } from "react";
 // Shared card surface for a collapsible group (sprint board groups and the epic
 // detail "By sprint" view). One base component so both surfaces stay visually in
 // sync: elevated surface, subtle border, soft shadow.
+// `overflow: clip` + a clip-margin still clips content to the rounded corners, but lets the
+// row drag handle straddle the left border by a few px instead of being cut off (it would be
+// with plain overflow-hidden). The margin is small so nothing else can visibly escape the card.
 export const GROUP_CARD_CLASS =
-  "overflow-hidden rounded-xl border border-border-subtle bg-[var(--color-surface-elevated)] shadow-[var(--shadow-sm)]";
+  "overflow-clip [overflow-clip-margin:0.75rem] rounded-xl border border-border-subtle bg-[var(--color-surface-elevated)] shadow-[var(--shadow-sm)]";
 
 interface GroupCardProps {
   /** The GroupStatBar (or equivalent) shown in the clickable header zone. */

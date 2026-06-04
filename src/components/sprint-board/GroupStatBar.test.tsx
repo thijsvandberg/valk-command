@@ -108,6 +108,17 @@ describe("GroupStatBar", () => {
     expect(screen.getByText(/DONE/)).toBeTruthy();
   });
 
+  it("hides the status breakdown when every ticket shares the same status", () => {
+    const allTodo = [
+      makeTicket({ key: "VPL-1", jiraStatus: "TO DO", storyPoints: 3 }),
+      makeTicket({ key: "VPL-2", jiraStatus: "TO DO", storyPoints: 5 }),
+    ];
+    render(<GroupStatBar tickets={allTodo} />);
+    // The "TO DO: 2" pill would just echo "2 items", so it is suppressed.
+    expect(screen.queryByText(/TO DO/)).toBeNull();
+    expect(screen.getByText("2 items")).toBeTruthy();
+  });
+
   it("hides the per-status count pills when showStatusCounts is false", () => {
     render(<GroupStatBar tickets={TICKETS} showStatusCounts={false} />);
     expect(screen.queryByText(/TO DO/)).toBeNull();

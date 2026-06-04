@@ -15,6 +15,7 @@ vi.mock("lucide-react", () => {
     X: stub("x"),
     Gem: stub("gem"),
     IterationCw: stub("iteration"),
+    GripVertical: stub("grip"),
   };
 });
 
@@ -165,6 +166,19 @@ describe("BoardRow (headerless, BRDG-239)", () => {
     });
     // Still only the one occurrence from the first render.
     expect(screen.getAllByText("BT: 138")).toHaveLength(1);
+  });
+
+  it("renders the margin drag affordance only when the row is draggable", () => {
+    renderRow();
+    expect(screen.queryByTestId("icon-grip")).toBeNull();
+
+    renderRow({ dragListeners: {} as never });
+    expect(screen.getByTestId("icon-grip")).toBeInTheDocument();
+  });
+
+  it("hides the drag affordance during multiselect", () => {
+    renderRow({ dragListeners: {} as never, someChecked: true });
+    expect(screen.queryByTestId("icon-grip")).toBeNull();
   });
 
   it("does not render a follow star, pipeline or deploy badge inline", () => {

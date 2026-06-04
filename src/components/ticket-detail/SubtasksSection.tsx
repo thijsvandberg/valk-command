@@ -135,8 +135,7 @@ function SortableSubtaskRow({
       ref={setActivatorNodeRef}
       {...attributes}
       {...listeners}
-      className="shrink-0 cursor-grab text-text-muted opacity-40 hover:opacity-100 active:cursor-grabbing"
-      style={{ transition: "opacity 0.15s ease" }}
+      className="flex shrink-0 cursor-grab items-center text-text-muted hover:!opacity-100 active:cursor-grabbing"
     >
       <GripVertical size={12} strokeWidth={1.5} />
     </span>

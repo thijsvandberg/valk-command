@@ -49,7 +49,6 @@ interface ChildIssueRowProps {
 export function ChildIssueRow({
   ref,
   item,
-  isLast,
   isPending = false,
   showTypeIcon = false,
   showKey = true,
@@ -90,48 +89,55 @@ export function ChildIssueRow({
   const hasPill = (showKey || showStatus) && !isPending;
   const showCheckbox = selectable && !isPending;
 
+  // Visual checkbox box, reused by the bulk-mode gutter and the hover overlay.
+  const checkboxBox = (
+    <span
+      className={`flex h-3.5 w-3.5 items-center justify-center rounded-sm border ${
+        isChecked
+          ? "border-[var(--color-brand-500)]/50 bg-[var(--color-brand-500)]/20"
+          : "border-border-default bg-overlay-subtle"
+      }`}
+    >
+      {isChecked && (
+        <svg width="8" height="8" viewBox="0 0 8 8" fill="none">
+          <path d="M1.5 4L3 5.5L6.5 2" stroke="var(--color-brand-400)" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+        </svg>
+      )}
+    </span>
+  );
+
   return (
     <div
       ref={ref}
       style={style}
-      className={`group relative flex items-center gap-2 px-3 py-2.5 ${
+      className={`group/row relative flex items-center gap-2 py-2 pl-4 pr-3 ${
         onSelect && !isPending ? "cursor-pointer hover:bg-overlay-subtle" : ""
-      } ${!isLast ? "border-b border-border-subtle" : ""} ${
-        isPending ? "opacity-50" : ""
-      } ${isChecked ? "bg-[var(--color-brand-500)]/[0.06]" : ""} ${className}`}
+      } ${isPending ? "opacity-50" : ""} ${isChecked ? "bg-[var(--color-brand-500)]/[0.06]" : ""} ${className}`}
       onClick={handleClick}
       onContextMenu={onContextMenu}
       {...(dndProps ?? {})}
     >
-      {showCheckbox && (
+      {/* Drag handle sits in the left gutter, over the row's leading edge (Jira-style),
+          so it never pushes the content right. Hidden during multiselect. */}
+      {dragHandleSlot && !someChecked && (
+        <span className="absolute left-0 top-1/2 z-10 flex h-6 w-[18px] -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-md border border-border-subtle bg-[var(--color-surface-elevated)] text-text-tertiary opacity-0 shadow-[var(--shadow-sm)] transition-opacity duration-150 group-hover/row:opacity-100 focus-within:opacity-100">
+          {dragHandleSlot}
+        </span>
+      )}
+
+      {/* Bulk mode: dedicated checkbox gutter on every row, mirroring the sprint board. */}
+      {showCheckbox && someChecked && (
         <span
           onPointerDown={(e) => e.stopPropagation()}
           onClick={(e) => { e.stopPropagation(); onCheckboxClick?.(e); }}
-          className={`flex shrink-0 cursor-pointer items-center justify-center ${
-            someChecked || isChecked ? "opacity-100" : "opacity-0 group-hover:opacity-100"
-          }`}
-          style={{ transition: "opacity 0.15s ease" }}
+          className="flex shrink-0 cursor-pointer items-center justify-center"
           role="checkbox"
           aria-checked={isChecked}
           aria-label={`Select ${item.key}`}
         >
-          <span
-            className={`flex h-3.5 w-3.5 items-center justify-center rounded-sm border ${
-              isChecked
-                ? "border-[var(--color-brand-500)]/50 bg-[var(--color-brand-500)]/20"
-                : "border-border-default"
-            }`}
-          >
-            {isChecked && (
-              <svg width="8" height="8" viewBox="0 0 8 8" fill="none">
-                <path d="M1.5 4L3 5.5L6.5 2" stroke="var(--color-brand-400)" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
-              </svg>
-            )}
-          </span>
+          {checkboxBox}
         </span>
       )}
-
-      {dragHandleSlot}
 
       {isPending && (showKey || showStatus) && (
         <span className="flex items-center gap-1.5 font-mono text-body-sm text-text-muted">
@@ -139,21 +145,39 @@ export function ChildIssueRow({
         </span>
       )}
 
-      {hasPill && (
-        <span onClick={(e) => e.stopPropagation()}>
-          <TicketStatusPill
-            ticketKey={item.key}
-            jiraStatus={item.jiraStatus}
-            issueType={showTypeIcon ? item.type : undefined}
-            readiness={readiness}
-            onJiraStatusChange={onJiraStatusChange}
-            onReadinessChange={onReadinessChange}
-            title={item.title}
-            variant="list"
-            showKey={showKey}
-            showStatus={showStatus}
-            hoverData={getHoverData(item.key)}
-          />
+      {(hasPill || (showCheckbox && !someChecked)) && (
+        <span className="relative flex shrink-0 items-center" onClick={(e) => e.stopPropagation()}>
+          {/* Default view: the hover checkbox takes the leading type icon's place (the icon fades
+              via dimTypeOnRowHover), so no extra gutter is reserved and content never shifts. */}
+          {showCheckbox && !someChecked && (
+            <span
+              onPointerDown={(e) => e.stopPropagation()}
+              onClick={(e) => { e.stopPropagation(); onCheckboxClick?.(e); }}
+              className="absolute left-1 top-1/2 z-10 flex -translate-y-1/2 cursor-pointer items-center opacity-0 transition-opacity duration-150 group-hover/row:opacity-100"
+              role="checkbox"
+              aria-checked={isChecked}
+              aria-label={`Select ${item.key}`}
+            >
+              {checkboxBox}
+            </span>
+          )}
+          {hasPill && (
+            <TicketStatusPill
+              ticketKey={item.key}
+              jiraStatus={item.jiraStatus}
+              issueType={showTypeIcon ? item.type : undefined}
+              readiness={readiness}
+              onJiraStatusChange={onJiraStatusChange}
+              onReadinessChange={onReadinessChange}
+              title={item.title}
+              variant="list"
+              size="lg"
+              showKey={showKey}
+              showStatus={showStatus}
+              dimTypeOnRowHover={showCheckbox && !someChecked}
+              hoverData={getHoverData(item.key)}
+            />
+          )}
         </span>
       )}
 
@@ -182,7 +206,7 @@ export function ChildIssueRow({
       {/* Hover overlay: actions float over content from the right */}
       {!isPending && !isEditing && actionsSlot && (
         <div
-          className="absolute right-1 top-1/2 flex -translate-y-1/2 items-center gap-1 rounded-md pl-6 pr-2 opacity-0 group-hover:opacity-100"
+          className="absolute right-1 top-1/2 flex -translate-y-1/2 items-center gap-1 rounded-md pl-6 pr-2 opacity-0 group-hover/row:opacity-100"
           style={{
             transition: "opacity 0.15s ease",
             background: "linear-gradient(to right, transparent, var(--color-surface-base) 24px)",

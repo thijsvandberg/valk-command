@@ -586,6 +586,7 @@ export function EpicChildrenSection({
               showMetricIcon
               richTooltip
               revealWhenEmpty
+              revealGroup="row"
             />
           </span>
         )}
@@ -601,6 +602,7 @@ export function EpicChildrenSection({
               showMetricIcon
               richTooltip
               revealWhenEmpty
+              revealGroup="row"
             />
           </span>
         )}

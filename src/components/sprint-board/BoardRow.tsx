@@ -8,7 +8,7 @@ import type { EpicOption } from "@/components/shared/EpicPicker";
 import { useEpicColor } from "@/hooks/useEpicColor";
 import type { InlineTagId } from "@/components/sprint-board/filter-bar-types";
 import { Avatar } from "@/components/shared/Avatar";
-import { Flag, MessageSquare, Pencil, Check, X, Gem, IterationCw } from "lucide-react";
+import { Flag, MessageSquare, Pencil, Check, X, Gem, IterationCw, GripVertical } from "lucide-react";
 import { OpenSubtasksIndicator } from "@/components/sprint-board/OpenSubtasksIndicator";
 import type { TicketSessionEntry } from "@/hooks/useTicketSessionMap";
 import { RefinementGemTrigger, type RefinementCardTicketInfo } from "@/components/sprint-board/RefinementGemHoverCard";
@@ -237,7 +237,19 @@ export const BoardRow = memo(forwardRef<HTMLTableRowElement, BoardRowBaseProps>(
             left, so the right uses pr-[23px] to make the assignee sit the same distance from
             the edge as the issue icon does on the left. Rows are line-less and use py-3 for an
             airier rhythm (BRDG-239, "B+C"). */}
-        <div className="flex items-center gap-2 py-3 pl-4 pr-[23px]">
+        <div className="relative flex items-center gap-2 py-2.5 pl-4 pr-[23px]">
+          {/* Drag affordance in the left gutter (Jira-style). Visual only: the whole row is the
+              drag activator, so this never needs its own listeners. Shown only when reordering
+              is possible (dragListeners present) and never during multiselect. */}
+          {dragListeners && !someChecked && (
+            <span
+              aria-hidden
+              className="pointer-events-none absolute -left-[3px] top-1/2 flex h-6 w-[18px] -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-md border border-border-subtle bg-[var(--color-surface-elevated)] text-text-tertiary opacity-0 shadow-[var(--shadow-sm)] transition-opacity duration-150 group-hover/row:opacity-100"
+            >
+              <GripVertical size={12} strokeWidth={1.5} />
+            </span>
+          )}
+
           {/* Bulk mode: dedicated checkbox gutter on every row. */}
           {someChecked && (
             <div
@@ -464,6 +476,8 @@ export const BoardRow = memo(forwardRef<HTMLTableRowElement, BoardRowBaseProps>(
                   subtle
                   showMetricIcon
                   richTooltip
+                  revealWhenEmpty
+                  revealGroup="row"
                 />
                 <BusinessValuePicker
                   value={ticket.businessValue}
@@ -471,6 +485,8 @@ export const BoardRow = memo(forwardRef<HTMLTableRowElement, BoardRowBaseProps>(
                   subtle
                   showMetricIcon
                   richTooltip
+                  revealWhenEmpty
+                  revealGroup="row"
                 />
               </div>
 

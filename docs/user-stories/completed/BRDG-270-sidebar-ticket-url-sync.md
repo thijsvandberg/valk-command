@@ -106,12 +106,17 @@ ticket page (`/tickets/[key]`), which already has its own route.
 - Deep-link to a ticket not in the active sprint/view: define the fallback behaviour.
 
 ## Checklist
-- [ ] Opening a ticket in the side panel writes the ticket key to the URL (shallow, no remount)
-- [ ] On load, a ticket key in the URL auto-opens the side panel on that ticket
-- [ ] The matching table row shows the correct active/selected state on load
-- [ ] Closing the panel removes the ticket key from the URL and clears the active row
-- [ ] Browser back/forward maps onto panel open/close sensibly
-- [ ] Move the board URL to path-based routing `/BT-139/VPL-1234` (sprint key + ticket)
-- [ ] Map human sprint key <-> numeric Jira sprint id in both directions
-- [ ] Define and implement the fallback for deep-links to tickets outside the active view
-- [ ] Tests for URL write on open, restore on load, clear on close, and the row active state
+- [x] Opening a ticket in the side panel writes the ticket key to the URL (shallow, no remount)
+- [x] On load, a ticket key in the URL auto-opens the side panel on that ticket
+- [x] The matching table row shows the correct active/selected state on load
+- [x] Closing the panel removes the ticket key from the URL and clears the active row
+- [x] Browser back/forward maps onto panel open/close sensibly
+- [x] Move the board URL to path-based routing `/sprint-board/<sprint-slug>/<ticket>` (sprint key + ticket)
+- [x] Map human sprint key <-> numeric Jira sprint id in both directions
+- [x] Define and implement the fallback for deep-links to tickets outside the active view
+- [x] Tests for URL write on open, restore on load, clear on close, and the row active state
+
+## Implementation notes
+- Final URL shape is `/sprint-board/<sprint-slug>/<ticket>` (under the `/sprint-board` segment), not a bare `/BT-139/...` at the app root, so it cannot collide with other routes.
+- Saved views (`?view=<uuid>`) and the All view stay query/`all`-slug driven; they are not human-readable, so promoting them to slugs added risk without benefit.
+- Legacy `/sprint-board?sprint=<id>` deep links (ticket page, activity log, search, workspace-tasks) still resolve via a back-compat read; the first interaction rewrites the URL to the clean path form.

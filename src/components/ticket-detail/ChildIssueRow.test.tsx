@@ -105,9 +105,26 @@ describe("ChildIssueRow", () => {
     expect(screen.getByTestId("drag-handle")).toBeInTheDocument();
   });
 
+  it("hides the drag handle during multiselect so it cannot fight the bulk gutter", () => {
+    render(
+      <ChildIssueRow
+        item={baseSub}
+        isLast={false}
+        someChecked
+        dragHandleSlot={<span data-testid="drag-handle">grip</span>}
+      />,
+    );
+    expect(screen.queryByTestId("drag-handle")).not.toBeInTheDocument();
+  });
+
   describe("multiselect checkbox", () => {
     it("renders a checkbox when selectable", () => {
       render(<ChildIssueRow item={baseSub} isLast={false} selectable />);
+      expect(screen.getByRole("checkbox", { name: "Select VPL-100" })).toBeInTheDocument();
+    });
+
+    it("renders the checkbox in bulk mode (someChecked) too", () => {
+      render(<ChildIssueRow item={baseSub} isLast={false} selectable someChecked />);
       expect(screen.getByRole("checkbox", { name: "Select VPL-100" })).toBeInTheDocument();
     });
 
@@ -205,13 +222,8 @@ describe("ChildIssueRow", () => {
     });
   });
 
-  it("applies border-b when not isLast", () => {
+  it("renders line-less rows to match the sprint board (no inter-row border)", () => {
     const { container } = render(<ChildIssueRow item={baseSub} isLast={false} />);
-    expect(container.firstChild).toHaveClass("border-b");
-  });
-
-  it("does not apply border-b when isLast", () => {
-    const { container } = render(<ChildIssueRow item={baseSub} isLast />);
     expect(container.firstChild).not.toHaveClass("border-b");
   });
 });

@@ -157,8 +157,7 @@ function DraggableChildRow({
           ref={setActivatorNodeRef}
           {...listeners}
           onClick={(e) => e.stopPropagation()}
-          className="shrink-0 cursor-grab text-text-muted opacity-0 group-hover:opacity-60 hover:!opacity-100 focus-visible:opacity-100 focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-[var(--color-brand-400)] active:cursor-grabbing"
-          style={{ transition: "opacity 0.15s ease" }}
+          className="flex shrink-0 cursor-grab items-center text-text-muted hover:!opacity-100 focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-[var(--color-brand-400)] active:cursor-grabbing"
           aria-label={`Move ${child.key} to another sprint`}
         >
           <GripVertical size={12} strokeWidth={1.5} />
