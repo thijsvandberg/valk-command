@@ -1076,15 +1076,31 @@ export class JiraClient {
 
   /**
    * Close (finish) an active sprint via the Jira Agile API.
-   * Uses PUT /rest/agile/1.0/sprint/{sprintId} with { state: "closed" },
-   * routed through the API gateway like updateSprint.
+   *
+   * Jira's PUT is a full update: a bare { state: "closed" } body is rejected
+   * (400 "Sprint name is required") and any omitted field is nulled out. We
+   * fetch the current sprint and re-send its name/dates/goal alongside the new
+   * state, mirroring updateSprint. Fields are picked explicitly so read-only
+   * values (completeDate, self, originBoardId) are never echoed back.
    */
   async closeSprint(sprintId: number, signal?: AbortSignal): Promise<void> {
     if (!isConfigured()) {
       throw new Error("Jira is not configured");
     }
 
-    await jiraPut(`/rest/agile/1.0/sprint/${sprintId}`, { state: "closed" }, signal);
+    const current = await jiraFetch<{
+      name: string;
+      startDate?: string;
+      endDate?: string;
+      goal?: string;
+    }>(`/rest/agile/1.0/sprint/${sprintId}`, signal);
+
+    const payload: Record<string, unknown> = { name: current.name, state: "closed" };
+    if (current.startDate) payload.startDate = current.startDate;
+    if (current.endDate) payload.endDate = current.endDate;
+    if (current.goal) payload.goal = current.goal;
+
+    await jiraPut(`/rest/agile/1.0/sprint/${sprintId}`, payload, signal);
   }
 
   /**

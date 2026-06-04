@@ -19,11 +19,29 @@ describe("JiraClient.closeSprint", () => {
   const client = new JiraClient();
   let fetchMock: ReturnType<typeof vi.fn>;
 
+  const currentSprint = {
+    id: 123,
+    name: "VPL Sprint 42",
+    state: "active",
+    startDate: "2026-05-08T09:00:00.000Z",
+    endDate: "2026-05-21T17:00:00.000Z",
+    goal: "Ship the thing",
+    completeDate: undefined,
+    originBoardId: 233,
+  };
+
   beforeEach(() => {
-    fetchMock = vi.fn().mockResolvedValue({
-      ok: true,
-      status: 204,
-      text: async () => "",
+    // closeSprint first GETs the current sprint, then PUTs the merged payload.
+    fetchMock = vi.fn().mockImplementation((_url: string, init?: { method?: string }) => {
+      if (init?.method === "PUT") {
+        return Promise.resolve({ ok: true, status: 204, text: async () => "" });
+      }
+      return Promise.resolve({
+        ok: true,
+        status: 200,
+        json: async () => currentSprint,
+        text: async () => JSON.stringify(currentSprint),
+      });
     });
     vi.stubGlobal("fetch", fetchMock);
   });
@@ -32,16 +50,30 @@ describe("JiraClient.closeSprint", () => {
     vi.unstubAllGlobals();
   });
 
-  it("PUTs state=closed to the api.atlassian.com gateway, not the direct instance URL", async () => {
+  const gatewayUrl =
+    "https://api.atlassian.com/ex/jira/cloud-123/rest/agile/1.0/sprint/123";
+
+  it("GETs the current sprint then PUTs a full merged payload to the gateway", async () => {
     await client.closeSprint(123);
 
-    expect(fetchMock).toHaveBeenCalledTimes(1);
-    const [url, init] = fetchMock.mock.calls[0];
-    expect(url).toBe(
-      "https://api.atlassian.com/ex/jira/cloud-123/rest/agile/1.0/sprint/123",
-    );
-    expect(url).not.toContain("new-story.atlassian.net");
-    expect(init.method).toBe("PUT");
-    expect(JSON.parse(init.body)).toEqual({ state: "closed" });
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+
+    const [getUrl, getInit] = fetchMock.mock.calls[0];
+    expect(getUrl).toBe(gatewayUrl);
+    expect(getInit.method).toBeUndefined();
+
+    const [putUrl, putInit] = fetchMock.mock.calls[1];
+    expect(putUrl).toBe(gatewayUrl);
+    expect(putUrl).not.toContain("new-story.atlassian.net");
+    expect(putInit.method).toBe("PUT");
+    // Re-sends name/dates/goal (Jira's PUT is a full update) with state flipped to closed,
+    // and never echoes read-only fields like completeDate / originBoardId.
+    expect(JSON.parse(putInit.body)).toEqual({
+      name: "VPL Sprint 42",
+      state: "closed",
+      startDate: "2026-05-08T09:00:00.000Z",
+      endDate: "2026-05-21T17:00:00.000Z",
+      goal: "Ship the thing",
+    });
   });
 });
