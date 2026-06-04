@@ -14,7 +14,7 @@ export type Disposition = "candidate" | "dismissed" | "confirmed" | null;
 // day one so the screen layout does not shift as each scorer lands.
 export const SCAN_TOPICS = [
   { key: "staleness", label: "Staleness", live: true },
-  { key: "replaced", label: "Replaced area", live: false },
+  { key: "replaced", label: "Replaced area", live: true },
   { key: "duplicate", label: "Duplicate", live: false },
   { key: "alreadyBuilt", label: "Already built", live: false },
   { key: "relevance", label: "Relevance decay", live: false },

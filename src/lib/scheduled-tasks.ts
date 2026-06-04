@@ -33,6 +33,8 @@ import {
   claimPendingBatch, markDone, markError, requeueStuckRunning,
 } from "@/lib/deprecation-scan-queue";
 import { runDeepScan } from "@/lib/deprecation-topics";
+// Side-effect import: registers every Tier-2 topic scorer before runDeepScan runs.
+import "@/lib/topics";
 
 // ---------------------------------------------------------------------------
 // Constants

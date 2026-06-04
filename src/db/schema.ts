@@ -151,6 +151,24 @@ export const deprecationScanQueue = sqliteTable("deprecation_scan_queue", {
 export type DeprecationScanQueueRow = typeof deprecationScanQueue.$inferSelect;
 export type NewDeprecationScanQueueRow = typeof deprecationScanQueue.$inferInsert;
 
+// Editable list of deprecated/retired product or tech areas (BRDG-285). The
+// "replaced area" deep-scan topic matches ticket text against these terms, so
+// the PO must be able to grow the list over time without a deploy. Local-only,
+// never synced to Jira. `aliases` is a comma-separated list of alternate
+// spellings/acronyms; `note` is an optional reminder of why the area is retired.
+export const deprecatedAreaKeyword = sqliteTable("deprecated_area_keyword", {
+  id: text("id").primaryKey(),
+  term: text("term").notNull(),
+  aliases: text("aliases").notNull().default(""),
+  note: text("note").notNull().default(""),
+  createdAt: text("created_at").notNull().default(sql`(datetime('now'))`),
+}, (table) => [
+  index("deprecated_area_keyword_term_idx").on(table.term),
+]);
+
+export type DeprecatedAreaKeyword = typeof deprecatedAreaKeyword.$inferSelect;
+export type NewDeprecatedAreaKeyword = typeof deprecatedAreaKeyword.$inferInsert;
+
 // Bridge-owned per-epic metadata, keyed by epicKey. Shared store for PO
 // metadata that Jira does not hold (team assignment now; epic color later).
 // No FK to ticket.jiraKey: an epic may not have a synced epic row yet, and the

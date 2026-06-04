@@ -463,6 +463,13 @@
       "when": 1780602827904,
       "tag": "0065_lyrical_stature",
       "breakpoints": true
+    },
+    {
+      "idx": 66,
+      "version": "6",
+      "when": 1780603569080,
+      "tag": "0066_tough_nighthawk",
+      "breakpoints": true
     }
   ]
 }

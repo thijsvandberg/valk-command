@@ -308,10 +308,12 @@ export async function runDeepScan(
 // ---------------------------------------------------------------------------
 
 /**
- * EXAMPLE STUB ONLY — not a real topic. It exists so the orchestration is
- * end-to-end testable before the real topics (BRDG-285..288) land, and as a
- * copy-paste reference for the contract above. It is deliberately NOT
- * registered by default; tests register it explicitly. Real topics replace it.
+ * EXAMPLE STUB ONLY — not a real topic, and SUPERSEDED by the production
+ * `replaced` scorer in src/lib/topics/replaced-area-topic.ts (BRDG-285), which
+ * registers under this same key with an editable keyword list + AI confirmation.
+ * This stub is kept solely as a minimal copy-paste reference for the contract
+ * above. It is deliberately NOT registered by default; tests register it
+ * explicitly. Do not register it in production — it would overwrite the real one.
  *
  * Heuristic: a long-untouched ticket whose title/labels mention a known retired
  * area scores high. Cheap, deterministic, no AI.
