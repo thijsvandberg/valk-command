@@ -646,9 +646,29 @@ export default function TicketDetailPage({
         </div>
       )}
 
-      <div className="sticky top-0 min-h-full self-stretch overflow-visible">
-        <TicketSidebar ticket={ticket} detail={h.detail} reviewData={h.reviewData} collapsed={sidebarCollapsed} onCollapsedChange={setSidebarCollapsed} onNavigateToReview={() => setActiveTab("review")} onNavigateToDev={() => setActiveTab("development")} onReadinessChange={h.handleReadinessChange} />
-      </div>
+      {/* The child preview panel takes the right column when open; the page's
+          own meta sidebar steps aside so we mirror the board's content+panel
+          layout instead of stacking two sidebars. */}
+      {previewTicketKey && previewTicket ? (
+        <SidePanel
+          key={previewTicketKey}
+          ticket={previewTicket}
+          poStatus={previewTicket.poStatus ?? null}
+          readiness={previewTicket.readiness ?? null}
+          onPoStatusChange={(v) => { void saveTicketMetadata(previewTicketKey, { poStatus: v }); }}
+          onReadinessChange={(v) => { void saveTicketMetadata(previewTicketKey, { readiness: v }); previewFetch.mutate(); }}
+          onNotesChange={(notes) => { void saveTicketMetadata(previewTicketKey, { poNotes: notes }); }}
+          onClose={() => setPreviewTicketKey(null)}
+          onShowToast={() => {}}
+          onMutate={h.mutateTicket}
+          onSelectTicket={setPreviewTicketKey}
+          adjacentKeys={previewAdjacentKeys}
+        />
+      ) : (
+        <div className="sticky top-0 min-h-full self-stretch overflow-visible">
+          <TicketSidebar ticket={ticket} detail={h.detail} reviewData={h.reviewData} collapsed={sidebarCollapsed} onCollapsedChange={setSidebarCollapsed} onNavigateToReview={() => setActiveTab("review")} onNavigateToDev={() => setActiveTab("development")} onReadinessChange={h.handleReadinessChange} />
+        </div>
+      )}
       </div>
     </div>
     </ErrorBoundary>
@@ -676,27 +696,6 @@ export default function TicketDetailPage({
         />
       }
     />
-    {previewTicketKey && previewTicket && (
-      <div
-        className="fixed inset-y-0 right-0 z-50 flex shadow-[0_8px_40px_-12px_rgba(0,0,0,0.45)]"
-        style={{ animation: "fadeInUp 0.15s ease" }}
-      >
-        <SidePanel
-          key={previewTicketKey}
-          ticket={previewTicket}
-          poStatus={previewTicket.poStatus ?? null}
-          readiness={previewTicket.readiness ?? null}
-          onPoStatusChange={(v) => { void saveTicketMetadata(previewTicketKey, { poStatus: v }); }}
-          onReadinessChange={(v) => { void saveTicketMetadata(previewTicketKey, { readiness: v }); previewFetch.mutate(); }}
-          onNotesChange={(notes) => { void saveTicketMetadata(previewTicketKey, { poNotes: notes }); }}
-          onClose={() => setPreviewTicketKey(null)}
-          onShowToast={() => {}}
-          onMutate={h.mutateTicket}
-          onSelectTicket={setPreviewTicketKey}
-          adjacentKeys={previewAdjacentKeys}
-        />
-      </div>
-    )}
     <AddToRefinementModal
       open={showAddToRefinement}
       onClose={() => setShowAddToRefinement(false)}
