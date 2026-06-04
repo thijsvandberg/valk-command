@@ -1,7 +1,7 @@
 "use client";
 
 import { usePathname } from "next/navigation";
-import { Settings2, SlidersHorizontal, Clock, Cpu, MessageSquare, Bell, Plug, Users } from "lucide-react";
+import { Settings2, SlidersHorizontal, Clock, Cpu, MessageSquare, Bell, Plug, Users, Archive } from "lucide-react";
 import { ViewHeader, ViewHeaderTitle } from "@/components/shared/ViewHeader";
 import { TabBar, TabLink } from "@/components/shared/TabBar";
 
@@ -10,6 +10,7 @@ const TABS = [
   { href: "/settings/jobs", label: "Workspace Jobs", icon: Clock },
   { href: "/settings/scheduler", label: "System Tasks", icon: Cpu },
   { href: "/settings/prompts", label: "Quick Prompts", icon: MessageSquare },
+  { href: "/settings/deprecated-areas", label: "Deprecated Areas", icon: Archive },
   { href: "/settings/notifications", label: "Notifications", icon: Bell },
   { href: "/settings/integrations", label: "Integrations", icon: Plug },
   { href: "/settings/people", label: "Team", icon: Users },

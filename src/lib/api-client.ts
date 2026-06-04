@@ -696,6 +696,30 @@ export const settings = {
 };
 
 // ---------------------------------------------------------------------------
+// Deprecated areas (BRDG-285) — editable keyword list for the "replaced area"
+// deep-scan topic.
+// ---------------------------------------------------------------------------
+
+export interface DeprecatedAreaItem {
+  id: string;
+  term: string;
+  aliases: string;
+  note: string;
+  createdAt: string;
+}
+
+export const deprecatedAreas = {
+  list: (signal?: AbortSignal) =>
+    apiFetch<{ areas: DeprecatedAreaItem[] }>("/api/cleanup/deprecated-areas", { signal }),
+  add: (input: { term: string; aliases?: string; note?: string }, signal?: AbortSignal) =>
+    apiFetch<{ area: DeprecatedAreaItem }>("/api/cleanup/deprecated-areas", { method: "POST", body: input, signal }),
+  update: (input: { id: string; term: string; aliases?: string; note?: string }, signal?: AbortSignal) =>
+    apiFetch<{ area: DeprecatedAreaItem }>("/api/cleanup/deprecated-areas", { method: "PUT", body: input, signal }),
+  remove: (id: string, signal?: AbortSignal) =>
+    apiFetch<void>("/api/cleanup/deprecated-areas", { method: "DELETE", body: { id }, signal }),
+};
+
+// ---------------------------------------------------------------------------
 // Pipelines
 // ---------------------------------------------------------------------------
 
