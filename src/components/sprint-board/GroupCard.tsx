@@ -28,7 +28,7 @@ export function GroupCard({ header, headerExtras, isCollapsed, onToggleCollapse,
       <div
         onClick={onToggleCollapse}
         className={`group/grouprow flex cursor-pointer select-none items-center gap-3 bg-[var(--color-surface-chrome)]/30 px-3 py-2.5 hover:bg-[var(--color-surface-chrome)]/50 [transition:background-color_.12s_ease] ${
-          isCollapsed ? "" : "border-b border-border-subtle"
+          isCollapsed ? "rounded-xl" : "rounded-t-xl border-b border-border-subtle"
         }`}
       >
         <div className="min-w-0 flex-1">{header}</div>
