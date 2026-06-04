@@ -740,6 +740,7 @@ export function EpicChildrenSection({
         onSelect={onSelectTicket}
         onMoveChild={handleMoveChild}
         onMoveError={setJiraWarning}
+        onCreateChild={(target, title, jiraType) => handleCreate(title, jiraType, target)}
         checkedKeys={checkedKeys}
         someChecked={someChecked}
         onCheckboxClick={handleCheckboxClick}

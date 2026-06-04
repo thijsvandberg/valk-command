@@ -122,3 +122,108 @@ describe("EpicChildrenBySprint move actions", () => {
     expect(container).toBeEmptyDOMElement();
   });
 });
+
+describe("EpicChildrenBySprint inline create", () => {
+  function setupCreate(overrides: Partial<Parameters<typeof EpicChildrenBySprint>[0]> = {}) {
+    const onCreateChild = vi.fn();
+    render(
+      <EpicChildrenBySprint
+        items={[
+          child("VPL-10", "Sprint 1"),
+          child("VPL-11", "Sprint 2"),
+          child("VPL-90", "Old Sprint"),
+          child("VPL-99", null),
+        ]}
+        sprints={SPRINTS}
+        ticketKey="VPL-1"
+        visibleFields={new Set(["issueKey", "status"])}
+        renderMetadata={() => null}
+        onJiraStatusChange={vi.fn()}
+        onReadinessChange={vi.fn()}
+        onCreateChild={onCreateChild}
+        {...overrides}
+      />,
+    );
+    return { onCreateChild };
+  }
+
+  it("shows a create button on active, future and unscheduled groups but not closed ones", () => {
+    setupCreate();
+    expect(screen.getByLabelText("Create issue in Sprint 1")).toBeInTheDocument();
+    expect(screen.getByLabelText("Create issue in Sprint 2")).toBeInTheDocument();
+    expect(screen.getByLabelText("Create issue in Unscheduled")).toBeInTheDocument();
+    expect(screen.queryByLabelText("Create issue in Old Sprint")).not.toBeInTheDocument();
+  });
+
+  it("does not render a create button without onCreateChild", () => {
+    setupCreate({ onCreateChild: undefined });
+    expect(screen.queryByLabelText("Create issue in Sprint 1")).not.toBeInTheDocument();
+  });
+
+  it("opens an inline composer for the clicked group", () => {
+    setupCreate();
+    fireEvent.click(screen.getByLabelText("Create issue in Sprint 1"));
+    expect(screen.getByPlaceholderText("Create issue in Sprint 1...")).toBeInTheDocument();
+  });
+
+  it("keeps only one composer open at a time", () => {
+    setupCreate();
+    fireEvent.click(screen.getByLabelText("Create issue in Sprint 1"));
+    fireEvent.click(screen.getByLabelText("Create issue in Sprint 2"));
+    expect(screen.queryByPlaceholderText("Create issue in Sprint 1...")).not.toBeInTheDocument();
+    expect(screen.getByPlaceholderText("Create issue in Sprint 2...")).toBeInTheDocument();
+  });
+
+  it("toggles the composer closed when its button is clicked again", () => {
+    setupCreate();
+    const btn = screen.getByLabelText("Create issue in Sprint 1");
+    fireEvent.click(btn);
+    expect(screen.getByPlaceholderText("Create issue in Sprint 1...")).toBeInTheDocument();
+    fireEvent.click(btn);
+    expect(screen.queryByPlaceholderText("Create issue in Sprint 1...")).not.toBeInTheDocument();
+  });
+
+  it("creates into the resolved sprint id on Enter", () => {
+    const { onCreateChild } = setupCreate();
+    fireEvent.click(screen.getByLabelText("Create issue in Sprint 1"));
+    const input = screen.getByPlaceholderText("Create issue in Sprint 1...");
+    fireEvent.change(input, { target: { value: "New thing" } });
+    fireEvent.keyDown(input, { key: "Enter" });
+    expect(onCreateChild).toHaveBeenCalledWith(
+      { sprintId: "1", sprintName: "Sprint 1" },
+      "New thing",
+      "Story",
+    );
+  });
+
+  it("creates with no sprint from the Unscheduled group", () => {
+    const { onCreateChild } = setupCreate();
+    fireEvent.click(screen.getByLabelText("Create issue in Unscheduled"));
+    const input = screen.getByPlaceholderText("Create unscheduled issue...");
+    fireEvent.change(input, { target: { value: "Loose item" } });
+    fireEvent.keyDown(input, { key: "Enter" });
+    expect(onCreateChild).toHaveBeenCalledWith(
+      { sprintId: null, sprintName: null },
+      "Loose item",
+      "Story",
+    );
+  });
+
+  it("closes the composer on Escape when empty", () => {
+    setupCreate();
+    fireEvent.click(screen.getByLabelText("Create issue in Sprint 1"));
+    const input = screen.getByPlaceholderText("Create issue in Sprint 1...");
+    fireEvent.keyDown(input, { key: "Escape" });
+    expect(screen.queryByPlaceholderText("Create issue in Sprint 1...")).not.toBeInTheDocument();
+  });
+
+  it("keeps the composer open after creating for rapid entry", () => {
+    const { onCreateChild } = setupCreate();
+    fireEvent.click(screen.getByLabelText("Create issue in Sprint 1"));
+    const input = screen.getByPlaceholderText("Create issue in Sprint 1...");
+    fireEvent.change(input, { target: { value: "First" } });
+    fireEvent.keyDown(input, { key: "Enter" });
+    expect(onCreateChild).toHaveBeenCalledTimes(1);
+    expect(screen.getByPlaceholderText("Create issue in Sprint 1...")).toHaveValue("");
+  });
+});

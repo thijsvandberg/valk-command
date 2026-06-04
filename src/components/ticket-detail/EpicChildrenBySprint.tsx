@@ -6,6 +6,7 @@ import { GroupStatBar } from "@/components/sprint-board/GroupStatBar";
 import { GroupCard } from "@/components/sprint-board/GroupCard";
 import { CursorMenu, TicketActionMenuContent } from "@/components/sprint-board/ticket-action-menu";
 import { ChildIssueRow } from "./ChildIssueRow";
+import { ChildIssueComposer } from "./ChildIssueComposer";
 import { groupChildrenBySprint, type ChildGroup } from "@/lib/epic-children-grouping";
 import { resolveMove } from "@/lib/epic-children-move";
 import { useSessionStorage } from "@/hooks/useSessionStorage";
@@ -22,7 +23,7 @@ import {
   type DragStartEvent,
   type DragEndEvent,
 } from "@dnd-kit/core";
-import { Zap, CircleDot, CalendarRange, GripVertical } from "lucide-react";
+import { Zap, CircleDot, CalendarRange, GripVertical, Plus } from "lucide-react";
 
 interface EpicChildrenBySprintProps {
   /** Already filtered child issues (status filter applied by the parent). */
@@ -41,6 +42,12 @@ interface EpicChildrenBySprintProps {
   onMoveChild?: (childKey: string, targetSprintId: string) => void;
   /** Surfaces a move rejection (e.g. closed sprint) to the parent's toast. */
   onMoveError?: (message: string) => void;
+  /**
+   * Create a child issue into a sprint. `target.sprintId` is null for the
+   * Unscheduled group (no sprint). When supplied, each non-closed group header
+   * reveals a "+" that opens an inline composer.
+   */
+  onCreateChild?: (target: { sprintId: string | null; sprintName: string | null }, title: string, jiraType: string) => void;
   /** Multiselect: when supplied, rows render a leading checkbox. */
   checkedKeys?: Set<string>;
   someChecked?: boolean;
@@ -213,6 +220,7 @@ export function EpicChildrenBySprint({
   onSelect,
   onMoveChild,
   onMoveError,
+  onCreateChild,
   checkedKeys,
   someChecked,
   onCheckboxClick,
@@ -224,6 +232,18 @@ export function EpicChildrenBySprint({
 
   const [activeDragKey, setActiveDragKey] = useState<string | null>(null);
   const [rowMenu, setRowMenu] = useState<{ x: number; y: number; childKey: string } | null>(null);
+  // Which group has its inline create composer open (only one at a time).
+  const [composerGroupKey, setComposerGroupKey] = useState<string | null>(null);
+
+  // Opening a composer expands its group so the input is visible; clicking the
+  // same group's "+" again closes it.
+  const openComposer = useCallback(
+    (key: string) => {
+      setComposerGroupKey((cur) => (cur === key ? null : key));
+      setCollapsed((prev) => (prev[key] ? { ...prev, [key]: false } : prev));
+    },
+    [setCollapsed],
+  );
   const draggingRef = useRef(false);
   // The unpointed-warning filter is scoped to the group whose warning was clicked.
   const [unpointedFilterKey, setUnpointedFilterKey] = useState<string | null>(null);
@@ -366,8 +386,19 @@ export function EpicChildrenBySprint({
         }
       />
     );
+    // Resolve the group's sprint id for creation (grouping keys by name only).
+    // Null for Unscheduled; undefined when a named group's sprint is unknown.
+    const createSprintId = isUnscheduled
+      ? null
+      : sprints.find((s) => s.name === group.sprintName)?.id;
+    // No "+" on closed sprints (Jira rejects creating into them) or on named
+    // groups whose sprint cannot be resolved to an id.
+    const canCreate =
+      !!onCreateChild && group.state !== "closed" && !(group.sprintName !== null && createSprintId === undefined);
+    const isComposerOpen = composerGroupKey === group.key;
+
     const headerExtras =
-      group.state || group.dateRange ? (
+      group.state || group.dateRange || canCreate ? (
         <>
           {group.state && <SprintStateChip state={group.state} />}
           {group.dateRange && (
@@ -375,9 +406,40 @@ export function EpicChildrenBySprint({
               <CalendarRange size={11} strokeWidth={1.5} /> {group.dateRange}
             </span>
           )}
+          {canCreate && (
+            <button
+              type="button"
+              aria-label={`Create issue in ${group.label}`}
+              onClick={(e) => {
+                e.stopPropagation();
+                openComposer(group.key);
+              }}
+              className={`flex shrink-0 cursor-pointer items-center justify-center rounded-md p-1 text-text-muted [transition:opacity_.12s_ease,color_.12s_ease,background-color_.12s_ease] hover:bg-overlay-subtle hover:text-text-secondary focus-visible:opacity-100 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)] ${
+                isComposerOpen ? "opacity-100" : "opacity-0 group-hover/grouprow:opacity-100"
+              }`}
+            >
+              <Plus size={14} strokeWidth={1.75} />
+            </button>
+          )}
         </>
       ) : undefined;
-    const body = visibleItems.map((child, idx) => renderRow(child, group, idx, visibleItems.length));
+    const body = (
+      <>
+        {visibleItems.map((child, idx) => renderRow(child, group, idx, visibleItems.length))}
+        {isComposerOpen && onCreateChild && (
+          <ChildIssueComposer
+            autoFocus
+            onCreate={(title, jiraType) =>
+              onCreateChild({ sprintId: createSprintId ?? null, sprintName: group.sprintName }, title, jiraType)
+            }
+            onEscapeEmpty={() => setComposerGroupKey(null)}
+            placeholder={isUnscheduled ? "Create unscheduled issue..." : `Create issue in ${group.label}...`}
+            alignKey={visibleFields.has("issueKey")}
+            className={visibleItems.length > 0 ? "border-t border-border-subtle" : ""}
+          />
+        )}
+      </>
+    );
 
     if (!dndEnabled) {
       return (

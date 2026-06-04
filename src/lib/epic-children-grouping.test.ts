@@ -42,6 +42,18 @@ describe("groupChildrenBySprint", () => {
     expect(groups.find((g) => g.sprintName === "Sprint 2")?.items).toHaveLength(1);
   });
 
+  it("buckets an optimistic pending placeholder by its sprintName, not into Unscheduled", () => {
+    // Mirrors the placeholder EpicChildrenSection.handleCreate builds for a
+    // sprint-targeted create: a pending key carrying the target sprint name.
+    const placeholder: EpicChild = child("pending-123", "Sprint 2");
+    const groups = groupChildrenBySprint([child("A", "Sprint 1"), placeholder], [
+      sprint("Sprint 1", "active", "2026-06-01"),
+      sprint("Sprint 2", "future", "2026-07-01"),
+    ]);
+    expect(groups.find((g) => g.sprintName === "Sprint 2")?.items.map((i) => i.key)).toEqual(["pending-123"]);
+    expect(groups.find((g) => g.key === UNSCHEDULED_GROUP_KEY)).toBeUndefined();
+  });
+
   it("collects children with sprintName null into the Unscheduled group, pinned last", () => {
     const groups = groupChildrenBySprint([
       child("A", null),

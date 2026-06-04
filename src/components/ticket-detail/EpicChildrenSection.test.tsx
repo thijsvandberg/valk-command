@@ -615,6 +615,32 @@ describe("EpicChildrenSection", () => {
       expect(closedChip.compareDocumentPosition(activeChip) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
     });
 
+    it("creates a child into the targeted sprint via the group composer", async () => {
+      mockCreateChildIssue.mockResolvedValue({
+        key: "VPL-777", title: "Sprint-scoped", type: "story", jiraStatus: "TO DO", assignee: null,
+      });
+      renderSection(SAMPLE_CHILDREN);
+      switchToSprintView();
+
+      await waitFor(() => {
+        expect(screen.getByLabelText("Create issue in Sprint 1")).toBeInTheDocument();
+      });
+      fireEvent.click(screen.getByLabelText("Create issue in Sprint 1"));
+      const input = screen.getByPlaceholderText("Create issue in Sprint 1...");
+      fireEvent.change(input, { target: { value: "Sprint-scoped" } });
+      fireEvent.keyDown(input, { key: "Enter" });
+
+      // The optimistic placeholder appears immediately under the targeted sprint.
+      expect(screen.getByText("Sprint-scoped")).toBeInTheDocument();
+
+      await waitFor(() => {
+        expect(mockCreateChildIssue).toHaveBeenCalledWith(
+          "VPL-1",
+          { title: "Sprint-scoped", issueType: "Story", sprintId: "1" },
+        );
+      });
+    });
+
     it("shares the status filter with the list view", () => {
       renderSection(SAMPLE_CHILDREN);
       openFilterPopover();
