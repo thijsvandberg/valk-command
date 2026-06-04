@@ -164,8 +164,11 @@ Proxy layer to the valk-agent backend. See [workspace-integration.md](workspace-
 | `/api/jobs/[id]` | GET | Get job details |
 | `/api/jobs/[id]` | PUT | Update job |
 | `/api/jobs/[id]` | DELETE | Delete job |
-| `/api/scheduler/tick` | POST | Trigger lazy-cron tick (runs overdue tasks) |
-| `/api/scheduler/tick` | GET | Get status of all scheduled tasks |
+| `/api/scheduler/tick` | POST | Trigger lazy-cron tick (runs overdue, enabled tasks) |
+| `/api/scheduler/tick` | GET | Get status of all scheduled tasks (`enabled` is the effective persisted-or-default value) |
+| `/api/scheduler/tasks` | POST | Toggle a task on/off `{ name, enabled }`; persists to `app_setting`. 404 unknown task, 400 invalid body (Backlog Deprecation Review epic). |
+| `/api/scheduler/tasks` | GET | Convenience read of all task statuses `{ tasks }`. |
+| `/api/scheduler/run/[name]` | POST | Run a task immediately, bypassing interval AND enabled checks (manual override). Returns `{ ran, result }` or 404. |
 
 ## Refinement Sessions
 
@@ -224,8 +227,9 @@ same definition the Tier-1 staleness scanner uses). Never writes; never touches 
 | Route | Method | Purpose |
 |-------|--------|---------|
 | `/api/cleanup` | GET | List scan-eligible backlog tickets with scan state. Query params below. |
-| `/api/cleanup/deep-scan` | GET | Tier-2 deep-dive queue status counts `{ pending, running, done, error }`. |
+| `/api/cleanup/deep-scan` | GET | Tier-2 deep-dive queue: status counts `{ pending, running, done, error }` plus `items[]` (the queue list with joined ticket title/status). |
 | `/api/cleanup/deep-scan` | POST | Enqueue tickets for Tier-2 deep scan (BRDG-284). Idempotent. |
+| `/api/cleanup/deep-scan` | DELETE | Manage the queue: `{ key }` removes one pending item (404 if no active item, 409 if running); `{ all: true }` or `?all=1` clears all pending items (running items finish on their own). Returns updated `{ queue }` counts. |
 | `/api/cleanup/auto-scan-settings` | GET | Read auto background scan settings `{ enabled, dailyCount }` (BRDG-290). |
 | `/api/cleanup/auto-scan-settings` | POST | Update settings `{ enabled?, dailyCount? }`. Returns merged settings. |
 | `/api/cleanup/deprecated-areas` | GET | List the editable deprecated-area keyword list (BRDG-285). |
@@ -302,6 +306,12 @@ the `Button` quick-actions, and the auto-scan toggle. The multi-select bulk bar 
 - `{ method: "oldest", topX: number }` — top-X by oldest `lastScannedAt`.
 
 Ranked methods exclude dismissed tickets still inside their cooldown. Returns `{ method, requested, enqueued, enqueuedKeys, queue }`. The background `deprecation-deep-scan` task drains the queue; see [scheduler.md](scheduler.md#backlog-deep-scan-every-2m).
+
+**Queue management (Backlog Deprecation Review epic).** `GET /api/cleanup/deep-scan` returns the status counts plus an `items[]` list of queue rows for the management UI. Each item is `{ id, jiraKey, status, source, enqueuedAt, startedAt, finishedAt, error, title, ticketStatus }` — the `title`/`ticketStatus` are joined from the `ticket` table (null when the ticket no longer exists locally) so a row is self-describing without a second fetch. `items[]` includes all pending+running rows (oldest-first) plus the most recent done/error rows (capped, newest-first). Helpers live in `src/lib/deprecation-scan-queue.ts`: `listQueue(opts?)`, `removeQueueItem(idOrKey)`, `clearPendingQueue()`.
+
+`DELETE /api/cleanup/deep-scan` manages the queue:
+- `{ key }` removes a single **pending** item (by row id or jiraKey). A **running** item is refused with 409 — the current scan finishes on its own; deleting it mid-flight could orphan the active-key invariant. Unknown/non-active keys return 404.
+- `{ all: true }` or `?all=1` clears all pending items (the "stop / clear" action). Running items are left to finish; only new work is stopped. Note the auto-enqueue task can refill the queue, so disable the deprecation tasks via the toggle API to keep it empty.
 
 ### Review & disposition (BRDG-289)
 

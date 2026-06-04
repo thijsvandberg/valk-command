@@ -32,26 +32,51 @@ Results returned to frontend -> SWR cache invalidation
 
 Central scheduler with task registration, persistence, and tick execution.
 
-**`defineTask(name, label, intervalMs, handler)`**
+**`defineTask(name, label, description, intervalMs, handler, enabledByDefault = true)`**
 
 Registers a task with the scheduler. If a task with the same name exists, it is updated. Each task has:
 - `name`: Unique identifier
 - `label`: Human-readable name for the settings UI
+- `description`: Short description of what the task does
 - `intervalMs`: Minimum time between runs
 - `handler`: Async function that performs the work
+- `enabledByDefault`: Whether the task runs when no persisted override exists (default `true`)
+
+**Persisted enable/disable (Backlog Deprecation Review epic)**
+
+A task's effective enabled state is the persisted override in `app_setting` under `scheduler:<name>:enabled` (`"true"`/`"false"`) if present, otherwise its `enabledByDefault`. The DB value is the source of truth and survives restarts (the old in-memory `enabled` flag was lost on every restart). Set it via the toggle API below.
+
+**The three deprecation scans default OFF**: `deprecation-staleness-scan`, `deprecation-deep-scan`, and `deprecation-auto-enqueue` register with `enabledByDefault: false`. WHY: they run continuously and consume agent/scan budget, so the PO opts in from the Cleanup page rather than having them run out of the box. All other tasks keep defaulting to enabled. Once the PO enables a task via the toggle API, the persisted setting wins.
 
 **`tick()`**
 
-Iterates all registered tasks, checks if enough time has elapsed since the last run, and executes overdue tasks sequentially. Returns which tasks ran and their results.
+Iterates all registered tasks, checks each task's effective enabled state (persisted-or-default) and whether enough time has elapsed since the last run, then executes overdue, enabled tasks sequentially. Disabled tasks are skipped. Returns which tasks ran and their results.
 
 - Concurrent tick prevention via `tickRunning` flag
 - Last-run timestamps stored in `app_setting` as `scheduler:<name>:last_run`
 - Last results stored as `scheduler:<name>:last_result`
 - Failed tasks log to console but do not block other tasks
 
+**`setTaskEnabled(name, enabled)`**
+
+Persists a task's enabled override to `app_setting`. Returns `false` when `name` is not a registered task (so the toggle API can return 404 instead of writing orphan rows).
+
+**`runTaskNow(name)`**
+
+Runs a task immediately, bypassing both the interval check AND the enabled check. WHY: a manual trigger is an explicit PO action and must work even when the task is disabled (manual override). Returns the `TaskResult`, or `null` if no task with that name exists.
+
 **`getTaskStatuses()`**
 
-Returns current status of all tasks for the settings UI.
+Returns current status of all tasks for the settings UI. The `enabled` field reflects the effective (persisted-or-default) value so the UI renders the toggle in its real state.
+
+### Task Toggle API (`src/app/api/scheduler/tasks/route.ts`)
+
+- `POST /api/scheduler/tasks` with body `{ name, enabled }` — validates the task name and persists the enabled override. Returns `{ name, enabled }`, or 404 for an unknown task, 400 for an invalid body.
+- `GET /api/scheduler/tasks` — convenience read of `getTaskStatuses()` as `{ tasks }`. The canonical status feed remains `GET /api/scheduler/tick`.
+
+### Manual Trigger API (`src/app/api/scheduler/run/[name]/route.ts`)
+
+- `POST /api/scheduler/run/<name>` — runs the named task now via `runTaskNow`, regardless of its enabled state. Returns `{ ran: true, result }`, or `{ error: "Task not found" }` with 404.
 
 ### Task Definitions (`src/lib/scheduled-tasks.ts`)
 
@@ -202,6 +227,7 @@ All scheduler state is stored in the `app_setting` table:
 |-------------|-------|---------|
 | `scheduler:<name>:last_run` | ISO timestamp | When the task last executed |
 | `scheduler:<name>:last_result` | JSON | Result of the last execution |
+| `scheduler:<name>:enabled` | `"true"` \| `"false"` | Persisted enable/disable override; absent = use the task's `enabledByDefault` |
 | `jira_sync_watermark` | ISO timestamp | Incremental sync position |
 
 ## Adding New Tasks
