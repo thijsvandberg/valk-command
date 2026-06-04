@@ -7,7 +7,7 @@ import { DEFAULT_VISIBLE_TAGS, columnsToTags } from "@/components/sprint-board/F
 import { SPRINT_STATE_FILTER_PREFIX, SPRINT_STATE_CLOSED, isSprintStateFilter } from "@/components/sprint-board/filter-bar-types";
 import { useLocalStorage } from "@/hooks/useLocalStorage";
 import { useSearchParams, useRouter } from "next/navigation";
-import { extractTeamPrefix } from "@/lib/sprint-utils";
+import { extractTeamPrefix, buildBoardUrl, ALL_SPRINT_SLUG } from "@/lib/sprint-utils";
 
 export interface StoredFilters {
   status: string[];
@@ -331,9 +331,12 @@ export function useSprintBoardFilters(
     } else {
       const id = crypto.randomUUID();
       setSavedViews((prev) => [...prev, { id, title, filters: currentFiltersSnapshot(), sort: { field: sortField, direction: sortDir }, columnConfig }]);
+      // A saved view is always an All-view-with-filters (activeSprintId resolves to
+      // __all__ whenever `view` is set), so the sprint slug becomes `all` and any open
+      // ticket is dropped from the path (BRDG-270).
       const params = new URLSearchParams(searchParams.toString());
       params.set("view", id);
-      router.replace(`?${params.toString()}`, { scroll: false });
+      router.replace(buildBoardUrl(ALL_SPRINT_SLUG, null, params.toString()), { scroll: false });
     }
   }, [activeViewId, currentFiltersSnapshot, sortField, sortDir, externalVisible, setSavedViews, searchParams, router]);
 
@@ -358,16 +361,16 @@ export function useSprintBoardFilters(
     }
     const params = new URLSearchParams(searchParams.toString());
     params.set("view", view.id);
-    params.delete("sprint");
-    router.replace(`?${params.toString()}`, { scroll: false });
+    router.replace(buildBoardUrl(ALL_SPRINT_SLUG, null, params.toString()), { scroll: false });
   }, [setStoredFilters, setStoredSort, onApplyColumnConfig, searchParams, router]);
 
   const handleDeleteView = useCallback((id: string) => {
     setSavedViews((prev) => prev.filter((v) => v.id !== id));
     if (activeViewId === id) {
+      // Drop back to the slugless board so it resolves to the default sprint.
       const params = new URLSearchParams(searchParams.toString());
       params.delete("view");
-      router.replace(`?${params.toString()}`, { scroll: false });
+      router.replace(buildBoardUrl(null, null, params.toString()), { scroll: false });
     }
   }, [setSavedViews, activeViewId, searchParams, router]);
 

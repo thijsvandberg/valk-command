@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useRef, useEffect, useCallback, useMemo } from "react";
-import { useSearchParams, useRouter } from "next/navigation";
+import { useSearchParams, useRouter, useParams } from "next/navigation";
 import type { Sprint } from "@/types/ticket";
 import { SprintSlots } from "@/components/sprint-board/SprintSlots";
 import { FilterBar } from "@/components/sprint-board/FilterBar";
@@ -15,12 +15,13 @@ import dynamic from "next/dynamic";
 const SearchModal = dynamic(() => import("@/components/sprint-board/SearchModal").then((m) => ({ default: m.SearchModal })), { ssr: false });
 const StoryWriterLauncherModal = dynamic(() => import("@/components/shared/StoryWriterLauncherModal").then((m) => ({ default: m.StoryWriterLauncherModal })), { ssr: false });
 const AddToRefinementModal = dynamic(() => import("@/components/refinement-session/AddToRefinementModal").then((m) => ({ default: m.AddToRefinementModal })), { ssr: false });
-import { useJiraSprints, useTickets } from "@/hooks/useSprintBoard";
+import { useJiraSprints, useTickets, useTicketDetail } from "@/hooks/useSprintBoard";
 import { useTicketSessionMap } from "@/hooks/useTicketSessionMap";
 import { useLocalStorage } from "@/hooks/useLocalStorage";
 import { useExportTask } from "@/hooks/useExportTask";
 import { usePageTitle } from "@/hooks/usePageTitle";
 import { mapJiraSprints, saveSprintSlots, saveTicketMetadata, bulkReviewStories, bulkGenerateSubtasks, computeSprintStats, computeSprintWorkDays } from "@/components/sprint-board/sprint-board-utils";
+import { sprintToSlug, slugToSprintId, buildBoardUrl } from "@/lib/sprint-utils";
 import { prefetchTicketList, setRouterPrefetch } from "@/lib/prefetch";
 import { getJiraUrl } from "@/components/sprint-board/TicketTableCells";
 import { apiFetch, jira, refinementSessions as refinementSessionsApi } from "@/lib/api-client";
@@ -54,19 +55,34 @@ export default function SprintBoard() {
   const router = useRouter();
   setRouterPrefetch((url) => router.prefetch(url));
 
+  // The board is path-based (BRDG-270): `/sprint-board/<sprint-slug>/<ticket>`.
+  // The sprint slug and open ticket are read from the URL; the URL is the source
+  // of truth for both, so refresh, deep-link, share and back/forward all work.
+  const routeParams = useParams<{ slug?: string[] }>();
+  const slugSegments = Array.isArray(routeParams.slug) ? routeParams.slug : [];
+  const sprintSlug = slugSegments[0] ?? null;
+  const ticketSlug = slugSegments[1] ? decodeURIComponent(slugSegments[1]) : null;
+  const selectedTicket = ticketSlug;
+
   const [slotSprints, setSlotSprints] = useState<string[]>([]);
   const slotSprintsSet = useMemo(() => new Set(slotSprints), [slotSprints]);
-  const isAllView = searchParams.get("sprint") === "__all__";
+  // Back-compat: existing deep links (ticket page, activity log, search) still
+  // point at `/sprint-board?sprint=<id>`. When there is no path slug, fall back
+  // to that legacy query so those links keep selecting the right sprint (BRDG-270).
+  const urlSprintId = useMemo(
+    () => slugToSprintId(sprintSlug, sprints) ?? searchParams.get("sprint"),
+    [sprintSlug, sprints, searchParams],
+  );
+  const isAllView = urlSprintId === "__all__";
   const activeSlot = useMemo(() => {
-    const url = searchParams.get("sprint"); if (url === "__all__") return -1;
+    const url = urlSprintId; if (url === "__all__") return -1;
     if (url && slotSprints.length > 0) { const idx = slotSprints.indexOf(url); if (idx >= 0) return idx; }
     const ai = slotSprints.findIndex((id) => sprints.find((s) => s.id === id && s.state === "active")); return ai >= 0 ? ai : 0;
-  }, [searchParams, slotSprints, sprints]);
+  }, [urlSprintId, slotSprints, sprints]);
 
   const [ephemeralSprintId, setEphemeralSprintId] = useState<string | null>(null);
-  const ephemeralIsActive = !isAllView && ephemeralSprintId !== null && searchParams.get("sprint") === ephemeralSprintId;
+  const ephemeralIsActive = !isAllView && ephemeralSprintId !== null && urlSprintId === ephemeralSprintId;
   const [editingSlot, setEditingSlot] = useState<number | null>(null);
-  const [selectedTicket, setSelectedTicket] = useState<string | null>(null);
   const [checkedTickets, setCheckedTickets] = useState<Set<string>>(new Set());
   const [focusedTicketIdx, setFocusedTicketIdx] = useState<number>(-1);
   const [poPriorityMap, setPoPriorityMap] = useLocalStorage<Record<string, string[]>>("sprint-board-po-priority-map", {});
@@ -100,6 +116,23 @@ export default function SprintBoard() {
   const slotsInitialized = useRef(false);
 
   const activeSprintId = (isAllView || searchParams.get("view")) ? "__all__" : ephemeralIsActive ? ephemeralSprintId! : slotSprints[activeSlot];
+
+  // Open/close the side panel by writing the ticket to the URL path. `push` (not
+  // `replace`) so back/forward map onto open/close; `scroll: false` and the
+  // unchanged sprint slug keep the list and scroll position (no remount).
+  const selectTicket = useCallback((key: string | null) => {
+    const slug = activeSprintId ? sprintToSlug(activeSprintId, sprints) : sprintSlug;
+    const sp = new URLSearchParams(searchParams.toString());
+    sp.delete("sprint"); // legacy param now lives in the path
+    router.push(buildBoardUrl(slug, key, sp.toString()), { scroll: false });
+  }, [activeSprintId, sprints, sprintSlug, router, searchParams]);
+  // Drop-in for the former useState setter so existing call sites keep working,
+  // including the functional-update form used by the keyboard shortcuts.
+  const setSelectedTicket = useCallback((action: React.SetStateAction<string | null>) => {
+    const next = typeof action === "function" ? action(selectedTicket) : action;
+    selectTicket(next);
+  }, [selectedTicket, selectTicket]);
+
   const poPriorityOrder = activeSprintId ? (poPriorityMap[activeSprintId] ?? null) : null;
   const setPoPriorityOrder = useCallback((order: string[] | null) => {
     if (!activeSprintId) return;
@@ -185,6 +218,10 @@ export default function SprintBoard() {
   }, [activeSlot, slotSprints, isAllView]);
 
   const selected = tickets.find((t) => t.key === selectedTicket);
+  // Deep-link fallback (BRDG-270): a ticket in the URL that is not in the loaded
+  // view (e.g. a different sprint) still opens the panel by fetching it directly.
+  const fallbackTicket = useTicketDetail(selectedTicket && !selected ? selectedTicket : null);
+  const panelTicket = selected ?? fallbackTicket.data ?? null;
   const allChecked = checkedTickets.size === tickets.length && tickets.length > 0;
   const someChecked = checkedTickets.size > 0;
 
@@ -192,10 +229,14 @@ export default function SprintBoard() {
   const navigateToSprint = useCallback((sprintId: string) => {
     f.resetFilters();
     if (f.activeViewId) { f.setSortField("rank"); f.setSortDir("asc"); resetToDefaults(); }
-    const params = new URLSearchParams(searchParams.toString());
-    params.set("sprint", sprintId); params.delete("view");
-    router.replace(`?${params.toString()}`, { scroll: false });
-  }, [f, searchParams, router, resetToDefaults]);
+    // Switching sprint replaces the path (no history entry) and drops any open
+    // ticket and saved view (BRDG-270).
+    const sp = new URLSearchParams(searchParams.toString());
+    sp.delete("view");
+    sp.delete("sprint"); // legacy param now lives in the path
+    const slug = sprintToSlug(sprintId, sprints);
+    router.replace(buildBoardUrl(slug, null, sp.toString()), { scroll: false });
+  }, [f, searchParams, router, resetToDefaults, sprints]);
   const setActiveSlot = useCallback((slot: number) => { const id = slotSprints[slot]; if (id) { setEphemeralSprintId(null); navigateToSprint(id); } }, [slotSprints, navigateToSprint]);
   const handleAllClick = useCallback(() => { setEphemeralSprintId(null); navigateToSprint("__all__"); }, [navigateToSprint]);
   const handleSprintListSelect = useCallback((id: string) => { setEphemeralSprintId(id); navigateToSprint(id); }, [navigateToSprint]);
@@ -399,10 +440,10 @@ export default function SprintBoard() {
         ) : boardContent}
       </div>
 
-      {selected && (() => {
-        const idx = tickets.findIndex((t) => t.key === selected.key);
-        const adjacentKeys = { prev: idx > 0 ? tickets[idx - 1].key : null, next: idx < tickets.length - 1 ? tickets[idx + 1].key : null };
-        return <SidePanel key={selected.key} ticket={selected} poStatus={poStatuses[selected.key] ?? null} readiness={readinessMap[selected.key] ?? null} onPoStatusChange={(v) => ta.handlePoStatusChange(selected.key, v)} onReadinessChange={(v) => ta.handleReadinessChange(selected.key, v)} onNotesChange={(notes) => { saveTicketMetadata(selected.key, { poNotes: notes }, activeListKey); }} onClose={() => setSelectedTicket(null)} onShowToast={showToast} onMutate={mutateTickets} onSelectTicket={setSelectedTicket} adjacentKeys={adjacentKeys} />;
+      {panelTicket && (() => {
+        const idx = tickets.findIndex((t) => t.key === panelTicket.key);
+        const adjacentKeys = { prev: idx > 0 ? tickets[idx - 1].key : null, next: idx >= 0 && idx < tickets.length - 1 ? tickets[idx + 1].key : null };
+        return <SidePanel key={panelTicket.key} ticket={panelTicket} poStatus={poStatuses[panelTicket.key] ?? null} readiness={readinessMap[panelTicket.key] ?? null} onPoStatusChange={(v) => ta.handlePoStatusChange(panelTicket.key, v)} onReadinessChange={(v) => ta.handleReadinessChange(panelTicket.key, v)} onNotesChange={(notes) => { saveTicketMetadata(panelTicket.key, { poNotes: notes }, activeListKey); }} onClose={() => setSelectedTicket(null)} onShowToast={showToast} onMutate={mutateTickets} onSelectTicket={setSelectedTicket} adjacentKeys={adjacentKeys} />;
       })()}
       </div>
       {bulkActionBar}

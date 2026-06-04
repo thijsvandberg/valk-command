@@ -3,7 +3,9 @@ import { describe, it, expect, vi } from "vitest";
 
 vi.mock("next/navigation", () => ({
   useSearchParams: () => new URLSearchParams(),
-  useRouter: () => ({ push: vi.fn(), prefetch: vi.fn() }),
+  useRouter: () => ({ push: vi.fn(), replace: vi.fn(), prefetch: vi.fn() }),
+  useParams: () => ({ slug: undefined }),
+  usePathname: () => "/sprint-board",
 }));
 
 vi.mock("next/dynamic", () => ({
@@ -32,6 +34,7 @@ vi.mock("@/hooks/useSprintBoard", () => ({
     isLoading: false,
     mutate: vi.fn(),
   }),
+  useTicketDetail: () => ({ data: undefined, isLoading: false, mutate: vi.fn() }),
 }));
 
 vi.mock("@/hooks/useTicketSessionMap", () => ({
