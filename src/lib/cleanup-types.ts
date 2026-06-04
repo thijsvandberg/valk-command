@@ -8,6 +8,14 @@
 
 export type Disposition = "candidate" | "dismissed" | "confirmed" | null;
 
+// Revival score at/above which a ticket is surfaced as "worth pulling up"
+// (BRDG-298). The opposite conclusion from deprecation: a low-backlog ticket
+// that is still high value and fits recent/planned sprint work. Lives here (a
+// dependency-free, client-safe module) so both the client view and the
+// server-only scoring code can import it without dragging "server-only" into
+// the client bundle.
+export const REVIVAL_CANDIDATE_THRESHOLD = 0.6;
+
 // Scoring topics from the epic. `live` flags whether a story has shipped the
 // scorer that populates this topic yet; until then the column renders a "—"
 // placeholder. WHY keep dormant topics in the list: the columns must exist from

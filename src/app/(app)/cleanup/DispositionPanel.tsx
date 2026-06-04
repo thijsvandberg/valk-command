@@ -18,9 +18,8 @@ import { X, Check, BellOff, RotateCcw, ExternalLink, ArrowRight, TrendingUp } fr
 import { Button } from "@/components/ui/Button";
 import { relativeDate, formatAbsoluteDate } from "@/lib/date-utils";
 import { scoreHeat, revivalHeat } from "./cleanup-utils";
-import { REVIVAL_CANDIDATE_THRESHOLD } from "@/lib/deprecation-topics";
 import { DISMISS_COOLDOWN_DAYS } from "@/lib/cleanup-disposition";
-import type { ScanTopicKey, Disposition } from "@/lib/cleanup-types";
+import { REVIVAL_CANDIDATE_THRESHOLD, type ScanTopicKey, type Disposition } from "@/lib/cleanup-types";
 
 interface TopicBreakdown {
   key: ScanTopicKey;

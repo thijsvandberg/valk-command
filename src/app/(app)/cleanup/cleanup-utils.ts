@@ -6,7 +6,7 @@
  */
 
 import type { CleanupRow, CleanupSort, Disposition, ScannedFilter } from "@/lib/cleanup-types";
-import { REVIVAL_CANDIDATE_THRESHOLD } from "@/lib/deprecation-topics";
+import { REVIVAL_CANDIDATE_THRESHOLD } from "@/lib/cleanup-types";
 
 export interface CleanupFilters {
   scanned: ScannedFilter;

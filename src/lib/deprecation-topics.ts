@@ -24,6 +24,7 @@ import { db } from "@/db";
 import { ticket, ticketMetadata } from "@/db/schema";
 import { eq } from "drizzle-orm";
 import type { ScanTopicKey } from "@/lib/cleanup-types";
+import { REVIVAL_CANDIDATE_THRESHOLD } from "@/lib/cleanup-types";
 import type { AnalyzerResult } from "@/lib/deprecation-analyzer";
 
 // ---------------------------------------------------------------------------
@@ -110,11 +111,11 @@ export function _clearTopicScorers(): void {
 // Mirrors the Tier-1 threshold so the two tiers read consistently.
 export const DEEP_SCAN_CANDIDATE_THRESHOLD = 0.6;
 
-// Revival score at/above which a ticket is surfaced as "worth pulling up"
-// (BRDG-298). The opposite conclusion from deprecation: a low-backlog ticket
-// that is still high value and fits recent/planned sprint work. Mirrors the
-// deprecation threshold so the two directions read on the same 0.6 scale.
-export const REVIVAL_CANDIDATE_THRESHOLD = 0.6;
+// REVIVAL_CANDIDATE_THRESHOLD is defined in the client-safe cleanup-types
+// module and re-exported here for the server-side scoring code and existing
+// tests, so the /cleanup client view can import it without pulling this
+// server-only module (db, agent) into the client bundle.
+export { REVIVAL_CANDIDATE_THRESHOLD } from "@/lib/cleanup-types";
 
 interface TopicContribution {
   key: string;
