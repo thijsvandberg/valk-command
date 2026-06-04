@@ -226,6 +226,10 @@ same definition the Tier-1 staleness scanner uses). Never writes; never touches 
 | `/api/cleanup` | GET | List scan-eligible backlog tickets with scan state. Query params below. |
 | `/api/cleanup/deep-scan` | GET | Tier-2 deep-dive queue status counts `{ pending, running, done, error }`. |
 | `/api/cleanup/deep-scan` | POST | Enqueue tickets for Tier-2 deep scan (BRDG-284). Idempotent. |
+| `/api/cleanup/deprecated-areas` | GET | List the editable deprecated-area keyword list (BRDG-285). |
+| `/api/cleanup/deprecated-areas` | POST | Add an area `{ term, aliases?, note? }`. Returns the created row (201). |
+| `/api/cleanup/deprecated-areas` | PUT | Edit an area `{ id, term, aliases?, note? }`. 404 if unknown id. |
+| `/api/cleanup/deprecated-areas` | DELETE | Remove an area `{ id }` (204). Managed at `/settings/deprecated-areas`; feeds the "replaced area" scan topic. |
 
 Query params: `sort` (`overall` \| `staleness` \| `lastScanned-oldest` \| `lastScanned-newest` \| `key`),
 `scanned` (`all` \| `scanned` \| `never`), `disposition` (`all` \| `candidate` \| `confirmed` \| `dismissed` \| `none`),

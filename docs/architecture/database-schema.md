@@ -370,6 +370,18 @@ Persisted Tier-2 deep-dive queue for the [Backlog Deprecation Review epic](../pl
 | `error` | text | Failure message when `status = error` |
 | `active_key` | text | Mirrors `jira_key` while pending/running, `NULL` once done/error. Unique index over this gives idempotent enqueue: at most one active row per ticket. |
 
+#### `deprecated_area_keyword`
+
+Editable list of retired/replaced product or tech areas for the "replaced area" deep-scan topic (BRDG-285, see the [Backlog Deprecation Review epic](../plans/2026-06-04-backlog-deprecation-review-epic.md)). Local-only, never synced to Jira. Seeded on migration with CWI, RezExchange, IDPMS, hybrid cloud; the PO manages it at `/settings/deprecated-areas` (CRUD via `/api/cleanup/deprecated-areas`).
+
+| Column | Type | Notes |
+|--------|------|-------|
+| `id` | text PK | Generated row id |
+| `term` | text | Canonical area/keyword, e.g. `RezExchange` |
+| `aliases` | text | Comma-separated alternate spellings/acronyms (default `''`) |
+| `note` | text | Optional reminder of why the area is retired (default `''`) |
+| `created_at` | text | ISO timestamp |
+
 ### Refinement
 
 #### `refinement_session`

@@ -101,6 +101,19 @@ Tier-2 of the [Backlog Deprecation Review epic](../plans/2026-06-04-backlog-depr
 
 **Selection + enqueue** is done via `POST /api/cleanup/deep-scan` (methods `keys` | `worst-staleness` | `oldest`, idempotent), with `GET` returning queue-status counts for the /cleanup batch-progress indicator. Pure selection ordering lives in `src/lib/deprecation-deep-scan-selection.ts` (excludes dismissed tickets still in cooldown for the ranked methods).
 
+**Topic registration**: shipped topic scorers self-register via a side-effect barrel `src/lib/topics/index.ts`, imported once from `scheduled-tasks.ts` so every topic is in the registry before `runDeepScan` runs. Later topics add one import line there.
+
+**Shipped topics:**
+
+- **Replaced / obsolete area** (`replaced`, BRDG-285, `src/lib/topics/replaced-area-topic.ts`). The first real Tier-2 topic, weight 1, no cap (an AI-confirmed retired-area match is an objective signal that may promote on its own). Pipeline:
+  1. Load the editable deprecated-area list from `deprecated_area_keyword` (managed at `/settings/deprecated-areas`, CRUD via `/api/cleanup/deprecated-areas`).
+  2. **Keyword match** (`src/lib/deprecated-area-matcher.ts`, pure): case-insensitive, word-boundary matching over title/description/labels/components; alias-aware; short-term safe (no substring false hits). No match => `run()` abstains (returns `null`). Produces a base score (title hit > body-only hit) and records matched terms as evidence.
+  3. **AI confirmation** (matched tickets only): asks the workspace agent to judge whether the ticket is genuinely ABOUT the retired area vs. an incidental mention, returning a one-line rationale. Uses the reusable blocking helper `runAgentTaskToCompletion()` (`src/lib/agent-task-result.ts`) — submit `POST /api/tasks`, poll `GET /api/tasks/:id` until `status === "completed"`, parse `output`. Confirmed => score lifts to >= 0.8; incidental => collapses to 0.15.
+  4. **Graceful degradation**: if the agent is unavailable/errors the scorer keeps the matcher prior at reduced confidence (capped at 0.5, marked `degraded` in evidence) and never throws out of `run()`.
+  - The `EXAMPLE_RETIRED_AREA_SCORER` stub in `deprecation-topics.ts` is superseded by this scorer (same `replaced` key) and remains only as a reference template; it is not registered in production.
+
+`runAgentTaskToCompletion()` is the shared submit-then-poll pattern for any server-side topic that needs a completed (non-streamed) agent result; BRDG-286/287/288 reuse it.
+
 #### Revalidate Deleted Tickets (every 10m)
 
 Detects tickets deleted from Jira that the incremental sync cannot catch (deleted tickets do not appear in "updated since" queries). Uses a view-driven queue approach:
