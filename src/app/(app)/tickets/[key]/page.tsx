@@ -54,6 +54,7 @@ import { ConfirmDialog } from "@/components/shared/ConfirmDialog";
 import { useLocalStorage } from "@/hooks/useLocalStorage";
 import { useTicketDetailPage } from "@/hooks/useTicketDetailPage";
 import { useTicketDetail } from "@/hooks/useSprintBoard";
+import type { Ticket } from "@/types/ticket";
 import { saveTicketMetadata } from "@/components/sprint-board/sprint-board-utils";
 import { useRefinementSessions } from "@/hooks/useRefinementSessions";
 
@@ -148,10 +149,37 @@ export default function TicketDetailPage({
   const [searchOpen, setSearchOpen] = useState(false);
   const [sidebarCollapsed, setSidebarCollapsed] = useLocalStorage(SIDEBAR_COLLAPSED_KEY, false);
   const [previewTicketKey, setPreviewTicketKey] = useState<string | null>(null);
-  // The child row carries a lighter shape; fetch its full Ticket by key (same
-  // fallback fetch the sprint board uses for deep-linked tickets).
-  const previewFetch = useTicketDetail(previewTicketKey);
-  const previewTicket = previewFetch.data ?? null;
+  // Build a lightweight Ticket from the child row the page already has so the panel
+  // opens instantly and switching between children never blanks out (no close-then-open).
+  // The panel re-derives full content via its own useTicketDetailPage; this only needs to
+  // satisfy the initial header render. Fall back to a fetch only for keys that are not in
+  // the current child list (e.g. a drill-down to a referenced ticket inside the panel).
+  const previewLightTicket = useMemo<Ticket | null>(() => {
+    if (!previewTicketKey || !h.detail) return null;
+    const epicChild = h.detail.epicChildren?.find((c) => c.key === previewTicketKey) ?? null;
+    const subtask = epicChild ? null : (h.detail.subtasks?.find((s) => s.key === previewTicketKey) ?? null);
+    const child = epicChild ?? subtask;
+    if (!child) return null;
+    return {
+      key: child.key,
+      title: child.title,
+      type: child.type,
+      epic: null,
+      epicKey: null,
+      jiraStatus: child.jiraStatus,
+      storyPoints: epicChild?.storyPoints ?? null,
+      assignee: child.assignee,
+      flagged: false,
+      readiness: epicChild?.readiness ?? null,
+      poStatus: null,
+      qualityScore: null,
+      businessValue: epicChild?.businessValue ?? null,
+      editState: "clean",
+      notes: "",
+    };
+  }, [previewTicketKey, h.detail]);
+  const previewFetch = useTicketDetail(previewTicketKey && !previewLightTicket ? previewTicketKey : null);
+  const previewTicket = previewLightTicket ?? previewFetch.data ?? null;
   // Adjacency drives the panel's neighbour prefetch. Derive prev/next from the
   // page's own child list (epic children or subtasks), mirroring the board.
   const previewAdjacentKeys = useMemo(() => {
@@ -656,7 +684,7 @@ export default function TicketDetailPage({
           poStatus={previewTicket.poStatus ?? null}
           readiness={previewTicket.readiness ?? null}
           onPoStatusChange={(v) => { void saveTicketMetadata(previewTicketKey, { poStatus: v }); }}
-          onReadinessChange={(v) => { void saveTicketMetadata(previewTicketKey, { readiness: v }); previewFetch.mutate(); }}
+          onReadinessChange={(v) => { void saveTicketMetadata(previewTicketKey, { readiness: v }); h.mutateTicket(); }}
           onNotesChange={(notes) => { void saveTicketMetadata(previewTicketKey, { poNotes: notes }); }}
           onClose={() => setPreviewTicketKey(null)}
           onShowToast={() => {}}

@@ -125,14 +125,18 @@ vi.mock("@/components/refinement-session/AddToRefinementModal", () => ({
 vi.mock("@/components/sprint-board/SearchModal", () => ({
   SearchModal: () => null,
 }));
+// Spy so tests can assert when the fetch fallback is (not) engaged. The page only fetches a
+// child by key when it is NOT already present in the page's loaded detail.
+const { useTicketDetailSpy } = vi.hoisted(() => ({ useTicketDetailSpy: vi.fn() }));
 vi.mock("@/hooks/useSprintBoard", () => ({
-  // The page fetches the clicked child's full ticket by key; echo the key back
-  // as data so the panel renders for whatever child was selected.
-  useTicketDetail: (key: string | null) => ({
-    data: key ? { key, title: "Child", type: "story", poStatus: null, readiness: null } : null,
-    mutate: vi.fn(),
-    isLoading: false,
-  }),
+  useTicketDetail: (key: string | null) => {
+    useTicketDetailSpy(key);
+    return {
+      data: key ? { key, title: "Child", type: "story", poStatus: null, readiness: null } : null,
+      mutate: vi.fn(),
+      isLoading: false,
+    };
+  },
 }));
 vi.mock("@/components/sprint-board/sprint-board-utils", () => ({
   saveTicketMetadata: vi.fn(),
@@ -277,6 +281,27 @@ describe("TicketDetailPage - child preview side panel", () => {
     expect(await screen.findByTestId("side-panel")).toBeInTheDocument();
     fireEvent.click(screen.getByText("close-panel"));
     expect(screen.queryByTestId("side-panel")).not.toBeInTheDocument();
+  });
+
+  it("opens instantly from the page's own child data and skips the fetch for a loaded child", async () => {
+    // A child already in the page's detail must render the panel synchronously (no fetch),
+    // so switching between children never blanks the panel out (no close-then-open) and the
+    // open is not gated on a network round-trip.
+    useTicketDetailSpy.mockClear();
+    resetHook(null, {
+      ticket: { ...baseTicket, type: "epic" },
+      detail: {
+        epicChildren: [
+          { key: "VPL-200", title: "Child", type: "story", jiraStatus: "TO DO", assignee: null, storyPoints: null, businessValue: null, readiness: null },
+        ],
+      },
+    });
+    await renderPage();
+    fireEvent.click(screen.getByText("select-child"));
+    expect(await screen.findByTestId("side-panel")).toBeInTheDocument();
+    expect(screen.getByTestId("side-panel-key")).toHaveTextContent("VPL-200");
+    // The fetch fallback must NOT be engaged for a child already present in the list.
+    expect(useTicketDetailSpy).not.toHaveBeenCalledWith("VPL-200");
   });
 
   it("derives prev/next from the epic children for an epic", async () => {
