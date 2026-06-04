@@ -57,6 +57,7 @@ export interface CleanupResponse {
 
 export type CleanupSort =
   | "overall"
+  | "revival"
   | "staleness"
   | "lastScanned-oldest"
   | "lastScanned-newest"

@@ -25,13 +25,24 @@ vi.mock("@/lib/jira-client", () => ({
 import { GET, POST } from "./route";
 import { DISMISS_COOLDOWN_DAYS } from "@/lib/cleanup-disposition";
 
-function seed(key: string, opts: { scanScores?: unknown; scanOverall?: number; scanRationale?: string } = {}) {
+function seed(
+  key: string,
+  opts: {
+    scanScores?: unknown;
+    scanOverall?: number;
+    scanRationale?: string;
+    revivalScore?: number;
+    revivalRationale?: string;
+  } = {},
+) {
   testDb.insert(ticket).values({ jiraKey: key, title: `Ticket ${key}`, status: "Backlog", sprintName: "" }).run();
   testDb.insert(ticketMetadata).values({
     jiraKey: key,
     scanScores: opts.scanScores ? JSON.stringify(opts.scanScores) : null,
     scanOverall: opts.scanOverall ?? null,
     scanRationale: opts.scanRationale ?? null,
+    revivalScore: opts.revivalScore ?? null,
+    revivalRationale: opts.revivalRationale ?? null,
   }).run();
 }
 
@@ -92,6 +103,20 @@ describe("GET /api/cleanup/[key]/disposition", () => {
     expect(byKey.alreadyBuilt.evidence.implementedIn).toBe("src/foo.ts");
     // A topic with no score reports null rather than dropping out of the list.
     expect(byKey.relevance.score).toBeNull();
+  });
+
+  it("exposes the revival score and rationale for the breakdown drawer (BRDG-298)", async () => {
+    seed("BT-REV", { revivalScore: 0.82, revivalRationale: "Complements active payments work" });
+    const data = await (await getReq("BT-REV")).json();
+    expect(data.revivalScore).toBeCloseTo(0.82);
+    expect(data.revivalRationale).toContain("payments");
+  });
+
+  it("reports null revival fields when no revival analysis has run", async () => {
+    seed("BT-NONE", { scanOverall: 0.4 });
+    const data = await (await getReq("BT-NONE")).json();
+    expect(data.revivalScore).toBeNull();
+    expect(data.revivalRationale).toBeNull();
   });
 });
 

@@ -46,6 +46,10 @@ export interface DispositionDetail {
   dispositionUntil: string | null;
   dispositionNote: string | null;
   topics: TopicBreakdown[];
+  // Revival signal (BRDG-298): the opposite read from deprecation. Surfaced here
+  // so the breakdown drawer can explain why a ticket is "worth pulling up".
+  revivalScore: number | null;
+  revivalRationale: string | null;
 }
 
 const bodySchema = z.object({
@@ -74,6 +78,8 @@ export async function GET(
       disposition: ticketMetadata.disposition,
       dispositionUntil: ticketMetadata.dispositionUntil,
       dispositionNote: ticketMetadata.dispositionNote,
+      revivalScore: ticketMetadata.revivalScore,
+      revivalRationale: ticketMetadata.revivalRationale,
     })
     .from(ticket)
     .leftJoin(ticketMetadata, eq(ticket.jiraKey, ticketMetadata.jiraKey))
@@ -110,6 +116,8 @@ export async function GET(
     dispositionUntil: row.dispositionUntil ?? null,
     dispositionNote: row.dispositionNote ?? null,
     topics,
+    revivalScore: row.revivalScore ?? null,
+    revivalRationale: row.revivalRationale ?? null,
   };
 
   return NextResponse.json(body, {

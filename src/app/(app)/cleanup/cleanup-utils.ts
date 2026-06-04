@@ -6,11 +6,23 @@
  */
 
 import type { CleanupRow, CleanupSort, Disposition, ScannedFilter } from "@/lib/cleanup-types";
+import { REVIVAL_CANDIDATE_THRESHOLD } from "@/lib/deprecation-topics";
 
 export interface CleanupFilters {
   scanned: ScannedFilter;
   disposition: Disposition | "all";
   minOverall: number;
+  // When true, keep only revival candidates (revivalScore at/above the backend
+  // promotion threshold). The opposite read from deprecation, surfaced as its own
+  // filter so the PO can isolate "worth pulling up" tickets (BRDG-298).
+  revivalOnly: boolean;
+}
+
+// A row is a revival candidate when its analyzer score crosses the same 0.6 bar
+// the background runner uses to promote one. Centralised so the badge, filter,
+// and sort all agree on what "candidate" means.
+export function isRevivalCandidate(row: CleanupRow): boolean {
+  return row.revivalScore != null && row.revivalScore >= REVIVAL_CANDIDATE_THRESHOLD;
 }
 
 // Null overall/lastScanned must always sink to the bottom regardless of sort
@@ -30,6 +42,7 @@ export function filterRows(rows: CleanupRow[], f: CleanupFilters): CleanupRow[] 
     if (f.scanned === "never" && r.lastScannedAt != null) return false;
     if (f.disposition !== "all" && r.disposition !== f.disposition) return false;
     if (f.minOverall > 0 && (r.scanOverall == null || r.scanOverall < f.minOverall)) return false;
+    if (f.revivalOnly && !isRevivalCandidate(r)) return false;
     return true;
   });
 }
@@ -39,6 +52,9 @@ export function sortRows(rows: CleanupRow[], sort: CleanupSort): CleanupRow[] {
   switch (sort) {
     case "overall":
       copy.sort((a, b) => compareNullableDesc(a.scanOverall, b.scanOverall));
+      break;
+    case "revival":
+      copy.sort((a, b) => compareNullableDesc(a.revivalScore, b.revivalScore));
       break;
     case "staleness":
       copy.sort((a, b) =>
@@ -79,4 +95,15 @@ export function scoreHeat(score: number | null): { color: string; track: string 
   if (score >= 0.6) return { color: "var(--color-status-warning)", track: "var(--color-status-warning-subtle)" };
   if (score >= 0.35) return { color: "var(--color-status-caution)", track: "var(--color-status-caution-subtle)" };
   return { color: "var(--color-brand-400)", track: "var(--color-brand-subtle)" };
+}
+
+/**
+ * Revival is the OPPOSITE conclusion from deprecation, so it reads on the
+ * positive/"success" green ramp rather than the deprecation heat ramp. A single
+ * affirmative colour (no warning gradient) keeps the two signals visually
+ * unmistakable: red-amber = "this can go", green = "pull this up".
+ */
+export function revivalHeat(score: number | null): { color: string; track: string } {
+  if (score == null) return { color: "var(--color-status-neutral)", track: "var(--color-overlay-subtle)" };
+  return { color: "var(--color-status-success)", track: "var(--color-status-success-subtle)" };
 }
