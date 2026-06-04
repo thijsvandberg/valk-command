@@ -54,6 +54,14 @@ PO-owned annotations per ticket. Never synced back to Jira.
 | `last_test_run_at` | text | ISO timestamp |
 | `last_test_report_url` | text | Link to test report |
 | `business_value` | integer | Business Value score (1-7, nullable) |
+| `scan_scores` | text | Backlog Deprecation Review (BRDG-282 epic): JSON map of per-topic scores + evidence. Local-only. |
+| `scan_overall` | real | Combined deprecation-likelihood score (0..1). |
+| `scan_rationale` | text | Assembled human-readable "why this can probably go". |
+| `last_scanned_at` | text | ISO; Tier-1 scan time, drives rolling re-scan / oldest-first ordering. |
+| `last_deep_scanned_at` | text | ISO; Tier-2 deep-dive scan time. |
+| `disposition` | text | `null` \| `candidate` \| `dismissed` \| `confirmed` (BRDG-289). PO's local judgement; never synced to Jira. |
+| `disposition_until` | text | ISO dismiss cooldown (BRDG-289); the deep-scan runner skips dismissed tickets until this passes. Default 90 days. |
+| `disposition_note` | text | Optional free-text note left on confirm/dismiss (BRDG-289), max 500 chars. |
 
 #### `ticket_subtask`
 

@@ -24,6 +24,7 @@ vi.mock("@/lib/notifications", () => ({ createNotification: vi.fn() }));
 
 import { runDeprecationDeepScan } from "./scheduled-tasks";
 import { enqueueDeepScan } from "./deprecation-scan-queue";
+import { createNotification } from "./notifications";
 import {
   registerTopicScorer,
   _clearTopicScorers,
@@ -112,6 +113,22 @@ describe("runDeprecationDeepScan", () => {
     expect(result.scanned).toBe(1);
     const row = testDb.select().from(deprecationScanQueue).get();
     expect(row?.status).toBe("done");
+  });
+
+  it("notifies the PO when a ticket becomes a new candidate (BRDG-289)", async () => {
+    insertTicket("BT-NEW", { title: "Migrate CWI" }); // retired area -> candidate
+    insertTicket("BT-PLAIN", { title: "Add a button" }); // no signal -> no notification
+    registerTopicScorer(EXAMPLE_RETIRED_AREA_SCORER);
+    await enqueueDeepScan(["BT-NEW", "BT-PLAIN"]);
+
+    await runDeprecationDeepScan();
+
+    const calls = vi.mocked(createNotification).mock.calls;
+    expect(calls).toHaveLength(1);
+    const [type, message, options] = calls[0];
+    expect(type).toBe("deprecation-candidate");
+    expect(message).toContain("BT-NEW");
+    expect(options).toMatchObject({ jiraKey: "BT-NEW", linkUrl: "/cleanup", skipFollowCheck: true });
   });
 
   it("logs a batch summary to the activity log", async () => {

@@ -230,6 +230,9 @@ same definition the Tier-1 staleness scanner uses). Never writes; never touches 
 | `/api/cleanup/deprecated-areas` | POST | Add an area `{ term, aliases?, note? }`. Returns the created row (201). |
 | `/api/cleanup/deprecated-areas` | PUT | Edit an area `{ id, term, aliases?, note? }`. 404 if unknown id. |
 | `/api/cleanup/deprecated-areas` | DELETE | Remove an area `{ id }` (204). Managed at `/settings/deprecated-areas`; feeds the "replaced area" scan topic. |
+| `/api/cleanup/[key]/disposition` | GET | Full per-ticket score breakdown (BRDG-289): every topic's score + evidence + rationale, the assembled `scanRationale`, overall, and current disposition/cooldown/note. |
+| `/api/cleanup/[key]/disposition` | POST | Apply a disposition `{ action: "confirm" \| "dismiss" \| "reset", note? }`. Local-only, never writes Jira. |
+| `/api/cleanup/disposition` | POST | Bulk disposition `{ action, keys: string[], note? }` (max 200). De-dupes keys; returns `{ action, requested, applied, appliedKeys, skipped }`. |
 
 Query params: `sort` (`overall` \| `staleness` \| `lastScanned-oldest` \| `lastScanned-newest` \| `key`),
 `scanned` (`all` \| `scanned` \| `never`), `disposition` (`all` \| `candidate` \| `confirmed` \| `dismissed` \| `none`),
@@ -256,7 +259,33 @@ Response shape (`CleanupResponse` in `src/lib/cleanup-types.ts`):
 
 Ranked methods exclude dismissed tickets still inside their cooldown. Returns `{ method, requested, enqueued, enqueuedKeys, queue }`. The background `deprecation-deep-scan` task drains the queue; see [scheduler.md](scheduler.md#backlog-deep-scan-every-2m).
 
-Later epic stories (BRDG-289 disposition) extend this same surface.
+### Review & disposition (BRDG-289)
+
+The human-in-the-loop close of the epic. A disposition is a LOCAL marker on `ticketMetadata`
+(`disposition`, `dispositionUntil`, `dispositionNote`); **nothing is ever written to Jira** —
+the disposition service (`src/lib/cleanup-disposition-service.ts`) imports no Jira client, and
+its tests assert no Jira write path is reachable. Transition maths live in
+`src/lib/cleanup-disposition.ts`:
+
+- **Confirm** → `disposition="confirmed"`, cooldown cleared. "This can probably go" (the PO's
+  later action in Jira is manual).
+- **Dismiss (snooze)** → `disposition="dismissed"` + `dispositionUntil = now + DISMISS_COOLDOWN_DAYS`
+  (default **90 days**). The `deprecation-deep-scan` runner already skips a dismissed ticket while
+  its cooldown is in the future, so this directly controls re-surfacing.
+- **Reset** → clears disposition, cooldown, and note.
+
+An optional free-text note is stored in the new `ticket_metadata.disposition_note` column
+(migration `drizzle/0067_mean_mother_askani.sql`), clamped to 500 chars. Each apply writes one
+`deprecation-scan` activity-log entry. When the background deep scan promotes a ticket to
+`candidate`, the runner fires a `deprecation-candidate` notification (`scheduler` category,
+`skipFollowCheck`, links to `/cleanup`).
+
+In the `/cleanup` view, a **row click opens a score-breakdown / disposition drawer**
+(`src/app/(app)/cleanup/DispositionPanel.tsx`) showing each topic's score + evidence + rationale.
+The `duplicate.supersededBy` renders as a clickable link that re-targets the drawer to that
+ticket; `alreadyBuilt.implementedIn` renders as evidence text. The drawer can escalate to the full
+ticket `SidePanel` ("Open full ticket"). Confirm/Dismiss live in the drawer; **bulk Confirm/Dismiss**
+act on the existing multi-select selection bar.
 
 ### Scan topics (as of BRDG-288)
 
@@ -278,8 +307,9 @@ for the cap proof in the file header.
 The view lives at `/cleanup` (`src/app/(app)/cleanup/page.tsx`, nav entry "Cleanup" in
 `src/components/Sidebar.tsx`). It renders the table (key+title, status, relative last-scanned
 with absolute on hover, a heat bar per topic, overall, disposition badge), with client-side
-sort/filter mirrored from the API (`cleanup-utils.ts`). Row click opens the ticket in the
-shared `SidePanel` overlay (the same component the sprint board uses, per BRDG-281/275).
+sort/filter mirrored from the API (`cleanup-utils.ts`). Row click opens the score-breakdown /
+disposition drawer (BRDG-289), which can escalate to the shared `SidePanel` overlay (the same
+component the sprint board uses, per BRDG-281/275) for full ticket management.
 
 ## Confluence
 

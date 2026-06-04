@@ -484,7 +484,22 @@ export async function runDeprecationDeepScan(): Promise<TaskResult> {
       }
 
       const result = await runDeepScan(row.jiraKey, { now });
-      if (result.becameCandidate) candidates++;
+      if (result.becameCandidate) {
+        candidates++;
+        // Notify the PO that a fresh deprecation candidate is ready to review
+        // (BRDG-289). skipFollowCheck: backlog candidates are rarely followed,
+        // but the PO still wants to know one surfaced. Links into /cleanup.
+        createNotification(
+          "deprecation-candidate",
+          `New deprecation candidate: ${row.jiraKey} (score ${result.scanOverall.toFixed(2)})`,
+          {
+            category: "scheduler",
+            jiraKey: row.jiraKey,
+            linkUrl: "/cleanup",
+            skipFollowCheck: true,
+          },
+        );
+      }
       await markDone(row.id);
     } catch (err) {
       errors++;
