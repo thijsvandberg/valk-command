@@ -92,7 +92,8 @@ describe("useSprintBoardFilters - DELETED status handling", () => {
 });
 
 describe("useSprintBoardFilters - sprint-state quick filters (BRDG-259)", () => {
-  const STORAGE_KEY = "sprint-board-filters";
+  // The All view persists to its own store so its filters survive returning from a sprint view.
+  const STORAGE_KEY = "sprint-board-all-filters";
   const A = makeTicket({ key: "A", sprintId: "act" });
   const F = makeTicket({ key: "F", sprintId: "fut" });
   const C = makeTicket({ key: "C", sprintId: "clo" });
@@ -150,5 +151,41 @@ describe("useSprintBoardFilters - sprint-state quick filters (BRDG-259)", () => 
     act(() => result.current.setSprintFilter(new Set([SPRINT_STATE_CLOSED])));
     const stored = JSON.parse(localStorage.getItem(STORAGE_KEY) ?? "{}");
     expect(stored.sprint).toContain(SPRINT_STATE_CLOSED);
+  });
+});
+
+describe("useSprintBoardFilters - All-view filter memory (BRDG-281)", () => {
+  const SPRINT_KEY = "sprint-board-filters";
+  const ALL_KEY = "sprint-board-all-filters";
+
+  beforeEach(() => {
+    localStorage.clear();
+  });
+
+  it("persists All-view filters to a store separate from the sprint working set", () => {
+    const { result } = renderHook(() => useSprintBoardFilters(ALL, {}, true, null));
+    act(() => result.current.setTeamFilter(new Set(["BT"])));
+    expect(JSON.parse(localStorage.getItem(ALL_KEY) ?? "{}").team).toEqual(["BT"]);
+    expect(localStorage.getItem(SPRINT_KEY)).toBeNull();
+  });
+
+  it("keeps the All-view filters when the sprint working set is reset on navigation", () => {
+    const { result } = renderHook(() => useSprintBoardFilters(ALL, {}, true, null));
+    act(() => result.current.setTeamFilter(new Set(["BT"])));
+    act(() => result.current.resetSprintViewFilters());
+    expect(result.current.teamFilter.has("BT")).toBe(true);
+    expect(JSON.parse(localStorage.getItem(ALL_KEY) ?? "{}").team).toEqual(["BT"]);
+  });
+
+  it("restores remembered All-view filters when reopening the All view in a new session", () => {
+    localStorage.setItem(ALL_KEY, JSON.stringify({ status: [], epic: [], assignee: [], readiness: [], editState: [], issueType: [], gaps: [], team: ["BT"], sprint: [] }));
+    const { result } = renderHook(() => useSprintBoardFilters(ALL, {}, true, null));
+    expect(result.current.teamFilter.has("BT")).toBe(true);
+  });
+
+  it("does not apply remembered All-view filters to a sprint view", () => {
+    localStorage.setItem(ALL_KEY, JSON.stringify({ status: [], epic: [], assignee: [], readiness: [], editState: [], issueType: [], gaps: [], team: ["BT"], sprint: [] }));
+    const { result } = renderHook(() => useSprintBoardFilters(ALL, {}, false, null));
+    expect(result.current.teamFilter.size).toBe(0);
   });
 });

@@ -41,7 +41,14 @@ export function useSprintBoardFilters(
   const searchParams = useSearchParams();
   const router = useRouter();
 
-  const [storedFilters, setStoredFilters] = useLocalStorage<StoredFilters>("sprint-board-filters", defaultFilters);
+  // The All view keeps its own remembered filter set (team/sprint/status/etc.) so returning to
+  // All restores the last selection across sessions, while sprint views share a working set that
+  // is cleared on navigation. The active store is chosen by view, so all the getters/setters below
+  // read and write the correct one transparently.
+  const [sprintViewFilters, setSprintViewFilters] = useLocalStorage<StoredFilters>("sprint-board-filters", defaultFilters);
+  const [allViewFilters, setAllViewFilters] = useLocalStorage<StoredFilters>("sprint-board-all-filters", defaultFilters);
+  const storedFilters = isAllView ? allViewFilters : sprintViewFilters;
+  const setStoredFilters = isAllView ? setAllViewFilters : setSprintViewFilters;
   const [storedSort, setStoredSort] = useLocalStorage<StoredSort>("sprint-board-sort", { field: "rank", direction: "asc" });
   const [storedColumns, setStoredColumns] = useLocalStorage<InlineTagId[]>("sprint-board-row-fields", [...DEFAULT_VISIBLE_TAGS]);
   const [savedViews, setSavedViews] = useLocalStorage<SavedView[]>("sprint-board-saved-views", []);
@@ -318,6 +325,12 @@ export function useSprintBoardFilters(
     setStoredFilters({ status: [], epic: [], assignee: [], readiness: [], editState: [], issueType: [], gaps: [], team: [], sprint: [] });
   }, [setStoredFilters]);
 
+  // Navigation clears only the sprint working set; the All view's remembered filters are left
+  // untouched so they survive switching sprints and reopen when the PO returns to All.
+  const resetSprintViewFilters = useCallback(() => {
+    setSprintViewFilters({ status: [], epic: [], assignee: [], readiness: [], editState: [], issueType: [], gaps: [], team: [], sprint: [] });
+  }, [setSprintViewFilters]);
+
   const handleSaveView = useCallback((title: string) => {
     const columnConfig = externalVisible
       ? { visibleTags: [...externalVisible] }
@@ -341,7 +354,9 @@ export function useSprintBoardFilters(
   }, [activeViewId, currentFiltersSnapshot, sortField, sortDir, externalVisible, setSavedViews, searchParams, router]);
 
   const handleViewClick = useCallback((view: SavedView) => {
-    setStoredFilters({
+    // A saved view always lands on the All view, so write straight to the All-view store
+    // regardless of the current view (avoids depending on isAllView having flipped yet).
+    setAllViewFilters({
       status: view.filters.status,
       epic: view.filters.epic,
       assignee: view.filters.assignee,
@@ -362,7 +377,7 @@ export function useSprintBoardFilters(
     const params = new URLSearchParams(searchParams.toString());
     params.set("view", view.id);
     router.replace(buildBoardUrl(ALL_SPRINT_SLUG, null, params.toString()), { scroll: false });
-  }, [setStoredFilters, setStoredSort, onApplyColumnConfig, searchParams, router]);
+  }, [setAllViewFilters, setStoredSort, onApplyColumnConfig, searchParams, router]);
 
   const handleDeleteView = useCallback((id: string) => {
     setSavedViews((prev) => prev.filter((v) => v.id !== id));
@@ -423,6 +438,7 @@ export function useSprintBoardFilters(
     hasActiveFilters,
     currentFiltersSnapshot,
     resetFilters,
+    resetSprintViewFilters,
     handleSaveView,
     handleViewClick,
     handleDeleteView,

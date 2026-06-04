@@ -227,7 +227,9 @@ export default function SprintBoard() {
 
   // Navigation handlers
   const navigateToSprint = useCallback((sprintId: string) => {
-    f.resetFilters();
+    // Clear only the sprint working set; the All view keeps its remembered filters so returning
+    // to All restores the PO's last team/sprint selection (BRDG-281).
+    f.resetSprintViewFilters();
     if (f.activeViewId) { f.setSortField("rank"); f.setSortDir("asc"); resetToDefaults(); }
     // Switching sprint replaces the path (no history entry) and drops any open
     // ticket and saved view (BRDG-270).

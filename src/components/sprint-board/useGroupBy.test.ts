@@ -96,9 +96,15 @@ describe("useGroupBy collapse/expand all", () => {
 
   it("reports not-all-collapsed when there are no groups", () => {
     const { result } = setup();
-    // groupBy stays "none" -> no groups
+    act(() => result.current.setGroupBy("none"));
     expect(result.current.groups.length).toBe(0);
     expect(result.current.allCollapsed).toBe(false);
+  });
+
+  it("defaults to grouping by sprint in the All view", () => {
+    const { result } = setup();
+    expect(result.current.groupBy).toBe("sprint");
+    expect(result.current.groups.length).toBe(2);
   });
 });
 

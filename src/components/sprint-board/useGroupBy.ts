@@ -152,7 +152,8 @@ export function useGroupBy(
   includeClosedSprints: boolean = false,
   forceShowSprintIds: string[] = [],
 ) {
-  const [groupBy, setGroupBy] = useSessionStorage<GroupByOption>("sprint-board-group-by", "none");
+  // Default the All view to grouping by sprint; non-All views force "none" via effectiveGroupBy below.
+  const [groupBy, setGroupBy] = useSessionStorage<GroupByOption>("sprint-board-group-by", "sprint");
   const [collapsedGroupsArr, setCollapsedGroupsArr] = useSessionStorage<string[]>("sprint-board-collapsed-groups", []);
 
   const collapsedGroups = useMemo(() => new Set(collapsedGroupsArr), [collapsedGroupsArr]);

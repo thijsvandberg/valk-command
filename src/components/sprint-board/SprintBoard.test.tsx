@@ -160,6 +160,7 @@ vi.mock("@/components/sprint-board/useSprintBoardFilters", () => ({
     setSortDir: vi.fn(),
     visibleTags: new Set(["flag", "quality"]),
     resetFilters: vi.fn(),
+    resetSprintViewFilters: vi.fn(),
     saveView: vi.fn(),
     deleteView: vi.fn(),
     savedViews: [],
