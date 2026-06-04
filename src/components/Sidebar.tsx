@@ -11,6 +11,7 @@ import {
   Zap,
   NotebookPen,
   Users,
+  Trash2,
   Menu,
   X,
 } from "lucide-react";
@@ -54,6 +55,11 @@ const navItems = [
     label: "Stakeholder",
     href: "/stakeholder",
     icon: <Users className="h-5 w-5" strokeWidth={1.5} />,
+  },
+  {
+    label: "Cleanup",
+    href: "/cleanup",
+    icon: <Trash2 className="h-5 w-5" strokeWidth={1.5} />,
   },
 ];
 
