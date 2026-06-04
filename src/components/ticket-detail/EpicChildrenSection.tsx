@@ -12,6 +12,7 @@ import { Tooltip } from "@/components/shared/Tooltip";
 import { Toast } from "@/components/ui/Toast";
 import { useToast } from "@/hooks/useToast";
 import { ChildIssueRow } from "./ChildIssueRow";
+import { ChildIssueComposer } from "./ChildIssueComposer";
 import { ChildIssueListHeader, type ChildIssueViewMode } from "./ChildIssueListHeader";
 import { EpicChildrenBySprint } from "./EpicChildrenBySprint";
 import type { StatusFilter } from "./FieldFilterPopover";
@@ -25,13 +26,7 @@ import { tickets, jira, apiFetch, ApiError } from "@/lib/api-client";
 import { getJiraUrl } from "@/lib/jira-url";
 import { applyLocalMoves, sprintNameForTarget } from "@/lib/epic-children-move";
 import { groupChildrenBySprint } from "@/lib/epic-children-grouping";
-import { Loader2, ChevronDown, Search, AlertTriangle } from "lucide-react";
-
-const CHILD_ISSUE_TYPES: { value: IssueType; label: string; jiraType: string }[] = [
-  { value: "story", label: "Story", jiraType: "Story" },
-  { value: "task", label: "Task", jiraType: "Task" },
-  { value: "bug", label: "Bug", jiraType: "Bug" },
-];
+import { Loader2, Search, AlertTriangle } from "lucide-react";
 
 const EPIC_CHILD_FIELDS = [
   { id: "issueKey", label: "issue keys" },
@@ -71,12 +66,9 @@ export function EpicChildrenSection({
   onSelectTicket,
 }: EpicChildrenSectionProps) {
   const [filter, setFilter] = useState<StatusFilter>("all");
-  const [newTitle, setNewTitle] = useState("");
-  const [selectedType, setSelectedType] = useState<IssueType>("story");
-  const [showTypePicker, setShowTypePicker] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [jiraWarning, setJiraWarning] = useState<string | null>(null);
-  const [locallyAdded, setLocallyAdded] = useState<Subtask[]>([]);
+  const [locallyAdded, setLocallyAdded] = useState<(Subtask | EpicChild)[]>([]);
   // Optimistic sprint reassignments (childKey -> new sprint name, or null for backlog),
   // applied to the by-sprint view until the refetched children reflect the move.
   const [localMoves, setLocalMoves] = useState<Record<string, string | null>>({});
@@ -90,8 +82,6 @@ export function EpicChildrenSection({
   const [refineModalOpen, setRefineModalOpen] = useState(false);
   const [bulkGenerating, setBulkGenerating] = useState(false);
   const lastCheckedRef = useRef<string | null>(null);
-  const inputRef = useRef<HTMLInputElement>(null);
-  const typePickerRef = useRef<HTMLDivElement>(null);
 
   // Search existing state
   const [searchMode, setSearchMode] = useState(false);
@@ -130,59 +120,62 @@ export function EpicChildrenSection({
     DONE: mergedItems.filter((i) => i.jiraStatus === "DONE").length,
   };
 
-  const currentTypeConfig = CHILD_ISSUE_TYPES.find((t) => t.value === selectedType) ?? CHILD_ISSUE_TYPES[0];
   const isFiltered = filter !== "all";
 
   // --- Create child issue ---
 
-  const handleCreate = useCallback(() => {
-    const title = newTitle.trim();
-    if (!title) return;
+  // Create a child issue, optionally targeted at a sprint. When `target` is given,
+  // the optimistic placeholder carries the group's sprintName so the new row lands
+  // in the right sprint card immediately (the API returns a bare Subtask), and the
+  // sprintId is forwarded so Jira assigns the issue to that sprint.
+  const handleCreate = useCallback(
+    (title: string, jiraType: string, target?: { sprintId: string | null; sprintName: string | null }) => {
+      const trimmed = title.trim();
+      if (!trimmed) return;
 
-    const placeholderKey = `pending-${Date.now()}`;
-    const placeholder: Subtask = {
-      key: placeholderKey,
-      title,
-      type: selectedType,
-      jiraStatus: "TO DO",
-      assignee: null,
-    };
-    setLocallyAdded((prev) => [...prev, placeholder]);
-    setNewTitle("");
-    setError(null);
+      const type = jiraType.toLowerCase() as IssueType;
+      const placeholderKey = `pending-${Date.now()}`;
+      const placeholder: Subtask | EpicChild = target
+        ? {
+            key: placeholderKey,
+            title: trimmed,
+            type,
+            jiraStatus: "TO DO",
+            assignee: null,
+            sprintName: target.sprintName,
+            storyPoints: null,
+            businessValue: null,
+            subtaskCount: 0,
+            readiness: null,
+          }
+        : { key: placeholderKey, title: trimmed, type, jiraStatus: "TO DO", assignee: null };
+      setLocallyAdded((prev) => [...prev, placeholder]);
+      setError(null);
 
-    tickets.createChildIssue(ticketKey, { title, issueType: currentTypeConfig.jiraType })
-      .then((created) => {
-        setLocallyAdded((prev) =>
-          prev.map((i) => i.key === placeholderKey ? created : i),
-        );
-        showToast(`${created.key} created`);
-        onMutate();
-      })
-      .catch((err) => {
-        setLocallyAdded((prev) => prev.filter((i) => i.key !== placeholderKey));
-        const detail = err instanceof ApiError ? err.message : "Jira API error";
-        setError(`Failed to create child issue: ${detail}`);
-        console.error("Failed to create child issue:", err);
-      });
-  }, [newTitle, selectedType, ticketKey, currentTypeConfig.jiraType, onMutate, showToast]);
-
-  const handleKeyDown = useCallback((e: React.KeyboardEvent) => {
-    if (e.key === "Enter") {
-      e.preventDefault();
-      if (searchMode) return;
-      handleCreate();
-    } else if (e.key === "Escape") {
-      if (searchMode) {
-        setSearchMode(false);
-        setSearchQuery("");
-        setSearchResults([]);
-      } else {
-        setNewTitle("");
-        inputRef.current?.blur();
-      }
-    }
-  }, [handleCreate, searchMode]);
+      const sprintId = target?.sprintId ?? undefined;
+      tickets.createChildIssue(ticketKey, { title: trimmed, issueType: jiraType, ...(sprintId ? { sprintId } : {}) })
+        .then((created) => {
+          setLocallyAdded((prev) =>
+            prev.map((i) =>
+              i.key === placeholderKey
+                ? target
+                  ? ({ ...created, sprintName: target.sprintName, storyPoints: null, businessValue: null, subtaskCount: 0, readiness: null } as EpicChild)
+                  : created
+                : i,
+            ),
+          );
+          showToast(`${created.key} created`);
+          onMutate();
+        })
+        .catch((err) => {
+          setLocallyAdded((prev) => prev.filter((i) => i.key !== placeholderKey));
+          const detail = err instanceof ApiError ? err.message : "Jira API error";
+          setError(`Failed to create child issue: ${detail}`);
+          console.error("Failed to create child issue:", err);
+        });
+    },
+    [ticketKey, onMutate, showToast],
+  );
 
   // --- Search existing ---
 
@@ -650,94 +643,35 @@ export function EpicChildrenSection({
     );
   });
 
-  // Inline input row (create or search mode)
-  const inlineInput = (
+  // Inline input row: search mode swaps the whole row for the search field; create
+  // mode delegates to the shared ChildIssueComposer (no sprint target here).
+  const borderTopClass = viewMode === "list" && filtered.length > 0 ? "border-t border-border-subtle" : "";
+  const inlineInput = searchMode ? (
     <div
-      ref={searchMode ? searchContainerRef : undefined}
-      className={`relative flex items-center gap-3 px-3 py-2 ${viewMode === "list" && filtered.length > 0 ? "border-t border-border-subtle" : ""}`}
+      ref={searchContainerRef}
+      className={`relative flex items-center gap-3 px-3 py-2 ${borderTopClass}`}
       onClick={(e) => e.stopPropagation()}
     >
-      {searchMode ? (
-        <>
-          <Search size={14} className="shrink-0 text-text-muted" />
-          <input
-            ref={searchInputRef}
-            type="text"
-            value={searchQuery}
-            onChange={(e) => handleSearchChange(e.target.value)}
-            onKeyDown={handleSearchKeyDown}
-            placeholder="Search by key or title..."
-            className="min-w-0 flex-1 bg-transparent text-body-lg text-text-primary placeholder:text-text-muted outline-none"
-          />
-          {searching && <Loader2 size={14} className="shrink-0 animate-spin text-text-muted" />}
-          <button
-            type="button"
-            onClick={closeSearch}
-            className="cursor-pointer text-body-sm text-text-muted transition-colors duration-150 hover:text-text-secondary"
-          >
-            Cancel
-          </button>
-        </>
-      ) : (
-        <>
-          <IssueTypeIcon type={selectedType} size={14} />
-          <div className="relative" ref={typePickerRef}>
-            <button
-              type="button"
-              onClick={() => setShowTypePicker((v) => !v)}
-              className="flex cursor-pointer items-center gap-1 rounded py-0.5 text-text-muted transition-colors duration-150 hover:text-text-secondary focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)]"
-              style={visibleFields.has("issueKey") ? { minWidth: 69 } : undefined}
-            >
-              <span className="text-body-sm font-medium text-text-muted">{currentTypeConfig.label}</span>
-              <ChevronDown size={10} className="text-text-muted" />
-            </button>
-            {showTypePicker && (
-              <div className="absolute top-full left-0 z-20 mt-1 overflow-hidden rounded-lg border border-border-default bg-[var(--color-surface-elevated)] shadow-[0_4px_12px_rgba(0,0,0,0.12),0_1px_3px_rgba(0,0,0,0.08)]">
-                {CHILD_ISSUE_TYPES.map((opt) => (
-                  <button
-                    key={opt.value}
-                    type="button"
-                    onClick={() => {
-                      setSelectedType(opt.value);
-                      setShowTypePicker(false);
-                      inputRef.current?.focus();
-                    }}
-                    className={`flex w-full cursor-pointer items-center gap-2 px-3 py-1.5 text-body-lg transition-colors duration-150 hover:bg-overlay-subtle focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)] active:bg-overlay-subtle/80 ${
-                      opt.value === selectedType ? "text-text-primary" : "text-text-secondary"
-                    }`}
-                  >
-                    <IssueTypeIcon type={opt.value} size={14} />
-                    <span>{opt.label}</span>
-                  </button>
-                ))}
-              </div>
-            )}
-          </div>
+      <Search size={14} className="shrink-0 text-text-muted" />
+      <input
+        ref={searchInputRef}
+        type="text"
+        value={searchQuery}
+        onChange={(e) => handleSearchChange(e.target.value)}
+        onKeyDown={handleSearchKeyDown}
+        placeholder="Search by key or title..."
+        className="min-w-0 flex-1 bg-transparent text-body-lg text-text-primary placeholder:text-text-muted outline-none"
+      />
+      {searching && <Loader2 size={14} className="shrink-0 animate-spin text-text-muted" />}
+      <button
+        type="button"
+        onClick={closeSearch}
+        className="cursor-pointer text-body-sm text-text-muted transition-colors duration-150 hover:text-text-secondary"
+      >
+        Cancel
+      </button>
 
-          <input
-            ref={inputRef}
-            type="text"
-            value={newTitle}
-            onChange={(e) => { setNewTitle(e.target.value); setError(null); }}
-            onKeyDown={handleKeyDown}
-            onFocus={() => setShowTypePicker(false)}
-            placeholder="Create child issue..."
-            className="min-w-0 flex-1 bg-transparent text-body-lg text-text-primary placeholder:text-text-muted outline-none"
-          />
-
-          <button
-            type="button"
-            onClick={() => setSearchMode(true)}
-            className="flex shrink-0 cursor-pointer items-center gap-1.5 rounded-md px-2 py-1 text-text-muted transition-colors duration-150 hover:bg-overlay-subtle hover:text-text-secondary focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)]"
-            title="Link existing issue"
-          >
-            <Search size={12} strokeWidth={1.5} />
-            <span className="hidden text-body-sm font-medium sm:inline">Link existing</span>
-          </button>
-        </>
-      )}
-
-      {searchMode && searchResults.length > 0 && (
+      {searchResults.length > 0 && (
         <div className="absolute top-full left-0 right-0 z-20 mt-1 max-h-56 overflow-y-auto rounded-lg border border-border-default bg-[var(--color-surface-elevated)] shadow-[0_4px_12px_rgba(0,0,0,0.12),0_1px_3px_rgba(0,0,0,0.08)]">
           {searchResults.map((r, idx) => (
             <button
@@ -760,6 +694,24 @@ export function EpicChildrenSection({
         </div>
       )}
     </div>
+  ) : (
+    <ChildIssueComposer
+      onCreate={(title, jiraType) => handleCreate(title, jiraType)}
+      placeholder="Create child issue..."
+      alignKey={visibleFields.has("issueKey")}
+      className={borderTopClass}
+      trailing={
+        <button
+          type="button"
+          onClick={() => setSearchMode(true)}
+          className="flex shrink-0 cursor-pointer items-center gap-1.5 rounded-md px-2 py-1 text-text-muted transition-colors duration-150 hover:bg-overlay-subtle hover:text-text-secondary focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)]"
+          title="Link existing issue"
+        >
+          <Search size={12} strokeWidth={1.5} />
+          <span className="hidden text-body-sm font-medium sm:inline">Link existing</span>
+        </button>
+      }
+    />
   );
 
   const listContent = (
