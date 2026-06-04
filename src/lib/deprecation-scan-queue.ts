@@ -12,7 +12,7 @@ import { db } from "@/db";
 import { deprecationScanQueue, type DeprecationScanQueueRow } from "@/db/schema";
 import { and, eq, inArray, asc } from "drizzle-orm";
 
-export type QueueSource = "manual" | "worst-staleness" | "oldest";
+export type QueueSource = "manual" | "worst-staleness" | "oldest" | "auto";
 
 export interface QueueStatusCounts {
   pending: number;

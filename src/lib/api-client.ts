@@ -720,6 +720,22 @@ export const deprecatedAreas = {
 };
 
 // ---------------------------------------------------------------------------
+// Auto scan settings (BRDG-290)
+// ---------------------------------------------------------------------------
+
+export interface AutoScanSettings {
+  enabled: boolean;
+  dailyCount: number;
+}
+
+export const autoScanSettings = {
+  get: (signal?: AbortSignal) =>
+    apiFetch<AutoScanSettings>("/api/cleanup/auto-scan-settings", { signal }),
+  update: (data: Partial<AutoScanSettings>, signal?: AbortSignal) =>
+    apiFetch<AutoScanSettings>("/api/cleanup/auto-scan-settings", { method: "POST", body: data, signal }),
+};
+
+// ---------------------------------------------------------------------------
 // Pipelines
 // ---------------------------------------------------------------------------
 
