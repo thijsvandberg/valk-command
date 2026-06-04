@@ -74,6 +74,7 @@ function entryTypeLabel(type: ActivityLogEntry["type"]): string {
     "story-writer": "Story writer",
     "incremental-sync": "Incremental sync",
     "epic-sync": "Epic sync",
+    "deprecation-scan": "Staleness scan",
   };
   return labels[type] ?? type;
 }

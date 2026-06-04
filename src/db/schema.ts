@@ -96,6 +96,23 @@ export const ticketMetadata = sqliteTable("ticket_metadata", {
   lastTestRunAt: text("last_test_run_at"),
   lastTestReportUrl: text("last_test_report_url"),
   businessValue: integer("business_value"),
+  // Backlog Deprecation Review (BRDG-282 epic): local-only scan state. These
+  // fields never sync to Jira; they live here precisely because ticketMetadata
+  // is the Bridge-private metadata layer with no write-back path.
+  // JSON map of per-topic scores + evidence. Tier-1 fills only `staleness`.
+  scanScores: text("scan_scores"),
+  // Combined deprecation-likelihood score (Tier-1: equals staleness).
+  scanOverall: real("scan_overall"),
+  // Assembled human-readable reason string.
+  scanRationale: text("scan_rationale"),
+  // ISO timestamp; drives rolling re-scan and oldest-first ordering.
+  lastScannedAt: text("last_scanned_at"),
+  // Reserved for Tier-2 deep dive (null in BRDG-282).
+  lastDeepScannedAt: text("last_deep_scanned_at"),
+  // null | "candidate" | "dismissed" | "confirmed".
+  disposition: text("disposition"),
+  // Dismiss cooldown; unused until BRDG-289.
+  dispositionUntil: text("disposition_until"),
 });
 
 // Bridge-owned per-epic metadata, keyed by epicKey. Shared store for PO
@@ -329,7 +346,7 @@ export const activityLog = sqliteTable("activity_log", {
     enum: [
       "sprint-sync", "ticket-sync", "single-ticket", "comment-sync",
       "review", "metadata-update", "local-edit", "push-to-jira", "bulk-action",
-      "story-writer", "incremental-sync", "epic-sync",
+      "story-writer", "incremental-sync", "epic-sync", "deprecation-scan",
     ],
   }).notNull(),
   scope: text("scope"),

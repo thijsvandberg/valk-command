@@ -442,6 +442,20 @@
       "when": 1780519641614,
       "tag": "0062_right_thing",
       "breakpoints": true
+    },
+    {
+      "idx": 63,
+      "version": "6",
+      "when": 1780601784735,
+      "tag": "0063_useful_jackpot",
+      "breakpoints": true
+    },
+    {
+      "idx": 64,
+      "version": "6",
+      "when": 1780601784736,
+      "tag": "0064_activity_log_deprecation_scan_type",
+      "breakpoints": true
     }
   ]
 }

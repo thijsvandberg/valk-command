@@ -303,7 +303,7 @@ export interface RelatedSuggestionResponse {
 export type ActivityLogType =
   | "sprint-sync" | "ticket-sync" | "single-ticket" | "comment-sync"
   | "review" | "metadata-update" | "local-edit" | "push-to-jira" | "bulk-action"
-  | "story-writer" | "incremental-sync" | "epic-sync";
+  | "story-writer" | "incremental-sync" | "epic-sync" | "deprecation-scan";
 
 export interface ActivityLogEntry {
   id: string;
