@@ -16,7 +16,9 @@ vi.mock("next/link", () => ({
 
 const updateStoryPoints = vi.fn().mockResolvedValue({});
 const updateMetadata = vi.fn().mockResolvedValue({});
+const apiFetch = vi.fn().mockResolvedValue({});
 vi.mock("@/lib/api-client", () => ({
+  apiFetch: (...args: unknown[]) => apiFetch(...args),
   tickets: {
     updateStoryPoints: (...args: unknown[]) => updateStoryPoints(...args),
     updateMetadata: (...args: unknown[]) => updateMetadata(...args),
@@ -34,7 +36,14 @@ vi.mock("@/hooks/useSprintBoard", () => ({
 
 vi.mock("@/hooks/useTicketSessionMap", () => ({ useTicketSessionMap: () => ({ ticketSessionMap: new Map() }) }));
 
-vi.mock("@/components/shared/TicketStatusPill", () => ({ TicketStatusPill: ({ ticketKey }: { ticketKey: string }) => <span>{ticketKey}</span> }));
+vi.mock("@/components/shared/TicketStatusPill", () => ({
+  TicketStatusPill: ({ ticketKey, jiraStatus, onJiraStatusChange }: { ticketKey: string; jiraStatus?: string; onJiraStatusChange?: (s: string) => void }) =>
+    onJiraStatusChange ? (
+      <button data-testid="status-pill" onClick={() => onJiraStatusChange("DONE")}>{jiraStatus}</button>
+    ) : (
+      <span>{jiraStatus ?? ticketKey}</span>
+    ),
+}));
 vi.mock("@/components/shared/Avatar", () => ({ Avatar: () => <span data-testid="avatar" /> }));
 vi.mock("@/components/shared/WatchersRow", () => ({ WatchersRow: ({ ticketKey }: { ticketKey: string }) => <span data-testid="watchers-row">{ticketKey}</span> }));
 vi.mock("@/components/shared/Tooltip", () => ({ Tooltip: ({ children }: { children: React.ReactNode }) => <span>{children}</span> }));
@@ -126,6 +135,7 @@ describe("TicketMetaContent", () => {
           storyPoints: 13,
           businessValue: 8,
           assignee: { name: "Bob", initials: "B", color: "#123" },
+          jiraStatus: "DONE",
         })}
         detail={detail}
       />,
@@ -135,6 +145,17 @@ describe("TicketMetaContent", () => {
     expect(screen.getByTestId("sp-picker")).toHaveTextContent("13");
     expect(screen.getByTestId("bv-picker")).toHaveTextContent("8");
     expect(screen.getByTestId("assignee-picker")).toHaveTextContent("Bob");
+    expect(screen.getByTestId("status-pill")).toHaveTextContent("DONE");
+  });
+
+  it("transitions the Jira status and notifies the host", async () => {
+    const onMutate = vi.fn();
+    render(<TicketMetaContent ticket={makeTicket()} detail={detail} onMutate={onMutate} />);
+    fireEvent.click(screen.getByTestId("status-pill"));
+    await waitFor(() => {
+      expect(apiFetch).toHaveBeenCalledWith("/api/tickets/PROJ-42/status", { method: "PUT", body: { status: "DONE" } });
+      expect(onMutate).toHaveBeenCalled();
+    });
   });
 
   it("notifies the host via onMutate after a field edit persists", async () => {

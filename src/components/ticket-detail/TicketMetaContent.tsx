@@ -1,13 +1,12 @@
 "use client";
 
 import { useState, useCallback, useRef, useMemo, useEffect } from "react";
-import type { Ticket, TicketReadiness, TicketDetail } from "@/types/ticket";
+import type { Ticket, TicketReadiness, TicketDetail, JiraStatus } from "@/types/ticket";
 import { READINESS_CONFIG } from "@/types/ticket";
 import Link from "next/link";
 import { ChevronDown, AlertTriangle, Play, Gem } from "lucide-react";
 import { TicketStatusPill } from "@/components/shared/TicketStatusPill";
-import { JIRA_STATUS_COLORS } from "@/components/shared/StatusBadge";
-import { tickets, jira } from "@/lib/api-client";
+import { tickets, jira, apiFetch } from "@/lib/api-client";
 import { Avatar } from "@/components/shared/Avatar";
 import { QualityBadge } from "@/components/sprint-board/TicketTable";
 import { ReadinessCell } from "@/components/shared/ReadinessCell";
@@ -102,6 +101,7 @@ export function TicketMetaContent({
   const [epicName, setEpicName] = useState<string | null>(ticket.epic);
   const [epicKey, setEpicKey] = useState<string | null>(ticket.epicKey);
   const [currentSprintId, setCurrentSprintId] = useState<string | null>(ticket.sprintId ?? null);
+  const [jiraStatus, setJiraStatus] = useState<JiraStatus>(ticket.jiraStatus);
   // Labels arrive async via detail; an override lets edits win until the host
   // remounts (keyed on ticket) without a state-sync effect.
   const [labelsOverride, setLabelsOverride] = useState<string[] | null>(null);
@@ -121,6 +121,7 @@ export function TicketMetaContent({
     setEpicName(ticket.epic);
     setEpicKey(ticket.epicKey);
     setCurrentSprintId(ticket.sprintId ?? null);
+    setJiraStatus(ticket.jiraStatus);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [
     ticket.businessValue,
@@ -130,6 +131,7 @@ export function TicketMetaContent({
     ticket.epic,
     ticket.epicKey,
     ticket.sprintId,
+    ticket.jiraStatus,
   ]);
   const labels = useMemo(() => labelsOverride ?? detail?.labels ?? [], [labelsOverride, detail?.labels]);
   const [showMore, setShowMore] = useState(ticket.qualityScore !== null);
@@ -182,6 +184,18 @@ export function TicketMetaContent({
       setStoryPoints(prev);
     }
   }, [ticket.key, storyPoints, onMutate]);
+
+  const handleJiraStatusChange = useCallback(async (status: JiraStatus) => {
+    const prev = jiraStatus;
+    setJiraStatus(status);
+    try {
+      await apiFetch(`/api/tickets/${encodeURIComponent(ticket.key)}/status`, { method: "PUT", body: { status } });
+      onMutate?.();
+    } catch (err) {
+      console.error("Operation failed:", err);
+      setJiraStatus(prev);
+    }
+  }, [ticket.key, jiraStatus, onMutate]);
 
   const handleSprintChange = useCallback(async (sprintId: string | null) => {
     if (!sprintId) return;
@@ -311,17 +325,18 @@ export function TicketMetaContent({
         {/* Status & Flow */}
         <div>
           <DetailRow label="Status">
-            {(() => {
-              const sc = JIRA_STATUS_COLORS[ticket.jiraStatus] ?? JIRA_STATUS_COLORS["TO DO"];
-              return (
-                <span
-                  className="inline-flex items-center rounded-md px-2 py-0.5 text-body-sm font-medium"
-                  style={{ backgroundColor: sc.bg, color: sc.text }}
-                >
-                  {ticket.jiraStatus}
-                </span>
-              );
-            })()}
+            <div className="flex justify-end">
+              <TicketStatusPill
+                ticketKey={ticket.key}
+                jiraStatus={jiraStatus}
+                onJiraStatusChange={handleJiraStatusChange}
+                variant="list"
+                size="lg"
+                showKey={false}
+                showReadiness={false}
+                showHoverCard={false}
+              />
+            </div>
           </DetailRow>
           {ticket.type !== "epic" && ticket.type !== "subtask" && (
             <DetailRow label="Epic">

@@ -314,7 +314,7 @@ function DropdownPortal({
   onClose: () => void;
   children: ReactNode;
 }) {
-  const [pos, setPos] = useState<{ top: number; left: number; openUp: boolean } | null>(null);
+  const [pos, setPos] = useState<{ top: number; left?: number; right?: number; openUp: boolean } | null>(null);
   const contentRef = useRef<HTMLDivElement>(null);
 
   useLayoutEffect(() => {
@@ -323,10 +323,15 @@ function DropdownPortal({
     const rect = el.getBoundingClientRect();
     const spaceBelow = window.innerHeight - rect.bottom;
     const openUp = spaceBelow < 200;
+    // Anchor by the trigger's left edge normally (dropdown grows rightward), but
+    // when the trigger sits in the right half of the viewport, anchor by its
+    // right edge so the dropdown grows leftward and stays on screen (e.g. the
+    // right-aligned status pill in the ticket sidebar).
+    const anchorRight = rect.left > window.innerWidth / 2;
     setPos({
       top: openUp ? rect.top : rect.bottom + 4,
-      left: rect.left,
       openUp,
+      ...(anchorRight ? { right: window.innerWidth - rect.right } : { left: rect.left }),
     });
 
     // Delay attaching the scroll-close listener to avoid closing from
@@ -351,7 +356,7 @@ function DropdownPortal({
       ref={contentRef}
       style={{
         position: "fixed",
-        left: pos.left,
+        ...(pos.left != null ? { left: pos.left } : { right: pos.right }),
         zIndex: 9999,
         ...(pos.openUp
           ? { bottom: window.innerHeight - pos.top + 4 }
@@ -930,6 +935,13 @@ export function TicketStatusPill({
   const typeIconSize = elevated && size === "sm" ? 13 : iconSize;
   const textSize = size === "sm" ? "text-[10px]" : size === "lg" ? "text-body-sm" : "text-label";
 
+  // The Jira status badge stays compact at sm/md (dense table rows); at lg it
+  // grows to match a sibling control like the Epic pill (px-2 py-0.5 text-label)
+  // so they line up at the same height in the ticket sidebar.
+  const statusBadgePad = size === "lg" ? "px-2 py-0.5 text-label" : "px-1.5 py-0.5 text-[10px]";
+  const statusDotSize = size === "lg" ? "h-2 w-2" : "h-1.5 w-1.5";
+  const statusRounded = elevated ? "rounded-full" : size === "lg" ? "rounded-md" : "rounded";
+
   // ---------------------------------------------------------------------------
   // List variant — no outer container, segments float inline with gaps
   // ---------------------------------------------------------------------------
@@ -1036,12 +1048,10 @@ export function TicketStatusPill({
               aria-label={statusTip}
               onClick={onJiraStatusChange ? () => setJiraDropdownOpen((o) => !o) : undefined}
               disabled={!onJiraStatusChange}
-              className={`flex items-center gap-1 px-1.5 py-0.5 font-mono text-[10px] font-medium tracking-wide transition-colors duration-150 ${
-                elevated ? "rounded-full" : "rounded"
-              } ${onJiraStatusChange ? "cursor-pointer hover:brightness-110" : "cursor-default"}`}
+              className={`flex items-center gap-1 ${statusBadgePad} font-mono font-medium tracking-wide transition-colors duration-150 ${statusRounded} ${onJiraStatusChange ? "cursor-pointer hover:brightness-110" : "cursor-default"}`}
               style={{ backgroundColor: jiraColors.bg, color: jiraColors.text, opacity: elevated ? 1 : 0.85 }}
             >
-              <span className="shrink-0 h-1.5 w-1.5 rounded-full opacity-70" style={{ backgroundColor: jiraColors.text }} />
+              <span className={`shrink-0 ${statusDotSize} rounded-full opacity-70`} style={{ backgroundColor: jiraColors.text }} />
               {JIRA_STATUS_ABBREVIATIONS[jiraStatus] ?? jiraStatus}
             </button>
           </Tooltip>
