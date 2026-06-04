@@ -18,7 +18,7 @@ import { GET, POST } from "./route";
 import {
   AUTO_SCAN_ENABLED_KEY,
   AUTO_SCAN_DAILY_COUNT_KEY,
-} from "./route";
+} from "@/lib/auto-scan-settings";
 
 function get(): Promise<Response> {
   return GET();

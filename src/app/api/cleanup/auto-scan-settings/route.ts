@@ -14,51 +14,22 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 import { db } from "@/db";
 import { appSetting } from "@/db/schema";
-import { inArray } from "drizzle-orm";
 import { applyRateLimit } from "@/lib/rate-limiter";
 import { errorResponse } from "@/lib/api-response";
 import { parseJsonBody } from "@/lib/request-parser";
-
-export const AUTO_SCAN_ENABLED_KEY = "deprecation-auto-scan:enabled";
-export const AUTO_SCAN_DAILY_COUNT_KEY = "deprecation-auto-scan:daily-count";
-
-/** Prefix for the per-day budget counter. Full key: `${PREFIX}:<YYYY-MM-DD>`. */
-export const AUTO_SCAN_BUDGET_KEY_PREFIX = "deprecation-auto-scan:budget";
-
-export const AUTO_SCAN_DEFAULT_ENABLED = false;
-export const AUTO_SCAN_DEFAULT_DAILY_COUNT = 10;
-
-export interface AutoScanSettings {
-  enabled: boolean;
-  dailyCount: number;
-}
+import {
+  AUTO_SCAN_ENABLED_KEY,
+  AUTO_SCAN_DAILY_COUNT_KEY,
+  readAutoScanSettings,
+} from "@/lib/auto-scan-settings";
 
 const bodySchema = z.object({
   enabled: z.boolean().optional(),
   dailyCount: z.number().int().min(1).max(200).optional(),
 });
 
-async function readSettings(): Promise<AutoScanSettings> {
-  const rows = await db
-    .select({ key: appSetting.key, value: appSetting.value })
-    .from(appSetting)
-    .where(inArray(appSetting.key, [AUTO_SCAN_ENABLED_KEY, AUTO_SCAN_DAILY_COUNT_KEY]));
-
-  const map = new Map(rows.map((r) => [r.key, r.value]));
-  const enabledVal = map.get(AUTO_SCAN_ENABLED_KEY);
-  const countVal = map.get(AUTO_SCAN_DAILY_COUNT_KEY);
-
-  return {
-    enabled: enabledVal !== undefined ? enabledVal === "true" : AUTO_SCAN_DEFAULT_ENABLED,
-    dailyCount:
-      countVal !== undefined
-        ? Math.max(1, parseInt(countVal, 10) || AUTO_SCAN_DEFAULT_DAILY_COUNT)
-        : AUTO_SCAN_DEFAULT_DAILY_COUNT,
-  };
-}
-
 export async function GET() {
-  const settings = await readSettings();
+  const settings = await readAutoScanSettings();
   return NextResponse.json(settings, {
     headers: { "Cache-Control": "private, no-store" },
   });
@@ -94,6 +65,6 @@ export async function POST(request: Request) {
       .onConflictDoUpdate({ target: appSetting.key, set: { value } });
   }
 
-  const settings = await readSettings();
+  const settings = await readAutoScanSettings();
   return NextResponse.json(settings);
 }

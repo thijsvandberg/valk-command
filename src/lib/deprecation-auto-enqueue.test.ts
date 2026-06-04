@@ -36,7 +36,7 @@ import {
   AUTO_SCAN_ENABLED_KEY,
   AUTO_SCAN_DAILY_COUNT_KEY,
   AUTO_SCAN_BUDGET_KEY_PREFIX,
-} from "@/app/api/cleanup/auto-scan-settings/route";
+} from "@/lib/auto-scan-settings";
 import { runAutoEnqueue, utcDateKey } from "./scheduled-tasks";
 
 // ---------------------------------------------------------------------------

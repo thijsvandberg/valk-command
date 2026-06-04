@@ -40,7 +40,7 @@ import {
   AUTO_SCAN_DAILY_COUNT_KEY,
   AUTO_SCAN_BUDGET_KEY_PREFIX,
   AUTO_SCAN_DEFAULT_DAILY_COUNT,
-} from "@/app/api/cleanup/auto-scan-settings/route";
+} from "@/lib/auto-scan-settings";
 import {
   selectDeepScanKeys,
   type SelectableTicket,

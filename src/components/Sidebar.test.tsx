@@ -72,6 +72,7 @@ describe("Sidebar", () => {
       "/pipelines",
       "/refinement",
       "/stakeholder",
+      "/cleanup",
     ]);
   });
 
