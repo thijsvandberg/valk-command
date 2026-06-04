@@ -138,11 +138,47 @@ describe("FinishSprintModal", () => {
 
     await waitFor(() => {
       expect(jira.closeSprint).toHaveBeenCalledWith("42");
-      expect(mutate).toHaveBeenCalledWith("/api/jira/sprints");
+      expect(mutate).toHaveBeenCalledWith("/api/jira/sprints", expect.any(Function), { revalidate: false });
       expect(props.showToast).toHaveBeenCalled();
       expect(props.onFinished).toHaveBeenCalled();
       expect(props.onClose).toHaveBeenCalled();
     });
+  });
+
+  it("optimistically flips the closed sprint to 'closed' in the SWR cache", async () => {
+    vi.mocked(jira.closeSprint).mockResolvedValue({ ok: true });
+    renderModal([mkTicket({ key: "VPL-1", jiraStatus: "DONE" })]);
+
+    await waitFor(() => {
+      expect(screen.getByRole("button", { name: /finish sprint/i })).not.toBeDisabled();
+    });
+    fireEvent.click(screen.getByRole("button", { name: /finish sprint/i }));
+
+    await waitFor(() => expect(mutate).toHaveBeenCalledWith("/api/jira/sprints", expect.any(Function), { revalidate: false }));
+
+    const updater = vi.mocked(mutate).mock.calls.find((c) => c[0] === "/api/jira/sprints")![1] as (
+      current: { sprints: Array<{ id: number | string; state: string }> } | undefined,
+    ) => { sprints: Array<{ id: number | string; state: string }> };
+    const next = updater({ sprints: [{ id: 42, state: "active" }, { id: 7, state: "active" }] });
+    expect(next.sprints).toEqual([{ id: 42, state: "closed" }, { id: 7, state: "active" }]);
+  });
+
+  it("shows an in-flight loading panel while the sprint is being finished", async () => {
+    // Keep the close request pending so the in-flight body state stays mounted.
+    let resolveClose: (v: { ok: boolean }) => void = () => {};
+    vi.mocked(jira.closeSprint).mockReturnValue(new Promise((res) => { resolveClose = res; }));
+    renderModal([mkTicket({ key: "VPL-1", jiraStatus: "DONE" })]);
+
+    await waitFor(() => {
+      expect(screen.getByRole("button", { name: /finish sprint/i })).not.toBeDisabled();
+    });
+    fireEvent.click(screen.getByRole("button", { name: /finish sprint/i }));
+
+    await waitFor(() => expect(screen.getByText(/Finishing sprint/i)).toBeInTheDocument());
+    // The ready confirmation must not show alongside the in-flight panel.
+    expect(screen.queryByText("Everything is done. Ready to finish.")).not.toBeInTheDocument();
+
+    resolveClose({ ok: true });
   });
 
   it("keeps the modal open and shows an error when close fails", async () => {

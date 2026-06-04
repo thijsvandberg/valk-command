@@ -153,7 +153,24 @@ export function FinishSprintModal({
     setFinishError(null);
     try {
       await jira.closeSprint(sprint.id);
-      await mutate("/api/jira/sprints");
+      // The /api/jira/sprints GET caches its payload in-process for minutes and the
+      // close route's cross-route cache.invalidate is unreliable in dev, so a plain
+      // revalidate refetches the stale "active" state. Patch the SWR cache directly
+      // (revalidate: false) so the sprint flips to "closed" immediately and the stale
+      // server payload cannot overwrite it.
+      await mutate(
+        "/api/jira/sprints",
+        (current: { sprints?: Array<{ id: number | string; state: string }> } | undefined) => {
+          if (!current?.sprints) return current;
+          return {
+            ...current,
+            sprints: current.sprints.map((s) =>
+              String(s.id) === String(sprint.id) ? { ...s, state: "closed" } : s,
+            ),
+          };
+        },
+        { revalidate: false },
+      );
       showToast(`Sprint "${sprint.name}" finished`);
       onFinished();
       onClose();
@@ -391,6 +408,15 @@ export function FinishSprintModal({
                   <p className="mt-0.5 truncate text-[11px] text-text-muted">{readySummary}</p>
                 )}
               </div>
+            </div>
+          )}
+
+          {/* In-flight: the ready/blocker panels are hidden while finishing, so without
+              this the body would be empty between the header and footer borders. */}
+          {finishing && (
+            <div className="flex items-center gap-3 rounded-lg border border-border-default bg-overlay-subtle px-3.5 py-3">
+              <Loader2 size={16} strokeWidth={1.75} className="shrink-0 animate-spin text-[var(--color-brand-400)]" />
+              <p className="text-body-sm font-medium text-text-primary">Finishing sprint&hellip;</p>
             </div>
           )}
 
