@@ -3,12 +3,16 @@
 import { useState, useRef } from "react";
 import { useOutsideClick } from "@/hooks/useOutsideClick";
 import { Search, SlidersHorizontal, X, ListFilter, Check } from "lucide-react";
-import { TicketRow } from "./TicketRow";
+import { ChildIssueRow } from "@/components/ticket-detail/ChildIssueRow";
+import { EpicBadge, SubtaskCountBadge, InRefinementBadge, SprintBadge } from "@/components/shared/IssueMetaBadges";
+import { StoryPointPicker } from "@/components/shared/StoryPointPicker";
+import { BusinessValuePicker } from "@/components/shared/BusinessValuePicker";
+import { EditStateDot } from "@/components/sprint-board/TicketTableCells";
 import { RefinementFilters } from "./RefinementFilters";
 import { useSectionVisibility } from "@/hooks/useSectionVisibility";
 import type { useRefinementFilters } from "@/hooks/useRefinementFilters";
 import type { useRefinementQueue } from "@/hooks/useRefinementQueue";
-import type { Ticket, Sprint } from "@/types/ticket";
+import type { Ticket, Sprint, JiraStatus, TicketReadiness } from "@/types/ticket";
 import type { AssignableUser } from "@/components/shared/AssigneePicker";
 import type { EpicOption } from "@/components/shared/EpicPicker";
 
@@ -29,17 +33,23 @@ interface RefinementTicketListProps {
   onSearchChange: (query: string) => void;
   filters: ReturnType<typeof useRefinementFilters>;
   queueHook: ReturnType<typeof useRefinementQueue>;
+  /** Open a ticket in the side panel. Distinct from the checkbox, which builds the queue. */
+  onSelectTicket: (key: string) => void;
   pinnedSprintIds: Set<string>;
   epicOptions: string[];
   sprintNameMap: Record<string, string>;
   ticketSessionMap: Map<string, { id: string; name: string }[]>;
   resolvedSessionId: string | null;
   sprints?: Sprint[];
+  /** Optimistic readiness overrides keyed by ticket key, layered over the persisted value. */
+  readinessMap?: Record<string, TicketReadiness | null>;
   onAssigneeChange?: (key: string, user: AssignableUser | null) => void;
   onEpicChange?: (key: string, epic: EpicOption | null) => void;
   onSprintChange?: (key: string, sprintId: string | null) => void;
   onStoryPointsChange?: (key: string, value: number | null) => void;
   onBusinessValueChange?: (key: string, value: number | null) => void;
+  onJiraStatusChange?: (key: string, status: JiraStatus) => void;
+  onReadinessChange?: (key: string, readiness: TicketReadiness | null) => void;
 }
 
 export function RefinementTicketList({
@@ -48,17 +58,21 @@ export function RefinementTicketList({
   onSearchChange,
   filters,
   queueHook,
+  onSelectTicket,
   pinnedSprintIds,
   epicOptions,
   sprintNameMap,
   ticketSessionMap,
   resolvedSessionId,
   sprints,
+  readinessMap,
   onAssigneeChange,
   onEpicChange,
   onSprintChange,
   onStoryPointsChange,
   onBusinessValueChange,
+  onJiraStatusChange,
+  onReadinessChange,
 }: RefinementTicketListProps) {
   const { visible: pillFields, toggleField: togglePillField } = useSectionVisibility("refinement-pill", ["issueType", "key", "status", "epic", "subtasks", "sp", "bv", "sprint"]);
   const [pillSettingsOpen, setPillSettingsOpen] = useState(false);
@@ -171,40 +185,102 @@ export function RefinementTicketList({
 
       {filters.filtersOpen && <RefinementFilters filters={filters} pinnedSprintIds={pinnedSprintIds} epicOptions={epicOptions} />}
 
-      {/* Ticket list */}
-      <div className="space-y-1">
-        {availableTickets.map((ticket, idx) => (
-          <TicketRow
-            key={ticket.key}
-            ticket={ticket}
-            selected={queueHook.queue.includes(ticket.key)}
-            onToggle={queueHook.toggleTicket}
-            sprintName={ticket.sprintId ? (sprintNameMap[ticket.sprintId] ?? null) : null}
-            index={idx}
-            sessionNames={ticketSessionMap.get(ticket.key)?.filter((s) => s.id !== resolvedSessionId).map((s) => s.name)}
-            isOtherSession={(ticketSessionMap.get(ticket.key)?.some((s) => s.id !== resolvedSessionId)) ?? false}
-            showIssueType={showIssueType}
-            showKey={showKey}
-            showStatus={showStatus}
-            showEpic={showEpic}
-            showSubtasks={showSubtasks}
-            showSp={showSp}
-            showBv={showBv}
-            showSprint={showSprint}
-            sprints={sprints}
-            onAssigneeChange={onAssigneeChange}
-            onEpicChange={onEpicChange}
-            onSprintChange={onSprintChange}
-            onStoryPointsChange={onStoryPointsChange}
-            onBusinessValueChange={onBusinessValueChange}
-          />
-        ))}
-        {availableTickets.length === 0 && (
-          <p className="py-8 text-center text-body-lg text-text-muted">
-            {searchQuery ? <>No tickets match &ldquo;{searchQuery}&rdquo;</> : "No tickets match the current filters."}
-          </p>
-        )}
-      </div>
+      {/* Ticket list — unified ChildIssueRow with the shared 18px metadata badges. */}
+      {availableTickets.length > 0 ? (
+        <div className="overflow-clip rounded-xl border border-border-subtle bg-[var(--color-surface-elevated)] shadow-[var(--shadow-sm)]">
+          {availableTickets.map((ticket, idx) => {
+            const sprintName = ticket.sprintId ? (sprintNameMap[ticket.sprintId] ?? null) : null;
+            const sessionNames = ticketSessionMap.get(ticket.key)?.filter((s) => s.id !== resolvedSessionId).map((s) => s.name);
+            const isOtherSession = (ticketSessionMap.get(ticket.key)?.some((s) => s.id !== resolvedSessionId)) ?? false;
+            const isChecked = queueHook.queue.includes(ticket.key);
+            const readiness = (readinessMap?.[ticket.key] ?? ticket.readiness) ?? null;
+            const metadata = (
+              <div className="flex shrink-0 items-center gap-1.5">
+                {ticket.editState === "draft" && <EditStateDot state="draft" />}
+                {ticket.editState === "local_edits" && <EditStateDot state="local_edits" />}
+                {ticket.editState === "conflict" && <EditStateDot state="conflict" />}
+                {showEpic && ticket.epic && <EpicBadge epic={ticket.epic} />}
+                {showSubtasks && <SubtaskCountBadge open={ticket.openSubtaskCount ?? 0} total={ticket.totalSubtaskCount ?? 0} />}
+                <InRefinementBadge sessionNames={sessionNames} />
+                {isChecked && isOtherSession && (
+                  <span className="shrink-0 text-[11px] leading-none text-amber-400/70">In other session</span>
+                )}
+                {showSprint && <SprintBadge name={sprintName} />}
+                {showBv && ticket.businessValue != null && (
+                  <span onClick={(e) => e.stopPropagation()} onPointerDown={(e) => e.stopPropagation()}>
+                    <BusinessValuePicker
+                      value={ticket.businessValue}
+                      onChange={(v) => onBusinessValueChange?.(ticket.key, v)}
+                      dense
+                      showMetricIcon
+                      richTooltip
+                    />
+                  </span>
+                )}
+                {showSp && ticket.storyPoints != null && (
+                  <span onClick={(e) => e.stopPropagation()} onPointerDown={(e) => e.stopPropagation()}>
+                    <StoryPointPicker
+                      value={ticket.storyPoints}
+                      onChange={(v) => onStoryPointsChange?.(ticket.key, v)}
+                      dense
+                      showMetricIcon
+                      richTooltip
+                    />
+                  </span>
+                )}
+              </div>
+            );
+            return (
+              <ChildIssueRow
+                key={ticket.key}
+                item={ticket}
+                isLast={idx === availableTickets.length - 1}
+                spacious
+                inlineCheckbox
+                showTypeIcon={showIssueType}
+                showKey={showKey}
+                showStatus={showStatus}
+                readiness={readiness}
+                onJiraStatusChange={onJiraStatusChange ? (s) => onJiraStatusChange(ticket.key, s) : undefined}
+                onReadinessChange={onReadinessChange ? (r) => onReadinessChange(ticket.key, r) : undefined}
+                selectable
+                isChecked={isChecked}
+                someChecked={queueHook.queue.length > 0}
+                onCheckboxClick={(e) => queueHook.toggleTicket(ticket.key, idx, e.shiftKey)}
+                onSelect={(key) => onSelectTicket(key)}
+                sprints={sprints}
+                onAssigneeChange={onAssigneeChange ? (u) => onAssigneeChange(ticket.key, u) : undefined}
+                onEpicChange={onEpicChange ? (epic) => onEpicChange(ticket.key, epic) : undefined}
+                onSprintChange={onSprintChange ? (s) => onSprintChange(ticket.key, s) : undefined}
+                onStoryPointsChange={onStoryPointsChange ? (v) => onStoryPointsChange(ticket.key, v) : undefined}
+                onBusinessValueChange={onBusinessValueChange ? (v) => onBusinessValueChange(ticket.key, v) : undefined}
+                hoverData={{
+                  title: ticket.title,
+                  storyPoints: ticket.storyPoints,
+                  businessValue: ticket.businessValue,
+                  sprintId: ticket.sprintId ?? null,
+                  sprintName,
+                  epicKey: ticket.epicKey,
+                  epic: ticket.epic,
+                  assignee: ticket.assignee ?? null,
+                  reporter: ticket.reporter ?? null,
+                  openSubtaskCount: ticket.openSubtaskCount ?? 0,
+                  totalSubtaskCount: ticket.totalSubtaskCount ?? 0,
+                  flagged: ticket.flagged,
+                  readiness,
+                  qualityScore: ticket.qualityScore,
+                  notes: ticket.notes || null,
+                }}
+                metadataSlot={metadata}
+              />
+            );
+          })}
+        </div>
+      ) : (
+        <p className="py-8 text-center text-body-lg text-text-muted">
+          {searchQuery ? <>No tickets match &ldquo;{searchQuery}&rdquo;</> : "No tickets match the current filters."}
+        </p>
+      )}
     </div>
   );
 }

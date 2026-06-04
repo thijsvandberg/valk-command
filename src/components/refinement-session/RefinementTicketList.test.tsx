@@ -14,11 +14,11 @@ vi.mock("@/hooks/useSectionVisibility", () => ({
   }),
 }));
 
-vi.mock("./TicketRow", () => ({
-  TicketRow: ({ ticket, selected, onToggle }: { ticket: Ticket; selected: boolean; onToggle: (key: string) => void }) => (
-    <div data-testid={`ticket-row-${ticket.key}`} data-selected={selected}>
-      <span>{ticket.title}</span>
-      <button onClick={() => onToggle(ticket.key)}>Toggle {ticket.key}</button>
+vi.mock("@/components/ticket-detail/ChildIssueRow", () => ({
+  ChildIssueRow: ({ item, isChecked, onCheckboxClick, onSelect }: { item: Ticket; isChecked: boolean; onCheckboxClick: (e: { shiftKey: boolean }) => void; onSelect: (key: string, e: { metaKey: boolean; ctrlKey: boolean }) => void }) => (
+    <div data-testid={`ticket-row-${item.key}`} data-selected={isChecked}>
+      <button onClick={() => onSelect?.(item.key, { metaKey: false, ctrlKey: false })}>{item.title}</button>
+      <button onClick={() => onCheckboxClick?.({ shiftKey: false })}>Toggle {item.key}</button>
     </div>
   ),
 }));
@@ -90,6 +90,7 @@ const defaultProps = {
   onSearchChange: vi.fn(),
   filters: makeFilters() as AnyFilters,
   queueHook: makeQueueHook() as AnyQueueHook,
+  onSelectTicket: vi.fn(),
   pinnedSprintIds: new Set<string>(),
   epicOptions: [] as string[],
   sprintNameMap: {} as Record<string, string>,
@@ -178,7 +179,7 @@ describe("RefinementTicketList", () => {
     expect(screen.getByTestId("ticket-row-VPL-1")).toHaveAttribute("data-selected", "true");
   });
 
-  it("calls toggleTicket when a ticket row toggle is clicked", () => {
+  it("calls toggleTicket when the checkbox is clicked (queue control unchanged)", () => {
     const toggleTicket = vi.fn();
     const tickets = [makeTicket("VPL-1", "Ticket One")];
     const queueHook = makeQueueHook({ queue: [], toggleTicket });
@@ -190,7 +191,25 @@ describe("RefinementTicketList", () => {
       />,
     );
     fireEvent.click(screen.getByText("Toggle VPL-1"));
-    expect(toggleTicket).toHaveBeenCalledWith("VPL-1");
+    expect(toggleTicket).toHaveBeenCalledWith("VPL-1", 0, false);
+  });
+
+  it("opens the side panel (onSelectTicket) on row click without toggling the queue", () => {
+    const toggleTicket = vi.fn();
+    const onSelectTicket = vi.fn();
+    const tickets = [makeTicket("VPL-1", "Ticket One")];
+    const queueHook = makeQueueHook({ queue: [], toggleTicket });
+    render(
+      <RefinementTicketList
+        {...defaultProps}
+        availableTickets={tickets}
+        queueHook={queueHook as AnyQueueHook}
+        onSelectTicket={onSelectTicket}
+      />,
+    );
+    fireEvent.click(screen.getByText("Ticket One"));
+    expect(onSelectTicket).toHaveBeenCalledWith("VPL-1");
+    expect(toggleTicket).not.toHaveBeenCalled();
   });
 
   it("shows the ready-to-refine badge when readyCount > 0", () => {

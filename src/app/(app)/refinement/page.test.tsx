@@ -27,6 +27,7 @@ vi.mock("@/hooks/useSprintBoard", () => ({
       { slotIndex: 0, sprintId: "1", sprintName: "Sprint 10" },
     ],
   }),
+  useTicketDetail: () => ({ data: null, isLoading: false, mutate: vi.fn() }),
   useTickets: () => ({
     mutate: vi.fn().mockResolvedValue(undefined),
     isValidating: false,
