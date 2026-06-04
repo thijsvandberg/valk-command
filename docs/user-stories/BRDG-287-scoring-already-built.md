@@ -29,12 +29,37 @@ that already look suspicious from the cheaper topics.
 - Throttle: stops at the daily cap and logs the remainder.
 - Result parsed into score + evidence + rationale (mock the agent).
 
+## Implementation Plan
+
+1. **Mark `alreadyBuilt` as `live: true` in `cleanup-types.ts`** — the topic key already exists; flip the flag so the UI column lights up.
+
+2. **Create `src/lib/topics/already-built-topic.ts`** — the scorer:
+   - Define `ALREADY_BUILT_GATE_THRESHOLD = 0.4` (sum of `staleness + replaced + duplicate` from persisted `scanScores` read inside `run()`). If the combined cheaper-topic score is below this, return `null` (no agent call).
+   - Define `ALREADY_BUILT_DAILY_CAP = 20` (constant).
+   - Throttle: on each invocation, read `app_setting` key `already-built-scan:<YYYY-MM-DD>` (today's date UTC). Parse the integer. If >= cap, log a warning (logger.warn) with the skipped ticket key and return `null`. Otherwise increment and upsert.
+   - Agent call: `runAgentTaskToCompletion` with `skill: "codebase-research"`, args containing a focused prompt asking whether the described feature is already implemented in the codebase or covered by a Done ticket. Parse the result into `score`, `evidence` (implementing file/area or Done-ticket reference), and `rationale: "Appears already implemented"`.
+   - Injectable `RunAgentFn` + injectable `ReadSettingFn` / `WriteSettingFn` for test isolation.
+   - Register: `registerTopicScorer(ALREADY_BUILT_TOPIC)`.
+
+3. **Register in `src/lib/topics/index.ts`** — add `import "@/lib/topics/already-built-topic";`.
+
+4. **Create `src/lib/topics/already-built-topic.test.ts`** — co-located tests:
+   - Gate test: below-threshold ticket does NOT call agent (assert mock not called).
+   - Throttle test: after cap calls succeed, next one abstains and logs.
+   - Throttle reset test: different date key is fresh (count 0).
+   - Parse test: success path produces score + evidence + rationale.
+   - Degraded test: agent failure returns null without throwing.
+
+5. **Update `docs/architecture/` relevant file** (Jira Sync or a new deprecation-topics doc) to reference the new topic and its gate/throttle.
+
+6. **Run lint + typecheck + tests; commit.**
+
 ## Checklist
 
-- [ ] Gate on a "suspicious" combined-score threshold from cheaper topics
-- [ ] Invoke codebase-research; capture implemented-in evidence
-- [ ] Hard daily throttle with transparent coverage logging (no silent caps)
-- [ ] Write `scanScores.alreadyBuilt`; add rationale line; contribute to overall
-- [ ] Tests (gate, throttle, parse)
-- [ ] Run `npm run lint`, `npm run typecheck`, `npm run test`, `npm run build`
-- [ ] Update docs and reference the epic
+- [x] Gate on a "suspicious" combined-score threshold from cheaper topics
+- [x] Invoke codebase-research; capture implemented-in evidence
+- [x] Hard daily throttle with transparent coverage logging (no silent caps)
+- [x] Write `scanScores.alreadyBuilt`; add rationale line; contribute to overall
+- [x] Tests (gate, throttle, parse)
+- [x] Run `npm run lint`, `npm run typecheck`, `npm run test`, `npm run build`
+- [x] Update docs and reference the epic

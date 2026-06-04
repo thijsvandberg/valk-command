@@ -144,6 +144,25 @@ When the agent returns review results, they are wrapped in `<json-output>` tags.
 
 Queries all configured repositories in parallel. Auth via Bitbucket app password (Basic auth). Returns empty payload when not configured.
 
+## Backlog Deprecation Review — Server-Side Skill Calls
+
+The deep-scan topic scorers (BRDG-285..287, `src/lib/topics/`) call workspace skills **server-side** using `runAgentTaskToCompletion()` (`src/lib/agent-task-result.ts`). This helper submits a `POST /api/tasks`, polls `GET /api/tasks/:id` until completion, and returns the final text output. It never throws; callers degrade gracefully on failure.
+
+| Scorer | Skill | BRDG | Notes |
+|--------|-------|------|-------|
+| `replaced-area-topic.ts` | `ask` | BRDG-285 | Confirms whether a keyword match is genuine |
+| `superseded-topic.ts` | `find-related` | BRDG-286 | Finds duplicate/superseded tickets |
+| `already-built-topic.ts` | `codebase-research` | BRDG-287 | Checks whether the feature is already implemented |
+
+### already-built topic (BRDG-287)
+
+The `codebase-research` skill is the most expensive call in the scorer pipeline. Two independent controls limit its use:
+
+- **Gate**: the scorer reads the already-persisted `scanScores` for the ticket (from prior Tier-1 or Tier-2 runs) and sums the `staleness + replaced + duplicate` scores. If the sum is below `ALREADY_BUILT_GATE_THRESHOLD` (0.4) the call is skipped and the scorer abstains (returns `null`).
+- **Hard throttle**: at most `ALREADY_BUILT_DAILY_CAP` (20) calls per UTC calendar day. The running count is stored in `app_setting` under the key `already-built-scan:<YYYY-MM-DD>`. When the cap is hit the scorer logs a warning with the skipped ticket key (via `logger.warn`) so coverage is transparent. Skipped tickets retain no `alreadyBuilt` entry in `scanScores`, so they are eligible for retry on a future deep-scan batch.
+
+The prompt asks the agent three structured questions: `IMPLEMENTED: YES/NO`, `IMPLEMENTED_IN: <file or ticket>`, `RATIONALE: <sentence>`. The response is parsed by `parseAlreadyBuiltResult()` in the scorer file.
+
 ## Investigate Skill and Confluence Integration
 
 The `investigate` skill (v2.0.0) in VRW searches both code repos and Confluence documentation.

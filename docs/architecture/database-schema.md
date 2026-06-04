@@ -351,8 +351,10 @@ Key-value store for application configuration.
 
 | Column | Type | Notes |
 |--------|------|-------|
-| `key` | text PK | e.g. `jira_sync_watermark`, `scheduler:*:last_run` |
+| `key` | text PK | e.g. `jira_sync_watermark`, `scheduler:*:last_run`, `already-built-scan:<YYYY-MM-DD>` |
 | `value` | text | Serialized value |
+
+The "already built" deep-scan topic (BRDG-287, `src/lib/topics/already-built-topic.ts`) uses the key pattern `already-built-scan:<YYYY-MM-DD>` (UTC date) to track the daily count of codebase-research agent calls. The value is the integer count as a string. A new key is created each day automatically; the prior day's key is left in place (no cleanup needed — it simply stops being incremented). Skipped tickets (cap hit) are logged via `logger.warn` and left with no `alreadyBuilt` entry in `scanScores`, making them eligible for retry on a future deep-scan batch.
 
 #### `deprecation_scan_queue`
 
