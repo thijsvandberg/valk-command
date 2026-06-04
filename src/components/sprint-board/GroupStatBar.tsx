@@ -94,6 +94,11 @@ export const GroupStatBar = memo(function GroupStatBar({
   const doneCount = tickets.filter((t) => t.jiraStatus === "DONE").length;
   const noPointsCount = tickets.filter((t) => t.storyPoints == null && t.jiraStatus !== "DEPRECATED" && t.type !== "spike").length;
   const deprecatedWithSp = tickets.filter((t) => t.jiraStatus === "DEPRECATED" && t.storyPoints != null && t.storyPoints > 0).length;
+  // A story that is closed (Done/Deprecated) while subtasks remain open is a
+  // hygiene gap: the parent reads as finished but work is still outstanding.
+  const closedWithOpenSubtasks = tickets.filter(
+    (t) => (t.jiraStatus === "DONE" || t.jiraStatus === "DEPRECATED") && (t.openSubtaskCount ?? 0) > 0,
+  ).length;
   // When every ticket shares the same status, the per-status pill just echoes the "X items"
   // count, so suppress the breakdown to cut noise (e.g. an all-TO DO sprint).
   const showStatusBreakdown = showStatusCounts && new Set(tickets.map((t) => t.jiraStatus)).size > 1;
@@ -112,6 +117,9 @@ export const GroupStatBar = memo(function GroupStatBar({
   }
   if (deprecatedWithSp > 0) {
     warningParts.push(`${deprecatedWithSp} deprecated ${deprecatedWithSp === 1 ? "ticket" : "tickets"} still with story points`);
+  }
+  if (closedWithOpenSubtasks > 0) {
+    warningParts.push(`${closedWithOpenSubtasks} ${closedWithOpenSubtasks === 1 ? "story" : "stories"} closed with open subtasks`);
   }
   const warningLabel = warningParts.join(" · ");
   // The warning is clickable whenever it shows anything (unpointed and/or

@@ -75,6 +75,33 @@ describe("GroupStatBar", () => {
     expect(screen.queryByLabelText(/without a story point estimate/)).toBeNull();
   });
 
+  it("warns about closed stories that still have open subtasks", () => {
+    const tickets = [
+      makeTicket({ key: "VPL-1", jiraStatus: "DONE", storyPoints: 3, openSubtaskCount: 1, totalSubtaskCount: 4 }),
+      makeTicket({ key: "VPL-2", jiraStatus: "DEPRECATED", storyPoints: 2, openSubtaskCount: 2, totalSubtaskCount: 3 }),
+      makeTicket({ key: "VPL-3", jiraStatus: "DONE", storyPoints: 5, openSubtaskCount: 0, totalSubtaskCount: 2 }),
+    ];
+    render(<GroupStatBar tickets={tickets} />);
+    expect(screen.getByLabelText(/2 stories closed with open subtasks/)).toBeTruthy();
+  });
+
+  it("uses the singular form for one closed story with open subtasks", () => {
+    const tickets = [
+      makeTicket({ key: "VPL-1", jiraStatus: "DONE", storyPoints: 3, openSubtaskCount: 1, totalSubtaskCount: 4 }),
+    ];
+    render(<GroupStatBar tickets={tickets} />);
+    expect(screen.getByLabelText(/1 story closed with open subtasks/)).toBeTruthy();
+  });
+
+  it("does not warn when closed stories have no open subtasks", () => {
+    const tickets = [
+      makeTicket({ key: "VPL-1", jiraStatus: "DONE", storyPoints: 3, openSubtaskCount: 0, totalSubtaskCount: 3 }),
+      makeTicket({ key: "VPL-2", jiraStatus: "IN PROGRESS", storyPoints: 2, openSubtaskCount: 2, totalSubtaskCount: 4 }),
+    ];
+    render(<GroupStatBar tickets={tickets} />);
+    expect(screen.queryByLabelText(/closed with open subtasks/)).toBeNull();
+  });
+
   it("makes the warning clickable for deprecated-with-points even when not active", () => {
     const onFilterChange = vi.fn();
     const tickets = [
