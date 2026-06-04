@@ -115,6 +115,42 @@ export const ticketMetadata = sqliteTable("ticket_metadata", {
   dispositionUntil: text("disposition_until"),
 });
 
+// Backlog Deprecation Review (BRDG-284): persisted Tier-2 deep-dive queue.
+// Survives restarts so the background runner can resume mid-batch. WHY a real
+// table (not the in-memory revalidation queue): the deep dive is expensive and
+// selective, so its backlog must be durable and observable across process
+// restarts and deploys. Status lifecycle: pending -> running -> done | error.
+export const deprecationScanQueue = sqliteTable("deprecation_scan_queue", {
+  id: text("id").primaryKey(),
+  jiraKey: text("jira_key").notNull(),
+  // pending | running | done | error.
+  status: text("status", {
+    enum: ["pending", "running", "done", "error"],
+  }).notNull().default("pending"),
+  // How the row was enqueued: a selection method or "manual" hand-pick. Purely
+  // informational for the activity log / future auto-mode (BRDG-290).
+  source: text("source").notNull().default("manual"),
+  enqueuedAt: text("enqueued_at").notNull().default(sql`(datetime('now'))`),
+  startedAt: text("started_at"),
+  finishedAt: text("finished_at"),
+  error: text("error"),
+  // Mirrors jiraKey while the row is active (pending/running) and is NULL once
+  // the row reaches done/error. A unique index over this nullable column is how
+  // SQLite gives us "at most one active row per ticket" while still allowing
+  // historical completed rows to accumulate (NULLs are not deduplicated).
+  activeKey: text("active_key"),
+}, (table) => [
+  index("deprecation_scan_queue_status_idx").on(table.status),
+  // Enforces idempotent enqueue: at most one ACTIVE (pending/running) row per
+  // ticket. Completed rows (done/error) get NULL here so re-queuing later is
+  // allowed once a deep scan has finished. The active flag is set to the
+  // jiraKey while active and cleared to NULL on completion.
+  uniqueIndex("deprecation_scan_queue_active_idx").on(table.activeKey),
+]);
+
+export type DeprecationScanQueueRow = typeof deprecationScanQueue.$inferSelect;
+export type NewDeprecationScanQueueRow = typeof deprecationScanQueue.$inferInsert;
+
 // Bridge-owned per-epic metadata, keyed by epicKey. Shared store for PO
 // metadata that Jira does not hold (team assignment now; epic color later).
 // No FK to ticket.jiraKey: an epic may not have a synced epic row yet, and the
