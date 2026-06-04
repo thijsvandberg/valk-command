@@ -85,6 +85,7 @@ export async function GET(request: Request) {
       epic: ticket.epic,
       epicKey: ticket.epicKey,
       storyPoints: ticket.storyPoints,
+      sprintName: ticket.sprintName,
       assignee: ticket.assignee,
       reporter: ticket.reporter,
       jiraUpdatedAt: ticket.jiraUpdatedAt,
@@ -129,6 +130,20 @@ export async function GET(request: Request) {
     subtaskCounts.set(s.ticketKey, entry);
   }
 
+  // Child-story count per epic in one grouped query: how many live (not removed
+  // from Jira) tickets are parented to each epic key. This reflects the epic's
+  // full scope, not just its eligible-backlog children, so the "N stories" badge
+  // reads the epic's real size. Keyed by epicKey so the per-row lookup is O(1).
+  const epicChildRows = await db
+    .select({ epicKey: ticket.epicKey, n: sql<number>`count(*)` })
+    .from(ticket)
+    .where(and(isNull(ticket.removedFromJiraAt), sql`${ticket.epicKey} is not null and ${ticket.epicKey} <> ''`))
+    .groupBy(ticket.epicKey);
+  const epicChildCounts = new Map<string, number>();
+  for (const e of epicChildRows) {
+    if (e.epicKey) epicChildCounts.set(e.epicKey, e.n);
+  }
+
   let rows: CleanupRow[] = eligible.map((r) => {
     const counts = subtaskCounts.get(r.key) ?? { open: 0, total: 0 };
     return {
@@ -139,8 +154,12 @@ export async function GET(request: Request) {
       epic: r.epic ?? null,
       epicKey: r.epicKey ?? null,
       storyPoints: r.storyPoints ?? null,
+      // Empty sprint string normalises to null so the client reads it as "Backlog".
+      sprintName: r.sprintName && r.sprintName.length > 0 ? r.sprintName : null,
       openSubtaskCount: counts.open,
       totalSubtaskCount: counts.total,
+      // Only epics carry a child-story count; everything else is 0.
+      epicChildCount: r.type && r.type.toLowerCase() === "epic" ? (epicChildCounts.get(r.key) ?? 0) : 0,
       assignee: toPerson(r.assignee),
       reporter: toPerson(r.reporter),
       jiraUpdatedAt: r.jiraUpdatedAt ?? null,

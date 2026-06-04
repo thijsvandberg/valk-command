@@ -253,6 +253,35 @@ describe("GET /api/cleanup", () => {
     expect(data.facets.reporters).toEqual(["Carol"]); // deduped
   });
 
+  it("reports a sprint name as null (backlog) for eligible rows", async () => {
+    // Only backlog rows (empty sprint) are eligible today, so sprintName reads
+    // null and the client renders a "Backlog" indicator.
+    seed("BT-BL", { sprintName: "" });
+    const row = (await (await call()).json()).rows[0];
+    expect(row.sprintName).toBeNull();
+  });
+
+  it("counts child stories per epic and reports 0 for non-epics (BRDG-298)", async () => {
+    // An epic with three live children parented by epicKey.
+    seed("EPIC-1", { type: "epic" });
+    seed("CH-1", { type: "story", epicKey: "EPIC-1" });
+    seed("CH-2", { type: "task", epicKey: "EPIC-1" });
+    seed("CH-3", { type: "bug", epicKey: "EPIC-1" });
+    // A removed child must not be counted.
+    seed("CH-GONE", { type: "story", epicKey: "EPIC-1", removedFromJiraAt: "2026-01-01T00:00:00Z" });
+    // A standalone story (no epic) reports 0.
+    seed("LONE", { type: "story" });
+
+    const rows = (await (await call("?sort=key")).json()).rows as Array<{ key: string; epicChildCount: number; type: string }>;
+    const epic = rows.find((r) => r.key === "EPIC-1");
+    const child = rows.find((r) => r.key === "CH-1");
+    const lone = rows.find((r) => r.key === "LONE");
+    expect(epic?.epicChildCount).toBe(3);
+    // Non-epics never carry a child-story count.
+    expect(child?.epicChildCount).toBe(0);
+    expect(lone?.epicChildCount).toBe(0);
+  });
+
   it("exposes revivalScore and revivalRationale per row (BRDG-298)", async () => {
     seed("BT-REV", {
       revivalScore: 0.82,

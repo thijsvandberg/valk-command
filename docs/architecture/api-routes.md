@@ -254,8 +254,10 @@ Response shape (`CleanupResponse` in `src/lib/cleanup-types.ts`):
     epic: string | null,              // epic display name
     epicKey: string | null,
     storyPoints: number | null,
+    sprintName: string | null,        // sprint placement; null = backlog (scan eligibility is backlog-only today, so null) (BRDG-298)
     openSubtaskCount: number,         // open (non-finished) / total subtask counts
     totalSubtaskCount: number,
+    epicChildCount: number,           // for epics: count of live tickets parented by epicKey; 0 for non-epics (BRDG-298)
     assignee: { name, initials, color } | null,  // person with precomputed initials + colour for the client
     reporter: { name, initials, color } | null,
     jiraUpdatedAt: string | null,     // last Jira activity; drives the last-activity filter buckets
