@@ -20,6 +20,7 @@ export function StoryPointPicker({
   richTooltip = false,
   revealWhenEmpty = false,
   revealGroup = "default",
+  dense = false,
   onOpenChange,
 }: {
   value: number | null;
@@ -27,6 +28,8 @@ export function StoryPointPicker({
   align?: "left" | "right";
   subtle?: boolean;
   size?: "sm" | "lg";
+  // Compact 18px trigger so the editable picker lines up with the uniform list badges.
+  dense?: boolean;
   // Show a leading gauge icon (effort/complexity) so SP is recognizable
   // without the column header. Used in the sprint-board table (BRDG-240).
   showMetricIcon?: boolean;
@@ -138,7 +141,7 @@ export function StoryPointPicker({
           onMouseLeave={handleMouseLeave}
           title={richTooltip ? undefined : titleText}
           aria-label={titleText}
-          className={`flex h-6 items-center rounded-md cursor-pointer transition-colors duration-150 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)] active:opacity-60 text-body-sm font-medium tabular-nums ${showMetricIcon ? "gap-1 px-1.5 min-w-[2.25rem] justify-start" : "min-w-[24px] justify-center"}`}
+          className={`flex items-center rounded-md cursor-pointer transition-colors duration-150 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)] active:opacity-60 font-medium tabular-nums ${dense ? "h-5 text-[11px] leading-none" : "h-6 text-body-sm"} ${showMetricIcon ? "gap-1 px-1.5 min-w-[2.25rem] justify-start" : "min-w-[24px] justify-center"}`}
           style={{
             // SP has no value color in the dense table (subtle): neutral grey.
             // Tinted contexts (non-subtle) get the green effort ramp.
@@ -152,7 +155,7 @@ export function StoryPointPicker({
             // share one width and the column reads as a calm, aligned SP gutter.
             // The icon keeps the same size and color whether or not a value is set.
             <>
-              <Gauge size={12} strokeWidth={2} aria-hidden />
+              <Gauge size={dense ? 11 : 12} strokeWidth={2} aria-hidden />
               {displayLabel != null && displayLabel}
             </>
           ) : displayLabel != null ? (

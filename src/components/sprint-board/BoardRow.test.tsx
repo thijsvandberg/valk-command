@@ -19,6 +19,10 @@ vi.mock("lucide-react", () => {
   };
 });
 
+vi.mock("@/components/shared/IssueMetaBadges", () => ({
+  EpicBadge: ({ epic }: { epic: string }) => <span data-testid="epic-badge">{epic}</span>,
+}));
+
 vi.mock("@dnd-kit/sortable", () => ({
   useSortable: () => ({ attributes: {}, listeners: {}, setNodeRef: vi.fn(), transform: null, transition: null, isDragging: false }),
 }));

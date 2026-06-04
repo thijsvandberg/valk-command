@@ -5,7 +5,8 @@ import { useOutsideClick } from "@/hooks/useOutsideClick";
 import type { Ticket, POStatus, TicketReadiness, IssueType, JiraStatus, Sprint } from "@/types/ticket";
 import { AssigneePicker, type AssignableUser } from "@/components/shared/AssigneePicker";
 import type { EpicOption } from "@/components/shared/EpicPicker";
-import { getEpicColor, JIRA_STATUS_COLORS } from "@/types/ticket";
+import { JIRA_STATUS_COLORS } from "@/types/ticket";
+import { EpicBadge } from "@/components/shared/IssueMetaBadges";
 import type { ColumnId, ColumnPreset } from "@/components/sprint-board/FilterBar";
 import { COLUMNS, COLUMN_PRESETS } from "@/components/sprint-board/FilterBar";
 import { IssueTypeIcon } from "@/components/shared/IssueTypeIcon";
@@ -178,7 +179,6 @@ export const TicketRow = memo(forwardRef<HTMLTableRowElement, TicketRowBaseProps
   );
 
   const isRemoved = Boolean(ticket.removedFromJiraAt);
-  const epicColor = ticket.epic ? getEpicColor(ticket.epic) ?? null : null;
   const jiraColor = JIRA_STATUS_COLORS[ticket.jiraStatus] ?? { bg: "var(--color-status-neutral-subtle)", text: "var(--color-status-neutral)" };
 
   const prefetchTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -431,14 +431,7 @@ export const TicketRow = memo(forwardRef<HTMLTableRowElement, TicketRowBaseProps
       case "epic":
         return (
           <td key={id} className="py-2 pr-3 overflow-hidden">
-            {epicColor && (
-              <span
-                className="inline-flex items-center max-w-full truncate whitespace-nowrap rounded-[3px] border-l-2 pl-1.5 pr-2 py-0.5 text-[10.5px] tracking-wide font-medium"
-                style={{ backgroundColor: epicColor.bg, color: epicColor.text, borderLeftColor: epicColor.text }}
-              >
-                {ticket.epic}
-              </span>
-            )}
+            {ticket.epic && <EpicBadge epic={ticket.epic} className="max-w-full" />}
           </td>
         );
       case "jiraStatus":

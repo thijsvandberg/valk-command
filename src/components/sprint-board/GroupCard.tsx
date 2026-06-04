@@ -16,23 +16,56 @@ interface GroupCardProps {
   header: ReactNode;
   /** Optional content pinned to the right of the header (state chip, date range). */
   headerExtras?: ReactNode;
+  /**
+   * Optional action (e.g. a "+" create button) layered on top of the header's
+   * right edge. Unlike `headerExtras` it reserves NO space: hidden until the row
+   * is hovered/focused (or `floatingActionVisible` is set), it fades in over the
+   * existing header content behind a short gradient that masks whatever sits
+   * beneath it so nothing reads through the icon.
+   */
+  floatingAction?: ReactNode;
+  /** Forces the floating action visible regardless of hover (e.g. its composer is open). */
+  floatingActionVisible?: boolean;
   isCollapsed: boolean;
   onToggleCollapse: () => void;
   /** Card body (rows / table), rendered only while expanded. */
   children: ReactNode;
 }
 
-export function GroupCard({ header, headerExtras, isCollapsed, onToggleCollapse, children }: GroupCardProps) {
+export function GroupCard({
+  header,
+  headerExtras,
+  floatingAction,
+  floatingActionVisible = false,
+  isCollapsed,
+  onToggleCollapse,
+  children,
+}: GroupCardProps) {
   return (
     <div className={GROUP_CARD_CLASS}>
       <div
         onClick={onToggleCollapse}
-        className={`group/grouprow flex cursor-pointer select-none items-center gap-3 bg-[var(--color-surface-chrome)]/30 px-3 py-2.5 hover:bg-[var(--color-surface-chrome)]/50 [transition:background-color_.12s_ease] ${
+        className={`group/grouprow @container relative flex cursor-pointer select-none items-center gap-3 bg-[var(--color-surface-chrome)]/30 px-3 py-[9px] hover:bg-[var(--color-surface-chrome)]/50 [transition:background-color_.12s_ease] ${
           isCollapsed ? "rounded-xl" : "rounded-t-xl border-b border-border-subtle"
         }`}
       >
         <div className="min-w-0 flex-1">{header}</div>
         {headerExtras && <div className="flex shrink-0 items-center gap-3">{headerExtras}</div>}
+        {floatingAction && (
+          <div
+            // Matches the header's hover background so the gradient masks the
+            // content beneath the action; fades in with the action itself.
+            className={`pointer-events-none absolute inset-y-0 right-0 flex items-center justify-end pl-12 pr-3 [transition:opacity_.12s_ease] group-hover/grouprow:opacity-100 group-focus-within/grouprow:opacity-100 ${
+              isCollapsed ? "rounded-r-xl" : "rounded-tr-xl"
+            } ${floatingActionVisible ? "opacity-100" : "opacity-0"}`}
+            style={{
+              background:
+                "linear-gradient(to left, color-mix(in srgb, var(--color-surface-chrome) 50%, var(--color-surface-elevated)) 60%, transparent 100%)",
+            }}
+          >
+            <div className="pointer-events-auto">{floatingAction}</div>
+          </div>
+        )}
       </div>
       {!isCollapsed && children}
     </div>

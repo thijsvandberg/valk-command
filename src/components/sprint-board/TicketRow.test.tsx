@@ -16,6 +16,7 @@ vi.mock("@/hooks/useOutsideClick", () => ({ useOutsideClick: vi.fn() }));
 vi.mock("@dnd-kit/sortable", () => ({ useSortable: () => ({ attributes: {}, listeners: {}, setNodeRef: vi.fn(), transform: null, transition: null, isDragging: false }) }));
 vi.mock("@dnd-kit/utilities", () => ({ CSS: { Transform: { toString: () => "" } } }));
 vi.mock("@/components/shared/IssueTypeIcon", () => ({ IssueTypeIcon: () => <span data-testid="type-icon" /> }));
+vi.mock("@/components/shared/IssueMetaBadges", () => ({ EpicBadge: ({ epic }: { epic: string }) => <span data-testid="epic-badge">{epic}</span> }));
 vi.mock("@/components/shared/Avatar", () => ({ Avatar: () => <span data-testid="avatar" /> }));
 vi.mock("@/components/sprint-board/TicketTableCells", () => ({
   EditStateDot: () => <span data-testid="edit-dot" />,

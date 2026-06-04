@@ -4,7 +4,6 @@ import { useCallback, useRef, useState, type ReactNode } from "react";
 import type { EpicChild, Subtask, Sprint, Ticket, JiraStatus, TicketReadiness } from "@/types/ticket";
 import { GroupStatBar } from "@/components/sprint-board/GroupStatBar";
 import { GroupCard } from "@/components/sprint-board/GroupCard";
-import { CursorMenu, TicketActionMenuContent } from "@/components/sprint-board/ticket-action-menu";
 import { ChildIssueRow } from "./ChildIssueRow";
 import { ChildIssueComposer } from "./ChildIssueComposer";
 import { groupChildrenBySprint, type ChildGroup } from "@/lib/epic-children-grouping";
@@ -42,10 +41,10 @@ interface EpicChildrenBySprintProps {
   onJiraStatusChange: (childKey: string, status: JiraStatus) => void;
   onReadinessChange: (childKey: string, readiness: TicketReadiness | null) => void;
   onSelect?: (key: string) => void;
-  /** Move a child to a sprint (id or "__backlog__"). Enables drag + context menu. */
+  /** Move a child to a sprint (id or "__backlog__"). Enables drag. */
   onMoveChild?: (childKey: string, targetSprintId: string) => void;
-  /** Pinned (slot) sprint IDs, in pinned order; shown first in the row context menu's sprint list. */
-  pinnedSprintIds?: string[];
+  /** Right-click a row to open the shared action menu. Receives the row key and the event. */
+  onRowContextMenu?: (key: string, e: React.MouseEvent) => void;
   /** Reorder a child within its own sprint group via Jira rank. Enables drag-to-reorder. */
   onReorderChild?: (reorder: ChildReorder) => void;
   /** Move a child into another sprint and land it at a specific position in one drop. */
@@ -111,11 +110,11 @@ const STATE_CHIP: Record<Sprint["state"], { label: string; cls: string }> = {
   backlog: { label: "Backlog", cls: "text-text-muted bg-overlay-subtle" },
 };
 
-function SprintStateChip({ state }: { state: Sprint["state"] }) {
+function SprintStateChip({ state, className = "" }: { state: Sprint["state"]; className?: string }) {
   const chip = STATE_CHIP[state];
   if (!chip) return null;
   return (
-    <span className={`rounded px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide ${chip.cls}`}>
+    <span className={`rounded px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide ${chip.cls} ${className}`}>
       {chip.label}
     </span>
   );
@@ -225,6 +224,8 @@ function DroppableGroup({
   onToggleCollapse: () => void;
   header: ReactNode;
   headerExtras?: ReactNode;
+  floatingAction?: ReactNode;
+  floatingActionVisible?: boolean;
 }) {
   const { setNodeRef, isOver } = useDroppable({
     id: group.key,
@@ -255,7 +256,7 @@ export function EpicChildrenBySprint({
   onReadinessChange,
   onSelect,
   onMoveChild,
-  pinnedSprintIds,
+  onRowContextMenu,
   onReorderChild,
   onMoveChildToPosition,
   onMoveError,
@@ -274,7 +275,6 @@ export function EpicChildrenBySprint({
   const [dragOverKey, setDragOverKey] = useState<string | null>(null);
   // Whether the hovered row's drop lands after it (cursor in its bottom half).
   const [dragInsertAfter, setDragInsertAfter] = useState(false);
-  const [rowMenu, setRowMenu] = useState<{ x: number; y: number; childKey: string } | null>(null);
   // Which group has its inline create composer open (only one at a time).
   const [composerGroupKey, setComposerGroupKey] = useState<string | null>(null);
 
@@ -375,11 +375,11 @@ export function EpicChildrenBySprint({
     const checkboxClick = onCheckboxClick ? (e: React.MouseEvent) => onCheckboxClick(child.key, e) : undefined;
 
     const contextMenu =
-      onMoveChild && !isPending
+      onRowContextMenu && !isPending
         ? (e: React.MouseEvent) => {
             e.preventDefault();
             if (draggingRef.current) return;
-            setRowMenu({ x: e.clientX, y: e.clientY, childKey: child.key });
+            onRowContextMenu(child.key, e);
           }
         : undefined;
 
@@ -447,6 +447,7 @@ export function EpicChildrenBySprint({
         onToggleCollapse={() => toggle(group.key)}
         showStatusCounts={false}
         showBvAvg={false}
+        labelWidthClass="@2xl:w-48"
         activeCriterion={filterActive ? "unpointed" : null}
         onFilterChange={(c) => {
           setUnpointedFilterKey(c ? group.key : null);
@@ -472,31 +473,33 @@ export function EpicChildrenBySprint({
     const isComposerOpen = composerGroupKey === group.key;
 
     const headerExtras =
-      group.state || group.dateRange || canCreate ? (
+      group.state || group.dateRange ? (
         <>
-          {group.state && <SprintStateChip state={group.state} />}
+          {/* Below a cramped card width the state chip is dropped first so the
+              item count + scores stay readable (the @container is GroupCard's header row). */}
+          {group.state && <SprintStateChip state={group.state} className="hidden @xl:inline-block" />}
           {group.dateRange && (
             <span className="flex items-center gap-1 text-[11px] text-text-muted">
               <CalendarRange size={11} strokeWidth={1.5} /> {group.dateRange}
             </span>
           )}
-          {canCreate && (
-            <button
-              type="button"
-              aria-label={`Create issue in ${group.label}`}
-              onClick={(e) => {
-                e.stopPropagation();
-                openComposer(group.key);
-              }}
-              className={`flex shrink-0 cursor-pointer items-center justify-center rounded-md p-1 text-text-muted [transition:opacity_.12s_ease,color_.12s_ease,background-color_.12s_ease] hover:bg-overlay-subtle hover:text-text-secondary focus-visible:opacity-100 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)] ${
-                isComposerOpen ? "opacity-100" : "opacity-0 group-hover/grouprow:opacity-100"
-              }`}
-            >
-              <Plus size={14} strokeWidth={1.75} />
-            </button>
-          )}
         </>
       ) : undefined;
+    // The "+" floats over the header's right edge (date range / scores) so it
+    // reserves no space; it surfaces on hover or while its composer is open.
+    const floatingAction = canCreate ? (
+      <button
+        type="button"
+        aria-label={`Create issue in ${group.label}`}
+        onClick={(e) => {
+          e.stopPropagation();
+          openComposer(group.key);
+        }}
+        className="flex shrink-0 cursor-pointer items-center justify-center rounded-md p-1 text-text-muted [transition:color_.12s_ease,background-color_.12s_ease] hover:bg-overlay-subtle hover:text-text-secondary focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)]"
+      >
+        <Plus size={14} strokeWidth={1.75} />
+      </button>
+    ) : undefined;
     // Sortable ids are the non-pending rows actually rendered in this group, so
     // dnd targets line up with the SortableContext's item list.
     const sortableIds = dndEnabled
@@ -536,6 +539,8 @@ export function EpicChildrenBySprint({
           onToggleCollapse={() => toggle(group.key)}
           header={header}
           headerExtras={headerExtras}
+          floatingAction={floatingAction}
+          floatingActionVisible={isComposerOpen}
         >
           {body}
         </GroupCard>
@@ -551,6 +556,8 @@ export function EpicChildrenBySprint({
         onToggleCollapse={() => toggle(group.key)}
         header={header}
         headerExtras={headerExtras}
+        floatingAction={floatingAction}
+        floatingActionVisible={isComposerOpen}
       >
         {body}
       </DroppableGroup>
@@ -584,17 +591,6 @@ export function EpicChildrenBySprint({
         </DndContext>
       ) : (
         list
-      )}
-
-      {rowMenu && onMoveChild && (
-        <CursorMenu x={rowMenu.x} y={rowMenu.y} onClose={() => setRowMenu(null)}>
-          <TicketActionMenuContent
-            onMoveSprint={(sprintId) => onMoveChild(rowMenu.childKey, sprintId)}
-            sprints={sprints}
-            pinnedSprintIds={pinnedSprintIds}
-            close={() => setRowMenu(null)}
-          />
-        </CursorMenu>
       )}
     </>
   );

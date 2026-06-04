@@ -530,7 +530,9 @@ export function TicketTable({
           </SortableContext>
         ) : ticketRows;
 
-        const headerExtras = canCreateInGroup ? (
+        // Always-on create action, sized to match the warning/menu icons so the
+        // header cluster reads as "warning | + | ...".
+        const createAction = canCreateInGroup ? (
           <button
             type="button"
             aria-label={`Create story in ${group.label}`}
@@ -539,11 +541,13 @@ export function TicketTable({
               setComposerGroupKey((cur) => (cur === group.key ? null : group.key));
               if (collapsedGroups?.has(group.key)) onToggleCollapse?.(group.key);
             }}
-            className={`flex shrink-0 cursor-pointer items-center justify-center rounded-md p-1 text-text-muted [transition:opacity_.12s_ease,color_.12s_ease,background-color_.12s_ease] hover:bg-overlay-subtle hover:text-text-secondary focus-visible:opacity-100 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)] ${
-              isComposerOpen ? "opacity-100" : "opacity-0 group-hover/grouprow:opacity-100"
+            className={`flex h-6 w-6 shrink-0 cursor-pointer items-center justify-center rounded-md focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-[var(--color-brand-400)] [transition:background-color_.12s_ease,color_.12s_ease] ${
+              isComposerOpen
+                ? "bg-overlay-strong text-text-secondary"
+                : "text-text-muted hover:bg-overlay-default hover:text-text-secondary"
             }`}
           >
-            <Plus size={14} strokeWidth={1.75} />
+            <Plus size={14} strokeWidth={2} aria-hidden />
           </button>
         ) : undefined;
 
@@ -552,11 +556,11 @@ export function TicketTable({
             key={group.key}
             isCollapsed={isCollapsed}
             onToggleCollapse={() => onToggleCollapse?.(group.key)}
-            headerExtras={headerExtras}
             header={
               <GroupStatBar
                 tickets={group.tickets}
                 label={group.label}
+                createAction={createAction}
                 leadingIcon={group.key === "__backlog__" ? <Inbox className="h-3.5 w-3.5" strokeWidth={1.5} /> : undefined}
                 isActive={groupBy === "sprint" && activeSprintIds.has(group.key)}
                 activeCriterion={activeCriterion}

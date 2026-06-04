@@ -1,8 +1,10 @@
 "use client";
 
-import type { Ref } from "react";
-import type { Subtask, TicketReadiness, JiraStatus, IssueType } from "@/types/ticket";
+import type { ComponentProps, Ref } from "react";
+import type { Subtask, TicketReadiness, JiraStatus, IssueType, Sprint } from "@/types/ticket";
 import { TicketStatusPill } from "@/components/shared/TicketStatusPill";
+import type { AssignableUser } from "@/components/shared/AssigneePicker";
+import type { EpicOption } from "@/components/shared/EpicPicker";
 import { useTicketHoverData } from "@/hooks/useTicketHoverData";
 import { Loader2 } from "lucide-react";
 
@@ -17,7 +19,18 @@ interface ChildIssueRowProps {
   readiness?: TicketReadiness | null;
   onJiraStatusChange?: (status: JiraStatus) => void;
   onReadinessChange?: (readiness: TicketReadiness | null) => void;
-  onSelect?: (key: string) => void;
+  // Optional hover-card edit callbacks, forwarded to the status pill (key already bound by the caller).
+  onIssueTypeChange?: (type: IssueType) => void;
+  onAssigneeChange?: (user: AssignableUser | null) => void;
+  onEpicChange?: (epic: EpicOption | null) => void;
+  onSprintChange?: (sprintId: string | null) => void;
+  onStoryPointsChange?: (value: number | null) => void;
+  onBusinessValueChange?: (value: number | null) => void;
+  sprints?: Sprint[];
+  /** Override the pill's hover-card data (defaults to the shared ticket hover-data context). */
+  hoverData?: ComponentProps<typeof TicketStatusPill>["hoverData"];
+  /** Row click. The event is forwarded so callers can read modifier keys (e.g. shift-range select). */
+  onSelect?: (key: string, e: React.MouseEvent) => void;
   /** Right-click handler (e.g. to open a move-to-sprint context menu). */
   onContextMenu?: (e: React.MouseEvent) => void;
   /** Multiselect: renders a leading checkbox when set. */
@@ -26,6 +39,11 @@ interface ChildIssueRowProps {
   /** True when any row in the surrounding list is checked (pins the gutter open). */
   someChecked?: boolean;
   onCheckboxClick?: (e: React.MouseEvent) => void;
+  /** Keep the checkbox in the content flow (reserved gutter, always visible) instead
+      of overlaying the type icon on hover. Used by the refinement select list. */
+  inlineCheckbox?: boolean;
+  /** Add 6px of vertical breathing room to the row (refinement select list). */
+  spacious?: boolean;
   /** Inline editing support */
   isEditing?: boolean;
   editValue?: string;
@@ -56,12 +74,22 @@ export function ChildIssueRow({
   readiness,
   onJiraStatusChange,
   onReadinessChange,
+  onIssueTypeChange,
+  onAssigneeChange,
+  onEpicChange,
+  onSprintChange,
+  onStoryPointsChange,
+  onBusinessValueChange,
+  sprints,
+  hoverData,
   onSelect,
   onContextMenu,
   selectable = false,
   isChecked = false,
   someChecked = false,
   onCheckboxClick,
+  inlineCheckbox = false,
+  spacious = false,
   isEditing = false,
   editValue = "",
   onEditChange,
@@ -83,7 +111,7 @@ export function ChildIssueRow({
       return;
     }
     e.preventDefault();
-    onSelect(item.key);
+    onSelect(item.key, e);
   };
 
   const hasPill = (showKey || showStatus) && !isPending;
@@ -110,7 +138,7 @@ export function ChildIssueRow({
     <div
       ref={ref}
       style={style}
-      className={`group/row relative flex items-center gap-2 py-2 pl-4 pr-3 ${
+      className={`group/row relative flex items-center gap-2 ${spacious ? "py-[10px]" : "py-[7px]"} pl-4 pr-3 ${
         onSelect && !isPending ? "cursor-pointer hover:bg-overlay-subtle" : ""
       } ${isPending ? "opacity-50" : ""} ${isChecked ? "bg-[var(--color-brand-500)]/[0.06]" : ""} ${className}`}
       onClick={handleClick}
@@ -125,8 +153,9 @@ export function ChildIssueRow({
         </span>
       )}
 
-      {/* Bulk mode: dedicated checkbox gutter on every row, mirroring the sprint board. */}
-      {showCheckbox && someChecked && (
+      {/* Bulk mode (or inline mode): dedicated checkbox gutter on every row, mirroring the
+          sprint board. Inline mode keeps it permanently in the content flow. */}
+      {showCheckbox && (someChecked || inlineCheckbox) && (
         <span
           onPointerDown={(e) => e.stopPropagation()}
           onClick={(e) => { e.stopPropagation(); onCheckboxClick?.(e); }}
@@ -148,8 +177,9 @@ export function ChildIssueRow({
       {(hasPill || (showCheckbox && !someChecked)) && (
         <span className="relative flex shrink-0 items-center" onClick={(e) => e.stopPropagation()}>
           {/* Default view: the hover checkbox takes the leading type icon's place (the icon fades
-              via dimTypeOnRowHover), so no extra gutter is reserved and content never shifts. */}
-          {showCheckbox && !someChecked && (
+              via dimTypeOnRowHover), so no extra gutter is reserved and content never shifts.
+              Skipped in inline mode, where the checkbox lives in the reserved gutter above. */}
+          {showCheckbox && !someChecked && !inlineCheckbox && (
             <span
               onPointerDown={(e) => e.stopPropagation()}
               onClick={(e) => { e.stopPropagation(); onCheckboxClick?.(e); }}
@@ -169,13 +199,20 @@ export function ChildIssueRow({
               readiness={readiness}
               onJiraStatusChange={onJiraStatusChange}
               onReadinessChange={onReadinessChange}
+              onIssueTypeChange={onIssueTypeChange}
+              onAssigneeChange={onAssigneeChange}
+              onEpicChange={onEpicChange}
+              onSprintChange={onSprintChange}
+              onStoryPointsChange={onStoryPointsChange}
+              onBusinessValueChange={onBusinessValueChange}
+              sprints={sprints}
               title={item.title}
               variant="list"
               size="lg"
               showKey={showKey}
               showStatus={showStatus}
-              dimTypeOnRowHover={showCheckbox && !someChecked}
-              hoverData={getHoverData(item.key)}
+              dimTypeOnRowHover={showCheckbox && !someChecked && !inlineCheckbox}
+              hoverData={hoverData ?? getHoverData(item.key)}
             />
           )}
         </span>

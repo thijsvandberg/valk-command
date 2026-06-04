@@ -166,6 +166,9 @@ export interface EpicChild extends Subtask {
   businessValue: number | null;
   sprintName: string | null;
   subtaskCount: number;
+  /** Open (not DONE/DEPRECATED) and total subtask counts, for the shared "open/total" badge. */
+  openSubtaskCount?: number;
+  totalSubtaskCount?: number;
   readiness: TicketReadiness | null;
   // Jira's global LexoRank index for the issue. Drives the within-sprint order in
   // the epic's by-sprint view; null when the issue has never been ranked.

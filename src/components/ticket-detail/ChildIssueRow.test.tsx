@@ -48,7 +48,7 @@ describe("ChildIssueRow", () => {
     const onSelect = vi.fn();
     render(<ChildIssueRow item={baseSub} isLast={false} onSelect={onSelect} />);
     fireEvent.click(screen.getByText("Test subtask"));
-    expect(onSelect).toHaveBeenCalledWith("VPL-100");
+    expect(onSelect).toHaveBeenCalledWith("VPL-100", expect.anything());
   });
 
   it("does not call onSelect when pending", () => {

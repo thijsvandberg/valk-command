@@ -5,7 +5,7 @@ import { useOutsideClick } from "@/hooks/useOutsideClick";
 import type { Ticket, POStatus, TicketReadiness, IssueType, JiraStatus, Sprint } from "@/types/ticket";
 import type { AssignableUser } from "@/components/shared/AssigneePicker";
 import type { EpicOption } from "@/components/shared/EpicPicker";
-import { useEpicColor } from "@/hooks/useEpicColor";
+import { EpicBadge } from "@/components/shared/IssueMetaBadges";
 import type { InlineTagId } from "@/components/sprint-board/filter-bar-types";
 import { Avatar } from "@/components/shared/Avatar";
 import { Flag, MessageSquare, Pencil, Check, X, Gem, IterationCw, GripVertical } from "lucide-react";
@@ -152,9 +152,6 @@ export const BoardRow = memo(forwardRef<HTMLTableRowElement, BoardRowBaseProps>(
   const lastDeploy = lastDeployedMap?.[ticket.key];
   const health = healthMap?.[ticket.key];
   const isRemoved = Boolean(ticket.removedFromJiraAt);
-  // Hook must run unconditionally; the empty-string fallback is ignored when there is no epic.
-  const resolvedEpicColor = useEpicColor(ticket.epic ?? "");
-  const epicColor = ticket.epic ? resolvedEpicColor : null;
 
   // Checkbox always visible when checked or when any row is checked (bulk mode)
   const showCheckbox = isChecked || someChecked;
@@ -423,23 +420,18 @@ export const BoardRow = memo(forwardRef<HTMLTableRowElement, BoardRowBaseProps>(
               )}
 
               {/* Epic chip — shrinks with the title when space is tight. */}
-              {!hideEpic && epicColor && (
-                <span
-                  className="inline-flex min-w-0 shrink items-center truncate whitespace-nowrap rounded-[3px] border-l-2 py-0.5 pl-1.5 pr-2 text-[10.5px] font-medium tracking-wide"
-                  style={{ backgroundColor: epicColor.bg, color: epicColor.text, borderLeftColor: epicColor.text }}
-                >
-                  {ticket.epic}
-                </span>
+              {!hideEpic && ticket.epic && (
+                <EpicBadge epic={ticket.epic} className="min-w-0 shrink" />
               )}
 
               {/* Sprint name — only when several sprints are visible at once (All view / saved view). */}
               {showSprint && ticket.sprintId && (
                 <span
-                  className="inline-flex min-w-0 shrink items-center gap-1 truncate whitespace-nowrap rounded px-1.5 py-0.5 text-[10.5px] text-text-tertiary"
+                  className="inline-flex h-5 min-w-0 shrink items-center gap-1 truncate whitespace-nowrap rounded-md px-1.5 text-[11px] leading-none text-text-tertiary"
                   style={{ backgroundColor: "var(--color-overlay-subtle)" }}
                   title={sprintNameMap[ticket.sprintId] ?? ticket.sprintId}
                 >
-                  <IterationCw size={9} strokeWidth={1.75} className="shrink-0 opacity-70" />
+                  <IterationCw size={10} strokeWidth={1.75} className="shrink-0 opacity-70" />
                   {sprintNameMap[ticket.sprintId] ?? ticket.sprintId}
                 </span>
               )}
@@ -473,6 +465,7 @@ export const BoardRow = memo(forwardRef<HTMLTableRowElement, BoardRowBaseProps>(
                 <StoryPointPicker
                   value={ticket.storyPoints}
                   onChange={onStoryPointsChange ? (v) => onStoryPointsChange(ticket.key, v) : () => {}}
+                  dense
                   showMetricIcon
                   richTooltip
                   revealWhenEmpty
@@ -481,6 +474,7 @@ export const BoardRow = memo(forwardRef<HTMLTableRowElement, BoardRowBaseProps>(
                 <BusinessValuePicker
                   value={ticket.businessValue}
                   onChange={onBusinessValueChange ? (v) => onBusinessValueChange(ticket.key, v) : () => {}}
+                  dense
                   showMetricIcon
                   richTooltip
                   revealWhenEmpty
@@ -490,7 +484,7 @@ export const BoardRow = memo(forwardRef<HTMLTableRowElement, BoardRowBaseProps>(
 
               {/* Assignee — right-aligned. */}
               <div className="shrink-0">
-                <Avatar assignee={ticket.assignee} size={18} />
+                <Avatar assignee={ticket.assignee} size={20} />
               </div>
             </>
           )}

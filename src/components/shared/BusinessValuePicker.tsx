@@ -19,6 +19,7 @@ export function BusinessValuePicker({
   richTooltip = false,
   revealWhenEmpty = false,
   revealGroup = "default",
+  dense = false,
   onOpenChange,
 }: {
   value: number | null;
@@ -26,6 +27,8 @@ export function BusinessValuePicker({
   align?: "left" | "right";
   subtle?: boolean;
   size?: "sm" | "lg";
+  // Compact 18px trigger so the editable picker lines up with the uniform list badges.
+  dense?: boolean;
   // Show a leading goal icon (value/target) so BV is recognizable without the
   // column header. Used in the sprint-board table (BRDG-240).
   showMetricIcon?: boolean;
@@ -100,7 +103,7 @@ export function BusinessValuePicker({
           onMouseLeave={handleMouseLeave}
           title={richTooltip ? undefined : titleText}
           aria-label={titleText}
-          className={`flex h-6 items-center rounded-md cursor-pointer transition-colors duration-150 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)] active:opacity-60 text-body-sm font-medium tabular-nums ${showMetricIcon ? "gap-1 px-1.5 min-w-[2.25rem] justify-start" : "min-w-[24px] justify-center"}`}
+          className={`flex items-center rounded-md cursor-pointer transition-colors duration-150 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)] active:opacity-60 font-medium tabular-nums ${dense ? "h-5 text-[11px] leading-none" : "h-6 text-body-sm"} ${showMetricIcon ? "gap-1 px-1.5 min-w-[2.25rem] justify-start" : "min-w-[24px] justify-center"}`}
           style={{
             color: color?.text ?? "var(--color-text-muted)",
             backgroundColor: showBg ? (color?.bg ?? "var(--color-overlay-subtle)") : "transparent",
@@ -113,7 +116,7 @@ export function BusinessValuePicker({
             // A scored cell inherits its BV-ramp color; an unset cell uses the
             // lightest tint in the ramp (value 2) so it reads as a faint placeholder.
             <>
-              <Goal size={12} strokeWidth={2} aria-hidden style={displayLabel == null ? { color: BV_COLORS[2].text } : undefined} />
+              <Goal size={dense ? 11 : 12} strokeWidth={2} aria-hidden style={displayLabel == null ? { color: BV_COLORS[2].text } : undefined} />
               {displayLabel != null && displayLabel}
             </>
           ) : displayLabel != null ? (

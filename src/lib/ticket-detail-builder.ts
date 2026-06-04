@@ -216,7 +216,7 @@ function transformQueryData(queryData: NonNullable<Awaited<ReturnType<typeof run
 
 async function resolveEpicChildren(epicChildRows: Awaited<ReturnType<typeof runTicketQueries>> extends null ? never : NonNullable<Awaited<ReturnType<typeof runTicketQueries>>>["epicChildRows"]): Promise<EpicChild[]> {
   const epicChildKeys = epicChildRows.map((c) => c.jiraKey);
-  const subtaskCountMap = new Map<string, number>();
+  const subtaskCountMap = new Map<string, { total: number; open: number }>();
   const sprintIdToName = new Map<string, string>();
   const readinessMap = new Map<string, TicketReadiness | null>();
   const businessValueMap = new Map<string, number | null>();
@@ -224,7 +224,11 @@ async function resolveEpicChildren(epicChildRows: Awaited<ReturnType<typeof runT
   if (epicChildKeys.length > 0) {
     const [subtaskCountResult, metaRows] = await Promise.all([
       db
-        .select({ ticketKey: ticketSubtask.ticketKey, total: count() })
+        .select({
+          ticketKey: ticketSubtask.ticketKey,
+          total: count(),
+          open: sql<number>`SUM(CASE WHEN ${ticketSubtask.status} NOT IN ('DONE', 'DEPRECATED') THEN 1 ELSE 0 END)`.as("open"),
+        })
         .from(ticketSubtask)
         .where(sql`${ticketSubtask.ticketKey} IN (${sql.join(epicChildKeys.map((k) => sql`${k}`), sql`, `)})`)
         .groupBy(ticketSubtask.ticketKey),
@@ -233,7 +237,7 @@ async function resolveEpicChildren(epicChildRows: Awaited<ReturnType<typeof runT
       }),
     ]);
     for (const row of subtaskCountResult) {
-      subtaskCountMap.set(row.ticketKey, row.total);
+      subtaskCountMap.set(row.ticketKey, { total: row.total, open: Number(row.open) });
     }
     for (const row of metaRows) {
       readinessMap.set(row.jiraKey, (row.readiness as TicketReadiness) ?? null);
@@ -261,7 +265,9 @@ async function resolveEpicChildren(epicChildRows: Awaited<ReturnType<typeof runT
     storyPoints: c.storyPoints ?? null,
     businessValue: businessValueMap.get(c.jiraKey) ?? null,
     sprintName: c.sprintName ? (sprintIdToName.get(c.sprintName) ?? c.sprintName) : null,
-    subtaskCount: subtaskCountMap.get(c.jiraKey) ?? 0,
+    subtaskCount: subtaskCountMap.get(c.jiraKey)?.total ?? 0,
+    openSubtaskCount: subtaskCountMap.get(c.jiraKey)?.open ?? 0,
+    totalSubtaskCount: subtaskCountMap.get(c.jiraKey)?.total ?? 0,
     readiness: readinessMap.get(c.jiraKey) ?? null,
     jiraRank: c.jiraRank ?? null,
   }));

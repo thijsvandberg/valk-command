@@ -20,6 +20,14 @@ export interface GroupStatBarProps {
   onFilterChange?: (criterion: StatCriterion | null) => void;
   isCollapsed?: boolean;
   onToggleCollapse?: () => void;
+  /**
+   * Width class for the fixed label zone that keeps the stats column-aligned
+   * across rows. Defaults to a hard `w-48`; callers on narrow surfaces can pass
+   * a container-query-gated value (e.g. `@2xl:w-48`) so the zone collapses to
+   * the label's own width when the bar is cramped, removing the dead space
+   * between a short sprint name and the item count.
+   */
+  labelWidthClass?: string;
   /** Show only a colored dot + count for status pills, no label text */
   showDot?: boolean;
   /** When false, the per-status (TO DO / IN PROGRESS / TEST / DONE) count pills are hidden. */
@@ -38,6 +46,8 @@ export interface GroupStatBarProps {
   onEditSprintDetails?: () => void;
   /** Closes (finishes) this group's sprint. Only surfaced for active sprints. */
   onCloseSprint?: () => void;
+  /** Action pinned into the right cluster between the warning and the "..." menu (e.g. a create "+"). */
+  createAction?: ReactNode;
 }
 
 // Two-row tooltip (total + average) styled like the estimate-hygiene warning tooltip:
@@ -67,6 +77,7 @@ export const GroupStatBar = memo(function GroupStatBar({
   onFilterChange,
   isCollapsed,
   onToggleCollapse,
+  labelWidthClass = "w-48",
   showDot = false,
   showStatusCounts = true,
   showBvAvg = true,
@@ -77,6 +88,7 @@ export const GroupStatBar = memo(function GroupStatBar({
   sprint,
   onEditSprintDetails,
   onCloseSprint,
+  createAction,
 }: GroupStatBarProps) {
   const [detailsOpen, setDetailsOpen] = useState(false);
   const menuButtonRef = useRef<HTMLButtonElement>(null);
@@ -134,7 +146,7 @@ export const GroupStatBar = memo(function GroupStatBar({
     <div className="@container flex w-full items-center gap-2">
       {/* Fixed-width label zone so the stats (item count onward) start at the same x
           across every group row, regardless of sprint name length (BRDG-239). */}
-      <div className={`flex shrink-0 items-center gap-2 ${label ? "w-48 min-w-0" : ""}`}>
+      <div className={`flex shrink-0 items-center gap-2 ${label ? `${labelWidthClass} min-w-0` : ""}`}>
         {isCollapsible && (
           isCollapsed
             ? <ChevronRight className="h-3 w-3 shrink-0 text-text-tertiary" strokeWidth={1.5} />
@@ -284,6 +296,7 @@ export const GroupStatBar = memo(function GroupStatBar({
             </button>
           </Tooltip>
         )}
+        {createAction}
         {showSprintMenu && (
           <div className="relative">
             <button

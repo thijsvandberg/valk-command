@@ -12,7 +12,6 @@ import {
   JIRA_STATUS_ABBREVIATIONS,
   READINESS_CONFIG,
   READINESS_OPTIONS,
-  getEpicColor,
 } from "@/types/ticket";
 import { ISSUE_TYPE_COLORS } from "@/components/shared/IssueTypeIcon";
 import { getJiraUrl } from "@/lib/jira-url";
@@ -25,6 +24,7 @@ import { MetricBadge } from "@/components/shared/MetricBadge";
 import { AssigneePicker, type AssignableUser } from "@/components/shared/AssigneePicker";
 import { SprintPicker } from "@/components/shared/SprintPicker";
 import { EpicPicker, type EpicOption } from "@/components/shared/EpicPicker";
+import { EpicBadge } from "@/components/shared/IssueMetaBadges";
 import { Avatar } from "@/components/shared/Avatar";
 import { useHoverCardEdits } from "@/hooks/useHoverCardEdits";
 
@@ -526,14 +526,12 @@ function TicketHoverCard({
 
   if (!pos || typeof document === "undefined") return null;
 
-  const epicColors = data.epic ? getEpicColor(data.epic) : null;
-
   return createPortal(
     <div
       role="tooltip"
       onMouseEnter={onMouseEnter}
       onMouseLeave={onMouseLeave}
-      className="fixed z-[9999] w-80 rounded-lg border border-border-default bg-[var(--color-surface-floating)] p-3 text-left normal-case tracking-normal shadow-[var(--shadow-popover)] transition-[opacity,transform] duration-150 ease-out"
+      className="fixed z-[9999] w-[400px] rounded-lg border border-border-default bg-[var(--color-surface-floating)] p-3 text-left normal-case tracking-normal shadow-[var(--shadow-popover)] transition-[opacity,transform] duration-150 ease-out"
       style={{
         left: pos.left,
         ...(pos.openUp ? { bottom: window.innerHeight - pos.top } : { top: pos.top }),
@@ -641,13 +639,8 @@ function TicketHoverCard({
               textClass="text-body-sm"
               onOpenChange={onPickerOpenChange}
             />
-          ) : data.epic && epicColors ? (
-            <span
-              className="rounded-[3px] border-l-2 px-1.5 py-0.5 text-[10.5px] font-medium tracking-wide"
-              style={{ backgroundColor: epicColors.bg, color: epicColors.text, borderLeftColor: epicColors.text }}
-            >
-              {data.epic}
-            </span>
+          ) : data.epic ? (
+            <EpicBadge epic={data.epic} />
           ) : (
             <span className="text-text-muted">No epic</span>
           )}
@@ -1041,20 +1034,18 @@ export function TicketStatusPill({
         </span>
       ) : (
         <div className="relative flex shrink-0">
-          <Tooltip content={statusTip}>
-            <button
-              ref={jiraStatusBtnRef}
-              type="button"
-              aria-label={statusTip}
-              onClick={onJiraStatusChange ? () => setJiraDropdownOpen((o) => !o) : undefined}
-              disabled={!onJiraStatusChange}
-              className={`flex items-center gap-1 ${statusBadgePad} font-mono font-medium tracking-wide transition-colors duration-150 ${statusRounded} ${onJiraStatusChange ? "cursor-pointer hover:brightness-110" : "cursor-default"}`}
-              style={{ backgroundColor: jiraColors.bg, color: jiraColors.text, opacity: elevated ? 1 : 0.85 }}
-            >
-              <span className={`shrink-0 ${statusDotSize} rounded-full opacity-70`} style={{ backgroundColor: jiraColors.text }} />
-              {JIRA_STATUS_ABBREVIATIONS[jiraStatus] ?? jiraStatus}
-            </button>
-          </Tooltip>
+          <button
+            ref={jiraStatusBtnRef}
+            type="button"
+            aria-label={statusTip}
+            onClick={onJiraStatusChange ? () => setJiraDropdownOpen((o) => !o) : undefined}
+            disabled={!onJiraStatusChange}
+            className={`flex items-center gap-1 ${statusBadgePad} font-mono font-medium tracking-wide transition-colors duration-150 ${statusRounded} ${onJiraStatusChange ? "cursor-pointer hover:brightness-110" : "cursor-default"}`}
+            style={{ backgroundColor: jiraColors.bg, color: jiraColors.text, opacity: elevated ? 1 : 0.85 }}
+          >
+            <span className={`shrink-0 ${statusDotSize} rounded-full opacity-70`} style={{ backgroundColor: jiraColors.text }} />
+            {JIRA_STATUS_ABBREVIATIONS[jiraStatus] ?? jiraStatus}
+          </button>
           {jiraDropdownOpen && onJiraStatusChange && (
             <DropdownPortal triggerRef={jiraStatusBtnRef} onClose={() => setJiraDropdownOpen(false)}>
               <JiraStatusDropdown
@@ -1071,25 +1062,23 @@ export function TicketStatusPill({
       {/* Readiness */}
       {showReadiness && (
         <div className={`relative flex shrink-0 ${elevated ? "" : "-ml-1"}`}>
-          <Tooltip content={readinessTip}>
-            <button
-              ref={readinessBtnRef}
-              type="button"
-              aria-label={readinessTip}
-              onClick={onReadinessChange ? () => setReadinessDropdownOpen((o) => !o) : undefined}
-              disabled={!onReadinessChange}
-              className={`flex items-center justify-center rounded transition-colors duration-150 ${
-                onReadinessChange ? "cursor-pointer hover:bg-overlay-default" : "cursor-default"
-              }`}
-              style={{ color: readinessCfg?.color ?? "var(--color-text-muted)", width: iconSize + 8, height: iconSize + 8 }}
-            >
-              {readiness ? (
-                <ReadinessIcon value={readiness} size={iconSize} />
-              ) : (
-                <span className="h-1.5 w-1.5 rounded-full bg-overlay-strong" />
-              )}
-            </button>
-          </Tooltip>
+          <button
+            ref={readinessBtnRef}
+            type="button"
+            aria-label={readinessTip}
+            onClick={onReadinessChange ? () => setReadinessDropdownOpen((o) => !o) : undefined}
+            disabled={!onReadinessChange}
+            className={`flex items-center justify-center rounded transition-colors duration-150 ${
+              onReadinessChange ? "cursor-pointer hover:bg-overlay-default" : "cursor-default"
+            }`}
+            style={{ color: readinessCfg?.color ?? "var(--color-text-muted)", width: iconSize + 8, height: iconSize + 8 }}
+          >
+            {readiness ? (
+              <ReadinessIcon value={readiness} size={iconSize} />
+            ) : (
+              <span className="h-1.5 w-1.5 rounded-full bg-overlay-strong" />
+            )}
+          </button>
           {readinessDropdownOpen && onReadinessChange && (
             <DropdownPortal triggerRef={readinessBtnRef} onClose={() => setReadinessDropdownOpen(false)}>
               <ReadinessDropdown

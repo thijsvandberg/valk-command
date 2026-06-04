@@ -328,9 +328,10 @@ describe("EpicChildrenSection", () => {
       expect(sprintLabels.length).toBeGreaterThanOrEqual(1);
     });
 
-    it("shows subtask count", () => {
+    it("shows subtask count as open/total", () => {
       renderSection(SAMPLE_CHILDREN);
-      const badges = screen.getAllByText("2");
+      // VPL-10 has 2 subtasks; with no open count it reads 0/2 (shared open/total badge).
+      const badges = screen.getAllByText("0/2");
       expect(badges.length).toBeGreaterThanOrEqual(1);
     });
 
@@ -580,7 +581,7 @@ describe("EpicChildrenSection", () => {
     it("calls onSelectTicket when clicking a child", () => {
       const { onSelectTicket } = renderSection(SAMPLE_CHILDREN);
       fireEvent.click(screen.getByText("First story"));
-      expect(onSelectTicket).toHaveBeenCalledWith("VPL-10");
+      expect(onSelectTicket).toHaveBeenCalledWith("VPL-10", expect.anything());
     });
   });
 
@@ -768,11 +769,56 @@ describe("EpicChildrenSection", () => {
       moveViaContextMenu("Second task", "Sprint 3");
 
       await waitFor(() => {
-        expect(screen.getByText(/Failed to move VPL-11 to sprint/)).toBeInTheDocument();
+        expect(screen.getByText(/Failed to move 1 issue to sprint/)).toBeInTheDocument();
       });
       // Reverted: the row is back under Unscheduled and the Sprint 3 group is gone.
       expect(screen.getByText("Unscheduled")).toBeInTheDocument();
       expect(screen.queryByText("Sprint 3")).not.toBeInTheDocument();
+    });
+
+    it("exposes the full action menu on right-click, not just Move to Sprint", () => {
+      renderSection(SAMPLE_CHILDREN);
+      switchToSprintView();
+      fireEvent.contextMenu(screen.getByText("First story"));
+      for (const label of [
+        "Set Status",
+        "Set Readiness",
+        "Set Epic",
+        "Move to Sprint",
+        "Update Assignee",
+        "Add/Update Label",
+        "Flag",
+        "Review Story",
+        "Generate Subtasks",
+        "Add to Refinement",
+      ]) {
+        expect(screen.getByText(label)).toBeInTheDocument();
+      }
+    });
+
+    it("flags only the right-clicked row when nothing is selected", async () => {
+      renderSection(SAMPLE_CHILDREN);
+      switchToSprintView();
+      fireEvent.contextMenu(screen.getByText("First story"));
+      fireEvent.click(screen.getByText("Flag"));
+      await waitFor(() => {
+        expect(mockToggleFlag).toHaveBeenCalledWith("VPL-10", true);
+      });
+      expect(mockToggleFlag).toHaveBeenCalledTimes(1);
+    });
+
+    it("acts on the whole selection when right-clicking a checked row", async () => {
+      renderSection(SAMPLE_CHILDREN);
+      switchToSprintView();
+      fireEvent.click(screen.getByLabelText("Select VPL-10"));
+      fireEvent.click(screen.getByLabelText("Select VPL-12"));
+      fireEvent.contextMenu(screen.getByText("First story"));
+      fireEvent.click(screen.getByText("Flag"));
+      await waitFor(() => {
+        expect(mockToggleFlag).toHaveBeenCalledTimes(2);
+      });
+      expect(mockToggleFlag).toHaveBeenCalledWith("VPL-10", true);
+      expect(mockToggleFlag).toHaveBeenCalledWith("VPL-12", true);
     });
   });
 
@@ -842,6 +888,37 @@ describe("EpicChildrenSection", () => {
       switchToSprintView();
       selectRow("VPL-10");
       expect(screen.getByText(/1\/3 selected/)).toBeInTheDocument();
+    });
+  });
+
+  describe("list view context menu", () => {
+    it("exposes the full action menu on right-click in the default list view", () => {
+      renderSection(SAMPLE_CHILDREN);
+      fireEvent.contextMenu(screen.getByText("First story"));
+      for (const label of [
+        "Set Status",
+        "Set Readiness",
+        "Set Epic",
+        "Move to Sprint",
+        "Update Assignee",
+        "Add/Update Label",
+        "Flag",
+        "Review Story",
+        "Generate Subtasks",
+        "Add to Refinement",
+      ]) {
+        expect(screen.getByText(label)).toBeInTheDocument();
+      }
+    });
+
+    it("flags the right-clicked row from the list view", async () => {
+      renderSection(SAMPLE_CHILDREN);
+      fireEvent.contextMenu(screen.getByText("First story"));
+      fireEvent.click(screen.getByText("Flag"));
+      await waitFor(() => {
+        expect(mockToggleFlag).toHaveBeenCalledWith("VPL-10", true);
+      });
+      expect(mockToggleFlag).toHaveBeenCalledTimes(1);
     });
   });
 });

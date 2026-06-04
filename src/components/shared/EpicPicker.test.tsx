@@ -19,6 +19,10 @@ vi.mock("lucide-react", () => ({
   ArrowUpRight: (props: Record<string, unknown>) => <span data-testid="arrow-up-right" {...props} />,
 }));
 
+vi.mock("@/components/shared/IssueMetaBadges", () => ({
+  EpicBadge: ({ epic }: { epic: string }) => <span data-testid="epic-badge">{epic}</span>,
+}));
+
 const mockMutate = vi.fn();
 vi.mock("swr", () => ({
   default: () => ({

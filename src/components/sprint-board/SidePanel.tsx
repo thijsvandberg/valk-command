@@ -60,6 +60,8 @@ export function SidePanel({
   onMutate,
   onSelectTicket,
   adjacentKeys,
+  defaultWidth,
+  storageKey,
 }: {
   ticket: Ticket;
   poStatus: POStatus;
@@ -72,6 +74,10 @@ export function SidePanel({
   onMutate?: () => void;
   onSelectTicket?: (key: string) => void;
   adjacentKeys?: { prev: string | null; next: string | null };
+  /** Initial width when no width has been persisted yet (e.g. match a host pane). */
+  defaultWidth?: number;
+  /** localStorage key for the persisted width. Defaults to the shared board key. */
+  storageKey?: string;
 }) {
   const router = useRouter();
 
@@ -108,12 +114,14 @@ export function SidePanel({
   }, [adjacentKeys]);
 
   // -- Panel width / resize --
+  const widthKey = storageKey ?? PANEL_STORAGE_KEY;
+  const initialWidth = defaultWidth ?? DEFAULT_PANEL_WIDTH;
   const [panelWidth, setPanelWidth] = useState(() => {
-    if (typeof window === "undefined") return DEFAULT_PANEL_WIDTH;
-    const saved = localStorage.getItem(PANEL_STORAGE_KEY);
-    if (!saved) return DEFAULT_PANEL_WIDTH;
+    if (typeof window === "undefined") return initialWidth;
+    const saved = localStorage.getItem(widthKey);
+    if (!saved) return initialWidth;
     const parsed = parseInt(saved, 10);
-    return !isNaN(parsed) ? Math.max(MIN_PANEL_WIDTH, parsed) : DEFAULT_PANEL_WIDTH;
+    return !isNaN(parsed) ? Math.max(MIN_PANEL_WIDTH, parsed) : initialWidth;
   });
   const [isDragging, setIsDragging] = useState(false);
   const panelRef = useRef<HTMLDivElement>(null);
@@ -126,9 +134,15 @@ export function SidePanel({
   useEffect(() => {
     if (!isDragging) return;
     function handleMouseMove(e: MouseEvent) {
-      const newWidth = Math.max(MIN_PANEL_WIDTH, window.innerWidth - e.clientX);
+      // Measure from the panel's own right edge rather than the viewport, so the
+      // drag stays accurate when the panel is right-anchored to a host pane that
+      // does not reach the viewport edge (e.g. the centered refinement layout).
+      // On the board/ticket page the right edge equals the viewport edge, so
+      // behaviour there is unchanged.
+      const rightEdge = panelRef.current?.getBoundingClientRect().right ?? window.innerWidth;
+      const newWidth = Math.max(MIN_PANEL_WIDTH, rightEdge - e.clientX);
       setPanelWidth(newWidth);
-      localStorage.setItem(PANEL_STORAGE_KEY, String(newWidth));
+      localStorage.setItem(widthKey, String(newWidth));
     }
     function handleMouseUp() {
       setIsDragging(false);
@@ -139,7 +153,7 @@ export function SidePanel({
       document.removeEventListener("mousemove", handleMouseMove);
       document.removeEventListener("mouseup", handleMouseUp);
     };
-  }, [isDragging]);
+  }, [isDragging, widthKey]);
 
   // -- Meta sidebar (interior column) width / collapse --
   // Mirrors the full ticket page's `TicketSidebar` shell, but the resize is

@@ -37,6 +37,7 @@ function child(key: string, sprintName: string | null): EpicChild {
 function setup(overrides: Partial<Parameters<typeof EpicChildrenBySprint>[0]> = {}) {
   const onMoveChild = vi.fn();
   const onMoveError = vi.fn();
+  const onRowContextMenu = vi.fn();
   render(
     <EpicChildrenBySprint
       items={[child("VPL-10", "Sprint 1"), child("VPL-11", "Sprint 2")]}
@@ -47,19 +48,17 @@ function setup(overrides: Partial<Parameters<typeof EpicChildrenBySprint>[0]> = 
       onJiraStatusChange={vi.fn()}
       onReadinessChange={vi.fn()}
       onMoveChild={onMoveChild}
+      onRowContextMenu={onRowContextMenu}
       onMoveError={onMoveError}
       {...overrides}
     />,
   );
-  return { onMoveChild, onMoveError };
+  return { onMoveChild, onMoveError, onRowContextMenu };
 }
 
-function openRowMenu(key: string) {
-  fireEvent.contextMenu(screen.getByText(`Title ${key}`));
-  fireEvent.click(screen.getByText("Move to Sprint"));
-}
-
-describe("EpicChildrenBySprint move actions", () => {
+// The action menu itself is rendered by the parent (EpicChildrenSection); here we
+// only verify that right-clicking a row delegates the row key to onRowContextMenu.
+describe("EpicChildrenBySprint row context menu", () => {
   it("renders a group per occupied sprint and no group for empty sprints", () => {
     setup();
     expect(screen.getByText("Sprint 1")).toBeInTheDocument();
@@ -68,43 +67,30 @@ describe("EpicChildrenBySprint move actions", () => {
     expect(screen.queryByText("Sprint 3")).not.toBeInTheDocument();
   });
 
-  it("opens the move menu on right-click and moves into a sprint that has no current children", () => {
-    const { onMoveChild } = setup();
-    openRowMenu("VPL-10");
-    // Sprint 3 only exists in the searchable menu (no group on screen).
-    fireEvent.click(screen.getByText("Sprint 3"));
-    expect(onMoveChild).toHaveBeenCalledWith("VPL-10", "3");
-  });
-
-  it("moves a child to the backlog via the menu", () => {
-    const { onMoveChild } = setup();
-    openRowMenu("VPL-11");
-    fireEvent.click(screen.getByText("Backlog"));
-    expect(onMoveChild).toHaveBeenCalledWith("VPL-11", "__backlog__");
-  });
-
-  it("only offers active/future sprints in the menu (closed sprints excluded)", () => {
-    setup();
+  it("delegates a right-click to onRowContextMenu with the row key", () => {
+    const { onRowContextMenu } = setup();
     fireEvent.contextMenu(screen.getByText("Title VPL-10"));
-    fireEvent.click(screen.getByText("Move to Sprint"));
-    expect(screen.queryByText("Old Sprint")).not.toBeInTheDocument();
+    expect(onRowContextMenu).toHaveBeenCalledTimes(1);
+    expect(onRowContextMenu.mock.calls[0][0]).toBe("VPL-10");
   });
 
-  it("does not open the move menu on a pending row", () => {
-    setup({ items: [{ key: "pending-1", title: "Pending row", type: "task", jiraStatus: "TO DO", assignee: null }] });
+  it("does not open the context menu on a pending row", () => {
+    const { onRowContextMenu } = setup({
+      items: [{ key: "pending-1", title: "Pending row", type: "task", jiraStatus: "TO DO", assignee: null }],
+    });
     fireEvent.contextMenu(screen.getByText("Pending row"));
-    expect(screen.queryByText("Move to Sprint")).not.toBeInTheDocument();
+    expect(onRowContextMenu).not.toHaveBeenCalled();
   });
 
   it("suppresses the context menu while a keyboard drag is active", () => {
-    setup();
+    const { onRowContextMenu } = setup();
     const handle = screen.getByLabelText("Drag VPL-10 to reorder or move it to another sprint");
     handle.focus();
     // Space picks up the draggable via dnd-kit's KeyboardSensor (sets the drag flag).
     fireEvent.keyDown(handle, { key: " ", code: "Space" });
     // The pickup mirrors the title into the DragOverlay, so target the original row.
     fireEvent.contextMenu(screen.getAllByText("Title VPL-10")[0]);
-    expect(screen.queryByText("Move to Sprint")).not.toBeInTheDocument();
+    expect(onRowContextMenu).not.toHaveBeenCalled();
   });
 
   it("renders nothing without children", () => {
