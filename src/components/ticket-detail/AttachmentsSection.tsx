@@ -1,6 +1,5 @@
 "use client";
 
-import Image from "next/image";
 import type { Attachment } from "@/types/ticket";
 import { File, FileMinus } from "lucide-react";
 import { SectionHeader } from "@/components/shared/SectionHeader";
@@ -43,11 +42,14 @@ export function AttachmentsSection({ attachments }: { attachments: Attachment[] 
                   src={`/api/attachments/${att.id}`}
                   alt={att.filename}
                 >
-                  <Image
+                  {/* Plain <img>, not next/image: the optimizer fetches the
+                      cookie-protected /api/attachments route server-side
+                      without the session cookie and gets a 401. */}
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img
                     src={`/api/attachments/${att.id}`}
                     alt={att.filename}
-                    width={300}
-                    height={96}
+                    loading="lazy"
                     className="h-full w-full object-cover"
                   />
                 </ImageLightbox>

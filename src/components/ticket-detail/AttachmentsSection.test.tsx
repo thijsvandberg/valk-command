@@ -3,13 +3,6 @@ import { describe, it, expect, vi } from "vitest";
 import { AttachmentsSection } from "./AttachmentsSection";
 import type { Attachment } from "@/types/ticket";
 
-vi.mock("next/image", () => ({
-  default: ({ src, alt, ...props }: { src: string; alt: string; [k: string]: unknown }) => (
-    // eslint-disable-next-line @next/next/no-img-element
-    <img src={src} alt={alt} {...props} />
-  ),
-}));
-
 vi.mock("@/components/shared/SectionHeader", () => ({
   SectionHeader: ({ title, count }: { title: string; count?: number }) => (
     <div data-testid="section-header">
@@ -70,6 +63,18 @@ describe("AttachmentsSection", () => {
     const attachments = [makeAttachment({ mimeType: "image/png" })];
     render(<AttachmentsSection attachments={attachments} />);
     expect(screen.getByTestId("image-lightbox")).toBeInTheDocument();
+  });
+
+  // Regression: the thumbnail must be a plain <img> pointing at the raw proxy
+  // URL. next/image would route through the optimizer, which fetches the
+  // cookie-protected /api/attachments route server-side without the session
+  // cookie and gets a 401, breaking every thumbnail.
+  it("renders image thumbnails as a plain <img> with the raw proxy URL", () => {
+    const attachments = [makeAttachment({ id: "att-42", mimeType: "image/png" })];
+    render(<AttachmentsSection attachments={attachments} />);
+    const img = screen.getByAltText("file.png");
+    expect(img.tagName).toBe("IMG");
+    expect(img.getAttribute("src")).toBe("/api/attachments/att-42");
   });
 
   it("renders mime type label for non-image attachments", () => {
