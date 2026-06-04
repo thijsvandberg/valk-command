@@ -1,4 +1,4 @@
-# BRDG-278: Description editor corrupts markdown on save (round-trip)
+# BRDG-280: Description editor corrupts markdown on save (round-trip)
 
 **Status:** Not started
 **Priority:** High

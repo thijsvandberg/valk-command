@@ -1,6 +1,6 @@
 # BRDG-272: Set BV/SP inline on epic child issues and confirm child creation
 
-**Status:** In Progress
+**Status:** Done
 **Priority:** Medium
 **Type:** Feature
 
@@ -64,10 +64,10 @@ badges per row.
 
 ## Checklist
 
-- [ ] Add `revealWhenEmpty` / `revealGroup` to `StoryPointPicker` and `BusinessValuePicker`
-- [ ] Replace static BV/SP badges in `EpicChildrenSection.renderMetadata` with editable pickers (list + sprint views), empty items reveal on hover
-- [ ] Wire `handleStoryPointsChange` / `handleBusinessValueChange` (persist + `onMutate`), only for epic children, with click/pointer propagation stopped
-- [ ] Apply `revealWhenEmpty` to the SP/BV pickers on the sprint board `TicketRow`
-- [ ] Add create/link confirmation + error toasts in `EpicChildrenSection`
-- [ ] Tests: picker hidden-when-empty/revealed, epic child SP/BV edit calls the right API, toast on create/link
-- [ ] `npm run lint`, `npm run typecheck`, `npm run test`, `npm run build` all pass
+- [x] Add `revealWhenEmpty` / `revealGroup` to `StoryPointPicker` and `BusinessValuePicker`
+- [x] Replace static BV/SP badges in `EpicChildrenSection.renderMetadata` with editable pickers (list + sprint views), empty items reveal on hover
+- [x] Wire `handleStoryPointsChange` / `handleBusinessValueChange` (persist + `onMutate`), only for epic children, with click/pointer propagation stopped
+- [x] Apply `revealWhenEmpty` to the SP/BV pickers on the sprint board `TicketRow`
+- [x] Add create/link confirmation + error toasts in `EpicChildrenSection`
+- [x] Tests: picker hidden-when-empty/revealed, epic child SP/BV edit calls the right API, toast on create/link
+- [x] `npm run lint`, `npm run typecheck`, `npm run test`, `npm run build` all pass
