@@ -15,7 +15,7 @@ export type Disposition = "candidate" | "dismissed" | "confirmed" | null;
 export const SCAN_TOPICS = [
   { key: "staleness", label: "Staleness", live: true },
   { key: "replaced", label: "Replaced area", live: true },
-  { key: "duplicate", label: "Duplicate", live: false },
+  { key: "duplicate", label: "Duplicate", live: true },
   { key: "alreadyBuilt", label: "Already built", live: false },
   { key: "relevance", label: "Relevance decay", live: false },
 ] as const;

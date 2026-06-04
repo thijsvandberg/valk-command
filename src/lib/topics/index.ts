@@ -8,3 +8,4 @@
  * import here and compose automatically.
  */
 import "@/lib/topics/replaced-area-topic";
+import "@/lib/topics/superseded-topic";

@@ -576,6 +576,8 @@ ticket (1) --- (*) related_suggestion_cache
 
 Cached AI-suggested related issues for the ticket detail view. Independent of story writer sessions. Reuses the workspace `find-related` skill. Cache is TTL-based (30 min) and invalidated when links are created/deleted.
 
+The "duplication / superseded" deep-scan topic (BRDG-286, `src/lib/topics/superseded-topic.ts`) reuses this same cache and skill: it reads a fresh entry when present (same 30-min TTL) and otherwise runs `find-related`, then writes the result back here (clear-then-insert, like the route's PUT). The scorer flags a ticket as superseded only when a high-overlap (>= 70/100) match is a **survivor** — newer (by the match's local `ticket.jira_updated_at`) or active (in-flight status). Evidence written to `scanScores.duplicate` carries `supersededBy` (the survivor key, for the review screen to link), `overlapScore`, `matchReason`, `matchStatus`, and `survivorBasis`. See the [Backlog Deprecation Review epic](../plans/2026-06-04-backlog-deprecation-review-epic.md).
+
 | Column | Type | Notes |
 |--------|------|-------|
 | `id` | text PK | |
