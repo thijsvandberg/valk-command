@@ -1,6 +1,6 @@
 # BRDG-275: Open Child Stories in the Full Side Panel (Epic Single View + Subtasks)
 
-**Status:** Not started
+**Status:** Complete
 **Priority:** Medium
 **Type:** Feature
 
