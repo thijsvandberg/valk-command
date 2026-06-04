@@ -3,7 +3,7 @@ import { describe, it, expect, beforeEach, vi } from "vitest";
 import { createTestDb } from "@/db/test-utils";
 import type { BetterSQLite3Database } from "drizzle-orm/better-sqlite3";
 import type * as schema from "@/db/schema";
-import { ticket, ticketMetadata } from "@/db/schema";
+import { ticket, ticketMetadata, ticketSubtask } from "@/db/schema";
 
 let testDb: BetterSQLite3Database<typeof schema>;
 
@@ -21,6 +21,13 @@ function seed(
     sprintName?: string | null;
     removedFromJiraAt?: string | null;
     status?: string;
+    type?: string | null;
+    epic?: string | null;
+    epicKey?: string | null;
+    storyPoints?: number | null;
+    assignee?: string | null;
+    reporter?: string | null;
+    jiraUpdatedAt?: string | null;
     lastScannedAt?: string | null;
     scanScores?: string | null;
     scanOverall?: number | null;
@@ -35,6 +42,13 @@ function seed(
       jiraKey: key,
       title: `Ticket ${key}`,
       status: opts.status ?? "TO DO",
+      type: opts.type ?? null,
+      epic: opts.epic ?? null,
+      epicKey: opts.epicKey ?? null,
+      storyPoints: opts.storyPoints ?? null,
+      assignee: opts.assignee ?? null,
+      reporter: opts.reporter ?? null,
+      jiraUpdatedAt: opts.jiraUpdatedAt ?? null,
       sprintName: opts.sprintName === undefined ? "" : opts.sprintName,
       removedFromJiraAt: opts.removedFromJiraAt ?? null,
     })
@@ -64,6 +78,20 @@ function seed(
 
 function call(query = ""): Promise<Response> {
   return GET(new Request(`http://localhost:3100/api/cleanup${query}`));
+}
+
+let subtaskSeq = 0;
+function seedSubtask(ticketKey: string, status: string) {
+  testDb
+    .insert(ticketSubtask)
+    .values({
+      id: `st-${subtaskSeq++}`,
+      ticketKey,
+      subtaskKey: `${ticketKey}-S${subtaskSeq}`,
+      title: "Sub",
+      status,
+    })
+    .run();
 }
 
 describe("GET /api/cleanup", () => {
@@ -149,6 +177,59 @@ describe("GET /api/cleanup", () => {
     seed("BT-HI", { scanOverall: 0.8 });
     const data = await (await call("?minOverall=0.6")).json();
     expect(data.rows.map((r: { key: string }) => r.key)).toEqual(["BT-HI"]);
+  });
+
+  it("exposes type, epic, story points, people, and last-activity per row (BRDG-298 UI refresh)", async () => {
+    seed("BT-FULL", {
+      type: "Bug",
+      epic: "Upsell",
+      epicKey: "BT-100",
+      storyPoints: 5,
+      assignee: "Alice Smith",
+      reporter: "Carol Jones",
+      jiraUpdatedAt: "2026-05-01T00:00:00Z",
+    });
+    const row = (await (await call("?sort=key")).json()).rows[0];
+    // Free-text Jira type is normalised onto the enum.
+    expect(row.type).toBe("bug");
+    expect(row.epic).toBe("Upsell");
+    expect(row.epicKey).toBe("BT-100");
+    expect(row.storyPoints).toBe(5);
+    expect(row.jiraUpdatedAt).toBe("2026-05-01T00:00:00Z");
+    // People carry precomputed initials + colour for the client.
+    expect(row.assignee).toMatchObject({ name: "Alice Smith", initials: "AS" });
+    expect(row.assignee.color).toMatch(/^hsl/);
+    expect(row.reporter).toMatchObject({ name: "Carol Jones", initials: "CJ" });
+  });
+
+  it("defaults an unknown/missing issue type to 'story'", async () => {
+    seed("BT-NOTYPE", { type: null });
+    const row = (await (await call()).json()).rows[0];
+    expect(row.type).toBe("story");
+  });
+
+  it("computes open/total subtask counts", async () => {
+    seed("BT-SUB", {});
+    seedSubtask("BT-SUB", "TO DO");
+    seedSubtask("BT-SUB", "IN PROGRESS");
+    seedSubtask("BT-SUB", "DONE"); // finished -> counts to total, not open
+    const row = (await (await call()).json()).rows[0];
+    expect(row.totalSubtaskCount).toBe(3);
+    expect(row.openSubtaskCount).toBe(2);
+  });
+
+  it("returns distinct facet option lists covering the whole eligible set", async () => {
+    seed("BT-A", { type: "story", epic: "Upsell", epicKey: "BT-100", assignee: "Alice", reporter: "Carol" });
+    seed("BT-B", { type: "bug", epic: "Logging", epicKey: "BT-200", assignee: "Bob", reporter: "Carol" });
+    seed("BT-C", { type: "bug" }); // no epic, no people
+    const data = await (await call()).json();
+    expect(data.facets.types).toEqual(["story", "bug"]); // stable display order, deduped
+    expect(data.facets.epics).toEqual([
+      { key: "BT-200", name: "Logging" },
+      { key: "BT-100", name: "Upsell" },
+    ]); // sorted by name, only parented rows
+    expect(data.facets.assignees).toEqual(["Alice", "Bob"]);
+    expect(data.facets.reporters).toEqual(["Carol"]); // deduped
   });
 
   it("exposes revivalScore and revivalRationale per row (BRDG-298)", async () => {

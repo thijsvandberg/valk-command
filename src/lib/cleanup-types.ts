@@ -6,6 +6,8 @@
  * of the surface follows automatically.
  */
 
+import type { IssueType } from "@/types/ticket";
+
 export type Disposition = "candidate" | "dismissed" | "confirmed" | null;
 
 // Revival score at/above which a ticket is surfaced as "worth pulling up"
@@ -42,10 +44,35 @@ export interface ScanTopicScore {
 
 export type ScanScores = Partial<Record<ScanTopicKey, ScanTopicScore>>;
 
+// A row's person reference (assignee/reporter). Name plus the precomputed
+// initials + colour the shared Avatar/pill use, so the client renders a person
+// without re-deriving anything and without importing server-only helpers.
+export interface CleanupPerson {
+  name: string;
+  initials: string;
+  color: string;
+}
+
 export interface CleanupRow {
   key: string;
   title: string;
   status: string;
+  // Issue type (story/task/bug/...). Drives the leading type icon and the
+  // issue-type filter (BRDG-298 UI refresh). Falls back to "story" when Jira
+  // never set one, matching the rest of the app's default.
+  type: IssueType;
+  // Epic the ticket belongs to: display name + key. Both null when unparented.
+  epic: string | null;
+  epicKey: string | null;
+  storyPoints: number | null;
+  // Open / total subtask counts for the shared subtask-count badge.
+  openSubtaskCount: number;
+  totalSubtaskCount: number;
+  assignee: CleanupPerson | null;
+  reporter: CleanupPerson | null;
+  // Last Jira activity timestamp (ticket.jiraUpdatedAt). Drives the
+  // last-activity time-period filter buckets. null when never recorded.
+  jiraUpdatedAt: string | null;
   lastScannedAt: string | null;
   /** Per-topic score in 0..1, or null when that topic has not scored this ticket. */
   topicScores: Partial<Record<ScanTopicKey, number | null>>;
@@ -57,10 +84,21 @@ export interface CleanupRow {
   revivalRationale: string | null;
 }
 
+// Distinct option lists for the view's dropdown filters, computed server-side so
+// the controls list every value present in the eligible backlog (not just the
+// page's current sort window). Epics carry both key + name; people are bare names.
+export interface CleanupFacets {
+  types: IssueType[];
+  epics: { key: string; name: string }[];
+  assignees: string[];
+  reporters: string[];
+}
+
 export interface CleanupResponse {
   rows: CleanupRow[];
   total: number;
   topics: { key: ScanTopicKey; label: string; live: boolean }[];
+  facets: CleanupFacets;
 }
 
 export type CleanupSort =
