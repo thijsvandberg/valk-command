@@ -1,6 +1,6 @@
 import { render, screen, fireEvent, waitFor } from "@testing-library/react";
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { SprintEditModal } from "./SprintEditModal";
+import { SprintEditModal, toInputDateTime, toIsoDateTime } from "./SprintEditModal";
 import type { Sprint, Ticket } from "@/types/ticket";
 
 vi.mock("swr", () => ({
@@ -20,6 +20,7 @@ vi.mock("@/lib/api-client", () => ({
 }));
 
 import { jira, workspaceTasks } from "@/lib/api-client";
+import { mutate } from "swr";
 
 function makeSprint(overrides: Partial<Sprint> = {}): Sprint {
   return {
@@ -55,6 +56,26 @@ function makeTicket(overrides: Partial<Ticket> = {}): Ticket {
     ...overrides,
   };
 }
+
+describe("date converters", () => {
+  it("keeps a date with no time time-less across the round trip", () => {
+    // No phantom time may appear: a date picked without a time must come back
+    // as the same bare date regardless of the runner's timezone.
+    const iso = toIsoDateTime("2026-06-05");
+    expect(toInputDateTime(iso)).toBe("2026-06-05");
+  });
+
+  it("preserves an explicit time across the round trip", () => {
+    const iso = toIsoDateTime("2026-06-18T17:00");
+    expect(toInputDateTime(iso)).toBe("2026-06-18T17:00");
+  });
+
+  it("returns empty for empty input", () => {
+    expect(toIsoDateTime("")).toBe("");
+    expect(toInputDateTime("")).toBe("");
+    expect(toInputDateTime(null)).toBe("");
+  });
+});
 
 describe("SprintEditModal", () => {
   const onClose = vi.fn();
@@ -120,6 +141,49 @@ describe("SprintEditModal", () => {
     await waitFor(() => {
       expect(onClose).toHaveBeenCalled();
     });
+  });
+
+  it("patches the SWR sprints cache directly so the edit shows immediately", async () => {
+    vi.mocked(jira.updateSprint).mockResolvedValue({ ok: true });
+
+    render(
+      <SprintEditModal
+        sprint={makeSprint()}
+        tickets={[makeTicket()]}
+        onClose={onClose}
+        showToast={showToast}
+      />,
+    );
+
+    fireEvent.change(screen.getByDisplayValue("Existing goal text"), {
+      target: { value: "New sprint goal" },
+    });
+    fireEvent.click(screen.getByText("Save"));
+
+    await waitFor(() => {
+      expect(mutate).toHaveBeenCalledWith(
+        "/api/jira/sprints",
+        expect.any(Function),
+        { revalidate: false },
+      );
+    });
+
+    // The updater must merge the changed fields onto the matching sprint without
+    // refetching, so the saved value survives the stale server cache.
+    const updater = vi.mocked(mutate).mock.calls[0][1] as (
+      current: unknown,
+    ) => unknown;
+    const next = updater({
+      sprints: [
+        { id: 100, name: "BT: 137", goal: "Existing goal text", startDate: null },
+        { id: 200, name: "Other", goal: "keep", startDate: null },
+      ],
+      backlogCount: 5,
+    }) as { sprints: Array<{ id: number; goal: string }>; backlogCount: number };
+
+    expect(next.sprints[0].goal).toBe("New sprint goal");
+    expect(next.sprints[1].goal).toBe("keep");
+    expect(next.backlogCount).toBe(5);
   });
 
   it("saves updated sprint name to Jira", async () => {

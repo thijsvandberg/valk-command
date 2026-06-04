@@ -19,20 +19,27 @@ interface SprintEditModalProps {
   autoSuggest?: boolean;
 }
 
-function toInputDateTime(iso: string | null | undefined): string {
+export function toInputDateTime(iso: string | null | undefined): string {
   if (!iso) return "";
   try {
     const d = new Date(iso);
     const pad = (n: number) => String(n).padStart(2, "0");
-    return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+    const datePart = `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+    // A date stored at local midnight had no explicit time; keep it time-less so
+    // it never resurfaces a phantom time on reopen.
+    if (d.getHours() === 0 && d.getMinutes() === 0) return datePart;
+    return `${datePart}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
   } catch {
     return "";
   }
 }
 
-function toIsoDateTime(input: string): string {
+export function toIsoDateTime(input: string): string {
   if (!input) return "";
-  return new Date(input).toISOString();
+  // "YYYY-MM-DD" alone parses as UTC midnight, which renders as 02:00 in a
+  // UTC+2 zone. Anchor a time-less date to local midnight instead.
+  const normalized = input.includes("T") ? input : `${input}T00:00`;
+  return new Date(normalized).toISOString();
 }
 
 // Persist suggestion task so it survives navigation
@@ -187,8 +194,22 @@ export function SprintEditModal({ sprint, tickets, onClose, showToast, autoSugge
       await jira.updateSprint(sprint.id, fields);
       showToast("Sprint updated");
       onClose();
-      // Revalidate in the background; a failed/slow refetch must not keep the modal open.
-      void mutate("/api/jira/sprints");
+      // The PUT route's cache.invalidate does not reach the GET route's cache
+      // instance under next dev, so a revalidating refetch returns stale data
+      // and the saved dates appear to vanish. Patch the SWR cache directly.
+      void mutate(
+        "/api/jira/sprints",
+        (current: { sprints: Array<{ id: number }>; backlogCount: number } | undefined) => {
+          if (!current?.sprints) return current;
+          return {
+            ...current,
+            sprints: current.sprints.map((s) =>
+              String(s.id) === String(sprint.id) ? { ...s, ...fields } : s,
+            ),
+          };
+        },
+        { revalidate: false },
+      );
     } catch (err) {
       const msg = err instanceof Error ? err.message : "Failed to update sprint";
       showToast(msg);
