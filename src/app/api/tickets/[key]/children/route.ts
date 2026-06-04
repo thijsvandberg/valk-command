@@ -56,12 +56,28 @@ export async function POST(request: Request, { params }: RouteContext) {
       issueType,
       parentKey: key,
       projectKey,
-      ...(sprintId ? { sprintId } : {}),
     });
   } catch (err) {
     logger.error("child-create", `Jira create failed for epic ${key}: ${err}`);
     const message = err instanceof Error ? err.message : "Jira API error";
     return errorResponse(message, 502);
+  }
+
+  // Assign the sprint via the same field-edit path as drag-to-sprint. Jira Cloud
+  // silently ignores the sprint field on create, so the issue must already exist.
+  // Only persist the local sprint when Jira confirms the move, so the by-sprint
+  // view never shows the child in a sprint it is not actually in.
+  let assignedSprintId: string | undefined;
+  if (sprintId) {
+    const sprintIdNum = parseInt(sprintId, 10);
+    if (!Number.isNaN(sprintIdNum)) {
+      try {
+        await jiraClient.moveToSprint([jiraResult.key], sprintIdNum);
+        assignedSprintId = sprintId;
+      } catch (err) {
+        logger.error("child-create", `Created ${jiraResult.key} but sprint assignment to ${sprintId} failed: ${err}`);
+      }
+    }
   }
 
   await db.insert(ticket).values({
@@ -72,6 +88,9 @@ export async function POST(request: Request, { params }: RouteContext) {
     status: "TO DO",
     epic: parent.title,
     epicKey: key,
+    // The sprint_name column stores the sprint id; the detail builder resolves it
+    // to a display name via sprintNameCache (same convention as the Jira sync).
+    ...(assignedSprintId ? { sprintName: assignedSprintId } : {}),
     flagged: false,
   });
 

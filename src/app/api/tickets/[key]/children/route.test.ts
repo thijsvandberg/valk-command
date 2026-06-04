@@ -14,6 +14,7 @@ vi.mock("@/db", () => ({
 vi.mock("@/lib/jira-client", () => ({
   jiraClient: {
     createIssue: vi.fn().mockResolvedValue({ key: "VPL-999", id: "99999" }),
+    moveToSprint: vi.fn().mockResolvedValue(undefined),
   },
 }));
 
@@ -112,7 +113,7 @@ describe("POST /api/tickets/[key]/children", () => {
     );
   });
 
-  it("forwards sprintId to Jira createIssue when provided", async () => {
+  it("assigns the sprint via moveToSprint after create, not on create", async () => {
     seedEpic("VPL-100");
     const { jiraClient } = await import("@/lib/jira-client");
 
@@ -121,12 +122,41 @@ describe("POST /api/tickets/[key]/children", () => {
       makeParams("VPL-100"),
     );
 
-    expect(jiraClient.createIssue).toHaveBeenCalledWith(
-      expect.objectContaining({ summary: "Into sprint", sprintId: "42" }),
-    );
+    // The sprint is not set on the create payload (Jira ignores it there)...
+    expect((jiraClient.createIssue as ReturnType<typeof vi.fn>).mock.calls[0][0]).not.toHaveProperty("sprintId");
+    // ...it is applied via the proven field-edit path used by drag-to-sprint.
+    expect(jiraClient.moveToSprint).toHaveBeenCalledWith(["VPL-999"], 42);
   });
 
-  it("omits sprintId when absent or blank", async () => {
+  it("persists the sprint id locally once Jira confirms the assignment", async () => {
+    seedEpic("VPL-100");
+
+    await POST(
+      postRequest("VPL-100", { title: "Into sprint", sprintId: "42" }),
+      makeParams("VPL-100"),
+    );
+
+    const child = testDb.select().from(ticket).all().find((r) => r.jiraKey === "VPL-999");
+    expect(child!.sprintName).toBe("42");
+  });
+
+  it("does not persist a sprint locally when the assignment fails", async () => {
+    seedEpic("VPL-100");
+    const { jiraClient } = await import("@/lib/jira-client");
+    (jiraClient.moveToSprint as ReturnType<typeof vi.fn>).mockRejectedValueOnce(new Error("sprint closed"));
+
+    const res = await POST(
+      postRequest("VPL-100", { title: "Into sprint", sprintId: "42" }),
+      makeParams("VPL-100"),
+    );
+
+    // Create still succeeds; the child just stays unscheduled locally.
+    expect(res.status).toBe(200);
+    const child = testDb.select().from(ticket).all().find((r) => r.jiraKey === "VPL-999");
+    expect(child!.sprintName).toBeNull();
+  });
+
+  it("does not assign a sprint when absent or blank", async () => {
     seedEpic("VPL-100");
     const { jiraClient } = await import("@/lib/jira-client");
 
@@ -135,8 +165,9 @@ describe("POST /api/tickets/[key]/children", () => {
       makeParams("VPL-100"),
     );
 
-    const call = (jiraClient.createIssue as ReturnType<typeof vi.fn>).mock.calls[0][0];
-    expect(call).not.toHaveProperty("sprintId");
+    expect(jiraClient.moveToSprint).not.toHaveBeenCalled();
+    const child = testDb.select().from(ticket).all().find((r) => r.jiraKey === "VPL-999");
+    expect(child!.sprintName).toBeNull();
   });
 
   it("defaults issueType to Story", async () => {
