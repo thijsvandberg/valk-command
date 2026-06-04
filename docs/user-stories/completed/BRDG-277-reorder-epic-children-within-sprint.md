@@ -1,6 +1,6 @@
 # BRDG-277: Drag-and-drop reorder of epic child issues within a sprint
 
-**Status:** To Do
+**Status:** Done
 **Priority:** Medium
 **Type:** Feature
 
@@ -119,4 +119,4 @@ behaviour.
 - [x] Wire reorder handler in `EpicChildrenSection` calling `jira.rank()` with optimistic update + revert/error toast
 - [x] Tests: children load in rank order; same-group drop calls `jira.rank` with correct anchor; cross-group drop still moves sprint; closed-sprint drop rejected
 - [x] Update relevant docs in `/docs` (documented `/api/jira/rank` and `/api/jira/move-sprint` in api-routes.md)
-- [ ] `npm run lint`, `npm run typecheck`, `npm run test`, `npm run build` all pass
+- [x] `npm run lint`, `npm run typecheck`, `npm run test`, `npm run build` all pass
