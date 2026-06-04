@@ -20,6 +20,26 @@ interface StoredSprint {
 }
 
 /**
+ * Pull a human-readable message out of a Jira 400 response body, which looks
+ * like { errorMessages: string[], errors: { field: string } }.
+ */
+function extractJiraValidationMessage(body: string): string | null {
+  try {
+    const parsed = JSON.parse(body) as {
+      errorMessages?: string[];
+      errors?: Record<string, string>;
+    };
+    const parts = [
+      ...(parsed.errorMessages ?? []),
+      ...Object.values(parsed.errors ?? {}),
+    ].filter(Boolean);
+    return parts.length > 0 ? parts.join("; ") : null;
+  } catch {
+    return null;
+  }
+}
+
+/**
  * PUT /api/jira/sprints/[id]
  *
  * Updates sprint metadata (name, goal, dates) via the Jira Agile API,
@@ -86,6 +106,14 @@ export async function PUT(
 
     const message = err instanceof Error ? err.message : "Unknown error";
     logger.error("jira", "Failed to update sprint", message);
+
+    // Surface Jira's own validation message on a 400 so the cause is visible
+    // instead of a generic failure.
+    if (err instanceof JiraApiError && err.status === 400) {
+      const detail = extractJiraValidationMessage(err.responseBody);
+      return errorResponse(detail ?? "Jira rejected the sprint update", 400);
+    }
+
     return errorResponse("Failed to update sprint", 500);
   }
 }

@@ -142,4 +142,21 @@ describe("PUT /api/jira/sprints/[id]", () => {
     const response = await PUT(req, ctx);
     expect(response.status).toBe(500);
   });
+
+  it("surfaces Jira's validation message on a 400", async () => {
+    vi.mocked(jiraClient.updateSprint).mockRejectedValue(
+      new JiraApiError(
+        400,
+        "Bad Request",
+        JSON.stringify({ errorMessages: [], errors: { name: "Sprint name is required" } }),
+        "/rest/agile/1.0/sprint/123",
+      ),
+    );
+
+    const [req, ctx] = makeRequest({ goal: "test" });
+    const response = await PUT(req, ctx);
+    expect(response.status).toBe(400);
+    const data = await response.json();
+    expect(data.error).toBe("Sprint name is required");
+  });
 });

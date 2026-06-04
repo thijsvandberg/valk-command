@@ -1045,6 +1045,11 @@ export class JiraClient {
   /**
    * Update sprint metadata (name, goal, dates) via the Jira Agile API.
    * Uses PUT /rest/agile/1.0/sprint/{sprintId}.
+   *
+   * The Agile API treats PUT as a full replace and rejects any request that
+   * omits `name` or `state` (400 "Sprint name/state is required"), even when
+   * only the goal or dates change. We fetch the current sprint and merge the
+   * changed fields on top so partial edits always carry the required fields.
    */
   async updateSprint(
     sprintId: number,
@@ -1055,7 +1060,18 @@ export class JiraClient {
       throw new Error("Jira is not configured");
     }
 
-    await jiraPut(`/rest/agile/1.0/sprint/${sprintId}`, fields, signal);
+    const current = await jiraFetch<{ name: string; state: string }>(
+      `/rest/agile/1.0/sprint/${sprintId}`,
+      signal,
+    );
+
+    const payload = {
+      name: current.name,
+      state: current.state,
+      ...fields,
+    };
+
+    await jiraPut(`/rest/agile/1.0/sprint/${sprintId}`, payload, signal);
   }
 
   /**
