@@ -341,8 +341,32 @@ export default function CleanupPage() {
                       <th className="px-3 py-2 font-medium">Status</th>
                       <th className="px-3 py-2 font-medium">Last scanned</th>
                       {topics.map((t) => (
-                        <th key={t.key} className="px-3 py-2 font-medium" title={t.live ? undefined : "Not scored yet"}>
-                          {t.label}
+                        <th
+                          key={t.key}
+                          className="px-3 py-2 font-medium"
+                          title={
+                            t.key === "relevance"
+                              ? "AI judgement call — lower trust than objective topics. Score is capped and needs corroboration to flag a ticket."
+                              : t.live ? undefined : "Not scored yet"
+                          }
+                        >
+                          {t.key === "relevance" ? (
+                            <span className="inline-flex items-center gap-1">
+                              {t.label}
+                              {/* Tilde marks this column as approximate / AI-subjective, consistent
+                                  with the mathematical "approximately" convention. Kept at low opacity
+                                  so it reads as a footnote, not a warning. */}
+                              <span
+                                className="font-normal text-text-muted opacity-50"
+                                style={{ fontSize: "10px", fontStyle: "italic", letterSpacing: 0 }}
+                                aria-label="AI judgement call"
+                              >
+                                ~
+                              </span>
+                            </span>
+                          ) : (
+                            t.label
+                          )}
                         </th>
                       ))}
                       <th className="px-3 py-2 font-medium">Overall</th>
