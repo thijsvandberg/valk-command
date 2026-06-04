@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState, useCallback } from "react";
+import { useMemo, useState, useCallback, useRef } from "react";
 import useSWR, { mutate as globalMutate } from "swr";
 import dynamic from "next/dynamic";
 import { Trash2, Telescope, Clock, Flame, Check, BellOff } from "lucide-react";
@@ -19,6 +19,7 @@ import {
   type ScannedFilter,
 } from "@/lib/cleanup-types";
 import { filterRows, sortRows, scoreHeat, type CleanupFilters } from "./cleanup-utils";
+import { type AutoScanSettings, autoScanSettings } from "@/lib/api-client";
 
 // The selected ticket opens in the same rich panel the sprint board uses, so
 // ticket management is identical across surfaces (BRDG-281/275).
@@ -213,6 +214,44 @@ export default function CleanupPage() {
     { refreshInterval: 4000 },
   );
 
+  // Auto-scan settings: toggle + daily count. No polling needed; settings
+  // change only on user action.
+  const { data: autoSettings, mutate: mutateAutoSettings } = useSWR<AutoScanSettings>(
+    "/api/cleanup/auto-scan-settings",
+  );
+  const [autoSaving, setAutoSaving] = useState(false);
+  // Optimistic count value while the user edits the number input.
+  const autoCountRef = useRef<HTMLInputElement>(null);
+
+  const toggleAutoScan = useCallback(async () => {
+    if (!autoSettings || autoSaving) return;
+    setAutoSaving(true);
+    try {
+      const updated = await autoScanSettings.update({ enabled: !autoSettings.enabled });
+      await mutateAutoSettings(updated, { revalidate: false });
+    } catch {
+      await mutateAutoSettings();
+    } finally {
+      setAutoSaving(false);
+    }
+  }, [autoSettings, autoSaving, mutateAutoSettings]);
+
+  const commitAutoCount = useCallback(async () => {
+    const raw = autoCountRef.current?.value;
+    const n = raw ? parseInt(raw, 10) : NaN;
+    if (!autoSettings || Number.isNaN(n) || n < 1 || n > 200) return;
+    if (n === autoSettings.dailyCount) return;
+    setAutoSaving(true);
+    try {
+      const updated = await autoScanSettings.update({ dailyCount: n });
+      await mutateAutoSettings(updated, { revalidate: false });
+    } catch {
+      await mutateAutoSettings();
+    } finally {
+      setAutoSaving(false);
+    }
+  }, [autoSettings, mutateAutoSettings]);
+
   const enqueue = useCallback(
     async (body: Record<string, unknown>) => {
       setEnqueuing(true);
@@ -355,8 +394,77 @@ export default function CleanupPage() {
                 Oldest (top {QUICK_TOP_X})
               </Button>
 
-              {queue && (queue.pending > 0 || queue.running > 0) && (
-                <span className="ml-auto flex items-center gap-2 text-label tabular-nums text-text-tertiary">
+              {/* Auto-scan toggle + count. Placed before the queue progress so the
+                  two controls read as a logical group: "auto mode state → queue state". */}
+              {autoSettings !== undefined && (
+                <span className="ml-auto flex items-center gap-2.5 text-label text-text-tertiary">
+                  <span className="h-5 w-px bg-overlay-default" />
+                  {/* Toggle pill */}
+                  <button
+                    type="button"
+                    role="switch"
+                    aria-checked={autoSettings.enabled}
+                    onClick={() => void toggleAutoScan()}
+                    disabled={autoSaving}
+                    title={autoSettings.enabled ? "Disable auto background deep scan" : "Enable auto background deep scan"}
+                    className={[
+                      "relative flex h-4 w-7 shrink-0 cursor-pointer items-center rounded-full border transition-colors duration-150",
+                      "focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)]",
+                      "disabled:cursor-not-allowed disabled:opacity-60",
+                      autoSettings.enabled
+                        ? "border-[var(--color-brand-500)]/50 bg-[var(--color-brand-500)]/25"
+                        : "border-border-default bg-overlay-subtle",
+                    ].join(" ")}
+                  >
+                    <span
+                      className={[
+                        "absolute h-2.5 w-2.5 rounded-full transition-[transform,background-color] duration-150",
+                        autoSettings.enabled
+                          ? "translate-x-[14px] bg-[var(--color-brand-400)]"
+                          : "translate-x-[1px] bg-text-muted",
+                      ].join(" ")}
+                    />
+                  </button>
+                  {/* Status text + count input */}
+                  {autoSettings.enabled ? (
+                    <span className="flex items-center gap-1.5 tabular-nums">
+                      <span>Auto:</span>
+                      <span className="font-medium text-[var(--color-brand-400)]">ON</span>
+                      <span className="text-text-muted">/</span>
+                      <input
+                        ref={autoCountRef}
+                        type="number"
+                        min={1}
+                        max={200}
+                        defaultValue={autoSettings.dailyCount}
+                        key={autoSettings.dailyCount}
+                        onBlur={() => void commitAutoCount()}
+                        onKeyDown={(e) => { if (e.key === "Enter") void commitAutoCount(); }}
+                        disabled={autoSaving}
+                        aria-label="Auto scan daily count"
+                        className={[
+                          "h-6 w-10 rounded-md border border-border-default bg-[var(--color-surface-elevated)]",
+                          "px-1.5 text-center text-label tabular-nums text-text-secondary",
+                          "focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-[var(--color-brand-400)]",
+                          "disabled:opacity-60",
+                          // Remove native spinner arrows; the field is small and arrows waste space.
+                          "[appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none",
+                        ].join(" ")}
+                      />
+                      <span>/ day</span>
+                    </span>
+                  ) : (
+                    <span className="tabular-nums text-text-muted">Auto: off</span>
+                  )}
+                </span>
+              )}
+
+              {queue && (queue.pending > 0 || queue.running > 0 || queue.done > 0) && (
+                <span className={[
+                  "flex items-center gap-2 text-label tabular-nums text-text-tertiary",
+                  autoSettings === undefined ? "ml-auto" : "",
+                ].join(" ")}>
+                  {autoSettings === undefined && <span className="h-5 w-px bg-overlay-default" />}
                   <Telescope size={13} strokeWidth={1.5} className="text-[var(--color-brand-400)]" />
                   <span title="Waiting in the deep-scan queue">{queue.pending} queued</span>
                   {queue.running > 0 && <span title="Currently being deep-scanned">{queue.running} running</span>}
