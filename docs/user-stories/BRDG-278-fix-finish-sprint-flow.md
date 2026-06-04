@@ -28,9 +28,9 @@ Order: item 1 → its test → items 3+4 together → component tests. Lint + ty
 ## In Scope
 
 - [x] Fix `closeSprint()` to mirror `updateSprint()`: fetch the current sprint and merge `state: "closed"` onto a full payload (`name`, `startDate`, `endDate`, `goal`) before the PUT.
-- [ ] In `FinishSprintModal.tsx`, hide the green "Ready to finish" banner whenever a `finishError` is present, so success and failure are never shown together.
-- [ ] Improve the ready state so the modal does not look half-empty: present it as an intentional confirmation block with a short sprint summary (e.g. count of completed stories).
-- [ ] Update/add tests: assert `closeSprint` sends the merged full payload; assert the modal hides the ready banner when an error is present.
+- [x] In `FinishSprintModal.tsx`, hide the green "Ready to finish" banner whenever a `finishError` is present, so success and failure are never shown together.
+- [x] Improve the ready state so the modal does not look half-empty: present it as an intentional confirmation block with a short sprint summary (e.g. count of completed stories).
+- [x] Update/add tests: assert `closeSprint` sends the merged full payload; assert the modal hides the ready banner when an error is present.
 
 ## Out of Scope
 

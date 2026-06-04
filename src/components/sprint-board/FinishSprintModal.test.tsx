@@ -67,6 +67,8 @@ describe("FinishSprintModal", () => {
     await waitFor(() => {
       expect(screen.getByText("Everything is done. Ready to finish.")).toBeInTheDocument();
     });
+    // The confirmation block carries a short summary so the modal is not half-empty.
+    expect(screen.getByText("1 story complete")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /finish sprint/i })).not.toBeDisabled();
   });
 
@@ -156,6 +158,8 @@ describe("FinishSprintModal", () => {
       expect(screen.getByText("Scope error")).toBeInTheDocument();
     });
     expect(props.onClose).not.toHaveBeenCalled();
+    // The error supersedes the ready confirmation; both must never show together.
+    expect(screen.queryByText("Everything is done. Ready to finish.")).not.toBeInTheDocument();
   });
 
   it("shows the early-close warning", () => {

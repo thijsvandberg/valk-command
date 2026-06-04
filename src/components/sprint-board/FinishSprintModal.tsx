@@ -176,7 +176,16 @@ export function FinishSprintModal({
     return parts.join(" · ");
   })();
 
-  const ready = !blocked && !finishing;
+  // An active error supersedes the ready state so success and failure are never shown together.
+  const ready = !blocked && !finishing && !finishError;
+
+  const completedCount = tickets.length - incompleteStories.length;
+  const readySummary = [
+    completedCount > 0 ? `${completedCount} ${completedCount === 1 ? "story" : "stories"} complete` : null,
+    sprint.dateRange || null,
+  ]
+    .filter(Boolean)
+    .join(" · ");
 
   return (
     <Modal open onClose={onClose} aria-label="Finish sprint">
@@ -372,9 +381,16 @@ export function FinishSprintModal({
 
           {/* Ready state */}
           {ready && (
-            <div className="flex items-center gap-2 rounded-lg border border-green-500/25 bg-green-500/[0.06] px-3 py-2.5">
-              <PartyPopper size={14} strokeWidth={1.75} className="shrink-0 text-[var(--color-status-success)]" />
-              <p className="text-body-sm text-text-secondary">Everything is done. Ready to finish.</p>
+            <div className="flex items-center gap-3 rounded-lg border border-green-500/25 bg-green-500/[0.06] px-3.5 py-3">
+              <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-green-500/12 text-[var(--color-status-success)]">
+                <PartyPopper size={16} strokeWidth={1.75} />
+              </span>
+              <div className="min-w-0">
+                <p className="text-body-sm font-medium text-text-primary">Everything is done. Ready to finish.</p>
+                {readySummary && (
+                  <p className="mt-0.5 truncate text-[11px] text-text-muted">{readySummary}</p>
+                )}
+              </div>
             </div>
           )}
 
