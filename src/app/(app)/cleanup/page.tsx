@@ -1,9 +1,9 @@
 "use client";
 
 import { useMemo, useState, useCallback } from "react";
-import useSWR from "swr";
+import useSWR, { mutate as globalMutate } from "swr";
 import dynamic from "next/dynamic";
-import { Trash2, Telescope, Clock, Flame } from "lucide-react";
+import { Trash2, Telescope, Clock, Flame, Check, BellOff } from "lucide-react";
 import { usePageTitle } from "@/hooks/usePageTitle";
 import { Button } from "@/components/ui/Button";
 import { ViewHeader, ViewHeaderTitle } from "@/components/shared/ViewHeader";
@@ -24,6 +24,13 @@ import { filterRows, sortRows, scoreHeat, type CleanupFilters } from "./cleanup-
 // ticket management is identical across surfaces (BRDG-281/275).
 const SidePanel = dynamic(
   () => import("@/components/sprint-board/SidePanel").then((m) => ({ default: m.SidePanel })),
+  { ssr: false },
+);
+
+// The score-breakdown + disposition drawer (BRDG-289). Lazy so the heavier
+// review surface only loads once the PO opens a candidate.
+const DispositionPanel = dynamic(
+  () => import("./DispositionPanel").then((m) => ({ default: m.DispositionPanel })),
   { ssr: false },
 );
 
@@ -145,11 +152,17 @@ export default function CleanupPage() {
     disposition: "all",
     minOverall: 0,
   });
+  // Ticket open in the score-breakdown / disposition drawer (BRDG-289). Row
+  // click opens this review drawer; the drawer can escalate to the full ticket
+  // SidePanel below for management.
+  const [reviewKey, setReviewKey] = useState<string | null>(null);
+  // Ticket open in the full management SidePanel (notes/status/etc.).
   const [selectedKey, setSelectedKey] = useState<string | null>(null);
-  // Multi-select for deep-scan enqueue (distinct from the single-row side-panel
-  // selection above): a set of ticket keys chosen via the row checkboxes.
+  // Multi-select for deep-scan enqueue and bulk disposition (distinct from the
+  // single-row selections above): a set of ticket keys chosen via the row checkboxes.
   const [checkedKeys, setCheckedKeys] = useState<Set<string>>(new Set());
   const [enqueuing, setEnqueuing] = useState(false);
+  const [disposing, setDisposing] = useState(false);
 
   const params = new URLSearchParams({ sort });
   if (filters.scanned !== "all") params.set("scanned", filters.scanned);
@@ -158,7 +171,40 @@ export default function CleanupPage() {
   }
   if (filters.minOverall > 0) params.set("minOverall", String(filters.minOverall));
 
-  const { data, isLoading } = useSWR<CleanupResponse>(`/api/cleanup?${params.toString()}`);
+  const cleanupKey = `/api/cleanup?${params.toString()}`;
+  const { data, isLoading, mutate: mutateCleanup } = useSWR<CleanupResponse>(cleanupKey);
+
+  // Refresh the list (badges) plus any open breakdown drawer after a disposition
+  // write. Both the explicit list key and the drawer's detail key are revalidated.
+  const refreshAfterDisposition = useCallback(
+    (keys: string[]) => {
+      void mutateCleanup();
+      for (const k of keys) {
+        void globalMutate(`/api/cleanup/${encodeURIComponent(k)}/disposition`);
+      }
+    },
+    [mutateCleanup],
+  );
+
+  const bulkDispose = useCallback(
+    async (action: "confirm" | "dismiss") => {
+      const keys = [...checkedKeys];
+      if (keys.length === 0) return;
+      setDisposing(true);
+      try {
+        await fetch("/api/cleanup/disposition", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ action, keys }),
+        });
+        refreshAfterDisposition(keys);
+        setCheckedKeys(new Set());
+      } finally {
+        setDisposing(false);
+      }
+    },
+    [checkedKeys, refreshAfterDisposition],
+  );
 
   // Poll the deep-dive queue so batch progress (queued/running/done) stays live
   // while the background runner drains it. 4s is responsive without hammering.
@@ -375,13 +421,13 @@ export default function CleanupPage() {
                   </thead>
                   <tbody>
                     {rows.map((row) => {
-                      const active = row.key === selectedKey;
+                      const active = row.key === reviewKey || row.key === selectedKey;
                       const isChecked = checkedKeys.has(row.key);
                       const badge = row.disposition ? DISPOSITION_BADGE[row.disposition] : null;
                       return (
                         <tr
                           key={row.key}
-                          onClick={() => setSelectedKey(row.key)}
+                          onClick={() => setReviewKey(row.key)}
                           className={`group cursor-pointer text-body-sm transition-colors duration-150 ${
                             active ? "[&>td]:bg-[var(--color-brand-600)]/12" : "[&>td]:hover:bg-hover-list-item"
                           }`}
@@ -447,11 +493,33 @@ export default function CleanupPage() {
                 <Button
                   variant="primary"
                   size="md"
-                  disabled={enqueuing}
+                  disabled={enqueuing || disposing}
                   onClick={() => void deepScanSelected()}
                 >
                   <Telescope className="h-3.5 w-3.5 shrink-0" strokeWidth={1.5} />
                   Deep-scan selected
+                </Button>
+                <span className="mx-1 h-5 w-px bg-overlay-default" />
+                {/* Bulk disposition (BRDG-289): local markers only, no Jira write. */}
+                <Button
+                  variant="soft"
+                  size="md"
+                  disabled={disposing || enqueuing}
+                  onClick={() => void bulkDispose("confirm")}
+                  title="Confirm selected as removable (local only, no Jira write)"
+                >
+                  <Check className="h-3.5 w-3.5 shrink-0" strokeWidth={2} />
+                  Confirm
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="md"
+                  disabled={disposing || enqueuing}
+                  onClick={() => void bulkDispose("dismiss")}
+                  title="Dismiss selected as false positives (snooze)"
+                >
+                  <BellOff className="h-3.5 w-3.5 shrink-0" strokeWidth={1.5} />
+                  Dismiss
                 </Button>
                 <Button
                   variant="ghost"
@@ -464,6 +532,17 @@ export default function CleanupPage() {
               </div>
             )}
           </div>
+
+          {reviewKey && !selectedKey && (
+            <DispositionPanel
+              key={reviewKey}
+              jiraKey={reviewKey}
+              onOpenTicket={(k) => setSelectedKey(k)}
+              onNavigate={(k) => setReviewKey(k)}
+              onClose={() => setReviewKey(null)}
+              onDisposed={() => refreshAfterDisposition([reviewKey])}
+            />
+          )}
 
           {selectedKey && panelTicket && (
             <SidePanel

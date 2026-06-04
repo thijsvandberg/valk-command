@@ -12,8 +12,9 @@ const swrSpy = vi.fn();
 vi.mock("swr", () => ({
   default: (key: string | null) => {
     swrSpy(key);
-    return { data: swrData, isLoading: swrLoading };
+    return { data: swrData, isLoading: swrLoading, mutate: vi.fn() };
   },
+  mutate: vi.fn(),
 }));
 
 // The panel is a heavy dynamic import; stub it so the test asserts wiring
@@ -23,6 +24,27 @@ vi.mock("@/components/sprint-board/SidePanel", () => ({
     <div data-testid="side-panel">
       <span>panel:{ticket.key}</span>
       <button onClick={onClose}>close-panel</button>
+    </div>
+  ),
+}));
+
+// The breakdown/disposition drawer (BRDG-289) is also a dynamic import; stub it
+// so the test asserts which ticket the row click opens, and lets it escalate to
+// the full SidePanel.
+vi.mock("./DispositionPanel", () => ({
+  DispositionPanel: ({
+    jiraKey,
+    onOpenTicket,
+    onClose,
+  }: {
+    jiraKey: string;
+    onOpenTicket: (k: string) => void;
+    onClose: () => void;
+  }) => (
+    <div data-testid="disposition-panel">
+      <span>review:{jiraKey}</span>
+      <button onClick={() => onOpenTicket(jiraKey)}>open-ticket</button>
+      <button onClick={onClose}>close-review</button>
     </div>
   ),
 }));
@@ -100,18 +122,30 @@ describe("CleanupPage", () => {
     expect(screen.getByText("never")).toBeInTheDocument();
   });
 
-  it("opens the SidePanel for the clicked ticket and closes it", async () => {
+  it("opens the breakdown drawer for the clicked ticket and closes it", async () => {
     swrData = RESPONSE;
     render(<CleanupPage />);
-    expect(screen.queryByTestId("side-panel")).not.toBeInTheDocument();
+    expect(screen.queryByTestId("disposition-panel")).not.toBeInTheDocument();
 
     fireEvent.click(screen.getByText("Ancient ticket"));
-    // The panel loads via next/dynamic, so it mounts on a later tick.
+    // The drawer loads via next/dynamic, so it mounts on a later tick.
+    const panel = await screen.findByTestId("disposition-panel");
+    expect(within(panel).getByText("review:BT-1")).toBeInTheDocument();
+
+    fireEvent.click(screen.getByText("close-review"));
+    expect(screen.queryByTestId("disposition-panel")).not.toBeInTheDocument();
+  });
+
+  it("escalates from the breakdown drawer to the full ticket SidePanel", async () => {
+    swrData = RESPONSE;
+    render(<CleanupPage />);
+
+    fireEvent.click(screen.getByText("Ancient ticket"));
+    await screen.findByTestId("disposition-panel");
+    fireEvent.click(screen.getByText("open-ticket"));
+
     const panel = await screen.findByTestId("side-panel");
     expect(within(panel).getByText("panel:BT-1")).toBeInTheDocument();
-
-    fireEvent.click(screen.getByText("close-panel"));
-    expect(screen.queryByTestId("side-panel")).not.toBeInTheDocument();
   });
 
   it("passes the disposition filter into the SWR key", () => {
