@@ -9,6 +9,7 @@ import { IssueTypeIcon } from "@/components/shared/IssueTypeIcon";
 import { EmptyState } from "@/components/shared/EmptyState";
 import { Sheet, Inbox } from "lucide-react";
 import { GroupStatBar } from "@/components/sprint-board/GroupStatBar";
+import { matchesWarningFilter } from "@/components/sprint-board/warning-filter";
 import { GroupCard, GROUP_CARD_CLASS } from "@/components/sprint-board/GroupCard";
 import type { TicketGroup, GroupByOption } from "@/components/sprint-board/useGroupBy";
 import {
@@ -467,14 +468,8 @@ export function TicketTable({
               : activeCriterion === "done"
                 ? group.tickets.filter((t) => t.jiraStatus === "DONE")
                 : activeCriterion === "unpointed"
-                  // Matches the GroupStatBar warning exactly: unpointed stories
-                  // (only for the active sprint, where that warning shows) plus any
-                  // deprecated-with-points tickets, so clicking the warning reveals
-                  // precisely the items it flagged.
                   ? group.tickets.filter((t) =>
-                      (groupBy === "sprint" && activeSprintIds.has(group.key)
-                        && t.storyPoints == null && t.jiraStatus !== "DEPRECATED" && t.type !== "spike")
-                      || (t.jiraStatus === "DEPRECATED" && t.storyPoints != null && t.storyPoints > 0))
+                      matchesWarningFilter(t, groupBy === "sprint" && activeSprintIds.has(group.key)))
                   : group.tickets;
 
         function toggleGroupFilter(criterion: "todo" | "in-progress" | "test" | "done" | "unpointed") {

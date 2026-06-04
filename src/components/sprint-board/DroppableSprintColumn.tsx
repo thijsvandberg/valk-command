@@ -5,6 +5,7 @@ import type { Ticket, Sprint, TicketReadiness, JiraStatus, IssueType } from "@/t
 import { EmptyState } from "@/components/shared/EmptyState";
 import { GroupStatBar } from "./GroupStatBar";
 import type { StatCriterion } from "./GroupStatBar";
+import { matchesWarningFilter } from "./warning-filter";
 import { SprintSelector } from "./SprintSelector";
 import { SortableTicketRow } from "./TicketRow";
 import type { ColumnId } from "./FilterBar";
@@ -228,7 +229,7 @@ export function DroppableSprintColumn({
         if (activeCriterion === "in-progress") return t.jiraStatus === "IN PROGRESS";
         if (activeCriterion === "test") return t.jiraStatus === "TEST";
         if (activeCriterion === "done") return t.jiraStatus === "DONE";
-        if (activeCriterion === "unpointed") return t.storyPoints == null && t.jiraStatus !== "DEPRECATED" && t.type !== "spike";
+        if (activeCriterion === "unpointed") return matchesWarningFilter(t, true);
         return true;
       });
     }
