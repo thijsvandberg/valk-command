@@ -29,6 +29,10 @@ import {
   scoreStaleness, isPoMetadataEmpty, STALENESS_CANDIDATE_THRESHOLD,
 } from "@/lib/deprecation-staleness";
 import { selectScanBatch } from "@/lib/deprecation-scan-batch";
+import {
+  claimPendingBatch, markDone, markError, requeueStuckRunning,
+} from "@/lib/deprecation-scan-queue";
+import { runDeepScan } from "@/lib/deprecation-topics";
 
 // ---------------------------------------------------------------------------
 // Constants
@@ -46,6 +50,10 @@ const STALENESS_SCAN_BATCH_SIZE = 25;
 // restarts; the authoritative rotation state is each ticket's own
 // lastScannedAt, so this cursor is informational and never gates selection.
 const STALENESS_SCAN_CURSOR_KEY = "scheduler:deprecation-staleness-scan:cursor";
+
+// Tier-2 deep-dive runner (BRDG-284). Small batch per tick keeps agent load low
+// per the epic's "small batches, never all at once" constraint.
+const DEEP_SCAN_BATCH_SIZE = 5;
 
 // ---------------------------------------------------------------------------
 // Task: Incremental Jira Sync (every 120s)
@@ -423,6 +431,80 @@ export async function runDeprecationStalenessScan(): Promise<TaskResult> {
 }
 
 // ---------------------------------------------------------------------------
+// Task: Tier-2 deprecation deep scan (every 2 minutes)
+// ---------------------------------------------------------------------------
+
+/**
+ * Drains the persisted deep-dive queue (BRDG-284) a small batch at a time. Each
+ * tick recovers any rows stuck in `running` from a prior crash, claims up to
+ * DEEP_SCAN_BATCH_SIZE pending rows, and runs runDeepScan on each. Tickets whose
+ * dismiss cooldown (dispositionUntil) is still active are skipped without
+ * scoring and marked done, so a snoozed false-positive is not re-evaluated until
+ * its cooldown elapses. Because the queue lives in the DB, the runner resumes
+ * across restarts. Writes one activity-log summary per non-empty batch.
+ */
+export async function runDeprecationDeepScan(): Promise<TaskResult> {
+  const startedAt = new Date().toISOString();
+  const recovered = await requeueStuckRunning();
+
+  const batch = await claimPendingBatch(DEEP_SCAN_BATCH_SIZE);
+  if (batch.length === 0) {
+    return { scanned: 0, candidates: 0, errors: 0, skipped: 0, recovered };
+  }
+
+  const now = Date.now();
+  let candidates = 0;
+  let errors = 0;
+  let skipped = 0;
+
+  for (const row of batch) {
+    try {
+      // Respect the dismiss cooldown: a ticket dismissed and still inside its
+      // cooldown window is not deep-scanned. We complete the queue row so it
+      // leaves the queue rather than looping forever.
+      const meta = await db
+        .select({
+          disposition: ticketMetadata.disposition,
+          dispositionUntil: ticketMetadata.dispositionUntil,
+        })
+        .from(ticketMetadata)
+        .where(eq(ticketMetadata.jiraKey, row.jiraKey))
+        .get();
+
+      if (
+        meta?.disposition === "dismissed" &&
+        meta.dispositionUntil &&
+        new Date(meta.dispositionUntil).getTime() > now
+      ) {
+        skipped++;
+        await markDone(row.id);
+        continue;
+      }
+
+      const result = await runDeepScan(row.jiraKey, { now });
+      if (result.becameCandidate) candidates++;
+      await markDone(row.id);
+    } catch (err) {
+      errors++;
+      const message = err instanceof Error ? err.message : "Unknown error";
+      logger.error("scheduled-tasks", `Deep scan failed for ${row.jiraKey}:`, message);
+      await markError(row.id, message);
+    }
+  }
+
+  const processed = batch.length;
+  await logActivity({
+    type: "deprecation-scan",
+    scope: `${processed} tickets`,
+    summary: `Deep scan: ${processed} processed, ${candidates} new candidate${candidates === 1 ? "" : "s"}${skipped > 0 ? `, ${skipped} skipped (cooldown)` : ""}${errors > 0 ? `, ${errors} error${errors === 1 ? "" : "s"}` : ""}`,
+    status: errors > 0 ? "failed" : "success",
+    startedAt,
+  });
+
+  return { scanned: processed, candidates, errors, skipped, recovered };
+}
+
+// ---------------------------------------------------------------------------
 // Register all tasks
 // ---------------------------------------------------------------------------
 
@@ -449,6 +531,14 @@ export function registerScheduledTasks() {
     "Tier-1 of the Backlog Deprecation Review: scores a rotating batch of 25 backlog tickets on local staleness heuristics (age, never-in-sprint, backlog status, empty PO metadata) and records lastScannedAt. No AI and no Jira writes; oldest-scanned tickets first, looping for continuous re-evaluation.",
     5 * 60 * 1000,
     runDeprecationStalenessScan,
+  );
+
+  defineTask(
+    "deprecation-deep-scan",
+    "Backlog Deep Scan",
+    "Tier-2 of the Backlog Deprecation Review: drains the persisted deep-dive queue 5 tickets per tick, running every registered topic scorer, recomputing the combined score, and promoting tickets to candidate on threshold. Respects the dismiss cooldown and resumes across restarts.",
+    2 * 60 * 1000,
+    runDeprecationDeepScan,
   );
 
   defineTask(
