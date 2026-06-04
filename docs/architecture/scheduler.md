@@ -19,6 +19,7 @@ Scheduler (src/lib/scheduler.ts)
     +-- deprecation-deep-scan (every 2m)
     +-- deprecation-staleness-scan (every 5m)
     +-- revalidate-deleted-tickets (every 10m)
+    +-- deprecation-auto-enqueue (every 10m, opt-in)
     +-- cleanup-removed-tickets (every 24h)
     |
     v
@@ -100,6 +101,30 @@ Tier-2 of the [Backlog Deprecation Review epic](../plans/2026-06-04-backlog-depr
 4. Logs a batch summary to `activity_log` (`type = deprecation-scan`)
 
 **Selection + enqueue** is done via `POST /api/cleanup/deep-scan` (methods `keys` | `worst-staleness` | `oldest`, idempotent), with `GET` returning queue-status counts for the /cleanup batch-progress indicator. Pure selection ordering lives in `src/lib/deprecation-deep-scan-selection.ts` (excludes dismissed tickets still in cooldown for the ranked methods).
+
+#### Auto Background Deep Scan (every 10m, opt-in) (BRDG-290)
+
+An optional hands-off policy that auto-enqueues up to N tickets per day without PO intervention. Off by default; toggled from the /cleanup view.
+
+**Settings** (stored in `app_setting`):
+- `deprecation-auto-scan:enabled` — `"true"` | `"false"` (default false)
+- `deprecation-auto-scan:daily-count` — integer string (default 10)
+- `deprecation-auto-scan:budget:<YYYY-MM-DD>` — per-day enqueue counter; resets naturally as the date suffix rolls over
+
+**API**: `GET /api/cleanup/auto-scan-settings` and `POST /api/cleanup/auto-scan-settings` — read and update enabled + dailyCount.
+
+**Task flow** (`runAutoEnqueue` in `scheduled-tasks.ts`):
+1. Reads `enabled`; returns immediately (skipped) if off
+2. Reads `dailyCount` and today's budget counter
+3. If budget already exhausted, returns skipped
+4. Loads eligible backlog (same definition: no sprint, not removed)
+5. Applies `worst-staleness` ordering via `selectDeepScanKeys()` from `deprecation-deep-scan-selection.ts` (the shared helper), capped at remaining budget
+6. Enqueues idempotently with source `"auto"` via `enqueueDeepScan()`
+7. Increments the day counter; logs to `activity_log`
+
+**Why worst-staleness**: surfaces the most actionable candidates first — identical to what the PO would pick manually via the top-10 quick-action button — making auto mode immediately useful without extra tuning.
+
+**UI**: On the /cleanup controls bar, a compact toggle pill + count input appear alongside the queue progress indicator. Status text reads "Auto: ON / N / day" (with brand-colored ON) or "Auto: off".
 
 **Topic registration**: shipped topic scorers self-register via a side-effect barrel `src/lib/topics/index.ts`, imported once from `scheduled-tasks.ts` so every topic is in the registry before `runDeepScan` runs. Later topics add one import line there.
 

@@ -226,6 +226,8 @@ same definition the Tier-1 staleness scanner uses). Never writes; never touches 
 | `/api/cleanup` | GET | List scan-eligible backlog tickets with scan state. Query params below. |
 | `/api/cleanup/deep-scan` | GET | Tier-2 deep-dive queue status counts `{ pending, running, done, error }`. |
 | `/api/cleanup/deep-scan` | POST | Enqueue tickets for Tier-2 deep scan (BRDG-284). Idempotent. |
+| `/api/cleanup/auto-scan-settings` | GET | Read auto background scan settings `{ enabled, dailyCount }` (BRDG-290). |
+| `/api/cleanup/auto-scan-settings` | POST | Update settings `{ enabled?, dailyCount? }`. Returns merged settings. |
 | `/api/cleanup/deprecated-areas` | GET | List the editable deprecated-area keyword list (BRDG-285). |
 | `/api/cleanup/deprecated-areas` | POST | Add an area `{ term, aliases?, note? }`. Returns the created row (201). |
 | `/api/cleanup/deprecated-areas` | PUT | Edit an area `{ id, term, aliases?, note? }`. 404 if unknown id. |

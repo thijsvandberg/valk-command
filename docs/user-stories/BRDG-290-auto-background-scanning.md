@@ -26,12 +26,29 @@ the PO selecting anything. Explicitly deferred per PO: ship and validate the **m
 - Toggle off = no auto-enqueue; on = exactly N/day, cooldown respected, correct ordering.
 - Daily budget not exceeded across multiple ticks in a day.
 
+## Implementation Plan
+
+**Setting keys** (stored in `app_setting`):
+- `deprecation-auto-scan:enabled` — `"true"` | `"false"`, default `"false"`
+- `deprecation-auto-scan:daily-count` — integer string, default `"10"`
+- `deprecation-auto-scan:budget:<YYYY-MM-DD>` — integer string, count of tickets already enqueued today
+
+**Settings API**: `GET/POST /api/cleanup/auto-scan-settings` — reads/writes the enabled + daily-count settings.
+
+**New source value**: Add `"auto"` to `QueueSource` in `src/lib/deprecation-scan-queue.ts`.
+
+**New task**: `deprecation-auto-enqueue` in `src/lib/scheduled-tasks.ts`, interval 10 minutes. When enabled: loads eligible backlog, applies `worst-staleness` ordering (natural default — most likely to yield actionable results), excludes cooldown tickets, reads today's budget counter, enqueues up to `(dailyCount - usedToday)` tickets, increments counter. Does nothing when disabled.
+
+**UI**: Inline in the `/cleanup` controls bar — a compact toggle + count input appended before the queue progress area. Status badge reads "Auto: ON, N/day" or "Auto: off" depending on state.
+
+**Shared selection**: `selectDeepScanKeys` already lives in `src/lib/deprecation-deep-scan-selection.ts` (extracted in BRDG-284); reused directly here without further extraction.
+
 ## Checklist
 
-- [ ] On/off setting (default off) + configurable daily count (default ~10)
-- [ ] Auto-enqueue policy reuses the BRDG-284 queue/runner and selection ordering
-- [ ] Respects dismiss cooldown; daily budget enforced across ticks
-- [ ] Setting + status indicator in the scan backlog view; auto runs logged
-- [ ] Tests (toggle, daily budget, cooldown, ordering)
+- [x] On/off setting (default off) + configurable daily count (default ~10)
+- [x] Auto-enqueue policy reuses the BRDG-284 queue/runner and selection ordering
+- [x] Respects dismiss cooldown; daily budget enforced across ticks
+- [x] Setting + status indicator in the scan backlog view; auto runs logged
+- [x] Tests (toggle, daily budget, cooldown, ordering)
 - [ ] Run `npm run lint`, `npm run typecheck`, `npm run test`, `npm run build`
-- [ ] Update docs and reference the epic
+- [x] Update docs and reference the epic
