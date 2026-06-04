@@ -26,6 +26,7 @@ import { AssigneePicker, type AssignableUser } from "@/components/shared/Assigne
 import { SprintPicker } from "@/components/shared/SprintPicker";
 import { EpicPicker, type EpicOption } from "@/components/shared/EpicPicker";
 import { Avatar } from "@/components/shared/Avatar";
+import { useHoverCardEdits } from "@/hooks/useHoverCardEdits";
 
 // ---------------------------------------------------------------------------
 // Readiness icon helper
@@ -448,6 +449,9 @@ interface TicketHoverCardProps {
   onRunReview?: () => void | Promise<void>;
   /** Notifies the parent when an inline picker opens/closes (to keep the card open). */
   onPickerOpenChange: (open: boolean) => void;
+  /** Editing is on by default (BRDG-276). Any field without an explicit handler above
+   *  falls back to a self-contained default editor; set false for a read-only card. */
+  editable?: boolean;
 }
 
 function TicketHoverCard({
@@ -465,15 +469,35 @@ function TicketHoverCard({
   onToggleFollow,
   onRunReview,
   onPickerOpenChange,
+  editable = true,
 }: TicketHoverCardProps) {
+  // Default, self-contained editors. Used for any field the parent did not wire
+  // explicitly, so the card is editable everywhere by default (BRDG-276). The
+  // hook only runs here, and the card mounts one-at-a-time on hover, so its SWR
+  // subscriptions cost nothing per row.
+  const edits = useHoverCardEdits(ticketKey);
+  const fallback = <T,>(explicit: T | undefined, def: T): T | undefined =>
+    explicit ?? (editable ? def : undefined);
+
+  const spChange = fallback(onStoryPointsChange, edits.onStoryPointsChange);
+  const bvChange = fallback(onBusinessValueChange, edits.onBusinessValueChange);
+  const sprintChange = fallback(onSprintChange, edits.onSprintChange);
+  const sprintsForPicker = sprints ?? (editable ? edits.sprints : undefined);
+  const epicChange = fallback(onEpicChange, edits.onEpicChange);
+  const assigneeChange = fallback(onAssigneeChange, edits.onAssigneeChange);
+  const toggleFollow = fallback(onToggleFollow, edits.onToggleFollow);
+  const runReview = fallback(onRunReview, edits.onRunReview);
+  // Explicit `followed` wins; otherwise the default follow state drives the star.
+  const followed = data.followed !== undefined ? data.followed : (editable ? edits.isFollowed : undefined);
+
   const [reviewing, setReviewing] = useState(false);
   const reviewMountedRef = useRef(true);
   useEffect(() => () => { reviewMountedRef.current = false; }, []);
   const handleRunReview = async () => {
-    if (!onRunReview || reviewing) return;
+    if (!runReview || reviewing) return;
     setReviewing(true);
     try {
-      await onRunReview();
+      await runReview();
     } finally {
       if (reviewMountedRef.current) setReviewing(false);
     }
@@ -514,22 +538,22 @@ function TicketHoverCard({
     >
       <div className="flex items-start justify-between gap-2">
         <div className="text-body-lg font-medium leading-snug text-text-primary">{data.title}</div>
-        {data.followed !== undefined && (
-          <Tooltip content={data.followed ? "Following. Click to unfollow." : "Follow for PR, pipeline, and deployment notifications."}>
+        {followed !== undefined && (
+          <Tooltip content={followed ? "Following. Click to unfollow." : "Follow for PR, pipeline, and deployment notifications."}>
             <button
               type="button"
-              aria-label={data.followed ? "Unfollow ticket" : "Follow ticket"}
-              aria-pressed={data.followed}
-              onClick={onToggleFollow}
-              disabled={!onToggleFollow}
+              aria-label={followed ? "Unfollow ticket" : "Follow ticket"}
+              aria-pressed={followed}
+              onClick={toggleFollow}
+              disabled={!toggleFollow}
               className={`-mr-0.5 -mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-md transition-colors duration-150 ${
-                onToggleFollow ? "cursor-pointer hover:bg-overlay-default" : "cursor-default"
+                toggleFollow ? "cursor-pointer hover:bg-overlay-default" : "cursor-default"
               }`}
             >
               <Star
                 size={14}
                 strokeWidth={1.5}
-                className={data.followed ? "text-amber-400 fill-amber-400" : "text-text-muted"}
+                className={followed ? "text-amber-400 fill-amber-400" : "text-text-muted"}
               />
             </button>
           </Tooltip>
@@ -537,13 +561,13 @@ function TicketHoverCard({
       </div>
 
       <div className="mt-2 flex items-center gap-3 border-t border-border-subtle pt-2">
-        {onStoryPointsChange ? (
-          <StoryPointPicker value={data.storyPoints} onChange={onStoryPointsChange} size="lg" align="left" showMetricIcon richTooltip onOpenChange={onPickerOpenChange} />
+        {spChange ? (
+          <StoryPointPicker value={data.storyPoints} onChange={spChange} size="lg" align="left" showMetricIcon richTooltip onOpenChange={onPickerOpenChange} />
         ) : (
           <MetricBadge metric="sp" value={data.storyPoints} tinted tooltip />
         )}
-        {onBusinessValueChange ? (
-          <BusinessValuePicker value={data.businessValue} onChange={onBusinessValueChange} size="lg" align="left" showMetricIcon richTooltip onOpenChange={onPickerOpenChange} />
+        {bvChange ? (
+          <BusinessValuePicker value={data.businessValue} onChange={bvChange} size="lg" align="left" showMetricIcon richTooltip onOpenChange={onPickerOpenChange} />
         ) : (
           <MetricBadge metric="bv" value={data.businessValue} tinted tooltip />
         )}
@@ -595,18 +619,18 @@ function TicketHoverCard({
 
       <div className="mt-2 flex flex-col gap-0.5">
         <InfoRow icon={<IterationCw size={12} strokeWidth={1.75} />} label="Sprint">
-          {onSprintChange && sprints ? (
-            <SprintPicker value={data.sprintId} sprints={sprints} onChange={onSprintChange} align="right" textClass="text-body-sm" onOpenChange={onPickerOpenChange} />
+          {sprintChange && sprintsForPicker ? (
+            <SprintPicker value={data.sprintId} sprints={sprintsForPicker} onChange={sprintChange} align="right" textClass="text-body-sm" onOpenChange={onPickerOpenChange} />
           ) : (
             data.sprintName ?? <span className="text-text-muted">No sprint</span>
           )}
         </InfoRow>
 
         <InfoRow icon={<Zap size={12} strokeWidth={1.75} />} label="Epic">
-          {onEpicChange ? (
+          {epicChange ? (
             <EpicPicker
               value={data.epicKey && data.epic ? { key: data.epicKey, name: data.epic } : null}
-              onChange={onEpicChange}
+              onChange={epicChange}
               ticketKey={ticketKey}
               align="right"
               textClass="text-body-sm"
@@ -625,8 +649,8 @@ function TicketHoverCard({
         </InfoRow>
 
         <InfoRow icon={<User size={12} strokeWidth={1.75} />} label="Assignee">
-          {onAssigneeChange ? (
-            <AssigneePicker value={data.assignee} onChange={onAssigneeChange} align="right" textClass="text-body-sm" onOpenChange={onPickerOpenChange} />
+          {assigneeChange ? (
+            <AssigneePicker value={data.assignee} onChange={assigneeChange} align="right" textClass="text-body-sm" onOpenChange={onPickerOpenChange} />
           ) : (
             <PersonValue person={data.assignee} />
           )}
@@ -665,7 +689,7 @@ function TicketHoverCard({
               <span className="h-1.5 w-1.5 rounded-full" style={{ backgroundColor: qualityColor(data.qualityScore) }} />
               {data.qualityScore}/100
             </span>
-          ) : onRunReview ? (
+          ) : runReview ? (
             <button
               type="button"
               onClick={handleRunReview}
@@ -771,6 +795,9 @@ export interface TicketStatusPillProps {
   onToggleFollow?: () => void;
   /** When provided, the hover card's Quality row offers a "Run Review" action when unscored. */
   onRunReview?: () => void | Promise<void>;
+  /** Hover card editing is on by default (BRDG-276). Set false for a read-only card.
+   *  Always forced off for `removedFromJira` tickets. */
+  hoverCardEditable?: boolean;
   /** Fade the leading issue-type icon while the enclosing `group/row` is hovered, so a row-level
    *  checkbox can take its place (list variant only). */
   dimTypeOnRowHover?: boolean;
@@ -802,6 +829,7 @@ export function TicketStatusPill({
   onAssigneeChange,
   onToggleFollow,
   onRunReview,
+  hoverCardEditable = true,
   dimTypeOnRowHover,
 }: TicketStatusPillProps) {
   const [issueTypeDropdownOpen, setIssueTypeDropdownOpen] = useState(false);
@@ -884,6 +912,7 @@ export function TicketStatusPill({
         onToggleFollow={onToggleFollow}
         onRunReview={onRunReview}
         onPickerOpenChange={handleCardPickerOpenChange}
+        editable={hoverCardEditable && !removedFromJira}
       />
     : null;
 

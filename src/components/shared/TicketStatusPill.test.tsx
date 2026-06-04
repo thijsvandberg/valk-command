@@ -9,6 +9,27 @@ vi.mock("next/navigation", () => ({
 import { usePathname } from "next/navigation";
 const mockUsePathname = vi.mocked(usePathname);
 
+// The card calls useHoverCardEdits for its default editors (BRDG-276). Mock it so
+// the card is deterministic and never touches SWR/fetch in tests.
+vi.mock("@/hooks/useHoverCardEdits", () => ({ useHoverCardEdits: vi.fn() }));
+import { useHoverCardEdits } from "@/hooks/useHoverCardEdits";
+const mockedEdits = vi.mocked(useHoverCardEdits);
+const SPRINT_42 = { id: "42", name: "Sprint 42", dateRange: "", state: "active" as const, ticketCount: 0 };
+function defaultEdits(overrides: Partial<ReturnType<typeof useHoverCardEdits>> = {}) {
+  return {
+    sprints: [SPRINT_42],
+    isFollowed: false,
+    onStoryPointsChange: vi.fn(),
+    onBusinessValueChange: vi.fn(),
+    onSprintChange: vi.fn(),
+    onEpicChange: vi.fn(),
+    onAssigneeChange: vi.fn(),
+    onToggleFollow: vi.fn(),
+    onRunReview: vi.fn(async () => {}),
+    ...overrides,
+  };
+}
+
 describe("JIRA_STATUS_ABBREVIATIONS", () => {
   it("maps all JiraStatus values", () => {
     expect(JIRA_STATUS_ABBREVIATIONS["TO DO"]).toBe("TODO");
@@ -238,7 +259,10 @@ describe("TicketStatusPill", () => {
 });
 
 describe("TicketStatusPill hover card", () => {
-  beforeEach(() => vi.useFakeTimers());
+  beforeEach(() => {
+    vi.useFakeTimers();
+    mockedEdits.mockReturnValue(defaultEdits());
+  });
   afterEach(() => {
     act(() => { vi.runOnlyPendingTimers(); });
     vi.useRealTimers();
@@ -360,7 +384,7 @@ describe("TicketStatusPill hover card", () => {
       flagged: false,
     };
     const { container } = render(
-      <TicketStatusPill ticketKey="VPL-1" jiraStatus="TO DO" hoverData={data} />,
+      <TicketStatusPill ticketKey="VPL-1" jiraStatus="TO DO" hoverData={data} hoverCardEditable={false} />,
     );
     openCard(container);
     expect(screen.getByText("No sprint")).toBeTruthy();
@@ -494,9 +518,9 @@ describe("TicketStatusPill hover card", () => {
     expect(screen.getByRole("tooltip")).toBeTruthy(); // still open because the picker is active
   });
 
-  it("renders a read-only score chip when no change handler is provided", () => {
+  it("renders a read-only score chip when editing is disabled", () => {
     const { container } = render(
-      <TicketStatusPill ticketKey="VPL-1" jiraStatus="TO DO" hoverData={fullData} />,
+      <TicketStatusPill ticketKey="VPL-1" jiraStatus="TO DO" hoverData={fullData} hoverCardEditable={false} />,
     );
     openCard(container);
     // No picker trigger; the static SP value is shown instead.
@@ -550,5 +574,61 @@ describe("TicketStatusPill hover card", () => {
     render(<TicketStatusPill ticketKey="VPL-1" jiraStatus="TO DO" hoverData={fullData} />);
     fireEvent.click(screen.getByText("VPL-1"));
     expect(screen.getByText("Copy Jira URL")).toBeTruthy();
+  });
+
+  // BRDG-276: the card is editable by default, with no per-usage wiring.
+  it("is editable by default: SP edits call the default handler", () => {
+    const onSp = vi.fn();
+    mockedEdits.mockReturnValue(defaultEdits({ onStoryPointsChange: onSp }));
+    const { container } = render(
+      <TicketStatusPill ticketKey="VPL-1" jiraStatus="TO DO" hoverData={fullData} />,
+    );
+    openCard(container);
+    act(() => { fireEvent.click(screen.getByText("5")); }); // SP picker trigger
+    act(() => { fireEvent.click(screen.getByText("8")); });
+    expect(onSp).toHaveBeenCalledWith(8);
+  });
+
+  it("is editable by default: shows Sprint/Epic/Assignee pickers without explicit handlers", () => {
+    const { container } = render(
+      <TicketStatusPill ticketKey="VPL-1" jiraStatus="TO DO" hoverData={fullData} />,
+    );
+    openCard(container);
+    expect(screen.getByTitle("Sprint: Sprint 42")).toBeTruthy();
+    expect(screen.getByTitle("Epic: Onboarding")).toBeTruthy();
+    expect(screen.getByTitle("Assignee: Alice")).toBeTruthy();
+  });
+
+  it("explicit handlers win over the default editors", () => {
+    const explicit = vi.fn();
+    const fallbackSp = vi.fn();
+    mockedEdits.mockReturnValue(defaultEdits({ onStoryPointsChange: fallbackSp }));
+    const { container } = render(
+      <TicketStatusPill ticketKey="VPL-1" jiraStatus="TO DO" hoverData={fullData} onStoryPointsChange={explicit} />,
+    );
+    openCard(container);
+    act(() => { fireEvent.click(screen.getByText("5")); });
+    act(() => { fireEvent.click(screen.getByText("8")); });
+    expect(explicit).toHaveBeenCalledWith(8);
+    expect(fallbackSp).not.toHaveBeenCalled();
+  });
+
+  it("renders read-only (no pickers) when hoverCardEditable is false", () => {
+    const { container } = render(
+      <TicketStatusPill ticketKey="VPL-1" jiraStatus="TO DO" hoverData={fullData} hoverCardEditable={false} />,
+    );
+    openCard(container);
+    expect(screen.queryByTitle("Sprint: Sprint 42")).toBeNull();
+    expect(screen.queryByTitle("Assignee: Alice")).toBeNull();
+    expect(screen.getByText("Sprint 42")).toBeTruthy(); // plain text value instead
+  });
+
+  it("stays read-only for removed-from-Jira tickets even with editing on", () => {
+    const { container } = render(
+      <TicketStatusPill ticketKey="VPL-1" jiraStatus="TO DO" hoverData={fullData} removedFromJira />,
+    );
+    openCard(container);
+    expect(screen.queryByTitle("Sprint: Sprint 42")).toBeNull();
+    expect(screen.queryByTitle("Story Points: 5")).toBeNull();
   });
 });

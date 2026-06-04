@@ -5,15 +5,17 @@ import { useTickets, useJiraSprints } from "@/hooks/useSprintBoard";
 import type { Ticket } from "@/types/ticket";
 import type { TicketPillHoverData } from "@/components/shared/TicketStatusPill";
 
-// Maps a full board ticket to the read-only hover-card shape. sprintId is left
-// null because editing is not offered in the reference contexts that use this.
-// sprintNames resolves the raw sprint id to its display name (e.g. "BT: 137").
+// Maps a full board ticket to the hover-card shape. The card is editable by
+// default (BRDG-276), so sprintId is carried through for the Sprint picker, and
+// the PO signals (readiness, quality, notes, edit state) are included so the
+// reference cards report the full set. sprintNames resolves the raw sprint id to
+// its display name (e.g. "BT: 137").
 export function buildTicketHoverData(t: Ticket, sprintNames: Record<string, string> = {}): TicketPillHoverData {
   return {
     title: t.title,
     storyPoints: t.storyPoints,
     businessValue: t.businessValue,
-    sprintId: null,
+    sprintId: t.sprintId ?? null,
     sprintName: t.sprintId ? (sprintNames[t.sprintId] ?? t.sprintId) : null,
     epicKey: t.epicKey,
     epic: t.epic,
@@ -22,6 +24,10 @@ export function buildTicketHoverData(t: Ticket, sprintNames: Record<string, stri
     openSubtaskCount: t.openSubtaskCount ?? 0,
     totalSubtaskCount: t.totalSubtaskCount ?? 0,
     flagged: t.flagged,
+    readiness: t.readiness,
+    qualityScore: t.qualityScore,
+    notes: t.notes || null,
+    editState: t.editState && t.editState !== "clean" ? t.editState : null,
   };
 }
 
