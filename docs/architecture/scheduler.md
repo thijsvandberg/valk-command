@@ -16,6 +16,7 @@ Scheduler (src/lib/scheduler.ts)
     | Check each registered task: elapsed >= intervalMs?
     |
     +-- incremental-sync (every 150s)
+    +-- deprecation-deep-scan (every 2m)
     +-- deprecation-staleness-scan (every 5m)
     +-- revalidate-deleted-tickets (every 10m)
     +-- cleanup-removed-tickets (every 24h)
@@ -79,6 +80,26 @@ Tier-1 of the [Backlog Deprecation Review epic](../plans/2026-06-04-backlog-depr
 3. Scores each and upserts the staleness fields, stamping `lastScannedAt = now` so the batch rotates to the back of the queue (continuous re-evaluation, wraps around)
 4. Writes a rolling cursor to `app_setting` key `scheduler:deprecation-staleness-scan:cursor` (informational; the authoritative rotation state is each ticket's own `lastScannedAt`, so it resumes cleanly across restarts)
 5. Logs a run summary to `activity_log` (`type = deprecation-scan`)
+
+#### Backlog Deep Scan (every 2m)
+
+Tier-2 of the [Backlog Deprecation Review epic](../plans/2026-06-04-backlog-deprecation-review-epic.md) (BRDG-284). The orchestration backbone for the expensive, selective deep dive: it drains a persisted queue a small batch at a time and runs every registered topic scorer. The actual topic logic ships in BRDG-285..288; this task and the registry are topic-agnostic.
+
+**Persisted queue** (`deprecation_scan_queue` table, helpers in `src/lib/deprecation-scan-queue.ts`): durable, observable, and resumes across restarts (unlike the in-memory revalidation queue). Status lifecycle `pending -> running -> done | error`. A unique index over a nullable `active_key` column (mirrors `jira_key` while pending/running, `NULL` once done/error) enforces idempotent enqueue: at most one active row per ticket, while completed rows can accumulate so a ticket can be re-queued later.
+
+**Topic-scorer registry** (`src/lib/deprecation-topics.ts`) — the extension point:
+- `DeprecationTopicScorer`: `{ key, label, weight?, maxContribution?, run(ticket, ctx) => Promise<{ score, evidence?, rationale? } | null> }`. Returning `null` abstains.
+- `registerTopicScorer(scorer)` / `getTopicScorers()`. Each topic story registers itself at import time and never touches the runner.
+- `runDeepScan(jiraKey, ctx?)`: loads the ticket, runs all registered scorers, merges each result into `scanScores[topicKey]` (preserving Tier-1 staleness), recomputes `scanOverall` via `combineTopicScores`, promotes `disposition` to `"candidate"` on threshold (`DEEP_SCAN_CANDIDATE_THRESHOLD = 0.6`, never downgrading a human confirmed/dismissed), and stamps `lastDeepScannedAt`.
+- **Score combination**: weighted average where each topic's contribution to the numerator is capped at `maxContribution` (default = `weight`), divided by the sum of weights of topics that actually scored. WHY cap-then-normalize: a plain sum lets weak signals stack to a false-high; a plain max ignores corroboration. The per-topic cap is the hook subjective topics (e.g. relevance decay, BRDG-288) use so a single soft signal can never alone cross the candidate threshold.
+
+**Task flow** (`runDeprecationDeepScan`):
+1. Requeues any rows stuck in `running` from a prior crash back to `pending`
+2. Claims up to 5 oldest `pending` rows (FIFO), marking them `running`
+3. For each: skips and completes tickets whose dismiss cooldown (`disposition_until`) is still active; otherwise calls `runDeepScan` and marks `done`/`error`
+4. Logs a batch summary to `activity_log` (`type = deprecation-scan`)
+
+**Selection + enqueue** is done via `POST /api/cleanup/deep-scan` (methods `keys` | `worst-staleness` | `oldest`, idempotent), with `GET` returning queue-status counts for the /cleanup batch-progress indicator. Pure selection ordering lives in `src/lib/deprecation-deep-scan-selection.ts` (excludes dismissed tickets still in cooldown for the ranked methods).
 
 #### Revalidate Deleted Tickets (every 10m)
 

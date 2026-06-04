@@ -354,6 +354,22 @@ Key-value store for application configuration.
 | `key` | text PK | e.g. `jira_sync_watermark`, `scheduler:*:last_run` |
 | `value` | text | Serialized value |
 
+#### `deprecation_scan_queue`
+
+Persisted Tier-2 deep-dive queue for the [Backlog Deprecation Review epic](../plans/2026-06-04-backlog-deprecation-review-epic.md) (BRDG-284). Durable so the background runner resumes across restarts. See [scheduler.md](scheduler.md#backlog-deep-scan-every-2m).
+
+| Column | Type | Notes |
+|--------|------|-------|
+| `id` | text PK | Generated row id |
+| `jira_key` | text | Ticket to deep-scan |
+| `status` | enum | `pending`, `running`, `done`, `error` |
+| `source` | text | `manual`, `worst-staleness`, `oldest` (selection method) |
+| `enqueued_at` | text | ISO timestamp |
+| `started_at` | text | When the runner claimed the row |
+| `finished_at` | text | When it completed |
+| `error` | text | Failure message when `status = error` |
+| `active_key` | text | Mirrors `jira_key` while pending/running, `NULL` once done/error. Unique index over this gives idempotent enqueue: at most one active row per ticket. |
+
 ### Refinement
 
 #### `refinement_session`

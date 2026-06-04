@@ -46,14 +46,44 @@ fully-automatic background mode is a separate, later story (BRDG-290).
 - Runner dequeues in batches, updates timestamps/scores, sets candidate on threshold.
 - Cooldown respected; restart resumes the queue.
 
+## Implementation Plan
+
+Orchestration backbone for the Tier-2 deep dive. The four scoring-topic stories
+(BRDG-285..288) plug into the topic-scorer registry without touching the runner.
+
+1. **Persisted queue** — `deprecationScanQueue` table (jiraKey unique-per-active,
+   enqueuedAt, status, source, startedAt, finishedAt, error). Enqueue is
+   idempotent: a ticket already `pending`/`running` is never double-queued.
+2. **Topic-scorer registry** (`src/lib/deprecation-topics.ts`) — the key
+   deliverable. `DeprecationTopicScorer` contract + `registerTopicScorer()` /
+   `getTopicScorers()`. `runDeepScan(jiraKey)` loads the ticket, runs every
+   registered scorer, merges results into `scanScores[topicKey]`, recomputes
+   `scanOverall` via a weighted-sum-with-per-topic-cap combiner, sets
+   `disposition="candidate"` on threshold, stamps `lastDeepScannedAt`. Ships one
+   clearly-marked example scorer so the runner is testable now.
+3. **Background runner** — lazy-cron task `deprecation-deep-scan` dequeues a batch
+   of 5 `pending` rows per tick, marks running, calls `runDeepScan`, marks
+   done/error, skips tickets in dismiss cooldown (`dispositionUntil`). Logs a
+   batch summary; resumes across restarts because the queue is in the DB.
+4. **Selection + enqueue API** — `POST /api/cleanup/deep-scan` with methods
+   `keys` | `worst-staleness` | `oldest`, each idempotent. `GET` returns queue
+   status counts.
+5. **Selection UI** on /cleanup — row checkboxes, "Deep-scan selected", quick
+   actions "Worst staleness (top X)" / "Oldest (top X)", live batch progress.
+
+scanOverall combination: weighted sum of per-topic contributions, each capped at
+its topic's `maxContribution` (default = its weight). A subjective topic can set
+a low cap so it alone can never push a ticket to high confidence (the hook
+BRDG-288 relevance-decay needs). Normalized by total weight, clamped to 0..1.
+
 ## Checklist
 
-- [ ] Invoke the `frontend-design` skill before any frontend work
-- [ ] Selection UI: multi-select + "deep-scan selected", "worst staleness top X", "oldest top X"
-- [ ] Persisted, idempotent deep-dive queue that survives restarts
-- [ ] Background runner (lazy-cron) dequeues small batches and calls the Tier-2 topic runner
-- [ ] Writes `lastDeepScannedAt` + topic scores; sets `disposition="candidate"` on threshold
-- [ ] Batch progress on the view + `activityLog` entry per run; cooldown respected
-- [ ] Tests (selection methods, batched runner, threshold, cooldown, resume)
-- [ ] Run `npm run lint`, `npm run typecheck`, `npm run test`, `npm run build`
-- [ ] Update `docs/architecture/scheduler.md` and reference the epic
+- [x] Invoke the `frontend-design` skill before any frontend work
+- [x] Selection UI: multi-select + "deep-scan selected", "worst staleness top X", "oldest top X"
+- [x] Persisted, idempotent deep-dive queue that survives restarts
+- [x] Background runner (lazy-cron) dequeues small batches and calls the Tier-2 topic runner
+- [x] Writes `lastDeepScannedAt` + topic scores; sets `disposition="candidate"` on threshold
+- [x] Batch progress on the view + `activityLog` entry per run; cooldown respected
+- [x] Tests (selection methods, batched runner, threshold, cooldown, resume)
+- [x] Run `npm run lint`, `npm run typecheck`, `npm run test` <!-- skipped: npm run build — task instructions forbid running build -->
+- [x] Update `docs/architecture/scheduler.md` and reference the epic

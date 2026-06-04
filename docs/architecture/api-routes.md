@@ -224,6 +224,8 @@ same definition the Tier-1 staleness scanner uses). Never writes; never touches 
 | Route | Method | Purpose |
 |-------|--------|---------|
 | `/api/cleanup` | GET | List scan-eligible backlog tickets with scan state. Query params below. |
+| `/api/cleanup/deep-scan` | GET | Tier-2 deep-dive queue status counts `{ pending, running, done, error }`. |
+| `/api/cleanup/deep-scan` | POST | Enqueue tickets for Tier-2 deep scan (BRDG-284). Idempotent. |
 
 Query params: `sort` (`overall` \| `staleness` \| `lastScanned-oldest` \| `lastScanned-newest` \| `key`),
 `scanned` (`all` \| `scanned` \| `never`), `disposition` (`all` \| `candidate` \| `confirmed` \| `dismissed` \| `none`),
@@ -243,7 +245,14 @@ Response shape (`CleanupResponse` in `src/lib/cleanup-types.ts`):
   topics: Array<{ key, label, live }> // dormant topics (live:false) render "—" until their scorer ships
 }
 ```
-Later epic stories (BRDG-284 selection, BRDG-289 disposition) extend this same route.
+`POST /api/cleanup/deep-scan` body is a discriminated union on `method`:
+- `{ method: "keys", keys: string[] }` — hand-picked tickets (filtered to the eligible backlog).
+- `{ method: "worst-staleness", topX: number }` — top-X by combined Tier-1 score.
+- `{ method: "oldest", topX: number }` — top-X by oldest `lastScannedAt`.
+
+Ranked methods exclude dismissed tickets still inside their cooldown. Returns `{ method, requested, enqueued, enqueuedKeys, queue }`. The background `deprecation-deep-scan` task drains the queue; see [scheduler.md](scheduler.md#backlog-deep-scan-every-2m).
+
+Later epic stories (BRDG-289 disposition) extend this same surface.
 
 The view lives at `/cleanup` (`src/app/(app)/cleanup/page.tsx`, nav entry "Cleanup" in
 `src/components/Sidebar.tsx`). It renders the table (key+title, status, relative last-scanned
