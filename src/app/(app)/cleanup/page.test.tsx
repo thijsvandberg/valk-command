@@ -58,17 +58,19 @@ vi.mock("@/components/ticket-detail/ChildIssueRow", () => ({
   ChildIssueRow: ({
     item,
     isChecked,
+    showTypeIcon,
     onSelect,
     onCheckboxClick,
     metadataSlot,
   }: {
-    item: { key: string; title: string };
+    item: { key: string; title: string; type: string };
     isChecked: boolean;
+    showTypeIcon?: boolean;
     onSelect?: (key: string) => void;
     onCheckboxClick?: (e: unknown) => void;
     metadataSlot?: ReactNode;
   }) => (
-    <div data-testid={`row-${item.key}`}>
+    <div data-testid={`row-${item.key}`} data-type={item.type} data-show-type-icon={String(Boolean(showTypeIcon))}>
       <button data-testid={`open-${item.key}`} onClick={() => onSelect?.(item.key)}>
         {item.key} {item.title}
       </button>
@@ -84,6 +86,12 @@ vi.mock("@/components/ticket-detail/ChildIssueRow", () => ({
   ),
 }));
 
+// EpicBadge consumes a reactive epic-color hook; stub it to a plain colour so the
+// page test does not need the EpicColorProvider context.
+vi.mock("@/hooks/useEpicColor", () => ({
+  useEpicColor: () => ({ bg: "#222", text: "#abc" }),
+}));
+
 vi.mock("@/hooks/useSprintBoard", () => ({
   useTicketDetail: () => ({ data: undefined }),
 }));
@@ -96,17 +104,45 @@ vi.mock("@/hooks/usePageTitle", () => ({
   usePageTitle: () => null,
 }));
 
+// Default field set shared by all fixture rows; per-row overrides spread on top so
+// each test row only states what it cares about.
+const ROW_DEFAULTS = {
+  type: "story" as const,
+  epic: null,
+  epicKey: null,
+  storyPoints: null,
+  openSubtaskCount: 0,
+  totalSubtaskCount: 0,
+  assignee: null,
+  reporter: null,
+  jiraUpdatedAt: null,
+};
+
+const EMPTY_FACETS = { types: [], epics: [], assignees: [], reporters: [] };
+
 const RESPONSE: CleanupResponse = {
   total: 3,
   topics: [
     { key: "staleness", label: "Staleness", live: true },
     { key: "replaced", label: "Replaced area", live: false },
   ],
+  facets: {
+    types: ["story", "bug"],
+    epics: [{ key: "BT-100", name: "Upsell" }],
+    assignees: ["Alice"],
+    reporters: ["Carol"],
+  },
   rows: [
     {
+      ...ROW_DEFAULTS,
       key: "BT-1",
       title: "Ancient ticket",
       status: "TO DO",
+      type: "bug",
+      epic: "Upsell",
+      epicKey: "BT-100",
+      storyPoints: 3,
+      assignee: { name: "Alice", initials: "AL", color: "hsl(1, 50%, 50%)" },
       lastScannedAt: "2026-06-01T00:00:00Z",
       topicScores: { staleness: 0.82 },
       scanOverall: 0.82,
@@ -115,6 +151,7 @@ const RESPONSE: CleanupResponse = {
       revivalRationale: null,
     },
     {
+      ...ROW_DEFAULTS,
       key: "BT-2",
       title: "Fresh-ish ticket",
       status: "TO DO",
@@ -126,6 +163,7 @@ const RESPONSE: CleanupResponse = {
       revivalRationale: null,
     },
     {
+      ...ROW_DEFAULTS,
       key: "BT-3",
       title: "Worth pulling up",
       status: "TO DO",
@@ -147,7 +185,7 @@ describe("CleanupPage", () => {
   });
 
   it("shows the never-scanned empty state when there is no data", () => {
-    swrData = { total: 0, topics: RESPONSE.topics, rows: [] };
+    swrData = { total: 0, topics: RESPONSE.topics, rows: [], facets: EMPTY_FACETS };
     render(<CleanupPage />);
     expect(screen.getByText("Nothing scanned yet")).toBeInTheDocument();
     expect(screen.getByText(/Tier-1 staleness runs in the background/i)).toBeInTheDocument();
@@ -172,6 +210,51 @@ describe("CleanupPage", () => {
     expect(within(screen.getByTestId("meta-BT-1")).getByText("Candidate")).toBeInTheDocument();
     // Never-scanned ticket shows "never" in its metadata.
     expect(within(screen.getByTestId("meta-BT-2")).getByText("never")).toBeInTheDocument();
+  });
+
+  it("feeds the real issue type to the row and enables the type icon", () => {
+    swrData = RESPONSE;
+    render(<CleanupPage />);
+    const row = screen.getByTestId("row-BT-1");
+    // BT-1 is a bug in the fixture; the row must receive that real type (PO #1)
+    // and have the leading type icon enabled.
+    expect(row).toHaveAttribute("data-type", "bug");
+    expect(row).toHaveAttribute("data-show-type-icon", "true");
+  });
+
+  it("renders epic and story-point badges in the row metadata", () => {
+    swrData = RESPONSE;
+    render(<CleanupPage />);
+    const meta = screen.getByTestId("meta-BT-1");
+    // Epic name chip (PO #5).
+    expect(within(meta).getByText("Upsell")).toBeInTheDocument();
+    // Story points chip (3 SP on BT-1).
+    expect(within(meta).getByText("3")).toBeInTheDocument();
+  });
+
+  it("renders the new facet filter controls", () => {
+    swrData = RESPONSE;
+    render(<CleanupPage />);
+    // The standard FilterDropdown triggers expose their label text (PO #2/#3).
+    expect(screen.getByText("Type")).toBeInTheDocument();
+    expect(screen.getByText("Epic")).toBeInTheDocument();
+    expect(screen.getByText("Assignee")).toBeInTheDocument();
+    expect(screen.getByText("Reporter")).toBeInTheDocument();
+    expect(screen.getByText("Last activity")).toBeInTheDocument();
+  });
+
+  it("shows the restyled selection bar with a select-all toggle and clear", () => {
+    swrData = RESPONSE;
+    render(<CleanupPage />);
+    fireEvent.click(screen.getByTestId("check-BT-1"));
+    // Counter now reads "N/total selected" (matches the sprint board bulk bar).
+    expect(screen.getByText("1/3 selected")).toBeInTheDocument();
+    // Select-all toggle selects every visible row.
+    fireEvent.click(screen.getByRole("button", { name: /Select all visible/i }));
+    expect(screen.getByText("3/3 selected")).toBeInTheDocument();
+    // Deselect-all clears the bar entirely.
+    fireEvent.click(screen.getByRole("button", { name: /Deselect all/i }));
+    expect(screen.queryByText(/selected/)).not.toBeInTheDocument();
   });
 
   it("shows a revival badge only on rows at/above the 0.6 threshold", () => {
@@ -204,7 +287,7 @@ describe("CleanupPage", () => {
     render(<CleanupPage />);
     expect(screen.queryByText(/selected/)).not.toBeInTheDocument();
     fireEvent.click(screen.getByTestId("check-BT-1"));
-    expect(screen.getByText(/1 selected/)).toBeInTheDocument();
+    expect(screen.getByText("1/3 selected")).toBeInTheDocument();
   });
 
   it("opens the breakdown drawer for the clicked ticket and closes it", async () => {

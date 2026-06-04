@@ -8,6 +8,11 @@ import { usePageTitle } from "@/hooks/usePageTitle";
 import { Button } from "@/components/ui/Button";
 import { ViewHeader, ViewHeaderTitle } from "@/components/shared/ViewHeader";
 import { Tooltip } from "@/components/shared/Tooltip";
+import { FilterDropdown } from "@/components/shared/FilterDropdown";
+import { BarContainer, BarDivider } from "@/components/shared/BarContainer";
+import { EpicBadge, SubtaskCountBadge, MetricChip } from "@/components/shared/IssueMetaBadges";
+import { IssueTypeIcon } from "@/components/shared/IssueTypeIcon";
+import { Avatar } from "@/components/shared/Avatar";
 import { ChildIssueRow } from "@/components/ticket-detail/ChildIssueRow";
 import { relativeDate, formatAbsoluteDate } from "@/lib/date-utils";
 import { useTicketDetail } from "@/hooks/useSprintBoard";
@@ -20,8 +25,26 @@ import {
   type Disposition,
   type ScannedFilter,
 } from "@/lib/cleanup-types";
-import { filterRows, sortRows, scoreHeat, isRevivalCandidate, type CleanupFilters } from "./cleanup-utils";
+import {
+  filterRows,
+  sortRows,
+  scoreHeat,
+  isRevivalCandidate,
+  LAST_ACTIVITY_OPTIONS,
+  type CleanupFilters,
+  type LastActivityBucket,
+} from "./cleanup-utils";
 import { type AutoScanSettings, autoScanSettings } from "@/lib/api-client";
+
+// Title-case label for an issue type, used in the type-filter dropdown.
+const ISSUE_TYPE_LABEL: Record<IssueType, string> = {
+  story: "Story",
+  task: "Task",
+  bug: "Bug",
+  spike: "Spike",
+  subtask: "Subtask",
+  epic: "Epic",
+};
 
 // The selected ticket opens in the same rich panel the sprint board uses, so
 // ticket management is identical across surfaces (BRDG-281/275).
@@ -66,9 +89,6 @@ const THRESHOLD_OPTIONS = [
   { value: 0.6, label: "≥ 0.60" },
   { value: 0.75, label: "≥ 0.75" },
 ];
-
-const selectClass =
-  "h-8 cursor-pointer rounded-lg border border-border-default bg-[var(--color-surface-elevated)] px-2.5 text-label font-medium text-text-secondary hover:border-[var(--color-brand-500)]/40 focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-[var(--color-brand-400)]";
 
 // Default batch size for the quick "top X" selection actions. Kept modest to
 // honour the epic's "small batches, never all at once" constraint.
@@ -137,24 +157,27 @@ function rowToSubtask(row: CleanupRow): Subtask {
   return {
     key: row.key,
     title: row.title,
-    type: "story" as IssueType,
+    // Real issue type drives the leading type icon in ChildIssueRow (PO feedback #1).
+    type: row.type,
     jiraStatus: (row.status as JiraStatus) ?? "TO DO",
-    assignee: null,
+    assignee: row.assignee,
   };
 }
 
 function rowToTicket(row: CleanupRow): Ticket {
   // A lightweight Ticket so the panel header renders instantly; the panel
-  // re-derives full content via its own useTicketDetailPage.
+  // re-derives full content via its own useTicketDetailPage. Real type/epic/SP
+  // so the header reads correctly before the detail fetch resolves.
   return {
     key: row.key,
     title: row.title,
-    type: "story" as IssueType,
-    epic: null,
-    epicKey: null,
+    type: row.type,
+    epic: row.epic,
+    epicKey: row.epicKey,
     jiraStatus: (row.status as JiraStatus) ?? "TO DO",
-    storyPoints: null,
-    assignee: null,
+    storyPoints: row.storyPoints,
+    assignee: row.assignee,
+    reporter: row.reporter,
     flagged: false,
     readiness: null,
     poStatus: null,
@@ -162,6 +185,9 @@ function rowToTicket(row: CleanupRow): Ticket {
     businessValue: null,
     editState: "clean",
     notes: "",
+    jiraUpdatedAt: row.jiraUpdatedAt,
+    openSubtaskCount: row.openSubtaskCount,
+    totalSubtaskCount: row.totalSubtaskCount,
   };
 }
 
@@ -174,6 +200,13 @@ export default function CleanupPage() {
     disposition: "all",
     minOverall: 0,
     revivalOnly: false,
+    // Facet filters are applied client-side over the full loaded list, so they
+    // start empty ("any") and never enter the SWR key.
+    types: new Set(),
+    epicKeys: new Set(),
+    assignees: new Set(),
+    reporters: new Set(),
+    lastActivity: new Set(),
   });
   // Ticket open in the score-breakdown / disposition drawer (BRDG-289). Row
   // click opens this review drawer; the drawer can escalate to the full ticket
@@ -314,6 +347,37 @@ export default function CleanupPage() {
     });
   }, []);
 
+  // All currently-visible (filtered) rows checked? Drives the select-all toggle in
+  // the bulk bar. Empty list never reads as "all checked".
+  const allVisibleChecked = rows.length > 0 && rows.every((r) => checkedKeys.has(r.key));
+  const toggleAllVisible = useCallback(() => {
+    setCheckedKeys((prev) => {
+      const allChecked = rows.length > 0 && rows.every((r) => prev.has(r.key));
+      if (allChecked) return new Set();
+      return new Set(rows.map((r) => r.key));
+    });
+  }, [rows]);
+
+  // Facet option lists from the server (cover the whole eligible backlog, not just
+  // the current page). Memoised maps let the dropdowns show display labels while
+  // selecting on the stable key (epic key) or name (people).
+  const facets = data?.facets;
+  const epicLabelMap = useMemo(() => {
+    const m: Record<string, string> = {};
+    for (const e of facets?.epics ?? []) m[e.key] = e.name;
+    return m;
+  }, [facets]);
+  const typeLabelMap = useMemo(() => {
+    const m: Record<string, string> = {};
+    for (const t of facets?.types ?? []) m[t] = ISSUE_TYPE_LABEL[t];
+    return m;
+  }, [facets]);
+  const activityLabelMap = useMemo(() => {
+    const m: Record<string, string> = {};
+    for (const o of LAST_ACTIVITY_OPTIONS) m[o.value] = o.label;
+    return m;
+  }, []);
+
   // Build the panel ticket from the row so the panel opens without a fetch round
   // trip; fall back to a fetch only if the key is somehow not in the list.
   const selectedRow = rows.find((r) => r.key === selectedKey) ?? null;
@@ -345,109 +409,96 @@ export default function CleanupPage() {
 
         <div className="flex flex-1 overflow-hidden">
           <div className="flex min-w-0 flex-1 flex-col overflow-hidden">
-            {/* Controls */}
-            <div className="flex flex-wrap items-center gap-2 border-b border-border-subtle px-8 py-3">
-              <label className="flex items-center gap-1.5 text-label text-text-muted">
-                Sort
-                <select className={selectClass} value={sort} onChange={(e) => setSort(e.target.value as CleanupSort)}>
-                  {SORT_OPTIONS.map((o) => (
-                    <option key={o.value} value={o.value}>{o.label}</option>
-                  ))}
-                </select>
-              </label>
-              <span className="mx-1 h-5 w-px bg-overlay-default" />
-              <select
-                className={selectClass}
-                value={filters.scanned}
-                onChange={(e) => setFilters((f) => ({ ...f, scanned: e.target.value as ScannedFilter }))}
-              >
-                {SCANNED_OPTIONS.map((o) => (
-                  <option key={o.value} value={o.value}>{o.label}</option>
-                ))}
-              </select>
-              <select
-                className={selectClass}
-                value={filters.disposition === null ? "none" : filters.disposition}
-                onChange={(e) => {
-                  const v = e.target.value;
-                  setFilters((f) => ({
-                    ...f,
-                    disposition: v === "all" ? "all" : v === "none" ? null : (v as Disposition),
-                  }));
-                }}
-              >
-                {DISPOSITION_OPTIONS.map((o) => (
-                  <option key={String(o.value)} value={o.value === null ? "none" : o.value}>{o.label}</option>
-                ))}
-              </select>
-              <select
-                className={selectClass}
-                value={String(filters.minOverall)}
-                onChange={(e) => setFilters((f) => ({ ...f, minOverall: Number(e.target.value) }))}
-              >
-                {THRESHOLD_OPTIONS.map((o) => (
-                  <option key={o.value} value={o.value}>{o.label}</option>
-                ))}
-              </select>
+            {/* Controls. Two rows of standard Bridge controls: row 1 = sort + the
+                single-choice scan/disposition/score selects + quick-actions + auto +
+                queue; row 2 = the multi-select facet filters (type/epic/assignee/
+                reporter/last-activity) plus the revival toggle. Every control carries
+                a tooltip explaining what it does (PO feedback #3). */}
+            <div className="flex flex-col gap-2 border-b border-border-subtle px-8 py-3">
+              <div className="flex flex-wrap items-center gap-2">
+                <Tooltip content="Order the list by deprecation score, revival score, staleness, last-scanned time, or ticket key">
+                  <LabeledSelect
+                    label="Sort"
+                    value={sort}
+                    onChange={(v) => setSort(v as CleanupSort)}
+                    options={SORT_OPTIONS}
+                  />
+                </Tooltip>
+                <BarDivider />
+                <Tooltip content="Show all tickets, only those already scored by a scan, or only never-scanned ones">
+                  <LabeledSelect
+                    label="Scanned"
+                    value={filters.scanned}
+                    onChange={(v) => setFilters((f) => ({ ...f, scanned: v as ScannedFilter }))}
+                    options={SCANNED_OPTIONS}
+                  />
+                </Tooltip>
+                <Tooltip content="Filter by your review decision: candidate, confirmed removable, dismissed, or not yet set">
+                  <LabeledSelect
+                    label="Disposition"
+                    value={filters.disposition === null ? "none" : String(filters.disposition)}
+                    onChange={(v) =>
+                      setFilters((f) => ({
+                        ...f,
+                        disposition: v === "all" ? "all" : v === "none" ? null : (v as Disposition),
+                      }))
+                    }
+                    options={DISPOSITION_OPTIONS.map((o) => ({
+                      value: o.value === null ? "none" : String(o.value),
+                      label: o.label,
+                    }))}
+                  />
+                </Tooltip>
+                <Tooltip content="Hide tickets below this deprecation-likelihood score (0 = show every score)">
+                  <LabeledSelect
+                    label="Min score"
+                    value={String(filters.minOverall)}
+                    onChange={(v) => setFilters((f) => ({ ...f, minOverall: Number(v) }))}
+                    options={THRESHOLD_OPTIONS.map((o) => ({ value: String(o.value), label: o.label }))}
+                  />
+                </Tooltip>
 
-              {/* Revival filter (BRDG-298): isolate "worth pulling up" tickets, the
-                  opposite read from deprecation. Toggle, on the positive/green
-                  treatment to match the row badge. */}
-              <button
-                type="button"
-                aria-pressed={filters.revivalOnly}
-                onClick={() => setFilters((f) => ({ ...f, revivalOnly: !f.revivalOnly }))}
-                title="Show only revival candidates (worth pulling up)"
-                className={[
-                  "flex h-8 cursor-pointer items-center gap-1.5 rounded-lg border px-2.5 text-label font-medium transition-colors duration-150",
-                  "focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-[var(--color-status-success)]",
-                  filters.revivalOnly
-                    ? "border-[var(--color-status-success)]/50 text-[var(--color-status-success)]"
-                    : "border-border-default text-text-secondary hover:border-[var(--color-status-success)]/40",
-                ].join(" ")}
-                style={filters.revivalOnly ? { backgroundColor: "var(--color-status-success-subtle)" } : undefined}
-              >
-                <TrendingUp size={13} strokeWidth={2} />
-                Revival candidates
-              </button>
+                <BarDivider />
 
-              <span className="mx-1 h-5 w-px bg-overlay-default" />
-
-              {/* Deep-dive quick actions: queue a small batch by ranked method. */}
-              <Button
-                variant="soft"
-                size="md"
-                disabled={enqueuing}
-                onClick={() => void enqueue({ method: "worst-staleness", topX: QUICK_TOP_X })}
-                title={`Queue the ${QUICK_TOP_X} most-likely-stale tickets for deep scan`}
-              >
-                <Flame className="h-3.5 w-3.5 shrink-0" strokeWidth={1.5} />
-                Worst staleness (top {QUICK_TOP_X})
-              </Button>
-              <Button
-                variant="soft"
-                size="md"
-                disabled={enqueuing}
-                onClick={() => void enqueue({ method: "oldest", topX: QUICK_TOP_X })}
-                title={`Queue the ${QUICK_TOP_X} least-recently-scanned tickets for deep scan`}
-              >
-                <Clock className="h-3.5 w-3.5 shrink-0" strokeWidth={1.5} />
-                Oldest (top {QUICK_TOP_X})
-              </Button>
+                {/* Deep-dive quick actions: queue a small batch by ranked method. */}
+                <Tooltip content={`Queue the ${QUICK_TOP_X} tickets most likely to be stale for a deep scan`}>
+                  <Button
+                    variant="soft"
+                    size="md"
+                    disabled={enqueuing}
+                    onClick={() => void enqueue({ method: "worst-staleness", topX: QUICK_TOP_X })}
+                  >
+                    <Flame className="h-3.5 w-3.5 shrink-0" strokeWidth={1.5} />
+                    Worst staleness (top {QUICK_TOP_X})
+                  </Button>
+                </Tooltip>
+                <Tooltip content={`Queue the ${QUICK_TOP_X} least-recently-scanned tickets for a deep scan`}>
+                  <Button
+                    variant="soft"
+                    size="md"
+                    disabled={enqueuing}
+                    onClick={() => void enqueue({ method: "oldest", topX: QUICK_TOP_X })}
+                  >
+                    <Clock className="h-3.5 w-3.5 shrink-0" strokeWidth={1.5} />
+                    Oldest (top {QUICK_TOP_X})
+                  </Button>
+                </Tooltip>
 
               {/* Auto-scan toggle + count. Placed before the queue progress so the
                   two controls read as a logical group: "auto mode state → queue state". */}
               {autoSettings !== undefined && (
                 <span className="ml-auto flex items-center gap-2.5 text-label text-text-tertiary">
-                  <span className="h-5 w-px bg-overlay-default" />
+                  <BarDivider />
+                  <Tooltip content={autoSettings.enabled ? "Auto background deep scan is on. Turn it off." : "Turn on auto background deep scan: a daily batch is queued automatically."}>
+                    <span className="inline-flex">
                   {/* Toggle pill */}
                   <button
                     type="button"
                     role="switch"
                     aria-checked={autoSettings.enabled}
+                    aria-label={autoSettings.enabled ? "Disable auto background deep scan" : "Enable auto background deep scan"}
                     onClick={() => void toggleAutoScan()}
                     disabled={autoSaving}
-                    title={autoSettings.enabled ? "Disable auto background deep scan" : "Enable auto background deep scan"}
                     className={[
                       "relative flex h-4 w-7 shrink-0 cursor-pointer items-center rounded-full border transition-colors duration-150",
                       "focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)]",
@@ -466,6 +517,8 @@ export default function CleanupPage() {
                       ].join(" ")}
                     />
                   </button>
+                    </span>
+                  </Tooltip>
                   {/* Status text + count input */}
                   {autoSettings.enabled ? (
                     <span className="flex items-center gap-1.5 tabular-nums">
@@ -515,6 +568,104 @@ export default function CleanupPage() {
                   )}
                 </span>
               )}
+              </div>
+
+              {/* Row 2: multi-select facet filters via the app-standard FilterDropdown
+                  (PO feedback #2/#3). Each is a portal-anchored checkbox dropdown with a
+                  count badge when active; epic/assignee/reporter are searchable since the
+                  backlog can hold many. Empty selection = "any". */}
+              <div className="flex flex-wrap items-center gap-2">
+                <span className="text-label font-medium text-text-muted">Filter</span>
+                <Tooltip content="Show only the selected issue types (story, task, bug, ...)">
+                  <span className="inline-flex">
+                    <FilterDropdown
+                      label="Type"
+                      options={(facets?.types ?? []) as string[]}
+                      labelMap={typeLabelMap}
+                      selected={filters.types as Set<string>}
+                      onChange={(next) => setFilters((f) => ({ ...f, types: next as Set<IssueType> }))}
+                      renderOption={(v) => (
+                        <span className="flex items-center gap-1.5">
+                          <IssueTypeIcon type={v} size={13} />
+                          {typeLabelMap[v] ?? v}
+                        </span>
+                      )}
+                    />
+                  </span>
+                </Tooltip>
+                <Tooltip content="Show only tickets in the selected epics">
+                  <span className="inline-flex">
+                    <FilterDropdown
+                      label="Epic"
+                      searchable
+                      searchPlaceholder="Search epics..."
+                      options={(facets?.epics ?? []).map((e) => e.key)}
+                      labelMap={epicLabelMap}
+                      selected={filters.epicKeys}
+                      onChange={(next) => setFilters((f) => ({ ...f, epicKeys: next }))}
+                    />
+                  </span>
+                </Tooltip>
+                <Tooltip content="Show only tickets assigned to the selected people">
+                  <span className="inline-flex">
+                    <FilterDropdown
+                      label="Assignee"
+                      searchable
+                      searchPlaceholder="Search assignees..."
+                      options={facets?.assignees ?? []}
+                      selected={filters.assignees}
+                      onChange={(next) => setFilters((f) => ({ ...f, assignees: next }))}
+                    />
+                  </span>
+                </Tooltip>
+                <Tooltip content="Show only tickets reported by the selected people">
+                  <span className="inline-flex">
+                    <FilterDropdown
+                      label="Reporter"
+                      searchable
+                      searchPlaceholder="Search reporters..."
+                      options={facets?.reporters ?? []}
+                      selected={filters.reporters}
+                      onChange={(next) => setFilters((f) => ({ ...f, reporters: next }))}
+                    />
+                  </span>
+                </Tooltip>
+                <Tooltip content="Show only tickets whose last Jira activity falls in the selected time periods">
+                  <span className="inline-flex">
+                    <FilterDropdown
+                      label="Last activity"
+                      options={LAST_ACTIVITY_OPTIONS.map((o) => o.value)}
+                      labelMap={activityLabelMap}
+                      selected={filters.lastActivity as Set<string>}
+                      onChange={(next) => setFilters((f) => ({ ...f, lastActivity: next as Set<LastActivityBucket> }))}
+                    />
+                  </span>
+                </Tooltip>
+
+                <BarDivider />
+
+                {/* Revival filter (BRDG-298): isolate "worth pulling up" tickets, the
+                    opposite read from deprecation. Toggle, on the positive/green
+                    treatment to match the row badge. */}
+                <Tooltip content="Show only revival candidates: low-backlog tickets the analyzer judges still worth pulling up">
+                  <button
+                    type="button"
+                    aria-pressed={filters.revivalOnly}
+                    onClick={() => setFilters((f) => ({ ...f, revivalOnly: !f.revivalOnly }))}
+                    className={[
+                      "flex h-7 cursor-pointer items-center gap-1.5 rounded-lg border px-2.5 text-label font-medium transition-colors duration-150 active:scale-[0.98]",
+                      "focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-[var(--color-status-success)]",
+                      filters.revivalOnly
+                        ? "border-[var(--color-status-success)]/50 text-[var(--color-status-success)]"
+                        : "border-border-default text-text-secondary hover:border-[var(--color-status-success)]/40 hover:text-text-primary",
+                    ].join(" ")}
+                    style={filters.revivalOnly ? { backgroundColor: "var(--color-status-success-subtle)" } : undefined}
+                  >
+                    <TrendingUp size={13} strokeWidth={2} />
+                    Revival candidates
+                  </button>
+                </Tooltip>
+              </div>
             </div>
 
             {/* Ticket list. Reuses the app's standard ChildIssueRow (and its
@@ -541,6 +692,19 @@ export default function CleanupPage() {
                     const revival = isRevivalCandidate(row);
                     const metadata = (
                       <div className="flex shrink-0 items-center gap-1.5">
+                        {/* Standard issue-metadata badges (PO feedback #5): epic,
+                            subtask count, story points — same chips the rest of the
+                            app uses, fed the row's real data. */}
+                        {row.epic && <EpicBadge epic={row.epic} className="max-w-[140px]" />}
+                        <SubtaskCountBadge open={row.openSubtaskCount} total={row.totalSubtaskCount} />
+                        {row.storyPoints != null && row.storyPoints > 0 && (
+                          <MetricChip metric="sp" value={row.storyPoints} />
+                        )}
+                        {row.assignee && (
+                          <Tooltip content={`Assignee: ${row.assignee.name}`}>
+                            <Avatar assignee={row.assignee} size={18} />
+                          </Tooltip>
+                        )}
                         {revival && row.revivalScore != null && <RevivalBadge score={row.revivalScore} />}
                         <DeprecationScoreBadge score={row.scanOverall} />
                         {badge && (
@@ -567,6 +731,7 @@ export default function CleanupPage() {
                         spacious
                         inlineCheckbox
                         showStatus
+                        showTypeIcon
                         selectable
                         isChecked={isChecked}
                         someChecked={checkedKeys.size > 0}
@@ -581,51 +746,98 @@ export default function CleanupPage() {
               )}
             </div>
 
+            {/* Multi-select bulk bar, restyled to match the sprint board's
+                BulkActionBar (PO feedback #4): the shared BarContainer footer with a
+                brand select-all checkbox, a "N selected" counter, and standard Buttons.
+                The cleanup-specific actions (deep-scan, confirm, dismiss) replace the
+                board's update/AI dropdowns. */}
             {checkedKeys.size > 0 && (
-              <div className="sticky bottom-0 z-40 flex items-center gap-3 border-t border-border-default bg-[var(--color-surface-base)] px-8 py-3">
-                <span className="text-body-sm font-medium text-text-secondary tabular-nums">
-                  {checkedKeys.size} selected
+              <BarContainer
+                border
+                borderPosition="top"
+                className="sticky bottom-0 z-50 gap-2 bg-[var(--color-surface-base)] px-8 sm:gap-3"
+              >
+                {/* Select all / deselect all visible rows (mirrors the board's toggle). */}
+                <Tooltip content={allVisibleChecked ? "Deselect all" : "Select all visible"}>
+                  <button
+                    type="button"
+                    onClick={toggleAllVisible}
+                    aria-label={allVisibleChecked ? "Deselect all" : "Select all visible"}
+                    className="flex shrink-0 items-center justify-center cursor-pointer"
+                  >
+                    <span
+                      className={`flex h-3.5 w-3.5 items-center justify-center rounded-sm border ${
+                        allVisibleChecked
+                          ? "border-[var(--color-brand-500)]/50 bg-[var(--color-brand-500)]/20"
+                          : "border-[var(--color-brand-500)]/30 bg-[var(--color-brand-500)]/10"
+                      }`}
+                    >
+                      {allVisibleChecked ? (
+                        <svg width="8" height="8" viewBox="0 0 8 8" fill="none">
+                          <path d="M1.5 4L3 5.5L6.5 2" stroke="var(--color-brand-400)" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+                        </svg>
+                      ) : (
+                        <div className="h-1.5 w-1.5 rounded-sm bg-[var(--color-brand-400)]" />
+                      )}
+                    </span>
+                  </button>
+                </Tooltip>
+
+                <span className="shrink-0 text-body-sm font-medium text-text-secondary whitespace-nowrap tabular-nums">
+                  {checkedKeys.size}/{rows.length} selected
                 </span>
-                <Button
-                  variant="primary"
-                  size="md"
-                  disabled={enqueuing || disposing}
-                  onClick={() => void deepScanSelected()}
-                >
-                  <Telescope className="h-3.5 w-3.5 shrink-0" strokeWidth={1.5} />
-                  Deep-scan selected
-                </Button>
-                <span className="mx-1 h-5 w-px bg-overlay-default" />
+
+                <BarDivider />
+
+                <Tooltip content="Queue the selected tickets for a Tier-2 deep scan">
+                  <Button
+                    variant="primary"
+                    size="md"
+                    disabled={enqueuing || disposing}
+                    onClick={() => void deepScanSelected()}
+                  >
+                    <Telescope className="h-3.5 w-3.5 shrink-0" strokeWidth={1.5} />
+                    Deep-scan selected
+                  </Button>
+                </Tooltip>
+
+                <BarDivider />
+
                 {/* Bulk disposition (BRDG-289): local markers only, no Jira write. */}
-                <Button
-                  variant="soft"
-                  size="md"
-                  disabled={disposing || enqueuing}
-                  onClick={() => void bulkDispose("confirm")}
-                  title="Confirm selected as removable (local only, no Jira write)"
-                >
-                  <Check className="h-3.5 w-3.5 shrink-0" strokeWidth={2} />
-                  Confirm
-                </Button>
-                <Button
-                  variant="ghost"
-                  size="md"
-                  disabled={disposing || enqueuing}
-                  onClick={() => void bulkDispose("dismiss")}
-                  title="Dismiss selected as false positives (snooze)"
-                >
-                  <BellOff className="h-3.5 w-3.5 shrink-0" strokeWidth={1.5} />
-                  Dismiss
-                </Button>
+                <Tooltip content="Confirm selected as removable (local only, no Jira write)">
+                  <Button
+                    variant="soft"
+                    size="md"
+                    disabled={disposing || enqueuing}
+                    onClick={() => void bulkDispose("confirm")}
+                  >
+                    <Check className="h-3.5 w-3.5 shrink-0" strokeWidth={2} />
+                    Confirm
+                  </Button>
+                </Tooltip>
+                <Tooltip content="Dismiss selected as false positives (snoozes them from re-surfacing)">
+                  <Button
+                    variant="ghost"
+                    size="md"
+                    disabled={disposing || enqueuing}
+                    onClick={() => void bulkDispose("dismiss")}
+                  >
+                    <BellOff className="h-3.5 w-3.5 shrink-0" strokeWidth={1.5} />
+                    Dismiss
+                  </Button>
+                </Tooltip>
+
+                <div className="flex-1" />
+
                 <Button
                   variant="ghost"
                   size="sm"
-                  className="border-0 bg-transparent text-text-tertiary hover:bg-transparent hover:text-text-secondary"
+                  className="shrink-0 border-0 bg-transparent text-text-tertiary hover:bg-transparent hover:text-text-secondary"
                   onClick={() => setCheckedKeys(new Set())}
                 >
                   Clear
                 </Button>
-              </div>
+              </BarContainer>
             )}
           </div>
 
@@ -658,6 +870,41 @@ export default function CleanupPage() {
         </div>
       </div>
     </>
+  );
+}
+
+// A single-choice select styled with the app's standard control tokens (the same
+// border / surface / focus treatment the rest of Bridge's inline selects use). The
+// app has no generic single-select dropdown component, so this keeps the sort and
+// the scan/disposition/score filters consistent while the multi-select facet
+// filters use FilterDropdown. A leading label sits inside the control so it reads
+// as one labelled unit.
+function LabeledSelect({
+  label,
+  value,
+  onChange,
+  options,
+}: {
+  label: string;
+  value: string;
+  onChange: (value: string) => void;
+  options: readonly { value: string | number | null; label: string }[];
+}) {
+  return (
+    <label className="flex h-7 cursor-pointer items-center gap-1.5 rounded-lg border border-border-default bg-overlay-subtle pl-2.5 pr-1.5 text-label font-medium text-text-secondary transition-colors duration-150 hover:border-border-strong hover:text-text-primary focus-within:outline-2 focus-within:outline-offset-1 focus-within:outline-[var(--color-brand-400)]">
+      <span className="text-text-muted">{label}</span>
+      <select
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        className="cursor-pointer appearance-none bg-transparent pr-1 text-label font-medium text-text-secondary focus:outline-none"
+      >
+        {options.map((o) => (
+          <option key={String(o.value)} value={o.value === null ? "none" : String(o.value)}>
+            {o.label}
+          </option>
+        ))}
+      </select>
+    </label>
   );
 }
 

@@ -1,5 +1,13 @@
 import { describe, it, expect } from "vitest";
-import { filterRows, sortRows, scoreHeat, revivalHeat, isRevivalCandidate, type CleanupFilters } from "./cleanup-utils";
+import {
+  filterRows,
+  sortRows,
+  scoreHeat,
+  revivalHeat,
+  isRevivalCandidate,
+  lastActivityBucket,
+  type CleanupFilters,
+} from "./cleanup-utils";
 import type { CleanupRow } from "@/lib/cleanup-types";
 
 function row(key: string, over: number | null, opts: Partial<CleanupRow> = {}): CleanupRow {
@@ -7,6 +15,15 @@ function row(key: string, over: number | null, opts: Partial<CleanupRow> = {}): 
     key,
     title: `Ticket ${key}`,
     status: "TO DO",
+    type: opts.type ?? "story",
+    epic: opts.epic ?? null,
+    epicKey: opts.epicKey ?? null,
+    storyPoints: opts.storyPoints ?? null,
+    openSubtaskCount: opts.openSubtaskCount ?? 0,
+    totalSubtaskCount: opts.totalSubtaskCount ?? 0,
+    assignee: opts.assignee ?? null,
+    reporter: opts.reporter ?? null,
+    jiraUpdatedAt: opts.jiraUpdatedAt ?? null,
     lastScannedAt: opts.lastScannedAt ?? null,
     topicScores: opts.topicScores ?? {},
     scanOverall: over,
@@ -18,7 +35,22 @@ function row(key: string, over: number | null, opts: Partial<CleanupRow> = {}): 
 
 // Filters default to "show everything"; tests override only the field under test.
 function filters(over: Partial<CleanupFilters> = {}): CleanupFilters {
-  return { scanned: "all", disposition: "all", minOverall: 0, revivalOnly: false, ...over };
+  return {
+    scanned: "all",
+    disposition: "all",
+    minOverall: 0,
+    revivalOnly: false,
+    types: new Set(),
+    epicKeys: new Set(),
+    assignees: new Set(),
+    reporters: new Set(),
+    lastActivity: new Set(),
+    ...over,
+  };
+}
+
+function person(name: string) {
+  return { name, initials: name.slice(0, 2).toUpperCase(), color: "hsl(1, 50%, 50%)" };
 }
 
 describe("sortRows", () => {
@@ -116,6 +148,74 @@ describe("filterRows", () => {
     ];
     const out = filterRows(revivalRows, filters({ revivalOnly: true }));
     expect(out.map((r) => r.key)).toEqual(["HIGH", "BORDER"]);
+  });
+
+  it("filters by issue type (OR within the set)", () => {
+    const typedRows = [
+      row("STORY", null, { type: "story" }),
+      row("BUG", null, { type: "bug" }),
+      row("TASK", null, { type: "task" }),
+    ];
+    const out = filterRows(typedRows, filters({ types: new Set(["bug", "task"]) }));
+    expect(out.map((r) => r.key)).toEqual(["BUG", "TASK"]);
+  });
+
+  it("filters by epic key and excludes unparented rows while active", () => {
+    const epicRows = [
+      row("A", null, { epicKey: "BT-100", epic: "Upsell" }),
+      row("B", null, { epicKey: "BT-200", epic: "Logging" }),
+      row("C", null, {}), // no epic
+    ];
+    const out = filterRows(epicRows, filters({ epicKeys: new Set(["BT-100"]) }));
+    expect(out.map((r) => r.key)).toEqual(["A"]);
+  });
+
+  it("filters by assignee and reporter name", () => {
+    const peopleRows = [
+      row("A", null, { assignee: person("Alice"), reporter: person("Carol") }),
+      row("B", null, { assignee: person("Bob"), reporter: person("Carol") }),
+      row("C", null, {}),
+    ];
+    expect(filterRows(peopleRows, filters({ assignees: new Set(["Alice"]) })).map((r) => r.key)).toEqual(["A"]);
+    expect(filterRows(peopleRows, filters({ reporters: new Set(["Carol"]) })).map((r) => r.key)).toEqual(["A", "B"]);
+  });
+
+  it("filters by last-activity bucket", () => {
+    const now = Date.parse("2026-06-04T00:00:00Z");
+    const activityRows = [
+      row("RECENT", null, { jiraUpdatedAt: "2026-05-20T00:00:00Z" }), // < 1mo
+      row("OLD", null, { jiraUpdatedAt: "2024-01-01T00:00:00Z" }), // > 1yr
+      row("MID", null, { jiraUpdatedAt: "2026-03-01T00:00:00Z" }), // 3-6mo
+    ];
+    const out = filterRows(activityRows, filters({ lastActivity: new Set(["lt1m", "gt1y"]) }), now);
+    expect(out.map((r) => r.key)).toEqual(["RECENT", "OLD"]);
+  });
+
+  it("ANDs multiple facet filters together", () => {
+    const mixed = [
+      row("A", null, { type: "bug", assignee: person("Alice") }),
+      row("B", null, { type: "bug", assignee: person("Bob") }),
+      row("C", null, { type: "story", assignee: person("Alice") }),
+    ];
+    const out = filterRows(mixed, filters({ types: new Set(["bug"]), assignees: new Set(["Alice"]) }));
+    expect(out.map((r) => r.key)).toEqual(["A"]);
+  });
+});
+
+describe("lastActivityBucket", () => {
+  const now = Date.parse("2026-06-04T00:00:00Z");
+
+  it("classifies into the coarse day windows", () => {
+    expect(lastActivityBucket("2026-06-01T00:00:00Z", now)).toBe("lt1m");
+    expect(lastActivityBucket("2026-04-15T00:00:00Z", now)).toBe("1to3m");
+    expect(lastActivityBucket("2026-02-15T00:00:00Z", now)).toBe("3to6m");
+    expect(lastActivityBucket("2025-10-01T00:00:00Z", now)).toBe("6to12m");
+    expect(lastActivityBucket("2024-01-01T00:00:00Z", now)).toBe("gt1y");
+  });
+
+  it("returns 'unknown' for null or unparseable timestamps", () => {
+    expect(lastActivityBucket(null, now)).toBe("unknown");
+    expect(lastActivityBucket("not-a-date", now)).toBe("unknown");
   });
 });
 

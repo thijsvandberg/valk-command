@@ -246,6 +246,15 @@ Response shape (`CleanupResponse` in `src/lib/cleanup-types.ts`):
 {
   rows: Array<{
     key, title, status,
+    type: IssueType,                  // story|task|bug|spike|subtask|epic (normalised from Jira; default "story")
+    epic: string | null,              // epic display name
+    epicKey: string | null,
+    storyPoints: number | null,
+    openSubtaskCount: number,         // open (non-finished) / total subtask counts
+    totalSubtaskCount: number,
+    assignee: { name, initials, color } | null,  // person with precomputed initials + colour for the client
+    reporter: { name, initials, color } | null,
+    jiraUpdatedAt: string | null,     // last Jira activity; drives the last-activity filter buckets
     lastScannedAt: string | null,
     topicScores: { staleness?: number | null, ... }, // 0..1 per topic, parsed from scanScores
     scanOverall: number | null,
@@ -254,9 +263,22 @@ Response shape (`CleanupResponse` in `src/lib/cleanup-types.ts`):
     revivalRationale: string | null
   }>,
   total: number,
-  topics: Array<{ key, label, live }> // dormant topics (live:false) render "—" until their scorer ships
+  topics: Array<{ key, label, live }>, // dormant topics (live:false) render "—" until their scorer ships
+  facets: {                            // distinct option lists for the view's filter dropdowns, computed
+    types: IssueType[],                // server-side over the WHOLE eligible backlog (not the page window)
+    epics: Array<{ key, name }>,       // sorted by name; only parented rows
+    assignees: string[],               // distinct names, sorted
+    reporters: string[]
+  }
 }
 ```
+
+The `type`/`epic`/`storyPoints`/subtask-count/person fields enrich the row so the shared `ChildIssueRow`
+renders the standard issue-type icon plus the epic / subtask-count / story-point badges. The `facets`
+object feeds the view's issue-type / epic / assignee / reporter filter dropdowns; the **last-activity**
+time-period filter (`< 1mo` / `1-3mo` / `3-6mo` / `6-12mo` / `> 1yr` / unknown) is derived client-side
+from `jiraUpdatedAt` (`lastActivityBucket` in `cleanup-utils.ts`). All facet filters apply client-side
+over the loaded list, so they never enter the SWR key.
 
 **`/cleanup` view (BRDG-283 → BRDG-298 UI refresh).** Each ticket renders via the app-standard
 `ChildIssueRow` + `TicketStatusPill` (the same row/pill used by the refinement select list and epic
@@ -264,8 +286,16 @@ children), so the surface matches the rest of the app and fits the viewport — 
 score columns are gone, eliminating the horizontal scroll. Per row, trailing metadata badges show: a
 compact **deprecation-score badge** (the overall score on the existing heat ramp), a **revival badge**
 (upward arrow + positive/green treatment) when `revivalScore >= 0.6`, the disposition badge, and the
-last-scanned relative time. The full per-topic breakdown plus the revival rationale live in the
-`DispositionPanel` drawer.
+last-scanned relative time. Each row also shows the standard **issue-type icon** (via `showTypeIcon`) and
+the shared **epic / subtask-count / story-point badges** (`IssueMetaBadges`) plus the assignee avatar. The
+full per-topic breakdown plus the revival rationale live in the `DispositionPanel` drawer.
+
+The controls bar uses standard Bridge components with a tooltip on every control: single-choice selects
+(sort, scanned, disposition, min-score) styled with the shared control tokens, the app-standard
+`FilterDropdown` for the multi-select facet filters (type / epic / assignee / reporter / last-activity),
+the `Button` quick-actions, and the auto-scan toggle. The multi-select bulk bar reuses the sprint board's
+`BarContainer` footer styling (brand select-all checkbox, `N/total selected` counter, standard `Button`s,
+`BarDivider`s) so it matches `BulkActionBar`; its actions are Deep-scan selected / Confirm / Dismiss / Clear.
 `POST /api/cleanup/deep-scan` body is a discriminated union on `method`:
 - `{ method: "keys", keys: string[] }` — hand-picked tickets (filtered to the eligible backlog).
 - `{ method: "worst-staleness", topX: number }` — top-X by combined Tier-1 score.

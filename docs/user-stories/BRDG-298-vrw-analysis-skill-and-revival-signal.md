@@ -100,3 +100,24 @@ the app:
   drawer can explain why a ticket is worth pulling up.
 - Selection, bulk confirm/dismiss, deep-scan selection, the Auto toggle, and the quick actions all
   continue to work unchanged.
+
+### Second UI pass (PO feedback on screenshots)
+
+Addressed the remaining direct PO feedback on the refreshed view:
+
+- **Issue type on every row.** `GET /api/cleanup` + `CleanupRow` now carry the normalised issue `type`;
+  the row passes it through and enables `showTypeIcon`, so the standard issue-type icon shows on each row.
+- **Row badges.** `CleanupRow` now also carries `epic`/`epicKey`, `storyPoints`, open/total subtask counts,
+  and `assignee`. The row renders the shared `EpicBadge` / `SubtaskCountBadge` / `MetricChip` (SP) from
+  `IssueMetaBadges` plus the assignee `Avatar` — the same badges the rest of the app uses.
+- **New filters.** Added issue-type, epic, assignee, reporter, and last-activity time-period filters
+  (`< 1mo` / `1-3mo` / `3-6mo` / `6-12mo` / `> 1yr` / unknown). Option lists come from a server-computed
+  `facets` object covering the whole eligible backlog; filtering itself is client-side over the loaded
+  list (`cleanup-utils.ts`, pure + unit-tested). The last-activity buckets are derived from `jiraUpdatedAt`.
+- **Standard controls + tooltips.** The controls bar was rebuilt on standard Bridge components — token-styled
+  single-choice selects for sort/scanned/disposition/min-score, the app-standard `FilterDropdown` for the
+  facet filters, `Button` quick-actions — and every control now has an explanatory `Tooltip` (quick actions,
+  Auto toggle, score/disposition filters, the new facet filters).
+- **Restyled selection bar.** The multi-select action bar now reuses the sprint board's `BarContainer`
+  footer styling to match `BulkActionBar`: a brand select-all checkbox, an `N/total selected` counter,
+  `BarDivider`s, and standard `Button`s for Deep-scan selected / Confirm / Dismiss / Clear.
