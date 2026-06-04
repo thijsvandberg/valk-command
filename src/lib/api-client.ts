@@ -571,13 +571,32 @@ export const jobs = {
     apiFetch<void>(`/api/jobs/${enc(id)}`, { method: "DELETE", signal }),
 };
 
+// One registered scheduler task as exposed by GET /api/scheduler/tasks (and
+// GET /api/scheduler/tick). `enabled` is the EFFECTIVE state (persisted override
+// or the task's default).
+export interface SchedulerTaskStatus {
+  name: string;
+  label: string;
+  description: string;
+  intervalMs: number;
+  enabled: boolean;
+}
+
 export const scheduler = {
   tick: (signal?: AbortSignal) =>
     apiFetch<unknown>("/api/scheduler/tick", { method: "POST", signal }),
   status: (signal?: AbortSignal) =>
     apiFetch<unknown>("/api/scheduler/tick", { signal }),
   run: (name: string, signal?: AbortSignal) =>
-    apiFetch<unknown>(`/api/scheduler/run/${enc(name)}`, { method: "POST", signal }),
+    apiFetch<{ ran: boolean; result: unknown }>(`/api/scheduler/run/${enc(name)}`, { method: "POST", signal }),
+  tasks: (signal?: AbortSignal) =>
+    apiFetch<{ tasks: SchedulerTaskStatus[] }>("/api/scheduler/tasks", { signal }),
+  setTaskEnabled: (name: string, enabled: boolean, signal?: AbortSignal) =>
+    apiFetch<{ name: string; enabled: boolean }>("/api/scheduler/tasks", {
+      method: "POST",
+      body: { name, enabled },
+      signal,
+    }),
 };
 
 // ---------------------------------------------------------------------------

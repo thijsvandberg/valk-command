@@ -111,8 +111,10 @@ const ROW_DEFAULTS = {
   epic: null,
   epicKey: null,
   storyPoints: null,
+  sprintName: null,
   openSubtaskCount: 0,
   totalSubtaskCount: 0,
+  epicChildCount: 0,
   assignee: null,
   reporter: null,
   jiraUpdatedAt: null,
@@ -230,6 +232,60 @@ describe("CleanupPage", () => {
     expect(within(meta).getByText("Upsell")).toBeInTheDocument();
     // Story points chip (3 SP on BT-1).
     expect(within(meta).getByText("3")).toBeInTheDocument();
+  });
+
+  it("shows a Backlog indicator on rows with no sprint", () => {
+    swrData = RESPONSE;
+    render(<CleanupPage />);
+    // Every fixture row is backlog (sprintName null) -> a Backlog chip per row.
+    expect(within(screen.getByTestId("meta-BT-1")).getByText("Backlog")).toBeInTheDocument();
+  });
+
+  it("shows the epic child-story count for epic rows and the subtask count for others", () => {
+    swrData = {
+      ...RESPONSE,
+      total: 2,
+      rows: [
+        {
+          ...ROW_DEFAULTS,
+          key: "EPIC-1",
+          title: "An epic",
+          status: "TO DO",
+          type: "epic",
+          epicChildCount: 9,
+          lastScannedAt: null,
+          topicScores: {},
+          scanOverall: null,
+          disposition: null,
+          revivalScore: null,
+          revivalRationale: null,
+        },
+        {
+          ...ROW_DEFAULTS,
+          key: "STORY-1",
+          title: "A story with subtasks",
+          status: "TO DO",
+          type: "story",
+          openSubtaskCount: 1,
+          totalSubtaskCount: 4,
+          epicChildCount: 0,
+          lastScannedAt: null,
+          topicScores: {},
+          scanOverall: null,
+          disposition: null,
+          revivalScore: null,
+          revivalRationale: null,
+        },
+      ],
+    };
+    render(<CleanupPage />);
+    // Epic row: "N stories" count badge, no subtask badge.
+    const epicMeta = screen.getByTestId("meta-EPIC-1");
+    expect(within(epicMeta).getByText("9")).toBeInTheDocument();
+    expect(within(epicMeta).queryByText("1/4")).not.toBeInTheDocument();
+    // Non-epic row: subtask count badge, no epic child-count.
+    const storyMeta = screen.getByTestId("meta-STORY-1");
+    expect(within(storyMeta).getByText("1/4")).toBeInTheDocument();
   });
 
   it("renders the new facet filter controls", () => {

@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState, useCallback, useRef } from "react";
+import { useMemo, useState, useCallback } from "react";
 import useSWR, { mutate as globalMutate } from "swr";
 import dynamic from "next/dynamic";
 import { Trash2, Telescope, Clock, Flame, Check, BellOff, TrendingUp } from "lucide-react";
@@ -10,7 +10,7 @@ import { ViewHeader, ViewHeaderTitle } from "@/components/shared/ViewHeader";
 import { Tooltip } from "@/components/shared/Tooltip";
 import { FilterDropdown } from "@/components/shared/FilterDropdown";
 import { BarContainer, BarDivider } from "@/components/shared/BarContainer";
-import { EpicBadge, SubtaskCountBadge, MetricChip } from "@/components/shared/IssueMetaBadges";
+import { EpicBadge, SubtaskCountBadge, MetricChip, SprintOrBacklogBadge, EpicChildCountBadge } from "@/components/shared/IssueMetaBadges";
 import { IssueTypeIcon } from "@/components/shared/IssueTypeIcon";
 import { Avatar } from "@/components/shared/Avatar";
 import { ChildIssueRow } from "@/components/ticket-detail/ChildIssueRow";
@@ -34,7 +34,8 @@ import {
   type CleanupFilters,
   type LastActivityBucket,
 } from "./cleanup-utils";
-import { type AutoScanSettings, autoScanSettings } from "@/lib/api-client";
+import { ScanControls } from "./ScanControls";
+import { DeepScanQueuePanel, type QueueData } from "./DeepScanQueuePanel";
 
 // Title-case label for an issue type, used in the type-filter dropdown.
 const ISSUE_TYPE_LABEL: Record<IssueType, string> = {
@@ -93,13 +94,6 @@ const THRESHOLD_OPTIONS = [
 // Default batch size for the quick "top X" selection actions. Kept modest to
 // honour the epic's "small batches, never all at once" constraint.
 const QUICK_TOP_X = 10;
-
-interface QueueCounts {
-  pending: number;
-  running: number;
-  done: number;
-  error: number;
-}
 
 // Shared 18px-high chip geometry, matching IssueMetaBadges so the trailing
 // cleanup badges line up with the rest of the app's list rows.
@@ -186,6 +180,7 @@ function rowToTicket(row: CleanupRow): Ticket {
     editState: "clean",
     notes: "",
     jiraUpdatedAt: row.jiraUpdatedAt,
+    sprintDisplayName: row.sprintName,
     openSubtaskCount: row.openSubtaskCount,
     totalSubtaskCount: row.totalSubtaskCount,
   };
@@ -262,50 +257,20 @@ export default function CleanupPage() {
     [checkedKeys, refreshAfterDisposition],
   );
 
-  // Poll the deep-dive queue so batch progress (queued/running/done) stays live
-  // while the background runner drains it. 4s is responsive without hammering.
-  const { data: queue, mutate: mutateQueue } = useSWR<QueueCounts>(
+  // Poll the deep-dive queue so batch progress (queued/running/done) and the
+  // item list stay live while the background runner drains it. 4s is responsive
+  // without hammering. The queue panel reuses this single poll.
+  const { data: queue, mutate: mutateQueue } = useSWR<QueueData>(
     "/api/cleanup/deep-scan",
     { refreshInterval: 4000 },
   );
 
-  // Auto-scan settings: toggle + daily count. No polling needed; settings
-  // change only on user action.
-  const { data: autoSettings, mutate: mutateAutoSettings } = useSWR<AutoScanSettings>(
-    "/api/cleanup/auto-scan-settings",
-  );
-  const [autoSaving, setAutoSaving] = useState(false);
-  // Optimistic count value while the user edits the number input.
-  const autoCountRef = useRef<HTMLInputElement>(null);
-
-  const toggleAutoScan = useCallback(async () => {
-    if (!autoSettings || autoSaving) return;
-    setAutoSaving(true);
-    try {
-      const updated = await autoScanSettings.update({ enabled: !autoSettings.enabled });
-      await mutateAutoSettings(updated, { revalidate: false });
-    } catch {
-      await mutateAutoSettings();
-    } finally {
-      setAutoSaving(false);
-    }
-  }, [autoSettings, autoSaving, mutateAutoSettings]);
-
-  const commitAutoCount = useCallback(async () => {
-    const raw = autoCountRef.current?.value;
-    const n = raw ? parseInt(raw, 10) : NaN;
-    if (!autoSettings || Number.isNaN(n) || n < 1 || n > 200) return;
-    if (n === autoSettings.dailyCount) return;
-    setAutoSaving(true);
-    try {
-      const updated = await autoScanSettings.update({ dailyCount: n });
-      await mutateAutoSettings(updated, { revalidate: false });
-    } catch {
-      await mutateAutoSettings();
-    } finally {
-      setAutoSaving(false);
-    }
-  }, [autoSettings, mutateAutoSettings]);
+  // After a scan toggle or "Run now", refresh both the queue and the row list:
+  // a staleness pass rescores rows, a deep-scan run drains the queue.
+  const refreshAfterScan = useCallback(() => {
+    void mutateQueue();
+    void mutateCleanup();
+  }, [mutateQueue, mutateCleanup]);
 
   const enqueue = useCallback(
     async (body: Record<string, unknown>) => {
@@ -484,90 +449,14 @@ export default function CleanupPage() {
                   </Button>
                 </Tooltip>
 
-              {/* Auto-scan toggle + count. Placed before the queue progress so the
-                  two controls read as a logical group: "auto mode state → queue state". */}
-              {autoSettings !== undefined && (
-                <span className="ml-auto flex items-center gap-2.5 text-label text-text-tertiary">
-                  <BarDivider />
-                  <Tooltip content={autoSettings.enabled ? "Auto background deep scan is on. Turn it off." : "Turn on auto background deep scan: a daily batch is queued automatically."}>
-                    <span className="inline-flex">
-                  {/* Toggle pill */}
-                  <button
-                    type="button"
-                    role="switch"
-                    aria-checked={autoSettings.enabled}
-                    aria-label={autoSettings.enabled ? "Disable auto background deep scan" : "Enable auto background deep scan"}
-                    onClick={() => void toggleAutoScan()}
-                    disabled={autoSaving}
-                    className={[
-                      "relative flex h-4 w-7 shrink-0 cursor-pointer items-center rounded-full border transition-colors duration-150",
-                      "focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)]",
-                      "disabled:cursor-not-allowed disabled:opacity-60",
-                      autoSettings.enabled
-                        ? "border-[var(--color-brand-500)]/50 bg-[var(--color-brand-500)]/25"
-                        : "border-border-default bg-overlay-subtle",
-                    ].join(" ")}
-                  >
-                    <span
-                      className={[
-                        "absolute h-2.5 w-2.5 rounded-full transition-[transform,background-color] duration-150",
-                        autoSettings.enabled
-                          ? "translate-x-[14px] bg-[var(--color-brand-400)]"
-                          : "translate-x-[1px] bg-text-muted",
-                      ].join(" ")}
-                    />
-                  </button>
-                    </span>
-                  </Tooltip>
-                  {/* Status text + count input */}
-                  {autoSettings.enabled ? (
-                    <span className="flex items-center gap-1.5 tabular-nums">
-                      <span>Auto:</span>
-                      <span className="font-medium text-[var(--color-brand-400)]">ON</span>
-                      <span className="text-text-muted">/</span>
-                      <input
-                        ref={autoCountRef}
-                        type="number"
-                        min={1}
-                        max={200}
-                        defaultValue={autoSettings.dailyCount}
-                        key={autoSettings.dailyCount}
-                        onBlur={() => void commitAutoCount()}
-                        onKeyDown={(e) => { if (e.key === "Enter") void commitAutoCount(); }}
-                        disabled={autoSaving}
-                        aria-label="Auto scan daily count"
-                        className={[
-                          "h-6 w-10 rounded-md border border-border-default bg-[var(--color-surface-elevated)]",
-                          "px-1.5 text-center text-label tabular-nums text-text-secondary",
-                          "focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-[var(--color-brand-400)]",
-                          "disabled:opacity-60",
-                          // Remove native spinner arrows; the field is small and arrows waste space.
-                          "[appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none",
-                        ].join(" ")}
-                      />
-                      <span>/ day</span>
-                    </span>
-                  ) : (
-                    <span className="tabular-nums text-text-muted">Auto: off</span>
-                  )}
-                </span>
-              )}
-
-              {queue && (queue.pending > 0 || queue.running > 0 || queue.done > 0) && (
-                <span className={[
-                  "flex items-center gap-2 text-label tabular-nums text-text-tertiary",
-                  autoSettings === undefined ? "ml-auto" : "",
-                ].join(" ")}>
-                  {autoSettings === undefined && <span className="h-5 w-px bg-overlay-default" />}
-                  <Telescope size={13} strokeWidth={1.5} className="text-[var(--color-brand-400)]" />
-                  <span title="Waiting in the deep-scan queue">{queue.pending} queued</span>
-                  {queue.running > 0 && <span title="Currently being deep-scanned">{queue.running} running</span>}
-                  <span title="Deep scans completed">{queue.done} done</span>
-                  {queue.error > 0 && (
-                    <span className="text-[var(--color-status-error)]" title="Deep scans that errored">{queue.error} error</span>
-                  )}
-                </span>
-              )}
+              {/* Scan governance + queue, pushed right. The Scans popover is the one
+                  place all background scanning is turned on/off and triggered, and
+                  reconciles the former standalone Auto toggle into a single auto
+                  on/off (BRDG-298). The queue panel replaces the old inline counter. */}
+              <span className="ml-auto flex items-center gap-2">
+                <DeepScanQueuePanel queue={queue} onMutate={mutateQueue} />
+                <ScanControls onRan={refreshAfterScan} />
+              </span>
               </div>
 
               {/* Row 2: multi-select facet filters via the app-standard FilterDropdown
@@ -696,7 +585,16 @@ export default function CleanupPage() {
                             subtask count, story points — same chips the rest of the
                             app uses, fed the row's real data. */}
                         {row.epic && <EpicBadge epic={row.epic} className="max-w-[140px]" />}
-                        <SubtaskCountBadge open={row.openSubtaskCount} total={row.totalSubtaskCount} />
+                        {/* Sprint/backlog placement (BRDG-298): every row shows where
+                            it lives; backlog-only eligibility means most read "Backlog". */}
+                        <SprintOrBacklogBadge sprintName={row.sprintName} />
+                        {/* Epics show their child-story count; everything else shows the
+                            subtask count. The two are mutually exclusive per row. */}
+                        {row.type === "epic" ? (
+                          <EpicChildCountBadge count={row.epicChildCount} />
+                        ) : (
+                          <SubtaskCountBadge open={row.openSubtaskCount} total={row.totalSubtaskCount} />
+                        )}
                         {row.storyPoints != null && row.storyPoints > 0 && (
                           <MetricChip metric="sp" value={row.storyPoints} />
                         )}

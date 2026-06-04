@@ -150,6 +150,8 @@ An optional hands-off policy that auto-enqueues up to N tickets per day without 
 
 **API**: `GET /api/cleanup/auto-scan-settings` and `POST /api/cleanup/auto-scan-settings` — read and update enabled + dailyCount.
 
+**Two gates, one switch (BRDG-298).** Auto enqueue is gated by BOTH the scheduler task-enabled flag (`scheduler:deprecation-auto-enqueue:enabled`) and the `deprecation-auto-scan:enabled` setting above. To avoid two competing toggles in the UI, the /cleanup "Scans" popover shows ONE auto on/off and writes BOTH flags in lock-step (`scheduler.setTaskEnabled` + `autoScanSettings.update({ enabled })`). The displayed effective state reads from the scheduler task feed (`GET /api/scheduler/tasks`), which is the source of truth; the daily-count input remains backed by `auto-scan-settings`. Keeping both consistent means neither gate can silently block the other.
+
 **Task flow** (`runAutoEnqueue` in `scheduled-tasks.ts`):
 1. Reads `enabled`; returns immediately (skipped) if off
 2. Reads `dailyCount` and today's budget counter

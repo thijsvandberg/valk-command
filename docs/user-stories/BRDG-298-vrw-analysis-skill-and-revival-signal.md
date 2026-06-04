@@ -121,3 +121,31 @@ Addressed the remaining direct PO feedback on the refreshed view:
 - **Restyled selection bar.** The multi-select action bar now reuses the sprint board's `BarContainer`
   footer styling to match `BulkActionBar`: a brand select-all checkbox, an `N/total selected` counter,
   `BarDivider`s, and standard `Button`s for Deep-scan selected / Confirm / Dismiss / Clear.
+
+### Third UI pass: scan governance, queue management, placement + epic badges (PO feedback)
+
+Epic: Backlog Deprecation Review. Four PO-requested features on `/cleanup`:
+
+- **Scan controls (`ScanControls.tsx`).** A "Scans" popover lists the three deprecation scheduler tasks
+  (`deprecation-staleness-scan`, `deprecation-deep-scan`, `deprecation-auto-enqueue`), each with an on/off
+  toggle reflecting the EFFECTIVE `enabled` state (all OFF by default) and a "Run now" button that triggers
+  the task immediately even while off. Toggles call `POST /api/scheduler/tasks`; Run now calls
+  `POST /api/scheduler/run/<name>`. After any action the queue + row list refresh. Tooltips explain each task.
+- **Auto reconciliation (single source of truth).** The standalone "Auto: off" toggle (BRDG-290) was folded
+  into the Scans popover as ONE auto on/off (plus the N/day count). Because auto-enqueue is gated by BOTH the
+  scheduler task-enabled flag AND `deprecation-auto-scan:enabled`, the toggle writes both in lock-step
+  (`scheduler.setTaskEnabled` + `autoScanSettings.update({ enabled })`). The scheduler task feed is the
+  displayed source of truth; the daily-count input stays backed by `auto-scan-settings`.
+- **Deep-scan queue list (`DeepScanQueuePanel.tsx`).** Replaced the "N queued M done" counter with a trigger
+  pill (counts + running spinner) that opens a managed list: each item shows the ticket pill/key + title,
+  a status treatment (pending / running spinner / done / error-with-message), source, and enqueued time.
+  Pending items have a Remove (x) → `DELETE { key }`; running items are non-removable (no control). A
+  "Clear pending" action → `DELETE { all: true }`. Reuses the page's existing 4s queue poll.
+- **Sprint/backlog indicator + epic child-count badge.** `CleanupRow` + `GET /api/cleanup` now carry
+  `sprintName` (null = backlog; backlog-only eligibility means this reads null today) and `epicChildCount`
+  (grouped count of live tickets parented by `epicKey`; 0 for non-epics). New shared badges in
+  `IssueMetaBadges`: `SprintOrBacklogBadge` (sprint name or a "Backlog" chip) and `EpicChildCountBadge`
+  ("N stories"). Epic rows show the child-count badge; non-epics keep the subtask-count badge.
+- Extracted the brand on/off switch into the shared `ToggleSwitch` component (reused by the auto control
+  and the scan-control toggles). Tests cover the toggle/run wiring, queue list rendering + remove/clear,
+  the placement indicator, the epic child-count badge, and the new API fields.
