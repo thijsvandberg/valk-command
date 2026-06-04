@@ -106,7 +106,13 @@ vi.mock("@/components/shared/TicketStatusPill", () => ({
   TicketStatusPill: () => <div data-testid="status-pill" />,
 }));
 vi.mock("@/components/ticket-detail/TicketTabContent", () => ({
-  TicketTabContent: () => <div data-testid="tab-content" />,
+  // Expose a button that drives the child-select callback so the preview side
+  // panel flow can be exercised from the page level.
+  TicketTabContent: ({ onSelectTicket }: { onSelectTicket: (key: string) => void }) => (
+    <div data-testid="tab-content">
+      <button onClick={() => onSelectTicket("VPL-200")}>select-child</button>
+    </div>
+  ),
 }));
 vi.mock("@/components/ticket-detail/TicketSidebar", () => ({
   TicketSidebar: () => <div data-testid="sidebar" />,
@@ -119,8 +125,34 @@ vi.mock("@/components/refinement-session/AddToRefinementModal", () => ({
 vi.mock("@/components/sprint-board/SearchModal", () => ({
   SearchModal: () => null,
 }));
-vi.mock("@/components/ticket-detail/TicketPreviewPanel", () => ({
-  TicketPreviewPanel: () => null,
+vi.mock("@/hooks/useSprintBoard", () => ({
+  // The page fetches the clicked child's full ticket by key; echo the key back
+  // as data so the panel renders for whatever child was selected.
+  useTicketDetail: (key: string | null) => ({
+    data: key ? { key, title: "Child", type: "story", poStatus: null, readiness: null } : null,
+    mutate: vi.fn(),
+    isLoading: false,
+  }),
+}));
+vi.mock("@/components/sprint-board/sprint-board-utils", () => ({
+  saveTicketMetadata: vi.fn(),
+}));
+vi.mock("@/components/sprint-board/SidePanel", () => ({
+  SidePanel: ({
+    ticket,
+    onClose,
+    adjacentKeys,
+  }: {
+    ticket: { key: string };
+    onClose: () => void;
+    adjacentKeys?: { prev: string | null; next: string | null };
+  }) => (
+    <div data-testid="side-panel">
+      <span data-testid="side-panel-key">{ticket.key}</span>
+      <span data-testid="side-panel-adjacent">{JSON.stringify(adjacentKeys ?? null)}</span>
+      <button onClick={onClose}>close-panel</button>
+    </div>
+  ),
 }));
 vi.mock("@/components/shared/TicketChatPane", () => ({
   TicketChatPane: () => null,
@@ -218,6 +250,58 @@ describe("TicketDetailPage header - Add to refinement button", () => {
       expect(screen.queryByText("Add to refinement")).not.toBeInTheDocument();
     },
   );
+});
+
+describe("TicketDetailPage - child preview side panel", () => {
+  beforeEach(() => {
+    resetHook(null);
+    mockSessions = [];
+  });
+
+  afterEach(() => {
+    cleanup();
+  });
+
+  it("opens the sprint-board SidePanel when a child issue is selected", async () => {
+    await renderPage();
+    expect(screen.queryByTestId("side-panel")).not.toBeInTheDocument();
+    fireEvent.click(screen.getByText("select-child"));
+    // SidePanel is a dynamic() import, so it resolves on a later tick.
+    expect(await screen.findByTestId("side-panel")).toBeInTheDocument();
+    expect(screen.getByTestId("side-panel-key")).toHaveTextContent("VPL-200");
+  });
+
+  it("closes the SidePanel via onClose", async () => {
+    await renderPage();
+    fireEvent.click(screen.getByText("select-child"));
+    expect(await screen.findByTestId("side-panel")).toBeInTheDocument();
+    fireEvent.click(screen.getByText("close-panel"));
+    expect(screen.queryByTestId("side-panel")).not.toBeInTheDocument();
+  });
+
+  it("derives prev/next from the epic children for an epic", async () => {
+    resetHook(null, {
+      ticket: { ...baseTicket, type: "epic" },
+      detail: { epicChildren: [{ key: "VPL-199" }, { key: "VPL-200" }, { key: "VPL-201" }] },
+    });
+    await renderPage();
+    fireEvent.click(screen.getByText("select-child"));
+    expect(await screen.findByTestId("side-panel-adjacent")).toHaveTextContent(
+      JSON.stringify({ prev: "VPL-199", next: "VPL-201" }),
+    );
+  });
+
+  it("derives prev/next from the subtasks for a non-epic ticket", async () => {
+    resetHook(null, {
+      ticket: { ...baseTicket, type: "story" },
+      detail: { subtasks: [{ key: "VPL-200" }, { key: "VPL-201" }] },
+    });
+    await renderPage();
+    fireEvent.click(screen.getByText("select-child"));
+    expect(await screen.findByTestId("side-panel-adjacent")).toHaveTextContent(
+      JSON.stringify({ prev: null, next: "VPL-201" }),
+    );
+  });
 });
 
 describe("TicketDetailPage - finalized draft key swap", () => {

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, use, useEffect, useRef, useCallback } from "react";
+import { useState, use, useEffect, useRef, useCallback, useMemo } from "react";
 import { usePageTitle } from "@/hooks/usePageTitle";
 import Link from "next/link";
 import {
@@ -30,8 +30,10 @@ import dynamic from "next/dynamic";
 import { TicketSidebar, SIDEBAR_COLLAPSED_KEY } from "@/components/ticket-detail/TicketSidebar";
 import { TicketTabContent, type TicketTab } from "@/components/ticket-detail/TicketTabContent";
 
-const TicketPreviewPanel = dynamic(
-  () => import("@/components/ticket-detail/TicketPreviewPanel").then((m) => ({ default: m.TicketPreviewPanel })),
+// The clicked child issue opens in the same rich panel the sprint board uses,
+// so child-ticket management is identical across both surfaces (BRDG-275).
+const SidePanel = dynamic(
+  () => import("@/components/sprint-board/SidePanel").then((m) => ({ default: m.SidePanel })),
   { ssr: false },
 );
 const TicketChatPane = dynamic(
@@ -51,6 +53,8 @@ import { Popover } from "@/components/shared/Popover";
 import { ConfirmDialog } from "@/components/shared/ConfirmDialog";
 import { useLocalStorage } from "@/hooks/useLocalStorage";
 import { useTicketDetailPage } from "@/hooks/useTicketDetailPage";
+import { useTicketDetail } from "@/hooks/useSprintBoard";
+import { saveTicketMetadata } from "@/components/sprint-board/sprint-board-utils";
 import { useRefinementSessions } from "@/hooks/useRefinementSessions";
 
 
@@ -144,6 +148,24 @@ export default function TicketDetailPage({
   const [searchOpen, setSearchOpen] = useState(false);
   const [sidebarCollapsed, setSidebarCollapsed] = useLocalStorage(SIDEBAR_COLLAPSED_KEY, false);
   const [previewTicketKey, setPreviewTicketKey] = useState<string | null>(null);
+  // The child row carries a lighter shape; fetch its full Ticket by key (same
+  // fallback fetch the sprint board uses for deep-linked tickets).
+  const previewFetch = useTicketDetail(previewTicketKey);
+  const previewTicket = previewFetch.data ?? null;
+  // Adjacency drives the panel's neighbour prefetch. Derive prev/next from the
+  // page's own child list (epic children or subtasks), mirroring the board.
+  const previewAdjacentKeys = useMemo(() => {
+    if (!previewTicketKey || !h.detail) return undefined;
+    const list = h.ticket?.type === "epic"
+      ? (h.detail.epicChildren ?? []).map((c) => c.key)
+      : (h.detail.subtasks ?? []).map((s) => s.key);
+    const idx = list.indexOf(previewTicketKey);
+    if (idx === -1) return undefined;
+    return {
+      prev: idx > 0 ? list[idx - 1] : null,
+      next: idx < list.length - 1 ? list[idx + 1] : null,
+    };
+  }, [previewTicketKey, h.detail, h.ticket?.type]);
   const [moreMenuOpen, setMoreMenuOpen] = useState(false);
   const [showAddToRefinement, setShowAddToRefinement] = useState(false);
   const [showFlagDialog, setShowFlagDialog] = useState(false);
@@ -654,11 +676,26 @@ export default function TicketDetailPage({
         />
       }
     />
-    {previewTicketKey && (
-      <TicketPreviewPanel
-        ticketKey={previewTicketKey}
-        onClose={() => setPreviewTicketKey(null)}
-      />
+    {previewTicketKey && previewTicket && (
+      <div
+        className="fixed inset-y-0 right-0 z-50 flex shadow-[0_8px_40px_-12px_rgba(0,0,0,0.45)]"
+        style={{ animation: "fadeInUp 0.15s ease" }}
+      >
+        <SidePanel
+          key={previewTicketKey}
+          ticket={previewTicket}
+          poStatus={previewTicket.poStatus ?? null}
+          readiness={previewTicket.readiness ?? null}
+          onPoStatusChange={(v) => { void saveTicketMetadata(previewTicketKey, { poStatus: v }); }}
+          onReadinessChange={(v) => { void saveTicketMetadata(previewTicketKey, { readiness: v }); previewFetch.mutate(); }}
+          onNotesChange={(notes) => { void saveTicketMetadata(previewTicketKey, { poNotes: notes }); }}
+          onClose={() => setPreviewTicketKey(null)}
+          onShowToast={() => {}}
+          onMutate={h.mutateTicket}
+          onSelectTicket={setPreviewTicketKey}
+          adjacentKeys={previewAdjacentKeys}
+        />
+      </div>
     )}
     <AddToRefinementModal
       open={showAddToRefinement}

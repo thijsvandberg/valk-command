@@ -12,5 +12,4 @@ export { CommentsSection } from "./CommentsSection";
 export { TicketHistory } from "./TicketHistory";
 export { TicketReview } from "./TicketReview";
 export { TicketSidebar } from "./TicketSidebar";
-export { TicketPreviewPanel } from "./TicketPreviewPanel";
 export { SectionHeader } from "@/components/shared/SectionHeader";
