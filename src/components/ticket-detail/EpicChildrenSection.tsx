@@ -461,7 +461,7 @@ export function EpicChildrenSection({
   // Drop optimistic overrides once the refetched children confirm the new sprint,
   // so a stale override never masks server truth on later syncs.
   useEffect(() => {
-    // eslint-disable-next-line react-hooks/set-state-in-effect -- guarded reconcile once server confirms the move
+     
     setLocalMoves((prev) => {
       if (Object.keys(prev).length === 0) return prev;
       let changed = false;
@@ -503,7 +503,7 @@ export function EpicChildrenSection({
   // Drop optimistic SP/BV overrides once the refetched children confirm the value,
   // so a stale override never masks server truth on later syncs.
   useEffect(() => {
-    // eslint-disable-next-line react-hooks/set-state-in-effect -- guarded reconcile once server confirms the edit
+     
     setLocalMetrics((prev) => {
       if (Object.keys(prev).length === 0) return prev;
       let changed = false;

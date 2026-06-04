@@ -72,7 +72,7 @@ export function DiffViewer({
 }: DiffViewerProps) {
   const [portalTarget, setPortalTarget] = useState<HTMLElement | null>(null);
   useEffect(() => {
-    setPortalTarget(document.getElementById(portalId)); // eslint-disable-line react-hooks/set-state-in-effect -- DOM lookup on mount
+    setPortalTarget(document.getElementById(portalId));  
   }, [portalId]);
 
   const compareBar = (

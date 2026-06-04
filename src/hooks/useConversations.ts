@@ -106,7 +106,7 @@ export function useConversations(): UseConversationsReturn {
         return false;
       }
     },
-    [fetchConversations]
+    []
   );
 
   const markAsRead = useCallback(

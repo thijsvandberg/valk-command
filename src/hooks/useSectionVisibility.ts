@@ -26,6 +26,9 @@ export function useSectionVisibility(sectionId: string, defaultVisible: string[]
         setLoaded(true);
       })
       .catch(() => setLoaded(true));
+    // defaultVisible is a fresh array each render; including it would refetch on every render.
+    // We only want to load stored visibility once per sectionId.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [sectionId]);
 
   const persist = useDebouncedCallback(

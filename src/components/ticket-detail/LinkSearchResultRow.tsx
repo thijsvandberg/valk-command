@@ -24,6 +24,7 @@ export const LinkSearchResultRow = memo(function LinkSearchResultRow({
   return (
     <div
       role="option"
+      aria-selected={highlighted}
       onMouseDown={(e) => {
         // Only select if the click is NOT on the pill (key/status area)
         const target = e.target as HTMLElement;

@@ -68,7 +68,7 @@ export function useJobs(): UseJobsReturn {
         return null;
       }
     },
-    [fetchJobs],
+    [],
   );
 
   const deleteJob = useCallback(
@@ -84,7 +84,7 @@ export function useJobs(): UseJobsReturn {
         return false;
       }
     },
-    [fetchJobs],
+    [],
   );
 
   return { jobs, loading, error, createJob, updateJob, deleteJob, refresh: fetchJobs };

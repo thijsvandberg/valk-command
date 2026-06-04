@@ -40,6 +40,7 @@ vi.mock("./CommentsSection", () => ({
 vi.mock("@/components/shared/TabBar", () => ({
   Tab: ({ label, active, onClick }: { label: string; active: boolean; onClick: () => void }) => (
     <button
+      role="tab"
       data-testid={`tab-${label.toLowerCase()}`}
       aria-selected={active}
       onClick={onClick}
