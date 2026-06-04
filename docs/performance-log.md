@@ -178,3 +178,16 @@ Key bottleneck:
 
 Key bottleneck:
 - **Stale `.next` cache from the running dev server failed the production build**: the first `npm run build` reported a phantom `Cannot find name 'MERGE_BRANCH_REGEX'` in an untouched file (`pipeline-sync.ts`) at a line offset that did not match the on-disk source, while `tsc --noEmit` passed. Cause: the backgrounded `next dev` server writes `.next` concurrently, so `next build` read a stale/partial artifact (and `rm -rf .next` raced the live writes). Fix: stop the dev server, clear `.next`, build clean, then restart dev. Lesson: for a trustworthy production build, stop the dev server first rather than building alongside it.
+
+## BRDG-277 — Drag-to-reorder epic children within a sprint (2026-06-04)
+
+| Phase | Notes |
+|-------|-------|
+| Plan | Opus Plan subagent confirmed the split: server-side rank-sorted load + `jiraRank` on `EpicChild`, a pure `computeReorder`/`applyLocalOrder`/`resolveDragEnd` set, `useSortable` rows inside per-group `SortableContext`, and an optimistic `localOrder` override reconciled against server rank. Reused the sprint board's `jira.rank` flow. |
+| Implement | Added `jiraRank` (type + builder query order), `epic-children-reorder.ts` helpers incl. `resolveDragEnd` (extracted so the drag-end branch is unit-testable), converted rows to `useSortable`, branched drag-end (same-group reorder vs cross-group move), wired `handleReorderChild` with optimistic order + revert. |
+| Verify | 132 focused tests + full suite (4226) + build all green. Skipped live drag verification: a real reorder calls `/api/jira/rank` and would mutate production Jira ranks (no write-permission), and behaviour is covered by tests. |
+
+Key bottlenecks:
+- **jsdom can't drive dnd-kit keyboard reorder**: my first attempt tested `handleReorderChild` end-to-end via the KeyboardSensor (focus grip → Space → ArrowUp → Space). It never fired — dnd-kit's sortable keyboard coordinates need real layout rects, which jsdom returns as zero, so the item never moves. Pivoted to a dedicated test file that mocks `EpicChildrenBySprint` to invoke `onReorderChild` directly, deterministically asserting the rank call, optimistic order, and revert. Lesson: don't test dnd-kit drag *movement* through jsdom; test the pure decision (`resolveDragEnd`/`computeReorder`) and mock the child to fire the callback.
+- **SWR timing in the handler test**: the sprint-id resolution reads `useJiraSprints`, so the first reorder click raced the async sprint load and called `jira.rank` without `sprintId`. Fixed by capturing the child's `sprints` prop and waiting for it before triggering.
+- **Shared-tree parallel work**: another agent was committing to `dev` and editing the same `EpicChildrenSection.tsx` (a "create child at drafting readiness" change) throughout the run; HEAD advanced under me and a transient `children/route.ts` typecheck error appeared then resolved on their side. Committed only explicit pathspecs (consistent with the BRDG-267/268 lesson) so my commits stayed scoped.
