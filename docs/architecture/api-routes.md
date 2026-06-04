@@ -258,6 +258,23 @@ Ranked methods exclude dismissed tickets still inside their cooldown. Returns `{
 
 Later epic stories (BRDG-289 disposition) extend this same surface.
 
+### Scan topics (as of BRDG-288)
+
+All five scoring topics from the epic are now live (`live: true` in `SCAN_TOPICS`):
+
+| Key | Story | Tier | Method | Weight | maxContribution |
+|-----|-------|------|--------|--------|----------------|
+| `staleness` | BRDG-282 | 1 | Local heuristics (age, sprint, PO metadata) | 1 | 1 |
+| `replaced` | BRDG-285 | 2 | Keyword list + AI confirmation (`ask` skill) | 1 | 1 |
+| `duplicate` | BRDG-286 | 2 | `find-related` skill + verdict rule | 1 | 1 |
+| `alreadyBuilt` | BRDG-287 | 2 | `codebase-research` skill (gated + throttled) | 1 | 0.8 |
+| `relevance` | BRDG-288 | 2 | `investigate` skill vs product docs (capped) | 1 | 0.3 |
+
+The `relevance` topic is capped at 0.3 so it can NEVER alone push a ticket past the candidate
+threshold (0.6). The `/cleanup` table renders it with a muted `~` marker and a tooltip to
+communicate its lower-trust, AI-subjective nature. See `src/lib/topics/relevance-decay-topic.ts`
+for the cap proof in the file header.
+
 The view lives at `/cleanup` (`src/app/(app)/cleanup/page.tsx`, nav entry "Cleanup" in
 `src/components/Sidebar.tsx`). It renders the table (key+title, status, relative last-scanned
 with absolute on hover, a heat bar per topic, overall, disposition badge), with client-side

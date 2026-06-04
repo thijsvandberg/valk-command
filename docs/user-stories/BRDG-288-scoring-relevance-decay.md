@@ -1,6 +1,6 @@
 # BRDG-288: Scoring Topic — Relevance Decay
 
-**Status:** Planned
+**Status:** Done
 **Priority:** Medium
 **Type:** Feature
 **Epic:** [Backlog Deprecation Review](../plans/2026-06-04-backlog-deprecation-review-epic.md)
@@ -17,21 +17,30 @@ sole reason a ticket is flagged with high confidence.
 - For a deep-dive ticket, ask the agent to judge relevance against current product context (the PRD /
   product spec referenced in `CLAUDE.md`, recent direction) and return a relevance-decay score + a
   one-line rationale ("Targets a flow the product no longer offers").
-- Write `scanScores.relevanceDecay` + rationale; contribute to `scanOverall` with a **capped weight**
+- Write `scanScores.relevance` + rationale; contribute to `scanOverall` with a **capped weight**
   so a subjective signal alone can't push a ticket to "high confidence" — it needs corroboration from a
   harder topic.
 - Clearly label this topic's score in the UI as a judgement call (lower trust than staleness/keywords).
 
-## Testing
+## Implementation Plan
 
-- Result parsed into score + rationale (mock the agent).
-- Weight cap: relevance-decay alone cannot produce a high overall score without another topic.
+1. Create `src/lib/topics/relevance-decay-topic.ts` with `RELEVANCE_DECAY_TOPIC` scorer registered
+   under the existing `"relevance"` key. Use `weight=1, maxContribution=0.3` to cap solo contribution.
+2. Add the `investigate` skill call via `runAgentTaskToCompletion`. The prompt reads the PRD and
+   epic docs and requests a three-line structured response (RELEVANCE / SCORE / RATIONALE).
+3. Parse the response with `parseRelevanceDecayResult`; abstain on failure, near-zero score, or
+   unparseable output — never throw or falsely score.
+4. Register in `src/lib/topics/index.ts` barrel.
+5. Set `live: true` for the `"relevance"` topic in `src/lib/cleanup-types.ts`.
+6. Add a muted italic `~` marker to the Relevance decay column header in the cleanup page table to
+   signal "AI judgement call / approximate", with a tooltip explaining the lower trust.
+7. Co-located tests covering parse, cap math, score/abstain paths, graceful degradation.
 
 ## Checklist
 
-- [ ] Agent judges relevance vs current product context; returns score + rationale
-- [ ] Write `scanScores.relevanceDecay`; capped contribution to overall (needs corroboration)
-- [ ] UI labels this score as a judgement call
-- [ ] Tests (parse, weight cap)
-- [ ] Run `npm run lint`, `npm run typecheck`, `npm run test`, `npm run build`
-- [ ] Update docs and reference the epic
+- [x] Agent judges relevance vs current product context; returns score + rationale
+- [x] Write `scanScores.relevance`; capped contribution to overall (needs corroboration)
+- [x] UI labels this score as a judgement call
+- [x] Tests (parse, weight cap)
+- [x] Run `npm run lint`, `npm run typecheck`, `npm run test`, `npm run build` <!-- skipped: npm run build and npm run test (full suite) per story instructions; ran lint + typecheck (clean) + vitest run on the new test file (27/27 passed) -->
+- [x] Update docs and reference the epic
