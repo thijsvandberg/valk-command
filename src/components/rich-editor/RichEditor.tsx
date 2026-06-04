@@ -79,8 +79,52 @@ export function normalizeMarkdownForEditor(markdown: string): string {
     .replace(/(?<!\*)\*([^*\n]+):\*(?!\*)/g, "*$1*:");
 }
 
-function markdownToEditorHtml(markdown: string): string {
+// Exported for testing only — the markdown -> editor-HTML load path.
+export function markdownToEditorHtml(markdown: string): string {
   return calloutMarkdownToHtml(expandEmojiShortcodes(normalizeMarkdownForEditor(markdown)));
+}
+
+// The production extension set, shared by the live editor and the round-trip test so the
+// two never drift. No prop dependencies (keyboard/save handling lives in editorProps).
+export function buildEditorExtensions() {
+  return [
+    StarterKit.configure({
+      heading: { levels: [2, 3, 4] },
+      codeBlock: { HTMLAttributes: { class: "editor-code-block" } },
+    }),
+    LinkExtension.extend({
+      addKeyboardShortcuts() {
+        return {
+          "Mod-k": () => {
+            this.editor.emit("openLinkPopover", {});
+            return true;
+          },
+        };
+      },
+    }).configure({
+      openOnClick: false,
+      HTMLAttributes: { class: "editor-link" },
+    }),
+    Image.configure({
+      allowBase64: false,
+      HTMLAttributes: { class: "editor-image" },
+    }),
+    TextStyle,
+    Color,
+    Table.configure({ resizable: false }),
+    TableRow,
+    TableHeader,
+    TableCell,
+    Markdown.configure({
+      html: true,
+      transformPastedText: true,
+      transformCopiedText: true,
+    }),
+    CalloutExtension,
+    ExpandExtension,
+    SelectionDecorationExtension,
+    SlashCommandExtension,
+  ];
 }
 
 function getInitialMode(): EditorMode {
@@ -90,7 +134,8 @@ function getInitialMode(): EditorMode {
   return "rich";
 }
 
-function getEditorMarkdown(editor: ReturnType<typeof useEditor>): string {
+// Exported for testing only — the editor -> markdown serialize path.
+export function getEditorMarkdown(editor: ReturnType<typeof useEditor>): string {
   if (!editor) return "";
   const raw = (editor.storage as unknown as Record<string, { getMarkdown?: () => string }>).markdown?.getMarkdown?.() ?? "";
   const withCallouts = htmlToCalloutMarkdown(raw);
@@ -148,44 +193,7 @@ export function RichEditor({
 
   const editor = useEditor({
     immediatelyRender: false,
-    extensions: [
-      StarterKit.configure({
-        heading: { levels: [2, 3, 4] },
-        codeBlock: { HTMLAttributes: { class: "editor-code-block" } },
-      }),
-      LinkExtension.extend({
-        addKeyboardShortcuts() {
-          return {
-            "Mod-k": () => {
-              this.editor.emit("openLinkPopover", {});
-              return true;
-            },
-          };
-        },
-      }).configure({
-        openOnClick: false,
-        HTMLAttributes: { class: "editor-link" },
-      }),
-      Image.configure({
-        allowBase64: false,
-        HTMLAttributes: { class: "editor-image" },
-      }),
-      TextStyle,
-      Color,
-      Table.configure({ resizable: false }),
-      TableRow,
-      TableHeader,
-      TableCell,
-      Markdown.configure({
-        html: true,
-        transformPastedText: true,
-        transformCopiedText: true,
-      }),
-      CalloutExtension,
-      ExpandExtension,
-      SelectionDecorationExtension,
-      SlashCommandExtension,
-    ],
+    extensions: buildEditorExtensions(),
     content: markdownToEditorHtml(value),
     editorProps: {
       attributes: {

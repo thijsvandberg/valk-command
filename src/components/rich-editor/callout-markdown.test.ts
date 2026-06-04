@@ -307,3 +307,55 @@ describe("isCalloutType", () => {
     expect(isCalloutType("INFO")).toBe(false);
   });
 });
+
+// BRDG-280: a multi-line paragraph (soft break) is wrapped in <p>...<br>...</p>. Before the
+// fix, the raw markdown was placed inside the HTML block where markdown-it never re-parses it,
+// so `**bold**` / `` `code` `` survived as literal text and got backslash-escaped on serialize.
+// Each line must now be inline-converted so the marks reach TipTap as real marks.
+describe("calloutMarkdownToHtml (multi-line paragraph inline marks) - BRDG-280", () => {
+  it("converts bold inside a multi-line paragraph instead of leaving it literal", () => {
+    const html = calloutMarkdownToHtml("**Background info**:\nsecond line");
+    expect(html).toContain("<strong>Background info</strong>:");
+    expect(html).toContain("<br>");
+    expect(html).not.toContain("**Background info**");
+  });
+
+  it("converts inline code inside a multi-line paragraph", () => {
+    const html = calloutMarkdownToHtml("Use `VPUPG` here\nand `VPUPG-100` there");
+    expect(html).toContain("<code>VPUPG</code>");
+    expect(html).toContain("<code>VPUPG-100</code>");
+    expect(html).not.toContain("`VPUPG`");
+  });
+
+  it("leaves a single-line paragraph raw (parsed by markdown-it at top level)", () => {
+    // Single lines must NOT be double-converted here.
+    const html = calloutMarkdownToHtml("**Background info**:");
+    expect(html).not.toContain("<p>");
+    expect(html).toBe("**Background info**:");
+  });
+});
+
+// BRDG-280: the CSSOM normalizes inline `color:#hex` to `rgb(...)` on load, so getHTML reads
+// it back as rgb. Serialize must convert 3-component rgb() back to hex to keep {color:#hex}
+// macros byte-stable; rgba(), named colors, and existing hex are untouched.
+describe("htmlToCalloutMarkdown (color rgb -> hex) - BRDG-280", () => {
+  it("converts rgb() back to lowercase 6-digit hex", () => {
+    const md = htmlToCalloutMarkdown('<span style="color: rgb(151, 160, 175)">text</span>');
+    expect(md).toBe("{color:#97a0af}text{color}");
+  });
+
+  it("leaves an existing hex color untouched", () => {
+    const md = htmlToCalloutMarkdown('<span style="color: #97a0af">text</span>');
+    expect(md).toBe("{color:#97a0af}text{color}");
+  });
+
+  it("leaves rgba() untouched (not a 3-component rgb)", () => {
+    const md = htmlToCalloutMarkdown('<span style="color: rgba(151, 160, 175, 0.5)">text</span>');
+    expect(md).toBe("{color:rgba(151, 160, 175, 0.5)}text{color}");
+  });
+
+  it("leaves a named color untouched", () => {
+    const md = htmlToCalloutMarkdown('<span style="color: red">text</span>');
+    expect(md).toBe("{color:red}text{color}");
+  });
+});

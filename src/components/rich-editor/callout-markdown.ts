@@ -129,9 +129,15 @@ export function calloutMarkdownToHtml(markdown: string): string {
   const flushPara = () => {
     if (paraBuffer.length === 0) return;
     if (paraBuffer.length === 1) {
+      // A single line reaches TipTap at the top level where markdown-it parses
+      // its inline marks; passing it raw is correct (converting here would double-process).
       htmlResult.push(paraBuffer[0]);
     } else {
-      htmlResult.push(`<p>${paraBuffer.join("<br>")}</p>`);
+      // A multi-line paragraph is wrapped in <p>...<br>...</p>, which TipTap parses as
+      // HTML — markdown-it does NOT re-parse inline markdown inside an HTML block. Without
+      // converting each line here, `**bold**` / `` `code` `` would become literal text and
+      // get backslash-escaped on the next serialize. Convert per line so the marks survive.
+      htmlResult.push(`<p>${paraBuffer.map(mdInlineToHtml).join("<br>")}</p>`);
     }
     paraBuffer = [];
   };
@@ -181,13 +187,27 @@ function inlineMarkdownToHtml(text: string): string {
     .replace(/`(.+?)`/g, "<code>$1</code>");
 }
 
+// The browser/jsdom CSSOM normalizes an inline `color: #97a0af` to `rgb(151, 160, 175)`
+// when the editor sets HTML, and getHTML() reads it back normalized. Jira's `{color:#hex}`
+// macro expects hex, so map 3-component rgb() back to a lowercase 6-digit hex to keep the
+// macro byte-stable across the round-trip. rgba(), named colors, and existing hex are left as-is.
+function normalizeColorValue(color: string): string {
+  const m = color.match(/^rgb\(\s*(\d{1,3})\s*,\s*(\d{1,3})\s*,\s*(\d{1,3})\s*\)$/);
+  if (!m) return color;
+  const hex = m
+    .slice(1, 4)
+    .map((n) => Math.min(255, parseInt(n, 10)).toString(16).padStart(2, "0"))
+    .join("");
+  return `#${hex}`;
+}
+
 export function htmlToCalloutMarkdown(html: string): string {
   // Convert color spans back to {color:} syntax, also converting inner HTML marks to markdown.
   // Normalize the color value: strip trailing semicolons/whitespace left by inline style serializers.
   let result = html.replace(
     /<span style="color:\s*([^"]+)">([\s\S]*?)<\/span>/g,
     (_, color: string, inner: string) =>
-      `{color:${color.trim().replace(/;+$/, "")}}${inlineHtmlToMarkdown(inner)}{color}`
+      `{color:${normalizeColorValue(color.trim().replace(/;+$/, ""))}}${inlineHtmlToMarkdown(inner)}{color}`
   );
 
   // Replace expand details back to :::expand fences.
