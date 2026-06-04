@@ -54,7 +54,7 @@ PO-owned annotations per ticket. Never synced back to Jira.
 | `last_test_run_at` | text | ISO timestamp |
 | `last_test_report_url` | text | Link to test report |
 | `business_value` | integer | Business Value score (1-7, nullable) |
-| `scan_scores` | text | Backlog Deprecation Review (BRDG-282 epic): JSON map of per-topic scores + evidence. Local-only. |
+| `scan_scores` | text | Backlog Deprecation Review (BRDG-297 epic): JSON map of per-topic scores + evidence. Local-only. |
 | `scan_overall` | real | Combined deprecation-likelihood score (0..1). |
 | `scan_rationale` | text | Assembled human-readable "why this can probably go". |
 | `last_scanned_at` | text | ISO; Tier-1 scan time, drives rolling re-scan / oldest-first ordering. |

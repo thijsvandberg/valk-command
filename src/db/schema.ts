@@ -96,7 +96,7 @@ export const ticketMetadata = sqliteTable("ticket_metadata", {
   lastTestRunAt: text("last_test_run_at"),
   lastTestReportUrl: text("last_test_report_url"),
   businessValue: integer("business_value"),
-  // Backlog Deprecation Review (BRDG-282 epic): local-only scan state. These
+  // Backlog Deprecation Review (BRDG-297 epic): local-only scan state. These
   // fields never sync to Jira; they live here precisely because ticketMetadata
   // is the Bridge-private metadata layer with no write-back path.
   // JSON map of per-topic scores + evidence. Tier-1 fills only `staleness`.
@@ -107,7 +107,7 @@ export const ticketMetadata = sqliteTable("ticket_metadata", {
   scanRationale: text("scan_rationale"),
   // ISO timestamp; drives rolling re-scan and oldest-first ordering.
   lastScannedAt: text("last_scanned_at"),
-  // Reserved for Tier-2 deep dive (null in BRDG-282).
+  // Reserved for Tier-2 deep dive (null in BRDG-297).
   lastDeepScannedAt: text("last_deep_scanned_at"),
   // null | "candidate" | "dismissed" | "confirmed".
   disposition: text("disposition"),

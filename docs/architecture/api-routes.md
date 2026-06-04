@@ -218,7 +218,7 @@ CI/CD pipeline feed with Bitbucket integration, notifications, and deploy tracki
 
 Read surface for the [Backlog Deprecation Review epic](../plans/2026-06-04-backlog-deprecation-review-epic.md).
 Lists scan-eligible backlog tickets joined with their local-only `ticketMetadata` scan
-fields (BRDG-282). Scan-eligible = `sprintName === "" AND removedFromJiraAt IS NULL` (the
+fields (BRDG-297). Scan-eligible = `sprintName === "" AND removedFromJiraAt IS NULL` (the
 same definition the Tier-1 staleness scanner uses). Never writes; never touches Jira.
 
 | Route | Method | Purpose |
@@ -295,7 +295,7 @@ All five scoring topics from the epic are now live (`live: true` in `SCAN_TOPICS
 
 | Key | Story | Tier | Method | Weight | maxContribution |
 |-----|-------|------|--------|--------|----------------|
-| `staleness` | BRDG-282 | 1 | Local heuristics (age, sprint, PO metadata) | 1 | 1 |
+| `staleness` | BRDG-297 | 1 | Local heuristics (age, sprint, PO metadata) | 1 | 1 |
 | `replaced` | BRDG-285 | 2 | Keyword list + AI confirmation (`ask` skill) | 1 | 1 |
 | `duplicate` | BRDG-286 | 2 | `find-related` skill + verdict rule | 1 | 1 |
 | `alreadyBuilt` | BRDG-287 | 2 | `codebase-research` skill (gated + throttled) | 1 | 0.8 |

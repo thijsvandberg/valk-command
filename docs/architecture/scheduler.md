@@ -69,7 +69,7 @@ See [jira-sync.md](jira-sync.md) for details. Key behavior:
 
 #### Backlog Staleness Scan (every 5m)
 
-Tier-1 of the [Backlog Deprecation Review epic](../plans/2026-06-04-backlog-deprecation-review-epic.md) (BRDG-282). A cheap, local, no-AI pass that ranks how likely each backlog ticket is obsolete and records when it was last scanned. It only writes the local-only scan-state fields on `ticketMetadata` (`scanScores.staleness`, `scanOverall`, `scanRationale`, `lastScannedAt`); it never writes to Jira.
+Tier-1 of the [Backlog Deprecation Review epic](../plans/2026-06-04-backlog-deprecation-review-epic.md) (BRDG-297). A cheap, local, no-AI pass that ranks how likely each backlog ticket is obsolete and records when it was last scanned. It only writes the local-only scan-state fields on `ticketMetadata` (`scanScores.staleness`, `scanOverall`, `scanRationale`, `lastScannedAt`); it never writes to Jira.
 
 **Scope**: backlog tickets only — those with no sprint (`sprint_name = ''`, the canonical local backlog marker) and not removed from Jira. This covers both board backlogs.
 

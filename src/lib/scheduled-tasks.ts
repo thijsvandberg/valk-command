@@ -55,7 +55,7 @@ const BATCH_LIMIT = 50;
 const REMOVED_TICKET_TTL_MS = 7 * 24 * 60 * 60 * 1000; // 7 days
 const REVALIDATION_BATCH_SIZE = 25;
 
-// Tier-1 deprecation staleness scan (BRDG-282).
+// Tier-1 deprecation staleness scan (BRDG-297).
 const STALENESS_SCAN_BATCH_SIZE = 25;
 // Rolling cursor: the highest lastScannedAt stamped by the most recent batch.
 // State lives in app_setting so progress is observable and resumes across

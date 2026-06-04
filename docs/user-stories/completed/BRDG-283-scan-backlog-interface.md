@@ -10,7 +10,7 @@
 The control center for the Backlog Deprecation Review epic: a dedicated view that lists every
 scan-eligible backlog ticket with its **scan state and multi-topic scores**, so the PO can see at a
 glance what has been scanned, when, and how likely each ticket is obsolete. Read-only over the data
-produced by BRDG-282 (and later the deep-dive topics). Selection/run controls (BRDG-284) and the
+produced by BRDG-297 (and later the deep-dive topics). Selection/run controls (BRDG-284) and the
 disposition actions (BRDG-289) plug into this screen later.
 
 ## Scope
@@ -37,7 +37,7 @@ disposition actions (BRDG-289) plug into this screen later.
 
 ## Sequencing note
 
-Per PO discussion, this can be built **UI-early against the BRDG-282 schema** (even before the full
+Per PO discussion, this can be built **UI-early against the BRDG-297 schema** (even before the full
 staleness data is populated) so the screen can be steered sooner, or backend-first so it shows real
 scored data on day one. Decide at kickoff.
 
@@ -49,7 +49,7 @@ scored data on day one. Decide at kickoff.
 
 ## Implementation Plan
 
-Built UI-early on the BRDG-282 schema (real Tier-1 staleness data flows through, other
+Built UI-early on the BRDG-297 schema (real Tier-1 staleness data flows through, other
 topics render as placeholders).
 
 - **API** `GET /api/cleanup`: joins scan-eligible backlog tickets (`sprintName === "" AND

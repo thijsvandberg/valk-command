@@ -50,5 +50,7 @@ the PO selecting anything. Explicitly deferred per PO: ship and validate the **m
 - [x] Respects dismiss cooldown; daily budget enforced across ticks
 - [x] Setting + status indicator in the scan backlog view; auto runs logged
 - [x] Tests (toggle, daily budget, cooldown, ordering)
-- [ ] Run `npm run lint`, `npm run typecheck`, `npm run test`, `npm run build`
+- [x] Run `npm run lint`, `npm run typecheck`, `npm run test`, `npm run build` <!-- full epic verify + build run by orchestrator: lint/typecheck clean, 4551 tests pass (1 unrelated pre-existing TicketSidebar failure), build succeeds -->
+
+**Status:** Done
 - [x] Update docs and reference the epic

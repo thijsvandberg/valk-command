@@ -1,5 +1,5 @@
 /**
- * Tier-1 staleness scorer for the Backlog Deprecation Review epic (BRDG-282).
+ * Tier-1 staleness scorer for the Backlog Deprecation Review epic (BRDG-297).
  *
  * Pure, deterministic, no-AI heuristic over already-synced local ticket data.
  * It ranks how likely a backlog ticket is obsolete based on cheap local signals

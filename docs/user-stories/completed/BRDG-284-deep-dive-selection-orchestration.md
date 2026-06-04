@@ -8,7 +8,7 @@
 ## Description
 
 Lets the PO choose which tickets enter the expensive **Tier-2 deep dive** and runs that work in the
-background in **small batches**. This is the bridge between the staleness ranking (BRDG-282) shown in
+background in **small batches**. This is the bridge between the staleness ranking (BRDG-297) shown in
 the scan backlog (BRDG-283) and the AI scoring topics (BRDG-285+). Manual selection first; the
 fully-automatic background mode is a separate, later story (BRDG-290).
 

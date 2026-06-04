@@ -1,5 +1,5 @@
 /**
- * Batch selection for the Tier-1 deprecation staleness scan (BRDG-282).
+ * Batch selection for the Tier-1 deprecation staleness scan (BRDG-297).
  *
  * Pure ordering/selection helpers kept separate from the DB-bound scheduler
  * task so the rotation logic is unit-testable in isolation. The scan always

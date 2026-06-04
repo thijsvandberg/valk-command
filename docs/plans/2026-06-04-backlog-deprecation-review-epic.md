@@ -92,7 +92,7 @@ Tier-2 AI reuses the workspace agent (`find-related`, codebase-research) — no 
 
 > Order roughly by dependency; each ships with co-located tests and passes lint/typecheck/test/build.
 
-1. **BRDG-282 — Scan-state data model + Tier-1 staleness pass.** Schema fields above; the cheap local
+1. **BRDG-297 — Scan-state data model + Tier-1 staleness pass.** Schema fields above; the cheap local
    staleness scorer; rolling `lastScannedAt`. Foundation, no AI, no UI yet (or minimal).
 2. **BRDG-283 — Scan backlog interface.** The list view: every eligible ticket, last-scan time, score
    columns, overall, disposition; sort/filter. Reads Tier-1 data.

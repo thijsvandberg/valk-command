@@ -1,4 +1,4 @@
-# BRDG-282: Scan-State Data Model + Tier-1 Staleness Pass
+# BRDG-297: Scan-State Data Model + Tier-1 Staleness Pass
 
 **Status:** Planned
 **Priority:** Medium
