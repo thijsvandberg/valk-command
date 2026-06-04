@@ -94,3 +94,40 @@ these ever enter the Jira write path (they live in `ticketMetadata`, which is lo
 - [x] Tests (scorer, batch selection/cursor, writes)
 - [x] Run `npm run lint`, `npm run typecheck`, `npm run test` <!-- skipped: npm run build deferred to orchestrator per task instructions -->
 - [x] Update `docs/architecture/scheduler.md` (new task) and reference the epic
+
+## Follow-up: comment activity + linked-epic dampener (2026-06-05)
+
+PO feedback after initial delivery: staleness should account for COMMENT activity and
+activity in the LINKED EPIC, not just `jiraUpdatedAt`.
+
+### Changes
+
+**Scorer input extended** (`src/lib/deprecation-staleness.ts`):
+- `lastCommentAt?: string | null` — ISO timestamp of the ticket's most recent local Jira
+  comment. When present, the **effective last-activity** timestamp is
+  `max(jiraUpdatedAt, lastCommentAt)`. A recently-commented backlog ticket is correctly
+  seen as NOT stale even if `jiraUpdatedAt` is old.
+- `epicLastActivityAt?: string | null` — ISO timestamp of the linked epic's effective
+  last activity (itself = `max(epicJiraUpdatedAt, epicLatestComment)`). When the epic
+  has been active within a **180-day window**, the age component is dampened by up to
+  **40 % of `WEIGHT_AGE`** (i.e. at most `0.5 * 0.4 = 0.2` off the age contribution).
+  This nudges, not overrides — the cap ensures a single soft signal cannot hide a stale
+  ticket. Both fields degrade gracefully to `jiraUpdatedAt`-only when absent.
+
+**Scorer helper exported**: `effectiveLastActivity(jiraUpdatedAt, lastCommentAt)` —
+pure, tested independently.
+
+**Batch gathering** (`runDeprecationStalenessScan` in `src/lib/scheduled-tasks.ts`):
+Two bulk queries are added for each scan batch (up to 25 tickets):
+1. `SELECT ticketKey, max(createdAt) FROM jira_comment WHERE ticketKey IN (batch_keys) GROUP BY ticketKey`
+2. Epic ticket `jiraUpdatedAt` rows + a parallel comment max per epic key —
+   combined into `effectiveLastActivity` per epic before calling the scorer.
+No N+1 queries; inputs remain pure (scorer receives pre-computed values).
+
+**Weights unchanged**: age 0.5, never-in-sprint 0.25, backlog-status 0.15, empty-metadata 0.1.
+The dampener only acts on the age component, never on the other three weights.
+
+**Tests**: 10 new test cases across `deprecation-staleness.test.ts` (pure scorer: comment
+lowers staleness, fallback to `jiraUpdatedAt`, epic dampener fires/misses/caps, nulls)
+and `deprecation-staleness-scan.test.ts` (integration: comment bulk gather, epic bulk
+gather including epic's own comments, dampener outside window, missing epicKey).

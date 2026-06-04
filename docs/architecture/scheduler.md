@@ -73,14 +73,26 @@ Tier-1 of the [Backlog Deprecation Review epic](../plans/2026-06-04-backlog-depr
 
 **Scope**: backlog tickets only — those with no sprint (`sprint_name = ''`, the canonical local backlog marker) and not removed from Jira. This covers both board backlogs.
 
-**Scorer** (`src/lib/deprecation-staleness.ts`): pure, deterministic `scoreStaleness()` over `jiraUpdatedAt` (age ramp), sprint membership (never scheduled), backlog-like status, and empty PO metadata. Returns a normalized 0..1 score plus a plain English rationale.
+**Scorer** (`src/lib/deprecation-staleness.ts`): pure, deterministic `scoreStaleness()` over four signals, returning a normalized 0..1 score plus a plain English rationale:
+
+| Signal | Weight | Notes |
+|--------|--------|-------|
+| Age / inactivity | 0.50 | Ramped from 90-day floor to 540-day ceiling using **effective last activity** = `max(jiraUpdatedAt, lastCommentAt)`. A recently-commented ticket is not penalised for an old `jiraUpdatedAt`. |
+| Never in a sprint | 0.25 | Fires when `sprintName` is empty/null. |
+| Backlog-like status | 0.15 | Case-insensitive match against "backlog", "to do", etc. |
+| Empty PO metadata | 0.10 | No readiness/score/notes/priority set. |
+
+**Epic dampener**: if the ticket has a linked `epicKey` and that epic's effective last activity (also `max(epicJiraUpdatedAt, epicLatestComment)`) is within 180 days, the age component is reduced by up to `0.5 * 0.4 = 0.2`. WHY a cap at 40 %: epic activity is a soft, indirect signal — a large ongoing epic might simply never revisit its backlog children. The dampener nudges, never hides.
+
+**Scorer inputs** (`StalenessInput`): `jiraUpdatedAt`, `sprintName`, `status`, `hasPoMetadata`, `lastCommentAt?`, `epicLastActivityAt?`. The last two are optional and degrade gracefully to `jiraUpdatedAt`-only when absent.
 
 **Task flow**:
-1. Loads in-scope backlog tickets joined with their metadata
+1. Loads in-scope backlog tickets joined with their metadata (including `epicKey`)
 2. Selects the 25 with the oldest `lastScannedAt` (never-scanned first) via `selectScanBatch()` (`src/lib/deprecation-scan-batch.ts`)
-3. Scores each and upserts the staleness fields, stamping `lastScannedAt = now` so the batch rotates to the back of the queue (continuous re-evaluation, wraps around)
-4. Writes a rolling cursor to `app_setting` key `scheduler:deprecation-staleness-scan:cursor` (informational; the authoritative rotation state is each ticket's own `lastScannedAt`, so it resumes cleanly across restarts)
-5. Logs a run summary to `activity_log` (`type = deprecation-scan`)
+3. Gathers comment + epic activity for the batch in two bulk `GROUP BY` queries (no N+1)
+4. Scores each ticket passing the pre-computed `lastCommentAt` and `epicLastActivityAt`, and upserts the staleness fields, stamping `lastScannedAt = now` so the batch rotates to the back of the queue (continuous re-evaluation, wraps around)
+5. Writes a rolling cursor to `app_setting` key `scheduler:deprecation-staleness-scan:cursor` (informational; the authoritative rotation state is each ticket's own `lastScannedAt`, so it resumes cleanly across restarts)
+6. Logs a run summary to `activity_log` (`type = deprecation-scan`)
 
 #### Backlog Deep Scan (every 2m)
 
