@@ -83,6 +83,18 @@ describe("GET /api/cleanup", () => {
     expect(data.rows.map((r: { key: string }) => r.key)).toEqual(["BT-1"]);
   });
 
+  it("excludes tickets with finished statuses from the cleanup list", async () => {
+    seed("BT-ACTIVE", { sprintName: "", status: "TO DO" });
+    // Finished statuses must never appear in the deprecation review list.
+    seed("BT-DONE", { sprintName: "", status: "DONE" });
+    seed("BT-DEPR", { sprintName: "", status: "DEPRECATED" });
+    seed("BT-CANCEL", { sprintName: "", status: "CANCELLED" });
+
+    const data = await (await call()).json();
+    expect(data.rows.map((r: { key: string }) => r.key)).toEqual(["BT-ACTIVE"]);
+    expect(data.total).toBe(1);
+  });
+
   it("parses scanScores into a per-topic map and surfaces overall + disposition", async () => {
     seed("BT-10", {
       lastScannedAt: "2026-06-01T00:00:00Z",

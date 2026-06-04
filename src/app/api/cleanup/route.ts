@@ -1,7 +1,8 @@
 import { NextResponse } from "next/server";
 import { db } from "@/db";
 import { ticket, ticketMetadata } from "@/db/schema";
-import { eq, and, isNull } from "drizzle-orm";
+import { eq, and, isNull, notInArray } from "drizzle-orm";
+import { FINISHED_STATUSES } from "@/lib/ticket-status";
 import {
   SCAN_TOPICS,
   parseScanScores,
@@ -44,7 +45,9 @@ export async function GET(request: Request) {
   const minOverall = Number.isFinite(minOverallRaw) ? Math.max(0, Math.min(1, minOverallRaw)) : 0;
 
   // Scan-eligible = the SAME definition the Tier-1 scanner uses for "backlog":
-  // empty sprintName AND not removed from Jira.
+  // empty sprintName, not removed from Jira, and not a finished status.
+  // Finished tickets (DONE, DEPRECATED, etc.) are excluded because they are
+  // irrelevant to deprecation review: the work was already resolved.
   const eligible = await db
     .select({
       key: ticket.jiraKey,
@@ -57,7 +60,13 @@ export async function GET(request: Request) {
     })
     .from(ticket)
     .leftJoin(ticketMetadata, eq(ticket.jiraKey, ticketMetadata.jiraKey))
-    .where(and(eq(ticket.sprintName, ""), isNull(ticket.removedFromJiraAt)));
+    .where(
+      and(
+        eq(ticket.sprintName, ""),
+        isNull(ticket.removedFromJiraAt),
+        notInArray(ticket.status, FINISHED_STATUSES as string[]),
+      ),
+    );
 
   let rows: CleanupRow[] = eligible.map((r) => ({
     key: r.key,

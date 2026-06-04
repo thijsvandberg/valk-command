@@ -14,7 +14,8 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 import { db } from "@/db";
 import { ticket, ticketMetadata } from "@/db/schema";
-import { and, eq, isNull } from "drizzle-orm";
+import { and, eq, isNull, notInArray } from "drizzle-orm";
+import { FINISHED_STATUSES } from "@/lib/ticket-status";
 import { applyRateLimit } from "@/lib/rate-limiter";
 import { errorResponse } from "@/lib/api-response";
 import { parseJsonBody } from "@/lib/request-parser";
@@ -42,6 +43,8 @@ const bodySchema = z.discriminatedUnion("method", [
 ]);
 
 // Scan-eligible = the SAME backlog definition the scanners use.
+// Finished tickets (DONE, DEPRECATED, etc.) are excluded because resolved work
+// is not a deprecation candidate.
 async function loadEligible(): Promise<SelectableTicket[]> {
   const rows = await db
     .select({
@@ -53,7 +56,13 @@ async function loadEligible(): Promise<SelectableTicket[]> {
     })
     .from(ticket)
     .leftJoin(ticketMetadata, eq(ticket.jiraKey, ticketMetadata.jiraKey))
-    .where(and(eq(ticket.sprintName, ""), isNull(ticket.removedFromJiraAt)));
+    .where(
+      and(
+        eq(ticket.sprintName, ""),
+        isNull(ticket.removedFromJiraAt),
+        notInArray(ticket.status, FINISHED_STATUSES as string[]),
+      ),
+    );
   return rows.map((r) => ({
     jiraKey: r.jiraKey,
     scanOverall: r.scanOverall ?? null,

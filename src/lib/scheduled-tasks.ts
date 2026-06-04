@@ -14,6 +14,7 @@ import {
   storyWriterSession,
 } from "@/db/schema";
 import { eq, inArray, and, isNotNull, isNull, lt, desc, notInArray } from "drizzle-orm";
+import { FINISHED_STATUSES } from "@/lib/ticket-status";
 import { jiraClient, JiraApiError, extractSprint } from "@/lib/jira-client";
 import { upsertIssue, cacheSprintName } from "@/lib/upsert-issue";
 import { invalidateSearchCache } from "@/lib/search-index-cache";
@@ -357,6 +358,8 @@ export async function cleanupOldNotifications(): Promise<TaskResult> {
 export async function runDeprecationStalenessScan(): Promise<TaskResult> {
   const startedAt = new Date().toISOString();
 
+  // Finished tickets (DONE, DEPRECATED, etc.) are excluded because they are
+  // irrelevant to deprecation review: the work was already resolved.
   const backlogTickets = await db
     .select({
       jiraKey: ticket.jiraKey,
@@ -375,7 +378,13 @@ export async function runDeprecationStalenessScan(): Promise<TaskResult> {
     })
     .from(ticket)
     .leftJoin(ticketMetadata, eq(ticket.jiraKey, ticketMetadata.jiraKey))
-    .where(and(eq(ticket.sprintName, ""), isNull(ticket.removedFromJiraAt)));
+    .where(
+      and(
+        eq(ticket.sprintName, ""),
+        isNull(ticket.removedFromJiraAt),
+        notInArray(ticket.status, FINISHED_STATUSES as string[]),
+      ),
+    );
 
   if (backlogTickets.length === 0) {
     return { scanned: 0, candidates: 0, backlogSize: 0 };
@@ -604,6 +613,8 @@ export async function runAutoEnqueue(): Promise<TaskResult> {
   }
 
   // Load eligible backlog (same definition as the manual enqueue API).
+  // Finished tickets are excluded for the same reason as the Tier-1 scan:
+  // resolved work is not a deprecation candidate.
   const rows = await db
     .select({
       jiraKey: ticket.jiraKey,
@@ -614,7 +625,13 @@ export async function runAutoEnqueue(): Promise<TaskResult> {
     })
     .from(ticket)
     .leftJoin(ticketMetadata, eq(ticket.jiraKey, ticketMetadata.jiraKey))
-    .where(and(eq(ticket.sprintName, ""), isNull(ticket.removedFromJiraAt)));
+    .where(
+      and(
+        eq(ticket.sprintName, ""),
+        isNull(ticket.removedFromJiraAt),
+        notInArray(ticket.status, FINISHED_STATUSES as string[]),
+      ),
+    );
 
   const eligible: SelectableTicket[] = rows.map((r) => ({
     jiraKey: r.jiraKey,
