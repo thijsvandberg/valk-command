@@ -9,8 +9,8 @@
  */
 
 import { db } from "@/db";
-import { deprecationScanQueue, type DeprecationScanQueueRow } from "@/db/schema";
-import { and, eq, inArray, asc } from "drizzle-orm";
+import { deprecationScanQueue, ticket, type DeprecationScanQueueRow } from "@/db/schema";
+import { and, eq, inArray, asc, desc, or } from "drizzle-orm";
 
 export type QueueSource = "manual" | "worst-staleness" | "oldest" | "auto";
 
@@ -20,6 +20,38 @@ export interface QueueStatusCounts {
   done: number;
   error: number;
 }
+
+export interface QueueItem {
+  id: string;
+  jiraKey: string;
+  status: "pending" | "running" | "done" | "error";
+  source: string;
+  enqueuedAt: string;
+  startedAt: string | null;
+  finishedAt: string | null;
+  error: string | null;
+  /** Joined from the ticket table so the UI renders a meaningful row without a
+   * second fetch. Null when the ticket no longer exists locally. */
+  title: string | null;
+  ticketStatus: string | null;
+}
+
+export interface ListQueueOptions {
+  /** Cap on completed (done/error) rows returned, newest-first. Pending and
+   * running rows are always returned in full so the actionable queue is never
+   * truncated. */
+  recentLimit?: number;
+}
+
+/**
+ * Outcome of a single-item removal so the API can report precisely.
+ *  - "removed":   a pending row was deleted.
+ *  - "not_found": no active (pending/running) row matched.
+ *  - "running":   the matched row is running; we refuse to delete it (see below).
+ */
+export type RemoveQueueResult = "removed" | "not_found" | "running";
+
+const DEFAULT_RECENT_LIMIT = 50;
 
 /**
  * Idempotently enqueue tickets for deep scanning. Tickets already pending or
@@ -122,4 +154,130 @@ export async function requeueStuckRunning(): Promise<number> {
     .set({ status: "pending", startedAt: null })
     .where(and(eq(deprecationScanQueue.status, "running")));
   return stuck.length;
+}
+
+/**
+ * List queue rows for the management UI. Returns every pending and running row
+ * (the actionable queue, oldest-first so it reads in drain order) plus the most
+ * recent `recentLimit` done/error rows (newest-first) for context. The ticket
+ * title and status are joined so a row is self-describing without a second
+ * fetch. Rows whose ticket was deleted locally keep a null title rather than
+ * being dropped.
+ */
+export async function listQueue(opts: ListQueueOptions = {}): Promise<QueueItem[]> {
+  const recentLimit = Math.max(0, opts.recentLimit ?? DEFAULT_RECENT_LIMIT);
+
+  const active = await db
+    .select({
+      id: deprecationScanQueue.id,
+      jiraKey: deprecationScanQueue.jiraKey,
+      status: deprecationScanQueue.status,
+      source: deprecationScanQueue.source,
+      enqueuedAt: deprecationScanQueue.enqueuedAt,
+      startedAt: deprecationScanQueue.startedAt,
+      finishedAt: deprecationScanQueue.finishedAt,
+      error: deprecationScanQueue.error,
+      title: ticket.title,
+      ticketStatus: ticket.status,
+    })
+    .from(deprecationScanQueue)
+    .leftJoin(ticket, eq(deprecationScanQueue.jiraKey, ticket.jiraKey))
+    .where(
+      or(
+        eq(deprecationScanQueue.status, "pending"),
+        eq(deprecationScanQueue.status, "running"),
+      ),
+    )
+    .orderBy(asc(deprecationScanQueue.enqueuedAt));
+
+  const recent = recentLimit === 0
+    ? []
+    : await db
+        .select({
+          id: deprecationScanQueue.id,
+          jiraKey: deprecationScanQueue.jiraKey,
+          status: deprecationScanQueue.status,
+          source: deprecationScanQueue.source,
+          enqueuedAt: deprecationScanQueue.enqueuedAt,
+          startedAt: deprecationScanQueue.startedAt,
+          finishedAt: deprecationScanQueue.finishedAt,
+          error: deprecationScanQueue.error,
+          title: ticket.title,
+          ticketStatus: ticket.status,
+        })
+        .from(deprecationScanQueue)
+        .leftJoin(ticket, eq(deprecationScanQueue.jiraKey, ticket.jiraKey))
+        .where(
+          or(
+            eq(deprecationScanQueue.status, "done"),
+            eq(deprecationScanQueue.status, "error"),
+          ),
+        )
+        .orderBy(desc(deprecationScanQueue.finishedAt))
+        .limit(recentLimit);
+
+  return [...active, ...recent].map((r) => ({
+    id: r.id,
+    jiraKey: r.jiraKey,
+    status: r.status,
+    source: r.source,
+    enqueuedAt: r.enqueuedAt,
+    startedAt: r.startedAt,
+    finishedAt: r.finishedAt,
+    error: r.error,
+    title: r.title ?? null,
+    ticketStatus: r.ticketStatus ?? null,
+  }));
+}
+
+/**
+ * Remove a single queue item identified by row id OR jiraKey. Only PENDING rows
+ * are removed.
+ *
+ * Running-item policy: a running row is NOT deleted. The deep-scan handler holds
+ * the row in `running` for the duration of its work and clears it on completion;
+ * deleting it mid-flight would let markDone/markError write to a vanished row and
+ * could orphan the active-key invariant. We therefore refuse (return "running")
+ * and let the current scan finish naturally. Done/error rows are history and are
+ * also left untouched (treated as not an active item -> "not_found").
+ */
+export async function removeQueueItem(idOrKey: string): Promise<RemoveQueueResult> {
+  const row = await db
+    .select({ id: deprecationScanQueue.id, status: deprecationScanQueue.status })
+    .from(deprecationScanQueue)
+    .where(
+      and(
+        or(eq(deprecationScanQueue.id, idOrKey), eq(deprecationScanQueue.jiraKey, idOrKey)),
+        or(
+          eq(deprecationScanQueue.status, "pending"),
+          eq(deprecationScanQueue.status, "running"),
+        ),
+      ),
+    )
+    .get();
+
+  if (!row) return "not_found";
+  if (row.status === "running") return "running";
+
+  await db.delete(deprecationScanQueue).where(eq(deprecationScanQueue.id, row.id));
+  return "removed";
+}
+
+/**
+ * Clear the queue: delete all PENDING rows (the "stop / clear" action). Returns
+ * the number removed.
+ *
+ * Running items are intentionally left in place — the current batch is allowed
+ * to finish; clearing only stops NEW work from starting. Because the auto-enqueue
+ * task can refill the queue, the PO should also disable the deprecation tasks via
+ * the toggle API if they want the queue to stay empty.
+ */
+export async function clearPendingQueue(): Promise<number> {
+  const pending = await db
+    .select({ id: deprecationScanQueue.id })
+    .from(deprecationScanQueue)
+    .where(eq(deprecationScanQueue.status, "pending"));
+  if (pending.length === 0) return 0;
+  await db.delete(deprecationScanQueue).where(eq(deprecationScanQueue.status, "pending"));
+  return pending.length;
 }

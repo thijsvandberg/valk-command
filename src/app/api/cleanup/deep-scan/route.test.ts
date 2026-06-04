@@ -14,7 +14,7 @@ vi.mock("@/db", () => ({
   },
 }));
 
-import { GET, POST } from "./route";
+import { GET, POST, DELETE } from "./route";
 
 function seed(
   key: string,
@@ -143,5 +143,73 @@ describe("GET /api/cleanup/deep-scan", () => {
     await post({ method: "keys", keys: ["BT-1"] });
     const data = await (await GET()).json();
     expect(data).toMatchObject({ pending: 1, running: 0, done: 0, error: 0 });
+  });
+
+  it("returns the queue items[] with joined title alongside counts", async () => {
+    seed("BT-1");
+    await post({ method: "keys", keys: ["BT-1"] });
+    const data = await (await GET()).json();
+    expect(Array.isArray(data.items)).toBe(true);
+    expect(data.items).toHaveLength(1);
+    expect(data.items[0]).toMatchObject({
+      jiraKey: "BT-1",
+      status: "pending",
+      title: "Ticket BT-1",
+    });
+  });
+});
+
+function del(opts: { body?: unknown; query?: string } = {}): Promise<Response> {
+  const url = `http://localhost:3100/api/cleanup/deep-scan${opts.query ?? ""}`;
+  return DELETE(new Request(url, {
+    method: "DELETE",
+    body: opts.body !== undefined ? JSON.stringify(opts.body) : undefined,
+    headers: { "Content-Type": "application/json" },
+  }));
+}
+
+describe("DELETE /api/cleanup/deep-scan", () => {
+  beforeEach(() => {
+    testDb = createTestDb();
+  });
+
+  it("removes a single pending item by key", async () => {
+    seed("BT-1");
+    await post({ method: "keys", keys: ["BT-1"] });
+    const res = await del({ body: { key: "BT-1" } });
+    const data = await res.json();
+    expect(res.status).toBe(200);
+    expect(data).toMatchObject({ removed: true, key: "BT-1" });
+    expect(data.queue.pending).toBe(0);
+  });
+
+  it("returns 404 when the key has no active item", async () => {
+    const res = await del({ body: { key: "NOPE-1" } });
+    expect(res.status).toBe(404);
+  });
+
+  it("clears all pending items with { all: true }", async () => {
+    seed("BT-1");
+    seed("BT-2");
+    await post({ method: "keys", keys: ["BT-1", "BT-2"] });
+    const res = await del({ body: { all: true } });
+    const data = await res.json();
+    expect(res.status).toBe(200);
+    expect(data).toMatchObject({ cleared: true, removed: 2 });
+    expect(data.queue.pending).toBe(0);
+  });
+
+  it("clears all pending items with ?all=1", async () => {
+    seed("BT-1");
+    await post({ method: "keys", keys: ["BT-1"] });
+    const res = await del({ query: "?all=1" });
+    const data = await res.json();
+    expect(res.status).toBe(200);
+    expect(data).toMatchObject({ cleared: true, removed: 1 });
+  });
+
+  it("rejects an invalid delete body", async () => {
+    const res = await del({ body: { foo: "bar" } });
+    expect(res.status).toBe(400);
   });
 });

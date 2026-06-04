@@ -19,7 +19,14 @@ import { FINISHED_STATUSES, EXCLUDED_SCAN_TYPES } from "@/lib/ticket-status";
 import { applyRateLimit } from "@/lib/rate-limiter";
 import { errorResponse } from "@/lib/api-response";
 import { parseJsonBody } from "@/lib/request-parser";
-import { enqueueDeepScan, queueStatusCounts, type QueueSource } from "@/lib/deprecation-scan-queue";
+import {
+  enqueueDeepScan,
+  queueStatusCounts,
+  listQueue,
+  removeQueueItem,
+  clearPendingQueue,
+  type QueueSource,
+} from "@/lib/deprecation-scan-queue";
 import {
   selectDeepScanKeys,
   type SelectableTicket,
@@ -78,10 +85,70 @@ async function loadEligible(): Promise<SelectableTicket[]> {
 }
 
 export async function GET() {
-  const counts = await queueStatusCounts();
-  return NextResponse.json(counts, {
+  // Counts power the progress summary; items[] powers the management list. Both
+  // are returned together so the Cleanup view renders the queue in one fetch.
+  // Counts remain at the top level for backward compatibility with callers that
+  // only read pending/running/done/error.
+  const [counts, items] = await Promise.all([queueStatusCounts(), listQueue()]);
+  return NextResponse.json({ ...counts, items }, {
     headers: { "Cache-Control": "private, no-store" },
   });
+}
+
+const deleteBodySchema = z.union([
+  z.object({ key: z.string().min(1).max(64) }),
+  z.object({ all: z.literal(true) }),
+]);
+
+/**
+ * DELETE /api/cleanup/deep-scan
+ *
+ * Two variants for queue management:
+ *  - { key }            remove one PENDING item (by row id or jiraKey).
+ *  - { all: true } or ?all=1   clear ALL pending items (the "stop / clear" action).
+ *
+ * Running items are never deleted; see removeQueueItem / clearPendingQueue for
+ * the running-item policy (the current batch finishes; only new work is stopped).
+ */
+export async function DELETE(request: Request) {
+  const limited = await applyRateLimit("delete");
+  if (limited) return limited;
+
+  const url = new URL(request.url);
+  if (url.searchParams.get("all") === "1") {
+    const removed = await clearPendingQueue();
+    const counts = await queueStatusCounts();
+    return NextResponse.json({ cleared: true, removed, queue: counts });
+  }
+
+  const parsed = await parseJsonBody(request);
+  if ("error" in parsed) return parsed.error;
+
+  const validation = deleteBodySchema.safeParse(parsed.data);
+  if (!validation.success) {
+    return errorResponse(validation.error.issues[0]?.message ?? "Invalid request body", 400);
+  }
+  const body = validation.data;
+
+  if ("all" in body) {
+    const removed = await clearPendingQueue();
+    const counts = await queueStatusCounts();
+    return NextResponse.json({ cleared: true, removed, queue: counts });
+  }
+
+  const result = await removeQueueItem(body.key);
+  if (result === "not_found") {
+    return NextResponse.json({ error: "No pending queue item found for that key" }, { status: 404 });
+  }
+  if (result === "running") {
+    // 409: the item exists but cannot be removed because it is mid-scan.
+    return NextResponse.json(
+      { error: "Item is currently running and cannot be removed; it will finish on its own" },
+      { status: 409 },
+    );
+  }
+  const counts = await queueStatusCounts();
+  return NextResponse.json({ removed: true, key: body.key, queue: counts });
 }
 
 export async function POST(request: Request) {
