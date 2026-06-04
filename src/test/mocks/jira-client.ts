@@ -23,6 +23,7 @@ export function createJiraClientMock(overrides?: {
       getSprints: vi.fn().mockResolvedValue([]),
       getSprintsLightweight: vi.fn().mockResolvedValue([]),
       getSprintIssues: vi.fn().mockResolvedValue([]),
+      getSprint: vi.fn().mockResolvedValue({ id: 0, name: "Sprint", state: "future" }),
       getIssue: vi.fn().mockResolvedValue({
         fields: { updated: new Date().toISOString() },
       }),
@@ -37,6 +38,7 @@ export function createJiraClientMock(overrides?: {
           emailAddress: "test@example.com",
         }),
       getSprintIssueTimestamps: vi.fn().mockResolvedValue([]),
+      getEpicIssueTimestamps: vi.fn().mockResolvedValue([]),
       getIssuesByKeys: vi.fn().mockResolvedValue([]),
       getIssueLinksByKeys: vi.fn().mockResolvedValue([]),
       getLastChangeAuthor: vi.fn().mockResolvedValue(null),

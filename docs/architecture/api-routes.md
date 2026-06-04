@@ -23,7 +23,7 @@ Sync engine for pulling Jira data into the local SQLite database. See [jira-sync
 | Route | Method | Purpose |
 |-------|--------|---------|
 | `/api/jira/sync-incremental` | POST | Watermark-based incremental sync (background, every 150s) |
-| `/api/jira/sync-tickets` | POST | Full sprint sync. `?strategy=bulk\|timestamp-first` |
+| `/api/jira/sync-tickets` | POST | Full sprint sync. `?strategy=bulk\|timestamp-first`. Body `{ ticketKeys }` syncs specific keys (max 100). `?mode=plan&sprintId=X\|&epicKey=Y` returns `{ keys }` (current Jira membership, rank-ordered). `?mode=reconcile&sprintId=X\|&epicKey=Y` + body `{ keys }` restores rank order and reconciles tickets that left the sprint/epic. Used by the tranched per-group sync (BRDG-282) |
 | `/api/jira/sync-sprints` | POST | Fetch and cache sprint list from Jira |
 | `/api/jira/sync-comments` | POST | Sync comments for a specific ticket |
 | `/api/jira/check-updated` | GET | Lightweight freshness check for a single ticket |

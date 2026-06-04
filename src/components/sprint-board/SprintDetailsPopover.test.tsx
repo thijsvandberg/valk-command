@@ -107,4 +107,120 @@ describe("SprintDetailsPopover", () => {
 
     expect(screen.queryByText("Close sprint")).not.toBeInTheDocument();
   });
+
+  describe("with sync action", () => {
+    it("shows Sync and Settings at the top level, hiding settings until opened", () => {
+      render(
+        <SprintDetailsPopover
+          sprint={makeSprint()}
+          open={true}
+          onClose={vi.fn()}
+          onEdit={vi.fn()}
+          canSync
+          onRunSync={vi.fn()}
+        />,
+      );
+
+      expect(screen.getByText("Sync sprint")).toBeInTheDocument();
+      expect(screen.getByText("Settings")).toBeInTheDocument();
+      // Goal/Edit live behind Settings now.
+      expect(screen.queryByText("Deliver authentication module")).not.toBeInTheDocument();
+      expect(screen.queryByText("Edit details")).not.toBeInTheDocument();
+    });
+
+    it("drills into Settings and back", () => {
+      render(
+        <SprintDetailsPopover
+          sprint={makeSprint()}
+          open={true}
+          onClose={vi.fn()}
+          onEdit={vi.fn()}
+          canSync
+          onRunSync={vi.fn()}
+        />,
+      );
+
+      fireEvent.click(screen.getByText("Settings"));
+      expect(screen.getByText("Edit details")).toBeInTheDocument();
+      fireEvent.click(screen.getByText("Back"));
+      expect(screen.getByText("Sync sprint")).toBeInTheDocument();
+    });
+
+    it("calls onRunSync when the Sync action is clicked", () => {
+      const onRunSync = vi.fn();
+      render(
+        <SprintDetailsPopover
+          sprint={makeSprint()}
+          open={true}
+          onClose={vi.fn()}
+          onEdit={vi.fn()}
+          canSync
+          onRunSync={onRunSync}
+        />,
+      );
+
+      fireEvent.click(screen.getByText("Sync sprint"));
+      expect(onRunSync).toHaveBeenCalledTimes(1);
+    });
+
+    it("renders progress while running and the result when done", () => {
+      const { rerender } = render(
+        <SprintDetailsPopover
+          sprint={makeSprint()}
+          open={true}
+          onClose={vi.fn()}
+          onEdit={vi.fn()}
+          canSync
+          onRunSync={vi.fn()}
+          syncState="running"
+          syncProgress={{ phase: "syncing", done: 25, total: 50 }}
+        />,
+      );
+      expect(screen.getByText("Syncing 25 of 50")).toBeInTheDocument();
+
+      rerender(
+        <SprintDetailsPopover
+          sprint={makeSprint()}
+          open={true}
+          onClose={vi.fn()}
+          onEdit={vi.fn()}
+          canSync
+          onRunSync={vi.fn()}
+          syncState="done"
+          syncResult={{ synced: 50, removed: 1 }}
+        />,
+      );
+      expect(screen.getByText("Synced 50, 1 moved out")).toBeInTheDocument();
+    });
+
+    it("shows an error state", () => {
+      render(
+        <SprintDetailsPopover
+          sprint={makeSprint()}
+          open={true}
+          onClose={vi.fn()}
+          onEdit={vi.fn()}
+          canSync
+          onRunSync={vi.fn()}
+          syncState="error"
+        />,
+      );
+      expect(screen.getByText("Sync failed — retry")).toBeInTheDocument();
+    });
+
+    it("for an epic shows only the sync action and no settings", () => {
+      render(
+        <SprintDetailsPopover
+          kind="epic"
+          open={true}
+          onClose={vi.fn()}
+          canSync
+          onRunSync={vi.fn()}
+        />,
+      );
+
+      expect(screen.getByText("Sync epic")).toBeInTheDocument();
+      expect(screen.queryByText("Settings")).not.toBeInTheDocument();
+    });
+  });
 });

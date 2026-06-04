@@ -13,6 +13,7 @@ import { GroupStatBar } from "@/components/sprint-board/GroupStatBar";
 import { matchesWarningFilter } from "@/components/sprint-board/warning-filter";
 import { GroupCard, GROUP_CARD_CLASS } from "@/components/sprint-board/GroupCard";
 import type { TicketGroup, GroupByOption } from "@/components/sprint-board/useGroupBy";
+import type { GroupSyncTarget, GroupSyncProgress, GroupSyncResult } from "@/lib/group-sync";
 import {
   DndContext,
   closestCenter,
@@ -126,6 +127,7 @@ export function TicketTable({
   onPinSprint,
   onEditSprint,
   onCloseSprint,
+  onSyncGroup,
   scrollContainerRef,
   refinementSessionMap,
   onRemoveFromRefinement,
@@ -192,6 +194,8 @@ export function TicketTable({
   // When grouping by sprint, open the goal/dates editor or close (finish) a sprint group. Key is the sprint id.
   onEditSprint?: (sprintId: string) => void;
   onCloseSprint?: (sprintId: string) => void;
+  // Runs a tranched Jira sync of a whole sprint or epic group, reporting progress.
+  onSyncGroup?: (target: GroupSyncTarget, onProgress: (p: GroupSyncProgress) => void) => Promise<GroupSyncResult>;
   // When provided, the table uses this as its scroll container (for shared scroll with analytics).
   scrollContainerRef?: React.RefObject<HTMLElement | null>;
   refinementSessionMap?: Map<string, TicketSessionEntry[]>;
@@ -470,6 +474,19 @@ export function TicketTable({
         const isBacklogGroup = groupBy === "sprint" && group.key === "__backlog__";
         const groupSprint = isSprintGroup ? sprints?.find((s) => s.id === group.key) : undefined;
 
+        // A real sprint or epic group can be synced from Jira in tranches. The backlog
+        // and the "no epic" bucket have no Jira container, so they get no sync action.
+        const isEpicGroup = groupBy === "epic" && group.key !== "__none__";
+        const epicKey = isEpicGroup ? group.tickets.find((t) => t.epicKey)?.epicKey ?? null : null;
+        const syncTarget: GroupSyncTarget | null = groupSprint
+          ? { kind: "sprint", id: group.key, label: group.label }
+          : epicKey
+            ? { kind: "epic", id: epicKey, label: group.label }
+            : null;
+        const groupSyncHandler = onSyncGroup && syncTarget
+          ? (onProgress: (p: GroupSyncProgress) => void) => onSyncGroup(syncTarget, onProgress)
+          : undefined;
+
         // Creating into a group only makes sense when grouped by sprint: the backlog
         // (no sprint) or any non-closed sprint. Jira rejects creating into closed sprints.
         const canCreateInGroup =
@@ -586,6 +603,9 @@ export function TicketTable({
                       onEditSprintDetails: onEditSprint ? () => onEditSprint(group.key) : undefined,
                       onCloseSprint: onCloseSprint && groupSprint.state === "active" ? () => onCloseSprint(group.key) : undefined,
                     }
+                  : {})}
+                {...(groupSyncHandler && syncTarget
+                  ? { onSync: groupSyncHandler, syncKind: syncTarget.kind }
                   : {})}
               />
             }

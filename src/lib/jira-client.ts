@@ -638,6 +638,18 @@ export class JiraClient {
   }
 
   /**
+   * Fetch a single sprint by id via the Jira Agile API. Used to backfill sprint
+   * metadata for a sprint that surfaced during ticket sync but is not yet in the
+   * cached sprint list (e.g. a brand-new future sprint).
+   */
+  async getSprint(sprintId: number, signal?: AbortSignal): Promise<JiraSprint> {
+    if (!isConfigured()) {
+      throw new Error("Jira is not configured");
+    }
+    return jiraFetch<JiraSprint>(`/rest/agile/1.0/sprint/${sprintId}`, signal);
+  }
+
+  /**
    * Fetch all issues for a given sprint using JQL search.
    */
   async getSprintIssues(sprintId: number, signal?: AbortSignal): Promise<JiraIssue[]> {
@@ -799,6 +811,34 @@ export class JiraClient {
     }
 
     const jql = `sprint = ${sprintId} ORDER BY rank ASC`;
+    let all: Array<{ key: string; updated: string }> = [];
+    let pageToken: string | undefined;
+
+    while (true) {
+      const tokenParam = pageToken ? `&nextPageToken=${encodeURIComponent(pageToken)}` : "";
+      const result = await jiraFetch<JiraSearchResponse>(
+        `/rest/api/3/search/jql?jql=${encodeURIComponent(jql)}&fields=updated&maxResults=200${tokenParam}`,
+        signal,
+      );
+      all = all.concat(result.issues.map((i) => ({ key: i.key, updated: i.fields.updated })));
+      if (result.isLast !== false || !result.nextPageToken) break;
+      pageToken = result.nextPageToken;
+    }
+
+    return all;
+  }
+
+  /**
+   * Lightweight key+timestamp list for the issues directly under an epic, in rank
+   * order. Mirrors getSprintIssueTimestamps; modern Jira links a story to its epic
+   * via the parent field, so `parent = EPIC` returns the epic's direct children.
+   */
+  async getEpicIssueTimestamps(epicKey: string, signal?: AbortSignal): Promise<Array<{ key: string; updated: string }>> {
+    if (!isConfigured()) {
+      return [];
+    }
+
+    const jql = `parent = ${epicKey} ORDER BY rank ASC`;
     let all: Array<{ key: string; updated: string }> = [];
     let pageToken: string | undefined;
 

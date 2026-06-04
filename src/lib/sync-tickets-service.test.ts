@@ -3,7 +3,7 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 import { createTestDb } from "@/db/test-utils";
 import type { BetterSQLite3Database } from "drizzle-orm/better-sqlite3";
 import type * as schema from "@/db/schema";
-import { ticket, activityLog, ticketScopeChange } from "@/db/schema";
+import { ticket, activityLog, ticketScopeChange, appSetting } from "@/db/schema";
 import { eq } from "drizzle-orm";
 import { seedTicket } from "@/test/builders";
 
@@ -50,9 +50,11 @@ import {
   syncIndividualTickets,
   syncSprint,
   syncBacklog,
+  planGroupKeys,
+  reconcileGroupMembership,
   SyncValidationError,
 } from "./sync-tickets-service";
-import { jiraClient, extractSprint, JiraApiError } from "@/lib/jira-client";
+import { jiraClient, extractSprint, extractEpicLink, JiraApiError } from "@/lib/jira-client";
 import { upsertIssue, cacheSprintName } from "@/lib/upsert-issue";
 import { upsertSetting } from "@/lib/upsert-setting";
 
@@ -133,6 +135,19 @@ describe("syncIndividualTickets", () => {
     const logs = testDb.select().from(activityLog).all();
     expect(logs[0].status).toBe("failed");
     expect(logs[0].errorDetail).toContain("network error");
+  });
+
+  it("backfills metadata for a sprint not yet in the cache", async () => {
+    vi.mocked(jiraClient.getIssue).mockResolvedValue(makeIssue("VPL-1"));
+    vi.mocked(extractSprint).mockReturnValue({ id: 42, name: "Sprint 42" } as ReturnType<typeof extractSprint>);
+    vi.mocked(jiraClient.getSprint).mockResolvedValue({ id: 42, name: "Sprint 42", state: "future" });
+
+    await syncIndividualTickets(["VPL-1"]);
+
+    expect(jiraClient.getSprint).toHaveBeenCalledWith(42, expect.anything());
+    const row = testDb.select().from(appSetting).where(eq(appSetting.key, "jira_sprints")).get();
+    expect(row).toBeTruthy();
+    expect(JSON.parse(row!.value).map((s: { id: number }) => s.id)).toContain(42);
   });
 });
 
@@ -277,5 +292,110 @@ describe("syncBacklog", () => {
     const logs = testDb.select().from(activityLog).all();
     expect(logs[0].status).toBe("failed");
     expect(logs[0].errorDetail).toContain("oops");
+  });
+});
+
+describe("planGroupKeys", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    testDb = createTestDb();
+  });
+
+  it("returns rank-ordered keys for a sprint", async () => {
+    vi.mocked(jiraClient.getSprintIssueTimestamps).mockResolvedValue([
+      { key: "VPL-1", updated: "a" },
+      { key: "VPL-2", updated: "b" },
+    ]);
+
+    const keys = await planGroupKeys({ kind: "sprint", id: "42" });
+
+    expect(keys).toEqual(["VPL-1", "VPL-2"]);
+    expect(jiraClient.getSprintIssueTimestamps).toHaveBeenCalledWith(42, undefined);
+  });
+
+  it("returns keys for an epic via its Jira key", async () => {
+    vi.mocked(jiraClient.getEpicIssueTimestamps).mockResolvedValue([
+      { key: "VPL-9", updated: "a" },
+    ]);
+
+    const keys = await planGroupKeys({ kind: "epic", id: "VPL-100" });
+
+    expect(keys).toEqual(["VPL-9"]);
+    expect(jiraClient.getEpicIssueTimestamps).toHaveBeenCalledWith("VPL-100", undefined);
+  });
+
+  it("rejects a non-numeric sprint id", async () => {
+    await expect(planGroupKeys({ kind: "sprint", id: "abc" })).rejects.toThrow(SyncValidationError);
+  });
+
+  it("rejects a missing id", async () => {
+    await expect(planGroupKeys({ kind: "epic", id: "" })).rejects.toThrow(SyncValidationError);
+  });
+});
+
+describe("reconcileGroupMembership", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    testDb = createTestDb();
+  });
+
+  it("restores rank order from the plan", async () => {
+    seedTicket(testDb, { jiraKey: "VPL-1", sprintName: "42", jiraRank: 99 });
+    seedTicket(testDb, { jiraKey: "VPL-2", sprintName: "42", jiraRank: 99 });
+
+    await reconcileGroupMembership({ kind: "sprint", id: "42" }, ["VPL-2", "VPL-1"]);
+
+    const t1 = testDb.select().from(ticket).where(eq(ticket.jiraKey, "VPL-1")).get();
+    const t2 = testDb.select().from(ticket).where(eq(ticket.jiraKey, "VPL-2")).get();
+    expect(t2!.jiraRank).toBe(0);
+    expect(t1!.jiraRank).toBe(1);
+  });
+
+  it("moves a ticket that left the sprint to its new sprint", async () => {
+    seedTicket(testDb, { jiraKey: "VPL-STAY", sprintName: "42" });
+    seedTicket(testDb, { jiraKey: "VPL-LEFT", sprintName: "42" });
+    vi.mocked(extractSprint).mockReturnValue({ id: 77, name: "Sprint 8" } as ReturnType<typeof extractSprint>);
+    vi.mocked(jiraClient.getIssue).mockResolvedValue(makeIssue("VPL-LEFT"));
+
+    const result = await reconcileGroupMembership({ kind: "sprint", id: "42" }, ["VPL-STAY"]);
+
+    expect(result.removed).toBe(1);
+    const left = testDb.select().from(ticket).where(eq(ticket.jiraKey, "VPL-LEFT")).get();
+    expect(left!.sprintName).toBe("77");
+  });
+
+  it("updates epic fields for a ticket that left an epic", async () => {
+    seedTicket(testDb, { jiraKey: "VPL-IN", epicKey: "VPL-100" });
+    seedTicket(testDb, { jiraKey: "VPL-OUT", epicKey: "VPL-100" });
+    vi.mocked(jiraClient.getIssue).mockResolvedValue(makeIssue("VPL-OUT"));
+    vi.mocked(extractEpicLink).mockReturnValue({ name: "Other epic", key: "VPL-200" });
+
+    const result = await reconcileGroupMembership({ kind: "epic", id: "VPL-100" }, ["VPL-IN"]);
+
+    expect(result.removed).toBe(1);
+    const out = testDb.select().from(ticket).where(eq(ticket.jiraKey, "VPL-OUT")).get();
+    expect(out!.epicKey).toBe("VPL-200");
+    expect(out!.epic).toBe("Other epic");
+  });
+
+  it("marks a removed-from-Jira ticket on 404", async () => {
+    seedTicket(testDb, { jiraKey: "VPL-GONE", sprintName: "42" });
+    vi.mocked(jiraClient.getIssue).mockRejectedValue(new JiraApiError(404, "Not Found", "", ""));
+
+    await reconcileGroupMembership({ kind: "sprint", id: "42" }, []);
+
+    const gone = testDb.select().from(ticket).where(eq(ticket.jiraKey, "VPL-GONE")).get();
+    expect(gone!.removedFromJiraAt).toBeTruthy();
+  });
+
+  it("logs an activity entry scoped to the epic for epic reconcile", async () => {
+    seedTicket(testDb, { jiraKey: "VPL-IN", epicKey: "VPL-100" });
+
+    await reconcileGroupMembership({ kind: "epic", id: "VPL-100" }, ["VPL-IN"]);
+
+    const logs = testDb.select().from(activityLog).all();
+    expect(logs[0].type).toBe("ticket-sync");
+    expect(logs[0].scope).toBe("VPL-100");
+    expect(logs[0].status).toBe("success");
   });
 });

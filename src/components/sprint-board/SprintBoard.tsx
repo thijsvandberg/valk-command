@@ -25,6 +25,7 @@ import { sprintToSlug, slugToSprintId, buildBoardUrl } from "@/lib/sprint-utils"
 import { prefetchTicketList, setRouterPrefetch } from "@/lib/prefetch";
 import { getJiraUrl } from "@/components/sprint-board/TicketTableCells";
 import { apiFetch, jira, tickets as ticketsApi, refinementSessions as refinementSessionsApi } from "@/lib/api-client";
+import { syncGroupInTranches, type GroupSyncTarget, type GroupSyncProgress } from "@/lib/group-sync";
 import { useSprintBoardFilters } from "@/components/sprint-board/useSprintBoardFilters";
 import { useGroupBy } from "@/components/sprint-board/useGroupBy";
 import { useSprintBoardDragDrop } from "@/components/sprint-board/useSprintBoardDragDrop";
@@ -426,6 +427,18 @@ export default function SprintBoard() {
     return "mixed";
   }, [tickets]);
   const handleRefresh = useCallback(async () => { setSyncing(true); try { const data = await jira.syncTickets({ sprintId: slotSprints[activeSlot] }) as { count?: number } | null; showToast(`Refreshed ${data?.count ?? 0} ticket${(data?.count ?? 0) === 1 ? "" : "s"}`); mutateTickets(); } catch { showToast("Failed to refresh tickets"); } finally { setSyncing(false); } }, [slotSprints, activeSlot, showToast, mutateTickets]);
+  const handleSyncGroup = useCallback(async (target: GroupSyncTarget, onProgress: (p: GroupSyncProgress) => void) => {
+    try {
+      const result = await syncGroupInTranches(target, onProgress);
+      mutateTickets();
+      const removedSuffix = result.removed > 0 ? `, ${result.removed} moved out` : "";
+      showToast(`Synced ${result.synced} ticket${result.synced === 1 ? "" : "s"} in ${target.label}${removedSuffix}`);
+      return result;
+    } catch (err) {
+      showToast(`Failed to sync ${target.label}`);
+      throw err;
+    }
+  }, [mutateTickets, showToast]);
   useEffect(() => {
     if (slotsInitialized.current || !sprintsData) return; slotsInitialized.current = true;
     const fallback = () => { const fb = sprints.find((s) => s.state === "active") ?? sprints[0]; if (fb) setSlotSprints([fb.id]); };
@@ -457,7 +470,7 @@ export default function SprintBoard() {
           // The list sits on a white surface; TicketTable renders the bordered card(s) itself —
           // one card when ungrouped, one per group when grouped (BRDG-239, BRDG-267).
           <div className="min-h-full bg-[var(--color-surface-elevated)] px-4 pb-4 pt-3">
-          <TicketTable tickets={tickets} checkedTickets={checkedTickets} selectedTicket={selectedTicket} focusedTicketIdx={focusedTicketIdx} someChecked={someChecked} allChecked={allChecked} visibleTags={f.visibleTags} hideEpic={hideEpicChip} showSprint={showSprintOnRow} sprintNameMap={sprintNameMap} poStatuses={poStatuses} readinessMap={readinessMap} inflightKeys={inflightKeys} onToggleCheck={toggleCheck} onRangeCheck={handleRangeCheck} onToggleAll={toggleAll} onSelectTicket={setSelectedTicket} onRowContextMenu={handleRowContextMenu} contextMenuKeys={rowMenu?.targets} onPoStatusChange={ta.handlePoStatusChange} onReadinessChange={ta.handleReadinessChange} onBusinessValueChange={ta.handleBusinessValueChange} onStoryPointsChange={ta.handleStoryPointsChange} onJiraStatusChange={ta.handleJiraStatusChange} onIssueTypeChange={ta.handleIssueTypeChange} onTitleChange={ta.handleTitleChange} onAssigneeChange={ta.handleAssigneeChange} onEpicChange={ta.handleEpicChange} onSprintChange={ta.handleSprintChange} sprints={sprints} onCloseSubtasks={ta.handleCloseSubtasks} onTableKeyDown={handleTableKeyDown} onRunReview={(key) => handleBulkReviewStory(new Set([key]))} sortField={f.sortField} sortDir={f.sortDir} groups={groups} collapsedGroups={collapsedGroups} onToggleCollapse={toggleCollapse} groupBy={groupBy} pinnedSprintIds={slotSprintsSet} onPinSprint={handleAddSlotWithSprint} onEditSprint={handleEditSprintFromGroup} onCloseSprint={handleCloseSprintFromGroup} onCreateTicket={handleCreateTicket} flatCreateTarget={flatCreateTarget} scrollContainerRef={contentScrollRef} refinementSessionMap={ticketSessionMap} onRemoveFromRefinement={handleRemoveFromRefinement} onViewRefinement={handleViewRefinement} {...(dnd.jiraRankDndEnabled ? { externalDnd: true as const, externalActiveDragId: dnd.boardActiveDragId, dragOverKey: dnd.boardOverId } : { onReorder: f.sortField === "rank" && !f.activeViewId ? handleReorder : undefined })} />
+          <TicketTable tickets={tickets} checkedTickets={checkedTickets} selectedTicket={selectedTicket} focusedTicketIdx={focusedTicketIdx} someChecked={someChecked} allChecked={allChecked} visibleTags={f.visibleTags} hideEpic={hideEpicChip} showSprint={showSprintOnRow} sprintNameMap={sprintNameMap} poStatuses={poStatuses} readinessMap={readinessMap} inflightKeys={inflightKeys} onToggleCheck={toggleCheck} onRangeCheck={handleRangeCheck} onToggleAll={toggleAll} onSelectTicket={setSelectedTicket} onRowContextMenu={handleRowContextMenu} contextMenuKeys={rowMenu?.targets} onPoStatusChange={ta.handlePoStatusChange} onReadinessChange={ta.handleReadinessChange} onBusinessValueChange={ta.handleBusinessValueChange} onStoryPointsChange={ta.handleStoryPointsChange} onJiraStatusChange={ta.handleJiraStatusChange} onIssueTypeChange={ta.handleIssueTypeChange} onTitleChange={ta.handleTitleChange} onAssigneeChange={ta.handleAssigneeChange} onEpicChange={ta.handleEpicChange} onSprintChange={ta.handleSprintChange} sprints={sprints} onCloseSubtasks={ta.handleCloseSubtasks} onTableKeyDown={handleTableKeyDown} onRunReview={(key) => handleBulkReviewStory(new Set([key]))} sortField={f.sortField} sortDir={f.sortDir} groups={groups} collapsedGroups={collapsedGroups} onToggleCollapse={toggleCollapse} groupBy={groupBy} pinnedSprintIds={slotSprintsSet} onPinSprint={handleAddSlotWithSprint} onEditSprint={handleEditSprintFromGroup} onCloseSprint={handleCloseSprintFromGroup} onSyncGroup={handleSyncGroup} onCreateTicket={handleCreateTicket} flatCreateTarget={flatCreateTarget} scrollContainerRef={contentScrollRef} refinementSessionMap={ticketSessionMap} onRemoveFromRefinement={handleRemoveFromRefinement} onViewRefinement={handleViewRefinement} {...(dnd.jiraRankDndEnabled ? { externalDnd: true as const, externalActiveDragId: dnd.boardActiveDragId, dragOverKey: dnd.boardOverId } : { onReorder: f.sortField === "rank" && !f.activeViewId ? handleReorder : undefined })} />
           </div>
         )}
       </div>

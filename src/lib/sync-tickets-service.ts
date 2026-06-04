@@ -1,15 +1,29 @@
 import { db } from "@/db";
 import { ticket, ticketMetadata, ticketScopeChange, activityLog } from "@/db/schema";
 import { eq, inArray } from "drizzle-orm";
-import { jiraClient, extractSprint, JiraApiError, type JiraIssue } from "@/lib/jira-client";
+import { jiraClient, extractSprint, extractEpicLink, JiraApiError, type JiraIssue } from "@/lib/jira-client";
 import { registerSync, unregisterSync } from "@/lib/sync-abort";
 import { invalidateSearchCache } from "@/lib/search-index-cache";
 import { upsertIssue, cacheSprintName } from "@/lib/upsert-issue";
 import { upsertSetting } from "@/lib/upsert-setting";
 import { cache } from "@/lib/cache";
+import { ensureSprintsCached } from "@/lib/sprint-cache";
 import { logger } from "@/lib/logger";
 
 const WATERMARK_KEY = "jira_sync_watermark";
+
+/**
+ * Backfill sprint metadata for any sprint ids seen during a sync that are not yet
+ * in the cached sprint list. Best-effort: swallows errors so a backfill problem
+ * never fails the ticket sync that triggered it.
+ */
+async function backfillUnknownSprints(sprintIds: Iterable<string>, signal?: AbortSignal): Promise<void> {
+  try {
+    await ensureSprintsCached(sprintIds, signal);
+  } catch (err) {
+    logger.warn("jira", "Sprint backfill failed", err instanceof Error ? err.message : String(err));
+  }
+}
 
 export interface SyncResult {
   count: number;
@@ -55,12 +69,14 @@ export async function syncIndividualTickets(ticketKeys: string[], requestSignal?
     const removedMap = new Map(existingTickets.map((t) => [t.jiraKey, t.removedFromJiraAt]));
 
     const results = [];
+    const seenSprintIds = new Set<string>();
     for (const key of ticketKeys) {
       try {
         const issue = await jiraClient.getIssue(key, controller.signal);
         const sprint = extractSprint(issue.fields);
         const sprintName = sprint ? String(sprint.id) : "";
         if (sprint) cacheSprintName(String(sprint.id), sprint.name);
+        if (sprintName) seenSprintIds.add(sprintName);
         const info = await upsertIssue(issue, sprintName, controller.signal);
 
         if (removedMap.get(key)) {
@@ -81,6 +97,8 @@ export async function syncIndividualTickets(ticketKeys: string[], requestSignal?
         }
       }
     }
+
+    await backfillUnknownSprints(seenSprintIds, controller.signal);
 
     const durationMs = Date.now() - new Date(startedAt).getTime();
     await db.update(activityLog).set({
@@ -161,6 +179,9 @@ export async function syncSprint(sprintId: string | null, strategy: string, requ
 
     const results = [];
     const jiraKeys = new Set<string>(allJiraKeys ?? []);
+    // The synced sprint itself, plus any sprint a ticket moves to below, may not be
+    // in the cached sprint list yet; collect them for a backfill at the end.
+    const discoveredSprintIds = new Set<string>([sprintId]);
     for (let i = 0; i < issues.length; i++) {
       const issue = issues[i];
       jiraKeys.add(issue.key);
@@ -219,6 +240,7 @@ export async function syncSprint(sprintId: string | null, strategy: string, requ
           const sprint = extractSprint(issue.fields);
           const newSprintName = sprint ? String(sprint.id) : "";
           if (sprint) cacheSprintName(String(sprint.id), sprint.name);
+          if (newSprintName) discoveredSprintIds.add(newSprintName);
           await db.update(ticket)
             .set({ sprintName: newSprintName })
             .where(eq(ticket.jiraKey, key));
@@ -232,6 +254,8 @@ export async function syncSprint(sprintId: string | null, strategy: string, requ
         }
       }
     }
+
+    await backfillUnknownSprints(discoveredSprintIds, controller.signal);
 
     const removedSuffix = removedCount > 0 ? `, ${removedCount} removed from Jira` : "";
     const clearedSuffix = removedFromSprint.length - removedCount > 0
@@ -394,6 +418,153 @@ export async function syncBacklog(strategy: string, requestSignal?: AbortSignal)
 
     logger.error("jira", "Backlog sync failed", errorMessage);
     throw new SyncValidationError("Backlog sync failed", 500);
+  } finally {
+    unregisterSync(logId);
+  }
+}
+
+export type GroupSyncKind = "sprint" | "epic";
+
+export interface GroupSyncTarget {
+  kind: GroupSyncKind;
+  /** Sprint id (numeric string) or epic Jira key. */
+  id: string;
+}
+
+function assertSprintId(id: string): number {
+  const num = parseInt(id, 10);
+  if (isNaN(num)) {
+    throw new SyncValidationError("sprintId must be a number");
+  }
+  return num;
+}
+
+/**
+ * Lightweight membership plan for a sprint or epic: the current Jira issue keys in
+ * rank order. Cheap (a couple of paginated timestamp calls, no upserts) so the
+ * client can split the work into tranches and show progress before syncing.
+ */
+export async function planGroupKeys(target: GroupSyncTarget, requestSignal?: AbortSignal): Promise<string[]> {
+  if (!target.id) {
+    throw new SyncValidationError(`${target.kind} id is required`);
+  }
+  if (target.kind === "sprint") {
+    const sprintId = assertSprintId(target.id);
+    const rows = await jiraClient.getSprintIssueTimestamps(sprintId, requestSignal);
+    return rows.map((r) => r.key);
+  }
+  const rows = await jiraClient.getEpicIssueTimestamps(target.id, requestSignal);
+  return rows.map((r) => r.key);
+}
+
+/**
+ * Final pass of a tranched group sync. The tranches sync each ticket's own fields
+ * (including its parent sprint/epic), so additions and field changes are already
+ * handled; this step (a) restores rank order from the plan and (b) reconciles
+ * tickets that have left the sprint/epic in Jira. Returns how many tickets left.
+ */
+export async function reconcileGroupMembership(
+  target: GroupSyncTarget,
+  currentKeys: string[],
+  requestSignal?: AbortSignal,
+): Promise<{ removed: number }> {
+  if (!target.id) {
+    throw new SyncValidationError(`${target.kind} id is required`);
+  }
+
+  const logId = `sync-${crypto.randomUUID()}`;
+  const startedAt = new Date().toISOString();
+  await db.insert(activityLog).values({
+    id: logId,
+    // The activity_log.type CHECK constraint has no dedicated epic value, so epic
+    // reconciles log as "ticket-sync" (matching the existing epic sync route); the
+    // scope column carries the epic key for identification.
+    type: target.kind === "epic" ? "ticket-sync" : "sprint-sync",
+    scope: target.id,
+    status: "running",
+    startedAt,
+  });
+
+  const controller = registerSync(logId);
+  requestSignal?.addEventListener("abort", () => controller.abort(), { once: true });
+
+  try {
+    if (target.kind === "sprint") assertSprintId(target.id);
+
+    // Restore rank order from the plan (tranche sync does not set rank).
+    for (let i = 0; i < currentKeys.length; i++) {
+      await db.update(ticket).set({ jiraRank: i }).where(eq(ticket.jiraKey, currentKeys[i]));
+    }
+
+    const currentSet = new Set(currentKeys);
+    const membershipColumn = target.kind === "sprint" ? ticket.sprintName : ticket.epicKey;
+    const localMembers = await db
+      .select({ jiraKey: ticket.jiraKey })
+      .from(ticket)
+      .where(eq(membershipColumn, target.id));
+
+    const left = localMembers.filter((t) => !currentSet.has(t.jiraKey));
+
+    let removedFromJira = 0;
+    // For a sprint target, the synced sprint plus any sprint a departing ticket
+    // moves to may be missing from the cached list; backfill them at the end.
+    const discoveredSprintIds = new Set<string>(target.kind === "sprint" ? [target.id] : []);
+    for (const { jiraKey: key } of left) {
+      try {
+        const issue = await jiraClient.getIssue(key, controller.signal);
+        if (target.kind === "sprint") {
+          const sprint = extractSprint(issue.fields);
+          const newSprintName = sprint ? String(sprint.id) : "";
+          if (sprint) cacheSprintName(String(sprint.id), sprint.name);
+          if (newSprintName) discoveredSprintIds.add(newSprintName);
+          await db.update(ticket).set({ sprintName: newSprintName }).where(eq(ticket.jiraKey, key));
+        } else {
+          const epicData = extractEpicLink(issue.fields);
+          await db.update(ticket)
+            .set({ epic: epicData?.name ?? null, epicKey: epicData?.key ?? null })
+            .where(eq(ticket.jiraKey, key));
+        }
+      } catch (err) {
+        if (err instanceof JiraApiError && err.status === 404) {
+          await db.update(ticket)
+            .set({ removedFromJiraAt: new Date().toISOString() })
+            .where(eq(ticket.jiraKey, key));
+          removedFromJira++;
+        } else {
+          throw err;
+        }
+      }
+    }
+
+    await backfillUnknownSprints(discoveredSprintIds, controller.signal);
+
+    const durationMs = Date.now() - new Date(startedAt).getTime();
+    await db.update(activityLog).set({
+      status: "success",
+      summary: `${target.kind} ${target.id}: ${currentKeys.length} in scope, ${left.length} left`,
+      durationMs,
+      completedAt: new Date().toISOString(),
+    }).where(eq(activityLog.id, logId));
+
+    invalidateSearchCache();
+    cache.invalidate("/api/tickets");
+
+    return { removed: left.length };
+  } catch (err) {
+    if (err instanceof SyncValidationError) throw err;
+    if (err instanceof DOMException && err.name === "AbortError") {
+      throw new SyncValidationError("Sync cancelled", 499);
+    }
+    const errorMessage = err instanceof Error ? err.message : "Unknown error";
+    const durationMs = Date.now() - new Date(startedAt).getTime();
+    await db.update(activityLog).set({
+      status: "failed",
+      errorDetail: errorMessage,
+      durationMs,
+      completedAt: new Date().toISOString(),
+    }).where(eq(activityLog.id, logId));
+    logger.error("jira", "Group reconcile failed", errorMessage);
+    throw new SyncValidationError("Group reconcile failed", 500);
   } finally {
     unregisterSync(logId);
   }

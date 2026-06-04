@@ -2,8 +2,9 @@
 
 import { memo, useRef, useState, type ReactNode } from "react";
 import type { Ticket, Sprint } from "@/types/ticket";
+import type { GroupSyncProgress, GroupSyncResult, GroupSyncState } from "@/lib/group-sync";
 import { getSpColor, getBvColor } from "@/types/ticket";
-import { ChevronRight, ChevronDown, Pin, AlertTriangle, MoreHorizontal } from "lucide-react";
+import { ChevronRight, ChevronDown, Pin, AlertTriangle, MoreHorizontal, RefreshCw } from "lucide-react";
 import { StatPill, StatusPill } from "./SprintStatPill";
 import { MetricBadge } from "@/components/shared/MetricBadge";
 import { Tooltip } from "@/components/shared/Tooltip";
@@ -46,6 +47,13 @@ export interface GroupStatBarProps {
   onEditSprintDetails?: () => void;
   /** Closes (finishes) this group's sprint. Only surfaced for active sprints. */
   onCloseSprint?: () => void;
+  /**
+   * Runs a tranched sync of this group (sprint or epic) from Jira, reporting
+   * progress. When provided, the "..." menu's first level exposes a Sync action.
+   */
+  onSync?: (onProgress: (progress: GroupSyncProgress) => void) => Promise<GroupSyncResult>;
+  /** What the group represents; drives the sync label. Defaults from `sprint`. */
+  syncKind?: "sprint" | "epic";
   /** Action pinned into the right cluster between the warning and the "..." menu (e.g. a create "+"). */
   createAction?: ReactNode;
 }
@@ -88,10 +96,31 @@ export const GroupStatBar = memo(function GroupStatBar({
   sprint,
   onEditSprintDetails,
   onCloseSprint,
+  onSync,
+  syncKind,
   createAction,
 }: GroupStatBarProps) {
   const [detailsOpen, setDetailsOpen] = useState(false);
   const menuButtonRef = useRef<HTMLButtonElement>(null);
+  // The sync lifecycle lives here (not in the popover) so a spinner can show in the
+  // header bar while the menu is closed.
+  const [syncState, setSyncState] = useState<GroupSyncState>("idle");
+  const [syncProgress, setSyncProgress] = useState<GroupSyncProgress | null>(null);
+  const [syncResult, setSyncResult] = useState<GroupSyncResult | null>(null);
+
+  async function runSync() {
+    if (!onSync || syncState === "running") return;
+    setSyncState("running");
+    setSyncResult(null);
+    setSyncProgress({ phase: "planning", done: 0, total: 0 });
+    try {
+      const res = await onSync(setSyncProgress);
+      setSyncResult(res);
+      setSyncState("done");
+    } catch {
+      setSyncState("error");
+    }
+  }
   const totalPoints = tickets.reduce((sum, t) => sum + (t.storyPoints ?? 0), 0);
   const bvTickets = tickets.filter((t) => t.businessValue != null && t.businessValue >= 1 && t.jiraStatus !== "DEPRECATED");
   const bvTotal = bvTickets.reduce((sum, t) => sum + (t.businessValue ?? 0), 0);
@@ -99,7 +128,18 @@ export const GroupStatBar = memo(function GroupStatBar({
   // Average effort per estimated (pointed, non-deprecated) ticket, surfaced on the SP badge hover.
   const spTickets = tickets.filter((t) => t.storyPoints != null && t.storyPoints > 0 && t.jiraStatus !== "DEPRECATED");
   const spAvg = spTickets.length > 0 ? (spTickets.reduce((sum, t) => sum + (t.storyPoints ?? 0), 0) / spTickets.length).toFixed(1) : null;
-  const showSprintMenu = sprint != null && (onEditSprintDetails != null || onCloseSprint != null);
+  const showSprintMenu = onSync != null || (sprint != null && (onEditSprintDetails != null || onCloseSprint != null));
+  const menuKind = syncKind ?? (sprint != null ? "sprint" : "epic");
+  // Progress-aware label for the header spinner: surfaces how many tickets are done
+  // versus the total while the tranches run.
+  const syncTooltip =
+    syncProgress?.phase === "planning"
+      ? `Preparing to sync ${menuKind}…`
+      : syncProgress?.phase === "reconciling"
+        ? `Finishing ${menuKind} sync…`
+        : syncProgress && syncProgress.total > 0
+          ? `Synced ${syncProgress.done} of ${syncProgress.total} tickets`
+          : `Syncing ${menuKind} from Jira`;
   const todoCount = tickets.filter((t) => t.jiraStatus === "TO DO").length;
   const inProgressCount = tickets.filter((t) => t.jiraStatus === "IN PROGRESS").length;
   const testCount = tickets.filter((t) => t.jiraStatus === "TEST").length;
@@ -296,15 +336,37 @@ export const GroupStatBar = memo(function GroupStatBar({
             </button>
           </Tooltip>
         )}
+        {syncState === "running" && (
+          <Tooltip content={syncTooltip}>
+            <span
+              role="status"
+              aria-label={syncTooltip}
+              className="flex h-6 w-6 shrink-0 items-center justify-center text-[var(--color-brand-400)]"
+            >
+              <RefreshCw size={13} strokeWidth={2} className="motion-safe:animate-spin" aria-hidden />
+            </span>
+          </Tooltip>
+        )}
         {createAction}
         {showSprintMenu && (
           <div className="relative">
             <button
               ref={menuButtonRef}
               type="button"
-              onClick={(e) => { e.stopPropagation(); setDetailsOpen((v) => !v); }}
-              title="Sprint goal & dates"
-              aria-label="Sprint goal and dates"
+              onClick={(e) => {
+                e.stopPropagation();
+                const opening = !detailsOpen;
+                setDetailsOpen(opening);
+                // Clear a finished result when reopening so the menu reads fresh; never
+                // interrupt an in-flight sync.
+                if (opening && syncState !== "running") {
+                  setSyncState("idle");
+                  setSyncProgress(null);
+                  setSyncResult(null);
+                }
+              }}
+              title={menuKind === "epic" ? "Epic options" : "Sprint options"}
+              aria-label={menuKind === "epic" ? "Epic options" : "Sprint options"}
               aria-haspopup="menu"
               aria-expanded={detailsOpen}
               className={`flex h-6 w-6 shrink-0 items-center justify-center rounded-md cursor-pointer focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-[var(--color-brand-400)] ${
@@ -317,12 +379,22 @@ export const GroupStatBar = memo(function GroupStatBar({
               <MoreHorizontal size={14} strokeWidth={2} aria-hidden />
             </button>
             <SprintDetailsPopover
-              sprint={sprint!}
+              kind={menuKind}
               open={detailsOpen}
               onClose={() => setDetailsOpen(false)}
-              onEdit={() => onEditSprintDetails?.()}
-              onCloseSprint={onCloseSprint ? () => onCloseSprint() : undefined}
+              canSync={onSync != null}
+              syncState={syncState}
+              syncProgress={syncProgress}
+              syncResult={syncResult}
+              onRunSync={runSync}
               anchorRef={menuButtonRef}
+              {...(sprint != null
+                ? {
+                    sprint,
+                    onEdit: onEditSprintDetails ? () => onEditSprintDetails() : undefined,
+                    onCloseSprint: onCloseSprint ? () => onCloseSprint() : undefined,
+                  }
+                : {})}
             />
           </div>
         )}

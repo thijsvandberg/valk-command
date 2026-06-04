@@ -1,4 +1,4 @@
-import { render, screen, fireEvent, act } from "@testing-library/react";
+import { render, screen, fireEvent, act, waitFor } from "@testing-library/react";
 import { describe, it, expect, vi } from "vitest";
 import { GroupStatBar } from "./GroupStatBar";
 import type { Ticket, Sprint } from "@/types/ticket";
@@ -264,9 +264,9 @@ describe("GroupStatBar", () => {
       goal: "Ship the thing",
     };
 
-    it("does not render the menu without a sprint", () => {
+    it("does not render the menu without a sprint or sync action", () => {
       render(<GroupStatBar tickets={TICKETS} label="BT: 138" />);
-      expect(screen.queryByLabelText("Sprint goal and dates")).toBeNull();
+      expect(screen.queryByLabelText("Sprint options")).toBeNull();
     });
 
     it("opens the details popover and triggers edit", () => {
@@ -279,7 +279,7 @@ describe("GroupStatBar", () => {
           onEditSprintDetails={onEditSprintDetails}
         />,
       );
-      fireEvent.click(screen.getByLabelText("Sprint goal and dates"));
+      fireEvent.click(screen.getByLabelText("Sprint options"));
       expect(screen.getByText("Ship the thing")).toBeInTheDocument();
       fireEvent.click(screen.getByText("Edit details"));
       expect(onEditSprintDetails).toHaveBeenCalledTimes(1);
@@ -296,9 +296,70 @@ describe("GroupStatBar", () => {
           onCloseSprint={onCloseSprint}
         />,
       );
-      fireEvent.click(screen.getByLabelText("Sprint goal and dates"));
+      fireEvent.click(screen.getByLabelText("Sprint options"));
       fireEvent.click(screen.getByText("Close sprint"));
       expect(onCloseSprint).toHaveBeenCalledTimes(1);
+    });
+
+    it("exposes a Sync action and runs it when provided", () => {
+      const onSync = vi.fn().mockResolvedValue({ synced: 0, removed: 0 });
+      render(
+        <GroupStatBar
+          tickets={TICKETS}
+          label="BT: 138"
+          sprint={SPRINT}
+          onEditSprintDetails={vi.fn()}
+          onSync={onSync}
+        />,
+      );
+      fireEvent.click(screen.getByLabelText("Sprint options"));
+      fireEvent.click(screen.getByText("Sync sprint"));
+      expect(onSync).toHaveBeenCalledTimes(1);
+    });
+
+    it("shows a header spinner with progress while a sync runs, persisting after the menu closes", async () => {
+      let resolve!: (v: { synced: number; removed: number }) => void;
+      let report!: (p: { phase: string; done: number; total: number }) => void;
+      const onSync = vi.fn().mockImplementation((onProgress) => {
+        report = onProgress;
+        return new Promise((r) => { resolve = r; });
+      });
+      render(
+        <GroupStatBar
+          tickets={TICKETS}
+          label="BT: 138"
+          sprint={SPRINT}
+          onEditSprintDetails={vi.fn()}
+          onSync={onSync}
+        />,
+      );
+
+      expect(screen.queryByRole("status")).toBeNull();
+      fireEvent.click(screen.getByLabelText("Sprint options"));
+      fireEvent.click(screen.getByText("Sync sprint"));
+      // Spinner appears in the header bar...
+      expect(screen.getByRole("status")).toBeInTheDocument();
+      // ...with a progress-aware tooltip/label once tickets start syncing.
+      await act(async () => { report({ phase: "syncing", done: 10, total: 22 }); });
+      expect(screen.getByRole("status")).toHaveAttribute("aria-label", "Synced 10 of 22 tickets");
+      // ...and it stays even after the menu is dismissed.
+      fireEvent.click(screen.getByLabelText("Sprint options"));
+      expect(screen.getByRole("status")).toBeInTheDocument();
+
+      await act(async () => {
+        resolve({ synced: 22, removed: 0 });
+      });
+      await waitFor(() => expect(screen.queryByRole("status")).toBeNull());
+    });
+
+    it("renders an epic options menu with sync only", () => {
+      const onSync = vi.fn().mockResolvedValue({ synced: 0, removed: 0 });
+      render(
+        <GroupStatBar tickets={TICKETS} label="My Epic" syncKind="epic" onSync={onSync} />,
+      );
+      fireEvent.click(screen.getByLabelText("Epic options"));
+      expect(screen.getByText("Sync epic")).toBeInTheDocument();
+      expect(screen.queryByText("Settings")).not.toBeInTheDocument();
     });
   });
 
