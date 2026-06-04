@@ -141,3 +141,9 @@ Two refinements requested after the initial implementation, both mirroring the s
   the cursor's half of the hovered row (`insertAfter`, from the dragged vs over rect centers)
   instead of always inserting before, so a sprint holding one item can be dropped onto from
   either side. Threaded through `resolveDragEnd` (rankBefore vs rankAfter) and `insertLineForRow`.
+- [x] **Smoother target acquisition.** Replaced `pointerWithin` with a `closestCenter`-over-rows
+  detector (`epic-children-collision.ts`, mirroring the sprint board's `boardCollisionDetection`).
+  `pointerWithin` only registered a target while the cursor was strictly inside a row, so the
+  target dropped out in the gaps between rows and the user had to wiggle to re-acquire it;
+  `closestCenter` always locks onto the nearest row. Group cards remain a fallback for rowless
+  groups (none exist in this view today). Unit-tested with a mocked `closestCenter`.

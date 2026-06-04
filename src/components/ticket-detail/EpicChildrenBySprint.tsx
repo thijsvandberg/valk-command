@@ -15,7 +15,6 @@ import {
   DragOverlay,
   PointerSensor,
   KeyboardSensor,
-  pointerWithin,
   useSensor,
   useSensors,
   useDroppable,
@@ -25,6 +24,7 @@ import {
 } from "@dnd-kit/core";
 import { SortableContext, useSortable, verticalListSortingStrategy } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
+import { epicChildrenCollisionDetection } from "./epic-children-collision";
 import { Zap, CircleDot, CalendarRange, GripVertical, Plus } from "lucide-react";
 
 export type { ChildReorder, ChildMoveToPosition };
@@ -44,6 +44,8 @@ interface EpicChildrenBySprintProps {
   onSelect?: (key: string) => void;
   /** Move a child to a sprint (id or "__backlog__"). Enables drag + context menu. */
   onMoveChild?: (childKey: string, targetSprintId: string) => void;
+  /** Pinned (slot) sprint IDs, in pinned order; shown first in the row context menu's sprint list. */
+  pinnedSprintIds?: string[];
   /** Reorder a child within its own sprint group via Jira rank. Enables drag-to-reorder. */
   onReorderChild?: (reorder: ChildReorder) => void;
   /** Move a child into another sprint and land it at a specific position in one drop. */
@@ -253,6 +255,7 @@ export function EpicChildrenBySprint({
   onReadinessChange,
   onSelect,
   onMoveChild,
+  pinnedSprintIds,
   onReorderChild,
   onMoveChildToPosition,
   onMoveError,
@@ -563,7 +566,7 @@ export function EpicChildrenBySprint({
       {dndEnabled ? (
         <DndContext
           sensors={sensors}
-          collisionDetection={pointerWithin}
+          collisionDetection={epicChildrenCollisionDetection}
           onDragStart={handleDragStart}
           onDragOver={handleDragOver}
           onDragEnd={handleDragEnd}
@@ -588,6 +591,7 @@ export function EpicChildrenBySprint({
           <TicketActionMenuContent
             onMoveSprint={(sprintId) => onMoveChild(rowMenu.childKey, sprintId)}
             sprints={sprints}
+            pinnedSprintIds={pinnedSprintIds}
             close={() => setRowMenu(null)}
           />
         </CursorMenu>
