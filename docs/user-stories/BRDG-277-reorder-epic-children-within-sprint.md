@@ -114,9 +114,9 @@ behaviour.
 ## Checklist
 
 - [x] Add `jiraRank` to `EpicChild` type, populate in `resolveEpicChildren`, sort epic-children query by rank
-- [ ] Add `SortableContext` + `useSortable` rows to `EpicChildrenBySprint` (sprint view), preserving cross-sprint move
-- [ ] Branch drag-end: same group -> rank reorder, different group -> existing move
-- [ ] Wire reorder handler in `EpicChildrenSection` calling `jira.rank()` with optimistic update + revert/error toast
-- [ ] Tests: children load in rank order; same-group drop calls `jira.rank` with correct anchor; cross-group drop still moves sprint; closed-sprint drop rejected
+- [x] Add `SortableContext` + `useSortable` rows to `EpicChildrenBySprint` (sprint view), preserving cross-sprint move
+- [x] Branch drag-end: same group -> rank reorder, different group -> existing move (extracted to pure `resolveDragEnd`)
+- [x] Wire reorder handler in `EpicChildrenSection` calling `jira.rank()` with optimistic update + revert/error toast
+- [x] Tests: children load in rank order; same-group drop calls `jira.rank` with correct anchor; cross-group drop still moves sprint; closed-sprint drop rejected
 - [ ] Update relevant docs in `/docs`
 - [ ] `npm run lint`, `npm run typecheck`, `npm run test`, `npm run build` all pass

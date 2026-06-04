@@ -14,7 +14,7 @@ import { useToast } from "@/hooks/useToast";
 import { ChildIssueRow } from "./ChildIssueRow";
 import { ChildIssueComposer } from "./ChildIssueComposer";
 import { ChildIssueListHeader, type ChildIssueViewMode } from "./ChildIssueListHeader";
-import { EpicChildrenBySprint } from "./EpicChildrenBySprint";
+import { EpicChildrenBySprint, type ChildReorder } from "./EpicChildrenBySprint";
 import type { StatusFilter } from "./FieldFilterPopover";
 import { BulkActionBar } from "@/components/sprint-board/BulkActionBar";
 import { AddToRefinementModal } from "@/components/refinement-session/AddToRefinementModal";
@@ -25,6 +25,7 @@ import { mapJiraSprints, bulkReviewStories, bulkGenerateSubtasks } from "@/compo
 import { tickets, jira, apiFetch, ApiError } from "@/lib/api-client";
 import { getJiraUrl } from "@/lib/jira-url";
 import { applyLocalMoves, sprintNameForTarget } from "@/lib/epic-children-move";
+import { applyLocalOrder } from "@/lib/epic-children-reorder";
 import { groupChildrenBySprint } from "@/lib/epic-children-grouping";
 import { Loader2, Search, AlertTriangle } from "lucide-react";
 
@@ -72,6 +73,9 @@ export function EpicChildrenSection({
   // Optimistic sprint reassignments (childKey -> new sprint name, or null for backlog),
   // applied to the by-sprint view until the refetched children reflect the move.
   const [localMoves, setLocalMoves] = useState<Record<string, string | null>>({});
+  // Optimistic within-group reorders (group bucket key -> ordered child keys),
+  // applied until the refetched children's rank order confirms the new sequence.
+  const [localOrder, setLocalOrder] = useState<Record<string, string[]>>({});
   // Optimistic SP/BV edits (childKey -> overridden metrics), applied immediately so
   // the badge appears on click instead of waiting for the refetch round-trip.
   const [localMetrics, setLocalMetrics] = useState<
@@ -96,6 +100,7 @@ export function EpicChildrenSection({
 
   const { visible: visibleFields, toggleField } = useSectionVisibility("epic-children", DEFAULT_VISIBLE);
   const [viewMode, setViewMode] = useLocalStorage<ChildIssueViewMode>("epic-children-view", "list");
+  const [hideDeprecated, setHideDeprecated] = useLocalStorage<boolean>("epic-children-hide-deprecated", true);
   const { toast, toastLoading, showToast, dismissToast } = useToast();
 
   const { sprints: rawSprints } = useJiraSprints();
@@ -109,25 +114,33 @@ export function EpicChildrenSection({
     return override ? ({ ...item, ...override } as EpicChild | Subtask) : item;
   });
 
+  // Deprecated items are treated as noise (already excluded from progress/velocity),
+  // so they are hidden by default and can be revealed via the filter toggle.
+  const deprecatedCount = mergedItems.filter((i) => i.jiraStatus === "DEPRECATED").length;
+  const visibleItems = hideDeprecated
+    ? mergedItems.filter((i) => i.jiraStatus !== "DEPRECATED")
+    : mergedItems;
+
   const filtered = filter === "all"
-    ? mergedItems
-    : mergedItems.filter((i) => i.jiraStatus === filter);
+    ? visibleItems
+    : visibleItems.filter((i) => i.jiraStatus === filter);
 
   const statusCounts = {
-    all: mergedItems.length,
-    "TO DO": mergedItems.filter((i) => i.jiraStatus === "TO DO").length,
-    "IN PROGRESS": mergedItems.filter((i) => i.jiraStatus === "IN PROGRESS").length,
-    DONE: mergedItems.filter((i) => i.jiraStatus === "DONE").length,
+    all: visibleItems.length,
+    "TO DO": visibleItems.filter((i) => i.jiraStatus === "TO DO").length,
+    "IN PROGRESS": visibleItems.filter((i) => i.jiraStatus === "IN PROGRESS").length,
+    DONE: visibleItems.filter((i) => i.jiraStatus === "DONE").length,
   };
 
-  const isFiltered = filter !== "all";
+  const isFiltered = filter !== "all" || (hideDeprecated && deprecatedCount > 0);
 
   // --- Create child issue ---
 
-  // Create a child issue, optionally targeted at a sprint. When `target` is given,
-  // the optimistic placeholder carries the group's sprintName so the new row lands
-  // in the right sprint card immediately (the API returns a bare Subtask), and the
-  // sprintId is forwarded so Jira assigns the issue to that sprint.
+  // Create a child issue, optionally targeted at a sprint. The optimistic placeholder
+  // carries the group's sprintName so the new row lands in the right sprint card
+  // immediately (the API returns a bare Subtask), and the sprintId is forwarded so
+  // Jira assigns the issue to that sprint. New children start at readiness "drafting"
+  // (set server-side too), so the pill shows up the moment the row appears.
   const handleCreate = useCallback(
     (title: string, jiraType: string, target?: { sprintId: string | null; sprintName: string | null }) => {
       const trimmed = title.trim();
@@ -135,21 +148,19 @@ export function EpicChildrenSection({
 
       const type = jiraType.toLowerCase() as IssueType;
       const placeholderKey = `pending-${Date.now()}`;
-      const placeholder: Subtask | EpicChild = target
-        ? {
-            key: placeholderKey,
-            title: trimmed,
-            type,
-            jiraStatus: "TO DO",
-            assignee: null,
-            sprintName: target.sprintName,
-            storyPoints: null,
-            businessValue: null,
-            subtaskCount: 0,
-            readiness: null,
-            jiraRank: null,
-          }
-        : { key: placeholderKey, title: trimmed, type, jiraStatus: "TO DO", assignee: null };
+      const placeholder: EpicChild = {
+        key: placeholderKey,
+        title: trimmed,
+        type,
+        jiraStatus: "TO DO",
+        assignee: null,
+        sprintName: target?.sprintName ?? null,
+        storyPoints: null,
+        businessValue: null,
+        subtaskCount: 0,
+        readiness: "drafting",
+        jiraRank: null,
+      };
       setLocallyAdded((prev) => [...prev, placeholder]);
       setError(null);
 
@@ -159,9 +170,7 @@ export function EpicChildrenSection({
           setLocallyAdded((prev) =>
             prev.map((i) =>
               i.key === placeholderKey
-                ? target
-                  ? ({ ...created, sprintName: target.sprintName, storyPoints: null, businessValue: null, subtaskCount: 0, readiness: null, jiraRank: null } as EpicChild)
-                  : created
+                ? ({ ...created, sprintName: target?.sprintName ?? null, storyPoints: null, businessValue: null, subtaskCount: 0, readiness: "drafting", jiraRank: null } as EpicChild)
                 : i,
             ),
           );
@@ -380,6 +389,31 @@ export function EpicChildrenSection({
       });
   }, [sprints, onMutate]);
 
+  // Reorder a child within its sprint group via Jira rank (drag-to-reorder).
+  // Optimistically applies the new within-group order, then reverts and warns if
+  // the Jira round-trip fails. The sprint id (resolved from the group's name) lets
+  // the rank route refresh local ranks; it is omitted for the Unscheduled group.
+  const handleReorderChild = useCallback(
+    ({ activeKey, groupKey, sprintName, newOrder, rankBeforeKey, rankAfterKey }: ChildReorder) => {
+      setJiraWarning(null);
+      setLocalOrder((prev) => ({ ...prev, [groupKey]: newOrder }));
+      const sprintId = sprintName === null ? undefined : sprints.find((s) => s.name === sprintName)?.id;
+      jira.rank({ issueKeys: [activeKey], rankBeforeKey, rankAfterKey, ...(sprintId ? { sprintId } : {}) })
+        .then(() => onMutate())
+        .catch((err) => {
+          setLocalOrder((prev) => {
+            const next = { ...prev };
+            delete next[groupKey];
+            return next;
+          });
+          const detail = err instanceof ApiError ? err.message : "Jira API error";
+          setJiraWarning(`Failed to reorder ${activeKey}: ${detail}`);
+          console.error("Failed to reorder child:", err);
+        });
+    },
+    [sprints, onMutate],
+  );
+
   // Drop optimistic overrides once the refetched children confirm the new sprint,
   // so a stale override never masks server truth on later syncs.
   useEffect(() => {
@@ -400,6 +434,27 @@ export function EpicChildrenSection({
       return changed ? next : prev;
     });
   }, [items]);
+
+  // Drop a reorder override once the refetched children's rank order matches it for
+  // that group, so a stale override never masks server truth on later syncs.
+  useEffect(() => {
+    setLocalOrder((prev) => {
+      if (Object.keys(prev).length === 0) return prev;
+      const serverGroups = groupChildrenBySprint(items, sprints);
+      let changed = false;
+      const next = { ...prev };
+      for (const [groupKey, order] of Object.entries(prev)) {
+        const group = serverGroups.find((g) => g.key === groupKey);
+        if (!group) continue;
+        const serverKeys = group.items.filter((i) => !i.key.startsWith("pending-")).map((i) => i.key);
+        if (serverKeys.length === order.length && serverKeys.every((k, i) => k === order[i])) {
+          delete next[groupKey];
+          changed = true;
+        }
+      }
+      return changed ? next : prev;
+    });
+  }, [items, sprints]);
 
   // Drop optimistic SP/BV overrides once the refetched children confirm the value,
   // so a stale override never masks server truth on later syncs.
@@ -432,12 +487,12 @@ export function EpicChildrenSection({
   // The visible order differs between views (groups reorder rows), so range-select
   // walks the rendered order of the active view.
   const orderedVisibleKeys = useMemo(() => {
-    const base = applyLocalMoves(filtered, localMoves).filter((i) => !i.key.startsWith("pending-"));
+    const base = applyLocalOrder(applyLocalMoves(filtered, localMoves), localOrder).filter((i) => !i.key.startsWith("pending-"));
     if (viewMode === "sprint") {
       return groupChildrenBySprint(base, sprints).flatMap((g) => g.items.map((i) => i.key));
     }
     return base.map((i) => i.key);
-  }, [filtered, localMoves, viewMode, sprints]);
+  }, [filtered, localMoves, localOrder, viewMode, sprints]);
 
   const someChecked = checkedKeys.size > 0;
   const allChecked = orderedVisibleKeys.length > 0 && orderedVisibleKeys.every((k) => checkedKeys.has(k));
@@ -731,7 +786,7 @@ export function EpicChildrenSection({
   const sprintContent = (
     <div className="mt-3 flex flex-col gap-3">
       <EpicChildrenBySprint
-        items={applyLocalMoves(filtered, localMoves)}
+        items={applyLocalOrder(applyLocalMoves(filtered, localMoves), localOrder)}
         sprints={sprints}
         ticketKey={ticketKey}
         visibleFields={visibleFields}
@@ -740,6 +795,7 @@ export function EpicChildrenSection({
         onReadinessChange={handleReadinessChange}
         onSelect={onSelectTicket}
         onMoveChild={handleMoveChild}
+        onReorderChild={handleReorderChild}
         onMoveError={setJiraWarning}
         onCreateChild={(target, title, jiraType) => handleCreate(title, jiraType, target)}
         checkedKeys={checkedKeys}
@@ -767,6 +823,9 @@ export function EpicChildrenSection({
         fields={EPIC_CHILD_FIELDS}
         visibleFields={visibleFields}
         onToggleField={(id, show) => toggleField(id, show)}
+        hideDeprecated={hideDeprecated}
+        onToggleHideDeprecated={setHideDeprecated}
+        deprecatedCount={deprecatedCount}
         viewMode={viewMode}
         onViewModeChange={setViewMode}
       />

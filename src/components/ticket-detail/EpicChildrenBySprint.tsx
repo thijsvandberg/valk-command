@@ -8,7 +8,7 @@ import { CursorMenu, TicketActionMenuContent } from "@/components/sprint-board/t
 import { ChildIssueRow } from "./ChildIssueRow";
 import { ChildIssueComposer } from "./ChildIssueComposer";
 import { groupChildrenBySprint, type ChildGroup } from "@/lib/epic-children-grouping";
-import { resolveMove } from "@/lib/epic-children-move";
+import { resolveDragEnd, type ChildReorder } from "@/lib/epic-children-reorder";
 import { useSessionStorage } from "@/hooks/useSessionStorage";
 import {
   DndContext,
@@ -18,12 +18,15 @@ import {
   pointerWithin,
   useSensor,
   useSensors,
-  useDraggable,
   useDroppable,
   type DragStartEvent,
   type DragEndEvent,
 } from "@dnd-kit/core";
+import { SortableContext, useSortable, verticalListSortingStrategy } from "@dnd-kit/sortable";
+import { CSS } from "@dnd-kit/utilities";
 import { Zap, CircleDot, CalendarRange, GripVertical, Plus } from "lucide-react";
+
+export type { ChildReorder };
 
 interface EpicChildrenBySprintProps {
   /** Already filtered child issues (status filter applied by the parent). */
@@ -40,6 +43,8 @@ interface EpicChildrenBySprintProps {
   onSelect?: (key: string) => void;
   /** Move a child to a sprint (id or "__backlog__"). Enables drag + context menu. */
   onMoveChild?: (childKey: string, targetSprintId: string) => void;
+  /** Reorder a child within its own sprint group via Jira rank. Enables drag-to-reorder. */
+  onReorderChild?: (reorder: ChildReorder) => void;
   /** Surfaces a move rejection (e.g. closed sprint) to the parent's toast. */
   onMoveError?: (message: string) => void;
   /**
@@ -101,13 +106,16 @@ function SprintStateChip({ state }: { state: Sprint["state"] }) {
   );
 }
 
-// A row that can be picked up and dropped onto another sprint group. Drag bits are
-// spread onto the whole row (PointerSensor's 8px threshold keeps a plain click for
-// selection), and the row also stays the keyboard activator via dnd-kit attributes.
-function DraggableChildRow({
+// A row that can be picked up to reorder within its sprint group or dropped onto
+// another sprint group. useSortable makes the row both draggable and a drop target,
+// so a sibling row resolves the reorder anchor while a group card resolves a move.
+// Drag bits go on the grip (PointerSensor's 8px threshold keeps a plain click for
+// selection); the grip is also the keyboard activator via dnd-kit attributes.
+function SortableChildRow({
   child,
   isLast,
   sprintName,
+  state,
   visibleFields,
   renderMetadata,
   onJiraStatusChange,
@@ -122,6 +130,7 @@ function DraggableChildRow({
   child: EpicChild | Subtask;
   isLast: boolean;
   sprintName: string | null;
+  state: Sprint["state"] | null;
   visibleFields: Set<string>;
   renderMetadata: (child: EpicChild | Subtask, hideSprint?: boolean) => ReactNode;
   onJiraStatusChange: (childKey: string, status: JiraStatus) => void;
@@ -134,9 +143,9 @@ function DraggableChildRow({
   onCheckboxClick?: (e: React.MouseEvent) => void;
 }) {
   const epic = isEpicChild(child) ? child : null;
-  const { attributes, listeners, setNodeRef, setActivatorNodeRef, isDragging } = useDraggable({
+  const { attributes, listeners, setNodeRef, setActivatorNodeRef, transform, transition, isDragging } = useSortable({
     id: child.key,
-    data: { sprintName },
+    data: { type: "child", sprintName, state },
   });
 
   return (
@@ -158,6 +167,7 @@ function DraggableChildRow({
       onCheckboxClick={onCheckboxClick}
       metadataSlot={renderMetadata(child, true)}
       className={isDragging ? "opacity-40" : ""}
+      style={{ transform: CSS.Translate.toString(transform), transition }}
       dndProps={{ ...attributes }}
       dragHandleSlot={
         <span
@@ -165,7 +175,7 @@ function DraggableChildRow({
           {...listeners}
           onClick={(e) => e.stopPropagation()}
           className="flex shrink-0 cursor-grab items-center text-text-muted hover:!opacity-100 focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-[var(--color-brand-400)] active:cursor-grabbing"
-          aria-label={`Move ${child.key} to another sprint`}
+          aria-label={`Drag ${child.key} to reorder or move it to another sprint`}
         >
           <GripVertical size={12} strokeWidth={1.5} />
         </span>
@@ -192,7 +202,7 @@ function DroppableGroup({
 }) {
   const { setNodeRef, isOver } = useDroppable({
     id: group.key,
-    data: { sprintName: group.sprintName, state: group.state },
+    data: { type: "group", sprintName: group.sprintName, state: group.state },
   });
   const isClosed = group.state === "closed";
   const highlight = isOver && !isClosed;
@@ -219,6 +229,7 @@ export function EpicChildrenBySprint({
   onReadinessChange,
   onSelect,
   onMoveChild,
+  onReorderChild,
   onMoveError,
   onCreateChild,
   checkedKeys,
@@ -260,7 +271,7 @@ export function EpicChildrenBySprint({
 
   const groups = groupChildrenBySprint(items, sprints);
 
-  const dndEnabled = !!onMoveChild;
+  const dndEnabled = !!onMoveChild || !!onReorderChild;
 
   const handleDragStart = useCallback((e: DragStartEvent) => {
     draggingRef.current = true;
@@ -272,18 +283,30 @@ export function EpicChildrenBySprint({
       draggingRef.current = false;
       setActiveDragKey(null);
       const { active, over } = e;
-      if (!over || !onMoveChild) return;
+      if (!over) return;
 
+      const activeKey = String(active.id);
       const childSprintName = (active.data.current?.sprintName ?? null) as string | null;
-      const targetGroup = over.data.current as Pick<ChildGroup, "sprintName" | "state">;
-      const res = resolveMove({ childSprintName, targetGroup, sprints });
-      if (res.ok) {
-        onMoveChild(String(active.id), res.targetSprintId);
-      } else if (res.reason === "closed") {
-        onMoveError?.("Cannot move into a closed sprint.");
-      }
+      const overData = over.data.current as
+        | { type?: "child" | "group"; sprintName?: string | null; state?: Sprint["state"] | null }
+        | undefined;
+
+      const res = resolveDragEnd({
+        activeKey,
+        overId: String(over.id),
+        childSprintName,
+        overType: overData?.type,
+        overSprintName: overData?.sprintName ?? null,
+        overState: overData?.state ?? null,
+        groups,
+        sprints,
+      });
+
+      if (res.kind === "reorder") onReorderChild?.(res.reorder);
+      else if (res.kind === "move") onMoveChild?.(activeKey, res.targetSprintId);
+      else if (res.kind === "move-rejected") onMoveError?.("Cannot move into a closed sprint.");
     },
-    [onMoveChild, onMoveError, sprints],
+    [groups, onMoveChild, onReorderChild, onMoveError, sprints],
   );
 
   const handleDragCancel = useCallback(() => {
@@ -313,11 +336,12 @@ export function EpicChildrenBySprint({
 
     if (dndEnabled && !isPending) {
       return (
-        <DraggableChildRow
+        <SortableChildRow
           key={child.key}
           child={child}
           isLast={isLast}
           sprintName={group.sprintName}
+          state={group.state}
           visibleFields={visibleFields}
           renderMetadata={renderMetadata}
           onJiraStatusChange={onJiraStatusChange}
@@ -423,9 +447,21 @@ export function EpicChildrenBySprint({
           )}
         </>
       ) : undefined;
+    // Sortable ids are the non-pending rows actually rendered in this group, so
+    // dnd targets line up with the SortableContext's item list.
+    const sortableIds = dndEnabled
+      ? visibleItems.filter((c) => !c.key.startsWith("pending-")).map((c) => c.key)
+      : [];
+    const rows = visibleItems.map((child, idx) => renderRow(child, group, idx, visibleItems.length));
     const body = (
       <>
-        {visibleItems.map((child, idx) => renderRow(child, group, idx, visibleItems.length))}
+        {dndEnabled ? (
+          <SortableContext items={sortableIds} strategy={verticalListSortingStrategy}>
+            {rows}
+          </SortableContext>
+        ) : (
+          rows
+        )}
         {isComposerOpen && onCreateChild && (
           <ChildIssueComposer
             autoFocus

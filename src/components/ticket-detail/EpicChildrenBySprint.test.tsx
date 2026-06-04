@@ -98,7 +98,7 @@ describe("EpicChildrenBySprint move actions", () => {
 
   it("suppresses the context menu while a keyboard drag is active", () => {
     setup();
-    const handle = screen.getByLabelText("Move VPL-10 to another sprint");
+    const handle = screen.getByLabelText("Drag VPL-10 to reorder or move it to another sprint");
     handle.focus();
     // Space picks up the draggable via dnd-kit's KeyboardSensor (sets the drag flag).
     fireEvent.keyDown(handle, { key: " ", code: "Space" });

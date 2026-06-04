@@ -11,6 +11,7 @@ const mockUpdateStoryPoints = vi.fn();
 const mockUpdateMetadata = vi.fn();
 const mockGetSectionVisibility = vi.fn();
 const mockMoveSprint = vi.fn();
+const mockRank = vi.fn();
 const mockApiFetch = vi.fn();
 const mockAssign = vi.fn();
 const mockToggleFlag = vi.fn();
@@ -47,6 +48,7 @@ vi.mock("@/lib/api-client", () => ({
   },
   jira: {
     moveSprint: (...args: unknown[]) => mockMoveSprint(...args),
+    rank: (...args: unknown[]) => mockRank(...args),
     assign: (...args: unknown[]) => mockAssign(...args),
   },
   refinementSessions: {
@@ -99,6 +101,7 @@ describe("EpicChildrenSection", () => {
     mockSearchForLinkWithJira.mockResolvedValue({ results: [], hasMore: false });
     mockGetSectionVisibility.mockResolvedValue({ visible: null });
     mockMoveSprint.mockResolvedValue({});
+    mockRank.mockResolvedValue({});
     mockUpdateStoryPoints.mockResolvedValue({ storyPoints: null });
     mockUpdateMetadata.mockResolvedValue({});
     mockApiFetch.mockResolvedValue({});
@@ -271,6 +274,30 @@ describe("EpicChildrenSection", () => {
       expect(screen.getByText("VPL-10")).toBeInTheDocument();
       expect(screen.queryByText("VPL-11")).not.toBeInTheDocument();
       expect(screen.queryByText("VPL-12")).not.toBeInTheDocument();
+    });
+
+    it("hides deprecated children by default and shows them when the toggle is turned off", () => {
+      const withDeprecated: EpicChild[] = [
+        ...SAMPLE_CHILDREN,
+        { key: "VPL-99", title: "Old story", type: "story", jiraStatus: "DEPRECATED", assignee: null, storyPoints: null, businessValue: null, sprintName: null, subtaskCount: 0, readiness: null, jiraRank: null },
+      ];
+      renderSection(withDeprecated);
+
+      // Hidden by default
+      expect(screen.queryByText("VPL-99")).not.toBeInTheDocument();
+
+      openFilterPopover();
+      expect(screen.getByText("Hide deprecated")).toBeInTheDocument();
+
+      // Turning the toggle off reveals the deprecated child
+      fireEvent.click(screen.getByText("Hide deprecated"));
+      expect(screen.getByText("VPL-99")).toBeInTheDocument();
+    });
+
+    it("does not show the Hide deprecated toggle when there are no deprecated children", () => {
+      renderSection(SAMPLE_CHILDREN);
+      openFilterPopover();
+      expect(screen.queryByText("Hide deprecated")).not.toBeInTheDocument();
     });
 
     it("shows field visibility toggles", () => {
