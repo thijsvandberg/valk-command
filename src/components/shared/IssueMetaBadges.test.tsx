@@ -1,6 +1,6 @@
 import { render, screen } from "@testing-library/react";
 import { describe, it, expect } from "vitest";
-import { EpicBadge, SubtaskCountBadge, InRefinementBadge, SprintBadge, MetricChip } from "./IssueMetaBadges";
+import { EpicBadge, SubtaskCountBadge, InRefinementBadge, SprintBadge, MetricChip, SprintOrBacklogBadge, EpicChildCountBadge } from "./IssueMetaBadges";
 
 describe("IssueMetaBadges", () => {
   it("EpicBadge renders the epic name", () => {
@@ -27,6 +27,20 @@ describe("IssueMetaBadges", () => {
     const { rerender, container } = render(<SprintBadge name="BT: 140" />);
     expect(screen.getByText("BT: 140")).toBeInTheDocument();
     rerender(<SprintBadge name={null} />);
+    expect(container).toBeEmptyDOMElement();
+  });
+
+  it("SprintOrBacklogBadge shows the sprint name when set, Backlog otherwise", () => {
+    const { rerender } = render(<SprintOrBacklogBadge sprintName="BT: 140" />);
+    expect(screen.getByText("BT: 140")).toBeInTheDocument();
+    rerender(<SprintOrBacklogBadge sprintName={null} />);
+    expect(screen.getByText("Backlog")).toBeInTheDocument();
+  });
+
+  it("EpicChildCountBadge shows the count and hides at zero", () => {
+    const { rerender, container } = render(<EpicChildCountBadge count={7} />);
+    expect(screen.getByText("7")).toBeInTheDocument();
+    rerender(<EpicChildCountBadge count={0} />);
     expect(container).toBeEmptyDOMElement();
   });
 

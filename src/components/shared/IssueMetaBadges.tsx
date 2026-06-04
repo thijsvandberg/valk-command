@@ -4,7 +4,7 @@
 // One height + padding + icon size across epic / subtask-count / in-refinement / sprint /
 // SP / BV so the trailing badges always line up. Display-only; editing lives in the pickers.
 
-import { Gauge, Goal, Gem, IterationCw } from "lucide-react";
+import { Gauge, Goal, Gem, IterationCw, Layers, Inbox } from "lucide-react";
 import { IssueTypeIcon } from "@/components/shared/IssueTypeIcon";
 import { getSpColor, getBvColor } from "@/types/ticket";
 import { useEpicColor } from "@/hooks/useEpicColor";
@@ -60,6 +60,37 @@ export function SprintBadge({ name }: { name: string | null }) {
       <IterationCw size={10} strokeWidth={1.75} className="shrink-0 opacity-70" />
       <span className="max-w-[120px] truncate">{name}</span>
     </span>
+  );
+}
+
+// Sprint/backlog placement indicator (BRDG-298): shows the resolved sprint name
+// when the ticket sits in a sprint, otherwise a neutral "Backlog" chip. Distinct
+// icon (inbox) and muted treatment for backlog so a parked ticket reads as parked
+// rather than as just another empty sprint.
+export function SprintOrBacklogBadge({ sprintName }: { sprintName: string | null }) {
+  if (sprintName) return <SprintBadge name={sprintName} />;
+  return (
+    <Tooltip content="In the backlog (not assigned to a sprint)">
+      <span className={`${CHIP} gap-1 bg-overlay-subtle text-text-muted`}>
+        <Inbox size={10} strokeWidth={1.75} className="shrink-0 opacity-70" />
+        Backlog
+      </span>
+    </Tooltip>
+  );
+}
+
+// Epic child-story count (BRDG-298): how many tickets are parented to this epic.
+// Layers icon reads as "contains a stack of work". Rendered only for epic rows,
+// replacing the subtask-count badge (epics have stories, not subtasks).
+export function EpicChildCountBadge({ count }: { count: number }) {
+  if (count <= 0) return null;
+  return (
+    <Tooltip content={`${count} ${count === 1 ? "story" : "stories"} under this epic`}>
+      <span className={`${CHIP} gap-1 bg-overlay-default tabular-nums text-text-muted`}>
+        <Layers size={11} strokeWidth={1.75} className="shrink-0 opacity-80" />
+        {count}
+      </span>
+    </Tooltip>
   );
 }
 
