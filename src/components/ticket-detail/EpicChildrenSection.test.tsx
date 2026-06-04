@@ -61,9 +61,9 @@ vi.mock("@/lib/api-client", () => ({
 }));
 
 const SAMPLE_CHILDREN: EpicChild[] = [
-  { key: "VPL-10", title: "First story", type: "story", jiraStatus: "TO DO", assignee: null, storyPoints: 3, businessValue: 7, sprintName: "Sprint 1", subtaskCount: 2, readiness: null },
-  { key: "VPL-11", title: "Second task", type: "task", jiraStatus: "IN PROGRESS", assignee: null, storyPoints: null, businessValue: null, sprintName: null, subtaskCount: 0, readiness: "drafting" },
-  { key: "VPL-12", title: "Done story", type: "story", jiraStatus: "DONE", assignee: null, storyPoints: 5, businessValue: 6, sprintName: "Sprint 1", subtaskCount: 1, readiness: null },
+  { key: "VPL-10", title: "First story", type: "story", jiraStatus: "TO DO", assignee: null, storyPoints: 3, businessValue: 7, sprintName: "Sprint 1", subtaskCount: 2, readiness: null, jiraRank: null },
+  { key: "VPL-11", title: "Second task", type: "task", jiraStatus: "IN PROGRESS", assignee: null, storyPoints: null, businessValue: null, sprintName: null, subtaskCount: 0, readiness: "drafting", jiraRank: null },
+  { key: "VPL-12", title: "Done story", type: "story", jiraStatus: "DONE", assignee: null, storyPoints: 5, businessValue: 6, sprintName: "Sprint 1", subtaskCount: 1, readiness: null, jiraRank: null },
 ];
 
 function renderSection(items: EpicChild[] = []) {
@@ -600,8 +600,8 @@ describe("EpicChildrenSection", () => {
 
     it("orders sprint groups closed -> active (chronological)", async () => {
       const children: EpicChild[] = [
-        { key: "VPL-20", title: "Active item", type: "story", jiraStatus: "TO DO", assignee: null, storyPoints: 1, businessValue: 4, sprintName: "Sprint 1", subtaskCount: 0, readiness: null },
-        { key: "VPL-21", title: "Closed item", type: "story", jiraStatus: "DONE", assignee: null, storyPoints: 2, businessValue: 6, sprintName: "Sprint 2", subtaskCount: 0, readiness: null },
+        { key: "VPL-20", title: "Active item", type: "story", jiraStatus: "TO DO", assignee: null, storyPoints: 1, businessValue: 4, sprintName: "Sprint 1", subtaskCount: 0, readiness: null, jiraRank: null },
+        { key: "VPL-21", title: "Closed item", type: "story", jiraStatus: "DONE", assignee: null, storyPoints: 2, businessValue: 6, sprintName: "Sprint 2", subtaskCount: 0, readiness: null, jiraRank: null },
       ];
       renderSection(children);
       switchToSprintView();
@@ -692,8 +692,8 @@ describe("EpicChildrenSection", () => {
 
     it("filters a sprint group to its unpointed stories when the warning icon is clicked", async () => {
       const children: EpicChild[] = [
-        { key: "VPL-30", title: "Estimated story", type: "story", jiraStatus: "TO DO", assignee: null, storyPoints: 3, businessValue: null, sprintName: "Sprint 1", subtaskCount: 0, readiness: null },
-        { key: "VPL-31", title: "Unestimated story", type: "story", jiraStatus: "TO DO", assignee: null, storyPoints: null, businessValue: null, sprintName: "Sprint 1", subtaskCount: 0, readiness: null },
+        { key: "VPL-30", title: "Estimated story", type: "story", jiraStatus: "TO DO", assignee: null, storyPoints: 3, businessValue: null, sprintName: "Sprint 1", subtaskCount: 0, readiness: null, jiraRank: null },
+        { key: "VPL-31", title: "Unestimated story", type: "story", jiraStatus: "TO DO", assignee: null, storyPoints: null, businessValue: null, sprintName: "Sprint 1", subtaskCount: 0, readiness: null, jiraRank: null },
       ];
       renderSection(children);
       switchToSprintView();

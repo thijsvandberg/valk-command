@@ -147,6 +147,7 @@ export function EpicChildrenSection({
             businessValue: null,
             subtaskCount: 0,
             readiness: null,
+            jiraRank: null,
           }
         : { key: placeholderKey, title: trimmed, type, jiraStatus: "TO DO", assignee: null };
       setLocallyAdded((prev) => [...prev, placeholder]);
@@ -159,7 +160,7 @@ export function EpicChildrenSection({
             prev.map((i) =>
               i.key === placeholderKey
                 ? target
-                  ? ({ ...created, sprintName: target.sprintName, storyPoints: null, businessValue: null, subtaskCount: 0, readiness: null } as EpicChild)
+                  ? ({ ...created, sprintName: target.sprintName, storyPoints: null, businessValue: null, subtaskCount: 0, readiness: null, jiraRank: null } as EpicChild)
                   : created
                 : i,
             ),
@@ -797,6 +798,7 @@ export function EpicChildrenSection({
 
       {someChecked && (
         <BulkActionBar
+          floating
           count={checkedKeys.size}
           totalCount={orderedVisibleKeys.length}
           selectedPoints={selectedPoints}

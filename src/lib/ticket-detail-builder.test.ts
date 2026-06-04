@@ -1,5 +1,54 @@
-import { describe, it, expect } from "vitest";
-import { buildAssignee, attachmentColor, resolveAttachmentRefs } from "./ticket-detail-builder";
+import { describe, it, expect, vi, beforeEach } from "vitest";
+import { createTestDb } from "@/db/test-utils";
+import type { BetterSQLite3Database } from "drizzle-orm/better-sqlite3";
+import type * as schema from "@/db/schema";
+import { seedTicket } from "@/test/builders";
+
+let testDb: BetterSQLite3Database<typeof schema>;
+
+vi.mock("@/db", () => ({
+  get db() {
+    return testDb;
+  },
+}));
+
+vi.mock("server-only", () => ({}));
+vi.mock("@/lib/logger", () => ({ logger: { info: vi.fn(), warn: vi.fn(), error: vi.fn() } }));
+vi.mock("@/lib/jira-client", () => ({ jiraClient: { getIssue: vi.fn() } }));
+
+import { buildAssignee, attachmentColor, resolveAttachmentRefs, buildTicketDetail } from "./ticket-detail-builder";
+
+describe("buildTicketDetail epic children ordering", () => {
+  beforeEach(() => {
+    testDb = createTestDb();
+  });
+
+  it("returns epic children sorted by jiraRank and exposes the rank", async () => {
+    seedTicket(testDb, { jiraKey: "VPL-1", title: "Epic", type: "epic" });
+    // Seeded out of rank order to prove the query sorts, not insertion order.
+    seedTicket(testDb, { jiraKey: "VPL-30", title: "Third", epicKey: "VPL-1", jiraRank: 2 });
+    seedTicket(testDb, { jiraKey: "VPL-10", title: "First", epicKey: "VPL-1", jiraRank: 0 });
+    seedTicket(testDb, { jiraKey: "VPL-20", title: "Second", epicKey: "VPL-1", jiraRank: 1 });
+
+    const built = await buildTicketDetail("VPL-1");
+    expect(built).not.toBeNull();
+    const children = built!.data.epicChildren;
+    expect(children.map((c) => c.key)).toEqual(["VPL-10", "VPL-20", "VPL-30"]);
+    expect(children.map((c) => c.jiraRank)).toEqual([0, 1, 2]);
+  });
+
+  it("sorts unranked children last with a deterministic key tiebreaker", async () => {
+    seedTicket(testDb, { jiraKey: "VPL-1", title: "Epic", type: "epic" });
+    seedTicket(testDb, { jiraKey: "VPL-40", title: "Unranked B", epicKey: "VPL-1", jiraRank: null });
+    seedTicket(testDb, { jiraKey: "VPL-11", title: "Ranked", epicKey: "VPL-1", jiraRank: 5 });
+    seedTicket(testDb, { jiraKey: "VPL-39", title: "Unranked A", epicKey: "VPL-1", jiraRank: null });
+
+    const built = await buildTicketDetail("VPL-1");
+    const children = built!.data.epicChildren;
+    expect(children.map((c) => c.key)).toEqual(["VPL-11", "VPL-39", "VPL-40"]);
+    expect(children.map((c) => c.jiraRank)).toEqual([5, null, null]);
+  });
+});
 
 describe("buildAssignee", () => {
   it("returns null for null name", () => {

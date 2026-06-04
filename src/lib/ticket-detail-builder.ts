@@ -75,6 +75,9 @@ async function runTicketQueries(key: string) {
     }),
     db.query.ticket.findMany({
       where: (row, { eq: eqFn }) => eqFn(row.epicKey, key),
+      // Rank order drives the epic's by-sprint view; unranked rows sort last, with
+      // a deterministic jiraKey tiebreaker so the order is reproducible.
+      orderBy: (row, { asc, sql: sqlFn }) => [sqlFn`${row.jiraRank} IS NULL`, asc(row.jiraRank), asc(row.jiraKey)],
     }),
     db.select().from(ticketLocalEdit).where(eq(ticketLocalEdit.ticketKey, key)),
     db.query.storyVersion.findFirst({
@@ -260,6 +263,7 @@ async function resolveEpicChildren(epicChildRows: Awaited<ReturnType<typeof runT
     sprintName: c.sprintName ? (sprintIdToName.get(c.sprintName) ?? c.sprintName) : null,
     subtaskCount: subtaskCountMap.get(c.jiraKey) ?? 0,
     readiness: readinessMap.get(c.jiraKey) ?? null,
+    jiraRank: c.jiraRank ?? null,
   }));
 }
 

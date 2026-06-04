@@ -30,6 +30,7 @@ function child(key: string, sprintName: string | null): EpicChild {
     sprintName,
     subtaskCount: 0,
     readiness: null,
+    jiraRank: null,
   };
 }
 

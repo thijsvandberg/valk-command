@@ -14,6 +14,7 @@ function child(key: string, sprintName: string | null, storyPoints: number | nul
     sprintName,
     subtaskCount: 0,
     readiness: null,
+    jiraRank: null,
   };
 }
 

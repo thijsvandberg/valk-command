@@ -167,6 +167,9 @@ export interface EpicChild extends Subtask {
   sprintName: string | null;
   subtaskCount: number;
   readiness: TicketReadiness | null;
+  // Jira's global LexoRank index for the issue. Drives the within-sprint order in
+  // the epic's by-sprint view; null when the issue has never been ranked.
+  jiraRank: number | null;
 }
 
 export interface LinkedIssue {
