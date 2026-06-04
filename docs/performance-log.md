@@ -191,3 +191,18 @@ Key bottlenecks:
 - **jsdom can't drive dnd-kit keyboard reorder**: my first attempt tested `handleReorderChild` end-to-end via the KeyboardSensor (focus grip → Space → ArrowUp → Space). It never fired — dnd-kit's sortable keyboard coordinates need real layout rects, which jsdom returns as zero, so the item never moves. Pivoted to a dedicated test file that mocks `EpicChildrenBySprint` to invoke `onReorderChild` directly, deterministically asserting the rank call, optimistic order, and revert. Lesson: don't test dnd-kit drag *movement* through jsdom; test the pure decision (`resolveDragEnd`/`computeReorder`) and mock the child to fire the callback.
 - **SWR timing in the handler test**: the sprint-id resolution reads `useJiraSprints`, so the first reorder click raced the async sprint load and called `jira.rank` without `sprintId`. Fixed by capturing the child's `sprints` prop and waiting for it before triggering.
 - **Shared-tree parallel work**: another agent was committing to `dev` and editing the same `EpicChildrenSection.tsx` (a "create child at drafting readiness" change) throughout the run; HEAD advanced under me and a transient `children/route.ts` typecheck error appeared then resolved on their side. Committed only explicit pathspecs (consistent with the BRDG-267/268 lesson) so my commits stayed scoped.
+
+## Backlog Deprecation Review epic (BRDG-297, 283-290) — 2026-06-04
+
+Whole-epic build (9 stories) orchestrated from the main thread via sequential subagents (one per story, dependency-ordered) to keep the orchestrator context small. ~1.0M subagent tokens total. Smooth overall; two notable issues.
+
+| Phase | Notes |
+|-------|-------|
+| Per-story implementation | 9 subagents, each: plan → implement → co-located tests → lint/typecheck/targeted-vitest → commit. All green per story. |
+| Final verification | Full suite 4551 pass (1 unrelated pre-existing TicketSidebar failure); build initially FAILED. |
+| Fixups | Route-export refactor + manifest/nav test updates + ticket-number renumber. |
+
+Key bottlenecks / lessons:
+- **Build-only failure hidden by per-story gates**: subagents were told not to run `npm run build` (final-only). A `route.ts` exporting non-handler constants (`AUTO_SCAN_ENABLED_KEY`, ...) passes lint+typecheck+vitest but fails the Next.js build ("not a valid Route export field"). Surfaced only at the orchestrator's final build. Lesson: when a story adds an API `route.ts`, either run build for that story or forbid non-handler exports from route files up front (put shared constants in a lib module).
+- **Ticket-number collision under concurrent branches**: I scanned at kickoff (max was BRDG-281) and numbered the epic 282-290. During the multi-hour run, parallel work committed its own **BRDG-282** (per-group tranched sync, commit b5acd365) plus BRDG-291-296 (epic-writer), so 282 collided. Resolved by renumbering my foundation story 282 → 297 (next free), surgically preserving the per-group BRDG-282 references. Lesson: on long runs that mint many story numbers, a kickoff scan can go stale; re-check free numbers before archiving, and prefer a reserved contiguous block.
+- **New cross-cutting enums need a full run**: stories added activity-log types, a notification type, a queue-source value, and scan-topic keys across shared files; targeted per-story tests passed but the route-manifest and Sidebar-nav tests (which assert the full set of routes/links) only fail under the full suite. Final `npm run verify` is what caught them.

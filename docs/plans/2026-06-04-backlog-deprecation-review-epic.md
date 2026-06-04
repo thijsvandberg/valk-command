@@ -1,6 +1,6 @@
 # Epic: Backlog Deprecation Review
 
-**Status:** Planned
+**Status:** Delivered (all 9 stories implemented; story 1 renumbered BRDG-282 → BRDG-297)
 **Type:** Epic (multiple stories)
 **Owner:** PO
 
