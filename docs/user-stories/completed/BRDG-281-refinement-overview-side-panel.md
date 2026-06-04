@@ -68,15 +68,28 @@ queue, the row opens the panel.
   (`onCheckboxClick` → `queueHook.toggleTicket`), including shift-click range select.
 - The "ready to refine" bulk toggle and all other queue interactions are unchanged.
 
-### 3. Panel overlays the queue
+### 3. Panel sits beside the list (revised: in-flow split pane)
 
-- The `SidePanel` renders as a **fixed, right-anchored, full-height overlay**
-  (`fixed inset-y-0 right-0 z-50`, matching the ticket detail page), so it covers the queue
-  pane rather than shrinking the list/queue columns.
-- It is resizable and remembers its width via the existing `localStorage` key
-  `sprintBoardPanelWidth` (reuse as-is). SidePanel's resize math
-  (`window.innerWidth - e.clientX`) works unchanged when right-anchored.
-- No backdrop (the board has none; close via X or re-click), consistent with BRDG-275.
+> **Revised after initial overlay implementation.** The original fixed, right-anchored
+> overlay (`fixed right-0 z-50`) let the ticket list run full-width *behind* the panel and
+> the queue peeked out from underneath. It now sits **in-flow as the right pane**, mirroring
+> the sprint board layout.
+
+- The page is a **two-column split**: a left column holds the session selector
+  (`SavedSessionList`) and the ticket list; the open ticket's panel is the right column.
+  Keeping the panel a sibling of the session row (not nested below it) lets its tab bar line
+  up with the session-selector row — the panel starts at the scroll container's top, so the
+  tab bar sits over the "session" bar rather than below the list header.
+- When a ticket is open the queue is not rendered (so it cannot peek); the panel takes the
+  right column and the left column (and therefore the `flex-1` ticket list) is pushed left.
+- The panel's own left-edge resizer divides the row between the two panes: dragging changes
+  the panel width, and the left column reflows into the remaining space.
+- The panel is pinned (`sticky top-0`) at the container's full visible height so it stays in
+  view and scrolls internally while the left column scrolls the page.
+- Width persists via `localStorage` key `refinementSplitPanelWidth` (a fresh key, since the
+  earlier overlay stored viewport-derived widths under `refinementPanelWidth`). SidePanel's
+  resize math measures from its own right edge, so it works in-flow.
+- No backdrop (close via X or re-click), consistent with BRDG-275.
 
 ### 4. Full panel parity + edits stay in sync
 
@@ -264,3 +277,20 @@ on open (so the first paint is correct) and on window resize.
 Verified in-app: session-selector border continuous full-width; panel spans queue-left → viewport
 edge; toolbar (tabs + collapse/maximize/more/close) fully visible. Gates: lint, typecheck,
 affected tests (39), build all green.
+
+## Follow-up 3 (PO feedback: tab bar one level up, border exact)
+
+The PO wanted the panel's tab bar **one level up**, sitting over the session-selector
+("refinement") tab row rather than below it, but with the divider still running through cleanly.
+
+- **Top moved up:** the overlay top is now anchored to the app-header bottom (`#main-content`
+  top) so the panel's tab bar sits at the session-row level and overlays it on the right.
+- **Pixel-exact border:** the panel's tab bar is ~1px taller than the session row (its border
+  sits outside the 44px row), which left a ~0.6px (≈1 device-px at DPR 1.6) step at the panel's
+  left edge. A `useLayoutEffect` measures the panel tab-bar border vs the session-row border and
+  sets the wrapper's `top` imperatively (no state, no re-render) so the two borders coincide
+  exactly. Because `SidePanel` is a dynamic import, a `MutationObserver` on the wrapper re-runs
+  the alignment once the panel's DOM mounts, and a resize listener keeps it aligned. Verified:
+  measured delta between the two borders is **0px**.
+
+Touched: `RefinementPageContent.tsx` (top anchor + imperative border alignment).

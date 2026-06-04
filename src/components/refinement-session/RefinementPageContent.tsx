@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback, useMemo, useRef, useEffect, useLayoutEffect } from "react";
+import { useState, useCallback, useMemo, useRef, useEffect } from "react";
 import dynamic from "next/dynamic";
 import { useRouter } from "next/navigation";
 import { usePageTitle } from "@/hooks/usePageTitle";
@@ -211,66 +211,33 @@ export function RefinementPageContent({
       next: idx < availableTickets.length - 1 ? availableTickets[idx + 1].key : null,
     };
   }, [previewTicketKey, availableTickets]);
-  // Anchor the panel to fill the right side of the layout: top at the app-header
-  // bottom so the panel's tab bar sits one level up, over the session-selector
-  // ("refinement") tab row. Both rows are h-[44px] with a bottom border, so the
-  // borders coincide and the divider runs through cleanly. Right edge at the
-  // viewport so it uses the right-hand space; default width spans from the
-  // queue's left edge to the viewport edge. Re-measured on resize.
-  const contentRowRef = useRef<HTMLDivElement>(null);
-  const panelWrapRef = useRef<HTMLDivElement>(null);
-  const [panelAnchor, setPanelAnchor] = useState<{ top: number; fillWidth: number }>({ top: 0, fillWidth: 380 });
-  const measurePanel = useCallback(() => {
+  // The panel is the right column of an in-flow two-column split, so it pushes
+  // the ticket list left (the resizer divides the row) rather than overlaying
+  // it. It starts at the scroll container's top so its tab bar lines up with the
+  // session-selector row, and is pinned (sticky) at full viewport height while
+  // the left column scrolls, so we size its wrapper to the container's visible
+  // height.
+  const [panelHeight, setPanelHeight] = useState(0);
+  const measurePanelHeight = useCallback(() => {
     const main = document.getElementById("main-content");
-    const queue = contentRowRef.current?.lastElementChild as HTMLElement | null;
-    if (!main || !queue) return;
-    setPanelAnchor({
-      top: main.getBoundingClientRect().top,
-      fillWidth: Math.round(window.innerWidth - queue.getBoundingClientRect().left),
-    });
+    if (!main) return;
+    setPanelHeight(main.clientHeight);
   }, []);
   // Re-click the open row closes it; clicking a different row swaps the panel.
-  // Measure synchronously on open so the panel paints at the right anchor/width.
+  // Measure synchronously on open so the panel paints at the right height.
   const handleSelectTicket = useCallback(
     (key: string) => {
-      measurePanel();
+      measurePanelHeight();
       setPreviewTicketKey((cur) => (cur === key ? null : key));
     },
-    [measurePanel],
+    [measurePanelHeight],
   );
-  // Keep the panel anchored as the viewport changes (listener only; the initial
-  // measure runs in the click handler, so no synchronous setState in the effect).
+  // Keep the panel height in sync as the viewport changes.
   useEffect(() => {
     if (!previewTicketKey) return;
-    window.addEventListener("resize", measurePanel);
-    return () => window.removeEventListener("resize", measurePanel);
-  }, [previewTicketKey, measurePanel]);
-  // Pixel-align the panel's tab-bar bottom border with the session-selector row's
-  // border so the divider runs through without a sub-pixel step. The panel's tab
-  // bar is ~1px taller than the session row (its border sits outside the 44px
-  // row), so we set the wrapper's top imperatively to the measured delta (no
-  // state, no re-render). SidePanel is a dynamic import, so we re-align via a
-  // MutationObserver once its DOM mounts, plus on window resize.
-  useLayoutEffect(() => {
-    const wrap = panelWrapRef.current;
-    if (!previewTicketKey || !wrap) return;
-    const align = () => {
-      const panel = wrap.firstElementChild as HTMLElement | null;
-      const tabBar = panel?.querySelector(".border-b") as HTMLElement | null;
-      const sessionRow = contentRowRef.current?.parentElement?.previousElementSibling as HTMLElement | null;
-      if (!panel || !tabBar || !sessionRow) return;
-      const tabBarHeight = tabBar.getBoundingClientRect().bottom - panel.getBoundingClientRect().top;
-      wrap.style.top = `${sessionRow.getBoundingClientRect().bottom - tabBarHeight}px`;
-    };
-    align();
-    const observer = new MutationObserver(align);
-    observer.observe(wrap, { childList: true });
-    window.addEventListener("resize", align);
-    return () => {
-      observer.disconnect();
-      window.removeEventListener("resize", align);
-    };
-  }, [previewTicketKey, panelAnchor.top, panelAnchor.fillWidth]);
+    window.addEventListener("resize", measurePanelHeight);
+    return () => window.removeEventListener("resize", measurePanelHeight);
+  }, [previewTicketKey, measurePanelHeight]);
 
   // --- Bulk suggest ---
   const bulk = useBulkSuggest({ resolvedSessionId, queueTickets: queueHook.queueTickets });
@@ -403,82 +370,90 @@ export function RefinementPageContent({
         <ViewHeaderTitle>Refinement</ViewHeaderTitle>
       </ViewHeader>
 
-      <SavedSessionList sessions={activeSessions} mutate={mutateSessions} activeSessionId={resolvedSessionId} onSelectSession={handleSelectSession} onSessionFinished={handleSessionFinished} />
+      {/* Two-column split: the left column holds the session selector and the
+          ticket list; the open ticket's panel is the right column. Keeping the
+          panel as a sibling of the session row (not nested below it) lets its tab
+          bar line up with the session-selector row. The panel's own resizer
+          divides the row, shrinking the left column (and so the list) as it grows. */}
+      <div className="flex">
+        <div className="min-w-0 flex-1">
+          <SavedSessionList sessions={activeSessions} mutate={mutateSessions} activeSessionId={resolvedSessionId} onSelectSession={handleSelectSession} onSessionFinished={handleSessionFinished} />
 
-      <div className="min-h-full">
-        {/* On xl+ screens the container cap grows so the flex-1 ticket pane gets the extra
-            room (~20-40% wider). The fixed-width queue pane keeps its size. */}
-        <div ref={contentRowRef} className="mx-auto flex max-w-6xl gap-6 p-6 xl:max-w-[1600px]">
-          {/* Left: ticket selection */}
-          <RefinementTicketList
-            availableTickets={availableTickets}
-            searchQuery={searchQuery}
-            onSearchChange={setSearchQuery}
-            filters={filters}
-            queueHook={queueHook}
-            onSelectTicket={handleSelectTicket}
-            pinnedSprintIds={pinnedSprintIds}
-            epicOptions={epicOptions}
-            sprintNameMap={sprintNameMap}
-            ticketSessionMap={ticketSessionMap}
-            resolvedSessionId={resolvedSessionId}
-            sprints={editableSprints}
-            readinessMap={ta.readinessMap}
-            onAssigneeChange={ta.handleAssigneeChange}
-            onEpicChange={ta.handleEpicChange}
-            onSprintChange={ta.handleSprintChange}
-            onStoryPointsChange={ta.handleStoryPointsChange}
-            onBusinessValueChange={ta.handleBusinessValueChange}
-            onJiraStatusChange={ta.handleJiraStatusChange}
-            onReadinessChange={ta.handleReadinessChange}
-          />
+          <div className="min-h-full">
+            {/* On xl+ screens the container cap grows so the flex-1 ticket pane
+                gets the extra room. The queue keeps its size; the resizer divides
+                the row between the list and the queue (or the panel column). */}
+            <div className="mx-auto flex max-w-6xl gap-6 p-6 xl:max-w-[1600px]">
+              <RefinementTicketList
+                availableTickets={availableTickets}
+                searchQuery={searchQuery}
+                onSearchChange={setSearchQuery}
+                filters={filters}
+                queueHook={queueHook}
+                onSelectTicket={handleSelectTicket}
+                pinnedSprintIds={pinnedSprintIds}
+                epicOptions={epicOptions}
+                sprintNameMap={sprintNameMap}
+                ticketSessionMap={ticketSessionMap}
+                resolvedSessionId={resolvedSessionId}
+                sprints={editableSprints}
+                readinessMap={ta.readinessMap}
+                onAssigneeChange={ta.handleAssigneeChange}
+                onEpicChange={ta.handleEpicChange}
+                onSprintChange={ta.handleSprintChange}
+                onStoryPointsChange={ta.handleStoryPointsChange}
+                onBusinessValueChange={ta.handleBusinessValueChange}
+                onJiraStatusChange={ta.handleJiraStatusChange}
+                onReadinessChange={ta.handleReadinessChange}
+              />
 
-          {/* Right: queue */}
-          <ResizableQueuePane>
-            <RefinementQueuePanel
-              activeSession={activeSession}
-              queueHook={queueHook}
-              bulk={bulk}
-              otherSessions={otherSessions}
-              canStart={canStart}
-              onMoveToSession={handleMoveToSession}
-              onBeginRefinement={handleBeginRefinement}
-              onSaveAsSession={handleSaveAsSession}
-              ticketsValidating={ticketsValidating}
-              onRefreshEditStates={() => mutateTickets()}
+              {!(previewTicketKey && previewTicket) && (
+                <ResizableQueuePane>
+                  <RefinementQueuePanel
+                    activeSession={activeSession}
+                    queueHook={queueHook}
+                    bulk={bulk}
+                    otherSessions={otherSessions}
+                    canStart={canStart}
+                    onMoveToSession={handleMoveToSession}
+                    onBeginRefinement={handleBeginRefinement}
+                    onSaveAsSession={handleSaveAsSession}
+                    ticketsValidating={ticketsValidating}
+                    onRefreshEditStates={() => mutateTickets()}
+                  />
+                </ResizableQueuePane>
+              )}
+            </div>
+          </div>
+        </div>
+
+        {/* Right column: the open ticket's panel. Pinned at the container top so
+            its tab bar sits over the session-selector row, full viewport height,
+            scrolls internally while the left column scrolls. */}
+        {previewTicketKey && previewTicket && (
+          <div
+            className="sticky top-0 z-10 shrink-0 self-start"
+            style={{ height: panelHeight || "calc(100vh - 65px)", animation: "slideInRight 0.18s ease" }}
+          >
+            <SidePanel
+              key={previewTicketKey}
+              ticket={previewTicket}
+              defaultWidth={560}
+              storageKey="refinementSplitPanelWidth"
+              poStatus={ta.poStatuses[previewTicketKey] ?? previewTicket.poStatus ?? null}
+              readiness={ta.readinessMap[previewTicketKey] ?? previewTicket.readiness ?? null}
+              onPoStatusChange={(v) => ta.handlePoStatusChange(previewTicketKey, v)}
+              onReadinessChange={(v) => ta.handleReadinessChange(previewTicketKey, v)}
+              onNotesChange={(notes) => { void saveTicketMetadata(previewTicketKey, { poNotes: notes }, "/api/tickets"); }}
+              onClose={() => setPreviewTicketKey(null)}
+              onShowToast={showToast}
+              onMutate={() => mutateTickets()}
+              onSelectTicket={setPreviewTicketKey}
+              adjacentKeys={previewAdjacentKeys}
             />
-          </ResizableQueuePane>
-        </div>
+          </div>
+        )}
       </div>
-
-      {/* Side panel: a fixed overlay filling the right side of the layout. Its
-          tab bar sits at the header bottom, one level up over the session-selector
-          row, with borders aligned; the right edge reaches the viewport. It falls
-          over the queue rather than shrinking the list/queue columns. */}
-      {previewTicketKey && previewTicket && (
-        <div
-          ref={panelWrapRef}
-          className="fixed bottom-0 right-0 z-50 flex"
-          style={{ top: panelAnchor.top, animation: "slideInRight 0.18s ease" }}
-        >
-          <SidePanel
-            key={previewTicketKey}
-            ticket={previewTicket}
-            defaultWidth={panelAnchor.fillWidth}
-            storageKey="refinementPanelWidth"
-            poStatus={ta.poStatuses[previewTicketKey] ?? previewTicket.poStatus ?? null}
-            readiness={ta.readinessMap[previewTicketKey] ?? previewTicket.readiness ?? null}
-            onPoStatusChange={(v) => ta.handlePoStatusChange(previewTicketKey, v)}
-            onReadinessChange={(v) => ta.handleReadinessChange(previewTicketKey, v)}
-            onNotesChange={(notes) => { void saveTicketMetadata(previewTicketKey, { poNotes: notes }, "/api/tickets"); }}
-            onClose={() => setPreviewTicketKey(null)}
-            onShowToast={showToast}
-            onMutate={() => mutateTickets()}
-            onSelectTicket={setPreviewTicketKey}
-            adjacentKeys={previewAdjacentKeys}
-          />
-        </div>
-      )}
 
       <CreateSessionModal open={createModalOpen} onClose={() => setCreateModalOpen(false)} onCreate={handleCreateSession} />
 

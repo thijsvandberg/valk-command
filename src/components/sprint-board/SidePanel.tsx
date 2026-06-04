@@ -3,6 +3,7 @@
 import { useState, useRef, useEffect, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import dynamic from "next/dynamic";
+import Link from "next/link";
 import type { Ticket, POStatus, TicketReadiness } from "@/types/ticket";
 import { Tooltip } from "@/components/shared/Tooltip";
 import { Popover } from "@/components/shared/Popover";
@@ -358,14 +359,15 @@ export function SidePanel({
       )}
 
       <Tooltip content="Open full view">
-        <button
-          type="button"
-          onClick={() => router.push(`/tickets/${ticket.key}`)}
+        {/* Anchor (not a button) so cmd/ctrl/middle-click opens the full ticket in
+            a new tab; plain click stays a client-side navigation. */}
+        <Link
+          href={`/tickets/${ticket.key}`}
           aria-label="Open full view"
           className={iconBtnClass}
         >
           <Maximize2 size={14} strokeWidth={1.5} />
-        </button>
+        </Link>
       </Tooltip>
 
       <div className="relative">

@@ -166,9 +166,8 @@ export function TicketTabContent({
             panel passes its header buttons via tabBarActions so the whole merged
             bar scrolls away, leaving a floating close behind. */}
         {renderTabBar && (
-          <div className="border-b border-border-default">
-            <div className={`flex h-[44px] items-stretch gap-1 ${railClass}`}>
-              {([
+          <div className={`flex h-[44px] shrink-0 items-stretch gap-1 border-b border-border-default ${railClass}`}>
+            {([
                 { id: "content" as const, label: "Content", badge: undefined as number | undefined, badgeHighlight: false },
                 { id: "history" as const, label: "History", badge: versionCount as number | undefined, badgeHighlight: false },
                 { id: "review" as const, label: "Review", badge: (reviewCount || undefined) as number | undefined, badgeHighlight: (reviewCount ?? 0) > 0 },
@@ -186,7 +185,6 @@ export function TicketTabContent({
               {tabBarActions && (
                 <div className="ml-auto flex shrink-0 items-center gap-1">{tabBarActions}</div>
               )}
-            </div>
           </div>
         )}
 
