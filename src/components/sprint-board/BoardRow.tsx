@@ -473,7 +473,6 @@ export const BoardRow = memo(forwardRef<HTMLTableRowElement, BoardRowBaseProps>(
                 <StoryPointPicker
                   value={ticket.storyPoints}
                   onChange={onStoryPointsChange ? (v) => onStoryPointsChange(ticket.key, v) : () => {}}
-                  subtle
                   showMetricIcon
                   richTooltip
                   revealWhenEmpty
@@ -482,7 +481,6 @@ export const BoardRow = memo(forwardRef<HTMLTableRowElement, BoardRowBaseProps>(
                 <BusinessValuePicker
                   value={ticket.businessValue}
                   onChange={onBusinessValueChange ? (v) => onBusinessValueChange(ticket.key, v) : () => {}}
-                  subtle
                   showMetricIcon
                   richTooltip
                   revealWhenEmpty
