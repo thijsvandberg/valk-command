@@ -25,6 +25,8 @@ function seed(
     scanScores?: string | null;
     scanOverall?: number | null;
     disposition?: string | null;
+    revivalScore?: number | null;
+    revivalRationale?: string | null;
   } = {},
 ) {
   testDb
@@ -41,7 +43,9 @@ function seed(
     opts.lastScannedAt !== undefined ||
     opts.scanScores !== undefined ||
     opts.scanOverall !== undefined ||
-    opts.disposition !== undefined
+    opts.disposition !== undefined ||
+    opts.revivalScore !== undefined ||
+    opts.revivalRationale !== undefined
   ) {
     testDb
       .insert(ticketMetadata)
@@ -51,6 +55,8 @@ function seed(
         scanScores: opts.scanScores ?? null,
         scanOverall: opts.scanOverall ?? null,
         disposition: opts.disposition ?? null,
+        revivalScore: opts.revivalScore ?? null,
+        revivalRationale: opts.revivalRationale ?? null,
       })
       .run();
   }
@@ -143,5 +149,20 @@ describe("GET /api/cleanup", () => {
     seed("BT-HI", { scanOverall: 0.8 });
     const data = await (await call("?minOverall=0.6")).json();
     expect(data.rows.map((r: { key: string }) => r.key)).toEqual(["BT-HI"]);
+  });
+
+  it("exposes revivalScore and revivalRationale per row (BRDG-298)", async () => {
+    seed("BT-REV", {
+      revivalScore: 0.82,
+      revivalRationale: "Complements active payments work",
+    });
+    seed("BT-NONE", {}); // no metadata -> nulls
+    const data = await (await call("?sort=key")).json();
+    const rev = data.rows.find((r: { key: string }) => r.key === "BT-REV");
+    const none = data.rows.find((r: { key: string }) => r.key === "BT-NONE");
+    expect(rev.revivalScore).toBeCloseTo(0.82);
+    expect(rev.revivalRationale).toContain("payments");
+    expect(none.revivalScore).toBeNull();
+    expect(none.revivalRationale).toBeNull();
   });
 });

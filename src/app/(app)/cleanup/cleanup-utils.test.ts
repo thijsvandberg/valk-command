@@ -11,6 +11,8 @@ function row(key: string, over: number | null, opts: Partial<CleanupRow> = {}): 
     topicScores: opts.topicScores ?? {},
     scanOverall: over,
     disposition: opts.disposition ?? null,
+    revivalScore: opts.revivalScore ?? null,
+    revivalRationale: opts.revivalRationale ?? null,
   };
 }
 

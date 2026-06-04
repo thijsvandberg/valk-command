@@ -1,5 +1,5 @@
 // @vitest-environment node
-import { describe, it, expect, vi, beforeEach } from "vitest";
+import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { createTestDb } from "@/db/test-utils";
 import type { BetterSQLite3Database } from "drizzle-orm/better-sqlite3";
 import type * as schema from "@/db/schema";
@@ -20,10 +20,13 @@ import {
   getTopicScorers,
   _clearTopicScorers,
   runDeepScan,
+  setConsolidatedAnalyzer,
   EXAMPLE_RETIRED_AREA_SCORER,
   DEEP_SCAN_CANDIDATE_THRESHOLD,
+  REVIVAL_CANDIDATE_THRESHOLD,
   type DeprecationTopicScorer,
 } from "./deprecation-topics";
+import type { AnalyzerResult } from "./deprecation-analyzer";
 
 function insertTicket(key: string, opts: { title?: string; removed?: string } = {}) {
   testDb.insert(ticket).values({
@@ -193,5 +196,111 @@ describe("runDeepScan", () => {
     const meta = testDb.select().from(ticketMetadata).where(eq(ticketMetadata.jiraKey, "BT-7")).get();
     const scores = JSON.parse(meta!.scanScores!);
     expect(scores.replaced.evidence.matchedKeywords).toContain("cwi");
+  });
+});
+
+describe("runDeepScan with the consolidated analyzer (BRDG-298)", () => {
+  beforeEach(() => {
+    testDb = createTestDb();
+    _clearTopicScorers();
+  });
+  afterEach(() => {
+    setConsolidatedAnalyzer(null);
+  });
+
+  function analyzer(result: AnalyzerResult | null) {
+    setConsolidatedAnalyzer(async () => result);
+  }
+
+  it("prefers the consolidated analyzer over per-topic scorers", async () => {
+    insertTicket("BT-A");
+    // A per-topic scorer that, if run, would set a distinctive score. The
+    // analyzer should win, so this scorer must NOT run.
+    let perTopicRan = false;
+    registerTopicScorer({
+      key: "replaced",
+      label: "should-not-run",
+      async run() {
+        perTopicRan = true;
+        return { score: 0.99, rationale: "per-topic" };
+      },
+    });
+    analyzer({
+      topicScores: { replaced: { score: 0.8, rationale: "analyzer said CWI" } },
+      revival: { score: 0, rationale: "", relatedKeys: [] },
+      summary: "s",
+    });
+
+    const result = await runDeepScan("BT-A");
+    expect(perTopicRan).toBe(false);
+    const meta = testDb.select().from(ticketMetadata).where(eq(ticketMetadata.jiraKey, "BT-A")).get();
+    const scores = JSON.parse(meta!.scanScores!);
+    expect(scores.replaced.rationale).toBe("analyzer said CWI");
+  });
+
+  it("falls back to per-topic scorers when the analyzer returns null", async () => {
+    insertTicket("BT-B");
+    registerTopicScorer(stubScorer("replaced", 1));
+    analyzer(null);
+
+    const result = await runDeepScan("BT-B");
+    expect(result.becameCandidate).toBe(true);
+    expect(result.topicsRun).toEqual(["replaced"]);
+  });
+
+  it("sets revivalScore/revivalRationale and stores related keys in scanScores", async () => {
+    insertTicket("BT-C");
+    analyzer({
+      topicScores: {},
+      revival: { score: 0.82, rationale: "Fits the active payments work", relatedKeys: ["BT-99"] },
+      summary: "Worth pulling up",
+    });
+
+    const result = await runDeepScan("BT-C");
+    expect(result.revivalScore).toBeCloseTo(0.82);
+    expect(result.becameRevivalCandidate).toBe(true);
+
+    const meta = testDb.select().from(ticketMetadata).where(eq(ticketMetadata.jiraKey, "BT-C")).get();
+    expect(meta?.revivalScore).toBeCloseTo(0.82);
+    expect(meta?.revivalRationale).toContain("payments");
+    const scores = JSON.parse(meta!.scanScores!);
+    expect(scores.revival.evidence.relatedKeys).toEqual(["BT-99"]);
+  });
+
+  it("leaves revival null when no revival signal is present", async () => {
+    insertTicket("BT-D");
+    analyzer({
+      topicScores: { staleness: { score: 0.5, rationale: "old" } },
+      revival: { score: 0, rationale: "", relatedKeys: [] },
+      summary: "s",
+    });
+
+    const result = await runDeepScan("BT-D");
+    expect(result.revivalScore).toBe(0);
+    expect(result.becameRevivalCandidate).toBe(false);
+    const meta = testDb.select().from(ticketMetadata).where(eq(ticketMetadata.jiraKey, "BT-D")).get();
+    expect(meta?.revivalScore ?? null).toBeNull();
+  });
+
+  it("reconciles direction: a winning revival suppresses the deprecation candidate", async () => {
+    insertTicket("BT-E");
+    // Both directions cross 0.6, but revival is at least as strong, so the
+    // ticket must NOT be auto-promoted to a deprecation candidate.
+    analyzer({
+      topicScores: { replaced: { score: 0.9, rationale: "looks retired" } },
+      revival: { score: 0.9, rationale: "but actually fits new work", relatedKeys: ["BT-1"] },
+      summary: "s",
+    });
+
+    const result = await runDeepScan("BT-E");
+    expect(result.scanOverall).toBeGreaterThanOrEqual(DEEP_SCAN_CANDIDATE_THRESHOLD);
+    expect(result.becameCandidate).toBe(false); // suppressed by revival
+    expect(result.becameRevivalCandidate).toBe(true);
+    const meta = testDb.select().from(ticketMetadata).where(eq(ticketMetadata.jiraKey, "BT-E")).get();
+    expect(meta?.disposition ?? null).toBeNull();
+  });
+
+  it("uses the configured revival threshold", () => {
+    expect(REVIVAL_CANDIDATE_THRESHOLD).toBe(0.6);
   });
 });

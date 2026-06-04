@@ -116,6 +116,15 @@ export const ticketMetadata = sqliteTable("ticket_metadata", {
   // Optional free-text note the PO leaves when confirming/dismissing a scan
   // candidate (BRDG-289). Local-only, like the rest of the scan state.
   dispositionNote: text("disposition_note"),
+  // Revival signal (BRDG-298): the OPPOSITE of deprecation. A low-backlog ticket
+  // that is still high value and fits recent/planned sprint work is "worth
+  // pulling up". The consolidated analyzer (analyze-deprecation skill) sets these.
+  // Local-only, never synced to Jira. Related ticket keys live in
+  // scanScores.revival.evidence.relatedKeys (no separate column needed).
+  // 0..1 likelihood the ticket should be pulled up; null when no analyzer ran.
+  revivalScore: real("revival_score"),
+  // Human-readable reason naming the recent/planned work it complements.
+  revivalRationale: text("revival_rationale"),
 });
 
 // Backlog Deprecation Review (BRDG-284): persisted Tier-2 deep-dive queue.

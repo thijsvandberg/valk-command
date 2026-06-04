@@ -475,6 +475,7 @@ export async function runDeprecationDeepScan(): Promise<TaskResult> {
 
   const now = Date.now();
   let candidates = 0;
+  let revivals = 0;
   let errors = 0;
   let skipped = 0;
 
@@ -519,6 +520,25 @@ export async function runDeprecationDeepScan(): Promise<TaskResult> {
           },
         );
       }
+      // Revival is the opposite conclusion (BRDG-298): a low-backlog ticket worth
+      // pulling up because it fits recent/planned work. Distinct notification so
+      // the PO can act on it separately from deprecation candidates. A ticket is
+      // a revival candidate INSTEAD OF a deprecation candidate (runDeepScan
+      // suppresses the deprecation promotion when revival wins), so the two
+      // branches do not double-fire for the same ticket.
+      if (result.becameRevivalCandidate) {
+        revivals++;
+        createNotification(
+          "revival-candidate",
+          `Backlog ticket worth pulling up: ${row.jiraKey} (revival ${result.revivalScore.toFixed(2)})`,
+          {
+            category: "scheduler",
+            jiraKey: row.jiraKey,
+            linkUrl: "/cleanup",
+            skipFollowCheck: true,
+          },
+        );
+      }
       await markDone(row.id);
     } catch (err) {
       errors++;
@@ -532,12 +552,12 @@ export async function runDeprecationDeepScan(): Promise<TaskResult> {
   await logActivity({
     type: "deprecation-scan",
     scope: `${processed} tickets`,
-    summary: `Deep scan: ${processed} processed, ${candidates} new candidate${candidates === 1 ? "" : "s"}${skipped > 0 ? `, ${skipped} skipped (cooldown)` : ""}${errors > 0 ? `, ${errors} error${errors === 1 ? "" : "s"}` : ""}`,
+    summary: `Deep scan: ${processed} processed, ${candidates} new candidate${candidates === 1 ? "" : "s"}${revivals > 0 ? `, ${revivals} revival${revivals === 1 ? "" : "s"}` : ""}${skipped > 0 ? `, ${skipped} skipped (cooldown)` : ""}${errors > 0 ? `, ${errors} error${errors === 1 ? "" : "s"}` : ""}`,
     status: errors > 0 ? "failed" : "success",
     startedAt,
   });
 
-  return { scanned: processed, candidates, errors, skipped, recovered };
+  return { scanned: processed, candidates, revivals, errors, skipped, recovered };
 }
 
 // ---------------------------------------------------------------------------

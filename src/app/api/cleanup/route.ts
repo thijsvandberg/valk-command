@@ -57,6 +57,8 @@ export async function GET(request: Request) {
       scanScores: ticketMetadata.scanScores,
       scanOverall: ticketMetadata.scanOverall,
       disposition: ticketMetadata.disposition,
+      revivalScore: ticketMetadata.revivalScore,
+      revivalRationale: ticketMetadata.revivalRationale,
     })
     .from(ticket)
     .leftJoin(ticketMetadata, eq(ticket.jiraKey, ticketMetadata.jiraKey))
@@ -76,6 +78,8 @@ export async function GET(request: Request) {
     topicScores: parseScanScores(r.scanScores),
     scanOverall: r.scanOverall ?? null,
     disposition: (r.disposition ?? null) as Disposition,
+    revivalScore: r.revivalScore ?? null,
+    revivalRationale: r.revivalRationale ?? null,
   }));
 
   // -- Filters --

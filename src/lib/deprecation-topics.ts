@@ -24,6 +24,7 @@ import { db } from "@/db";
 import { ticket, ticketMetadata } from "@/db/schema";
 import { eq } from "drizzle-orm";
 import type { ScanTopicKey } from "@/lib/cleanup-types";
+import type { AnalyzerResult } from "@/lib/deprecation-analyzer";
 
 // ---------------------------------------------------------------------------
 // Contract
@@ -109,6 +110,12 @@ export function _clearTopicScorers(): void {
 // Mirrors the Tier-1 threshold so the two tiers read consistently.
 export const DEEP_SCAN_CANDIDATE_THRESHOLD = 0.6;
 
+// Revival score at/above which a ticket is surfaced as "worth pulling up"
+// (BRDG-298). The opposite conclusion from deprecation: a low-backlog ticket
+// that is still high value and fits recent/planned sprint work. Mirrors the
+// deprecation threshold so the two directions read on the same 0.6 scale.
+export const REVIVAL_CANDIDATE_THRESHOLD = 0.6;
+
 interface TopicContribution {
   key: string;
   score: number;
@@ -144,6 +151,35 @@ export function combineTopicScores(contributions: TopicContribution[]): number {
 }
 
 // ---------------------------------------------------------------------------
+// Consolidated analyzer wiring (BRDG-298)
+// ---------------------------------------------------------------------------
+
+/**
+ * Consolidated-analysis function: runs the single VRW `analyze-deprecation`
+ * skill and returns mapped topic scores + a revival verdict, or null when the
+ * agent is unavailable / its response is unparseable.
+ *
+ * WHY injectable + lazily wired: runDeepScan PREFERS this single call and only
+ * falls back to the registered per-topic scorers when it returns null. The real
+ * implementation lives in deprecation-analyzer.ts; it is injected here (rather
+ * than imported at module top) to keep this registry module free of the agent
+ * client and to let tests swap a mock without the network. Default is null until
+ * `setConsolidatedAnalyzer` is called (the deep-scan side-effect barrel wires it,
+ * the same place that imports the per-topic scorers).
+ */
+export type ConsolidatedAnalyzerFn = (
+  ticket: DeprecationTicketContext,
+  ctx: DeprecationScanContext,
+) => Promise<AnalyzerResult | null>;
+
+let consolidatedAnalyzer: ConsolidatedAnalyzerFn | null = null;
+
+/** Wire (or replace) the consolidated analyzer used as the primary deep-scan path. */
+export function setConsolidatedAnalyzer(fn: ConsolidatedAnalyzerFn | null): void {
+  consolidatedAnalyzer = fn;
+}
+
+// ---------------------------------------------------------------------------
 // runDeepScan
 // ---------------------------------------------------------------------------
 
@@ -156,6 +192,10 @@ export interface DeepScanResult {
   becameCandidate: boolean;
   /** Keys of topics that returned a score this run. */
   topicsRun: string[];
+  /** Revival likelihood 0..1 (BRDG-298); 0 when no analyzer ran. */
+  revivalScore: number;
+  /** True when revivalScore crossed the revival threshold this run. */
+  becameRevivalCandidate: boolean;
   reason?: string;
 }
 
@@ -199,6 +239,8 @@ export async function runDeepScan(
       scanOverall: 0,
       becameCandidate: false,
       topicsRun: [],
+      revivalScore: 0,
+      becameRevivalCandidate: false,
       reason: row ? "removed from Jira" : "ticket not found",
     };
   }
@@ -228,22 +270,62 @@ export async function runDeepScan(
   const topicsRun: string[] = [];
   const rationaleLines: string[] = [];
 
-  for (const scorer of getTopicScorers()) {
-    let result: TopicScoreResult | null = null;
+  // Revival verdict (BRDG-298) only the consolidated analyzer produces. Defaults
+  // to "no signal" so the per-topic fallback simply leaves revival untouched.
+  let revivalScore = 0;
+  let revivalRationale: string | null = null;
+  let revivalRelatedKeys: string[] = [];
+
+  // PRIMARY PATH: one consolidated `analyze-deprecation` call covers every topic
+  // plus revival. Used whenever the analyzer is wired and returns a result.
+  let usedConsolidated = false;
+  if (consolidatedAnalyzer) {
+    let analysis: AnalyzerResult | null = null;
     try {
-      result = await scorer.run(ticketCtx, ctx);
+      analysis = await consolidatedAnalyzer(ticketCtx, ctx);
     } catch {
-      // A failing topic must not sink the whole deep scan; it simply abstains.
-      result = null;
+      // A failing analyzer must not sink the scan; fall through to per-topic.
+      analysis = null;
     }
-    if (!result) continue;
-    topicsRun.push(scorer.key);
-    scores[scorer.key] = {
-      score: result.score,
-      evidence: result.evidence,
-      rationale: result.rationale,
-    };
-    if (result.rationale) rationaleLines.push(result.rationale);
+    if (analysis) {
+      usedConsolidated = true;
+      for (const [key, entry] of Object.entries(analysis.topicScores)) {
+        if (!entry) continue;
+        topicsRun.push(key);
+        scores[key] = {
+          score: entry.score,
+          evidence: entry.evidence,
+          rationale: entry.rationale,
+        };
+        if (entry.rationale) rationaleLines.push(entry.rationale);
+      }
+      revivalScore = analysis.revival.score;
+      revivalRationale = analysis.revival.rationale || null;
+      revivalRelatedKeys = analysis.revival.relatedKeys;
+    }
+  }
+
+  // FALLBACK PATH: the analyzer was unavailable or returned nothing parseable.
+  // Run the registered per-topic scorers exactly as before so the deep scan still
+  // produces topic scores. (Revival has no fallback: it is an analyzer-only idea.)
+  if (!usedConsolidated) {
+    for (const scorer of getTopicScorers()) {
+      let result: TopicScoreResult | null = null;
+      try {
+        result = await scorer.run(ticketCtx, ctx);
+      } catch {
+        // A failing topic must not sink the whole deep scan; it simply abstains.
+        result = null;
+      }
+      if (!result) continue;
+      topicsRun.push(scorer.key);
+      scores[scorer.key] = {
+        score: result.score,
+        evidence: result.evidence,
+        rationale: result.rationale,
+      };
+      if (result.rationale) rationaleLines.push(result.rationale);
+    }
   }
 
   // Build the combination from EVERY topic present in the merged map (Tier-1
@@ -261,6 +343,27 @@ export async function runDeepScan(
   const scanOverall = combineTopicScores(contributions);
   const scannedAt = new Date(ctx.now).toISOString();
 
+  // RECONCILE direction (BRDG-298): deprecation and revival are opposite reads.
+  // A ticket the analyzer judges worth pulling up should not also read as a
+  // strong deprecation candidate. When revival wins (>= threshold and >= the
+  // deprecation score), suppress the deprecation candidate promotion so the two
+  // signals stay mutually sensible. The analyzer itself is instructed to keep the
+  // weaker direction low, so this is a safety net rather than the primary guard.
+  const crossedRevival = revivalScore >= REVIVAL_CANDIDATE_THRESHOLD;
+  const revivalWins = crossedRevival && revivalScore >= scanOverall;
+
+  // Store revival related keys alongside topic scores so the /cleanup row and the
+  // review screen can read them without a separate column. WHY in scanScores:
+  // keeps the loose JSON the epic already uses for evidence; the dedicated
+  // columns carry the score + rationale for cheap sorting/filtering.
+  if (crossedRevival || revivalRelatedKeys.length > 0 || revivalRationale) {
+    scores.revival = {
+      score: revivalScore,
+      rationale: revivalRationale ?? undefined,
+      evidence: { relatedKeys: revivalRelatedKeys },
+    };
+  }
+
   // Assemble a rationale from the topic lines plus any pre-existing staleness
   // rationale, falling back to a neutral note when nothing fired.
   const existingStaleness = scores.staleness?.rationale;
@@ -273,13 +376,16 @@ export async function runDeepScan(
 
   // Promote to candidate on threshold, but never downgrade a human disposition
   // (confirmed/dismissed). An unset or already-candidate row may be (re)set.
+  // Revival winning suppresses the auto-promotion (see reconcile note above).
   const current = row.disposition ?? null;
-  const crossed = scanOverall >= DEEP_SCAN_CANDIDATE_THRESHOLD;
+  const crossed = scanOverall >= DEEP_SCAN_CANDIDATE_THRESHOLD && !revivalWins;
   let nextDisposition = current;
   if (crossed && (current === null || current === "candidate")) {
     nextDisposition = "candidate";
   }
   const becameCandidate = crossed && current !== "candidate" && nextDisposition === "candidate";
+
+  const becameRevivalCandidate = crossedRevival;
 
   const fields = {
     scanScores: JSON.stringify(scores),
@@ -287,6 +393,8 @@ export async function runDeepScan(
     scanRationale: rationale,
     lastDeepScannedAt: scannedAt,
     disposition: nextDisposition,
+    revivalScore: revivalScore > 0 ? revivalScore : null,
+    revivalRationale: revivalRationale,
   };
 
   await db
@@ -300,6 +408,8 @@ export async function runDeepScan(
     scanOverall,
     becameCandidate,
     topicsRun,
+    revivalScore,
+    becameRevivalCandidate,
   };
 }
 

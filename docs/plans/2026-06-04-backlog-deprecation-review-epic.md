@@ -107,6 +107,13 @@ Tier-2 AI reuses the workspace agent (`find-related`, codebase-research) — no 
    activity-log + notifications.
 9. **BRDG-290 — Auto background scanning (deferred).** On/off setting; auto ~N/day deep scans once
    manual flow is proven.
+10. **BRDG-298 — VRW `analyze-deprecation` skill + revival signal.** A dedicated VRW skill that scores
+    every topic in ONE pass (replacing the four per-topic agent calls as the primary path; the
+    per-topic scorers stay as a fallback) AND adds a NEW **revival** signal — the opposite conclusion
+    from deprecation: a low-backlog ticket still high value and a good fit for recent/planned sprint
+    work ("worth pulling up"). New `revival_score` / `revival_rationale` columns, a distinct
+    `revival-candidate` notification at threshold 0.6, and `/cleanup` exposes both for the UI.
+    See [BRDG-298](../user-stories/BRDG-298-vrw-analysis-skill-and-revival-signal.md).
 
 ## Out of scope (epic-wide)
 

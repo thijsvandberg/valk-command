@@ -62,6 +62,8 @@ PO-owned annotations per ticket. Never synced back to Jira.
 | `disposition` | text | `null` \| `candidate` \| `dismissed` \| `confirmed` (BRDG-289). PO's local judgement; never synced to Jira. |
 | `disposition_until` | text | ISO dismiss cooldown (BRDG-289); the deep-scan runner skips dismissed tickets until this passes. Default 90 days. |
 | `disposition_note` | text | Optional free-text note left on confirm/dismiss (BRDG-289), max 500 chars. |
+| `revival_score` | real | Revival signal (BRDG-298): 0..1 likelihood a low-backlog ticket is worth pulling up (still high value + fits recent/planned work). The OPPOSITE of deprecation. Set by the consolidated `analyze-deprecation` analyzer; null when no analyzer ran. Local-only. |
+| `revival_rationale` | text | Human-readable reason naming the recent/planned work the ticket complements (BRDG-298). Related ticket keys live in `scan_scores.revival.evidence.relatedKeys`. Local-only. |
 
 #### `ticket_subtask`
 

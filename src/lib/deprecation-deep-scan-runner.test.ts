@@ -28,6 +28,7 @@ import { createNotification } from "./notifications";
 import {
   registerTopicScorer,
   _clearTopicScorers,
+  setConsolidatedAnalyzer,
   EXAMPLE_RETIRED_AREA_SCORER,
 } from "./deprecation-topics";
 
@@ -139,5 +140,29 @@ describe("runDeprecationDeepScan", () => {
     const logs = testDb.select().from(activityLog).all();
     const entry = logs.find((l) => l.type === "deprecation-scan");
     expect(entry?.summary).toContain("Deep scan");
+  });
+
+  it("fires a distinct revival notification when a ticket crosses the revival threshold (BRDG-298)", async () => {
+    insertTicket("BT-REVIVE", { title: "Still-valuable backlog idea" });
+    // Inject a consolidated analyzer that returns a strong revival, no deprecation.
+    setConsolidatedAnalyzer(async () => ({
+      topicScores: {},
+      revival: { score: 0.85, rationale: "Complements active payments work", relatedKeys: ["BT-1"] },
+      summary: "Worth pulling up",
+    }));
+    try {
+      await enqueueDeepScan(["BT-REVIVE"]);
+      await runDeprecationDeepScan();
+
+      const calls = vi.mocked(createNotification).mock.calls;
+      const revival = calls.find((c) => c[0] === "revival-candidate");
+      expect(revival).toBeDefined();
+      expect(revival![1]).toContain("BT-REVIVE");
+      expect(revival![2]).toMatchObject({ jiraKey: "BT-REVIVE", linkUrl: "/cleanup", skipFollowCheck: true });
+      // It must NOT also fire a deprecation-candidate for the same ticket.
+      expect(calls.some((c) => c[0] === "deprecation-candidate")).toBe(false);
+    } finally {
+      setConsolidatedAnalyzer(null);
+    }
   });
 });

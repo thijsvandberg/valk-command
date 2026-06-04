@@ -150,9 +150,32 @@ The deep-scan topic scorers (BRDG-285..287, `src/lib/topics/`) call workspace sk
 
 | Scorer | Skill | BRDG | Notes |
 |--------|-------|------|-------|
-| `replaced-area-topic.ts` | `ask` | BRDG-285 | Confirms whether a keyword match is genuine |
-| `superseded-topic.ts` | `find-related` | BRDG-286 | Finds duplicate/superseded tickets |
-| `already-built-topic.ts` | `codebase-research` | BRDG-287 | Checks whether the feature is already implemented |
+| `deprecation-analyzer.ts` (consolidated, **primary**) | `analyze-deprecation` | BRDG-298 | One pass scores all topics + revival; see below |
+| `replaced-area-topic.ts` (fallback) | `ask` | BRDG-285 | Confirms whether a keyword match is genuine |
+| `superseded-topic.ts` (fallback) | `find-related` | BRDG-286 | Finds duplicate/superseded tickets |
+| `already-built-topic.ts` (fallback) | `codebase-research` | BRDG-287 | Checks whether the feature is already implemented |
+
+### Consolidated `analyze-deprecation` skill (BRDG-298)
+
+`runDeepScan` PREFERS one consolidated call to the VRW `analyze-deprecation` skill
+(`.claude/skills/analyze-deprecation.md`) over the four per-topic scorers above. The skill takes a
+target ticket (`key`, `summary`, `description`), gathers signals once (Jira recent/open/future
+sprints, related tickets, codebase, product docs), and emits a single parseable
+`<deprecation-analysis>` JSON block covering every topic (`staleness`, `replaced`, `duplicate` with
+`supersededBy`, `alreadyBuilt`, `relevance`) **plus** a `revival` verdict.
+
+- **Parser**: `src/lib/parse-deprecation-analysis.ts` — defaults missing fields, clamps scores to
+  0..1, never throws (null on absent/malformed block).
+- **Analyzer**: `src/lib/deprecation-analyzer.ts` — submits the skill, maps the result into the
+  `scanScores` topic shape + a revival verdict. Wired as primary in `src/lib/topics/index.ts`.
+- **Fallback**: when the analyzer is unavailable (agent down, `VALK_AGENT_KEY` unset) or returns
+  nothing parseable, `runDeepScan` falls back to the registered per-topic scorers. The per-topic
+  scorers are intentionally NOT removed.
+- **Revival** (the OPPOSITE of deprecation): a low-backlog ticket still high value and a good fit for
+  recent/planned sprint work. `revivalScore >= 0.6` fires a distinct `revival-candidate` notification
+  and suppresses the deprecation-candidate promotion for that ticket (the two never double-fire). See
+  [database-schema.md](database-schema.md#ticket_metadata) for the `revival_score` / `revival_rationale`
+  columns.
 
 ### already-built topic (BRDG-287)
 

@@ -43,6 +43,10 @@ export interface CleanupRow {
   topicScores: Partial<Record<ScanTopicKey, number | null>>;
   scanOverall: number | null;
   disposition: Disposition;
+  // Revival signal (BRDG-298): the OPPOSITE of deprecation. Exposed so the UI can
+  // render a "worth pulling up" badge/filter. null when no analyzer has run.
+  revivalScore: number | null;
+  revivalRationale: string | null;
 }
 
 export interface CleanupResponse {

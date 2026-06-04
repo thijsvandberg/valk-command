@@ -76,6 +76,8 @@ const RESPONSE: CleanupResponse = {
       topicScores: { staleness: 0.82 },
       scanOverall: 0.82,
       disposition: "candidate",
+      revivalScore: null,
+      revivalRationale: null,
     },
     {
       key: "BT-2",
@@ -85,6 +87,8 @@ const RESPONSE: CleanupResponse = {
       topicScores: {},
       scanOverall: null,
       disposition: null,
+      revivalScore: null,
+      revivalRationale: null,
     },
   ],
 };
