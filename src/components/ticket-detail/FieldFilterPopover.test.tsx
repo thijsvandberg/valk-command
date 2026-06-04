@@ -15,7 +15,7 @@ const defaultProps = {
   onClose: vi.fn(),
 };
 
-function renderPopover(overrides: Partial<typeof defaultProps> = {}) {
+function renderPopover(overrides: Partial<React.ComponentProps<typeof FieldFilterPopover>> = {}) {
   return render(<FieldFilterPopover {...defaultProps} {...overrides} />);
 }
 
@@ -87,5 +87,28 @@ describe("FieldFilterPopover", () => {
     renderPopover({ onClose });
     fireEvent.keyDown(document, { key: "Escape" });
     expect(onClose).toHaveBeenCalled();
+  });
+
+  it("renders the Hide deprecated toggle with count when deprecated items exist", () => {
+    renderPopover({ hideDeprecated: true, onToggleHideDeprecated: vi.fn(), deprecatedCount: 3 });
+    expect(screen.getByText("Hide deprecated")).toBeInTheDocument();
+    expect(screen.getByText("3")).toBeInTheDocument();
+  });
+
+  it("does not render the Hide deprecated toggle when there are no deprecated items", () => {
+    renderPopover({ hideDeprecated: true, onToggleHideDeprecated: vi.fn(), deprecatedCount: 0 });
+    expect(screen.queryByText("Hide deprecated")).not.toBeInTheDocument();
+  });
+
+  it("does not render the Hide deprecated toggle when no handler is provided", () => {
+    renderPopover({ deprecatedCount: 3 });
+    expect(screen.queryByText("Hide deprecated")).not.toBeInTheDocument();
+  });
+
+  it("calls onToggleHideDeprecated with the inverted value when clicked", () => {
+    const onToggleHideDeprecated = vi.fn();
+    renderPopover({ hideDeprecated: true, onToggleHideDeprecated, deprecatedCount: 2 });
+    fireEvent.click(screen.getByText("Hide deprecated"));
+    expect(onToggleHideDeprecated).toHaveBeenCalledWith(false);
   });
 });

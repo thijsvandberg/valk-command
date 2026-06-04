@@ -27,6 +27,10 @@ interface FieldFilterPopoverProps {
   visibleFields: Set<string>;
   onToggleField: (id: string, show: boolean) => void;
   onClose: () => void;
+  /** When provided, renders a "Hide deprecated" toggle. Only shown when deprecatedCount > 0. */
+  hideDeprecated?: boolean;
+  onToggleHideDeprecated?: (hide: boolean) => void;
+  deprecatedCount?: number;
 }
 
 export function FieldFilterPopover({
@@ -37,6 +41,9 @@ export function FieldFilterPopover({
   visibleFields,
   onToggleField,
   onClose,
+  hideDeprecated,
+  onToggleHideDeprecated,
+  deprecatedCount = 0,
 }: FieldFilterPopoverProps) {
   const ref = useRef<HTMLDivElement>(null);
 
@@ -70,6 +77,30 @@ export function FieldFilterPopover({
           </button>
         );
       })}
+
+      {/* Hide deprecated toggle (only relevant when deprecated items exist) */}
+      {onToggleHideDeprecated && deprecatedCount > 0 && (
+        <>
+          <div className="my-1 h-px bg-border-subtle" />
+          <button
+            type="button"
+            onClick={() => onToggleHideDeprecated(!hideDeprecated)}
+            className="flex w-full cursor-pointer items-center gap-2.5 px-3 py-[7px] text-body-sm hover:bg-hover-list-item active:bg-overlay-default"
+          >
+            <span
+              className={`flex h-3.5 w-3.5 shrink-0 items-center justify-center rounded border transition-colors duration-100 ${
+                hideDeprecated
+                  ? "border-[var(--color-brand-400)] bg-[var(--color-brand-400)]"
+                  : "border-border-default bg-transparent"
+              }`}
+            >
+              {hideDeprecated && <Check size={10} strokeWidth={3} className="text-white" />}
+            </span>
+            <span className="text-text-secondary">Hide deprecated</span>
+            <span className="ml-auto tabular-nums text-caption text-text-muted">{deprecatedCount}</span>
+          </button>
+        </>
+      )}
 
       {/* Column visibility toggles */}
       {fields.length > 0 && (

@@ -185,6 +185,7 @@ export function SubtasksSection({
   showDragHandles,
 }: SubtasksSectionProps) {
   const [filter, setFilter] = useLocalStorage<StatusFilter>("subtask-status-filter", "all");
+  const [hideDeprecated, setHideDeprecated] = useLocalStorage<boolean>("subtask-hide-deprecated", true);
   const [newTitle, setNewTitle] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [jiraWarning, setJiraWarning] = useState<string | null>(null);
@@ -239,18 +240,28 @@ export function SubtasksSection({
     ? orderedSubtasks.filter((s) => !hiddenKeys.has(s.key))
     : orderedSubtasks;
 
+  // Deprecated subtasks are treated as noise, so they are hidden by default and
+  // can be revealed via the filter toggle.
+  const activeSubtasks = hideDeprecated
+    ? visibleSubtasks.filter((s) => s.jiraStatus !== "DEPRECATED")
+    : visibleSubtasks;
+
   const filtered = filter === "all"
-    ? visibleSubtasks
-    : visibleSubtasks.filter((s) => s.jiraStatus === filter);
+    ? activeSubtasks
+    : activeSubtasks.filter((s) => s.jiraStatus === filter);
 
   const countBase = hiddenKeys.size > 0
     ? mergedSubtasks.filter((s) => !hiddenKeys.has(s.key))
     : mergedSubtasks;
+  const deprecatedCount = countBase.filter((s) => s.jiraStatus === "DEPRECATED").length;
+  const visibleCountBase = hideDeprecated
+    ? countBase.filter((s) => s.jiraStatus !== "DEPRECATED")
+    : countBase;
   const statusCounts = {
-    all: countBase.length,
-    "TO DO": countBase.filter((s) => s.jiraStatus === "TO DO").length,
-    "IN PROGRESS": countBase.filter((s) => s.jiraStatus === "IN PROGRESS").length,
-    DONE: countBase.filter((s) => s.jiraStatus === "DONE").length,
+    all: visibleCountBase.length,
+    "TO DO": visibleCountBase.filter((s) => s.jiraStatus === "TO DO").length,
+    "IN PROGRESS": visibleCountBase.filter((s) => s.jiraStatus === "IN PROGRESS").length,
+    DONE: visibleCountBase.filter((s) => s.jiraStatus === "DONE").length,
   };
 
   const sensors = useSensors(
@@ -576,7 +587,7 @@ export function SubtasksSection({
   }, [suggestions, ticketKey]);
 
   const isDndEnabled = filter === "all" && filtered.length > 1;
-  const isFiltered = filter !== "all";
+  const isFiltered = filter !== "all" || (hideDeprecated && deprecatedCount > 0);
   const showKey = visibleFields.has("issueKey");
   const showStatus = visibleFields.has("status");
   const showAssignee = visibleFields.has("assignee");
@@ -725,6 +736,9 @@ export function SubtasksSection({
           fields={SUBTASK_FIELDS}
           visibleFields={visibleFields}
           onToggleField={(id, show) => toggleField(id, show)}
+          hideDeprecated={hideDeprecated}
+          onToggleHideDeprecated={setHideDeprecated}
+          deprecatedCount={deprecatedCount}
           onClose={() => setFilterPopoverOpen(false)}
         />
       )}
@@ -745,6 +759,9 @@ export function SubtasksSection({
           fields={SUBTASK_FIELDS}
           visibleFields={visibleFields}
           onToggleField={(id, show) => toggleField(id, show)}
+          hideDeprecated={hideDeprecated}
+          onToggleHideDeprecated={setHideDeprecated}
+          deprecatedCount={deprecatedCount}
           extraActions={suggestButton}
         />
       )}

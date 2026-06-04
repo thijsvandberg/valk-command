@@ -294,6 +294,19 @@ describe("SubtasksSection", () => {
     expect(screen.getByTestId("subtask-row-VPL-11")).toBeInTheDocument();
   });
 
+  it("hides deprecated subtasks by default", () => {
+    const subtasks = [
+      makeSubtask({ key: "VPL-10", title: "Active subtask", jiraStatus: "TO DO" }),
+      makeSubtask({ key: "VPL-99", title: "Old subtask", jiraStatus: "DEPRECATED" }),
+    ];
+    renderSection(subtasks);
+
+    expect(screen.getByTestId("subtask-row-VPL-10")).toBeInTheDocument();
+    expect(screen.queryByTestId("subtask-row-VPL-99")).not.toBeInTheDocument();
+    // Header reflects the hidden deprecated subtask as an active filter
+    expect(screen.getByText(/filtered/)).toBeInTheDocument();
+  });
+
   it("shows 'Edit' and 'Delete' buttons for subtask rows", () => {
     const subtasks = [makeSubtask({ key: "VPL-10", title: "Subtask" })];
     renderSection(subtasks);

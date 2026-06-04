@@ -18,6 +18,10 @@ interface ChildIssueListHeaderProps {
   fields: FieldToggle[];
   visibleFields: Set<string>;
   onToggleField: (id: string, show: boolean) => void;
+  /** When provided, renders a "Hide deprecated" toggle in the filter popover. */
+  hideDeprecated?: boolean;
+  onToggleHideDeprecated?: (hide: boolean) => void;
+  deprecatedCount?: number;
   /** When provided, renders a List / By sprint view toggle before the filter button. */
   viewMode?: ChildIssueViewMode;
   onViewModeChange?: (mode: ChildIssueViewMode) => void;
@@ -41,6 +45,9 @@ export function ChildIssueListHeader({
   fields,
   visibleFields,
   onToggleField,
+  hideDeprecated,
+  onToggleHideDeprecated,
+  deprecatedCount,
   viewMode,
   onViewModeChange,
   extraActions,
@@ -101,6 +108,9 @@ export function ChildIssueListHeader({
           fields={fields}
           visibleFields={visibleFields}
           onToggleField={onToggleField}
+          hideDeprecated={hideDeprecated}
+          onToggleHideDeprecated={onToggleHideDeprecated}
+          deprecatedCount={deprecatedCount}
           onClose={() => setPopoverOpen(false)}
         />
       )}
