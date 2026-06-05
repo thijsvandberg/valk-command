@@ -104,6 +104,20 @@ describe("GET /api/tickets", () => {
     expect(inFirst[0].sprintId).toBe("456");
   });
 
+  it("falls back to sprint_name for tickets synced before sprint_ids existed", async () => {
+    // Legacy row: sprint_name set, sprint_ids still null (not yet re-synced).
+    testDb.insert(ticket).values({
+      jiraKey: "VPL-300",
+      title: "Legacy ticket",
+      status: "TO DO",
+      sprintName: "555",
+      sprintIds: null,
+    }).run();
+
+    const data = await (await GET(new Request("http://localhost:3100/api/tickets?sprintId=555"))).json();
+    expect(data.map((t: { key: string }) => t.key)).toEqual(["VPL-300"]);
+  });
+
   it("includes PO status from metadata when available", async () => {
     seedTicket(testDb, "VPL-100");
 

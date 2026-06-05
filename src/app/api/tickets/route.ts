@@ -70,7 +70,12 @@ export async function GET(request: Request) {
       // A ticket can be in several sprints at once, so sprint membership is matched
       // against the sprint_ids JSON array (not the single primary sprint_name). The
       // IS NOT NULL guard is required: json_each(NULL) raises "malformed JSON".
-      const memberOfSprint = sql`${ticket.sprintIds} IS NOT NULL AND EXISTS (SELECT 1 FROM json_each(${ticket.sprintIds}) WHERE value = ${sprintId})`;
+      // Tickets synced before sprint_ids existed have a null array; fall back to the
+      // primary sprint_name for them so they keep showing until their next re-sync.
+      const memberOfSprint = sql`(
+        (${ticket.sprintIds} IS NOT NULL AND EXISTS (SELECT 1 FROM json_each(${ticket.sprintIds}) WHERE value = ${sprintId}))
+        OR (${ticket.sprintIds} IS NULL AND ${ticket.sprintName} = ${sprintId})
+      )`;
 
       // Backlog = tickets with empty sprintName
       const sprintFilter = isBacklog
