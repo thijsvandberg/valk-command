@@ -96,18 +96,40 @@ export const COLUMN_PRESETS: Record<ColumnPreset, ColumnId[]> = {
 // `poReadiness` maps onto the pill's existing readiness segment; the others render
 // as conditional inline tags. The hover card always shows the full set.
 
-export type InlineTagId = "flag" | "refinement" | "quality" | "notes" | "poReadiness" | "editState";
+export type InlineTagId =
+  | "flag"
+  | "refinement"
+  | "quality"
+  | "notes"
+  | "poReadiness"
+  | "editState"
+  | "storyPoints"
+  | "businessValue"
+  | "epic"
+  | "assignee";
 
-export const ROW_FIELDS: { id: InlineTagId; label: string }[] = [
-  { id: "flag", label: "Flag" },
-  { id: "refinement", label: "Refinement" },
-  { id: "quality", label: "Quality Score (QS)" },
-  { id: "notes", label: "Notes" },
-  { id: "poReadiness", label: "PO readiness" },
-  { id: "editState", label: "Edit state" },
+// Toggleable row fields, split into the secondary signals and the always-present
+// badges (SP/BV/epic/assignee). The `group` boundary drives a divider in the
+// field-toggle dropdown (BRDG-299).
+export const ROW_FIELDS: { id: InlineTagId; label: string; group: "signal" | "badge" }[] = [
+  { id: "flag", label: "Flag", group: "signal" },
+  { id: "refinement", label: "Refinement", group: "signal" },
+  { id: "quality", label: "Quality Score (QS)", group: "signal" },
+  { id: "notes", label: "Notes", group: "signal" },
+  { id: "poReadiness", label: "PO readiness", group: "signal" },
+  { id: "editState", label: "Edit state", group: "signal" },
+  { id: "storyPoints", label: "Story points (SP)", group: "badge" },
+  { id: "businessValue", label: "Business value (BV)", group: "badge" },
+  { id: "epic", label: "Epic", group: "badge" },
+  { id: "assignee", label: "Assignee", group: "badge" },
 ];
 
 export const DEFAULT_VISIBLE_TAGS: InlineTagId[] = ROW_FIELDS.map((f) => f.id);
+
+// Badge fields added after the initial headerless board (BRDG-299). They were
+// always shown before, so an existing persisted set that predates them must keep
+// them visible; useColumnConfig applies this once on load.
+export const BADGE_DEFAULT_TAGS: InlineTagId[] = ["storyPoints", "businessValue", "epic", "assignee"];
 
 // Migration map from the legacy column ids to the new inline tag ids (BRDG-239).
 // Note: poReadiness/refinement/editState have no legacy column equivalent, so they are

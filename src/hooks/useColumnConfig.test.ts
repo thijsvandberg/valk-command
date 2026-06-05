@@ -35,8 +35,9 @@ describe("useColumnConfig (headerless tags, BRDG-239)", () => {
   });
 
   it("loads an already-migrated tag visibility set as-is", async () => {
-    // Skip the one-time PO readiness correction so this asserts pure load behaviour.
+    // Skip the one-time corrections so this asserts pure load behaviour.
     localStorage.setItem("sprint-board-poreadiness-default-fix", "true");
+    localStorage.setItem("sprint-board-badges-default-fix", "true");
     vi.mocked(settingsApi.getColumnConfig).mockResolvedValue({
       order: [],
       visible: ["flag", "quality"],
@@ -96,8 +97,44 @@ describe("useColumnConfig (headerless tags, BRDG-239)", () => {
     expect(localStorage.getItem("sprint-board-poreadiness-default-fix")).toBe("true");
   });
 
+  it("adds the SP/BV/epic/assignee badges once when a persisted set predates them (BRDG-299)", async () => {
+    // Pre-badge persisted set: the one-time PO readiness fix already ran.
+    localStorage.setItem("sprint-board-poreadiness-default-fix", "true");
+    vi.mocked(settingsApi.getColumnConfig).mockResolvedValue({
+      order: [],
+      visible: ["flag", "quality", "poReadiness"],
+    });
+    const { result } = renderHook(() => useColumnConfig(), { wrapper: swrWrapper });
+    await waitFor(() => expect(result.current.loaded).toBe(true));
+    expect(result.current.visible.has("storyPoints")).toBe(true);
+    expect(result.current.visible.has("businessValue")).toBe(true);
+    expect(result.current.visible.has("epic")).toBe(true);
+    expect(result.current.visible.has("assignee")).toBe(true);
+    // The user's existing hidden choices are untouched.
+    expect(result.current.visible.has("notes")).toBe(false);
+    expect(settingsApi.saveColumnConfig).toHaveBeenCalledWith(
+      expect.objectContaining({ visible: expect.arrayContaining(["storyPoints", "assignee"]) }),
+    );
+    expect(localStorage.getItem("sprint-board-badges-default-fix")).toBe("true");
+  });
+
+  it("respects a hidden badge once the badges fix has already run (BRDG-299)", async () => {
+    localStorage.setItem("sprint-board-poreadiness-default-fix", "true");
+    localStorage.setItem("sprint-board-badges-default-fix", "true");
+    vi.mocked(settingsApi.getColumnConfig).mockResolvedValue({
+      order: [],
+      visible: ["flag", "storyPoints"], // assignee deliberately hidden by the user
+    });
+    const { result } = renderHook(() => useColumnConfig(), { wrapper: swrWrapper });
+    await waitFor(() => expect(result.current.loaded).toBe(true));
+    expect(result.current.visible.has("storyPoints")).toBe(true);
+    expect(result.current.visible.has("assignee")).toBe(false);
+    expect(settingsApi.saveColumnConfig).not.toHaveBeenCalled();
+  });
+
   it("resetToDefaults restores the full default tag set", async () => {
     localStorage.setItem("sprint-board-poreadiness-default-fix", "true");
+    localStorage.setItem("sprint-board-badges-default-fix", "true");
     vi.mocked(settingsApi.getColumnConfig).mockResolvedValue({
       order: [],
       visible: ["flag"],

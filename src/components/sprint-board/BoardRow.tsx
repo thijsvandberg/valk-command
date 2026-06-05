@@ -22,7 +22,7 @@ import { StoryPointPicker } from "@/components/shared/StoryPointPicker";
 import { TicketStatusPill } from "@/components/shared/TicketStatusPill";
 import { prefetchTicketPage } from "@/lib/prefetch";
 
-const ALL_TAGS: Set<InlineTagId> = new Set(["flag", "refinement", "quality", "notes", "poReadiness", "editState"]);
+const ALL_TAGS: Set<InlineTagId> = new Set(["flag", "refinement", "quality", "notes", "poReadiness", "editState", "storyPoints", "businessValue", "epic", "assignee"]);
 
 export interface BoardRowBaseProps {
   ticket: Ticket;
@@ -420,7 +420,7 @@ export const BoardRow = memo(forwardRef<HTMLTableRowElement, BoardRowBaseProps>(
               )}
 
               {/* Epic chip — shrinks with the title when space is tight. */}
-              {!hideEpic && ticket.epic && (
+              {tags.has("epic") && !hideEpic && ticket.epic && (
                 <EpicBadge epic={ticket.epic} className="min-w-0 shrink" />
               )}
 
@@ -462,30 +462,36 @@ export const BoardRow = memo(forwardRef<HTMLTableRowElement, BoardRowBaseProps>(
                 onPointerDown={(e) => e.stopPropagation()}
                 onClick={(e) => e.stopPropagation()}
               >
-                <StoryPointPicker
-                  value={ticket.storyPoints}
-                  onChange={onStoryPointsChange ? (v) => onStoryPointsChange(ticket.key, v) : () => {}}
-                  dense
-                  showMetricIcon
-                  richTooltip
-                  revealWhenEmpty
-                  revealGroup="row"
-                />
-                <BusinessValuePicker
-                  value={ticket.businessValue}
-                  onChange={onBusinessValueChange ? (v) => onBusinessValueChange(ticket.key, v) : () => {}}
-                  dense
-                  showMetricIcon
-                  richTooltip
-                  revealWhenEmpty
-                  revealGroup="row"
-                />
+                {tags.has("storyPoints") && (
+                  <StoryPointPicker
+                    value={ticket.storyPoints}
+                    onChange={onStoryPointsChange ? (v) => onStoryPointsChange(ticket.key, v) : () => {}}
+                    dense
+                    showMetricIcon
+                    richTooltip
+                    revealWhenEmpty
+                    revealGroup="row"
+                  />
+                )}
+                {tags.has("businessValue") && (
+                  <BusinessValuePicker
+                    value={ticket.businessValue}
+                    onChange={onBusinessValueChange ? (v) => onBusinessValueChange(ticket.key, v) : () => {}}
+                    dense
+                    showMetricIcon
+                    richTooltip
+                    revealWhenEmpty
+                    revealGroup="row"
+                  />
+                )}
               </div>
 
               {/* Assignee — right-aligned. */}
-              <div className="shrink-0">
-                <Avatar assignee={ticket.assignee} size={20} />
-              </div>
+              {tags.has("assignee") && (
+                <div className="shrink-0">
+                  <Avatar assignee={ticket.assignee} size={20} />
+                </div>
+              )}
             </>
           )}
         </div>

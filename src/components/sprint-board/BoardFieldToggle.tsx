@@ -37,11 +37,14 @@ export function BoardFieldToggle({
       {open && (
         <div className="absolute top-full right-0 z-50 mt-1.5 flex w-56 flex-col overflow-hidden rounded-xl border border-border-strong bg-[var(--color-surface-floating)] shadow-[var(--shadow-xl)]">
           <div className="max-h-[70vh] overflow-y-auto py-1.5">
-            {ROW_FIELDS.map((field) => {
+            {ROW_FIELDS.map((field, idx) => {
               const checked = visible.has(field.id);
+              // Divider between the secondary signals and the always-present badges (BRDG-299).
+              const startsBadgeGroup = field.group === "badge" && ROW_FIELDS[idx - 1]?.group === "signal";
               return (
+                <div key={field.id} className="contents">
+                {startsBadgeGroup && <div className="my-1 h-px bg-overlay-default" />}
                 <label
-                  key={field.id}
                   className="flex w-full cursor-pointer select-none items-center gap-3 px-3.5 py-1 text-body text-text-secondary hover:bg-hover-list-item hover:text-text-primary"
                 >
                   <span
@@ -66,6 +69,7 @@ export function BoardFieldToggle({
                   />
                   {field.label}
                 </label>
+                </div>
               );
             })}
           </div>

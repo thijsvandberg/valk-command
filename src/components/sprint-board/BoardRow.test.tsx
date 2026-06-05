@@ -45,7 +45,7 @@ vi.mock("./TicketTableCells", () => ({
   QualityBadge: () => <span data-testid="quality" />,
 }));
 
-const ALL_TAGS = new Set<InlineTagId>(["flag", "refinement", "quality", "notes", "poReadiness", "editState"]);
+const ALL_TAGS = new Set<InlineTagId>(["flag", "refinement", "quality", "notes", "poReadiness", "editState", "storyPoints", "businessValue", "epic", "assignee"]);
 
 function makeTicket(overrides: Partial<Ticket> = {}): Ticket {
   return {
@@ -144,6 +144,23 @@ describe("BoardRow (headerless, BRDG-239)", () => {
     expect(screen.queryByTestId("icon-notes")).toBeNull();
     expect(screen.queryByTestId("editstate")).toBeNull();
     expect(screen.queryByTestId("icon-gem")).toBeNull();
+  });
+
+  it("gates SP, BV, epic and assignee badges on the visibility set (BRDG-299)", () => {
+    renderRow({ tags: new Set<InlineTagId>(["flag"]) });
+    expect(screen.queryByTestId("sp")).toBeNull();
+    expect(screen.queryByTestId("bv")).toBeNull();
+    expect(screen.queryByTestId("avatar")).toBeNull();
+    expect(screen.queryByText("Onboarding")).toBeNull();
+  });
+
+  it("shows each badge when only its own tag is on (BRDG-299)", () => {
+    renderRow({ tags: new Set<InlineTagId>(["storyPoints"]) });
+    expect(screen.getByTestId("sp")).toBeInTheDocument();
+    expect(screen.queryByTestId("bv")).toBeNull();
+
+    renderRow({ tags: new Set<InlineTagId>(["assignee"]) });
+    expect(screen.getByTestId("avatar")).toBeInTheDocument();
   });
 
   it("drives the pill readiness segment via the poReadiness tag", () => {

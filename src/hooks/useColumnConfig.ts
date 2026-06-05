@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback } from "react";
 import type { InlineTagId } from "@/components/sprint-board/FilterBar";
-import { DEFAULT_VISIBLE_TAGS, columnsToTags, isTagVisibility } from "@/components/sprint-board/FilterBar";
+import { DEFAULT_VISIBLE_TAGS, BADGE_DEFAULT_TAGS, columnsToTags, isTagVisibility } from "@/components/sprint-board/FilterBar";
 import { settings as settingsApi } from "@/lib/api-client";
 import { useDebouncedCallback } from "./useDebouncedCallback";
 
@@ -11,6 +11,11 @@ const DEBOUNCE_MS = 500;
 // One-time correction: an earlier migration wrongly dropped PO readiness for existing
 // users. Re-add it once, then respect the user's toggle choice afterwards (BRDG-239).
 const POREADINESS_FIX_KEY = "sprint-board-poreadiness-default-fix";
+
+// One-time correction for the SP/BV/epic/assignee badges added in BRDG-299: they
+// were always shown before, so re-add them to a pre-existing persisted set once,
+// then respect the user's toggle choice afterwards.
+const BADGES_FIX_KEY = "sprint-board-badges-default-fix";
 
 // Headerless board (BRDG-239): persists only inline tag visibility. Column ordering
 // and fixed widths were removed with the table. Legacy persisted column-visibility
@@ -26,6 +31,7 @@ export function useColumnConfig() {
 
   useEffect(() => {
     const fixApplied = typeof window !== "undefined" && localStorage.getItem(POREADINESS_FIX_KEY) === "true";
+    const badgesFixApplied = typeof window !== "undefined" && localStorage.getItem(BADGES_FIX_KEY) === "true";
     settingsApi.getColumnConfig()
       .then((raw) => raw as { order: string[] | null; visible: string[] | null })
       .then((data) => {
@@ -44,6 +50,15 @@ export function useColumnConfig() {
         if (!fixApplied) {
           if (next && !next.has("poReadiness")) { next.add("poReadiness"); needsPersist = true; }
           if (typeof window !== "undefined") localStorage.setItem(POREADINESS_FIX_KEY, "true");
+        }
+        // One-time badge correction (see BADGES_FIX_KEY).
+        if (!badgesFixApplied) {
+          if (next) {
+            for (const tag of BADGE_DEFAULT_TAGS) {
+              if (!next.has(tag)) { next.add(tag); needsPersist = true; }
+            }
+          }
+          if (typeof window !== "undefined") localStorage.setItem(BADGES_FIX_KEY, "true");
         }
         if (next) {
           setVisible(next);
