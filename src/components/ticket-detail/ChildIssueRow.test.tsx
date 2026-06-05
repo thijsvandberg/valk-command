@@ -4,8 +4,8 @@ import { ChildIssueRow } from "./ChildIssueRow";
 import type { Subtask } from "@/types/ticket";
 
 vi.mock("@/components/shared/TicketStatusPill", () => ({
-  TicketStatusPill: ({ ticketKey }: { ticketKey: string }) => (
-    <span data-testid="ticket-status-pill">{ticketKey}</span>
+  TicketStatusPill: ({ ticketKey, showReadiness }: { ticketKey: string; showReadiness?: boolean }) => (
+    <span data-testid="ticket-status-pill" data-show-readiness={String(showReadiness)}>{ticketKey}</span>
   ),
 }));
 
@@ -33,9 +33,19 @@ describe("ChildIssueRow", () => {
     expect(screen.getByTestId("ticket-status-pill")).toBeInTheDocument();
   });
 
-  it("hides pill entirely when both showKey and showStatus are false", () => {
+  it("hides pill entirely when type icon, key, and status are all off", () => {
     render(<ChildIssueRow item={baseSub} isLast={false} showKey={false} showStatus={false} />);
     expect(screen.queryByTestId("ticket-status-pill")).not.toBeInTheDocument();
+  });
+
+  it("still renders the pill for the type icon alone when key and status are off", () => {
+    render(<ChildIssueRow item={baseSub} isLast={false} showTypeIcon showKey={false} showStatus={false} />);
+    expect(screen.getByTestId("ticket-status-pill")).toBeInTheDocument();
+  });
+
+  it("forwards showReadiness=false to the pill so subtasks never show a readiness dot", () => {
+    render(<ChildIssueRow item={baseSub} isLast={false} showReadiness={false} />);
+    expect(screen.getByTestId("ticket-status-pill")).toHaveAttribute("data-show-readiness", "false");
   });
 
   it("shows spinner instead of pill when pending", () => {

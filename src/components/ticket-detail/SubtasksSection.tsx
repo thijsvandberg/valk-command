@@ -32,6 +32,7 @@ import {
 } from "@dnd-kit/sortable";
 
 const SUBTASK_FIELDS = [
+  { id: "issueType", label: "issue icon" },
   { id: "issueKey", label: "issue keys" },
   { id: "status", label: "status" },
   { id: "assignee", label: "assignees" },
@@ -82,6 +83,7 @@ function SortableSubtaskRow({
   sub,
   isLast,
   onSelect,
+  showTypeIcon,
   showKey,
   showStatus,
   showAssignee,
@@ -99,6 +101,7 @@ function SortableSubtaskRow({
   sub: Subtask;
   isLast: boolean;
   onSelect?: (key: string) => void;
+  showTypeIcon: boolean;
   showKey: boolean;
   showStatus: boolean;
   showAssignee: boolean;
@@ -148,7 +151,8 @@ function SortableSubtaskRow({
       ref={setNodeRef}
       item={itemWithTitle}
       isLast={isLast}
-      showTypeIcon
+      showTypeIcon={showTypeIcon}
+      showReadiness={false}
       showKey={showKey}
       showStatus={showStatus}
       onJiraStatusChange={onJiraStatusChange}
@@ -210,7 +214,7 @@ export function SubtasksSection({
   const [suggestTaskId, setSuggestTaskId] = useState<string | null>(null);
   const suggestRetryRef = useRef(0);
   const handleSuggestRef = useRef<(isRetry?: boolean) => void>(() => {});
-  const defaultVisible = defaultHideKeys ? ["status"] : ["issueKey", "status"];
+  const defaultVisible = defaultHideKeys ? ["issueType", "status"] : ["issueType", "issueKey", "status"];
   const { visible: visibleFields, toggleField } = useSectionVisibility("subtasks", defaultVisible);
 
   // Load persisted suggestions on mount
@@ -588,6 +592,7 @@ export function SubtasksSection({
 
   const isDndEnabled = filter === "all" && filtered.length > 1;
   const isFiltered = filter !== "all" || (hideDeprecated && deprecatedCount > 0);
+  const showType = visibleFields.has("issueType");
   const showKey = visibleFields.has("issueKey");
   const showStatus = visibleFields.has("status");
   const showAssignee = visibleFields.has("assignee");
@@ -603,6 +608,7 @@ export function SubtasksSection({
           sub={sub}
           isLast={idx === filtered.length - 1}
           onSelect={onSelectTicket}
+          showTypeIcon={showType}
           showKey={showKey}
           showStatus={showStatus}
           showAssignee={showAssignee}
@@ -628,7 +634,8 @@ export function SubtasksSection({
         item={itemWithTitle}
         isLast={idx === filtered.length - 1}
         isPending={isPending}
-        showTypeIcon
+        showTypeIcon={showType}
+        showReadiness={false}
         showKey={showKey}
         showStatus={showStatus}
         onJiraStatusChange={!isPending ? (s) => handleJiraStatusChange(sub.key, s) : undefined}
@@ -667,7 +674,9 @@ export function SubtasksSection({
   );
 
   const listContent = (
-    <div className="mt-3 overflow-hidden rounded-lg border border-border-default">
+    // overflow-clip + clip-margin still clips rows to the rounded corners, but lets the
+    // drag handle straddle the left border by a few px instead of being cut off (overflow-hidden would clip it).
+    <div className="mt-3 overflow-clip [overflow-clip-margin:0.75rem] rounded-lg border border-border-default">
       {subtaskRows}
       {inlineInput}
     </div>

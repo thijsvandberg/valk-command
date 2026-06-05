@@ -16,6 +16,8 @@ interface ChildIssueRowProps {
   showTypeIcon?: boolean;
   showKey?: boolean;
   showStatus?: boolean;
+  /** Controls the readiness indicator. Defaults to true; subtasks pass false since they have no readiness. */
+  showReadiness?: boolean;
   readiness?: TicketReadiness | null;
   onJiraStatusChange?: (status: JiraStatus) => void;
   onReadinessChange?: (readiness: TicketReadiness | null) => void;
@@ -71,6 +73,7 @@ export function ChildIssueRow({
   showTypeIcon = false,
   showKey = true,
   showStatus = true,
+  showReadiness = true,
   readiness,
   onJiraStatusChange,
   onReadinessChange,
@@ -114,7 +117,7 @@ export function ChildIssueRow({
     onSelect(item.key, e);
   };
 
-  const hasPill = (showKey || showStatus) && !isPending;
+  const hasPill = (showTypeIcon || showKey || showStatus) && !isPending;
   const showCheckbox = selectable && !isPending;
 
   // Visual checkbox box, reused by the bulk-mode gutter and the hover overlay.
@@ -196,6 +199,7 @@ export function ChildIssueRow({
               ticketKey={item.key}
               jiraStatus={item.jiraStatus}
               issueType={showTypeIcon ? item.type : undefined}
+              showReadiness={showReadiness}
               readiness={readiness}
               onJiraStatusChange={onJiraStatusChange}
               onReadinessChange={onReadinessChange}
