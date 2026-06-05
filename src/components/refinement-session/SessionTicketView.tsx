@@ -11,6 +11,7 @@ import { EditableDescription } from "@/components/ticket-detail/EditableDescript
 import { EditableTitle } from "@/components/ticket-detail/EditableTitle";
 import { LinkedIssuesSection } from "@/components/ticket-detail/LinkedIssuesSection";
 import { ConfluencePagesSection } from "@/components/ticket-detail/ConfluencePagesSection";
+import { AttachmentsSection } from "@/components/ticket-detail/AttachmentsSection";
 
 import { SprintPicker } from "@/components/shared/SprintPicker";
 import { StoryPointPicker } from "@/components/shared/StoryPointPicker";
@@ -22,6 +23,8 @@ import { LabelPicker } from "@/components/shared/LabelPicker";
 import { JIRA_STATUS_COLORS } from "@/types/ticket";
 import { Tooltip } from "@/components/shared/Tooltip";
 import { tickets, jira } from "@/lib/api-client";
+import { useSectionCollapsed } from "@/hooks/useSectionCollapsed";
+import { SECTION_KEYS } from "@/lib/section-collapse-store";
 import { useJiraSprints } from "@/hooks/useSprintBoard";
 import { relativeDate, formatAbsoluteDate } from "@/lib/date-utils";
 import {
@@ -57,12 +60,6 @@ interface SessionTicketViewProps {
   onViewDiff?: () => void;
 }
 
-const QUICK_COMMENTS = [
-  "Discussed in refinement, ready for dev",
-  "Needs follow-up before development",
-  "Accepted with noted caveats",
-];
-
 function CollapsibleComments({
   ticketKey,
   jiraComments,
@@ -72,7 +69,10 @@ function CollapsibleComments({
   jiraComments: TicketDetail["jiraComments"];
   onMutate?: () => void;
 }) {
-  const [expanded, setExpanded] = useState(true);
+  // Comments collapse is shared with the full-view "Jira Comments" section so the
+  // PO's choice persists across every surface, not just this session.
+  const { isCollapsed, toggle } = useSectionCollapsed();
+  const expanded = !isCollapsed(SECTION_KEYS.jiraComments);
   const [newComment, setNewComment] = useState("");
   const [posting, setPosting] = useState(false);
   const [posted, setPosted] = useState(false);
@@ -109,8 +109,9 @@ function CollapsibleComments({
     <div className="mt-6">
       <button
         type="button"
-        onClick={() => setExpanded(!expanded)}
-        className="flex w-full cursor-pointer items-center gap-2 border-b border-border-default pb-2 text-left"
+        onClick={() => toggle(SECTION_KEYS.jiraComments)}
+        aria-expanded={expanded}
+        className="flex w-full cursor-pointer items-center gap-2 border-b border-border-default pb-2 text-left focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)]"
       >
         <MessageSquare size={13} strokeWidth={1.5} className="text-text-muted" />
         <h3 className="font-[var(--font-display)] text-body-lg font-semibold text-text-primary">
@@ -189,22 +190,6 @@ function CollapsibleComments({
                 <p className="mt-1.5 text-caption text-[var(--color-status-error)]">{error}</p>
               )}
             </div>
-          </div>
-
-          {/* Quick-post buttons */}
-          <div className="flex flex-wrap gap-1.5 pl-10">
-            {QUICK_COMMENTS.map((text) => (
-              <button
-                key={text}
-                type="button"
-                onClick={() => handlePost(text)}
-                disabled={posting}
-                className="rounded-md border border-border-default bg-overlay-subtle px-2 py-1 text-caption text-text-tertiary cursor-pointer hover:border-[var(--color-brand-500)]/30 hover:bg-[var(--color-brand-500)]/[0.06] hover:text-text-secondary focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)] active:scale-[0.97] disabled:opacity-40 disabled:cursor-not-allowed"
-                style={{ transition: "border-color 0.15s ease, background-color 0.15s ease, color 0.15s ease, transform 0.1s ease" }}
-              >
-                {text}
-              </button>
-            ))}
           </div>
 
           {/* Existing comments */}
@@ -619,6 +604,11 @@ export function SessionTicketView({
         overrideConfirmed={overrideConfirmed}
         onOverrideChange={onOverrideChange}
       />
+
+      {/* Attachments (only when present, to keep the session flow clean) */}
+      {detail.attachments.length > 0 && (
+        <AttachmentsSection attachments={detail.attachments} />
+      )}
 
       {/* Subtasks (hidden when in side pane mode) */}
       {!subtasksPaneMode && (
