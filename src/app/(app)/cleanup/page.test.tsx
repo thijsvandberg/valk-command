@@ -1,5 +1,5 @@
 import type { ReactNode } from "react";
-import { render, screen, fireEvent, within } from "@testing-library/react";
+import { render, screen, fireEvent, within, waitFor } from "@testing-library/react";
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import CleanupPage from "./page";
 import type { CleanupResponse } from "@/lib/cleanup-types";
@@ -402,5 +402,72 @@ describe("CleanupPage", () => {
     swrLoading = true;
     const { container } = render(<CleanupPage />);
     expect(container.querySelector(".animate-pulse")).toBeInTheDocument();
+  });
+
+  describe("quick-scan selected", () => {
+    beforeEach(() => {
+      swrData = RESPONSE;
+    });
+
+    it("renders the Quick-scan and Deep-scan actions with their clarifying tooltips", async () => {
+      vi.useFakeTimers({ shouldAdvanceTime: true });
+      try {
+        render(<CleanupPage />);
+        fireEvent.click(screen.getByTestId("check-BT-1"));
+
+        const quickBtn = screen.getByRole("button", { name: /Quick-scan selected/i });
+        const deepBtn = screen.getByRole("button", { name: /Deep-scan selected/i });
+        expect(quickBtn).toBeInTheDocument();
+        expect(deepBtn).toBeInTheDocument();
+
+        // The Tooltip renders its content lazily on focus/hover after a delay.
+        // Focus the trigger span and advance past the delay to assert the copy.
+        fireEvent.focus(quickBtn.parentElement!);
+        vi.advanceTimersByTime(500);
+        expect(
+          await screen.findByText(/Runs the cheap staleness pass now on the selected tickets \(instant, no AI\)\./i),
+        ).toBeInTheDocument();
+        fireEvent.blur(quickBtn.parentElement!);
+
+        fireEvent.focus(deepBtn.parentElement!);
+        vi.advanceTimersByTime(500);
+        expect(
+          await screen.findByText(/Adds the selected tickets to the deep-scan queue\..*does not run immediately\./i),
+        ).toBeInTheDocument();
+      } finally {
+        vi.useRealTimers();
+      }
+    });
+
+    it("posts the selected keys to the quick-scan endpoint and shows the result", async () => {
+      const fetchSpy = vi
+        .spyOn(globalThis, "fetch")
+        .mockResolvedValue(
+          new Response(JSON.stringify({ scored: 2, skipped: 0 }), {
+            status: 200,
+            headers: { "Content-Type": "application/json" },
+          }),
+        );
+
+      render(<CleanupPage />);
+      fireEvent.click(screen.getByTestId("check-BT-1"));
+      fireEvent.click(screen.getByTestId("check-BT-2"));
+
+      fireEvent.click(screen.getByRole("button", { name: /Quick-scan selected/i }));
+
+      await waitFor(() => {
+        expect(fetchSpy).toHaveBeenCalledWith(
+          "/api/cleanup/quick-scan",
+          expect.objectContaining({ method: "POST" }),
+        );
+      });
+      const [, init] = fetchSpy.mock.calls[0];
+      expect(JSON.parse((init as RequestInit).body as string)).toEqual({ keys: ["BT-1", "BT-2"] });
+
+      // Inline "scored N" result surfaces after the run.
+      expect(await screen.findByText(/Scored 2/)).toBeInTheDocument();
+
+      fetchSpy.mockRestore();
+    });
   });
 });

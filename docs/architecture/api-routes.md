@@ -230,6 +230,7 @@ same definition the Tier-1 staleness scanner uses). Never writes; never touches 
 | `/api/cleanup/deep-scan` | GET | Tier-2 deep-dive queue: status counts `{ pending, running, done, error }` plus `items[]` (the queue list with joined ticket title/status). |
 | `/api/cleanup/deep-scan` | POST | Enqueue tickets for Tier-2 deep scan (BRDG-284). Idempotent. |
 | `/api/cleanup/deep-scan` | DELETE | Manage the queue: `{ key }` removes one pending item (404 if no active item, 409 if running); `{ all: true }` or `?all=1` clears all pending items (running items finish on their own). Returns updated `{ queue }` counts. |
+| `/api/cleanup/quick-scan` | POST | Run the Tier-1 staleness pass **synchronously** for `{ keys: string[] }` (max 200). Cheap/local/no-AI; no Jira reads or writes. Scores only eligible keys (backlog, not removed, not finished, not subtask) and skips the rest. Returns `{ scored, skipped }`. Unlike `deep-scan` POST, this runs immediately rather than enqueuing. |
 | `/api/cleanup/auto-scan-settings` | GET | Read auto background scan settings `{ enabled, dailyCount }` (BRDG-290). |
 | `/api/cleanup/auto-scan-settings` | POST | Update settings `{ enabled?, dailyCount? }`. Returns merged settings. |
 | `/api/cleanup/deprecated-areas` | GET | List the editable deprecated-area keyword list (BRDG-285). |
@@ -312,7 +313,10 @@ The controls bar uses standard Bridge components with a tooltip on every control
 `FilterDropdown` for the multi-select facet filters (type / epic / assignee / reporter / last-activity / sprint),
 the `Button` quick-actions, and the auto-scan toggle. The multi-select bulk bar reuses the sprint board's
 `BarContainer` footer styling (brand select-all checkbox, `N/total selected` counter, standard `Button`s,
-`BarDivider`s) so it matches `BulkActionBar`; its actions are Deep-scan selected / Confirm / Dismiss / Clear.
+`BarDivider`s) so it matches `BulkActionBar`; its actions are Quick-scan selected / Deep-scan selected / Confirm / Dismiss / Clear.
+
+**Quick-scan vs Deep-scan (PO clarity).** "Quick-scan selected" POSTs `{ keys }` to `/api/cleanup/quick-scan`, which runs the cheap Tier-1 staleness pass **immediately** (no AI, no Jira) and refreshes the list, surfacing an inline "Scored N" result. "Deep-scan selected" POSTs `{ method: "keys", keys }` to `/api/cleanup/deep-scan`, which only **enqueues** the tickets; processing starts from the Scans popover (enable or "Run now" Backlog Deep Scan). Tooltips on both buttons spell out the immediate-vs-queued difference. The quick-scan endpoint and the rolling `deprecation-staleness` scheduled task share one implementation — `scoreStalenessForKeys` / `scoreRows` in `src/lib/deprecation-staleness-runner.ts` — so on-demand and background staleness scores are identical.
+
 `POST /api/cleanup/deep-scan` body is a discriminated union on `method`:
 - `{ method: "keys", keys: string[] }` — hand-picked tickets (filtered to the eligible backlog).
 - `{ method: "worst-staleness", topX: number }` — top-X by combined Tier-1 score.

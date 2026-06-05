@@ -175,3 +175,31 @@ Epic: Backlog Deprecation Review. Three PO-requested items on `/cleanup`:
 - Tests: API exposes the new fields + sprints facet + deep filter/sort; `filterRows` deep + sprint
   (incl. backlog mapping) filters; inline rationale renders/omits cleanly; `listQueue` + `claimPendingBatch`
   exclude subtasks. `npm run lint` + `npm run typecheck` clean. Docs updated (api-routes, this story).
+
+### Fifth UI pass: on-demand Quick-scan + queue-vs-immediate clarity (PO feedback)
+
+Epic: Backlog Deprecation Review. The rolling `deprecation-staleness` scheduled task now defaults OFF, so
+the PO needs to trigger the cheap staleness pass on demand, and was confused about whether "Deep-scan
+selected" runs immediately (it does not — it only enqueues).
+
+- **Reusable staleness runner.** Extracted the per-ticket gather+score+persist loop out of
+  `runDeprecationStalenessScan` into `src/lib/deprecation-staleness-runner.ts`: `scoreRows(rows, scannedAt,
+  now?)` (bulk-gathers latest comment + linked-epic activity, scores via `scoreStaleness`, merges into
+  `scanScores` without clobbering deep-scan topic scores, writes `scanOverall`/`scanRationale`/
+  `lastScannedAt`) and `scoreStalenessForKeys(keys, now?)` (loads only the eligible rows among the requested
+  keys — backlog, not removed, not finished, not subtask — scores them, returns `{ scored, skipped }`). The
+  scheduled task now calls `scoreRows`, so there is **one** implementation and the background and on-demand
+  scans produce identical scores.
+- **`POST /api/cleanup/quick-scan`.** Validates `{ keys: string[] }` (max 200), calls `scoreStalenessForKeys`
+  synchronously (cheap/local/no-AI, no Jira writes), returns `{ scored, skipped }`. No-op on empty.
+- **"Quick-scan selected" bulk action.** New `Zap`-icon button in the `/cleanup` selection bar next to
+  "Deep-scan selected". POSTs the checked keys to `/api/cleanup/quick-scan`, refreshes the list, and shows an
+  inline "Scored N (M skipped)" result; selection is kept so the PO can chain another action. Tooltips now
+  spell out the difference — Quick-scan: "Runs the cheap staleness pass now on the selected tickets (instant,
+  no AI)."; Deep-scan: "Adds the selected tickets to the deep-scan queue. Start processing from the Scans
+  popover ... It does not run immediately."
+- Tests: `scoreStalenessForKeys` (scores eligible, skips subtask/finished/non-backlog/unknown, merges not
+  clobbers, bulk comment+epic gather, de-dupes keys, empty no-op); `quick-scan` route (validates, caps at
+  200, returns counts, scores synchronously); the scheduled-task tests stay green via the shared function; the
+  page test asserts the button posts the selected keys + shows the result + both tooltips. `npm run lint` +
+  `npm run typecheck` clean. Docs updated (api-routes, this story).

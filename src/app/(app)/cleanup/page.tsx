@@ -3,7 +3,7 @@
 import { useMemo, useState, useCallback } from "react";
 import useSWR, { mutate as globalMutate } from "swr";
 import dynamic from "next/dynamic";
-import { Trash2, Telescope, Clock, Flame, Check, BellOff, TrendingUp, Sparkles } from "lucide-react";
+import { Trash2, Telescope, Clock, Flame, Check, BellOff, TrendingUp, Sparkles, Zap } from "lucide-react";
 import { usePageTitle } from "@/hooks/usePageTitle";
 import { Button } from "@/components/ui/Button";
 import { ViewHeader, ViewHeaderTitle } from "@/components/shared/ViewHeader";
@@ -245,6 +245,10 @@ export default function CleanupPage() {
   const [checkedKeys, setCheckedKeys] = useState<Set<string>>(new Set());
   const [enqueuing, setEnqueuing] = useState(false);
   const [disposing, setDisposing] = useState(false);
+  const [quickScanning, setQuickScanning] = useState(false);
+  // Transient inline result of the last quick-scan ("scored N"). Cleared on the
+  // next action so the bulk bar never carries a stale message.
+  const [quickScanResult, setQuickScanResult] = useState<string | null>(null);
 
   const params = new URLSearchParams({ sort });
   if (filters.scanned !== "all") params.set("scanned", filters.scanned);
@@ -326,6 +330,33 @@ export default function CleanupPage() {
     await enqueue({ method: "keys", keys });
     setCheckedKeys(new Set());
   }, [checkedKeys, enqueue]);
+
+  // Quick (Tier-1 staleness) scan: runs immediately on the server because it is
+  // cheap and local. We keep the selection so the PO can chain another action,
+  // and surface a brief "scored N" result inline. Refresh the list so the new
+  // scores/rationale appear right away.
+  const quickScanSelected = useCallback(async () => {
+    const keys = [...checkedKeys];
+    if (keys.length === 0) return;
+    setQuickScanning(true);
+    setQuickScanResult(null);
+    try {
+      const res = await fetch("/api/cleanup/quick-scan", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ keys }),
+      });
+      if (res.ok) {
+        const data = (await res.json()) as { scored: number; skipped: number };
+        setQuickScanResult(
+          `Scored ${data.scored}${data.skipped > 0 ? ` (${data.skipped} skipped)` : ""}`,
+        );
+      }
+      void mutateCleanup();
+    } finally {
+      setQuickScanning(false);
+    }
+  }, [checkedKeys, mutateCleanup]);
 
   // Re-apply sort/filter client-side so the loaded list re-orders instantly when
   // controls change, without waiting on a refetch.
@@ -750,17 +781,37 @@ export default function CleanupPage() {
 
                 <BarDivider />
 
-                <Tooltip content="Queue the selected tickets for a Tier-2 deep scan">
+                {/* Quick-scan: the cheap, local Tier-1 staleness pass run on demand.
+                    Runs immediately (no queue, no AI), unlike Deep-scan below. */}
+                <Tooltip content="Runs the cheap staleness pass now on the selected tickets (instant, no AI).">
+                  <Button
+                    variant="soft"
+                    size="md"
+                    disabled={quickScanning || enqueuing || disposing}
+                    onClick={() => void quickScanSelected()}
+                  >
+                    <Zap className="h-3.5 w-3.5 shrink-0" strokeWidth={1.75} />
+                    Quick-scan selected
+                  </Button>
+                </Tooltip>
+
+                <Tooltip content="Adds the selected tickets to the deep-scan queue. Start processing from the Scans popover (enable or Run now 'Backlog Deep Scan'). It does not run immediately.">
                   <Button
                     variant="primary"
                     size="md"
-                    disabled={enqueuing || disposing}
+                    disabled={enqueuing || disposing || quickScanning}
                     onClick={() => void deepScanSelected()}
                   >
                     <Telescope className="h-3.5 w-3.5 shrink-0" strokeWidth={1.5} />
                     Deep-scan selected
                   </Button>
                 </Tooltip>
+
+                {quickScanResult && (
+                  <span className="shrink-0 text-label font-medium tabular-nums text-[var(--color-status-success)]">
+                    {quickScanResult}
+                  </span>
+                )}
 
                 <BarDivider />
 
@@ -769,7 +820,7 @@ export default function CleanupPage() {
                   <Button
                     variant="soft"
                     size="md"
-                    disabled={disposing || enqueuing}
+                    disabled={disposing || enqueuing || quickScanning}
                     onClick={() => void bulkDispose("confirm")}
                   >
                     <Check className="h-3.5 w-3.5 shrink-0" strokeWidth={2} />
@@ -780,7 +831,7 @@ export default function CleanupPage() {
                   <Button
                     variant="ghost"
                     size="md"
-                    disabled={disposing || enqueuing}
+                    disabled={disposing || enqueuing || quickScanning}
                     onClick={() => void bulkDispose("dismiss")}
                   >
                     <BellOff className="h-3.5 w-3.5 shrink-0" strokeWidth={1.5} />
@@ -794,7 +845,7 @@ export default function CleanupPage() {
                   variant="ghost"
                   size="sm"
                   className="shrink-0 border-0 bg-transparent text-text-tertiary hover:bg-transparent hover:text-text-secondary"
-                  onClick={() => setCheckedKeys(new Set())}
+                  onClick={() => { setCheckedKeys(new Set()); setQuickScanResult(null); }}
                 >
                   Clear
                 </Button>
