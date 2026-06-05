@@ -3,6 +3,7 @@ import { appSetting, activityLog } from "@/db/schema";
 import { jiraClient } from "@/lib/jira-client";
 import type { JiraSprint } from "@/lib/jira-client";
 import { upsertSetting } from "@/lib/upsert-setting";
+import { cacheSprintName } from "@/lib/upsert-issue";
 import { cache } from "@/lib/cache";
 import { logger } from "@/lib/logger";
 
@@ -82,6 +83,12 @@ export async function refreshSprintMetadata(signal?: AbortSignal): Promise<boole
 
   await upsertSetting("jira_sprints", JSON.stringify(merged));
   await upsertSetting(SPRINT_SYNC_KEY, new Date().toISOString());
+
+  // Keep the sprint-name cache (resolved by detail surfaces like the epic
+  // children view) in step with renames. Ticket records only store sprint IDs,
+  // so without this a rename stays invisible there until a child ticket is
+  // re-synced individually.
+  for (const s of sprints) cacheSprintName(String(s.id), s.name);
 
   cache.invalidate("/api/jira/sprints");
   return true;

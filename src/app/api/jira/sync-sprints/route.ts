@@ -3,6 +3,7 @@ import { db } from "@/db";
 import { appSetting, activityLog } from "@/db/schema";
 import { eq } from "drizzle-orm";
 import { jiraClient } from "@/lib/jira-client";
+import { cacheSprintName } from "@/lib/upsert-issue";
 import { registerSync, unregisterSync } from "@/lib/sync-abort";
 import { applyRateLimit } from "@/lib/rate-limiter";
 import { cache } from "@/lib/cache";
@@ -93,6 +94,12 @@ export async function POST(request: NextRequest) {
     } else {
       await db.insert(appSetting).values({ key: "jira_sprints", value: payload });
     }
+
+    // Refresh the sprint-name cache that detail surfaces (e.g. epic children)
+    // resolve sprint IDs against. Ticket records only store sprint IDs, so a
+    // rename in Jira is otherwise invisible there until a child ticket is
+    // re-synced individually.
+    for (const s of sprints) cacheSprintName(String(s.id), s.name);
 
     const durationMs = Date.now() - new Date(startedAt).getTime();
     await db.update(activityLog).set({

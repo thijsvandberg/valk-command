@@ -104,6 +104,27 @@ describe("refreshSprintMetadata", () => {
     expect(logs[0].summary).toContain("active");
   });
 
+  it("refreshes the sprint-name cache so renames reach detail surfaces", async () => {
+    const { sprintNameCache } = await import("@/db/schema");
+    const { eq } = await import("drizzle-orm");
+
+    // Stale cache entry from before the rename.
+    testDb.insert(sprintNameCache).values({
+      sprintId: "141",
+      displayName: "Sprint 141",
+    }).run();
+
+    mockGetSprintsLightweight.mockResolvedValue([
+      { id: 141, name: "BT: 141", state: "future", startDate: "2026-07-03" },
+    ]);
+
+    await refreshSprintMetadata();
+
+    const cached = testDb.select().from(sprintNameCache)
+      .where(eq(sprintNameCache.sprintId, "141")).get();
+    expect(cached!.displayName).toBe("BT: 141");
+  });
+
   it("preserves closed sprints during merge", async () => {
     const { appSetting } = await import("@/db/schema");
     const { eq } = await import("drizzle-orm");
