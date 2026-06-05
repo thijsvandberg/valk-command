@@ -10,7 +10,8 @@ import useSWR from "swr";
 import { swrFetcher } from "@/lib/api-client";
 
 export interface AssignableUser {
-  accountId: string;
+  // Real Jira accountId, or null until sync has captured it for this person.
+  accountId: string | null;
   displayName: string;
   avatarUrl: string | null;
   isFavorite?: boolean;
@@ -107,7 +108,7 @@ function AssigneePickerInner({
     const tempAssignee: Assignee = { name: u.displayName, initials: userInitials(u.displayName), color: userColor(u.displayName) };
     return (
       <BasePicker.Item
-        key={u.accountId}
+        key={u.accountId ?? u.displayName}
         selected={isSelected}
         onSelect={() => { onChange(u); handleClose(); }}
       >

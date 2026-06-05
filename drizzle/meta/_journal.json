@@ -491,6 +491,13 @@
       "when": 1780657871939,
       "tag": "0069_nostalgic_black_panther",
       "breakpoints": true
+    },
+    {
+      "idx": 70,
+      "version": "6",
+      "when": 1780694332249,
+      "tag": "0070_peaceful_clint_barton",
+      "breakpoints": true
     }
   ]
 }

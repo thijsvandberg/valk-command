@@ -55,7 +55,7 @@ export interface WriterContextValue {
   onCodebaseResearchChange: (v: boolean) => void;
   onModelChange: (v: string) => void;
 
-  onAssigneeChange: (user: { accountId: string; displayName: string; avatarUrl: string | null } | null) => Promise<void>;
+  onAssigneeChange: (user: { accountId: string | null; displayName: string; avatarUrl: string | null } | null) => Promise<void>;
   onSprintChange: (sprintId: string | null) => Promise<void>;
   onStoryPointsChange: (v: number | null) => Promise<void>;
   onBusinessValueChange: (v: number | null) => Promise<void>;

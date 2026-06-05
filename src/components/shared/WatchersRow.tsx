@@ -34,6 +34,7 @@ export function WatchersRow({ ticketKey, align = "right" }: { ticketKey: string;
   const watchers = data?.watchers ?? [];
 
   const handleAdd = useCallback(async (user: AssignableUser) => {
+    if (!user.accountId) return; // watchers always carry a real Jira id
     const prev = data?.watchers ?? [];
     if (prev.some((w) => w.accountId === user.accountId)) return;
     const next = [...prev, user];
@@ -48,6 +49,7 @@ export function WatchersRow({ ticketKey, align = "right" }: { ticketKey: string;
   }, [data, mutate, ticketKey, showToast]);
 
   const handleRemove = useCallback(async (user: AssignableUser) => {
+    if (!user.accountId) return; // watchers always carry a real Jira id
     const prev = data?.watchers ?? [];
     const next = prev.filter((w) => w.accountId !== user.accountId);
     mutate({ watchers: next }, false);

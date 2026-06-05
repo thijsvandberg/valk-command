@@ -12,10 +12,20 @@ import { isNotNull, sql } from "drizzle-orm";
 export async function GET() {
   try {
     const rows = await db
-      .selectDistinct({ assignee: ticket.assignee })
+      .selectDistinct({ assignee: ticket.assignee, accountId: ticket.assigneeAccountId })
       .from(ticket)
       .where(isNotNull(ticket.assignee))
       .orderBy(sql`${ticket.assignee} COLLATE NOCASE`);
+
+    // Collapse to one entry per display name, preferring a row that carries a
+    // real Jira accountId (harvested during sync) so assignment can use it.
+    const accountIdByName = new Map<string, string | null>();
+    for (const r of rows) {
+      if (!r.assignee) continue;
+      if (!accountIdByName.has(r.assignee) || (r.accountId && !accountIdByName.get(r.assignee))) {
+        accountIdByName.set(r.assignee, r.accountId ?? null);
+      }
+    }
 
     const favRows = db.select().from(favoriteUser).all();
     const favSet = new Set(favRows.map((r) => r.displayName));
@@ -28,16 +38,18 @@ export async function GET() {
       teamMap.set(row.displayName, list);
     }
 
-    const users = rows
-      .map((r) => r.assignee)
-      .filter((name): name is string => Boolean(name?.trim()))
-      .map((name) => {
+    const users = [...accountIdByName.entries()]
+      .filter(([name]) => Boolean(name?.trim()))
+      .map(([name, accountId]) => {
         const parts = name.trim().split(/\s+/);
         const initials = parts.length === 1
           ? parts[0].slice(0, 2).toUpperCase()
           : (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
         return {
-          accountId: name,
+          // Real Jira accountId once captured by sync; null until then (the
+          // assign route rejects null with a "re-sync" message rather than
+          // silently sending a bad id).
+          accountId,
           displayName: name,
           avatarUrl: null,
           initials,

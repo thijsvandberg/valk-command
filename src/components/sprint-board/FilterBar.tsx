@@ -189,7 +189,7 @@ export function FilterBar({
                 <span className="flex w-4 justify-center">
                   <span className="h-1.5 w-1.5 rounded-full bg-overlay-strong" />
                 </span>
-                No readiness
+                Ready for Development
               </span>
             );
           }

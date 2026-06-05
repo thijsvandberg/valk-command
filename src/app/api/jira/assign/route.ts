@@ -35,6 +35,14 @@ export async function POST(request: Request) {
     return errorResponse("issueKey is required", 400);
   }
 
+  // Assigning a person requires a real Jira accountId (the token has no
+  // user-search scope, so the id must come from sync-captured data). Reject a
+  // name without an id rather than silently unassigning. A null accountId AND
+  // null name is an intentional unassign.
+  if (name && !accountId) {
+    return errorResponse(`Cannot assign "${name}" yet — no Jira account id on record. Re-sync this project and try again.`, 422);
+  }
+
   try {
     await jiraClient.assignIssue(issueKey, accountId ?? null);
     await syncJiraTimestamp(issueKey);

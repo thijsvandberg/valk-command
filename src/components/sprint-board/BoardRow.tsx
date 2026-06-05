@@ -3,7 +3,7 @@
 import { forwardRef, memo, useRef, useCallback, useState, useMemo } from "react";
 import { useOutsideClick } from "@/hooks/useOutsideClick";
 import type { Ticket, POStatus, TicketReadiness, IssueType, JiraStatus, Sprint } from "@/types/ticket";
-import type { AssignableUser } from "@/components/shared/AssigneePicker";
+import { AssigneePicker, type AssignableUser } from "@/components/shared/AssigneePicker";
 import type { EpicOption } from "@/components/shared/EpicPicker";
 import { EpicBadge } from "@/components/shared/IssueMetaBadges";
 import type { InlineTagId } from "@/components/sprint-board/filter-bar-types";
@@ -478,10 +478,25 @@ export const BoardRow = memo(forwardRef<HTMLTableRowElement, BoardRowBaseProps>(
                 )}
               </div>
 
-              {/* Assignee — right-aligned. */}
+              {/* Assignee — right-aligned. Clickable avatar opens the people
+                  picker inline, mirroring the ticket sidebar. */}
               {tags.has("assignee") && (
-                <div className="shrink-0">
-                  <Avatar assignee={ticket.assignee} size={20} />
+                <div
+                  className="shrink-0"
+                  onPointerDown={(e) => e.stopPropagation()}
+                  onClick={(e) => e.stopPropagation()}
+                >
+                  {!isRemoved && onAssigneeChange ? (
+                    <AssigneePicker
+                      value={ticket.assignee ?? null}
+                      onChange={(u) => onAssigneeChange(ticket.key, u)}
+                      variant="avatar"
+                      avatarSize={20}
+                      align="right"
+                    />
+                  ) : (
+                    <Avatar assignee={ticket.assignee} size={20} />
+                  )}
                 </div>
               )}
             </>

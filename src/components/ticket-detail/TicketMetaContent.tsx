@@ -238,7 +238,7 @@ export function TicketMetaContent({
     setSprintModalOpen(true);
   }, []);
 
-  const handleAssigneeChange = useCallback(async (user: { accountId: string; displayName: string; avatarUrl: string | null } | null) => {
+  const handleAssigneeChange = useCallback(async (user: { accountId: string | null; displayName: string; avatarUrl: string | null } | null) => {
     const prev = assignee;
     let next: typeof assignee = null;
     if (user) {

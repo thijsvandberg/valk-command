@@ -43,6 +43,21 @@ describe("GET /api/jira/assignable-users", () => {
     expect(data.users[1].initials).toBe("BO");
   });
 
+  it("emits the sync-captured accountId, preferring a non-null id across rows", async () => {
+    testDb.insert(ticket).values([
+      { jiraKey: "VPL-1", title: "T1", status: "TO DO", assignee: "Alice Smith", assigneeAccountId: null },
+      { jiraKey: "VPL-2", title: "T2", status: "TO DO", assignee: "Alice Smith", assigneeAccountId: "acc-alice" },
+      { jiraKey: "VPL-3", title: "T3", status: "TO DO", assignee: "Bob Jones" },
+    ]).run();
+
+    const res = await GET();
+    const data = await res.json();
+    const alice = data.users.find((u: { displayName: string }) => u.displayName === "Alice Smith");
+    const bob = data.users.find((u: { displayName: string }) => u.displayName === "Bob Jones");
+    expect(alice.accountId).toBe("acc-alice");
+    expect(bob.accountId).toBeNull();
+  });
+
   it("computes two-char initials for single-word name", async () => {
     testDb.insert(ticket).values({
       jiraKey: "VPL-1", title: "T1", status: "TO DO", assignee: "Alice",
