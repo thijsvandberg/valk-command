@@ -94,7 +94,7 @@ function IssueTypeDropdown({ currentValue, onChange, onClose, skipRef }: IssueTy
             onClick={() => { onChange(type); onClose(); }}
             className="flex w-full items-center gap-2.5 px-3 py-1.5 text-body-sm cursor-pointer hover:bg-hover-list-item active:bg-overlay-default"
           >
-            <IssueTypeIcon type={type} size={12} />
+            <IssueTypeIcon type={type} size={15} strokeWidth={2.0} />
             <span className={isActive ? "font-medium" : ""} style={{ color: isActive ? color : "var(--color-text-secondary)" }}>
               {TYPE_LABELS[type]}
             </span>
@@ -516,7 +516,14 @@ function TicketHoverCard({
     const rect = el.getBoundingClientRect();
     const spaceBelow = window.innerHeight - rect.bottom;
     const openUp = spaceBelow < 260;
-    setPos({ left: rect.left, top: openUp ? rect.top - 6 : rect.bottom + 6, openUp });
+    // Anchor to the trigger's left edge, but clamp so the fixed-width card never
+    // spills past either viewport edge (it would otherwise run off-screen for
+    // pills in the right half of the page).
+    const CARD_WIDTH = 400;
+    const MARGIN = 8;
+    const maxLeft = window.innerWidth - CARD_WIDTH - MARGIN;
+    const left = Math.max(MARGIN, Math.min(rect.left, maxLeft));
+    setPos({ left, top: openUp ? rect.top - 6 : rect.bottom + 6, openUp });
   }, [triggerRef]);
 
   useEffect(() => {
@@ -920,8 +927,10 @@ export function TicketStatusPill({
 
   const iconSize = size === "sm" ? 10 : size === "lg" ? 14 : 12;
   // The issue-type glyph reads too small next to the key in the compact elevated
-  // pill, so nudge it up there (other contexts keep the standard size).
-  const typeIconSize = elevated && size === "sm" ? 13 : iconSize;
+  // pill, so nudge it up there. In the dense list row it is the primary type cue,
+  // so give it extra size. A bolder stroke keeps it prominent in both variants.
+  const typeIconSize = elevated ? (size === "sm" ? 13 : iconSize) + 4 : iconSize + 3;
+  const typeStrokeWidth = 2.0;
   const textSize = size === "sm" ? "text-[10px]" : size === "lg" ? "text-body-sm" : "text-label";
 
   // The Jira status badge stays compact at sm/md (dense table rows); at lg it
@@ -975,7 +984,7 @@ export function TicketStatusPill({
                 onIssueTypeChange ? "cursor-pointer hover:bg-overlay-default" : "cursor-default"
               }`}
             >
-              <IssueTypeIcon type={issueType} size={typeIconSize} />
+              <IssueTypeIcon type={issueType} size={typeIconSize} strokeWidth={typeStrokeWidth} />
             </button>
           </Tooltip>
           {issueTypeDropdownOpen && onIssueTypeChange && (
