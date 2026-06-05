@@ -163,6 +163,18 @@ describe("BoardRow (headerless, BRDG-239)", () => {
     expect(screen.getByTestId("avatar")).toBeInTheDocument();
   });
 
+  it("hides empty SP/BV on deprecated stories so no space is reserved", () => {
+    renderRow({ ticket: makeTicket({ jiraStatus: "DEPRECATED", storyPoints: null, businessValue: null }) });
+    expect(screen.queryByTestId("sp")).toBeNull();
+    expect(screen.queryByTestId("bv")).toBeNull();
+  });
+
+  it("still shows SP/BV on deprecated stories when a value is set", () => {
+    renderRow({ ticket: makeTicket({ jiraStatus: "DEPRECATED", storyPoints: 3, businessValue: 8 }) });
+    expect(screen.getByTestId("sp")).toBeInTheDocument();
+    expect(screen.getByTestId("bv")).toBeInTheDocument();
+  });
+
   it("drives the pill readiness segment via the poReadiness tag", () => {
     renderRow({ tags: new Set<InlineTagId>(["poReadiness"]) });
     expect(screen.getByTestId("pill").getAttribute("data-show-readiness")).toBe("true");

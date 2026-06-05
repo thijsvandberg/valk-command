@@ -152,6 +152,10 @@ export const BoardRow = memo(forwardRef<HTMLTableRowElement, BoardRowBaseProps>(
   const lastDeploy = lastDeployedMap?.[ticket.key];
   const health = healthMap?.[ticket.key];
   const isRemoved = Boolean(ticket.removedFromJiraAt);
+  // Deprecated stories carry no planning metrics, so an empty SP/BV slot is just
+  // noise here. Drop the reveal-on-hover placeholder entirely (no reserved width)
+  // unless a value was actually set.
+  const isDeprecated = ticket.jiraStatus === "DEPRECATED";
 
   // Checkbox always visible when checked or when any row is checked (bulk mode)
   const showCheckbox = isChecked || someChecked;
@@ -462,7 +466,7 @@ export const BoardRow = memo(forwardRef<HTMLTableRowElement, BoardRowBaseProps>(
                 onPointerDown={(e) => e.stopPropagation()}
                 onClick={(e) => e.stopPropagation()}
               >
-                {tags.has("storyPoints") && (
+                {tags.has("storyPoints") && !(isDeprecated && ticket.storyPoints == null) && (
                   <StoryPointPicker
                     value={ticket.storyPoints}
                     onChange={onStoryPointsChange ? (v) => onStoryPointsChange(ticket.key, v) : () => {}}
@@ -473,7 +477,7 @@ export const BoardRow = memo(forwardRef<HTMLTableRowElement, BoardRowBaseProps>(
                     revealGroup="row"
                   />
                 )}
-                {tags.has("businessValue") && (
+                {tags.has("businessValue") && !(isDeprecated && ticket.businessValue == null) && (
                   <BusinessValuePicker
                     value={ticket.businessValue}
                     onChange={onBusinessValueChange ? (v) => onBusinessValueChange(ticket.key, v) : () => {}}
