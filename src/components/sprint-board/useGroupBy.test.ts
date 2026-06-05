@@ -223,3 +223,29 @@ describe("useGroupBy closed-sprint filtering (BRDG-259)", () => {
     expect(result.current.groups.map((g) => g.key)).toContain("old-99");
   });
 });
+
+describe("useGroupBy multi-sprint placement", () => {
+  beforeEach(() => {
+    sessionStorage.clear();
+  });
+
+  it("places a multi-sprint ticket in every sprint group it belongs to", () => {
+    const sprints = [makeSprint("s1", "Sprint One", "active"), makeSprint("s2", "Sprint Two", "active")];
+    const ticket = makeTicket({ key: "VPL-1", sprintId: "s2", sprintIds: ["s1", "s2"] });
+    const { result } = renderHook(() => useGroupBy([ticket], sprints, NAME_MAP, true));
+    act(() => result.current.setGroupBy("sprint"));
+
+    const s1 = result.current.groups.find((g) => g.key === "s1");
+    const s2 = result.current.groups.find((g) => g.key === "s2");
+    expect(s1?.tickets.map((t) => t.key)).toEqual(["VPL-1"]);
+    expect(s2?.tickets.map((t) => t.key)).toEqual(["VPL-1"]);
+  });
+
+  it("does not duplicate a ticket within a single group", () => {
+    const sprints = [makeSprint("s1", "Sprint One", "active")];
+    const ticket = makeTicket({ key: "VPL-1", sprintId: "s1", sprintIds: ["s1"] });
+    const { result } = renderHook(() => useGroupBy([ticket], sprints, NAME_MAP, true));
+    act(() => result.current.setGroupBy("sprint"));
+    expect(result.current.groups.find((g) => g.key === "s1")?.tickets).toHaveLength(1);
+  });
+});

@@ -231,7 +231,10 @@ export interface Ticket {
   editState: TicketEditState;
   notes: string;
   jiraRank?: number | null;
+  // Primary sprint (active > future > most recently closed); drives the card label.
   sprintId?: string;
+  // Every sprint the ticket belongs to; drives which sprint columns it appears in.
+  sprintIds?: string[];
   // Human-readable sprint name from the sprint_name_cache, resolved at sync time.
   // Used to label sprints (e.g. closed ones) that are absent from the cached sprint list.
   sprintDisplayName?: string | null;

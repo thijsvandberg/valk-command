@@ -479,11 +479,59 @@ async function jiraDelete(path: string, signal?: AbortSignal): Promise<void> {
 // Field helpers
 // ---------------------------------------------------------------------------
 
-/** Extract sprint data from the REST API v3 sprint custom field (array of sprint objects) */
-export function extractSprint(fields: JiraIssueFields): JiraSprint | null {
+function readSprintList(fields: JiraIssueFields): JiraSprint[] {
   const sprintList = fields[SPRINT_FIELD as `customfield_${string}`] as JiraSprint[] | null | undefined;
-  if (!Array.isArray(sprintList) || sprintList.length === 0) return null;
-  return sprintList[sprintList.length - 1];
+  return Array.isArray(sprintList) ? sprintList : [];
+}
+
+/**
+ * Pick the single sprint to treat as primary when an issue is in several at once.
+ * Priority: active, then the soonest future, then the most recently closed (by
+ * complete/end/start date). Returns null for an empty list. A ticket carried into
+ * the active sprint while still tagged to an old closed one therefore reports the
+ * active sprint, not an arbitrary array position.
+ */
+export function selectPrimarySprint(sprints: JiraSprint[]): JiraSprint | null {
+  if (sprints.length === 0) return null;
+
+  const active = sprints.filter((s) => s.state === "active");
+  if (active.length > 0) return active[active.length - 1];
+
+  const sprintTime = (s: JiraSprint): number => {
+    const d = s.completeDate ?? s.endDate ?? s.startDate;
+    const t = d ? Date.parse(d) : NaN;
+    return Number.isNaN(t) ? 0 : t;
+  };
+
+  const future = sprints.filter((s) => s.state === "future");
+  if (future.length > 0) {
+    // Soonest upcoming sprint first.
+    return [...future].sort((a, b) => sprintTime(a) - sprintTime(b))[0];
+  }
+
+  // Otherwise everything is closed: most recently completed wins.
+  return [...sprints].sort((a, b) => sprintTime(b) - sprintTime(a))[0];
+}
+
+/** Extract the primary sprint from the REST API v3 sprint custom field (array of sprint objects) */
+export function extractSprint(fields: JiraIssueFields): JiraSprint | null {
+  return selectPrimarySprint(readSprintList(fields));
+}
+
+/**
+ * Extract every sprint the issue belongs to, deduped by id with original order
+ * preserved. Used to record full multi-sprint membership so a ticket shows in
+ * every sprint column it is part of.
+ */
+export function extractSprints(fields: JiraIssueFields): JiraSprint[] {
+  const seen = new Set<number>();
+  const result: JiraSprint[] = [];
+  for (const s of readSprintList(fields)) {
+    if (seen.has(s.id)) continue;
+    seen.add(s.id);
+    result.push(s);
+  }
+  return result;
 }
 
 /** Extract story points from the custom field */

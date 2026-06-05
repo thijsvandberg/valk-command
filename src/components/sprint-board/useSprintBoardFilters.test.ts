@@ -154,6 +154,39 @@ describe("useSprintBoardFilters - sprint-state quick filters (BRDG-259)", () => 
   });
 });
 
+describe("useSprintBoardFilters - multi-sprint membership", () => {
+  // M is primarily in a closed sprint but also still tagged to the active one.
+  const M = makeTicket({ key: "M", sprintId: "clo", sprintIds: ["act", "clo"] });
+  const OTHER = makeTicket({ key: "O", sprintId: "fut", sprintIds: ["fut"] });
+  const STATE_MAP = { act: "active", fut: "future", clo: "closed" };
+  const STATE_ACTIVE = `${SPRINT_STATE_FILTER_PREFIX}active`;
+
+  function setupAll() {
+    return renderHook(() => useSprintBoardFilters([M, OTHER], {}, true, null, undefined, undefined, undefined, STATE_MAP));
+  }
+
+  beforeEach(() => {
+    localStorage.clear();
+  });
+
+  it("matches the active state bucket via a secondary sprint", () => {
+    const { result } = setupAll();
+    act(() => result.current.setSprintFilter(new Set([STATE_ACTIVE])));
+    expect(result.current.sortedTickets.map((t) => t.key)).toEqual(["M"]);
+  });
+
+  it("matches when filtering by any of the ticket's sprint ids", () => {
+    const { result } = setupAll();
+    act(() => result.current.setSprintFilter(new Set(["act"])));
+    expect(result.current.sortedTickets.map((t) => t.key)).toEqual(["M"]);
+  });
+
+  it("lists every membership sprint in sprintOptions", () => {
+    const { result } = setupAll();
+    expect([...result.current.sprintOptions].sort()).toEqual(["act", "clo", "fut"]);
+  });
+});
+
 describe("useSprintBoardFilters - All-view filter memory (BRDG-281)", () => {
   const SPRINT_KEY = "sprint-board-filters";
   const ALL_KEY = "sprint-board-all-filters";

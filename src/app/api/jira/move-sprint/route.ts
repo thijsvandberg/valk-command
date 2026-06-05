@@ -61,10 +61,15 @@ export async function POST(request: Request) {
     }
   }
 
-  // Update local sprint assignment (empty string = backlog)
+  // Update local sprint assignment (empty string = backlog). A move from Bridge
+  // targets a single sprint, so sprint_ids collapses to just that sprint and the
+  // ticket leaves every other column immediately (re-derived on the next Jira sync).
   await db
     .update(ticket)
-    .set({ sprintName: isBacklog ? "" : targetSprintId })
+    .set({
+      sprintName: isBacklog ? "" : targetSprintId,
+      sprintIds: isBacklog ? null : JSON.stringify([targetSprintId]),
+    })
     .where(inArray(ticket.jiraKey, issueKeys));
 
   cache.invalidate("/api/tickets");

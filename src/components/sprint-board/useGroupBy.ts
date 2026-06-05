@@ -42,9 +42,15 @@ function groupBySprintFn(
   const groupMap = new Map<string, Ticket[]>();
 
   for (const ticket of tickets) {
-    const sid = ticket.sprintId || "__backlog__";
-    if (!groupMap.has(sid)) groupMap.set(sid, []);
-    groupMap.get(sid)!.push(ticket);
+    // A multi-sprint ticket appears once in each sprint column it belongs to.
+    // Fall back to the single primary sprint, then to the backlog pseudo-group.
+    const sprintIds = ticket.sprintIds && ticket.sprintIds.length > 0
+      ? ticket.sprintIds
+      : (ticket.sprintId ? [ticket.sprintId] : ["__backlog__"]);
+    for (const sid of sprintIds) {
+      if (!groupMap.has(sid)) groupMap.set(sid, []);
+      groupMap.get(sid)!.push(ticket);
+    }
   }
 
   const groups: TicketGroup[] = [];

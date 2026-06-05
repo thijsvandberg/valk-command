@@ -1,7 +1,7 @@
 import { db } from "@/db";
 import { ticket, ticketMetadata, storyVersion, ticketAttachment, ticketSubtask, ticketLink, jiraComment, sprintNameCache, ticketStatusChange } from "@/db/schema";
 import { eq, and, isNotNull, isNull } from "drizzle-orm";
-import { jiraClient, extractStoryPoints, extractEpicLink, extractAcceptanceCriteria, extractLastChangeAuthor, FLAGGED_FIELD, type JiraIssue, type JiraAttachment } from "@/lib/jira-client";
+import { jiraClient, extractStoryPoints, extractSprints, extractEpicLink, extractAcceptanceCriteria, extractLastChangeAuthor, FLAGGED_FIELD, type JiraIssue, type JiraAttachment } from "@/lib/jira-client";
 import { adfToMarkdown } from "@/lib/adf-to-markdown";
 import { createHash } from "crypto";
 
@@ -48,7 +48,11 @@ export function cacheSprintName(sprintId: string, displayName: string) {
 
 export async function upsertIssue(issue: JiraIssue, sprintName: string, _signal?: AbortSignal, jiraRank?: number) {
   const fields = issue.fields;
-  const storyPoints = extractStoryPoints(fields);
+  const extractedStoryPoints = extractStoryPoints(fields);
+  // Record every sprint the issue belongs to so it shows in each sprint column.
+  // The sprintName param remains the single primary sprint used for the card label.
+  const sprintIdList = extractSprints(fields).map((s) => String(s.id));
+  const sprintIdsJson = sprintIdList.length > 0 ? JSON.stringify(sprintIdList) : null;
   const epicData = extractEpicLink(fields);
   const epicValue = epicData?.name ?? null;
   const epicKeyValue = epicData?.key ?? null;
@@ -72,6 +76,12 @@ export async function upsertIssue(issue: JiraIssue, sprintName: string, _signal?
   const existing = await db.query.ticket.findFirst({
     where: (row, { eq: eqFn }) => eqFn(row.jiraKey, issue.key),
   });
+
+  // "-" (stored locally as 0) is a Bridge-only "not applicable" marker. Jira has
+  // no concept of 0 story points, so a "-" ticket pushes an empty value to Jira;
+  // a later sync reading that empty field back must not clobber the local 0 and
+  // revert "-" to "?". A real (non-empty) Jira value still wins.
+  const storyPoints = extractedStoryPoints == null && existing?.storyPoints === 0 ? 0 : extractedStoryPoints;
   const meta = await db.query.ticketMetadata.findFirst({
     where: (m, { eq: eqFn }) => eqFn(m.jiraKey, issue.key),
   });
@@ -138,6 +148,7 @@ export async function upsertIssue(issue: JiraIssue, sprintName: string, _signal?
     acceptanceCriteria: ac,
     storyPoints,
     sprintName,
+    sprintIds: sprintIdsJson,
     labels: fields.labels.length > 0 ? JSON.stringify(fields.labels) : null,
     priority,
     components: componentsJson,

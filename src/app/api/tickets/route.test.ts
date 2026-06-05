@@ -31,13 +31,18 @@ function seedTicket(
   db: BetterSQLite3Database<typeof schema>,
   key: string,
   sprintName: string | null = null,
+  sprintIds?: string[],
 ) {
+  // Mirror production: sprint_ids carries the full membership, sprint_name the
+  // primary. When only a single sprint is given, both line up.
+  const ids = sprintIds ?? (sprintName ? [sprintName] : null);
   db.insert(ticket)
     .values({
       jiraKey: key,
       title: `Ticket ${key}`,
       status: "TO DO",
       sprintName,
+      sprintIds: ids ? JSON.stringify(ids) : null,
     })
     .run();
 }
@@ -80,6 +85,23 @@ describe("GET /api/tickets", () => {
     expect(data).toHaveLength(2);
     // New shape: sprintId field (mapped from sprintName)
     expect(data.every((t: { sprintId: string }) => t.sprintId === "Sprint 1")).toBe(true);
+  });
+
+  it("matches a multi-sprint ticket under each of its sprints", async () => {
+    // VPL-200 lives in both sprints; it must surface when filtering by either one.
+    seedTicket(testDb, "VPL-200", "456", ["123", "456"]);
+    seedTicket(testDb, "VPL-201", "789", ["789"]);
+
+    const inFirst = await (await GET(new Request("http://localhost:3100/api/tickets?sprintId=123"))).json();
+    expect(inFirst.map((t: { key: string }) => t.key)).toEqual(["VPL-200"]);
+
+    const inSecond = await (await GET(new Request("http://localhost:3100/api/tickets?sprintId=456"))).json();
+    expect(inSecond.map((t: { key: string }) => t.key)).toEqual(["VPL-200"]);
+
+    // The response exposes the full membership so the board can place it in both columns.
+    expect(inFirst[0].sprintIds).toEqual(["123", "456"]);
+    // The primary sprint stays the single sprint_name value.
+    expect(inFirst[0].sprintId).toBe("456");
   });
 
   it("includes PO status from metadata when available", async () => {

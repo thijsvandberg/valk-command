@@ -28,6 +28,14 @@ export interface StoredSort {
 
 const defaultFilters: StoredFilters = { status: [], epic: [], assignee: [], readiness: [], editState: [], issueType: [], gaps: [], team: [], sprint: [] };
 
+// Every sprint a ticket belongs to. A multi-sprint ticket matches a sprint filter
+// or team filter when ANY of its sprints qualifies. Falls back to the single
+// primary sprint for tickets synced before sprint_ids existed.
+function ticketSprintIds(t: Ticket): string[] {
+  if (t.sprintIds && t.sprintIds.length > 0) return t.sprintIds;
+  return t.sprintId ? [t.sprintId] : [];
+}
+
 export function useSprintBoardFilters(
   allTickets: Ticket[],
   readinessMap: Record<string, TicketReadiness | null>,
@@ -119,7 +127,7 @@ export function useSprintBoardFilters(
   const epicOptions = useMemo(() => [...new Set(allTickets.map((t) => t.epic).filter(Boolean) as string[])], [allTickets]);
   const assigneeOptions = useMemo(() => [...new Set(allTickets.map((t) => t.assignee?.name).filter(Boolean) as string[])], [allTickets]);
   const sprintOptions = useMemo(
-    () => [...new Set(allTickets.map((t) => t.sprintId).filter(Boolean) as string[])],
+    () => [...new Set(allTickets.flatMap((t) => ticketSprintIds(t)))],
     [allTickets],
   );
   const issueTypeOptions = useMemo(() => [...new Set(allTickets.map((t) => t.type))], [allTickets]);
@@ -128,11 +136,12 @@ export function useSprintBoardFilters(
     if (!sprintNameMap) return [];
     const prefixes = new Set<string>();
     for (const t of allTickets) {
-      if (!t.sprintId) continue;
-      const name = sprintNameMap[t.sprintId];
-      if (!name) continue;
-      const prefix = extractTeamPrefix(name);
-      if (prefix) prefixes.add(prefix);
+      for (const sid of ticketSprintIds(t)) {
+        const name = sprintNameMap[sid];
+        if (!name) continue;
+        const prefix = extractTeamPrefix(name);
+        if (prefix) prefixes.add(prefix);
+      }
     }
     return [...prefixes].sort();
   }, [allTickets, sprintNameMap]);
@@ -201,19 +210,25 @@ export function useSprintBoardFilters(
     const sprintScopeActive = isAllView && sprintFilter.size > 0;
     if (!sprintScopeActive && teamFilter.size === 0) return metaFiltered;
     return metaFiltered.filter((t) => {
+      const sprintIds = ticketSprintIds(t);
       if (sprintScopeActive) {
-        const sid = t.sprintId ?? "";
-        // Cache-dropped sprints carry no state, so they are treated as closed to match the
-        // grouped view (older sprints surface only under the Closed bucket).
-        const state = sid ? (sprintStateMap?.[sid] ?? "closed") : "";
-        const idMatch = selectedSprintIds.has(sid);
-        const stateMatch = Boolean(sid) && selectedSprintStates.has(state);
-        if (!idMatch && !stateMatch) return false;
+        // A multi-sprint ticket is in scope when ANY of its sprints is selected by id
+        // or matches a selected state bucket. Cache-dropped sprints carry no state, so
+        // they are treated as closed to match the grouped view (older sprints surface
+        // only under the Closed bucket).
+        const match = sprintIds.some((sid) => {
+          const state = sprintStateMap?.[sid] ?? "closed";
+          return selectedSprintIds.has(sid) || selectedSprintStates.has(state);
+        });
+        if (!match) return false;
       }
       if (teamFilter.size > 0) {
-        const sprintName = t.sprintId ? sprintNameMap?.[t.sprintId] : undefined;
-        const prefix = sprintName ? extractTeamPrefix(sprintName) : null;
-        if (!prefix || !teamFilter.has(prefix)) return false;
+        const match = sprintIds.some((sid) => {
+          const sprintName = sprintNameMap?.[sid];
+          const prefix = sprintName ? extractTeamPrefix(sprintName) : null;
+          return prefix ? teamFilter.has(prefix) : false;
+        });
+        if (!match) return false;
       }
       return true;
     });

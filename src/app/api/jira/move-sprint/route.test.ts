@@ -68,6 +68,27 @@ describe("POST /api/jira/move-sprint", () => {
     expect(t!.sprintName).toBe("456");
   });
 
+  it("collapses sprint_ids to the single target sprint on move", async () => {
+    // A multi-sprint ticket should leave every other column after a manual move.
+    testDb.update(ticket).set({ sprintIds: JSON.stringify(["123", "999"]) }).where(eq(ticket.jiraKey, "VPL-100")).run();
+
+    const req = makeRequest({ issueKeys: ["VPL-100"], targetSprintId: "456" });
+    await POST(req);
+
+    const t = testDb.select().from(ticket).where(eq(ticket.jiraKey, "VPL-100")).get();
+    expect(t!.sprintIds).toBe(JSON.stringify(["456"]));
+  });
+
+  it("clears sprint_ids when moving to backlog", async () => {
+    testDb.update(ticket).set({ sprintIds: JSON.stringify(["123"]) }).where(eq(ticket.jiraKey, "VPL-100")).run();
+
+    const req = makeRequest({ issueKeys: ["VPL-100"], targetSprintId: "__backlog__" });
+    await POST(req);
+
+    const t = testDb.select().from(ticket).where(eq(ticket.jiraKey, "VPL-100")).get();
+    expect(t!.sprintIds).toBeNull();
+  });
+
   it("moves ticket to backlog by clearing sprint", async () => {
     const req = makeRequest({ issueKeys: ["VPL-100"], targetSprintId: "__backlog__" });
     const res = await POST(req);

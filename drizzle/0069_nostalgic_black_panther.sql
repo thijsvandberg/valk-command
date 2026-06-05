@@ -1,0 +1,1 @@
+ALTER TABLE `ticket` ADD `sprint_ids` text;

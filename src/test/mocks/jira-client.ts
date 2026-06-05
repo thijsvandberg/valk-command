@@ -91,6 +91,7 @@ export function createJiraClientMock(overrides?: {
     ACCEPTANCE_CRITERIA_FIELD: "customfield_10034",
     FLAGGED_FIELD: "customfield_10002",
     extractSprint: vi.fn().mockReturnValue(null),
+    extractSprints: vi.fn().mockReturnValue([]),
     extractStoryPoints: vi.fn().mockReturnValue(null),
     extractEpicLink: vi.fn().mockReturnValue(null),
     extractAcceptanceCriteria: vi.fn().mockReturnValue(null),

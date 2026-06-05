@@ -55,6 +55,10 @@ export const ticket = sqliteTable("ticket", {
   acceptanceCriteria: text("acceptance_criteria"),
   storyPoints: real("story_points"),
   sprintName: text("sprint_name"),
+  // JSON array of every sprint id the ticket belongs to. sprintName above is the
+  // single primary sprint (active > future > most recently closed) used for the
+  // card label; sprintIds drives which sprint columns the ticket appears in.
+  sprintIds: text("sprint_ids"),
   labels: text("labels"),
   priority: text("priority"),
   components: text("components"),

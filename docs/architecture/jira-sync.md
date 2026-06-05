@@ -79,6 +79,16 @@ Extracted upsert function shared between sprint sync and incremental sync. Pre-r
 - Subtask sync (replace all)
 - Issue link sync (preserves locally-created links)
 - Inline comment sync
+- Story-points "-" preservation: "-" (Not Applicable) is a Bridge-only marker stored locally as `0`. Jira has no concept of `0`, so a "-" ticket pushes an empty value to Jira. To stop a sync from reverting "-" back to unestimated ("?"), an empty Jira story-points field does **not** overwrite a local `0`; a real (non-empty) Jira value still wins.
+
+#### Sprint membership (multi-sprint tickets)
+
+A Jira issue's sprint custom field is an **array** -- an issue can belong to several sprints at once (e.g. carried from a closed sprint into the active one). Two helpers in `jira-client.ts` read it:
+
+- `extractSprint(fields)` returns the single **primary** sprint via `selectPrimarySprint`: active > soonest future > most recently closed (by complete/end/start date). This is stored in `ticket.sprint_name` and used for the card label. Callers that pass a context sprint id (sprint/backlog sync, reconciliation) keep doing so; the refresh paths that derive from the issue (individual + incremental sync, detail builder) get the active primary.
+- `extractSprints(fields)` returns **all** sprints (deduped by id, order preserved). `upsertIssue` writes these ids into `ticket.sprint_ids` (JSON array, `null` for backlog).
+
+The sprint board filters and groups by `sprint_ids` membership, so a multi-sprint ticket appears in every column it belongs to (`/api/tickets` uses a `json_each` membership query, not exact `sprint_name` equality). A **manual move from Bridge** (`/api/jira/move-sprint`) sets a single sprint in Jira and collapses local `sprint_ids` to `[targetSprintId]`, so the ticket leaves every other column immediately; the true set is re-derived on the next sync.
 
 ### Sync Routes (`src/app/api/jira/`)
 

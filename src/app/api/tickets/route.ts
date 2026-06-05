@@ -67,11 +67,16 @@ export async function GET(request: Request) {
         .leftJoin(ticketMetadata, eq(ticket.jiraKey, ticketMetadata.jiraKey))
         .leftJoin(sprintNameCache, eq(ticket.sprintName, sprintNameCache.sprintId));
 
+      // A ticket can be in several sprints at once, so sprint membership is matched
+      // against the sprint_ids JSON array (not the single primary sprint_name). The
+      // IS NOT NULL guard is required: json_each(NULL) raises "malformed JSON".
+      const memberOfSprint = sql`${ticket.sprintIds} IS NOT NULL AND EXISTS (SELECT 1 FROM json_each(${ticket.sprintIds}) WHERE value = ${sprintId})`;
+
       // Backlog = tickets with empty sprintName
       const sprintFilter = isBacklog
         ? and(draftFilter, eq(ticket.sprintName, ""))
         : sprintId
-          ? and(draftFilter, eq(ticket.sprintName, sprintId))
+          ? and(draftFilter, memberOfSprint)
           : draftFilter;
 
       // Subquery to scope local edits and versions to the same sprint filter without
@@ -164,6 +169,7 @@ export async function GET(request: Request) {
       notes: meta?.poNotes ?? "",
       jiraRank: t.jiraRank ?? null,
       sprintId: t.sprintName || undefined,
+      sprintIds: t.sprintIds ? (JSON.parse(t.sprintIds) as string[]) : undefined,
       sprintDisplayName: sprintDisplayName ?? null,
       jiraUpdatedAt: t.jiraUpdatedAt ?? null,
       removedFromJiraAt: t.removedFromJiraAt ?? null,
@@ -255,9 +261,10 @@ export async function POST(request: Request) {
     type: issueType.toLowerCase(),
     status: "TO DO",
     ...(epicKey ? { epic: epicTitle, epicKey } : {}),
-    // The sprint_name column stores the sprint id; the detail builder resolves it
-    // to a display name via sprintNameCache (same convention as the Jira sync).
-    ...(assignedSprintId ? { sprintName: assignedSprintId } : {}),
+    // The sprint_name column stores the primary sprint id; the detail builder resolves
+    // it to a display name via sprintNameCache (same convention as the Jira sync).
+    // sprint_ids mirrors it so the membership filter places the new ticket in its column.
+    ...(assignedSprintId ? { sprintName: assignedSprintId, sprintIds: JSON.stringify([assignedSprintId]) } : {}),
     flagged: false,
   });
 

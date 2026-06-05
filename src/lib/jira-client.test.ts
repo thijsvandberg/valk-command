@@ -1,6 +1,6 @@
 // @vitest-environment node
 import { describe, it, expect, beforeEach } from "vitest";
-import { JiraClient, _requestTimestamps, filterDescriptionChanges, type ChangelogEntry } from "./jira-client";
+import { JiraClient, _requestTimestamps, filterDescriptionChanges, extractSprint, extractSprints, selectPrimarySprint, SPRINT_FIELD, type ChangelogEntry, type JiraSprint, type JiraIssueFields } from "./jira-client";
 
 describe("JiraClient (unconfigured mode)", () => {
   const client = new JiraClient();
@@ -157,5 +157,59 @@ describe("Rate limiter", () => {
 
   it("timestamps array is empty on init", () => {
     expect(_requestTimestamps).toEqual([]);
+  });
+});
+
+function fieldsWithSprints(sprints: JiraSprint[]): JiraIssueFields {
+  return { [SPRINT_FIELD]: sprints } as unknown as JiraIssueFields;
+}
+
+const ACTIVE: JiraSprint = { id: 2, name: "Active", state: "active", startDate: "2026-05-01T00:00:00.000Z" };
+const FUTURE_EARLY: JiraSprint = { id: 3, name: "Future early", state: "future", startDate: "2026-06-01T00:00:00.000Z" };
+const FUTURE_LATE: JiraSprint = { id: 4, name: "Future late", state: "future", startDate: "2026-07-01T00:00:00.000Z" };
+const CLOSED_OLD: JiraSprint = { id: 5, name: "Closed old", state: "closed", completeDate: "2026-01-01T00:00:00.000Z" };
+const CLOSED_RECENT: JiraSprint = { id: 6, name: "Closed recent", state: "closed", completeDate: "2026-04-01T00:00:00.000Z" };
+
+describe("selectPrimarySprint", () => {
+  it("returns null for an empty list", () => {
+    expect(selectPrimarySprint([])).toBeNull();
+  });
+
+  it("prefers the active sprint over future and closed", () => {
+    expect(selectPrimarySprint([CLOSED_RECENT, FUTURE_EARLY, ACTIVE])?.id).toBe(ACTIVE.id);
+  });
+
+  it("falls back to the soonest future sprint when none are active", () => {
+    expect(selectPrimarySprint([FUTURE_LATE, CLOSED_RECENT, FUTURE_EARLY])?.id).toBe(FUTURE_EARLY.id);
+  });
+
+  it("falls back to the most recently completed sprint when all are closed", () => {
+    expect(selectPrimarySprint([CLOSED_OLD, CLOSED_RECENT])?.id).toBe(CLOSED_RECENT.id);
+  });
+});
+
+describe("extractSprint", () => {
+  it("returns null when the issue has no sprint", () => {
+    expect(extractSprint({} as JiraIssueFields)).toBeNull();
+    expect(extractSprint(fieldsWithSprints([]))).toBeNull();
+  });
+
+  it("returns the active sprint even when a closed sprint comes later in the array", () => {
+    // Reproduces VPL-29223: closed Sprint 115 was last in the array and used to win.
+    expect(extractSprint(fieldsWithSprints([ACTIVE, CLOSED_RECENT]))?.id).toBe(ACTIVE.id);
+  });
+});
+
+describe("extractSprints", () => {
+  it("returns an empty array when the field is absent", () => {
+    expect(extractSprints({} as JiraIssueFields)).toEqual([]);
+  });
+
+  it("returns every sprint in original order", () => {
+    expect(extractSprints(fieldsWithSprints([CLOSED_OLD, ACTIVE])).map((s) => s.id)).toEqual([CLOSED_OLD.id, ACTIVE.id]);
+  });
+
+  it("dedupes by id", () => {
+    expect(extractSprints(fieldsWithSprints([ACTIVE, ACTIVE, CLOSED_OLD])).map((s) => s.id)).toEqual([ACTIVE.id, CLOSED_OLD.id]);
   });
 });

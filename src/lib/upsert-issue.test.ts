@@ -18,6 +18,7 @@ vi.mock("@/lib/jira-client", () => ({
     getLastChangeAuthor: vi.fn().mockResolvedValue(null),
   },
   extractStoryPoints: vi.fn().mockReturnValue(null),
+  extractSprints: vi.fn().mockReturnValue([]),
   extractEpicLink: vi.fn().mockReturnValue(null),
   extractAcceptanceCriteria: vi.fn().mockReturnValue(null),
   extractLastChangeAuthor: vi.fn().mockReturnValue(null),
@@ -29,7 +30,8 @@ vi.mock("@/lib/adf-to-markdown", () => ({
 }));
 
 import { normalizeIssueType, normalizeStatus, userColor, upsertIssue } from "./upsert-issue";
-import type { JiraIssue } from "@/lib/jira-client";
+import { extractSprints, extractStoryPoints } from "@/lib/jira-client";
+import type { JiraIssue, JiraSprint } from "@/lib/jira-client";
 
 function makeIssue(overrides: Partial<JiraIssue["fields"]> = {}): JiraIssue {
   return {
@@ -127,6 +129,8 @@ describe("userColor", () => {
 describe("upsertIssue", () => {
   beforeEach(() => {
     testDb = createTestDb();
+    vi.mocked(extractSprints).mockReturnValue([]);
+    vi.mocked(extractStoryPoints).mockReturnValue(null);
   });
 
   it("inserts a new ticket into the database", async () => {
@@ -139,6 +143,29 @@ describe("upsertIssue", () => {
     expect(all[0].title).toBe("Test issue");
   });
 
+  it("stores every sprint the issue belongs to in sprint_ids", async () => {
+    vi.mocked(extractSprints).mockReturnValue([
+      { id: 100, name: "Sprint A", state: "closed" },
+      { id: 200, name: "Sprint B", state: "active" },
+    ] as JiraSprint[]);
+
+    await upsertIssue(makeIssue(), "200");
+
+    const row = testDb.select().from(ticket).all()[0];
+    expect(row.sprintIds).toBe(JSON.stringify(["100", "200"]));
+    // sprintName remains the single primary passed by the caller.
+    expect(row.sprintName).toBe("200");
+  });
+
+  it("leaves sprint_ids null when the issue is in no sprint (backlog)", async () => {
+    vi.mocked(extractSprints).mockReturnValue([]);
+
+    await upsertIssue(makeIssue(), "");
+
+    const row = testDb.select().from(ticket).all()[0];
+    expect(row.sprintIds).toBeNull();
+  });
+
   it("updates an existing ticket on second upsert", async () => {
     const issue = makeIssue({ summary: "Original title" });
     await upsertIssue(issue, "Sprint 1");
@@ -149,6 +176,37 @@ describe("upsertIssue", () => {
     const all = testDb.select().from(ticket).all();
     expect(all).toHaveLength(1);
     expect(all[0].title).toBe("Updated title");
+  });
+
+  it("preserves a local 0 (\"-\"/N/A) when Jira returns no story points", async () => {
+    // "-" is a Bridge-only marker stored as 0; Jira has no 0, so its field is
+    // empty. A sync must not revert the local "-" back to unestimated.
+    testDb.insert(ticket).values({ jiraKey: "VPL-1", title: "Spike", status: "TO DO", storyPoints: 0 }).run();
+    vi.mocked(extractStoryPoints).mockReturnValue(null);
+
+    await upsertIssue(makeIssue(), "Sprint 1");
+
+    const row = testDb.select().from(ticket).all()[0];
+    expect(row.storyPoints).toBe(0);
+  });
+
+  it("lets a real Jira story-point value overwrite a local 0", async () => {
+    testDb.insert(ticket).values({ jiraKey: "VPL-1", title: "Spike", status: "TO DO", storyPoints: 0 }).run();
+    vi.mocked(extractStoryPoints).mockReturnValue(5);
+
+    await upsertIssue(makeIssue(), "Sprint 1");
+
+    const row = testDb.select().from(ticket).all()[0];
+    expect(row.storyPoints).toBe(5);
+  });
+
+  it("keeps story points null when Jira is empty and there is no local estimate", async () => {
+    vi.mocked(extractStoryPoints).mockReturnValue(null);
+
+    await upsertIssue(makeIssue(), "Sprint 1");
+
+    const row = testDb.select().from(ticket).all()[0];
+    expect(row.storyPoints).toBeNull();
   });
 
   it("updates parent ticketSubtask row when syncing a subtask directly", async () => {

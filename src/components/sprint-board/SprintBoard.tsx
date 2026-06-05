@@ -198,8 +198,10 @@ export default function SprintBoard() {
   // In the All view allTickets spans every sprint, so narrow to the target sprint's tickets.
   const editSprint = editSprintId ? sprints.find((s) => s.id === editSprintId) ?? null : activeSprint;
   const finishSprint = finishSprintId ? sprints.find((s) => s.id === finishSprintId) ?? null : activeSprint;
-  const editSprintTickets = editSprintId ? allTickets.filter((t) => t.sprintId === editSprintId) : allTickets;
-  const finishSprintTickets = finishSprintId ? allTickets.filter((t) => t.sprintId === finishSprintId) : allTickets;
+  // Membership match: a multi-sprint ticket counts towards every sprint it belongs to.
+  const inSprint = (t: Ticket, id: string) => (t.sprintIds && t.sprintIds.length > 0 ? t.sprintIds.includes(id) : t.sprintId === id);
+  const editSprintTickets = editSprintId ? allTickets.filter((t) => inSprint(t, editSprintId)) : allTickets;
+  const finishSprintTickets = finishSprintId ? allTickets.filter((t) => inSprint(t, finishSprintId)) : allTickets;
   const stats = useMemo(() => computeSprintStats(allTickets), [allTickets]);
   const sprintWorkDays = useMemo(() => computeSprintWorkDays(activeSprint), [activeSprint]);
   const pageTitle = usePageTitle(isAllView ? "Sprint Board - All" : activeSprint ? `${activeSprint.name} - Sprint Board` : "Sprint Board");

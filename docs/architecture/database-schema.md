@@ -26,7 +26,8 @@ Primary table for Jira tickets synced into the local database.
 | `description` | text | ADF JSON |
 | `acceptance_criteria` | text | ADF JSON (custom field) |
 | `story_points` | real | Estimated points |
-| `sprint_name` | text | Sprint ID (used as foreign key to sprint slots) |
+| `sprint_name` | text | Primary sprint ID (active > future > most recently closed). Drives the card label and the sprint-name-cache join. |
+| `sprint_ids` | text | JSON array of every sprint ID the ticket belongs to (e.g. `["1779","1802"]`); `null` for backlog. Drives which sprint columns the ticket appears in (membership), since a Jira issue can be in several sprints at once. |
 | `labels` | text | Comma-separated labels |
 | `priority` | text | Jira priority name |
 | `components` | text | Comma-separated components |
