@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import { usePageTitle } from "@/hooks/usePageTitle";
 import { useRefinementSession } from "@/contexts/RefinementSessionContext";
 import { useTicketDetail, useTickets } from "@/hooks/useSprintBoard";
+import { useTicketHoverData } from "@/hooks/useTicketHoverData";
 import { refinementSessions as refinementSessionsApi } from "@/lib/api-client";
 import { SessionTicketView, SessionMetadataPanel } from "@/components/refinement-session/SessionTicketView";
 import { TicketStatusPill } from "@/components/shared/TicketStatusPill";
@@ -158,6 +159,11 @@ export default function RefinementSessionTicketPage({
 
   const { data: ticketData, mutate } = useTicketDetail(currentKey);
 
+  // Hover-card data for the header ticket pill, resolved from the shared board
+  // list so the header gets the same info tooltip as rows on the sprint board.
+  const getHoverData = useTicketHoverData();
+  const headerHoverData = currentKey ? getHoverData(currentKey) : undefined;
+
   // Force a Jira sync when entering a ticket in the refinement session
   // to ensure subtasks and other data are up to date
   const syncedKeyRef = useRef<string | null>(null);
@@ -252,10 +258,10 @@ export default function RefinementSessionTicketPage({
       const prev = storyPoints;
       setStoryPoints(v);
       try {
+        // The "set SP -> advance Ready-to-Refine to Ready-for-Development"
+        // transition is owned by the server (ticket-detail-builder); mutate()
+        // pulls the updated readiness back into the session view.
         await tickets.updateStoryPoints(currentKey!, v);
-        if (v != null) {
-          await tickets.updateMetadata(currentKey!, { readiness: null });
-        }
         mutate();
       } catch (err) {
         console.error("Failed to update story points:", err);
@@ -435,6 +441,8 @@ export default function RefinementSessionTicketPage({
                   title={ticketData.title}
                   size="lg"
                   onHeader
+                  hoverData={headerHoverData}
+                  onStoryPointsChange={handleStoryPointsChange}
                 />
               </>
             )}

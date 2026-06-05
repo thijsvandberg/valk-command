@@ -358,6 +358,22 @@ export async function updateTicketFields(key: string, body: Record<string, unkno
     const spValue = raw as number | null;
     await db.update(ticket).set({ storyPoints: spValue }).where(eq(ticket.jiraKey, key));
 
+    // Estimating a ticket (any value, including "-"/0) completes its refinement
+    // prep, so a ticket sitting at "Ready to Refine" advances to "Ready for
+    // Development" (readiness = null). Other readiness states are left untouched.
+    // Readiness lives on ticket_metadata; absent metadata already means "ready
+    // for development", so there is nothing to advance in that case.
+    if (spValue != null) {
+      const meta = await db.query.ticketMetadata.findFirst({
+        where: (m, { eq: eqFn }) => eqFn(m.jiraKey, key),
+      });
+      if (meta?.readiness === "ready_to_refine") {
+        await db.update(ticketMetadata).set({ readiness: null }).where(eq(ticketMetadata.jiraKey, key));
+        await logActivity({ type: "metadata-update", scope: key, summary: "Advanced to Ready for Development (estimated)" });
+        result.readiness = null;
+      }
+    }
+
     const jiraValue = spValue != null && spValue > 0 ? spValue : null;
     jiraClient.updateIssue(key, { [STORY_POINTS_FIELD]: jiraValue })
       .then(() => syncJiraTimestamp(key))

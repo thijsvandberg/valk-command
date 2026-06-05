@@ -2,6 +2,7 @@ import { renderHook, act } from "@testing-library/react";
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import type { Ticket } from "@/types/ticket";
 import { useTicketActions } from "./useTicketActions";
+import { saveStoryPoints } from "@/components/sprint-board/sprint-board-utils";
 
 const toggleFlag = vi.fn();
 const moveSprint = vi.fn();
@@ -16,6 +17,8 @@ vi.mock("@/components/sprint-board/sprint-board-utils", () => ({
   saveTicketMetadata: vi.fn(),
   saveStoryPoints: vi.fn(),
 }));
+
+const saveStoryPointsMock = vi.mocked(saveStoryPoints);
 vi.mock("swr", () => ({
   mutate: (...args: unknown[]) => globalMutate(...args),
 }));
@@ -93,6 +96,71 @@ describe("useTicketActions - handleBulkSetFlagged", () => {
     // Optimistic write + revert write
     expect(mutateTickets.mock.calls.length).toBeGreaterThanOrEqual(2);
     expect(showToast).toHaveBeenLastCalledWith("Failed to flag 1 ticket");
+  });
+});
+
+describe("useTicketActions - handleStoryPointsChange readiness transition", () => {
+  beforeEach(() => {
+    saveStoryPointsMock.mockReset();
+    saveStoryPointsMock.mockResolvedValue(true);
+  });
+
+  function setup(apiTickets: Ticket[]) {
+    const mutateTickets = vi.fn();
+    const showToast = vi.fn();
+    const { result } = renderHook(() =>
+      useTicketActions({ apiTickets, mutateTickets, activeListKey: null, showToast }),
+    );
+    // Seed the optimistic readiness map from the API tickets, as the board does.
+    act(() => result.current.syncFromApiTickets(apiTickets));
+    return { result };
+  }
+
+  function refineReady(key: string): Ticket {
+    return { ...makeTicket(key, false), readiness: "ready_to_refine" } as Ticket;
+  }
+
+  it("advances a Ready-to-Refine ticket to Ready-for-Development when SP is set", async () => {
+    const { result } = setup([refineReady("A-1")]);
+
+    await act(async () => {
+      result.current.handleStoryPointsChange("A-1", 5);
+    });
+
+    expect(saveStoryPointsMock).toHaveBeenCalledWith("A-1", 5, null);
+    expect(result.current.readinessMap["A-1"]).toBeNull();
+  });
+
+  it("treats '-' (0) as an estimate and advances readiness", async () => {
+    const { result } = setup([refineReady("A-1")]);
+
+    await act(async () => {
+      result.current.handleStoryPointsChange("A-1", 0);
+    });
+
+    expect(result.current.readinessMap["A-1"]).toBeNull();
+  });
+
+  it("leaves a non-Ready-to-Refine ticket's readiness untouched", async () => {
+    const drafting = { ...makeTicket("A-1", false), readiness: "drafting" } as Ticket;
+    const { result } = setup([drafting]);
+
+    await act(async () => {
+      result.current.handleStoryPointsChange("A-1", 3);
+    });
+
+    expect(result.current.readinessMap["A-1"]).toBe("drafting");
+  });
+
+  it("reverts the optimistic readiness when the save fails", async () => {
+    saveStoryPointsMock.mockResolvedValue(false);
+    const { result } = setup([refineReady("A-1")]);
+
+    await act(async () => {
+      result.current.handleStoryPointsChange("A-1", 5);
+    });
+
+    expect(result.current.readinessMap["A-1"]).toBe("ready_to_refine");
   });
 });
 

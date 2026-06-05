@@ -62,7 +62,7 @@ CRUD operations on locally stored tickets and their metadata.
 | `/api/tickets` | POST | Create a story/task/bug in Jira and mirror it locally. Body: `{ title, issueType?, sprintId?, epicKey? }`. `issueType` defaults to `Story`; `sprintId` lands it in a sprint (via the same field-edit path as drag-to-sprint, applied after create); `epicKey` links it under an epic. New tickets start at readiness `drafting`. Used by the Sprint Board inline "Add story" composer (single sprint and per-sprint group in the All view). |
 | `/api/tickets/[key]` | GET | Get single ticket with metadata, subtasks, links, local edits |
 | `/api/tickets/[key]` | PUT | Update ticket fields |
-| `/api/tickets/[key]` | PATCH | Partial update: `flagged` (+ optional `flagReason`, synced to Jira as a comment), `labels`, `epicKey`, `type`. Bulk flag from the Sprint Board fans out one PATCH per ticket. |
+| `/api/tickets/[key]` | PATCH | Partial update: `flagged` (+ optional `flagReason`, synced to Jira as a comment), `labels`, `epicKey`, `type`, `storyPoints`. Setting `storyPoints` to any value (including `0`/"-") auto-advances a ticket at readiness `ready_to_refine` to Ready for Development (`readiness = null`); other readiness states are left untouched. Bulk flag from the Sprint Board fans out one PATCH per ticket. |
 | `/api/tickets/[key]/metadata` | GET | Get PO metadata |
 | `/api/tickets/[key]/metadata` | PUT | Update PO metadata (readiness, scores, notes) |
 | `/api/tickets/[key]/comments` | GET | List Jira + PO comments |

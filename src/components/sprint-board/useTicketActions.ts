@@ -54,8 +54,20 @@ export function useTicketActions(deps: TicketActionsDeps) {
   }, [activeListKey]);
 
   const handleStoryPointsChange = useCallback((key: string, value: number | null) => {
+    // Mirror the server rule (ticket-detail-builder): estimating a ticket that
+    // sits at "Ready to Refine" advances it to "Ready for Development". The
+    // board's readiness pill reads from this optimistic map, which the SP save
+    // would not refresh on its own, so update it here too (and revert on fail).
+    if (value != null && (readinessMap[key] ?? null) === "ready_to_refine") {
+      const prev = readinessMap[key];
+      setReadinessMap((m) => ({ ...m, [key]: null }));
+      saveStoryPoints(key, value, activeListKey).then((ok) => {
+        if (!ok) setReadinessMap((m) => ({ ...m, [key]: prev }));
+      });
+      return;
+    }
     saveStoryPoints(key, value, activeListKey);
-  }, [activeListKey]);
+  }, [activeListKey, readinessMap]);
 
   const handleJiraStatusChange = useCallback(async (key: string, status: JiraStatus) => {
     const prev = apiTickets?.find((t) => t.key === key)?.jiraStatus;

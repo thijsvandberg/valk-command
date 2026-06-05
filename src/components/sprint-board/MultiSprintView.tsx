@@ -193,8 +193,19 @@ export function MultiSprintView({
   }, [getListKeyForTicket]);
 
   const handleStoryPointsChange = useCallback((key: string, value: number | null) => {
+    // Mirror the server rule: estimating a ticket at "Ready to Refine" advances
+    // it to "Ready for Development". The readiness pill reads this optimistic
+    // map, which the SP save would not refresh, so update it here (revert on fail).
+    if (value != null && (readinessMap[key] ?? null) === "ready_to_refine") {
+      const prev = readinessMap[key];
+      setReadinessMap((m) => ({ ...m, [key]: null }));
+      saveStoryPoints(key, value, getListKeyForTicket(key)).then((ok) => {
+        if (!ok) setReadinessMap((m) => ({ ...m, [key]: prev }));
+      });
+      return;
+    }
     saveStoryPoints(key, value, getListKeyForTicket(key));
-  }, [getListKeyForTicket]);
+  }, [readinessMap, getListKeyForTicket]);
 
   const handleReadinessChange = useCallback((key: string, readiness: TicketReadiness | null) => {
     const prev = readinessMap[key];
