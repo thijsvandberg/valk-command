@@ -285,14 +285,14 @@ export function RichEditor({
   const isPortaled = fullWidthToolbar && stickyToolbar && !!portalTarget;
 
   const toolbarEl = (
-    <div className={isPortaled ? "border-b border-border-default bg-[var(--color-surface-elevated)]" : toolbarWrapperClasses}>
+    // The portal target owns the surface (sticky, border, background, rail
+    // padding), so here we only establish a container so the action labels can
+    // collapse to icon-only when the rail is narrow. Inline, the controls line
+    // up with the editor body via the contentMaxWidth wrapper.
+    <div className={isPortaled ? "@container" : toolbarWrapperClasses}>
       {fullWidthToolbar ? (
-        // A portaled toolbar spans the full viewport, so its controls are
-        // centered to max-w-4xl. Inline, the controls must instead line up with
-        // the editor body, which mirrors the contentMaxWidth wrapper below and
-        // carries no horizontal padding.
         isPortaled ? (
-          <div className="mx-auto max-w-4xl px-8">{toolbarContent}</div>
+          toolbarContent
         ) : (
           <div className={contentMaxWidth ? "mx-auto w-full max-w-4xl" : ""}>{toolbarContent}</div>
         )

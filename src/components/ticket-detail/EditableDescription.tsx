@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef, useCallback, useMemo } from "react";
 import type { Attachment } from "@/types/ticket";
-import { CloudUpload, Loader2, ChevronDown } from "lucide-react";
+import { CloudUpload, Loader2, ChevronDown, Save, RotateCcw } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import { apiFetch, tickets } from "@/lib/api-client";
 import { markdownEqualIgnoringSpacing, normalizeMarkdownForCompare } from "@/lib/normalize-markdown";
@@ -346,29 +346,33 @@ export function EditableDescription({
                 variant="ghost"
                 size="md"
                 onClick={handleDiscard}
+                title="Discard"
+                icon={<RotateCcw size={13} strokeWidth={1.5} />}
                 className="!text-text-tertiary hover:!text-text-secondary !text-body-sm"
               >
-                Discard
+                <span className="hidden @2xl:inline">Discard</span>
               </Button>
               <Button
                 variant="ghost"
                 size="md"
                 onClick={save}
+                title="Save"
+                icon={<Save size={13} strokeWidth={1.5} />}
                 className="!bg-overlay-strong !text-text-secondary hover:!bg-overlay-strong hover:!text-text-primary !text-body-sm"
               >
-                Save
+                <span className="hidden @2xl:inline">Save</span>
               </Button>
               {showPush && (
                 <Button
                   variant="primary"
                   size="md"
                   disabled={isPushing || (showConflictWarning && !overrideConfirmed)}
-                  title={showConflictWarning && !overrideConfirmed ? "Review the diff and confirm before pushing" : undefined}
+                  title={showConflictWarning && !overrideConfirmed ? "Review the diff and confirm before pushing" : "Push to Jira"}
                   onClick={handlePushToJira}
                   icon={isPushing ? <Loader2 size={12} strokeWidth={1.5} className="animate-spin" /> : <CloudUpload size={12} strokeWidth={1.5} />}
                   className="!text-body-sm"
                 >
-                  {isPushing ? "Pushing..." : "Push to Jira"}
+                  <span className="hidden @2xl:inline">{isPushing ? "Pushing..." : "Push to Jira"}</span>
                 </Button>
               )}
             </div>

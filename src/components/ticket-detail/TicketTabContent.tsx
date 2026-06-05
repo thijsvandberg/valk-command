@@ -158,9 +158,6 @@ export function TicketTabContent({
 
   return (
     <div className="min-w-0 flex-1 flex flex-col overflow-hidden">
-      {/* Portal target for editor toolbar */}
-      <div id={toolbarPortalId} className="relative z-10 shrink-0" />
-
       <div onScroll={handleScroll} className="flex flex-1 flex-col overflow-y-auto" style={{ overflowX: "hidden", scrollbarGutter: "stable" }}>
         {/* Tab bar scrolls with the content rather than staying pinned. The side
             panel passes its header buttons via tabBarActions so the whole merged
@@ -187,6 +184,14 @@ export function TicketTabContent({
               )}
           </div>
         )}
+
+        {/* Editor toolbar portals in here, directly under the tab bar and sticky
+            so formatting stays reachable while scrolling a long body. empty:hidden
+            keeps it out of the layout until the editor mounts its toolbar. */}
+        <div
+          id={toolbarPortalId}
+          className={`sticky top-0 z-10 border-b border-border-default bg-[var(--color-surface-elevated)] empty:hidden ${railClass}`}
+        />
 
         <div className={`${railClass} ${activeTab === "history" ? "pt-6 pb-4" : "py-6"}`}>
 
