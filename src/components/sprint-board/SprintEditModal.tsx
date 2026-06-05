@@ -7,7 +7,7 @@ import { Modal } from "@/components/shared/Modal";
 import { DateTimePicker, formatDateTimeLabel } from "@/components/shared/DateTimePicker";
 import { Button } from "@/components/ui/Button";
 import { jira, workspaceTasks } from "@/lib/api-client";
-import { sprintEndFromStart } from "@/lib/sprint-dates";
+import { sprintEndFromStart, toInputDateTime, toIsoDateTime } from "@/lib/sprint-dates";
 import { useTaskStream } from "@/hooks/useTaskStream";
 import { Calendar, Target, Sparkles, Loader2, X, Check, CornerDownRight } from "lucide-react";
 
@@ -17,29 +17,6 @@ interface SprintEditModalProps {
   onClose: () => void;
   showToast: (msg: string) => void;
   autoSuggest?: boolean;
-}
-
-export function toInputDateTime(iso: string | null | undefined): string {
-  if (!iso) return "";
-  try {
-    const d = new Date(iso);
-    const pad = (n: number) => String(n).padStart(2, "0");
-    const datePart = `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
-    // A date stored at local midnight had no explicit time; keep it time-less so
-    // it never resurfaces a phantom time on reopen.
-    if (d.getHours() === 0 && d.getMinutes() === 0) return datePart;
-    return `${datePart}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
-  } catch {
-    return "";
-  }
-}
-
-export function toIsoDateTime(input: string): string {
-  if (!input) return "";
-  // "YYYY-MM-DD" alone parses as UTC midnight, which renders as 02:00 in a
-  // UTC+2 zone. Anchor a time-less date to local midnight instead.
-  const normalized = input.includes("T") ? input : `${input}T00:00`;
-  return new Date(normalized).toISOString();
 }
 
 // Persist suggestion task so it survives navigation

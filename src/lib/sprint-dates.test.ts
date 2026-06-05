@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { sprintEndFromStart } from "./sprint-dates";
+import { sprintEndFromStart, toInputDateTime, toIsoDateTime } from "./sprint-dates";
 
 describe("sprintEndFromStart", () => {
   it("maps a Friday start to the Thursday two weeks later at 17:00", () => {
@@ -24,5 +24,26 @@ describe("sprintEndFromStart", () => {
   it("does not mutate across calls (year rollover)", () => {
     // Fri 25 Dec 2026 -> Thu 7 Jan 2027
     expect(sprintEndFromStart("2026-12-25")).toBe("2027-01-07T17:00");
+  });
+});
+
+describe("date converters", () => {
+  it("keeps a date with no time time-less across the round trip", () => {
+    // No phantom time may appear: a date picked without a time must come back
+    // as the same bare date regardless of the runner's timezone. This is the
+    // regression that surfaced as a "02:00" start in a UTC+2 zone.
+    const iso = toIsoDateTime("2026-07-03");
+    expect(toInputDateTime(iso)).toBe("2026-07-03");
+  });
+
+  it("preserves an explicit time across the round trip", () => {
+    const iso = toIsoDateTime("2026-06-18T17:00");
+    expect(toInputDateTime(iso)).toBe("2026-06-18T17:00");
+  });
+
+  it("returns empty for empty input", () => {
+    expect(toIsoDateTime("")).toBe("");
+    expect(toInputDateTime("")).toBe("");
+    expect(toInputDateTime(null)).toBe("");
   });
 });

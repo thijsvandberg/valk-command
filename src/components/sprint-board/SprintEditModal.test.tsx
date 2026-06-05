@@ -1,6 +1,6 @@
 import { render, screen, fireEvent, waitFor } from "@testing-library/react";
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { SprintEditModal, toInputDateTime, toIsoDateTime } from "./SprintEditModal";
+import { SprintEditModal } from "./SprintEditModal";
 import type { Sprint, Ticket } from "@/types/ticket";
 
 vi.mock("swr", () => ({
@@ -56,26 +56,6 @@ function makeTicket(overrides: Partial<Ticket> = {}): Ticket {
     ...overrides,
   };
 }
-
-describe("date converters", () => {
-  it("keeps a date with no time time-less across the round trip", () => {
-    // No phantom time may appear: a date picked without a time must come back
-    // as the same bare date regardless of the runner's timezone.
-    const iso = toIsoDateTime("2026-06-05");
-    expect(toInputDateTime(iso)).toBe("2026-06-05");
-  });
-
-  it("preserves an explicit time across the round trip", () => {
-    const iso = toIsoDateTime("2026-06-18T17:00");
-    expect(toInputDateTime(iso)).toBe("2026-06-18T17:00");
-  });
-
-  it("returns empty for empty input", () => {
-    expect(toIsoDateTime("")).toBe("");
-    expect(toInputDateTime("")).toBe("");
-    expect(toInputDateTime(null)).toBe("");
-  });
-});
 
 describe("SprintEditModal", () => {
   const onClose = vi.fn();

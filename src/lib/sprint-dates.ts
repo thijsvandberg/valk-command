@@ -34,3 +34,27 @@ export function sprintEndFromStart(startValue: string): string {
   base.setDate(base.getDate() + offsetToThursday);
   return `${base.getFullYear()}-${pad(base.getMonth() + 1)}-${pad(base.getDate())}T17:00`;
 }
+
+/** Convert a stored ISO timestamp to the picker value ("" | "YYYY-MM-DD" | "YYYY-MM-DDTHH:mm"). */
+export function toInputDateTime(iso: string | null | undefined): string {
+  if (!iso) return "";
+  try {
+    const d = new Date(iso);
+    const datePart = `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+    // A date stored at local midnight had no explicit time; keep it time-less so
+    // it never resurfaces a phantom time on reopen.
+    if (d.getHours() === 0 && d.getMinutes() === 0) return datePart;
+    return `${datePart}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+  } catch {
+    return "";
+  }
+}
+
+/** Convert a picker value to an ISO timestamp for storage. */
+export function toIsoDateTime(input: string): string {
+  if (!input) return "";
+  // "YYYY-MM-DD" alone parses as UTC midnight, which renders as 02:00 in a
+  // UTC+2 zone. Anchor a time-less date to local midnight instead.
+  const normalized = input.includes("T") ? input : `${input}T00:00`;
+  return new Date(normalized).toISOString();
+}

@@ -6,18 +6,13 @@ import { Modal } from "@/components/shared/Modal";
 import { DateTimePicker, formatDateTimeLabel } from "@/components/shared/DateTimePicker";
 import { Button } from "@/components/ui/Button";
 import { jira } from "@/lib/api-client";
-import { sprintEndFromStart } from "@/lib/sprint-dates";
+import { sprintEndFromStart, toIsoDateTime } from "@/lib/sprint-dates";
 import { Calendar, Target, Type, X, AlertTriangle, CornerDownRight } from "lucide-react";
 
 interface CreateSprintModalProps {
   onClose: () => void;
   onCreated: (sprintId: string) => void;
   showToast: (msg: string) => void;
-}
-
-function toIsoDateTime(input: string): string {
-  if (!input) return "";
-  return new Date(input).toISOString();
 }
 
 export function CreateSprintModal({ onClose, onCreated, showToast }: CreateSprintModalProps) {
