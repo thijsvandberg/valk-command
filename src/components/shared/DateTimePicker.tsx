@@ -74,13 +74,27 @@ function normalizeTime(raw: string): string {
   return `${pad(h)}:${pad(m)}`;
 }
 
-function buildCalendarCells(viewYear: number, viewMonth: number): (Date | null)[] {
+interface CalendarCell {
+  date: Date;
+  /** False for trailing/leading days that belong to the adjacent month. */
+  inMonth: boolean;
+}
+
+// Fill the leading and trailing blanks with the adjacent months' days so the
+// grid is fully pickable; overflow days are flagged so the caller can mute them.
+function buildCalendarCells(viewYear: number, viewMonth: number): CalendarCell[] {
   const firstWeekday = (new Date(viewYear, viewMonth, 1).getDay() + 6) % 7; // Monday = 0
   const daysInMonth = new Date(viewYear, viewMonth + 1, 0).getDate();
-  const cells: (Date | null)[] = [];
-  for (let i = 0; i < firstWeekday; i++) cells.push(null);
-  for (let d = 1; d <= daysInMonth; d++) cells.push(new Date(viewYear, viewMonth, d));
-  while (cells.length % 7 !== 0) cells.push(null);
+  const cells: CalendarCell[] = [];
+  for (let i = firstWeekday; i > 0; i--) {
+    cells.push({ date: new Date(viewYear, viewMonth, 1 - i), inMonth: false });
+  }
+  for (let d = 1; d <= daysInMonth; d++) {
+    cells.push({ date: new Date(viewYear, viewMonth, d), inMonth: true });
+  }
+  for (let d = 1; cells.length % 7 !== 0; d++) {
+    cells.push({ date: new Date(viewYear, viewMonth + 1, d), inMonth: false });
+  }
   return cells;
 }
 
@@ -255,8 +269,7 @@ export function DateTimePicker({ value, onChange, ariaLabel, placeholder = "Sele
 
           {/* Day grid */}
           <div className="grid grid-cols-7 gap-0.5">
-            {cells.map((day, i) => {
-              if (!day) return <div key={`empty-${i}`} />;
+            {cells.map(({ date: day, inMonth }) => {
               const isSelected = sameDay(day, selectedDate);
               const isToday = sameDay(day, today);
               return (
@@ -268,7 +281,9 @@ export function DateTimePicker({ value, onChange, ariaLabel, placeholder = "Sele
                   className={`relative flex h-8 items-center justify-center rounded-md text-body-sm cursor-pointer transition-colors duration-100
                     ${isSelected
                       ? "bg-[var(--color-brand-500)] font-semibold text-white"
-                      : "text-text-secondary hover:bg-overlay-default hover:text-text-primary"}`}
+                      : inMonth
+                        ? "text-text-secondary hover:bg-overlay-default hover:text-text-primary"
+                        : "text-text-muted/60 hover:bg-overlay-default hover:text-text-secondary"}`}
                 >
                   {day.getDate()}
                   {isToday && !isSelected && (
