@@ -107,6 +107,37 @@ describe("FinishSprintModal", () => {
     });
   });
 
+  it("copies the open-subtasks list to the clipboard (Blocker B)", async () => {
+    const writeText = vi.fn().mockResolvedValue(undefined);
+    Object.assign(navigator, { clipboard: { writeText } });
+
+    vi.mocked(ticketsApi.getSubtasks).mockResolvedValue([
+      { key: "VPL-46336", title: "Finalize story", status: "TO DO" },
+    ]);
+
+    const props = renderModal([
+      mkTicket({
+        key: "VPL-46187",
+        title: "Update gift card transaction code to 904-102",
+        jiraStatus: "DONE",
+        openSubtaskCount: 1,
+        assignee: { name: "Frank", initials: "F", color: "#000" },
+      } as Partial<Ticket> & { key: string }),
+    ]);
+
+    await waitFor(() => expect(screen.getByText("Finalize story")).toBeInTheDocument());
+
+    fireEvent.click(screen.getByRole("button", { name: "Copy open-subtasks list" }));
+
+    await waitFor(() => {
+      expect(writeText).toHaveBeenCalledWith(
+        "Update gift card transaction code to 904-102 (DONE) - https://new-story.atlassian.net/browse/VPL-46187 (Frank)\n" +
+          " - Finalize story (TODO) - https://new-story.atlassian.net/browse/VPL-46336",
+      );
+      expect(props.showToast).toHaveBeenCalledWith("Copied 1 story to clipboard");
+    });
+  });
+
   it("closes a single subtask via the per-item action", async () => {
     vi.mocked(ticketsApi.getSubtasks).mockResolvedValue([
       { key: "VPL-9", title: "Write tests", status: "TO DO" },

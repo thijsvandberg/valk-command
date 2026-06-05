@@ -8,10 +8,11 @@ import { jira, tickets as ticketsApi } from "@/lib/api-client";
 import type { Sprint, Ticket, JiraStatus } from "@/types/ticket";
 import {
   Flag, X, AlertTriangle, CircleAlert, CircleCheckBig,
-  CheckCheck, Loader2, PartyPopper,
+  CheckCheck, Loader2, PartyPopper, Copy,
 } from "lucide-react";
 import { TicketStatusPill } from "@/components/shared/TicketStatusPill";
 import { buildTicketHoverData } from "@/hooks/useTicketHoverData";
+import { buildOpenSubtasksReport, type ReportStory } from "@/lib/open-subtasks-report";
 
 interface SubtaskItem {
   key: string;
@@ -146,6 +147,25 @@ export function FinishSprintModal({
     const pending = blockerBKeys.filter((k) => openSubtasksFor(k).length > 0);
     await Promise.all(pending.map((k) => closeAllForStory(k)));
   }, [blockerBKeys, openSubtasksFor, closeAllForStory]);
+
+  const handleCopyReport = useCallback(async () => {
+    const stories: ReportStory[] = blockerBStories
+      .map((story) => ({
+        key: story.key,
+        title: story.title,
+        status: story.jiraStatus,
+        assignee: story.assignee?.name ?? null,
+        openSubtasks: openSubtasksFor(story.key),
+      }))
+      .filter((s) => s.openSubtasks.length > 0);
+
+    try {
+      await navigator.clipboard.writeText(buildOpenSubtasksReport(stories));
+      showToast(`Copied ${stories.length} ${stories.length === 1 ? "story" : "stories"} to clipboard`);
+    } catch {
+      showToast("Failed to copy to clipboard");
+    }
+  }, [blockerBStories, openSubtasksFor, showToast]);
 
   const handleFinish = useCallback(async () => {
     if (blocked) return;
@@ -286,16 +306,27 @@ export function FinishSprintModal({
                   </span>
                 </div>
                 {totalOpenSubtasks > 0 && (
-                  <button
-                    type="button"
-                    onClick={closeAllSubtasks}
-                    disabled={busyStories.size > 0}
-                    aria-label="Close all open subtasks"
-                    className="inline-flex items-center gap-1.5 rounded-md bg-amber-500/15 px-2 py-1 text-[11px] font-medium text-text-secondary cursor-pointer hover:bg-amber-500/25 hover:text-text-primary active:bg-amber-500/30 disabled:opacity-50 disabled:cursor-not-allowed transition-colors duration-150"
-                  >
-                    <CheckCheck size={11} strokeWidth={1.75} />
-                    Close all
-                  </button>
+                  <div className="flex items-center gap-1.5">
+                    <button
+                      type="button"
+                      onClick={handleCopyReport}
+                      aria-label="Copy open-subtasks list"
+                      className="inline-flex items-center gap-1.5 rounded-md bg-amber-500/15 px-2 py-1 text-[11px] font-medium text-text-secondary cursor-pointer hover:bg-amber-500/25 hover:text-text-primary active:bg-amber-500/30 transition-colors duration-150"
+                    >
+                      <Copy size={11} strokeWidth={1.75} />
+                      Copy list
+                    </button>
+                    <button
+                      type="button"
+                      onClick={closeAllSubtasks}
+                      disabled={busyStories.size > 0}
+                      aria-label="Close all open subtasks"
+                      className="inline-flex items-center gap-1.5 rounded-md bg-amber-500/15 px-2 py-1 text-[11px] font-medium text-text-secondary cursor-pointer hover:bg-amber-500/25 hover:text-text-primary active:bg-amber-500/30 disabled:opacity-50 disabled:cursor-not-allowed transition-colors duration-150"
+                    >
+                      <CheckCheck size={11} strokeWidth={1.75} />
+                      Close all
+                    </button>
+                  </div>
                 )}
               </div>
               <ul className="max-h-56 space-y-1 overflow-y-auto p-2">
