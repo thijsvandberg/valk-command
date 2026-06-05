@@ -35,10 +35,18 @@ describe("JiraClient.updateSprint", () => {
     vi.unstubAllGlobals();
   });
 
-  it("always sends the current name and state, merging changed fields on top", async () => {
-    // 1: GET current sprint, 2: PUT the merged payload
+  it("preserves the existing dates when only the goal changes", async () => {
+    // Jira's PUT nulls out omitted fields, so a goal-only update must re-send
+    // the current startDate/endDate or they vanish.
     fetchMock
-      .mockResolvedValueOnce(jsonResponse({ id: 6361, name: "BT: 139", state: "future" }))
+      .mockResolvedValueOnce(jsonResponse({
+        id: 6361,
+        name: "BT: 139",
+        state: "future",
+        startDate: "2026-07-03T00:00:00.000Z",
+        endDate: "2026-07-16T17:00:00.000Z",
+        goal: "Old goal",
+      }))
       .mockResolvedValueOnce(jsonResponse({ id: 6361 }));
 
     await client.updateSprint(6361, { goal: "Ship the thing" });
@@ -50,7 +58,31 @@ describe("JiraClient.updateSprint", () => {
     expect(JSON.parse(putCall[1]?.body as string)).toEqual({
       name: "BT: 139",
       state: "future",
+      startDate: "2026-07-03T00:00:00.000Z",
+      endDate: "2026-07-16T17:00:00.000Z",
       goal: "Ship the thing",
+    });
+  });
+
+  it("preserves the existing goal when only a date changes", async () => {
+    fetchMock
+      .mockResolvedValueOnce(jsonResponse({
+        id: 6361,
+        name: "BT: 139",
+        state: "future",
+        endDate: "2026-07-16T17:00:00.000Z",
+        goal: "Keep me",
+      }))
+      .mockResolvedValueOnce(jsonResponse({ id: 6361 }));
+
+    await client.updateSprint(6361, { startDate: "2026-07-03T00:00:00.000Z" });
+
+    expect(JSON.parse(fetchMock.mock.calls[1][1]?.body as string)).toEqual({
+      name: "BT: 139",
+      state: "future",
+      startDate: "2026-07-03T00:00:00.000Z",
+      endDate: "2026-07-16T17:00:00.000Z",
+      goal: "Keep me",
     });
   });
 
@@ -65,6 +97,27 @@ describe("JiraClient.updateSprint", () => {
       name: "BT: 140",
       state: "future",
       startDate: "2026-06-05T00:00:00.000Z",
+    });
+  });
+
+  it("lets an empty string clear a field instead of re-sending the old value", async () => {
+    fetchMock
+      .mockResolvedValueOnce(jsonResponse({
+        id: 6361,
+        name: "BT: 139",
+        state: "future",
+        startDate: "2026-07-03T00:00:00.000Z",
+        goal: "Old goal",
+      }))
+      .mockResolvedValueOnce(jsonResponse({ id: 6361 }));
+
+    await client.updateSprint(6361, { goal: "" });
+
+    // goal omitted from payload => Jira nulls it; startDate preserved.
+    expect(JSON.parse(fetchMock.mock.calls[1][1]?.body as string)).toEqual({
+      name: "BT: 139",
+      state: "future",
+      startDate: "2026-07-03T00:00:00.000Z",
     });
   });
 });
