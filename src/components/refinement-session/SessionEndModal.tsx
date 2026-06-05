@@ -8,6 +8,7 @@ import { refinementSessions as refinementSessionsApi } from "@/lib/api-client";
 import type { RefinementSessionTicketNoteResponse } from "@/lib/api-client";
 import { Button } from "@/components/ui/Button";
 import { TicketStatusPill } from "@/components/shared/TicketStatusPill";
+import { IssueTypeIcon } from "@/components/shared/IssueTypeIcon";
 import { tickets, apiFetch } from "@/lib/api-client";
 import type { JiraStatus, TicketReadiness, IssueType } from "@/types/ticket";
 import {
@@ -178,6 +179,7 @@ export function SessionEndModal() {
         readiness: (ticket?.readiness ?? null) as TicketReadiness | null,
         storyPoints: ticket?.storyPoints ?? null,
         isSpike: ticket?.type === "spike",
+        subtaskCount: ticket?.totalSubtaskCount ?? 0,
       };
     });
   }, [queue, queueMeta, allTickets]);
@@ -308,6 +310,12 @@ export function SessionEndModal() {
                     {!row.isSpike && (row.storyPoints == null || row.storyPoints === 0) && (
                       <span className="flex h-5 items-center rounded-md bg-amber-500/10 px-1.5 text-[10px] font-medium text-amber-400/80">
                         No estimate
+                      </span>
+                    )}
+                    {row.subtaskCount === 0 && (
+                      <span className="flex h-5 items-center gap-1 rounded-md bg-amber-500/10 px-1.5 text-[10px] font-medium text-amber-400/80">
+                        <IssueTypeIcon type="subtask" size={10} />
+                        No subtasks
                       </span>
                     )}
                     <button
