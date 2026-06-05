@@ -90,3 +90,11 @@ topics render as placeholders).
 cleaned up with their parent and must never appear as their own row in the cleanup overview.
 Null-type tickets are retained (the `or(isNull)` guard prevents SQLite NULL semantics from
 accidentally dropping unknown types). Tests updated at all four sites.
+
+**Queue subtask guard** (Backlog Deprecation Review epic, 2026-06-05): the deep-scan queue helpers
+`listQueue` and `claimPendingBatch` (`src/lib/deprecation-scan-queue.ts`) now also left-join the ticket
+and exclude subtask-typed rows (reusing `EXCLUDED_SCAN_TYPES`), so even a stale queue row never surfaces
+in the queue panel or gets processed by the runner. Eligibility blocks NEW subtask enqueues; this is the
+going-forward guard for stale rows or tickets re-typed to subtask after enqueue. Null/unknown types stay
+claimable. See BRDG-298's fourth UI pass for the rest of the cleanup changes (deep-scanned overview,
+inline rationale, sprint filter).

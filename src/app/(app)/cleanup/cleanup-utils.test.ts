@@ -27,6 +27,8 @@ function row(key: string, over: number | null, opts: Partial<CleanupRow> = {}): 
     reporter: opts.reporter ?? null,
     jiraUpdatedAt: opts.jiraUpdatedAt ?? null,
     lastScannedAt: opts.lastScannedAt ?? null,
+    lastDeepScannedAt: opts.lastDeepScannedAt ?? null,
+    scanRationale: opts.scanRationale ?? null,
     topicScores: opts.topicScores ?? {},
     scanOverall: over,
     disposition: opts.disposition ?? null,
@@ -47,6 +49,7 @@ function filters(over: Partial<CleanupFilters> = {}): CleanupFilters {
     assignees: new Set(),
     reporters: new Set(),
     lastActivity: new Set(),
+    sprints: new Set(),
     ...over,
   };
 }
@@ -92,6 +95,15 @@ describe("sortRows", () => {
     expect(sortRows(rows, "key").map((r) => r.key)).toEqual(["BT-1", "BT-2", "BT-10"]);
   });
 
+  it("orders by deep-scanned newest first, never-deep-scanned last", () => {
+    const rows = [
+      row("OLD", null, { lastDeepScannedAt: "2026-01-01T00:00:00Z" }),
+      row("NONE", null, {}),
+      row("NEW", null, { lastDeepScannedAt: "2026-06-03T00:00:00Z" }),
+    ];
+    expect(sortRows(rows, "deepScanned-newest").map((r) => r.key)).toEqual(["NEW", "OLD", "NONE"]);
+  });
+
   it("orders by revival score descending, nulls last", () => {
     const rows = [
       row("A", null, { revivalScore: 0.4 }),
@@ -124,6 +136,16 @@ describe("filterRows", () => {
   it("filters to never-scanned only", () => {
     const out = filterRows(rows, filters({ scanned: "never" }));
     expect(out.map((r) => r.key)).toEqual(["NEVER"]);
+  });
+
+  it("filters to deep-scanned only (lastDeepScannedAt set)", () => {
+    const deepRows = [
+      row("DEEP", 0.8, { lastScannedAt: "2026-06-01T00:00:00Z", lastDeepScannedAt: "2026-06-04T00:00:00Z" }),
+      row("T1", 0.5, { lastScannedAt: "2026-06-01T00:00:00Z" }), // tier-1 only
+      row("NONE", null, {}),
+    ];
+    const out = filterRows(deepRows, filters({ scanned: "deep" }));
+    expect(out.map((r) => r.key)).toEqual(["DEEP"]);
   });
 
   it("filters by disposition", () => {
@@ -191,6 +213,22 @@ describe("filterRows", () => {
     ];
     const out = filterRows(activityRows, filters({ lastActivity: new Set(["lt1m", "gt1y"]) }), now);
     expect(out.map((r) => r.key)).toEqual(["RECENT", "OLD"]);
+  });
+
+  it("filters by sprint, mapping the backlog (null sprintName) to the backlog sentinel", () => {
+    const sprintRows = [
+      row("BL", null, { sprintName: null }), // backlog
+      row("S5", null, { sprintName: "Sprint 5" }),
+      row("S6", null, { sprintName: "Sprint 6" }),
+    ];
+    // Selecting the backlog sentinel keeps only the backlog row.
+    expect(filterRows(sprintRows, filters({ sprints: new Set(["__backlog__"]) })).map((r) => r.key)).toEqual(["BL"]);
+    // Selecting a named sprint keeps only that sprint's rows.
+    expect(filterRows(sprintRows, filters({ sprints: new Set(["Sprint 5"]) })).map((r) => r.key)).toEqual(["S5"]);
+    // Combining backlog + a named sprint ORs within the filter.
+    expect(
+      filterRows(sprintRows, filters({ sprints: new Set(["__backlog__", "Sprint 6"]) })).map((r) => r.key),
+    ).toEqual(["BL", "S6"]);
   });
 
   it("ANDs multiple facet filters together", () => {

@@ -149,3 +149,29 @@ Epic: Backlog Deprecation Review. Four PO-requested features on `/cleanup`:
 - Extracted the brand on/off switch into the shared `ToggleSwitch` component (reused by the auto control
   and the scan-control toggles). Tests cover the toggle/run wiring, queue list rendering + remove/clear,
   the placement indicator, the epic child-count badge, and the new API fields.
+
+### Fourth UI pass: deep-scanned overview, inline rationale, sprint filter, queue subtask guard (PO feedback)
+
+Epic: Backlog Deprecation Review. Three PO-requested items on `/cleanup`:
+
+- **Deep-scanned overview + inline rationale.** `CleanupRow` + `GET /api/cleanup` now expose
+  `lastDeepScannedAt` and `scanRationale`. A new **"Deep-scanned"** option in the Scanned filter
+  (`scanned=deep`, mirrored in `filterRows`) narrows the main list to rows that have actually had a Tier-2
+  deep dive — this is the requested overview, in the list itself rather than the queue dropdown. Added a
+  matching **"Deep-scanned (newest)"** sort. When a row has a `scanRationale`, a compact muted **inline
+  rationale line** (`RationaleLine`) renders under the title: a `Sparkles` icon + one truncated line, full
+  text on hover via `Tooltip`, click opens the `DispositionPanel`. Rows without a rationale render no extra
+  line, so their height stays tight.
+- **Sprint filter.** New `sprints` facet on `CleanupFacets`, computed server-side over the eligible set;
+  the backlog (empty `sprintName`) folds into the `BACKLOG_FACET_VALUE` (`__backlog__`) sentinel so it
+  reads as a real "Backlog" option (consistent with `SprintOrBacklogBadge`). Added a sprint `FilterDropdown`
+  and a `sprints` set on `CleanupFilters`/`filterRows` (backlog mapping included). Backlog-only eligibility
+  means it usually shows just "Backlog" today; wired correctly so it widens if scope changes.
+- **Queue/runner subtask exclusion (going-forward guard).** `listQueue` and `claimPendingBatch`
+  (`src/lib/deprecation-scan-queue.ts`) now left-join the ticket and exclude subtask-typed rows
+  (`EXCLUDED_SCAN_TYPES` / `isScannableType`), so even a stale queue row never surfaces in the panel or gets
+  processed. Subtasks are cleaned up with their parent; eligibility already blocks new enqueues, this guards
+  rows predating that check or whose ticket type changed after enqueue. Null/unknown types stay claimable.
+- Tests: API exposes the new fields + sprints facet + deep filter/sort; `filterRows` deep + sprint
+  (incl. backlog mapping) filters; inline rationale renders/omits cleanly; `listQueue` + `claimPendingBatch`
+  exclude subtasks. `npm run lint` + `npm run typecheck` clean. Docs updated (api-routes, this story).

@@ -118,9 +118,11 @@ const ROW_DEFAULTS = {
   assignee: null,
   reporter: null,
   jiraUpdatedAt: null,
+  lastDeepScannedAt: null,
+  scanRationale: null,
 };
 
-const EMPTY_FACETS = { types: [], epics: [], assignees: [], reporters: [] };
+const EMPTY_FACETS = { types: [], epics: [], assignees: [], reporters: [], sprints: [] };
 
 const RESPONSE: CleanupResponse = {
   total: 3,
@@ -133,6 +135,7 @@ const RESPONSE: CleanupResponse = {
     epics: [{ key: "BT-100", name: "Upsell" }],
     assignees: ["Alice"],
     reporters: ["Carol"],
+    sprints: ["__backlog__"],
   },
   rows: [
     {
@@ -146,6 +149,8 @@ const RESPONSE: CleanupResponse = {
       storyPoints: 3,
       assignee: { name: "Alice", initials: "AL", color: "hsl(1, 50%, 50%)" },
       lastScannedAt: "2026-06-01T00:00:00Z",
+      lastDeepScannedAt: "2026-06-01T00:00:00Z",
+      scanRationale: "Superseded by the new onboarding flow; no recent activity.",
       topicScores: { staleness: 0.82 },
       scanOverall: 0.82,
       disposition: "candidate",
@@ -200,6 +205,17 @@ describe("CleanupPage", () => {
     expect(screen.getByTestId("row-BT-2")).toBeInTheDocument();
     expect(screen.getByTestId("row-BT-3")).toBeInTheDocument();
     expect(within(screen.getByTestId("row-BT-1")).getByText(/Ancient ticket/)).toBeInTheDocument();
+  });
+
+  it("renders the scan rationale inline for rows that have one, and omits it otherwise", () => {
+    swrData = RESPONSE;
+    render(<CleanupPage />);
+    // BT-1 has a rationale -> rendered as a compact secondary line.
+    expect(screen.getByText(/Superseded by the new onboarding flow/)).toBeInTheDocument();
+    // BT-2 has no rationale -> no rationale line for it (clean, tight row).
+    expect(screen.queryByText(/Superseded by the new onboarding flow.*BT-2/)).not.toBeInTheDocument();
+    // Exactly one rationale line across the three fixture rows.
+    expect(screen.getAllByText(/Superseded by the new onboarding flow/)).toHaveLength(1);
   });
 
   it("shows a deprecation-score badge from the overall score in the row metadata", () => {
@@ -297,6 +313,7 @@ describe("CleanupPage", () => {
     expect(screen.getByText("Assignee")).toBeInTheDocument();
     expect(screen.getByText("Reporter")).toBeInTheDocument();
     expect(screen.getByText("Last activity")).toBeInTheDocument();
+    expect(screen.getByText("Sprint")).toBeInTheDocument();
   });
 
   it("shows the restyled selection bar with a select-all toggle and clear", () => {

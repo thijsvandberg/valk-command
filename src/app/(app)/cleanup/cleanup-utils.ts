@@ -6,7 +6,7 @@
  */
 
 import type { CleanupRow, CleanupSort, Disposition, ScannedFilter } from "@/lib/cleanup-types";
-import { REVIVAL_CANDIDATE_THRESHOLD } from "@/lib/cleanup-types";
+import { REVIVAL_CANDIDATE_THRESHOLD, BACKLOG_FACET_VALUE } from "@/lib/cleanup-types";
 import type { IssueType } from "@/types/ticket";
 
 // Last-activity time-period buckets (BRDG-298 UI refresh): how long since the
@@ -60,6 +60,9 @@ export interface CleanupFilters {
   assignees: Set<string>;
   reporters: Set<string>;
   lastActivity: Set<LastActivityBucket>;
+  // Sprint placement filter. Values are sprint names, with the backlog case
+  // represented by BACKLOG_FACET_VALUE (matches the facet/dropdown). Empty = any.
+  sprints: Set<string>;
 }
 
 // A row is a revival candidate when its analyzer score crosses the same 0.6 bar
@@ -84,6 +87,7 @@ export function filterRows(rows: CleanupRow[], f: CleanupFilters, now: number = 
   return rows.filter((r) => {
     if (f.scanned === "scanned" && r.lastScannedAt == null) return false;
     if (f.scanned === "never" && r.lastScannedAt != null) return false;
+    if (f.scanned === "deep" && r.lastDeepScannedAt == null) return false;
     if (f.disposition !== "all" && r.disposition !== f.disposition) return false;
     if (f.minOverall > 0 && (r.scanOverall == null || r.scanOverall < f.minOverall)) return false;
     if (f.revivalOnly && !isRevivalCandidate(r)) return false;
@@ -94,6 +98,9 @@ export function filterRows(rows: CleanupRow[], f: CleanupFilters, now: number = 
     if (f.assignees.size > 0 && !(r.assignee != null && f.assignees.has(r.assignee.name))) return false;
     if (f.reporters.size > 0 && !(r.reporter != null && f.reporters.has(r.reporter.name))) return false;
     if (f.lastActivity.size > 0 && !f.lastActivity.has(lastActivityBucket(r.jiraUpdatedAt, now))) return false;
+    // Backlog rows (null sprintName) match the BACKLOG sentinel so the "Backlog"
+    // dropdown option behaves like any other sprint value.
+    if (f.sprints.size > 0 && !f.sprints.has(r.sprintName ?? BACKLOG_FACET_VALUE)) return false;
     return true;
   });
 }
@@ -126,6 +133,14 @@ export function sortRows(rows: CleanupRow[], sort: CleanupSort): CleanupRow[] {
         if (a.lastScannedAt == null) return 1;
         if (b.lastScannedAt == null) return -1;
         return b.lastScannedAt.localeCompare(a.lastScannedAt);
+      });
+      break;
+    case "deepScanned-newest":
+      copy.sort((a, b) => {
+        if (a.lastDeepScannedAt == null && b.lastDeepScannedAt == null) return 0;
+        if (a.lastDeepScannedAt == null) return 1;
+        if (b.lastDeepScannedAt == null) return -1;
+        return b.lastDeepScannedAt.localeCompare(a.lastDeepScannedAt);
       });
       break;
     case "key":

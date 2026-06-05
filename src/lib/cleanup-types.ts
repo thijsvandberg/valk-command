@@ -93,6 +93,16 @@ export interface CleanupRow {
   // last-activity time-period filter buckets. null when never recorded.
   jiraUpdatedAt: string | null;
   lastScannedAt: string | null;
+  // Timestamp of the last Tier-2 deep scan, or null when the ticket has only had
+  // (or not even had) the cheap Tier-1 staleness pass. Drives the "Deep-scanned"
+  // filter + recency sort: this is how the PO narrows the list to items that have
+  // actually had a deep dive (BRDG-298), the requested overview.
+  lastDeepScannedAt: string | null;
+  // Free-text rationale written by the deep-scan analyzer explaining WHY the
+  // ticket was flagged. Surfaced inline under the title (truncated) so the PO can
+  // read the reasoning without opening each drawer; the full text lives in the
+  // DispositionPanel. null when no deep scan has produced one (BRDG-298).
+  scanRationale: string | null;
   /** Per-topic score in 0..1, or null when that topic has not scored this ticket. */
   topicScores: Partial<Record<ScanTopicKey, number | null>>;
   scanOverall: number | null;
@@ -111,7 +121,18 @@ export interface CleanupFacets {
   epics: { key: string; name: string }[];
   assignees: string[];
   reporters: string[];
+  // Distinct sprint placements across the eligible set. The empty/backlog case is
+  // represented by BACKLOG_FACET_VALUE so it reads as a real option in the
+  // dropdown (BRDG-298). Scan eligibility is backlog-only today, so this usually
+  // holds just "Backlog"; still computed so it widens correctly if scope changes.
+  sprints: string[];
 }
+
+// Sentinel option value for the "no sprint" (backlog) case in the sprint facet
+// and filter. The empty sprintName maps to this so the dropdown shows a real
+// "Backlog" choice instead of a blank entry, consistent with SprintOrBacklogBadge.
+export const BACKLOG_FACET_VALUE = "__backlog__";
+export const BACKLOG_FACET_LABEL = "Backlog";
 
 export interface CleanupResponse {
   rows: CleanupRow[];
@@ -126,9 +147,13 @@ export type CleanupSort =
   | "staleness"
   | "lastScanned-oldest"
   | "lastScanned-newest"
+  // Most-recently deep-scanned first; never-deep-scanned rows sink to the bottom.
+  | "deepScanned-newest"
   | "key";
 
-export type ScannedFilter = "all" | "scanned" | "never";
+// "deep" narrows to rows that have had a Tier-2 deep scan (lastDeepScannedAt set):
+// the requested "items that have actually had a deep dive" overview (BRDG-298).
+export type ScannedFilter = "all" | "scanned" | "never" | "deep";
 
 /**
  * Parse the stored scanScores JSON into a defensive per-topic number map. Bad or

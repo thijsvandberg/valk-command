@@ -29,6 +29,8 @@ function seed(
     reporter?: string | null;
     jiraUpdatedAt?: string | null;
     lastScannedAt?: string | null;
+    lastDeepScannedAt?: string | null;
+    scanRationale?: string | null;
     scanScores?: string | null;
     scanOverall?: number | null;
     disposition?: string | null;
@@ -55,6 +57,8 @@ function seed(
     .run();
   if (
     opts.lastScannedAt !== undefined ||
+    opts.lastDeepScannedAt !== undefined ||
+    opts.scanRationale !== undefined ||
     opts.scanScores !== undefined ||
     opts.scanOverall !== undefined ||
     opts.disposition !== undefined ||
@@ -66,6 +70,8 @@ function seed(
       .values({
         jiraKey: key,
         lastScannedAt: opts.lastScannedAt ?? null,
+        lastDeepScannedAt: opts.lastDeepScannedAt ?? null,
+        scanRationale: opts.scanRationale ?? null,
         scanScores: opts.scanScores ?? null,
         scanOverall: opts.scanOverall ?? null,
         disposition: opts.disposition ?? null,
@@ -295,5 +301,44 @@ describe("GET /api/cleanup", () => {
     expect(rev.revivalRationale).toContain("payments");
     expect(none.revivalScore).toBeNull();
     expect(none.revivalRationale).toBeNull();
+  });
+
+  it("exposes lastDeepScannedAt and scanRationale per row (BRDG-298)", async () => {
+    seed("BT-DEEP", {
+      lastDeepScannedAt: "2026-06-04T00:00:00Z",
+      scanRationale: "Superseded by the new onboarding flow",
+    });
+    seed("BT-SHALLOW", { lastScannedAt: "2026-06-01T00:00:00Z" }); // tier-1 only
+    const data = await (await call("?sort=key")).json();
+    const deep = data.rows.find((r: { key: string }) => r.key === "BT-DEEP");
+    const shallow = data.rows.find((r: { key: string }) => r.key === "BT-SHALLOW");
+    expect(deep.lastDeepScannedAt).toBe("2026-06-04T00:00:00Z");
+    expect(deep.scanRationale).toContain("onboarding");
+    expect(shallow.lastDeepScannedAt).toBeNull();
+    expect(shallow.scanRationale).toBeNull();
+  });
+
+  it("filters to deep-scanned tickets only (scanned=deep)", async () => {
+    seed("BT-DEEP", { lastDeepScannedAt: "2026-06-04T00:00:00Z" });
+    seed("BT-T1", { lastScannedAt: "2026-06-01T00:00:00Z" }); // tier-1 only, no deep
+    seed("BT-NONE", {});
+    const data = await (await call("?scanned=deep")).json();
+    expect(data.rows.map((r: { key: string }) => r.key)).toEqual(["BT-DEEP"]);
+  });
+
+  it("sorts by deep-scanned newest first, never-deep-scanned last", async () => {
+    seed("BT-OLD", { lastDeepScannedAt: "2026-01-01T00:00:00Z" });
+    seed("BT-NEW", { lastDeepScannedAt: "2026-06-01T00:00:00Z" });
+    seed("BT-NONE", {}); // never deep-scanned -> last
+    const data = await (await call("?sort=deepScanned-newest")).json();
+    expect(data.rows.map((r: { key: string }) => r.key)).toEqual(["BT-NEW", "BT-OLD", "BT-NONE"]);
+  });
+
+  it("returns a sprints facet mapping the backlog (empty sprint) to the sentinel value", async () => {
+    // Eligible rows are backlog-only (empty sprint) today, so the only sprint
+    // option is the backlog sentinel.
+    seed("BT-BL", { sprintName: "" });
+    const data = await (await call()).json();
+    expect(data.facets.sprints).toEqual(["__backlog__"]);
   });
 });

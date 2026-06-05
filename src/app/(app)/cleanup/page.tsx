@@ -3,7 +3,7 @@
 import { useMemo, useState, useCallback } from "react";
 import useSWR, { mutate as globalMutate } from "swr";
 import dynamic from "next/dynamic";
-import { Trash2, Telescope, Clock, Flame, Check, BellOff, TrendingUp } from "lucide-react";
+import { Trash2, Telescope, Clock, Flame, Check, BellOff, TrendingUp, Sparkles } from "lucide-react";
 import { usePageTitle } from "@/hooks/usePageTitle";
 import { Button } from "@/components/ui/Button";
 import { ViewHeader, ViewHeaderTitle } from "@/components/shared/ViewHeader";
@@ -11,6 +11,7 @@ import { Tooltip } from "@/components/shared/Tooltip";
 import { FilterDropdown } from "@/components/shared/FilterDropdown";
 import { BarContainer, BarDivider } from "@/components/shared/BarContainer";
 import { EpicBadge, SubtaskCountBadge, MetricChip, SprintOrBacklogBadge, EpicChildCountBadge } from "@/components/shared/IssueMetaBadges";
+import { BACKLOG_FACET_VALUE, BACKLOG_FACET_LABEL } from "@/lib/cleanup-types";
 import { IssueTypeIcon } from "@/components/shared/IssueTypeIcon";
 import { Avatar } from "@/components/shared/Avatar";
 import { ChildIssueRow } from "@/components/ticket-detail/ChildIssueRow";
@@ -67,12 +68,14 @@ const SORT_OPTIONS: { value: CleanupSort; label: string }[] = [
   { value: "staleness", label: "Staleness" },
   { value: "lastScanned-oldest", label: "Last scanned (oldest)" },
   { value: "lastScanned-newest", label: "Last scanned (newest)" },
+  { value: "deepScanned-newest", label: "Deep-scanned (newest)" },
   { value: "key", label: "Key" },
 ];
 
 const SCANNED_OPTIONS: { value: ScannedFilter; label: string }[] = [
   { value: "all", label: "All" },
   { value: "scanned", label: "Scanned" },
+  { value: "deep", label: "Deep-scanned" },
   { value: "never", label: "Never scanned" },
 ];
 
@@ -134,6 +137,33 @@ function RevivalBadge({ score }: { score: number }) {
         <TrendingUp size={11} strokeWidth={2} />
         {score.toFixed(2)}
       </span>
+    </Tooltip>
+  );
+}
+
+// Inline scan rationale (BRDG-298): a compact, muted secondary line under the
+// row title showing WHY the deep scan flagged the ticket, so the PO can read the
+// reasoning without opening each drawer. Truncated to one line with the full text
+// on hover (Tooltip) and still fully available in the DispositionPanel. Only
+// rendered when a rationale exists, so rationale-less rows keep their tight height.
+// Indented to align with the title (past the checkbox gutter + status pill).
+function RationaleLine({ rationale, onClick }: { rationale: string; onClick: () => void }) {
+  return (
+    <Tooltip content={rationale}>
+      <button
+        type="button"
+        onClick={onClick}
+        className="group/rationale flex w-full cursor-pointer items-start gap-1.5 pb-2 pl-[3.25rem] pr-3 text-left transition-colors duration-150 hover:bg-overlay-subtle focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-[var(--color-brand-400)]"
+      >
+        <Sparkles
+          size={11}
+          strokeWidth={1.75}
+          className="mt-[2px] shrink-0 text-text-muted transition-colors duration-150 group-hover/rationale:text-[var(--color-brand-400)]"
+        />
+        <span className="min-w-0 flex-1 truncate text-[12px] leading-snug text-text-muted transition-colors duration-150 group-hover/rationale:text-text-tertiary">
+          {rationale}
+        </span>
+      </button>
     </Tooltip>
   );
 }
@@ -202,6 +232,7 @@ export default function CleanupPage() {
     assignees: new Set(),
     reporters: new Set(),
     lastActivity: new Set(),
+    sprints: new Set(),
   });
   // Ticket open in the score-breakdown / disposition drawer (BRDG-289). Row
   // click opens this review drawer; the drawer can escalate to the full ticket
@@ -342,6 +373,16 @@ export default function CleanupPage() {
     for (const o of LAST_ACTIVITY_OPTIONS) m[o.value] = o.label;
     return m;
   }, []);
+  // Sprint facet (BRDG-298): the backlog sentinel renders as "Backlog"; named
+  // sprints render as themselves. Backlog-only eligibility means this usually
+  // holds just the one option today.
+  const sprintLabelMap = useMemo(() => {
+    const m: Record<string, string> = { [BACKLOG_FACET_VALUE]: BACKLOG_FACET_LABEL };
+    for (const s of facets?.sprints ?? []) {
+      if (s !== BACKLOG_FACET_VALUE) m[s] = s;
+    }
+    return m;
+  }, [facets]);
 
   // Build the panel ticket from the row so the panel opens without a fetch round
   // trip; fall back to a fetch only if the key is somehow not in the list.
@@ -530,6 +571,17 @@ export default function CleanupPage() {
                     />
                   </span>
                 </Tooltip>
+                <Tooltip content="Show only tickets in the selected sprints (or the backlog)">
+                  <span className="inline-flex">
+                    <FilterDropdown
+                      label="Sprint"
+                      options={facets?.sprints ?? []}
+                      labelMap={sprintLabelMap}
+                      selected={filters.sprints}
+                      onChange={(next) => setFilters((f) => ({ ...f, sprints: next }))}
+                    />
+                  </span>
+                </Tooltip>
 
                 <BarDivider />
 
@@ -622,22 +674,33 @@ export default function CleanupPage() {
                       </div>
                     );
                     return (
-                      <ChildIssueRow
+                      <div
                         key={row.key}
-                        item={rowToSubtask(row)}
-                        isLast={idx === rows.length - 1}
-                        spacious
-                        inlineCheckbox
-                        showStatus
-                        showTypeIcon
-                        selectable
-                        isChecked={isChecked}
-                        someChecked={checkedKeys.size > 0}
-                        onCheckboxClick={() => toggleRow(row.key)}
-                        onSelect={(key) => setReviewKey(key)}
+                        // Wrapper groups the row pill with its optional rationale
+                        // line so they read as one block; the active tint moves here.
                         className={active ? "bg-[var(--color-brand-600)]/12" : ""}
-                        metadataSlot={metadata}
-                      />
+                      >
+                        <ChildIssueRow
+                          item={rowToSubtask(row)}
+                          isLast={idx === rows.length - 1}
+                          spacious
+                          inlineCheckbox
+                          showStatus
+                          showTypeIcon
+                          selectable
+                          isChecked={isChecked}
+                          someChecked={checkedKeys.size > 0}
+                          onCheckboxClick={() => toggleRow(row.key)}
+                          onSelect={(key) => setReviewKey(key)}
+                          metadataSlot={metadata}
+                        />
+                        {row.scanRationale && (
+                          <RationaleLine
+                            rationale={row.scanRationale}
+                            onClick={() => setReviewKey(row.key)}
+                          />
+                        )}
+                      </div>
                     );
                   })}
                 </div>

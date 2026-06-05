@@ -6,6 +6,7 @@ import { FINISHED_STATUSES, EXCLUDED_SCAN_TYPES, isFinishedStatus } from "@/lib/
 import { userInitials, userColor } from "@/lib/user-utils";
 import {
   SCAN_TOPICS,
+  BACKLOG_FACET_VALUE,
   parseScanScores,
   type CleanupResponse,
   type CleanupRow,
@@ -48,6 +49,7 @@ const VALID_SORTS = new Set([
   "staleness",
   "lastScanned-oldest",
   "lastScanned-newest",
+  "deepScanned-newest",
   "key",
 ]);
 const VALID_DISPOSITIONS = new Set(["candidate", "dismissed", "confirmed", "none"]);
@@ -65,7 +67,8 @@ export async function GET(request: Request) {
   const sortParam = searchParams.get("sort") ?? "overall";
   const sort = VALID_SORTS.has(sortParam) ? sortParam : "overall";
 
-  // scanned = scanned | never | all (default all)
+  // scanned = scanned | never | deep | all (default all). "deep" narrows to rows
+  // that have actually had a Tier-2 deep scan (lastDeepScannedAt set).
   const scanned = searchParams.get("scanned") ?? "all";
   // disposition = candidate | dismissed | confirmed | none | all (default all)
   const dispositionFilter = searchParams.get("disposition") ?? "all";
@@ -90,6 +93,8 @@ export async function GET(request: Request) {
       reporter: ticket.reporter,
       jiraUpdatedAt: ticket.jiraUpdatedAt,
       lastScannedAt: ticketMetadata.lastScannedAt,
+      lastDeepScannedAt: ticketMetadata.lastDeepScannedAt,
+      scanRationale: ticketMetadata.scanRationale,
       scanScores: ticketMetadata.scanScores,
       scanOverall: ticketMetadata.scanOverall,
       disposition: ticketMetadata.disposition,
@@ -164,6 +169,8 @@ export async function GET(request: Request) {
       reporter: toPerson(r.reporter),
       jiraUpdatedAt: r.jiraUpdatedAt ?? null,
       lastScannedAt: r.lastScannedAt ?? null,
+      lastDeepScannedAt: r.lastDeepScannedAt ?? null,
+      scanRationale: r.scanRationale ?? null,
       topicScores: parseScanScores(r.scanScores),
       scanOverall: r.scanOverall ?? null,
       disposition: (r.disposition ?? null) as Disposition,
@@ -181,6 +188,7 @@ export async function GET(request: Request) {
   // -- Filters --
   if (scanned === "scanned") rows = rows.filter((r) => r.lastScannedAt != null);
   else if (scanned === "never") rows = rows.filter((r) => r.lastScannedAt == null);
+  else if (scanned === "deep") rows = rows.filter((r) => r.lastDeepScannedAt != null);
 
   if (dispositionFilter !== "all" && VALID_DISPOSITIONS.has(dispositionFilter)) {
     const want = dispositionFilter === "none" ? null : dispositionFilter;
@@ -215,6 +223,14 @@ export async function GET(request: Request) {
         return b.lastScannedAt.localeCompare(a.lastScannedAt);
       });
       break;
+    case "deepScanned-newest":
+      rows.sort((a, b) => {
+        if (a.lastDeepScannedAt == null && b.lastDeepScannedAt == null) return 0;
+        if (a.lastDeepScannedAt == null) return 1;
+        if (b.lastDeepScannedAt == null) return -1;
+        return b.lastDeepScannedAt.localeCompare(a.lastDeepScannedAt);
+      });
+      break;
     case "key":
       rows.sort((a, b) => a.key.localeCompare(b.key, undefined, { numeric: true }));
       break;
@@ -241,13 +257,25 @@ function buildFacets(rows: CleanupRow[]): CleanupFacets {
   const epics = new Map<string, string>(); // epicKey -> name
   const assignees = new Set<string>();
   const reporters = new Set<string>();
+  const sprints = new Set<string>();
 
   for (const r of rows) {
     types.add(r.type);
     if (r.epicKey) epics.set(r.epicKey, r.epic ?? r.epicKey);
     if (r.assignee) assignees.add(r.assignee.name);
     if (r.reporter) reporters.add(r.reporter.name);
+    // null sprintName (backlog) folds into the BACKLOG sentinel so the dropdown
+    // shows a real "Backlog" option rather than a blank entry.
+    sprints.add(r.sprintName ?? BACKLOG_FACET_VALUE);
   }
+
+  // Backlog sorts first (it is the default placement for the eligible set), then
+  // named sprints alphabetically/numerically.
+  const sortedSprints = [...sprints].sort((a, b) => {
+    if (a === BACKLOG_FACET_VALUE) return -1;
+    if (b === BACKLOG_FACET_VALUE) return 1;
+    return a.localeCompare(b, undefined, { numeric: true });
+  });
 
   return {
     types: TYPE_ORDER.filter((t) => types.has(t)),
@@ -256,5 +284,6 @@ function buildFacets(rows: CleanupRow[]): CleanupFacets {
       .sort((a, b) => a.name.localeCompare(b.name)),
     assignees: [...assignees].sort((a, b) => a.localeCompare(b)),
     reporters: [...reporters].sort((a, b) => a.localeCompare(b)),
+    sprints: sortedSprints,
   };
 }

@@ -240,9 +240,11 @@ same definition the Tier-1 staleness scanner uses). Never writes; never touches 
 | `/api/cleanup/[key]/disposition` | POST | Apply a disposition `{ action: "confirm" \| "dismiss" \| "reset", note? }`. Local-only, never writes Jira. |
 | `/api/cleanup/disposition` | POST | Bulk disposition `{ action, keys: string[], note? }` (max 200). De-dupes keys; returns `{ action, requested, applied, appliedKeys, skipped }`. |
 
-Query params: `sort` (`overall` \| `revival` \| `staleness` \| `lastScanned-oldest` \| `lastScanned-newest` \| `key`),
-`scanned` (`all` \| `scanned` \| `never`), `disposition` (`all` \| `candidate` \| `confirmed` \| `dismissed` \| `none`),
-`minOverall` (0..1 threshold on the overall score). The `/cleanup` view additionally applies a client-side
+Query params: `sort` (`overall` \| `revival` \| `staleness` \| `lastScanned-oldest` \| `lastScanned-newest` \| `deepScanned-newest` \| `key`),
+`scanned` (`all` \| `scanned` \| `deep` \| `never`), `disposition` (`all` \| `candidate` \| `confirmed` \| `dismissed` \| `none`),
+`minOverall` (0..1 threshold on the overall score). `scanned=deep` narrows to rows that have actually had a
+Tier-2 **deep scan** (`lastDeepScannedAt` set) — the requested deep-scanned overview — and `deepScanned-newest`
+sorts by deep-scan recency. The `/cleanup` view additionally applies a client-side
 **revival candidates** filter (`revivalScore >= REVIVAL_CANDIDATE_THRESHOLD`, 0.6) and the `revival` sort.
 
 Response shape (`CleanupResponse` in `src/lib/cleanup-types.ts`):
@@ -262,6 +264,8 @@ Response shape (`CleanupResponse` in `src/lib/cleanup-types.ts`):
     reporter: { name, initials, color } | null,
     jiraUpdatedAt: string | null,     // last Jira activity; drives the last-activity filter buckets
     lastScannedAt: string | null,
+    lastDeepScannedAt: string | null, // last Tier-2 deep scan; drives the "Deep-scanned" filter + recency sort (BRDG-298)
+    scanRationale: string | null,     // deep-scan reasoning (why flagged); shown inline under the title + in the drawer (BRDG-298)
     topicScores: { staleness?: number | null, ... }, // 0..1 per topic, parsed from scanScores
     scanOverall: number | null,
     disposition: "candidate" | "dismissed" | "confirmed" | null,
@@ -274,17 +278,21 @@ Response shape (`CleanupResponse` in `src/lib/cleanup-types.ts`):
     types: IssueType[],                // server-side over the WHOLE eligible backlog (not the page window)
     epics: Array<{ key, name }>,       // sorted by name; only parented rows
     assignees: string[],               // distinct names, sorted
-    reporters: string[]
+    reporters: string[],
+    sprints: string[]                  // distinct sprint placements; backlog folds into the "__backlog__" sentinel
+                                       // (BACKLOG_FACET_VALUE), sorted backlog-first then numeric (BRDG-298)
   }
 }
 ```
 
 The `type`/`epic`/`storyPoints`/subtask-count/person fields enrich the row so the shared `ChildIssueRow`
 renders the standard issue-type icon plus the epic / subtask-count / story-point badges. The `facets`
-object feeds the view's issue-type / epic / assignee / reporter filter dropdowns; the **last-activity**
+object feeds the view's issue-type / epic / assignee / reporter / **sprint** filter dropdowns; the **last-activity**
 time-period filter (`< 1mo` / `1-3mo` / `3-6mo` / `6-12mo` / `> 1yr` / unknown) is derived client-side
-from `jiraUpdatedAt` (`lastActivityBucket` in `cleanup-utils.ts`). All facet filters apply client-side
-over the loaded list, so they never enter the SWR key.
+from `jiraUpdatedAt` (`lastActivityBucket` in `cleanup-utils.ts`). The **sprint** filter maps the backlog
+(null `sprintName`) onto the `__backlog__` sentinel so it reads as a real "Backlog" option (consistent with
+`SprintOrBacklogBadge`); backlog-only eligibility means it usually holds just that one option today. All facet
+filters apply client-side over the loaded list, so they never enter the SWR key.
 
 **`/cleanup` view (BRDG-283 → BRDG-298 UI refresh).** Each ticket renders via the app-standard
 `ChildIssueRow` + `TicketStatusPill` (the same row/pill used by the refinement select list and epic
@@ -293,12 +301,15 @@ score columns are gone, eliminating the horizontal scroll. Per row, trailing met
 compact **deprecation-score badge** (the overall score on the existing heat ramp), a **revival badge**
 (upward arrow + positive/green treatment) when `revivalScore >= 0.6`, the disposition badge, and the
 last-scanned relative time. Each row also shows the standard **issue-type icon** (via `showTypeIcon`) and
-the shared **epic / subtask-count / story-point badges** (`IssueMetaBadges`) plus the assignee avatar. The
-full per-topic breakdown plus the revival rationale live in the `DispositionPanel` drawer.
+the shared **epic / subtask-count / story-point badges** (`IssueMetaBadges`) plus the assignee avatar. When a
+row has a `scanRationale`, a compact muted **inline rationale line** renders under the title (truncated, full
+text on hover via `Tooltip`, click opens the drawer) so the PO can read why a ticket was flagged without
+opening each drawer; rows without a rationale keep their tight height. The full per-topic breakdown plus the
+revival rationale live in the `DispositionPanel` drawer.
 
 The controls bar uses standard Bridge components with a tooltip on every control: single-choice selects
 (sort, scanned, disposition, min-score) styled with the shared control tokens, the app-standard
-`FilterDropdown` for the multi-select facet filters (type / epic / assignee / reporter / last-activity),
+`FilterDropdown` for the multi-select facet filters (type / epic / assignee / reporter / last-activity / sprint),
 the `Button` quick-actions, and the auto-scan toggle. The multi-select bulk bar reuses the sprint board's
 `BarContainer` footer styling (brand select-all checkbox, `N/total selected` counter, standard `Button`s,
 `BarDivider`s) so it matches `BulkActionBar`; its actions are Deep-scan selected / Confirm / Dismiss / Clear.
@@ -309,7 +320,7 @@ the `Button` quick-actions, and the auto-scan toggle. The multi-select bulk bar 
 
 Ranked methods exclude dismissed tickets still inside their cooldown. Returns `{ method, requested, enqueued, enqueuedKeys, queue }`. The background `deprecation-deep-scan` task drains the queue; see [scheduler.md](scheduler.md#backlog-deep-scan-every-2m).
 
-**Queue management (Backlog Deprecation Review epic).** `GET /api/cleanup/deep-scan` returns the status counts plus an `items[]` list of queue rows for the management UI. Each item is `{ id, jiraKey, status, source, enqueuedAt, startedAt, finishedAt, error, title, ticketStatus }` — the `title`/`ticketStatus` are joined from the `ticket` table (null when the ticket no longer exists locally) so a row is self-describing without a second fetch. `items[]` includes all pending+running rows (oldest-first) plus the most recent done/error rows (capped, newest-first). Helpers live in `src/lib/deprecation-scan-queue.ts`: `listQueue(opts?)`, `removeQueueItem(idOrKey)`, `clearPendingQueue()`.
+**Queue management (Backlog Deprecation Review epic).** `GET /api/cleanup/deep-scan` returns the status counts plus an `items[]` list of queue rows for the management UI. Each item is `{ id, jiraKey, status, source, enqueuedAt, startedAt, finishedAt, error, title, ticketStatus }` — the `title`/`ticketStatus` are joined from the `ticket` table (null when the ticket no longer exists locally) so a row is self-describing without a second fetch. `items[]` includes all pending+running rows (oldest-first) plus the most recent done/error rows (capped, newest-first). Helpers live in `src/lib/deprecation-scan-queue.ts`: `listQueue(opts?)`, `removeQueueItem(idOrKey)`, `clearPendingQueue()`. **Subtask guard (going-forward):** both `listQueue` and `claimPendingBatch` left-join the ticket and exclude subtask-typed rows (`EXCLUDED_SCAN_TYPES` / `isScannableType` from `src/lib/ticket-status.ts`), so even a stale queue row never surfaces in the panel or gets processed — subtasks are cleaned up together with their parent. Enqueue eligibility already blocks new subtask enqueues; this guards rows that predate the eligibility check or whose ticket type changed after enqueue. A null/unknown ticket type stays claimable so a locally-deleted ticket's row is never silently dropped.
 
 `DELETE /api/cleanup/deep-scan` manages the queue:
 - `{ key }` removes a single **pending** item (by row id or jiraKey). A **running** item is refused with 409 — the current scan finishes on its own; deleting it mid-flight could orphan the active-key invariant. Unknown/non-active keys return 404.
