@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useRef, useEffect, useCallback, useMemo } from "react";
-import { useSearchParams, useRouter, useParams } from "next/navigation";
+import { useSearchParams, useRouter, usePathname } from "next/navigation";
 import type { Sprint, Ticket, IssueType } from "@/types/ticket";
 import { SprintSlots } from "@/components/sprint-board/SprintSlots";
 import { FilterBar } from "@/components/sprint-board/FilterBar";
@@ -59,8 +59,16 @@ export default function SprintBoard() {
   // The board is path-based (BRDG-270): `/sprint-board/<sprint-slug>/<ticket>`.
   // The sprint slug and open ticket are read from the URL; the URL is the source
   // of truth for both, so refresh, deep-link, share and back/forward all work.
-  const routeParams = useParams<{ slug?: string[] }>();
-  const slugSegments = Array.isArray(routeParams.slug) ? routeParams.slug : [];
+  // Derive the sprint slug and open ticket from the pathname rather than
+  // useParams(): opening a ticket updates the URL via window.history.pushState
+  // (see selectTicket) so the board does not remount, and usePathname() stays in
+  // sync with pushState while useParams() does not (BRDG-270).
+  const pathname = usePathname();
+  const slugSegments = useMemo(() => {
+    const prefix = "/sprint-board/";
+    if (!pathname || !pathname.startsWith(prefix)) return [] as string[];
+    return pathname.slice(prefix.length).split("/").filter(Boolean);
+  }, [pathname]);
   const sprintSlug = slugSegments[0] ?? null;
   const ticketSlug = slugSegments[1] ? decodeURIComponent(slugSegments[1]) : null;
   const selectedTicket = ticketSlug;
@@ -118,15 +126,18 @@ export default function SprintBoard() {
 
   const activeSprintId = (isAllView || searchParams.get("view")) ? "__all__" : ephemeralIsActive ? ephemeralSprintId! : slotSprints[activeSlot];
 
-  // Open/close the side panel by writing the ticket to the URL path. `push` (not
-  // `replace`) so back/forward map onto open/close; `scroll: false` and the
-  // unchanged sprint slug keep the list and scroll position (no remount).
+  // Open/close the side panel by writing the ticket to the URL path. We use
+  // window.history.pushState rather than router.push: router.push triggers a Next
+  // route navigation that remounts the whole board, wiping the checkbox selection
+  // and visibly re-rendering the list on every ticket click. pushState updates the
+  // URL (deep-link, refresh and back/forward still work) and usePathname() syncs
+  // with it, so the panel opens/switches without a remount (BRDG-270).
   const selectTicket = useCallback((key: string | null) => {
     const slug = activeSprintId ? sprintToSlug(activeSprintId, sprints) : sprintSlug;
     const sp = new URLSearchParams(searchParams.toString());
     sp.delete("sprint"); // legacy param now lives in the path
-    router.push(buildBoardUrl(slug, key, sp.toString()), { scroll: false });
-  }, [activeSprintId, sprints, sprintSlug, router, searchParams]);
+    window.history.pushState(null, "", buildBoardUrl(slug, key, sp.toString()));
+  }, [activeSprintId, sprints, sprintSlug, searchParams]);
   // Drop-in for the former useState setter so existing call sites keep working,
   // including the functional-update form used by the keyboard shortcuts.
   const setSelectedTicket = useCallback((action: React.SetStateAction<string | null>) => {

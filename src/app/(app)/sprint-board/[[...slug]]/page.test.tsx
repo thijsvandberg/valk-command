@@ -6,6 +6,9 @@ import SprintBoardPage from "./page";
 let mockSlug: string[] | undefined;
 const pushMock = vi.fn();
 const replaceMock = vi.fn();
+// Opening/switching a ticket updates the URL via window.history.pushState (not the
+// Next router) so the board does not remount; assert on this spy instead of push.
+const pushStateMock = vi.fn();
 
 vi.mock("next/navigation", () => ({
   useSearchParams: () => new URLSearchParams(),
@@ -66,6 +69,8 @@ beforeEach(() => {
   mockSlug = undefined;
   pushMock.mockClear();
   replaceMock.mockClear();
+  pushStateMock.mockClear();
+  vi.spyOn(window.history, "pushState").mockImplementation(pushStateMock);
   vi.spyOn(globalThis, "fetch").mockImplementation((input) => {
     const url = typeof input === "string" ? input : (input as Request).url;
     if (url.includes("/api/sprint-slots")) {
@@ -113,8 +118,8 @@ describe("SprintBoard URL <-> side panel sync", () => {
     render(<SprintBoardPage />);
     const row = await screen.findByText(/Monitoring Kibana/);
     fireEvent.click(row);
-    await waitFor(() => expect(pushMock).toHaveBeenCalled());
-    expect(pushMock.mock.calls[0][0]).toMatch(/\/sprint-board\/bt-134\/VPL-29223/);
+    await waitFor(() => expect(pushStateMock).toHaveBeenCalled());
+    expect(pushStateMock.mock.calls[0][2]).toMatch(/\/sprint-board\/bt-134\/VPL-29223/);
   });
 
   it("restores the side panel from a ticket in the URL on load", async () => {
@@ -129,9 +134,9 @@ describe("SprintBoard URL <-> side panel sync", () => {
     render(<SprintBoardPage />);
     const closeBtn = await screen.findByText("close panel");
     fireEvent.click(closeBtn);
-    await waitFor(() => expect(pushMock).toHaveBeenCalled());
+    await waitFor(() => expect(pushStateMock).toHaveBeenCalled());
     // Closing drops the ticket segment back to the bare sprint path.
-    const lastUrl = pushMock.mock.calls.at(-1)?.[0] as string;
+    const lastUrl = pushStateMock.mock.calls.at(-1)?.[2] as string;
     expect(lastUrl).toMatch(/\/sprint-board\/bt-134(\?|$)/);
     expect(lastUrl).not.toMatch(/VPL-29223/);
   });
@@ -142,8 +147,8 @@ describe("SprintBoard URL <-> side panel sync", () => {
     const row = await screen.findByText(/Monitoring Kibana/);
     fireEvent.click(row);
     // An already-active row toggles closed, so the next URL drops the ticket.
-    await waitFor(() => expect(pushMock).toHaveBeenCalled());
-    const lastUrl = pushMock.mock.calls.at(-1)?.[0] as string;
+    await waitFor(() => expect(pushStateMock).toHaveBeenCalled());
+    const lastUrl = pushStateMock.mock.calls.at(-1)?.[2] as string;
     expect(lastUrl).not.toMatch(/VPL-29223/);
   });
 });
