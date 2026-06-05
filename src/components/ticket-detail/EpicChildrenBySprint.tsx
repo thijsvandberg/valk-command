@@ -442,6 +442,7 @@ export function EpicChildrenBySprint({
       <GroupStatBar
         tickets={group.items.map(toStatTicket)}
         label={group.label}
+        sprint={group.sprintName ? sprints.find((s) => s.name === group.sprintName) : undefined}
         isActive={group.isActive}
         isCollapsed={isCollapsed}
         onToggleCollapse={() => toggle(group.key)}
@@ -525,7 +526,6 @@ export function EpicChildrenBySprint({
             placeholder={isUnscheduled ? "Create unscheduled issue..." : `Create issue in ${group.label}...`}
             alignKey={visibleFields.has("issueKey")}
             className={visibleItems.length > 0 ? "border-t border-border-subtle" : ""}
-            dropUp
           />
         )}
       </>

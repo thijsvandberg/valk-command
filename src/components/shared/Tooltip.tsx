@@ -7,12 +7,14 @@ interface TooltipProps {
   content: React.ReactNode;
   children: React.ReactNode;
   delay?: number;
+  /** Extra classes for the trigger wrapper, e.g. `min-w-0` so a truncating child still shrinks. */
+  className?: string;
 }
 
 // Keep the tooltip this far from the viewport edges when clamping (BRDG-239).
 const VIEWPORT_MARGIN = 8;
 
-export function Tooltip({ content, children, delay = 400 }: TooltipProps) {
+export function Tooltip({ content, children, delay = 400, className = "" }: TooltipProps) {
   const [visible, setVisible] = useState(false);
   const [position, setPosition] = useState<{ top: number; left: number; flipUp: boolean } | null>(null);
   // Clamped left edge (px). null until measured -> first paint uses the centered anchor.
@@ -65,7 +67,7 @@ export function Tooltip({ content, children, delay = 400 }: TooltipProps) {
     <>
       <span
         ref={triggerRef}
-        className="inline-flex items-center"
+        className={`inline-flex items-center ${className}`}
         onMouseEnter={show}
         onMouseLeave={hide}
         onFocus={show}

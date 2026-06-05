@@ -368,6 +368,45 @@ describe("GroupStatBar", () => {
     expect(screen.getByText("Sprint Alpha")).toBeTruthy();
   });
 
+  describe("sprint goal tooltip", () => {
+    const withGoal: Sprint = {
+      id: "s1",
+      name: "BT: 138",
+      dateRange: "22 May - 4 Jun",
+      state: "active",
+      ticketCount: 2,
+      startDate: "2026-05-22",
+      endDate: "2026-06-04",
+      goal: "Cut checkout drop-off",
+    };
+
+    it("shows the sprint goal in a tooltip when hovering the label", () => {
+      vi.useFakeTimers();
+      try {
+        render(<GroupStatBar tickets={TICKETS} label="BT: 138" sprint={withGoal} />);
+        expect(screen.queryByText("Cut checkout drop-off")).toBeNull();
+        fireEvent.mouseEnter(screen.getByText("BT: 138"));
+        act(() => { vi.advanceTimersByTime(400); });
+        expect(screen.getByText("Sprint goal")).toBeInTheDocument();
+        expect(screen.getByText("Cut checkout drop-off")).toBeInTheDocument();
+      } finally {
+        vi.useRealTimers();
+      }
+    });
+
+    it("does not wrap the label in a tooltip when the sprint has no goal", () => {
+      vi.useFakeTimers();
+      try {
+        render(<GroupStatBar tickets={TICKETS} label="BT: 138" sprint={{ ...withGoal, goal: null }} />);
+        fireEvent.mouseEnter(screen.getByText("BT: 138"));
+        act(() => { vi.advanceTimersByTime(400); });
+        expect(screen.queryByText("Sprint goal")).toBeNull();
+      } finally {
+        vi.useRealTimers();
+      }
+    });
+  });
+
   it("renders chevron when onToggleCollapse is provided", () => {
     const { container } = render(
       <GroupStatBar tickets={TICKETS} onToggleCollapse={vi.fn()} isCollapsed={false} />,

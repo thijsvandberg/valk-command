@@ -77,6 +77,17 @@ function metricTooltip(label: string, total: number, avg: string | null, suffix:
   );
 }
 
+// Tooltip for the sprint label: a small caption above the goal text so a glance
+// reads it as the sprint's goal rather than a stray note.
+function goalTooltip(goal: string): ReactNode {
+  return (
+    <div className="flex max-w-[18rem] flex-col gap-1">
+      <span className="text-[11px] font-semibold uppercase tracking-wide text-text-tertiary">Sprint goal</span>
+      <span className="whitespace-pre-line text-text-primary">{goal}</span>
+    </div>
+  );
+}
+
 export const GroupStatBar = memo(function GroupStatBar({
   tickets,
   label,
@@ -223,7 +234,13 @@ export const GroupStatBar = memo(function GroupStatBar({
           </Tooltip>
         )}
         {label && (
-          <span className="truncate text-body-sm font-medium text-text-secondary">{label}</span>
+          sprint?.goal ? (
+            <Tooltip content={goalTooltip(sprint.goal)} className="min-w-0">
+              <span className="truncate text-body-sm font-medium text-text-secondary">{label}</span>
+            </Tooltip>
+          ) : (
+            <span className="truncate text-body-sm font-medium text-text-secondary">{label}</span>
+          )
         )}
       </div>
       <StatPill size="sm" variant="default">
