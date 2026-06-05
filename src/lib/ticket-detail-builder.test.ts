@@ -2,7 +2,7 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 import { createTestDb } from "@/db/test-utils";
 import type { BetterSQLite3Database } from "drizzle-orm/better-sqlite3";
 import type * as schema from "@/db/schema";
-import { seedTicket } from "@/test/builders";
+import { seedTicket, seedTicketMetadata } from "@/test/builders";
 
 let testDb: BetterSQLite3Database<typeof schema>;
 
@@ -14,9 +14,16 @@ vi.mock("@/db", () => ({
 
 vi.mock("server-only", () => ({}));
 vi.mock("@/lib/logger", () => ({ logger: { info: vi.fn(), warn: vi.fn(), error: vi.fn() } }));
-vi.mock("@/lib/jira-client", () => ({ jiraClient: { getIssue: vi.fn() } }));
+vi.mock("@/lib/jira-client", () => ({
+  jiraClient: { getIssue: vi.fn(), updateIssue: vi.fn().mockResolvedValue(undefined) },
+  STORY_POINTS_FIELD: "customfield_sp",
+  FLAGGED_FIELD: "customfield_flag",
+  extractSprint: vi.fn(),
+}));
+vi.mock("@/lib/activity-logger", () => ({ logActivity: vi.fn().mockResolvedValue(undefined) }));
+vi.mock("@/lib/sync-jira-timestamp", () => ({ syncJiraTimestamp: vi.fn().mockResolvedValue(undefined) }));
 
-import { buildAssignee, attachmentColor, resolveAttachmentRefs, buildTicketDetail } from "./ticket-detail-builder";
+import { buildAssignee, attachmentColor, resolveAttachmentRefs, buildTicketDetail, updateTicketFields } from "./ticket-detail-builder";
 
 describe("buildTicketDetail epic children ordering", () => {
   beforeEach(() => {
@@ -47,6 +54,58 @@ describe("buildTicketDetail epic children ordering", () => {
     const children = built!.data.epicChildren;
     expect(children.map((c) => c.key)).toEqual(["VPL-11", "VPL-39", "VPL-40"]);
     expect(children.map((c) => c.jiraRank)).toEqual([5, null, null]);
+  });
+});
+
+describe("updateTicketFields story-points readiness transition", () => {
+  beforeEach(() => {
+    testDb = createTestDb();
+  });
+
+  async function readReadiness(key: string) {
+    const row = await testDb.query.ticketMetadata.findFirst({
+      where: (m, { eq: eqFn }) => eqFn(m.jiraKey, key),
+    });
+    return row?.readiness ?? null;
+  }
+
+  it("advances a Ready-to-Refine ticket to Ready-for-Development when story points are set", async () => {
+    seedTicket(testDb, { jiraKey: "VPL-1", storyPoints: null });
+    seedTicketMetadata(testDb, { jiraKey: "VPL-1", readiness: "ready_to_refine" });
+
+    const outcome = await updateTicketFields("VPL-1", { storyPoints: 5 });
+
+    expect("result" in outcome).toBe(true);
+    expect((outcome as { result: Record<string, unknown> }).result.readiness).toBeNull();
+    expect(await readReadiness("VPL-1")).toBeNull();
+  });
+
+  it("treats '-' (story points 0) as an estimate and advances readiness", async () => {
+    seedTicket(testDb, { jiraKey: "VPL-2", storyPoints: null });
+    seedTicketMetadata(testDb, { jiraKey: "VPL-2", readiness: "ready_to_refine" });
+
+    await updateTicketFields("VPL-2", { storyPoints: 0 });
+
+    expect(await readReadiness("VPL-2")).toBeNull();
+  });
+
+  it("leaves other readiness states untouched when story points are set", async () => {
+    seedTicket(testDb, { jiraKey: "VPL-3", storyPoints: null });
+    seedTicketMetadata(testDb, { jiraKey: "VPL-3", readiness: "drafting" });
+
+    const outcome = await updateTicketFields("VPL-3", { storyPoints: 3 });
+
+    expect((outcome as { result: Record<string, unknown> }).result.readiness).toBeUndefined();
+    expect(await readReadiness("VPL-3")).toBe("drafting");
+  });
+
+  it("does not change readiness when story points are cleared", async () => {
+    seedTicket(testDb, { jiraKey: "VPL-4", storyPoints: 5 });
+    seedTicketMetadata(testDb, { jiraKey: "VPL-4", readiness: "ready_to_refine" });
+
+    await updateTicketFields("VPL-4", { storyPoints: null });
+
+    expect(await readReadiness("VPL-4")).toBe("ready_to_refine");
   });
 });
 
