@@ -10,7 +10,21 @@
 
 import { db } from "@/db";
 import { deprecationScanQueue, ticket, type DeprecationScanQueueRow } from "@/db/schema";
-import { and, eq, inArray, asc, desc, or } from "drizzle-orm";
+import { and, eq, inArray, asc, desc, or, isNull, notInArray } from "drizzle-orm";
+import { EXCLUDED_SCAN_TYPES } from "@/lib/ticket-status";
+
+// Going-forward guard against stale subtask queue rows. Scan ELIGIBILITY already
+// blocks NEW subtask enqueues (api/cleanup + auto-enqueue use isScannableType),
+// but a row left over from before that guard, or one whose ticket type changed to
+// subtask after enqueue, could still surface in the queue panel or be processed.
+// Subtasks are cleaned up together with their parent and must never be scanned on
+// their own, so both the list and the claim defensively skip them by joining the
+// ticket and excluding EXCLUDED_SCAN_TYPES. A null/unknown type is NOT excluded
+// (matches isScannableType) so we never silently drop a real parent-level row.
+const NOT_SUBTASK_TICKET = or(
+  isNull(ticket.type),
+  notInArray(ticket.type, EXCLUDED_SCAN_TYPES as string[]),
+);
 
 export type QueueSource = "manual" | "worst-staleness" | "oldest" | "auto";
 
@@ -94,12 +108,17 @@ export async function enqueueDeepScan(
  * dropping it.
  */
 export async function claimPendingBatch(limit: number): Promise<DeprecationScanQueueRow[]> {
-  const pending = await db
-    .select()
+  // Left-join the ticket so subtask-typed rows are never claimed (see
+  // NOT_SUBTASK_TICKET). Rows whose ticket was deleted locally have a null type
+  // and remain claimable so the runner can still resolve/clear them.
+  const claimable = await db
+    .select({ queue: deprecationScanQueue })
     .from(deprecationScanQueue)
-    .where(eq(deprecationScanQueue.status, "pending"))
+    .leftJoin(ticket, eq(deprecationScanQueue.jiraKey, ticket.jiraKey))
+    .where(and(eq(deprecationScanQueue.status, "pending"), NOT_SUBTASK_TICKET))
     .orderBy(asc(deprecationScanQueue.enqueuedAt))
     .limit(Math.max(0, limit));
+  const pending = claimable.map((r) => r.queue);
 
   if (pending.length === 0) return [];
 
@@ -183,9 +202,13 @@ export async function listQueue(opts: ListQueueOptions = {}): Promise<QueueItem[
     .from(deprecationScanQueue)
     .leftJoin(ticket, eq(deprecationScanQueue.jiraKey, ticket.jiraKey))
     .where(
-      or(
-        eq(deprecationScanQueue.status, "pending"),
-        eq(deprecationScanQueue.status, "running"),
+      and(
+        or(
+          eq(deprecationScanQueue.status, "pending"),
+          eq(deprecationScanQueue.status, "running"),
+        ),
+        // Never surface a subtask in the queue panel, even from a stale row.
+        NOT_SUBTASK_TICKET,
       ),
     )
     .orderBy(asc(deprecationScanQueue.enqueuedAt));
@@ -208,9 +231,12 @@ export async function listQueue(opts: ListQueueOptions = {}): Promise<QueueItem[
         .from(deprecationScanQueue)
         .leftJoin(ticket, eq(deprecationScanQueue.jiraKey, ticket.jiraKey))
         .where(
-          or(
-            eq(deprecationScanQueue.status, "done"),
-            eq(deprecationScanQueue.status, "error"),
+          and(
+            or(
+              eq(deprecationScanQueue.status, "done"),
+              eq(deprecationScanQueue.status, "error"),
+            ),
+            NOT_SUBTASK_TICKET,
           ),
         )
         .orderBy(desc(deprecationScanQueue.finishedAt))

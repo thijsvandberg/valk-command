@@ -26,8 +26,8 @@ import {
   clearPendingQueue,
 } from "./deprecation-scan-queue";
 
-function seedTicket(key: string, title = `Ticket ${key}`, status = "Backlog") {
-  testDb.insert(ticket).values({ jiraKey: key, title, status }).run();
+function seedTicket(key: string, title = `Ticket ${key}`, status = "Backlog", type: string | null = "story") {
+  testDb.insert(ticket).values({ jiraKey: key, title, status, type }).run();
 }
 
 describe("deprecation deep-scan queue", () => {
@@ -86,6 +86,27 @@ describe("deprecation deep-scan queue", () => {
     expect(remaining.map((r) => r.jiraKey)).toEqual(["BT-3"]);
   });
 
+  it("never claims a subtask-typed row (cleaned up with its parent)", async () => {
+    // A stale subtask row sitting in the queue must be skipped by the runner so a
+    // subtask is never deep-scanned on its own; a null-typed row stays claimable.
+    seedTicket("PARENT-1", "Parent", "Backlog", "story");
+    seedTicket("SUB-1", "Subtask", "Backlog", "subtask");
+    seedTicket("GHOST-1", "Gone", "Backlog", null);
+    await enqueueDeepScan(["PARENT-1", "SUB-1", "GHOST-1"]);
+
+    const batch = await claimPendingBatch(10);
+    const claimed = batch.map((r) => r.jiraKey).sort();
+    expect(claimed).toEqual(["GHOST-1", "PARENT-1"]);
+    expect(claimed).not.toContain("SUB-1");
+    // The skipped subtask row stays pending (not silently consumed).
+    const stillPending = testDb
+      .select()
+      .from(deprecationScanQueue)
+      .where(eq(deprecationScanQueue.status, "pending"))
+      .all();
+    expect(stillPending.map((r) => r.jiraKey)).toEqual(["SUB-1"]);
+  });
+
   it("markError records the message and counts toward errors", async () => {
     await enqueueDeepScan(["BT-1"]);
     const [row] = await claimPendingBatch(5);
@@ -142,6 +163,20 @@ describe("deprecation deep-scan queue", () => {
       const byKey = (k: string) => items.find((i) => i.jiraKey === k);
       expect(byKey("BT-1")?.status).toBe("done");
       expect(byKey("BT-2")?.status).toBe("pending");
+    });
+
+    it("excludes subtask-typed rows even when a stale queue row exists", async () => {
+      // Going-forward guard: eligibility blocks new subtask enqueues, but a stale
+      // row (or a ticket re-typed to subtask after enqueue) must never surface.
+      seedTicket("PARENT-1", "Parent story", "Backlog", "story");
+      seedTicket("SUB-1", "A subtask", "Backlog", "subtask");
+      seedTicket("GHOST-1", "Deleted-locally ticket", "Backlog", null); // null type stays visible
+      await enqueueDeepScan(["PARENT-1", "SUB-1", "GHOST-1"]);
+
+      const items = await listQueue();
+      const keys = items.map((i) => i.jiraKey).sort();
+      expect(keys).toEqual(["GHOST-1", "PARENT-1"]);
+      expect(keys).not.toContain("SUB-1");
     });
 
     it("caps recent done/error rows via recentLimit (active rows never truncated)", async () => {
