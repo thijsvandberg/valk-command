@@ -11,7 +11,7 @@ import { cache } from "@/lib/cache";
 
 type RouteContext = { params: Promise<{ key: string }> };
 
-const ALLOWED_TYPES = ["Story", "Task", "Bug"];
+const ALLOWED_TYPES = ["Story", "Task", "Bug", "Spike"];
 
 export async function POST(request: Request, { params }: RouteContext) {
   const { key } = await params;

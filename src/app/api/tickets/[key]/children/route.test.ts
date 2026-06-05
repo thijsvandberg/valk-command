@@ -124,6 +124,21 @@ describe("POST /api/tickets/[key]/children", () => {
     );
   });
 
+  it("accepts Spike as a child issue type", async () => {
+    seedEpic("VPL-100");
+    const { jiraClient } = await import("@/lib/jira-client");
+
+    const res = await POST(
+      postRequest("VPL-100", { title: "A spike", issueType: "Spike" }),
+      makeParams("VPL-100"),
+    );
+
+    expect(res.status).toBe(200);
+    expect(jiraClient.createIssue).toHaveBeenCalledWith(
+      expect.objectContaining({ issueType: "Spike", parentKey: "VPL-100" }),
+    );
+  });
+
   it("assigns the sprint via moveToSprint after create, not on create", async () => {
     seedEpic("VPL-100");
     const { jiraClient } = await import("@/lib/jira-client");

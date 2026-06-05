@@ -224,6 +224,7 @@ describe("EpicChildrenSection", () => {
       await waitFor(() => {
         expect(screen.getByText("Task")).toBeInTheDocument();
         expect(screen.getByText("Bug")).toBeInTheDocument();
+        expect(screen.getByText("Spike")).toBeInTheDocument();
       });
 
       fireEvent.click(screen.getByText("Task"));

@@ -14,7 +14,7 @@ import { logActivity } from "@/lib/activity-logger";
 import { logger } from "@/lib/logger";
 import { env } from "@/lib/env";
 
-const CREATABLE_TYPES = ["Story", "Task", "Bug"];
+const CREATABLE_TYPES = ["Story", "Task", "Bug", "Spike"];
 
 function userInitials(name: string): string {
   return name

@@ -7,11 +7,12 @@ import type { IssueType } from "@/types/ticket";
 
 // Shared issue-type options for child creation, used by both the bottom composer
 // in EpicChildrenSection and the per-sprint composer in EpicChildrenBySprint, so
-// the Story/Task/Bug selector and its Jira mapping cannot drift between the two.
+// the selector and its Jira mapping cannot drift between the two.
 export const CHILD_ISSUE_TYPES: { value: IssueType; label: string; jiraType: string }[] = [
   { value: "story", label: "Story", jiraType: "Story" },
-  { value: "task", label: "Task", jiraType: "Task" },
   { value: "bug", label: "Bug", jiraType: "Bug" },
+  { value: "task", label: "Task", jiraType: "Task" },
+  { value: "spike", label: "Spike", jiraType: "Spike" },
 ];
 
 interface ChildIssueComposerProps {
