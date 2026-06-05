@@ -15,6 +15,7 @@ import type { TicketSessionEntry } from "@/hooks/useTicketSessionMap";
 import { TicketStatusPill } from "@/components/shared/TicketStatusPill";
 import { Button } from "@/components/ui/Button";
 import type { IssueType, JiraStatus, TicketReadiness } from "@/types/ticket";
+import { pluralize } from "@/lib/pluralize";
 
 // Past this many members we cap the visible rows and surface a "+N more" link
 // to the session, rather than silently truncating the list.
@@ -62,7 +63,7 @@ function SessionSection({
       <div className="flex items-center gap-2 px-3.5 py-2.5">
         <Gem size={13} strokeWidth={1.5} className="shrink-0 text-[var(--color-brand-400)]" />
         <span className="min-w-0 flex-1 truncate text-body-sm font-medium text-text-primary">{session.name}</span>
-        <span className="shrink-0 text-[11px] tabular-nums text-text-muted">{count} items</span>
+        <span className="shrink-0 text-[11px] tabular-nums text-text-muted">{count} {pluralize(count, "item")}</span>
       </div>
 
       <ul className="max-h-[260px] overflow-y-auto pb-1">

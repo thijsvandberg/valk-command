@@ -1,7 +1,14 @@
 "use client";
 
-import { useState, useRef } from "react";
+import { useState, useRef, useMemo } from "react";
+import useSWR from "swr";
 import { IssueTypeIcon, ISSUE_TYPE_COLORS } from "@/components/shared/IssueTypeIcon";
+import { ReadinessIcon } from "@/components/shared/ReadinessCell";
+import { Avatar } from "@/components/shared/Avatar";
+import { userInitials, userColor, type AssignableUser } from "@/components/shared/AssigneePicker";
+import { swrFetcher } from "@/lib/api-client";
+import type { TicketReadiness, JiraStatus } from "@/types/ticket";
+import { StatusBadge } from "@/components/shared/StatusBadge";
 import { X, Bookmark } from "lucide-react";
 import { FilterDropdown } from "@/components/shared/FilterDropdown";
 import { Button } from "@/components/ui/Button";
@@ -15,7 +22,8 @@ export { SortDropdown } from "@/components/sprint-board/SortControls";
 export { ColumnToggle } from "@/components/sprint-board/ColumnToggle";
 export { BoardFieldToggle } from "@/components/sprint-board/BoardFieldToggle";
 
-import { EDIT_STATE_OPTIONS, GAPS_OPTIONS, READINESS_OPTIONS, READINESS_CONFIG, JIRA_STATUS_COLORS, getEpicColor, SPRINT_STATE_FILTER_OPTIONS, type SavedView } from "@/components/sprint-board/filter-bar-types";
+import { EDIT_STATE_OPTIONS, GAPS_OPTIONS, READINESS_OPTIONS, READINESS_CONFIG, SPRINT_STATE_FILTER_OPTIONS, type SavedView } from "@/components/sprint-board/filter-bar-types";
+import { EpicBadge } from "@/components/shared/IssueMetaBadges";
 
 export function FilterBar({
   statusFilter,
@@ -85,6 +93,23 @@ export function FilterBar({
   const [saveViewOpen, setSaveViewOpen] = useState(false);
   const saveViewRef = useRef<HTMLDivElement>(null);
   const readinessOptions = [...READINESS_OPTIONS.filter((o) => o.value !== null).map((o) => o.value as string), "none"];
+
+  // Favorite assignees float to the top, mirroring the AssigneePicker ordering.
+  const { data: assignableData } = useSWR<{ users: AssignableUser[] }>(
+    "/api/jira/assignable-users",
+    swrFetcher,
+    { revalidateOnFocus: false, dedupingInterval: 60000 },
+  );
+  const favoriteNames = useMemo(() => {
+    const set = new Set<string>();
+    for (const u of assignableData?.users ?? []) if (u.isFavorite) set.add(u.displayName);
+    return set;
+  }, [assignableData]);
+  const orderedAssigneeOptions = useMemo(() => {
+    const favs = assigneeOptions.filter((n) => favoriteNames.has(n));
+    const rest = assigneeOptions.filter((n) => !favoriteNames.has(n));
+    return [...favs, ...rest];
+  }, [assigneeOptions, favoriteNames]);
   const editStateValues = EDIT_STATE_OPTIONS.map((o) => o.value);
   const hasActiveFilters = statusFilter.size > 0 || epicFilter.size > 0 || assigneeFilter.size > 0 ||
     readinessFilter.size > 0 || editStateFilter.size > 0 || issueTypeFilter.size > 0 ||
@@ -112,21 +137,20 @@ export function FilterBar({
         options={statusOptions}
         selected={statusFilter}
         onChange={onStatusFilterChange}
-        renderOption={(v) => {
-          // DELETED is a pseudo-status for tickets removed from Jira; match the red DELETED badge.
-          const dotColor = v === "DELETED"
-            ? "rgb(248 113 113 / 0.7)"
-            : JIRA_STATUS_COLORS[v as keyof typeof JIRA_STATUS_COLORS]?.text ?? "var(--color-status-neutral)";
-          return (
-            <span className="flex items-center gap-2">
-              <span
-                className="inline-block h-2 w-2 rounded-full"
-                style={{ backgroundColor: dotColor }}
-              />
-              {v}
+        renderOption={(v) =>
+          // DELETED is a pseudo-status for tickets removed from Jira (not in
+          // JIRA_STATUS_COLORS); give it its own red badge in the same pill style.
+          v === "DELETED" ? (
+            <span
+              className="inline-flex items-center rounded px-2 py-0.5 text-body-sm font-medium"
+              style={{ backgroundColor: "var(--color-status-deprecated-subtle)", color: "var(--color-status-deprecated)" }}
+            >
+              DELETED
             </span>
-          );
-        }}
+          ) : (
+            <StatusBadge status={v as JiraStatus} />
+          )
+        }
       />
       <FilterDropdown
         label="Epic"
@@ -136,24 +160,22 @@ export function FilterBar({
         searchable
         searchPlaceholder="Search epics..."
         renderOption={(v) => {
-          const color = getEpicColor(v);
-          return (
-            <span
-              className="inline-block rounded px-1.5 py-0.5 text-body-sm"
-              style={color ? { backgroundColor: color.bg, color: color.text } : undefined}
-            >
-              {v}
-            </span>
-          );
+          return <EpicBadge epic={v} className="max-w-[240px]" />;
         }}
       />
       <FilterDropdown
         label="Assignee"
-        options={assigneeOptions}
+        options={orderedAssigneeOptions}
         selected={assigneeFilter}
         onChange={onAssigneeFilterChange}
         searchable
         searchPlaceholder="Search assignees..."
+        renderOption={(v) => (
+          <span className="flex items-center gap-2">
+            <Avatar assignee={{ name: v, initials: userInitials(v), color: userColor(v) }} size={20} />
+            <span className="truncate">{v}</span>
+          </span>
+        )}
       />
       <FilterDropdown
         label="Readiness"
@@ -164,7 +186,9 @@ export function FilterBar({
           if (v === "none") {
             return (
               <span className="flex items-center gap-2">
-                <span className="inline-block h-2 w-2 rounded-full border border-border-strong" />
+                <span className="flex w-4 justify-center">
+                  <span className="h-1.5 w-1.5 rounded-full bg-overlay-strong" />
+                </span>
                 No readiness
               </span>
             );
@@ -172,10 +196,9 @@ export function FilterBar({
           const cfg = READINESS_CONFIG[v as keyof typeof READINESS_CONFIG];
           return (
             <span className="flex items-center gap-2">
-              <span
-                className="inline-block h-2 w-2 rounded-full"
-                style={{ backgroundColor: cfg?.color ?? "var(--color-status-neutral)" }}
-              />
+              <span className="flex w-4 justify-center" style={{ color: cfg?.color ?? "var(--color-status-neutral)" }}>
+                <ReadinessIcon value={v as TicketReadiness} size={15} strokeWidth={2} />
+              </span>
               {cfg?.label ?? v}
             </span>
           );
@@ -205,7 +228,9 @@ export function FilterBar({
           const color = ISSUE_TYPE_COLORS[v as keyof typeof ISSUE_TYPE_COLORS];
           return (
             <span className="flex items-center gap-2">
-              <IssueTypeIcon type={v} size={13} />
+              <span className="flex w-4 justify-center">
+                <IssueTypeIcon type={v} size={15} strokeWidth={2} />
+              </span>
               <span style={color ? { color } : undefined} className="capitalize">{v}</span>
             </span>
           );

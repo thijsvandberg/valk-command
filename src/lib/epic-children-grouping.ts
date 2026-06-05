@@ -38,8 +38,8 @@ function childSprintName(child: EpicChild | Subtask): string | null {
  * When `sprints` metadata is supplied, each named group is correlated to its
  * sprint by matching `sprintName === sprint.name`, populating state/date range/
  * active flag, and groups are ordered chronologically (closed → active → future,
- * then by start date). Without metadata, named groups keep a stable alphabetical
- * order.
+ * then dated sprints by start date with undated ones last). Without metadata,
+ * named groups keep a stable alphabetical order.
  */
 export function groupChildrenBySprint(
   items: (EpicChild | Subtask)[],
@@ -79,9 +79,13 @@ export function groupChildrenBySprint(
     if (aSprint && bSprint) {
       const order = STATE_ORDER[aSprint.state] - STATE_ORDER[bSprint.state];
       if (order !== 0) return order;
-      const aDate = aSprint.startDate ?? "";
-      const bDate = bSprint.startDate ?? "";
-      if (aDate !== bDate) return aDate.localeCompare(bDate);
+      // Within a state, dated sprints lead and order by start date; sprints
+      // without a schedule (e.g. a backlog-style sprint) are "the rest" and
+      // sink to the bottom instead of jumping ahead on an empty date.
+      const aDate = aSprint.startDate ?? null;
+      const bDate = bSprint.startDate ?? null;
+      if ((aDate === null) !== (bDate === null)) return aDate === null ? 1 : -1;
+      if (aDate && bDate && aDate !== bDate) return aDate.localeCompare(bDate);
     }
     return a.label.localeCompare(b.label);
   });

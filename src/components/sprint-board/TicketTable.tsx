@@ -122,6 +122,7 @@ export function TicketTable({
   groups,
   collapsedGroups,
   onToggleCollapse,
+  groupsCollapsible = true,
   groupBy,
   pinnedSprintIds,
   onPinSprint,
@@ -187,6 +188,9 @@ export function TicketTable({
   groups?: TicketGroup[];
   collapsedGroups?: Set<string>;
   onToggleCollapse?: (groupKey: string) => void;
+  // When false, group cards render without a collapse chevron and stay expanded
+  // (used for the single-sprint view, which has only one group). Defaults to true.
+  groupsCollapsible?: boolean;
   groupBy?: GroupByOption;
   // When grouping by sprint, pin a sprint group to the tab bar. Key is the sprint id.
   pinnedSprintIds?: Set<string>;
@@ -469,7 +473,7 @@ export function TicketTable({
     // flex gap, so consecutive sprints read as distinct sections (BRDG-239).
     <div className="flex flex-col gap-3">
       {groups.map((group) => {
-        const isCollapsed = collapsedGroups?.has(group.key) ?? false;
+        const isCollapsed = groupsCollapsible ? (collapsedGroups?.has(group.key) ?? false) : false;
         const isSprintGroup = groupBy === "sprint" && group.key !== "__backlog__";
         const isBacklogGroup = groupBy === "sprint" && group.key === "__backlog__";
         const groupSprint = isSprintGroup ? sprints?.find((s) => s.id === group.key) : undefined;
@@ -572,11 +576,15 @@ export function TicketTable({
           <GroupCard
             key={group.key}
             isCollapsed={isCollapsed}
-            onToggleCollapse={() => onToggleCollapse?.(group.key)}
+            onToggleCollapse={groupsCollapsible ? () => onToggleCollapse?.(group.key) : undefined}
             header={
               <GroupStatBar
                 tickets={group.tickets}
                 label={group.label}
+                // Collapse the label zone to its own width so the item count sits
+                // tight against each group name instead of leaving dead space
+                // before a fixed-width alignment column.
+                labelWidthClass=""
                 createAction={createAction}
                 leadingIcon={group.key === "__backlog__" ? <Inbox className="h-3.5 w-3.5" strokeWidth={1.5} /> : undefined}
                 isActive={groupBy === "sprint" && activeSprintIds.has(group.key)}
@@ -588,8 +596,9 @@ export function TicketTable({
                     toggleGroupFilter(criterion);
                   }
                 }}
-                isCollapsed={isCollapsed}
-                onToggleCollapse={() => onToggleCollapse?.(group.key)}
+                {...(groupsCollapsible
+                  ? { isCollapsed, onToggleCollapse: () => onToggleCollapse?.(group.key) }
+                  : {})}
                 {...(isSprintGroup && onPinSprint
                   ? {
                       onPin: () => onPinSprint(group.key),
@@ -620,7 +629,6 @@ export function TicketTable({
                 onEscapeEmpty={() => setComposerGroupKey(null)}
                 placeholder={isBacklogGroup ? "Create story in the backlog..." : `Create story in ${group.label}...`}
                 alignKey
-                dropUp
                 className={visibleGroupTickets.length > 0 ? "border-t border-border-subtle" : ""}
               />
             )}
@@ -647,7 +655,6 @@ export function TicketTable({
               onCreate={(title, jiraType) => onCreateTicket(flatCreateTarget.sprintId, title, jiraType)}
               placeholder={flatCreateTarget.sprintId === null ? "Create story in the backlog..." : "Create story in this sprint..."}
               alignKey
-              dropUp
               className={tickets.length > 0 ? "border-t border-border-subtle" : ""}
             />
           )}

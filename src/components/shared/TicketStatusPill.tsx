@@ -4,7 +4,7 @@ import { useState, useRef, useEffect, useLayoutEffect, type ReactNode } from "re
 import { usePathname } from "next/navigation";
 import { useOutsideClick } from "@/hooks/useOutsideClick";
 import { createPortal } from "react-dom";
-import { ExternalLink, FilePen, MessageCircleQuestion, CheckCircle2, Ban, Minus, Copy, ClipboardList, PenLine, Flag, IterationCw, Zap, User, UserRound, ListChecks, Eye, GitBranch, Rocket, Star, Gem, MessageSquare, Gauge, Sparkles, RefreshCw } from "lucide-react";
+import { ExternalLink, FilePen, MessageCircleQuestion, CheckCircle2, Ban, Copy, ClipboardList, PenLine, Flag, IterationCw, Zap, User, UserRound, ListChecks, Eye, GitBranch, Rocket, Star, Gem, MessageSquare, Gauge, Sparkles, RefreshCw } from "lucide-react";
 import type { JiraStatus, TicketReadiness, IssueType, Assignee, Sprint } from "@/types/ticket";
 import type { PipelineHealthEntry, LastDeployedInfo } from "@/hooks/usePipelines";
 import {
@@ -32,8 +32,8 @@ import { useHoverCardEdits } from "@/hooks/useHoverCardEdits";
 // Readiness icon helper
 // ---------------------------------------------------------------------------
 
-function ReadinessIcon({ value, size = 12 }: { value: TicketReadiness; size?: number }) {
-  const props = { style: { width: size, height: size }, strokeWidth: 1.75 };
+function ReadinessIcon({ value, size = 12, strokeWidth = 1.75 }: { value: TicketReadiness; size?: number; strokeWidth?: number }) {
+  const props = { style: { width: size, height: size }, strokeWidth };
   switch (value) {
     case "drafting":             return <FilePen {...props} />;
     case "waiting_for_feedback": return <MessageCircleQuestion {...props} />;
@@ -289,7 +289,7 @@ function ReadinessDropdown({ currentValue, onChange, onClose, skipRef }: Readine
               className="shrink-0 w-4 flex items-center justify-center"
               style={{ color: cfg?.color ?? "var(--color-text-muted)" }}
             >
-              {opt.value ? <ReadinessIcon value={opt.value} size={13} /> : <Minus style={{ width: 11, height: 11 }} strokeWidth={1.5} />}
+              {opt.value ? <ReadinessIcon value={opt.value} size={15} strokeWidth={2} /> : <span className="h-1.5 w-1.5 rounded-full bg-overlay-strong" />}
             </span>
             <span className={isActive ? "text-text-primary font-medium" : "text-text-secondary"}>{opt.label}</span>
           </button>

@@ -743,14 +743,14 @@ function renderMarkdownUncached(text: string, linkifyRefs: boolean): ReactNode[]
           {paragraphs.map((para, pi) => {
             const paraLines = para.split("\n");
             return (
-              <p key={pi}>
+              <div className="md-paragraph" key={pi}>
                 {paraLines.map((l, li) => (
                   <span key={li}>
                     {li > 0 && <br />}
                     {fmt(l)}
                   </span>
                 ))}
-              </p>
+              </div>
             );
           })}
         </blockquote>
@@ -833,18 +833,21 @@ function renderMarkdownUncached(text: string, linkifyRefs: boolean): ReactNode[]
     }
 
     if (paraLines.length === 1) {
-      elements.push(<p key={`p-${idx}`}>{fmt(paraLines[0])}</p>);
+      // Rendered as a div, not a <p>: inline ticket-ref pills (linkifyRefs)
+      // expand to div-based components, which are invalid inside <p> and break
+      // hydration. The .md-paragraph class restores paragraph spacing.
+      elements.push(<div className="md-paragraph" key={`p-${idx}`}>{fmt(paraLines[0])}</div>);
     } else {
       // Multiple consecutive lines → single paragraph with soft breaks
       elements.push(
-        <p key={`p-${idx}`}>
+        <div className="md-paragraph" key={`p-${idx}`}>
           {paraLines.map((l, li) => (
             <span key={li}>
               {li > 0 && <br />}
               {fmt(l)}
             </span>
           ))}
-        </p>
+        </div>
       );
     }
   }

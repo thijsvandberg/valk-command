@@ -7,8 +7,9 @@
 //   status - colored chip with optional dot indicator (IN PROGRESS, DONE, TO DO, TEST)
 
 import { MetricBadge } from "@/components/shared/MetricBadge";
+import { pluralize } from "@/lib/pluralize";
 
-export type PillSize = "md" | "sm";
+export type PillSize = "md" | "sm" | "badge";
 export type PillVariant = "stat" | "status";
 
 export interface StatusPillColor {
@@ -23,35 +24,36 @@ export interface StatusPillColor {
 // Canonical color tokens for every Jira status
 export const STATUS_PILL_COLORS: Record<string, StatusPillColor> = {
   "TO DO": {
-    bg: "color-mix(in srgb, var(--color-status-neutral) 12%, transparent)",
-    bgActive: "color-mix(in srgb, var(--color-status-neutral) 20%, transparent)",
-    text: "var(--color-status-neutral)",
-    textActive: "#b8c8d8",
-    ring: "color-mix(in srgb, var(--color-status-neutral) 35%, transparent)",
+    bg: "var(--sp-todo-bg)",
+    bgActive: "var(--sp-todo-active-bg)",
+    text: "var(--sp-todo-text)",
+    textActive: "var(--sp-todo-active-text)",
+    ring: "transparent",
+    dot: "var(--sp-todo-dot)",
   },
   "IN PROGRESS": {
-    bg: "color-mix(in srgb, var(--color-status-progress) 10%, transparent)",
-    bgActive: "color-mix(in srgb, var(--color-status-progress) 20%, transparent)",
-    text: "#3bbfbe",
-    textActive: "#7ec8f0",
-    ring: "color-mix(in srgb, var(--color-status-progress) 35%, transparent)",
-    dot: "#3bbfbe",
+    bg: "var(--sp-prog-bg)",
+    bgActive: "var(--sp-prog-active-bg)",
+    text: "var(--sp-prog-text)",
+    textActive: "var(--sp-prog-active-text)",
+    ring: "transparent",
+    dot: "var(--sp-prog-dot)",
   },
   TEST: {
-    bg: "color-mix(in srgb, var(--color-testing-400) 12%, transparent)",
-    bgActive: "color-mix(in srgb, var(--color-testing-400) 22%, transparent)",
-    text: "#9b7ee8",
-    textActive: "#b49cf0",
-    ring: "color-mix(in srgb, var(--color-testing-400) 35%, transparent)",
-    dot: "#9b7ee8",
+    bg: "var(--sp-test-bg)",
+    bgActive: "var(--sp-test-active-bg)",
+    text: "var(--sp-test-text)",
+    textActive: "var(--sp-test-active-text)",
+    ring: "transparent",
+    dot: "var(--sp-test-dot)",
   },
   DONE: {
-    bg: "color-mix(in srgb, var(--color-status-done) 10%, transparent)",
-    bgActive: "color-mix(in srgb, var(--color-status-done) 20%, transparent)",
-    text: "#4ade80",
-    textActive: "#6aee96",
-    ring: "color-mix(in srgb, var(--color-status-done) 35%, transparent)",
-    dot: "#4ade80",
+    bg: "var(--sp-done-bg)",
+    bgActive: "var(--sp-done-active-bg)",
+    text: "var(--sp-done-text)",
+    textActive: "var(--sp-done-active-text)",
+    ring: "transparent",
+    dot: "var(--sp-done-dot)",
   },
 };
 
@@ -62,12 +64,23 @@ const SIZE = {
     text: "text-body-sm",       // 12px — header bar has more room
     dot: "h-1.5 w-1.5",
     gap: "gap-1.5",
+    radius: "rounded",
   },
   sm: {
     pill: "px-1.5 py-0.5",
     text: "text-[10px]",   // matches --text-caption (10px)
     dot: "h-1.5 w-1.5",
     gap: "gap-1",
+    radius: "rounded",
+  },
+  // Matches the SP/BV MetricBadge so status pills sit in the same visual family
+  // as the other header-bar badges (same height, radius and 12px text).
+  badge: {
+    pill: "px-1.5 py-0.5",
+    text: "text-body-sm",
+    dot: "h-1.5 w-1.5",
+    gap: "gap-1",
+    radius: "rounded-md",
   },
 };
 
@@ -212,7 +225,7 @@ interface SprintStatsProps {
 export function SprintStats({ totalItems, totalSp, totalBv, className = "" }: SprintStatsProps) {
   return (
     <div className={`flex items-center gap-2 text-body-sm tabular-nums ${className}`}>
-      <span className="text-text-tertiary">{totalItems} <span className="text-[10px]">items</span></span>
+      <span className="text-text-tertiary">{totalItems} <span className="text-[10px]">{pluralize(totalItems, "item")}</span></span>
       {totalSp > 0 && (
         <div className="flex items-center gap-1">
           <MetricBadge metric="sp" value={totalSp} tinted />
@@ -437,7 +450,6 @@ export function StatusPill({
     backgroundColor: active ? colors.bgActive : colors.bg,
     color: active ? colors.textActive : colors.text,
     opacity: dimmed ? 0.38 : 1,
-    ...(active ? { boxShadow: `0 0 0 1px ${colors.ring}` } : {}),
   };
 
   const content = showDot ? (
@@ -453,7 +465,8 @@ export function StatusPill({
   );
 
   const base = [
-    "inline-flex items-center rounded font-medium tabular-nums shrink-0 select-none",
+    "inline-flex items-center font-medium tabular-nums shrink-0 select-none",
+    s.radius,
     s.pill,
     s.text,
     s.gap,

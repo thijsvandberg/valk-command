@@ -116,6 +116,18 @@ describe("groupChildrenBySprint", () => {
     expect(groups.map((g) => g.label)).toEqual(["Closed A", "Closed B"]);
   });
 
+  it("sinks an undated sprint below dated ones within the same state", () => {
+    const sprints = [
+      sprint("Dated Future", "future", "2026-07-01"),
+      sprint("Undated Future", "future", null),
+    ];
+    const groups = groupChildrenBySprint(
+      [child("U", "Undated Future"), child("D", "Dated Future")],
+      sprints,
+    );
+    expect(groups.map((g) => g.label)).toEqual(["Dated Future", "Undated Future"]);
+  });
+
   it("derives state, dateRange and isActive from the matched sprint", () => {
     const sprints = [sprint("Active Sprint", "active", "2026-06-01")];
     const [group] = groupChildrenBySprint([child("A", "Active Sprint")], sprints);

@@ -2,12 +2,10 @@ import { render, screen, fireEvent } from "@testing-library/react";
 import { describe, it, expect, vi } from "vitest";
 import { FilterBar } from "./FilterBar";
 
-vi.mock("lucide-react", () => ({
-  X: (props: Record<string, unknown>) => <span data-testid="x-icon" {...props} />,
-  Bookmark: (props: Record<string, unknown>) => <span data-testid="bookmark" {...props} />,
-  ChevronDown: (props: Record<string, unknown>) => <span data-testid="chevron" {...props} />,
-  Search: (props: Record<string, unknown>) => <span data-testid="search" {...props} />,
-}));
+// Use the real icon set so the mock survives new icon imports pulled in
+// transitively (ReadinessCell, Avatar, EpicBadge). The mocked FilterDropdown
+// never renders these, so this only needs to satisfy module-level bindings.
+vi.mock("lucide-react", async (importOriginal) => await importOriginal());
 
 vi.mock("@/components/shared/FilterDropdown", () => ({
   FilterDropdown: ({ label, onChange, leadingOptions, leadingLabel }: { label: string; onChange: (s: Set<string>) => void; leadingOptions?: { value: string; label: string }[]; leadingLabel?: string }) => (

@@ -13,7 +13,6 @@ import { SidePanel } from "@/components/sprint-board/SidePanel";
 import { SprintAnalytics } from "@/components/sprint-board/SprintAnalytics";
 import dynamic from "next/dynamic";
 const SearchModal = dynamic(() => import("@/components/sprint-board/SearchModal").then((m) => ({ default: m.SearchModal })), { ssr: false });
-const StoryWriterLauncherModal = dynamic(() => import("@/components/shared/StoryWriterLauncherModal").then((m) => ({ default: m.StoryWriterLauncherModal })), { ssr: false });
 const AddToRefinementModal = dynamic(() => import("@/components/refinement-session/AddToRefinementModal").then((m) => ({ default: m.AddToRefinementModal })), { ssr: false });
 import { useJiraSprints, useTickets, useTicketDetail } from "@/hooks/useSprintBoard";
 import { useTicketSessionMap } from "@/hooks/useTicketSessionMap";
@@ -27,7 +26,7 @@ import { getJiraUrl } from "@/components/sprint-board/TicketTableCells";
 import { apiFetch, jira, tickets as ticketsApi, refinementSessions as refinementSessionsApi } from "@/lib/api-client";
 import { syncGroupInTranches, type GroupSyncTarget, type GroupSyncProgress } from "@/lib/group-sync";
 import { useSprintBoardFilters } from "@/components/sprint-board/useSprintBoardFilters";
-import { useGroupBy } from "@/components/sprint-board/useGroupBy";
+import { useGroupBy, type TicketGroup } from "@/components/sprint-board/useGroupBy";
 import { useSprintBoardDragDrop } from "@/components/sprint-board/useSprintBoardDragDrop";
 import { useSprintBoardShortcuts } from "@/components/sprint-board/useSprintBoardShortcuts";
 import { useTicketActions } from "@/components/sprint-board/useTicketActions";
@@ -98,8 +97,6 @@ export default function SprintBoard() {
   const [searchModalOpen, setSearchModalOpen] = useState(false);
   const [barsCollapsed, setBarsCollapsed] = useLocalStorage("sprint-bars-collapsed", false);
   const [analyticsVisible, setAnalyticsVisible] = useLocalStorage("sprint-analytics-visible", false);
-  const [showStoryWriterLauncher, setShowStoryWriterLauncher] = useState(false);
-  const [syncing, setSyncing] = useState(false);
   const [headerMenuOpen, setHeaderMenuOpen] = useState(false);
   const [editModalOpen, setEditModalOpen] = useState(false);
   const [autoSuggest, setAutoSuggest] = useState(false);
@@ -215,6 +212,18 @@ export default function SprintBoard() {
     if (activeSprint && activeSprint.state !== "closed") return { sprintId: activeSprintId };
     return undefined;
   }, [isAllView, activeSprintId, f.activeViewId, activeSprint]);
+
+  // The single-sprint view (not All, not a saved view, not already grouped) gets the
+  // same group-card header as the grouped All view: its one sprint (or the backlog)
+  // becomes a single, non-collapsible group so create/pin/sync/menu live in the header.
+  const singleSprintGroup = useMemo((): TicketGroup | null => {
+    if (isAllView || f.activeViewId || groups.length > 0) return null;
+    if (activeSprintId === "__backlog__") return { key: "__backlog__", label: "Backlog", tickets, sortOrder: 0 };
+    if (activeSprint) return { key: activeSprint.id, label: activeSprint.name, tickets, sortOrder: 0 };
+    return null;
+  }, [isAllView, f.activeViewId, groups.length, activeSprintId, activeSprint, tickets]);
+  const effectiveGroups = singleSprintGroup ? [singleSprintGroup] : groups;
+  const effectiveGroupBy = singleSprintGroup ? "sprint" : groupBy;
 
   // Optimistically add the new ticket to the active list, then reconcile with the
   // created Jira key. Caches are patched client-side rather than via the POST route's
@@ -439,7 +448,6 @@ export default function SprintBoard() {
     if (flaggedCount === sel.length) return "flagged";
     return "mixed";
   }, [tickets]);
-  const handleRefresh = useCallback(async () => { setSyncing(true); try { const data = await jira.syncTickets({ sprintId: slotSprints[activeSlot] }) as { count?: number } | null; showToast(`Refreshed ${data?.count ?? 0} ticket${(data?.count ?? 0) === 1 ? "" : "s"}`); mutateTickets(); } catch { showToast("Failed to refresh tickets"); } finally { setSyncing(false); } }, [slotSprints, activeSlot, showToast, mutateTickets]);
   const handleSyncGroup = useCallback(async (target: GroupSyncTarget, onProgress: (p: GroupSyncProgress) => void) => {
     try {
       const result = await syncGroupInTranches(target, onProgress);
@@ -468,7 +476,7 @@ export default function SprintBoard() {
   const boardContent = (
     <>
       <div className={`${dnd.jiraRankDndEnabled ? "relative " : ""}bg-[var(--color-surface-toolbar)]`}>
-        <SprintSlots slotSprints={slotSprints} activeSlot={activeSlot} allActive={isAllView && !f.activeViewId} sprints={sprints} backlogCount={backlogCount} onSlotClick={setActiveSlot} onAllClick={handleAllClick} editingSlot={editingSlot} onSlotEdit={handleSlotEdit} onSprintSelect={handleSprintSelect} onEditClose={() => setEditingSlot(null)} syncing={syncing} onRefresh={handleRefresh} onReorderSlots={handleReorderSlots} ephemeralSprintId={ephemeralSprintId} ephemeralIsActive={ephemeralIsActive} onEphemeralClick={handleEphemeralClick} filtersCollapsed={barsCollapsed} activeFilterCount={activeFilterCount} onToggleFilters={() => setBarsCollapsed((v) => !v)} savedViews={f.savedViews} activeViewId={f.activeViewId} onViewClick={f.handleViewClick} sortField={f.sortField} sortDir={f.sortDir} onSortChange={sortChange} columnVisible={f.visibleTags} onColumnToggle={toggleColumn} onColumnReset={resetToDefaults} groupBy={groupBy} onGroupByChange={setGroupBy} onCreateSprint={() => setCreateSprintModalOpen(true)} groupCount={groups.length} allGroupsCollapsed={allCollapsed} onToggleCollapseAll={toggleAllGroups} />
+        <SprintSlots slotSprints={slotSprints} activeSlot={activeSlot} allActive={isAllView && !f.activeViewId} sprints={sprints} backlogCount={backlogCount} onSlotClick={setActiveSlot} onAllClick={handleAllClick} editingSlot={editingSlot} onSlotEdit={handleSlotEdit} onSprintSelect={handleSprintSelect} onEditClose={() => setEditingSlot(null)} onReorderSlots={handleReorderSlots} ephemeralSprintId={ephemeralSprintId} ephemeralIsActive={ephemeralIsActive} onEphemeralClick={handleEphemeralClick} filtersCollapsed={barsCollapsed} activeFilterCount={activeFilterCount} onToggleFilters={() => setBarsCollapsed((v) => !v)} savedViews={f.savedViews} activeViewId={f.activeViewId} onViewClick={f.handleViewClick} sortField={f.sortField} sortDir={f.sortDir} onSortChange={sortChange} columnVisible={f.visibleTags} onColumnToggle={toggleColumn} onColumnReset={resetToDefaults} groupBy={groupBy} onGroupByChange={setGroupBy} onCreateSprint={() => setCreateSprintModalOpen(true)} groupCount={groups.length} allGroupsCollapsed={allCollapsed} onToggleCollapseAll={toggleAllGroups} />
         {dnd.jiraRankDndEnabled && dnd.boardActiveDragId && <SprintDropZoneBar sprints={sprints} slotSprints={slotSprints} activeSprintId={activeSprintId} />}
       </div>
       {!barsCollapsed && (
@@ -483,7 +491,7 @@ export default function SprintBoard() {
           // The list sits on a white surface; TicketTable renders the bordered card(s) itself —
           // one card when ungrouped, one per group when grouped (BRDG-239, BRDG-267).
           <div className="min-h-full bg-[var(--color-surface-elevated)] px-4 pb-4 pt-3">
-          <TicketTable tickets={tickets} checkedTickets={checkedTickets} selectedTicket={selectedTicket} focusedTicketIdx={focusedTicketIdx} someChecked={someChecked} allChecked={allChecked} visibleTags={f.visibleTags} hideEpic={hideEpicChip} showSprint={showSprintOnRow} sprintNameMap={sprintNameMap} poStatuses={poStatuses} readinessMap={readinessMap} inflightKeys={inflightKeys} onToggleCheck={toggleCheck} onRangeCheck={handleRangeCheck} onToggleAll={toggleAll} onSelectTicket={setSelectedTicket} onRowContextMenu={handleRowContextMenu} contextMenuKeys={rowMenu?.targets} onPoStatusChange={ta.handlePoStatusChange} onReadinessChange={ta.handleReadinessChange} onBusinessValueChange={ta.handleBusinessValueChange} onStoryPointsChange={ta.handleStoryPointsChange} onJiraStatusChange={ta.handleJiraStatusChange} onIssueTypeChange={ta.handleIssueTypeChange} onTitleChange={ta.handleTitleChange} onAssigneeChange={ta.handleAssigneeChange} onEpicChange={ta.handleEpicChange} onSprintChange={ta.handleSprintChange} sprints={sprints} onCloseSubtasks={ta.handleCloseSubtasks} onTableKeyDown={handleTableKeyDown} onRunReview={(key) => handleBulkReviewStory(new Set([key]))} sortField={f.sortField} sortDir={f.sortDir} groups={groups} collapsedGroups={collapsedGroups} onToggleCollapse={toggleCollapse} groupBy={groupBy} pinnedSprintIds={slotSprintsSet} onPinSprint={handleAddSlotWithSprint} onEditSprint={handleEditSprintFromGroup} onCloseSprint={handleCloseSprintFromGroup} onSyncGroup={handleSyncGroup} onCreateTicket={handleCreateTicket} flatCreateTarget={flatCreateTarget} scrollContainerRef={contentScrollRef} refinementSessionMap={ticketSessionMap} onRemoveFromRefinement={handleRemoveFromRefinement} onViewRefinement={handleViewRefinement} {...(dnd.jiraRankDndEnabled ? { externalDnd: true as const, externalActiveDragId: dnd.boardActiveDragId, dragOverKey: dnd.boardOverId } : { onReorder: f.sortField === "rank" && !f.activeViewId ? handleReorder : undefined })} />
+          <TicketTable tickets={tickets} checkedTickets={checkedTickets} selectedTicket={selectedTicket} focusedTicketIdx={focusedTicketIdx} someChecked={someChecked} allChecked={allChecked} visibleTags={f.visibleTags} hideEpic={hideEpicChip} showSprint={showSprintOnRow} sprintNameMap={sprintNameMap} poStatuses={poStatuses} readinessMap={readinessMap} inflightKeys={inflightKeys} onToggleCheck={toggleCheck} onRangeCheck={handleRangeCheck} onToggleAll={toggleAll} onSelectTicket={setSelectedTicket} onRowContextMenu={handleRowContextMenu} contextMenuKeys={rowMenu?.targets} onPoStatusChange={ta.handlePoStatusChange} onReadinessChange={ta.handleReadinessChange} onBusinessValueChange={ta.handleBusinessValueChange} onStoryPointsChange={ta.handleStoryPointsChange} onJiraStatusChange={ta.handleJiraStatusChange} onIssueTypeChange={ta.handleIssueTypeChange} onTitleChange={ta.handleTitleChange} onAssigneeChange={ta.handleAssigneeChange} onEpicChange={ta.handleEpicChange} onSprintChange={ta.handleSprintChange} sprints={sprints} onCloseSubtasks={ta.handleCloseSubtasks} onTableKeyDown={handleTableKeyDown} onRunReview={(key) => handleBulkReviewStory(new Set([key]))} sortField={f.sortField} sortDir={f.sortDir} groups={effectiveGroups} groupsCollapsible={!singleSprintGroup} collapsedGroups={collapsedGroups} onToggleCollapse={toggleCollapse} groupBy={effectiveGroupBy} pinnedSprintIds={slotSprintsSet} onPinSprint={handleAddSlotWithSprint} onEditSprint={handleEditSprintFromGroup} onCloseSprint={handleCloseSprintFromGroup} onSyncGroup={handleSyncGroup} onCreateTicket={handleCreateTicket} flatCreateTarget={flatCreateTarget} scrollContainerRef={contentScrollRef} refinementSessionMap={ticketSessionMap} onRemoveFromRefinement={handleRemoveFromRefinement} onViewRefinement={handleViewRefinement} {...(dnd.jiraRankDndEnabled ? { externalDnd: true as const, externalActiveDragId: dnd.boardActiveDragId, dragOverKey: dnd.boardOverId } : { onReorder: f.sortField === "rank" && !f.activeViewId ? handleReorder : undefined })} />
           </div>
         )}
       </div>
@@ -510,7 +518,7 @@ export default function SprintBoard() {
           showToast={showToast} activeView={f.activeView} sortField={f.sortField} sortDir={f.sortDir}
           filters={{ statusFilter: f.statusFilter, setStatusFilter: f.setStatusFilter, gapsFilter: f.gapsFilter, setGapsFilter: f.setGapsFilter, hasActiveFilters: f.hasActiveFilters, resetFilters: f.resetFilters, setIssueTypeFilter: f.setIssueTypeFilter, setEpicFilter: f.setEpicFilter }}
           analyticsVisible={analyticsVisible} setAnalyticsVisible={setAnalyticsVisible}
-          setShowStoryWriterLauncher={setShowStoryWriterLauncher} setSearchModalOpen={setSearchModalOpen}
+          setSearchModalOpen={setSearchModalOpen}
           setEditModalOpen={setEditModalOpen} setCreateSprintModalOpen={setCreateSprintModalOpen}
           handleSprintListSelect={handleSprintListSelect} handleAddSlotWithSprint={handleAddSlotWithSprint}
           onFinishSprint={openFinishModal}
@@ -539,7 +547,6 @@ export default function SprintBoard() {
       <ExportToasts status={exportTask.status} output={exportTask.output} error={exportTask.error} conversationId={exportTask.conversationId} dismiss={exportTask.dismiss} showToast={showToast} />
 
       <SearchModal open={searchModalOpen} initialQuery={f.searchQuery} onClose={() => setSearchModalOpen(false)} onSelectTicket={(key: string) => setSelectedTicket(key)} sprintNameMap={sprintNameMap} />
-      <StoryWriterLauncherModal open={showStoryWriterLauncher} onClose={() => setShowStoryWriterLauncher(false)} />
       {editModalOpen && editSprint && <SprintEditModal sprint={editSprint} tickets={editSprintTickets} onClose={() => { setEditModalOpen(false); setAutoSuggest(false); setEditSprintId(null); }} showToast={showToast} autoSuggest={autoSuggest} />}
       {createSprintModalOpen && <CreateSprintModal onClose={() => setCreateSprintModalOpen(false)} onCreated={handleSprintCreated} showToast={showToast} />}
       {finishModalOpen && finishSprint && (

@@ -5,7 +5,7 @@ import { useOutsideClick } from "@/hooks/useOutsideClick";
 import { ChevronDown, Check } from "lucide-react";
 import { SprintListModal } from "@/components/sprint-board/SprintListModal";
 import { FilterDropdown } from "@/components/shared/FilterDropdown";
-import { getEpicColor } from "@/types/ticket";
+import { EpicBadge } from "@/components/shared/IssueMetaBadges";
 import { LAST_UPDATED_OPTIONS } from "./refinement-utils";
 import type { useRefinementFilters } from "@/hooks/useRefinementFilters";
 
@@ -59,17 +59,7 @@ export function RefinementFilters({
         onChange={filters.setEpicFilter}
         searchable={epicOptions.length > 6}
         searchPlaceholder="Search epics..."
-        renderOption={(epic) => {
-          const c = getEpicColor(epic);
-          return (
-            <span
-              className="truncate rounded-md px-1.5 py-0.5 text-caption font-medium"
-              style={{ backgroundColor: c.bg, color: c.text }}
-            >
-              {epic}
-            </span>
-          );
-        }}
+        renderOption={(epic) => <EpicBadge epic={epic} className="max-w-[240px]" />}
       />
 
       {/* Last updated filter */}

@@ -1,8 +1,10 @@
 "use client";
 
 import { useRef, useState, type ReactNode } from "react";
+import { createPortal } from "react-dom";
 import { ChevronDown } from "lucide-react";
 import { IssueTypeIcon } from "@/components/shared/IssueTypeIcon";
+import { usePickerState } from "@/components/shared/BasePicker";
 import type { IssueType } from "@/types/ticket";
 
 // Shared issue-type options for child creation, used by both the bottom composer
@@ -28,9 +30,6 @@ interface ChildIssueComposerProps {
   trailing?: ReactNode;
   /** Extra classes on the row container (border, etc.). */
   className?: string;
-  /** Open the type dropdown upward. Needed inside a sprint card, whose overflow-clip
-   *  would otherwise hide a downward menu at the card's bottom edge. */
-  dropUp?: boolean;
 }
 
 // The create row: an issue-type dropdown plus a title input. Enter creates and
@@ -44,13 +43,14 @@ export function ChildIssueComposer({
   autoFocus,
   trailing,
   className = "",
-  dropUp,
 }: ChildIssueComposerProps) {
   const [title, setTitle] = useState("");
   const [selectedType, setSelectedType] = useState<IssueType>("story");
-  const [showTypePicker, setShowTypePicker] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
-  const typePickerRef = useRef<HTMLDivElement>(null);
+  // Portal the type menu so it escapes the surrounding card's overflow-clip and
+  // auto-flips up near the viewport bottom instead of being cut off.
+  const { open, pos, triggerRef, popoverRef, handleOpen, handleClose, getPopoverStyle } =
+    usePickerState({ align: "left", popoverHeight: 180 });
 
   const currentTypeConfig = CHILD_ISSUE_TYPES.find((t) => t.value === selectedType) ?? CHILD_ISSUE_TYPES[0];
 
@@ -78,37 +78,44 @@ export function ChildIssueComposer({
       onClick={(e) => e.stopPropagation()}
     >
       <IssueTypeIcon type={selectedType} size={14} />
-      <div className="relative" ref={typePickerRef}>
+      <div className="relative">
         <button
+          ref={triggerRef}
           type="button"
-          onClick={() => setShowTypePicker((v) => !v)}
+          onClick={() => (open ? handleClose() : handleOpen())}
           className="flex cursor-pointer items-center gap-1 rounded py-0.5 text-text-muted transition-colors duration-150 hover:text-text-secondary focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)]"
           style={alignKey ? { minWidth: 69 } : undefined}
         >
           <span className="text-body-sm font-medium text-text-muted">{currentTypeConfig.label}</span>
           <ChevronDown size={10} className="text-text-muted" />
         </button>
-        {showTypePicker && (
-          <div className={`absolute left-0 z-20 overflow-hidden rounded-lg border border-border-default bg-[var(--color-surface-elevated)] shadow-[0_4px_12px_rgba(0,0,0,0.12),0_1px_3px_rgba(0,0,0,0.08)] ${dropUp ? "bottom-full mb-1" : "top-full mt-1"}`}>
-            {CHILD_ISSUE_TYPES.map((opt) => (
-              <button
-                key={opt.value}
-                type="button"
-                onClick={() => {
-                  setSelectedType(opt.value);
-                  setShowTypePicker(false);
-                  inputRef.current?.focus();
-                }}
-                className={`flex w-full cursor-pointer items-center gap-2 px-3 py-1.5 text-body-lg transition-colors duration-150 hover:bg-overlay-subtle focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)] active:bg-overlay-subtle/80 ${
-                  opt.value === selectedType ? "text-text-primary" : "text-text-secondary"
-                }`}
-              >
-                <IssueTypeIcon type={opt.value} size={14} />
-                <span>{opt.label}</span>
-              </button>
-            ))}
-          </div>
-        )}
+        {open && pos && typeof document !== "undefined" &&
+          createPortal(
+            <div
+              ref={popoverRef}
+              className="fixed z-[9999] min-w-[160px] overflow-hidden rounded-lg border border-border-default"
+              style={getPopoverStyle()}
+            >
+              {CHILD_ISSUE_TYPES.map((opt) => (
+                <button
+                  key={opt.value}
+                  type="button"
+                  onClick={() => {
+                    setSelectedType(opt.value);
+                    handleClose();
+                    inputRef.current?.focus();
+                  }}
+                  className={`flex w-full cursor-pointer items-center gap-2 px-3 py-1.5 text-body-lg transition-colors duration-150 hover:bg-overlay-subtle focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)] active:bg-overlay-subtle/80 ${
+                    opt.value === selectedType ? "text-text-primary" : "text-text-secondary"
+                  }`}
+                >
+                  <IssueTypeIcon type={opt.value} size={14} />
+                  <span>{opt.label}</span>
+                </button>
+              ))}
+            </div>,
+            document.body,
+          )}
       </div>
 
       <input
@@ -118,7 +125,7 @@ export function ChildIssueComposer({
         autoFocus={autoFocus}
         onChange={(e) => setTitle(e.target.value)}
         onKeyDown={handleKeyDown}
-        onFocus={() => setShowTypePicker(false)}
+        onFocus={() => handleClose()}
         placeholder={placeholder}
         className="min-w-0 flex-1 bg-transparent text-body-lg text-text-primary placeholder:text-text-muted outline-none"
       />

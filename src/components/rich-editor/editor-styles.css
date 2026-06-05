@@ -78,12 +78,16 @@
 }
 
 /* Paragraphs */
+/* .md-paragraph: read-only markdown paragraphs render as <div> so inline
+   ticket-ref pills (which expand to <div>s) don't nest illegally inside <p>. */
 .description-content p,
+.description-content .md-paragraph,
 .rich-editor-wrapper .tiptap p {
   margin: 0 0 1.1rem;
 }
 
 .description-content p:last-child,
+.description-content .md-paragraph:last-child,
 .rich-editor-wrapper .tiptap p:last-child {
   margin-bottom: 0;
 }

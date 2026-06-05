@@ -114,6 +114,8 @@ function AiAssistDropdown({
   const hasAnyAction = onReviewStory || onGenerateSubtasks || onSummarizedList;
   if (!hasAnyAction) return null;
 
+  const isBusy = isExporting || isGeneratingSubtasks;
+
   return (
     <div ref={ref} className="relative">
       <Button
@@ -122,7 +124,11 @@ function AiAssistDropdown({
         onClick={() => setOpen(!open)}
         className="border-0 text-text-secondary hover:text-text-primary"
       >
-        <Sparkles className="mr-1.5 h-3.5 w-3.5 shrink-0" strokeWidth={1.5} />
+        {isBusy ? (
+          <Loader2 className="mr-1.5 h-3.5 w-3.5 shrink-0 animate-spin" strokeWidth={1.5} />
+        ) : (
+          <Sparkles className="mr-1.5 h-3.5 w-3.5 shrink-0" strokeWidth={1.5} />
+        )}
         <span className="hidden sm:inline">AI Assist</span>
         <ChevronDown className="ml-1 h-3 w-3 shrink-0" strokeWidth={1.5} />
       </Button>

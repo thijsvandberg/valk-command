@@ -70,9 +70,9 @@ export function extractTicketKey(input: string): string | null {
 
 export function statusColor(status: string): { bg: string; text: string } {
   const s = status?.toUpperCase() ?? "";
-  if (s === "DONE") return { bg: "rgba(34,197,94,0.12)", text: "#4ade80" };
-  if (s.includes("PROGRESS")) return { bg: "rgba(56,152,210,0.12)", text: "#58b4e6" };
-  if (s.includes("TEST") || s.includes("REVIEW")) return { bg: "rgba(120,90,220,0.12)", text: "#9b7ee8" };
-  if (s === "DEPRECATED") return { bg: "rgba(239,68,68,0.12)", text: "#f87171" };
-  return { bg: "rgba(100,116,139,0.14)", text: "#94a3b8" };
+  if (s === "DONE") return { bg: "var(--sp-done-bg)", text: "var(--sp-done-text)" };
+  if (s.includes("PROGRESS")) return { bg: "var(--sp-prog-bg)", text: "var(--sp-prog-text)" };
+  if (s.includes("TEST") || s.includes("REVIEW")) return { bg: "var(--sp-test-bg)", text: "var(--sp-test-text)" };
+  if (s === "DEPRECATED") return { bg: "var(--color-status-deprecated-subtle)", text: "var(--color-status-deprecated)" };
+  return { bg: "var(--sp-todo-bg)", text: "var(--sp-todo-text)" };
 }

@@ -18,6 +18,7 @@ import { Button } from "@/components/ui/Button";
 import { useTickets } from "@/hooks/useSprintBoard";
 import { useTicketSessionMap } from "@/hooks/useTicketSessionMap";
 import { apiFetch, jira } from "@/lib/api-client";
+import { pluralize } from "@/lib/pluralize";
 import {
   DndContext,
   DragOverlay,
@@ -519,7 +520,7 @@ export function MultiSprintView({
         >
           <ViewHeaderTitle>Compare Sprints</ViewHeaderTitle>
           <ViewHeaderDivider />
-          <span className="text-body-lg text-text-tertiary">{totalItems} items total</span>
+          <span className="text-body-lg text-text-tertiary">{totalItems} {pluralize(totalItems, "item")} total</span>
         </ViewHeader>
 
         {/* Content */}

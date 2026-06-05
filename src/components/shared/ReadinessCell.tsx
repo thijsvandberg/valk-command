@@ -2,12 +2,12 @@
 
 import { useState, useRef, useCallback } from "react";
 import { useOutsideClick } from "@/hooks/useOutsideClick";
-import { FilePen, MessageCircleQuestion, CheckCircle2, Ban, Minus } from "lucide-react";
+import { FilePen, MessageCircleQuestion, CheckCircle2, Ban } from "lucide-react";
 import type { TicketReadiness } from "@/types/ticket";
 import { READINESS_CONFIG, READINESS_OPTIONS } from "@/types/ticket";
 
-export function ReadinessIcon({ value, size = 13 }: { value: TicketReadiness; size?: number }) {
-  const props = { style: { width: size, height: size }, strokeWidth: 1.75 };
+export function ReadinessIcon({ value, size = 13, strokeWidth = 1.75 }: { value: TicketReadiness; size?: number; strokeWidth?: number }) {
+  const props = { style: { width: size, height: size }, strokeWidth };
   switch (value) {
     case "drafting":             return <FilePen {...props} />;
     case "waiting_for_feedback": return <MessageCircleQuestion {...props} />;
@@ -81,7 +81,7 @@ export function ReadinessCell({
                   className="shrink-0 w-4 flex items-center justify-center"
                   style={{ color: optCfg?.color ?? "var(--color-text-muted)" }}
                 >
-                  {opt.value ? <ReadinessIcon value={opt.value} size={13} /> : <Minus style={{ width: 11, height: 11 }} strokeWidth={1.5} />}
+                  {opt.value ? <ReadinessIcon value={opt.value} size={15} strokeWidth={2} /> : <span className="h-1.5 w-1.5 rounded-full bg-overlay-strong" />}
                 </span>
                 <span className={isActive ? "text-text-primary font-medium" : "text-text-secondary"}>{opt.label}</span>
               </button>
