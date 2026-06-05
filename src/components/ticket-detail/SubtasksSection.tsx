@@ -49,6 +49,10 @@ interface SubtasksSectionProps {
   compactFilters?: boolean;
   defaultHideKeys?: boolean;
   showDragHandles?: boolean;
+  // When set, the heading renders without a collapse toggle and the body is
+  // always shown. Used where collapsing is redundant (e.g. the refinement
+  // session sidebar pane, which can be closed entirely instead).
+  disableCollapse?: boolean;
 }
 
 function EditButton({ onClick }: { onClick: () => void }) {
@@ -189,6 +193,7 @@ export function SubtasksSection({
   compactFilters,
   defaultHideKeys,
   showDragHandles,
+  disableCollapse,
 }: SubtasksSectionProps) {
   const [filter, setFilter] = useLocalStorage<StatusFilter>("subtask-status-filter", "all");
   const [hideDeprecated, setHideDeprecated] = useLocalStorage<boolean>("subtask-hide-deprecated", true);
@@ -221,7 +226,7 @@ export function SubtasksSection({
   const { isCollapsed } = useSectionCollapsed();
   // Collapse only applies when this section renders its own heading; embedded
   // (hideHeader) usages have no toggle and always show their body.
-  const collapsed = !hideHeader && isCollapsed(SECTION_KEYS.subtasks);
+  const collapsed = !hideHeader && !disableCollapse && isCollapsed(SECTION_KEYS.subtasks);
 
   // Load persisted suggestions on mount
   useEffect(() => {
@@ -778,7 +783,7 @@ export function SubtasksSection({
           onToggleHideDeprecated={setHideDeprecated}
           deprecatedCount={deprecatedCount}
           extraActions={suggestButton}
-          sectionKey={SECTION_KEYS.subtasks}
+          sectionKey={disableCollapse ? undefined : SECTION_KEYS.subtasks}
         />
       )}
 

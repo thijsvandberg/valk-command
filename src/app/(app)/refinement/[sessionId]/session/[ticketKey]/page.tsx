@@ -705,6 +705,7 @@ export default function RefinementSessionTicketPage({
                 compactFilters
                 defaultHideKeys
                 showDragHandles
+                disableCollapse
               />
             </SubtasksPaneResizable>
           )}
