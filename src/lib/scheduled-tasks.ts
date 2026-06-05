@@ -13,7 +13,7 @@ import {
   ticketLocalEdit, poComment, jiraComment, storyVersion, storedReview,
   storyWriterSession,
 } from "@/db/schema";
-import { eq, inArray, and, isNotNull, isNull, or, lt, desc, notInArray, sql } from "drizzle-orm";
+import { eq, inArray, and, isNotNull, isNull, or, lt, desc, notInArray } from "drizzle-orm";
 import { FINISHED_STATUSES, EXCLUDED_SCAN_TYPES } from "@/lib/ticket-status";
 import { jiraClient, JiraApiError, extractSprint } from "@/lib/jira-client";
 import { upsertIssue, cacheSprintName } from "@/lib/upsert-issue";
@@ -26,10 +26,7 @@ import { createNotification } from "@/lib/notifications";
 import { refreshSprintMetadata } from "@/lib/refresh-sprint-metadata";
 import { dequeue, markChecked, remove as removeFromQueue, stats as queueStats } from "@/lib/revalidation-queue";
 import { logActivity } from "@/lib/activity-logger";
-import {
-  scoreStaleness, isPoMetadataEmpty, STALENESS_CANDIDATE_THRESHOLD,
-  effectiveLastActivity,
-} from "@/lib/deprecation-staleness";
+import { scoreRows } from "@/lib/deprecation-staleness-runner";
 import { selectScanBatch } from "@/lib/deprecation-scan-batch";
 import {
   claimPendingBatch, markDone, markError, requeueStuckRunning, enqueueDeepScan,
@@ -401,100 +398,9 @@ export async function runDeprecationStalenessScan(): Promise<TaskResult> {
   const now = Date.now();
   const scannedAt = new Date(now).toISOString();
 
-  // Gather the latest comment timestamp per ticket in one bulk query.
-  // WHY a separate query rather than a join: a LEFT JOIN with a GROUP BY on the
-  // full backlog scan would be more expensive; we only need comment data for the
-  // current small batch (up to 25 tickets), so restricting to the batch keys
-  // keeps the query cheap and the result easy to index.
-  const batchKeys = batch.map((r) => r.jiraKey);
-  const commentRows = await db
-    .select({
-      ticketKey: jiraComment.ticketKey,
-      latestComment: sql<string | null>`max(${jiraComment.createdAt})`.as("latest_comment"),
-    })
-    .from(jiraComment)
-    .where(inArray(jiraComment.ticketKey, batchKeys))
-    .groupBy(jiraComment.ticketKey)
-    .all();
-  const lastCommentByKey = new Map(commentRows.map((r) => [r.ticketKey, r.latestComment]));
-
-  // Gather effective last-activity for each linked epic in one bulk query.
-  // WHY include the epic's own comments: an epic ticket can accumulate comments
-  // from planning/review without changing jiraUpdatedAt, so comments are a
-  // meaningful activity signal for the parent too.
-  const epicKeys = [...new Set(batch.map((r) => r.epicKey).filter(Boolean))] as string[];
-  const epicActivityByKey = new Map<string, string | null>();
-  if (epicKeys.length > 0) {
-    // Step 1: get each epic's own jiraUpdatedAt.
-    const epicTicketRows = await db
-      .select({ jiraKey: ticket.jiraKey, jiraUpdatedAt: ticket.jiraUpdatedAt })
-      .from(ticket)
-      .where(inArray(ticket.jiraKey, epicKeys))
-      .all();
-
-    // Step 2: get each epic's latest comment timestamp.
-    const epicCommentRows = await db
-      .select({
-        ticketKey: jiraComment.ticketKey,
-        latestComment: sql<string | null>`max(${jiraComment.createdAt})`.as("latest_comment"),
-      })
-      .from(jiraComment)
-      .where(inArray(jiraComment.ticketKey, epicKeys))
-      .groupBy(jiraComment.ticketKey)
-      .all();
-    const epicLatestComment = new Map(epicCommentRows.map((r) => [r.ticketKey, r.latestComment]));
-
-    // Combine: effective epic activity = max(jiraUpdatedAt, latestComment).
-    for (const epicRow of epicTicketRows) {
-      const combined = effectiveLastActivity(
-        epicRow.jiraUpdatedAt,
-        epicLatestComment.get(epicRow.jiraKey) ?? null,
-      );
-      epicActivityByKey.set(epicRow.jiraKey, combined);
-    }
-  }
-
-  let candidates = 0;
-  for (const row of batch) {
-    const result = scoreStaleness(
-      {
-        jiraUpdatedAt: row.jiraUpdatedAt,
-        sprintName: row.sprintName,
-        status: row.status,
-        hasPoMetadata: !isPoMetadataEmpty(row),
-        lastCommentAt: lastCommentByKey.get(row.jiraKey) ?? null,
-        epicLastActivityAt: row.epicKey ? (epicActivityByKey.get(row.epicKey) ?? null) : null,
-      },
-      now,
-    );
-
-    if (result.score >= STALENESS_CANDIDATE_THRESHOLD) candidates++;
-
-    // Preserve any future deep-dive topic scores; only overwrite staleness.
-    let scores: Record<string, unknown> = {};
-    if (row.scanScores) {
-      try {
-        const parsed = JSON.parse(row.scanScores);
-        if (parsed && typeof parsed === "object") scores = parsed;
-      } catch {
-        // Corrupt JSON is discarded; the scan recomputes from scratch.
-      }
-    }
-    scores.staleness = { score: result.score, rationale: result.rationale };
-
-    const fields = {
-      scanScores: JSON.stringify(scores),
-      scanOverall: result.score,
-      scanRationale: result.rationale,
-      lastScannedAt: scannedAt,
-    };
-
-    // The ticket may have no metadata row yet; upsert keyed on jiraKey.
-    await db
-      .insert(ticketMetadata)
-      .values({ jiraKey: row.jiraKey, ...fields })
-      .onConflictDoUpdate({ target: ticketMetadata.jiraKey, set: fields });
-  }
+  // Gather + score + persist via the shared runner so the scheduled pass and the
+  // on-demand quick-scan endpoint stay byte-for-byte identical (one implementation).
+  const { candidates } = await scoreRows(batch, scannedAt, now);
 
   await upsertSetting(STALENESS_SCAN_CURSOR_KEY, scannedAt);
 
