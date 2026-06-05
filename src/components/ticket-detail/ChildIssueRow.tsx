@@ -156,13 +156,16 @@ export function ChildIssueRow({
         </span>
       )}
 
-      {/* Bulk mode (or inline mode): dedicated checkbox gutter on every row, mirroring the
-          sprint board. Inline mode keeps it permanently in the content flow. */}
-      {showCheckbox && (someChecked || inlineCheckbox) && (
+      {/* Dedicated checkbox gutter on every row, mirroring the sprint board. Always reserves
+          space so content never shifts; the checkbox stays hidden until row hover unless a
+          selection is active or inline mode keeps it permanently visible. */}
+      {showCheckbox && (
         <span
           onPointerDown={(e) => e.stopPropagation()}
           onClick={(e) => { e.stopPropagation(); onCheckboxClick?.(e); }}
-          className="flex shrink-0 cursor-pointer items-center justify-center"
+          className={`flex shrink-0 cursor-pointer items-center justify-center transition-opacity duration-150 ${
+            isChecked || someChecked || inlineCheckbox ? "opacity-100" : "opacity-0 group-hover/row:opacity-100"
+          }`}
           role="checkbox"
           aria-checked={isChecked}
           aria-label={`Select ${item.key}`}
@@ -177,48 +180,30 @@ export function ChildIssueRow({
         </span>
       )}
 
-      {(hasPill || (showCheckbox && !someChecked)) && (
+      {hasPill && (
         <span className="relative flex shrink-0 items-center" onClick={(e) => e.stopPropagation()}>
-          {/* Default view: the hover checkbox takes the leading type icon's place (the icon fades
-              via dimTypeOnRowHover), so no extra gutter is reserved and content never shifts.
-              Skipped in inline mode, where the checkbox lives in the reserved gutter above. */}
-          {showCheckbox && !someChecked && !inlineCheckbox && (
-            <span
-              onPointerDown={(e) => e.stopPropagation()}
-              onClick={(e) => { e.stopPropagation(); onCheckboxClick?.(e); }}
-              className="absolute left-1 top-1/2 z-10 flex -translate-y-1/2 cursor-pointer items-center opacity-0 transition-opacity duration-150 group-hover/row:opacity-100"
-              role="checkbox"
-              aria-checked={isChecked}
-              aria-label={`Select ${item.key}`}
-            >
-              {checkboxBox}
-            </span>
-          )}
-          {hasPill && (
-            <TicketStatusPill
-              ticketKey={item.key}
-              jiraStatus={item.jiraStatus}
-              issueType={showTypeIcon ? item.type : undefined}
-              showReadiness={showReadiness}
-              readiness={readiness}
-              onJiraStatusChange={onJiraStatusChange}
-              onReadinessChange={onReadinessChange}
-              onIssueTypeChange={onIssueTypeChange}
-              onAssigneeChange={onAssigneeChange}
-              onEpicChange={onEpicChange}
-              onSprintChange={onSprintChange}
-              onStoryPointsChange={onStoryPointsChange}
-              onBusinessValueChange={onBusinessValueChange}
-              sprints={sprints}
-              title={item.title}
-              variant="list"
-              size="lg"
-              showKey={showKey}
-              showStatus={showStatus}
-              dimTypeOnRowHover={showCheckbox && !someChecked && !inlineCheckbox}
-              hoverData={hoverData ?? getHoverData(item.key)}
-            />
-          )}
+          <TicketStatusPill
+            ticketKey={item.key}
+            jiraStatus={item.jiraStatus}
+            issueType={showTypeIcon ? item.type : undefined}
+            showReadiness={showReadiness}
+            readiness={readiness}
+            onJiraStatusChange={onJiraStatusChange}
+            onReadinessChange={onReadinessChange}
+            onIssueTypeChange={onIssueTypeChange}
+            onAssigneeChange={onAssigneeChange}
+            onEpicChange={onEpicChange}
+            onSprintChange={onSprintChange}
+            onStoryPointsChange={onStoryPointsChange}
+            onBusinessValueChange={onBusinessValueChange}
+            sprints={sprints}
+            title={item.title}
+            variant="list"
+            size="lg"
+            showKey={showKey}
+            showStatus={showStatus}
+            hoverData={hoverData ?? getHoverData(item.key)}
+          />
         </span>
       )}
 

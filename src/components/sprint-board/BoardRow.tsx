@@ -251,32 +251,20 @@ export const BoardRow = memo(forwardRef<HTMLTableRowElement, BoardRowBaseProps>(
             </span>
           )}
 
-          {/* Bulk mode: dedicated checkbox gutter on every row. */}
-          {someChecked && (
-            <div
-              className="flex w-5 shrink-0 cursor-pointer items-center justify-center"
-              onPointerDown={(e) => e.stopPropagation()}
-              onClick={(e) => { e.stopPropagation(); onCheckboxClick(ticket.key, ticketIdx, e.shiftKey); }}
-            >
-              {checkbox}
-            </div>
-          )}
+          {/* Dedicated checkbox gutter on every row: always reserves space so content never
+              shifts. The checkbox itself stays hidden until row hover (or when a selection is
+              active) - see the `checkbox` definition above. */}
+          <div
+            className="flex w-5 shrink-0 cursor-pointer items-center justify-center"
+            onPointerDown={(e) => e.stopPropagation()}
+            onClick={(e) => { e.stopPropagation(); onCheckboxClick(ticket.key, ticketIdx, e.shiftKey); }}
+          >
+            {checkbox}
+          </div>
 
-          {/* Pill block: the hover checkbox sits over the issue-type icon (which fades on row hover),
-              so no extra gutter is reserved and content never shifts. */}
           <div className="relative flex shrink-0 items-center gap-1.5" style={{ fontVariantNumeric: "tabular-nums" }}>
-            {!someChecked && (
-              <span
-                className="absolute left-1 top-1/2 z-10 flex -translate-y-1/2 cursor-pointer items-center"
-                onPointerDown={(e) => e.stopPropagation()}
-                onClick={(e) => { e.stopPropagation(); onCheckboxClick(ticket.key, ticketIdx, e.shiftKey); }}
-              >
-                {checkbox}
-              </span>
-            )}
             <span onPointerDown={(e) => e.stopPropagation()} onClick={(e) => e.stopPropagation()}>
               <TicketStatusPill
-                dimTypeOnRowHover={!someChecked}
                 ticketKey={ticket.key}
                 jiraStatus={ticket.jiraStatus}
                 title={ticket.title}

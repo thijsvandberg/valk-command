@@ -222,27 +222,12 @@ export const TicketRow = memo(forwardRef<HTMLTableRowElement, TicketRowBaseProps
       case "key":
         return (
           <td key={id} className="relative py-2 pr-3" style={{ fontVariantNumeric: "tabular-nums" }}>
-            {/* Default view: the hover checkbox takes the leading issue-type icon's place (the icon fades
-                via dimTypeOnRowHover), so no extra gutter is reserved and content never shifts. */}
-            {!someChecked && (
-              <span
-                className="absolute left-1 top-1/2 z-10 flex -translate-y-1/2 cursor-pointer items-center"
-                onPointerDown={(e) => e.stopPropagation()}
-                onClick={(e) => {
-                  e.stopPropagation();
-                  onCheckboxClick(ticket.key, ticketIdx, e.shiftKey);
-                }}
-              >
-                {checkbox}
-              </span>
-            )}
             <span className="flex items-center gap-1.5">
               <span
                 onPointerDown={(e) => e.stopPropagation()}
                 onClick={(e) => e.stopPropagation()}
               >
                 <TicketStatusPill
-                  dimTypeOnRowHover={!someChecked}
                   ticketKey={ticket.key}
                   jiraStatus={ticket.jiraStatus}
                   title={ticket.title}
@@ -647,17 +632,17 @@ export const TicketRow = memo(forwardRef<HTMLTableRowElement, TicketRowBaseProps
       {...dragListeners}
       {...dragAttributes}
     >
-      {/* Leading cell. Bulk mode shows a dedicated checkbox gutter on every row; the default view keeps
-          only a small breathing gap (the hover checkbox lives in the `type` cell, over the icon). */}
+      {/* Leading cell: dedicated checkbox gutter on every row. Always reserves space so content never
+          shifts; the checkbox itself stays hidden until row hover (or when a selection is active). */}
       <td
-        className={`cursor-pointer select-none py-2 ${someChecked ? "pl-1 pr-1" : "p-0"}`}
+        className="cursor-pointer select-none py-2 pl-1 pr-1"
         onPointerDown={(e) => e.stopPropagation()}
         onClick={(e) => {
           e.stopPropagation();
           onCheckboxClick(ticket.key, ticketIdx, e.shiftKey);
         }}
       >
-        {someChecked && <div className="flex items-center justify-center">{checkbox}</div>}
+        <div className="flex items-center justify-center">{checkbox}</div>
       </td>
 
       {effectiveOrder.map(renderCell)}

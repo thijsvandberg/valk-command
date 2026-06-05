@@ -796,9 +796,6 @@ export interface TicketStatusPillProps {
   /** Hover card editing is on by default (BRDG-276). Set false for a read-only card.
    *  Always forced off for `removedFromJira` tickets. */
   hoverCardEditable?: boolean;
-  /** Fade the leading issue-type icon while the enclosing `group/row` is hovered, so a row-level
-   *  checkbox can take its place (list variant only). */
-  dimTypeOnRowHover?: boolean;
 }
 
 export function TicketStatusPill({
@@ -828,7 +825,6 @@ export function TicketStatusPill({
   onToggleFollow,
   onRunReview,
   hoverCardEditable = true,
-  dimTypeOnRowHover,
 }: TicketStatusPillProps) {
   const [issueTypeDropdownOpen, setIssueTypeDropdownOpen] = useState(false);
   const [keyDropdownOpen, setKeyDropdownOpen] = useState(false);
@@ -967,7 +963,7 @@ export function TicketStatusPill({
 
       {/* Issue type */}
       {issueType && (
-        <div className={`relative flex shrink-0 ${dimTypeOnRowHover ? "transition-opacity duration-150 group-hover/row:opacity-0" : ""}`}>
+        <div className="relative flex shrink-0">
           <Tooltip content={issueTypeTip}>
             <button
               ref={issueTypeBtnRef}

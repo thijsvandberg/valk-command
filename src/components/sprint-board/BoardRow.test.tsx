@@ -1,4 +1,4 @@
-import { render, screen } from "@testing-library/react";
+import { render, screen, fireEvent } from "@testing-library/react";
 import { describe, it, expect, vi } from "vitest";
 import { BoardRow, type BoardRowBaseProps } from "./BoardRow";
 import type { Ticket } from "@/types/ticket";
@@ -212,6 +212,31 @@ describe("BoardRow (headerless, BRDG-239)", () => {
   it("hides the drag affordance during multiselect", () => {
     renderRow({ dragListeners: {} as never, someChecked: true });
     expect(screen.queryByTestId("icon-grip")).toBeNull();
+  });
+
+  it("reserves the checkbox gutter and keeps the box hidden until hover by default", () => {
+    const { container } = renderRow();
+    // Gutter is always present so content never shifts when the box fades in.
+    const gutter = container.querySelector("div.w-5");
+    expect(gutter).toBeInTheDocument();
+    // The box itself is hidden until the row is hovered.
+    const box = gutter!.querySelector("span");
+    expect(box?.className).toContain("opacity-0");
+    expect(box?.className).toContain("group-hover/row:opacity-100");
+  });
+
+  it("keeps the checkbox visible (no hover needed) while a selection is active", () => {
+    const { container } = renderRow({ someChecked: true });
+    const box = container.querySelector("div.w-5 span");
+    expect(box?.className).toContain("opacity-100");
+    expect(box?.className).not.toContain("opacity-0");
+  });
+
+  it("fires onCheckboxClick from the gutter in default (non-bulk) mode", () => {
+    const onCheckboxClick = vi.fn();
+    const { container } = renderRow({ onCheckboxClick });
+    fireEvent.click(container.querySelector("div.w-5")!);
+    expect(onCheckboxClick).toHaveBeenCalledWith("VPL-1", 0, false);
   });
 
   it("does not render a follow star, pipeline or deploy badge inline", () => {
