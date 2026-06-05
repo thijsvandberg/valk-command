@@ -5,6 +5,7 @@ import { useUser } from "@clerk/nextjs";
 import type { TicketDetail } from "@/types/ticket";
 import { Trash2, Flag, Send, Check, User } from "lucide-react";
 import { SectionHeader } from "@/components/shared/SectionHeader";
+import { SECTION_KEYS } from "@/lib/section-collapse-store";
 import { Button } from "@/components/ui/Button";
 import { tickets } from "@/lib/api-client";
 import { renderMarkdown } from "./renderMarkdown";
@@ -76,7 +77,7 @@ export function CommentsSection({
     <div className="mt-8 space-y-8">
       {/* PO Comments */}
       <div>
-        <SectionHeader title="PO Comments" count={poComments.length} />
+        <SectionHeader title="PO Comments" count={poComments.length} sectionKey={SECTION_KEYS.poComments}>
         <div className="mt-3 space-y-3">
           {/* Add comment */}
           <div className="flex gap-3">
@@ -143,6 +144,7 @@ export function CommentsSection({
             <p className="pl-10 text-body-sm text-text-muted">No comments yet</p>
           )}
         </div>
+        </SectionHeader>
       </div>
 
       {/* Jira Comments */}
@@ -195,7 +197,7 @@ function JiraCommentsSection({
 
   return (
     <div>
-      <SectionHeader title="Jira Comments" count={jiraComments.length} />
+      <SectionHeader title="Jira Comments" count={jiraComments.length} sectionKey={SECTION_KEYS.jiraComments}>
       <div className="mt-3 space-y-4">
         {[...jiraComments].reverse().map((comment) => {
           const isFlagComment = /flag_on|Flag added|flag_off|Flag removed/i.test(comment.content);
@@ -304,6 +306,7 @@ function JiraCommentsSection({
           <p className="pl-10 text-body-sm text-text-muted">No Jira comments</p>
         )}
       </div>
+      </SectionHeader>
     </div>
   );
 }

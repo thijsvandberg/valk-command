@@ -27,6 +27,8 @@ interface ChildIssueListHeaderProps {
   onViewModeChange?: (mode: ChildIssueViewMode) => void;
   /** Extra action buttons (e.g. AI suggest button) rendered before the filter button */
   extraActions?: React.ReactNode;
+  /** When set, the heading becomes collapsible with shared cross-surface state. */
+  sectionKey?: string;
 }
 
 const VIEW_MODES: { mode: ChildIssueViewMode; label: string; Icon: typeof LayoutList }[] = [
@@ -51,6 +53,7 @@ export function ChildIssueListHeader({
   viewMode,
   onViewModeChange,
   extraActions,
+  sectionKey,
 }: ChildIssueListHeaderProps) {
   const [popoverOpen, setPopoverOpen] = useState(false);
 
@@ -123,6 +126,7 @@ export function ChildIssueListHeader({
       count={!isFiltered ? totalCount : undefined}
       countLabel={isFiltered && totalCount > 0 ? `${filteredCount} of ${totalCount}` : undefined}
       actions={<>{extraActions}{viewToggle}{filterButton}</>}
+      sectionKey={sectionKey}
     />
   );
 }

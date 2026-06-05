@@ -6,6 +6,7 @@ import type { TicketDetail, LinkedIssue } from "@/types/ticket";
 import { Avatar } from "@/components/shared/Avatar";
 import { ChildIssueRow } from "./ChildIssueRow";
 import { SectionHeader } from "@/components/shared/SectionHeader";
+import { SECTION_KEYS } from "@/lib/section-collapse-store";
 import { LinkIssueDialog } from "./LinkIssueDialog";
 import { useLinkTypes } from "@/hooks/useLinkTypes";
 import { useLinkIssueSearch } from "@/hooks/useLinkIssueSearch";
@@ -381,7 +382,8 @@ export function LinkedIssuesSection({ issues, ticketKey, onMutate }: LinkedIssue
         title="Linked Issues"
         count={allIssues.length}
         actions={suggestButton}
-      />
+        sectionKey={SECTION_KEYS.linkedIssues}
+      >
 
       {allIssues.length > 0 && (
         <div className="mt-3 space-y-4">
@@ -643,6 +645,7 @@ export function LinkedIssuesSection({ issues, ticketKey, onMutate }: LinkedIssue
         initialQuery={linkDialogDefaults.initialQuery}
         defaultRelation={linkDialogDefaults.relation}
       />
+      </SectionHeader>
     </div>
   );
 }

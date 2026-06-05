@@ -21,6 +21,8 @@ import { BulkActionBar } from "@/components/sprint-board/BulkActionBar";
 import { CursorMenu, TicketActionMenuContent } from "@/components/sprint-board/ticket-action-menu";
 import { AddToRefinementModal } from "@/components/refinement-session/AddToRefinementModal";
 import { useSectionVisibility } from "@/hooks/useSectionVisibility";
+import { useSectionCollapsed } from "@/hooks/useSectionCollapsed";
+import { SECTION_KEYS } from "@/lib/section-collapse-store";
 import { useLocalStorage } from "@/hooks/useLocalStorage";
 import { useJiraSprints, useSprintSlots } from "@/hooks/useSprintBoard";
 import { mapJiraSprints, bulkReviewStories, bulkGenerateSubtasks } from "@/components/sprint-board/sprint-board-utils";
@@ -106,6 +108,8 @@ export function EpicChildrenSection({
   const searchContainerRef = useRef<HTMLDivElement>(null);
 
   const { visible: visibleFields, toggleField } = useSectionVisibility("epic-children", DEFAULT_VISIBLE);
+  const { isCollapsed } = useSectionCollapsed();
+  const collapsed = isCollapsed(SECTION_KEYS.epicChildren);
   const [viewMode, setViewMode] = useLocalStorage<ChildIssueViewMode>("epic-children-view", "list");
   const [hideDeprecated, setHideDeprecated] = useLocalStorage<boolean>("epic-children-hide-deprecated", true);
   const { toast, toastLoading, showToast, dismissToast } = useToast();
@@ -886,6 +890,7 @@ export function EpicChildrenSection({
         deprecatedCount={deprecatedCount}
         viewMode={viewMode}
         onViewModeChange={setViewMode}
+        sectionKey={SECTION_KEYS.epicChildren}
       />
 
       {error && (
@@ -902,6 +907,8 @@ export function EpicChildrenSection({
         </div>
       )}
 
+      {!collapsed && (
+      <>
       {filtered.length > 0 ? (
         content
       ) : mergedItems.length > 0 ? (
@@ -960,6 +967,8 @@ export function EpicChildrenSection({
             close={() => setRowMenu(null)}
           />
         </CursorMenu>
+      )}
+      </>
       )}
 
       <AddToRefinementModal

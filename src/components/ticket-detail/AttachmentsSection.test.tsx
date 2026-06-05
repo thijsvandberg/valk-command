@@ -1,12 +1,23 @@
-import { render, screen } from "@testing-library/react";
+import { render, screen, fireEvent } from "@testing-library/react";
 import { describe, it, expect, vi } from "vitest";
 import { AttachmentsSection } from "./AttachmentsSection";
 import type { Attachment } from "@/types/ticket";
 
 vi.mock("@/components/shared/SectionHeader", () => ({
-  SectionHeader: ({ title, count }: { title: string; count?: number }) => (
+  SectionHeader: ({
+    title,
+    count,
+    children,
+  }: {
+    title: string;
+    count?: number;
+    children?: React.ReactNode;
+  }) => (
     <div data-testid="section-header">
-      {title}{count !== undefined ? ` (${count})` : ""}
+      <div>
+        {title}{count !== undefined ? ` (${count})` : ""}
+      </div>
+      {children}
     </div>
   ),
 }));
@@ -101,5 +112,41 @@ describe("AttachmentsSection", () => {
     // The date is formatted via toLocaleDateString, just check "Cleaned" prefix exists
     const texts = screen.getAllByText(/Cleaned/);
     expect(texts.length).toBeGreaterThan(0);
+  });
+
+  it("does not show a toggle when at or below the collapse threshold", () => {
+    const attachments = Array.from({ length: 3 }, (_, i) =>
+      makeAttachment({ id: `${i}`, filename: `file-${i}.png` }),
+    );
+    render(<AttachmentsSection attachments={attachments} />);
+    expect(screen.queryByText(/Show all/)).not.toBeInTheDocument();
+    expect(screen.getByText("file-2.png")).toBeInTheDocument();
+  });
+
+  it("collapses to the first three attachments with a 'Show all' toggle", () => {
+    const attachments = Array.from({ length: 21 }, (_, i) =>
+      makeAttachment({ id: `${i}`, filename: `file-${i}.png` }),
+    );
+    render(<AttachmentsSection attachments={attachments} />);
+
+    // First three visible, the rest hidden behind the toggle
+    expect(screen.getByText("file-2.png")).toBeInTheDocument();
+    expect(screen.queryByText("file-3.png")).not.toBeInTheDocument();
+    expect(screen.getByText("Show all 21 (18 more)")).toBeInTheDocument();
+  });
+
+  it("expands and collapses on toggle", () => {
+    const attachments = Array.from({ length: 21 }, (_, i) =>
+      makeAttachment({ id: `${i}`, filename: `file-${i}.png` }),
+    );
+    render(<AttachmentsSection attachments={attachments} />);
+
+    fireEvent.click(screen.getByText("Show all 21 (18 more)"));
+    expect(screen.getByText("file-20.png")).toBeInTheDocument();
+    expect(screen.getByText("Show less")).toBeInTheDocument();
+
+    fireEvent.click(screen.getByText("Show less"));
+    expect(screen.queryByText("file-20.png")).not.toBeInTheDocument();
+    expect(screen.getByText("Show all 21 (18 more)")).toBeInTheDocument();
   });
 });

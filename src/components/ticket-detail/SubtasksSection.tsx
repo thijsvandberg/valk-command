@@ -7,6 +7,8 @@ import { ChildIssueRow } from "./ChildIssueRow";
 import { ChildIssueListHeader } from "./ChildIssueListHeader";
 import { FieldFilterPopover, type StatusFilter } from "./FieldFilterPopover";
 import { useSectionVisibility } from "@/hooks/useSectionVisibility";
+import { useSectionCollapsed } from "@/hooks/useSectionCollapsed";
+import { SECTION_KEYS } from "@/lib/section-collapse-store";
 import { useLocalStorage } from "@/hooks/useLocalStorage";
 import { tickets } from "@/lib/api-client";
 import { ApiError } from "@/lib/api-client";
@@ -216,6 +218,10 @@ export function SubtasksSection({
   const handleSuggestRef = useRef<(isRetry?: boolean) => void>(() => {});
   const defaultVisible = defaultHideKeys ? ["issueType", "status"] : ["issueType", "issueKey", "status"];
   const { visible: visibleFields, toggleField } = useSectionVisibility("subtasks", defaultVisible);
+  const { isCollapsed } = useSectionCollapsed();
+  // Collapse only applies when this section renders its own heading; embedded
+  // (hideHeader) usages have no toggle and always show their body.
+  const collapsed = !hideHeader && isCollapsed(SECTION_KEYS.subtasks);
 
   // Load persisted suggestions on mount
   useEffect(() => {
@@ -772,6 +778,7 @@ export function SubtasksSection({
           onToggleHideDeprecated={setHideDeprecated}
           deprecatedCount={deprecatedCount}
           extraActions={suggestButton}
+          sectionKey={SECTION_KEYS.subtasks}
         />
       )}
 
@@ -796,6 +803,8 @@ export function SubtasksSection({
         </div>
       )}
 
+      {!collapsed && (
+      <>
       {filtered.length > 0 && isDndEnabled ? (
         <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
           <SortableContext items={filtered.map((s) => s.key)} strategy={verticalListSortingStrategy}>
@@ -844,6 +853,8 @@ export function SubtasksSection({
           onDismiss={handleDismissSuggestion}
           onRegenerate={() => handleSuggest()}
         />
+      )}
+      </>
       )}
     </div>
   );

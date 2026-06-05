@@ -30,9 +30,10 @@ vi.mock("@/hooks/usePrismLanguages", () => ({
 }));
 
 vi.mock("@/components/shared/SectionHeader", () => ({
-  SectionHeader: ({ title, count }: { title: string; count?: number }) => (
+  SectionHeader: ({ title, count, children }: { title: string; count?: number; children?: React.ReactNode }) => (
     <div data-testid={`section-header-${title.replace(/\s+/g, "-").toLowerCase()}`}>
       {title}{count !== undefined ? ` (${count})` : ""}
+      {children}
     </div>
   ),
 }));

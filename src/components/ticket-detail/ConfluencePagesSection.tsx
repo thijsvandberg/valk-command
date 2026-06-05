@@ -19,6 +19,8 @@ import {
 } from "lucide-react";
 import { useTicketConfluenceLinks } from "@/hooks/useSprintBoard";
 import { SectionHeader } from "@/components/shared/SectionHeader";
+import { SECTION_KEYS } from "@/lib/section-collapse-store";
+import { useSectionCollapsed } from "@/hooks/useSectionCollapsed";
 import useSWR from "swr";
 import type { ConfluenceSearchResult } from "@/lib/confluence-client";
 import { swrFetcher, tickets } from "@/lib/api-client";
@@ -273,6 +275,7 @@ export function ConfluencePagesSection({
   hideWhenEmpty?: boolean;
 }) {
   const { data, mutate } = useTicketConfluenceLinks(ticketKey);
+  const { isCollapsed } = useSectionCollapsed();
   const [showSearch, setShowSearch] = useState(false);
   const [expandedPageId, setExpandedPageId] = useState<string | null>(null);
   const [compactExpanded, setCompactExpanded] = useState(false);
@@ -326,7 +329,7 @@ export function ConfluencePagesSection({
 
   if (hideWhenEmpty && links.length === 0) return null;
 
-  const compactBody = variant === "compact" ? compactExpanded : true;
+  const compactBody = variant === "compact" ? compactExpanded : !isCollapsed(SECTION_KEYS.confluence);
 
   return (
     <div className={variant === "compact" ? "" : "mt-8"}>
@@ -351,7 +354,7 @@ export function ConfluencePagesSection({
           />
         </button>
       ) : (
-        <SectionHeader title="Confluence" count={links.length} />
+        <SectionHeader title="Confluence" count={links.length} sectionKey={SECTION_KEYS.confluence} />
       )}
 
       {compactBody && (

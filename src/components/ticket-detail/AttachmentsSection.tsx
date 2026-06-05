@@ -1,25 +1,38 @@
 "use client";
 
+import { useState } from "react";
 import type { Attachment } from "@/types/ticket";
-import { File, FileMinus } from "lucide-react";
+import { File, FileMinus, ChevronDown, ChevronUp } from "lucide-react";
 import { SectionHeader } from "@/components/shared/SectionHeader";
+import { SECTION_KEYS } from "@/lib/section-collapse-store";
 import { ImageLightbox } from "@/components/shared/ImageLightbox";
 
+// Collapse long attachment lists to the first row of the 3-column grid;
+// reviewing a ticket shouldn't mean scrolling past 20+ thumbnails.
+const COLLAPSED_COUNT = 3;
+
 export function AttachmentsSection({ attachments }: { attachments: Attachment[] }) {
+  const [expanded, setExpanded] = useState(false);
+
   if (attachments.length === 0) {
     return (
       <div className="mt-8">
-        <SectionHeader title="Attachments" />
-        <p className="mt-3 text-body-lg text-text-muted">No attachments</p>
+        <SectionHeader title="Attachments" sectionKey={SECTION_KEYS.attachments}>
+          <p className="mt-3 text-body-lg text-text-muted">No attachments</p>
+        </SectionHeader>
       </div>
     );
   }
 
+  const isCollapsible = attachments.length > COLLAPSED_COUNT;
+  const visible = isCollapsible && !expanded ? attachments.slice(0, COLLAPSED_COUNT) : attachments;
+  const hiddenCount = attachments.length - COLLAPSED_COUNT;
+
   return (
     <div className="mt-8">
-      <SectionHeader title="Attachments" count={attachments.length} />
+      <SectionHeader title="Attachments" count={attachments.length} sectionKey={SECTION_KEYS.attachments}>
       <div className="mt-3 grid grid-cols-3 gap-3">
-        {attachments.map((att) => (
+        {visible.map((att) => (
           <div
             key={att.id}
             className={`group relative overflow-hidden rounded-lg border ${
@@ -73,6 +86,27 @@ export function AttachmentsSection({ attachments }: { attachments: Attachment[] 
           </div>
         ))}
       </div>
+      {isCollapsible && (
+        <button
+          type="button"
+          onClick={() => setExpanded((v) => !v)}
+          className="mt-3 flex cursor-pointer items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-body-sm font-medium text-text-muted hover:bg-overlay-subtle hover:text-text-secondary focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)]"
+          style={{ transition: "background-color 0.15s ease, color 0.15s ease" }}
+        >
+          {expanded ? (
+            <>
+              <ChevronUp size={14} strokeWidth={1.5} />
+              Show less
+            </>
+          ) : (
+            <>
+              <ChevronDown size={14} strokeWidth={1.5} />
+              Show all {attachments.length} ({hiddenCount} more)
+            </>
+          )}
+        </button>
+      )}
+      </SectionHeader>
     </div>
   );
 }
