@@ -468,7 +468,10 @@ export default function SprintBoard() {
       : onlyStatus ? (STATUS_TO_CRIT[onlyStatus] ?? null) : null;
     return (
       <GroupStatBar
-        tickets={tickets}
+        // Use the unfiltered sprint set so the status breakdown always shows every
+        // pill — otherwise filtering down to one status hides the others and you
+        // can no longer click to toggle the filter back off.
+        tickets={allTickets}
         label={label}
         labelWidthClass=""
         isActive={!isBacklog && activeSprint?.state === "active"}
@@ -500,7 +503,7 @@ export default function SprintBoard() {
           : {})}
       />
     );
-  }, [isAllView, f.activeViewId, f.statusFilter, f.gapsFilter, f.setStatusFilter, f.setGapsFilter, groups.length, activeSprintId, activeSprint, tickets, slotSprintsSet, handleAddSlotWithSprint, handleEditSprintFromGroup, handleCloseSprintFromGroup, handleSyncGroup]);
+  }, [isAllView, f.activeViewId, f.statusFilter, f.gapsFilter, f.setStatusFilter, f.setGapsFilter, groups.length, activeSprintId, activeSprint, allTickets, slotSprintsSet, handleAddSlotWithSprint, handleEditSprintFromGroup, handleCloseSprintFromGroup, handleSyncGroup]);
 
   useEffect(() => {
     if (slotsInitialized.current || !sprintsData) return; slotsInitialized.current = true;
