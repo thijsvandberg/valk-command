@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef, useCallback, useMemo } from "react";
+import { useState, useRef, useCallback, useMemo, type ReactNode } from "react";
 import type { Ticket, POStatus, TicketReadiness, IssueType, JiraStatus, Sprint } from "@/types/ticket";
 import type { AssignableUser } from "@/components/shared/AssigneePicker";
 import type { EpicOption } from "@/components/shared/EpicPicker";
@@ -122,13 +122,13 @@ export function TicketTable({
   groups,
   collapsedGroups,
   onToggleCollapse,
-  groupsCollapsible = true,
   groupBy,
   pinnedSprintIds,
   onPinSprint,
   onEditSprint,
   onCloseSprint,
   onSyncGroup,
+  flatHeader,
   scrollContainerRef,
   refinementSessionMap,
   onRemoveFromRefinement,
@@ -188,10 +188,10 @@ export function TicketTable({
   groups?: TicketGroup[];
   collapsedGroups?: Set<string>;
   onToggleCollapse?: (groupKey: string) => void;
-  // When false, group cards render without a collapse chevron and stay expanded
-  // (used for the single-sprint view, which has only one group). Defaults to true.
-  groupsCollapsible?: boolean;
   groupBy?: GroupByOption;
+  // Rendered at the top of the flat (ungrouped) card — the single-sprint/backlog
+  // stat header (BRDG card header). Only shown when not grouped.
+  flatHeader?: ReactNode;
   // When grouping by sprint, pin a sprint group to the tab bar. Key is the sprint id.
   pinnedSprintIds?: Set<string>;
   onPinSprint?: (sprintId: string) => void;
@@ -473,7 +473,7 @@ export function TicketTable({
     // flex gap, so consecutive sprints read as distinct sections (BRDG-239).
     <div className="flex flex-col gap-3">
       {groups.map((group) => {
-        const isCollapsed = groupsCollapsible ? (collapsedGroups?.has(group.key) ?? false) : false;
+        const isCollapsed = collapsedGroups?.has(group.key) ?? false;
         const isSprintGroup = groupBy === "sprint" && group.key !== "__backlog__";
         const isBacklogGroup = groupBy === "sprint" && group.key === "__backlog__";
         const groupSprint = isSprintGroup ? sprints?.find((s) => s.id === group.key) : undefined;
@@ -576,7 +576,7 @@ export function TicketTable({
           <GroupCard
             key={group.key}
             isCollapsed={isCollapsed}
-            onToggleCollapse={groupsCollapsible ? () => onToggleCollapse?.(group.key) : undefined}
+            onToggleCollapse={() => onToggleCollapse?.(group.key)}
             header={
               <GroupStatBar
                 tickets={group.tickets}
@@ -596,9 +596,8 @@ export function TicketTable({
                     toggleGroupFilter(criterion);
                   }
                 }}
-                {...(groupsCollapsible
-                  ? { isCollapsed, onToggleCollapse: () => onToggleCollapse?.(group.key) }
-                  : {})}
+                isCollapsed={isCollapsed}
+                onToggleCollapse={() => onToggleCollapse?.(group.key)}
                 {...(isSprintGroup && onPinSprint
                   ? {
                       onPin: () => onPinSprint(group.key),
@@ -647,8 +646,13 @@ export function TicketTable({
       tabIndex={0}
       onKeyDown={onTableKeyDown}
     >
-      {isGrouped ? groupedTable : ((tickets.length > 0 || (flatCreateTarget && onCreateTicket)) && (
+      {isGrouped ? groupedTable : ((flatHeader || tickets.length > 0 || (flatCreateTarget && onCreateTicket)) && (
         <div className={CARD_CLASS}>
+          {flatHeader && (
+            <div className="@container relative flex items-center gap-3 bg-[var(--color-surface-chrome)]/30 px-3 py-[9px] rounded-t-xl border-b border-border-subtle">
+              <div className="min-w-0 flex-1">{flatHeader}</div>
+            </div>
+          )}
           {tickets.length > 0 && (enableVirtualization ? virtualizedTable : ((externalDnd || onReorder) ? dndTable : plainTable))}
           {flatCreateTarget && onCreateTicket && (
             <ChildIssueComposer

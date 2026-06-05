@@ -1,6 +1,8 @@
 "use client";
 
-import { useState, useRef, useEffect, useCallback, useMemo } from "react";
+import { useState, useRef, useEffect, useCallback, useMemo, type ReactNode } from "react";
+import { Inbox } from "lucide-react";
+import { GroupStatBar, type StatCriterion } from "@/components/sprint-board/GroupStatBar";
 import { useSearchParams, useRouter, usePathname } from "next/navigation";
 import type { Sprint, Ticket, IssueType } from "@/types/ticket";
 import { SprintSlots } from "@/components/sprint-board/SprintSlots";
@@ -26,7 +28,7 @@ import { getJiraUrl } from "@/components/sprint-board/TicketTableCells";
 import { apiFetch, jira, tickets as ticketsApi, refinementSessions as refinementSessionsApi } from "@/lib/api-client";
 import { syncGroupInTranches, type GroupSyncTarget, type GroupSyncProgress } from "@/lib/group-sync";
 import { useSprintBoardFilters } from "@/components/sprint-board/useSprintBoardFilters";
-import { useGroupBy, type TicketGroup } from "@/components/sprint-board/useGroupBy";
+import { useGroupBy } from "@/components/sprint-board/useGroupBy";
 import { useSprintBoardDragDrop } from "@/components/sprint-board/useSprintBoardDragDrop";
 import { useSprintBoardShortcuts } from "@/components/sprint-board/useSprintBoardShortcuts";
 import { useTicketActions } from "@/components/sprint-board/useTicketActions";
@@ -212,18 +214,6 @@ export default function SprintBoard() {
     if (activeSprint && activeSprint.state !== "closed") return { sprintId: activeSprintId };
     return undefined;
   }, [isAllView, activeSprintId, f.activeViewId, activeSprint]);
-
-  // The single-sprint view (not All, not a saved view, not already grouped) gets the
-  // same group-card header as the grouped All view: its one sprint (or the backlog)
-  // becomes a single, non-collapsible group so create/pin/sync/menu live in the header.
-  const singleSprintGroup = useMemo((): TicketGroup | null => {
-    if (isAllView || f.activeViewId || groups.length > 0) return null;
-    if (activeSprintId === "__backlog__") return { key: "__backlog__", label: "Backlog", tickets, sortOrder: 0 };
-    if (activeSprint) return { key: activeSprint.id, label: activeSprint.name, tickets, sortOrder: 0 };
-    return null;
-  }, [isAllView, f.activeViewId, groups.length, activeSprintId, activeSprint, tickets]);
-  const effectiveGroups = singleSprintGroup ? [singleSprintGroup] : groups;
-  const effectiveGroupBy = singleSprintGroup ? "sprint" : groupBy;
 
   // Optimistically add the new ticket to the active list, then reconcile with the
   // created Jira key. Caches are patched client-side rather than via the POST route's
@@ -460,6 +450,58 @@ export default function SprintBoard() {
       throw err;
     }
   }, [mutateTickets, showToast]);
+
+  // Single-sprint / backlog view (not All, not a saved view, not already grouped):
+  // render the same stat header as the grouped view, but at the top of the FLAT card
+  // so the proven flat row rendering (clicks, dnd, virtualization) stays intact.
+  const singleSprintHeader = useMemo<ReactNode>(() => {
+    if (isAllView || f.activeViewId || groups.length > 0) return undefined;
+    const isBacklog = activeSprintId === "__backlog__";
+    if (!isBacklog && !activeSprint) return undefined;
+    const label = isBacklog ? "Backlog" : activeSprint!.name;
+    const key = isBacklog ? "__backlog__" : activeSprint!.id;
+    const CRIT_TO_STATUS: Record<string, string> = { todo: "TO DO", "in-progress": "IN PROGRESS", test: "TEST", done: "DONE" };
+    const STATUS_TO_CRIT: Record<string, StatCriterion> = { "TO DO": "todo", "IN PROGRESS": "in-progress", TEST: "test", DONE: "done" };
+    const onlyStatus = f.statusFilter.size === 1 ? [...f.statusFilter][0] : null;
+    const activeCriterion: StatCriterion | null = f.gapsFilter.has("no_points")
+      ? "unpointed"
+      : onlyStatus ? (STATUS_TO_CRIT[onlyStatus] ?? null) : null;
+    return (
+      <GroupStatBar
+        tickets={tickets}
+        label={label}
+        labelWidthClass=""
+        isActive={!isBacklog && activeSprint?.state === "active"}
+        leadingIcon={isBacklog ? <Inbox className="h-3.5 w-3.5" strokeWidth={1.5} /> : undefined}
+        activeCriterion={activeCriterion}
+        onFilterChange={(crit) => {
+          if (crit === null) { f.setStatusFilter(new Set()); return; }
+          if (crit === "unpointed") {
+            const g = new Set(f.gapsFilter);
+            if (g.has("no_points")) g.delete("no_points"); else g.add("no_points");
+            f.setGapsFilter(g);
+            return;
+          }
+          const status = CRIT_TO_STATUS[crit];
+          if (!status) return;
+          f.setStatusFilter(activeCriterion === crit ? new Set() : new Set([status]));
+        }}
+        {...(!isBacklog && activeSprint
+          ? {
+              onPin: () => handleAddSlotWithSprint(key),
+              isPinned: slotSprintsSet.has(key),
+              pinDisabled: slotSprintsSet.size >= 8,
+              sprint: activeSprint,
+              onEditSprintDetails: () => handleEditSprintFromGroup(key),
+              onCloseSprint: activeSprint.state === "active" ? () => handleCloseSprintFromGroup(key) : undefined,
+              onSync: (onProgress: (p: GroupSyncProgress) => void) => handleSyncGroup({ kind: "sprint", id: key, label }, onProgress),
+              syncKind: "sprint" as const,
+            }
+          : {})}
+      />
+    );
+  }, [isAllView, f.activeViewId, f.statusFilter, f.gapsFilter, f.setStatusFilter, f.setGapsFilter, groups.length, activeSprintId, activeSprint, tickets, slotSprintsSet, handleAddSlotWithSprint, handleEditSprintFromGroup, handleCloseSprintFromGroup, handleSyncGroup]);
+
   useEffect(() => {
     if (slotsInitialized.current || !sprintsData) return; slotsInitialized.current = true;
     const fallback = () => { const fb = sprints.find((s) => s.state === "active") ?? sprints[0]; if (fb) setSlotSprints([fb.id]); };
@@ -491,7 +533,7 @@ export default function SprintBoard() {
           // The list sits on a white surface; TicketTable renders the bordered card(s) itself —
           // one card when ungrouped, one per group when grouped (BRDG-239, BRDG-267).
           <div className="min-h-full bg-[var(--color-surface-elevated)] px-4 pb-4 pt-3">
-          <TicketTable tickets={tickets} checkedTickets={checkedTickets} selectedTicket={selectedTicket} focusedTicketIdx={focusedTicketIdx} someChecked={someChecked} allChecked={allChecked} visibleTags={f.visibleTags} hideEpic={hideEpicChip} showSprint={showSprintOnRow} sprintNameMap={sprintNameMap} poStatuses={poStatuses} readinessMap={readinessMap} inflightKeys={inflightKeys} onToggleCheck={toggleCheck} onRangeCheck={handleRangeCheck} onToggleAll={toggleAll} onSelectTicket={setSelectedTicket} onRowContextMenu={handleRowContextMenu} contextMenuKeys={rowMenu?.targets} onPoStatusChange={ta.handlePoStatusChange} onReadinessChange={ta.handleReadinessChange} onBusinessValueChange={ta.handleBusinessValueChange} onStoryPointsChange={ta.handleStoryPointsChange} onJiraStatusChange={ta.handleJiraStatusChange} onIssueTypeChange={ta.handleIssueTypeChange} onTitleChange={ta.handleTitleChange} onAssigneeChange={ta.handleAssigneeChange} onEpicChange={ta.handleEpicChange} onSprintChange={ta.handleSprintChange} sprints={sprints} onCloseSubtasks={ta.handleCloseSubtasks} onTableKeyDown={handleTableKeyDown} onRunReview={(key) => handleBulkReviewStory(new Set([key]))} sortField={f.sortField} sortDir={f.sortDir} groups={effectiveGroups} groupsCollapsible={!singleSprintGroup} collapsedGroups={collapsedGroups} onToggleCollapse={toggleCollapse} groupBy={effectiveGroupBy} pinnedSprintIds={slotSprintsSet} onPinSprint={handleAddSlotWithSprint} onEditSprint={handleEditSprintFromGroup} onCloseSprint={handleCloseSprintFromGroup} onSyncGroup={handleSyncGroup} onCreateTicket={handleCreateTicket} flatCreateTarget={flatCreateTarget} scrollContainerRef={contentScrollRef} refinementSessionMap={ticketSessionMap} onRemoveFromRefinement={handleRemoveFromRefinement} onViewRefinement={handleViewRefinement} {...(dnd.jiraRankDndEnabled ? { externalDnd: true as const, externalActiveDragId: dnd.boardActiveDragId, dragOverKey: dnd.boardOverId } : { onReorder: f.sortField === "rank" && !f.activeViewId ? handleReorder : undefined })} />
+          <TicketTable tickets={tickets} checkedTickets={checkedTickets} selectedTicket={selectedTicket} focusedTicketIdx={focusedTicketIdx} someChecked={someChecked} allChecked={allChecked} visibleTags={f.visibleTags} hideEpic={hideEpicChip} showSprint={showSprintOnRow} sprintNameMap={sprintNameMap} poStatuses={poStatuses} readinessMap={readinessMap} inflightKeys={inflightKeys} onToggleCheck={toggleCheck} onRangeCheck={handleRangeCheck} onToggleAll={toggleAll} onSelectTicket={setSelectedTicket} onRowContextMenu={handleRowContextMenu} contextMenuKeys={rowMenu?.targets} onPoStatusChange={ta.handlePoStatusChange} onReadinessChange={ta.handleReadinessChange} onBusinessValueChange={ta.handleBusinessValueChange} onStoryPointsChange={ta.handleStoryPointsChange} onJiraStatusChange={ta.handleJiraStatusChange} onIssueTypeChange={ta.handleIssueTypeChange} onTitleChange={ta.handleTitleChange} onAssigneeChange={ta.handleAssigneeChange} onEpicChange={ta.handleEpicChange} onSprintChange={ta.handleSprintChange} sprints={sprints} onCloseSubtasks={ta.handleCloseSubtasks} onTableKeyDown={handleTableKeyDown} onRunReview={(key) => handleBulkReviewStory(new Set([key]))} sortField={f.sortField} sortDir={f.sortDir} groups={groups} flatHeader={singleSprintHeader} collapsedGroups={collapsedGroups} onToggleCollapse={toggleCollapse} groupBy={groupBy} pinnedSprintIds={slotSprintsSet} onPinSprint={handleAddSlotWithSprint} onEditSprint={handleEditSprintFromGroup} onCloseSprint={handleCloseSprintFromGroup} onSyncGroup={handleSyncGroup} onCreateTicket={handleCreateTicket} flatCreateTarget={flatCreateTarget} scrollContainerRef={contentScrollRef} refinementSessionMap={ticketSessionMap} onRemoveFromRefinement={handleRemoveFromRefinement} onViewRefinement={handleViewRefinement} {...(dnd.jiraRankDndEnabled ? { externalDnd: true as const, externalActiveDragId: dnd.boardActiveDragId, dragOverKey: dnd.boardOverId } : { onReorder: f.sortField === "rank" && !f.activeViewId ? handleReorder : undefined })} />
           </div>
         )}
       </div>
