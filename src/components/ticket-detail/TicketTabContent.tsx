@@ -44,6 +44,10 @@ export interface TicketTabContentProps {
   // When false, the internal tab bar is not rendered; the host renders its own
   // (e.g. the side panel merges the tabs into its full-width header bar).
   renderTabBar?: boolean;
+  // When true, the Review tab is dropped from the tab bar (the host surfaces it
+  // elsewhere, e.g. the side panel's overflow menu) to free up horizontal space.
+  // Review content still renders when activeTab is "review".
+  reviewInMenu?: boolean;
   // Optional actions rendered on the right of the tab bar row. The side panel
   // passes its header buttons here so the whole bar (tabs + actions) scrolls
   // with the content instead of staying pinned.
@@ -99,6 +103,7 @@ export interface TicketTabContentProps {
 export function TicketTabContent({
   layout = "page",
   renderTabBar = true,
+  reviewInMenu = false,
   tabBarActions,
   onScrolledChange,
   metaContent,
@@ -167,7 +172,7 @@ export function TicketTabContent({
             {([
                 { id: "content" as const, label: "Content", badge: undefined as number | undefined, badgeHighlight: false },
                 { id: "history" as const, label: "History", badge: versionCount as number | undefined, badgeHighlight: false },
-                { id: "review" as const, label: "Review", badge: (reviewCount || undefined) as number | undefined, badgeHighlight: (reviewCount ?? 0) > 0 },
+                ...(reviewInMenu ? [] : [{ id: "review" as const, label: "Review", badge: (reviewCount || undefined) as number | undefined, badgeHighlight: (reviewCount ?? 0) > 0 }]),
                 { id: "development" as const, label: "Development", badge: undefined as number | undefined, badgeHighlight: false },
               ]).map((tab) => (
                 <Tab
