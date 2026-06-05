@@ -16,16 +16,18 @@ vi.mock("next/link", () => ({
 
 const updateStoryPoints = vi.fn().mockResolvedValue({});
 const updateMetadata = vi.fn().mockResolvedValue({});
+const updateEpic = vi.fn().mockResolvedValue({});
+const moveSprint = vi.fn().mockResolvedValue({});
 const apiFetch = vi.fn().mockResolvedValue({});
 vi.mock("@/lib/api-client", () => ({
   apiFetch: (...args: unknown[]) => apiFetch(...args),
   tickets: {
     updateStoryPoints: (...args: unknown[]) => updateStoryPoints(...args),
     updateMetadata: (...args: unknown[]) => updateMetadata(...args),
-    updateEpic: vi.fn().mockResolvedValue({}),
+    updateEpic: (...args: unknown[]) => updateEpic(...args),
     updateLabels: vi.fn().mockResolvedValue({}),
   },
-  jira: { assign: vi.fn().mockResolvedValue({}), moveSprint: vi.fn().mockResolvedValue({}) },
+  jira: { assign: vi.fn().mockResolvedValue({}), moveSprint: (...args: unknown[]) => moveSprint(...args) },
 }));
 
 vi.mock("@/hooks/useSprintBoard", () => ({
@@ -52,10 +54,25 @@ vi.mock("@/components/shared/ReadinessCell", () => ({ ReadinessCell: () => <span
 vi.mock("@/components/shared/BusinessValuePicker", () => ({ BusinessValuePicker: ({ value }: { value: number | null }) => <span data-testid="bv-picker">{value}</span> }));
 vi.mock("@/components/shared/StoryPointPicker", () => ({ StoryPointPicker: ({ value, onChange }: { value: number | null; onChange: (v: number | null) => void }) => <button data-testid="sp-picker" onClick={() => onChange(8)}>{value}</button> }));
 vi.mock("@/components/shared/AssigneePicker", () => ({ AssigneePicker: ({ value }: { value: { name: string } | null }) => <span data-testid="assignee-picker">{value?.name}</span> }));
-vi.mock("@/components/shared/EpicPicker", () => ({ EpicPicker: ({ value }: { value: { name: string } | null }) => <span data-testid="epic-picker">{value?.name}</span> }));
+vi.mock("@/components/shared/EpicPicker", () => ({
+  EpicPicker: ({ value, onChange }: { value: { name: string } | null; onChange?: (epic: { key: string; name: string } | null) => void }) => (
+    <button data-testid="epic-picker" onClick={() => onChange?.({ key: "EPIC-9", name: "Epic Nine" })}>{value?.name}</button>
+  ),
+}));
+
+const patchTicketCaches = vi.fn();
+const moveTicketSprintCaches = vi.fn();
+vi.mock("@/lib/ticket-cache", () => ({
+  patchTicketCaches: (...args: unknown[]) => patchTicketCaches(...args),
+  moveTicketSprintCaches: (...args: unknown[]) => moveTicketSprintCaches(...args),
+}));
 vi.mock("@/components/shared/LabelPicker", () => ({ LabelPicker: ({ value }: { value: string[] }) => <span data-testid="label-picker">{value.join(",")}</span> }));
 vi.mock("@/components/sprint-board/TicketTable", () => ({ QualityBadge: ({ score }: { score: number | null }) => <span data-testid="quality-badge">{score}</span> }));
-vi.mock("@/components/sprint-board/SprintListModal", () => ({ SprintListModal: () => null }));
+vi.mock("@/components/sprint-board/SprintListModal", () => ({
+  SprintListModal: ({ onSelect }: { onSelect: (id: string) => void }) => (
+    <button data-testid="sprint-select" onClick={() => onSelect("2")}>pick sprint</button>
+  ),
+}));
 vi.mock("@/components/ticket-detail/DevPanel", () => ({ DevPanel: () => <div data-testid="dev-panel" /> }));
 vi.mock("@/components/ticket-detail/ConfluencePagesSection", () => ({ ConfluencePagesSection: () => <div data-testid="confluence-section" /> }));
 vi.mock("@/lib/date-utils", () => ({ relativeDate: () => "14d ago", formatAbsoluteDate: () => "1 Jan 2026" }));
@@ -158,6 +175,19 @@ describe("TicketMetaContent", () => {
     });
   });
 
+  it("patches the ticket caches immediately when the epic changes, then persists and notifies", async () => {
+    patchTicketCaches.mockClear();
+    const onMutate = vi.fn();
+    render(<TicketMetaContent ticket={makeTicket()} detail={detail} onMutate={onMutate} />);
+    fireEvent.click(screen.getByTestId("epic-picker"));
+    // Cache patch happens synchronously so the board chip appears at once.
+    expect(patchTicketCaches).toHaveBeenCalledWith("PROJ-42", { epic: "Epic Nine", epicKey: "EPIC-9" });
+    await waitFor(() => {
+      expect(updateEpic).toHaveBeenCalledWith("PROJ-42", "EPIC-9");
+      expect(onMutate).toHaveBeenCalled();
+    });
+  });
+
   it("notifies the host via onMutate after a field edit persists", async () => {
     const onMutate = vi.fn();
     render(<TicketMetaContent ticket={makeTicket()} detail={detail} onMutate={onMutate} />);
@@ -166,5 +196,25 @@ describe("TicketMetaContent", () => {
       expect(updateStoryPoints).toHaveBeenCalledWith("PROJ-42", 8);
       expect(onMutate).toHaveBeenCalled();
     });
+  });
+
+  it("moves the row between sprint caches on sprint change and does not revalidate (avoids the stale row popping back)", async () => {
+    moveTicketSprintCaches.mockClear();
+    const onMutate = vi.fn();
+    render(<TicketMetaContent ticket={makeTicket()} detail={detail} onMutate={onMutate} />);
+    fireEvent.click(screen.getByTitle("Sprint: Sprint 1"));
+    fireEvent.click(screen.getByTestId("sprint-select"));
+    expect(moveTicketSprintCaches).toHaveBeenCalledWith(expect.objectContaining({ key: "PROJ-42" }), "2");
+    await waitFor(() => expect(moveSprint).toHaveBeenCalledWith({ issueKeys: ["PROJ-42"], targetSprintId: "2" }));
+    // No revalidation: relying on the optimistic move keeps the row out of the old list.
+    expect(onMutate).not.toHaveBeenCalled();
+  });
+
+  it("patches the ticket caches immediately when story points change", async () => {
+    patchTicketCaches.mockClear();
+    render(<TicketMetaContent ticket={makeTicket()} detail={detail} onMutate={vi.fn()} />);
+    fireEvent.click(screen.getByTestId("sp-picker"));
+    expect(patchTicketCaches).toHaveBeenCalledWith("PROJ-42", { storyPoints: 8 });
+    await waitFor(() => expect(updateStoryPoints).toHaveBeenCalled());
   });
 });

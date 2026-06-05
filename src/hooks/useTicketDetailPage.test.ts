@@ -122,6 +122,35 @@ describe("useTicketDetailPage", () => {
     expect(result.current.pushError).toBeNull();
   });
 
+  it("push to Jira optimistically clears the draft edit state", async () => {
+    vi.mocked(tickets.pushToJira).mockResolvedValue({ success: true });
+
+    const { result } = renderHook(() => useTicketDetailPage("VPL-42"));
+
+    await act(async () => { await result.current.handlePushToJira(); });
+
+    // The success path must patch the detail cache optimistically (not just
+    // revalidate) so the "draft" badge clears even when the server cache is stale.
+    const optimisticCall = mutateFn.mock.calls.find((c) => typeof c[0] === "function");
+    expect(optimisticCall).toBeDefined();
+    const updater = optimisticCall![0] as (prev: typeof mockApiData) => typeof mockApiData;
+    expect(updater({ ...mockApiData, editState: "draft" })).toMatchObject({ editState: "clean", localEdits: {} });
+    expect(optimisticCall![1]).toMatchObject({ revalidate: true });
+  });
+
+  it("push to Jira does not clear draft state on conflict", async () => {
+    vi.mocked(tickets.pushToJira).mockResolvedValue({ conflict: true, contentChanged: true });
+
+    const { result } = renderHook(() => useTicketDetailPage("VPL-42"));
+
+    await act(async () => { await result.current.handlePushToJira(); });
+
+    const cleansDraft = mutateFn.mock.calls.some(
+      (c) => typeof c[0] === "function" && (c[0] as (p: typeof mockApiData) => typeof mockApiData)({ ...mockApiData, editState: "draft" }).editState === "clean",
+    );
+    expect(cleansDraft).toBe(false);
+  });
+
   it("push to Jira with conflict shows diff", async () => {
     vi.mocked(tickets.pushToJira).mockResolvedValue({ conflict: true, contentChanged: true });
 
