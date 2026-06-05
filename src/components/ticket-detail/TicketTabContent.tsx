@@ -245,6 +245,7 @@ export function TicketTabContent({
                   onLocalEdit={onTitleLocalEdit}
                   onEditingChange={onTitleEditingChange}
                   onViewDiff={onViewDiff}
+                  onSaved={onMutate}
                 />
               </div>
               {ticket.assignee && (

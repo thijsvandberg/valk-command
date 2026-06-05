@@ -22,6 +22,7 @@ function renderTitle(overrides: {
   onLocalEdit?: (hasEdit: boolean) => void;
   onEditingChange?: (isEditing: boolean) => void;
   onViewDiff?: () => void;
+  onSaved?: () => void;
 } = {}) {
   const onLocalEdit = vi.fn();
   const onEditingChange = vi.fn();
@@ -33,6 +34,7 @@ function renderTitle(overrides: {
       onLocalEdit={overrides.onLocalEdit ?? onLocalEdit}
       onEditingChange={overrides.onEditingChange ?? onEditingChange}
       onViewDiff={overrides.onViewDiff}
+      onSaved={overrides.onSaved}
     />,
   );
   return { ...result, onLocalEdit, onEditingChange };
@@ -194,5 +196,34 @@ describe("EditableTitle", () => {
   it("does not render badge when no local edit exists", () => {
     renderTitle({ initialTitle: "Clean title" });
     expect(screen.queryByText("Locally modified")).not.toBeInTheDocument();
+  });
+
+  it("calls onSaved after persisting a new title", async () => {
+    const onSaved = vi.fn();
+    renderTitle({ ticketKey: "VPL-1", initialTitle: "Old title", onSaved });
+    fireEvent.click(screen.getByText("Old title"));
+
+    const textarea = screen.getByRole("textbox");
+    fireEvent.change(textarea, { target: { value: "New title" } });
+    fireEvent.keyDown(textarea, { key: "Enter" });
+
+    await waitFor(() => {
+      expect(onSaved).toHaveBeenCalled();
+    });
+  });
+
+  it("calls onSaved when reverting to the initial title", async () => {
+    const onSaved = vi.fn();
+    renderTitle({ ticketKey: "VPL-1", initialTitle: "Original", onSaved });
+    fireEvent.click(screen.getByText("Original"));
+
+    const textarea = screen.getByRole("textbox");
+    fireEvent.change(textarea, { target: { value: "Original" } });
+    fireEvent.blur(textarea);
+
+    await waitFor(() => {
+      expect(onSaved).toHaveBeenCalled();
+    });
+    expect(mockSaveLocalEdit).not.toHaveBeenCalled();
   });
 });

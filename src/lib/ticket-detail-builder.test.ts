@@ -3,6 +3,7 @@ import { createTestDb } from "@/db/test-utils";
 import type { BetterSQLite3Database } from "drizzle-orm/better-sqlite3";
 import type * as schema from "@/db/schema";
 import { seedTicket, seedTicketMetadata } from "@/test/builders";
+import { ticketLocalEdit } from "@/db/schema";
 
 let testDb: BetterSQLite3Database<typeof schema>;
 
@@ -54,6 +55,23 @@ describe("buildTicketDetail epic children ordering", () => {
     const children = built!.data.epicChildren;
     expect(children.map((c) => c.key)).toEqual(["VPL-11", "VPL-39", "VPL-40"]);
     expect(children.map((c) => c.jiraRank)).toEqual([5, null, null]);
+  });
+
+  it("surfaces a child's pending local title edit instead of the synced Jira title", async () => {
+    seedTicket(testDb, { jiraKey: "VPL-1", title: "Epic", type: "epic" });
+    seedTicket(testDb, { jiraKey: "VPL-10", title: "Synced title", epicKey: "VPL-1", jiraRank: 0 });
+    seedTicket(testDb, { jiraKey: "VPL-20", title: "Untouched title", epicKey: "VPL-1", jiraRank: 1 });
+    testDb.insert(ticketLocalEdit).values({
+      id: "edit-1",
+      ticketKey: "VPL-10",
+      field: "title",
+      localValue: "Locally edited title",
+    }).run();
+
+    const built = await buildTicketDetail("VPL-1");
+    const children = built!.data.epicChildren;
+    expect(children.find((c) => c.key === "VPL-10")?.title).toBe("Locally edited title");
+    expect(children.find((c) => c.key === "VPL-20")?.title).toBe("Untouched title");
   });
 });
 

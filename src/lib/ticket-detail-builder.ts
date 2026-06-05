@@ -220,9 +220,14 @@ async function resolveEpicChildren(epicChildRows: Awaited<ReturnType<typeof runT
   const sprintIdToName = new Map<string, string>();
   const readinessMap = new Map<string, TicketReadiness | null>();
   const businessValueMap = new Map<string, number | null>();
+  // A pending local title edit on a child is the title the PO sees in the child
+  // panel; surface the same effective title here so editing a child's title is
+  // immediately visible in the epic's children list (not stuck on the synced
+  // Jira title until a push).
+  const titleEditMap = new Map<string, string>();
 
   if (epicChildKeys.length > 0) {
-    const [subtaskCountResult, metaRows] = await Promise.all([
+    const [subtaskCountResult, metaRows, titleEditRows] = await Promise.all([
       db
         .select({
           ticketKey: ticketSubtask.ticketKey,
@@ -235,6 +240,10 @@ async function resolveEpicChildren(epicChildRows: Awaited<ReturnType<typeof runT
       db.query.ticketMetadata.findMany({
         where: (m, { sql: sqlFn }) => sqlFn`${m.jiraKey} IN (${sql.join(epicChildKeys.map((k) => sql`${k}`), sql`, `)})`,
       }),
+      db
+        .select({ ticketKey: ticketLocalEdit.ticketKey, localValue: ticketLocalEdit.localValue })
+        .from(ticketLocalEdit)
+        .where(sql`${ticketLocalEdit.field} = 'title' AND ${ticketLocalEdit.ticketKey} IN (${sql.join(epicChildKeys.map((k) => sql`${k}`), sql`, `)})`),
     ]);
     for (const row of subtaskCountResult) {
       subtaskCountMap.set(row.ticketKey, { total: row.total, open: Number(row.open) });
@@ -242,6 +251,9 @@ async function resolveEpicChildren(epicChildRows: Awaited<ReturnType<typeof runT
     for (const row of metaRows) {
       readinessMap.set(row.jiraKey, (row.readiness as TicketReadiness) ?? null);
       businessValueMap.set(row.jiraKey, row.businessValue ?? null);
+    }
+    for (const row of titleEditRows) {
+      if (row.localValue) titleEditMap.set(row.ticketKey, row.localValue);
     }
 
     const sprintIds = [...new Set(epicChildRows.map((c) => c.sprintName).filter(Boolean))] as string[];
@@ -258,7 +270,7 @@ async function resolveEpicChildren(epicChildRows: Awaited<ReturnType<typeof runT
 
   return epicChildRows.map((c) => ({
     key: c.jiraKey,
-    title: c.title,
+    title: titleEditMap.get(c.jiraKey) ?? c.title,
     type: (c.type ?? "task") as IssueType,
     jiraStatus: (c.status ?? "TO DO") as JiraStatus,
     assignee: buildAssignee(c.assignee),
