@@ -10,11 +10,19 @@ const ICON_MAP: Record<IssueType, { Icon: React.ComponentType<{ size?: number; s
   epic:    { Icon: Zap,          color: "text-[var(--color-icon-epic)]" },
 };
 
-export function IssueTypeIcon({ type, size = 16 }: { type: IssueType | string; size?: number }) {
+export function IssueTypeIcon({
+  type,
+  size = 16,
+  strokeWidth = 1.5,
+}: {
+  type: IssueType | string;
+  size?: number;
+  strokeWidth?: number;
+}) {
   const entry = ICON_MAP[type as IssueType];
   if (!entry) return null;
   const { Icon, color } = entry;
-  return <Icon size={size} strokeWidth={1.5} className={color} />;
+  return <Icon size={size} strokeWidth={strokeWidth} className={color} />;
 }
 
 // Color map for use outside the icon component (e.g. backgrounds, borders)

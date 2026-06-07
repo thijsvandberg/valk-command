@@ -72,8 +72,12 @@ export function DiffViewer({
 }: DiffViewerProps) {
   const [portalTarget, setPortalTarget] = useState<HTMLElement | null>(null);
   useEffect(() => {
-    setPortalTarget(document.getElementById(portalId));  
+    setPortalTarget(document.getElementById(portalId));
   }, [portalId]);
+
+  // The footer is portaled full-width; match the surrounding content rail so it
+  // stays aligned and does not waste space in the narrow side panel.
+  const compact = portalId.endsWith("-panel");
 
   const compareBar = (
     <div className="flex items-center gap-2">
@@ -193,60 +197,61 @@ export function DiffViewer({
       {/* Action footer: portaled to sit outside max-w container, full-width sticky */}
       {showFooter && portalTarget && createPortal(
         <div
-          className="diff-action-footer flex items-center gap-4 border-t border-border-default bg-[var(--color-surface-elevated)]/95 px-8 py-4 backdrop-blur-sm"
+          className={`diff-action-footer flex flex-wrap items-center gap-x-3 gap-y-2 border-t border-border-default bg-[var(--color-surface-elevated)]/95 backdrop-blur-sm ${compact ? "px-5 py-2.5" : "px-8 py-4"}`}
         >
-          {showConflictActions && (
-            <>
+          {mergeResult !== null && !showConflictActions && (
+            <span className="min-w-0 flex-1 text-body-sm text-text-secondary">
+              Apply merge selections as local edit
+            </span>
+          )}
+
+          <div className="flex shrink-0 flex-wrap items-center gap-2 ms-auto">
+            {showConflictActions && (
+              <>
+                <Button
+                  variant="ghost"
+                  size="md"
+                  disabled={resolving}
+                  onClick={onDiscardLocal}
+                  className="whitespace-nowrap"
+                >
+                  {resolving ? "Accepting..." : "Accept Jira version"}
+                </Button>
+                <Button
+                  variant="destructive"
+                  size="md"
+                  disabled={resolving}
+                  onClick={metadataOnlyConflict ? onForcePush : onKeepAndPush}
+                  className="whitespace-nowrap !border !border-red-500/20 !bg-red-500/[0.08] hover:!bg-red-500/[0.15]"
+                >
+                  {resolving ? "Pushing..." : "Overwrite Jira with your draft"}
+                </Button>
+              </>
+            )}
+            {mergeResult !== null && (
+              <Button
+                variant="primary"
+                size="md"
+                disabled={savingMerge}
+                onClick={onSaveMerge}
+                icon={<Save size={13} strokeWidth={1.5} />}
+                className="whitespace-nowrap"
+              >
+                {savingMerge ? "Applying..." : "Apply merge"}
+              </Button>
+            )}
+            {showRevertActions && compareOldVersion && (
               <Button
                 variant="ghost"
                 size="md"
                 disabled={resolving}
-                onClick={onDiscardLocal}
+                onClick={() => onRevertTo(compareOldVersion)}
+                className="whitespace-nowrap"
               >
-                {resolving ? "Accepting..." : "Accept Jira version"}
+                {resolving ? "Reverting..." : `Revert to v${compareOldVersion.versionNumber}`}
               </Button>
-              <Button
-                variant="destructive"
-                size="md"
-                disabled={resolving}
-                onClick={metadataOnlyConflict ? onForcePush : onKeepAndPush}
-                className="!border !border-red-500/20 !bg-red-500/[0.08] hover:!bg-red-500/[0.15]"
-              >
-                {resolving ? "Pushing..." : "Overwrite Jira with your draft"}
-              </Button>
-            </>
-          )}
-          {showRevertActions && (
-            <span className="text-body-sm text-text-tertiary">Revert:</span>
-          )}
-
-          {mergeResult !== null && !showConflictActions && (
-            <span className="text-body-sm text-text-secondary">Apply merge selections as local edit</span>
-          )}
-
-          <div className="flex-1" />
-
-          {mergeResult !== null && (
-            <Button
-              variant="primary"
-              size="md"
-              disabled={savingMerge}
-              onClick={onSaveMerge}
-              icon={<Save size={13} strokeWidth={1.5} />}
-            >
-              {savingMerge ? "Applying..." : "Apply merge"}
-            </Button>
-          )}
-          {showRevertActions && compareOldVersion && (
-            <Button
-              variant="ghost"
-              size="md"
-              disabled={resolving}
-              onClick={() => onRevertTo(compareOldVersion)}
-            >
-              {resolving ? "Reverting..." : `Revert to v${compareOldVersion.versionNumber}`}
-            </Button>
-          )}
+            )}
+          </div>
         </div>,
         portalTarget,
       )}

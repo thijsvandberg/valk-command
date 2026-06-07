@@ -201,6 +201,31 @@ describe("BulkActionBar", () => {
     expect(screen.getByText("Summarized List")).toBeTruthy();
   });
 
+  it("shows a spinner on the collapsed AI Assist trigger while exporting", () => {
+    const { container } = render(
+      <BulkActionBar
+        {...defaultProps}
+        onExportForStakeholders={vi.fn()}
+        isExporting
+      />,
+    );
+    // Menu is closed, but the trigger button itself should spin.
+    expect(screen.queryByText("Summarized List")).toBeNull();
+    expect(container.querySelector(".animate-spin")).toBeTruthy();
+  });
+
+  it("shows a spinner on the collapsed AI Assist trigger while generating subtasks", () => {
+    const { container } = render(
+      <BulkActionBar
+        {...defaultProps}
+        onGenerateSubtasks={vi.fn()}
+        isGeneratingSubtasks
+      />,
+    );
+    expect(screen.queryByText("Generating...")).toBeNull();
+    expect(container.querySelector(".animate-spin")).toBeTruthy();
+  });
+
   it("calls onReviewStory when Review Story is clicked in AI Assist dropdown", () => {
     const onReview = vi.fn();
     render(

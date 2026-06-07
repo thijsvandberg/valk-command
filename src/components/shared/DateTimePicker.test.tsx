@@ -74,6 +74,19 @@ describe("DateTimePicker", () => {
     expect(onChange).toHaveBeenCalledWith("2026-05-22");
   });
 
+  it("fills trailing blanks with the next month's days and picks them", () => {
+    const onChange = vi.fn();
+    render(<DateTimePicker value="2026-06-15" onChange={onChange} ariaLabel="Start date" />);
+    fireEvent.click(screen.getByLabelText("Start date"));
+    expect(screen.getByText("June 2026")).toBeInTheDocument();
+
+    // June ends on Tue 30, so the trailing row holds Jul 1-5. Both June 1 and
+    // July 1 render a "1"; the last one is the overflow day from July.
+    const ones = screen.getAllByRole("button", { name: "1" });
+    fireEvent.click(ones[ones.length - 1]);
+    expect(onChange).toHaveBeenCalledWith("2026-07-01");
+  });
+
   it("clears the entire value", () => {
     const onChange = vi.fn();
     render(<DateTimePicker value="2026-05-22T14:04" onChange={onChange} ariaLabel="Start date" />);

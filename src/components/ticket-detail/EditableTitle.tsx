@@ -11,6 +11,7 @@ export function EditableTitle({
   onLocalEdit,
   onEditingChange,
   onViewDiff,
+  onSaved,
 }: {
   ticketKey: string;
   initialTitle: string;
@@ -18,6 +19,9 @@ export function EditableTitle({
   onLocalEdit: (hasEdit: boolean) => void;
   onEditingChange?: (isEditing: boolean) => void;
   onViewDiff?: () => void;
+  /** Fires after a title edit is persisted (or reverted) so consumers can refresh
+   *  surrounding views, e.g. an epic's children list that mirrors this title. */
+  onSaved?: () => void;
 }) {
   const [editing, setEditing] = useState(false);
   // Persisted local edit - only updated on save, drives the "Locally modified" badge
@@ -94,17 +98,19 @@ export function EditableTitle({
       if (draft === initialTitle) {
         setLocalValue(null);
         onLocalEdit(false);
+        onSaved?.();
         return;
       }
       await tickets.saveLocalEdit(ticketKey, { field: "title", localValue: draft });
       setLocalValue(draft);
       onLocalEdit(true);
+      onSaved?.();
     } catch (err) {
       console.error("Operation failed:", err);
     } finally {
       savingRef.current = false;
     }
-  }, [ticketKey, initialTitle, onLocalEdit]);
+  }, [ticketKey, initialTitle, onLocalEdit, onSaved]);
 
   if (editing) {
     return (

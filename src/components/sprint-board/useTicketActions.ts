@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useCallback } from "react";
-import { mutate as globalMutate } from "swr";
+import { mutate as globalMutate, type KeyedMutator } from "swr";
 import type { POStatus, TicketReadiness, Ticket, IssueType, JiraStatus, Assignee } from "@/types/ticket";
 import { saveTicketMetadata, saveStoryPoints } from "@/components/sprint-board/sprint-board-utils";
 import { apiFetch, jira, tickets as ticketsApi } from "@/lib/api-client";
@@ -11,7 +11,7 @@ import type { EpicOption } from "@/components/shared/EpicPicker";
 
 interface TicketActionsDeps {
   apiTickets: Ticket[] | undefined;
-  mutateTickets: (data?: Ticket[] | Promise<Ticket[]> | ((current?: Ticket[]) => Ticket[] | undefined), opts?: { revalidate?: boolean }) => void;
+  mutateTickets: KeyedMutator<Ticket[]>;
   activeListKey: string | null;
   showToast: (message: React.ReactNode, durationMs?: number) => void;
 }
@@ -106,19 +106,29 @@ export function useTicketActions(deps: TicketActionsDeps) {
   }, [apiTickets, mutateTickets]);
 
   const handleAssigneeChange = useCallback(async (key: string, user: AssignableUser | null) => {
-    const prev = apiTickets?.find((t) => t.key === key)?.assignee ?? null;
     const optimistic: Assignee | null = user
       ? { name: user.displayName, initials: userInitials(user.displayName), color: userColor(user.displayName) }
       : null;
-    mutateTickets((data) => data?.map((t) => t.key === key ? { ...t, assignee: optimistic } : t), { revalidate: false });
+    const withAssignee = (data?: Ticket[]) => data?.map((t) => t.key === key ? { ...t, assignee: optimistic } : t);
     try {
-      await jira.assign({ issueKey: key, accountId: user?.accountId ?? null, name: user?.displayName ?? null, avatar: user?.avatarUrl ?? null });
-      mutateTickets();
+      // SWR optimistic mutation: optimisticData shows the new assignee for the
+      // whole request and makes SWR discard any revalidation that races it (the
+      // board revalidates on focus, which fires when the picker portal closes
+      // and would otherwise flash the stale value). populateCache locks the new
+      // value in on success; revalidate:false avoids a refetch flip.
+      await mutateTickets(
+        jira.assign({ issueKey: key, accountId: user?.accountId ?? null, name: user?.displayName ?? null, avatar: user?.avatarUrl ?? null }).then(() => undefined as unknown as Ticket[]),
+        {
+          optimisticData: (current) => withAssignee(current) ?? [],
+          populateCache: (_result, current) => withAssignee(current) ?? [],
+          revalidate: false,
+          rollbackOnError: true,
+        },
+      );
     } catch {
-      mutateTickets((data) => data?.map((t) => t.key === key ? { ...t, assignee: prev } : t), { revalidate: false });
       showToast(`Failed to update assignee for ${key}. Change reverted.`);
     }
-  }, [apiTickets, mutateTickets, showToast]);
+  }, [mutateTickets, showToast]);
 
   const handleEpicChange = useCallback(async (key: string, epic: EpicOption | null) => {
     const prevTicket = apiTickets?.find((t) => t.key === key);

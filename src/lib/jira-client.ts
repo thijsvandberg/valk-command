@@ -1148,16 +1148,30 @@ export class JiraClient {
       throw new Error("Jira is not configured");
     }
 
-    const current = await jiraFetch<{ name: string; state: string }>(
-      `/rest/agile/1.0/sprint/${sprintId}`,
-      signal,
-    );
+    // Jira's PUT is a full update: any omitted field is nulled out. Fetch the
+    // current sprint and merge the changed fields over it so an update that only
+    // touches one field (e.g. the goal) does not wipe the dates, and vice versa.
+    const current = await jiraFetch<{
+      name: string;
+      state: string;
+      startDate?: string;
+      endDate?: string;
+      goal?: string;
+    }>(`/rest/agile/1.0/sprint/${sprintId}`, signal);
 
-    const payload = {
-      name: current.name,
-      state: current.state,
-      ...fields,
+    const merged = {
+      name: fields.name ?? current.name,
+      startDate: fields.startDate ?? current.startDate,
+      endDate: fields.endDate ?? current.endDate,
+      goal: fields.goal ?? current.goal,
     };
+
+    const payload: Record<string, unknown> = { name: merged.name, state: current.state };
+    // Only echo back fields that have a value: an empty string means the user
+    // deliberately cleared it, so we let Jira's full update null it out.
+    if (merged.startDate) payload.startDate = merged.startDate;
+    if (merged.endDate) payload.endDate = merged.endDate;
+    if (merged.goal) payload.goal = merged.goal;
 
     await jiraPut(`/rest/agile/1.0/sprint/${sprintId}`, payload, signal);
   }

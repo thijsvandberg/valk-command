@@ -57,6 +57,7 @@ vi.mock("@/lib/jira-client", () => ({
     getIssue: vi.fn().mockResolvedValue({}),
   },
   extractSprint: () => null,
+  extractSprints: () => [],
   extractStoryPoints: () => null,
   extractEpicLink: () => null,
   extractAcceptanceCriteria: () => null,

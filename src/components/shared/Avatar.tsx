@@ -11,7 +11,7 @@ export function Avatar({ assignee, size = 24 }: { assignee: Assignee | null; siz
           height: size,
         }}
       >
-        <User size={size * 0.55} strokeWidth={1.5} className="text-text-muted" style={{ opacity: 0.6 }} />
+        <User size={size * 0.62} strokeWidth={1.85} className="text-text-muted" style={{ opacity: 0.6 }} />
       </div>
     );
   }

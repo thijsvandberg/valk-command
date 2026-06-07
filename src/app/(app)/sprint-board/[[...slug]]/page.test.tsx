@@ -104,11 +104,6 @@ describe("SprintBoardPage", () => {
     expect(screen.getAllByText("Status").length).toBeGreaterThanOrEqual(1);
     expect(screen.getAllByText("Epic").length).toBeGreaterThanOrEqual(1);
   });
-
-  it("renders the refresh button", () => {
-    render(<SprintBoardPage />);
-    expect(screen.getByTitle("Refresh board")).toBeInTheDocument();
-  });
 });
 
 // BRDG-270: the open ticket lives in the URL path.

@@ -54,11 +54,14 @@ export const PO_STATUS_OPTIONS: { value: POStatus; label: string }[] = [
   { value: "On Hold", label: "On Hold" },
 ];
 
+// Shared with the sprint-board status pills via the --sp-* theme variables
+// (defined in globals.css) so every ticket-status surface uses one fresh,
+// light-mode-aware palette. DEPRECATED keeps its own red token.
 export const JIRA_STATUS_COLORS: Record<JiraStatus, { bg: string; text: string }> = {
-  "TO DO": { bg: "var(--color-status-neutral-subtle)", text: "var(--color-status-neutral)" },
-  "IN PROGRESS": { bg: "var(--color-status-progress-subtle)", text: "var(--color-status-progress)" },
-  TEST: { bg: "rgba(120, 90, 220, 0.15)", text: "var(--color-testing-400)" },
-  DONE: { bg: "var(--color-status-done-subtle)", text: "var(--color-status-done)" },
+  "TO DO": { bg: "var(--sp-todo-bg)", text: "var(--sp-todo-text)" },
+  "IN PROGRESS": { bg: "var(--sp-prog-bg)", text: "var(--sp-prog-text)" },
+  TEST: { bg: "var(--sp-test-bg)", text: "var(--sp-test-text)" },
+  DONE: { bg: "var(--sp-done-bg)", text: "var(--sp-done-text)" },
   DEPRECATED: { bg: "var(--color-status-deprecated-subtle)", text: "var(--color-status-deprecated)" },
 };
 

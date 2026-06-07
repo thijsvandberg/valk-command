@@ -9,6 +9,7 @@ import { StatPill, StatusPill } from "./SprintStatPill";
 import { MetricBadge } from "@/components/shared/MetricBadge";
 import { Tooltip } from "@/components/shared/Tooltip";
 import { SprintDetailsPopover } from "./SprintDetailsPopover";
+import { pluralize } from "@/lib/pluralize";
 
 export type StatCriterion = "todo" | "in-progress" | "test" | "done" | "unpointed";
 
@@ -73,6 +74,17 @@ function metricTooltip(label: string, total: number, avg: string | null, suffix:
           {`Average ${avg} ${suffix}`}
         </span>
       )}
+    </div>
+  );
+}
+
+// Tooltip for the sprint label: a small caption above the goal text so a glance
+// reads it as the sprint's goal rather than a stray note.
+function goalTooltip(goal: string): ReactNode {
+  return (
+    <div className="flex max-w-[18rem] flex-col gap-1">
+      <span className="text-[11px] font-semibold uppercase tracking-wide text-text-tertiary">Sprint goal</span>
+      <span className="whitespace-pre-line text-text-primary">{goal}</span>
     </div>
   );
 }
@@ -223,11 +235,17 @@ export const GroupStatBar = memo(function GroupStatBar({
           </Tooltip>
         )}
         {label && (
-          <span className="truncate text-body-sm font-medium text-text-secondary">{label}</span>
+          sprint?.goal ? (
+            <Tooltip content={goalTooltip(sprint.goal)} className="min-w-0">
+              <span className="truncate text-body-sm font-semibold text-text-secondary">{label}</span>
+            </Tooltip>
+          ) : (
+            <span className="truncate text-body-sm font-semibold text-text-secondary">{label}</span>
+          )
         )}
       </div>
       <StatPill size="sm" variant="default">
-        {tickets.length} items
+        {tickets.length} {pluralize(tickets.length, "item")}
       </StatPill>
       {totalPoints > 0 && (
         <MetricBadge
@@ -261,7 +279,7 @@ export const GroupStatBar = memo(function GroupStatBar({
         <div className="hidden @4xl:contents">
           {todoCount > 0 && (
             <StatusPill
-              size="sm"
+              size="badge"
               colorKey="TO DO"
               label="TO DO"
               count={todoCount}
@@ -272,7 +290,7 @@ export const GroupStatBar = memo(function GroupStatBar({
           )}
           {inProgressCount > 0 && (
             <StatusPill
-              size="sm"
+              size="badge"
               colorKey="IN PROGRESS"
               label="IN PROGRESS"
               count={inProgressCount}
@@ -283,7 +301,7 @@ export const GroupStatBar = memo(function GroupStatBar({
           )}
           {testCount > 0 && (
             <StatusPill
-              size="sm"
+              size="badge"
               colorKey="TEST"
               label="TEST"
               count={testCount}
@@ -294,7 +312,7 @@ export const GroupStatBar = memo(function GroupStatBar({
           )}
           {doneCount > 0 && (
             <StatusPill
-              size="sm"
+              size="badge"
               colorKey="DONE"
               label="DONE"
               count={doneCount}

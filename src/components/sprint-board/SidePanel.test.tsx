@@ -5,7 +5,7 @@ import type { Ticket } from "@/types/ticket";
 
 vi.mock("lucide-react", () => {
   const stub = () => null;
-  const names = ["Maximize2", "X", "Gem", "NotebookPen", "MoreHorizontal", "Star", "Copy", "Check", "CloudDownload", "CloudUpload", "Flag", "MessageSquare", "Loader2", "Trash2", "ChevronRight", "PanelRightClose", "Filter", "FilterX", "Layers"];
+  const names = ["Maximize2", "X", "Gem", "NotebookPen", "MoreHorizontal", "Star", "Copy", "Check", "CloudDownload", "CloudUpload", "Flag", "MessageSquare", "Loader2", "Trash2", "ChevronRight", "PanelRightClose", "Filter", "FilterX", "Layers", "ClipboardCheck"];
   return Object.fromEntries(names.map((n) => [n, stub]));
 });
 

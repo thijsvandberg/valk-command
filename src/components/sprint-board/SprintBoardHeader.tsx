@@ -8,12 +8,11 @@ import type { SprintStats } from "@/components/sprint-board/sprint-board-utils";
 import type { SortField, SortDir, SavedView } from "@/components/sprint-board/FilterBar";
 import { ViewHeader, ViewHeaderTitle, ViewHeaderDivider } from "@/components/shared/ViewHeader";
 import { Button } from "@/components/ui/Button";
-import { StatusCount, SprintCompletionBar, SprintStats as SprintStatsComponent } from "@/components/sprint-board/SprintStatPill";
+import { SprintCompletionBar, SprintStats as SprintStatsComponent } from "@/components/sprint-board/SprintStatPill";
 import { SprintStatsPopover } from "@/components/sprint-board/SprintStatsPopover";
 import { SprintDetailsPopover } from "@/components/sprint-board/SprintDetailsPopover";
-import { Tooltip } from "@/components/shared/Tooltip";
 import { followedSprints, workspaceTasks } from "@/lib/api-client";
-import { Columns2, Check, LayoutGrid, CalendarRange, NotebookPen, Search, Bookmark, MoreHorizontal, BarChart2, List, Bell, BellOff, Users, AlertTriangle, Inbox, Flag } from "lucide-react";
+import { Columns2, Check, LayoutGrid, CalendarRange, Search, Bookmark, MoreHorizontal, BarChart2, List, Bell, BellOff, Users, Inbox, Flag } from "lucide-react";
 import dynamic from "next/dynamic";
 const SprintListModal = dynamic(() => import("@/components/sprint-board/SprintListModal").then((m) => ({ default: m.SprintListModal })), { ssr: false });
 
@@ -44,7 +43,6 @@ interface SprintBoardHeaderProps {
   };
   analyticsVisible: boolean;
   setAnalyticsVisible: (v: boolean | ((prev: boolean) => boolean)) => void;
-  setShowStoryWriterLauncher: (v: boolean) => void;
   setSearchModalOpen: (v: boolean) => void;
   setEditModalOpen: (v: boolean) => void;
   setCreateSprintModalOpen: (v: boolean) => void;
@@ -58,7 +56,7 @@ export function SprintBoardHeader(props: SprintBoardHeaderProps) {
     isAllView, activeSprint, activeSprintId, allTickets, tickets, ticketsLoading,
     stats, sprintWorkDays, slotSprints, activeSlot, showToast,
     activeView, filters, analyticsVisible, setAnalyticsVisible,
-    setShowStoryWriterLauncher, setSearchModalOpen, setEditModalOpen,
+    setSearchModalOpen, setEditModalOpen,
     handleSprintListSelect, handleAddSlotWithSprint, onFinishSprint,
   } = props;
 
@@ -109,7 +107,7 @@ export function SprintBoardHeader(props: SprintBoardHeaderProps) {
     }
   }, [activeSprintName, isSprintFollowed]);
 
-  const { todoCount, inProgressCount, testCount, doneCount, totalPoints, noPointsCount, bvTotal, statusStats } = stats;
+  const { inProgressCount, testCount, doneCount, totalPoints, bvTotal, statusStats } = stats;
 
   return (
     <ViewHeader
@@ -131,9 +129,6 @@ export function SprintBoardHeader(props: SprintBoardHeaderProps) {
               className={isSprintFollowed ? "border-[var(--color-brand-500)]/40 text-[var(--color-brand-400)]" : ""}
             />
           )}
-          <Button variant="soft" size="md" icon={<NotebookPen className="h-3 w-3" strokeWidth={1.5} />} onClick={() => setShowStoryWriterLauncher(true)} className="shadow-[0_2px_8px_color-mix(in_srgb,var(--color-brand-600)_12%,transparent)]">
-            Story writer
-          </Button>
           <Button variant="secondary" size="md" iconOnly icon={<Search className="h-3.5 w-3.5" strokeWidth={1.5} />} onClick={() => setSearchModalOpen(true)} title="Search tickets (shift+cmd+K)" aria-label="Search tickets" />
           <div ref={headerMenuRef} className="relative">
             <Button
@@ -296,28 +291,9 @@ export function SprintBoardHeader(props: SprintBoardHeaderProps) {
                     totalItems={allTickets.length}
                     workingDaysRemaining={sprintWorkDays.remaining}
                     totalWorkingDays={sprintWorkDays.total}
+                    hideStats
                   />
                 </div>
-                {noPointsCount > 0 && (
-                  <Tooltip content={`${noPointsCount} ticket${noPointsCount === 1 ? "" : "s"} without an estimate`}>
-                    <button
-                      type="button"
-                      onClick={() => {
-                        const next = new Set(filters.gapsFilter);
-                        if (next.has("no_points")) next.delete("no_points"); else next.add("no_points");
-                        filters.setGapsFilter(next);
-                      }}
-                      aria-label={`${noPointsCount} ticket${noPointsCount === 1 ? "" : "s"} without an estimate`}
-                      className={`flex items-center justify-center h-[18px] min-w-[18px] rounded cursor-pointer transition-[background-color,color,box-shadow] duration-150 ${
-                        filters.gapsFilter.has("no_points")
-                          ? "bg-amber-400/15 text-amber-500 shadow-[0_0_0_1px_color-mix(in_srgb,var(--color-status-caution)_30%,transparent)]"
-                          : "text-amber-400/50 hover:text-amber-500 hover:bg-amber-400/8"
-                      }`}
-                    >
-                      <AlertTriangle size={10} strokeWidth={2.5} />
-                    </button>
-                  </Tooltip>
-                )}
                 {endReached && (
                   <Button
                     variant="primary"
@@ -331,52 +307,19 @@ export function SprintBoardHeader(props: SprintBoardHeaderProps) {
                   </Button>
                 )}
               </>
-            ) : (
+            ) : (isAllView || activeView) ? (
+              // All / multiple-sprint / saved (epic) views keep just the item count;
+              // SP/BV live in the per-group card headers now. Single-sprint views drop
+              // the top-header stats entirely since the card header repeats them.
               <>
                 <ViewHeaderDivider />
                 <SprintStatsComponent
                   totalItems={filters.hasActiveFilters ? tickets.length : allTickets.length}
-                  totalSp={!isAllView && !activeView ? totalPoints : 0}
-                  totalBv={!isAllView && !activeView ? bvTotal : 0}
+                  totalSp={0}
+                  totalBv={0}
                 />
               </>
-            )}
-            {!isAllView && !activeView && activeSprint?.state !== "active" && (
-              <>
-                <ViewHeaderDivider />
-                <div className="flex items-center gap-1">
-                  {(["TO DO", "IN PROGRESS", "TEST", "DONE"] as const).map((status) => {
-                    const count = status === "TO DO" ? todoCount : status === "IN PROGRESS" ? inProgressCount : status === "TEST" ? testCount : doneCount;
-                    if (count === 0 && status === "TEST") return null;
-                    const active = filters.statusFilter.has(status);
-                    const dimmed = filters.statusFilter.size > 0 && !active;
-                    return (
-                      <StatusCount
-                        key={status}
-                        colorKey={status}
-                        label={status}
-                        count={count}
-                        active={active}
-                        dimmed={dimmed}
-                        onClick={() => {
-                          const next = new Set(filters.statusFilter);
-                          if (active) next.delete(status); else next.add(status);
-                          filters.setStatusFilter(next);
-                        }}
-                      />
-                    );
-                  })}
-                </div>
-                <button
-                  type="button"
-                  onClick={() => setStatsPopoverOpen(true)}
-                  className="rounded-md p-1 text-text-muted cursor-pointer hover:text-text-secondary hover:bg-overlay-default active:bg-overlay-strong transition-colors duration-100"
-                  title="Sprint statistics"
-                >
-                  <BarChart2 size={13} strokeWidth={1.5} />
-                </button>
-              </>
-            )}
+            ) : null}
           </>
         )}
         {statsPopoverOpen && (

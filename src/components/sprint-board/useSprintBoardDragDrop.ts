@@ -14,6 +14,7 @@ import {
   type DragOverEvent,
 } from "@dnd-kit/core";
 import { jira, ApiError } from "@/lib/api-client";
+import { moveTicketSprintCaches } from "@/lib/ticket-cache";
 
 const VIRTUALIZE_THRESHOLD = 40;
 
@@ -102,11 +103,16 @@ export function useSprintBoardDragDrop(deps: DragDropDeps) {
         : [activeKey];
 
       const targetName = sprintNameMap[targetSprintId] ?? targetSprintId;
-      const prevData = apiTickets;
-      mutateTickets(
-        (current) => current?.filter((t) => !keysToMove.includes(t.key)) ?? [],
-        { revalidate: false },
-      );
+      // Snapshot the moved rows so we can roll them back to their origin sprint.
+      const movedTickets = keysToMove
+        .map((k) => apiTickets?.find((t) => t.key === k))
+        .filter((t): t is Ticket => Boolean(t));
+      // Move each row across the sprint caches at once: it leaves the source
+      // list, lands in the destination list, and the open detail panel/sidebar
+      // follow. No revalidation follows on purpose: the move route and the
+      // tickets GET hold separate 30s caches in next dev, so a bare revalidate
+      // re-reads the stale list and the rows pop back. Mirrors the bulk-move path.
+      movedTickets.forEach((t) => moveTicketSprintCaches(t, targetSprintId));
       setCheckedTickets((prev) => {
         const next = new Set(prev);
         keysToMove.forEach((k) => next.delete(k));
@@ -117,9 +123,8 @@ export function useSprintBoardDragDrop(deps: DragDropDeps) {
         await jira.moveSprint({ issueKeys: keysToMove, targetSprintId });
         const label = keysToMove.length === 1 ? keysToMove[0] : `${keysToMove.length} tickets`;
         showToast(`Moved ${label} to ${targetName}`);
-        mutateTickets();
       } catch {
-        mutateTickets(prevData, { revalidate: true });
+        movedTickets.forEach((t) => moveTicketSprintCaches(t, t.sprintId ?? "__backlog__"));
         showToast("Failed to move to sprint. Changes reverted.");
       }
       return;

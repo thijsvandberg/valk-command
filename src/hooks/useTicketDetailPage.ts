@@ -219,7 +219,13 @@ export function useTicketDetailPage(key: string) {
         setHasLocalTitleEdit(false);
         setHasLocalDescEdit(false);
         setOverrideConfirmed(false);
-        await mutateTicket();
+        // Clear the draft state optimistically; a plain revalidation can return
+        // the stale cached "draft" because server cache invalidation is
+        // unreliable in dev, leaving the badge stuck after a successful push.
+        await mutateTicket(
+          (prev) => prev ? { ...prev, editState: "clean", localEdits: {} } : prev,
+          { revalidate: true },
+        );
         setDraftDiscardKey((k) => k + 1);
         showToast("Pushed to Jira");
       } else {

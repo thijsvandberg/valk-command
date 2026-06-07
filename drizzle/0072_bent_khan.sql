@@ -1,0 +1,1 @@
+ALTER TABLE `ticket` ADD `assignee_account_id` text;

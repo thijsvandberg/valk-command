@@ -59,6 +59,7 @@ export async function upsertIssue(issue: JiraIssue, sprintName: string, _signal?
   const ac = extractAcceptanceCriteria(fields);
   const assigneeName = fields.assignee?.displayName ?? null;
   const assigneeAvatar = fields.assignee?.avatarUrls?.["48x48"] ?? null;
+  const assigneeAccountId = fields.assignee?.accountId ?? null;
   const reporterName = fields.reporter?.displayName ?? null;
   const priority = fields.priority?.name ?? null;
   const componentsArr = fields.components ?? [];
@@ -137,6 +138,7 @@ export async function upsertIssue(issue: JiraIssue, sprintName: string, _signal?
     status: normalizeStatus(fields.status.name),
     assignee: assigneeName,
     assigneeAvatar,
+    assigneeAccountId,
     epic: epicValue,
     epicKey: epicKeyValue,
     flagged: (() => {

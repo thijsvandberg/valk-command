@@ -9,7 +9,17 @@ interface CacheEntry<T = unknown> {
 let hits = 0;
 let misses = 0;
 
-const store = new Map<string, CacheEntry>();
+// In Next dev (Turbopack) each route bundle can get its own module instance, so
+// a plain module-level Map would not be shared between the route that writes a
+// cache entry and the one that invalidates it (e.g. /api/jira/move-sprint vs
+// /api/tickets). Backing the store with a globalThis singleton makes it truly
+// process-wide, so cross-route cache.invalidate actually clears the GET cache
+// and freshly-fetched lists reflect the change without a manual refresh.
+const globalForCache = globalThis as typeof globalThis & {
+  __bridgeCacheStore?: Map<string, CacheEntry>;
+};
+const store: Map<string, CacheEntry> = globalForCache.__bridgeCacheStore ?? new Map<string, CacheEntry>();
+globalForCache.__bridgeCacheStore = store;
 
 function evictIfNeeded() {
   if (store.size <= MAX_ENTRIES) return;

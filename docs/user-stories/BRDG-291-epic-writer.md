@@ -48,3 +48,19 @@ Full plan: [docs/plans/2026-06-04-epic-writer.md](../plans/2026-06-04-epic-write
 
 Stories are vertically sliced so each is shippable on its own and builds on the previous one.
 BRDG-292 alone delivers value (spar with AI + refine the epic).
+
+## Related: placeholder tickets (BRDG-304)
+
+[BRDG-304](BRDG-304-placeholder-tickets.md) introduces the same underlying concept from a
+different angle: a **local-until-promoted ticket** that lives in Bridge, carries content
+(and BV/estimate), shows up in the grouped sprint/epic views, and has a **promote / "Create
+in Jira"** action that creates the real issue under the epic with sprint placement happening
+at/after creation.
+
+The Epic Writer's `epic_child_draft` + `create-in-jira` path (BRDG-292 foundation,
+BRDG-295 create-in-jira/linking) and BRDG-304's `placeholderTicket` + promote endpoint are
+two models for the same "provisional ticket" abstraction. The difference is origin (AI-
+generated breakdown cards vs manually placed forward-planning markers) and surface (writer
+canvas vs board/epic rows). If/when both are built, consider a shared provisional-ticket
+model + a single promote-to-Jira service that both consume, plus shared "provisional" row
+styling. Flagged here for later; not being restructured now.

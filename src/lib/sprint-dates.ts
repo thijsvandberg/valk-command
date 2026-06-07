@@ -49,6 +49,19 @@ export function startDateFromPreviousEnd(endIso: string | null | undefined): str
   return `${start.getFullYear()}-${pad(start.getMonth() + 1)}-${pad(start.getDate())}`;
 }
 
+/**
+ * Whole-day span between a start and end picker value (date parts only, so the
+ * end's 17:00 does not produce a fractional day). Returns null when either side
+ * is missing/unparseable or the end precedes the start.
+ */
+export function sprintDurationDays(startValue: string, endValue: string): number | null {
+  const start = parseDatePart(startValue);
+  const end = parseDatePart(endValue);
+  if (!start || !end) return null;
+  const days = Math.round((end.getTime() - start.getTime()) / 86_400_000);
+  return days < 0 ? null : days;
+}
+
 /** Convert a stored ISO timestamp to the picker value ("" | "YYYY-MM-DD" | "YYYY-MM-DDTHH:mm"). */
 export function toInputDateTime(iso: string | null | undefined): string {
   if (!iso) return "";

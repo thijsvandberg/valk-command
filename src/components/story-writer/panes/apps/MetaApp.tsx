@@ -59,7 +59,7 @@ export function MetaApp() {
     setLocalLabels(serverLabels);
   }
 
-  const handleAssigneeChange = useCallback(async (user: { accountId: string; displayName: string; avatarUrl: string | null } | null) => {
+  const handleAssigneeChange = useCallback(async (user: { accountId: string | null; displayName: string; avatarUrl: string | null } | null) => {
     await writer.onAssigneeChange(user);
   }, [writer]);
 

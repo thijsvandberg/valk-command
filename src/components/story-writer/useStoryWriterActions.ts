@@ -164,7 +164,7 @@ export function useStoryWriterActions({
     mutateTicket();
   }, [ticketKey, mutateTicket]);
 
-  const handleAssigneeChange = useCallback(async (user: { accountId: string; displayName: string; avatarUrl: string | null } | null) => {
+  const handleAssigneeChange = useCallback(async (user: { accountId: string | null; displayName: string; avatarUrl: string | null } | null) => {
     try {
       await jira.assign({ issueKey: ticketKey, accountId: user?.accountId ?? null, name: user?.displayName ?? null });
       mutateTicket();

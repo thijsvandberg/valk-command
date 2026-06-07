@@ -6,11 +6,15 @@ import { saveStoryPoints } from "@/components/sprint-board/sprint-board-utils";
 
 const toggleFlag = vi.fn();
 const moveSprint = vi.fn();
+const assign = vi.fn();
 const globalMutate = vi.fn();
 
 vi.mock("@/lib/api-client", () => ({
   apiFetch: vi.fn(),
-  jira: { moveSprint: (...args: unknown[]) => moveSprint(...args) },
+  jira: {
+    moveSprint: (...args: unknown[]) => moveSprint(...args),
+    assign: (...args: unknown[]) => assign(...args),
+  },
   tickets: { toggleFlag: (...args: unknown[]) => toggleFlag(...args) },
 }));
 vi.mock("@/components/sprint-board/sprint-board-utils", () => ({
@@ -279,5 +283,78 @@ describe("useTicketActions - handleBulkMoveSprint", () => {
     expect(outcome).toEqual({ ok: false, count: 1 });
     expect(mutateTickets).not.toHaveBeenCalled();
     expect(globalMutate).not.toHaveBeenCalled();
+  });
+});
+
+describe("useTicketActions - handleAssigneeChange", () => {
+  beforeEach(() => {
+    assign.mockReset();
+  });
+
+  // A minimal SWR-mutate stand-in: awaits the data promise (rethrowing so the
+  // hook's catch fires) and exposes the optimistic/populate updaters for assertion.
+  function setup(apiTickets: Ticket[]) {
+    const mutateTickets = vi.fn(async (data?: unknown, _opts?: unknown) => {
+      if (data && typeof (data as Promise<unknown>).then === "function") {
+        await data; // rejects -> mutateTickets rejects -> hook catch runs
+      }
+    });
+    const showToast = vi.fn();
+    const { result } = renderHook(() =>
+      useTicketActions({
+        apiTickets,
+        mutateTickets: mutateTickets as unknown as Parameters<typeof useTicketActions>[0]["mutateTickets"],
+        activeListKey: null,
+        showToast,
+      }),
+    );
+    return { result, mutateTickets, showToast };
+  }
+
+  const user = { accountId: "acc-real-1", displayName: "Frank van den Nouland", avatarUrl: null };
+
+  it("assigns with the real accountId and optimistically shows the new assignee", async () => {
+    assign.mockResolvedValue(undefined);
+    const { result, mutateTickets } = setup([makeTicket("A-1", false)]);
+
+    await act(async () => {
+      await result.current.handleAssigneeChange("A-1", user);
+    });
+
+    expect(assign).toHaveBeenCalledWith({ issueKey: "A-1", accountId: "acc-real-1", name: "Frank van den Nouland", avatar: null });
+
+    const opts = mutateTickets.mock.calls[0][1] as {
+      optimisticData: (c?: Ticket[]) => Ticket[];
+      populateCache: (r: unknown, c?: Ticket[]) => Ticket[];
+      revalidate: boolean;
+    };
+    const current = [makeTicket("A-1", false)];
+    expect(opts.revalidate).toBe(false);
+    expect(opts.optimisticData(current).find((t) => t.key === "A-1")?.assignee?.name).toBe("Frank van den Nouland");
+    expect(opts.populateCache(undefined, current).find((t) => t.key === "A-1")?.assignee?.name).toBe("Frank van den Nouland");
+  });
+
+  it("clears the assignee when unassigning (null user)", async () => {
+    assign.mockResolvedValue(undefined);
+    const { result, mutateTickets } = setup([{ ...makeTicket("A-1", false), assignee: { name: "X", initials: "X", color: "#000" } } as Ticket]);
+
+    await act(async () => {
+      await result.current.handleAssigneeChange("A-1", null);
+    });
+
+    expect(assign).toHaveBeenCalledWith({ issueKey: "A-1", accountId: null, name: null, avatar: null });
+    const opts = mutateTickets.mock.calls[0][1] as { optimisticData: (c?: Ticket[]) => Ticket[] };
+    expect(opts.optimisticData([makeTicket("A-1", false)]).find((t) => t.key === "A-1")?.assignee).toBeNull();
+  });
+
+  it("toasts a revert message when the assign request fails", async () => {
+    assign.mockRejectedValue(new Error("boom"));
+    const { result, showToast } = setup([makeTicket("A-1", false)]);
+
+    await act(async () => {
+      await result.current.handleAssigneeChange("A-1", user);
+    });
+
+    expect(showToast).toHaveBeenCalledWith("Failed to update assignee for A-1. Change reverted.");
   });
 });

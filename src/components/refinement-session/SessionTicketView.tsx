@@ -303,7 +303,7 @@ export function SessionMetadataPanel({
     }
   }, [ticket.key, currentSprintId, onMutate]);
 
-  const handleAssigneeChange = useCallback(async (user: { accountId: string; displayName: string; avatarUrl: string | null } | null) => {
+  const handleAssigneeChange = useCallback(async (user: { accountId: string | null; displayName: string; avatarUrl: string | null } | null) => {
     const prev = assignee;
     if (user) {
       const name = user.displayName;

@@ -50,21 +50,32 @@ describe("POST /api/jira/assign", () => {
     expect(res.status).toBe(400);
   });
 
-  it("assigns user and updates local DB", async () => {
+  it("assigns using the real accountId and stores the display name locally", async () => {
     seedTicket(testDb, { jiraKey: "VPL-100", assignee: "Old User" });
 
     const res = await POST(makeRequest({
       issueKey: "VPL-100",
-      accountId: "acc-123",
+      accountId: "acc-real-123",
       name: "New User",
     }));
     const data = await res.json();
     expect(res.status).toBe(200);
     expect(data.ok).toBe(true);
-    expect(vi.mocked(jiraClient.assignIssue)).toHaveBeenCalledWith("VPL-100", "acc-123");
+    expect(vi.mocked(jiraClient.assignIssue)).toHaveBeenCalledWith("VPL-100", "acc-real-123");
 
     const row = testDb.select().from(ticket).where(eq(ticket.jiraKey, "VPL-100")).get();
     expect(row?.assignee).toBe("New User");
+  });
+
+  it("returns 422 when a name is given without an accountId (not yet synced)", async () => {
+    seedTicket(testDb, { jiraKey: "VPL-100", assignee: "Old User" });
+
+    const res = await POST(makeRequest({ issueKey: "VPL-100", accountId: null, name: "Ghost" }));
+    expect(res.status).toBe(422);
+    expect(vi.mocked(jiraClient.assignIssue)).not.toHaveBeenCalled();
+
+    const row = testDb.select().from(ticket).where(eq(ticket.jiraKey, "VPL-100")).get();
+    expect(row?.assignee).toBe("Old User");
   });
 
   it("unassigns when accountId is null", async () => {

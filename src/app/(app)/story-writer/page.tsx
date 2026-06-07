@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { NotebookPen, Plus, ArrowRight, AlertTriangle, Scissors, Clock, Trash2 } from "lucide-react";
 import { TicketStatusPill } from "@/components/shared/TicketStatusPill";
 import type { JiraStatus, TicketReadiness } from "@/types/ticket";
-import { getEpicColor } from "@/types/ticket";
+import { EpicBadge } from "@/components/shared/IssueMetaBadges";
 import { ViewHeader, ViewHeaderTitle } from "@/components/shared/ViewHeader";
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/shared/Card";
@@ -48,20 +48,6 @@ function formatTimeAgo(iso: string): string {
 function hasJiraChanges(session: ActiveSession): boolean {
   if (!session.jiraUpdatedAt || !session.updatedAt) return false;
   return new Date(session.jiraUpdatedAt).getTime() > new Date(session.updatedAt).getTime();
-}
-
-// Epic chip mirrors the treatment used in the TicketStatusPill hover card so
-// the epic reads consistently across the app.
-function EpicChip({ epic }: { epic: string }) {
-  const c = getEpicColor(epic);
-  return (
-    <span
-      className="inline-flex min-w-0 items-center truncate rounded-[4px] border-l-2 px-1.5 py-0.5 text-[10.5px] font-medium tracking-wide"
-      style={{ backgroundColor: c.bg, color: c.text, borderLeftColor: c.text }}
-    >
-      {epic}
-    </span>
-  );
 }
 
 function SessionCard({
@@ -131,7 +117,7 @@ function SessionCard({
           {sprintLabel && (
             <span className="shrink-0 truncate">{sprintLabel}</span>
           )}
-          {session.epic && <EpicChip epic={session.epic} />}
+          {session.epic && <EpicBadge epic={session.epic} />}
           {session.updatedAt && (
             <span className="flex shrink-0 items-center gap-1">
               <Clock size={10} strokeWidth={1.75} className="text-text-muted" />

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef, useCallback, useMemo } from "react";
+import { useState, useRef, useCallback, useMemo, type ReactNode } from "react";
 import type { Ticket, POStatus, TicketReadiness, IssueType, JiraStatus, Sprint } from "@/types/ticket";
 import type { AssignableUser } from "@/components/shared/AssigneePicker";
 import type { EpicOption } from "@/components/shared/EpicPicker";
@@ -128,6 +128,7 @@ export function TicketTable({
   onEditSprint,
   onCloseSprint,
   onSyncGroup,
+  flatHeader,
   scrollContainerRef,
   refinementSessionMap,
   onRemoveFromRefinement,
@@ -188,6 +189,9 @@ export function TicketTable({
   collapsedGroups?: Set<string>;
   onToggleCollapse?: (groupKey: string) => void;
   groupBy?: GroupByOption;
+  // Rendered at the top of the flat (ungrouped) card — the single-sprint/backlog
+  // stat header (BRDG card header). Only shown when not grouped.
+  flatHeader?: ReactNode;
   // When grouping by sprint, pin a sprint group to the tab bar. Key is the sprint id.
   pinnedSprintIds?: Set<string>;
   onPinSprint?: (sprintId: string) => void;
@@ -577,6 +581,10 @@ export function TicketTable({
               <GroupStatBar
                 tickets={group.tickets}
                 label={group.label}
+                // Collapse the label zone to its own width so the item count sits
+                // tight against each group name instead of leaving dead space
+                // before a fixed-width alignment column.
+                labelWidthClass=""
                 createAction={createAction}
                 leadingIcon={group.key === "__backlog__" ? <Inbox className="h-3.5 w-3.5" strokeWidth={1.5} /> : undefined}
                 isActive={groupBy === "sprint" && activeSprintIds.has(group.key)}
@@ -620,7 +628,6 @@ export function TicketTable({
                 onEscapeEmpty={() => setComposerGroupKey(null)}
                 placeholder={isBacklogGroup ? "Create story in the backlog..." : `Create story in ${group.label}...`}
                 alignKey
-                dropUp
                 className={visibleGroupTickets.length > 0 ? "border-t border-border-subtle" : ""}
               />
             )}
@@ -639,15 +646,19 @@ export function TicketTable({
       tabIndex={0}
       onKeyDown={onTableKeyDown}
     >
-      {isGrouped ? groupedTable : ((tickets.length > 0 || (flatCreateTarget && onCreateTicket)) && (
+      {isGrouped ? groupedTable : ((flatHeader || tickets.length > 0 || (flatCreateTarget && onCreateTicket)) && (
         <div className={CARD_CLASS}>
+          {flatHeader && (
+            <div className="@container relative flex items-center gap-3 bg-[var(--color-surface-chrome)]/30 px-3 py-[9px] rounded-t-xl border-b border-border-subtle">
+              <div className="min-w-0 flex-1">{flatHeader}</div>
+            </div>
+          )}
           {tickets.length > 0 && (enableVirtualization ? virtualizedTable : ((externalDnd || onReorder) ? dndTable : plainTable))}
           {flatCreateTarget && onCreateTicket && (
             <ChildIssueComposer
               onCreate={(title, jiraType) => onCreateTicket(flatCreateTarget.sprintId, title, jiraType)}
               placeholder={flatCreateTarget.sprintId === null ? "Create story in the backlog..." : "Create story in this sprint..."}
               alignKey
-              dropUp
               className={tickets.length > 0 ? "border-t border-border-subtle" : ""}
             />
           )}

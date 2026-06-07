@@ -37,9 +37,9 @@ vi.mock("@/contexts/RefinementSessionContext", () => ({
 }));
 
 const mockTickets = [
-  { key: "VPL-1", title: "First ticket", type: "story", storyPoints: 3, jiraStatus: "TO DO", readiness: null },
-  { key: "VPL-2", title: "Second ticket", type: "story", storyPoints: null, jiraStatus: "IN PROGRESS", readiness: "drafting" },
-  { key: "VPL-3", title: "Spike investigation", type: "spike", storyPoints: null, jiraStatus: "TO DO", readiness: null },
+  { key: "VPL-1", title: "First ticket", type: "story", storyPoints: 3, jiraStatus: "TO DO", readiness: null, totalSubtaskCount: 2 },
+  { key: "VPL-2", title: "Second ticket", type: "story", storyPoints: null, jiraStatus: "IN PROGRESS", readiness: "drafting", totalSubtaskCount: 0 },
+  { key: "VPL-3", title: "Spike investigation", type: "spike", storyPoints: null, jiraStatus: "TO DO", readiness: null, totalSubtaskCount: 0 },
 ];
 
 vi.mock("@/hooks/useSprintBoard", () => ({
@@ -96,6 +96,12 @@ describe("SessionEndModal", () => {
   it("shows unestimated indicator for tickets without story points", () => {
     render(<SessionEndModal />);
     expect(screen.getByText("No estimate")).toBeInTheDocument();
+  });
+
+  it("shows a no-subtasks alert only for tickets without subtasks", () => {
+    render(<SessionEndModal />);
+    // VPL-2 and VPL-3 have no subtasks; VPL-1 has 2, so it is not flagged.
+    expect(screen.getAllByText("No subtasks")).toHaveLength(2);
   });
 
   it("shows back to session button", () => {

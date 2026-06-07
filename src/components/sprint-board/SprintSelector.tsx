@@ -5,12 +5,13 @@ import { useOutsideClick } from "@/hooks/useOutsideClick";
 import type { Sprint } from "@/types/ticket";
 import { ChevronRight, Inbox } from "lucide-react";
 import { TEAMS, extractTeamPrefix } from "@/lib/sprint-utils";
+import { pluralize } from "@/lib/pluralize";
 
 export const BACKLOG_SPRINT_ID = "__backlog__";
 
 function sprintSecondary(s: Sprint): string {
   if (s.dateRange) return s.dateRange;
-  if (s.ticketCount > 0) return `${s.ticketCount} items`;
+  if (s.ticketCount > 0) return `${s.ticketCount} ${pluralize(s.ticketCount, "item")}`;
   return "";
 }
 

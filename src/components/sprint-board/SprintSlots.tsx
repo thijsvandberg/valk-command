@@ -3,7 +3,7 @@
 import { useState, useRef, useEffect, useCallback } from "react";
 import { useOutsideClick } from "@/hooks/useOutsideClick";
 import type { Sprint } from "@/types/ticket";
-import { ArrowUp, ArrowDown, ListFilter, RefreshCw, Layers, X, Plus, Inbox, ChevronsDownUp, ChevronsUpDown } from "lucide-react";
+import { ArrowUp, ArrowDown, ListFilter, Layers, X, Plus, Inbox, ChevronsDownUp, ChevronsUpDown } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import type { SavedView, SortField, SortDir, InlineTagId } from "./FilterBar";
 import { BoardFieldToggle, SortDropdown, SORT_OPTIONS } from "./FilterBar";
@@ -113,7 +113,7 @@ function GroupByDropdown({ value, onChange }: { value: GroupByOption; onChange: 
   return (
     <div ref={ref} className="relative">
       <Button
-        variant={isActive ? "soft" : "ghost"}
+        variant="ghost"
         size="md"
         iconOnly
         onClick={() => setOpen(!open)}
@@ -127,7 +127,7 @@ function GroupByDropdown({ value, onChange }: { value: GroupByOption; onChange: 
         }
         title={isActive ? `Group by: ${value}` : "Group by"}
         aria-label={isActive ? `Group by: ${value}` : "Group by"}
-        className={isActive ? "" : "border-0 bg-transparent text-text-tertiary hover:bg-hover-list-item hover:text-text-secondary"}
+        className={isActive ? "border-0 bg-transparent text-[var(--color-brand-400)] hover:bg-hover-list-item" : "border-0 bg-transparent text-text-tertiary hover:bg-hover-list-item hover:text-text-secondary"}
       />
       {open && (
         <div className="absolute top-full right-0 z-50 mt-1 w-36 rounded-lg border border-border-strong bg-[var(--color-surface-floating)] py-1 shadow-[var(--shadow-lg)]">
@@ -188,8 +188,6 @@ export function SprintSlots({
   onSlotEdit,
   onSprintSelect,
   onEditClose,
-  syncing,
-  onRefresh,
   onReorderSlots,
   ephemeralSprintId = null,
   ephemeralIsActive = false,
@@ -224,8 +222,6 @@ export function SprintSlots({
   onSlotEdit: (idx: number) => void;
   onSprintSelect: (sprintId: string) => void;
   onEditClose: () => void;
-  syncing: boolean;
-  onRefresh: () => void;
   onReorderSlots: (activeId: string, overId: string) => void;
   ephemeralSprintId?: string | null;
   ephemeralIsActive?: boolean;
@@ -453,8 +449,8 @@ export function SprintSlots({
             aria-label={allGroupsCollapsed ? "Expand all groups" : "Collapse all groups"}
             icon={
               allGroupsCollapsed
-                ? <ChevronsUpDown className="h-3.5 w-3.5" strokeWidth={1.5} />
-                : <ChevronsDownUp className="h-3.5 w-3.5" strokeWidth={1.5} />
+                ? <ChevronsUpDown className="h-3.5 w-3.5" strokeWidth={2} />
+                : <ChevronsDownUp className="h-3.5 w-3.5" strokeWidth={2} />
             }
             className="border-0 bg-transparent text-text-tertiary hover:bg-hover-list-item hover:text-text-secondary"
           />
@@ -478,29 +474,11 @@ export function SprintSlots({
           />
         )}
 
-        {/* Refresh board - hidden in All view since syncing all sprints at once is not practical */}
-        {!allActive && (
-          <Button
-            variant="secondary"
-            size="md"
-            iconOnly
-            disabled={syncing}
-            onClick={onRefresh}
-            title={syncing ? "Syncing..." : "Refresh board"}
-            aria-label={syncing ? "Syncing..." : "Refresh board"}
-            icon={
-              <RefreshCw
-                className={`h-3.5 w-3.5 ${syncing ? "animate-spin" : ""}`}
-                strokeWidth={1.5}
-              />
-            }
-          />
-        )}
 
         {/* Toggle filter bar visibility */}
         {onToggleFilters && (
           <Button
-            variant={filtersCollapsed && activeFilterCount > 0 ? "soft" : "ghost"}
+            variant="ghost"
             size="md"
             iconOnly
             onClick={onToggleFilters}
@@ -509,12 +487,12 @@ export function SprintSlots({
             icon={
               <span className="relative flex items-center justify-center">
                 <ListFilter className="h-3.5 w-3.5" strokeWidth={1.5} />
-                {filtersCollapsed && activeFilterCount > 0 && (
+                {activeFilterCount > 0 && (
                   <span className="absolute -top-0.5 -right-1 h-[6px] w-[6px] rounded-full bg-[var(--color-brand-400)] ring-2 ring-[var(--color-surface-base)]" />
                 )}
               </span>
             }
-            className={!filtersCollapsed || activeFilterCount > 0 ? "" : "border-0 bg-transparent text-text-tertiary hover:bg-hover-list-item hover:text-text-secondary"}
+            className={activeFilterCount > 0 ? "border-0 bg-transparent text-[var(--color-brand-400)] hover:bg-hover-list-item" : "border-0 bg-transparent text-text-tertiary hover:bg-hover-list-item hover:text-text-secondary"}
           />
         )}
       </div>

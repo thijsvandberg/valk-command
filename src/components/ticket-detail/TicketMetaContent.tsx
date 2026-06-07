@@ -7,6 +7,7 @@ import Link from "next/link";
 import { ChevronDown, AlertTriangle, Play, Gem } from "lucide-react";
 import { TicketStatusPill } from "@/components/shared/TicketStatusPill";
 import { tickets, jira, apiFetch } from "@/lib/api-client";
+import { patchTicketCaches, moveTicketSprintCaches } from "@/lib/ticket-cache";
 import { Avatar } from "@/components/shared/Avatar";
 import { QualityBadge } from "@/components/sprint-board/TicketTable";
 import { ReadinessCell } from "@/components/shared/ReadinessCell";
@@ -164,36 +165,44 @@ export function TicketMetaContent({
   }, [onReadinessChange]);
 
   const handleBusinessValueChange = useCallback(async (v: number | null) => {
+    const prev = businessValue;
     setBusinessValue(v);
+    patchTicketCaches(ticket.key, { businessValue: v });
     try {
       await tickets.updateMetadata(ticket.key, { businessValue: v });
       onMutate?.();
     } catch (err) {
       console.error("Operation failed:", err);
+      setBusinessValue(prev);
+      patchTicketCaches(ticket.key, { businessValue: prev });
     }
-  }, [ticket.key, onMutate]);
+  }, [ticket.key, businessValue, onMutate]);
 
   const handleStoryPointsChange = useCallback(async (v: number | null) => {
     const prev = storyPoints;
     setStoryPoints(v);
+    patchTicketCaches(ticket.key, { storyPoints: v });
     try {
       await tickets.updateStoryPoints(ticket.key, v);
       onMutate?.();
     } catch (err) {
       console.error("Operation failed:", err);
       setStoryPoints(prev);
+      patchTicketCaches(ticket.key, { storyPoints: prev });
     }
   }, [ticket.key, storyPoints, onMutate]);
 
   const handleJiraStatusChange = useCallback(async (status: JiraStatus) => {
     const prev = jiraStatus;
     setJiraStatus(status);
+    patchTicketCaches(ticket.key, { jiraStatus: status });
     try {
       await apiFetch(`/api/tickets/${encodeURIComponent(ticket.key)}/status`, { method: "PUT", body: { status } });
       onMutate?.();
     } catch (err) {
       console.error("Operation failed:", err);
       setJiraStatus(prev);
+      patchTicketCaches(ticket.key, { jiraStatus: prev });
     }
   }, [ticket.key, jiraStatus, onMutate]);
 
@@ -201,14 +210,21 @@ export function TicketMetaContent({
     if (!sprintId) return;
     const prev = currentSprintId;
     setCurrentSprintId(sprintId);
+    // Move the row between sprint lists at once so it leaves the current
+    // (e.g. backlog) view immediately. We deliberately do NOT revalidate after
+    // the move (no onMutate): the move route and the tickets GET hold separate
+    // caches in next dev, so a bare revalidation re-reads the stale 30s list and
+    // the row briefly pops back. The optimistic cache writes are authoritative
+    // until the natural refresh reconciles. Mirrors the board's bulk-move handler.
+    moveTicketSprintCaches(ticket, sprintId);
     try {
       await jira.moveSprint({ issueKeys: [ticket.key], targetSprintId: sprintId });
-      onMutate?.();
     } catch (err) {
       console.error("Operation failed:", err);
       setCurrentSprintId(prev);
+      moveTicketSprintCaches(ticket, prev ?? "__backlog__");
     }
-  }, [ticket.key, currentSprintId, onMutate]);
+  }, [ticket, currentSprintId]);
 
   const handleSprintModalSelect = useCallback((sprintId: string) => {
     handleSprintChange(sprintId);
@@ -222,8 +238,9 @@ export function TicketMetaContent({
     setSprintModalOpen(true);
   }, []);
 
-  const handleAssigneeChange = useCallback(async (user: { accountId: string; displayName: string; avatarUrl: string | null } | null) => {
+  const handleAssigneeChange = useCallback(async (user: { accountId: string | null; displayName: string; avatarUrl: string | null } | null) => {
     const prev = assignee;
+    let next: typeof assignee = null;
     if (user) {
       const name = user.displayName;
       const parts = name.trim().split(/\s+/);
@@ -231,10 +248,10 @@ export function TicketMetaContent({
       let hash = 0;
       for (let i = 0; i < name.length; i++) hash = name.charCodeAt(i) + ((hash << 5) - hash);
       const hue = ((hash % 360) + 360) % 360;
-      setAssignee({ name, initials, color: `hsl(${hue}, 55%, 50%)` });
-    } else {
-      setAssignee(null);
+      next = { name, initials, color: `hsl(${hue}, 55%, 50%)` };
     }
+    setAssignee(next);
+    patchTicketCaches(ticket.key, { assignee: next });
     try {
       await jira.assign({
         issueKey: ticket.key,
@@ -245,6 +262,7 @@ export function TicketMetaContent({
     } catch (err) {
       console.error("Operation failed:", err);
       setAssignee(prev);
+      patchTicketCaches(ticket.key, { assignee: prev });
     }
   }, [ticket.key, assignee, onMutate]);
 
@@ -253,6 +271,10 @@ export function TicketMetaContent({
     const prevKey = epicKey;
     setEpicName(epic?.name ?? null);
     setEpicKey(epic?.key ?? null);
+    // Patch the board/list caches immediately so the epic chip appears at once;
+    // relying on onMutate revalidation alone shows stale data because server
+    // cache invalidation is unreliable in dev.
+    patchTicketCaches(ticket.key, { epic: epic?.name ?? null, epicKey: epic?.key ?? null });
     try {
       await tickets.updateEpic(ticket.key, epic?.key ?? null);
       onMutate?.();
@@ -260,30 +282,37 @@ export function TicketMetaContent({
       console.error("Operation failed:", err);
       setEpicName(prevName);
       setEpicKey(prevKey);
+      patchTicketCaches(ticket.key, { epic: prevName, epicKey: prevKey });
     }
   }, [ticket.key, epicName, epicKey, onMutate]);
 
   const handleLabelsChange = useCallback(async (newLabels: string[]) => {
     const prev = labels;
     setLabelsOverride(newLabels);
+    patchTicketCaches(ticket.key, { labels: newLabels });
     try {
       await tickets.updateLabels(ticket.key, newLabels);
       onMutate?.();
     } catch (err) {
       console.error("Operation failed:", err);
       setLabelsOverride(prev);
+      patchTicketCaches(ticket.key, { labels: prev });
     }
   }, [ticket.key, labels, onMutate]);
 
   const handleNotesChange = useCallback(async (notes: string) => {
+    const prev = poNotes;
     setPoNotes(notes);
+    patchTicketCaches(ticket.key, { notes });
     try {
       await tickets.updateMetadata(ticket.key, { poNotes: notes });
       onMutate?.();
     } catch (err) {
       console.error("Operation failed:", err);
+      setPoNotes(prev);
+      patchTicketCaches(ticket.key, { notes: prev });
     }
-  }, [ticket.key, onMutate]);
+  }, [ticket.key, poNotes, onMutate]);
 
   const description = detail?.description ?? "";
   const hasDescription = description.trim().length > 20;

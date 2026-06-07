@@ -27,7 +27,7 @@ export function SortDropdown({
   return (
     <div ref={ref} className="relative flex items-center gap-1">
       <Button
-        variant={isActive ? "soft" : "ghost"}
+        variant="ghost"
         size="md"
         iconOnly
         onClick={() => setOpen(!open)}
@@ -41,7 +41,7 @@ export function SortDropdown({
         }
         title={isActive ? `Sorted: ${activeLabel} (${direction === "asc" ? "ascending" : "descending"})` : "Sort"}
         aria-label={isActive ? `Sort: ${activeLabel} (${direction === "asc" ? "ascending" : "descending"})` : "Sort"}
-        className={isActive ? "" : "border-0 bg-transparent text-text-tertiary hover:bg-hover-list-item hover:text-text-secondary"}
+        className={isActive ? "border-0 bg-transparent text-[var(--color-brand-400)] hover:bg-hover-list-item" : "border-0 bg-transparent text-text-tertiary hover:bg-hover-list-item hover:text-text-secondary"}
       />
 
       {open && (

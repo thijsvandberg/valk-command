@@ -26,8 +26,9 @@ interface GroupCardProps {
   floatingAction?: ReactNode;
   /** Forces the floating action visible regardless of hover (e.g. its composer is open). */
   floatingActionVisible?: boolean;
-  isCollapsed: boolean;
-  onToggleCollapse: () => void;
+  isCollapsed?: boolean;
+  /** Omit to make the card non-collapsible: no chevron affordance, always expanded. */
+  onToggleCollapse?: () => void;
   /** Card body (rows / table), rendered only while expanded. */
   children: ReactNode;
 }
@@ -37,16 +38,20 @@ export function GroupCard({
   headerExtras,
   floatingAction,
   floatingActionVisible = false,
-  isCollapsed,
+  isCollapsed = false,
   onToggleCollapse,
   children,
 }: GroupCardProps) {
+  const collapsible = onToggleCollapse !== undefined;
+  const collapsed = collapsible && isCollapsed;
   return (
     <div className={GROUP_CARD_CLASS}>
       <div
         onClick={onToggleCollapse}
-        className={`group/grouprow @container relative flex cursor-pointer select-none items-center gap-3 bg-[var(--color-surface-chrome)]/30 px-3 py-[9px] hover:bg-[var(--color-surface-chrome)]/50 [transition:background-color_.12s_ease] ${
-          isCollapsed ? "rounded-xl" : "rounded-t-xl border-b border-border-subtle"
+        className={`group/grouprow @container relative flex select-none items-center gap-3 bg-[var(--color-surface-chrome)]/30 px-3 py-[9px] [transition:background-color_.12s_ease] ${
+          collapsible ? "cursor-pointer hover:bg-[var(--color-surface-chrome)]/50" : ""
+        } ${
+          collapsed ? "rounded-xl" : "rounded-t-xl border-b border-border-subtle"
         }`}
       >
         <div className="min-w-0 flex-1">{header}</div>
@@ -56,7 +61,7 @@ export function GroupCard({
             // Matches the header's hover background so the gradient masks the
             // content beneath the action; fades in with the action itself.
             className={`pointer-events-none absolute inset-y-0 right-0 flex items-center justify-end pl-12 pr-3 [transition:opacity_.12s_ease] group-hover/grouprow:opacity-100 group-focus-within/grouprow:opacity-100 ${
-              isCollapsed ? "rounded-r-xl" : "rounded-tr-xl"
+              collapsed ? "rounded-r-xl" : "rounded-tr-xl"
             } ${floatingActionVisible ? "opacity-100" : "opacity-0"}`}
             style={{
               background:
@@ -67,7 +72,7 @@ export function GroupCard({
           </div>
         )}
       </div>
-      {!isCollapsed && children}
+      {!collapsed && children}
     </div>
   );
 }

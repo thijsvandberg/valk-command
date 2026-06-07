@@ -50,7 +50,7 @@ export async function GET(request: Request) {
     return NextResponse.json(cached, {
       headers: {
         "X-Cache": "HIT",
-        "Cache-Control": "private, max-age=10, stale-while-revalidate=20",
+        "Cache-Control": "no-store",
       },
     });
   }

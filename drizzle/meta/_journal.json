@@ -505,6 +505,13 @@
       "when": 1780851081340,
       "tag": "0071_sweet_the_captain",
       "breakpoints": true
+    },
+    {
+      "idx": 72,
+      "version": "6",
+      "when": 1780865430752,
+      "tag": "0072_bent_khan",
+      "breakpoints": true
     }
   ]
 }

@@ -438,16 +438,22 @@ export function EpicChildrenBySprint({
     const visibleItems = filterActive
       ? group.items.filter((c) => (group.isActive && isUnpointedChild(c)) || isDeprecatedWithSpChild(c))
       : group.items;
+    // No fixed-width label column here (labelWidthClass=""): groups in this view
+    // differ in header width because some sprints carry a date range and the
+    // backlog does not. That made the gated `@2xl:w-48` trip inconsistently and
+    // leave dead space before the item count on the wider groups. Collapsing to
+    // the label's own width keeps every group's count tight to its label.
     const header = (
       <GroupStatBar
         tickets={group.items.map(toStatTicket)}
         label={group.label}
+        sprint={group.sprintName ? sprints.find((s) => s.name === group.sprintName) : undefined}
         isActive={group.isActive}
         isCollapsed={isCollapsed}
         onToggleCollapse={() => toggle(group.key)}
         showStatusCounts={false}
         showBvAvg={false}
-        labelWidthClass="@2xl:w-48"
+        labelWidthClass=""
         activeCriterion={filterActive ? "unpointed" : null}
         onFilterChange={(c) => {
           setUnpointedFilterKey(c ? group.key : null);
@@ -525,7 +531,6 @@ export function EpicChildrenBySprint({
             placeholder={isUnscheduled ? "Create unscheduled issue..." : `Create issue in ${group.label}...`}
             alignKey={visibleFields.has("issueKey")}
             className={visibleItems.length > 0 ? "border-t border-border-subtle" : ""}
-            dropUp
           />
         )}
       </>

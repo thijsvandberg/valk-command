@@ -47,6 +47,10 @@ export const ticket = sqliteTable("ticket", {
   status: text("status").notNull(),
   assignee: text("assignee"),
   assigneeAvatar: text("assignee_avatar"),
+  // Real Jira accountId for the assignee, harvested from issue data during sync.
+  // The user-search API is outside the token's scope, so this captured id is the
+  // only way to assign people by their real id (the picker keys people by name).
+  assigneeAccountId: text("assignee_account_id"),
   epic: text("epic"),
   epicKey: text("epic_key"),
   flagged: integer("flagged", { mode: "boolean" }).notNull().default(false),

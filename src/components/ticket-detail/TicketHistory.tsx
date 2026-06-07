@@ -340,7 +340,9 @@ export function TicketHistory({ ticket, showConflictDiff, autoOpenDraftDiff, met
     [sorted],
   );
 
-  const wrapperClass = embedded ? "p-4" : "mt-8";
+  // Non-embedded usage (the History tab) already gets top padding from its
+  // container, so no extra top margin is needed here.
+  const wrapperClass = embedded ? "p-4" : "";
 
   if (loading) {
     return (

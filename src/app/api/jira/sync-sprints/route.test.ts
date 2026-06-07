@@ -13,6 +13,16 @@ vi.mock("@/db", () => ({
   },
 }));
 
+const getSprints = vi.fn();
+vi.mock("@/lib/jira-client", () => ({
+  jiraClient: {
+    get isLive() {
+      return false;
+    },
+    getSprints: (...args: unknown[]) => getSprints(...args),
+  },
+}));
+
 import { POST } from "./route";
 
 function makeRequest(scope?: string): NextRequest {
@@ -25,6 +35,8 @@ function makeRequest(scope?: string): NextRequest {
 describe("POST /api/jira/sync-sprints", () => {
   beforeEach(() => {
     testDb = createTestDb();
+    getSprints.mockReset();
+    getSprints.mockResolvedValue([]);
   });
 
   it("fetches and caches sprints (default scope)", async () => {
@@ -70,6 +82,28 @@ describe("POST /api/jira/sync-sprints", () => {
     expect(response.status).toBe(200);
     expect(data.ok).toBe(true);
     expect(data.scope).toBe("history");
+  });
+
+  it("refreshes the sprint-name cache so renames propagate to detail surfaces", async () => {
+    const { sprintNameCache } = await import("@/db/schema");
+
+    // First sync: sprint 141 is still called "Sprint 141".
+    getSprints.mockResolvedValueOnce([
+      { id: 141, name: "Sprint 141", state: "future", startDate: "2026-07-03" },
+    ]);
+    await POST(makeRequest());
+
+    let cached = testDb.select().from(sprintNameCache).all();
+    expect(cached.find((r) => r.sprintId === "141")?.displayName).toBe("Sprint 141");
+
+    // Re-sync after a rename in Jira: cache must pick up the new name.
+    getSprints.mockResolvedValueOnce([
+      { id: 141, name: "BT: 141", state: "future", startDate: "2026-07-03" },
+    ]);
+    await POST(makeRequest());
+
+    cached = testDb.select().from(sprintNameCache).all();
+    expect(cached.find((r) => r.sprintId === "141")?.displayName).toBe("BT: 141");
   });
 
   it("merges sprints and history without overwriting each other", async () => {
