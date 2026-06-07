@@ -167,8 +167,9 @@ describe("CreateSprintModal", () => {
     expect(screen.getByText(/18 Jun 2026/)).toBeInTheDocument();
     // The end matches the convention, so the re-snap button is hidden.
     expect(screen.queryByTitle("Set end date to the conventional sprint end")).not.toBeInTheDocument();
-    // The sprint length is shown under the field.
-    expect(screen.getByText("+13 days")).toBeInTheDocument();
+    // The sprint length is shown under the field, as a sentence with the count bold.
+    expect(screen.getByText("This sprint runs for", { exact: false })).toBeInTheDocument();
+    expect(screen.getByText("13")).toBeInTheDocument();
   });
 
   it("shows the previous sprint it follows, with its end date", () => {
@@ -184,8 +185,9 @@ describe("CreateSprintModal", () => {
       />,
     );
 
-    expect(screen.getByText(/Follows BT: 141/)).toBeInTheDocument();
-    expect(screen.getByText(/16 Jul 2026/)).toBeInTheDocument();
+    expect(screen.getByText("Follows", { exact: false })).toBeInTheDocument();
+    expect(screen.getByText("BT: 141")).toBeInTheDocument();
+    expect(screen.getByText("Thu 16 Jul 2026")).toBeInTheDocument();
   });
 
   it("keeps prefilled fields editable", () => {

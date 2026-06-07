@@ -128,7 +128,10 @@ export function CreateSprintModal({
           {previousSprintName && (
             <p className="-mt-2 flex items-center gap-1.5 text-[11px] text-text-muted">
               <CornerDownRight size={11} strokeWidth={1.5} className="shrink-0" />
-              <span>Follows {previousSprintName}{previousEndLabel ? `, ends ${previousEndLabel}` : ""}</span>
+              <span>
+                Follows <span className="font-semibold text-text-secondary">{previousSprintName}</span>
+                {previousEndLabel && <>, ends <span className="font-semibold text-text-secondary">{previousEndLabel}</span></>}
+              </span>
             </p>
           )}
 
@@ -181,7 +184,9 @@ export function CreateSprintModal({
               )}
               {durationDays !== null && (
                 <span className="px-2 text-[11px] text-text-muted">
-                  +{durationDays} {durationDays === 1 ? "day" : "days"}
+                  This sprint runs for{" "}
+                  <span className="font-semibold text-text-secondary">{durationDays}</span>{" "}
+                  {durationDays === 1 ? "day" : "days"}
                 </span>
               )}
             </div>
