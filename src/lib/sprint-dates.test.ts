@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { sprintEndFromStart, toInputDateTime, toIsoDateTime, startDateFromPreviousEnd } from "./sprint-dates";
+import { sprintEndFromStart, toInputDateTime, toIsoDateTime, startDateFromPreviousEnd, sprintDurationDays } from "./sprint-dates";
 
 describe("sprintEndFromStart", () => {
   it("maps a Friday start to the Thursday two weeks later at 17:00", () => {
@@ -54,6 +54,23 @@ describe("startDateFromPreviousEnd", () => {
     expect(startDateFromPreviousEnd(undefined)).toBe("");
     expect(startDateFromPreviousEnd("")).toBe("");
     expect(startDateFromPreviousEnd("not a date")).toBe("");
+  });
+});
+
+describe("sprintDurationDays", () => {
+  it("counts whole days between start and end, ignoring the end time", () => {
+    // Fri 17 Jul -> Thu 30 Jul (17:00) is a 13-day span.
+    expect(sprintDurationDays("2026-07-17", "2026-07-30T17:00")).toBe(13);
+  });
+
+  it("counts a same-day span as zero", () => {
+    expect(sprintDurationDays("2026-07-17", "2026-07-17")).toBe(0);
+  });
+
+  it("returns null when a date is missing or the end precedes the start", () => {
+    expect(sprintDurationDays("", "2026-07-30")).toBeNull();
+    expect(sprintDurationDays("2026-07-17", "")).toBeNull();
+    expect(sprintDurationDays("2026-07-30", "2026-07-17")).toBeNull();
   });
 });
 

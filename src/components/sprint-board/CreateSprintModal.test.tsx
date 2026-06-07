@@ -149,7 +149,7 @@ describe("CreateSprintModal", () => {
     });
   });
 
-  it("prefills the name and start date from suggestions", () => {
+  it("prefills the name, start date and conventional end date from suggestions", () => {
     render(
       <CreateSprintModal
         onClose={onClose}
@@ -163,8 +163,29 @@ describe("CreateSprintModal", () => {
     expect(screen.getByPlaceholderText("e.g. Sprint 42")).toHaveValue("BT: 140");
     // A prefilled name enables Create immediately (one-click create).
     expect(screen.getByText("Create")).not.toBeDisabled();
-    // The prefilled start date drives the conventional end-date suggestion button.
-    expect(screen.getByTitle("Set end date to the conventional sprint end")).toBeInTheDocument();
+    // Fri 5 Jun -> conventional end Thu 18 Jun, prefilled into the End date field.
+    expect(screen.getByText(/18 Jun 2026/)).toBeInTheDocument();
+    // The end matches the convention, so the re-snap button is hidden.
+    expect(screen.queryByTitle("Set end date to the conventional sprint end")).not.toBeInTheDocument();
+    // The sprint length is shown under the field.
+    expect(screen.getByText("+13 days")).toBeInTheDocument();
+  });
+
+  it("shows the previous sprint it follows, with its end date", () => {
+    render(
+      <CreateSprintModal
+        onClose={onClose}
+        onCreated={onCreated}
+        showToast={showToast}
+        suggestedName="BT: 142"
+        suggestedStartDate="2026-07-17"
+        previousSprintName="BT: 141"
+        previousSprintEndIso="2026-07-16T17:00:00.000Z"
+      />,
+    );
+
+    expect(screen.getByText(/Follows BT: 141/)).toBeInTheDocument();
+    expect(screen.getByText(/16 Jul 2026/)).toBeInTheDocument();
   });
 
   it("keeps prefilled fields editable", () => {

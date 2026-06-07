@@ -6,7 +6,7 @@ import { Modal } from "@/components/shared/Modal";
 import { DateTimePicker, formatDateTimeLabel } from "@/components/shared/DateTimePicker";
 import { Button } from "@/components/ui/Button";
 import { jira } from "@/lib/api-client";
-import { sprintEndFromStart, toIsoDateTime } from "@/lib/sprint-dates";
+import { sprintEndFromStart, sprintDurationDays, toIsoDateTime, toInputDateTime } from "@/lib/sprint-dates";
 import { Calendar, Target, Type, X, AlertTriangle, CornerDownRight } from "lucide-react";
 
 interface CreateSprintModalProps {
@@ -16,6 +16,9 @@ interface CreateSprintModalProps {
   // Editable defaults derived from the regular sprint series (BRDG-305).
   suggestedName?: string;
   suggestedStartDate?: string;
+  // The regular sprint this one follows, for context (BRDG-305 follow-up).
+  previousSprintName?: string;
+  previousSprintEndIso?: string | null;
 }
 
 export function CreateSprintModal({
@@ -24,10 +27,14 @@ export function CreateSprintModal({
   showToast,
   suggestedName = "",
   suggestedStartDate = "",
+  previousSprintName,
+  previousSprintEndIso,
 }: CreateSprintModalProps) {
   const [name, setName] = useState(suggestedName);
   const [startDate, setStartDate] = useState(suggestedStartDate);
-  const [endDate, setEndDate] = useState("");
+  // Prefill the conventional end so the PO can create in one click; empty when
+  // there is no suggested start to derive it from.
+  const [endDate, setEndDate] = useState(suggestedStartDate ? sprintEndFromStart(suggestedStartDate) : "");
   const [goal, setGoal] = useState("");
   const [creating, setCreating] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -72,6 +79,11 @@ export function CreateSprintModal({
   }, [name, startDate, endDate, goal, onClose, onCreated, showToast]);
 
   const suggestedEnd = sprintEndFromStart(startDate);
+  // Date-only label for the previous sprint's end (drop the stored 17:00).
+  const previousEndLabel = previousSprintEndIso
+    ? formatDateTimeLabel(toInputDateTime(previousSprintEndIso).split("T")[0])
+    : null;
+  const durationDays = sprintDurationDays(startDate, endDate);
 
   return (
     <Modal open onClose={onClose} aria-label="Create sprint">
@@ -112,6 +124,14 @@ export function CreateSprintModal({
             />
           </label>
 
+          {/* Context: the regular sprint this one follows (BRDG-305 follow-up) */}
+          {previousSprintName && (
+            <p className="-mt-2 flex items-center gap-1.5 text-[11px] text-text-muted">
+              <CornerDownRight size={11} strokeWidth={1.5} className="shrink-0" />
+              <span>Follows {previousSprintName}{previousEndLabel ? `, ends ${previousEndLabel}` : ""}</span>
+            </p>
+          )}
+
           {/* Date fields */}
           <div className="grid grid-cols-2 gap-3">
             <div className="space-y-1">
@@ -141,22 +161,29 @@ export function CreateSprintModal({
             </div>
           </div>
 
-          {/* Conventional sprint-end suggestion (first Thursday after +1 week, 17:00) */}
-          {startDate && suggestedEnd !== endDate && (
-            <div className="-mt-2 flex justify-end">
-              <button
-                type="button"
-                onClick={() => setEndDate(suggestedEnd)}
-                title="Set end date to the conventional sprint end"
-                className="flex items-center gap-1.5 rounded-md px-2 py-1 text-[11px] font-medium cursor-pointer
-                  text-[var(--color-brand-400)]
-                  hover:bg-[var(--color-brand-500)]/10
-                  active:bg-[var(--color-brand-500)]/15
-                  transition-colors duration-100"
-              >
-                <CornerDownRight size={11} strokeWidth={1.5} />
-                End on {formatDateTimeLabel(suggestedEnd)}
-              </button>
+          {/* Sprint length + the conventional end suggestion when the end diverges */}
+          {(durationDays !== null || (startDate && suggestedEnd !== endDate)) && (
+            <div className="-mt-2 flex flex-col items-end gap-1">
+              {startDate && suggestedEnd !== endDate && (
+                <button
+                  type="button"
+                  onClick={() => setEndDate(suggestedEnd)}
+                  title="Set end date to the conventional sprint end"
+                  className="flex items-center gap-1.5 rounded-md px-2 py-1 text-[11px] font-medium cursor-pointer
+                    text-[var(--color-brand-400)]
+                    hover:bg-[var(--color-brand-500)]/10
+                    active:bg-[var(--color-brand-500)]/15
+                    transition-colors duration-100"
+                >
+                  <CornerDownRight size={11} strokeWidth={1.5} />
+                  End on {formatDateTimeLabel(suggestedEnd)}
+                </button>
+              )}
+              {durationDays !== null && (
+                <span className="px-2 text-[11px] text-text-muted">
+                  +{durationDays} {durationDays === 1 ? "day" : "days"}
+                </span>
+              )}
             </div>
           )}
 

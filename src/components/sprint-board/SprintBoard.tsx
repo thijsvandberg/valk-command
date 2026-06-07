@@ -105,10 +105,11 @@ export default function SprintBoard() {
   const [autoSuggest, setAutoSuggest] = useState(false);
   const [createSprintModalOpen, setCreateSprintModalOpen] = useState(false);
   // Editable defaults for the Create Sprint modal, derived from the regular series (BRDG-305).
+  const latestRegular = useMemo(() => latestRegularSprint(sprints), [sprints]);
   const suggestedSprintName = useMemo(() => nextSprintName(sprints), [sprints]);
   const suggestedSprintStartDate = useMemo(
-    () => startDateFromPreviousEnd(latestRegularSprint(sprints)?.sprint.endDate),
-    [sprints],
+    () => startDateFromPreviousEnd(latestRegular?.sprint.endDate),
+    [latestRegular],
   );
   const [finishModalOpen, setFinishModalOpen] = useState(false);
   const [finishEarlyClose, setFinishEarlyClose] = useState(false);
@@ -616,7 +617,7 @@ export default function SprintBoard() {
 
       <SearchModal open={searchModalOpen} initialQuery={f.searchQuery} onClose={() => setSearchModalOpen(false)} onSelectTicket={(key: string) => setSelectedTicket(key)} sprintNameMap={sprintNameMap} />
       {editModalOpen && editSprint && <SprintEditModal sprint={editSprint} tickets={editSprintTickets} onClose={() => { setEditModalOpen(false); setAutoSuggest(false); setEditSprintId(null); }} showToast={showToast} autoSuggest={autoSuggest} />}
-      {createSprintModalOpen && <CreateSprintModal onClose={() => setCreateSprintModalOpen(false)} onCreated={handleSprintCreated} showToast={showToast} suggestedName={suggestedSprintName} suggestedStartDate={suggestedSprintStartDate} />}
+      {createSprintModalOpen && <CreateSprintModal onClose={() => setCreateSprintModalOpen(false)} onCreated={handleSprintCreated} showToast={showToast} suggestedName={suggestedSprintName} suggestedStartDate={suggestedSprintStartDate} previousSprintName={latestRegular?.sprint.name} previousSprintEndIso={latestRegular?.sprint.endDate ?? null} />}
       {finishModalOpen && finishSprint && (
         <FinishSprintModal
           sprint={finishSprint}
