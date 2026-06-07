@@ -376,6 +376,9 @@ export const epics = {
   list: (signal?: AbortSignal) =>
     apiFetch<{ key: string; name: string; status: string; childCount: number; summary: string | null; summaryStale: boolean }[]>("/api/epics", { signal }),
 
+  create: (data: { title: string; description?: string }, signal?: AbortSignal) =>
+    apiFetch<{ key: string }>("/api/epics", { method: "POST", body: data, signal }),
+
   updateSummary: (key: string, summary: string, signal?: AbortSignal) =>
     apiFetch<{ key: string; summary: string; summaryUpdatedAt: string }>(
       `/api/epics/${enc(key)}/summary`, { method: "PATCH", body: { summary }, signal },

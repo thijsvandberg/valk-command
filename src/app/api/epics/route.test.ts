@@ -22,7 +22,26 @@ vi.mock("@/lib/cache", () => ({
   cache: mockCache,
 }));
 
-import { GET } from "./route";
+vi.mock("@/lib/jira-client", () => ({
+  jiraClient: {
+    createIssue: vi.fn().mockResolvedValue({ key: "VPL-999", id: "99999" }),
+  },
+}));
+
+vi.mock("@/lib/activity-logger", () => ({
+  logActivity: vi.fn().mockResolvedValue(undefined),
+}));
+
+import { GET, POST } from "./route";
+import { jiraClient } from "@/lib/jira-client";
+
+function postRequest(body: unknown): Request {
+  return new Request("http://localhost:3100/api/epics", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(body),
+  });
+}
 
 describe("GET /api/epics", () => {
   beforeEach(() => {
@@ -122,5 +141,73 @@ describe("GET /api/epics", () => {
     const data = await res.json();
     expect(data[0].key).toBe("VPL-E2");
     expect(data[1].key).toBe("VPL-E1");
+  });
+});
+
+describe("POST /api/epics", () => {
+  beforeEach(() => {
+    testDb = createTestDb();
+    vi.clearAllMocks();
+    (jiraClient.createIssue as ReturnType<typeof vi.fn>).mockResolvedValue({ key: "VPL-999", id: "99999" });
+  });
+
+  it("creates a Jira issue of type Epic and returns its key", async () => {
+    const res = await POST(postRequest({ title: "New epic" }));
+    const data = await res.json();
+
+    expect(res.status).toBe(200);
+    expect(data).toEqual({ key: "VPL-999" });
+    expect(jiraClient.createIssue).toHaveBeenCalledWith(
+      expect.objectContaining({ summary: "New epic", issueType: "Epic", projectKey: "VPL" }),
+    );
+  });
+
+  it("never sends sprintId or parentKey for an epic", async () => {
+    await POST(postRequest({ title: "New epic", description: "desc" }));
+    const arg = (jiraClient.createIssue as ReturnType<typeof vi.fn>).mock.calls[0][0];
+    expect(arg).not.toHaveProperty("sprintId");
+    expect(arg).not.toHaveProperty("parentKey");
+  });
+
+  it("converts the optional description to an ADF doc node", async () => {
+    await POST(postRequest({ title: "New epic", description: "**bold**" }));
+    const arg = (jiraClient.createIssue as ReturnType<typeof vi.fn>).mock.calls[0][0];
+    expect(arg.description).toEqual(expect.objectContaining({ type: "doc" }));
+    expect(typeof arg.description).toBe("object");
+  });
+
+  it("omits description entirely when blank or absent", async () => {
+    await POST(postRequest({ title: "No desc", description: "   " }));
+    const arg = (jiraClient.createIssue as ReturnType<typeof vi.fn>).mock.calls[0][0];
+    expect(arg).not.toHaveProperty("description");
+  });
+
+  it("persists a local epic row with type=epic and status=TO DO", async () => {
+    await POST(postRequest({ title: "Persisted epic" }));
+    const rows = testDb.select().from(ticket).all();
+    expect(rows).toHaveLength(1);
+    expect(rows[0].jiraKey).toBe("VPL-999");
+    expect(rows[0].type).toBe("epic");
+    expect(rows[0].status).toBe("TO DO");
+    expect(rows[0].title).toBe("Persisted epic");
+  });
+
+  it("invalidates the epic caches", async () => {
+    await POST(postRequest({ title: "Cache epic" }));
+    expect(mockCache.invalidate).toHaveBeenCalledWith("/api/epics");
+  });
+
+  it("returns 400 when the title is missing or empty", async () => {
+    const res = await POST(postRequest({ title: "   " }));
+    expect(res.status).toBe(400);
+    expect(jiraClient.createIssue).not.toHaveBeenCalled();
+  });
+
+  it("returns 502 when the Jira create fails", async () => {
+    (jiraClient.createIssue as ReturnType<typeof vi.fn>).mockRejectedValueOnce(new Error("Jira down"));
+    const res = await POST(postRequest({ title: "Boom" }));
+    expect(res.status).toBe(502);
+    const rows = testDb.select().from(ticket).all();
+    expect(rows).toHaveLength(0);
   });
 });

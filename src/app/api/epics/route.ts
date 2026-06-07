@@ -3,6 +3,13 @@ import { db } from "@/db";
 import { ticket } from "@/db/schema";
 import { eq, sql } from "drizzle-orm";
 import { cache } from "@/lib/cache";
+import { jiraClient } from "@/lib/jira-client";
+import { markdownToAdf } from "@/lib/markdown-to-adf";
+import { env } from "@/lib/env";
+import { logActivity } from "@/lib/activity-logger";
+import { logger } from "@/lib/logger";
+import { errorResponse } from "@/lib/api-response";
+import { parseJsonBody } from "@/lib/request-parser";
 
 export interface EpicListItem {
   key: string;
@@ -98,4 +105,55 @@ export async function GET() {
   cache.set(cacheKey, epics, 300_000);
 
   return NextResponse.json(epics, { headers: { "X-Cache": "MISS" } });
+}
+
+// Create a standalone epic from the Epics page. Unlike POST /api/tickets (which is
+// board-oriented and excludes epics), an epic carries no sprint and no parent. The
+// optional description is authored as markdown and stored as ADF, the same way the
+// epic writer's create-in-jira path does it.
+export async function POST(request: Request) {
+  const parsed = await parseJsonBody(request);
+  if ("error" in parsed) return parsed.error;
+  const body = parsed.data as { title?: string; description?: string };
+
+  const title = body.title?.trim();
+  if (!title) {
+    return errorResponse("title is required", 400);
+  }
+
+  const descriptionText = typeof body.description === "string" ? body.description.trim() : "";
+
+  let jiraResult: { key: string; id: string };
+  try {
+    jiraResult = await jiraClient.createIssue({
+      summary: title,
+      issueType: "Epic",
+      projectKey: env.JIRA_PROJECT_KEY,
+      ...(descriptionText ? { description: markdownToAdf(descriptionText) } : {}),
+    });
+  } catch (err) {
+    logger.error("epic-create", `Jira create failed: ${err}`);
+    const message = err instanceof Error ? err.message : "Jira API error";
+    return errorResponse(message, 502);
+  }
+
+  await db.insert(ticket).values({
+    jiraKey: jiraResult.key,
+    jiraId: jiraResult.id,
+    title,
+    type: "epic",
+    status: "TO DO",
+    flagged: false,
+  });
+
+  // Prefix-clears /api/epics and /api/epics/progress so the new epic surfaces.
+  cache.invalidate("/api/epics");
+
+  await logActivity({
+    type: "metadata-update",
+    scope: jiraResult.key,
+    summary: `Created epic ${jiraResult.key}: ${title}`,
+  });
+
+  return NextResponse.json({ key: jiraResult.key });
 }
