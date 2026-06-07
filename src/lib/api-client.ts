@@ -345,6 +345,18 @@ export const epicWriter = {
     apiFetch<unknown>(`/api/epics/${enc(key)}/writer/apply-output`, { method: "POST", body: data, signal }),
   updateCard: (key: string, index: number, data: { body: string | null }, signal?: AbortSignal) =>
     apiFetch<unknown>(`/api/epics/${enc(key)}/writer/cards/${index}`, { method: "PATCH", body: data, signal }),
+  createInJira: (key: string, data: { cardIndex: number; placement?: string }, signal?: AbortSignal) =>
+    apiFetch<{ ok: boolean; cardIndex: number; jiraKey: string; alreadyCreated?: boolean }>(
+      `/api/epics/${enc(key)}/writer/create-in-jira`, { method: "POST", body: data, signal },
+    ),
+  linkChildren: (
+    key: string,
+    data: { sourceIndex: number; targetIndex: number; relation: string },
+    signal?: AbortSignal,
+  ) =>
+    apiFetch<{ ok: boolean; sourceKey: string; destKey: string; relation: string }>(
+      `/api/epics/${enc(key)}/writer/link-children`, { method: "POST", body: data, signal },
+    ),
 };
 
 // ---------------------------------------------------------------------------

@@ -1,8 +1,9 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { Layers, FileText, AlignLeft, Sparkles, ChevronDown, ChevronRight, Loader2 } from "lucide-react";
+import { Layers, FileText, AlignLeft, Sparkles, ChevronDown, ChevronRight, Loader2, Link2, Check } from "lucide-react";
 import type { EpicChildDraftRow } from "@/db/schema";
+import { SprintPlacementMenu } from "./SprintPlacementMenu";
 
 interface ChildStoryCardProps {
   card: EpicChildDraftRow;
@@ -11,6 +12,16 @@ interface ChildStoryCardProps {
   onDeepen?: (index: number, title: string) => void | Promise<unknown>;
   // Persist a PO hand-edit of the worked-out body.
   onEditBody?: (index: number, body: string | null) => void | Promise<unknown>;
+  // Promote this DRAFT card to a real Jira issue under the epic with the chosen
+  // placement. Omitted on a read-only board.
+  onCreateInJira?: (index: number, placement: string) => void | Promise<unknown>;
+  // Confirm one AI-proposed inter-story link from this card.
+  onConfirmLink?: (sourceIndex: number, targetIndex: number, relation: string) => void | Promise<unknown>;
+  // Titles of all cards by cardIndex, so a suggested link can name its target.
+  cardTitles?: Record<number, string>;
+  // cardIndexes of cards already created in Jira; a link can only be confirmed
+  // once both ends are live, so the confirm button stays disabled until then.
+  createdIndexes?: Set<number>;
   // True while a workspace task is running, so the card disables its deepen
   // action (one turn at a time) and shows a busy affordance.
   busy?: boolean;
@@ -41,12 +52,26 @@ const DEPTH_META: Record<Depth, { label: string; icon: typeof Layers }> = {
  * + AC; once filled, the body is shown in an expandable, editable region. DRAFT
  * cards show the local state; created cards show their Jira key.
  */
-export function ChildStoryCard({ card, onDeepen, onEditBody, busy }: ChildStoryCardProps) {
+export function ChildStoryCard({
+  card,
+  onDeepen,
+  onEditBody,
+  onCreateInJira,
+  onConfirmLink,
+  cardTitles,
+  createdIndexes,
+  busy,
+}: ChildStoryCardProps) {
   const depth = cardDepth(card);
   const meta = DEPTH_META[depth];
   const DepthIcon = meta.icon;
   const bullets = Array.isArray(card.bullets) ? card.bullets : [];
   const hasBody = !!card.body && card.body.trim().length > 0;
+  const isCreated = card.status === "created" && !!card.jiraKey;
+  const suggestedLinks = Array.isArray(card.suggestedLinks) ? card.suggestedLinks : [];
+
+  const [creating, setCreating] = useState(false);
+  const [linkingKey, setLinkingKey] = useState<string | null>(null);
 
   const [expanded, setExpanded] = useState(false);
   const [editing, setEditing] = useState(false);
@@ -153,8 +178,62 @@ export function ChildStoryCard({ card, onDeepen, onEditBody, busy }: ChildStoryC
         </div>
       )}
 
+      {suggestedLinks.length > 0 && (
+        <ul className="mt-2.5 space-y-1">
+          {suggestedLinks.map((link, i) => {
+            const targetTitle = cardTitles?.[link.targetIndex] ?? `Story ${link.targetIndex + 1}`;
+            const targetCreated = createdIndexes?.has(link.targetIndex) ?? false;
+            // Both ends must be live in Jira before a link can be created.
+            const canConfirm = isCreated && targetCreated && !link.confirmed;
+            const linkId = `${link.targetIndex}:${link.relation}`;
+            return (
+              <li
+                key={i}
+                className="flex items-center justify-between gap-2 rounded-md bg-overlay-subtle px-2 py-1 text-label text-text-tertiary"
+              >
+                <span className="flex min-w-0 items-center gap-1.5">
+                  <Link2 size={10} strokeWidth={1.75} className="shrink-0 text-text-muted" />
+                  <span className="shrink-0 font-medium text-text-secondary">{link.relation}</span>
+                  <span className="min-w-0 truncate">{targetTitle}</span>
+                </span>
+                {link.confirmed ? (
+                  <span className="flex shrink-0 items-center gap-0.5 text-[var(--color-brand-400)]">
+                    <Check size={10} strokeWidth={2} />
+                    Linked
+                  </span>
+                ) : onConfirmLink ? (
+                  <button
+                    type="button"
+                    disabled={!canConfirm || linkingKey !== null}
+                    onClick={async () => {
+                      setLinkingKey(linkId);
+                      try {
+                        await onConfirmLink(card.cardIndex, link.targetIndex, link.relation);
+                      } finally {
+                        setLinkingKey(null);
+                      }
+                    }}
+                    className="flex shrink-0 items-center gap-1 rounded border border-border-default bg-surface-base px-1.5 py-0.5 font-medium text-text-secondary cursor-pointer transition-colors duration-150 hover:bg-hover-list-item focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)] active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-50"
+                    title={
+                      canConfirm
+                        ? "Create this link in Jira"
+                        : "Both stories must be created in Jira first"
+                    }
+                  >
+                    {linkingKey === linkId ? (
+                      <Loader2 size={10} strokeWidth={1.75} className="animate-spin" />
+                    ) : null}
+                    Confirm
+                  </button>
+                ) : null}
+              </li>
+            );
+          })}
+        </ul>
+      )}
+
       <footer className="mt-3 flex items-center justify-between gap-2">
-        {card.status === "created" && card.jiraKey ? (
+        {isCreated ? (
           <span className="font-mono text-[10px] text-[var(--color-brand-400)]">
             {card.jiraKey}
           </span>
@@ -164,22 +243,38 @@ export function ChildStoryCard({ card, onDeepen, onEditBody, busy }: ChildStoryC
           </span>
         )}
 
-        {onDeepen && (
-          <button
-            type="button"
-            disabled={busy}
-            onClick={() => void onDeepen(card.cardIndex, card.title)}
-            className="flex items-center gap-1 rounded-md border border-border-default bg-overlay-subtle px-2 py-0.5 text-label font-medium text-text-secondary cursor-pointer transition-colors duration-150 hover:bg-hover-list-item focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)] active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-50"
-            title={hasBody ? "Refine the worked-out story" : "Work this story out in full"}
-          >
-            {busy ? (
-              <Loader2 size={11} strokeWidth={1.75} className="animate-spin" />
-            ) : (
-              <Sparkles size={11} strokeWidth={1.75} />
-            )}
-            {hasBody ? "Refine" : "Deepen"}
-          </button>
-        )}
+        <div className="flex items-center gap-1.5">
+          {onDeepen && (
+            <button
+              type="button"
+              disabled={busy}
+              onClick={() => void onDeepen(card.cardIndex, card.title)}
+              className="flex items-center gap-1 rounded-md border border-border-default bg-overlay-subtle px-2 py-0.5 text-label font-medium text-text-secondary cursor-pointer transition-colors duration-150 hover:bg-hover-list-item focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)] active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-50"
+              title={hasBody ? "Refine the worked-out story" : "Work this story out in full"}
+            >
+              {busy ? (
+                <Loader2 size={11} strokeWidth={1.75} className="animate-spin" />
+              ) : (
+                <Sparkles size={11} strokeWidth={1.75} />
+              )}
+              {hasBody ? "Refine" : "Deepen"}
+            </button>
+          )}
+
+          {onCreateInJira && !isCreated && (
+            <SprintPlacementMenu
+              busy={creating}
+              onCreate={async (placement) => {
+                setCreating(true);
+                try {
+                  await onCreateInJira(card.cardIndex, placement);
+                } finally {
+                  setCreating(false);
+                }
+              }}
+            />
+          )}
+        </div>
       </footer>
     </article>
   );

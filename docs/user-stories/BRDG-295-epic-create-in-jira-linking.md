@@ -1,7 +1,7 @@
 # BRDG-295: Epic Writer create-in-Jira and linking
 
 **Epic:** [BRDG-291](BRDG-291-epic-writer.md)
-**Status:** Not Started
+**Status:** Done
 **Priority:** High
 
 ## Description
@@ -12,14 +12,23 @@ breakdown becomes real, linked Jira tickets when I am ready.
 
 ## Acceptance Criteria
 
-- [ ] Per-card "Create in Jira" button promotes a DRAFT card to a real Jira issue under the epic
-- [ ] Created issue is automatically linked to the epic (epic-child)
-- [ ] Card state shows DRAFT vs created (Jira key visible after creation)
-- [ ] `epic_child_draft` updates: `status: created`, `jiraKey` set
-- [ ] AI-proposed inter-story links (`suggestedLinks`) are shown; PO confirms each before it is
+- [x] Per-card "Create in Jira" button promotes a DRAFT card to a real Jira issue under the epic
+- [x] Created issue is automatically linked to the epic (epic-child)
+- [x] Card state shows DRAFT vs created (Jira key visible after creation)
+- [x] `epic_child_draft` updates: `status: created`, `jiraKey` set
+- [x] AI-proposed inter-story links (`suggestedLinks`) are shown; PO confirms each before it is
       created in both local DB and Jira
-- [ ] Nothing reaches Jira until "Create in Jira" / link confirmation is pressed
-- [ ] Tests for: create-in-jira promotion, epic-child link, suggested-link confirm/skip
+- [x] Nothing reaches Jira until "Create in Jira" / link confirmation is pressed
+- [x] Tests for: create-in-jira promotion, epic-child link, suggested-link confirm/skip
+
+## Implementation notes
+
+- Epic-child link is established at creation via `jiraClient.createIssue({ parentKey: epicKey })`
+  (modern Jira hierarchy), so no separate link call is needed.
+- `create-in-jira` accepts a `placement` (sprint id | `__backlog__` | `__default__`) so the
+  placement menu is wired end to end; the actual `moveToSprint` lands in BRDG-296.
+- `link-children` requires both ends to be `created` (real Jira keys) and is idempotent on the
+  local link rows; it marks the matching `suggestedLink.confirmed` on the source card.
 
 ## Technical Notes
 

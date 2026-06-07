@@ -120,6 +120,8 @@ export function EpicWriterLayout({ epicKey }: EpicWriterLayoutProps) {
             cards={writer.cards}
             onDeepen={writer.deepenCard}
             onEditBody={writer.updateCardBody}
+            onCreateInJira={writer.createCardInJira}
+            onConfirmLink={writer.confirmCardLink}
             busy={writer.status === "sending" || writer.status === "streaming"}
           />
         </aside>

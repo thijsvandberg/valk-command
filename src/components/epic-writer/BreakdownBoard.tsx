@@ -10,6 +10,10 @@ interface BreakdownBoardProps {
   onDeepen?: (index: number, title: string) => void | Promise<unknown>;
   // Persist a PO hand-edit of a card's worked-out body.
   onEditBody?: (index: number, body: string | null) => void | Promise<unknown>;
+  // Promote a DRAFT card to a real Jira issue under the epic.
+  onCreateInJira?: (index: number, placement: string) => void | Promise<unknown>;
+  // Confirm one AI-proposed inter-story link.
+  onConfirmLink?: (sourceIndex: number, targetIndex: number, relation: string) => void | Promise<unknown>;
   // True while a workspace task is running: cards disable their deepen action.
   busy?: boolean;
 }
@@ -20,7 +24,23 @@ interface BreakdownBoardProps {
  * story for X") and the board reflects the latest <epic-breakdown>. Create-in-
  * Jira, deepen, and link affordances are added in later stories.
  */
-export function BreakdownBoard({ cards, onDeepen, onEditBody, busy }: BreakdownBoardProps) {
+export function BreakdownBoard({
+  cards,
+  onDeepen,
+  onEditBody,
+  onCreateInJira,
+  onConfirmLink,
+  busy,
+}: BreakdownBoardProps) {
+  // Titles + created-state lookups so each card can name its suggested-link
+  // targets and only allow a link once both ends are live in Jira.
+  const cardTitles: Record<number, string> = {};
+  const createdIndexes = new Set<number>();
+  for (const c of cards) {
+    cardTitles[c.cardIndex] = c.title;
+    if (c.status === "created" && c.jiraKey) createdIndexes.add(c.cardIndex);
+  }
+
   if (cards.length === 0) {
     return (
       <div className="flex h-full flex-col items-center justify-center gap-2 px-6 text-center">
@@ -46,6 +66,10 @@ export function BreakdownBoard({ cards, onDeepen, onEditBody, busy }: BreakdownB
             card={card}
             onDeepen={onDeepen}
             onEditBody={onEditBody}
+            onCreateInJira={onCreateInJira}
+            onConfirmLink={onConfirmLink}
+            cardTitles={cardTitles}
+            createdIndexes={createdIndexes}
             busy={busy}
           />
         ))}

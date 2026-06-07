@@ -490,6 +490,41 @@ export function useStoryWriter(ticketKey: string, options?: UseStoryWriterOption
     }
   }, [isEpicMode, ticketKey, refreshSession]);
 
+  // Promote a DRAFT card to a real Jira issue under the epic. The placement
+  // (sprint | backlog | default) is carried through to the route now so the
+  // Create-in-Jira menu is wired end to end; the sprint move itself lands in a
+  // later story. Refreshes the session so the card flips to its created state
+  // (Jira key visible). Returns the created key, or null on failure.
+  const createCardInJira = useCallback(
+    async (index: number, placement?: string): Promise<string | null> => {
+      if (!isEpicMode) return null;
+      try {
+        const res = await epicWriterApi.createInJira(ticketKey, { cardIndex: index, placement });
+        await refreshSession();
+        return res.jiraKey;
+      } catch {
+        return null;
+      }
+    },
+    [isEpicMode, ticketKey, refreshSession],
+  );
+
+  // Confirm a single AI-proposed inter-story link. Nothing reaches Jira until
+  // this is pressed. Refreshes so the suggested link shows as confirmed.
+  const confirmCardLink = useCallback(
+    async (sourceIndex: number, targetIndex: number, relation: string): Promise<boolean> => {
+      if (!isEpicMode) return false;
+      try {
+        await epicWriterApi.linkChildren(ticketKey, { sourceIndex, targetIndex, relation });
+        await refreshSession();
+        return true;
+      } catch {
+        return false;
+      }
+    },
+    [isEpicMode, ticketKey, refreshSession],
+  );
+
   const saveDraft = useCallback(() => drafts.saveDraft(session), [drafts, session]);
   const pushToJira = useCallback(() => drafts.pushToJira(session), [drafts, session]);
 
@@ -532,5 +567,7 @@ export function useStoryWriter(ticketKey: string, options?: UseStoryWriterOption
     setPhase,
     deepenCard,
     updateCardBody,
+    createCardInJira,
+    confirmCardLink,
   };
 }

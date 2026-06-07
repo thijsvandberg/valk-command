@@ -3,6 +3,13 @@ import { describe, it, expect, vi } from "vitest";
 import { ChildStoryCard } from "./ChildStoryCard";
 import type { EpicChildDraftRow } from "@/db/schema";
 
+// The Create-in-Jira menu lazy-loads sprints + the default-sprint setting when
+// it opens; stub those so the card tests stay isolated from the network.
+vi.mock("@/lib/api-client", () => ({
+  jira: { getSprints: vi.fn().mockResolvedValue([]) },
+  settings: { getDefaultSprint: vi.fn().mockResolvedValue({ sprintId: "" }) },
+}));
+
 function card(overrides: Partial<EpicChildDraftRow>): EpicChildDraftRow {
   return {
     id: overrides.id ?? "c1",
@@ -71,5 +78,84 @@ describe("ChildStoryCard", () => {
     const textarea = await screen.findByRole("textbox");
     fireEvent.blur(textarea);
     expect(onEditBody).not.toHaveBeenCalled();
+  });
+
+  it("shows a Create in Jira menu on a DRAFT card and promotes with the chosen placement", async () => {
+    const onCreateInJira = vi.fn().mockResolvedValue(undefined);
+    render(<ChildStoryCard card={card({ cardIndex: 3 })} onCreateInJira={onCreateInJira} />);
+
+    fireEvent.click(screen.getByRole("button", { name: /create in jira/i }));
+    fireEvent.click(await screen.findByRole("menuitem", { name: /to be planned/i }));
+
+    await waitFor(() => expect(onCreateInJira).toHaveBeenCalledWith(3, "__backlog__"));
+  });
+
+  it("shows the Jira key and hides the Create menu once the card is created", () => {
+    render(
+      <ChildStoryCard
+        card={card({ status: "created", jiraKey: "VPL-201" })}
+        onCreateInJira={vi.fn()}
+      />,
+    );
+    expect(screen.getByText("VPL-201")).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /create in jira/i })).not.toBeInTheDocument();
+  });
+
+  it("lists a suggested link and confirms it only when both ends are created", async () => {
+    const onConfirmLink = vi.fn().mockResolvedValue(undefined);
+    render(
+      <ChildStoryCard
+        card={card({
+          cardIndex: 0,
+          status: "created",
+          jiraKey: "VPL-301",
+          suggestedLinks: [{ targetIndex: 1, relation: "blocks", confirmed: false }],
+        })}
+        onConfirmLink={onConfirmLink}
+        cardTitles={{ 0: "A", 1: "B" }}
+        createdIndexes={new Set([0, 1])}
+      />,
+    );
+
+    expect(screen.getByText("blocks")).toBeInTheDocument();
+    expect(screen.getByText("B")).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: /confirm/i }));
+    await waitFor(() => expect(onConfirmLink).toHaveBeenCalledWith(0, 1, "blocks"));
+  });
+
+  it("disables link confirmation when the target is still a DRAFT", () => {
+    render(
+      <ChildStoryCard
+        card={card({
+          cardIndex: 0,
+          status: "created",
+          jiraKey: "VPL-301",
+          suggestedLinks: [{ targetIndex: 1, relation: "blocks", confirmed: false }],
+        })}
+        onConfirmLink={vi.fn()}
+        cardTitles={{ 0: "A", 1: "B" }}
+        createdIndexes={new Set([0])}
+      />,
+    );
+    expect(screen.getByRole("button", { name: /confirm/i })).toBeDisabled();
+  });
+
+  it("shows an already-confirmed link as Linked with no confirm button", () => {
+    render(
+      <ChildStoryCard
+        card={card({
+          cardIndex: 0,
+          status: "created",
+          jiraKey: "VPL-301",
+          suggestedLinks: [{ targetIndex: 1, relation: "blocks", confirmed: true }],
+        })}
+        onConfirmLink={vi.fn()}
+        cardTitles={{ 0: "A", 1: "B" }}
+        createdIndexes={new Set([0, 1])}
+      />,
+    );
+    expect(screen.getByText(/linked/i)).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /confirm/i })).not.toBeInTheDocument();
   });
 });
