@@ -336,6 +336,10 @@ export default function TicketDetailPage({
 
   const { ticket } = h;
 
+  // Epics are worked out in the Epic Writer, everything else in the Story Writer.
+  const isEpic = ticket.type === "epic";
+  const writeHref = isEpic ? `/epics/${key}/write` : `/tickets/${key}/write`;
+
   return (
     <>
       {pageTitle}
@@ -551,7 +555,7 @@ export default function TicketDetailPage({
                 style={{ transition: "border-color 0.15s ease" }}
               >
                 <Link
-                  href={`/tickets/${key}/write`}
+                  href={writeHref}
                   className="flex h-7 items-center gap-1.5 rounded-l-md px-2.5 text-body-sm font-medium text-[var(--color-brand-400)] cursor-pointer hover:bg-[var(--color-brand-500)]/20 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)] active:scale-[0.98]"
                   style={{ transition: "background-color 0.15s ease, transform 0.1s ease" }}
                 >
@@ -579,12 +583,12 @@ export default function TicketDetailPage({
               </div>
             ) : (
               <Link
-                href={`/tickets/${key}/write`}
+                href={writeHref}
                 className="flex h-7 items-center gap-1.5 rounded-md border border-[var(--color-brand-500)]/25 bg-[var(--color-brand-500)]/10 px-2.5 text-body-sm font-medium text-[var(--color-brand-400)] cursor-pointer hover:bg-[var(--color-brand-500)]/20 hover:border-[var(--color-brand-500)]/40 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)] active:scale-[0.98] shadow-[0_2px_8px_color-mix(in_srgb,var(--color-brand-600)_12%,transparent)]"
                 style={{ transition: "background-color 0.15s ease, border-color 0.15s ease, transform 0.1s ease" }}
               >
                 <NotebookPen size={13} strokeWidth={1.5} />
-                Story writer
+                {isEpic ? "Epic writer" : "Story writer"}
               </Link>
             )}
             {sidebarCollapsed && (

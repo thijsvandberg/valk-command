@@ -1,8 +1,11 @@
 "use client";
 
-import { useCallback, useMemo } from "react";
-import { Zap } from "lucide-react";
+import { useCallback, useMemo, useState } from "react";
+import { Zap, Plus } from "lucide-react";
 import { ViewHeader, ViewHeaderTitle } from "@/components/shared/ViewHeader";
+import { Button } from "@/components/ui/Button";
+import { Toast } from "@/components/ui/Toast";
+import { useToast } from "@/hooks/useToast";
 import { useEpicProgress } from "@/hooks/useEpics";
 import { useJiraSprints } from "@/hooks/useSprintBoard";
 import { useLocalStorage } from "@/hooks/useLocalStorage";
@@ -15,10 +18,13 @@ import {
 import { EpicRow } from "./EpicRow";
 import { EpicFilterBar } from "./EpicFilterBar";
 import { EpicListSkeleton } from "./loading";
+import { CreateEpicModal } from "./CreateEpicModal";
 
 export default function EpicsPage() {
   const { data: epics, isLoading } = useEpicProgress();
   const { sprints } = useJiraSprints();
+  const { toast, toastLoading, showToast, dismissToast } = useToast();
+  const [createOpen, setCreateOpen] = useState(false);
 
   const [filters, setFilters] = useLocalStorage<PersistedEpicFilters>(STORAGE_KEY, {});
   const teamFilter = useMemo(() => filters.teams ?? [], [filters.teams]);
@@ -69,7 +75,19 @@ export default function EpicsPage() {
 
   return (
     <div className="flex h-full flex-col">
-      <ViewHeader icon={<Zap size={16} strokeWidth={1.5} />}>
+      <ViewHeader
+        icon={<Zap size={16} strokeWidth={1.5} />}
+        actions={
+          <Button
+            variant="primary"
+            size="sm"
+            onClick={() => setCreateOpen(true)}
+            icon={<Plus size={14} strokeWidth={2} />}
+          >
+            Create epic
+          </Button>
+        }
+      >
         <ViewHeaderTitle>Epics</ViewHeaderTitle>
         {filtered && filtered.length > 0 && (
           <span className="ml-2 rounded-md bg-overlay-default px-2 py-0.5 text-caption font-medium tabular-nums text-text-tertiary">
@@ -128,6 +146,11 @@ export default function EpicsPage() {
           )}
         </div>
       </div>
+
+      {createOpen && (
+        <CreateEpicModal onClose={() => setCreateOpen(false)} showToast={showToast} />
+      )}
+      <Toast toast={toast} loading={toastLoading} onDismiss={dismissToast} />
     </div>
   );
 }
