@@ -23,6 +23,10 @@ vi.mock("@/components/shared/IssueMetaBadges", () => ({
   EpicBadge: ({ epic }: { epic: string }) => <span data-testid="epic-badge">{epic}</span>,
 }));
 
+vi.mock("@/components/shared/AddEpicPill", () => ({
+  AddEpicPill: ({ ticketKey }: { ticketKey: string }) => <span data-testid="add-epic" data-ticket={ticketKey} />,
+}));
+
 vi.mock("@dnd-kit/sortable", () => ({
   useSortable: () => ({ attributes: {}, listeners: {}, setNodeRef: vi.fn(), transform: null, transition: null, isDragging: false }),
 }));
@@ -106,6 +110,33 @@ describe("BoardRow (headerless, BRDG-239)", () => {
       </tbody></table>,
     );
     expect(screen.queryByText("Onboarding")).toBeNull();
+  });
+
+  it("opens the epic (not the row) when the epic chip is clicked (BRDG-131)", () => {
+    const onSelectTicket = vi.fn();
+    renderRow({ onSelectTicket });
+    fireEvent.click(screen.getByText("Onboarding"));
+    expect(onSelectTicket).toHaveBeenCalledTimes(1);
+    expect(onSelectTicket).toHaveBeenCalledWith("VPL-100");
+  });
+
+  it("shows the Add-epic placeholder only when the row has no epic and is editable (BRDG-131)", () => {
+    // No epic + editable -> placeholder shown
+    renderRow({ ticket: makeTicket({ epic: null, epicKey: null }), onEpicChange: vi.fn() });
+    expect(screen.getByTestId("add-epic")).toBeInTheDocument();
+
+    // No epic but not editable (no handler) -> no placeholder
+    renderRow({ ticket: makeTicket({ epic: null, epicKey: null }) });
+    expect(screen.getAllByTestId("add-epic")).toHaveLength(1);
+
+    // Has an epic -> badge, never the placeholder
+    renderRow({ ticket: makeTicket(), onEpicChange: vi.fn() });
+    expect(screen.getAllByTestId("add-epic")).toHaveLength(1);
+  });
+
+  it("hides the Add-epic placeholder when grouped by epic (hideEpic)", () => {
+    renderRow({ ticket: makeTicket({ epic: null, epicKey: null }), onEpicChange: vi.fn(), hideEpic: true });
+    expect(screen.queryByTestId("add-epic")).toBeNull();
   });
 
   it("gates the flag tag on both the flag field and the visibility set", () => {

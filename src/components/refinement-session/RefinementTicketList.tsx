@@ -5,6 +5,7 @@ import { useOutsideClick } from "@/hooks/useOutsideClick";
 import { Search, SlidersHorizontal, X, ListFilter, Check } from "lucide-react";
 import { ChildIssueRow } from "@/components/ticket-detail/ChildIssueRow";
 import { EpicBadge, SubtaskCountBadge, InRefinementBadge, SprintBadge } from "@/components/shared/IssueMetaBadges";
+import { AddEpicPill } from "@/components/shared/AddEpicPill";
 import { StoryPointPicker } from "@/components/shared/StoryPointPicker";
 import { BusinessValuePicker } from "@/components/shared/BusinessValuePicker";
 import { EditStateDot } from "@/components/sprint-board/TicketTableCells";
@@ -199,7 +200,9 @@ export function RefinementTicketList({
                 {ticket.editState === "draft" && <EditStateDot state="draft" />}
                 {ticket.editState === "local_edits" && <EditStateDot state="local_edits" />}
                 {ticket.editState === "conflict" && <EditStateDot state="conflict" />}
-                {showEpic && ticket.epic && <EpicBadge epic={ticket.epic} />}
+                {showEpic && (ticket.epic
+                  ? <EpicBadge epic={ticket.epic} />
+                  : onEpicChange && <AddEpicPill ticketKey={ticket.key} onChange={(epic) => onEpicChange(ticket.key, epic)} />)}
                 {showSubtasks && <SubtaskCountBadge open={ticket.openSubtaskCount ?? 0} total={ticket.totalSubtaskCount ?? 0} />}
                 <InRefinementBadge sessionNames={sessionNames} />
                 {isChecked && isOtherSession && (

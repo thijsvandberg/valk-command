@@ -43,6 +43,8 @@ export function EpicPicker({
   ticketKey,
   onOpenChange,
   textClass = "text-label",
+  emptyLabel = "Select epic",
+  emptyTriggerClassName,
 }: {
   value: EpicOption | null;
   onChange: (epic: EpicOption | null) => void;
@@ -52,10 +54,14 @@ export function EpicPicker({
   // Trigger font-size utility. Defaults to the compact pill size; the ticket
   // detail sidebar overrides this to align with its other 14px values.
   textClass?: string;
+  // Empty-state (no epic) trigger overrides, used by the ghost "Add epic"
+  // placeholder on issue rows (BRDG-131).
+  emptyLabel?: string;
+  emptyTriggerClassName?: string;
 }) {
   return (
     <BasePicker.Root portal={true} align={align} popoverHeight={300} onOpenChange={onOpenChange}>
-      <EpicPickerInner value={value} onChange={onChange} ticketKey={ticketKey} textClass={textClass} />
+      <EpicPickerInner value={value} onChange={onChange} ticketKey={ticketKey} textClass={textClass} emptyLabel={emptyLabel} emptyTriggerClassName={emptyTriggerClassName} />
     </BasePicker.Root>
   );
 }
@@ -65,11 +71,15 @@ function EpicPickerInner({
   onChange,
   ticketKey,
   textClass,
+  emptyLabel,
+  emptyTriggerClassName,
 }: {
   value: EpicOption | null;
   onChange: (epic: EpicOption | null) => void;
   ticketKey?: string;
   textClass: string;
+  emptyLabel: string;
+  emptyTriggerClassName?: string;
 }) {
   const { open, query, setQuery, searchRef, handleClose } = BasePicker.useContext();
 
@@ -226,19 +236,24 @@ function EpicPickerInner({
   return (
     <>
       <BasePicker.Trigger
-        title={value ? `Epic: ${value.name}` : "Select epic"}
+        title={value ? `Epic: ${value.name}` : emptyLabel}
         className={
           value
             ? "inline-flex min-w-0 max-w-full items-center rounded-md cursor-pointer transition-[box-shadow,transform] duration-150 hover:ring-1 hover:ring-inset hover:ring-border-default focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)] active:scale-[0.98]"
-            : `inline-flex items-center gap-1.5 rounded-md bg-overlay-default px-2 py-0.5 ${textClass} font-medium cursor-pointer hover:bg-overlay-strong transition-colors duration-150 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)] active:scale-[0.98]`
+            : emptyTriggerClassName
+              // Keep the override visible while its popover is open, otherwise a
+              // hover-reveal ghost trigger vanishes the moment the cursor leaves
+              // the row to enter the popover.
+              ? `${emptyTriggerClassName}${open ? " opacity-100" : ""}`
+              : `inline-flex items-center gap-1.5 rounded-md bg-overlay-default px-2 py-0.5 ${textClass} font-medium text-text-muted cursor-pointer hover:bg-overlay-strong transition-colors duration-150 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)] active:scale-[0.98]`
         }
       >
         {value ? (
           <EpicBadge epic={value.name} className="max-w-full" />
         ) : (
           <>
-            <Zap size={12} strokeWidth={1.5} className="shrink-0 text-text-muted" />
-            <span className="truncate max-w-[140px] text-text-muted">Select epic</span>
+            <Zap size={12} strokeWidth={1.5} className="shrink-0" />
+            <span className="truncate max-w-[140px]">{emptyLabel}</span>
           </>
         )}
       </BasePicker.Trigger>

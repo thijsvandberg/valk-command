@@ -6,6 +6,7 @@ import type { Ticket, POStatus, TicketReadiness, IssueType, JiraStatus, Sprint }
 import type { AssignableUser } from "@/components/shared/AssigneePicker";
 import type { EpicOption } from "@/components/shared/EpicPicker";
 import { EpicBadge } from "@/components/shared/IssueMetaBadges";
+import { AddEpicPill } from "@/components/shared/AddEpicPill";
 import type { InlineTagId } from "@/components/sprint-board/filter-bar-types";
 import { Avatar } from "@/components/shared/Avatar";
 import { Flag, MessageSquare, Pencil, Check, X, Gem, IterationCw, GripVertical } from "lucide-react";
@@ -411,9 +412,24 @@ export const BoardRow = memo(forwardRef<HTMLTableRowElement, BoardRowBaseProps>(
                 </RefinementGemTrigger>
               )}
 
-              {/* Epic chip — shrinks with the title when space is tight. */}
-              {tags.has("epic") && !hideEpic && ticket.epic && (
-                <EpicBadge epic={ticket.epic} className="min-w-0 shrink" />
+              {/* Epic chip — shrinks with the title when space is tight. Clicking it
+                  opens the epic itself in the side panel rather than selecting the row
+                  (BRDG-131). Rows without an epic get a hover-revealed "Add epic"
+                  placeholder instead, except when grouped by epic (hideEpic). */}
+              {tags.has("epic") && !hideEpic && (
+                ticket.epic && ticket.epicKey ? (
+                  <button
+                    type="button"
+                    onPointerDown={(e) => e.stopPropagation()}
+                    onClick={(e) => { e.stopPropagation(); onSelectTicket(ticket.epicKey!); }}
+                    className="flex min-w-0 shrink cursor-pointer items-center rounded-md transition-[box-shadow,transform] duration-150 hover:ring-1 hover:ring-inset hover:ring-border-default focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)] active:scale-[0.98]"
+                    title={`Open epic ${ticket.epic}`}
+                  >
+                    <EpicBadge epic={ticket.epic} className="min-w-0 shrink" />
+                  </button>
+                ) : !ticket.epic && onEpicChange && !isRemoved ? (
+                  <AddEpicPill ticketKey={ticket.key} onChange={(epic) => onEpicChange(ticket.key, epic)} />
+                ) : null
               )}
 
               {/* Sprint name — only when several sprints are visible at once (All view / saved view). */}
