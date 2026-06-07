@@ -206,3 +206,16 @@ Key bottlenecks / lessons:
 - **Build-only failure hidden by per-story gates**: subagents were told not to run `npm run build` (final-only). A `route.ts` exporting non-handler constants (`AUTO_SCAN_ENABLED_KEY`, ...) passes lint+typecheck+vitest but fails the Next.js build ("not a valid Route export field"). Surfaced only at the orchestrator's final build. Lesson: when a story adds an API `route.ts`, either run build for that story or forbid non-handler exports from route files up front (put shared constants in a lib module).
 - **Ticket-number collision under concurrent branches**: I scanned at kickoff (max was BRDG-281) and numbered the epic 282-290. During the multi-hour run, parallel work committed its own **BRDG-282** (per-group tranched sync, commit b5acd365) plus BRDG-291-296 (epic-writer), so 282 collided. Resolved by renumbering my foundation story 282 → 297 (next free), surgically preserving the per-group BRDG-282 references. Lesson: on long runs that mint many story numbers, a kickoff scan can go stale; re-check free numbers before archiving, and prefer a reserved contiguous block.
 - **New cross-cutting enums need a full run**: stories added activity-log types, a notification type, a queue-source value, and scan-topic keys across shared files; targeted per-story tests passed but the route-manifest and Sidebar-nav tests (which assert the full set of routes/links) only fail under the full suite. Final `npm run verify` is what caught them.
+
+## BRDG-307 — Create an epic from the Epics page (2026-06-07)
+
+Smooth implementation run (API endpoint + modal + page wiring + epic-writer href branch). All five planned checkboxes implemented in two logical commits; 20 new tests (16 API, 4 modal) all green; build passed; visual verification confirmed the button, modal, disabled-state, Escape-close, and the "Epic writer" CTA on an epic single view.
+
+| Phase | Notes |
+|-------|-------|
+| Plan (Opus) | Grounded, accurate; no rework needed |
+| Implement | Backend + frontend, no blockers |
+| Verify | Build + targeted tests passed first try |
+
+Key bottleneck / lesson:
+- **Pre-existing failures from parallel work muddied final verify**: `npm run verify` reported 5 failing tests (`sync-tickets/route.test.ts` x4 — `extractSprints` mock gap; `TicketSidebar.test.tsx` "displays Jira status" x1). None touched any file in this story. Confirmed pre-existing by running both files at the base commit (BRDG-296, `4f0fad5d`) in a throwaway `git worktree` with `node_modules` symlinked — identical 5 failures there. Lesson: when the integration branch carries unfinished parallel work, the full suite is not a clean baseline; isolate suspected-unrelated failures against the base commit rather than assuming they are yours.
