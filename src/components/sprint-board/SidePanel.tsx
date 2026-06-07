@@ -31,6 +31,9 @@ import {
   Trash2,
   ChevronRight,
   PanelRightClose,
+  Filter,
+  FilterX,
+  Layers,
 } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 
@@ -63,6 +66,7 @@ export function SidePanel({
   adjacentKeys,
   defaultWidth,
   storageKey,
+  epicActions,
 }: {
   ticket: Ticket;
   poStatus: POStatus;
@@ -79,6 +83,14 @@ export function SidePanel({
   defaultWidth?: number;
   /** localStorage key for the persisted width. Defaults to the shared board key. */
   storageKey?: string;
+  /** Epic filter actions, surfaced in the more-menu when the open ticket is an
+      epic (BRDG-131). Omitted outside the sprint board. */
+  epicActions?: {
+    onShowOnly: (epicName: string) => void;
+    onShowAcrossAllSprints: (epicName: string) => void;
+    onClear: () => void;
+    isFiltered: boolean;
+  };
 }) {
   const router = useRouter();
 
@@ -479,6 +491,38 @@ export function SidePanel({
               <MessageSquare size={13} strokeWidth={1.5} className="text-text-muted" />
               Chat about this ticket
             </a>
+            {epicActions && t.type === "epic" && (
+              <>
+                <div className="mx-2 my-1 h-px bg-overlay-default" />
+                <div className="px-3 pt-1 pb-0.5 text-caption font-medium uppercase tracking-wider text-text-muted">Epic</div>
+                <button
+                  onClick={() => { setMoreMenuOpen(false); epicActions.onShowOnly(t.title); }}
+                  className="flex w-full cursor-pointer items-center gap-2.5 px-3 py-2 text-body-sm text-text-secondary hover:bg-overlay-default active:bg-overlay-strong"
+                  style={{ transition: "background-color 0.1s ease" }}
+                >
+                  <Filter size={13} strokeWidth={1.5} className="text-text-muted" />
+                  Show only this epic
+                </button>
+                <button
+                  onClick={() => { setMoreMenuOpen(false); epicActions.onShowAcrossAllSprints(t.title); }}
+                  className="flex w-full cursor-pointer items-center gap-2.5 px-3 py-2 text-body-sm text-text-secondary hover:bg-overlay-default active:bg-overlay-strong"
+                  style={{ transition: "background-color 0.1s ease" }}
+                >
+                  <Layers size={13} strokeWidth={1.5} className="text-text-muted" />
+                  Show across all sprints
+                </button>
+                {epicActions.isFiltered && (
+                  <button
+                    onClick={() => { setMoreMenuOpen(false); epicActions.onClear(); }}
+                    className="flex w-full cursor-pointer items-center gap-2.5 px-3 py-2 text-body-sm text-text-secondary hover:bg-overlay-default active:bg-overlay-strong"
+                    style={{ transition: "background-color 0.1s ease" }}
+                  >
+                    <FilterX size={13} strokeWidth={1.5} className="text-text-muted" />
+                    Clear epic filter
+                  </button>
+                )}
+              </>
+            )}
           </div>
         </Popover>
       </div>

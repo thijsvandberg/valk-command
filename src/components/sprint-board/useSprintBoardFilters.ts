@@ -340,6 +340,13 @@ export function useSprintBoardFilters(
     setStoredFilters({ status: [], epic: [], assignee: [], readiness: [], editState: [], issueType: [], gaps: [], team: [], sprint: [] });
   }, [setStoredFilters]);
 
+  // Filter the All view down to a single epic. Writes straight to the All-view
+  // store (like handleViewClick) so it does not depend on isAllView having
+  // flipped yet when the caller switches to All in the same tick (BRDG-131).
+  const showOnlyEpicInAllView = useCallback((epicName: string) => {
+    setAllViewFilters((prev) => ({ ...prev, epic: [epicName] }));
+  }, [setAllViewFilters]);
+
   // Navigation clears only the sprint working set; the All view's remembered filters are left
   // untouched so they survive switching sprints and reopen when the PO returns to All.
   const resetSprintViewFilters = useCallback(() => {
@@ -454,6 +461,7 @@ export function useSprintBoardFilters(
     currentFiltersSnapshot,
     resetFilters,
     resetSprintViewFilters,
+    showOnlyEpicInAllView,
     handleSaveView,
     handleViewClick,
     handleDeleteView,

@@ -221,4 +221,18 @@ describe("useSprintBoardFilters - All-view filter memory (BRDG-281)", () => {
     const { result } = renderHook(() => useSprintBoardFilters(ALL, {}, false, null));
     expect(result.current.teamFilter.size).toBe(0);
   });
+
+  // BRDG-131: "show across all sprints" writes straight to the All-view store so
+  // it survives the in-flight switch to All, regardless of the current view.
+  it("showOnlyEpicInAllView writes the epic to the All-view store from a sprint view", () => {
+    const { result } = renderHook(() => useSprintBoardFilters(ALL, {}, false, null));
+    act(() => result.current.showOnlyEpicInAllView("Onboarding"));
+    expect(JSON.parse(localStorage.getItem(ALL_KEY) ?? "{}").epic).toEqual(["Onboarding"]);
+  });
+
+  it("showOnlyEpicInAllView is reflected by the epic filter when the All view is active", () => {
+    const { result } = renderHook(() => useSprintBoardFilters(ALL, {}, true, null));
+    act(() => result.current.showOnlyEpicInAllView("Onboarding"));
+    expect([...result.current.epicFilter]).toEqual(["Onboarding"]);
+  });
 });

@@ -41,9 +41,9 @@ These were the open questions; resolved with the PO:
 - [x] Epic data renders immediately from cache, then refreshes when the background Jira sync completes (cache-then-revalidate, same pattern as `EpicPicker`/`/api/epics`) <!-- handled by useTicketDetailPage -->
 
 ### Phase 2: Filter integration
-- [ ] "Show only this epic" action that sets the epic filter on the sprint board
-- [ ] "Show across all sprints" action that switches to All view + filters by this epic
-- [ ] Clear filter option to reset
+- [x] "Show only this epic" action that sets the epic filter on the sprint board <!-- epic side-panel more-menu -> setEpicFilter([epic name]) -->
+- [x] "Show across all sprints" action that switches to All view + filters by this epic <!-- showOnlyEpicInAllView + handleAllClick -->
+- [x] Clear filter option to reset <!-- shown only when an epic filter is active -->
 
 ### Phase 3: Epic assignment
 - [x] Ability to change the epic for a ticket from the sprint board

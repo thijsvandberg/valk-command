@@ -5,7 +5,7 @@ import type { Ticket } from "@/types/ticket";
 
 vi.mock("lucide-react", () => {
   const stub = () => null;
-  const names = ["Maximize2", "X", "Gem", "NotebookPen", "MoreHorizontal", "Star", "Copy", "Check", "CloudDownload", "CloudUpload", "Flag", "MessageSquare", "Loader2", "Trash2", "ChevronRight", "PanelRightClose"];
+  const names = ["Maximize2", "X", "Gem", "NotebookPen", "MoreHorizontal", "Star", "Copy", "Check", "CloudDownload", "CloudUpload", "Flag", "MessageSquare", "Loader2", "Trash2", "ChevronRight", "PanelRightClose", "Filter", "FilterX", "Layers"];
   return Object.fromEntries(names.map((n) => [n, stub]));
 });
 
@@ -225,6 +225,53 @@ describe("SidePanel", () => {
     render(<SidePanel {...defaultProps} />);
     expect(screen.getByText("Content")).toBeInTheDocument();
     expect(screen.getByTestId("tab-content")).toBeInTheDocument();
+  });
+
+  describe("epic filter actions (BRDG-131)", () => {
+    const epicActions = {
+      onShowOnly: vi.fn(),
+      onShowAcrossAllSprints: vi.fn(),
+      onClear: vi.fn(),
+      isFiltered: false,
+    };
+
+    beforeEach(() => {
+      epicActions.onShowOnly.mockClear();
+      epicActions.onShowAcrossAllSprints.mockClear();
+      epicActions.onClear.mockClear();
+    });
+
+    it("shows the epic filter actions in the more-menu for an epic", () => {
+      render(<SidePanel {...defaultProps} ticket={makeTicket({ type: "epic", title: "Onboarding" })} epicActions={epicActions} />);
+      fireEvent.click(screen.getByLabelText("More actions"));
+      const menu = screen.getByTestId("more-menu");
+      expect(menu).toHaveTextContent("Show only this epic");
+      expect(menu).toHaveTextContent("Show across all sprints");
+    });
+
+    it("does not show epic actions for a non-epic ticket", () => {
+      render(<SidePanel {...defaultProps} ticket={makeTicket({ type: "story" })} epicActions={epicActions} />);
+      fireEvent.click(screen.getByLabelText("More actions"));
+      expect(screen.getByTestId("more-menu")).not.toHaveTextContent("Show only this epic");
+    });
+
+    it("passes the epic title to the show-only action", () => {
+      render(<SidePanel {...defaultProps} ticket={makeTicket({ type: "epic", title: "Onboarding" })} epicActions={epicActions} />);
+      fireEvent.click(screen.getByLabelText("More actions"));
+      fireEvent.click(screen.getByText("Show only this epic"));
+      expect(epicActions.onShowOnly).toHaveBeenCalledWith("Onboarding");
+    });
+
+    it("offers Clear only when an epic filter is active", () => {
+      const { unmount } = render(<SidePanel {...defaultProps} ticket={makeTicket({ type: "epic" })} epicActions={epicActions} />);
+      fireEvent.click(screen.getByLabelText("More actions"));
+      expect(screen.getByTestId("more-menu")).not.toHaveTextContent("Clear epic filter");
+      unmount();
+
+      render(<SidePanel {...defaultProps} ticket={makeTicket({ type: "epic" })} epicActions={{ ...epicActions, isFiltered: true }} />);
+      fireEvent.click(screen.getByLabelText("More actions"));
+      expect(screen.getByTestId("more-menu")).toHaveTextContent("Clear epic filter");
+    });
   });
 
   describe("meta sidebar (collapse / resize / auto-stack)", () => {

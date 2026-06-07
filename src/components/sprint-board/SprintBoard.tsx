@@ -471,6 +471,22 @@ export default function SprintBoard() {
 
   const sortChange = (fld: typeof f.sortField, d: typeof f.sortDir) => { f.setSortField(fld); f.setSortDir(d); };
 
+  // Epic filter actions surfaced from the epic side panel (BRDG-131). The board
+  // epic filter matches on epic name (not key), so these take the epic's title.
+  // "Show only" filters the current view and closes the panel so the result is
+  // visible; "across all sprints" switches to All (which drops the open ticket).
+  const handleFilterByEpic = useCallback((epicName: string) => {
+    f.setEpicFilter(new Set([epicName]));
+    setSelectedTicket(null);
+  }, [f, setSelectedTicket]);
+  const handleShowEpicAcrossAllSprints = useCallback((epicName: string) => {
+    f.showOnlyEpicInAllView(epicName);
+    handleAllClick();
+  }, [f, handleAllClick]);
+  const handleClearEpicFilter = useCallback(() => {
+    f.setEpicFilter(new Set());
+  }, [f]);
+
   // Shared board content rendered once, conditionally wrapped in DndContext
   const boardContent = (
     <>
@@ -536,7 +552,7 @@ export default function SprintBoard() {
       {panelTicket && (() => {
         const idx = tickets.findIndex((t) => t.key === panelTicket.key);
         const adjacentKeys = { prev: idx > 0 ? tickets[idx - 1].key : null, next: idx >= 0 && idx < tickets.length - 1 ? tickets[idx + 1].key : null };
-        return <SidePanel key={panelTicket.key} ticket={panelTicket} poStatus={poStatuses[panelTicket.key] ?? null} readiness={readinessMap[panelTicket.key] ?? null} onPoStatusChange={(v) => ta.handlePoStatusChange(panelTicket.key, v)} onReadinessChange={(v) => ta.handleReadinessChange(panelTicket.key, v)} onNotesChange={(notes) => { saveTicketMetadata(panelTicket.key, { poNotes: notes }, activeListKey); }} onClose={() => setSelectedTicket(null)} onShowToast={showToast} onMutate={mutateTickets} onSelectTicket={setSelectedTicket} adjacentKeys={adjacentKeys} />;
+        return <SidePanel key={panelTicket.key} ticket={panelTicket} poStatus={poStatuses[panelTicket.key] ?? null} readiness={readinessMap[panelTicket.key] ?? null} onPoStatusChange={(v) => ta.handlePoStatusChange(panelTicket.key, v)} onReadinessChange={(v) => ta.handleReadinessChange(panelTicket.key, v)} onNotesChange={(notes) => { saveTicketMetadata(panelTicket.key, { poNotes: notes }, activeListKey); }} onClose={() => setSelectedTicket(null)} onShowToast={showToast} onMutate={mutateTickets} onSelectTicket={setSelectedTicket} adjacentKeys={adjacentKeys} epicActions={{ onShowOnly: handleFilterByEpic, onShowAcrossAllSprints: handleShowEpicAcrossAllSprints, onClear: handleClearEpicFilter, isFiltered: f.epicFilter.size > 0 }} />;
       })()}
       </div>
       {bulkActionBar}
