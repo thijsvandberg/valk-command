@@ -5,6 +5,7 @@ import { db } from "@/db";
 import {
   storyWriterSession,
   storyWriterDraft,
+  epicChildDraft,
   conversation,
   message,
   storyVersion,
@@ -42,7 +43,7 @@ export async function GET(_request: Request, { params }: RouteContext) {
       .get();
 
     if (!session) {
-      return NextResponse.json({ session: null, messages: [], aiDrafts: [] });
+      return NextResponse.json({ session: null, messages: [], aiDrafts: [], cards: [] });
     }
 
     // Heal an empty draft from the epic's local edit or live description, the
@@ -73,7 +74,7 @@ export async function GET(_request: Request, { params }: RouteContext) {
       }
     }
 
-    const [aiDrafts, messages] = await Promise.all([
+    const [aiDrafts, messages, cards] = await Promise.all([
       db
         .select()
         .from(storyWriterDraft)
@@ -86,9 +87,15 @@ export async function GET(_request: Request, { params }: RouteContext) {
         .where(eq(message.conversationId, session.conversationId))
         .orderBy(message.timestamp)
         .all(),
+      db
+        .select()
+        .from(epicChildDraft)
+        .where(eq(epicChildDraft.sessionId, session.id))
+        .orderBy(epicChildDraft.cardIndex)
+        .all(),
     ]);
 
-    return NextResponse.json({ session: resolvedSession, messages, aiDrafts });
+    return NextResponse.json({ session: resolvedSession, messages, aiDrafts, cards });
   } catch (err) {
     logger.error("epic-writer", "GET session failed", err);
     return errorResponse("Failed to load epic writer session", 500);
@@ -205,7 +212,7 @@ export async function POST(_request: Request, { params }: RouteContext) {
       summary: "Started epic writer session",
     });
 
-    return NextResponse.json({ session, messages: [], aiDrafts: [] }, { status: 201 });
+    return NextResponse.json({ session, messages: [], aiDrafts: [], cards: [] }, { status: 201 });
   } catch (err) {
     logger.error("epic-writer", "POST session failed", err);
     return errorResponse("Failed to create epic writer session", 500);

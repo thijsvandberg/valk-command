@@ -14,6 +14,10 @@ export interface WorkspaceUsage {
 
 interface TaskMonitoringOptions {
   apiBase: string;
+  // When set (epic mode), break-down-epic output is also posted here to parse
+  // <epic-questions> / <epic-breakdown> into the breakdown board. The regular
+  // apply-draft path still handles the epic's own <story-draft> body.
+  applyOutputBase?: string;
   ticketKey?: string;
   unmountedRef: React.RefObject<boolean>;
   onStatus: (s: StoryWriterStatus) => void;
@@ -48,7 +52,7 @@ function notifyStoryWriterFailure(ticketKey: string | undefined, message: string
 
 export function useTaskMonitoring(options: TaskMonitoringOptions) {
   const {
-    apiBase, ticketKey, unmountedRef,
+    apiBase, applyOutputBase, ticketKey, unmountedRef,
     onStatus, onProgress, onError, onUsage, onDuration, onRelatedCandidates,
   } = options;
 
@@ -119,9 +123,21 @@ export function useTaskMonitoring(options: TaskMonitoringOptions) {
           })()
         : Promise.resolve();
 
+      const hasBreakdownTags = output.includes("<epic-breakdown") || output.includes("<epic-questions");
+      const applyOutputPromise = applyOutputBase && hasBreakdownTags
+        ? (async () => {
+            try {
+              await apiFetch(`${applyOutputBase}/apply-output`, {
+                method: "POST",
+                body: { output, taskId },
+              });
+            } catch { /* non-critical: a malformed turn leaves cards untouched */ }
+          })()
+        : Promise.resolve();
+
       // Wait for draft + related to be saved before refreshing, so the
       // assistant message written by apply-draft is included in the refresh.
-      await Promise.all([applyDraftPromise, applyRelatedPromise]);
+      await Promise.all([applyDraftPromise, applyRelatedPromise, applyOutputPromise]);
       await refreshSessionRef.current();
 
       const elapsed = Math.round(performance.now() - t0);
@@ -237,7 +253,7 @@ export function useTaskMonitoring(options: TaskMonitoringOptions) {
         eventSourceRef.current = null;
       },
     });
-  }, [apiBase, ticketKey, unmountedRef, onStatus, onProgress, onError, onUsage, onDuration, onRelatedCandidates]);
+  }, [apiBase, applyOutputBase, ticketKey, unmountedRef, onStatus, onProgress, onError, onUsage, onDuration, onRelatedCandidates]);
 
   const cancelTask = useCallback((_taskId: string) => {
     // Prevent any in-flight poll/SSE result from being applied

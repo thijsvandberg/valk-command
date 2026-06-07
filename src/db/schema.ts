@@ -620,6 +620,42 @@ export const storyWriterDraft = sqliteTable("story_writer_draft", {
   index("story_writer_draft_session_id_idx").on(table.sessionId),
 ]);
 
+// Epic Writer child-story cards produced during breakdown/refine. These live as
+// local DRAFTs in Bridge until the PO presses "Create in Jira" (a later story);
+// nothing lands in Jira until then. The full set is re-parsed from the latest
+// <epic-breakdown> block, so the card index is the AI's 0-based ordering.
+export const epicChildDraft = sqliteTable("epic_child_draft", {
+  id: text("id").primaryKey(),
+  sessionId: text("session_id")
+    .notNull()
+    .references(() => storyWriterSession.id, { onDelete: "cascade" }),
+  cardIndex: integer("card_index").notNull(),
+  title: text("title").notNull(),
+  // JSON array of strings: the default detail level (title + bullets).
+  bullets: text("bullets", { mode: "json" }).$type<string[]>().notNull().default([]),
+  // Filled only in the detail phase (full description + AC); null at default depth.
+  body: text("body"),
+  status: text("status", { enum: ["draft", "created"] }).notNull().default("draft"),
+  // Set once the card is promoted to a real Jira issue (a later story).
+  jiraKey: text("jira_key"),
+  // AI suggestion only; the live sprint lives on ticket.sprintName after creation.
+  suggestedSprintId: text("suggested_sprint_id"),
+  // JSON array of { targetIndex, relation, confirmed }: proposed inter-story links.
+  suggestedLinks: text("suggested_links", { mode: "json" })
+    .$type<{ targetIndex: number; relation: string; confirmed: boolean }[]>()
+    .notNull()
+    .default([]),
+  createdAt: text("created_at")
+    .notNull()
+    .default(sql`(datetime('now'))`),
+  updatedAt: text("updated_at")
+    .notNull()
+    .default(sql`(datetime('now'))`),
+}, (table) => [
+  index("epic_child_draft_session_id_idx").on(table.sessionId),
+  uniqueIndex("epic_child_draft_session_card_idx").on(table.sessionId, table.cardIndex),
+]);
+
 // Full execution log for a story writer task: prompt, tool calls, responses
 export const storyWriterExecutionLog = sqliteTable("story_writer_execution_log", {
   id: text("id").primaryKey(),
@@ -747,6 +783,8 @@ export type NewWorkspaceTask = typeof workspaceTask.$inferInsert;
 export type StoryWriterSessionRow = typeof storyWriterSession.$inferSelect;
 export type NewStoryWriterSessionRow = typeof storyWriterSession.$inferInsert;
 export type StoryWriterDraftRow = typeof storyWriterDraft.$inferSelect;
+export type EpicChildDraftRow = typeof epicChildDraft.$inferSelect;
+export type NewEpicChildDraftRow = typeof epicChildDraft.$inferInsert;
 export type StoryWriterExecutionLogRow = typeof storyWriterExecutionLog.$inferSelect;
 export type RelatedStoryCandidateRow = typeof relatedStoryCandidate.$inferSelect;
 

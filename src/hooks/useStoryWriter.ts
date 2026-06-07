@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useCallback, useRef, useEffect } from "react";
-import type { StoryWriterSessionRow, StoryWriterDraftRow, RelatedStoryCandidateRow } from "@/db/schema";
+import type { StoryWriterSessionRow, StoryWriterDraftRow, RelatedStoryCandidateRow, EpicChildDraftRow } from "@/db/schema";
 import type { Message } from "@/types/chat";
 import type { StoryWriterStatus } from "@/types/story-writer";
 import { useTaskMonitoring, type WorkspaceUsage } from "./useTaskMonitoring";
@@ -30,6 +30,7 @@ export function useStoryWriter(ticketKey: string, options?: UseStoryWriterOption
   const [messages, setMessages] = useState<Message[]>([]);
   const [allDrafts, setAllDrafts] = useState<StoryWriterDraftRow[]>([]);
   const [relatedCandidates, setRelatedCandidates] = useState<RelatedStoryCandidateRow[]>([]);
+  const [cards, setCards] = useState<EpicChildDraftRow[]>([]);
   const [outdated, setOutdated] = useState(false);
   const [targetOutdated, setTargetOutdated] = useState(false);
   const [status, setStatus] = useState<StoryWriterStatus>("loading");
@@ -53,6 +54,11 @@ export function useStoryWriter(ticketKey: string, options?: UseStoryWriterOption
   // key regardless of mode, so this is the epic-enrichment path (AC8).
   const apiBase = `/api/tickets/${encodeURIComponent(ticketKey)}/story-writer`;
   const sessionApi = isEpicMode ? epicWriterApi : storyWriterApi;
+  // Epic breakdown output (<epic-questions>/<epic-breakdown>) is parsed by the
+  // epic writer group; the epic's own <story-draft> body still flows via apiBase.
+  const applyOutputBase = isEpicMode
+    ? `/api/epics/${encodeURIComponent(ticketKey)}/writer`
+    : undefined;
 
   const aiDrafts = allDrafts.filter((d) => d.storySlot === "original");
   const targetAiDrafts = allDrafts.filter((d) => d.storySlot === "target");
@@ -75,6 +81,7 @@ export function useStoryWriter(ticketKey: string, options?: UseStoryWriterOption
         setRelatedCandidates(((data as Record<string, unknown>).relatedCandidates as RelatedStoryCandidateRow[] | undefined) ?? []);
         setOutdated(((data as Record<string, unknown>).outdated as boolean | undefined) ?? false);
         setTargetOutdated(((data as Record<string, unknown>).targetOutdated as boolean | undefined) ?? false);
+        setCards(((data as Record<string, unknown>).cards as EpicChildDraftRow[] | undefined) ?? []);
       }
     } catch { /* ignore */ }
   }, [ticketKey, setSession, sessionApi]);
@@ -83,6 +90,7 @@ export function useStoryWriter(ticketKey: string, options?: UseStoryWriterOption
 
   const monitoring = useTaskMonitoring({
     apiBase,
+    applyOutputBase,
     ticketKey,
     unmountedRef,
     onStatus: setStatus,
@@ -147,6 +155,7 @@ export function useStoryWriter(ticketKey: string, options?: UseStoryWriterOption
             setRelatedCandidates((data.relatedCandidates as RelatedStoryCandidateRow[] | undefined) ?? []);
             setOutdated((data.outdated as boolean | undefined) ?? false);
             setTargetOutdated((data.targetOutdated as boolean | undefined) ?? false);
+            setCards((data.cards as EpicChildDraftRow[] | undefined) ?? []);
 
             const loadedMsgs: Message[] = (data.messages as Message[]) ?? [];
             const lastUserMsg = [...loadedMsgs].reverse().find((m: Message) => m.role === "user");
@@ -181,6 +190,7 @@ export function useStoryWriter(ticketKey: string, options?: UseStoryWriterOption
                       setRelatedCandidates((refreshed.relatedCandidates as RelatedStoryCandidateRow[] | undefined) ?? []);
                       setOutdated((refreshed.outdated as boolean | undefined) ?? false);
                       setTargetOutdated((refreshed.targetOutdated as boolean | undefined) ?? false);
+                      setCards((refreshed.cards as EpicChildDraftRow[] | undefined) ?? []);
                     }
                   } catch { /* ignore refresh failure */ }
                   if (!cancelled) {
@@ -456,6 +466,7 @@ export function useStoryWriter(ticketKey: string, options?: UseStoryWriterOption
     aiDrafts,
     targetAiDrafts,
     relatedCandidates,
+    cards,
     outdated,
     targetOutdated,
     status,

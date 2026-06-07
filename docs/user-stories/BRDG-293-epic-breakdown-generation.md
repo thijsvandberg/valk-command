@@ -1,7 +1,7 @@
 # BRDG-293: Epic breakdown generation
 
 **Epic:** [BRDG-291](BRDG-291-epic-writer.md)
-**Status:** Not Started
+**Status:** Done
 **Priority:** High
 
 ## Description
@@ -12,17 +12,17 @@ of stories before anything is created.
 
 ## Acceptance Criteria
 
-- [ ] New phase-aware VRW skill `break-down-epic` (alongside `write-story-draft`), receiving epic
+- [x] New phase-aware VRW skill `break-down-epic` (alongside `write-story-draft`), receiving epic
       context + children + Confluence text + attachments + optional codebase research
-- [ ] Discovery phase: AI emits `<epic-questions>`; PO answers in chat
-- [ ] Breakdown phase: AI emits `<epic-breakdown>` (JSON array: `title`, `bullets[]`, optional
+- [x] Discovery phase: AI emits `<epic-questions>`; PO answers in chat
+- [x] Breakdown phase: AI emits `<epic-breakdown>` (JSON array: `title`, `bullets[]`, optional
       `body`, `suggestedLinks[]`, `suggestedSprintId?`)
-- [ ] New table `epic_child_draft` stores cards (status `draft`); parsed from skill output
-- [ ] `BreakdownBoard` renders `ChildStoryCard`s (title + bullets) with a depth badge
-- [ ] Default detail level is title + bullets (not fully worked out in one pass)
-- [ ] Sparring updates the breakdown ("split card 3", "add a story for X", "remove card 5")
-- [ ] AI may propose a sharpened epic summary (handled via the BRDG-292 epic draft flow)
-- [ ] Tests for: skill output parsing (questions + breakdown), card persistence, board rendering
+- [x] New table `epic_child_draft` stores cards (status `draft`); parsed from skill output
+- [x] `BreakdownBoard` renders `ChildStoryCard`s (title + bullets) with a depth badge
+- [x] Default detail level is title + bullets (not fully worked out in one pass)
+- [x] Sparring updates the breakdown ("split card 3", "add a story for X", "remove card 5")
+- [x] AI may propose a sharpened epic summary (handled via the BRDG-292 epic draft flow)
+- [x] Tests for: skill output parsing (questions + breakdown), card persistence, board rendering
 
 ## Technical Notes
 

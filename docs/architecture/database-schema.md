@@ -269,6 +269,25 @@ AI-generated draft suggestions waiting for user acceptance.
 | `story_slot` | enum | `original` or `target` (split mode) |
 | `created_at` | text | |
 
+#### `epic_child_draft`
+
+Epic Writer child-story cards parsed from the `break-down-epic` skill's `<epic-breakdown>` output. Cards live as local DRAFTs in Bridge until promoted to Jira (a later story); the full set is re-parsed each turn (wholesale replace), so `card_index` is the AI's 0-based ordering.
+
+| Column | Type | Notes |
+|--------|------|-------|
+| `id` | text PK | |
+| `session_id` | text FK -> story_writer_session | Cascade delete |
+| `card_index` | integer | 0-based AI ordering; unique per session |
+| `title` | text | Story title |
+| `bullets` | text (JSON) | Array of strings; the default detail level (title + bullets) |
+| `body` | text nullable | Full description + AC, filled only in the detail phase |
+| `status` | enum | `draft` (local) or `created` (live in Jira) |
+| `jira_key` | text nullable | Set after Create-in-Jira; preserved by index across re-parses |
+| `suggested_sprint_id` | text nullable | AI suggestion only; live sprint lives on `ticket.sprint_name` after creation |
+| `suggested_links` | text (JSON) | Array of `{ targetIndex, relation, confirmed }` inter-story link proposals |
+| `created_at` | text | |
+| `updated_at` | text | |
+
 #### `story_writer_execution_log`
 
 Full execution logs for story writer AI tasks.
@@ -582,6 +601,7 @@ conversation (1) --- (*) message
 conversation (1) --- (*) story_writer_session
 
 story_writer_session (1) --- (*) story_writer_draft
+story_writer_session (1) --- (*) epic_child_draft
 story_writer_session (1) --- (*) story_writer_execution_log
 story_writer_session (1) --- (*) related_story_candidate
 ticket (1) --- (*) related_suggestion_cache

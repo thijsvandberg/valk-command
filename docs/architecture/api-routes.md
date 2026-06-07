@@ -52,10 +52,11 @@ Epic mode of the Story Writer. The epic is the subject ticket; sessions reuse `s
 
 | Route | Method | Purpose |
 |-------|--------|---------|
-| `/api/epics/[key]/writer/session` | GET | Get active epic session (phase + messages + drafts); resumable |
+| `/api/epics/[key]/writer/session` | GET | Get active epic session (phase + messages + drafts + breakdown cards); resumable |
 | `/api/epics/[key]/writer/session` | POST | Create epic session (`mode: "epic"`, snapshots epic description; near-empty epic is valid) |
 | `/api/epics/[key]/writer/phase` | PATCH | Set the session phase. Body: `{ phase }`. Free movement, no transition guard |
-| `/api/epics/[key]/writer/messages` | POST | Send a chat turn; invokes the workspace `write-story-draft` skill with epic-mode context (no direct LLM in Bridge) |
+| `/api/epics/[key]/writer/messages` | POST | Send a chat turn. Phase-aware: `feed` invokes `write-story-draft` (epic body enrichment); `discovery`/`breakdown`/`refine`/`detail`/`sprints` invoke the `break-down-epic` skill with the current phase + existing breakdown. No direct LLM in Bridge |
+| `/api/epics/[key]/writer/apply-output` | POST | Parse `break-down-epic` output. Persists `<epic-breakdown>` cards into `epic_child_draft` (full-set replace, preserving created cards' Jira keys by index); reports whether `<epic-questions>` is present. Body: `{ output, taskId? }` |
 
 ## Sprints
 

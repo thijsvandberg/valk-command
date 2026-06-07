@@ -498,6 +498,13 @@
       "when": 1780850628303,
       "tag": "0070_odd_screwball",
       "breakpoints": true
+    },
+    {
+      "idx": 71,
+      "version": "6",
+      "when": 1780851081340,
+      "tag": "0071_sweet_the_captain",
+      "breakpoints": true
     }
   ]
 }

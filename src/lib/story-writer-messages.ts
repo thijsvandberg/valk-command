@@ -6,6 +6,7 @@ import {
   jiraComment,
   ticketConfluenceLink,
   ticketAttachment,
+  epicChildDraft,
 } from "@/db/schema";
 import { eq, and, ne, sql } from "drizzle-orm";
 import { randomUUID, createHash } from "crypto";
@@ -195,13 +196,86 @@ export async function buildEpicContext(key: string): Promise<string> {
   return parts.join("\n\n");
 }
 
-export async function buildEpicFirstMessageBody(
-  session: { conversationId: string; localDraft: string | null },
+/**
+ * Phases where the break-down-epic skill drives the turn (it emits the tagged
+ * breakdown blocks). The "feed" phase stays on the regular write-story-draft
+ * flow because it enriches the epic's own body (the <story-draft> contract);
+ * the sharpened epic summary is therefore handled by the 292 epic draft path.
+ */
+export function epicPhaseUsesBreakdownSkill(phase: string | null | undefined): boolean {
+  return phase === "discovery" || phase === "breakdown" || phase === "refine"
+    || phase === "detail" || phase === "sprints";
+}
+
+/**
+ * Serializes the current child cards so the phase-aware skill can refine them
+ * in place ("split card 3", "remove card 5") instead of starting over. Indexes
+ * are 0-based to match the AI's <epic-breakdown> ordering.
+ */
+export async function buildBreakdownStateForSession(sessionId: string): Promise<string> {
+  const cards = await db
+    .select()
+    .from(epicChildDraft)
+    .where(eq(epicChildDraft.sessionId, sessionId))
+    .orderBy(epicChildDraft.cardIndex)
+    .all();
+
+  if (cards.length === 0) {
+    return "[No breakdown yet. This is the first breakdown for this epic.]";
+  }
+
+  const serialized = cards.map((c) => ({
+    index: c.cardIndex,
+    title: c.title,
+    bullets: c.bullets ?? [],
+    body: c.body ?? undefined,
+  }));
+  return `[Current breakdown (${cards.length} cards), refine in place; return the full updated set]:\n${JSON.stringify(serialized, null, 2)}`;
+}
+
+/**
+ * Builds the break-down-epic invocation for a phase that uses the breakdown
+ * skill. Carries the current phase and the existing breakdown so the skill
+ * returns the block relevant to that phase.
+ */
+async function buildEpicBreakdownBody(
+  session: { id: string; conversationId: string; phase?: string | null },
   key: string,
   content: string,
   codebaseResearch: boolean,
   model: string | undefined,
 ) {
+  const epicContext = await buildEpicContext(key);
+  const researchFlag = `[codebase-research: ${codebaseResearch ? "on" : "off"}]`;
+  const phase = session.phase ?? "breakdown";
+  const breakdownState = await buildBreakdownStateForSession(session.id);
+
+  const args =
+    `${epicContext}\n\n` +
+    `${researchFlag}\n\n` +
+    `[phase: ${phase}]\n\n` +
+    `${breakdownState}\n\n` +
+    `User request: ${content}`;
+
+  return {
+    skill: "break-down-epic",
+    args: { args },
+    conversationId: session.conversationId,
+    model,
+  };
+}
+
+export async function buildEpicFirstMessageBody(
+  session: { id: string; conversationId: string; localDraft: string | null; phase?: string | null },
+  key: string,
+  content: string,
+  codebaseResearch: boolean,
+  model: string | undefined,
+) {
+  if (epicPhaseUsesBreakdownSkill(session.phase)) {
+    return buildEpicBreakdownBody(session, key, content, codebaseResearch, model);
+  }
+
   const epicContext = await buildEpicContext(key);
   const researchFlag = `[codebase-research: ${codebaseResearch ? "on" : "off"}]`;
 
@@ -225,7 +299,7 @@ export async function buildEpicFirstMessageBody(
 }
 
 export async function buildFirstMessageBody(
-  session: { conversationId: string; localDraft: string | null; localTitle: string | null; targetTicketKey: string | null; targetLocalDraft: string | null; mode?: string | null },
+  session: { id: string; conversationId: string; localDraft: string | null; localTitle: string | null; targetTicketKey: string | null; targetLocalDraft: string | null; mode?: string | null; phase?: string | null },
   key: string,
   content: string,
   codebaseResearch: boolean,
@@ -314,14 +388,29 @@ export async function buildFirstMessageBody(
 }
 
 export function buildFollowUpContent(
-  session: { localDraft: string | null; localTitle: string | null; targetTicketKey: string | null; mode?: string | null },
+  session: { localDraft: string | null; localTitle: string | null; targetTicketKey: string | null; mode?: string | null; phase?: string | null },
   key: string,
   content: string,
   codebaseResearch: boolean,
+  breakdownState?: string,
 ): { content: string; isEdit: boolean } {
   if (session.mode === "epic") {
-    const isEdit = hasEditIntent(content, { splitMode: false });
     const researchFlag = `[codebase-research: ${codebaseResearch ? "on" : "off"}]`;
+
+    // Breakdown phases steer the same break-down-epic session: carry the phase
+    // and the current cards so the skill returns the matching tagged block and
+    // can mutate the breakdown in place (split/add/remove a card).
+    if (epicPhaseUsesBreakdownSkill(session.phase)) {
+      const phase = session.phase ?? "breakdown";
+      const state = breakdownState ?? "[Current breakdown state unavailable.]";
+      return {
+        content: `${researchFlag}\n\n[phase: ${phase}]\n\n${state}\n\n${content}`,
+        // The breakdown itself is the artifact being edited each turn.
+        isEdit: true,
+      };
+    }
+
+    const isEdit = hasEditIntent(content, { splitMode: false });
     const draftContext = isEdit && session.localDraft
       ? `\n\n[Current epic draft]\n${session.localDraft}\n[End of draft]`
       : "";
@@ -602,7 +691,10 @@ export async function sendStoryWriterMessage(params: SendMessageParams): Promise
   }
 
   // Follow-up message
-  const { content: followUpContent, isEdit } = buildFollowUpContent(session, key, content, codebaseResearch);
+  const breakdownState = session.mode === "epic" && epicPhaseUsesBreakdownSkill(session.phase)
+    ? await buildBreakdownStateForSession(session.id)
+    : undefined;
+  const { content: followUpContent, isEdit } = buildFollowUpContent(session, key, content, codebaseResearch, breakdownState);
 
   console.info(
     `[story-writer] follow-up prompt: key=${key} editIntent=${isEdit} chars=${followUpContent.length} ~tokens=${Math.ceil(followUpContent.length / 4)}`,

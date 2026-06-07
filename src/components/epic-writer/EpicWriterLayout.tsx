@@ -8,6 +8,7 @@ import { StoryWriterChat } from "@/components/story-writer/StoryWriterChat";
 import { ViewHeader, ViewHeaderDivider } from "@/components/shared/ViewHeader";
 import { Button } from "@/components/ui/Button";
 import { PhaseRail } from "./PhaseRail";
+import { BreakdownBoard } from "./BreakdownBoard";
 import { isEpicWriterPhase, type EpicWriterPhase } from "@/types/epic-writer";
 
 interface EpicWriterLayoutProps {
@@ -91,27 +92,32 @@ export function EpicWriterLayout({ epicKey }: EpicWriterLayoutProps) {
 
       <PhaseRail current={phase} onSelect={(p) => void writer.setPhase(p)} />
 
-      <div className="min-h-0 flex-1">
-        <StoryWriterChat
-          messages={writer.messages}
-          status={writer.status}
-          streamProgress={writer.streamProgress}
-          streamError={writer.streamError}
-          usage={writer.usage}
-          lastResponseDurationMs={writer.lastResponseDurationMs}
-          localDraft={writer.session?.localDraft ?? null}
-          codebaseResearch={writer.codebaseResearch}
-          onCodebaseResearchChange={writer.setCodbaseResearch}
-          model={writer.model}
-          onModelChange={writer.setModel}
-          onSend={writer.sendMessage}
-          onRetry={writer.retryMessage}
-          onClearFailed={writer.clearFailedMessages}
-          onCancel={writer.cancelCurrentTask}
-          messageDraftMap={messageDraftMap}
-          draftContentMap={draftContentMap}
-          onAcceptDraft={writer.acceptDraft}
-        />
+      <div className="grid min-h-0 flex-1 grid-cols-[minmax(0,1fr)_minmax(0,22rem)]">
+        <div className="min-h-0 border-r border-border-subtle">
+          <StoryWriterChat
+            messages={writer.messages}
+            status={writer.status}
+            streamProgress={writer.streamProgress}
+            streamError={writer.streamError}
+            usage={writer.usage}
+            lastResponseDurationMs={writer.lastResponseDurationMs}
+            localDraft={writer.session?.localDraft ?? null}
+            codebaseResearch={writer.codebaseResearch}
+            onCodebaseResearchChange={writer.setCodbaseResearch}
+            model={writer.model}
+            onModelChange={writer.setModel}
+            onSend={writer.sendMessage}
+            onRetry={writer.retryMessage}
+            onClearFailed={writer.clearFailedMessages}
+            onCancel={writer.cancelCurrentTask}
+            messageDraftMap={messageDraftMap}
+            draftContentMap={draftContentMap}
+            onAcceptDraft={writer.acceptDraft}
+          />
+        </div>
+        <aside className="min-h-0 bg-surface-base/30">
+          <BreakdownBoard cards={writer.cards} />
+        </aside>
       </div>
     </div>
   );

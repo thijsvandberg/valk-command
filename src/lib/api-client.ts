@@ -341,6 +341,8 @@ export const epicWriter = {
     apiFetch<unknown>(`/api/epics/${enc(key)}/writer/phase`, { method: "PATCH", body: data, signal }),
   sendMessage: (key: string, data: Record<string, unknown>, signal?: AbortSignal) =>
     apiFetch<unknown>(`/api/epics/${enc(key)}/writer/messages`, { method: "POST", body: data, signal }),
+  applyOutput: (key: string, data: Record<string, unknown>, signal?: AbortSignal) =>
+    apiFetch<unknown>(`/api/epics/${enc(key)}/writer/apply-output`, { method: "POST", body: data, signal }),
 };
 
 // ---------------------------------------------------------------------------

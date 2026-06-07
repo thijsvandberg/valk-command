@@ -1,4 +1,4 @@
-import type { StoryWriterSessionRow, StoryWriterDraftRow } from "@/db/schema";
+import type { StoryWriterSessionRow, StoryWriterDraftRow, EpicChildDraftRow } from "@/db/schema";
 import type { Message } from "@/types/chat";
 
 /**
@@ -44,6 +44,7 @@ export interface EpicWriterSessionResponse {
   session: StoryWriterSessionRow | null;
   messages: Message[];
   aiDrafts: StoryWriterDraftRow[];
+  cards: EpicChildDraftRow[];
 }
 
 export interface EpicWriterPhaseResponse {
