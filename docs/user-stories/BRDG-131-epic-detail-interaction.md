@@ -34,11 +34,11 @@ These were the open questions; resolved with the PO:
 ## Acceptance Criteria
 
 ### Phase 1: Epic info display (in the sidebar)
-- [ ] Clicking an epic pill in the sprint backlog opens the epic in the regular sidebar (`SidePanel`), the same panel used for tickets
-- [ ] Click on the epic pill does NOT trigger row selection of the underlying ticket (`stopPropagation`)
-- [ ] Sidebar shows: epic name, ticket count (open/closed breakdown)
-- [ ] Sidebar shows status distribution of tickets in this epic (TO DO / IN PROGRESS / TEST / DONE)
-- [ ] Epic data renders immediately from cache, then refreshes when the background Jira sync completes (cache-then-revalidate, same pattern as `EpicPicker`/`/api/epics`)
+- [x] Clicking an epic pill in the sprint backlog opens the epic in the regular sidebar (`SidePanel`), the same panel used for tickets
+- [x] Click on the epic pill does NOT trigger row selection of the underlying ticket (`stopPropagation`)
+- [x] Sidebar shows: epic name, ticket count (open/closed breakdown) <!-- epic name = panel header (ticket title); count = EpicStatsSummary -->
+- [x] Sidebar shows status distribution of tickets in this epic (TO DO / IN PROGRESS / TEST / DONE) <!-- EpicStatsSummary, incl. TEST which the filter chips omit -->
+- [x] Epic data renders immediately from cache, then refreshes when the background Jira sync completes (cache-then-revalidate, same pattern as `EpicPicker`/`/api/epics`) <!-- handled by useTicketDetailPage -->
 
 ### Phase 2: Filter integration
 - [ ] "Show only this epic" action that sets the epic filter on the sprint board
@@ -54,10 +54,10 @@ These were the open questions; resolved with the PO:
 - [x] Change syncs back to Jira via the same sidebar-edit-to-Jira path used for regular story field edits (no new sync mechanism)
 
 ### Phase 4: Epic sidebar context
-- [ ] When an epic is open in the sidebar, it shows epic-level context (reusing the ticket sidebar layout)
-- [ ] Epic description shown from cache; refreshed by the background Jira sync. Editing the description is allowed but not a goal of this story
-- [ ] Related tickets list with status indicators, **editable**: add/remove related tickets, reusing the existing `LinkedIssuesSection` pattern (which already persists to Jira)
-- [ ] Story point total and progress
+- [x] When an epic is open in the sidebar, it shows epic-level context (reusing the ticket sidebar layout) <!-- TicketTabContent epic branch -->
+- [x] Epic description shown from cache; refreshed by the background Jira sync. Editing the description is allowed but not a goal of this story <!-- existing description editor in TicketTabContent works for epics -->
+- [x] Related tickets list with status indicators, **editable**: add/remove related tickets, reusing the existing `EpicChildrenSection` pattern (epics use children, not `LinkedIssuesSection`; it persists to Jira via `tickets.updateEpic`)
+- [x] Story point total and progress <!-- EpicStatsSummary: SP done/total + progress bar -->
 
 ## Technical Notes
 

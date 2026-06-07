@@ -15,6 +15,7 @@ import { useToast } from "@/hooks/useToast";
 import { ChildIssueRow } from "./ChildIssueRow";
 import { ChildIssueComposer } from "./ChildIssueComposer";
 import { ChildIssueListHeader, type ChildIssueViewMode } from "./ChildIssueListHeader";
+import { EpicStatsSummary } from "./EpicStatsSummary";
 import { EpicChildrenBySprint, type ChildReorder, type ChildMoveToPosition } from "./EpicChildrenBySprint";
 import type { StatusFilter } from "./FieldFilterPopover";
 import { BulkActionBar } from "@/components/sprint-board/BulkActionBar";
@@ -58,6 +59,9 @@ interface EpicChildrenSectionProps {
   ticketKey: string;
   onMutate: () => void;
   onSelectTicket?: (key: string) => void;
+  /** Render the read-only epic roll-up (count / status distribution / SP progress)
+      above the list. Used by the side panel's epic view (BRDG-131). */
+  showStatsSummary?: boolean;
 }
 
 function isEpicChild(child: EpicChild | Subtask): child is EpicChild {
@@ -69,6 +73,7 @@ export function EpicChildrenSection({
   ticketKey,
   onMutate,
   onSelectTicket,
+  showStatsSummary = false,
 }: EpicChildrenSectionProps) {
   const [filter, setFilter] = useState<StatusFilter>("all");
   const [error, setError] = useState<string | null>(null);
@@ -874,6 +879,7 @@ export function EpicChildrenSection({
 
   return (
     <div className="mt-8">
+      {showStatsSummary && <EpicStatsSummary items={mergedItems} />}
       <ChildIssueListHeader
         title="Child Issues"
         totalCount={mergedItems.length}

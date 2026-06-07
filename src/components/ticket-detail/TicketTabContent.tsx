@@ -316,7 +316,7 @@ export function TicketTabContent({
               />
               {detail && <AttachmentsSection attachments={detail.attachments} />}
               {ticket?.type === "epic"
-                ? detail && <EpicChildrenSection items={detail.epicChildren} ticketKey={ticketKey} onMutate={onMutate} onSelectTicket={onSelectTicket} />
+                ? detail && <EpicChildrenSection items={detail.epicChildren} ticketKey={ticketKey} onMutate={onMutate} onSelectTicket={onSelectTicket} showStatsSummary={isPanel} />
                 : <>
                     {detail && <SubtasksSection subtasks={detail.subtasks} ticketKey={ticketKey} onMutate={onMutate} onSelectTicket={onSelectTicket} />}
                     {detail && <LinkedIssuesSection issues={detail.linkedIssues} ticketKey={ticketKey} onMutate={onMutate} />}
