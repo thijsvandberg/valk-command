@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { extractEpicQuestions, extractEpicBreakdown } from "./epic-breakdown-parser";
+import { extractEpicQuestions, extractEpicBreakdown, extractStoryDetails } from "./epic-breakdown-parser";
 
 describe("extractEpicQuestions", () => {
   it("extracts the inner markdown of an <epic-questions> block", () => {
@@ -72,5 +72,58 @@ describe("extractEpicBreakdown", () => {
 
   it("returns an empty array when the block has no valid cards", () => {
     expect(extractEpicBreakdown("<epic-breakdown>[]</epic-breakdown>")).toEqual([]);
+  });
+});
+
+describe("extractStoryDetails", () => {
+  it("extracts a single detail block keyed by its index", () => {
+    const output =
+      `Here is the worked-out story:\n` +
+      `<story-detail index="2">\n## Description\nFull body.\n\n## Acceptance criteria\n- Given X\n</story-detail>\nLet me know.`;
+    const details = extractStoryDetails(output);
+    expect(details).not.toBeNull();
+    expect(details).toHaveLength(1);
+    expect(details![0].index).toBe(2);
+    expect(details![0].body).toBe("## Description\nFull body.\n\n## Acceptance criteria\n- Given X");
+  });
+
+  it("extracts multiple detail blocks deepened in parallel", () => {
+    const output =
+      `<story-detail index="0">Body zero</story-detail>` +
+      `<story-detail index="3">Body three</story-detail>`;
+    const details = extractStoryDetails(output)!;
+    expect(details).toHaveLength(2);
+    const byIndex = Object.fromEntries(details.map((d) => [d.index, d.body]));
+    expect(byIndex[0]).toBe("Body zero");
+    expect(byIndex[3]).toBe("Body three");
+  });
+
+  it("returns null when no detail block is present (leave bodies untouched)", () => {
+    expect(extractStoryDetails("just chatting, no detail")).toBeNull();
+  });
+
+  it("drops blocks without a usable index", () => {
+    const output =
+      `<story-detail>missing index</story-detail>` +
+      `<story-detail index="-1">negative</story-detail>` +
+      `<story-detail index="1">keep me</story-detail>`;
+    const details = extractStoryDetails(output)!;
+    expect(details).toHaveLength(1);
+    expect(details[0]).toEqual({ index: 1, body: "keep me" });
+  });
+
+  it("drops blocks with empty inner content", () => {
+    const output = `<story-detail index="0">   </story-detail>`;
+    // The block is present but unusable, so an empty array (not null) is returned.
+    expect(extractStoryDetails(output)).toEqual([]);
+  });
+
+  it("keeps the last block when an index is repeated", () => {
+    const output =
+      `<story-detail index="0">first</story-detail>` +
+      `<story-detail index="0">second wins</story-detail>`;
+    const details = extractStoryDetails(output)!;
+    expect(details).toHaveLength(1);
+    expect(details[0].body).toBe("second wins");
   });
 });

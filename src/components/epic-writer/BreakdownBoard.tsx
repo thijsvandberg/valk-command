@@ -6,6 +6,12 @@ import { ChildStoryCard } from "./ChildStoryCard";
 
 interface BreakdownBoardProps {
   cards: EpicChildDraftRow[];
+  // Deepen a card into a full body + AC (detail phase).
+  onDeepen?: (index: number, title: string) => void | Promise<unknown>;
+  // Persist a PO hand-edit of a card's worked-out body.
+  onEditBody?: (index: number, body: string | null) => void | Promise<unknown>;
+  // True while a workspace task is running: cards disable their deepen action.
+  busy?: boolean;
 }
 
 /**
@@ -14,7 +20,7 @@ interface BreakdownBoardProps {
  * story for X") and the board reflects the latest <epic-breakdown>. Create-in-
  * Jira, deepen, and link affordances are added in later stories.
  */
-export function BreakdownBoard({ cards }: BreakdownBoardProps) {
+export function BreakdownBoard({ cards, onDeepen, onEditBody, busy }: BreakdownBoardProps) {
   if (cards.length === 0) {
     return (
       <div className="flex h-full flex-col items-center justify-center gap-2 px-6 text-center">
@@ -35,7 +41,13 @@ export function BreakdownBoard({ cards }: BreakdownBoardProps) {
       </header>
       <div className="min-h-0 flex-1 space-y-2.5 overflow-y-auto px-4 py-3">
         {cards.map((card) => (
-          <ChildStoryCard key={card.id} card={card} />
+          <ChildStoryCard
+            key={card.id}
+            card={card}
+            onDeepen={onDeepen}
+            onEditBody={onEditBody}
+            busy={busy}
+          />
         ))}
       </div>
     </div>

@@ -1,7 +1,7 @@
 # BRDG-294: Epic child-story detailing
 
 **Epic:** [BRDG-291](BRDG-291-epic-writer.md)
-**Status:** Not Started
+**Status:** Done
 **Priority:** Medium
 
 ## Description
@@ -11,14 +11,14 @@ story (description + acceptance criteria), so the stories are ready before I cre
 
 ## Acceptance Criteria
 
-- [ ] "Deepen" action per card asks the AI to produce a full body + AC (`<story-detail>` block)
-- [ ] Detailing can run for one or several cards in parallel
-- [ ] Reuses the existing single-story `write-story-draft` path so a child can graduate into a full
+- [x] "Deepen" action per card asks the AI to produce a full body + AC (`<story-detail>` block)
+- [x] Detailing can run for one or several cards in parallel
+- [x] Reuses the existing single-story `write-story-draft` path so a child can graduate into a full
       Story Writer-style draft
-- [ ] `epic_child_draft.body` is filled on detailing; depth badge updates (title / bullets / full)
-- [ ] Detailed content is editable and persists across resume
-- [ ] Sparring can refine a detailed card further
-- [ ] Tests for: detail-output parsing, body persistence, depth badge transitions
+- [x] `epic_child_draft.body` is filled on detailing; depth badge updates (title / bullets / full)
+- [x] Detailed content is editable and persists across resume
+- [x] Sparring can refine a detailed card further
+- [x] Tests for: detail-output parsing, body persistence, depth badge transitions
 
 ## Technical Notes
 

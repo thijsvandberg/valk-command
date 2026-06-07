@@ -208,6 +208,38 @@ describe("sendStoryWriterMessage (epic mode, phase-aware breakdown)", () => {
     expect(args).toContain("split card 1");
   });
 
+  it("carries the <story-detail> tag contract in the detail phase first message", async () => {
+    seedEpicWithContext("VPL-E1");
+    const conv = seedConversation(testDb, { id: "conv-detail" });
+    seedStoryWriterSession(testDb, {
+      id: "sess-detail",
+      ticketKey: "VPL-E1",
+      conversationId: conv.id,
+      status: "active",
+      mode: "epic",
+      phase: "detail",
+    });
+    testDb.insert(epicChildDraft).values({
+      id: randomUUID(),
+      sessionId: "sess-detail",
+      cardIndex: 0,
+      title: "Cart summary",
+      bullets: ["bullet"],
+    }).run();
+
+    await sendStoryWriterMessage({
+      key: "VPL-E1",
+      content: "Deepen story 1 into a full description and acceptance criteria.",
+      codebaseResearch: false,
+    });
+
+    const [, opts] = mockAgentFetch.mock.calls[0] as [string, { body: Record<string, unknown> }];
+    expect(opts.body.skill).toBe("break-down-epic");
+    const args = (opts.body.args as { args: string }).args;
+    expect(args).toContain("[phase: detail]");
+    expect(args).toContain("<story-detail index=");
+  });
+
   it("invokes break-down-epic in the discovery phase (questions)", async () => {
     seedEpicWithContext("VPL-E1");
     const conv = seedConversation(testDb, { id: "conv-disc" });
@@ -261,5 +293,17 @@ describe("buildFollowUpContent (epic breakdown phase)", () => {
     expect(result.content).toContain("[Current breakdown (3 cards)]");
     expect(result.content).toContain("remove card 2");
     expect(result.isEdit).toBe(true);
+  });
+
+  it("adds the <story-detail> instruction on a detail-phase follow-up", () => {
+    const result = buildFollowUpContent(
+      { localDraft: null, localTitle: null, targetTicketKey: null, mode: "epic", phase: "detail" },
+      "VPL-E1",
+      "Deepen story 2",
+      false,
+      "[Current breakdown (3 cards)]",
+    );
+    expect(result.content).toContain("[phase: detail]");
+    expect(result.content).toContain("<story-detail index=");
   });
 });

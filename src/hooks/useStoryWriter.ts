@@ -457,6 +457,39 @@ export function useStoryWriter(ticketKey: string, options?: UseStoryWriterOption
     }
   }, [isEpicMode, ticketKey, setSession, refreshSession]);
 
+  // Deepen a single card into a full body + AC. This moves the session into the
+  // detail phase (so the break-down-epic skill emits a <story-detail> block) and
+  // sends a targeted message naming the card by its 1-based position and title.
+  // The PO can fire this for several cards; each deepen is one chat turn, and the
+  // skill can also detail multiple cards in one turn when asked. Returns the
+  // sendMessage outcome so callers can reflect failures.
+  const deepenCard = useCallback(async (index: number, title: string): Promise<boolean> => {
+    if (!isEpicMode || !session) return false;
+    if (session.phase !== "detail") {
+      setSession((prev) => (prev ? { ...prev, phase: "detail" } : prev));
+      try {
+        await epicWriterApi.setPhase(ticketKey, { phase: "detail" });
+      } catch { /* the message still carries [phase: detail] guidance */ }
+    }
+    const label = title.trim() ? ` ("${title.trim()}")` : "";
+    return sendMessage(
+      `Deepen story ${index + 1}${label} into a full description and acceptance criteria.`,
+    );
+  }, [isEpicMode, session, ticketKey, setSession, sendMessage]);
+
+  // Persist a PO hand-edit of a card's worked-out body. Optimistically updates
+  // the local card so the depth badge and body reflect the edit immediately.
+  const updateCardBody = useCallback(async (index: number, body: string | null) => {
+    if (!isEpicMode) return;
+    const trimmed = body && body.trim().length > 0 ? body : null;
+    setCards((prev) => prev.map((c) => (c.cardIndex === index ? { ...c, body: trimmed } : c)));
+    try {
+      await epicWriterApi.updateCard(ticketKey, index, { body: trimmed });
+    } catch {
+      void refreshSession();
+    }
+  }, [isEpicMode, ticketKey, refreshSession]);
+
   const saveDraft = useCallback(() => drafts.saveDraft(session), [drafts, session]);
   const pushToJira = useCallback(() => drafts.pushToJira(session), [drafts, session]);
 
@@ -497,5 +530,7 @@ export function useStoryWriter(ticketKey: string, options?: UseStoryWriterOption
     createLink,
     linkCandidate,
     setPhase,
+    deepenCard,
+    updateCardBody,
   };
 }

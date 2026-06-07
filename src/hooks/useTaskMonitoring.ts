@@ -123,7 +123,10 @@ export function useTaskMonitoring(options: TaskMonitoringOptions) {
           })()
         : Promise.resolve();
 
-      const hasBreakdownTags = output.includes("<epic-breakdown") || output.includes("<epic-questions");
+      const hasBreakdownTags =
+        output.includes("<epic-breakdown") ||
+        output.includes("<epic-questions") ||
+        output.includes("<story-detail");
       const applyOutputPromise = applyOutputBase && hasBreakdownTags
         ? (async () => {
             try {

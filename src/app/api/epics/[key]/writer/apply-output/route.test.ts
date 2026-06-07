@@ -170,4 +170,107 @@ describe("POST /api/epics/[key]/writer/apply-output", () => {
     const res = await POST(postReq("VPL-NONE", { output: "x" }), makeParams("VPL-NONE"));
     expect(res.status).toBe(404);
   });
+
+  it("fills a card's body from a <story-detail> deepen turn without a breakdown", async () => {
+    seedEpicSession("VPL-D1", "sess-d1");
+    await POST(
+      postReq("VPL-D1", { output: `<epic-breakdown>[{"title":"A"},{"title":"B"}]</epic-breakdown>` }),
+      makeParams("VPL-D1"),
+    );
+
+    const res = await POST(
+      postReq("VPL-D1", { output: `<story-detail index="1">## Description\nWorked out B.</story-detail>` }),
+      makeParams("VPL-D1"),
+    );
+    const data = await res.json();
+    expect(res.status).toBe(200);
+    expect(data.applied).toBe(true);
+    expect(data.detailedCount).toBe(1);
+    // No breakdown block in this turn: the card set is left intact.
+    expect(data.cardCount).toBe(0);
+
+    const cards = testDb
+      .select()
+      .from(epicChildDraft)
+      .where(eq(epicChildDraft.sessionId, "sess-d1"))
+      .orderBy(epicChildDraft.cardIndex)
+      .all();
+    expect(cards).toHaveLength(2);
+    expect(cards[0].body).toBeNull();
+    expect(cards[1].body).toBe("## Description\nWorked out B.");
+  });
+
+  it("ignores a detail block for an index with no card", async () => {
+    seedEpicSession("VPL-D2", "sess-d2");
+    await POST(
+      postReq("VPL-D2", { output: `<epic-breakdown>[{"title":"Only A"}]</epic-breakdown>` }),
+      makeParams("VPL-D2"),
+    );
+
+    const res = await POST(
+      postReq("VPL-D2", { output: `<story-detail index="9">orphan body</story-detail>` }),
+      makeParams("VPL-D2"),
+    );
+    const data = await res.json();
+    // No applicable detail and no breakdown: nothing applied.
+    expect(data.applied).toBe(false);
+    expect(data.detailedCount).toBe(0);
+
+    const cards = testDb.select().from(epicChildDraft).all();
+    expect(cards).toHaveLength(1);
+    expect(cards[0].body).toBeNull();
+  });
+
+  it("applies detail bodies alongside a re-emitted breakdown in the same turn", async () => {
+    seedEpicSession("VPL-D3", "sess-d3");
+    await POST(
+      postReq("VPL-D3", { output: `<epic-breakdown>[{"title":"A"},{"title":"B"}]</epic-breakdown>` }),
+      makeParams("VPL-D3"),
+    );
+
+    const output =
+      `<epic-breakdown>[{"title":"A"},{"title":"B"}]</epic-breakdown>` +
+      `<story-detail index="0">Body for A</story-detail>`;
+    const res = await POST(postReq("VPL-D3", { output }), makeParams("VPL-D3"));
+    const data = await res.json();
+    expect(data.applied).toBe(true);
+    expect(data.cardCount).toBe(2);
+    expect(data.detailedCount).toBe(1);
+
+    const cards = testDb
+      .select()
+      .from(epicChildDraft)
+      .where(eq(epicChildDraft.sessionId, "sess-d3"))
+      .orderBy(epicChildDraft.cardIndex)
+      .all();
+    expect(cards[0].body).toBe("Body for A");
+    expect(cards[1].body).toBeNull();
+  });
+
+  it("preserves a detailed body across a later breakdown that omits it", async () => {
+    seedEpicSession("VPL-D4", "sess-d4");
+    await POST(
+      postReq("VPL-D4", { output: `<epic-breakdown>[{"title":"A"}]</epic-breakdown>` }),
+      makeParams("VPL-D4"),
+    );
+    await POST(
+      postReq("VPL-D4", { output: `<story-detail index="0">Detailed A</story-detail>` }),
+      makeParams("VPL-D4"),
+    );
+
+    // A later breakdown turn that re-emits the card without a body must keep the
+    // previously detailed body (depth must not regress on a refine).
+    await POST(
+      postReq("VPL-D4", { output: `<epic-breakdown>[{"title":"A refined"}]</epic-breakdown>` }),
+      makeParams("VPL-D4"),
+    );
+
+    const cards = testDb
+      .select()
+      .from(epicChildDraft)
+      .where(eq(epicChildDraft.sessionId, "sess-d4"))
+      .all();
+    expect(cards[0].title).toBe("A refined");
+    expect(cards[0].body).toBe("Detailed A");
+  });
 });

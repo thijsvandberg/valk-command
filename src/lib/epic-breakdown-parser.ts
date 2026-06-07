@@ -109,3 +109,50 @@ export function extractEpicBreakdown(output: string): ParsedChildCard[] | null {
 
   return cards;
 }
+
+/**
+ * A worked-out story body keyed by the card index it details. The detail phase
+ * deepens individual cards, so the skill emits one <story-detail index="N">
+ * block per deepened card (full description + acceptance criteria as markdown).
+ */
+export interface ParsedStoryDetail {
+  index: number;
+  body: string;
+}
+
+/**
+ * Extracts the detail-phase <story-detail> blocks. Each block names the card it
+ * deepens via an index attribute and carries the full body (description + AC) as
+ * its inner markdown. Several blocks can appear in one turn when the PO deepens
+ * multiple cards in parallel. Unlike <epic-breakdown>, these are merged onto the
+ * existing cards by index rather than replacing the set.
+ *
+ * Parsing is defensive: a block without a parseable non-negative integer index,
+ * or with empty inner content, is dropped. Returns null when no block is present
+ * (so the caller leaves bodies untouched) and an empty array when blocks are
+ * present but none are usable. Duplicate indexes: the last one wins.
+ */
+export function extractStoryDetails(output: string): ParsedStoryDetail[] | null {
+  const regex = /<story-detail\b([^>]*)>([\s\S]*?)<\/story-detail>/g;
+  let match: RegExpExecArray | null;
+  let sawAny = false;
+  const byIndex = new Map<number, string>();
+
+  while ((match = regex.exec(output)) !== null) {
+    sawAny = true;
+    const attrs = match[1];
+    const inner = match[2].trim();
+    if (!inner) continue;
+
+    const indexMatch = attrs.match(/\bindex\s*=\s*"(\d+)"/);
+    if (!indexMatch) continue;
+    const index = Number.parseInt(indexMatch[1], 10);
+    if (!Number.isInteger(index) || index < 0) continue;
+
+    // Last block for an index wins, so a re-emitted detail supersedes earlier.
+    byIndex.set(index, inner);
+  }
+
+  if (!sawAny) return null;
+  return [...byIndex.entries()].map(([index, body]) => ({ index, body }));
+}

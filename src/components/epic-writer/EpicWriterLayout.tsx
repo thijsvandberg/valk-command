@@ -116,7 +116,12 @@ export function EpicWriterLayout({ epicKey }: EpicWriterLayoutProps) {
           />
         </div>
         <aside className="min-h-0 bg-surface-base/30">
-          <BreakdownBoard cards={writer.cards} />
+          <BreakdownBoard
+            cards={writer.cards}
+            onDeepen={writer.deepenCard}
+            onEditBody={writer.updateCardBody}
+            busy={writer.status === "sending" || writer.status === "streaming"}
+          />
         </aside>
       </div>
     </div>
