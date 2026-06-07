@@ -329,46 +329,46 @@ html.theme-transition *::after {
    hardcoded hex was tuned for dark and washed out on a light surface). The active
    state is a solid, saturated fill instead of a faint tint + ring. */
 :root {
-  --sp-todo-bg: color-mix(in srgb, #94a3b8 14%, transparent);
-  --sp-todo-text: #aab6c4;
+  --sp-todo-bg: var(--color-status-neutral-subtle);
+  --sp-todo-text: var(--color-status-neutral);
   --sp-todo-dot: #94a3b8;
   --sp-todo-active-bg: #5d6b7d;
   --sp-todo-active-text: #f1f5f9;
 
-  --sp-prog-bg: color-mix(in srgb, #38bdf8 15%, transparent);
-  --sp-prog-text: #5cc3ef;
+  --sp-prog-bg: var(--color-status-progress-subtle);
+  --sp-prog-text: var(--color-status-progress);
   --sp-prog-dot: #38bdf8;
   --sp-prog-active-bg: #0c87c9;
   --sp-prog-active-text: #ffffff;
 
-  --sp-test-bg: color-mix(in srgb, #9b7ee8 16%, transparent);
-  --sp-test-text: #b29cf0;
+  --sp-test-bg: color-mix(in srgb, var(--color-testing-400) 15%, transparent);
+  --sp-test-text: var(--color-testing-400);
   --sp-test-dot: #9b7ee8;
   --sp-test-active-bg: #7c3aed;
   --sp-test-active-text: #ffffff;
 
-  --sp-done-bg: color-mix(in srgb, #22c55e 14%, transparent);
-  --sp-done-text: #5cdd88;
+  --sp-done-bg: var(--color-status-done-subtle);
+  --sp-done-text: var(--color-status-done);
   --sp-done-dot: #34d36a;
   --sp-done-active-bg: #15a346;
   --sp-done-active-text: #ffffff;
 }
 
 [data-theme="light"] {
-  --sp-todo-bg: color-mix(in srgb, #64748b 12%, transparent);
-  --sp-todo-text: #475569;
+  --sp-todo-bg: var(--color-status-neutral-subtle);
+  --sp-todo-text: var(--color-status-neutral);
   --sp-todo-dot: #64748b;
 
-  --sp-prog-bg: color-mix(in srgb, #0ea5e9 13%, transparent);
-  --sp-prog-text: #0369a1;
+  --sp-prog-bg: var(--color-status-progress-subtle);
+  --sp-prog-text: var(--color-status-progress);
   --sp-prog-dot: #0284c7;
 
-  --sp-test-bg: color-mix(in srgb, #8b5cf6 12%, transparent);
-  --sp-test-text: #6d28d9;
+  --sp-test-bg: color-mix(in srgb, var(--color-testing-400) 15%, transparent);
+  --sp-test-text: var(--color-testing-400);
   --sp-test-dot: #7c3aed;
 
-  --sp-done-bg: color-mix(in srgb, #16a34a 13%, transparent);
-  --sp-done-text: #15803d;
+  --sp-done-bg: var(--color-status-done-subtle);
+  --sp-done-text: var(--color-status-done);
   --sp-done-dot: #16a34a;
 }
 
