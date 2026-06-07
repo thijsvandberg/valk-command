@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { sprintEndFromStart, toInputDateTime, toIsoDateTime } from "./sprint-dates";
+import { sprintEndFromStart, toInputDateTime, toIsoDateTime, startDateFromPreviousEnd } from "./sprint-dates";
 
 describe("sprintEndFromStart", () => {
   it("maps a Friday start to the Thursday two weeks later at 17:00", () => {
@@ -24,6 +24,36 @@ describe("sprintEndFromStart", () => {
   it("does not mutate across calls (year rollover)", () => {
     // Fri 25 Dec 2026 -> Thu 7 Jan 2027
     expect(sprintEndFromStart("2026-12-25")).toBe("2027-01-07T17:00");
+  });
+});
+
+describe("startDateFromPreviousEnd", () => {
+  it("returns the day after the previous Thursday end (the new Friday)", () => {
+    // Thu 4 Jun 2026 -> Fri 5 Jun 2026
+    expect(startDateFromPreviousEnd("2026-06-04T17:00:00.000Z")).toBe("2026-06-05");
+  });
+
+  it("handles a month rollover", () => {
+    // Thu 30 Apr 2026 -> Fri 1 May 2026
+    expect(startDateFromPreviousEnd("2026-04-30T17:00:00.000Z")).toBe("2026-05-01");
+  });
+
+  it("round-trips to local midnight through the picker converters", () => {
+    const start = startDateFromPreviousEnd("2026-06-04T17:00:00.000Z");
+    expect(toInputDateTime(toIsoDateTime(start))).toBe(start);
+  });
+
+  it("feeds the conventional end-date suggestion", () => {
+    // A Friday start derived from the previous end yields the next Thursday end.
+    const start = startDateFromPreviousEnd("2026-06-04T17:00:00.000Z");
+    expect(sprintEndFromStart(start)).toBe("2026-06-18T17:00");
+  });
+
+  it("returns empty for missing or unparseable end dates", () => {
+    expect(startDateFromPreviousEnd(null)).toBe("");
+    expect(startDateFromPreviousEnd(undefined)).toBe("");
+    expect(startDateFromPreviousEnd("")).toBe("");
+    expect(startDateFromPreviousEnd("not a date")).toBe("");
   });
 });
 

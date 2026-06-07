@@ -149,6 +149,49 @@ describe("CreateSprintModal", () => {
     });
   });
 
+  it("prefills the name and start date from suggestions", () => {
+    render(
+      <CreateSprintModal
+        onClose={onClose}
+        onCreated={onCreated}
+        showToast={showToast}
+        suggestedName="BT: 140"
+        suggestedStartDate="2026-06-05"
+      />,
+    );
+
+    expect(screen.getByPlaceholderText("e.g. Sprint 42")).toHaveValue("BT: 140");
+    // A prefilled name enables Create immediately (one-click create).
+    expect(screen.getByText("Create")).not.toBeDisabled();
+    // The prefilled start date drives the conventional end-date suggestion button.
+    expect(screen.getByTitle("Set end date to the conventional sprint end")).toBeInTheDocument();
+  });
+
+  it("keeps prefilled fields editable", () => {
+    render(
+      <CreateSprintModal
+        onClose={onClose}
+        onCreated={onCreated}
+        showToast={showToast}
+        suggestedName="BT: 140"
+        suggestedStartDate="2026-06-05"
+      />,
+    );
+
+    const nameInput = screen.getByPlaceholderText("e.g. Sprint 42");
+    fireEvent.change(nameInput, { target: { value: "BT: 141" } });
+    expect(nameInput).toHaveValue("BT: 141");
+  });
+
+  it("falls back to empty fields when no suggestions are given", () => {
+    render(
+      <CreateSprintModal onClose={onClose} onCreated={onCreated} showToast={showToast} />,
+    );
+
+    expect(screen.getByPlaceholderText("e.g. Sprint 42")).toHaveValue("");
+    expect(screen.getByText("Create")).toBeDisabled();
+  });
+
   it("passes goal and dates when provided", async () => {
     vi.mocked(jira.createSprint).mockResolvedValue({
       id: 501,

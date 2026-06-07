@@ -7,6 +7,10 @@ import {
   sprintToSlug,
   slugToSprintId,
   buildBoardUrl,
+  sprintNumber,
+  isRegularSprint,
+  latestRegularSprint,
+  nextSprintName,
   ALL_SPRINT_ID,
   BACKLOG_SPRINT_ID,
 } from "./sprint-utils";
@@ -26,6 +30,80 @@ describe("extractTeamPrefix", () => {
     expect(extractTeamPrefix("Sprint 42")).toBeNull();
     expect(extractTeamPrefix("")).toBeNull();
     expect(extractTeamPrefix("lowercase: sprint")).toBeNull();
+  });
+});
+
+describe("sprintNumber", () => {
+  it("extracts the first number after the prefix", () => {
+    expect(sprintNumber("BT: 138")).toBe(138);
+    expect(sprintNumber("BT: 130 - Align sidebars")).toBe(130);
+    expect(sprintNumber("BT 135")).toBe(135);
+  });
+
+  it("returns Infinity for non-numeric names", () => {
+    expect(sprintNumber("BT: TODO")).toBe(Infinity);
+    expect(sprintNumber("Backlog")).toBe(Infinity);
+    expect(sprintNumber("")).toBe(Infinity);
+  });
+});
+
+describe("isRegularSprint", () => {
+  it("is true for prefixed numeric sprints", () => {
+    expect(isRegularSprint("BT: 138")).toBe(true);
+    expect(isRegularSprint("GXP: 5")).toBe(true);
+  });
+
+  it("is false for placeholder and prefix-less names", () => {
+    expect(isRegularSprint("BT: TODO")).toBe(false);
+    expect(isRegularSprint("BT: Backlog")).toBe(false);
+    expect(isRegularSprint("Backlog")).toBe(false);
+    expect(isRegularSprint("Sprint 42")).toBe(false);
+  });
+});
+
+describe("latestRegularSprint", () => {
+  it("returns the highest-numbered regular sprint with its prefix and sprint", () => {
+    const sprints = [
+      { name: "BT: 138", endDate: "2026-05-21T17:00:00.000Z" },
+      { name: "BT: 139", endDate: "2026-06-04T17:00:00.000Z" },
+    ];
+    const latest = latestRegularSprint(sprints);
+    expect(latest).toMatchObject({ prefix: "BT", number: 139 });
+    expect(latest?.sprint.endDate).toBe("2026-06-04T17:00:00.000Z");
+  });
+
+  it("ignores placeholder and unscheduled groups", () => {
+    const sprints = [
+      { name: "BT: 139" },
+      { name: "BT: TODO" },
+      { name: "GXP: Backlog" },
+      { name: "Backlog" },
+    ];
+    expect(latestRegularSprint(sprints)).toMatchObject({ prefix: "BT", number: 139 });
+  });
+
+  it("takes the prefix from the data rather than hardcoding it", () => {
+    expect(latestRegularSprint([{ name: "GXP: 7" }])).toMatchObject({ prefix: "GXP", number: 7 });
+  });
+
+  it("returns null when no regular sprint exists", () => {
+    expect(latestRegularSprint([])).toBeNull();
+    expect(latestRegularSprint([{ name: "Backlog" }, { name: "BT: TODO" }])).toBeNull();
+  });
+});
+
+describe("nextSprintName", () => {
+  it("suggests the next number in the series", () => {
+    expect(nextSprintName([{ name: "BT: 138" }, { name: "BT: 139" }])).toBe("BT: 140");
+  });
+
+  it("uses the highest-numbered prefix when prefixes differ", () => {
+    expect(nextSprintName([{ name: "BT: 139" }, { name: "GXP: 200" }])).toBe("GXP: 201");
+  });
+
+  it("returns an empty string when no regular sprint exists", () => {
+    expect(nextSprintName([])).toBe("");
+    expect(nextSprintName([{ name: "Backlog" }])).toBe("");
   });
 });
 

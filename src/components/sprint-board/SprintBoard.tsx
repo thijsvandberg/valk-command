@@ -21,7 +21,8 @@ import { useLocalStorage } from "@/hooks/useLocalStorage";
 import { useExportTask } from "@/hooks/useExportTask";
 import { usePageTitle } from "@/hooks/usePageTitle";
 import { mapJiraSprints, saveSprintSlots, saveTicketMetadata, bulkReviewStories, bulkGenerateSubtasks, computeSprintStats, computeSprintWorkDays } from "@/components/sprint-board/sprint-board-utils";
-import { sprintToSlug, slugToSprintId, buildBoardUrl } from "@/lib/sprint-utils";
+import { sprintToSlug, slugToSprintId, buildBoardUrl, nextSprintName, latestRegularSprint } from "@/lib/sprint-utils";
+import { startDateFromPreviousEnd } from "@/lib/sprint-dates";
 import { prefetchTicketList, setRouterPrefetch } from "@/lib/prefetch";
 import { getJiraUrl } from "@/components/sprint-board/TicketTableCells";
 import { apiFetch, jira, tickets as ticketsApi, refinementSessions as refinementSessionsApi } from "@/lib/api-client";
@@ -104,6 +105,12 @@ export default function SprintBoard() {
   const [editModalOpen, setEditModalOpen] = useState(false);
   const [autoSuggest, setAutoSuggest] = useState(false);
   const [createSprintModalOpen, setCreateSprintModalOpen] = useState(false);
+  // Editable defaults for the Create Sprint modal, derived from the regular series (BRDG-305).
+  const suggestedSprintName = useMemo(() => nextSprintName(sprints), [sprints]);
+  const suggestedSprintStartDate = useMemo(
+    () => startDateFromPreviousEnd(latestRegularSprint(sprints)?.sprint.endDate),
+    [sprints],
+  );
   const [finishModalOpen, setFinishModalOpen] = useState(false);
   const [finishEarlyClose, setFinishEarlyClose] = useState(false);
   // In the All view there is no single active sprint, so the edit/finish modals target a
@@ -541,7 +548,7 @@ export default function SprintBoard() {
       <SearchModal open={searchModalOpen} initialQuery={f.searchQuery} onClose={() => setSearchModalOpen(false)} onSelectTicket={(key: string) => setSelectedTicket(key)} sprintNameMap={sprintNameMap} />
       <StoryWriterLauncherModal open={showStoryWriterLauncher} onClose={() => setShowStoryWriterLauncher(false)} />
       {editModalOpen && editSprint && <SprintEditModal sprint={editSprint} tickets={editSprintTickets} onClose={() => { setEditModalOpen(false); setAutoSuggest(false); setEditSprintId(null); }} showToast={showToast} autoSuggest={autoSuggest} />}
-      {createSprintModalOpen && <CreateSprintModal onClose={() => setCreateSprintModalOpen(false)} onCreated={handleSprintCreated} showToast={showToast} />}
+      {createSprintModalOpen && <CreateSprintModal onClose={() => setCreateSprintModalOpen(false)} onCreated={handleSprintCreated} showToast={showToast} suggestedName={suggestedSprintName} suggestedStartDate={suggestedSprintStartDate} />}
       {finishModalOpen && finishSprint && (
         <FinishSprintModal
           sprint={finishSprint}

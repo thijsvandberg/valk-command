@@ -6,6 +6,56 @@ export function extractTeamPrefix(sprintName: string): string | null {
   return match ? match[1] : null;
 }
 
+// --- Regular sprint series (BRDG-305, reused by BRDG-306) ---------------------
+// A "regular" sprint follows the `PREFIX: <number>` shape (e.g. `BT: 138`). The
+// number drives ordering and the next-sprint suggestion; placeholder sprints
+// (`BT: TODO`, `Backlog`, `Unscheduled`) have no number and are excluded. This is
+// the single source of truth for the number regex, shared with the velocity route.
+
+/** First number after the team prefix: "BT: 133" -> 133, "BT: 130 - Align" -> 130, else Infinity. */
+export function sprintNumber(name: string): number {
+  const m = name.match(/[: ]\s*(\d+)/);
+  return m ? parseInt(m[1], 10) : Infinity;
+}
+
+/** A regular numeric sprint has both a team prefix and a finite series number. */
+export function isRegularSprint(name: string): boolean {
+  return extractTeamPrefix(name) !== null && Number.isFinite(sprintNumber(name));
+}
+
+interface NamedSprint {
+  name: string;
+  endDate?: string | null;
+}
+
+export interface RegularSprintInfo<T extends NamedSprint = NamedSprint> {
+  prefix: string;
+  number: number;
+  sprint: T;
+}
+
+/**
+ * The highest-numbered regular sprint, with its prefix and the sprint itself
+ * (so callers can read its endDate). Ties resolve to the last one seen. Returns
+ * null when no regular sprint exists.
+ */
+export function latestRegularSprint<T extends NamedSprint>(sprints: T[]): RegularSprintInfo<T> | null {
+  let best: RegularSprintInfo<T> | null = null;
+  for (const sprint of sprints) {
+    if (!isRegularSprint(sprint.name)) continue;
+    const number = sprintNumber(sprint.name);
+    const prefix = extractTeamPrefix(sprint.name)!;
+    if (!best || number >= best.number) best = { prefix, number, sprint };
+  }
+  return best;
+}
+
+/** Next name in the regular series ("BT: 139" -> "BT: 140"), or "" when none exists. */
+export function nextSprintName(sprints: NamedSprint[]): string {
+  const latest = latestRegularSprint(sprints);
+  return latest ? `${latest.prefix}: ${latest.number + 1}` : "";
+}
+
 // --- Sprint URL slugs (BRDG-270) ---------------------------------------------
 // The Sprint Board encodes the active sprint as a path segment so the board is
 // deep-linkable. The numeric Jira id is not human-readable, so we slugify the

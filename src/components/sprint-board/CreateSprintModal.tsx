@@ -13,11 +13,20 @@ interface CreateSprintModalProps {
   onClose: () => void;
   onCreated: (sprintId: string) => void;
   showToast: (msg: string) => void;
+  // Editable defaults derived from the regular sprint series (BRDG-305).
+  suggestedName?: string;
+  suggestedStartDate?: string;
 }
 
-export function CreateSprintModal({ onClose, onCreated, showToast }: CreateSprintModalProps) {
-  const [name, setName] = useState("");
-  const [startDate, setStartDate] = useState("");
+export function CreateSprintModal({
+  onClose,
+  onCreated,
+  showToast,
+  suggestedName = "",
+  suggestedStartDate = "",
+}: CreateSprintModalProps) {
+  const [name, setName] = useState(suggestedName);
+  const [startDate, setStartDate] = useState(suggestedStartDate);
   const [endDate, setEndDate] = useState("");
   const [goal, setGoal] = useState("");
   const [creating, setCreating] = useState(false);
@@ -27,7 +36,11 @@ export function CreateSprintModal({ onClose, onCreated, showToast }: CreateSprin
   useEffect(() => {
     // Focus after Modal's own focus trap runs (which uses rAF)
     const id = requestAnimationFrame(() => {
-      requestAnimationFrame(() => nameRef.current?.focus());
+      requestAnimationFrame(() => {
+        nameRef.current?.focus();
+        // Prefilled name is a suggestion; select it so the PO can overwrite in one keystroke.
+        nameRef.current?.select();
+      });
     });
     return () => cancelAnimationFrame(id);
   }, []);

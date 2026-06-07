@@ -35,6 +35,20 @@ export function sprintEndFromStart(startValue: string): string {
   return `${base.getFullYear()}-${pad(base.getMonth() + 1)}-${pad(base.getDate())}T17:00`;
 }
 
+/**
+ * Suggested start date for the next sprint: the day after the previous sprint's
+ * end. A sprint runs Friday through Thursday, so the previous end (a Thursday)
+ * plus one day is the new Friday. Returns the time-less picker value
+ * ("YYYY-MM-DD") anchored to local midnight, or "" when no usable end date.
+ */
+export function startDateFromPreviousEnd(endIso: string | null | undefined): string {
+  if (!endIso) return "";
+  const end = new Date(endIso);
+  if (Number.isNaN(end.getTime())) return "";
+  const start = new Date(end.getFullYear(), end.getMonth(), end.getDate() + 1);
+  return `${start.getFullYear()}-${pad(start.getMonth() + 1)}-${pad(start.getDate())}`;
+}
+
 /** Convert a stored ISO timestamp to the picker value ("" | "YYYY-MM-DD" | "YYYY-MM-DDTHH:mm"). */
 export function toInputDateTime(iso: string | null | undefined): string {
   if (!iso) return "";

@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/db";
 import { ticket, appSetting } from "@/db/schema";
 import { eq, sql } from "drizzle-orm";
+import { sprintNumber } from "@/lib/sprint-utils";
 
 interface StoredSprint {
   id: number;
@@ -11,13 +12,6 @@ interface StoredSprint {
   endDate: string | null;
   completeDate: string | null;
   goal: string | null;
-}
-
-// Extract sprint number for sorting: "BT: 133" → 133, "BT: 130 - Align sidebars" → 130
-function sprintNumber(name: string): number {
-  // First number after the team prefix
-  const m = name.match(/[: ]\s*(\d+)/);
-  return m ? parseInt(m[1], 10) : Infinity;
 }
 
 /**
