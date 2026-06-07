@@ -8,6 +8,8 @@ const mockSession: StoryWriterSessionRow = {
   ticketKey: "BRDG-100",
   conversationId: "conv-1",
   status: "active",
+  mode: "story",
+  phase: "feed",
   localDraft: null,
   localTitle: null,
   baseVersionHash: null,

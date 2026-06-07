@@ -236,14 +236,16 @@ Messages within conversations.
 
 #### `story_writer_session`
 
-AI-assisted story editing sessions.
+AI-assisted story editing sessions. Also backs the Epic Writer (epic mode).
 
 | Column | Type | Notes |
 |--------|------|-------|
 | `id` | text PK | |
-| `ticket_key` | text FK -> ticket | |
+| `ticket_key` | text FK -> ticket | For epic mode this is the epic key |
 | `conversation_id` | text FK -> conversation | Chat for this session |
 | `status` | enum | `active`, `completed`, `discarded` |
+| `mode` | enum | `story` (default) or `epic` (Epic Writer) |
+| `phase` | enum | Epic Writer phase bookmark: `feed`, `discovery`, `breakdown`, `refine`, `detail`, `sprints`. Default `feed`; persisted marker only (no gating) |
 | `local_draft` | text | Current working draft |
 | `local_title` | text | Current working title |
 | `base_version_hash` | text | Content hash at session start |

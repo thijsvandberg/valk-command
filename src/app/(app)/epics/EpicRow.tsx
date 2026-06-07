@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { ChevronRight, ArrowUpRight } from "lucide-react";
+import { ChevronRight, ArrowUpRight, NotebookPen } from "lucide-react";
 import type { EpicProgressItem } from "@/app/api/epics/progress/route";
 import { useEpicColor } from "@/hooks/useEpicColor";
 import { EpicProgressBar } from "./EpicProgressBar";
@@ -81,6 +81,15 @@ export function EpicRow({ epic, sprints }: { epic: EpicProgressItem; sprints: Sp
       </button>
 
         <div className="flex shrink-0 items-center gap-0.5 pr-3">
+          <Link
+            href={`/epics/${epic.key}/write`}
+            onClick={(e) => e.stopPropagation()}
+            title="Work out Epic"
+            className="inline-flex h-7 items-center gap-1.5 rounded-md px-2 text-[11px] font-medium text-text-tertiary transition-colors duration-150 cursor-pointer hover:bg-hover-interactive hover:text-[var(--color-brand-400)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)]"
+          >
+            <NotebookPen size={13} strokeWidth={1.5} />
+            <span className="hidden sm:inline">Work out Epic</span>
+          </Link>
           <EpicColorPicker epicKey={epic.key} name={epic.name} color={epic.color} />
           <EpicTeamPicker epicKey={epic.key} teams={epic.teams} />
         </div>

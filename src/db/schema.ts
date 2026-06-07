@@ -573,6 +573,16 @@ export const storyWriterSession = sqliteTable("story_writer_session", {
   status: text("status", {
     enum: ["active", "completed", "discarded"],
   }).notNull().default("active"),
+  // Distinguishes the single-story flow ("story") from the Epic Writer flow ("epic").
+  // NOT NULL + default keeps every existing row and the story-path INSERT valid.
+  mode: text("mode", {
+    enum: ["story", "epic"],
+  }).notNull().default("story"),
+  // Epic Writer phase bookmark. Free movement in 292; does not gate behavior.
+  // Irrelevant for story-mode sessions, which stay on the default.
+  phase: text("phase", {
+    enum: ["feed", "discovery", "breakdown", "refine", "detail", "sprints"],
+  }).notNull().default("feed"),
   localDraft: text("local_draft"),
   localTitle: text("local_title"),
   baseVersionHash: text("base_version_hash"),

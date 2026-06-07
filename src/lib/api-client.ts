@@ -329,6 +329,21 @@ export const storyWriter = {
 };
 
 // ---------------------------------------------------------------------------
+// Epic Writer (epic mode of the Story Writer)
+// ---------------------------------------------------------------------------
+
+export const epicWriter = {
+  getSession: (key: string, signal?: AbortSignal) =>
+    apiFetch<unknown>(`/api/epics/${enc(key)}/writer/session`, { signal }),
+  createSession: (key: string, data?: Record<string, unknown>, signal?: AbortSignal) =>
+    apiFetch<unknown>(`/api/epics/${enc(key)}/writer/session`, { method: "POST", body: data, signal }),
+  setPhase: (key: string, data: { phase: string }, signal?: AbortSignal) =>
+    apiFetch<unknown>(`/api/epics/${enc(key)}/writer/phase`, { method: "PATCH", body: data, signal }),
+  sendMessage: (key: string, data: Record<string, unknown>, signal?: AbortSignal) =>
+    apiFetch<unknown>(`/api/epics/${enc(key)}/writer/messages`, { method: "POST", body: data, signal }),
+};
+
+// ---------------------------------------------------------------------------
 // Epics
 // ---------------------------------------------------------------------------
 

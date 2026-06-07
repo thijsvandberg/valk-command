@@ -13,6 +13,7 @@ const EXPECTED_ROUTES = [
   { path: "/chat/[id]", file: "src/app/(app)/chat/[id]/page.tsx", name: "Chat Conversation" },
   { path: "/sprint-board/[[...slug]]", file: "src/app/(app)/sprint-board/[[...slug]]/page.tsx", name: "Sprint Board" },
   { path: "/epics", file: "src/app/(app)/epics/page.tsx", name: "Epics" },
+  { path: "/epics/[key]/write", file: "src/app/(app)/epics/[key]/write/page.tsx", name: "Epic Writer" },
   { path: "/pipelines", file: "src/app/(app)/pipelines/page.tsx", name: "Pipelines" },
   { path: "/test-center", file: "src/app/(app)/test-center/page.tsx", name: "Test Center" },
   { path: "/refinement", file: "src/app/(app)/refinement/page.tsx", name: "Refinement" },

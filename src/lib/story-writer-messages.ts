@@ -1,5 +1,12 @@
 import { db } from "@/db";
-import { storyWriterSession, message, ticket, jiraComment } from "@/db/schema";
+import {
+  storyWriterSession,
+  message,
+  ticket,
+  jiraComment,
+  ticketConfluenceLink,
+  ticketAttachment,
+} from "@/db/schema";
 import { eq, and, ne, sql } from "drizzle-orm";
 import { randomUUID, createHash } from "crypto";
 import { agentFetch, type AgentError as AgentFetchError } from "@/lib/agent-fetch";
@@ -126,13 +133,107 @@ async function logSuccess(key: string, summary: string, messageStart: number, me
   });
 }
 
-export async function buildFirstMessageBody(
-  session: { conversationId: string; localDraft: string | null; localTitle: string | null; targetTicketKey: string | null; targetLocalDraft: string | null },
+/**
+ * Assembles the epic-mode context block: the epic itself, its child stories,
+ * linked Confluence pages (titles + URLs only, to bound token cost), and
+ * attachments (filenames/types). This is the context the AI sees when working
+ * out an epic. Child filtering mirrors /api/epics/[key]/tickets (excludes the
+ * epic itself and removed/draft tickets).
+ */
+export async function buildEpicContext(key: string): Promise<string> {
+  const [epicRow, children, confluence, attachments] = await Promise.all([
+    db.select().from(ticket).where(eq(ticket.jiraKey, key)).get(),
+    db
+      .select({ jiraKey: ticket.jiraKey, title: ticket.title, type: ticket.type, status: ticket.status })
+      .from(ticket)
+      .where(and(eq(ticket.epicKey, key), ne(ticket.type, "epic")))
+      .all(),
+    db
+      .select({ pageTitle: ticketConfluenceLink.pageTitle, pageUrl: ticketConfluenceLink.pageUrl })
+      .from(ticketConfluenceLink)
+      .where(eq(ticketConfluenceLink.ticketKey, key))
+      .all(),
+    db
+      .select({ filename: ticketAttachment.filename, mimeType: ticketAttachment.mimeType })
+      .from(ticketAttachment)
+      .where(eq(ticketAttachment.ticketKey, key))
+      .all(),
+  ]);
+
+  const parts: string[] = [];
+  parts.push(`You are helping work out an epic. The epic is the subject.`);
+  if (epicRow) {
+    parts.push(`Epic: ${key} - ${epicRow.title}`);
+    parts.push(`Epic description:\n${selectCurrentDescription(null, epicRow.description)}`);
+  } else {
+    parts.push(`Epic: ${key}`);
+  }
+
+  if (children.length > 0) {
+    const formatted = children
+      .map((c) => `- ${c.jiraKey} [${c.type ?? "story"}, ${c.status ?? "TO DO"}]: ${c.title}`)
+      .join("\n");
+    parts.push(`Existing child stories (${children.length}):\n${formatted}`);
+  } else {
+    parts.push(`Existing child stories: none yet.`);
+  }
+
+  if (confluence.length > 0) {
+    const formatted = confluence
+      .map((c) => `- ${c.pageTitle} (${c.pageUrl})`)
+      .join("\n");
+    parts.push(`Linked Confluence pages (${confluence.length}):\n${formatted}`);
+  }
+
+  if (attachments.length > 0) {
+    const formatted = attachments
+      .map((a) => `- ${a.filename} (${a.mimeType})`)
+      .join("\n");
+    parts.push(`Attachments (${attachments.length}):\n${formatted}`);
+  }
+
+  return parts.join("\n\n");
+}
+
+export async function buildEpicFirstMessageBody(
+  session: { conversationId: string; localDraft: string | null },
   key: string,
   content: string,
   codebaseResearch: boolean,
   model: string | undefined,
 ) {
+  const epicContext = await buildEpicContext(key);
+  const researchFlag = `[codebase-research: ${codebaseResearch ? "on" : "off"}]`;
+
+  // The epic itself is refined via the regular single-story draft flow (epic as
+  // subject), so we keep the write-story-draft skill and its <story-draft>
+  // contract. We suppress the story-only epic-suggestion and title-suggestion
+  // blocks, which make no sense when the subject is itself an epic.
+  const args =
+    `${epicContext}\n\n` +
+    `${researchFlag}\n\n` +
+    `User request: ${content}\n\n` +
+    `Important: When you sharpen or rewrite the epic's own description, return it in a <story-draft> block (the epic is the subject ticket). ` +
+    `Always include a brief commentary outside the tags explaining what you changed and why, and when relevant end with a follow-up question to guide the next iteration.`;
+
+  return {
+    skill: "write-story-draft",
+    args: { args },
+    conversationId: session.conversationId,
+    model,
+  };
+}
+
+export async function buildFirstMessageBody(
+  session: { conversationId: string; localDraft: string | null; localTitle: string | null; targetTicketKey: string | null; targetLocalDraft: string | null; mode?: string | null },
+  key: string,
+  content: string,
+  codebaseResearch: boolean,
+  model: string | undefined,
+) {
+  if (session.mode === "epic") {
+    return buildEpicFirstMessageBody(session, key, content, codebaseResearch, model);
+  }
   const ticketRow = await db
     .select()
     .from(ticket)
@@ -213,11 +314,26 @@ export async function buildFirstMessageBody(
 }
 
 export function buildFollowUpContent(
-  session: { localDraft: string | null; localTitle: string | null; targetTicketKey: string | null },
+  session: { localDraft: string | null; localTitle: string | null; targetTicketKey: string | null; mode?: string | null },
   key: string,
   content: string,
   codebaseResearch: boolean,
 ): { content: string; isEdit: boolean } {
+  if (session.mode === "epic") {
+    const isEdit = hasEditIntent(content, { splitMode: false });
+    const researchFlag = `[codebase-research: ${codebaseResearch ? "on" : "off"}]`;
+    const draftContext = isEdit && session.localDraft
+      ? `\n\n[Current epic draft]\n${session.localDraft}\n[End of draft]`
+      : "";
+    const instructions = isEdit
+      ? `[Remember: when you change the epic description, return it in a <story-draft> block, and include a brief commentary explaining what you changed.]`
+      : `[If your answer requires editing the epic description, include a <story-draft> block.]`;
+    return {
+      content: `${researchFlag}${draftContext}\n\n${content}\n\n${instructions}`,
+      isEdit,
+    };
+  }
+
   const isEdit = hasEditIntent(content, { splitMode: !!session.targetTicketKey });
   const researchFlag = `[codebase-research: ${codebaseResearch ? "on" : "off"}]`;
 

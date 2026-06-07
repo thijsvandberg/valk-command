@@ -46,6 +46,17 @@ Sync engine for pulling Jira data into the local SQLite database. See [jira-sync
 | `/api/epics/[key]/summary` | PATCH | Update epic summary manually. Body: `{ summary }` |
 | `/api/epics/generate-summaries` | POST | Invoke workspace `summarize-epics` skill to generate summaries for all epics |
 
+### Epic Writer
+
+Epic mode of the Story Writer. The epic is the subject ticket; sessions reuse `story_writer_session` (`mode: "epic"`). See [story-writer.md](story-writer.md).
+
+| Route | Method | Purpose |
+|-------|--------|---------|
+| `/api/epics/[key]/writer/session` | GET | Get active epic session (phase + messages + drafts); resumable |
+| `/api/epics/[key]/writer/session` | POST | Create epic session (`mode: "epic"`, snapshots epic description; near-empty epic is valid) |
+| `/api/epics/[key]/writer/phase` | PATCH | Set the session phase. Body: `{ phase }`. Free movement, no transition guard |
+| `/api/epics/[key]/writer/messages` | POST | Send a chat turn; invokes the workspace `write-story-draft` skill with epic-mode context (no direct LLM in Bridge) |
+
 ## Sprints
 
 | Route | Method | Purpose |

@@ -7,11 +7,18 @@ import type { StoryWriterStatus } from "@/types/story-writer";
 import { useTaskMonitoring, type WorkspaceUsage } from "./useTaskMonitoring";
 import { useStoryWriterDrafts } from "./useStoryWriterDrafts";
 import { friendlyAgentError } from "@/lib/agent-errors";
-import { storyWriter as storyWriterApi, workspaceTasks as workspaceTasksApi, apiFetch, ApiError, tickets } from "@/lib/api-client";
+import { storyWriter as storyWriterApi, epicWriter as epicWriterApi, workspaceTasks as workspaceTasksApi, apiFetch, ApiError, tickets } from "@/lib/api-client";
+import type { EpicWriterPhase } from "@/types/epic-writer";
 
 export type { WorkspaceUsage } from "./useTaskMonitoring";
 
-export function useStoryWriter(ticketKey: string) {
+export interface UseStoryWriterOptions {
+  mode?: "story" | "epic";
+}
+
+export function useStoryWriter(ticketKey: string, options?: UseStoryWriterOptions) {
+  const mode = options?.mode ?? "story";
+  const isEpicMode = mode === "epic";
   const [session, setSessionState] = useState<StoryWriterSessionRow | null>(null);
   const setSession = useCallback((v: StoryWriterSessionRow | null | ((prev: StoryWriterSessionRow | null) => StoryWriterSessionRow | null)) => {
     setSessionState((prev) => {
@@ -40,14 +47,19 @@ export function useStoryWriter(ticketKey: string) {
   const unmountedRef = useRef(false);
   const sessionRef = useRef<StoryWriterSessionRow | null>(null);
 
+  // Session/phase/messages use the epic group in epic mode, but draft-apply,
+  // save, and push-to-Jira reuse the ticket story-writer routes against the
+  // epic key (the epic is the subject ticket). The active session is found by
+  // key regardless of mode, so this is the epic-enrichment path (AC8).
   const apiBase = `/api/tickets/${encodeURIComponent(ticketKey)}/story-writer`;
+  const sessionApi = isEpicMode ? epicWriterApi : storyWriterApi;
 
   const aiDrafts = allDrafts.filter((d) => d.storySlot === "original");
   const targetAiDrafts = allDrafts.filter((d) => d.storySlot === "target");
 
   const refreshSession = useCallback(async () => {
     try {
-      const data = await storyWriterApi.getSession(ticketKey);
+      const data = await sessionApi.getSession(ticketKey);
       if (!unmountedRef.current) {
         setSession((data as Record<string, unknown>).session as StoryWriterSessionRow | null);
         const serverMessages = (data as Record<string, unknown>).messages as Message[];
@@ -65,7 +77,7 @@ export function useStoryWriter(ticketKey: string) {
         setTargetOutdated(((data as Record<string, unknown>).targetOutdated as boolean | undefined) ?? false);
       }
     } catch { /* ignore */ }
-  }, [ticketKey, setSession]);
+  }, [ticketKey, setSession, sessionApi]);
 
   const startMonitoringRef = useRef<((taskId: string, progressMessage?: string) => void) | null>(null);
 
@@ -124,7 +136,7 @@ export function useStoryWriter(ticketKey: string) {
       const maxRetries = isDraftKey ? 20 : 0;
       for (let attempt = 0; ; attempt++) {
         try {
-          const data = await storyWriterApi.getSession(ticketKey) as Record<string, unknown>;
+          const data = await sessionApi.getSession(ticketKey) as Record<string, unknown>;
 
           if (cancelled) return;
 
@@ -161,7 +173,7 @@ export function useStoryWriter(ticketKey: string) {
                   }
                   if (cancelled) return;
                   try {
-                    const refreshed = await storyWriterApi.getSession(ticketKey) as Record<string, unknown>;
+                    const refreshed = await sessionApi.getSession(ticketKey) as Record<string, unknown>;
                     if (!cancelled) {
                       setSession(refreshed.session as StoryWriterSessionRow);
                       setMessages(refreshed.messages as Message[]);
@@ -197,7 +209,7 @@ export function useStoryWriter(ticketKey: string) {
             return;
           } else {
             try {
-              const created = await storyWriterApi.createSession(ticketKey) as Record<string, unknown>;
+              const created = await sessionApi.createSession(ticketKey) as Record<string, unknown>;
               if (cancelled) return;
               setSession(created.session as StoryWriterSessionRow);
               setMessages([]);
@@ -205,7 +217,7 @@ export function useStoryWriter(ticketKey: string) {
             } catch (err) {
               if (cancelled) return;
               if (err instanceof ApiError && (err.status === 409 || err.status === 500)) {
-                const retryData = await storyWriterApi.getSession(ticketKey) as Record<string, unknown>;
+                const retryData = await sessionApi.getSession(ticketKey) as Record<string, unknown>;
                 if (cancelled) return;
                 if (retryData.session) {
                   setSession(retryData.session as StoryWriterSessionRow);
@@ -235,7 +247,7 @@ export function useStoryWriter(ticketKey: string) {
 
     init();
     return () => { cancelled = true; };
-  }, [ticketKey, apiBase, setSession]);
+  }, [ticketKey, apiBase, setSession, sessionApi]);
 
   const sendMessage = useCallback(async (content: string, skill?: string): Promise<boolean> => {
     if (!session) return false;
@@ -263,7 +275,7 @@ export function useStoryWriter(ticketKey: string) {
     setMessages((prev) => [...prev, tempMsg]);
 
     try {
-      const result = await storyWriterApi.sendMessage(ticketKey, {
+      const result = await sessionApi.sendMessage(ticketKey, {
         content,
         codebaseResearch: codebaseResearchRef.current,
         model: modelRef.current,
@@ -293,7 +305,7 @@ export function useStoryWriter(ticketKey: string) {
       setStatus("ready");
       return false;
     }
-  }, [session, ticketKey, monitoring]);
+  }, [session, ticketKey, monitoring, sessionApi]);
 
   const retryMessage = useCallback(async (messageId: string): Promise<boolean> => {
     if (!session) return false;
@@ -311,7 +323,7 @@ export function useStoryWriter(ticketKey: string) {
     setMessages((prev) => prev.map((m) => m.id === messageId ? { ...m, status: "pending" as const } : m));
 
     try {
-      const result = await storyWriterApi.sendMessage(ticketKey, {
+      const result = await sessionApi.sendMessage(ticketKey, {
         content: failedMsg.content,
         retryMessageId: messageId,
         codebaseResearch: codebaseResearchRef.current,
@@ -333,7 +345,7 @@ export function useStoryWriter(ticketKey: string) {
       setStatus("ready");
       return false;
     }
-  }, [session, messages, ticketKey, monitoring]);
+  }, [session, messages, ticketKey, monitoring, sessionApi]);
 
   const clearFailedMessages = useCallback(async () => {
     try {
@@ -423,6 +435,18 @@ export function useStoryWriter(ticketKey: string) {
     }
   }, [messages, monitoring]);
 
+  // Epic-mode phase bookmark. Persists the chosen phase, then mirrors it into
+  // local session state so the rail reflects the move immediately.
+  const setPhase = useCallback(async (phase: EpicWriterPhase) => {
+    if (!isEpicMode) return;
+    setSession((prev) => (prev ? { ...prev, phase } : prev));
+    try {
+      await epicWriterApi.setPhase(ticketKey, { phase });
+    } catch {
+      void refreshSession();
+    }
+  }, [isEpicMode, ticketKey, setSession, refreshSession]);
+
   const saveDraft = useCallback(() => drafts.saveDraft(session), [drafts, session]);
   const pushToJira = useCallback(() => drafts.pushToJira(session), [drafts, session]);
 
@@ -461,5 +485,6 @@ export function useStoryWriter(ticketKey: string) {
     refreshSession,
     createLink,
     linkCandidate,
+    setPhase,
   };
 }
