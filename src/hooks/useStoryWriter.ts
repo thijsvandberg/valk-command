@@ -1,14 +1,14 @@
 "use client";
 
 import { useState, useCallback, useRef, useEffect } from "react";
-import type { StoryWriterSessionRow, StoryWriterDraftRow, RelatedStoryCandidateRow, EpicChildDraftRow } from "@/db/schema";
+import type { StoryWriterSessionRow, StoryWriterDraftRow, RelatedStoryCandidateRow } from "@/db/schema";
 import type { Message } from "@/types/chat";
 import type { StoryWriterStatus } from "@/types/story-writer";
 import { useTaskMonitoring, type WorkspaceUsage } from "./useTaskMonitoring";
 import { useStoryWriterDrafts } from "./useStoryWriterDrafts";
 import { friendlyAgentError } from "@/lib/agent-errors";
-import { storyWriter as storyWriterApi, epicWriter as epicWriterApi, workspaceTasks as workspaceTasksApi, apiFetch, ApiError, tickets } from "@/lib/api-client";
-import type { EpicWriterPhase } from "@/types/epic-writer";
+import { storyWriter as storyWriterApi, epicWriter as epicWriterApi, jira as jiraApi, workspaceTasks as workspaceTasksApi, apiFetch, ApiError, tickets } from "@/lib/api-client";
+import type { EpicWriterPhase, EpicChildCardWithSprint } from "@/types/epic-writer";
 
 export type { WorkspaceUsage } from "./useTaskMonitoring";
 
@@ -30,7 +30,7 @@ export function useStoryWriter(ticketKey: string, options?: UseStoryWriterOption
   const [messages, setMessages] = useState<Message[]>([]);
   const [allDrafts, setAllDrafts] = useState<StoryWriterDraftRow[]>([]);
   const [relatedCandidates, setRelatedCandidates] = useState<RelatedStoryCandidateRow[]>([]);
-  const [cards, setCards] = useState<EpicChildDraftRow[]>([]);
+  const [cards, setCards] = useState<EpicChildCardWithSprint[]>([]);
   const [outdated, setOutdated] = useState(false);
   const [targetOutdated, setTargetOutdated] = useState(false);
   const [status, setStatus] = useState<StoryWriterStatus>("loading");
@@ -81,7 +81,7 @@ export function useStoryWriter(ticketKey: string, options?: UseStoryWriterOption
         setRelatedCandidates(((data as Record<string, unknown>).relatedCandidates as RelatedStoryCandidateRow[] | undefined) ?? []);
         setOutdated(((data as Record<string, unknown>).outdated as boolean | undefined) ?? false);
         setTargetOutdated(((data as Record<string, unknown>).targetOutdated as boolean | undefined) ?? false);
-        setCards(((data as Record<string, unknown>).cards as EpicChildDraftRow[] | undefined) ?? []);
+        setCards(((data as Record<string, unknown>).cards as EpicChildCardWithSprint[] | undefined) ?? []);
       }
     } catch { /* ignore */ }
   }, [ticketKey, setSession, sessionApi]);
@@ -155,7 +155,7 @@ export function useStoryWriter(ticketKey: string, options?: UseStoryWriterOption
             setRelatedCandidates((data.relatedCandidates as RelatedStoryCandidateRow[] | undefined) ?? []);
             setOutdated((data.outdated as boolean | undefined) ?? false);
             setTargetOutdated((data.targetOutdated as boolean | undefined) ?? false);
-            setCards((data.cards as EpicChildDraftRow[] | undefined) ?? []);
+            setCards((data.cards as EpicChildCardWithSprint[] | undefined) ?? []);
 
             const loadedMsgs: Message[] = (data.messages as Message[]) ?? [];
             const lastUserMsg = [...loadedMsgs].reverse().find((m: Message) => m.role === "user");
@@ -190,7 +190,7 @@ export function useStoryWriter(ticketKey: string, options?: UseStoryWriterOption
                       setRelatedCandidates((refreshed.relatedCandidates as RelatedStoryCandidateRow[] | undefined) ?? []);
                       setOutdated((refreshed.outdated as boolean | undefined) ?? false);
                       setTargetOutdated((refreshed.targetOutdated as boolean | undefined) ?? false);
-                      setCards((refreshed.cards as EpicChildDraftRow[] | undefined) ?? []);
+                      setCards((refreshed.cards as EpicChildCardWithSprint[] | undefined) ?? []);
                     }
                   } catch { /* ignore refresh failure */ }
                   if (!cancelled) {
@@ -491,10 +491,10 @@ export function useStoryWriter(ticketKey: string, options?: UseStoryWriterOption
   }, [isEpicMode, ticketKey, refreshSession]);
 
   // Promote a DRAFT card to a real Jira issue under the epic. The placement
-  // (sprint | backlog | default) is carried through to the route now so the
-  // Create-in-Jira menu is wired end to end; the sprint move itself lands in a
-  // later story. Refreshes the session so the card flips to its created state
-  // (Jira key visible). Returns the created key, or null on failure.
+  // (sprint | backlog | default) is applied by the route via the existing
+  // move-sprint plumbing, so the card lands in the chosen sprint at creation.
+  // Refreshes the session so the card flips to its created state (Jira key and
+  // live sprint visible). Returns the created key, or null on failure.
   const createCardInJira = useCallback(
     async (index: number, placement?: string): Promise<string | null> => {
       if (!isEpicMode) return null;
@@ -523,6 +523,24 @@ export function useStoryWriter(ticketKey: string, options?: UseStoryWriterOption
       }
     },
     [isEpicMode, ticketKey, refreshSession],
+  );
+
+  // Reassign a created card's sprint after the fact, reusing the existing
+  // move-sprint transport (no epic-specific sprint plumbing). The card must
+  // already be live in Jira; targetSprintId is a concrete id or "__backlog__".
+  // Refreshes so the card shows its new current sprint.
+  const reassignCardSprint = useCallback(
+    async (jiraKey: string, targetSprintId: string): Promise<boolean> => {
+      if (!isEpicMode) return false;
+      try {
+        await jiraApi.moveSprint({ issueKeys: [jiraKey], targetSprintId });
+        await refreshSession();
+        return true;
+      } catch {
+        return false;
+      }
+    },
+    [isEpicMode, refreshSession],
   );
 
   const saveDraft = useCallback(() => drafts.saveDraft(session), [drafts, session]);
@@ -569,5 +587,6 @@ export function useStoryWriter(ticketKey: string, options?: UseStoryWriterOption
     updateCardBody,
     createCardInJira,
     confirmCardLink,
+    reassignCardSprint,
   };
 }

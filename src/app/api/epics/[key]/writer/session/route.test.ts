@@ -3,9 +3,10 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 import { createTestDb } from "@/db/test-utils";
 import type { BetterSQLite3Database } from "drizzle-orm/better-sqlite3";
 import type * as schema from "@/db/schema";
-import { seedTicket, seedConversation, seedMessage, seedStoryWriterSession } from "@/test/builders";
-import { storyWriterSession } from "@/db/schema";
+import { seedTicket, seedConversation, seedMessage, seedStoryWriterSession, seedSprint } from "@/test/builders";
+import { storyWriterSession, epicChildDraft } from "@/db/schema";
 import { eq } from "drizzle-orm";
+import { randomUUID } from "crypto";
 
 let testDb: BetterSQLite3Database<typeof schema>;
 
@@ -150,5 +151,65 @@ describe("GET /api/epics/[key]/writer/session", () => {
 
     const persisted = testDb.select().from(storyWriterSession).where(eq(storyWriterSession.id, "sess-e6")).get();
     expect(persisted?.localDraft).toBe("Live description");
+  });
+
+  it("enriches created cards with their live sprint name", async () => {
+    seedTicket(testDb, { jiraKey: "VPL-E7", type: "epic" });
+    const conv = seedConversation(testDb, { id: "conv-e7" });
+    seedStoryWriterSession(testDb, {
+      id: "sess-e7",
+      ticketKey: "VPL-E7",
+      conversationId: conv.id,
+      status: "active",
+      mode: "epic",
+      localDraft: "x",
+    });
+    // The promoted child issue is a real ticket carrying its live sprint id.
+    seedTicket(testDb, { jiraKey: "VPL-700", type: "story", epicKey: "VPL-E7", sprintName: "42" });
+    seedSprint(testDb, { sprintId: "42", displayName: "Sprint 42" });
+    // A second created child sitting in the backlog (empty sprintName).
+    seedTicket(testDb, { jiraKey: "VPL-701", type: "story", epicKey: "VPL-E7", sprintName: "" });
+
+    testDb.insert(epicChildDraft).values([
+      {
+        id: randomUUID(),
+        sessionId: "sess-e7",
+        cardIndex: 0,
+        title: "In a sprint",
+        bullets: [],
+        status: "created",
+        jiraKey: "VPL-700",
+      },
+      {
+        id: randomUUID(),
+        sessionId: "sess-e7",
+        cardIndex: 1,
+        title: "Backlog child",
+        bullets: [],
+        status: "created",
+        jiraKey: "VPL-701",
+      },
+      {
+        id: randomUUID(),
+        sessionId: "sess-e7",
+        cardIndex: 2,
+        title: "Still a draft",
+        bullets: [],
+        status: "draft",
+      },
+    ]).run();
+
+    const res = await GET(epicReq("VPL-E7"), makeParams("VPL-E7"));
+    const data = await res.json();
+
+    expect(res.status).toBe(200);
+    expect(data.cards).toHaveLength(3);
+    expect(data.cards[0].liveSprintId).toBe("42");
+    expect(data.cards[0].liveSprintName).toBe("Sprint 42");
+    // Empty sprintName reads as no sprint (backlog), not a blank id.
+    expect(data.cards[1].liveSprintId).toBeNull();
+    expect(data.cards[1].liveSprintName).toBeNull();
+    // DRAFT card has no live sprint.
+    expect(data.cards[2].liveSprintId).toBeNull();
   });
 });

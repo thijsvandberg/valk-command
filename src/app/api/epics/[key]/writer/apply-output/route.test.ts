@@ -273,4 +273,68 @@ describe("POST /api/epics/[key]/writer/apply-output", () => {
     expect(cards[0].title).toBe("A refined");
     expect(cards[0].body).toBe("Detailed A");
   });
+
+  it("pre-fills suggestedSprintId from a <sprint-plan> turn without a breakdown", async () => {
+    seedEpicSession("VPL-S1", "sess-s1");
+    await POST(
+      postReq("VPL-S1", { output: `<epic-breakdown>[{"title":"A"},{"title":"B"}]</epic-breakdown>` }),
+      makeParams("VPL-S1"),
+    );
+
+    const res = await POST(
+      postReq("VPL-S1", { output: `<sprint-plan>[{"index":0,"sprintId":"42"},{"index":1,"sprintId":"__backlog__"}]</sprint-plan>` }),
+      makeParams("VPL-S1"),
+    );
+    const data = await res.json();
+    expect(res.status).toBe(200);
+    expect(data.applied).toBe(true);
+    expect(data.plannedCount).toBe(2);
+    expect(data.cardCount).toBe(0);
+
+    const cards = testDb
+      .select()
+      .from(epicChildDraft)
+      .where(eq(epicChildDraft.sessionId, "sess-s1"))
+      .orderBy(epicChildDraft.cardIndex)
+      .all();
+    expect(cards[0].suggestedSprintId).toBe("42");
+    expect(cards[1].suggestedSprintId).toBe("__backlog__");
+  });
+
+  it("ignores a sprint-plan entry for an index with no card", async () => {
+    seedEpicSession("VPL-S2", "sess-s2");
+    await POST(
+      postReq("VPL-S2", { output: `<epic-breakdown>[{"title":"Only A"}]</epic-breakdown>` }),
+      makeParams("VPL-S2"),
+    );
+
+    const res = await POST(
+      postReq("VPL-S2", { output: `<sprint-plan>[{"index":9,"sprintId":"42"}]</sprint-plan>` }),
+      makeParams("VPL-S2"),
+    );
+    const data = await res.json();
+    expect(data.applied).toBe(false);
+    expect(data.plannedCount).toBe(0);
+
+    const cards = testDb.select().from(epicChildDraft).all();
+    expect(cards[0].suggestedSprintId).toBeNull();
+  });
+
+  it("lets a same-turn sprint-plan win over the breakdown card's own suggestion", async () => {
+    seedEpicSession("VPL-S3", "sess-s3");
+    const output =
+      `<epic-breakdown>[{"title":"A","suggestedSprintId":"10"}]</epic-breakdown>` +
+      `<sprint-plan>[{"index":0,"sprintId":"42"}]</sprint-plan>`;
+    const res = await POST(postReq("VPL-S3", { output }), makeParams("VPL-S3"));
+    const data = await res.json();
+    expect(data.cardCount).toBe(1);
+    expect(data.plannedCount).toBe(1);
+
+    const cards = testDb
+      .select()
+      .from(epicChildDraft)
+      .where(eq(epicChildDraft.sessionId, "sess-s3"))
+      .all();
+    expect(cards[0].suggestedSprintId).toBe("42");
+  });
 });

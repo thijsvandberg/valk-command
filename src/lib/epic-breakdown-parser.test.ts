@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { extractEpicQuestions, extractEpicBreakdown, extractStoryDetails } from "./epic-breakdown-parser";
+import { extractEpicQuestions, extractEpicBreakdown, extractStoryDetails, extractSprintPlan } from "./epic-breakdown-parser";
 
 describe("extractEpicQuestions", () => {
   it("extracts the inner markdown of an <epic-questions> block", () => {
@@ -125,5 +125,52 @@ describe("extractStoryDetails", () => {
     const details = extractStoryDetails(output)!;
     expect(details).toHaveLength(1);
     expect(details[0].body).toBe("second wins");
+  });
+});
+
+describe("extractSprintPlan", () => {
+  it("extracts per-card sprint suggestions, normalizing numeric ids to strings", () => {
+    const output =
+      `Proposed plan:\n<sprint-plan>[{"index":0,"sprintId":42},{"index":1,"sprintId":"43"}]</sprint-plan>`;
+    const plan = extractSprintPlan(output)!;
+    expect(plan).toEqual([
+      { index: 0, sprintId: "42" },
+      { index: 1, sprintId: "43" },
+    ]);
+  });
+
+  it("passes the backlog marker through verbatim", () => {
+    const output = `<sprint-plan>[{"index":0,"sprintId":"__backlog__"}]</sprint-plan>`;
+    expect(extractSprintPlan(output)).toEqual([{ index: 0, sprintId: "__backlog__" }]);
+  });
+
+  it("returns null when the block is absent (leave suggestions untouched)", () => {
+    expect(extractSprintPlan("no plan here")).toBeNull();
+  });
+
+  it("returns null when the JSON is unparseable", () => {
+    expect(extractSprintPlan("<sprint-plan>not json</sprint-plan>")).toBeNull();
+  });
+
+  it("drops entries without a usable index or sprint id", () => {
+    const output =
+      `<sprint-plan>[` +
+      `{"index":-1,"sprintId":"1"},` +
+      `{"sprintId":"2"},` +
+      `{"index":3},` +
+      `{"index":4,"sprintId":""},` +
+      `{"index":5,"sprintId":"77"}` +
+      `]</sprint-plan>`;
+    expect(extractSprintPlan(output)).toEqual([{ index: 5, sprintId: "77" }]);
+  });
+
+  it("keeps the last entry when an index is repeated", () => {
+    const output =
+      `<sprint-plan>[{"index":0,"sprintId":"1"},{"index":0,"sprintId":"2"}]</sprint-plan>`;
+    expect(extractSprintPlan(output)).toEqual([{ index: 0, sprintId: "2" }]);
+  });
+
+  it("returns an empty array when the block is present but has no usable entries", () => {
+    expect(extractSprintPlan(`<sprint-plan>[{"foo":"bar"}]</sprint-plan>`)).toEqual([]);
   });
 });

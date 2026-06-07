@@ -1,9 +1,9 @@
 import { render, screen } from "@testing-library/react";
 import { describe, it, expect } from "vitest";
 import { BreakdownBoard } from "./BreakdownBoard";
-import type { EpicChildDraftRow } from "@/db/schema";
+import type { EpicChildCardWithSprint } from "@/types/epic-writer";
 
-function card(overrides: Partial<EpicChildDraftRow>): EpicChildDraftRow {
+function card(overrides: Partial<EpicChildCardWithSprint>): EpicChildCardWithSprint {
   return {
     id: overrides.id ?? "c1",
     sessionId: "sess-1",
@@ -15,6 +15,8 @@ function card(overrides: Partial<EpicChildDraftRow>): EpicChildDraftRow {
     jiraKey: null,
     suggestedSprintId: null,
     suggestedLinks: [],
+    liveSprintId: null,
+    liveSprintName: null,
     createdAt: "2026-06-04T00:00:00.000Z",
     updatedAt: "2026-06-04T00:00:00.000Z",
     ...overrides,

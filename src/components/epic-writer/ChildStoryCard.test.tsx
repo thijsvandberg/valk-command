@@ -1,16 +1,21 @@
 import { render, screen, fireEvent, waitFor } from "@testing-library/react";
 import { describe, it, expect, vi } from "vitest";
 import { ChildStoryCard } from "./ChildStoryCard";
-import type { EpicChildDraftRow } from "@/db/schema";
+import type { EpicChildCardWithSprint } from "@/types/epic-writer";
 
-// The Create-in-Jira menu lazy-loads sprints + the default-sprint setting when
-// it opens; stub those so the card tests stay isolated from the network.
+// The Create-in-Jira / reassign menu lazy-loads sprints + the default-sprint
+// setting when it opens; stub those so the card tests stay isolated from the
+// network.
 vi.mock("@/lib/api-client", () => ({
-  jira: { getSprints: vi.fn().mockResolvedValue([]) },
+  jira: {
+    getSprints: vi
+      .fn()
+      .mockResolvedValue([{ id: "42", name: "Sprint 42", state: "active" }]),
+  },
   settings: { getDefaultSprint: vi.fn().mockResolvedValue({ sprintId: "" }) },
 }));
 
-function card(overrides: Partial<EpicChildDraftRow>): EpicChildDraftRow {
+function card(overrides: Partial<EpicChildCardWithSprint>): EpicChildCardWithSprint {
   return {
     id: overrides.id ?? "c1",
     sessionId: "sess-1",
@@ -22,6 +27,8 @@ function card(overrides: Partial<EpicChildDraftRow>): EpicChildDraftRow {
     jiraKey: null,
     suggestedSprintId: null,
     suggestedLinks: [],
+    liveSprintId: null,
+    liveSprintName: null,
     createdAt: "2026-06-04T00:00:00.000Z",
     updatedAt: "2026-06-04T00:00:00.000Z",
     ...overrides,
@@ -139,6 +146,69 @@ describe("ChildStoryCard", () => {
       />,
     );
     expect(screen.getByRole("button", { name: /confirm/i })).toBeDisabled();
+  });
+
+  it("shows the current sprint on a created card", () => {
+    render(
+      <ChildStoryCard
+        card={card({ status: "created", jiraKey: "VPL-201", liveSprintId: "42", liveSprintName: "Sprint 42" })}
+      />,
+    );
+    expect(screen.getByText("Sprint 42")).toBeInTheDocument();
+  });
+
+  it("shows 'To be planned' for a created card with no sprint", () => {
+    render(
+      <ChildStoryCard card={card({ status: "created", jiraKey: "VPL-201", liveSprintId: null })} />,
+    );
+    expect(screen.getByText(/to be planned/i)).toBeInTheDocument();
+  });
+
+  it("offers a Move sprint menu on a created card and reassigns to the chosen sprint", async () => {
+    const onReassignSprint = vi.fn().mockResolvedValue(undefined);
+    render(
+      <ChildStoryCard
+        card={card({ status: "created", jiraKey: "VPL-201", liveSprintId: null })}
+        onReassignSprint={onReassignSprint}
+      />,
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: /move sprint/i }));
+    fireEvent.click(await screen.findByRole("menuitem", { name: /sprint 42/i }));
+
+    await waitFor(() => expect(onReassignSprint).toHaveBeenCalledWith("VPL-201", "42"));
+  });
+
+  it("can reassign a created card to the backlog", async () => {
+    const onReassignSprint = vi.fn().mockResolvedValue(undefined);
+    render(
+      <ChildStoryCard
+        card={card({ status: "created", jiraKey: "VPL-201", liveSprintId: "42", liveSprintName: "Sprint 42" })}
+        onReassignSprint={onReassignSprint}
+      />,
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: /move sprint/i }));
+    fireEvent.click(await screen.findByRole("menuitem", { name: /to be planned/i }));
+
+    await waitFor(() => expect(onReassignSprint).toHaveBeenCalledWith("VPL-201", "__backlog__"));
+  });
+
+  it("does not offer a Move sprint menu on a DRAFT card", () => {
+    render(<ChildStoryCard card={card({})} onReassignSprint={vi.fn()} />);
+    expect(screen.queryByRole("button", { name: /move sprint/i })).not.toBeInTheDocument();
+  });
+
+  it("does not offer the default-sprint option when reassigning", async () => {
+    render(
+      <ChildStoryCard
+        card={card({ status: "created", jiraKey: "VPL-201", liveSprintId: null })}
+        onReassignSprint={vi.fn()}
+      />,
+    );
+    fireEvent.click(screen.getByRole("button", { name: /move sprint/i }));
+    await screen.findByRole("menuitem", { name: /to be planned/i });
+    expect(screen.queryByRole("menuitem", { name: /default sprint/i })).not.toBeInTheDocument();
   });
 
   it("shows an already-confirmed link as Linked with no confirm button", () => {

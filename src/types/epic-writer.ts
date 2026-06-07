@@ -36,6 +36,18 @@ export function isEpicWriterPhase(value: unknown): value is EpicWriterPhase {
 }
 
 /**
+ * A child card as returned by the session route: the persisted draft row plus
+ * the live sprint of its created Jira issue. The live sprint is NOT duplicated
+ * on the card row (it lives on ticket.sprintName); the session route joins it in
+ * so the board can show "current sprint" without a second fetch. Both fields are
+ * null for a DRAFT card and for a created card sitting in the backlog.
+ */
+export type EpicChildCardWithSprint = EpicChildDraftRow & {
+  liveSprintId: string | null;
+  liveSprintName: string | null;
+};
+
+/**
  * Shape returned by GET/POST /api/epics/[key]/writer/session. Mirrors the
  * Story Writer session response so the shared useStoryWriter hook can consume
  * it unchanged, plus the epic-specific mode/phase fields on the session row.
@@ -44,7 +56,7 @@ export interface EpicWriterSessionResponse {
   session: StoryWriterSessionRow | null;
   messages: Message[];
   aiDrafts: StoryWriterDraftRow[];
-  cards: EpicChildDraftRow[];
+  cards: EpicChildCardWithSprint[];
 }
 
 export interface EpicWriterPhaseResponse {

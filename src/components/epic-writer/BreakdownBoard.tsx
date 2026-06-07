@@ -1,11 +1,11 @@
 "use client";
 
 import { LayoutList } from "lucide-react";
-import type { EpicChildDraftRow } from "@/db/schema";
+import type { EpicChildCardWithSprint } from "@/types/epic-writer";
 import { ChildStoryCard } from "./ChildStoryCard";
 
 interface BreakdownBoardProps {
-  cards: EpicChildDraftRow[];
+  cards: EpicChildCardWithSprint[];
   // Deepen a card into a full body + AC (detail phase).
   onDeepen?: (index: number, title: string) => void | Promise<unknown>;
   // Persist a PO hand-edit of a card's worked-out body.
@@ -14,6 +14,8 @@ interface BreakdownBoardProps {
   onCreateInJira?: (index: number, placement: string) => void | Promise<unknown>;
   // Confirm one AI-proposed inter-story link.
   onConfirmLink?: (sourceIndex: number, targetIndex: number, relation: string) => void | Promise<unknown>;
+  // Reassign a created card's sprint after the fact.
+  onReassignSprint?: (jiraKey: string, targetSprintId: string) => void | Promise<unknown>;
   // True while a workspace task is running: cards disable their deepen action.
   busy?: boolean;
 }
@@ -30,6 +32,7 @@ export function BreakdownBoard({
   onEditBody,
   onCreateInJira,
   onConfirmLink,
+  onReassignSprint,
   busy,
 }: BreakdownBoardProps) {
   // Titles + created-state lookups so each card can name its suggested-link
@@ -68,6 +71,7 @@ export function BreakdownBoard({
             onEditBody={onEditBody}
             onCreateInJira={onCreateInJira}
             onConfirmLink={onConfirmLink}
+            onReassignSprint={onReassignSprint}
             cardTitles={cardTitles}
             createdIndexes={createdIndexes}
             busy={busy}

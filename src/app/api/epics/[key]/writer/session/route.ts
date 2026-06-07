@@ -11,8 +11,9 @@ import {
   storyVersion,
   ticket,
   ticketLocalEdit,
+  sprintNameCache,
 } from "@/db/schema";
-import { eq, and, desc } from "drizzle-orm";
+import { eq, and, desc, inArray } from "drizzle-orm";
 import { randomUUID } from "crypto";
 import { logActivity } from "@/lib/activity-logger";
 import { logger } from "@/lib/logger";
@@ -95,7 +96,45 @@ export async function GET(_request: Request, { params }: RouteContext) {
         .all(),
     ]);
 
-    return NextResponse.json({ session: resolvedSession, messages, aiDrafts, cards });
+    // Enrich created cards with their live sprint so the board shows the current
+    // placement (the live sprint lives on ticket.sprintName, not duplicated on
+    // the card). sprintNameCache resolves the id to a display name, the same
+    // convention every other sprint-aware view uses.
+    const createdKeys = cards
+      .filter((c) => c.status === "created" && c.jiraKey)
+      .map((c) => c.jiraKey as string);
+
+    let cardsWithSprint: (typeof cards[number] & {
+      liveSprintId: string | null;
+      liveSprintName: string | null;
+    })[] = cards.map((c) => ({ ...c, liveSprintId: null, liveSprintName: null }));
+
+    if (createdKeys.length > 0) {
+      const rows = await db
+        .select({
+          jiraKey: ticket.jiraKey,
+          sprintId: ticket.sprintName,
+          displayName: sprintNameCache.displayName,
+        })
+        .from(ticket)
+        .leftJoin(sprintNameCache, eq(ticket.sprintName, sprintNameCache.sprintId))
+        .where(inArray(ticket.jiraKey, createdKeys))
+        .all();
+      const byKey = new Map(rows.map((r) => [r.jiraKey, r] as const));
+      cardsWithSprint = cards.map((c) => {
+        const live = c.jiraKey ? byKey.get(c.jiraKey) : undefined;
+        // Empty string sprintName means backlog (set by move-sprint); treat it
+        // as no sprint so the card reads as "to be planned" rather than blank id.
+        const liveSprintId = live?.sprintId && live.sprintId.length > 0 ? live.sprintId : null;
+        return {
+          ...c,
+          liveSprintId,
+          liveSprintName: liveSprintId ? live?.displayName ?? null : null,
+        };
+      });
+    }
+
+    return NextResponse.json({ session: resolvedSession, messages, aiDrafts, cards: cardsWithSprint });
   } catch (err) {
     logger.error("epic-writer", "GET session failed", err);
     return errorResponse("Failed to load epic writer session", 500);

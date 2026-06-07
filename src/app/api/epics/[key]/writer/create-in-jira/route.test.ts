@@ -4,7 +4,7 @@ import { createTestDb } from "@/db/test-utils";
 import type { BetterSQLite3Database } from "drizzle-orm/better-sqlite3";
 import type * as schema from "@/db/schema";
 import { seedTicket, seedConversation, seedStoryWriterSession } from "@/test/builders";
-import { epicChildDraft, ticket, ticketMetadata } from "@/db/schema";
+import { epicChildDraft, ticket, ticketMetadata, appSetting } from "@/db/schema";
 import { eq, and } from "drizzle-orm";
 import { randomUUID } from "crypto";
 
@@ -25,6 +25,7 @@ vi.mock("@/lib/markdown-to-adf", () => ({
 vi.mock("@/lib/jira-client", () => ({
   jiraClient: {
     createIssue: vi.fn().mockResolvedValue({ key: "VPL-201", id: "1" }),
+    moveToSprint: vi.fn().mockResolvedValue(undefined),
   },
 }));
 
@@ -79,6 +80,7 @@ describe("POST /api/epics/[key]/writer/create-in-jira", () => {
     testDb = createTestDb();
     vi.clearAllMocks();
     vi.mocked(jiraClient.createIssue).mockResolvedValue({ key: "VPL-201", id: "1" } as never);
+    vi.mocked(jiraClient.moveToSprint).mockResolvedValue(undefined as never);
   });
 
   it("promotes a DRAFT card to a real Jira issue under the epic", async () => {
@@ -178,5 +180,82 @@ describe("POST /api/epics/[key]/writer/create-in-jira", () => {
     seedEpicSession("VPL-E1", "sess-1");
     const res = await POST(postReq("VPL-E1", { cardIndex: -1 }), makeParams("VPL-E1"));
     expect(res.status).toBe(400);
+  });
+
+  it("places the created card into a specific sprint via moveToSprint", async () => {
+    seedEpicSession("VPL-E1", "sess-1");
+    seedCard("sess-1", { cardIndex: 0 });
+
+    const res = await POST(postReq("VPL-E1", { cardIndex: 0, placement: "42" }), makeParams("VPL-E1"));
+    const data = await res.json();
+
+    expect(res.status).toBe(201);
+    expect(data.sprintId).toBe("42");
+    expect(vi.mocked(jiraClient.moveToSprint)).toHaveBeenCalledWith(["VPL-201"], 42);
+
+    const childTicket = testDb.select().from(ticket).where(eq(ticket.jiraKey, "VPL-201")).get();
+    expect(childTicket?.sprintName).toBe("42");
+    expect(childTicket?.sprintIds).toBe(JSON.stringify(["42"]));
+  });
+
+  it("leaves the card in the backlog (no move) for the backlog placement", async () => {
+    seedEpicSession("VPL-E1", "sess-1");
+    seedCard("sess-1", { cardIndex: 0 });
+
+    const res = await POST(postReq("VPL-E1", { cardIndex: 0, placement: "__backlog__" }), makeParams("VPL-E1"));
+    const data = await res.json();
+
+    expect(res.status).toBe(201);
+    expect(data.sprintId).toBeNull();
+    expect(vi.mocked(jiraClient.moveToSprint)).not.toHaveBeenCalled();
+  });
+
+  it("resolves the default placement to the configured default_sprint_id", async () => {
+    seedEpicSession("VPL-E1", "sess-1");
+    seedCard("sess-1", { cardIndex: 0 });
+    testDb.insert(appSetting).values({ key: "default_sprint_id", value: "99" }).run();
+
+    const res = await POST(postReq("VPL-E1", { cardIndex: 0, placement: "__default__" }), makeParams("VPL-E1"));
+    const data = await res.json();
+
+    expect(res.status).toBe(201);
+    expect(data.sprintId).toBe("99");
+    expect(vi.mocked(jiraClient.moveToSprint)).toHaveBeenCalledWith(["VPL-201"], 99);
+  });
+
+  it("treats an empty default_sprint_id as the backlog", async () => {
+    seedEpicSession("VPL-E1", "sess-1");
+    seedCard("sess-1", { cardIndex: 0 });
+    testDb.insert(appSetting).values({ key: "default_sprint_id", value: "" }).run();
+
+    const res = await POST(postReq("VPL-E1", { cardIndex: 0, placement: "__default__" }), makeParams("VPL-E1"));
+    const data = await res.json();
+
+    expect(res.status).toBe(201);
+    expect(data.sprintId).toBeNull();
+    expect(vi.mocked(jiraClient.moveToSprint)).not.toHaveBeenCalled();
+  });
+
+  it("keeps the created card even when the sprint move fails", async () => {
+    seedEpicSession("VPL-E1", "sess-1");
+    seedCard("sess-1", { cardIndex: 0 });
+    vi.mocked(jiraClient.moveToSprint).mockRejectedValueOnce(new Error("Jira down"));
+
+    const res = await POST(postReq("VPL-E1", { cardIndex: 0, placement: "42" }), makeParams("VPL-E1"));
+    const data = await res.json();
+
+    // The issue exists; only the placement failed, so the card stays created.
+    expect(res.status).toBe(201);
+    expect(data.jiraKey).toBe("VPL-201");
+    expect(data.sprintMoveFailed).toBe(true);
+    expect(data.sprintId).toBeNull();
+
+    const card = testDb
+      .select()
+      .from(epicChildDraft)
+      .where(and(eq(epicChildDraft.sessionId, "sess-1"), eq(epicChildDraft.cardIndex, 0)))
+      .get();
+    expect(card?.status).toBe("created");
+    expect(card?.jiraKey).toBe("VPL-201");
   });
 });

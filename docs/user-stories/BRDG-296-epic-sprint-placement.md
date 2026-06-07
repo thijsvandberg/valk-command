@@ -1,7 +1,7 @@
 # BRDG-296: Epic Writer sprint placement
 
 **Epic:** [BRDG-291](BRDG-291-epic-writer.md)
-**Status:** Not Started
+**Status:** Done
 **Priority:** Medium
 
 ## Description
@@ -12,17 +12,17 @@ into sprints from within the Epic Writer.
 
 ## Acceptance Criteria
 
-- [ ] "Create in Jira" placement menu offers: specific sprint, "to be planned" (backlog), default sprint
-- [ ] Sprint list fed by `GET /api/jira/sprints`
-- [ ] "Default sprint" reuses the existing setting `default_sprint_id`
+- [x] "Create in Jira" placement menu offers: specific sprint, "to be planned" (backlog), default sprint
+- [x] Sprint list fed by `GET /api/jira/sprints`
+- [x] "Default sprint" reuses the existing setting `default_sprint_id`
       (`GET /api/settings/default-sprint`); empty value means backlog
-- [ ] Assignment uses the existing `POST /api/jira/move-sprint` -> `moveToSprint`; backlog leaves
+- [x] Assignment uses the existing `POST /api/jira/move-sprint` -> `moveToSprint`; backlog leaves
       the sprint empty
-- [ ] Sprint controls only appear once a card is live in Jira (a DRAFT cannot be assigned)
-- [ ] Reassigning a created card's sprint works after creation
-- [ ] AI `<sprint-plan>` suggestion can pre-fill placement choices (PO confirms)
-- [ ] Created card shows its current sprint (from `ticket.sprintName` / `sprintNameCache`)
-- [ ] Tests for: placement on create (sprint/backlog/default), post-create reassignment
+- [x] Sprint controls only appear once a card is live in Jira (a DRAFT cannot be assigned)
+- [x] Reassigning a created card's sprint works after creation
+- [x] AI `<sprint-plan>` suggestion can pre-fill placement choices (PO confirms)
+- [x] Created card shows its current sprint (from `ticket.sprintName` / `sprintNameCache`)
+- [x] Tests for: placement on create (sprint/backlog/default), post-create reassignment
 
 ## Technical Notes
 

@@ -1,12 +1,12 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { Layers, FileText, AlignLeft, Sparkles, ChevronDown, ChevronRight, Loader2, Link2, Check } from "lucide-react";
-import type { EpicChildDraftRow } from "@/db/schema";
+import { Layers, FileText, AlignLeft, Sparkles, ChevronDown, ChevronRight, Loader2, Link2, Check, CalendarRange } from "lucide-react";
+import type { EpicChildCardWithSprint } from "@/types/epic-writer";
 import { SprintPlacementMenu } from "./SprintPlacementMenu";
 
 interface ChildStoryCardProps {
-  card: EpicChildDraftRow;
+  card: EpicChildCardWithSprint;
   // Deepen the card into a full body + AC (detail phase). Omitted when the board
   // is read-only (e.g. no active deepen path available).
   onDeepen?: (index: number, title: string) => void | Promise<unknown>;
@@ -17,6 +17,9 @@ interface ChildStoryCardProps {
   onCreateInJira?: (index: number, placement: string) => void | Promise<unknown>;
   // Confirm one AI-proposed inter-story link from this card.
   onConfirmLink?: (sourceIndex: number, targetIndex: number, relation: string) => void | Promise<unknown>;
+  // Reassign a created card's sprint (jiraKey, target sprint id or "__backlog__").
+  // Only offered once a card is live in Jira. Omitted on a read-only board.
+  onReassignSprint?: (jiraKey: string, targetSprintId: string) => void | Promise<unknown>;
   // Titles of all cards by cardIndex, so a suggested link can name its target.
   cardTitles?: Record<number, string>;
   // cardIndexes of cards already created in Jira; a link can only be confirmed
@@ -34,7 +37,7 @@ interface ChildStoryCardProps {
  */
 type Depth = "title" | "bullets" | "full";
 
-function cardDepth(card: EpicChildDraftRow): Depth {
+function cardDepth(card: EpicChildCardWithSprint): Depth {
   if (card.body && card.body.trim().length > 0) return "full";
   if (Array.isArray(card.bullets) && card.bullets.length > 0) return "bullets";
   return "title";
@@ -58,6 +61,7 @@ export function ChildStoryCard({
   onEditBody,
   onCreateInJira,
   onConfirmLink,
+  onReassignSprint,
   cardTitles,
   createdIndexes,
   busy,
@@ -71,6 +75,7 @@ export function ChildStoryCard({
   const suggestedLinks = Array.isArray(card.suggestedLinks) ? card.suggestedLinks : [];
 
   const [creating, setCreating] = useState(false);
+  const [reassigning, setReassigning] = useState(false);
   const [linkingKey, setLinkingKey] = useState<string | null>(null);
 
   const [expanded, setExpanded] = useState(false);
@@ -234,8 +239,23 @@ export function ChildStoryCard({
 
       <footer className="mt-3 flex items-center justify-between gap-2">
         {isCreated ? (
-          <span className="font-mono text-[10px] text-[var(--color-brand-400)]">
-            {card.jiraKey}
+          <span className="flex min-w-0 items-center gap-2">
+            <span className="font-mono text-[10px] text-[var(--color-brand-400)]">
+              {card.jiraKey}
+            </span>
+            {/* Live sprint of the created issue (null id = backlog). Shows the
+                current placement so the PO can see and reassign it. */}
+            <span
+              className="flex min-w-0 items-center gap-1 text-label text-text-muted"
+              title={card.liveSprintId ? "Current sprint" : "Not in a sprint"}
+            >
+              <CalendarRange size={10} strokeWidth={1.75} className="shrink-0" />
+              <span className="min-w-0 truncate">
+                {card.liveSprintId
+                  ? card.liveSprintName ?? card.liveSprintId
+                  : "To be planned"}
+              </span>
+            </span>
           </span>
         ) : (
           <span className="rounded bg-overlay-subtle px-1.5 py-0.5 text-label font-medium uppercase tracking-wide text-text-muted">
@@ -244,6 +264,22 @@ export function ChildStoryCard({
         )}
 
         <div className="flex items-center gap-1.5">
+          {isCreated && onReassignSprint && card.jiraKey && (
+            <SprintPlacementMenu
+              variant="reassign"
+              busy={reassigning}
+              currentSprintId={card.liveSprintId}
+              onCreate={async (placement) => {
+                setReassigning(true);
+                try {
+                  await onReassignSprint(card.jiraKey as string, placement);
+                } finally {
+                  setReassigning(false);
+                }
+              }}
+            />
+          )}
+
           {onDeepen && (
             <button
               type="button"

@@ -156,3 +156,56 @@ export function extractStoryDetails(output: string): ParsedStoryDetail[] | null 
   if (!sawAny) return null;
   return [...byIndex.entries()].map(([index, body]) => ({ index, body }));
 }
+
+/**
+ * A proposed sprint placement for one card, keyed by the card index it applies
+ * to. The sprint-planning phase suggests where each story should go; the PO
+ * confirms before anything moves (the suggestion only pre-fills the placement
+ * menu, it never assigns a sprint on its own).
+ */
+export interface ParsedSprintPlanEntry {
+  index: number;
+  sprintId: string;
+}
+
+/**
+ * Extracts the sprint-planning <sprint-plan> block. The skill emits a JSON array
+ * of { index, sprintId } entries inside the block; index names the card and
+ * sprintId is the proposed sprint (a numeric id, or "__backlog__" for the
+ * backlog). Defensive like the other parsers: returns null when the block is
+ * absent or its JSON is unparseable (caller leaves suggestions untouched), and
+ * an empty array when present but containing no usable entries. Entries without
+ * a non-negative integer index or a usable sprint id are dropped; duplicate
+ * indexes keep the last entry.
+ */
+export function extractSprintPlan(output: string): ParsedSprintPlanEntry[] | null {
+  const match = output.match(/<sprint-plan>([\s\S]*?)<\/sprint-plan>/);
+  if (!match) return null;
+
+  const inner = match[1].trim();
+  if (!inner) return null;
+
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(inner);
+  } catch {
+    return null;
+  }
+
+  if (!Array.isArray(parsed)) return null;
+
+  const byIndex = new Map<number, string>();
+  for (const item of parsed) {
+    if (!item || typeof item !== "object") continue;
+    const obj = item as Record<string, unknown>;
+    const index = obj.index;
+    if (typeof index !== "number" || !Number.isInteger(index) || index < 0) continue;
+    const sprintId = normalizeSprintId(obj.sprintId);
+    // Allow the explicit backlog marker through verbatim alongside numeric ids.
+    const value = sprintId ?? (obj.sprintId === "__backlog__" ? "__backlog__" : null);
+    if (!value) continue;
+    byIndex.set(index, value);
+  }
+
+  return [...byIndex.entries()].map(([index, sprintId]) => ({ index, sprintId }));
+}

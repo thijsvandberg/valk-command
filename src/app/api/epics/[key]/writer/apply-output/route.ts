@@ -6,7 +6,7 @@ import { db } from "@/db";
 import { storyWriterSession, epicChildDraft } from "@/db/schema";
 import { eq, and } from "drizzle-orm";
 import { randomUUID } from "crypto";
-import { extractEpicQuestions, extractEpicBreakdown, extractStoryDetails } from "@/lib/epic-breakdown-parser";
+import { extractEpicQuestions, extractEpicBreakdown, extractStoryDetails, extractSprintPlan } from "@/lib/epic-breakdown-parser";
 import { logActivity } from "@/lib/activity-logger";
 import { logger } from "@/lib/logger";
 import { applyRateLimit } from "@/lib/rate-limiter";
@@ -30,6 +30,11 @@ type RouteContext = { params: Promise<{ key: string }> };
  * epic_child_draft.body, which drives the depth badge to "full"). A deepen turn
  * typically carries only <story-detail> blocks and no <epic-breakdown>, so
  * detailing must apply even when the breakdown set is left untouched.
+ *
+ * Sprint-planning output (<sprint-plan>) merges a suggested sprint onto cards by
+ * index (filling epic_child_draft.suggestedSprintId). This only pre-fills the
+ * placement menu; it never moves a story to a sprint. Like detail blocks it can
+ * arrive on a turn that carries no <epic-breakdown>, so it applies independently.
  */
 export async function POST(request: Request, { params }: RouteContext) {
   const limited = await applyRateLimit("write");
@@ -64,6 +69,7 @@ export async function POST(request: Request, { params }: RouteContext) {
     const hasQuestions = extractEpicQuestions(output) !== null;
     const cards = extractEpicBreakdown(output);
     const details = extractStoryDetails(output);
+    const sprintPlan = extractSprintPlan(output);
 
     const now = new Date().toISOString();
     const existing = await db
@@ -78,14 +84,28 @@ export async function POST(request: Request, { params }: RouteContext) {
     const applicableDetails = (details ?? []).filter((d) => priorByIndex.has(d.index));
     const detailByIndex = new Map(applicableDetails.map((d) => [d.index, d.body] as const));
 
+    // Sprint-plan entries pre-fill a suggested sprint per card index. In the
+    // wholesale-replace branch they attach to the cards being (re)inserted; in
+    // the no-breakdown branch they can only update a card that already exists at
+    // the named index (filtered below).
+    const sprintByIndex = new Map((sprintPlan ?? []).map((p) => [p.index, p.sprintId] as const));
+
     // Null = no breakdown block (or unparseable): leave the card set as-is, but
-    // still apply any detail bodies (a deepen turn carries only <story-detail>).
+    // still apply any detail bodies and sprint suggestions (a deepen or sprint-
+    // planning turn carries only <story-detail> / <sprint-plan>).
     if (cards === null) {
-      if (detailByIndex.size === 0) {
+      // With no breakdown to (re)insert, a sprint suggestion can only update a
+      // card that already exists at the named index.
+      const applicableSprint = [...sprintByIndex.entries()].filter(([index]) =>
+        priorByIndex.has(index),
+      );
+
+      if (detailByIndex.size === 0 && applicableSprint.length === 0) {
         return NextResponse.json({
           hasQuestions,
           cardCount: 0,
           detailedCount: 0,
+          plannedCount: 0,
           applied: false,
         });
       }
@@ -94,6 +114,17 @@ export async function POST(request: Request, { params }: RouteContext) {
         for (const [index, body] of detailByIndex) {
           tx.update(epicChildDraft)
             .set({ body, updatedAt: now })
+            .where(
+              and(
+                eq(epicChildDraft.sessionId, session.id),
+                eq(epicChildDraft.cardIndex, index),
+              ),
+            )
+            .run();
+        }
+        for (const [index, sprintId] of applicableSprint) {
+          tx.update(epicChildDraft)
+            .set({ suggestedSprintId: sprintId, updatedAt: now })
             .where(
               and(
                 eq(epicChildDraft.sessionId, session.id),
@@ -112,13 +143,14 @@ export async function POST(request: Request, { params }: RouteContext) {
       await logActivity({
         type: "story-writer",
         scope: key,
-        summary: `Epic stories detailed: ${detailByIndex.size}`,
+        summary: `Epic stories detailed: ${detailByIndex.size}, sprint suggestions: ${applicableSprint.length}`,
       });
 
       return NextResponse.json({
         hasQuestions,
         cardCount: 0,
         detailedCount: detailByIndex.size,
+        plannedCount: applicableSprint.length,
         applied: true,
       });
     }
@@ -133,6 +165,9 @@ export async function POST(request: Request, { params }: RouteContext) {
         // (e.g. the skill re-emitted the breakdown without the prior body);
         // then a fresh body from the breakdown card itself.
         const detailedBody = detailByIndex.get(idx);
+        // A sprint-plan suggestion in the same turn wins; then the breakdown
+        // card's own suggestion; then a prior suggestion already on the card.
+        const plannedSprint = sprintByIndex.get(idx);
         tx.insert(epicChildDraft).values({
           id: randomUUID(),
           sessionId: session.id,
@@ -142,7 +177,7 @@ export async function POST(request: Request, { params }: RouteContext) {
           body: detailedBody ?? card.body ?? prior?.body ?? null,
           status: wasCreated ? "created" : "draft",
           jiraKey: wasCreated ? prior?.jiraKey ?? null : null,
-          suggestedSprintId: card.suggestedSprintId,
+          suggestedSprintId: plannedSprint ?? card.suggestedSprintId ?? prior?.suggestedSprintId ?? null,
           suggestedLinks: card.suggestedLinks,
           updatedAt: now,
         }).run();
@@ -160,10 +195,15 @@ export async function POST(request: Request, { params }: RouteContext) {
       summary: `Epic breakdown updated: ${cards.length} cards`,
     });
 
+    // A sprint suggestion applies only where a card exists at that index in the
+    // re-emitted breakdown.
+    const plannedCount = [...sprintByIndex.keys()].filter((i) => i < cards.length).length;
+
     return NextResponse.json({
       hasQuestions,
       cardCount: cards.length,
       detailedCount: detailByIndex.size,
+      plannedCount,
       applied: true,
     });
   } catch (err) {
