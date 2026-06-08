@@ -271,7 +271,7 @@ export const BoardRow = memo(forwardRef<HTMLTableRowElement, BoardRowBaseProps>(
               shifts. The checkbox itself stays hidden until row hover (or when a selection is
               active) - see the `checkbox` definition above. */}
           <div
-            className="flex w-5 shrink-0 cursor-pointer items-center justify-center"
+            className="flex w-3.5 shrink-0 cursor-pointer items-center justify-center"
             onPointerDown={(e) => e.stopPropagation()}
             onClick={(e) => { e.stopPropagation(); onCheckboxClick(ticket.key, ticketIdx, e.shiftKey); }}
           >

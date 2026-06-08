@@ -318,7 +318,7 @@ describe("BoardRow (headerless, BRDG-239)", () => {
   it("reserves the checkbox gutter and keeps the box hidden until hover by default", () => {
     const { container } = renderRow();
     // Gutter is always present so content never shifts when the box fades in.
-    const gutter = container.querySelector("div.w-5");
+    const gutter = container.querySelector("div.w-3\\.5");
     expect(gutter).toBeInTheDocument();
     // The box itself is hidden until the row is hovered.
     const box = gutter!.querySelector("span");
@@ -328,7 +328,7 @@ describe("BoardRow (headerless, BRDG-239)", () => {
 
   it("keeps the checkbox visible (no hover needed) while a selection is active", () => {
     const { container } = renderRow({ someChecked: true });
-    const box = container.querySelector("div.w-5 span");
+    const box = container.querySelector("div.w-3\\.5 span");
     expect(box?.className).toContain("opacity-100");
     expect(box?.className).not.toContain("opacity-0");
   });
@@ -336,7 +336,7 @@ describe("BoardRow (headerless, BRDG-239)", () => {
   it("fires onCheckboxClick from the gutter in default (non-bulk) mode", () => {
     const onCheckboxClick = vi.fn();
     const { container } = renderRow({ onCheckboxClick });
-    fireEvent.click(container.querySelector("div.w-5")!);
+    fireEvent.click(container.querySelector("div.w-3\\.5")!);
     expect(onCheckboxClick).toHaveBeenCalledWith("VPL-1", 0, false);
   });
 
