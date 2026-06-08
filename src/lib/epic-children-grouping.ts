@@ -1,5 +1,5 @@
 import type { EpicChild, Subtask, Sprint } from "@/types/ticket";
-import { isRegularSprint, nextSprintName, sprintNumber } from "./sprint-utils";
+import { isBacklogSprintName, isRegularSprint, nextSprintName, sprintNumber } from "./sprint-utils";
 
 export const UNSCHEDULED_GROUP_KEY = "__unscheduled__";
 
@@ -216,13 +216,6 @@ export function nextRegularSprintCreateGroup(
 function sprintTeamToken(name: string): string | null {
   const idx = name.indexOf(":");
   return idx > 0 ? name.slice(0, idx).trim() : null;
-}
-
-// A "backlog" sprint is identified by name, not state: Jira only reports
-// active/future/closed, so the team backlogs ("BT: Backlog", "GXP: Backlog") and a
-// plain "Backlog" all arrive as future. The name ends in "Backlog".
-function isBacklogSprintName(name: string): boolean {
-  return /(^|:\s*)backlog$/i.test(name.trim());
 }
 
 /**

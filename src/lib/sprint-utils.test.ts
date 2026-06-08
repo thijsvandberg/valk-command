@@ -9,6 +9,8 @@ import {
   buildBoardUrl,
   sprintNumber,
   isRegularSprint,
+  isBacklogSprintName,
+  isOverallRefinementSprint,
   latestRegularSprint,
   nextSprintName,
   ALL_SPRINT_ID,
@@ -58,6 +60,39 @@ describe("isRegularSprint", () => {
     expect(isRegularSprint("BT: Backlog")).toBe(false);
     expect(isRegularSprint("Backlog")).toBe(false);
     expect(isRegularSprint("Sprint 42")).toBe(false);
+  });
+});
+
+describe("isBacklogSprintName", () => {
+  it("is true for plain and team-prefixed backlogs", () => {
+    expect(isBacklogSprintName("Backlog")).toBe(true);
+    expect(isBacklogSprintName("BT: Backlog")).toBe(true);
+    expect(isBacklogSprintName("GXP: Backlog")).toBe(true);
+    expect(isBacklogSprintName("BO: Backlog")).toBe(true);
+    expect(isBacklogSprintName("  HT: Backlog  ")).toBe(true);
+    expect(isBacklogSprintName("BM: backlog")).toBe(true);
+  });
+
+  it("is false for numeric sprints and other placeholders", () => {
+    expect(isBacklogSprintName("BT: 139")).toBe(false);
+    expect(isBacklogSprintName("BT: TODO")).toBe(false);
+    expect(isBacklogSprintName("Backlog grooming")).toBe(false);
+    expect(isBacklogSprintName("Overall refinement")).toBe(false);
+    expect(isBacklogSprintName("")).toBe(false);
+  });
+});
+
+describe("isOverallRefinementSprint", () => {
+  it("matches the overall refinement bucket regardless of prefix/case", () => {
+    expect(isOverallRefinementSprint("Overall refinement")).toBe(true);
+    expect(isOverallRefinementSprint("BT: Overall Refinement")).toBe(true);
+    expect(isOverallRefinementSprint("overall refinement")).toBe(true);
+  });
+
+  it("is false for normal sprints and backlogs", () => {
+    expect(isOverallRefinementSprint("BT: 140")).toBe(false);
+    expect(isOverallRefinementSprint("BT: Backlog")).toBe(false);
+    expect(isOverallRefinementSprint("Refinement")).toBe(false);
   });
 });
 

@@ -23,6 +23,21 @@ export function isRegularSprint(name: string): boolean {
   return extractTeamPrefix(name) !== null && Number.isFinite(sprintNumber(name));
 }
 
+// --- Backlog & preset classification (BRDG-319) ------------------------------
+// Jira only reports active/future/closed, so the team backlogs ("BT: Backlog",
+// "GXP: Backlog") and a plain "Backlog" all arrive as future and are recognised by
+// name. Single source of truth, shared by the views bar and epic-children grouping.
+
+/** A backlog sprint: name ends in "Backlog" ("Backlog", "BT: Backlog", "GXP: Backlog"). */
+export function isBacklogSprintName(name: string): boolean {
+  return /(^|:\s*)backlog$/i.test(name.trim());
+}
+
+/** The "Overall refinement" cross-team bucket, surfaced as a preset filter, not a pill. */
+export function isOverallRefinementSprint(name: string): boolean {
+  return /overall refinement/i.test(name);
+}
+
 interface NamedSprint {
   name: string;
   endDate?: string | null;
