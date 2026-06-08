@@ -78,17 +78,17 @@ function SortableTab({
         ) : sprint.state === "active" ? (
           <span
             className={`h-[7px] w-[7px] rounded-full ${isActive ? "bg-[var(--color-brand-400)]" : "bg-overlay-strong"}`}
-            style={isActive ? { boxShadow: "0 0 5px color-mix(in srgb, var(--color-brand-400) 50%, transparent)" } : undefined}
+            style={isActive ? { boxShadow: "0 0 8px var(--color-brand-glow)" } : undefined}
           />
         ) : null}
         {sprint.name}
-        {/* Active underline */}
+        {/* Active underline -- aligned to the dot+label like the exploration */}
         {isActive && (
-          <span className="absolute bottom-0 left-1.5 right-1.5 h-[2px] rounded-full bg-[var(--color-brand-400)]" />
+          <span className="absolute inset-x-2.5 bottom-0 h-[2px] rounded-full bg-[var(--color-brand-400)]" />
         )}
         {/* Hover underline preview */}
         {!isActive && (
-          <span className="absolute bottom-0 left-2 right-2 h-[2px] rounded-full bg-[var(--color-brand-400)] opacity-0 group-hover:opacity-20" style={{ transition: "opacity 150ms" }} />
+          <span className="absolute inset-x-2.5 bottom-0 h-[2px] rounded-full bg-[var(--color-brand-400)] opacity-0 group-hover:opacity-20" style={{ transition: "opacity 150ms" }} />
         )}
       </button>
     </div>
