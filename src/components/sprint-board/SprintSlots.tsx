@@ -172,6 +172,33 @@ function BacklogsDropdown({
   if (backlogSprints.length === 0) return null;
   const active = backlogSprints.find((s) => s.id === activeBacklogId) ?? null;
 
+  // Primary backlogs surface first: the PO's own team (BT) then the team-less Backlog,
+  // separated from the rest by a divider (BRDG-319).
+  const bt = backlogSprints.find((s) => /^bt:\s*backlog$/i.test(s.name.trim())) ?? null;
+  const plain = backlogSprints.find((s) => s.id === "__backlog__") ?? null;
+  const primary = [bt, plain].filter((s): s is Sprint => s !== null);
+  const primaryIds = new Set(primary.map((s) => s.id));
+  const rest = backlogSprints.filter((s) => !primaryIds.has(s.id));
+
+  const row = (s: Sprint, emphasised: boolean) => {
+    const isActive = s.id === activeBacklogId;
+    return (
+      <button
+        key={s.id}
+        type="button"
+        onClick={() => { onSelect(s.id); setOpen(false); }}
+        className={`flex w-full items-center gap-2 rounded-md px-2.5 py-1.5 text-left text-body-sm cursor-pointer hover:bg-hover-list-item ${
+          isActive ? "text-text-primary" : emphasised ? "font-medium text-text-secondary" : "text-text-tertiary"
+        }`}
+      >
+        <Inbox className={`h-3.5 w-3.5 shrink-0 ${emphasised ? "text-text-secondary" : "text-text-tertiary"}`} strokeWidth={1.5} />
+        <span className="flex-1 truncate">{s.name}</span>
+        {s.ticketCount > 0 && <span className="text-[11px] tabular-nums text-text-muted">{s.ticketCount}</span>}
+        {isActive && <Check className="h-3.5 w-3.5 shrink-0 text-[var(--color-brand-400)]" strokeWidth={2} />}
+      </button>
+    );
+  };
+
   return (
     <div ref={ref} className="relative shrink-0 self-center">
       <button
@@ -191,22 +218,9 @@ function BacklogsDropdown({
       </button>
       {open && (
         <div className="absolute top-full left-0 z-50 mt-1 max-h-[60vh] w-56 overflow-y-auto rounded-lg border border-border-strong bg-[var(--color-surface-floating)] p-1 shadow-[var(--shadow-lg)]">
-          {backlogSprints.map((s) => {
-            const isActive = s.id === activeBacklogId;
-            return (
-              <button
-                key={s.id}
-                type="button"
-                onClick={() => { onSelect(s.id); setOpen(false); }}
-                className={`flex w-full items-center gap-2 rounded-md px-2.5 py-1.5 text-left text-body-sm cursor-pointer hover:bg-hover-list-item ${isActive ? "text-text-primary" : "text-text-secondary"}`}
-              >
-                <Inbox className="h-3.5 w-3.5 shrink-0 text-text-tertiary" strokeWidth={1.5} />
-                <span className="flex-1 truncate">{s.name}</span>
-                {s.ticketCount > 0 && <span className="text-[11px] tabular-nums text-text-muted">{s.ticketCount}</span>}
-                {isActive && <Check className="h-3.5 w-3.5 shrink-0 text-[var(--color-brand-400)]" strokeWidth={2} />}
-              </button>
-            );
-          })}
+          {primary.map((s) => row(s, true))}
+          {primary.length > 0 && rest.length > 0 && <div className="my-1 h-px bg-border-subtle" />}
+          {rest.map((s) => row(s, false))}
         </div>
       )}
     </div>
@@ -488,18 +502,7 @@ export function SprintSlots({
 
   return (
     <BarContainer>
-      {/* Scrollable tab area with fade indicators */}
-      <div className="relative flex min-w-0 flex-1 h-full items-stretch">
-        {/* Left fade */}
-        {canScrollLeft && (
-          <div className="pointer-events-none absolute left-0 top-0 bottom-0 z-10 w-6 bg-gradient-to-r from-[var(--color-surface-base)] to-transparent" />
-        )}
-        {/* Right fade */}
-        {canScrollRight && (
-          <div className="pointer-events-none absolute right-0 top-0 bottom-0 z-10 w-6 bg-gradient-to-l from-[var(--color-surface-base)] to-transparent" />
-        )}
-      <div ref={scrollRef} className="flex min-w-0 flex-1 h-full items-stretch gap-1 xl:gap-1.5 overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-      {/* All tab -- filled pill, no border, brand-tinted bg */}
+      {/* All tab -- fixed leading, filled pill, brand-tinted bg */}
       <button
         type="button"
         onClick={onAllClick}
@@ -519,13 +522,25 @@ export function SprintSlots({
         All
       </button>
 
-      {/* Backlogs dropdown -- backlog-named sprints collapse here (BRDG-319) */}
+      {/* Backlogs dropdown -- fixed leading, kept OUTSIDE the horizontal scroller so its
+          menu is not clipped by overflow-x (BRDG-319) */}
       {onBacklogSelect && (
         <BacklogsDropdown backlogSprints={backlogSprints} activeBacklogId={activeBacklogId} onSelect={onBacklogSelect} />
       )}
 
       {pillSlotSprints.length > 0 && <BarDivider className="mx-1 self-center" />}
 
+      {/* Scrollable sprint-pill area with fade indicators */}
+      <div className="relative flex min-w-0 flex-1 h-full items-stretch">
+        {/* Left fade */}
+        {canScrollLeft && (
+          <div className="pointer-events-none absolute left-0 top-0 bottom-0 z-10 w-6 bg-gradient-to-r from-[var(--color-surface-base)] to-transparent" />
+        )}
+        {/* Right fade */}
+        {canScrollRight && (
+          <div className="pointer-events-none absolute right-0 top-0 bottom-0 z-10 w-6 bg-gradient-to-l from-[var(--color-surface-base)] to-transparent" />
+        )}
+      <div ref={scrollRef} className="flex min-w-0 flex-1 h-full items-stretch gap-1 xl:gap-1.5 overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
       <DndContext
         sensors={sensors}
         collisionDetection={closestCenter}
@@ -568,9 +583,6 @@ export function SprintSlots({
         </SortableContext>
       </DndContext>
 
-      {/* Sprint overflow: sprint overview + create sprint */}
-      <SprintOverflowMenu onOpenSprintList={onOpenSprintList} onCreateSprint={onCreateSprint} />
-
       {/* Ephemeral (unpinned) sprint tab -- backlogs surface via the Backlogs dropdown instead */}
       {ephemeralSprintId && (() => {
         const eSprint = sprints.find((s) => s.id === ephemeralSprintId);
@@ -602,6 +614,9 @@ export function SprintSlots({
       })()}
       </div>{/* end scrollable inner */}
       </div>{/* end scroll wrapper */}
+
+      {/* Sprint overflow: sprint overview + create sprint -- outside the scroller so the menu is not clipped */}
+      <SprintOverflowMenu onOpenSprintList={onOpenSprintList} onCreateSprint={onCreateSprint} />
 
       {/* Right side: icon group */}
       <div className="ml-auto flex shrink-0 items-center gap-1 pl-2">

@@ -79,6 +79,18 @@ describe("SprintSlots views bar (BRDG-319)", () => {
     expect(screen.getAllByText("Backlog").length).toBeGreaterThan(0);
   });
 
+  it("orders the Backlogs menu BT: Backlog, then Backlog, then the rest", () => {
+    renderBar();
+    fireEvent.click(screen.getByTitle("Backlogs"));
+    const menu = screen.getByText("GXP: Backlog").closest("div")!;
+    const labels = Array.from(menu.querySelectorAll("button")).map((b) =>
+      (b.textContent ?? "").replace(/\d+$/, "").trim(),
+    );
+    expect(labels[0]).toBe("BT: Backlog");
+    expect(labels[1]).toBe("Backlog");
+    expect(labels[2]).toBe("GXP: Backlog");
+  });
+
   it("calls onBacklogSelect with the sprint id when a backlog is chosen", () => {
     const props = renderBar();
     fireEvent.click(screen.getByTitle("Backlogs"));
