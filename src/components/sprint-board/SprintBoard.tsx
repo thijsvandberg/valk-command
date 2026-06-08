@@ -635,7 +635,7 @@ export default function SprintBoard() {
   // the title on wide screens (BRDG-315). Cap the inner content of the toolbar, the filter bar,
   // and the list to one shared centred width so all three stay aligned; the section backgrounds
   // still span full width behind them.
-  const boardMaxW = "mx-auto w-full max-w-[1200px]";
+  const boardMaxW = "mx-auto w-full max-w-[1280px]";
   const boardContent = (
     <>
       <div className={`${dnd.jiraRankDndEnabled ? "relative " : ""}bg-[var(--color-surface-toolbar)]`}>
