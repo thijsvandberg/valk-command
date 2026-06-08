@@ -4,6 +4,7 @@ import {
   nextRegularSprintGroup,
   canPlanNextSprint,
   nextRegularSprintCreateGroup,
+  placeNextCreateZone,
   backlogDropGroups,
   CREATE_NEXT_SPRINT_GROUP_KEY,
   sortNamedGroups,
@@ -264,41 +265,43 @@ describe("canPlanNextSprint", () => {
     };
   }
 
-  it("predicts the team's next sprint from the global highest number, not the visible one", () => {
-    // The epic only reaches BT: 141, but the series globally is already at BT: 143, so
-    // the next sprint to create is BT: 144 - no need to first park a child in BT: 143.
+  it("predicts the sprint right after the epic's highest visible numbered sprint", () => {
     const visible = [group("BT: 140"), group("BT: 141")];
+    // Highest visible is BT: 141 -> next is BT: 142, which is absent.
+    expect(canPlanNextSprint(visible, [sprint("BT: 141", "active", "2026-07-03")])).toBe("BT: 142");
+  });
+
+  it("returns null when that next sprint already exists (the move zone owns the slot)", () => {
+    // Epic tops at BT: 142; BT: 143 exists, so only the plain move zone shows - no create.
+    const visible = [group("BT: 142")];
+    const sprints = [sprint("BT: 142", "future", null), sprint("BT: 143", "future", null)];
+    expect(canPlanNextSprint(visible, sprints)).toBeNull();
+  });
+
+  it("scopes to the epic's dominant team (highest visible number)", () => {
+    const visible = [group("BT: 141"), group("GXP: 140")];
+    const sprints = [sprint("BT: 141", "active", null), sprint("GXP: 140", "future", null)];
+    expect(canPlanNextSprint(visible, sprints)).toBe("BT: 142");
+  });
+
+  it("plans from a backlog-only epic using the team's global latest", () => {
+    // The epic sits only in BT: Backlog; the team is read from it and its global latest
+    // (BT: 143) is extended, so a child can be pulled straight into a new sprint.
+    const visible = [group("BT: Backlog")];
     const sprints = [
-      sprint("BT: 141", "active", "2026-07-03"),
-      sprint("BT: 142", "future", "2026-07-17"),
-      sprint("BT: 143", "future", "2026-07-31"),
+      sprint("BT: 142", "future", null),
+      sprint("BT: 143", "future", null),
+      sprint("BT: Backlog", "future", null),
     ];
     expect(canPlanNextSprint(visible, sprints)).toBe("BT: 144");
   });
 
-  it("scopes the prediction to the epic's team, not the globally-highest number", () => {
-    // Epic is on BT (top BT: 141); HT has a higher number but is a different team.
-    const visible = [group("BT: 141")];
-    const sprints = [sprint("BT: 141", "active", null), sprint("HT: 200", "future", null)];
-    expect(canPlanNextSprint(visible, sprints)).toBe("BT: 142");
-  });
-
-  it("plans from a backlog-only epic (no numbered sprint visible)", () => {
-    // The epic sits only in BT: Backlog; the team is read from that backlog so a child
-    // can be pulled straight into a new sprint.
-    const visible = [group("BT: Backlog")];
-    const sprints = [sprint("BT: 142", "future", null), sprint("BT: Backlog", "future", null)];
-    expect(canPlanNextSprint(visible, sprints)).toBe("BT: 143");
-  });
-
   it("returns null when the epic's team cannot be determined", () => {
-    const visible = [group(null)];
-    expect(canPlanNextSprint(visible, [sprint("BT: 1", "future", null)])).toBeNull();
+    expect(canPlanNextSprint([group(null)], [sprint("BT: 1", "future", null)])).toBeNull();
   });
 
-  it("returns null when the team has no existing sprints to extend", () => {
-    const visible = [group("ZZ: Backlog")];
-    expect(canPlanNextSprint(visible, [sprint("BT: 1", "future", null)])).toBeNull();
+  it("returns null when the backlog's team has no sprints to extend", () => {
+    expect(canPlanNextSprint([group("ZZ: Backlog")], [sprint("BT: 1", "future", null)])).toBeNull();
   });
 });
 
@@ -328,13 +331,36 @@ describe("nextRegularSprintCreateGroup", () => {
     expect(nextRegularSprintCreateGroup([group(null)], [])).toBeNull();
   });
 
-  it("sorts after every dated group, landing in the trailing next-sprint slot", () => {
-    const sprints = [sprint("BT: 141", "active", "2026-07-03")];
-    const zone = nextRegularSprintCreateGroup([group("BT: 141")], sprints)!;
-    const existing = group("BT: 141");
-    existing.state = "active";
-    const ordered = sortNamedGroups([zone, existing], sprints);
-    expect(ordered.map((g) => g.label)).toEqual(["BT: 141", "BT: 142"]);
+  it("returns null when the next sprint already exists (move zone owns the slot)", () => {
+    const sprints = [sprint("BT: 141", "active", null), sprint("BT: 142", "future", null)];
+    expect(nextRegularSprintCreateGroup([group("BT: 141")], sprints)).toBeNull();
+  });
+});
+
+describe("placeNextCreateZone", () => {
+  function group(sprintName: string | null): ChildGroup {
+    return {
+      key: sprintName ?? UNSCHEDULED_GROUP_KEY,
+      label: sprintName ?? "Unscheduled",
+      sprintName,
+      items: [],
+      isActive: false,
+      state: null,
+      dateRange: null,
+    };
+  }
+  const zone = (name: string): ChildGroup => ({ ...group(name), key: CREATE_NEXT_SPRINT_GROUP_KEY, isCreateZone: true, isDropZone: true });
+
+  it("inserts the create zone right after the team's last numbered sprint", () => {
+    const ordered = [group("BT: 141"), group("BT: 142"), group("GXP: 140"), group("BT: Backlog")];
+    const result = placeNextCreateZone(ordered, zone("BT: 143"));
+    expect(result.map((g) => g.label)).toEqual(["BT: 141", "BT: 142", "BT: 143", "GXP: 140", "BT: Backlog"]);
+  });
+
+  it("appends when the team has no numbered sprint shown (e.g. a backlog-only epic)", () => {
+    const ordered = [group("GXP: 140"), group("BT: Backlog")];
+    const result = placeNextCreateZone(ordered, zone("BT: 144"));
+    expect(result.map((g) => g.label)).toEqual(["GXP: 140", "BT: Backlog", "BT: 144"]);
   });
 });
 

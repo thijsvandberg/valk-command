@@ -6,7 +6,7 @@ import { GroupStatBar } from "@/components/sprint-board/GroupStatBar";
 import { GroupCard } from "@/components/sprint-board/GroupCard";
 import { ChildIssueRow } from "./ChildIssueRow";
 import { ChildIssueComposer } from "./ChildIssueComposer";
-import { groupChildrenBySprint, nextRegularSprintGroup, nextRegularSprintCreateGroup, backlogDropGroups, sortNamedGroups, UNSCHEDULED_GROUP_KEY, type ChildGroup } from "@/lib/epic-children-grouping";
+import { groupChildrenBySprint, nextRegularSprintGroup, nextRegularSprintCreateGroup, placeNextCreateZone, backlogDropGroups, sortNamedGroups, UNSCHEDULED_GROUP_KEY, type ChildGroup } from "@/lib/epic-children-grouping";
 import { resolveDragEnd, insertLineForRow, type ChildReorder, type ChildMoveToPosition } from "@/lib/epic-children-reorder";
 import { useSessionStorage } from "@/hooks/useSessionStorage";
 import {
@@ -329,19 +329,20 @@ export function EpicChildrenBySprint({
   // synthetic group sorts into the regular series via the shared comparator.
   const dragGroups = useMemo(() => {
     if (!dndEnabled || activeDragKey === null) return groups;
-    // Drag-only drop zones, all surfaced together so any target is reachable mid-drag:
-    // - BRDG-306 move zone: push a child into the next *existing* sprint the epic isn't in.
-    // - BRDG-309 create zone: always offers the team's *next* sprint to create (global
-    //   highest + 1), so a child - even one in a backlog - can be pulled into a brand-new
-    //   sprint without first parking it in the latest one.
-    // - Backlog zones for the epic's reachable backlogs.
+    // Drag-only drop zones surfaced so any target is reachable mid-drag. The next-sprint
+    // slot is a single zone, mutually exclusive: BRDG-306's plain move zone when that
+    // sprint exists, else BRDG-309's create zone. Backlog zones cover the epic's backlogs.
+    const named = groups.filter((g) => g.key !== UNSCHEDULED_GROUP_KEY);
     const extras: ChildGroup[] = [];
     const moveZone = nextRegularSprintGroup(groups, sprints);
     if (moveZone) extras.push(moveZone);
-    const createZone = onPlanNextSprint ? nextRegularSprintCreateGroup(groups, sprints) : null;
-    if (createZone && !extras.some((z) => z.sprintName === createZone.sprintName)) extras.push(createZone);
     extras.push(...backlogDropGroups(groups, sprints));
-    const named = groups.filter((g) => g.key !== UNSCHEDULED_GROUP_KEY);
+    // Sort the real + move + backlog groups (all known/dated) together first.
+    let ordered = sortNamedGroups([...named, ...extras], sprints);
+    // Then slot the create zone right after the team's last numbered sprint, in order.
+    const createZone = onPlanNextSprint ? nextRegularSprintCreateGroup(groups, sprints) : null;
+    if (createZone) ordered = placeNextCreateZone(ordered, createZone);
+
     // Always expose the no-sprint backlog (the "Unscheduled" bucket) as a drop target
     // during a drag, even when the epic currently has no unscheduled children, so a
     // child can be sent back to the backlog. When it already has children it stays a
@@ -350,7 +351,7 @@ export function EpicChildrenBySprint({
     const unscheduledZone: ChildGroup[] = realUnscheduled.length > 0
       ? realUnscheduled
       : [{ key: UNSCHEDULED_GROUP_KEY, label: "Unscheduled", sprintName: null, items: [], isActive: false, state: null, dateRange: null, isDropZone: true }];
-    return [...sortNamedGroups([...named, ...extras], sprints), ...unscheduledZone];
+    return [...ordered, ...unscheduledZone];
   }, [groups, sprints, activeDragKey, dndEnabled, onPlanNextSprint]);
 
   // Keys that exist in the real grouping; anything in dragGroups outside this set

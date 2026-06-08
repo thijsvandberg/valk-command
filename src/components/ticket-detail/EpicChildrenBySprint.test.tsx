@@ -264,17 +264,16 @@ describe("EpicChildrenBySprint create-next-sprint drop zone (BRDG-309)", () => {
     expect(screen.queryByText(/Create new sprint/)).not.toBeInTheDocument();
   });
 
-  it("shows BRDG-306's move zone for the next existing sprint and a create zone for the one beyond", () => {
-    // Add BT: 140: the epic (top BT: 139) gets a plain "move to BT: 140" zone, while the
-    // create zone offers the team's actual next sprint to create (BT: 141), so both the
-    // push-forward and the create-new options are available at once.
+  it("shows a single move zone (not a create) when the next sprint already exists", () => {
+    // Add BT: 140: the epic (top BT: 139) gets just the plain "move to BT: 140" zone -
+    // the slot is filled by the move zone, so no create zone appears (mutually exclusive).
     setupCreate({
       sprints: [...REGULAR, { id: "140", name: "BT: 140", dateRange: "", state: "future", ticketCount: 0, startDate: "2026-06-19", endDate: null, goal: null }],
     });
     startKeyboardDrag("VPL-30");
     expect(screen.getByText("Drop here to move to BT: 140")).toBeInTheDocument();
-    expect(screen.getByText(/Create new sprint/)).toBeInTheDocument();
-    expect(screen.getAllByText("BT: 141").length).toBeGreaterThan(0);
+    expect(screen.queryByText(/Create new sprint/)).not.toBeInTheDocument();
+    expect(screen.queryByText("New sprint")).not.toBeInTheDocument();
   });
 });
 

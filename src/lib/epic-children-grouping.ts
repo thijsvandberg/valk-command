@@ -113,57 +113,55 @@ export function nextRegularSprintGroup(
   };
 }
 
-// The epic's team: the prefix of its highest-numbered visible regular sprint, or -
-// for an epic only sitting in a backlog - the team of a visible "<team>: Backlog".
-// Lets the create zone target the right team even when no numbered sprint is shown.
-function epicTeamPrefix(visibleGroups: ChildGroup[]): string | null {
-  let best: string | null = null;
-  let bestNum = -Infinity;
-  for (const g of visibleGroups) {
-    if (g.sprintName && isRegularSprint(g.sprintName)) {
-      const n = sprintNumber(g.sprintName);
-      if (n > bestNum) {
-        bestNum = n;
-        best = sprintTeamToken(g.sprintName);
-      }
-    }
-  }
-  if (best) return best;
-  for (const g of visibleGroups) {
-    if (g.sprintName && isBacklogSprintName(g.sprintName)) {
-      const t = sprintTeamToken(g.sprintName);
-      if (t) return t;
-    }
-  }
-  return null;
-}
-
 /**
- * The next regular sprint name to *create* while dragging in the by-sprint view
- * (BRDG-309). Predicts the epic's team's *actual* next sprint - the highest existing
- * number for that team across the whole sprint list, plus one - so a child can be
- * pulled straight into a brand-new sprint without first parking it in the latest one
- * (and it works from a backlog too). Returns null when the epic's team can't be
- * determined, or in the defensive case where that name already exists.
+ * The next regular sprint name for the by-sprint "create / move" slot (BRDG-306/309).
+ * It is the single sprint immediately after the epic's position in its team's series:
+ * the highest *visible* numbered sprint + 1 (so it sits right under the last shown
+ * `<team>: <n>`). For a backlog-only epic (no numbered sprint shown) the team is read
+ * from a visible `<team>: Backlog` and the team's global latest number is extended
+ * instead, so a child can still be planned into a new sprint straight from a backlog.
+ *
+ * Returns null when no team can be determined, or when that next sprint already exists
+ * or is already shown - in which case the plain move zone (`nextRegularSprintGroup`)
+ * owns the same slot. The two are mutually exclusive: exactly one fills the slot.
  */
 export function canPlanNextSprint(
   visibleGroups: ChildGroup[],
   sprints: Sprint[],
 ): string | null {
-  const team = epicTeamPrefix(visibleGroups);
-  if (!team) return null;
-
-  let latestNum = -Infinity;
-  for (const s of sprints) {
-    if (sprintTeamToken(s.name) === team && isRegularSprint(s.name)) {
-      const n = sprintNumber(s.name);
-      if (n > latestNum) latestNum = n;
+  // The epic's own position: the highest visible numbered sprint and its team.
+  let team: string | null = null;
+  let baseNum = -Infinity;
+  for (const g of visibleGroups) {
+    if (g.sprintName && isRegularSprint(g.sprintName)) {
+      const n = sprintNumber(g.sprintName);
+      if (n > baseNum) {
+        baseNum = n;
+        team = sprintTeamToken(g.sprintName);
+      }
     }
   }
-  if (!Number.isFinite(latestNum)) return null;
 
-  const candidateName = `${team}: ${latestNum + 1}`;
-  // Defensive: never offer a create for a name that already exists or is shown.
+  // Backlog-only epic: take the team from a visible "<team>: Backlog" and extend the
+  // team's global latest number, so a child can be planned from a backlog directly.
+  if (!team) {
+    const backlogName = visibleGroups
+      .map((g) => g.sprintName)
+      .find((n): n is string => !!n && isBacklogSprintName(n));
+    if (!backlogName) return null;
+    team = sprintTeamToken(backlogName);
+    if (!team) return null;
+    for (const s of sprints) {
+      if (sprintTeamToken(s.name) === team && isRegularSprint(s.name)) {
+        const n = sprintNumber(s.name);
+        if (n > baseNum) baseNum = n;
+      }
+    }
+  }
+  if (!Number.isFinite(baseNum)) return null;
+
+  const candidateName = `${team}: ${baseNum + 1}`;
+  // Exists or already shown -> the plain move zone owns this slot (mutual exclusivity).
   if (sprints.some((s) => s.name === candidateName)) return null;
   if (visibleGroups.some((g) => g.sprintName === candidateName)) return null;
 
@@ -171,11 +169,27 @@ export function canPlanNextSprint(
 }
 
 /**
+ * Places the create zone in series order: immediately after the team's last numbered
+ * group (e.g. right under `BT: 142`), rather than letting it sink to the bottom as an
+ * unmatched group would under `sortNamedGroups`. Falls back to appending when the team
+ * has no numbered group shown (e.g. a backlog-only epic). Returns a new array.
+ */
+export function placeNextCreateZone(ordered: ChildGroup[], zone: ChildGroup): ChildGroup[] {
+  const team = zone.sprintName ? sprintTeamToken(zone.sprintName) : null;
+  let insertAt = -1;
+  for (let i = 0; i < ordered.length; i++) {
+    const name = ordered[i].sprintName;
+    if (name && isRegularSprint(name) && sprintTeamToken(name) === team) insertAt = i;
+  }
+  if (insertAt === -1) return [...ordered, zone];
+  return [...ordered.slice(0, insertAt + 1), zone, ...ordered.slice(insertAt + 1)];
+}
+
+/**
  * The synthetic "create the next sprint" drop zone (BRDG-309), or null when no
  * next sprint can be planned. Carries the predicted name so the component can
- * label the zone and the drop can prefill the Create Sprint modal. Has no matched
- * sprint metadata (the sprint does not exist yet), so it sorts after every dated
- * group, landing in the trailing next-sprint slot via `sortNamedGroups`.
+ * label the zone and the drop can prefill the Create Sprint modal. Positioned via
+ * `placeNextCreateZone` so it lands right after the team's last numbered sprint.
  */
 export function nextRegularSprintCreateGroup(
   visibleGroups: ChildGroup[],
