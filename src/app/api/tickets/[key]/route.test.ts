@@ -32,6 +32,18 @@ vi.mock("@/lib/activity-logger", () => ({
   logActivity: vi.fn().mockResolvedValue(undefined),
 }));
 
+// Capture after() callbacks instead of running them inside the response.
+vi.mock("next/server", async (importOriginal) => {
+  const orig = await importOriginal<typeof import("next/server")>();
+  return { ...orig, after: vi.fn() };
+});
+
+vi.mock("@/lib/sync-tickets-service", () => ({
+  syncIndividualTickets: vi.fn().mockResolvedValue({ count: 1, live: false, strategy: "test", tickets: [] }),
+}));
+
+import { after } from "next/server";
+import { syncIndividualTickets } from "@/lib/sync-tickets-service";
 import { GET, PATCH } from "./route";
 
 describe("GET /api/tickets/[key]", () => {
@@ -114,6 +126,47 @@ describe("GET /api/tickets/[key]", () => {
 
     expect(response.headers.get("X-Cache")).toBe("HIT");
     expect(response.headers.get("Cache-Control")).toBe("private, no-cache");
+  });
+
+  it("flags and schedules a background re-sync for children with legacy name-only sprints", async () => {
+    vi.mocked(after).mockClear();
+    vi.mocked(syncIndividualTickets).mockClear();
+    seedTicket(testDb, { jiraKey: "VPL-700", title: "Epic", type: "epic" });
+    seedTicket(testDb, { jiraKey: "VPL-701", title: "Legacy child", epicKey: "VPL-700", sprintName: "VP Sprint 66 Angels" });
+
+    const response = await GET(
+      buildGet("/api/tickets/VPL-700"),
+      buildParams({ key: "VPL-700" }),
+    );
+    const data = await response.json();
+
+    expect(data.resyncingSprints).toBe(true);
+    expect(after).toHaveBeenCalledTimes(1);
+
+    // Running the scheduled callback re-syncs the child and drops the dependent caches.
+    const invalidateSpy = vi.spyOn(cache, "invalidate");
+    const cb = vi.mocked(after).mock.calls[0][0] as () => Promise<void>;
+    await cb();
+
+    expect(syncIndividualTickets).toHaveBeenCalledWith(["VPL-701"]);
+    expect(invalidateSpy).toHaveBeenCalledWith("/api/tickets/VPL-700");
+    expect(invalidateSpy).toHaveBeenCalledWith("/api/jira/sprints");
+    invalidateSpy.mockRestore();
+  });
+
+  it("does not schedule a re-sync when child sprints are numeric ids", async () => {
+    vi.mocked(after).mockClear();
+    seedTicket(testDb, { jiraKey: "VPL-710", title: "Epic", type: "epic" });
+    seedTicket(testDb, { jiraKey: "VPL-711", title: "By id", epicKey: "VPL-710", sprintName: "5995" });
+
+    const response = await GET(
+      buildGet("/api/tickets/VPL-710"),
+      buildParams({ key: "VPL-710" }),
+    );
+    const data = await response.json();
+
+    expect(data.resyncingSprints).toBeUndefined();
+    expect(after).not.toHaveBeenCalled();
   });
 });
 

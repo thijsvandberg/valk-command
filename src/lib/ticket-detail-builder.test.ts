@@ -73,6 +73,31 @@ describe("buildTicketDetail epic children ordering", () => {
     expect(children.find((c) => c.key === "VPL-10")?.title).toBe("Locally edited title");
     expect(children.find((c) => c.key === "VPL-20")?.title).toBe("Untouched title");
   });
+
+  it("flags epic children whose sprint is stored as a legacy name (no id) for re-sync", async () => {
+    seedTicket(testDb, { jiraKey: "VPL-1", title: "Epic", type: "epic" });
+    // Numeric id: resolvable by the sprint backfill, not a re-sync candidate.
+    seedTicket(testDb, { jiraKey: "VPL-10", title: "By id", epicKey: "VPL-1", jiraRank: 0, sprintName: "5995" });
+    // Legacy name and the on-demand placeholder: no id to resolve, need a ticket re-sync.
+    seedTicket(testDb, { jiraKey: "VPL-20", title: "By name", epicKey: "VPL-1", jiraRank: 1, sprintName: "VP Sprint 66 Angels" });
+    seedTicket(testDb, { jiraKey: "VPL-30", title: "On demand", epicKey: "VPL-1", jiraRank: 2, sprintName: "__on_demand__" });
+
+    const built = await buildTicketDetail("VPL-1");
+
+    expect(built!.unresolvedSprintKeys.sort()).toEqual(["VPL-20", "VPL-30"]);
+    expect(built!.data.resyncingSprints).toBe(true);
+  });
+
+  it("does not flag a re-sync when every child sprint is a numeric id", async () => {
+    seedTicket(testDb, { jiraKey: "VPL-1", title: "Epic", type: "epic" });
+    seedTicket(testDb, { jiraKey: "VPL-10", title: "A", epicKey: "VPL-1", jiraRank: 0, sprintName: "5995" });
+    seedTicket(testDb, { jiraKey: "VPL-20", title: "B", epicKey: "VPL-1", jiraRank: 1, sprintName: "" });
+
+    const built = await buildTicketDetail("VPL-1");
+
+    expect(built!.unresolvedSprintKeys).toEqual([]);
+    expect(built!.data.resyncingSprints).toBeUndefined();
+  });
 });
 
 describe("updateTicketFields story-points readiness transition", () => {

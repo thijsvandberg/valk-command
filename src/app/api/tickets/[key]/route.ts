@@ -1,12 +1,32 @@
-import { NextResponse } from "next/server";
+import { NextResponse, after } from "next/server";
 import { errorResponse } from "@/lib/api-response";
 import { parseJsonBody } from "@/lib/request-parser";
 import { validatePathParam } from "@/lib/api-validation";
 import { cache } from "@/lib/cache";
+import { logger } from "@/lib/logger";
 import { enqueue as enqueueForRevalidation } from "@/lib/revalidation-queue";
 import { applyRateLimit } from "@/lib/rate-limiter";
 import { resolveDraftKey } from "@/lib/draft-sync";
 import { buildTicketDetail, updateTicketFields } from "@/lib/ticket-detail-builder";
+import { syncIndividualTickets } from "@/lib/sync-tickets-service";
+
+/**
+ * Re-sync epic children whose sprint is stored as a legacy name (no id) so their `sprint_name`
+ * becomes the current Jira sprint id, then drop the parent detail + sprint caches so the next read
+ * rebuilds with resolved dates/state. Detached and best-effort: never affects the response.
+ */
+function scheduleUnresolvedSprintResync(parentKey: string, childKeys: string[]) {
+  if (childKeys.length === 0) return;
+  after(async () => {
+    try {
+      await syncIndividualTickets(childKeys);
+      cache.invalidate(`/api/tickets/${parentKey}`);
+      cache.invalidate("/api/jira/sprints");
+    } catch (err) {
+      logger.warn("ticket-detail", "unresolved sprint re-sync failed", err instanceof Error ? err.message : String(err));
+    }
+  });
+}
 
 export async function GET(
   _request: Request,
@@ -36,6 +56,7 @@ export async function GET(
 
   cache.set(cacheKey, result.data, 60_000);
   enqueueForRevalidation([key]);
+  scheduleUnresolvedSprintResync(key, result.unresolvedSprintKeys);
 
   return NextResponse.json(result.data, {
     headers: {

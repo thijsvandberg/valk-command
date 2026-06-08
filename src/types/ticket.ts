@@ -212,6 +212,10 @@ export interface TicketDetail {
   linkedIssues: LinkedIssue[];
   jiraComments: JiraComment[];
   epicChildren: EpicChild[];
+  /** True when one or more epic children reference a sprint stored as a legacy name (no id) that
+      is being re-synced from Jira in the background. The client revalidates until it clears so the
+      open page resolves the sprint's dates/state without a manual reload. (BRDG-308) */
+  resyncingSprints?: boolean;
 }
 
 export type TicketEditState = "clean" | "draft" | "local_edits" | "conflict";

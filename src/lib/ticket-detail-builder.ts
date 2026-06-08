@@ -289,7 +289,22 @@ async function resolveEpicChildren(epicChildRows: Awaited<ReturnType<typeof runT
  * Builds the full ticket detail response, including on-demand Jira fetch.
  * Returns { data, durationMs } or null if not found.
  */
-export async function buildTicketDetail(key: string): Promise<{ data: TicketDetailResponse; durationMs: number } | null> {
+/**
+ * Epic-child keys whose stored `sprint_name` is a legacy sprint *name* (or `__on_demand__`) rather
+ * than a numeric id. Such rows can't be resolved by the id-based sprint backfill, so the read path
+ * re-syncs these tickets from Jira to rewrite `sprint_name` to the current sprint id.
+ */
+function unresolvedSprintChildKeys(
+  epicChildRows: NonNullable<Awaited<ReturnType<typeof runTicketQueries>>>["epicChildRows"],
+): string[] {
+  return epicChildRows
+    .filter((c) => c.sprintName && !/^\d+$/.test(c.sprintName))
+    .map((c) => c.jiraKey);
+}
+
+export async function buildTicketDetail(
+  key: string,
+): Promise<{ data: TicketDetailResponse; durationMs: number; unresolvedSprintKeys: string[] } | null> {
   let { result: queryData, durationMs } = await timedQuery(`GET /api/tickets/${key}`, () => runTicketQueries(key));
 
   if (!queryData) {
@@ -311,11 +326,14 @@ export async function buildTicketDetail(key: string): Promise<{ data: TicketDeta
 
   const response = transformQueryData(queryData);
 
+  let unresolvedSprintKeys: string[] = [];
   if (queryData.epicChildRows.length > 0) {
     response.epicChildren = await resolveEpicChildren(queryData.epicChildRows);
+    unresolvedSprintKeys = unresolvedSprintChildKeys(queryData.epicChildRows);
+    if (unresolvedSprintKeys.length > 0) response.resyncingSprints = true;
   }
 
-  return { data: response, durationMs };
+  return { data: response, durationMs, unresolvedSprintKeys };
 }
 
 // PATCH logic
