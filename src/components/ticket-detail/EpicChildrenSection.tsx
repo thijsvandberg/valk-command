@@ -31,6 +31,7 @@ import { useSectionCollapsed } from "@/hooks/useSectionCollapsed";
 import { SECTION_KEYS } from "@/lib/section-collapse-store";
 import { useLocalStorage } from "@/hooks/useLocalStorage";
 import { usePencilCapacity } from "@/hooks/usePencilCapacity";
+import { useSprintUsedPoints } from "@/hooks/useSprintUsedPoints";
 import { useJiraSprints, useSprintSlots } from "@/hooks/useSprintBoard";
 import { mapJiraSprints, bulkReviewStories, bulkGenerateSubtasks } from "@/components/sprint-board/sprint-board-utils";
 import { tickets, jira, apiFetch, ApiError } from "@/lib/api-client";
@@ -139,6 +140,7 @@ export function EpicChildrenSection({
   // board's. Off by default; reveals guestimation pickers and the fullness meter.
   const [planningOn, setPlanningOn] = useLocalStorage<boolean>("epic-children-planning-visible", false);
   const { capacityMap: pencilCapacityMap, setCapacity: setPencilCapacity } = usePencilCapacity(planningOn);
+  const sprintUsedMap = useSprintUsedPoints(planningOn);
   const [hideDeprecated, setHideDeprecated] = useLocalStorage<boolean>("epic-children-hide-deprecated", true);
   const { toast, toastLoading, showToast, dismissToast } = useToast();
 
@@ -1006,6 +1008,7 @@ export function EpicChildrenSection({
         planningOn={planningOn}
         pencilCapacityMap={pencilCapacityMap}
         onPencilCapacityChange={setPencilCapacity}
+        sprintUsedMap={sprintUsedMap}
       />
       {createOpen && (
         <div className="overflow-hidden rounded-lg border border-border-default">

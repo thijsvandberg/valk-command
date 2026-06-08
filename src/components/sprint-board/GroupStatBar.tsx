@@ -72,6 +72,13 @@ export interface GroupStatBarProps {
   pencilCapacity?: number | null;
   /** Persist a new pencil capacity (null clears it). */
   onPencilCapacityChange?: (value: number | null) => void;
+  /**
+   * Override the meter's "used" value (BRDG-303). On the epic-children-by-sprint
+   * view the group only holds the open epic's children, but the fullness meter
+   * must reflect the WHOLE sprint's load; the consumer passes the sprint total
+   * here. When omitted, "used" is summed from this group's tickets (sprint board).
+   */
+  usedPointsOverride?: number;
 }
 
 // Two-row tooltip (total + average) styled like the estimate-hygiene warning tooltip:
@@ -130,6 +137,7 @@ export const GroupStatBar = memo(function GroupStatBar({
   planningOn = false,
   pencilCapacity = null,
   onPencilCapacityChange,
+  usedPointsOverride,
 }: GroupStatBarProps) {
   const [detailsOpen, setDetailsOpen] = useState(false);
   const menuButtonRef = useRef<HTMLButtonElement>(null);
@@ -309,7 +317,7 @@ export const GroupStatBar = memo(function GroupStatBar({
       )}
       {planningOn && onPencilCapacityChange && (
         <FullnessMeter
-          used={usedEffective}
+          used={usedPointsOverride ?? usedEffective}
           capacity={pencilCapacity}
           onCapacityChange={onPencilCapacityChange}
         />

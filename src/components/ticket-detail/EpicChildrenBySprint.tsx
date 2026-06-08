@@ -74,6 +74,9 @@ interface EpicChildrenBySprintProps {
   /** sprintId -> pencil capacity, for the fullness meter. */
   pencilCapacityMap?: Record<string, number>;
   onPencilCapacityChange?: (sprintId: string, value: number | null) => void;
+  /** sprintId -> total effective points across the WHOLE sprint (not just this epic's
+   *  children), so the meter reflects real sprint fullness (BRDG-303). */
+  sprintUsedMap?: Record<string, number>;
 }
 
 function isEpicChild(child: EpicChild | Subtask): child is EpicChild {
@@ -291,6 +294,7 @@ export function EpicChildrenBySprint({
   planningOn = false,
   pencilCapacityMap,
   onPencilCapacityChange,
+  sprintUsedMap,
 }: EpicChildrenBySprintProps) {
   const [collapsed, setCollapsed] = useSessionStorage<Record<string, boolean>>(
     `epic-children-collapse-${ticketKey}`,
@@ -534,6 +538,8 @@ export function EpicChildrenBySprint({
               planningOn: true,
               pencilCapacity: pencilCapacityMap?.[planningSprintId] ?? null,
               onPencilCapacityChange: (v: number | null) => onPencilCapacityChange(planningSprintId, v),
+              // The meter must reflect the whole sprint, not just this epic's children.
+              usedPointsOverride: sprintUsedMap?.[planningSprintId] ?? 0,
             }
           : {})}
         isCollapsed={isCollapsed}

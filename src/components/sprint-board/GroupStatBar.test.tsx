@@ -550,5 +550,23 @@ describe("GroupStatBar", () => {
       );
       expect(screen.getByText("21")).toBeInTheDocument();
     });
+
+    it("uses usedPointsOverride for the meter when provided (epic view = whole sprint)", () => {
+      // The group only holds this epic's children (SP total 10), but the meter
+      // must reflect the whole sprint's load passed via the override.
+      render(
+        <GroupStatBar
+          tickets={[makeTicket({ key: "E-1", storyPoints: 3 }), makeTicket({ key: "E-2", storyPoints: 7 })]}
+          label="Sprint Alpha"
+          planningOn
+          pencilCapacity={25}
+          onPencilCapacityChange={() => {}}
+          usedPointsOverride={22}
+        />,
+      );
+      // The meter's "used" is the override (22), not the group's SP sum (10).
+      // The capacity input reads 25, so 22 here is unambiguously the meter value.
+      expect(screen.getByText("22")).toBeInTheDocument();
+    });
   });
 });

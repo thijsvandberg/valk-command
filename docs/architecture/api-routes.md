@@ -69,6 +69,7 @@ Epic mode of the Story Writer. The epic is the subject ticket; sessions reuse `s
 | `/api/sprints/[id]/suggest-goal` | POST | Invoke workspace skill to generate a sprint goal suggestion |
 | `/api/sprints/pencil-capacity` | GET | Get all sprints' forward-planning pencil capacities (BRDG-303) |
 | `/api/sprints/pencil-capacity` | PUT | Upsert one sprint's pencil capacity (`{ sprintId, capacity }`; `capacity: null` clears it). Bridge-local, never synced to Jira. |
+| `/api/sprints/used-points` | GET | Total effective points (real SP, else guestimation) per sprint across all tickets (BRDG-303). Drives the epic-view fullness meter so it reflects the whole sprint, not just the open epic's children. |
 
 ## Tickets
 
