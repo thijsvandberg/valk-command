@@ -35,6 +35,7 @@ import { groupChildrenBySprint } from "@/lib/epic-children-grouping";
 import { Loader2, Search, AlertTriangle } from "lucide-react";
 
 const EPIC_CHILD_FIELDS = [
+  { id: "checkboxes", label: "checkboxes" },
   { id: "issueKey", label: "issue keys" },
   { id: "assignee", label: "assignees" },
   { id: "status", label: "status" },
@@ -44,7 +45,7 @@ const EPIC_CHILD_FIELDS = [
   { id: "subtaskCount", label: "subtask count" },
 ];
 
-const DEFAULT_VISIBLE = ["issueKey", "status", "storyPoints", "businessValue", "sprint", "subtaskCount"];
+const DEFAULT_VISIBLE = ["checkboxes", "issueKey", "status", "storyPoints", "businessValue", "sprint", "subtaskCount"];
 
 interface SearchResult {
   key: string;
@@ -547,7 +548,10 @@ export function EpicChildrenSection({
     return base.map((i) => i.key);
   }, [filtered, localMoves, localOrder, viewMode, sprints]);
 
-  const someChecked = checkedKeys.size > 0;
+  // The selection-checkbox column is itself a toggleable "field"; when hidden,
+  // rows lose their checkbox and bulk selection is suppressed.
+  const selectionEnabled = visibleFields.has("checkboxes");
+  const someChecked = selectionEnabled && checkedKeys.size > 0;
   const allChecked = orderedVisibleKeys.length > 0 && orderedVisibleKeys.every((k) => checkedKeys.has(k));
 
   const handleCheckboxClick = useCallback((key: string, e: React.MouseEvent) => {
@@ -755,7 +759,7 @@ export function EpicChildrenSection({
         onReadinessChange={(r) => handleReadinessChange(child.key, r)}
         onSelect={onSelectTicket}
         onContextMenu={isPending ? undefined : (e) => { e.preventDefault(); handleRowContextMenu(child.key, e); }}
-        selectable
+        selectable={selectionEnabled}
         isChecked={checkedKeys.has(child.key)}
         someChecked={someChecked}
         onCheckboxClick={(e) => handleCheckboxClick(child.key, e)}
@@ -867,7 +871,7 @@ export function EpicChildrenSection({
         onCreateChild={(target, title, jiraType) => handleCreate(title, jiraType, target)}
         checkedKeys={checkedKeys}
         someChecked={someChecked}
-        onCheckboxClick={handleCheckboxClick}
+        onCheckboxClick={selectionEnabled ? handleCheckboxClick : undefined}
       />
       <div className="overflow-hidden rounded-lg border border-border-default">
         {inlineInput}
@@ -879,7 +883,13 @@ export function EpicChildrenSection({
 
   return (
     <div className="mt-8">
-      {showStatsSummary && <EpicStatsSummary items={mergedItems} />}
+      {showStatsSummary && (
+        <EpicStatsSummary
+          items={mergedItems}
+          activeStatus={filter}
+          onSelectStatus={(s) => setFilter(filter === s ? "all" : s)}
+        />
+      )}
       <ChildIssueListHeader
         title="Child Issues"
         totalCount={mergedItems.length}
@@ -890,7 +900,10 @@ export function EpicChildrenSection({
         statusCounts={statusCounts}
         fields={EPIC_CHILD_FIELDS}
         visibleFields={visibleFields}
-        onToggleField={(id, show) => toggleField(id, show)}
+        onToggleField={(id, show) => {
+          toggleField(id, show);
+          if (id === "checkboxes" && !show) setCheckedKeys(new Set());
+        }}
         hideDeprecated={hideDeprecated}
         onToggleHideDeprecated={setHideDeprecated}
         deprecatedCount={deprecatedCount}
