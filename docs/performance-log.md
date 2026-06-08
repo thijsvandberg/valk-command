@@ -233,3 +233,17 @@ Smooth implementation run. BRDG-305's series helpers (`isRegularSprint`/`latestR
 Key bottlenecks / lessons:
 - **Pre-existing failure detour**: full `npm run verify` showed `TicketSidebar.test.tsx` "displays Jira status" failing — untouched by this story. Confirmed pre-existing by checking out HEAD~2 (pre-BRDG-306) and rerunning: identical failure. Same parallel-work baseline noise noted in BRDG-307. `git stash`/checkout/pop round-trip restored the unrelated working-tree changes cleanly.
 - **Browser positive-case unverifiable from data**: the drag-only drop zone is correct to hide when the next sprint doesn't exist — and for the request's epic (VPL-43142) the highest sprint is BT:141 with no BT:142 in `sprint_name_cache`, so the live view correctly showed nothing. The positive case (zone appears mid-drag) couldn't be captured live: no epic in local data had a next-sprint gap, the keyboard grip isn't click-focusable for a scripted Space-pickup, and `left_click_drag` can't hold a mid-drag state. Covered fully by jsdom component tests instead. Lesson: for "appears only mid-drag" UI, lean on component tests; live capture of a held drag state is not reliably scriptable.
+
+## BRDG-314 — Theme-aware code blocks (light/dark) + syntax highlighting (2026-06-08)
+
+Smooth implementation. Introduced semantic `--color-code-*` tokens (surface/header-bg/border/fg/line-number/label) that flip per theme, rewired `CodeBlock.tsx` + editor CSS to them, removed the broad `[data-theme="light"] !important` overrides, and added a GitHub-light Prism palette. One feature commit + two doc/archive commits; 21 targeted tests green, full `npm run verify` (5097 tests) and `npm run build` passed.
+
+| Phase | Notes |
+|-------|-------|
+| Plan (Opus) | Accurate; correctly flagged that the editor `.editor-code-block` has no Prism token spans, so "consistent" means surface/fg/border parity only |
+| Implement | CSS tokens + component rewiring, no blockers |
+| Verify | Targeted + full suite + build green; visual check both themes |
+
+Key bottlenecks / lessons:
+- **Concurrent-build race with parallel work**: the integration branch was being actively committed to by another process during the run. First `npm run verify` failed typecheck on an unrelated, concurrently-edited untracked file (`TicketTable.warning.test.tsx`, `TicketGroup.sortOrder` mismatch) that resolved itself on the next run; first `npm run build` "Compiled successfully" but then failed the static-export step ("Could not find a production build in `.next-build`") because a concurrent `next build` clobbered the output dir — passed cleanly on retry. Lesson: on a shared working tree with live parallel commits, transient verify/build failures in files you never touched are environment races; re-run once and confirm the error is outside your diff before investigating.
+- **No real component to verify against**: the sprint board was initially empty (no tickets), so there was no ticket-detail code block to inspect. Built a throwaway `/dev/code-block-preview` page rendering real `renderMarkdown` output (with `ensureLanguages`), screenshotted both themes, then moved it to `deleted/` (gitignored + tsconfig-excluded, so it can't affect build). Lesson: for component-level visual checks when no live data exists, a temporary dev-route harness is faster and more reliable than hunting for qualifying data.
