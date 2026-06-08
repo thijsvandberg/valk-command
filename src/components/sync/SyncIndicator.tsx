@@ -266,7 +266,7 @@ export function SyncIndicator({
       <div className="relative inline-flex" ref={triggerRef}>
         <button
           type="button"
-          onClick={() => { if (!expanded) computePos(); setExpanded((v) => !v); }}
+          onClick={(e) => { e.stopPropagation(); if (!expanded) computePos(); setExpanded((v) => !v); }}
           className="flex items-center gap-1.5 rounded-md px-1 py-0.5 -mx-1 text-[11px] text-text-tertiary cursor-pointer hover:text-text-secondary focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)] transition-colors duration-150"
           aria-label="Activity status"
         >
