@@ -3,7 +3,6 @@
 import { useState, useLayoutEffect, type ReactNode } from "react";
 import { createPortal } from "react-dom";
 import { Minimize2 } from "lucide-react";
-import { BridgeMark } from "@/components/shared/BridgeMark";
 import { NotificationBell } from "@/components/NotificationBell";
 import { useFocusModeContext } from "@/contexts/FocusModeContext";
 
@@ -40,13 +39,10 @@ export function ViewHeader({ icon, children, actions, className, hideNotificatio
       {/* Right glow */}
       <div className="pointer-events-none absolute right-0 top-0 h-full w-48 bg-[radial-gradient(ellipse_at_right_center,color-mix(in_srgb,var(--color-brand-500)_5%,transparent)_0%,transparent_70%)]" />
 
-      {/* Brand: mark + wordmark */}
-      <div className="relative flex shrink-0 items-center gap-2.5">
-        <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-[var(--color-brand-600)] text-white shadow-[0_2px_10px_var(--color-brand-glow),inset_0_1px_0_var(--color-text-muted)]">
-          <BridgeMark size={22} />
-        </div>
-        <span className="font-[var(--font-display)] text-heading-sm font-extrabold tracking-[-0.04em] text-text-primary">
-          Bridge
+      {/* Brand: text-only console wordmark */}
+      <div className="relative flex shrink-0 items-center">
+        <span className="font-[family-name:var(--font-space-mono)] text-[19px] font-bold lowercase tracking-[-0.02em] text-text-primary">
+          bridge<span className="text-[var(--color-brand-400)]">_</span>
         </span>
       </div>
 

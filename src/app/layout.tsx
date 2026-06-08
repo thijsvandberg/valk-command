@@ -1,5 +1,5 @@
 import type { Metadata, Viewport } from "next";
-import { Inter, Bricolage_Grotesque } from "next/font/google";
+import { Inter, Bricolage_Grotesque, Space_Mono } from "next/font/google";
 import Script from "next/script";
 import { ClerkProvider } from "@clerk/nextjs";
 import { ServiceWorkerRegistrar } from "@/components/ServiceWorkerRegistrar";
@@ -14,6 +14,14 @@ const inter = Inter({
 const bricolage = Bricolage_Grotesque({
   subsets: ["latin"],
   variable: "--font-bricolage",
+  display: "swap",
+});
+
+// Console-style monospace used for the text-only Bridge wordmark.
+const spaceMono = Space_Mono({
+  subsets: ["latin"],
+  weight: ["400", "700"],
+  variable: "--font-space-mono",
   display: "swap",
 });
 
@@ -46,7 +54,7 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en" data-theme="dark" suppressHydrationWarning>
-      <body className={`${inter.variable} ${bricolage.variable}`}>
+      <body className={`${inter.variable} ${bricolage.variable} ${spaceMono.variable}`}>
         <Script id="theme-init" strategy="beforeInteractive" src="/theme-init.js" />
         <ClerkProvider>
           <ThemeProvider>
