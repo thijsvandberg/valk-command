@@ -262,12 +262,15 @@ function SavedViewsMenu({
         type="button"
         onClick={() => setOpen((v) => !v)}
         title="Saved filters"
-        className={`group flex h-7 items-center gap-1.5 rounded-md px-2 text-body-sm font-medium cursor-pointer focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)] ${
+        className={`group flex h-7 items-center gap-1.5 rounded-md px-2 text-body-sm cursor-pointer focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)] ${
           active
-            ? "bg-[color-mix(in_srgb,var(--color-brand-400)_14%,transparent)] text-[var(--color-brand-200)]"
-            : "text-text-tertiary hover:bg-hover-list-item hover:text-text-secondary"
+            ? "font-semibold text-[var(--color-brand-600)]"
+            : "font-medium text-text-tertiary hover:bg-hover-list-item hover:text-text-secondary"
         }`}
-        style={{ transition: "color 120ms, background-color 150ms" }}
+        style={{
+          transition: "color 120ms, background-color 150ms",
+          backgroundColor: active ? "color-mix(in srgb, var(--color-brand-400) 18%, transparent)" : undefined,
+        }}
       >
         <Bookmark className="h-3.5 w-3.5" strokeWidth={1.5} fill={active ? "currentColor" : "none"} />
         <span className="hidden sm:inline">{active ? active.title : "Saved"}</span>
@@ -330,7 +333,7 @@ function SprintOverflowMenu({
   onOpenSprintList,
   onCreateSprint,
 }: {
-  onOpenSprintList?: () => void;
+  onOpenSprintList?: (anchor: { top: number; right: number }) => void;
   onCreateSprint?: () => void;
 }) {
   const [open, setOpen] = useState(false);
@@ -355,7 +358,13 @@ function SprintOverflowMenu({
           {onOpenSprintList && (
             <button
               type="button"
-              onClick={() => { onOpenSprintList(); setOpen(false); }}
+              onClick={() => {
+                // Anchor the sprint-list popover to the overflow button so it opens
+                // beneath it rather than at the board root (BRDG-319).
+                const r = ref.current?.getBoundingClientRect();
+                if (r) onOpenSprintList({ top: r.bottom + 6, right: Math.max(8, window.innerWidth - r.right) });
+                setOpen(false);
+              }}
               className="flex w-full items-center gap-2 rounded-md px-2.5 py-1.5 text-left text-body-sm text-text-secondary cursor-pointer hover:bg-hover-list-item hover:text-text-primary"
             >
               <ListTree className="h-4 w-4 shrink-0 text-text-tertiary" strokeWidth={1.5} />
@@ -480,7 +489,7 @@ export function SprintSlots({
   groupBy?: GroupByOption;
   onGroupByChange?: (v: GroupByOption) => void;
   onCreateSprint?: () => void;
-  onOpenSprintList?: () => void;
+  onOpenSprintList?: (anchor: { top: number; right: number }) => void;
   groupCount?: number;
   allGroupsCollapsed?: boolean;
   onToggleCollapseAll?: () => void;
@@ -506,7 +515,7 @@ export function SprintSlots({
       <button
         type="button"
         onClick={onAllClick}
-        className={`group relative flex shrink-0 items-center self-center h-7 rounded-md px-2.5 text-body-sm font-semibold tracking-wide cursor-pointer focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)] ${
+        className={`group relative mr-2 flex shrink-0 items-center self-center h-7 rounded-md px-2.5 text-body-sm font-semibold tracking-wide cursor-pointer focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)] ${
           allActive
             ? "text-[var(--color-brand-600)]"
             : "text-[var(--color-brand-500)] hover:text-[var(--color-brand-600)]"
@@ -528,7 +537,7 @@ export function SprintSlots({
         <BacklogsDropdown backlogSprints={backlogSprints} activeBacklogId={activeBacklogId} onSelect={onBacklogSelect} />
       )}
 
-      {pillSlotSprints.length > 0 && <BarDivider className="mx-1 self-center" />}
+      {pillSlotSprints.length > 0 && <BarDivider className="mx-2.5 self-center" />}
 
       {/* Scrollable sprint-pill area with fade indicators */}
       <div className="relative flex min-w-0 flex-1 h-full items-stretch">

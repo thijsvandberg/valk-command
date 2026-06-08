@@ -137,8 +137,9 @@ export default function SprintBoard() {
   const [autoSuggest, setAutoSuggest] = useState(false);
   const [createSprintModalOpen, setCreateSprintModalOpen] = useState(false);
   // Sprint overview opened from the views bar's overflow menu (BRDG-319); the header
-  // keeps its own entry, so this is a separate instance with its own open state.
-  const [barSprintListOpen, setBarSprintListOpen] = useState(false);
+  // keeps its own entry, so this is a separate instance with its own open state. The
+  // anchor positions the popover beneath the overflow (⋯) button.
+  const [barSprintListAnchor, setBarSprintListAnchor] = useState<{ top: number; right: number } | null>(null);
   // Editable defaults for the Create Sprint modal, derived from the regular series (BRDG-305).
   const latestRegular = useMemo(() => latestRegularSprint(sprints), [sprints]);
   const suggestedSprintName = useMemo(() => nextSprintName(sprints), [sprints]);
@@ -697,7 +698,7 @@ export default function SprintBoard() {
   const boardContent = (
     <>
       <div className={`${dnd.jiraRankDndEnabled ? "relative " : ""}bg-[var(--color-surface-toolbar)]`}>
-        <SprintSlots slotSprints={slotSprints} pillSlotSprints={pillSlotSprints} activeSprintId={activeSprintId} allActive={isAllView && !f.activeViewId} sprints={sprints} backlogCount={backlogCount} backlogSprints={backlogSprints} activeBacklogId={activeBacklog?.id ?? null} onBacklogSelect={handleSprintListSelect} onSlotClick={setActiveSlot} onAllClick={handleAllClick} editingSlot={editingSlot} onSlotEdit={handleSlotEdit} onSprintSelect={handleSprintSelect} onEditClose={() => setEditingSlot(null)} onReorderSlots={handleReorderSlots} ephemeralSprintId={ephemeralSprintId} ephemeralIsActive={ephemeralIsActive} onEphemeralClick={handleEphemeralClick} filtersCollapsed={barsCollapsed} activeFilterCount={activeFilterCount} onToggleFilters={() => setBarsCollapsed((v) => !v)} savedViews={presetViews} activeViewId={f.activeViewId} onViewClick={f.handleViewClick} onSaveCurrentView={f.handleSaveView} sortField={f.sortField} sortDir={f.sortDir} onSortChange={sortChange} columnVisible={f.visibleTags} onColumnToggle={toggleColumn} onColumnReset={resetToDefaults} groupBy={groupBy} onGroupByChange={setGroupBy} onCreateSprint={() => setCreateSprintModalOpen(true)} onOpenSprintList={() => setBarSprintListOpen(true)} groupCount={groups.length} allGroupsCollapsed={allCollapsed} onToggleCollapseAll={toggleAllGroups} />
+        <SprintSlots slotSprints={slotSprints} pillSlotSprints={pillSlotSprints} activeSprintId={activeSprintId} allActive={isAllView && !f.activeViewId} sprints={sprints} backlogCount={backlogCount} backlogSprints={backlogSprints} activeBacklogId={activeBacklog?.id ?? null} onBacklogSelect={handleSprintListSelect} onSlotClick={setActiveSlot} onAllClick={handleAllClick} editingSlot={editingSlot} onSlotEdit={handleSlotEdit} onSprintSelect={handleSprintSelect} onEditClose={() => setEditingSlot(null)} onReorderSlots={handleReorderSlots} ephemeralSprintId={ephemeralSprintId} ephemeralIsActive={ephemeralIsActive} onEphemeralClick={handleEphemeralClick} filtersCollapsed={barsCollapsed} activeFilterCount={activeFilterCount} onToggleFilters={() => setBarsCollapsed((v) => !v)} savedViews={presetViews} activeViewId={f.activeViewId} onViewClick={f.handleViewClick} onSaveCurrentView={f.handleSaveView} sortField={f.sortField} sortDir={f.sortDir} onSortChange={sortChange} columnVisible={f.visibleTags} onColumnToggle={toggleColumn} onColumnReset={resetToDefaults} groupBy={groupBy} onGroupByChange={setGroupBy} onCreateSprint={() => setCreateSprintModalOpen(true)} onOpenSprintList={(anchor) => setBarSprintListAnchor(anchor)} groupCount={groups.length} allGroupsCollapsed={allCollapsed} onToggleCollapseAll={toggleAllGroups} />
         {dnd.jiraRankDndEnabled && dnd.boardActiveDragId && <SprintDropZoneBar sprints={sprints} slotSprints={slotSprints} activeSprintId={activeSprintId} />}
       </div>
       {!barsCollapsed && (
@@ -779,7 +780,7 @@ export default function SprintBoard() {
       <SearchModal open={searchModalOpen} initialQuery={f.searchQuery} onClose={() => setSearchModalOpen(false)} onSelectTicket={(key: string) => setSelectedTicket(key)} sprintNameMap={sprintNameMap} />
       {editModalOpen && editSprint && <SprintEditModal sprint={editSprint} tickets={editSprintTickets} onClose={() => { setEditModalOpen(false); setAutoSuggest(false); setEditSprintId(null); }} showToast={showToast} autoSuggest={autoSuggest} />}
       {createSprintModalOpen && <CreateSprintModal onClose={() => setCreateSprintModalOpen(false)} onCreated={handleSprintCreated} showToast={showToast} suggestedName={suggestedSprintName} suggestedStartDate={suggestedSprintStartDate} previousSprintName={latestRegular?.sprint.name} previousSprintEndIso={latestRegular?.sprint.endDate ?? null} />}
-      {barSprintListOpen && <SprintListModal onClose={() => setBarSprintListOpen(false)} onSelect={handleSprintListSelect} onPin={handleAddSlotWithSprint} pinnedIds={slotSprintsSet} />}
+      {barSprintListAnchor && <SprintListModal onClose={() => setBarSprintListAnchor(null)} onSelect={handleSprintListSelect} onPin={handleAddSlotWithSprint} pinnedIds={slotSprintsSet} portalAnchor={barSprintListAnchor} />}
       {finishModalOpen && finishSprint && (
         <FinishSprintModal
           sprint={finishSprint}
