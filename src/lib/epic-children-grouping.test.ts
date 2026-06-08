@@ -2,6 +2,9 @@ import { describe, it, expect } from "vitest";
 import {
   groupChildrenBySprint,
   nextRegularSprintGroup,
+  canPlanNextSprint,
+  nextRegularSprintCreateGroup,
+  CREATE_NEXT_SPRINT_GROUP_KEY,
   sortNamedGroups,
   UNSCHEDULED_GROUP_KEY,
   type ChildGroup,
@@ -243,5 +246,89 @@ describe("nextRegularSprintGroup", () => {
     backlog.state = "backlog";
     const ordered = sortNamedGroups([backlog, synthetic], sprints);
     expect(ordered.map((g) => g.label)).toEqual(["BT: 142", "GXP: Backlog"]);
+  });
+});
+
+describe("canPlanNextSprint", () => {
+  // Minimal ChildGroup factory; only sprintName drives the next-sprint pick.
+  function group(sprintName: string | null): ChildGroup {
+    return {
+      key: sprintName ?? UNSCHEDULED_GROUP_KEY,
+      label: sprintName ?? "Unscheduled",
+      sprintName,
+      items: [],
+      isActive: false,
+      state: null,
+      dateRange: null,
+    };
+  }
+
+  it("returns the candidate name when the next regular sprint does not exist yet", () => {
+    // Highest visible is BT: 141 -> next is BT: 142, which is absent from the list.
+    const visible = [group("BT: 140"), group("BT: 141")];
+    expect(canPlanNextSprint(visible, [sprint("BT: 141", "active", "2026-07-03")])).toBe("BT: 142");
+  });
+
+  it("returns null when the candidate already exists (BRDG-306 owns that slot)", () => {
+    const visible = [group("BT: 141")];
+    expect(canPlanNextSprint(visible, [sprint("BT: 142", "future", "2026-07-17")])).toBeNull();
+  });
+
+  it("predicts off the highest visible regular number, ignoring placeholders", () => {
+    const visible = [group("BT: 140"), group("BT: 141"), group("GXP: Backlog"), group(null)];
+    // Highest regular numeric is BT: 141 -> BT: 142, which is absent.
+    expect(canPlanNextSprint(visible, [])).toBe("BT: 142");
+  });
+
+  it("returns null when no regular numeric sprint is visible", () => {
+    const visible = [group("GXP: Backlog"), group(null)];
+    expect(canPlanNextSprint(visible, [sprint("BT: 1", "future", "2026-07-03")])).toBeNull();
+  });
+
+  it("is mutually exclusive with nextRegularSprintGroup for the same slot", () => {
+    const visible = [group("BT: 141")];
+    // Exists -> BRDG-306 returns a group, BRDG-309 returns null.
+    const existing = [sprint("BT: 142", "future", "2026-07-17")];
+    expect(nextRegularSprintGroup(visible, existing)?.sprintName).toBe("BT: 142");
+    expect(canPlanNextSprint(visible, existing)).toBeNull();
+    // Absent -> BRDG-306 returns null, BRDG-309 returns the name.
+    expect(nextRegularSprintGroup(visible, [])).toBeNull();
+    expect(canPlanNextSprint(visible, [])).toBe("BT: 142");
+  });
+});
+
+describe("nextRegularSprintCreateGroup", () => {
+  function group(sprintName: string | null): ChildGroup {
+    return {
+      key: sprintName ?? UNSCHEDULED_GROUP_KEY,
+      label: sprintName ?? "Unscheduled",
+      sprintName,
+      items: [],
+      isActive: false,
+      state: null,
+      dateRange: null,
+    };
+  }
+
+  it("builds a create-zone group carrying the predicted name", () => {
+    const zone = nextRegularSprintCreateGroup([group("BT: 141")], []);
+    expect(zone?.key).toBe(CREATE_NEXT_SPRINT_GROUP_KEY);
+    expect(zone?.label).toBe("BT: 142");
+    expect(zone?.sprintName).toBe("BT: 142");
+    expect(zone?.isCreateZone).toBe(true);
+    expect(zone?.items).toEqual([]);
+  });
+
+  it("returns null when no next sprint can be planned", () => {
+    expect(nextRegularSprintCreateGroup([group(null)], [])).toBeNull();
+  });
+
+  it("sorts after every dated group, landing in the trailing next-sprint slot", () => {
+    const sprints = [sprint("BT: 141", "active", "2026-07-03")];
+    const zone = nextRegularSprintCreateGroup([group("BT: 141")], sprints)!;
+    const existing = group("BT: 141");
+    existing.state = "active";
+    const ordered = sortNamedGroups([zone, existing], sprints);
+    expect(ordered.map((g) => g.label)).toEqual(["BT: 141", "BT: 142"]);
   });
 });

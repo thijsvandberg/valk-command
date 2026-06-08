@@ -3,6 +3,11 @@ import { isRegularSprint, nextSprintName } from "./sprint-utils";
 
 export const UNSCHEDULED_GROUP_KEY = "__unscheduled__";
 
+// Key for the synthetic "create the next sprint" drop zone (BRDG-309). Distinct
+// from a real sprint name so the component can tell it apart from BRDG-306's
+// existing-sprint zone and route its drop to the create flow.
+export const CREATE_NEXT_SPRINT_GROUP_KEY = "__create-next-sprint__";
+
 export interface ChildGroup {
   /** Group key: the sprint name, or UNSCHEDULED_GROUP_KEY for children without a sprint. */
   key: string;
@@ -16,6 +21,8 @@ export interface ChildGroup {
   state: Sprint["state"] | null;
   /** Human-readable date range from the matched sprint, or null. */
   dateRange: string | null;
+  /** Marks the BRDG-309 synthetic zone whose drop opens the Create Sprint modal. */
+  isCreateZone?: boolean;
 }
 
 // Chronological state ordering for the epic view: past (closed) leads up to the
@@ -96,6 +103,59 @@ export function nextRegularSprintGroup(
     isActive: match.state === "active",
     state: match.state,
     dateRange: match.dateRange || null,
+  };
+}
+
+/**
+ * The next regular sprint name to *create* while dragging in the by-sprint view
+ * (BRDG-309). The inverse of `nextRegularSprintGroup`'s existence check: returns
+ * the candidate `<PREFIX>: <highest + 1>` name only when it can be derived from
+ * the visible regular groups **and** no sprint with that name exists yet. Returns
+ * null when no regular sprint is visible, the candidate is already shown, or the
+ * candidate already exists (that slot belongs to BRDG-306's plain move zone).
+ * The two zones are therefore mutually exclusive for the same next-sprint slot.
+ */
+export function canPlanNextSprint(
+  visibleGroups: ChildGroup[],
+  sprints: Sprint[],
+): string | null {
+  const regularNames = visibleGroups
+    .map((g) => g.sprintName)
+    .filter((name): name is string => name !== null && isRegularSprint(name));
+  if (regularNames.length === 0) return null;
+
+  const candidateName = nextSprintName(regularNames.map((name) => ({ name })));
+  if (!candidateName) return null;
+  if (visibleGroups.some((g) => g.sprintName === candidateName)) return null;
+  // Exists already -> BRDG-306 owns this slot; this story stays inert.
+  if (sprints.some((s) => s.name === candidateName)) return null;
+
+  return candidateName;
+}
+
+/**
+ * The synthetic "create the next sprint" drop zone (BRDG-309), or null when no
+ * next sprint can be planned. Carries the predicted name so the component can
+ * label the zone and the drop can prefill the Create Sprint modal. Has no matched
+ * sprint metadata (the sprint does not exist yet), so it sorts after every dated
+ * group, landing in the trailing next-sprint slot via `sortNamedGroups`.
+ */
+export function nextRegularSprintCreateGroup(
+  visibleGroups: ChildGroup[],
+  sprints: Sprint[],
+): ChildGroup | null {
+  const candidateName = canPlanNextSprint(visibleGroups, sprints);
+  if (!candidateName) return null;
+
+  return {
+    key: CREATE_NEXT_SPRINT_GROUP_KEY,
+    label: candidateName,
+    sprintName: candidateName,
+    items: [],
+    isActive: false,
+    state: null,
+    dateRange: null,
+    isCreateZone: true,
   };
 }
 
