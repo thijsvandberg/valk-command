@@ -127,21 +127,21 @@ Reorganise the bar by type, following variant **D (Hybrid)**:
 
 - [x] A reusable `isBacklogSprintName()` (or shared equivalent) classifies backlog sprints, covered by
       unit tests (`Backlog`, `BT: Backlog`, `GXP: Backlog` true; `BT: 139`, `BT: TODO` false).
-- [ ] Backlog sprints (name-detected) + the synthetic `Backlog` appear in a **Backlogs ▾** dropdown,
+- [x] Backlog sprints (name-detected) + the synthetic `Backlog` appear in a **Backlogs ▾** dropdown,
       sourced from the full sprint list, not as numbered pills.
-- [ ] Selecting a backlog from the dropdown shows that sprint's tickets and marks it active; the trigger
+- [x] Selecting a backlog from the dropdown shows that sprint's tickets and marks it active; the trigger
       reflects the active backlog.
-- [ ] Normal numbered sprints remain one-click, draggable, pinnable pills with the active dot + underline.
-- [ ] **Overall refinement** does not appear as a sprint pill; it is available as a sprint-targeted
+- [x] Normal numbered sprints remain one-click, draggable, pinnable pills with the active dot + underline.
+- [x] **Overall refinement** does not appear as a sprint pill; it is available as a sprint-targeted
       preset under **Saved ▾**.
-- [ ] Saved views (To refine, etc.) are reachable from a **Saved ▾** menu, active one indicated;
+- [x] Saved views (To refine, etc.) are reachable from a **Saved ▾** menu, active one indicated;
       selecting one applies its filters/sort/columns as before.
-- [ ] **All** is a one-click pill and remains the default view.
-- [ ] **Sprint overview** and **New sprint** are reachable from a **⋯** menu in the bar.
-- [ ] Right-side tools (fields / sort / filter) behave exactly as before.
-- [ ] Menus close on outside click and Esc, with visible focus-visible states and `cursor: pointer`.
-- [ ] No regression to saved-view persistence, sprint pinning/reordering, or the ephemeral-sprint tab.
-- [ ] Tests cover: backlog classification, Backlogs dropdown contents + selection, saved-view menu apply,
+- [x] **All** is a one-click pill and remains the default view.
+- [x] **Sprint overview** and **New sprint** are reachable from a **⋯** menu in the bar.
+- [x] Right-side tools (fields / sort / filter) behave exactly as before.
+- [x] Menus close on outside click and Esc, with visible focus-visible states and `cursor: pointer`.
+- [x] No regression to saved-view persistence, sprint pinning/reordering, or the ephemeral-sprint tab.
+- [x] Tests cover: backlog classification, Backlogs dropdown contents + selection, saved-view menu apply,
       Overall-refinement preset, overflow menu opens sprint overview / create sprint.
 
 ## Open questions (deferred — not blocking)

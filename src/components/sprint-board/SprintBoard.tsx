@@ -25,7 +25,8 @@ import { usePencilCapacity } from "@/hooks/usePencilCapacity";
 import { useExportTask } from "@/hooks/useExportTask";
 import { usePageTitle } from "@/hooks/usePageTitle";
 import { mapJiraSprints, saveSprintSlots, saveTicketMetadata, bulkReviewStories, bulkGenerateSubtasks, computeSprintStats, computeSprintWorkDays } from "@/components/sprint-board/sprint-board-utils";
-import { sprintToSlug, slugToSprintId, buildBoardUrl, nextSprintName, latestRegularSprint } from "@/lib/sprint-utils";
+import { sprintToSlug, slugToSprintId, buildBoardUrl, nextSprintName, latestRegularSprint, isBacklogSprintName, isOverallRefinementSprint } from "@/lib/sprint-utils";
+import type { SavedView } from "@/components/sprint-board/filter-bar-types";
 import { startDateFromPreviousEnd } from "@/lib/sprint-dates";
 import { prefetchTicketList, setRouterPrefetch } from "@/lib/prefetch";
 import { getJiraUrl } from "@/components/sprint-board/TicketTableCells";
@@ -45,6 +46,7 @@ import { useToast } from "@/hooks/useToast";
 import { DndContext, DragOverlay } from "@dnd-kit/core";
 const SprintEditModal = dynamic(() => import("@/components/sprint-board/SprintEditModal").then((m) => ({ default: m.SprintEditModal })), { ssr: false });
 const CreateSprintModal = dynamic(() => import("@/components/sprint-board/CreateSprintModal").then((m) => ({ default: m.CreateSprintModal })), { ssr: false });
+const SprintListModal = dynamic(() => import("@/components/sprint-board/SprintListModal").then((m) => ({ default: m.SprintListModal })), { ssr: false });
 const FinishSprintModal = dynamic(() => import("@/components/sprint-board/FinishSprintModal").then((m) => ({ default: m.FinishSprintModal })), { ssr: false });
 import { LoadingState } from "@/components/shared/LoadingState";
 import { useColumnConfig } from "@/hooks/useColumnConfig";
@@ -96,6 +98,27 @@ export default function SprintBoard() {
 
   const [ephemeralSprintId, setEphemeralSprintId] = useState<string | null>(null);
   const ephemeralIsActive = !isAllView && ephemeralSprintId !== null && urlSprintId === ephemeralSprintId;
+
+  // Views bar reorganisation (BRDG-319): backlog-named sprints are pulled out of the
+  // numbered-pill row into the Backlogs dropdown, and "Overall refinement" becomes a
+  // preset filter under the saved-views menu. Detection is by name (single source of
+  // truth in sprint-utils); no per-sprint setting or schema change.
+  const backlogSprints = useMemo(
+    () => sprints.filter((s) => s.id === "__backlog__" || isBacklogSprintName(s.name)),
+    [sprints],
+  );
+  // Pinned slots minus backlogs + Overall refinement; render/dnd only, persistence untouched.
+  const pillSlotSprints = useMemo(
+    () => slotSprints.filter((id) => {
+      const s = sprints.find((x) => x.id === id);
+      return s ? !isBacklogSprintName(s.name) && !isOverallRefinementSprint(s.name) : true;
+    }),
+    [slotSprints, sprints],
+  );
+  const overallRefinementSprint = useMemo(
+    () => sprints.find((s) => isOverallRefinementSprint(s.name)) ?? null,
+    [sprints],
+  );
   const [editingSlot, setEditingSlot] = useState<number | null>(null);
   const [checkedTickets, setCheckedTickets] = useState<Set<string>>(new Set());
   const [focusedTicketIdx, setFocusedTicketIdx] = useState<number>(-1);
@@ -113,6 +136,9 @@ export default function SprintBoard() {
   const [editModalOpen, setEditModalOpen] = useState(false);
   const [autoSuggest, setAutoSuggest] = useState(false);
   const [createSprintModalOpen, setCreateSprintModalOpen] = useState(false);
+  // Sprint overview opened from the views bar's overflow menu (BRDG-319); the header
+  // keeps its own entry, so this is a separate instance with its own open state.
+  const [barSprintListOpen, setBarSprintListOpen] = useState(false);
   // Editable defaults for the Create Sprint modal, derived from the regular series (BRDG-305).
   const latestRegular = useMemo(() => latestRegularSprint(sprints), [sprints]);
   const suggestedSprintName = useMemo(() => nextSprintName(sprints), [sprints]);
@@ -141,6 +167,12 @@ export default function SprintBoard() {
   const slotsInitialized = useRef(false);
 
   const activeSprintId = (isAllView || searchParams.get("view")) ? "__all__" : ephemeralIsActive ? ephemeralSprintId! : slotSprints[activeSlot];
+
+  // The currently-open backlog (if any), so the Backlogs dropdown trigger can reflect it.
+  const activeBacklog = useMemo(
+    () => (isAllView ? null : backlogSprints.find((s) => s.id === activeSprintId) ?? null),
+    [isAllView, activeSprintId, backlogSprints],
+  );
 
   // Open/close the side panel by writing the ticket to the URL path. We use
   // window.history.pushState rather than router.push: router.push triggers a Next
@@ -210,6 +242,18 @@ export default function SprintBoard() {
 
   const { visible: columnVisible, toggleColumn, applyVisible, resetToDefaults } = useColumnConfig();
   const f = useSprintBoardFilters(allTickets, readinessMap, isAllView, poPriorityOrder, columnVisible, applyVisible, sprintNameMap, sprintStateMap);
+  // Surface "Overall refinement" as a built-in preset filter (sprint-scoped) in the
+  // saved-views menu rather than as a sprint pill. Synthetic, never persisted/deleted.
+  const presetViews = useMemo<SavedView[]>(() => {
+    if (!overallRefinementSprint) return f.savedViews;
+    const preset: SavedView = {
+      id: "__preset:overall-refinement__",
+      title: "Overall refinement",
+      filters: { status: [], epic: [], assignee: [], readiness: [], editState: [], sprint: [overallRefinementSprint.id] },
+      sort: { field: "rank", direction: "asc" },
+    };
+    return [preset, ...f.savedViews];
+  }, [overallRefinementSprint, f.savedViews]);
   const tickets = f.sortedTickets;
   const activeFilterCount = useMemo(() =>
     [f.statusFilter, f.epicFilter, f.assigneeFilter, f.readinessFilter, f.editStateFilter, f.issueTypeFilter, f.gapsFilter, f.teamFilter].filter((s) => s.size > 0).length + (f.searchQuery ? 1 : 0),
@@ -653,12 +697,12 @@ export default function SprintBoard() {
   const boardContent = (
     <>
       <div className={`${dnd.jiraRankDndEnabled ? "relative " : ""}bg-[var(--color-surface-toolbar)]`}>
-        <SprintSlots slotSprints={slotSprints} activeSlot={activeSlot} allActive={isAllView && !f.activeViewId} sprints={sprints} backlogCount={backlogCount} onSlotClick={setActiveSlot} onAllClick={handleAllClick} editingSlot={editingSlot} onSlotEdit={handleSlotEdit} onSprintSelect={handleSprintSelect} onEditClose={() => setEditingSlot(null)} onReorderSlots={handleReorderSlots} ephemeralSprintId={ephemeralSprintId} ephemeralIsActive={ephemeralIsActive} onEphemeralClick={handleEphemeralClick} filtersCollapsed={barsCollapsed} activeFilterCount={activeFilterCount} onToggleFilters={() => setBarsCollapsed((v) => !v)} savedViews={f.savedViews} activeViewId={f.activeViewId} onViewClick={f.handleViewClick} sortField={f.sortField} sortDir={f.sortDir} onSortChange={sortChange} columnVisible={f.visibleTags} onColumnToggle={toggleColumn} onColumnReset={resetToDefaults} groupBy={groupBy} onGroupByChange={setGroupBy} onCreateSprint={() => setCreateSprintModalOpen(true)} groupCount={groups.length} allGroupsCollapsed={allCollapsed} onToggleCollapseAll={toggleAllGroups} />
+        <SprintSlots slotSprints={slotSprints} pillSlotSprints={pillSlotSprints} activeSprintId={activeSprintId} allActive={isAllView && !f.activeViewId} sprints={sprints} backlogCount={backlogCount} backlogSprints={backlogSprints} activeBacklogId={activeBacklog?.id ?? null} onBacklogSelect={handleSprintListSelect} onSlotClick={setActiveSlot} onAllClick={handleAllClick} editingSlot={editingSlot} onSlotEdit={handleSlotEdit} onSprintSelect={handleSprintSelect} onEditClose={() => setEditingSlot(null)} onReorderSlots={handleReorderSlots} ephemeralSprintId={ephemeralSprintId} ephemeralIsActive={ephemeralIsActive} onEphemeralClick={handleEphemeralClick} filtersCollapsed={barsCollapsed} activeFilterCount={activeFilterCount} onToggleFilters={() => setBarsCollapsed((v) => !v)} savedViews={presetViews} activeViewId={f.activeViewId} onViewClick={f.handleViewClick} onSaveCurrentView={f.handleSaveView} sortField={f.sortField} sortDir={f.sortDir} onSortChange={sortChange} columnVisible={f.visibleTags} onColumnToggle={toggleColumn} onColumnReset={resetToDefaults} groupBy={groupBy} onGroupByChange={setGroupBy} onCreateSprint={() => setCreateSprintModalOpen(true)} onOpenSprintList={() => setBarSprintListOpen(true)} groupCount={groups.length} allGroupsCollapsed={allCollapsed} onToggleCollapseAll={toggleAllGroups} />
         {dnd.jiraRankDndEnabled && dnd.boardActiveDragId && <SprintDropZoneBar sprints={sprints} slotSprints={slotSprints} activeSprintId={activeSprintId} />}
       </div>
       {!barsCollapsed && (
         <div className="border-b border-border-default bg-[var(--color-surface-toolbar)]">
-          <FilterBar statusFilter={f.statusFilter} epicFilter={f.epicFilter} assigneeFilter={f.assigneeFilter} readinessFilter={f.readinessFilter} editStateFilter={f.editStateFilter} issueTypeFilter={f.issueTypeFilter} onStatusFilterChange={f.setStatusFilter} onEpicFilterChange={f.setEpicFilter} onAssigneeFilterChange={f.setAssigneeFilter} onReadinessFilterChange={f.setReadinessFilter} onEditStateFilterChange={f.setEditStateFilter} onIssueTypeFilterChange={f.setIssueTypeFilter} gapsFilter={f.gapsFilter} onGapsFilterChange={f.setGapsFilter} statusOptions={f.statusOptions} epicOptions={f.epicOptions} assigneeOptions={f.assigneeOptions} issueTypeOptions={f.issueTypeOptions} teamFilter={f.teamFilter} onTeamFilterChange={f.setTeamFilter} teamOptions={f.teamOptions} {... (isAllView ? { sprintFilter: f.sprintFilter, onSprintFilterChange: f.setSprintFilter, sprintOptions: f.sprintOptions, sprintNameMap } : {})} noBorder searchQuery={f.searchQuery} onSearchChange={f.setSearchQuery} onSaveView={f.handleSaveView} onDeleteView={f.activeViewId ? () => f.handleDeleteView(f.activeViewId!) : undefined} activeView={f.activeView} />
+          <FilterBar statusFilter={f.statusFilter} epicFilter={f.epicFilter} assigneeFilter={f.assigneeFilter} readinessFilter={f.readinessFilter} editStateFilter={f.editStateFilter} issueTypeFilter={f.issueTypeFilter} onStatusFilterChange={f.setStatusFilter} onEpicFilterChange={f.setEpicFilter} onAssigneeFilterChange={f.setAssigneeFilter} onReadinessFilterChange={f.setReadinessFilter} onEditStateFilterChange={f.setEditStateFilter} onIssueTypeFilterChange={f.setIssueTypeFilter} gapsFilter={f.gapsFilter} onGapsFilterChange={f.setGapsFilter} statusOptions={f.statusOptions} epicOptions={f.epicOptions} assigneeOptions={f.assigneeOptions} issueTypeOptions={f.issueTypeOptions} teamFilter={f.teamFilter} onTeamFilterChange={f.setTeamFilter} teamOptions={f.teamOptions} {... (isAllView ? { sprintFilter: f.sprintFilter, onSprintFilterChange: f.setSprintFilter, sprintOptions: f.sprintOptions, sprintNameMap } : {})} noBorder searchQuery={f.searchQuery} onSearchChange={f.setSearchQuery} onSaveView={f.handleSaveView} onDeleteView={f.activeViewId && !f.activeViewId.startsWith("__preset:") ? () => f.handleDeleteView(f.activeViewId!) : undefined} activeView={f.activeView} />
         </div>
       )}
       <div ref={contentScrollRef} className="min-h-0 flex-1 overflow-y-auto">
@@ -735,6 +779,7 @@ export default function SprintBoard() {
       <SearchModal open={searchModalOpen} initialQuery={f.searchQuery} onClose={() => setSearchModalOpen(false)} onSelectTicket={(key: string) => setSelectedTicket(key)} sprintNameMap={sprintNameMap} />
       {editModalOpen && editSprint && <SprintEditModal sprint={editSprint} tickets={editSprintTickets} onClose={() => { setEditModalOpen(false); setAutoSuggest(false); setEditSprintId(null); }} showToast={showToast} autoSuggest={autoSuggest} />}
       {createSprintModalOpen && <CreateSprintModal onClose={() => setCreateSprintModalOpen(false)} onCreated={handleSprintCreated} showToast={showToast} suggestedName={suggestedSprintName} suggestedStartDate={suggestedSprintStartDate} previousSprintName={latestRegular?.sprint.name} previousSprintEndIso={latestRegular?.sprint.endDate ?? null} />}
+      {barSprintListOpen && <SprintListModal onClose={() => setBarSprintListOpen(false)} onSelect={handleSprintListSelect} onPin={handleAddSlotWithSprint} pinnedIds={slotSprintsSet} />}
       {finishModalOpen && finishSprint && (
         <FinishSprintModal
           sprint={finishSprint}

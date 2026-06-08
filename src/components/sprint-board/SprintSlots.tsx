@@ -3,13 +3,14 @@
 import { useState, useRef, useEffect, useCallback } from "react";
 import { useOutsideClick } from "@/hooks/useOutsideClick";
 import type { Sprint } from "@/types/ticket";
-import { ArrowUp, ArrowDown, ListFilter, Layers, X, Plus, Inbox, ChevronsDownUp, ChevronsUpDown } from "lucide-react";
+import { ArrowUp, ArrowDown, ListFilter, Layers, X, Plus, Inbox, ChevronsDownUp, ChevronsUpDown, Bookmark, MoreHorizontal, ChevronDown, Check, ListTree, CalendarPlus } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import type { SavedView, SortField, SortDir, InlineTagId } from "./FilterBar";
 import { BoardFieldToggle, SortDropdown, SORT_OPTIONS } from "./FilterBar";
 import type { GroupByOption } from "./useGroupBy";
 import { SprintSelector } from "./SprintSelector";
-import { BarContainer } from "@/components/shared/BarContainer";
+import { isBacklogSprintName } from "@/lib/sprint-utils";
+import { BarContainer, BarDivider } from "@/components/shared/BarContainer";
 import {
   DndContext,
   closestCenter,
@@ -150,6 +151,219 @@ function GroupByDropdown({ value, onChange }: { value: GroupByOption; onChange: 
   );
 }
 
+// -- Backlogs dropdown (BRDG-319) --
+// All backlog-named sprints (+ the synthetic Backlog) collapse here instead of
+// crowding the numbered-sprint row. Sourced from the full sprint list, so unpinned
+// team backlogs (GXP, BO, ...) are reachable without taking a pinned slot.
+
+function BacklogsDropdown({
+  backlogSprints,
+  activeBacklogId,
+  onSelect,
+}: {
+  backlogSprints: Sprint[];
+  activeBacklogId: string | null;
+  onSelect: (sprintId: string) => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
+  useOutsideClick(ref, () => setOpen(false), { enabled: open });
+
+  if (backlogSprints.length === 0) return null;
+  const active = backlogSprints.find((s) => s.id === activeBacklogId) ?? null;
+
+  return (
+    <div ref={ref} className="relative shrink-0 self-center">
+      <button
+        type="button"
+        onClick={() => setOpen((v) => !v)}
+        title="Backlogs"
+        className={`flex h-7 items-center gap-1.5 rounded-md border px-2.5 text-body-sm font-medium cursor-pointer focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)] ${
+          active
+            ? "border-border-strong text-text-primary"
+            : "border-border-default text-text-tertiary hover:border-border-strong hover:text-text-secondary"
+        }`}
+        style={{ transition: "color 120ms, border-color 150ms", backgroundColor: active ? "color-mix(in srgb, var(--color-text-primary) 4%, transparent)" : undefined }}
+      >
+        <Inbox className="h-3.5 w-3.5" strokeWidth={1.5} />
+        <span>{active ? active.name : "Backlogs"}</span>
+        <ChevronDown className={`h-3 w-3 transition-transform duration-150 ${open ? "rotate-180" : ""}`} strokeWidth={1.75} />
+      </button>
+      {open && (
+        <div className="absolute top-full left-0 z-50 mt-1 max-h-[60vh] w-56 overflow-y-auto rounded-lg border border-border-strong bg-[var(--color-surface-floating)] p-1 shadow-[var(--shadow-lg)]">
+          {backlogSprints.map((s) => {
+            const isActive = s.id === activeBacklogId;
+            return (
+              <button
+                key={s.id}
+                type="button"
+                onClick={() => { onSelect(s.id); setOpen(false); }}
+                className={`flex w-full items-center gap-2 rounded-md px-2.5 py-1.5 text-left text-body-sm cursor-pointer hover:bg-hover-list-item ${isActive ? "text-text-primary" : "text-text-secondary"}`}
+              >
+                <Inbox className="h-3.5 w-3.5 shrink-0 text-text-tertiary" strokeWidth={1.5} />
+                <span className="flex-1 truncate">{s.name}</span>
+                {s.ticketCount > 0 && <span className="text-[11px] tabular-nums text-text-muted">{s.ticketCount}</span>}
+                {isActive && <Check className="h-3.5 w-3.5 shrink-0 text-[var(--color-brand-400)]" strokeWidth={2} />}
+              </button>
+            );
+          })}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// -- Saved views menu (BRDG-319) --
+// Saved filters/presets (incl. the built-in "Overall refinement") live behind a
+// bookmark menu instead of inline tabs, so they scale and stay out of the way.
+
+function SavedViewsMenu({
+  savedViews,
+  activeViewId,
+  onViewClick,
+  onSaveCurrentView,
+}: {
+  savedViews: SavedView[];
+  activeViewId: string | null;
+  onViewClick?: (view: SavedView) => void;
+  onSaveCurrentView?: (title: string) => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const [naming, setNaming] = useState(false);
+  const [title, setTitle] = useState("");
+  const ref = useRef<HTMLDivElement>(null);
+  useOutsideClick(ref, () => { setOpen(false); setNaming(false); }, { enabled: open });
+
+  const active = savedViews.find((v) => v.id === activeViewId) ?? null;
+
+  function commitSave() {
+    const t = title.trim();
+    if (t && onSaveCurrentView) onSaveCurrentView(t);
+    setTitle(""); setNaming(false); setOpen(false);
+  }
+
+  return (
+    <div ref={ref} className="relative shrink-0 self-center">
+      <button
+        type="button"
+        onClick={() => setOpen((v) => !v)}
+        title="Saved filters"
+        className={`group flex h-7 items-center gap-1.5 rounded-md px-2 text-body-sm font-medium cursor-pointer focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)] ${
+          active
+            ? "bg-[color-mix(in_srgb,var(--color-brand-400)_14%,transparent)] text-[var(--color-brand-200)]"
+            : "text-text-tertiary hover:bg-hover-list-item hover:text-text-secondary"
+        }`}
+        style={{ transition: "color 120ms, background-color 150ms" }}
+      >
+        <Bookmark className="h-3.5 w-3.5" strokeWidth={1.5} fill={active ? "currentColor" : "none"} />
+        <span className="hidden sm:inline">{active ? active.title : "Saved"}</span>
+        <ChevronDown className={`h-3 w-3 transition-transform duration-150 ${open ? "rotate-180" : ""}`} strokeWidth={1.75} />
+      </button>
+      {open && (
+        <div className="absolute top-full right-0 z-50 mt-1 w-56 rounded-lg border border-border-strong bg-[var(--color-surface-floating)] p-1 shadow-[var(--shadow-lg)]">
+          {savedViews.length === 0 && !naming && (
+            <p className="px-2.5 py-2 text-body-sm text-text-muted">No saved filters yet</p>
+          )}
+          {savedViews.map((view) => {
+            const isActive = view.id === activeViewId;
+            return (
+              <button
+                key={view.id}
+                type="button"
+                onClick={() => { onViewClick?.(view); setOpen(false); }}
+                className={`flex w-full items-center gap-2 rounded-md px-2.5 py-1.5 text-left text-body-sm cursor-pointer hover:bg-hover-list-item ${isActive ? "text-text-primary" : "text-text-secondary"}`}
+              >
+                <Bookmark className="h-3.5 w-3.5 shrink-0 text-text-tertiary" strokeWidth={1.5} />
+                <span className="flex-1 truncate">{view.title}</span>
+                {isActive && <Check className="h-3.5 w-3.5 shrink-0 text-[var(--color-brand-400)]" strokeWidth={2} />}
+              </button>
+            );
+          })}
+          {onSaveCurrentView && (
+            <>
+              <div className="my-1 h-px bg-border-subtle" />
+              {naming ? (
+                <input
+                  autoFocus
+                  value={title}
+                  onChange={(e) => setTitle(e.target.value)}
+                  onKeyDown={(e) => { if (e.key === "Enter") commitSave(); else if (e.key === "Escape") { setNaming(false); setTitle(""); } }}
+                  onBlur={commitSave}
+                  placeholder="View name…"
+                  className="w-full rounded-md border border-border-strong bg-transparent px-2.5 py-1.5 text-body-sm text-text-primary outline-none placeholder:text-text-muted focus-visible:border-[var(--color-brand-400)]"
+                />
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => setNaming(true)}
+                  className="flex w-full items-center gap-2 rounded-md px-2.5 py-1.5 text-left text-body-sm text-text-secondary cursor-pointer hover:bg-hover-list-item hover:text-text-primary"
+                >
+                  <Plus className="h-3.5 w-3.5 shrink-0 text-text-tertiary" strokeWidth={1.5} />
+                  Save current view…
+                </button>
+              )}
+            </>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// -- Sprint overflow menu (BRDG-319): sprint overview + create sprint --
+
+function SprintOverflowMenu({
+  onOpenSprintList,
+  onCreateSprint,
+}: {
+  onOpenSprintList?: () => void;
+  onCreateSprint?: () => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
+  useOutsideClick(ref, () => setOpen(false), { enabled: open });
+
+  if (!onOpenSprintList && !onCreateSprint) return null;
+
+  return (
+    <div ref={ref} className="relative shrink-0 self-center">
+      <button
+        type="button"
+        onClick={() => setOpen((v) => !v)}
+        title="Sprint actions"
+        aria-label="Sprint actions"
+        className="grid h-6 w-6 place-items-center rounded-md text-text-muted cursor-pointer hover:bg-overlay-default hover:text-text-secondary focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)] transition-colors duration-100"
+      >
+        <MoreHorizontal size={14} strokeWidth={1.5} />
+      </button>
+      {open && (
+        <div className="absolute top-full left-0 z-50 mt-1 w-48 rounded-lg border border-border-strong bg-[var(--color-surface-floating)] p-1 shadow-[var(--shadow-lg)]">
+          {onOpenSprintList && (
+            <button
+              type="button"
+              onClick={() => { onOpenSprintList(); setOpen(false); }}
+              className="flex w-full items-center gap-2 rounded-md px-2.5 py-1.5 text-left text-body-sm text-text-secondary cursor-pointer hover:bg-hover-list-item hover:text-text-primary"
+            >
+              <ListTree className="h-4 w-4 shrink-0 text-text-tertiary" strokeWidth={1.5} />
+              Sprint overview
+            </button>
+          )}
+          {onCreateSprint && (
+            <button
+              type="button"
+              onClick={() => { onCreateSprint(); setOpen(false); }}
+              className="flex w-full items-center gap-2 rounded-md px-2.5 py-1.5 text-left text-body-sm text-text-secondary cursor-pointer hover:bg-hover-list-item hover:text-text-primary"
+            >
+              <CalendarPlus className="h-4 w-4 shrink-0 text-text-tertiary" strokeWidth={1.5} />
+              New sprint
+            </button>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
 // -- Scroll overflow detection for fade indicators --
 
 function useScrollOverflow(ref: React.RefObject<HTMLElement | null>) {
@@ -178,10 +392,14 @@ function useScrollOverflow(ref: React.RefObject<HTMLElement | null>) {
 
 export function SprintSlots({
   slotSprints,
-  activeSlot,
+  pillSlotSprints,
+  activeSprintId = null,
   allActive,
   sprints,
   backlogCount = 0,
+  backlogSprints = [],
+  activeBacklogId = null,
+  onBacklogSelect,
   onSlotClick,
   onAllClick,
   editingSlot,
@@ -198,6 +416,7 @@ export function SprintSlots({
   savedViews = [],
   activeViewId = null,
   onViewClick,
+  onSaveCurrentView,
   sortField,
   sortDir,
   onSortChange,
@@ -207,15 +426,20 @@ export function SprintSlots({
   groupBy,
   onGroupByChange,
   onCreateSprint,
+  onOpenSprintList,
   groupCount = 0,
   allGroupsCollapsed = false,
   onToggleCollapseAll,
 }: {
   slotSprints: string[];
-  activeSlot: number;
+  pillSlotSprints: string[];
+  activeSprintId?: string | null;
   allActive: boolean;
   sprints: Sprint[];
   backlogCount?: number;
+  backlogSprints?: Sprint[];
+  activeBacklogId?: string | null;
+  onBacklogSelect?: (sprintId: string) => void;
   onSlotClick: (idx: number) => void;
   onAllClick: () => void;
   editingSlot: number | null;
@@ -232,6 +456,7 @@ export function SprintSlots({
   savedViews?: SavedView[];
   activeViewId?: string | null;
   onViewClick?: (view: SavedView) => void;
+  onSaveCurrentView?: (title: string) => void;
   sortField?: SortField;
   sortDir?: SortDir;
   onSortChange?: (field: SortField, dir: SortDir) => void;
@@ -241,6 +466,7 @@ export function SprintSlots({
   groupBy?: GroupByOption;
   onGroupByChange?: (v: GroupByOption) => void;
   onCreateSprint?: () => void;
+  onOpenSprintList?: () => void;
   groupCount?: number;
   allGroupsCollapsed?: boolean;
   onToggleCollapseAll?: () => void;
@@ -293,28 +519,12 @@ export function SprintSlots({
         All
       </button>
 
-      {/* Saved view tabs -- pill outline style to group with "All" */}
-      {savedViews.length > 0 && savedViews.map((view) => {
-        const isActive = activeViewId === view.id;
-        return (
-          <button
-            key={view.id}
-            type="button"
-            onClick={() => onViewClick?.(view)}
-            className={`group relative flex shrink-0 items-center self-center h-7 rounded-md px-2.5 text-body-sm font-semibold tracking-wide cursor-pointer border focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)] ${
-              isActive
-                ? "border-border-strong text-text-primary"
-                : "border-border-default text-text-tertiary hover:text-text-secondary hover:border-border-strong"
-            }`}
-            style={{
-              transition: "color 120ms, border-color 150ms",
-              backgroundColor: isActive ? "color-mix(in srgb, var(--color-text-primary) 4%, transparent)" : undefined,
-            }}
-          >
-            {view.title}
-          </button>
-        );
-      })}
+      {/* Backlogs dropdown -- backlog-named sprints collapse here (BRDG-319) */}
+      {onBacklogSelect && (
+        <BacklogsDropdown backlogSprints={backlogSprints} activeBacklogId={activeBacklogId} onSelect={onBacklogSelect} />
+      )}
+
+      {pillSlotSprints.length > 0 && <BarDivider className="mx-1 self-center" />}
 
       <DndContext
         sensors={sensors}
@@ -322,26 +532,29 @@ export function SprintSlots({
         onDragEnd={handleDragEnd}
       >
         <SortableContext
-          items={slotSprints}
+          items={pillSlotSprints}
           strategy={horizontalListSortingStrategy}
         >
-          {slotSprints.map((sprintId, idx) => {
+          {pillSlotSprints.map((sprintId) => {
             const sprint = sprints.find((s) => s.id === sprintId);
             if (!sprint) return null;
-            const isActive = !activeViewId && idx === activeSlot;
+            // Active/edit stay index-based against the persisted slot array; the
+            // pill row is a filtered view of it (backlogs/Overall refinement pulled out).
+            const slotIdx = slotSprints.indexOf(sprintId);
+            const isActive = !activeViewId && sprintId === activeSprintId;
             return (
               <div key={sprintId} className="relative shrink-0 flex h-full items-stretch">
                 <SortableTab
                   sprintId={sprintId}
                   sprint={sprint}
                   isActive={isActive}
-                  onClick={() => onSlotClick(idx)}
+                  onClick={() => onSlotClick(slotIdx)}
                   onContextMenu={(e) => {
                     e.preventDefault();
-                    onSlotEdit(idx);
+                    onSlotEdit(slotIdx);
                   }}
                 />
-                {editingSlot === idx && (
+                {editingSlot === slotIdx && (
                   <SprintSelector
                     sprints={sprints}
                     backlogCount={backlogCount}
@@ -355,28 +568,13 @@ export function SprintSlots({
         </SortableContext>
       </DndContext>
 
-      {/* Create sprint button */}
-      {onCreateSprint && (
-        <button
-          type="button"
-          onClick={onCreateSprint}
-          disabled={slotSprints.length >= 8}
-          title={slotSprints.length >= 8 ? "Maximum 8 pinned sprints" : "Create sprint"}
-          aria-label={slotSprints.length >= 8 ? "Maximum 8 pinned sprints" : "Create sprint"}
-          className="group relative flex shrink-0 items-center justify-center self-center h-6 w-6 rounded-md text-text-muted cursor-pointer
-            hover:text-text-secondary hover:bg-overlay-default
-            focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)]
-            disabled:opacity-30 disabled:cursor-not-allowed disabled:hover:bg-transparent disabled:hover:text-text-muted
-            transition-colors duration-100"
-        >
-          <Plus size={13} strokeWidth={1.5} />
-        </button>
-      )}
+      {/* Sprint overflow: sprint overview + create sprint */}
+      <SprintOverflowMenu onOpenSprintList={onOpenSprintList} onCreateSprint={onCreateSprint} />
 
-      {/* Ephemeral (unpinned) sprint tab */}
+      {/* Ephemeral (unpinned) sprint tab -- backlogs surface via the Backlogs dropdown instead */}
       {ephemeralSprintId && (() => {
         const eSprint = sprints.find((s) => s.id === ephemeralSprintId);
-        if (!eSprint) return null;
+        if (!eSprint || isBacklogSprintName(eSprint.name)) return null;
         return (
           <button
             type="button"
@@ -407,6 +605,9 @@ export function SprintSlots({
 
       {/* Right side: icon group */}
       <div className="ml-auto flex shrink-0 items-center gap-1 pl-2">
+        {/* Saved filters menu (BRDG-319) */}
+        <SavedViewsMenu savedViews={savedViews} activeViewId={activeViewId} onViewClick={onViewClick} onSaveCurrentView={onSaveCurrentView} />
+        <BarDivider className="mx-0.5 self-center" />
         {/* Active sort label — shown to the left of the icon group */}
         {sortField && sortField !== "rank" && sortDir && onSortChange && (
           <div className="flex items-center mr-1">

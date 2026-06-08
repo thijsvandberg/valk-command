@@ -2,6 +2,7 @@ import { renderHook, act } from "@testing-library/react";
 import { describe, it, expect, beforeEach, vi } from "vitest";
 import { useSprintBoardFilters } from "./useSprintBoardFilters";
 import { SPRINT_STATE_CLOSED, SPRINT_STATE_FILTER_PREFIX } from "./filter-bar-types";
+import type { SavedView } from "./filter-bar-types";
 import type { Ticket } from "@/types/ticket";
 
 vi.mock("next/navigation", () => ({
@@ -234,5 +235,22 @@ describe("useSprintBoardFilters - All-view filter memory (BRDG-281)", () => {
     const { result } = renderHook(() => useSprintBoardFilters(ALL, {}, true, null));
     act(() => result.current.showOnlyEpicInAllView("Onboarding"));
     expect([...result.current.epicFilter]).toEqual(["Onboarding"]);
+  });
+});
+
+// BRDG-319: the "Overall refinement" preset is a synthetic saved view whose only
+// filter is a sprint id. Applying it must scope the All view to that sprint.
+describe("useSprintBoardFilters - sprint-targeted saved view (BRDG-319)", () => {
+  const SPRINT_VIEW: SavedView = {
+    id: "__preset:overall-refinement__",
+    title: "Overall refinement",
+    filters: { status: [], epic: [], assignee: [], readiness: [], editState: [], sprint: ["o1"] },
+    sort: { field: "rank", direction: "asc" },
+  };
+
+  it("applies the view's sprint filter to the All view", () => {
+    const { result } = renderHook(() => useSprintBoardFilters(ALL, {}, true, null));
+    act(() => result.current.handleViewClick(SPRINT_VIEW));
+    expect([...result.current.sprintFilter]).toEqual(["o1"]);
   });
 });
