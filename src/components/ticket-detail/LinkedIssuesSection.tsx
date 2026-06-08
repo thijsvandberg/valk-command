@@ -58,12 +58,17 @@ export function LinkedIssuesSection({ issues, ticketKey, onMutate }: LinkedIssue
   const [deletingKeys, setDeletingKeys] = useState<Set<string>>(new Set());
   const [inlineFocused, setInlineFocused] = useState(false);
   const inlineInputRef = useRef<HTMLInputElement>(null);
-  // The inline link composer is hidden until the header "+" opens it (BRDG-315), mirroring the
-  // sprint board and epic child views.
-  const [linkOpen, setLinkOpen] = useState(false);
+  // Which create composer is open (BRDG-315): null = closed, "__bottom__" = the header "+", or a
+  // relation value = the "+" on that group's heading (the composer then expands within that
+  // section with the link type preset to that relation).
+  const [composerAt, setComposerAt] = useState<string | null>(null);
   useEffect(() => {
-    if (linkOpen) requestAnimationFrame(() => inlineInputRef.current?.focus());
-  }, [linkOpen]);
+    if (composerAt) requestAnimationFrame(() => inlineInputRef.current?.focus());
+  }, [composerAt]);
+  const openGroupComposer = useCallback((relation: string) => {
+    setInlineRelation(relation);
+    setComposerAt((prev) => (prev === relation ? null : relation));
+  }, []);
   const inlineDropdownRef = useRef<HTMLDivElement>(null);
   const interactingWithDropdownRef = useRef(false);
 
@@ -309,7 +314,7 @@ export function LinkedIssuesSection({ issues, ticketKey, onMutate }: LinkedIssue
         search.resetSearch();
         inlineInputRef.current?.blur();
         // Escape on an empty input closes the composer (parity with the sprint board create row).
-        if (!search.query) setLinkOpen(false);
+        if (!search.query) setComposerAt(null);
       }
       return;
     }
@@ -387,11 +392,11 @@ export function LinkedIssuesSection({ issues, ticketKey, onMutate }: LinkedIssue
   const linkButton = (
     <button
       type="button"
-      onClick={() => setLinkOpen((v) => !v)}
+      onClick={() => setComposerAt((v) => (v === "__bottom__" ? null : "__bottom__"))}
       aria-label="Link an issue"
-      aria-pressed={linkOpen}
+      aria-pressed={composerAt === "__bottom__"}
       className={`flex cursor-pointer items-center justify-center rounded-md p-1.5 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)] ${
-        linkOpen
+        composerAt === "__bottom__"
           ? "bg-[var(--color-brand-500)]/[0.08] text-[var(--color-brand-400)]"
           : "text-text-muted hover:bg-overlay-subtle hover:text-text-secondary"
       }`}
@@ -402,51 +407,9 @@ export function LinkedIssuesSection({ issues, ticketKey, onMutate }: LinkedIssue
     </button>
   );
 
-  return (
-    <div className="mt-8">
-      <SectionHeader
-        title="Linked Issues"
-        count={allIssues.length}
-        actions={<>{suggestButton}{linkButton}</>}
-        sectionKey={SECTION_KEYS.linkedIssues}
-      >
-
-      {allIssues.length > 0 && (
-        <div className="mt-3 space-y-4">
-          {Object.entries(grouped).map(([relation, items]) => (
-            <div key={relation}>
-              <div className="mb-2 text-label font-medium uppercase tracking-wider text-text-muted">
-                {relation}
-              </div>
-              <div className="overflow-hidden rounded-lg border border-border-default">
-                {items.map((item, idx) => {
-                  const isPending = item.jiraLinkId?.startsWith("pending-");
-
-                  return (
-                    <ChildIssueRow
-                      key={item.key}
-                      item={item}
-                      isLast={idx === items.length - 1}
-                      isPending={isPending}
-                      showTypeIcon
-                      showKey
-                      showStatus
-                      metadataSlot={<Avatar assignee={item.assignee} size={22} />}
-                      actionsSlot={!isPending ? (
-                        <DeleteButton onClick={() => handleDelete(item)} />
-                      ) : undefined}
-                    />
-                  );
-                })}
-              </div>
-            </div>
-          ))}
-        </div>
-      )}
-
-      {/* Inline link input: hidden until the header "+" opens it, styled as the shared raised
-          inset bar (tinted strip + raised bar) used across the create rows (BRDG-315). */}
-      {linkOpen && (
+  // The link composer (one shared instance) renders under whichever group's "+" is active, or at
+  // the bottom when opened from the header "+" — styled as the shared raised inset bar (BRDG-315).
+  const linkComposer = (
       <div className="mt-3 rounded-lg bg-[var(--color-surface-chrome)]/40 p-3 lg:p-4">
       <div className="relative rounded-lg border border-border-default bg-[var(--color-surface-elevated)] shadow-[var(--shadow-sm)]">
         <div className="flex items-center gap-3 px-3 py-2">
@@ -652,7 +615,70 @@ export function LinkedIssuesSection({ issues, ticketKey, onMutate }: LinkedIssue
         )}
       </div>
       </div>
+  );
+
+  return (
+    <div className="mt-8">
+      <SectionHeader
+        title="Linked Issues"
+        count={allIssues.length}
+        actions={<>{suggestButton}{linkButton}</>}
+        sectionKey={SECTION_KEYS.linkedIssues}
+      >
+
+      {allIssues.length > 0 && (
+        <div className="mt-3 space-y-4">
+          {Object.entries(grouped).map(([relation, items]) => (
+            <div key={relation}>
+              <div className="group/relgroup mb-2 flex items-center gap-1.5">
+                <span className="text-label font-medium uppercase tracking-wider text-text-muted">
+                  {relation}
+                </span>
+                <button
+                  type="button"
+                  onClick={() => openGroupComposer(relation)}
+                  aria-label={`Add a "${relation}" link`}
+                  aria-pressed={composerAt === relation}
+                  title={`Add a "${relation}" link`}
+                  className={`flex h-4 w-4 shrink-0 cursor-pointer items-center justify-center rounded focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-[var(--color-brand-400)] ${
+                    composerAt === relation
+                      ? "text-[var(--color-brand-400)]"
+                      : "text-text-muted opacity-0 group-hover/relgroup:opacity-100 hover:text-text-secondary"
+                  }`}
+                  style={{ transition: "opacity 0.15s ease, color 0.15s ease" }}
+                >
+                  <Plus size={12} strokeWidth={2} />
+                </button>
+              </div>
+              <div className="overflow-hidden rounded-lg border border-border-default">
+                {items.map((item, idx) => {
+                  const isPending = item.jiraLinkId?.startsWith("pending-");
+
+                  return (
+                    <ChildIssueRow
+                      key={item.key}
+                      item={item}
+                      isLast={idx === items.length - 1}
+                      isPending={isPending}
+                      showTypeIcon
+                      showKey
+                      showStatus
+                      metadataSlot={<Avatar assignee={item.assignee} size={22} />}
+                      actionsSlot={!isPending ? (
+                        <DeleteButton onClick={() => handleDelete(item)} />
+                      ) : undefined}
+                    />
+                  );
+                })}
+              </div>
+              {composerAt === relation && linkComposer}
+            </div>
+          ))}
+        </div>
       )}
+
+      {/* Header "+" opens the composer at the bottom; a group "+" opens it within that group. */}
+      {composerAt === "__bottom__" && linkComposer}
 
       <RelatedSuggestions
         suggestions={suggestions}

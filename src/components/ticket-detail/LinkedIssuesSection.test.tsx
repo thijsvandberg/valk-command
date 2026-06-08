@@ -103,6 +103,24 @@ describe("LinkedIssuesSection", () => {
     expect(screen.queryByPlaceholderText("Link issue...")).toBeNull();
   });
 
+  it("a group heading + opens the composer with that relation preset", () => {
+    const blockingIssue: LinkedIssue = {
+      key: "VPL-200",
+      title: "Blocking issue",
+      type: "story",
+      jiraStatus: "TO DO",
+      assignee: null,
+      relation: "blocks",
+      jiraLinkId: "link-2",
+    };
+    renderSection([blockingIssue], { openLink: false });
+    expect(screen.queryByPlaceholderText("Link issue...")).toBeNull();
+    fireEvent.click(screen.getByLabelText('Add a "blocks" link'));
+    expect(screen.getByPlaceholderText("Link issue...")).toBeInTheDocument();
+    // The relation chip is preset to the group's relation.
+    expect(screen.getByText("Blocks")).toBeInTheDocument();
+  });
+
   it("renders inline input placeholder when no issues exist", () => {
     renderSection();
     expect(screen.getByPlaceholderText("Link issue...")).toBeInTheDocument();
