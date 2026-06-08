@@ -90,6 +90,17 @@ Grounded in the existing SP/BV pattern so the new field mirrors what already wor
 
 ## Implementation Plan
 
+### Verified decisions (resolved gaps, 2026-06-08)
+
+- **Colour bands** for the fullness meter: healthy `< 0.85`, approaching `0.85–1.0`, over `> 1.0`.
+- **SP clears guess** only when a real, non-zero SP (`> 0`) is set. Setting SP to `0`/N/A or clearing it does not touch the guess.
+- **Guestimation scale**: Fibonacci-only (`1,2,3,5,8`), stored as integer on `ticketMetadata`. No custom-number entry (unlike SP), to keep it a coarse PO guess. `0`/N/A is allowed (mirrors SP's `-`).
+- **Pencil capacity** is server-persisted per sprint (a planning fact, shared), keyed by sprint id, in a new `sprint_pencil_capacity` table. Only the per-view *visibility toggles* live in localStorage.
+- **Frontend wiring**: add `guestimation` to `Ticket`/`EpicChild` types; map it in `src/app/api/tickets/route.ts` and in `ticket-detail-builder.ts` (mirror `businessValueMap`).
+- **Migration**: `npm run db:generate`, auto-applied on next server start.
+- **Meter suppressed** for the backlog group and any non-sprint grouping (used-only there).
+- **localStorage keys**: `sprint-board-planning-visible` and `epic-children-planning-visible` (mirror `sprint-analytics-visible`).
+
 ### Data
 
 1. Add a `guestimation` column to `ticketMetadata` (Bridge-local, no Jira sync), mirroring
@@ -182,13 +193,13 @@ Grounded in the existing SP/BV pattern so the new field mirrors what already wor
 
 ## Checklist
 
-- [ ] `guestimation` column on `ticketMetadata` + migration
-- [ ] per-sprint pencil-capacity store + migration
-- [ ] API: read/write guestimation (validated) and sprint pencil capacity
-- [ ] SP-set silently clears guestimation in `updateTicketFields`
-- [ ] `GuestimationPicker` with distinct pencil/muted styling + colour helper
-- [ ] Inline guestimation picker on board rows and epic-children rows (SP-absent + planning on)
-- [ ] Per-view "Planning" toggle (sprint board + epic view), persisted independently
-- [ ] Capacity input + fullness meter in `GroupStatBar` (effective points / capacity)
-- [ ] Tests for all of the above
-- [ ] Update relevant docs in `/docs`
+- [x] `guestimation` column on `ticketMetadata` + migration
+- [x] per-sprint pencil-capacity store + migration
+- [x] API: read/write guestimation (validated) and sprint pencil capacity
+- [x] SP-set silently clears guestimation in `updateTicketFields`
+- [x] `GuestimationPicker` with distinct pencil/muted styling + colour helper
+- [x] Inline guestimation picker on board rows and epic-children rows (SP-absent + planning on)
+- [x] Per-view "Planning" toggle (sprint board + epic view), persisted independently
+- [x] Capacity input + fullness meter in `GroupStatBar` (effective points / capacity)
+- [x] Tests for all of the above
+- [x] Update relevant docs in `/docs`

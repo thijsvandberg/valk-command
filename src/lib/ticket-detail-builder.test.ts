@@ -152,6 +152,55 @@ describe("updateTicketFields story-points readiness transition", () => {
   });
 });
 
+describe("updateTicketFields silently clears guestimation when a real SP is set (BRDG-303)", () => {
+  beforeEach(() => {
+    testDb = createTestDb();
+  });
+
+  async function readGuess(key: string) {
+    const row = await testDb.query.ticketMetadata.findFirst({
+      where: (m, { eq: eqFn }) => eqFn(m.jiraKey, key),
+    });
+    return row?.guestimation ?? null;
+  }
+
+  it("clears the guestimation when a real non-zero story point lands", async () => {
+    seedTicket(testDb, { jiraKey: "VPL-1", storyPoints: null });
+    seedTicketMetadata(testDb, { jiraKey: "VPL-1", guestimation: 5 });
+
+    await updateTicketFields("VPL-1", { storyPoints: 3 });
+
+    expect(await readGuess("VPL-1")).toBeNull();
+  });
+
+  it("keeps the guestimation when SP is set to 0 (N/A), not a real estimate", async () => {
+    seedTicket(testDb, { jiraKey: "VPL-2", storyPoints: null });
+    seedTicketMetadata(testDb, { jiraKey: "VPL-2", guestimation: 8 });
+
+    await updateTicketFields("VPL-2", { storyPoints: 0 });
+
+    expect(await readGuess("VPL-2")).toBe(8);
+  });
+
+  it("keeps the guestimation when SP is cleared", async () => {
+    seedTicket(testDb, { jiraKey: "VPL-3", storyPoints: 5 });
+    seedTicketMetadata(testDb, { jiraKey: "VPL-3", guestimation: 2 });
+
+    await updateTicketFields("VPL-3", { storyPoints: null });
+
+    expect(await readGuess("VPL-3")).toBe(2);
+  });
+
+  it("is a no-op when the ticket has no metadata row", async () => {
+    seedTicket(testDb, { jiraKey: "VPL-4", storyPoints: null });
+
+    const outcome = await updateTicketFields("VPL-4", { storyPoints: 5 });
+
+    expect("result" in outcome).toBe(true);
+    expect(await readGuess("VPL-4")).toBeNull();
+  });
+});
+
 describe("buildAssignee", () => {
   it("returns null for null name", () => {
     expect(buildAssignee(null)).toBeNull();

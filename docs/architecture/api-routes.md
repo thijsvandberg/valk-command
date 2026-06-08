@@ -67,6 +67,8 @@ Epic mode of the Story Writer. The epic is the subject ticket; sessions reuse `s
 | Route | Method | Purpose |
 |-------|--------|---------|
 | `/api/sprints/[id]/suggest-goal` | POST | Invoke workspace skill to generate a sprint goal suggestion |
+| `/api/sprints/pencil-capacity` | GET | Get all sprints' forward-planning pencil capacities (BRDG-303) |
+| `/api/sprints/pencil-capacity` | PUT | Upsert one sprint's pencil capacity (`{ sprintId, capacity }`; `capacity: null` clears it). Bridge-local, never synced to Jira. |
 
 ## Tickets
 
@@ -80,7 +82,7 @@ CRUD operations on locally stored tickets and their metadata.
 | `/api/tickets/[key]` | PUT | Update ticket fields |
 | `/api/tickets/[key]` | PATCH | Partial update: `flagged` (+ optional `flagReason`, synced to Jira as a comment), `labels`, `epicKey`, `type`, `storyPoints`. Setting `storyPoints` to any value (including `0`/"-") auto-advances a ticket at readiness `ready_to_refine` to Ready for Development (`readiness = null`); other readiness states are left untouched. Bulk flag from the Sprint Board fans out one PATCH per ticket. |
 | `/api/tickets/[key]/metadata` | GET | Get PO metadata |
-| `/api/tickets/[key]/metadata` | PUT | Update PO metadata (readiness, scores, notes) |
+| `/api/tickets/[key]/metadata` | PUT | Update PO metadata (readiness, scores, notes, business value, guestimation) |
 | `/api/tickets/[key]/comments` | GET | List Jira + PO comments |
 | `/api/tickets/[key]/comments` | POST | Create PO comment |
 | `/api/tickets/[key]/comments/[id]` | DELETE | Delete PO comment |

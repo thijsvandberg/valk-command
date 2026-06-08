@@ -509,4 +509,46 @@ describe("GroupStatBar", () => {
       expect(onToggleCollapse).not.toHaveBeenCalled();
     });
   });
+
+  describe("forward-planning fullness meter (BRDG-303)", () => {
+    it("does not render the meter when planning mode is off", () => {
+      render(<GroupStatBar tickets={TICKETS} label="Sprint Alpha" onPencilCapacityChange={() => {}} />);
+      expect(screen.queryByLabelText("Sprint pencil capacity")).not.toBeInTheDocument();
+    });
+
+    it("renders the meter when planning is on and a capacity handler is supplied", () => {
+      render(
+        <GroupStatBar
+          tickets={TICKETS}
+          label="Sprint Alpha"
+          planningOn
+          pencilCapacity={20}
+          onPencilCapacityChange={() => {}}
+        />,
+      );
+      expect(screen.getByLabelText("Sprint pencil capacity")).toHaveValue(20);
+    });
+
+    it("sums effective points (real SP, else guestimation) as the used total", () => {
+      // SP total of TICKETS is 3 + 5 + 2 = 10 (two unpointed). Give the two unpointed
+      // tickets guesses (3 and 8); effective used should be 10 + 11 = 21.
+      const tickets = [
+        makeTicket({ key: "G-1", storyPoints: 3 }),
+        makeTicket({ key: "G-2", storyPoints: 5 }),
+        makeTicket({ key: "G-3", storyPoints: null, guestimation: 3 }),
+        makeTicket({ key: "G-4", storyPoints: 2 }),
+        makeTicket({ key: "G-5", storyPoints: null, guestimation: 8 }),
+      ];
+      render(
+        <GroupStatBar
+          tickets={tickets}
+          label="Sprint Alpha"
+          planningOn
+          pencilCapacity={40}
+          onPencilCapacityChange={() => {}}
+        />,
+      );
+      expect(screen.getByText("21")).toBeInTheDocument();
+    });
+  });
 });

@@ -55,6 +55,7 @@ PO-owned annotations per ticket. Never synced back to Jira.
 | `last_test_run_at` | text | ISO timestamp |
 | `last_test_report_url` | text | Link to test report |
 | `business_value` | integer | Business Value score (1-7, nullable) |
+| `guestimation` | integer | Forward-planning guestimation (BRDG-303): a PO placeholder estimate on the Fibonacci scale (`1,2,3,5,8`, `0`=N/A, nullable). Local-only, never synced to Jira. Silently cleared when a real non-zero `story_points` is set, so SP and guestimation are never both present. |
 | `scan_scores` | text | Backlog Deprecation Review (BRDG-297 epic): JSON map of per-topic scores + evidence. Local-only. |
 | `scan_overall` | real | Combined deprecation-likelihood score (0..1). |
 | `scan_rationale` | text | Assembled human-readable "why this can probably go". |
@@ -376,6 +377,18 @@ Simple lookup cache mapping Jira sprint IDs to display names.
 |--------|------|-------|
 | `sprint_id` | text PK | Jira sprint ID |
 | `display_name` | text | Human-readable sprint name |
+
+#### `sprint_pencil_capacity`
+
+Forward-planning pencil capacity (BRDG-303): the PO's rough story-point capacity
+guess per sprint, the denominator for the fullness meter. Bridge-local, never
+synced to Jira. A missing row means "no capacity set" (the meter shows the used
+total only, with no fill ratio).
+
+| Column | Type | Notes |
+|--------|------|-------|
+| `sprint_id` | text PK | Jira sprint ID |
+| `capacity` | real | Story-point capacity guess (0-999) |
 
 #### `app_setting`
 

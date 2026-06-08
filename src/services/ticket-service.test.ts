@@ -372,6 +372,32 @@ describe("updateTicketMetadata", () => {
       updateTicketMetadata("VPL-1", { poNotes: "x".repeat(5001) }),
     ).rejects.toBeInstanceOf(ValidationError);
   });
+
+  it("stores a valid Fibonacci guestimation", async () => {
+    seedTicket(testDb, "VPL-1");
+    const result = await updateTicketMetadata("VPL-1", { guestimation: 5 });
+    expect(result.guestimation).toBe(5);
+  });
+
+  it("allows clearing the guestimation with null", async () => {
+    seedTicket(testDb, "VPL-1");
+    await updateTicketMetadata("VPL-1", { guestimation: 3 });
+    const result = await updateTicketMetadata("VPL-1", { guestimation: null });
+    expect(result.guestimation).toBeNull();
+  });
+
+  it("allows a 0 (N/A) guestimation", async () => {
+    seedTicket(testDb, "VPL-1");
+    const result = await updateTicketMetadata("VPL-1", { guestimation: 0 });
+    expect(result.guestimation).toBe(0);
+  });
+
+  it("throws ValidationError for a non-Fibonacci guestimation", async () => {
+    seedTicket(testDb, "VPL-1");
+    await expect(
+      updateTicketMetadata("VPL-1", { guestimation: 4 }),
+    ).rejects.toBeInstanceOf(ValidationError);
+  });
 });
 
 // ---------------------------------------------------------------------------
