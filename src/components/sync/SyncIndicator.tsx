@@ -49,6 +49,23 @@ function stateLabel(state: ActivityState, syncRemaining: number, hasChecked: boo
   return "All clear";
 }
 
+// Compact wording for the bento launcher header line (BRDG-317).
+function headerLineLabel(state: ActivityState, syncRemaining: number, hasChecked: boolean): string {
+  if (!hasChecked) return "Checking";
+  if (state === "syncing") return "Syncing";
+  if (state === "error") return "Sync error";
+  if (syncRemaining > 0) return "Catching up";
+  return "Synced";
+}
+
+// Status dot colour for the header line; mirrors stateIcon's intent.
+function headerDotClass(state: ActivityState, errorCount: number, syncRemaining: number, hasChecked: boolean): string {
+  if (!hasChecked || state === "syncing") return "bg-[var(--color-brand-400)] animate-pulse";
+  if (state === "error" || errorCount > 0) return "bg-amber-400";
+  if (syncRemaining > 0) return "bg-[var(--color-brand-400)]";
+  return "bg-[var(--color-status-done)]";
+}
+
 function timeAgo(dateStr: string | null): string {
   if (!dateStr) return "";
   const diff = Date.now() - new Date(dateStr).getTime();
@@ -86,7 +103,13 @@ function statusDot(status: ActivityLogEntry["status"]) {
   return "bg-overlay-strong";
 }
 
-export function SyncIndicator({ collapsed }: { collapsed: boolean }) {
+export function SyncIndicator({
+  collapsed = false,
+  variant = "rail",
+}: {
+  collapsed?: boolean;
+  variant?: "rail" | "header-line";
+}) {
   const { activityState, lastEntry, unacknowledgedErrors, runningEntries, logEntries, incrementalSyncRemaining, incrementalSyncLastAt, incrementalSyncLastCount, cancelEntry, cancelAllEntries } = useActivityContext();
   const recentEntries = logEntries.slice(0, 8);
   const [expanded, setExpanded] = useState(false);
@@ -94,16 +117,18 @@ export function SyncIndicator({ collapsed }: { collapsed: boolean }) {
   const triggerRef = useRef<HTMLDivElement>(null);
   const panelRef = useRef<HTMLDivElement>(null);
 
+  const isHeaderLine = variant === "header-line";
+
   const computePos = useCallback(() => {
     if (!triggerRef.current) return;
     const rect = triggerRef.current.getBoundingClientRect();
-    const width = collapsed ? 240 : Math.max(rect.width, 220);
+    const width = collapsed || isHeaderLine ? 240 : Math.max(rect.width, 220);
     setPanelPos({
       bottom: window.innerHeight - rect.top + 6,
       left: Math.max(8, rect.left),
       width,
     });
-  }, [collapsed]);
+  }, [collapsed, isHeaderLine]);
 
   useOutsideClick([triggerRef, panelRef], () => setExpanded(false), { enabled: expanded });
 
@@ -116,6 +141,145 @@ export function SyncIndicator({ collapsed }: { collapsed: boolean }) {
 
   const errorCount = unacknowledgedErrors.length;
   const hasChecked = incrementalSyncLastAt !== null;
+
+  // Shared expanded panel, portalled to escape any sidebar stacking context.
+  // Both the rail trigger and the header-line trigger reuse it (BRDG-317).
+  const syncPanel = panelPos ? (
+    <div
+      ref={panelRef}
+      className="rounded-lg border border-border-default bg-[var(--color-surface-floating)] shadow-[var(--shadow-popover)] overflow-hidden"
+      style={{ position: "fixed", bottom: panelPos.bottom, left: panelPos.left, width: panelPos.width, zIndex: "var(--z-notification)" }}
+    >
+      <div className="px-3 py-2.5 border-b border-border-default flex items-center justify-between">
+        <span className="text-label font-semibold tracking-wide uppercase text-text-tertiary font-[var(--font-body)]">
+          Recent activity
+        </span>
+        {runningEntries.length > 0 && (
+          <Button
+            variant="destructive"
+            size="sm"
+            icon={<Square className="h-2.5 w-2.5" strokeWidth={2} fill="currentColor" />}
+            onClick={(e) => { e.stopPropagation(); cancelAllEntries(); }}
+            className="font-[var(--font-body)]"
+          >
+            Stop all
+          </Button>
+        )}
+      </div>
+      <div className="px-3 py-2 flex items-center gap-2 border-b border-border-default">
+        {!incrementalSyncLastAt ? (
+          <>
+            <RefreshCw className="h-3.5 w-3.5 text-text-muted animate-spin shrink-0" strokeWidth={2} />
+            <span className="text-label text-text-tertiary font-[var(--font-body)]">
+              Checking Jira...
+            </span>
+          </>
+        ) : incrementalSyncRemaining > 0 ? (
+          <>
+            <CloudDownload className="h-3.5 w-3.5 text-[var(--color-brand-400)] shrink-0" strokeWidth={2} />
+            <div className="flex-1 min-w-0">
+              <span className="text-label text-[var(--color-brand-300)] font-[var(--font-body)]">
+                {incrementalSyncRemaining} ticket{incrementalSyncRemaining === 1 ? "" : "s"} still catching up
+              </span>
+              <div className="text-caption text-text-muted font-[var(--font-body)] mt-0.5">
+                Last sync {timeAgo(incrementalSyncLastAt)}{incrementalSyncLastCount > 0 ? ` · ${incrementalSyncLastCount} updated` : ""}
+              </div>
+            </div>
+          </>
+        ) : (
+          <>
+            <CheckCheck className="h-3.5 w-3.5 text-[var(--color-brand-500)]/60 shrink-0" strokeWidth={2} />
+            <div className="flex-1 min-w-0">
+              <span className="text-label text-text-tertiary font-[var(--font-body)]">
+                Jira sync up to date
+              </span>
+              <div className="text-caption text-text-muted font-[var(--font-body)] mt-0.5">
+                Last check {timeAgo(incrementalSyncLastAt)}{incrementalSyncLastCount > 0 ? ` · ${incrementalSyncLastCount} updated` : ""}
+              </div>
+            </div>
+          </>
+        )}
+      </div>
+      <ul className="max-h-[240px] overflow-y-auto">
+        {(!recentEntries || recentEntries.length === 0) && (
+          <li className="px-3 py-3 text-body-sm text-text-muted font-[var(--font-body)]">
+            No activity yet
+          </li>
+        )}
+        {recentEntries?.slice(0, 8).map((entry) => (
+          <li
+            key={entry.id}
+            className="px-3 py-2 flex items-start gap-2.5 hover:bg-overlay-subtle transition-colors duration-100"
+          >
+            <span className={`mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full ${statusDot(entry.status)}`} />
+            <div className="flex-1 min-w-0">
+              <div className="flex items-baseline justify-between gap-2">
+                <span className="text-body-sm text-text-secondary font-[var(--font-body)] truncate">
+                  {entryTypeLabel(entry.type)}
+                  {entry.sprintName && (
+                    <span className="text-text-tertiary ml-1">&middot; {entry.sprintName}</span>
+                  )}
+                </span>
+                <span className="text-caption text-text-muted shrink-0 font-[var(--font-body)]">
+                  {timeAgo(entry.completedAt ?? entry.startedAt)}
+                </span>
+              </div>
+              {entry.summary && (
+                <div className="text-label text-text-tertiary truncate font-[var(--font-body)] mt-0.5">
+                  {entry.summary}
+                </div>
+              )}
+              {entry.status === "failed" && entry.errorDetail && (
+                <div className="text-label text-amber-400/70 truncate font-[var(--font-body)] mt-0.5">
+                  {entry.errorDetail}
+                </div>
+              )}
+              {entry.status === "running" && (
+                <Button
+                  variant="destructive"
+                  size="sm"
+                  icon={<Square className="h-2 w-2" strokeWidth={2} fill="currentColor" />}
+                  onClick={(e) => { e.stopPropagation(); cancelEntry(entry.id); }}
+                  className="mt-1 font-[var(--font-body)]"
+                >
+                  Cancel
+                </Button>
+              )}
+            </div>
+          </li>
+        ))}
+      </ul>
+      <a
+        href="/activity-log"
+        className="block px-3 py-2 text-label text-[var(--color-brand-400)] hover:text-[var(--color-brand-300)] font-[var(--font-body)] border-t border-border-default transition-colors duration-150 cursor-pointer"
+      >
+        View full activity log
+      </a>
+    </div>
+  ) : null;
+
+  if (isHeaderLine) {
+    const lastSynced = activityState === "idle" && incrementalSyncRemaining === 0 && hasChecked
+      ? timeAgo(incrementalSyncLastAt)
+      : "";
+    return (
+      <div className="relative inline-flex" ref={triggerRef}>
+        <button
+          type="button"
+          onClick={() => { if (!expanded) computePos(); setExpanded((v) => !v); }}
+          className="flex items-center gap-1.5 rounded-md px-1 py-0.5 -mx-1 text-[11px] text-text-tertiary cursor-pointer hover:text-text-secondary focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)] transition-colors duration-150"
+          aria-label="Activity status"
+        >
+          <span className={`h-1.5 w-1.5 shrink-0 rounded-full ${headerDotClass(activityState, errorCount, incrementalSyncRemaining, hasChecked)}`} />
+          <span className="truncate">
+            {headerLineLabel(activityState, incrementalSyncRemaining, hasChecked)}
+            {lastSynced && <span className="text-text-muted"> &middot; {lastSynced}</span>}
+          </span>
+        </button>
+        {expanded && panelPos && createPortal(syncPanel, document.body)}
+      </div>
+    );
+  }
 
   return (
     <div className="relative" ref={triggerRef}>
@@ -152,120 +316,7 @@ export function SyncIndicator({ collapsed }: { collapsed: boolean }) {
       </button>
 
       {/* Expanded panel — portal to escape sidebar stacking context */}
-      {expanded && panelPos && createPortal(
-        <div
-          ref={panelRef}
-          className="rounded-lg border border-border-default bg-[var(--color-surface-floating)] shadow-[var(--shadow-popover)] overflow-hidden"
-          style={{ position: "fixed", bottom: panelPos.bottom, left: panelPos.left, width: panelPos.width, zIndex: "var(--z-notification)" }}
-        >
-          <div className="px-3 py-2.5 border-b border-border-default flex items-center justify-between">
-            <span className="text-label font-semibold tracking-wide uppercase text-text-tertiary font-[var(--font-body)]">
-              Recent activity
-            </span>
-            {runningEntries.length > 0 && (
-              <Button
-                variant="destructive"
-                size="sm"
-                icon={<Square className="h-2.5 w-2.5" strokeWidth={2} fill="currentColor" />}
-                onClick={(e) => { e.stopPropagation(); cancelAllEntries(); }}
-                className="font-[var(--font-body)]"
-              >
-                Stop all
-              </Button>
-            )}
-          </div>
-          <div className="px-3 py-2 flex items-center gap-2 border-b border-border-default">
-            {!incrementalSyncLastAt ? (
-              <>
-                <RefreshCw className="h-3.5 w-3.5 text-text-muted animate-spin shrink-0" strokeWidth={2} />
-                <span className="text-label text-text-tertiary font-[var(--font-body)]">
-                  Checking Jira...
-                </span>
-              </>
-            ) : incrementalSyncRemaining > 0 ? (
-              <>
-                <CloudDownload className="h-3.5 w-3.5 text-[var(--color-brand-400)] shrink-0" strokeWidth={2} />
-                <div className="flex-1 min-w-0">
-                  <span className="text-label text-[var(--color-brand-300)] font-[var(--font-body)]">
-                    {incrementalSyncRemaining} ticket{incrementalSyncRemaining === 1 ? "" : "s"} still catching up
-                  </span>
-                  <div className="text-caption text-text-muted font-[var(--font-body)] mt-0.5">
-                    Last sync {timeAgo(incrementalSyncLastAt)}{incrementalSyncLastCount > 0 ? ` \u00b7 ${incrementalSyncLastCount} updated` : ""}
-                  </div>
-                </div>
-              </>
-            ) : (
-              <>
-                <CheckCheck className="h-3.5 w-3.5 text-[var(--color-brand-500)]/60 shrink-0" strokeWidth={2} />
-                <div className="flex-1 min-w-0">
-                  <span className="text-label text-text-tertiary font-[var(--font-body)]">
-                    Jira sync up to date
-                  </span>
-                  <div className="text-caption text-text-muted font-[var(--font-body)] mt-0.5">
-                    Last check {timeAgo(incrementalSyncLastAt)}{incrementalSyncLastCount > 0 ? ` \u00b7 ${incrementalSyncLastCount} updated` : ""}
-                  </div>
-                </div>
-              </>
-            )}
-          </div>
-          <ul className="max-h-[240px] overflow-y-auto">
-            {(!recentEntries || recentEntries.length === 0) && (
-              <li className="px-3 py-3 text-body-sm text-text-muted font-[var(--font-body)]">
-                No activity yet
-              </li>
-            )}
-            {recentEntries?.slice(0, 8).map((entry) => (
-              <li
-                key={entry.id}
-                className="px-3 py-2 flex items-start gap-2.5 hover:bg-overlay-subtle transition-colors duration-100"
-              >
-                <span className={`mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full ${statusDot(entry.status)}`} />
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-baseline justify-between gap-2">
-                    <span className="text-body-sm text-text-secondary font-[var(--font-body)] truncate">
-                      {entryTypeLabel(entry.type)}
-                      {entry.sprintName && (
-                        <span className="text-text-tertiary ml-1">&middot; {entry.sprintName}</span>
-                      )}
-                    </span>
-                    <span className="text-caption text-text-muted shrink-0 font-[var(--font-body)]">
-                      {timeAgo(entry.completedAt ?? entry.startedAt)}
-                    </span>
-                  </div>
-                  {entry.summary && (
-                    <div className="text-label text-text-tertiary truncate font-[var(--font-body)] mt-0.5">
-                      {entry.summary}
-                    </div>
-                  )}
-                  {entry.status === "failed" && entry.errorDetail && (
-                    <div className="text-label text-amber-400/70 truncate font-[var(--font-body)] mt-0.5">
-                      {entry.errorDetail}
-                    </div>
-                  )}
-                  {entry.status === "running" && (
-                    <Button
-                      variant="destructive"
-                      size="sm"
-                      icon={<Square className="h-2 w-2" strokeWidth={2} fill="currentColor" />}
-                      onClick={(e) => { e.stopPropagation(); cancelEntry(entry.id); }}
-                      className="mt-1 font-[var(--font-body)]"
-                    >
-                      Cancel
-                    </Button>
-                  )}
-                </div>
-              </li>
-            ))}
-          </ul>
-          <a
-            href="/activity-log"
-            className="block px-3 py-2 text-label text-[var(--color-brand-400)] hover:text-[var(--color-brand-300)] font-[var(--font-body)] border-t border-border-default transition-colors duration-150 cursor-pointer"
-          >
-            View full activity log
-          </a>
-        </div>,
-        document.body,
-      )}
+      {expanded && panelPos && createPortal(syncPanel, document.body)}
     </div>
   );
 }
