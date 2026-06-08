@@ -1,4 +1,4 @@
-import useSWR, { mutate as globalMutate } from "swr";
+import useSWR, { mutate as globalMutate, useSWRConfig } from "swr";
 import { useRef, useMemo, useEffect, useCallback } from "react";
 import type { Ticket, TicketDetail, ActivityLogEntry, StoredReview, StoryVersion } from "@/types/ticket";
 import type { DevInfoPayload } from "@/lib/bitbucket-client";
@@ -108,6 +108,27 @@ export function useTicketDetail(ticketKey: string | null) {
 
     return () => { cancelled = true; };
   }, [ticketKey, mutate]);
+
+  // When the response flags that legacy name-only child sprints are being re-synced server-side
+  // (BRDG-308), revalidate the detail and the sprint list on a short bounded poll so the open page
+  // resolves the sprint's dates/state on its own. Stops as soon as the flag clears or after a few
+  // attempts, so an unresolvable sprint never loops forever.
+  const { mutate: configMutate } = useSWRConfig();
+  const resyncAttemptsRef = useRef(0);
+  useEffect(() => {
+    resyncAttemptsRef.current = 0;
+  }, [ticketKey]);
+  const resyncing = swr.data?.resyncingSprints === true;
+  useEffect(() => {
+    if (!resyncing) return;
+    if (resyncAttemptsRef.current >= 5) return;
+    const timer = setTimeout(() => {
+      resyncAttemptsRef.current += 1;
+      void mutate();
+      void configMutate("/api/jira/sprints");
+    }, 2500);
+    return () => clearTimeout(timer);
+  }, [resyncing, swr.data, mutate, configMutate]);
 
   return swr;
 }

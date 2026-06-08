@@ -202,6 +202,37 @@ describe("useTicketDetail", () => {
       expect(calls).toContain("/api/jira/sync-tickets");
     }, { timeout: 8000 });
   }, 10000);
+
+  it("revalidates the sprint list while resyncingSprints is flagged (BRDG-308)", async () => {
+    let detailCalls = 0;
+    vi.spyOn(global, "fetch").mockImplementation(async (url) => {
+      const u = typeof url === "string" ? url : url.toString();
+      if (u === "/api/tickets/BRDG-101") {
+        detailCalls += 1;
+        // Stay flagged until the bounded poll has had a chance to fire, then clear.
+        const resyncingSprints = detailCalls < 3;
+        return { ok: true, json: async () => ({ ...mockTicketDetail, resyncingSprints }) } as Response;
+      }
+      if (u === "/api/jira/sprints") {
+        return { ok: true, json: async () => ({ sprints: [], backlogCount: 0 }) } as Response;
+      }
+      if (u === "/api/jira/sync-tickets") {
+        return { ok: true, json: async () => ({}) } as Response;
+      }
+      return { ok: false, status: 500, json: async () => null } as Response;
+    });
+
+    // Bind useJiraSprints too so the global revalidation of "/api/jira/sprints" triggers a fetch.
+    renderHook(() => { useJiraSprints(); return useTicketDetail("BRDG-101"); }, { wrapper: swrWrapper });
+
+    // The sprint list is fetched once on mount; the poll-driven revalidation fetches it again.
+    await waitFor(() => {
+      const sprintCalls = (fetch as ReturnType<typeof vi.fn>).mock.calls
+        .map((c) => (typeof c[0] === "string" ? c[0] : c[0].toString()))
+        .filter((u) => u === "/api/jira/sprints");
+      expect(sprintCalls.length).toBeGreaterThanOrEqual(2);
+    }, { timeout: 8000 });
+  }, 10000);
 });
 
 // ---------------------------------------------------------------------------
