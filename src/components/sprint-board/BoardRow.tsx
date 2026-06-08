@@ -421,9 +421,9 @@ export const BoardRow = memo(forwardRef<HTMLTableRowElement, BoardRowBaseProps>(
                   {warningLabels.map((labelText) => (
                     <span
                       key={labelText}
-                      className="inline-flex h-5 items-center gap-1 whitespace-nowrap rounded-md px-2 text-[11px] leading-none text-[var(--color-status-warning)] bg-[color-mix(in_srgb,var(--color-status-warning)_10%,transparent)]"
+                      className="inline-flex h-5 items-center gap-1 whitespace-nowrap rounded-md px-2 text-[11px] leading-none text-[color-mix(in_srgb,var(--color-status-warning)_80%,var(--color-text-secondary))] bg-[color-mix(in_srgb,var(--color-status-warning)_6%,transparent)]"
                     >
-                      <AlertTriangle size={11} strokeWidth={2} className="shrink-0 opacity-80" aria-hidden />
+                      <AlertTriangle size={11} strokeWidth={2} className="shrink-0 opacity-70" aria-hidden />
                       {labelText}
                     </span>
                   ))}
