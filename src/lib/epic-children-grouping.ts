@@ -1,4 +1,5 @@
 import type { EpicChild, Subtask, Sprint } from "@/types/ticket";
+import { isRegularSprint, nextSprintName } from "./sprint-utils";
 
 export const UNSCHEDULED_GROUP_KEY = "__unscheduled__";
 
@@ -29,6 +30,73 @@ const STATE_ORDER: Record<Sprint["state"], number> = {
 function childSprintName(child: EpicChild | Subtask): string | null {
   // Locally-added items are plain Subtasks without a sprintName property.
   return "sprintName" in child ? child.sprintName : null;
+}
+
+/**
+ * Sorts named sprint groups chronologically (closed → active → future → backlog),
+ * then dated sprints by start date with undated/unmatched ones last. Mutates and
+ * returns the array. Shared so a synthetic group (BRDG-306) can be folded into the
+ * same ordering as the real groups.
+ */
+export function sortNamedGroups(named: ChildGroup[], sprints: Sprint[]): ChildGroup[] {
+  const sprintByName = new Map<string, Sprint>();
+  for (const s of sprints) sprintByName.set(s.name, s);
+
+  named.sort((a, b) => {
+    const aSprint = sprintByName.get(a.sprintName!);
+    const bSprint = sprintByName.get(b.sprintName!);
+    // Matched sprints sort ahead of unmatched (unknown) ones.
+    if (!!aSprint !== !!bSprint) return aSprint ? -1 : 1;
+    if (aSprint && bSprint) {
+      const order = STATE_ORDER[aSprint.state] - STATE_ORDER[bSprint.state];
+      if (order !== 0) return order;
+      // Within a state, dated sprints lead and order by start date; sprints
+      // without a schedule (e.g. a backlog-style sprint) are "the rest" and
+      // sink to the bottom instead of jumping ahead on an empty date.
+      const aDate = aSprint.startDate ?? null;
+      const bDate = bSprint.startDate ?? null;
+      if ((aDate === null) !== (bDate === null)) return aDate === null ? 1 : -1;
+      if (aDate && bDate && aDate !== bDate) return aDate.localeCompare(bDate);
+    }
+    return a.label.localeCompare(b.label);
+  });
+  return named;
+}
+
+/**
+ * The next regular sprint in the series to surface as a drop target while a child
+ * is being dragged in the by-sprint view (BRDG-306). Looks at the currently shown
+ * named groups, takes the highest regular numeric sprint (placeholders like
+ * `GXP: Backlog`/`BT: TODO` and the Unscheduled group are ignored), and returns a
+ * zero-item group for `<PREFIX>: <highest + 1>` — but only when a real sprint with
+ * that exact name exists and is not already shown. Strictly `+1`: a missing number
+ * yields null rather than skipping ahead.
+ */
+export function nextRegularSprintGroup(
+  visibleGroups: ChildGroup[],
+  sprints: Sprint[],
+): ChildGroup | null {
+  const regularNames = visibleGroups
+    .map((g) => g.sprintName)
+    .filter((name): name is string => name !== null && isRegularSprint(name));
+  if (regularNames.length === 0) return null;
+
+  const candidateName = nextSprintName(regularNames.map((name) => ({ name })));
+  if (!candidateName) return null;
+  if (visibleGroups.some((g) => g.sprintName === candidateName)) return null;
+
+  const match = sprints.find((s) => s.name === candidateName);
+  if (!match) return null;
+
+  return {
+    key: candidateName,
+    label: candidateName,
+    sprintName: candidateName,
+    items: [],
+    isActive: match.state === "active",
+    state: match.state,
+    dateRange: match.dateRange || null,
+  };
 }
 
 /**
@@ -71,24 +139,7 @@ export function groupChildrenBySprint(
     });
   }
 
-  named.sort((a, b) => {
-    const aSprint = sprintByName.get(a.sprintName!);
-    const bSprint = sprintByName.get(b.sprintName!);
-    // Matched sprints sort ahead of unmatched (unknown) ones.
-    if (!!aSprint !== !!bSprint) return aSprint ? -1 : 1;
-    if (aSprint && bSprint) {
-      const order = STATE_ORDER[aSprint.state] - STATE_ORDER[bSprint.state];
-      if (order !== 0) return order;
-      // Within a state, dated sprints lead and order by start date; sprints
-      // without a schedule (e.g. a backlog-style sprint) are "the rest" and
-      // sink to the bottom instead of jumping ahead on an empty date.
-      const aDate = aSprint.startDate ?? null;
-      const bDate = bSprint.startDate ?? null;
-      if ((aDate === null) !== (bDate === null)) return aDate === null ? 1 : -1;
-      if (aDate && bDate && aDate !== bDate) return aDate.localeCompare(bDate);
-    }
-    return a.label.localeCompare(b.label);
-  });
+  sortNamedGroups(named, sprints);
 
   const groups = named;
 

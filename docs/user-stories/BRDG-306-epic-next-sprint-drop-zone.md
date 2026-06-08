@@ -82,32 +82,50 @@ trailing placeholder group such as `GXP: Backlog`), not at the bottom.
 
 ## Implementation Plan
 
-1. **Shared series helper (coordinate with BRDG-305).** Put the regular-series number logic in one
-   place (`src/lib/sprint-utils.ts` or `sprint-dates.ts`): parse `PREFIX`/number from a sprint
-   name, and given a set of names return the highest regular number + its prefix. BRDG-305 uses
-   it to suggest the next sprint name on create; this story uses it to find the next-sprint group.
-2. **Pure "next sprint group" function + test** — e.g. `nextRegularSprintGroup(visibleGroups, sprints)`
-   in `epic-children-grouping.ts`:
-   - From the visible **named** groups, find the highest regular numeric sprint (ignore
-     non-numeric placeholders and Unscheduled) and its prefix (helper from step 1).
-   - Build the candidate name `<PREFIX>: <highest+1>`; look it up in `sprints` by exact name.
-   - Return a synthetic empty `ChildGroup` for it (items `[]`, `state`/`dateRange`/`isActive` from
-     the matched sprint) **only if** it exists and is not already a visible group; else `null`.
-3. **Render it only during drag.** In `EpicChildrenBySprint`, when `activeDragKey !== null` and the
-   helper returns a group, append it to the `groups` used for rendering and for `resolveDragEnd`,
-   so it is both droppable and a valid move target. Insert it so chronological ordering puts it in
-   the regular series (reuse the grouping sort, or splice before backlog/Unscheduled).
-4. **Empty-group affordance.** Render the synthetic group's empty body with a clear "drop here"
-   hint and the standard hovered-group highlight. No create "+" composer behaviour change needed
-   for this story (it is a drag-only affordance).
-5. **Drop wiring.** Confirm `resolveDragEnd`/`resolveMove` produce the right `targetSprintId` for
-   the synthetic group (future state → allowed; carries real `sprintName`). Reuse `onMoveChild`
-   end-to-end — no new move path.
-6. **Tests.** Unit: next-sprint derivation (highest numeric + prefix, placeholder/Unscheduled
-   excluded, candidate must exist, strict `+1` with no gap-skipping, multi-prefix picks the
-   highest one's prefix, returns null when none). Component: the empty group appears only during
-   drag, in the regular-series position above a trailing backlog group, and dropping on it calls
-   `onMoveChild` with the correct id; nothing shows when the `+1` sprint doesn't exist.
+**Note:** BRDG-305 already landed, so the shared series helpers exist in `src/lib/sprint-utils.ts`
+(`isRegularSprint`, `latestRegularSprint`, `nextSprintName`, `sprintNumber`) and are tested in
+`sprint-utils.test.ts`. This story **reuses** them — no new helper, satisfying the "single shared
+helper" criterion directly.
+
+1. **Reuse the shared series helpers.** `isRegularSprint(name)` (prefix + finite number),
+   `latestRegularSprint(sprints)` → `{ prefix, number, sprint }`, `nextSprintName(sprints)` →
+   `"<PREFIX>: <highest+1>"`. No change to `sprint-utils.ts`.
+2. **Extract the named-group comparator** in `epic-children-grouping.ts` so the synthetic group can
+   be sorted identically. Pull the inline `named.sort(...)` into a reusable
+   `sortNamedGroups(groups, sprints)` (closed → active → future → backlog, then `startDate`), and
+   have `groupChildrenBySprint` call it. The synthetic group's `sprintName` is a real sprint name,
+   so the comparator finds its `startDate`/`state` in `sprintByName` and orders it correctly with
+   **no `ChildGroup` shape change**.
+3. **Pure `nextRegularSprintGroup(visibleGroups, sprints)`** in `epic-children-grouping.ts`:
+   - Filter `visibleGroups` to named regular numeric sprints (`isRegularSprint(group.sprintName)`),
+     excluding Unscheduled and non-numeric placeholders. If none → `null`.
+   - `candidateName = nextSprintName(those-group-names-as-{name})` → strictly `+1` of the highest,
+     prefix taken from the highest-numbered visible sprint.
+   - `match = sprints.find(s => s.name === candidateName)`. Return `null` if absent (no gap-skip) or
+     if a visible group already has that name.
+   - Else return a zero-item `ChildGroup` `{ key/label/sprintName: candidateName, items: [],
+     isActive: match.state === "active", state: match.state, dateRange: match.dateRange || null }`.
+4. **Inject only during drag.** In `EpicChildrenBySprint`, compute
+   `dragGroups = useMemo(...)`: when `activeDragKey === null` return `groups`; else append
+   `nextRegularSprintGroup(groups, sprints)` (if any) and re-sort via `sortNamedGroups` (Unscheduled
+   stays pinned last). Replace the `groups` usages in `handleDragEnd`'s `resolveDragEnd(...)`, the
+   `groupCards` map, and `insertLineForRow` with `dragGroups`. Keep the `groups.length === 0`
+   early-return on the **original** `groups` (empty epic still renders nothing).
+5. **Empty-group affordance + suppress create.** In the `groupCards` map, detect the synthetic
+   group (key not in the original `groups`). For it: force `canCreate = false` (no "+"/composer —
+   drag-only), and render a muted "Drop here to move to `<name>`" placeholder body instead of the
+   empty `SortableContext`. The existing `DroppableGroup` ring highlight on hover already applies.
+6. **Drop wiring (unchanged).** A drop on the synthetic group card → `overType "group"`,
+   `sprintName = candidateName`, `state = "future"` → `resolveDragEnd` → `resolveMove` resolves the
+   real sprint id → `{ kind: "move", targetSprintId }` → existing `onMoveChild` (optimistic +
+   refetch + revert). Cancel/drop-elsewhere clears `activeDragKey`, so `dragGroups` collapses back.
+7. **Tests.** `epic-children-grouping.test.ts`: `nextRegularSprintGroup` — highest `BT: 141` +
+   real `BT: 142` → group; candidate missing → `null` (no jump to `+2`); ignores `GXP: Backlog` /
+   `BT: TODO` / Unscheduled; multi-prefix picks the highest-numbered prefix; no regular groups →
+   `null`; synthetic future group sorts above a backlog group. `EpicChildrenBySprint.test.tsx`:
+   absent with no drag, appears as empty droppable with the hint during drag, no "+" on it,
+   dropping calls `onMoveChild` with the candidate's sprint id, and nothing appears when the `+1`
+   sprint doesn't exist.
 
 ## Acceptance Criteria
 
@@ -137,5 +155,3 @@ trailing placeholder group such as `GXP: Backlog`), not at the bottom.
 - The flat `list` view (unchanged — drag affordances live in "By sprint" only).
 - The right-click "Move to Sprint" menu (already covers moving into hidden sprints; unchanged).
 - Capacity / pencil planning (BRDG-303) and reordering within a sprint (already shipped).
-</content>
-</invoke>

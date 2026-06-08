@@ -1,5 +1,11 @@
 import { describe, it, expect } from "vitest";
-import { groupChildrenBySprint, UNSCHEDULED_GROUP_KEY } from "./epic-children-grouping";
+import {
+  groupChildrenBySprint,
+  nextRegularSprintGroup,
+  sortNamedGroups,
+  UNSCHEDULED_GROUP_KEY,
+  type ChildGroup,
+} from "./epic-children-grouping";
 import type { EpicChild, Subtask, Sprint } from "@/types/ticket";
 
 function child(key: string, sprintName: string | null, storyPoints: number | null = null): EpicChild {
@@ -161,5 +167,81 @@ describe("groupChildrenBySprint", () => {
     const totalSp = (list: (EpicChild | Subtask)[]) =>
       list.reduce((sum, i) => sum + (("storyPoints" in i ? i.storyPoints : null) ?? 0), 0);
     expect(totalSp(grouped)).toBe(totalSp(items));
+  });
+});
+
+describe("nextRegularSprintGroup", () => {
+  // Minimal ChildGroup factory; only sprintName matters for the next-sprint pick.
+  function group(sprintName: string | null): ChildGroup {
+    return {
+      key: sprintName ?? UNSCHEDULED_GROUP_KEY,
+      label: sprintName ?? "Unscheduled",
+      sprintName,
+      items: [],
+      isActive: false,
+      state: null,
+      dateRange: null,
+    };
+  }
+
+  it("returns the highest visible regular sprint + 1 when that sprint exists", () => {
+    const visible = [group("BT: 138"), group("BT: 140"), group("BT: 139")];
+    const sprints = [sprint("BT: 141", "future", "2026-07-03")];
+    const next = nextRegularSprintGroup(visible, sprints);
+    expect(next?.sprintName).toBe("BT: 141");
+    expect(next?.label).toBe("BT: 141");
+    expect(next?.items).toEqual([]);
+    expect(next?.state).toBe("future");
+    expect(next?.dateRange).toBe("BT: 141 range");
+  });
+
+  it("returns null (no gap-skip) when the strict +1 sprint does not exist", () => {
+    const visible = [group("BT: 140")];
+    // BT: 141 is missing; BT: 142 exists, but we must not jump ahead to it.
+    const sprints = [sprint("BT: 142", "future", "2026-07-17")];
+    expect(nextRegularSprintGroup(visible, sprints)).toBeNull();
+  });
+
+  it("ignores non-numeric placeholders and Unscheduled when picking the highest", () => {
+    const visible = [group("BT: 141"), group("GXP: Backlog"), group("BT: TODO"), group(null)];
+    const sprints = [sprint("BT: 142", "future", "2026-07-17")];
+    // Highest regular numeric is BT: 141 (placeholders/Unscheduled excluded) -> BT: 142.
+    expect(nextRegularSprintGroup(visible, sprints)?.sprintName).toBe("BT: 142");
+  });
+
+  it("uses the prefix of the highest-numbered sprint when prefixes are mixed", () => {
+    const visible = [group("BT: 139"), group("GXP: 200")];
+    const sprints = [sprint("GXP: 201", "future", "2026-08-01")];
+    expect(nextRegularSprintGroup(visible, sprints)?.sprintName).toBe("GXP: 201");
+  });
+
+  it("returns null when no regular numeric sprint is visible", () => {
+    const visible = [group("GXP: Backlog"), group(null)];
+    const sprints = [sprint("BT: 1", "future", "2026-07-03")];
+    expect(nextRegularSprintGroup(visible, sprints)).toBeNull();
+  });
+
+  it("returns null when the candidate is already a visible group", () => {
+    const visible = [group("BT: 140"), group("BT: 141")];
+    const sprints = [sprint("BT: 141", "future", "2026-07-03")];
+    // Highest is BT: 141, so +1 is BT: 142 which does not exist -> null. Also guards
+    // the duplicate case directly.
+    expect(nextRegularSprintGroup(visible, sprints)).toBeNull();
+  });
+
+  it("sorts the synthetic future group above a trailing backlog group", () => {
+    // Mirrors the screenshot: a backlog-state placeholder must not outrank the next
+    // regular future sprint once it is folded into the grouping order.
+    const sprints = [
+      sprint("BT: 142", "future", "2026-07-17"),
+      sprint("GXP: Backlog", "backlog", null),
+    ];
+    const synthetic = nextRegularSprintGroup([group("BT: 141")], sprints)!;
+    expect(synthetic.state).toBe("future");
+
+    const backlog = group("GXP: Backlog");
+    backlog.state = "backlog";
+    const ordered = sortNamedGroups([backlog, synthetic], sprints);
+    expect(ordered.map((g) => g.label)).toEqual(["BT: 142", "GXP: Backlog"]);
   });
 });
