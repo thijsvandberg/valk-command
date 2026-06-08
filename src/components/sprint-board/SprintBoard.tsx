@@ -1,7 +1,8 @@
 "use client";
 
 import { useState, useRef, useEffect, useCallback, useMemo, type ReactNode } from "react";
-import { Inbox } from "lucide-react";
+import { Inbox, Plus } from "lucide-react";
+import { trailingDoneDepStart, interpolateRank } from "@/lib/sprint-insert-position";
 import { GroupStatBar, type StatCriterion } from "@/components/sprint-board/GroupStatBar";
 import { matchesWarningFilter } from "@/components/sprint-board/warning-filter";
 import { useSearchParams, useRouter, usePathname } from "next/navigation";
@@ -261,6 +262,13 @@ export default function SprintBoard() {
     return undefined;
   }, [isAllView, activeSprintId, f.activeViewId, activeSprint]);
 
+  // The single-sprint create row is hidden until the header "+" opens it (BRDG-315), mirroring
+  // the per-group "+" on the grouped/All view. Close it when the create target disappears (e.g.
+  // switching to a closed sprint or the All view) so it never lingers on a list that cannot create.
+  const [flatComposerOpen, setFlatComposerOpen] = useState(false);
+  useEffect(() => { if (!flatCreateTarget) setFlatComposerOpen(false); }, [flatCreateTarget]);
+  const closeFlatComposer = useCallback(() => setFlatComposerOpen(false), []);
+
   // Optimistically add the new ticket to the active list, then reconcile with the
   // created Jira key. Caches are patched client-side rather than via the POST route's
   // cache.invalidate, which is unreliable across routes in next dev (see [[project_turbopack_cache_invalidate]]).
@@ -268,6 +276,17 @@ export default function SprintBoard() {
     const trimmed = title.trim();
     if (!trimmed) return;
     const placeholderKey = `pending-${Date.now()}`;
+    // Land the new ticket at the bottom of its sprint but above the trailing done/deprecated block,
+    // and have it appear there instantly with no resort/jump: pick a jiraRank between the two
+    // neighbours at the insertion point so the rank sort keeps it in place (BRDG-315).
+    const sprintTickets = displayTickets.filter((t) =>
+      sprintId === null ? t.sprintId == null : t.sprintId === sprintId,
+    );
+    const insertIdx = trailingDoneDepStart(sprintTickets);
+    const placeholderRank = interpolateRank(
+      sprintTickets[insertIdx - 1]?.jiraRank,
+      sprintTickets[insertIdx]?.jiraRank,
+    );
     const placeholder: Ticket = {
       key: placeholderKey,
       title: trimmed,
@@ -285,7 +304,7 @@ export default function SprintBoard() {
       businessValue: null,
       editState: "clean",
       notes: "",
-      jiraRank: null,
+      jiraRank: placeholderRank,
       sprintId: sprintId ?? undefined,
       sprintDisplayName: null,
       jiraUpdatedAt: null,
@@ -307,7 +326,7 @@ export default function SprintBoard() {
         mutateTickets((data) => data?.filter((t) => t.key !== placeholderKey), { revalidate: false });
         showToast("Failed to create story");
       });
-  }, [mutateTickets, showToast]);
+  }, [mutateTickets, showToast, displayTickets]);
 
   // Sync PO data from API
   useEffect(() => { if (apiTickets && apiTickets.length > 0) syncFromApiTickets(apiTickets); }, [apiTickets, syncFromApiTickets]);
@@ -517,8 +536,26 @@ export default function SprintBoard() {
     const activeCriterion: StatCriterion | null = warningLensActive
       ? "unpointed"
       : onlyStatus ? (STATUS_TO_CRIT[onlyStatus] ?? null) : null;
+    // The "+" lives in the header next to "...", matching the grouped/All view's per-group create
+    // button. Jira rejects creating into a closed sprint, so it only shows where creation is allowed.
+    const canCreate = isBacklog || activeSprint?.state !== "closed";
+    const createAction = canCreate ? (
+      <button
+        type="button"
+        aria-label="Create story in this sprint"
+        onClick={(e) => { e.stopPropagation(); setFlatComposerOpen((v) => !v); }}
+        className={`flex h-6 w-6 shrink-0 cursor-pointer items-center justify-center rounded-md focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-[var(--color-brand-400)] [transition:background-color_.12s_ease,color_.12s_ease] ${
+          flatComposerOpen
+            ? "bg-overlay-strong text-text-secondary"
+            : "text-text-muted hover:bg-overlay-default hover:text-text-secondary"
+        }`}
+      >
+        <Plus size={14} strokeWidth={2} aria-hidden />
+      </button>
+    ) : undefined;
     return (
       <GroupStatBar
+        createAction={createAction}
         // Use the unfiltered sprint set so the status breakdown always shows every
         // pill — otherwise filtering down to one status hides the others and you
         // can no longer click to toggle the filter back off.
@@ -563,7 +600,7 @@ export default function SprintBoard() {
           : {})}
       />
     );
-  }, [isAllView, fActiveViewId, fStatusFilter, fSetStatusFilter, warningLensActive, groups.length, activeSprintId, activeSprint, allTickets, slotSprintsSet, handleAddSlotWithSprint, handleEditSprintFromGroup, handleCloseSprintFromGroup, handleSyncGroup]);
+  }, [isAllView, fActiveViewId, fStatusFilter, fSetStatusFilter, warningLensActive, groups.length, activeSprintId, activeSprint, allTickets, slotSprintsSet, handleAddSlotWithSprint, handleEditSprintFromGroup, handleCloseSprintFromGroup, handleSyncGroup, flatComposerOpen]);
 
   useEffect(() => {
     if (slotsInitialized.current || !sprintsData) return; slotsInitialized.current = true;
@@ -593,16 +630,25 @@ export default function SprintBoard() {
     f.setEpicFilter(new Set());
   }, [f]);
 
-  // Shared board content rendered once, conditionally wrapped in DndContext
+  // Shared board content rendered once, conditionally wrapped in DndContext.
+  // The list would otherwise span the full viewport, stranding the right-hand metadata far from
+  // the title on wide screens (BRDG-315). Cap the inner content of the toolbar, the filter bar,
+  // and the list to one shared centred width so all three stay aligned; the section backgrounds
+  // still span full width behind them.
+  const boardMaxW = "mx-auto w-full max-w-[1600px]";
   const boardContent = (
     <>
       <div className={`${dnd.jiraRankDndEnabled ? "relative " : ""}bg-[var(--color-surface-toolbar)]`}>
+        <div className={boardMaxW}>
         <SprintSlots slotSprints={slotSprints} activeSlot={activeSlot} allActive={isAllView && !f.activeViewId} sprints={sprints} backlogCount={backlogCount} onSlotClick={setActiveSlot} onAllClick={handleAllClick} editingSlot={editingSlot} onSlotEdit={handleSlotEdit} onSprintSelect={handleSprintSelect} onEditClose={() => setEditingSlot(null)} onReorderSlots={handleReorderSlots} ephemeralSprintId={ephemeralSprintId} ephemeralIsActive={ephemeralIsActive} onEphemeralClick={handleEphemeralClick} filtersCollapsed={barsCollapsed} activeFilterCount={activeFilterCount} onToggleFilters={() => setBarsCollapsed((v) => !v)} savedViews={f.savedViews} activeViewId={f.activeViewId} onViewClick={f.handleViewClick} sortField={f.sortField} sortDir={f.sortDir} onSortChange={sortChange} columnVisible={f.visibleTags} onColumnToggle={toggleColumn} onColumnReset={resetToDefaults} groupBy={groupBy} onGroupByChange={setGroupBy} onCreateSprint={() => setCreateSprintModalOpen(true)} groupCount={groups.length} allGroupsCollapsed={allCollapsed} onToggleCollapseAll={toggleAllGroups} />
+        </div>
         {dnd.jiraRankDndEnabled && dnd.boardActiveDragId && <SprintDropZoneBar sprints={sprints} slotSprints={slotSprints} activeSprintId={activeSprintId} />}
       </div>
       {!barsCollapsed && (
         <div className="border-b border-border-default bg-[var(--color-surface-toolbar)]">
+          <div className={boardMaxW}>
           <FilterBar statusFilter={f.statusFilter} epicFilter={f.epicFilter} assigneeFilter={f.assigneeFilter} readinessFilter={f.readinessFilter} editStateFilter={f.editStateFilter} issueTypeFilter={f.issueTypeFilter} onStatusFilterChange={f.setStatusFilter} onEpicFilterChange={f.setEpicFilter} onAssigneeFilterChange={f.setAssigneeFilter} onReadinessFilterChange={f.setReadinessFilter} onEditStateFilterChange={f.setEditStateFilter} onIssueTypeFilterChange={f.setIssueTypeFilter} gapsFilter={f.gapsFilter} onGapsFilterChange={f.setGapsFilter} statusOptions={f.statusOptions} epicOptions={f.epicOptions} assigneeOptions={f.assigneeOptions} issueTypeOptions={f.issueTypeOptions} teamFilter={f.teamFilter} onTeamFilterChange={f.setTeamFilter} teamOptions={f.teamOptions} {... (isAllView ? { sprintFilter: f.sprintFilter, onSprintFilterChange: f.setSprintFilter, sprintOptions: f.sprintOptions, sprintNameMap } : {})} noBorder searchQuery={f.searchQuery} onSearchChange={f.setSearchQuery} onSaveView={f.handleSaveView} onDeleteView={f.activeViewId ? () => f.handleDeleteView(f.activeViewId!) : undefined} activeView={f.activeView} />
+          </div>
         </div>
       )}
       <div ref={contentScrollRef} className="min-h-0 flex-1 overflow-y-auto">
@@ -612,7 +658,9 @@ export default function SprintBoard() {
           // The list sits on a white surface; TicketTable renders the bordered card(s) itself —
           // one card when ungrouped, one per group when grouped (BRDG-239, BRDG-267).
           <div className="min-h-full bg-[var(--color-surface-elevated)] px-4 pb-4 pt-3">
-          <TicketTable tickets={displayTickets} warningLensActive={warningLensActive} warningLensActiveSprint={!!flatIsActiveSprint} filterSignature={filterSignature} checkedTickets={checkedTickets} selectedTicket={selectedTicket} focusedTicketIdx={focusedTicketIdx} someChecked={someChecked} allChecked={allChecked} visibleTags={f.visibleTags} hideEpic={hideEpicChip} showSprint={showSprintOnRow} sprintNameMap={sprintNameMap} poStatuses={poStatuses} readinessMap={readinessMap} inflightKeys={inflightKeys} onToggleCheck={toggleCheck} onRangeCheck={handleRangeCheck} onToggleAll={toggleAll} onSelectTicket={setSelectedTicket} onRowContextMenu={handleRowContextMenu} contextMenuKeys={rowMenu?.targets} onPoStatusChange={ta.handlePoStatusChange} onReadinessChange={ta.handleReadinessChange} onBusinessValueChange={ta.handleBusinessValueChange} onStoryPointsChange={ta.handleStoryPointsChange} onJiraStatusChange={ta.handleJiraStatusChange} onIssueTypeChange={ta.handleIssueTypeChange} onTitleChange={ta.handleTitleChange} onAssigneeChange={ta.handleAssigneeChange} onEpicChange={ta.handleEpicChange} onSprintChange={ta.handleSprintChange} sprints={sprints} onCloseSubtasks={ta.handleCloseSubtasks} onTableKeyDown={handleTableKeyDown} onRunReview={(key) => handleBulkReviewStory(new Set([key]))} sortField={f.sortField} sortDir={f.sortDir} groups={groups} flatHeader={singleSprintHeader} collapsedGroups={collapsedGroups} onToggleCollapse={toggleCollapse} groupBy={groupBy} pinnedSprintIds={slotSprintsSet} onPinSprint={handleAddSlotWithSprint} onEditSprint={handleEditSprintFromGroup} onCloseSprint={handleCloseSprintFromGroup} onSyncGroup={handleSyncGroup} onCreateTicket={handleCreateTicket} flatCreateTarget={flatCreateTarget} scrollContainerRef={contentScrollRef} refinementSessionMap={ticketSessionMap} onRemoveFromRefinement={handleRemoveFromRefinement} onViewRefinement={handleViewRefinement} {...(dnd.jiraRankDndEnabled ? { externalDnd: true as const, externalActiveDragId: dnd.boardActiveDragId, dragOverKey: dnd.boardOverId } : { onReorder: f.sortField === "rank" && !f.activeViewId ? handleReorder : undefined })} />
+          <div className={boardMaxW}>
+          <TicketTable tickets={displayTickets} warningLensActive={warningLensActive} warningLensActiveSprint={!!flatIsActiveSprint} filterSignature={filterSignature} checkedTickets={checkedTickets} selectedTicket={selectedTicket} focusedTicketIdx={focusedTicketIdx} someChecked={someChecked} allChecked={allChecked} visibleTags={f.visibleTags} hideEpic={hideEpicChip} showSprint={showSprintOnRow} sprintNameMap={sprintNameMap} poStatuses={poStatuses} readinessMap={readinessMap} inflightKeys={inflightKeys} onToggleCheck={toggleCheck} onRangeCheck={handleRangeCheck} onToggleAll={toggleAll} onSelectTicket={setSelectedTicket} onRowContextMenu={handleRowContextMenu} contextMenuKeys={rowMenu?.targets} onPoStatusChange={ta.handlePoStatusChange} onReadinessChange={ta.handleReadinessChange} onBusinessValueChange={ta.handleBusinessValueChange} onStoryPointsChange={ta.handleStoryPointsChange} onJiraStatusChange={ta.handleJiraStatusChange} onIssueTypeChange={ta.handleIssueTypeChange} onTitleChange={ta.handleTitleChange} onAssigneeChange={ta.handleAssigneeChange} onEpicChange={ta.handleEpicChange} onSprintChange={ta.handleSprintChange} sprints={sprints} onCloseSubtasks={ta.handleCloseSubtasks} onTableKeyDown={handleTableKeyDown} onRunReview={(key) => handleBulkReviewStory(new Set([key]))} sortField={f.sortField} sortDir={f.sortDir} groups={groups} flatHeader={singleSprintHeader} collapsedGroups={collapsedGroups} onToggleCollapse={toggleCollapse} groupBy={groupBy} pinnedSprintIds={slotSprintsSet} onPinSprint={handleAddSlotWithSprint} onEditSprint={handleEditSprintFromGroup} onCloseSprint={handleCloseSprintFromGroup} onSyncGroup={handleSyncGroup} onCreateTicket={handleCreateTicket} flatCreateTarget={flatCreateTarget} flatComposerOpen={flatComposerOpen} onCloseFlatComposer={closeFlatComposer} scrollContainerRef={contentScrollRef} refinementSessionMap={ticketSessionMap} onRemoveFromRefinement={handleRemoveFromRefinement} onViewRefinement={handleViewRefinement} {...(dnd.jiraRankDndEnabled ? { externalDnd: true as const, externalActiveDragId: dnd.boardActiveDragId, dragOverKey: dnd.boardOverId } : { onReorder: f.sortField === "rank" && !f.activeViewId ? handleReorder : undefined })} />
+          </div>
           </div>
         )}
       </div>

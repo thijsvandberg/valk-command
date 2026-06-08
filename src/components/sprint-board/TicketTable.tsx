@@ -12,6 +12,7 @@ import { Sheet, Inbox, Plus } from "lucide-react";
 import { GroupStatBar } from "@/components/sprint-board/GroupStatBar";
 import { matchesWarningFilter, ticketWarningLabels } from "@/components/sprint-board/warning-filter";
 import { GroupCard, GROUP_CARD_CLASS } from "@/components/sprint-board/GroupCard";
+import { trailingDoneDepStart } from "@/lib/sprint-insert-position";
 import type { TicketGroup, GroupByOption } from "@/components/sprint-board/useGroupBy";
 import type { GroupSyncTarget, GroupSyncProgress, GroupSyncResult } from "@/lib/group-sync";
 import {
@@ -135,6 +136,8 @@ export function TicketTable({
   onViewRefinement,
   onCreateTicket,
   flatCreateTarget,
+  flatComposerOpen = false,
+  onCloseFlatComposer,
   warningLensActive = false,
   warningLensActiveSprint = false,
   filterSignature,
@@ -212,8 +215,12 @@ export function TicketTable({
   onViewRefinement?: (sessionId: string) => void;
   /** Create a story/task/bug into a sprint (id), or the backlog (null). Enables the inline composer. */
   onCreateTicket?: (sprintId: string | null, title: string, jiraType: string) => void;
-  /** Target for the ungrouped list's composer. When set, a "+ Add story" row shows under the flat list. */
+  /** Target for the ungrouped list's composer. When set, the header "+" can open the inline composer. */
   flatCreateTarget?: { sprintId: string | null };
+  /** Whether the flat (single-sprint) composer is open. Toggled by the "+" in the single-sprint header. */
+  flatComposerOpen?: boolean;
+  /** Close the flat composer (Escape on an empty input). */
+  onCloseFlatComposer?: () => void;
   // Warning filter mode for the FLAT single-sprint view (BRDG-313): when active, the
   // already-narrowed `tickets` get per-row hygiene labels. warningLensActiveSprint gates
   // the unpointed label (only meaningful on the active sprint). The grouped view drives
@@ -301,7 +308,10 @@ export function TicketTable({
     }
   }, [onReorder]);
 
-  const enableVirtualization = tickets.length > VIRTUALIZE_THRESHOLD;
+  // The flat composer is injected as a real row at the insertion index, which the virtualizer's
+  // uniform-index math cannot accommodate; render non-virtualized while it is open (BRDG-315).
+  const flatComposerActive = !!(flatCreateTarget && onCreateTicket && flatComposerOpen);
+  const enableVirtualization = tickets.length > VIRTUALIZE_THRESHOLD && !flatComposerActive;
   const ticketIds = tickets.map((t) => t.key);
   const activeTicket = activeDragId ? tickets.find((t) => t.key === activeDragId) : null;
 
@@ -408,16 +418,37 @@ export function TicketTable({
     </table>
   );
 
+  // The flat (single-sprint) create row, rendered at the insertion point: just above the trailing
+  // contiguous done/deprecated block so the PO sees where the new story will land (BRDG-315).
+  const flatInsertIdx = flatComposerActive ? trailingDoneDepStart(tickets) : -1;
+  const flatComposerRow = flatComposerActive ? (
+    <tr key="__flat_composer__">
+      <td className="p-0">
+        <ChildIssueComposer
+          variant="bar"
+          autoFocus
+          onCreate={(title, jiraType) => onCreateTicket!(flatCreateTarget!.sprintId, title, jiraType)}
+          onEscapeEmpty={onCloseFlatComposer}
+          placeholder={flatCreateTarget!.sprintId === null ? "Create story in the backlog..." : "Create story in this sprint..."}
+        />
+      </td>
+    </tr>
+  ) : null;
+
   const plainTable = (
     <table className="w-full table-fixed border-collapse text-body-lg">
       <tbody>
-        {tickets.map((ticket, ticketIdx) => (
-          <BoardRow
-            key={ticket.key}
-            {...makeRowProps(ticket, ticketIdx)}
-            warningLabels={warningLensActive ? ticketWarningLabels(ticket, warningLensActiveSprint) : undefined}
-          />
-        ))}
+        {tickets.flatMap((ticket, ticketIdx) => {
+          const row = (
+            <BoardRow
+              key={ticket.key}
+              {...makeRowProps(ticket, ticketIdx)}
+              warningLabels={warningLensActive ? ticketWarningLabels(ticket, warningLensActiveSprint) : undefined}
+            />
+          );
+          return ticketIdx === flatInsertIdx ? [flatComposerRow, row] : [row];
+        })}
+        {flatInsertIdx === tickets.length && flatComposerRow}
       </tbody>
     </table>
   );
@@ -431,12 +462,12 @@ export function TicketTable({
   const sortableTableBody = (
     <SortableContext items={ticketIds} strategy={externalDnd ? () => null : verticalListSortingStrategy}>
       <tbody>
-        {tickets.map((ticket, ticketIdx) => {
+        {tickets.flatMap((ticket, ticketIdx) => {
           let insertLine: "above" | "below" | undefined;
           if (dragOverKey && ticket.key === dragOverKey && activeInsertIdx !== -1 && overInsertIdx !== -1) {
             insertLine = activeInsertIdx > overInsertIdx ? "above" : "below";
           }
-          return (
+          const row = (
             <SortableBoardRow
               key={ticket.key}
               {...makeRowProps(ticket, ticketIdx)}
@@ -444,7 +475,9 @@ export function TicketTable({
               warningLabels={warningLensActive ? ticketWarningLabels(ticket, warningLensActiveSprint) : undefined}
             />
           );
+          return ticketIdx === flatInsertIdx ? [flatComposerRow, row] : [row];
         })}
+        {flatInsertIdx === tickets.length && flatComposerRow}
       </tbody>
     </SortableContext>
   );
@@ -656,12 +689,11 @@ export function TicketTable({
             </table>
             {isComposerOpen && canCreateInGroup && onCreateTicket && (
               <ChildIssueComposer
+                variant="bar"
                 autoFocus
                 onCreate={(title, jiraType) => onCreateTicket(createTargetSprintId, title, jiraType)}
                 onEscapeEmpty={() => setComposerGroupKey(null)}
                 placeholder={isBacklogGroup ? "Create story in the backlog..." : `Create story in ${group.label}...`}
-                alignKey
-                className={visibleGroupTickets.length > 0 ? "border-t border-border-subtle" : ""}
               />
             )}
           </GroupCard>
@@ -679,7 +711,7 @@ export function TicketTable({
       tabIndex={0}
       onKeyDown={onTableKeyDown}
     >
-      {isGrouped ? groupedTable : ((flatHeader || tickets.length > 0 || (flatCreateTarget && onCreateTicket)) && (
+      {isGrouped ? groupedTable : ((flatHeader || tickets.length > 0 || flatComposerActive) && (
         <div className={CARD_CLASS}>
           {flatHeader && (
             <div className="@container relative flex items-center gap-3 bg-[var(--color-surface-chrome)]/30 px-3 py-[9px] rounded-t-xl border-b border-border-subtle">
@@ -687,17 +719,19 @@ export function TicketTable({
             </div>
           )}
           {tickets.length > 0 && (enableVirtualization ? virtualizedTable : ((externalDnd || onReorder) ? dndTable : plainTable))}
-          {flatCreateTarget && onCreateTicket && (
+          {/* Empty sprint: the injected-row path has no rows to attach to, so render the composer directly. */}
+          {tickets.length === 0 && flatComposerActive && onCreateTicket && flatCreateTarget && (
             <ChildIssueComposer
+              variant="bar"
+              autoFocus
               onCreate={(title, jiraType) => onCreateTicket(flatCreateTarget.sprintId, title, jiraType)}
+              onEscapeEmpty={onCloseFlatComposer}
               placeholder={flatCreateTarget.sprintId === null ? "Create story in the backlog..." : "Create story in this sprint..."}
-              alignKey
-              className={tickets.length > 0 ? "border-t border-border-subtle" : ""}
             />
           )}
         </div>
       ))}
-      {tickets.length === 0 && !isGrouped && !(flatCreateTarget && onCreateTicket) && (
+      {tickets.length === 0 && !isGrouped && !flatComposerActive && (
         <EmptyState
           icon={<Sheet className="h-6 w-6 text-text-muted" strokeWidth={1} />}
           title="No tickets in this sprint"
