@@ -1,12 +1,12 @@
 "use client";
 
-import { useLayoutEffect, useRef, useState, type RefObject } from "react";
+import { useLayoutEffect, useRef, useState, type ReactNode, type RefObject } from "react";
 import { createPortal } from "react-dom";
 import type { Sprint } from "@/types/ticket";
 import type { GroupSyncProgress, GroupSyncResult, GroupSyncState } from "@/lib/group-sync";
 import { Popover } from "@/components/shared/Popover";
 import { useOutsideClick } from "@/hooks/useOutsideClick";
-import { Pencil, Sparkles, ExternalLink, Flag, Play, RefreshCw, ChevronRight, ChevronLeft, Check, Settings2 } from "lucide-react";
+import { Sparkles, ExternalLink, CircleCheck, Play, RefreshCw, Check, Settings2 } from "lucide-react";
 import Link from "next/link";
 
 interface SprintDetailsPopoverProps {
@@ -23,6 +23,8 @@ interface SprintDetailsPopoverProps {
   onCloseSprint?: () => void;
   /** When provided and the sprint is in the future, shows a "Start sprint" action. */
   onStartSprint?: () => void;
+  /** When provided, shows an "Open in Jira" link to the sprint's board backlog. */
+  jiraUrl?: string | null;
   /**
    * When true, the menu's first level shows a "Sync" action. The sync lifecycle is
    * owned by the parent (so a header spinner can show while the menu is closed) and
@@ -43,11 +45,6 @@ interface SprintDetailsPopoverProps {
   anchorRef?: RefObject<HTMLElement | null>;
 }
 
-function fmtDate(iso: string): string {
-  const d = new Date(iso);
-  return d.toLocaleDateString("en-GB", { weekday: "short", day: "numeric", month: "short" });
-}
-
 export function SprintDetailsPopover({
   sprint,
   kind = "sprint",
@@ -58,6 +55,7 @@ export function SprintDetailsPopover({
   goalSuggestionUrl,
   onCloseSprint,
   onStartSprint,
+  jiraUrl,
   canSync = false,
   syncState = "idle",
   syncProgress = null,
@@ -66,19 +64,10 @@ export function SprintDetailsPopover({
   align = "left",
   anchorRef,
 }: SprintDetailsPopoverProps) {
-  const hasGoal = sprint?.goal && sprint.goal.trim().length > 0;
-  const hasDates = sprint?.startDate && sprint?.endDate;
-  // Settings only make sense for sprints (goal/dates/edit/close); epic groups get a
-  // sync-only menu, so the two-level split collapses to a single level there.
-  const hasSettings = sprint != null && (onEdit != null || onCloseSprint != null || onStartSprint != null || hasDates || hasGoal);
-  // The two-level split (Sync | Settings) only earns its keep when a sync action
-  // exists. Without one, settings render directly so there is no pointless
-  // single-item menu in front of them.
-  const hasMenu = canSync;
+  const hasGoal = !!sprint?.goal && sprint.goal.trim().length > 0;
 
   const panelRef = useRef<HTMLDivElement>(null);
   const [coords, setCoords] = useState<{ top: number; right: number } | null>(null);
-  const [view, setView] = useState<"menu" | "settings">("menu");
 
   useOutsideClick(anchorRef ? [panelRef, anchorRef] : panelRef, onClose, { enabled: open && anchorRef != null });
   useLayoutEffect(() => {
@@ -86,15 +75,6 @@ export function SprintDetailsPopover({
     const rect = anchorRef.current.getBoundingClientRect();
     setCoords({ top: rect.bottom + 8, right: window.innerWidth - rect.right });
   }, [open, anchorRef]);
-
-  // Every fresh open lands on the top-level menu. Adjusting state during render
-  // (not an effect) avoids a second commit; see
-  // https://react.dev/reference/react/useState#storing-information-from-previous-renders
-  const [prevOpen, setPrevOpen] = useState(open);
-  if (open !== prevOpen) {
-    setPrevOpen(open);
-    if (open) setView("menu");
-  }
 
   const syncLabel = kind === "epic" ? "Sync epic" : "Sync sprint";
   const fraction = syncProgress && syncProgress.total > 0 ? syncProgress.done / syncProgress.total : 0;
@@ -107,178 +87,121 @@ export function SprintDetailsPopover({
           ? `Syncing ${syncProgress.done} of ${syncProgress.total}`
           : "";
 
-  const syncRow = canSync && (
-    <button
-      type="button"
-      onClick={() => onRunSync?.()}
-      disabled={syncState === "running"}
-      className="flex w-full flex-col gap-1.5 rounded-md px-2 py-1.5 text-body-sm text-text-secondary cursor-pointer
-        hover:bg-hover-interactive hover:text-text-primary active:bg-overlay-strong
-        focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-[var(--color-brand-400)]
-        disabled:cursor-default disabled:hover:bg-transparent
-        [transition:background-color_.12s_ease,color_.12s_ease]"
-    >
-      <span className="flex w-full items-center gap-1.5">
-        {syncState === "done" ? (
-          <Check size={12} strokeWidth={2} className="shrink-0 text-[var(--color-status-success)]" />
-        ) : (
-          <RefreshCw
-            size={11}
-            strokeWidth={1.5}
-            className={`shrink-0 opacity-60 ${syncState === "running" ? "motion-safe:animate-spin" : ""}`}
-          />
-        )}
-        <span className={syncState === "error" ? "text-[var(--color-status-danger,#ef4444)]" : undefined}>
-          {syncState === "running"
-            ? phaseLabel
-            : syncState === "done"
-              ? `Synced ${syncResult?.synced ?? 0}${syncResult && syncResult.removed > 0 ? `, ${syncResult.removed} moved out` : ""}`
-              : syncState === "error"
-                ? "Sync failed — retry"
-                : syncLabel}
-        </span>
-      </span>
-      {syncState === "running" && syncProgress?.phase !== "planning" && (
-        <span className="h-0.5 w-full overflow-hidden rounded-full bg-overlay-default" aria-hidden>
-          <span
-            className="block h-full origin-left rounded-full bg-[var(--color-brand-400)] [transition:transform_.2s_ease]"
-            style={{ transform: `scaleX(${fraction})` }}
-          />
-        </span>
-      )}
-    </button>
-  );
+  // Item geometry matches the board's regular "More options" menu: full-width rows,
+  // tight px-3 py-2 padding (no nested padding layer), 13px icons.
+  const rowBase = "flex w-full items-center gap-2.5 px-3 py-2 text-body-sm cursor-pointer transition-colors duration-150";
+  const neutralRow = `${rowBase} text-text-secondary hover:bg-hover-interactive hover:text-text-primary`;
+  const brandRow = `${rowBase} text-[var(--color-brand-400)] hover:bg-[var(--color-brand-500)]/10 hover:text-[var(--color-brand-300)]`;
 
-  const menuView = (
-    <div className="space-y-0.5">
-      {syncRow}
-      {hasSettings && (
-        <button
-          type="button"
-          onClick={() => setView("settings")}
-          className="flex w-full items-center gap-1.5 rounded-md px-2 py-1.5 text-body-sm text-text-secondary cursor-pointer
-            hover:bg-hover-interactive hover:text-text-primary active:bg-overlay-strong
-            focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-[var(--color-brand-400)]
-            [transition:background-color_.12s_ease,color_.12s_ease]"
-        >
-          <Settings2 size={11} strokeWidth={1.5} className="shrink-0 opacity-60" />
-          <span>Settings</span>
-          <ChevronRight size={12} strokeWidth={1.5} className="ml-auto shrink-0 opacity-50" />
-        </button>
-      )}
-    </div>
-  );
+  const items: ReactNode[] = [];
 
-  const settingsView = (
-    <div className="space-y-2">
-      {hasMenu && (
-        <button
-          type="button"
-          onClick={() => setView("menu")}
-          className="flex items-center gap-1 rounded-md px-1.5 py-1 -mx-1 text-[11px] font-medium text-text-muted cursor-pointer
-            hover:text-text-secondary active:text-text-primary
-            focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-[var(--color-brand-400)]
-            [transition:color_.12s_ease]"
-        >
-          <ChevronLeft size={12} strokeWidth={1.5} className="shrink-0" />
-          Back
-        </button>
-      )}
-
-      {hasDates && (
-        <div className="text-body-sm text-text-secondary tabular-nums">
-          {fmtDate(sprint!.startDate!)} &ndash; {fmtDate(sprint!.endDate!)}
-        </div>
-      )}
-
-      {hasGoal ? (
-        <p className="text-body-sm leading-relaxed text-text-primary">{sprint!.goal}</p>
-      ) : (
-        <div className="space-y-1.5">
-          <p className="flex items-center gap-1.5 text-body-sm italic text-text-muted">
-            <span>No sprint goal set</span>
-            {onSuggestGoal && !goalSuggestionUrl && (
-              <button
-                type="button"
-                onClick={() => { onClose(); onSuggestGoal(); }}
-                className="inline-flex items-center gap-1 rounded-md px-1.5 py-0.5 text-[11px] font-medium not-italic cursor-pointer
-                  text-[var(--color-brand-400)]
-                  hover:bg-[var(--color-brand-500)]/10
-                  active:bg-[var(--color-brand-500)]/15
-                  transition-colors duration-100"
-              >
-                <Sparkles size={10} strokeWidth={1.5} className="shrink-0" />
-                Suggest with AI
-              </button>
-            )}
-          </p>
-          {goalSuggestionUrl && (
-            <Link
-              href={goalSuggestionUrl}
-              onClick={onClose}
-              className="flex items-center gap-1.5 rounded-md px-2 py-1.5 text-[11px] font-medium not-italic cursor-pointer
-                text-[var(--color-brand-400)] bg-[var(--color-brand-500)]/[0.06] border border-[var(--color-brand-500)]/20
-                hover:bg-[var(--color-brand-500)]/[0.12]
-                transition-colors duration-100"
-            >
-              <Sparkles size={10} strokeWidth={1.5} className="shrink-0" />
-              AI suggestion available
-              <ExternalLink size={9} strokeWidth={1.5} className="ml-auto shrink-0 opacity-60" />
-            </Link>
+  if (canSync) {
+    items.push(
+      <button
+        key="sync"
+        type="button"
+        onClick={() => onRunSync?.()}
+        disabled={syncState === "running"}
+        className={`flex w-full flex-col gap-1.5 px-3 py-2 text-body-sm text-text-secondary cursor-pointer
+          hover:bg-hover-interactive hover:text-text-primary
+          disabled:cursor-default disabled:hover:bg-transparent
+          transition-colors duration-150`}
+      >
+        <span className="flex w-full items-center gap-2.5">
+          {syncState === "done" ? (
+            <Check size={13} strokeWidth={2} className="shrink-0 text-[var(--color-status-success)]" />
+          ) : (
+            <RefreshCw
+              size={13}
+              strokeWidth={1.5}
+              className={`shrink-0 ${syncState === "running" ? "motion-safe:animate-spin" : ""}`}
+            />
           )}
-        </div>
-      )}
+          <span className={syncState === "error" ? "text-[var(--color-status-danger,#ef4444)]" : undefined}>
+            {syncState === "running"
+              ? phaseLabel
+              : syncState === "done"
+                ? `Synced ${syncResult?.synced ?? 0}${syncResult && syncResult.removed > 0 ? `, ${syncResult.removed} moved out` : ""}`
+                : syncState === "error"
+                  ? "Sync failed — retry"
+                  : syncLabel}
+          </span>
+        </span>
+        {syncState === "running" && syncProgress?.phase !== "planning" && (
+          <span className="h-0.5 w-full overflow-hidden rounded-full bg-overlay-default" aria-hidden>
+            <span
+              className="block h-full origin-left rounded-full bg-[var(--color-brand-400)] [transition:transform_.2s_ease]"
+              style={{ transform: `scaleX(${fraction})` }}
+            />
+          </span>
+        )}
+      </button>,
+    );
+  }
 
-      <div className="pt-0.5">
-        <div className="h-px bg-border-default -mx-3.5 mb-2" />
-        {onEdit && (
-          <button
-            type="button"
-            onClick={() => { onClose(); onEdit(); }}
-            className="flex w-full items-center gap-1.5 rounded-md px-2 py-1.5 text-body-sm text-text-secondary cursor-pointer
-              hover:bg-hover-interactive hover:text-text-primary active:bg-overlay-strong
-              transition-colors duration-100"
-          >
-            <Pencil size={11} strokeWidth={1.5} className="shrink-0 opacity-60" />
-            <span>Edit details</span>
-          </button>
-        )}
-        {onStartSprint && sprint?.state === "future" && (
-          <button
-            type="button"
-            onClick={() => { onClose(); onStartSprint(); }}
-            className="flex w-full items-center gap-1.5 rounded-md px-2 py-1.5 text-body-sm text-[var(--color-brand-400)] cursor-pointer
-              hover:bg-[var(--color-brand-500)]/10 hover:text-[var(--color-brand-300)] active:bg-[var(--color-brand-500)]/15
-              transition-colors duration-100"
-          >
-            <Play size={11} strokeWidth={1.5} className="shrink-0 opacity-80" />
-            <span>Start sprint</span>
-          </button>
-        )}
-        {onCloseSprint && sprint?.state === "active" && (
-          <button
-            type="button"
-            onClick={() => { onClose(); onCloseSprint(); }}
-            className="flex w-full items-center gap-1.5 rounded-md px-2 py-1.5 text-body-sm text-amber-300/90 cursor-pointer
-              hover:bg-amber-500/10 hover:text-amber-300 active:bg-amber-500/15
-              transition-colors duration-100"
-          >
-            <Flag size={11} strokeWidth={1.5} className="shrink-0 opacity-80" />
-            <span>Close sprint</span>
-          </button>
-        )}
-      </div>
-    </div>
-  );
+  // "Sprint settings" opens the edit modal directly (no sub-panel). The sprint goal
+  // is intentionally not shown here; it lives in that modal.
+  if (onEdit) {
+    items.push(
+      <button key="settings" type="button" onClick={() => { onClose(); onEdit(); }} className={neutralRow}>
+        <Settings2 size={13} strokeWidth={1.5} className="shrink-0" />
+        <span>Sprint settings</span>
+      </button>,
+    );
+  }
 
-  // Without a menu, settings stand alone. With one, the menu leads and Settings
-  // drills into the same block.
-  const effectiveView = hasMenu ? view : "settings";
-  const inner = (
-    <div className="px-3.5 py-3">
-      {effectiveView === "settings" && hasSettings ? settingsView : menuView}
-    </div>
-  );
+  // Goal-suggestion affordances (single-sprint header only): an action to generate
+  // a goal, or a link to a ready suggestion. No goal text is rendered.
+  if (onSuggestGoal && !hasGoal && !goalSuggestionUrl) {
+    items.push(
+      <button key="suggest" type="button" onClick={() => { onClose(); onSuggestGoal(); }} className={brandRow}>
+        <Sparkles size={13} strokeWidth={1.5} className="shrink-0" />
+        <span>Suggest goal with AI</span>
+      </button>,
+    );
+  }
+  if (goalSuggestionUrl) {
+    items.push(
+      <Link key="ai" href={goalSuggestionUrl} onClick={onClose} className={brandRow}>
+        <Sparkles size={13} strokeWidth={1.5} className="shrink-0" />
+        <span>AI suggestion available</span>
+        <ExternalLink size={11} strokeWidth={1.5} className="ml-auto shrink-0 opacity-60" />
+      </Link>,
+    );
+  }
+
+  if (onStartSprint && sprint?.state === "future") {
+    items.push(
+      <button key="start" type="button" onClick={() => { onClose(); onStartSprint(); }} className={brandRow}>
+        <Play size={13} strokeWidth={1.5} className="shrink-0" />
+        <span>Start sprint</span>
+      </button>,
+    );
+  }
+  if (onCloseSprint && sprint?.state === "active") {
+    items.push(
+      <button
+        key="close"
+        type="button"
+        onClick={() => { onClose(); onCloseSprint(); }}
+        className={`${rowBase} text-[var(--color-status-warning)] hover:bg-[var(--color-status-warning-subtle)]`}
+      >
+        <CircleCheck size={13} strokeWidth={1.5} className="shrink-0" />
+        <span>Close sprint</span>
+      </button>,
+    );
+  }
+
+  if (jiraUrl) {
+    items.push(
+      <a key="jira" href={jiraUrl} target="_blank" rel="noopener noreferrer" onClick={onClose} className={neutralRow}>
+        <ExternalLink size={13} strokeWidth={1.5} className="shrink-0" />
+        <span>Open in Jira</span>
+      </a>,
+    );
+  }
+
+  const inner = <div className="py-1.5">{items}</div>;
 
   // Portal mode: fixed-positioned panel anchored to the trigger, so an ancestor
   // card's `overflow-hidden` cannot clip it (BRDG group-row menu).
@@ -287,7 +210,7 @@ export function SprintDetailsPopover({
     return createPortal(
       <div
         ref={panelRef}
-        className="fixed z-[9999] w-64 overflow-hidden rounded-xl border border-border-strong bg-[var(--color-surface-floating)] shadow-[var(--shadow-xl)]"
+        className="fixed z-[9999] w-56 overflow-hidden rounded-xl border border-border-strong bg-[var(--color-surface-floating)] shadow-[var(--shadow-lg)]"
         style={{ top: coords.top, right: coords.right }}
       >
         {inner}
@@ -297,7 +220,7 @@ export function SprintDetailsPopover({
   }
 
   return (
-    <Popover open={open} onClose={onClose} align={align} offsetClass="mt-2" className="w-64">
+    <Popover open={open} onClose={onClose} align={align} offsetClass="mt-2" className="w-56">
       {inner}
     </Popover>
   );

@@ -9,6 +9,7 @@ import { StatPill, StatusPill } from "./SprintStatPill";
 import { MetricBadge } from "@/components/shared/MetricBadge";
 import { Tooltip } from "@/components/shared/Tooltip";
 import { SprintDetailsPopover } from "./SprintDetailsPopover";
+import { getJiraSprintUrl } from "@/lib/jira-url";
 import { pluralize } from "@/lib/pluralize";
 
 export type StatCriterion = "todo" | "in-progress" | "test" | "done" | "unpointed";
@@ -48,6 +49,8 @@ export interface GroupStatBarProps {
   onEditSprintDetails?: () => void;
   /** Closes (finishes) this group's sprint. Only surfaced for active sprints. */
   onCloseSprint?: () => void;
+  /** Starts (activates) this group's sprint. Only surfaced for future sprints. */
+  onStartSprint?: () => void;
   /**
    * Runs a tranched sync of this group (sprint or epic) from Jira, reporting
    * progress. When provided, the "..." menu's first level exposes a Sync action.
@@ -108,6 +111,7 @@ export const GroupStatBar = memo(function GroupStatBar({
   sprint,
   onEditSprintDetails,
   onCloseSprint,
+  onStartSprint,
   onSync,
   syncKind,
   createAction,
@@ -409,8 +413,10 @@ export const GroupStatBar = memo(function GroupStatBar({
               {...(sprint != null
                 ? {
                     sprint,
+                    jiraUrl: getJiraSprintUrl(sprint.id),
                     onEdit: onEditSprintDetails ? () => onEditSprintDetails() : undefined,
                     onCloseSprint: onCloseSprint ? () => onCloseSprint() : undefined,
+                    onStartSprint: onStartSprint ? () => onStartSprint() : undefined,
                   }
                 : {})}
             />

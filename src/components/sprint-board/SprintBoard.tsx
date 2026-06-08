@@ -508,6 +508,8 @@ export default function SprintBoard() {
               sprint: activeSprint,
               onEditSprintDetails: () => handleEditSprintFromGroup(key),
               onCloseSprint: activeSprint.state === "active" ? () => handleCloseSprintFromGroup(key) : undefined,
+              // Start happens inside the edit modal (date validation + Start button live there).
+              onStartSprint: activeSprint.state === "future" ? () => handleEditSprintFromGroup(key) : undefined,
               onSync: (onProgress: (p: GroupSyncProgress) => void) => handleSyncGroup({ kind: "sprint", id: key, label }, onProgress),
               syncKind: "sprint" as const,
             }

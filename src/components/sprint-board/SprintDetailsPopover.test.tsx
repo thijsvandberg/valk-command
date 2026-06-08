@@ -30,7 +30,7 @@ describe("SprintDetailsPopover", () => {
     expect(container.innerHTML).toBe("");
   });
 
-  it("shows sprint goal when open", () => {
+  it("shows the settings action and never renders the sprint goal text", () => {
     render(
       <SprintDetailsPopover
         sprint={makeSprint()}
@@ -40,24 +40,39 @@ describe("SprintDetailsPopover", () => {
       />,
     );
 
-    expect(screen.getByText("Deliver authentication module")).toBeInTheDocument();
-    expect(screen.getByText("Edit details")).toBeInTheDocument();
+    expect(screen.getByText("Sprint settings")).toBeInTheDocument();
+    expect(screen.queryByText("Deliver authentication module")).not.toBeInTheDocument();
   });
 
-  it("shows placeholder when no goal is set", () => {
+  it("offers 'Suggest goal with AI' when no goal is set and suggestion is wired", () => {
     render(
       <SprintDetailsPopover
         sprint={makeSprint({ goal: null })}
         open={true}
         onClose={vi.fn()}
         onEdit={vi.fn()}
+        onSuggestGoal={vi.fn()}
       />,
     );
 
-    expect(screen.getByText("No sprint goal set")).toBeInTheDocument();
+    expect(screen.getByText("Suggest goal with AI")).toBeInTheDocument();
   });
 
-  it("calls onEdit and onClose when edit button is clicked", () => {
+  it("offers no goal suggestion when a goal already exists", () => {
+    render(
+      <SprintDetailsPopover
+        sprint={makeSprint()}
+        open={true}
+        onClose={vi.fn()}
+        onEdit={vi.fn()}
+        onSuggestGoal={vi.fn()}
+      />,
+    );
+
+    expect(screen.queryByText("Suggest goal with AI")).not.toBeInTheDocument();
+  });
+
+  it("calls onEdit and onClose when 'Sprint settings' is clicked", () => {
     const onClose = vi.fn();
     const onEdit = vi.fn();
 
@@ -70,7 +85,7 @@ describe("SprintDetailsPopover", () => {
       />,
     );
 
-    fireEvent.click(screen.getByText("Edit details"));
+    fireEvent.click(screen.getByText("Sprint settings"));
     expect(onClose).toHaveBeenCalled();
     expect(onEdit).toHaveBeenCalled();
   });
@@ -141,8 +156,37 @@ describe("SprintDetailsPopover", () => {
     expect(screen.queryByText("Close sprint")).not.toBeInTheDocument();
   });
 
+  it("shows an 'Open in Jira' link when a jiraUrl is provided", () => {
+    render(
+      <SprintDetailsPopover
+        sprint={makeSprint()}
+        open={true}
+        onClose={vi.fn()}
+        onEdit={vi.fn()}
+        jiraUrl="https://new-story.atlassian.net/jira/software/projects/VPL/boards/233/backlog?jql=Sprint%20%3D%20100"
+      />,
+    );
+
+    const link = screen.getByText("Open in Jira").closest("a");
+    expect(link).toHaveAttribute("href", "https://new-story.atlassian.net/jira/software/projects/VPL/boards/233/backlog?jql=Sprint%20%3D%20100");
+    expect(link).toHaveAttribute("target", "_blank");
+  });
+
+  it("hides 'Open in Jira' when no jiraUrl is provided", () => {
+    render(
+      <SprintDetailsPopover
+        sprint={makeSprint()}
+        open={true}
+        onClose={vi.fn()}
+        onEdit={vi.fn()}
+      />,
+    );
+
+    expect(screen.queryByText("Open in Jira")).not.toBeInTheDocument();
+  });
+
   describe("with sync action", () => {
-    it("shows Sync and Settings at the top level, hiding settings until opened", () => {
+    it("shows Sync and the sprint actions together in one flat menu", () => {
       render(
         <SprintDetailsPopover
           sprint={makeSprint()}
@@ -154,29 +198,11 @@ describe("SprintDetailsPopover", () => {
         />,
       );
 
+      // No drill-in: sync and the settings action are both visible at once.
       expect(screen.getByText("Sync sprint")).toBeInTheDocument();
-      expect(screen.getByText("Settings")).toBeInTheDocument();
-      // Goal/Edit live behind Settings now.
-      expect(screen.queryByText("Deliver authentication module")).not.toBeInTheDocument();
-      expect(screen.queryByText("Edit details")).not.toBeInTheDocument();
-    });
-
-    it("drills into Settings and back", () => {
-      render(
-        <SprintDetailsPopover
-          sprint={makeSprint()}
-          open={true}
-          onClose={vi.fn()}
-          onEdit={vi.fn()}
-          canSync
-          onRunSync={vi.fn()}
-        />,
-      );
-
-      fireEvent.click(screen.getByText("Settings"));
-      expect(screen.getByText("Edit details")).toBeInTheDocument();
-      fireEvent.click(screen.getByText("Back"));
-      expect(screen.getByText("Sync sprint")).toBeInTheDocument();
+      expect(screen.getByText("Sprint settings")).toBeInTheDocument();
+      expect(screen.queryByText("Settings")).not.toBeInTheDocument();
+      expect(screen.queryByText("Back")).not.toBeInTheDocument();
     });
 
     it("calls onRunSync when the Sync action is clicked", () => {
@@ -241,7 +267,7 @@ describe("SprintDetailsPopover", () => {
       expect(screen.getByText("Sync failed — retry")).toBeInTheDocument();
     });
 
-    it("for an epic shows only the sync action and no settings", () => {
+    it("for an epic shows only the sync action and no sprint settings", () => {
       render(
         <SprintDetailsPopover
           kind="epic"
@@ -253,7 +279,7 @@ describe("SprintDetailsPopover", () => {
       );
 
       expect(screen.getByText("Sync epic")).toBeInTheDocument();
-      expect(screen.queryByText("Settings")).not.toBeInTheDocument();
+      expect(screen.queryByText("Sprint settings")).not.toBeInTheDocument();
     });
   });
 });

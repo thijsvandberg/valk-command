@@ -280,8 +280,7 @@ describe("GroupStatBar", () => {
         />,
       );
       fireEvent.click(screen.getByLabelText("Sprint options"));
-      expect(screen.getByText("Ship the thing")).toBeInTheDocument();
-      fireEvent.click(screen.getByText("Edit details"));
+      fireEvent.click(screen.getByText("Sprint settings"));
       expect(onEditSprintDetails).toHaveBeenCalledTimes(1);
     });
 
