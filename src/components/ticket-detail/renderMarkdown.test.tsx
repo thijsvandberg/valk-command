@@ -1,5 +1,6 @@
 import { render } from "@testing-library/react";
-import { describe, it, expect, vi } from "vitest";
+import { describe, it, expect, vi, beforeAll } from "vitest";
+import Prism from "prismjs";
 
 // TicketRefPill (rendered for linkified refs) fetches ticket detail after mount.
 // Stub the fetcher so these tests stay focused on linkification, not network.
@@ -133,5 +134,56 @@ describe("renderMarkdown — VPL reference linkification", () => {
     const { container } = render(<div>{renderMarkdown("Mentions VPL-7 here.")}</div>);
     expect(pillFor(container, "VPL-7")).toBeNull();
     expect(container.textContent).toContain("VPL-7");
+  });
+});
+
+describe("renderMarkdown — untagged code fence highlighting (BRDG-316)", () => {
+  // prismjs core ships markup/css/clike/javascript; json is a separate component
+  // that expects a global `Prism`. renderMarkdown highlights synchronously, so the
+  // grammars must be registered before rendering (the app does this via
+  // usePrismLanguages + ensureLanguages).
+  beforeAll(async () => {
+    (globalThis as unknown as { Prism: typeof Prism }).Prism = Prism;
+    // Template-literal specifier mirrors prismLoader's dynamic import so TS does
+    // not demand a (non-existent) type declaration for the component module.
+    const component = "json";
+    await import(`prismjs/components/prism-${component}`);
+  });
+
+  const tokens = (c: HTMLElement) => c.querySelectorAll(".rm-code-content .token");
+
+  it("highlights a bare ``` fence whose content is recognizably JavaScript", () => {
+    const md = "```\nconst total = items.reduce((a, b) => a + b, 0) === 42;\nwindow.console.log(total);\n```";
+    const { container } = render(<div>{renderMarkdown(md)}</div>);
+    expect(container.querySelector(".rm-code-content")).toBeTruthy();
+    expect(tokens(container).length).toBeGreaterThan(0);
+  });
+
+  it("highlights a bare ``` fence whose content is JSON", () => {
+    const md = '```\n{ "event": "search_results", "numRooms": 7, "ok": true }\n```';
+    const { container } = render(<div>{renderMarkdown(md)}</div>);
+    expect(container.querySelector(".rm-code-content")).toBeTruthy();
+    expect(tokens(container).length).toBeGreaterThan(0);
+  });
+
+  it("leaves an ambiguous bare ``` fence as plain text (no token spans)", () => {
+    const md = "```\nthis is just some prose describing the booking flow in words\n```";
+    const { container } = render(<div>{renderMarkdown(md)}</div>);
+    expect(container.querySelector(".rm-code-content")).toBeTruthy();
+    expect(tokens(container).length).toBe(0);
+  });
+
+  it("does not assert a language label for an inferred fence", () => {
+    // Long enough to render collapsed: the summary must read "Code", not a guessed lang.
+    const body = Array.from({ length: 20 }, (_, i) => `let detected_${i} = ${i} === ${i};`).join("\n");
+    const { container } = render(<div>{renderMarkdown("```\n" + body + "\n```")}</div>);
+    expect(container.textContent).toContain("Code · 20 lines");
+    expect(container.textContent).not.toContain("JAVASCRIPT");
+  });
+
+  it("keeps using the explicit tag for a tagged fence (detection not run)", () => {
+    const md = "```js\nconst tagged = 1 === 1 && true;\n```";
+    const { container } = render(<div>{renderMarkdown(md)}</div>);
+    expect(tokens(container).length).toBeGreaterThan(0);
   });
 });

@@ -4,6 +4,8 @@ import { sanitizePrismOutput } from "@/lib/sanitize-client";
 import { ImageLightbox } from "@/components/shared/ImageLightbox";
 import { TicketRefPill } from "@/components/shared/TicketRefPill";
 import { CodeBlock } from "./CodeBlock";
+import { detectFenceLanguage } from "./detectLanguage";
+import { getLoadedGeneration } from "./prismLoader";
 
 // Bare project-key references (e.g. "VPL-43237") sitting in plain description
 // text are linkified into interactive pills. The prefix is configurable so a
@@ -347,8 +349,12 @@ const CODE_BLOCK_COLLAPSE_THRESHOLD = 15;
 // highlighting runs here in the pure layer; the collapse toggle lives in the
 // CodeBlock client component so renderMarkdown's cached output stays pure.
 function renderCodeBlock(lines: string[], lang: string, key: string): ReactNode {
+  // Bare fences (no author tag) get a content-detected grammar for highlighting,
+  // but the `lang` passed to CodeBlock stays empty so the header never asserts a
+  // language the author didn't write (BRDG-316).
+  const highlightLang = lang || detectFenceLanguage(lines.join("\n")) || "";
   const highlightedLines = lines.map(
-    (codeLine) => sanitizePrismOutput(highlightCodeLine(codeLine, lang) || "\u00a0"),
+    (codeLine) => sanitizePrismOutput(highlightCodeLine(codeLine, highlightLang) || "\u00a0"),
   );
   return (
     <CodeBlock
@@ -376,8 +382,11 @@ export interface RenderMarkdownOptions {
 export function renderMarkdown(text: string, opts?: RenderMarkdownOptions): ReactNode[] {
   const linkifyRefs = opts?.linkifyRefs ?? false;
   // Cache key must distinguish the two render modes, since identical text
-  // produces a different tree when references are linkified.
-  const cacheKey = `${linkifyRefs ? "1" : "0"}:${text}`;
+  // produces a different tree when references are linkified. It is also prefixed
+  // with the Prism loaded-grammar generation: a tree cached before a fence's
+  // grammar loaded (plain text) must not be served back once the grammar arrives
+  // and the same text would now highlight (BRDG-316).
+  const cacheKey = `${getLoadedGeneration()}:${linkifyRefs ? "1" : "0"}:${text}`;
   const cached = markdownCache.get(cacheKey);
   if (cached) return cached;
 

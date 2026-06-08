@@ -1,4 +1,5 @@
 import Prism from "prismjs";
+import { detectFenceLanguage } from "./detectLanguage";
 
 const PRISM_LANG_ALIASES: Record<string, string> = {
   js: "javascript",
@@ -24,6 +25,14 @@ const SUPPORTED_LANGUAGES = new Set([
 const loaded = new Set<string>();
 const inflight = new Map<string, Promise<void>>();
 
+// Bumped whenever a NEW grammar becomes available to Prism. renderMarkdown folds
+// this into its LRU cache key so a tree cached before a grammar loaded (plain
+// text) is not served back after the grammar arrives (BRDG-316).
+let loadedGeneration = 0;
+export function getLoadedGeneration(): number {
+  return loadedGeneration;
+}
+
 function resolveLang(lang: string): string {
   const lower = lang.toLowerCase();
   return PRISM_LANG_ALIASES[lower] ?? lower;
@@ -46,22 +55,45 @@ async function loadLang(lang: string): Promise<void> {
     `prismjs/components/prism-${lang}`
   ).then(() => {
     loaded.add(lang);
+    loadedGeneration++;
     inflight.delete(lang);
   });
   inflight.set(lang, promise);
   await promise;
 }
 
-// Scan markdown for fenced code block languages (```lang)
-const CODE_FENCE_RE = /^```(\w+)/gm;
-
+// Scan markdown for fenced code block languages. Tagged fences (```lang) use the
+// tag verbatim; bare ``` fences are run through content-based detection so their
+// inferred grammar is preloaded too (BRDG-316). Walks fences line-by-line so the
+// pairing matches renderMarkdown's parser exactly.
 export function extractCodeLanguages(markdown: string): string[] {
   const langs = new Set<string>();
-  let match: RegExpExecArray | null;
-  while ((match = CODE_FENCE_RE.exec(markdown)) !== null) {
-    langs.add(resolveLang(match[1]));
+  let inFence = false;
+  let tag = "";
+  let body: string[] = [];
+
+  for (const line of markdown.split("\n")) {
+    if (line.startsWith("```")) {
+      if (inFence) {
+        if (tag) {
+          langs.add(resolveLang(tag));
+        } else {
+          // detectFenceLanguage returns an already-resolved grammar key or null.
+          const detected = detectFenceLanguage(body.join("\n"));
+          if (detected) langs.add(detected);
+        }
+        inFence = false;
+        tag = "";
+        body = [];
+      } else {
+        inFence = true;
+        tag = line.slice(3).trim();
+        body = [];
+      }
+    } else if (inFence) {
+      body.push(line);
+    }
   }
-  CODE_FENCE_RE.lastIndex = 0;
   return [...langs];
 }
 
