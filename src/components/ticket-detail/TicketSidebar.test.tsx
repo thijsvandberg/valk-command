@@ -45,8 +45,8 @@ vi.mock("@/hooks/useTicketSessionMap", () => ({
 }));
 
 vi.mock("@/components/shared/TicketStatusPill", () => ({
-  TicketStatusPill: ({ ticketKey }: { ticketKey: string }) => (
-    <span data-testid={`status-pill-${ticketKey}`} />
+  TicketStatusPill: ({ ticketKey, jiraStatus }: { ticketKey: string; jiraStatus?: string }) => (
+    <span data-testid={`status-pill-${ticketKey}`}>{jiraStatus}</span>
   ),
 }));
 
