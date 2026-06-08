@@ -254,7 +254,7 @@ export const BoardRow = memo(forwardRef<HTMLTableRowElement, BoardRowBaseProps>(
             left, so the right uses pr-[23px] to make the assignee sit the same distance from
             the edge as the issue icon does on the left. Rows are line-less and use py-3 for an
             airier rhythm (BRDG-239, "B+C"). */}
-        <div className="relative flex items-center gap-2 py-2.5 pl-4 pr-[23px]">
+        <div className="@container/boardrow relative flex items-center gap-2 py-2.5 pl-4 pr-[23px]">
           {/* Drag affordance in the left gutter (Jira-style). Visual only: the whole row is the
               drag activator, so this never needs its own listeners. Shown only when reordering
               is possible (dragListeners present) and never during multiselect. */}
@@ -410,12 +410,12 @@ export const BoardRow = memo(forwardRef<HTMLTableRowElement, BoardRowBaseProps>(
                   epic -> SP -> BV order. Set values render in their own slots further
                   right. */}
               {showEpicPlaceholder && (
-                <HoverRevealSlot>
+                <HoverRevealSlot hideWhenNarrow>
                   <AddEpicPill ticketKey={ticket.key} onChange={(epic) => onEpicChange?.(ticket.key, epic)} />
                 </HoverRevealSlot>
               )}
               {showSpPlaceholder && (
-                <HoverRevealSlot>
+                <HoverRevealSlot hideWhenNarrow>
                   <StoryPointPicker
                     value={ticket.storyPoints}
                     onChange={onStoryPointsChange ? (v) => onStoryPointsChange(ticket.key, v) : () => {}}
@@ -426,7 +426,7 @@ export const BoardRow = memo(forwardRef<HTMLTableRowElement, BoardRowBaseProps>(
                 </HoverRevealSlot>
               )}
               {showBvPlaceholder && (
-                <HoverRevealSlot>
+                <HoverRevealSlot hideWhenNarrow>
                   <BusinessValuePicker
                     value={ticket.businessValue}
                     onChange={onBusinessValueChange ? (v) => onBusinessValueChange(ticket.key, v) : () => {}}
