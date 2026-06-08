@@ -3,6 +3,7 @@
 **Date:** 2026-06-08
 **Found during:** BRDG-308 final verification (`npm run verify`)
 **Scope:** Out of scope for BRDG-308 — logged, not fixed.
+**Still present:** Reconfirmed during BRDG-311 verification (same single failure, reproduces in isolation on files untouched by BRDG-311). Still unfixed, still out of scope.
 
 ## Symptom
 
