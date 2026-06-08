@@ -1,5 +1,5 @@
 import { render, screen } from "@testing-library/react";
-import { describe, it, expect, vi } from "vitest";
+import { describe, it, expect, vi, beforeEach } from "vitest";
 import { TicketTable } from "./TicketTable";
 import type { Ticket } from "@/types/ticket";
 import type { InlineTagId } from "./filter-bar-types";
@@ -16,6 +16,10 @@ vi.mock("lucide-react", () => {
   };
 });
 
+const { useDroppableMock } = vi.hoisted(() => ({
+  useDroppableMock: vi.fn((_args: { id: string }) => ({ setNodeRef: vi.fn(), isOver: false })),
+}));
+
 vi.mock("@dnd-kit/core", () => ({
   DndContext: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
   closestCenter: vi.fn(),
@@ -23,7 +27,7 @@ vi.mock("@dnd-kit/core", () => ({
   PointerSensor: vi.fn(),
   useSensor: vi.fn(() => ({})),
   useSensors: vi.fn(() => []),
-  useDroppable: () => ({ setNodeRef: vi.fn(), isOver: false }),
+  useDroppable: useDroppableMock,
   DragOverlay: () => null,
 }));
 
@@ -190,5 +194,55 @@ describe("TicketTable flat create composer (BRDG-315)", () => {
     const composerIdx = rows.findIndex((r) => r.querySelector(`input[placeholder="${COMPOSER_PLACEHOLDER}"]`));
     const lastRowIdx = rows.findIndex((r) => r.getAttribute("data-testid") === "row-T-2");
     expect(composerIdx).toBeGreaterThan(lastRowIdx);
+  });
+});
+
+describe("TicketTable collapsed-group drop target", () => {
+  const groups = [
+    { key: "1", label: "Sprint 1", tickets: [makeTicket("T-1", "First")], sortOrder: 0 },
+    { key: "2", label: "Sprint 2", tickets: [makeTicket("T-2", "Second")], sortOrder: 1 },
+  ];
+  const groupedProps = {
+    tickets: [makeTicket("T-1", "First"), makeTicket("T-2", "Second")],
+    selectedTicket: null,
+    onSelectTicket: vi.fn(),
+    visibleTags: new Set<InlineTagId>(DEFAULT_VISIBLE_TAGS),
+    checkedTickets: new Set<string>(),
+    focusedTicketIdx: -1,
+    someChecked: false,
+    allChecked: false,
+    onToggleCheck: vi.fn(),
+    onRangeCheck: vi.fn(),
+    onToggleAll: vi.fn(),
+    onPoStatusChange: vi.fn(),
+    onTableKeyDown: vi.fn(),
+    poStatuses: {},
+    readinessMap: {},
+    sortField: "rank" as const,
+    sortDir: "asc" as const,
+    groups,
+    groupBy: "sprint" as const,
+    externalDnd: true,
+  };
+
+  const droppableIds = () => useDroppableMock.mock.calls.map((c) => c[0].id);
+
+  beforeEach(() => useDroppableMock.mockClear());
+
+  it("registers a group-zone droppable for a collapsed group (even when it has tickets)", () => {
+    render(<TicketTable {...groupedProps} collapsedGroups={new Set(["2"])} />);
+    expect(droppableIds()).toContain("group-zone:2");
+  });
+
+  it("does not register the body drop zone for an expanded group with tickets", () => {
+    // Expanded, non-empty groups have no DroppableGroupZone; only the collapsed card is a target.
+    render(<TicketTable {...groupedProps} collapsedGroups={new Set()} />);
+    expect(droppableIds()).not.toContain("group-zone:1");
+    expect(droppableIds()).not.toContain("group-zone:2");
+  });
+
+  it("does not register a collapsed drop target when external drag is off", () => {
+    render(<TicketTable {...groupedProps} externalDnd={false} collapsedGroups={new Set(["2"])} />);
+    expect(droppableIds()).not.toContain("group-zone:2");
   });
 });

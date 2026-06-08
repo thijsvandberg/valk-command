@@ -74,6 +74,26 @@ function DroppableGroupZone({ groupKey }: { groupKey: string }) {
   );
 }
 
+// A collapsed group unmounts its table (and the empty-group drop zone with it), so the
+// header card itself becomes the drop target during an external drag. The brand ring + tint
+// make the otherwise-static header read as a live target so the drop feels intentional.
+function CollapsedGroupDroppable({ groupKey, children }: { groupKey: string; children: ReactNode }) {
+  const { setNodeRef, isOver } = useDroppable({
+    id: `group-zone:${groupKey}`,
+    data: { type: "group-zone", sprintId: groupKey },
+  });
+  return (
+    <div
+      ref={setNodeRef}
+      className={`rounded-xl [transition:box-shadow_.12s_ease] ${
+        isOver ? "shadow-[0_0_0_2px_var(--color-brand-500)]" : ""
+      }`}
+    >
+      {children}
+    </div>
+  );
+}
+
 const VIRTUALIZE_THRESHOLD = 40;
 // Line-less py-3 rows measure ~44px; the virtualizer still measures real heights, this is
 // only the pre-measurement estimate (BRDG-239 "B+C").
@@ -641,7 +661,7 @@ export function TicketTable({
           </button>
         ) : undefined;
 
-        return (
+        const card = (
           <GroupCard
             key={group.key}
             isCollapsed={isCollapsed}
@@ -700,6 +720,14 @@ export function TicketTable({
               />
             )}
           </GroupCard>
+        );
+
+        return externalDnd && isCollapsed ? (
+          <CollapsedGroupDroppable key={group.key} groupKey={group.key}>
+            {card}
+          </CollapsedGroupDroppable>
+        ) : (
+          card
         );
       })}
     </div>
