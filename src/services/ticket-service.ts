@@ -11,6 +11,7 @@ import { sanitizeText } from "@/lib/sanitize";
 import { syncIndividualTickets } from "@/lib/sync-tickets-service";
 import { logger } from "@/lib/logger";
 import { cache } from "@/lib/cache";
+import { emitTicketEvent } from "@/lib/ticket-events";
 import {
   JiraUnavailableError,
   NotFoundError,
@@ -162,6 +163,9 @@ export async function pushToJira(key: string, force: boolean): Promise<PushToJir
       scope: key,
       summary: `Pushed ${pushedFields} to Jira`,
     });
+
+    // Let an open editor (e.g. Story Writer in another tab) react to the push.
+    emitTicketEvent({ type: "content:changed", ticketKey: key });
 
     return {
       success: true,

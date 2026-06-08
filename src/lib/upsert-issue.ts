@@ -3,6 +3,7 @@ import { ticket, ticketMetadata, storyVersion, ticketAttachment, ticketSubtask, 
 import { eq, and, isNotNull, isNull } from "drizzle-orm";
 import { jiraClient, extractStoryPoints, extractSprints, extractEpicLink, extractAcceptanceCriteria, extractLastChangeAuthor, FLAGGED_FIELD, type JiraIssue, type JiraAttachment } from "@/lib/jira-client";
 import { adfToMarkdown } from "@/lib/adf-to-markdown";
+import { emitTicketEvent } from "@/lib/ticket-events";
 import { createHash } from "crypto";
 
 export function normalizeIssueType(name: string): string {
@@ -394,6 +395,12 @@ export async function upsertIssue(issue: JiraIssue, sprintName: string, _signal?
       }
     }
   });
+
+  // A new recorded version means the ticket's content moved on (webhook, sync,
+  // agent push). Notify any open editor subscribed to this ticket's stream.
+  if (needsNewVersion) {
+    emitTicketEvent({ type: "content:changed", ticketKey: issue.key });
+  }
 
   return {
     key: issue.key,

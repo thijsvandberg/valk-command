@@ -3,6 +3,7 @@ import { useOutsideClick } from "@/hooks/useOutsideClick";
 import { useRouter } from "next/navigation";
 import { mutate as globalMutate } from "swr";
 import { useStoryWriter } from "@/hooks/useStoryWriter";
+import { useTicketEvents } from "@/hooks/useTicketEvents";
 import { useNotification } from "@/hooks/useNotification";
 import { PAGE_TITLE_SUFFIX } from "@/hooks/usePageTitle";
 import { ApiError, apiFetch, jira, tickets } from "@/lib/api-client";
@@ -401,6 +402,24 @@ export function useStoryWriterActions({
       console.warn("[story-writer] take Jira version failed", err);
     }
   }, [ticketKey, targetTicketKey, writer, handleDraftChange, handleTitleChange, handleTargetDraftChange, handleTargetTitleChange]);
+
+  // React to the ticket's content changing elsewhere (another tab, Jira webhook,
+  // agent sync) while this editor is open. Interpretation A: only an untouched
+  // draft follows Jira; once the PO has their own work in the draft we never
+  // overwrite it, we just re-evaluate the staleness banner.
+  const handleExternalContentChange = useCallback(() => {
+    // Mid-stream or mid-push this tab is the source of truth; the stream/push
+    // completion path already refreshes, so reacting here would clobber it.
+    if (writer.status === "streaming" || pushing) return;
+    if (isDraftDirty) {
+      void writer.refreshSession();
+      mutateTicket();
+    } else {
+      void handleTakeJiraVersion("original");
+    }
+  }, [writer, pushing, isDraftDirty, mutateTicket, handleTakeJiraVersion]);
+
+  useTicketEvents(effectiveKey, handleExternalContentChange);
 
   const handleSplitButtonClick = useCallback(() => {
     if (!targetTicketKey) {

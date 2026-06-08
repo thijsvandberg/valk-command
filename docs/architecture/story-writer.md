@@ -90,6 +90,10 @@ When the Jira version of a ticket moves on after a draft's baseline was recorded
   - **View difference** opens the diff pane (editor draft vs latest Jira version).
   - **Take Jira version** pulls the current Jira content into the editor, rebases the baseline (PATCH `rebaseBaseline: true` for the original; local-edits rebase for the target), and refreshes the session so the warning clears.
 - **No false positives:** accepting an AI draft does not change `baseVersionHash` or create a `storyVersion`, so it never flags outdated; a successful push rebases the baseline server-side.
+- **Live cross-tab updates:** the `outdated` flag is recomputed at fetch time, so an open editor would otherwise stay stale until reload. A per-ticket SSE stream closes that gap:
+  - `emitTicketEvent({ type: "content:changed", ticketKey })` fires whenever the ticket's content moves on server-side: from `pushToJira` (ticket-service) and from `upsert-issue` when a new `storyVersion` is recorded (Jira webhook, sync, agent push).
+  - `GET /api/tickets/[key]/events` streams those events, filtered to the requested key. `useTicketEvents(key, onChange)` subscribes (reconnecting on error, disabled for `DRAFT-` keys).
+  - The editor reacts via `useStoryWriterActions` with a working-tree rule (interpretation A): an **untouched** draft (`!isDraftDirty`, i.e. `localDraft` still equals the Jira baseline) follows the new Jira version via the existing `handleTakeJiraVersion` path; a draft with the PO's **own work** is never overwritten — only `refreshSession()` + `mutateTicket()` run so the banner re-evaluates. Events are ignored while this tab is mid-stream or mid-push (those paths refresh on their own).
 
 ### Close Session
 
