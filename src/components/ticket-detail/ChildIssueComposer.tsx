@@ -128,7 +128,7 @@ export function ChildIssueComposer({
     // Raised inset bar floating in a faint footer strip (the chosen B3d treatment).
     return (
       <div
-        className={`bg-[var(--color-surface-chrome)]/40 px-2.5 py-2.5 ${className}`}
+        className={`bg-[var(--color-surface-chrome)]/40 px-2 py-1.5 ${className}`}
         onClick={(e) => e.stopPropagation()}
       >
         <div className="relative flex items-center gap-3 rounded-lg border border-border-default bg-[var(--color-surface-elevated)] px-3 py-2 shadow-[var(--shadow-sm)]">
