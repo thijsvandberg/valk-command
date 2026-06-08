@@ -922,6 +922,9 @@ export function TicketStatusPill({
   // Two renderings: "list" is the dense, container-less row style; everything
   // else is the elevated chip (a soft card wrapping the same floating segments).
   const elevated = variant !== "list";
+  // Optimistic rows created from the board carry a `pending-<timestamp>` placeholder key until
+  // Jira returns the real key. Never surface that raw GUID; show a spinner in its place (BRDG-315).
+  const isPending = ticketKey.startsWith("pending-");
   const jiraColors = JIRA_STATUS_COLORS[jiraStatus] ?? JIRA_STATUS_COLORS["TO DO"];
   const readinessCfg = readiness ? READINESS_CONFIG[readiness] : null;
 
@@ -1003,6 +1006,15 @@ export function TicketStatusPill({
       {/* Key */}
       {showKey && (
         <div className={`relative flex shrink-0 ${!elevated && issueType ? "-ml-1" : ""}`}>
+          {isPending ? (
+            <span
+              className={`flex items-center font-mono ${textSize} text-text-muted`}
+              style={{ minWidth: elevated ? undefined : "9ch" }}
+              aria-label="Creating story"
+            >
+              <RefreshCw size={11} strokeWidth={1.5} className="animate-spin" />
+            </span>
+          ) : (
           <a
             ref={keyLinkRef}
             href={`/tickets/${ticketKey}`}
@@ -1017,7 +1029,8 @@ export function TicketStatusPill({
           >
             {ticketKey}
           </a>
-          {keyDropdownOpen && (
+          )}
+          {!isPending && keyDropdownOpen && (
             <DropdownPortal triggerRef={keyLinkRef} onClose={() => setKeyDropdownOpen(false)}>
               <KeyDropdown
                 jiraUrl={jiraUrl}

@@ -256,6 +256,20 @@ describe("TicketStatusPill", () => {
     fireEvent.click(screen.getByText("IN PROGRESS"));
     expect(onChange).toHaveBeenCalledWith("IN PROGRESS");
   });
+
+  // BRDG-315: optimistic rows carry a `pending-<timestamp>` placeholder key until Jira returns
+  // the real one. That raw GUID must never be shown; a spinner stands in for it.
+  it("never renders the raw pending- placeholder key, showing a spinner instead", () => {
+    render(<TicketStatusPill ticketKey="pending-1780927981071" jiraStatus="TO DO" />);
+    expect(screen.queryByText(/pending-/)).toBeNull();
+    expect(screen.getByLabelText("Creating story")).toBeTruthy();
+  });
+
+  it("does not open a key dropdown for a pending placeholder", () => {
+    render(<TicketStatusPill ticketKey="pending-1780927981071" jiraStatus="TO DO" />);
+    // There is no key link/text to click, so the dropdown actions are absent.
+    expect(screen.queryByText("Copy Jira URL")).toBeNull();
+  });
 });
 
 describe("TicketStatusPill hover card", () => {
