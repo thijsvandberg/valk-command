@@ -300,7 +300,10 @@ export default function SprintBoard() {
   // Deep-link fallback (BRDG-270): a ticket in the URL that is not in the loaded
   // view (e.g. a different sprint) still opens the panel by fetching it directly.
   const fallbackTicket = useTicketDetail(selectedTicket && !selected ? selectedTicket : null);
-  const panelTicket = selected ?? fallbackTicket.data ?? null;
+  // Gate on selectedTicket: SWR's global keepPreviousData retains the fallback's
+  // last detail after its key goes null, so without this the panel would stay open
+  // for a fallback-opened ticket (e.g. an epic) after closing (BRDG-131).
+  const panelTicket = selectedTicket ? (selected ?? fallbackTicket.data ?? null) : null;
   const allChecked = checkedTickets.size === tickets.length && tickets.length > 0;
   const someChecked = checkedTickets.size > 0;
 
