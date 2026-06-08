@@ -27,7 +27,7 @@ export async function POST(request: Request) {
   if ("error" in parsed) return parsed.error;
   const body = parsed.data as Record<string, unknown>;
 
-  const { issueKeys, targetSprintId } = body as { issueKeys?: string[]; targetSprintId?: string };
+  const { issueKeys, targetSprintId, position } = body as { issueKeys?: string[]; targetSprintId?: string; position?: string };
 
   if (!Array.isArray(issueKeys) || issueKeys.length === 0) {
     return errorResponse("issueKeys must be a non-empty array", 400);
@@ -37,6 +37,8 @@ export async function POST(request: Request) {
   }
 
   const isBacklog = targetSprintId === "__backlog__";
+  // When dropped on a sprint/backlog zone (not between two rows), land at the very top.
+  const toTop = position === "top";
 
   if (!isBacklog) {
     const sprintIdNum = parseInt(targetSprintId, 10);
@@ -51,6 +53,14 @@ export async function POST(request: Request) {
       logger.error("jira", "Failed to move issues", message);
       return errorResponse("Failed to move issues", 500);
     }
+    // Best-effort: ranking is secondary to the move, so a failure here never fails it.
+    if (toTop) {
+      try {
+        await jiraClient.rankToTopOfSprint(issueKeys, sprintIdNum);
+      } catch (err) {
+        logger.warn("jira", "Failed to rank moved issues to top of sprint", err instanceof Error ? err.message : String(err));
+      }
+    }
   } else {
     try {
       await jiraClient.moveToBacklog(issueKeys);
@@ -58,6 +68,13 @@ export async function POST(request: Request) {
       const message = err instanceof Error ? err.message : "Unknown error";
       logger.error("jira", "Failed to move issues to backlog", message);
       return errorResponse("Failed to move issues to backlog", 500);
+    }
+    if (toTop) {
+      try {
+        await jiraClient.rankToTopOfBacklog(issueKeys);
+      } catch (err) {
+        logger.warn("jira", "Failed to rank moved issues to top of backlog", err instanceof Error ? err.message : String(err));
+      }
     }
   }
 

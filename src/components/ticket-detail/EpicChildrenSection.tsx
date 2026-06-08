@@ -507,18 +507,22 @@ export function EpicChildrenSection({
     [sprints, onMutate],
   );
 
-  // Move a child into another sprint AND land it at a specific position in one drop
-  // (drag onto a row in another sprint group). Optimistically re-groups the row and
-  // sets the target group's order, then persists move + rank, reverting both on error.
+  // Move a child into another sprint AND land it at a specific position in one drop.
+  // Dropped onto a row -> rank relative to that row. Dropped onto a sprint/backlog zone
+  // or header (toTop) -> the server ranks it to the very top, so no row anchor is sent.
+  // Optimistically re-groups the row and sets the target group's order, reverting on error.
   const handleMoveChildToPosition = useCallback(
-    ({ activeKey, targetSprintId, targetGroupKey, targetSprintName, newOrder, rankBeforeKey, rankAfterKey }: ChildMoveToPosition) => {
+    ({ activeKey, targetSprintId, targetGroupKey, targetSprintName, newOrder, rankBeforeKey, rankAfterKey, toTop }: ChildMoveToPosition) => {
       setJiraWarning(null);
       setLocalMoves((prev) => ({ ...prev, [activeKey]: targetSprintName }));
       setLocalOrder((prev) => ({ ...prev, [targetGroupKey]: newOrder }));
       // The backlog has no sprint id to refresh local ranks against, so omit it there.
       const rankSprintId = targetSprintName === null ? undefined : targetSprintId;
-      jira.moveSprint({ issueKeys: [activeKey], targetSprintId })
-        .then(() => jira.rank({ issueKeys: [activeKey], rankBeforeKey, rankAfterKey, ...(rankSprintId ? { sprintId: rankSprintId } : {}) }))
+      const persist = toTop
+        ? jira.moveSprint({ issueKeys: [activeKey], targetSprintId, position: "top" })
+        : jira.moveSprint({ issueKeys: [activeKey], targetSprintId })
+            .then(() => jira.rank({ issueKeys: [activeKey], rankBeforeKey, rankAfterKey, ...(rankSprintId ? { sprintId: rankSprintId } : {}) }));
+      persist
         .then(() => onMutate())
         .catch((err) => {
           setLocalMoves((prev) => {

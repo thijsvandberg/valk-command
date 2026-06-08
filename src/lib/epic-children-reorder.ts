@@ -61,6 +61,12 @@ export interface ChildMoveToPosition extends ReorderResult {
   targetGroupKey: string;
   /** Target sprint name (null for the backlog), for the local move override. */
   targetSprintName: string | null;
+  /**
+   * Dropped onto a sprint/backlog zone or header (not between two rows): land at the
+   * very top of the target. The server ranks it above the target's first issue, so
+   * no client rank anchor (rankBeforeKey/rankAfterKey) is sent in this case.
+   */
+  toTop?: boolean;
 }
 
 export type DragEndResolution =
@@ -140,7 +146,24 @@ export function resolveDragEnd({
     };
   }
 
-  return { kind: "move", targetSprintId: move.targetSprintId };
+  // Dropped onto a group card / drop zone (not between two rows): land at the TOP of
+  // the target. Optimistically the child leads the target's epic children; the server
+  // ranks it above the sprint/backlog's first issue (no row anchor is sent).
+  const targetGroup = groups.find((g) => g.sprintName === overSprintName);
+  const targetKeys = targetGroup
+    ? targetGroup.items.filter((i) => !i.key.startsWith("pending-") && i.key !== activeKey).map((i) => i.key)
+    : [];
+  return {
+    kind: "move-to-position",
+    move: {
+      activeKey,
+      targetSprintId: move.targetSprintId,
+      targetGroupKey: targetGroup?.key ?? (overSprintName ?? UNSCHEDULED_GROUP_KEY),
+      targetSprintName: overSprintName,
+      newOrder: [activeKey, ...targetKeys],
+      toTop: true,
+    },
+  };
 }
 
 /**

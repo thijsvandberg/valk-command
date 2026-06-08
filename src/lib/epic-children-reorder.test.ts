@@ -185,7 +185,7 @@ describe("resolveDragEnd", () => {
     expect(res).toEqual({ kind: "move-rejected", reason: "closed" });
   });
 
-  it("moves when dropped onto a group card", () => {
+  it("moves to the TOP when dropped onto a group card (not between rows)", () => {
     const res = resolveDragEnd({
       ...base,
       activeKey: "VPL-10",
@@ -194,7 +194,18 @@ describe("resolveDragEnd", () => {
       overSprintName: "Sprint 2",
       overState: "future",
     });
-    expect(res).toEqual({ kind: "move", targetSprintId: "2" });
+    // Lands above the target's current first child; the server ranks it to the very top.
+    expect(res).toEqual({
+      kind: "move-to-position",
+      move: {
+        activeKey: "VPL-10",
+        targetSprintId: "2",
+        targetGroupKey: "Sprint 2",
+        targetSprintName: "Sprint 2",
+        newOrder: ["VPL-10", "VPL-12"],
+        toTop: true,
+      },
+    });
   });
 
   it("rejects a move into a closed sprint", () => {
@@ -260,7 +271,19 @@ describe("resolveDragEnd", () => {
       overSprintName: "BT: 139",
       overState: "future",
     });
-    expect(res).toEqual({ kind: "move", targetSprintId: "139" });
+    // Empty zone: nothing to anchor against, so newOrder is just the moved child and
+    // the server ranks it to the top of the sprint.
+    expect(res).toEqual({
+      kind: "move-to-position",
+      move: {
+        activeKey: "VPL-20",
+        targetSprintId: "139",
+        targetGroupKey: "BT: 139",
+        targetSprintName: "BT: 139",
+        newOrder: ["VPL-20"],
+        toTop: true,
+      },
+    });
   });
 });
 

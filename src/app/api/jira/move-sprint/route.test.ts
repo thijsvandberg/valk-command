@@ -15,11 +15,15 @@ vi.mock("@/db", () => ({
 
 const mockMoveToSprint = vi.fn().mockResolvedValue(undefined);
 const mockMoveToBacklog = vi.fn().mockResolvedValue(undefined);
+const mockRankToTopOfSprint = vi.fn().mockResolvedValue(undefined);
+const mockRankToTopOfBacklog = vi.fn().mockResolvedValue(undefined);
 
 vi.mock("@/lib/jira-client", () => ({
   jiraClient: {
     moveToSprint: (...args: unknown[]) => mockMoveToSprint(...args),
     moveToBacklog: (...args: unknown[]) => mockMoveToBacklog(...args),
+    rankToTopOfSprint: (...args: unknown[]) => mockRankToTopOfSprint(...args),
+    rankToTopOfBacklog: (...args: unknown[]) => mockRankToTopOfBacklog(...args),
   },
 }));
 
@@ -46,6 +50,8 @@ describe("POST /api/jira/move-sprint", () => {
     testDb = createTestDb();
     mockMoveToSprint.mockReset().mockResolvedValue(undefined);
     mockMoveToBacklog.mockReset().mockResolvedValue(undefined);
+    mockRankToTopOfSprint.mockReset().mockResolvedValue(undefined);
+    mockRankToTopOfBacklog.mockReset().mockResolvedValue(undefined);
 
     testDb.insert(ticket).values({
       jiraKey: "VPL-100",
@@ -63,7 +69,35 @@ describe("POST /api/jira/move-sprint", () => {
     expect(data.ok).toBe(true);
     expect(data.movedCount).toBe(1);
     expect(mockMoveToSprint).toHaveBeenCalledWith(["VPL-100"], 456);
+    // No position given -> rank is left untouched (the issue keeps its existing rank).
+    expect(mockRankToTopOfSprint).not.toHaveBeenCalled();
 
+    const t = testDb.select().from(ticket).where(eq(ticket.jiraKey, "VPL-100")).get();
+    expect(t!.sprintName).toBe("456");
+  });
+
+  it("ranks to the top of the sprint when position is 'top'", async () => {
+    const req = makeRequest({ issueKeys: ["VPL-100"], targetSprintId: "456", position: "top" });
+    const res = await POST(req);
+    expect((await res.json()).ok).toBe(true);
+    expect(mockMoveToSprint).toHaveBeenCalledWith(["VPL-100"], 456);
+    expect(mockRankToTopOfSprint).toHaveBeenCalledWith(["VPL-100"], 456);
+  });
+
+  it("ranks to the top of the backlog when position is 'top'", async () => {
+    const req = makeRequest({ issueKeys: ["VPL-100"], targetSprintId: "__backlog__", position: "top" });
+    const res = await POST(req);
+    expect((await res.json()).ok).toBe(true);
+    expect(mockMoveToBacklog).toHaveBeenCalledWith(["VPL-100"]);
+    expect(mockRankToTopOfBacklog).toHaveBeenCalledWith(["VPL-100"]);
+  });
+
+  it("still succeeds when ranking to top fails (rank is best-effort)", async () => {
+    mockRankToTopOfSprint.mockRejectedValue(new Error("rank API down"));
+    const req = makeRequest({ issueKeys: ["VPL-100"], targetSprintId: "456", position: "top" });
+    const res = await POST(req);
+    const data = await res.json();
+    expect(data.ok).toBe(true);
     const t = testDb.select().from(ticket).where(eq(ticket.jiraKey, "VPL-100")).get();
     expect(t!.sprintName).toBe("456");
   });
