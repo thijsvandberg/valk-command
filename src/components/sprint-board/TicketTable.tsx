@@ -128,6 +128,7 @@ export function TicketTable({
   onGuestimationChange,
   pencilCapacityMap,
   onPencilCapacityChange,
+  sprintUsedMap,
   onJiraStatusChange,
   onIssueTypeChange,
   onTitleChange,
@@ -199,6 +200,9 @@ export function TicketTable({
   /** sprintId -> pencil capacity, for the fullness meter on sprint group headers. */
   pencilCapacityMap?: Record<string, number>;
   onPencilCapacityChange?: (sprintId: string, value: number | null) => void;
+  /** sprintId -> total effective points across the WHOLE sprint, so the fullness meter
+   *  is filter-independent (BRDG-303). */
+  sprintUsedMap?: Record<string, number>;
   onJiraStatusChange?: (key: string, status: JiraStatus) => void;
   onIssueTypeChange?: (key: string, type: IssueType) => void;
   onTitleChange?: (key: string, title: string) => void;
@@ -722,6 +726,8 @@ export function TicketTable({
                       planningOn: true,
                       pencilCapacity: pencilCapacityMap?.[group.key] ?? null,
                       onPencilCapacityChange: (v: number | null) => onPencilCapacityChange(group.key, v),
+                      // Always the whole sprint, independent of the active filter.
+                      usedPointsOverride: sprintUsedMap?.[group.key] ?? 0,
                     }
                   : {})}
               />
