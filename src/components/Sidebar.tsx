@@ -146,7 +146,7 @@ export default function Sidebar() {
           onClick={() => { setAccountOpen(false); setOpen((v) => !v); }}
           aria-label="Open navigation"
           aria-expanded={open}
-          className="fixed bottom-6 left-6 z-50 grid h-11 w-11 cursor-pointer place-items-center rounded-2xl bg-[var(--color-surface-floating)]/90 text-[var(--color-brand-300)] shadow-[0_10px_30px_-6px_rgba(0,0,0,0.6),0_0_0_1px_var(--color-border-strong)] ring-1 ring-border-strong backdrop-blur-xl transition-[transform,opacity,color] duration-200 ease-[cubic-bezier(0.34,1.56,0.64,1)] hover:scale-[1.06] hover:text-[var(--color-brand-200)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)] active:scale-95"
+          className="fixed bottom-6 left-6 z-50 grid h-11 w-11 cursor-pointer place-items-center rounded-2xl bg-gradient-to-br from-[var(--color-brand-400)] to-[var(--color-brand-600)] text-white shadow-[0_10px_30px_-6px_var(--color-brand-glow),0_0_0_1px_rgba(255,255,255,0.08)] transition-[transform,opacity] duration-200 ease-[cubic-bezier(0.34,1.56,0.64,1)] hover:scale-[1.06] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)] active:scale-95"
           style={{ transform: open ? "scale(0.85)" : "scale(1)", opacity: open ? 0.5 : 1 }}
         >
           <LayoutGrid className="h-[18px] w-[18px]" strokeWidth={1.75} />
@@ -170,10 +170,19 @@ export default function Sidebar() {
           <div className="pointer-events-none absolute -left-10 -top-10 h-40 w-40 rounded-full bg-[var(--color-brand-500)]/20 blur-3xl" />
 
           <div className="relative p-3">
-            {/* Header: avatar + name/email + sync line, flips to the account view */}
-            <button
-              type="button"
+            {/* Header: avatar + name/email + sync line, flips to the account view.
+                role="button" instead of <button> so the nested SyncIndicator button
+                stays valid HTML (a real button cannot be a descendant of a button). */}
+            <div
+              role="button"
+              tabIndex={0}
               onClick={() => setAccountOpen((v) => !v)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter" || e.key === " ") {
+                  e.preventDefault();
+                  setAccountOpen((v) => !v);
+                }
+              }}
               aria-expanded={accountOpen}
               style={revealStyle(open, 0)}
               className={`mb-3 flex w-full items-center gap-3 rounded-2xl px-1.5 py-1.5 text-left transition-colors duration-150 cursor-pointer focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)] ${accountOpen ? "bg-overlay-default" : "hover:bg-hover-list-item"}`}
@@ -194,7 +203,7 @@ export default function Sidebar() {
                 className={`ml-auto h-4 w-4 shrink-0 text-text-tertiary transition-transform duration-200 ${accountOpen ? "rotate-180" : ""}`}
                 strokeWidth={1.5}
               />
-            </button>
+            </div>
 
             {accountOpen ? (
               <AccountView open={open} menuItems={menuItems} signOutItem={signOutItem} />
