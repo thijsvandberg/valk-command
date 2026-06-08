@@ -1,6 +1,6 @@
 # BRDG-308: Async backfill of partially-known sprint metadata
 
-**Status:** Done
+**Status:** In Progress (Phase 2)
 **Priority:** Medium
 
 ## Description
@@ -133,8 +133,51 @@ err.status === 404` (precedent `sync-tickets-service.ts:90`). Fire-and-forget us
       fetched and merged; failures are swallowed; an already-cached sprint is not re-fetched.
 - [x] Docs updated: `docs/architecture/jira-sync.md` (where/when partial sprints get backfilled).
 
+## Phase 2 — legacy name-only sprints + live app refresh
+
+**Found in testing on VPL-9642.** Phase 1's id-based backfill does not fix the reported sprint.
+`VPL-13088` stores the literal sprint **name** `"VP Sprint 66 Angels"` in `ticket.sprint_name`
+(not an id), with empty `sprint_ids`, and that name no longer exists in Jira (it was renamed; the
+surviving sprint is `Sprint 78 - Angels`, id 589). These legacy rows come from the on-demand fetch
+path (`ticket-detail-builder.ts:299` passes `sprint?.name`, and `__on_demand__` placeholders).
+Because there is no id, the sprint endpoint backfill skips it, so the group stays name-only.
+
+Also, Phase 1 only invalidated the **server** sprint cache; the **open page never refreshed**, so
+even resolvable sprints required a manual reload.
+
+Decision (confirmed with PO): re-sync the affected child ticket(s) from Jira. That rewrites
+`sprint_name` to the current sprint id (via `syncIndividualTickets`, which uses `String(sprint.id)`
+and runs `ensureSprintsCached`), after which the sprint resolves with full metadata. The displayed
+name may change to the current Jira name (e.g. `Sprint 78 - Angels`).
+
+Plan:
+1. **Detect** (`buildTicketDetail` / `resolveEpicChildren`, `src/lib/ticket-detail-builder.ts`):
+   collect epic-child keys whose raw `sprint_name` is non-empty and **non-numeric** (legacy name or
+   `__on_demand__`) — these need a ticket re-sync. Return them from `buildTicketDetail` and set a
+   `resyncingSprints: true` flag on the response.
+2. **Re-sync in background** (`GET /api/tickets/[key]`): when there are unresolved child keys,
+   schedule via `after()` → `syncIndividualTickets(keys)`, then invalidate the parent detail cache
+   (`/api/tickets/${key}`) and `/api/jira/sprints` so the next read rebuilds fresh.
+3. **Live refresh** (`useTicketDetail`, `src/hooks/useSprintBoard.ts`): when the response has
+   `resyncingSprints`, revalidate the ticket detail and the sprints list on a short, bounded poll
+   until the flag clears, so the open page updates itself once the data arrives.
+
+### Phase 2 Acceptance Criteria
+
+- [ ] An epic child whose `sprint_name` is a legacy **name** (or `__on_demand__`) with no id is
+      detected on the read path and re-synced from Jira, rewriting it to the current sprint id.
+- [ ] After the background re-sync, the open ticket-detail page **refreshes itself** (no manual
+      reload) and the sprint group shows its real dates + state.
+- [ ] The background re-sync invalidates the parent ticket-detail cache and `/api/jira/sprints`, and
+      is best-effort (a failure never breaks the response).
+- [ ] The client revalidation is bounded (no infinite polling) and stops once the sprint resolves.
+- [ ] Tests: builder returns unresolved (non-numeric) child sprint keys; route schedules the re-sync
+      + cache invalidation and sets the flag; client effect revalidates while flagged and stops when
+      cleared.
+
 ## Notes
 
 - Reuse `ensureSprintsCached` rather than introducing a second backfill path.
-- This is read-path enrichment; do not change how `sprintName` / `sprintIds` are written during sync
-  (that is BRDG-299 territory).
+- Phase 1 is read-path enrichment; do not change how `sprintName` / `sprintIds` are written during
+  sync. Phase 2 deliberately re-syncs whole tickets (the approved way to repair legacy name-only
+  rows), which updates `sprint_name` as a side effect of a normal sync.
