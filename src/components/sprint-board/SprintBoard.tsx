@@ -667,7 +667,7 @@ export default function SprintBoard() {
   // overflow over the panel when the list column is narrowed.
   const bulkActionBar = someChecked && (() => {
     const sel = tickets.filter((t) => checkedTickets.has(t.key));
-    return <BulkActionBar count={checkedTickets.size} totalCount={tickets.length} selectedPoints={sel.reduce((s, t) => s + (t.storyPoints ?? 0), 0)} selectedBV={sel.reduce((s, t) => s + (t.businessValue ?? 0), 0)} allChecked={allChecked} onToggleAll={toggleAll} onClear={() => setCheckedTickets(new Set())} onSetReadiness={handleBulkSetReadiness} onSetStatus={handleBulkSetStatus} onSetEpic={handleBulkSetEpic} onMoveSprint={handleBulkMoveSprint} onUpdateAssignee={handleBulkUpdateAssignee} onUpdateLabel={handleBulkUpdateLabels} onSetFlagged={(flagged) => handleSetFlagged(flagged)} flagState={computeFlagState(checkedTickets)} sprints={sprints} pinnedSprintIds={slotSprints} onRefreshFromJira={handleBulkRefresh} onReviewStory={handleBulkReviewStory} onCopyToClipboard={handleCopyToClipboard} onExportForStakeholders={handleExportForStakeholders} isRefreshing={bulkRefreshing} isExporting={exportTask.isActive} onGenerateSubtasks={handleBulkGenerateSubtasks} isGeneratingSubtasks={bulkGenerating} onRefine={handleRefineSelected} />;
+    return <BulkActionBar floating count={checkedTickets.size} totalCount={tickets.length} selectedPoints={sel.reduce((s, t) => s + (t.storyPoints ?? 0), 0)} selectedBV={sel.reduce((s, t) => s + (t.businessValue ?? 0), 0)} allChecked={allChecked} onToggleAll={toggleAll} onClear={() => setCheckedTickets(new Set())} onSetReadiness={handleBulkSetReadiness} onSetStatus={handleBulkSetStatus} onSetEpic={handleBulkSetEpic} onMoveSprint={handleBulkMoveSprint} onUpdateAssignee={handleBulkUpdateAssignee} onUpdateLabel={handleBulkUpdateLabels} onSetFlagged={(flagged) => handleSetFlagged(flagged)} flagState={computeFlagState(checkedTickets)} sprints={sprints} pinnedSprintIds={slotSprints} onRefreshFromJira={handleBulkRefresh} onReviewStory={handleBulkReviewStory} onCopyToClipboard={handleCopyToClipboard} onExportForStakeholders={handleExportForStakeholders} isRefreshing={bulkRefreshing} isExporting={exportTask.isActive} onGenerateSubtasks={handleBulkGenerateSubtasks} isGeneratingSubtasks={bulkGenerating} onRefine={handleRefineSelected} />;
   })();
 
   return (
@@ -705,7 +705,13 @@ export default function SprintBoard() {
         return <SidePanel key={panelTicket.key} ticket={panelTicket} poStatus={poStatuses[panelTicket.key] ?? null} readiness={readinessMap[panelTicket.key] ?? null} onPoStatusChange={(v) => ta.handlePoStatusChange(panelTicket.key, v)} onReadinessChange={(v) => ta.handleReadinessChange(panelTicket.key, v)} onNotesChange={(notes) => { saveTicketMetadata(panelTicket.key, { poNotes: notes }, activeListKey); }} onClose={() => setSelectedTicket(null)} onShowToast={showToast} onMutate={mutateTickets} onSelectTicket={setSelectedTicket} adjacentKeys={adjacentKeys} epicActions={{ onShowOnly: handleFilterByEpic, onShowAcrossAllSprints: handleShowEpicAcrossAllSprints, onClear: handleClearEpicFilter, isFiltered: f.epicFilter.size > 0 }} />;
       })()}
       </div>
-      {bulkActionBar}
+      {bulkActionBar && (
+        <div className="pointer-events-none fixed inset-x-0 bottom-0 z-50 flex justify-center pb-2 pl-20 pr-2 sm:pl-24 sm:pr-4">
+          <div className="pointer-events-auto w-full max-w-5xl px-3 sm:px-4">
+            {bulkActionBar}
+          </div>
+        </div>
+      )}
 
       <Toast toast={toast} loading={toastLoading} onDismiss={dismissToast} />
 
