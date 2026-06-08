@@ -252,6 +252,17 @@ describe("BoardRow (headerless, BRDG-239)", () => {
     expect(epic.compareDocumentPosition(sp) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
   });
 
+  it("treats N/A SP/BV (value 0, shown as '-') like unset: hover-reveal, not an inline badge", () => {
+    renderRow({ ticket: makeTicket({ storyPoints: 0, businessValue: 0 }), onEpicChange: vi.fn() });
+    const sp = screen.getByTestId("sp");
+    const bv = screen.getByTestId("bv");
+
+    // Wrapped in the collapse-to-nothing slot so the resting list stays calm.
+    expect(sp.parentElement?.className).toContain("hidden");
+    expect(sp.parentElement?.className).toContain("group-hover/row:inline-flex");
+    expect(bv.parentElement?.className).toContain("hidden");
+  });
+
   it("clusters the add-epic / SP / BV placeholders in natural order when nothing is set", () => {
     renderRow({ ticket: makeTicket({ epic: null, epicKey: null, storyPoints: null, businessValue: null }), onEpicChange: vi.fn() });
     const addEpic = screen.getByTestId("add-epic");

@@ -172,8 +172,11 @@ export const BoardRow = memo(forwardRef<HTMLTableRowElement, BoardRowBaseProps>(
   // sit left of a set epic chip, a refinement gem, etc.). Among themselves the
   // placeholders keep the natural epic -> SP -> BV order. Empty SP/BV on a deprecated
   // story are suppressed entirely (no hover placeholder); a set value still shows.
-  const spEmpty = ticket.storyPoints == null;
-  const bvEmpty = ticket.businessValue == null;
+  // N/A (value 0, rendered as "-") is folded in with the unset case so it stays out
+  // of the calm resting list and only surfaces as a hover placeholder; only real
+  // estimates (1, 2, 3, ...) keep an always-visible badge (BRDG-310).
+  const spEmpty = ticket.storyPoints == null || ticket.storyPoints === 0;
+  const bvEmpty = ticket.businessValue == null || ticket.businessValue === 0;
   const showSpValue = tags.has("storyPoints") && !spEmpty;
   const showBvValue = tags.has("businessValue") && !bvEmpty;
   const showSpPlaceholder = tags.has("storyPoints") && spEmpty && !isDeprecated;

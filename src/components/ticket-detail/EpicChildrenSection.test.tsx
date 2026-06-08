@@ -406,6 +406,24 @@ describe("EpicChildrenSection", () => {
       expect(inRevealSlot(screen.getByLabelText("Story Points: 3"))).toBe(false);
     });
 
+    // N/A (value 0, rendered as "-") is treated like unset: hidden in the resting list,
+    // revealed on hover, so it never adds an always-visible "-" badge.
+    it("wraps an N/A metric (value 0) in the hover-reveal slot, like an unset one", () => {
+      const inRevealSlot = (el: HTMLElement | null) => {
+        for (let n = el; n; n = n.parentElement) {
+          if (typeof n.className === "string" && n.className.includes("group-hover/row:inline-flex")) return true;
+        }
+        return false;
+      };
+      renderSection([
+        { key: "VPL-13", title: "N/A story", type: "story", jiraStatus: "TO DO", assignee: null, storyPoints: 0, businessValue: 0, sprintName: null, subtaskCount: 0, readiness: null, jiraRank: null },
+      ]);
+      // Both SP and BV pickers carry the "N/A" label at value 0.
+      for (const na of screen.getAllByLabelText("N/A")) {
+        expect(inRevealSlot(na)).toBe(true);
+      }
+    });
+
     it("sets story points via keyboard while the popover is open", async () => {
       renderSection(SAMPLE_CHILDREN);
       fireEvent.click(screen.getByLabelText("Set Story Points"));

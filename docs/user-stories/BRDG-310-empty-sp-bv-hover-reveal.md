@@ -49,6 +49,13 @@ all set:                            Epic     SP     BV
   cluster (natural `SP → BV` order); set values render inline. Existing per-status logic is unchanged
   (deprecated children are filtered by the list's own "hide deprecated" toggle).
 
+### Update: N/A (value 0) is folded in with the empty case
+
+A SP/BV set to **N/A** (stored as `0`, rendered as `"-"`) used to keep an always-visible badge in
+the resting list. It is now treated exactly like an unset field: **hidden at rest**, revealed on row
+hover (where the picker still shows `"-"` so it can be changed). Only real estimates (`1, 2, 3, …`)
+keep an always-visible inline badge. Applies to both `BoardRow` and `EpicChildrenSection`.
+
 ## Implementation
 
 - **`src/components/shared/HoverRevealSlot.tsx` (new):** wraps an empty placeholder in
@@ -61,8 +68,10 @@ all set:                            Epic     SP     BV
   refinement / epic / metric slots). The epic chip slot now renders only a *set* epic; the trailing
   SP/BV slots render only *set* values. Flags: `showEpicPlaceholder`, `showSpPlaceholder`,
   `showBvPlaceholder` (gated by `!isDeprecated` for SP/BV) vs `showSpValue` / `showBvValue`.
+  `spEmpty` / `bvEmpty` count value `0` (N/A) as empty, so N/A reveals on hover instead of showing
+  an inline `"-"`.
 - **`src/components/ticket-detail/EpicChildrenSection.tsx`:** `renderMetadata` renders SP then BV
-  (empty -> `HoverRevealSlot`, set -> inline), then subtask/sprint/assignee.
+  (empty or N/A `0` -> `HoverRevealSlot`, set -> inline), then subtask/sprint/assignee.
 
 ## Requirements
 
@@ -78,6 +87,8 @@ all set:                            Epic     SP     BV
 - [x] Applies to `BoardRow` and `EpicChildrenSection`; the dense `TicketRow` column table is unchanged
 - [x] Tests cover the reveal-slot wrapping, left-of-set-epic and left-of-refinement ordering, the
       nothing-set cluster order, and deprecated suppression
+- [x] N/A SP/BV (value `0`) is hidden at rest and revealed on hover, not shown as an inline `"-"`
+      (covered by tests in `BoardRow` and `EpicChildrenSection`)
 
 ## Out of Scope
 

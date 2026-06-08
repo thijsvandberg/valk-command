@@ -811,11 +811,13 @@ export function EpicChildrenSection({
     return (
       <>
         {/* SP then BV in natural order: empty -> hover-reveal slot, set -> inline. */}
+        {/* N/A (value 0, shown as "-") is treated like unset: hover-reveal only, so the
+            resting list stays calm; only real estimates keep an inline badge (BRDG-310). */}
         {visibleFields.has("storyPoints") && epic && (
-          epic.storyPoints == null ? <HoverRevealSlot>{spPicker}</HoverRevealSlot> : metricCell(spPicker)
+          epic.storyPoints == null || epic.storyPoints === 0 ? <HoverRevealSlot>{spPicker}</HoverRevealSlot> : metricCell(spPicker)
         )}
         {visibleFields.has("businessValue") && epic && (
-          epic.businessValue == null ? <HoverRevealSlot>{bvPicker}</HoverRevealSlot> : metricCell(bvPicker)
+          epic.businessValue == null || epic.businessValue === 0 ? <HoverRevealSlot>{bvPicker}</HoverRevealSlot> : metricCell(bvPicker)
         )}
         {visibleFields.has("subtaskCount") && epic && (
           <SubtaskCountBadge open={epic.openSubtaskCount ?? 0} total={epic.totalSubtaskCount ?? epic.subtaskCount} />
