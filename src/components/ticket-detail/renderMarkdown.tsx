@@ -3,6 +3,7 @@ import { Check } from "lucide-react";
 import { sanitizePrismOutput } from "@/lib/sanitize-client";
 import { ImageLightbox } from "@/components/shared/ImageLightbox";
 import { TicketRefPill } from "@/components/shared/TicketRefPill";
+import { CodeBlock } from "./CodeBlock";
 
 // Bare project-key references (e.g. "VPL-43237") sitting in plain description
 // text are linkified into interactive pills. The prefix is configurable so a
@@ -338,42 +339,25 @@ function renderTable(tableLines: string[], key: string, linkify: boolean): React
   );
 }
 
-// Renders a code block with optional language label and line numbers
+// Blocks longer than this start collapsed: a long payload otherwise dominates
+// the viewport and buries the prose around it. Single source of truth.
+const CODE_BLOCK_COLLAPSE_THRESHOLD = 15;
+
+// Renders a code block with optional language label and line numbers. Prism
+// highlighting runs here in the pure layer; the collapse toggle lives in the
+// CodeBlock client component so renderMarkdown's cached output stays pure.
 function renderCodeBlock(lines: string[], lang: string, key: string): ReactNode {
+  const highlightedLines = lines.map(
+    (codeLine) => sanitizePrismOutput(highlightCodeLine(codeLine, lang) || "\u00a0"),
+  );
   return (
-    <div key={key} className="rm-code-block my-3 overflow-hidden rounded-xl" style={{ background: "color-mix(in srgb, black 28%, transparent)", border: "1px solid var(--color-overlay-default)" }}>
-      {/* Header bar */}
-      <div className="rm-code-block-header flex items-center gap-2 border-b px-3 py-2" style={{ borderColor: "var(--color-overlay-default)", background: "var(--color-overlay-subtle)" }}>
-        <div className="flex gap-1.5">
-          <span className="h-2.5 w-2.5 rounded-full" style={{ background: "var(--color-overlay-strong)" }} />
-          <span className="h-2.5 w-2.5 rounded-full" style={{ background: "var(--color-overlay-strong)" }} />
-          <span className="h-2.5 w-2.5 rounded-full" style={{ background: "var(--color-overlay-strong)" }} />
-        </div>
-        {lang && (
-          <span className="ml-1 font-mono text-caption font-medium uppercase tracking-widest" style={{ color: "var(--color-text-muted)" }}>{lang}</span>
-        )}
-      </div>
-      {/* Code grid */}
-      <div className="overflow-x-auto py-2">
-        <div className="grid" style={{ gridTemplateColumns: "3rem 1fr" }}>
-          {lines.map((codeLine, li) => (
-            <div key={li} className="contents group">
-              <div
-                className="select-none border-r py-0 pr-3 pl-0 text-right font-mono text-label leading-[1.6rem]"
-                style={{ color: "var(--color-text-muted)", borderColor: "var(--color-overlay-default)", whiteSpace: "nowrap" }}
-              >
-                {li + 1}
-              </div>
-              <div
-                className="rm-code-content py-0 pl-4 pr-6 font-mono text-[0.8125rem] leading-[1.6rem]"
-                style={{ color: "var(--color-text-secondary)", whiteSpace: "pre" }}
-                dangerouslySetInnerHTML={{ __html: sanitizePrismOutput(highlightCodeLine(codeLine, lang) || "\u00a0") }}
-              />
-            </div>
-          ))}
-        </div>
-      </div>
-    </div>
+    <CodeBlock
+      key={key}
+      lang={lang}
+      highlightedLines={highlightedLines}
+      lineCount={lines.length}
+      defaultCollapsed={lines.length > CODE_BLOCK_COLLAPSE_THRESHOLD}
+    />
   );
 }
 

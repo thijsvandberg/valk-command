@@ -98,6 +98,19 @@ describe("renderMarkdown — VPL reference linkification", () => {
     expect(container.querySelector(".rm-code-block")).toBeTruthy();
   });
 
+  it("renders a short code block expanded (code grid visible)", () => {
+    const { container } = renderDesc("```js\nconst a = 1;\n```");
+    expect(container.querySelector(".rm-code-content")).toBeTruthy();
+  });
+
+  it("renders a long code block collapsed by default (no code grid)", () => {
+    const longBlock = "```js\n" + Array.from({ length: 20 }, (_, i) => `const v${i} = ${i};`).join("\n") + "\n```";
+    const { container } = renderDesc(longBlock);
+    expect(container.querySelector(".rm-code-block")).toBeTruthy();
+    expect(container.querySelector(".rm-code-content")).toBeNull();
+    expect(container.textContent).toContain("JS · 20 lines");
+  });
+
   it("does NOT convert a key inside bold/emphasis", () => {
     const { container } = renderDesc("This is **VPL-1** in bold.");
     expect(pillFor(container, "VPL-1")).toBeNull();
