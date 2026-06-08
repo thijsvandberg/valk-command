@@ -30,6 +30,12 @@ interface ChildIssueComposerProps {
   trailing?: ReactNode;
   /** Extra classes on the row container (border, etc.). */
   className?: string;
+  /**
+   * Visual treatment. "default" is the inline row used by the epic child views.
+   * "bar" is the sprint-board create row (BRDG-315): a raised inset bar floating in a
+   * faint footer strip, with a pill type chip and an "Enter to add" hint.
+   */
+  variant?: "default" | "bar";
 }
 
 // The create row: an issue-type dropdown plus a title input. Enter creates and
@@ -43,6 +49,7 @@ export function ChildIssueComposer({
   autoFocus,
   trailing,
   className = "",
+  variant = "default",
 }: ChildIssueComposerProps) {
   const [title, setTitle] = useState("");
   const [selectedType, setSelectedType] = useState<IssueType>("story");
@@ -72,6 +79,80 @@ export function ChildIssueComposer({
     }
   };
 
+  const typeMenu =
+    open && pos && typeof document !== "undefined"
+      ? createPortal(
+          <div
+            ref={popoverRef}
+            // surface-elevated (not literal white) so the popover is opaque in both themes (BRDG-315).
+            className="fixed z-[9999] min-w-[160px] overflow-hidden rounded-lg border border-border-default bg-[var(--color-surface-elevated)] shadow-[var(--shadow-popover)]"
+            style={getPopoverStyle()}
+          >
+            {CHILD_ISSUE_TYPES.map((opt) => (
+              <button
+                key={opt.value}
+                type="button"
+                onClick={() => {
+                  setSelectedType(opt.value);
+                  handleClose();
+                  inputRef.current?.focus();
+                }}
+                className={`flex w-full cursor-pointer items-center gap-2 px-3 py-1.5 text-body-lg transition-colors duration-150 hover:bg-overlay-subtle focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)] active:bg-overlay-subtle/80 ${
+                  opt.value === selectedType ? "text-text-primary" : "text-text-secondary"
+                }`}
+              >
+                <IssueTypeIcon type={opt.value} size={14} />
+                <span>{opt.label}</span>
+              </button>
+            ))}
+          </div>,
+          document.body,
+        )
+      : null;
+
+  const input = (
+    <input
+      ref={inputRef}
+      type="text"
+      value={title}
+      autoFocus={autoFocus}
+      onChange={(e) => setTitle(e.target.value)}
+      onKeyDown={handleKeyDown}
+      onFocus={() => handleClose()}
+      placeholder={placeholder}
+      className="min-w-0 flex-1 bg-transparent text-body-lg text-text-primary placeholder:text-text-muted outline-none"
+    />
+  );
+
+  if (variant === "bar") {
+    // Raised inset bar floating in a faint footer strip (the chosen B3d treatment).
+    return (
+      <div
+        className={`bg-[var(--color-surface-chrome)]/40 px-2.5 py-2.5 ${className}`}
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className="relative flex items-center gap-3 rounded-lg border border-border-default bg-[var(--color-surface-elevated)] px-3 py-2 shadow-[var(--shadow-sm)]">
+          <button
+            ref={triggerRef}
+            type="button"
+            onClick={() => (open ? handleClose() : handleOpen())}
+            className="flex shrink-0 cursor-pointer items-center gap-1.5 rounded-full border border-border-default bg-[var(--color-surface-elevated)] px-2.5 py-1 text-text-secondary transition-colors duration-150 hover:border-[var(--color-brand-400)] focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-[var(--color-brand-400)]"
+          >
+            <IssueTypeIcon type={selectedType} size={13} />
+            <span className="text-body-sm font-medium">{currentTypeConfig.label}</span>
+            <ChevronDown size={10} className="text-text-muted" />
+          </button>
+          {typeMenu}
+          {input}
+          <span className="shrink-0 rounded border border-border-subtle px-1.5 py-0.5 text-label font-medium text-text-muted">
+            ↵ to add
+          </span>
+          {trailing}
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div
       className={`relative flex items-center gap-3 px-3 py-2 ${className}`}
@@ -89,46 +170,10 @@ export function ChildIssueComposer({
           <span className="text-body-sm font-medium text-text-muted">{currentTypeConfig.label}</span>
           <ChevronDown size={10} className="text-text-muted" />
         </button>
-        {open && pos && typeof document !== "undefined" &&
-          createPortal(
-            <div
-              ref={popoverRef}
-              className="fixed z-[9999] min-w-[160px] overflow-hidden rounded-lg border border-border-default"
-              style={getPopoverStyle()}
-            >
-              {CHILD_ISSUE_TYPES.map((opt) => (
-                <button
-                  key={opt.value}
-                  type="button"
-                  onClick={() => {
-                    setSelectedType(opt.value);
-                    handleClose();
-                    inputRef.current?.focus();
-                  }}
-                  className={`flex w-full cursor-pointer items-center gap-2 px-3 py-1.5 text-body-lg transition-colors duration-150 hover:bg-overlay-subtle focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)] active:bg-overlay-subtle/80 ${
-                    opt.value === selectedType ? "text-text-primary" : "text-text-secondary"
-                  }`}
-                >
-                  <IssueTypeIcon type={opt.value} size={14} />
-                  <span>{opt.label}</span>
-                </button>
-              ))}
-            </div>,
-            document.body,
-          )}
+        {typeMenu}
       </div>
 
-      <input
-        ref={inputRef}
-        type="text"
-        value={title}
-        autoFocus={autoFocus}
-        onChange={(e) => setTitle(e.target.value)}
-        onKeyDown={handleKeyDown}
-        onFocus={() => handleClose()}
-        placeholder={placeholder}
-        className="min-w-0 flex-1 bg-transparent text-body-lg text-text-primary placeholder:text-text-muted outline-none"
-      />
+      {input}
 
       {trailing}
     </div>
