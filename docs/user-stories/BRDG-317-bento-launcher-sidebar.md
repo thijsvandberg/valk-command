@@ -164,16 +164,16 @@ themselves are unchanged.
 - [x] Works at mobile breakpoints; the old hamburger drawer is removed
 - [x] Hero/common counts use real data; rows render label-only when a count is unavailable (no fake numbers)
 - [x] `src/app/dev/sidebar/` removed (moved to `deleted/`)
-- [ ] Tests updated/added (see below)
+- [x] Tests updated/added (see below)
 
 ## Tests
 
-- [ ] `Sidebar.test.tsx`: launcher renders collapsed; clicking opens the panel; renders the Sprint
+- [x] `Sidebar.test.tsx`: launcher renders collapsed; clicking opens the panel; renders the Sprint
       Board hero, the three common rows, and the four rare footer links
-- [ ] Active-state highlighting for the current route (incl. `/` and `*/write` rules)
-- [ ] Account flip shows the five account items; Sign out and the route actions invoke the right handlers
-- [ ] Closes on `Esc`, outside-click, and after selecting a destination
-- [ ] Label-only fallback when a count is missing
+- [x] Active-state highlighting for the current route (incl. `/` and `*/write` rules)
+- [x] Account flip shows the five account items; Sign out and the route actions invoke the right handlers
+- [x] Closes on `Esc`, outside-click, and after selecting a destination
+- [x] Label-only fallback when a count is missing
 
 ## Out of Scope
 

@@ -157,6 +157,7 @@ export default function Sidebar() {
           ref={panelRef}
           role="dialog"
           aria-label="Navigation"
+          data-testid="sidebar-panel"
           aria-hidden={!open}
           className={`fixed bottom-6 left-6 z-50 w-[380px] max-w-[calc(100vw-3rem)] origin-bottom-left overflow-hidden rounded-[26px] bg-[var(--color-surface-floating)]/95 ${PANEL_SHADOW} backdrop-blur-2xl transition-[transform,opacity] duration-200 ease-[cubic-bezier(0.34,1.56,0.64,1)]`}
           style={{
