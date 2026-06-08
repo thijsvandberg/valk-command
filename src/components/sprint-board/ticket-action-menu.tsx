@@ -411,7 +411,7 @@ interface AssignableUser {
 function AssigneeSubPanel({ onSelect }: { onSelect: (accountId: string | null, name: string | null) => void }) {
   const { data } = useSWR<{ users: AssignableUser[] }>("/api/jira/assignable-users", swrFetcher);
   const [query, setQuery] = useState("");
-  const users = data?.users ?? [];
+  const users = useMemo(() => data?.users ?? [], [data?.users]);
   const filtered = useMemo(() => {
     if (!query) return users;
     const q = query.toLowerCase();
@@ -466,7 +466,7 @@ function LabelSubPanel({ onSelect }: { onSelect: (labels: string[], mode: "add" 
   const { data } = useSWR<{ labels: string[] }>("/api/jira/labels", swrFetcher);
   const [query, setQuery] = useState("");
   const [selected, setSelected] = useState<Set<string>>(new Set());
-  const allLabels = data?.labels ?? [];
+  const allLabels = useMemo(() => data?.labels ?? [], [data?.labels]);
   const filtered = useMemo(() => {
     if (!query) return allLabels;
     const q = query.toLowerCase();

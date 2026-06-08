@@ -81,7 +81,7 @@ function AssigneePickerInner({
     { revalidateOnFocus: false, dedupingInterval: 60000 },
   );
 
-  const users = data?.users ?? [];
+  const users = useMemo(() => data?.users ?? [], [data?.users]);
 
   const { favorites, regular } = useMemo(() => {
     let pool = users;

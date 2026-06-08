@@ -223,7 +223,7 @@ export function StoryWriterChat({
     promptsFetcher,
     { revalidateOnFocus: false, dedupingInterval: 60000 }
   );
-  const apiPrompts = promptsData?.prompts[issueType] ?? [];
+  const apiPrompts = useMemo(() => promptsData?.prompts[issueType] ?? [], [promptsData?.prompts, issueType]);
 
   const hasTitle = !!(currentTitle && currentTitle !== "Untitled draft");
   const hasDraft = !!localDraft?.trim();

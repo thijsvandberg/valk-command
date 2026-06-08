@@ -53,7 +53,7 @@ function WatcherPickerInner({
     { revalidateOnFocus: false, dedupingInterval: 60000, shouldRetryOnError: false },
   );
 
-  const users = data?.users ?? [];
+  const users = useMemo(() => data?.users ?? [], [data?.users]);
   const watching = useMemo(() => new Set(watchers.map((w) => w.accountId)), [watchers]);
 
   const { favorites, regular } = useMemo(() => {

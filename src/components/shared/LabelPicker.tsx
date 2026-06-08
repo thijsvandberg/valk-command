@@ -37,7 +37,7 @@ function LabelPickerInner({
     { revalidateOnFocus: false, dedupingInterval: 60000 },
   );
 
-  const labels = data?.labels ?? [];
+  const labels = useMemo(() => data?.labels ?? [], [data?.labels]);
 
   const filtered = useMemo(() => {
     let pool = labels;

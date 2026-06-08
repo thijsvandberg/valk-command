@@ -162,7 +162,7 @@ export function BurnupChart({
   const handleMouseLeave = useCallback(() => setHoverX(null), []);
 
   // Compute chart data points from API response
-  const points = data?.points ?? [];
+  const points = useMemo(() => data?.points ?? [], [data?.points]);
   const hasSp = totalSp > 0;
   const hasBv = totalBv > 0;
 
