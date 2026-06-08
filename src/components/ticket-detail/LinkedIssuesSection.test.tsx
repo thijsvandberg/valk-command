@@ -74,11 +74,14 @@ const SAMPLE_ISSUES: LinkedIssue[] = [
   },
 ];
 
-function renderSection(issues: LinkedIssue[] = []) {
+function renderSection(issues: LinkedIssue[] = [], { openLink = true } = {}) {
   const onMutate = vi.fn();
   const result = render(
     <LinkedIssuesSection issues={issues} ticketKey="VPL-1" onMutate={onMutate} />,
   );
+  // The inline link composer is hidden until the header "+" opens it (BRDG-315); most tests here
+  // exercise that composer, so open it by default.
+  if (openLink) fireEvent.click(screen.getByLabelText("Link an issue"));
   return { ...result, onMutate };
 }
 
@@ -88,6 +91,16 @@ describe("LinkedIssuesSection", () => {
     mockRecentlyUpdated.mockResolvedValue({ results: [], hasMore: false });
     mockSearchForLinkWithJira.mockResolvedValue({ results: [], hasMore: false });
     mockGetRelatedSuggestions.mockResolvedValue({ suggestions: [], cachedAt: null });
+  });
+
+  it("hides the link composer until the header + is clicked, and the + toggles it", () => {
+    renderSection([], { openLink: false });
+    expect(screen.queryByPlaceholderText("Link issue...")).toBeNull();
+    const plus = screen.getByLabelText("Link an issue");
+    fireEvent.click(plus);
+    expect(screen.getByPlaceholderText("Link issue...")).toBeInTheDocument();
+    fireEvent.click(plus);
+    expect(screen.queryByPlaceholderText("Link issue...")).toBeNull();
   });
 
   it("renders inline input placeholder when no issues exist", () => {

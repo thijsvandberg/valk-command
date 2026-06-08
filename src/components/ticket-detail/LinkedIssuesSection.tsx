@@ -18,7 +18,7 @@ import { ScrollSentinel } from "./ScrollSentinel";
 import { tickets } from "@/lib/api-client";
 import { useTaskStream } from "@/hooks/useTaskStream";
 import { friendlyStreamError, isRetryableStreamError } from "@/lib/agent-errors";
-import { X, Sparkles, Loader2, Link2, ChevronDown, Maximize2, Clock } from "lucide-react";
+import { X, Sparkles, Loader2, Link2, ChevronDown, Maximize2, Clock, Plus } from "lucide-react";
 
 interface LinkedIssuesSectionProps {
   issues: TicketDetail["linkedIssues"];
@@ -58,6 +58,12 @@ export function LinkedIssuesSection({ issues, ticketKey, onMutate }: LinkedIssue
   const [deletingKeys, setDeletingKeys] = useState<Set<string>>(new Set());
   const [inlineFocused, setInlineFocused] = useState(false);
   const inlineInputRef = useRef<HTMLInputElement>(null);
+  // The inline link composer is hidden until the header "+" opens it (BRDG-315), mirroring the
+  // sprint board and epic child views.
+  const [linkOpen, setLinkOpen] = useState(false);
+  useEffect(() => {
+    if (linkOpen) requestAnimationFrame(() => inlineInputRef.current?.focus());
+  }, [linkOpen]);
   const inlineDropdownRef = useRef<HTMLDivElement>(null);
   const interactingWithDropdownRef = useRef(false);
 
@@ -302,6 +308,8 @@ export function LinkedIssuesSection({ issues, ticketKey, onMutate }: LinkedIssue
       if (e.key === "Escape") {
         search.resetSearch();
         inlineInputRef.current?.blur();
+        // Escape on an empty input closes the composer (parity with the sprint board create row).
+        if (!search.query) setLinkOpen(false);
       }
       return;
     }
@@ -376,12 +384,30 @@ export function LinkedIssuesSection({ issues, ticketKey, onMutate }: LinkedIssue
     </div>
   );
 
+  const linkButton = (
+    <button
+      type="button"
+      onClick={() => setLinkOpen((v) => !v)}
+      aria-label="Link an issue"
+      aria-pressed={linkOpen}
+      className={`flex cursor-pointer items-center justify-center rounded-md p-1.5 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)] ${
+        linkOpen
+          ? "bg-[var(--color-brand-500)]/[0.08] text-[var(--color-brand-400)]"
+          : "text-text-muted hover:bg-overlay-subtle hover:text-text-secondary"
+      }`}
+      style={{ transition: "background-color 0.15s ease, color 0.15s ease" }}
+      title="Link an issue"
+    >
+      <Plus size={14} strokeWidth={2} />
+    </button>
+  );
+
   return (
     <div className="mt-8">
       <SectionHeader
         title="Linked Issues"
         count={allIssues.length}
-        actions={suggestButton}
+        actions={<>{suggestButton}{linkButton}</>}
         sectionKey={SECTION_KEYS.linkedIssues}
       >
 
@@ -418,8 +444,11 @@ export function LinkedIssuesSection({ issues, ticketKey, onMutate }: LinkedIssue
         </div>
       )}
 
-      {/* Inline link input */}
-      <div className="relative mt-3 rounded-lg border border-border-default">
+      {/* Inline link input: hidden until the header "+" opens it, styled as the shared raised
+          inset bar (tinted strip + raised bar) used across the create rows (BRDG-315). */}
+      {linkOpen && (
+      <div className="mt-3 rounded-lg bg-[var(--color-surface-chrome)]/40 p-3 lg:p-4">
+      <div className="relative rounded-lg border border-border-default bg-[var(--color-surface-elevated)] shadow-[var(--shadow-sm)]">
         <div className="flex items-center gap-3 px-3 py-2">
           <div ref={inlineRelationRef} className="relative shrink-0">
             <button
@@ -622,6 +651,8 @@ export function LinkedIssuesSection({ issues, ticketKey, onMutate }: LinkedIssue
           </div>
         )}
       </div>
+      </div>
+      )}
 
       <RelatedSuggestions
         suggestions={suggestions}
