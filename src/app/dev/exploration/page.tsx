@@ -8,7 +8,7 @@
  */
 
 import Link from "next/link";
-import { ArrowUpRight, LayoutGrid, Rows3, FlaskConical, Shapes, MousePointerClick } from "lucide-react";
+import { ArrowUpRight, LayoutGrid, Rows3, FlaskConical, Shapes, MousePointerClick, Type } from "lucide-react";
 
 type Exploration = {
   slug: string;
@@ -22,6 +22,14 @@ type Exploration = {
 const ICON = "h-5 w-5";
 
 const EXPLORATIONS: Exploration[] = [
+  {
+    slug: "wordmark",
+    title: "Text-only logo",
+    blurb:
+      "Drops the icon entirely — Bridge as a wordmark in pronounced display fonts (editorial serif, condensed poster, console mono, geometric), shown in the real header lockup.",
+    status: "Exploration",
+    icon: <Type className={ICON} strokeWidth={1.5} />,
+  },
   {
     slug: "logo",
     title: "Logomark explorations",
