@@ -44,4 +44,27 @@ describe("TitleInput", () => {
     rerender(<TitleInput value="Updated" onChange={vi.fn()} />);
     expect(screen.getByDisplayValue("Updated")).toBeInTheDocument();
   });
+
+  it("does not render the suggest button when onSuggest is omitted", () => {
+    render(<TitleInput value="" onChange={vi.fn()} />);
+    expect(screen.queryByRole("button", { name: /suggest titles/i })).toBeNull();
+  });
+
+  it("renders the suggest button and fires onSuggest when clicked", () => {
+    const onSuggest = vi.fn().mockResolvedValue(true);
+    render(<TitleInput value="" onChange={vi.fn()} onSuggest={onSuggest} />);
+
+    fireEvent.click(screen.getByRole("button", { name: /suggest titles/i }));
+    expect(onSuggest).toHaveBeenCalledTimes(1);
+  });
+
+  it("disables the suggest button when suggestDisabled is true", () => {
+    const onSuggest = vi.fn();
+    render(<TitleInput value="" onChange={vi.fn()} onSuggest={onSuggest} suggestDisabled />);
+
+    const button = screen.getByRole("button", { name: /suggest titles/i });
+    expect(button).toBeDisabled();
+    fireEvent.click(button);
+    expect(onSuggest).not.toHaveBeenCalled();
+  });
 });

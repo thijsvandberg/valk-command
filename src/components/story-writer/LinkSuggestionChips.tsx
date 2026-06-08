@@ -88,9 +88,15 @@ export function LinkSuggestionChips({ suggestions, linkedIssueKeys, onLink, mess
   if (suggestions.length === 0) return null;
 
   // Epics are never valid link targets — drop them once their type resolves.
-  const visibleSuggestions = suggestions.filter(
-    (s) => resolved[s.key]?.type?.toLowerCase() !== "epic",
-  );
+  // Also drop stories already linked before this card was opened: they were
+  // linked elsewhere (e.g. the Related Stories panel), so re-proposing them is
+  // noise. In-session links (tracked in `linked`) stay visible so the user
+  // still sees the confirmation after clicking Link here.
+  const visibleSuggestions = suggestions.filter((s) => {
+    if (resolved[s.key]?.type?.toLowerCase() === "epic") return false;
+    if (linkedIssueKeys.has(s.key) && !linked.has(s.key)) return false;
+    return true;
+  });
 
   if (visibleSuggestions.length === 0) return null;
 

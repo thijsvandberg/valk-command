@@ -138,6 +138,12 @@ The `find-related` skill discovers stories related to the current ticket.
 
 Found tickets are synced into the local DB in the background.
 
+### Suggestion display
+
+Two inline cards surface in the chat thread, both built on the shared `SuggestionCard` shell:
+- **Related stories** (`RelatedStoriesInline`) - scored candidates from `find-related`, with per-row link toggle. Shows an `Applied` header badge once any candidate is linked.
+- **Link suggestions** (`LinkSuggestionChips`) - relation-typed link proposals parsed from a chat message. Stories already linked to the ticket (e.g. linked earlier via the related stories panel) are filtered out so they are never re-proposed; only in-session links stay visible to confirm the action.
+
 ## Client-Side Hooks
 
 ### `useStoryWriter(ticketKey)`
@@ -187,6 +193,7 @@ Located in `src/components/story-writer/`:
 | `ChatMessageParts` | Message rendering with structured output |
 | `ExecutionLogViewer` | Detailed AI task execution logs |
 | `RelatedStoriesPanel` | Related story candidates with link toggle |
+| `TitleInput` | Editable story title; reveals a compact hover/focus sparkle button that sends the type-aware suggest-title prompt in one click. Hidden once the chat already contains a title suggestion (`hasTitleSuggestion`) |
 | `OutdatedBanner` | Warns when the Jira version changed under the draft; offers view-diff / take-Jira |
 | `SplitModeLayout` | Two-pane layout for split editing |
 | `SplitPaneHeader` | Header for each split pane |

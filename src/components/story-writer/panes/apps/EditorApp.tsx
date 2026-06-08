@@ -4,6 +4,7 @@ import { useState, useCallback, useMemo, useRef, useEffect } from "react";
 import { GitCompare, Eye, Type } from "lucide-react";
 import { RichEditor } from "@/components/rich-editor/RichEditor";
 import { TitleInput } from "@/components/story-writer/TitleInput";
+import { buildSuggestTitlePrompt, hasTitleSuggestion } from "@/lib/suggest-title-prompt";
 import { DiffPane, type RightVersion, type DiffViewMode } from "@/components/story-writer/DiffPane";
 import { Button } from "@/components/ui/Button";
 import { Tooltip } from "@/components/shared/Tooltip";
@@ -169,6 +170,12 @@ export function EditorApp() {
             <TitleInput
               value={writer.session?.localTitle ?? writer.ticketData?.title ?? ""}
               onChange={writer.onTitleChange}
+              onSuggest={
+                hasTitleSuggestion(writer.messages ?? [])
+                  ? undefined
+                  : () => writer.onSend(buildSuggestTitlePrompt(writer.ticketData?.type))
+              }
+              suggestDisabled={writer.status === "sending" || writer.status === "streaming"}
             />
           }
         />

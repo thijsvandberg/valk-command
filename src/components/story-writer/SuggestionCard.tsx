@@ -50,7 +50,7 @@ export function SuggestionCard({
       <button
         type="button"
         onClick={toggle}
-        className="flex w-full items-center gap-1.5 px-3 py-1.5 bg-overlay-subtle border-b border-border-default cursor-pointer hover:bg-overlay-default transition-colors duration-150"
+        className="flex min-h-8 w-full items-center gap-1.5 px-3 py-1.5 bg-overlay-subtle border-b border-border-default cursor-pointer hover:bg-overlay-default transition-colors duration-150"
       >
         {icon}
         <span className="text-caption font-medium uppercase tracking-[0.06em] text-text-tertiary">

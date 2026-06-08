@@ -35,7 +35,7 @@ describe("LinkSuggestionChips", () => {
     expect(screen.getByText("blocks")).toBeInTheDocument();
   });
 
-  it("shows 'Applied' in the header and auto-collapses when a key is already linked", () => {
+  it("drops a suggestion already linked beforehand, keeping the rest", () => {
     render(
       <LinkSuggestionChips
         suggestions={SUGGESTIONS}
@@ -43,24 +43,52 @@ describe("LinkSuggestionChips", () => {
         onLink={vi.fn()}
       />,
     );
-    // Header badge visible, rows collapsed on reopen.
-    expect(screen.getByText("Applied")).toBeInTheDocument();
+    // Already-linked story is dropped, along with its now-empty relation group.
     expect(screen.queryByText("VPL-100")).not.toBeInTheDocument();
-    expect(screen.queryByRole("button", { name: /^link$/i })).toBeNull();
+    expect(screen.queryByText("relates to")).not.toBeInTheDocument();
+    // The remaining fresh suggestion stays actionable.
+    expect(screen.getByText("VPL-200")).toBeInTheDocument();
+    expect(screen.getByText("blocks")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /^link$/i })).toBeInTheDocument();
+    // Nothing is applied, so no header badge.
+    expect(screen.queryByText("Applied")).not.toBeInTheDocument();
   });
 
-  it("shows 'Linked' rows after expanding an auto-collapsed card", () => {
-    render(
+  it("renders nothing when every suggestion is already linked", () => {
+    const { container } = render(
       <LinkSuggestionChips
         suggestions={SUGGESTIONS}
-        linkedIssueKeys={new Set(["VPL-100"])}
+        linkedIssueKeys={new Set(["VPL-100", "VPL-200"])}
         onLink={vi.fn()}
       />,
     );
-    fireEvent.click(screen.getByRole("button", { name: /link suggestions/i }));
-    expect(screen.getAllByText("Linked")).toHaveLength(1);
-    // VPL-200 should still have a Link button
-    expect(screen.getAllByRole("button", { name: /^link$/i })).toHaveLength(1);
+    expect(container.firstChild).toBeNull();
+  });
+
+  it("keeps an in-session linked suggestion visible even after it lands in linkedIssueKeys", async () => {
+    const onLink = vi.fn().mockResolvedValue(undefined);
+    const { rerender } = render(
+      <LinkSuggestionChips
+        suggestions={[{ key: "VPL-100", relation: "relates to" }]}
+        linkedIssueKeys={new Set()}
+        onLink={onLink}
+      />,
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: /^link$/i }));
+    await waitFor(() => expect(screen.getByText("Linked")).toBeInTheDocument());
+
+    // Parent refetch now reports the link as persisted; the row must remain so
+    // the user still sees the confirmation rather than it vanishing.
+    rerender(
+      <LinkSuggestionChips
+        suggestions={[{ key: "VPL-100", relation: "relates to" }]}
+        linkedIssueKeys={new Set(["VPL-100"])}
+        onLink={onLink}
+      />,
+    );
+    expect(screen.getByText("VPL-100")).toBeInTheDocument();
+    expect(screen.getByText("Linked")).toBeInTheDocument();
   });
 
   it("persists a manual collapse across remounts via messageId", () => {

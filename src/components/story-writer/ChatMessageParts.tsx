@@ -17,6 +17,7 @@ import {
   GitCompare,
   Sparkles,
   Search,
+  PanelRight,
   type LucideIcon,
 } from "lucide-react";
 import { Button } from "@/components/ui/Button";
@@ -25,7 +26,7 @@ import { TitleSuggestionChips } from "@/components/story-writer/TitleSuggestionC
 import { TypeSuggestionChip } from "@/components/story-writer/TypeSuggestionChip";
 import { LinkSuggestionChips, type LinkSuggestion } from "@/components/story-writer/LinkSuggestionChips";
 import { EpicSuggestionCard, type EpicSuggestion } from "@/components/story-writer/EpicSuggestionCard";
-import { SuggestionCard, SuggestionRow, ScoreBadge, LinkButton } from "@/components/story-writer/SuggestionCard";
+import { SuggestionCard, SuggestionRow, ScoreBadge, LinkButton, AppliedBadge } from "@/components/story-writer/SuggestionCard";
 import { TicketStatusPill, type TicketPillHoverData } from "@/components/shared/TicketStatusPill";
 import { tickets } from "@/lib/api-client";
 import type { JiraStatus } from "@/types/ticket";
@@ -670,6 +671,8 @@ export function RelatedStoriesInline({
 
   if (visibleCandidates.length === 0) return null;
 
+  const anyLinked = visibleCandidates.some((c) => c.isLinked);
+
   const handleLink = async (id: string, isLinked: boolean) => {
     setLinkingId(id);
     await onLink(id, isLinked);
@@ -680,15 +683,27 @@ export function RelatedStoriesInline({
     <SuggestionCard
       icon={<Search size={10} strokeWidth={1.5} className="text-text-muted" />}
       title="Related stories"
-      headerRight={onOpenPanel ? (
-        <button
-          type="button"
-          onClick={onOpenPanel}
-          className="text-caption text-text-tertiary hover:text-text-secondary cursor-pointer transition-colors duration-150"
-        >
-          Open panel
-        </button>
-      ) : undefined}
+      headerRight={
+        (anyLinked || onOpenPanel) ? (
+          <span className="flex items-center gap-2.5">
+            {anyLinked && <AppliedBadge />}
+            {onOpenPanel && (
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onOpenPanel();
+                }}
+                title="Open in side panel"
+                aria-label="Open in side panel"
+                className="flex size-5 items-center justify-center rounded text-text-tertiary hover:text-text-secondary cursor-pointer transition-colors duration-150"
+              >
+                <PanelRight size={13} strokeWidth={1.5} />
+              </button>
+            )}
+          </span>
+        ) : undefined
+      }
     >
       {visibleCandidates.map((c) => (
         <SuggestionRow key={c.id} active={c.isLinked}>
