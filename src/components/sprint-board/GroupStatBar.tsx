@@ -3,7 +3,8 @@
 import { memo, useRef, useState, type ReactNode } from "react";
 import type { Ticket, Sprint } from "@/types/ticket";
 import type { GroupSyncProgress, GroupSyncResult, GroupSyncState } from "@/lib/group-sync";
-import { getSpColor, getBvColor } from "@/types/ticket";
+import { getSpColor, getBvColor, effectivePoints } from "@/types/ticket";
+import { FullnessMeter } from "./FullnessMeter";
 import { ChevronRight, ChevronDown, Pin, AlertTriangle, MoreHorizontal, RefreshCw } from "lucide-react";
 import { StatPill, StatusPill } from "./SprintStatPill";
 import { MetricBadge } from "@/components/shared/MetricBadge";
@@ -61,6 +62,16 @@ export interface GroupStatBarProps {
   syncKind?: "sprint" | "epic";
   /** Action pinned into the right cluster between the warning and the "..." menu (e.g. a create "+"). */
   createAction?: ReactNode;
+  /**
+   * Forward-planning mode (BRDG-303). When on, the bar shows a fullness meter
+   * (effective points / pencil capacity). Only meaningful for real sprint groups;
+   * the consumer suppresses it for the backlog and non-sprint groupings.
+   */
+  planningOn?: boolean;
+  /** The sprint's pencil capacity (PO guess), or null when unset. */
+  pencilCapacity?: number | null;
+  /** Persist a new pencil capacity (null clears it). */
+  onPencilCapacityChange?: (value: number | null) => void;
 }
 
 // Two-row tooltip (total + average) styled like the estimate-hygiene warning tooltip:
@@ -116,6 +127,9 @@ export const GroupStatBar = memo(function GroupStatBar({
   onSync,
   syncKind,
   createAction,
+  planningOn = false,
+  pencilCapacity = null,
+  onPencilCapacityChange,
 }: GroupStatBarProps) {
   const [detailsOpen, setDetailsOpen] = useState(false);
   const menuButtonRef = useRef<HTMLButtonElement>(null);
@@ -139,6 +153,9 @@ export const GroupStatBar = memo(function GroupStatBar({
     }
   }
   const totalPoints = tickets.reduce((sum, t) => sum + (t.storyPoints ?? 0), 0);
+  // Effective points for the fullness meter: real SP wins, else the guestimation,
+  // so the meter reflects both refined and penciled work (BRDG-303).
+  const usedEffective = tickets.reduce((sum, t) => sum + effectivePoints(t.storyPoints, t.guestimation), 0);
   const bvTickets = tickets.filter((t) => t.businessValue != null && t.businessValue >= 1 && t.jiraStatus !== "DEPRECATED");
   const bvTotal = bvTickets.reduce((sum, t) => sum + (t.businessValue ?? 0), 0);
   const bvAvg = bvTickets.length > 0 ? (bvTotal / bvTickets.length).toFixed(1) : null;
@@ -288,6 +305,13 @@ export const GroupStatBar = memo(function GroupStatBar({
               ? metricTooltip("Business value", bvTotal, bvAvg, "per scored ticket", getBvColor(bvTotal).text)
               : undefined
           }
+        />
+      )}
+      {planningOn && onPencilCapacityChange && (
+        <FullnessMeter
+          used={usedEffective}
+          capacity={pencilCapacity}
+          onCapacityChange={onPencilCapacityChange}
         />
       )}
       {/* The per-status breakdown is the first thing to drop when the bar gets cramped:

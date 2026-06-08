@@ -126,6 +126,8 @@ export function TicketTable({
   onStoryPointsChange,
   planningOn = false,
   onGuestimationChange,
+  pencilCapacityMap,
+  onPencilCapacityChange,
   onJiraStatusChange,
   onIssueTypeChange,
   onTitleChange,
@@ -190,9 +192,13 @@ export function TicketTable({
   onReadinessChange?: (key: string, readiness: TicketReadiness | null) => void;
   onBusinessValueChange?: (key: string, value: number | null) => void;
   onStoryPointsChange?: (key: string, value: number | null) => void;
-  /** Forward-planning mode (BRDG-303): reveals the guestimation picker on unestimated rows. */
+  /** Forward-planning mode (BRDG-303): reveals the guestimation picker on unestimated rows
+   *  and the fullness meter on sprint group headers. */
   planningOn?: boolean;
   onGuestimationChange?: (key: string, value: number | null) => void;
+  /** sprintId -> pencil capacity, for the fullness meter on sprint group headers. */
+  pencilCapacityMap?: Record<string, number>;
+  onPencilCapacityChange?: (sprintId: string, value: number | null) => void;
   onJiraStatusChange?: (key: string, status: JiraStatus) => void;
   onIssueTypeChange?: (key: string, type: IssueType) => void;
   onTitleChange?: (key: string, title: string) => void;
@@ -710,6 +716,13 @@ export function TicketTable({
                   : {})}
                 {...(groupSyncHandler && syncTarget
                   ? { onSync: groupSyncHandler, syncKind: syncTarget.kind }
+                  : {})}
+                {...(isSprintGroup && planningOn && onPencilCapacityChange
+                  ? {
+                      planningOn: true,
+                      pencilCapacity: pencilCapacityMap?.[group.key] ?? null,
+                      onPencilCapacityChange: (v: number | null) => onPencilCapacityChange(group.key, v),
+                    }
                   : {})}
               />
             }

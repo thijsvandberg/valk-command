@@ -4,6 +4,7 @@ import { useState, useRef, useCallback, useEffect, useMemo } from "react";
 import { useOutsideClick } from "@/hooks/useOutsideClick";
 import type { TicketDetail, JiraStatus, TicketReadiness, Subtask, EpicChild, IssueType } from "@/types/ticket";
 import { StoryPointPicker } from "@/components/shared/StoryPointPicker";
+import { GuestimationPicker } from "@/components/shared/GuestimationPicker";
 import { BusinessValuePicker } from "@/components/shared/BusinessValuePicker";
 import { IssueTypeIcon } from "@/components/shared/IssueTypeIcon";
 import { SubtaskCountBadge } from "@/components/shared/IssueMetaBadges";
@@ -29,6 +30,7 @@ import { useSectionVisibility } from "@/hooks/useSectionVisibility";
 import { useSectionCollapsed } from "@/hooks/useSectionCollapsed";
 import { SECTION_KEYS } from "@/lib/section-collapse-store";
 import { useLocalStorage } from "@/hooks/useLocalStorage";
+import { usePencilCapacity } from "@/hooks/usePencilCapacity";
 import { useJiraSprints, useSprintSlots } from "@/hooks/useSprintBoard";
 import { mapJiraSprints, bulkReviewStories, bulkGenerateSubtasks } from "@/components/sprint-board/sprint-board-utils";
 import { tickets, jira, apiFetch, ApiError } from "@/lib/api-client";
@@ -93,7 +95,7 @@ export function EpicChildrenSection({
   // Optimistic SP/BV edits (childKey -> overridden metrics), applied immediately so
   // the badge appears on click instead of waiting for the refetch round-trip.
   const [localMetrics, setLocalMetrics] = useState<
-    Record<string, { storyPoints?: number | null; businessValue?: number | null }>
+    Record<string, { storyPoints?: number | null; businessValue?: number | null; guestimation?: number | null }>
   >({});
   // Multiselect: checked child keys for the bulk-action toolbar.
   const [checkedKeys, setCheckedKeys] = useState<Set<string>>(new Set());
@@ -133,6 +135,10 @@ export function EpicChildrenSection({
   const { isCollapsed } = useSectionCollapsed();
   const collapsed = isCollapsed(SECTION_KEYS.epicChildren);
   const [viewMode, setViewMode] = useLocalStorage<ChildIssueViewMode>("epic-children-view", "list");
+  // Forward-planning mode (BRDG-303): per-view toggle, independent from the sprint
+  // board's. Off by default; reveals guestimation pickers and the fullness meter.
+  const [planningOn, setPlanningOn] = useLocalStorage<boolean>("epic-children-planning-visible", false);
+  const { capacityMap: pencilCapacityMap, setCapacity: setPencilCapacity } = usePencilCapacity(planningOn);
   const [hideDeprecated, setHideDeprecated] = useLocalStorage<boolean>("epic-children-hide-deprecated", true);
   const { toast, toastLoading, showToast, dismissToast } = useToast();
 
@@ -386,7 +392,7 @@ export function EpicChildrenSection({
   }, [onMutate]);
 
   // Drop one optimistic metric override, removing the child entry when empty.
-  const revertLocalMetric = useCallback((childKey: string, field: "storyPoints" | "businessValue") => {
+  const revertLocalMetric = useCallback((childKey: string, field: "storyPoints" | "businessValue" | "guestimation") => {
     setLocalMetrics((prev) => {
       const entry = prev[childKey];
       if (!entry || !(field in entry)) return prev;
@@ -421,6 +427,18 @@ export function EpicChildrenSection({
       console.error("Failed to update business value:", err);
       revertLocalMetric(childKey, "businessValue");
       setJiraWarning(`Failed to update business value for ${childKey}`);
+    }
+  }, [onMutate, revertLocalMetric]);
+
+  const handleGuestimationChange = useCallback(async (childKey: string, value: number | null) => {
+    setLocalMetrics((prev) => ({ ...prev, [childKey]: { ...prev[childKey], guestimation: value } }));
+    try {
+      await tickets.updateMetadata(childKey, { guestimation: value });
+      onMutate();
+    } catch (err) {
+      console.error("Failed to update guestimation:", err);
+      revertLocalMetric(childKey, "guestimation");
+      setJiraWarning(`Failed to update guestimation for ${childKey}`);
     }
   }, [onMutate, revertLocalMetric]);
 
@@ -799,6 +817,18 @@ export function EpicChildrenSection({
         richTooltip
       />
     );
+    // Guestimation (BRDG-303): only offered while planning mode is on and only when
+    // the child has no real SP, so a guess never sits in the SP slot.
+    const spEmpty = !epic || epic.storyPoints == null || epic.storyPoints === 0;
+    const guessPicker = epic && planningOn && spEmpty && (
+      <GuestimationPicker
+        value={epic.guestimation ?? null}
+        onChange={(v) => handleGuestimationChange(child.key, v)}
+        dense
+        showMetricIcon
+        richTooltip
+      />
+    );
     const metricCell = (node: React.ReactNode) => (
       <span
         className="shrink-0"
@@ -815,6 +845,11 @@ export function EpicChildrenSection({
             resting list stays calm; only real estimates keep an inline badge (BRDG-310). */}
         {visibleFields.has("storyPoints") && epic && (
           epic.storyPoints == null || epic.storyPoints === 0 ? <HoverRevealSlot>{spPicker}</HoverRevealSlot> : metricCell(spPicker)
+        )}
+        {guessPicker && (
+          epic && (epic.guestimation == null || epic.guestimation === 0)
+            ? <HoverRevealSlot>{guessPicker}</HoverRevealSlot>
+            : metricCell(guessPicker)
         )}
         {visibleFields.has("businessValue") && epic && (
           epic.businessValue == null || epic.businessValue === 0 ? <HoverRevealSlot>{bvPicker}</HoverRevealSlot> : metricCell(bvPicker)
@@ -968,6 +1003,9 @@ export function EpicChildrenSection({
         checkedKeys={checkedKeys}
         someChecked={someChecked}
         onCheckboxClick={selectionEnabled ? handleCheckboxClick : undefined}
+        planningOn={planningOn}
+        pencilCapacityMap={pencilCapacityMap}
+        onPencilCapacityChange={setPencilCapacity}
       />
       {createOpen && (
         <div className="overflow-hidden rounded-lg border border-border-default">
@@ -1010,6 +1048,8 @@ export function EpicChildrenSection({
         sectionKey={SECTION_KEYS.epicChildren}
         onToggleCreate={handleToggleCreate}
         createOpen={createOpen}
+        planningOn={planningOn}
+        onTogglePlanning={() => setPlanningOn((v) => !v)}
       />
 
       {error && (

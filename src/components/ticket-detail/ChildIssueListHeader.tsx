@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { SectionHeader } from "@/components/shared/SectionHeader";
 import { FieldFilterPopover, type StatusFilter, type FieldToggle } from "./FieldFilterPopover";
-import { Filter, LayoutList, CalendarRange, Plus } from "lucide-react";
+import { Filter, LayoutList, CalendarRange, Plus, Ruler } from "lucide-react";
 
 export type ChildIssueViewMode = "list" | "sprint";
 
@@ -33,6 +33,10 @@ interface ChildIssueListHeaderProps {
   onToggleCreate?: () => void;
   /** Whether the create composer is currently open (drives the "+" active state). */
   createOpen?: boolean;
+  /** Forward-planning mode (BRDG-303): when provided, renders a "Planning" toggle that
+   *  reveals guestimation pickers and (in the by-sprint view) the fullness meter. */
+  planningOn?: boolean;
+  onTogglePlanning?: () => void;
 }
 
 const VIEW_MODES: { mode: ChildIssueViewMode; label: string; Icon: typeof LayoutList }[] = [
@@ -60,8 +64,28 @@ export function ChildIssueListHeader({
   sectionKey,
   onToggleCreate,
   createOpen,
+  planningOn,
+  onTogglePlanning,
 }: ChildIssueListHeaderProps) {
   const [popoverOpen, setPopoverOpen] = useState(false);
+
+  const planningButton = onTogglePlanning ? (
+    <button
+      type="button"
+      onClick={onTogglePlanning}
+      aria-label="Toggle forward planning"
+      aria-pressed={planningOn}
+      className={`flex cursor-pointer items-center justify-center rounded-md p-1.5 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)] ${
+        planningOn
+          ? "bg-[var(--color-brand-500)]/[0.08] text-[var(--color-brand-400)]"
+          : "text-text-muted hover:bg-overlay-subtle hover:text-text-secondary"
+      }`}
+      style={{ transition: "background-color 0.15s ease, color 0.15s ease" }}
+      title="Planning (pencil capacity + guestimations)"
+    >
+      <Ruler size={13} strokeWidth={1.5} />
+    </button>
+  ) : null;
 
   const createButton = onToggleCreate ? (
     <button
@@ -149,7 +173,7 @@ export function ChildIssueListHeader({
       title={title}
       count={!isFiltered ? totalCount : undefined}
       countLabel={isFiltered && totalCount > 0 ? `${filteredCount} of ${totalCount}` : undefined}
-      actions={<>{extraActions}{viewToggle}{filterButton}{createButton}</>}
+      actions={<>{extraActions}{viewToggle}{planningButton}{filterButton}{createButton}</>}
       sectionKey={sectionKey}
     />
   );

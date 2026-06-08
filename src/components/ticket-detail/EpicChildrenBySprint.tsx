@@ -69,6 +69,11 @@ interface EpicChildrenBySprintProps {
   checkedKeys?: Set<string>;
   someChecked?: boolean;
   onCheckboxClick?: (key: string, e: React.MouseEvent) => void;
+  /** Forward-planning mode (BRDG-303): shows the fullness meter on resolvable sprint groups. */
+  planningOn?: boolean;
+  /** sprintId -> pencil capacity, for the fullness meter. */
+  pencilCapacityMap?: Record<string, number>;
+  onPencilCapacityChange?: (sprintId: string, value: number | null) => void;
 }
 
 function isEpicChild(child: EpicChild | Subtask): child is EpicChild {
@@ -105,6 +110,7 @@ function toStatTicket(child: EpicChild | Subtask): Ticket {
   const epic = isEpicChild(child) ? child : null;
   return {
     storyPoints: epic?.storyPoints ?? null,
+    guestimation: epic?.guestimation ?? null,
     businessValue: epic?.businessValue ?? null,
     jiraStatus: child.jiraStatus,
     type: child.type,
@@ -282,6 +288,9 @@ export function EpicChildrenBySprint({
   checkedKeys,
   someChecked,
   onCheckboxClick,
+  planningOn = false,
+  pencilCapacityMap,
+  onPencilCapacityChange,
 }: EpicChildrenBySprintProps) {
   const [collapsed, setCollapsed] = useSessionStorage<Record<string, boolean>>(
     `epic-children-collapse-${ticketKey}`,
@@ -508,12 +517,25 @@ export function EpicChildrenBySprint({
     // backlog does not. That made the gated `@2xl:w-48` trip inconsistently and
     // leave dead space before the item count on the wider groups. Collapsing to
     // the label's own width keeps every group's count tight to its label.
+    // Resolve a real sprint id for planning: only named (non-synthetic) groups whose
+    // sprint resolves to an id get the fullness meter; the create/unscheduled/backlog
+    // zones do not (BRDG-303).
+    const planningSprintId = !isSynthetic && !isUnscheduled && group.sprintName
+      ? sprints.find((s) => s.name === group.sprintName)?.id
+      : undefined;
     const header = (
       <GroupStatBar
         tickets={group.items.map(toStatTicket)}
         label={group.label}
         sprint={group.sprintName ? sprints.find((s) => s.name === group.sprintName) : undefined}
         isActive={group.isActive}
+        {...(planningOn && planningSprintId && onPencilCapacityChange
+          ? {
+              planningOn: true,
+              pencilCapacity: pencilCapacityMap?.[planningSprintId] ?? null,
+              onPencilCapacityChange: (v: number | null) => onPencilCapacityChange(planningSprintId, v),
+            }
+          : {})}
         isCollapsed={isCollapsed}
         onToggleCollapse={() => toggle(group.key)}
         showStatusCounts={false}
