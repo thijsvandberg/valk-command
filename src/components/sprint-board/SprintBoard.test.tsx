@@ -64,6 +64,7 @@ vi.mock("@/lib/prefetch", () => ({
 
 vi.mock("@/lib/api-client", () => ({
   apiFetch: vi.fn().mockResolvedValue({}),
+  swrFetcher: vi.fn().mockResolvedValue([]),
   jira: { syncSprint: vi.fn().mockResolvedValue({}) },
 }));
 
