@@ -378,6 +378,21 @@ describe("EpicChildrenSection", () => {
       expect(screen.getByLabelText("Set Business Value")).toBeInTheDocument();
     });
 
+    // BRDG-310: an empty metric reserves no space - it lives in a hover-reveal slot
+    // (collapsed via `display:none`) until the row is hovered; a set value sits in a
+    // normal, always-visible cell.
+    it("wraps an empty metric in a no-space hover-reveal slot, but not a set one", () => {
+      renderSection(SAMPLE_CHILDREN);
+      const inRevealSlot = (el: HTMLElement | null) => {
+        for (let n = el; n; n = n.parentElement) {
+          if (typeof n.className === "string" && n.className.includes("group-hover/row:inline-flex")) return true;
+        }
+        return false;
+      };
+      expect(inRevealSlot(screen.getByLabelText("Set Story Points"))).toBe(true);
+      expect(inRevealSlot(screen.getByLabelText("Story Points: 3"))).toBe(false);
+    });
+
     it("sets story points via keyboard while the popover is open", async () => {
       renderSection(SAMPLE_CHILDREN);
       fireEvent.click(screen.getByLabelText("Set Story Points"));

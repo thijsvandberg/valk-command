@@ -7,6 +7,7 @@ import { AssigneePicker, type AssignableUser } from "@/components/shared/Assigne
 import { EpicPicker, type EpicOption } from "@/components/shared/EpicPicker";
 import { EpicBadge } from "@/components/shared/IssueMetaBadges";
 import { AddEpicPill } from "@/components/shared/AddEpicPill";
+import { HoverRevealSlot } from "@/components/shared/HoverRevealSlot";
 import type { InlineTagId } from "@/components/sprint-board/filter-bar-types";
 import { Avatar } from "@/components/shared/Avatar";
 import { Flag, MessageSquare, Pencil, Check, X, Gem, IterationCw, GripVertical } from "lucide-react";
@@ -153,10 +154,24 @@ export const BoardRow = memo(forwardRef<HTMLTableRowElement, BoardRowBaseProps>(
   const lastDeploy = lastDeployedMap?.[ticket.key];
   const health = healthMap?.[ticket.key];
   const isRemoved = Boolean(ticket.removedFromJiraAt);
-  // Deprecated stories carry no planning metrics, so an empty SP/BV slot is just
-  // noise here. Drop the reveal-on-hover placeholder entirely (no reserved width)
-  // unless a value was actually set.
+  // Deprecated stories carry no planning metrics, so an empty SP/BV is suppressed
+  // entirely here (no hover placeholder). A deprecated ticket that still carries a
+  // value keeps showing it.
   const isDeprecated = ticket.jiraStatus === "DEPRECATED";
+
+  // Epic / SP / BV placement (BRDG-310): everything that is *set* renders in its
+  // natural slot; the still-empty (but applicable) planning fields reserve no space and
+  // open on row hover as a placeholder cluster to the LEFT of every set badge (so they
+  // sit left of a set epic chip, a refinement gem, etc.). Among themselves the
+  // placeholders keep the natural epic -> SP -> BV order. Empty SP/BV on a deprecated
+  // story are suppressed entirely (no hover placeholder); a set value still shows.
+  const spEmpty = ticket.storyPoints == null;
+  const bvEmpty = ticket.businessValue == null;
+  const showSpValue = tags.has("storyPoints") && !spEmpty;
+  const showBvValue = tags.has("businessValue") && !bvEmpty;
+  const showSpPlaceholder = tags.has("storyPoints") && spEmpty && !isDeprecated;
+  const showBvPlaceholder = tags.has("businessValue") && bvEmpty && !isDeprecated;
+  const showEpicPlaceholder = tags.has("epic") && !hideEpic && !ticket.epic && Boolean(onEpicChange) && !isRemoved;
 
   // Checkbox always visible when checked or when any row is checked (bulk mode)
   const showCheckbox = isChecked || someChecked;
@@ -389,6 +404,39 @@ export const BoardRow = memo(forwardRef<HTMLTableRowElement, BoardRowBaseProps>(
                 )}
               </div>
 
+              {/* Hover-revealed placeholders for the still-empty planning fields
+                  (BRDG-310). They reserve no space (HoverRevealSlot) and open on row
+                  hover to the LEFT of every set badge below, keeping the natural
+                  epic -> SP -> BV order. Set values render in their own slots further
+                  right. */}
+              {showEpicPlaceholder && (
+                <HoverRevealSlot>
+                  <AddEpicPill ticketKey={ticket.key} onChange={(epic) => onEpicChange?.(ticket.key, epic)} />
+                </HoverRevealSlot>
+              )}
+              {showSpPlaceholder && (
+                <HoverRevealSlot>
+                  <StoryPointPicker
+                    value={ticket.storyPoints}
+                    onChange={onStoryPointsChange ? (v) => onStoryPointsChange(ticket.key, v) : () => {}}
+                    dense
+                    showMetricIcon
+                    richTooltip
+                  />
+                </HoverRevealSlot>
+              )}
+              {showBvPlaceholder && (
+                <HoverRevealSlot>
+                  <BusinessValuePicker
+                    value={ticket.businessValue}
+                    onChange={onBusinessValueChange ? (v) => onBusinessValueChange(ticket.key, v) : () => {}}
+                    dense
+                    showMetricIcon
+                    richTooltip
+                  />
+                </HoverRevealSlot>
+              )}
+
               {/* Notes + refinement signals, placed just left of the epic chip. */}
               {tags.has("notes") && ticket.notes && (
                 <span className="shrink-0" title={ticket.notes}>
@@ -412,30 +460,27 @@ export const BoardRow = memo(forwardRef<HTMLTableRowElement, BoardRowBaseProps>(
                 </RefinementGemTrigger>
               )}
 
-              {/* Epic chip — shrinks with the title when space is tight. Clicking it
-                  opens the epic picker dropdown (view in sidebar / new tab / unlink /
-                  change) rather than navigating away or selecting the row (BRDG-131).
-                  Rows without an epic get a hover-revealed "Add epic" placeholder.
-                  Both are suppressed when grouped by epic (hideEpic). */}
-              {tags.has("epic") && !hideEpic && (
-                ticket.epic && ticket.epicKey ? (
-                  onEpicChange && !isRemoved ? (
-                    <span className="flex min-w-0 shrink" onPointerDown={(e) => e.stopPropagation()} onClick={(e) => e.stopPropagation()}>
-                      <EpicPicker
-                        value={{ key: ticket.epicKey, name: ticket.epic }}
-                        onChange={(epic) => onEpicChange(ticket.key, epic)}
-                        ticketKey={ticket.key}
-                        onViewInSidebar={() => onSelectTicket(ticket.epicKey!)}
-                        triggerClassName="min-w-0 shrink"
-                        align="left"
-                      />
-                    </span>
-                  ) : (
-                    <EpicBadge epic={ticket.epic} className="min-w-0 shrink" />
-                  )
-                ) : !ticket.epic && onEpicChange && !isRemoved ? (
-                  <AddEpicPill ticketKey={ticket.key} onChange={(epic) => onEpicChange(ticket.key, epic)} />
-                ) : null
+              {/* Epic chip (set epics only) — shrinks with the title when space is
+                  tight. Clicking it opens the epic picker dropdown (view in sidebar /
+                  new tab / unlink / change) rather than navigating away or selecting
+                  the row (BRDG-131). Rows without an epic show the hover-revealed
+                  "Add epic" placeholder above instead. Suppressed when grouped by epic
+                  (hideEpic). */}
+              {tags.has("epic") && !hideEpic && ticket.epic && ticket.epicKey && (
+                onEpicChange && !isRemoved ? (
+                  <span className="flex min-w-0 shrink" onPointerDown={(e) => e.stopPropagation()} onClick={(e) => e.stopPropagation()}>
+                    <EpicPicker
+                      value={{ key: ticket.epicKey, name: ticket.epic }}
+                      onChange={(epic) => onEpicChange(ticket.key, epic)}
+                      ticketKey={ticket.key}
+                      onViewInSidebar={() => onSelectTicket(ticket.epicKey!)}
+                      triggerClassName="min-w-0 shrink"
+                      align="left"
+                    />
+                  </span>
+                ) : (
+                  <EpicBadge epic={ticket.epic} className="min-w-0 shrink" />
+                )
               )}
 
               {/* Sprint name — only when several sprints are visible at once (All view / saved view). */}
@@ -470,35 +515,31 @@ export const BoardRow = memo(forwardRef<HTMLTableRowElement, BoardRowBaseProps>(
                   />
                 </span>
               )}
-              {/* SP / BV — compact, right of the tags. */}
-              <div
-                className="flex shrink-0 items-center gap-2"
-                onPointerDown={(e) => e.stopPropagation()}
-                onClick={(e) => e.stopPropagation()}
-              >
-                {tags.has("storyPoints") && !(isDeprecated && ticket.storyPoints == null) && (
+              {/* SP / BV values (set only) — empty cells live in the hover-revealed
+                  placeholder cluster above, so a set value simply renders inline here
+                  in natural order (BRDG-310). */}
+              {showSpValue && (
+                <span className="shrink-0" onPointerDown={(e) => e.stopPropagation()} onClick={(e) => e.stopPropagation()}>
                   <StoryPointPicker
                     value={ticket.storyPoints}
                     onChange={onStoryPointsChange ? (v) => onStoryPointsChange(ticket.key, v) : () => {}}
                     dense
                     showMetricIcon
                     richTooltip
-                    revealWhenEmpty
-                    revealGroup="row"
                   />
-                )}
-                {tags.has("businessValue") && !(isDeprecated && ticket.businessValue == null) && (
+                </span>
+              )}
+              {showBvValue && (
+                <span className="shrink-0" onPointerDown={(e) => e.stopPropagation()} onClick={(e) => e.stopPropagation()}>
                   <BusinessValuePicker
                     value={ticket.businessValue}
                     onChange={onBusinessValueChange ? (v) => onBusinessValueChange(ticket.key, v) : () => {}}
                     dense
                     showMetricIcon
                     richTooltip
-                    revealWhenEmpty
-                    revealGroup="row"
                   />
-                )}
-              </div>
+                </span>
+              )}
 
               {/* Assignee — right-aligned. Clickable avatar opens the people
                   picker inline, mirroring the ticket sidebar. */}

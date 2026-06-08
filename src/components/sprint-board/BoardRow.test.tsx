@@ -223,6 +223,59 @@ describe("BoardRow (headerless, BRDG-239)", () => {
     expect(screen.getByTestId("bv")).toBeInTheDocument();
   });
 
+  // BRDG-310: set badges show in their natural slot; the empty (applicable) planning
+  // fields reserve no space and open on hover as a cluster to the LEFT of every set
+  // badge, keeping the natural epic -> SP -> BV order among themselves.
+  it("opens empty SP/BV placeholders on hover to the left of a set epic chip (no reserved space)", () => {
+    renderRow({ ticket: makeTicket({ storyPoints: null, businessValue: null }), onEpicChange: vi.fn() });
+    const sp = screen.getByTestId("sp");
+    const bv = screen.getByTestId("bv");
+    const epic = screen.getByTestId("epic-picker");
+
+    // Wrapped in the collapse-to-nothing slot until the row is hovered.
+    expect(sp.parentElement?.className).toContain("hidden");
+    expect(sp.parentElement?.className).toContain("group-hover/row:inline-flex");
+    expect(bv.parentElement?.className).toContain("hidden");
+
+    // Placeholders sit before the set epic chip, in natural SP -> BV order.
+    expect(sp.compareDocumentPosition(epic) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(sp.compareDocumentPosition(bv) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+  });
+
+  it("renders a set SP/BV inline after the epic chip, not in a hover-reveal slot", () => {
+    renderRow({ ticket: makeTicket({ storyPoints: 5, businessValue: 8 }), onEpicChange: vi.fn() });
+    const sp = screen.getByTestId("sp");
+    const epic = screen.getByTestId("epic-picker");
+
+    expect(sp.parentElement?.className).not.toContain("hidden");
+    expect(epic.compareDocumentPosition(sp) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+  });
+
+  it("clusters the add-epic / SP / BV placeholders in natural order when nothing is set", () => {
+    renderRow({ ticket: makeTicket({ epic: null, epicKey: null, storyPoints: null, businessValue: null }), onEpicChange: vi.fn() });
+    const addEpic = screen.getByTestId("add-epic");
+    const sp = screen.getByTestId("sp");
+    const bv = screen.getByTestId("bv");
+    expect(addEpic.compareDocumentPosition(sp) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(sp.compareDocumentPosition(bv) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+  });
+
+  it("opens the placeholders to the left of a set refinement badge (no reserved gap)", () => {
+    renderRow({
+      ticket: makeTicket({ epic: null, epicKey: null, storyPoints: null, businessValue: null }),
+      onEpicChange: vi.fn(),
+      refinementSessions: [{ name: "Refine A" } as never],
+    });
+    const gem = screen.getByTestId("icon-gem");
+    const addEpic = screen.getByTestId("add-epic");
+    const sp = screen.getByTestId("sp");
+    const bv = screen.getByTestId("bv");
+    // Every placeholder precedes the set refinement gem.
+    expect(addEpic.compareDocumentPosition(gem) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(sp.compareDocumentPosition(gem) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(bv.compareDocumentPosition(gem) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+  });
+
   it("drives the pill readiness segment via the poReadiness tag", () => {
     renderRow({ tags: new Set<InlineTagId>(["poReadiness"]) });
     expect(screen.getByTestId("pill").getAttribute("data-show-readiness")).toBe("true");

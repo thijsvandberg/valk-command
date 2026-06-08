@@ -7,6 +7,7 @@ import { StoryPointPicker } from "@/components/shared/StoryPointPicker";
 import { BusinessValuePicker } from "@/components/shared/BusinessValuePicker";
 import { IssueTypeIcon } from "@/components/shared/IssueTypeIcon";
 import { SubtaskCountBadge } from "@/components/shared/IssueMetaBadges";
+import { HoverRevealSlot } from "@/components/shared/HoverRevealSlot";
 import { Avatar } from "@/components/shared/Avatar";
 import { StatusBadge } from "@/components/shared/StatusBadge";
 import { Tooltip } from "@/components/shared/Tooltip";
@@ -691,41 +692,44 @@ export function EpicChildrenSection({
   // sprint (the by-sprint view), avoiding a redundant per-row badge.
   function renderMetadata(child: EpicChild | Subtask, hideSprint = false) {
     const epic = isEpicChild(child) ? child : null;
+    // SP/BV placement (BRDG-310): metrics keep their natural order (SP then BV). An
+    // empty metric reserves no space and surfaces only on row hover (HoverRevealSlot);
+    // a set value renders inline in the same slot.
+    const spPicker = epic && (
+      <StoryPointPicker
+        value={epic.storyPoints}
+        onChange={(v) => handleStoryPointsChange(child.key, v)}
+        dense
+        showMetricIcon
+        richTooltip
+      />
+    );
+    const bvPicker = epic && (
+      <BusinessValuePicker
+        value={epic.businessValue}
+        onChange={(v) => handleBusinessValueChange(child.key, v)}
+        dense
+        showMetricIcon
+        richTooltip
+      />
+    );
+    const metricCell = (node: React.ReactNode) => (
+      <span
+        className="shrink-0"
+        onClick={(e) => e.stopPropagation()}
+        onPointerDown={(e) => e.stopPropagation()}
+      >
+        {node}
+      </span>
+    );
     return (
       <>
+        {/* SP then BV in natural order: empty -> hover-reveal slot, set -> inline. */}
         {visibleFields.has("storyPoints") && epic && (
-          <span
-            className="shrink-0"
-            onClick={(e) => e.stopPropagation()}
-            onPointerDown={(e) => e.stopPropagation()}
-          >
-            <StoryPointPicker
-              value={epic.storyPoints}
-              onChange={(v) => handleStoryPointsChange(child.key, v)}
-              dense
-              showMetricIcon
-              richTooltip
-              revealWhenEmpty
-              revealGroup="row"
-            />
-          </span>
+          epic.storyPoints == null ? <HoverRevealSlot>{spPicker}</HoverRevealSlot> : metricCell(spPicker)
         )}
         {visibleFields.has("businessValue") && epic && (
-          <span
-            className="shrink-0"
-            onClick={(e) => e.stopPropagation()}
-            onPointerDown={(e) => e.stopPropagation()}
-          >
-            <BusinessValuePicker
-              value={epic.businessValue}
-              onChange={(v) => handleBusinessValueChange(child.key, v)}
-              dense
-              showMetricIcon
-              richTooltip
-              revealWhenEmpty
-              revealGroup="row"
-            />
-          </span>
+          epic.businessValue == null ? <HoverRevealSlot>{bvPicker}</HoverRevealSlot> : metricCell(bvPicker)
         )}
         {visibleFields.has("subtaskCount") && epic && (
           <SubtaskCountBadge open={epic.openSubtaskCount ?? 0} total={epic.totalSubtaskCount ?? epic.subtaskCount} />
