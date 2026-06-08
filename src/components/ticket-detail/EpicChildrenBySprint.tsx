@@ -6,7 +6,7 @@ import { GroupStatBar } from "@/components/sprint-board/GroupStatBar";
 import { GroupCard } from "@/components/sprint-board/GroupCard";
 import { ChildIssueRow } from "./ChildIssueRow";
 import { ChildIssueComposer } from "./ChildIssueComposer";
-import { groupChildrenBySprint, nextRegularSprintGroup, nextRegularSprintCreateGroup, sortNamedGroups, UNSCHEDULED_GROUP_KEY, type ChildGroup } from "@/lib/epic-children-grouping";
+import { groupChildrenBySprint, nextRegularSprintGroup, nextRegularSprintCreateGroup, backlogDropGroups, sortNamedGroups, UNSCHEDULED_GROUP_KEY, type ChildGroup } from "@/lib/epic-children-grouping";
 import { resolveDragEnd, insertLineForRow, type ChildReorder, type ChildMoveToPosition } from "@/lib/epic-children-reorder";
 import { useSessionStorage } from "@/hooks/useSessionStorage";
 import {
@@ -236,7 +236,7 @@ function DroppableGroup({
 }) {
   const { setNodeRef, isOver } = useDroppable({
     id: group.key,
-    data: { type: "group", sprintName: group.sprintName, state: group.state, isCreateZone: group.isCreateZone },
+    data: { type: "group", sprintName: group.sprintName, state: group.state, isCreateZone: group.isCreateZone, isDropZone: group.isDropZone },
   });
   const isClosed = group.state === "closed";
   const isCreate = !!group.isCreateZone;
@@ -330,14 +330,18 @@ export function EpicChildrenBySprint({
     if (!dndEnabled || activeDragKey === null) return groups;
     // The next-sprint slot is mutually exclusive: BRDG-306's plain move zone when
     // that sprint already exists, else BRDG-309's create zone (only when the parent
-    // can handle the create flow). At most one of these is ever non-null.
-    const extra =
+    // can handle the create flow). At most one of these is ever non-null. Backlog
+    // zones surface alongside it so the epic's backlogs are reachable mid-drag.
+    const extras: ChildGroup[] = [];
+    const nextZone =
       nextRegularSprintGroup(groups, sprints) ??
       (onPlanNextSprint ? nextRegularSprintCreateGroup(groups, sprints) : null);
-    if (!extra) return groups;
+    if (nextZone) extras.push(nextZone);
+    extras.push(...backlogDropGroups(groups, sprints));
+    if (extras.length === 0) return groups;
     const unscheduled = groups.filter((g) => g.key === UNSCHEDULED_GROUP_KEY);
     const named = groups.filter((g) => g.key !== UNSCHEDULED_GROUP_KEY);
-    return [...sortNamedGroups([...named, extra], sprints), ...unscheduled];
+    return [...sortNamedGroups([...named, ...extras], sprints), ...unscheduled];
   }, [groups, sprints, activeDragKey, dndEnabled, onPlanNextSprint]);
 
   // Keys that exist in the real grouping; anything in dragGroups outside this set

@@ -1,5 +1,5 @@
 import type { EpicChild, Subtask, Sprint } from "@/types/ticket";
-import { isRegularSprint, nextSprintName } from "./sprint-utils";
+import { isRegularSprint, nextSprintName, extractTeamPrefix } from "./sprint-utils";
 
 export const UNSCHEDULED_GROUP_KEY = "__unscheduled__";
 
@@ -23,6 +23,12 @@ export interface ChildGroup {
   dateRange: string | null;
   /** Marks the BRDG-309 synthetic zone whose drop opens the Create Sprint modal. */
   isCreateZone?: boolean;
+  /**
+   * Marks a synthetic, drag-only empty drop zone (the next-sprint move zone, the
+   * create zone, or a backlog zone). These carry no rows, so collision detection
+   * must let them win on a pointer-within hit instead of losing to nearby rows.
+   */
+  isDropZone?: boolean;
 }
 
 // Chronological state ordering for the epic view: past (closed) leads up to the
@@ -103,6 +109,7 @@ export function nextRegularSprintGroup(
     isActive: match.state === "active",
     state: match.state,
     dateRange: match.dateRange || null,
+    isDropZone: true,
   };
 }
 
@@ -156,7 +163,44 @@ export function nextRegularSprintCreateGroup(
     state: null,
     dateRange: null,
     isCreateZone: true,
+    isDropZone: true,
   };
+}
+
+/**
+ * Backlog-state sprints to surface as empty drop zones while dragging, so a child
+ * can be pushed into a backlog the epic isn't in yet (e.g. the plain `Backlog` and
+ * the team's `BT: Backlog`). Only backlogs relevant to the epic appear: a prefix-less
+ * `Backlog`, plus any whose team prefix matches a regular sprint already on the board.
+ * Other teams' backlogs stay out of the way. Excludes backlogs already shown as groups.
+ */
+export function backlogDropGroups(visibleGroups: ChildGroup[], sprints: Sprint[]): ChildGroup[] {
+  const visibleNames = new Set(
+    visibleGroups.map((g) => g.sprintName).filter((n): n is string => n !== null),
+  );
+  const visiblePrefixes = new Set(
+    visibleGroups
+      .map((g) => g.sprintName)
+      .filter((n): n is string => n !== null && isRegularSprint(n))
+      .map((n) => extractTeamPrefix(n)!),
+  );
+
+  return sprints
+    .filter((s) => s.state === "backlog" && !visibleNames.has(s.name))
+    .filter((s) => {
+      const prefix = extractTeamPrefix(s.name);
+      return prefix === null || visiblePrefixes.has(prefix);
+    })
+    .map((s) => ({
+      key: s.name,
+      label: s.name,
+      sprintName: s.name,
+      items: [],
+      isActive: false,
+      state: "backlog" as const,
+      dateRange: s.dateRange || null,
+      isDropZone: true,
+    }));
 }
 
 /**

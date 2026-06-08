@@ -264,6 +264,57 @@ describe("EpicChildrenBySprint create-next-sprint drop zone (BRDG-309)", () => {
   });
 });
 
+// Backlog drop zones: empty backlog-state sprints the epic can reach (the plain
+// "Backlog" and the team's "BT: Backlog") surface as drop zones during a drag.
+describe("EpicChildrenBySprint backlog drop zones", () => {
+  const WITH_BACKLOGS: Sprint[] = [
+    { id: "138", name: "BT: 138", dateRange: "", state: "active", ticketCount: 0, startDate: "2026-05-22", endDate: null, goal: null },
+    { id: "bl", name: "Backlog", dateRange: "", state: "backlog", ticketCount: 0, startDate: null, endDate: null, goal: null },
+    { id: "btbl", name: "BT: Backlog", dateRange: "", state: "backlog", ticketCount: 0, startDate: null, endDate: null, goal: null },
+    { id: "gxpbl", name: "GXP: Backlog", dateRange: "", state: "backlog", ticketCount: 0, startDate: null, endDate: null, goal: null },
+  ];
+
+  function setupBacklogs() {
+    render(
+      <EpicChildrenBySprint
+        items={[child("VPL-40", "BT: 138")]}
+        sprints={WITH_BACKLOGS}
+        ticketKey="VPL-4"
+        visibleFields={new Set(["issueKey", "status"])}
+        renderMetadata={() => null}
+        onJiraStatusChange={vi.fn()}
+        onReadinessChange={vi.fn()}
+        onMoveChild={vi.fn()}
+      />,
+    );
+  }
+
+  function startKeyboardDrag(childKey: string) {
+    const handle = screen.getByLabelText(`Drag ${childKey} to reorder or move it to another sprint`);
+    handle.focus();
+    fireEvent.keyDown(handle, { key: " ", code: "Space" });
+  }
+
+  it("does not show backlog zones until a drag begins", () => {
+    setupBacklogs();
+    expect(screen.queryByText("Drop here to move to Backlog")).not.toBeInTheDocument();
+    expect(screen.queryByText("Drop here to move to BT: Backlog")).not.toBeInTheDocument();
+  });
+
+  it("surfaces the plain Backlog and the team's BT: Backlog as drop zones during a drag", () => {
+    setupBacklogs();
+    startKeyboardDrag("VPL-40");
+    expect(screen.getByText("Drop here to move to Backlog")).toBeInTheDocument();
+    expect(screen.getByText("Drop here to move to BT: Backlog")).toBeInTheDocument();
+  });
+
+  it("does not surface another team's backlog the epic does not touch", () => {
+    setupBacklogs();
+    startKeyboardDrag("VPL-40");
+    expect(screen.queryByText("Drop here to move to GXP: Backlog")).not.toBeInTheDocument();
+  });
+});
+
 describe("EpicChildrenBySprint inline create", () => {
   function setupCreate(overrides: Partial<Parameters<typeof EpicChildrenBySprint>[0]> = {}) {
     const onCreateChild = vi.fn();

@@ -4,6 +4,7 @@ import {
   nextRegularSprintGroup,
   canPlanNextSprint,
   nextRegularSprintCreateGroup,
+  backlogDropGroups,
   CREATE_NEXT_SPRINT_GROUP_KEY,
   sortNamedGroups,
   UNSCHEDULED_GROUP_KEY,
@@ -330,5 +331,55 @@ describe("nextRegularSprintCreateGroup", () => {
     existing.state = "active";
     const ordered = sortNamedGroups([zone, existing], sprints);
     expect(ordered.map((g) => g.label)).toEqual(["BT: 141", "BT: 142"]);
+  });
+});
+
+describe("backlogDropGroups", () => {
+  function group(sprintName: string | null): ChildGroup {
+    return {
+      key: sprintName ?? UNSCHEDULED_GROUP_KEY,
+      label: sprintName ?? "Unscheduled",
+      sprintName,
+      items: [],
+      isActive: false,
+      state: null,
+      dateRange: null,
+    };
+  }
+
+  it("surfaces the plain Backlog and the epic's team backlog as empty drop zones", () => {
+    const sprints = [
+      sprint("BT: 141", "active", "2026-07-03"),
+      sprint("Backlog", "backlog", null),
+      sprint("BT: Backlog", "backlog", null),
+    ];
+    const zones = backlogDropGroups([group("BT: 141")], sprints);
+    expect(zones.map((z) => z.sprintName).sort()).toEqual(["BT: Backlog", "Backlog"].sort());
+    expect(zones.every((z) => z.isDropZone && z.items.length === 0 && z.state === "backlog")).toBe(true);
+  });
+
+  it("excludes other teams' backlogs the epic does not touch", () => {
+    const sprints = [
+      sprint("BT: 141", "active", "2026-07-03"),
+      sprint("BT: Backlog", "backlog", null),
+      sprint("GXP: Backlog", "backlog", null),
+    ];
+    const zones = backlogDropGroups([group("BT: 141")], sprints);
+    expect(zones.map((z) => z.sprintName)).toEqual(["BT: Backlog"]);
+  });
+
+  it("excludes a backlog already shown as a group (it has children)", () => {
+    const sprints = [
+      sprint("BT: 141", "active", "2026-07-03"),
+      sprint("BT: Backlog", "backlog", null),
+    ];
+    // BT: Backlog is already a visible group, so it is not duplicated as a zone.
+    const zones = backlogDropGroups([group("BT: 141"), group("BT: Backlog")], sprints);
+    expect(zones).toEqual([]);
+  });
+
+  it("returns nothing when there are no backlog-state sprints", () => {
+    const sprints = [sprint("BT: 141", "active", "2026-07-03")];
+    expect(backlogDropGroups([group("BT: 141")], sprints)).toEqual([]);
   });
 });
