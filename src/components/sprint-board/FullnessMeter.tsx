@@ -54,35 +54,46 @@ export function FullnessMeter({
     ? `Sprint fullness: ${used} of ${capacity} pts (${Math.round((ratio ?? 0) * 100)}%)`
     : `Used ${used} pts. Set a pencil capacity to track fullness.`;
 
+  // Subtle, cohesive with the neighbouring SP/BV pills: a faint band tint (no
+  // border), the band colour carried by a slim transform-scaled bar and the used
+  // value, with the capacity denominator kept quiet. No filled chunky bar / bold
+  // numerals (BRDG-303).
+  const accent = c?.text ?? "var(--color-text-secondary)";
+  const fillColor = c?.fill ?? "var(--color-text-muted)";
+
   return (
     <Tooltip content={tooltip}>
       <div
-        className="flex h-6 shrink-0 items-center gap-1.5 rounded-md border border-dashed px-1.5 text-[11px] leading-none tabular-nums"
+        className="inline-flex h-6 shrink-0 items-center gap-1.5 rounded-md px-2 text-body-sm tabular-nums"
         style={{
-          color: c?.text ?? "var(--color-text-secondary)",
-          backgroundColor: c?.bg ?? "var(--color-overlay-subtle)",
-          borderColor: c
-            ? `color-mix(in srgb, ${c.text} 40%, transparent)`
-            : "var(--color-border-default)",
+          color: accent,
+          backgroundColor: c
+            ? `color-mix(in srgb, ${c.text} 7%, transparent)`
+            : "var(--color-overlay-subtle)",
         }}
         onClick={(e) => e.stopPropagation()}
         onPointerDown={(e) => e.stopPropagation()}
       >
-        <Ruler size={11} strokeWidth={2} aria-hidden className="opacity-70" />
+        <Ruler size={11} strokeWidth={2} aria-hidden style={{ color: "color-mix(in srgb, currentColor 55%, transparent)" }} />
         {capacity != null && (
           <span
             aria-hidden
-            className="h-1.5 w-12 overflow-hidden rounded-full"
-            style={{ backgroundColor: "color-mix(in srgb, currentColor 18%, transparent)" }}
+            className="h-[3px] w-14 overflow-hidden rounded-full"
+            style={{ backgroundColor: "color-mix(in srgb, currentColor 16%, transparent)" }}
           >
             <span
               className="block h-full rounded-full"
-              style={{ width: `${fillPct}%`, backgroundColor: c?.fill ?? "currentColor" }}
+              style={{
+                transform: `scaleX(${Math.max(fillPct, 2) / 100})`,
+                transformOrigin: "left",
+                transition: "transform 0.25s ease",
+                backgroundColor: fillColor,
+              }}
             />
           </span>
         )}
-        <span className="font-semibold">{used}</span>
-        <span className="opacity-60">/</span>
+        <span className="font-medium">{used}</span>
+        <span style={{ color: "color-mix(in srgb, currentColor 45%, transparent)" }}>/</span>
         <input
           type="number"
           min={0}
@@ -96,8 +107,8 @@ export function FullnessMeter({
           }}
           placeholder="cap"
           aria-label="Sprint pencil capacity"
-          className="w-9 bg-transparent text-center font-semibold tabular-nums outline-none placeholder:font-normal placeholder:not-italic placeholder:text-text-muted focus:underline focus:decoration-dashed [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
-          style={{ color: "inherit" }}
+          className="w-7 bg-transparent text-center font-medium tabular-nums outline-none placeholder:font-normal placeholder:text-text-muted focus:underline focus:decoration-dotted focus:underline-offset-2 [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
+          style={{ color: "color-mix(in srgb, currentColor 75%, transparent)" }}
         />
       </div>
     </Tooltip>
