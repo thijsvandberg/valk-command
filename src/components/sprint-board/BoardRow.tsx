@@ -21,6 +21,7 @@ import { EditStateDot, QualityBadge } from "@/components/sprint-board/TicketTabl
 import { Tooltip } from "@/components/shared/Tooltip";
 import { BusinessValuePicker } from "@/components/shared/BusinessValuePicker";
 import { StoryPointPicker } from "@/components/shared/StoryPointPicker";
+import { GuestimationPicker } from "@/components/shared/GuestimationPicker";
 import { TicketStatusPill } from "@/components/shared/TicketStatusPill";
 import { prefetchTicketPage } from "@/lib/prefetch";
 
@@ -65,6 +66,10 @@ export interface BoardRowBaseProps {
   onReadinessChange?: (key: string, readiness: TicketReadiness | null) => void;
   onBusinessValueChange?: (key: string, value: number | null) => void;
   onStoryPointsChange?: (key: string, value: number | null) => void;
+  /** Forward-planning mode for this view (BRDG-303): reveals the guestimation picker
+   *  on tickets that have no real story points yet. Off = the row looks as it does today. */
+  planningOn?: boolean;
+  onGuestimationChange?: (key: string, value: number | null) => void;
   onJiraStatusChange?: (key: string, status: JiraStatus) => void;
   onIssueTypeChange?: (key: string, type: IssueType) => void;
   onTitleChange?: (key: string, title: string) => void;
@@ -120,6 +125,8 @@ export const BoardRow = memo(forwardRef<HTMLTableRowElement, BoardRowBaseProps>(
     onReadinessChange,
     onBusinessValueChange,
     onStoryPointsChange,
+    planningOn = false,
+    onGuestimationChange,
     onJiraStatusChange,
     onIssueTypeChange,
     onTitleChange,
@@ -181,6 +188,12 @@ export const BoardRow = memo(forwardRef<HTMLTableRowElement, BoardRowBaseProps>(
   const showBvValue = tags.has("businessValue") && !bvEmpty;
   const showSpPlaceholder = tags.has("storyPoints") && spEmpty && !isDeprecated;
   const showBvPlaceholder = tags.has("businessValue") && bvEmpty && !isDeprecated;
+  // Guestimation (BRDG-303): a PO placeholder estimate, only offered while planning
+  // mode is on and only when the ticket has no real SP (a guess never sits in the SP
+  // slot). A set guess renders as its own badge; an empty one as a hover placeholder.
+  const guessEmpty = ticket.guestimation == null || ticket.guestimation === 0;
+  const showGuessValue = planningOn && spEmpty && !guessEmpty && Boolean(onGuestimationChange);
+  const showGuessPlaceholder = planningOn && spEmpty && guessEmpty && !isDeprecated && Boolean(onGuestimationChange);
   const showEpicPlaceholder = tags.has("epic") && !hideEpic && !ticket.epic && Boolean(onEpicChange) && !isRemoved;
 
   // Checkbox always visible when checked or when any row is checked (bulk mode)
@@ -454,6 +467,17 @@ export const BoardRow = memo(forwardRef<HTMLTableRowElement, BoardRowBaseProps>(
                   />
                 </HoverRevealSlot>
               )}
+              {showGuessPlaceholder && (
+                <HoverRevealSlot hideWhenNarrow>
+                  <GuestimationPicker
+                    value={ticket.guestimation ?? null}
+                    onChange={onGuestimationChange ? (v) => onGuestimationChange(ticket.key, v) : () => {}}
+                    dense
+                    showMetricIcon
+                    richTooltip
+                  />
+                </HoverRevealSlot>
+              )}
               {showBvPlaceholder && (
                 <HoverRevealSlot hideWhenNarrow>
                   <BusinessValuePicker
@@ -552,6 +576,17 @@ export const BoardRow = memo(forwardRef<HTMLTableRowElement, BoardRowBaseProps>(
                   <StoryPointPicker
                     value={ticket.storyPoints}
                     onChange={onStoryPointsChange ? (v) => onStoryPointsChange(ticket.key, v) : () => {}}
+                    dense
+                    showMetricIcon
+                    richTooltip
+                  />
+                </span>
+              )}
+              {showGuessValue && (
+                <span className="shrink-0" onPointerDown={(e) => e.stopPropagation()} onClick={(e) => e.stopPropagation()}>
+                  <GuestimationPicker
+                    value={ticket.guestimation ?? null}
+                    onChange={onGuestimationChange ? (v) => onGuestimationChange(ticket.key, v) : () => {}}
                     dense
                     showMetricIcon
                     richTooltip

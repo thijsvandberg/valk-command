@@ -39,7 +39,7 @@ export async function saveSprintSlots(slotSprints: string[], sprints: Sprint[]) 
 
 export async function saveTicketMetadata(
   jiraKey: string,
-  updates: { readiness?: TicketReadiness | null; poStatus?: POStatus | undefined; poNotes?: string | undefined; qualityScore?: number | null; businessValue?: number | null },
+  updates: { readiness?: TicketReadiness | null; poStatus?: POStatus | undefined; poNotes?: string | undefined; qualityScore?: number | null; businessValue?: number | null; guestimation?: number | null },
   activeListKey?: string | null,
 ): Promise<boolean> {
   const updateTicket = (ticket: Ticket): Ticket => {
@@ -49,6 +49,7 @@ export async function saveTicketMetadata(
     if (updates.poNotes !== undefined) patched.notes = updates.poNotes;
     if (updates.qualityScore !== undefined) patched.qualityScore = updates.qualityScore;
     if (updates.businessValue !== undefined) patched.businessValue = updates.businessValue;
+    if (updates.guestimation !== undefined) patched.guestimation = updates.guestimation;
     return patched;
   };
 
@@ -71,6 +72,7 @@ export async function saveTicketMetadata(
       ...(updates.poNotes !== undefined ? { notes: updates.poNotes } : {}),
       ...(updates.qualityScore !== undefined ? { qualityScore: updates.qualityScore } : {}),
       ...(updates.businessValue !== undefined ? { businessValue: updates.businessValue } : {}),
+      ...(updates.guestimation !== undefined ? { guestimation: updates.guestimation } : {}),
     } : current,
     { revalidate: false },
   );

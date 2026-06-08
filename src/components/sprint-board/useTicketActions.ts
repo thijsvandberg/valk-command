@@ -53,6 +53,10 @@ export function useTicketActions(deps: TicketActionsDeps) {
     saveTicketMetadata(key, { businessValue: value }, activeListKey);
   }, [activeListKey]);
 
+  const handleGuestimationChange = useCallback((key: string, value: number | null) => {
+    saveTicketMetadata(key, { guestimation: value }, activeListKey);
+  }, [activeListKey]);
+
   const handleStoryPointsChange = useCallback((key: string, value: number | null) => {
     // Mirror the server rule (ticket-detail-builder): estimating a ticket that
     // sits at "Ready to Refine" advances it to "Ready for Development". The
@@ -345,6 +349,7 @@ export function useTicketActions(deps: TicketActionsDeps) {
     handlePoStatusChange,
     handleReadinessChange,
     handleBusinessValueChange,
+    handleGuestimationChange,
     handleStoryPointsChange,
     handleJiraStatusChange,
     handleIssueTypeChange,

@@ -13,7 +13,7 @@ import { SprintStatsPopover } from "@/components/sprint-board/SprintStatsPopover
 import { SprintDetailsPopover } from "@/components/sprint-board/SprintDetailsPopover";
 import { followedSprints, workspaceTasks } from "@/lib/api-client";
 import { getJiraSprintUrl } from "@/lib/jira-url";
-import { Columns2, Check, LayoutGrid, CalendarRange, Search, Bookmark, MoreHorizontal, BarChart2, List, Bell, BellOff, Users, Inbox, Flag, Play } from "lucide-react";
+import { Columns2, Check, LayoutGrid, CalendarRange, Search, Bookmark, MoreHorizontal, BarChart2, List, Bell, BellOff, Users, Inbox, Flag, Play, Ruler } from "lucide-react";
 import dynamic from "next/dynamic";
 const SprintListModal = dynamic(() => import("@/components/sprint-board/SprintListModal").then((m) => ({ default: m.SprintListModal })), { ssr: false });
 
@@ -44,6 +44,8 @@ interface SprintBoardHeaderProps {
   };
   analyticsVisible: boolean;
   setAnalyticsVisible: (v: boolean | ((prev: boolean) => boolean)) => void;
+  planningVisible: boolean;
+  setPlanningVisible: (v: boolean | ((prev: boolean) => boolean)) => void;
   setSearchModalOpen: (v: boolean) => void;
   setEditModalOpen: (v: boolean) => void;
   setCreateSprintModalOpen: (v: boolean) => void;
@@ -56,7 +58,7 @@ export function SprintBoardHeader(props: SprintBoardHeaderProps) {
   const {
     isAllView, activeSprint, activeSprintId, allTickets, tickets, ticketsLoading,
     stats, sprintWorkDays, slotSprints, activeSlot, showToast,
-    activeView, filters, analyticsVisible, setAnalyticsVisible,
+    activeView, filters, analyticsVisible, setAnalyticsVisible, planningVisible, setPlanningVisible,
     setSearchModalOpen, setEditModalOpen,
     handleSprintListSelect, handleAddSlotWithSprint, onFinishSprint,
   } = props;
@@ -168,6 +170,18 @@ export function SprintBoardHeader(props: SprintBoardHeaderProps) {
                 >
                   <BarChart2 size={13} strokeWidth={1.5} className="shrink-0" />
                   <span>Analytics</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => { setPlanningVisible((v: boolean) => !v); setHeaderMenuOpen(false); }}
+                  className={`flex w-full items-center gap-2.5 px-3 py-2 text-body-sm cursor-pointer transition-colors duration-150 ${
+                    planningVisible
+                      ? "text-[var(--color-brand-400)] bg-[var(--color-brand-500)]/[0.08]"
+                      : "text-text-secondary hover:bg-hover-interactive hover:text-text-primary"
+                  }`}
+                >
+                  <Ruler size={13} strokeWidth={1.5} className="shrink-0" />
+                  <span>Planning</span>
                 </button>
                 {!isAllView && !activeView && (
                   <button

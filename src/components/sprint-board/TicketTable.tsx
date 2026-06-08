@@ -124,6 +124,8 @@ export function TicketTable({
   onReadinessChange,
   onBusinessValueChange,
   onStoryPointsChange,
+  planningOn = false,
+  onGuestimationChange,
   onJiraStatusChange,
   onIssueTypeChange,
   onTitleChange,
@@ -188,6 +190,9 @@ export function TicketTable({
   onReadinessChange?: (key: string, readiness: TicketReadiness | null) => void;
   onBusinessValueChange?: (key: string, value: number | null) => void;
   onStoryPointsChange?: (key: string, value: number | null) => void;
+  /** Forward-planning mode (BRDG-303): reveals the guestimation picker on unestimated rows. */
+  planningOn?: boolean;
+  onGuestimationChange?: (key: string, value: number | null) => void;
   onJiraStatusChange?: (key: string, status: JiraStatus) => void;
   onIssueTypeChange?: (key: string, type: IssueType) => void;
   onTitleChange?: (key: string, title: string) => void;
@@ -394,6 +399,8 @@ export function TicketTable({
     onReadinessChange: onReadinessChange ?? NOOP,
     onBusinessValueChange,
     onStoryPointsChange,
+    planningOn,
+    onGuestimationChange,
     onJiraStatusChange,
     onIssueTypeChange,
     onTitleChange,
@@ -411,7 +418,7 @@ export function TicketTable({
     ticketInfoMap,
     onRemoveFromRefinement,
     onViewRefinement,
-  }), [checkedTickets, selectedTicket, focusedTicketIdx, someChecked, activeDragId, visibleTags, hideEpic, showSprint, sprintNameMap, poStatuses, readinessMap, inflightKeys, contextMenuKeys, onSelectTicket, onRowContextMenu, handleCheckboxClick, onPoStatusChange, onReadinessChange, onBusinessValueChange, onStoryPointsChange, onJiraStatusChange, onIssueTypeChange, onTitleChange, onAssigneeChange, onEpicChange, onSprintChange, sprints, onCloseSubtasks, editingTitleKey, reviewPopoverKey, handleToggleReviewPopover, onRunReview, followedKeys, followTicket, unfollowTicket, lastDeployedMap, healthMap, refinementSessionMap, ticketInfoMap, onRemoveFromRefinement, onViewRefinement]);
+  }), [checkedTickets, selectedTicket, focusedTicketIdx, someChecked, activeDragId, visibleTags, hideEpic, showSprint, sprintNameMap, poStatuses, readinessMap, inflightKeys, contextMenuKeys, onSelectTicket, onRowContextMenu, handleCheckboxClick, onPoStatusChange, onReadinessChange, onBusinessValueChange, onStoryPointsChange, planningOn, onGuestimationChange, onJiraStatusChange, onIssueTypeChange, onTitleChange, onAssigneeChange, onEpicChange, onSprintChange, sprints, onCloseSubtasks, editingTitleKey, reviewPopoverKey, handleToggleReviewPopover, onRunReview, followedKeys, followTicket, unfollowTicket, lastDeployedMap, healthMap, refinementSessionMap, ticketInfoMap, onRemoveFromRefinement, onViewRefinement]);
 
   const virtualizedTable = (
     <table className="w-full table-fixed border-collapse text-body-lg">
