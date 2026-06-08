@@ -10,6 +10,9 @@ function mk(partial: Partial<Ticket>): Ticket {
     jiraStatus: "TO DO",
     storyPoints: 3,
     openSubtaskCount: 0,
+    // Default to having subtasks so the no_subtasks rule is out of the way unless a
+    // case opts in by setting totalSubtaskCount: 0.
+    totalSubtaskCount: 1,
     ...partial,
   } as unknown as Ticket;
 }
@@ -23,6 +26,15 @@ describe("matchesWarningFilter", () => {
 
   it("ignores unpointed spikes", () => {
     expect(matchesWarningFilter(mk({ storyPoints: null, type: "spike" }), true)).toBe(false);
+  });
+
+  it("ignores unpointed tasks", () => {
+    // A task may carry story points but is not required to.
+    expect(ticketWarnings(mk({ storyPoints: null, type: "task" }), true)).not.toContain("unpointed");
+  });
+
+  it("still flags unpointed bugs in the active sprint", () => {
+    expect(ticketWarnings(mk({ storyPoints: null, type: "bug" }), true)).toContain("unpointed");
   });
 
   it("matches deprecated tickets that still carry story points regardless of sprint", () => {
@@ -50,6 +62,32 @@ describe("matchesWarningFilter", () => {
   it("does not match an in-progress story with open subtasks (only closed ones are flagged)", () => {
     expect(matchesWarningFilter(mk({ jiraStatus: "IN PROGRESS", storyPoints: 3, openSubtaskCount: 4 }), true)).toBe(false);
   });
+
+  it("matches a ticket with no subtasks only in the active sprint", () => {
+    const t = mk({ totalSubtaskCount: 0 });
+    expect(matchesWarningFilter(t, true)).toBe(true);
+    expect(matchesWarningFilter(t, false)).toBe(false);
+  });
+
+  it("treats a missing totalSubtaskCount as no subtasks", () => {
+    expect(matchesWarningFilter(mk({ totalSubtaskCount: undefined }), true)).toBe(true);
+  });
+
+  it("does not flag no-subtasks for closed (Done/Deprecated) tickets", () => {
+    expect(matchesWarningFilter(mk({ totalSubtaskCount: 0, jiraStatus: "DONE" }), true)).toBe(false);
+    expect(matchesWarningFilter(mk({ totalSubtaskCount: 0, jiraStatus: "DEPRECATED", storyPoints: null }), true)).toBe(false);
+  });
+
+  it("does not flag no-subtasks for subtasks or epics", () => {
+    expect(matchesWarningFilter(mk({ totalSubtaskCount: 0, type: "subtask" }), true)).toBe(false);
+    expect(matchesWarningFilter(mk({ totalSubtaskCount: 0, type: "epic" }), true)).toBe(false);
+  });
+
+  it("flags no-subtasks for bugs, tasks and spikes", () => {
+    for (const type of ["bug", "task", "spike"] as const) {
+      expect(matchesWarningFilter(mk({ totalSubtaskCount: 0, type }), true)).toBe(true);
+    }
+  });
 });
 
 describe("ticketWarnings / ticketWarningLabels", () => {
@@ -69,6 +107,18 @@ describe("ticketWarnings / ticketWarningLabels", () => {
   it("labels a closed story with open subtasks", () => {
     const t = mk({ jiraStatus: "DONE", storyPoints: 3, openSubtaskCount: 1 });
     expect(ticketWarningLabels(t, true)).toEqual(["Closed with open subtasks"]);
+  });
+
+  it("labels a ticket without subtasks only in the active sprint", () => {
+    const t = mk({ totalSubtaskCount: 0 });
+    expect(ticketWarnings(t, true)).toEqual(["no_subtasks"]);
+    expect(ticketWarningLabels(t, true)).toEqual(["No subtasks"]);
+    expect(ticketWarnings(t, false)).toEqual([]);
+  });
+
+  it("labels both unpointed and no-subtasks when a ticket has neither", () => {
+    const t = mk({ storyPoints: null, totalSubtaskCount: 0 });
+    expect(ticketWarningLabels(t, true)).toEqual(["No story point estimate", "No subtasks"]);
   });
 
   it("returns a label per applicable problem for a multi-condition ticket", () => {

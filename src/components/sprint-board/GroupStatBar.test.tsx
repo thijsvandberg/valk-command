@@ -21,6 +21,9 @@ function makeTicket(overrides: Partial<Ticket> = {}): Ticket {
     notes: "",
     sprintId: "s1",
     businessValue: null,
+    // Default to having subtasks so the no-subtasks warning stays out of the
+    // unrelated cases; tests that exercise it set totalSubtaskCount: 0.
+    totalSubtaskCount: 1,
     ...overrides,
   };
 }
@@ -412,6 +415,22 @@ describe("GroupStatBar", () => {
     );
     // ChevronDown icon should be present (rendered as SVG)
     expect(container.querySelector("svg")).toBeTruthy();
+  });
+
+  it("surfaces tickets without subtasks via the warning icon for the active sprint", () => {
+    const tickets = [
+      makeTicket({ key: "VPL-1", storyPoints: 3, totalSubtaskCount: 2 }),
+      makeTicket({ key: "VPL-2", storyPoints: 5, totalSubtaskCount: 0 }),
+      makeTicket({ key: "VPL-3", storyPoints: 5, type: "bug", totalSubtaskCount: 0 }),
+    ];
+    render(<GroupStatBar tickets={tickets} isActive />);
+    expect(screen.getByLabelText(/2 tickets without subtasks/)).toBeTruthy();
+  });
+
+  it("does not warn about missing subtasks for non-active sprints", () => {
+    const tickets = [makeTicket({ key: "VPL-1", storyPoints: 3, totalSubtaskCount: 0 })];
+    render(<GroupStatBar tickets={tickets} />);
+    expect(screen.queryByLabelText(/without subtasks/)).toBeNull();
   });
 
   it("excludes spikes from no-points count", () => {

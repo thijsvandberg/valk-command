@@ -166,11 +166,13 @@ export const GroupStatBar = memo(function GroupStatBar({
   // problems (BRDG-313). The unpointed kind already requires the active sprint inside
   // the helper, matching the showNoPointsWarning gating.
   let noPointsCount = 0;
+  let noSubtasksCount = 0;
   let deprecatedWithSp = 0;
   let closedWithOpenSubtasks = 0;
   for (const t of tickets) {
     for (const kind of ticketWarnings(t, isActive)) {
       if (kind === "unpointed") noPointsCount++;
+      else if (kind === "no_subtasks") noSubtasksCount++;
       else if (kind === "deprecated_with_points") deprecatedWithSp++;
       else closedWithOpenSubtasks++;
     }
@@ -190,6 +192,11 @@ export const GroupStatBar = memo(function GroupStatBar({
   const warningParts: string[] = [];
   if (showNoPointsWarning) {
     warningParts.push(`${noPointsCount} ${noPointsCount === 1 ? "story" : "stories"} without a story point estimate`);
+  }
+  // no_subtasks is already active-sprint-gated inside ticketWarnings, so the count
+  // is zero off the active sprint; mirror showNoPointsWarning's isActive guard anyway.
+  if (noSubtasksCount > 0 && isActive) {
+    warningParts.push(`${noSubtasksCount} ${noSubtasksCount === 1 ? "ticket" : "tickets"} without subtasks`);
   }
   if (deprecatedWithSp > 0) {
     warningParts.push(`${deprecatedWithSp} deprecated ${deprecatedWithSp === 1 ? "ticket" : "tickets"} still with story points`);
