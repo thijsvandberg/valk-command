@@ -8,7 +8,7 @@
  */
 
 import Link from "next/link";
-import { ArrowUpRight, LayoutGrid, Rows3, FlaskConical, Shapes, MousePointerClick, Type } from "lucide-react";
+import { ArrowUpRight, LayoutGrid, Rows3, FlaskConical, Shapes, MousePointerClick, Type, PanelTop } from "lucide-react";
 
 type Exploration = {
   slug: string;
@@ -22,6 +22,15 @@ type Exploration = {
 const ICON = "h-5 w-5";
 
 const EXPLORATIONS: Exploration[] = [
+  {
+    slug: "board-tabs",
+    title: "Sprint Board views bar",
+    blurb:
+      "Reworks the flat tabs strip (All / Backlog / BT: 139 / Overall refinement + tools) by separating scopes, sprints and saved-filter bookmarks. Hybrid (D) chosen and shipped: All pill + Backlogs dropdown + sprint pills + saved-filter and ⋯ menus.",
+    status: "Shipped",
+    ticket: "BRDG-319",
+    icon: <PanelTop className={ICON} strokeWidth={1.5} />,
+  },
   {
     slug: "wordmark",
     title: "Text-only logo",

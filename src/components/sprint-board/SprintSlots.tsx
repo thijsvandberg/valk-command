@@ -539,8 +539,11 @@ export function SprintSlots({
 
       {pillSlotSprints.length > 0 && <BarDivider className="mx-2.5 self-center" />}
 
-      {/* Scrollable sprint-pill area with fade indicators */}
-      <div className="relative flex min-w-0 flex-1 h-full items-stretch">
+      {/* Scrollable sprint-pill area with fade indicators. The scroller hugs its
+          content (no flex-grow) so the overflow/Saved zone sits right after the pills;
+          the view-tools float right via ml-auto. When pills overflow, min-w-0 lets the
+          scroller shrink and scroll instead of stretching the bar. */}
+      <div className="relative flex min-w-0 h-full items-stretch">
         {/* Left fade */}
         {canScrollLeft && (
           <div className="pointer-events-none absolute left-0 top-0 bottom-0 z-10 w-6 bg-gradient-to-r from-[var(--color-surface-base)] to-transparent" />
@@ -549,7 +552,7 @@ export function SprintSlots({
         {canScrollRight && (
           <div className="pointer-events-none absolute right-0 top-0 bottom-0 z-10 w-6 bg-gradient-to-l from-[var(--color-surface-base)] to-transparent" />
         )}
-      <div ref={scrollRef} className="flex min-w-0 flex-1 h-full items-stretch gap-1 xl:gap-1.5 overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+      <div ref={scrollRef} className="flex min-w-0 h-full items-stretch gap-1 xl:gap-1.5 overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
       <DndContext
         sensors={sensors}
         collisionDetection={closestCenter}
@@ -627,11 +630,13 @@ export function SprintSlots({
       {/* Sprint overflow: sprint overview + create sprint -- outside the scroller so the menu is not clipped */}
       <SprintOverflowMenu onOpenSprintList={onOpenSprintList} onCreateSprint={onCreateSprint} />
 
-      {/* Right side: icon group */}
+      <BarDivider className="mx-2.5 self-center" />
+
+      {/* Saved filters menu (BRDG-319) -- hugs the sprint zone; tools float right */}
+      <SavedViewsMenu savedViews={savedViews} activeViewId={activeViewId} onViewClick={onViewClick} onSaveCurrentView={onSaveCurrentView} />
+
+      {/* Right side: view tools, pushed to the far edge */}
       <div className="ml-auto flex shrink-0 items-center gap-1 pl-2">
-        {/* Saved filters menu (BRDG-319) */}
-        <SavedViewsMenu savedViews={savedViews} activeViewId={activeViewId} onViewClick={onViewClick} onSaveCurrentView={onSaveCurrentView} />
-        <BarDivider className="mx-0.5 self-center" />
         {/* Active sort label — shown to the left of the icon group */}
         {sortField && sortField !== "rank" && sortDir && onSortChange && (
           <div className="flex items-center mr-1">
