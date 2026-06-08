@@ -59,6 +59,14 @@ export function usePickerState(opts: UsePickerStateOptions = {}): UsePickerState
   const [pos, setPos] = useState<PickerPosition | null>(null);
   const triggerRef = useRef<HTMLButtonElement | null>(null);
   const popoverRef = useRef<HTMLDivElement | null>(null);
+  // True once the trigger has been measured with a real layout box. A trigger
+  // inside a hover-reveal slot (HoverRevealSlot) collapses to a 0x0 box when its
+  // row loses :hover - which happens the moment the cursor moves onto the open
+  // popover. Repositioning against a 0x0 reference snaps the popover to the
+  // top-left corner, so once measured we stop repositioning while collapsed and
+  // hold the last good position (BRDG-303). Before the first real measurement
+  // (e.g. jsdom, which never lays out) we always compute.
+  const hasMeasuredRef = useRef(false);
 
   // start/end anchor the popover to the trigger's matching edge; flip() handles
   // the vertical axis (top vs bottom) and shift() clamps it back into the
@@ -69,6 +77,10 @@ export function usePickerState(opts: UsePickerStateOptions = {}): UsePickerState
     const trigger = triggerRef.current;
     const popover = popoverRef.current;
     if (!trigger || !popover) return;
+    const rect = trigger.getBoundingClientRect();
+    const collapsed = rect.width === 0 && rect.height === 0;
+    if (collapsed && hasMeasuredRef.current) return;
+    if (!collapsed) hasMeasuredRef.current = true;
     void computePosition(trigger, popover, {
       strategy: "fixed",
       placement,
