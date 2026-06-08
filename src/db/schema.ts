@@ -104,6 +104,11 @@ export const ticketMetadata = sqliteTable("ticket_metadata", {
   lastTestRunAt: text("last_test_run_at"),
   lastTestReportUrl: text("last_test_report_url"),
   businessValue: integer("business_value"),
+  // Forward-planning guestimation (BRDG-303): a PO placeholder estimate on the
+  // Fibonacci scale for tickets that have no real story points yet. Bridge-local,
+  // never synced to Jira (like businessValue). Silently cleared the moment a real
+  // non-zero storyPoints is set, so SP and guestimation are never both present.
+  guestimation: integer("guestimation"),
   // Backlog Deprecation Review (BRDG-297 epic): local-only scan state. These
   // fields never sync to Jira; they live here precisely because ticketMetadata
   // is the Bridge-private metadata layer with no write-back path.
@@ -245,6 +250,18 @@ export const sprintNameCache = sqliteTable("sprint_name_cache", {
   sprintId: text("sprint_id").primaryKey(),
   displayName: text("display_name").notNull(),
 });
+
+// Forward-planning pencil capacity (BRDG-303): a PO's rough story-point capacity
+// guess per sprint, the denominator for the fullness meter. Bridge-local, never
+// synced to Jira. Keyed by Jira sprint id (string), matching the sprintSlot
+// convention; a missing row means "no capacity set" (meter shows used-only).
+export const sprintPencilCapacity = sqliteTable("sprint_pencil_capacity", {
+  sprintId: text("sprint_id").primaryKey(),
+  capacity: real("capacity").notNull(),
+});
+
+export type SprintPencilCapacityRow = typeof sprintPencilCapacity.$inferSelect;
+export type NewSprintPencilCapacityRow = typeof sprintPencilCapacity.$inferInsert;
 
 export const appSetting = sqliteTable("app_setting", {
   key: text("key").primaryKey(),
