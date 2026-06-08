@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { SectionHeader } from "@/components/shared/SectionHeader";
 import { FieldFilterPopover, type StatusFilter, type FieldToggle } from "./FieldFilterPopover";
-import { Filter, LayoutList, CalendarRange } from "lucide-react";
+import { Filter, LayoutList, CalendarRange, Plus } from "lucide-react";
 
 export type ChildIssueViewMode = "list" | "sprint";
 
@@ -29,6 +29,10 @@ interface ChildIssueListHeaderProps {
   extraActions?: React.ReactNode;
   /** When set, the heading becomes collapsible with shared cross-surface state. */
   sectionKey?: string;
+  /** When provided, renders a "+" that toggles the inline create-child composer (BRDG-315). */
+  onToggleCreate?: () => void;
+  /** Whether the create composer is currently open (drives the "+" active state). */
+  createOpen?: boolean;
 }
 
 const VIEW_MODES: { mode: ChildIssueViewMode; label: string; Icon: typeof LayoutList }[] = [
@@ -54,8 +58,28 @@ export function ChildIssueListHeader({
   onViewModeChange,
   extraActions,
   sectionKey,
+  onToggleCreate,
+  createOpen,
 }: ChildIssueListHeaderProps) {
   const [popoverOpen, setPopoverOpen] = useState(false);
+
+  const createButton = onToggleCreate ? (
+    <button
+      type="button"
+      onClick={onToggleCreate}
+      aria-label="Create child issue"
+      aria-pressed={createOpen}
+      className={`flex cursor-pointer items-center justify-center rounded-md p-1.5 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)] ${
+        createOpen
+          ? "bg-[var(--color-brand-500)]/[0.08] text-[var(--color-brand-400)]"
+          : "text-text-muted hover:bg-overlay-subtle hover:text-text-secondary"
+      }`}
+      style={{ transition: "background-color 0.15s ease, color 0.15s ease" }}
+      title="Create child issue"
+    >
+      <Plus size={14} strokeWidth={2} />
+    </button>
+  ) : null;
 
   const viewToggle = viewMode && onViewModeChange ? (
     <div
@@ -125,7 +149,7 @@ export function ChildIssueListHeader({
       title={title}
       count={!isFiltered ? totalCount : undefined}
       countLabel={isFiltered && totalCount > 0 ? `${filteredCount} of ${totalCount}` : undefined}
-      actions={<>{extraActions}{viewToggle}{filterButton}</>}
+      actions={<>{extraActions}{viewToggle}{filterButton}{createButton}</>}
       sectionKey={sectionKey}
     />
   );

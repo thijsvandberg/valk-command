@@ -113,6 +113,18 @@ export function EpicChildrenSection({
   const [searchHighlight, setSearchHighlight] = useState(-1);
   const [searching, setSearching] = useState(false);
   const searchInputRef = useRef<HTMLInputElement>(null);
+
+  // The inline create-child composer is hidden until the header "+" opens it (BRDG-315),
+  // mirroring the sprint board's single-sprint create row.
+  const [createOpen, setCreateOpen] = useState(false);
+  const handleToggleCreate = useCallback(() => {
+    setCreateOpen((v) => !v);
+    setSearchMode(false);
+  }, []);
+  const closeCreate = useCallback(() => {
+    setCreateOpen(false);
+    setSearchMode(false);
+  }, []);
   const searchDebounceRef = useRef<ReturnType<typeof setTimeout>>(null);
   const searchAbortRef = useRef<AbortController | null>(null);
   const searchContainerRef = useRef<HTMLDivElement>(null);
@@ -899,10 +911,11 @@ export function EpicChildrenSection({
     </div>
   ) : (
     <ChildIssueComposer
+      variant="bar"
+      autoFocus
       onCreate={(title, jiraType) => handleCreate(title, jiraType)}
+      onEscapeEmpty={closeCreate}
       placeholder="Create child issue..."
-      alignKey={visibleFields.has("issueKey")}
-      className={borderTopClass}
       trailing={
         <button
           type="button"
@@ -920,13 +933,15 @@ export function EpicChildrenSection({
   const listContent = (
     <div className="mt-3">
       {filtered.length > 0 && (
-        <div className="overflow-hidden rounded-lg rounded-b-none border border-b-0 border-border-default">
+        <div className={`overflow-hidden rounded-lg border border-border-default ${createOpen ? "rounded-b-none border-b-0" : ""}`}>
           {childRows}
         </div>
       )}
-      <div className={`rounded-lg border border-border-default ${filtered.length > 0 ? "rounded-t-none border-t-0" : ""}`}>
-        {inlineInput}
-      </div>
+      {createOpen && (
+        <div className={`overflow-hidden rounded-lg border border-border-default ${filtered.length > 0 ? "rounded-t-none border-t-0" : ""}`}>
+          {inlineInput}
+        </div>
+      )}
     </div>
   );
 
@@ -952,9 +967,11 @@ export function EpicChildrenSection({
         someChecked={someChecked}
         onCheckboxClick={selectionEnabled ? handleCheckboxClick : undefined}
       />
-      <div className="overflow-hidden rounded-lg border border-border-default">
-        {inlineInput}
-      </div>
+      {createOpen && (
+        <div className="overflow-hidden rounded-lg border border-border-default">
+          {inlineInput}
+        </div>
+      )}
     </div>
   );
 
@@ -989,6 +1006,8 @@ export function EpicChildrenSection({
         viewMode={viewMode}
         onViewModeChange={setViewMode}
         sectionKey={SECTION_KEYS.epicChildren}
+        onToggleCreate={handleToggleCreate}
+        createOpen={createOpen}
       />
 
       {error && (

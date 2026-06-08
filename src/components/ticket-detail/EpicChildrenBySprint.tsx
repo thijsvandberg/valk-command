@@ -608,14 +608,13 @@ export function EpicChildrenBySprint({
         )}
         {isComposerOpen && onCreateChild && (
           <ChildIssueComposer
+            variant="bar"
             autoFocus
             onCreate={(title, jiraType) =>
               onCreateChild({ sprintId: createSprintId ?? null, sprintName: group.sprintName }, title, jiraType)
             }
             onEscapeEmpty={() => setComposerGroupKey(null)}
             placeholder={isUnscheduled ? "Create unscheduled issue..." : `Create issue in ${group.label}...`}
-            alignKey={visibleFields.has("issueKey")}
-            className={visibleItems.length > 0 ? "border-t border-border-subtle" : ""}
           />
         )}
       </>

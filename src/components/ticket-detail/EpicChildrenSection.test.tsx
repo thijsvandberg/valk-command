@@ -68,7 +68,7 @@ const SAMPLE_CHILDREN: EpicChild[] = [
   { key: "VPL-12", title: "Done story", type: "story", jiraStatus: "DONE", assignee: null, storyPoints: 5, businessValue: 6, sprintName: "Sprint 1", subtaskCount: 1, readiness: null, jiraRank: null },
 ];
 
-function renderSection(items: EpicChild[] = []) {
+function renderSection(items: EpicChild[] = [], { openCreate = true } = {}) {
   const onMutate = vi.fn();
   const onSelectTicket = vi.fn();
   const result = render(
@@ -79,6 +79,9 @@ function renderSection(items: EpicChild[] = []) {
       onSelectTicket={onSelectTicket}
     />,
   );
+  // The inline create composer is hidden until the header "+" opens it (BRDG-315); most tests
+  // here exercise that composer, so open it by default.
+  if (openCreate) fireEvent.click(screen.getByTitle("Create child issue"));
   return { ...result, onMutate, onSelectTicket };
 }
 
@@ -113,6 +116,16 @@ describe("EpicChildrenSection", () => {
   });
 
   describe("inline creation", () => {
+    it("hides the create composer until the header + is clicked, and the + toggles it", () => {
+      renderSection([], { openCreate: false });
+      expect(screen.queryByPlaceholderText("Create child issue...")).toBeNull();
+      const plus = screen.getByTitle("Create child issue");
+      fireEvent.click(plus);
+      expect(screen.getByPlaceholderText("Create child issue...")).toBeInTheDocument();
+      fireEvent.click(plus);
+      expect(screen.queryByPlaceholderText("Create child issue...")).toBeNull();
+    });
+
     it("renders input with placeholder", () => {
       renderSection();
       expect(screen.getByPlaceholderText("Create child issue...")).toBeInTheDocument();
