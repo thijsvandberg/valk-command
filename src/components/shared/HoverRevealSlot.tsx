@@ -12,10 +12,16 @@
 // hideWhenNarrow drops the placeholder entirely (no hover reveal) once the row's
 // own width falls below ~720px - e.g. when the ticket detail panel is open and
 // the list column is cramped. Requires an ancestor marked `@container/boardrow`.
+//
+// `focus-within:inline-flex` keeps the slot rendered while the picker inside is
+// open: clicking the trigger focuses it, so once its popover opens the cursor can
+// leave the row (dropping :hover) without collapsing the trigger to display:none.
+// A collapsed trigger has a 0x0 rect, which would make floating-ui snap the open
+// popover to the top-left corner (BRDG-303).
 export function HoverRevealSlot({ children, hideWhenNarrow = false }: { children: React.ReactNode; hideWhenNarrow?: boolean }) {
   return (
     <span
-      className={`hidden shrink-0 ${hideWhenNarrow ? "@[45rem]/boardrow:group-hover/row:inline-flex" : "group-hover/row:inline-flex"}`}
+      className={`hidden shrink-0 focus-within:inline-flex ${hideWhenNarrow ? "@[45rem]/boardrow:group-hover/row:inline-flex" : "group-hover/row:inline-flex"}`}
       onPointerDown={(e) => e.stopPropagation()}
       onClick={(e) => e.stopPropagation()}
     >
