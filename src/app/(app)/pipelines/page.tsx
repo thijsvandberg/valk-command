@@ -300,7 +300,7 @@ export default function PipelinesPage() {
         )}
       </ViewHeader>
 
-      <div className="flex-1 overflow-y-auto px-6 lg:px-8 py-6">
+      <div className="flex-1 overflow-y-auto px-6 lg:px-8 pt-6 pb-20">
         <div className="max-w-6xl">
           {isLoading ? (
             <PipelineSkeleton />

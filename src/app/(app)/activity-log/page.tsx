@@ -161,7 +161,7 @@ export default function ActivityLogPage() {
       >
         <ViewHeaderTitle>Activity Log</ViewHeaderTitle>
       </ViewHeader>
-      <div className="mx-auto max-w-5xl px-6 py-8">
+      <div className="mx-auto max-w-5xl px-6 pt-8 pb-20">
 
         {stats && (
           <StatsBar today={stats.today} yesterday={stats.yesterday} />

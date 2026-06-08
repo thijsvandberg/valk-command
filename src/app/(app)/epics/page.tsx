@@ -96,7 +96,7 @@ export default function EpicsPage() {
         )}
       </ViewHeader>
 
-      <div className="flex-1 overflow-y-auto px-6 py-6 lg:px-8">
+      <div className="flex-1 overflow-y-auto px-6 pt-6 pb-20 lg:px-8">
         <div className="mx-auto max-w-5xl">
           <div className="mb-5 flex flex-wrap items-center justify-between gap-3">
             <p className="text-body-sm text-text-tertiary">
