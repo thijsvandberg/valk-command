@@ -43,6 +43,21 @@ Full sync of all tickets in a specific sprint. Used for initial data load and ma
 
 Both strategies set the incremental sync watermark after completion, enabling automatic incremental sync going forward.
 
+### Read-path sprint backfill (BRDG-308)
+
+Routine syncs only keep **active + future** sprints fresh in `jira_sprints`. Closed sprints enter the cache only via an explicit `scope=history` sync or the on-demand backfill below, so an old, finished sprint referenced by a ticket can render with only its name (resolved from `sprintNameCache`) and no dates/state.
+
+`GET /api/jira/sprints` closes that gap. Every read schedules a detached job via `after()` that collects the distinct sprint ids referenced by tickets (`ticket.sprintName` stores the sprint id) and calls `ensureSprintsCached(ids)`. Because all sprint-rendering surfaces (epic *By sprint* view, sprint board, stakeholder view, sprint switcher) read this endpoint, hooking here covers them all in one place.
+
+`ensureSprintsCached` (`src/lib/sprint-cache.ts`) is the single backfill path:
+- **Fetch what's needed.** Fetches each id that is missing from `jira_sprints`, or cached but only partially known (a closed sprint without an `endDate`). Active/future/backlog entries are treated as complete to avoid re-fetch churn.
+- **404 ⇒ delete on our side.** A definitive 404 from `getSprint` means the sprint was deleted in Jira, so its entry is removed from both `jira_sprints` and `sprintNameCache`. This doubles as a negative cache: there is nothing left to re-resolve, so it is not re-fetched on every view.
+- **Transient errors are skipped.** Network/timeout/401/403/5xx are logged and leave the cached copy intact, so a temporary Jira hiccup never discards good data.
+- **In-flight dedup.** Concurrent backfills for the same id share a single `getSprint` call.
+- **Async + best-effort.** Runs after the response flushes (zero added latency) and is wrapped so a failure never breaks the read. On success it persists (an upsert, race-safe on the unique key) and invalidates `/api/jira/sprints` so the new dates/state appear on the next revalidate.
+
+This is read-path enrichment only; it does not change how `sprintName` / `sprintIds` are written during sync (see [multi-sprint membership](#sprint-membership-multi-sprint-tickets), BRDG-299).
+
 ### Single-ticket Sync
 
 Triggered on ticket detail open. `useTicketDetail` returns cached data immediately, then runs a background freshness check via `/api/jira/check-updated`. If stale, triggers a single-ticket sync.
