@@ -1,6 +1,6 @@
 # BRDG-314: Theme-aware code blocks and syntax highlighting (light/dark)
 
-**Status:** Draft
+**Status:** Done
 **Priority:** Medium
 **Type:** Improvement
 **Related:** BRDG-310 (board row polish), rendered markdown code blocks (`CodeBlock.tsx`), rich editor code blocks (`editor-styles.css`)
@@ -93,8 +93,16 @@ means surface/fg/border parity, not token colours — matching editor token high
       overrides where avoidable
 - [x] Both code-block paths (rendered markdown **and** the rich editor) are consistent
 - [x] Inline code contrast verified in both themes
-- [ ] Visual verification in light **and** dark mode (use the `validate-ui` skill); tests cover the
+- [x] Visual verification in light **and** dark mode (use the `validate-ui` skill); tests cover the
       collapsed/expanded header rendering as applicable
+
+## Verification
+
+- Light mode (verified in browser): light `#f6f8fa` surface, GitHub-light Prism palette, readable
+  header label / line-number gutter, collapsed "TYPESCRIPT · 10 lines" header legible (the original bug).
+- Dark mode (verified in browser): original dark surface + VS-Code-style palette preserved, all legible.
+- Inline code legible (teal `--color-code-inline`) on both surfaces.
+- `npm run verify` (lint + typecheck + 5097 tests) and `npm run build` pass.
 
 ## Out of Scope
 
