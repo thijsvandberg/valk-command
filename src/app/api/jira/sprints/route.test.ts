@@ -53,10 +53,23 @@ vi.mock("@/lib/cache", () => ({
   },
 }));
 
+// Capture after() callbacks instead of running them inside the response, so we can assert the
+// read-path backfill is scheduled and then run it explicitly.
+vi.mock("next/server", async (importOriginal) => {
+  const orig = await importOriginal<typeof import("next/server")>();
+  return { ...orig, after: vi.fn() };
+});
+
+vi.mock("@/lib/sprint-cache", () => ({
+  ensureSprintsCached: vi.fn().mockResolvedValue(0),
+}));
+
 import { jiraClient, JiraApiError } from "@/lib/jira-client";
 import { cache } from "@/lib/cache";
+import { after } from "next/server";
+import { ensureSprintsCached } from "@/lib/sprint-cache";
 import { GET, POST } from "./route";
-import { appSetting } from "@/db/schema";
+import { appSetting, ticket } from "@/db/schema";
 
 describe("GET /api/jira/sprints", () => {
   beforeEach(() => {
@@ -108,6 +121,29 @@ describe("GET /api/jira/sprints", () => {
     expect(data.backlogCount).toBe(5);
     // Jira client should NOT be called when cache is hit
     expect(jiraClient.getSprints).not.toHaveBeenCalled();
+  });
+
+  it("schedules a background backfill for the sprint ids referenced by tickets", async () => {
+    testDb.insert(ticket).values([
+      { jiraKey: "VPL-1", title: "A", status: "DONE", sprintName: "101" },
+      { jiraKey: "VPL-2", title: "B", status: "DONE", sprintName: "102" },
+      { jiraKey: "VPL-3", title: "C", status: "TO DO", sprintName: "101" }, // duplicate id
+      { jiraKey: "VPL-4", title: "D", status: "TO DO", sprintName: "" }, // backlog, excluded
+    ]).run();
+    testDb.insert(appSetting).values({ key: "jira_sprints", value: "[]" }).run();
+
+    await GET();
+
+    // The backfill is scheduled (not run inside the response) ...
+    expect(after).toHaveBeenCalledTimes(1);
+    expect(ensureSprintsCached).not.toHaveBeenCalled();
+
+    // ... and when the scheduled callback runs it passes the distinct referenced ids.
+    const scheduled = vi.mocked(after).mock.calls[0][0] as () => Promise<void>;
+    await scheduled();
+    expect(ensureSprintsCached).toHaveBeenCalledTimes(1);
+    const ids = vi.mocked(ensureSprintsCached).mock.calls[0][0] as string[];
+    expect([...ids].sort()).toEqual(["101", "102"]);
   });
 });
 

@@ -1,10 +1,11 @@
-import { NextRequest, NextResponse } from "next/server";
+import { NextRequest, NextResponse, after } from "next/server";
 import { db } from "@/db";
 import { appSetting, ticket } from "@/db/schema";
-import { eq, and, notInArray, sql } from "drizzle-orm";
+import { eq, and, ne, notInArray, sql } from "drizzle-orm";
 import { jiraClient, JiraApiError } from "@/lib/jira-client";
 import { cache } from "@/lib/cache";
 import { logger } from "@/lib/logger";
+import { ensureSprintsCached } from "@/lib/sprint-cache";
 import { env } from "@/lib/env";
 import { safeJsonParse } from "@/lib/api-validation";
 import { applyRateLimit } from "@/lib/rate-limiter";
@@ -30,7 +31,33 @@ async function getHiddenIds(): Promise<Set<string>> {
  * Returns the cached sprint list with a `hidden` boolean per sprint.
  * Falls back to fetching from Jira if no cache exists.
  */
+/**
+ * Backfill full metadata for any sprint a ticket references but that is missing or only partially
+ * known in `jira_sprints`. Runs detached from the response (after it flushes) so it never adds
+ * latency, and best-effort so it never breaks the read. Reuses the single `ensureSprintsCached`
+ * path, which decides per id what needs fetching, dedups, and prunes 404'd sprints.
+ */
+function scheduleSprintBackfill() {
+  after(async () => {
+    try {
+      const rows = await db
+        .selectDistinct({ sprintId: ticket.sprintName })
+        .from(ticket)
+        .where(ne(ticket.sprintName, ""))
+        .all();
+      const ids = rows.map((r) => r.sprintId).filter((id): id is string => !!id);
+      if (ids.length > 0) await ensureSprintsCached(ids);
+    } catch (err) {
+      logger.warn("jira", "read-path sprint backfill failed", err instanceof Error ? err.message : String(err));
+    }
+  });
+}
+
 export async function GET() {
+  // Enrich partially-known sprints (e.g. old closed sprints with only a name) in the background so
+  // their dates/state appear on the next revalidate, across every surface that reads this endpoint.
+  scheduleSprintBackfill();
+
   const CACHE_KEY = "/api/jira/sprints";
   const cached = cache.get(CACHE_KEY);
   if (cached) {
