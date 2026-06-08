@@ -166,13 +166,13 @@ describe("EpicChildrenBySprint next-sprint drop zone", () => {
     expect(screen.queryByLabelText("Create issue in BT: 139")).not.toBeInTheDocument();
   });
 
-  it("shows nothing extra when the next sprint does not exist and no create handler is wired", () => {
+  it("shows no next-sprint zone when it does not exist and no create handler is wired", () => {
     // Children sit in BT: 139 (the highest existing regular sprint); BT: 140 is absent.
-    // Without onPlanNextSprint the BRDG-309 create zone must not appear either.
+    // Without onPlanNextSprint neither the BRDG-306 move zone nor the create zone appear.
     setupRegular({ items: [child("VPL-22", "BT: 139")] });
     startKeyboardDrag("VPL-22");
     expect(screen.queryByText("BT: 140")).not.toBeInTheDocument();
-    expect(screen.queryByText(/Drop here to move to/)).not.toBeInTheDocument();
+    expect(screen.queryByText("Drop here to move to BT: 140")).not.toBeInTheDocument();
     expect(screen.queryByText(/Create new sprint/)).not.toBeInTheDocument();
   });
 });
@@ -234,9 +234,10 @@ describe("EpicChildrenBySprint create-next-sprint drop zone (BRDG-309)", () => {
   it("reads as a create action, not a plain move (distinct from BRDG-306)", () => {
     setupCreate();
     startKeyboardDrag("VPL-30");
-    // Distinct "New sprint" treatment, and NOT BRDG-306's plain "Drop here to move to".
+    // Distinct "New sprint" treatment, and the next-sprint slot is a create, not a
+    // plain "move here" into BT: 140.
     expect(screen.getByText("New sprint")).toBeInTheDocument();
-    expect(screen.queryByText(/Drop here to move to/)).not.toBeInTheDocument();
+    expect(screen.queryByText("Drop here to move to BT: 140")).not.toBeInTheDocument();
   });
 
   it("offers no create '+' button on the create zone (drag-only)", () => {
@@ -264,14 +265,14 @@ describe("EpicChildrenBySprint create-next-sprint drop zone (BRDG-309)", () => {
   });
 });
 
-// Backlog drop zones: empty backlog-state sprints the epic can reach (the plain
-// "Backlog" and the team's "BT: Backlog") surface as drop zones during a drag.
+// Backlog drop zones: the team's "BT: Backlog" (a future-state sprint identified by
+// name, not state) and the no-sprint "Unscheduled" backlog surface during a drag.
 describe("EpicChildrenBySprint backlog drop zones", () => {
+  // Backlog sprints arrive from Jira as state "future" (Jira has no "backlog" state).
   const WITH_BACKLOGS: Sprint[] = [
     { id: "138", name: "BT: 138", dateRange: "", state: "active", ticketCount: 0, startDate: "2026-05-22", endDate: null, goal: null },
-    { id: "bl", name: "Backlog", dateRange: "", state: "backlog", ticketCount: 0, startDate: null, endDate: null, goal: null },
-    { id: "btbl", name: "BT: Backlog", dateRange: "", state: "backlog", ticketCount: 0, startDate: null, endDate: null, goal: null },
-    { id: "gxpbl", name: "GXP: Backlog", dateRange: "", state: "backlog", ticketCount: 0, startDate: null, endDate: null, goal: null },
+    { id: "btbl", name: "BT: Backlog", dateRange: "", state: "future", ticketCount: 0, startDate: null, endDate: null, goal: null },
+    { id: "gxpbl", name: "GXP: Backlog", dateRange: "", state: "future", ticketCount: 0, startDate: null, endDate: null, goal: null },
   ];
 
   function setupBacklogs() {
@@ -297,15 +298,20 @@ describe("EpicChildrenBySprint backlog drop zones", () => {
 
   it("does not show backlog zones until a drag begins", () => {
     setupBacklogs();
-    expect(screen.queryByText("Drop here to move to Backlog")).not.toBeInTheDocument();
     expect(screen.queryByText("Drop here to move to BT: Backlog")).not.toBeInTheDocument();
+    expect(screen.queryByText("Drop here to move to Unscheduled")).not.toBeInTheDocument();
   });
 
-  it("surfaces the plain Backlog and the team's BT: Backlog as drop zones during a drag", () => {
+  it("surfaces the team's BT: Backlog as a drop zone during a drag", () => {
     setupBacklogs();
     startKeyboardDrag("VPL-40");
-    expect(screen.getByText("Drop here to move to Backlog")).toBeInTheDocument();
     expect(screen.getByText("Drop here to move to BT: Backlog")).toBeInTheDocument();
+  });
+
+  it("surfaces the no-sprint backlog (Unscheduled) as a drop zone during a drag", () => {
+    setupBacklogs();
+    startKeyboardDrag("VPL-40");
+    expect(screen.getByText("Drop here to move to Unscheduled")).toBeInTheDocument();
   });
 
   it("does not surface another team's backlog the epic does not touch", () => {

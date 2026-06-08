@@ -21,7 +21,10 @@ import { EpicChildrenBySprint, type ChildReorder, type ChildMoveToPosition } fro
 import type { StatusFilter } from "./FieldFilterPopover";
 import { BulkActionBar } from "@/components/sprint-board/BulkActionBar";
 import { CursorMenu, TicketActionMenuContent } from "@/components/sprint-board/ticket-action-menu";
+import { CreateSprintModal, type CreatedSprint } from "@/components/sprint-board/CreateSprintModal";
 import { AddToRefinementModal } from "@/components/refinement-session/AddToRefinementModal";
+import { nextSprintName, latestRegularSprint } from "@/lib/sprint-utils";
+import { startDateFromPreviousEnd } from "@/lib/sprint-dates";
 import { useSectionVisibility } from "@/hooks/useSectionVisibility";
 import { useSectionCollapsed } from "@/hooks/useSectionCollapsed";
 import { SECTION_KEYS } from "@/lib/section-collapse-store";
@@ -121,8 +124,18 @@ export function EpicChildrenSection({
   const [hideDeprecated, setHideDeprecated] = useLocalStorage<boolean>("epic-children-hide-deprecated", true);
   const { toast, toastLoading, showToast, dismissToast } = useToast();
 
-  const { sprints: rawSprints } = useJiraSprints();
+  const { sprints: rawSprints, mutate: mutateSprints } = useJiraSprints();
   const sprints = useMemo(() => mapJiraSprints(rawSprints), [rawSprints]);
+  // Prediction props for the BRDG-309 create-the-next-sprint flow, mirroring SprintBoard.
+  const latestRegular = useMemo(() => latestRegularSprint(sprints), [sprints]);
+  const suggestedSprintName = useMemo(() => nextSprintName(sprints), [sprints]);
+  const suggestedSprintStartDate = useMemo(
+    () => startDateFromPreviousEnd(latestRegular?.sprint.endDate),
+    [latestRegular],
+  );
+  // The child stashed when the create zone is dropped on; while set, the Create
+  // Sprint modal is open and its onCreated moves this child into the new sprint.
+  const [pendingPlanChildKey, setPendingPlanChildKey] = useState<string | null>(null);
   const { data: sprintSlots } = useSprintSlots();
   const pinnedSprintIds = useMemo(
     () => [...(sprintSlots ?? [])].sort((a, b) => a.slotIndex - b.slotIndex).map((s) => s.sprintId),
@@ -411,6 +424,54 @@ export function EpicChildrenSection({
         console.error("Failed to move child to sprint:", err);
       });
   }, [sprints, onMutate]);
+
+  // BRDG-309: dropping onto the create zone stashes the child and opens the Create
+  // Sprint modal. Cancelling clears the stash (no sprint, no move).
+  const handlePlanNextSprint = useCallback((childKey: string) => {
+    setPendingPlanChildKey(childKey);
+  }, []);
+
+  // The modal created the sprint. Move the stashed child into it, then refetch +
+  // confirm. The created sprint's name comes straight from the modal (not a list
+  // refetch), so the optimistic re-group and toast work even though the shared
+  // sprint cache lags in dev (see project_turbopack_cache_invalidate). We also patch
+  // the sprint-list cache so the new sprint renders with metadata and BRDG-306 takes
+  // over for later drags. If the move fails after the create, it is reported honestly.
+  const handlePlanSprintCreated = useCallback(
+    async (sprint: CreatedSprint) => {
+      const childKey = pendingPlanChildKey;
+      setPendingPlanChildKey(null);
+      if (!childKey) return;
+      setJiraWarning(null);
+
+      // Inject the just-created sprint into the cached list so its group has dates/state.
+      void mutateSprints(
+        (cur) =>
+          cur && !cur.sprints.some((s) => s.id === sprint.id)
+            ? { ...cur, sprints: [...cur.sprints, { id: sprint.id, name: sprint.name, state: sprint.state, startDate: sprint.startDate, endDate: sprint.endDate, goal: sprint.goal }] }
+            : cur,
+        { revalidate: false },
+      );
+
+      // Optimistically re-group the child under the new sprint's name right away.
+      setLocalMoves((prev) => ({ ...prev, [childKey]: sprint.name }));
+      try {
+        await jira.moveSprint({ issueKeys: [childKey], targetSprintId: String(sprint.id) });
+        onMutate();
+        showToast(`Moved ${childKey} into ${sprint.name}`);
+      } catch (err) {
+        setLocalMoves((prev) => {
+          const next = { ...prev };
+          delete next[childKey];
+          return next;
+        });
+        const detail = err instanceof ApiError ? err.message : "Jira API error";
+        setJiraWarning(`Sprint created, but moving ${childKey} into it failed: ${detail}`);
+        console.error("Failed to move child into the newly created sprint:", err);
+      }
+    },
+    [pendingPlanChildKey, mutateSprints, onMutate, showToast],
+  );
 
   // Reorder a child within its sprint group via Jira rank (drag-to-reorder).
   // Optimistically applies the new within-group order, then reverts and warns if
@@ -872,6 +933,7 @@ export function EpicChildrenSection({
         onReorderChild={handleReorderChild}
         onMoveChildToPosition={handleMoveChildToPosition}
         onMoveError={setJiraWarning}
+        onPlanNextSprint={handlePlanNextSprint}
         onCreateChild={(target, title, jiraType) => handleCreate(title, jiraType, target)}
         checkedKeys={checkedKeys}
         someChecked={someChecked}
@@ -1000,6 +1062,18 @@ export function EpicChildrenSection({
         ticketKeys={refineKeys}
         onAdded={(_id, name) => showToast(`Added ${refineKeys.length} issue${refineKeys.length === 1 ? "" : "s"} to "${name}"`)}
       />
+
+      {pendingPlanChildKey && (
+        <CreateSprintModal
+          onClose={() => setPendingPlanChildKey(null)}
+          onCreated={handlePlanSprintCreated}
+          showToast={showToast}
+          suggestedName={suggestedSprintName}
+          suggestedStartDate={suggestedSprintStartDate}
+          previousSprintName={latestRegular?.sprint.name}
+          previousSprintEndIso={latestRegular?.sprint.endDate ?? null}
+        />
+      )}
 
       <Toast toast={toast} loading={toastLoading} onDismiss={dismissToast} />
     </div>

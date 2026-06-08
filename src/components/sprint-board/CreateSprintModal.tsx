@@ -9,9 +9,21 @@ import { jira } from "@/lib/api-client";
 import { sprintEndFromStart, sprintDurationDays, toIsoDateTime, toInputDateTime } from "@/lib/sprint-dates";
 import { Calendar, Target, Type, X, AlertTriangle, CornerDownRight } from "lucide-react";
 
+/** The sprint as returned by POST /api/jira/sprints (jira.createSprint). */
+export interface CreatedSprint {
+  id: number;
+  name: string;
+  state: string;
+  startDate: string | null;
+  endDate: string | null;
+  goal: string | null;
+}
+
 interface CreateSprintModalProps {
   onClose: () => void;
-  onCreated: (sprintId: string) => void;
+  // Receives the full created sprint so callers can re-group / navigate without
+  // waiting on a sprint-list refetch (the dev cache invalidation is unreliable).
+  onCreated: (sprint: CreatedSprint) => void;
   showToast: (msg: string) => void;
   // Editable defaults derived from the regular sprint series (BRDG-305).
   suggestedName?: string;
@@ -68,7 +80,7 @@ export function CreateSprintModal({
 
       await mutate("/api/jira/sprints");
       showToast("Sprint created");
-      onCreated(String(result.id));
+      onCreated(result);
       onClose();
     } catch (err) {
       const msg = err instanceof Error ? err.message : "Failed to create sprint";

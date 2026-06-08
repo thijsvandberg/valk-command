@@ -330,7 +330,8 @@ export default function SprintBoard() {
   const handleAddSlotWithSprint = useCallback((id: string) => {
     setSlotSprints((prev) => { if (prev.includes(id)) { const next = prev.filter((x) => x !== id); saveSprintSlots(next, sprints); return next; } if (prev.length >= 8) return prev; const next = [...prev, id]; saveSprintSlots(next, sprints); return next; });
   }, [sprints]);
-  const handleSprintCreated = useCallback((id: string) => {
+  const handleSprintCreated = useCallback((sprint: { id: number }) => {
+    const id = String(sprint.id);
     setSlotSprints((prev) => { if (prev.length >= 8 || prev.includes(id)) return prev; const next = [...prev, id]; saveSprintSlots(next, sprints); return next; });
     navigateToSprint(id); setCreateSprintModalOpen(false);
   }, [sprints, navigateToSprint]);

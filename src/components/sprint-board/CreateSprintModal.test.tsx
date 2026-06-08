@@ -70,7 +70,7 @@ describe("CreateSprintModal", () => {
     expect(onClose).toHaveBeenCalled();
   });
 
-  it("creates sprint on submit and calls onCreated with sprint ID", async () => {
+  it("creates sprint on submit and calls onCreated with the created sprint", async () => {
     vi.mocked(jira.createSprint).mockResolvedValue({
       id: 500,
       name: "Sprint 50",
@@ -97,7 +97,7 @@ describe("CreateSprintModal", () => {
 
     await waitFor(() => {
       expect(mutate).toHaveBeenCalledWith("/api/jira/sprints");
-      expect(onCreated).toHaveBeenCalledWith("500");
+      expect(onCreated).toHaveBeenCalledWith(expect.objectContaining({ id: 500, name: "Sprint 50" }));
       expect(showToast).toHaveBeenCalledWith("Sprint created");
       expect(onClose).toHaveBeenCalled();
     });

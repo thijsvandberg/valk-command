@@ -114,7 +114,7 @@ describe("EpicChildrenSection create-the-next-sprint flow (BRDG-309)", () => {
   });
 
   it("on create, moves the dragged child into the new sprint and confirms", async () => {
-    mockCreateSprint.mockResolvedValue({ id: 999 });
+    mockCreateSprint.mockResolvedValue({ id: 999, name: "BT: 140", state: "future", startDate: null, endDate: null, goal: null });
     const { onMutate } = renderSection();
     openCreateZoneDrop();
 
@@ -146,7 +146,7 @@ describe("EpicChildrenSection create-the-next-sprint flow (BRDG-309)", () => {
   });
 
   it("reports an honest partial state when the move fails after the sprint is created", async () => {
-    mockCreateSprint.mockResolvedValue({ id: 999 });
+    mockCreateSprint.mockResolvedValue({ id: 999, name: "BT: 140", state: "future", startDate: null, endDate: null, goal: null });
     mockMoveSprint.mockRejectedValue(new Error("Jira rejected"));
     renderSection();
     openCreateZoneDrop();

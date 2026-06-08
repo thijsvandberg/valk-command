@@ -1,5 +1,5 @@
 import type { EpicChild, Subtask, Sprint } from "@/types/ticket";
-import { isRegularSprint, nextSprintName, extractTeamPrefix } from "./sprint-utils";
+import { isRegularSprint, nextSprintName } from "./sprint-utils";
 
 export const UNSCHEDULED_GROUP_KEY = "__unscheduled__";
 
@@ -167,29 +167,44 @@ export function nextRegularSprintCreateGroup(
   };
 }
 
+// The team token of a sprint name: the part before the first colon ("BT: 141" ->
+// "BT", "Design: Backlog" -> "Design"), or null when there is no colon ("Backlog").
+function sprintTeamToken(name: string): string | null {
+  const idx = name.indexOf(":");
+  return idx > 0 ? name.slice(0, idx).trim() : null;
+}
+
+// A "backlog" sprint is identified by name, not state: Jira only reports
+// active/future/closed, so the team backlogs ("BT: Backlog", "GXP: Backlog") and a
+// plain "Backlog" all arrive as future. The name ends in "Backlog".
+function isBacklogSprintName(name: string): boolean {
+  return /(^|:\s*)backlog$/i.test(name.trim());
+}
+
 /**
- * Backlog-state sprints to surface as empty drop zones while dragging, so a child
- * can be pushed into a backlog the epic isn't in yet (e.g. the plain `Backlog` and
- * the team's `BT: Backlog`). Only backlogs relevant to the epic appear: a prefix-less
- * `Backlog`, plus any whose team prefix matches a regular sprint already on the board.
- * Other teams' backlogs stay out of the way. Excludes backlogs already shown as groups.
+ * Backlog sprints to surface as empty drop zones while dragging, so a child can be
+ * pushed into a backlog the epic isn't in yet (e.g. the team's `BT: Backlog`). Only
+ * backlogs relevant to the epic appear: a team-less `Backlog`, plus any whose team
+ * token matches a sprint already on the board. Other teams' backlogs stay out of the
+ * way. Backlogs already shown as groups (they have children) are excluded.
  */
 export function backlogDropGroups(visibleGroups: ChildGroup[], sprints: Sprint[]): ChildGroup[] {
   const visibleNames = new Set(
     visibleGroups.map((g) => g.sprintName).filter((n): n is string => n !== null),
   );
-  const visiblePrefixes = new Set(
+  const visibleTeams = new Set(
     visibleGroups
       .map((g) => g.sprintName)
-      .filter((n): n is string => n !== null && isRegularSprint(n))
-      .map((n) => extractTeamPrefix(n)!),
+      .filter((n): n is string => n !== null)
+      .map(sprintTeamToken)
+      .filter((t): t is string => t !== null),
   );
 
   return sprints
-    .filter((s) => s.state === "backlog" && !visibleNames.has(s.name))
+    .filter((s) => isBacklogSprintName(s.name) && !visibleNames.has(s.name))
     .filter((s) => {
-      const prefix = extractTeamPrefix(s.name);
-      return prefix === null || visiblePrefixes.has(prefix);
+      const team = sprintTeamToken(s.name);
+      return team === null || visibleTeams.has(team);
     })
     .map((s) => ({
       key: s.name,
@@ -197,7 +212,7 @@ export function backlogDropGroups(visibleGroups: ChildGroup[], sprints: Sprint[]
       sprintName: s.name,
       items: [],
       isActive: false,
-      state: "backlog" as const,
+      state: s.state,
       dateRange: s.dateRange || null,
       isDropZone: true,
     }));

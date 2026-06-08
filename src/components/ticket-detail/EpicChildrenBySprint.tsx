@@ -338,10 +338,16 @@ export function EpicChildrenBySprint({
       (onPlanNextSprint ? nextRegularSprintCreateGroup(groups, sprints) : null);
     if (nextZone) extras.push(nextZone);
     extras.push(...backlogDropGroups(groups, sprints));
-    if (extras.length === 0) return groups;
-    const unscheduled = groups.filter((g) => g.key === UNSCHEDULED_GROUP_KEY);
     const named = groups.filter((g) => g.key !== UNSCHEDULED_GROUP_KEY);
-    return [...sortNamedGroups([...named, ...extras], sprints), ...unscheduled];
+    // Always expose the no-sprint backlog (the "Unscheduled" bucket) as a drop target
+    // during a drag, even when the epic currently has no unscheduled children, so a
+    // child can be sent back to the backlog. When it already has children it stays a
+    // normal group; otherwise a synthetic empty drop zone stands in for it.
+    const realUnscheduled = groups.filter((g) => g.key === UNSCHEDULED_GROUP_KEY);
+    const unscheduledZone: ChildGroup[] = realUnscheduled.length > 0
+      ? realUnscheduled
+      : [{ key: UNSCHEDULED_GROUP_KEY, label: "Unscheduled", sprintName: null, items: [], isActive: false, state: null, dateRange: null, isDropZone: true }];
+    return [...sortNamedGroups([...named, ...extras], sprints), ...unscheduledZone];
   }, [groups, sprints, activeDragKey, dndEnabled, onPlanNextSprint]);
 
   // Keys that exist in the real grouping; anything in dragGroups outside this set
