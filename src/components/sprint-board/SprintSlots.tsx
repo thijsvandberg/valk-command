@@ -64,7 +64,7 @@ function SortableTab({
         type="button"
         onClick={onClick}
         onContextMenu={onContextMenu}
-        className={`group relative flex items-center gap-1.5 px-2.5 text-body-sm font-medium cursor-pointer focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)] ${
+        className={`group relative flex h-7 self-center items-center gap-1.5 px-2.5 text-body-sm font-medium cursor-pointer focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)] ${
           isActive
             ? "text-text-primary"
             : "text-text-tertiary hover:text-text-secondary"
