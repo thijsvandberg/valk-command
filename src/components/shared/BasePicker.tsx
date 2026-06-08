@@ -13,6 +13,7 @@ import {
 } from "react";
 import { useOutsideClick } from "@/hooks/useOutsideClick";
 import { createPortal } from "react-dom";
+import { computePosition, autoUpdate, offset, flip, shift } from "@floating-ui/dom";
 import { Check, Search } from "lucide-react";
 
 // ---------------------------------------------------------------------------
@@ -22,15 +23,18 @@ import { Check, Search } from "lucide-react";
 interface UsePickerStateOptions {
   portal?: boolean;
   align?: "left" | "right";
+  // Retained for API compatibility. Positioning now measures the real popover
+  // element via floating-ui, so an estimated height is no longer needed.
   popoverHeight?: number;
   onOpen?: () => void;
   onClose?: () => void;
 }
 
+// Collision-corrected top-left coordinates in the fixed-strategy coordinate
+// space, produced by floating-ui's computePosition.
 interface PickerPosition {
-  top: number;
-  left: number;
-  flipUp: boolean;
+  x: number;
+  y: number;
 }
 
 export interface UsePickerStateReturn {
@@ -47,7 +51,6 @@ export function usePickerState(opts: UsePickerStateOptions = {}): UsePickerState
   const {
     portal = true,
     align = "right",
-    popoverHeight = 300,
     onOpen,
     onClose,
   } = opts;
@@ -57,22 +60,36 @@ export function usePickerState(opts: UsePickerStateOptions = {}): UsePickerState
   const triggerRef = useRef<HTMLButtonElement | null>(null);
   const popoverRef = useRef<HTMLDivElement | null>(null);
 
+  // start/end anchor the popover to the trigger's matching edge; flip() handles
+  // the vertical axis (top vs bottom) and shift() clamps it back into the
+  // viewport on the horizontal axis, so a trigger near any edge stays visible.
+  const placement = align === "left" ? "bottom-start" : "bottom-end";
+
   const updatePosition = useCallback(() => {
-    if (!triggerRef.current) return;
-    const rect = triggerRef.current.getBoundingClientRect();
-    const flipUp = rect.bottom + popoverHeight > window.innerHeight;
-    setPos({
-      top: flipUp ? rect.top : rect.bottom + 4,
-      left: align === "left" ? rect.left : rect.right,
-      flipUp,
+    const trigger = triggerRef.current;
+    const popover = popoverRef.current;
+    if (!trigger || !popover) return;
+    void computePosition(trigger, popover, {
+      strategy: "fixed",
+      placement,
+      middleware: [offset(4), flip(), shift({ padding: 4 })],
+    }).then(({ x, y }) => {
+      // Ignore a resolution that lands after the popover has unmounted.
+      if (popoverRef.current) setPos({ x, y });
     });
-  }, [align, popoverHeight]);
+  }, [placement]);
 
   const handleOpen = useCallback(() => {
-    if (portal) updatePosition();
+    // Seed a provisional position from the trigger rect so the portal popover
+    // mounts immediately (render is gated on `pos`); autoUpdate then corrects it
+    // to the collision-aware position once the element can be measured.
+    if (portal && triggerRef.current) {
+      const rect = triggerRef.current.getBoundingClientRect();
+      setPos({ x: rect.left, y: rect.bottom + 4 });
+    }
     setOpen(true);
     onOpen?.();
-  }, [portal, updatePosition, onOpen]);
+  }, [portal, onOpen]);
 
   const handleClose = useCallback(() => {
     setOpen(false);
@@ -81,25 +98,26 @@ export function usePickerState(opts: UsePickerStateOptions = {}): UsePickerState
 
   useOutsideClick([triggerRef, popoverRef], () => { setOpen(false); onClose?.(); }, { enabled: open });
 
-  // Scroll repositioning (portal mode only)
+  // Keep the popover anchored on scroll, resize, and trigger/popover resize
+  // (portal mode only). autoUpdate fires the first measured pass immediately.
   useEffect(() => {
     if (!open || !portal) return;
-    function onScroll() { updatePosition(); }
-    window.addEventListener("scroll", onScroll, true);
-    return () => window.removeEventListener("scroll", onScroll, true);
+    const trigger = triggerRef.current;
+    const popover = popoverRef.current;
+    if (!trigger || !popover) return;
+    return autoUpdate(trigger, popover, updatePosition);
   }, [open, portal, updatePosition]);
 
   const getPopoverStyle = useCallback((): CSSProperties => {
     if (!pos) return {};
     return {
-      top: pos.flipUp ? undefined : pos.top,
-      bottom: pos.flipUp ? window.innerHeight - pos.top + 4 : undefined,
-      left: align === "left" ? pos.left : undefined,
-      right: align === "right" ? window.innerWidth - pos.left : undefined,
+      position: "fixed",
+      top: pos.y,
+      left: pos.x,
       backgroundColor: "var(--color-surface-floating)",
       boxShadow: "0 4px 16px rgba(0,0,0,0.20), 0 1px 4px rgba(0,0,0,0.10)",
     };
-  }, [pos, align]);
+  }, [pos]);
 
   return { open, pos, triggerRef, popoverRef, handleOpen, handleClose, getPopoverStyle };
 }

@@ -1,7 +1,26 @@
-import { render, screen, fireEvent, within } from "@testing-library/react";
+import { render, screen, fireEvent, within, waitFor } from "@testing-library/react";
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { renderHook, act } from "@testing-library/react";
+import { computePosition, autoUpdate, offset, flip, shift } from "@floating-ui/dom";
 import { BasePicker, usePickerState } from "./BasePicker";
+
+// jsdom performs no layout, so floating-ui cannot compute real geometry. Mock it
+// to assert the positioning *contract*: placement per align, collision
+// middleware, applied coordinates, and autoUpdate lifecycle.
+vi.mock("@floating-ui/dom", () => ({
+  computePosition: vi.fn(() =>
+    Promise.resolve({ x: 123, y: 456, placement: "bottom-end", strategy: "fixed", middlewareData: {} }),
+  ),
+  // Fire the first measured pass immediately (as the real autoUpdate does) and
+  // return a cleanup spy so the effect teardown can be asserted.
+  autoUpdate: vi.fn((_trigger: unknown, _popover: unknown, update: () => void) => {
+    update();
+    return vi.fn();
+  }),
+  offset: vi.fn((value: number) => ({ name: "offset", options: value })),
+  flip: vi.fn(() => ({ name: "flip" })),
+  shift: vi.fn((options: unknown) => ({ name: "shift", options })),
+}));
 
 // ---------------------------------------------------------------------------
 // Helper: minimal picker built with BasePicker compound component
@@ -315,5 +334,82 @@ describe("usePickerState", () => {
     const { result } = renderHook(() => usePickerState());
     expect(result.current.triggerRef).toBeDefined();
     expect(result.current.popoverRef).toBeDefined();
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Collision-aware positioning (portal mode, floating-ui)
+// ---------------------------------------------------------------------------
+
+describe("Collision-aware positioning", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  function openPortalPicker(align?: "left" | "right") {
+    render(<TestPicker portal align={align} />);
+    fireEvent.click(screen.getByText("Select"));
+  }
+
+  it("anchors to the trigger's left edge for align=left (placement bottom-start)", async () => {
+    openPortalPicker("left");
+    await waitFor(() => expect(computePosition).toHaveBeenCalled());
+    expect(vi.mocked(computePosition).mock.calls[0][2]).toMatchObject({
+      placement: "bottom-start",
+      strategy: "fixed",
+    });
+  });
+
+  it("anchors to the trigger's right edge for align=right (placement bottom-end)", async () => {
+    openPortalPicker("right");
+    await waitFor(() => expect(computePosition).toHaveBeenCalled());
+    expect(vi.mocked(computePosition).mock.calls[0][2]).toMatchObject({
+      placement: "bottom-end",
+    });
+  });
+
+  it("uses flip + shift collision middleware with a 4px offset gap", async () => {
+    openPortalPicker("left");
+    await waitFor(() => expect(computePosition).toHaveBeenCalled());
+    // offset(4) preserves the 4px trigger-to-panel gap.
+    expect(offset).toHaveBeenCalledWith(4);
+    // flip() handles the bottom-edge flip-up; shift() clamps left/right into view.
+    expect(flip).toHaveBeenCalled();
+    expect(shift).toHaveBeenCalledWith({ padding: 4 });
+  });
+
+  it("applies the collision-corrected coordinates to the panel", async () => {
+    openPortalPicker("left");
+    const popover = await waitFor(() => {
+      const el = screen.getByPlaceholderText("Search items...").closest("div.fixed") as HTMLElement;
+      // Wait until the async computePosition result (123/456) has been applied.
+      expect(el.style.left).toBe("123px");
+      return el;
+    });
+    expect(popover.style.top).toBe("456px");
+    expect(popover.style.position).toBe("fixed");
+  });
+
+  it("sets up autoUpdate on open and tears it down on close", async () => {
+    render(<TestPicker portal />);
+    const trigger = screen.getByText("Select");
+
+    fireEvent.click(trigger);
+    await waitFor(() => expect(autoUpdate).toHaveBeenCalledTimes(1));
+    const cleanup = vi.mocked(autoUpdate).mock.results[0].value as ReturnType<typeof vi.fn>;
+    expect(cleanup).not.toHaveBeenCalled();
+
+    fireEvent.click(trigger);
+    await waitFor(() => expect(cleanup).toHaveBeenCalledTimes(1));
+  });
+
+  it("tears down autoUpdate on unmount", async () => {
+    const { unmount } = render(<TestPicker portal />);
+    fireEvent.click(screen.getByText("Select"));
+    await waitFor(() => expect(autoUpdate).toHaveBeenCalledTimes(1));
+    const cleanup = vi.mocked(autoUpdate).mock.results[0].value as ReturnType<typeof vi.fn>;
+
+    unmount();
+    expect(cleanup).toHaveBeenCalledTimes(1);
   });
 });
