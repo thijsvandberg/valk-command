@@ -219,3 +219,17 @@ Smooth implementation run (API endpoint + modal + page wiring + epic-writer href
 
 Key bottleneck / lesson:
 - **Pre-existing failures from parallel work muddied final verify**: `npm run verify` reported 5 failing tests (`sync-tickets/route.test.ts` x4 — `extractSprints` mock gap; `TicketSidebar.test.tsx` "displays Jira status" x1). None touched any file in this story. Confirmed pre-existing by running both files at the base commit (BRDG-296, `4f0fad5d`) in a throwaway `git worktree` with `node_modules` symlinked — identical 5 failures there. Lesson: when the integration branch carries unfinished parallel work, the full suite is not a clean baseline; isolate suspected-unrelated failures against the base commit rather than assuming they are yours.
+
+## BRDG-306 — Next-sprint drop zone in epic view (2026-06-08)
+
+Smooth implementation run. BRDG-305's series helpers (`isRegularSprint`/`latestRegularSprint`/`nextSprintName`) already existed, so the "shared helper" criterion was met by reuse rather than new code; the planner flagged the story's "create the helper now" note as stale. Three logical commits (grouping lib + tests, component + tests, archive); 62 targeted tests green; build passed.
+
+| Phase | Notes |
+|-------|-------|
+| Plan (Opus) | Accurate; caught the stale "create helper" assumption up front |
+| Implement | Pure `nextRegularSprintGroup` + extract `sortNamedGroups` + drag-only injection in `EpicChildrenBySprint`; `MeasuringStrategy.Always` so the mid-drag-mounted droppable registers |
+| Verify | Targeted tests + build green; full suite 4993 pass, 1 unrelated pre-existing failure |
+
+Key bottlenecks / lessons:
+- **Pre-existing failure detour**: full `npm run verify` showed `TicketSidebar.test.tsx` "displays Jira status" failing — untouched by this story. Confirmed pre-existing by checking out HEAD~2 (pre-BRDG-306) and rerunning: identical failure. Same parallel-work baseline noise noted in BRDG-307. `git stash`/checkout/pop round-trip restored the unrelated working-tree changes cleanly.
+- **Browser positive-case unverifiable from data**: the drag-only drop zone is correct to hide when the next sprint doesn't exist — and for the request's epic (VPL-43142) the highest sprint is BT:141 with no BT:142 in `sprint_name_cache`, so the live view correctly showed nothing. The positive case (zone appears mid-drag) couldn't be captured live: no epic in local data had a next-sprint gap, the keyboard grip isn't click-focusable for a scripted Space-pickup, and `left_click_drag` can't hold a mid-drag state. Covered fully by jsdom component tests instead. Lesson: for "appears only mid-drag" UI, lean on component tests; live capture of a held drag state is not reliably scriptable.
