@@ -185,6 +185,19 @@ export default function SprintBoard() {
   // Ticket actions hook (must be before useSprintBoardFilters which needs readinessMap)
   const ta = useTicketActions({ apiTickets, mutateTickets, activeListKey, showToast });
   const { poStatuses, readinessMap, inflightKeys } = ta;
+  // Stable useCallback refs from the actions hook, aliased so the local bulk
+  // wrappers below can depend on them directly. Depending on `ta` itself would
+  // re-run those hooks every render, since `ta` is a fresh object each time.
+  const {
+    syncFromApiTickets,
+    handleBulkSetReadiness: taBulkSetReadiness,
+    handleBulkSetStatus: taBulkSetStatus,
+    handleBulkSetEpic: taBulkSetEpic,
+    handleBulkMoveSprint: taBulkMoveSprint,
+    handleBulkUpdateAssignee: taBulkUpdateAssignee,
+    handleBulkUpdateLabels: taBulkUpdateLabels,
+    handleBulkSetFlagged: taBulkSetFlagged,
+  } = ta;
 
   const { visible: columnVisible, toggleColumn, applyVisible, resetToDefaults } = useColumnConfig();
   const f = useSprintBoardFilters(allTickets, readinessMap, isAllView, poPriorityOrder, columnVisible, applyVisible, sprintNameMap, sprintStateMap);
@@ -272,7 +285,7 @@ export default function SprintBoard() {
   }, [mutateTickets, showToast]);
 
   // Sync PO data from API
-  useEffect(() => { if (apiTickets && apiTickets.length > 0) ta.syncFromApiTickets(apiTickets); }, [apiTickets, ta.syncFromApiTickets]);
+  useEffect(() => { if (apiTickets && apiTickets.length > 0) syncFromApiTickets(apiTickets); }, [apiTickets, syncFromApiTickets]);
 
   // Keyboard shortcuts
   const { handleTableKeyDown } = useSprintBoardShortcuts({
@@ -366,7 +379,7 @@ export default function SprintBoard() {
     // that is already active.
     if (key !== selectedTicket) setSelectedTicket(null);
     setRowMenu({ x: e.clientX, y: e.clientY, targets });
-  }, [checkedTickets, selectedTicket]);
+  }, [checkedTickets, selectedTicket, setSelectedTicket]);
   const handleReorder = useCallback((activeKey: string, overKey: string) => {
     const order = poPriorityOrder ?? tickets.map((t) => t.key); const oi = order.indexOf(activeKey); const ni = order.indexOf(overKey);
     if (oi === -1 || ni === -1) return; const next = [...order]; next.splice(oi, 1); next.splice(ni, 0, activeKey); setPoPriorityOrder(next);
@@ -375,7 +388,7 @@ export default function SprintBoard() {
   // Bulk actions. Each accepts an explicit target set (defaulting to the current
   // checkbox selection) so the same handlers serve both the toolbar and the
   // right-click row context menu.
-  const handleBulkSetReadiness = useCallback(async (readiness: Parameters<typeof ta.handleBulkSetReadiness>[0], targets: Set<string> = checkedTickets) => { await ta.handleBulkSetReadiness(readiness, targets); }, [ta.handleBulkSetReadiness, checkedTickets]);
+  const handleBulkSetReadiness = useCallback(async (readiness: Parameters<typeof taBulkSetReadiness>[0], targets: Set<string> = checkedTickets) => { await taBulkSetReadiness(readiness, targets); }, [taBulkSetReadiness, checkedTickets]);
   const handleBulkRefresh = useCallback(async () => { setBulkRefreshing(true); try { await jira.syncTickets({ sprintId: slotSprints[activeSlot] }); showToast(`Refreshed ${checkedTickets.size} ticket${checkedTickets.size === 1 ? "" : "s"} from Jira`); } finally { setBulkRefreshing(false); } }, [slotSprints, activeSlot, checkedTickets.size, showToast]);
   const handleBulkReviewStory = useCallback(async (targets: Set<string> = checkedTickets) => { const keys = Array.from(targets); showToast(`Reviewing ${keys.length} ticket${keys.length === 1 ? "" : "s"}...`); await bulkReviewStories(keys); mutateTickets(); showToast(`Reviewed ${keys.length} ticket${keys.length === 1 ? "" : "s"}`); }, [checkedTickets, showToast, mutateTickets]);
   const handleCopyToClipboard = useCallback(() => { const sel = tickets.filter((t) => checkedTickets.has(t.key)); navigator.clipboard.writeText(sel.map((t) => `${t.title} - ${getJiraUrl(t.key)}`).join("\n")).then(() => showToast(`Copied ${sel.length} ticket${sel.length === 1 ? "" : "s"} to clipboard`)).catch(() => showToast("Failed to copy to clipboard")); }, [tickets, checkedTickets, showToast]);
@@ -403,8 +416,8 @@ export default function SprintBoard() {
     }
   }, [refinementSessionList, mutateRefinementSessions, showToast]);
   const handleRefineSelected = useCallback(() => { openRefine(Array.from(checkedTickets)); }, [checkedTickets, openRefine]);
-  const handleBulkSetStatus = useCallback(async (status: Parameters<typeof ta.handleBulkSetStatus>[0], targets: Set<string> = checkedTickets) => { await ta.handleBulkSetStatus(status, targets); }, [ta.handleBulkSetStatus, checkedTickets]);
-  const handleBulkSetEpic = useCallback(async (epicKey: string | null, targets: Set<string> = checkedTickets) => { await ta.handleBulkSetEpic(epicKey, targets); }, [ta.handleBulkSetEpic, checkedTickets]);
+  const handleBulkSetStatus = useCallback(async (status: Parameters<typeof taBulkSetStatus>[0], targets: Set<string> = checkedTickets) => { await taBulkSetStatus(status, targets); }, [taBulkSetStatus, checkedTickets]);
+  const handleBulkSetEpic = useCallback(async (epicKey: string | null, targets: Set<string> = checkedTickets) => { await taBulkSetEpic(epicKey, targets); }, [taBulkSetEpic, checkedTickets]);
   const handleBulkMoveSprint = useCallback(async (sprintId: string, targets: Set<string> = checkedTickets) => {
     const isBacklog = sprintId === "__backlog__";
     const dest = sprintNameMap[sprintId] ?? (isBacklog ? "backlog" : "sprint");
@@ -415,7 +428,7 @@ export default function SprintBoard() {
       0,
       { loading: true },
     );
-    const { ok } = await ta.handleBulkMoveSprint(sprintId, targets);
+    const { ok } = await taBulkMoveSprint(sprintId, targets);
     if (!ok) { showToast("Failed to move tickets to sprint"); return; }
     showToast(
       <span>
@@ -432,16 +445,16 @@ export default function SprintBoard() {
       </span>,
       0,
     );
-  }, [ta.handleBulkMoveSprint, checkedTickets, sprintNameMap, handleSprintListSelect, showToast, dismissToast]);
-  const handleBulkUpdateAssignee = useCallback(async (accountId: string | null, name: string | null, targets: Set<string> = checkedTickets) => { await ta.handleBulkUpdateAssignee(accountId, name, targets); }, [ta.handleBulkUpdateAssignee, checkedTickets]);
-  const handleBulkUpdateLabels = useCallback(async (labels: string[], mode: "add" | "set", targets: Set<string> = checkedTickets) => { await ta.handleBulkUpdateLabels(labels, mode, targets); }, [ta.handleBulkUpdateLabels, checkedTickets]);
+  }, [taBulkMoveSprint, checkedTickets, sprintNameMap, handleSprintListSelect, showToast, dismissToast]);
+  const handleBulkUpdateAssignee = useCallback(async (accountId: string | null, name: string | null, targets: Set<string> = checkedTickets) => { await taBulkUpdateAssignee(accountId, name, targets); }, [taBulkUpdateAssignee, checkedTickets]);
+  const handleBulkUpdateLabels = useCallback(async (labels: string[], mode: "add" | "set", targets: Set<string> = checkedTickets) => { await taBulkUpdateLabels(labels, mode, targets); }, [taBulkUpdateLabels, checkedTickets]);
   const handleBulkGenerateSubtasks = useCallback(async (targets: Set<string> = checkedTickets) => { const keys = Array.from(targets); setBulkGenerating(true); showToast(`Generating subtasks for ${keys.length} ticket${keys.length === 1 ? "" : "s"}...`); try { const { succeeded, failed } = await bulkGenerateSubtasks(keys); if (failed > 0) { showToast(`Generated subtasks for ${succeeded} ticket${succeeded === 1 ? "" : "s"}, ${failed} failed`); } else { showToast(`Subtask suggestions sent for ${succeeded} ticket${succeeded === 1 ? "" : "s"}`); } mutateTickets(); } finally { setBulkGenerating(false); } }, [checkedTickets, showToast, mutateTickets]);
   // Flag: "Flag" opens a reason dialog (reason synced to Jira as a comment); "Remove flag" is immediate.
   const handleSetFlagged = useCallback((flagged: boolean, targets: Set<string> = checkedTickets) => {
     if (targets.size === 0) return;
     if (flagged) { setFlagReason(""); setFlagDialog({ targets }); }
-    else { void ta.handleBulkSetFlagged(false, null, targets); }
-  }, [ta.handleBulkSetFlagged, checkedTickets]);
+    else { void taBulkSetFlagged(false, null, targets); }
+  }, [taBulkSetFlagged, checkedTickets]);
   const computeFlagState = useCallback((keys: Set<string>): FlagState => {
     const sel = tickets.filter((t) => keys.has(t.key));
     if (sel.length === 0) return "mixed";
@@ -466,16 +479,17 @@ export default function SprintBoard() {
   // Single-sprint / backlog view (not All, not a saved view, not already grouped):
   // render the same stat header as the grouped view, but at the top of the FLAT card
   // so the proven flat row rendering (clicks, dnd, virtualization) stays intact.
+  const { activeViewId: fActiveViewId, statusFilter: fStatusFilter, gapsFilter: fGapsFilter, setStatusFilter: fSetStatusFilter, setGapsFilter: fSetGapsFilter } = f;
   const singleSprintHeader = useMemo<ReactNode>(() => {
-    if (isAllView || f.activeViewId || groups.length > 0) return undefined;
+    if (isAllView || fActiveViewId || groups.length > 0) return undefined;
     const isBacklog = activeSprintId === "__backlog__";
     if (!isBacklog && !activeSprint) return undefined;
     const label = isBacklog ? "Backlog" : activeSprint!.name;
     const key = isBacklog ? "__backlog__" : activeSprint!.id;
     const CRIT_TO_STATUS: Record<string, string> = { todo: "TO DO", "in-progress": "IN PROGRESS", test: "TEST", done: "DONE" };
     const STATUS_TO_CRIT: Record<string, StatCriterion> = { "TO DO": "todo", "IN PROGRESS": "in-progress", TEST: "test", DONE: "done" };
-    const onlyStatus = f.statusFilter.size === 1 ? [...f.statusFilter][0] : null;
-    const activeCriterion: StatCriterion | null = f.gapsFilter.has("no_points")
+    const onlyStatus = fStatusFilter.size === 1 ? [...fStatusFilter][0] : null;
+    const activeCriterion: StatCriterion | null = fGapsFilter.has("no_points")
       ? "unpointed"
       : onlyStatus ? (STATUS_TO_CRIT[onlyStatus] ?? null) : null;
     return (
@@ -490,16 +504,16 @@ export default function SprintBoard() {
         leadingIcon={isBacklog ? <Inbox className="h-3.5 w-3.5" strokeWidth={1.5} /> : undefined}
         activeCriterion={activeCriterion}
         onFilterChange={(crit) => {
-          if (crit === null) { f.setStatusFilter(new Set()); return; }
+          if (crit === null) { fSetStatusFilter(new Set()); return; }
           if (crit === "unpointed") {
-            const g = new Set(f.gapsFilter);
+            const g = new Set(fGapsFilter);
             if (g.has("no_points")) g.delete("no_points"); else g.add("no_points");
-            f.setGapsFilter(g);
+            fSetGapsFilter(g);
             return;
           }
           const status = CRIT_TO_STATUS[crit];
           if (!status) return;
-          f.setStatusFilter(activeCriterion === crit ? new Set() : new Set([status]));
+          fSetStatusFilter(activeCriterion === crit ? new Set() : new Set([status]));
         }}
         {...(!isBacklog && activeSprint
           ? {
@@ -517,7 +531,7 @@ export default function SprintBoard() {
           : {})}
       />
     );
-  }, [isAllView, f.activeViewId, f.statusFilter, f.gapsFilter, f.setStatusFilter, f.setGapsFilter, groups.length, activeSprintId, activeSprint, allTickets, slotSprintsSet, handleAddSlotWithSprint, handleEditSprintFromGroup, handleCloseSprintFromGroup, handleSyncGroup]);
+  }, [isAllView, fActiveViewId, fStatusFilter, fGapsFilter, fSetStatusFilter, fSetGapsFilter, groups.length, activeSprintId, activeSprint, allTickets, slotSprintsSet, handleAddSlotWithSprint, handleEditSprintFromGroup, handleCloseSprintFromGroup, handleSyncGroup]);
 
   useEffect(() => {
     if (slotsInitialized.current || !sprintsData) return; slotsInitialized.current = true;

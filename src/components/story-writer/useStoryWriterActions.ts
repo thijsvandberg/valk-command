@@ -420,10 +420,14 @@ export function useStoryWriterActions({
 
   const stableOnMutateTicket = useCallback(() => { mutateTicket(); }, [mutateTicket]);
 
+  // Narrow deps to the individual stable callbacks so these handlers don't
+  // re-create on every unrelated change to the `writer` object.
+  const { createLink: writerCreateLink, acceptDraft: writerAcceptDraft } = writer;
+
   const stableOnCreateLink = useCallback(async (targetKey: string, relation: string) => {
-    await writer.createLink(targetKey, relation);
+    await writerCreateLink(targetKey, relation);
     mutateTicket();
-  }, [writer.createLink, mutateTicket]);
+  }, [writerCreateLink, mutateTicket]);
 
   const stableOnApplyEpic = useCallback(async (epicKey: string) => {
     await tickets.updateEpic(ticketKey, epicKey);
@@ -431,10 +435,10 @@ export function useStoryWriterActions({
   }, [ticketKey, mutateTicket]);
 
   const stableOnAcceptDraft = useCallback(async (draftId: string) => {
-    await writer.acceptDraft(draftId);
+    await writerAcceptDraft(draftId);
     editVersionRef.current += 1;
     setIsDraftDirty(true);
-  }, [writer.acceptDraft]);
+  }, [writerAcceptDraft]);
 
   const linkedIssueKeys = useMemo(
     () => new Set(
