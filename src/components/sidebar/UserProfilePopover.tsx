@@ -11,35 +11,15 @@ import {
 import { useOutsideClick } from "@/hooks/useOutsideClick";
 import { useKeyboardNav } from "@/hooks/useKeyboardNav";
 import { createPortal } from "react-dom";
-import { useUser, useClerk } from "@clerk/nextjs";
-import { useRouter } from "next/navigation";
-import {
-  Moon,
-  Sun,
-  Bell,
-  Command,
-  Settings,
-  LogOut,
-  User,
-} from "lucide-react";
-import { apiFetch } from "@/lib/api-client";
-import { useTheme } from "@/contexts/ThemeContext";
+import { useUser } from "@clerk/nextjs";
+import { User } from "lucide-react";
+import { useAccountMenuItems } from "@/components/sidebar/accountMenuItems";
 
 interface UserProfilePopoverProps {
   open: boolean;
   onClose: () => void;
   triggerRef: RefObject<HTMLButtonElement | null>;
   onNavigate?: () => void;
-}
-
-interface MenuItem {
-  id: string;
-  icon: React.ReactNode;
-  label: string;
-  secondaryLabel?: string;
-  disabled?: boolean;
-  destructive?: boolean;
-  action: () => void;
 }
 
 const MENU_ITEM_COUNT = 4;
@@ -52,84 +32,16 @@ export function UserProfilePopover({
   onNavigate,
 }: UserProfilePopoverProps) {
   const { user } = useUser();
-  const { signOut } = useClerk();
-  const router = useRouter();
-  const { theme, toggleTheme } = useTheme();
   const popoverRef = useRef<HTMLDivElement>(null);
   const [pos, setPos] = useState<{ bottom: number; left: number }>({
     bottom: 0,
     left: 0,
   });
 
-  const handleSignOut = useCallback(async () => {
-    await apiFetch("/api/dev/bypass", { method: "DELETE" }).catch(() => {});
-    await signOut();
-    globalThis.location.assign("/login");
-  }, [signOut]);
-
-  const iconClass = "h-3.5 w-3.5 shrink-0";
-
-  const menuItems: MenuItem[] = useMemo(
-    () => [
-      {
-        id: "theme",
-        icon: theme === "dark"
-          ? <Sun className={iconClass} strokeWidth={1.5} />
-          : <Moon className={iconClass} strokeWidth={1.5} />,
-        label: "Theme",
-        secondaryLabel: theme === "dark" ? "Dark" : "Light",
-        action: () => {
-          toggleTheme();
-        },
-      },
-      {
-        id: "notifications",
-        icon: <Bell className={iconClass} strokeWidth={1.5} />,
-        label: "Notifications",
-        action: () => {
-          router.push("/settings/notifications");
-          onNavigate?.();
-          onClose();
-        },
-      },
-      {
-        id: "shortcuts",
-        icon: <Command className={iconClass} strokeWidth={1.5} />,
-        label: "Keyboard shortcuts",
-        action: () => {
-          onClose();
-          window.dispatchEvent(new Event("valk:openKeyboardShortcuts"));
-        },
-      },
-      {
-        id: "settings",
-        icon: <Settings className={iconClass} strokeWidth={1.5} />,
-        label: "Settings",
-        action: () => {
-          router.push("/settings");
-          onNavigate?.();
-          onClose();
-        },
-      },
-    ],
-    [router, onNavigate, onClose, theme, toggleTheme],
-  );
-
-  const signOutItem: MenuItem = useMemo(
-    () => ({
-      id: "signout",
-      icon: <LogOut className={iconClass} strokeWidth={1.5} />,
-      label: "Sign out",
-      destructive: true,
-      action: handleSignOut,
-    }),
-    [handleSignOut],
-  );
-
-  const allItems = useMemo(
-    () => [...menuItems, signOutItem],
-    [menuItems, signOutItem],
-  );
+  const { menuItems, signOutItem, allItems } = useAccountMenuItems({
+    onClose,
+    onNavigate,
+  });
 
   // Position popover above the trigger
   useEffect(() => {

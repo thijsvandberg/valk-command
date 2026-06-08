@@ -113,6 +113,38 @@ themselves are unchanged.
 - A reference implementation of the exact A4 layout/markup lives in `src/app/dev/sidebar/page.tsx`
   (`BodyEditorial` + `StackShell`); port its structure and tokens.
 
+## Implementation Plan
+
+### Phase 1 — Extract shared account actions (req 5)
+1. New `src/components/sidebar/accountMenuItems.tsx`: a `useAccountMenuItems({ onClose, onNavigate })` hook returning the exact `MenuItem[]` (theme with current value, notifications, shortcuts, settings) + `signOutItem`, lifting the `useMemo`/`useCallback` blocks and `handleSignOut` (`apiFetch("/api/dev/bypass",{method:"DELETE"})` → `signOut()` → `location.assign("/login")`) verbatim out of `UserProfilePopover.tsx`. Refactor `UserProfilePopover` to consume it so sign-out is never duplicated.
+
+### Phase 2 — Live data hook (reqs 2, 6, 11)
+2. New `src/hooks/useSidebarData.ts` aggregating null-safe counts (missing → `null` → label-only):
+   - Hero: `useJiraSprints()` → active sprint key/name; `useTickets(activeSprint.id)` → `computeSprintStats` (todo/inProgress/done) + `computeSprintWorkDays` (day X/Y) + progress %.
+   - Chat: `useConversations()` → unread `readAt === null` count; note "unread" (return `null` while loading).
+   - Story Writer: `useActiveWriterSessions()` → length; note "drafts".
+   - Refinement: active-sprint tickets `readiness === "ready_to_refine"` count (matches `useRefinementQueue.readyCount`); note "to refine".
+
+### Phase 3 — Sync line for header (req 6)
+3. Extend `SyncIndicator` with `variant?: "rail" | "header-line"` (default = current `collapsed`). `header-line` renders a compact inline trigger (dot + label + last-synced) reusing existing helpers/portal. Only caller is Sidebar.tsx.
+
+### Phase 4 — Rewrite `Sidebar.tsx` (reqs 1,2,3,4,7,8,10)
+4. Port `StackShell` + `BodyEditorial` (A4) from `dev/sidebar/page.tsx`. Floating `LayoutGrid` launcher (`fixed bottom-6 left-6`), backdrop, 380px glass panel with staggered reveal, header (avatar + name + email + sync line + chevron) that flips to account view, hero row + 3 hairline common rows + "More" footer. Keep `navItems` + `isActive` verbatim; map tiers (primary/common/rare). Every row is a `next/link` that closes on navigate; `useOutsideClick([launcherRef, panelRef], close, { enabled: open })` for outside-click + Esc. Remove mobile drawer/overlay. Anti-generic: brand tokens, transform/opacity only, focus-visible/hover/active + cursor-pointer everywhere, `font-display` headings.
+
+### Phase 5 — Layout & focus mode (req 9)
+5. `FocusModeWrapper`: drop the `w-[52px]` `#sidebar-wrapper`; `<main>` spans full width; render `{!focusMode && <Sidebar/>}` so the floating launcher hides in focus mode.
+
+### Phase 6 — dev/sidebar removal (req 12)
+6. Move `src/app/dev/sidebar/` to `deleted/`.
+
+### Phase 7 — Tests (req 13)
+7. Rewrite `Sidebar.test.tsx`: mock `useSidebarData` (with a null-counts variant), keep SyncIndicator/Theme/Clerk/next mocks, mock `@/lib/api-client` + stub `location.assign`. Assert collapsed launcher, open panel (hero + 3 common + 4 rare), active state (`/`, `/chat`, `*/write`), account flip (5 items + handlers), close on Esc/outside/navigate, label-only fallback.
+
+### Risks / notes
+- `useConversations` polls and starts `loading:true` (return `null` until loaded); `useTickets` fires a background sync on mount — both already warm from the board, deduped/cached.
+- After the flip view ships, `UserProfilePopover` becomes unused — extracting `accountMenuItems` satisfies the reuse requirement either way.
+- Panel needs `max-w-[calc(100vw-3rem)]` for narrow viewports (req 10).
+
 ## Requirements
 
 - [ ] Collapsed state is a single icon-only floating launcher bottom-left; no reserved rail column
