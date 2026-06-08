@@ -32,19 +32,11 @@ function FocusModeLayout({ children }: { children: ReactNode }) {
         }`}
       />
 
-      {/* Sidebar + content */}
+      {/* Content. The sidebar is now a floating bento launcher (BRDG-317): it
+          reserves no column, so main spans the full width. The launcher hides
+          entirely in focus mode, mirroring the old rail's slide-away. */}
       <div className="flex flex-1 min-h-0">
-        {/* Sidebar wrapper - slides left when focus mode is active */}
-        <div
-          id="sidebar-wrapper"
-          className={`shrink-0 overflow-hidden transition-[transform,opacity] duration-300 ease-out ${
-            focusMode
-              ? "-translate-x-full opacity-0 w-0"
-              : "translate-x-0 opacity-100 w-[52px]"
-          }`}
-        >
-          <Sidebar />
-        </div>
+        {!focusMode && <Sidebar />}
 
         <main
           id="main-content"

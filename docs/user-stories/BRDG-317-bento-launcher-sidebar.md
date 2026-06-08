@@ -147,23 +147,23 @@ themselves are unchanged.
 
 ## Requirements
 
-- [ ] Collapsed state is a single icon-only floating launcher bottom-left; no reserved rail column
-- [ ] Opening shows the editorial panel: avatar/name/email header, Sprint Board hero with sprint key +
+- [x] Collapsed state is a single icon-only floating launcher bottom-left; no reserved rail column
+- [x] Opening shows the editorial panel: avatar/name/email header, Sprint Board hero with sprint key +
       status summary + progress bar, common views as hairline-divided rows, rare views as a faint
       "More" footer
-- [ ] Sprint Board is visually the primary destination; Epics / Pipelines / Stakeholder / Cleanup are
+- [x] Sprint Board is visually the primary destination; Epics / Pipelines / Stakeholder / Cleanup are
       clearly demoted
-- [ ] The current route's row shows an active state (reusing the existing `isActive` rules)
-- [ ] Header chevron flips to the account view with Theme (with current value), Notifications,
+- [x] The current route's row shows an active state (reusing the existing `isActive` rules)
+- [x] Header chevron flips to the account view with Theme (with current value), Notifications,
       Keyboard shortcuts, Settings, and Sign out — wired to the existing handlers/routes
-- [ ] Sync status remains reachable (relocated into the panel), not removed
-- [ ] Panel closes on outside-click, `Esc`, and after navigating; backdrop dims the board
-- [ ] Full keyboard accessibility: launcher and every row are focusable with visible focus rings;
+- [x] Sync status remains reachable (relocated into the panel), not removed
+- [x] Panel closes on outside-click, `Esc`, and after navigating; backdrop dims the board
+- [x] Full keyboard accessibility: launcher and every row are focusable with visible focus rings;
       hover/active/`cursor: pointer` on all interactive elements; animations limited to transform/opacity
-- [ ] `FocusModeWrapper` reserves no sidebar width; the launcher hides in focus mode; `main` is full width
-- [ ] Works at mobile breakpoints; the old hamburger drawer is removed
-- [ ] Hero/common counts use real data; rows render label-only when a count is unavailable (no fake numbers)
-- [ ] `src/app/dev/sidebar/` removed (moved to `deleted/`)
+- [x] `FocusModeWrapper` reserves no sidebar width; the launcher hides in focus mode; `main` is full width
+- [x] Works at mobile breakpoints; the old hamburger drawer is removed
+- [x] Hero/common counts use real data; rows render label-only when a count is unavailable (no fake numbers)
+- [x] `src/app/dev/sidebar/` removed (moved to `deleted/`)
 - [ ] Tests updated/added (see below)
 
 ## Tests
