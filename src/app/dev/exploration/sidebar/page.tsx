@@ -3,8 +3,10 @@
 /**
  * TEMPORARY exploration page for sidebar redesign concepts.
  * Five navigation concepts shown over a faux board backdrop so each can be judged
- * in context. Not linked from any nav; reach it at /dev/sidebar.
- * Delete (move to deleted/) once the PO picks a direction.
+ * in context. Reach it via the exploration hub at /dev/exploration (or directly
+ * at /dev/exploration/sidebar). Not linked from the app nav.
+ * The Bento launcher (variant A4) shipped as the real sidebar in BRDG-317; this
+ * page is kept under /dev/exploration as a reference for future nav explorations.
  *
  * The "Bento launcher" concept is the front-runner (vertical-stack shell). Its
  * sub-tabs A1-A4 explore how the CONTENT inside the panel is presented; the
