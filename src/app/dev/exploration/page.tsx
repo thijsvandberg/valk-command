@@ -8,7 +8,7 @@
  */
 
 import Link from "next/link";
-import { ArrowUpRight, LayoutGrid, Rows3, FlaskConical } from "lucide-react";
+import { ArrowUpRight, LayoutGrid, Rows3, FlaskConical, Shapes, MousePointerClick } from "lucide-react";
 
 type Exploration = {
   slug: string;
@@ -22,6 +22,23 @@ type Exploration = {
 const ICON = "h-5 w-5";
 
 const EXPLORATIONS: Exploration[] = [
+  {
+    slug: "logo",
+    title: "Logomark explorations",
+    blurb:
+      "Ten new beeldmerk directions for Bridge, each from a different angle (architecture, command deck, network, typography, data), some with paired wordmarks.",
+    status: "Exploration",
+    icon: <Shapes className={ICON} strokeWidth={1.5} />,
+  },
+  {
+    slug: "launcher",
+    title: "Launcher button",
+    blurb:
+      "Restyle options for the collapsed bottom-left launcher button — brand fill, tonal, circle, pill, ghost and more — to fit the editorial styling.",
+    status: "Exploration",
+    ticket: "BRDG-317",
+    icon: <MousePointerClick className={ICON} strokeWidth={1.5} />,
+  },
   {
     slug: "sidebar",
     title: "Sidebar concepts",
