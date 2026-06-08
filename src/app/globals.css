@@ -179,6 +179,16 @@
   --color-code-bg: rgba(255, 255, 255, 0.08);
   --color-ambient-glow-1: #032c2a;
   --color-ambient-glow-2: #021a19;
+
+  /* Code block tokens (theme-aware). Dark defaults keep the existing near-black
+     fenced-block treatment; the light theme flips them to a light surface so code
+     blocks match the page instead of being forced dark. */
+  --color-code-surface: color-mix(in srgb, black 28%, transparent);
+  --color-code-header-bg: var(--color-overlay-subtle);
+  --color-code-border: var(--color-overlay-default);
+  --color-code-fg: var(--color-text-secondary);
+  --color-code-line-number: var(--color-text-muted);
+  --color-code-label: var(--color-text-secondary);
 }
 
 /* Dark theme (default) */
@@ -241,6 +251,15 @@
   --color-code-bg: #e8f5f4;
   --color-ambient-glow-1: #e6f7f7;
   --color-ambient-glow-2: #f0faf9;
+
+  /* Light code surface (GitHub-light inspired) so code blocks read as part of the
+     light page rather than a forced dark slab. */
+  --color-code-surface: #f6f8fa;
+  --color-code-header-bg: #eaeef2;
+  --color-code-border: #d0d7de;
+  --color-code-fg: rgba(0, 0, 0, 0.80);
+  --color-code-line-number: rgba(0, 0, 0, 0.45);
+  --color-code-label: rgba(0, 0, 0, 0.60);
 }
 
 /* Smooth theme transition (added temporarily by ThemeProvider on toggle) */

@@ -25,7 +25,7 @@ export function CodeBlock({ lang, highlightedLines, lineCount, defaultCollapsed 
   return (
     <div
       className="rm-code-block my-3 overflow-hidden rounded-xl"
-      style={{ background: "color-mix(in srgb, black 28%, transparent)", border: "1px solid var(--color-overlay-default)" }}
+      style={{ background: "var(--color-code-surface)", border: "1px solid var(--color-code-border)" }}
     >
       {/* Header bar doubles as the collapse toggle (large hit target). */}
       <button
@@ -33,8 +33,8 @@ export function CodeBlock({ lang, highlightedLines, lineCount, defaultCollapsed 
         onClick={() => setCollapsed((c) => !c)}
         aria-expanded={!collapsed}
         aria-label={collapsed ? "Expand code" : "Collapse code"}
-        className="rm-code-block-header flex w-full cursor-pointer items-center gap-2 border-b bg-overlay-subtle px-3 py-2 text-left hover:bg-hover-list-item active:bg-overlay-default focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-[var(--color-brand-400)]"
-        style={{ borderColor: "var(--color-overlay-default)", transition: "background 0.15s ease" }}
+        className="rm-code-block-header flex w-full cursor-pointer items-center gap-2 border-b px-3 py-2 text-left hover:bg-hover-list-item active:bg-overlay-default focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-[var(--color-brand-400)]"
+        style={{ background: "var(--color-code-header-bg)", borderColor: "var(--color-code-border)", transition: "background 0.15s ease" }}
       >
         <svg
           className="h-3 w-3 shrink-0"
@@ -47,18 +47,20 @@ export function CodeBlock({ lang, highlightedLines, lineCount, defaultCollapsed 
         >
           <path d="M9 18l6-6-6-6" />
         </svg>
-        <div className="flex gap-1.5">
-          <span className="h-2.5 w-2.5 rounded-full" style={{ background: "var(--color-overlay-strong)" }} />
-          <span className="h-2.5 w-2.5 rounded-full" style={{ background: "var(--color-overlay-strong)" }} />
-          <span className="h-2.5 w-2.5 rounded-full" style={{ background: "var(--color-overlay-strong)" }} />
-        </div>
+        {!collapsed && (
+          <div className="flex gap-1.5">
+            <span className="h-2.5 w-2.5 rounded-full" style={{ background: "var(--color-overlay-strong)" }} />
+            <span className="h-2.5 w-2.5 rounded-full" style={{ background: "var(--color-overlay-strong)" }} />
+            <span className="h-2.5 w-2.5 rounded-full" style={{ background: "var(--color-overlay-strong)" }} />
+          </div>
+        )}
         {collapsed ? (
-          <span className="ml-1 font-mono text-caption font-medium tracking-wide" style={{ color: "var(--color-text-muted)" }}>
+          <span className="font-mono text-caption font-medium tracking-wide" style={{ color: "var(--color-code-label)" }}>
             {summary}
           </span>
         ) : (
           lang && (
-            <span className="ml-1 font-mono text-caption font-medium uppercase tracking-widest" style={{ color: "var(--color-text-muted)" }}>
+            <span className="ml-1 font-mono text-caption font-medium uppercase tracking-widest" style={{ color: "var(--color-code-label)" }}>
               {lang}
             </span>
           )
@@ -72,13 +74,13 @@ export function CodeBlock({ lang, highlightedLines, lineCount, defaultCollapsed 
               <div key={li} className="contents group">
                 <div
                   className="select-none border-r py-0 pr-3 pl-0 text-right font-mono text-label leading-[1.6rem]"
-                  style={{ color: "var(--color-text-muted)", borderColor: "var(--color-overlay-default)", whiteSpace: "nowrap" }}
+                  style={{ color: "var(--color-code-line-number)", borderColor: "var(--color-code-border)", whiteSpace: "nowrap" }}
                 >
                   {li + 1}
                 </div>
                 <div
                   className="rm-code-content py-0 pl-4 pr-6 font-mono text-[0.8125rem] leading-[1.6rem]"
-                  style={{ color: "var(--color-text-secondary)", whiteSpace: "pre" }}
+                  style={{ color: "var(--color-code-fg)", whiteSpace: "pre" }}
                   dangerouslySetInnerHTML={{ __html: html }}
                 />
               </div>
