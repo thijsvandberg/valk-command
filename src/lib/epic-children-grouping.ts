@@ -1,5 +1,5 @@
 import type { EpicChild, Subtask, Sprint } from "@/types/ticket";
-import { isRegularSprint, nextSprintName } from "./sprint-utils";
+import { isRegularSprint, nextSprintName, sprintNumber } from "./sprint-utils";
 
 export const UNSCHEDULED_GROUP_KEY = "__unscheduled__";
 
@@ -113,29 +113,59 @@ export function nextRegularSprintGroup(
   };
 }
 
+// The epic's team: the prefix of its highest-numbered visible regular sprint, or -
+// for an epic only sitting in a backlog - the team of a visible "<team>: Backlog".
+// Lets the create zone target the right team even when no numbered sprint is shown.
+function epicTeamPrefix(visibleGroups: ChildGroup[]): string | null {
+  let best: string | null = null;
+  let bestNum = -Infinity;
+  for (const g of visibleGroups) {
+    if (g.sprintName && isRegularSprint(g.sprintName)) {
+      const n = sprintNumber(g.sprintName);
+      if (n > bestNum) {
+        bestNum = n;
+        best = sprintTeamToken(g.sprintName);
+      }
+    }
+  }
+  if (best) return best;
+  for (const g of visibleGroups) {
+    if (g.sprintName && isBacklogSprintName(g.sprintName)) {
+      const t = sprintTeamToken(g.sprintName);
+      if (t) return t;
+    }
+  }
+  return null;
+}
+
 /**
  * The next regular sprint name to *create* while dragging in the by-sprint view
- * (BRDG-309). The inverse of `nextRegularSprintGroup`'s existence check: returns
- * the candidate `<PREFIX>: <highest + 1>` name only when it can be derived from
- * the visible regular groups **and** no sprint with that name exists yet. Returns
- * null when no regular sprint is visible, the candidate is already shown, or the
- * candidate already exists (that slot belongs to BRDG-306's plain move zone).
- * The two zones are therefore mutually exclusive for the same next-sprint slot.
+ * (BRDG-309). Predicts the epic's team's *actual* next sprint - the highest existing
+ * number for that team across the whole sprint list, plus one - so a child can be
+ * pulled straight into a brand-new sprint without first parking it in the latest one
+ * (and it works from a backlog too). Returns null when the epic's team can't be
+ * determined, or in the defensive case where that name already exists.
  */
 export function canPlanNextSprint(
   visibleGroups: ChildGroup[],
   sprints: Sprint[],
 ): string | null {
-  const regularNames = visibleGroups
-    .map((g) => g.sprintName)
-    .filter((name): name is string => name !== null && isRegularSprint(name));
-  if (regularNames.length === 0) return null;
+  const team = epicTeamPrefix(visibleGroups);
+  if (!team) return null;
 
-  const candidateName = nextSprintName(regularNames.map((name) => ({ name })));
-  if (!candidateName) return null;
-  if (visibleGroups.some((g) => g.sprintName === candidateName)) return null;
-  // Exists already -> BRDG-306 owns this slot; this story stays inert.
+  let latestNum = -Infinity;
+  for (const s of sprints) {
+    if (sprintTeamToken(s.name) === team && isRegularSprint(s.name)) {
+      const n = sprintNumber(s.name);
+      if (n > latestNum) latestNum = n;
+    }
+  }
+  if (!Number.isFinite(latestNum)) return null;
+
+  const candidateName = `${team}: ${latestNum + 1}`;
+  // Defensive: never offer a create for a name that already exists or is shown.
   if (sprints.some((s) => s.name === candidateName)) return null;
+  if (visibleGroups.some((g) => g.sprintName === candidateName)) return null;
 
   return candidateName;
 }

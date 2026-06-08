@@ -129,13 +129,20 @@ export function EpicChildrenSection({
   // Prediction props for the BRDG-309 create-the-next-sprint flow, mirroring SprintBoard.
   const latestRegular = useMemo(() => latestRegularSprint(sprints), [sprints]);
   const suggestedSprintName = useMemo(() => nextSprintName(sprints), [sprints]);
-  const suggestedSprintStartDate = useMemo(
-    () => startDateFromPreviousEnd(latestRegular?.sprint.endDate),
-    [latestRegular],
-  );
   // The child stashed when the create zone is dropped on; while set, the Create
   // Sprint modal is open and its onCreated moves this child into the new sprint.
+  // pendingPlanSprintName is the name the create zone predicted (the team's next
+  // sprint), used to prefill the modal so it matches the zone.
   const [pendingPlanChildKey, setPendingPlanChildKey] = useState<string | null>(null);
+  const [pendingPlanSprintName, setPendingPlanSprintName] = useState<string | null>(null);
+  // The sprint the planned one follows: the latest existing sprint of the predicted
+  // name's team, so the modal's date prediction matches the team being planned for.
+  const planPrevSprint = useMemo(() => {
+    if (!pendingPlanSprintName) return latestRegular;
+    const team = pendingPlanSprintName.split(":")[0]?.trim();
+    if (!team) return latestRegular;
+    return latestRegularSprint(sprints.filter((s) => s.name.split(":")[0]?.trim() === team)) ?? latestRegular;
+  }, [pendingPlanSprintName, sprints, latestRegular]);
   const { data: sprintSlots } = useSprintSlots();
   const pinnedSprintIds = useMemo(
     () => [...(sprintSlots ?? [])].sort((a, b) => a.slotIndex - b.slotIndex).map((s) => s.sprintId),
@@ -425,10 +432,11 @@ export function EpicChildrenSection({
       });
   }, [sprints, onMutate]);
 
-  // BRDG-309: dropping onto the create zone stashes the child and opens the Create
-  // Sprint modal. Cancelling clears the stash (no sprint, no move).
-  const handlePlanNextSprint = useCallback((childKey: string) => {
+  // BRDG-309: dropping onto the create zone stashes the child (and the predicted
+  // sprint name) and opens the Create Sprint modal. Cancelling clears the stash.
+  const handlePlanNextSprint = useCallback((childKey: string, suggestedName?: string) => {
     setPendingPlanChildKey(childKey);
+    setPendingPlanSprintName(suggestedName ?? null);
   }, []);
 
   // The modal created the sprint. Move the stashed child into it, then refetch +
@@ -441,6 +449,7 @@ export function EpicChildrenSection({
     async (sprint: CreatedSprint) => {
       const childKey = pendingPlanChildKey;
       setPendingPlanChildKey(null);
+      setPendingPlanSprintName(null);
       if (!childKey) return;
       setJiraWarning(null);
 
@@ -1065,13 +1074,13 @@ export function EpicChildrenSection({
 
       {pendingPlanChildKey && (
         <CreateSprintModal
-          onClose={() => setPendingPlanChildKey(null)}
+          onClose={() => { setPendingPlanChildKey(null); setPendingPlanSprintName(null); }}
           onCreated={handlePlanSprintCreated}
           showToast={showToast}
-          suggestedName={suggestedSprintName}
-          suggestedStartDate={suggestedSprintStartDate}
-          previousSprintName={latestRegular?.sprint.name}
-          previousSprintEndIso={latestRegular?.sprint.endDate ?? null}
+          suggestedName={pendingPlanSprintName ?? suggestedSprintName}
+          suggestedStartDate={startDateFromPreviousEnd(planPrevSprint?.sprint.endDate)}
+          previousSprintName={planPrevSprint?.sprint.name}
+          previousSprintEndIso={planPrevSprint?.sprint.endDate ?? null}
         />
       )}
 

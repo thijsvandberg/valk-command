@@ -54,10 +54,11 @@ interface EpicChildrenBySprintProps {
   onMoveError?: (message: string) => void;
   /**
    * Dropping onto the BRDG-309 "create the next sprint" zone. Receives the dragged
-   * child's key; the parent opens the Create Sprint modal and, on create, moves the
-   * child into the new sprint. When omitted, the create zone is not offered.
+   * child's key and the predicted sprint name; the parent opens the Create Sprint
+   * modal prefilled with it and, on create, moves the child into the new sprint. When
+   * omitted, the create zone is not offered.
    */
-  onPlanNextSprint?: (childKey: string) => void;
+  onPlanNextSprint?: (childKey: string, suggestedSprintName?: string) => void;
   /**
    * Create a child issue into a sprint. `target.sprintId` is null for the
    * Unscheduled group (no sprint). When supplied, each non-closed group header
@@ -328,15 +329,17 @@ export function EpicChildrenBySprint({
   // synthetic group sorts into the regular series via the shared comparator.
   const dragGroups = useMemo(() => {
     if (!dndEnabled || activeDragKey === null) return groups;
-    // The next-sprint slot is mutually exclusive: BRDG-306's plain move zone when
-    // that sprint already exists, else BRDG-309's create zone (only when the parent
-    // can handle the create flow). At most one of these is ever non-null. Backlog
-    // zones surface alongside it so the epic's backlogs are reachable mid-drag.
+    // Drag-only drop zones, all surfaced together so any target is reachable mid-drag:
+    // - BRDG-306 move zone: push a child into the next *existing* sprint the epic isn't in.
+    // - BRDG-309 create zone: always offers the team's *next* sprint to create (global
+    //   highest + 1), so a child - even one in a backlog - can be pulled into a brand-new
+    //   sprint without first parking it in the latest one.
+    // - Backlog zones for the epic's reachable backlogs.
     const extras: ChildGroup[] = [];
-    const nextZone =
-      nextRegularSprintGroup(groups, sprints) ??
-      (onPlanNextSprint ? nextRegularSprintCreateGroup(groups, sprints) : null);
-    if (nextZone) extras.push(nextZone);
+    const moveZone = nextRegularSprintGroup(groups, sprints);
+    if (moveZone) extras.push(moveZone);
+    const createZone = onPlanNextSprint ? nextRegularSprintCreateGroup(groups, sprints) : null;
+    if (createZone && !extras.some((z) => z.sprintName === createZone.sprintName)) extras.push(createZone);
     extras.push(...backlogDropGroups(groups, sprints));
     const named = groups.filter((g) => g.key !== UNSCHEDULED_GROUP_KEY);
     // Always expose the no-sprint backlog (the "Unscheduled" bucket) as a drop target
@@ -386,9 +389,10 @@ export function EpicChildrenBySprint({
         | undefined;
 
       // BRDG-309: dropping onto the create zone does not move silently; it hands the
-      // child key to the parent, which opens the Create Sprint modal then moves on create.
+      // child key (and the predicted sprint name) to the parent, which opens the Create
+      // Sprint modal prefilled with that name, then moves the child on create.
       if (overData?.isCreateZone) {
-        onPlanNextSprint?.(activeKey);
+        onPlanNextSprint?.(activeKey, overData.sprintName ?? undefined);
         return;
       }
 

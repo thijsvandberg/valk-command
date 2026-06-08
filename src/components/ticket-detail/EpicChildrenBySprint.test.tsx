@@ -246,22 +246,35 @@ describe("EpicChildrenBySprint create-next-sprint drop zone (BRDG-309)", () => {
     expect(screen.queryByLabelText("Create issue in BT: 140")).not.toBeInTheDocument();
   });
 
+  it("offers the create zone when dragging from a backlog, without parking in the latest sprint", () => {
+    // Epic only sits in BT: Backlog; the series globally is at BT: 139. The create zone
+    // offers the team's next sprint (BT: 140) so the backlog item can go straight in.
+    setupCreate({
+      items: [child("VPL-31", "BT: Backlog")],
+      sprints: [...REGULAR, { id: "btbl", name: "BT: Backlog", dateRange: "", state: "future", ticketCount: 0, startDate: null, endDate: null, goal: null }],
+    });
+    startKeyboardDrag("VPL-31");
+    expect(screen.getByText(/Create new sprint/)).toBeInTheDocument();
+    expect(screen.getAllByText("BT: 140").length).toBeGreaterThan(0);
+  });
+
   it("does not show the create zone when onPlanNextSprint is absent", () => {
     setupCreate({ onPlanNextSprint: undefined });
     startKeyboardDrag("VPL-30");
     expect(screen.queryByText(/Create new sprint/)).not.toBeInTheDocument();
   });
 
-  it("yields to BRDG-306's plain zone when the next sprint already exists", () => {
-    // Add BT: 140 to the sprint list: now the next slot exists, so BRDG-306's plain
-    // move zone shows and BRDG-309's create zone stays inert (mutually exclusive).
+  it("shows BRDG-306's move zone for the next existing sprint and a create zone for the one beyond", () => {
+    // Add BT: 140: the epic (top BT: 139) gets a plain "move to BT: 140" zone, while the
+    // create zone offers the team's actual next sprint to create (BT: 141), so both the
+    // push-forward and the create-new options are available at once.
     setupCreate({
       sprints: [...REGULAR, { id: "140", name: "BT: 140", dateRange: "", state: "future", ticketCount: 0, startDate: "2026-06-19", endDate: null, goal: null }],
     });
     startKeyboardDrag("VPL-30");
     expect(screen.getByText("Drop here to move to BT: 140")).toBeInTheDocument();
-    expect(screen.queryByText(/Create new sprint/)).not.toBeInTheDocument();
-    expect(screen.queryByText("New sprint")).not.toBeInTheDocument();
+    expect(screen.getByText(/Create new sprint/)).toBeInTheDocument();
+    expect(screen.getAllByText("BT: 141").length).toBeGreaterThan(0);
   });
 });
 

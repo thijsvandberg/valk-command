@@ -264,37 +264,41 @@ describe("canPlanNextSprint", () => {
     };
   }
 
-  it("returns the candidate name when the next regular sprint does not exist yet", () => {
-    // Highest visible is BT: 141 -> next is BT: 142, which is absent from the list.
+  it("predicts the team's next sprint from the global highest number, not the visible one", () => {
+    // The epic only reaches BT: 141, but the series globally is already at BT: 143, so
+    // the next sprint to create is BT: 144 - no need to first park a child in BT: 143.
     const visible = [group("BT: 140"), group("BT: 141")];
-    expect(canPlanNextSprint(visible, [sprint("BT: 141", "active", "2026-07-03")])).toBe("BT: 142");
+    const sprints = [
+      sprint("BT: 141", "active", "2026-07-03"),
+      sprint("BT: 142", "future", "2026-07-17"),
+      sprint("BT: 143", "future", "2026-07-31"),
+    ];
+    expect(canPlanNextSprint(visible, sprints)).toBe("BT: 144");
   });
 
-  it("returns null when the candidate already exists (BRDG-306 owns that slot)", () => {
+  it("scopes the prediction to the epic's team, not the globally-highest number", () => {
+    // Epic is on BT (top BT: 141); HT has a higher number but is a different team.
     const visible = [group("BT: 141")];
-    expect(canPlanNextSprint(visible, [sprint("BT: 142", "future", "2026-07-17")])).toBeNull();
+    const sprints = [sprint("BT: 141", "active", null), sprint("HT: 200", "future", null)];
+    expect(canPlanNextSprint(visible, sprints)).toBe("BT: 142");
   });
 
-  it("predicts off the highest visible regular number, ignoring placeholders", () => {
-    const visible = [group("BT: 140"), group("BT: 141"), group("GXP: Backlog"), group(null)];
-    // Highest regular numeric is BT: 141 -> BT: 142, which is absent.
-    expect(canPlanNextSprint(visible, [])).toBe("BT: 142");
+  it("plans from a backlog-only epic (no numbered sprint visible)", () => {
+    // The epic sits only in BT: Backlog; the team is read from that backlog so a child
+    // can be pulled straight into a new sprint.
+    const visible = [group("BT: Backlog")];
+    const sprints = [sprint("BT: 142", "future", null), sprint("BT: Backlog", "future", null)];
+    expect(canPlanNextSprint(visible, sprints)).toBe("BT: 143");
   });
 
-  it("returns null when no regular numeric sprint is visible", () => {
-    const visible = [group("GXP: Backlog"), group(null)];
-    expect(canPlanNextSprint(visible, [sprint("BT: 1", "future", "2026-07-03")])).toBeNull();
+  it("returns null when the epic's team cannot be determined", () => {
+    const visible = [group(null)];
+    expect(canPlanNextSprint(visible, [sprint("BT: 1", "future", null)])).toBeNull();
   });
 
-  it("is mutually exclusive with nextRegularSprintGroup for the same slot", () => {
-    const visible = [group("BT: 141")];
-    // Exists -> BRDG-306 returns a group, BRDG-309 returns null.
-    const existing = [sprint("BT: 142", "future", "2026-07-17")];
-    expect(nextRegularSprintGroup(visible, existing)?.sprintName).toBe("BT: 142");
-    expect(canPlanNextSprint(visible, existing)).toBeNull();
-    // Absent -> BRDG-306 returns null, BRDG-309 returns the name.
-    expect(nextRegularSprintGroup(visible, [])).toBeNull();
-    expect(canPlanNextSprint(visible, [])).toBe("BT: 142");
+  it("returns null when the team has no existing sprints to extend", () => {
+    const visible = [group("ZZ: Backlog")];
+    expect(canPlanNextSprint(visible, [sprint("BT: 1", "future", null)])).toBeNull();
   });
 });
 
@@ -312,7 +316,7 @@ describe("nextRegularSprintCreateGroup", () => {
   }
 
   it("builds a create-zone group carrying the predicted name", () => {
-    const zone = nextRegularSprintCreateGroup([group("BT: 141")], []);
+    const zone = nextRegularSprintCreateGroup([group("BT: 141")], [sprint("BT: 141", "active", null)]);
     expect(zone?.key).toBe(CREATE_NEXT_SPRINT_GROUP_KEY);
     expect(zone?.label).toBe("BT: 142");
     expect(zone?.sprintName).toBe("BT: 142");
