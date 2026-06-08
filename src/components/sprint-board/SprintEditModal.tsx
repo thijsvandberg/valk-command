@@ -7,9 +7,9 @@ import { Modal } from "@/components/shared/Modal";
 import { DateTimePicker, formatDateTimeLabel } from "@/components/shared/DateTimePicker";
 import { Button } from "@/components/ui/Button";
 import { jira, workspaceTasks } from "@/lib/api-client";
-import { sprintEndFromStart, toInputDateTime, toIsoDateTime } from "@/lib/sprint-dates";
+import { sprintEndFromStart, sprintStartDateTime, toInputDateTime, toIsoDateTime } from "@/lib/sprint-dates";
 import { useTaskStream } from "@/hooks/useTaskStream";
-import { Calendar, Target, Sparkles, Loader2, X, Check, CornerDownRight } from "lucide-react";
+import { Calendar, Target, Sparkles, Loader2, X, Check, CornerDownRight, Play } from "lucide-react";
 
 interface SprintEditModalProps {
   sprint: Sprint;
@@ -60,6 +60,7 @@ export function SprintEditModal({ sprint, tickets, onClose, showToast, autoSugge
   const [endDate, setEndDate] = useState(toInputDateTime(sprint.endDate));
   const [goal, setGoal] = useState(sprint.goal ?? "");
   const [saving, setSaving] = useState(false);
+  const [starting, setStarting] = useState(false);
   const [suggesting, setSuggesting] = useState(false);
   const [suggestion, setSuggestion] = useState<string | null>(null);
   const [suggestionDate, setSuggestionDate] = useState<number | null>(null);
@@ -149,19 +150,26 @@ export function SprintEditModal({ sprint, tickets, onClose, showToast, autoSugge
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [autoSuggest]);
 
+  // The set of sprint fields the form has changed relative to the loaded sprint.
+  // Shared by Save and Start so starting also persists any pending edits.
+  const collectChangedFields = useCallback((): Record<string, string> => {
+    const fields: Record<string, string> = {};
+    const origStart = toInputDateTime(sprint.startDate);
+    const origEnd = toInputDateTime(sprint.endDate);
+    const origGoal = sprint.goal ?? "";
+    const trimmedName = name.trim();
+
+    if (trimmedName && trimmedName !== sprint.name) fields.name = trimmedName;
+    if (startDate !== origStart) fields.startDate = toIsoDateTime(startDate);
+    if (endDate !== origEnd) fields.endDate = toIsoDateTime(endDate);
+    if (goal !== origGoal) fields.goal = goal;
+    return fields;
+  }, [sprint, name, startDate, endDate, goal]);
+
   const handleSave = useCallback(async () => {
     setSaving(true);
     try {
-      const fields: Record<string, string> = {};
-      const origStart = toInputDateTime(sprint.startDate);
-      const origEnd = toInputDateTime(sprint.endDate);
-      const origGoal = sprint.goal ?? "";
-      const trimmedName = name.trim();
-
-      if (trimmedName && trimmedName !== sprint.name) fields.name = trimmedName;
-      if (startDate !== origStart) fields.startDate = toIsoDateTime(startDate);
-      if (endDate !== origEnd) fields.endDate = toIsoDateTime(endDate);
-      if (goal !== origGoal) fields.goal = goal;
+      const fields = collectChangedFields();
 
       if (Object.keys(fields).length === 0) {
         onClose();
@@ -193,7 +201,71 @@ export function SprintEditModal({ sprint, tickets, onClose, showToast, autoSugge
     } finally {
       setSaving(false);
     }
-  }, [sprint, name, startDate, endDate, goal, onClose, showToast]);
+  }, [collectChangedFields, sprint.id, onClose, showToast]);
+
+  // Starting is only offered for a future sprint, and only once Jira's
+  // preconditions are met: an end date that carries a time and lies in the
+  // future (time stops being optional here, see BRDG-246).
+  const canStartSprint = sprint.state === "future";
+  const endHasTime = endDate.includes("T");
+  const endIsFuture = (() => {
+    if (!endDate) return false;
+    const end = new Date(toIsoDateTime(endDate));
+    return !Number.isNaN(end.getTime()) && end.getTime() > Date.now();
+  })();
+  const startReady = canStartSprint && endHasTime && endIsFuture;
+  const startBlockReason = !endDate
+    ? "Set an end date to start"
+    : !endHasTime
+      ? "Add an end time to start"
+      : !endIsFuture
+        ? "End date must be in the future"
+        : null;
+
+  const handleStart = useCallback(async () => {
+    if (!startReady) return;
+    setStarting(true);
+    try {
+      // Persist any pending edits (name/goal/dates) before activating, so what
+      // the PO sees in the form is what the started sprint carries.
+      const fields = collectChangedFields();
+      if (Object.keys(fields).length > 0) {
+        await jira.updateSprint(sprint.id, fields);
+      }
+
+      const applied = await jira.startSprint(sprint.id, {
+        // Anchor the start to the planned day at noon, or "now" if we are starting
+        // before that (see sprintStartDateTime). Jira keeps a past noon as-is.
+        startDate: sprintStartDateTime(startDate),
+        endDate: toIsoDateTime(endDate),
+      });
+
+      showToast(`Sprint "${name.trim() || sprint.name}" started`);
+      onClose();
+      // Mirror handleSave: the start route's cache.invalidate does not reach the
+      // GET route's cache under next dev, so patch the SWR cache directly to flip
+      // the sprint to "active" with the accepted dates.
+      void mutate(
+        "/api/jira/sprints",
+        (current: { sprints: Array<{ id: number }> } | undefined) => {
+          if (!current?.sprints) return current;
+          return {
+            ...current,
+            sprints: current.sprints.map((s) =>
+              String(s.id) === String(sprint.id)
+                ? { ...s, state: "active", startDate: applied.startDate, endDate: applied.endDate }
+                : s,
+            ),
+          };
+        },
+        { revalidate: false },
+      );
+    } catch (err) {
+      showToast(err instanceof Error ? err.message : "Failed to start sprint");
+    } finally {
+      setStarting(false);
+    }
+  }, [startReady, collectChangedFields, sprint.id, sprint.name, name, startDate, endDate, onClose, showToast]);
 
   const handleSuggestGoal = useCallback(async () => {
     abortRef.current?.abort();
@@ -436,13 +508,32 @@ export function SprintEditModal({ sprint, tickets, onClose, showToast, autoSugge
         </div>
 
         {/* Footer */}
-        <div className="flex items-center justify-end gap-2 border-t border-border-default px-5 py-3">
-          <Button variant="ghost" size="md" onClick={onClose} disabled={saving}>
-            Cancel
-          </Button>
-          <Button variant="primary" size="md" onClick={handleSave} disabled={saving}>
-            {saving ? "Saving..." : "Save"}
-          </Button>
+        <div className="flex items-center justify-between gap-3 border-t border-border-default px-5 py-3">
+          <div className="flex min-w-0 items-center gap-2">
+            {canStartSprint && (
+              <Button
+                variant="primary"
+                size="md"
+                onClick={handleStart}
+                disabled={!startReady || starting || saving}
+                title={startBlockReason ?? "Start this sprint now"}
+                icon={starting ? <Loader2 size={13} strokeWidth={1.75} className="animate-spin" /> : <Play size={13} strokeWidth={1.75} />}
+              >
+                {starting ? "Starting..." : "Start sprint"}
+              </Button>
+            )}
+            {canStartSprint && startBlockReason && !starting && (
+              <span className="truncate text-[11px] text-text-muted">{startBlockReason}</span>
+            )}
+          </div>
+          <div className="flex shrink-0 items-center gap-2">
+            <Button variant="ghost" size="md" onClick={onClose} disabled={saving || starting}>
+              Cancel
+            </Button>
+            <Button variant={canStartSprint ? "secondary" : "primary"} size="md" onClick={handleSave} disabled={saving || starting}>
+              {saving ? "Saving..." : "Save"}
+            </Button>
+          </div>
         </div>
       </div>
     </Modal>

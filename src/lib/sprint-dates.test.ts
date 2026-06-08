@@ -1,5 +1,48 @@
-import { describe, it, expect } from "vitest";
-import { sprintEndFromStart, toInputDateTime, toIsoDateTime, startDateFromPreviousEnd, sprintDurationDays } from "./sprint-dates";
+import { describe, it, expect, afterEach, vi } from "vitest";
+import { sprintEndFromStart, sprintStartDateTime, toInputDateTime, toIsoDateTime, startDateFromPreviousEnd, sprintDurationDays } from "./sprint-dates";
+
+describe("sprintStartDateTime", () => {
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
+  // Local-noon of the given day, as an ISO string, so assertions are timezone-stable.
+  function noonIso(y: number, m: number, d: number): string {
+    return new Date(y, m - 1, d, 12, 0, 0, 0).toISOString();
+  }
+
+  it("keeps a past planned start day at noon", () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date(2026, 5, 8, 10, 0, 0)); // 8 Jun 2026, 10:00
+    expect(sprintStartDateTime("2026-06-05")).toBe(noonIso(2026, 6, 5));
+  });
+
+  it("uses planned noon when started later the same day (after noon)", () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date(2026, 5, 8, 14, 0, 0)); // start day, 14:00
+    expect(sprintStartDateTime("2026-06-08")).toBe(noonIso(2026, 6, 8));
+  });
+
+  it("uses the current time when started before noon on the start day", () => {
+    vi.useFakeTimers();
+    const now = new Date(2026, 5, 8, 9, 30, 0); // start day, 09:30 (before noon)
+    vi.setSystemTime(now);
+    expect(sprintStartDateTime("2026-06-08")).toBe(now.toISOString());
+  });
+
+  it("uses the current time when the planned start is still in the future", () => {
+    vi.useFakeTimers();
+    const now = new Date(2026, 5, 8, 16, 0, 0); // today
+    vi.setSystemTime(now);
+    expect(sprintStartDateTime("2026-06-09")).toBe(now.toISOString()); // planned tomorrow
+  });
+
+  it("falls back to today when no start day is set", () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date(2026, 5, 8, 15, 0, 0));
+    expect(sprintStartDateTime("")).toBe(noonIso(2026, 6, 8));
+  });
+});
 
 describe("sprintEndFromStart", () => {
   it("maps a Friday start to the Thursday two weeks later at 17:00", () => {

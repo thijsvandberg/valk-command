@@ -1206,6 +1206,65 @@ export class JiraClient {
   }
 
   /**
+   * Start (activate) a future sprint via the Jira Agile API.
+   *
+   * Jira requires both a startDate and an endDate to move a sprint to "active".
+   * We prefer the sprint's existing start date so a sprint planned to begin on a
+   * past Friday keeps that day; if Jira rejects that date as invalid we retry
+   * once with "now" as the start, mirroring Jira's own Start Sprint dialog.
+   * Returns the start date Jira actually accepted so the caller can persist it.
+   *
+   * As with updateSprint/closeSprint, Jira's PUT is a full update, so the
+   * current name/goal are re-sent alongside the new state.
+   */
+  async startSprint(
+    sprintId: number,
+    opts: { startDate?: string | null; endDate: string },
+    signal?: AbortSignal,
+  ): Promise<{ startDate: string; endDate: string }> {
+    if (!isConfigured()) {
+      throw new Error("Jira is not configured");
+    }
+
+    const current = await jiraFetch<{ name: string; goal?: string }>(
+      `/rest/agile/1.0/sprint/${sprintId}`,
+      signal,
+    );
+
+    const nowIso = new Date().toISOString();
+    const preferredStart = opts.startDate || nowIso;
+
+    const buildPayload = (startDate: string): Record<string, unknown> => {
+      const payload: Record<string, unknown> = {
+        name: current.name,
+        state: "active",
+        startDate,
+        endDate: opts.endDate,
+      };
+      if (current.goal) payload.goal = current.goal;
+      return payload;
+    };
+
+    try {
+      await jiraPut(`/rest/agile/1.0/sprint/${sprintId}`, buildPayload(preferredStart), signal);
+      return { startDate: preferredStart, endDate: opts.endDate };
+    } catch (err) {
+      // Jira can reject a start date it deems invalid (e.g. too far in the past).
+      // Fall back to "now" once so starting still succeeds with our preferred-day
+      // attempt as the only cost.
+      const startDateRejected =
+        err instanceof JiraApiError &&
+        err.status === 400 &&
+        preferredStart !== nowIso &&
+        /start ?date/i.test(err.responseBody);
+      if (!startDateRejected) throw err;
+
+      await jiraPut(`/rest/agile/1.0/sprint/${sprintId}`, buildPayload(nowIso), signal);
+      return { startDate: nowIso, endDate: opts.endDate };
+    }
+  }
+
+  /**
    * Create a new sprint on a board via the Jira Agile API.
    * Routed through the API gateway (api.atlassian.com): Basic auth on the
    * direct instance URL is no longer accepted, while the gateway honors the

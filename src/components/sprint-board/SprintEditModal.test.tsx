@@ -12,6 +12,7 @@ vi.mock("swr", () => ({
 vi.mock("@/lib/api-client", () => ({
   jira: {
     updateSprint: vi.fn(),
+    startSprint: vi.fn(),
   },
   workspaceTasks: {
     create: vi.fn(),
@@ -249,6 +250,73 @@ describe("SprintEditModal", () => {
       expect(onClose).toHaveBeenCalled();
       expect(jira.updateSprint).not.toHaveBeenCalled();
     });
+  });
+
+  it("does not offer Start sprint for an active sprint", () => {
+    render(
+      <SprintEditModal
+        sprint={makeSprint({ state: "active" })}
+        tickets={[makeTicket()]}
+        onClose={onClose}
+        showToast={showToast}
+      />,
+    );
+    expect(screen.queryByText("Start sprint")).not.toBeInTheDocument();
+  });
+
+  it("starts a future sprint with a valid end date", async () => {
+    vi.mocked(jira.startSprint).mockResolvedValue({
+      ok: true,
+      startDate: "2026-06-05T00:00:00.000Z",
+      endDate: "2026-06-18T17:00:00.000Z",
+    });
+
+    // A clearly-future end date that carries a time, so the start gate opens
+    // regardless of the wall clock the test runs under.
+    const futureEnd = new Date(Date.now() + 10 * 86_400_000);
+    futureEnd.setHours(17, 0, 0, 0);
+
+    render(
+      <SprintEditModal
+        sprint={makeSprint({ state: "future", endDate: futureEnd.toISOString() })}
+        tickets={[makeTicket()]}
+        onClose={onClose}
+        showToast={showToast}
+      />,
+    );
+
+    const startButton = screen.getByText("Start sprint");
+    expect(startButton).not.toBeDisabled();
+    fireEvent.click(startButton);
+
+    await waitFor(() => {
+      expect(jira.startSprint).toHaveBeenCalledWith(
+        "100",
+        expect.objectContaining({ endDate: expect.any(String) }),
+      );
+    });
+    await waitFor(() => {
+      expect(showToast).toHaveBeenCalledWith('Sprint "BT: 137" started');
+      expect(onClose).toHaveBeenCalled();
+    });
+  });
+
+  it("disables Start sprint until the end date carries a time", () => {
+    // Local midnight so toInputDateTime keeps it time-less regardless of the
+    // test timezone (a UTC-midnight ISO would gain a local time and pass the gate).
+    const timelessEnd = new Date(2026, 11, 16).toISOString();
+    render(
+      <SprintEditModal
+        sprint={makeSprint({ state: "future", endDate: timelessEnd })}
+        tickets={[makeTicket()]}
+        onClose={onClose}
+        showToast={showToast}
+      />,
+    );
+
+    expect(screen.getByText("Start sprint")).toBeDisabled();
+    expect(screen.getByText("Add an end time to start")).toBeInTheDocument();
+    expect(jira.startSprint).not.toHaveBeenCalled();
   });
 
   it("shows AI suggest button", () => {

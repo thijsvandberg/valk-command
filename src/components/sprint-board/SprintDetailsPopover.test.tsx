@@ -94,6 +94,39 @@ describe("SprintDetailsPopover", () => {
     expect(onCloseSprint).toHaveBeenCalled();
   });
 
+  it("shows 'Start sprint' for a future sprint and triggers the callback", () => {
+    const onClose = vi.fn();
+    const onStartSprint = vi.fn();
+
+    render(
+      <SprintDetailsPopover
+        sprint={makeSprint({ state: "future" })}
+        open={true}
+        onClose={onClose}
+        onEdit={vi.fn()}
+        onStartSprint={onStartSprint}
+      />,
+    );
+
+    fireEvent.click(screen.getByText("Start sprint"));
+    expect(onClose).toHaveBeenCalled();
+    expect(onStartSprint).toHaveBeenCalled();
+  });
+
+  it("hides 'Start sprint' when the sprint is not in the future", () => {
+    render(
+      <SprintDetailsPopover
+        sprint={makeSprint({ state: "active" })}
+        open={true}
+        onClose={vi.fn()}
+        onEdit={vi.fn()}
+        onStartSprint={vi.fn()}
+      />,
+    );
+
+    expect(screen.queryByText("Start sprint")).not.toBeInTheDocument();
+  });
+
   it("hides 'Close sprint' when the sprint is not active", () => {
     render(
       <SprintDetailsPopover

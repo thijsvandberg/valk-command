@@ -36,6 +36,23 @@ export function sprintEndFromStart(startValue: string): string {
 }
 
 /**
+ * The start timestamp to send when activating a sprint.
+ *
+ * Anchors to the planned start day at 12:00 (noon, local), but never later than
+ * "now": starting before that planned noon (early on the start day, or a day
+ * ahead) uses the actual current time instead, so a sprint never appears to
+ * start in the future. Falls back to today when no start day is set.
+ * Returns an ISO timestamp.
+ */
+export function sprintStartDateTime(startValue: string): string {
+  const day = parseDatePart(startValue) ?? new Date();
+  const noon = new Date(day.getFullYear(), day.getMonth(), day.getDate(), 12, 0, 0, 0);
+  const now = new Date();
+  const chosen = now.getTime() < noon.getTime() ? now : noon;
+  return chosen.toISOString();
+}
+
+/**
  * Suggested start date for the next sprint: the day after the previous sprint's
  * end. A sprint runs Friday through Thursday, so the previous end (a Thursday)
  * plus one day is the new Friday. Returns the time-less picker value

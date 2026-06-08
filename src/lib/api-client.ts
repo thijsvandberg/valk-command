@@ -537,6 +537,10 @@ export const jira = {
     ),
   closeSprint: (sprintId: string, signal?: AbortSignal) =>
     apiFetch<{ ok: boolean }>(`/api/jira/sprints/${encodeURIComponent(sprintId)}/close`, { method: "POST", signal }),
+  startSprint: (sprintId: string, data: { startDate?: string | null; endDate: string }, signal?: AbortSignal) =>
+    apiFetch<{ ok: boolean; startDate: string; endDate: string }>(
+      `/api/jira/sprints/${encodeURIComponent(sprintId)}/start`, { method: "POST", body: data, signal },
+    ),
 };
 
 // ---------------------------------------------------------------------------

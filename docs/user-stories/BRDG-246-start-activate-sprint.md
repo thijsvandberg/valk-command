@@ -1,6 +1,6 @@
 # BRDG-246: Start / Activate a Sprint from Bridge
 
-**Status:** To Do
+**Status:** Done
 **Priority:** Medium
 **Type:** Feature
 
@@ -23,24 +23,23 @@ As a Product Owner, I want to start (activate) a `future` sprint directly from B
 
 ## Requirements
 
-### 1. "Start sprint" affordance for a future sprint
+### 1. "Start sprint" entry points (future sprints only)
 
-- Surface a **Start sprint** action for a `future` sprint, in `SprintDetailsPopover` (and/or near the sprint header when a future sprint is selected — see open question).
-- Visible only for `future` sprints. Not shown for `active`, `closed`, or `backlog`.
-- Clicking it opens the start confirmation modal (section 2).
+Three entry points, all leading to the Edit Sprint modal, which is the single place the start actually fires (the PO sees the full sprint — name, dates, goal — before starting):
 
-### 2. Start confirmation modal
+- **Header button** (`SprintBoardHeader`): a prominent "Start sprint" button next to the sprint title, shown once the sprint's start day is within reach — **tomorrow or earlier**, including an already-passed start — and kept from then on until the sprint is started.
+- **Details dropdown** (`SprintDetailsPopover`): a "Start sprint" action alongside "Edit details", always shown for a `future` sprint (mirrors the "Close sprint" action's placement for active sprints).
+- All entry points open the Edit Sprint modal (`onStartSprint` → `setEditModalOpen(true)`).
+- None of these are shown for `active`, `closed`, or `backlog` sprints.
 
-The modal must guarantee Jira's preconditions before enabling the start action.
+### 2. Start from the Edit Sprint modal
 
-- **Start = now (not editable).** The start datetime is set to the current time at the moment of starting, mirroring Jira's own Start Sprint dialog. The PO does not pick it; a sprint cannot start in the past or the future. Show it read-only ("Starts now") for confirmation. This sidesteps any question of whether Jira accepts a past start date.
-- **End date+time is required.** Show an end date field (reuse `DateTimePicker`); it must have a date **and** a time before the sprint can start (this is where time stops being optional).
-  - Pre-fill from the sprint's existing `endDate` if present.
-  - Offer the conventional end suggestion (`sprintEndFromStart`, 17:00) as a one-click fill, consistent with the create/edit modals.
-- **Validation:** end must be after "now". The **Start sprint** button is disabled with a short reason until the end is valid.
-- **Another active sprint:** if a sprint is already `active`, starting another is not allowed. Detect this up front (the board already knows the active sprint) and either block with a clear explanation ("Finish the current sprint first") or surface Jira's rejection gracefully — see open question.
-- **On confirm:** call the new start endpoint with the chosen start/end datetimes, then refresh sprint state so the board reflects the now-`active` sprint. Transient success/error feedback via the existing toast pattern.
-- Loading and error states for the start call (including the "already active" / scope / permission errors).
+- The modal carries a **Start sprint** button in its footer (left side), shown only for `future` sprints. Save becomes the secondary action there.
+- **End date+time is required.** The button is disabled, with a short inline reason, until the end date has both a date **and** a time and lies in the future (this is where time stops being optional). If the end is empty, the PO fills it right here — the conventional end suggestion (`sprintEndFromStart`, 17:00) is the existing one-click fill.
+- **Start date prefers the planned day.** We send the sprint's existing start date (often a past Friday) so the sprint keeps it. If Jira rejects that start as invalid, the backend retries once with "now" — so starting always succeeds, keeping the planned day when Jira allows it.
+- **No hard block on a concurrent active sprint.** The board routinely runs multiple active sprints, so Bridge does not block on an already-active sprint; Jira is the source of truth.
+- **On start:** any pending field edits are persisted first (so the started sprint reflects the form), then the start endpoint is called. The SWR sprints cache is patched directly to flip the sprint to `active` with the accepted dates, and a toast confirms.
+- Loading and error states for the start call (scope/permission errors surfaced via toast).
 
 ### 3. Backend: start-sprint capability
 
@@ -51,13 +50,11 @@ The modal must guarantee Jira's preconditions before enabling the start action.
 
 ## Decisions (resolved)
 
-- **Start is always "now".** The start datetime is fixed to the current time at activation (not editable, no past, no future), matching Jira's own Start Sprint behaviour. Because Bridge always sends "now", whether Jira would accept a past start date is moot and does not need a (risky, side-effecting) live test.
-
-## Open questions (need PO input)
-
-- **Affordance placement:** dropdown action only (`SprintDetailsPopover`), or also a prominent button when a future sprint is selected on the board?
-- **Already-active behavior:** hard-block in Bridge with "Finish the current sprint first", or let the PO attempt it and surface Jira's rejection? (Bridge does not auto-finish the current sprint.)
-- **End date default:** when a future sprint has no end date yet, pre-fill with the conventional suggestion (now + the Thursday rule, 17:00), or leave it empty and force the PO to choose?
+- **Start time = planned day at 12:00, or "now" if earlier.** The start timestamp anchors to the planned start day at noon (12:00 local, `sprintStartDateTime`), but never later than the actual moment of starting: starting before that noon (early on the start day, or a day ahead) uses the current time, so a sprint never appears to start in the future. A past planned day keeps its noon.
+- **Start prefers the planned start date, falling back to "now" only on rejection.** Bridge sends the computed planned start (which may be in the past); if Jira were to reject it, `startSprint` retries once with "now". **Verified:** Jira accepts a past start date, so the planned day is kept and the rejection-fallback is not exercised in practice.
+- **Affordance placement:** both a prominent header button (gated on start day ≤ tomorrow) and an always-on action in the details dropdown. Both open the Edit Sprint modal, where the actual Start button lives.
+- **Already-active behavior:** no hard block. Multiple active sprints are normal here, so Bridge does not block; Jira remains the source of truth.
+- **End date default:** the modal pre-fills from the sprint's existing end date; when empty, the PO sets it in the modal (the conventional `sprintEndFromStart` one-click fill is available). The Start button stays disabled until a valid end date+time is present.
 
 ## Out of scope
 
@@ -67,14 +64,14 @@ The modal must guarantee Jira's preconditions before enabling the start action.
 
 ## Checklist
 
-- [ ] Add `startSprint(sprintId, { startDate, endDate })` to `jira-client.ts` (`PUT /sprint/{id}` state=active + dates via gateway) + test
-- [ ] Add `POST /api/jira/sprints/[id]/start` endpoint (activates + re-syncs state, sets startDate=now, requires endDate, distinct handling for already-active / scope errors) + test
-- [ ] Add `jira.startSprint(...)` to `api-client.ts`
-- [ ] Add "Start sprint" action for `future` sprints (placement per open question)
-- [ ] Build the start confirmation modal: read-only "Starts now" + end `DateTimePicker` with required time, end-after-now validation, conventional-end suggestion
-- [ ] Gate "Start sprint": disabled until valid end date+time (and no other active sprint, per decision), with reason shown
-- [ ] Confirm + start flow: success/error toast, refresh board to show `active` state
-- [ ] Loading / error states (including already-active and token-scope errors)
-- [ ] Verify end-to-end against real Jira (token scope for activating sprints; single-active-sprint constraint)
-- [ ] Update relevant docs in `/docs` (`api-routes.md`, `jira-sync.md`)
+- [x] Add `startSprint(sprintId, { startDate, endDate })` to `jira-client.ts` (`PUT /sprint/{id}` state=active + dates via gateway, prefer existing start with fallback to now) + test
+- [x] Add `POST /api/jira/sprints/[id]/start` endpoint (activates + re-syncs cached state, requires endDate, forwards preferred startDate, scope-error handling) + test
+- [x] Add `jira.startSprint(...)` to `api-client.ts`
+- [x] Add "Start sprint" entry points for `future` sprints: header button (start day ≤ tomorrow) + details dropdown action, both opening the Edit Sprint modal
+- [x] Add the Start button to the Edit Sprint modal footer (future-only), reusing the existing end `DateTimePicker` + conventional-end suggestion
+- [x] Gate "Start sprint": disabled until a valid end date+time in the future, with reason shown (no concurrent-active block, per decision)
+- [x] Start flow: persist pending edits, success/error toast, patch SWR cache to `active`
+- [x] Loading / error states (token-scope errors surfaced)
+- [x] Verify end-to-end against real Jira: confirmed a sprint with a **past** planned start date (5 Jun, started on 8 Jun) activates and keeps that start day. Jira accepts the past start, so the now-fallback is a safety net that is not exercised in this config.
+- [x] Update relevant docs in `/docs` (`api-routes.md`)
 </content>

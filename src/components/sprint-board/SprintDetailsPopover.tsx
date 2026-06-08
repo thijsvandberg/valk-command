@@ -6,7 +6,7 @@ import type { Sprint } from "@/types/ticket";
 import type { GroupSyncProgress, GroupSyncResult, GroupSyncState } from "@/lib/group-sync";
 import { Popover } from "@/components/shared/Popover";
 import { useOutsideClick } from "@/hooks/useOutsideClick";
-import { Pencil, Sparkles, ExternalLink, Flag, RefreshCw, ChevronRight, ChevronLeft, Check, Settings2 } from "lucide-react";
+import { Pencil, Sparkles, ExternalLink, Flag, Play, RefreshCw, ChevronRight, ChevronLeft, Check, Settings2 } from "lucide-react";
 import Link from "next/link";
 
 interface SprintDetailsPopoverProps {
@@ -21,6 +21,8 @@ interface SprintDetailsPopoverProps {
   goalSuggestionUrl?: string | null;
   /** When provided and the sprint is active, shows a "Close sprint" action. */
   onCloseSprint?: () => void;
+  /** When provided and the sprint is in the future, shows a "Start sprint" action. */
+  onStartSprint?: () => void;
   /**
    * When true, the menu's first level shows a "Sync" action. The sync lifecycle is
    * owned by the parent (so a header spinner can show while the menu is closed) and
@@ -55,6 +57,7 @@ export function SprintDetailsPopover({
   onSuggestGoal,
   goalSuggestionUrl,
   onCloseSprint,
+  onStartSprint,
   canSync = false,
   syncState = "idle",
   syncProgress = null,
@@ -67,7 +70,7 @@ export function SprintDetailsPopover({
   const hasDates = sprint?.startDate && sprint?.endDate;
   // Settings only make sense for sprints (goal/dates/edit/close); epic groups get a
   // sync-only menu, so the two-level split collapses to a single level there.
-  const hasSettings = sprint != null && (onEdit != null || onCloseSprint != null || hasDates || hasGoal);
+  const hasSettings = sprint != null && (onEdit != null || onCloseSprint != null || onStartSprint != null || hasDates || hasGoal);
   // The two-level split (Sync | Settings) only earns its keep when a sync action
   // exists. Without one, settings render directly so there is no pointless
   // single-item menu in front of them.
@@ -238,6 +241,18 @@ export function SprintDetailsPopover({
           >
             <Pencil size={11} strokeWidth={1.5} className="shrink-0 opacity-60" />
             <span>Edit details</span>
+          </button>
+        )}
+        {onStartSprint && sprint?.state === "future" && (
+          <button
+            type="button"
+            onClick={() => { onClose(); onStartSprint(); }}
+            className="flex w-full items-center gap-1.5 rounded-md px-2 py-1.5 text-body-sm text-[var(--color-brand-400)] cursor-pointer
+              hover:bg-[var(--color-brand-500)]/10 hover:text-[var(--color-brand-300)] active:bg-[var(--color-brand-500)]/15
+              transition-colors duration-100"
+          >
+            <Play size={11} strokeWidth={1.5} className="shrink-0 opacity-80" />
+            <span>Start sprint</span>
           </button>
         )}
         {onCloseSprint && sprint?.state === "active" && (

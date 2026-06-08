@@ -35,6 +35,7 @@ Sync engine for pulling Jira data into the local SQLite database. See [jira-sync
 | `/api/jira/sprints` | POST | Create a new sprint in Jira and add to local cache |
 | `/api/jira/sprints/[id]` | PUT | Update sprint metadata (goal, dates) via Jira Agile API |
 | `/api/jira/sprints/[id]/close` | POST | Close (finish) an active sprint via Jira Agile API; flips cached state to `closed` |
+| `/api/jira/sprints/[id]/start` | POST | Start (activate) a future sprint via Jira Agile API; flips cached state to `active`. Body: `{ startDate?, endDate }` (endDate required). Prefers the given start date, falls back to "now" if Jira rejects it |
 | `/api/jira/move-sprint` | POST | Move issues to a sprint (or `__backlog__`). Body: `{ issueKeys, targetSprintId }`. Used by the sprint board and the epic Child Issues by-sprint view (drag/menu). |
 | `/api/jira/rank` | POST | Re-rank issues relative to another via Jira Agile rank, then refresh local `jiraRank`. Body: `{ issueKeys, rankBeforeKey? \| rankAfterKey?, sprintId? }`. Used by the sprint board and by drag-to-reorder of epic children within a sprint. A cross-sprint drag onto a row calls `move-sprint` then `rank` to land the child at that position. |
 

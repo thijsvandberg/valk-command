@@ -12,7 +12,7 @@ import { SprintCompletionBar, SprintStats as SprintStatsComponent } from "@/comp
 import { SprintStatsPopover } from "@/components/sprint-board/SprintStatsPopover";
 import { SprintDetailsPopover } from "@/components/sprint-board/SprintDetailsPopover";
 import { followedSprints, workspaceTasks } from "@/lib/api-client";
-import { Columns2, Check, LayoutGrid, CalendarRange, Search, Bookmark, MoreHorizontal, BarChart2, List, Bell, BellOff, Users, Inbox, Flag } from "lucide-react";
+import { Columns2, Check, LayoutGrid, CalendarRange, Search, Bookmark, MoreHorizontal, BarChart2, List, Bell, BellOff, Users, Inbox, Flag, Play } from "lucide-react";
 import dynamic from "next/dynamic";
 const SprintListModal = dynamic(() => import("@/components/sprint-board/SprintListModal").then((m) => ({ default: m.SprintListModal })), { ssr: false });
 
@@ -63,6 +63,19 @@ export function SprintBoardHeader(props: SprintBoardHeaderProps) {
   // The sprint's end date has effectively passed once no working days remain
   // (this is the same signal the completion bar surfaces as "last day").
   const endReached = sprintWorkDays.remaining !== null && sprintWorkDays.remaining <= 0;
+
+  // Surface a "Start sprint" affordance on a future sprint once its start day is
+  // within reach (tomorrow or earlier, including an already-passed start), and
+  // keep it from then on until the sprint is actually started.
+  const startReached = (() => {
+    if (activeSprint?.state !== "future" || !activeSprint.startDate) return false;
+    const start = new Date(activeSprint.startDate);
+    if (Number.isNaN(start.getTime())) return false;
+    const tomorrowEnd = new Date();
+    tomorrowEnd.setDate(tomorrowEnd.getDate() + 1);
+    tomorrowEnd.setHours(23, 59, 59, 999);
+    return start.getTime() <= tomorrowEnd.getTime();
+  })();
 
   const router = useRouter();
   const completionBarRef = useRef<HTMLDivElement>(null);
@@ -254,6 +267,7 @@ export function SprintBoardHeader(props: SprintBoardHeaderProps) {
               }}
               goalSuggestionUrl={goalSuggestionUrl}
               onCloseSprint={() => onFinishSprint(!endReached)}
+              onStartSprint={() => setEditModalOpen(true)}
             />
           </span>
           )
@@ -307,6 +321,17 @@ export function SprintBoardHeader(props: SprintBoardHeaderProps) {
                   </Button>
                 )}
               </>
+            ) : (!isAllView && !activeView && activeSprint?.state === "future" && startReached) ? (
+              <Button
+                variant="primary"
+                size="sm"
+                icon={<Play className="h-3 w-3" strokeWidth={2} />}
+                onClick={() => setEditModalOpen(true)}
+                title="Start this sprint"
+                className="ml-2 mr-3 shrink-0"
+              >
+                Start sprint
+              </Button>
             ) : (isAllView || activeView) ? (
               // All / multiple-sprint / saved (epic) views keep just the item count;
               // SP/BV live in the per-group card headers now. Single-sprint views drop
