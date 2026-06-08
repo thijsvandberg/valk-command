@@ -430,6 +430,9 @@ export function TicketTable({
           onCreate={(title, jiraType) => onCreateTicket!(flatCreateTarget!.sprintId, title, jiraType)}
           onEscapeEmpty={onCloseFlatComposer}
           placeholder={flatCreateTarget!.sprintId === null ? "Create story in the backlog..." : "Create story in this sprint..."}
+          // Bleed 2px left to cover the table's collapsed-border inset (from BoardRow's left
+          // selection border) so the tinted strip is flush with the card edge (BRDG-315).
+          className="-ml-0.5"
         />
       </td>
     </tr>
