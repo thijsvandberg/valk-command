@@ -1,6 +1,6 @@
 # BRDG-308: Async backfill of partially-known sprint metadata
 
-**Status:** In Progress (Phase 2)
+**Status:** Done
 **Priority:** Medium
 
 ## Description
@@ -164,14 +164,14 @@ Plan:
 
 ### Phase 2 Acceptance Criteria
 
-- [ ] An epic child whose `sprint_name` is a legacy **name** (or `__on_demand__`) with no id is
+- [x] An epic child whose `sprint_name` is a legacy **name** (or `__on_demand__`) with no id is
       detected on the read path and re-synced from Jira, rewriting it to the current sprint id.
-- [ ] After the background re-sync, the open ticket-detail page **refreshes itself** (no manual
+- [x] After the background re-sync, the open ticket-detail page **refreshes itself** (no manual
       reload) and the sprint group shows its real dates + state.
-- [ ] The background re-sync invalidates the parent ticket-detail cache and `/api/jira/sprints`, and
+- [x] The background re-sync invalidates the parent ticket-detail cache and `/api/jira/sprints`, and
       is best-effort (a failure never breaks the response).
-- [ ] The client revalidation is bounded (no infinite polling) and stops once the sprint resolves.
-- [ ] Tests: builder returns unresolved (non-numeric) child sprint keys; route schedules the re-sync
+- [x] The client revalidation is bounded (no infinite polling) and stops once the sprint resolves.
+- [x] Tests: builder returns unresolved (non-numeric) child sprint keys; route schedules the re-sync
       + cache invalidation and sets the flag; client effect revalidates while flagged and stops when
       cleared.
 
