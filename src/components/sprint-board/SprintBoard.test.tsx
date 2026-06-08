@@ -161,6 +161,7 @@ vi.mock("@/components/sprint-board/useSprintBoardFilters", () => ({
     visibleTags: new Set(["flag", "quality"]),
     resetFilters: vi.fn(),
     resetSprintViewFilters: vi.fn(),
+    currentFiltersSnapshot: () => ({ status: [], epic: [], assignee: [], readiness: [], editState: [], issueType: [], gaps: [], team: [], sprint: [] }),
     saveView: vi.fn(),
     deleteView: vi.fn(),
     savedViews: [],

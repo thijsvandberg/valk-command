@@ -125,7 +125,7 @@ const baseProps = {
   sortField: "rank" as const,
   sortDir: "asc" as const,
   groupBy: "epic" as const,
-  groups: [{ key: "E-1", label: "Epic one", tickets: [CLEAN, FLAGGED] }],
+  groups: [{ key: "E-1", label: "Epic one", tickets: [CLEAN, FLAGGED], sortOrder: 0 }],
 };
 
 describe("TicketTable warning filter mode (BRDG-313)", () => {
