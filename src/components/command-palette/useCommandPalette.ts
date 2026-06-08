@@ -27,6 +27,7 @@ import {
   MAX_TOTAL,
   TICKET_DEBOUNCE_MS,
   extractTicketKey,
+  isTicketIssueType,
 } from "./palette-data";
 
 export interface UseCommandPaletteReturn {
@@ -350,6 +351,7 @@ export function useCommandPalette(): UseCommandPaletteReturn {
           { signal: abortRef.current.signal },
         );
         const results: TicketResult[] = ((data.results ?? []) as LocalSearchResult[])
+          .filter((r) => isTicketIssueType(r.issueType))
           .slice(0, MAX_PER_CATEGORY)
           .map((r) => ({
             category: "ticket" as const,
@@ -492,11 +494,11 @@ export function useCommandPalette(): UseCommandPaletteReturn {
       }
     }
 
-    // Story writer results appear above plain conversations; epics after tickets
+    // Matching epics surface above tickets; story writer results appear above plain conversations
     const combined: PaletteResult[] = [
       ...ranked,
-      ...ticketResults,
       ...filteredEpicResults,
+      ...ticketResults,
       ...filteredStoryWriterSessions,
       ...conversationResults,
     ];

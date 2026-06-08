@@ -45,6 +45,13 @@ describe("CommandPalette", () => {
     vi.spyOn(globalThis, "fetch").mockImplementation(async (url) => {
       const urlStr = typeof url === "string" ? url : url.toString();
       if (urlStr.includes("/api/search/local")) {
+        if (urlStr.includes("mixedtypes")) {
+          return new Response(JSON.stringify({ results: [
+            { key: "VPL-43142", summary: "Group Reservations", status: "To Do", issueType: "Epic" },
+            { key: "VPL-44044", summary: "Tabs groups", status: "Done", issueType: "Story" },
+            { key: "VPL-55000", summary: "Subtask item", status: "To Do", issueType: "Sub-task" },
+          ] }));
+        }
         if (urlStr.includes("login") || urlStr.includes("bug") || urlStr.includes("VPL")) {
           return new Response(JSON.stringify({ results: [
             { key: "VPL-123", summary: "Fix login bug", status: "In Progress", issueType: "Bug" },
@@ -233,6 +240,29 @@ describe("CommandPalette", () => {
       expect(screen.getByText("VPL-123")).toBeInTheDocument();
       expect(screen.getByText("Fix login bug")).toBeInTheDocument();
     });
+  });
+
+  it("excludes epics and subtasks from the Tickets section", async () => {
+    render(<CommandPalette />);
+    await act(async () => {
+      fireEvent.keyDown(window, { key: "k", metaKey: true });
+    });
+
+    const input = screen.getByPlaceholderText(/search pages/i);
+    await act(async () => {
+      fireEvent.change(input, { target: { value: "mixedtypes" } });
+    });
+
+    await act(async () => {
+      vi.advanceTimersByTime(400);
+    });
+
+    await waitFor(() => {
+      expect(screen.getByText("VPL-44044")).toBeInTheDocument();
+    });
+    // Epic and sub-task issue types must not appear as tickets
+    expect(screen.queryByText("VPL-43142")).not.toBeInTheDocument();
+    expect(screen.queryByText("VPL-55000")).not.toBeInTheDocument();
   });
 
   it("closes on backdrop click", async () => {
