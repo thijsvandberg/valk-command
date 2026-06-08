@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { Ruler } from "lucide-react";
 import { fullnessBand, FULLNESS_BAND_COLORS } from "@/types/ticket";
 import { Tooltip } from "@/components/shared/Tooltip";
@@ -9,8 +9,8 @@ import { Tooltip } from "@/components/shared/Tooltip";
 // planning mode is on. "used" is the sum of effective points (real SP, else
 // guestimation); "capacity" is the PO's pencil estimate for the sprint. With a
 // capacity set, a band-coloured bar shows used/capacity; with none, only the used
-// total shows (no fill ratio) and the capacity field invites a value. The whole
-// cluster wears a dashed outline to read as provisional, like the guess badge.
+// total shows (no fill ratio) and the capacity field invites a value. The capacity
+// is always editable: clicking anywhere on the meter focuses (and selects) it.
 
 export function FullnessMeter({
   used,
@@ -21,6 +21,7 @@ export function FullnessMeter({
   capacity: number | null;
   onCapacityChange: (value: number | null) => void;
 }) {
+  const inputRef = useRef<HTMLInputElement>(null);
   const [draft, setDraft] = useState(capacity != null ? String(capacity) : "");
   // Resync the editable draft when the persisted capacity changes externally
   // (another tab, optimistic update). React's "adjust state during render" pattern
@@ -71,8 +72,16 @@ export function FullnessMeter({
             ? `color-mix(in srgb, ${c.text} 7%, transparent)`
             : "var(--color-overlay-subtle)",
         }}
-        onClick={(e) => e.stopPropagation()}
+        onClick={(e) => {
+          // The capacity field is a small target, so clicking anywhere on the
+          // meter focuses and selects it - making the value easy to (re)edit.
+          e.stopPropagation();
+          inputRef.current?.focus();
+          inputRef.current?.select();
+        }}
         onPointerDown={(e) => e.stopPropagation()}
+        role="group"
+        aria-label="Sprint fullness"
       >
         <Ruler size={11} strokeWidth={2} aria-hidden style={{ color: "color-mix(in srgb, currentColor 55%, transparent)" }} />
         {capacity != null && (
@@ -95,6 +104,7 @@ export function FullnessMeter({
         <span className="font-medium">{used}</span>
         <span style={{ color: "color-mix(in srgb, currentColor 45%, transparent)" }}>/</span>
         <input
+          ref={inputRef}
           type="number"
           min={0}
           max={999}
@@ -107,8 +117,11 @@ export function FullnessMeter({
           }}
           placeholder="cap"
           aria-label="Sprint pencil capacity"
-          className="w-7 bg-transparent text-center font-medium tabular-nums outline-none placeholder:font-normal placeholder:text-text-muted focus:underline focus:decoration-dotted focus:underline-offset-2 [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
-          style={{ color: "color-mix(in srgb, currentColor 75%, transparent)" }}
+          title="Edit sprint capacity"
+          // A faint hover/focus chip signals the value is editable (it otherwise
+          // reads as static text once filled) and widens the click target.
+          className="h-5 w-8 cursor-text select-text rounded bg-transparent text-center font-medium tabular-nums outline-none transition-colors duration-100 placeholder:font-normal placeholder:text-text-muted hover:bg-[color-mix(in_srgb,currentColor_12%,transparent)] focus:bg-[color-mix(in_srgb,currentColor_16%,transparent)] [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
+          style={{ color: "color-mix(in srgb, currentColor 78%, transparent)" }}
         />
       </div>
     </Tooltip>
