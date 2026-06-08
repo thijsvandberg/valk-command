@@ -119,7 +119,7 @@ if visual review shows crowding.
       (no truncation, wrap, or reserved space)
 - [x] Row labels use warning colour tokens and only appear while the mode is active
 - [x] A single helper in `warning-filter.ts` produces both the per-row labels and the header tooltip lines
-- [ ] Tests cover: snapshot/restore on double click, mode-exit on manual filter change, the label
+- [x] Tests cover: snapshot/restore on double click, mode-exit on manual filter change, the label
       text per condition (and multi-condition rows), and the width-gated visibility
 
 ## Out of Scope

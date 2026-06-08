@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest";
 import type { Ticket } from "@/types/ticket";
-import { matchesWarningFilter } from "./warning-filter";
+import { matchesWarningFilter, ticketWarnings, ticketWarningLabels } from "./warning-filter";
 
 function mk(partial: Partial<Ticket>): Ticket {
   return {
@@ -49,5 +49,49 @@ describe("matchesWarningFilter", () => {
 
   it("does not match an in-progress story with open subtasks (only closed ones are flagged)", () => {
     expect(matchesWarningFilter(mk({ jiraStatus: "IN PROGRESS", storyPoints: 3, openSubtaskCount: 4 }), true)).toBe(false);
+  });
+});
+
+describe("ticketWarnings / ticketWarningLabels", () => {
+  it("labels an unpointed story only in the active sprint", () => {
+    const t = mk({ storyPoints: null, jiraStatus: "TO DO" });
+    expect(ticketWarnings(t, true)).toEqual(["unpointed"]);
+    expect(ticketWarningLabels(t, true)).toEqual(["No story point estimate"]);
+    expect(ticketWarnings(t, false)).toEqual([]);
+    expect(ticketWarningLabels(t, false)).toEqual([]);
+  });
+
+  it("labels a deprecated ticket that still carries story points", () => {
+    const t = mk({ jiraStatus: "DEPRECATED", storyPoints: 5 });
+    expect(ticketWarningLabels(t, false)).toEqual(["Deprecated but still has story points"]);
+  });
+
+  it("labels a closed story with open subtasks", () => {
+    const t = mk({ jiraStatus: "DONE", storyPoints: 3, openSubtaskCount: 1 });
+    expect(ticketWarningLabels(t, true)).toEqual(["Closed with open subtasks"]);
+  });
+
+  it("returns a label per applicable problem for a multi-condition ticket", () => {
+    // Deprecated, still pointed, and still has an open subtask -> two distinct problems.
+    const t = mk({ jiraStatus: "DEPRECATED", storyPoints: 8, openSubtaskCount: 2 });
+    expect(ticketWarnings(t, true)).toEqual(["deprecated_with_points", "closed_with_open_subtasks"]);
+    expect(ticketWarningLabels(t, true)).toEqual([
+      "Deprecated but still has story points",
+      "Closed with open subtasks",
+    ]);
+  });
+
+  it("stays in lockstep with matchesWarningFilter", () => {
+    const cases: Ticket[] = [
+      mk({ storyPoints: null }),
+      mk({ jiraStatus: "DEPRECATED", storyPoints: 5 }),
+      mk({ jiraStatus: "DONE", openSubtaskCount: 1 }),
+      mk({ storyPoints: 3, openSubtaskCount: 0 }),
+    ];
+    for (const t of cases) {
+      for (const active of [true, false]) {
+        expect(matchesWarningFilter(t, active)).toBe(ticketWarnings(t, active).length > 0);
+      }
+    }
   });
 });

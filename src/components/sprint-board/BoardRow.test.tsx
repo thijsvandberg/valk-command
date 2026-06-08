@@ -347,4 +347,33 @@ describe("BoardRow (headerless, BRDG-239)", () => {
     expect(screen.queryByTestId("icon-rocket")).toBeNull();
     expect(screen.queryByTestId("icon-gitbranch")).toBeNull();
   });
+
+  // Warning filter mode: per-row hygiene labels (BRDG-313).
+  it("renders a warning label per problem when warningLabels is set", () => {
+    renderRow({ warningLabels: ["No story point estimate", "Closed with open subtasks"] });
+    expect(screen.getByText("No story point estimate")).toBeInTheDocument();
+    expect(screen.getByText("Closed with open subtasks")).toBeInTheDocument();
+  });
+
+  it("renders no warning labels when the prop is absent or empty (mode off)", () => {
+    const { rerender } = renderRow({ warningLabels: undefined });
+    expect(screen.queryByText("No story point estimate")).toBeNull();
+    rerender(
+      <table><tbody>
+        <BoardRow ticket={makeTicket()} ticketIdx={0} isChecked={false} isSelected={false} someChecked={false} isDragActive={false} tags={ALL_TAGS} warningLabels={[]} selectedTicket={null} onSelectTicket={vi.fn()} onCheckboxClick={vi.fn()} />
+      </tbody></table>,
+    );
+    expect(screen.queryByText("No story point estimate")).toBeNull();
+  });
+
+  it("width-gates the label cluster (hidden until the container is wide enough)", () => {
+    // jsdom can't evaluate container queries, so assert the display-toggle gating class is
+    // present: the cluster is `hidden` and only reveals at the @[52rem]/boardrow breakpoint,
+    // so it reserves no space on narrow rows.
+    renderRow({ warningLabels: ["No story point estimate"] });
+    const labelEl = screen.getByText("No story point estimate");
+    const cluster = labelEl.parentElement!;
+    expect(cluster.className).toContain("hidden");
+    expect(cluster.className).toContain("@[52rem]/boardrow:inline-flex");
+  });
 });
