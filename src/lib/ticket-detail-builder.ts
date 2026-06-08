@@ -220,6 +220,7 @@ async function resolveEpicChildren(epicChildRows: Awaited<ReturnType<typeof runT
   const sprintIdToName = new Map<string, string>();
   const readinessMap = new Map<string, TicketReadiness | null>();
   const businessValueMap = new Map<string, number | null>();
+  const guestimationMap = new Map<string, number | null>();
   // A pending local title edit on a child is the title the PO sees in the child
   // panel; surface the same effective title here so editing a child's title is
   // immediately visible in the epic's children list (not stuck on the synced
@@ -251,6 +252,7 @@ async function resolveEpicChildren(epicChildRows: Awaited<ReturnType<typeof runT
     for (const row of metaRows) {
       readinessMap.set(row.jiraKey, (row.readiness as TicketReadiness) ?? null);
       businessValueMap.set(row.jiraKey, row.businessValue ?? null);
+      guestimationMap.set(row.jiraKey, row.guestimation ?? null);
     }
     for (const row of titleEditRows) {
       if (row.localValue) titleEditMap.set(row.ticketKey, row.localValue);
@@ -275,6 +277,7 @@ async function resolveEpicChildren(epicChildRows: Awaited<ReturnType<typeof runT
     jiraStatus: (c.status ?? "TO DO") as JiraStatus,
     assignee: buildAssignee(c.assignee),
     storyPoints: c.storyPoints ?? null,
+    guestimation: guestimationMap.get(c.jiraKey) ?? null,
     businessValue: businessValueMap.get(c.jiraKey) ?? null,
     sprintName: c.sprintName ? (sprintIdToName.get(c.sprintName) ?? c.sprintName) : null,
     subtaskCount: subtaskCountMap.get(c.jiraKey)?.total ?? 0,
@@ -387,6 +390,13 @@ export async function updateTicketFields(key: string, body: Record<string, unkno
 
     const spValue = raw as number | null;
     await db.update(ticket).set({ storyPoints: spValue }).where(eq(ticket.jiraKey, key));
+
+    // SP wins and resets the guess (BRDG-303): the moment a real, non-zero story
+    // point lands, any forward-planning guestimation is silently cleared so the
+    // two are never both present. A no-op when there is no metadata row or guess.
+    if (spValue != null && spValue > 0) {
+      await db.update(ticketMetadata).set({ guestimation: null }).where(eq(ticketMetadata.jiraKey, key));
+    }
 
     // Estimating a ticket (any value, including "-"/0) completes its refinement
     // prep, so a ticket sitting at "Ready to Refine" advances to "Ready for

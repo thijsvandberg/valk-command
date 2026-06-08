@@ -434,7 +434,12 @@ export interface UpdateMetadataInput {
   qualityScore?: number | null;
   poNotes?: string | null;
   businessValue?: number | null;
+  guestimation?: number | null;
 }
+
+// Forward-planning guestimation (BRDG-303): same Fibonacci scale as story points.
+// 0 means N/A (mirrors the SP "-" option); null clears it.
+const VALID_GUESTIMATION_VALUES = [0, 1, 2, 3, 5, 8];
 
 const VALID_READINESS_VALUES = [
   null,
@@ -527,6 +532,15 @@ export async function updateTicketMetadata(
       }
     }
     updates.businessValue = input.businessValue;
+  }
+
+  if (input.guestimation !== undefined) {
+    if (input.guestimation !== null && !VALID_GUESTIMATION_VALUES.includes(input.guestimation)) {
+      throw new ValidationError(
+        "guestimation must be null or one of 0, 1, 2, 3, 5, 8",
+      );
+    }
+    updates.guestimation = input.guestimation;
   }
 
   if (existing) {

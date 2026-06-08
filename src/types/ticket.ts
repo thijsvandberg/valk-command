@@ -139,6 +139,60 @@ export function getSpColor(value: number): { text: string; bg: string } {
   return SP_COLORS[8];
 }
 
+// Forward-planning guestimation (BRDG-303): a PO placeholder estimate, shown
+// only until real story points land. The Fibonacci scale is identical to SP, but
+// the meaning (a guess, "in pencil") and appearance differ deliberately so a
+// guess can never be mistaken for a refined estimate.
+export const GUESTIMATION_OPTIONS = [1, 2, 3, 5, 8] as const;
+export const GUESTIMATION_OPTION_SET = new Set<number>(GUESTIMATION_OPTIONS);
+
+// A muted graphite/slate-violet ramp, deliberately desaturated so it never reads
+// as SP's green gauge or BV's amber goal. Reinforced by a dashed "pencil" badge
+// in the picker. 0 = N/A.
+export const GUESS_COLORS: Record<number, { text: string; bg: string }> = {
+  0: { text: "#555a64", bg: "rgba(85, 90, 100, 0.08)" },
+  1: { text: "#8a86a6", bg: "rgba(138, 134, 166, 0.10)" },
+  2: { text: "#827e9f", bg: "rgba(130, 126, 159, 0.11)" },
+  3: { text: "#7a7699", bg: "rgba(122, 118, 153, 0.12)" },
+  5: { text: "#726e92", bg: "rgba(114, 110, 146, 0.13)" },
+  8: { text: "#6a668b", bg: "rgba(106, 102, 139, 0.14)" },
+};
+
+export function getGuestimationColor(value: number): { text: string; bg: string } {
+  if (value <= 0) return GUESS_COLORS[0];
+  if (value <= 1) return GUESS_COLORS[1];
+  if (value <= 2) return GUESS_COLORS[2];
+  if (value <= 3) return GUESS_COLORS[3];
+  if (value <= 5) return GUESS_COLORS[5];
+  return GUESS_COLORS[8];
+}
+
+// A ticket's effective points for forward planning: a real story-point value
+// wins, otherwise its guestimation, otherwise 0. SP "present-but-zero" (N/A) is
+// treated as a real 0 so a refined N/A correctly suppresses any stale guess.
+export function effectivePoints(
+  storyPoints: number | null | undefined,
+  guestimation: number | null | undefined,
+): number {
+  if (storyPoints != null) return storyPoints;
+  return guestimation ?? 0;
+}
+
+export type FullnessBand = "healthy" | "approaching" | "over";
+
+// Fullness colour bands (BRDG-303): healthy < 0.85, approaching 0.85-1.0, over > 1.0.
+export function fullnessBand(ratio: number): FullnessBand {
+  if (ratio > 1) return "over";
+  if (ratio >= 0.85) return "approaching";
+  return "healthy";
+}
+
+export const FULLNESS_BAND_COLORS: Record<FullnessBand, { text: string; bg: string; fill: string }> = {
+  healthy:     { text: "var(--color-status-done)",    bg: "var(--color-status-done-subtle)",    fill: "var(--color-status-done)" },
+  approaching: { text: "var(--color-status-warning)", bg: "var(--color-status-warning-subtle)", fill: "var(--color-status-warning)" },
+  over:        { text: "var(--color-status-error)",   bg: "var(--color-status-error-subtle)",   fill: "var(--color-status-error)" },
+};
+
 export interface Assignee {
   name: string;
   initials: string;
@@ -166,6 +220,9 @@ export interface Subtask {
 
 export interface EpicChild extends Subtask {
   storyPoints: number | null;
+  // Forward-planning guestimation (BRDG-303): a PO placeholder estimate, present
+  // only when there is no real storyPoints value. Bridge-local, never in Jira.
+  guestimation?: number | null;
   businessValue: number | null;
   sprintName: string | null;
   subtaskCount: number;
@@ -228,6 +285,9 @@ export interface Ticket {
   epicKey: string | null;
   jiraStatus: JiraStatus;
   storyPoints: number | null;
+  // Forward-planning guestimation (BRDG-303): PO placeholder estimate, present
+  // only when there is no real storyPoints value. Bridge-local, never in Jira.
+  guestimation?: number | null;
   assignee: Assignee | null;
   reporter?: Assignee | null;
   flagged: boolean;

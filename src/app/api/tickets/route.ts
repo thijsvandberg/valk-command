@@ -163,6 +163,7 @@ export async function GET(request: Request) {
       epicKey: t.epicKey ?? null,
       jiraStatus: (t.status ?? "TO DO") as JiraStatus,
       storyPoints: t.storyPoints ?? null,
+      guestimation: meta?.guestimation ?? null,
       assignee: buildAssignee(t.assignee),
       reporter: buildAssignee(t.reporter),
       flagged: t.flagged ?? false,
