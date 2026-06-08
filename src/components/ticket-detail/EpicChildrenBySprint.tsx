@@ -1,12 +1,12 @@
 "use client";
 
-import { useCallback, useRef, useState, type ReactNode } from "react";
+import { useCallback, useMemo, useRef, useState, type ReactNode } from "react";
 import type { EpicChild, Subtask, Sprint, Ticket, JiraStatus, TicketReadiness } from "@/types/ticket";
 import { GroupStatBar } from "@/components/sprint-board/GroupStatBar";
 import { GroupCard } from "@/components/sprint-board/GroupCard";
 import { ChildIssueRow } from "./ChildIssueRow";
 import { ChildIssueComposer } from "./ChildIssueComposer";
-import { groupChildrenBySprint, type ChildGroup } from "@/lib/epic-children-grouping";
+import { groupChildrenBySprint, nextRegularSprintGroup, sortNamedGroups, UNSCHEDULED_GROUP_KEY, type ChildGroup } from "@/lib/epic-children-grouping";
 import { resolveDragEnd, insertLineForRow, type ChildReorder, type ChildMoveToPosition } from "@/lib/epic-children-reorder";
 import { useSessionStorage } from "@/hooks/useSessionStorage";
 import {
@@ -14,6 +14,7 @@ import {
   DragOverlay,
   PointerSensor,
   KeyboardSensor,
+  MeasuringStrategy,
   useSensor,
   useSensors,
   useDroppable,
@@ -305,6 +306,23 @@ export function EpicChildrenBySprint({
 
   const dndEnabled = !!onMoveChild || !!onReorderChild;
 
+  // While dragging, surface the next regular sprint as an extra empty drop target
+  // (BRDG-306) so a child can be pushed one sprint forward into a sprint the epic
+  // isn't in yet, without the right-click menu. Only when moves are enabled; the
+  // synthetic group sorts into the regular series via the shared comparator.
+  const dragGroups = useMemo(() => {
+    if (!dndEnabled || activeDragKey === null) return groups;
+    const extra = nextRegularSprintGroup(groups, sprints);
+    if (!extra) return groups;
+    const unscheduled = groups.filter((g) => g.key === UNSCHEDULED_GROUP_KEY);
+    const named = groups.filter((g) => g.key !== UNSCHEDULED_GROUP_KEY);
+    return [...sortNamedGroups([...named, extra], sprints), ...unscheduled];
+  }, [groups, sprints, activeDragKey, dndEnabled]);
+
+  // Keys that exist in the real grouping; anything in dragGroups outside this set
+  // is the synthetic next-sprint drop zone (drag-only, no create affordance).
+  const realGroupKeys = useMemo(() => new Set(groups.map((g) => g.key)), [groups]);
+
   const handleDragStart = useCallback((e: DragStartEvent) => {
     draggingRef.current = true;
     setActiveDragKey(String(e.active.id));
@@ -344,7 +362,7 @@ export function EpicChildrenBySprint({
         overSprintName: overData?.sprintName ?? null,
         overState: overData?.state ?? null,
         insertAfter: overData?.type === "child" ? isBelowOverRow(active, over) : false,
-        groups,
+        groups: dragGroups,
         sprints,
       });
 
@@ -353,7 +371,7 @@ export function EpicChildrenBySprint({
       else if (res.kind === "move") onMoveChild?.(activeKey, res.targetSprintId);
       else if (res.kind === "move-rejected") onMoveError?.("Cannot move into a closed sprint.");
     },
-    [groups, onMoveChild, onReorderChild, onMoveChildToPosition, onMoveError, sprints],
+    [dragGroups, onMoveChild, onReorderChild, onMoveChildToPosition, onMoveError, sprints],
   );
 
   const handleDragCancel = useCallback(() => {
@@ -391,7 +409,7 @@ export function EpicChildrenBySprint({
           isLast={isLast}
           sprintName={group.sprintName}
           state={group.state}
-          insertLine={insertLineForRow({ rowKey: child.key, activeKey: activeDragKey, overKey: dragOverKey, insertAfter: dragInsertAfter, groups })}
+          insertLine={insertLineForRow({ rowKey: child.key, activeKey: activeDragKey, overKey: dragOverKey, insertAfter: dragInsertAfter, groups: dragGroups })}
           visibleFields={visibleFields}
           renderMetadata={renderMetadata}
           onJiraStatusChange={onJiraStatusChange}
@@ -429,7 +447,9 @@ export function EpicChildrenBySprint({
     );
   };
 
-  const groupCards = groups.map((group) => {
+  const groupCards = dragGroups.map((group) => {
+    // The drag-only next-sprint drop zone: empty, no create affordance, just a hint.
+    const isSynthetic = !realGroupKeys.has(group.key);
     const isCollapsed = !!collapsed[group.key];
     const isUnscheduled = group.sprintName === null;
     const filterActive = unpointedFilterKey === group.key;
@@ -475,7 +495,10 @@ export function EpicChildrenBySprint({
     // No "+" on closed sprints (Jira rejects creating into them) or on named
     // groups whose sprint cannot be resolved to an id.
     const canCreate =
-      !!onCreateChild && group.state !== "closed" && !(group.sprintName !== null && createSprintId === undefined);
+      !isSynthetic &&
+      !!onCreateChild &&
+      group.state !== "closed" &&
+      !(group.sprintName !== null && createSprintId === undefined);
     const isComposerOpen = composerGroupKey === group.key;
 
     const headerExtras =
@@ -512,7 +535,11 @@ export function EpicChildrenBySprint({
       ? visibleItems.filter((c) => !c.key.startsWith("pending-")).map((c) => c.key)
       : [];
     const rows = visibleItems.map((child, idx) => renderRow(child, group, idx, visibleItems.length));
-    const body = (
+    const body = isSynthetic ? (
+      <div className="px-4 py-3 text-body-sm italic text-text-muted">
+        Drop here to move to {group.label}
+      </div>
+    ) : (
       <>
         {dndEnabled ? (
           <SortableContext items={sortableIds} strategy={verticalListSortingStrategy}>
@@ -579,6 +606,9 @@ export function EpicChildrenBySprint({
         <DndContext
           sensors={sensors}
           collisionDetection={epicChildrenCollisionDetection}
+          // Re-measure droppables continuously so the next-sprint drop zone, which
+          // only mounts once a drag begins (BRDG-306), is detected as a target.
+          measuring={{ droppable: { strategy: MeasuringStrategy.Always } }}
           onDragStart={handleDragStart}
           onDragOver={handleDragOver}
           onDragEnd={handleDragEnd}

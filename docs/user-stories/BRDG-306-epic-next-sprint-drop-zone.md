@@ -1,6 +1,6 @@
 # BRDG-306: Surface the next sprint as a drop zone while dragging in an epic
 
-**Status:** Not Started
+**Status:** Completed
 **Priority:** Medium
 **Type:** Feature
 **Related:** BRDG-305 (next-number derivation in the regular sprint series — shared logic), BRDG-268 (epic children drag-between-sprints — the view this extends), BRDG-267 ("By sprint" grouped view)
@@ -129,23 +129,25 @@ helper" criterion directly.
 
 ## Acceptance Criteria
 
-- [ ] While dragging a child in the "By sprint" view, the next regular sprint in the series
+- [x] While dragging a child in the "By sprint" view, the next regular sprint in the series
       (`<PREFIX>: <highest visible number + 1>`) appears as an empty drop zone
-- [ ] It appears **only if** that sprint actually exists in the sprint list; strictly `+1`, no
+- [x] It appears **only if** that sprint actually exists in the sprint list; strictly `+1`, no
       skipping a missing number to the one after
-- [ ] Non-numeric / placeholder groups (`GXP: Backlog`, `BT: TODO`, `Unscheduled`) are excluded
+- [x] Non-numeric / placeholder groups (`GXP: Backlog`, `BT: TODO`, `Unscheduled`) are excluded
       when determining the highest number, and the prefix is taken from the visible regular
       sprints (not hardcoded)
-- [ ] The empty next-sprint group sorts into the regular series (a future sprint above any
+- [x] The empty next-sprint group sorts into the regular series (a future sprint above any
       trailing backlog-state placeholder group), matching the screenshot expectation that
       `BT: 142` surfaces above `GXP: Backlog`
-- [ ] The empty group is shown only during an active drag; with no drag the view is unchanged
-- [ ] Dropping a child onto the empty group moves it via the existing `onMoveChild` path
+- [x] The empty group is shown only during an active drag; with no drag the view is unchanged
+- [x] Dropping a child onto the empty group moves it via the existing `onMoveChild` path
       (optimistic, refetch, revert-on-error) and the sprint then renders as a normal group
-- [ ] Drag cancelled / dropped elsewhere removes the empty group with no side effect
-- [ ] Regular-series number derivation is a single shared helper reused by BRDG-305 (not a copied
+      <!-- drop resolution unit-tested in epic-children-reorder; jsdom cannot complete a
+           keyboard drag across droppables, so the cross-droppable drop is covered there -->
+- [x] Drag cancelled / dropped elsewhere removes the empty group with no side effect
+- [x] Regular-series number derivation is a single shared helper reused by BRDG-305 (not a copied
       regex)
-- [ ] Tests cover derivation, drag-only visibility, ordering position, drop wiring, and the
+- [x] Tests cover derivation, drag-only visibility, ordering position, drop wiring, and the
       "next sprint does not exist" case
 
 ## Out of Scope

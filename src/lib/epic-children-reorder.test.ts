@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest";
 import { computeReorder, applyLocalOrder, groupKeyForItem, resolveDragEnd, insertLineForRow } from "./epic-children-reorder";
-import { groupChildrenBySprint, UNSCHEDULED_GROUP_KEY } from "./epic-children-grouping";
+import { groupChildrenBySprint, nextRegularSprintGroup, UNSCHEDULED_GROUP_KEY } from "./epic-children-grouping";
 import type { EpicChild, Sprint } from "@/types/ticket";
 
 function child(key: string, sprintName: string | null, jiraRank: number | null): EpicChild {
@@ -231,6 +231,36 @@ describe("resolveDragEnd", () => {
       overState: "active",
     });
     expect(res).toEqual({ kind: "noop" });
+  });
+
+  it("resolves a drop onto the synthetic next-sprint group to its sprint id (BRDG-306)", () => {
+    // The next-sprint drop zone is an empty group injected only during drag. From
+    // resolveDragEnd's view it is a normal future group, so the move resolves to id.
+    const next = nextRegularSprintGroup(
+      [{ key: "Sprint 2", label: "Sprint 2", sprintName: "Sprint 2", items: [], isActive: false, state: "future", dateRange: null }],
+      SPRINTS,
+    );
+    expect(next).toBeNull(); // "Sprint 2" is not a regular PREFIX: N name.
+
+    const regularSprints: Sprint[] = [
+      { id: "138", name: "BT: 138", dateRange: "", state: "active", ticketCount: 0, startDate: "2026-05-22", endDate: null, goal: null },
+      { id: "139", name: "BT: 139", dateRange: "", state: "future", ticketCount: 0, startDate: "2026-06-05", endDate: null, goal: null },
+    ];
+    const regularGroups = groupChildrenBySprint([child("VPL-20", "BT: 138", 0)], regularSprints);
+    const synthetic = nextRegularSprintGroup(regularGroups, regularSprints);
+    expect(synthetic?.sprintName).toBe("BT: 139");
+
+    const res = resolveDragEnd({
+      childSprintName: "BT: 138",
+      groups: [...regularGroups, synthetic!],
+      sprints: regularSprints,
+      activeKey: "VPL-20",
+      overId: "BT: 139",
+      overType: "group",
+      overSprintName: "BT: 139",
+      overState: "future",
+    });
+    expect(res).toEqual({ kind: "move", targetSprintId: "139" });
   });
 });
 

@@ -110,6 +110,71 @@ describe("EpicChildrenBySprint row context menu", () => {
   });
 });
 
+// The next-sprint drop zone (BRDG-306) needs regular `PREFIX: N` sprint names so the
+// series helpers engage. jsdom cannot complete a keyboard drag across droppables (no
+// measured rects), so the move-resolution itself is unit-tested in epic-children-reorder;
+// here we verify the drag-only visibility and affordances of the synthetic group.
+describe("EpicChildrenBySprint next-sprint drop zone", () => {
+  const REGULAR: Sprint[] = [
+    { id: "138", name: "BT: 138", dateRange: "22 May - 4 Jun", state: "active", ticketCount: 0, startDate: "2026-05-22", endDate: null, goal: null },
+    { id: "139", name: "BT: 139", dateRange: "5 Jun - 18 Jun", state: "future", ticketCount: 0, startDate: "2026-06-05", endDate: null, goal: null },
+    { id: "142", name: "GXP: Backlog", dateRange: "", state: "backlog", ticketCount: 0, startDate: null, endDate: null, goal: null },
+  ];
+
+  function setupRegular(overrides: Partial<Parameters<typeof EpicChildrenBySprint>[0]> = {}) {
+    const onMoveChild = vi.fn();
+    render(
+      <EpicChildrenBySprint
+        items={[child("VPL-20", "BT: 138"), child("VPL-21", "GXP: Backlog")]}
+        sprints={REGULAR}
+        ticketKey="VPL-2"
+        visibleFields={new Set(["issueKey", "status"])}
+        renderMetadata={() => null}
+        onJiraStatusChange={vi.fn()}
+        onReadinessChange={vi.fn()}
+        onMoveChild={onMoveChild}
+        onCreateChild={vi.fn()}
+        {...overrides}
+      />,
+    );
+    return { onMoveChild };
+  }
+
+  function startKeyboardDrag(childKey: string) {
+    const handle = screen.getByLabelText(`Drag ${childKey} to reorder or move it to another sprint`);
+    handle.focus();
+    fireEvent.keyDown(handle, { key: " ", code: "Space" });
+  }
+
+  it("does not show the next sprint as a group when no drag is active", () => {
+    setupRegular();
+    // Highest visible regular sprint is BT: 138 -> next is BT: 139, which exists,
+    // but it must stay hidden until a drag begins.
+    expect(screen.queryByText("BT: 139")).not.toBeInTheDocument();
+  });
+
+  it("surfaces the next regular sprint as an empty drop zone during a drag", () => {
+    setupRegular();
+    startKeyboardDrag("VPL-20");
+    expect(screen.getByText("BT: 139")).toBeInTheDocument();
+    expect(screen.getByText("Drop here to move to BT: 139")).toBeInTheDocument();
+  });
+
+  it("does not offer a create button on the synthetic drop zone", () => {
+    setupRegular();
+    startKeyboardDrag("VPL-20");
+    expect(screen.queryByLabelText("Create issue in BT: 139")).not.toBeInTheDocument();
+  });
+
+  it("shows nothing extra when the next sprint does not exist in the sprint list", () => {
+    // Children sit in BT: 139 (the highest existing regular sprint); BT: 140 is absent.
+    setupRegular({ items: [child("VPL-22", "BT: 139")] });
+    startKeyboardDrag("VPL-22");
+    expect(screen.queryByText("BT: 140")).not.toBeInTheDocument();
+    expect(screen.queryByText(/Drop here to move to/)).not.toBeInTheDocument();
+  });
+});
+
 describe("EpicChildrenBySprint inline create", () => {
   function setupCreate(overrides: Partial<Parameters<typeof EpicChildrenBySprint>[0]> = {}) {
     const onCreateChild = vi.fn();
