@@ -69,6 +69,13 @@ export function usePickerState(opts: UsePickerStateOptions = {}): UsePickerState
     const trigger = triggerRef.current;
     const popover = popoverRef.current;
     if (!trigger || !popover) return;
+    // A hover-reveal slot (HoverRevealSlot) sets `display:none` on the trigger
+    // when the row is no longer hovered. Once the popover is open the cursor
+    // moves off the row to reach it, collapsing the trigger to a 0x0 rect; a
+    // reposition pass then would snap the popover to the top-left corner. Keep
+    // the last good position instead while the trigger is collapsed.
+    const rect = trigger.getBoundingClientRect();
+    if (rect.width === 0 && rect.height === 0) return;
     void computePosition(trigger, popover, {
       strategy: "fixed",
       placement,
