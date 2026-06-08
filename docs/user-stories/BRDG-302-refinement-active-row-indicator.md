@@ -78,7 +78,7 @@ that is open in its side panel.
 
 ## Checklist
 
-- [ ] Add `isActive` prop + active styling to `ChildIssueRow`
-- [ ] Pass `previewTicketKey` -> `isActive` through `RefinementTicketList`
-- [ ] Verify active vs checked vs both render distinctly
-- [ ] Tests for row and list
+- [x] Add `isActive` prop + active styling to `ChildIssueRow`
+- [x] Pass `previewTicketKey` -> `isActive` through `RefinementTicketList`
+- [x] Verify active vs checked vs both render distinctly
+- [x] Tests for row and list

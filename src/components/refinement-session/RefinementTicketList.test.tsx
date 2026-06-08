@@ -15,8 +15,8 @@ vi.mock("@/hooks/useSectionVisibility", () => ({
 }));
 
 vi.mock("@/components/ticket-detail/ChildIssueRow", () => ({
-  ChildIssueRow: ({ item, isChecked, onCheckboxClick, onSelect }: { item: Ticket; isChecked: boolean; onCheckboxClick: (e: { shiftKey: boolean }) => void; onSelect: (key: string, e: { metaKey: boolean; ctrlKey: boolean }) => void }) => (
-    <div data-testid={`ticket-row-${item.key}`} data-selected={isChecked}>
+  ChildIssueRow: ({ item, isChecked, isActive, onCheckboxClick, onSelect }: { item: Ticket; isChecked: boolean; isActive: boolean; onCheckboxClick: (e: { shiftKey: boolean }) => void; onSelect: (key: string, e: { metaKey: boolean; ctrlKey: boolean }) => void }) => (
+    <div data-testid={`ticket-row-${item.key}`} data-selected={isChecked} data-active={isActive}>
       <button onClick={() => onSelect?.(item.key, { metaKey: false, ctrlKey: false })}>{item.title}</button>
       <button onClick={() => onCheckboxClick?.({ shiftKey: false })}>Toggle {item.key}</button>
     </div>
@@ -177,6 +177,52 @@ describe("RefinementTicketList", () => {
       />,
     );
     expect(screen.getByTestId("ticket-row-VPL-1")).toHaveAttribute("data-selected", "true");
+  });
+
+  it("marks the row matching previewTicketKey as active, distinct from the checked state", () => {
+    const tickets = [makeTicket("VPL-1", "Ticket One"), makeTicket("VPL-2", "Ticket Two")];
+    const queueHook = makeQueueHook({ queue: ["VPL-1"] });
+    render(
+      <RefinementTicketList
+        {...defaultProps}
+        availableTickets={tickets}
+        queueHook={queueHook as AnyQueueHook}
+        previewTicketKey="VPL-2"
+      />,
+    );
+    // VPL-2 is open in the sidebar (active) but not queued (not checked).
+    expect(screen.getByTestId("ticket-row-VPL-2")).toHaveAttribute("data-active", "true");
+    expect(screen.getByTestId("ticket-row-VPL-2")).toHaveAttribute("data-selected", "false");
+    // VPL-1 is queued (checked) but not the open ticket (not active).
+    expect(screen.getByTestId("ticket-row-VPL-1")).toHaveAttribute("data-active", "false");
+    expect(screen.getByTestId("ticket-row-VPL-1")).toHaveAttribute("data-selected", "true");
+  });
+
+  it("can mark a row as both active and checked", () => {
+    const tickets = [makeTicket("VPL-1", "Ticket One")];
+    const queueHook = makeQueueHook({ queue: ["VPL-1"] });
+    render(
+      <RefinementTicketList
+        {...defaultProps}
+        availableTickets={tickets}
+        queueHook={queueHook as AnyQueueHook}
+        previewTicketKey="VPL-1"
+      />,
+    );
+    expect(screen.getByTestId("ticket-row-VPL-1")).toHaveAttribute("data-active", "true");
+    expect(screen.getByTestId("ticket-row-VPL-1")).toHaveAttribute("data-selected", "true");
+  });
+
+  it("marks no row active when previewTicketKey is null (sidebar closed)", () => {
+    const tickets = [makeTicket("VPL-1", "Ticket One")];
+    render(
+      <RefinementTicketList
+        {...defaultProps}
+        availableTickets={tickets}
+        previewTicketKey={null}
+      />,
+    );
+    expect(screen.getByTestId("ticket-row-VPL-1")).toHaveAttribute("data-active", "false");
   });
 
   it("calls toggleTicket when the checkbox is clicked (queue control unchanged)", () => {

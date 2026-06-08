@@ -232,6 +232,38 @@ describe("ChildIssueRow", () => {
     });
   });
 
+  describe("active (open-in-sidebar) state", () => {
+    it("applies the active highlight when isActive", () => {
+      const { container } = render(<ChildIssueRow item={baseSub} isLast={false} isActive />);
+      expect(container.firstChild).toHaveClass("bg-[var(--color-brand-600)]/12");
+      expect(container.firstChild).toHaveClass("shadow-[inset_3px_0_0_0_var(--color-brand-300)]");
+    });
+
+    it("applies the lighter checked highlight (not the active one) when only isChecked", () => {
+      const { container } = render(<ChildIssueRow item={baseSub} isLast={false} isChecked />);
+      expect(container.firstChild).toHaveClass("bg-[var(--color-brand-500)]/[0.06]");
+      expect(container.firstChild).not.toHaveClass("bg-[var(--color-brand-600)]/12");
+    });
+
+    it("lets active win over checked when a row is both", () => {
+      const { container } = render(<ChildIssueRow item={baseSub} isLast={false} isActive isChecked />);
+      expect(container.firstChild).toHaveClass("bg-[var(--color-brand-600)]/12");
+      expect(container.firstChild).not.toHaveClass("bg-[var(--color-brand-500)]/[0.06]");
+    });
+
+    it("has neither highlight when inactive and unchecked", () => {
+      const { container } = render(<ChildIssueRow item={baseSub} isLast={false} />);
+      expect(container.firstChild).not.toHaveClass("bg-[var(--color-brand-600)]/12");
+      expect(container.firstChild).not.toHaveClass("bg-[var(--color-brand-500)]/[0.06]");
+    });
+
+    it("drops the generic hover background on the active row so its tint stays stable", () => {
+      const { container } = render(<ChildIssueRow item={baseSub} isLast={false} isActive onSelect={vi.fn()} />);
+      expect(container.firstChild).not.toHaveClass("hover:bg-overlay-subtle");
+      expect(container.firstChild).toHaveClass("cursor-pointer");
+    });
+  });
+
   it("renders line-less rows to match the sprint board (no inter-row border)", () => {
     const { container } = render(<ChildIssueRow item={baseSub} isLast={false} />);
     expect(container.firstChild).not.toHaveClass("border-b");

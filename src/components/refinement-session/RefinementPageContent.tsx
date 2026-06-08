@@ -391,6 +391,7 @@ export function RefinementPageContent({
                 filters={filters}
                 queueHook={queueHook}
                 onSelectTicket={handleSelectTicket}
+                previewTicketKey={previewTicketKey}
                 pinnedSprintIds={pinnedSprintIds}
                 epicOptions={epicOptions}
                 sprintNameMap={sprintNameMap}

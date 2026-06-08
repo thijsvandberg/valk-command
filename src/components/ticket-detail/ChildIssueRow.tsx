@@ -38,6 +38,10 @@ interface ChildIssueRowProps {
   /** Multiselect: renders a leading checkbox when set. */
   selectable?: boolean;
   isChecked?: boolean;
+  /** True when this row's ticket is the one open in the detail sidebar. Independent of
+      isChecked (queue membership): a row can be active, checked, both, or neither. Mirrors
+      the Sprint Board's selected-row highlight and takes visual precedence over checked. */
+  isActive?: boolean;
   /** True when any row in the surrounding list is checked (pins the gutter open). */
   someChecked?: boolean;
   onCheckboxClick?: (e: React.MouseEvent) => void;
@@ -89,6 +93,7 @@ export function ChildIssueRow({
   onContextMenu,
   selectable = false,
   isChecked = false,
+  isActive = false,
   someChecked = false,
   onCheckboxClick,
   inlineCheckbox = false,
@@ -142,8 +147,14 @@ export function ChildIssueRow({
       ref={ref}
       style={style}
       className={`group/row relative flex items-center gap-2 ${spacious ? "py-[10px]" : "py-[7px]"} pl-4 pr-3 ${
-        onSelect && !isPending ? "cursor-pointer hover:bg-overlay-subtle" : ""
-      } ${isPending ? "opacity-50" : ""} ${isChecked ? "bg-[var(--color-brand-500)]/[0.06]" : ""} ${className}`}
+        onSelect && !isPending ? (isActive ? "cursor-pointer" : "cursor-pointer hover:bg-overlay-subtle") : ""
+      } ${isPending ? "opacity-50" : ""} ${
+        isActive
+          ? "bg-[var(--color-brand-600)]/12 shadow-[inset_3px_0_0_0_var(--color-brand-300)]"
+          : isChecked
+          ? "bg-[var(--color-brand-500)]/[0.06]"
+          : ""
+      } ${className}`}
       onClick={handleClick}
       onContextMenu={onContextMenu}
       {...(dndProps ?? {})}

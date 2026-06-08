@@ -36,6 +36,8 @@ interface RefinementTicketListProps {
   queueHook: ReturnType<typeof useRefinementQueue>;
   /** Open a ticket in the side panel. Distinct from the checkbox, which builds the queue. */
   onSelectTicket: (key: string) => void;
+  /** Key of the ticket currently open in the side panel, highlighted as the active row. */
+  previewTicketKey?: string | null;
   pinnedSprintIds: Set<string>;
   epicOptions: string[];
   sprintNameMap: Record<string, string>;
@@ -60,6 +62,7 @@ export function RefinementTicketList({
   filters,
   queueHook,
   onSelectTicket,
+  previewTicketKey,
   pinnedSprintIds,
   epicOptions,
   sprintNameMap,
@@ -248,6 +251,7 @@ export function RefinementTicketList({
                 onReadinessChange={onReadinessChange ? (r) => onReadinessChange(ticket.key, r) : undefined}
                 selectable
                 isChecked={isChecked}
+                isActive={ticket.key === previewTicketKey}
                 someChecked={queueHook.queue.length > 0}
                 onCheckboxClick={(e) => queueHook.toggleTicket(ticket.key, idx, e.shiftKey)}
                 onSelect={(key) => onSelectTicket(key)}
