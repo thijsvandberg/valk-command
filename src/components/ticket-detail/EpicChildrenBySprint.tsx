@@ -6,7 +6,7 @@ import { GroupStatBar } from "@/components/sprint-board/GroupStatBar";
 import { GroupCard } from "@/components/sprint-board/GroupCard";
 import { ChildIssueRow } from "./ChildIssueRow";
 import { ChildIssueComposer } from "./ChildIssueComposer";
-import { groupChildrenBySprint, nextRegularSprintGroup, sortNamedGroups, UNSCHEDULED_GROUP_KEY, type ChildGroup } from "@/lib/epic-children-grouping";
+import { groupChildrenBySprint, nextRegularSprintGroup, nextRegularSprintCreateGroup, sortNamedGroups, UNSCHEDULED_GROUP_KEY, type ChildGroup } from "@/lib/epic-children-grouping";
 import { resolveDragEnd, insertLineForRow, type ChildReorder, type ChildMoveToPosition } from "@/lib/epic-children-reorder";
 import { useSessionStorage } from "@/hooks/useSessionStorage";
 import {
@@ -25,7 +25,7 @@ import {
 import { SortableContext, useSortable, verticalListSortingStrategy } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import { epicChildrenCollisionDetection } from "./epic-children-collision";
-import { Zap, CircleDot, CalendarRange, GripVertical, Plus } from "lucide-react";
+import { Zap, CircleDot, CalendarRange, GripVertical, Plus, Sparkles } from "lucide-react";
 
 export type { ChildReorder, ChildMoveToPosition };
 
@@ -52,6 +52,12 @@ interface EpicChildrenBySprintProps {
   onMoveChildToPosition?: (move: ChildMoveToPosition) => void;
   /** Surfaces a move rejection (e.g. closed sprint) to the parent's toast. */
   onMoveError?: (message: string) => void;
+  /**
+   * Dropping onto the BRDG-309 "create the next sprint" zone. Receives the dragged
+   * child's key; the parent opens the Create Sprint modal and, on create, moves the
+   * child into the new sprint. When omitted, the create zone is not offered.
+   */
+  onPlanNextSprint?: (childKey: string) => void;
   /**
    * Create a child issue into a sprint. `target.sprintId` is null for the
    * Unscheduled group (no sprint). When supplied, each non-closed group header
@@ -230,17 +236,26 @@ function DroppableGroup({
 }) {
   const { setNodeRef, isOver } = useDroppable({
     id: group.key,
-    data: { type: "group", sprintName: group.sprintName, state: group.state },
+    data: { type: "group", sprintName: group.sprintName, state: group.state, isCreateZone: group.isCreateZone },
   });
   const isClosed = group.state === "closed";
+  const isCreate = !!group.isCreateZone;
   const highlight = isOver && !isClosed;
+  // The create zone (BRDG-309) reads as a "new sprint" action, not a plain move:
+  // a persistent dashed brand outline (vs BRDG-306's solid ring) that brightens on
+  // hover. Outline sits outside the card's own border with no layout shift.
+  const createOutline = isCreate
+    ? highlight
+      ? "outline-2 outline-dashed outline-offset-2 outline-[var(--color-brand-400)]"
+      : "outline-2 outline-dashed outline-offset-2 outline-[var(--color-brand-400)]/45"
+    : "";
   return (
     <div
       ref={setNodeRef}
-      className={`rounded-xl ${highlight ? "ring-2 ring-[var(--color-brand-400)]/70" : "ring-0"} ${
-        isDragging && isClosed ? "opacity-50" : ""
-      }`}
-      style={{ transition: "box-shadow 0.12s ease, opacity 0.12s ease" }}
+      className={`rounded-xl ${
+        isCreate ? createOutline : highlight ? "ring-2 ring-[var(--color-brand-400)]/70" : "ring-0"
+      } ${isDragging && isClosed ? "opacity-50" : ""}`}
+      style={{ transition: "box-shadow 0.12s ease, outline-color 0.12s ease, opacity 0.12s ease" }}
     >
       <GroupCard {...cardProps}>{children}</GroupCard>
     </div>
@@ -261,6 +276,7 @@ export function EpicChildrenBySprint({
   onReorderChild,
   onMoveChildToPosition,
   onMoveError,
+  onPlanNextSprint,
   onCreateChild,
   checkedKeys,
   someChecked,
@@ -312,12 +328,17 @@ export function EpicChildrenBySprint({
   // synthetic group sorts into the regular series via the shared comparator.
   const dragGroups = useMemo(() => {
     if (!dndEnabled || activeDragKey === null) return groups;
-    const extra = nextRegularSprintGroup(groups, sprints);
+    // The next-sprint slot is mutually exclusive: BRDG-306's plain move zone when
+    // that sprint already exists, else BRDG-309's create zone (only when the parent
+    // can handle the create flow). At most one of these is ever non-null.
+    const extra =
+      nextRegularSprintGroup(groups, sprints) ??
+      (onPlanNextSprint ? nextRegularSprintCreateGroup(groups, sprints) : null);
     if (!extra) return groups;
     const unscheduled = groups.filter((g) => g.key === UNSCHEDULED_GROUP_KEY);
     const named = groups.filter((g) => g.key !== UNSCHEDULED_GROUP_KEY);
     return [...sortNamedGroups([...named, extra], sprints), ...unscheduled];
-  }, [groups, sprints, activeDragKey, dndEnabled]);
+  }, [groups, sprints, activeDragKey, dndEnabled, onPlanNextSprint]);
 
   // Keys that exist in the real grouping; anything in dragGroups outside this set
   // is the synthetic next-sprint drop zone (drag-only, no create affordance).
@@ -351,8 +372,15 @@ export function EpicChildrenBySprint({
       const activeKey = String(active.id);
       const childSprintName = (active.data.current?.sprintName ?? null) as string | null;
       const overData = over.data.current as
-        | { type?: "child" | "group"; sprintName?: string | null; state?: Sprint["state"] | null }
+        | { type?: "child" | "group"; sprintName?: string | null; state?: Sprint["state"] | null; isCreateZone?: boolean }
         | undefined;
+
+      // BRDG-309: dropping onto the create zone does not move silently; it hands the
+      // child key to the parent, which opens the Create Sprint modal then moves on create.
+      if (overData?.isCreateZone) {
+        onPlanNextSprint?.(activeKey);
+        return;
+      }
 
       const res = resolveDragEnd({
         activeKey,
@@ -371,7 +399,7 @@ export function EpicChildrenBySprint({
       else if (res.kind === "move") onMoveChild?.(activeKey, res.targetSprintId);
       else if (res.kind === "move-rejected") onMoveError?.("Cannot move into a closed sprint.");
     },
-    [dragGroups, onMoveChild, onReorderChild, onMoveChildToPosition, onMoveError, sprints],
+    [dragGroups, onMoveChild, onReorderChild, onMoveChildToPosition, onMoveError, onPlanNextSprint, sprints],
   );
 
   const handleDragCancel = useCallback(() => {
@@ -450,6 +478,8 @@ export function EpicChildrenBySprint({
   const groupCards = dragGroups.map((group) => {
     // The drag-only next-sprint drop zone: empty, no create affordance, just a hint.
     const isSynthetic = !realGroupKeys.has(group.key);
+    // BRDG-309's variant: dropping here opens the Create Sprint modal rather than moving.
+    const isCreateZone = !!group.isCreateZone;
     const isCollapsed = !!collapsed[group.key];
     const isUnscheduled = group.sprintName === null;
     const filterActive = unpointedFilterKey === group.key;
@@ -481,9 +511,11 @@ export function EpicChildrenBySprint({
           if (c) setCollapsed((prev) => ({ ...prev, [group.key]: false }));
         }}
         leadingIcon={
-          isUnscheduled
-            ? <CircleDot size={12} />
-            : <Zap size={12} style={{ color: "var(--color-icon-sprint)" }} />
+          isCreateZone
+            ? <Sparkles size={12} className="text-[var(--color-brand-400)]" />
+            : isUnscheduled
+              ? <CircleDot size={12} />
+              : <Zap size={12} style={{ color: "var(--color-icon-sprint)" }} />
         }
       />
     );
@@ -501,8 +533,11 @@ export function EpicChildrenBySprint({
       !(group.sprintName !== null && createSprintId === undefined);
     const isComposerOpen = composerGroupKey === group.key;
 
-    const headerExtras =
-      group.state || group.dateRange ? (
+    const headerExtras = isCreateZone ? (
+      <span className="rounded px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-[var(--color-brand-300)] bg-[var(--color-brand-500)]/15">
+        New sprint
+      </span>
+    ) : group.state || group.dateRange ? (
         <>
           {/* Below a cramped card width the state chip is dropped first so the
               item count + scores stay readable (the @container is GroupCard's header row). */}
@@ -535,7 +570,15 @@ export function EpicChildrenBySprint({
       ? visibleItems.filter((c) => !c.key.startsWith("pending-")).map((c) => c.key)
       : [];
     const rows = visibleItems.map((child, idx) => renderRow(child, group, idx, visibleItems.length));
-    const body = isSynthetic ? (
+    const body = isCreateZone ? (
+      <div className="flex items-center gap-2 px-4 py-3 text-body-sm text-[var(--color-brand-300)]">
+        <Plus size={13} strokeWidth={2} className="shrink-0" />
+        <span>
+          Create new sprint <span className="font-semibold">{group.label}</span>
+          <span className="text-text-muted">… and move here</span>
+        </span>
+      </div>
+    ) : isSynthetic ? (
       <div className="px-4 py-3 text-body-sm italic text-text-muted">
         Drop here to move to {group.label}
       </div>

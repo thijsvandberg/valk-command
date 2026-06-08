@@ -166,12 +166,101 @@ describe("EpicChildrenBySprint next-sprint drop zone", () => {
     expect(screen.queryByLabelText("Create issue in BT: 139")).not.toBeInTheDocument();
   });
 
-  it("shows nothing extra when the next sprint does not exist in the sprint list", () => {
+  it("shows nothing extra when the next sprint does not exist and no create handler is wired", () => {
     // Children sit in BT: 139 (the highest existing regular sprint); BT: 140 is absent.
+    // Without onPlanNextSprint the BRDG-309 create zone must not appear either.
     setupRegular({ items: [child("VPL-22", "BT: 139")] });
     startKeyboardDrag("VPL-22");
     expect(screen.queryByText("BT: 140")).not.toBeInTheDocument();
     expect(screen.queryByText(/Drop here to move to/)).not.toBeInTheDocument();
+    expect(screen.queryByText(/Create new sprint/)).not.toBeInTheDocument();
+  });
+});
+
+// BRDG-309: the "create the next sprint" drop zone. It is the inverse of BRDG-306 -
+// it appears only when the next regular sprint does NOT exist yet, and is wired only
+// when the parent supplies onPlanNextSprint. As with BRDG-306, jsdom cannot complete
+// a drag across droppables, so the drop -> modal flow is covered at the section level;
+// here we verify drag-only + absent-only visibility and the distinct create affordances.
+describe("EpicChildrenBySprint create-next-sprint drop zone (BRDG-309)", () => {
+  const REGULAR: Sprint[] = [
+    { id: "138", name: "BT: 138", dateRange: "22 May - 4 Jun", state: "active", ticketCount: 0, startDate: "2026-05-22", endDate: null, goal: null },
+    { id: "139", name: "BT: 139", dateRange: "5 Jun - 18 Jun", state: "future", ticketCount: 0, startDate: "2026-06-05", endDate: null, goal: null },
+  ];
+
+  function setupCreate(overrides: Partial<Parameters<typeof EpicChildrenBySprint>[0]> = {}) {
+    const onPlanNextSprint = vi.fn();
+    render(
+      <EpicChildrenBySprint
+        // Highest existing regular sprint is BT: 139, so the next candidate is BT: 140,
+        // which is absent from REGULAR -> the create zone is eligible.
+        items={[child("VPL-30", "BT: 139")]}
+        sprints={REGULAR}
+        ticketKey="VPL-3"
+        visibleFields={new Set(["issueKey", "status"])}
+        renderMetadata={() => null}
+        onJiraStatusChange={vi.fn()}
+        onReadinessChange={vi.fn()}
+        onMoveChild={vi.fn()}
+        onCreateChild={vi.fn()}
+        onPlanNextSprint={onPlanNextSprint}
+        {...overrides}
+      />,
+    );
+    return { onPlanNextSprint };
+  }
+
+  function startKeyboardDrag(childKey: string) {
+    const handle = screen.getByLabelText(`Drag ${childKey} to reorder or move it to another sprint`);
+    handle.focus();
+    fireEvent.keyDown(handle, { key: " ", code: "Space" });
+  }
+
+  it("does not show the create zone until a drag begins", () => {
+    setupCreate();
+    expect(screen.queryByText(/Create new sprint/)).not.toBeInTheDocument();
+    expect(screen.queryByText("New sprint")).not.toBeInTheDocument();
+  });
+
+  it("surfaces the create zone during a drag, hinting the predicted name", () => {
+    setupCreate();
+    startKeyboardDrag("VPL-30");
+    expect(screen.getByText(/Create new sprint/)).toBeInTheDocument();
+    // The predicted next name (BT: 139 + 1) is hinted in the zone: it shows both as
+    // the group label and inline in the create body.
+    expect(screen.getAllByText("BT: 140").length).toBeGreaterThan(0);
+  });
+
+  it("reads as a create action, not a plain move (distinct from BRDG-306)", () => {
+    setupCreate();
+    startKeyboardDrag("VPL-30");
+    // Distinct "New sprint" treatment, and NOT BRDG-306's plain "Drop here to move to".
+    expect(screen.getByText("New sprint")).toBeInTheDocument();
+    expect(screen.queryByText(/Drop here to move to/)).not.toBeInTheDocument();
+  });
+
+  it("offers no create '+' button on the create zone (drag-only)", () => {
+    setupCreate();
+    startKeyboardDrag("VPL-30");
+    expect(screen.queryByLabelText("Create issue in BT: 140")).not.toBeInTheDocument();
+  });
+
+  it("does not show the create zone when onPlanNextSprint is absent", () => {
+    setupCreate({ onPlanNextSprint: undefined });
+    startKeyboardDrag("VPL-30");
+    expect(screen.queryByText(/Create new sprint/)).not.toBeInTheDocument();
+  });
+
+  it("yields to BRDG-306's plain zone when the next sprint already exists", () => {
+    // Add BT: 140 to the sprint list: now the next slot exists, so BRDG-306's plain
+    // move zone shows and BRDG-309's create zone stays inert (mutually exclusive).
+    setupCreate({
+      sprints: [...REGULAR, { id: "140", name: "BT: 140", dateRange: "", state: "future", ticketCount: 0, startDate: "2026-06-19", endDate: null, goal: null }],
+    });
+    startKeyboardDrag("VPL-30");
+    expect(screen.getByText("Drop here to move to BT: 140")).toBeInTheDocument();
+    expect(screen.queryByText(/Create new sprint/)).not.toBeInTheDocument();
+    expect(screen.queryByText("New sprint")).not.toBeInTheDocument();
   });
 });
 
