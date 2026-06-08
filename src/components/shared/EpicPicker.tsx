@@ -2,7 +2,7 @@
 
 import { useState, useRef, useEffect, useCallback, useMemo } from "react";
 import Link from "next/link";
-import { Check, Search, Zap, X, RefreshCw, Sparkles, AlertTriangle, ArrowUpRight } from "lucide-react";
+import { Check, Search, Zap, X, RefreshCw, Sparkles, AlertTriangle, ArrowUpRight, ExternalLink, PanelRight } from "lucide-react";
 import { BasePicker } from "@/components/shared/BasePicker";
 import { EpicBadge } from "@/components/shared/IssueMetaBadges";
 import useSWR from "swr";
@@ -45,6 +45,8 @@ export function EpicPicker({
   textClass = "text-label",
   emptyLabel = "Select epic",
   emptyTriggerClassName,
+  triggerClassName,
+  onViewInSidebar,
 }: {
   value: EpicOption | null;
   onChange: (epic: EpicOption | null) => void;
@@ -58,10 +60,17 @@ export function EpicPicker({
   // placeholder on issue rows (BRDG-131).
   emptyLabel?: string;
   emptyTriggerClassName?: string;
+  // Extra classes for the selected-value trigger (e.g. `min-w-0 shrink` so the
+  // epic pill yields space in a dense board row).
+  triggerClassName?: string;
+  // When provided, the dropdown's primary action becomes "View in sidebar"
+  // (opening the epic in the side panel) instead of navigating to its full page,
+  // and an explicit "open in new tab" action is shown alongside (BRDG-131).
+  onViewInSidebar?: () => void;
 }) {
   return (
     <BasePicker.Root portal={true} align={align} popoverHeight={300} onOpenChange={onOpenChange}>
-      <EpicPickerInner value={value} onChange={onChange} ticketKey={ticketKey} textClass={textClass} emptyLabel={emptyLabel} emptyTriggerClassName={emptyTriggerClassName} />
+      <EpicPickerInner value={value} onChange={onChange} ticketKey={ticketKey} textClass={textClass} emptyLabel={emptyLabel} emptyTriggerClassName={emptyTriggerClassName} triggerClassName={triggerClassName} onViewInSidebar={onViewInSidebar} />
     </BasePicker.Root>
   );
 }
@@ -73,6 +82,8 @@ function EpicPickerInner({
   textClass,
   emptyLabel,
   emptyTriggerClassName,
+  triggerClassName,
+  onViewInSidebar,
 }: {
   value: EpicOption | null;
   onChange: (epic: EpicOption | null) => void;
@@ -80,6 +91,8 @@ function EpicPickerInner({
   textClass: string;
   emptyLabel: string;
   emptyTriggerClassName?: string;
+  triggerClassName?: string;
+  onViewInSidebar?: () => void;
 }) {
   const { open, query, setQuery, searchRef, handleClose } = BasePicker.useContext();
 
@@ -239,7 +252,7 @@ function EpicPickerInner({
         title={value ? `Epic: ${value.name}` : emptyLabel}
         className={
           value
-            ? "inline-flex min-w-0 max-w-full items-center rounded-md cursor-pointer transition-[box-shadow,transform] duration-150 hover:ring-1 hover:ring-inset hover:ring-border-default focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)] active:scale-[0.98]"
+            ? `inline-flex min-w-0 max-w-full items-center rounded-md cursor-pointer transition-[box-shadow,transform] duration-150 hover:ring-1 hover:ring-inset hover:ring-border-default focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)] active:scale-[0.98]${triggerClassName ? ` ${triggerClassName}` : ""}`
             : emptyTriggerClassName
               // Keep the override visible while its popover is open, otherwise a
               // hover-reveal ghost trigger vanishes the moment the cursor leaves
@@ -303,30 +316,73 @@ function EpicPickerInner({
         {suggestionsSection}
 
         {/* Actions for the currently-selected epic, sitting side-by-side above
-            a divider so they read as actions, not as selectable epic options. */}
+            a divider so they read as actions, not as selectable epic options.
+            On the board (onViewInSidebar set) the primary action opens the epic in
+            the side panel, with an explicit "open in new tab" alongside; elsewhere
+            it links straight to the epic's full page (cmd-click for a new tab). */}
         {!query.trim() && value && (
           <div className="flex items-stretch gap-1.5 border-b border-border-subtle px-2 py-2">
-            <Link
-              href={`/tickets/${value.key}`}
-              onClick={handleClose}
-              title={`View epic ${value.key}`}
-              aria-label={`View epic ${value.name}`}
-              className="flex flex-1 items-center justify-center gap-1.5 rounded-lg px-2.5 py-1.5 text-body-sm font-semibold text-[var(--color-icon-epic)] cursor-pointer hover:bg-[color-mix(in_srgb,var(--color-icon-epic)_16%,transparent)] focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-[var(--color-brand-400)] active:scale-[0.98]"
-              style={{ backgroundColor: "color-mix(in srgb, var(--color-icon-epic) 10%, transparent)", transition: "background-color 0.15s ease, transform 0.15s ease" }}
-            >
-              <ArrowUpRight size={13} strokeWidth={2.25} className="shrink-0" />
-              <span className="truncate">View epic</span>
-            </Link>
-            <button
-              type="button"
-              onClick={() => { onChange(null); handleClose(); }}
-              title="Unlink this epic from the ticket"
-              className="flex items-center justify-center gap-1.5 rounded-lg px-2.5 py-1.5 text-body-sm text-text-muted cursor-pointer hover:bg-overlay-default hover:text-text-secondary focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-[var(--color-brand-400)] active:scale-[0.98]"
-              style={{ transition: "background-color 0.15s ease, color 0.15s ease, transform 0.15s ease" }}
-            >
-              <X size={12} strokeWidth={1.5} className="shrink-0" />
-              <span className="truncate">Unlink epic</span>
-            </button>
+            {onViewInSidebar ? (
+              <>
+                <button
+                  type="button"
+                  onClick={() => { onViewInSidebar(); handleClose(); }}
+                  title="View epic in the side panel"
+                  aria-label={`View epic ${value.name} in the side panel`}
+                  className="flex flex-1 items-center justify-center gap-1.5 rounded-lg px-2.5 py-1.5 text-body-sm font-semibold text-[var(--color-icon-epic)] cursor-pointer hover:bg-[color-mix(in_srgb,var(--color-icon-epic)_16%,transparent)] focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-[var(--color-brand-400)] active:scale-[0.98]"
+                  style={{ backgroundColor: "color-mix(in srgb, var(--color-icon-epic) 10%, transparent)", transition: "background-color 0.15s ease, transform 0.15s ease" }}
+                >
+                  <PanelRight size={13} strokeWidth={2.25} className="shrink-0" />
+                  <span className="truncate">View epic</span>
+                </button>
+                <a
+                  href={`/tickets/${value.key}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  onClick={handleClose}
+                  title={`Open epic ${value.key} in a new tab`}
+                  aria-label={`Open epic ${value.name} in a new tab`}
+                  className="flex items-center justify-center rounded-lg px-2 py-1.5 text-text-muted cursor-pointer hover:bg-overlay-default hover:text-text-secondary focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-[var(--color-brand-400)] active:scale-[0.98]"
+                  style={{ transition: "background-color 0.15s ease, color 0.15s ease, transform 0.15s ease" }}
+                >
+                  <ExternalLink size={13} strokeWidth={1.75} className="shrink-0" />
+                </a>
+                <button
+                  type="button"
+                  onClick={() => { onChange(null); handleClose(); }}
+                  title="Unlink this epic from the ticket"
+                  aria-label="Unlink epic"
+                  className="flex items-center justify-center rounded-lg px-2 py-1.5 text-text-muted cursor-pointer hover:bg-overlay-default hover:text-text-secondary focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-[var(--color-brand-400)] active:scale-[0.98]"
+                  style={{ transition: "background-color 0.15s ease, color 0.15s ease, transform 0.15s ease" }}
+                >
+                  <X size={13} strokeWidth={1.75} className="shrink-0" />
+                </button>
+              </>
+            ) : (
+              <>
+                <Link
+                  href={`/tickets/${value.key}`}
+                  onClick={handleClose}
+                  title={`View epic ${value.key}`}
+                  aria-label={`View epic ${value.name}`}
+                  className="flex flex-1 items-center justify-center gap-1.5 rounded-lg px-2.5 py-1.5 text-body-sm font-semibold text-[var(--color-icon-epic)] cursor-pointer hover:bg-[color-mix(in_srgb,var(--color-icon-epic)_16%,transparent)] focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-[var(--color-brand-400)] active:scale-[0.98]"
+                  style={{ backgroundColor: "color-mix(in srgb, var(--color-icon-epic) 10%, transparent)", transition: "background-color 0.15s ease, transform 0.15s ease" }}
+                >
+                  <ArrowUpRight size={13} strokeWidth={2.25} className="shrink-0" />
+                  <span className="truncate">View epic</span>
+                </Link>
+                <button
+                  type="button"
+                  onClick={() => { onChange(null); handleClose(); }}
+                  title="Unlink this epic from the ticket"
+                  className="flex items-center justify-center gap-1.5 rounded-lg px-2.5 py-1.5 text-body-sm text-text-muted cursor-pointer hover:bg-overlay-default hover:text-text-secondary focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-[var(--color-brand-400)] active:scale-[0.98]"
+                  style={{ transition: "background-color 0.15s ease, color 0.15s ease, transform 0.15s ease" }}
+                >
+                  <X size={12} strokeWidth={1.5} className="shrink-0" />
+                  <span className="truncate">Unlink epic</span>
+                </button>
+              </>
+            )}
           </div>
         )}
 

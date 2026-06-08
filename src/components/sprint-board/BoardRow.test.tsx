@@ -27,6 +27,14 @@ vi.mock("@/components/shared/AddEpicPill", () => ({
   AddEpicPill: ({ ticketKey }: { ticketKey: string }) => <span data-testid="add-epic" data-ticket={ticketKey} />,
 }));
 
+vi.mock("@/components/shared/EpicPicker", () => ({
+  EpicPicker: ({ value, onViewInSidebar }: { value: { name: string } | null; onViewInSidebar?: () => void }) => (
+    <span data-testid="epic-picker" data-epic={value?.name}>
+      <button data-testid="epic-view-sidebar" onClick={() => onViewInSidebar?.()}>view</button>
+    </span>
+  ),
+}));
+
 vi.mock("@dnd-kit/sortable", () => ({
   useSortable: () => ({ attributes: {}, listeners: {}, setNodeRef: vi.fn(), transform: null, transition: null, isDragging: false }),
 }));
@@ -112,12 +120,21 @@ describe("BoardRow (headerless, BRDG-239)", () => {
     expect(screen.queryByText("Onboarding")).toBeNull();
   });
 
-  it("opens the epic (not the row) when the epic chip is clicked (BRDG-131)", () => {
+  it("renders the epic picker dropdown (not a direct navigate) for an editable epic pill (BRDG-131)", () => {
     const onSelectTicket = vi.fn();
-    renderRow({ onSelectTicket });
-    fireEvent.click(screen.getByText("Onboarding"));
+    renderRow({ onSelectTicket, onEpicChange: vi.fn() });
+    const picker = screen.getByTestId("epic-picker");
+    expect(picker.getAttribute("data-epic")).toBe("Onboarding");
+    // The picker's "view in sidebar" action opens the epic; the row is not selected.
+    fireEvent.click(screen.getByTestId("epic-view-sidebar"));
     expect(onSelectTicket).toHaveBeenCalledTimes(1);
     expect(onSelectTicket).toHaveBeenCalledWith("VPL-100");
+  });
+
+  it("shows a plain epic chip (no picker) when the row is not editable", () => {
+    renderRow(); // no onEpicChange
+    expect(screen.getByText("Onboarding")).toBeInTheDocument();
+    expect(screen.queryByTestId("epic-picker")).toBeNull();
   });
 
   it("shows the Add-epic placeholder only when the row has no epic and is editable (BRDG-131)", () => {

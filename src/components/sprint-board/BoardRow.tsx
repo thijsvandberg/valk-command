@@ -4,7 +4,7 @@ import { forwardRef, memo, useRef, useCallback, useState, useMemo } from "react"
 import { useOutsideClick } from "@/hooks/useOutsideClick";
 import type { Ticket, POStatus, TicketReadiness, IssueType, JiraStatus, Sprint } from "@/types/ticket";
 import { AssigneePicker, type AssignableUser } from "@/components/shared/AssigneePicker";
-import type { EpicOption } from "@/components/shared/EpicPicker";
+import { EpicPicker, type EpicOption } from "@/components/shared/EpicPicker";
 import { EpicBadge } from "@/components/shared/IssueMetaBadges";
 import { AddEpicPill } from "@/components/shared/AddEpicPill";
 import type { InlineTagId } from "@/components/sprint-board/filter-bar-types";
@@ -413,20 +413,26 @@ export const BoardRow = memo(forwardRef<HTMLTableRowElement, BoardRowBaseProps>(
               )}
 
               {/* Epic chip — shrinks with the title when space is tight. Clicking it
-                  opens the epic itself in the side panel rather than selecting the row
-                  (BRDG-131). Rows without an epic get a hover-revealed "Add epic"
-                  placeholder instead, except when grouped by epic (hideEpic). */}
+                  opens the epic picker dropdown (view in sidebar / new tab / unlink /
+                  change) rather than navigating away or selecting the row (BRDG-131).
+                  Rows without an epic get a hover-revealed "Add epic" placeholder.
+                  Both are suppressed when grouped by epic (hideEpic). */}
               {tags.has("epic") && !hideEpic && (
                 ticket.epic && ticket.epicKey ? (
-                  <button
-                    type="button"
-                    onPointerDown={(e) => e.stopPropagation()}
-                    onClick={(e) => { e.stopPropagation(); onSelectTicket(ticket.epicKey!); }}
-                    className="flex min-w-0 shrink cursor-pointer items-center rounded-md transition-[box-shadow,transform] duration-150 hover:ring-1 hover:ring-inset hover:ring-border-default focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)] active:scale-[0.98]"
-                    title={`Open epic ${ticket.epic}`}
-                  >
+                  onEpicChange && !isRemoved ? (
+                    <span className="flex min-w-0 shrink" onPointerDown={(e) => e.stopPropagation()} onClick={(e) => e.stopPropagation()}>
+                      <EpicPicker
+                        value={{ key: ticket.epicKey, name: ticket.epic }}
+                        onChange={(epic) => onEpicChange(ticket.key, epic)}
+                        ticketKey={ticket.key}
+                        onViewInSidebar={() => onSelectTicket(ticket.epicKey!)}
+                        triggerClassName="min-w-0 shrink"
+                        align="left"
+                      />
+                    </span>
+                  ) : (
                     <EpicBadge epic={ticket.epic} className="min-w-0 shrink" />
-                  </button>
+                  )
                 ) : !ticket.epic && onEpicChange && !isRemoved ? (
                   <AddEpicPill ticketKey={ticket.key} onChange={(epic) => onEpicChange(ticket.key, epic)} />
                 ) : null
