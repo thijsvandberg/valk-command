@@ -144,9 +144,13 @@ export function ChildIssueComposer({
           </button>
           {typeMenu}
           {input}
-          <span className="shrink-0 rounded border border-border-subtle px-1.5 py-0.5 text-label font-medium text-text-muted">
-            ↵ to add
-          </span>
+          {/* The hint and a trailing control would crowd the right edge; show the hint only when
+              there is no trailing element (e.g. the epic view's "Link existing"). */}
+          {!trailing && (
+            <span className="shrink-0 rounded border border-border-subtle px-1.5 py-0.5 text-label font-medium text-text-muted">
+              ↵ to add
+            </span>
+          )}
           {trailing}
         </div>
       </div>
