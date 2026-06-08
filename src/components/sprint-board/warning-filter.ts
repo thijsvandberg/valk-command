@@ -1,18 +1,42 @@
 import type { Ticket } from "@/types/ticket";
 
-// The hygiene items the GroupStatBar warning triangle counts, and therefore the
-// exact set a click on the warning should filter the board down to:
+// The estimate-hygiene problems the GroupStatBar warning triangle counts, and the
+// exact set a click on the warning filters the board down to:
 //   - unpointed stories (only meaningful for the active sprint, where that
 //     warning line is shown; future/backlog work is expected to be unestimated)
 //   - deprecated tickets that still carry story points
 //   - closed stories (Done/Deprecated) that still have open subtasks
-// Keep this in lockstep with the counts in GroupStatBar.
+export type WarningKind = "unpointed" | "deprecated_with_points" | "closed_with_open_subtasks";
+
+// Human-readable, per-row phrasing for each problem. The aggregate header tooltip
+// uses its own count sentences ("2 stories without a story point estimate"); both
+// derive from the same WarningKind set so they can never describe different problems.
+export const WARNING_LABELS: Record<WarningKind, string> = {
+  unpointed: "No story point estimate",
+  deprecated_with_points: "Deprecated but still has story points",
+  closed_with_open_subtasks: "Closed with open subtasks",
+};
+
+// The single source of truth for "what is wrong with this ticket". matchesWarningFilter,
+// the per-row labels (BoardRow) and the header tooltip tallies (GroupStatBar) all build on it.
+export function ticketWarnings(ticket: Ticket, isActiveSprint: boolean): WarningKind[] {
+  const kinds: WarningKind[] = [];
+  if (isActiveSprint && ticket.storyPoints == null && ticket.jiraStatus !== "DEPRECATED" && ticket.type !== "spike") {
+    kinds.push("unpointed");
+  }
+  if (ticket.jiraStatus === "DEPRECATED" && ticket.storyPoints != null && ticket.storyPoints > 0) {
+    kinds.push("deprecated_with_points");
+  }
+  if ((ticket.jiraStatus === "DONE" || ticket.jiraStatus === "DEPRECATED") && (ticket.openSubtaskCount ?? 0) > 0) {
+    kinds.push("closed_with_open_subtasks");
+  }
+  return kinds;
+}
+
+export function ticketWarningLabels(ticket: Ticket, isActiveSprint: boolean): string[] {
+  return ticketWarnings(ticket, isActiveSprint).map((kind) => WARNING_LABELS[kind]);
+}
+
 export function matchesWarningFilter(ticket: Ticket, isActiveSprint: boolean): boolean {
-  const unpointed =
-    isActiveSprint && ticket.storyPoints == null && ticket.jiraStatus !== "DEPRECATED" && ticket.type !== "spike";
-  const deprecatedWithPoints =
-    ticket.jiraStatus === "DEPRECATED" && ticket.storyPoints != null && ticket.storyPoints > 0;
-  const closedWithOpenSubtasks =
-    (ticket.jiraStatus === "DONE" || ticket.jiraStatus === "DEPRECATED") && (ticket.openSubtaskCount ?? 0) > 0;
-  return unpointed || deprecatedWithPoints || closedWithOpenSubtasks;
+  return ticketWarnings(ticket, isActiveSprint).length > 0;
 }

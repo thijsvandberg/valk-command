@@ -11,6 +11,7 @@ import { Tooltip } from "@/components/shared/Tooltip";
 import { SprintDetailsPopover } from "./SprintDetailsPopover";
 import { getJiraSprintUrl } from "@/lib/jira-url";
 import { pluralize } from "@/lib/pluralize";
+import { ticketWarnings } from "./warning-filter";
 
 export type StatCriterion = "todo" | "in-progress" | "test" | "done" | "unpointed";
 
@@ -160,13 +161,20 @@ export const GroupStatBar = memo(function GroupStatBar({
   const inProgressCount = tickets.filter((t) => t.jiraStatus === "IN PROGRESS").length;
   const testCount = tickets.filter((t) => t.jiraStatus === "TEST").length;
   const doneCount = tickets.filter((t) => t.jiraStatus === "DONE").length;
-  const noPointsCount = tickets.filter((t) => t.storyPoints == null && t.jiraStatus !== "DEPRECATED" && t.type !== "spike").length;
-  const deprecatedWithSp = tickets.filter((t) => t.jiraStatus === "DEPRECATED" && t.storyPoints != null && t.storyPoints > 0).length;
-  // A story that is closed (Done/Deprecated) while subtasks remain open is a
-  // hygiene gap: the parent reads as finished but work is still outstanding.
-  const closedWithOpenSubtasks = tickets.filter(
-    (t) => (t.jiraStatus === "DONE" || t.jiraStatus === "DEPRECATED") && (t.openSubtaskCount ?? 0) > 0,
-  ).length;
+  // Tally the per-kind warning counts from the shared ticketWarnings helper so the
+  // tooltip lines below and the per-row labels (BoardRow) can never describe different
+  // problems (BRDG-313). The unpointed kind already requires the active sprint inside
+  // the helper, matching the showNoPointsWarning gating.
+  let noPointsCount = 0;
+  let deprecatedWithSp = 0;
+  let closedWithOpenSubtasks = 0;
+  for (const t of tickets) {
+    for (const kind of ticketWarnings(t, isActive)) {
+      if (kind === "unpointed") noPointsCount++;
+      else if (kind === "deprecated_with_points") deprecatedWithSp++;
+      else closedWithOpenSubtasks++;
+    }
+  }
   // When every ticket shares the same status, the per-status pill just echoes the "X items"
   // count, so suppress the breakdown to cut noise (e.g. an all-TO DO sprint).
   const showStatusBreakdown = showStatusCounts && new Set(tickets.map((t) => t.jiraStatus)).size > 1;

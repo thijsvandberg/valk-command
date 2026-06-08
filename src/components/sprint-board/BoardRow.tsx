@@ -41,6 +41,12 @@ export interface BoardRowBaseProps {
   tags?: Set<InlineTagId>;
   /** Suppress the epic chip (e.g. when the board is grouped by epic). */
   hideEpic?: boolean;
+  /**
+   * Estimate-hygiene problems for this ticket, shown as width-gated labels while the
+   * warning filter mode is active (BRDG-313). Empty/undefined renders nothing, so the
+   * labels only appear when the parent sets them (i.e. while the mode is on).
+   */
+  warningLabels?: string[];
   /** Show the sprint name inline (when multiple sprints are visible: All view / saved view). */
   showSprint?: boolean;
   sprintNameMap?: Record<string, string>;
@@ -98,6 +104,7 @@ export const BoardRow = memo(forwardRef<HTMLTableRowElement, BoardRowBaseProps>(
     isDragActive,
     tags = ALL_TAGS,
     hideEpic = false,
+    warningLabels,
     showSprint = false,
     sprintNameMap = {},
     readinessMap = {},
@@ -403,6 +410,24 @@ export const BoardRow = memo(forwardRef<HTMLTableRowElement, BoardRowBaseProps>(
                   </button>
                 )}
               </div>
+
+              {/* Per-row estimate-hygiene labels (BRDG-313). Shown only while the warning
+                  filter mode is active (the parent only passes warningLabels then) and only
+                  when the row is wide enough: gated by display (not opacity) so narrow rows
+                  reserve no space. shrink-0 + placement after the truncating title means the
+                  title yields width first. Same warning tokens as the header triangle. */}
+              {warningLabels && warningLabels.length > 0 && (
+                <span className="hidden shrink-0 items-center gap-1 @[52rem]/boardrow:inline-flex">
+                  {warningLabels.map((labelText) => (
+                    <span
+                      key={labelText}
+                      className="inline-flex items-center whitespace-nowrap rounded px-1.5 py-0.5 text-[11px] font-medium leading-none text-[var(--color-status-warning)] bg-[var(--color-status-warning-subtle)]"
+                    >
+                      {labelText}
+                    </span>
+                  ))}
+                </span>
+              )}
 
               {/* Hover-revealed placeholders for the still-empty planning fields
                   (BRDG-310). They reserve no space (HoverRevealSlot) and open on row

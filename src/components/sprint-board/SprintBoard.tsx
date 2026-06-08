@@ -3,6 +3,7 @@
 import { useState, useRef, useEffect, useCallback, useMemo, type ReactNode } from "react";
 import { Inbox } from "lucide-react";
 import { GroupStatBar, type StatCriterion } from "@/components/sprint-board/GroupStatBar";
+import { matchesWarningFilter } from "@/components/sprint-board/warning-filter";
 import { useSearchParams, useRouter, usePathname } from "next/navigation";
 import type { Sprint, Ticket, IssueType } from "@/types/ticket";
 import { SprintSlots } from "@/components/sprint-board/SprintSlots";
@@ -214,6 +215,30 @@ export default function SprintBoard() {
   const showSprintOnRow = (isAllView || !!f.activeViewId) && groupBy !== "sprint";
 
   const activeSprint = isAllView ? null : sprints.find((s) => s.id === activeSprintId) ?? null;
+
+  // Warning filter mode (BRDG-313): a transient lens over the flat single-sprint view.
+  // It never mutates the persistent filters, so toggling it off restores the prior view
+  // exactly. The header (singleSprintHeader) only renders in this flat view, so the lens
+  // can only be toggled there; the grouped view drives its own per-group warning narrowing.
+  const [warningLensActive, setWarningLensActive] = useState(false);
+  const isFlatView = groups.length === 0 && !isAllView && !f.activeViewId;
+  // Only the unpointed problem depends on the sprint being active (others always apply).
+  const flatIsActiveSprint = activeSprintId !== "__backlog__" && activeSprint?.state === "active";
+  const displayTickets = useMemo(
+    () => (isFlatView && warningLensActive ? tickets.filter((t) => matchesWarningFilter(t, !!flatIsActiveSprint)) : tickets),
+    [isFlatView, warningLensActive, tickets, flatIsActiveSprint],
+  );
+  // A change to any persistent filter, the search query, or the active view/sprint exits the
+  // lens so it never narrows onto a stale set (req 3). Same signature feeds the grouped view.
+  const { currentFiltersSnapshot, searchQuery: fSearchQuery, activeViewId } = f;
+  const filterSignature = useMemo(
+    () => `${JSON.stringify(currentFiltersSnapshot())}|${fSearchQuery}|${activeSprintId}|${isAllView}|${activeViewId ?? ""}`,
+    [currentFiltersSnapshot, fSearchQuery, activeSprintId, isAllView, activeViewId],
+  );
+  useEffect(() => {
+    setWarningLensActive(false);
+  }, [filterSignature]);
+
   // Modal targets: an explicit group-row choice (All view) takes precedence over the active sprint.
   // In the All view allTickets spans every sprint, so narrow to the target sprint's tickets.
   const editSprint = editSprintId ? sprints.find((s) => s.id === editSprintId) ?? null : activeSprint;
@@ -479,7 +504,7 @@ export default function SprintBoard() {
   // Single-sprint / backlog view (not All, not a saved view, not already grouped):
   // render the same stat header as the grouped view, but at the top of the FLAT card
   // so the proven flat row rendering (clicks, dnd, virtualization) stays intact.
-  const { activeViewId: fActiveViewId, statusFilter: fStatusFilter, gapsFilter: fGapsFilter, setStatusFilter: fSetStatusFilter, setGapsFilter: fSetGapsFilter } = f;
+  const { activeViewId: fActiveViewId, statusFilter: fStatusFilter, setStatusFilter: fSetStatusFilter } = f;
   const singleSprintHeader = useMemo<ReactNode>(() => {
     if (isAllView || fActiveViewId || groups.length > 0) return undefined;
     const isBacklog = activeSprintId === "__backlog__";
@@ -489,7 +514,7 @@ export default function SprintBoard() {
     const CRIT_TO_STATUS: Record<string, string> = { todo: "TO DO", "in-progress": "IN PROGRESS", test: "TEST", done: "DONE" };
     const STATUS_TO_CRIT: Record<string, StatCriterion> = { "TO DO": "todo", "IN PROGRESS": "in-progress", TEST: "test", DONE: "done" };
     const onlyStatus = fStatusFilter.size === 1 ? [...fStatusFilter][0] : null;
-    const activeCriterion: StatCriterion | null = fGapsFilter.has("no_points")
+    const activeCriterion: StatCriterion | null = warningLensActive
       ? "unpointed"
       : onlyStatus ? (STATUS_TO_CRIT[onlyStatus] ?? null) : null;
     return (
@@ -506,9 +531,9 @@ export default function SprintBoard() {
         onFilterChange={(crit) => {
           if (crit === null) { fSetStatusFilter(new Set()); return; }
           if (crit === "unpointed") {
-            const g = new Set(fGapsFilter);
-            if (g.has("no_points")) g.delete("no_points"); else g.add("no_points");
-            fSetGapsFilter(g);
+            // Toggle the transient warning lens; never mutate the persistent filters, so
+            // turning it off restores the prior view exactly (BRDG-313, req 1/2).
+            setWarningLensActive((v) => !v);
             return;
           }
           const status = CRIT_TO_STATUS[crit];
@@ -531,7 +556,7 @@ export default function SprintBoard() {
           : {})}
       />
     );
-  }, [isAllView, fActiveViewId, fStatusFilter, fGapsFilter, fSetStatusFilter, fSetGapsFilter, groups.length, activeSprintId, activeSprint, allTickets, slotSprintsSet, handleAddSlotWithSprint, handleEditSprintFromGroup, handleCloseSprintFromGroup, handleSyncGroup]);
+  }, [isAllView, fActiveViewId, fStatusFilter, fSetStatusFilter, warningLensActive, groups.length, activeSprintId, activeSprint, allTickets, slotSprintsSet, handleAddSlotWithSprint, handleEditSprintFromGroup, handleCloseSprintFromGroup, handleSyncGroup]);
 
   useEffect(() => {
     if (slotsInitialized.current || !sprintsData) return; slotsInitialized.current = true;
@@ -580,7 +605,7 @@ export default function SprintBoard() {
           // The list sits on a white surface; TicketTable renders the bordered card(s) itself —
           // one card when ungrouped, one per group when grouped (BRDG-239, BRDG-267).
           <div className="min-h-full bg-[var(--color-surface-elevated)] px-4 pb-4 pt-3">
-          <TicketTable tickets={tickets} checkedTickets={checkedTickets} selectedTicket={selectedTicket} focusedTicketIdx={focusedTicketIdx} someChecked={someChecked} allChecked={allChecked} visibleTags={f.visibleTags} hideEpic={hideEpicChip} showSprint={showSprintOnRow} sprintNameMap={sprintNameMap} poStatuses={poStatuses} readinessMap={readinessMap} inflightKeys={inflightKeys} onToggleCheck={toggleCheck} onRangeCheck={handleRangeCheck} onToggleAll={toggleAll} onSelectTicket={setSelectedTicket} onRowContextMenu={handleRowContextMenu} contextMenuKeys={rowMenu?.targets} onPoStatusChange={ta.handlePoStatusChange} onReadinessChange={ta.handleReadinessChange} onBusinessValueChange={ta.handleBusinessValueChange} onStoryPointsChange={ta.handleStoryPointsChange} onJiraStatusChange={ta.handleJiraStatusChange} onIssueTypeChange={ta.handleIssueTypeChange} onTitleChange={ta.handleTitleChange} onAssigneeChange={ta.handleAssigneeChange} onEpicChange={ta.handleEpicChange} onSprintChange={ta.handleSprintChange} sprints={sprints} onCloseSubtasks={ta.handleCloseSubtasks} onTableKeyDown={handleTableKeyDown} onRunReview={(key) => handleBulkReviewStory(new Set([key]))} sortField={f.sortField} sortDir={f.sortDir} groups={groups} flatHeader={singleSprintHeader} collapsedGroups={collapsedGroups} onToggleCollapse={toggleCollapse} groupBy={groupBy} pinnedSprintIds={slotSprintsSet} onPinSprint={handleAddSlotWithSprint} onEditSprint={handleEditSprintFromGroup} onCloseSprint={handleCloseSprintFromGroup} onSyncGroup={handleSyncGroup} onCreateTicket={handleCreateTicket} flatCreateTarget={flatCreateTarget} scrollContainerRef={contentScrollRef} refinementSessionMap={ticketSessionMap} onRemoveFromRefinement={handleRemoveFromRefinement} onViewRefinement={handleViewRefinement} {...(dnd.jiraRankDndEnabled ? { externalDnd: true as const, externalActiveDragId: dnd.boardActiveDragId, dragOverKey: dnd.boardOverId } : { onReorder: f.sortField === "rank" && !f.activeViewId ? handleReorder : undefined })} />
+          <TicketTable tickets={displayTickets} warningLensActive={warningLensActive} warningLensActiveSprint={!!flatIsActiveSprint} filterSignature={filterSignature} checkedTickets={checkedTickets} selectedTicket={selectedTicket} focusedTicketIdx={focusedTicketIdx} someChecked={someChecked} allChecked={allChecked} visibleTags={f.visibleTags} hideEpic={hideEpicChip} showSprint={showSprintOnRow} sprintNameMap={sprintNameMap} poStatuses={poStatuses} readinessMap={readinessMap} inflightKeys={inflightKeys} onToggleCheck={toggleCheck} onRangeCheck={handleRangeCheck} onToggleAll={toggleAll} onSelectTicket={setSelectedTicket} onRowContextMenu={handleRowContextMenu} contextMenuKeys={rowMenu?.targets} onPoStatusChange={ta.handlePoStatusChange} onReadinessChange={ta.handleReadinessChange} onBusinessValueChange={ta.handleBusinessValueChange} onStoryPointsChange={ta.handleStoryPointsChange} onJiraStatusChange={ta.handleJiraStatusChange} onIssueTypeChange={ta.handleIssueTypeChange} onTitleChange={ta.handleTitleChange} onAssigneeChange={ta.handleAssigneeChange} onEpicChange={ta.handleEpicChange} onSprintChange={ta.handleSprintChange} sprints={sprints} onCloseSubtasks={ta.handleCloseSubtasks} onTableKeyDown={handleTableKeyDown} onRunReview={(key) => handleBulkReviewStory(new Set([key]))} sortField={f.sortField} sortDir={f.sortDir} groups={groups} flatHeader={singleSprintHeader} collapsedGroups={collapsedGroups} onToggleCollapse={toggleCollapse} groupBy={groupBy} pinnedSprintIds={slotSprintsSet} onPinSprint={handleAddSlotWithSprint} onEditSprint={handleEditSprintFromGroup} onCloseSprint={handleCloseSprintFromGroup} onSyncGroup={handleSyncGroup} onCreateTicket={handleCreateTicket} flatCreateTarget={flatCreateTarget} scrollContainerRef={contentScrollRef} refinementSessionMap={ticketSessionMap} onRemoveFromRefinement={handleRemoveFromRefinement} onViewRefinement={handleViewRefinement} {...(dnd.jiraRankDndEnabled ? { externalDnd: true as const, externalActiveDragId: dnd.boardActiveDragId, dragOverKey: dnd.boardOverId } : { onReorder: f.sortField === "rank" && !f.activeViewId ? handleReorder : undefined })} />
           </div>
         )}
       </div>

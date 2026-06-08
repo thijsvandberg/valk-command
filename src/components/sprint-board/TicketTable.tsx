@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef, useCallback, useMemo, type ReactNode } from "react";
+import { useState, useRef, useCallback, useMemo, useEffect, type ReactNode } from "react";
 import type { Ticket, POStatus, TicketReadiness, IssueType, JiraStatus, Sprint } from "@/types/ticket";
 import type { AssignableUser } from "@/components/shared/AssigneePicker";
 import type { EpicOption } from "@/components/shared/EpicPicker";
@@ -10,7 +10,7 @@ import { EmptyState } from "@/components/shared/EmptyState";
 import { ChildIssueComposer } from "@/components/ticket-detail/ChildIssueComposer";
 import { Sheet, Inbox, Plus } from "lucide-react";
 import { GroupStatBar } from "@/components/sprint-board/GroupStatBar";
-import { matchesWarningFilter } from "@/components/sprint-board/warning-filter";
+import { matchesWarningFilter, ticketWarningLabels } from "@/components/sprint-board/warning-filter";
 import { GroupCard, GROUP_CARD_CLASS } from "@/components/sprint-board/GroupCard";
 import type { TicketGroup, GroupByOption } from "@/components/sprint-board/useGroupBy";
 import type { GroupSyncTarget, GroupSyncProgress, GroupSyncResult } from "@/lib/group-sync";
@@ -135,6 +135,9 @@ export function TicketTable({
   onViewRefinement,
   onCreateTicket,
   flatCreateTarget,
+  warningLensActive = false,
+  warningLensActiveSprint = false,
+  filterSignature,
 }: {
   tickets: Ticket[];
   checkedTickets: Set<string>;
@@ -211,6 +214,15 @@ export function TicketTable({
   onCreateTicket?: (sprintId: string | null, title: string, jiraType: string) => void;
   /** Target for the ungrouped list's composer. When set, a "+ Add story" row shows under the flat list. */
   flatCreateTarget?: { sprintId: string | null };
+  // Warning filter mode for the FLAT single-sprint view (BRDG-313): when active, the
+  // already-narrowed `tickets` get per-row hygiene labels. warningLensActiveSprint gates
+  // the unpointed label (only meaningful on the active sprint). The grouped view drives
+  // its own labels off the per-group warning criterion instead.
+  warningLensActive?: boolean;
+  warningLensActiveSprint?: boolean;
+  // A stable signature of the global filters; when it changes, any active per-group
+  // warning/status filter is cleared so the warning mode never leaves a stale narrowing.
+  filterSignature?: string;
 }) {
   const tableContainerRef = useRef<HTMLDivElement>(null);
 
@@ -238,6 +250,12 @@ export function TicketTable({
   const lastCheckRef = useRef<{ idx: number; checked: boolean } | null>(null);
 
   const [groupFilter, setGroupFilter] = useState<{ groupKey: string; criterion: "todo" | "in-progress" | "test" | "done" | "unpointed" } | null>(null);
+
+  // Changing any global filter exits a per-group warning/status narrowing so the mode
+  // never restores onto a stale set (BRDG-313, req 3). Mirrors the flat-view lens exit.
+  useEffect(() => {
+    setGroupFilter(null);
+  }, [filterSignature]);
 
   // Inline create composer: the flat (single-sprint) list shows it inline at all
   // times; grouped sprints reveal it per group via the header "+", one at a time.
@@ -379,6 +397,7 @@ export function TicketTable({
               ref={rowVirtualizer.measureElement}
               data-index={virtualRow.index}
               {...makeRowProps(ticket, virtualRow.index)}
+              warningLabels={warningLensActive ? ticketWarningLabels(ticket, warningLensActiveSprint) : undefined}
             />
           );
         })}
@@ -393,7 +412,11 @@ export function TicketTable({
     <table className="w-full table-fixed border-collapse text-body-lg">
       <tbody>
         {tickets.map((ticket, ticketIdx) => (
-          <BoardRow key={ticket.key} {...makeRowProps(ticket, ticketIdx)} />
+          <BoardRow
+            key={ticket.key}
+            {...makeRowProps(ticket, ticketIdx)}
+            warningLabels={warningLensActive ? ticketWarningLabels(ticket, warningLensActiveSprint) : undefined}
+          />
         ))}
       </tbody>
     </table>
@@ -418,6 +441,7 @@ export function TicketTable({
               key={ticket.key}
               {...makeRowProps(ticket, ticketIdx)}
               insertLine={insertLine}
+              warningLabels={warningLensActive ? ticketWarningLabels(ticket, warningLensActiveSprint) : undefined}
             />
           );
         })}
@@ -499,6 +523,10 @@ export function TicketTable({
         const isComposerOpen = composerGroupKey === group.key;
 
         const activeCriterion = groupFilter?.groupKey === group.key ? groupFilter.criterion : null;
+        // While this group's warning mode is on, each row gets its own hygiene labels
+        // (BRDG-313), gated by whether the group is the active sprint for the unpointed kind.
+        const groupIsActiveSprint = groupBy === "sprint" && activeSprintIds.has(group.key);
+        const showGroupWarningLabels = activeCriterion === "unpointed";
         const visibleGroupTickets = activeCriterion === "todo"
           ? group.tickets.filter((t) => t.jiraStatus === "TO DO")
           : activeCriterion === "in-progress"
@@ -528,16 +556,21 @@ export function TicketTable({
           if (dragOverKey && ticket.key === dragOverKey && activeInsertIdx !== -1 && overInsertIdx !== -1) {
             insertLine = activeInsertIdx > overInsertIdx ? "above" : "below";
           }
+          const warningLabels = showGroupWarningLabels
+            ? ticketWarningLabels(ticket, groupIsActiveSprint)
+            : undefined;
           return externalDnd ? (
             <SortableBoardRow
               key={ticket.key}
               {...makeRowProps(ticket, flatIdx)}
               insertLine={insertLine}
+              warningLabels={warningLabels}
             />
           ) : (
             <BoardRow
               key={ticket.key}
               {...makeRowProps(ticket, flatIdx)}
+              warningLabels={warningLabels}
             />
           );
         });
