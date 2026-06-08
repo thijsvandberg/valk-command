@@ -20,12 +20,22 @@ import {
   User,
 } from "lucide-react";
 import { useOutsideClick } from "@/hooks/useOutsideClick";
+import { useCornerSnap, CORNER_CLASSES, type Corner } from "@/hooks/useCornerSnap";
 import { SyncIndicator } from "@/components/sync/SyncIndicator";
 import { useAccountMenuItems } from "@/components/sidebar/accountMenuItems";
 import { useSidebarData, type SidebarCount, type SidebarHeroData } from "@/hooks/useSidebarData";
 
 type Tier = "primary" | "common" | "rare";
 type DataKey = "chat" | "storyWriter" | "refinement";
+
+// Where the floating panel anchors + grows from for each launcher corner, so it
+// opens out of whichever corner the launcher was dragged to (BRDG-317).
+const PANEL_CORNER_CLASSES: Record<Corner, string> = {
+  "top-left": "top-6 left-6 origin-top-left",
+  "top-right": "top-6 right-6 origin-top-right",
+  "bottom-left": "bottom-6 left-6 origin-bottom-left",
+  "bottom-right": "bottom-6 right-6 origin-bottom-right",
+};
 
 interface NavItem {
   label: string;
@@ -111,6 +121,20 @@ export default function Sidebar() {
     setAccountOpen(false);
   }, []);
 
+  const toggleOpen = useCallback(() => {
+    setAccountOpen(false);
+    setOpen((v) => !v);
+  }, []);
+
+  // Drag the launcher corner-to-corner (snaps to the nearest quadrant), same
+  // gesture as the focus-mode exit button; a plain tap still toggles the panel.
+  const snap = useCornerSnap({
+    enabled: true,
+    onClick: toggleOpen,
+    storageKey: "bridge:launcher-corner",
+    defaultCorner: "bottom-left",
+  });
+
   useOutsideClick([launcherRef, panelRef], close, { enabled: open });
 
   const { menuItems, signOutItem } = useAccountMenuItems({
@@ -139,30 +163,35 @@ export default function Sidebar() {
           style={{ opacity: open ? 1 : 0, pointerEvents: open ? "auto" : "none" }}
         />
 
-        {/* Collapsed launcher */}
+        {/* Collapsed launcher — drag corner-to-corner, tap to toggle the panel. */}
         <button
           ref={launcherRef}
           type="button"
-          onClick={() => { setAccountOpen(false); setOpen((v) => !v); }}
+          {...snap.handlers}
           aria-label="Open navigation"
           aria-expanded={open}
-          className="fixed bottom-6 left-6 z-50 grid h-11 w-11 cursor-pointer place-items-center rounded-2xl bg-gradient-to-br from-[var(--color-brand-400)] to-[var(--color-brand-600)] text-white shadow-[0_10px_30px_-6px_var(--color-brand-glow),0_0_0_1px_rgba(255,255,255,0.08)] transition-[transform,opacity] duration-200 ease-[cubic-bezier(0.34,1.56,0.64,1)] hover:scale-[1.06] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)] active:scale-95"
-          style={{ transform: open ? "scale(0.85)" : "scale(1)", opacity: open ? 0.5 : 1 }}
+          className={`fixed ${CORNER_CLASSES[snap.corner]} z-50 grid h-11 w-11 touch-none place-items-center rounded-2xl bg-gradient-to-br from-[var(--color-brand-400)] to-[var(--color-brand-600)] text-white shadow-[0_10px_30px_-6px_var(--color-brand-glow),0_0_0_1px_rgba(255,255,255,0.08)] transition-[transform,opacity] duration-200 ease-[cubic-bezier(0.34,1.56,0.64,1)] hover:scale-[1.06] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)] ${snap.isDragging ? "cursor-grabbing" : "cursor-pointer active:scale-95"}`}
+          style={{
+            ...(open && !snap.isDragging ? { transform: "scale(0.85)", opacity: 0.5 } : { opacity: 1 }),
+            ...snap.style,
+          }}
         >
           <LayoutGrid className="h-[18px] w-[18px]" strokeWidth={1.75} />
         </button>
 
-        {/* Floating editorial panel */}
+        {/* Floating editorial panel — anchored to the launcher's current corner. */}
         <div
           ref={panelRef}
           role="dialog"
           aria-label="Navigation"
           data-testid="sidebar-panel"
           aria-hidden={!open}
-          className={`fixed bottom-6 left-6 z-50 w-[380px] max-w-[calc(100vw-3rem)] origin-bottom-left overflow-hidden rounded-[26px] bg-[var(--color-surface-floating)]/95 ${PANEL_SHADOW} backdrop-blur-2xl transition-[transform,opacity] duration-200 ease-[cubic-bezier(0.34,1.56,0.64,1)]`}
+          className={`fixed ${PANEL_CORNER_CLASSES[snap.corner]} z-50 w-[380px] max-w-[calc(100vw-3rem)] overflow-hidden rounded-[26px] bg-[var(--color-surface-floating)]/95 ${PANEL_SHADOW} backdrop-blur-2xl transition-[transform,opacity] duration-200 ease-[cubic-bezier(0.34,1.56,0.64,1)]`}
           style={{
             opacity: open ? 1 : 0,
-            transform: open ? "scale(1) translateY(0)" : "scale(0.9) translateY(16px)",
+            transform: open
+              ? "scale(1) translateY(0)"
+              : `scale(0.9) translateY(${snap.corner.startsWith("top") ? "-16px" : "16px"})`,
             pointerEvents: open ? "auto" : "none",
           }}
         >

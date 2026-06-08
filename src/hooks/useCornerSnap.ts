@@ -72,9 +72,12 @@ export interface CornerSnapResult {
 export function useCornerSnap(options: {
   enabled: boolean;
   onClick: () => void;
+  /** Persisted-corner key; override so independent buttons remember separate corners. */
+  storageKey?: string;
+  defaultCorner?: Corner;
 }): CornerSnapResult {
-  const { enabled, onClick } = options;
-  const [corner, setCorner] = useLocalStorage<Corner>(CORNER_STORAGE_KEY, DEFAULT_CORNER);
+  const { enabled, onClick, storageKey = CORNER_STORAGE_KEY, defaultCorner = DEFAULT_CORNER } = options;
+  const [corner, setCorner] = useLocalStorage<Corner>(storageKey, defaultCorner);
   const [isDragging, setIsDragging] = useState(false);
   const [dragOffset, setDragOffset] = useState<{ x: number; y: number } | null>(null);
   const [snapOffset, setSnapOffset] = useState<{ x: number; y: number } | null>(null);

@@ -76,8 +76,16 @@ function emptyData(): SidebarData {
   };
 }
 
+// The launcher is drag-enabled (useCornerSnap): a tap is a pointerdown +
+// pointerup with no movement, which the hook treats as the click.
+function tapLauncher() {
+  const btn = screen.getByRole("button", { name: "Open navigation" });
+  fireEvent.pointerDown(btn, { clientX: 10, clientY: 10 });
+  fireEvent.pointerUp(btn, { clientX: 10, clientY: 10 });
+}
+
 function openPanel() {
-  fireEvent.click(screen.getByRole("button", { name: "Open navigation" }));
+  tapLauncher();
 }
 
 // The panel stays mounted (opacity toggles) and is removed from the a11y tree
@@ -194,7 +202,7 @@ describe("Sidebar (bento launcher)", () => {
       fireEvent.click(screen.getByRole("menuitem", { name: /notifications/i }));
       expect(mockPush).toHaveBeenCalledWith("/settings/notifications");
       // Choosing a route closes the panel; reopen and reflip to reach Settings.
-      fireEvent.click(screen.getByRole("button", { name: "Open navigation" }));
+      tapLauncher();
       fireEvent.click(screen.getByRole("button", { name: /Test User/ }));
       fireEvent.click(screen.getByRole("menuitem", { name: /^settings$/i }));
       expect(mockPush).toHaveBeenCalledWith("/settings");
@@ -236,6 +244,18 @@ describe("Sidebar (bento launcher)", () => {
       render(<Sidebar />);
       openPanel();
       fireEvent.click(screen.getByRole("link", { name: /Chat/ }));
+      expect(getDialog()).toHaveAttribute("aria-hidden", "true");
+    });
+  });
+
+  describe("draggable launcher", () => {
+    it("treats a drag as a move, not a tap (panel stays closed)", () => {
+      render(<Sidebar />);
+      const btn = screen.getByRole("button", { name: "Open navigation" });
+      fireEvent.pointerDown(btn, { clientX: 10, clientY: 10 });
+      // Move well past the drag threshold before releasing.
+      fireEvent.pointerMove(window, { clientX: 200, clientY: 200 });
+      fireEvent.pointerUp(window, { clientX: 200, clientY: 200 });
       expect(getDialog()).toHaveAttribute("aria-hidden", "true");
     });
   });
