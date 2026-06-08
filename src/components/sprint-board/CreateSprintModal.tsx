@@ -130,7 +130,7 @@ export function CreateSprintModal({
               <CornerDownRight size={11} strokeWidth={1.5} className="shrink-0" />
               <span>
                 Follows <span className="font-semibold text-text-secondary">{previousSprintName}</span>
-                {previousEndLabel && <>, ends <span className="font-semibold text-text-secondary">{previousEndLabel}</span></>}
+                {previousEndLabel && <>, which ends <span className="font-semibold text-text-secondary">{previousEndLabel}</span></>}
               </span>
             </p>
           )}
