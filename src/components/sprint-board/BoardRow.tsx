@@ -10,7 +10,7 @@ import { AddEpicPill } from "@/components/shared/AddEpicPill";
 import { HoverRevealSlot } from "@/components/shared/HoverRevealSlot";
 import type { InlineTagId } from "@/components/sprint-board/filter-bar-types";
 import { Avatar } from "@/components/shared/Avatar";
-import { Flag, MessageSquare, Pencil, Check, X, Gem, IterationCw, GripVertical } from "lucide-react";
+import { Flag, MessageSquare, Pencil, Check, X, Gem, IterationCw, GripVertical, AlertTriangle } from "lucide-react";
 import { OpenSubtasksIndicator } from "@/components/sprint-board/OpenSubtasksIndicator";
 import type { TicketSessionEntry } from "@/hooks/useTicketSessionMap";
 import { RefinementGemTrigger, type RefinementCardTicketInfo } from "@/components/sprint-board/RefinementGemHoverCard";
@@ -417,12 +417,13 @@ export const BoardRow = memo(forwardRef<HTMLTableRowElement, BoardRowBaseProps>(
                   reserve no space. shrink-0 + placement after the truncating title means the
                   title yields width first. Same warning tokens as the header triangle. */}
               {warningLabels && warningLabels.length > 0 && (
-                <span className="hidden shrink-0 items-center gap-1 @[52rem]/boardrow:inline-flex">
+                <span className="hidden shrink-0 items-center gap-1.5 @[52rem]/boardrow:inline-flex">
                   {warningLabels.map((labelText) => (
                     <span
                       key={labelText}
-                      className="inline-flex items-center whitespace-nowrap rounded px-1.5 py-0.5 text-[11px] font-medium leading-none text-[var(--color-status-warning)] bg-[var(--color-status-warning-subtle)]"
+                      className="inline-flex h-5 items-center gap-1 whitespace-nowrap rounded-md px-2 text-[11px] font-medium leading-none text-[var(--color-status-warning)] bg-[var(--color-status-warning-subtle)] ring-1 ring-inset ring-[var(--color-status-warning)]/20"
                     >
+                      <AlertTriangle size={11} strokeWidth={2.25} className="shrink-0" aria-hidden />
                       {labelText}
                     </span>
                   ))}

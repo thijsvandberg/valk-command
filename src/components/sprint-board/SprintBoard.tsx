@@ -529,11 +529,18 @@ export default function SprintBoard() {
         leadingIcon={isBacklog ? <Inbox className="h-3.5 w-3.5" strokeWidth={1.5} /> : undefined}
         activeCriterion={activeCriterion}
         onFilterChange={(crit) => {
-          if (crit === null) { fSetStatusFilter(new Set()); return; }
+          if (crit === null) {
+            // GroupStatBar collapses a re-click of the active pill to null. While the lens
+            // is on it is the active pill, so null here means "turn the warning lens off"
+            // (BRDG-313, req 2); otherwise it clears the status filter.
+            if (warningLensActive) { setWarningLensActive(false); return; }
+            fSetStatusFilter(new Set());
+            return;
+          }
           if (crit === "unpointed") {
-            // Toggle the transient warning lens; never mutate the persistent filters, so
+            // Enter the transient warning lens; never mutate the persistent filters, so
             // turning it off restores the prior view exactly (BRDG-313, req 1/2).
-            setWarningLensActive((v) => !v);
+            setWarningLensActive(true);
             return;
           }
           const status = CRIT_TO_STATUS[crit];

@@ -16,6 +16,7 @@ vi.mock("lucide-react", () => {
     Gem: stub("gem"),
     IterationCw: stub("iteration"),
     GripVertical: stub("grip"),
+    AlertTriangle: stub("alert-triangle"),
   };
 });
 
