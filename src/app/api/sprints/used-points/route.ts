@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { eq, notInArray } from "drizzle-orm";
 import { db } from "@/db";
-import { ticket, ticketMetadata } from "@/db/schema";
+import { ticket, ticketMetadata, placeholderTicket } from "@/db/schema";
 import { effectivePoints } from "@/types/ticket";
 
 // Forward-planning sprint load (BRDG-303). Returns the total effective points
@@ -44,6 +44,21 @@ export async function GET() {
       if (!id) continue;
       totals[id] = (totals[id] ?? 0) + eff;
     }
+  }
+
+  // Active placeholders (BRDG-304) count toward the fullness meter via their
+  // guestimation, exactly like an un-pointed real ticket. Promoted placeholders are
+  // excluded: their points already arrived as the real ticket above.
+  const placeholderRows = await db
+    .select({ guestimation: placeholderTicket.guestimation, sprintId: placeholderTicket.sprintId })
+    .from(placeholderTicket)
+    .where(eq(placeholderTicket.status, "active"));
+
+  for (const row of placeholderRows) {
+    if (!row.sprintId) continue;
+    const eff = effectivePoints(null, row.guestimation);
+    if (eff === 0) continue;
+    totals[row.sprintId] = (totals[row.sprintId] ?? 0) + eff;
   }
 
   return NextResponse.json(

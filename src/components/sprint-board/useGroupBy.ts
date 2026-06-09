@@ -38,6 +38,7 @@ function groupBySprintFn(
   pinnedOrder: string[],
   includeClosedSprints: boolean,
   forceShow: Set<string>,
+  placeholderSprintIds: string[],
 ): TicketGroup[] {
   const groupMap = new Map<string, Ticket[]>();
 
@@ -51,6 +52,13 @@ function groupBySprintFn(
       if (!groupMap.has(sid)) groupMap.set(sid, []);
       groupMap.get(sid)!.push(ticket);
     }
+  }
+
+  // Forward-planning placeholders (BRDG-304) can target a future sprint that has no
+  // real tickets yet. Seed an empty group for those sprint ids so the placeholder
+  // still surfaces in its sprint group (the rows are appended by TicketTable).
+  for (const sid of placeholderSprintIds) {
+    if (!groupMap.has(sid)) groupMap.set(sid, []);
   }
 
   const groups: TicketGroup[] = [];
@@ -157,6 +165,7 @@ export function useGroupBy(
   pinnedSprintIds: string[] = [],
   includeClosedSprints: boolean = false,
   forceShowSprintIds: string[] = [],
+  placeholderSprintIds: string[] = [],
 ) {
   // Default the All view to grouping by sprint; non-All views force "none" via effectiveGroupBy below.
   const [groupBy, setGroupBy] = useSessionStorage<GroupByOption>("sprint-board-group-by", "sprint");
@@ -175,11 +184,14 @@ export function useGroupBy(
 
   const forceShow = useMemo(() => new Set(forceShowSprintIds), [forceShowSprintIds]);
 
+  const placeholderSprintIdsKey = placeholderSprintIds.join(",");
   const groups = useMemo<TicketGroup[]>(() => {
     if (!isAllView || groupBy === "none") return [];
-    if (groupBy === "sprint") return groupBySprintFn(tickets, sprints, sprintNameMap, pinnedSprintIds, includeClosedSprints, forceShow);
+    if (groupBy === "sprint") return groupBySprintFn(tickets, sprints, sprintNameMap, pinnedSprintIds, includeClosedSprints, forceShow, placeholderSprintIds);
     return groupByEpicFn(tickets);
-  }, [tickets, sprints, sprintNameMap, isAllView, groupBy, pinnedSprintIds, includeClosedSprints, forceShow]);
+    // placeholderSprintIds is captured via its stable string key to avoid a new-array identity churn.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [tickets, sprints, sprintNameMap, isAllView, groupBy, pinnedSprintIds, includeClosedSprints, forceShow, placeholderSprintIdsKey]);
 
   const effectiveGroupBy = isAllView ? groupBy : "none";
 

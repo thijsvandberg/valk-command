@@ -39,6 +39,7 @@ export function EstimatePicker({
   onStoryPointsChange,
   onGuestimationChange,
   planningMode = false,
+  guessOnly = false,
   align = "right",
   dense = false,
   showMetricIcon = false,
@@ -51,6 +52,10 @@ export function EstimatePicker({
   onGuestimationChange: (v: number | null) => void;
   // When off, the guess lifecycle is hidden and only story points are editable.
   planningMode?: boolean;
+  // Pure-guess mode (BRDG-304 placeholders): the chip only ever sets a guestimation,
+  // with no "commit to story points" affordance, since the row has no real SP and is
+  // promoted into a ticket instead. Implies the guess phase regardless of storyPoints.
+  guessOnly?: boolean;
   align?: "left" | "right";
   dense?: boolean;
   showMetricIcon?: boolean;
@@ -80,7 +85,8 @@ export function EstimatePicker({
   });
 
   // Guess phase while planning and no real SP yet; otherwise the story-point phase.
-  const phase: "guess" | "sp" = planningMode && storyPoints == null ? "guess" : "sp";
+  // guessOnly forces the guess phase (placeholders never carry real story points).
+  const phase: "guess" | "sp" = guessOnly || (planningMode && storyPoints == null) ? "guess" : "sp";
   const committed = phase === "sp";
   const activeValue = committed ? storyPoints : guestimation;
 
@@ -207,7 +213,9 @@ export function EstimatePicker({
   );
 
   const btnSize = "h-7 w-7";
-  const showGuessActions = planningMode;
+  // In guessOnly mode the "commit to story points" / "back to guess" actions are
+  // suppressed: a placeholder is promoted into a ticket, not committed to SP.
+  const showGuessActions = planningMode && !guessOnly;
 
   return (
     <span>

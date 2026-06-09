@@ -1,12 +1,13 @@
 "use client";
 
 import { useState, useRef, useEffect, useCallback, useMemo, type ReactNode } from "react";
+import { mutate as globalMutate } from "swr";
 import { Inbox, Plus } from "lucide-react";
 import { trailingDoneDepStart, interpolateRank } from "@/lib/sprint-insert-position";
 import { GroupStatBar, type StatCriterion } from "@/components/sprint-board/GroupStatBar";
 import { matchesWarningFilter } from "@/components/sprint-board/warning-filter";
 import { useSearchParams, useRouter, usePathname } from "next/navigation";
-import type { Sprint, Ticket, IssueType } from "@/types/ticket";
+import type { Sprint, Ticket, IssueType, PlaceholderTicket } from "@/types/ticket";
 import { SprintSlots } from "@/components/sprint-board/SprintSlots";
 import { FilterBar } from "@/components/sprint-board/FilterBar";
 import { TicketTable } from "@/components/sprint-board/TicketTable";
@@ -23,6 +24,7 @@ import { useTicketSessionMap } from "@/hooks/useTicketSessionMap";
 import { useLocalStorage } from "@/hooks/useLocalStorage";
 import { usePencilCapacity } from "@/hooks/usePencilCapacity";
 import { useSprintUsedPoints } from "@/hooks/useSprintUsedPoints";
+import { usePlaceholders } from "@/hooks/usePlaceholders";
 import { useExportTask } from "@/hooks/useExportTask";
 import { usePageTitle } from "@/hooks/usePageTitle";
 import { mapJiraSprints, saveSprintSlots, saveTicketMetadata, bulkReviewStories, bulkGenerateSubtasks, computeSprintStats, computeSprintWorkDays } from "@/components/sprint-board/sprint-board-utils";
@@ -232,6 +234,39 @@ export default function SprintBoard() {
     return activeSprintId === "__all__" ? "/api/tickets" : `/api/tickets?sprintId=${encodeURIComponent(activeSprintId)}`;
   }, [activeSprintId]);
 
+  // Forward-planning placeholders (BRDG-304). Fetched only while planning mode is on.
+  // The full active set is loaded once; the grouped view buckets by sprintId and the
+  // flat view scopes to the open sprint. Promote/edit/delete revalidate the fullness
+  // meter (a separate server-computed total) and, on promote, the ticket list.
+  const {
+    placeholders: allPlaceholders,
+    create: createPlaceholderApi,
+    update: updatePlaceholderApi,
+    remove: removePlaceholderApi,
+    promote: promotePlaceholderApi,
+  } = usePlaceholders(planningVisible);
+  const refreshMeter = useCallback(() => { globalMutate("/api/sprints/used-points"); }, []);
+  const handlePlaceholderUpdate = useCallback((id: string, patch: Partial<PlaceholderTicket>) => {
+    updatePlaceholderApi(id, patch).then(refreshMeter).catch(() => showToast("Failed to update placeholder"));
+  }, [updatePlaceholderApi, refreshMeter, showToast]);
+  const handlePlaceholderDelete = useCallback((id: string) => {
+    removePlaceholderApi(id).then(refreshMeter).catch(() => showToast("Failed to delete placeholder"));
+  }, [removePlaceholderApi, refreshMeter, showToast]);
+  const handlePlaceholderCreate = useCallback((sprintId: string | null) => {
+    createPlaceholderApi({ title: "New placeholder", sprintId }).then(refreshMeter).catch(() => showToast("Failed to create placeholder"));
+  }, [createPlaceholderApi, refreshMeter, showToast]);
+  const handlePlaceholderPromote = useCallback((id: string) => {
+    promotePlaceholderApi(id)
+      .then((r) => { mutateTickets(); refreshMeter(); showToast(`Promoted to ${r.key}`); })
+      .catch(() => showToast("Failed to promote placeholder"));
+  }, [promotePlaceholderApi, mutateTickets, refreshMeter, showToast]);
+  // Sprint ids that carry placeholders, so the grouped view shows a group even for a
+  // future sprint that has no real tickets yet.
+  const placeholderSprintIds = useMemo(
+    () => Array.from(new Set(allPlaceholders.map((p) => p.sprintId).filter((s): s is string => !!s))),
+    [allPlaceholders],
+  );
+
   // Sprint id -> display name. The cached sprint list omits older closed sprints,
   // so fall back to the per-ticket name resolved from the sprint_name_cache; this
   // keeps group headers and row labels from showing raw numeric sprint ids (BRDG-239).
@@ -284,7 +319,7 @@ export default function SprintBoard() {
   const activeFilterCount = useMemo(() =>
     [f.statusFilter, f.epicFilter, f.assigneeFilter, f.readinessFilter, f.editStateFilter, f.issueTypeFilter, f.gapsFilter, f.teamFilter].filter((s) => s.size > 0).length + (f.searchQuery ? 1 : 0),
   [f.statusFilter, f.epicFilter, f.assigneeFilter, f.readinessFilter, f.editStateFilter, f.issueTypeFilter, f.gapsFilter, f.teamFilter, f.searchQuery]);
-  const { groupBy, setGroupBy, collapsedGroups, toggleCollapse, allCollapsed, toggleAllGroups, groups } = useGroupBy(tickets, sprints, sprintNameMap, isAllView, slotSprints, f.includeClosedSprints, f.forceShowSprintIds);
+  const { groupBy, setGroupBy, collapsedGroups, toggleCollapse, allCollapsed, toggleAllGroups, groups } = useGroupBy(tickets, sprints, sprintNameMap, isAllView, slotSprints, f.includeClosedSprints, f.forceShowSprintIds, placeholderSprintIds);
   // When grouping by epic, the epic chip is redundant on every row (the group header
   // already names it), so suppress it. Other groupings keep the chip (BRDG-239).
   const hideEpicChip = groupBy === "epic";
@@ -300,6 +335,17 @@ export default function SprintBoard() {
   // can only be toggled there; the grouped view drives its own per-group warning narrowing.
   const [warningLensActive, setWarningLensActive] = useState(false);
   const isFlatView = groups.length === 0 && !isAllView && !f.activeViewId;
+  // Placeholders handed to the table (BRDG-304): the grouped view buckets the full
+  // active set by sprintId; the flat single-sprint view shows only the open sprint's
+  // (backlog == null). Undefined when planning mode is off so the table renders today's look.
+  const placeholdersForTable = useMemo(() => {
+    if (!planningVisible) return undefined;
+    if (isFlatView) {
+      const target = activeSprintId === "__backlog__" ? null : (activeSprintId ?? null);
+      return allPlaceholders.filter((p) => (p.sprintId ?? null) === target);
+    }
+    return allPlaceholders;
+  }, [planningVisible, isFlatView, activeSprintId, allPlaceholders]);
   // Only the unpointed problem depends on the sprint being active (others always apply).
   const flatIsActiveSprint = activeSprintId !== "__backlog__" && activeSprint?.state === "active";
   const displayTickets = useMemo(
@@ -747,7 +793,7 @@ export default function SprintBoard() {
           // one card when ungrouped, one per group when grouped (BRDG-239, BRDG-267).
           <div className="min-h-full bg-[var(--color-surface-elevated)] px-4 pb-20 pt-3">
           <div className={boardMaxW}>
-          <TicketTable tickets={displayTickets} warningLensActive={warningLensActive} warningLensActiveSprint={!!flatIsActiveSprint} filterSignature={filterSignature} checkedTickets={checkedTickets} selectedTicket={selectedTicket} focusedTicketIdx={focusedTicketIdx} someChecked={someChecked} allChecked={allChecked} visibleTags={f.visibleTags} hideEpic={hideEpicChip} showSprint={showSprintOnRow} sprintNameMap={sprintNameMap} poStatuses={poStatuses} readinessMap={readinessMap} inflightKeys={inflightKeys} onToggleCheck={toggleCheck} onRangeCheck={handleRangeCheck} onToggleAll={toggleAll} onSelectTicket={setSelectedTicket} onRowContextMenu={handleRowContextMenu} contextMenuKeys={rowMenu?.targets} onPoStatusChange={ta.handlePoStatusChange} onReadinessChange={ta.handleReadinessChange} onBusinessValueChange={ta.handleBusinessValueChange} onStoryPointsChange={ta.handleStoryPointsChange} planningOn={planningVisible} onGuestimationChange={ta.handleGuestimationChange} pencilCapacityMap={pencilCapacityMap} onPencilCapacityChange={setPencilCapacity} sprintUsedMap={sprintUsedMap} onJiraStatusChange={ta.handleJiraStatusChange} onIssueTypeChange={ta.handleIssueTypeChange} onTitleChange={ta.handleTitleChange} onAssigneeChange={ta.handleAssigneeChange} onEpicChange={ta.handleEpicChange} onSprintChange={ta.handleSprintChange} sprints={sprints} onCloseSubtasks={ta.handleCloseSubtasks} onTableKeyDown={handleTableKeyDown} onRunReview={(key) => handleBulkReviewStory(new Set([key]))} sortField={f.sortField} sortDir={f.sortDir} groups={groups} flatHeader={singleSprintHeader} collapsedGroups={collapsedGroups} onToggleCollapse={toggleCollapse} groupBy={groupBy} pinnedSprintIds={slotSprintsSet} onPinSprint={handleAddSlotWithSprint} onEditSprint={handleEditSprintFromGroup} onCloseSprint={handleCloseSprintFromGroup} onSyncGroup={handleSyncGroup} onCreateTicket={handleCreateTicket} flatCreateTarget={flatCreateTarget} flatComposerOpen={flatComposerOpen} onCloseFlatComposer={closeFlatComposer} scrollContainerRef={contentScrollRef} refinementSessionMap={ticketSessionMap} onRemoveFromRefinement={handleRemoveFromRefinement} onViewRefinement={handleViewRefinement} {...(dnd.jiraRankDndEnabled ? { externalDnd: true as const, externalActiveDragId: dnd.boardActiveDragId, dragOverKey: dnd.boardOverId } : { onReorder: f.sortField === "rank" && !f.activeViewId ? handleReorder : undefined })} />
+          <TicketTable tickets={displayTickets} warningLensActive={warningLensActive} warningLensActiveSprint={!!flatIsActiveSprint} filterSignature={filterSignature} checkedTickets={checkedTickets} selectedTicket={selectedTicket} focusedTicketIdx={focusedTicketIdx} someChecked={someChecked} allChecked={allChecked} visibleTags={f.visibleTags} hideEpic={hideEpicChip} showSprint={showSprintOnRow} sprintNameMap={sprintNameMap} poStatuses={poStatuses} readinessMap={readinessMap} inflightKeys={inflightKeys} onToggleCheck={toggleCheck} onRangeCheck={handleRangeCheck} onToggleAll={toggleAll} onSelectTicket={setSelectedTicket} onRowContextMenu={handleRowContextMenu} contextMenuKeys={rowMenu?.targets} onPoStatusChange={ta.handlePoStatusChange} onReadinessChange={ta.handleReadinessChange} onBusinessValueChange={ta.handleBusinessValueChange} onStoryPointsChange={ta.handleStoryPointsChange} planningOn={planningVisible} onGuestimationChange={ta.handleGuestimationChange} pencilCapacityMap={pencilCapacityMap} onPencilCapacityChange={setPencilCapacity} sprintUsedMap={sprintUsedMap} onJiraStatusChange={ta.handleJiraStatusChange} onIssueTypeChange={ta.handleIssueTypeChange} onTitleChange={ta.handleTitleChange} onAssigneeChange={ta.handleAssigneeChange} onEpicChange={ta.handleEpicChange} onSprintChange={ta.handleSprintChange} sprints={sprints} onCloseSubtasks={ta.handleCloseSubtasks} onTableKeyDown={handleTableKeyDown} onRunReview={(key) => handleBulkReviewStory(new Set([key]))} sortField={f.sortField} sortDir={f.sortDir} groups={groups} flatHeader={singleSprintHeader} collapsedGroups={collapsedGroups} onToggleCollapse={toggleCollapse} groupBy={groupBy} pinnedSprintIds={slotSprintsSet} onPinSprint={handleAddSlotWithSprint} onEditSprint={handleEditSprintFromGroup} onCloseSprint={handleCloseSprintFromGroup} onSyncGroup={handleSyncGroup} onCreateTicket={handleCreateTicket} flatCreateTarget={flatCreateTarget} flatComposerOpen={flatComposerOpen} onCloseFlatComposer={closeFlatComposer} scrollContainerRef={contentScrollRef} refinementSessionMap={ticketSessionMap} onRemoveFromRefinement={handleRemoveFromRefinement} onViewRefinement={handleViewRefinement} placeholders={placeholdersForTable} onPlaceholderUpdate={handlePlaceholderUpdate} onPlaceholderDelete={handlePlaceholderDelete} onPlaceholderPromote={handlePlaceholderPromote} onPlaceholderCreate={planningVisible ? handlePlaceholderCreate : undefined} {...(dnd.jiraRankDndEnabled ? { externalDnd: true as const, externalActiveDragId: dnd.boardActiveDragId, dragOverKey: dnd.boardOverId } : { onReorder: f.sortField === "rank" && !f.activeViewId ? handleReorder : undefined })} />
           </div>
           </div>
         )}
