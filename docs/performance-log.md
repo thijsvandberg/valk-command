@@ -1,5 +1,22 @@
 # Implementation Performance Log
 
+## BRDG-304 — Placeholder tickets for forward planning (2026-06-10)
+
+Large, multi-layer feature (new table + service + 3 routes + 2 grouped-view integrations + a
+new row component), but no rework. Built backend-first, then the sprint board, then the epic
+view, committing per layer. 116 own tests green (66 new + 50 regression for touched shared
+files); browser-verified create + distinct row + delete in the live app.
+
+| Phase | Notes |
+|-------|-------|
+| Plan (Opus) | High-value: caught that BRDG-323's unified `EstimatePicker` and the **server-computed** used-points meter had made the in-file plan stale, and made the key call to route placeholders to a dedicated `PlaceholderRow` rather than fake a `Ticket` (BoardRow assumes a real Jira key everywhere). |
+| Implement | Backend (schema/migration/service/routes/promote) → sprint board (TicketTable + useGroupBy seeding + SprintBoard wiring) → epic view (separate `placeholders` prop bucketed per group, outside dnd). Extracted a shared `createTicketWithJira` helper from `POST /api/tickets` so promote reuses one create path. |
+| Verify | Targeted typecheck/lint/tests green throughout; full suite 5401 pass; `next build` compiled my code cleanly. Live browser check: planning toggle reveals "Add placeholder", create renders the dashed provisional row with estimate/BV/promote/delete, delete cleans up. |
+
+Key bottlenecks / lessons:
+- **Empty-sprint visibility gap.** `useGroupBy` builds groups from tickets, so a future sprint with only placeholders had no group. Fixed by seeding empty groups for placeholder sprint ids (sprint board). The epic view groups by the epic's children, so the same gap there is left as a documented v1 limitation (placeholder still shows on the board).
+- **Recurring foreign breakage on `dev`.** `npm run verify`/`build` are blocked by the same pre-existing `ChatMessageParts.tsx` `react-hooks/set-state-in-effect` lint error and 2 untouched story-writer/sidebar test failures — none in files this story touched (build compiled the project cleanly; only the lint gate fails). Proved the work in isolation per the established pattern; left the residual blocker alone. The shared `dev` tree also had concurrent agents' commits interleaved with mine.
+
 ## BRDG-324 — Dedicated search improvements (subtasks, shared filters, ticket pill) (2026-06-10)
 
 Smooth, well-scoped run. Extracted three shared filter-option renderers (IssueTypeOption / StatusOption / ReadinessOption) used by both FilterBar and SearchFilterPanel, added default subtask exclusion + readiness to the local engine and Jira route, swapped the search PO Status filter for Readiness, and put TicketStatusPill in the result rows. 5356 project tests green (the only 2 failures are pre-existing, in untouched story-writer files); browser-verified the board + search dropdowns and result pills in the real app.
