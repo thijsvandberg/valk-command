@@ -239,7 +239,7 @@ export function ChildIssueRow({
           the avatar/picker stays visible and clickable; otherwise it hugs the edge. */}
       {!isPending && !isEditing && actionsSlot && (
         <div
-          className={`absolute ${metadataSlot ? "right-9" : "right-1"} top-1/2 flex -translate-y-1/2 items-center gap-1 rounded-md pl-6 pr-2 opacity-0 group-hover/row:opacity-100`}
+          className={`absolute inset-y-0 ${metadataSlot ? "right-9" : "right-1"} flex items-center gap-1 pl-8 pr-2 opacity-0 group-hover/row:opacity-100`}
           style={{
             transition: "opacity 0.15s ease",
             background: "linear-gradient(to right, transparent, var(--color-surface-base) 24px)",
