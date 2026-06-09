@@ -19,7 +19,7 @@ import { tickets, apiFetch, jira as jiraApi } from "@/lib/api-client";
 import { mutate as globalMutate } from "swr";
 import type { TicketReadiness, IssueType, JiraStatus } from "@/types/ticket";
 import { useLocalStorage } from "@/hooks/useLocalStorage";
-import { BridgeMark } from "@/components/shared/BridgeMark";
+import { NavPanel } from "@/components/nav/NavPanel";
 import {
   MoreHorizontal,
   LogOut,
@@ -29,6 +29,7 @@ import {
   MessageSquareText,
   ZoomIn,
   ZoomOut,
+  Menu,
 } from "lucide-react";
 
 function getDefaultPaneWidth() {
@@ -324,6 +325,10 @@ export default function RefinementSessionTicketPage({
   const [overflowOpen, setOverflowOpen] = useState(false);
   const overflowRef = useRef<HTMLDivElement>(null);
 
+  // Brand nav menu (matches ViewHeader command capsule)
+  const [navMenuOpen, setNavMenuOpen] = useState(false);
+  const navMenuRef = useRef<HTMLDivElement>(null);
+
   useEffect(() => {
     if (!ticketData || syncedKey === ticketData.key) return;
     setSyncedKey(ticketData.key);
@@ -353,6 +358,7 @@ export default function RefinementSessionTicketPage({
   }, [openEndModal]);
 
   useOutsideClick(overflowRef, () => setOverflowOpen(false), { enabled: overflowOpen });
+  useOutsideClick(navMenuRef, () => setNavMenuOpen(false), { enabled: navMenuOpen });
 
   // Keyboard shortcuts
   useEffect(() => {
@@ -416,14 +422,22 @@ export default function RefinementSessionTicketPage({
 
           {/* Left: brand + exit + previous + ticket info */}
           <div className="relative flex items-center gap-3">
-            {/* Brand mark */}
-            <div className="flex shrink-0 items-center gap-2.5">
-              <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-[var(--color-brand-600)] text-white shadow-[0_2px_10px_var(--color-brand-glow),inset_0_1px_0_var(--color-text-muted)]">
-                <BridgeMark size={22} />
-              </div>
-              <span className="hidden font-[var(--font-display)] text-heading-sm font-extrabold tracking-[-0.04em] text-text-primary min-[1160px]:inline">
-                Bridge
-              </span>
+            {/* Brand mark — command capsule trigger, matches ViewHeader */}
+            <div ref={navMenuRef} className="relative shrink-0">
+              <button
+                type="button"
+                onClick={() => setNavMenuOpen((v) => !v)}
+                aria-haspopup="menu"
+                aria-expanded={navMenuOpen}
+                aria-label="Open navigation"
+                className="group flex items-center gap-2 rounded-lg px-1.5 py-1 cursor-pointer transition-colors duration-150 hover:bg-hover-interactive focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)]"
+              >
+                <Menu className="h-4 w-4 shrink-0 text-text-muted transition-colors duration-150 group-hover:text-[var(--color-brand-300)]" strokeWidth={2} />
+                <span className="font-[family-name:var(--font-space-mono)] text-[19px] font-bold lowercase tracking-[-0.02em] text-text-primary">
+                  bridge<span className="bridge-caret text-[var(--color-brand-400)]">_</span>
+                </span>
+              </button>
+              {navMenuOpen && <NavPanel open onClose={() => setNavMenuOpen(false)} />}
             </div>
 
             <div className="h-6 w-px shrink-0 bg-gradient-to-b from-transparent via-border-strong to-transparent" />
