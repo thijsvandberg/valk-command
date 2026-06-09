@@ -390,6 +390,37 @@ total only, with no fill ratio).
 | `sprint_id` | text PK | Jira sprint ID |
 | `capacity` | real | Story-point capacity guess (0-999) |
 
+#### `placeholder_ticket`
+
+Forward-planning placeholder tickets (BRDG-304): a lightweight, Bridge-local
+stand-in the PO drops into a future sprint/epic to mark "more work is coming"
+before any real Jira issue exists. Never synced to Jira; it has no real story
+points by definition, so its estimate is the BRDG-303 guestimation. Promotion
+creates the real Jira issue (via the shared `createTicketWithJira` helper),
+carries content/BV/guestimation over, and flips `status` to `promoted` with
+`promoted_to_key` set — the row then renders as that real ticket. No FK to
+`ticket.jira_key` (target sprint/epic may be unsynced).
+
+| Column | Type | Notes |
+|--------|------|-------|
+| `id` | text PK | `PLH-<uuid>`, never collides with a Jira key |
+| `title` | text | Required |
+| `description` | text | Notes/content, default `""` |
+| `type` | text | Lower-case issue type, default `story` |
+| `sprint_id` | text | Jira sprint ID; null = unscheduled |
+| `sprint_name` | text | Display-name snapshot (optional) |
+| `epic_key` | text | Parent epic key (optional) |
+| `epic` | text | Epic title snapshot (optional) |
+| `business_value` | integer | 0-7, same scale as `ticket_metadata.business_value` |
+| `guestimation` | integer | 0,1,2,3,5,8 - the BRDG-303 Fibonacci guess |
+| `status` | text | `active` \| `promoted`, default `active` |
+| `promoted_to_key` | text | Jira key created on promotion; null while active |
+| `created_at` | text | `datetime('now')` |
+| `updated_at` | text | `datetime('now')` |
+
+Indexed on `sprint_id`, `epic_key`, `status`. Active placeholders contribute
+their guestimation to the fullness meter via `GET /api/sprints/used-points`.
+
 #### `app_setting`
 
 Key-value store for application configuration.

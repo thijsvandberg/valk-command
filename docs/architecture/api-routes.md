@@ -69,7 +69,19 @@ Epic mode of the Story Writer. The epic is the subject ticket; sessions reuse `s
 | `/api/sprints/[id]/suggest-goal` | POST | Invoke workspace skill to generate a sprint goal suggestion |
 | `/api/sprints/pencil-capacity` | GET | Get all sprints' forward-planning pencil capacities (BRDG-303) |
 | `/api/sprints/pencil-capacity` | PUT | Upsert one sprint's pencil capacity (`{ sprintId, capacity }`; `capacity: null` clears it). Bridge-local, never synced to Jira. |
-| `/api/sprints/used-points` | GET | Total effective points (real SP, else guestimation) per sprint across all tickets (BRDG-303). Drives the epic-view fullness meter so it reflects the whole sprint, not just the open epic's children. |
+| `/api/sprints/used-points` | GET | Total effective points (real SP, else guestimation) per sprint across all tickets AND active placeholders (BRDG-303/304). Drives the fullness meter so it reflects the whole sprint, not just the open epic's children. |
+
+## Placeholder Tickets (BRDG-304)
+
+Bridge-local forward-planning stand-ins. Never touch Jira until promoted.
+
+| Route | Method | Purpose |
+|-------|--------|---------|
+| `/api/placeholders` | GET | List active placeholders; optional `?sprintId=` / `?epicKey=` filters |
+| `/api/placeholders` | POST | Create a placeholder (`{ title, description?, type?, sprintId?, epicKey?, businessValue?, guestimation? }`); returns 201 with a `PLH-<uuid>` id |
+| `/api/placeholders/[id]` | PATCH | Update title/description/type/sprint/epic/BV/guestimation (validated) |
+| `/api/placeholders/[id]` | DELETE | Delete the placeholder row (it never reached Jira) |
+| `/api/placeholders/[id]/promote` | POST | Promote into a real Jira ticket via the shared `createTicketWithJira` helper: carries the description (as a local edit), BV + guestimation (to `ticket_metadata`), and marks the placeholder `promoted` with `promoted_to_key`. Returns `{ key }`. |
 
 ## Tickets
 

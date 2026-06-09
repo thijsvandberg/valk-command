@@ -89,48 +89,76 @@ Flagged for alignment; not blocking this story.
 
 ## Implementation Plan
 
+> Refined 2026-06-09 against current code. Supersedes the original draft: BRDG-323 shipped a
+> unified `EstimatePicker` (SP + guestimation in one control); the "used" total for the
+> fullness meter is computed **server-side** in `GET /api/sprints/used-points`, not in the
+> components; placeholders must route to a dedicated `PlaceholderRow` rather than fake a
+> `Ticket`, because `BoardRow` assumes a real Jira key everywhere (prefetch, navigation,
+> status pill, assignee/follow/review).
+
+### Core design decision
+
+Placeholders are merged into the grouped views keyed by a `PLH-<uuid>` id, but render through
+a **dedicated `PlaceholderRow`** (sprint board) / placeholder branch (epic view), NOT a faked
+`Ticket`. `useGroupBy` and dnd are id-agnostic (string keys), so the id flows through grouping
+cleanly; routing to a separate component contains all Jira-key assumptions. Placeholders are
+**not draggable** in v1 (excluded from SortableContext); sprint is set at create/edit time.
+
 ### Data
 
-1. New `placeholderTicket` table (Bridge-local; no Jira sync), e.g.:
-   - local id (e.g. `PLH-<uuid>`), `title`, `description` (content), `type`
-     (default Story), `sprintId`/`sprintName`, `epicKey`,
-   - `businessValue`, `guestimation` (the BRDG-303 estimate),
-   - lifecycle (`active` | `promoted`), `promotedToKey` (Jira key once promoted),
-   - `createdAt`/`updatedAt`. Migration in `drizzle/`.
+1. New `placeholder_ticket` table in `src/db/schema.ts` (Bridge-local, no Jira sync, no FK):
+   `id` (text PK, `PLH-<uuid>`), `title`, `description` (default ""), `type` (default
+   "story"), `sprintId`/`sprintName`, `epicKey`/`epic`, `businessValue` (int 0–7),
+   `guestimation` (int in 0,1,2,3,5,8), `status` ("active"|"promoted", default "active"),
+   `promotedToKey`, `createdAt`/`updatedAt` (`datetime('now')`). Indexes on sprintId, epicKey,
+   status. Run `npm run db:generate` to emit the migration.
 
 ### API
 
-2. CRUD endpoints for placeholders (create, update content/BV/guestimation/sprint/epic,
-   delete-to-`deleted/` per repo convention, list by sprint/epic).
-3. **Promote** endpoint: create the real Jira ticket via the existing creation path
-   (title, type, sprintId, epicKey), carry over the description (push as local edits), BV
-   (→ `ticketMetadata`), and guestimation (→ the new ticket's guestimation, since it has no
-   SP yet), then mark the placeholder `promoted` with `promotedToKey`. The row thereafter
-   renders as the real ticket.
+2. `src/services/placeholder-service.ts` (validation lives here) + thin routes
+   `src/app/api/placeholders/route.ts` (GET list with `?sprintId=`/`?epicKey=` filters,
+   default `status=active`; POST create, generates id, requires title) and
+   `src/app/api/placeholders/[id]/route.ts` (PATCH partial update with BV/guestimation
+   validation; DELETE hard-delete the DB row). Add `placeholders` to `src/lib/api-client.ts`.
+   Invalidate `/api/tickets*` and used-points caches on write.
+3. **Promote** `src/app/api/placeholders/[id]/promote/route.ts` (POST → `promotePlaceholder`):
+   extract the Jira-creating body of `POST /api/tickets` into a shared
+   `createTicketWithJira({title, issueType, sprintId, epicKey})` helper and call it from both;
+   carry description as a `ticketLocalEdit` (field "description", null baseline), BV +
+   guestimation via `updateTicketMetadata(newKey, …)`; mark placeholder
+   `status=promoted, promotedToKey=newKey`. Active-only list filter means no duplicate row.
 
 ### UI — rendering & distinct look
 
-4. Merge active placeholders into the row lists in the sprint board grouped view and the
-   epic-children-by-sprint view.
-5. Distinct placeholder styling, consistent with BRDG-303's "pencil/provisional" motif:
-   dashed/outline row, muted/ghosted surface, a clear "Placeholder" badge and pencil-family
-   icon — unmistakably not a real ticket. Mirror the `BoardRow` variant-state approach.
-6. Allow editing content (title + description), BV, and guestimation inline / in a light
-   editor. A placeholder has no real SP field and no Jira-only controls (status workflow,
-   assignee push, etc.).
-7. A **Promote / Convert to ticket** action on the placeholder.
+4. `PlaceholderTicket` type in `src/types/ticket.ts`; `src/hooks/usePlaceholders.ts` (SWR,
+   fetch only when `enabled`=planning on, optimistic create/update/remove/promote). Merge into
+   `SprintBoard.tsx` (build `placeholdersBySprint`, render in each group) and into
+   `EpicChildrenSection.tsx`→`EpicChildrenBySprint.tsx` (adapt to an `EpicChild`-shaped object
+   with `isPlaceholder:true`, branch `renderRow`). Both gated on the planning toggle.
+5. `src/components/sprint-board/PlaceholderRow.tsx`: dashed/ghosted surface, `Pencil` motif,
+   "Placeholder" badge (slate metric tone), NO status pill / assignee / navigation / prefetch.
+   Reuse for the epic view.
+6. Inline edit on `PlaceholderRow`: editable title + description (popover textarea),
+   `BusinessValuePicker` for BV, `EstimatePicker` with `storyPoints={null}` + `planningMode`
+   for guestimation (degrades to guess-only). All persist via PATCH.
+7. A **Promote / Convert to ticket** overflow action on `PlaceholderRow` → `promote` → mutate
+   ticket list + placeholder list.
 
-### UI — visibility toggle
+### UI — visibility toggle + meter
 
-8. Placeholders are shown only when the view's Planning mode (BRDG-303) is on. When off,
-   they are hidden everywhere.
+8. Visibility tied to the existing per-view planning toggle (`sprint-board-planning-visible` /
+   `epic-children-planning-visible`) via the `usePlaceholders(enabled)` gate. Extend
+   `GET /api/sprints/used-points` to also sum `effectivePoints(null, guestimation)` over active
+   placeholders per sprint, so the fullness meter matches. Guard `isUnpointedChild` so
+   placeholders are not flagged as unpointed.
 
 ### Tests
 
-9. Cover: placeholder CRUD + validation; placeholders appear only in grouped views with
-   planning on; distinct styling renders; BV + guestimation editable and counted in the
-   fullness meter; promote creates a real ticket carrying content/BV/guestimation and marks
-   the placeholder promoted.
+9. `placeholder-service.test.ts` (CRUD validation, promote carries content/BV/guestimation +
+   marks promoted, no duplicate), `placeholders` route test (filters, 400 on missing title, id
+   format), `PlaceholderRow.test.tsx` (dashed/badge/pencil, BV+guestimation edits, promote
+   fires, no status pill/navigation), used-points test (active placeholder counts, promoted
+   does not double-count), view-merge test (planning on/off + correct sprint group).
 
 ## Requirements
 
@@ -167,14 +195,25 @@ Flagged for alignment; not blocking this story.
 
 ## Checklist
 
-- [ ] `placeholderTicket` table (Bridge-local) + migration
-- [ ] CRUD API for placeholders (create/update/list/delete-to-`deleted/`)
-- [ ] Promote endpoint: create real ticket, carry content/BV/guestimation, mark promoted
-- [ ] Merge placeholders into sprint-board and epic-by-sprint grouped views
-- [ ] Distinct placeholder styling (dashed/ghosted + badge + pencil motif)
-- [ ] Inline edit of content, BV, and guestimation on a placeholder
-- [ ] Visibility tied to BRDG-303 per-view Planning toggle
-- [ ] Promote / Convert-to-ticket action in the UI
-- [ ] Tests for all of the above
-- [ ] Update relevant docs in `/docs`
+- [x] `placeholderTicket` table (Bridge-local) + migration (`0074`)
+- [x] CRUD API for placeholders (create/update/list/delete) + `placeholder-service`
+- [x] Promote endpoint: create real ticket, carry content/BV/guestimation, mark promoted
+- [x] Merge placeholders into sprint-board and epic-by-sprint grouped views
+- [x] Distinct placeholder styling (dashed/ghosted + badge + pencil motif) — `PlaceholderRow`
+- [x] Inline edit of content, BV, and guestimation on a placeholder
+- [x] Visibility tied to BRDG-303 per-view Planning toggle
+- [x] Promote / Convert-to-ticket action in the UI (+ Add placeholder + delete)
+- [x] Tests for all of the above
+- [x] Update relevant docs in `/docs`
+
+### Notes / known limitations
+
+- The sprint board's grouped (All) view seeds an empty group for a future sprint that has
+  only placeholders, so a placeholder always surfaces there and in the flat single-sprint
+  view. The **epic-by-sprint** view groups by the epic's children, so a placeholder added to
+  a sprint with no epic children does not create a group there (it is still visible on the
+  sprint board); a child in that sprint makes the group and its placeholders appear.
+- Placeholders are intentionally **not draggable** in v1; sprint is set at create/edit time.
+- A promoted placeholder's description is carried as a **pending local edit** on the new
+  ticket (pushable to Jira), not auto-pushed.
 ```
