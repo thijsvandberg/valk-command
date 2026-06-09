@@ -5,6 +5,8 @@ import type { Attachment } from "@/types/ticket";
 import { CloudUpload, Loader2, ChevronDown, Save, RotateCcw } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import { apiFetch, tickets } from "@/lib/api-client";
+import { useTicketEditStateSync } from "@/hooks/useTicketEditStateSync";
+import type { TicketEditState } from "@/types/ticket";
 import { markdownEqualIgnoringSpacing, normalizeMarkdownForCompare } from "@/lib/normalize-markdown";
 import { renderMarkdown } from "./renderMarkdown";
 import { Checkbox } from "@/components/shared/Checkbox";
@@ -79,6 +81,7 @@ export function EditableDescription({
   onOverrideChange?: (val: boolean) => void;
   toolbarPortalId?: string;
 }) {
+  const syncEditState = useTicketEditStateSync();
   const resolvedInitial = resolveLocalValue(serverLocalEdit?.value, initialDescription, attachments);
   // A server-side edit that differs from the Jira version only in cosmetic
   // blank-line spacing is a serializer round-trip artifact, not a real edit.
@@ -119,17 +122,19 @@ export function EditableDescription({
   // up) cosmetic-only drafts so they never surface as pending changes.
   useEffect(() => {
     if (serverEditIsCosmetic) {
-      apiFetch<void>(
+      apiFetch<{ editState?: TicketEditState }>(
         `/api/tickets/${encodeURIComponent(ticketKey)}/local-edits?draftsOnly=true`,
         { method: "DELETE" },
-      ).catch(() => { /* best-effort cleanup */ });
+      )
+        .then((res) => syncEditState(ticketKey, res?.editState ?? "clean"))
+        .catch(() => { /* best-effort cleanup */ });
       return;
     }
     if (serverLocalEdit && !notifiedDescRef.current) {
       notifiedDescRef.current = true;
       onLocalEdit(true);
     }
-  }, [serverLocalEdit, onLocalEdit, serverEditIsCosmetic, ticketKey]);
+  }, [serverLocalEdit, onLocalEdit, serverEditIsCosmetic, ticketKey, syncEditState]);
 
   // Auto-save draft on change (debounced)
   const autoSaveDraft = useCallback((content: string) => {
@@ -137,9 +142,10 @@ export function EditableDescription({
     autoSaveTimerRef.current = setTimeout(async () => {
       try {
         await tickets.saveLocalEdit(ticketKey, { field: "description", localValue: content.trim(), isDraft: true });
+        syncEditState(ticketKey, "draft");
       } catch { /* ignore */ }
     }, 800);
-  }, [ticketKey]);
+  }, [ticketKey, syncEditState]);
 
   // Flush pending draft on unmount (e.g. ticket navigation) via sendBeacon
   useEffect(() => {
@@ -188,7 +194,8 @@ export function EditableDescription({
       localEditNotifiedRef.current = false;
       onLocalEdit(false);
       // Clean up any draft
-      await apiFetch<void>(`/api/tickets/${encodeURIComponent(ticketKey)}/local-edits?draftsOnly=true`, { method: "DELETE" });
+      const res = await apiFetch<{ editState?: TicketEditState }>(`/api/tickets/${encodeURIComponent(ticketKey)}/local-edits?draftsOnly=true`, { method: "DELETE" });
+      syncEditState(ticketKey, res?.editState ?? "clean");
       return;
     }
     if (autoSaveTimerRef.current) clearTimeout(autoSaveTimerRef.current);
@@ -196,7 +203,8 @@ export function EditableDescription({
     setLocalValue(value.trim());
     setEditIsDraft(false);
     onLocalEdit(true);
-  }, [ticketKey, value, initialDescription, onLocalEdit]);
+    syncEditState(ticketKey, "local_edits");
+  }, [ticketKey, value, initialDescription, onLocalEdit, syncEditState]);
 
   const save = useCallback(async () => {
     setEditingState(false);

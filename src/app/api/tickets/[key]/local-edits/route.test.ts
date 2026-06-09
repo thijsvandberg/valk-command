@@ -183,6 +183,7 @@ describe("DELETE /api/tickets/[key]/local-edits", () => {
     const delReq = new Request("http://localhost:3100/api/tickets/VPL-100/local-edits", { method: "DELETE" });
     const res = await DELETE(delReq, makeParams("VPL-100"));
     expect(res.status).toBe(200);
+    expect(await res.json()).toEqual({ success: true, editState: "clean" });
 
     const getRes = await GET(getRequest("VPL-100"), makeParams("VPL-100"));
     const data = await getRes.json();
@@ -212,6 +213,8 @@ describe("DELETE /api/tickets/[key]/local-edits", () => {
     const delReq = new Request("http://localhost:3100/api/tickets/VPL-100/local-edits?draftsOnly=true", { method: "DELETE" });
     const res = await DELETE(delReq, makeParams("VPL-100"));
     expect(res.status).toBe(200);
+    // A saved (non-draft) edit survives, so the reported state is not clean.
+    expect(await res.json()).toEqual({ success: true, editState: "local_edits" });
 
     const getRes = await GET(getRequest("VPL-100"), makeParams("VPL-100"));
     const data = await getRes.json();

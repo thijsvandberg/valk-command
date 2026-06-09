@@ -4,12 +4,17 @@ import { EditableDescription, resolveLocalValue } from "./EditableDescription";
 
 const mockSaveLocalEdit = vi.fn();
 const mockApiFetch = vi.fn();
+const mockSyncEditState = vi.fn();
 
 vi.mock("@/lib/api-client", () => ({
   tickets: {
     saveLocalEdit: (...args: unknown[]) => mockSaveLocalEdit(...args),
   },
   apiFetch: (...args: unknown[]) => mockApiFetch(...args),
+}));
+
+vi.mock("@/hooks/useTicketEditStateSync", () => ({
+  useTicketEditStateSync: () => mockSyncEditState,
 }));
 
 vi.mock("./renderMarkdown", () => ({
@@ -171,6 +176,26 @@ describe("EditableDescription", () => {
     renderDesc({ initialDescription: "Original" });
     fireEvent.click(screen.getByTestId("rendered-markdown"));
     expect(screen.getByTestId("rich-editor")).toBeInTheDocument();
+  });
+
+  it("cleans up a cosmetic-only draft and broadcasts the resulting state", async () => {
+    mockApiFetch.mockResolvedValue({ editState: "clean" });
+    renderDesc({
+      ticketKey: "VPL-7",
+      initialDescription: "Original",
+      // Differs from the Jira version only in blank-line spacing: a no-op draft.
+      serverLocalEdit: { value: "Original\n\n", isDraft: true },
+    });
+
+    await waitFor(() => {
+      expect(mockApiFetch).toHaveBeenCalledWith(
+        "/api/tickets/VPL-7/local-edits?draftsOnly=true",
+        { method: "DELETE" },
+      );
+    });
+    await waitFor(() => {
+      expect(mockSyncEditState).toHaveBeenCalledWith("VPL-7", "clean");
+    });
   });
 
   it("renders 'Unsaved changes' badge for draft local edits", () => {

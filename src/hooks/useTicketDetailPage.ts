@@ -5,12 +5,13 @@ import type { Ticket, TicketDetail, TicketReadiness, IssueType, JiraStatus } fro
 import { useTicketDetail, useJiraSprints, useTicketReviews, useActiveWriterSessions } from "@/hooks/useSprintBoard";
 import { useFollowedTickets, useFollowTicket } from "@/hooks/usePipelines";
 import { apiFetch, jira, tickets } from "@/lib/api-client";
-import { publishTicketSync } from "@/lib/ticket-sync-channel";
+import { useTicketEditStateSync } from "@/hooks/useTicketEditStateSync";
 import { getJiraUrl } from "@/components/sprint-board/TicketTableCells";
 import { useToast } from "@/hooks/useToast";
 
 export function useTicketDetailPage(key: string) {
   const { toast, toastLoading, showToast, dismissToast } = useToast();
+  const syncEditState = useTicketEditStateSync();
   const { data: apiData, isLoading: ticketLoading, mutate: mutateTicket } = useTicketDetail(key);
   const handleMutate = useCallback(() => { mutateTicket(); }, [mutateTicket]);
 
@@ -201,14 +202,14 @@ export function useTicketDetailPage(key: string) {
         { revalidate: true },
       );
       setDraftDiscardKey((k) => k + 1);
-      publishTicketSync({ key, editState: "clean" });
+      syncEditState(key, "clean");
     } catch (err) {
       console.error("Failed to discard draft:", err);
       setDiscardError("Failed to accept Jira version. Please try again.");
     } finally {
       setIsDiscarding(false);
     }
-  }, [key, mutateTicket]);
+  }, [key, mutateTicket, syncEditState]);
 
   const handlePushToJira = useCallback(async () => {
     setIsPushing(true);
@@ -229,7 +230,7 @@ export function useTicketDetailPage(key: string) {
           { revalidate: true },
         );
         setDraftDiscardKey((k) => k + 1);
-        publishTicketSync({ key, editState: "clean" });
+        syncEditState(key, "clean");
         showToast("Pushed to Jira");
       } else {
         setPushError(data.error ?? "Push failed");
@@ -239,7 +240,7 @@ export function useTicketDetailPage(key: string) {
     } finally {
       setIsPushing(false);
     }
-  }, [key, handleRemoteChanged, mutateTicket, showToast]);
+  }, [key, handleRemoteChanged, mutateTicket, showToast, syncEditState]);
 
   const handleRefreshFromJira = useCallback(async () => {
     setIsRefreshing(true);

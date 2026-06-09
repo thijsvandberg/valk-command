@@ -236,15 +236,16 @@ describe("deleteLocalEdits", () => {
     testDb = createTestDb();
   });
 
-  it("deletes all local edits", async () => {
+  it("deletes all local edits and returns clean", async () => {
     seedTicket(testDb, "VPL-1");
     await upsertLocalEdit("VPL-1", { field: "title", localValue: "t" });
-    await deleteLocalEdits("VPL-1", { draftsOnly: false });
+    const editState = await deleteLocalEdits("VPL-1", { draftsOnly: false });
     const remaining = await getLocalEdits("VPL-1");
     expect(remaining).toHaveLength(0);
+    expect(editState).toBe("clean");
   });
 
-  it("deletes only drafts when draftsOnly=true", async () => {
+  it("deletes only drafts when draftsOnly=true and returns the remaining state", async () => {
     seedTicket(testDb, "VPL-1");
     await upsertLocalEdit("VPL-1", { field: "title", localValue: "saved" });
     await upsertLocalEdit("VPL-1", {
@@ -252,10 +253,24 @@ describe("deleteLocalEdits", () => {
       localValue: "draft",
       isDraft: true,
     });
-    await deleteLocalEdits("VPL-1", { draftsOnly: true });
+    const editState = await deleteLocalEdits("VPL-1", { draftsOnly: true });
     const remaining = await getLocalEdits("VPL-1");
     expect(remaining).toHaveLength(1);
     expect(remaining[0].field).toBe("title");
+    // A saved (non-draft) edit survives the drafts-only delete.
+    expect(editState).toBe("local_edits");
+  });
+
+  it("returns clean when a drafts-only delete removes the last edit", async () => {
+    seedTicket(testDb, "VPL-1");
+    await upsertLocalEdit("VPL-1", {
+      field: "description",
+      localValue: "draft",
+      isDraft: true,
+    });
+    const editState = await deleteLocalEdits("VPL-1", { draftsOnly: true });
+    expect(await getLocalEdits("VPL-1")).toHaveLength(0);
+    expect(editState).toBe("clean");
   });
 });
 

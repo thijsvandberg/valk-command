@@ -3,6 +3,7 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import { Tag } from "@/components/shared/Tag";
 import { tickets } from "@/lib/api-client";
+import { useTicketEditStateSync } from "@/hooks/useTicketEditStateSync";
 
 export function EditableTitle({
   ticketKey,
@@ -23,6 +24,7 @@ export function EditableTitle({
    *  surrounding views, e.g. an epic's children list that mirrors this title. */
   onSaved?: () => void;
 }) {
+  const syncEditState = useTicketEditStateSync();
   const [editing, setEditing] = useState(false);
   // Persisted local edit - only updated on save, drives the "Locally modified" badge
   const [localValue, setLocalValue] = useState<string | null>(serverLocalEdit?.value ?? null);
@@ -104,13 +106,14 @@ export function EditableTitle({
       await tickets.saveLocalEdit(ticketKey, { field: "title", localValue: draft });
       setLocalValue(draft);
       onLocalEdit(true);
+      syncEditState(ticketKey, "local_edits");
       onSaved?.();
     } catch (err) {
       console.error("Operation failed:", err);
     } finally {
       savingRef.current = false;
     }
-  }, [ticketKey, initialTitle, onLocalEdit, onSaved]);
+  }, [ticketKey, initialTitle, onLocalEdit, onSaved, syncEditState]);
 
   if (editing) {
     return (

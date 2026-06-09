@@ -58,13 +58,15 @@ export async function DELETE(
   if (invalid) return invalid;
   const key = resolveDraftKey(rawKey);
   const draftsOnly = new URL(request.url).searchParams.get("draftsOnly") === "true";
-  await ticketService.deleteLocalEdits(key, { draftsOnly });
+  const editState = await ticketService.deleteLocalEdits(key, { draftsOnly });
   cache.invalidate(`/api/tickets/${key}`);
   // The sprint/backlog list cache carries each ticket's editState; without this a
   // refetch would keep serving the stale "draft"/"local changes" label until the
   // 30s list TTL expires.
   cache.invalidate(/^\/api\/tickets(\?|$)/);
-  return NextResponse.json({ success: true });
+  // editState lets the caller broadcast the true post-delete state to other tabs,
+  // so views like the refinement queue update live instead of waiting for a poll.
+  return NextResponse.json({ success: true, editState });
 }
 
 export async function PATCH(
