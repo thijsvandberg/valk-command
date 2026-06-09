@@ -5,6 +5,11 @@ const isPublicRoute = createRouteMatcher([
   "/login(.*)",
   "/sign-in(.*)",
   "/sign-up(.*)",
+  // Dynamically generated app icons (favicon, apple, PWA) must be reachable
+  // without auth so browsers and OS installers can fetch them.
+  "/icon",
+  "/apple-icon",
+  "/app-icon",
   // Dev bypass activation endpoint must be reachable before auth is established
   "/api/dev/bypass",
 ]);

@@ -31,10 +31,8 @@ export const metadata: Metadata = {
     default: "Bridge",
   },
   description: "PO Command Center for Valk Platform",
-  icons: {
-    icon: "/favicon.ico",
-    apple: "/apple-touch-icon.png",
-  },
+  // Favicon + apple icon are generated dynamically by src/app/icon.tsx and
+  // src/app/apple-icon.tsx (env-coloured), so no static icon refs here.
   other: {
     "mobile-web-app-capable": "yes",
     "apple-mobile-web-app-capable": "yes",

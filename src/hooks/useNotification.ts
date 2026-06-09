@@ -52,7 +52,7 @@ export function useNotification(): UseNotificationReturn {
       const notification = new Notification(title, {
         body: options?.body,
         tag: options?.tag,
-        icon: "/icon-192.png",
+        icon: "/app-icon?size=192",
       });
 
       notification.onclick = () => {

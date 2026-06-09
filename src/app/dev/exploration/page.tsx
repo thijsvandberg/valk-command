@@ -8,7 +8,7 @@
  */
 
 import Link from "next/link";
-import { ArrowUpRight, LayoutGrid, Rows3, FlaskConical, Shapes, MousePointerClick, Type, PanelTop, PanelTopDashed } from "lucide-react";
+import { ArrowUpRight, LayoutGrid, Rows3, FlaskConical, Shapes, MousePointerClick, Type, PanelTop, PanelTopDashed, AppWindow } from "lucide-react";
 
 type Exploration = {
   slug: string;
@@ -22,6 +22,14 @@ type Exploration = {
 const ICON = "h-5 w-5";
 
 const EXPLORATIONS: Exploration[] = [
+  {
+    slug: "favicon",
+    title: "Favicon directions",
+    blurb:
+      "Five favicons built from the bridge_ wordmark instead of the rejected aperture mark. Each distils the brand to what survives at 16px: the mono b and the teal underscore caret. Shown large, at real sizes, and in faux browser tabs.",
+    status: "Exploration",
+    icon: <AppWindow className={ICON} strokeWidth={1.5} />,
+  },
   {
     slug: "header",
     title: "Top bar - wordmark & menu",
