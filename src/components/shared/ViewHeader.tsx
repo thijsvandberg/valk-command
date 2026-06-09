@@ -16,9 +16,11 @@ interface ViewHeaderProps {
   hideNotifications?: boolean;
   /** Drops the separator between the bridge menu and the view context. */
   hideContextDivider?: boolean;
+  /** Collapses the notification bell + actions into a single rounded ring. */
+  groupedActions?: boolean;
 }
 
-export function ViewHeader({ icon, children, actions, className, hideNotifications, hideContextDivider }: ViewHeaderProps) {
+export function ViewHeader({ icon, children, actions, className, hideNotifications, hideContextDivider, groupedActions }: ViewHeaderProps) {
   const { toggleFocusMode } = useFocusModeContext();
   const [target, setTarget] = useState<HTMLElement | null>(null);
   const [menuOpen, setMenuOpen] = useState(false);
@@ -86,19 +88,38 @@ export function ViewHeader({ icon, children, actions, className, hideNotificatio
       </div>
 
       <div className="relative flex shrink-0 items-center gap-2 pl-3">
-        {actions}
-        {/* Hovering the top-right corner (bell area) smoothly expands the focus-mode toggle into view */}
-        <div className="group/corner flex items-center">
-          {!hideNotifications && <NotificationBell />}
-          <button
-            onClick={toggleFocusMode}
-            title="Focus mode"
-            aria-label="Toggle focus mode"
-            className="inline-flex h-7 w-0 ml-0 shrink-0 items-center justify-center overflow-hidden rounded-lg cursor-pointer text-text-tertiary bg-transparent border border-transparent opacity-0 group-hover/corner:w-7 group-hover/corner:ml-2 group-hover/corner:opacity-100 focus-visible:w-7 focus-visible:ml-2 focus-visible:opacity-100 hover:bg-hover-interactive hover:text-text-secondary focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)] active:scale-[0.95] transition-[width,margin,opacity,background-color,color,transform] duration-200 ease-out"
-          >
-            <Minimize2 className="h-3.5 w-3.5 shrink-0" strokeWidth={2} />
-          </button>
-        </div>
+        {groupedActions ? (
+          /* Notification bell + view actions collapsed into one console ring; the
+             focus-mode toggle still expands in on hover of the whole cluster. */
+          <div className="group/corner flex items-center gap-0.5 rounded-xl border border-border-default bg-overlay-subtle px-1 py-1">
+            {!hideNotifications && <NotificationBell />}
+            {actions}
+            <button
+              onClick={toggleFocusMode}
+              title="Focus mode"
+              aria-label="Toggle focus mode"
+              className="inline-flex h-7 w-0 ml-0 shrink-0 items-center justify-center overflow-hidden rounded-lg cursor-pointer text-text-tertiary bg-transparent border border-transparent opacity-0 group-hover/corner:w-7 group-hover/corner:ml-1 group-hover/corner:opacity-100 focus-visible:w-7 focus-visible:ml-1 focus-visible:opacity-100 hover:bg-hover-interactive hover:text-text-secondary focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)] active:scale-[0.95] transition-[width,margin,opacity,background-color,color,transform] duration-200 ease-out"
+            >
+              <Minimize2 className="h-3.5 w-3.5 shrink-0" strokeWidth={2} />
+            </button>
+          </div>
+        ) : (
+          <>
+            {actions}
+            {/* Hovering the top-right corner (bell area) smoothly expands the focus-mode toggle into view */}
+            <div className="group/corner flex items-center">
+              {!hideNotifications && <NotificationBell />}
+              <button
+                onClick={toggleFocusMode}
+                title="Focus mode"
+                aria-label="Toggle focus mode"
+                className="inline-flex h-7 w-0 ml-0 shrink-0 items-center justify-center overflow-hidden rounded-lg cursor-pointer text-text-tertiary bg-transparent border border-transparent opacity-0 group-hover/corner:w-7 group-hover/corner:ml-2 group-hover/corner:opacity-100 focus-visible:w-7 focus-visible:ml-2 focus-visible:opacity-100 hover:bg-hover-interactive hover:text-text-secondary focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)] active:scale-[0.95] transition-[width,margin,opacity,background-color,color,transform] duration-200 ease-out"
+              >
+                <Minimize2 className="h-3.5 w-3.5 shrink-0" strokeWidth={2} />
+              </button>
+            </div>
+          </>
+        )}
       </div>
     </div>,
     target,

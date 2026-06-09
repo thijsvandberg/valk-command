@@ -127,25 +127,12 @@ export function SprintBoardHeader(props: SprintBoardHeaderProps) {
 
   return (
     <ViewHeader
+      groupedActions
       icon={isAllView ? <LayoutGrid size={15} strokeWidth={1.5} className="text-text-tertiary" />
         : activeView ? <Bookmark size={15} strokeWidth={1.5} className="text-text-tertiary" fill="currentColor" />
         : <CalendarRange size={15} strokeWidth={1.5} className="text-text-tertiary" />}
       actions={<>
-          {!isAllView && !activeView && activeSprint && (
-            <Button
-              variant="secondary"
-              size="md"
-              iconOnly
-              icon={isSprintFollowed
-                ? <BellOff className="h-3.5 w-3.5" strokeWidth={1.5} />
-                : <Bell className="h-3.5 w-3.5" strokeWidth={1.5} />}
-              onClick={handleToggleFollowSprint}
-              title={isSprintFollowed ? "Unfollow sprint (stop UAT deploy notifications)" : "Follow sprint (get UAT deploy notifications)"}
-              aria-label={isSprintFollowed ? "Unfollow sprint" : "Follow sprint"}
-              className={isSprintFollowed ? "border-[var(--color-brand-500)]/40 text-[var(--color-brand-400)]" : ""}
-            />
-          )}
-          <Button variant="secondary" size="md" iconOnly icon={<Search className="h-3.5 w-3.5" strokeWidth={1.5} />} onClick={() => setSearchModalOpen(true)} title="Search tickets (shift+cmd+K)" aria-label="Search tickets" />
+          <Button variant="ghost" size="md" iconOnly icon={<Search className="h-3.5 w-3.5" strokeWidth={1.5} />} onClick={() => setSearchModalOpen(true)} title="Search tickets (shift+cmd+K)" aria-label="Search tickets" className="border-0 bg-transparent" />
           <div ref={headerMenuRef} className="relative">
             <Button
               variant="ghost"
@@ -155,10 +142,30 @@ export function SprintBoardHeader(props: SprintBoardHeaderProps) {
               onClick={() => setHeaderMenuOpen((v) => !v)}
               title="More options"
               aria-label="More options"
-              className={headerMenuOpen ? "border-border-strong bg-overlay-strong text-text-secondary" : ""}
+              className={`border-0 bg-transparent ${headerMenuOpen ? "bg-overlay-strong text-text-secondary" : ""}`}
             />
             {headerMenuOpen && (
               <div className="absolute right-0 top-full z-30 mt-1.5 w-44 rounded-xl border border-border-strong bg-[var(--color-surface-floating)] py-1.5 shadow-[var(--shadow-lg)]">
+                {!isAllView && !activeView && activeSprint && (
+                  <button
+                    type="button"
+                    onClick={() => { handleToggleFollowSprint(); setHeaderMenuOpen(false); }}
+                    className={`flex w-full items-center gap-2.5 px-3 py-2 text-body-sm cursor-pointer transition-colors duration-150 ${
+                      isSprintFollowed
+                        ? "text-[var(--color-brand-400)] bg-[var(--color-brand-500)]/[0.08]"
+                        : "text-text-secondary hover:bg-hover-interactive hover:text-text-primary"
+                    }`}
+                    title={isSprintFollowed ? "Stop UAT deploy notifications" : "Get UAT deploy notifications"}
+                  >
+                    {isSprintFollowed
+                      ? <BellOff size={13} strokeWidth={1.5} className="shrink-0" />
+                      : <Bell size={13} strokeWidth={1.5} className="shrink-0" />}
+                    <span>{isSprintFollowed ? "Unfollow sprint" : "Follow sprint"}</span>
+                  </button>
+                )}
+                {!isAllView && !activeView && activeSprint && (
+                  <div className="my-1 h-px bg-border-default/60" aria-hidden />
+                )}
                 <button
                   type="button"
                   onClick={() => { setAnalyticsVisible((v: boolean) => !v); setHeaderMenuOpen(false); }}
