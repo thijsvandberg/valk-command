@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useLayoutEffect, useRef, useState } from "react";
 import { Sparkles, Loader2 } from "lucide-react";
 import { Tooltip } from "@/components/shared/Tooltip";
 
@@ -22,6 +22,16 @@ export function TitleInput({
   suggestDisabled = false,
 }: TitleInputProps) {
   const [suggesting, setSuggesting] = useState(false);
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
+
+  // Auto-grow the textarea to fit its content so long titles wrap onto
+  // multiple lines instead of being clipped on a single line.
+  useLayoutEffect(() => {
+    const el = textareaRef.current;
+    if (!el) return;
+    el.style.height = "auto";
+    el.style.height = `${el.scrollHeight}px`;
+  }, [value]);
 
   const handleSuggest = async () => {
     if (!onSuggest || suggesting || suggestDisabled) return;
@@ -33,20 +43,25 @@ export function TitleInput({
     }
   };
 
-  // Padding lives on the wrapper (not the input) so the button can be vertically
-  // centered against the title text via `items-center`. Centering on the input
-  // itself would land too high because of its asymmetric pt-4/pb-1 padding.
+  // Padding lives on the wrapper (not the textarea) so the button aligns to the
+  // first line of the title via `items-start`, which keeps it stable as the
+  // title wraps onto multiple lines.
   return (
-    <div className={`group/title flex items-center pl-4 pt-4 pb-1 ${onSuggest ? "pr-3" : "pr-4"}`}>
-      <input
-        type="text"
+    <div className={`group/title flex items-start pl-4 pt-4 pb-1 ${onSuggest ? "pr-3" : "pr-4"}`}>
+      <textarea
+        ref={textareaRef}
+        rows={1}
         value={value}
         onChange={(e) => onChange(e.target.value)}
+        // A title is a single logical line; block Enter from inserting newlines.
+        onKeyDown={(e) => {
+          if (e.key === "Enter") e.preventDefault();
+        }}
         placeholder={placeholder}
-        className="min-w-0 flex-1 bg-transparent font-[var(--font-display)] text-[1.35rem] font-semibold leading-snug tracking-tight text-text-primary placeholder:text-text-muted focus:outline-none"
+        className="min-w-0 flex-1 resize-none overflow-hidden bg-transparent font-[var(--font-display)] text-[1.35rem] font-semibold leading-snug tracking-tight text-text-primary placeholder:text-text-muted focus:outline-none"
       />
       {onSuggest && (
-        <Tooltip content="Suggest titles" delay={250} className="ml-2 shrink-0">
+        <Tooltip content="Suggest titles" delay={250} className="ml-2 mt-1 shrink-0">
           <button
             type="button"
             onClick={handleSuggest}
