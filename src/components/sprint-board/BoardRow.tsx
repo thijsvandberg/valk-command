@@ -508,10 +508,10 @@ export const BoardRow = memo(forwardRef<HTMLTableRowElement, BoardRowBaseProps>(
                   onViewRefinement={onViewRefinement}
                 >
                   <span
-                    className="inline-flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-[var(--color-brand-500)]/12 ring-1 ring-inset ring-[var(--color-brand-500)]/15"
+                    className="inline-flex h-5 shrink-0 items-center justify-center"
                     style={{ color: "var(--meta-refine-fg)" }}
                   >
-                    <Boxes size={12} strokeWidth={1.75} className="shrink-0" />
+                    <Boxes size={14} strokeWidth={1.75} className="shrink-0" />
                   </span>
                 </RefinementGemTrigger>
               )}
