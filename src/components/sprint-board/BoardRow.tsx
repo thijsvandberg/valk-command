@@ -280,7 +280,7 @@ export const BoardRow = memo(forwardRef<HTMLTableRowElement, BoardRowBaseProps>(
             : ticket.flagged
             ? "bg-[color-mix(in_srgb,var(--color-status-error)_6%,transparent)] border-l-[var(--color-status-error)] hover:bg-[color-mix(in_srgb,var(--color-status-error)_8%,transparent)]"
             : "border-l-transparent hover:bg-overlay-subtle hover:border-l-[var(--color-brand-400)]/25"
-        } ${isFocused && !isSelected && !isContextTarget ? "outline outline-1 -outline-offset-1 outline-[var(--color-brand-500)]/40" : ""} ${isRemoved ? "opacity-50" : isInflight ? "opacity-70" : ""} ${isLastInCard ? "rounded-b-[11px]" : ""}`}>
+        } ${isFocused && !isSelected && !isContextTarget ? "outline outline-1 -outline-offset-1 outline-[var(--color-brand-500)]/40" : ""} ${isRemoved ? "opacity-50" : isDeprecated ? "opacity-60" : isInflight ? "opacity-70" : ""} ${isLastInCard ? "rounded-b-[11px]" : ""}`}>
           {/* Drag affordance in the left gutter (Jira-style). Visual only: the whole row is the
               drag activator, so this never needs its own listeners. Shown only when reordering
               is possible (dragListeners present) and never during multiselect. */}
