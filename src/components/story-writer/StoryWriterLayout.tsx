@@ -30,7 +30,7 @@ const AddToRefinementModal = dynamic(
   { ssr: false },
 );
 import { getJiraUrl } from "@/lib/jira-url";
-import { ViewHeader, ViewHeaderDivider } from "@/components/shared/ViewHeader";
+import { ViewHeader } from "@/components/shared/ViewHeader";
 import { TicketStatusPill } from "@/components/shared/TicketStatusPill";
 import { buildTicketHoverData } from "@/hooks/useTicketHoverData";
 import { Button } from "@/components/ui/Button";
@@ -115,6 +115,7 @@ export function StoryWriterLayout({ ticketKey, draftTitle, draftType }: StoryWri
           <ViewHeader
             className="shrink-0"
             hideNotifications
+            hideContextDivider
             actions={<>
               {latestReview && (
                 <div className="flex h-7 items-center gap-1 rounded-md bg-overlay-subtle px-2 text-label text-text-tertiary border border-border-subtle">
@@ -386,7 +387,6 @@ export function StoryWriterLayout({ ticketKey, draftTitle, draftType }: StoryWri
                       <span className="h-2 w-2 rounded-full bg-amber-400/60 animate-pulse" />
                       Syncing to Jira...
                     </span>
-                    <ViewHeaderDivider />
                     <span className="min-w-0 flex-1 truncate font-[var(--font-display)] text-heading-sm font-semibold tracking-tight text-text-primary">
                       {displayTitle}
                     </span>
@@ -398,7 +398,6 @@ export function StoryWriterLayout({ ticketKey, draftTitle, draftType }: StoryWri
                 return (
                   <>
                     {displayType && <IssueTypeIcon type={displayType} size={14} />}
-                    <ViewHeaderDivider />
                     <span className="min-w-0 flex-1 truncate font-[var(--font-display)] text-heading-sm font-semibold tracking-tight text-text-primary">
                       {displayTitle}
                     </span>
@@ -422,7 +421,6 @@ export function StoryWriterLayout({ ticketKey, draftTitle, draftType }: StoryWri
                     onHeader
                     hoverData={ticketHoverData}
                   />
-                  <ViewHeaderDivider />
                   <span className="min-w-0 flex-1 truncate font-[var(--font-display)] text-heading-sm font-semibold tracking-tight text-text-primary">
                     {displayTitle}
                   </span>

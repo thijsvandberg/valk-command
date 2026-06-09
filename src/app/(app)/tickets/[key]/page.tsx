@@ -23,7 +23,7 @@ import {
 } from "lucide-react";
 import { ErrorBoundary } from "@/components/shared/ErrorBoundary";
 import { Tooltip } from "@/components/shared/Tooltip";
-import { ViewHeader, ViewHeaderDivider } from "@/components/shared/ViewHeader";
+import { ViewHeader } from "@/components/shared/ViewHeader";
 import { Toast } from "@/components/ui/Toast";
 import { TicketStatusPill } from "@/components/shared/TicketStatusPill";
 import dynamic from "next/dynamic";
@@ -228,9 +228,8 @@ export default function TicketDetailPage({
       <>
         {pageTitle}
         <div className="flex h-full flex-col">
-          <ViewHeader>
+          <ViewHeader hideContextDivider>
             <div className="h-5 w-16 animate-pulse rounded bg-overlay-strong" />
-            <ViewHeaderDivider />
             <div className="h-5 w-48 animate-pulse rounded bg-overlay-strong" />
           </ViewHeader>
 
@@ -281,9 +280,8 @@ export default function TicketDetailPage({
         <>
           {pageTitle}
           <div className="flex h-full flex-col">
-            <ViewHeader>
+            <ViewHeader hideContextDivider>
               <div className="h-5 w-16 animate-pulse rounded bg-overlay-strong" />
-              <ViewHeaderDivider />
               <div className="h-5 w-48 animate-pulse rounded bg-overlay-strong" />
             </ViewHeader>
 
@@ -347,6 +345,7 @@ export default function TicketDetailPage({
     <div className="flex h-full flex-col">
 
       <ViewHeader
+        hideContextDivider
         actions={
           <div className="flex shrink-0 items-center gap-2">
             {((h.ticketSprintId && ticket.type !== "epic") || ticket.epic || ticket.type === "epic" || h.detail?.parent) && (

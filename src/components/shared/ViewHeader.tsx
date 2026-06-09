@@ -14,9 +14,11 @@ interface ViewHeaderProps {
   actions?: ReactNode;
   className?: string;
   hideNotifications?: boolean;
+  /** Drops the separator between the bridge menu and the view context. */
+  hideContextDivider?: boolean;
 }
 
-export function ViewHeader({ icon, children, actions, className, hideNotifications }: ViewHeaderProps) {
+export function ViewHeader({ icon, children, actions, className, hideNotifications, hideContextDivider }: ViewHeaderProps) {
   const { toggleFocusMode } = useFocusModeContext();
   const [target, setTarget] = useState<HTMLElement | null>(null);
   const [menuOpen, setMenuOpen] = useState(false);
@@ -51,7 +53,7 @@ export function ViewHeader({ icon, children, actions, className, hideNotificatio
 
       {/* Command capsule: the wordmark menu trigger + view context grouped into
           one brand-tinted console unit, distinct from the right-side tools. */}
-      <div className="relative flex min-w-0 items-center gap-3 rounded-xl bg-overlay-subtle py-1.5 pl-2 pr-3.5 ring-1 ring-border-default/70">
+      <div className="relative flex min-w-0 items-center gap-3 py-1.5 pl-2 pr-3.5">
         {/* Trigger + dropdown live in one wrapper so outside-click ignores both. */}
         <div ref={menuRef} className="relative shrink-0">
           <button
@@ -72,7 +74,7 @@ export function ViewHeader({ icon, children, actions, className, hideNotificatio
           {menuOpen && <NavPanel open onClose={closeMenu} />}
         </div>
 
-        {(icon || children) && (
+        {(icon || children) && !hideContextDivider && (
           <span className="h-5 w-px shrink-0 bg-gradient-to-b from-transparent via-border-strong to-transparent" aria-hidden />
         )}
 
