@@ -276,6 +276,27 @@ export interface Ticket {
   chatMessageCount?: number;
 }
 
+// Forward-planning placeholder ticket (BRDG-304): a Bridge-local stand-in the PO
+// drops into a future sprint/epic before any real Jira issue exists. Carries a BV
+// and a guestimation (it has no real SP by definition); promotion turns it into a
+// real ticket. Visible only when the view's planning mode is on.
+export interface PlaceholderTicket {
+  id: string;
+  title: string;
+  description: string;
+  type: IssueType;
+  sprintId: string | null;
+  sprintName: string | null;
+  epicKey: string | null;
+  epic: string | null;
+  businessValue: number | null;
+  guestimation: number | null;
+  status: "active" | "promoted";
+  promotedToKey: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
 export interface Sprint {
   id: string;
   name: string;

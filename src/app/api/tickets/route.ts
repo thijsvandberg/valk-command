@@ -9,12 +9,8 @@ import { cache } from "@/lib/cache";
 import { enqueue as enqueueForRevalidation } from "@/lib/revalidation-queue";
 import { errorResponse } from "@/lib/api-response";
 import { parseJsonBody } from "@/lib/request-parser";
-import { jiraClient } from "@/lib/jira-client";
-import { logActivity } from "@/lib/activity-logger";
 import { logger } from "@/lib/logger";
-import { env } from "@/lib/env";
-
-const CREATABLE_TYPES = ["Story", "Task", "Bug", "Spike"];
+import { createTicketWithJira, CREATABLE_TYPES } from "@/lib/create-ticket";
 
 function userInitials(name: string): string {
   return name
@@ -215,27 +211,13 @@ export async function POST(request: Request) {
     return errorResponse(`issueType must be one of: ${CREATABLE_TYPES.join(", ")}`, 400);
   }
 
-  // Optional target sprint. Absent/blank keeps the issue in the backlog (Jira default).
-  const sprintId = typeof body.sprintId === "string" && body.sprintId.trim() ? body.sprintId.trim() : undefined;
-  const epicKey = typeof body.epicKey === "string" && body.epicKey.trim() ? body.epicKey.trim() : undefined;
-
-  // Resolve the epic title so the local row carries the same epic label the board
-  // groups and chips by. A missing epic is tolerated: the link still goes to Jira.
-  let epicTitle: string | null = null;
-  if (epicKey) {
-    const epic = await db.query.ticket.findFirst({
-      where: (row, { eq: eqFn }) => eqFn(row.jiraKey, epicKey),
-    });
-    epicTitle = epic?.title ?? null;
-  }
-
-  let jiraResult: { key: string; id: string };
+  let created;
   try {
-    jiraResult = await jiraClient.createIssue({
-      summary: title,
+    created = await createTicketWithJira({
+      title,
       issueType,
-      projectKey: env.JIRA_PROJECT_KEY,
-      ...(epicKey ? { parentKey: epicKey } : {}),
+      sprintId: typeof body.sprintId === "string" ? body.sprintId : undefined,
+      epicKey: typeof body.epicKey === "string" ? body.epicKey : undefined,
     });
   } catch (err) {
     logger.error("ticket-create", `Jira create failed: ${err}`);
@@ -243,59 +225,14 @@ export async function POST(request: Request) {
     return errorResponse(message, 502);
   }
 
-  // Assign the sprint via the same field-edit path as drag-to-sprint. Jira Cloud
-  // silently ignores the sprint field on create, so the issue must already exist.
-  // Only persist the local sprint when Jira confirms the move, so the board never
-  // shows the new ticket in a sprint it is not actually in.
-  let assignedSprintId: string | undefined;
-  if (sprintId) {
-    const sprintIdNum = parseInt(sprintId, 10);
-    if (!Number.isNaN(sprintIdNum)) {
-      try {
-        await jiraClient.moveToSprint([jiraResult.key], sprintIdNum);
-        assignedSprintId = sprintId;
-      } catch (err) {
-        logger.error("ticket-create", `Created ${jiraResult.key} but sprint assignment to ${sprintId} failed: ${err}`);
-      }
-    }
-  }
-
-  await db.insert(ticket).values({
-    jiraKey: jiraResult.key,
-    jiraId: jiraResult.id,
-    title,
-    type: issueType.toLowerCase(),
-    status: "TO DO",
-    ...(epicKey ? { epic: epicTitle, epicKey } : {}),
-    // The sprint_name column stores the primary sprint id; the detail builder resolves
-    // it to a display name via sprintNameCache (same convention as the Jira sync).
-    // sprint_ids mirrors it so the membership filter places the new ticket in its column.
-    ...(assignedSprintId ? { sprintName: assignedSprintId, sprintIds: JSON.stringify([assignedSprintId]) } : {}),
-    flagged: false,
-  });
-
-  // New tickets start in the PO "drafting" stage so they surface for refinement.
-  await db
-    .insert(ticketMetadata)
-    .values({ jiraKey: jiraResult.key, readiness: "drafting" })
-    .onConflictDoUpdate({ target: ticketMetadata.jiraKey, set: { readiness: "drafting" } });
-
-  cache.invalidate(/^\/api\/tickets(\?|$)/);
-
-  await logActivity({
-    type: "metadata-update",
-    scope: jiraResult.key,
-    summary: `Created ${issueType.toLowerCase()} ${jiraResult.key}: ${title}`,
-  });
-
   return NextResponse.json({
-    key: jiraResult.key,
-    title,
-    type: issueType.toLowerCase(),
+    key: created.key,
+    title: created.title,
+    type: created.type,
     jiraStatus: "TO DO",
-    sprintId: assignedSprintId ?? null,
-    epic: epicKey ? epicTitle : null,
-    epicKey: epicKey ?? null,
+    sprintId: created.sprintId,
+    epic: created.epic,
+    epicKey: created.epicKey,
     assignee: null,
   });
 }

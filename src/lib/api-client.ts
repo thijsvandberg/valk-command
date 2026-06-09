@@ -1,7 +1,7 @@
 // Centralized internal API client for all /api/* calls.
 // Replaces scattered fetch() patterns with typed, consistent error handling.
 
-import type { Ticket, TicketDetail, Sprint, StoryVersion, StoredReview, RelatedSuggestionResponse, SubtaskSuggestionResponse } from "@/types/ticket";
+import type { Ticket, TicketDetail, Sprint, StoryVersion, StoredReview, RelatedSuggestionResponse, SubtaskSuggestionResponse, PlaceholderTicket } from "@/types/ticket";
 import type { Conversation, ConversationType, Message } from "@/types/chat";
 
 export interface LinkSearchResult {
@@ -403,6 +403,30 @@ export const epics = {
     apiFetch<{ epicKey: string; color: string | null }>(
       `/api/epics/${enc(key)}/color`, { method: "PUT", body: { color }, signal },
     ),
+};
+
+// ---------------------------------------------------------------------------
+// Placeholder tickets (BRDG-304) - Bridge-local forward-planning stand-ins
+// ---------------------------------------------------------------------------
+
+export const placeholders = {
+  listUrl: (opts?: { sprintId?: string | null; epicKey?: string | null }) =>
+    `/api/placeholders${qs({ sprintId: opts?.sprintId, epicKey: opts?.epicKey })}`,
+
+  list: (opts?: { sprintId?: string | null; epicKey?: string | null }, signal?: AbortSignal) =>
+    apiFetch<PlaceholderTicket[]>(`/api/placeholders${qs({ sprintId: opts?.sprintId, epicKey: opts?.epicKey })}`, { signal }),
+
+  create: (data: Partial<PlaceholderTicket> & { title: string }, signal?: AbortSignal) =>
+    apiFetch<PlaceholderTicket>("/api/placeholders", { method: "POST", body: data, signal }),
+
+  update: (id: string, data: Partial<PlaceholderTicket>, signal?: AbortSignal) =>
+    apiFetch<PlaceholderTicket>(`/api/placeholders/${enc(id)}`, { method: "PATCH", body: data, signal }),
+
+  remove: (id: string, signal?: AbortSignal) =>
+    apiFetch<{ ok: true }>(`/api/placeholders/${enc(id)}`, { method: "DELETE", signal }),
+
+  promote: (id: string, signal?: AbortSignal) =>
+    apiFetch<{ key: string }>(`/api/placeholders/${enc(id)}/promote`, { method: "POST", signal }),
 };
 
 // ---------------------------------------------------------------------------

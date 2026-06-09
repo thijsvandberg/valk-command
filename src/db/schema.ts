@@ -265,6 +265,47 @@ export const sprintPencilCapacity = sqliteTable("sprint_pencil_capacity", {
 export type SprintPencilCapacityRow = typeof sprintPencilCapacity.$inferSelect;
 export type NewSprintPencilCapacityRow = typeof sprintPencilCapacity.$inferInsert;
 
+// Forward-planning placeholder tickets (BRDG-304): a lightweight, Bridge-local
+// stand-in the PO drops into a future sprint/epic to mark "more work is coming"
+// before any real Jira issue exists. Never synced to Jira; it has no real story
+// points by definition, so its estimate is the BRDG-303 guestimation. Promotion
+// (status -> "promoted", promotedToKey set) creates the real Jira issue and the
+// row thereafter renders as that ticket. No FK to ticket.jiraKey: the target
+// sprint/epic may not be synced, and the promoted ticket is referenced by its
+// key only (same rationale as epicMetadata).
+export const placeholderTicket = sqliteTable("placeholder_ticket", {
+  // "PLH-<uuid>" generated in the create route so the id never collides with a Jira key.
+  id: text("id").primaryKey(),
+  title: text("title").notNull(),
+  description: text("description").notNull().default(""),
+  // Lower-case issue type, matching the ticket.type convention.
+  type: text("type").notNull().default("story"),
+  // Sprint placement mirrors ticket.sprintName: stores the Jira sprint id (string),
+  // so the grouped views reuse the same membership/grouping logic. Null = unscheduled.
+  sprintId: text("sprint_id"),
+  // Snapshot of the sprint's display name at create/edit time (optional, for labels).
+  sprintName: text("sprint_name"),
+  epicKey: text("epic_key"),
+  // Snapshot of the epic title so the row can chip it without a join.
+  epic: text("epic"),
+  // 0-7, same scale as ticketMetadata.businessValue.
+  businessValue: integer("business_value"),
+  // 0,1,2,3,5,8 - the BRDG-303 Fibonacci guestimation.
+  guestimation: integer("guestimation"),
+  status: text("status", { enum: ["active", "promoted"] }).notNull().default("active"),
+  // The Jira key created on promotion; null while active.
+  promotedToKey: text("promoted_to_key"),
+  createdAt: text("created_at").notNull().default(sql`(datetime('now'))`),
+  updatedAt: text("updated_at").notNull().default(sql`(datetime('now'))`),
+}, (table) => [
+  index("placeholder_ticket_sprint_id_idx").on(table.sprintId),
+  index("placeholder_ticket_epic_key_idx").on(table.epicKey),
+  index("placeholder_ticket_status_idx").on(table.status),
+]);
+
+export type PlaceholderTicketRow = typeof placeholderTicket.$inferSelect;
+export type NewPlaceholderTicketRow = typeof placeholderTicket.$inferInsert;
+
 export const appSetting = sqliteTable("app_setting", {
   key: text("key").primaryKey(),
   value: text("value").notNull(),
