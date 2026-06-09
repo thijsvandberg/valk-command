@@ -4,7 +4,6 @@ import { type ReactNode } from "react";
 import { Maximize2 } from "lucide-react";
 import { FocusModeProvider, useFocusModeContext } from "@/contexts/FocusModeContext";
 import { useCornerSnap, CORNER_CLASSES } from "@/hooks/useCornerSnap";
-import Sidebar from "@/components/Sidebar";
 
 function FocusModeLayout({ children }: { children: ReactNode }) {
   const { focusMode, exitFocusMode } = useFocusModeContext();
@@ -32,12 +31,9 @@ function FocusModeLayout({ children }: { children: ReactNode }) {
         }`}
       />
 
-      {/* Content. The sidebar is now a floating bento launcher (BRDG-317): it
-          reserves no column, so main spans the full width. The launcher hides
-          entirely in focus mode, mirroring the old rail's slide-away. */}
+      {/* Content. Primary navigation now lives in the header command bar
+          (BRDG-320), so main spans the full width with no reserved column. */}
       <div className="flex flex-1 min-h-0">
-        {!focusMode && <Sidebar />}
-
         <main
           id="main-content"
           className="flex-1 overflow-auto isolate bg-[var(--color-surface-elevated)]"

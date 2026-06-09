@@ -433,8 +433,17 @@ details.expand-block[open] > summary .expand-arrow { transform: rotate(90deg); }
   to { opacity: 1; transform: translateX(0); }
 }
 
-/* Refinement session: fullscreen mode hides app shell */
+/* Header wordmark caret: the teal underscore blinks like a console prompt.
+   Opacity-only so it stays off the main thread (BRDG-320). */
+@keyframes bridge-blink {
+  0%, 55% { opacity: 1; }
+  60%, 95% { opacity: 0.25; }
+  100% { opacity: 1; }
+}
+.bridge-caret { animation: bridge-blink 1.5s steps(1, end) infinite; }
+
+/* Refinement session: fullscreen mode hides app shell. The header portal holds
+   the primary nav now (BRDG-320), so hiding it here also hides nav, matching the
+   old launcher's refinement behaviour. */
 body.refinement-session-active #view-header-portal { display: none; }
-body.refinement-session-active #sidebar-wrapper,
-body.refinement-session-active div:has(> [data-testid="sidebar"]) { display: none; }
 body.refinement-session-active #main-content { border-radius: 0; }

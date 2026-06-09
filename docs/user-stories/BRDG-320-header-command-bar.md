@@ -77,58 +77,76 @@ variant **F**:
   same as now; the floating exit button is unaffected.
 - Active route is indicated in the dropdown (the launcher already knows the pathname via `usePathname`).
 
-## Implementation Plan
+## Implementation Plan (refined with Opus Plan agent)
 
-### Phase 0 — Extract the nav panel from the launcher
-1. Pull the panel body of `Sidebar.tsx` (account header, nav list with counts, MORE row) into a reusable
-   presentational component, e.g. `src/components/nav/NavPanel.tsx`, parameterised by an `open` flag and an
-   `onClose` callback. Keep `useSidebarData`, `accountMenuItems`, `SyncIndicator`, `usePathname` wiring
-   inside it. The corner-snap launcher chrome is NOT part of this extraction.
-2. The reveal/stagger styling (`revealStyle`) moves with the panel so the drop-in animation is preserved.
+**Decomposition:** `NavPanel` is a new component at `src/components/nav/NavPanel.tsx` that is *smart but
+visibility-controlled*: it owns all its data (`useSidebarData`, `usePathname`, `useUser`,
+`useAccountMenuItems`), the `isActive` rules and the account-flip state, and takes only `{ open, onClose }`.
+`ViewHeader` owns just the open boolean, the trigger button and the anchoring wrapper + refs. This keeps
+the heavily-reused, portal-rendered `ViewHeader` thin and its prop surface unchanged.
 
-### Phase 1 — Header command capsule + trigger
-3. In `ViewHeader.tsx`, replace the standalone wordmark + divider with a **command capsule**: a rounded
-   `bg-overlay-subtle` container (hairline ring) wrapping the menu trigger, a thin inner divider, and the
-   existing `icon` + `children` view-context slot.
-4. Add the left **brand glow** (radial `--color-brand-glow`/`--color-brand-500` mix) to the bar background,
-   matching the exploration.
-5. Build the trigger: hamburger glyph + `Wordmark` with the caret underscore. `cursor-pointer`, hover tint,
-   `focus-visible` ring; `aria-haspopup`/`aria-expanded` for the dropdown.
-6. Add the caret keyframe to `globals.css` (`@keyframes bridge-blink`, opacity 1 → 0.25 → 1, ~1.5s,
-   `steps(1, end)`), applied via a `bridge-caret` class on the underscore span.
+**Panel content:** per the Decisions above, reuse the FULL launcher panel (Sprint Board hero with live
+status, progress bar, common rows with counts, MORE footer, account flip + sign out) — not the
+exploration's hardcoded mock. Adopt variant F's dropdown *shell* (rounded-2xl, `ring-1 ring-border-strong`,
+top accent gradient, anchored `absolute top-[calc(100%+10px)] left-0`) and size it to fit the real hero
+(~360px). The exploration's compact rows are directional, not literal.
 
-### Phase 2 — Wire trigger → NavPanel + retire launcher
-7. Local `open` state in `ViewHeader` (or a small `useState`); render `NavPanel` anchored
-   `top-[calc(100%+…)] left-0` under the trigger. Close on outside click + Esc via `useOutsideClick`.
-8. Remove the floating `Sidebar` launcher from `FocusModeWrapper.tsx` (`{!focusMode && <Sidebar/>}`). Move
-   the bento-launcher-specific chrome (corner snap, drag) to `deleted/` per project convention; keep
-   `useCornerSnap` only if still used by the focus-mode exit button (it is — leave that path intact).
-9. Confirm no other mount points reference `Sidebar`; update imports.
+1. **globals.css** — add the caret keyframe next to the existing `@keyframes` block:
+   `@keyframes bridge-blink { 0%,55%{opacity:1} 60%,95%{opacity:.25} 100%{opacity:1} }` +
+   `.bridge-caret { animation: bridge-blink 1.5s steps(1,end) infinite; }`. Opacity-only.
+2. **NavPanel.tsx** — lift the panel internals out of `Sidebar.tsx` (NAV_ITEMS/PRIMARY/COMMON/RARE, ICON,
+   `revealStyle`, `HeaderAvatar`, `NavigationView`, `AccountView`, `isActive`, account header markup, data
+   wiring). Drop the launcher button, backdrop, `useCornerSnap`, `PANEL_CORNER_CLASSES`, `PANEL_SHADOW`,
+   and the `data-testid="sidebar"` wrapper. Render inline-absolute under the trigger; `onClose` fires on
+   navigate / account-route select.
+3. **ViewHeader.tsx** — add `open` state + `triggerRef`/`panelRef` + `useOutsideClick([triggerRef,
+   panelRef], close, { enabled: open })` (gives outside-click + Esc). Replace the standalone wordmark +
+   divider with the **command capsule**: rounded `bg-overlay-subtle` + hairline ring wrapping (a) the
+   trigger (`Menu` glyph + `bridge` + caret underscore span; `aria-haspopup`, `aria-expanded`,
+   `aria-label="Open navigation"`, cursor/hover/focus-visible) with `<NavPanel>` in an anchored wrapper,
+   (b) a thin separator, (c) the existing `icon` + `children` slot (keep `min-w-0 flex-1` so titles
+   truncate). Widen/strengthen the existing left brand glow to match F. Right actions stay outside the
+   capsule, unchanged.
+4. **FocusModeWrapper.tsx** — remove the `import Sidebar` and the `{!focusMode && <Sidebar/>}` line. Focus
+   exit button + `#view-header-portal` slide-up untouched. The existing
+   `body.refinement-session-active #view-header-portal { display:none }` rule already hides nav in
+   refinement, so parity holds automatically.
+5. **Move `Sidebar.tsx` → `deleted/Sidebar.tsx`** (never-delete convention) once its internals live in
+   NavPanel.
+6. **Tests** — rework `Sidebar.test.tsx` into:
+   - `src/components/nav/NavPanel.test.tsx`: render `<NavPanel open onClose={spy}/>` directly (no launcher
+     tap); port hero/status, common rows + counts, MORE links, active-route rules, account flip (theme,
+     settings routing, shortcuts event, sign out), label-only fallback; replace "closes on navigate" with
+     "`onClose` fires on link/account-route click". Drop drag-vs-tap + panel-visibility cases.
+   - `src/components/shared/ViewHeader.test.tsx`: append a `#view-header-portal` to `document.body` in
+     `beforeEach`; mock `FocusModeContext`, `NotificationBell`, and `@/components/nav/NavPanel` (stub →
+     `open ? <div data-testid="nav-panel"/> : null`). Assert `aria-expanded` toggles, click opens/closes,
+     Esc + outside `mousedown` close, right actions render.
+   - Move the old `Sidebar.test.tsx` to `deleted/`.
+7. **globals.css cleanup** — remove the now-dead `div:has(> [data-testid="sidebar"])` and the
+   already-dead `#sidebar-wrapper` refinement-session selectors.
+8. Run lint, typecheck, the changed tests, then full `npm run verify` + `npm run build`.
 
-### Phase 3 — Tests
-10. `NavPanel.test.tsx`: renders account header, all primary items with their counts, MORE row; active
-    route highlighted; `onClose` fires on item click.
-11. `ViewHeader.test.tsx`: trigger toggles the panel; Esc and outside-click close it; `aria-expanded`
-    reflects state; right-side actions still render. Mock the portal target (`#view-header-portal`) and
-    `useSidebarData`/`useUser` as the existing suite does.
-12. Verify `FocusModeWrapper` no longer renders the launcher and the header still mounts the portal.
+**Risks flagged:** keep `min-w-0 flex-1` on the view-context child or long titles stop truncating; if the
+absolute dropdown clips inside the portal in normal mode, fall back to a body portal (last resort, since it
+complicates outside-click ref containment) — prefer inline-absolute.
 
 ## Acceptance criteria
 
-- [ ] The header left side is a single brand-tinted **command capsule** (trigger + view context) with a
+- [x] The header left side is a single brand-tinted **command capsule** (trigger + view context) with a
       soft left brand glow; no `BridgeMark`/beeldmerk anywhere in the header.
-- [ ] The `bridge_` wordmark (hamburger glyph + blinking teal caret underscore) is the nav trigger.
-- [ ] Clicking the trigger opens the nav menu as a dropdown anchored top-left, reusing the existing
+- [x] The `bridge_` wordmark (hamburger glyph + blinking teal caret underscore) is the nav trigger.
+- [x] Clicking the trigger opens the nav menu as a dropdown anchored top-left, reusing the existing
       launcher panel (account header, primary nav with live counts, MORE row).
-- [ ] The dropdown closes on outside click and Esc; trigger has `cursor-pointer`, hover and
+- [x] The dropdown closes on outside click and Esc; trigger has `cursor-pointer`, hover and
       `focus-visible` states; `aria-expanded` reflects open state.
-- [ ] The nav is reachable from every view (header is portal-rendered everywhere).
-- [ ] The floating bento launcher is removed; focus-mode behaviour and the floating exit button are
+- [x] The nav is reachable from every view (header is portal-rendered everywhere).
+- [x] The floating bento launcher is removed; focus-mode behaviour and the floating exit button are
       unchanged.
-- [ ] The caret animation is opacity-only; no `transition-all`; no default-Tailwind brand colors.
-- [ ] Right-side actions (fullness meter, notifications + 9+ badge, search, overflow, focus toggle reveal)
+- [x] The caret animation is opacity-only; no `transition-all`; no default-Tailwind brand colors.
+- [x] Right-side actions (fullness meter, notifications + 9+ badge, search, overflow, focus toggle reveal)
       behave exactly as before.
-- [ ] Tests cover NavPanel contents/active-route/onClose and ViewHeader open/close/Esc/outside-click.
+- [x] Tests cover NavPanel contents/active-route/onClose and ViewHeader open/close/Esc/outside-click.
 - [ ] `npm run lint`, `npm run typecheck`, `npm run test`, `npm run build` all pass.
 
 ## Open questions (deferred — not blocking)
