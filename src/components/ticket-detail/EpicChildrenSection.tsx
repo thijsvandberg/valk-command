@@ -866,7 +866,7 @@ export function EpicChildrenSection({
             </span>
           </Tooltip>
         )}
-        {visibleFields.has("assignee") && <Avatar assignee={child.assignee} size={28} />}
+        {visibleFields.has("assignee") && <Avatar assignee={child.assignee} size={24} />}
       </>
     );
   }

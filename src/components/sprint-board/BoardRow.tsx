@@ -621,11 +621,11 @@ export const BoardRow = memo(forwardRef<HTMLTableRowElement, BoardRowBaseProps>(
                       value={ticket.assignee ?? null}
                       onChange={(u) => onAssigneeChange(ticket.key, u)}
                       variant="avatar"
-                      avatarSize={20}
+                      avatarSize={24}
                       align="right"
                     />
                   ) : (
-                    <Avatar assignee={ticket.assignee} size={20} />
+                    <Avatar assignee={ticket.assignee} size={24} />
                   )}
                 </div>
               )}
