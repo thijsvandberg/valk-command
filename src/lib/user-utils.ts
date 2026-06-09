@@ -1,3 +1,5 @@
+import type { Assignee } from "@/types/ticket";
+
 export function userInitials(name: string): string {
   return name
     .split(" ")
@@ -14,4 +16,11 @@ export function userColor(name: string): string {
   }
   const hue = Math.abs(hash) % 360;
   return `hsl(${hue}, 55%, 50%)`;
+}
+
+// Builds the display Assignee shape from a stored name, deriving initials + a
+// stable color. Returns null for an absent assignee.
+export function buildAssignee(name: string | null | undefined): Assignee | null {
+  if (!name) return null;
+  return { name, initials: userInitials(name), color: userColor(name) };
 }

@@ -4,6 +4,7 @@ import type * as schema from "@/db/schema";
 import {
   ticket,
   ticketMetadata,
+  ticketSubtask,
   sprintNameCache,
   conversation,
   message,
@@ -56,6 +57,32 @@ export function seedTicketMetadata(
 ) {
   const data = buildTicketMetadata(overrides);
   db.insert(ticketMetadata).values(data).run();
+  return data;
+}
+
+// --- Ticket Subtask ---
+
+type NewTicketSubtask = typeof ticketSubtask.$inferInsert;
+
+export function buildTicketSubtask(
+  overrides?: Partial<NewTicketSubtask>,
+): NewTicketSubtask {
+  return {
+    id: randomUUID(),
+    ticketKey: "VPL-100",
+    subtaskKey: "VPL-101",
+    title: "Test subtask",
+    status: "TO DO",
+    ...overrides,
+  };
+}
+
+export function seedTicketSubtask(
+  db: TestDb,
+  overrides?: Partial<NewTicketSubtask>,
+) {
+  const data = buildTicketSubtask(overrides);
+  db.insert(ticketSubtask).values(data).run();
   return data;
 }
 

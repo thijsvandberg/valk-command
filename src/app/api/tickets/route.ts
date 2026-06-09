@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { db } from "@/db";
 import { ticket, ticketMetadata, ticketLocalEdit, storyVersion, ticketSubtask, sprintNameCache } from "@/db/schema";
 import { eq, inArray, asc, isNull, sql, and, notInArray } from "drizzle-orm";
-import type { Ticket, IssueType, JiraStatus, POStatus, TicketReadiness, Assignee, TicketEditState } from "@/types/ticket";
+import type { Ticket, IssueType, JiraStatus, POStatus, TicketReadiness, TicketEditState } from "@/types/ticket";
 import { computeTicketEditState } from "@/lib/ticket-state";
 import { timedQuery } from "@/lib/query-timer";
 import { cache } from "@/lib/cache";
@@ -11,29 +11,7 @@ import { errorResponse } from "@/lib/api-response";
 import { parseJsonBody } from "@/lib/request-parser";
 import { logger } from "@/lib/logger";
 import { createTicketWithJira, CREATABLE_TYPES } from "@/lib/create-ticket";
-
-function userInitials(name: string): string {
-  return name
-    .split(" ")
-    .filter(Boolean)
-    .slice(0, 2)
-    .map((w) => w[0].toUpperCase())
-    .join("");
-}
-
-function userColor(name: string): string {
-  let hash = 0;
-  for (let i = 0; i < name.length; i++) {
-    hash = name.charCodeAt(i) + ((hash << 5) - hash);
-  }
-  const hue = Math.abs(hash) % 360;
-  return `hsl(${hue}, 55%, 50%)`;
-}
-
-function buildAssignee(name: string | null): Assignee | null {
-  if (!name) return null;
-  return { name, initials: userInitials(name), color: userColor(name) };
-}
+import { buildAssignee } from "@/lib/user-utils";
 
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);

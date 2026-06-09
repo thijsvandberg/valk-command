@@ -7,7 +7,7 @@ import { useRouter, usePathname } from "next/navigation";
 import { apiFetch, jira, conversations as conversationsApi, storyWriter, sprintSlots as sprintSlotsApi, settings, epics as epicsApi } from "@/lib/api-client";
 import type { LocalSearchResult } from "@/lib/local-search-engine";
 import type { Conversation } from "@/types/chat";
-import type { ActiveSession } from "@/app/api/story-writer/active-sessions/route";
+import type { ActiveSession } from "@/types/story-writer";
 
 import type {
   ActionResult,
