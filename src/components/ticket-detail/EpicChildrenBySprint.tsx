@@ -1,7 +1,8 @@
 "use client";
 
 import { useCallback, useMemo, useRef, useState, type ReactNode } from "react";
-import type { EpicChild, Subtask, Sprint, Ticket, JiraStatus, TicketReadiness } from "@/types/ticket";
+import type { EpicChild, Subtask, Sprint, Ticket, JiraStatus, TicketReadiness, PlaceholderTicket } from "@/types/ticket";
+import { PlaceholderRow } from "@/components/sprint-board/PlaceholderRow";
 import { GroupStatBar } from "@/components/sprint-board/GroupStatBar";
 import { GroupCard } from "@/components/sprint-board/GroupCard";
 import { ChildIssueRow } from "./ChildIssueRow";
@@ -25,7 +26,7 @@ import {
 import { SortableContext, useSortable, verticalListSortingStrategy } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import { epicChildrenCollisionDetection } from "./epic-children-collision";
-import { CircleDot, CalendarRange, GripVertical, Plus, Sparkles } from "lucide-react";
+import { CircleDot, CalendarRange, GripVertical, Plus, Sparkles, Pencil } from "lucide-react";
 
 export type { ChildReorder, ChildMoveToPosition };
 
@@ -77,6 +78,14 @@ interface EpicChildrenBySprintProps {
   /** sprintId -> total effective points across the WHOLE sprint (not just this epic's
    *  children), so the meter reflects real sprint fullness (BRDG-303). */
   sprintUsedMap?: Record<string, number>;
+  /** Forward-planning placeholders for this epic (BRDG-304), bucketed into their
+   *  sprint group. Shown only when planning mode is on. Non-draggable. */
+  placeholders?: PlaceholderTicket[];
+  onPlaceholderUpdate?: (id: string, patch: Partial<PlaceholderTicket>) => void;
+  onPlaceholderDelete?: (id: string) => void;
+  onPlaceholderPromote?: (id: string) => void;
+  /** Create a placeholder into a sprint (id) or unscheduled (null). */
+  onPlaceholderCreate?: (sprintId: string | null) => void;
 }
 
 function isEpicChild(child: EpicChild | Subtask): child is EpicChild {
@@ -295,6 +304,11 @@ export function EpicChildrenBySprint({
   pencilCapacityMap,
   onPencilCapacityChange,
   sprintUsedMap,
+  placeholders,
+  onPlaceholderUpdate,
+  onPlaceholderDelete,
+  onPlaceholderPromote,
+  onPlaceholderCreate,
 }: EpicChildrenBySprintProps) {
   const [collapsed, setCollapsed] = useSessionStorage<Record<string, boolean>>(
     `epic-children-collapse-${ticketKey}`,
@@ -616,6 +630,42 @@ export function EpicChildrenBySprint({
       ? visibleItems.filter((c) => !c.key.startsWith("pending-")).map((c) => c.key)
       : [];
     const rows = visibleItems.map((child, idx) => renderRow(child, group, idx, visibleItems.length));
+
+    // Forward-planning placeholders (BRDG-304) bucket into this sprint group by the
+    // resolved sprint id (null = Unscheduled). They never enter the dnd/grouping
+    // machinery: they render after the sortable rows as their own dashed rows, and a
+    // dashed "Add placeholder" affordance creates one into this group's sprint.
+    const groupPlaceholders =
+      planningOn && !isSynthetic && createSprintId !== undefined
+        ? (placeholders ?? []).filter((p) => (p.sprintId ?? null) === (createSprintId ?? null))
+        : [];
+    const canCreatePlaceholder =
+      planningOn && !!onPlaceholderCreate && !isSynthetic && group.state !== "closed" && createSprintId !== undefined;
+    const placeholderBlock =
+      groupPlaceholders.length > 0 || canCreatePlaceholder ? (
+        <div className="flex flex-col">
+          {groupPlaceholders.map((p) => (
+            <PlaceholderRow
+              key={p.id}
+              placeholder={p}
+              onUpdate={onPlaceholderUpdate ?? (() => {})}
+              onDelete={onPlaceholderDelete ?? (() => {})}
+              onPromote={onPlaceholderPromote ?? (() => {})}
+            />
+          ))}
+          {canCreatePlaceholder && (
+            <button
+              type="button"
+              onClick={() => onPlaceholderCreate!(createSprintId ?? null)}
+              className="group/addph flex w-full items-center gap-1.5 px-4 py-2 text-left text-[12px] text-text-muted transition-colors duration-100 hover:text-text-secondary cursor-pointer"
+            >
+              <Pencil size={12} strokeWidth={1.75} className="opacity-60 group-hover/addph:opacity-100" aria-hidden />
+              Add placeholder
+            </button>
+          )}
+        </div>
+      ) : null;
+
     const body = isCreateZone ? (
       <div className="flex items-center gap-2 px-4 py-3 text-body-sm text-[var(--color-brand-300)]">
         <Plus size={13} strokeWidth={2} className="shrink-0" />
@@ -637,6 +687,7 @@ export function EpicChildrenBySprint({
         ) : (
           rows
         )}
+        {placeholderBlock}
         {isComposerOpen && onCreateChild && (
           <ChildIssueComposer
             variant="bar"

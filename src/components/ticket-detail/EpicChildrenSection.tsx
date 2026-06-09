@@ -1,8 +1,10 @@
 "use client";
 
 import { useState, useRef, useCallback, useEffect, useMemo } from "react";
+import { mutate as globalMutate } from "swr";
 import { useOutsideClick } from "@/hooks/useOutsideClick";
-import type { TicketDetail, JiraStatus, TicketReadiness, Subtask, EpicChild, IssueType } from "@/types/ticket";
+import type { TicketDetail, JiraStatus, TicketReadiness, Subtask, EpicChild, IssueType, PlaceholderTicket } from "@/types/ticket";
+import { usePlaceholders } from "@/hooks/usePlaceholders";
 import { EstimatePicker } from "@/components/shared/EstimatePicker";
 import { BusinessValuePicker } from "@/components/shared/BusinessValuePicker";
 import { IssueTypeIcon } from "@/components/shared/IssueTypeIcon";
@@ -193,6 +195,34 @@ export function EpicChildrenSection({
   const sprintUsedMap = useSprintUsedPoints(planningOn);
   const [hideDeprecated, setHideDeprecated] = useLocalStorage<boolean>("epic-children-hide-deprecated", true);
   const { toast, toastLoading, showToast, dismissToast } = useToast();
+
+  // Forward-planning placeholders for this epic (BRDG-304), fetched only while
+  // planning mode is on. Created placeholders carry this epic's key so they stay
+  // scoped to it. Promote/edit/delete revalidate the server-computed fullness meter.
+  const {
+    placeholders: epicPlaceholders,
+    create: createPlaceholderApi,
+    update: updatePlaceholderApi,
+    remove: removePlaceholderApi,
+    promote: promotePlaceholderApi,
+  } = usePlaceholders(planningOn, { epicKey: ticketKey });
+  const refreshMeter = useCallback(() => { globalMutate("/api/sprints/used-points"); }, []);
+  const handlePlaceholderUpdate = useCallback((id: string, patch: Partial<PlaceholderTicket>) => {
+    updatePlaceholderApi(id, patch).then(refreshMeter).catch(() => showToast("Failed to update placeholder"));
+  }, [updatePlaceholderApi, refreshMeter, showToast]);
+  const handlePlaceholderDelete = useCallback((id: string) => {
+    removePlaceholderApi(id).then(refreshMeter).catch(() => showToast("Failed to delete placeholder"));
+  }, [removePlaceholderApi, refreshMeter, showToast]);
+  const handlePlaceholderCreate = useCallback((sprintId: string | null) => {
+    createPlaceholderApi({ title: "New placeholder", sprintId, epicKey: ticketKey })
+      .then(refreshMeter)
+      .catch(() => showToast("Failed to create placeholder"));
+  }, [createPlaceholderApi, refreshMeter, showToast, ticketKey]);
+  const handlePlaceholderPromote = useCallback((id: string) => {
+    promotePlaceholderApi(id)
+      .then((r) => { onMutate(); refreshMeter(); showToast(`Promoted to ${r.key}`); })
+      .catch(() => showToast("Failed to promote placeholder"));
+  }, [promotePlaceholderApi, onMutate, refreshMeter, showToast]);
 
   const { sprints: rawSprints, mutate: mutateSprints } = useJiraSprints();
   const sprints = useMemo(() => mapJiraSprints(rawSprints), [rawSprints]);
@@ -1039,6 +1069,11 @@ export function EpicChildrenSection({
         pencilCapacityMap={pencilCapacityMap}
         onPencilCapacityChange={setPencilCapacity}
         sprintUsedMap={sprintUsedMap}
+        placeholders={epicPlaceholders}
+        onPlaceholderUpdate={handlePlaceholderUpdate}
+        onPlaceholderDelete={handlePlaceholderDelete}
+        onPlaceholderPromote={handlePlaceholderPromote}
+        onPlaceholderCreate={planningOn ? handlePlaceholderCreate : undefined}
       />
       {createOpen && (
         <div className="overflow-hidden rounded-lg border border-border-default">
