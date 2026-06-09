@@ -693,20 +693,17 @@ export function SubtasksSection({
     </div>
   );
 
+  const handleSuggestAction = () => {
+    setSuggestionsVisible(true);
+    setSuggestionsExpanded(true);
+    if (suggestions.length === 0) handleSuggest();
+  };
+
   const suggestButton = (
     <div className="relative">
       <button
         type="button"
-        onClick={() => {
-          if (suggestions.length > 0) {
-            setSuggestionsVisible(true);
-            setSuggestionsExpanded(true);
-          } else {
-            setSuggestionsVisible(true);
-            setSuggestionsExpanded(true);
-            handleSuggest();
-          }
-        }}
+        onClick={handleSuggestAction}
         disabled={suggestLoading}
         className={`flex cursor-pointer items-center justify-center rounded-md p-1.5 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)] disabled:cursor-not-allowed disabled:opacity-40 ${
           suggestLoading
@@ -782,7 +779,9 @@ export function SubtasksSection({
           hideDeprecated={hideDeprecated}
           onToggleHideDeprecated={setHideDeprecated}
           deprecatedCount={deprecatedCount}
-          extraActions={suggestButton}
+          onSuggest={handleSuggestAction}
+          suggestLoading={suggestLoading}
+          suggestCount={suggestions.length}
           sectionKey={disableCollapse ? undefined : SECTION_KEYS.subtasks}
         />
       )}

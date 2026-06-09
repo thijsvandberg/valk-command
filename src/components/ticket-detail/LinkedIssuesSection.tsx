@@ -18,7 +18,7 @@ import { ScrollSentinel } from "./ScrollSentinel";
 import { tickets } from "@/lib/api-client";
 import { useTaskStream } from "@/hooks/useTaskStream";
 import { friendlyStreamError, isRetryableStreamError } from "@/lib/agent-errors";
-import { X, Sparkles, Loader2, Link2, ChevronDown, Maximize2, Clock, Plus } from "lucide-react";
+import { X, Sparkles, Loader2, Link2, ChevronDown, Maximize2, Clock, Plus, MoreHorizontal } from "lucide-react";
 
 interface LinkedIssuesSectionProps {
   issues: TicketDetail["linkedIssues"];
@@ -71,6 +71,11 @@ export function LinkedIssuesSection({ issues, ticketKey, onMutate }: LinkedIssue
   }, []);
   const inlineDropdownRef = useRef<HTMLDivElement>(null);
   const interactingWithDropdownRef = useRef(false);
+
+  // Header actions menu (BRDG): the AI-suggest and link actions live behind one "..." trigger.
+  const [headerMenuOpen, setHeaderMenuOpen] = useState(false);
+  const headerMenuRef = useRef<HTMLDivElement>(null);
+  useOutsideClick(headerMenuRef, () => setHeaderMenuOpen(false), { enabled: headerMenuOpen });
 
   // Shared search hook
   const search = useLinkIssueSearch(ticketKey);
@@ -352,59 +357,77 @@ export function LinkedIssuesSection({ issues, ticketKey, onMutate }: LinkedIssue
 
   const showRecentPicks = inlineFocused && search.query.length < 2 && !search.showResults && search.recentResults.length > 0;
 
-  const suggestButton = (
-    <div className="relative">
+  const headerActiveState = headerMenuOpen || composerAt === "__bottom__" || suggestions.length > 0;
+
+  const headerMenu = (
+    <div className="relative" ref={headerMenuRef}>
       <button
         type="button"
-        onClick={() => {
-          if (suggestions.length > 0) {
-            setSuggestionsExpanded(true);
-          } else {
-            handleSuggest();
-            setSuggestionsExpanded(true);
-          }
-        }}
-        disabled={suggestLoading}
-        className={`flex cursor-pointer items-center justify-center rounded-md p-1.5 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)] disabled:cursor-not-allowed disabled:opacity-40 ${
-          suggestLoading
-            ? "text-[var(--color-brand-400)]"
-            : suggestions.length > 0
-              ? "text-[var(--color-brand-400)]"
-              : "text-text-muted hover:bg-overlay-subtle hover:text-text-secondary"
+        onClick={() => setHeaderMenuOpen((v) => !v)}
+        aria-label="Linked issues actions"
+        aria-haspopup="menu"
+        aria-expanded={headerMenuOpen}
+        className={`flex cursor-pointer items-center justify-center rounded-md p-1.5 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)] ${
+          headerActiveState
+            ? "bg-[var(--color-brand-500)]/[0.08] text-[var(--color-brand-400)]"
+            : "text-text-muted hover:bg-overlay-subtle hover:text-text-secondary"
         }`}
         style={{ transition: "background-color 0.15s ease, color 0.15s ease" }}
-        title={suggestions.length > 0 ? `${suggestions.length} pending AI suggestions` : "Find related issues with AI"}
+        title="Link an issue or find related issues with AI"
       >
-        {suggestLoading ? (
-          <Loader2 size={13} strokeWidth={1.5} className="animate-spin" />
-        ) : (
-          <Sparkles size={13} strokeWidth={1.5} />
-        )}
+        <MoreHorizontal size={14} strokeWidth={1.5} />
       </button>
-      {suggestions.length > 0 && !suggestLoading && (
-        <span className="absolute -top-1 -right-1 flex h-3.5 min-w-3.5 items-center justify-center rounded-full bg-[var(--color-brand-500)] px-0.5 text-[9px] font-semibold text-white">
-          {suggestions.length}
-        </span>
+
+      {headerMenuOpen && (
+        <div
+          role="menu"
+          className="absolute top-full right-0 z-50 mt-1 w-[232px] overflow-hidden rounded-xl border border-border-default bg-[var(--color-surface-floating)] p-1 shadow-[var(--shadow-popover)]"
+          style={{ animation: "fadeInUp 0.1s ease" }}
+        >
+          <button
+            type="button"
+            role="menuitem"
+            onClick={() => {
+              setComposerAt((v) => (v === "__bottom__" ? null : "__bottom__"));
+              setHeaderMenuOpen(false);
+            }}
+            title="Link an issue"
+            className={`flex w-full cursor-pointer items-center gap-2.5 rounded-md px-2.5 py-2 text-body-sm transition-colors duration-150 hover:bg-hover-list-item ${
+              composerAt === "__bottom__" ? "text-[var(--color-brand-400)]" : "text-text-secondary hover:text-text-primary"
+            }`}
+          >
+            <Plus size={14} strokeWidth={2} className="shrink-0 text-[var(--color-brand-400)]" />
+            <span>Link an issue</span>
+          </button>
+          <button
+            type="button"
+            role="menuitem"
+            onClick={() => {
+              setSuggestionsExpanded(true);
+              if (suggestions.length === 0) handleSuggest();
+              setHeaderMenuOpen(false);
+            }}
+            disabled={suggestLoading}
+            title={suggestions.length > 0 ? `${suggestions.length} pending AI suggestions` : "Find related issues with AI"}
+            className={`flex w-full cursor-pointer items-center gap-2.5 rounded-md px-2.5 py-2 text-body-sm transition-colors duration-150 hover:bg-hover-list-item disabled:cursor-not-allowed disabled:opacity-60 ${
+              suggestions.length > 0 ? "text-[var(--color-brand-400)]" : "text-text-secondary hover:text-text-primary"
+            }`}
+          >
+            {suggestLoading ? (
+              <Loader2 size={14} strokeWidth={1.5} className="shrink-0 animate-spin text-[var(--color-brand-400)]" />
+            ) : (
+              <Sparkles size={14} strokeWidth={1.5} className="shrink-0 text-[var(--color-brand-400)]" />
+            )}
+            <span>Find related issues with AI</span>
+            {suggestions.length > 0 ? (
+              <span className="ml-auto flex h-4 min-w-4 items-center justify-center rounded-full bg-[var(--color-brand-500)] px-1 text-[10px] font-semibold text-white">
+                {suggestions.length}
+              </span>
+            ) : null}
+          </button>
+        </div>
       )}
     </div>
-  );
-
-  const linkButton = (
-    <button
-      type="button"
-      onClick={() => setComposerAt((v) => (v === "__bottom__" ? null : "__bottom__"))}
-      aria-label="Link an issue"
-      aria-pressed={composerAt === "__bottom__"}
-      className={`flex cursor-pointer items-center justify-center rounded-md p-1.5 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)] ${
-        composerAt === "__bottom__"
-          ? "bg-[var(--color-brand-500)]/[0.08] text-[var(--color-brand-400)]"
-          : "text-text-muted hover:bg-overlay-subtle hover:text-text-secondary"
-      }`}
-      style={{ transition: "background-color 0.15s ease, color 0.15s ease" }}
-      title="Link an issue"
-    >
-      <Plus size={14} strokeWidth={2} />
-    </button>
   );
 
   // The link composer (one shared instance) renders under whichever group's "+" is active, or at
@@ -622,7 +645,7 @@ export function LinkedIssuesSection({ issues, ticketKey, onMutate }: LinkedIssue
       <SectionHeader
         title="Linked Issues"
         count={allIssues.length}
-        actions={<>{suggestButton}{linkButton}</>}
+        actions={headerMenu}
         sectionKey={SECTION_KEYS.linkedIssues}
       >
 
@@ -640,12 +663,12 @@ export function LinkedIssuesSection({ issues, ticketKey, onMutate }: LinkedIssue
                   aria-label={`Add a "${relation}" link`}
                   aria-pressed={composerAt === relation}
                   title={`Add a "${relation}" link`}
-                  className={`flex h-4 w-4 shrink-0 cursor-pointer items-center justify-center rounded focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-[var(--color-brand-400)] ${
+                  className={`flex h-5 w-5 shrink-0 cursor-pointer items-center justify-center rounded-md focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-[var(--color-brand-400)] ${
                     composerAt === relation
-                      ? "text-[var(--color-brand-400)]"
-                      : "text-text-muted opacity-0 group-hover/relgroup:opacity-100 hover:text-text-secondary"
+                      ? "bg-[var(--color-brand-500)]/[0.08] text-[var(--color-brand-400)]"
+                      : "text-text-muted opacity-0 group-hover/relgroup:opacity-100 hover:bg-overlay-subtle hover:text-text-secondary"
                   }`}
-                  style={{ transition: "opacity 0.15s ease, color 0.15s ease" }}
+                  style={{ transition: "opacity 0.15s ease, background-color 0.15s ease, color 0.15s ease" }}
                 >
                   <Plus size={12} strokeWidth={2} />
                 </button>

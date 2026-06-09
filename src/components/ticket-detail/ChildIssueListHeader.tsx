@@ -18,8 +18,10 @@ import {
   Plus,
   MoreHorizontal,
   Eye,
-  Filter,
+  ListFilter,
   Columns3,
+  Sparkles,
+  Loader2,
 } from "lucide-react";
 
 export type ChildIssueViewMode = "list" | "sprint";
@@ -54,6 +56,12 @@ interface ChildIssueListHeaderProps {
    *  that reveals guestimation pickers and (in the by-sprint view) the fullness meter. */
   planningOn?: boolean;
   onTogglePlanning?: () => void;
+  /** When provided, renders an "AI suggest" action in the menu footer. */
+  onSuggest?: () => void;
+  /** Drives the spinner on the AI suggest action while a suggestion run is in flight. */
+  suggestLoading?: boolean;
+  /** Number of pending AI suggestions; surfaces a badge and accents the trigger when > 0. */
+  suggestCount?: number;
 }
 
 const VIEW_MODES: { mode: ChildIssueViewMode; label: string; Icon: LucideIcon }[] = [
@@ -88,6 +96,9 @@ export function ChildIssueListHeader({
   createOpen,
   planningOn,
   onTogglePlanning,
+  onSuggest,
+  suggestLoading,
+  suggestCount,
 }: ChildIssueListHeaderProps) {
   const showViewToggle = Boolean(viewMode && onViewModeChange);
   const hasViewPane = showViewToggle || Boolean(onTogglePlanning);
@@ -101,11 +112,12 @@ export function ChildIssueListHeader({
 
   // The trigger carries an active accent whenever something behind it is engaged, so collapsing
   // the controls into one icon doesn't hide that a control is toggled.
-  const hasActiveState = open || isFiltered || Boolean(planningOn) || Boolean(createOpen);
+  const hasActiveState =
+    open || isFiltered || Boolean(planningOn) || Boolean(createOpen) || Boolean(suggestCount);
 
   const railItems: { key: Pane; label: string; Icon: LucideIcon }[] = [
     ...(hasViewPane ? [{ key: "view" as const, label: "View", Icon: Eye }] : []),
-    { key: "filter" as const, label: "Filter", Icon: Filter },
+    { key: "filter" as const, label: "Filter", Icon: ListFilter },
     ...(hasColumnsPane ? [{ key: "columns" as const, label: "Columns", Icon: Columns3 }] : []),
   ];
 
@@ -131,12 +143,12 @@ export function ChildIssueListHeader({
       {open && (
         <div
           role="menu"
-          className="absolute top-full right-0 z-50 mt-1 w-[392px] overflow-hidden rounded-xl border border-border-default bg-[var(--color-surface-floating)] shadow-[var(--shadow-popover)]"
+          className="absolute top-full right-0 z-50 mt-1 w-[420px] overflow-hidden rounded-xl border border-border-default bg-[var(--color-surface-floating)] shadow-[var(--shadow-popover)]"
           style={{ animation: "fadeInUp 0.1s ease" }}
         >
           <div className="flex">
             {/* category rail */}
-            <div className="w-[104px] shrink-0 border-r border-border-subtle bg-overlay-subtle/40 p-1.5">
+            <div className="w-[132px] shrink-0 border-r border-border-subtle bg-overlay-subtle/40 p-1.5">
               {railItems.map(({ key, label, Icon }) => {
                 const active = pane === key;
                 return (
@@ -243,25 +255,54 @@ export function ChildIssueListHeader({
             </div>
           </div>
 
-          {onToggleCreate && (
+          {(onToggleCreate || onSuggest) && (
             <>
               <div className="h-px bg-border-subtle" />
               <div className="p-1">
-                <button
-                  type="button"
-                  role="menuitem"
-                  onClick={() => {
-                    onToggleCreate();
-                    setOpen(false);
-                  }}
-                  title="Create child issue"
-                  className={`flex w-full cursor-pointer items-center gap-2.5 rounded-md px-2.5 py-2 text-body-sm transition-colors duration-150 hover:bg-hover-list-item ${
-                    createOpen ? "text-[var(--color-brand-400)]" : "text-text-secondary hover:text-text-primary"
-                  }`}
-                >
-                  <Plus size={14} strokeWidth={2} className="shrink-0 text-[var(--color-brand-400)]" />
-                  <span>New child issue</span>
-                </button>
+                {onToggleCreate && (
+                  <button
+                    type="button"
+                    role="menuitem"
+                    onClick={() => {
+                      onToggleCreate();
+                      setOpen(false);
+                    }}
+                    title="Create child issue"
+                    className={`flex w-full cursor-pointer items-center gap-2.5 rounded-md px-2.5 py-2 text-body-sm transition-colors duration-150 hover:bg-hover-list-item ${
+                      createOpen ? "text-[var(--color-brand-400)]" : "text-text-secondary hover:text-text-primary"
+                    }`}
+                  >
+                    <Plus size={14} strokeWidth={2} className="shrink-0 text-[var(--color-brand-400)]" />
+                    <span>New child issue</span>
+                  </button>
+                )}
+                {onSuggest && (
+                  <button
+                    type="button"
+                    role="menuitem"
+                    onClick={() => {
+                      onSuggest();
+                      setOpen(false);
+                    }}
+                    disabled={suggestLoading}
+                    title={suggestCount ? `${suggestCount} pending AI suggestions` : "Suggest subtasks with AI"}
+                    className={`flex w-full cursor-pointer items-center gap-2.5 rounded-md px-2.5 py-2 text-body-sm transition-colors duration-150 hover:bg-hover-list-item disabled:cursor-not-allowed disabled:opacity-60 ${
+                      suggestCount ? "text-[var(--color-brand-400)]" : "text-text-secondary hover:text-text-primary"
+                    }`}
+                  >
+                    {suggestLoading ? (
+                      <Loader2 size={14} strokeWidth={1.5} className="shrink-0 animate-spin text-[var(--color-brand-400)]" />
+                    ) : (
+                      <Sparkles size={14} strokeWidth={1.5} className="shrink-0 text-[var(--color-brand-400)]" />
+                    )}
+                    <span>Suggest subtasks with AI</span>
+                    {suggestCount ? (
+                      <span className="ml-auto flex h-4 min-w-4 items-center justify-center rounded-full bg-[var(--color-brand-500)] px-1 text-[10px] font-semibold text-white">
+                        {suggestCount}
+                      </span>
+                    ) : null}
+                  </button>
+                )}
               </div>
             </>
           )}

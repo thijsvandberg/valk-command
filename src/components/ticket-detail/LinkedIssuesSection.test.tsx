@@ -74,6 +74,13 @@ const SAMPLE_ISSUES: LinkedIssue[] = [
   },
 ];
 
+// The header "+" and AI-suggest actions now live behind one "..." menu; opening the link composer
+// means opening that menu and clicking its "Link an issue" item.
+function openLinkComposer() {
+  fireEvent.click(screen.getByLabelText("Linked issues actions"));
+  fireEvent.click(screen.getByRole("menuitem", { name: "Link an issue" }));
+}
+
 function renderSection(issues: LinkedIssue[] = [], { openLink = true } = {}) {
   const onMutate = vi.fn();
   const result = render(
@@ -81,7 +88,7 @@ function renderSection(issues: LinkedIssue[] = [], { openLink = true } = {}) {
   );
   // The inline link composer is hidden until the header "+" opens it (BRDG-315); most tests here
   // exercise that composer, so open it by default.
-  if (openLink) fireEvent.click(screen.getByLabelText("Link an issue"));
+  if (openLink) openLinkComposer();
   return { ...result, onMutate };
 }
 
@@ -93,13 +100,12 @@ describe("LinkedIssuesSection", () => {
     mockGetRelatedSuggestions.mockResolvedValue({ suggestions: [], cachedAt: null });
   });
 
-  it("hides the link composer until the header + is clicked, and the + toggles it", () => {
+  it("hides the link composer until the header menu's Link action is clicked, and it toggles", () => {
     renderSection([], { openLink: false });
     expect(screen.queryByPlaceholderText("Link issue...")).toBeNull();
-    const plus = screen.getByLabelText("Link an issue");
-    fireEvent.click(plus);
+    openLinkComposer();
     expect(screen.getByPlaceholderText("Link issue...")).toBeInTheDocument();
-    fireEvent.click(plus);
+    openLinkComposer();
     expect(screen.queryByPlaceholderText("Link issue...")).toBeNull();
   });
 
