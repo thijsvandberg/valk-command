@@ -14,7 +14,7 @@ import {
   type LucideIcon,
   LayoutList,
   CalendarRange,
-  Ruler,
+  Pencil,
   Plus,
   MoreHorizontal,
   Eye,
@@ -209,7 +209,7 @@ export function ChildIssueListHeader({
                       title="Planning (pencil capacity + guestimations)"
                     >
                       <Checkbox checked={Boolean(planningOn)} />
-                      <Ruler size={13} strokeWidth={1.5} className="text-text-tertiary" />
+                      <Pencil size={13} strokeWidth={1.5} className="text-text-tertiary" />
                       <span className="text-text-secondary">Planning</span>
                     </button>
                   )}

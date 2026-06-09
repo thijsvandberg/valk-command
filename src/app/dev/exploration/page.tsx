@@ -8,7 +8,7 @@
  */
 
 import Link from "next/link";
-import { ArrowUpRight, LayoutGrid, Rows3, FlaskConical, Shapes, MousePointerClick, Type, PanelTop, PanelTopDashed, AppWindow, ListChecks } from "lucide-react";
+import { ArrowUpRight, LayoutGrid, Rows3, FlaskConical, Shapes, MousePointerClick, Type, PanelTop, PanelTopDashed, AppWindow, ListChecks, Gauge } from "lucide-react";
 
 type Exploration = {
   slug: string;
@@ -22,6 +22,14 @@ type Exploration = {
 const ICON = "h-5 w-5";
 
 const EXPLORATIONS: Exploration[] = [
+  {
+    slug: "capacity-meter",
+    title: "Sprint capacity meter",
+    blurb:
+      "Calmer treatment for the sprint capacity bar, which used to turn amber at a perfectly-full sprint. Shipped: a neutral pill (grey text, teal fill bar, no icon) where the ONLY over-capacity signal is the bar turning red - text and pill stay neutral. Page also compares the rejected louder over-capacity treatments and icon options.",
+    status: "Shipped",
+    icon: <Gauge className={ICON} strokeWidth={1.5} />,
+  },
   {
     slug: "child-issues-menu",
     title: "Child Issues controls menu",

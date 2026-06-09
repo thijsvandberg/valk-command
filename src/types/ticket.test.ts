@@ -5,7 +5,6 @@ import {
   getGuestimationColor,
   GUESS_COLORS,
   effectivePoints,
-  fullnessBand,
 } from "./ticket";
 
 describe("getSpColor", () => {
@@ -81,24 +80,5 @@ describe("effectivePoints", () => {
   it("returns 0 when neither is set", () => {
     expect(effectivePoints(null, null)).toBe(0);
     expect(effectivePoints(undefined, undefined)).toBe(0);
-  });
-});
-
-describe("fullnessBand", () => {
-  it("is healthy below 0.85", () => {
-    expect(fullnessBand(0)).toBe("healthy");
-    expect(fullnessBand(0.5)).toBe("healthy");
-    expect(fullnessBand(0.849)).toBe("healthy");
-  });
-
-  it("is approaching from 0.85 up to and including 1.0", () => {
-    expect(fullnessBand(0.85)).toBe("approaching");
-    expect(fullnessBand(0.95)).toBe("approaching");
-    expect(fullnessBand(1)).toBe("approaching");
-  });
-
-  it("is over above 1.0", () => {
-    expect(fullnessBand(1.01)).toBe("over");
-    expect(fullnessBand(2)).toBe("over");
   });
 });

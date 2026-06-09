@@ -13,7 +13,7 @@ import { SprintStatsPopover } from "@/components/sprint-board/SprintStatsPopover
 import { SprintDetailsPopover } from "@/components/sprint-board/SprintDetailsPopover";
 import { followedSprints, workspaceTasks } from "@/lib/api-client";
 import { getJiraSprintUrl } from "@/lib/jira-url";
-import { Columns2, Check, LayoutGrid, CalendarRange, Search, Bookmark, MoreHorizontal, BarChart2, List, Bell, BellOff, Users, Inbox, Flag, Play, Ruler } from "lucide-react";
+import { Columns2, Check, LayoutGrid, CalendarRange, Search, Bookmark, MoreHorizontal, BarChart2, List, Bell, BellOff, Users, Inbox, Flag, Play, Pencil } from "lucide-react";
 import dynamic from "next/dynamic";
 const SprintListModal = dynamic(() => import("@/components/sprint-board/SprintListModal").then((m) => ({ default: m.SprintListModal })), { ssr: false });
 
@@ -187,7 +187,7 @@ export function SprintBoardHeader(props: SprintBoardHeaderProps) {
                       : "text-text-secondary hover:bg-hover-interactive hover:text-text-primary"
                   }`}
                 >
-                  <Ruler size={13} strokeWidth={1.5} className="shrink-0" />
+                  <Pencil size={13} strokeWidth={1.5} className="shrink-0" />
                   <span>Planning</span>
                 </button>
                 {!isAllView && !activeView && (

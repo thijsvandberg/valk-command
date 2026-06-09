@@ -178,21 +178,6 @@ export function effectivePoints(
   return guestimation ?? 0;
 }
 
-export type FullnessBand = "healthy" | "approaching" | "over";
-
-// Fullness colour bands (BRDG-303): healthy < 0.85, approaching 0.85-1.0, over > 1.0.
-export function fullnessBand(ratio: number): FullnessBand {
-  if (ratio > 1) return "over";
-  if (ratio >= 0.85) return "approaching";
-  return "healthy";
-}
-
-export const FULLNESS_BAND_COLORS: Record<FullnessBand, { text: string; bg: string; fill: string }> = {
-  healthy:     { text: "var(--color-status-done)",    bg: "var(--color-status-done-subtle)",    fill: "var(--color-status-done)" },
-  approaching: { text: "var(--color-status-warning)", bg: "var(--color-status-warning-subtle)", fill: "var(--color-status-warning)" },
-  over:        { text: "var(--color-status-error)",   bg: "var(--color-status-error-subtle)",   fill: "var(--color-status-error)" },
-};
-
 export interface Assignee {
   name: string;
   initials: string;
