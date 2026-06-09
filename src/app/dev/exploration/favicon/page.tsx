@@ -1,20 +1,23 @@
 "use client";
 
 /**
- * Throwaway exploration: favicon directions for Bridge.
+ * Exploration: favicon directions for Bridge. SHIPPED.
  *
- * The current favicon.ico/logo.svg still use the aperture "BridgeMark" beeldmerk,
- * which was rejected as the brand. These five options instead derive from the
- * real brand: the `bridge_` wordmark (Space Mono, teal cursor). At 16px a wordmark
- * is unreadable, so each option distills it to its smallest legible signature —
- * the mono "b" and/or the teal underscore caret. No aperture/lens mark.
+ * The old favicon.ico used the aperture "BridgeMark" beeldmerk, which was rejected
+ * as the brand. These options instead derive from the real brand: the `bridge_`
+ * wordmark (Space Mono, teal cursor), distilled to what survives at 16px — the mono
+ * "b" and/or the teal underscore caret. No aperture/lens mark.
  *
- * Each option is shown large, at real favicon sizes (16/32/48/64), and inside a
- * faux browser tab on light and dark chrome. Reachable at /dev/exploration/favicon.
+ * Two were chosen and shipped as env-aware dynamic icons (src/lib/app-icon.tsx):
+ *   - prod (port 3101): "b _ lockup · dark"  — white b on the dark teal tile.
+ *   - dev  (port 3100): "b _ lockup · light" — black b on a light tile.
+ * Both keep the teal underscore so a 3100 tab is instantly distinct from a 3101 tab.
+ *
+ * Reachable at /dev/exploration/favicon.
  */
 
 import Link from "next/link";
-import { ArrowLeft } from "lucide-react";
+import { ArrowLeft, Check } from "lucide-react";
 import { Space_Mono } from "next/font/google";
 
 const spaceMono = Space_Mono({ subsets: ["latin"], weight: ["400", "700"], display: "swap" });
@@ -36,6 +39,8 @@ type Option = {
   id: string;
   title: string;
   note: string;
+  /** Set when this direction was chosen and shipped, naming the scenario it serves. */
+  chosen?: "prod" | "dev";
   /** Render the mark at a given pixel size. */
   render: (px: number) => React.ReactNode;
 };
@@ -68,13 +73,14 @@ const OPTIONS: Option[] = [
   },
   {
     id: "f",
-    title: "b _ lockup · wordmark",
-    note: "Closest to the real bridge_ lockup: a mono b with the teal underscore trailing beside it on the baseline, not beneath. Reads as a cropped wordmark.",
+    title: "b _ lockup · light",
+    chosen: "dev",
+    note: "Shipped for dev (port 3100): the bridge_ crop on a light tile with a black b and the teal underscore trailing beside it. Light chrome instantly separates a 3100 tab from prod.",
     render: (px) => (
       <svg width={px} height={px} viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
-        <Tile fill="#ffffff" />
+        <Tile fill="#f4f5f5" />
         <rect x="0.5" y="0.5" width="31" height="31" rx="6.5" stroke="#000000" strokeOpacity="0.08" />
-        <text x="11" y="22" textAnchor="middle" fontFamily={MONO} fontWeight={700} fontSize="19" fill={T.b700}>
+        <text x="11" y="22" textAnchor="middle" fontFamily={MONO} fontWeight={700} fontSize="19" fill="#0a0f0f">
           b
         </text>
         <rect x="17.5" y="21" width="9" height="2.8" rx="1.4" fill={T.b400} />
@@ -84,7 +90,8 @@ const OPTIONS: Option[] = [
   {
     id: "f-dark",
     title: "b _ lockup · dark",
-    note: "Same wordmark crop on a dark console tile: white b, teal trailing underscore. Mirrors how bridge_ sits in the app's dark header.",
+    chosen: "prod",
+    note: "Shipped for prod (port 3101): the same wordmark crop on the dark teal tile — white b, teal trailing underscore. Mirrors how bridge_ sits in the app's dark header.",
     render: (px) => (
       <svg width={px} height={px} viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
         <Tile fill={T.b950} />
@@ -157,6 +164,15 @@ const OPTIONS: Option[] = [
 
 const REAL_SIZES = [16, 32, 48, 64];
 
+// Chosen directions float to the top (prod before dev), the rest keep their order.
+const rank = (o: Option) => (o.chosen === "prod" ? 0 : o.chosen === "dev" ? 1 : 2);
+const ORDERED = OPTIONS.slice().sort((a, b) => rank(a) - rank(b));
+const CHOSEN = ORDERED.filter((o) => o.chosen);
+const SCENARIO_LABEL: Record<NonNullable<Option["chosen"]>, string> = {
+  prod: "prod · port 3101",
+  dev: "dev · port 3100",
+};
+
 export default function FaviconExplorationPage() {
   return (
     <div className="min-h-screen bg-[var(--color-surface-base)] px-6 py-10 lg:px-10">
@@ -173,15 +189,45 @@ export default function FaviconExplorationPage() {
             Favicon directions
           </h1>
           <p className="mt-2 max-w-2xl text-body-lg leading-[1.7] text-text-secondary">
-            Five favicons built from the <span className={`${spaceMono.className} text-[var(--color-brand-300)]`}>bridge_</span> wordmark
+            Favicons built from the <span className={`${spaceMono.className} text-[var(--color-brand-300)]`}>bridge_</span> wordmark
             rather than the rejected aperture mark. Each distils the brand to what survives at 16px: the mono{" "}
             <span className={spaceMono.className}>b</span> and the teal underscore caret. Each is shown large, at real
             favicon sizes, and in a browser tab on light and dark chrome.
           </p>
         </header>
 
+        {/* Shipped decision: the two directions that became the live env-aware icons. */}
+        <section className="mb-8 rounded-2xl bg-[var(--color-surface-floating)] p-5 ring-1 ring-border-default">
+          <p className="mb-2 flex items-center gap-1.5 font-mono text-[11px] font-semibold uppercase tracking-[0.16em] text-[var(--color-status-done)]">
+            <Check className="h-3.5 w-3.5" strokeWidth={2.25} />
+            Shipped
+          </p>
+          <h2 className="font-display text-[17px] font-semibold tracking-[-0.01em] text-text-primary">
+            Chosen for the two scenarios
+          </h2>
+          <p className="mt-1.5 max-w-2xl text-body-sm leading-[1.6] text-text-tertiary">
+            Generated on the fly so each instance carries its own colour. The shared teal underscore keeps them
+            a family; the tile and <span className={spaceMono.className}>b</span> colour tell the running instances apart.
+          </p>
+          <div className="mt-4 grid gap-3 sm:grid-cols-2">
+            {CHOSEN.map((o) => (
+              <div key={o.id} className="flex items-center gap-3 rounded-xl bg-overlay-default p-3">
+                {o.render(48)}
+                <div>
+                  <div className="font-display text-[14px] font-semibold tracking-[-0.01em] text-text-primary">
+                    {o.title}
+                  </div>
+                  <div className="mt-0.5 font-mono text-[11px] tracking-[0.08em] text-text-tertiary">
+                    {SCENARIO_LABEL[o.chosen!]}
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        </section>
+
         <ul className="grid gap-5 sm:grid-cols-2">
-          {OPTIONS.map((opt) => (
+          {ORDERED.map((opt) => (
             <li
               key={opt.id}
               className="flex flex-col gap-5 overflow-hidden rounded-2xl bg-[var(--color-surface-floating)] p-5 ring-1 ring-border-default"
@@ -195,6 +241,11 @@ export default function FaviconExplorationPage() {
                     <h2 className="font-display text-[16px] font-semibold tracking-[-0.01em] text-text-primary">
                       {opt.title}
                     </h2>
+                    {opt.chosen && (
+                      <span className="rounded-full bg-[var(--color-status-done-subtle)] px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.1em] text-[var(--color-status-done)]">
+                        Shipped · {opt.chosen}
+                      </span>
+                    )}
                   </div>
                   <p className="mt-1.5 text-body-sm leading-[1.6] text-text-tertiary">{opt.note}</p>
                 </div>
