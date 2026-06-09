@@ -444,22 +444,6 @@ export default function TicketDetailPage({
                 Push to Jira
               </Button>
             )}
-            <Tooltip content={chatPaneOpen ? "Close ticket chat" : "Open ticket chat"}>
-              <Button
-                variant="ghost"
-                size="md"
-                iconOnly
-                onClick={() => setChatPaneOpen((v) => !v)}
-                aria-label={chatPaneOpen ? "Close ticket chat" : "Open ticket chat"}
-                icon={
-                  <MessageSquareText
-                    size={14}
-                    strokeWidth={1.5}
-                    className={chatPaneOpen ? "text-[#a78bfa]" : ""}
-                  />
-                }
-              />
-            </Tooltip>
             {!ticket.removedFromJiraAt && ticket.jiraStatus !== "DONE" && ticket.jiraStatus !== "DEPRECATED" && ticket.readiness === "ready_to_refine" && !isInRefinementSession && (
               <button
                 onClick={() => setShowAddToRefinement(true)}
@@ -485,6 +469,19 @@ export default function TicketDetailPage({
               />
               <Popover open={moreMenuOpen} onClose={() => setMoreMenuOpen(false)} align="right">
                 <div className="min-w-[220px] py-1">
+                  <button
+                    onClick={() => { setMoreMenuOpen(false); setChatPaneOpen((v) => !v); }}
+                    className="flex w-full cursor-pointer items-center gap-2.5 px-3 py-2 text-body-sm text-text-secondary hover:bg-overlay-default active:bg-overlay-strong"
+                    style={{ transition: "background-color 0.1s ease" }}
+                  >
+                    <MessageSquareText
+                      size={13}
+                      strokeWidth={1.5}
+                      className={chatPaneOpen ? "text-[#a78bfa]" : "text-text-muted"}
+                    />
+                    {chatPaneOpen ? "Close ticket chat" : "Open ticket chat"}
+                  </button>
+                  <div className="mx-2 my-1 h-px bg-overlay-default" />
                   <button
                     onClick={() => { setMoreMenuOpen(false); h.isFollowed ? h.unfollow(key) : h.follow(key); }}
                     className="flex w-full cursor-pointer items-center gap-2.5 px-3 py-2 text-body-sm text-text-secondary hover:bg-overlay-default active:bg-overlay-strong"
