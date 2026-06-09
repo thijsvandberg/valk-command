@@ -53,13 +53,31 @@ that both **assign** and **set progress** are obvious, one-or-two-click actions 
   - Lay the actions out in-flow (reserve space) instead of as an overlay, or
   - Move the avatar to the left of the actions with guaranteed hit area.
 
+## Implementation Plan
+
+### Decisions
+- Scope to Subtasks only (not Child Issues / EpicChildrenSection) for now.
+- Make the row's assignee avatar an interactive `AssigneePicker variant="avatar"` (obvious one-click assign), reusing the existing `jira.assign` path.
+- Status change stays on the existing inline-editable status pill (AC #2 already satisfied; verify + add a test).
+- Persistence follows the existing `onMutate()` refetch pattern used by `handleJiraStatusChange` (no second optimistic system).
+
+### Steps
+1. **`ChildIssueRow.tsx` — overlap fix.** Wrap `{metadataSlot}` in `<span className="relative z-20 shrink-0">` with `onClick` stopPropagation so the avatar sits above the actions overlay and its clicks never trigger row-select. Reposition the actions overlay (start it to the left of the avatar / clear it) so Edit and Delete stay reachable while the avatar remains clickable on hover.
+2. **`SubtasksSection.tsx` — assignee handler.** Import `jira` from `@/lib/api-client` and `AssignableUser` from `AssigneePicker`. Add `handleAssigneeChange(childKey, user)` mirroring `handleJiraStatusChange`: `jira.assign({ issueKey, accountId: user?.accountId ?? null, name: user?.displayName ?? null })` then `onMutate()`, with try/catch setting `jiraWarning`.
+3. **`SubtasksSection.tsx` — interactive avatar.** Replace the display-only `<Avatar>` metadataSlot in both render paths (`SortableSubtaskRow` and the plain `ChildIssueRow`) with `AssigneePicker variant="avatar" avatarSize={22}`. Thread an `onAssigneeChange` prop into `SortableSubtaskRow`. Guard pending rows (`pending-*` keys) to keep the plain non-interactive avatar.
+4. **Tests.** `ChildIssueRow.test.tsx`: overlap/reachability test (both slots present, avatar click does not call onSelect). `SubtasksSection.test.tsx`: add `jira.assign` to the api-client mock, render metadataSlot in the mocked row, mock `AssigneePicker`, test assign + unassign wiring, status-to-In-Progress wiring, and pending-row guard. Keep existing create/rename/delete/reorder tests green.
+5. **Verify** status-to-In-Progress still works.
+
+### Implementation order
+ChildIssueRow overlap fix → SubtasksSection handler + avatar → tests → manual verify.
+
 ## Acceptance criteria
 
-- [ ] On a subtask row, the assignee can be changed inline (assign + unassign) and persists to Jira.
-- [ ] On a subtask row, the status can be set to In Progress inline.
-- [ ] Hovering a row never makes the assignee control unclickable; Edit and Delete remain reachable.
-- [ ] No regression to the existing optimistic create/rename/delete/reorder flows in `SubtasksSection`.
-- [ ] Tests cover: assignee change wiring, status change, and that actions do not block the assignee.
+- [x] On a subtask row, the assignee can be changed inline (assign + unassign) and persists to Jira.
+- [x] On a subtask row, the status can be set to In Progress inline.
+- [x] Hovering a row never makes the assignee control unclickable; Edit and Delete remain reachable.
+- [x] No regression to the existing optimistic create/rename/delete/reorder flows in `SubtasksSection`.
+- [x] Tests cover: assignee change wiring, status change, and that actions do not block the assignee.
 
 ## Open questions (deferred — to answer later)
 

@@ -91,6 +91,67 @@ describe("ChildIssueRow", () => {
     expect(screen.getByTestId("delete-btn")).toBeInTheDocument();
   });
 
+  describe("assignee control vs. actions overlay (BRDG-318)", () => {
+    it("renders both an interactive metadata control and the actions on the same row", () => {
+      render(
+        <ChildIssueRow
+          item={baseSub}
+          isLast={false}
+          metadataSlot={<button data-testid="assignee-trigger">A</button>}
+          actionsSlot={<button data-testid="delete-btn">Delete</button>}
+        />,
+      );
+      expect(screen.getByTestId("assignee-trigger")).toBeInTheDocument();
+      expect(screen.getByTestId("delete-btn")).toBeInTheDocument();
+    });
+
+    it("isolates metadata-control clicks from row select so the picker stays usable", () => {
+      const onSelect = vi.fn();
+      render(
+        <ChildIssueRow
+          item={baseSub}
+          isLast={false}
+          onSelect={onSelect}
+          metadataSlot={<button data-testid="assignee-trigger">A</button>}
+        />,
+      );
+      fireEvent.click(screen.getByTestId("assignee-trigger"));
+      expect(onSelect).not.toHaveBeenCalled();
+    });
+
+    it("lifts the metadata control above the actions overlay (z-20)", () => {
+      render(
+        <ChildIssueRow
+          item={baseSub}
+          isLast={false}
+          metadataSlot={<button data-testid="assignee-trigger">A</button>}
+        />,
+      );
+      expect(screen.getByTestId("assignee-trigger").parentElement).toHaveClass("z-20");
+    });
+
+    it("offsets the actions overlay off the right edge when a metadata control is present", () => {
+      const { rerender } = render(
+        <ChildIssueRow
+          item={baseSub}
+          isLast={false}
+          metadataSlot={<button data-testid="assignee-trigger">A</button>}
+          actionsSlot={<button data-testid="delete-btn">Delete</button>}
+        />,
+      );
+      expect(screen.getByTestId("delete-btn").parentElement).toHaveClass("right-9");
+
+      rerender(
+        <ChildIssueRow
+          item={baseSub}
+          isLast={false}
+          actionsSlot={<button data-testid="delete-btn">Delete</button>}
+        />,
+      );
+      expect(screen.getByTestId("delete-btn").parentElement).toHaveClass("right-1");
+    });
+  });
+
   it("hides actions slot when pending", () => {
     const pending = { ...baseSub, key: "pending-123" };
     render(

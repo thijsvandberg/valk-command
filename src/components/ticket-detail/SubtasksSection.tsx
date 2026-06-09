@@ -3,6 +3,7 @@
 import { useState, useRef, useCallback, useEffect, useMemo } from "react";
 import type { TicketDetail, Subtask, SubtaskSuggestionResponse, JiraStatus } from "@/types/ticket";
 import { Avatar } from "@/components/shared/Avatar";
+import { AssigneePicker, type AssignableUser } from "@/components/shared/AssigneePicker";
 import { ChildIssueRow } from "./ChildIssueRow";
 import { ChildIssueListHeader } from "./ChildIssueListHeader";
 import { FieldFilterPopover, type StatusFilter } from "./FieldFilterPopover";
@@ -10,7 +11,7 @@ import { useSectionVisibility } from "@/hooks/useSectionVisibility";
 import { useSectionCollapsed } from "@/hooks/useSectionCollapsed";
 import { SECTION_KEYS } from "@/lib/section-collapse-store";
 import { useLocalStorage } from "@/hooks/useLocalStorage";
-import { tickets } from "@/lib/api-client";
+import { tickets, jira } from "@/lib/api-client";
 import { ApiError } from "@/lib/api-client";
 import { GripVertical, Filter, Sparkles, Undo2, Loader2, X, SquarePen, AlertTriangle } from "lucide-react";
 import { SubtaskSuggestions } from "./SubtaskSuggestions";
@@ -103,6 +104,7 @@ function SortableSubtaskRow({
   onCancelEdit,
   onDelete,
   onJiraStatusChange,
+  onAssigneeChange,
 }: {
   sub: Subtask;
   isLast: boolean;
@@ -121,6 +123,7 @@ function SortableSubtaskRow({
   onCancelEdit: () => void;
   onDelete: () => void;
   onJiraStatusChange?: (status: JiraStatus) => void;
+  onAssigneeChange: (user: AssignableUser | null) => void;
 }) {
   const {
     attributes,
@@ -168,7 +171,15 @@ function SortableSubtaskRow({
       onEditChange={onEditChange}
       onSaveEdit={onSaveEdit}
       onCancelEdit={onCancelEdit}
-      metadataSlot={showAssignee ? <Avatar assignee={sub.assignee} size={22} /> : undefined}
+      metadataSlot={showAssignee ? (
+        <AssigneePicker
+          variant="avatar"
+          avatarSize={22}
+          align="right"
+          value={sub.assignee}
+          onChange={onAssigneeChange}
+        />
+      ) : undefined}
       actionsSlot={
         <>
           <EditButton onClick={onStartEdit} />
@@ -304,6 +315,17 @@ export function SubtasksSection({
     } catch (err) {
       console.error("Failed to update status:", err);
       setJiraWarning("Failed to update status");
+    }
+  }, [onMutate]);
+
+  const handleAssigneeChange = useCallback(async (childKey: string, user: AssignableUser | null) => {
+    setJiraWarning(null);
+    try {
+      await jira.assign({ issueKey: childKey, accountId: user?.accountId ?? null, name: user?.displayName ?? null });
+      onMutate();
+    } catch (err) {
+      console.error("Failed to update assignee:", err);
+      setJiraWarning(`${childKey}: failed to update assignee`);
     }
   }, [onMutate]);
 
@@ -633,6 +655,7 @@ export function SubtasksSection({
           onCancelEdit={handleCancelEdit}
           onDelete={() => handleDelete(sub, idx)}
           onJiraStatusChange={(s) => handleJiraStatusChange(sub.key, s)}
+          onAssigneeChange={(u) => handleAssigneeChange(sub.key, u)}
         />
       );
     }
@@ -656,7 +679,19 @@ export function SubtasksSection({
         onEditChange={setEditingTitle}
         onSaveEdit={handleSaveEdit}
         onCancelEdit={handleCancelEdit}
-        metadataSlot={showAssignee ? <Avatar assignee={sub.assignee} size={22} /> : undefined}
+        metadataSlot={showAssignee ? (
+          isPending ? (
+            <Avatar assignee={sub.assignee} size={22} />
+          ) : (
+            <AssigneePicker
+              variant="avatar"
+              avatarSize={22}
+              align="right"
+              value={sub.assignee}
+              onChange={(u) => handleAssigneeChange(sub.key, u)}
+            />
+          )
+        ) : undefined}
         actionsSlot={!isPending ? (
           <>
             <EditButton onClick={() => handleStartEdit(sub.key, displayTitle)} />

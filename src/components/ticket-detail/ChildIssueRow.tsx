@@ -225,12 +225,21 @@ export function ChildIssueRow({
         </span>
       )}
 
-      {metadataSlot}
+      {/* Lifted above the actions overlay (z-20) and click-isolated so an interactive
+          metadata control (e.g. the assignee picker) stays reachable on hover and its
+          clicks never bubble up to row-select. */}
+      {metadataSlot && (
+        <span className="relative z-20 flex shrink-0 items-center" onClick={(e) => e.stopPropagation()}>
+          {metadataSlot}
+        </span>
+      )}
 
-      {/* Hover overlay: actions float over content from the right */}
+      {/* Hover overlay: actions float over content from the right. When a metadata
+          control occupies the right edge, the overlay stops short of it (right-9) so
+          the avatar/picker stays visible and clickable; otherwise it hugs the edge. */}
       {!isPending && !isEditing && actionsSlot && (
         <div
-          className="absolute right-1 top-1/2 flex -translate-y-1/2 items-center gap-1 rounded-md pl-6 pr-2 opacity-0 group-hover/row:opacity-100"
+          className={`absolute ${metadataSlot ? "right-9" : "right-1"} top-1/2 flex -translate-y-1/2 items-center gap-1 rounded-md pl-6 pr-2 opacity-0 group-hover/row:opacity-100`}
           style={{
             transition: "opacity 0.15s ease",
             background: "linear-gradient(to right, transparent, var(--color-surface-base) 24px)",

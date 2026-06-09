@@ -1,5 +1,5 @@
 import { render, screen, fireEvent, waitFor } from "@testing-library/react";
-import { describe, it, expect, vi, beforeEach } from "vitest";
+import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { SubtasksSection } from "./SubtasksSection";
 import type { Subtask } from "@/types/ticket";
 
@@ -11,6 +11,7 @@ const mockSuggestSubtasks = vi.fn();
 const mockPersistSubtaskSuggestions = vi.fn();
 const mockDismissSubtaskSuggestion = vi.fn();
 const mockRankSubtasks = vi.fn();
+const mockAssign = vi.fn();
 
 vi.mock("@/lib/api-client", () => ({
   tickets: {
@@ -22,6 +23,9 @@ vi.mock("@/lib/api-client", () => ({
     persistSubtaskSuggestions: (...args: unknown[]) => mockPersistSubtaskSuggestions(...args),
     dismissSubtaskSuggestion: (...args: unknown[]) => mockDismissSubtaskSuggestion(...args),
     rankSubtasks: (...args: unknown[]) => mockRankSubtasks(...args),
+  },
+  jira: {
+    assign: (...args: unknown[]) => mockAssign(...args),
   },
   ApiError: class ApiError extends Error {
     constructor(message: string, public status = 500, public body?: unknown) {
@@ -40,6 +44,8 @@ vi.mock("./ChildIssueRow", () => ({
     onCancelEdit,
     onSelect,
     actionsSlot,
+    metadataSlot,
+    onJiraStatusChange,
   }: {
     item: Subtask;
     isEditing?: boolean;
@@ -49,6 +55,8 @@ vi.mock("./ChildIssueRow", () => ({
     onCancelEdit?: () => void;
     onSelect?: (key: string) => void;
     actionsSlot?: React.ReactNode;
+    metadataSlot?: React.ReactNode;
+    onJiraStatusChange?: (status: string) => void;
   }) => (
     <div data-testid={`subtask-row-${item.key}`}>
       {isEditing ? (
@@ -62,8 +70,29 @@ vi.mock("./ChildIssueRow", () => ({
       ) : (
         <button onClick={() => onSelect?.(item.key)}>{item.title}</button>
       )}
+      {metadataSlot}
+      {onJiraStatusChange && (
+        <button data-testid={`set-progress-${item.key}`} onClick={() => onJiraStatusChange("IN PROGRESS")}>
+          In Progress
+        </button>
+      )}
       {actionsSlot}
     </div>
+  ),
+}));
+
+// The real AssigneePicker is a portal-based popover with SWR-loaded users; the
+// SubtasksSection tests only care that selecting a person / unassigning calls back.
+vi.mock("@/components/shared/AssigneePicker", () => ({
+  AssigneePicker: ({ onChange }: { onChange: (u: { accountId: string | null; displayName: string } | null) => void }) => (
+    <span data-testid="assignee-picker">
+      <button data-testid="assign-jane" onClick={() => onChange({ accountId: "acc-1", displayName: "Jane" })}>
+        Assign Jane
+      </button>
+      <button data-testid="unassign" onClick={() => onChange(null)}>
+        Unassign
+      </button>
+    </span>
   ),
 }));
 
@@ -109,7 +138,7 @@ vi.mock("@/components/shared/Avatar", () => ({
 
 vi.mock("@/hooks/useSectionVisibility", () => ({
   useSectionVisibility: () => ({
-    visible: new Set(["issueKey", "status"]),
+    visible: new Set(["issueKey", "status", "assignee"]),
     toggleField: vi.fn(),
   }),
 }));
@@ -196,6 +225,11 @@ describe("SubtasksSection", () => {
     mockCreateSubtask.mockResolvedValue(makeSubtask({ key: "VPL-99", title: "Created" }));
     mockRenameSubtask.mockResolvedValue({});
     mockDeleteSubtask.mockResolvedValue({});
+    mockAssign.mockResolvedValue({});
+  });
+
+  afterEach(() => {
+    vi.unstubAllGlobals();
   });
 
   it("renders inline input with placeholder", () => {
@@ -375,5 +409,63 @@ describe("SubtasksSection", () => {
 
     // Delete API should not have been called
     expect(mockDeleteSubtask).not.toHaveBeenCalled();
+  });
+
+  describe("inline assignee + status (BRDG-318)", () => {
+    it("renders an interactive assignee picker on each subtask row", () => {
+      renderSection([makeSubtask({ key: "VPL-10", title: "A subtask" })]);
+      expect(screen.getByTestId("assignee-picker")).toBeInTheDocument();
+    });
+
+    it("assigns a subtask inline and persists to Jira", async () => {
+      const { onMutate } = renderSection([makeSubtask({ key: "VPL-10" })]);
+      fireEvent.click(screen.getByTestId("assign-jane"));
+
+      await waitFor(() => {
+        expect(mockAssign).toHaveBeenCalledWith({ issueKey: "VPL-10", accountId: "acc-1", name: "Jane" });
+      });
+      await waitFor(() => expect(onMutate).toHaveBeenCalled());
+    });
+
+    it("unassigns a subtask inline (null accountId + name)", async () => {
+      renderSection([makeSubtask({ key: "VPL-10", assignee: { name: "Jane", initials: "JA", color: "#000" } })]);
+      fireEvent.click(screen.getByTestId("unassign"));
+
+      await waitFor(() => {
+        expect(mockAssign).toHaveBeenCalledWith({ issueKey: "VPL-10", accountId: null, name: null });
+      });
+    });
+
+    it("surfaces a warning when the assignee update fails", async () => {
+      mockAssign.mockRejectedValue(new Error("Jira API error"));
+      renderSection([makeSubtask({ key: "VPL-10" })]);
+      fireEvent.click(screen.getByTestId("assign-jane"));
+
+      await waitFor(() => {
+        expect(screen.getByText(/failed to update assignee/i)).toBeInTheDocument();
+      });
+    });
+
+    it("moves a subtask to In Progress inline via the status pill handler", async () => {
+      const fetchMock = vi.fn().mockResolvedValue({ ok: true, json: async () => ({}) });
+      vi.stubGlobal("fetch", fetchMock);
+
+      const { onMutate } = renderSection([makeSubtask({ key: "VPL-10" })]);
+      fireEvent.click(screen.getByTestId("set-progress-VPL-10"));
+
+      await waitFor(() => {
+        expect(fetchMock).toHaveBeenCalledWith(
+          "/api/tickets/VPL-10/status",
+          expect.objectContaining({ method: "PUT", body: JSON.stringify({ status: "IN PROGRESS" }) }),
+        );
+      });
+      await waitFor(() => expect(onMutate).toHaveBeenCalled());
+    });
+
+    it("does not expose the assignee picker on pending rows", () => {
+      renderSection([makeSubtask({ key: "pending-1", title: "Pending" })]);
+      expect(screen.queryByTestId("assignee-picker")).not.toBeInTheDocument();
+      expect(screen.getByTestId("avatar")).toBeInTheDocument();
+    });
   });
 });
