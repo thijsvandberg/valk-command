@@ -1,196 +1,89 @@
 "use client";
 
-import { useState, useEffect, useCallback, useMemo } from "react";
+import { useState, useEffect, useMemo, useCallback } from "react";
+import useSWR from "swr";
 import { useRouter } from "next/navigation";
-import { NotebookPen, Plus, ArrowRight, AlertTriangle, Scissors, Clock, Trash2 } from "lucide-react";
-import { TicketStatusPill } from "@/components/shared/TicketStatusPill";
-import type { JiraStatus, TicketReadiness } from "@/types/ticket";
-import { EpicBadge } from "@/components/shared/IssueMetaBadges";
+import { NotebookPen, Plus } from "lucide-react";
+import dynamic from "next/dynamic";
+import type { Ticket } from "@/types/ticket";
+import {
+  sessionToSessionTicket,
+  formatTimeAgo,
+  hasJiraChanges,
+  type ActiveSession,
+  type SessionTicket,
+} from "@/types/story-writer";
 import { ViewHeader, ViewHeaderTitle } from "@/components/shared/ViewHeader";
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/shared/Card";
 import { ConfirmDialog } from "@/components/shared/ConfirmDialog";
 import { EmptyState } from "@/components/shared/EmptyState";
 import { InlineAlert } from "@/components/shared/InlineAlert";
-import dynamic from "next/dynamic";
+import { Toast } from "@/components/ui/Toast";
+import { BoardRow } from "@/components/sprint-board/BoardRow";
+import { useTicketActions } from "@/components/sprint-board/useTicketActions";
+import { mapJiraSprints } from "@/components/sprint-board/sprint-board-utils";
+import { useToast } from "@/hooks/useToast";
+import { useJiraSprints } from "@/hooks/useSprintBoard";
+import { apiFetch } from "@/lib/api-client";
+
 const StoryWriterLauncherModal = dynamic(
   () => import("@/components/shared/StoryWriterLauncherModal").then((m) => ({ default: m.StoryWriterLauncherModal })),
   { ssr: false },
 );
-import { apiFetch } from "@/lib/api-client";
-import { useJiraSprints } from "@/hooks/useSprintBoard";
 
-interface ActiveSession {
-  sessionId: string;
-  ticketKey: string;
-  title: string;
-  sprintName: string | null;
-  epic: string | null;
-  epicKey: string | null;
-  issueType: string | null;
-  status: string;
-  readiness: string | null;
-  updatedAt: string | null;
-  jiraUpdatedAt: string | null;
-  targetTicketKey: string | null;
-  targetTitle: string | null;
-  removedFromJira: boolean;
-}
+// One stable key shared by the SWR hook and useTicketActions' activeListKey, so the
+// optimistic globalMutate writes in saveTicketMetadata/saveStoryPoints land on the same
+// cache entry the table reads (BRDG-325).
+const SESSIONS_KEY = "/api/story-writer/active-sessions";
 
-function formatTimeAgo(iso: string): string {
-  const seconds = Math.floor((Date.now() - new Date(iso).getTime()) / 1000);
-  if (seconds < 60) return "just now";
-  if (seconds < 3600) return `${Math.floor(seconds / 60)}m ago`;
-  if (seconds < 86400) return `${Math.floor(seconds / 3600)}h ago`;
-  return `${Math.floor(seconds / 86400)}d ago`;
-}
-
-function hasJiraChanges(session: ActiveSession): boolean {
-  if (!session.jiraUpdatedAt || !session.updatedAt) return false;
-  return new Date(session.jiraUpdatedAt).getTime() > new Date(session.updatedAt).getTime();
-}
-
-function SessionCard({
-  session,
-  sprintLabel,
-  jiraChanged,
-  onResume,
-  onDiscard,
-}: {
-  session: ActiveSession;
-  sprintLabel: string | null;
-  jiraChanged: boolean;
-  onResume: () => void;
-  onDiscard: () => void;
-}) {
-  const isSplit = !!session.targetTicketKey;
-  return (
-    <div className="group flex flex-col gap-3 rounded-xl border border-border-default bg-surface-elevated p-4 shadow-[var(--shadow-sm)] transition-[transform,box-shadow,border-color] duration-200 ease-out hover:-translate-y-0.5 hover:border-border-strong hover:shadow-[var(--shadow-md)]">
-      {/* Top row: ticket key(s) + badges */}
-      <div className="flex items-center justify-between gap-2">
-        <div className="flex items-center gap-1.5 min-w-0 flex-wrap">
-          <TicketStatusPill
-            ticketKey={session.ticketKey}
-            jiraStatus={(session.status as JiraStatus) ?? "TO DO"}
-            readiness={(session.readiness as TicketReadiness) ?? undefined}
-            issueType={session.issueType ?? undefined}
-            title={session.title}
-            size="sm"
-            removedFromJira={session.removedFromJira}
-          />
-          {isSplit && (
-            <>
-              <Scissors size={9} strokeWidth={2} className="shrink-0 text-violet-400/60" />
-              <span className="shrink-0 flex items-center gap-1 rounded-md bg-violet-500/10 px-1.5 py-0.5 text-caption font-medium text-violet-400/80">
-                Split
-              </span>
-            </>
-          )}
-        </div>
-        {jiraChanged && (
-          <span className="shrink-0 flex items-center gap-1 rounded-md bg-amber-500/10 px-1.5 py-0.5 text-caption font-medium text-amber-400/90">
-            <AlertTriangle size={10} strokeWidth={2} />
-            Jira changed
-          </span>
-        )}
-      </div>
-
-      {/* Title(s) */}
-      {isSplit ? (
-        <div className="space-y-1">
-          <p className="text-body-sm font-semibold leading-snug text-text-primary truncate">
-            {session.title}
-          </p>
-          <p className="text-body-sm leading-snug text-text-tertiary truncate">
-            {session.targetTitle ?? session.targetTicketKey}
-          </p>
-        </div>
-      ) : (
-        <p className="font-[var(--font-display)] text-body-lg font-semibold leading-snug tracking-[-0.01em] text-text-primary line-clamp-2">
-          {session.title}
-        </p>
-      )}
-
-      {/* Bottom row: metadata + actions */}
-      <div className="mt-auto flex items-center justify-between gap-3 pt-1">
-        <div className="flex min-w-0 items-center gap-2 text-label text-text-tertiary">
-          {sprintLabel && (
-            <span className="shrink-0 truncate">{sprintLabel}</span>
-          )}
-          {session.epic && <EpicBadge epic={session.epic} />}
-          {session.updatedAt && (
-            <span className="flex shrink-0 items-center gap-1">
-              <Clock size={10} strokeWidth={1.75} className="text-text-muted" />
-              {formatTimeAgo(session.updatedAt)}
-            </span>
-          )}
-        </div>
-        <div className="flex items-center gap-1 shrink-0">
-          <button
-            type="button"
-            aria-label="Discard session"
-            onClick={onDiscard}
-            className="flex h-7 w-7 items-center justify-center rounded-lg text-text-muted transition-[color,background-color] duration-150 hover:bg-red-500/10 hover:text-red-400 cursor-pointer"
-          >
-            <Trash2 size={13} strokeWidth={1.75} />
-          </button>
-          <Button
-            variant="soft"
-            size="sm"
-            icon={<ArrowRight size={11} strokeWidth={2} />}
-            onClick={onResume}
-          >
-            Resume
-          </Button>
-        </div>
-      </div>
-    </div>
-  );
-}
+// Fetch active sessions and map them to SessionTickets (Ticket + session fields). The
+// cache holds the mapped tickets so useTicketActions' optimistic spreads operate on the
+// Ticket shape it expects; the session fields ride along and survive every spread.
+const fetchSessions = () =>
+  apiFetch<ActiveSession[]>(SESSIONS_KEY).then((data) => data.map(sessionToSessionTicket));
 
 export default function StoryWriterLandingPage() {
   const router = useRouter();
-  const [sessions, setSessions] = useState<ActiveSession[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
   const [showLauncher, setShowLauncher] = useState(false);
-  const [confirmDiscardId, setConfirmDiscardId] = useState<string | null>(null);
+  const [confirmDiscardSessionId, setConfirmDiscardSessionId] = useState<string | null>(null);
+  const [editingTitleKey, setEditingTitleKey] = useState<string | null>(null);
 
-  const { sprints } = useJiraSprints();
-
+  const { toast, toastLoading, showToast, dismissToast } = useToast();
+  const { sprints: rawSprints } = useJiraSprints();
+  const sprints = useMemo(() => mapJiraSprints(rawSprints), [rawSprints]);
   const sprintNameMap = useMemo(() => {
     const map: Record<string, string> = {};
-    sprints?.forEach((s) => { map[s.id] = s.name; });
+    sprints.forEach((s) => { map[s.id] = s.name; });
     return map;
   }, [sprints]);
 
-  const fetchSessions = useCallback(() => {
-    apiFetch<ActiveSession[]>("/api/story-writer/active-sessions")
-      .then((data) => {
-        setSessions(data);
-        setLoading(false);
-      })
-      .catch(() => {
-        setError("Failed to load sessions");
-        setLoading(false);
-      });
-  }, []);
+  const { data: tickets, error, isLoading, mutate } = useSWR<Ticket[]>(SESSIONS_KEY, fetchSessions, {
+    revalidateOnFocus: true,
+  });
 
+  const sessionTickets = (tickets ?? []) as SessionTicket[];
+
+  const ta = useTicketActions({
+    apiTickets: tickets,
+    mutateTickets: mutate,
+    activeListKey: SESSIONS_KEY,
+    showToast,
+  });
+
+  // Seed the readiness/PO map from the loaded rows: BoardRow reads the readiness pill
+  // segment from this map, not from ticket.readiness directly.
+  const { syncFromApiTickets } = ta;
   useEffect(() => {
-    fetchSessions();
-  }, [fetchSessions]);
+    if (tickets) syncFromApiTickets(tickets);
+  }, [tickets, syncFromApiTickets]);
 
-  async function handleDiscard(sessionId: string) {
-    await apiFetch(`/api/story-writer/active-sessions?sessionId=${sessionId}`, {
-      method: "DELETE",
-    });
-    fetchSessions();
-  }
+  const handleDiscard = useCallback(async (sessionId: string) => {
+    await apiFetch(`${SESSIONS_KEY}?sessionId=${sessionId}`, { method: "DELETE" });
+    mutate();
+  }, [mutate]);
 
-  function resolveSprintName(sprintId: string | null): string | null {
-    if (!sprintId) return null;
-    return sprintNameMap[sprintId] ?? null;
-  }
+  const sessionCount = sessionTickets.length;
 
   return (
     <div className="flex flex-col h-full">
@@ -202,13 +95,13 @@ export default function StoryWriterLandingPage() {
 
       <div className="flex-1 overflow-y-auto px-8 pt-6 pb-20">
         <div className="max-w-5xl">
-          {error && <InlineAlert variant="error" className="mb-4">{error}</InlineAlert>}
+          {error && <InlineAlert variant="error" className="mb-4">Failed to load sessions</InlineAlert>}
 
           <div className="flex items-center justify-between mb-5">
             <span className="text-body-lg text-text-tertiary">
-              {loading
+              {isLoading
                 ? "Loading..."
-                : `${sessions.length} active session${sessions.length === 1 ? "" : "s"}`}
+                : `${sessionCount} active session${sessionCount === 1 ? "" : "s"}`}
             </span>
             <Button
               variant="primary"
@@ -220,54 +113,80 @@ export default function StoryWriterLandingPage() {
             </Button>
           </div>
 
-          {!loading && sessions.length === 0 && (
+          {!isLoading && sessionCount === 0 && (
             <Card variant="dashed" className="px-6 py-12">
               <EmptyState
-                icon={
-                  <NotebookPen
-                    size={20}
-                    strokeWidth={1.5}
-                    className="text-text-tertiary"
-                  />
-                }
+                icon={<NotebookPen size={20} strokeWidth={1.5} className="text-text-tertiary" />}
                 title="No active sessions"
                 description="Start a new story to begin writing."
               />
             </Card>
           )}
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-            {sessions.map((session) => (
-              <SessionCard
-                key={session.sessionId}
-                session={session}
-                sprintLabel={resolveSprintName(session.sprintName)}
-                jiraChanged={hasJiraChanges(session)}
-                onResume={() => router.push(`/tickets/${session.ticketKey}/write`)}
-                onDiscard={() => setConfirmDiscardId(session.sessionId)}
-              />
-            ))}
-          </div>
+          {sessionCount > 0 && (
+            <Card className="overflow-hidden p-0">
+              <table className="w-full table-fixed border-collapse text-body-lg">
+                <tbody>
+                  {sessionTickets.map((st, idx) => (
+                    <BoardRow
+                      key={st.sessionId}
+                      ticket={st}
+                      ticketIdx={idx}
+                      isChecked={false}
+                      isSelected={false}
+                      someChecked={false}
+                      isDragActive={false}
+                      selectedTicket={null}
+                      onSelectTicket={() => {}}
+                      onCheckboxClick={() => {}}
+                      showSprint
+                      sprintNameMap={sprintNameMap}
+                      sprints={sprints}
+                      readinessMap={ta.readinessMap}
+                      onReadinessChange={ta.handleReadinessChange}
+                      onBusinessValueChange={ta.handleBusinessValueChange}
+                      onStoryPointsChange={ta.handleStoryPointsChange}
+                      onJiraStatusChange={ta.handleJiraStatusChange}
+                      onIssueTypeChange={ta.handleIssueTypeChange}
+                      onTitleChange={ta.handleTitleChange}
+                      onAssigneeChange={ta.handleAssigneeChange}
+                      onEpicChange={ta.handleEpicChange}
+                      onSprintChange={ta.handleSprintChange}
+                      editingTitleKey={editingTitleKey}
+                      onEditingTitleKeyChange={setEditingTitleKey}
+                      onActivate={(key) => router.push(`/tickets/${key}/write`)}
+                      onDiscard={() => setConfirmDiscardSessionId(st.sessionId)}
+                      sessionTimeAgo={st.sessionUpdatedAt ? formatTimeAgo(st.sessionUpdatedAt) : undefined}
+                      sessionJiraChanged={hasJiraChanges({ updatedAt: st.sessionUpdatedAt, jiraUpdatedAt: st.sessionJiraUpdatedAt })}
+                      splitTarget={st.targetTicketKey ? (st.targetTitle ?? st.targetTicketKey) : undefined}
+                      isLastInCard={idx === sessionCount - 1}
+                    />
+                  ))}
+                </tbody>
+              </table>
+            </Card>
+          )}
         </div>
       </div>
 
-      {/* Discard confirmation dialog */}
       <ConfirmDialog
-        open={!!confirmDiscardId}
-        onClose={() => setConfirmDiscardId(null)}
+        open={!!confirmDiscardSessionId}
+        onClose={() => setConfirmDiscardSessionId(null)}
         title="Discard session?"
         description="This will permanently discard the session. You will not be able to resume it later."
         confirmLabel="Discard"
         confirmClassName="bg-red-500/10 border border-red-500/20 hover:bg-red-500/20"
         onConfirm={() => {
-          if (confirmDiscardId) handleDiscard(confirmDiscardId);
+          if (confirmDiscardSessionId) handleDiscard(confirmDiscardSessionId);
         }}
       />
 
       <StoryWriterLauncherModal
         open={showLauncher}
-        onClose={() => { setShowLauncher(false); fetchSessions(); }}
+        onClose={() => { setShowLauncher(false); mutate(); }}
       />
+
+      <Toast toast={toast} loading={toastLoading} onDismiss={dismissToast} />
     </div>
   );
 }
