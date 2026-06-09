@@ -8,6 +8,15 @@ import { useActivityContext, type ActivityState } from "@/contexts/ActivityConte
 import type { ActivityLogEntry } from "@/types/ticket";
 import { Button } from "@/components/ui/Button";
 
+/**
+ * Horizontal position for the fixed sync panel: align to the trigger, but clamp
+ * against the right viewport edge first so a trigger near the edge never pushes
+ * the panel off-screen, then keep an 8px floor on the left.
+ */
+export function clampPanelLeft(triggerLeft: number, width: number, viewportWidth: number): number {
+  return Math.max(8, Math.min(triggerLeft, viewportWidth - width - 8));
+}
+
 function stateIcon(state: ActivityState, errorCount: number, syncRemaining: number, hasChecked: boolean) {
   if (!hasChecked || state === "syncing") {
     return (
@@ -125,7 +134,7 @@ export function SyncIndicator({
     const width = collapsed || isHeaderLine ? 240 : Math.max(rect.width, 220);
     setPanelPos({
       bottom: window.innerHeight - rect.top + 6,
-      left: Math.max(8, rect.left),
+      left: clampPanelLeft(rect.left, width, window.innerWidth),
       width,
     });
   }, [collapsed, isHeaderLine]);

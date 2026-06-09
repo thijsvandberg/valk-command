@@ -4,7 +4,10 @@ import { useMemo } from "react";
 import type { Sprint } from "@/types/ticket";
 import { useJiraSprints, useTickets, useActiveWriterSessions } from "@/hooks/useSprintBoard";
 import { useConversations } from "@/hooks/useConversations";
+import { useDefaultSprintId } from "@/hooks/useDefaultSprint";
+import { useRefinementSessions } from "@/hooks/useRefinementSessions";
 import { computeSprintStats, computeSprintWorkDays } from "@/components/sprint-board/sprint-board-utils";
+import { extractTeamPrefix } from "@/lib/sprint-utils";
 
 export interface SidebarHeroData {
   /** Active sprint name, used as the hero key (e.g. "BT: 139"). */
@@ -40,14 +43,26 @@ export interface SidebarData {
  */
 export function useSidebarData(): SidebarData {
   const { sprints } = useJiraSprints();
-  const activeSprint = useMemo(
-    () => sprints.find((s) => s.state === "active") ?? null,
-    [sprints],
-  );
+  const defaultSprintId = useDefaultSprintId();
+  // The default-sprint setting only pins which TEAM is the default (e.g. BT).
+  // We surface that team's currently *active* sprint so the widget follows the
+  // rollover (BT: 139 -> BT: 140) automatically. Fall back to the pinned sprint
+  // itself, then to any active sprint, when the team has none active.
+  const activeSprint = useMemo(() => {
+    const defaultSprint = defaultSprintId
+      ? sprints.find((s) => String(s.id) === defaultSprintId)
+      : null;
+    const team = defaultSprint ? extractTeamPrefix(defaultSprint.name) : null;
+    const teamActive = team
+      ? sprints.find((s) => s.state === "active" && extractTeamPrefix(s.name) === team)
+      : null;
+    return teamActive ?? defaultSprint ?? sprints.find((s) => s.state === "active") ?? null;
+  }, [sprints, defaultSprintId]);
 
   const { data: tickets } = useTickets(activeSprint ? String(activeSprint.id) : null);
   const { data: writerSessions } = useActiveWriterSessions();
   const { conversations, loading: conversationsLoading } = useConversations();
+  const { sessions: refinementSessions, isLoading: refinementLoading } = useRefinementSessions();
 
   const hero = useMemo<SidebarHeroData | null>(() => {
     if (!activeSprint) return null;
@@ -90,10 +105,15 @@ export function useSidebarData(): SidebarData {
   );
 
   const refinement = useMemo<SidebarCount>(() => {
-    if (!tickets) return { count: null, note: "to refine" };
-    const toRefine = tickets.filter((t) => t.readiness === "ready_to_refine").length;
-    return { count: toRefine, note: "to refine" };
-  }, [tickets]);
+    if (refinementLoading) return { count: null, note: "to refine" };
+    // "Next refinement" = the in-progress session if one is running, otherwise
+    // the most recently created draft (sessions arrive newest-first).
+    const next =
+      refinementSessions.find((s) => s.status === "in_progress") ??
+      refinementSessions.find((s) => s.status === "draft") ??
+      null;
+    return { count: next?.ticketCount ?? 0, note: "to refine" };
+  }, [refinementSessions, refinementLoading]);
 
   return { hero, chat, storyWriter, refinement };
 }

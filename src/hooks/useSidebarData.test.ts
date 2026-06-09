@@ -6,6 +6,8 @@ const mockUseJiraSprints = vi.fn();
 const mockUseTickets = vi.fn();
 const mockUseActiveWriterSessions = vi.fn();
 const mockUseConversations = vi.fn();
+const mockUseDefaultSprintId = vi.fn();
+const mockUseRefinementSessions = vi.fn();
 
 vi.mock("@/hooks/useSprintBoard", () => ({
   useJiraSprints: () => mockUseJiraSprints(),
@@ -15,6 +17,14 @@ vi.mock("@/hooks/useSprintBoard", () => ({
 
 vi.mock("@/hooks/useConversations", () => ({
   useConversations: () => mockUseConversations(),
+}));
+
+vi.mock("@/hooks/useDefaultSprint", () => ({
+  useDefaultSprintId: () => mockUseDefaultSprintId(),
+}));
+
+vi.mock("@/hooks/useRefinementSessions", () => ({
+  useRefinementSessions: () => mockUseRefinementSessions(),
 }));
 
 function ticket(overrides: Record<string, unknown>) {
@@ -35,6 +45,8 @@ describe("useSidebarData", () => {
     mockUseTickets.mockReturnValue({ data: undefined });
     mockUseActiveWriterSessions.mockReturnValue({ data: undefined });
     mockUseConversations.mockReturnValue({ conversations: [], loading: false });
+    mockUseDefaultSprintId.mockReturnValue(null);
+    mockUseRefinementSessions.mockReturnValue({ sessions: [], isLoading: false });
   });
 
   it("returns null hero when there is no active sprint", () => {
@@ -106,20 +118,73 @@ describe("useSidebarData", () => {
     expect(renderHook(() => useSidebarData()).result.current.storyWriter.count).toBeNull();
   });
 
-  it("counts ready_to_refine tickets for the refinement row, null while loading", () => {
+  it("uses the active sprint of the default team, following the rollover", () => {
+    // Default is pinned to a closed BT sprint; the active BT sprint should win.
     mockUseJiraSprints.mockReturnValue({
-      sprints: [{ id: 100, name: "BT: 140", state: "active", startDate: null, endDate: null, goal: null }],
-    });
-    mockUseTickets.mockReturnValue({
-      data: [
-        ticket({ readiness: "ready_to_refine" }),
-        ticket({ readiness: "drafting" }),
-        ticket({ readiness: "ready_to_refine" }),
+      sprints: [
+        { id: 100, name: "BM: 139", state: "active", startDate: null, endDate: null, goal: null },
+        { id: 101, name: "BT: 139", state: "closed", startDate: null, endDate: null, goal: null },
+        { id: 102, name: "BT: 140", state: "active", startDate: null, endDate: null, goal: null },
       ],
     });
-    expect(renderHook(() => useSidebarData()).result.current.refinement).toEqual({ count: 2, note: "to refine" });
+    mockUseDefaultSprintId.mockReturnValue("101");
 
-    mockUseTickets.mockReturnValue({ data: undefined });
+    const { result } = renderHook(() => useSidebarData());
+    expect(result.current.hero?.sprintKey).toBe("BT: 140");
+    // Tickets are fetched for the active sprint of the default team.
+    expect(mockUseTickets).toHaveBeenCalledWith("102");
+  });
+
+  it("falls back to the pinned sprint when the default team has none active", () => {
+    mockUseJiraSprints.mockReturnValue({
+      sprints: [
+        { id: 100, name: "BM: 139", state: "active", startDate: null, endDate: null, goal: null },
+        { id: 101, name: "BT: 139", state: "closed", startDate: null, endDate: null, goal: null },
+      ],
+    });
+    mockUseDefaultSprintId.mockReturnValue("101");
+
+    const { result } = renderHook(() => useSidebarData());
+    expect(result.current.hero?.sprintKey).toBe("BT: 139");
+  });
+
+  it("falls back to any active sprint when the default sprint is missing from the list", () => {
+    mockUseJiraSprints.mockReturnValue({
+      sprints: [{ id: 100, name: "BM: 139", state: "active", startDate: null, endDate: null, goal: null }],
+    });
+    mockUseDefaultSprintId.mockReturnValue("999");
+
+    const { result } = renderHook(() => useSidebarData());
+    expect(result.current.hero?.sprintKey).toBe("BM: 139");
+  });
+
+  it("counts tickets in the next refinement session, preferring in_progress over draft", () => {
+    mockUseRefinementSessions.mockReturnValue({
+      sessions: [
+        { id: "d", status: "draft", ticketCount: 3 },
+        { id: "p", status: "in_progress", ticketCount: 5 },
+        { id: "c", status: "completed", ticketCount: 9 },
+      ],
+      isLoading: false,
+    });
+    expect(renderHook(() => useSidebarData()).result.current.refinement).toEqual({ count: 5, note: "to refine" });
+  });
+
+  it("uses the latest draft session when none are in progress", () => {
+    mockUseRefinementSessions.mockReturnValue({
+      sessions: [
+        { id: "d2", status: "draft", ticketCount: 4 },
+        { id: "d1", status: "draft", ticketCount: 2 },
+      ],
+      isLoading: false,
+    });
+    expect(renderHook(() => useSidebarData()).result.current.refinement.count).toBe(4);
+  });
+
+  it("refinement count is zero with no open sessions, null while loading", () => {
+    expect(renderHook(() => useSidebarData()).result.current.refinement).toEqual({ count: 0, note: "to refine" });
+
+    mockUseRefinementSessions.mockReturnValue({ sessions: [], isLoading: true });
     expect(renderHook(() => useSidebarData()).result.current.refinement.count).toBeNull();
   });
 });
