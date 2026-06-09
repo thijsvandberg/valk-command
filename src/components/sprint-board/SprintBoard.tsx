@@ -82,6 +82,9 @@ export default function SprintBoard() {
   const selectedTicket = ticketSlug;
 
   const [slotSprints, setSlotSprints] = useState<string[]>([]);
+  // True once the pinned slots have been fetched, so URL-driven ephemeral adoption
+  // doesn't fire against the empty initial slots and double up a pinned sprint (BRDG-319).
+  const [slotsLoaded, setSlotsLoaded] = useState(false);
   const slotSprintsSet = useMemo(() => new Set(slotSprints), [slotSprints]);
   // Back-compat: existing deep links (ticket page, activity log, search) still
   // point at `/sprint-board?sprint=<id>`. When there is no path slug, fall back
@@ -107,10 +110,15 @@ export default function SprintBoard() {
   // reflected by the Backlogs dropdown — either way the sprint actually opens.
   useEffect(() => {
     if (isAllView || !urlSprintId || urlSprintId === "__all__") return;
-    if (slotSprints.includes(urlSprintId)) return;
+    if (!slotsLoaded) return; // wait until pins are known so a pinned sprint isn't doubled
+    if (slotSprints.includes(urlSprintId)) {
+      // The URL sprint is pinned: it renders as a pill, so drop any stale ephemeral on it.
+      setEphemeralSprintId((prev) => (prev === urlSprintId ? null : prev));
+      return;
+    }
     if (!sprints.some((s) => s.id === urlSprintId)) return;
     setEphemeralSprintId((prev) => (prev === urlSprintId ? prev : urlSprintId));
-  }, [urlSprintId, isAllView, slotSprints, sprints]);
+  }, [urlSprintId, isAllView, slotSprints, sprints, slotsLoaded]);
 
   // Views bar reorganisation (BRDG-319): backlog-named sprints are pulled out of the
   // numbered-pill row into the Backlogs dropdown, and "Overall refinement" becomes a
@@ -682,10 +690,10 @@ export default function SprintBoard() {
 
   useEffect(() => {
     if (slotsInitialized.current || !sprintsData) return; slotsInitialized.current = true;
-    const fallback = () => { const fb = sprints.find((s) => s.state === "active") ?? sprints[0]; if (fb) setSlotSprints([fb.id]); };
+    const fallback = () => { const fb = sprints.find((s) => s.state === "active") ?? sprints[0]; if (fb) setSlotSprints([fb.id]); setSlotsLoaded(true); };
     apiFetch<{ slotIndex: number; sprintId: string }[]>("/api/sprint-slots").then((saved) => {
       const ids = new Set(sprints.map((s) => s.id));
-      if (Array.isArray(saved) && saved.length > 0) { const loaded = saved.sort((a, b) => a.slotIndex - b.slotIndex).map((s) => s.sprintId).filter((id) => ids.has(id)); if (loaded.length > 0) { setSlotSprints(loaded); if (loaded.length !== saved.length) saveSprintSlots(loaded, sprints); return; } }
+      if (Array.isArray(saved) && saved.length > 0) { const loaded = saved.sort((a, b) => a.slotIndex - b.slotIndex).map((s) => s.sprintId).filter((id) => ids.has(id)); if (loaded.length > 0) { setSlotSprints(loaded); if (loaded.length !== saved.length) saveSprintSlots(loaded, sprints); setSlotsLoaded(true); return; } }
       fallback();
     }).catch(fallback);
   }, [sprintsData, sprints]);
