@@ -612,7 +612,7 @@ export const BoardRow = memo(forwardRef<HTMLTableRowElement, BoardRowBaseProps>(
                   picker inline, mirroring the ticket sidebar. */}
               {tags.has("assignee") && (
                 <div
-                  className="shrink-0"
+                  className="ml-1.5 shrink-0"
                   onPointerDown={(e) => e.stopPropagation()}
                   onClick={(e) => e.stopPropagation()}
                 >
@@ -621,11 +621,11 @@ export const BoardRow = memo(forwardRef<HTMLTableRowElement, BoardRowBaseProps>(
                       value={ticket.assignee ?? null}
                       onChange={(u) => onAssigneeChange(ticket.key, u)}
                       variant="avatar"
-                      avatarSize={24}
+                      avatarSize={26}
                       align="right"
                     />
                   ) : (
-                    <Avatar assignee={ticket.assignee} size={24} />
+                    <Avatar assignee={ticket.assignee} size={26} />
                   )}
                 </div>
               )}
