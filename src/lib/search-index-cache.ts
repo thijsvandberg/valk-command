@@ -100,6 +100,7 @@ export interface TicketDetail {
   storyPoints: number | null;
   jiraUpdatedAt: string | null;
   poStatus: string | null;
+  readiness: string | null;
 }
 
 interface CacheEntry {

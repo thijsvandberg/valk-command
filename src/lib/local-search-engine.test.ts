@@ -42,6 +42,7 @@ function defaultParams(overrides?: Partial<SearchParams>): SearchParams {
     q: "test",
     statusFilter: [],
     poStatusFilter: [],
+    readinessFilter: [],
     typeFilter: [],
     assigneeFilter: [],
     sprintFilter: [],
@@ -141,6 +142,64 @@ describe("executeLocalSearch", () => {
     }));
 
     expect(result.results.every((r) => r.issueType?.toLowerCase() === "bug")).toBe(true);
+  });
+
+  it("excludes subtasks by default", async () => {
+    seedTestTicket("VPL-SUB", { title: "Subtask omega work", type: "Sub-task" });
+    seedTestTicket("VPL-STD", { title: "Story omega work", type: "Story" });
+
+    const result = await executeLocalSearch(defaultParams({ q: "omega" }));
+
+    const keys = result.results.map((r) => r.key);
+    expect(keys).toContain("VPL-STD");
+    expect(keys).not.toContain("VPL-SUB");
+  });
+
+  it("includes subtasks when the subtask type filter is active", async () => {
+    seedTestTicket("VPL-SUB", { title: "Subtask omega work", type: "Sub-task" });
+    seedTestTicket("VPL-STD", { title: "Story omega work", type: "Story" });
+
+    const result = await executeLocalSearch(defaultParams({ q: "omega", typeFilter: ["subtask"] }));
+
+    const keys = result.results.map((r) => r.key);
+    expect(keys).toContain("VPL-SUB");
+    // Selecting only "subtask" narrows to subtasks, excluding the story.
+    expect(keys).not.toContain("VPL-STD");
+  });
+
+  it("keeps subtasks excluded when an unrelated type filter is active", async () => {
+    seedTestTicket("VPL-SUB", { title: "Subtask omega work", type: "Sub-task" });
+    seedTestTicket("VPL-STD", { title: "Story omega work", type: "Story" });
+
+    const result = await executeLocalSearch(defaultParams({ q: "omega", typeFilter: ["story"] }));
+
+    const keys = result.results.map((r) => r.key);
+    expect(keys).toContain("VPL-STD");
+    expect(keys).not.toContain("VPL-SUB");
+  });
+
+  it("filters by readiness enum value", async () => {
+    seedTestTicket("VPL-HOLD", { title: "Readiness sigma alpha" });
+    seedTicketMetadata(testDb, { jiraKey: "VPL-HOLD", readiness: "on_hold" });
+    seedTestTicket("VPL-RFR", { title: "Readiness sigma beta" });
+    seedTicketMetadata(testDb, { jiraKey: "VPL-RFR", readiness: "ready_to_refine" });
+
+    const result = await executeLocalSearch(defaultParams({ q: "sigma", readinessFilter: ["on_hold"] }));
+
+    expect(result.results.every((r) => r.readiness === "on_hold")).toBe(true);
+    expect(result.results.map((r) => r.key)).toContain("VPL-HOLD");
+  });
+
+  it("filters by readiness 'none' (ready for development)", async () => {
+    seedTestTicket("VPL-NONE", { title: "Readiness tau alpha" });
+    // No metadata row -> readiness is null (ready for development)
+    seedTestTicket("VPL-DRAFT", { title: "Readiness tau beta" });
+    seedTicketMetadata(testDb, { jiraKey: "VPL-DRAFT", readiness: "drafting" });
+
+    const result = await executeLocalSearch(defaultParams({ q: "tau", readinessFilter: ["none"] }));
+
+    expect(result.results.every((r) => r.readiness === null)).toBe(true);
+    expect(result.results.map((r) => r.key)).toContain("VPL-NONE");
   });
 
   it("filters by assignee", async () => {

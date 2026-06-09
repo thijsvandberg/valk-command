@@ -9,6 +9,7 @@ export async function GET(request: Request) {
 
   const statusFilter = (searchParams.get("status") ?? "").split(",").map((s) => s.toUpperCase()).filter(Boolean);
   const poStatusFilter = (searchParams.get("poStatus") ?? "").split(",").filter(Boolean);
+  const readinessFilter = (searchParams.get("readiness") ?? "").split(",").map((s) => s.toLowerCase()).filter(Boolean);
   const typeFilter = (searchParams.get("type") ?? "").split(",").map((s) => s.toLowerCase()).filter(Boolean);
   const assigneeFilter = (searchParams.get("assignee") ?? "").split(",").filter(Boolean);
   const sprintFilter = (searchParams.get("sprint") ?? "").split(",").filter(Boolean);
@@ -28,6 +29,7 @@ export async function GET(request: Request) {
       q,
       statusFilter,
       poStatusFilter,
+      readinessFilter,
       typeFilter,
       assigneeFilter,
       sprintFilter,

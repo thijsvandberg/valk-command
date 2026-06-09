@@ -25,7 +25,7 @@ const localStorageMock = (() => {
 Object.defineProperty(window, "localStorage", { value: localStorageMock, writable: true });
 
 function makeLocalResult(key: string, summary: string, status = "TO DO"): LocalSearchResult {
-  return { key, summary, status, poStatus: null, issueType: null, assignee: null, sprintId: null, sprintName: null, labels: null, epic: null, epicKey: null, description: null, acceptanceCriteria: null, jiraUrl: null, storyPoints: null, reporter: null, updatedAt: null, score: 0.1, matches: [] };
+  return { key, summary, status, poStatus: null, readiness: null, issueType: null, assignee: null, sprintId: null, sprintName: null, labels: null, epic: null, epicKey: null, description: null, acceptanceCriteria: null, jiraUrl: null, storyPoints: null, reporter: null, updatedAt: null, score: 0.1, matches: [] };
 }
 
 function makeConversationResult(id: string, title: string, type = "chat") {

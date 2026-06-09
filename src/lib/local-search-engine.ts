@@ -13,12 +13,14 @@ import {
   type CommentSearchDoc,
 } from "@/lib/search-index-cache";
 import { logger } from "@/lib/logger";
+import type { TicketReadiness } from "@/types/ticket";
 
 export interface LocalSearchResult {
   key: string;
   summary: string;
   status: string;
   poStatus: string | null;
+  readiness: TicketReadiness | null;
   issueType: string | null;
   assignee: string | null;
   sprintId: string | null;
@@ -69,10 +71,17 @@ export interface SearchParams {
   q: string;
   statusFilter: string[];
   poStatusFilter: string[];
+  readinessFilter: string[];
   typeFilter: string[];
   assigneeFilter: string[];
   sprintFilter: string[];
   dateRange: string | null;
+}
+
+// Jira issue types arrive as display strings ("Sub-task", "Subtask", "Story", ...).
+// Normalize to a compact lowercase token so filter comparisons are robust to spacing/hyphens.
+function normalizeType(t: string | null | undefined): string | null {
+  return t ? t.toLowerCase().replace(/[\s-]/g, "") : null;
 }
 
 function stripAdf(raw: string | null | undefined): string {
@@ -173,6 +182,7 @@ async function buildIndex() {
           storyPoints: t.storyPoints ?? null,
           jiraUpdatedAt: t.jiraUpdatedAt ?? null,
           poStatus: meta?.poStatus ?? null,
+          readiness: meta?.readiness ?? null,
         },
       ];
     })
@@ -226,7 +236,7 @@ const EMPTY_RESPONSE: GroupedSearchResponse = {
 };
 
 export async function executeLocalSearch(params: SearchParams): Promise<GroupedSearchResponse> {
-  const { q, statusFilter, poStatusFilter, typeFilter, assigneeFilter, sprintFilter, dateRange } = params;
+  const { q, statusFilter, poStatusFilter, readinessFilter, typeFilter, assigneeFilter, sprintFilter, dateRange } = params;
 
   if (q.trim().length < 2) return EMPTY_RESPONSE;
 
@@ -235,7 +245,7 @@ export async function executeLocalSearch(params: SearchParams): Promise<GroupedS
     const { fuse, ticketDetails, sprintIdToName, jiraBaseUrl, conversationFuse, commentFuse } = entry;
 
     const tokens = q.trim().split(/\s+/).filter((t) => t.length >= 2);
-    const hasFilters = statusFilter.length > 0 || poStatusFilter.length > 0 || typeFilter.length > 0 || assigneeFilter.length > 0 || sprintFilter.length > 0 || !!dateRange;
+    const hasFilters = statusFilter.length > 0 || poStatusFilter.length > 0 || readinessFilter.length > 0 || typeFilter.length > 0 || assigneeFilter.length > 0 || sprintFilter.length > 0 || !!dateRange;
     const fuseLimit = hasFilters ? 500 : 200;
     const fuseResults = fuse.search(tokens[0] ?? q, { limit: fuseLimit });
 
@@ -291,6 +301,7 @@ export async function executeLocalSearch(params: SearchParams): Promise<GroupedS
         summary: r.item.localEditTitle || r.item.summary,
         status: r.item.status,
         poStatus: detail?.poStatus ?? null,
+        readiness: (detail?.readiness as TicketReadiness | null) ?? null,
         issueType: detail?.type ?? null,
         assignee: r.item.assignee,
         sprintId: r.item.sprintName ?? null,
@@ -315,7 +326,16 @@ export async function executeLocalSearch(params: SearchParams): Promise<GroupedS
       .filter((r) => {
         if (statusFilter.length > 0 && !statusFilter.includes(r.status.toUpperCase())) return false;
         if (poStatusFilter.length > 0 && !(r.poStatus && poStatusFilter.some((p) => p.toLowerCase() === r.poStatus!.toLowerCase()))) return false;
-        if (typeFilter.length > 0 && !(r.issueType && typeFilter.includes(r.issueType.toLowerCase()))) return false;
+
+        const normType = normalizeType(r.issueType);
+        // Subtasks are hidden by default; only an explicit `subtask` Type filter brings them back.
+        if (!typeFilter.includes("subtask") && normType === "subtask") return false;
+        if (typeFilter.length > 0 && !(normType && typeFilter.includes(normType))) return false;
+
+        if (readinessFilter.length > 0) {
+          const ok = r.readiness === null ? readinessFilter.includes("none") : readinessFilter.includes(r.readiness);
+          if (!ok) return false;
+        }
         if (assigneeFilter.length > 0 && !(r.assignee && assigneeFilter.some((a) => a.toLowerCase() === r.assignee!.toLowerCase()))) return false;
         if (sprintFilter.length > 0 && !(r.sprintId && sprintFilter.includes(r.sprintId))) return false;
 

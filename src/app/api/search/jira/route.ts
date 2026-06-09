@@ -45,6 +45,8 @@ export async function GET(request: Request) {
     } else {
       const parts = [`project = ${cfg.projectKey}`];
       if (issuetype.trim()) parts.push(`issuetype = "${issuetype.trim()}"`);
+      // Subtasks are hidden by default to match local search; an explicit issuetype opts back in.
+      else parts.push(`issuetype != subtask`);
       if (q.trim()) parts.push(`text ~ "${q.replace(/"/g, '\\"')}"`);
       jql = `${parts.join(" AND ")} ORDER BY updated DESC`;
     }
