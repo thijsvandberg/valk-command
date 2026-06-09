@@ -14,6 +14,7 @@ vi.mock("@/db", () => ({
 }));
 
 import { GET, PUT, DELETE, PATCH } from "./route";
+import { cache } from "@/lib/cache";
 
 function seedTicket(db: BetterSQLite3Database<typeof schema>, key: string) {
   db.insert(ticket).values({ jiraKey: key, title: `Ticket ${key}`, status: "TO DO" }).run();
@@ -186,6 +187,16 @@ describe("DELETE /api/tickets/[key]/local-edits", () => {
     const getRes = await GET(getRequest("VPL-100"), makeParams("VPL-100"));
     const data = await getRes.json();
     expect(data).toEqual([]);
+  });
+
+  it("invalidates both the detail and the sprint/backlog list caches", async () => {
+    seedTicket(testDb, "VPL-100");
+    const invalidateSpy = vi.spyOn(cache, "invalidate");
+    const delReq = new Request("http://localhost:3100/api/tickets/VPL-100/local-edits", { method: "DELETE" });
+    await DELETE(delReq, makeParams("VPL-100"));
+    expect(invalidateSpy).toHaveBeenCalledWith("/api/tickets/VPL-100");
+    expect(invalidateSpy).toHaveBeenCalledWith(/^\/api\/tickets(\?|$)/);
+    invalidateSpy.mockRestore();
   });
 
   it("deletes only drafts when draftsOnly=true", async () => {

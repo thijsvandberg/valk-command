@@ -5,6 +5,7 @@ import type { Ticket, TicketDetail, TicketReadiness, IssueType, JiraStatus } fro
 import { useTicketDetail, useJiraSprints, useTicketReviews, useActiveWriterSessions } from "@/hooks/useSprintBoard";
 import { useFollowedTickets, useFollowTicket } from "@/hooks/usePipelines";
 import { apiFetch, jira, tickets } from "@/lib/api-client";
+import { publishTicketSync } from "@/lib/ticket-sync-channel";
 import { getJiraUrl } from "@/components/sprint-board/TicketTableCells";
 import { useToast } from "@/hooks/useToast";
 
@@ -200,6 +201,7 @@ export function useTicketDetailPage(key: string) {
         { revalidate: true },
       );
       setDraftDiscardKey((k) => k + 1);
+      publishTicketSync({ key, editState: "clean" });
     } catch (err) {
       console.error("Failed to discard draft:", err);
       setDiscardError("Failed to accept Jira version. Please try again.");
@@ -227,6 +229,7 @@ export function useTicketDetailPage(key: string) {
           { revalidate: true },
         );
         setDraftDiscardKey((k) => k + 1);
+        publishTicketSync({ key, editState: "clean" });
         showToast("Pushed to Jira");
       } else {
         setPushError(data.error ?? "Push failed");

@@ -9,6 +9,11 @@ const mockHandleServiceError = vi.hoisted(() => vi.fn().mockReturnValue(
   new Response(JSON.stringify({ error: "Service error" }), { status: 500, headers: { "Content-Type": "application/json" } }),
 ));
 const mockResolveDraftKey = vi.hoisted(() => vi.fn((key: string) => key));
+const mockCacheInvalidate = vi.hoisted(() => vi.fn());
+
+vi.mock("@/lib/cache", () => ({
+  cache: { invalidate: mockCacheInvalidate },
+}));
 
 vi.mock("@/services/ticket-service", () => ({
   pushToJira: mockPushToJira,
@@ -70,6 +75,18 @@ describe("POST /api/tickets/[key]/push-to-jira", () => {
     const res = await POST(makeRequest(), makeParams("VPL-100"));
     const data = await res.json();
     expect(data.conflict).toBe(true);
+  });
+
+  it("invalidates the detail and list caches on a successful push", async () => {
+    await POST(makeRequest(), makeParams("VPL-100"));
+    expect(mockCacheInvalidate).toHaveBeenCalledWith("/api/tickets/VPL-100");
+    expect(mockCacheInvalidate).toHaveBeenCalledWith(/^\/api\/tickets(\?|$)/);
+  });
+
+  it("does not invalidate caches when the push conflicts", async () => {
+    mockPushToJira.mockResolvedValue({ conflict: true, remoteVersion: "abc" });
+    await POST(makeRequest(), makeParams("VPL-100"));
+    expect(mockCacheInvalidate).not.toHaveBeenCalled();
   });
 
   it("calls handleServiceError when pushToJira throws", async () => {

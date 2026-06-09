@@ -1,6 +1,7 @@
 "use client";
 
 import { SWRConfig } from "swr";
+import { TicketSyncBridge } from "@/components/TicketSyncBridge";
 
 const fetcher = (url: string) => fetch(url).then((r) => (r.ok ? r.json() : null));
 
@@ -17,6 +18,7 @@ export function SWRProvider({ children }: { children: React.ReactNode }) {
         keepPreviousData: true,
       }}
     >
+      <TicketSyncBridge />
       {children}
     </SWRConfig>
   );

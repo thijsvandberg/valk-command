@@ -4,6 +4,7 @@ import * as ticketService from "@/services/ticket-service";
 import { handleServiceError } from "@/services/handle-service-error";
 import { applyRateLimit } from "@/lib/rate-limiter";
 import { resolveDraftKey } from "@/lib/draft-sync";
+import { cache } from "@/lib/cache";
 
 export async function POST(
   request: Request,
@@ -33,6 +34,10 @@ export async function POST(
       return NextResponse.json(result);
     }
 
+    // A successful push clears the local edits; drop the detail and list caches so
+    // the "local changes" label does not linger behind their TTLs.
+    cache.invalidate(`/api/tickets/${key}`);
+    cache.invalidate(/^\/api\/tickets(\?|$)/);
     return NextResponse.json(result);
   } catch (err) {
     return handleServiceError(err);
