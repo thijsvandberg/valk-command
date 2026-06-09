@@ -240,7 +240,7 @@ export function ChildIssueRow({
           the Edit/Delete buttons to its left so the avatar/picker stays clickable. */}
       {!isPending && !isEditing && actionsSlot && (
         <div
-          className={`absolute inset-y-0 right-1 flex items-center gap-1 pl-8 ${metadataSlot ? "pr-9" : "pr-2"} opacity-0 group-hover/row:opacity-100`}
+          className={`absolute inset-y-0 right-0 flex items-center gap-1 pl-8 ${metadataSlot ? "pr-11" : "pr-3"} opacity-0 group-hover/row:opacity-100`}
           style={{
             transition: "opacity 0.15s ease",
             background: "linear-gradient(to right, transparent, var(--color-surface-base) 24px)",

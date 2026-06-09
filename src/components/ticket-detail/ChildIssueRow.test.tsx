@@ -140,8 +140,8 @@ describe("ChildIssueRow", () => {
         />,
       );
       // Fade always runs to the edge; extra right padding clears the avatar.
-      expect(screen.getByTestId("delete-btn").parentElement).toHaveClass("right-1");
-      expect(screen.getByTestId("delete-btn").parentElement).toHaveClass("pr-9");
+      expect(screen.getByTestId("delete-btn").parentElement).toHaveClass("right-0");
+      expect(screen.getByTestId("delete-btn").parentElement).toHaveClass("pr-11");
 
       rerender(
         <ChildIssueRow
@@ -150,8 +150,8 @@ describe("ChildIssueRow", () => {
           actionsSlot={<button data-testid="delete-btn">Delete</button>}
         />,
       );
-      expect(screen.getByTestId("delete-btn").parentElement).toHaveClass("right-1");
-      expect(screen.getByTestId("delete-btn").parentElement).toHaveClass("pr-2");
+      expect(screen.getByTestId("delete-btn").parentElement).toHaveClass("right-0");
+      expect(screen.getByTestId("delete-btn").parentElement).toHaveClass("pr-3");
     });
   });
 
