@@ -2,7 +2,8 @@
 
 import { useState, useEffect, useRef, useCallback } from "react";
 import { useOutsideClick } from "@/hooks/useOutsideClick";
-import { ChevronDown, Check } from "lucide-react";
+import { ChevronDown } from "lucide-react";
+import { Checkbox } from "@/components/shared/Checkbox";
 
 export interface SelectOption { value: string; label: string; sublabel?: string | null }
 
@@ -78,15 +79,7 @@ export function SessionSelectDropdown({
                     className="flex w-full items-start gap-2.5 px-3 py-2 text-left cursor-pointer"
                     style={{ backgroundColor: isFoc ? "var(--color-overlay-default)" : "transparent", transition: "background-color 60ms" }}
                   >
-                    <span className="flex h-[14px] w-[14px] mt-0.5 shrink-0 items-center justify-center rounded-[3px] border"
-                      style={{
-                        backgroundColor: isSel ? "var(--color-brand-500)" : "transparent",
-                        borderColor: isSel ? "var(--color-brand-500)" : "var(--color-text-muted)",
-                        transition: "background-color 100ms, border-color 100ms",
-                      }}
-                    >
-                      {isSel && <Check size={8} strokeWidth={2.5} className="text-white" />}
-                    </span>
+                    <Checkbox checked={isSel} className="mt-0.5" />
                     <span className="flex-1 min-w-0">
                       <span className="block font-mono text-label font-medium text-[var(--color-brand-400)]/80">{opt.label}</span>
                       {opt.sublabel && <span className="block truncate text-body-sm text-text-secondary mt-0.5">{opt.sublabel}</span>}

@@ -67,14 +67,14 @@ describe("FieldFilterPopover", () => {
 
   it("shows checked state for visible fields and unchecked for hidden", () => {
     renderPopover({ visibleFields: new Set(["issueKey"]) });
-    // Visible field has a checked checkbox (brand-colored border + background)
+    // Visible field has a checked checkbox (subtle brand-tinted fill, per the shared Checkbox)
     const issueKeysBtn = screen.getByText("Issue keys").closest("button")!;
     const issueKeysCheckbox = issueKeysBtn.querySelector("span:first-child")!;
-    expect(issueKeysCheckbox.className).toContain("bg-[var(--color-brand-400)]");
-    // Hidden field has an unchecked checkbox (transparent bg)
+    expect(issueKeysCheckbox.className).toContain("bg-[var(--color-brand-500)]/20");
+    // Hidden field has an unchecked checkbox (subtle neutral fill)
     const assigneesBtn = screen.getByText("Assignees").closest("button")!;
     const assigneesCheckbox = assigneesBtn.querySelector("span:first-child")!;
-    expect(assigneesCheckbox.className).toContain("bg-transparent");
+    expect(assigneesCheckbox.className).toContain("bg-overlay-subtle");
   });
 
   it("does not render Columns section when no fields", () => {

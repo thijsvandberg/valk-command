@@ -2,8 +2,9 @@
 
 import { useState } from "react";
 import { createPortal } from "react-dom";
-import { Plus, Check } from "lucide-react";
+import { Plus } from "lucide-react";
 import { TEAMS, type Team } from "@/lib/sprint-utils";
+import { Checkbox } from "@/components/shared/Checkbox";
 import { useSetEpicTeams } from "@/hooks/useEpics";
 import { usePickerState } from "@/components/shared/BasePicker";
 
@@ -118,15 +119,7 @@ export function EpicTeamPicker({ epicKey, teams }: { epicKey: string; teams: Tea
                       : "text-text-secondary hover:bg-hover-list-item"
                   }`}
                 >
-                  <span
-                    className={`flex h-3.5 w-3.5 shrink-0 items-center justify-center rounded border text-caption ${
-                      checked
-                        ? "border-[var(--color-brand-400)] bg-[var(--color-brand-500)]/20 text-[var(--color-brand-400)]"
-                        : "border-border-strong"
-                    }`}
-                  >
-                    {checked && <Check size={9} strokeWidth={3} />}
-                  </span>
+                  <Checkbox checked={checked} />
                   <span
                     className="h-2 w-2 shrink-0 rounded-full"
                     style={{ backgroundColor: TEAM_COLORS[team] }}

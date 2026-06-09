@@ -7,6 +7,7 @@ import { AssigneePicker, type AssignableUser } from "@/components/shared/Assigne
 import type { EpicOption } from "@/components/shared/EpicPicker";
 import { JIRA_STATUS_COLORS } from "@/types/ticket";
 import { EpicBadge } from "@/components/shared/IssueMetaBadges";
+import { Checkbox } from "@/components/shared/Checkbox";
 import type { ColumnId, ColumnPreset } from "@/components/sprint-board/FilterBar";
 import { COLUMNS, COLUMN_PRESETS } from "@/components/sprint-board/FilterBar";
 import { IssueTypeIcon } from "@/components/shared/IssueTypeIcon";
@@ -163,19 +164,10 @@ export const TicketRow = memo(forwardRef<HTMLTableRowElement, TicketRowBaseProps
   const showCheckbox = isChecked || someChecked;
 
   const checkbox = (
-    <span
-      className={`flex h-3.5 w-3.5 items-center justify-center rounded-sm border transition-[opacity,background-color] duration-150 ease-in-out ${
-        isChecked
-          ? "border-[var(--color-brand-500)]/50 bg-[var(--color-brand-500)]/20"
-          : "border-border-strong bg-overlay-subtle"
-      } ${showCheckbox ? "opacity-100" : `opacity-0 ${!isDragActive ? "group-hover/row:opacity-100" : ""}`}`}
-    >
-      {isChecked && (
-        <svg width="8" height="8" viewBox="0 0 8 8" fill="none">
-          <path d="M1.5 4L3 5.5L6.5 2" stroke="var(--color-brand-400)" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
-        </svg>
-      )}
-    </span>
+    <Checkbox
+      checked={isChecked}
+      className={showCheckbox ? "opacity-100" : `opacity-0 ${!isDragActive ? "group-hover/row:opacity-100" : ""}`}
+    />
   );
 
   const isRemoved = Boolean(ticket.removedFromJiraAt);

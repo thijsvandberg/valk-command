@@ -88,13 +88,28 @@ function renderSection(items: EpicChild[] = [], { openCreate = true } = {}) {
   return { ...result, onMutate, onSelectTicket };
 }
 
-// The view/planning/filter/create controls now live behind a single header menu.
+// The view/planning/filter/create controls now live behind a single header menu,
+// organised into View / Filter / Columns panes.
 function openListMenu() {
   fireEvent.click(screen.getByRole("button", { name: "List options" }));
 }
 
+// The rail buttons only exist while the menu is open, so one of them doubles as an open-check.
+function menuIsOpen() {
+  return Boolean(screen.queryByRole("button", { name: "Filter" }));
+}
+
+function openPane(pane: "View" | "Filter" | "Columns") {
+  if (!menuIsOpen()) openListMenu();
+  fireEvent.click(screen.getByRole("button", { name: pane }));
+}
+
 function openFilterPopover() {
-  openListMenu();
+  openPane("Filter");
+}
+
+function openColumnsPane() {
+  openPane("Columns");
 }
 
 function openSearchMode() {
@@ -324,11 +339,11 @@ describe("EpicChildrenSection", () => {
 
     it("shows field visibility toggles", () => {
       renderSection(SAMPLE_CHILDREN);
-      openFilterPopover();
+      openColumnsPane();
 
       expect(screen.getByText("Columns")).toBeInTheDocument();
       expect(screen.getByText("Issue keys")).toBeInTheDocument();
-      expect(screen.getAllByText("Status")).toHaveLength(2);
+      expect(screen.getByText("Status")).toBeInTheDocument();
       expect(screen.getByText("Story points")).toBeInTheDocument();
       expect(screen.getByText("Sprint")).toBeInTheDocument();
       expect(screen.getByText("Subtask count")).toBeInTheDocument();
@@ -641,10 +656,11 @@ describe("EpicChildrenSection", () => {
   });
 
   describe("by-sprint view", () => {
-    // The view toggle now lives inside the header menu; open it (unless already open),
-    // switch, then close so the open popover doesn't overlay later content assertions.
+    // The view toggle now lives in the menu's View pane; ensure the menu is open, switch to
+    // the View pane, pick By sprint, then close so the popover doesn't overlay later assertions.
     function switchToSprintView() {
-      if (!screen.queryByRole("radio", { name: "By sprint" })) openListMenu();
+      if (!menuIsOpen()) openListMenu();
+      fireEvent.click(screen.getByRole("button", { name: "View" }));
       fireEvent.click(screen.getByRole("radio", { name: "By sprint" }));
       fireEvent.click(screen.getByRole("button", { name: "List options" }));
     }
@@ -745,10 +761,9 @@ describe("EpicChildrenSection", () => {
 
     it("shares column visibility with the list view", () => {
       renderSection(SAMPLE_CHILDREN);
-      openFilterPopover();
+      openColumnsPane();
       // Hide the issue keys column.
       fireEvent.click(screen.getByText("Issue keys"));
-      openFilterPopover();
 
       switchToSprintView();
 
@@ -893,7 +908,8 @@ describe("EpicChildrenSection", () => {
       fireEvent.click(screen.getByText(label));
     }
     function switchToSprintView() {
-      if (!screen.queryByRole("radio", { name: "By sprint" })) openListMenu();
+      if (!menuIsOpen()) openListMenu();
+      fireEvent.click(screen.getByRole("button", { name: "View" }));
       fireEvent.click(screen.getByRole("radio", { name: "By sprint" }));
       fireEvent.click(screen.getByRole("button", { name: "List options" }));
     }

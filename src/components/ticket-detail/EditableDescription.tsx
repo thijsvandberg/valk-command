@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/Button";
 import { apiFetch, tickets } from "@/lib/api-client";
 import { markdownEqualIgnoringSpacing, normalizeMarkdownForCompare } from "@/lib/normalize-markdown";
 import { renderMarkdown } from "./renderMarkdown";
+import { Checkbox } from "@/components/shared/Checkbox";
 import { RichEditor } from "@/components/rich-editor/RichEditor";
 import { StoryDiff } from "@/components/story-diff/StoryDiff";
 import { usePrismLanguages } from "@/hooks/usePrismLanguages";
@@ -279,11 +280,12 @@ export function EditableDescription({
                 )}
                 {showConflictWarning && showPush && (
                   <label className="mr-2 flex cursor-pointer items-center gap-1.5">
+                    <Checkbox checked={!!overrideConfirmed} />
                     <input
                       type="checkbox"
                       checked={overrideConfirmed}
                       onChange={(e) => onOverrideChange?.(e.target.checked)}
-                      className="h-3 w-3 rounded border-border-strong bg-overlay-subtle accent-[var(--color-brand-500)] cursor-pointer"
+                      className="sr-only"
                     />
                     <span className="text-caption text-text-tertiary">Override remote</span>
                   </label>
@@ -333,11 +335,12 @@ export function EditableDescription({
               )}
               {showConflictWarning && (
                 <label className="flex items-center gap-1.5 cursor-pointer">
+                  <Checkbox checked={!!overrideConfirmed} />
                   <input
                     type="checkbox"
                     checked={overrideConfirmed}
                     onChange={(e) => onOverrideChange?.(e.target.checked)}
-                    className="h-3 w-3 rounded border-border-strong bg-overlay-subtle accent-[var(--color-brand-500)] cursor-pointer"
+                    className="sr-only"
                   />
                   <span className="text-caption text-text-tertiary">Override remote</span>
                 </label>

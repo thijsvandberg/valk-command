@@ -8,6 +8,7 @@ import { EpicPicker, type EpicOption } from "@/components/shared/EpicPicker";
 import { EpicBadge } from "@/components/shared/IssueMetaBadges";
 import { AddEpicPill } from "@/components/shared/AddEpicPill";
 import { HoverRevealSlot } from "@/components/shared/HoverRevealSlot";
+import { Checkbox } from "@/components/shared/Checkbox";
 import type { InlineTagId } from "@/components/sprint-board/filter-bar-types";
 import { Avatar } from "@/components/shared/Avatar";
 import { Flag, MessageSquare, Pencil, Check, X, Gem, IterationCw, GripVertical, AlertTriangle } from "lucide-react";
@@ -200,19 +201,10 @@ export const BoardRow = memo(forwardRef<HTMLTableRowElement, BoardRowBaseProps>(
   const showCheckbox = isChecked || someChecked;
 
   const checkbox = (
-    <span
-      className={`flex h-3.5 w-3.5 items-center justify-center rounded-sm border transition-[opacity,background-color] duration-150 ease-in-out ${
-        isChecked
-          ? "border-[var(--color-brand-500)]/50 bg-[var(--color-brand-500)]/20"
-          : "border-border-strong bg-overlay-subtle"
-      } ${showCheckbox ? "opacity-100" : `opacity-0 ${!isDragActive ? "group-hover/row:opacity-100" : ""}`}`}
-    >
-      {isChecked && (
-        <svg width="8" height="8" viewBox="0 0 8 8" fill="none">
-          <path d="M1.5 4L3 5.5L6.5 2" stroke="var(--color-brand-400)" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
-        </svg>
-      )}
-    </span>
+    <Checkbox
+      checked={isChecked}
+      className={showCheckbox ? "opacity-100" : `opacity-0 ${!isDragActive ? "group-hover/row:opacity-100" : ""}`}
+    />
   );
 
   const prefetchTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);

@@ -5,6 +5,7 @@ import type { TicketReadiness, JiraStatus, Sprint } from "@/types/ticket";
 import { useOutsideClick } from "@/hooks/useOutsideClick";
 import { Button } from "@/components/ui/Button";
 import { MetricBadge } from "@/components/shared/MetricBadge";
+import { Checkbox } from "@/components/shared/Checkbox";
 import {
   Copy,
   Loader2,
@@ -262,21 +263,7 @@ export function BulkActionBar({
           className="flex shrink-0 items-center justify-center cursor-pointer"
           title={allChecked ? "Deselect all" : "Select all"}
         >
-          <span
-            className={`flex h-3.5 w-3.5 items-center justify-center rounded-sm border ${
-              allChecked
-                ? "border-[var(--color-brand-500)]/50 bg-[var(--color-brand-500)]/20"
-                : "border-[var(--color-brand-500)]/30 bg-[var(--color-brand-500)]/10"
-            }`}
-          >
-            {allChecked ? (
-              <svg width="8" height="8" viewBox="0 0 8 8" fill="none">
-                <path d="M1.5 4L3 5.5L6.5 2" stroke="var(--color-brand-400)" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
-              </svg>
-            ) : (
-              <div className="h-1.5 w-1.5 rounded-sm bg-[var(--color-brand-400)]" />
-            )}
-          </span>
+          <Checkbox checked={!!allChecked} indeterminate={!allChecked} />
         </button>
       )}
 

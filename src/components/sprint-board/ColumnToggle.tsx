@@ -4,6 +4,7 @@ import { useState, useRef, useCallback } from "react";
 import { useOutsideClick } from "@/hooks/useOutsideClick";
 import { Columns3, GripVertical } from "lucide-react";
 import { Button } from "@/components/ui/Button";
+import { Checkbox } from "@/components/shared/Checkbox";
 import { COLUMNS } from "@/components/sprint-board/filter-bar-types";
 import type { ColumnId } from "@/components/sprint-board/filter-bar-types";
 import {
@@ -63,20 +64,7 @@ function SortableColumnItem({
       <label
         className="flex flex-1 items-center gap-3 cursor-pointer select-none"
       >
-        <span
-          className="flex h-[15px] w-[15px] shrink-0 items-center justify-center rounded-[4px] border"
-          style={{
-            backgroundColor: checked ? "var(--color-brand-500)" : "transparent",
-            borderColor: checked ? "var(--color-brand-500)" : "var(--color-text-muted)",
-            transition: "background-color 100ms, border-color 100ms",
-          }}
-        >
-          {checked && (
-            <svg width="9" height="7" viewBox="0 0 9 7" fill="none">
-              <path d="M1 3.5L3.5 6L8 1" stroke="white" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
-            </svg>
-          )}
-        </span>
+        <Checkbox checked={checked} />
         <input
           type="checkbox"
           checked={checked}
@@ -169,10 +157,7 @@ export function ColumnToggle({
                       <GripVertical size={12} strokeWidth={1.5} />
                     </div>
                     <label className="flex flex-1 items-center gap-3 cursor-pointer select-none">
-                      <span
-                        className="flex h-[15px] w-[15px] shrink-0 items-center justify-center rounded-[4px] border"
-                        style={{ backgroundColor: "transparent", borderColor: "var(--color-overlay-strong)" }}
-                      />
+                      <Checkbox checked={false} />
                       <input
                         type="checkbox"
                         checked={false}

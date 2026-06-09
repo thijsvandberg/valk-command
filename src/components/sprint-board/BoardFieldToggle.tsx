@@ -4,6 +4,7 @@ import { useState, useRef } from "react";
 import { useOutsideClick } from "@/hooks/useOutsideClick";
 import { Columns3 } from "lucide-react";
 import { Button } from "@/components/ui/Button";
+import { Checkbox } from "@/components/shared/Checkbox";
 import { ROW_FIELDS, type InlineTagId } from "@/components/sprint-board/filter-bar-types";
 
 // Headerless board field show/hide (BRDG-239). Reordering and fixed widths were
@@ -47,20 +48,7 @@ export function BoardFieldToggle({
                 <label
                   className="flex w-full cursor-pointer select-none items-center gap-3 px-3.5 py-1 text-body text-text-secondary hover:bg-hover-list-item hover:text-text-primary"
                 >
-                  <span
-                    className="flex h-[15px] w-[15px] shrink-0 items-center justify-center rounded-[4px] border"
-                    style={{
-                      backgroundColor: checked ? "var(--color-brand-500)" : "transparent",
-                      borderColor: checked ? "var(--color-brand-500)" : "var(--color-text-muted)",
-                      transition: "background-color 100ms, border-color 100ms",
-                    }}
-                  >
-                    {checked && (
-                      <svg width="9" height="7" viewBox="0 0 9 7" fill="none">
-                        <path d="M1 3.5L3.5 6L8 1" stroke="white" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
-                      </svg>
-                    )}
-                  </span>
+                  <Checkbox checked={checked} />
                   <input
                     type="checkbox"
                     checked={checked}

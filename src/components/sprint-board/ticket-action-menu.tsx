@@ -15,6 +15,7 @@ import {
 import { ReadinessIcon } from "@/components/shared/ReadinessCell";
 import { useOutsideClick } from "@/hooks/useOutsideClick";
 import { Card } from "@/components/shared/Card";
+import { Checkbox } from "@/components/shared/Checkbox";
 
 // ---------------------------------------------------------------------------
 // Anchored portal menu
@@ -504,13 +505,7 @@ function LabelSubPanel({ onSelect }: { onSelect: (labels: string[], mode: "add" 
             onClick={() => toggle(label)}
             className="flex w-full items-center gap-2.5 px-3 py-1.5 text-body-sm text-text-secondary cursor-pointer hover:bg-hover-list-item active:bg-overlay-default"
           >
-            <span className={`flex h-3.5 w-3.5 shrink-0 items-center justify-center rounded-sm border ${selected.has(label) ? "border-[var(--color-brand-500)]/50 bg-[var(--color-brand-500)]/20" : "border-border-default"}`}>
-              {selected.has(label) && (
-                <svg width="8" height="8" viewBox="0 0 8 8" fill="none">
-                  <path d="M1.5 4L3 5.5L6.5 2" stroke="var(--color-brand-400)" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
-                </svg>
-              )}
-            </span>
+            <Checkbox checked={selected.has(label)} />
             {label}
           </button>
         ))}

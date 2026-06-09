@@ -2,7 +2,8 @@
 
 import { useState, useEffect, useRef } from "react";
 import { useOutsideClick } from "@/hooks/useOutsideClick";
-import { ChevronDown, Search, Check } from "lucide-react";
+import { ChevronDown, Search } from "lucide-react";
+import { Checkbox } from "@/components/shared/Checkbox";
 
 export interface SprintOption { value: string; label: string; section: "next" | "pinned" | "other" }
 
@@ -115,15 +116,7 @@ export function SprintSelectDropdown({
                         className="flex w-full items-center gap-2.5 px-3 py-2 text-left cursor-pointer"
                         style={{ backgroundColor: isFoc ? "var(--color-overlay-default)" : "transparent", transition: "background-color 60ms" }}
                       >
-                        <span className="flex h-[14px] w-[14px] shrink-0 items-center justify-center rounded-[3px] border"
-                          style={{
-                            backgroundColor: isSel ? "var(--color-brand-500)" : "transparent",
-                            borderColor: isSel ? "var(--color-brand-500)" : "var(--color-text-muted)",
-                            transition: "background-color 100ms, border-color 100ms",
-                          }}
-                        >
-                          {isSel && <Check size={8} strokeWidth={2.5} className="text-white" />}
-                        </span>
+                        <Checkbox checked={isSel} />
                         <span className="flex-1 min-w-0 truncate text-body text-text-secondary">{opt.label}</span>
                       </button>
                     );

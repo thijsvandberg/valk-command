@@ -8,6 +8,7 @@ import { usePageTitle } from "@/hooks/usePageTitle";
 import { Button } from "@/components/ui/Button";
 import { ViewHeader, ViewHeaderTitle } from "@/components/shared/ViewHeader";
 import { Tooltip } from "@/components/shared/Tooltip";
+import { Checkbox } from "@/components/shared/Checkbox";
 import { FilterDropdown } from "@/components/shared/FilterDropdown";
 import { BarContainer, BarDivider } from "@/components/shared/BarContainer";
 import { EpicBadge, SubtaskCountBadge, MetricChip, SprintOrBacklogBadge, EpicChildCountBadge } from "@/components/shared/IssueMetaBadges";
@@ -757,21 +758,7 @@ export default function CleanupPage() {
                     aria-label={allVisibleChecked ? "Deselect all" : "Select all visible"}
                     className="flex shrink-0 items-center justify-center cursor-pointer"
                   >
-                    <span
-                      className={`flex h-3.5 w-3.5 items-center justify-center rounded-sm border ${
-                        allVisibleChecked
-                          ? "border-[var(--color-brand-500)]/50 bg-[var(--color-brand-500)]/20"
-                          : "border-[var(--color-brand-500)]/30 bg-[var(--color-brand-500)]/10"
-                      }`}
-                    >
-                      {allVisibleChecked ? (
-                        <svg width="8" height="8" viewBox="0 0 8 8" fill="none">
-                          <path d="M1.5 4L3 5.5L6.5 2" stroke="var(--color-brand-400)" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
-                        </svg>
-                      ) : (
-                        <div className="h-1.5 w-1.5 rounded-sm bg-[var(--color-brand-400)]" />
-                      )}
-                    </span>
+                    <Checkbox checked={allVisibleChecked} indeterminate={!allVisibleChecked} />
                   </button>
                 </Tooltip>
 

@@ -5,6 +5,7 @@ import { useOutsideClick } from "@/hooks/useOutsideClick";
 import { ChevronDown, Check } from "lucide-react";
 import { SprintListModal } from "@/components/sprint-board/SprintListModal";
 import { FilterDropdown } from "@/components/shared/FilterDropdown";
+import { Checkbox } from "@/components/shared/Checkbox";
 import { EpicBadge } from "@/components/shared/IssueMetaBadges";
 import { LAST_UPDATED_OPTIONS } from "./refinement-utils";
 import type { useRefinementFilters } from "@/hooks/useRefinementFilters";
@@ -118,20 +119,7 @@ export function RefinementFilters({
         }`}
         style={{ transition: "background-color 0.12s ease, border-color 0.12s ease, color 0.12s ease, transform 80ms" }}
       >
-        <span
-          className="flex h-3 w-3 shrink-0 items-center justify-center rounded-sm border"
-          style={{
-            backgroundColor: filters.hideEstimated ? "var(--color-brand-500)" : "transparent",
-            borderColor: filters.hideEstimated ? "var(--color-brand-500)" : "var(--color-text-muted)",
-            transition: "background-color 0.1s ease, border-color 0.1s ease",
-          }}
-        >
-          {filters.hideEstimated && (
-            <svg width="7" height="6" viewBox="0 0 9 7" fill="none">
-              <path d="M1 3.5L3.5 6L8 1" stroke="white" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
-            </svg>
-          )}
-        </span>
+        <Checkbox checked={filters.hideEstimated} />
         Hide estimated
       </button>
     </div>

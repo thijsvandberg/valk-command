@@ -3,8 +3,24 @@
 import { useRef, useState } from "react";
 import { SectionHeader } from "@/components/shared/SectionHeader";
 import { useOutsideClick } from "@/hooks/useOutsideClick";
-import { FieldFilterSections, type StatusFilter, type FieldToggle } from "./FieldFilterPopover";
-import { LayoutList, CalendarRange, Plus, Ruler, MoreHorizontal, Check } from "lucide-react";
+import { Checkbox } from "@/components/shared/Checkbox";
+import { Radio } from "@/components/shared/Radio";
+import {
+  FieldFilterSections,
+  type StatusFilter,
+  type FieldToggle,
+} from "./FieldFilterPopover";
+import {
+  type LucideIcon,
+  LayoutList,
+  CalendarRange,
+  Ruler,
+  Plus,
+  MoreHorizontal,
+  Eye,
+  Filter,
+  Columns3,
+} from "lucide-react";
 
 export type ChildIssueViewMode = "list" | "sprint";
 
@@ -19,11 +35,11 @@ interface ChildIssueListHeaderProps {
   fields: FieldToggle[];
   visibleFields: Set<string>;
   onToggleField: (id: string, show: boolean) => void;
-  /** When provided, renders a "Hide deprecated" toggle in the filter popover. */
+  /** When provided, renders a "Hide deprecated" toggle in the Filter pane. */
   hideDeprecated?: boolean;
   onToggleHideDeprecated?: (hide: boolean) => void;
   deprecatedCount?: number;
-  /** When provided, renders a List / By sprint view toggle inside the menu. */
+  /** When provided, renders the List / By sprint view toggle in the View pane. */
   viewMode?: ChildIssueViewMode;
   onViewModeChange?: (mode: ChildIssueViewMode) => void;
   /** Extra action buttons (e.g. AI suggest button) rendered before the menu trigger */
@@ -34,19 +50,21 @@ interface ChildIssueListHeaderProps {
   onToggleCreate?: () => void;
   /** Whether the create composer is currently open (drives the action's active state). */
   createOpen?: boolean;
-  /** Forward-planning mode (BRDG-303): when provided, renders a "Planning" toggle that
-   *  reveals guestimation pickers and (in the by-sprint view) the fullness meter. */
+  /** Forward-planning mode (BRDG-303): when provided, renders a "Planning" toggle in the View pane
+   *  that reveals guestimation pickers and (in the by-sprint view) the fullness meter. */
   planningOn?: boolean;
   onTogglePlanning?: () => void;
 }
 
-const VIEW_MODES: { mode: ChildIssueViewMode; label: string; Icon: typeof LayoutList }[] = [
+const VIEW_MODES: { mode: ChildIssueViewMode; label: string; Icon: LucideIcon }[] = [
   { mode: "list", label: "List", Icon: LayoutList },
   { mode: "sprint", label: "By sprint", Icon: CalendarRange },
 ];
 
-const menuHeadingClass = "px-3 py-1.5 text-caption font-semibold uppercase tracking-wider text-text-muted";
-const dividerClass = "my-1 h-px bg-border-subtle";
+type Pane = "view" | "filter" | "columns";
+
+const ROW =
+  "flex w-full cursor-pointer items-center gap-2.5 rounded-md px-2.5 py-[7px] text-body-sm hover:bg-hover-list-item active:bg-overlay-default";
 
 export function ChildIssueListHeader({
   title,
@@ -71,16 +89,25 @@ export function ChildIssueListHeader({
   planningOn,
   onTogglePlanning,
 }: ChildIssueListHeaderProps) {
+  const showViewToggle = Boolean(viewMode && onViewModeChange);
+  const hasViewPane = showViewToggle || Boolean(onTogglePlanning);
+  const hasColumnsPane = fields.length > 0;
+
   const [open, setOpen] = useState(false);
+  const [pane, setPane] = useState<Pane>(hasViewPane ? "view" : "filter");
   const ref = useRef<HTMLDivElement>(null);
 
   useOutsideClick(ref, () => setOpen(false), { enabled: open });
 
-  // The trigger carries an active accent whenever something behind it is engaged, so the
-  // collapse from four buttons to one icon doesn't hide that a control is toggled.
+  // The trigger carries an active accent whenever something behind it is engaged, so collapsing
+  // the controls into one icon doesn't hide that a control is toggled.
   const hasActiveState = open || isFiltered || Boolean(planningOn) || Boolean(createOpen);
 
-  const showViewToggle = Boolean(viewMode && onViewModeChange);
+  const railItems: { key: Pane; label: string; Icon: LucideIcon }[] = [
+    ...(hasViewPane ? [{ key: "view" as const, label: "View", Icon: Eye }] : []),
+    { key: "filter" as const, label: "Filter", Icon: Filter },
+    ...(hasColumnsPane ? [{ key: "columns" as const, label: "Columns", Icon: Columns3 }] : []),
+  ];
 
   const menu = (
     <div className="relative" ref={ref}>
@@ -104,101 +131,138 @@ export function ChildIssueListHeader({
       {open && (
         <div
           role="menu"
-          className="absolute top-full right-0 z-50 mt-1 min-w-[200px] rounded-xl border border-border-default bg-[var(--color-surface-floating)] py-1 shadow-[var(--shadow-popover)]"
+          className="absolute top-full right-0 z-50 mt-1 w-[392px] overflow-hidden rounded-xl border border-border-default bg-[var(--color-surface-floating)] shadow-[var(--shadow-popover)]"
           style={{ animation: "fadeInUp 0.1s ease" }}
         >
-          {showViewToggle && (
-            <>
-              <div className={menuHeadingClass}>View</div>
-              <div className="px-2 pb-1">
-                <div
-                  role="radiogroup"
-                  aria-label="Child issue view"
-                  className="flex items-center gap-0.5 rounded-md bg-overlay-subtle p-0.5"
-                >
-                  {VIEW_MODES.map(({ mode, label, Icon }) => {
-                    const isActive = viewMode === mode;
+          <div className="flex">
+            {/* category rail */}
+            <div className="w-[104px] shrink-0 border-r border-border-subtle bg-overlay-subtle/40 p-1.5">
+              {railItems.map(({ key, label, Icon }) => {
+                const active = pane === key;
+                return (
+                  <button
+                    key={key}
+                    type="button"
+                    onClick={() => setPane(key)}
+                    aria-pressed={active}
+                    className={`mb-0.5 flex w-full cursor-pointer items-center gap-2 rounded-md px-2 py-2 text-body-sm transition-colors duration-150 ${
+                      active
+                        ? "bg-[var(--color-surface-floating)] font-medium text-[var(--color-brand-400)] shadow-[0_1px_2px_rgba(0,0,0,0.06)]"
+                        : "text-text-muted hover:text-text-secondary"
+                    }`}
+                  >
+                    <Icon size={14} strokeWidth={1.5} />
+                    {label}
+                  </button>
+                );
+              })}
+            </div>
+
+            {/* active pane */}
+            <div className="min-h-[152px] flex-1 p-1">
+              {pane === "view" && (
+                <div>
+                  {showViewToggle &&
+                    VIEW_MODES.map(({ mode, label, Icon }) => {
+                      const active = viewMode === mode;
+                      return (
+                        <button
+                          key={mode}
+                          type="button"
+                          role="radio"
+                          aria-checked={active}
+                          onClick={() => onViewModeChange!(mode)}
+                          className={`${ROW} ${active ? "bg-[var(--color-brand-500)]/[0.06]" : ""}`}
+                        >
+                          <Radio checked={active} />
+                          <Icon
+                            size={13}
+                            strokeWidth={1.5}
+                            className={active ? "text-[var(--color-brand-400)]" : "text-text-tertiary"}
+                          />
+                          <span className={active ? "font-medium text-text-primary" : "text-text-secondary"}>
+                            {label}
+                          </span>
+                        </button>
+                      );
+                    })}
+                  {showViewToggle && onTogglePlanning && <div className="my-1 h-px bg-border-subtle" />}
+                  {onTogglePlanning && (
+                    <button
+                      type="button"
+                      role="menuitemcheckbox"
+                      aria-checked={Boolean(planningOn)}
+                      onClick={onTogglePlanning}
+                      className={ROW}
+                      title="Planning (pencil capacity + guestimations)"
+                    >
+                      <Checkbox checked={Boolean(planningOn)} />
+                      <Ruler size={13} strokeWidth={1.5} className="text-text-tertiary" />
+                      <span className="text-text-secondary">Planning</span>
+                    </button>
+                  )}
+                </div>
+              )}
+
+              {pane === "filter" && (
+                <FieldFilterSections
+                  filter={filter}
+                  setFilter={setFilter}
+                  statusCounts={statusCounts}
+                  fields={fields}
+                  visibleFields={visibleFields}
+                  onToggleField={onToggleField}
+                  hideDeprecated={hideDeprecated}
+                  onToggleHideDeprecated={onToggleHideDeprecated}
+                  deprecatedCount={deprecatedCount}
+                  sections="filter"
+                  showHeadings={false}
+                />
+              )}
+
+              {pane === "columns" && (
+                <div className="grid grid-cols-2 gap-x-1">
+                  {fields.map((field) => {
+                    const isVisible = visibleFields.has(field.id);
                     return (
                       <button
-                        key={mode}
+                        key={field.id}
                         type="button"
-                        role="radio"
-                        aria-checked={isActive}
-                        onClick={() => onViewModeChange!(mode)}
-                        className={`flex flex-1 cursor-pointer items-center justify-center gap-1.5 rounded px-2 py-1 text-caption font-medium focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-[var(--color-brand-400)] ${
-                          isActive
-                            ? "bg-[var(--color-surface-elevated)] text-[var(--color-brand-400)] shadow-[0_1px_2px_color-mix(in_srgb,var(--color-brand-500)_18%,transparent)]"
-                            : "text-text-muted hover:text-text-secondary"
-                        }`}
-                        style={{ transition: "color 0.15s ease, background-color 0.15s ease" }}
+                        onClick={() => onToggleField(field.id, !isVisible)}
+                        className={ROW}
                       >
-                        <Icon size={13} strokeWidth={1.5} />
-                        {label}
+                        <Checkbox checked={isVisible} />
+                        <span className="truncate text-text-secondary">
+                          {field.label.charAt(0).toUpperCase() + field.label.slice(1)}
+                        </span>
                       </button>
                     );
                   })}
                 </div>
-              </div>
-              <div className={dividerClass} />
-            </>
-          )}
-
-          {onTogglePlanning && (
-            <>
-              <button
-                type="button"
-                role="menuitemcheckbox"
-                aria-checked={Boolean(planningOn)}
-                onClick={onTogglePlanning}
-                className="flex w-full cursor-pointer items-center gap-2.5 px-3 py-[7px] text-body-sm hover:bg-hover-list-item active:bg-overlay-default"
-                title="Planning (pencil capacity + guestimations)"
-              >
-                <span
-                  className={`flex h-3.5 w-3.5 shrink-0 items-center justify-center rounded border transition-colors duration-100 ${
-                    planningOn
-                      ? "border-[var(--color-brand-400)] bg-[var(--color-brand-400)]"
-                      : "border-border-default bg-transparent"
-                  }`}
-                >
-                  {planningOn && <Check size={10} strokeWidth={3} className="text-white" />}
-                </span>
-                <Ruler size={13} strokeWidth={1.5} className="shrink-0 text-text-tertiary" />
-                <span className="text-text-secondary">Planning</span>
-              </button>
-              <div className={dividerClass} />
-            </>
-          )}
-
-          <FieldFilterSections
-            filter={filter}
-            setFilter={setFilter}
-            statusCounts={statusCounts}
-            fields={fields}
-            visibleFields={visibleFields}
-            onToggleField={onToggleField}
-            hideDeprecated={hideDeprecated}
-            onToggleHideDeprecated={onToggleHideDeprecated}
-            deprecatedCount={deprecatedCount}
-          />
+              )}
+            </div>
+          </div>
 
           {onToggleCreate && (
             <>
-              <div className={dividerClass} />
-              <button
-                type="button"
-                role="menuitem"
-                onClick={() => {
-                  onToggleCreate();
-                  setOpen(false);
-                }}
-                title="Create child issue"
-                className={`flex w-full cursor-pointer items-center gap-2.5 px-3 py-[7px] text-body-sm hover:bg-hover-list-item active:bg-overlay-default ${
-                  createOpen ? "text-[var(--color-brand-400)]" : "text-text-secondary"
-                }`}
-              >
-                <Plus size={14} strokeWidth={2} className="shrink-0" />
-                <span>New child issue</span>
-              </button>
+              <div className="h-px bg-border-subtle" />
+              <div className="p-1">
+                <button
+                  type="button"
+                  role="menuitem"
+                  onClick={() => {
+                    onToggleCreate();
+                    setOpen(false);
+                  }}
+                  title="Create child issue"
+                  className={`flex w-full cursor-pointer items-center gap-2.5 rounded-md px-2.5 py-2 text-body-sm transition-colors duration-150 hover:bg-hover-list-item ${
+                    createOpen ? "text-[var(--color-brand-400)]" : "text-text-secondary hover:text-text-primary"
+                  }`}
+                >
+                  <Plus size={14} strokeWidth={2} className="shrink-0 text-[var(--color-brand-400)]" />
+                  <span>New child issue</span>
+                </button>
+              </div>
             </>
           )}
         </div>

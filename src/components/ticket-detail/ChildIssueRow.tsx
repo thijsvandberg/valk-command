@@ -3,6 +3,7 @@
 import type { ComponentProps, Ref } from "react";
 import type { Subtask, TicketReadiness, JiraStatus, IssueType, Sprint } from "@/types/ticket";
 import { TicketStatusPill } from "@/components/shared/TicketStatusPill";
+import { Checkbox } from "@/components/shared/Checkbox";
 import type { AssignableUser } from "@/components/shared/AssigneePicker";
 import type { EpicOption } from "@/components/shared/EpicPicker";
 import { useTicketHoverData } from "@/hooks/useTicketHoverData";
@@ -126,21 +127,7 @@ export function ChildIssueRow({
   const showCheckbox = selectable && !isPending;
 
   // Visual checkbox box, reused by the bulk-mode gutter and the hover overlay.
-  const checkboxBox = (
-    <span
-      className={`flex h-3.5 w-3.5 items-center justify-center rounded-sm border ${
-        isChecked
-          ? "border-[var(--color-brand-500)]/50 bg-[var(--color-brand-500)]/20"
-          : "border-border-default bg-overlay-subtle"
-      }`}
-    >
-      {isChecked && (
-        <svg width="8" height="8" viewBox="0 0 8 8" fill="none">
-          <path d="M1.5 4L3 5.5L6.5 2" stroke="var(--color-brand-400)" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
-        </svg>
-      )}
-    </span>
-  );
+  const checkboxBox = <Checkbox checked={isChecked} />;
 
   return (
     <div

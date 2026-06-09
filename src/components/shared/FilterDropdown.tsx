@@ -2,6 +2,7 @@
 
 import { useState, useRef, useEffect, useMemo } from "react";
 import { useOutsideClick } from "@/hooks/useOutsideClick";
+import { Checkbox } from "@/components/shared/Checkbox";
 import { createPortal } from "react-dom";
 import { ChevronDown, X, Search } from "lucide-react";
 
@@ -149,20 +150,7 @@ export function FilterDropdown({
                 }`}
                 style={{ transition: "background-color 80ms, color 80ms" }}
               >
-                <span
-                  className="flex h-[14px] w-[14px] shrink-0 items-center justify-center rounded-[3px] border"
-                  style={{
-                    backgroundColor: checked ? "var(--color-brand-500)" : "transparent",
-                    borderColor: checked ? "var(--color-brand-500)" : "var(--color-text-muted)",
-                    transition: "background-color 100ms, border-color 100ms",
-                  }}
-                >
-                  {checked && (
-                    <svg width="8" height="6" viewBox="0 0 9 7" fill="none">
-                      <path d="M1 3.5L3.5 6L8 1" stroke="white" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
-                    </svg>
-                  )}
-                </span>
+                <Checkbox checked={checked} />
                 <input
                   type="checkbox"
                   checked={checked}
@@ -202,20 +190,7 @@ export function FilterDropdown({
               }`}
               style={{ transition: "background-color 80ms, color 80ms" }}
             >
-              <span
-                className="flex h-[14px] w-[14px] shrink-0 items-center justify-center rounded-[3px] border"
-                style={{
-                  backgroundColor: checked ? "var(--color-brand-500)" : "transparent",
-                  borderColor: checked ? "var(--color-brand-500)" : "var(--color-text-muted)",
-                  transition: "background-color 100ms, border-color 100ms",
-                }}
-              >
-                {checked && (
-                  <svg width="8" height="6" viewBox="0 0 9 7" fill="none">
-                    <path d="M1 3.5L3.5 6L8 1" stroke="white" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
-                  </svg>
-                )}
-              </span>
+              <Checkbox checked={checked} />
               <input
                 type="checkbox"
                 checked={checked}

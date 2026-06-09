@@ -8,6 +8,7 @@ import { useJiraSprints } from "@/hooks/useSprintBoard";
 import { useLocalStorage } from "@/hooks/useLocalStorage";
 import { Pin, Check, RefreshCw, Eye, EyeOff, AlertCircle, Users, ChevronRight, ListFilter, Inbox } from "lucide-react";
 import { TextInput } from "@/components/shared/TextInput";
+import { Checkbox } from "@/components/shared/Checkbox";
 import { apiFetch, ApiError } from "@/lib/api-client";
 import { extractTeamPrefix } from "@/lib/sprint-utils";
 
@@ -268,21 +269,7 @@ function SprintRow({
       }}
     >
       <span className="flex items-center gap-2 min-w-0">
-        {isChecked !== undefined && (
-          <span
-            className={`flex h-3.5 w-3.5 shrink-0 items-center justify-center rounded-sm border ${
-              isChecked
-                ? "border-[var(--color-brand-500)] bg-[var(--color-brand-600)]"
-                : "border-border-strong bg-overlay-subtle"
-            }`}
-          >
-            {isChecked && (
-              <svg width="8" height="8" viewBox="0 0 8 8" fill="none">
-                <path d="M1.5 4L3 5.5L6.5 2" stroke="white" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
-              </svg>
-            )}
-          </span>
-        )}
+        {isChecked !== undefined && <Checkbox checked={isChecked} />}
         {isChecked === undefined && (
           <span
             className="h-1.5 w-1.5 shrink-0 rounded-full"

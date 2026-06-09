@@ -119,8 +119,9 @@ function renderSection() {
 }
 
 function switchToSprintView() {
-  // The view toggle now lives inside the header menu; open it, switch, then close.
+  // The view toggle now lives in the menu's View pane; open it, switch to View, pick By sprint, close.
   fireEvent.click(screen.getByRole("button", { name: "List options" }));
+  fireEvent.click(screen.getByRole("button", { name: "View" }));
   fireEvent.click(screen.getByRole("radio", { name: "By sprint" }));
   fireEvent.click(screen.getByRole("button", { name: "List options" }));
 }

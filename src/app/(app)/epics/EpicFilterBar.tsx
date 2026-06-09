@@ -1,8 +1,9 @@
 "use client";
 
 import { useState, type ReactNode } from "react";
-import { Users, CircleDot, ChevronDown, Check, X, Slash } from "lucide-react";
+import { Users, CircleDot, ChevronDown, X, Slash } from "lucide-react";
 import { Button } from "@/components/ui/Button";
+import { Checkbox } from "@/components/shared/Checkbox";
 import { TEAMS, type Team } from "@/lib/sprint-utils";
 import { EPIC_STATUSES } from "@/lib/epic-filters";
 import {
@@ -70,15 +71,7 @@ function CheckRow({
         checked ? "bg-[var(--color-brand-500)]/10" : "hover:bg-hover-list-item"
       }`}
     >
-      <span
-        className={`flex h-3.5 w-3.5 shrink-0 items-center justify-center rounded border text-caption ${
-          checked
-            ? "border-[var(--color-brand-400)] bg-[var(--color-brand-500)]/20 text-[var(--color-brand-400)]"
-            : "border-border-strong"
-        }`}
-      >
-        {checked && <Check size={9} strokeWidth={3} />}
-      </span>
+      <Checkbox checked={checked} />
       {children}
     </button>
   );
