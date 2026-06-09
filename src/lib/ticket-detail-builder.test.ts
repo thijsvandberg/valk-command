@@ -152,7 +152,7 @@ describe("updateTicketFields story-points readiness transition", () => {
   });
 });
 
-describe("updateTicketFields silently clears guestimation when a real SP is set (BRDG-303)", () => {
+describe("updateTicketFields keeps the guestimation as the guesstimate of record when SP is set (BRDG-323)", () => {
   beforeEach(() => {
     testDb = createTestDb();
   });
@@ -164,16 +164,18 @@ describe("updateTicketFields silently clears guestimation when a real SP is set 
     return row?.guestimation ?? null;
   }
 
-  it("clears the guestimation when a real non-zero story point lands", async () => {
+  it("keeps the guestimation when a real non-zero story point lands (pencil to ink)", async () => {
+    // BRDG-323: SP supersedes the guess for display, but the prior guess is kept
+    // so committing it to story points stays revertible ("back to guesstimate").
     seedTicket(testDb, { jiraKey: "VPL-1", storyPoints: null });
     seedTicketMetadata(testDb, { jiraKey: "VPL-1", guestimation: 5 });
 
     await updateTicketFields("VPL-1", { storyPoints: 3 });
 
-    expect(await readGuess("VPL-1")).toBeNull();
+    expect(await readGuess("VPL-1")).toBe(5);
   });
 
-  it("keeps the guestimation when SP is set to 0 (N/A), not a real estimate", async () => {
+  it("keeps the guestimation when SP is set to 0 (N/A)", async () => {
     seedTicket(testDb, { jiraKey: "VPL-2", storyPoints: null });
     seedTicketMetadata(testDb, { jiraKey: "VPL-2", guestimation: 8 });
 
@@ -191,7 +193,7 @@ describe("updateTicketFields silently clears guestimation when a real SP is set 
     expect(await readGuess("VPL-3")).toBe(2);
   });
 
-  it("is a no-op when the ticket has no metadata row", async () => {
+  it("does not create a guess where there was no metadata row", async () => {
     seedTicket(testDb, { jiraKey: "VPL-4", storyPoints: null });
 
     const outcome = await updateTicketFields("VPL-4", { storyPoints: 5 });

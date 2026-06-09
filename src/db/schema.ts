@@ -106,8 +106,10 @@ export const ticketMetadata = sqliteTable("ticket_metadata", {
   businessValue: integer("business_value"),
   // Forward-planning guestimation (BRDG-303): a PO placeholder estimate on the
   // Fibonacci scale for tickets that have no real story points yet. Bridge-local,
-  // never synced to Jira (like businessValue). Silently cleared the moment a real
-  // non-zero storyPoints is set, so SP and guestimation are never both present.
+  // never synced to Jira (like businessValue). SP supersedes it for display (a
+  // guess only ever shows while SP is empty), but the value is KEPT once SP lands
+  // (BRDG-323) as the guesstimate of record, so committing a guess to SP can be
+  // reverted to it.
   guestimation: integer("guestimation"),
   // Backlog Deprecation Review (BRDG-297 epic): local-only scan state. These
   // fields never sync to Jira; they live here precisely because ticketMetadata

@@ -3,8 +3,7 @@
 import { useState, useRef, useCallback, useEffect, useMemo } from "react";
 import { useOutsideClick } from "@/hooks/useOutsideClick";
 import type { TicketDetail, JiraStatus, TicketReadiness, Subtask, EpicChild, IssueType } from "@/types/ticket";
-import { StoryPointPicker } from "@/components/shared/StoryPointPicker";
-import { GuestimationPicker } from "@/components/shared/GuestimationPicker";
+import { EstimatePicker } from "@/components/shared/EstimatePicker";
 import { BusinessValuePicker } from "@/components/shared/BusinessValuePicker";
 import { IssueTypeIcon } from "@/components/shared/IssueTypeIcon";
 import { SubtaskCountBadge } from "@/components/shared/IssueMetaBadges";
@@ -74,6 +73,57 @@ interface EpicChildrenSectionProps {
 
 function isEpicChild(child: EpicChild | Subtask): child is EpicChild {
   return "storyPoints" in child;
+}
+
+// One unified SP + guess chip per child row (BRDG-323). Holds the same slot-freeze
+// as the board: while the popover is open the chip stays in its slot (placeholder
+// vs inline value) so picking a guess does not remount and close the dropdown
+// before you can commit.
+function ChildEstimateCell({
+  storyPoints,
+  guestimation,
+  onStoryPointsChange,
+  onGuestimationChange,
+  planningMode,
+}: {
+  storyPoints: number | null;
+  guestimation: number | null;
+  onStoryPointsChange: (v: number | null) => void;
+  onGuestimationChange: (v: number | null) => void;
+  planningMode: boolean;
+}) {
+  const [open, setOpen] = useState(false);
+  const [frozen, setFrozen] = useState<null | "value" | "placeholder">(null);
+  const spEmpty = storyPoints == null || storyPoints === 0;
+  const guessEmpty = guestimation == null || guestimation === 0;
+  const estimateSet = !spEmpty || (planningMode && !guessEmpty);
+  const inValue = frozen ? frozen === "value" : estimateSet;
+
+  const picker = (
+    <EstimatePicker
+      storyPoints={storyPoints}
+      guestimation={guestimation}
+      onStoryPointsChange={onStoryPointsChange}
+      onGuestimationChange={onGuestimationChange}
+      planningMode={planningMode}
+      onOpenChange={(o) => {
+        setOpen(o);
+        setFrozen(o ? (estimateSet ? "value" : "placeholder") : null);
+      }}
+      dense
+      showMetricIcon
+      richTooltip
+    />
+  );
+
+  if (inValue) {
+    return (
+      <span className="shrink-0" onClick={(e) => e.stopPropagation()} onPointerDown={(e) => e.stopPropagation()}>
+        {picker}
+      </span>
+    );
+  }
+  return <HoverRevealSlot forceOpen={open}>{picker}</HoverRevealSlot>;
 }
 
 export function EpicChildrenSection({
@@ -801,31 +851,10 @@ export function EpicChildrenSection({
     // SP/BV placement (BRDG-310): metrics keep their natural order (SP then BV). An
     // empty metric reserves no space and surfaces only on row hover (HoverRevealSlot);
     // a set value renders inline in the same slot.
-    const spPicker = epic && (
-      <StoryPointPicker
-        value={epic.storyPoints}
-        onChange={(v) => handleStoryPointsChange(child.key, v)}
-        dense
-        showMetricIcon
-        richTooltip
-      />
-    );
     const bvPicker = epic && (
       <BusinessValuePicker
         value={epic.businessValue}
         onChange={(v) => handleBusinessValueChange(child.key, v)}
-        dense
-        showMetricIcon
-        richTooltip
-      />
-    );
-    // Guestimation (BRDG-303): only offered while planning mode is on and only when
-    // the child has no real SP, so a guess never sits in the SP slot.
-    const spEmpty = !epic || epic.storyPoints == null || epic.storyPoints === 0;
-    const guessPicker = epic && planningOn && spEmpty && (
-      <GuestimationPicker
-        value={epic.guestimation ?? null}
-        onChange={(v) => handleGuestimationChange(child.key, v)}
         dense
         showMetricIcon
         richTooltip
@@ -842,16 +871,17 @@ export function EpicChildrenSection({
     );
     return (
       <>
-        {/* SP then BV in natural order: empty -> hover-reveal slot, set -> inline. */}
-        {/* N/A (value 0, shown as "-") is treated like unset: hover-reveal only, so the
-            resting list stays calm; only real estimates keep an inline badge (BRDG-310). */}
+        {/* Estimate (SP + guess) as ONE chip, then BV (BRDG-323). Empty -> hover-reveal
+            slot, set -> inline. N/A (value 0) is treated like unset so the resting list
+            stays calm; only real estimates keep an inline badge (BRDG-310). */}
         {visibleFields.has("storyPoints") && epic && (
-          epic.storyPoints == null || epic.storyPoints === 0 ? <HoverRevealSlot>{spPicker}</HoverRevealSlot> : metricCell(spPicker)
-        )}
-        {guessPicker && (
-          epic && (epic.guestimation == null || epic.guestimation === 0)
-            ? <HoverRevealSlot>{guessPicker}</HoverRevealSlot>
-            : metricCell(guessPicker)
+          <ChildEstimateCell
+            storyPoints={epic.storyPoints}
+            guestimation={epic.guestimation ?? null}
+            onStoryPointsChange={(v) => handleStoryPointsChange(child.key, v)}
+            onGuestimationChange={(v) => handleGuestimationChange(child.key, v)}
+            planningMode={planningOn}
+          />
         )}
         {visibleFields.has("businessValue") && epic && (
           epic.businessValue == null || epic.businessValue === 0 ? <HoverRevealSlot>{bvPicker}</HoverRevealSlot> : metricCell(bvPicker)

@@ -18,10 +18,24 @@
 // leave the row (dropping :hover) without collapsing the trigger to display:none.
 // A collapsed trigger has a 0x0 rect, which would make floating-ui snap the open
 // popover to the top-left corner (BRDG-303).
-export function HoverRevealSlot({ children, hideWhenNarrow = false }: { children: React.ReactNode; hideWhenNarrow?: boolean }) {
+//
+// `forceOpen` keeps the whole placeholder cluster visible while ANY picker in the
+// row is open (the open picker's popover is portaled to the body, so its focus no
+// longer lives inside a sibling slot). Without it, moving the cursor from the row
+// into the open dropdown drops :hover and collapses the neighbouring placeholders,
+// which is jarring (BRDG-323).
+export function HoverRevealSlot({
+  children,
+  hideWhenNarrow = false,
+  forceOpen = false,
+}: {
+  children: React.ReactNode;
+  hideWhenNarrow?: boolean;
+  forceOpen?: boolean;
+}) {
   return (
     <span
-      className={`hidden shrink-0 focus-within:inline-flex ${hideWhenNarrow ? "@[45rem]/boardrow:group-hover/row:inline-flex" : "group-hover/row:inline-flex"}`}
+      className={`${forceOpen ? "inline-flex" : "hidden"} shrink-0 focus-within:inline-flex ${hideWhenNarrow ? "@[45rem]/boardrow:group-hover/row:inline-flex" : "group-hover/row:inline-flex"}`}
       onPointerDown={(e) => e.stopPropagation()}
       onClick={(e) => e.stopPropagation()}
     >

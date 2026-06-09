@@ -50,7 +50,14 @@ vi.mock("@/components/shared/TicketStatusPill", () => ({
 }));
 
 vi.mock("@/components/shared/Avatar", () => ({ Avatar: () => <span data-testid="avatar" /> }));
-vi.mock("@/components/shared/StoryPointPicker", () => ({ StoryPointPicker: () => <span data-testid="sp" /> }));
+// BRDG-323: SP + guess are one unified chip; "sp" testid now marks that estimate
+// chip. Clicking it reports the popover as open (onOpenChange) so slot-freeze can
+// be exercised.
+vi.mock("@/components/shared/EstimatePicker", () => ({
+  EstimatePicker: ({ onOpenChange }: { onOpenChange?: (open: boolean) => void }) => (
+    <button data-testid="sp" onClick={() => onOpenChange?.(true)} />
+  ),
+}));
 vi.mock("@/components/shared/BusinessValuePicker", () => ({ BusinessValuePicker: () => <span data-testid="bv" /> }));
 vi.mock("@/components/shared/Tooltip", () => ({ Tooltip: ({ children }: { children: React.ReactNode }) => <span>{children}</span> }));
 vi.mock("./TicketTableCells", () => ({
@@ -261,6 +268,63 @@ describe("BoardRow (headerless, BRDG-239)", () => {
     expect(sp.parentElement?.className).toContain("hidden");
     expect(sp.parentElement?.className).toContain("group-hover/row:inline-flex");
     expect(bv.parentElement?.className).toContain("hidden");
+  });
+
+  // BRDG-323: in planning mode a guess is a resting estimate, but a ticket being
+  // refined is estimated with story points only — no guess on those rows.
+  it("shows a planning guess as a resting estimate when the row is not in a refinement session", () => {
+    renderRow({
+      ticket: makeTicket({ storyPoints: null, businessValue: null, guestimation: 3 }),
+      planningOn: true,
+      onStoryPointsChange: vi.fn(),
+      onGuestimationChange: vi.fn(),
+    });
+    // Inline (resting) value, not a hover-only placeholder.
+    expect(screen.getByTestId("sp").parentElement?.className).not.toContain("hidden");
+  });
+
+  it("drops the guess (story points only) on a ticket in a refinement session", () => {
+    renderRow({
+      ticket: makeTicket({ storyPoints: null, businessValue: null, guestimation: 3 }),
+      planningOn: true,
+      onStoryPointsChange: vi.fn(),
+      onGuestimationChange: vi.fn(),
+      refinementSessions: [{ name: "Refine A" } as never],
+    });
+    // No resting guess: the estimate collapses to an empty SP placeholder (hover-reveal).
+    expect(screen.getByTestId("sp").parentElement?.className).toContain("hidden");
+  });
+
+  it("freezes the estimate in its slot while open, so a first pick does not remount it (BRDG-323)", () => {
+    const props = {
+      ticket: makeTicket({ storyPoints: null, businessValue: null, guestimation: null }),
+      ticketIdx: 0,
+      isChecked: false,
+      isSelected: false,
+      someChecked: false,
+      isDragActive: false,
+      tags: ALL_TAGS,
+      selectedTicket: null,
+      onSelectTicket: vi.fn(),
+      onCheckboxClick: vi.fn(),
+      planningOn: true,
+      onStoryPointsChange: vi.fn(),
+      onGuestimationChange: vi.fn(),
+    };
+    const { rerender } = render(<table><tbody><BoardRow {...props} /></tbody></table>);
+    // Empty: estimate sits in the hover-revealed placeholder slot.
+    const placeholderClass = screen.getByTestId("sp").parentElement?.className ?? "";
+    expect(placeholderClass).toContain("group-hover/row:inline-flex");
+
+    // Open the popover, then a guess lands (parent re-renders with the new value).
+    fireEvent.click(screen.getByTestId("sp"));
+    rerender(
+      <table><tbody><BoardRow {...props} ticket={makeTicket({ storyPoints: null, businessValue: null, guestimation: 2 })} /></tbody></table>,
+    );
+
+    // Still the SAME placeholder slot (not jumped to the inline value slot), so the
+    // open dropdown is preserved long enough to reach the commit action.
+    expect(screen.getByTestId("sp").parentElement?.className).toContain("group-hover/row:inline-flex");
   });
 
   it("clusters the add-epic / SP / BV placeholders in natural order when nothing is set", () => {

@@ -21,8 +21,7 @@ import { CSS } from "@dnd-kit/utilities";
 import { EditStateDot, QualityBadge } from "@/components/sprint-board/TicketTableCells";
 import { Tooltip } from "@/components/shared/Tooltip";
 import { BusinessValuePicker } from "@/components/shared/BusinessValuePicker";
-import { StoryPointPicker } from "@/components/shared/StoryPointPicker";
-import { GuestimationPicker } from "@/components/shared/GuestimationPicker";
+import { EstimatePicker } from "@/components/shared/EstimatePicker";
 import { TicketStatusPill } from "@/components/shared/TicketStatusPill";
 import { prefetchTicketPage } from "@/lib/prefetch";
 
@@ -163,6 +162,15 @@ export const BoardRow = memo(forwardRef<HTMLTableRowElement, BoardRowBaseProps>(
 ) {
   const isEditingTitle = editingTitleKey === ticket.key;
   const [editTitleValue, setEditTitleValue] = useState("");
+  // True while a meta picker (estimate / business value) popover is open. Keeps the
+  // whole empty-placeholder cluster visible so moving the cursor into the open
+  // dropdown does not collapse the neighbouring placeholders (BRDG-323).
+  const [metaPickerOpen, setMetaPickerOpen] = useState(false);
+  // The estimate lives in the left placeholder cluster while empty and in its
+  // natural value slot once set. Setting a guess mid-popover would flip slots and
+  // remount the picker, dropping the open dropdown before you can commit. So we
+  // freeze which slot it renders in for as long as its popover is open (BRDG-323).
+  const [estimateSlotFrozen, setEstimateSlotFrozen] = useState<null | "value" | "placeholder">(null);
   const titleInputRef = useRef<HTMLTextAreaElement>(null);
   const titleEditContainerRef = useRef<HTMLDivElement>(null);
 
@@ -193,16 +201,29 @@ export const BoardRow = memo(forwardRef<HTMLTableRowElement, BoardRowBaseProps>(
   // estimates (1, 2, 3, ...) keep an always-visible badge (BRDG-310).
   const spEmpty = ticket.storyPoints == null || ticket.storyPoints === 0;
   const bvEmpty = ticket.businessValue == null || ticket.businessValue === 0;
-  const showSpValue = tags.has("storyPoints") && !spEmpty;
   const showBvValue = tags.has("businessValue") && !bvEmpty;
-  const showSpPlaceholder = tags.has("storyPoints") && spEmpty && !isDeprecated;
   const showBvPlaceholder = tags.has("businessValue") && bvEmpty && !isDeprecated;
-  // Guestimation (BRDG-303): a PO placeholder estimate, only offered while planning
-  // mode is on and only when the ticket has no real SP (a guess never sits in the SP
-  // slot). A set guess renders as its own badge; an empty one as a hover placeholder.
+  // Estimate (BRDG-323): SP and the forward-planning guess share ONE chip. The
+  // guess lifecycle is only offered while planning mode is on and a write handler
+  // is wired; SP supersedes the guess for display (a guess only shows while SP is
+  // empty). A set estimate (real SP, or a guess in planning mode) renders inline;
+  // an all-empty cell surfaces as a hover placeholder.
   const guessEmpty = ticket.guestimation == null || ticket.guestimation === 0;
-  const showGuessValue = planningOn && spEmpty && !guessEmpty && Boolean(onGuestimationChange);
-  const showGuessPlaceholder = planningOn && spEmpty && guessEmpty && !isDeprecated && Boolean(onGuestimationChange);
+  // A ticket being refined is estimated with real story points only — no guess to
+  // see or fill (BRDG-323). So the guess lifecycle is dropped on rows that are in a
+  // refinement session, even while planning mode is on elsewhere.
+  const inRefinementSession = Boolean(refinementSessions && refinementSessions.length > 0);
+  const estimatePlanning = planningOn && Boolean(onGuestimationChange) && !inRefinementSession;
+  const estimateSet = !spEmpty || (estimatePlanning && !guessEmpty);
+  // While the estimate popover is open, hold its slot fixed so picking a guess
+  // does not remount it (which would close the dropdown before you can commit).
+  const estimateInValue = estimateSlotFrozen ? estimateSlotFrozen === "value" : estimateSet;
+  const showEstimateValue = tags.has("storyPoints") && estimateInValue;
+  const showEstimatePlaceholder = tags.has("storyPoints") && !estimateInValue && !isDeprecated;
+  const handleEstimateOpenChange = (open: boolean) => {
+    setMetaPickerOpen(open);
+    setEstimateSlotFrozen(open ? (estimateSet ? "value" : "placeholder") : null);
+  };
   const showEpicPlaceholder = tags.has("epic") && !hideEpic && !ticket.epic && Boolean(onEpicChange) && !isRemoved;
 
   // Checkbox always visible when checked or when any row is checked (bulk mode)
@@ -455,26 +476,19 @@ export const BoardRow = memo(forwardRef<HTMLTableRowElement, BoardRowBaseProps>(
                   epic -> SP -> BV order. Set values render in their own slots further
                   right. */}
               {showEpicPlaceholder && (
-                <HoverRevealSlot hideWhenNarrow>
+                <HoverRevealSlot hideWhenNarrow forceOpen={metaPickerOpen}>
                   <AddEpicPill ticketKey={ticket.key} onChange={(epic) => onEpicChange?.(ticket.key, epic)} />
                 </HoverRevealSlot>
               )}
-              {showSpPlaceholder && (
-                <HoverRevealSlot hideWhenNarrow>
-                  <StoryPointPicker
-                    value={ticket.storyPoints}
-                    onChange={onStoryPointsChange ? (v) => onStoryPointsChange(ticket.key, v) : () => {}}
-                    dense
-                    showMetricIcon
-                    richTooltip
-                  />
-                </HoverRevealSlot>
-              )}
-              {showGuessPlaceholder && (
-                <HoverRevealSlot hideWhenNarrow>
-                  <GuestimationPicker
-                    value={ticket.guestimation ?? null}
-                    onChange={onGuestimationChange ? (v) => onGuestimationChange(ticket.key, v) : () => {}}
+              {showEstimatePlaceholder && (
+                <HoverRevealSlot hideWhenNarrow forceOpen={metaPickerOpen}>
+                  <EstimatePicker
+                    storyPoints={ticket.storyPoints}
+                    guestimation={ticket.guestimation ?? null}
+                    onStoryPointsChange={onStoryPointsChange ? (v) => onStoryPointsChange(ticket.key, v) : () => {}}
+                    onGuestimationChange={onGuestimationChange ? (v) => onGuestimationChange(ticket.key, v) : () => {}}
+                    planningMode={estimatePlanning}
+                    onOpenChange={handleEstimateOpenChange}
                     dense
                     showMetricIcon
                     richTooltip
@@ -482,10 +496,11 @@ export const BoardRow = memo(forwardRef<HTMLTableRowElement, BoardRowBaseProps>(
                 </HoverRevealSlot>
               )}
               {showBvPlaceholder && (
-                <HoverRevealSlot hideWhenNarrow>
+                <HoverRevealSlot hideWhenNarrow forceOpen={metaPickerOpen}>
                   <BusinessValuePicker
                     value={ticket.businessValue}
                     onChange={onBusinessValueChange ? (v) => onBusinessValueChange(ticket.key, v) : () => {}}
+                    onOpenChange={setMetaPickerOpen}
                     dense
                     showMetricIcon
                     richTooltip
@@ -574,22 +589,15 @@ export const BoardRow = memo(forwardRef<HTMLTableRowElement, BoardRowBaseProps>(
               {/* SP / BV values (set only) — empty cells live in the hover-revealed
                   placeholder cluster above, so a set value simply renders inline here
                   in natural order (BRDG-310). */}
-              {showSpValue && (
+              {showEstimateValue && (
                 <span className="shrink-0" onPointerDown={(e) => e.stopPropagation()} onClick={(e) => e.stopPropagation()}>
-                  <StoryPointPicker
-                    value={ticket.storyPoints}
-                    onChange={onStoryPointsChange ? (v) => onStoryPointsChange(ticket.key, v) : () => {}}
-                    dense
-                    showMetricIcon
-                    richTooltip
-                  />
-                </span>
-              )}
-              {showGuessValue && (
-                <span className="shrink-0" onPointerDown={(e) => e.stopPropagation()} onClick={(e) => e.stopPropagation()}>
-                  <GuestimationPicker
-                    value={ticket.guestimation ?? null}
-                    onChange={onGuestimationChange ? (v) => onGuestimationChange(ticket.key, v) : () => {}}
+                  <EstimatePicker
+                    storyPoints={ticket.storyPoints}
+                    guestimation={ticket.guestimation ?? null}
+                    onStoryPointsChange={onStoryPointsChange ? (v) => onStoryPointsChange(ticket.key, v) : () => {}}
+                    onGuestimationChange={onGuestimationChange ? (v) => onGuestimationChange(ticket.key, v) : () => {}}
+                    planningMode={estimatePlanning}
+                    onOpenChange={handleEstimateOpenChange}
                     dense
                     showMetricIcon
                     richTooltip
@@ -601,6 +609,7 @@ export const BoardRow = memo(forwardRef<HTMLTableRowElement, BoardRowBaseProps>(
                   <BusinessValuePicker
                     value={ticket.businessValue}
                     onChange={onBusinessValueChange ? (v) => onBusinessValueChange(ticket.key, v) : () => {}}
+                    onOpenChange={setMetaPickerOpen}
                     dense
                     showMetricIcon
                     richTooltip

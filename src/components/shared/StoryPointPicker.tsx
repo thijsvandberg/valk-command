@@ -101,6 +101,10 @@ export function StoryPointPicker({
   const isNA = value === 0;
   const isCustomValue = value != null && value > 0 && !SP_PRESET_SET.has(value);
   const color = value != null ? getSpColor(value) : null;
+  // Empty SP keeps the slate family tone (BRDG-323) so the placeholder badge reads
+  // as SP everywhere it appears (refinement, ticket cards, detail), matching the
+  // board chip, instead of a generic grey button.
+  const emptyTone = getSpColor(1);
   const showBg = !subtle || hovered || open;
   const displayLabel = value != null ? (isNA ? "-" : String(value)) : null;
   const titleText = isNA ? "N/A" : value != null ? `Story Points: ${value}` : "Set Story Points";
@@ -123,9 +127,10 @@ export function StoryPointPicker({
           aria-label={titleText}
           className="flex h-7 items-center gap-1.5 rounded-lg border border-transparent px-2.5 cursor-pointer focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)] active:opacity-60"
           style={{
-            color: color?.text ?? "var(--color-text-muted)",
-            backgroundColor: color?.bg ?? "var(--color-overlay-subtle)",
-            opacity: hovered ? 0.85 : 1,
+            color: color?.text ?? emptyTone.text,
+            backgroundColor: color?.bg ?? emptyTone.bg,
+            // Empty keeps the slate hue but sits a bit muted so it stays calm.
+            opacity: value == null ? (hovered ? 0.8 : 0.6) : hovered ? 0.85 : 1,
             transition: "opacity 0.15s ease",
           }}
         >
@@ -143,11 +148,11 @@ export function StoryPointPicker({
           aria-label={titleText}
           className={`flex items-center rounded-md border border-transparent cursor-pointer transition-colors duration-150 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)] active:opacity-60 font-medium tabular-nums ${dense ? "h-5 text-[11px] leading-none" : "h-6 text-body-sm"} ${showMetricIcon ? "gap-1 px-1.5 min-w-[2.25rem] justify-start" : "min-w-[24px] justify-center"}`}
           style={{
-            // SP has no value color in the dense table (subtle): neutral grey.
-            // Tinted contexts (non-subtle) get the green effort ramp.
-            color: subtle ? "var(--color-text-secondary)" : (color?.text ?? "var(--color-text-muted)"),
-            backgroundColor: showBg ? (subtle ? "var(--color-overlay-subtle)" : (color?.bg ?? "var(--color-overlay-subtle)")) : "transparent",
-            opacity: hovered && showBg ? 0.85 : 1,
+            // Slate family tone (BRDG-321/323). Empty keeps the slate hue, a bit
+            // muted, so the placeholder reads as SP. Subtle contexts stay neutral.
+            color: subtle ? "var(--color-text-secondary)" : (color?.text ?? emptyTone.text),
+            backgroundColor: showBg ? (subtle ? "var(--color-overlay-subtle)" : (color?.bg ?? emptyTone.bg)) : "transparent",
+            opacity: !subtle && value == null ? (hovered ? 0.8 : 0.6) : hovered && showBg ? 0.85 : 1,
           }}
         >
           {showMetricIcon ? (

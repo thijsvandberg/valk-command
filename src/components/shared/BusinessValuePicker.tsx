@@ -70,6 +70,9 @@ export function BusinessValuePicker({
   const isLg = size === "lg";
   const isNA = value === 0;
   const color = value != null ? getBvColor(value) : null;
+  // Empty BV still wears the violet family tone (BRDG-323) so the unscored "↗"
+  // placeholder reads as the BV slot, not a generic grey button.
+  const emptyTone = getBvColor(1);
   const showBg = !subtle || hovered || open;
   const displayLabel = value != null ? (isNA ? "-" : String(value)) : null;
   const titleText = isNA ? "N/A" : value != null ? `Business Value: ${value}` : "Set Business Value";
@@ -85,9 +88,10 @@ export function BusinessValuePicker({
           aria-label={titleText}
           className="flex h-7 items-center gap-1.5 rounded-lg border border-transparent px-2.5 cursor-pointer focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)] active:opacity-60"
           style={{
-            color: color?.text ?? "var(--color-text-muted)",
-            backgroundColor: color?.bg ?? "var(--color-overlay-subtle)",
-            opacity: hovered ? 0.85 : 1,
+            color: color?.text ?? emptyTone.text,
+            backgroundColor: color?.bg ?? emptyTone.bg,
+            // Empty keeps the violet hue but sits a bit muted so it stays calm.
+            opacity: value == null ? (hovered ? 0.8 : 0.6) : hovered ? 0.85 : 1,
             transition: "opacity 0.15s ease",
           }}
         >
@@ -105,18 +109,19 @@ export function BusinessValuePicker({
           aria-label={titleText}
           className={`flex items-center rounded-md border border-transparent cursor-pointer transition-colors duration-150 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)] active:opacity-60 font-medium tabular-nums ${dense ? "h-5 text-[11px] leading-none" : "h-6 text-body-sm"} ${showMetricIcon ? "gap-1 px-1.5 min-w-[2.25rem] justify-start" : "min-w-[24px] justify-center"}`}
           style={{
-            color: color?.text ?? "var(--color-text-muted)",
-            backgroundColor: showBg ? (color?.bg ?? "var(--color-overlay-subtle)") : "transparent",
-            opacity: hovered && showBg ? 0.85 : 1,
+            color: color?.text ?? emptyTone.text,
+            backgroundColor: showBg ? (color?.bg ?? emptyTone.bg) : "transparent",
+            // Empty placeholder keeps the violet hue but sits a bit muted so it stays calm.
+            opacity: value == null ? (hovered ? 0.8 : 0.6) : hovered && showBg ? 0.85 : 1,
           }}
         >
           {showMetricIcon ? (
             // Always reserve the icon + value footprint so empty and filled cells
             // share one width and the column reads as a calm, aligned BV gutter.
-            // A scored cell inherits the flat violet tone; an unset cell shows a
-            // faded violet glyph so it reads as a faint placeholder.
+            // Both scored and unset cells wear the flat violet tone; the unset cell
+            // is just the glyph without a number.
             <>
-              <TrendingUp size={dense ? 11 : 12} strokeWidth={2} aria-hidden style={displayLabel == null ? { color: "var(--meta-bv-fg)", opacity: 0.4 } : undefined} />
+              <TrendingUp size={dense ? 11 : 12} strokeWidth={2} aria-hidden />
               {displayLabel != null && displayLabel}
             </>
           ) : displayLabel != null ? (

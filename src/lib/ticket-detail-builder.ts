@@ -391,12 +391,10 @@ export async function updateTicketFields(key: string, body: Record<string, unkno
     const spValue = raw as number | null;
     await db.update(ticket).set({ storyPoints: spValue }).where(eq(ticket.jiraKey, key));
 
-    // SP wins and resets the guess (BRDG-303): the moment a real, non-zero story
-    // point lands, any forward-planning guestimation is silently cleared so the
-    // two are never both present. A no-op when there is no metadata row or guess.
-    if (spValue != null && spValue > 0) {
-      await db.update(ticketMetadata).set({ guestimation: null }).where(eq(ticketMetadata.jiraKey, key));
-    }
+    // The guess is kept as the guesstimate of record once SP lands (BRDG-323,
+    // "pencil to ink"): SP supersedes it for display everywhere (guess only ever
+    // shows while SP is empty), but the prior guess is preserved so committing a
+    // guess can be reverted to it. It stays Bridge-local and is never synced to Jira.
 
     // Estimating a ticket (any value, including "-"/0) completes its refinement
     // prep, so a ticket sitting at "Ready to Refine" advances to "Ready for

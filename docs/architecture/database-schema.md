@@ -55,7 +55,7 @@ PO-owned annotations per ticket. Never synced back to Jira.
 | `last_test_run_at` | text | ISO timestamp |
 | `last_test_report_url` | text | Link to test report |
 | `business_value` | integer | Business Value score (1-7, nullable) |
-| `guestimation` | integer | Forward-planning guestimation (BRDG-303): a PO placeholder estimate on the Fibonacci scale (`1,2,3,5,8`, `0`=N/A, nullable). Local-only, never synced to Jira. Silently cleared when a real non-zero `story_points` is set, so SP and guestimation are never both present. |
+| `guestimation` | integer | Forward-planning guestimation (BRDG-303): a PO placeholder estimate on the Fibonacci scale (`1,2,3,5,8`, `0`=N/A, nullable). Local-only, never synced to Jira. SP supersedes it for display (a guess only shows while `story_points` is empty), but the value is **kept** once SP lands (BRDG-323) as the guesstimate of record, so committing a guess to SP stays revertible. |
 | `scan_scores` | text | Backlog Deprecation Review (BRDG-297 epic): JSON map of per-topic scores + evidence. Local-only. |
 | `scan_overall` | real | Combined deprecation-likelihood score (0..1). |
 | `scan_rationale` | text | Assembled human-readable "why this can probably go". |

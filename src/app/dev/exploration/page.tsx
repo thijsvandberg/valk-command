@@ -8,7 +8,7 @@
  */
 
 import Link from "next/link";
-import { ArrowUpRight, LayoutGrid, Rows3, FlaskConical, Shapes, MousePointerClick, Type, PanelTop, PanelTopDashed, AppWindow, ListChecks, Gauge } from "lucide-react";
+import { ArrowUpRight, LayoutGrid, Rows3, FlaskConical, Shapes, MousePointerClick, Type, PanelTop, PanelTopDashed, AppWindow, ListChecks, Gem, Gauge, Hash } from "lucide-react";
 
 type Exploration = {
   slug: string;
@@ -23,12 +23,30 @@ const ICON = "h-5 w-5";
 
 const EXPLORATIONS: Exploration[] = [
   {
+    slug: "estimate-entry",
+    title: "Setting SP & the guestimate",
+    blurb:
+      "Three flows for entering an estimate from a board row, each built to stop an unscored row from revealing two near-identical '#' badges on hover. A · One entry point; B · Pencil to ink (one chip that graduates from a dashed guess to a committed solid SP, with manual entry, a quiet commit and a revertible 'back to guesstimate'); C · Twin track. Shipped: flow B is live on the real board as the unified EstimatePicker (BRDG-323); the guess is now kept after commit so the revert works.",
+    status: "Shipped",
+    ticket: "BRDG-323",
+    icon: <Hash className={ICON} strokeWidth={1.5} />,
+  },
+  {
     slug: "capacity-meter",
     title: "Sprint capacity meter",
     blurb:
       "Calmer treatment for the sprint capacity bar, which used to turn amber at a perfectly-full sprint. Shipped: a neutral pill (grey text, teal fill bar, no icon) where the ONLY over-capacity signal is the bar turning red - text and pill stay neutral. Page also compares the rejected louder over-capacity treatments and icon options.",
     status: "Shipped",
     icon: <Gauge className={ICON} strokeWidth={1.5} />,
+  },
+  {
+    slug: "refinement-badge",
+    title: "Row meta markers — Refinement, SP & BV",
+    blurb:
+      "The small right-edge row markers as a cohesive family. Shipped: Refinement = teal Boxes (no count), SP = slate Hash, BV = violet TrendingUp, penciled SP = dashed inset draft, all theme-aware. Also re-hues the status badges (TO DO zinc, IN PROGRESS sky, TEST amber, DONE emerald, DEPRECATED/DELETED muted + struck) to clear the teal/slate/violet collisions. Kept as reference.",
+    status: "Shipped",
+    ticket: "BRDG-321 · BRDG-322",
+    icon: <Gem className={ICON} strokeWidth={1.5} />,
   },
   {
     slug: "child-issues-menu",
