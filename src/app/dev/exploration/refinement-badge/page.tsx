@@ -664,6 +664,15 @@ export default function RefinementBadgeExplorationPage() {
             kind of thing. Every chip here is theme-aware (dark text on light, light text on dark), so toggling
             light/dark mode keeps them readable. Pick a refinement glyph, then a colour palette for all three.
           </p>
+          <p className="mt-4 inline-flex flex-wrap items-center gap-2 rounded-lg bg-[color-mix(in_srgb,var(--color-status-done)_12%,transparent)] px-3 py-2 text-[12px] leading-[1.5] text-text-secondary ring-1 ring-[color-mix(in_srgb,var(--color-status-done)_30%,transparent)]">
+            <span className="font-semibold text-[var(--color-status-done)]">Shipped</span>
+            <span>
+              The chosen design now lives in the real app — <strong className="text-text-secondary">BRDG-321</strong>{" "}
+              (Refinement <span className="text-[var(--color-brand-400)]">Boxes</span> + slate SP + violet BV, dashed
+              draft) and <strong className="text-text-secondary">BRDG-322</strong> (status colours). This page is kept
+              as reference.
+            </span>
+          </p>
         </header>
 
         {/* ===== SECTION 1 ===== */}
@@ -865,7 +874,7 @@ export default function RefinementBadgeExplorationPage() {
               { k: "Test", v: "amber — in verification; warm contrast against In progress" },
               { k: "Done", v: "emerald — complete / success" },
               { k: "Deprecated", v: "muted zinc + strikethrough — retired, sits outside the flow" },
-              { k: "Deleted", v: "muted rose + strikethrough — removed (rose is fine for a terminal status)" },
+              { k: "Deleted", v: "muted rose + strikethrough — the derived removed-from-Jira state, not a Jira status" },
             ].map((r) => (
               <div key={r.k} className="rounded-xl bg-[var(--color-surface-floating)] px-3.5 py-3 ring-1 ring-border-default">
                 <p className="text-[12px] font-semibold text-text-primary">{r.k}</p>
