@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { useUser } from "@clerk/nextjs";
 import {
   MessageCircle,
@@ -100,9 +100,9 @@ function HeaderAvatar({ size = 34 }: { size?: number }) {
  * counts, account flip and active-route rules; only the chrome changed from a
  * draggable floating launcher to a header-anchored dropdown.
  *
- * Visibility-controlled by the parent via `open`; it owns its own data and the
- * account-view flip. It stays mounted (opacity toggle) so the staggered reveal
- * can animate on each open.
+ * The parent mounts it only while open, so it owns its own data and the
+ * account-view flip; unmounting on close resets the flip for free and keeps the
+ * data hooks off every page that merely renders the header.
  */
 export function NavPanel({ open, onClose }: { open: boolean; onClose: () => void }) {
   const pathname = usePathname();
@@ -114,15 +114,6 @@ export function NavPanel({ open, onClose }: { open: boolean; onClose: () => void
     onClose,
     iconClass: "h-[18px] w-[18px] shrink-0",
   });
-
-  // Closing the panel should return it to the navigation view, not reopen on the
-  // account flip next time.
-  useEffect(() => {
-    if (!open) {
-      // eslint-disable-next-line react-hooks/set-state-in-effect
-      setAccountOpen(false);
-    }
-  }, [open]);
 
   function isActive(href: string) {
     if (href === "/sprint-board") return pathname === "/" || pathname.startsWith("/sprint-board");
@@ -137,13 +128,7 @@ export function NavPanel({ open, onClose }: { open: boolean; onClose: () => void
       role="dialog"
       aria-label="Navigation"
       data-testid="nav-panel"
-      aria-hidden={!open}
-      className={`absolute left-0 top-[calc(100%+10px)] z-50 w-[360px] max-w-[calc(100vw-2rem)] overflow-hidden rounded-2xl bg-[var(--color-surface-floating)]/95 ${PANEL_SHADOW} ring-1 ring-border-strong backdrop-blur-2xl transition-[transform,opacity] duration-200 ease-[cubic-bezier(0.34,1.56,0.64,1)]`}
-      style={{
-        opacity: open ? 1 : 0,
-        transform: open ? "scale(1) translateY(0)" : "scale(0.96) translateY(-8px)",
-        pointerEvents: open ? "auto" : "none",
-      }}
+      className={`nav-panel-enter absolute left-0 top-[calc(100%+10px)] z-50 w-[360px] max-w-[calc(100vw-2rem)] overflow-hidden rounded-2xl bg-[var(--color-surface-floating)]/95 ${PANEL_SHADOW} ring-1 ring-border-strong backdrop-blur-2xl`}
     >
       {/* Top accent gradient + soft brand glow */}
       <span className="pointer-events-none absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-[var(--color-brand-glow)] to-transparent" />

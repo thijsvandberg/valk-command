@@ -67,7 +67,9 @@ export function ViewHeader({ icon, children, actions, className, hideNotificatio
               bridge<span className="bridge-caret text-[var(--color-brand-400)]">_</span>
             </span>
           </button>
-          <NavPanel open={menuOpen} onClose={closeMenu} />
+          {/* Mounted only while open: keeps the nav's data hooks off every page
+              that merely renders the header, and lets it animate in fresh. */}
+          {menuOpen && <NavPanel open onClose={closeMenu} />}
         </div>
 
         {(icon || children) && (

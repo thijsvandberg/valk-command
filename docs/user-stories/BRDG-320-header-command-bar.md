@@ -147,7 +147,7 @@ complicates outside-click ref containment) — prefer inline-absolute.
 - [x] Right-side actions (fullness meter, notifications + 9+ badge, search, overflow, focus toggle reveal)
       behave exactly as before.
 - [x] Tests cover NavPanel contents/active-route/onClose and ViewHeader open/close/Esc/outside-click.
-- [ ] `npm run lint`, `npm run typecheck`, `npm run test`, `npm run build` all pass.
+- [x] `npm run lint`, `npm run typecheck`, `npm run test`, `npm run build` all pass.
 
 ## Open questions (deferred — not blocking)
 
