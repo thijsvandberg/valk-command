@@ -1,5 +1,18 @@
 # Implementation Performance Log
 
+## BRDG-318 — Inline subtask assignee + status (2026-06-09)
+
+Smooth, well-scoped UI run; the only friction was the recurring foreign-breakage blocker.
+
+| Phase | Notes |
+|-------|-------|
+| Plan | Opus Plan subagent confirmed status was already inline-editable (so AC #2 needed only a test), and chose the lowest-risk overlap fix: lift the metadata control above the actions overlay (z-20 + stopPropagation) and offset the overlay off the right edge when a metadata control is present. |
+| Implement | Swapped the display-only `<Avatar>` for an interactive `AssigneePicker variant="avatar"` in both row paths (sortable + plain), guarded pending rows, and added `handleAssigneeChange` mirroring the existing `handleJiraStatusChange` `onMutate` pattern. One contained `ChildIssueRow` layout change benefits all consumers (LinkedIssues, EpicChildren). |
+| Verify | 57 targeted tests green; full suite 5306 pass; typecheck clean. Browser-verified the picker opens on avatar click and Edit/Delete no longer cover the avatar (stopped short of an actual assign to avoid writing to live Jira). |
+
+Key bottlenecks:
+- **Recurring pre-existing broken tree blocks `npm run build`/`npm run verify`**: a committed, unmodified `ChatMessageParts.tsx:290` `react-hooks/set-state-in-effect` lint error fails the build's lint gate, and `story-writer/TitleInput.test.tsx` has one failing test. Both are independent of this story (story-writer module, not subtasks). Verified my work in isolation instead (typecheck clean, my two test files + full suite minus that one foreign failure pass). Documented in `docs/investigations/2026-06-09-prexisting-build-blocker-chatmessageparts.md`.
+
 ## BRDG-250 — Epic color management (2026-06-02)
 
 Smooth run overall. The one notable item is a recurring foreign-breakage blocker.
