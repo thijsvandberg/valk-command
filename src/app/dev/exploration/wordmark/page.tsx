@@ -17,7 +17,6 @@ import {
   Anton,
   Space_Mono,
   DM_Serif_Display,
-  Big_Shoulders,
   Archivo,
   Sora,
   Geist_Mono,
@@ -40,7 +39,6 @@ const bebas = Bebas_Neue({ subsets: ["latin"], weight: ["400"], display: "swap" 
 const anton = Anton({ subsets: ["latin"], weight: ["400"], display: "swap" });
 const spaceMono = Space_Mono({ subsets: ["latin"], weight: ["400", "700"], display: "swap" });
 const dmSerif = DM_Serif_Display({ subsets: ["latin"], weight: ["400"], style: ["normal", "italic"], display: "swap" });
-const bigShoulders = Big_Shoulders({ subsets: ["latin"], weight: ["700", "800"], display: "swap" });
 const archivo = Archivo({ subsets: ["latin"], weight: ["800", "900"], display: "swap" });
 const sora = Sora({ subsets: ["latin"], weight: ["300", "700"], display: "swap" });
 const geistMono = Geist_Mono({ subsets: ["latin"], weight: ["500", "600"], display: "swap" });
@@ -133,13 +131,6 @@ const CONCEPTS: Concept[] = [
     font: "DM Serif Display",
     note: "Sharp Didone serif. High-fashion contrast, decisive thicks and thins.",
     style: { fontFamily: dmSerif.style.fontFamily, fontWeight: 400, letterSpacing: "-0.01em" },
-    node: "Bridge",
-  },
-  {
-    id: "big-shoulders",
-    font: "Big Shoulders",
-    note: "Industrial condensed caps. Engineered, signage, utilitarian.",
-    style: { fontFamily: bigShoulders.style.fontFamily, fontWeight: 800, textTransform: "uppercase", letterSpacing: "0.02em" },
     node: "Bridge",
   },
   {
