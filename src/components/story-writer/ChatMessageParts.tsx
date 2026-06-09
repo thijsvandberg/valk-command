@@ -252,10 +252,12 @@ export function ChatMessage({
   currentEpicKey,
   currentTitle,
   currentType,
+  isLatestDraft,
 }: {
   message: Message;
   draftId?: string;
   draftContent?: string;
+  isLatestDraft?: boolean;
   onViewDraft?: (draftId: string) => void;
   onFocusDraft?: (draftId: string) => void;
   onAcceptDraft?: (draftId: string) => void;
@@ -275,10 +277,18 @@ export function ChatMessage({
 }) {
   const isUser = message.role === "user";
   const [expanded, setExpanded] = useState(false);
-  const [draftExpanded, setDraftExpanded] = useState(false);
+  const [draftExpanded, setDraftExpanded] = useState<boolean>(() => Boolean(isLatestDraft && draftId));
   const [draftAccepted, setDraftAccepted] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
   const [containerWidth, setContainerWidth] = useState(0);
+
+  // The latest draft in the chat shows expanded; when a newer draft arrives this
+  // one is demoted to collapsed. Accepted drafts default to collapsed. Manual
+  // toggles in between are preserved since this only re-runs on these changes.
+  useEffect(() => {
+    if (!draftId) return;
+    setDraftExpanded(Boolean(isLatestDraft) && !draftAccepted);
+  }, [isLatestDraft, draftId, draftAccepted]);
 
   useEffect(() => {
     const el = containerRef.current;
@@ -463,79 +473,101 @@ export function ChatMessage({
           </div>
         )}
         {draftId && (
-          <div className={`${displayContent || contentAfter || allTitleSuggestions.length > 0 ? "mt-2.5" : ""} rounded-lg border border-[var(--color-brand-500)]/15 bg-[var(--color-brand-500)]/[0.04]`}>
-            <div className="flex items-center gap-1 px-1.5 py-1.5">
+          <div className={`group/draft ${displayContent || contentAfter || allTitleSuggestions.length > 0 ? "mt-3" : ""} rounded-lg border border-border-default overflow-hidden`}>
+            <div
+              onClick={() => setDraftExpanded((v) => !v)}
+              className="flex min-h-8 items-center gap-1.5 px-3 py-1 bg-overlay-subtle border-b border-border-default cursor-pointer hover:bg-overlay-default transition-colors duration-150"
+            >
+              <FileText size={11} strokeWidth={1.5} className="shrink-0 text-text-muted" />
+              <span className="text-caption font-medium uppercase tracking-[0.06em] text-text-tertiary">Draft updated</span>
+              {draftAccepted && (
+                <span className="ml-auto flex items-center mr-1.5">
+                  <span className="inline-flex h-5 items-center gap-1 text-caption font-medium uppercase tracking-[0.06em] text-text-muted">
+                    <Check size={11} strokeWidth={2} className="shrink-0" />
+                    Accepted
+                  </span>
+                </span>
+              )}
               <button
                 type="button"
-                onClick={() => setDraftExpanded((v) => !v)}
-                className="flex flex-1 items-center gap-1.5 px-2 py-1 text-body-sm font-medium text-[var(--color-brand-400)] cursor-pointer rounded-md hover:bg-[var(--color-brand-500)]/10 transition-colors duration-150"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setDraftExpanded((v) => !v);
+                }}
+                aria-label={draftExpanded ? "Collapse draft" : "Expand draft"}
+                className={`${!draftAccepted ? "ml-auto " : ""}flex items-center justify-center shrink-0 cursor-pointer text-text-muted hover:text-text-secondary transition-colors duration-150`}
               >
-                <FileText size={12} strokeWidth={1.5} className="shrink-0" />
-                Draft updated
-                {draftExpanded ? <ChevronUp size={11} className="ml-auto shrink-0" /> : <ChevronDown size={11} className="ml-auto shrink-0" />}
-              </button>
-              <div className="h-4 w-px bg-[var(--color-brand-500)]/10 shrink-0" />
-              <button
-                type="button"
-                onClick={() => onViewDraft?.(draftId)}
-                className="flex items-center gap-1 rounded-md px-2 py-1 text-caption font-medium text-[var(--color-brand-400)]/60 cursor-pointer hover:text-[var(--color-brand-400)] hover:bg-[var(--color-brand-500)]/10 transition-colors duration-150"
-                title="Open in editor"
-              >
-                Open
-              </button>
-              <button
-                type="button"
-                onClick={() => onFocusDraft?.(draftId)}
-                className="flex items-center justify-center rounded-md size-7 text-[var(--color-brand-400)]/40 cursor-pointer hover:text-[var(--color-brand-400)] hover:bg-[var(--color-brand-500)]/10 transition-colors duration-150"
-                title="Focus mode"
-              >
-                <Maximize2 size={11} strokeWidth={1.5} />
+                <ChevronDown
+                  size={12}
+                  strokeWidth={1.5}
+                  className={`transition-transform duration-150 ${draftExpanded ? "" : "-rotate-90"}`}
+                />
               </button>
             </div>
             {draftExpanded && draftContent && (
               <>
-                <div
-                  className="border-t border-[var(--color-brand-500)]/10 px-3 py-2.5 overflow-y-auto"
-                  style={{
-                    maxHeight: containerWidth > 0
-                      ? Math.min(Math.round(containerWidth * 0.65), typeof window !== "undefined" ? window.innerHeight - 180 : 600)
-                      : 300,
-                  }}
-                >
-                  <div className="description-content chat-markdown text-body-sm leading-[1.7] text-text-secondary">
-                    {renderMarkdown(draftContent, { linkifyRefs: true })}
-                  </div>
-                </div>
-                {onAcceptDraft && draftId && (
-                  <div className="border-t border-[var(--color-brand-500)]/10 px-3 py-2 flex items-center gap-2">
-                    {draftAccepted ? (
-                      <span className="rounded-md px-3 py-1.5 text-body-sm font-medium bg-[var(--color-brand-500)]/[0.1] text-[var(--color-brand-500)]">
-                        Accepted
-                      </span>
-                    ) : (
-                      <>
+                <div className="relative">
+                  {(onViewDraft || onFocusDraft) && (
+                    <div className="absolute right-2 top-2 z-10 flex items-center gap-0.5 rounded-md border border-border-default bg-[var(--color-surface-floating)] p-0.5 opacity-0 shadow-[0_4px_14px_-4px_rgba(0,0,0,0.18)] transition-opacity duration-150 group-hover/draft:opacity-100 focus-within:opacity-100">
+                      {onViewDraft && (
                         <button
                           type="button"
-                          onClick={() => {
-                            onAcceptDraft(draftId);
-                            setDraftAccepted(true);
-                          }}
-                          className="flex items-center gap-1.5 rounded-md px-3 py-1.5 text-body-sm font-medium text-[var(--color-brand-400)] bg-[var(--color-brand-500)]/10 cursor-pointer hover:bg-[var(--color-brand-500)]/20 active:bg-[var(--color-brand-500)]/25 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)] transition-colors duration-150"
+                          onClick={() => onViewDraft(draftId)}
+                          className="flex items-center gap-1.5 rounded px-2 py-1 text-caption font-medium text-text-tertiary cursor-pointer hover:text-text-secondary hover:bg-overlay-subtle active:bg-overlay-default focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)] transition-colors duration-150"
+                          title="Open the draft in the side editor"
                         >
-                          <Check size={12} strokeWidth={2} />
-                          Accept draft
+                          <PanelRight size={12} strokeWidth={1.5} />
+                          Open in editor
                         </button>
-                        {hasExistingDraft && onShowDiff && (
-                          <button
-                            type="button"
-                            onClick={() => onShowDiff(draftId)}
-                            className="flex items-center gap-1.5 rounded-md px-3 py-1.5 text-body-sm font-medium text-text-tertiary cursor-pointer hover:text-text-secondary hover:bg-overlay-subtle active:bg-overlay-default focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)] transition-colors duration-150"
-                          >
-                            <GitCompare size={12} strokeWidth={2} />
-                            View diff
-                          </button>
-                        )}
-                      </>
+                      )}
+                      {onFocusDraft && (
+                        <button
+                          type="button"
+                          onClick={() => onFocusDraft(draftId)}
+                          className="flex items-center gap-1.5 rounded px-2 py-1 text-caption font-medium text-text-tertiary cursor-pointer hover:text-text-secondary hover:bg-overlay-subtle active:bg-overlay-default focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)] transition-colors duration-150"
+                          title="Open the draft in fullscreen focus mode"
+                        >
+                          <Maximize2 size={12} strokeWidth={1.5} />
+                          Open in fullscreen
+                        </button>
+                      )}
+                    </div>
+                  )}
+                  <div
+                    className="px-3 py-2.5 overflow-y-auto"
+                    style={{
+                      maxHeight: containerWidth > 0
+                        ? Math.min(Math.round(containerWidth * 0.65), typeof window !== "undefined" ? window.innerHeight - 180 : 600)
+                        : 300,
+                    }}
+                  >
+                    <div className="description-content chat-markdown text-body-sm leading-[1.7] text-text-secondary">
+                      {renderMarkdown(draftContent, { linkifyRefs: true })}
+                    </div>
+                  </div>
+                </div>
+                {onAcceptDraft && !draftAccepted && (
+                  <div className="border-t border-border-default px-3 py-2 flex items-center gap-2">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        onAcceptDraft(draftId);
+                        setDraftAccepted(true);
+                      }}
+                      className="flex items-center gap-1.5 rounded-md px-3 py-1.5 text-body-sm font-medium text-[var(--color-brand-500)] bg-[var(--color-brand-500)]/[0.1] cursor-pointer hover:bg-[var(--color-brand-500)]/[0.16] active:bg-[var(--color-brand-500)]/[0.2] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)] transition-colors duration-150"
+                    >
+                      <Check size={12} strokeWidth={2} />
+                      Accept draft
+                    </button>
+                    {hasExistingDraft && onShowDiff && (
+                      <button
+                        type="button"
+                        onClick={() => onShowDiff(draftId)}
+                        className="flex items-center gap-1.5 rounded-md px-3 py-1.5 text-body-sm font-medium text-text-tertiary cursor-pointer hover:text-text-secondary hover:bg-overlay-subtle active:bg-overlay-default focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)] transition-colors duration-150"
+                      >
+                        <GitCompare size={12} strokeWidth={2} />
+                        View diff
+                      </button>
                     )}
                   </div>
                 )}

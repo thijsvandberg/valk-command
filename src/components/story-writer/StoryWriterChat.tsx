@@ -413,6 +413,14 @@ export function StoryWriterChat({
     setSending(false);
   }, [isBusy, inputValue, messages, onCodebaseResearchChange, onSend]);
 
+  // The most recent message carrying a draft; only this one shows expanded by default.
+  const latestDraftMessageId = (() => {
+    for (let i = messages.length - 1; i >= 0; i--) {
+      if (messageDraftMap[messages[i].id]) return messages[i].id;
+    }
+    return null;
+  })();
+
   return (
     <div className="flex min-h-0 flex-1 flex-col">
       {/* Messages */}
@@ -436,6 +444,7 @@ export function StoryWriterChat({
                 message={msg}
                 draftId={messageDraftMap[msg.id]}
                 draftContent={messageDraftMap[msg.id] ? draftContentMap[messageDraftMap[msg.id]] : undefined}
+                isLatestDraft={msg.id === latestDraftMessageId}
                 onViewDraft={onViewDraft}
                 onFocusDraft={onFocusDraft}
                 onAcceptDraft={onAcceptDraft}
