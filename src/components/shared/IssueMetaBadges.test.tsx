@@ -19,8 +19,12 @@ describe("IssueMetaBadges", () => {
     const { rerender, container } = render(<InRefinementBadge sessionNames={[]} />);
     expect(container).toBeEmptyDOMElement();
     rerender(<InRefinementBadge sessionNames={["Refine A"]} />);
-    // Icon-only chip (the session name lives in the tooltip); the gem icon renders.
-    expect(container.querySelector("svg")).toBeInTheDocument();
+    // Icon-only chip (the session name lives in the tooltip); the Boxes glyph renders,
+    // tinted with the theme-aware refinement var (BRDG-321 — no more Gem).
+    expect(container.querySelector(".lucide-boxes")).toBeInTheDocument();
+    expect(container.querySelector(".lucide-gem")).toBeNull();
+    const chip = container.querySelector("span[style]")!;
+    expect(chip.getAttribute("style")).toContain("var(--meta-refine-fg)");
   });
 
   it("SprintBadge renders the name and hides when null", () => {
@@ -44,10 +48,12 @@ describe("IssueMetaBadges", () => {
     expect(container).toBeEmptyDOMElement();
   });
 
-  it("MetricChip renders the value for sp and bv", () => {
-    const { rerender } = render(<MetricChip metric="sp" value={5} />);
+  it("MetricChip renders the value with the right glyph for sp and bv (BRDG-321)", () => {
+    const { rerender, container } = render(<MetricChip metric="sp" value={5} />);
     expect(screen.getByText("5")).toBeInTheDocument();
+    expect(container.querySelector(".lucide-hash")).toBeInTheDocument();
     rerender(<MetricChip metric="bv" value={4} />);
     expect(screen.getByText("4")).toBeInTheDocument();
+    expect(container.querySelector(".lucide-trending-up")).toBeInTheDocument();
   });
 });

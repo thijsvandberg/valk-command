@@ -8,7 +8,7 @@ vi.mock("lucide-react", () => {
   const stub = (name: string) => (props: Record<string, unknown>) => <span data-testid={`icon-${name}`} {...props} />;
   return {
     Flag: stub("flag"), MessageSquare: stub("msg"), Star: stub("star"), Rocket: stub("rocket"),
-    GitBranch: stub("branch"), Pencil: stub("pencil"), Check: stub("check"), X: stub("x"), Gem: stub("gem"),
+    GitBranch: stub("branch"), Pencil: stub("pencil"), Check: stub("check"), X: stub("x"), Boxes: stub("boxes"),
   };
 });
 

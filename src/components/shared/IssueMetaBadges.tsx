@@ -4,7 +4,7 @@
 // One height + padding + icon size across epic / subtask-count / in-refinement / sprint /
 // SP / BV so the trailing badges always line up. Display-only; editing lives in the pickers.
 
-import { Gauge, Goal, Gem, IterationCw, Layers, Inbox } from "lucide-react";
+import { Hash, TrendingUp, Boxes, IterationCw, Layers, Inbox } from "lucide-react";
 import { IssueTypeIcon } from "@/components/shared/IssueTypeIcon";
 import { getSpColor, getBvColor } from "@/types/ticket";
 import { useEpicColor } from "@/hooks/useEpicColor";
@@ -41,13 +41,17 @@ export function SubtaskCountBadge({ open, total }: { open: number; total: number
   );
 }
 
-// In-refinement: gem-icon-only square chip (5.A). The session name(s) live in the tooltip.
+// In-refinement: Boxes-icon-only square chip (BRDG-321), theme-aware brand teal.
+// The session name(s) live in the tooltip.
 export function InRefinementBadge({ sessionNames }: { sessionNames?: string[] }) {
   if (!sessionNames || sessionNames.length === 0) return null;
   return (
     <Tooltip content={`In refinement: ${sessionNames.join(", ")}`}>
-      <span className="inline-flex h-5 w-5 shrink-0 items-center justify-center rounded-md bg-[var(--color-brand-500)]/[0.1] text-[var(--color-brand-400)]">
-        <Gem size={11} strokeWidth={1.75} />
+      <span
+        className="inline-flex h-5 w-5 shrink-0 items-center justify-center rounded-md"
+        style={{ color: "var(--meta-refine-fg)", backgroundColor: "color-mix(in srgb, var(--color-brand-500) 16%, transparent)" }}
+      >
+        <Boxes size={11} strokeWidth={1.75} />
       </span>
     </Tooltip>
   );
@@ -95,8 +99,8 @@ export function EpicChildCountBadge({ count }: { count: number }) {
 }
 
 const METRIC = {
-  sp: { Icon: Gauge, label: "Story Points", color: getSpColor },
-  bv: { Icon: Goal, label: "Business Value", color: getBvColor },
+  sp: { Icon: Hash, label: "Story Points", color: getSpColor },
+  bv: { Icon: TrendingUp, label: "Business Value", color: getBvColor },
 } as const;
 
 // Display-only SP / BV chip at the uniform height (the editable trigger lives in the pickers).

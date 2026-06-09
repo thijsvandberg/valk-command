@@ -9,7 +9,7 @@ import {
   type ReactNode,
 } from "react";
 import { createPortal } from "react-dom";
-import { Gem, X, ArrowRight } from "lucide-react";
+import { Boxes, X, ArrowRight } from "lucide-react";
 import { useOutsideClick } from "@/hooks/useOutsideClick";
 import type { TicketSessionEntry } from "@/hooks/useTicketSessionMap";
 import { TicketStatusPill } from "@/components/shared/TicketStatusPill";
@@ -61,7 +61,7 @@ function SessionSection({
   return (
     <div className="border-b border-border-subtle last:border-b-0">
       <div className="flex items-center gap-2 px-3.5 py-2.5">
-        <Gem size={13} strokeWidth={1.5} className="shrink-0 text-[var(--color-brand-400)]" />
+        <Boxes size={13} strokeWidth={1.5} className="shrink-0" style={{ color: "var(--meta-refine-fg)" }} />
         <span className="min-w-0 flex-1 truncate text-body-sm font-medium text-text-primary">{session.name}</span>
         <span className="shrink-0 text-[11px] tabular-nums text-text-muted">{count} {pluralize(count, "item")}</span>
       </div>

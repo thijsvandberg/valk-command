@@ -13,7 +13,7 @@ vi.mock("lucide-react", () => {
     Pencil: stub("pencil"),
     Check: stub("check"),
     X: stub("x"),
-    Gem: stub("gem"),
+    Boxes: stub("boxes"),
     IterationCw: stub("iteration"),
     GripVertical: stub("grip"),
     AlertTriangle: stub("alert-triangle"),
@@ -175,7 +175,7 @@ describe("BoardRow (headerless, BRDG-239)", () => {
     expect(screen.getByTestId("quality")).toBeInTheDocument();
     expect(screen.getByTestId("icon-notes")).toBeInTheDocument();
     expect(screen.getByTestId("editstate")).toBeInTheDocument();
-    expect(screen.getByTestId("icon-gem")).toBeInTheDocument();
+    expect(screen.getByTestId("icon-boxes")).toBeInTheDocument();
   });
 
   it("hides the quality badge when the ticket has no score (BRDG-239)", () => {
@@ -278,14 +278,28 @@ describe("BoardRow (headerless, BRDG-239)", () => {
       onEpicChange: vi.fn(),
       refinementSessions: [{ name: "Refine A" } as never],
     });
-    const gem = screen.getByTestId("icon-gem");
+    const marker = screen.getByTestId("icon-boxes");
     const addEpic = screen.getByTestId("add-epic");
     const sp = screen.getByTestId("sp");
     const bv = screen.getByTestId("bv");
-    // Every placeholder precedes the set refinement gem.
-    expect(addEpic.compareDocumentPosition(gem) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
-    expect(sp.compareDocumentPosition(gem) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
-    expect(bv.compareDocumentPosition(gem) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    // Every placeholder precedes the set refinement marker.
+    expect(addEpic.compareDocumentPosition(marker) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(sp.compareDocumentPosition(marker) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(bv.compareDocumentPosition(marker) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+  });
+
+  it("shows the refinement marker as a Boxes glyph with no session count (BRDG-321)", () => {
+    const { container } = renderRow({
+      ticket: makeTicket({}),
+      // More than one session: the old design showed a count badge here; it is gone now.
+      refinementSessions: [{ name: "Refine A" } as never, { name: "Refine B" } as never],
+    });
+    // The refinement marker renders exactly one Boxes glyph...
+    expect(screen.getAllByTestId("icon-boxes")).toHaveLength(1);
+    // ...and the icon-only pill carries no "2" (or any) session-count text.
+    const marker = screen.getByTestId("icon-boxes").parentElement!;
+    expect(marker.textContent).toBe("");
+    expect(container.textContent).not.toContain("Refine A");
   });
 
   it("drives the pill readiness segment via the poReadiness tag", () => {

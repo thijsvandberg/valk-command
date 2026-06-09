@@ -12,7 +12,7 @@ import type { ColumnId, ColumnPreset } from "@/components/sprint-board/FilterBar
 import { COLUMNS, COLUMN_PRESETS } from "@/components/sprint-board/FilterBar";
 import { IssueTypeIcon } from "@/components/shared/IssueTypeIcon";
 import { Avatar } from "@/components/shared/Avatar";
-import { Flag, MessageSquare, Star, Rocket, GitBranch, Pencil, Check, X, Gem } from "lucide-react";
+import { Flag, MessageSquare, Star, Rocket, GitBranch, Pencil, Check, X, Boxes } from "lucide-react";
 import type { TicketSessionEntry } from "@/hooks/useTicketSessionMap";
 import { RefinementGemTrigger, type RefinementCardTicketInfo } from "@/components/sprint-board/RefinementGemHoverCard";
 import type { PipelineHealthEntry, LastDeployedInfo } from "@/hooks/usePipelines";
@@ -293,10 +293,11 @@ export const TicketRow = memo(forwardRef<HTMLTableRowElement, TicketRowBaseProps
                   onRemoveFromRefinement={onRemoveFromRefinement}
                   onViewRefinement={onViewRefinement}
                 >
-                  <Gem
+                  <Boxes
                     size={10}
                     strokeWidth={1.5}
-                    className="text-[var(--color-brand-400)] opacity-60"
+                    className="opacity-60"
+                    style={{ color: "var(--meta-refine-fg)" }}
                   />
                 </RefinementGemTrigger>
               )}

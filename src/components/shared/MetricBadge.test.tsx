@@ -68,4 +68,21 @@ describe("MetricBadge", () => {
     const tinted = screen.getByText("8").closest("span")!;
     expect(tinted.getAttribute("style")).not.toContain("var(--color-text-secondary)");
   });
+
+  it("renders the Hash glyph for SP and TrendingUp for BV (BRDG-321 marker family)", () => {
+    const sp = render(<MetricBadge metric="sp" value={3} />);
+    expect(sp.container.querySelector(".lucide-hash")).toBeInTheDocument();
+    const bv = render(<MetricBadge metric="bv" value={5} />);
+    expect(bv.container.querySelector(".lucide-trending-up")).toBeInTheDocument();
+  });
+
+  it("uses the theme-aware violet tone for BV with no value ramp (3 and 8 match)", () => {
+    const a = render(<MetricBadge metric="bv" value={3} tinted />);
+    const three = screen.getByText("3").closest("span")!;
+    expect(three.getAttribute("style")).toContain("var(--meta-bv-fg)");
+    a.unmount();
+    render(<MetricBadge metric="bv" value={8} tinted />);
+    const eight = screen.getByText("8").closest("span")!;
+    expect(eight.getAttribute("style")).toContain("var(--meta-bv-fg)");
+  });
 });

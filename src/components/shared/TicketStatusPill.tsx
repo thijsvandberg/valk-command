@@ -4,7 +4,7 @@ import { useState, useRef, useEffect, useLayoutEffect, type ReactNode } from "re
 import { usePathname } from "next/navigation";
 import { useOutsideClick } from "@/hooks/useOutsideClick";
 import { createPortal } from "react-dom";
-import { ExternalLink, FilePen, MessageCircleQuestion, CheckCircle2, Ban, Copy, ClipboardList, PenLine, Flag, IterationCw, Zap, User, UserRound, ListChecks, Eye, GitBranch, Rocket, Star, Gem, MessageSquare, Gauge, Sparkles, RefreshCw } from "lucide-react";
+import { ExternalLink, FilePen, MessageCircleQuestion, CheckCircle2, Ban, Copy, ClipboardList, PenLine, Flag, IterationCw, Zap, User, UserRound, ListChecks, Eye, GitBranch, Rocket, Star, Boxes, MessageSquare, Gauge, Sparkles, RefreshCw } from "lucide-react";
 import type { JiraStatus, TicketReadiness, IssueType, Assignee, Sprint } from "@/types/ticket";
 import type { PipelineHealthEntry, LastDeployedInfo } from "@/hooks/usePipelines";
 import {
@@ -741,8 +741,8 @@ function TicketHoverCard({
           )}
           {data.refinementNames && data.refinementNames.length > 0 && (
             <Tooltip content={`In refinement: ${data.refinementNames.join(", ")}`}>
-              <span className="flex items-center gap-1.5 text-[var(--color-brand-300)]">
-                <Gem size={11} strokeWidth={1.5} />
+              <span className="flex items-center gap-1.5" style={{ color: "var(--meta-refine-fg)" }}>
+                <Boxes size={11} strokeWidth={1.5} />
                 <span className="text-label font-medium">In refinement</span>
               </span>
             </Tooltip>

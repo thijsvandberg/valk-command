@@ -173,21 +173,21 @@ function BvSummarySection({ tickets, previousTickets }: { tickets: StakeholderTi
             {high > 0 && (
               <div
                 className="h-full transition-[width] duration-700 ease-out"
-                style={{ width: `${(high / bandTotal) * 100}%`, backgroundColor: highColor.text, opacity: 0.6 }}
+                style={{ width: `${(high / bandTotal) * 100}%`, backgroundColor: highColor.solid, opacity: 0.7 }}
                 title={`High value (5-7): ${high}`}
               />
             )}
             {medium > 0 && (
               <div
                 className="h-full transition-[width] duration-700 ease-out"
-                style={{ width: `${(medium / bandTotal) * 100}%`, backgroundColor: medColor.text, opacity: 0.5 }}
+                style={{ width: `${(medium / bandTotal) * 100}%`, backgroundColor: medColor.solid, opacity: 0.5 }}
                 title={`Medium value (3-4): ${medium}`}
               />
             )}
             {low > 0 && (
               <div
                 className="h-full transition-[width] duration-700 ease-out"
-                style={{ width: `${(low / bandTotal) * 100}%`, backgroundColor: lowColor.text, opacity: 0.4 }}
+                style={{ width: `${(low / bandTotal) * 100}%`, backgroundColor: lowColor.solid, opacity: 0.35 }}
                 title={`Low value (1-2): ${low}`}
               />
             )}
@@ -195,19 +195,19 @@ function BvSummarySection({ tickets, previousTickets }: { tickets: StakeholderTi
           <div className="flex items-center gap-3 text-caption text-text-muted">
             {high > 0 && (
               <span className="flex items-center gap-1">
-                <span className="h-1.5 w-1.5 rounded-full" style={{ backgroundColor: highColor.text }} />
+                <span className="h-1.5 w-1.5 rounded-full" style={{ backgroundColor: highColor.solid }} />
                 {high} high
               </span>
             )}
             {medium > 0 && (
               <span className="flex items-center gap-1">
-                <span className="h-1.5 w-1.5 rounded-full" style={{ backgroundColor: medColor.text }} />
+                <span className="h-1.5 w-1.5 rounded-full" style={{ backgroundColor: medColor.solid }} />
                 {medium} medium
               </span>
             )}
             {low > 0 && (
               <span className="flex items-center gap-1">
-                <span className="h-1.5 w-1.5 rounded-full" style={{ backgroundColor: lowColor.text }} />
+                <span className="h-1.5 w-1.5 rounded-full" style={{ backgroundColor: lowColor.solid }} />
                 {low} low
               </span>
             )}
@@ -231,7 +231,7 @@ function TopValueItems({ tickets }: { tickets: StakeholderTicket[] }) {
   return (
     <div
       className="rounded-lg border px-4 py-3 space-y-2"
-      style={{ borderColor: `${highColor.text}20`, backgroundColor: `${highColor.bg}` }}
+      style={{ borderColor: `color-mix(in srgb, ${highColor.solid} 20%, transparent)`, backgroundColor: highColor.bg }}
     >
       <div className="flex items-center gap-2">
         <span
@@ -242,7 +242,7 @@ function TopValueItems({ tickets }: { tickets: StakeholderTicket[] }) {
         </span>
         <span
           className="rounded-full px-1.5 py-0.5 text-caption tabular-nums"
-          style={{ color: highColor.text, backgroundColor: `${highColor.text}15` }}
+          style={{ color: highColor.text, backgroundColor: `color-mix(in srgb, ${highColor.solid} 15%, transparent)` }}
         >
           {topItems.length}
         </span>

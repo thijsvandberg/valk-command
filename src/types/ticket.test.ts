@@ -1,64 +1,68 @@
 import { describe, it, expect } from "vitest";
 import {
   getSpColor,
-  SP_COLORS,
+  getBvColor,
   getGuestimationColor,
-  GUESS_COLORS,
   effectivePoints,
 } from "./ticket";
 
 describe("getSpColor", () => {
-  it("returns the correct color for each preset value", () => {
-    expect(getSpColor(0)).toBe(SP_COLORS[0]);
-    expect(getSpColor(1)).toBe(SP_COLORS[1]);
-    expect(getSpColor(2)).toBe(SP_COLORS[2]);
-    expect(getSpColor(3)).toBe(SP_COLORS[3]);
-    expect(getSpColor(5)).toBe(SP_COLORS[5]);
-    expect(getSpColor(8)).toBe(SP_COLORS[8]);
+  it("returns one flat slate tone for every positive value (no ramp)", () => {
+    const one = getSpColor(1);
+    for (const v of [2, 3, 5, 8, 13, 21]) {
+      expect(getSpColor(v)).toEqual(one);
+    }
   });
 
-  it("returns SP_COLORS[0] for negative values", () => {
-    expect(getSpColor(-1)).toBe(SP_COLORS[0]);
+  it("uses a theme-aware foreground var, not a fixed hex", () => {
+    expect(getSpColor(3).text).toBe("var(--meta-sp-fg)");
   });
 
-  it("maps custom values to the nearest band", () => {
-    // 4 should fall in the <=5 band
-    expect(getSpColor(4)).toBe(SP_COLORS[5]);
-    // 13 should fall in the highest band (>5)
-    expect(getSpColor(13)).toBe(SP_COLORS[8]);
-    // 21 should also be highest
-    expect(getSpColor(21)).toBe(SP_COLORS[8]);
+  it("returns the neutral N/A tone for 0 and negative values", () => {
+    expect(getSpColor(0)).toEqual(getSpColor(-1));
+    expect(getSpColor(0).text).not.toBe(getSpColor(5).text);
   });
 
-  it("returns an object with text and bg properties", () => {
+  it("returns an object with text, bg and solid properties", () => {
     const color = getSpColor(3);
     expect(color).toHaveProperty("text");
     expect(color).toHaveProperty("bg");
-    expect(typeof color.text).toBe("string");
-    expect(typeof color.bg).toBe("string");
+    expect(color).toHaveProperty("solid");
+  });
+
+  it("never uses an amber/green/red hue (off the traffic-light palette)", () => {
+    // The slate solid sits in the cool grey-blue range, not green/amber/red.
+    expect(getSpColor(5).solid).toBe("#64748b");
+  });
+});
+
+describe("getBvColor", () => {
+  it("returns one flat violet tone for every positive value (no ramp)", () => {
+    const one = getBvColor(1);
+    for (const v of [2, 3, 4, 5, 6, 7]) {
+      expect(getBvColor(v)).toEqual(one);
+    }
+  });
+
+  it("uses a theme-aware foreground var and a violet solid (never amber)", () => {
+    expect(getBvColor(5).text).toBe("var(--meta-bv-fg)");
+    expect(getBvColor(5).solid).toBe("#8b5cf6");
+  });
+
+  it("returns the neutral N/A tone for 0", () => {
+    expect(getBvColor(0).text).not.toBe(getBvColor(5).text);
   });
 });
 
 describe("getGuestimationColor", () => {
-  it("returns the muted band for each Fibonacci value", () => {
-    expect(getGuestimationColor(1)).toBe(GUESS_COLORS[1]);
-    expect(getGuestimationColor(2)).toBe(GUESS_COLORS[2]);
-    expect(getGuestimationColor(3)).toBe(GUESS_COLORS[3]);
-    expect(getGuestimationColor(5)).toBe(GUESS_COLORS[5]);
-    expect(getGuestimationColor(8)).toBe(GUESS_COLORS[8]);
-  });
-
-  it("is visually distinct from the SP ramp (never the green text)", () => {
-    // A guess must never read as a refined estimate: its ramp differs from SP's.
+  it("wears the SAME slate tone as SP (set apart by the dashed border, not hue)", () => {
     for (const v of [1, 2, 3, 5, 8]) {
-      expect(getGuestimationColor(v).text).not.toBe(getSpColor(v).text);
+      expect(getGuestimationColor(v)).toEqual(getSpColor(v));
     }
   });
 
-  it("clamps out-of-range values to the nearest band", () => {
-    expect(getGuestimationColor(0)).toBe(GUESS_COLORS[0]);
-    expect(getGuestimationColor(-1)).toBe(GUESS_COLORS[0]);
-    expect(getGuestimationColor(13)).toBe(GUESS_COLORS[8]);
+  it("returns the neutral N/A tone for 0 and negative values", () => {
+    expect(getGuestimationColor(0)).toEqual(getGuestimationColor(-1));
   });
 });
 

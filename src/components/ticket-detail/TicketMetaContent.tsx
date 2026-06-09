@@ -4,7 +4,7 @@ import { useState, useCallback, useRef, useMemo, useEffect } from "react";
 import type { Ticket, TicketReadiness, TicketDetail, JiraStatus } from "@/types/ticket";
 import { READINESS_CONFIG } from "@/types/ticket";
 import Link from "next/link";
-import { ChevronDown, AlertTriangle, Play, Gem } from "lucide-react";
+import { ChevronDown, AlertTriangle, Play, Boxes } from "lucide-react";
 import { TicketStatusPill } from "@/components/shared/TicketStatusPill";
 import { tickets, jira, apiFetch } from "@/lib/api-client";
 import { patchTicketCaches, moveTicketSprintCaches } from "@/lib/ticket-cache";
@@ -438,7 +438,7 @@ export function TicketMetaContent({
                     style={{ transition: "background-color 0.15s ease, border-color 0.15s ease" }}
                     title={`Open refinement session: ${s.name}`}
                   >
-                    <Gem size={12} strokeWidth={1.5} className="shrink-0 text-[var(--color-brand-500)]/70" />
+                    <Boxes size={12} strokeWidth={1.5} className="shrink-0 text-[var(--color-brand-500)]/70" />
                     <span className="min-w-0 truncate max-w-[150px]">{s.name}</span>
                   </Link>
                 ))}

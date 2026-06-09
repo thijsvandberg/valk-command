@@ -101,70 +101,44 @@ export function getEpicColor(epic: string): EpicColor {
   return EPIC_COLORS[epic] ?? EPIC_COLORS[epic.toUpperCase()] ?? generateEpicColor(epic);
 }
 
-// Business Value color bands: low (1-2) neutral grey, then a warm amber → orange
-// ramp for medium/high (3-7). 0 = not applicable (N/A), excluded from averages.
-export const BV_COLORS: Record<number, { text: string; bg: string }> = {
-  0: { text: "#555a64", bg: "rgba(85, 90, 100, 0.08)" },
-  1: { text: "#6e737c", bg: "rgba(110, 115, 124, 0.10)" },
-  2: { text: "#858a92", bg: "rgba(133, 138, 146, 0.10)" },
-  3: { text: "#c89a44", bg: "rgba(200, 154, 68, 0.11)" },
-  4: { text: "#d4962f", bg: "rgba(212, 150, 47, 0.12)" },
-  5: { text: "#dd8b22", bg: "rgba(221, 139, 34, 0.13)" },
-  6: { text: "#e5811a", bg: "rgba(229, 129, 26, 0.13)" },
-  7: { text: "#ec7614", bg: "rgba(236, 118, 20, 0.14)" },
-};
-
-export function getBvColor(value: number): { text: string; bg: string } {
-  return BV_COLORS[value] ?? BV_COLORS[4];
+// Row meta-marker tones (BRDG-321). The SP/BV/guestimation markers are a single
+// cohesive family — flat single tones, NOT magnitude ramps — so they read as
+// metadata, not status. Each tone carries a theme-aware `text` (a CSS var that
+// flips per [data-theme], light-on-dark / dark-on-light), a transparent tint
+// `bg` that composites over either surface, and a fixed mid-tone `solid` for
+// places that need an opaque value (active swatch fills, borders, shadows,
+// legend dots) where theme-flipping the foreground would not apply.
+export interface MetricTone {
+  text: string;
+  bg: string;
+  solid: string;
 }
 
-// Story Point colors: a single green ramp (light → deep) used only where SP is
-// shown tinted (pickers in detail views, popover swatches). In the dense table
-// SP renders neutral grey (see StoryPointPicker). 0 = N/A, excluded from totals.
-export const SP_COLORS: Record<number, { text: string; bg: string }> = {
-  0: { text: "#555a64", bg: "rgba(85, 90, 100, 0.08)" },
-  1: { text: "#6fa384", bg: "rgba(111, 163, 132, 0.10)" },
-  2: { text: "#5d9871", bg: "rgba(93, 152, 113, 0.10)" },
-  3: { text: "#4d8d5d", bg: "rgba(77, 141, 93, 0.10)" },
-  5: { text: "#3d8050", bg: "rgba(61, 128, 80, 0.12)" },
-  8: { text: "#2e7444", bg: "rgba(46, 116, 68, 0.14)" },
-};
+// SP = neutral slate (effort "recedes"); BV = violet ("premium/value"). Off the
+// traffic-light hues (no amber/green/red) so neither borrows a status meaning.
+const SP_TONE: MetricTone = { text: "var(--meta-sp-fg)", bg: "color-mix(in srgb, #64748b 18%, transparent)", solid: "#64748b" };
+const BV_TONE: MetricTone = { text: "var(--meta-bv-fg)", bg: "color-mix(in srgb, #8b5cf6 18%, transparent)", solid: "#8b5cf6" };
+// N/A (value 0) stays a neutral grey: it is a distinct semantic, not a magnitude.
+const NA_TONE: MetricTone = { text: "#7c8595", bg: "color-mix(in srgb, #64748b 12%, transparent)", solid: "#64748b" };
 
-export function getSpColor(value: number): { text: string; bg: string } {
-  if (value <= 0) return SP_COLORS[0];
-  if (value <= 1) return SP_COLORS[1];
-  if (value <= 2) return SP_COLORS[2];
-  if (value <= 3) return SP_COLORS[3];
-  if (value <= 5) return SP_COLORS[5];
-  return SP_COLORS[8];
+export function getBvColor(value: number): MetricTone {
+  return value <= 0 ? NA_TONE : BV_TONE;
+}
+
+export function getSpColor(value: number): MetricTone {
+  return value <= 0 ? NA_TONE : SP_TONE;
 }
 
 // Forward-planning guestimation (BRDG-303): a PO placeholder estimate, shown
-// only until real story points land. The Fibonacci scale is identical to SP, but
-// the meaning (a guess, "in pencil") and appearance differ deliberately so a
-// guess can never be mistaken for a refined estimate.
+// only until real story points land. The Fibonacci scale is identical to SP.
+// Per BRDG-321 a guess no longer differs by hue — it wears the SAME slate tone
+// as SP and is set apart purely by a dashed inset border ("penciled in"), so it
+// can never be mistaken for a committed estimate.
 export const GUESTIMATION_OPTIONS = [1, 2, 3, 5, 8] as const;
 export const GUESTIMATION_OPTION_SET = new Set<number>(GUESTIMATION_OPTIONS);
 
-// A muted graphite/slate-violet ramp, deliberately desaturated so it never reads
-// as SP's green gauge or BV's amber goal. Reinforced by a dashed "pencil" badge
-// in the picker. 0 = N/A.
-export const GUESS_COLORS: Record<number, { text: string; bg: string }> = {
-  0: { text: "#555a64", bg: "rgba(85, 90, 100, 0.08)" },
-  1: { text: "#8a86a6", bg: "rgba(138, 134, 166, 0.10)" },
-  2: { text: "#827e9f", bg: "rgba(130, 126, 159, 0.11)" },
-  3: { text: "#7a7699", bg: "rgba(122, 118, 153, 0.12)" },
-  5: { text: "#726e92", bg: "rgba(114, 110, 146, 0.13)" },
-  8: { text: "#6a668b", bg: "rgba(106, 102, 139, 0.14)" },
-};
-
-export function getGuestimationColor(value: number): { text: string; bg: string } {
-  if (value <= 0) return GUESS_COLORS[0];
-  if (value <= 1) return GUESS_COLORS[1];
-  if (value <= 2) return GUESS_COLORS[2];
-  if (value <= 3) return GUESS_COLORS[3];
-  if (value <= 5) return GUESS_COLORS[5];
-  return GUESS_COLORS[8];
+export function getGuestimationColor(value: number): MetricTone {
+  return value <= 0 ? NA_TONE : SP_TONE;
 }
 
 // A ticket's effective points for forward planning: a real story-point value

@@ -15,7 +15,7 @@ import { useRefinementStream } from "@/hooks/useRefinementStream";
 import { refinementSessions as refinementSessionsApi, jira as jiraApi } from "@/lib/api-client";
 import { useTicketActions } from "@/components/sprint-board/useTicketActions";
 import { mapJiraSprints } from "@/components/sprint-board/sprint-board-utils";
-import { Gem, Plus, Clock } from "lucide-react";
+import { Boxes, Plus, Clock } from "lucide-react";
 import { Toast } from "@/components/ui/Toast";
 import { useToast } from "@/hooks/useToast";
 import { ViewHeader, ViewHeaderTitle } from "@/components/shared/ViewHeader";
@@ -354,7 +354,7 @@ export function RefinementPageContent({
     <>
       {pageTitle}
       <ViewHeader
-        icon={<Gem size={16} strokeWidth={1.5} />}
+        icon={<Boxes size={16} strokeWidth={1.5} />}
         hideNotifications
         actions={
           <div className="flex items-center gap-2">

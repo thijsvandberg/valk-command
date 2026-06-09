@@ -5,7 +5,7 @@ import { BusinessValuePicker } from "./BusinessValuePicker";
 vi.mock("lucide-react", () => ({
   Minus: (props: Record<string, unknown>) => <span data-testid="minus-icon" {...props} />,
   X: (props: Record<string, unknown>) => <span data-testid="x-icon" {...props} />,
-  Goal: (props: Record<string, unknown>) => <span data-testid="goal-icon" {...props} />,
+  TrendingUp: (props: Record<string, unknown>) => <span data-testid="trending-up-icon" {...props} />,
 }));
 
 vi.mock("@/components/shared/BasePicker", () => {
@@ -26,15 +26,11 @@ vi.mock("@/components/shared/BasePicker", () => {
 });
 
 vi.mock("@/types/ticket", () => ({
-  getBvColor: (v: number) => {
-    if (v <= 2) return { text: "#22c55e", bg: "#22c55e20" };
-    if (v <= 5) return { text: "#eab308", bg: "#eab30820" };
-    return { text: "#ef4444", bg: "#ef444420" };
-  },
-  BV_COLORS: {
-    1: { text: "#6e737c", bg: "rgba(110, 115, 124, 0.10)" },
-    2: { text: "#858a92", bg: "rgba(133, 138, 146, 0.10)" },
-  },
+  // Flat violet tone regardless of value (BRDG-321 — no ramp).
+  getBvColor: (v: number) =>
+    v <= 0
+      ? { text: "#7c8595", bg: "color-mix(in srgb, #64748b 12%, transparent)", solid: "#64748b" }
+      : { text: "var(--meta-bv-fg)", bg: "color-mix(in srgb, #8b5cf6 18%, transparent)", solid: "#8b5cf6" },
 }));
 
 beforeEach(() => {
@@ -69,26 +65,26 @@ describe("BusinessValuePicker", () => {
   });
 
   describe("showMetricIcon", () => {
-    it("renders the goal icon in compact mode when set and value present", () => {
+    it("renders the trending-up icon in compact mode when set and value present", () => {
       render(<BusinessValuePicker value={3} onChange={vi.fn()} showMetricIcon />);
-      expect(screen.getByTestId("goal-icon")).toBeInTheDocument();
+      expect(screen.getByTestId("trending-up-icon")).toBeInTheDocument();
       expect(screen.getByText("3")).toBeInTheDocument();
     });
 
-    it("renders a faded goal icon when value is unset", () => {
+    it("renders a faded trending-up icon when value is unset", () => {
       render(<BusinessValuePicker value={null} onChange={vi.fn()} showMetricIcon />);
-      expect(screen.getByTestId("goal-icon")).toBeInTheDocument();
+      expect(screen.getByTestId("trending-up-icon")).toBeInTheDocument();
     });
 
     it("renders no icon by default in compact mode", () => {
       render(<BusinessValuePicker value={3} onChange={vi.fn()} />);
-      expect(screen.queryByTestId("goal-icon")).not.toBeInTheDocument();
+      expect(screen.queryByTestId("trending-up-icon")).not.toBeInTheDocument();
     });
 
-    it("replaces the BV text label with the goal icon in lg mode when set", () => {
+    it("replaces the BV text label with the trending-up icon in lg mode when set", () => {
       render(<BusinessValuePicker value={5} onChange={vi.fn()} size="lg" showMetricIcon />);
       expect(screen.queryByText("BV")).not.toBeInTheDocument();
-      expect(screen.getByTestId("goal-icon")).toBeInTheDocument();
+      expect(screen.getByTestId("trending-up-icon")).toBeInTheDocument();
     });
   });
 

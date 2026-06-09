@@ -1,8 +1,8 @@
-import { Gauge, Goal } from "lucide-react";
+import { Hash, TrendingUp } from "lucide-react";
 import { MetricBadge } from "@/components/shared/MetricBadge";
 
 export function SummaryCard({ label, value, sub, metric }: { label: string; value: number; sub?: string; metric?: "sp" | "bv" }) {
-  const Icon = metric === "sp" ? Gauge : metric === "bv" ? Goal : null;
+  const Icon = metric === "sp" ? Hash : metric === "bv" ? TrendingUp : null;
   return (
     <div className="rounded-lg px-3.5 py-3" style={{ backgroundColor: "var(--color-overlay-subtle)" }}>
       <div className="flex items-center gap-1.5 text-[10px] uppercase tracking-wider text-text-muted font-medium mb-1.5">

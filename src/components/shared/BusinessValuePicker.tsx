@@ -3,8 +3,8 @@
 import { useState, useCallback, useEffect } from "react";
 import { createPortal } from "react-dom";
 import { usePickerState } from "@/components/shared/BasePicker";
-import { getBvColor, BV_COLORS } from "@/types/ticket";
-import { Minus, X, Goal } from "lucide-react";
+import { getBvColor } from "@/types/ticket";
+import { Minus, X, TrendingUp } from "lucide-react";
 import { Tooltip } from "@/components/shared/Tooltip";
 
 const BV_SCORE_OPTIONS = [1, 2, 3, 4, 5, 6, 7] as const;
@@ -91,7 +91,7 @@ export function BusinessValuePicker({
             transition: "opacity 0.15s ease",
           }}
         >
-          {showMetricIcon ? <Goal size={13} strokeWidth={2} aria-hidden /> : <span className="text-[10px] font-semibold uppercase tracking-wider opacity-60">BV</span>}
+          {showMetricIcon ? <TrendingUp size={13} strokeWidth={2} aria-hidden /> : <span className="text-[10px] font-semibold uppercase tracking-wider opacity-60">BV</span>}
           <span className="text-body-sm font-semibold tabular-nums">{displayLabel ?? "?"}</span>
         </button>
       ) : (
@@ -113,10 +113,10 @@ export function BusinessValuePicker({
           {showMetricIcon ? (
             // Always reserve the icon + value footprint so empty and filled cells
             // share one width and the column reads as a calm, aligned BV gutter.
-            // A scored cell inherits its BV-ramp color; an unset cell uses the
-            // lightest tint in the ramp (value 2) so it reads as a faint placeholder.
+            // A scored cell inherits the flat violet tone; an unset cell shows a
+            // faded violet glyph so it reads as a faint placeholder.
             <>
-              <Goal size={dense ? 11 : 12} strokeWidth={2} aria-hidden style={displayLabel == null ? { color: BV_COLORS[2].text } : undefined} />
+              <TrendingUp size={dense ? 11 : 12} strokeWidth={2} aria-hidden style={displayLabel == null ? { color: "var(--meta-bv-fg)", opacity: 0.4 } : undefined} />
               {displayLabel != null && displayLabel}
             </>
           ) : displayLabel != null ? (
@@ -156,7 +156,7 @@ export function BusinessValuePicker({
               const c = getBvColor(n);
               const isActive = n === value;
               return (
-                <button key={n} type="button" onClick={() => { onChange(n); handleClose(); }} className="flex h-7 w-7 items-center justify-center rounded-md text-body-sm font-medium tabular-nums cursor-pointer transition-colors duration-100 hover:opacity-80 active:opacity-60" style={{ color: isActive ? "#fff" : c.text, backgroundColor: isActive ? c.text : c.bg, boxShadow: isActive ? `0 0 0 1px ${c.text}40` : undefined }}>
+                <button key={n} type="button" onClick={() => { onChange(n); handleClose(); }} className="flex h-7 w-7 items-center justify-center rounded-md text-body-sm font-medium tabular-nums cursor-pointer transition-colors duration-100 hover:opacity-80 active:opacity-60" style={{ color: isActive ? "#fff" : c.text, backgroundColor: isActive ? c.solid : c.bg, boxShadow: isActive ? `0 0 0 1px color-mix(in srgb, ${c.solid} 40%, transparent)` : undefined }}>
                   {n}
                 </button>
               );

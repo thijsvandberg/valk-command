@@ -4,7 +4,7 @@ import { useState, useRef, useEffect, useCallback } from "react";
 import { createPortal } from "react-dom";
 import { usePickerState } from "@/components/shared/BasePicker";
 import { getSpColor } from "@/types/ticket";
-import { Minus, X, Hash, Gauge } from "lucide-react";
+import { Minus, X, Hash } from "lucide-react";
 import { Tooltip } from "@/components/shared/Tooltip";
 
 const SP_PRESET_OPTIONS = [1, 2, 3, 5, 8] as const;
@@ -129,7 +129,7 @@ export function StoryPointPicker({
             transition: "opacity 0.15s ease",
           }}
         >
-          {showMetricIcon ? <Gauge size={13} strokeWidth={2} aria-hidden /> : <span className="text-[10px] font-semibold uppercase tracking-wider opacity-60">SP</span>}
+          {showMetricIcon ? <Hash size={13} strokeWidth={2} aria-hidden /> : <span className="text-[10px] font-semibold uppercase tracking-wider opacity-60">SP</span>}
           <span className="text-body-sm font-semibold tabular-nums">{displayLabel ?? "?"}</span>
         </button>
       ) : (
@@ -155,7 +155,7 @@ export function StoryPointPicker({
             // share one width and the column reads as a calm, aligned SP gutter.
             // The icon keeps the same size and color whether or not a value is set.
             <>
-              <Gauge size={dense ? 11 : 12} strokeWidth={2} aria-hidden />
+              <Hash size={dense ? 11 : 12} strokeWidth={2} aria-hidden />
               {displayLabel != null && displayLabel}
             </>
           ) : displayLabel != null ? (
@@ -197,7 +197,7 @@ export function StoryPointPicker({
                   const c = getSpColor(n);
                   const isActive = n === value;
                   return (
-                    <button key={n} type="button" onClick={() => { onChange(n); handleClose(); }} className="flex h-10 w-10 items-center justify-center rounded-md text-body-lg font-semibold tabular-nums cursor-pointer transition-colors duration-100 hover:opacity-80 active:opacity-60" style={{ color: isActive ? "#fff" : c.text, backgroundColor: isActive ? c.text : c.bg, boxShadow: isActive ? `0 0 0 1px ${c.text}40` : undefined }}>
+                    <button key={n} type="button" onClick={() => { onChange(n); handleClose(); }} className="flex h-10 w-10 items-center justify-center rounded-md text-body-lg font-semibold tabular-nums cursor-pointer transition-colors duration-100 hover:opacity-80 active:opacity-60" style={{ color: isActive ? "#fff" : c.text, backgroundColor: isActive ? c.solid : c.bg, boxShadow: isActive ? `0 0 0 1px color-mix(in srgb, ${c.solid} 40%, transparent)` : undefined }}>
                       {n}
                     </button>
                   );
@@ -224,12 +224,12 @@ export function StoryPointPicker({
                 const c = getSpColor(n);
                 const isActive = n === value;
                 return (
-                  <button key={n} type="button" onClick={() => { onChange(n); handleClose(); }} className={`flex ${btnSize} items-center justify-center rounded-md ${btnText} tabular-nums cursor-pointer transition-colors duration-100 hover:opacity-80 active:opacity-60`} style={{ color: isActive ? "#fff" : c.text, backgroundColor: isActive ? c.text : c.bg, boxShadow: isActive ? `0 0 0 1px ${c.text}40` : undefined }}>
+                  <button key={n} type="button" onClick={() => { onChange(n); handleClose(); }} className={`flex ${btnSize} items-center justify-center rounded-md ${btnText} tabular-nums cursor-pointer transition-colors duration-100 hover:opacity-80 active:opacity-60`} style={{ color: isActive ? "#fff" : c.text, backgroundColor: isActive ? c.solid : c.bg, boxShadow: isActive ? `0 0 0 1px color-mix(in srgb, ${c.solid} 40%, transparent)` : undefined }}>
                     {n}
                   </button>
                 );
               })}
-              <button type="button" onClick={() => setCustomMode(true)} title="Custom value" className={`flex ${btnSize} items-center justify-center rounded-md cursor-pointer transition-colors duration-100 hover:opacity-80 active:opacity-60`} style={{ color: isCustomValue ? "#fff" : "var(--color-text-muted)", backgroundColor: isCustomValue ? (color?.text ?? "var(--color-overlay-default)") : "var(--color-overlay-subtle)", boxShadow: isCustomValue ? `0 0 0 1px ${color?.text ?? "var(--color-text-muted)"}40` : undefined }}>
+              <button type="button" onClick={() => setCustomMode(true)} title="Custom value" className={`flex ${btnSize} items-center justify-center rounded-md cursor-pointer transition-colors duration-100 hover:opacity-80 active:opacity-60`} style={{ color: isCustomValue ? "#fff" : "var(--color-text-muted)", backgroundColor: isCustomValue ? (color?.solid ?? "var(--color-overlay-default)") : "var(--color-overlay-subtle)", boxShadow: isCustomValue ? `0 0 0 1px color-mix(in srgb, ${color?.solid ?? "var(--color-text-muted)"} 40%, transparent)` : undefined }}>
                 <Hash size={11} strokeWidth={1.5} />
               </button>
               <button type="button" onClick={() => { onChange(null); handleClose(); }} title="Clear story points" className={`flex ${btnSize} items-center justify-center rounded-md text-text-muted cursor-pointer hover:bg-overlay-default hover:text-text-secondary transition-colors duration-100 active:opacity-60 ${value == null ? "opacity-30 pointer-events-none" : ""}`} disabled={value == null}>

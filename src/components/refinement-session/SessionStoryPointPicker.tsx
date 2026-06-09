@@ -117,8 +117,8 @@ export function SessionStoryPointPicker({
                     className="flex h-12 w-12 cursor-pointer items-center justify-center rounded-lg text-heading-sm font-semibold tabular-nums hover:opacity-80 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)] active:scale-95"
                     style={{
                       color: isActive ? "#fff" : c.text,
-                      backgroundColor: isActive ? c.text : c.bg,
-                      boxShadow: isActive ? `0 0 0 2px ${c.text}40, 0 2px 8px ${c.text}30` : undefined,
+                      backgroundColor: isActive ? c.solid : c.bg,
+                      boxShadow: isActive ? `0 0 0 2px color-mix(in srgb, ${c.solid} 40%, transparent), 0 2px 8px color-mix(in srgb, ${c.solid} 30%, transparent)` : undefined,
                       transition: "transform 0.1s ease, opacity 0.15s ease",
                     }}
                   >

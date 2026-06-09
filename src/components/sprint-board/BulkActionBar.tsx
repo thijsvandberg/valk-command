@@ -9,7 +9,7 @@ import { Checkbox } from "@/components/shared/Checkbox";
 import {
   Copy,
   Loader2,
-  Gem,
+  Boxes,
   ChevronDown,
   Sparkles,
   Settings2,
@@ -342,7 +342,7 @@ export function BulkActionBar({
           onClick={onRefine}
           className="shrink-0 border-0 text-text-secondary hover:text-text-primary"
         >
-          <Gem className="mr-1.5 h-3.5 w-3.5 shrink-0" strokeWidth={1.5} />
+          <Boxes className="mr-1.5 h-3.5 w-3.5 shrink-0" strokeWidth={1.5} />
           <span className="hidden sm:inline">Add to Refinement</span>
         </Button>
       )}

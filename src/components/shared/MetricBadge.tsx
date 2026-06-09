@@ -1,15 +1,16 @@
 "use client";
 
-// Reusable SP / BV display badge (BRDG-240). A leading gauge (SP, effort) or
-// goal (BV, value) icon plus the number, with the project color rules:
-//   - SP has no value color by default (neutral grey); only the `tinted`
-//     emphasis variant uses the green effort ramp.
-//   - BV always uses its band: neutral grey at 1-2, amber → orange at 3-7.
+// Reusable SP / BV display badge (BRDG-240, re-hued in BRDG-321). A leading hash
+// (SP, effort) or trending-up (BV, value) icon plus the number. SP and BV are one
+// cohesive marker family — flat single tones (slate / violet), no value ramp:
+//   - SP stays neutral by default (untinted); the `tinted` emphasis variant fills
+//     with the slate tone.
+//   - BV always wears its flat violet tone.
 // This is display-only; the editable trigger lives in StoryPointPicker /
 // BusinessValuePicker (which share the same icon + color treatment).
 
 import type { ReactNode } from "react";
-import { Gauge, Goal } from "lucide-react";
+import { Hash, TrendingUp } from "lucide-react";
 import { getSpColor, getBvColor } from "@/types/ticket";
 import { Tooltip } from "@/components/shared/Tooltip";
 
@@ -37,7 +38,7 @@ export function MetricBadge({
   size?: "xs" | "sm";
   className?: string;
 }) {
-  const Icon = metric === "sp" ? Gauge : Goal;
+  const Icon = metric === "sp" ? Hash : TrendingUp;
   const palette = value != null ? (metric === "sp" ? getSpColor(value) : getBvColor(value)) : null;
   const fg =
     value == null

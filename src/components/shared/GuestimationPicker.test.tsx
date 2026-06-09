@@ -14,10 +14,13 @@ describe("GuestimationPicker", () => {
     expect(screen.getByRole("button").title).toBe("Guestimation: 5 (PO guess)");
   });
 
-  it("renders the distinct pencil/dashed motif so it never reads as SP", () => {
+  it("wears the slate SP tone, set apart only by the dashed inset border (BRDG-321)", () => {
     render(<GuestimationPicker value={5} onChange={() => {}} />);
-    // The dashed border is the key visual differentiator from the solid SP gauge.
-    expect(screen.getByRole("button").className).toContain("border-dashed");
+    const button = screen.getByRole("button");
+    // The dashed border ("penciled in") is the only differentiator from a committed SP chip...
+    expect(button.className).toContain("border-dashed");
+    // ...the hue is the SAME theme-aware slate as SP, no longer a separate guess color.
+    expect(button.getAttribute("style")).toContain("--meta-sp-fg");
   });
 
   it("offers the same Fibonacci scale as story points, with no custom entry", () => {

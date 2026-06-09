@@ -298,7 +298,7 @@ export const GroupStatBar = memo(function GroupStatBar({
           tinted
           tooltipContent={
             showBvAvg && spAvg
-              ? metricTooltip("Story points", totalPoints, spAvg, "per estimated ticket", getSpColor(totalPoints).text)
+              ? metricTooltip("Story points", totalPoints, spAvg, "per estimated ticket", getSpColor(totalPoints).solid)
               : undefined
           }
         />
@@ -310,7 +310,7 @@ export const GroupStatBar = memo(function GroupStatBar({
           tinted
           tooltipContent={
             showBvAvg && bvAvg
-              ? metricTooltip("Business value", bvTotal, bvAvg, "per scored ticket", getBvColor(bvTotal).text)
+              ? metricTooltip("Business value", bvTotal, bvAvg, "per scored ticket", getBvColor(bvTotal).solid)
               : undefined
           }
         />

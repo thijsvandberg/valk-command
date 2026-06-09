@@ -4,14 +4,16 @@ import { useState, useCallback, useEffect } from "react";
 import { createPortal } from "react-dom";
 import { usePickerState } from "@/components/shared/BasePicker";
 import { getGuestimationColor, GUESTIMATION_OPTIONS, GUESTIMATION_OPTION_SET } from "@/types/ticket";
-import { Minus, X, Pencil } from "lucide-react";
+import { Minus, X, Hash } from "lucide-react";
 import { Tooltip } from "@/components/shared/Tooltip";
 
-// Forward-planning guestimation (BRDG-303). Technically identical to the story
-// point picker (same Fibonacci scale, same keyboard entry), but deliberately
-// styled as a provisional "pencil" estimate: a dashed outline badge in a muted
-// graphite-violet hue, never the solid green SP gauge. A guess must never read
-// as a refined estimate. No custom-number entry: a guess is intentionally coarse.
+// Forward-planning guestimation (BRDG-303, re-styled in BRDG-321). Technically
+// identical to the story point picker (same Fibonacci scale, same keyboard
+// entry) and now wears the SAME slate Hash tone — a guess is set apart purely by
+// a dashed inset border ("penciled in"), never by a different hue. Because the
+// dashed border sits inside the existing footprint (border-box), the draft chip
+// is exactly the same outer size as a committed SP chip. No custom-number entry:
+// a guess is intentionally coarse.
 
 export function GuestimationPicker({
   value,
@@ -97,8 +99,8 @@ export function GuestimationPicker({
             transition: "opacity 0.15s ease",
           }}
         >
-          {showMetricIcon ? <Pencil size={12} strokeWidth={2} aria-hidden /> : <span className="text-[10px] font-semibold uppercase tracking-wider opacity-60">G</span>}
-          <span className="text-body-sm font-semibold tabular-nums italic">{displayLabel ?? "?"}</span>
+          {showMetricIcon ? <Hash size={12} strokeWidth={2} aria-hidden /> : <span className="text-[10px] font-semibold uppercase tracking-wider opacity-60">G</span>}
+          <span className="text-body-sm font-semibold tabular-nums">{displayLabel ?? "?"}</span>
         </button>
       ) : (
         <button
@@ -109,7 +111,7 @@ export function GuestimationPicker({
           onMouseLeave={handleMouseLeave}
           title={richTooltip ? undefined : titleText}
           aria-label={titleText}
-          className={`flex items-center rounded-md border border-dashed cursor-pointer transition-colors duration-150 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)] active:opacity-60 font-medium tabular-nums italic ${dense ? "h-5 text-[11px] leading-none" : "h-6 text-body-sm"} ${showMetricIcon ? "gap-1 px-1.5 min-w-[2.25rem] justify-start" : "min-w-[24px] justify-center px-1"}`}
+          className={`flex items-center rounded-md border border-dashed cursor-pointer transition-colors duration-150 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)] active:opacity-60 font-medium tabular-nums ${dense ? "h-5 text-[11px] leading-none" : "h-6 text-body-sm"} ${showMetricIcon ? "gap-1 px-1.5 min-w-[2.25rem] justify-start" : "min-w-[24px] justify-center px-1"}`}
           style={{
             color: color?.text ?? "var(--color-text-muted)",
             backgroundColor: showBg ? (color?.bg ?? "var(--color-overlay-subtle)") : "transparent",
@@ -121,13 +123,13 @@ export function GuestimationPicker({
             // Reserve the icon + value footprint so empty and filled cells share
             // one width and the column reads as a calm, aligned guess gutter.
             <>
-              <Pencil size={dense ? 10 : 11} strokeWidth={2} aria-hidden />
+              <Hash size={dense ? 10 : 11} strokeWidth={2} aria-hidden />
               {displayLabel != null && displayLabel}
             </>
           ) : displayLabel != null ? (
             displayLabel
           ) : (
-            <Pencil size={dense ? 10 : 11} strokeWidth={2} aria-hidden style={{ opacity: 0.7 }} />
+            <Hash size={dense ? 10 : 11} strokeWidth={2} aria-hidden style={{ opacity: 0.7 }} />
           )}
         </button>
   );
@@ -151,7 +153,7 @@ export function GuestimationPicker({
           className="fixed z-[9999] rounded-lg border border-dashed border-border-default p-1.5"
           style={getPopoverStyle()}
         >
-          <div className="mb-1 px-0.5 text-[9px] font-semibold uppercase tracking-wider text-text-muted italic">Guestimate</div>
+          <div className="mb-1 px-0.5 text-[9px] font-semibold uppercase tracking-wider text-text-muted">Guestimate</div>
           <div className="flex items-center gap-1">
             <button type="button" onClick={() => { onChange(0); handleClose(); }} title="Not applicable" className="flex h-7 w-7 items-center justify-center rounded-md border border-dashed cursor-pointer transition-colors duration-100 hover:opacity-80 active:opacity-60" style={{ color: isNA ? "#fff" : "#555a64", backgroundColor: isNA ? "#555a64" : "color-mix(in srgb, #555a64 8%, transparent)", borderColor: isNA ? "transparent" : "color-mix(in srgb, #555a64 35%, transparent)" }}>
               <Minus size={12} strokeWidth={1.5} />
@@ -161,7 +163,7 @@ export function GuestimationPicker({
               const c = getGuestimationColor(n);
               const isActive = n === value;
               return (
-                <button key={n} type="button" onClick={() => { onChange(n); handleClose(); }} className="flex h-7 w-7 items-center justify-center rounded-md border border-dashed text-body-sm font-semibold tabular-nums italic cursor-pointer transition-colors duration-100 hover:opacity-80 active:opacity-60" style={{ color: isActive ? "#fff" : c.text, backgroundColor: isActive ? c.text : c.bg, borderColor: isActive ? "transparent" : `color-mix(in srgb, ${c.text} 40%, transparent)` }}>
+                <button key={n} type="button" onClick={() => { onChange(n); handleClose(); }} className="flex h-7 w-7 items-center justify-center rounded-md border border-dashed text-body-sm font-semibold tabular-nums cursor-pointer transition-colors duration-100 hover:opacity-80 active:opacity-60" style={{ color: isActive ? "#fff" : c.text, backgroundColor: isActive ? c.solid : c.bg, borderColor: isActive ? "transparent" : `color-mix(in srgb, ${c.solid} 40%, transparent)` }}>
                   {n}
                 </button>
               );

@@ -11,7 +11,7 @@ import { HoverRevealSlot } from "@/components/shared/HoverRevealSlot";
 import { Checkbox } from "@/components/shared/Checkbox";
 import type { InlineTagId } from "@/components/sprint-board/filter-bar-types";
 import { Avatar } from "@/components/shared/Avatar";
-import { Flag, MessageSquare, Pencil, Check, X, Gem, IterationCw, GripVertical, AlertTriangle } from "lucide-react";
+import { Flag, MessageSquare, Pencil, Check, X, Boxes, IterationCw, GripVertical, AlertTriangle } from "lucide-react";
 import { OpenSubtasksIndicator } from "@/components/sprint-board/OpenSubtasksIndicator";
 import type { TicketSessionEntry } from "@/hooks/useTicketSessionMap";
 import { RefinementGemTrigger, type RefinementCardTicketInfo } from "@/components/sprint-board/RefinementGemHoverCard";
@@ -507,11 +507,11 @@ export const BoardRow = memo(forwardRef<HTMLTableRowElement, BoardRowBaseProps>(
                   onRemoveFromRefinement={onRemoveFromRefinement}
                   onViewRefinement={onViewRefinement}
                 >
-                  <span className="inline-flex h-5 shrink-0 items-center gap-1 rounded-full bg-[var(--color-brand-500)]/12 px-2 text-[var(--color-brand-300)] ring-1 ring-inset ring-[var(--color-brand-500)]/15">
-                    <Gem size={12} strokeWidth={1.75} className="shrink-0" />
-                    {refinementSessions.length > 1 && (
-                      <span className="text-[11px] font-medium leading-none tabular-nums">{refinementSessions.length}</span>
-                    )}
+                  <span
+                    className="inline-flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-[var(--color-brand-500)]/12 ring-1 ring-inset ring-[var(--color-brand-500)]/15"
+                    style={{ color: "var(--meta-refine-fg)" }}
+                  >
+                    <Boxes size={12} strokeWidth={1.75} className="shrink-0" />
                   </span>
                 </RefinementGemTrigger>
               )}

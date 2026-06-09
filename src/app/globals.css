@@ -391,6 +391,23 @@ html.theme-transition *::after {
   --sp-done-dot: #16a34a;
 }
 
+/* Row meta-marker family (BRDG-321): the three small markers that ride at the
+   right edge of an issue row read as one family — Refinement (brand teal), SP
+   (slate), BV (violet). These vars carry only the foreground, which must flip
+   per theme (light text on dark, dark text on light) since the project has no
+   working Tailwind `dark:` variant; a fixed shade vanishes on one surface. The
+   tint fill stays a transparent color-mix that composites over either theme. */
+:root {
+  --meta-sp-fg: #cbd5e1;
+  --meta-bv-fg: #c4b5fd;
+  --meta-refine-fg: var(--color-brand-300);
+}
+[data-theme="light"] {
+  --meta-sp-fg: #475569;
+  --meta-bv-fg: #6d28d9;
+  --meta-refine-fg: var(--color-brand-700);
+}
+
 /* Expand/details block: hide native marker, rotate arrow when open */
 details.expand-block > summary::-webkit-details-marker { display: none; }
 details.expand-block > summary { list-style: none; }

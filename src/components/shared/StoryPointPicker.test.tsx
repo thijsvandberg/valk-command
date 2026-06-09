@@ -184,9 +184,10 @@ describe("StoryPointPicker", () => {
   });
 
   describe("showMetricIcon", () => {
-    it("renders a leading icon in compact mode when set and value present", () => {
+    it("renders a leading Hash glyph in compact mode when set and value present (BRDG-321)", () => {
       const { container } = render(<StoryPointPicker value={3} onChange={() => {}} showMetricIcon />);
-      expect(container.querySelector("svg")).toBeInTheDocument();
+      expect(container.querySelector(".lucide-hash")).toBeInTheDocument();
+      expect(container.querySelector(".lucide-gauge")).toBeNull();
       expect(screen.getByText("3")).toBeInTheDocument();
     });
 
