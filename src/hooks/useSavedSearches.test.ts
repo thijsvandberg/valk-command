@@ -35,7 +35,7 @@ describe("useSavedSearches", () => {
           filters: {
             sections: ["tickets"],
             status: ["TO DO"],
-            poStatus: [],
+            readiness: ["on_hold"],
             type: [],
             assignee: [],
             sprint: [],
@@ -56,6 +56,42 @@ describe("useSavedSearches", () => {
     expect(first.filters.sections.has("tickets")).toBe(true);
     expect(first.filters.status).toBeInstanceOf(Set);
     expect(first.filters.status.has("TO DO")).toBe(true);
+    expect(first.filters.readiness).toBeInstanceOf(Set);
+    expect(first.filters.readiness.has("on_hold")).toBe(true);
+  });
+
+  it("deserializes legacy searches carrying a poStatus field without throwing", async () => {
+    // Searches saved before the PO Status -> Readiness switch (BRDG-324) carry a free-text
+    // poStatus array. It must deserialize cleanly, dropping the legacy values.
+    const serialized = {
+      searches: [
+        {
+          id: "legacy",
+          label: "Legacy",
+          query: "auth",
+          filters: {
+            sections: [],
+            status: [],
+            poStatus: ["needs-refinement"],
+            type: [],
+            assignee: [],
+            sprint: [],
+            dateRange: null,
+          },
+        },
+      ],
+    };
+    vi.spyOn(globalThis, "fetch").mockResolvedValue(
+      new Response(JSON.stringify(serialized), { status: 200 }),
+    );
+
+    const { result } = renderHook(() => useSavedSearches(), { wrapper });
+
+    await waitFor(() => expect(result.current.isLoading).toBe(false));
+    const first = result.current.savedSearches[0];
+    expect(first.filters.readiness).toBeInstanceOf(Set);
+    expect(first.filters.readiness.size).toBe(0);
+    expect("poStatus" in first.filters).toBe(false);
   });
 
   it("saveSearch calls PUT with serialized filters", async () => {
@@ -87,8 +123,8 @@ describe("useSavedSearches", () => {
   it("deleteSearch removes the entry by id", async () => {
     const initial = {
       searches: [
-        { id: "a", label: "A", query: "foo", filters: { sections: [], status: [], poStatus: [], type: [], assignee: [], sprint: [], dateRange: null } },
-        { id: "b", label: "B", query: "bar", filters: { sections: [], status: [], poStatus: [], type: [], assignee: [], sprint: [], dateRange: null } },
+        { id: "a", label: "A", query: "foo", filters: { sections: [], status: [], readiness: [], type: [], assignee: [], sprint: [], dateRange: null } },
+        { id: "b", label: "B", query: "bar", filters: { sections: [], status: [], readiness: [], type: [], assignee: [], sprint: [], dateRange: null } },
       ],
     };
 
@@ -122,7 +158,7 @@ describe("useSavedSearches", () => {
         id: `id-${i}`,
         label: `Search ${i}`,
         query: `q${i}`,
-        filters: { sections: [], status: [], poStatus: [], type: [], assignee: [], sprint: [], dateRange: null },
+        filters: { sections: [], status: [], readiness: [], type: [], assignee: [], sprint: [], dateRange: null },
       })),
     };
     vi.spyOn(globalThis, "fetch").mockResolvedValue(

@@ -252,7 +252,7 @@ describe("SearchModal", () => {
     });
 
     // Regular click: router.push + onClose
-    const resultRow = document.querySelector("[data-result-row] a")!;
+    const resultRow = document.querySelector("[data-result-row] [role=\"link\"]")!;
     fireEvent.click(resultRow);
     expect(mockPush).toHaveBeenCalledWith("/tickets/VPL-3");
     expect(onClose).toHaveBeenCalled();
@@ -310,7 +310,7 @@ describe("SearchModal", () => {
       expect(screen.getAllByText("Settings page").length).toBeGreaterThanOrEqual(1);
     });
 
-    const resultRow = document.querySelector("[data-result-row] a")!;
+    const resultRow = document.querySelector("[data-result-row] [role=\"link\"]")!;
     fireEvent.click(resultRow, { metaKey: true });
     // window.open called (new tab), modal stays open
     expect(windowOpenSpy).toHaveBeenCalledWith("/tickets/VPL-4", "_blank", "noopener,noreferrer");

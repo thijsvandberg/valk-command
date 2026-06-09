@@ -2,13 +2,12 @@
 
 import { useState, useRef, useMemo } from "react";
 import useSWR from "swr";
-import { IssueTypeIcon, ISSUE_TYPE_COLORS } from "@/components/shared/IssueTypeIcon";
-import { ReadinessIcon } from "@/components/shared/ReadinessCell";
 import { Avatar } from "@/components/shared/Avatar";
 import { userInitials, userColor, type AssignableUser } from "@/components/shared/AssigneePicker";
 import { swrFetcher } from "@/lib/api-client";
-import type { TicketReadiness, JiraStatus } from "@/types/ticket";
-import { StatusBadge } from "@/components/shared/StatusBadge";
+import { IssueTypeOption } from "@/components/shared/IssueTypeOption";
+import { StatusOption } from "@/components/shared/StatusOption";
+import { ReadinessOption } from "@/components/shared/ReadinessOption";
 import { X, Bookmark } from "lucide-react";
 import { FilterDropdown } from "@/components/shared/FilterDropdown";
 import { Button } from "@/components/ui/Button";
@@ -22,7 +21,7 @@ export { SortDropdown } from "@/components/sprint-board/SortControls";
 export { ColumnToggle } from "@/components/sprint-board/ColumnToggle";
 export { BoardFieldToggle } from "@/components/sprint-board/BoardFieldToggle";
 
-import { EDIT_STATE_OPTIONS, GAPS_OPTIONS, READINESS_OPTIONS, READINESS_CONFIG, SPRINT_STATE_FILTER_OPTIONS, type SavedView } from "@/components/sprint-board/filter-bar-types";
+import { EDIT_STATE_OPTIONS, GAPS_OPTIONS, READINESS_OPTIONS, SPRINT_STATE_FILTER_OPTIONS, type SavedView } from "@/components/sprint-board/filter-bar-types";
 import { EpicBadge } from "@/components/shared/IssueMetaBadges";
 
 export function FilterBar({
@@ -137,21 +136,7 @@ export function FilterBar({
         options={statusOptions}
         selected={statusFilter}
         onChange={onStatusFilterChange}
-        renderOption={(v) =>
-          // DELETED is a derived soft-delete state for tickets removed from Jira
-          // (not a JiraStatus): muted rose + strikethrough, matching the badge
-          // treatment everywhere else (BRDG-322).
-          v === "DELETED" ? (
-            <span
-              className="inline-flex items-center rounded px-2 py-0.5 text-body-sm font-medium line-through"
-              style={{ backgroundColor: "var(--color-status-deleted-subtle)", color: "var(--color-status-deleted)" }}
-            >
-              DELETED
-            </span>
-          ) : (
-            <StatusBadge status={v as JiraStatus} />
-          )
-        }
+        renderOption={(v) => <StatusOption value={v} />}
       />
       <FilterDropdown
         label="Epic"
@@ -183,27 +168,7 @@ export function FilterBar({
         options={readinessOptions}
         selected={readinessFilter}
         onChange={onReadinessFilterChange}
-        renderOption={(v) => {
-          if (v === "none") {
-            return (
-              <span className="flex items-center gap-2">
-                <span className="flex w-4 justify-center">
-                  <span className="h-1.5 w-1.5 rounded-full bg-overlay-strong" />
-                </span>
-                Ready for Development
-              </span>
-            );
-          }
-          const cfg = READINESS_CONFIG[v as keyof typeof READINESS_CONFIG];
-          return (
-            <span className="flex items-center gap-2">
-              <span className="flex w-4 justify-center" style={{ color: cfg?.color ?? "var(--color-status-neutral)" }}>
-                <ReadinessIcon value={v as TicketReadiness} size={15} strokeWidth={2} />
-              </span>
-              {cfg?.label ?? v}
-            </span>
-          );
-        }}
+        renderOption={(v) => <ReadinessOption value={v} />}
       />
       <FilterDropdown
         label="Changes"
@@ -225,17 +190,7 @@ export function FilterBar({
         options={issueTypeOptions}
         selected={issueTypeFilter}
         onChange={onIssueTypeFilterChange}
-        renderOption={(v) => {
-          const color = ISSUE_TYPE_COLORS[v as keyof typeof ISSUE_TYPE_COLORS];
-          return (
-            <span className="flex items-center gap-2">
-              <span className="flex w-4 justify-center">
-                <IssueTypeIcon type={v} size={15} strokeWidth={2} />
-              </span>
-              <span style={color ? { color } : undefined} className="capitalize">{v}</span>
-            </span>
-          );
-        }}
+        renderOption={(v) => <IssueTypeOption value={v} />}
       />
       {gapsFilter && onGapsFilterChange && (
         <FilterDropdown

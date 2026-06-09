@@ -3,15 +3,16 @@
 import { useState } from "react";
 import { X, Tag, MessageSquare, MessageCircle } from "lucide-react";
 import { FilterDropdown } from "@/components/shared/FilterDropdown";
-import { IssueTypeIcon } from "@/components/shared/IssueTypeIcon";
-import { PO_STATUS_COLORS } from "@/components/sprint-board/FilterBar";
-import { JIRA_STATUS_COLORS } from "@/types/ticket";
+import { IssueTypeOption } from "@/components/shared/IssueTypeOption";
+import { StatusOption } from "@/components/shared/StatusOption";
+import { ReadinessOption } from "@/components/shared/ReadinessOption";
+import { READINESS_OPTIONS } from "@/types/ticket";
 import { userColor, userInitials } from "@/lib/user-display";
 
 export interface SearchFilters {
   sections: Set<string>;
   status: Set<string>;
-  poStatus: Set<string>;
+  readiness: Set<string>;
   type: Set<string>;
   assignee: Set<string>;
   sprint: Set<string>;
@@ -21,7 +22,7 @@ export interface SearchFilters {
 export const EMPTY_FILTERS: SearchFilters = {
   sections: new Set(),
   status: new Set(),
-  poStatus: new Set(),
+  readiness: new Set(),
   type: new Set(),
   assignee: new Set(),
   sprint: new Set(),
@@ -38,7 +39,7 @@ export const STATUS_LABEL_MAP: Record<string, string> = {
   DEPRECATED: "Deprecated",
 };
 
-export const TYPE_OPTIONS = ["story", "bug", "task", "spike", "epic"];
+export const TYPE_OPTIONS = ["story", "bug", "task", "spike", "epic", "subtask"];
 
 export const TYPE_LABEL_MAP: Record<string, string> = {
   story: "Story",
@@ -46,7 +47,12 @@ export const TYPE_LABEL_MAP: Record<string, string> = {
   task: "Task",
   spike: "Spike",
   epic: "Epic",
+  subtask: "Subtask",
 };
+
+// Readiness filter options: the four lifecycle states plus a "none" sentinel
+// (null readiness = ready for development), mirroring the Sprint Board (BRDG-324).
+const READINESS_FILTER_OPTIONS = READINESS_OPTIONS.map((o) => o.value ?? "none");
 
 const DATE_RANGE_OPTIONS = [
   { value: "7d", label: "Last 7 days" },
@@ -58,7 +64,7 @@ export function hasActiveFilters(filters: SearchFilters): boolean {
   return (
     filters.sections.size > 0 ||
     filters.status.size > 0 ||
-    filters.poStatus.size > 0 ||
+    filters.readiness.size > 0 ||
     filters.type.size > 0 ||
     filters.assignee.size > 0 ||
     filters.sprint.size > 0 ||
@@ -69,7 +75,7 @@ export function hasActiveFilters(filters: SearchFilters): boolean {
 export interface SerializedSearchFilters {
   sections: string[];
   status: string[];
-  poStatus: string[];
+  readiness: string[];
   type: string[];
   assignee: string[];
   sprint: string[];
@@ -80,7 +86,7 @@ export function serializeFilters(filters: SearchFilters): SerializedSearchFilter
   return {
     sections: [...filters.sections],
     status: [...filters.status],
-    poStatus: [...filters.poStatus],
+    readiness: [...filters.readiness],
     type: [...filters.type],
     assignee: [...filters.assignee],
     sprint: [...filters.sprint],
@@ -88,11 +94,14 @@ export function serializeFilters(filters: SearchFilters): SerializedSearchFilter
   };
 }
 
-export function deserializeFilters(raw: SerializedSearchFilters): SearchFilters {
+// Accepts a legacy `poStatus` field from searches saved before the PO Status -> Readiness
+// switch (BRDG-324). The legacy free-text values are dropped, not migrated, since the two
+// filters no longer mean the same thing.
+export function deserializeFilters(raw: SerializedSearchFilters & { poStatus?: string[] }): SearchFilters {
   return {
     sections: new Set(raw.sections),
     status: new Set(raw.status),
-    poStatus: new Set(raw.poStatus),
+    readiness: new Set(raw.readiness ?? []),
     type: new Set(raw.type),
     assignee: new Set(raw.assignee),
     sprint: new Set(raw.sprint),
@@ -103,7 +112,7 @@ export function deserializeFilters(raw: SerializedSearchFilters): SearchFilters 
 export function filtersToParams(filters: SearchFilters): URLSearchParams {
   const params = new URLSearchParams();
   if (filters.status.size > 0) params.set("status", [...filters.status].join(","));
-  if (filters.poStatus.size > 0) params.set("poStatus", [...filters.poStatus].join(","));
+  if (filters.readiness.size > 0) params.set("readiness", [...filters.readiness].join(","));
   if (filters.type.size > 0) params.set("type", [...filters.type].join(","));
   if (filters.assignee.size > 0) params.set("assignee", [...filters.assignee].join(","));
   if (filters.sprint.size > 0) params.set("sprint", [...filters.sprint].join(","));
@@ -131,26 +140,6 @@ interface SearchFilterPanelProps {
   onChange: (next: SearchFilters) => void;
   filterOptions: FilterOptionsData | null;
   sectionCounts?: SectionCounts;
-}
-
-function StatusDot({ status }: { status: string }) {
-  const color = JIRA_STATUS_COLORS[status as keyof typeof JIRA_STATUS_COLORS]?.text ?? "var(--color-status-neutral)";
-  return (
-    <span
-      className="inline-block h-2 w-2 shrink-0 rounded-full"
-      style={{ backgroundColor: color }}
-    />
-  );
-}
-
-function PoStatusDot({ status }: { status: string }) {
-  const color = PO_STATUS_COLORS[status]?.dot ?? "var(--color-status-neutral)";
-  return (
-    <span
-      className="inline-block h-2 w-2 shrink-0 rounded-full"
-      style={{ backgroundColor: color }}
-    />
-  );
 }
 
 function AssigneeAvatar({ name }: { name: string }) {
@@ -218,27 +207,15 @@ export function SearchFilterPanel({ filters, onChange, filterOptions, sectionCou
         selected={filters.status}
         onChange={(next) => onChange({ ...filters, status: next })}
         labelMap={STATUS_LABEL_MAP}
-        renderOption={(val) => (
-          <span className="flex items-center gap-2">
-            <StatusDot status={val} />
-            <span>{STATUS_LABEL_MAP[val] ?? val}</span>
-          </span>
-        )}
+        renderOption={(val) => <StatusOption value={val} />}
         widthClass="w-48"
       />
       <FilterDropdown
-        label="PO Status"
-        options={filterOptions?.poStatuses ?? []}
-        selected={filters.poStatus}
-        onChange={(next) => onChange({ ...filters, poStatus: next })}
-        searchable
-        searchPlaceholder="Search PO status..."
-        renderOption={(val) => (
-          <span className="flex items-center gap-2">
-            <PoStatusDot status={val} />
-            <span>{val}</span>
-          </span>
-        )}
+        label="Readiness"
+        options={READINESS_FILTER_OPTIONS}
+        selected={filters.readiness}
+        onChange={(next) => onChange({ ...filters, readiness: next })}
+        renderOption={(val) => <ReadinessOption value={val} />}
         widthClass="w-52"
       />
       <FilterDropdown
@@ -247,12 +224,7 @@ export function SearchFilterPanel({ filters, onChange, filterOptions, sectionCou
         selected={filters.type}
         onChange={(next) => onChange({ ...filters, type: next })}
         labelMap={TYPE_LABEL_MAP}
-        renderOption={(val) => (
-          <span className="flex items-center gap-2">
-            <IssueTypeIcon type={val} size={14} />
-            <span>{TYPE_LABEL_MAP[val] ?? val}</span>
-          </span>
-        )}
+        renderOption={(val) => <IssueTypeOption value={val} />}
         widthClass="w-44"
       />
       <FilterDropdown

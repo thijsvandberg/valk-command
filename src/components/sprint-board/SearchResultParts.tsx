@@ -7,7 +7,8 @@ import { renderMarkdown } from "@/components/ticket-detail/renderMarkdown";
 import type { LocalSearchResult, ConversationSearchResult, CommentSearchResult } from "@/lib/local-search-engine";
 import type { JiraSearchResult } from "@/app/api/search/jira/route";
 import { IssueTypeIcon } from "@/components/shared/IssueTypeIcon";
-import type { IssueType } from "@/types/ticket";
+import { TicketStatusPill } from "@/components/shared/TicketStatusPill";
+import type { IssueType, JiraStatus } from "@/types/ticket";
 import { JIRA_STATUS_COLORS } from "@/types/ticket";
 
 export type SearchMode = "local" | "jira";
@@ -334,19 +335,25 @@ export function LocalResultRow({
     ? (sprintNameMap?.[result.sprintName] ?? result.sprintName)
     : null;
 
+  // DELETED is a derived soft-delete state, not a JiraStatus: route it through the pill's
+  // `removedFromJira` treatment and keep a safe lifecycle status for the colour lookup (BRDG-324).
+  const upperStatus = result.status.toUpperCase();
+  const isDeleted = upperStatus === "DELETED";
+
+  // The row is a clickable element rather than an anchor because TicketStatusPill renders its own
+  // key link and dropdown buttons, which cannot legally nest inside an <a>. This mirrors the
+  // Sprint Board row, where the pill's interactive segments stop event propagation (BRDG-324).
   return (
-    <a
-      href={`/tickets/${result.key}`}
+    <div
+      role="link"
+      aria-label={result.summary}
       onClick={(e) => {
         const newTab = e.metaKey || e.ctrlKey;
-        if (!newTab) e.preventDefault();
         onSelect(newTab);
       }}
       onMouseMove={onHover}
       className="group relative flex w-full items-center gap-3 px-6 py-3.5 focus-visible:outline-none"
       style={{
-        display: "flex",
-        textDecoration: "none",
         backgroundColor: active ? "var(--color-brand-subtle)" : undefined,
         borderLeft: active ? "2px solid var(--color-brand-400)" : "2px solid transparent",
         cursor: "pointer",
@@ -360,22 +367,25 @@ export function LocalResultRow({
         {hasBodyFieldMatch(result.matches) && <MatchSnippet matches={result.matches} />}
       </span>
       <span className="ml-auto flex shrink-0 items-center gap-2">
-        {(showKey || displaySprintName) && (
-          <span className="hidden sm:flex items-center gap-1.5">
-            {showKey && (
-              <span className="font-mono text-label text-text-tertiary tracking-tight">{result.key}</span>
-            )}
-            {showKey && displaySprintName && (
-              <span className="text-text-muted text-label">·</span>
-            )}
-            {displaySprintName && (
-              <span className="text-label text-text-muted truncate max-w-[140px]">{displaySprintName}</span>
-            )}
-          </span>
+        {displaySprintName && (
+          <span className="hidden sm:block text-label text-text-muted truncate max-w-[140px]">{displaySprintName}</span>
         )}
-        <StatusBadge status={result.status} />
+        <span className="relative z-10 shrink-0" onClick={(e) => e.stopPropagation()}>
+          <TicketStatusPill
+            variant="list"
+            ticketKey={result.key}
+            title={result.summary}
+            jiraStatus={isDeleted ? "TO DO" : (upperStatus as JiraStatus)}
+            removedFromJira={isDeleted}
+            issueType={result.issueType ?? undefined}
+            readiness={result.readiness}
+            showKey={showKey}
+            showStatus
+            showReadiness
+          />
+        </span>
       </span>
-    </a>
+    </div>
   );
 }
 
