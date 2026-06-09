@@ -52,6 +52,7 @@ import { ConfirmDialog } from "@/components/shared/ConfirmDialog";
 import { useLocalStorage } from "@/hooks/useLocalStorage";
 import { useTicketDetailPage } from "@/hooks/useTicketDetailPage";
 import { useTicketDetail } from "@/hooks/useSprintBoard";
+import { useTicketHoverData } from "@/hooks/useTicketHoverData";
 import type { Ticket } from "@/types/ticket";
 import { saveTicketMetadata } from "@/components/sprint-board/sprint-board-utils";
 import { useRefinementSessions } from "@/hooks/useRefinementSessions";
@@ -90,6 +91,11 @@ export default function TicketDetailPage({
     (s) => s.status !== "completed" && s.ticketKeys.includes(key),
   );
   const pageTitle = usePageTitle(h.apiData ? `${key} - ${h.apiData.title}` : key);
+
+  // Same editable hover card the sprint board shows on the key pill, sourced from
+  // the shared /api/tickets cache. Returns undefined for Jira-only/removed tickets
+  // not in that list, in which case the pill simply renders no card.
+  const getHoverData = useTicketHoverData();
 
   const [chatPaneOpen, setChatPaneOpen] = useState(false);
   const [chatPaneWidth, setChatPaneWidth] = useState(() => {
@@ -573,6 +579,7 @@ export default function TicketDetailPage({
           size="lg"
           onHeader
           removedFromJira={Boolean(ticket.removedFromJiraAt)}
+          hoverData={getHoverData(key)}
         />
         <span className="min-w-0 flex-1 truncate font-[var(--font-display)] text-heading-sm font-semibold tracking-tight text-text-primary">
           {ticket.title}

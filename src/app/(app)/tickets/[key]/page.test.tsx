@@ -102,8 +102,18 @@ vi.mock("@/components/shared/ViewHeader", () => ({
   ),
   ViewHeaderDivider: () => null,
 }));
+const { lastPillProps } = vi.hoisted(() => ({ lastPillProps: { current: null as Record<string, unknown> | null } }));
 vi.mock("@/components/shared/TicketStatusPill", () => ({
-  TicketStatusPill: () => <div data-testid="status-pill" />,
+  TicketStatusPill: (props: Record<string, unknown>) => {
+    lastPillProps.current = props;
+    return <div data-testid="status-pill" />;
+  },
+}));
+// The hover card data lookup is sourced from the shared /api/tickets cache;
+// stub it so the page test stays isolated from that hook's SWR internals.
+const { hoverDataSpy } = vi.hoisted(() => ({ hoverDataSpy: vi.fn() }));
+vi.mock("@/hooks/useTicketHoverData", () => ({
+  useTicketHoverData: () => hoverDataSpy,
 }));
 vi.mock("@/components/ticket-detail/TicketTabContent", () => ({
   // Expose a button that drives the child-select callback so the preview side
@@ -366,5 +376,32 @@ describe("TicketDetailPage - finalized draft key swap", () => {
     resetHook(null, { apiData: undefined });
     await renderPage("DRAFT-35f135df");
     expect(replaceStateSpy).not.toHaveBeenCalled();
+  });
+});
+
+describe("TicketDetailPage - header pill hover card", () => {
+  beforeEach(() => {
+    resetHook(null);
+    mockSessions = [];
+    lastPillProps.current = null;
+    hoverDataSpy.mockReset();
+  });
+
+  afterEach(() => {
+    cleanup();
+  });
+
+  it("forwards hover-card data for the current key to the header pill", async () => {
+    const hoverData = { title: baseTicket.title, storyPoints: 5 };
+    hoverDataSpy.mockImplementation((k: string) => (k === "VPL-100" ? hoverData : undefined));
+    await renderPage("VPL-100");
+    expect(hoverDataSpy).toHaveBeenCalledWith("VPL-100");
+    expect(lastPillProps.current?.hoverData).toBe(hoverData);
+  });
+
+  it("passes undefined hoverData for tickets absent from the shared list (no card)", async () => {
+    hoverDataSpy.mockReturnValue(undefined);
+    await renderPage("VPL-100");
+    expect(lastPillProps.current?.hoverData).toBeUndefined();
   });
 });
