@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useMemo } from "react";
 import {
   CloudUpload,
   CloudDownload,
@@ -29,13 +29,12 @@ const AddToRefinementModal = dynamic(
   () => import("@/components/refinement-session/AddToRefinementModal").then((m) => ({ default: m.AddToRefinementModal })),
   { ssr: false },
 );
-import { SprintPicker } from "@/components/shared/SprintPicker";
 import { getJiraUrl } from "@/lib/jira-url";
 import { ViewHeader, ViewHeaderDivider } from "@/components/shared/ViewHeader";
 import { TicketStatusPill } from "@/components/shared/TicketStatusPill";
+import { buildTicketHoverData } from "@/hooks/useTicketHoverData";
 import { Button } from "@/components/ui/Button";
 import { ConfirmDialog } from "@/components/shared/ConfirmDialog";
-import { EpicPicker } from "@/components/shared/EpicPicker";
 import { PaneProvider, usePaneContext } from "./panes/PaneContext";
 import { WriterProvider, useWriterContext } from "./panes/WriterContext";
 import { ApplicationListBar } from "./panes/ApplicationListBar";
@@ -78,6 +77,15 @@ export function StoryWriterLayout({ ticketKey, draftTitle, draftType }: StoryWri
   const { sprints: rawSprints } = useJiraSprints();
   const latestReview = reviewData?.reviews?.[0];
 
+  // Resolve sprint ids to display names so the header pill's hover card matches
+  // the board (BRDG-276). Mirrors TicketRefPill's read-only enrichment.
+  const sprintNames = useMemo(() => {
+    const m: Record<string, string> = {};
+    rawSprints.forEach((s) => { m[s.id] = s.name; });
+    return m;
+  }, [rawSprints]);
+  const ticketHoverData = ticketData ? buildTicketHoverData(ticketData, sprintNames) : undefined;
+
   const { moreMenuRef, ...actions } = useStoryWriterActions({
     ticketKey,
     writer,
@@ -106,28 +114,8 @@ export function StoryWriterLayout({ ticketKey, draftTitle, draftType }: StoryWri
           {/* Action bar */}
           <ViewHeader
             className="shrink-0"
+            hideNotifications
             actions={<>
-              {ticketData && (
-                <nav className="hidden lg:flex shrink-0 items-center gap-1.5">
-                  <SprintPicker
-                    value={actions.ticketSprintId}
-                    sprints={rawSprints ?? []}
-                    onChange={actions.handleSprintChange}
-                    align="left"
-                    variant="badge"
-                  />
-                  <EpicPicker
-                    value={actions.ticketAsTicket?.epicKey ? { key: actions.ticketAsTicket.epicKey, name: actions.ticketAsTicket.epic ?? actions.ticketAsTicket.epicKey } : null}
-                    onChange={actions.handleEpicChange}
-                    align="left"
-                    ticketKey={ticketKey}
-                  />
-                </nav>
-              )}
-              {ticketData && (
-                <div className="h-5 w-px shrink-0 bg-overlay-default" />
-              )}
-
               {latestReview && (
                 <div className="flex h-7 items-center gap-1 rounded-md bg-overlay-subtle px-2 text-label text-text-tertiary border border-border-subtle">
                   <Star size={11} strokeWidth={1.5} />
@@ -432,6 +420,7 @@ export function StoryWriterLayout({ ticketKey, draftTitle, draftType }: StoryWri
                     title={displayTitle}
                     size="lg"
                     onHeader
+                    hoverData={ticketHoverData}
                   />
                   <ViewHeaderDivider />
                   <span className="min-w-0 flex-1 truncate font-[var(--font-display)] text-heading-sm font-semibold tracking-tight text-text-primary">

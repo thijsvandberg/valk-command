@@ -53,6 +53,7 @@ export function EpicWriterLayout({ epicKey }: EpicWriterLayoutProps) {
     <div className="flex h-full flex-col">
       <ViewHeader
         className="shrink-0"
+        hideNotifications
         actions={
           <>
             <button
