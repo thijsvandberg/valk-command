@@ -453,8 +453,14 @@ export default function SprintBoard() {
     sp.delete("view");
     sp.delete("sprint"); // legacy param now lives in the path
     const slug = sprintToSlug(sprintId, sprints);
-    router.replace(buildBoardUrl(slug, null, sp.toString()), { scroll: false });
-  }, [f, searchParams, router, resetToDefaults, sprints]);
+    // Replace the path via the History API rather than router.replace: a router
+    // navigation remounts the whole board, resetting the locally-held slotSprints
+    // to [] until /api/sprint-slots refetches, which flashes the sprint pills away
+    // and shifts the content. pushState/replaceState updates usePathname() without
+    // a remount, so the pills persist while SWR refetches the tickets (mirrors the
+    // selectTicket approach from BRDG-270).
+    window.history.replaceState(null, "", buildBoardUrl(slug, null, sp.toString()));
+  }, [f, searchParams, resetToDefaults, sprints]);
   const setActiveSlot = useCallback((slot: number) => { const id = slotSprints[slot]; if (id) { setEphemeralSprintId(null); navigateToSprint(id); } }, [slotSprints, navigateToSprint]);
   const handleAllClick = useCallback(() => { setEphemeralSprintId(null); navigateToSprint("__all__"); }, [navigateToSprint]);
   const handleSprintListSelect = useCallback((id: string) => { setEphemeralSprintId(id); navigateToSprint(id); }, [navigateToSprint]);
