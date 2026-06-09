@@ -112,7 +112,7 @@ function renderRow(props: Partial<BoardRowBaseProps> = {}) {
 
 describe("BoardRow (headerless, BRDG-239)", () => {
   it("renders pill, title, SP, BV and assignee", () => {
-    renderRow();
+    renderRow({ ticket: makeTicket({ assignee: { name: "Jane", initials: "J", color: "#000" } }) });
     expect(screen.getByTestId("pill")).toBeInTheDocument();
     expect(screen.getByText("Build onboarding")).toBeInTheDocument();
     expect(screen.getByTestId("sp")).toBeInTheDocument();
@@ -218,7 +218,7 @@ describe("BoardRow (headerless, BRDG-239)", () => {
     expect(screen.getByTestId("sp")).toBeInTheDocument();
     expect(screen.queryByTestId("bv")).toBeNull();
 
-    renderRow({ tags: new Set<InlineTagId>(["assignee"]) });
+    renderRow({ tags: new Set<InlineTagId>(["assignee"]), ticket: makeTicket({ assignee: { name: "Jane", initials: "J", color: "#000" } }) });
     expect(screen.getByTestId("avatar")).toBeInTheDocument();
   });
 
@@ -238,7 +238,7 @@ describe("BoardRow (headerless, BRDG-239)", () => {
   // fields reserve no space and open on hover as a cluster to the LEFT of every set
   // badge, keeping the natural epic -> SP -> BV order among themselves.
   it("opens empty SP/BV placeholders on hover to the left of a set epic chip (no reserved space)", () => {
-    renderRow({ ticket: makeTicket({ storyPoints: null, businessValue: null }), onEpicChange: vi.fn() });
+    renderRow({ ticket: makeTicket({ storyPoints: null, businessValue: null }), onEpicChange: vi.fn(), onStoryPointsChange: vi.fn(), onBusinessValueChange: vi.fn() });
     const sp = screen.getByTestId("sp");
     const bv = screen.getByTestId("bv");
     const epic = screen.getByTestId("epic-picker");
@@ -263,7 +263,7 @@ describe("BoardRow (headerless, BRDG-239)", () => {
   });
 
   it("treats N/A SP/BV (value 0, shown as '-') like unset: hover-reveal, not an inline badge", () => {
-    renderRow({ ticket: makeTicket({ storyPoints: 0, businessValue: 0 }), onEpicChange: vi.fn() });
+    renderRow({ ticket: makeTicket({ storyPoints: 0, businessValue: 0 }), onEpicChange: vi.fn(), onStoryPointsChange: vi.fn(), onBusinessValueChange: vi.fn() });
     const sp = screen.getByTestId("sp");
     const bv = screen.getByTestId("bv");
 
@@ -331,7 +331,7 @@ describe("BoardRow (headerless, BRDG-239)", () => {
   });
 
   it("clusters the add-epic / SP / BV placeholders in natural order when nothing is set", () => {
-    renderRow({ ticket: makeTicket({ epic: null, epicKey: null, storyPoints: null, businessValue: null }), onEpicChange: vi.fn() });
+    renderRow({ ticket: makeTicket({ epic: null, epicKey: null, storyPoints: null, businessValue: null }), onEpicChange: vi.fn(), onStoryPointsChange: vi.fn(), onBusinessValueChange: vi.fn() });
     const addEpic = screen.getByTestId("add-epic");
     const sp = screen.getByTestId("sp");
     const bv = screen.getByTestId("bv");
@@ -343,6 +343,8 @@ describe("BoardRow (headerless, BRDG-239)", () => {
     renderRow({
       ticket: makeTicket({ epic: null, epicKey: null, storyPoints: null, businessValue: null }),
       onEpicChange: vi.fn(),
+      onStoryPointsChange: vi.fn(),
+      onBusinessValueChange: vi.fn(),
       refinementSessions: [{ name: "Refine A" } as never],
     });
     const marker = screen.getByTestId("icon-boxes");
@@ -477,7 +479,7 @@ describe("BoardRow (headerless, BRDG-239)", () => {
       expect(screen.queryByText("Split")).toBeNull();
       expect(screen.queryByText("Jira changed")).toBeNull();
       expect(screen.queryByTestId("icon-clock")).toBeNull();
-      expect(screen.queryByRole("button", { name: /discard session/i })).toBeNull();
+      expect(screen.queryByText("Clear session")).toBeNull();
     });
 
     it("shows the Split badge and the muted target title for a split session", () => {
@@ -519,11 +521,11 @@ describe("BoardRow (headerless, BRDG-239)", () => {
       expect(onSelectTicket).toHaveBeenCalledWith("VPL-1");
     });
 
-    it("discards via the trash without activating the row", () => {
+    it("clears the session via the 'Clear session' overlay without activating the row", () => {
       const onActivate = vi.fn();
       const onDiscard = vi.fn();
       renderRow({ onActivate, onDiscard });
-      fireEvent.click(screen.getByRole("button", { name: /discard session/i }));
+      fireEvent.click(screen.getByRole("button", { name: /clear session/i }));
       expect(onDiscard).toHaveBeenCalledWith("VPL-1");
       expect(onActivate).not.toHaveBeenCalled();
     });
@@ -535,6 +537,29 @@ describe("BoardRow (headerless, BRDG-239)", () => {
       fireEvent.click(screen.getByTestId("sp"));
       expect(onActivate).not.toHaveBeenCalled();
       expect(onDiscard).not.toHaveBeenCalled();
+    });
+  });
+
+  // Read-only meta on the Story Writer landing (BRDG-325): no edit handlers passed.
+  describe("read-only meta (BRDG-325)", () => {
+    it("suppresses the empty estimate placeholder when the estimate is not editable", () => {
+      // No onStoryPointsChange and not in planning mode -> nothing to set, so no placeholder.
+      renderRow({ ticket: makeTicket({ storyPoints: null }), onEpicChange: vi.fn() });
+      expect(screen.queryByTestId("sp")).toBeNull();
+    });
+
+    it("still shows a set story-point value read-only without an edit handler", () => {
+      renderRow({ ticket: makeTicket({ storyPoints: 5 }) });
+      expect(screen.getByTestId("sp")).toBeInTheDocument();
+    });
+
+    it("shows a read-only assignee avatar when assigned but no empty grey placeholder when not", () => {
+      renderRow({ ticket: makeTicket({ assignee: { name: "Jane", initials: "J", color: "#000" } }) });
+      expect(screen.getByTestId("avatar")).toBeInTheDocument();
+
+      renderRow({ ticket: makeTicket({ assignee: null }) });
+      // Only the one avatar from the first render; the unassigned read-only row shows none.
+      expect(screen.getAllByTestId("avatar")).toHaveLength(1);
     });
   });
 });

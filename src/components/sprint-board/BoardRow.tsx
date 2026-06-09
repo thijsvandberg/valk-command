@@ -11,7 +11,7 @@ import { HoverRevealSlot } from "@/components/shared/HoverRevealSlot";
 import { Checkbox } from "@/components/shared/Checkbox";
 import type { InlineTagId } from "@/components/sprint-board/filter-bar-types";
 import { Avatar } from "@/components/shared/Avatar";
-import { Flag, MessageSquare, Pencil, Check, X, Boxes, IterationCw, GripVertical, AlertTriangle, Trash2, Scissors, Clock } from "lucide-react";
+import { Flag, MessageSquare, Pencil, Check, X, Boxes, IterationCw, GripVertical, AlertTriangle, Scissors, Clock } from "lucide-react";
 import { OpenSubtasksIndicator } from "@/components/sprint-board/OpenSubtasksIndicator";
 import type { TicketSessionEntry } from "@/hooks/useTicketSessionMap";
 import { RefinementGemTrigger, type RefinementCardTicketInfo } from "@/components/sprint-board/RefinementGemHoverCard";
@@ -96,7 +96,8 @@ export interface BoardRowBaseProps {
    *
    * onActivate: clicking the row activates it (resume the draft) instead of selecting it
    * into the sidebar; cmd/ctrl-click still opens the ticket in a new tab.
-   * onDiscard: renders a hover-revealed trailing trash action.
+   * onDiscard: renders a hover-revealed "Clear session" action that floats over the row
+   * content from the right (same overlay concept as the subtask Edit/Delete actions).
    * sessionTimeAgo: preformatted "6h ago" chip.
    * sessionJiraChanged: amber "Jira changed" badge.
    * splitTarget: when defined, renders the "Split" badge; a non-empty value is shown as a
@@ -241,7 +242,11 @@ export const BoardRow = memo(forwardRef<HTMLTableRowElement, BoardRowBaseProps>(
   // does not remount it (which would close the dropdown before you can commit).
   const estimateInValue = estimateSlotFrozen ? estimateSlotFrozen === "value" : estimateSet;
   const showEstimateValue = tags.has("storyPoints") && estimateInValue;
-  const showEstimatePlaceholder = tags.has("storyPoints") && !estimateInValue && !isDeprecated;
+  // The empty "add estimate" placeholder is only useful when the estimate can actually be
+  // set: a read-only row (no SP handler, not in planning mode) shows nothing for an empty
+  // estimate. On the board the handler is always wired, so this is a no-op there (BRDG-325).
+  const canEditEstimate = Boolean(onStoryPointsChange) || estimatePlanning;
+  const showEstimatePlaceholder = tags.has("storyPoints") && !estimateInValue && !isDeprecated && canEditEstimate;
   const handleEstimateOpenChange = (open: boolean) => {
     setMetaPickerOpen(open);
     setEstimateSlotFrozen(open ? (estimateSet ? "value" : "placeholder") : null);
@@ -698,28 +703,38 @@ export const BoardRow = memo(forwardRef<HTMLTableRowElement, BoardRowBaseProps>(
                       avatarSize={26}
                       align="right"
                     />
-                  ) : (
+                  ) : ticket.assignee ? (
                     <Avatar assignee={ticket.assignee} size={26} />
+                  ) : (
+                    // Read-only and unassigned: reserve the avatar's width so the column stays
+                    // aligned, but render nothing (no grey placeholder circle) (BRDG-325).
+                    <span aria-hidden className="block h-[26px] w-[26px]" />
                   )}
                 </div>
               )}
-
-              {/* Discard session (BRDG-325): hover-revealed trailing action, mirroring the
-                  title pencil's reveal. stopPropagation keeps it from activating the row.
-                  Inert on the board (onDiscard absent). */}
-              {onDiscard && (
-                <button
-                  type="button"
-                  aria-label="Discard session"
-                  title="Discard session"
-                  onPointerDown={(e) => e.stopPropagation()}
-                  onClick={(e) => { e.stopPropagation(); onDiscard(ticket.key); }}
-                  className="ml-0.5 hidden h-7 w-7 shrink-0 cursor-pointer items-center justify-center rounded-lg text-text-muted transition-[color,background-color] duration-150 group-hover/row:flex hover:bg-[color-mix(in_srgb,var(--color-status-error)_12%,transparent)] hover:text-[var(--color-status-error)]"
-                >
-                  <Trash2 size={13} strokeWidth={1.75} />
-                </button>
-              )}
             </>
+          )}
+
+          {/* Clear-session overlay (BRDG-325): a textual action that floats over the row
+              content from the right on hover, with a gradient fade so it reads cleanly over
+              the metadata (same concept as the subtask Edit/Delete actions). stopPropagation
+              keeps the click from activating the row. Inert on the board (onDiscard absent). */}
+          {onDiscard && !isEditingTitle && (
+            <div
+              className="absolute inset-y-0 right-0 z-10 flex items-center pl-8 pr-4 opacity-0 transition-opacity duration-150 group-hover/row:opacity-100"
+              style={{ background: "linear-gradient(to right, transparent, var(--color-surface-elevated) 24px)" }}
+            >
+              <button
+                type="button"
+                title="Clear session"
+                onPointerDown={(e) => e.stopPropagation()}
+                onClick={(e) => { e.stopPropagation(); onDiscard(ticket.key); }}
+                className="flex shrink-0 cursor-pointer items-center gap-1 rounded-md px-2 py-1 text-[11px] font-medium text-text-muted transition-[background-color,color] duration-150 hover:bg-[color-mix(in_srgb,var(--color-status-error)_12%,transparent)] hover:text-[var(--color-status-error)] focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-[var(--color-brand-400)] active:bg-[color-mix(in_srgb,var(--color-status-error)_18%,transparent)]"
+              >
+                <X size={14} strokeWidth={2} />
+                <span>Clear session</span>
+              </button>
+            </div>
           )}
         </div>
       </td>

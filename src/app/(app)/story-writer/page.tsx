@@ -21,6 +21,8 @@ import { EmptyState } from "@/components/shared/EmptyState";
 import { InlineAlert } from "@/components/shared/InlineAlert";
 import { Toast } from "@/components/ui/Toast";
 import { BoardRow } from "@/components/sprint-board/BoardRow";
+import type { InlineTagId } from "@/components/sprint-board/filter-bar-types";
+import { GROUP_CARD_CLASS } from "@/components/sprint-board/GroupCard";
 import { useTicketActions } from "@/components/sprint-board/useTicketActions";
 import { mapJiraSprints } from "@/components/sprint-board/sprint-board-utils";
 import { useToast } from "@/hooks/useToast";
@@ -42,6 +44,13 @@ const SESSIONS_KEY = "/api/story-writer/active-sessions";
 // Ticket shape it expects; the session fields ride along and survive every spread.
 const fetchSessions = () =>
   apiFetch<ActiveSession[]>(SESSIONS_KEY).then((data) => data.map(sessionToSessionTicket));
+
+// Inline signals shown on a row here. Story Points and the epic chip stay (read-only,
+// see the omitted edit handlers below); Business Value is intentionally not shown on this
+// view (BRDG-325).
+const ROW_TAGS = new Set<InlineTagId>([
+  "flag", "refinement", "quality", "notes", "poReadiness", "editState", "storyPoints", "epic", "assignee",
+]);
 
 export default function StoryWriterLandingPage() {
   const router = useRouter();
@@ -124,7 +133,7 @@ export default function StoryWriterLandingPage() {
           )}
 
           {sessionCount > 0 && (
-            <Card className="overflow-hidden p-0">
+            <div className={GROUP_CARD_CLASS}>
               <table className="w-full table-fixed border-collapse text-body-lg">
                 <tbody>
                   {sessionTickets.map((st, idx) => (
@@ -136,6 +145,7 @@ export default function StoryWriterLandingPage() {
                       isSelected={false}
                       someChecked={false}
                       isDragActive={false}
+                      tags={ROW_TAGS}
                       selectedTicket={null}
                       onSelectTicket={() => {}}
                       onCheckboxClick={() => {}}
@@ -144,13 +154,9 @@ export default function StoryWriterLandingPage() {
                       sprints={sprints}
                       readinessMap={ta.readinessMap}
                       onReadinessChange={ta.handleReadinessChange}
-                      onBusinessValueChange={ta.handleBusinessValueChange}
-                      onStoryPointsChange={ta.handleStoryPointsChange}
                       onJiraStatusChange={ta.handleJiraStatusChange}
                       onIssueTypeChange={ta.handleIssueTypeChange}
                       onTitleChange={ta.handleTitleChange}
-                      onAssigneeChange={ta.handleAssigneeChange}
-                      onEpicChange={ta.handleEpicChange}
                       onSprintChange={ta.handleSprintChange}
                       editingTitleKey={editingTitleKey}
                       onEditingTitleKeyChange={setEditingTitleKey}
@@ -164,7 +170,7 @@ export default function StoryWriterLandingPage() {
                   ))}
                 </tbody>
               </table>
-            </Card>
+            </div>
           )}
         </div>
       </div>
