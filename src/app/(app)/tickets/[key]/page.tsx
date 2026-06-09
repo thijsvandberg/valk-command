@@ -9,8 +9,6 @@ import {
   Loader2,
   MoreHorizontal,
   NotebookPen,
-  Zap,
-  IterationCw,
   Trash2,
   Star,
   Check,
@@ -348,46 +346,8 @@ export default function TicketDetailPage({
         hideContextDivider
         actions={
           <div className="flex shrink-0 items-center gap-2">
-            {((h.ticketSprintId && ticket.type !== "epic") || ticket.epic || ticket.type === "epic" || h.detail?.parent) && (
+            {h.detail?.parent && (
               <nav className="hidden lg:flex shrink-0 items-center gap-1.5">
-                {ticket.type === "epic" && (
-                  <span
-                    className="flex items-center gap-1.5 rounded-md px-2 py-0.5 text-[11px] font-semibold uppercase tracking-wider"
-                    style={{ backgroundColor: "color-mix(in srgb, var(--color-icon-epic) 12%, transparent)", color: "var(--color-icon-epic)", border: "1px solid color-mix(in srgb, var(--color-icon-epic) 25%, transparent)" }}
-                  >
-                    <Zap size={11} strokeWidth={2} />
-                    Epic
-                  </span>
-                )}
-                {h.ticketSprintId && ticket.type !== "epic" && (
-                  <Tooltip content={h.ticketSprintLabel || "Sprint"}>
-                    <Link
-                      href={`/sprint-board?sprint=${encodeURIComponent(h.ticketSprintId)}`}
-                      className="flex items-center gap-1.5 rounded-md bg-overlay-default px-2 py-0.5 text-label font-medium text-text-tertiary cursor-pointer hover:bg-overlay-strong hover:text-text-secondary transition-colors duration-150 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)]"
-                    >
-                      <IterationCw size={12} strokeWidth={1.5} />
-                      <span className="max-w-[110px] truncate">{h.ticketSprintLabel}</span>
-                    </Link>
-                  </Tooltip>
-                )}
-                {ticket.epic && (
-                  <Tooltip content={ticket.epic}>
-                    {ticket.epicKey ? (
-                      <Link
-                        href={`/tickets/${ticket.epicKey}`}
-                        className="flex items-center gap-1.5 rounded-md bg-overlay-default px-2 py-0.5 text-label font-medium text-text-tertiary cursor-pointer hover:bg-overlay-strong hover:text-text-secondary transition-colors duration-150 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)]"
-                      >
-                        <Zap size={12} strokeWidth={1.5} />
-                        <span className="max-w-[120px] truncate">{ticket.epic}</span>
-                      </Link>
-                    ) : (
-                      <span className="flex items-center gap-1.5 rounded-md bg-overlay-default px-2 py-0.5 text-label font-medium text-text-tertiary">
-                        <Zap size={12} strokeWidth={1.5} />
-                        <span className="max-w-[120px] truncate">{ticket.epic}</span>
-                      </span>
-                    )}
-                  </Tooltip>
-                )}
                 {h.detail?.parent && (
                   <Tooltip content={`${h.detail.parent.key} ${h.detail.parent.title}`}>
                     <Link
@@ -425,7 +385,7 @@ export default function TicketDetailPage({
                 </button>
               </Tooltip>
             )}
-            {((h.ticketSprintId && ticket.type !== "epic") || ticket.epic || ticket.type === "epic" || h.detail?.parent || h.isFlagged) && (
+            {(h.detail?.parent || h.isFlagged) && (
               <div className="h-5 w-px shrink-0 bg-overlay-default" />
             )}
             {showPushButton && (

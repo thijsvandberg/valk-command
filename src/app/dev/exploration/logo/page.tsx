@@ -221,8 +221,11 @@ export default function LogoExplorationPage() {
         </Link>
 
         <header className="mb-9">
-          <p className="mb-2 font-mono text-[11px] uppercase tracking-[0.18em] text-[var(--color-brand-400)]">
+          <p className="mb-2 flex items-center gap-2 font-mono text-[11px] uppercase tracking-[0.18em] text-[var(--color-brand-400)]">
             /dev/exploration/logo
+            <span className="rounded-full bg-[var(--color-status-error-subtle)] px-2 py-0.5 font-semibold tracking-[0.1em] text-[var(--color-status-error)]">
+              Declined
+            </span>
           </p>
           <h1 className="font-display text-[30px] font-semibold tracking-[-0.03em] text-text-primary">
             Logomark explorations
@@ -231,6 +234,11 @@ export default function LogoExplorationPage() {
             Ten new beeldmerk directions for <span className="text-text-primary">Bridge</span>, each from a different
             angle on the name — architecture, command deck, network, typography, data. A subset shows a paired wordmark.
             Today&apos;s mark sits in the reference strip below for comparison.
+          </p>
+          <p className="mt-4 max-w-2xl rounded-xl bg-[var(--color-status-error-subtle)] px-4 py-3 text-body-sm leading-[1.6] text-text-secondary ring-1 ring-[var(--color-status-error)]/20">
+            <span className="font-semibold text-text-primary">Declined.</span> Bridge stays wordmark-only — no beeldmerk.
+            The brand carries through the <span className="font-mono">bridge_</span> wordmark and its teal underscore;
+            these marks are kept here for reference only.
           </p>
         </header>
 

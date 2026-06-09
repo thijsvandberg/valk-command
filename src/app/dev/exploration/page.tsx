@@ -68,8 +68,8 @@ const EXPLORATIONS: Exploration[] = [
     slug: "logo",
     title: "Logomark explorations",
     blurb:
-      "Ten new beeldmerk directions for Bridge, each from a different angle (architecture, command deck, network, typography, data), some with paired wordmarks.",
-    status: "Exploration",
+      "Ten new beeldmerk directions for Bridge, each from a different angle (architecture, command deck, network, typography, data), some with paired wordmarks. Declined: Bridge stays wordmark-only — no beeldmerk.",
+    status: "Declined",
     icon: <Shapes className={ICON} strokeWidth={1.5} />,
   },
   {
@@ -121,7 +121,12 @@ export default function ExplorationHubPage() {
 
         <ul className="grid gap-3 sm:grid-cols-2">
           {EXPLORATIONS.map((ex) => {
-            const shipped = ex.status === "Shipped";
+            const badgeClass =
+              ex.status === "Shipped"
+                ? "bg-[var(--color-status-done-subtle)] text-[var(--color-status-done)]"
+                : ex.status === "Declined"
+                  ? "bg-[var(--color-status-error-subtle)] text-[var(--color-status-error)]"
+                  : "bg-overlay-default text-text-tertiary";
             return (
               <li key={ex.slug}>
                 <Link
@@ -134,11 +139,7 @@ export default function ExplorationHubPage() {
                       {ex.icon}
                     </span>
                     <span
-                      className={`rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.1em] ${
-                        shipped
-                          ? "bg-[var(--color-status-done-subtle)] text-[var(--color-status-done)]"
-                          : "bg-overlay-default text-text-tertiary"
-                      }`}
+                      className={`rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.1em] ${badgeClass}`}
                     >
                       {ex.status}
                     </span>
