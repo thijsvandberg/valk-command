@@ -55,6 +55,41 @@ export function FieldFilterPopover({
       className="absolute top-full right-0 z-50 mt-1 min-w-[180px] rounded-xl border border-border-default bg-[var(--color-surface-floating)] py-1 shadow-[var(--shadow-popover)]"
       style={{ animation: "fadeInUp 0.1s ease" }}
     >
+      <FieldFilterSections
+        filter={filter}
+        setFilter={setFilter}
+        statusCounts={statusCounts}
+        fields={fields}
+        visibleFields={visibleFields}
+        onToggleField={onToggleField}
+        hideDeprecated={hideDeprecated}
+        onToggleHideDeprecated={onToggleHideDeprecated}
+        deprecatedCount={deprecatedCount}
+      />
+    </div>
+  );
+}
+
+type FieldFilterSectionsProps = Omit<FieldFilterPopoverProps, "onClose">;
+
+/**
+ * The status filter, hide-deprecated, and column-visibility rows without the
+ * popover chrome. Reused both by FieldFilterPopover and by the consolidated
+ * list-controls menu so the two stay visually identical.
+ */
+export function FieldFilterSections({
+  filter,
+  setFilter,
+  statusCounts,
+  fields,
+  visibleFields,
+  onToggleField,
+  hideDeprecated,
+  onToggleHideDeprecated,
+  deprecatedCount = 0,
+}: FieldFilterSectionsProps) {
+  return (
+    <>
       {/* Status filter */}
       <div className="px-3 py-1.5 text-caption font-semibold uppercase tracking-wider text-text-muted">
         Status
@@ -135,6 +170,6 @@ export function FieldFilterPopover({
           })}
         </>
       )}
-    </div>
+    </>
   );
 }

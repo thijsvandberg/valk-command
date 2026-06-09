@@ -79,15 +79,22 @@ function renderSection(items: EpicChild[] = [], { openCreate = true } = {}) {
       onSelectTicket={onSelectTicket}
     />,
   );
-  // The inline create composer is hidden until the header "+" opens it (BRDG-315); most tests
-  // here exercise that composer, so open it by default.
-  if (openCreate) fireEvent.click(screen.getByTitle("Create child issue"));
+  // The inline create composer is hidden until "New child issue" is picked from the header
+  // menu (BRDG-315); most tests here exercise that composer, so open it by default.
+  if (openCreate) {
+    openListMenu();
+    fireEvent.click(screen.getByTitle("Create child issue"));
+  }
   return { ...result, onMutate, onSelectTicket };
 }
 
+// The view/planning/filter/create controls now live behind a single header menu.
+function openListMenu() {
+  fireEvent.click(screen.getByRole("button", { name: "List options" }));
+}
+
 function openFilterPopover() {
-  const filterBtn = screen.getByTitle("Filter and display options");
-  fireEvent.click(filterBtn);
+  openListMenu();
 }
 
 function openSearchMode() {
@@ -116,13 +123,14 @@ describe("EpicChildrenSection", () => {
   });
 
   describe("inline creation", () => {
-    it("hides the create composer until the header + is clicked, and the + toggles it", () => {
+    it("hides the create composer until New child issue is picked, and it toggles", () => {
       renderSection([], { openCreate: false });
       expect(screen.queryByPlaceholderText("Create child issue...")).toBeNull();
-      const plus = screen.getByTitle("Create child issue");
-      fireEvent.click(plus);
+      openListMenu();
+      fireEvent.click(screen.getByTitle("Create child issue"));
       expect(screen.getByPlaceholderText("Create child issue...")).toBeInTheDocument();
-      fireEvent.click(plus);
+      openListMenu();
+      fireEvent.click(screen.getByTitle("Create child issue"));
       expect(screen.queryByPlaceholderText("Create child issue...")).toBeNull();
     });
 
@@ -264,9 +272,9 @@ describe("EpicChildrenSection", () => {
   });
 
   describe("filter popover", () => {
-    it("shows filter button", () => {
+    it("shows the list options menu trigger", () => {
       renderSection(SAMPLE_CHILDREN);
-      expect(screen.getByTitle("Filter and display options")).toBeInTheDocument();
+      expect(screen.getByRole("button", { name: "List options" })).toBeInTheDocument();
     });
 
     it("opens popover with status filters on click", () => {
@@ -633,21 +641,27 @@ describe("EpicChildrenSection", () => {
   });
 
   describe("by-sprint view", () => {
+    // The view toggle now lives inside the header menu; open it (unless already open),
+    // switch, then close so the open popover doesn't overlay later content assertions.
     function switchToSprintView() {
+      if (!screen.queryByRole("radio", { name: "By sprint" })) openListMenu();
       fireEvent.click(screen.getByRole("radio", { name: "By sprint" }));
+      fireEvent.click(screen.getByRole("button", { name: "List options" }));
     }
 
     it("renders the List / By sprint toggle", () => {
       renderSection(SAMPLE_CHILDREN);
+      openListMenu();
       expect(screen.getByRole("radio", { name: "List" })).toBeInTheDocument();
       expect(screen.getByRole("radio", { name: "By sprint" })).toBeInTheDocument();
     });
 
     it("defaults to list view and persists the choice to localStorage", () => {
       renderSection(SAMPLE_CHILDREN);
+      openListMenu();
       expect(screen.getByRole("radio", { name: "List" })).toHaveAttribute("aria-checked", "true");
 
-      switchToSprintView();
+      fireEvent.click(screen.getByRole("radio", { name: "By sprint" }));
 
       expect(screen.getByRole("radio", { name: "By sprint" })).toHaveAttribute("aria-checked", "true");
       expect(localStorage.getItem("epic-children-view")).toBe('"sprint"');
@@ -656,6 +670,7 @@ describe("EpicChildrenSection", () => {
     it("restores the persisted view on mount", () => {
       localStorage.setItem("epic-children-view", '"sprint"');
       renderSection(SAMPLE_CHILDREN);
+      openListMenu();
       expect(screen.getByRole("radio", { name: "By sprint" })).toHaveAttribute("aria-checked", "true");
     });
 
@@ -878,7 +893,9 @@ describe("EpicChildrenSection", () => {
       fireEvent.click(screen.getByText(label));
     }
     function switchToSprintView() {
+      if (!screen.queryByRole("radio", { name: "By sprint" })) openListMenu();
       fireEvent.click(screen.getByRole("radio", { name: "By sprint" }));
+      fireEvent.click(screen.getByRole("button", { name: "List options" }));
     }
 
     it("shows the bulk toolbar with a count after checking a row", () => {

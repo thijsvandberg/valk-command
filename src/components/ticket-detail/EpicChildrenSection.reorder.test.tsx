@@ -119,7 +119,10 @@ function renderSection() {
 }
 
 function switchToSprintView() {
+  // The view toggle now lives inside the header menu; open it, switch, then close.
+  fireEvent.click(screen.getByRole("button", { name: "List options" }));
   fireEvent.click(screen.getByRole("radio", { name: "By sprint" }));
+  fireEvent.click(screen.getByRole("button", { name: "List options" }));
 }
 
 describe("EpicChildrenSection reorder handler", () => {
