@@ -7,6 +7,7 @@ import { renderMarkdown } from "@/components/ticket-detail/renderMarkdown";
 import type { LocalSearchResult, ConversationSearchResult, CommentSearchResult } from "@/lib/local-search-engine";
 import type { JiraSearchResult } from "@/app/api/search/jira/route";
 import { IssueTypeIcon } from "@/components/shared/IssueTypeIcon";
+import { SprintBadge } from "@/components/shared/IssueMetaBadges";
 import { TicketStatusPill } from "@/components/shared/TicketStatusPill";
 import type { IssueType, JiraStatus } from "@/types/ticket";
 import { JIRA_STATUS_COLORS } from "@/types/ticket";
@@ -368,11 +369,12 @@ export function LocalResultRow({
       </span>
       <span className="ml-auto flex shrink-0 items-center gap-2">
         {displaySprintName && (
-          <span className="hidden sm:block text-label text-text-muted truncate max-w-[140px]">{displaySprintName}</span>
+          <span className="hidden sm:flex">
+            <SprintBadge name={displaySprintName} />
+          </span>
         )}
         <span className="relative z-10 shrink-0" onClick={(e) => e.stopPropagation()}>
           <TicketStatusPill
-            variant="list"
             ticketKey={result.key}
             title={result.summary}
             jiraStatus={isDeleted ? "TO DO" : (upperStatus as JiraStatus)}
