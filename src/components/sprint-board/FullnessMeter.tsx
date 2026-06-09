@@ -118,10 +118,10 @@ export function FullnessMeter({
           placeholder="cap"
           aria-label="Sprint pencil capacity"
           title="Edit sprint capacity"
-          // A faint hover/focus chip signals the value is editable (it otherwise
-          // reads as static text once filled) and widens the click target.
-          className="h-5 w-8 cursor-text select-text rounded bg-transparent text-center font-medium tabular-nums outline-none transition-colors duration-100 placeholder:font-normal placeholder:text-text-muted hover:bg-[color-mix(in_srgb,currentColor_12%,transparent)] focus:bg-[color-mix(in_srgb,currentColor_16%,transparent)] [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
-          style={{ color: "color-mix(in srgb, currentColor 78%, transparent)" }}
+          // A dotted underline hints the value is editable at rest; on focus it
+          // becomes an unmistakable little text field - solid surface, full-strength
+          // text and a brand focus ring - so it is obvious you are editing.
+          className="h-5 w-9 cursor-text select-text rounded text-center font-medium tabular-nums outline-none transition-colors duration-100 text-[color-mix(in_srgb,currentColor_80%,transparent)] underline decoration-dotted decoration-[color-mix(in_srgb,currentColor_35%,transparent)] underline-offset-[3px] hover:bg-[color-mix(in_srgb,currentColor_14%,transparent)] focus:bg-[var(--color-surface-default)] focus:text-text-primary focus:no-underline focus:shadow-[0_0_0_2px_var(--color-brand-400)] placeholder:font-normal placeholder:text-text-muted placeholder:no-underline [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
         />
       </div>
     </Tooltip>
