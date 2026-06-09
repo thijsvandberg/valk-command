@@ -1,5 +1,19 @@
 # Implementation Performance Log
 
+## BRDG-324 — Dedicated search improvements (subtasks, shared filters, ticket pill) (2026-06-10)
+
+Smooth, well-scoped run. Extracted three shared filter-option renderers (IssueTypeOption / StatusOption / ReadinessOption) used by both FilterBar and SearchFilterPanel, added default subtask exclusion + readiness to the local engine and Jira route, swapped the search PO Status filter for Readiness, and put TicketStatusPill in the result rows. 5356 project tests green (the only 2 failures are pre-existing, in untouched story-writer files); browser-verified the board + search dropdowns and result pills in the real app.
+
+| Phase | Notes |
+|-------|-------|
+| Plan (Opus) | Strong; pre-empted the saved-search back-compat (`poStatus` -> `readiness`) and the subtask type-string normalization, both of which landed exactly as planned |
+| Implement | A->G in order, one structural decision surfaced at build time (see below); no rework |
+| Verify | Own code green in isolation (targeted eslint exit 0, typecheck clean, all touched test files pass); full `verify`/`build` blocked only by pre-existing foreign breakage |
+
+Key bottlenecks / lessons:
+- **Nested-anchor constraint forced a row-element change.** `TicketStatusPill` renders its own key `<a>` + dropdown buttons, which cannot legally nest inside the result row's wrapping `<a>`. Converted `LocalResultRow` to a clickable `<div role="link">` (mirroring the Sprint Board's `<tr onClick>` pattern, with the pill wrapped in a `stopPropagation` span). This broke two SearchModal tests that selected `[data-result-row] a` for the row root; updated them to `[role="link"]`. Lesson: embedding the interactive pill in a previously-anchor row is a structural change, not a drop-in — anticipate the selector/keyboard-nav fallout.
+- **Recurring foreign breakage on `dev`.** `npm run verify` and `npm run build` both fail on `src/components/story-writer/ChatMessageParts.tsx` (a `react-hooks/set-state-in-effect` error) and 2 failing story-writer tests — all in files this story never touched. `next build` compiled and type-checked the whole project cleanly; only that one untracked lint error blocks the build. Per the established pattern, proved the work in isolation and left the residual blocker documented rather than touching parallel-work files.
+
 ## BRDG-318 — Inline subtask assignee + status (2026-06-09)
 
 Smooth, well-scoped UI run; the only friction was the recurring foreign-breakage blocker.
