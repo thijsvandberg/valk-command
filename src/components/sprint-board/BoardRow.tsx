@@ -91,6 +91,13 @@ export interface BoardRowBaseProps {
   onRemoveFromRefinement?: (sessionId: string, ticketKey: string) => void;
   onViewRefinement?: (sessionId: string) => void;
   insertLine?: "above" | "below";
+  /**
+   * Last row in its card: rounds the row surface's bottom corners so the hover/selection
+   * fill follows the card's rounded edge instead of bleeding square into the corners. The
+   * card lets content bleed past its edge (overflow-clip-margin) so the drag handle can
+   * straddle the left border, which is why the corners need rounding here per-row.
+   */
+  isLastInCard?: boolean;
   rowStyle?: React.CSSProperties;
   dragListeners?: ReturnType<typeof useSortable>["listeners"];
   dragAttributes?: ReturnType<typeof useSortable>["attributes"];
@@ -146,6 +153,7 @@ export const BoardRow = memo(forwardRef<HTMLTableRowElement, BoardRowBaseProps>(
     onRemoveFromRefinement,
     onViewRefinement,
     insertLine,
+    isLastInCard = false,
     rowStyle,
     dragListeners,
     dragAttributes,
@@ -250,17 +258,6 @@ export const BoardRow = memo(forwardRef<HTMLTableRowElement, BoardRowBaseProps>(
         }
         onSelectTicket(ticket.key === selectedTicket ? null : ticket.key);
       }}
-      className={`group/row border-l-[3px] transition-colors duration-100 ${
-        dragListeners ? "cursor-grab active:cursor-grabbing select-none" : "cursor-pointer"
-      } ${
-        isSelected || isContextTarget
-          ? "bg-[var(--color-brand-600)]/12 border-l-[var(--color-brand-300)]"
-          : isChecked
-          ? "bg-[var(--color-brand-500)]/6 border-l-[var(--color-brand-300)] hover:bg-[var(--color-brand-500)]/10"
-          : ticket.flagged
-          ? "bg-[color-mix(in_srgb,var(--color-status-error)_6%,transparent)] border-l-[var(--color-status-error)] hover:bg-[color-mix(in_srgb,var(--color-status-error)_8%,transparent)]"
-          : "border-l-transparent hover:bg-overlay-subtle hover:border-l-[var(--color-brand-400)]/25"
-      } ${isFocused && !isSelected && !isContextTarget ? "outline outline-1 -outline-offset-1 outline-[var(--color-brand-500)]/40" : ""} ${isRemoved ? "opacity-50" : isInflight ? "opacity-70" : ""}`}
       {...dragListeners}
       {...dragAttributes}
     >
@@ -268,8 +265,22 @@ export const BoardRow = memo(forwardRef<HTMLTableRowElement, BoardRowBaseProps>(
         {/* Horizontal gutters: pl-4 + the issue-icon's internal padding reads as ~24px on the
             left, so the right uses pr-[23px] to make the assignee sit the same distance from
             the edge as the issue icon does on the left. Rows are line-less and use py-3 for an
-            airier rhythm (BRDG-239, "B+C"). */}
-        <div className="@container/boardrow relative flex items-center gap-2 py-2.5 pl-4 pr-[23px]">
+            airier rhythm (BRDG-239, "B+C").
+            The row surface (background, left accent, hover) lives on this div rather than the
+            <tr>: a div honours border-radius, so the last row can round its bottom corners to
+            the card edge. A <tr>/<td> with border-collapse ignores radius, which is why the
+            hover fill used to bleed square into the card's rounded corners. */}
+        <div className={`group/row @container/boardrow relative flex items-center gap-2 border-l-[3px] py-2.5 pl-4 pr-[23px] transition-colors duration-100 ${
+          dragListeners ? "cursor-grab active:cursor-grabbing select-none" : "cursor-pointer"
+        } ${
+          isSelected || isContextTarget
+            ? "bg-[var(--color-brand-600)]/12 border-l-[var(--color-brand-300)]"
+            : isChecked
+            ? "bg-[var(--color-brand-500)]/6 border-l-[var(--color-brand-300)] hover:bg-[var(--color-brand-500)]/10"
+            : ticket.flagged
+            ? "bg-[color-mix(in_srgb,var(--color-status-error)_6%,transparent)] border-l-[var(--color-status-error)] hover:bg-[color-mix(in_srgb,var(--color-status-error)_8%,transparent)]"
+            : "border-l-transparent hover:bg-overlay-subtle hover:border-l-[var(--color-brand-400)]/25"
+        } ${isFocused && !isSelected && !isContextTarget ? "outline outline-1 -outline-offset-1 outline-[var(--color-brand-500)]/40" : ""} ${isRemoved ? "opacity-50" : isInflight ? "opacity-70" : ""} ${isLastInCard ? "rounded-b-[11px]" : ""}`}>
           {/* Drag affordance in the left gutter (Jira-style). Visual only: the whole row is the
               drag activator, so this never needs its own listeners. Shown only when reordering
               is possible (dragListeners present) and never during multiselect. */}

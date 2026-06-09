@@ -444,6 +444,7 @@ export function TicketTable({
               ref={rowVirtualizer.measureElement}
               data-index={virtualRow.index}
               {...makeRowProps(ticket, virtualRow.index)}
+              isLastInCard={virtualRow.index === tickets.length - 1}
               warningLabels={warningLensActive ? ticketWarningLabels(ticket, warningLensActiveSprint) : undefined}
             />
           );
@@ -458,6 +459,9 @@ export function TicketTable({
   // The flat (single-sprint) create row, rendered at the insertion point: just above the trailing
   // contiguous done/deprecated block so the PO sees where the new story will land (BRDG-315).
   const flatInsertIdx = flatComposerActive ? trailingDoneDepStart(tickets) : -1;
+  // When the composer is appended after the last ticket it becomes the visual last row, so
+  // the last ticket should not round its bottom corners (the card edge sits below the composer).
+  const flatComposerAtEnd = flatComposerActive && flatInsertIdx === tickets.length;
   const flatComposerRow = flatComposerActive ? (
     <tr key="__flat_composer__">
       <td className="p-0">
@@ -483,6 +487,7 @@ export function TicketTable({
             <BoardRow
               key={ticket.key}
               {...makeRowProps(ticket, ticketIdx)}
+              isLastInCard={ticketIdx === tickets.length - 1 && !flatComposerAtEnd}
               warningLabels={warningLensActive ? ticketWarningLabels(ticket, warningLensActiveSprint) : undefined}
             />
           );
@@ -512,6 +517,7 @@ export function TicketTable({
               key={ticket.key}
               {...makeRowProps(ticket, ticketIdx)}
               insertLine={insertLine}
+              isLastInCard={ticketIdx === tickets.length - 1 && !flatComposerAtEnd}
               warningLabels={warningLensActive ? ticketWarningLabels(ticket, warningLensActiveSprint) : undefined}
             />
           );
@@ -623,7 +629,7 @@ export function TicketTable({
 
         const groupTicketIds = visibleGroupTickets.map((t) => t.key);
 
-        const ticketRows = !isCollapsed && visibleGroupTickets.map((ticket) => {
+        const ticketRows = !isCollapsed && visibleGroupTickets.map((ticket, groupIdx) => {
           const flatIdx = tickets.findIndex((t) => t.key === ticket.key);
           let insertLine: "above" | "below" | undefined;
           if (dragOverKey && ticket.key === dragOverKey && activeInsertIdx !== -1 && overInsertIdx !== -1) {
@@ -632,17 +638,23 @@ export function TicketTable({
           const warningLabels = showGroupWarningLabels
             ? ticketWarningLabels(ticket, groupIsActiveSprint)
             : undefined;
+          // Last row of the group's table rounds its bottom corners to the card edge. The
+          // per-group composer (when open) renders outside this table, so the last ticket is
+          // always the table's final row.
+          const isLastInCard = groupIdx === visibleGroupTickets.length - 1;
           return externalDnd ? (
             <SortableBoardRow
               key={ticket.key}
               {...makeRowProps(ticket, flatIdx)}
               insertLine={insertLine}
+              isLastInCard={isLastInCard}
               warningLabels={warningLabels}
             />
           ) : (
             <BoardRow
               key={ticket.key}
               {...makeRowProps(ticket, flatIdx)}
+              isLastInCard={isLastInCard}
               warningLabels={warningLabels}
             />
           );
