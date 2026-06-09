@@ -1046,8 +1046,13 @@ export function TicketStatusPill({
 
       {/* Jira status badge */}
       {!showStatus ? null : removedFromJira ? (
-        <span className="inline-flex items-center gap-1 whitespace-nowrap rounded px-1.5 py-0.5 font-mono text-[10px] font-semibold bg-red-500/10 text-red-400/70">
-          <span className="shrink-0 h-1.5 w-1.5 rounded-full opacity-70 bg-red-400/70" />
+        // DELETED is a derived soft-delete state (not a JiraStatus): muted rose
+        // + strikethrough, sitting outside the lifecycle set (BRDG-322).
+        <span
+          className="inline-flex items-center gap-1 whitespace-nowrap rounded px-1.5 py-0.5 font-mono text-[10px] font-semibold line-through"
+          style={{ backgroundColor: JIRA_STATUS_COLORS.DELETED.bg, color: JIRA_STATUS_COLORS.DELETED.text }}
+        >
+          <span className="shrink-0 h-1.5 w-1.5 rounded-full opacity-70" style={{ backgroundColor: JIRA_STATUS_COLORS.DELETED.text }} />
           DELETED
         </span>
       ) : (
@@ -1058,7 +1063,7 @@ export function TicketStatusPill({
             aria-label={statusTip}
             onClick={onJiraStatusChange ? () => setJiraDropdownOpen((o) => !o) : undefined}
             disabled={!onJiraStatusChange}
-            className={`flex items-center gap-1 ${statusBadgePad} font-mono font-medium tracking-wide transition-colors duration-150 ${statusRounded} ${onJiraStatusChange ? "cursor-pointer hover:brightness-110" : "cursor-default"}`}
+            className={`flex items-center gap-1 ${statusBadgePad} font-mono font-medium tracking-wide transition-colors duration-150 ${statusRounded} ${jiraStatus === "DEPRECATED" ? "line-through" : ""} ${onJiraStatusChange ? "cursor-pointer hover:brightness-110" : "cursor-default"}`}
             style={{ backgroundColor: jiraColors.bg, color: jiraColors.text, opacity: elevated ? 1 : 0.85 }}
           >
             <span className={`shrink-0 ${statusDotSize} rounded-full opacity-70`} style={{ backgroundColor: jiraColors.text }} />

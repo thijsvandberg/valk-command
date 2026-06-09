@@ -6,6 +6,7 @@ import {
   chatStatusColor,
   pipelineStatusColor,
   JIRA_STATUS_STYLES,
+  RAW_STATUS_COLORS,
   READINESS_STYLES,
   PR_STATUS_STYLES,
   CONFIDENCE_STYLES,
@@ -79,8 +80,8 @@ describe("chatStatusColor", () => {
 });
 
 describe("JIRA_STATUS_STYLES", () => {
-  it("has entries for all JiraStatus values", () => {
-    const expected = ["TO DO", "IN PROGRESS", "TEST", "DONE", "DEPRECATED"];
+  it("has entries for all JiraStatus values plus the derived DELETED state", () => {
+    const expected = ["TO DO", "IN PROGRESS", "TEST", "DONE", "DEPRECATED", "DELETED"];
     expect(Object.keys(JIRA_STATUS_STYLES)).toEqual(expect.arrayContaining(expected));
     expect(Object.keys(JIRA_STATUS_STYLES)).toHaveLength(expected.length);
   });
@@ -90,6 +91,42 @@ describe("JIRA_STATUS_STYLES", () => {
       expect(style).toHaveProperty("bg");
       expect(style).toHaveProperty("text");
     }
+  });
+
+  // BRDG-322: the collision-free colour set. The status badges must not borrow
+  // the BRDG-321 marker hues, and the two tables must not drift apart.
+  it("maps each status to its BRDG-322 token", () => {
+    expect(JIRA_STATUS_STYLES["TO DO"].text).toBe("var(--color-status-todo)");
+    expect(JIRA_STATUS_STYLES["IN PROGRESS"].text).toBe("var(--color-status-progress)");
+    expect(JIRA_STATUS_STYLES.TEST.text).toBe("var(--color-status-test)");
+    expect(JIRA_STATUS_STYLES.DONE.text).toBe("var(--color-status-done)");
+    expect(JIRA_STATUS_STYLES.DEPRECATED.text).toBe("var(--color-status-deprecated)");
+    expect(JIRA_STATUS_STYLES.DELETED.text).toBe("var(--color-status-deleted)");
+  });
+
+  it("uses no marker hue (teal / slate / violet) and drops the legacy hardcoded violet", () => {
+    const serialized = JSON.stringify(JIRA_STATUS_STYLES);
+    // legacy violet TEST fill + the brand-teal / testing-violet ramps
+    expect(serialized).not.toContain("rgba(120, 90, 220");
+    expect(serialized).not.toContain("color-testing");
+    expect(serialized).not.toContain("color-brand");
+    expect(serialized).not.toContain("status-neutral"); // slate, now zinc
+  });
+});
+
+describe("RAW_STATUS_COLORS (server-side hex, BRDG-322)", () => {
+  it("uses sky for progress, zinc for todo/deprecated, amber for test, rose for deleted", () => {
+    expect(RAW_STATUS_COLORS.todo).toBe("#a1a1aa");
+    expect(RAW_STATUS_COLORS.progress).toBe("#38bdf8");
+    expect(RAW_STATUS_COLORS.test).toBe("#f59e0b");
+    expect(RAW_STATUS_COLORS.deprecated).toBe("#a1a1aa");
+    expect(RAW_STATUS_COLORS.deleted).toBe("#f43f5e");
+  });
+
+  it("no longer uses the old teal-ish progress or muted-green deprecated hex", () => {
+    const hexes = Object.values(RAW_STATUS_COLORS);
+    expect(hexes).not.toContain("#58b4e6");
+    expect(hexes).not.toContain("#7a9a7a");
   });
 });
 

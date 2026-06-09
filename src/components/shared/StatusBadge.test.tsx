@@ -28,4 +28,14 @@ describe("StatusBadge", () => {
     expect(el.className).toContain("inline-flex");
     expect(el.className).toContain("rounded");
   });
+
+  // BRDG-322: DEPRECATED is an exception state struck through to sit outside
+  // the lifecycle; lifecycle statuses are not struck.
+  it("strikes through DEPRECATED but not lifecycle statuses", () => {
+    const { container: depr } = render(<StatusBadge status="DEPRECATED" />);
+    expect((depr.firstChild as HTMLElement).className).toContain("line-through");
+
+    const { container: done } = render(<StatusBadge status="DONE" />);
+    expect((done.firstChild as HTMLElement).className).not.toContain("line-through");
+  });
 });

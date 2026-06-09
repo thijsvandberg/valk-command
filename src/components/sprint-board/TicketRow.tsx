@@ -416,12 +416,16 @@ export const TicketRow = memo(forwardRef<HTMLTableRowElement, TicketRowBaseProps
         return (
           <td key={id} className="py-2 pr-3 overflow-hidden">
             {isRemoved ? (
-              <span className="inline-flex items-center whitespace-nowrap rounded px-1.5 py-0.5 text-label font-medium bg-red-500/10 text-red-400/70">
+              // DELETED: muted rose + strikethrough, outside the lifecycle (BRDG-322).
+              <span
+                className="inline-flex items-center whitespace-nowrap rounded px-1.5 py-0.5 text-label font-medium line-through"
+                style={{ backgroundColor: JIRA_STATUS_COLORS.DELETED.bg, color: JIRA_STATUS_COLORS.DELETED.text }}
+              >
                 DELETED
               </span>
             ) : (
               <span
-                className="inline-flex items-center whitespace-nowrap rounded px-1.5 py-0.5 text-label font-medium"
+                className={`inline-flex items-center whitespace-nowrap rounded px-1.5 py-0.5 text-label font-medium${ticket.jiraStatus === "DEPRECATED" ? " line-through" : ""}`}
                 style={{ backgroundColor: jiraColor.bg, color: jiraColor.text }}
               >
                 {ticket.jiraStatus}

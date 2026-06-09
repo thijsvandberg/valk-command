@@ -138,12 +138,13 @@ export function FilterBar({
         selected={statusFilter}
         onChange={onStatusFilterChange}
         renderOption={(v) =>
-          // DELETED is a pseudo-status for tickets removed from Jira (not in
-          // JIRA_STATUS_COLORS); give it its own red badge in the same pill style.
+          // DELETED is a derived soft-delete state for tickets removed from Jira
+          // (not a JiraStatus): muted rose + strikethrough, matching the badge
+          // treatment everywhere else (BRDG-322).
           v === "DELETED" ? (
             <span
-              className="inline-flex items-center rounded px-2 py-0.5 text-body-sm font-medium"
-              style={{ backgroundColor: "var(--color-status-deprecated-subtle)", color: "var(--color-status-deprecated)" }}
+              className="inline-flex items-center rounded px-2 py-0.5 text-body-sm font-medium line-through"
+              style={{ backgroundColor: "var(--color-status-deleted-subtle)", color: "var(--color-status-deleted)" }}
             >
               DELETED
             </span>

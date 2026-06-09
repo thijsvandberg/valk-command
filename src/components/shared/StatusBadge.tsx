@@ -11,9 +11,12 @@ export function StatusBadge({
   className?: string;
 }) {
   const color = JIRA_STATUS_COLORS[status] || JIRA_STATUS_COLORS["TO DO"];
+  // DEPRECATED is struck through so it reads as outside the lifecycle flow
+  // (BRDG-322). DELETED is a derived state rendered by its own call sites.
+  const struck = status === "DEPRECATED";
   return (
     <span
-      className={`inline-flex items-center rounded px-2 py-0.5 text-body-sm font-medium${className ? ` ${className}` : ""}`}
+      className={`inline-flex items-center rounded px-2 py-0.5 text-body-sm font-medium${struck ? " line-through" : ""}${className ? ` ${className}` : ""}`}
       style={{ backgroundColor: color.bg, color: color.text }}
     >
       {status}

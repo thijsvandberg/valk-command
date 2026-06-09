@@ -645,4 +645,16 @@ describe("TicketStatusPill hover card", () => {
     expect(screen.queryByTitle("Sprint: Sprint 42")).toBeNull();
     expect(screen.queryByTitle("Story Points: 5")).toBeNull();
   });
+
+  // BRDG-322: DELETED renders muted rose + strikethrough via the status token,
+  // not the old hardcoded red Tailwind classes.
+  it("renders the DELETED pill struck through with the deleted token (no hardcoded red)", () => {
+    render(<TicketStatusPill ticketKey="VPL-1" jiraStatus="TO DO" removedFromJira />);
+    const pill = screen.getByText("DELETED");
+    expect(pill.className).toContain("line-through");
+    expect(pill.className).not.toContain("bg-red-500/10");
+    expect(pill.className).not.toContain("text-red-400");
+    expect(pill.style.color).toBe("var(--color-status-deleted)");
+    expect(pill.style.backgroundColor).toBe("var(--color-status-deleted-subtle)");
+  });
 });

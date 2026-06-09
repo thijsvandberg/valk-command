@@ -37,12 +37,18 @@ export function chatStatusColor(status: string): string {
 
 // --- Jira status styles ---
 
-export const JIRA_STATUS_STYLES: Record<JiraStatus, { bg: string; text: string }> = {
-  "TO DO":       { bg: "var(--color-status-neutral-subtle)", text: "var(--color-status-neutral)" },
+// Jira status colour set (BRDG-322). Collision-free with the BRDG-321 row
+// markers: no status uses teal (refine) / slate (SP) / violet (BV). The key
+// includes the derived "DELETED" state (a soft-delete, not a real JiraStatus)
+// so this table and JIRA_STATUS_COLORS stay in lockstep and consumers stop
+// hardcoding a red pill. All values are CSS-var driven so they flip per theme.
+export const JIRA_STATUS_STYLES: Record<JiraStatus | "DELETED", { bg: string; text: string }> = {
+  "TO DO":       { bg: "var(--color-status-todo-subtle)", text: "var(--color-status-todo)" },
   "IN PROGRESS": { bg: "var(--color-status-progress-subtle)", text: "var(--color-status-progress)" },
-  TEST:          { bg: "rgba(120, 90, 220, 0.15)", text: "var(--color-testing-400)" },
+  TEST:          { bg: "var(--color-status-test-subtle)", text: "var(--color-status-test)" },
   DONE:          { bg: "var(--color-status-done-subtle)", text: "var(--color-status-done)" },
   DEPRECATED:    { bg: "var(--color-status-deprecated-subtle)", text: "var(--color-status-deprecated)" },
+  DELETED:       { bg: "var(--color-status-deleted-subtle)", text: "var(--color-status-deleted)" },
 };
 
 // --- Readiness styles ---
@@ -116,9 +122,12 @@ export const RAW_STATUS_COLORS = {
   caution:    "#eab308",
   info:       "#60a5fa",
   neutral:    "#94a3b8",
-  progress:   "#58b4e6",
+  todo:       "#a1a1aa", // zinc (BRDG-322)
+  progress:   "#38bdf8", // sky  (BRDG-322, was teal-ish #58b4e6)
+  test:       "#f59e0b", // amber (BRDG-322)
   done:       "#22c55e",
-  deprecated: "#7a9a7a",
+  deprecated: "#a1a1aa", // muted zinc (BRDG-322, was muted green #7a9a7a)
+  deleted:    "#f43f5e", // muted rose (BRDG-322)
   epic:       "#9b6cd4",
   sprint:     "#d4904a",
   task:       "#4a90d9",

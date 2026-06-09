@@ -147,12 +147,24 @@
   --color-status-info-subtle: rgba(96, 165, 250, 0.12);
   --color-status-neutral: #94a3b8;
   --color-status-neutral-subtle: rgba(100, 116, 139, 0.15);
-  --color-status-progress: #58b4e6;
-  --color-status-progress-subtle: rgba(56, 152, 210, 0.15);
-  --color-status-done: #22c55e;
+  /* Jira status badge set (BRDG-322): collision-free with the BRDG-321 row
+     markers — no status uses the teal (refine) / slate (SP) / violet (BV) hues.
+     Lifecycle runs zinc -> sky -> amber -> green; the two exception states sit
+     outside the flow as muted zinc / muted rose (+ strikethrough at the call
+     sites). Text values are tuned for the dark surface here and flipped to
+     darker shades in the [data-theme="light"] block below. */
+  --color-status-todo: #d4d4d8;                                          /* zinc */
+  --color-status-todo-subtle: color-mix(in srgb, #71717a 15%, transparent);
+  --color-status-progress: #38bdf8;                                      /* sky (was teal-ish #58b4e6) */
+  --color-status-progress-subtle: color-mix(in srgb, #0ea5e9 15%, transparent);
+  --color-status-test: #fcd34d;                                          /* amber (frees violet for BV) */
+  --color-status-test-subtle: color-mix(in srgb, #f59e0b 15%, transparent);
+  --color-status-done: #22c55e;                                          /* green (unchanged) */
   --color-status-done-subtle: rgba(34, 197, 94, 0.15);
-  --color-status-deprecated: #7a9a7a;
-  --color-status-deprecated-subtle: rgba(120, 160, 120, 0.12);
+  --color-status-deprecated: #a1a1aa;                                    /* muted zinc (was muted green) */
+  --color-status-deprecated-subtle: color-mix(in srgb, #71717a 12%, transparent);
+  --color-status-deleted: #fda4af;                                       /* muted rose, terminal state */
+  --color-status-deleted-subtle: color-mix(in srgb, #f43f5e 14%, transparent);
 
   /* Decorative icon tokens */
   --color-icon-epic: #9b6cd4;
@@ -260,6 +272,15 @@
   --color-code-fg: rgba(0, 0, 0, 0.80);
   --color-code-line-number: rgba(0, 0, 0, 0.45);
   --color-code-label: rgba(0, 0, 0, 0.60);
+
+  /* Status badge text flipped to darker shades so it stays legible on the pale
+     subtle tints in light mode (BRDG-322). The -subtle color-mixes composite
+     over either surface, so only the foregrounds need to flip. */
+  --color-status-todo: #52525b;        /* zinc */
+  --color-status-progress: #0284c7;    /* sky */
+  --color-status-test: #b45309;        /* amber */
+  --color-status-deprecated: #52525b;  /* muted zinc */
+  --color-status-deleted: #be123c;     /* muted rose */
 }
 
 /* Smooth theme transition (added temporarily by ThemeProvider on toggle) */
@@ -333,14 +354,15 @@ html.theme-transition *::after {
   padding: 0.125rem 0.375rem;
   font-variant-numeric: tabular-nums;
 }
-.status-count-todo     { background: var(--color-status-neutral-subtle); color: var(--color-text-tertiary); }
-.status-count-progress { background: color-mix(in srgb, var(--color-brand-500) 15%, transparent);  color: #3bbfbe; }
-.status-count-test     { background: color-mix(in srgb, var(--color-testing-400) 15%, transparent);  color: var(--color-testing-400); }
-.status-count-done     { background: var(--color-status-done-subtle);  color: #4ade80; }
+/* These count-badge classes feed off the BRDG-322 status tokens so they can
+   never drift back to a marker hue (teal/slate/violet) if reused. */
+.status-count-todo     { background: var(--color-status-todo-subtle);     color: var(--color-status-todo); }
+.status-count-progress { background: var(--color-status-progress-subtle); color: var(--color-status-progress); }
+.status-count-test     { background: var(--color-status-test-subtle);     color: var(--color-status-test); }
+.status-count-done     { background: var(--color-status-done-subtle);     color: #4ade80; }
+.status-count-depr     { background: var(--color-status-deprecated-subtle); color: var(--color-status-deprecated); text-decoration: line-through; }
+.status-count-deleted  { background: var(--color-status-deleted-subtle);  color: var(--color-status-deleted); text-decoration: line-through; }
 
-[data-theme="light"] .status-count-todo     { background: color-mix(in srgb, var(--color-status-neutral) 8%, transparent); }
-[data-theme="light"] .status-count-progress { background: color-mix(in srgb, var(--color-brand-500) 10%, transparent);  color: #0a736e; }
-[data-theme="light"] .status-count-test     { background: color-mix(in srgb, var(--color-testing-400) 10%, transparent);  color: var(--color-testing-600); }
 [data-theme="light"] .status-count-done     { background: color-mix(in srgb, var(--color-status-done) 10%, transparent);   color: #16a34a; }
 
 /* Sprint header status pills (StatusPill component). Driven through theme-aware
@@ -348,11 +370,11 @@ html.theme-transition *::after {
    hardcoded hex was tuned for dark and washed out on a light surface). The active
    state is a solid, saturated fill instead of a faint tint + ring. */
 :root {
-  --sp-todo-bg: var(--color-status-neutral-subtle);
-  --sp-todo-text: var(--color-status-neutral);
-  --sp-todo-dot: #94a3b8;
-  --sp-todo-active-bg: #5d6b7d;
-  --sp-todo-active-text: #f1f5f9;
+  --sp-todo-bg: var(--color-status-todo-subtle);
+  --sp-todo-text: var(--color-status-todo);
+  --sp-todo-dot: #a1a1aa;
+  --sp-todo-active-bg: #52525b;
+  --sp-todo-active-text: #f4f4f5;
 
   --sp-prog-bg: var(--color-status-progress-subtle);
   --sp-prog-text: var(--color-status-progress);
@@ -360,10 +382,10 @@ html.theme-transition *::after {
   --sp-prog-active-bg: #0c87c9;
   --sp-prog-active-text: #ffffff;
 
-  --sp-test-bg: color-mix(in srgb, var(--color-testing-400) 15%, transparent);
-  --sp-test-text: var(--color-testing-400);
-  --sp-test-dot: #9b7ee8;
-  --sp-test-active-bg: #7c3aed;
+  --sp-test-bg: var(--color-status-test-subtle);
+  --sp-test-text: var(--color-status-test);
+  --sp-test-dot: #fbbf24;
+  --sp-test-active-bg: #b45309;
   --sp-test-active-text: #ffffff;
 
   --sp-done-bg: var(--color-status-done-subtle);
@@ -374,17 +396,17 @@ html.theme-transition *::after {
 }
 
 [data-theme="light"] {
-  --sp-todo-bg: var(--color-status-neutral-subtle);
-  --sp-todo-text: var(--color-status-neutral);
-  --sp-todo-dot: #64748b;
+  --sp-todo-bg: var(--color-status-todo-subtle);
+  --sp-todo-text: var(--color-status-todo);
+  --sp-todo-dot: #71717a;
 
   --sp-prog-bg: var(--color-status-progress-subtle);
   --sp-prog-text: var(--color-status-progress);
   --sp-prog-dot: #0284c7;
 
-  --sp-test-bg: color-mix(in srgb, var(--color-testing-400) 15%, transparent);
-  --sp-test-text: var(--color-testing-400);
-  --sp-test-dot: #7c3aed;
+  --sp-test-bg: var(--color-status-test-subtle);
+  --sp-test-text: var(--color-status-test);
+  --sp-test-dot: #f59e0b;
 
   --sp-done-bg: var(--color-status-done-subtle);
   --sp-done-text: var(--color-status-done);
