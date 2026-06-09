@@ -34,8 +34,8 @@ const EXPLORATIONS: Exploration[] = [
     slug: "favicon",
     title: "Favicon directions",
     blurb:
-      "Five favicons built from the bridge_ wordmark instead of the rejected aperture mark. Each distils the brand to what survives at 16px: the mono b and the teal underscore caret. Shown large, at real sizes, and in faux browser tabs.",
-    status: "Exploration",
+      "Favicons built from the bridge_ wordmark instead of the rejected aperture mark. The b _ lockup shipped as env-aware dynamic icons: dark tile for prod (3101), light tile for dev (3100), both with the teal underscore.",
+    status: "Shipped",
     icon: <AppWindow className={ICON} strokeWidth={1.5} />,
   },
   {
@@ -76,8 +76,8 @@ const EXPLORATIONS: Exploration[] = [
     slug: "launcher",
     title: "Launcher button",
     blurb:
-      "Restyle options for the collapsed bottom-left launcher button — brand fill, tonal, circle, pill, ghost and more — to fit the editorial styling.",
-    status: "Exploration",
+      "Eight restyle options for the collapsed launcher button (brand fill, tonal, circle, pill, ghost and more). Chosen and shipped: the brand-gradient fill, plus the launcher is now draggable corner-to-corner like the focus-exit button.",
+    status: "Shipped",
     ticket: "BRDG-317",
     icon: <MousePointerClick className={ICON} strokeWidth={1.5} />,
   },

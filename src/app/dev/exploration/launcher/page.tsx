@@ -17,6 +17,8 @@ type Variant = {
   id: string;
   name: string;
   note: string;
+  /** The variant that was chosen and shipped into the real launcher. */
+  chosen?: boolean;
   /** Rendered button. Kept at the real 44px size unless the variant is about size. */
   el: React.ReactNode;
 };
@@ -43,6 +45,7 @@ const VARIANTS: Variant[] = [
   {
     id: "brand-gradient",
     name: "Brand gradient",
+    chosen: true,
     note: "Solid brand fill with a soft glow. Echoes the Sprint Board hero tile inside the panel; reads as the primary action.",
     el: (
       <button
@@ -158,17 +161,31 @@ export default function LauncherExplorationPage() {
             The collapsed bottom-left button that opens the sidebar panel. Treatments to make it fit the
             editorial brand styling better than the current glass squircle. Hover each to feel its motion.
           </p>
+          <p className="mt-3 inline-flex items-center gap-2 rounded-lg bg-[var(--color-status-done-subtle)] px-3 py-1.5 text-body-sm">
+            <span className="text-[10px] font-semibold uppercase tracking-[0.1em] text-[var(--color-status-done)]">Shipped</span>
+            <span className="text-text-secondary">
+              Chosen: <strong className="font-semibold text-text-primary">Brand gradient</strong>, and the
+              launcher was made draggable corner-to-corner (BRDG-317).
+            </span>
+          </p>
         </header>
 
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {VARIANTS.map((v) => (
             <div
               key={v.id}
-              className="flex flex-col overflow-hidden rounded-2xl ring-1 ring-border-subtle"
+              className={`flex flex-col overflow-hidden rounded-2xl ring-1 ${
+                v.chosen ? "ring-2 ring-[var(--color-status-done)]/60" : "ring-border-subtle"
+              }`}
             >
               {/* Faux board surface so the button is judged in context */}
               <div className="relative grid h-36 place-items-center bg-gradient-to-br from-[var(--color-surface-elevated)] to-[var(--color-surface-chrome)]">
                 <div className="pointer-events-none absolute inset-0 opacity-60 [background:radial-gradient(120%_120%_at_15%_85%,var(--color-brand-500)/8,transparent_60%)]" />
+                {v.chosen && (
+                  <span className="absolute right-2.5 top-2.5 rounded-full bg-[var(--color-status-done-subtle)] px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.1em] text-[var(--color-status-done)]">
+                    Shipped
+                  </span>
+                )}
                 {v.el}
               </div>
               <div className="border-t border-border-subtle bg-[var(--color-surface-floating)] px-4 py-3">
