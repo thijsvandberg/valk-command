@@ -229,7 +229,7 @@ export function ChildIssueRow({
           metadata control (e.g. the assignee picker) stays reachable on hover and its
           clicks never bubble up to row-select. */}
       {metadataSlot && (
-        <span className="relative z-20 flex shrink-0 items-center" onClick={(e) => e.stopPropagation()}>
+        <span className="relative z-20 flex shrink-0 items-center gap-1.5" onClick={(e) => e.stopPropagation()}>
           {metadataSlot}
         </span>
       )}

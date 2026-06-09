@@ -56,13 +56,17 @@ export const PO_STATUS_OPTIONS: { value: POStatus; label: string }[] = [
 
 // Shared with the sprint-board status pills via the --sp-* theme variables
 // (defined in globals.css) so every ticket-status surface uses one fresh,
-// light-mode-aware palette. DEPRECATED keeps its own red token.
-export const JIRA_STATUS_COLORS: Record<JiraStatus, { bg: string; text: string }> = {
+// light-mode-aware palette. The BRDG-322 set is collision-free with the
+// BRDG-321 row markers (no teal/slate/violet). DEPRECATED is muted zinc and
+// DELETED (a derived soft-delete, not a real JiraStatus) is muted rose; both
+// are struck through at the call sites. Kept in lockstep with JIRA_STATUS_STYLES.
+export const JIRA_STATUS_COLORS: Record<JiraStatus | "DELETED", { bg: string; text: string }> = {
   "TO DO": { bg: "var(--sp-todo-bg)", text: "var(--sp-todo-text)" },
   "IN PROGRESS": { bg: "var(--sp-prog-bg)", text: "var(--sp-prog-text)" },
   TEST: { bg: "var(--sp-test-bg)", text: "var(--sp-test-text)" },
   DONE: { bg: "var(--sp-done-bg)", text: "var(--sp-done-text)" },
   DEPRECATED: { bg: "var(--color-status-deprecated-subtle)", text: "var(--color-status-deprecated)" },
+  DELETED: { bg: "var(--color-status-deleted-subtle)", text: "var(--color-status-deleted)" },
 };
 
 export interface EpicColor {
@@ -131,9 +135,10 @@ export function getSpColor(value: number): MetricTone {
 
 // Forward-planning guestimation (BRDG-303): a PO placeholder estimate, shown
 // only until real story points land. The Fibonacci scale is identical to SP.
-// Per BRDG-321 a guess no longer differs by hue — it wears the SAME slate tone
-// as SP and is set apart purely by a dashed inset border ("penciled in"), so it
-// can never be mistaken for a committed estimate.
+// Per BRDG-321 a guess shares the SAME slate hue as SP (never a different
+// metric); the chip itself is set apart as "penciled in" by a dashed inset
+// outline and NO fill (see GuestimationPicker). This tone supplies the slate
+// text/border + the popover preset fills.
 export const GUESTIMATION_OPTIONS = [1, 2, 3, 5, 8] as const;
 export const GUESTIMATION_OPTION_SET = new Set<number>(GUESTIMATION_OPTIONS);
 

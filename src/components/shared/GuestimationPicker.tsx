@@ -75,7 +75,8 @@ export function GuestimationPicker({
   const isLg = size === "lg";
   const isNA = value === 0;
   const color = value != null ? getGuestimationColor(value) : null;
-  // A guess always wears a dashed outline so it never reads as a solid SP badge.
+  // A guess wears a dashed slate outline with NO fill ("penciled in"), so it
+  // reads as the same SP chip but not yet committed (BRDG-321, exploration pick B).
   const borderColor = color ? color.text : "var(--color-text-muted)";
   const showBg = !subtle || hovered || open || value != null;
   const displayLabel = value != null ? (isNA ? "-" : String(value)) : null;
@@ -93,7 +94,7 @@ export function GuestimationPicker({
           className="flex h-7 items-center gap-1.5 rounded-lg border border-dashed px-2.5 cursor-pointer focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)] active:opacity-60"
           style={{
             color: color?.text ?? "var(--color-text-muted)",
-            backgroundColor: color?.bg ?? "var(--color-overlay-subtle)",
+            backgroundColor: "transparent",
             borderColor: `color-mix(in srgb, ${borderColor} 45%, transparent)`,
             opacity: hovered ? 0.85 : 1,
             transition: "opacity 0.15s ease",
@@ -114,7 +115,7 @@ export function GuestimationPicker({
           className={`flex items-center rounded-md border border-dashed cursor-pointer transition-colors duration-150 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)] active:opacity-60 font-medium tabular-nums ${dense ? "h-5 text-[11px] leading-none" : "h-6 text-body-sm"} ${showMetricIcon ? "gap-1 px-1.5 min-w-[2.25rem] justify-start" : "min-w-[24px] justify-center px-1"}`}
           style={{
             color: color?.text ?? "var(--color-text-muted)",
-            backgroundColor: showBg ? (color?.bg ?? "var(--color-overlay-subtle)") : "transparent",
+            backgroundColor: "transparent",
             borderColor: showBg ? `color-mix(in srgb, ${borderColor} 45%, transparent)` : "transparent",
             opacity: hovered && showBg ? 0.85 : 1,
           }}
