@@ -120,7 +120,7 @@ const CONCEPTS: Concept[] = [
     id: "space-mono",
     font: "Space Mono",
     chosen: true,
-    note: "Console monospace with a cursor. Speaks 'command center'. Chosen and live in the app header.",
+    note: "Console monospace with a cursor. Speaks 'command center'. This is the one that shipped — live in the app header as bridge_.",
     style: { fontFamily: spaceMono.style.fontFamily, fontWeight: 700, letterSpacing: "-0.02em", textTransform: "lowercase" },
     node: (
       <>
@@ -163,7 +163,7 @@ const CONCEPTS: Concept[] = [
   {
     id: "geist-mono",
     font: "Geist Mono",
-    note: "Refined contemporary monospace with a block cursor. The chosen lane, cleaner than Space Mono.",
+    note: "Refined contemporary monospace with a block cursor. A cleaner alternative to Space Mono, but not the one we shipped.",
     style: { fontFamily: geistMono.style.fontFamily, fontWeight: 600, letterSpacing: "-0.03em", textTransform: "lowercase" },
     node: (
       <>
@@ -321,7 +321,7 @@ export default function WordmarkExplorationPage() {
                   {c.chosen && (
                     <span className="inline-flex items-center gap-1 rounded-full bg-[var(--color-brand-400)] px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.1em] text-[var(--color-surface-base)]">
                       <span className="h-1.5 w-1.5 rounded-full bg-current" />
-                      Live
+                      Shipped
                     </span>
                   )}
                   <span className="font-mono text-[10px] uppercase tracking-[0.12em] text-text-muted">{c.font}</span>
