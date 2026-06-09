@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo } from "react";
+import { useMemo, useState, useEffect } from "react";
 import type { Sprint } from "@/types/ticket";
 import { useJiraSprints, useTickets, useActiveWriterSessions } from "@/hooks/useSprintBoard";
 import { useConversations } from "@/hooks/useConversations";
@@ -8,6 +8,7 @@ import { useDefaultSprintId } from "@/hooks/useDefaultSprint";
 import { useRefinementSessions } from "@/hooks/useRefinementSessions";
 import { computeSprintStats, computeSprintWorkDays } from "@/components/sprint-board/sprint-board-utils";
 import { extractTeamPrefix } from "@/lib/sprint-utils";
+import { readSidebarSnapshot, writeSidebarSnapshot } from "@/lib/sidebar-snapshot";
 
 export interface SidebarHeroData {
   /** Active sprint name, used as the hero key (e.g. "BT: 139"). */
@@ -36,13 +37,16 @@ export interface SidebarData {
 }
 
 /**
- * Aggregates the live counts surfaced by the bento launcher. Every source is
- * already SWR/context-cached, so reading them from the always-mounted Sidebar is
- * cheap. Each value is null-safe: when data is loading or empty the count is
- * null, so rows render label-only instead of showing a fake zero (BRDG-317).
+ * Aggregates the live counts surfaced by the bento launcher. The popover mounts
+ * its data hooks only on open, so a last-known-good snapshot (persisted to
+ * localStorage) seeds the first render: the popover paints populated immediately
+ * and the live sources revalidate behind it instead of flashing empty. Each
+ * live value is null-safe: while a source is loading its count is null, so we
+ * fall back to the snapshot; an empty source still renders label-only rather
+ * than a fake zero (BRDG-317).
  */
 export function useSidebarData(): SidebarData {
-  const { sprints } = useJiraSprints();
+  const { sprints, isLoading: sprintsLoading } = useJiraSprints();
   const defaultSprintId = useDefaultSprintId();
   // The default-sprint setting only pins which TEAM is the default (e.g. BT).
   // We surface that team's currently *active* sprint so the widget follows the
@@ -64,7 +68,11 @@ export function useSidebarData(): SidebarData {
   const { conversations, loading: conversationsLoading } = useConversations();
   const { sessions: refinementSessions, isLoading: refinementLoading } = useRefinementSessions();
 
-  const hero = useMemo<SidebarHeroData | null>(() => {
+  // Last-known-good snapshot read once on mount; used as a fallback per field
+  // while that field's live source is still loading.
+  const [snapshot] = useState<SidebarData | null>(() => readSidebarSnapshot());
+
+  const liveHero = useMemo<SidebarHeroData | null>(() => {
     if (!activeSprint) return null;
     const stats = tickets ? computeSprintStats(tickets) : null;
     const total = stats
@@ -115,5 +123,31 @@ export function useSidebarData(): SidebarData {
     return { count: next?.ticketCount ?? 0, note: "to refine" };
   }, [refinementSessions, refinementLoading]);
 
-  return { hero, chat, storyWriter, refinement };
+  // Readiness per source. Hero is ready once sprints have loaded and either
+  // there is no active sprint or its tickets have arrived; the count sources are
+  // ready once their loading flag clears (writer uses SWR's undefined-while-loading).
+  const heroReady = !sprintsLoading && (!activeSprint || tickets != null);
+  const writerReady = writerSessions !== undefined;
+
+  // Merge: prefer the live value once its source is ready, otherwise fall back
+  // to the snapshot so the row stays populated during revalidation.
+  const result = useMemo<SidebarData>(
+    () => ({
+      hero: heroReady ? liveHero : (snapshot?.hero ?? liveHero),
+      chat: !conversationsLoading ? chat : (snapshot?.chat ?? chat),
+      storyWriter: writerReady ? storyWriter : (snapshot?.storyWriter ?? storyWriter),
+      refinement: !refinementLoading ? refinement : (snapshot?.refinement ?? refinement),
+    }),
+    [heroReady, liveHero, conversationsLoading, chat, writerReady, storyWriter, refinementLoading, refinement, snapshot],
+  );
+
+  // Persist only a fully-live frame, so the snapshot never captures a half-loaded
+  // mix of live values and stale fallbacks.
+  useEffect(() => {
+    if (heroReady && !conversationsLoading && writerReady && !refinementLoading) {
+      writeSidebarSnapshot({ hero: liveHero, chat, storyWriter, refinement });
+    }
+  }, [heroReady, conversationsLoading, writerReady, refinementLoading, liveHero, chat, storyWriter, refinement]);
+
+  return result;
 }
