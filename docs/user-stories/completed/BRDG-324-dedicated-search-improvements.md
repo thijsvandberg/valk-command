@@ -1,6 +1,6 @@
 # BRDG-324: Dedicated search improvements (subtasks, shared filters, ticket pill)
 
-**Status:** To Do
+**Status:** Done
 **Priority:** Medium
 **Type:** Improvement
 **Related:** BRDG-321/322 (board row markers), shared `FilterDropdown` / `IssueTypeIcon` / `TicketStatusPill`
@@ -113,13 +113,67 @@ Shared building blocks already in place: `FilterDropdown`, `IssueTypeIcon` + `IS
 Out of scope: the action/command modal; saved-view behaviour; Jira-side readiness mapping beyond what
 the toggle needs.
 
+## Implementation Plan
+
+### Phase A — Data layer: add `readiness` to the index and result (FIRST; unblocks #4/#5)
+
+1. `src/lib/search-index-cache.ts` — add `readiness: string | null` to the `TicketDetail` interface.
+2. `src/lib/local-search-engine.ts` — populate readiness end-to-end:
+   - `buildIndex()` ticketDetails builder: add `readiness: meta?.readiness ?? null`.
+   - `LocalSearchResult` interface: add `readiness: TicketReadiness | null` (import `TicketReadiness`).
+   - Mapped result loop: `readiness: (detail?.readiness as TicketReadiness | null) ?? null`.
+
+### Phase B — Engine filtering: subtasks + readiness
+
+3. `SearchParams`: add `readinessFilter: string[]`. Keep `poStatusFilter` for back-compat.
+4. Default subtask exclusion + opt-in. Normalize Jira type string robustly:
+   `const norm = (t) => t ? t.toLowerCase().replace(/[\s-]/g, "") : null;` (handles "Sub-task"/"Subtask").
+   - Type membership check uses normalized type.
+   - Guard regardless of typeFilter: `if (!typeFilter.includes("subtask") && norm(r.issueType) === "subtask") return false;`
+5. Readiness filter mirroring board semantics: `cur === null ? readinessFilter.includes("none") : readinessFilter.includes(cur)`. Add to `hasFilters` (fuse limit).
+
+### Phase C — Routes
+
+6. `src/app/api/search/local/route.ts` — parse `readiness` param, pass `readinessFilter`. Keep `poStatus` parse for back-compat.
+7. `src/app/api/search/jira/route.ts` — default JQL path: append `issuetype != subtask` when no `issuetype` param and no jqlOverride. (Known limitation: Jira mode has no filter UI, so the opt-in is Local-only.)
+
+### Phase D — Shared option-renderer components
+
+8. New `src/components/shared/IssueTypeOption.tsx` — `{ value }` → ISSUE_TYPE_COLORS color + centered IssueTypeIcon (15/2) + capitalized label.
+9. New `src/components/shared/StatusOption.tsx` — `{ value }` → DELETED rose/strikethrough branch + StatusBadge else.
+10. New `src/components/shared/ReadinessOption.tsx` — `{ value }` → "none" → dot + "Ready for Development"; else ReadinessIcon + READINESS_CONFIG label.
+11. `FilterBar.tsx` — replace inline Status/Type/Readiness renderOption bodies with the shared components (keeps board+search in sync).
+
+### Phase E — SearchFilterPanel: poStatus → readiness, Subtask, shared renderers
+
+12. `SearchFilterPanel.tsx`: rename `poStatus` → `readiness` across `SearchFilters`, `EMPTY_FILTERS`, `hasActiveFilters`, `SerializedSearchFilters`, `serializeFilters`, `deserializeFilters` (back-compat: accept optional legacy `poStatus`, drop it — semantics differ), `filtersToParams` (emit `readiness`). Add `subtask` to TYPE_OPTIONS/TYPE_LABEL_MAP. Use shared Status/Type/Readiness option renderers. Replace PO Status dropdown with a Readiness dropdown (`READINESS_OPTIONS.map(o => o.value ?? "none")`).
+13. `useSavedSearches.test.ts` — fixtures `poStatus: []` → `readiness: []`; add one legacy-`poStatus` fixture to assert no-throw deserialize.
+
+### Phase F — Result row pill
+
+14. `SearchResultParts.tsx` `LocalResultRow` — replace mono key + StatusBadge with `<TicketStatusPill variant="list" ticketKey readiness issueType showKey={showKey} showStatus showReadiness />`. Map status: `removedFromJira={status.toUpperCase()==="DELETED"}`, else `jiraStatus={status.toUpperCase() as JiraStatus}`. Keep sprint-name suffix. Keep `StatusBadge` (still used by JiraResultRow/PreviewPane).
+
+### Phase G — Tests + gates
+
+15. `local-search-engine.test.ts` — add `readinessFilter: []` to `defaultParams`; tests for subtask default-exclude, `["subtask"]` opt-in, `["story"]` still excludes subtasks, readiness `["on_hold"]` and `["none"]`.
+16. New component tests for IssueTypeOption / StatusOption / ReadinessOption.
+17. Gates: lint, typecheck, test, build.
+
+### Risks / notes
+
+- Subtask type string unverified → normalized comparison, no hard-coded "Sub-task".
+- Saved searches persist `poStatus` in localStorage → back-compat deserialize must not throw; legacy values dropped, not migrated.
+- Jira opt-in not wired (no Jira filter UI); default Jira search always excludes subtasks.
+- `result.status` casing/DELETED handled defensively via `.toUpperCase()` + `removedFromJira`.
+- `poStatuses` in `FilterOptionsData` becomes unused by the panel; keep the field to avoid route churn (optional follow-up cleanup).
+
 ## Checklist
 
-- [ ] Subtasks excluded by default; `Subtask` Type option brings them back (Local + Jira)
-- [ ] Shared Type option renderer used in both `SearchFilterPanel` and `FilterBar`
-- [ ] Shared Status option renderer (badge pills) used in both
-- [ ] Search "PO Status" replaced with "Readiness" filter (board's enum + icons)
-- [ ] Result rows render the standard `TicketStatusPill` (key + issue type + status + readiness)
-- [ ] `readiness` added to search index/result if needed for the pill
-- [ ] Tests for engine subtask filtering and the shared option components
-- [ ] `npm run lint`, `typecheck`, `test`, `build` pass
+- [x] Subtasks excluded by default; `Subtask` Type option brings them back (Local + Jira) <!-- Jira opt-in is exclusion-only: Jira mode has no filter panel, so the Subtask toggle is Local-only -->
+- [x] Shared Type option renderer used in both `SearchFilterPanel` and `FilterBar`
+- [x] Shared Status option renderer (badge pills) used in both
+- [x] Search "PO Status" replaced with "Readiness" filter (board's enum + icons)
+- [x] Result rows render the standard `TicketStatusPill` (key + issue type + status + readiness)
+- [x] `readiness` added to search index/result if needed for the pill
+- [x] Tests for engine subtask filtering and the shared option components
+- [x] `npm run lint`, `typecheck`, `test`, `build` pass
