@@ -8,7 +8,7 @@
  */
 
 import Link from "next/link";
-import { ArrowUpRight, LayoutGrid, Rows3, FlaskConical, Shapes, MousePointerClick, Type, PanelTop } from "lucide-react";
+import { ArrowUpRight, LayoutGrid, Rows3, FlaskConical, Shapes, MousePointerClick, Type, PanelTop, PanelTopDashed } from "lucide-react";
 
 type Exploration = {
   slug: string;
@@ -22,6 +22,15 @@ type Exploration = {
 const ICON = "h-5 w-5";
 
 const EXPLORATIONS: Exploration[] = [
+  {
+    slug: "header",
+    title: "Top bar - wordmark & menu",
+    blurb:
+      "Six directions for the fixed top bar. No beeldmerk: the brand carries through the bridge_ wordmark (teal underscore promoted to a live caret) plus mono type. Each pulls the nav menu out of the floating launcher into the header. Variant F (Caret Command Bar) chosen and written up as BRDG-320; page kept for reference.",
+    status: "Exploration",
+    ticket: "BRDG-320",
+    icon: <PanelTopDashed className={ICON} strokeWidth={1.5} />,
+  },
   {
     slug: "board-tabs",
     title: "Sprint Board views bar",
