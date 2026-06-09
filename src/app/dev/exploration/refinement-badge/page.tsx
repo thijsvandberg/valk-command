@@ -249,8 +249,50 @@ const LABEL_TONE: Record<Tone, ChipStyle> = {
 const STATUS_META: Record<Status, { label: string; dot: string }> = {
   todo: { label: "Todo", dot: "bg-zinc-400" },
   prog: { label: "Prog", dot: "bg-sky-400" },
-  test: { label: "Test", dot: "bg-violet-400" },
+  // TEST moves off violet (now used by BV) to amber — see the status-badge section.
+  test: { label: "Test", dot: "bg-amber-400" },
 };
+
+/* ---- proposed status-badge colour set ---- *
+ * Statuses ARE the place for semantic/progression colour (markers deliberately
+ * aren't). They must avoid the three marker hues: teal (refine), slate (SP),
+ * violet (BV). Lifecycle = cool→warm→success; the two exception states are muted. */
+type StatusDef = { key: string; label: string; count: number; hue: Hue; lane: "lifecycle" | "exception" };
+
+const STATUSES: StatusDef[] = [
+  { key: "todo", label: "To do", count: 8, hue: "zinc", lane: "lifecycle" },
+  { key: "prog", label: "In progress", count: 5, hue: "sky", lane: "lifecycle" },
+  { key: "test", label: "Test", count: 3, hue: "amber", lane: "lifecycle" },
+  { key: "done", label: "Done", count: 2, hue: "emerald", lane: "lifecycle" },
+  { key: "depr", label: "Deprecated", count: 1, hue: "zinc", lane: "exception" },
+  { key: "del", label: "Deleted", count: 0, hue: "rose", lane: "exception" },
+];
+
+/** Header-style count pill (full colour: tinted fill + theme-aware text). */
+function StatusCountPill({ d }: { d: StatusDef }) {
+  const s = chip(d.hue);
+  const muted = d.lane === "exception";
+  return (
+    <span
+      className={`expfg inline-flex items-center rounded-md px-2 py-0.5 font-mono text-[10px] font-medium uppercase tracking-[0.06em] ${muted ? "opacity-65" : ""}`}
+      style={{ ...fgVars(s), background: s.bg }}
+    >
+      <span className={muted ? "line-through" : ""}>{d.label}</span>:&nbsp;{d.count}
+    </span>
+  );
+}
+
+/** Row-style status pill (neutral text, colour carried by the dot — as on the real board). */
+function StatusRowPill({ d }: { d: StatusDef }) {
+  const s = chip(d.hue);
+  const muted = d.lane === "exception";
+  return (
+    <span className={`inline-flex items-center gap-1.5 rounded-md border border-border-default bg-overlay-subtle px-2 py-1 font-mono text-[11px] font-medium uppercase tracking-[0.04em] text-text-tertiary ${muted ? "opacity-70" : ""}`}>
+      <span className="h-1.5 w-1.5 rounded-full" style={{ background: muted ? `color-mix(in srgb, ${s.swatch} 60%, transparent)` : s.swatch }} />
+      <span className={muted ? "line-through" : ""}>{d.label}</span>
+    </span>
+  );
+}
 
 /* ================================================================== *
  * Refinement-glyph candidates, grouped by metaphor.
@@ -457,7 +499,7 @@ function BoardHeader() {
       <span className="ml-1 hidden items-center gap-1.5 lg:flex">
         <span className="rounded-md bg-overlay-default px-2 py-0.5 font-mono text-[10px] uppercase tracking-[0.06em] text-text-tertiary">To do: 8</span>
         <span className="expfg rounded-md px-2 py-0.5 font-mono text-[10px] uppercase tracking-[0.06em]" style={{ ...fgVars(chip("sky")), background: chip("sky").bg }}>In progress: 5</span>
-        <span className="expfg rounded-md px-2 py-0.5 font-mono text-[10px] uppercase tracking-[0.06em]" style={{ ...fgVars(chip("violet")), background: chip("violet").bg }}>Test: 3</span>
+        <span className="expfg rounded-md px-2 py-0.5 font-mono text-[10px] uppercase tracking-[0.06em]" style={{ ...fgVars(chip("amber")), background: chip("amber").bg }}>Test: 3</span>
         <span className="expfg rounded-md px-2 py-0.5 font-mono text-[10px] uppercase tracking-[0.06em]" style={{ ...fgVars(chip("emerald")), background: chip("emerald").bg }}>Done: 2</span>
       </span>
       <span className="ml-auto flex items-center gap-2 text-text-tertiary">
@@ -777,9 +819,65 @@ export default function RefinementBadgeExplorationPage() {
           </p>
         </section>
 
-        {/* ===== SECTION 4 ===== */}
+        {/* ===== SECTION 4 — status badges ===== */}
+        <section className="mb-16">
+          <SectionTitle n="4" title="Status badges" hint="now that violet = BV" />
+          <p className="mb-5 max-w-2xl text-body-sm leading-[1.6] text-text-tertiary">
+            Statuses <em>are</em> the right place for semantic colour (markers aren&apos;t). The trigger: <strong className="text-text-secondary">TEST was violet</strong>, and BV now takes violet — a collision. So TEST moves to <strong className="text-text-secondary">amber</strong> (freed up when BV left it). The set avoids all three marker hues (teal / slate / violet). Lifecycle runs cool&nbsp;→&nbsp;warm&nbsp;→&nbsp;success; the two exception states are muted + struck so they sit outside the flow.
+          </p>
+
+          <div className="grid gap-4 lg:grid-cols-2">
+            <Card>
+              <div className="border-b border-border-subtle px-4 py-3">
+                <h3 className="text-[14px] font-semibold text-text-primary">Header count pills</h3>
+                <p className="mt-0.5 text-[12px] text-text-tertiary">Full colour: tinted fill + theme-aware text.</p>
+              </div>
+              <div className="flex flex-col gap-4 p-4">
+                <div className="flex flex-wrap items-center gap-2">
+                  {STATUSES.filter((s) => s.lane === "lifecycle").map((d) => <StatusCountPill key={d.key} d={d} />)}
+                </div>
+                <div className="flex flex-wrap items-center gap-2">
+                  {STATUSES.filter((s) => s.lane === "exception").map((d) => <StatusCountPill key={d.key} d={d} />)}
+                </div>
+                <div className="flex items-center gap-2 border-t border-border-subtle pt-3">
+                  <span className="text-[11px] text-text-muted">no collision with BV:</span>
+                  <StatusCountPill d={STATUSES[2]} />
+                  <Chip s={MARKERS.bv.style} Icon={MARKERS.bv.Icon}>8</Chip>
+                </div>
+              </div>
+            </Card>
+
+            <Card>
+              <div className="border-b border-border-subtle px-4 py-3">
+                <h3 className="text-[14px] font-semibold text-text-primary">Row status pills</h3>
+                <p className="mt-0.5 text-[12px] text-text-tertiary">Neutral text; colour carried by the dot (as on the real board).</p>
+              </div>
+              <div className="flex flex-wrap items-center gap-2 p-4">
+                {STATUSES.map((d) => <StatusRowPill key={d.key} d={d} />)}
+              </div>
+            </Card>
+          </div>
+
+          <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+            {[
+              { k: "To do", v: "zinc — neutral, not started (cooler-neutral than the slate SP chip)" },
+              { k: "In progress", v: "sky — active (not teal, which is the refinement marker)" },
+              { k: "Test", v: "amber — in verification; warm contrast against In progress" },
+              { k: "Done", v: "emerald — complete / success" },
+              { k: "Deprecated", v: "muted zinc + strikethrough — retired, sits outside the flow" },
+              { k: "Deleted", v: "muted rose + strikethrough — removed (rose is fine for a terminal status)" },
+            ].map((r) => (
+              <div key={r.k} className="rounded-xl bg-[var(--color-surface-floating)] px-3.5 py-3 ring-1 ring-border-default">
+                <p className="text-[12px] font-semibold text-text-primary">{r.k}</p>
+                <p className="mt-0.5 text-[12px] leading-[1.5] text-text-tertiary">{r.v}</p>
+              </div>
+            ))}
+          </div>
+        </section>
+
+        {/* ===== SECTION 5 ===== */}
         <section className="mb-10">
-          <SectionTitle n="4" title="Refinement badge treatments" hint="if the bare glyph is too quiet" />
+          <SectionTitle n="5" title="Refinement badge treatments" hint="if the bare glyph is too quiet" />
           <p className="mb-5 max-w-2xl text-body-sm leading-[1.6] text-text-tertiary">
             If the bare teal glyph is too easy to miss, these make the refinement signal louder — all with the
             chosen <span className="text-[var(--color-brand-400)]">Boxes</span> glyph.
