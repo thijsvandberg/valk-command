@@ -100,6 +100,18 @@ export default function SprintBoard() {
   const [ephemeralSprintId, setEphemeralSprintId] = useState<string | null>(null);
   const ephemeralIsActive = !isAllView && ephemeralSprintId !== null && urlSprintId === ephemeralSprintId;
 
+  // Deep-link / refresh support (BRDG-319): when the URL resolves to a valid sprint
+  // that is not pinned (e.g. opened from the sprint overview, then shared or reloaded),
+  // adopt it as the ephemeral sprint so the board shows it instead of falling back to a
+  // pinned slot. Non-backlog sprints then appear as the ephemeral tab; backlogs are
+  // reflected by the Backlogs dropdown — either way the sprint actually opens.
+  useEffect(() => {
+    if (isAllView || !urlSprintId || urlSprintId === "__all__") return;
+    if (slotSprints.includes(urlSprintId)) return;
+    if (!sprints.some((s) => s.id === urlSprintId)) return;
+    setEphemeralSprintId((prev) => (prev === urlSprintId ? prev : urlSprintId));
+  }, [urlSprintId, isAllView, slotSprints, sprints]);
+
   // Views bar reorganisation (BRDG-319): backlog-named sprints are pulled out of the
   // numbered-pill row into the Backlogs dropdown, and "Overall refinement" becomes a
   // preset filter under the saved-views menu. Detection is by name (single source of
