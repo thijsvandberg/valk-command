@@ -8,7 +8,7 @@
  */
 
 import Link from "next/link";
-import { ArrowUpRight, LayoutGrid, Rows3, FlaskConical, Shapes, MousePointerClick, Type, PanelTop, PanelTopDashed, AppWindow } from "lucide-react";
+import { ArrowUpRight, LayoutGrid, Rows3, FlaskConical, Shapes, MousePointerClick, Type, PanelTop, PanelTopDashed, AppWindow, ListChecks } from "lucide-react";
 
 type Exploration = {
   slug: string;
@@ -22,6 +22,14 @@ type Exploration = {
 const ICON = "h-5 w-5";
 
 const EXPLORATIONS: Exploration[] = [
+  {
+    slug: "child-issues-menu",
+    title: "Child Issues controls menu",
+    blurb:
+      "Collapses the four loose header controls (view, planning, filter, columns, create) into one menu. Two rounds: layout (Tabs / Compact / Two-pane) then C's View pane (radio rows / trailing tick / cards). Shipped: two-pane with radio-row View pane and the shared subtle-tint checkbox/radio.",
+    status: "Shipped",
+    icon: <ListChecks className={ICON} strokeWidth={1.5} />,
+  },
   {
     slug: "favicon",
     title: "Favicon directions",
