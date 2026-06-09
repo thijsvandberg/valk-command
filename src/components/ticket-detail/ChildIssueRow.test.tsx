@@ -130,7 +130,7 @@ describe("ChildIssueRow", () => {
       expect(screen.getByTestId("assignee-trigger").parentElement).toHaveClass("z-20");
     });
 
-    it("offsets the actions overlay off the right edge when a metadata control is present", () => {
+    it("keeps the fade anchored to the row edge while padding the actions clear of the metadata control", () => {
       const { rerender } = render(
         <ChildIssueRow
           item={baseSub}
@@ -139,7 +139,9 @@ describe("ChildIssueRow", () => {
           actionsSlot={<button data-testid="delete-btn">Delete</button>}
         />,
       );
-      expect(screen.getByTestId("delete-btn").parentElement).toHaveClass("right-9");
+      // Fade always runs to the edge; extra right padding clears the avatar.
+      expect(screen.getByTestId("delete-btn").parentElement).toHaveClass("right-1");
+      expect(screen.getByTestId("delete-btn").parentElement).toHaveClass("pr-9");
 
       rerender(
         <ChildIssueRow
@@ -149,6 +151,7 @@ describe("ChildIssueRow", () => {
         />,
       );
       expect(screen.getByTestId("delete-btn").parentElement).toHaveClass("right-1");
+      expect(screen.getByTestId("delete-btn").parentElement).toHaveClass("pr-2");
     });
   });
 

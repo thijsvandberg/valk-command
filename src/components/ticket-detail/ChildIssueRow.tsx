@@ -234,12 +234,13 @@ export function ChildIssueRow({
         </span>
       )}
 
-      {/* Hover overlay: actions float over content from the right. When a metadata
-          control occupies the right edge, the overlay stops short of it (right-9) so
-          the avatar/picker stays visible and clickable; otherwise it hugs the edge. */}
+      {/* Hover overlay: actions float over content from the right. The backing fade
+          always runs to the row edge (behind the metadata control, which stays on top
+          via z-20); when a metadata control is present, extra right padding (pr-9) keeps
+          the Edit/Delete buttons to its left so the avatar/picker stays clickable. */}
       {!isPending && !isEditing && actionsSlot && (
         <div
-          className={`absolute inset-y-0 ${metadataSlot ? "right-9" : "right-1"} flex items-center gap-1 pl-8 pr-2 opacity-0 group-hover/row:opacity-100`}
+          className={`absolute inset-y-0 right-1 flex items-center gap-1 pl-8 ${metadataSlot ? "pr-9" : "pr-2"} opacity-0 group-hover/row:opacity-100`}
           style={{
             transition: "opacity 0.15s ease",
             background: "linear-gradient(to right, transparent, var(--color-surface-base) 24px)",
