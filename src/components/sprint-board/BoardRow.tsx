@@ -11,7 +11,7 @@ import { HoverRevealSlot } from "@/components/shared/HoverRevealSlot";
 import { Checkbox } from "@/components/shared/Checkbox";
 import type { InlineTagId } from "@/components/sprint-board/filter-bar-types";
 import { Avatar } from "@/components/shared/Avatar";
-import { Flag, MessageSquare, Pencil, Check, X, Boxes, IterationCw, GripVertical, AlertTriangle } from "lucide-react";
+import { Flag, MessageSquare, Pencil, Check, X, Boxes, IterationCw, GripVertical, AlertTriangle, Trash2, Scissors, Clock } from "lucide-react";
 import { OpenSubtasksIndicator } from "@/components/sprint-board/OpenSubtasksIndicator";
 import type { TicketSessionEntry } from "@/hooks/useTicketSessionMap";
 import { RefinementGemTrigger, type RefinementCardTicketInfo } from "@/components/sprint-board/RefinementGemHoverCard";
@@ -91,6 +91,23 @@ export interface BoardRowBaseProps {
   onViewRefinement?: (sessionId: string) => void;
   insertLine?: "above" | "below";
   /**
+   * Story Writer landing (BRDG-325) session decorations. All optional and inert on the
+   * sprint board, which never passes them.
+   *
+   * onActivate: clicking the row activates it (resume the draft) instead of selecting it
+   * into the sidebar; cmd/ctrl-click still opens the ticket in a new tab.
+   * onDiscard: renders a hover-revealed trailing trash action.
+   * sessionTimeAgo: preformatted "6h ago" chip.
+   * sessionJiraChanged: amber "Jira changed" badge.
+   * splitTarget: when defined, renders the "Split" badge; a non-empty value is shown as a
+   * muted secondary target title next to the source title.
+   */
+  onActivate?: (key: string) => void;
+  onDiscard?: (key: string) => void;
+  sessionTimeAgo?: string;
+  sessionJiraChanged?: boolean;
+  splitTarget?: string | null;
+  /**
    * Last row in its card: rounds the row surface's bottom corners so the hover/selection
    * fill follows the card's rounded edge instead of bleeding square into the corners. The
    * card lets content bleed past its edge (overflow-clip-margin) so the drag handle can
@@ -152,6 +169,11 @@ export const BoardRow = memo(forwardRef<HTMLTableRowElement, BoardRowBaseProps>(
     onRemoveFromRefinement,
     onViewRefinement,
     insertLine,
+    onActivate,
+    onDiscard,
+    sessionTimeAgo,
+    sessionJiraChanged = false,
+    splitTarget,
     isLastInCard = false,
     rowStyle,
     dragListeners,
@@ -255,6 +277,7 @@ export const BoardRow = memo(forwardRef<HTMLTableRowElement, BoardRowBaseProps>(
   };
 
   const showReadiness = tags.has("poReadiness");
+  const isSplit = splitTarget !== undefined;
 
   return (
     <tr
@@ -275,6 +298,12 @@ export const BoardRow = memo(forwardRef<HTMLTableRowElement, BoardRowBaseProps>(
         if (isDragActive) return;
         if (e.metaKey || e.ctrlKey) {
           window.open(`/tickets/${ticket.key}`, "_blank", "noopener,noreferrer");
+          return;
+        }
+        // Story Writer landing: a row activates (resume the draft) rather than
+        // selecting into the sidebar (BRDG-325). Inert on the board (onActivate absent).
+        if (onActivate) {
+          onActivate(ticket.key);
           return;
         }
         onSelectTicket(ticket.key === selectedTicket ? null : ticket.key);
@@ -377,6 +406,18 @@ export const BoardRow = memo(forwardRef<HTMLTableRowElement, BoardRowBaseProps>(
             {tags.has("editState") && !isRemoved && ticket.editState === "conflict" && <EditStateDot state="conflict" />}
           </div>
 
+          {/* Split-session badge (BRDG-325). Violet from the row-marker family (BRDG-321),
+              kept theme-aware via --meta-bv-fg. Inert on the board (splitTarget absent). */}
+          {isSplit && (
+            <span
+              className="inline-flex h-5 shrink-0 items-center gap-1 whitespace-nowrap rounded-md px-1.5 text-[11px] font-medium leading-none"
+              style={{ color: "var(--meta-bv-fg)", backgroundColor: "color-mix(in srgb, #8b5cf6 14%, transparent)" }}
+            >
+              <Scissors size={10} strokeWidth={2} className="shrink-0 opacity-80" aria-hidden />
+              Split
+            </span>
+          )}
+
           {isEditingTitle ? (
             <div ref={titleEditContainerRef} className="z-20 flex min-w-0 flex-1 items-start gap-1" onPointerDown={(e) => e.stopPropagation()} onClick={(e) => e.stopPropagation()}>
               <textarea
@@ -430,6 +471,14 @@ export const BoardRow = memo(forwardRef<HTMLTableRowElement, BoardRowBaseProps>(
                   onCloseSubtasks={onCloseSubtasks}
                 />
                 <span className="min-w-0 truncate text-body-lg">{ticket.title}</span>
+                {/* Split target title (BRDG-325): the destination story, muted, after the
+                    source. Yields width with the source title. */}
+                {isSplit && splitTarget && (
+                  <span className="flex min-w-0 shrink items-center gap-1 text-body-sm text-text-tertiary">
+                    <Scissors size={10} strokeWidth={1.75} className="shrink-0 rotate-90 opacity-50" aria-hidden />
+                    <span className="min-w-0 truncate">{splitTarget}</span>
+                  </span>
+                )}
                 {onTitleChange && !isRemoved && (
                   <button
                     type="button"
@@ -617,6 +666,22 @@ export const BoardRow = memo(forwardRef<HTMLTableRowElement, BoardRowBaseProps>(
                 </span>
               )}
 
+              {/* Session signals (BRDG-325), right of the metric cluster. Inert on the
+                  board (the props are absent there). The "Jira changed" badge reuses the
+                  same status-warning chip treatment as the per-row warning labels above. */}
+              {sessionJiraChanged && (
+                <span className="inline-flex h-5 shrink-0 items-center gap-1 whitespace-nowrap rounded-md px-2 text-[11px] leading-none text-[color-mix(in_srgb,var(--color-status-warning)_80%,var(--color-text-secondary))] bg-[color-mix(in_srgb,var(--color-status-warning)_6%,transparent)]">
+                  <AlertTriangle size={11} strokeWidth={2} className="shrink-0 opacity-70" aria-hidden />
+                  Jira changed
+                </span>
+              )}
+              {sessionTimeAgo && (
+                <span className="flex shrink-0 items-center gap-1 whitespace-nowrap text-label text-text-tertiary">
+                  <Clock size={10} strokeWidth={1.75} className="text-text-muted" aria-hidden />
+                  {sessionTimeAgo}
+                </span>
+              )}
+
               {/* Assignee — right-aligned. Clickable avatar opens the people
                   picker inline, mirroring the ticket sidebar. */}
               {tags.has("assignee") && (
@@ -637,6 +702,22 @@ export const BoardRow = memo(forwardRef<HTMLTableRowElement, BoardRowBaseProps>(
                     <Avatar assignee={ticket.assignee} size={26} />
                   )}
                 </div>
+              )}
+
+              {/* Discard session (BRDG-325): hover-revealed trailing action, mirroring the
+                  title pencil's reveal. stopPropagation keeps it from activating the row.
+                  Inert on the board (onDiscard absent). */}
+              {onDiscard && (
+                <button
+                  type="button"
+                  aria-label="Discard session"
+                  title="Discard session"
+                  onPointerDown={(e) => e.stopPropagation()}
+                  onClick={(e) => { e.stopPropagation(); onDiscard(ticket.key); }}
+                  className="ml-0.5 hidden h-7 w-7 shrink-0 cursor-pointer items-center justify-center rounded-lg text-text-muted transition-[color,background-color] duration-150 group-hover/row:flex hover:bg-[color-mix(in_srgb,var(--color-status-error)_12%,transparent)] hover:text-[var(--color-status-error)]"
+                >
+                  <Trash2 size={13} strokeWidth={1.75} />
+                </button>
               )}
             </>
           )}

@@ -17,6 +17,9 @@ vi.mock("lucide-react", () => {
     IterationCw: stub("iteration"),
     GripVertical: stub("grip"),
     AlertTriangle: stub("alert-triangle"),
+    Trash2: stub("trash"),
+    Scissors: stub("scissors"),
+    Clock: stub("clock"),
   };
 });
 
@@ -465,5 +468,73 @@ describe("BoardRow (headerless, BRDG-239)", () => {
     const cluster = labelEl.parentElement!;
     expect(cluster.className).toContain("hidden");
     expect(cluster.className).toContain("@[52rem]/boardrow:inline-flex");
+  });
+
+  // Story Writer landing session decorations (BRDG-325). All optional; absent on the board.
+  describe("session decorations (BRDG-325)", () => {
+    it("renders nothing extra when no session props are passed (inert on the board)", () => {
+      renderRow();
+      expect(screen.queryByText("Split")).toBeNull();
+      expect(screen.queryByText("Jira changed")).toBeNull();
+      expect(screen.queryByTestId("icon-clock")).toBeNull();
+      expect(screen.queryByRole("button", { name: /discard session/i })).toBeNull();
+    });
+
+    it("shows the Split badge and the muted target title for a split session", () => {
+      renderRow({ splitTarget: "Target story title" });
+      expect(screen.getByText("Split")).toBeInTheDocument();
+      expect(screen.getByText("Target story title")).toBeInTheDocument();
+    });
+
+    it("shows the Split badge but no secondary line when the split target title is empty", () => {
+      renderRow({ splitTarget: null });
+      expect(screen.getByText("Split")).toBeInTheDocument();
+    });
+
+    it("shows the amber 'Jira changed' badge only when flagged", () => {
+      renderRow({ sessionJiraChanged: true });
+      expect(screen.getByText("Jira changed")).toBeInTheDocument();
+      renderRow({ sessionJiraChanged: false });
+      expect(screen.getAllByText("Jira changed")).toHaveLength(1);
+    });
+
+    it("shows the relative-time chip when provided", () => {
+      renderRow({ sessionTimeAgo: "6h ago" });
+      expect(screen.getByText("6h ago")).toBeInTheDocument();
+    });
+
+    it("activates (resume) on row click instead of selecting, when onActivate is set", () => {
+      const onActivate = vi.fn();
+      const onSelectTicket = vi.fn();
+      renderRow({ onActivate, onSelectTicket });
+      fireEvent.click(screen.getByText("Build onboarding"));
+      expect(onActivate).toHaveBeenCalledWith("VPL-1");
+      expect(onSelectTicket).not.toHaveBeenCalled();
+    });
+
+    it("falls back to selecting the row when onActivate is absent (board behaviour)", () => {
+      const onSelectTicket = vi.fn();
+      renderRow({ onSelectTicket });
+      fireEvent.click(screen.getByText("Build onboarding"));
+      expect(onSelectTicket).toHaveBeenCalledWith("VPL-1");
+    });
+
+    it("discards via the trash without activating the row", () => {
+      const onActivate = vi.fn();
+      const onDiscard = vi.fn();
+      renderRow({ onActivate, onDiscard });
+      fireEvent.click(screen.getByRole("button", { name: /discard session/i }));
+      expect(onDiscard).toHaveBeenCalledWith("VPL-1");
+      expect(onActivate).not.toHaveBeenCalled();
+    });
+
+    it("does not activate or discard the row when an inline picker is clicked", () => {
+      const onActivate = vi.fn();
+      const onDiscard = vi.fn();
+      renderRow({ onActivate, onDiscard, onStoryPointsChange: vi.fn() });
+      fireEvent.click(screen.getByTestId("sp"));
+      expect(onActivate).not.toHaveBeenCalled();
+      expect(onDiscard).not.toHaveBeenCalled();
+    });
   });
 });
