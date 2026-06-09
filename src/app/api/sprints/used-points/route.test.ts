@@ -2,6 +2,7 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { createTestDb } from "@/db/test-utils";
 import { seedTicket, seedTicketMetadata } from "@/test/builders";
+import { placeholderTicket } from "@/db/schema";
 import type { BetterSQLite3Database } from "drizzle-orm/better-sqlite3";
 import type * as schema from "@/db/schema";
 
@@ -53,5 +54,21 @@ describe("GET /api/sprints/used-points", () => {
     seedTicket(testDb, { jiraKey: "VPL-3", sprintName: "5895", status: "DRAFTING", storyPoints: 8 });
 
     expect(await getMap()).toEqual({ "5895": 3 });
+  });
+
+  // Forward-planning placeholders (BRDG-304) count via their guestimation.
+  it("counts an active placeholder's guestimation toward its sprint", async () => {
+    seedTicket(testDb, { jiraKey: "VPL-1", sprintName: "5895", storyPoints: 2 });
+    testDb.insert(placeholderTicket).values({ id: "PLH-1", title: "ph", sprintId: "5895", guestimation: 3, status: "active" }).run();
+
+    expect(await getMap()).toEqual({ "5895": 5 });
+  });
+
+  it("ignores promoted placeholders and zero/no-sprint ones", async () => {
+    testDb.insert(placeholderTicket).values({ id: "PLH-1", title: "promoted", sprintId: "5895", guestimation: 3, status: "promoted", promotedToKey: "VPL-9" }).run();
+    testDb.insert(placeholderTicket).values({ id: "PLH-2", title: "no sprint", sprintId: null, guestimation: 5, status: "active" }).run();
+    testDb.insert(placeholderTicket).values({ id: "PLH-3", title: "na", sprintId: "5895", guestimation: 0, status: "active" }).run();
+
+    expect(await getMap()).toEqual({});
   });
 });

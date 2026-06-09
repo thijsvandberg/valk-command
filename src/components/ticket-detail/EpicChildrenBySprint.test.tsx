@@ -110,6 +110,43 @@ describe("EpicChildrenBySprint row context menu", () => {
   });
 });
 
+// Forward-planning placeholders (BRDG-304) in the epic-by-sprint view.
+describe("EpicChildrenBySprint placeholders", () => {
+  const PLACEHOLDER = {
+    id: "PLH-1",
+    title: "Penciled work",
+    description: "",
+    type: "story" as const,
+    sprintId: "1",
+    sprintName: "Sprint 1",
+    epicKey: "VPL-1",
+    epic: null,
+    businessValue: null,
+    guestimation: 5,
+    status: "active" as const,
+    promotedToKey: null,
+    createdAt: "2026-06-10T00:00:00Z",
+    updatedAt: "2026-06-10T00:00:00Z",
+  };
+
+  it("renders a placeholder in its sprint group when planning mode is on", () => {
+    setup({ placeholders: [PLACEHOLDER], planningOn: true, onPlaceholderUpdate: vi.fn(), onPlaceholderPromote: vi.fn(), onPlaceholderDelete: vi.fn() });
+    expect(screen.getByText("Penciled work")).toBeInTheDocument();
+    expect(screen.getByText("Placeholder")).toBeInTheDocument();
+  });
+
+  it("hides placeholders when planning mode is off", () => {
+    setup({ placeholders: [PLACEHOLDER], planningOn: false });
+    expect(screen.queryByText("Penciled work")).not.toBeInTheDocument();
+  });
+
+  it("offers an Add placeholder affordance per group when a create handler is wired", () => {
+    setup({ planningOn: true, onPlaceholderCreate: vi.fn() });
+    // One per occupied, non-closed group (Sprint 1 active + Sprint 2 future).
+    expect(screen.getAllByText("Add placeholder").length).toBeGreaterThanOrEqual(2);
+  });
+});
+
 // The next-sprint drop zone (BRDG-306) needs regular `PREFIX: N` sprint names so the
 // series helpers engage. jsdom cannot complete a keyboard drag across droppables (no
 // measured rects), so the move-resolution itself is unit-tested in epic-children-reorder;
