@@ -25,7 +25,7 @@ import {
 import { SortableContext, useSortable, verticalListSortingStrategy } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import { epicChildrenCollisionDetection } from "./epic-children-collision";
-import { Zap, CircleDot, CalendarRange, GripVertical, Plus, Sparkles } from "lucide-react";
+import { CircleDot, CalendarRange, GripVertical, Plus, Sparkles } from "lucide-react";
 
 export type { ChildReorder, ChildMoveToPosition };
 
@@ -558,7 +558,10 @@ export function EpicChildrenBySprint({
             ? <Sparkles size={12} className="text-[var(--color-brand-400)]" />
             : isUnscheduled
               ? <CircleDot size={12} />
-              : <Zap size={12} style={{ color: "var(--color-icon-sprint)" }} />
+              // Real sprint groups carry no leading icon, matching the sprint board's
+              // grouped-by-sprint view. The lightning glyph means "Epic" everywhere else, so
+              // using it for a sprint here read as the wrong icon.
+              : undefined
         }
       />
     );
