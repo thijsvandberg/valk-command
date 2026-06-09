@@ -12,6 +12,8 @@ import { syncIndividualTickets } from "@/lib/sync-tickets-service";
 import { logger } from "@/lib/logger";
 import { cache } from "@/lib/cache";
 import { emitTicketEvent } from "@/lib/ticket-events";
+import { computeTicketEditState } from "@/lib/ticket-state";
+import type { TicketEditState } from "@/types/ticket";
 import {
   JiraUnavailableError,
   NotFoundError,
@@ -354,10 +356,13 @@ export async function upsertLocalEdit(
   return result!;
 }
 
+// Returns the ticket's edit-state after the deletion so callers can broadcast the
+// true resulting state to other tabs (a drafts-only delete may leave saved edits,
+// so the result is not always "clean").
 export async function deleteLocalEdits(
   key: string,
   options: { draftsOnly: boolean },
-): Promise<void> {
+): Promise<TicketEditState> {
   if (options.draftsOnly) {
     await db
       .delete(ticketLocalEdit)
@@ -378,6 +383,17 @@ export async function deleteLocalEdits(
       summary: "Discarded all local edits",
     });
   }
+
+  const remaining = await db
+    .select({ baseJiraVersion: ticketLocalEdit.baseJiraVersion, isDraft: ticketLocalEdit.isDraft })
+    .from(ticketLocalEdit)
+    .where(eq(ticketLocalEdit.ticketKey, key))
+    .all();
+  const latestVersion = await db.query.storyVersion.findFirst({
+    where: eq(storyVersion.jiraKey, key),
+    orderBy: [desc(storyVersion.createdAt)],
+  });
+  return computeTicketEditState(remaining, latestVersion?.contentHash ?? null);
 }
 
 export async function rebaseLocalEdits(key: string): Promise<{ newBase: string }> {
