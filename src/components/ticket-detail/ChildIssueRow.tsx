@@ -13,6 +13,10 @@ interface ChildIssueRowProps {
   ref?: Ref<HTMLDivElement>;
   item: Subtask;
   isLast: boolean;
+  /** When this row is the card's bottom-most element, round its bottom corners so its
+      hover/active background cannot bleed past the card's rounded corner (the GroupCard's
+      overflow-clip-margin, kept for the drag handle, otherwise lets it into the corner). */
+  roundBottom?: boolean;
   isPending?: boolean;
   showTypeIcon?: boolean;
   showKey?: boolean;
@@ -74,6 +78,7 @@ interface ChildIssueRowProps {
 export function ChildIssueRow({
   ref,
   item,
+  roundBottom = false,
   isPending = false,
   showTypeIcon = false,
   showKey = true,
@@ -141,7 +146,7 @@ export function ChildIssueRow({
           : isChecked
           ? "bg-[var(--color-brand-500)]/[0.06]"
           : ""
-      } ${className}`}
+      } ${roundBottom ? "rounded-b-[11px]" : ""} ${className}`}
       onClick={handleClick}
       onContextMenu={onContextMenu}
       {...(dndProps ?? {})}

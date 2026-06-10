@@ -159,6 +159,7 @@ function SprintStateChip({ state, className = "" }: { state: Sprint["state"]; cl
 function SortableChildRow({
   child,
   isLast,
+  roundBottom,
   sprintName,
   state,
   insertLine,
@@ -175,6 +176,7 @@ function SortableChildRow({
 }: {
   child: EpicChild | Subtask;
   isLast: boolean;
+  roundBottom: boolean;
   sprintName: string | null;
   state: Sprint["state"] | null;
   insertLine?: "above" | "below";
@@ -209,6 +211,7 @@ function SortableChildRow({
       ref={setNodeRef}
       item={child}
       isLast={isLast}
+      roundBottom={roundBottom}
       showTypeIcon
       showKey={visibleFields.has("issueKey")}
       showStatus={visibleFields.has("status")}
@@ -249,6 +252,7 @@ function SortablePlaceholderRow({
   sprintName,
   state,
   reserveCheckboxGutter,
+  isLastInCard,
   onUpdate,
   onDelete,
   onPromote,
@@ -257,6 +261,7 @@ function SortablePlaceholderRow({
   sprintName: string | null;
   state: Sprint["state"] | null;
   reserveCheckboxGutter: boolean;
+  isLastInCard: boolean;
   onUpdate: (id: string, patch: Partial<PlaceholderTicket>) => void;
   onDelete: (id: string) => void;
   onPromote: (id: string) => void;
@@ -269,6 +274,7 @@ function SortablePlaceholderRow({
     <PlaceholderRow
       placeholder={placeholder}
       reserveCheckboxGutter={reserveCheckboxGutter}
+      isLastInCard={isLastInCard}
       onUpdate={onUpdate}
       onDelete={onDelete}
       onPromote={onPromote}
@@ -537,7 +543,7 @@ export function EpicChildrenBySprint({
 
   const selectable = !!onCheckboxClick;
 
-  const renderRow = (child: EpicChild | Subtask, group: ChildGroup, idx: number, total: number) => {
+  const renderRow = (child: EpicChild | Subtask, group: ChildGroup, idx: number, total: number, roundBottom: boolean) => {
     const epic = isEpicChild(child) ? child : null;
     const isPending = child.key.startsWith("pending-");
     const isLast = idx === total - 1;
@@ -559,6 +565,7 @@ export function EpicChildrenBySprint({
           key={child.key}
           child={child}
           isLast={isLast}
+          roundBottom={roundBottom}
           sprintName={group.sprintName}
           state={group.state}
           insertLine={insertLineForRow({ rowKey: child.key, activeKey: activeDragKey, overKey: dragOverKey, insertAfter: dragInsertAfter, groups: dragGroups })}
@@ -581,6 +588,7 @@ export function EpicChildrenBySprint({
         key={child.key}
         item={child}
         isLast={isLast}
+        roundBottom={roundBottom}
         isPending={isPending}
         showTypeIcon
         showKey={visibleFields.has("issueKey")}
@@ -674,6 +682,9 @@ export function EpicChildrenBySprint({
       group.state !== "closed" &&
       !(group.sprintName !== null && createSprintId === undefined);
     const isComposerOpen = composerGroupKey === group.key;
+    // The composer renders only when both open and a create handler is wired; it then
+    // becomes the card's bottom-most element.
+    const composerRendered = isComposerOpen && !!onCreateChild;
 
     const headerExtras = isCreateZone ? (
       <span className="rounded px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-[var(--color-brand-300)] bg-[var(--color-brand-500)]/15">
@@ -711,7 +722,6 @@ export function EpicChildrenBySprint({
     const sortableIds = dndEnabled
       ? visibleItems.filter((c) => !c.key.startsWith("pending-")).map((c) => c.key)
       : [];
-    const rows = visibleItems.map((child, idx) => renderRow(child, group, idx, visibleItems.length));
 
     // Forward-planning placeholders (BRDG-304) bucket into this sprint group by the
     // resolved sprint id (null = Unscheduled). They never enter the dnd/grouping
@@ -725,18 +735,29 @@ export function EpicChildrenBySprint({
     // wired and dnd is active; otherwise they render as static rows (e.g. Sprint Board).
     const placeholdersDraggable = dndEnabled && !!onPlaceholderReorder;
     const placeholderIds = groupPlaceholders.map((p) => p.id);
+
+    // Round whichever element is genuinely the card's bottom so its background cannot
+    // bleed past the rounded corner: the composer if open, else the last placeholder,
+    // else the last data row.
+    const lastDataRowIsBottom = groupPlaceholders.length === 0 && !composerRendered;
+    const lastPlaceholderIsBottom = !composerRendered;
+    const rows = visibleItems.map((child, idx) =>
+      renderRow(child, group, idx, visibleItems.length, lastDataRowIsBottom && idx === visibleItems.length - 1),
+    );
+
     const placeholderBlock =
       groupPlaceholders.length > 0 ? (
         <div className="flex flex-col">
           {placeholdersDraggable ? (
             <SortableContext items={placeholderIds} strategy={verticalListSortingStrategy}>
-              {groupPlaceholders.map((p) => (
+              {groupPlaceholders.map((p, idx) => (
                 <SortablePlaceholderRow
                   key={p.id}
                   placeholder={p}
                   sprintName={group.sprintName}
                   state={group.state}
                   reserveCheckboxGutter={selectable}
+                  isLastInCard={lastPlaceholderIsBottom && idx === groupPlaceholders.length - 1}
                   onUpdate={onPlaceholderUpdate ?? (() => {})}
                   onDelete={onPlaceholderDelete ?? (() => {})}
                   onPromote={onPlaceholderPromote ?? (() => {})}
@@ -744,11 +765,12 @@ export function EpicChildrenBySprint({
               ))}
             </SortableContext>
           ) : (
-            groupPlaceholders.map((p) => (
+            groupPlaceholders.map((p, idx) => (
               <PlaceholderRow
                 key={p.id}
                 placeholder={p}
                 reserveCheckboxGutter={selectable}
+                isLastInCard={lastPlaceholderIsBottom && idx === groupPlaceholders.length - 1}
                 onUpdate={onPlaceholderUpdate ?? (() => {})}
                 onDelete={onPlaceholderDelete ?? (() => {})}
                 onPromote={onPlaceholderPromote ?? (() => {})}
@@ -787,8 +809,8 @@ export function EpicChildrenBySprint({
             // The composer is the card's last child; round its bottom so the footer
             // strip's tint cannot bleed past the card's rounded corner (the card's
             // overflow-clip-margin, kept for the row drag handle, lets content into
-            // the corner squares otherwise).
-            className="rounded-b-xl"
+            // the corner squares otherwise). 11px nests inside the card's 1px border.
+            className="rounded-b-[11px]"
             onCreate={(title, jiraType) =>
               onCreateChild({ sprintId: createSprintId ?? null, sprintName: group.sprintName }, title, jiraType)
             }
