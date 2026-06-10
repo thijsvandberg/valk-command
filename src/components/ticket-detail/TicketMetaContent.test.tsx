@@ -256,6 +256,26 @@ describe("TicketMetaContent", () => {
       fireEvent.click(screen.getByText("More details"));
       expect(screen.queryByTitle("View review details")).not.toBeInTheDocument();
     });
+
+    it("places the Parent above Status for subtasks, but below for other types", () => {
+      const detailWithParent: TicketDetail = {
+        ...detail,
+        parent: { key: "PROJ-1", title: "Parent story", status: "TO DO", type: "story" },
+      };
+
+      const { unmount } = render(<TicketMetaContent ticket={makeTicket({ type: "subtask" })} detail={detailWithParent} />);
+      let parent = screen.getByRole("link", { name: /Open parent PROJ-1/i });
+      let status = screen.getByText("Status");
+      // Status follows the Parent in the DOM => Parent is above Status.
+      expect(parent.compareDocumentPosition(status) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+      unmount();
+
+      render(<TicketMetaContent ticket={makeTicket({ type: "story" })} detail={detailWithParent} />);
+      parent = screen.getByRole("link", { name: /Open parent PROJ-1/i });
+      status = screen.getByText("Status");
+      // Parent follows Status in the DOM => Parent is below Status.
+      expect(status.compareDocumentPosition(parent) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    });
   });
 
   // BRDG-332: the Parent field used to wrap a TicketStatusPill (which renders its own key <a>)

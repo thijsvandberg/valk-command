@@ -333,6 +333,53 @@ export function TicketMetaContent({
 
   const readinessCfg = readiness ? READINESS_CONFIG[readiness] : null;
 
+  // For a subtask the parent is its primary context, so it sits above Status; for other
+  // types it keeps its place below Status. The card is shared between both positions (BRDG-333).
+  const isSubtask = ticket.type === "subtask";
+  const parentCard = detail?.parent ? (
+    <div className="flex flex-col gap-1.5 py-1.5">
+      <span className="text-body-sm text-text-tertiary">Parent</span>
+      {/* A clickable element rather than an <a>: TicketStatusPill renders its own key
+          link, which cannot legally nest inside an anchor (mirrors SearchResultParts /
+          the Sprint Board row, BRDG-324/BRDG-332). The pill's interactive segment stops
+          propagation so the key dropdown works without triggering card navigation. */}
+      <div
+        role="link"
+        tabIndex={0}
+        aria-label={`Open parent ${detail.parent.key}`}
+        onClick={(e) => {
+          const href = `/tickets/${detail.parent!.key}`;
+          if (e.metaKey || e.ctrlKey) { window.open(href, "_blank"); return; }
+          router.push(href);
+        }}
+        onKeyDown={(e) => {
+          if (e.key === "Enter" || e.key === " ") {
+            e.preventDefault();
+            router.push(`/tickets/${detail.parent!.key}`);
+          }
+        }}
+        className="group/parent rounded-lg border border-border-subtle bg-[var(--color-overlay-subtle)] px-3 py-2.5 flex flex-col gap-1.5 cursor-pointer hover:border-border-default hover:bg-overlay-default focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)]"
+        style={{ transition: "background-color 0.15s ease, border-color 0.15s ease" }}
+        title={detail.parent.title}
+      >
+        <span className="relative z-10 self-start" onClick={(e) => e.stopPropagation()}>
+          <TicketStatusPill
+            ticketKey={detail.parent.key}
+            jiraStatus={detail.parent.status}
+            issueType={detail.parent.type}
+            title={detail.parent.title}
+            variant="list"
+            showKey
+            showStatus
+          />
+        </span>
+        <span className="min-w-0 truncate text-body-sm text-text-secondary group-hover/parent:text-text-primary" style={{ transition: "color 0.15s ease" }}>
+          {detail.parent.title}
+        </span>
+      </div>
+    </div>
+  ) : null;
+
   return (
     <div className={`flex flex-col ${className ?? ""}`} style={style}>
       {/* Details */}
@@ -358,6 +405,7 @@ export function TicketMetaContent({
 
         {/* Status & Flow */}
         <div>
+          {isSubtask && parentCard}
           <DetailRow label="Status">
             <div className="flex justify-end">
               <TicketStatusPill
@@ -383,49 +431,7 @@ export function TicketMetaContent({
               />
             </DetailRow>
           )}
-          {detail?.parent && (
-            <div className="flex flex-col gap-1.5 py-1.5">
-              <span className="text-body-sm text-text-tertiary">Parent</span>
-              {/* A clickable element rather than an <a>: TicketStatusPill renders its own key
-                  link, which cannot legally nest inside an anchor (mirrors SearchResultParts /
-                  the Sprint Board row, BRDG-324/BRDG-332). The pill's interactive segment stops
-                  propagation so the key dropdown works without triggering card navigation. */}
-              <div
-                role="link"
-                tabIndex={0}
-                aria-label={`Open parent ${detail.parent.key}`}
-                onClick={(e) => {
-                  const href = `/tickets/${detail.parent!.key}`;
-                  if (e.metaKey || e.ctrlKey) { window.open(href, "_blank"); return; }
-                  router.push(href);
-                }}
-                onKeyDown={(e) => {
-                  if (e.key === "Enter" || e.key === " ") {
-                    e.preventDefault();
-                    router.push(`/tickets/${detail.parent!.key}`);
-                  }
-                }}
-                className="group/parent rounded-lg border border-border-subtle bg-[var(--color-overlay-subtle)] px-3 py-2.5 flex flex-col gap-1.5 cursor-pointer hover:border-border-default hover:bg-overlay-default focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)]"
-                style={{ transition: "background-color 0.15s ease, border-color 0.15s ease" }}
-                title={detail.parent.title}
-              >
-                <span className="relative z-10 self-start" onClick={(e) => e.stopPropagation()}>
-                  <TicketStatusPill
-                    ticketKey={detail.parent.key}
-                    jiraStatus={detail.parent.status}
-                    issueType={detail.parent.type}
-                    title={detail.parent.title}
-                    variant="list"
-                    showKey
-                    showStatus
-                  />
-                </span>
-                <span className="min-w-0 truncate text-body-sm text-text-secondary group-hover/parent:text-text-primary" style={{ transition: "color 0.15s ease" }}>
-                  {detail.parent.title}
-                </span>
-              </div>
-            </div>
-          )}
+          {!isSubtask && parentCard}
           {ticket.type !== "epic" && (
             <DetailRow label="Sprint">
               <div className="relative">
