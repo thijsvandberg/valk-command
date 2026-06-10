@@ -938,10 +938,10 @@ export function TicketStatusPill({
   // Every elevated chip gets an optical vertical nudge (verified in-browser): the
   // all-caps key has no descenders, so its ink box reads high next to the icon and
   // status badge even when geometrically centered. leading-none makes the line box
-  // deterministic and top-[1px] pushes the key down to look balanced. The compact
+  // deterministic and top-[0.5px] pushes the key down to look balanced. The compact
   // sm inline pill also bumps one size step so the key stays legible.
   const keyTextClass = elevated
-    ? `${size === "sm" ? "text-body-sm" : textSize} font-medium leading-none relative top-[1px]`
+    ? `${size === "sm" ? "text-body-sm" : textSize} font-medium leading-none relative top-[0.5px]`
     : `${textSize} font-medium`;
 
   // The Jira status badge stays compact at sm/md (dense table rows); at lg it
@@ -956,7 +956,10 @@ export function TicketStatusPill({
   // ---------------------------------------------------------------------------
   // Shared labels: used both as the visual tooltip and the button's accessible
   // name, since these icon-only segments have no visible text.
-  const issueTypeTip = onIssueTypeChange ? "Change issue type" : (TYPE_LABELS[issueType as IssueType] ?? issueType ?? "");
+  // Epics cannot be reclassified: the dropdown only offers story/bug/task/spike,
+  // and an epic carries child issues that would be orphaned by a type change.
+  const canChangeType = !!onIssueTypeChange && issueType !== "epic";
+  const issueTypeTip = canChangeType ? "Change issue type" : (TYPE_LABELS[issueType as IssueType] ?? issueType ?? "");
   const statusTip = onJiraStatusChange ? "Change status" : jiraStatus;
   const readinessTip = readiness ? READINESS_CONFIG[readiness].label : "Ready for Development";
   return (
@@ -989,16 +992,16 @@ export function TicketStatusPill({
               ref={issueTypeBtnRef}
               type="button"
               aria-label={issueTypeTip}
-              onClick={onIssueTypeChange ? () => setIssueTypeDropdownOpen((o) => !o) : undefined}
-              disabled={!onIssueTypeChange}
+              onClick={canChangeType ? () => setIssueTypeDropdownOpen((o) => !o) : undefined}
+              disabled={!canChangeType}
               className={`flex items-center justify-center rounded p-1 transition-colors duration-150 ${
-                onIssueTypeChange ? "cursor-pointer hover:bg-overlay-default" : "cursor-default"
+                canChangeType ? "cursor-pointer hover:bg-overlay-default" : "cursor-default"
               }`}
             >
               <IssueTypeIcon type={issueType} size={typeIconSize} strokeWidth={typeStrokeWidth} />
             </button>
           </Tooltip>
-          {issueTypeDropdownOpen && onIssueTypeChange && (
+          {issueTypeDropdownOpen && canChangeType && (
             <DropdownPortal triggerRef={issueTypeBtnRef} onClose={() => setIssueTypeDropdownOpen(false)}>
               <IssueTypeDropdown
                 currentValue={issueType}

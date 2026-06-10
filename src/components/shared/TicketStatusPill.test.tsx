@@ -121,6 +121,20 @@ describe("TicketStatusPill", () => {
     expect(onChange).toHaveBeenCalledWith("bug");
   });
 
+  it("does not let an epic change its issue type even when onIssueTypeChange is wired", () => {
+    const onChange = vi.fn();
+    render(
+      <TicketStatusPill ticketKey="VPL-1" jiraStatus="TO DO" issueType="epic" onIssueTypeChange={onChange} />,
+    );
+    // The segment shows the plain type label rather than the editable affordance.
+    expect(screen.queryByLabelText("Change issue type")).toBeNull();
+    const btn = screen.getByLabelText("Epic");
+    expect((btn as HTMLButtonElement).disabled).toBe(true);
+    fireEvent.click(btn);
+    expect(screen.queryByText("Story")).toBeNull();
+    expect(onChange).not.toHaveBeenCalled();
+  });
+
   it("shows 'Copy with title' option when title prop is provided", () => {
     render(<TicketStatusPill ticketKey="VPL-1" jiraStatus="TO DO" title="My ticket" />);
     fireEvent.click(screen.getByText("VPL-1"));
