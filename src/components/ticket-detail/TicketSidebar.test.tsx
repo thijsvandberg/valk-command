@@ -28,6 +28,10 @@ vi.mock("next/link", () => ({
   ),
 }));
 
+vi.mock("next/navigation", () => ({
+  useRouter: () => ({ push: vi.fn() }),
+}));
+
 vi.mock("@/hooks/useSprintBoard", () => ({
   useJiraSprints: () => ({ sprints: [] }),
   useSprintSlots: () => ({ data: [] }),
