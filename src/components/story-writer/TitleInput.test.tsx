@@ -30,11 +30,11 @@ describe("TitleInput", () => {
     expect(screen.getByPlaceholderText("Enter story title...")).toBeInTheDocument();
   });
 
-  it("is a text input element", () => {
+  it("renders an auto-growing textarea for the title", () => {
     render(<TitleInput value="Test" onChange={vi.fn()} />);
 
     const input = screen.getByRole("textbox");
-    expect(input).toHaveAttribute("type", "text");
+    expect(input.tagName).toBe("TEXTAREA");
   });
 
   it("reflects updated value on re-render", () => {

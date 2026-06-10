@@ -27,6 +27,14 @@ vi.mock("@/hooks/useRefinementSessions", () => ({
   useRefinementSessions: () => mockUseRefinementSessions(),
 }));
 
+// Isolate from the persisted snapshot (BRDG-317): without this, a snapshot
+// written by one renderHook leaks into the next as a fallback, masking the
+// null-while-loading behavior these tests assert on the live sources.
+vi.mock("@/lib/sidebar-snapshot", () => ({
+  readSidebarSnapshot: () => null,
+  writeSidebarSnapshot: () => {},
+}));
+
 function ticket(overrides: Record<string, unknown>) {
   return {
     key: "VPL-1",

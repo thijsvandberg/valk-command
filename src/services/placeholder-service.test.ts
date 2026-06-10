@@ -34,6 +34,7 @@ import {
   updatePlaceholder,
   deletePlaceholder,
   promotePlaceholder,
+  reorderPlaceholders,
 } from "./placeholder-service";
 
 beforeEach(() => {
@@ -86,6 +87,47 @@ describe("listPlaceholders", () => {
   it("filters by epic", async () => {
     const rows = await listPlaceholders({ epicKey: "EP-1" });
     expect(rows.map((r) => r.title).sort()).toEqual(["A", "B"]);
+  });
+});
+
+describe("ordering (BRDG-328)", () => {
+  it("appends each new placeholder to the end of its sprint group's order", async () => {
+    const a = await createPlaceholder({ title: "A", sprintId: "9" });
+    const b = await createPlaceholder({ title: "B", sprintId: "9" });
+    const c = await createPlaceholder({ title: "C", sprintId: "9" });
+    expect([a.orderIndex, b.orderIndex, c.orderIndex]).toEqual([0, 1, 2]);
+  });
+
+  it("orders independently per sprint group", async () => {
+    const a = await createPlaceholder({ title: "A", sprintId: "9" });
+    const x = await createPlaceholder({ title: "X", sprintId: "10" });
+    expect(a.orderIndex).toBe(0);
+    expect(x.orderIndex).toBe(0);
+  });
+
+  it("lists placeholders sorted by orderIndex", async () => {
+    await createPlaceholder({ title: "A", sprintId: "9" });
+    await createPlaceholder({ title: "B", sprintId: "9" });
+    const rows = await listPlaceholders({ sprintId: "9" });
+    expect(rows.map((r) => r.title)).toEqual(["A", "B"]);
+  });
+
+  it("reorderPlaceholders rewrites orderIndex to match the supplied order", async () => {
+    const a = await createPlaceholder({ title: "A", sprintId: "9" });
+    const b = await createPlaceholder({ title: "B", sprintId: "9" });
+    const c = await createPlaceholder({ title: "C", sprintId: "9" });
+    await reorderPlaceholders([c.id, a.id, b.id]);
+    const rows = await listPlaceholders({ sprintId: "9" });
+    expect(rows.map((r) => r.title)).toEqual(["C", "A", "B"]);
+    expect(rows.map((r) => r.orderIndex)).toEqual([0, 1, 2]);
+  });
+
+  it("appends to the target group's order when moved to another sprint", async () => {
+    await createPlaceholder({ title: "X", sprintId: "10" }); // orderIndex 0 in sprint 10
+    const a = await createPlaceholder({ title: "A", sprintId: "9" }); // orderIndex 0 in sprint 9
+    const moved = await updatePlaceholder(a.id, { sprintId: "10" });
+    expect(moved.sprintId).toBe("10");
+    expect(moved.orderIndex).toBe(1);
   });
 });
 
