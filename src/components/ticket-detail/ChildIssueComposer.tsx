@@ -117,7 +117,7 @@ export function ChildIssueComposer({
                   opt.value === selectedType && !isPlaceholder ? "text-text-primary" : "text-text-secondary"
                 }`}
               >
-                <IssueTypeIcon type={opt.value} size={14} />
+                <IssueTypeIcon type={opt.value} size={15} strokeWidth={2} />
                 <span>{opt.label}</span>
               </button>
             ))}
@@ -137,7 +137,7 @@ export function ChildIssueComposer({
                     isPlaceholder ? "text-text-primary" : "text-text-secondary"
                   }`}
                 >
-                  <Pencil size={14} strokeWidth={2} />
+                  <Pencil size={15} strokeWidth={2} className="text-text-muted" />
                   <span>Placeholder</span>
                 </button>
               </>
@@ -180,7 +180,7 @@ export function ChildIssueComposer({
             onClick={() => (open ? handleClose() : handleOpen())}
             className={`flex shrink-0 cursor-pointer items-center gap-1.5 rounded-full border bg-[var(--color-surface-elevated)] px-2.5 py-1 text-text-secondary transition-colors duration-150 hover:border-[var(--color-brand-400)] focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-[var(--color-brand-400)] ${isPlaceholder ? "border-dashed border-border-strong" : "border-border-default"}`}
           >
-            {isPlaceholder ? <Pencil size={13} strokeWidth={2} /> : <IssueTypeIcon type={selectedType} size={13} />}
+            {isPlaceholder ? <Pencil size={13} strokeWidth={2} /> : <IssueTypeIcon type={selectedType} size={13} strokeWidth={2} />}
             <span className="text-body-sm font-medium">{isPlaceholder ? "Placeholder" : currentTypeConfig.label}</span>
             <ChevronDown size={10} className="text-text-muted" />
           </button>
@@ -204,7 +204,7 @@ export function ChildIssueComposer({
       className={`relative flex items-center gap-3 px-3 py-2 ${className}`}
       onClick={(e) => e.stopPropagation()}
     >
-      {isPlaceholder ? <Pencil size={14} strokeWidth={2} className="text-text-muted" /> : <IssueTypeIcon type={selectedType} size={14} />}
+      {isPlaceholder ? <Pencil size={14} strokeWidth={2} className="text-text-muted" /> : <IssueTypeIcon type={selectedType} size={14} strokeWidth={2} />}
       <div className="relative">
         <button
           ref={triggerRef}
