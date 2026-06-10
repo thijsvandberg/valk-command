@@ -44,9 +44,10 @@ export function TicketRefPill({ ticketKey }: TicketRefPillProps) {
   const hoverData = data ? buildTicketHoverData(data, sprintNames) : undefined;
 
   return (
-    // Strip the description's anchor underline (.description-content a) so the
-    // pill reads as a chip; !important beats that equal-specificity rule.
-    <span className="inline-flex align-middle [&_a]:!no-underline">
+    // Strip the description's anchor underline AND link color (.description-content a
+    // paints both) so the key reads as a pill chip, not a link; !important beats
+    // that higher-specificity rule, including its :hover variant.
+    <span className="inline-flex align-middle [&_a]:!no-underline [&_a]:!text-text-primary">
       <TicketStatusPill
         ticketKey={ticketKey}
         jiraStatus={data?.jiraStatus ?? "TO DO"}
