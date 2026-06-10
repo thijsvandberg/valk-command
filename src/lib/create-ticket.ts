@@ -109,6 +109,8 @@ export async function createTicketWithJira(input: CreateTicketInput): Promise<Cr
     .onConflictDoUpdate({ target: ticketMetadata.jiraKey, set: { readiness: "drafting" } });
 
   cache.invalidate(/^\/api\/tickets(\?|$)/);
+  // New tickets land in the backlog; the cached sprints payload embeds backlogCount.
+  cache.invalidate("/api/jira/sprints");
 
   await logActivity({
     type: "metadata-update",

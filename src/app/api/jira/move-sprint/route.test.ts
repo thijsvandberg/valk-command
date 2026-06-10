@@ -34,6 +34,7 @@ vi.mock("@/lib/cache", () => ({
 }));
 
 import { POST } from "./route";
+import { cache } from "@/lib/cache";
 import { ticket } from "@/db/schema";
 import { eq } from "drizzle-orm";
 
@@ -74,6 +75,14 @@ describe("POST /api/jira/move-sprint", () => {
 
     const t = testDb.select().from(ticket).where(eq(ticket.jiraKey, "VPL-100")).get();
     expect(t!.sprintName).toBe("456");
+  });
+
+  it("invalidates the sprints cache so the embedded backlogCount refreshes", async () => {
+    vi.mocked(cache.invalidate).mockClear();
+    const req = makeRequest({ issueKeys: ["VPL-100"], targetSprintId: "__backlog__" });
+    await POST(req);
+
+    expect(cache.invalidate).toHaveBeenCalledWith("/api/jira/sprints");
   });
 
   it("ranks to the top of the sprint when position is 'top'", async () => {

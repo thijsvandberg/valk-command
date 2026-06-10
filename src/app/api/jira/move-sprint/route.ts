@@ -90,6 +90,8 @@ export async function POST(request: Request) {
     .where(inArray(ticket.jiraKey, issueKeys));
 
   cache.invalidate("/api/tickets");
+  // The cached sprints payload embeds backlogCount, which moves to/from the backlog change.
+  cache.invalidate("/api/jira/sprints");
 
   return NextResponse.json({ ok: true, movedCount: issueKeys.length });
 }
