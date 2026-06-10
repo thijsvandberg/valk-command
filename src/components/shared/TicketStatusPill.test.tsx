@@ -286,6 +286,96 @@ describe("TicketStatusPill", () => {
   });
 });
 
+// BRDG-327: double-click anywhere on the pill copies the shareable reference and
+// shows a quiet, in-place confirmation instead of opening the key dropdown.
+describe("TicketStatusPill double-click copy", () => {
+  let writeText: ReturnType<typeof vi.fn>;
+
+  beforeEach(() => {
+    writeText = vi.fn().mockResolvedValue(undefined);
+    // jsdom does not implement navigator.clipboard; provide a stub.
+    Object.defineProperty(navigator, "clipboard", {
+      value: { writeText },
+      configurable: true,
+      writable: true,
+    });
+  });
+
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  it("copies the share text (Title - URL) on double-click when a title is present", async () => {
+    const { container } = render(
+      <TicketStatusPill ticketKey="VPL-1" jiraStatus="TO DO" title="My ticket" />,
+    );
+    await act(async () => {
+      fireEvent.doubleClick(container.firstChild as Element);
+    });
+    expect(writeText).toHaveBeenCalledWith("My ticket - https://new-story.atlassian.net/browse/VPL-1");
+  });
+
+  it("falls back to copying just the URL when the title has not resolved yet", async () => {
+    const { container } = render(
+      <TicketStatusPill ticketKey="VPL-1" jiraStatus="TO DO" />,
+    );
+    await act(async () => {
+      fireEvent.doubleClick(container.firstChild as Element);
+    });
+    expect(writeText).toHaveBeenCalledWith("https://new-story.atlassian.net/browse/VPL-1");
+  });
+
+  it("shows the in-place 'Copied' confirmation after a successful double-click", async () => {
+    const { container } = render(
+      <TicketStatusPill ticketKey="VPL-1" jiraStatus="TO DO" title="My ticket" />,
+    );
+    await act(async () => {
+      fireEvent.doubleClick(container.firstChild as Element);
+    });
+    expect(screen.getByText("Copied")).toBeTruthy();
+  });
+
+  it("does not open the key dropdown when the key is double-clicked", async () => {
+    render(<TicketStatusPill ticketKey="VPL-1" jiraStatus="TO DO" title="My ticket" />);
+    await act(async () => {
+      fireEvent.doubleClick(screen.getByText("VPL-1"));
+    });
+    // The dropdown actions must not be present after a double-click.
+    expect(screen.queryByText("Copy Jira URL")).toBeNull();
+    expect(screen.queryByText("Open in Jira")).toBeNull();
+  });
+
+  it("ignores double-click on a pending placeholder row (no copy, no confirmation)", async () => {
+    const { container } = render(
+      <TicketStatusPill ticketKey="pending-1780927981071" jiraStatus="TO DO" title="My ticket" />,
+    );
+    await act(async () => {
+      fireEvent.doubleClick(container.firstChild as Element);
+    });
+    expect(writeText).not.toHaveBeenCalled();
+    expect(screen.queryByText("Copied")).toBeNull();
+  });
+
+  it("hides the 'Copied' confirmation after ~1.2s", async () => {
+    vi.useFakeTimers();
+    try {
+      const { container } = render(
+        <TicketStatusPill ticketKey="VPL-1" jiraStatus="TO DO" title="My ticket" />,
+      );
+      await act(async () => {
+        fireEvent.doubleClick(container.firstChild as Element);
+        // Let the resolved writeText microtask flush so the state update runs.
+        await Promise.resolve();
+      });
+      expect(screen.getByText("Copied")).toBeTruthy();
+      act(() => { vi.advanceTimersByTime(1200); });
+      expect(screen.queryByText("Copied")).toBeNull();
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+});
+
 describe("TicketStatusPill hover card", () => {
   beforeEach(() => {
     vi.useFakeTimers();

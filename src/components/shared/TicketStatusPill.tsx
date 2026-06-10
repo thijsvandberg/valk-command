@@ -853,6 +853,12 @@ export function TicketStatusPill({
   const closeTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const cardPickerOpenRef = useRef(false);
 
+  // Double-click anywhere on the pill copies the share text (BRDG-327). A quiet,
+  // in-place "Copied" badge confirms it and fades on its own, so there is no loud
+  // corner toast for what is a frequent, low-stakes action.
+  const [copyConfirmed, setCopyConfirmed] = useState(false);
+  const copyTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
   const hoverCardEnabled = showHoverCard && hoverData != null;
   const anyDropdownOpen = issueTypeDropdownOpen || keyDropdownOpen || jiraDropdownOpen || readinessDropdownOpen;
 
@@ -890,7 +896,11 @@ export function TicketStatusPill({
     else scheduleClose();
   };
 
-  useEffect(() => () => { clearOpenTimer(); clearCloseTimer(); }, []);
+  useEffect(() => () => {
+    clearOpenTimer();
+    clearCloseTimer();
+    if (copyTimerRef.current) clearTimeout(copyTimerRef.current);
+  }, []);
 
   const hoverProps = hoverCardEnabled
     ? { onMouseEnter: handleHoverEnter, onMouseLeave: handleHoverLeave, onFocus: handleHoverEnter, onBlur: handleHoverLeave }
@@ -925,6 +935,23 @@ export function TicketStatusPill({
   // Optimistic rows created from the board carry a `pending-<timestamp>` placeholder key until
   // Jira returns the real key. Never surface that raw GUID; show a spinner in its place (BRDG-315).
   const isPending = ticketKey.startsWith("pending-");
+
+  // Copy the shareable reference on double-click. Falls back to the bare Jira URL
+  // when the title has not resolved yet, so the clipboard never holds a partial
+  // string. Pending placeholder rows have no real key, so they are ignored.
+  const handlePillDoubleClick = async () => {
+    if (isPending) return;
+    const text = title ? formatTicketShare(title, ticketKey) : jiraUrl;
+    try {
+      await navigator.clipboard.writeText(text);
+      setCopyConfirmed(true);
+      if (copyTimerRef.current) clearTimeout(copyTimerRef.current);
+      copyTimerRef.current = setTimeout(() => setCopyConfirmed(false), 1200);
+    } catch {
+      // Clipboard write requires a secure context or user gesture; fail quietly.
+    }
+  };
+
   const jiraColors = JIRA_STATUS_COLORS[jiraStatus] ?? JIRA_STATUS_COLORS["TO DO"];
   const readinessCfg = readiness ? READINESS_CONFIG[readiness] : null;
 
@@ -966,16 +993,17 @@ export function TicketStatusPill({
     <div
       ref={wrapperRef}
       {...hoverProps}
+      onDoubleClick={handlePillDoubleClick}
       className={
         elevated
-          ? `inline-flex shrink-0 items-center gap-1.5 rounded-md align-middle ring-1 ring-inset ring-border-subtle ${
+          ? `relative inline-flex shrink-0 items-center gap-1.5 rounded-md align-middle ring-1 ring-inset ring-border-subtle ${
               onHeader ? "" : "bg-surface-elevated"
             } ${
               size === "lg"
                 ? "px-2.5 py-1.5 shadow-[0_1px_3px_rgba(0,0,0,0.16)]"
                 : "px-1.5 py-[3px] shadow-[0_1px_2px_rgba(0,0,0,0.14)]"
             }`
-          : "flex shrink-0 items-center gap-1.5"
+          : "relative flex shrink-0 items-center gap-1.5"
       }
       // On the header chrome the elevated pill uses a translucent, theme-aware
       // surface (white 75% in light, a faint white lift in dark) so it reads as
@@ -983,6 +1011,19 @@ export function TicketStatusPill({
       style={elevated && onHeader ? { backgroundColor: "var(--color-pill-header-surface)" } : undefined}
     >
       {hoverCardEl}
+
+      {/* Quiet, in-place copy confirmation (BRDG-327). Sits above the chip without
+          shifting its layout and fades on its own — no global corner toast. */}
+      {copyConfirmed && (
+        <span
+          aria-live="polite"
+          style={{ animation: "fadeIn 150ms ease-out both" }}
+          className="pointer-events-none absolute -top-2 left-1/2 z-20 flex -translate-x-1/2 -translate-y-full items-center gap-1 rounded-md border border-border-subtle bg-[var(--color-surface-floating)] px-1.5 py-0.5 text-[10px] font-medium text-[var(--color-status-success)] shadow-[var(--shadow-popover)]"
+        >
+          <CheckCircle2 size={11} strokeWidth={2} aria-hidden />
+          Copied
+        </span>
+      )}
 
       {/* Issue type */}
       {issueType && (
@@ -1030,6 +1071,14 @@ export function TicketStatusPill({
             ref={keyLinkRef}
             href={`/tickets/${ticketKey}`}
             onClick={(e) => {
+              // The second click of a double-click (detail > 1) must not toggle the
+              // dropdown: keep it closed so a copy gesture never leaves it open or
+              // flickering (BRDG-327).
+              if (e.detail > 1) {
+                e.preventDefault();
+                setKeyDropdownOpen(false);
+                return;
+              }
               if (!e.metaKey && !e.ctrlKey && !e.shiftKey) {
                 e.preventDefault();
                 setKeyDropdownOpen((o) => !o);
