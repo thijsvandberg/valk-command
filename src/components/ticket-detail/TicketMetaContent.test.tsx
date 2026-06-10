@@ -236,6 +236,28 @@ describe("TicketMetaContent", () => {
     await waitFor(() => expect(updateStoryPoints).toHaveBeenCalled());
   });
 
+  // BRDG-333: subtasks are not estimated, scored, reviewed, or developed on their own, so the
+  // SP/BV row, the Quality/review panel, and the Development panel are all hidden for them.
+  describe("subtask variant (BRDG-333)", () => {
+    it("hides the story points and business value row", () => {
+      render(<TicketMetaContent ticket={makeTicket({ type: "subtask" })} detail={detail} />);
+      expect(screen.queryByTestId("sp-picker")).not.toBeInTheDocument();
+      expect(screen.queryByTestId("bv-picker")).not.toBeInTheDocument();
+    });
+
+    it("hides the Development panel", () => {
+      // Default qualityScore expands the More section, so the panel would render if not guarded.
+      render(<TicketMetaContent ticket={makeTicket({ type: "subtask" })} detail={detail} />);
+      expect(screen.queryByTestId("dev-panel")).not.toBeInTheDocument();
+    });
+
+    it("hides the Quality/review panel under More details", () => {
+      render(<TicketMetaContent ticket={makeTicket({ type: "subtask", qualityScore: null })} detail={detail} />);
+      fireEvent.click(screen.getByText("More details"));
+      expect(screen.queryByTitle("View review details")).not.toBeInTheDocument();
+    });
+  });
+
   // BRDG-332: the Parent field used to wrap a TicketStatusPill (which renders its own key <a>)
   // inside a Next <Link>, producing a nested-anchor hydration crash when a subtask opened in the
   // panel. The fix renders the parent as a non-anchor role="link" control.

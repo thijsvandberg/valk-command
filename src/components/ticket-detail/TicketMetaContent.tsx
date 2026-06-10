@@ -338,20 +338,23 @@ export function TicketMetaContent({
       {/* Details */}
       <div className="space-y-3">
 
-        {/* SP / BV (above status) */}
-        <div className="grid grid-cols-2 gap-2">
-          <CompactField label="Story Points" accent={hasPoints}>
-            <StoryPointPicker
-              value={storyPoints}
-              onChange={handleStoryPointsChange}
-              showMetricIcon
-              richTooltip
-            />
-          </CompactField>
-          <CompactField label="Business Value" accent={hasBV}>
-            <BusinessValuePicker value={businessValue} onChange={handleBusinessValueChange} align="right" showMetricIcon richTooltip />
-          </CompactField>
-        </div>
+        {/* SP / BV (above status). Subtasks are not estimated or scored, so the row is
+            hidden for them (BRDG-333). */}
+        {ticket.type !== "subtask" && (
+          <div className="grid grid-cols-2 gap-2">
+            <CompactField label="Story Points" accent={hasPoints}>
+              <StoryPointPicker
+                value={storyPoints}
+                onChange={handleStoryPointsChange}
+                showMetricIcon
+                richTooltip
+              />
+            </CompactField>
+            <CompactField label="Business Value" accent={hasBV}>
+              <BusinessValuePicker value={businessValue} onChange={handleBusinessValueChange} align="right" showMetricIcon richTooltip />
+            </CompactField>
+          </div>
+        )}
 
         {/* Status & Flow */}
         <div>
@@ -587,8 +590,8 @@ export function TicketMetaContent({
                   align="right"
                 />
               </DetailRow>
-              {/* Review is not relevant for epics, so the quality panel is hidden there. */}
-              {ticket.type !== "epic" && (
+              {/* Review is not relevant for epics or subtasks, so the quality panel is hidden there. */}
+              {ticket.type !== "epic" && ticket.type !== "subtask" && (
               <button
                 type="button"
                 onClick={onNavigateToReview}
@@ -691,11 +694,16 @@ export function TicketMetaContent({
         {/* Confluence pages */}
         <ConfluencePagesSection ticketKey={ticket.key} variant="compact" />
 
-        <div className="h-px bg-border-subtle" />
-
         {/* Development panel. Epics have no Development tab, so the "open full view"
-            link is suppressed there; the inline expander still shows branch/PR data. */}
-        <DevPanel data={devInfo} isLoading={devInfoLoading} onExpand={ticket.type === "epic" ? undefined : onNavigateToDev} />
+            link is suppressed there; the inline expander still shows branch/PR data.
+            Subtasks have no development workflow of their own, so the panel is omitted
+            entirely (BRDG-333). */}
+        {ticket.type !== "subtask" && (
+          <>
+            <div className="h-px bg-border-subtle" />
+            <DevPanel data={devInfo} isLoading={devInfoLoading} onExpand={ticket.type === "epic" ? undefined : onNavigateToDev} />
+          </>
+        )}
       </div>
     </div>
   );

@@ -101,6 +101,8 @@ export function SidePanel({
   const h = useTicketDetailPage(ticket.key);
   const t = h.ticket ?? ticket;
   const detail = h.detail;
+  // Subtasks have no review workflow, so the panel's "..." menu omits the Review entry (BRDG-333).
+  const isSubtask = t.type === "subtask";
 
   // Refresh the panel's own detail cache and the board list together.
   const handleMutate = useCallback(() => {
@@ -421,20 +423,24 @@ export function SidePanel({
                 </span>
               )}
             </a>
-            <div className="mx-2 my-1 h-px bg-overlay-default" />
-            <button
-              onClick={() => { setMoreMenuOpen(false); handleTabChange("review"); }}
-              className="flex w-full cursor-pointer items-center gap-2.5 px-3 py-2 text-body-sm text-text-secondary hover:bg-overlay-default active:bg-overlay-strong"
-              style={{ transition: "background-color 0.1s ease" }}
-            >
-              <ClipboardCheck size={13} strokeWidth={1.5} className={activeTab === "review" ? "text-[var(--color-brand-400)]" : "text-text-muted"} />
-              Review
-              {h.reviewCount > 0 && (
-                <span className="ml-auto flex h-4 min-w-4 items-center justify-center rounded-full bg-[var(--color-brand-500)]/15 px-1 text-caption font-medium text-[var(--color-brand-400)]">
-                  {h.reviewCount}
-                </span>
-              )}
-            </button>
+            {!isSubtask && (
+              <>
+                <div className="mx-2 my-1 h-px bg-overlay-default" />
+                <button
+                  onClick={() => { setMoreMenuOpen(false); handleTabChange("review"); }}
+                  className="flex w-full cursor-pointer items-center gap-2.5 px-3 py-2 text-body-sm text-text-secondary hover:bg-overlay-default active:bg-overlay-strong"
+                  style={{ transition: "background-color 0.1s ease" }}
+                >
+                  <ClipboardCheck size={13} strokeWidth={1.5} className={activeTab === "review" ? "text-[var(--color-brand-400)]" : "text-text-muted"} />
+                  Review
+                  {h.reviewCount > 0 && (
+                    <span className="ml-auto flex h-4 min-w-4 items-center justify-center rounded-full bg-[var(--color-brand-500)]/15 px-1 text-caption font-medium text-[var(--color-brand-400)]">
+                      {h.reviewCount}
+                    </span>
+                  )}
+                </button>
+              </>
+            )}
             <div className="mx-2 my-1 h-px bg-overlay-default" />
             <button
               onClick={() => { setMoreMenuOpen(false); h.isFollowed ? h.unfollow(ticket.key) : h.follow(ticket.key); }}

@@ -235,6 +235,17 @@ describe("SidePanel", () => {
     expect(menu).toHaveTextContent("Flag this ticket");
   });
 
+  it("omits the Review item from the more-menu for subtasks (BRDG-333)", () => {
+    const { unmount } = render(<SidePanel {...defaultProps} ticket={makeTicket({ type: "story" })} />);
+    fireEvent.click(screen.getByLabelText("More actions"));
+    expect(screen.getByTestId("more-menu")).toHaveTextContent("Review");
+    unmount();
+
+    render(<SidePanel {...defaultProps} ticket={makeTicket({ type: "subtask" })} />);
+    fireEvent.click(screen.getByLabelText("More actions"));
+    expect(screen.getByTestId("more-menu")).not.toHaveTextContent("Review");
+  });
+
   it("shows a push-to-jira action when there are local edits", () => {
     hookValue = makeHook({ hasLocalTitleEdit: true });
     render(<SidePanel {...defaultProps} />);

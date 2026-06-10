@@ -208,6 +208,16 @@ describe("TicketTabContent", () => {
       expect(screen.getByTestId("tab-review")).toBeInTheDocument();
       expect(screen.getByTestId("tab-development")).toBeInTheDocument();
     });
+
+    it("relabels the Content tab as 'Subtask' and omits Review/Development for subtasks (BRDG-333)", () => {
+      renderContent("content", { ticket: makeTicket({ type: "subtask" }) });
+      expect(screen.getByTestId("tab-subtask")).toBeInTheDocument();
+      expect(screen.queryByTestId("tab-content")).not.toBeInTheDocument();
+      expect(screen.queryByTestId("tab-review")).not.toBeInTheDocument();
+      expect(screen.queryByTestId("tab-development")).not.toBeInTheDocument();
+      // History remains available for subtasks.
+      expect(screen.getByTestId("tab-history")).toBeInTheDocument();
+    });
   });
 
   describe("epic child issues tab", () => {

@@ -145,6 +145,9 @@ export function TicketTabContent({
   // Epics split their breakdown (child issues) into a dedicated leading tab so the
   // PO lands on the list rather than scrolling past the description.
   const isEpic = ticket.type === "epic";
+  // Subtasks have no review or development workflow of their own, so those tabs are
+  // dropped and the Content tab is relabelled "Subtask" (BRDG-333).
+  const isSubtask = ticket.type === "subtask";
   const railClass = isPanel ? "w-full px-5" : "mx-auto w-full max-w-4xl px-8";
   // The toolbar and diff footer render into these portals by id. When a panel
   // instance shares the page with the full ticket page (the child preview side
@@ -174,10 +177,10 @@ export function TicketTabContent({
           <div className={`flex h-[44px] shrink-0 items-stretch gap-1 border-b border-border-default ${railClass}`}>
             {([
                 ...(isEpic ? [{ id: "children" as const, label: "Child issues", badge: (detail?.epicChildren.length || undefined) as number | undefined, badgeHighlight: false }] : []),
-                { id: "content" as const, label: "Content", badge: undefined as number | undefined, badgeHighlight: false },
+                { id: "content" as const, label: isSubtask ? "Subtask" : "Content", badge: undefined as number | undefined, badgeHighlight: false },
                 { id: "history" as const, label: "History", badge: versionCount as number | undefined, badgeHighlight: false },
-                ...((reviewInMenu || isEpic) ? [] : [{ id: "review" as const, label: "Review", badge: (reviewCount || undefined) as number | undefined, badgeHighlight: (reviewCount ?? 0) > 0 }]),
-                ...(isEpic ? [] : [{ id: "development" as const, label: "Development", badge: undefined as number | undefined, badgeHighlight: false }]),
+                ...((reviewInMenu || isEpic || isSubtask) ? [] : [{ id: "review" as const, label: "Review", badge: (reviewCount || undefined) as number | undefined, badgeHighlight: (reviewCount ?? 0) > 0 }]),
+                ...((isEpic || isSubtask) ? [] : [{ id: "development" as const, label: "Development", badge: undefined as number | undefined, badgeHighlight: false }]),
               ]).map((tab) => (
                 <Tab
                   key={tab.id}
@@ -366,8 +369,8 @@ export function TicketTabContent({
               }}
             />
           )}
-          {activeTab === "review" && <TicketReview ticketKey={ticketKey} />}
-          {activeTab === "development" && <TicketDevelopment ticketKey={ticketKey} />}
+          {activeTab === "review" && !isSubtask && <TicketReview ticketKey={ticketKey} />}
+          {activeTab === "development" && !isSubtask && <TicketDevelopment ticketKey={ticketKey} />}
 
           {activeTab !== "history" && <div className="h-12" />}
         </div>
