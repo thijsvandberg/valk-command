@@ -26,6 +26,10 @@ import {
   KanbanSquare,
 } from "lucide-react";
 import { TicketRefPill } from "@/components/shared/TicketRefPill";
+import { IssueTypeIcon } from "@/components/shared/IssueTypeIcon";
+import { JIRA_STATUS_COLORS, JIRA_STATUS_ABBREVIATIONS } from "@/types/ticket";
+import type { JiraStatus, IssueType } from "@/types/ticket";
+import { User } from "lucide-react";
 
 // ---------------------------------------------------------------------------
 // Mock data: real ticket keys (so the live pill resolves them), relative times
@@ -37,24 +41,26 @@ type MockEntry = {
   title: string;
   ago: string;
   bucket: "Today" | "Yesterday" | "Earlier";
+  type: IssueType;
+  status: JiraStatus;
   current?: boolean;
 };
 
 const ENTRIES: MockEntry[] = [
-  { key: "VPL-46304", title: "Research Valk Loyal SOAP security", ago: "2m", bucket: "Today", current: true },
-  { key: "VPL-46101", title: "Display strikethrough (original) price per rate in room results", ago: "18m", bucket: "Today" },
-  { key: "VPL-43142", title: "Group Reservations", ago: "32m", bucket: "Today" },
-  { key: "VPL-46337", title: "Expose most-expensive room in pricing feed", ago: "1h", bucket: "Today" },
-  { key: "VPL-45943", title: "Restrict booking calendar to group dates to group reservation date range/shoulder", ago: "2h", bucket: "Today" },
-  { key: "VPL-45948", title: "Add and remove group codes manually in the bookingtool", ago: "6h", bucket: "Today" },
-  { key: "VPL-46360", title: "Check lowest price cron (on UAT)", ago: "1d", bucket: "Yesterday" },
-  { key: "VPL-29223", title: "Monitoring Kibana (PROD) & heartbeat channel", ago: "1d", bucket: "Yesterday" },
-  { key: "VPL-42510", title: "[Initial-sync] Implement initial restrictions sync", ago: "2d", bucket: "Earlier" },
-  { key: "VPL-36166", title: "Configurable maximum booking period per hotel (12-24 months)", ago: "3d", bucket: "Earlier" },
+  { key: "VPL-46304", title: "Research Valk Loyal SOAP security", ago: "2m", bucket: "Today", type: "spike", status: "TEST", current: true },
+  { key: "VPL-46101", title: "Display strikethrough (original) price per rate in room results", ago: "18m", bucket: "Today", type: "spike", status: "TEST" },
+  { key: "VPL-43142", title: "Group Reservations", ago: "32m", bucket: "Today", type: "epic", status: "TO DO" },
+  { key: "VPL-46337", title: "Expose most-expensive room in pricing feed", ago: "1h", bucket: "Today", type: "story", status: "TO DO" },
+  { key: "VPL-45943", title: "Restrict booking calendar to group dates to group reservation date range/shoulder", ago: "2h", bucket: "Today", type: "story", status: "TEST" },
+  { key: "VPL-45948", title: "Add and remove group codes manually in the bookingtool", ago: "6h", bucket: "Today", type: "story", status: "IN PROGRESS" },
+  { key: "VPL-46360", title: "Check lowest price cron (on UAT)", ago: "1d", bucket: "Yesterday", type: "task", status: "IN PROGRESS" },
+  { key: "VPL-29223", title: "Monitoring Kibana (PROD) & heartbeat channel", ago: "1d", bucket: "Yesterday", type: "task", status: "TO DO" },
+  { key: "VPL-42510", title: "[Initial-sync] Implement initial restrictions sync", ago: "2d", bucket: "Earlier", type: "bug", status: "TEST" },
+  { key: "VPL-36166", title: "Configurable maximum booking period per hotel (12-24 months)", ago: "3d", bucket: "Earlier", type: "story", status: "IN PROGRESS" },
 ];
 
 type Fill = "full" | "few" | "empty";
-type RowLayout = "inline" | "titleFirst" | "pillFirst";
+type RowLayout = "inline" | "titleFirst" | "pillFirst" | "listRow";
 
 const FILL_LABEL: Record<Fill, string> = { full: "Full (10)", few: "Few (3)", empty: "Empty" };
 
@@ -73,6 +79,11 @@ const LAYOUTS: { id: RowLayout; label: string; thesis: string }[] = [
     id: "pillFirst",
     label: "C · Pill first",
     thesis: "Pill leads on its own line with the age beside it; the title gets the full second line. Key-oriented, still nothing truncated.",
+  },
+  {
+    id: "listRow",
+    label: "D · List row",
+    thesis: "The epic child-issues table anatomy, shrunk to the panel: loose type icon, mono key, status chip, then the title - no chip border around the whole reference. Familiar from the epic view; in 360px the title still shares its line.",
   },
 ];
 
@@ -160,6 +171,31 @@ function Row({ entry, layout }: { entry: MockEntry; layout: RowLayout }) {
         <span className="flex w-full items-center gap-2">
           <TicketRefPill ticketKey={entry.key} />
           <span className="font-mono text-[10px] text-text-muted/70">{entry.ago}</span>
+        </span>
+      </div>
+    );
+  }
+
+  if (layout === "listRow") {
+    const c = JIRA_STATUS_COLORS[entry.status];
+    return (
+      <div role="button" tabIndex={0} className={`${base} items-center gap-2 border-t border-border-subtle py-2.5 pl-1 pr-0.5 first:border-t-0`}>
+        <span className="shrink-0">
+          <IssueTypeIcon type={entry.type} size={14} strokeWidth={1.75} />
+        </span>
+        <span className="shrink-0 font-mono text-[11px] font-medium text-text-secondary">{entry.key}</span>
+        <span
+          className="inline-flex shrink-0 items-center gap-1 rounded-md px-1.5 py-0.5 font-mono text-[9px] font-semibold tracking-[0.04em]"
+          style={{ backgroundColor: c.bg, color: c.text }}
+        >
+          <span className="h-1 w-1 rounded-full" style={{ backgroundColor: c.text }} />
+          {JIRA_STATUS_ABBREVIATIONS[entry.status]}
+        </span>
+        <span className="min-w-0 flex-1 truncate text-body-sm text-text-primary">{entry.title}</span>
+        {entry.current && <CurrentDot />}
+        <span className="shrink-0 font-mono text-[10px] text-text-muted/70">{entry.ago}</span>
+        <span className="grid h-5 w-5 shrink-0 place-items-center rounded-full bg-overlay-default">
+          <User className="h-3 w-3 text-text-muted" strokeWidth={1.5} />
         </span>
       </div>
     );
