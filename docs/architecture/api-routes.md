@@ -82,6 +82,7 @@ Bridge-local forward-planning stand-ins. Never touch Jira until promoted.
 | `/api/placeholders/[id]` | PATCH | Update title/description/type/sprint/epic/BV/guestimation (validated) |
 | `/api/placeholders/[id]` | DELETE | Delete the placeholder row (it never reached Jira) |
 | `/api/placeholders/[id]/promote` | POST | Promote into a real Jira ticket via the shared `createTicketWithJira` helper: carries the description (as a local edit), BV + guestimation (to `ticket_metadata`), and marks the placeholder `promoted` with `promoted_to_key`. Returns `{ key }`. |
+| `/api/placeholders/reorder` | POST | Rewrite a sprint group's placeholder order (`{ orderedIds }`, top-to-bottom) by setting `order_index` (BRDG-328). Cross-sprint moves use `PATCH /:id` with `sprintId`. |
 
 ## Tickets
 

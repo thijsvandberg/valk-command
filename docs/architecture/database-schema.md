@@ -415,6 +415,7 @@ carries content/BV/guestimation over, and flips `status` to `promoted` with
 | `guestimation` | integer | 0,1,2,3,5,8 - the BRDG-303 Fibonacci guess |
 | `status` | text | `active` \| `promoted`, default `active` |
 | `promoted_to_key` | text | Jira key created on promotion; null while active |
+| `order_index` | integer | Manual order within a sprint group (BRDG-328); placeholders have no Jira rank, so they render as their own ordered block below the rank-ordered real rows |
 | `created_at` | text | `datetime('now')` |
 | `updated_at` | text | `datetime('now')` |
 
