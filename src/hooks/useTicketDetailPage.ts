@@ -5,6 +5,7 @@ import type { Ticket, TicketDetail, TicketReadiness, IssueType, JiraStatus, Epic
 import { useTicketDetail, useJiraSprints, useTicketReviews, useActiveWriterSessions } from "@/hooks/useSprintBoard";
 import { useFollowedTickets, useFollowTicket } from "@/hooks/usePipelines";
 import { apiFetch, jira, tickets } from "@/lib/api-client";
+import { patchTicketCaches, revalidateTicketCaches } from "@/lib/ticket-cache";
 import { useTicketEditStateSync } from "@/hooks/useTicketEditStateSync";
 import { getJiraUrl } from "@/components/sprint-board/TicketTableCells";
 import { useToast } from "@/hooks/useToast";
@@ -161,13 +162,15 @@ export function useTicketDetailPage(key: string) {
   const handleDescLocalEdit = useCallback((has: boolean) => setHasLocalDescEdit(has), []);
 
   const handleReadinessChange = useCallback(async (v: TicketReadiness | null) => {
-    mutateTicket((prev) => prev ? { ...prev, readiness: v } : prev, { revalidate: false });
+    // Patch every cache that renders readiness (detail + board lists) so the board
+    // pill also reflects the change when the user returns to it (BRDG-334).
+    patchTicketCaches(key, { readiness: v });
     try {
       await apiFetch(`/api/tickets/${key}/metadata`, { method: "PUT", body: { readiness: v } });
     } catch {
-      mutateTicket();
+      revalidateTicketCaches();
     }
-  }, [key, mutateTicket]);
+  }, [key]);
 
   const handleJiraStatusChange = useCallback(async (status: JiraStatus) => {
     mutateTicket((prev) => prev ? { ...prev, jiraStatus: status } : prev, { revalidate: false });

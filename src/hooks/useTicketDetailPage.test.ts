@@ -22,6 +22,11 @@ vi.mock("@/lib/api-client", () => ({
   },
 }));
 
+vi.mock("@/lib/ticket-cache", () => ({
+  patchTicketCaches: vi.fn(),
+  revalidateTicketCaches: vi.fn(),
+}));
+
 vi.mock("@/components/sprint-board/TicketTableCells", () => ({
   getJiraUrl: (key: string) => `https://jira.example.com/browse/${key}`,
 }));
@@ -29,6 +34,7 @@ vi.mock("@/components/sprint-board/TicketTableCells", () => ({
 import { useTicketDetailPage } from "./useTicketDetailPage";
 import { useTicketDetail } from "@/hooks/useSprintBoard";
 import { apiFetch, jira, tickets } from "@/lib/api-client";
+import { patchTicketCaches, revalidateTicketCaches } from "@/lib/ticket-cache";
 
 const mockApiData = {
   key: "VPL-42",
@@ -211,16 +217,25 @@ describe("useTicketDetailPage", () => {
     expect(result.current.linkCopied).toBe(true);
   });
 
-  it("readiness change: optimistic update then API call", async () => {
+  it("readiness change: patches detail and list caches, then calls the API", async () => {
     const { result } = renderHook(() => useTicketDetailPage("VPL-42"));
 
     await act(async () => { await result.current.handleReadinessChange("drafting"); });
 
-    expect(mutateFn).toHaveBeenCalledWith(expect.any(Function), { revalidate: false });
+    expect(patchTicketCaches).toHaveBeenCalledWith("VPL-42", { readiness: "drafting" });
     expect(apiFetch).toHaveBeenCalledWith(
       "/api/tickets/VPL-42/metadata",
       expect.objectContaining({ method: "PUT", body: { readiness: "drafting" } }),
     );
+  });
+
+  it("readiness change: revalidates ticket caches when the write fails", async () => {
+    vi.mocked(apiFetch).mockRejectedValueOnce(new Error("boom"));
+    const { result } = renderHook(() => useTicketDetailPage("VPL-42"));
+
+    await act(async () => { await result.current.handleReadinessChange("drafting"); });
+
+    expect(revalidateTicketCaches).toHaveBeenCalled();
   });
 
   it("Jira status change: optimistic update then API call", async () => {

@@ -65,13 +65,19 @@ export function useTicketActions(deps: TicketActionsDeps) {
     if (value != null && (readinessMap[key] ?? null) === "ready_to_refine") {
       const prev = readinessMap[key];
       setReadinessMap((m) => ({ ...m, [key]: null }));
+      // Keep the SWR list in step so the reconciling syncFromApiTickets does not
+      // revert the pill to the stale cached readiness.
+      mutateTickets((data) => data?.map((t) => t.key === key ? { ...t, readiness: null } : t), { revalidate: false });
       saveStoryPoints(key, value, activeListKey).then((ok) => {
-        if (!ok) setReadinessMap((m) => ({ ...m, [key]: prev }));
+        if (!ok) {
+          setReadinessMap((m) => ({ ...m, [key]: prev }));
+          mutateTickets((data) => data?.map((t) => t.key === key ? { ...t, readiness: prev ?? null } : t), { revalidate: false });
+        }
       });
       return;
     }
     saveStoryPoints(key, value, activeListKey);
-  }, [activeListKey, readinessMap]);
+  }, [activeListKey, readinessMap, mutateTickets]);
 
   const handleJiraStatusChange = useCallback(async (key: string, status: JiraStatus) => {
     const prev = apiTickets?.find((t) => t.key === key)?.jiraStatus;
@@ -173,21 +179,30 @@ export function useTicketActions(deps: TicketActionsDeps) {
     }
   }, [apiTickets, mutateTickets]);
 
-  // Sync initial PO data from API tickets
+  // Reconcile the optimistic PO maps with fresh API data. Values follow the SWR list
+  // (so edits made on other surfaces, e.g. the ticket detail page, show up when the
+  // board re-renders) except for keys with an in-flight save, whose optimistic value
+  // must not be clobbered by a racing revalidation.
   const syncFromApiTickets = useCallback((tickets: Ticket[]) => {
     setPoStatuses((prev) => {
       let changed = false;
       const next = { ...prev };
-      tickets.forEach((t) => { if (!(t.key in next)) { next[t.key] = t.poStatus; changed = true; } });
+      tickets.forEach((t) => {
+        if (inflightKeys.has(t.key)) return;
+        if (next[t.key] !== t.poStatus) { next[t.key] = t.poStatus; changed = true; }
+      });
       return changed ? next : prev;
     });
     setReadinessMap((prev) => {
       let changed = false;
       const next = { ...prev };
-      tickets.forEach((t) => { if (!(t.key in next)) { next[t.key] = t.readiness; changed = true; } });
+      tickets.forEach((t) => {
+        if (inflightKeys.has(t.key)) return;
+        if (next[t.key] !== t.readiness) { next[t.key] = t.readiness; changed = true; }
+      });
       return changed ? next : prev;
     });
-  }, []);
+  }, [inflightKeys]);
 
   const handleBulkSetReadiness = useCallback(async (readiness: TicketReadiness | null, checkedTickets: Set<string>) => {
     const keys = [...checkedTickets];

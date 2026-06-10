@@ -2,7 +2,7 @@ import { renderHook, act } from "@testing-library/react";
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import type { Ticket } from "@/types/ticket";
 import { useTicketActions } from "./useTicketActions";
-import { saveStoryPoints } from "@/components/sprint-board/sprint-board-utils";
+import { saveStoryPoints, saveTicketMetadata } from "@/components/sprint-board/sprint-board-utils";
 
 const toggleFlag = vi.fn();
 const moveSprint = vi.fn();
@@ -356,5 +356,56 @@ describe("useTicketActions - handleAssigneeChange", () => {
     });
 
     expect(showToast).toHaveBeenCalledWith("Failed to update assignee for A-1. Change reverted.");
+  });
+});
+
+describe("useTicketActions - syncFromApiTickets reconciliation (BRDG-334)", () => {
+  const saveTicketMetadataMock = vi.mocked(saveTicketMetadata);
+
+  beforeEach(() => {
+    saveTicketMetadataMock.mockReset();
+    saveTicketMetadataMock.mockResolvedValue(true);
+  });
+
+  function setup(apiTickets: Ticket[]) {
+    const mutateTickets = vi.fn();
+    const showToast = vi.fn();
+    const { result } = renderHook(() =>
+      useTicketActions({ apiTickets, mutateTickets, activeListKey: null, showToast }),
+    );
+    return { result };
+  }
+
+  it("follows fresh API data so edits made on other surfaces show up", () => {
+    const t = { ...makeTicket("A-1", false), readiness: "drafting" } as Ticket;
+    const { result } = setup([t]);
+    act(() => result.current.syncFromApiTickets([t]));
+    expect(result.current.readinessMap["A-1"]).toBe("drafting");
+    expect(result.current.poStatuses["A-1"]).toBe("Draft");
+
+    // The same ticket comes back changed (e.g. edited on the ticket detail page).
+    const updated = { ...t, readiness: "ready_to_refine", poStatus: "Ready" } as Ticket;
+    act(() => result.current.syncFromApiTickets([updated]));
+
+    expect(result.current.readinessMap["A-1"]).toBe("ready_to_refine");
+    expect(result.current.poStatuses["A-1"]).toBe("Ready");
+  });
+
+  it("does not clobber an optimistic value while its save is in flight", async () => {
+    let resolveSave: ((ok: boolean) => void) | undefined;
+    saveTicketMetadataMock.mockImplementation(() => new Promise((res) => { resolveSave = res; }));
+    const t = { ...makeTicket("A-1", false), readiness: "drafting" } as Ticket;
+    const { result } = setup([t]);
+    act(() => result.current.syncFromApiTickets([t]));
+
+    act(() => { result.current.handleReadinessChange("A-1", "on_hold"); });
+    // A racing revalidation still carrying the old readiness must not revert the pill.
+    act(() => result.current.syncFromApiTickets([t]));
+    expect(result.current.readinessMap["A-1"]).toBe("on_hold");
+
+    await act(async () => { resolveSave?.(true); });
+    // After the save resolves, fresh data flows through again.
+    act(() => result.current.syncFromApiTickets([{ ...t, readiness: "on_hold" } as Ticket]));
+    expect(result.current.readinessMap["A-1"]).toBe("on_hold");
   });
 });
