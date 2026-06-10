@@ -183,6 +183,20 @@ export default function RefinementSessionTicketPage({
       .catch(() => {});
   }, [currentKey, mutate]);
 
+  // Optimistically patch a subtask's status in the detail SWR cache so the row updates
+  // instantly. The child status endpoint does not reliably invalidate this parent detail
+  // cache (cross-route invalidation is unreliable in dev), so a bare revalidation would
+  // return the stale subtask status. SubtasksSection owns the PUT and rolls back on failure.
+  const handleSubtaskStatusOptimistic = useCallback((childKey: string, status: JiraStatus) => {
+    mutate(
+      (prev) => prev ? {
+        ...prev,
+        subtasks: (prev.subtasks ?? []).map((s) => s.key === childKey ? { ...s, jiraStatus: status } : s),
+      } : prev,
+      { revalidate: false },
+    );
+  }, [mutate]);
+
   // Push / save / discard state
   const [isPushing, setIsPushing] = useState(false);
   const [pushError, setPushError] = useState<string | null>(null);
@@ -723,6 +737,7 @@ export default function RefinementSessionTicketPage({
                 subtasks={ticketData.subtasks ?? []}
                 ticketKey={ticketData.key}
                 onMutate={() => mutate()}
+                onSubtaskStatusOptimistic={handleSubtaskStatusOptimistic}
                 compactFilters
                 defaultHideKeys
                 showDragHandles

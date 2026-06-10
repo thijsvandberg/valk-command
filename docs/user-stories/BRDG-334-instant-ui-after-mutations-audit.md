@@ -163,6 +163,6 @@ every claim. Keep the report concise and actionable.
 - [x] `PUT /api/tickets/[key]/status` also invalidates the parent ticket detail cache when the ticket has a parent
 - [x] Failure path rolls back / revalidates and still surfaces the warning
 - [x] Tests cover instant subtask status update and the failure path
-- [ ] Refinement session subtask view (`SessionTicketView`) wired the same way (own data path; deferred to the audit)
+- [x] Refinement session subtask view (`SessionTicketView`) wired the same way (own data path; deferred to the audit)
 - [ ] Audit prompt run; findings saved to `docs/investigations/2026-06-10-stale-ui-after-mutation-audit.md`
 - [ ] Confirmed audit findings fixed with the client-side SWR-patch pattern, each with a test
