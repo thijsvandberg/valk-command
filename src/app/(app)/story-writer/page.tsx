@@ -130,12 +130,14 @@ export default function StoryWriterLandingPage() {
 
           {sessionCount > 0 && (
             <div className={GROUP_CARD_CLASS}>
-              {/* Card heading (BRDG-325): titles the list and carries the session count. */}
-              <div className="flex items-center justify-between gap-2 border-b border-border-subtle bg-[var(--color-surface-chrome)]/30 px-4 py-2.5">
+              {/* Card heading (BRDG-325): "Continue session" with the count as a badge. */}
+              <div className="flex items-center gap-2 border-b border-border-subtle bg-[var(--color-surface-chrome)]/30 px-4 py-2.5">
                 <h2 className="font-[var(--font-display)] text-body-sm font-semibold tracking-[-0.01em] text-text-secondary">
-                  Active sessions
+                  Continue Story Writer session
                 </h2>
-                <span className="text-label tabular-nums text-text-tertiary">{sessionCount}</span>
+                <span className="inline-flex h-[18px] min-w-[18px] items-center justify-center rounded-full bg-overlay-subtle px-1.5 text-[11px] font-medium tabular-nums text-text-tertiary">
+                  {sessionCount}
+                </span>
               </div>
               <table className="w-full table-fixed border-collapse text-body-lg">
                 <tbody>

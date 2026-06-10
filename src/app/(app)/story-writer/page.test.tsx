@@ -116,13 +116,13 @@ describe("StoryWriterLandingPage (BRDG-325)", () => {
     swrData = [];
     render(<StoryWriterLandingPage />);
     expect(screen.getByText("No active sessions")).toBeInTheDocument();
-    expect(screen.queryByText("Active sessions")).toBeNull();
+    expect(screen.queryByText("Continue Story Writer session")).toBeNull();
   });
 
-  it("renders one row per session under the card heading with a count", () => {
+  it("renders one row per session under the 'Continue Story Writer session' heading with a count badge", () => {
     swrData = [makeRow({ key: "VPL-1", title: "Draft one" }), makeRow({ key: "VPL-2", sessionId: "sess-2", title: "Draft two" })];
     render(<StoryWriterLandingPage />);
-    expect(screen.getByText("Active sessions")).toBeInTheDocument();
+    expect(screen.getByText("Continue Story Writer session")).toBeInTheDocument();
     expect(screen.getByText("2")).toBeInTheDocument();
     expect(screen.getByText("Draft one")).toBeInTheDocument();
     expect(screen.getByText("Draft two")).toBeInTheDocument();
