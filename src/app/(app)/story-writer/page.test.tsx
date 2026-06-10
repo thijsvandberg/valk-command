@@ -123,7 +123,7 @@ describe("StoryWriterLandingPage (BRDG-325)", () => {
     swrData = [makeRow({ key: "VPL-1", title: "Draft one" }), makeRow({ key: "VPL-2", sessionId: "sess-2", title: "Draft two" })];
     render(<StoryWriterLandingPage />);
     expect(screen.getByText("Continue Story Writer session")).toBeInTheDocument();
-    expect(screen.getByText("2")).toBeInTheDocument();
+    expect(screen.getByText("2 sessions")).toBeInTheDocument();
     expect(screen.getByText("Draft one")).toBeInTheDocument();
     expect(screen.getByText("Draft two")).toBeInTheDocument();
   });

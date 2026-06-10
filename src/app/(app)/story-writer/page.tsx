@@ -22,7 +22,6 @@ import { InlineAlert } from "@/components/shared/InlineAlert";
 import { Toast } from "@/components/ui/Toast";
 import { BoardRow } from "@/components/sprint-board/BoardRow";
 import type { InlineTagId } from "@/components/sprint-board/filter-bar-types";
-import { GROUP_CARD_CLASS } from "@/components/sprint-board/GroupCard";
 import { useTicketActions } from "@/components/sprint-board/useTicketActions";
 import { mapJiraSprints } from "@/components/sprint-board/sprint-board-utils";
 import { useToast } from "@/hooks/useToast";
@@ -129,14 +128,17 @@ export default function StoryWriterLandingPage() {
           )}
 
           {sessionCount > 0 && (
-            <div className={GROUP_CARD_CLASS}>
+            // Plain overflow-hidden card (not the board's GROUP_CARD_CLASS, whose
+            // overflow-clip-margin lets the heading background bleed past the rounded
+            // corner): this list has no drag handle that needs to straddle the edge.
+            <div className="overflow-hidden rounded-xl border border-border-subtle bg-[var(--color-surface-elevated)] shadow-[var(--shadow-sm)]">
               {/* Card heading (BRDG-325): "Continue session" with the count as a badge. */}
               <div className="flex items-center gap-2 border-b border-border-subtle bg-[var(--color-surface-chrome)]/30 px-4 py-2.5">
                 <h2 className="font-[var(--font-display)] text-body-sm font-semibold tracking-[-0.01em] text-text-secondary">
                   Continue Story Writer session
                 </h2>
-                <span className="inline-flex h-[18px] min-w-[18px] items-center justify-center rounded-full bg-overlay-subtle px-1.5 text-[11px] font-medium tabular-nums text-text-tertiary">
-                  {sessionCount}
+                <span className="inline-flex items-center rounded-full bg-overlay-subtle px-2 py-0.5 text-[11px] font-medium text-text-tertiary">
+                  {sessionCount} session{sessionCount === 1 ? "" : "s"}
                 </span>
               </div>
               <table className="w-full table-fixed border-collapse text-body-lg">
