@@ -1,12 +1,13 @@
 "use client";
 
 import { memo, useCallback, useRef, useState } from "react";
-import { Pencil, SquarePen, MessageSquare, Check, X, SquareArrowUpRight, IterationCw } from "lucide-react";
+import { SquareDashed, SquarePen, MessageSquare, Check, X, SquareArrowUpRight, IterationCw } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import type { PlaceholderTicket } from "@/types/ticket";
 import { getSpColor } from "@/types/ticket";
 import { EstimatePicker } from "@/components/shared/EstimatePicker";
 import { BusinessValuePicker } from "@/components/shared/BusinessValuePicker";
+import { HoverRevealSlot } from "@/components/shared/HoverRevealSlot";
 import { useOutsideClick } from "@/hooks/useOutsideClick";
 
 // Hover action button, mirroring the subtask row's Edit/Delete treatment exactly
@@ -43,18 +44,17 @@ function PhActionButton({
   );
 }
 
-// Forward-planning placeholder row (BRDG-304). A deliberately provisional surface:
-// dashed/ghosted, badged "Placeholder", carrying the BRDG-321/323 "penciled in"
-// slate motif so it is unmistakably not a real ticket. It exposes NO Jira controls
-// (no status workflow, assignee, follow/review) and never navigates to /tickets/:key
-// because it has no Jira key. Editing content/BV/guestimation and promoting are the
-// only actions.
+// Forward-planning placeholder row (BRDG-304). Reads like a real ticket row (leading
+// pill format), set apart only by a dashed leading icon and a slate "Placeholder"
+// pill instead of an issue-type icon + status. It exposes NO Jira controls (no status
+// workflow, assignee, follow/review) and never navigates to /tickets/:key because it
+// has no Jira key. SP/BV follow the same show-when-set / hide-when-empty logic as a
+// real story row; the Convert/Edit/Delete actions overlay the content on hover, like
+// the subtask rows.
 
 const TONE = getSpColor(1);
 const SLATE_FG = TONE.text;
 const SLATE_BG = TONE.bg;
-const DASH = `color-mix(in srgb, ${SLATE_FG} 38%, transparent)`;
-const GHOST_BG = `color-mix(in srgb, ${TONE.solid} 5%, transparent)`;
 
 export interface PlaceholderRowProps {
   placeholder: PlaceholderTicket;
@@ -79,6 +79,12 @@ export const PlaceholderRow = memo(function PlaceholderRow({
   const [editing, setEditing] = useState(false);
   const [titleDraft, setTitleDraft] = useState(placeholder.title);
   const [descDraft, setDescDraft] = useState(placeholder.description);
+  // Keeps the empty SP/BV hover placeholders open while any picker popover is open
+  // (the popover is portaled, so its focus no longer lives in the row).
+  const [metaPickerOpen, setMetaPickerOpen] = useState(false);
+  // Freeze the estimate's slot (value vs placeholder) while its popover is open, so
+  // picking a guess does not flip slots and remount the picker mid-edit (BRDG-323).
+  const [estimateSlotFrozen, setEstimateSlotFrozen] = useState<null | "value" | "placeholder">(null);
   const editRef = useRef<HTMLDivElement>(null);
   const titleInputRef = useRef<HTMLTextAreaElement>(null);
 
@@ -116,20 +122,59 @@ export const PlaceholderRow = memo(function PlaceholderRow({
 
   const hasDescription = placeholder.description.trim().length > 0;
 
+  // SP/BV visibility mirrors a real story row (BRDG-310): a set value (1, 2, ...)
+  // renders inline; an empty value (null or N/A 0) reserves no space and only
+  // surfaces on row hover. The estimate is the guess-only BRDG-323 chip.
+  const guessEmpty = placeholder.guestimation == null || placeholder.guestimation === 0;
+  const bvEmpty = placeholder.businessValue == null || placeholder.businessValue === 0;
+  const estimateInValue = estimateSlotFrozen ? estimateSlotFrozen === "value" : !guessEmpty;
+  const handleEstimateOpenChange = (open: boolean) => {
+    setMetaPickerOpen(open);
+    setEstimateSlotFrozen(open ? (!guessEmpty ? "value" : "placeholder") : null);
+  };
+
+  const estimatePicker = (
+    <EstimatePicker
+      storyPoints={null}
+      guestimation={placeholder.guestimation}
+      onStoryPointsChange={() => {}}
+      onGuestimationChange={(v) => onUpdate(placeholder.id, { guestimation: v })}
+      planningMode
+      guessOnly
+      onOpenChange={handleEstimateOpenChange}
+      dense
+      showMetricIcon
+      richTooltip
+    />
+  );
+  const bvPicker = (
+    <BusinessValuePicker
+      value={placeholder.businessValue}
+      onChange={(v) => onUpdate(placeholder.id, { businessValue: v })}
+      onOpenChange={setMetaPickerOpen}
+      dense
+      showMetricIcon
+      richTooltip
+    />
+  );
+
   return (
     <div
-      className={`group/phrow relative flex items-start gap-2 border-l-[3px] border-l-transparent py-2.5 pl-3 pr-3 transition-colors duration-100 ${isLastInCard ? "rounded-b-[11px]" : ""}`}
-      style={{ backgroundColor: GHOST_BG }}
+      className={`group/row @container/boardrow relative flex items-center gap-2 py-2.5 pl-4 pr-3 ${isLastInCard ? "rounded-b-[11px]" : ""}`}
       data-placeholder-id={placeholder.id}
     >
-      {/* Provisional badge: pencil motif + slate "Placeholder" pill (BRDG-304). */}
-      <span
-        className="mt-0.5 flex h-6 shrink-0 items-center gap-1 rounded-md border border-dashed px-1.5 text-[11px] font-medium leading-none"
-        style={{ color: SLATE_FG, backgroundColor: SLATE_BG, borderColor: DASH }}
-        title="Placeholder - a provisional, Bridge-local forward-planning stand-in"
-      >
-        <Pencil size={11} strokeWidth={2} aria-hidden />
-        Placeholder
+      {/* Leading cluster in the ticket pill format, adapted for a placeholder: a dashed
+          icon (provisional) + a slate "Placeholder" pill, in place of the issue-type
+          icon + status pill on a real ticket. */}
+      <span className="flex shrink-0 items-center gap-2">
+        <SquareDashed size={16} strokeWidth={1.75} style={{ color: SLATE_FG }} className="opacity-80" aria-hidden />
+        <span
+          className="inline-flex items-center rounded px-2 py-0.5 text-body-sm font-medium"
+          style={{ color: SLATE_FG, backgroundColor: SLATE_BG }}
+          title="Placeholder - a provisional, Bridge-local forward-planning stand-in"
+        >
+          Placeholder
+        </span>
       </span>
 
       {editing ? (
@@ -181,27 +226,21 @@ export const PlaceholderRow = memo(function PlaceholderRow({
           <button
             type="button"
             onClick={openEditor}
-            className="flex min-w-0 flex-1 items-center gap-1.5 text-left text-text-secondary cursor-pointer"
-            title="Edit placeholder title"
+            className="min-w-0 flex-1 truncate text-left text-body-lg text-text-secondary cursor-pointer"
+            title="Edit placeholder"
           >
-            <span className="min-w-0 truncate text-body-lg">{placeholder.title}</span>
-            <Pencil
-              size={11}
-              strokeWidth={1.5}
-              className="hidden shrink-0 text-text-muted group-hover/phrow:block"
-              aria-hidden
-            />
+            {placeholder.title}
           </button>
 
           {hasDescription && (
-            <span className="mt-1 shrink-0" title={placeholder.description}>
+            <span className="shrink-0" title={placeholder.description}>
               <MessageSquare className="h-3.5 w-3.5 text-text-muted" strokeWidth={1.5} />
             </span>
           )}
 
           {showSprint && placeholder.sprintId && (
             <span
-              className="mt-0.5 inline-flex h-5 min-w-0 shrink items-center gap-1 truncate whitespace-nowrap rounded-md px-1.5 text-[11px] leading-none text-text-tertiary"
+              className="inline-flex h-5 min-w-0 shrink items-center gap-1 truncate whitespace-nowrap rounded-md px-1.5 text-[11px] leading-none text-text-tertiary"
               style={{ backgroundColor: "var(--color-overlay-subtle)" }}
               title={sprintNameMap[placeholder.sprintId] ?? placeholder.sprintName ?? placeholder.sprintId}
             >
@@ -210,33 +249,35 @@ export const PlaceholderRow = memo(function PlaceholderRow({
             </span>
           )}
 
-          {/* Guestimation (no real SP on a placeholder) + business value. */}
-          <span className="mt-0.5 shrink-0" onPointerDown={(e) => e.stopPropagation()} onClick={(e) => e.stopPropagation()}>
-            <EstimatePicker
-              storyPoints={null}
-              guestimation={placeholder.guestimation}
-              onStoryPointsChange={() => {}}
-              onGuestimationChange={(v) => onUpdate(placeholder.id, { guestimation: v })}
-              planningMode
-              guessOnly
-              dense
-              showMetricIcon
-              richTooltip
-            />
-          </span>
-          <span className="mt-0.5 shrink-0" onPointerDown={(e) => e.stopPropagation()} onClick={(e) => e.stopPropagation()}>
-            <BusinessValuePicker
-              value={placeholder.businessValue}
-              onChange={(v) => onUpdate(placeholder.id, { businessValue: v })}
-              dense
-              showMetricIcon
-              richTooltip
-            />
+          {/* SP (guess) + BV. Set values render inline; empty ones hover-reveal, exactly
+              like a real story row. The cluster sits above the actions overlay (z-20) so
+              the pickers stay reachable while the actions are shown. */}
+          <span className="relative z-20 flex shrink-0 items-center gap-1.5">
+            {estimateInValue ? (
+              <span className="shrink-0" onPointerDown={(e) => e.stopPropagation()} onClick={(e) => e.stopPropagation()}>
+                {estimatePicker}
+              </span>
+            ) : (
+              <HoverRevealSlot hideWhenNarrow forceOpen={metaPickerOpen}>{estimatePicker}</HoverRevealSlot>
+            )}
+            {!bvEmpty ? (
+              <span className="shrink-0" onPointerDown={(e) => e.stopPropagation()} onClick={(e) => e.stopPropagation()}>
+                {bvPicker}
+              </span>
+            ) : (
+              <HoverRevealSlot hideWhenNarrow forceOpen={metaPickerOpen}>{bvPicker}</HoverRevealSlot>
+            )}
           </span>
 
-          {/* Hover-revealed actions, spelled out like the subtask rows: convert into a
-              real ticket, edit content, or delete. */}
-          <span className="mt-0.5 flex shrink-0 items-center gap-0.5 opacity-0 transition-opacity duration-100 group-hover/phrow:opacity-100">
+          {/* Actions overlay the row content on hover, like the subtask rows: a fade masks
+              the title under the buttons; pr clears the SP/BV cluster (which stays on top). */}
+          <div
+            className="absolute inset-y-0 right-0 z-10 flex items-center gap-0.5 pl-8 pr-[92px] opacity-0 group-hover/row:opacity-100"
+            style={{
+              transition: "opacity 0.15s ease",
+              background: "linear-gradient(to right, transparent, var(--color-surface-elevated) 28px)",
+            }}
+          >
             <PhActionButton
               icon={SquareArrowUpRight}
               label="Convert to ticket"
@@ -256,7 +297,7 @@ export const PlaceholderRow = memo(function PlaceholderRow({
               tone="danger"
               onClick={() => onDelete(placeholder.id)}
             />
-          </span>
+          </div>
         </>
       )}
     </div>
