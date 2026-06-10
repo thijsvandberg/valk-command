@@ -553,6 +553,14 @@ describe("BoardRow (headerless, BRDG-239)", () => {
       expect(screen.getByTestId("sp")).toBeInTheDocument();
     });
 
+    it("drops the checkbox gutter when hideCheckbox is set", () => {
+      const withBox = renderRow();
+      expect(withBox.container.querySelector("div.w-3\\.5")).toBeInTheDocument();
+
+      const withoutBox = renderRow({ hideCheckbox: true });
+      expect(withoutBox.container.querySelector("div.w-3\\.5")).toBeNull();
+    });
+
     it("shows a read-only assignee avatar when assigned but no empty grey placeholder when not", () => {
       renderRow({ ticket: makeTicket({ assignee: { name: "Jane", initials: "J", color: "#000" } }) });
       expect(screen.getByTestId("avatar")).toBeInTheDocument();

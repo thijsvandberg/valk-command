@@ -103,15 +103,11 @@ export default function StoryWriterLandingPage() {
       </ViewHeader>
 
       <div className="flex-1 overflow-y-auto px-8 pt-6 pb-20">
-        <div className="max-w-5xl">
+        <div className="mx-auto max-w-5xl">
           {error && <InlineAlert variant="error" className="mb-4">Failed to load sessions</InlineAlert>}
 
-          <div className="flex items-center justify-between mb-5">
-            <span className="text-body-lg text-text-tertiary">
-              {isLoading
-                ? "Loading..."
-                : `${sessionCount} active session${sessionCount === 1 ? "" : "s"}`}
-            </span>
+          <div className="mb-5 flex items-center justify-end">
+            {isLoading && <span className="mr-auto text-body-lg text-text-tertiary">Loading...</span>}
             <Button
               variant="primary"
               size="lg"
@@ -134,6 +130,13 @@ export default function StoryWriterLandingPage() {
 
           {sessionCount > 0 && (
             <div className={GROUP_CARD_CLASS}>
+              {/* Card heading (BRDG-325): titles the list and carries the session count. */}
+              <div className="flex items-center justify-between gap-2 border-b border-border-subtle bg-[var(--color-surface-chrome)]/30 px-4 py-2.5">
+                <h2 className="font-[var(--font-display)] text-body-sm font-semibold tracking-[-0.01em] text-text-secondary">
+                  Active sessions
+                </h2>
+                <span className="text-label tabular-nums text-text-tertiary">{sessionCount}</span>
+              </div>
               <table className="w-full table-fixed border-collapse text-body-lg">
                 <tbody>
                   {sessionTickets.map((st, idx) => (
@@ -146,6 +149,7 @@ export default function StoryWriterLandingPage() {
                       someChecked={false}
                       isDragActive={false}
                       tags={ROW_TAGS}
+                      hideCheckbox
                       selectedTicket={null}
                       onSelectTicket={() => {}}
                       onCheckboxClick={() => {}}

@@ -108,6 +108,9 @@ export interface BoardRowBaseProps {
   sessionTimeAgo?: string;
   sessionJiraChanged?: boolean;
   splitTarget?: string | null;
+  /** Drop the leading selection-checkbox gutter (views without bulk selection, e.g. the
+   *  Story Writer landing). Off by default so the board keeps its checkbox. */
+  hideCheckbox?: boolean;
   /**
    * Last row in its card: rounds the row surface's bottom corners so the hover/selection
    * fill follows the card's rounded edge instead of bleeding square into the corners. The
@@ -175,6 +178,7 @@ export const BoardRow = memo(forwardRef<HTMLTableRowElement, BoardRowBaseProps>(
     sessionTimeAgo,
     sessionJiraChanged = false,
     splitTarget,
+    hideCheckbox = false,
     isLastInCard = false,
     rowStyle,
     dragListeners,
@@ -350,14 +354,17 @@ export const BoardRow = memo(forwardRef<HTMLTableRowElement, BoardRowBaseProps>(
 
           {/* Dedicated checkbox gutter on every row: always reserves space so content never
               shifts. The checkbox itself stays hidden until row hover (or when a selection is
-              active) - see the `checkbox` definition above. */}
-          <div
-            className="flex w-3.5 shrink-0 cursor-pointer items-center justify-center"
-            onPointerDown={(e) => e.stopPropagation()}
-            onClick={(e) => { e.stopPropagation(); onCheckboxClick(ticket.key, ticketIdx, e.shiftKey); }}
-          >
-            {checkbox}
-          </div>
+              active) - see the `checkbox` definition above. Dropped entirely on views with no
+              bulk selection (hideCheckbox), e.g. the Story Writer landing (BRDG-325). */}
+          {!hideCheckbox && (
+            <div
+              className="flex w-3.5 shrink-0 cursor-pointer items-center justify-center"
+              onPointerDown={(e) => e.stopPropagation()}
+              onClick={(e) => { e.stopPropagation(); onCheckboxClick(ticket.key, ticketIdx, e.shiftKey); }}
+            >
+              {checkbox}
+            </div>
+          )}
 
           <div className="relative flex shrink-0 items-center gap-1.5" style={{ fontVariantNumeric: "tabular-nums" }}>
             <span onPointerDown={(e) => e.stopPropagation()} onClick={(e) => e.stopPropagation()}>

@@ -112,17 +112,18 @@ describe("StoryWriterLandingPage (BRDG-325)", () => {
     swrData = undefined;
   });
 
-  it("shows the empty state when there are no sessions", () => {
+  it("shows the empty state (no card heading) when there are no sessions", () => {
     swrData = [];
     render(<StoryWriterLandingPage />);
-    expect(screen.getByText("0 active sessions")).toBeInTheDocument();
     expect(screen.getByText("No active sessions")).toBeInTheDocument();
+    expect(screen.queryByText("Active sessions")).toBeNull();
   });
 
-  it("renders one row per session with a singular/plural count", () => {
+  it("renders one row per session under the card heading with a count", () => {
     swrData = [makeRow({ key: "VPL-1", title: "Draft one" }), makeRow({ key: "VPL-2", sessionId: "sess-2", title: "Draft two" })];
     render(<StoryWriterLandingPage />);
-    expect(screen.getByText("2 active sessions")).toBeInTheDocument();
+    expect(screen.getByText("Active sessions")).toBeInTheDocument();
+    expect(screen.getByText("2")).toBeInTheDocument();
     expect(screen.getByText("Draft one")).toBeInTheDocument();
     expect(screen.getByText("Draft two")).toBeInTheDocument();
   });
