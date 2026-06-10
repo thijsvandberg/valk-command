@@ -24,9 +24,9 @@ const ICON = "h-5 w-5";
 const EXPLORATIONS: Exploration[] = [
   {
     slug: "recently-viewed",
-    title: "Recently viewed — beyond the pill list",
+    title: "Recently viewed — pills kept, layout explored",
     blurb:
-      "Polish pass on the BRDG-330 MRU list in the nav panel. The shipped v1 leads with the full ticket pill, leaving the title ~15 characters. Four directions in the real 360px panel shell: A shipped baseline, B title-first two-line rows grouped by day, C numbered IDE-style quick-switch, D status-rail cards. Cross-variant upgrades: relative age, a pulse on the ticket you are on, friendlier empty state, quiet Clear footer. List-state simulator: full / few / empty.",
+      "Polish pass on the BRDG-330 MRU list in the nav panel. Constraint: every row keeps the REAL ticket pill (it carries the copy-URL / share interaction for free), so the exploration is purely about row anatomy: A inline (shipped, title truncates), B title-first with the pill on a meta line, C pill-first with the title on its own line. Toggles for group-by-day and list state (full / few / empty). Centerpiece: a walkable demo of the whole interaction from the menu button - open panel, flip to Recently viewed, pick a ticket - with live pills whose hover cards and copy behavior work in place.",
     status: "Exploration",
     ticket: "BRDG-330",
     icon: <HistoryIcon className={ICON} strokeWidth={1.5} />,
