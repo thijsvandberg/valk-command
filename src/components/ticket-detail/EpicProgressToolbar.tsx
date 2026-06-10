@@ -91,7 +91,7 @@ function SegBar({
         return (
           <div
             key={s}
-            className="min-w-0"
+            className="flex min-w-0"
             style={{ width: `${(v / total) * 100}%`, transition: "width 400ms cubic-bezier(0.34, 1.56, 0.64, 1)" }}
           >
             <Tooltip

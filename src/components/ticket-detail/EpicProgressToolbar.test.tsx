@@ -79,9 +79,13 @@ describe("EpicProgressToolbar", () => {
     expect(localStorage.getItem("epic-stats-metric")).toBe('"sp"');
   });
 
-  it("gives each colored segment an explicit (non-collapsing) height", () => {
+  it("gives each colored segment an explicit height and a flex wrapper so it fills the track", () => {
     renderToolbar({ items: [child("A", "DONE"), child("B", "TO DO")] });
     const bar = screen.getByRole("progressbar");
+    // Each segment wrapper must use flex layout: the Tooltip trigger is an inline-flex
+    // box that otherwise sits on the text baseline and gets clipped below the
+    // overflow-hidden track (the bar then looks empty).
+    [...bar.children].forEach((segment) => expect(segment).toHaveClass("flex"));
     const colored = bar.querySelectorAll("span > span");
     expect(colored.length).toBeGreaterThan(0);
     colored.forEach((span) => expect(span).toHaveStyle({ height: "8px" }));
