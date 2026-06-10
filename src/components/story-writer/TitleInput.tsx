@@ -1,6 +1,6 @@
 "use client";
 
-import { useLayoutEffect, useRef, useState } from "react";
+import { useCallback, useLayoutEffect, useRef, useState } from "react";
 import { Sparkles, Loader2 } from "lucide-react";
 import { Tooltip } from "@/components/shared/Tooltip";
 
@@ -23,15 +23,39 @@ export function TitleInput({
 }: TitleInputProps) {
   const [suggesting, setSuggesting] = useState(false);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const lastWidthRef = useRef(0);
 
-  // Auto-grow the textarea to fit its content so long titles wrap onto
-  // multiple lines instead of being clipped on a single line.
-  useLayoutEffect(() => {
+  const fitHeight = useCallback(() => {
     const el = textareaRef.current;
     if (!el) return;
     el.style.height = "auto";
     el.style.height = `${el.scrollHeight}px`;
-  }, [value]);
+  }, []);
+
+  // Auto-grow the textarea to fit its content so long titles wrap onto
+  // multiple lines instead of being clipped on a single line.
+  useLayoutEffect(() => {
+    fitHeight();
+  }, [value, fitHeight]);
+
+  // Wrapping depends on width, not just text, so the value-only effect above
+  // leaves a frozen height when the field narrows (pane resize, side panel
+  // toggle, font load) and clips the lower lines. Recompute when the width
+  // changes; ignore height-only callbacks (our own fitHeight writes) so the
+  // observer can't feed back into an infinite resize loop.
+  useLayoutEffect(() => {
+    const el = textareaRef.current;
+    if (!el || typeof ResizeObserver === "undefined") return;
+    lastWidthRef.current = el.clientWidth;
+    const observer = new ResizeObserver((entries) => {
+      const width = entries[0]?.contentRect.width ?? el.clientWidth;
+      if (width === lastWidthRef.current) return;
+      lastWidthRef.current = width;
+      fitHeight();
+    });
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, [fitHeight]);
 
   const handleSuggest = async () => {
     if (!onSuggest || suggesting || suggestDisabled) return;

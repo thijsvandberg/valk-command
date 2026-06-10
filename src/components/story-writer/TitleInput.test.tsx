@@ -1,6 +1,8 @@
 import { render, screen, fireEvent } from "@testing-library/react";
-import { describe, it, expect, vi } from "vitest";
+import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { TitleInput } from "./TitleInput";
+
+type ResizeCallback = (entries: Array<{ contentRect: { width: number } }>) => void;
 
 describe("TitleInput", () => {
   it("renders an input with the provided value", () => {
@@ -66,5 +68,64 @@ describe("TitleInput", () => {
     expect(button).toBeDisabled();
     fireEvent.click(button);
     expect(onSuggest).not.toHaveBeenCalled();
+  });
+
+  describe("auto-grow on width change", () => {
+    let resizeCallback: ResizeCallback | undefined;
+    let observedEl: Element | undefined;
+
+    beforeEach(() => {
+      resizeCallback = undefined;
+      observedEl = undefined;
+      vi.stubGlobal(
+        "ResizeObserver",
+        class {
+          constructor(cb: ResizeCallback) {
+            resizeCallback = cb;
+          }
+          observe(el: Element) {
+            observedEl = el;
+          }
+          disconnect() {}
+        },
+      );
+    });
+
+    afterEach(() => {
+      vi.unstubAllGlobals();
+    });
+
+    it("observes the title textarea", () => {
+      render(<TitleInput value="A long title that may wrap" onChange={vi.fn()} />);
+      expect(observedEl).toBe(screen.getByRole("textbox"));
+    });
+
+    it("recomputes height when the field width changes", () => {
+      render(<TitleInput value="A long title that wraps onto two lines" onChange={vi.fn()} />);
+      const textarea = screen.getByRole("textbox") as HTMLTextAreaElement;
+
+      // jsdom reports scrollHeight as 0, so simulate a wrapped two-line content.
+      Object.defineProperty(textarea, "scrollHeight", { configurable: true, value: 64 });
+
+      resizeCallback?.([{ contentRect: { width: 352 } }]);
+
+      expect(textarea.style.height).toBe("64px");
+    });
+
+    it("ignores callbacks that do not change the width (avoids resize loops)", () => {
+      render(<TitleInput value="A long title that wraps onto two lines" onChange={vi.fn()} />);
+      const textarea = screen.getByRole("textbox") as HTMLTextAreaElement;
+
+      // First callback establishes the width and applies a height.
+      Object.defineProperty(textarea, "scrollHeight", { configurable: true, value: 64 });
+      resizeCallback?.([{ contentRect: { width: 352 } }]);
+      expect(textarea.style.height).toBe("64px");
+
+      // A height-only callback (same width) must not re-run fitHeight, which
+      // would otherwise reset height to "auto" and feed an infinite loop.
+      Object.defineProperty(textarea, "scrollHeight", { configurable: true, value: 999 });
+      resizeCallback?.([{ contentRect: { width: 352 } }]);
+      expect(textarea.style.height).toBe("64px");
+    });
   });
 });
