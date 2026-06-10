@@ -65,6 +65,9 @@ interface EpicChildrenSectionProps {
   items: TicketDetail["epicChildren"];
   ticketKey: string;
   onMutate: () => void;
+  // Optimistically patch a child row in the epic's detail cache so status/readiness
+  // changes show instantly instead of waiting on a revalidation of the cached epic.
+  onChildOptimistic?: (childKey: string, patch: Partial<EpicChild>) => void;
   onSelectTicket?: (key: string) => void;
   /** Render the read-only epic roll-up (count / status distribution / SP progress)
       above the list. Used by the side panel's epic view (BRDG-131). */
@@ -130,6 +133,7 @@ export function EpicChildrenSection({
   items,
   ticketKey,
   onMutate,
+  onChildOptimistic,
   onSelectTicket,
   showStatsSummary = false,
 }: EpicChildrenSectionProps) {
@@ -444,6 +448,9 @@ export function EpicChildrenSection({
 
   const handleJiraStatusChange = useCallback(async (childKey: string, status: JiraStatus) => {
     setJiraWarning(null);
+    // Patch the child row optimistically: the status write hits the child's own
+    // endpoint, and a bare revalidation can still return the cached epic detail.
+    onChildOptimistic?.(childKey, { jiraStatus: status });
     try {
       const res = await fetch(`/api/tickets/${encodeURIComponent(childKey)}/status`, {
         method: "PUT",
@@ -453,26 +460,30 @@ export function EpicChildrenSection({
       const data = await res.json();
       if (!res.ok) {
         setJiraWarning(data.error ?? "Failed to update status");
+        onMutate(); // revalidate to roll back the optimistic patch
         return;
       }
       if (data.jiraWarning) {
         setJiraWarning(`${childKey}: status updated locally, but Jira sync failed`);
       }
-      onMutate();
+      if (!onChildOptimistic) onMutate();
     } catch (err) {
       console.error("Failed to update status:", err);
       setJiraWarning("Failed to update status");
+      onMutate(); // revalidate to roll back the optimistic patch
     }
-  }, [onMutate]);
+  }, [onMutate, onChildOptimistic]);
 
   const handleReadinessChange = useCallback(async (childKey: string, readiness: TicketReadiness | null) => {
+    onChildOptimistic?.(childKey, { readiness });
     try {
       await tickets.updateMetadata(childKey, { readiness });
-      onMutate();
+      if (!onChildOptimistic) onMutate();
     } catch (err) {
       console.error("Failed to update readiness:", err);
+      onMutate(); // revalidate to roll back the optimistic patch
     }
-  }, [onMutate]);
+  }, [onMutate, onChildOptimistic]);
 
   // Drop one optimistic metric override, removing the child entry when empty.
   const revertLocalMetric = useCallback((childKey: string, field: "storyPoints" | "businessValue" | "guestimation") => {
@@ -784,13 +795,16 @@ export function EpicChildrenSection({
       : `${verb} ${keys.length} issue${keys.length === 1 ? "" : "s"}`);
   }, [checkedKeys, onMutate, showToast]);
 
-  const handleBulkStatus = useCallback((status: JiraStatus, keys?: Set<string>) =>
-    runBulk("Status set for", (k) => apiFetch(`/api/tickets/${encodeURIComponent(k)}/status`, { method: "PUT", body: { status } }), keys),
-    [runBulk]);
+  const handleBulkStatus = useCallback((status: JiraStatus, keys?: Set<string>) => {
+    // Patch the rows up front; runBulk's closing onMutate() confirms (or reverts) them.
+    [...(keys ?? checkedKeys)].forEach((k) => onChildOptimistic?.(k, { jiraStatus: status }));
+    return runBulk("Status set for", (k) => apiFetch(`/api/tickets/${encodeURIComponent(k)}/status`, { method: "PUT", body: { status } }), keys);
+  }, [runBulk, checkedKeys, onChildOptimistic]);
 
-  const handleBulkReadiness = useCallback((readiness: TicketReadiness | null, keys?: Set<string>) =>
-    runBulk("Readiness set for", (k) => tickets.updateMetadata(k, { readiness }), keys),
-    [runBulk]);
+  const handleBulkReadiness = useCallback((readiness: TicketReadiness | null, keys?: Set<string>) => {
+    [...(keys ?? checkedKeys)].forEach((k) => onChildOptimistic?.(k, { readiness }));
+    return runBulk("Readiness set for", (k) => tickets.updateMetadata(k, { readiness }), keys);
+  }, [runBulk, checkedKeys, onChildOptimistic]);
 
   const handleBulkEpic = useCallback((epicKey: string | null, keys?: Set<string>) =>
     runBulk("Epic updated for", (k) => tickets.updateEpic(k, epicKey), keys),

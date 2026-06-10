@@ -2,7 +2,7 @@
 
 import { useRef } from "react";
 import { Loader2, AlertTriangle, Flag } from "lucide-react";
-import type { Ticket, TicketDetail, JiraStatus } from "@/types/ticket";
+import type { Ticket, TicketDetail, JiraStatus, EpicChild } from "@/types/ticket";
 import { Avatar } from "@/components/shared/Avatar";
 import { EditableTitle } from "./EditableTitle";
 import { EditableDescription } from "./EditableDescription";
@@ -92,6 +92,7 @@ export interface TicketTabContentProps {
   onPushToJira: () => Promise<void>;
   onMutate: () => void;
   onSubtaskStatusOptimistic?: (childKey: string, status: JiraStatus) => void;
+  onEpicChildOptimistic?: (childKey: string, patch: Partial<EpicChild>) => void;
   onConflictResolved: () => Promise<void>;
   onSelectTicket: (key: string) => void;
   // Badge counts
@@ -136,6 +137,7 @@ export function TicketTabContent({
   onPushToJira,
   onMutate,
   onSubtaskStatusOptimistic,
+  onEpicChildOptimistic,
   onConflictResolved,
   onSelectTicket,
   reviewCount,
@@ -354,7 +356,7 @@ export function TicketTabContent({
           )}
 
           {activeTab === "children" && isEpic && detail && (
-            <EpicChildrenSection items={detail.epicChildren} ticketKey={ticketKey} onMutate={onMutate} onSelectTicket={onSelectTicket} showStatsSummary />
+            <EpicChildrenSection items={detail.epicChildren} ticketKey={ticketKey} onMutate={onMutate} onChildOptimistic={onEpicChildOptimistic} onSelectTicket={onSelectTicket} showStatsSummary />
           )}
 
           {activeTab === "history" && (

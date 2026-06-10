@@ -246,4 +246,45 @@ describe("useTicketDetailPage", () => {
     );
     expect(mutateFn).toHaveBeenCalled();
   });
+
+  describe("handleEpicChildPatch (BRDG-334)", () => {
+    it("patches only the targeted child in epicChildren, without revalidating", () => {
+      const { result } = renderHook(() => useTicketDetailPage("VPL-42"));
+
+      act(() => { result.current.handleEpicChildPatch("VPL-50", { jiraStatus: "DONE" }); });
+
+      expect(mutateFn).toHaveBeenCalledWith(expect.any(Function), { revalidate: false });
+      const updater = mutateFn.mock.calls.at(-1)![0] as (prev: unknown) => { epicChildren: unknown[] };
+      const next = updater({
+        ...mockApiData,
+        epicChildren: [
+          { key: "VPL-50", jiraStatus: "TO DO", readiness: null },
+          { key: "VPL-51", jiraStatus: "TO DO", readiness: null },
+        ],
+      });
+      expect(next.epicChildren).toEqual([
+        { key: "VPL-50", jiraStatus: "DONE", readiness: null },
+        { key: "VPL-51", jiraStatus: "TO DO", readiness: null },
+      ]);
+    });
+
+    it("merges arbitrary fields like readiness into the child row", () => {
+      const { result } = renderHook(() => useTicketDetailPage("VPL-42"));
+
+      act(() => { result.current.handleEpicChildPatch("VPL-50", { readiness: "drafting" }); });
+
+      const updater = mutateFn.mock.calls.at(-1)![0] as (prev: unknown) => { epicChildren: { readiness: string | null }[] };
+      const next = updater({ ...mockApiData, epicChildren: [{ key: "VPL-50", readiness: null }] });
+      expect(next.epicChildren[0].readiness).toBe("drafting");
+    });
+
+    it("leaves the cache untouched when there is no data yet", () => {
+      const { result } = renderHook(() => useTicketDetailPage("VPL-42"));
+
+      act(() => { result.current.handleEpicChildPatch("VPL-50", { jiraStatus: "DONE" }); });
+
+      const updater = mutateFn.mock.calls.at(-1)![0] as (prev: unknown) => unknown;
+      expect(updater(undefined)).toBeUndefined();
+    });
+  });
 });

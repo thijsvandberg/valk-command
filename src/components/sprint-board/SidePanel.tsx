@@ -614,6 +614,7 @@ export function SidePanel({
       onPushToJira={h.handlePushToJira}
       onMutate={handleMutate}
       onSubtaskStatusOptimistic={h.handleSubtaskJiraStatusChange}
+      onEpicChildOptimistic={h.handleEpicChildPatch}
       onConflictResolved={h.handleConflictResolved}
       onSelectTicket={handleSelectTicket}
       reviewCount={h.reviewCount}

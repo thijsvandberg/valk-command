@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback, useMemo, useRef } from "react";
-import type { Ticket, TicketDetail, TicketReadiness, IssueType, JiraStatus } from "@/types/ticket";
+import type { Ticket, TicketDetail, TicketReadiness, IssueType, JiraStatus, EpicChild } from "@/types/ticket";
 import { useTicketDetail, useJiraSprints, useTicketReviews, useActiveWriterSessions } from "@/hooks/useSprintBoard";
 import { useFollowedTickets, useFollowTicket } from "@/hooks/usePipelines";
 import { apiFetch, jira, tickets } from "@/lib/api-client";
@@ -187,6 +187,20 @@ export function useTicketDetailPage(key: string) {
       (prev) => prev ? {
         ...prev,
         subtasks: prev.subtasks.map((s) => s.key === childKey ? { ...s, jiraStatus: status } : s),
+      } : prev,
+      { revalidate: false },
+    );
+  }, [mutateTicket]);
+
+  // Same optimistic pattern for the epic children table: child rows render from the
+  // epicChildren array embedded in this (epic) ticket's detail cache, while child
+  // writes hit the child's own endpoints. EpicChildrenSection owns the writes and
+  // revalidates on failure.
+  const handleEpicChildPatch = useCallback((childKey: string, patch: Partial<EpicChild>) => {
+    mutateTicket(
+      (prev) => prev ? {
+        ...prev,
+        epicChildren: (prev.epicChildren ?? []).map((c) => c.key === childKey ? { ...c, ...patch } : c),
       } : prev,
       { revalidate: false },
     );
@@ -389,6 +403,7 @@ export function useTicketDetailPage(key: string) {
     handleReadinessChange,
     handleJiraStatusChange,
     handleSubtaskJiraStatusChange,
+    handleEpicChildPatch,
     handleRemoteChanged,
 
     // Sprint
