@@ -8,7 +8,7 @@
  */
 
 import Link from "next/link";
-import { ArrowUpRight, LayoutGrid, Rows3, FlaskConical, Shapes, MousePointerClick, Type, PanelTop, PanelTopDashed, AppWindow, ListChecks, Gem, Gauge, Hash, SendHorizontal, BarChart3 } from "lucide-react";
+import { ArrowUpRight, LayoutGrid, Rows3, FlaskConical, Shapes, MousePointerClick, Type, PanelTop, PanelTopDashed, AppWindow, ListChecks, Gem, Gauge, Hash, SendHorizontal, BarChart3, History as HistoryIcon } from "lucide-react";
 
 type Exploration = {
   slug: string;
@@ -22,6 +22,15 @@ type Exploration = {
 const ICON = "h-5 w-5";
 
 const EXPLORATIONS: Exploration[] = [
+  {
+    slug: "recently-viewed",
+    title: "Recently viewed — beyond the pill list",
+    blurb:
+      "Polish pass on the BRDG-330 MRU list in the nav panel. The shipped v1 leads with the full ticket pill, leaving the title ~15 characters. Four directions in the real 360px panel shell: A shipped baseline, B title-first two-line rows grouped by day, C numbered IDE-style quick-switch, D status-rail cards. Cross-variant upgrades: relative age, a pulse on the ticket you are on, friendlier empty state, quiet Clear footer. List-state simulator: full / few / empty.",
+    status: "Exploration",
+    ticket: "BRDG-330",
+    icon: <HistoryIcon className={ICON} strokeWidth={1.5} />,
+  },
   {
     slug: "epic-progress",
     title: "Epic progress summary",
