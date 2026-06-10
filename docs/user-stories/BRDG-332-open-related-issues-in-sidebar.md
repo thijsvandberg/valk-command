@@ -1,6 +1,6 @@
 # BRDG-332: Open related & linked issues in the sidebar from a regular story
 
-**Status:** To Do
+**Status:** Done
 **Priority:** Medium
 
 This story covers two related problems on the ticket detail view's sidebar:
@@ -53,25 +53,35 @@ Verified via the dev runtime overlay (call stack: `a → TicketMetaContent → S
 
 This is **subtask-specific** because only subtasks render the **Parent** link in the meta panel. Regular stories and epics have no Parent field there, so no nested anchor and no crash.
 
+## Implementation Plan
+
+Order: Problem 2 first (the crash), then Problem 1, then tests.
+
+1. **Problem 2 — remove the nested anchor (`TicketMetaContent.tsx`).** The **Parent** field (lines 381-403) wraps a `TicketStatusPill` inside a Next `<Link>`; the pill renders its key as its own `<a>`, producing nested anchors. The codebase already forbids this pattern: `SearchResultParts.tsx:344-377` documents it and uses a `role="link"` div with the pill in a `stopPropagation` span (BRDG-324). Apply the same here: replace the outer `<Link>` with a focusable `role="link"` div that navigates via `useRouter().push` (and `window.open` for Cmd/Ctrl-click, preserving open-in-new-tab), keep the identical card styling/hover/focus classes, and wrap the pill in `<span className="relative z-10" onClick={stopPropagation}>` so the key dropdown still works without triggering card navigation. Do **not** edit `TicketStatusPill.tsx` (it carries unrelated in-flight BRDG-327 work).
+
+2. **Problem 1 — thread selection into Linked Issues.** In `TicketTabContent.tsx:336`, pass `onSelectTicket={onSelectTicket}` and `activeKey={ticketKey}` to `LinkedIssuesSection` (mirroring the sibling sections on lines 335/352). In `LinkedIssuesSection.tsx`: add `onSelectTicket?` and `activeKey?` props, and at the `ChildIssueRow` render (~line 681) pass `onSelect={!isPending ? onSelectTicket : undefined}` and `isActive={item.key === activeKey}`. `ChildIssueRow` already handles Cmd/Ctrl-click → new tab, pending-row guard, and the Delete button already `stopPropagation`s.
+
+3. **Tests.** `LinkedIssuesSection.test.tsx`: row click calls `onSelectTicket`; Cmd/Ctrl-click does not (and opens a new tab); Delete does not trigger selection; pending rows are non-clickable. `TicketMetaContent.test.tsx`: rendering with a `detail.parent` produces no `<a>` nested inside another `<a>` and the parent is still reachable.
+
 ## Acceptance Criteria
 
 ### Problem 1: related issues open in the sidebar
 
-- [ ] On a regular story's detail view, clicking a row in the **Linked Issues** section opens that issue in the right-hand SidePanel (same behavior as subtasks and epic children).
-- [ ] Clicked rows show the standard interactive affordances: `cursor: pointer`, hover background, and an active/selected state for the row currently open in the panel.
-- [ ] Cmd/Ctrl-click (and middle-click) still opens the related issue in a new tab, unchanged.
-- [ ] The Delete ("remove link") action on a row still works and does not trigger opening the issue in the sidebar (click does not bubble).
-- [ ] Behavior is consistent whether the story is viewed full-page (`/tickets/[key]`) or already inside the SidePanel (clicking a related issue swaps the panel to that issue, matching how subtasks/children behave there).
-- [ ] Pending (just-linked, not yet confirmed) rows remain non-clickable until confirmed, as today.
-- [ ] Tests cover: a related-issue row calls the selection callback on click, Cmd/Ctrl-click opens a new tab instead, and the Delete action does not trigger selection.
+- [x] On a regular story's detail view, clicking a row in the **Linked Issues** section opens that issue in the right-hand SidePanel (same behavior as subtasks and epic children).
+- [x] Clicked rows show the standard interactive affordances: `cursor: pointer`, hover background, and an active/selected state for the row currently open in the panel.
+- [x] Cmd/Ctrl-click (and middle-click) still opens the related issue in a new tab, unchanged.
+- [x] The Delete ("remove link") action on a row still works and does not trigger opening the issue in the sidebar (click does not bubble).
+- [x] Behavior is consistent whether the story is viewed full-page (`/tickets/[key]`) or already inside the SidePanel (clicking a related issue swaps the panel to that issue, matching how subtasks/children behave there).
+- [x] Pending (just-linked, not yet confirmed) rows remain non-clickable until confirmed, as today.
+- [x] Tests cover: a related-issue row calls the selection callback on click, Cmd/Ctrl-click opens a new tab instead, and the Delete action does not trigger selection.
 
 ### Problem 2: subtask opens in the sidebar without crashing
 
-- [ ] Opening a subtask in the SidePanel from a regular story's single view shows the subtask, not the "Something went wrong" fallback.
-- [ ] No `<a>` cannot be a descendant of `<a>` (nested-anchor) hydration error appears in the console for that view.
-- [ ] The **Parent** field in the panel still links to the parent ticket and remains clickable.
-- [ ] Navigating subtask -> parent (and back) works without errors.
-- [ ] A test reproduces the regression: rendering the meta panel for a ticket that has a parent does not nest an anchor inside an anchor.
+- [x] Opening a subtask in the SidePanel from a regular story's single view shows the subtask, not the "Something went wrong" fallback.
+- [x] No `<a>` cannot be a descendant of `<a>` (nested-anchor) hydration error appears in the console for that view.
+- [x] The **Parent** field in the panel still links to the parent ticket and remains clickable.
+- [x] Navigating subtask -> parent (and back) works without errors.
+- [x] A test reproduces the regression: rendering the meta panel for a ticket that has a parent does not nest an anchor inside an anchor.
 
 ## Technical Notes
 
