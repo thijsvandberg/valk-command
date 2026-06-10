@@ -784,6 +784,11 @@ export function EpicChildrenBySprint({
           <ChildIssueComposer
             variant="bar"
             autoFocus
+            // The composer is the card's last child; round its bottom so the footer
+            // strip's tint cannot bleed past the card's rounded corner (the card's
+            // overflow-clip-margin, kept for the row drag handle, lets content into
+            // the corner squares otherwise).
+            className="rounded-b-xl"
             onCreate={(title, jiraType) =>
               onCreateChild({ sprintId: createSprintId ?? null, sprintName: group.sprintName }, title, jiraType)
             }
