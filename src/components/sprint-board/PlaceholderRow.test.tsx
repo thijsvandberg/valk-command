@@ -16,6 +16,7 @@ const BASE: PlaceholderTicket = {
   guestimation: null,
   status: "active",
   promotedToKey: null,
+  orderIndex: 0,
   createdAt: "2026-06-10T00:00:00Z",
   updatedAt: "2026-06-10T00:00:00Z",
 };
@@ -51,7 +52,7 @@ describe("PlaceholderRow", () => {
 
   it("opens an inline editor and saves a new title + description", () => {
     const { onUpdate } = setup();
-    fireEvent.click(screen.getByRole("button", { name: "Edit" }));
+    fireEvent.click(screen.getByRole("button", { name: "Future work" }));
 
     const title = screen.getByPlaceholderText("Placeholder title") as HTMLTextAreaElement;
     fireEvent.change(title, { target: { value: "Renamed" } });
@@ -64,17 +65,23 @@ describe("PlaceholderRow", () => {
 
   it("does not call onUpdate when nothing changed", () => {
     const { onUpdate } = setup();
-    fireEvent.click(screen.getByRole("button", { name: "Edit" }));
+    fireEvent.click(screen.getByRole("button", { name: "Future work" }));
     fireEvent.click(screen.getByText("Save"));
     expect(onUpdate).not.toHaveBeenCalled();
   });
 
-  it("fires onPromote (Convert to ticket) and onDelete from the spelled-out row actions", () => {
+  it("fires onPromote (Convert to ticket) and onDelete; has no Edit button", () => {
     const { onPromote, onDelete } = setup();
+    expect(screen.queryByRole("button", { name: "Edit" })).not.toBeInTheDocument();
     fireEvent.click(screen.getByRole("button", { name: "Convert to ticket" }));
     expect(onPromote).toHaveBeenCalledWith("PLH-1");
     fireEvent.click(screen.getByRole("button", { name: "Delete" }));
     expect(onDelete).toHaveBeenCalledWith("PLH-1");
+  });
+
+  it("renders the BookDashed provisional icon", () => {
+    const { container } = setup();
+    expect(container.querySelector(".lucide-book-dashed")).toBeInTheDocument();
   });
 
   it("shows a guess-only estimate (no 'Commit as story points' action)", () => {

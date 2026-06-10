@@ -23,7 +23,7 @@ import {
   type DragEndEvent,
   type DragOverEvent,
 } from "@dnd-kit/core";
-import { SortableContext, useSortable, verticalListSortingStrategy } from "@dnd-kit/sortable";
+import { SortableContext, useSortable, verticalListSortingStrategy, arrayMove } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import { epicChildrenCollisionDetection } from "./epic-children-collision";
 import { CircleDot, CalendarRange, GripVertical, Plus, Sparkles } from "lucide-react";
@@ -87,6 +87,10 @@ interface EpicChildrenBySprintProps {
   /** Create a placeholder with a title into a sprint (id) or unscheduled (null). Wired to
    *  the per-group composer's "Placeholder" type option. */
   onPlaceholderCreate?: (sprintId: string | null, title: string) => void;
+  /** Persist a new top-to-bottom order for a sprint group's placeholders (BRDG-328).
+   *  When provided (with onPlaceholderUpdate for cross-sprint moves), placeholders become
+   *  draggable in this view. */
+  onPlaceholderReorder?: (orderedIds: string[]) => void;
 }
 
 function isEpicChild(child: EpicChild | Subtask): child is EpicChild {
@@ -236,6 +240,53 @@ function SortableChildRow({
   );
 }
 
+// Draggable placeholder row (BRDG-328): mirrors SortableChildRow so placeholders can be
+// reordered within their block and moved between sprint groups. data.type="placeholder"
+// lets handleDragEnd route it to the placeholder reorder/move path, away from the
+// Jira-rank child logic.
+function SortablePlaceholderRow({
+  placeholder,
+  sprintName,
+  state,
+  onUpdate,
+  onDelete,
+  onPromote,
+}: {
+  placeholder: PlaceholderTicket;
+  sprintName: string | null;
+  state: Sprint["state"] | null;
+  onUpdate: (id: string, patch: Partial<PlaceholderTicket>) => void;
+  onDelete: (id: string) => void;
+  onPromote: (id: string) => void;
+}) {
+  const { attributes, listeners, setNodeRef, setActivatorNodeRef, transform, transition, isDragging } = useSortable({
+    id: placeholder.id,
+    data: { type: "placeholder", sprintName, state },
+  });
+  return (
+    <PlaceholderRow
+      placeholder={placeholder}
+      onUpdate={onUpdate}
+      onDelete={onDelete}
+      onPromote={onPromote}
+      className={isDragging ? "opacity-40" : ""}
+      style={{ transform: CSS.Translate.toString(transform), transition }}
+      dndProps={{ ...attributes }}
+      dragHandleSlot={
+        <span
+          ref={setActivatorNodeRef}
+          {...listeners}
+          onClick={(e) => e.stopPropagation()}
+          className="flex shrink-0 cursor-grab items-center text-text-muted hover:!opacity-100 focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-[var(--color-brand-400)] active:cursor-grabbing"
+          aria-label={`Drag placeholder ${placeholder.title} to reorder or move it to another sprint`}
+        >
+          <GripVertical size={12} strokeWidth={1.5} />
+        </span>
+      }
+    />
+  );
+}
+
 // Wraps a group's GroupCard as a drop target. Highlights with a brand ring while a
 // row hovers over it, and dims the closed groups that reject the drop.
 function DroppableGroup({
@@ -310,6 +361,7 @@ export function EpicChildrenBySprint({
   onPlaceholderDelete,
   onPlaceholderPromote,
   onPlaceholderCreate,
+  onPlaceholderReorder,
 }: EpicChildrenBySprintProps) {
   const [collapsed, setCollapsed] = useSessionStorage<Record<string, boolean>>(
     `epic-children-collapse-${ticketKey}`,
@@ -414,8 +466,34 @@ export function EpicChildrenBySprint({
       const activeKey = String(active.id);
       const childSprintName = (active.data.current?.sprintName ?? null) as string | null;
       const overData = over.data.current as
-        | { type?: "child" | "group"; sprintName?: string | null; state?: Sprint["state"] | null; isCreateZone?: boolean }
+        | { type?: "child" | "group" | "placeholder"; sprintName?: string | null; state?: Sprint["state"] | null; isCreateZone?: boolean }
         | undefined;
+
+      // Placeholders (BRDG-328) are a separate ordered block: reorder within their sprint
+      // group, or move to another group (patch sprintId; the service appends to its order).
+      // They never hit the Jira-rank child path or the create-sprint zone.
+      if (active.data.current?.type === "placeholder") {
+        if (overData?.isCreateZone) return;
+        const activePh = (placeholders ?? []).find((p) => p.id === activeKey);
+        if (!activePh) return;
+        const overSprintName = overData?.sprintName ?? null;
+        const targetSprintId = overSprintName
+          ? (sprints.find((s) => s.name === overSprintName)?.id ?? null)
+          : null;
+        const sameGroup = (activePh.sprintId ?? null) === (targetSprintId ?? null);
+        if (sameGroup) {
+          const groupIds = (placeholders ?? [])
+            .filter((p) => (p.sprintId ?? null) === (activePh.sprintId ?? null))
+            .map((p) => p.id);
+          const from = groupIds.indexOf(activeKey);
+          let to = groupIds.indexOf(String(over.id));
+          if (to === -1) to = groupIds.length - 1;
+          if (from !== -1 && from !== to) onPlaceholderReorder?.(arrayMove(groupIds, from, to));
+        } else {
+          onPlaceholderUpdate?.(activeKey, { sprintId: targetSprintId });
+        }
+        return;
+      }
 
       // BRDG-309: dropping onto the create zone does not move silently; it hands the
       // child key (and the predicted sprint name) to the parent, which opens the Create
@@ -429,7 +507,7 @@ export function EpicChildrenBySprint({
         activeKey,
         overId: String(over.id),
         childSprintName,
-        overType: overData?.type,
+        overType: overData?.type === "placeholder" ? undefined : overData?.type,
         overSprintName: overData?.sprintName ?? null,
         overState: overData?.state ?? null,
         insertAfter: overData?.type === "child" ? isBelowOverRow(active, over) : false,
@@ -442,7 +520,7 @@ export function EpicChildrenBySprint({
       else if (res.kind === "move") onMoveChild?.(activeKey, res.targetSprintId);
       else if (res.kind === "move-rejected") onMoveError?.("Cannot move into a closed sprint.");
     },
-    [dragGroups, onMoveChild, onReorderChild, onMoveChildToPosition, onMoveError, onPlanNextSprint, sprints],
+    [dragGroups, onMoveChild, onReorderChild, onMoveChildToPosition, onMoveError, onPlanNextSprint, sprints, placeholders, onPlaceholderReorder, onPlaceholderUpdate],
   );
 
   const handleDragCancel = useCallback(() => {
@@ -640,18 +718,38 @@ export function EpicChildrenBySprint({
       planningOn && !isSynthetic && createSprintId !== undefined
         ? (placeholders ?? []).filter((p) => (p.sprintId ?? null) === (createSprintId ?? null))
         : [];
+    // Placeholders are draggable (reorder + cross-sprint move) when a reorder handler is
+    // wired and dnd is active; otherwise they render as static rows (e.g. Sprint Board).
+    const placeholdersDraggable = dndEnabled && !!onPlaceholderReorder;
+    const placeholderIds = groupPlaceholders.map((p) => p.id);
     const placeholderBlock =
       groupPlaceholders.length > 0 ? (
         <div className="flex flex-col">
-          {groupPlaceholders.map((p) => (
-            <PlaceholderRow
-              key={p.id}
-              placeholder={p}
-              onUpdate={onPlaceholderUpdate ?? (() => {})}
-              onDelete={onPlaceholderDelete ?? (() => {})}
-              onPromote={onPlaceholderPromote ?? (() => {})}
-            />
-          ))}
+          {placeholdersDraggable ? (
+            <SortableContext items={placeholderIds} strategy={verticalListSortingStrategy}>
+              {groupPlaceholders.map((p) => (
+                <SortablePlaceholderRow
+                  key={p.id}
+                  placeholder={p}
+                  sprintName={group.sprintName}
+                  state={group.state}
+                  onUpdate={onPlaceholderUpdate ?? (() => {})}
+                  onDelete={onPlaceholderDelete ?? (() => {})}
+                  onPromote={onPlaceholderPromote ?? (() => {})}
+                />
+              ))}
+            </SortableContext>
+          ) : (
+            groupPlaceholders.map((p) => (
+              <PlaceholderRow
+                key={p.id}
+                placeholder={p}
+                onUpdate={onPlaceholderUpdate ?? (() => {})}
+                onDelete={onPlaceholderDelete ?? (() => {})}
+                onPromote={onPlaceholderPromote ?? (() => {})}
+              />
+            ))
+          )}
         </div>
       ) : null;
 

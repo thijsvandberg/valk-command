@@ -1,7 +1,7 @@
 "use client";
 
-import { memo, useCallback, useRef, useState } from "react";
-import { SquareDashed, SquarePen, MessageSquare, Check, X, SquareArrowUpRight, IterationCw } from "lucide-react";
+import { memo, useCallback, useRef, useState, type ReactNode } from "react";
+import { BookDashed, MessageSquare, Check, X, SquareArrowUpRight, IterationCw } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import type { PlaceholderTicket } from "@/types/ticket";
 import { getSpColor } from "@/types/ticket";
@@ -44,13 +44,13 @@ function PhActionButton({
   );
 }
 
-// Forward-planning placeholder row (BRDG-304). Reads like a real ticket row (leading
-// pill format), set apart only by a dashed leading icon and a slate "Placeholder"
-// pill instead of an issue-type icon + status. It exposes NO Jira controls (no status
-// workflow, assignee, follow/review) and never navigates to /tickets/:key because it
-// has no Jira key. SP/BV follow the same show-when-set / hide-when-empty logic as a
-// real story row; the Convert/Edit/Delete actions overlay the content on hover, like
-// the subtask rows.
+// Forward-planning placeholder row (BRDG-304/328). Reads like a real ticket row
+// (ChildIssueRow geometry): a BookDashed icon + a status-style "Placeholder" pill in
+// the leading slot, with the key column reserved so titles align with real rows. It
+// exposes NO Jira controls and never navigates to /tickets/:key (it has no Jira key).
+// SP/BV follow the real story-row show-when-set / hover-reveal logic; Convert + Delete
+// overlay the content on hover (so width never changes). In the epic view the row is
+// made draggable by a useSortable wrapper that passes dragHandleSlot/style/dndProps.
 
 const TONE = getSpColor(1);
 const SLATE_FG = TONE.text;
@@ -65,6 +65,13 @@ export interface PlaceholderRowProps {
   onDelete: (id: string) => void;
   onPromote: (id: string) => void;
   isLastInCard?: boolean;
+  /** Drag handle (epic view); rendered in the left gutter like ChildIssueRow. */
+  dragHandleSlot?: ReactNode;
+  /** DnD transform/transition styles from useSortable. */
+  style?: React.CSSProperties;
+  /** DnD attributes spread on the row. */
+  dndProps?: Record<string, unknown>;
+  className?: string;
 }
 
 export const PlaceholderRow = memo(function PlaceholderRow({
@@ -75,6 +82,10 @@ export const PlaceholderRow = memo(function PlaceholderRow({
   onDelete,
   onPromote,
   isLastInCard = false,
+  dragHandleSlot,
+  style,
+  dndProps,
+  className = "",
 }: PlaceholderRowProps) {
   const [editing, setEditing] = useState(false);
   const [titleDraft, setTitleDraft] = useState(placeholder.title);
@@ -122,9 +133,8 @@ export const PlaceholderRow = memo(function PlaceholderRow({
 
   const hasDescription = placeholder.description.trim().length > 0;
 
-  // SP/BV visibility mirrors a real story row (BRDG-310): a set value (1, 2, ...)
-  // renders inline; an empty value (null or N/A 0) reserves no space and only
-  // surfaces on row hover. The estimate is the guess-only BRDG-323 chip.
+  // SP/BV visibility mirrors a real story row (BRDG-310): a set value renders inline;
+  // an empty value reserves no space and only surfaces on row hover.
   const guessEmpty = placeholder.guestimation == null || placeholder.guestimation === 0;
   const bvEmpty = placeholder.businessValue == null || placeholder.businessValue === 0;
   const estimateInValue = estimateSlotFrozen ? estimateSlotFrozen === "value" : !guessEmpty;
@@ -160,19 +170,33 @@ export const PlaceholderRow = memo(function PlaceholderRow({
 
   return (
     <div
-      className={`group/row @container/boardrow relative flex items-center gap-2 py-2.5 pl-4 pr-3 ${isLastInCard ? "rounded-b-[11px]" : ""}`}
+      style={style}
+      className={`group/row @container/boardrow relative flex items-center gap-2 py-[7px] pl-4 pr-3 hover:bg-overlay-subtle ${isLastInCard ? "rounded-b-[11px]" : ""} ${className}`}
       data-placeholder-id={placeholder.id}
+      {...(dndProps ?? {})}
     >
-      {/* Leading cluster in the ticket pill format, adapted for a placeholder: a dashed
-          icon (provisional) + a slate "Placeholder" pill, in place of the issue-type
-          icon + status pill on a real ticket. */}
-      <span className="flex shrink-0 items-center gap-2">
-        <SquareDashed size={16} strokeWidth={1.75} style={{ color: SLATE_FG }} className="opacity-80" aria-hidden />
+      {/* Drag handle in the left gutter (epic view), over the leading edge so it never
+          pushes content right; revealed on hover. Mirrors ChildIssueRow. */}
+      {dragHandleSlot && (
+        <span className="absolute left-0 top-1/2 z-10 flex h-6 w-[18px] -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-md border border-border-subtle bg-[var(--color-surface-elevated)] text-text-tertiary opacity-0 shadow-[var(--shadow-sm)] transition-opacity duration-150 group-hover/row:opacity-100 focus-within:opacity-100">
+          {dragHandleSlot}
+        </span>
+      )}
+
+      {/* Leading cluster, matching TicketStatusPill's list/lg geometry: a dashed-bookmark
+          icon (in the issue-type-icon slot) + a reserved key column (placeholders have no
+          key, so titles still align) + a status-style "Placeholder" pill. */}
+      <span className="relative flex shrink-0 items-center gap-1.5">
+        <span className="flex items-center justify-center rounded p-1" aria-hidden>
+          <BookDashed size={14} strokeWidth={1.75} style={{ color: SLATE_FG }} />
+        </span>
+        <span className="-ml-1 font-mono text-body-sm" style={{ minWidth: "9ch" }} aria-hidden />
         <span
-          className="inline-flex items-center rounded px-2 py-0.5 text-body-sm font-medium"
-          style={{ color: SLATE_FG, backgroundColor: SLATE_BG }}
+          className="flex items-center gap-1 rounded-md px-2 py-0.5 text-label font-medium tracking-wide"
+          style={{ backgroundColor: SLATE_BG, color: SLATE_FG, opacity: 0.85 }}
           title="Placeholder - a provisional, Bridge-local forward-planning stand-in"
         >
+          <span className="h-2 w-2 shrink-0 rounded-full opacity-70" style={{ backgroundColor: SLATE_FG }} />
           Placeholder
         </span>
       </span>
@@ -252,30 +276,27 @@ export const PlaceholderRow = memo(function PlaceholderRow({
           {/* SP (guess) + BV. Set values render inline; empty ones hover-reveal, exactly
               like a real story row. The cluster sits above the actions overlay (z-20) so
               the pickers stay reachable while the actions are shown. */}
-          <span className="relative z-20 flex shrink-0 items-center gap-1.5">
+          <span className="relative z-20 flex shrink-0 items-center gap-1.5" onClick={(e) => e.stopPropagation()}>
             {estimateInValue ? (
-              <span className="shrink-0" onPointerDown={(e) => e.stopPropagation()} onClick={(e) => e.stopPropagation()}>
-                {estimatePicker}
-              </span>
+              <span className="shrink-0" onPointerDown={(e) => e.stopPropagation()}>{estimatePicker}</span>
             ) : (
               <HoverRevealSlot hideWhenNarrow forceOpen={metaPickerOpen}>{estimatePicker}</HoverRevealSlot>
             )}
             {!bvEmpty ? (
-              <span className="shrink-0" onPointerDown={(e) => e.stopPropagation()} onClick={(e) => e.stopPropagation()}>
-                {bvPicker}
-              </span>
+              <span className="shrink-0" onPointerDown={(e) => e.stopPropagation()}>{bvPicker}</span>
             ) : (
               <HoverRevealSlot hideWhenNarrow forceOpen={metaPickerOpen}>{bvPicker}</HoverRevealSlot>
             )}
           </span>
 
-          {/* Actions overlay the row content on hover, like the subtask rows: a fade masks
-              the title under the buttons; pr clears the SP/BV cluster (which stays on top). */}
+          {/* Actions overlay the row content on hover (ChildIssueRow.actionsSlot pattern):
+              a fade masks the title under the buttons; pr clears the SP/BV cluster, which
+              stays on top (z-20). Convert + Delete only - the title is click-to-edit. */}
           <div
-            className="absolute inset-y-0 right-0 z-10 flex items-center gap-0.5 pl-8 pr-[92px] opacity-0 group-hover/row:opacity-100"
+            className="absolute inset-y-0 right-0 flex items-center gap-1 pl-8 pr-[88px] opacity-0 group-hover/row:opacity-100"
             style={{
               transition: "opacity 0.15s ease",
-              background: "linear-gradient(to right, transparent, var(--color-surface-elevated) 28px)",
+              background: "linear-gradient(to right, transparent, var(--color-surface-base) 24px)",
             }}
           >
             <PhActionButton
@@ -283,12 +304,6 @@ export const PlaceholderRow = memo(function PlaceholderRow({
               label="Convert to ticket"
               title="Convert this placeholder into a real ticket"
               onClick={() => onPromote(placeholder.id)}
-            />
-            <PhActionButton
-              icon={SquarePen}
-              label="Edit"
-              title="Edit placeholder content"
-              onClick={openEditor}
             />
             <PhActionButton
               icon={X}

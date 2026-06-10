@@ -205,6 +205,7 @@ export function EpicChildrenSection({
     update: updatePlaceholderApi,
     remove: removePlaceholderApi,
     promote: promotePlaceholderApi,
+    reorder: reorderPlaceholdersApi,
   } = usePlaceholders(planningOn, { epicKey: ticketKey });
   const refreshMeter = useCallback(() => { globalMutate("/api/sprints/used-points"); }, []);
   const handlePlaceholderUpdate = useCallback((id: string, patch: Partial<PlaceholderTicket>) => {
@@ -223,6 +224,9 @@ export function EpicChildrenSection({
       .then((r) => { onMutate(); refreshMeter(); showToast(`Promoted to ${r.key}`); })
       .catch(() => showToast("Failed to promote placeholder"));
   }, [promotePlaceholderApi, onMutate, refreshMeter, showToast]);
+  const handlePlaceholderReorder = useCallback((orderedIds: string[]) => {
+    reorderPlaceholdersApi(orderedIds).then(refreshMeter).catch(() => showToast("Failed to reorder placeholder"));
+  }, [reorderPlaceholdersApi, refreshMeter, showToast]);
 
   const { sprints: rawSprints, mutate: mutateSprints } = useJiraSprints();
   const sprints = useMemo(() => mapJiraSprints(rawSprints), [rawSprints]);
@@ -1074,6 +1078,7 @@ export function EpicChildrenSection({
         onPlaceholderDelete={handlePlaceholderDelete}
         onPlaceholderPromote={handlePlaceholderPromote}
         onPlaceholderCreate={planningOn ? handlePlaceholderCreate : undefined}
+        onPlaceholderReorder={handlePlaceholderReorder}
       />
       {createOpen && (
         <div className="overflow-hidden rounded-lg border border-border-default">

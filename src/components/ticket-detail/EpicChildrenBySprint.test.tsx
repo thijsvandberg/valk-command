@@ -125,6 +125,7 @@ describe("EpicChildrenBySprint placeholders", () => {
     guestimation: 5,
     status: "active" as const,
     promotedToKey: null,
+    orderIndex: 0,
     createdAt: "2026-06-10T00:00:00Z",
     updatedAt: "2026-06-10T00:00:00Z",
   };
@@ -140,11 +141,21 @@ describe("EpicChildrenBySprint placeholders", () => {
     expect(screen.queryByText("Penciled work")).not.toBeInTheDocument();
   });
 
-  it("spells out the row actions (Convert to ticket / Edit / Delete), no AI icon", () => {
+  it("has Convert + Delete row actions and no Edit button", () => {
     setup({ placeholders: [PLACEHOLDER], planningOn: true, onPlaceholderUpdate: vi.fn(), onPlaceholderPromote: vi.fn(), onPlaceholderDelete: vi.fn() });
     expect(screen.getByRole("button", { name: "Convert to ticket" })).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Edit" })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Delete" })).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Edit" })).not.toBeInTheDocument();
+  });
+
+  it("makes the placeholder draggable when a reorder handler is wired", () => {
+    setup({ placeholders: [PLACEHOLDER], planningOn: true, onPlaceholderUpdate: vi.fn(), onPlaceholderPromote: vi.fn(), onPlaceholderDelete: vi.fn(), onPlaceholderReorder: vi.fn() });
+    expect(screen.getByLabelText("Drag placeholder Penciled work to reorder or move it to another sprint")).toBeInTheDocument();
+  });
+
+  it("renders a static placeholder (no drag handle) without a reorder handler", () => {
+    setup({ placeholders: [PLACEHOLDER], planningOn: true, onPlaceholderUpdate: vi.fn(), onPlaceholderPromote: vi.fn(), onPlaceholderDelete: vi.fn() });
+    expect(screen.queryByLabelText(/Drag placeholder/)).not.toBeInTheDocument();
   });
 });
 
