@@ -1020,10 +1020,18 @@ export function TicketStatusPill({
       {copyConfirmed && (
         <span
           aria-live="polite"
-          style={{ animation: "fadeIn 150ms ease-out both" }}
-          className="pointer-events-none absolute inset-0 z-20 flex items-center justify-center gap-1 whitespace-nowrap rounded-md bg-surface-elevated px-1.5 text-[10px] font-medium text-[var(--color-status-success)] ring-1 ring-inset ring-[var(--color-status-success-subtle)]"
+          style={{
+            animation: "copyConfirmIn 240ms cubic-bezier(0.34, 1.56, 0.64, 1) both",
+            background: "color-mix(in srgb, var(--color-status-success) 14%, var(--color-surface-elevated))",
+          }}
+          className="pointer-events-none absolute inset-0 z-20 flex items-center justify-center gap-1 whitespace-nowrap rounded-md px-1.5 text-[10px] font-semibold tracking-tight text-[var(--color-status-success)] ring-1 ring-inset ring-[var(--color-status-success)]/35 shadow-[0_2px_8px_-2px_color-mix(in_srgb,var(--color-status-success)_45%,transparent)]"
         >
-          <CheckCircle2 size={11} strokeWidth={2} aria-hidden />
+          <CheckCircle2
+            size={12}
+            strokeWidth={2.5}
+            aria-hidden
+            style={{ animation: "copyConfirmCheckIn 360ms cubic-bezier(0.34, 1.7, 0.5, 1) 60ms both" }}
+          />
           Copied
         </span>
       )}
