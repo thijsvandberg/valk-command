@@ -946,7 +946,9 @@ export function TicketStatusPill({
       await navigator.clipboard.writeText(text);
       setCopyConfirmed(true);
       if (copyTimerRef.current) clearTimeout(copyTimerRef.current);
-      copyTimerRef.current = setTimeout(() => setCopyConfirmed(false), 1200);
+      // Matches the copyConfirmInOut animation duration so the gentle fade-out
+      // finishes before the overlay unmounts.
+      copyTimerRef.current = setTimeout(() => setCopyConfirmed(false), 1500);
     } catch {
       // Clipboard write requires a secure context or user gesture; fail quietly.
     }
@@ -1020,12 +1022,14 @@ export function TicketStatusPill({
       {copyConfirmed && (
         <span
           aria-live="polite"
-          style={{ animation: "copyConfirmIn 240ms cubic-bezier(0.34, 1.56, 0.64, 1) both" }}
-          className="pointer-events-none absolute inset-0 z-20 flex items-center justify-center gap-1.5 whitespace-nowrap rounded-md bg-[var(--color-surface-floating)] px-2 text-body-sm font-semibold tracking-tight text-text-primary ring-1 ring-inset ring-border-default shadow-[var(--shadow-popover)]"
+          style={{ animation: "copyConfirmInOut 1500ms ease-out both" }}
+          className={`pointer-events-none absolute inset-0 z-20 flex items-center justify-center gap-1 whitespace-nowrap rounded-md bg-[var(--color-surface-floating)] px-2 tracking-tight text-text-primary ring-1 ring-inset ring-border-default shadow-[0_1px_4px_rgba(0,0,0,0.12)] ${
+            elevated ? "text-body-sm font-semibold" : "text-label font-medium"
+          }`}
         >
           <CheckCircle2
-            size={14}
-            strokeWidth={2.5}
+            size={elevated ? 14 : 12}
+            strokeWidth={2.25}
             aria-hidden
             className="text-[var(--color-status-success)]"
             style={{ animation: "copyConfirmCheckIn 360ms cubic-bezier(0.34, 1.7, 0.5, 1) 60ms both" }}

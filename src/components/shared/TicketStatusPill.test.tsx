@@ -356,7 +356,7 @@ describe("TicketStatusPill double-click copy", () => {
     expect(screen.queryByText("Copied")).toBeNull();
   });
 
-  it("hides the 'Copied' confirmation after ~1.2s", async () => {
+  it("hides the 'Copied' confirmation after the fade-out completes", async () => {
     vi.useFakeTimers();
     try {
       const { container } = render(
@@ -368,7 +368,7 @@ describe("TicketStatusPill double-click copy", () => {
         await Promise.resolve();
       });
       expect(screen.getByText("Copied")).toBeTruthy();
-      act(() => { vi.advanceTimersByTime(1200); });
+      act(() => { vi.advanceTimersByTime(1500); });
       expect(screen.queryByText("Copied")).toBeNull();
     } finally {
       vi.useRealTimers();
