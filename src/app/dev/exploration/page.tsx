@@ -8,7 +8,7 @@
  */
 
 import Link from "next/link";
-import { ArrowUpRight, LayoutGrid, Rows3, FlaskConical, Shapes, MousePointerClick, Type, PanelTop, PanelTopDashed, AppWindow, ListChecks, Gem, Gauge, Hash } from "lucide-react";
+import { ArrowUpRight, LayoutGrid, Rows3, FlaskConical, Shapes, MousePointerClick, Type, PanelTop, PanelTopDashed, AppWindow, ListChecks, Gem, Gauge, Hash, SendHorizontal, BarChart3 } from "lucide-react";
 
 type Exploration = {
   slug: string;
@@ -22,6 +22,22 @@ type Exploration = {
 const ICON = "h-5 w-5";
 
 const EXPLORATIONS: Exploration[] = [
+  {
+    slug: "epic-progress",
+    title: "Epic progress summary",
+    blurb:
+      "Reworks the epic roll-up that floated as a detached card above Child Issues. Two shifts reframe it: the most-used list is grouped by sprint (the roll-up must sit above those GroupStatBar cards), and child issues now have their own tab so the separate 'Child Issues 22 of 26' header is a redundant repeat. Four directions, each a full tab over a real grouped-sprint mock, folding the header's count + actions into the roll-up: A consolidated tab header (sentence-labelled bar), B slim one-line toolbar, C quiet strip, D re-earned header. Show/hide via the menu; groups keep their own collapse.",
+    status: "Exploration",
+    icon: <BarChart3 className={ICON} strokeWidth={1.5} />,
+  },
+  {
+    slug: "story-writer-footer",
+    title: "Story Writer footer — save / push / finish",
+    blurb:
+      "Rethinks the save / push / clear footer, which used one primary button that silently changed identity (Push & Close -> Push to Jira -> Close) and set Ready to refine in two inconsistent ways. Decouples three primitives: Save (local), Push (publish, stay open), Finish (push + clear + Ready to refine). Ready to refine now fires ONLY on Finish. Walkable state simulator compares three layouts: three-tier emphasis, split button, two buttons.",
+    status: "Exploration",
+    icon: <SendHorizontal className={ICON} strokeWidth={1.5} />,
+  },
   {
     slug: "estimate-entry",
     title: "Setting SP & the guestimate",
