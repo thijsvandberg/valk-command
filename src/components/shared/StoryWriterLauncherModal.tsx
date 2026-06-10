@@ -10,6 +10,7 @@ import {
 } from "lucide-react";
 import { IssueTypeIcon, ISSUE_TYPE_COLORS } from "@/components/shared/IssueTypeIcon";
 import { apiFetch, jira, sprintSlots, config as configApi, storyWriter, settings } from "@/lib/api-client";
+import { mutate as globalMutate } from "swr";
 import { Button } from "@/components/ui/Button";
 import { TextInput } from "@/components/shared/TextInput";
 import { StatusBadge } from "@/components/shared/StatusBadge";
@@ -206,7 +207,20 @@ export function StoryWriterLauncherModal({ open, onClose }: StoryWriterLauncherM
     if (!remaining.find((s) => s.ticketKey === selectedSessionKey)) {
       setSelectedSessionKey(remaining[0]?.ticketKey ?? "");
     }
-    await apiFetch(`/api/story-writer/active-sessions?sessionId=${encodeURIComponent(sessionId)}`, { method: "DELETE" });
+    // The sidebar session list and the ticket-detail "active session" badge read the
+    // active-sessions SWR key; patch it so they drop the deleted session immediately
+    // instead of showing it until their next remount.
+    globalMutate(
+      "/api/story-writer/active-sessions",
+      (current: { sessionId: string }[] | undefined) => current?.filter((s) => s.sessionId !== sessionId) ?? [],
+      { revalidate: false },
+    );
+    try {
+      await apiFetch(`/api/story-writer/active-sessions?sessionId=${encodeURIComponent(sessionId)}`, { method: "DELETE" });
+    } catch {
+      // Roll back the optimistic removal by refetching the real list.
+      globalMutate("/api/story-writer/active-sessions");
+    }
   };
 
   // Auto-focus first card when switching to session tab or when sessions finish loading on that tab
