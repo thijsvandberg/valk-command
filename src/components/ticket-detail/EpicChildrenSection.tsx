@@ -213,8 +213,8 @@ export function EpicChildrenSection({
   const handlePlaceholderDelete = useCallback((id: string) => {
     removePlaceholderApi(id).then(refreshMeter).catch(() => showToast("Failed to delete placeholder"));
   }, [removePlaceholderApi, refreshMeter, showToast]);
-  const handlePlaceholderCreate = useCallback((sprintId: string | null) => {
-    createPlaceholderApi({ title: "New placeholder", sprintId, epicKey: ticketKey })
+  const handlePlaceholderCreate = useCallback((sprintId: string | null, title: string) => {
+    createPlaceholderApi({ title, sprintId, epicKey: ticketKey })
       .then(refreshMeter)
       .catch(() => showToast("Failed to create placeholder"));
   }, [createPlaceholderApi, refreshMeter, showToast, ticketKey]);

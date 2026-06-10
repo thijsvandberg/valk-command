@@ -52,4 +52,39 @@ describe("ChildIssueComposer", () => {
     fireEvent.keyDown(input, { key: "Escape" });
     expect(onEscapeEmpty).toHaveBeenCalledTimes(1);
   });
+
+  // BRDG-304: the same composer can create a Bridge-local placeholder.
+  describe("placeholder option", () => {
+    it("does not offer a Placeholder type unless allowPlaceholder is set", () => {
+      render(<ChildIssueComposer variant="bar" onCreate={vi.fn()} />);
+      fireEvent.click(screen.getByText("Story"));
+      expect(screen.queryByText("Placeholder")).not.toBeInTheDocument();
+    });
+
+    it("selecting Placeholder switches the chip and creates via onCreatePlaceholder", () => {
+      const onCreate = vi.fn();
+      const onCreatePlaceholder = vi.fn();
+      render(
+        <ChildIssueComposer
+          variant="bar"
+          onCreate={onCreate}
+          allowPlaceholder
+          onCreatePlaceholder={onCreatePlaceholder}
+          placeholder="Create story in BT: 142..."
+        />,
+      );
+      // Open the type dropdown and pick Placeholder.
+      fireEvent.click(screen.getByText("Story"));
+      fireEvent.click(screen.getByText("Placeholder"));
+      // The chip now reads "Placeholder" and the input hint reflects the mode.
+      expect(screen.getByText("Placeholder")).toBeInTheDocument();
+      const input = screen.getByPlaceholderText("Create placeholder in BT: 142...") as HTMLInputElement;
+      fireEvent.change(input, { target: { value: "Hide prices flow" } });
+      fireEvent.keyDown(input, { key: "Enter" });
+
+      expect(onCreatePlaceholder).toHaveBeenCalledWith("Hide prices flow");
+      expect(onCreate).not.toHaveBeenCalled();
+      expect(input.value).toBe("");
+    });
+  });
 });

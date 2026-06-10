@@ -252,8 +252,8 @@ export default function SprintBoard() {
   const handlePlaceholderDelete = useCallback((id: string) => {
     removePlaceholderApi(id).then(refreshMeter).catch(() => showToast("Failed to delete placeholder"));
   }, [removePlaceholderApi, refreshMeter, showToast]);
-  const handlePlaceholderCreate = useCallback((sprintId: string | null) => {
-    createPlaceholderApi({ title: "New placeholder", sprintId }).then(refreshMeter).catch(() => showToast("Failed to create placeholder"));
+  const handlePlaceholderCreate = useCallback((sprintId: string | null, title: string) => {
+    createPlaceholderApi({ title, sprintId }).then(refreshMeter).catch(() => showToast("Failed to create placeholder"));
   }, [createPlaceholderApi, refreshMeter, showToast]);
   const handlePlaceholderPromote = useCallback((id: string) => {
     promotePlaceholderApi(id)

@@ -9,7 +9,7 @@ import type { SortField, SortDir, InlineTagId } from "@/components/sprint-board/
 import { IssueTypeIcon } from "@/components/shared/IssueTypeIcon";
 import { EmptyState } from "@/components/shared/EmptyState";
 import { ChildIssueComposer } from "@/components/ticket-detail/ChildIssueComposer";
-import { Sheet, Inbox, Plus, Pencil } from "lucide-react";
+import { Sheet, Inbox, Plus } from "lucide-react";
 import { GroupStatBar } from "@/components/sprint-board/GroupStatBar";
 import { matchesWarningFilter, ticketWarningLabels } from "@/components/sprint-board/warning-filter";
 import { GroupCard, GROUP_CARD_CLASS } from "@/components/sprint-board/GroupCard";
@@ -279,9 +279,9 @@ export function TicketTable({
   onPlaceholderUpdate?: (id: string, patch: Partial<PlaceholderTicket>) => void;
   onPlaceholderDelete?: (id: string) => void;
   onPlaceholderPromote?: (id: string) => void;
-  /** Create a placeholder into a sprint (id) or the backlog (null). Enables the
-   *  "Add placeholder" affordance under each sprint group when planning is on. */
-  onPlaceholderCreate?: (sprintId: string | null) => void;
+  /** Create a placeholder with a title into a sprint (id) or the backlog (null). Wired
+   *  to the create composer's "Placeholder" type option when planning is on. */
+  onPlaceholderCreate?: (sprintId: string | null, title: string) => void;
 }) {
   const tableContainerRef = useRef<HTMLDivElement>(null);
 
@@ -469,28 +469,6 @@ export function TicketTable({
     [showSprint, sprintNameMap, onPlaceholderUpdate, onPlaceholderDelete, onPlaceholderPromote],
   );
 
-  // Dashed "Add placeholder" affordance under a sprint group (BRDG-304), shown only
-  // when planning mode is on (onPlaceholderCreate is wired). Creates a draft the PO
-  // then renames inline.
-  const renderAddPlaceholderRow = useCallback(
-    (sprintId: string | null) =>
-      onPlaceholderCreate ? (
-        <tr key={`__add_placeholder_${sprintId ?? "backlog"}`}>
-          <td className="p-0">
-            <button
-              type="button"
-              onClick={() => onPlaceholderCreate(sprintId)}
-              className="group/addph flex w-full items-center gap-1.5 px-4 py-2 text-left text-[12px] text-text-muted transition-colors duration-100 hover:text-text-secondary cursor-pointer"
-            >
-              <Pencil size={12} strokeWidth={1.75} className="opacity-60 group-hover/addph:opacity-100" aria-hidden />
-              Add placeholder
-            </button>
-          </td>
-        </tr>
-      ) : null,
-    [onPlaceholderCreate],
-  );
-
   const virtualizedTable = (
     <table className="w-full table-fixed border-collapse text-body-lg">
       <tbody>
@@ -532,6 +510,8 @@ export function TicketTable({
           onCreate={(title, jiraType) => onCreateTicket!(flatCreateTarget!.sprintId, title, jiraType)}
           onEscapeEmpty={onCloseFlatComposer}
           placeholder={flatCreateTarget!.sprintId === null ? "Create story in the backlog..." : "Create story in this sprint..."}
+          allowPlaceholder={!!onPlaceholderCreate}
+          onCreatePlaceholder={onPlaceholderCreate ? (t) => onPlaceholderCreate(flatCreateTarget!.sprintId, t) : undefined}
           // Bleed 2px left to cover the table's collapsed-border inset (from BoardRow's left
           // selection border) so the tinted strip is flush with the card edge (BRDG-315).
           className="-ml-0.5"
@@ -819,8 +799,6 @@ export function TicketTable({
               <tbody>
                 {groupRows}
                 {!isCollapsed && hasPlaceholders && renderPlaceholderRows(groupPlaceholders)}
-                {!isCollapsed && (isSprintGroup || isBacklogGroup) && !activeCriterion &&
-                  renderAddPlaceholderRow(isBacklogGroup ? null : group.key)}
               </tbody>
             </table>
             {isComposerOpen && canCreateInGroup && onCreateTicket && (
@@ -830,6 +808,8 @@ export function TicketTable({
                 onCreate={(title, jiraType) => onCreateTicket(createTargetSprintId, title, jiraType)}
                 onEscapeEmpty={() => setComposerGroupKey(null)}
                 placeholder={isBacklogGroup ? "Create story in the backlog..." : `Create story in ${group.label}...`}
+                allowPlaceholder={!!onPlaceholderCreate}
+                onCreatePlaceholder={onPlaceholderCreate ? (t) => onPlaceholderCreate(createTargetSprintId, t) : undefined}
               />
             )}
           </GroupCard>
@@ -864,13 +844,11 @@ export function TicketTable({
           )}
           {tickets.length > 0 && (enableVirtualization ? virtualizedTable : ((externalDnd || onReorder) ? dndTable : plainTable))}
           {/* Forward-planning placeholders for the open single sprint (BRDG-304): the
-              parent scopes the list to this sprint, so they all render below the tickets. */}
-          {(((placeholders?.length ?? 0) > 0) || (onPlaceholderCreate && flatCreateTarget)) && (
+              parent scopes the list to this sprint, so they all render below the tickets.
+              Creating one rides the regular composer (its "Placeholder" type option). */}
+          {(placeholders?.length ?? 0) > 0 && (
             <table className="w-full table-fixed border-collapse text-body-lg">
-              <tbody>
-                {placeholders && placeholders.length > 0 && renderPlaceholderRows(placeholders)}
-                {onPlaceholderCreate && flatCreateTarget && renderAddPlaceholderRow(flatCreateTarget.sprintId)}
-              </tbody>
+              <tbody>{renderPlaceholderRows(placeholders!)}</tbody>
             </table>
           )}
           {/* Empty sprint: the injected-row path has no rows to attach to, so render the composer directly. */}
@@ -881,11 +859,13 @@ export function TicketTable({
               onCreate={(title, jiraType) => onCreateTicket(flatCreateTarget.sprintId, title, jiraType)}
               onEscapeEmpty={onCloseFlatComposer}
               placeholder={flatCreateTarget.sprintId === null ? "Create story in the backlog..." : "Create story in this sprint..."}
+              allowPlaceholder={!!onPlaceholderCreate}
+              onCreatePlaceholder={onPlaceholderCreate ? (t) => onPlaceholderCreate(flatCreateTarget.sprintId, t) : undefined}
             />
           )}
         </div>
       ))}
-      {tickets.length === 0 && !isGrouped && !flatComposerActive && (placeholders?.length ?? 0) === 0 && !onPlaceholderCreate && (
+      {tickets.length === 0 && !isGrouped && !flatComposerActive && (placeholders?.length ?? 0) === 0 && (
         <EmptyState
           icon={<Sheet className="h-6 w-6 text-text-muted" strokeWidth={1} />}
           title="No tickets in this sprint"

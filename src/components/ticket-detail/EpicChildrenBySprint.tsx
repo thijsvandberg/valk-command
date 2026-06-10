@@ -26,7 +26,7 @@ import {
 import { SortableContext, useSortable, verticalListSortingStrategy } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import { epicChildrenCollisionDetection } from "./epic-children-collision";
-import { CircleDot, CalendarRange, GripVertical, Plus, Sparkles, Pencil } from "lucide-react";
+import { CircleDot, CalendarRange, GripVertical, Plus, Sparkles } from "lucide-react";
 
 export type { ChildReorder, ChildMoveToPosition };
 
@@ -84,8 +84,9 @@ interface EpicChildrenBySprintProps {
   onPlaceholderUpdate?: (id: string, patch: Partial<PlaceholderTicket>) => void;
   onPlaceholderDelete?: (id: string) => void;
   onPlaceholderPromote?: (id: string) => void;
-  /** Create a placeholder into a sprint (id) or unscheduled (null). */
-  onPlaceholderCreate?: (sprintId: string | null) => void;
+  /** Create a placeholder with a title into a sprint (id) or unscheduled (null). Wired to
+   *  the per-group composer's "Placeholder" type option. */
+  onPlaceholderCreate?: (sprintId: string | null, title: string) => void;
 }
 
 function isEpicChild(child: EpicChild | Subtask): child is EpicChild {
@@ -639,10 +640,8 @@ export function EpicChildrenBySprint({
       planningOn && !isSynthetic && createSprintId !== undefined
         ? (placeholders ?? []).filter((p) => (p.sprintId ?? null) === (createSprintId ?? null))
         : [];
-    const canCreatePlaceholder =
-      planningOn && !!onPlaceholderCreate && !isSynthetic && group.state !== "closed" && createSprintId !== undefined;
     const placeholderBlock =
-      groupPlaceholders.length > 0 || canCreatePlaceholder ? (
+      groupPlaceholders.length > 0 ? (
         <div className="flex flex-col">
           {groupPlaceholders.map((p) => (
             <PlaceholderRow
@@ -653,16 +652,6 @@ export function EpicChildrenBySprint({
               onPromote={onPlaceholderPromote ?? (() => {})}
             />
           ))}
-          {canCreatePlaceholder && (
-            <button
-              type="button"
-              onClick={() => onPlaceholderCreate!(createSprintId ?? null)}
-              className="group/addph flex w-full items-center gap-1.5 px-4 py-2 text-left text-[12px] text-text-muted transition-colors duration-100 hover:text-text-secondary cursor-pointer"
-            >
-              <Pencil size={12} strokeWidth={1.75} className="opacity-60 group-hover/addph:opacity-100" aria-hidden />
-              Add placeholder
-            </button>
-          )}
         </div>
       ) : null;
 
@@ -697,6 +686,8 @@ export function EpicChildrenBySprint({
             }
             onEscapeEmpty={() => setComposerGroupKey(null)}
             placeholder={isUnscheduled ? "Create unscheduled issue..." : `Create issue in ${group.label}...`}
+            allowPlaceholder={!!onPlaceholderCreate}
+            onCreatePlaceholder={onPlaceholderCreate ? (t) => onPlaceholderCreate(createSprintId ?? null, t) : undefined}
           />
         )}
       </>

@@ -2,7 +2,7 @@
 
 import { useRef, useState, type ReactNode } from "react";
 import { createPortal } from "react-dom";
-import { ChevronDown } from "lucide-react";
+import { ChevronDown, Pencil } from "lucide-react";
 import { IssueTypeIcon } from "@/components/shared/IssueTypeIcon";
 import { usePickerState } from "@/components/shared/BasePicker";
 import type { IssueType } from "@/types/ticket";
@@ -36,6 +36,12 @@ interface ChildIssueComposerProps {
    * faint footer strip, with a pill type chip and an "Enter to add" hint.
    */
   variant?: "default" | "bar";
+  /** When true, the type dropdown offers a "Placeholder" option (BRDG-304) so the same
+   *  create flow makes a Bridge-local placeholder instead of a real Jira issue. */
+  allowPlaceholder?: boolean;
+  /** Create a Bridge-local placeholder with the given title (used when Placeholder is the
+   *  selected "type"). */
+  onCreatePlaceholder?: (title: string) => void;
 }
 
 // The create row: an issue-type dropdown plus a title input. Enter creates and
@@ -50,9 +56,14 @@ export function ChildIssueComposer({
   trailing,
   className = "",
   variant = "default",
+  allowPlaceholder = false,
+  onCreatePlaceholder,
 }: ChildIssueComposerProps) {
   const [title, setTitle] = useState("");
   const [selectedType, setSelectedType] = useState<IssueType>("story");
+  // Placeholder mode (BRDG-304): the dropdown's "Placeholder" entry switches the
+  // composer to create a Bridge-local placeholder instead of a real Jira issue.
+  const [isPlaceholder, setIsPlaceholder] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
   // Portal the type menu so it escapes the surrounding card's overflow-clip and
   // auto-flips up near the viewport bottom instead of being cut off.
@@ -66,7 +77,11 @@ export function ChildIssueComposer({
       e.preventDefault();
       const trimmed = title.trim();
       if (!trimmed) return;
-      onCreate(trimmed, currentTypeConfig.jiraType);
+      if (isPlaceholder && onCreatePlaceholder) {
+        onCreatePlaceholder(trimmed);
+      } else {
+        onCreate(trimmed, currentTypeConfig.jiraType);
+      }
       setTitle("");
     } else if (e.key === "Escape") {
       if (title) {
@@ -94,21 +109,48 @@ export function ChildIssueComposer({
                 type="button"
                 onClick={() => {
                   setSelectedType(opt.value);
+                  setIsPlaceholder(false);
                   handleClose();
                   inputRef.current?.focus();
                 }}
                 className={`flex w-full cursor-pointer items-center gap-2 px-3 py-1.5 text-body-lg transition-colors duration-150 hover:bg-overlay-subtle focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)] active:bg-overlay-subtle/80 ${
-                  opt.value === selectedType ? "text-text-primary" : "text-text-secondary"
+                  opt.value === selectedType && !isPlaceholder ? "text-text-primary" : "text-text-secondary"
                 }`}
               >
                 <IssueTypeIcon type={opt.value} size={14} />
                 <span>{opt.label}</span>
               </button>
             ))}
+            {/* Placeholder (BRDG-304): a provisional, Bridge-local stand-in created via the
+                same flow, set apart by a dashed pencil entry below the real issue types. */}
+            {allowPlaceholder && (
+              <>
+                <div className="my-1 border-t border-border-subtle" />
+                <button
+                  type="button"
+                  onClick={() => {
+                    setIsPlaceholder(true);
+                    handleClose();
+                    inputRef.current?.focus();
+                  }}
+                  className={`flex w-full cursor-pointer items-center gap-2 px-3 py-1.5 text-body-lg transition-colors duration-150 hover:bg-overlay-subtle focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)] active:bg-overlay-subtle/80 ${
+                    isPlaceholder ? "text-text-primary" : "text-text-secondary"
+                  }`}
+                >
+                  <Pencil size={14} strokeWidth={2} />
+                  <span>Placeholder</span>
+                </button>
+              </>
+            )}
           </div>,
           document.body,
         )
       : null;
+
+  // In placeholder mode, reflect it in the input hint too (e.g. "Create story in X" -> "Create placeholder in X").
+  const effectivePlaceholder = isPlaceholder
+    ? placeholder.replace(/Create (?:issue|story|child issue)/i, "Create placeholder")
+    : placeholder;
 
   const input = (
     <input
@@ -119,7 +161,7 @@ export function ChildIssueComposer({
       onChange={(e) => setTitle(e.target.value)}
       onKeyDown={handleKeyDown}
       onFocus={() => handleClose()}
-      placeholder={placeholder}
+      placeholder={effectivePlaceholder}
       className="min-w-0 flex-1 bg-transparent text-body-lg text-text-primary placeholder:text-text-muted outline-none"
     />
   );
@@ -136,10 +178,10 @@ export function ChildIssueComposer({
             ref={triggerRef}
             type="button"
             onClick={() => (open ? handleClose() : handleOpen())}
-            className="flex shrink-0 cursor-pointer items-center gap-1.5 rounded-full border border-border-default bg-[var(--color-surface-elevated)] px-2.5 py-1 text-text-secondary transition-colors duration-150 hover:border-[var(--color-brand-400)] focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-[var(--color-brand-400)]"
+            className={`flex shrink-0 cursor-pointer items-center gap-1.5 rounded-full border bg-[var(--color-surface-elevated)] px-2.5 py-1 text-text-secondary transition-colors duration-150 hover:border-[var(--color-brand-400)] focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-[var(--color-brand-400)] ${isPlaceholder ? "border-dashed border-border-strong" : "border-border-default"}`}
           >
-            <IssueTypeIcon type={selectedType} size={13} />
-            <span className="text-body-sm font-medium">{currentTypeConfig.label}</span>
+            {isPlaceholder ? <Pencil size={13} strokeWidth={2} /> : <IssueTypeIcon type={selectedType} size={13} />}
+            <span className="text-body-sm font-medium">{isPlaceholder ? "Placeholder" : currentTypeConfig.label}</span>
             <ChevronDown size={10} className="text-text-muted" />
           </button>
           {typeMenu}
@@ -162,7 +204,7 @@ export function ChildIssueComposer({
       className={`relative flex items-center gap-3 px-3 py-2 ${className}`}
       onClick={(e) => e.stopPropagation()}
     >
-      <IssueTypeIcon type={selectedType} size={14} />
+      {isPlaceholder ? <Pencil size={14} strokeWidth={2} className="text-text-muted" /> : <IssueTypeIcon type={selectedType} size={14} />}
       <div className="relative">
         <button
           ref={triggerRef}
@@ -171,7 +213,7 @@ export function ChildIssueComposer({
           className="flex cursor-pointer items-center gap-1 rounded py-0.5 text-text-muted transition-colors duration-150 hover:text-text-secondary focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)]"
           style={alignKey ? { minWidth: 69 } : undefined}
         >
-          <span className="text-body-sm font-medium text-text-muted">{currentTypeConfig.label}</span>
+          <span className="text-body-sm font-medium text-text-muted">{isPlaceholder ? "Placeholder" : currentTypeConfig.label}</span>
           <ChevronDown size={10} className="text-text-muted" />
         </button>
         {typeMenu}

@@ -1,13 +1,47 @@
 "use client";
 
 import { memo, useCallback, useRef, useState } from "react";
-import { Pencil, MessageSquare, Check, X, Trash2, Sparkles, IterationCw } from "lucide-react";
+import { Pencil, SquarePen, MessageSquare, Check, X, SquareArrowUpRight, IterationCw } from "lucide-react";
+import type { LucideIcon } from "lucide-react";
 import type { PlaceholderTicket } from "@/types/ticket";
 import { getSpColor } from "@/types/ticket";
 import { EstimatePicker } from "@/components/shared/EstimatePicker";
 import { BusinessValuePicker } from "@/components/shared/BusinessValuePicker";
-import { Tooltip } from "@/components/shared/Tooltip";
 import { useOutsideClick } from "@/hooks/useOutsideClick";
+
+// Hover action button, mirroring the subtask row's Edit/Delete treatment exactly
+// (SubtasksSection): small text+icon, muted by default, red on hover for the
+// destructive one.
+function PhActionButton({
+  icon: Icon,
+  label,
+  title,
+  onClick,
+  tone = "default",
+}: {
+  icon: LucideIcon;
+  label: string;
+  title: string;
+  onClick: () => void;
+  tone?: "default" | "danger";
+}) {
+  return (
+    <button
+      type="button"
+      title={title}
+      onClick={(e) => { e.stopPropagation(); onClick(); }}
+      style={{ transition: "background-color 0.15s ease, color 0.15s ease" }}
+      className={`flex shrink-0 cursor-pointer items-center gap-1 rounded-md px-2 py-1 text-[11px] font-medium text-text-muted focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-[var(--color-brand-400)] ${
+        tone === "danger"
+          ? "hover:bg-red-500/10 hover:text-red-500 active:bg-red-500/15"
+          : "hover:bg-overlay-subtle hover:text-text-secondary active:bg-overlay-subtle/80"
+      }`}
+    >
+      <Icon size={tone === "danger" ? 14 : 13} strokeWidth={2} />
+      <span>{label}</span>
+    </button>
+  );
+}
 
 // Forward-planning placeholder row (BRDG-304). A deliberately provisional surface:
 // dashed/ghosted, badged "Placeholder", carrying the BRDG-321/323 "penciled in"
@@ -148,7 +182,7 @@ export const PlaceholderRow = memo(function PlaceholderRow({
             type="button"
             onClick={openEditor}
             className="flex min-w-0 flex-1 items-center gap-1.5 text-left text-text-secondary cursor-pointer"
-            title="Edit placeholder content"
+            title="Edit placeholder title"
           >
             <span className="min-w-0 truncate text-body-lg">{placeholder.title}</span>
             <Pencil
@@ -200,28 +234,28 @@ export const PlaceholderRow = memo(function PlaceholderRow({
             />
           </span>
 
-          {/* Hover-revealed actions: promote into a real ticket, or discard. */}
+          {/* Hover-revealed actions, spelled out like the subtask rows: convert into a
+              real ticket, edit content, or delete. */}
           <span className="mt-0.5 flex shrink-0 items-center gap-0.5 opacity-0 transition-opacity duration-100 group-hover/phrow:opacity-100">
-            <Tooltip content="Promote to a real ticket">
-              <button
-                type="button"
-                aria-label="Promote placeholder to a real ticket"
-                onClick={() => onPromote(placeholder.id)}
-                className="flex h-6 w-6 items-center justify-center rounded-md text-[var(--color-brand-400)] transition-colors duration-100 hover:bg-[color-mix(in_srgb,var(--color-brand-500)_12%,transparent)] active:opacity-70 cursor-pointer"
-              >
-                <Sparkles size={13} strokeWidth={2} />
-              </button>
-            </Tooltip>
-            <Tooltip content="Delete placeholder">
-              <button
-                type="button"
-                aria-label="Delete placeholder"
-                onClick={() => onDelete(placeholder.id)}
-                className="flex h-6 w-6 items-center justify-center rounded-md text-text-muted transition-colors duration-100 hover:bg-overlay-default hover:text-[var(--color-status-error)] active:opacity-70 cursor-pointer"
-              >
-                <Trash2 size={13} strokeWidth={1.75} />
-              </button>
-            </Tooltip>
+            <PhActionButton
+              icon={SquareArrowUpRight}
+              label="Convert to ticket"
+              title="Convert this placeholder into a real ticket"
+              onClick={() => onPromote(placeholder.id)}
+            />
+            <PhActionButton
+              icon={SquarePen}
+              label="Edit"
+              title="Edit placeholder content"
+              onClick={openEditor}
+            />
+            <PhActionButton
+              icon={X}
+              label="Delete"
+              title="Delete placeholder"
+              tone="danger"
+              onClick={() => onDelete(placeholder.id)}
+            />
           </span>
         </>
       )}

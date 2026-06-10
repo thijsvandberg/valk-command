@@ -140,10 +140,11 @@ describe("EpicChildrenBySprint placeholders", () => {
     expect(screen.queryByText("Penciled work")).not.toBeInTheDocument();
   });
 
-  it("offers an Add placeholder affordance per group when a create handler is wired", () => {
-    setup({ planningOn: true, onPlaceholderCreate: vi.fn() });
-    // One per occupied, non-closed group (Sprint 1 active + Sprint 2 future).
-    expect(screen.getAllByText("Add placeholder").length).toBeGreaterThanOrEqual(2);
+  it("spells out the row actions (Convert to ticket / Edit / Delete), no AI icon", () => {
+    setup({ placeholders: [PLACEHOLDER], planningOn: true, onPlaceholderUpdate: vi.fn(), onPlaceholderPromote: vi.fn(), onPlaceholderDelete: vi.fn() });
+    expect(screen.getByRole("button", { name: "Convert to ticket" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Edit" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Delete" })).toBeInTheDocument();
   });
 });
 

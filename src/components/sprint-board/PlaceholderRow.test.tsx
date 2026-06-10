@@ -51,7 +51,7 @@ describe("PlaceholderRow", () => {
 
   it("opens an inline editor and saves a new title + description", () => {
     const { onUpdate } = setup();
-    fireEvent.click(screen.getByTitle("Edit placeholder content"));
+    fireEvent.click(screen.getByRole("button", { name: "Edit" }));
 
     const title = screen.getByPlaceholderText("Placeholder title") as HTMLTextAreaElement;
     fireEvent.change(title, { target: { value: "Renamed" } });
@@ -64,16 +64,16 @@ describe("PlaceholderRow", () => {
 
   it("does not call onUpdate when nothing changed", () => {
     const { onUpdate } = setup();
-    fireEvent.click(screen.getByTitle("Edit placeholder content"));
+    fireEvent.click(screen.getByRole("button", { name: "Edit" }));
     fireEvent.click(screen.getByText("Save"));
     expect(onUpdate).not.toHaveBeenCalled();
   });
 
-  it("fires onPromote and onDelete from the row actions", () => {
+  it("fires onPromote (Convert to ticket) and onDelete from the spelled-out row actions", () => {
     const { onPromote, onDelete } = setup();
-    fireEvent.click(screen.getByRole("button", { name: "Promote placeholder to a real ticket" }));
+    fireEvent.click(screen.getByRole("button", { name: "Convert to ticket" }));
     expect(onPromote).toHaveBeenCalledWith("PLH-1");
-    fireEvent.click(screen.getByRole("button", { name: "Delete placeholder" }));
+    fireEvent.click(screen.getByRole("button", { name: "Delete" }));
     expect(onDelete).toHaveBeenCalledWith("PLH-1");
   });
 
