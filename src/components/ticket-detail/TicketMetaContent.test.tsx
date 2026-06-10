@@ -14,6 +14,11 @@ vi.mock("next/link", () => ({
   ),
 }));
 
+const pushMock = vi.fn();
+vi.mock("next/navigation", () => ({
+  useRouter: () => ({ push: pushMock }),
+}));
+
 const updateStoryPoints = vi.fn().mockResolvedValue({});
 const updateMetadata = vi.fn().mockResolvedValue({});
 const updateEpic = vi.fn().mockResolvedValue({});
@@ -229,5 +234,28 @@ describe("TicketMetaContent", () => {
     fireEvent.click(screen.getByTestId("sp-picker"));
     expect(patchTicketCaches).toHaveBeenCalledWith("PROJ-42", { storyPoints: 8 });
     await waitFor(() => expect(updateStoryPoints).toHaveBeenCalled());
+  });
+
+  // BRDG-332: the Parent field used to wrap a TicketStatusPill (which renders its own key <a>)
+  // inside a Next <Link>, producing a nested-anchor hydration crash when a subtask opened in the
+  // panel. The fix renders the parent as a non-anchor role="link" control.
+  it("renders the Parent field as a non-anchor clickable control and navigates without nesting anchors", () => {
+    pushMock.mockClear();
+    const parentDetail: TicketDetail = {
+      ...detail,
+      parent: { key: "PROJ-1", title: "Parent epic", status: "TO DO", type: "epic" },
+    };
+    const { container } = render(<TicketMetaContent ticket={makeTicket()} detail={parentDetail} />);
+
+    const parentLink = screen.getByRole("link", { name: /Open parent PROJ-1/i });
+    expect(parentLink.tagName).not.toBe("A");
+
+    // No anchor anywhere in the tree may contain another anchor.
+    container.querySelectorAll("a").forEach((anchor) => {
+      expect(anchor.querySelector("a")).toBeNull();
+    });
+
+    fireEvent.click(parentLink);
+    expect(pushMock).toHaveBeenCalledWith("/tickets/PROJ-1");
   });
 });

@@ -4,6 +4,7 @@ import { useState, useCallback, useRef, useMemo, useEffect } from "react";
 import type { Ticket, TicketReadiness, TicketDetail, JiraStatus } from "@/types/ticket";
 import { READINESS_CONFIG } from "@/types/ticket";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { ChevronDown, AlertTriangle, Play, Boxes } from "lucide-react";
 import { TicketStatusPill } from "@/components/shared/TicketStatusPill";
 import { tickets, jira, apiFetch } from "@/lib/api-client";
@@ -94,6 +95,7 @@ export function TicketMetaContent({
   className,
   style,
 }: TicketMetaContentProps) {
+  const router = useRouter();
   const readiness = ticket.readiness;
   const [businessValue, setBusinessValue] = useState<number | null>(ticket.businessValue);
   const [storyPoints, setStoryPoints] = useState<number | null>(ticket.storyPoints);
@@ -381,25 +383,44 @@ export function TicketMetaContent({
           {detail?.parent && (
             <div className="flex flex-col gap-1.5 py-1.5">
               <span className="text-body-sm text-text-tertiary">Parent</span>
-              <Link
-                href={`/tickets/${detail.parent.key}`}
+              {/* A clickable element rather than an <a>: TicketStatusPill renders its own key
+                  link, which cannot legally nest inside an anchor (mirrors SearchResultParts /
+                  the Sprint Board row, BRDG-324/BRDG-332). The pill's interactive segment stops
+                  propagation so the key dropdown works without triggering card navigation. */}
+              <div
+                role="link"
+                tabIndex={0}
+                aria-label={`Open parent ${detail.parent.key}`}
+                onClick={(e) => {
+                  const href = `/tickets/${detail.parent!.key}`;
+                  if (e.metaKey || e.ctrlKey) { window.open(href, "_blank"); return; }
+                  router.push(href);
+                }}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" || e.key === " ") {
+                    e.preventDefault();
+                    router.push(`/tickets/${detail.parent!.key}`);
+                  }
+                }}
                 className="group/parent rounded-lg border border-border-subtle bg-[var(--color-overlay-subtle)] px-3 py-2.5 flex flex-col gap-1.5 cursor-pointer hover:border-border-default hover:bg-overlay-default focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)]"
                 style={{ transition: "background-color 0.15s ease, border-color 0.15s ease" }}
                 title={detail.parent.title}
               >
-                <TicketStatusPill
-                  ticketKey={detail.parent.key}
-                  jiraStatus={detail.parent.status}
-                  issueType={detail.parent.type}
-                  title={detail.parent.title}
-                  variant="list"
-                  showKey
-                  showStatus
-                />
+                <span className="relative z-10 self-start" onClick={(e) => e.stopPropagation()}>
+                  <TicketStatusPill
+                    ticketKey={detail.parent.key}
+                    jiraStatus={detail.parent.status}
+                    issueType={detail.parent.type}
+                    title={detail.parent.title}
+                    variant="list"
+                    showKey
+                    showStatus
+                  />
+                </span>
                 <span className="min-w-0 truncate text-body-sm text-text-secondary group-hover/parent:text-text-primary" style={{ transition: "color 0.15s ease" }}>
                   {detail.parent.title}
                 </span>
-              </Link>
+              </div>
             </div>
           )}
           {ticket.type !== "epic" && (
