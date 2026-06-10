@@ -458,6 +458,7 @@ export function TicketTable({
               placeholder={p}
               showSprint={showSprint}
               sprintNameMap={sprintNameMap ?? EMPTY_STRING_MAP}
+              reserveCheckboxGutter
               onUpdate={onPlaceholderUpdate ?? NOOP}
               onDelete={onPlaceholderDelete ?? NOOP}
               onPromote={onPlaceholderPromote ?? NOOP}

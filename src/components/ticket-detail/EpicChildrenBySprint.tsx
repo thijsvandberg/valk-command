@@ -248,6 +248,7 @@ function SortablePlaceholderRow({
   placeholder,
   sprintName,
   state,
+  reserveCheckboxGutter,
   onUpdate,
   onDelete,
   onPromote,
@@ -255,6 +256,7 @@ function SortablePlaceholderRow({
   placeholder: PlaceholderTicket;
   sprintName: string | null;
   state: Sprint["state"] | null;
+  reserveCheckboxGutter: boolean;
   onUpdate: (id: string, patch: Partial<PlaceholderTicket>) => void;
   onDelete: (id: string) => void;
   onPromote: (id: string) => void;
@@ -266,6 +268,7 @@ function SortablePlaceholderRow({
   return (
     <PlaceholderRow
       placeholder={placeholder}
+      reserveCheckboxGutter={reserveCheckboxGutter}
       onUpdate={onUpdate}
       onDelete={onDelete}
       onPromote={onPromote}
@@ -733,6 +736,7 @@ export function EpicChildrenBySprint({
                   placeholder={p}
                   sprintName={group.sprintName}
                   state={group.state}
+                  reserveCheckboxGutter={selectable}
                   onUpdate={onPlaceholderUpdate ?? (() => {})}
                   onDelete={onPlaceholderDelete ?? (() => {})}
                   onPromote={onPlaceholderPromote ?? (() => {})}
@@ -744,6 +748,7 @@ export function EpicChildrenBySprint({
               <PlaceholderRow
                 key={p.id}
                 placeholder={p}
+                reserveCheckboxGutter={selectable}
                 onUpdate={onPlaceholderUpdate ?? (() => {})}
                 onDelete={onPlaceholderDelete ?? (() => {})}
                 onPromote={onPlaceholderPromote ?? (() => {})}

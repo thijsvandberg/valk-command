@@ -65,6 +65,10 @@ export interface PlaceholderRowProps {
   onDelete: (id: string) => void;
   onPromote: (id: string) => void;
   isLastInCard?: boolean;
+  /** Reserve a leading checkbox-width gutter so the icon/title align with sibling rows
+   *  that show a (possibly hidden) selection checkbox: always on the Sprint Board's
+   *  BoardRow, and on epic rows when the checkboxes field is enabled. */
+  reserveCheckboxGutter?: boolean;
   /** Drag handle (epic view); rendered in the left gutter like ChildIssueRow. */
   dragHandleSlot?: ReactNode;
   /** DnD transform/transition styles from useSortable. */
@@ -82,6 +86,7 @@ export const PlaceholderRow = memo(function PlaceholderRow({
   onDelete,
   onPromote,
   isLastInCard = false,
+  reserveCheckboxGutter = false,
   dragHandleSlot,
   style,
   dndProps,
@@ -182,6 +187,10 @@ export const PlaceholderRow = memo(function PlaceholderRow({
           {dragHandleSlot}
         </span>
       )}
+
+      {/* Reserved selection-checkbox gutter so the icon + title line up with sibling rows
+          (BoardRow always; epic rows when the checkboxes field is on). */}
+      {reserveCheckboxGutter && <span className="w-3.5 shrink-0" aria-hidden />}
 
       {/* Leading cluster, matching TicketStatusPill's list/lg geometry: a dashed-bookmark
           icon (in the issue-type-icon slot) + a reserved key column (placeholders have no
