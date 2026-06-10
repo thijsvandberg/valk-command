@@ -566,6 +566,8 @@ export function TicketMetaContent({
                   align="right"
                 />
               </DetailRow>
+              {/* Review is not relevant for epics, so the quality panel is hidden there. */}
+              {ticket.type !== "epic" && (
               <button
                 type="button"
                 onClick={onNavigateToReview}
@@ -609,6 +611,7 @@ export function TicketMetaContent({
                   </div>
                 )}
               </button>
+              )}
             </div>
           )}
         </div>
@@ -669,8 +672,9 @@ export function TicketMetaContent({
 
         <div className="h-px bg-border-subtle" />
 
-        {/* Development panel */}
-        <DevPanel data={devInfo} isLoading={devInfoLoading} onExpand={onNavigateToDev} />
+        {/* Development panel. Epics have no Development tab, so the "open full view"
+            link is suppressed there; the inline expander still shows branch/PR data. */}
+        <DevPanel data={devInfo} isLoading={devInfoLoading} onExpand={ticket.type === "epic" ? undefined : onNavigateToDev} />
       </div>
     </div>
   );

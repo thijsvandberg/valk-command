@@ -194,6 +194,20 @@ describe("TicketTabContent", () => {
       expect(tabs[0]).toHaveAttribute("data-testid", "tab-child issues");
       expect(screen.getByTestId("tab-content")).toBeInTheDocument();
     });
+
+    it("omits the Review and Development tabs for epics (not relevant)", () => {
+      renderContent("children", { ticket: makeTicket({ type: "epic" }) });
+      expect(screen.queryByTestId("tab-review")).not.toBeInTheDocument();
+      expect(screen.queryByTestId("tab-development")).not.toBeInTheDocument();
+      // History remains available for epics.
+      expect(screen.getByTestId("tab-history")).toBeInTheDocument();
+    });
+
+    it("keeps the Review and Development tabs for non-epic tickets", () => {
+      renderContent("content");
+      expect(screen.getByTestId("tab-review")).toBeInTheDocument();
+      expect(screen.getByTestId("tab-development")).toBeInTheDocument();
+    });
   });
 
   describe("epic child issues tab", () => {

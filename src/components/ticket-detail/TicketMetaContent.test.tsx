@@ -138,6 +138,19 @@ describe("TicketMetaContent", () => {
     expect(screen.getByTestId("readiness-cell")).toBeInTheDocument();
   });
 
+  it("shows the review/quality panel for non-epic tickets", () => {
+    render(<TicketMetaContent ticket={makeTicket({ qualityScore: null })} detail={detail} />);
+    fireEvent.click(screen.getByText("More details"));
+    expect(screen.getByTitle("View review details")).toBeInTheDocument();
+  });
+
+  it("hides the review/quality panel for epics but keeps the dev panel", () => {
+    render(<TicketMetaContent ticket={makeTicket({ type: "epic", qualityScore: null })} detail={detail} />);
+    fireEvent.click(screen.getByText("More details"));
+    expect(screen.queryByTitle("View review details")).not.toBeInTheDocument();
+    expect(screen.getByTestId("dev-panel")).toBeInTheDocument();
+  });
+
   it("re-syncs sidebar fields when the same ticket is updated in place (e.g. streamed)", () => {
     const { rerender } = render(<TicketMetaContent ticket={makeTicket()} detail={detail} />);
     expect(screen.getByText("Sprint 1")).toBeInTheDocument();

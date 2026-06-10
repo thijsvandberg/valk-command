@@ -176,8 +176,8 @@ export function TicketTabContent({
                 ...(isEpic ? [{ id: "children" as const, label: "Child issues", badge: (detail?.epicChildren.length || undefined) as number | undefined, badgeHighlight: false }] : []),
                 { id: "content" as const, label: "Content", badge: undefined as number | undefined, badgeHighlight: false },
                 { id: "history" as const, label: "History", badge: versionCount as number | undefined, badgeHighlight: false },
-                ...(reviewInMenu ? [] : [{ id: "review" as const, label: "Review", badge: (reviewCount || undefined) as number | undefined, badgeHighlight: (reviewCount ?? 0) > 0 }]),
-                { id: "development" as const, label: "Development", badge: undefined as number | undefined, badgeHighlight: false },
+                ...((reviewInMenu || isEpic) ? [] : [{ id: "review" as const, label: "Review", badge: (reviewCount || undefined) as number | undefined, badgeHighlight: (reviewCount ?? 0) > 0 }]),
+                ...(isEpic ? [] : [{ id: "development" as const, label: "Development", badge: undefined as number | undefined, badgeHighlight: false }]),
               ]).map((tab) => (
                 <Tab
                   key={tab.id}

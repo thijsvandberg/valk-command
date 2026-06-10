@@ -1,7 +1,11 @@
 # BRDG-326: Epic single view — Child issues and Content in separate tabs
 
-**Status:** Not Started
+**Status:** Done
 **Priority:** Medium
+
+## Follow-up (post-archive)
+
+Per PO feedback, on the epic single view: the **Review** and **Development** tabs are not relevant and are removed from the epic tab bar (epic tabs are now `Child issues · Content · History`). In the right-hand sidebar/meta the **Development** panel stays, but the **Run review / Quality** panel is hidden for epics. Non-epic tickets keep all tabs and the Quality panel unchanged. Implemented in `TicketTabContent.tsx` and `TicketMetaContent.tsx`.
 
 ## Description
 
