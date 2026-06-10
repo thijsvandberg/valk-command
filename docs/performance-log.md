@@ -379,3 +379,18 @@ Added an `onDoubleClick` copy handler to `TicketStatusPill` (whole-chip target, 
 Key bottlenecks / lessons:
 - **Browser verification consumed the bulk of the run; the feature logic was never the problem.** Three compounding issues: (1) the ticket detail header renders a skeleton (`animate-pulse`) for several seconds, so early `double_click`s landed on a skeleton, not the pill — always confirm the real element via `elementFromPoint` before interacting; (2) the Chrome automation `double_click` does not reliably emit a coalesced `dblclick` DOM event (a native listener showed `fired:0`), so it cannot exercise an `onDoubleClick` handler — a one-off `fired:true` early on was a timing fluke; (3) the 1.2s fade window is shorter than batch screenshot latency. Lesson: for `dblclick`/transient-state UI, trust `fireEvent.doubleClick` unit tests for behaviour and verify only the *visual* in-browser by temporarily forcing the state (`useState(true)`) — don't try to drive a real double-click + clipboard gesture through automation.
 - **Design caught only in-browser, not by the plan.** The first confirmation placement (floating badge above the pill) clipped off-screen for header pills at the viewport top; moving it below collided with the hover card that opens there. Resolved by overlaying the pill itself (`absolute inset-0`), which is also what the AC literally asked for ("on the pill itself"). Lesson: floating-element placement near viewport edges and against existing portals (hover card) is worth a quick mental check before picking above/below.
+
+## BRDG-334 — Stale UI after mutations (2026-06-10)
+
+Total: roughly one hour of agent time for the remaining scope (refinement wiring, app-wide audit, six confirmed fixes plus one minor, full verification).
+
+| Phase | Notes |
+|---|---|
+| Pickup | Story was half-done in the working tree; a parallel session committed that work (9d7021de) mid-run while this session was staging the same files, voiding a hand-built partial-staging patch |
+| Audit | First Explore agent returned only a summary instead of the full document; a second general-purpose agent re-ran the audit and wrote the report directly (~12 min, 166k tokens) |
+| Fixes | Six confirmed bugs fixed bug-by-bug with tests, no failures along the way |
+| Verify | Full suite (5,584 tests) + build green on first try |
+
+Key bottlenecks / lessons:
+- **Two agent sessions sharing one working tree is the real hazard.** The tree carried another session's uncommitted work the entire run (story-writer routes, ticket-service, hover-data). Consequences: a transient typecheck failure from their half-edited file, two audit fixes (versionCount, chatMessageCount invalidation) deliberately skipped because the write paths live in their dirty files, and the metadata epic-invalidation placed in the route handler instead of ticket-service to avoid touching it. Staging explicit paths only (per standing rule) is what kept the commits clean.
+- **Read-only Explore agents cannot deliver a file, and summarise instead.** For "produce a document" audits, use an agent that may write the single output file; instructing it that the investigation doc is its only permitted write worked well.
