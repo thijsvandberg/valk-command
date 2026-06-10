@@ -18,7 +18,7 @@ import { useToast } from "@/hooks/useToast";
 import { ChildIssueRow } from "./ChildIssueRow";
 import { ChildIssueComposer } from "./ChildIssueComposer";
 import { ChildIssueListHeader, type ChildIssueViewMode } from "./ChildIssueListHeader";
-import { EpicStatsSummary } from "./EpicStatsSummary";
+import { EpicProgressToolbar } from "./EpicProgressToolbar";
 import { EpicChildrenBySprint, type ChildReorder, type ChildMoveToPosition } from "./EpicChildrenBySprint";
 import type { StatusFilter } from "./FieldFilterPopover";
 import { BulkActionBar } from "@/components/sprint-board/BulkActionBar";
@@ -28,8 +28,6 @@ import { AddToRefinementModal } from "@/components/refinement-session/AddToRefin
 import { nextSprintName, latestRegularSprint } from "@/lib/sprint-utils";
 import { startDateFromPreviousEnd } from "@/lib/sprint-dates";
 import { useSectionVisibility } from "@/hooks/useSectionVisibility";
-import { useSectionCollapsed } from "@/hooks/useSectionCollapsed";
-import { SECTION_KEYS } from "@/lib/section-collapse-store";
 import { useLocalStorage } from "@/hooks/useLocalStorage";
 import { usePencilCapacity } from "@/hooks/usePencilCapacity";
 import { useSprintUsedPoints } from "@/hooks/useSprintUsedPoints";
@@ -185,8 +183,7 @@ export function EpicChildrenSection({
   const searchContainerRef = useRef<HTMLDivElement>(null);
 
   const { visible: visibleFields, toggleField } = useSectionVisibility("epic-children", DEFAULT_VISIBLE);
-  const { isCollapsed } = useSectionCollapsed();
-  const collapsed = isCollapsed(SECTION_KEYS.epicChildren);
+  const [summaryHidden, setSummaryHidden] = useLocalStorage<boolean>("epic-stats-summary-hidden", false);
   const [viewMode, setViewMode] = useLocalStorage<ChildIssueViewMode>("epic-children-view", "list");
   // Forward-planning mode (BRDG-303): per-view toggle, independent from the sprint
   // board's. Off by default; reveals guestimation pickers and the fullness meter.
@@ -1092,37 +1089,38 @@ export function EpicChildrenSection({
 
   return (
     <div className="mt-8">
-      {showStatsSummary && (
-        <EpicStatsSummary
-          items={mergedItems}
-          activeStatus={filter}
-          onSelectStatus={(s) => setFilter(filter === s ? "all" : s)}
-        />
-      )}
-      <ChildIssueListHeader
-        title="Child Issues"
-        totalCount={mergedItems.length}
+      <EpicProgressToolbar
+        items={mergedItems}
         filteredCount={filtered.length}
+        totalCount={mergedItems.length}
         isFiltered={isFiltered}
-        filter={filter}
-        setFilter={setFilter}
-        statusCounts={statusCounts}
-        fields={EPIC_CHILD_FIELDS}
-        visibleFields={visibleFields}
-        onToggleField={(id, show) => {
-          toggleField(id, show);
-          if (id === "checkboxes" && !show) setCheckedKeys(new Set());
-        }}
-        hideDeprecated={hideDeprecated}
-        onToggleHideDeprecated={setHideDeprecated}
-        deprecatedCount={deprecatedCount}
-        viewMode={viewMode}
-        onViewModeChange={setViewMode}
-        sectionKey={SECTION_KEYS.epicChildren}
-        onToggleCreate={handleToggleCreate}
-        createOpen={createOpen}
-        planningOn={planningOn}
-        onTogglePlanning={() => setPlanningOn((v) => !v)}
+        showStats={showStatsSummary}
+        hidden={summaryHidden}
+        actions={
+          <ChildIssueListHeader
+            isFiltered={isFiltered}
+            filter={filter}
+            setFilter={setFilter}
+            statusCounts={statusCounts}
+            fields={EPIC_CHILD_FIELDS}
+            visibleFields={visibleFields}
+            onToggleField={(id, show) => {
+              toggleField(id, show);
+              if (id === "checkboxes" && !show) setCheckedKeys(new Set());
+            }}
+            hideDeprecated={hideDeprecated}
+            onToggleHideDeprecated={setHideDeprecated}
+            deprecatedCount={deprecatedCount}
+            viewMode={viewMode}
+            onViewModeChange={setViewMode}
+            summaryHidden={summaryHidden}
+            onToggleSummary={showStatsSummary ? () => setSummaryHidden((v) => !v) : undefined}
+            onToggleCreate={handleToggleCreate}
+            createOpen={createOpen}
+            planningOn={planningOn}
+            onTogglePlanning={() => setPlanningOn((v) => !v)}
+          />
+        }
       />
 
       {error && (
@@ -1139,8 +1137,6 @@ export function EpicChildrenSection({
         </div>
       )}
 
-      {!collapsed && (
-      <>
       {filtered.length > 0 ? (
         content
       ) : mergedItems.length > 0 ? (
@@ -1199,8 +1195,6 @@ export function EpicChildrenSection({
             close={() => setRowMenu(null)}
           />
         </CursorMenu>
-      )}
-      </>
       )}
 
       <AddToRefinementModal

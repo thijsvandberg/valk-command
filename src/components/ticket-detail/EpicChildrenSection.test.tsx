@@ -137,6 +137,39 @@ describe("EpicChildrenSection", () => {
     mockUpdateEpic.mockResolvedValue({ epic: null, epicKey: null });
   });
 
+  describe("progress summary (BRDG-331)", () => {
+    function renderWithSummary(items: EpicChild[]) {
+      return render(
+        <EpicChildrenSection items={items} ticketKey="VPL-1" onMutate={vi.fn()} onSelectTicket={vi.fn()} showStatsSummary />,
+      );
+    }
+
+    it("renders the progress bar and no standing 'Child Issues' title", () => {
+      renderWithSummary(SAMPLE_CHILDREN);
+      expect(screen.getByRole("progressbar")).toBeInTheDocument();
+      expect(screen.queryByText("Child Issues")).toBeNull();
+      // The loud status pills are gone.
+      expect(screen.queryByText("TO DO: 1")).toBeNull();
+    });
+
+    it("hides the bar via the menu's 'Hide progress summary' and persists the choice", () => {
+      renderWithSummary(SAMPLE_CHILDREN);
+      expect(screen.getByRole("progressbar")).toBeInTheDocument();
+      openListMenu();
+      fireEvent.click(screen.getByText("Hide progress summary"));
+      expect(screen.queryByRole("progressbar")).toBeNull();
+      expect(localStorage.getItem("epic-stats-summary-hidden")).toBe("true");
+    });
+
+    it("restores the hidden preference from localStorage and offers 'Show progress summary'", () => {
+      localStorage.setItem("epic-stats-summary-hidden", "true");
+      renderWithSummary(SAMPLE_CHILDREN);
+      expect(screen.queryByRole("progressbar")).toBeNull();
+      openListMenu();
+      expect(screen.getByText("Show progress summary")).toBeInTheDocument();
+    });
+  });
+
   describe("inline creation", () => {
     it("hides the create composer until New child issue is picked, and it toggles", () => {
       renderSection([], { openCreate: false });

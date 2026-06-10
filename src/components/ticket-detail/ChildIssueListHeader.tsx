@@ -18,6 +18,7 @@ import {
   Plus,
   MoreHorizontal,
   Eye,
+  EyeOff,
   ListFilter,
   Columns3,
   Sparkles,
@@ -27,9 +28,12 @@ import {
 export type ChildIssueViewMode = "list" | "sprint";
 
 interface ChildIssueListHeaderProps {
-  title: string;
-  totalCount: number;
-  filteredCount: number;
+  /** When provided, the controls render under a collapsible SectionHeader with this
+   *  title + count (used by SubtasksSection). Omit for the title-less toolbar form
+   *  (epic Child issues tab), where only the menu cluster renders. */
+  title?: string;
+  totalCount?: number;
+  filteredCount?: number;
   isFiltered: boolean;
   filter: StatusFilter;
   setFilter: (f: StatusFilter) => void;
@@ -46,8 +50,11 @@ interface ChildIssueListHeaderProps {
   onViewModeChange?: (mode: ChildIssueViewMode) => void;
   /** Extra action buttons (e.g. AI suggest button) rendered before the menu trigger */
   extraActions?: React.ReactNode;
-  /** When set, the heading becomes collapsible with shared cross-surface state. */
+  /** When set (with `title`), the heading becomes collapsible with shared cross-surface state. */
   sectionKey?: string;
+  /** When provided, renders a "Hide/Show progress summary" toggle in the menu footer (BRDG-331). */
+  summaryHidden?: boolean;
+  onToggleSummary?: () => void;
   /** When provided, renders a "New child issue" action that toggles the inline composer (BRDG-315). */
   onToggleCreate?: () => void;
   /** Whether the create composer is currently open (drives the action's active state). */
@@ -92,6 +99,8 @@ export function ChildIssueListHeader({
   onViewModeChange,
   extraActions,
   sectionKey,
+  summaryHidden,
+  onToggleSummary,
   onToggleCreate,
   createOpen,
   planningOn,
@@ -255,10 +264,29 @@ export function ChildIssueListHeader({
             </div>
           </div>
 
-          {(onToggleCreate || onSuggest) && (
+          {(onToggleCreate || onSuggest || onToggleSummary) && (
             <>
               <div className="h-px bg-border-subtle" />
               <div className="p-1">
+                {onToggleSummary && (
+                  <button
+                    type="button"
+                    role="menuitemcheckbox"
+                    aria-checked={!summaryHidden}
+                    onClick={() => {
+                      onToggleSummary();
+                      setOpen(false);
+                    }}
+                    className="flex w-full cursor-pointer items-center gap-2.5 rounded-md px-2.5 py-2 text-body-sm text-text-secondary transition-colors duration-150 hover:bg-hover-list-item hover:text-text-primary"
+                  >
+                    {summaryHidden ? (
+                      <Eye size={14} strokeWidth={1.5} className="shrink-0 text-text-tertiary" />
+                    ) : (
+                      <EyeOff size={14} strokeWidth={1.5} className="shrink-0 text-text-tertiary" />
+                    )}
+                    <span>{summaryHidden ? "Show progress summary" : "Hide progress summary"}</span>
+                  </button>
+                )}
                 {onToggleCreate && (
                   <button
                     type="button"
@@ -311,13 +339,24 @@ export function ChildIssueListHeader({
     </div>
   );
 
+  // Title present -> collapsible SectionHeader (SubtasksSection). Otherwise the
+  // title-less cluster used inside the epic progress toolbar (BRDG-331).
+  if (title !== undefined) {
+    return (
+      <SectionHeader
+        title={title}
+        count={!isFiltered ? totalCount : undefined}
+        countLabel={isFiltered && (totalCount ?? 0) > 0 ? `${filteredCount} of ${totalCount}` : undefined}
+        actions={<>{extraActions}{menu}</>}
+        sectionKey={sectionKey}
+      />
+    );
+  }
+
   return (
-    <SectionHeader
-      title={title}
-      count={!isFiltered ? totalCount : undefined}
-      countLabel={isFiltered && totalCount > 0 ? `${filteredCount} of ${totalCount}` : undefined}
-      actions={<>{extraActions}{menu}</>}
-      sectionKey={sectionKey}
-    />
+    <div className="flex items-center gap-1.5">
+      {extraActions}
+      {menu}
+    </div>
   );
 }

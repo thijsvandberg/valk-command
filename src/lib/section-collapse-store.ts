@@ -16,7 +16,6 @@ const STORAGE_KEY = "bridge:section-collapsed";
 export const SECTION_KEYS = {
   attachments: "attachments",
   subtasks: "subtasks",
-  epicChildren: "epic-children",
   linkedIssues: "linked-issues",
   poComments: "po-comments",
   jiraComments: "jira-comments",
