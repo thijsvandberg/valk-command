@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { useState } from "react";
 import { useUser } from "@clerk/nextjs";
 import {
@@ -15,12 +15,16 @@ import {
   Trash2,
   ChevronRight,
   ChevronDown,
+  ChevronLeft,
+  History,
   LogOut,
   User,
 } from "lucide-react";
 import { SyncIndicator } from "@/components/sync/SyncIndicator";
 import { useAccountMenuItems } from "@/components/sidebar/accountMenuItems";
 import { useSidebarData, type SidebarCount, type SidebarHeroData } from "@/hooks/useSidebarData";
+import { useRecentlyViewed } from "@/hooks/useRecentlyViewed";
+import { TicketRefPill } from "@/components/shared/TicketRefPill";
 
 type Tier = "primary" | "common" | "rare";
 type DataKey = "chat" | "storyWriter" | "refinement";
@@ -108,6 +112,7 @@ export function NavPanel({ open, onClose }: { open: boolean; onClose: () => void
   const pathname = usePathname();
   const { user } = useUser();
   const [accountOpen, setAccountOpen] = useState(false);
+  const [recentOpen, setRecentOpen] = useState(false);
   const data = useSidebarData();
 
   const { menuItems, signOutItem } = useAccountMenuItems({
@@ -141,11 +146,12 @@ export function NavPanel({ open, onClose }: { open: boolean; onClose: () => void
         <div
           role="button"
           tabIndex={0}
-          onClick={() => setAccountOpen((v) => !v)}
+          onClick={() => { setAccountOpen((v) => !v); setRecentOpen(false); }}
           onKeyDown={(e) => {
             if (e.key === "Enter" || e.key === " ") {
               e.preventDefault();
               setAccountOpen((v) => !v);
+              setRecentOpen(false);
             }
           }}
           aria-expanded={accountOpen}
@@ -170,6 +176,8 @@ export function NavPanel({ open, onClose }: { open: boolean; onClose: () => void
 
         {accountOpen ? (
           <AccountView open={open} menuItems={menuItems} signOutItem={signOutItem} />
+        ) : recentOpen ? (
+          <RecentlyViewedView open={open} onBack={() => setRecentOpen(false)} onClose={onClose} />
         ) : (
           <NavigationView
             open={open}
@@ -177,6 +185,7 @@ export function NavPanel({ open, onClose }: { open: boolean; onClose: () => void
             hero={data.hero}
             isActive={isActive}
             onNavigate={onClose}
+            onOpenRecent={() => setRecentOpen(true)}
             counts={{ chat: data.chat, storyWriter: data.storyWriter, refinement: data.refinement }}
           />
         )}
@@ -191,6 +200,7 @@ function NavigationView({
   hero,
   isActive,
   onNavigate,
+  onOpenRecent,
   counts,
 }: {
   open: boolean;
@@ -198,6 +208,7 @@ function NavigationView({
   hero: SidebarHeroData | null;
   isActive: (href: string) => boolean;
   onNavigate: () => void;
+  onOpenRecent: () => void;
   counts: Record<DataKey, SidebarCount>;
 }) {
   return (
@@ -273,8 +284,25 @@ function NavigationView({
         })}
       </div>
 
+      {/* Recently viewed: flips to the MRU ticket list, same anatomy as the rows above */}
+      <div className="px-1" style={revealStyle(open, 4)}>
+        <button
+          type="button"
+          onClick={onOpenRecent}
+          className="group flex w-full items-center gap-3 border-t border-border-subtle py-3 text-left transition-colors duration-150 cursor-pointer focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)]"
+        >
+          <span className="shrink-0 text-text-tertiary transition-colors group-hover:text-text-secondary">
+            <History className={ICON} strokeWidth={1.5} />
+          </span>
+          <span className="flex-1 text-body-sm text-text-secondary transition-colors group-hover:text-text-primary">
+            Recently viewed
+          </span>
+          <ChevronRight className="h-4 w-4 shrink-0 text-text-muted transition-transform duration-200 group-hover:translate-x-0.5" strokeWidth={1.5} />
+        </button>
+      </div>
+
       {/* Rare views as a faint "More" footer */}
-      <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 border-t border-border-subtle px-1 pt-3" style={revealStyle(open, 4)}>
+      <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 border-t border-border-subtle px-1 pt-3" style={revealStyle(open, 5)}>
         <span className="text-[10px] font-semibold uppercase tracking-[0.12em] text-text-muted">More</span>
         {RARE.map((item) => {
           const on = isActive(item.href);
@@ -332,6 +360,74 @@ function AccountView({
         <LogOut className="h-[18px] w-[18px]" strokeWidth={1.5} />
         {signOutItem.label}
       </button>
+    </div>
+  );
+}
+
+function RecentlyViewedView({
+  open,
+  onBack,
+  onClose,
+}: {
+  open: boolean;
+  onBack: () => void;
+  onClose: () => void;
+}) {
+  const router = useRouter();
+  const entries = useRecentlyViewed();
+
+  function openTicket(e: React.SyntheticEvent, key: string) {
+    // Cancels the pill's inner anchor default so every click in the row takes
+    // the same client-side route instead of a full document navigation.
+    e.preventDefault();
+    router.push(`/tickets/${key}`);
+    onClose();
+  }
+
+  return (
+    <div data-testid="recently-viewed-view">
+      <button
+        type="button"
+        onClick={onBack}
+        style={revealStyle(open, 1)}
+        className="group flex w-full items-center gap-2 rounded-xl px-1.5 py-2 text-left transition-colors duration-150 cursor-pointer hover:bg-hover-list-item active:bg-overlay-default focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)]"
+      >
+        <ChevronLeft className="h-4 w-4 shrink-0 text-text-muted transition-transform duration-200 group-hover:-translate-x-0.5" strokeWidth={1.5} />
+        <History className={`${ICON} shrink-0 text-text-tertiary`} strokeWidth={1.5} />
+        <span className="text-body-sm font-medium text-text-primary">Recently viewed</span>
+      </button>
+
+      {entries.length === 0 ? (
+        <p className="px-2 py-8 text-center text-[12px] text-text-muted" style={revealStyle(open, 2)}>
+          No recently viewed tickets yet
+        </p>
+      ) : (
+        <div className="flex flex-col px-1">
+          {entries.map((entry, i) => (
+            // role="button" instead of <Link>: TicketRefPill renders its own
+            // inner anchor, and an anchor cannot be a descendant of an anchor.
+            <div
+              key={entry.key}
+              role="button"
+              tabIndex={0}
+              onClick={(e) => openTicket(e, entry.key)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter" || e.key === " ") openTicket(e, entry.key);
+              }}
+              style={revealStyle(open, 2 + i)}
+              className="group flex w-full items-center gap-3 border-t border-border-subtle py-2.5 text-left transition-colors duration-150 cursor-pointer first:border-t-0 hover:bg-hover-list-item active:bg-overlay-default focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)]"
+            >
+              <span className="shrink-0">
+                <TicketRefPill ticketKey={entry.key} />
+              </span>
+              <span className="min-w-0 flex-1 truncate text-body-sm text-text-secondary transition-colors group-hover:text-text-primary">
+                {entry.title ?? ""}
+              </span>
+              <ChevronRight className="h-4 w-4 shrink-0 text-text-muted opacity-0 transition-opacity duration-150 group-hover:opacity-100" strokeWidth={1.5} />
+            </div>
+          ))}
+        </div>
+      )}
     </div>
   );
 }

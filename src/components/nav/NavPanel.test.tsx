@@ -55,6 +55,16 @@ vi.mock("@/hooks/useSidebarData", () => ({
   useSidebarData: () => sidebarData,
 }));
 
+// TicketRefPill pulls SWR + the full api-client; a key-only stand-in keeps the
+// suite's api-client mock minimal.
+vi.mock("@/components/shared/TicketRefPill", () => ({
+  TicketRefPill: ({ ticketKey }: { ticketKey: string }) => (
+    <span data-testid="ticket-pill">{ticketKey}</span>
+  ),
+}));
+
+import { recordTicketView } from "@/lib/recently-viewed-store";
+
 import { usePathname } from "next/navigation";
 const mockUsePathname = vi.mocked(usePathname);
 
@@ -215,6 +225,78 @@ describe("NavPanel (header navigation dropdown)", () => {
       const hero = screen.getByRole("link", { name: /Sprint Board/ });
       expect(within(hero).queryByText(/to do/)).not.toBeInTheDocument();
       expect(within(hero).queryByText("BT: 140")).not.toBeInTheDocument();
+    });
+  });
+
+  describe("recently viewed flip", () => {
+    beforeEach(() => {
+      localStorage.clear();
+    });
+
+    function flipToRecent(onClose = vi.fn()) {
+      renderOpen(onClose);
+      fireEvent.click(screen.getByRole("button", { name: /Recently viewed/ }));
+      return onClose;
+    }
+
+    it("shows the Recently viewed affordance in the navigation view", () => {
+      renderOpen();
+      expect(screen.getByRole("button", { name: /Recently viewed/ })).toBeInTheDocument();
+    });
+
+    it("flips to the list without navigating away from the page", () => {
+      recordTicketView("VPL-1", "Ticket one");
+      flipToRecent();
+      expect(screen.getByTestId("recently-viewed-view")).toBeInTheDocument();
+      expect(mockPush).not.toHaveBeenCalled();
+    });
+
+    it("renders entries with pill + title, most-recent-first", () => {
+      recordTicketView("VPL-1", "Ticket one");
+      recordTicketView("VPL-2", "Ticket two");
+      flipToRecent();
+
+      const pills = screen.getAllByTestId("ticket-pill");
+      expect(pills.map((p) => p.textContent)).toEqual(["VPL-2", "VPL-1"]);
+      expect(screen.getByText("Ticket two")).toBeInTheDocument();
+      expect(screen.getByText("Ticket one")).toBeInTheDocument();
+    });
+
+    it("navigates to the ticket and closes the panel when an entry is clicked", () => {
+      recordTicketView("VPL-7", "Clickable ticket");
+      const onClose = flipToRecent();
+
+      fireEvent.click(screen.getByRole("button", { name: /Clickable ticket/ }));
+      expect(mockPush).toHaveBeenCalledWith("/tickets/VPL-7");
+      expect(onClose).toHaveBeenCalled();
+    });
+
+    it("supports keyboard activation of an entry", () => {
+      recordTicketView("VPL-8", "Keyboard ticket");
+      const onClose = flipToRecent();
+
+      fireEvent.keyDown(screen.getByRole("button", { name: /Keyboard ticket/ }), { key: "Enter" });
+      expect(mockPush).toHaveBeenCalledWith("/tickets/VPL-8");
+      expect(onClose).toHaveBeenCalled();
+    });
+
+    it("renders the empty state when nothing has been viewed", () => {
+      flipToRecent();
+      expect(screen.getByText("No recently viewed tickets yet")).toBeInTheDocument();
+    });
+
+    it("flips back to the navigation view via the back affordance", () => {
+      recordTicketView("VPL-1", "Ticket one");
+      flipToRecent();
+      fireEvent.click(screen.getByRole("button", { name: /Recently viewed/ }));
+      expect(screen.queryByTestId("recently-viewed-view")).not.toBeInTheDocument();
+      expect(screen.getByRole("link", { name: /Sprint Board/ })).toBeInTheDocument();
+    });
+
+    it("falls back to a pill-only row when an entry has no title", () => {
+      recordTicketView("VPL-9");
+      flipToRecent();
+      expect(screen.getAllByTestId("ticket-pill").map((p) => p.textContent)).toEqual(["VPL-9"]);
     });
   });
 });
