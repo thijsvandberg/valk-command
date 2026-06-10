@@ -207,6 +207,16 @@ export default function TicketDetailPage({
   const isDraftOnly = h.ticket?.editState === "draft";
   const showPushButton = hasLocalEdits && !h.showConflictWarning && !isEditing && !isDraftOnly;
 
+  // Epics lead with their child-issue breakdown; everything else lands on Content.
+  // Resolve once per ticket key (after the async load fixes the type) via the
+  // adjust-state-during-render pattern so user tab clicks within a ticket are never
+  // clobbered, but a ticket swap re-defaults.
+  const [tabDefaultedKey, setTabDefaultedKey] = useState<string | null>(null);
+  if (h.ticket && h.ticket.key !== tabDefaultedKey) {
+    setTabDefaultedKey(h.ticket.key);
+    setActiveTab(h.ticket.type === "epic" ? "children" : "content");
+  }
+
   const handleTabChange = (tab: TicketTab) => {
     if (tab === "history" && activeTab === "history") {
       setHistoryResetKey((k) => k + 1);

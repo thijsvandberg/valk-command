@@ -35,7 +35,7 @@ const TicketDevelopment = dynamic(
   { loading: TabLoadingFallback },
 );
 
-export type TicketTab = "content" | "history" | "review" | "development";
+export type TicketTab = "children" | "content" | "history" | "review" | "development";
 
 export interface TicketTabContentProps {
   // Layout context: "page" centers content in a max-w-4xl column with wide
@@ -142,6 +142,9 @@ export function TicketTabContent({
   isFlagged,
 }: TicketTabContentProps) {
   const isPanel = layout === "panel";
+  // Epics split their breakdown (child issues) into a dedicated leading tab so the
+  // PO lands on the list rather than scrolling past the description.
+  const isEpic = ticket.type === "epic";
   const railClass = isPanel ? "w-full px-5" : "mx-auto w-full max-w-4xl px-8";
   // The toolbar and diff footer render into these portals by id. When a panel
   // instance shares the page with the full ticket page (the child preview side
@@ -170,6 +173,7 @@ export function TicketTabContent({
         {renderTabBar && (
           <div className={`flex h-[44px] shrink-0 items-stretch gap-1 border-b border-border-default ${railClass}`}>
             {([
+                ...(isEpic ? [{ id: "children" as const, label: "Child issues", badge: (detail?.epicChildren.length || undefined) as number | undefined, badgeHighlight: false }] : []),
                 { id: "content" as const, label: "Content", badge: undefined as number | undefined, badgeHighlight: false },
                 { id: "history" as const, label: "History", badge: versionCount as number | undefined, badgeHighlight: false },
                 ...(reviewInMenu ? [] : [{ id: "review" as const, label: "Review", badge: (reviewCount || undefined) as number | undefined, badgeHighlight: (reviewCount ?? 0) > 0 }]),
@@ -326,13 +330,12 @@ export function TicketTabContent({
                 toolbarPortalId={toolbarPortalId}
               />
               {detail && <AttachmentsSection attachments={detail.attachments} />}
-              {ticket?.type === "epic"
-                ? detail && <EpicChildrenSection items={detail.epicChildren} ticketKey={ticketKey} onMutate={onMutate} onSelectTicket={onSelectTicket} showStatsSummary />
-                : <>
-                    {detail && <SubtasksSection subtasks={detail.subtasks} ticketKey={ticketKey} onMutate={onMutate} onSelectTicket={onSelectTicket} />}
-                    {detail && <LinkedIssuesSection issues={detail.linkedIssues} ticketKey={ticketKey} onMutate={onMutate} />}
-                  </>
-              }
+              {!isEpic && (
+                <>
+                  {detail && <SubtasksSection subtasks={detail.subtasks} ticketKey={ticketKey} onMutate={onMutate} onSelectTicket={onSelectTicket} />}
+                  {detail && <LinkedIssuesSection issues={detail.linkedIssues} ticketKey={ticketKey} onMutate={onMutate} />}
+                </>
+              )}
               {/* Stacked meta (panel only) sits above the comments so the PO
                   metadata stays close to the content rather than below the
                   Jira conversation. */}
@@ -343,6 +346,10 @@ export function TicketTabContent({
                 onMutate={onMutate}
               />
             </>
+          )}
+
+          {activeTab === "children" && isEpic && detail && (
+            <EpicChildrenSection items={detail.epicChildren} ticketKey={ticketKey} onMutate={onMutate} onSelectTicket={onSelectTicket} showStatsSummary />
           )}
 
           {activeTab === "history" && (

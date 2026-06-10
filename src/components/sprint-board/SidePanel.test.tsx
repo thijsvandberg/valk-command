@@ -200,6 +200,27 @@ describe("SidePanel", () => {
     expect(screen.getByTestId("active-tab")).toHaveTextContent("content");
   });
 
+  describe("default tab (BRDG-326)", () => {
+    it("defaults a non-epic ticket to the content tab", () => {
+      render(<SidePanel {...defaultProps} ticket={makeTicket({ type: "story" })} />);
+      expect(screen.getByTestId("active-tab")).toHaveTextContent("content");
+    });
+
+    it("defaults an epic to the leading child issues tab", () => {
+      render(<SidePanel {...defaultProps} ticket={makeTicket({ type: "epic" })} />);
+      expect(screen.getByTestId("active-tab")).toHaveTextContent("children");
+    });
+
+    it("re-defaults the tab when the displayed ticket is swapped", () => {
+      const { rerender } = render(
+        <SidePanel {...defaultProps} ticket={makeTicket({ key: "PROJ-1", type: "epic" })} />,
+      );
+      expect(screen.getByTestId("active-tab")).toHaveTextContent("children");
+      rerender(<SidePanel {...defaultProps} ticket={makeTicket({ key: "PROJ-2", type: "story" })} />);
+      expect(screen.getByTestId("active-tab")).toHaveTextContent("content");
+    });
+  });
+
   it("renders the shared meta panel (stacked under content at narrow width)", () => {
     render(<SidePanel {...defaultProps} />);
     expect(screen.getByTestId("meta-content")).toBeInTheDocument();

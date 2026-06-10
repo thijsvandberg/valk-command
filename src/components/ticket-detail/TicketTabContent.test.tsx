@@ -38,7 +38,7 @@ vi.mock("./CommentsSection", () => ({
 }));
 
 vi.mock("@/components/shared/TabBar", () => ({
-  Tab: ({ label, active, onClick }: { label: string; active: boolean; onClick: () => void }) => (
+  Tab: ({ label, active, onClick, badge }: { label: string; active: boolean; onClick: () => void; badge?: number }) => (
     <button
       role="tab"
       data-testid={`tab-${label.toLowerCase()}`}
@@ -46,6 +46,7 @@ vi.mock("@/components/shared/TabBar", () => ({
       onClick={onClick}
     >
       {label}
+      {badge !== undefined && <span data-testid="tab-badge">{badge}</span>}
     </button>
   ),
 }));
@@ -109,8 +110,8 @@ type Props = React.ComponentProps<typeof TicketTabContent>;
 
 function renderContent(activeTab: TicketTab = "content", overrides: Partial<Props> = {}) {
   const onActiveTabChange = vi.fn();
-  const ticket = makeTicket();
-  const detail = makeDetail();
+  const ticket = overrides.ticket ?? makeTicket();
+  const detail = overrides.detail ?? makeDetail();
 
   const result = render(
     <TicketTabContent
@@ -180,6 +181,46 @@ describe("TicketTabContent", () => {
       fireEvent.click(screen.getByTestId("tab-history"));
       expect(onActiveTabChange).toHaveBeenCalledWith("history");
     });
+
+    it("does not render a Child issues tab for non-epic tickets", () => {
+      renderContent();
+      expect(screen.queryByTestId("tab-child issues")).not.toBeInTheDocument();
+    });
+
+    it("renders a leading Child issues tab for epic tickets", () => {
+      renderContent("children", { ticket: makeTicket({ type: "epic" }) });
+      const tabs = screen.getAllByRole("tab");
+      // Child issues is the first (leading) tab in the bar.
+      expect(tabs[0]).toHaveAttribute("data-testid", "tab-child issues");
+      expect(screen.getByTestId("tab-content")).toBeInTheDocument();
+    });
+  });
+
+  describe("epic child issues tab", () => {
+    const epicTicket = () => makeTicket({ type: "epic" });
+
+    it("renders the epic children section on the children tab", () => {
+      renderContent("children", { ticket: epicTicket() });
+      expect(screen.getByTestId("epic-children-section")).toBeInTheDocument();
+    });
+
+    it("shows a count badge equal to the number of child issues", () => {
+      const detail = makeDetail({
+        epicChildren: [
+          { key: "VPL-2" } as TicketDetail["epicChildren"][number],
+          { key: "VPL-3" } as TicketDetail["epicChildren"][number],
+        ],
+      });
+      renderContent("children", { ticket: epicTicket(), detail });
+      const childTab = screen.getByTestId("tab-child issues");
+      expect(childTab).toHaveTextContent("2");
+    });
+
+    it("hides the count badge when the epic has no children", () => {
+      renderContent("children", { ticket: epicTicket(), detail: makeDetail({ epicChildren: [] }) });
+      const childTab = screen.getByTestId("tab-child issues");
+      expect(childTab).not.toHaveTextContent(/\d/);
+    });
   });
 
   describe("content tab", () => {
@@ -204,49 +245,12 @@ describe("TicketTabContent", () => {
       expect(screen.queryByTestId("epic-children-section")).not.toBeInTheDocument();
     });
 
-    it("renders epic children section for epic tickets", () => {
-      const onActiveTabChange = vi.fn();
-      const ticket = makeTicket({ type: "epic" });
-      const detail = makeDetail();
-      render(
-        <TicketTabContent
-          ticketKey="VPL-1"
-          ticket={ticket}
-          detail={detail}
-          localEdits={undefined}
-          activeTab="content"
-          onActiveTabChange={onActiveTabChange}
-          draftDiscardKey={0}
-          isTitleEditing={false}
-          isDescEditing={false}
-          onTitleEditingChange={vi.fn()}
-          onDescEditingChange={vi.fn()}
-          onTitleLocalEdit={vi.fn()}
-          onDescLocalEdit={vi.fn()}
-          showConflictWarning={false}
-          showConflictDiff={false}
-          autoOpenDraftDiff={false}
-          metadataOnlyConflict={false}
-          onViewDiff={vi.fn()}
-          isDiscarding={false}
-          discardError={null}
-          isPushing={false}
-          pushError={null}
-          overrideConfirmed={false}
-          onOverrideChange={vi.fn()}
-          onDiscardDraft={vi.fn().mockResolvedValue(undefined)}
-          onPushToJira={vi.fn().mockResolvedValue(undefined)}
-          onMutate={vi.fn()}
-          onConflictResolved={vi.fn().mockResolvedValue(undefined)}
-          onSelectTicket={vi.fn()}
-          reviewCount={0}
-          versionCount={0}
-          historyResetKey={0}
-          isFlagged={false}
-        />,
-      );
-      expect(screen.getByTestId("epic-children-section")).toBeInTheDocument();
+    it("does not render subtasks or epic children on the content tab for epics", () => {
+      renderContent("content", { ticket: makeTicket({ type: "epic" }) });
       expect(screen.queryByTestId("subtasks-section")).not.toBeInTheDocument();
+      expect(screen.queryByTestId("epic-children-section")).not.toBeInTheDocument();
+      // Epic content body still renders title/description on the Content tab.
+      expect(screen.getByTestId("editable-description")).toBeInTheDocument();
     });
 
     it("renders comments section on content tab", () => {

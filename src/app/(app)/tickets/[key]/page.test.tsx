@@ -118,8 +118,9 @@ vi.mock("@/hooks/useTicketHoverData", () => ({
 vi.mock("@/components/ticket-detail/TicketTabContent", () => ({
   // Expose a button that drives the child-select callback so the preview side
   // panel flow can be exercised from the page level.
-  TicketTabContent: ({ onSelectTicket }: { onSelectTicket: (key: string) => void }) => (
+  TicketTabContent: ({ onSelectTicket, activeTab }: { onSelectTicket: (key: string) => void; activeTab: string }) => (
     <div data-testid="tab-content">
+      <span data-testid="active-tab">{activeTab}</span>
       <button onClick={() => onSelectTicket("VPL-200")}>select-child</button>
     </div>
   ),
@@ -336,6 +337,28 @@ describe("TicketDetailPage - child preview side panel", () => {
     expect(await screen.findByTestId("side-panel-adjacent")).toHaveTextContent(
       JSON.stringify({ prev: null, next: "VPL-201" }),
     );
+  });
+});
+
+describe("TicketDetailPage - default tab (BRDG-326)", () => {
+  beforeEach(() => {
+    mockSessions = [];
+  });
+
+  afterEach(() => {
+    cleanup();
+  });
+
+  it("defaults a non-epic ticket to the content tab", async () => {
+    resetHook(null, { ticket: { ...baseTicket, type: "story" } });
+    await renderPage();
+    expect(screen.getByTestId("active-tab")).toHaveTextContent("content");
+  });
+
+  it("defaults an epic to the leading child issues tab", async () => {
+    resetHook(null, { ticket: { ...baseTicket, type: "epic" } });
+    await renderPage();
+    expect(screen.getByTestId("active-tab")).toHaveTextContent("children");
   });
 });
 

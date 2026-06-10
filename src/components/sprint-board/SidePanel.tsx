@@ -232,6 +232,16 @@ export function SidePanel({
   const [historyResetKey, setHistoryResetKey] = useState(0);
   const [openDraftDiff, setOpenDraftDiff] = useState(false);
 
+  // Epics lead with their child-issue breakdown; everything else lands on Content.
+  // Keyed on the displayed ticket so a panel that swaps tickets (drill-down or a
+  // reused MultiSprintView instance) re-defaults, without clobbering user tab clicks.
+  // Uses the adjust-state-during-render pattern keyed on the displayed ticket.
+  const [tabDefaultedKey, setTabDefaultedKey] = useState<string | null>(null);
+  if (t.key !== tabDefaultedKey) {
+    setTabDefaultedKey(t.key);
+    setActiveTab(t.type === "epic" ? "children" : "content");
+  }
+
   const handleTabChange = (tab: TicketTab) => {
     if (tab === "history" && activeTab === "history") setHistoryResetKey((k) => k + 1);
     if (tab === "history" && h.showConflictWarning) h.setShowConflictDiff(true);
