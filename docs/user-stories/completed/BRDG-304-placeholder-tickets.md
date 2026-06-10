@@ -216,4 +216,16 @@ cleanly; routing to a separate component contains all Jira-key assumptions. Plac
 - Placeholders are intentionally **not draggable** in v1; sprint is set at create/edit time.
 - A promoted placeholder's description is carried as a **pending local edit** on the new
   ticket (pushable to Jira), not auto-pushed.
+
+### Post-review refinement (PO feedback, 2026-06-10)
+
+- **Create via the regular composer.** Placeholders are no longer created from a separate
+  "Add placeholder" row. The shared `ChildIssueComposer` gained a "Placeholder" option in its
+  type dropdown (dashed pencil chip, "Create placeholder in …" hint); selecting it routes the
+  same create flow to a Bridge-local placeholder. Wired on the sprint board (flat + per-group)
+  and the epic-by-sprint per-group composers, gated to planning mode.
+- **Polished row.** The row's actions are spelled out exactly like the subtask rows:
+  **Convert to ticket / Edit / Delete** (Delete reddens on hover), replacing the bare icons.
+- **Convert icon** is `SquareArrowUpRight` (was the AI `Sparkles`).
+- A dev exploration page (`/dev/exploration/placeholder-row`) compares convert-icon candidates.
 ```
