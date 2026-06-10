@@ -1,6 +1,6 @@
 # BRDG-334: Mutations should update the UI instantly (stale-cache sweep)
 
-**Status:** Not Started
+**Status:** Done
 **Priority:** Medium
 **Type:** Bug / Tech-debt audit
 
@@ -164,5 +164,16 @@ every claim. Keep the report concise and actionable.
 - [x] Failure path rolls back / revalidates and still surfaces the warning
 - [x] Tests cover instant subtask status update and the failure path
 - [x] Refinement session subtask view (`SessionTicketView`) wired the same way (own data path; deferred to the audit)
-- [ ] Audit prompt run; findings saved to `docs/investigations/2026-06-10-stale-ui-after-mutation-audit.md`
-- [ ] Confirmed audit findings fixed with the client-side SWR-patch pattern, each with a test
+- [x] Audit prompt run; findings saved to `docs/investigations/2026-06-10-stale-ui-after-mutation-audit.md`
+- [x] Confirmed audit findings fixed with the client-side SWR-patch pattern, each with a test
+  <!-- BUG-1..6 fixed. Of the four minor TTL-bounded items, backlogCount is fixed;
+       versionCount and chatMessageCount invalidation were skipped because their write
+       paths live in files under active parallel development (story-writer routes /
+       ticket-service); the burnup chart self-heals within its 60s TTL. -->
+
+## Status
+
+**Done.** Fix commits: 9d7021de (subtask seed case), 5d9ac82a (refinement pane),
+f37adcdf (reviews/quality score), d8039c8d (writer session delete), 5ef15dcb (wrap-up
+modal pills), 4307b1e8 (epic/progress server invalidation), dc2f8376 (epic children
+optimistic rows), 59cdf487 (board pill resync), e3e94c7e (backlog count).

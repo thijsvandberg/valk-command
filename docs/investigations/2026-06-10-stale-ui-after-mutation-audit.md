@@ -213,3 +213,15 @@ TicketChatPane) are class (b) against uncached GETs -> OK.
 4. Flagged a bug only where a displayed, server-cached key is neither invalidated by the
    write route nor patched client-side. All file:line references verified by reading the
    files in this audit.
+
+## Fix status (2026-06-10, BRDG-334)
+
+- BUG-1: fixed in dc2f8376 (client: `handleEpicChildPatch` + `onChildOptimistic` wiring) and 4307b1e8 (server: epic detail invalidation in status PUT, PATCH, metadata PUT, summary PUT).
+- BUG-2: fixed in f37adcdf (reviews POST/DELETE invalidate detail + list caches).
+- BUG-3: fixed in 59cdf487 (`syncFromApiTickets` reconciles against fresh data, in-flight keys protected; detail-page readiness uses `patchTicketCaches`).
+- BUG-4: fixed in 4307b1e8 (`/api/epics/progress` invalidated on status PUT and SP/epicKey PATCH).
+- BUG-5: fixed in 5ef15dcb (wrap-up modal handlers patch via `patchTicketCaches`, rollback on failure).
+- BUG-6: fixed in d8039c8d (launcher modal patches the active-sessions SWR key, revalidates on failure).
+- Minor backlogCount: fixed in e3e94c7e (move-sprint + create-ticket invalidate `/api/jira/sprints`).
+- Minor versionCount / chatMessageCount: NOT fixed; their write paths live in files under active parallel development (story-writer routes, ticket-service). Revisit once that work lands.
+- Minor burnup: NOT fixed by design; self-heals within the 60s TTL.
