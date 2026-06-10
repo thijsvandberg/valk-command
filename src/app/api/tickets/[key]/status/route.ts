@@ -66,6 +66,13 @@ export async function PUT(request: Request, { params }: RouteContext) {
     cache.invalidate(`/api/tickets/${parentKey}`);
   }
 
+  // The child's status is also shown in its epic's children table (embedded in the
+  // epic's cached detail) and aggregated in the epics progress view.
+  if (existing.epicKey) {
+    cache.invalidate(`/api/tickets/${existing.epicKey}`);
+  }
+  cache.invalidate("/api/epics/progress");
+
   await logActivity({
     type: "metadata-update",
     scope: key,

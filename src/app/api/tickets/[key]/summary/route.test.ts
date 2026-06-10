@@ -35,6 +35,7 @@ vi.mock("@/lib/logger", () => ({
 
 import { PUT } from "./route";
 import { jiraClient } from "@/lib/jira-client";
+import { cache } from "@/lib/cache";
 
 function seedTicket(db: BetterSQLite3Database<typeof schema>, key: string) {
   db.insert(ticket)
@@ -110,6 +111,19 @@ describe("PUT /api/tickets/[key]/summary", () => {
 
     expect(response.status).toBe(200);
     expect(data.title).toBe("Updated title");
+  });
+
+  it("invalidates the epic detail when the renamed ticket belongs to an epic", async () => {
+    testDb.insert(ticket).values({
+      jiraKey: "BRDG-2",
+      title: "Child of epic",
+      status: "TO DO",
+      epicKey: "BRDG-100",
+    }).run();
+
+    await PUT(putRequest("BRDG-2", { title: "Renamed" }), makeParams("BRDG-2"));
+
+    expect(cache.invalidate).toHaveBeenCalledWith("/api/tickets/BRDG-100");
   });
 
   it("returns jiraWarning if Jira update fails", async () => {

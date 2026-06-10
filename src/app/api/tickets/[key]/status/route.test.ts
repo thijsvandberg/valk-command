@@ -110,6 +110,23 @@ describe("PUT /api/tickets/[key]/status", () => {
     expect(cache.invalidate).toHaveBeenCalledWith("/api/tickets/BRDG-1");
   });
 
+  it("invalidates the epic detail and epics progress caches", async () => {
+    seedTicket(testDb, { jiraKey: "BRDG-1", epicKey: "BRDG-100" });
+
+    await PUT(putRequest("BRDG-1", { status: "DONE" }), makeParams("BRDG-1"));
+
+    expect(cache.invalidate).toHaveBeenCalledWith("/api/tickets/BRDG-100");
+    expect(cache.invalidate).toHaveBeenCalledWith("/api/epics/progress");
+  });
+
+  it("still invalidates epics progress when the ticket has no epic", async () => {
+    seedTicket(testDb, { jiraKey: "BRDG-1" });
+
+    await PUT(putRequest("BRDG-1", { status: "DONE" }), makeParams("BRDG-1"));
+
+    expect(cache.invalidate).toHaveBeenCalledWith("/api/epics/progress");
+  });
+
   it("returns jiraWarning if Jira transition fails", async () => {
     seedTicket(testDb, { jiraKey: "BRDG-1" });
     vi.mocked(jiraClient.transitionIssue).mockRejectedValueOnce(

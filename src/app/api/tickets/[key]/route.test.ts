@@ -573,6 +573,56 @@ describe("PATCH /api/tickets/[key] - jiraUpdatedAt sync", () => {
   });
 });
 
+describe("PATCH /api/tickets/[key] - epic cache invalidation", () => {
+  beforeEach(() => {
+    testDb = createTestDb();
+    cache.flush();
+    vi.clearAllMocks();
+  });
+
+  it("invalidates the epic detail and epics progress on story point change", async () => {
+    seedTicket(testDb, { jiraKey: "VPL-800", epicKey: "VPL-50" });
+    const spy = vi.spyOn(cache, "invalidate");
+
+    await PATCH(
+      buildJson("PATCH", "/api/tickets/VPL-800", { storyPoints: 5 }),
+      buildParams({ key: "VPL-800" }),
+    );
+
+    expect(spy).toHaveBeenCalledWith("/api/tickets/VPL-50");
+    expect(spy).toHaveBeenCalledWith("/api/epics/progress");
+    spy.mockRestore();
+  });
+
+  it("invalidates both the old and new epic details on an epic move", async () => {
+    seedTicket(testDb, { jiraKey: "VPL-801", epicKey: "VPL-10" });
+    const spy = vi.spyOn(cache, "invalidate");
+
+    await PATCH(
+      buildJson("PATCH", "/api/tickets/VPL-801", { epicKey: "VPL-20" }),
+      buildParams({ key: "VPL-801" }),
+    );
+
+    expect(spy).toHaveBeenCalledWith("/api/tickets/VPL-10");
+    expect(spy).toHaveBeenCalledWith("/api/tickets/VPL-20");
+    expect(spy).toHaveBeenCalledWith("/api/epics/progress");
+    spy.mockRestore();
+  });
+
+  it("does not invalidate epics progress for a flag-only change", async () => {
+    seedTicket(testDb, { jiraKey: "VPL-802" });
+    const spy = vi.spyOn(cache, "invalidate");
+
+    await PATCH(
+      buildJson("PATCH", "/api/tickets/VPL-802", { flagged: true }),
+      buildParams({ key: "VPL-802" }),
+    );
+
+    expect(spy).not.toHaveBeenCalledWith("/api/epics/progress");
+    spy.mockRestore();
+  });
+});
+
 describe("PATCH /api/tickets/[key] - error paths", () => {
   beforeEach(() => {
     testDb = createTestDb();

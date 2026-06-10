@@ -4,6 +4,7 @@ import { createTestDb } from "@/db/test-utils";
 import type { BetterSQLite3Database } from "drizzle-orm/better-sqlite3";
 import type * as schema from "@/db/schema";
 import { ticket } from "@/db/schema";
+import { cache } from "@/lib/cache";
 
 let testDb: BetterSQLite3Database<typeof schema>;
 
@@ -164,5 +165,38 @@ describe("PUT /api/tickets/[key]/metadata", () => {
     const data = await response.json();
 
     expect(data.qualityScore).toBe(80);
+  });
+});
+
+describe("PUT /api/tickets/[key]/metadata - epic cache invalidation", () => {
+  beforeEach(() => {
+    testDb = createTestDb();
+    cache.flush();
+  });
+
+  it("invalidates the epic detail when the ticket belongs to an epic", async () => {
+    testDb.insert(ticket).values({
+      jiraKey: "VPL-200",
+      title: "Child of epic",
+      status: "TO DO",
+      epicKey: "VPL-50",
+    }).run();
+    const spy = vi.spyOn(cache, "invalidate");
+
+    await PUT(putRequest("VPL-200", { readiness: "drafting" }), makeParams("VPL-200"));
+
+    expect(spy).toHaveBeenCalledWith("/api/tickets/VPL-50");
+    spy.mockRestore();
+  });
+
+  it("does not invalidate any epic detail for a ticket without an epic", async () => {
+    seedTicket(testDb, "VPL-201");
+    const spy = vi.spyOn(cache, "invalidate");
+
+    await PUT(putRequest("VPL-201", { readiness: "drafting" }), makeParams("VPL-201"));
+
+    const epicCalls = spy.mock.calls.filter((c) => c[0] === "/api/tickets/VPL-50");
+    expect(epicCalls).toHaveLength(0);
+    spy.mockRestore();
   });
 });

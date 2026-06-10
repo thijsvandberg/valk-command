@@ -9,6 +9,7 @@ import { applyRateLimit } from "@/lib/rate-limiter";
 import { resolveDraftKey } from "@/lib/draft-sync";
 import { buildTicketDetail, updateTicketFields } from "@/lib/ticket-detail-builder";
 import { syncIndividualTickets } from "@/lib/sync-tickets-service";
+import { db } from "@/db";
 
 /**
  * Re-sync epic children whose sprint is stored as a legacy name (no id) so their `sprint_name`
@@ -83,6 +84,12 @@ export async function PATCH(
   if ("error" in parsed) return parsed.error;
   const body = parsed.data as Record<string, unknown>;
 
+  // Capture the pre-update epic so a move between epics also refreshes the old epic.
+  const before = await db.query.ticket.findFirst({
+    where: (row, { eq: eqFn }) => eqFn(row.jiraKey, key),
+    columns: { epicKey: true },
+  });
+
   const outcome = await updateTicketFields(key, body);
   if ("error" in outcome) {
     return errorResponse(outcome.error, outcome.status);
@@ -90,6 +97,18 @@ export async function PATCH(
 
   cache.invalidate(`/api/tickets/${key}`);
   cache.invalidate(/^\/api\/tickets(\?|$)/);
+
+  // Epic children tables render this ticket's fields from the epic's cached detail,
+  // and the epics progress view aggregates story points per epic.
+  if (before?.epicKey) {
+    cache.invalidate(`/api/tickets/${before.epicKey}`);
+  }
+  if (typeof body.epicKey === "string" && body.epicKey) {
+    cache.invalidate(`/api/tickets/${body.epicKey}`);
+  }
+  if ("storyPoints" in body || "epicKey" in body) {
+    cache.invalidate("/api/epics/progress");
+  }
 
   return NextResponse.json(outcome.result);
 }

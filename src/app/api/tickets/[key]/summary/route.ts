@@ -53,6 +53,12 @@ export async function PUT(request: Request, { params }: RouteContext) {
   cache.invalidate(`/api/tickets/${key}`);
   cache.invalidate(/^\/api\/tickets(\?|$)/);
 
+  // The title is also rendered in the epic's children table, embedded in the
+  // epic's cached detail.
+  if (existing.epicKey) {
+    cache.invalidate(`/api/tickets/${existing.epicKey}`);
+  }
+
   await logActivity({
     type: "metadata-update",
     scope: key,
