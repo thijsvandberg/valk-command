@@ -1,6 +1,7 @@
 import { render, screen, fireEvent, waitFor } from "@testing-library/react";
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { TicketSidebar } from "./TicketSidebar";
+import { readRecentlyViewed } from "@/lib/recently-viewed-store";
 import type { Ticket, TicketDetail } from "@/types/ticket";
 
 const mockUpdateMetadata = vi.fn();
@@ -209,6 +210,12 @@ describe("TicketSidebar", () => {
     mockUpdateStoryPoints.mockResolvedValue({});
     mockUpdateEpic.mockResolvedValue({});
     mockUpdateLabels.mockResolvedValue({});
+  });
+
+  it("records the ticket as viewed on mount (BRDG-330)", () => {
+    localStorage.clear();
+    renderSidebar({ ticket: { key: "VPL-99", title: "Viewed ticket" } });
+    expect(readRecentlyViewed()[0]).toMatchObject({ key: "VPL-99", title: "Viewed ticket" });
   });
 
   it("renders nothing when collapsed", () => {

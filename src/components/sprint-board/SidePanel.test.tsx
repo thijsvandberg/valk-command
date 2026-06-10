@@ -1,6 +1,7 @@
 import { render, screen, fireEvent } from "@testing-library/react";
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { SidePanel } from "./SidePanel";
+import { readRecentlyViewed } from "@/lib/recently-viewed-store";
 import type { Ticket } from "@/types/ticket";
 
 vi.mock("lucide-react", () => {
@@ -404,6 +405,19 @@ describe("SidePanel", () => {
       fireEvent.mouseMove(document, { clientX: 100 });
       fireEvent.mouseUp(document);
       expect(window.localStorage.getItem("sprintBoardMetaWidth")).toBe("280");
+    });
+  });
+
+  describe("recently viewed recording (BRDG-330)", () => {
+    it("records the ticket as viewed when the panel opens", () => {
+      render(<SidePanel {...defaultProps} />);
+      expect(readRecentlyViewed()[0]).toMatchObject({ key: "PROJ-42", title: "Test ticket title" });
+    });
+
+    it("records the new ticket when the panel switches tickets", () => {
+      const { rerender } = render(<SidePanel {...defaultProps} />);
+      rerender(<SidePanel {...defaultProps} ticket={makeTicket({ key: "PROJ-43", title: "Next ticket" })} />);
+      expect(readRecentlyViewed().map((e) => e.key)).toEqual(["PROJ-43", "PROJ-42"]);
     });
   });
 });

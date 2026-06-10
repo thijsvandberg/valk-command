@@ -4,6 +4,7 @@ import { useState, useCallback, useEffect, useRef } from "react";
 import type { Ticket, TicketReadiness, TicketDetail } from "@/types/ticket";
 import { ChevronRight } from "lucide-react";
 import { useLocalStorage } from "@/hooks/useLocalStorage";
+import { recordTicketView } from "@/lib/recently-viewed-store";
 import { TicketMetaContent } from "@/components/ticket-detail/TicketMetaContent";
 
 export const DEFAULT_SIDEBAR_WIDTH = 420;
@@ -35,6 +36,13 @@ export function TicketSidebar({
   onNavigateToDev?: () => void;
   onReadinessChange?: (v: TicketReadiness | null) => void;
 }) {
+  // This rail renders exactly once per opened ticket page, so it doubles as
+  // the page's "ticket viewed" recorder; the page component itself carries
+  // unrelated in-flight work (BRDG-329/330 split).
+  useEffect(() => {
+    recordTicketView(ticket.key, ticket.title);
+  }, [ticket.key, ticket.title]);
+
   // Resize state
   const [sidebarWidth, setSidebarWidth] = useLocalStorage(SIDEBAR_WIDTH_KEY, DEFAULT_SIDEBAR_WIDTH);
   const [isDragging, setIsDragging] = useState(false);

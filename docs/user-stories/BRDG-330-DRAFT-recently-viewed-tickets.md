@@ -1,67 +1,96 @@
-# BRDG-330: Recently viewed tickets — quick access from any page
+# BRDG-330: Recently viewed tickets — quick access from the nav panel
 
-**Status:** Draft
+**Status:** In Progress
 **Priority:** Medium
-
-> **Draft note:** Two product decisions are still open (see _Open decisions_ below): **where** the list surfaces and **whether** it syncs across devices. The acceptance criteria are written against the recommended defaults (header popover + local-per-browser storage). Revisit before promoting to "To Do".
 
 ## Description
 
-As the PO, I jump between tickets across many views (Sprint Board, ticket/epic detail, Refinement, Story Writer). When I want to get back to a ticket I just looked at, I currently have to search for it again or retrace my steps.
+As the PO, I jump between tickets across many views (Sprint Board, ticket/epic detail, Refinement). When I want to get back to a ticket I just looked at, I currently have to search for it again or retrace my steps.
 
-I want to see my **last 10 viewed tickets** from roughly **every page**, so I can re-open one in a single click — quick access without searching.
+I want to see my **last 10 viewed tickets** for quick access, reachable from **the nav panel** (the `bridge_` dropdown in the header, which is available on every page). Opening the list is a **popout** that keeps me on my current page — viewing the list never navigates me away. From the list, one click on a ticket opens it.
 
 A "view" is any moment a ticket becomes the focused/open item: opening it in the Sprint Board side panel, landing on its detail page, opening it in a Refinement session, or previewing a child/linked ticket in the side panel. The list is most-recent-first, de-duplicated (re-viewing a ticket moves it to the top, not a second entry), and capped at 10.
 
-## Open decisions
+## Decided
 
-These are not yet decided. The story is written against option **(a)** in each case; change before implementation if desired.
+- **Surface:** inside the existing nav panel (`src/components/nav/NavPanel.tsx`), the dropdown that opens from the `bridge_` button. The screenshot shows this panel with its Sprint Board hero / Chat / Story Writer / Refinement rows and the account flip.
+- **Interaction:** the recently-viewed list is a **popout that stays on the current page** — opening it does not navigate. Preferred implementation is a **flip-view within the nav panel**, mirroring the existing account flip (`AccountView`), so it reuses the panel's overlay, animation and dismiss behaviour. Entry point: a small "Recent" affordance in the panel (e.g. a row or header control alongside the account header).
+- **Per-entry content:** each of the 10 entries shows at minimum the **ticket pill + title**. Reuse `TicketRefPill` (`src/components/shared/TicketRefPill.tsx`) for the pill so it matches the rest of the app.
+- **Storage:** local per browser via `localStorage` (existing `useLocalStorage` hook). No backend, no cross-device sync.
+- **Quality bar:** must look polished and feel intuitive — consistent with the nav panel's existing styling (staggered reveal, hairline rows, brand tokens, hover/focus-visible states). Follows the project's frontend guardrails (no default Tailwind palette, transform/opacity-only animation, every clickable element has hover + focus-visible + active + `cursor: pointer`).
 
-1. **Where does the list surface?**
-   - **(a) Recommended — header popover.** A small "Recent" control in the existing header command bar (BRDG-320). One click opens a dropdown with the last 10. Always visible, fastest path. The header is rendered on every `(app)` page, so it satisfies "from any page" cleanly.
-   - (b) Command-palette section. A "Recently viewed" block at the top of Cmd+K. No extra chrome, but requires a shortcut/extra step.
-   - (c) Both surfaces, sharing one data source.
+## Implementation Plan
 
-2. **Does the list travel across devices/browsers?**
-   - **(a) Recommended — local per browser** (`localStorage`, existing `useLocalStorage` hook). Simple, instant, no backend. List is per browser/device. Fine for a single-user app on one main machine.
-   - (b) Synced via a DB table + API, so the list is identical on every device. More work; only worth it if you regularly switch devices.
+### Architecture: module store + custom event, read hook for the panel
+
+- **`src/lib/recently-viewed-store.ts`** (new): `RECENTLY_VIEWED_KEY = "bridge:recently-viewed"`, `MAX_ENTRIES = 10`, entry type `{ key, title?, viewedAt }`. `readRecentlyViewed()` is SSR-safe, try/catch parse, filters malformed entries. `recordTicketView(key, title?)` de-dupes by key, prepends, slices to 10, writes, and dispatches a custom `valk:recentlyViewed` window event. A plain module function (not a hook) because all call sites are non-render contexts; an effect that only writes localStorage is React-Compiler-safe.
+- **`src/hooks/useRecentlyViewed.ts`** (new): seeds from `readRecentlyViewed()` on mount, re-reads on both `storage` (cross-tab) and `valk:recentlyViewed` (same-tab). NavPanel is mounted only while open, so it also gets a fresh read every open.
+
+### Recording call sites (dirty-tree aware)
+
+The tree carries uncommitted BRDG-329/334 work in `src/app/(app)/tickets/[key]/page.tsx` and several ticket-detail files. BRDG-330 commits must not drag that along, so recording routes through clean files:
+
+1. **Sprint Board selection + side-panel child/linked preview** — one effect in `src/components/sprint-board/SidePanel.tsx` (clean): `SidePanel` is rendered both by SprintBoard (board selection) and by the ticket detail page (child/linked preview), always with `ticket.key` + `ticket.title` in props. One mount/key-change effect covers both ACs.
+2. **Refinement session** — effect in `src/app/(app)/refinement/[sessionId]/session/[ticketKey]/page.tsx` (clean), where the resolved key + ticket data are in scope.
+3. **Ticket detail page load** — `page.tsx` is dirty with BRDG-329, but `src/components/ticket-detail/TicketSidebar.tsx` is clean and rendered exclusively by the detail page (`page.tsx:731`) with the resolved `ticket`. Recording lives there; no page.tsx edit needed.
+
+### NavPanel UI
+
+- Third flip-view alongside `NavigationView`/`AccountView`, toggled by panel-local `recentOpen` state mirroring `accountOpen` (mutually exclusive). Reuses the panel overlay, `revealStyle` stagger, hairline rows, dismiss behavior.
+- Entry affordance: compact "Recently viewed" control near the account header with a `History` lucide icon; back affordance flips back.
+- Row anatomy: ticket pill + truncated title, most-recent-first. **HTML-nesting caveat:** `TicketRefPill` renders an inner `<a>`, so the row must not be a `<Link>`/anchor — render the row as `role="button"` navigating via `router.push("/tickets/{key}")` + `onClose()`, with the pill inside.
+- Empty state: muted "No recently viewed tickets yet".
+
+### Commit order (explicit paths only, never `git add -A`)
+
+1. `feat(recently-viewed): add localStorage store and read hook` — store + hook + their tests.
+2. `feat(nav): add recently-viewed flip-view to NavPanel` — NavPanel + its test.
+3. `feat(recently-viewed): record views from side panel, detail page and refinement session` — SidePanel + TicketSidebar + refinement session page + tests.
+
+### Test plan
+
+- Store unit tests: prepend, de-dupe moves to top, cap evicts oldest, title carry-forward, malformed JSON/entries skipped without throw, custom event dispatched.
+- Hook test: re-reads on custom event and storage event.
+- NavPanel tests: Recent affordance present, flip-view opens without navigation, entries render pill + title in order, empty state, click navigates to `/tickets/{key}` and closes panel.
+- SidePanel test: mount records key + title; key change records the new ticket.
 
 ## Acceptance Criteria
 
-_(Written for header popover + local storage; adjust if the open decisions change.)_
-
-- [ ] A "Recent" control is reachable from every `(app)` page (placed in the header command bar).
-- [ ] Opening it shows the **last 10 viewed tickets**, most-recent-first, each showing at least the ticket key and title.
-- [ ] Clicking an entry navigates to that ticket (`/tickets/{key}`).
-- [ ] A ticket is recorded as "viewed" when it becomes the focused/open item in:
-  - [ ] Sprint Board side panel selection (`selectTicket`)
-  - [ ] Ticket / epic detail page (`/tickets/[key]`)
-  - [ ] Refinement session ticket view
-  - [ ] Side-panel preview of a child / linked ticket (`onSelectTicket`)
-- [ ] Re-viewing a ticket moves it to the top rather than creating a duplicate entry.
-- [ ] The list never exceeds 10 entries; the 11th view evicts the oldest.
-- [ ] The list persists across page reloads and browser restarts (localStorage).
-- [ ] Empty state is handled gracefully (e.g. "No recently viewed tickets yet") with no error.
-- [ ] A stale/invalid key in the list fails gracefully (entry is skipped or removed, no crash).
-- [ ] Tests cover: recording a view prepends + de-dupes, the cap evicts the oldest, and the popover renders + navigates correctly.
+- [x] The nav panel (the `bridge_` dropdown) exposes a "Recent" affordance, reachable from every `(app)` page.
+- [x] Activating it shows the **last 10 viewed tickets** as a popout/flip-view **without leaving the current page** (no route navigation to open the list).
+- [x] Each entry shows the **ticket pill (`TicketRefPill`) + title**, most-recent-first.
+- [x] Clicking an entry navigates to that ticket (`/tickets/{key}`) and closes the panel.
+- [x] A ticket is recorded as "viewed" when it becomes the focused/open item in:
+  - [x] Sprint Board side panel selection (`selectTicket`)
+  - [x] Ticket / epic detail page (`/tickets/[key]`)
+  - [x] Refinement session ticket view
+  - [x] Side-panel preview of a child / linked ticket (`onSelectTicket`)
+- [x] Re-viewing a ticket moves it to the top rather than creating a duplicate entry.
+- [x] The list never exceeds 10 entries; the 11th view evicts the oldest.
+- [x] The list persists across page reloads and browser restarts (localStorage), and stays in sync if multiple tabs are open (the `useLocalStorage` `storage` event already covers this).
+- [x] Empty state is handled gracefully (e.g. "No recently viewed tickets yet") with no error.
+- [x] A stale/invalid key in the list fails gracefully (entry skipped or removed, no crash).
+- [x] Visual + interaction quality matches the nav panel: staggered reveal animation, hover/focus-visible/active states, `cursor: pointer`, brand tokens, no `transition-all`, no default Tailwind blue/indigo.
+- [x] Tests cover: recording a view prepends + de-dupes, the cap evicts the oldest, the popout renders entries with pill + title, and clicking an entry navigates correctly.
 
 ## Technical Notes
 
-- **Storage:** reuse `useLocalStorage` (`src/hooks/useLocalStorage.ts`) with a key like `bridge:recently-viewed`, value `Array<{ key: string; title?: string; viewedAt: number }>`. The hook already syncs across tabs via the `storage` event and handles quota errors — re-use, don't reinvent.
-- **Recording:** add a small `useRecordTicketView()` hook (or a `recordTicketView(key, title)` helper backed by the same storage key) and call it from the view points below. Keep it side-effect-only so it can be dropped into existing callbacks without restructuring:
+- **Storage:** reuse `useLocalStorage` (`src/hooks/useLocalStorage.ts`) with key `bridge:recently-viewed`, value `Array<{ key: string; title?: string; viewedAt: number }>`. The hook already syncs across tabs via the `storage` event and handles quota errors — re-use, don't reinvent.
+- **Recording:** add a small `recordTicketView(key, title)` helper (or `useRecordTicketView()` hook) backed by the same storage key — side-effect-only so it drops into existing callbacks without restructuring. Call from:
   - `selectTicket(key)` in `src/components/sprint-board/SprintBoard.tsx` (~line 211)
-  - mount of `src/app/(app)/tickets/[key]/page.tsx` (the resolved `routeKey`)
+  - mount/load of `src/app/(app)/tickets/[key]/page.tsx` (the resolved `routeKey`)
   - the Refinement session ticket view (`src/components/refinement-session/SessionTicketView.tsx`)
   - the side-panel `onSelectTicket` callback in `src/app/(app)/tickets/[key]/page.tsx`
-- **Watch React Compiler lint rules** (no setState-in-effect) when recording on page mount — prefer recording in the existing data-load/selection callback over a bare `useEffect` that sets state.
-- **Display surface (option a):** add the "Recent" control to the header command bar (BRDG-320). If option (b) is chosen instead, add a "recently-viewed" category in `src/components/command-palette/useCommandPalette.ts` and render it as a top section — the grouped-results logic already supports section headers.
-- **Navigation:** link entries to the canonical `/tickets/{key}` route, which works from anywhere. (Sprint-board deep-link via `buildBoardUrl` is an option only if we later want to restore sprint context; not needed for v1.)
-- Capture title at record time so the popover can render without an extra fetch; fall back to showing just the key if the title is unknown.
+- **Capture the title at record time** so the popout renders without an extra fetch; fall back to showing just the pill if the title is unknown.
+- **Watch React Compiler lint rules** (no setState-in-effect): prefer recording inside the existing data-load/selection callback over a bare `useEffect` that sets state.
+- **Panel integration:** add a third view to `NavPanel.tsx` alongside `NavigationView` / `AccountView`, toggled by panel-local state the same way `accountOpen` flips the account view (`NavPanel.tsx:110`, `:171`). Render entries as hairline rows reusing the `revealStyle(open, i)` stagger and the existing row classes. This keeps the popout on the current page for free, since the panel is an overlay.
+- **Navigation:** link entries to the canonical `/tickets/{key}` route (works from anywhere) and call `onClose()` on click, matching the existing nav rows.
+- **Pill:** reuse `TicketRefPill` (`src/components/shared/TicketRefPill.tsx`) for visual consistency with description/chat pills.
 
 ## Out of Scope
 
-- Cross-device sync (only relevant if open decision #2 picks option b).
+- Cross-device / server-side sync (localStorage only).
+- Surfacing recently-viewed in the command palette or a separate header control (this story is scoped to the nav panel).
 - Recording Story Writer session opens as "ticket views" (sessions aren't always a Jira ticket); can be added later if useful.
 - Pinning / favouriting tickets, or any manual curation of the list — this is purely automatic MRU.
-- Showing rich metadata (status, assignee, scores) in the list beyond key + title.
-- Server-side analytics on what gets viewed.
+- Showing rich metadata (status, assignee, scores) in the list beyond pill + title.

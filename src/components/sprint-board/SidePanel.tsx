@@ -11,6 +11,7 @@ import { ConfirmDialog } from "@/components/shared/ConfirmDialog";
 import { useTicketDetailPage } from "@/hooks/useTicketDetailPage";
 import { useRefinementSessions } from "@/hooks/useRefinementSessions";
 import { prefetchTicketPage } from "@/lib/prefetch";
+import { recordTicketView } from "@/lib/recently-viewed-store";
 import { TicketTabContent, type TicketTab } from "@/components/ticket-detail/TicketTabContent";
 import { TicketMetaContent } from "@/components/ticket-detail/TicketMetaContent";
 import { useLocalStorage } from "@/hooks/useLocalStorage";
@@ -128,6 +129,12 @@ export function SidePanel({
     if (adjacentKeys?.prev) prefetchTicketPage(adjacentKeys.prev);
     if (adjacentKeys?.next) prefetchTicketPage(adjacentKeys.next);
   }, [adjacentKeys]);
+
+  // This panel opening IS the "ticket viewed" moment, both for board selection
+  // and for child/linked previews on the ticket detail page (BRDG-330).
+  useEffect(() => {
+    recordTicketView(ticket.key, ticket.title);
+  }, [ticket.key, ticket.title]);
 
   // -- Panel width / resize --
   const widthKey = storageKey ?? PANEL_STORAGE_KEY;

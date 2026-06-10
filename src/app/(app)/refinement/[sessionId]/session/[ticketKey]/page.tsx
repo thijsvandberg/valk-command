@@ -16,6 +16,7 @@ import { SubtasksPaneResizable } from "@/components/refinement-session/SubtasksP
 import { SubtasksSection } from "@/components/ticket-detail/SubtasksSection";
 import { TicketChatPane } from "@/components/shared/TicketChatPane";
 import { tickets, apiFetch, jira as jiraApi } from "@/lib/api-client";
+import { recordTicketView } from "@/lib/recently-viewed-store";
 import { mutate as globalMutate } from "swr";
 import type { TicketReadiness, IssueType, JiraStatus } from "@/types/ticket";
 import { useLocalStorage } from "@/hooks/useLocalStorage";
@@ -159,6 +160,12 @@ export default function RefinementSessionTicketPage({
   const isLastTicket = currentIndex >= queue.length - 1;
 
   const { data: ticketData, mutate } = useTicketDetail(currentKey);
+
+  // Entering a ticket in the session counts as viewing it (BRDG-330).
+  const ticketTitle = ticketData?.title;
+  useEffect(() => {
+    if (currentKey && ticketTitle !== undefined) recordTicketView(currentKey, ticketTitle);
+  }, [currentKey, ticketTitle]);
 
   // Hover-card data for the header ticket pill, resolved from the shared board
   // list so the header gets the same info tooltip as rows on the sprint board.
