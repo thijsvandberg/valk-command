@@ -1,6 +1,6 @@
 # BRDG-329: Reflect open detail panel (and active tab) in the URL
 
-**Status:** To Do
+**Status:** Done
 **Priority:** Medium
 
 ## Description
@@ -72,10 +72,10 @@ Investigated during refinement. Behavior today:
 - [x] Closing the panel removes the child from the URL.
 - [x] The same behavior applies when a subtask is opened in the panel from the ticket detail view.
 - [x] The active tab (Child issues / Content / History) is reflected in the URL (e.g. `?tab=history`) and restored on refresh.
-- [ ] Browser back/forward navigates panel/tab state intuitively (back closes the panel / returns to the previous tab rather than leaving the page).
+- [x] Browser back/forward navigates panel/tab state intuitively (back closes the panel / returns to the previous tab rather than leaving the page).
 - [x] An invalid or stale key/tab in the URL falls back gracefully (panel closed / default tab) without errors.
-- [ ] Sharing the URL reproduces the same view for another session.
-- [ ] Sprint Board and Refinement behavior is unchanged.
+- [x] Sharing the URL reproduces the same view for another session.
+- [x] Sprint Board and Refinement behavior is unchanged.
 - [x] Tests cover: opening a child updates the URL, deep-linking a `?ticket=` URL opens the panel on load, and the active tab round-trips through the URL.
 
 ## Technical Notes
