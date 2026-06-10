@@ -45,10 +45,10 @@ const fetchSessions = () =>
   apiFetch<ActiveSession[]>(SESSIONS_KEY).then((data) => data.map(sessionToSessionTicket));
 
 // Inline signals shown on a row here. Story Points and the epic chip stay (read-only,
-// see the omitted edit handlers below); Business Value is intentionally not shown on this
-// view (BRDG-325).
+// see the omitted edit handlers below); Business Value and the assignee are intentionally
+// not shown on this view (BRDG-325).
 const ROW_TAGS = new Set<InlineTagId>([
-  "flag", "refinement", "quality", "notes", "poReadiness", "editState", "storyPoints", "epic", "assignee",
+  "flag", "refinement", "quality", "notes", "poReadiness", "editState", "storyPoints", "epic",
 ]);
 
 export default function StoryWriterLandingPage() {
