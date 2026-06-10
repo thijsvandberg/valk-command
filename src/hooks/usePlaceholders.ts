@@ -73,5 +73,24 @@ export function usePlaceholders(enabled: boolean, opts: UsePlaceholdersOptions =
     [mutate],
   );
 
-  return { placeholders, mutate, create, update, remove, promote };
+  // Reorder a sprint group's placeholders (BRDG-328). Patches local orderIndex
+  // optimistically so the dragged row settles in place, then persists.
+  const reorder = useCallback(
+    async (orderedIds: string[]) => {
+      const rank = new Map(orderedIds.map((id, i) => [id, i]));
+      mutate(
+        (cur) => (cur ?? []).map((p) => (rank.has(p.id) ? { ...p, orderIndex: rank.get(p.id)! } : p)),
+        { revalidate: false },
+      );
+      try {
+        await placeholdersApi.reorder(orderedIds);
+      } catch (err) {
+        mutate();
+        throw err;
+      }
+    },
+    [mutate],
+  );
+
+  return { placeholders, mutate, create, update, remove, promote, reorder };
 }

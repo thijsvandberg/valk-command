@@ -295,6 +295,10 @@ export const placeholderTicket = sqliteTable("placeholder_ticket", {
   status: text("status", { enum: ["active", "promoted"] }).notNull().default("active"),
   // The Jira key created on promotion; null while active.
   promotedToKey: text("promoted_to_key"),
+  // Manual ordering within a sprint group (BRDG-328). Placeholders have no Jira
+  // rank, so they render as their own ordered block (below the real, rank-ordered
+  // rows) and are reordered/moved by drag in the epic view.
+  orderIndex: integer("order_index").notNull().default(0),
   createdAt: text("created_at").notNull().default(sql`(datetime('now'))`),
   updatedAt: text("updated_at").notNull().default(sql`(datetime('now'))`),
 }, (table) => [

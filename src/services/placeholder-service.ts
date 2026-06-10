@@ -1,7 +1,7 @@
 import { db } from "@/db";
 import { placeholderTicket, ticketLocalEdit } from "@/db/schema";
 import type { PlaceholderTicketRow } from "@/db/schema";
-import { eq, and, desc } from "drizzle-orm";
+import { eq, and, asc, isNull } from "drizzle-orm";
 import { randomUUID } from "crypto";
 import { cache } from "@/lib/cache";
 import { logActivity } from "@/lib/activity-logger";
@@ -48,6 +48,7 @@ export interface UpdatePlaceholderInput {
   epicKey?: string | null;
   businessValue?: number | null;
   guestimation?: number | null;
+  orderIndex?: number;
 }
 
 function invalidateTicketCaches(): void {
@@ -102,7 +103,21 @@ export async function listPlaceholders(filter: PlaceholderListFilter = {}): Prom
     .select()
     .from(placeholderTicket)
     .where(and(...conditions))
-    .orderBy(desc(placeholderTicket.createdAt));
+    .orderBy(asc(placeholderTicket.orderIndex), asc(placeholderTicket.createdAt));
+}
+
+// Next order slot at the end of a sprint group's active placeholders (BRDG-328).
+async function nextOrderIndex(sprintId: string | null): Promise<number> {
+  const rows = await db
+    .select({ o: placeholderTicket.orderIndex })
+    .from(placeholderTicket)
+    .where(
+      and(
+        eq(placeholderTicket.status, "active"),
+        sprintId === null ? isNull(placeholderTicket.sprintId) : eq(placeholderTicket.sprintId, sprintId),
+      ),
+    );
+  return rows.reduce((m, r) => Math.max(m, r.o ?? 0), -1) + 1;
 }
 
 export async function createPlaceholder(input: CreatePlaceholderInput): Promise<PlaceholderTicketRow> {
@@ -132,6 +147,7 @@ export async function createPlaceholder(input: CreatePlaceholderInput): Promise<
     businessValue,
     guestimation,
     status: "active",
+    orderIndex: await nextOrderIndex(sprintId),
   });
 
   invalidateTicketCaches();
@@ -180,6 +196,17 @@ export async function updatePlaceholder(id: string, input: UpdatePlaceholderInpu
   if (input.sprintId !== undefined) {
     updates.sprintId = input.sprintId;
     updates.sprintName = await resolveSprintName(input.sprintId);
+    // Moving to a different sprint group appends the placeholder to the end of that
+    // group's order, unless the caller is also setting an explicit orderIndex.
+    if (input.sprintId !== existing.sprintId && input.orderIndex === undefined) {
+      updates.orderIndex = await nextOrderIndex(input.sprintId);
+    }
+  }
+  if (input.orderIndex !== undefined) {
+    if (!Number.isInteger(input.orderIndex) || input.orderIndex < 0) {
+      throw new ValidationError("orderIndex must be a non-negative integer");
+    }
+    updates.orderIndex = input.orderIndex;
   }
   if (input.epicKey !== undefined) {
     updates.epicKey = input.epicKey;
@@ -211,6 +238,25 @@ export async function deletePlaceholder(id: string): Promise<void> {
     scope: id,
     summary: `Deleted placeholder: ${existing.title}`,
   });
+}
+
+/**
+ * Rewrites the `orderIndex` of the given placeholders to match the supplied order
+ * (BRDG-328). Used by drag-to-reorder in the epic view; callers pass the ids of a
+ * single sprint group's placeholders in their new top-to-bottom order.
+ */
+export async function reorderPlaceholders(orderedIds: string[]): Promise<void> {
+  if (!Array.isArray(orderedIds) || orderedIds.some((id) => typeof id !== "string")) {
+    throw new ValidationError("orderedIds must be an array of placeholder ids");
+  }
+  const now = new Date().toISOString();
+  for (let i = 0; i < orderedIds.length; i++) {
+    await db
+      .update(placeholderTicket)
+      .set({ orderIndex: i, updatedAt: now })
+      .where(eq(placeholderTicket.id, orderedIds[i]));
+  }
+  invalidateTicketCaches();
 }
 
 export interface PromotePlaceholderResult {

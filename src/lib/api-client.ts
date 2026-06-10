@@ -427,6 +427,9 @@ export const placeholders = {
 
   promote: (id: string, signal?: AbortSignal) =>
     apiFetch<{ key: string }>(`/api/placeholders/${enc(id)}/promote`, { method: "POST", signal }),
+
+  reorder: (orderedIds: string[], signal?: AbortSignal) =>
+    apiFetch<{ ok: true }>("/api/placeholders/reorder", { method: "POST", body: { orderedIds }, signal }),
 };
 
 // ---------------------------------------------------------------------------

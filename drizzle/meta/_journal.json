@@ -526,6 +526,13 @@
       "when": 1781042578871,
       "tag": "0074_sweet_annihilus",
       "breakpoints": true
+    },
+    {
+      "idx": 75,
+      "version": "6",
+      "when": 1781081341510,
+      "tag": "0075_fair_talisman",
+      "breakpoints": true
     }
   ]
 }

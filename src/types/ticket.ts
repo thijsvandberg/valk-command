@@ -293,6 +293,8 @@ export interface PlaceholderTicket {
   guestimation: number | null;
   status: "active" | "promoted";
   promotedToKey: string | null;
+  // Manual order within a sprint group (BRDG-328); placeholders have no Jira rank.
+  orderIndex: number;
   createdAt: string;
   updatedAt: string;
 }

@@ -1,0 +1,1 @@
+ALTER TABLE `placeholder_ticket` ADD `order_index` integer DEFAULT 0 NOT NULL;
