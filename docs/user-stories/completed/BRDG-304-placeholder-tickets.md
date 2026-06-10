@@ -227,5 +227,16 @@ cleanly; routing to a separate component contains all Jira-key assumptions. Plac
 - **Polished row.** The row's actions are spelled out exactly like the subtask rows:
   **Convert to ticket / Edit / Delete** (Delete reddens on hover), replacing the bare icons.
 - **Convert icon** is `SquareArrowUpRight` (was the AI `Sparkles`).
-- A dev exploration page (`/dev/exploration/placeholder-row`) compares convert-icon candidates.
+
+### Post-review refinement, pass 2 (PO feedback, 2026-06-10)
+
+- **Row reads like a real ticket row.** Dropped the big "Placeholder" badge; the row now
+  leads with the ticket pill format adapted for a placeholder: a **dashed icon**
+  (`SquareDashed`) + a small slate **"Placeholder" pill** (in place of the issue-type icon +
+  status pill).
+- **SP/BV follow the story-row logic.** A set guess/BV renders inline; an empty one is hidden
+  and only **reveals on row hover** (`HoverRevealSlot`), exactly like a real story row.
+- **Actions overlay the content on hover** (gradient fade), like the subtask rows; the SP/BV
+  cluster stays reachable on top (`z-20`).
+- The dev exploration preview page was removed once the direction was chosen.
 ```
