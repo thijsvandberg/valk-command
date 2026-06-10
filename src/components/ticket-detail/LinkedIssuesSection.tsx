@@ -24,6 +24,11 @@ interface LinkedIssuesSectionProps {
   issues: TicketDetail["linkedIssues"];
   ticketKey: string;
   onMutate: () => void;
+  /** Opens a linked issue in the SidePanel (or navigates) when a row is clicked. Mirrors
+      Subtasks/Epic-children. Omitted -> rows are not clickable (BRDG-332). */
+  onSelectTicket?: (key: string) => void;
+  /** Key of the ticket currently open in the panel, used to highlight the active row. */
+  activeKey?: string;
 }
 
 function DeleteButton({ onClick }: { onClick: () => void }) {
@@ -41,7 +46,7 @@ function DeleteButton({ onClick }: { onClick: () => void }) {
   );
 }
 
-export function LinkedIssuesSection({ issues, ticketKey, onMutate }: LinkedIssuesSectionProps) {
+export function LinkedIssuesSection({ issues, ticketKey, onMutate, onSelectTicket, activeKey }: LinkedIssuesSectionProps) {
   const { linkTypes } = useLinkTypes();
   const [showLinkDialog, setShowLinkDialog] = useState(false);
   const [linkDialogDefaults, setLinkDialogDefaults] = useState<{ initialQuery?: string; relation?: string }>({});
@@ -683,6 +688,8 @@ export function LinkedIssuesSection({ issues, ticketKey, onMutate }: LinkedIssue
                       item={item}
                       isLast={idx === items.length - 1}
                       isPending={isPending}
+                      onSelect={!isPending ? onSelectTicket : undefined}
+                      isActive={item.key === activeKey}
                       showTypeIcon
                       showKey
                       showStatus

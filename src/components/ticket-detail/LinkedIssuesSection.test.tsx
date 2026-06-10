@@ -308,4 +308,47 @@ describe("LinkedIssuesSection", () => {
       expect(input).toHaveValue("");
     });
   });
+
+  // BRDG-332: linked-issue rows open in the SidePanel like subtasks/epic children.
+  describe("row selection (BRDG-332)", () => {
+    it("calls onSelectTicket with the row key when a linked-issue row is clicked", () => {
+      const onSelectTicket = vi.fn();
+      render(<LinkedIssuesSection issues={SAMPLE_ISSUES} ticketKey="VPL-1" onMutate={vi.fn()} onSelectTicket={onSelectTicket} />);
+      fireEvent.click(screen.getByText("Existing linked issue"));
+      expect(onSelectTicket).toHaveBeenCalledWith("VPL-100", expect.anything());
+    });
+
+    it("opens a new tab and does not select on Cmd/Ctrl-click", () => {
+      const onSelectTicket = vi.fn();
+      const openSpy = vi.spyOn(window, "open").mockImplementation(() => null);
+      render(<LinkedIssuesSection issues={SAMPLE_ISSUES} ticketKey="VPL-1" onMutate={vi.fn()} onSelectTicket={onSelectTicket} />);
+      fireEvent.click(screen.getByText("Existing linked issue"), { ctrlKey: true });
+      expect(onSelectTicket).not.toHaveBeenCalled();
+      expect(openSpy).toHaveBeenCalledWith("/tickets/VPL-100", "_blank");
+      openSpy.mockRestore();
+    });
+
+    it("does not select the issue when the Delete action is clicked", async () => {
+      mockDeleteLink.mockResolvedValue({});
+      const onSelectTicket = vi.fn();
+      render(<LinkedIssuesSection issues={SAMPLE_ISSUES} ticketKey="VPL-1" onMutate={vi.fn()} onSelectTicket={onSelectTicket} />);
+      fireEvent.click(screen.getByTitle("Remove link"));
+      expect(onSelectTicket).not.toHaveBeenCalled();
+      await waitFor(() => expect(mockDeleteLink).toHaveBeenCalled());
+    });
+
+    it("does not make pending rows clickable", () => {
+      const onSelectTicket = vi.fn();
+      const pending: LinkedIssue = { ...SAMPLE_ISSUES[0], key: "VPL-101", title: "Pending issue", jiraLinkId: "pending-123" };
+      render(<LinkedIssuesSection issues={[pending]} ticketKey="VPL-1" onMutate={vi.fn()} onSelectTicket={onSelectTicket} />);
+      fireEvent.click(screen.getByText("Pending issue"));
+      expect(onSelectTicket).not.toHaveBeenCalled();
+    });
+
+    it("highlights the row matching activeKey", () => {
+      render(<LinkedIssuesSection issues={SAMPLE_ISSUES} ticketKey="VPL-1" onMutate={vi.fn()} onSelectTicket={vi.fn()} activeKey="VPL-100" />);
+      const row = screen.getByText("Existing linked issue").closest("div");
+      expect(row?.className).toContain("brand-600");
+    });
+  });
 });

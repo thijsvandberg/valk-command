@@ -333,7 +333,7 @@ export function TicketTabContent({
               {!isEpic && (
                 <>
                   {detail && <SubtasksSection subtasks={detail.subtasks} ticketKey={ticketKey} onMutate={onMutate} onSelectTicket={onSelectTicket} />}
-                  {detail && <LinkedIssuesSection issues={detail.linkedIssues} ticketKey={ticketKey} onMutate={onMutate} />}
+                  {detail && <LinkedIssuesSection issues={detail.linkedIssues} ticketKey={ticketKey} onMutate={onMutate} onSelectTicket={onSelectTicket} activeKey={ticketKey} />}
                 </>
               )}
               {/* Stacked meta (panel only) sits above the comments so the PO
