@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, use, useEffect, useRef, useCallback, useMemo } from "react";
+import { useSearchParams } from "next/navigation";
 import { usePageTitle } from "@/hooks/usePageTitle";
 import Link from "next/link";
 import {
@@ -75,6 +76,7 @@ import { useTicketHoverData } from "@/hooks/useTicketHoverData";
 import type { Ticket } from "@/types/ticket";
 import { saveTicketMetadata } from "@/components/sprint-board/sprint-board-utils";
 import { useRefinementSessions } from "@/hooks/useRefinementSessions";
+import { buildTicketDetailUrl, defaultTicketTab, resolveTicketTab } from "@/lib/ticket-detail-url";
 
 
 const TICKET_CHAT_STORAGE_KEY = "ticket-chat-width";
@@ -100,9 +102,17 @@ export default function TicketDetailPage({
   const key = h.apiData?.key ?? routeKey;
   useEffect(() => {
     if (routeKey.startsWith("DRAFT-") && key !== routeKey) {
-      window.history.replaceState(null, "", `/tickets/${encodeURIComponent(key)}`);
+      // Keep ?ticket=/?tab= view state alive across the silent key swap.
+      window.history.replaceState(null, "", `/tickets/${encodeURIComponent(key)}${window.location.search}`);
     }
   }, [routeKey, key]);
+  // URL is the source of truth for the active tab and the open child panel
+  // (BRDG-329): refresh, share and back/forward reproduce the exact view.
+  // Both are derived during render (no state, no effects), which also keeps
+  // the React Compiler's no-setState-in-effect rule happy. useSearchParams()
+  // stays in sync with history.pushState, so no popstate listener is needed
+  // (same mechanism the sprint board relies on, BRDG-270).
+  const searchParams = useSearchParams();
   const { sessions: refinementSessions } = useRefinementSessions();
   // A ticket already in an unfinished refinement should not offer the shortcut;
   // completed sessions are historical and don't block re-adding it later.
@@ -166,12 +176,32 @@ export default function TicketDetailPage({
       document.removeEventListener("mouseup", handleMouseUp);
     };
   }, [isChatResizing]);
-  const [activeTab, setActiveTab] = useState<TicketTab>("content");
+  // Epics lead with their child-issue breakdown; everything else lands on
+  // Content. An invalid, stale, or type-unavailable ?tab= degrades to that
+  // default; the default itself is kept out of the URL (canonical bare link).
+  const activeTab = resolveTicketTab(searchParams.get("tab"), h.ticket?.type ?? "");
   const [historyResetKey, setHistoryResetKey] = useState(0);
   const [openDraftDiff, setOpenDraftDiff] = useState(false);
   const [searchOpen, setSearchOpen] = useState(false);
   const [sidebarCollapsed, setSidebarCollapsed] = useLocalStorage(SIDEBAR_COLLAPSED_KEY, false);
-  const [previewTicketKey, setPreviewTicketKey] = useState<string | null>(null);
+  // The open child panel is URL-driven (?ticket=). An unknown or stale key
+  // degrades gracefully: previewTicket resolves to null and no panel renders.
+  const previewTicketKey = searchParams.get("ticket") || null;
+  // Open/close the panel and switch tabs by writing to the URL with pushState
+  // rather than router.push: a route navigation would remount this heavy page,
+  // while pushState keeps it mounted and back/forward still walk the history
+  // (mirrors selectTicket on the sprint board). Tab changes preserve the open
+  // panel and vice versa; an invalid ?tab= is dropped instead of carried along.
+  const ticketType = h.ticket?.type ?? "";
+  const selectTicket = useCallback((next: string | null) => {
+    const tab = searchParams.get("tab");
+    const keepTab = tab && resolveTicketTab(tab, ticketType) === tab ? tab : null;
+    window.history.pushState(null, "", buildTicketDetailUrl(key, { ticket: next, tab: keepTab }));
+  }, [key, searchParams, ticketType]);
+  const selectTab = useCallback((tab: TicketTab) => {
+    const next = tab === defaultTicketTab(ticketType) ? null : tab;
+    window.history.pushState(null, "", buildTicketDetailUrl(key, { ticket: searchParams.get("ticket"), tab: next }));
+  }, [key, searchParams, ticketType]);
   // Build a lightweight Ticket from the child row the page already has so the panel
   // opens instantly and switching between children never blanks out (no close-then-open).
   // The panel re-derives full content via its own useTicketDetailPage; this only needs to
@@ -236,16 +266,6 @@ export default function TicketDetailPage({
   const isDraftOnly = h.ticket?.editState === "draft";
   const showPushButton = hasLocalEdits && !h.showConflictWarning && !isEditing && !isDraftOnly;
 
-  // Epics lead with their child-issue breakdown; everything else lands on Content.
-  // Resolve once per ticket key (after the async load fixes the type) via the
-  // adjust-state-during-render pattern so user tab clicks within a ticket are never
-  // clobbered, but a ticket swap re-defaults.
-  const [tabDefaultedKey, setTabDefaultedKey] = useState<string | null>(null);
-  if (h.ticket && h.ticket.key !== tabDefaultedKey) {
-    setTabDefaultedKey(h.ticket.key);
-    setActiveTab(h.ticket.type === "epic" ? "children" : "content");
-  }
-
   const handleTabChange = (tab: TicketTab) => {
     if (tab === "history" && activeTab === "history") {
       setHistoryResetKey((k) => k + 1);
@@ -257,13 +277,13 @@ export default function TicketDetailPage({
     if (tab === "history") {
       setOpenDraftDiff(false);
     }
-    setActiveTab(tab);
+    selectTab(tab);
   };
 
   // "Local edits" click: jump to History and auto-open the draft-vs-Jira diff.
   const handleViewDiff = () => {
     setOpenDraftDiff(true);
-    setActiveTab("history");
+    selectTab("history");
   };
 
   if (h.ticketLoading) {
@@ -655,7 +675,7 @@ export default function TicketDetailPage({
           onPushToJira={h.handlePushToJira}
           onMutate={h.mutateTicket}
           onConflictResolved={h.handleConflictResolved}
-          onSelectTicket={setPreviewTicketKey}
+          onSelectTicket={selectTicket}
           reviewCount={h.reviewCount}
           versionCount={h.versionCount}
           historyResetKey={historyResetKey}
@@ -696,10 +716,10 @@ export default function TicketDetailPage({
             onPoStatusChange={(v) => { void saveTicketMetadata(previewTicketKey, { poStatus: v }); }}
             onReadinessChange={(v) => { void saveTicketMetadata(previewTicketKey, { readiness: v }); h.mutateTicket(); }}
             onNotesChange={(notes) => { void saveTicketMetadata(previewTicketKey, { poNotes: notes }); }}
-            onClose={() => setPreviewTicketKey(null)}
+            onClose={() => selectTicket(null)}
             onShowToast={() => {}}
             onMutate={h.mutateTicket}
-            onSelectTicket={setPreviewTicketKey}
+            onSelectTicket={selectTicket}
             adjacentKeys={previewAdjacentKeys}
             defaultWidth={DEFAULT_SIDEBAR_WIDTH}
             storageKey={SIDEBAR_WIDTH_KEY}
@@ -707,7 +727,7 @@ export default function TicketDetailPage({
         </div>
       ) : (
         <div key="epic-meta" className="sticky top-0 min-h-full self-stretch overflow-visible" style={{ animation: "fadeIn 0.15s ease" }}>
-          <TicketSidebar ticket={ticket} detail={h.detail} reviewData={h.reviewData} collapsed={sidebarCollapsed} onCollapsedChange={setSidebarCollapsed} onNavigateToReview={() => setActiveTab("review")} onNavigateToDev={() => setActiveTab("development")} onReadinessChange={h.handleReadinessChange} />
+          <TicketSidebar ticket={ticket} detail={h.detail} reviewData={h.reviewData} collapsed={sidebarCollapsed} onCollapsedChange={setSidebarCollapsed} onNavigateToReview={() => selectTab("review")} onNavigateToDev={() => selectTab("development")} onReadinessChange={h.handleReadinessChange} />
         </div>
       )}
       </div>

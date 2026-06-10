@@ -86,6 +86,17 @@ vi.mock("@/hooks/useTicketDetailPage", () => ({
   useTicketDetailPage: () => mockHook,
 }));
 
+// The page derives the open child panel and active tab from useSearchParams()
+// and writes them back via window.history.pushState (BRDG-329). Reads are
+// simulated by seeding urlState.search before render (deep-link style); writes
+// are asserted on a pushState spy — same approach as the sprint board page test.
+const { urlState } = vi.hoisted(() => ({
+  urlState: { search: new URLSearchParams() },
+}));
+vi.mock("next/navigation", () => ({
+  useSearchParams: () => urlState.search,
+}));
+
 let mockSessions: Array<{ ticketKeys: string[]; status: string }> = [];
 vi.mock("@/hooks/useRefinementSessions", () => ({
   useRefinementSessions: () => ({ sessions: mockSessions, mutate: vi.fn(), isLoading: false }),
@@ -116,12 +127,14 @@ vi.mock("@/hooks/useTicketHoverData", () => ({
   useTicketHoverData: () => hoverDataSpy,
 }));
 vi.mock("@/components/ticket-detail/TicketTabContent", () => ({
-  // Expose a button that drives the child-select callback so the preview side
-  // panel flow can be exercised from the page level.
-  TicketTabContent: ({ onSelectTicket, activeTab }: { onSelectTicket: (key: string) => void; activeTab: string }) => (
+  // Expose buttons that drive the child-select and tab-change callbacks so the
+  // preview side panel and URL-tab flows can be exercised from the page level.
+  TicketTabContent: ({ onSelectTicket, activeTab, onActiveTabChange }: { onSelectTicket: (key: string) => void; activeTab: string; onActiveTabChange: (tab: string) => void }) => (
     <div data-testid="tab-content">
       <span data-testid="active-tab">{activeTab}</span>
       <button onClick={() => onSelectTicket("VPL-200")}>select-child</button>
+      <button onClick={() => onActiveTabChange("history")}>select-tab-history</button>
+      <button onClick={() => onActiveTabChange("content")}>select-tab-content</button>
     </div>
   ),
 }));
@@ -180,6 +193,12 @@ vi.mock("@/components/sprint-board/SidePanel", () => ({
 vi.mock("@/components/shared/TicketChatPane", () => ({
   TicketChatPane: () => null,
 }));
+
+// Every test starts from a bare URL; tests that need a deep link seed
+// urlState.search themselves before rendering.
+beforeEach(() => {
+  urlState.search = new URLSearchParams();
+});
 
 // use(params) suspends on first render; flushing microtasks inside act lets
 // the resolved params promise commit before we query the DOM.
@@ -276,29 +295,32 @@ describe("TicketDetailPage header - Add to refinement button", () => {
 });
 
 describe("TicketDetailPage - child preview side panel", () => {
+  // The panel is URL-driven since BRDG-329: selecting a child pushes ?ticket=
+  // and the panel renders from the URL. Open states are simulated by seeding
+  // the search params (deep-link style); selections assert the pushState spy.
+  let pushStateSpy: ReturnType<typeof vi.spyOn>;
+
   beforeEach(() => {
     resetHook(null);
     mockSessions = [];
+    pushStateSpy = vi.spyOn(window.history, "pushState").mockImplementation(() => {});
   });
 
   afterEach(() => {
     cleanup();
+    pushStateSpy.mockRestore();
   });
 
-  it("opens the sprint-board SidePanel when a child issue is selected", async () => {
+  it("restores the SidePanel from a ?ticket= deep link on load", async () => {
+    urlState.search = new URLSearchParams("ticket=VPL-200");
     await renderPage();
-    expect(screen.queryByTestId("side-panel")).not.toBeInTheDocument();
-    fireEvent.click(screen.getByText("select-child"));
     // SidePanel is a dynamic() import, so it resolves on a later tick.
     expect(await screen.findByTestId("side-panel")).toBeInTheDocument();
     expect(screen.getByTestId("side-panel-key")).toHaveTextContent("VPL-200");
   });
 
-  it("closes the SidePanel via onClose", async () => {
+  it("does not render the panel without ?ticket= in the URL", async () => {
     await renderPage();
-    fireEvent.click(screen.getByText("select-child"));
-    expect(await screen.findByTestId("side-panel")).toBeInTheDocument();
-    fireEvent.click(screen.getByText("close-panel"));
     expect(screen.queryByTestId("side-panel")).not.toBeInTheDocument();
   });
 
@@ -315,8 +337,8 @@ describe("TicketDetailPage - child preview side panel", () => {
         ],
       },
     });
+    urlState.search = new URLSearchParams("ticket=VPL-200");
     await renderPage();
-    fireEvent.click(screen.getByText("select-child"));
     expect(await screen.findByTestId("side-panel")).toBeInTheDocument();
     expect(screen.getByTestId("side-panel-key")).toHaveTextContent("VPL-200");
     // The fetch fallback must NOT be engaged for a child already present in the list.
@@ -327,8 +349,8 @@ describe("TicketDetailPage - child preview side panel", () => {
     // The panel inherits the sidebar's persisted width + storage key so the swap
     // from meta sidebar to child panel keeps the same right-column footprint,
     // leaving the content to its left unmoved (no collapse-then-expand jank).
+    urlState.search = new URLSearchParams("ticket=VPL-200");
     await renderPage();
-    fireEvent.click(screen.getByText("select-child"));
     expect(await screen.findByTestId("side-panel")).toBeInTheDocument();
     expect(screen.getByTestId("side-panel-storage-key")).toHaveTextContent("ticket-sidebar-width");
     expect(screen.getByTestId("side-panel-default-width")).toHaveTextContent("420");
@@ -339,8 +361,8 @@ describe("TicketDetailPage - child preview side panel", () => {
       ticket: { ...baseTicket, type: "epic" },
       detail: { epicChildren: [{ key: "VPL-199" }, { key: "VPL-200" }, { key: "VPL-201" }] },
     });
+    urlState.search = new URLSearchParams("ticket=VPL-200");
     await renderPage();
-    fireEvent.click(screen.getByText("select-child"));
     expect(await screen.findByTestId("side-panel-adjacent")).toHaveTextContent(
       JSON.stringify({ prev: "VPL-199", next: "VPL-201" }),
     );
@@ -351,11 +373,95 @@ describe("TicketDetailPage - child preview side panel", () => {
       ticket: { ...baseTicket, type: "story" },
       detail: { subtasks: [{ key: "VPL-200" }, { key: "VPL-201" }] },
     });
+    urlState.search = new URLSearchParams("ticket=VPL-200");
     await renderPage();
-    fireEvent.click(screen.getByText("select-child"));
     expect(await screen.findByTestId("side-panel-adjacent")).toHaveTextContent(
       JSON.stringify({ prev: null, next: "VPL-201" }),
     );
+  });
+});
+
+// BRDG-329: the open child panel and the active tab live in the URL.
+describe("TicketDetailPage - URL <-> panel/tab sync (BRDG-329)", () => {
+  let pushStateSpy: ReturnType<typeof vi.spyOn>;
+
+  beforeEach(() => {
+    resetHook(null);
+    mockSessions = [];
+    pushStateSpy = vi.spyOn(window.history, "pushState").mockImplementation(() => {});
+  });
+
+  afterEach(() => {
+    cleanup();
+    pushStateSpy.mockRestore();
+  });
+
+  it("writes ?ticket= to the URL when a child is selected", async () => {
+    await renderPage();
+    fireEvent.click(screen.getByText("select-child"));
+    expect(pushStateSpy).toHaveBeenCalledWith(null, "", "/tickets/VPL-100?ticket=VPL-200");
+  });
+
+  it("drops ?ticket= from the URL when the panel closes", async () => {
+    urlState.search = new URLSearchParams("ticket=VPL-200");
+    await renderPage();
+    fireEvent.click(await screen.findByText("close-panel"));
+    expect(pushStateSpy).toHaveBeenCalledWith(null, "", "/tickets/VPL-100");
+  });
+
+  it("preserves a valid ?tab= when opening a child", async () => {
+    urlState.search = new URLSearchParams("tab=history");
+    await renderPage();
+    fireEvent.click(screen.getByText("select-child"));
+    expect(pushStateSpy).toHaveBeenCalledWith(null, "", "/tickets/VPL-100?ticket=VPL-200&tab=history");
+  });
+
+  it("drops an invalid ?tab= instead of carrying it along when opening a child", async () => {
+    urlState.search = new URLSearchParams("tab=bogus");
+    await renderPage();
+    fireEvent.click(screen.getByText("select-child"));
+    expect(pushStateSpy).toHaveBeenCalledWith(null, "", "/tickets/VPL-100?ticket=VPL-200");
+  });
+
+  it("writes ?tab= to the URL when switching to a non-default tab", async () => {
+    await renderPage();
+    fireEvent.click(screen.getByText("select-tab-history"));
+    expect(pushStateSpy).toHaveBeenCalledWith(null, "", "/tickets/VPL-100?tab=history");
+  });
+
+  it("omits the default tab from the URL when switching back", async () => {
+    urlState.search = new URLSearchParams("tab=history");
+    await renderPage();
+    fireEvent.click(screen.getByText("select-tab-content"));
+    expect(pushStateSpy).toHaveBeenCalledWith(null, "", "/tickets/VPL-100");
+  });
+
+  it("keeps the open panel when switching tabs", async () => {
+    urlState.search = new URLSearchParams("ticket=VPL-200");
+    await renderPage();
+    fireEvent.click(screen.getByText("select-tab-history"));
+    expect(pushStateSpy).toHaveBeenCalledWith(null, "", "/tickets/VPL-100?ticket=VPL-200&tab=history");
+  });
+
+  it("restores the active tab from ?tab= on load", async () => {
+    resetHook(null, { ticket: { ...baseTicket, type: "story" } });
+    urlState.search = new URLSearchParams("tab=history");
+    await renderPage();
+    expect(screen.getByTestId("active-tab")).toHaveTextContent("history");
+  });
+
+  it("falls back to the default tab for an invalid ?tab=", async () => {
+    resetHook(null, { ticket: { ...baseTicket, type: "story" } });
+    urlState.search = new URLSearchParams("tab=bogus");
+    await renderPage();
+    expect(screen.getByTestId("active-tab")).toHaveTextContent("content");
+  });
+
+  it("falls back when ?tab= names a tab the ticket type does not have", async () => {
+    resetHook(null, { ticket: { ...baseTicket, type: "epic" } });
+    urlState.search = new URLSearchParams("tab=development");
+    await renderPage();
+    expect(screen.getByTestId("active-tab")).toHaveTextContent("children");
   });
 });
 
@@ -392,6 +498,20 @@ describe("TicketDetailPage - finalized draft key swap", () => {
   afterEach(() => {
     cleanup();
     replaceStateSpy.mockRestore();
+    // Tests in this block may move the real jsdom URL; park it back on a bare path.
+    window.history.replaceState(null, "", "/");
+  });
+
+  it("preserves ?ticket= and ?tab= view state across the draft key swap", async () => {
+    // The swap reads window.location.search, so seed the real jsdom URL.
+    window.history.replaceState(null, "", "/tickets/DRAFT-35f135df?ticket=VPL-200&tab=history");
+    replaceStateSpy.mockClear();
+    resetHook(null, {
+      ticket: { ...baseTicket, key: "VPL-46190" },
+      apiData: { key: "VPL-46190", title: baseTicket.title },
+    });
+    await renderPage("DRAFT-35f135df");
+    expect(replaceStateSpy).toHaveBeenCalledWith(null, "", "/tickets/VPL-46190?ticket=VPL-200&tab=history");
   });
 
   it("swaps the URL to the real Jira key when a finalized DRAFT resolves", async () => {
