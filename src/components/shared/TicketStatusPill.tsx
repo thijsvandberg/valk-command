@@ -1012,13 +1012,16 @@ export function TicketStatusPill({
     >
       {hoverCardEl}
 
-      {/* Quiet, in-place copy confirmation (BRDG-327). Sits above the chip without
-          shifting its layout and fades on its own — no global corner toast. */}
+      {/* Quiet, in-place copy confirmation (BRDG-327). Briefly overlays the chip
+          itself with a "Copied" state and fades on its own — no global corner
+          toast. Overlaying (rather than a floating badge) keeps it on the pill
+          regardless of viewport position and never collides with the hover card
+          that opens below the pill. */}
       {copyConfirmed && (
         <span
           aria-live="polite"
           style={{ animation: "fadeIn 150ms ease-out both" }}
-          className="pointer-events-none absolute -top-2 left-1/2 z-20 flex -translate-x-1/2 -translate-y-full items-center gap-1 rounded-md border border-border-subtle bg-[var(--color-surface-floating)] px-1.5 py-0.5 text-[10px] font-medium text-[var(--color-status-success)] shadow-[var(--shadow-popover)]"
+          className="pointer-events-none absolute inset-0 z-20 flex items-center justify-center gap-1 whitespace-nowrap rounded-md bg-surface-elevated px-1.5 text-[10px] font-medium text-[var(--color-status-success)] ring-1 ring-inset ring-[var(--color-status-success-subtle)]"
         >
           <CheckCircle2 size={11} strokeWidth={2} aria-hidden />
           Copied
