@@ -8,6 +8,7 @@ import { randomUUID } from "crypto";
 import { logActivity } from "@/lib/activity-logger";
 import { safeJsonParse, validatePathParam } from "@/lib/api-validation";
 import { applyRateLimit } from "@/lib/rate-limiter";
+import { cache } from "@/lib/cache";
 
 export async function GET(
   _request: Request,
@@ -120,6 +121,11 @@ export async function POST(
       createdAt,
     }),
   ]);
+
+  // The new qualityScore/reviewCount are embedded in the cached ticket detail and board
+  // list responses; without invalidation a client revalidation gets the stale score back.
+  cache.invalidate(`/api/tickets/${key}`);
+  cache.invalidate(/^\/api\/tickets(\?|$)/);
 
   await logActivity({
     type: body.source === "bulk-action" ? "bulk-action" : "review",

@@ -4,6 +4,7 @@ import { db } from "@/db";
 import { storedReview, ticketMetadata } from "@/db/schema";
 import { eq, desc, and } from "drizzle-orm";
 import { applyRateLimit } from "@/lib/rate-limiter";
+import { cache } from "@/lib/cache";
 
 export async function DELETE(
   _request: Request,
@@ -45,6 +46,11 @@ export async function DELETE(
     .update(ticketMetadata)
     .set({ qualityScore: newScore })
     .where(eq(ticketMetadata.jiraKey, key));
+
+  // The updated qualityScore/reviewCount are embedded in the cached ticket detail and
+  // board list responses; invalidate so a client revalidation returns the new values.
+  cache.invalidate(`/api/tickets/${key}`);
+  cache.invalidate(/^\/api\/tickets(\?|$)/);
 
   return NextResponse.json({ deleted: true });
 }

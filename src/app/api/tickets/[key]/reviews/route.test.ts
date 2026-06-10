@@ -14,7 +14,14 @@ vi.mock("@/db", () => ({
   },
 }));
 
+vi.mock("@/lib/cache", () => ({
+  cache: {
+    invalidate: vi.fn(),
+  },
+}));
+
 import { GET, POST } from "./route";
+import { cache } from "@/lib/cache";
 
 function seedTicket(db: BetterSQLite3Database<typeof schema>, key: string) {
   db.insert(ticket)
@@ -111,6 +118,16 @@ describe("POST /api/tickets/[key]/reviews", () => {
       .all();
 
     expect(metaRows[0]?.qualityScore).toBe(72);
+  });
+
+  it("invalidates the ticket detail and board list caches so revalidation returns the new score", async () => {
+    seedTicket(testDb, "VPL-100");
+    vi.mocked(cache.invalidate).mockClear();
+
+    await POST(postRequest("VPL-100", sampleReview), makeParams("VPL-100"));
+
+    expect(cache.invalidate).toHaveBeenCalledWith("/api/tickets/VPL-100");
+    expect(cache.invalidate).toHaveBeenCalledWith(/^\/api\/tickets(\?|$)/);
   });
 
   it("returns 404 for non-existent ticket", async () => {
@@ -287,6 +304,22 @@ describe("DELETE /api/tickets/[key]/reviews/[id]", () => {
       .all();
 
     expect(metaRows[0]?.qualityScore).toBeNull();
+  });
+
+  it("invalidates the ticket detail and board list caches after delete", async () => {
+    seedTicket(testDb, "VPL-100");
+
+    const r1 = await POST(postRequest("VPL-100", sampleReview), makeParams("VPL-100"));
+    const review1 = await r1.json();
+    vi.mocked(cache.invalidate).mockClear();
+
+    await DELETE(
+      deleteRequest("VPL-100", review1.id),
+      makeIdParams("VPL-100", review1.id),
+    );
+
+    expect(cache.invalidate).toHaveBeenCalledWith("/api/tickets/VPL-100");
+    expect(cache.invalidate).toHaveBeenCalledWith(/^\/api\/tickets(\?|$)/);
   });
 
   it("returns 404 for non-existent review", async () => {
