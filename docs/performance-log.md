@@ -365,3 +365,17 @@ Key bottlenecks / lessons:
 - **Recurring shared-`dev`-tree interference (again).** A parallel agent committed row-rounding work mid-run; because `git mv` *stages*, that agent's bare `git commit` swept my staged `EpicStatsSummary`→`deleted/` rename into its unrelated commit (`5aa2e1db`). Harmless (the move is correct) but it meant my retirement landed under someone else's message. Lesson: on this tree, `git mv` leaves staged changes a concurrent commit can claim — either commit the move immediately, or defer the `git mv` until just before my own commit.
 - **Mid-run transient typecheck failure from parallel work.** A first `tsc` showed `roundBottom`/`isLastInCard` errors in `EpicChildrenBySprint.tsx` (a file I never touched) — the parallel agent's half-saved state. It cleared on its own once that agent committed. Lesson (again): attribute non-mine errors via `git status`/`git log -- <file>` before reacting; don't fix parallel work.
 - **Shared component, hidden second consumer.** The plan's Explore pass reported only `EpicChildrenSection` used `ChildIssueListHeader`; `SubtasksSection` also did. Typecheck caught it immediately. Lesson: grep `<Component` usages directly before changing a component's required props, not just its obvious parent.
+
+## BRDG-327 — Double-click a ticket pill to copy title + URL (2026-06-10)
+
+Added an `onDoubleClick` copy handler to `TicketStatusPill` (whole-chip target, both elevated and `list` variants) reusing `formatTicketShare`/`getJiraUrl`, with a title-missing URL fallback, a `pending-` guard, an `e.detail > 1` guard so a double-click never leaves the key dropdown open, and a quiet in-place "Copied" confirmation that fades after 1.2s. 7 new tests; full suite (5460) + build green.
+
+| Phase | Notes |
+|-------|-------|
+| Plan (Opus) | Tight and accurate for a single-component story; correctly flagged the `e.detail` single-vs-double conflict and the jsdom clipboard-stub wrinkle |
+| Implement | Clean, no rework on logic |
+| Verify | Unit suite + build green quickly; browser verification was the entire bottleneck (below) |
+
+Key bottlenecks / lessons:
+- **Browser verification consumed the bulk of the run; the feature logic was never the problem.** Three compounding issues: (1) the ticket detail header renders a skeleton (`animate-pulse`) for several seconds, so early `double_click`s landed on a skeleton, not the pill — always confirm the real element via `elementFromPoint` before interacting; (2) the Chrome automation `double_click` does not reliably emit a coalesced `dblclick` DOM event (a native listener showed `fired:0`), so it cannot exercise an `onDoubleClick` handler — a one-off `fired:true` early on was a timing fluke; (3) the 1.2s fade window is shorter than batch screenshot latency. Lesson: for `dblclick`/transient-state UI, trust `fireEvent.doubleClick` unit tests for behaviour and verify only the *visual* in-browser by temporarily forcing the state (`useState(true)`) — don't try to drive a real double-click + clipboard gesture through automation.
+- **Design caught only in-browser, not by the plan.** The first confirmation placement (floating badge above the pill) clipped off-screen for header pills at the viewport top; moving it below collided with the hover card that opens there. Resolved by overlaying the pill itself (`absolute inset-0`), which is also what the AC literally asked for ("on the pill itself"). Lesson: floating-element placement near viewport edges and against existing portals (hover card) is worth a quick mental check before picking above/below.
