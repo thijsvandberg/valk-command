@@ -935,6 +935,14 @@ export function TicketStatusPill({
   const typeIconSize = elevated ? (size === "sm" ? 13 : iconSize) + 4 : iconSize + 3;
   const typeStrokeWidth = 2.0;
   const textSize = size === "sm" ? "text-[10px]" : size === "lg" ? "text-body-sm" : "text-label";
+  // Every elevated chip gets an optical vertical nudge (verified in-browser): the
+  // all-caps key has no descenders, so its ink box reads high next to the icon and
+  // status badge even when geometrically centered. leading-none makes the line box
+  // deterministic and top-[1px] pushes the key down to look balanced. The compact
+  // sm inline pill also bumps one size step so the key stays legible.
+  const keyTextClass = elevated
+    ? `${size === "sm" ? "text-body-sm" : textSize} font-medium leading-none relative top-[1px]`
+    : `${textSize} font-medium`;
 
   // The Jira status badge stays compact at sm/md (dense table rows); at lg it
   // grows to match a sibling control like the Epic pill (px-2 py-0.5 text-label)
@@ -1005,7 +1013,7 @@ export function TicketStatusPill({
 
       {/* Key */}
       {showKey && (
-        <div className={`relative flex shrink-0 ${!elevated && issueType ? "-ml-1" : ""}`}>
+        <div className={`relative flex shrink-0 ${issueType && (!elevated || size === "sm") ? "-ml-1" : ""}`}>
           {isPending ? (
             <span
               className={`flex items-center font-mono ${textSize} text-text-muted`}
@@ -1024,7 +1032,7 @@ export function TicketStatusPill({
                 setKeyDropdownOpen((o) => !o);
               }
             }}
-            className={`font-mono ${textSize} font-medium transition-colors duration-150 hover:text-text-primary focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)] ${elevated ? "text-text-primary" : "text-text-secondary"}`}
+            className={`font-mono ${keyTextClass} transition-colors duration-150 hover:text-text-primary focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)] ${elevated ? "text-text-primary" : "text-text-secondary"}`}
             style={{ minWidth: elevated ? undefined : "9ch" }}
           >
             {ticketKey}
