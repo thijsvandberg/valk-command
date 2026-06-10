@@ -1,9 +1,12 @@
 "use client";
 
 import { useMemo, useCallback } from "react";
-import { useTickets, useJiraSprints } from "@/hooks/useSprintBoard";
-import type { Ticket } from "@/types/ticket";
+import { useTickets, useJiraSprints, useTicketDetail } from "@/hooks/useSprintBoard";
+import type { Ticket, IssueType, JiraStatus, Assignee } from "@/types/ticket";
 import type { TicketPillHoverData } from "@/components/shared/TicketStatusPill";
+
+// Subtask Jira statuses that count as closed when deriving open/total counts.
+const DONE_LIKE_STATUSES = new Set(["DONE", "DEPRECATED"]);
 
 // Maps a full board ticket to the hover-card shape. The card is editable by
 // default (BRDG-276), so sprintId is carried through for the Sprint picker, and
@@ -52,4 +55,63 @@ export function useTicketHoverData(): (key: string) => TicketPillHoverData | und
     return m;
   }, [data, sprintNames]);
   return useCallback((key: string) => map.get(key), [map]);
+}
+
+/** Live data resolved for a linked-issue row: the hover-card payload plus the
+ *  current inline fields, used to refresh the row over its cached link snapshot. */
+export interface LinkedTicketData {
+  hoverData: TicketPillHoverData | undefined;
+  /** Live inline fields. Undefined when no live source is available yet, so the
+   *  caller keeps showing the cached link snapshot. */
+  jiraStatus?: JiraStatus;
+  title?: string;
+  type?: IssueType;
+  assignee?: Assignee | null;
+}
+
+/**
+ * Resolves live data for a single linked issue. Linked-issue rows otherwise show
+ * only a cached link snapshot (stale status/title/assignee, no PO metadata), and
+ * the board-wide list only covers tickets on synced sprints. This prefers the
+ * board ticket (instant, no fetch) and falls back to an on-demand single-ticket
+ * fetch (which background-syncs from Jira) once the row is hovered. The returned
+ * inline fields let the row refresh in place; hoverData feeds the tooltip.
+ */
+export function useLinkedTicketData(
+  key: string,
+  boardTicket: Ticket | undefined,
+  primed: boolean,
+): LinkedTicketData {
+  const { sprints } = useJiraSprints();
+  const sprintNames = useMemo(() => {
+    const m: Record<string, string> = {};
+    sprints.forEach((s) => { m[s.id] = s.name; });
+    return m;
+  }, [sprints]);
+
+  // Only fetch (and background-sync) when the row is hovered and the board list
+  // doesn't already cover it.
+  const { data: detail } = useTicketDetail(primed && !boardTicket ? key : null);
+
+  return useMemo(() => {
+    const live = boardTicket ?? detail;
+    if (!live) return { hoverData: undefined };
+
+    const hoverData = buildTicketHoverData(live, sprintNames);
+    // The detail payload omits the aggregate subtask counts the board list
+    // carries, so derive them from its subtask array for an accurate count row.
+    if (detail && !boardTicket) {
+      const subs = detail.subtasks ?? [];
+      hoverData.totalSubtaskCount = subs.length;
+      hoverData.openSubtaskCount = subs.filter((s) => !DONE_LIKE_STATUSES.has(s.jiraStatus.toUpperCase())).length;
+    }
+
+    return {
+      hoverData,
+      jiraStatus: live.jiraStatus,
+      title: live.title,
+      type: live.type,
+      assignee: live.assignee ?? null,
+    };
+  }, [boardTicket, detail, sprintNames]);
 }

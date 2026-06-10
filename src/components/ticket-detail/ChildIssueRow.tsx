@@ -40,6 +40,9 @@ interface ChildIssueRowProps {
   onSelect?: (key: string, e: React.MouseEvent) => void;
   /** Right-click handler (e.g. to open a move-to-sprint context menu). */
   onContextMenu?: (e: React.MouseEvent) => void;
+  /** Fires on row hover. Lets callers lazily prime data (e.g. fetch a linked
+      issue's hover-card details on first hover) without eager fetching. */
+  onMouseEnter?: () => void;
   /** Multiselect: renders a leading checkbox when set. */
   selectable?: boolean;
   isChecked?: boolean;
@@ -97,6 +100,7 @@ export function ChildIssueRow({
   hoverData,
   onSelect,
   onContextMenu,
+  onMouseEnter,
   selectable = false,
   isChecked = false,
   isActive = false,
@@ -149,6 +153,7 @@ export function ChildIssueRow({
       } ${roundBottom ? "rounded-b-[11px]" : ""} ${className}`}
       onClick={handleClick}
       onContextMenu={onContextMenu}
+      onMouseEnter={onMouseEnter}
       {...(dndProps ?? {})}
     >
       {/* Drag handle sits in the left gutter, over the row's leading edge (Jira-style),

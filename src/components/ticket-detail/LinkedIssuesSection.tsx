@@ -1,10 +1,10 @@
 "use client";
 
-import { useState, useCallback, useRef, useEffect } from "react";
+import { useState, useCallback, useRef, useEffect, useMemo } from "react";
 import { useOutsideClick } from "@/hooks/useOutsideClick";
-import type { TicketDetail, LinkedIssue } from "@/types/ticket";
-import { Avatar } from "@/components/shared/Avatar";
-import { ChildIssueRow } from "./ChildIssueRow";
+import type { TicketDetail, LinkedIssue, Ticket } from "@/types/ticket";
+import { LinkedIssueRow } from "./LinkedIssueRow";
+import { useTickets } from "@/hooks/useSprintBoard";
 import { SectionHeader } from "@/components/shared/SectionHeader";
 import { SECTION_KEYS } from "@/lib/section-collapse-store";
 import { LinkIssueDialog } from "./LinkIssueDialog";
@@ -48,6 +48,14 @@ function DeleteButton({ onClick }: { onClick: () => void }) {
 
 export function LinkedIssuesSection({ issues, ticketKey, onMutate, onSelectTicket, activeKey }: LinkedIssuesSectionProps) {
   const { linkTypes } = useLinkTypes();
+  // The shared board list lets linked rows refresh from live ticket data instead
+  // of their cached link snapshot (BRDG-333 follow-up).
+  const { data: boardTickets } = useTickets("__all__");
+  const boardTicketByKey = useMemo(() => {
+    const m = new Map<string, Ticket>();
+    (boardTickets ?? []).forEach((t) => m.set(t.key, t));
+    return m;
+  }, [boardTickets]);
   const [showLinkDialog, setShowLinkDialog] = useState(false);
   const [linkDialogDefaults, setLinkDialogDefaults] = useState<{ initialQuery?: string; relation?: string }>({});
 
@@ -683,17 +691,14 @@ export function LinkedIssuesSection({ issues, ticketKey, onMutate, onSelectTicke
                   const isPending = item.jiraLinkId?.startsWith("pending-");
 
                   return (
-                    <ChildIssueRow
+                    <LinkedIssueRow
                       key={item.key}
                       item={item}
                       isLast={idx === items.length - 1}
-                      isPending={isPending}
+                      isPending={Boolean(isPending)}
                       onSelect={!isPending ? onSelectTicket : undefined}
                       isActive={item.key === activeKey}
-                      showTypeIcon
-                      showKey
-                      showStatus
-                      metadataSlot={<Avatar assignee={item.assignee} size={22} />}
+                      boardTicket={boardTicketByKey.get(item.key)}
                       actionsSlot={!isPending ? (
                         <DeleteButton onClick={() => handleDelete(item)} />
                       ) : undefined}
