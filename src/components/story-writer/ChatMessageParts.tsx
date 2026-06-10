@@ -284,11 +284,19 @@ export function ChatMessage({
 
   // The latest draft in the chat shows expanded; when a newer draft arrives this
   // one is demoted to collapsed. Accepted drafts default to collapsed. Manual
-  // toggles in between are preserved since this only re-runs on these changes.
-  useEffect(() => {
-    if (!draftId) return;
-    setDraftExpanded(Boolean(isLatestDraft) && !draftAccepted);
-  }, [isLatestDraft, draftId, draftAccepted]);
+  // toggles in between are preserved since this only recomputes when one of the
+  // tracked inputs changes (adjust-state-during-render, not an effect).
+  const [draftSyncKey, setDraftSyncKey] = useState({ isLatestDraft, draftId, draftAccepted });
+  if (
+    draftSyncKey.isLatestDraft !== isLatestDraft ||
+    draftSyncKey.draftId !== draftId ||
+    draftSyncKey.draftAccepted !== draftAccepted
+  ) {
+    setDraftSyncKey({ isLatestDraft, draftId, draftAccepted });
+    if (draftId) {
+      setDraftExpanded(Boolean(isLatestDraft) && !draftAccepted);
+    }
+  }
 
   useEffect(() => {
     const el = containerRef.current;
