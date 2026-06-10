@@ -592,6 +592,17 @@ export const BoardRow = memo(forwardRef<HTMLTableRowElement, BoardRowBaseProps>(
                 </RefinementGemTrigger>
               )}
 
+              {/* "Jira changed" badge (BRDG-325): positioned at the far left of the
+                  metadata cluster, just before the epic chip. Reuses the same
+                  status-warning chip treatment as the per-row warning labels. Inert on
+                  the board (sessionJiraChanged absent). */}
+              {sessionJiraChanged && (
+                <span className="inline-flex h-5 shrink-0 items-center gap-1 whitespace-nowrap rounded-md px-2 text-[11px] leading-none text-[color-mix(in_srgb,var(--color-status-warning)_80%,var(--color-text-secondary))] bg-[color-mix(in_srgb,var(--color-status-warning)_6%,transparent)]">
+                  <AlertTriangle size={11} strokeWidth={2} className="shrink-0 opacity-70" aria-hidden />
+                  Jira changed
+                </span>
+              )}
+
               {/* Epic chip (set epics only) — shrinks with the title when space is
                   tight. Clicking it opens the epic picker dropdown (view in sidebar /
                   new tab / unlink / change) rather than navigating away or selecting
@@ -678,15 +689,8 @@ export const BoardRow = memo(forwardRef<HTMLTableRowElement, BoardRowBaseProps>(
                 </span>
               )}
 
-              {/* Session signals (BRDG-325), right of the metric cluster. Inert on the
-                  board (the props are absent there). The "Jira changed" badge reuses the
-                  same status-warning chip treatment as the per-row warning labels above. */}
-              {sessionJiraChanged && (
-                <span className="inline-flex h-5 shrink-0 items-center gap-1 whitespace-nowrap rounded-md px-2 text-[11px] leading-none text-[color-mix(in_srgb,var(--color-status-warning)_80%,var(--color-text-secondary))] bg-[color-mix(in_srgb,var(--color-status-warning)_6%,transparent)]">
-                  <AlertTriangle size={11} strokeWidth={2} className="shrink-0 opacity-70" aria-hidden />
-                  Jira changed
-                </span>
-              )}
+              {/* Relative time (BRDG-325), right of the metric cluster. Inert on the
+                  board (the prop is absent there). */}
               {sessionTimeAgo && (
                 <span className="flex shrink-0 items-center gap-1 whitespace-nowrap text-label text-text-tertiary">
                   <Clock size={10} strokeWidth={1.75} className="text-text-muted" aria-hidden />
