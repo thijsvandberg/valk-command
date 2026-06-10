@@ -25,14 +25,33 @@ import { ViewHeader } from "@/components/shared/ViewHeader";
 import { Toast } from "@/components/ui/Toast";
 import { TicketStatusPill } from "@/components/shared/TicketStatusPill";
 import dynamic from "next/dynamic";
-import { TicketSidebar, SIDEBAR_COLLAPSED_KEY } from "@/components/ticket-detail/TicketSidebar";
+import { TicketSidebar, SIDEBAR_COLLAPSED_KEY, SIDEBAR_WIDTH_KEY, DEFAULT_SIDEBAR_WIDTH } from "@/components/ticket-detail/TicketSidebar";
 import { TicketTabContent, type TicketTab } from "@/components/ticket-detail/TicketTabContent";
 
 // The clicked child issue opens in the same rich panel the sprint board uses,
 // so child-ticket management is identical across both surfaces (BRDG-275).
+// The persisted meta-sidebar width, read eagerly so the lazy panel's loading
+// placeholder can reserve the exact column footprint (avoids a cold-cache flash).
+function readSidebarWidth(): number {
+  if (typeof window === "undefined") return DEFAULT_SIDEBAR_WIDTH;
+  const saved = parseInt(localStorage.getItem(SIDEBAR_WIDTH_KEY) ?? "", 10);
+  return Number.isNaN(saved) ? DEFAULT_SIDEBAR_WIDTH : saved;
+}
+
 const SidePanel = dynamic(
   () => import("@/components/sprint-board/SidePanel").then((m) => ({ default: m.SidePanel })),
-  { ssr: false },
+  {
+    ssr: false,
+    // On the very first open after a hard reload the chunk is not cached yet;
+    // hold the sidebar's width so the content column does not flash to full
+    // width before the panel mounts. Warm-cache opens never show this.
+    loading: () => (
+      <div
+        className="h-full shrink-0 border-l border-border-default bg-[var(--color-surface-elevated)]"
+        style={{ width: readSidebarWidth() }}
+      />
+    ),
+  },
 );
 const TicketChatPane = dynamic(
   () => import("@/components/shared/TicketChatPane").then((m) => ({ default: m.TicketChatPane })),
@@ -198,6 +217,16 @@ export default function TicketDetailPage({
       next: idx < list.length - 1 ? list[idx + 1] : null,
     };
   }, [previewTicketKey, h.detail, h.ticket?.type]);
+  // Warm the lazy SidePanel chunk as soon as the ticket has openable children,
+  // so the first child click after a hard reload swaps in without waiting on the
+  // chunk download. The dynamic import dedupes this with the real open.
+  const hasOpenableChildren = Boolean(
+    (h.detail?.epicChildren?.length ?? 0) > 0 || (h.detail?.subtasks?.length ?? 0) > 0,
+  );
+  useEffect(() => {
+    if (hasOpenableChildren) void import("@/components/sprint-board/SidePanel");
+  }, [hasOpenableChildren]);
+
   const [moreMenuOpen, setMoreMenuOpen] = useState(false);
   const [showAddToRefinement, setShowAddToRefinement] = useState(false);
   const [showFlagDialog, setShowFlagDialog] = useState(false);
@@ -655,22 +684,29 @@ export default function TicketDetailPage({
           own meta sidebar steps aside so we mirror the board's content+panel
           layout instead of stacking two sidebars. */}
       {previewTicketKey && previewTicket ? (
-        <SidePanel
-          key={previewTicketKey}
-          ticket={previewTicket}
-          poStatus={previewTicket.poStatus ?? null}
-          readiness={previewTicket.readiness ?? null}
-          onPoStatusChange={(v) => { void saveTicketMetadata(previewTicketKey, { poStatus: v }); }}
-          onReadinessChange={(v) => { void saveTicketMetadata(previewTicketKey, { readiness: v }); h.mutateTicket(); }}
-          onNotesChange={(notes) => { void saveTicketMetadata(previewTicketKey, { poNotes: notes }); }}
-          onClose={() => setPreviewTicketKey(null)}
-          onShowToast={() => {}}
-          onMutate={h.mutateTicket}
-          onSelectTicket={setPreviewTicketKey}
-          adjacentKeys={previewAdjacentKeys}
-        />
+        // The child panel inherits the meta sidebar's persisted width + storage
+        // key so it opens on the exact footprint the sidebar vacated, leaving the
+        // content column to its left unmoved. The opacity-only fade (re-keyed per
+        // child) softens the swap without nudging layout.
+        <div key={previewTicketKey} className="h-full shrink-0" style={{ animation: "fadeIn 0.15s ease" }}>
+          <SidePanel
+            ticket={previewTicket}
+            poStatus={previewTicket.poStatus ?? null}
+            readiness={previewTicket.readiness ?? null}
+            onPoStatusChange={(v) => { void saveTicketMetadata(previewTicketKey, { poStatus: v }); }}
+            onReadinessChange={(v) => { void saveTicketMetadata(previewTicketKey, { readiness: v }); h.mutateTicket(); }}
+            onNotesChange={(notes) => { void saveTicketMetadata(previewTicketKey, { poNotes: notes }); }}
+            onClose={() => setPreviewTicketKey(null)}
+            onShowToast={() => {}}
+            onMutate={h.mutateTicket}
+            onSelectTicket={setPreviewTicketKey}
+            adjacentKeys={previewAdjacentKeys}
+            defaultWidth={DEFAULT_SIDEBAR_WIDTH}
+            storageKey={SIDEBAR_WIDTH_KEY}
+          />
+        </div>
       ) : (
-        <div className="sticky top-0 min-h-full self-stretch overflow-visible">
+        <div key="epic-meta" className="sticky top-0 min-h-full self-stretch overflow-visible" style={{ animation: "fadeIn 0.15s ease" }}>
           <TicketSidebar ticket={ticket} detail={h.detail} reviewData={h.reviewData} collapsed={sidebarCollapsed} onCollapsedChange={setSidebarCollapsed} onNavigateToReview={() => setActiveTab("review")} onNavigateToDev={() => setActiveTab("development")} onReadinessChange={h.handleReadinessChange} />
         </div>
       )}

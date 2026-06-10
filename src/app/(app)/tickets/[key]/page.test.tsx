@@ -128,6 +128,8 @@ vi.mock("@/components/ticket-detail/TicketTabContent", () => ({
 vi.mock("@/components/ticket-detail/TicketSidebar", () => ({
   TicketSidebar: () => <div data-testid="sidebar" />,
   SIDEBAR_COLLAPSED_KEY: "sidebar-collapsed",
+  SIDEBAR_WIDTH_KEY: "ticket-sidebar-width",
+  DEFAULT_SIDEBAR_WIDTH: 420,
 }));
 vi.mock("@/components/refinement-session/AddToRefinementModal", () => ({
   AddToRefinementModal: ({ open }: { open: boolean }) =>
@@ -157,14 +159,20 @@ vi.mock("@/components/sprint-board/SidePanel", () => ({
     ticket,
     onClose,
     adjacentKeys,
+    storageKey,
+    defaultWidth,
   }: {
     ticket: { key: string };
     onClose: () => void;
     adjacentKeys?: { prev: string | null; next: string | null };
+    storageKey?: string;
+    defaultWidth?: number;
   }) => (
     <div data-testid="side-panel">
       <span data-testid="side-panel-key">{ticket.key}</span>
       <span data-testid="side-panel-adjacent">{JSON.stringify(adjacentKeys ?? null)}</span>
+      <span data-testid="side-panel-storage-key">{storageKey ?? ""}</span>
+      <span data-testid="side-panel-default-width">{defaultWidth ?? ""}</span>
       <button onClick={onClose}>close-panel</button>
     </div>
   ),
@@ -313,6 +321,17 @@ describe("TicketDetailPage - child preview side panel", () => {
     expect(screen.getByTestId("side-panel-key")).toHaveTextContent("VPL-200");
     // The fetch fallback must NOT be engaged for a child already present in the list.
     expect(useTicketDetailSpy).not.toHaveBeenCalledWith("VPL-200");
+  });
+
+  it("opens the panel on the meta sidebar's width footprint so the content column does not reflow", async () => {
+    // The panel inherits the sidebar's persisted width + storage key so the swap
+    // from meta sidebar to child panel keeps the same right-column footprint,
+    // leaving the content to its left unmoved (no collapse-then-expand jank).
+    await renderPage();
+    fireEvent.click(screen.getByText("select-child"));
+    expect(await screen.findByTestId("side-panel")).toBeInTheDocument();
+    expect(screen.getByTestId("side-panel-storage-key")).toHaveTextContent("ticket-sidebar-width");
+    expect(screen.getByTestId("side-panel-default-width")).toHaveTextContent("420");
   });
 
   it("derives prev/next from the epic children for an epic", async () => {

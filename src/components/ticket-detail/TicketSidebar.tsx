@@ -6,9 +6,9 @@ import { ChevronRight } from "lucide-react";
 import { useLocalStorage } from "@/hooks/useLocalStorage";
 import { TicketMetaContent } from "@/components/ticket-detail/TicketMetaContent";
 
-const DEFAULT_SIDEBAR_WIDTH = 420;
+export const DEFAULT_SIDEBAR_WIDTH = 420;
 const MIN_SIDEBAR_WIDTH = 280;
-const SIDEBAR_WIDTH_KEY = "ticket-sidebar-width";
+export const SIDEBAR_WIDTH_KEY = "ticket-sidebar-width";
 export const SIDEBAR_COLLAPSED_KEY = "ticket-sidebar-collapsed";
 
 /**
