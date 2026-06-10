@@ -606,6 +606,7 @@ export function SidePanel({
       onDiscardDraft={h.handleDiscardDraft}
       onPushToJira={h.handlePushToJira}
       onMutate={handleMutate}
+      onSubtaskStatusOptimistic={h.handleSubtaskJiraStatusChange}
       onConflictResolved={h.handleConflictResolved}
       onSelectTicket={handleSelectTicket}
       reviewCount={h.reviewCount}

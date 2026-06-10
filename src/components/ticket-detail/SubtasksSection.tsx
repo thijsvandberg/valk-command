@@ -45,6 +45,9 @@ interface SubtasksSectionProps {
   subtasks: TicketDetail["subtasks"];
   ticketKey: string;
   onMutate: () => void;
+  // Optimistically patch a subtask's status in the parent detail cache. When wired, the
+  // row updates instantly instead of waiting on a revalidation that returns stale data.
+  onSubtaskStatusOptimistic?: (childKey: string, status: JiraStatus) => void;
   onSelectTicket?: (key: string) => void;
   hideHeader?: boolean;
   compactFilters?: boolean;
@@ -199,6 +202,7 @@ export function SubtasksSection({
   subtasks,
   ticketKey,
   onMutate,
+  onSubtaskStatusOptimistic,
   onSelectTicket,
   hideHeader,
   compactFilters,
@@ -297,6 +301,10 @@ export function SubtasksSection({
 
   const handleJiraStatusChange = useCallback(async (childKey: string, status: JiraStatus) => {
     setJiraWarning(null);
+    // Patch the row optimistically. The child status endpoint does not invalidate the
+    // parent detail cache reliably (cross-route invalidation is unreliable in dev), so a
+    // bare revalidation would return the stale subtask status.
+    onSubtaskStatusOptimistic?.(childKey, status);
     try {
       const res = await fetch(`/api/tickets/${encodeURIComponent(childKey)}/status`, {
         method: "PUT",
@@ -306,17 +314,21 @@ export function SubtasksSection({
       const data = await res.json();
       if (!res.ok) {
         setJiraWarning(data.error ?? "Failed to update status");
+        onMutate(); // revalidate to roll back the optimistic patch
         return;
       }
       if (data.jiraWarning) {
         setJiraWarning(`${childKey}: status updated locally, but Jira sync failed`);
       }
-      onMutate();
+      // On success keep the optimistic value. Fall back to a revalidation only when no
+      // optimistic handler is wired (callers without parent-cache access).
+      if (!onSubtaskStatusOptimistic) onMutate();
     } catch (err) {
       console.error("Failed to update status:", err);
       setJiraWarning("Failed to update status");
+      onMutate(); // revalidate to roll back the optimistic patch
     }
-  }, [onMutate]);
+  }, [onMutate, onSubtaskStatusOptimistic]);
 
   const handleAssigneeChange = useCallback(async (childKey: string, user: AssignableUser | null) => {
     setJiraWarning(null);

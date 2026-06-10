@@ -178,6 +178,20 @@ export function useTicketDetailPage(key: string) {
     }
   }, [key, mutateTicket]);
 
+  // Optimistically patch a subtask's status in the parent detail SWR cache so the row
+  // updates instantly. The subtask status write hits the child's endpoint, which does
+  // not touch this parent detail cache; a bare revalidation would return the still-cached
+  // (stale) subtask status. SubtasksSection owns the PUT and rolls this back on failure.
+  const handleSubtaskJiraStatusChange = useCallback((childKey: string, status: JiraStatus) => {
+    mutateTicket(
+      (prev) => prev ? {
+        ...prev,
+        subtasks: prev.subtasks.map((s) => s.key === childKey ? { ...s, jiraStatus: status } : s),
+      } : prev,
+      { revalidate: false },
+    );
+  }, [mutateTicket]);
+
   const showConflictWarning = ticket?.editState === "conflict";
 
   const handleRemoteChanged = useCallback((contentChanged: boolean) => {
@@ -374,6 +388,7 @@ export function useTicketDetailPage(key: string) {
     handleTypeChange,
     handleReadinessChange,
     handleJiraStatusChange,
+    handleSubtaskJiraStatusChange,
     handleRemoteChanged,
 
     // Sprint

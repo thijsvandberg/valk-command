@@ -3,7 +3,7 @@ import { errorResponse } from "@/lib/api-response";
 import { parseJsonBody } from "@/lib/request-parser";
 import { validatePathParam } from "@/lib/api-validation";
 import { db } from "@/db";
-import { ticket } from "@/db/schema";
+import { ticket, ticketSubtask } from "@/db/schema";
 import { eq } from "drizzle-orm";
 import { jiraClient } from "@/lib/jira-client";
 import { logActivity } from "@/lib/activity-logger";
@@ -54,6 +54,17 @@ export async function PUT(request: Request, { params }: RouteContext) {
 
   cache.invalidate(`/api/tickets/${key}`);
   cache.invalidate(/^\/api\/tickets(\?|$)/);
+
+  // A subtask's status is shown inside its parent ticket detail, whose response is cached
+  // under the parent key. Drop that cache so the next read reflects the new status rather
+  // than serving the stale embedded subtask.
+  const parents = await db
+    .select({ parentKey: ticketSubtask.ticketKey })
+    .from(ticketSubtask)
+    .where(eq(ticketSubtask.subtaskKey, key));
+  for (const { parentKey } of parents) {
+    cache.invalidate(`/api/tickets/${parentKey}`);
+  }
 
   await logActivity({
     type: "metadata-update",

@@ -204,18 +204,20 @@ function makeSubtask(overrides: Partial<Subtask> = {}): Subtask {
   };
 }
 
-function renderSection(subtasks: Subtask[] = []) {
+function renderSection(subtasks: Subtask[] = [], opts: { withOptimistic?: boolean } = {}) {
   const onMutate = vi.fn();
   const onSelectTicket = vi.fn();
+  const onSubtaskStatusOptimistic = vi.fn();
   const result = render(
     <SubtasksSection
       subtasks={subtasks}
       ticketKey="VPL-1"
       onMutate={onMutate}
+      onSubtaskStatusOptimistic={opts.withOptimistic ? onSubtaskStatusOptimistic : undefined}
       onSelectTicket={onSelectTicket}
     />,
   );
-  return { ...result, onMutate, onSelectTicket };
+  return { ...result, onMutate, onSelectTicket, onSubtaskStatusOptimistic };
 }
 
 describe("SubtasksSection", () => {
@@ -459,6 +461,39 @@ describe("SubtasksSection", () => {
           expect.objectContaining({ method: "PUT", body: JSON.stringify({ status: "IN PROGRESS" }) }),
         );
       });
+      await waitFor(() => expect(onMutate).toHaveBeenCalled());
+    });
+
+    it("patches the parent cache optimistically and skips the stale revalidation on success", async () => {
+      const fetchMock = vi.fn().mockResolvedValue({ ok: true, json: async () => ({}) });
+      vi.stubGlobal("fetch", fetchMock);
+
+      const { onMutate, onSubtaskStatusOptimistic } = renderSection(
+        [makeSubtask({ key: "VPL-10" })],
+        { withOptimistic: true },
+      );
+      fireEvent.click(screen.getByTestId("set-progress-VPL-10"));
+
+      await waitFor(() => {
+        expect(onSubtaskStatusOptimistic).toHaveBeenCalledWith("VPL-10", "IN PROGRESS");
+      });
+      await waitFor(() => expect(fetchMock).toHaveBeenCalled());
+      // With the optimistic patch applied, a bare revalidation (which returns the stale
+      // cached parent detail) must not run on success.
+      expect(onMutate).not.toHaveBeenCalled();
+    });
+
+    it("rolls back via revalidation when the status write fails", async () => {
+      const fetchMock = vi.fn().mockResolvedValue({ ok: false, json: async () => ({ error: "nope" }) });
+      vi.stubGlobal("fetch", fetchMock);
+
+      const { onMutate, onSubtaskStatusOptimistic } = renderSection(
+        [makeSubtask({ key: "VPL-10" })],
+        { withOptimistic: true },
+      );
+      fireEvent.click(screen.getByTestId("set-progress-VPL-10"));
+
+      await waitFor(() => expect(onSubtaskStatusOptimistic).toHaveBeenCalledWith("VPL-10", "IN PROGRESS"));
       await waitFor(() => expect(onMutate).toHaveBeenCalled());
     });
 

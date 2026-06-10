@@ -2,7 +2,7 @@
 
 import { useRef } from "react";
 import { Loader2, AlertTriangle, Flag } from "lucide-react";
-import type { Ticket, TicketDetail } from "@/types/ticket";
+import type { Ticket, TicketDetail, JiraStatus } from "@/types/ticket";
 import { Avatar } from "@/components/shared/Avatar";
 import { EditableTitle } from "./EditableTitle";
 import { EditableDescription } from "./EditableDescription";
@@ -91,6 +91,7 @@ export interface TicketTabContentProps {
   onDiscardDraft: () => Promise<void>;
   onPushToJira: () => Promise<void>;
   onMutate: () => void;
+  onSubtaskStatusOptimistic?: (childKey: string, status: JiraStatus) => void;
   onConflictResolved: () => Promise<void>;
   onSelectTicket: (key: string) => void;
   // Badge counts
@@ -134,6 +135,7 @@ export function TicketTabContent({
   onDiscardDraft,
   onPushToJira,
   onMutate,
+  onSubtaskStatusOptimistic,
   onConflictResolved,
   onSelectTicket,
   reviewCount,
@@ -335,7 +337,7 @@ export function TicketTabContent({
               {detail && <AttachmentsSection attachments={detail.attachments} />}
               {!isEpic && (
                 <>
-                  {detail && <SubtasksSection subtasks={detail.subtasks} ticketKey={ticketKey} onMutate={onMutate} onSelectTicket={onSelectTicket} />}
+                  {detail && <SubtasksSection subtasks={detail.subtasks} ticketKey={ticketKey} onMutate={onMutate} onSubtaskStatusOptimistic={onSubtaskStatusOptimistic} onSelectTicket={onSelectTicket} />}
                   {detail && <LinkedIssuesSection issues={detail.linkedIssues} ticketKey={ticketKey} onMutate={onMutate} onSelectTicket={onSelectTicket} activeKey={ticketKey} />}
                 </>
               )}

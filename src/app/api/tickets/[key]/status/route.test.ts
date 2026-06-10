@@ -3,7 +3,7 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 import { createTestDb } from "@/db/test-utils";
 import type { BetterSQLite3Database } from "drizzle-orm/better-sqlite3";
 import type * as schema from "@/db/schema";
-import { seedTicket } from "@/test/builders";
+import { seedTicket, seedTicketSubtask } from "@/test/builders";
 import { createJiraClientMock } from "@/test/mocks";
 
 let testDb: BetterSQLite3Database<typeof schema>;
@@ -32,6 +32,7 @@ vi.mock("@/lib/logger", () => ({
 
 import { PUT } from "./route";
 import { jiraClient } from "@/lib/jira-client";
+import { cache } from "@/lib/cache";
 
 function makeParams(key: string): { params: Promise<{ key: string }> } {
   return { params: Promise.resolve({ key }) };
@@ -97,6 +98,16 @@ describe("PUT /api/tickets/[key]/status", () => {
 
     expect(response.status).toBe(200);
     expect(data.status).toBe("IN PROGRESS");
+  });
+
+  it("invalidates the parent ticket detail cache when the updated ticket is a subtask", async () => {
+    seedTicket(testDb, { jiraKey: "BRDG-1" });
+    seedTicket(testDb, { jiraKey: "BRDG-2" });
+    seedTicketSubtask(testDb, { ticketKey: "BRDG-1", subtaskKey: "BRDG-2" });
+
+    await PUT(putRequest("BRDG-2", { status: "DEPRECATED" }), makeParams("BRDG-2"));
+
+    expect(cache.invalidate).toHaveBeenCalledWith("/api/tickets/BRDG-1");
   });
 
   it("returns jiraWarning if Jira transition fails", async () => {
