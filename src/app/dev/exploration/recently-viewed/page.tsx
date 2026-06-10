@@ -264,9 +264,12 @@ function RecentList({
 // Panel chrome mocks
 // ---------------------------------------------------------------------------
 
-function PanelChrome({ children }: { children: React.ReactNode }) {
+function PanelChrome({ children, width = 360 }: { children: React.ReactNode; width?: number }) {
   return (
-    <div className="w-[360px] shrink-0 overflow-hidden rounded-2xl bg-[var(--color-surface-floating)]/95 shadow-[0_32px_80px_-24px_rgba(0,0,0,0.45),inset_0_1px_0_rgba(255,255,255,0.06)] ring-1 ring-border-strong backdrop-blur-2xl">
+    <div
+      className="shrink-0 overflow-hidden rounded-2xl bg-[var(--color-surface-floating)]/95 shadow-[0_32px_80px_-24px_rgba(0,0,0,0.45),inset_0_1px_0_rgba(255,255,255,0.06)] ring-1 ring-border-strong backdrop-blur-2xl"
+      style={{ width }}
+    >
       <span className="pointer-events-none block h-px bg-gradient-to-r from-transparent via-[var(--color-brand-glow)] to-transparent" />
       <div className="relative p-3">{children}</div>
     </div>
@@ -316,10 +319,12 @@ function MenuFlowDemo({
   entries,
   layout,
   grouped,
+  width,
 }: {
   entries: MockEntry[];
   layout: RowLayout;
   grouped: boolean;
+  width: number;
 }) {
   const [open, setOpen] = useState(true);
   const [view, setView] = useState<"nav" | "recent">("recent");
@@ -349,7 +354,7 @@ function MenuFlowDemo({
       {/* Dropped panel, anchored under the menu button like the real NavPanel */}
       {open && (
         <div className="absolute left-4 top-[58px] z-10">
-          <PanelChrome>
+          <PanelChrome width={width}>
             <AccountHeaderMock />
             {view === "nav" ? (
               <>
@@ -414,10 +419,13 @@ function MenuFlowDemo({
 // Page
 // ---------------------------------------------------------------------------
 
+const WIDTHS = [360, 420, 480] as const;
+
 export default function RecentlyViewedExplorationPage() {
   const [fill, setFill] = useState<Fill>("full");
   const [layout, setLayout] = useState<RowLayout>("titleFirst");
   const [grouped, setGrouped] = useState(true);
+  const [width, setWidth] = useState<number>(360);
   const entries = useEntries(fill);
 
   return (
@@ -478,6 +486,25 @@ export default function RecentlyViewedExplorationPage() {
             </button>
           </div>
           <div className="flex items-center gap-3">
+            <p className="font-mono text-[11px] uppercase tracking-[0.14em] text-text-muted">Panel width</p>
+            <div className="flex gap-1">
+              {WIDTHS.map((w) => (
+                <button
+                  key={w}
+                  type="button"
+                  onClick={() => setWidth(w)}
+                  className={`cursor-pointer rounded-lg px-3 py-1.5 font-mono text-[12px] transition-colors duration-150 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)] ${
+                    width === w
+                      ? "bg-[var(--color-brand-600)]/15 font-medium text-[var(--color-brand-300)]"
+                      : "text-text-secondary hover:bg-hover-list-item hover:text-text-primary"
+                  }`}
+                >
+                  {w}px
+                </button>
+              ))}
+            </div>
+          </div>
+          <div className="flex items-center gap-3">
             <p className="font-mono text-[11px] uppercase tracking-[0.14em] text-text-muted">List state</p>
             <div className="flex gap-1">
               {(Object.keys(FILL_LABEL) as Fill[]).map((f) => (
@@ -503,7 +530,7 @@ export default function RecentlyViewedExplorationPage() {
         </p>
 
         {/* The full interaction, from the menu button */}
-        <MenuFlowDemo entries={entries} layout={layout} grouped={grouped} />
+        <MenuFlowDemo entries={entries} layout={layout} grouped={grouped} width={width} />
 
         {/* Side-by-side compare of the three row layouts */}
         <h2 className="mb-1 mt-12 font-display text-[20px] font-semibold tracking-[-0.02em] text-text-primary">
@@ -516,7 +543,7 @@ export default function RecentlyViewedExplorationPage() {
           {LAYOUTS.map((l) => (
             <div key={l.id}>
               <p className="mb-2 px-1 font-mono text-[11px] uppercase tracking-[0.14em] text-text-muted">{l.label}</p>
-              <PanelChrome>
+              <PanelChrome width={width}>
                 <RecentHeader onBack={() => {}} />
                 <RecentList entries={entries} layout={l.id} grouped={grouped} />
                 <ClearFooter count={entries.length} />
