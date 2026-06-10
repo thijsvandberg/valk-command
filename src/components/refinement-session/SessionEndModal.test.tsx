@@ -46,6 +46,28 @@ vi.mock("@/hooks/useSprintBoard", () => ({
   useTickets: () => ({ data: mockTickets }),
 }));
 
+vi.mock("@/lib/ticket-cache", () => ({
+  patchTicketCaches: vi.fn(),
+}));
+
+// Stub the pill with buttons that fire the change callbacks, keeping the
+// ticket key visible for the render assertions.
+vi.mock("@/components/shared/TicketStatusPill", () => ({
+  TicketStatusPill: ({ ticketKey, onJiraStatusChange, onReadinessChange, onIssueTypeChange }: {
+    ticketKey: string;
+    onJiraStatusChange?: (s: string) => void;
+    onReadinessChange?: (r: string | null) => void;
+    onIssueTypeChange?: (t: string) => void;
+  }) => (
+    <div>
+      <span>{ticketKey}</span>
+      <button aria-label={`set-status-${ticketKey}`} onClick={() => onJiraStatusChange?.("DONE")} />
+      <button aria-label={`set-readiness-${ticketKey}`} onClick={() => onReadinessChange?.("drafting")} />
+      <button aria-label={`set-type-${ticketKey}`} onClick={() => onIssueTypeChange?.("bug")} />
+    </div>
+  ),
+}));
+
 vi.mock("@/lib/api-client", () => ({
   refinementSessions: {
     get: vi.fn().mockResolvedValue({
@@ -199,6 +221,61 @@ describe("SessionEndModal", () => {
     await waitFor(() => {
       const textarea = screen.getByPlaceholderText("Session notes, decisions, follow-ups...") as HTMLTextAreaElement;
       expect(textarea.value).toBe("Existing comment");
+    });
+  });
+
+  describe("instant pill updates (BRDG-334)", () => {
+    it("patches the tickets SWR cache when a status pill changes", async () => {
+      const { patchTicketCaches } = await import("@/lib/ticket-cache");
+      const { apiFetch } = await import("@/lib/api-client");
+      render(<SessionEndModal />);
+
+      fireEvent.click(screen.getByLabelText("set-status-VPL-1"));
+
+      expect(patchTicketCaches).toHaveBeenCalledWith("VPL-1", { jiraStatus: "DONE" });
+      await waitFor(() =>
+        expect(apiFetch).toHaveBeenCalledWith("/api/tickets/VPL-1/status", { method: "PUT", body: { status: "DONE" } }),
+      );
+    });
+
+    it("rolls the status patch back when the write fails", async () => {
+      const { patchTicketCaches } = await import("@/lib/ticket-cache");
+      const { apiFetch } = await import("@/lib/api-client");
+      vi.mocked(apiFetch).mockRejectedValueOnce(new Error("boom"));
+      render(<SessionEndModal />);
+
+      fireEvent.click(screen.getByLabelText("set-status-VPL-1"));
+
+      await waitFor(() =>
+        expect(patchTicketCaches).toHaveBeenCalledWith("VPL-1", { jiraStatus: "TO DO" }),
+      );
+    });
+
+    it("patches readiness optimistically", async () => {
+      const { patchTicketCaches } = await import("@/lib/ticket-cache");
+      const { tickets } = await import("@/lib/api-client");
+      render(<SessionEndModal />);
+
+      fireEvent.click(screen.getByLabelText("set-readiness-VPL-1"));
+
+      expect(patchTicketCaches).toHaveBeenCalledWith("VPL-1", { readiness: "drafting" });
+      await waitFor(() =>
+        expect(tickets.updateMetadata).toHaveBeenCalledWith("VPL-1", { readiness: "drafting" }),
+      );
+    });
+
+    it("patches issue type optimistically and rolls back on failure", async () => {
+      const { patchTicketCaches } = await import("@/lib/ticket-cache");
+      const { apiFetch } = await import("@/lib/api-client");
+      vi.mocked(apiFetch).mockRejectedValueOnce(new Error("boom"));
+      render(<SessionEndModal />);
+
+      fireEvent.click(screen.getByLabelText("set-type-VPL-2"));
+
+      expect(patchTicketCaches).toHaveBeenCalledWith("VPL-2", { type: "bug" });
+      await waitFor(() =>
+        expect(patchTicketCaches).toHaveBeenCalledWith("VPL-2", { type: "story" }),
+      );
     });
   });
 });

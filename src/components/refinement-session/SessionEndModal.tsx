@@ -10,6 +10,7 @@ import { Button } from "@/components/ui/Button";
 import { TicketStatusPill } from "@/components/shared/TicketStatusPill";
 import { IssueTypeIcon } from "@/components/shared/IssueTypeIcon";
 import { tickets, apiFetch } from "@/lib/api-client";
+import { patchTicketCaches } from "@/lib/ticket-cache";
 import type { JiraStatus, TicketReadiness, IssueType } from "@/types/ticket";
 import {
   ArrowLeft,
@@ -215,24 +216,38 @@ export function SessionEndModal() {
     closeEndModal();
   }, [closeEndModal]);
 
-  // Handlers for inline status changes via the pill
+  // Handlers for inline status changes via the pill. Rows read from the
+  // "__all__" tickets SWR cache, which only refreshes on its 60s interval, so
+  // each change patches that cache optimistically and rolls back on failure.
   const handleJiraStatusChange = useCallback(async (key: string, status: JiraStatus) => {
+    const prev = allTickets?.find((t) => t.key === key);
+    patchTicketCaches(key, { jiraStatus: status });
     try {
       await apiFetch(`/api/tickets/${encodeURIComponent(key)}/status`, { method: "PUT", body: { status } });
-    } catch { /* optimistic UI not needed here, allTickets will revalidate */ }
-  }, []);
+    } catch {
+      if (prev) patchTicketCaches(key, { jiraStatus: prev.jiraStatus });
+    }
+  }, [allTickets]);
 
   const handleReadinessChange = useCallback(async (key: string, readiness: TicketReadiness | null) => {
+    const prev = allTickets?.find((t) => t.key === key);
+    patchTicketCaches(key, { readiness });
     try {
       await tickets.updateMetadata(key, { readiness });
-    } catch { /* silent */ }
-  }, []);
+    } catch {
+      if (prev) patchTicketCaches(key, { readiness: prev.readiness ?? null });
+    }
+  }, [allTickets]);
 
   const handleIssueTypeChange = useCallback(async (key: string, type: IssueType) => {
+    const prev = allTickets?.find((t) => t.key === key);
+    patchTicketCaches(key, { type });
     try {
       await apiFetch(`/api/tickets/${encodeURIComponent(key)}`, { method: "PATCH", body: { type } });
-    } catch { /* silent */ }
-  }, []);
+    } catch {
+      if (prev) patchTicketCaches(key, { type: prev.type });
+    }
+  }, [allTickets]);
 
   const unestimatedCount = ticketRows.filter(
     (t) => !t.isSpike && (t.storyPoints == null || t.storyPoints === 0),
