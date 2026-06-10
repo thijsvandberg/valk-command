@@ -1,6 +1,6 @@
 # BRDG-330: Recently viewed tickets — quick access from the nav panel
 
-**Status:** In Progress
+**Status:** Done
 **Priority:** Medium
 
 ## Description

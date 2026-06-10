@@ -23,12 +23,15 @@ All new keys use the `bridge:<view>:<purpose>` format:
 | `bridge:activity-status` | Activity log | Status filter value |
 | `bridge:stakeholder-team` | Stakeholder | Last selected team prefix |
 | `bridge:stakeholder-sprint` | Stakeholder | Last selected sprint ID |
+| `bridge:recently-viewed` | Nav panel | Last 10 viewed tickets (MRU list, BRDG-330) |
 
 Existing sprint-board keys (`sprint-board-filters`, `sprint-board-sort`, `sprint-board-columns`, `sprint-board-saved-views`) predate this convention and are left unchanged to avoid discarding user data.
 
 ## Hook usage
 
 Always use `useLocalStorage` from `src/hooks/useLocalStorage.ts`. Never call `localStorage.getItem`/`setItem` directly in page or component code -- the hook handles SSR, hydration, and cross-tab sync.
+
+One exception: `bridge:recently-viewed` is owned by `src/lib/recently-viewed-store.ts` (BRDG-330). Its writer (`recordTicketView`) must be callable outside React render cycles and notify same-tab readers, which `useLocalStorage` cannot do (the browser `storage` event only fires in other tabs). The store dispatches a custom event and exposes `useRecentlyViewed` (a `useSyncExternalStore` wrapper) for reading. Write through `recordTicketView`, never directly.
 
 ```typescript
 // Good
