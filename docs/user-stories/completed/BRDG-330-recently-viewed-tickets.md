@@ -94,3 +94,7 @@ The tree carries uncommitted BRDG-329/334 work in `src/app/(app)/tickets/[key]/p
 - Recording Story Writer session opens as "ticket views" (sessions aren't always a Jira ticket); can be added later if useful.
 - Pinning / favouriting tickets, or any manual curation of the list — this is purely automatic MRU.
 - Showing rich metadata (status, assignee, scores) in the list beyond pill + title.
+
+## v2 (post-ship polish)
+
+Decided via /dev/exploration/recently-viewed: the panel widens to 480px while the flip-view is open (reverts on back), and rows use the epic-table list anatomy via `TicketStatusPill variant="list"` (loose type icon, key, status chip) so the key keeps its copy/share dropdown (BRDG-327). Added: day group headers (Today / Yesterday / Earlier), relative age per row, a pulse on the ticket currently open, a friendlier empty state, and a footer with count + Clear (`clearRecentlyViewed` in the store). The view moved to `src/components/nav/RecentlyViewedView.tsx` with its own test suite; the stagger helper moved to `src/components/nav/revealStyle.ts`.
