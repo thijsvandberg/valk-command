@@ -464,7 +464,7 @@ export default function SprintBoard() {
   const dnd = useSprintBoardDragDrop({
     activeSprintId, isAllView, groupBy, checkedTickets, setCheckedTickets,
     tickets, apiTickets, mutateTickets, sprintNameMap, showToast,
-    setPoPriorityOrder, sortField: f.sortField, activeViewId: f.activeViewId,
+    setPoPriorityOrder, refreshMeter, sortField: f.sortField, activeViewId: f.activeViewId,
   });
 
   // Prefetch adjacent sprints
@@ -603,6 +603,9 @@ export default function SprintBoard() {
     );
     const { ok } = await taBulkMoveSprint(sprintId, targets);
     if (!ok) { showToast("Failed to move tickets to sprint"); return; }
+    // The capacity meter reads a separate server total; refresh it so used points
+    // recompute for both source and destination sprint without a manual reload.
+    refreshMeter();
     showToast(
       <span>
         Moved {count} ticket{count === 1 ? "" : "s"} to{" "}
@@ -618,7 +621,7 @@ export default function SprintBoard() {
       </span>,
       0,
     );
-  }, [taBulkMoveSprint, checkedTickets, sprintNameMap, handleSprintListSelect, showToast, dismissToast]);
+  }, [taBulkMoveSprint, checkedTickets, sprintNameMap, handleSprintListSelect, showToast, dismissToast, refreshMeter]);
   const handleBulkUpdateAssignee = useCallback(async (accountId: string | null, name: string | null, targets: Set<string> = checkedTickets) => { await taBulkUpdateAssignee(accountId, name, targets); }, [taBulkUpdateAssignee, checkedTickets]);
   const handleBulkUpdateLabels = useCallback(async (labels: string[], mode: "add" | "set", targets: Set<string> = checkedTickets) => { await taBulkUpdateLabels(labels, mode, targets); }, [taBulkUpdateLabels, checkedTickets]);
   const handleBulkGenerateSubtasks = useCallback(async (targets: Set<string> = checkedTickets) => { const keys = Array.from(targets); setBulkGenerating(true); showToast(`Generating subtasks for ${keys.length} ticket${keys.length === 1 ? "" : "s"}...`); try { const { succeeded, failed } = await bulkGenerateSubtasks(keys); if (failed > 0) { showToast(`Generated subtasks for ${succeeded} ticket${succeeded === 1 ? "" : "s"}, ${failed} failed`); } else { showToast(`Subtask suggestions sent for ${succeeded} ticket${succeeded === 1 ? "" : "s"}`); } mutateTickets(); } finally { setBulkGenerating(false); } }, [checkedTickets, showToast, mutateTickets]);

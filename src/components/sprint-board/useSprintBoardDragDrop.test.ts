@@ -38,6 +38,7 @@ function makeDeps(overrides: Record<string, unknown> = {}) {
     sprintNameMap: { "140": "BT: 140" },
     showToast: vi.fn(),
     setPoPriorityOrder: vi.fn(),
+    refreshMeter: vi.fn(),
     sortField: "rank" as const,
     activeViewId: null,
     ...overrides,
@@ -72,6 +73,29 @@ describe("useSprintBoardDragDrop - sprint-slot drop zone", () => {
     await waitFor(() => expect(moveSprint).toHaveBeenCalledWith({ issueKeys: ["VPL-1"], targetSprintId: "140" }));
     // The bug being fixed: no list revalidation after the move, so the row stays gone.
     expect(deps.mutateTickets).not.toHaveBeenCalled();
+  });
+
+  it("refreshes the capacity meter after a successful cross-sprint drop", async () => {
+    const deps = makeDeps();
+    const { result } = renderHook(() => useSprintBoardDragDrop(deps));
+
+    await act(async () => {
+      await result.current.handleBoardDragEnd(dropEvent("VPL-1", "sprint-slot:140"));
+    });
+
+    await waitFor(() => expect(deps.refreshMeter).toHaveBeenCalled());
+  });
+
+  it("does not refresh the capacity meter when the move fails", async () => {
+    moveSprint.mockRejectedValueOnce(new Error("boom"));
+    const deps = makeDeps();
+    const { result } = renderHook(() => useSprintBoardDragDrop(deps));
+
+    await act(async () => {
+      await result.current.handleBoardDragEnd(dropEvent("VPL-1", "sprint-slot:140"));
+    });
+
+    expect(deps.refreshMeter).not.toHaveBeenCalled();
   });
 
   it("rolls the row back to its origin sprint when the move fails", async () => {

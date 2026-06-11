@@ -54,7 +54,11 @@ export function useTicketActions(deps: TicketActionsDeps) {
   }, [activeListKey]);
 
   const handleGuestimationChange = useCallback((key: string, value: number | null) => {
-    saveTicketMetadata(key, { guestimation: value }, activeListKey);
+    // The capacity meter reads a server-computed effective-points total (real SP
+    // or guestimation), separate from the ticket list, so refresh it after the save.
+    saveTicketMetadata(key, { guestimation: value }, activeListKey).then((ok) => {
+      if (ok) globalMutate("/api/sprints/used-points");
+    });
   }, [activeListKey]);
 
   const handleStoryPointsChange = useCallback((key: string, value: number | null) => {
@@ -72,11 +76,15 @@ export function useTicketActions(deps: TicketActionsDeps) {
         if (!ok) {
           setReadinessMap((m) => ({ ...m, [key]: prev }));
           mutateTickets((data) => data?.map((t) => t.key === key ? { ...t, readiness: prev ?? null } : t), { revalidate: false });
+          return;
         }
+        globalMutate("/api/sprints/used-points");
       });
       return;
     }
-    saveStoryPoints(key, value, activeListKey);
+    saveStoryPoints(key, value, activeListKey).then((ok) => {
+      if (ok) globalMutate("/api/sprints/used-points");
+    });
   }, [activeListKey, readinessMap, mutateTickets]);
 
   const handleJiraStatusChange = useCallback(async (key: string, status: JiraStatus) => {

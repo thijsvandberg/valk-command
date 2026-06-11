@@ -168,6 +168,41 @@ describe("useTicketActions - handleStoryPointsChange readiness transition", () =
   });
 });
 
+describe("useTicketActions - capacity meter refresh on estimate change", () => {
+  const saveTicketMetadataMock = vi.mocked(saveTicketMetadata);
+  beforeEach(() => {
+    globalMutate.mockReset();
+    saveStoryPointsMock.mockReset().mockResolvedValue(true);
+    saveTicketMetadataMock.mockReset().mockResolvedValue(true);
+  });
+
+  function setup() {
+    const { result } = renderHook(() =>
+      useTicketActions({ apiTickets: [], mutateTickets: vi.fn(), activeListKey: null, showToast: vi.fn() }),
+    );
+    return { result };
+  }
+
+  it("refreshes the meter after a story-points change", async () => {
+    const { result } = setup();
+    await act(async () => { result.current.handleStoryPointsChange("A-1", 5); });
+    expect(globalMutate).toHaveBeenCalledWith("/api/sprints/used-points");
+  });
+
+  it("refreshes the meter after a guestimation change", async () => {
+    const { result } = setup();
+    await act(async () => { result.current.handleGuestimationChange("A-1", 3); });
+    expect(globalMutate).toHaveBeenCalledWith("/api/sprints/used-points");
+  });
+
+  it("does not refresh the meter when the story-points save fails", async () => {
+    saveStoryPointsMock.mockResolvedValue(false);
+    const { result } = setup();
+    await act(async () => { result.current.handleStoryPointsChange("A-1", 5); });
+    expect(globalMutate).not.toHaveBeenCalledWith("/api/sprints/used-points");
+  });
+});
+
 describe("useTicketActions - handleBulkMoveSprint", () => {
   beforeEach(() => {
     moveSprint.mockReset();

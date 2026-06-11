@@ -30,6 +30,9 @@ interface DragDropDeps {
   sprintNameMap: Record<string, string>;
   showToast: (message: React.ReactNode, durationMs?: number) => void;
   setPoPriorityOrder: (order: string[] | null) => void;
+  // Refreshes the server-computed sprint capacity meter, which reads a separate
+  // total from the ticket list and so must be revalidated after a cross-sprint move.
+  refreshMeter: () => void;
   sortField: SortField;
   activeViewId: string | null;
 }
@@ -38,7 +41,7 @@ export function useSprintBoardDragDrop(deps: DragDropDeps) {
   const {
     activeSprintId, isAllView, groupBy, checkedTickets, setCheckedTickets,
     tickets, apiTickets, mutateTickets, sprintNameMap, showToast,
-    setPoPriorityOrder, sortField, activeViewId,
+    setPoPriorityOrder, refreshMeter, sortField, activeViewId,
   } = deps;
 
   const [boardActiveDragId, setBoardActiveDragId] = useState<string | null>(null);
@@ -121,6 +124,7 @@ export function useSprintBoardDragDrop(deps: DragDropDeps) {
 
       try {
         await jira.moveSprint({ issueKeys: keysToMove, targetSprintId });
+        refreshMeter();
         const label = keysToMove.length === 1 ? keysToMove[0] : `${keysToMove.length} tickets`;
         showToast(`Moved ${label} to ${targetName}`);
       } catch {
@@ -158,6 +162,7 @@ export function useSprintBoardDragDrop(deps: DragDropDeps) {
         const label = keysToMove.length === 1 ? keysToMove[0] : `${keysToMove.length} tickets`;
         showToast(`Moved ${label} to ${targetName}`);
         mutateTickets();
+        refreshMeter();
       } catch {
         mutateTickets(prevData, { revalidate: true });
         showToast("Failed to move to sprint. Changes reverted.");
@@ -205,6 +210,7 @@ export function useSprintBoardDragDrop(deps: DragDropDeps) {
         const label = keysToMove.length === 1 ? keysToMove[0] : `${keysToMove.length} tickets`;
         showToast(`Moved ${label} to ${targetName}`);
         mutateTickets();
+        refreshMeter();
       } catch {
         mutateTickets(prevData, { revalidate: true });
         showToast("Failed to move to sprint. Changes reverted.");
@@ -257,7 +263,7 @@ export function useSprintBoardDragDrop(deps: DragDropDeps) {
       const msg = err instanceof ApiError ? err.message : err instanceof Error ? err.message : "Failed to update rank in Jira";
       showToast(`${msg}. Reverted.`);
     }
-  }, [activeSprintId, isAllView, groupBy, checkedTickets, tickets, apiTickets, mutateTickets, sprintNameMap, showToast, setCheckedTickets, setPoPriorityOrder]);
+  }, [activeSprintId, isAllView, groupBy, checkedTickets, tickets, apiTickets, mutateTickets, sprintNameMap, showToast, setCheckedTickets, setPoPriorityOrder, refreshMeter]);
 
   const boardActiveDragTicket = boardActiveDragId ? tickets.find((t) => t.key === boardActiveDragId) : null;
   const boardDraggedKeys = useMemo(() => {
