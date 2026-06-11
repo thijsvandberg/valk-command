@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname, useRouter } from "next/navigation";
+import { usePathname } from "next/navigation";
 import { useState } from "react";
 import { useUser } from "@clerk/nextjs";
 import {
@@ -15,7 +15,6 @@ import {
   Trash2,
   ChevronRight,
   ChevronDown,
-  ChevronLeft,
   History,
   LogOut,
   User,
@@ -23,8 +22,8 @@ import {
 import { SyncIndicator } from "@/components/sync/SyncIndicator";
 import { useAccountMenuItems } from "@/components/sidebar/accountMenuItems";
 import { useSidebarData, type SidebarCount, type SidebarHeroData } from "@/hooks/useSidebarData";
-import { useRecentlyViewed } from "@/hooks/useRecentlyViewed";
-import { TicketRefPill } from "@/components/shared/TicketRefPill";
+import { RecentlyViewedView } from "@/components/nav/RecentlyViewedView";
+import { revealStyle } from "@/components/nav/revealStyle";
 
 type Tier = "primary" | "common" | "rare";
 type DataKey = "chat" | "storyWriter" | "refinement";
@@ -57,16 +56,6 @@ const RARE = NAV_ITEMS.filter((n) => n.tier === "rare");
 const PANEL_SHADOW =
   "shadow-[0_32px_80px_-24px_rgba(0,0,0,0.65),inset_0_1px_0_rgba(255,255,255,0.06)]";
 
-// Staggered reveal: each child eases in once `open`, ordered top-to-bottom.
-// Limited to transform + opacity so it stays on the compositor (BRDG-317).
-function revealStyle(open: boolean, i: number): React.CSSProperties {
-  return {
-    opacity: open ? 1 : 0,
-    transform: open ? "translateY(0)" : "translateY(8px)",
-    transition: "opacity 260ms ease, transform 260ms cubic-bezier(0.34,1.56,0.64,1)",
-    transitionDelay: open ? `${60 + i * 45}ms` : "0ms",
-  };
-}
 
 function HeaderAvatar({ size = 34 }: { size?: number }) {
   const { user } = useUser();
@@ -133,7 +122,7 @@ export function NavPanel({ open, onClose }: { open: boolean; onClose: () => void
       role="dialog"
       aria-label="Navigation"
       data-testid="nav-panel"
-      className={`nav-panel-enter absolute left-0 top-[calc(100%+10px)] z-50 w-[360px] max-w-[calc(100vw-2rem)] overflow-hidden rounded-2xl bg-[var(--color-surface-floating)]/95 ${PANEL_SHADOW} ring-1 ring-border-strong backdrop-blur-2xl`}
+      className={`nav-panel-enter absolute left-0 top-[calc(100%+10px)] z-50 max-w-[calc(100vw-2rem)] overflow-hidden rounded-2xl bg-[var(--color-surface-floating)]/95 ${PANEL_SHADOW} ring-1 ring-border-strong backdrop-blur-2xl transition-[width] duration-200 ${recentOpen ? "w-[480px]" : "w-[360px]"}`}
     >
       {/* Top accent gradient + soft brand glow */}
       <span className="pointer-events-none absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-[var(--color-brand-glow)] to-transparent" />
@@ -360,74 +349,6 @@ function AccountView({
         <LogOut className="h-[18px] w-[18px]" strokeWidth={1.5} />
         {signOutItem.label}
       </button>
-    </div>
-  );
-}
-
-function RecentlyViewedView({
-  open,
-  onBack,
-  onClose,
-}: {
-  open: boolean;
-  onBack: () => void;
-  onClose: () => void;
-}) {
-  const router = useRouter();
-  const entries = useRecentlyViewed();
-
-  function openTicket(e: React.SyntheticEvent, key: string) {
-    // Cancels the pill's inner anchor default so every click in the row takes
-    // the same client-side route instead of a full document navigation.
-    e.preventDefault();
-    router.push(`/tickets/${key}`);
-    onClose();
-  }
-
-  return (
-    <div data-testid="recently-viewed-view">
-      <button
-        type="button"
-        onClick={onBack}
-        style={revealStyle(open, 1)}
-        className="group flex w-full items-center gap-2 rounded-xl px-1.5 py-2 text-left transition-colors duration-150 cursor-pointer hover:bg-hover-list-item active:bg-overlay-default focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)]"
-      >
-        <ChevronLeft className="h-4 w-4 shrink-0 text-text-muted transition-transform duration-200 group-hover:-translate-x-0.5" strokeWidth={1.5} />
-        <History className={`${ICON} shrink-0 text-text-tertiary`} strokeWidth={1.5} />
-        <span className="text-body-sm font-medium text-text-primary">Recently viewed</span>
-      </button>
-
-      {entries.length === 0 ? (
-        <p className="px-2 py-8 text-center text-[12px] text-text-muted" style={revealStyle(open, 2)}>
-          No recently viewed tickets yet
-        </p>
-      ) : (
-        <div className="flex flex-col px-1">
-          {entries.map((entry, i) => (
-            // role="button" instead of <Link>: TicketRefPill renders its own
-            // inner anchor, and an anchor cannot be a descendant of an anchor.
-            <div
-              key={entry.key}
-              role="button"
-              tabIndex={0}
-              onClick={(e) => openTicket(e, entry.key)}
-              onKeyDown={(e) => {
-                if (e.key === "Enter" || e.key === " ") openTicket(e, entry.key);
-              }}
-              style={revealStyle(open, 2 + i)}
-              className="group flex w-full items-center gap-3 border-t border-border-subtle py-2.5 text-left transition-colors duration-150 cursor-pointer first:border-t-0 hover:bg-hover-list-item active:bg-overlay-default focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)]"
-            >
-              <span className="shrink-0">
-                <TicketRefPill ticketKey={entry.key} />
-              </span>
-              <span className="min-w-0 flex-1 truncate text-body-sm text-text-secondary transition-colors group-hover:text-text-primary">
-                {entry.title ?? ""}
-              </span>
-              <ChevronRight className="h-4 w-4 shrink-0 text-text-muted opacity-0 transition-opacity duration-150 group-hover:opacity-100" strokeWidth={1.5} />
-            </div>
-          ))}
-        </div>
-      )}
     </div>
   );
 }

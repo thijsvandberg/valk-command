@@ -59,6 +59,17 @@ export function recordTicketView(key: string, title?: string): void {
   window.dispatchEvent(new Event(RECENTLY_VIEWED_EVENT));
 }
 
+/** Empties the list (the footer's Clear action) and notifies listeners. */
+export function clearRecentlyViewed(): void {
+  if (typeof window === "undefined") return;
+  try {
+    localStorage.removeItem(RECENTLY_VIEWED_KEY);
+  } catch {
+    return;
+  }
+  window.dispatchEvent(new Event(RECENTLY_VIEWED_EVENT));
+}
+
 // ---------------------------------------------------------------------------
 // useSyncExternalStore adapters. The snapshot is cached by the raw string so
 // repeated reads return a stable reference (required to avoid render loops).

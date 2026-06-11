@@ -5,6 +5,7 @@ import {
   MAX_RECENTLY_VIEWED,
   readRecentlyViewed,
   recordTicketView,
+  clearRecentlyViewed,
   getRecentlyViewedSnapshot,
 } from "./recently-viewed-store";
 
@@ -69,6 +70,19 @@ describe("recordTicketView", () => {
     recordTicketView("VPL-1", "First");
     window.removeEventListener(RECENTLY_VIEWED_EVENT, listener);
 
+    expect(listener).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe("clearRecentlyViewed", () => {
+  it("empties the list and dispatches the change event", () => {
+    recordTicketView("VPL-1", "First");
+    const listener = vi.fn();
+    window.addEventListener(RECENTLY_VIEWED_EVENT, listener);
+    clearRecentlyViewed();
+    window.removeEventListener(RECENTLY_VIEWED_EVENT, listener);
+
+    expect(readRecentlyViewed()).toEqual([]);
     expect(listener).toHaveBeenCalledTimes(1);
   });
 });
