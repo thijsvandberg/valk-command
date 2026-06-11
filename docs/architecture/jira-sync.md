@@ -90,6 +90,7 @@ Extracted upsert function shared between sprint sync and incremental sync. Pre-r
 - Ticket data upsert (insert or update)
 - Metadata row creation
 - Story version tracking (content hash comparison, changelog author lookup)
+- Own-push echo suppression: a new version whose markdown matches the local mirror (and AC unchanged) is Bridge's own push returning through sync (the ADF round-trip changes the raw hash). It is recorded for history, but `content:changed` is not emitted and any active Story Writer session is rebased onto it instead, so the editor is not falsely told its draft is outdated. Push-to-Jira also runs a confirm-fetch right after a successful write (`ingestIssue` in sync-tickets-service) so the post-push state usually lands before any webhook echo arrives.
 - Attachment metadata sync
 - Subtask sync (replace all)
 - Issue link sync (preserves locally-created links)
@@ -132,7 +133,7 @@ React Context that provides sync state to the entire app:
 - `incrementalSyncRemaining`: tickets still catching up (from useIncrementalSync)
 - `incrementalSyncLastAt`: when the last incremental check ran
 - `incrementalSyncLastCount`: how many tickets were synced in the last run
-- `toasts`: new sync completions shown as toast notifications
+- `toasts`: failed sync entries shown as toast notifications. Successful and cancelled runs never toast (most are background syncs: scheduler, hover prefetch, auto-fetch on ticket open). A successful retry from a failure toast pushes a local confirmation toast.
 - `triggerSync(type, scope)`: manually trigger a sync
 - `acknowledgeError(id)`: dismiss a failed sync entry
 
@@ -152,7 +153,7 @@ Client-side hook that drives the incremental sync polling:
 | Component | Location | Purpose |
 |-----------|----------|---------|
 | `SyncIndicator` | Sidebar footer | Shows sync state with three modes: checking (spinner), catching up (cloud icon + count), up to date (checkmark). Expandable panel with activity history. |
-| `SyncToast` | Bottom-right overlay | Success toasts (3s auto-dismiss), error toasts (persist until dismissed) |
+| `SyncToast` | Bottom-right overlay | Error toasts (persist until dismissed, with retry); retry-success confirmations auto-dismiss after 3s. Routine sync successes do not toast. |
 | `OfflineBanner` | Top of main content area | Shown when Jira health check fails, with retry button |
 
 **SyncIndicator states:**

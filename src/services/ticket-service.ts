@@ -8,7 +8,7 @@ import { markdownToAdf } from "@/lib/markdown-to-adf";
 import { adfToMarkdown } from "@/lib/adf-to-markdown";
 import { logActivity } from "@/lib/activity-logger";
 import { sanitizeText } from "@/lib/sanitize";
-import { syncIndividualTickets } from "@/lib/sync-tickets-service";
+import { syncIndividualTickets, ingestIssue } from "@/lib/sync-tickets-service";
 import { logger } from "@/lib/logger";
 import { cache } from "@/lib/cache";
 import { emitTicketEvent } from "@/lib/ticket-events";
@@ -47,7 +47,7 @@ export interface PushToJiraConflict {
 
 export type PushToJiraOutcome = PushToJiraResult | PushToJiraConflict;
 
-export async function pushToJira(key: string, force: boolean): Promise<PushToJiraOutcome> {
+export async function pushToJira(key: string): Promise<PushToJiraOutcome> {
   if (!jiraClient.isLive) {
     throw new JiraUnavailableError();
   }
@@ -103,14 +103,9 @@ export async function pushToJira(key: string, force: boolean): Promise<PushToJir
             message: "Jira was updated since your edit. Review the diff before pushing.",
           };
         }
-
-        if (!force) {
-          return {
-            conflict: true,
-            contentChanged: false,
-            message: "Jira metadata was updated since your last sync, but the content is unchanged. Review and confirm.",
-          };
-        }
+        // Metadata-only drift (status, assignee, our own previous push bumping
+        // `updated`) is not a content conflict: pushing title/description
+        // cannot clobber it, so proceed without prompting.
       }
     }
 
@@ -137,6 +132,32 @@ export async function pushToJira(key: string, force: boolean): Promise<PushToJir
     }
     if (Object.keys(directUpdates).length > 0) {
       db.update(ticket).set(directUpdates).where(eq(ticket.jiraKey, key)).run();
+    }
+
+    // Confirm-fetch: ingest Jira's canonical post-push state so the version
+    // history, the mirror's jiraUpdatedAt and any active Story Writer baseline
+    // all reflect this push. Without it, the next sync sees our own push come
+    // back as an "external" change and falsely flags open drafts as outdated.
+    // Reads right after a write can be stale (see above), so retry briefly
+    // until the remote `updated` timestamp moves past the pre-push value.
+    // Failures here must never fail the push itself: the deferred checkUpdated
+    // sync plus the echo suppression in upsert-issue cover the fallback.
+    for (const delayMs of [0, 300, 600]) {
+      if (delayMs > 0) await new Promise((resolve) => setTimeout(resolve, delayMs));
+      let fresh;
+      try {
+        fresh = await jiraClient.getIssue(key);
+      } catch (fetchErr) {
+        logger.warn("push-to-jira", `post-push fetch failed for ${key}:`, fetchErr);
+        break;
+      }
+      if (fresh.fields.updated === remoteUpdated) continue;
+      try {
+        await ingestIssue(fresh);
+      } catch (ingestErr) {
+        logger.warn("push-to-jira", `post-push ingest failed for ${key}:`, ingestErr);
+      }
+      break;
     }
 
     const postPushVersion = await db.query.storyVersion.findFirst({

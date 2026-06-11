@@ -1,8 +1,9 @@
 import { db } from "@/db";
-import { ticket, ticketMetadata, storyVersion, ticketAttachment, ticketSubtask, ticketLink, jiraComment, sprintNameCache, ticketStatusChange } from "@/db/schema";
+import { ticket, ticketMetadata, storyVersion, ticketAttachment, ticketSubtask, ticketLink, jiraComment, sprintNameCache, ticketStatusChange, storyWriterSession } from "@/db/schema";
 import { eq, and, isNotNull, isNull } from "drizzle-orm";
 import { jiraClient, extractStoryPoints, extractSprints, extractEpicLink, extractAcceptanceCriteria, extractLastChangeAuthor, FLAGGED_FIELD, type JiraIssue, type JiraAttachment } from "@/lib/jira-client";
 import { adfToMarkdown } from "@/lib/adf-to-markdown";
+import { markdownEqualIgnoringSpacing } from "@/lib/normalize-markdown";
 import { emitTicketEvent } from "@/lib/ticket-events";
 import { createHash } from "crypto";
 
@@ -97,6 +98,18 @@ export async function upsertIssue(issue: JiraIssue, sprintName: string, _signal?
   // to avoid an extra API call per issue. Fall back to a separate fetch only when
   // the issue was fetched without changelog expansion (e.g. single-issue views).
   const needsNewVersion = !latestVersion || latestVersion.contentHash !== hash;
+
+  // A new version whose visible content already matches the local mirror is
+  // the echo of Bridge's own push returning through sync (the push round-trips
+  // through ADF, so the raw content hash still moves), not an external edit.
+  // Record it for history, but keep open editors quiet and carry any active
+  // Story Writer baseline along so the draft is not falsely flagged outdated.
+  const isOwnPushEcho =
+    needsNewVersion &&
+    !!existing &&
+    markdownEqualIgnoringSpacing(descriptionMarkdown ?? "", existing.description ?? "") &&
+    (ac ?? "") === (existing.acceptanceCriteria ?? "");
+
   const changeAuthor = needsNewVersion && latestVersion
     ? (extractLastChangeAuthor(issue) ?? await jiraClient.getLastChangeAuthor(issue.key, _signal))
     : null;
@@ -397,9 +410,18 @@ export async function upsertIssue(issue: JiraIssue, sprintName: string, _signal?
   });
 
   // A new recorded version means the ticket's content moved on (webhook, sync,
-  // agent push). Notify any open editor subscribed to this ticket's stream.
+  // agent push). Notify any open editor subscribed to this ticket's stream --
+  // unless it is the echo of Bridge's own push, in which case rebase any
+  // active Story Writer session instead so its draft stays "current".
   if (needsNewVersion) {
-    emitTicketEvent({ type: "content:changed", ticketKey: issue.key });
+    if (isOwnPushEcho) {
+      db.update(storyWriterSession)
+        .set({ baseVersionHash: hash, updatedAt: now })
+        .where(and(eq(storyWriterSession.ticketKey, issue.key), eq(storyWriterSession.status, "active")))
+        .run();
+    } else {
+      emitTicketEvent({ type: "content:changed", ticketKey: issue.key });
+    }
   }
 
   return {

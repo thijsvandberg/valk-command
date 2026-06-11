@@ -8,6 +8,7 @@ import { storyWriterSession, storyWriterDraft, conversation, message, storyVersi
 import { eq, and, desc, sql } from "drizzle-orm";
 import { randomUUID } from "crypto";
 import { logActivity } from "@/lib/activity-logger";
+import { markdownEqualIgnoringSpacing } from "@/lib/normalize-markdown";
 import { logger } from "@/lib/logger";
 import { applyRateLimit } from "@/lib/rate-limiter";
 import { resolveDraftKey } from "@/lib/draft-sync";
@@ -145,10 +146,28 @@ export async function GET(request: Request, { params }: RouteContext) {
       where: eq(storyVersion.jiraKey, key),
       orderBy: [desc(storyVersion.createdAt)],
     });
-    const outdated =
+    let outdated =
       resolvedSession.baseVersionHash != null &&
       latestVersion?.contentHash != null &&
       latestVersion.contentHash !== resolvedSession.baseVersionHash;
+
+    // Self-heal: when the latest Jira version's content matches the draft,
+    // the "newer" version is Bridge's own push echoed back through sync (or
+    // formatting-only churn). Rebase the baseline silently instead of warning
+    // about a divergence the user cannot see.
+    if (
+      outdated &&
+      latestVersion?.contentHash &&
+      resolvedSession.localDraft != null &&
+      markdownEqualIgnoringSpacing(resolvedSession.localDraft, latestVersion.description ?? "")
+    ) {
+      await db
+        .update(storyWriterSession)
+        .set({ baseVersionHash: latestVersion.contentHash, updatedAt: new Date().toISOString() })
+        .where(eq(storyWriterSession.id, resolvedSession.id));
+      resolvedSession = { ...resolvedSession, baseVersionHash: latestVersion.contentHash };
+      outdated = false;
+    }
 
     // Split target uses its own ticketLocalEdit baseline (the Story Writer persists
     // target content there), compared against the target ticket's latest Jira version.
@@ -174,6 +193,20 @@ export async function GET(request: Request, { params }: RouteContext) {
         targetEdit?.baseJiraVersion != null &&
         targetLatest?.contentHash != null &&
         targetEdit.baseJiraVersion !== targetLatest.contentHash;
+
+      // Same self-heal as above, for the split target's own baseline.
+      if (
+        targetOutdated &&
+        targetEdit &&
+        targetLatest?.contentHash &&
+        markdownEqualIgnoringSpacing(targetEdit.localValue ?? "", targetLatest.description ?? "")
+      ) {
+        await db
+          .update(ticketLocalEdit)
+          .set({ baseJiraVersion: targetLatest.contentHash })
+          .where(eq(ticketLocalEdit.id, targetEdit.id));
+        targetOutdated = false;
+      }
     }
 
     if (draftsOnly) {

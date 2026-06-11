@@ -53,12 +53,12 @@ describe("POST /api/tickets/[key]/push-to-jira", () => {
     const data = await res.json();
     expect(res.status).toBe(200);
     expect(data.ok).toBe(true);
-    expect(mockPushToJira).toHaveBeenCalledWith("VPL-100", false);
+    expect(mockPushToJira).toHaveBeenCalledWith("VPL-100");
   });
 
-  it("passes force: true from request body", async () => {
+  it("ignores a legacy force flag in the request body", async () => {
     await POST(makeRequest({ force: true }), makeParams("VPL-100"));
-    expect(mockPushToJira).toHaveBeenCalledWith("VPL-100", true);
+    expect(mockPushToJira).toHaveBeenCalledWith("VPL-100");
   });
 
   it("resolves DRAFT key before calling pushToJira", async () => {
@@ -66,7 +66,7 @@ describe("POST /api/tickets/[key]/push-to-jira", () => {
 
     await POST(makeRequest(), makeParams("DRAFT-abc"));
     expect(mockResolveDraftKey).toHaveBeenCalledWith("DRAFT-abc");
-    expect(mockPushToJira).toHaveBeenCalledWith("VPL-999", false);
+    expect(mockPushToJira).toHaveBeenCalledWith("VPL-999");
   });
 
   it("returns conflict result as-is", async () => {

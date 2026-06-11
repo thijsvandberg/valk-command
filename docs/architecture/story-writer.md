@@ -79,7 +79,11 @@ The PO reviews AI drafts in the editor panel. Accepting a draft merges it into t
 
 `POST /api/tickets/[key]/push-to-jira` pushes local edits (title + description) to Jira. For split mode, both original and target tickets are pushed.
 
-On a successful push, `pushToJira` rebases the active session's `baseVersionHash` onto the just-pushed version, so the draft is not immediately flagged as outdated (see below).
+After a successful update, `pushToJira` runs a **confirm-fetch**: it re-reads the issue from Jira (retrying briefly until the remote `updated` timestamp moves past the pre-push value, because Jira reads right after a write can be stale) and ingests that canonical state via `ingestIssue` (sync-tickets-service). This records the pushed content as the newest `storyVersion`, refreshes the mirror's `jiraUpdatedAt`, and lets the session rebase below land on the *pushed* version rather than the pre-push one. Confirm-fetch failures never fail the push; the deferred `checkUpdated` sync plus echo suppression (below) cover the fallback.
+
+On a successful push, `pushToJira` then rebases the active session's `baseVersionHash` onto the just-pushed version, so the draft is not immediately flagged as outdated (see below).
+
+Conflicts are content-only: if Jira's `updated` moved but the latest synced content hash still matches the edit's `baseJiraVersion` (metadata-only drift such as status changes or Bridge's own earlier push), the push proceeds without prompting.
 
 ### Outdated-draft detection (BRDG-243)
 
@@ -90,6 +94,8 @@ When the Jira version of a ticket moves on after a draft's baseline was recorded
   - **View difference** opens the diff pane (editor draft vs latest Jira version).
   - **Take Jira version** pulls the current Jira content into the editor, rebases the baseline (PATCH `rebaseBaseline: true` for the original; local-edits rebase for the target), and refreshes the session so the warning clears.
 - **No false positives:** accepting an AI draft does not change `baseVersionHash` or create a `storyVersion`, so it never flags outdated; a successful push rebases the baseline server-side.
+- **Own-push echo suppression:** when sync records a new `storyVersion` whose markdown matches the local mirror (`markdownEqualIgnoringSpacing`, AC unchanged), it is the echo of Bridge's own push returning through webhook/sync, not an external edit. `upsert-issue` keeps the version for history but skips the `content:changed` emit and rebases any active session's `baseVersionHash` onto it.
+- **Self-heal at read time:** if `outdated`/`targetOutdated` would be `true` but the latest version's content matches the draft (same `markdownEqualIgnoringSpacing` check), the GET route silently rebases the baseline (`baseVersionHash` for the session, `baseJiraVersion` for the target's local edit) and reports not outdated. This rescues sessions stuck in the false-outdated state from before these fixes and covers races the other two layers miss.
 - **Live cross-tab updates:** the `outdated` flag is recomputed at fetch time, so an open editor would otherwise stay stale until reload. A per-ticket SSE stream closes that gap:
   - `emitTicketEvent({ type: "content:changed", ticketKey })` fires whenever the ticket's content moves on server-side: from `pushToJira` (ticket-service) and from `upsert-issue` when a new `storyVersion` is recorded (Jira webhook, sync, agent push).
   - `GET /api/tickets/[key]/events` streams those events, filtered to the requested key. `useTicketEvents(key, onChange)` subscribes (reconnecting on error, disabled for `DRAFT-` keys).

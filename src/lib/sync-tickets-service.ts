@@ -45,6 +45,18 @@ async function updateWatermark(value: string) {
   await upsertSetting(WATERMARK_KEY, value);
 }
 
+/**
+ * Ingest an already-fetched issue through the canonical sync path (sprint
+ * cache + upsertIssue). Lets push-to-jira record the confirmed post-push
+ * state without a second fetch or an activity-log entry per save.
+ */
+export async function ingestIssue(issue: JiraIssue, signal?: AbortSignal) {
+  const sprint = extractSprint(issue.fields);
+  const sprintName = sprint ? String(sprint.id) : "";
+  if (sprint) cacheSprintName(String(sprint.id), sprint.name);
+  return upsertIssue(issue, sprintName, signal);
+}
+
 export async function syncIndividualTickets(ticketKeys: string[], requestSignal?: AbortSignal): Promise<SyncResult> {
   const logId = `sync-${crypto.randomUUID()}`;
   const startedAt = new Date().toISOString();

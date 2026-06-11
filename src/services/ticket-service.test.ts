@@ -54,6 +54,7 @@ vi.mock("@/lib/cache", () => ({
 
 vi.mock("@/lib/sync-tickets-service", () => ({
   syncIndividualTickets: vi.fn().mockResolvedValue(undefined),
+  ingestIssue: vi.fn().mockResolvedValue(undefined),
 }));
 
 // fetch is not available in test env, so stub globally
@@ -79,7 +80,7 @@ import {
   JiraOperationError,
 } from "./errors";
 import { jiraClient } from "@/lib/jira-client";
-import { syncIndividualTickets } from "@/lib/sync-tickets-service";
+import { syncIndividualTickets, ingestIssue } from "@/lib/sync-tickets-service";
 
 function seedTicket(db: BetterSQLite3Database<typeof schema>, key: string) {
   db.insert(ticket)
@@ -464,18 +465,20 @@ describe("pushToJira", () => {
     fetchMock.mockResolvedValue({ ok: true });
     vi.mocked(syncIndividualTickets).mockReset();
     vi.mocked(syncIndividualTickets).mockResolvedValue(undefined as never);
+    vi.mocked(ingestIssue).mockReset();
+    vi.mocked(ingestIssue).mockResolvedValue(undefined as never);
   });
 
   it("throws JiraUnavailableError when jiraClient is not live", async () => {
     mockJiraLive = false;
-    await expect(pushToJira("VPL-1", false)).rejects.toBeInstanceOf(
+    await expect(pushToJira("VPL-1")).rejects.toBeInstanceOf(
       JiraUnavailableError,
     );
   });
 
   it("throws ValidationError when no local edits exist", async () => {
     mockJiraLive = true;
-    await expect(pushToJira("VPL-1", false)).rejects.toBeInstanceOf(
+    await expect(pushToJira("VPL-1")).rejects.toBeInstanceOf(
       ValidationError,
     );
   });
@@ -499,7 +502,7 @@ describe("pushToJira", () => {
     vi.mocked(jiraClient.getIssue).mockResolvedValue({
       fields: { updated: "2024-01-01T00:00:00Z" },
     } as never);
-    await expect(pushToJira("VPL-GHOST", false)).rejects.toBeInstanceOf(NotFoundError);
+    await expect(pushToJira("VPL-GHOST")).rejects.toBeInstanceOf(NotFoundError);
   });
 
   it("throws JiraOperationError when jiraClient.updateIssue throws JiraApiError", async () => {
@@ -519,7 +522,7 @@ describe("pushToJira", () => {
     vi.mocked(jiraClient.updateIssue).mockRejectedValue(
       new Err(400, "Bad Request", '{"errorMessages":["field error"]}', "/issue/VPL-1"),
     );
-    await expect(pushToJira("VPL-1", false)).rejects.toBeInstanceOf(
+    await expect(pushToJira("VPL-1")).rejects.toBeInstanceOf(
       JiraOperationError,
     );
   });
@@ -533,12 +536,17 @@ describe("pushToJira", () => {
       .where(eq(ticket.jiraKey, "VPL-1"))
       .run();
     await upsertLocalEdit("VPL-1", { field: "title", localValue: "t" });
-    vi.mocked(jiraClient.getIssue).mockResolvedValue({
-      fields: { updated: "2024-01-01T00:00:00Z" },
-    } as never);
+    vi.mocked(jiraClient.getIssue)
+      .mockResolvedValueOnce({
+        fields: { updated: "2024-01-01T00:00:00Z" },
+      } as never)
+      .mockResolvedValue({
+        fields: { updated: "2024-01-02T00:00:00Z" },
+      } as never);
     vi.mocked(jiraClient.updateIssue).mockResolvedValue(undefined as never);
-    const result = await pushToJira("VPL-1", false);
+    const result = await pushToJira("VPL-1");
     expect("success" in result && result.success).toBe(true);
+    expect(ingestIssue).toHaveBeenCalledTimes(1);
   });
 
   it("succeeds without false conflict when Bridge synced jiraUpdatedAt after metadata push", async () => {
@@ -560,16 +568,20 @@ describe("pushToJira", () => {
     });
 
     // Remote returns the same timestamp that Bridge synced
-    vi.mocked(jiraClient.getIssue).mockResolvedValue({
-      fields: { updated: "2024-06-01T00:00:00Z" },
-    } as never);
+    vi.mocked(jiraClient.getIssue)
+      .mockResolvedValueOnce({
+        fields: { updated: "2024-06-01T00:00:00Z" },
+      } as never)
+      .mockResolvedValue({
+        fields: { updated: "2024-06-02T00:00:00Z" },
+      } as never);
     vi.mocked(jiraClient.updateIssue).mockResolvedValue(undefined as never);
 
-    const result = await pushToJira("VPL-1", false);
+    const result = await pushToJira("VPL-1");
     expect("success" in result && result.success).toBe(true);
   });
 
-  it("detects real external metadata change as conflict", async () => {
+  it("pushes without prompting when only metadata changed externally", async () => {
     mockJiraLive = true;
     seedTicket(testDb, "VPL-1");
     seedStoryVersion(testDb, "VPL-1", "hash-current", "2024-01-01T00:00:00.000Z");
@@ -585,10 +597,15 @@ describe("pushToJira", () => {
       baseJiraVersion: "hash-current",
     });
 
-    // Someone edited the ticket directly in Jira
-    vi.mocked(jiraClient.getIssue).mockResolvedValue({
-      fields: { updated: "2024-07-01T00:00:00Z" },
-    } as never);
+    // Someone changed metadata directly in Jira (status, assignee, ...)
+    vi.mocked(jiraClient.getIssue)
+      .mockResolvedValueOnce({
+        fields: { updated: "2024-07-01T00:00:00Z" },
+      } as never)
+      .mockResolvedValue({
+        fields: { updated: "2024-07-02T00:00:00Z" },
+      } as never);
+    vi.mocked(jiraClient.updateIssue).mockResolvedValue(undefined as never);
 
     // After sync, content hash is unchanged (metadata-only change in Jira)
     vi.mocked(syncIndividualTickets).mockImplementationOnce(async () => {
@@ -596,11 +613,10 @@ describe("pushToJira", () => {
       return undefined as never;
     });
 
-    const result = await pushToJira("VPL-1", false);
-    expect("conflict" in result && result.conflict).toBe(true);
-    if ("conflict" in result) {
-      expect(result.contentChanged).toBe(false);
-    }
+    // Pushing title/description cannot clobber metadata, so no prompt
+    const result = await pushToJira("VPL-1");
+    expect(syncIndividualTickets).toHaveBeenCalledWith(["VPL-1"]);
+    expect("success" in result && result.success).toBe(true);
   });
 
   it("skips conflict check for newly created tickets with no sync baseline", async () => {
@@ -619,9 +635,13 @@ describe("pushToJira", () => {
     await promoteDrafts("VPL-1");
 
     // Remote returns a timestamp (Jira always has one)
-    vi.mocked(jiraClient.getIssue).mockResolvedValue({
-      fields: { updated: "2024-07-01T00:00:00Z" },
-    } as never);
+    vi.mocked(jiraClient.getIssue)
+      .mockResolvedValueOnce({
+        fields: { updated: "2024-07-01T00:00:00Z" },
+      } as never)
+      .mockResolvedValue({
+        fields: { updated: "2024-07-02T00:00:00Z" },
+      } as never);
 
     // Sync creates the first storyVersion
     vi.mocked(syncIndividualTickets).mockImplementationOnce(async () => {
@@ -630,7 +650,7 @@ describe("pushToJira", () => {
     });
     vi.mocked(jiraClient.updateIssue).mockResolvedValue(undefined as never);
 
-    const result = await pushToJira("VPL-1", false);
+    const result = await pushToJira("VPL-1");
     expect("success" in result && result.success).toBe(true);
   });
 
@@ -659,7 +679,7 @@ describe("pushToJira", () => {
       seedStoryVersion(testDb, "VPL-1", "hash-new", "2024-12-01T00:00:00.000Z");
       return undefined as never;
     });
-    const result = await pushToJira("VPL-1", false);
+    const result = await pushToJira("VPL-1");
     expect("conflict" in result && result.conflict).toBe(true);
     if ("conflict" in result) {
       expect(result.contentChanged).toBe(true);
@@ -688,12 +708,16 @@ describe("pushToJira", () => {
     }).run();
 
     await upsertLocalEdit("VPL-1", { field: "title", localValue: "t", baseJiraVersion: "hash-current" });
-    vi.mocked(jiraClient.getIssue).mockResolvedValue({
-      fields: { updated: "2024-01-01T00:00:00Z" },
-    } as never);
+    vi.mocked(jiraClient.getIssue)
+      .mockResolvedValueOnce({
+        fields: { updated: "2024-01-01T00:00:00Z" },
+      } as never)
+      .mockResolvedValue({
+        fields: { updated: "2024-01-02T00:00:00Z" },
+      } as never);
     vi.mocked(jiraClient.updateIssue).mockResolvedValue(undefined as never);
 
-    const result = await pushToJira("VPL-1", false);
+    const result = await pushToJira("VPL-1");
     expect("success" in result && result.success).toBe(true);
 
     const session = testDb
@@ -702,5 +726,108 @@ describe("pushToJira", () => {
       .where(eq(storyWriterSession.id, "sws-1"))
       .get();
     expect(session?.baseVersionHash).toBe("hash-current");
+  });
+
+  it("ingests the confirmed post-push state and rebases the session onto it", async () => {
+    mockJiraLive = true;
+    seedTicket(testDb, "VPL-1");
+    seedStoryVersion(testDb, "VPL-1", "hash-old", "2024-01-01T00:00:00.000Z");
+    testDb
+      .update(ticket)
+      .set({ jiraUpdatedAt: "2024-01-01T00:00:00Z" })
+      .where(eq(ticket.jiraKey, "VPL-1"))
+      .run();
+    testDb.insert(conversation).values({ id: "conv-1", title: "SW", relatedTicket: "VPL-1" }).run();
+    testDb.insert(storyWriterSession).values({
+      id: "sws-1",
+      ticketKey: "VPL-1",
+      conversationId: "conv-1",
+      status: "active",
+      localDraft: "new draft",
+      baseVersionHash: "hash-old",
+    }).run();
+    await upsertLocalEdit("VPL-1", {
+      field: "description",
+      localValue: "new draft",
+      baseJiraVersion: "hash-old",
+    });
+
+    vi.mocked(jiraClient.getIssue)
+      .mockResolvedValueOnce({
+        fields: { updated: "2024-01-01T00:00:00Z" },
+      } as never)
+      .mockResolvedValue({
+        fields: { updated: "2024-06-01T00:00:00Z" },
+      } as never);
+    vi.mocked(jiraClient.updateIssue).mockResolvedValue(undefined as never);
+    // The ingest records the pushed content as the newest story version
+    vi.mocked(ingestIssue).mockImplementationOnce(async () => {
+      seedStoryVersion(testDb, "VPL-1", "hash-pushed", "2024-06-01T00:00:00.000Z");
+      return undefined as never;
+    });
+
+    const result = await pushToJira("VPL-1");
+    expect("success" in result && result.success).toBe(true);
+    expect(ingestIssue).toHaveBeenCalledTimes(1);
+    if ("success" in result) {
+      expect(result.newContentHash).toBe("hash-pushed");
+    }
+
+    const session = testDb
+      .select()
+      .from(storyWriterSession)
+      .where(eq(storyWriterSession.id, "sws-1"))
+      .get();
+    expect(session?.baseVersionHash).toBe("hash-pushed");
+  });
+
+  it("succeeds without ingesting when Jira keeps returning the pre-push state", async () => {
+    mockJiraLive = true;
+    seedTicket(testDb, "VPL-1");
+    testDb
+      .update(ticket)
+      .set({ jiraUpdatedAt: "2024-01-01T00:00:00Z" })
+      .where(eq(ticket.jiraKey, "VPL-1"))
+      .run();
+    await upsertLocalEdit("VPL-1", { field: "title", localValue: "t" });
+    // Jira keeps serving the stale pre-push read after the update
+    vi.mocked(jiraClient.getIssue).mockResolvedValue({
+      fields: { updated: "2024-01-01T00:00:00Z" },
+    } as never);
+    vi.mocked(jiraClient.updateIssue).mockResolvedValue(undefined as never);
+
+    vi.useFakeTimers();
+    try {
+      const pushPromise = pushToJira("VPL-1");
+      await vi.advanceTimersByTimeAsync(2000);
+      const result = await pushPromise;
+      expect("success" in result && result.success).toBe(true);
+      expect(ingestIssue).not.toHaveBeenCalled();
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it("does not fail the push when the post-push ingest throws", async () => {
+    mockJiraLive = true;
+    seedTicket(testDb, "VPL-1");
+    testDb
+      .update(ticket)
+      .set({ jiraUpdatedAt: "2024-01-01T00:00:00Z" })
+      .where(eq(ticket.jiraKey, "VPL-1"))
+      .run();
+    await upsertLocalEdit("VPL-1", { field: "title", localValue: "t" });
+    vi.mocked(jiraClient.getIssue)
+      .mockResolvedValueOnce({
+        fields: { updated: "2024-01-01T00:00:00Z" },
+      } as never)
+      .mockResolvedValue({
+        fields: { updated: "2024-01-02T00:00:00Z" },
+      } as never);
+    vi.mocked(jiraClient.updateIssue).mockResolvedValue(undefined as never);
+    vi.mocked(ingestIssue).mockRejectedValue(new Error("ingest boom"));
+
+    const result = await pushToJira("VPL-1");
+    expect("success" in result && result.success).toBe(true);
   });
 });

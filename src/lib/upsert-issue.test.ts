@@ -3,7 +3,8 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 import { createTestDb } from "@/db/test-utils";
 import type { BetterSQLite3Database } from "drizzle-orm/better-sqlite3";
 import type * as schema from "@/db/schema";
-import { ticket, ticketSubtask, ticketMetadata } from "@/db/schema";
+import { ticket, ticketSubtask, ticketMetadata, storyVersion, storyWriterSession, conversation } from "@/db/schema";
+import { eq } from "drizzle-orm";
 
 let testDb: BetterSQLite3Database<typeof schema>;
 
@@ -29,8 +30,13 @@ vi.mock("@/lib/adf-to-markdown", () => ({
   adfToMarkdown: vi.fn().mockReturnValue(""),
 }));
 
+vi.mock("@/lib/ticket-events", () => ({
+  emitTicketEvent: vi.fn(),
+}));
+
 import { normalizeIssueType, normalizeStatus, userColor, upsertIssue } from "./upsert-issue";
 import { extractSprints, extractStoryPoints } from "@/lib/jira-client";
+import { emitTicketEvent } from "@/lib/ticket-events";
 import type { JiraIssue, JiraSprint } from "@/lib/jira-client";
 
 function makeIssue(overrides: Partial<JiraIssue["fields"]> = {}): JiraIssue {
@@ -249,5 +255,68 @@ describe("upsertIssue", () => {
     expect(after[0].status).toBe("DONE");
     expect(after[0].assignee).toBe("Robin");
     expect(after[0].assigneeAvatar).toBe("https://example.com/avatar.png");
+  });
+});
+
+describe("own-push echo suppression", () => {
+  beforeEach(() => {
+    testDb = createTestDb();
+    vi.mocked(extractSprints).mockReturnValue([]);
+    vi.mocked(extractStoryPoints).mockReturnValue(null);
+    vi.mocked(emitTicketEvent).mockClear();
+  });
+
+  function seedActiveSession(key: string, baseVersionHash: string | null) {
+    testDb.insert(conversation).values({ id: "conv-1", title: "SW", relatedTicket: key }).run();
+    testDb.insert(storyWriterSession).values({
+      id: "sws-1",
+      ticketKey: key,
+      conversationId: "conv-1",
+      status: "active",
+      localDraft: "New content",
+      baseVersionHash,
+    }).run();
+  }
+
+  // storyVersion ids are timestamp-based; space consecutive upserts apart so
+  // two versions for the same key never collide on the same millisecond.
+  const tick = () => new Promise((resolve) => setTimeout(resolve, 2));
+
+  it("suppresses content:changed and rebases the session when the new version matches the mirror", async () => {
+    await upsertIssue(makeIssue({ description: "Original content" }), "");
+    const v1 = testDb.select().from(storyVersion).all()[0];
+    seedActiveSession("VPL-1", v1.contentHash);
+    vi.mocked(emitTicketEvent).mockClear();
+
+    // Bridge pushed "New content"; the push wrote the mirror directly
+    testDb.update(ticket).set({ description: "New content" }).where(eq(ticket.jiraKey, "VPL-1")).run();
+
+    // The push echoes back through sync with a new raw content hash
+    await tick();
+    await upsertIssue(makeIssue({ description: "New content" }), "");
+
+    const versions = testDb.select().from(storyVersion).all();
+    expect(versions).toHaveLength(2);
+    expect(emitTicketEvent).not.toHaveBeenCalled();
+
+    const latest = versions.find((v) => v.contentHash !== v1.contentHash);
+    const session = testDb.select().from(storyWriterSession).all()[0];
+    expect(latest).toBeDefined();
+    expect(session.baseVersionHash).toBe(latest?.contentHash);
+  });
+
+  it("emits content:changed and keeps the baseline for a genuine external change", async () => {
+    await upsertIssue(makeIssue({ description: "Original content" }), "");
+    const v1 = testDb.select().from(storyVersion).all()[0];
+    seedActiveSession("VPL-1", v1.contentHash);
+    vi.mocked(emitTicketEvent).mockClear();
+
+    // Someone edited the description in Jira; the mirror still has the old text
+    await tick();
+    await upsertIssue(makeIssue({ description: "External edit from Jira" }), "");
+
+    expect(emitTicketEvent).toHaveBeenCalledWith({ type: "content:changed", ticketKey: "VPL-1" });
+    const session = testDb.select().from(storyWriterSession).all()[0];
+    expect(session.baseVersionHash).toBe(v1.contentHash);
   });
 });

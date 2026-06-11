@@ -7,7 +7,7 @@ import { resolveDraftKey } from "@/lib/draft-sync";
 import { cache } from "@/lib/cache";
 
 export async function POST(
-  request: Request,
+  _request: Request,
   { params }: { params: Promise<{ key: string }> },
 ) {
   const limited = await applyRateLimit("write");
@@ -18,16 +18,8 @@ export async function POST(
   if (invalid) return invalid;
   const key = resolveDraftKey(rawKey);
 
-  let force = false;
   try {
-    const body = await request.json();
-    force = body?.force === true;
-  } catch {
-    // No body or invalid JSON is fine
-  }
-
-  try {
-    const result = await ticketService.pushToJira(key, force);
+    const result = await ticketService.pushToJira(key);
 
     // Conflict is a valid outcome (not an error) — return it as-is
     if ("conflict" in result) {

@@ -327,11 +327,11 @@ describe("Story Writer Session CRUD", () => {
   });
 
   describe("outdated detection", () => {
-    function seedVersionAt(key: string, id: string, hash: string, createdAt: string) {
+    function seedVersionAt(key: string, id: string, hash: string, createdAt: string, description?: string) {
       testDb.insert(storyVersion).values({
         id,
         jiraKey: key,
-        description: `desc-${hash}`,
+        description: description ?? `desc-${hash}`,
         contentHash: hash,
         createdAt,
       }).run();
@@ -452,6 +452,49 @@ describe("Story Writer Session CRUD", () => {
       // A newer target version diverges from the edit's baseline -> outdated
       seedVersionAt("VPL-101", "sv-t2", "tgt-new", "2099-01-01 00:00:00");
       expect((await getData("VPL-100")).targetOutdated).toBe(true);
+    });
+
+    it("self-heals outdated when the latest version content matches the draft", async () => {
+      seedTicket(testDb, "VPL-100");
+      seedVersion(testDb, "VPL-100"); // hash abc123
+      await POST(makeRequest(`${BASE}/VPL-100/story-writer`, { method: "POST" }), makeParams("VPL-100"));
+
+      // Bridge's own push echoes back: new hash, same visible content as the draft
+      seedVersionAt("VPL-100", "sv-2", "def456", "2099-01-01 00:00:00", "Original description from Jira");
+
+      const data = await getData("VPL-100");
+      expect(data.outdated).toBe(false);
+      // The baseline was rebased onto the echoed version
+      expect(data.session.baseVersionHash).toBe("def456");
+    });
+
+    it("self-heals targetOutdated when the target version content matches the target edit", async () => {
+      seedTicket(testDb, "VPL-100");
+      seedVersion(testDb, "VPL-100");
+      seedTicket(testDb, "VPL-101");
+      seedVersionAt("VPL-101", "sv-t1", "tgt-old", "2026-01-01 00:00:00");
+      const createRes = await POST(makeRequest(`${BASE}/VPL-100/story-writer`, { method: "POST" }), makeParams("VPL-100"));
+      const { session } = await createRes.json();
+
+      testDb.update(storyWriterSession)
+        .set({ targetTicketKey: "VPL-101" })
+        .where(eq(storyWriterSession.id, session.id))
+        .run();
+      testDb.insert(ticketLocalEdit).values({
+        id: "tle-1",
+        ticketKey: "VPL-101",
+        field: "description",
+        localValue: "target draft",
+        baseJiraVersion: "tgt-old",
+        isDraft: true,
+      }).run();
+
+      // The target push echoes back with a new hash but identical content
+      seedVersionAt("VPL-101", "sv-t2", "tgt-new", "2099-01-01 00:00:00", "target draft");
+
+      expect((await getData("VPL-100")).targetOutdated).toBe(false);
+      const healedEdit = testDb.select().from(ticketLocalEdit).where(eq(ticketLocalEdit.id, "tle-1")).get();
+      expect(healedEdit?.baseJiraVersion).toBe("tgt-new");
     });
   });
 });
