@@ -173,7 +173,7 @@ Proxy layer to the valk-agent backend. See [workspace-integration.md](workspace-
 
 | Route | Method | Purpose |
 |-------|--------|---------|
-| `/api/search/local` | GET | Fuzzy search local DB via Fuse.js. `?q=text` |
+| `/api/search/local` | GET | Fuzzy search local DB via Fuse.js. `?q=text`. Wrapping the query in double quotes (`?q="exact phrase"`) switches to a literal, case-insensitive phrase match (no fuzzy). |
 | `/api/search/jira` | GET | Live Jira search. `?q=text` or `?jql=...` |
 
 ## Activity Log

@@ -312,6 +312,45 @@ describe("executeLocalSearch", () => {
     expect(result.results.length).toBeLessThanOrEqual(25);
   });
 
+  it("quoted query matches the literal phrase including spaces", async () => {
+    seedTestTicket("VPL-EX1", { title: "Show only accommodation types in filter when active" });
+    seedTestTicket("VPL-EX2", { title: "Show accommodation count in a different filter" });
+
+    const result = await executeLocalSearch(defaultParams({ q: '"accommodation types in filter"' }));
+
+    const keys = result.results.map((r) => r.key);
+    expect(keys).toContain("VPL-EX1");
+    expect(keys).not.toContain("VPL-EX2");
+  });
+
+  it("quoted query is not fuzzy: a typo does not match", async () => {
+    seedTestTicket("VPL-AUTH", { title: "Authentication login bug" });
+
+    // Fuzzy search would still surface VPL-AUTH for this typo...
+    const fuzzy = await executeLocalSearch(defaultParams({ q: "authentcation" }));
+    expect(fuzzy.results.map((r) => r.key)).toContain("VPL-AUTH");
+
+    // ...but a quoted query must match literally, so the typo finds nothing.
+    const exact = await executeLocalSearch(defaultParams({ q: '"authentcation"' }));
+    expect(exact.results.map((r) => r.key)).not.toContain("VPL-AUTH");
+  });
+
+  it("quoted query matches case-insensitively", async () => {
+    seedTestTicket("VPL-CI", { title: "Authentication login bug" });
+
+    const result = await executeLocalSearch(defaultParams({ q: '"AUTHENTICATION LOGIN"' }));
+
+    expect(result.results.map((r) => r.key)).toContain("VPL-CI");
+  });
+
+  it("empty quotes return no results", async () => {
+    seedTestTicket("VPL-EMPTY", { title: "Some ticket" });
+
+    const result = await executeLocalSearch(defaultParams({ q: '""' }));
+
+    expect(result.results).toEqual([]);
+  });
+
   it("uses cache when available", async () => {
     seedTestTicket("VPL-CACHED", { title: "Lambda cached result" });
 

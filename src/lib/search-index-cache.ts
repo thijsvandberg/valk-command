@@ -39,29 +39,50 @@ export interface CommentSearchDoc {
   createdAt: string;
 }
 
+// A searchable field plus its relevance weight. Shared between Fuse (fuzzy mode) and the
+// exact-phrase matcher (quoted queries) so both rank fields the same way.
+export interface WeightedKey<T> {
+  name: keyof T & string;
+  weight: number;
+}
+
+export const TICKET_SEARCH_KEYS: WeightedKey<SearchDoc>[] = [
+  { name: "key", weight: 1.0 },
+  { name: "summary", weight: 0.85 },
+  { name: "localEditTitle", weight: 0.8 },
+  { name: "assignee", weight: 0.8 },
+  { name: "labels", weight: 0.6 },
+  { name: "notes", weight: 0.55 },
+  { name: "tags", weight: 0.5 },
+  { name: "description", weight: 0.45 },
+  { name: "acceptanceCriteria", weight: 0.4 },
+  { name: "localEditDescription", weight: 0.45 },
+  { name: "reporter", weight: 0.35 },
+  { name: "poCommentBodies", weight: 0.25 },
+  { name: "status", weight: 0.2 },
+  { name: "priority", weight: 0.2 },
+  { name: "jiraCommentBodies", weight: 0.15 },
+];
+
+export const CONVERSATION_SEARCH_KEYS: WeightedKey<ConversationSearchDoc>[] = [
+  { name: "title", weight: 1.0 },
+  { name: "relatedTicket", weight: 0.7 },
+  { name: "messageBodies", weight: 0.4 },
+];
+
+export const COMMENT_SEARCH_KEYS: WeightedKey<CommentSearchDoc>[] = [
+  { name: "content", weight: 1.0 },
+  { name: "author", weight: 0.5 },
+  { name: "ticketKey", weight: 0.6 },
+];
+
 const FUSE_OPTIONS: IFuseOptions<SearchDoc> = {
   threshold: 0.4,
   ignoreLocation: true,
   includeScore: true,
   includeMatches: true,
   minMatchCharLength: 2,
-  keys: [
-    { name: "key", weight: 1.0 },
-    { name: "summary", weight: 0.85 },
-    { name: "localEditTitle", weight: 0.8 },
-    { name: "assignee", weight: 0.8 },
-    { name: "labels", weight: 0.6 },
-    { name: "notes", weight: 0.55 },
-    { name: "tags", weight: 0.5 },
-    { name: "description", weight: 0.45 },
-    { name: "acceptanceCriteria", weight: 0.4 },
-    { name: "localEditDescription", weight: 0.45 },
-    { name: "reporter", weight: 0.35 },
-    { name: "poCommentBodies", weight: 0.25 },
-    { name: "status", weight: 0.2 },
-    { name: "priority", weight: 0.2 },
-    { name: "jiraCommentBodies", weight: 0.15 },
-  ],
+  keys: TICKET_SEARCH_KEYS,
 };
 
 const CONVERSATION_FUSE_OPTIONS: IFuseOptions<ConversationSearchDoc> = {
@@ -70,11 +91,7 @@ const CONVERSATION_FUSE_OPTIONS: IFuseOptions<ConversationSearchDoc> = {
   includeScore: true,
   includeMatches: false,
   minMatchCharLength: 2,
-  keys: [
-    { name: "title", weight: 1.0 },
-    { name: "relatedTicket", weight: 0.7 },
-    { name: "messageBodies", weight: 0.4 },
-  ],
+  keys: CONVERSATION_SEARCH_KEYS,
 };
 
 const COMMENT_FUSE_OPTIONS: IFuseOptions<CommentSearchDoc> = {
@@ -83,11 +100,7 @@ const COMMENT_FUSE_OPTIONS: IFuseOptions<CommentSearchDoc> = {
   includeScore: true,
   includeMatches: false,
   minMatchCharLength: 2,
-  keys: [
-    { name: "content", weight: 1.0 },
-    { name: "author", weight: 0.5 },
-    { name: "ticketKey", weight: 0.6 },
-  ],
+  keys: COMMENT_SEARCH_KEYS,
 };
 
 export type FuseResultMatchType = FuseResultMatch;

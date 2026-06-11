@@ -6,6 +6,10 @@ import { env } from "@/lib/env";
 import {
   getSearchCache,
   setSearchCache,
+  TICKET_SEARCH_KEYS,
+  CONVERSATION_SEARCH_KEYS,
+  COMMENT_SEARCH_KEYS,
+  type WeightedKey,
   type SearchDoc,
   type TicketDetail,
   type FuseResultMatchType,
@@ -95,6 +99,58 @@ function stripAdf(raw: string | null | undefined): string {
     // Not JSON
   }
   return raw;
+}
+
+// When the whole query is wrapped in double quotes, the user wants a literal phrase match
+// (no fuzzy scoring). Returns the unquoted inner phrase, or null for a normal fuzzy query.
+function extractExactPhrase(q: string): string | null {
+  const trimmed = q.trim();
+  if (trimmed.length >= 2 && trimmed.startsWith('"') && trimmed.endsWith('"')) {
+    const inner = trimmed.slice(1, -1).trim();
+    return inner.length > 0 ? inner : null;
+  }
+  return null;
+}
+
+interface ExactSearchResult<T> {
+  item: T;
+  score: number;
+  matches: FuseResultMatchType[];
+}
+
+// Case-insensitive substring match of a literal phrase across weighted fields. Mirrors the
+// shape Fuse.search() returns (item/score/matches) so callers stay identical, but ranks by
+// the best-matching field's weight instead of fuzzy distance. Lower score = better (Fuse convention).
+function exactPhraseSearch<T>(
+  docs: readonly T[],
+  phrase: string,
+  keys: readonly WeightedKey<T>[],
+  limit: number,
+): ExactSearchResult<T>[] {
+  const needle = phrase.toLowerCase();
+  const results: ExactSearchResult<T>[] = [];
+
+  for (const item of docs) {
+    let bestWeight = 0;
+    const matches: FuseResultMatchType[] = [];
+
+    for (const { name, weight } of keys) {
+      const raw = (item as Record<string, unknown>)[name];
+      if (typeof raw !== "string" || raw.length === 0) continue;
+      const idx = raw.toLowerCase().indexOf(needle);
+      if (idx === -1) continue;
+      const indices: readonly [number, number][] = [[idx, idx + needle.length - 1]];
+      matches.push({ key: name, value: raw, indices });
+      if (weight > bestWeight) bestWeight = weight;
+    }
+
+    if (matches.length > 0) {
+      results.push({ item, score: 1 - bestWeight, matches });
+    }
+  }
+
+  results.sort((a, b) => a.score - b.score);
+  return results.slice(0, limit);
 }
 
 async function buildIndex() {
@@ -242,14 +298,17 @@ export async function executeLocalSearch(params: SearchParams): Promise<GroupedS
 
   try {
     const entry = getSearchCache() ?? (await buildIndex());
-    const { fuse, ticketDetails, sprintIdToName, jiraBaseUrl, conversationFuse, commentFuse } = entry;
+    const { fuse, docs, ticketDetails, sprintIdToName, jiraBaseUrl, conversationFuse, conversationDocs, commentFuse, commentDocs } = entry;
 
+    const exactPhrase = extractExactPhrase(q);
     const tokens = q.trim().split(/\s+/).filter((t) => t.length >= 2);
     const hasFilters = statusFilter.length > 0 || poStatusFilter.length > 0 || readinessFilter.length > 0 || typeFilter.length > 0 || assigneeFilter.length > 0 || sprintFilter.length > 0 || !!dateRange;
     const fuseLimit = hasFilters ? 500 : 200;
-    const fuseResults = fuse.search(tokens[0] ?? q, { limit: fuseLimit });
+    const fuseResults = exactPhrase
+      ? exactPhraseSearch(docs, exactPhrase, TICKET_SEARCH_KEYS, fuseLimit)
+      : fuse.search(tokens[0] ?? q, { limit: fuseLimit });
 
-    if (tokens.length > 1) {
+    if (!exactPhrase && tokens.length > 1) {
       const additionalMaps = tokens.slice(1).map((token) => {
         return new Map(fuse.search(token, { limit: 200 }).map((r) => [r.item.key, r.score ?? 1]));
       });
@@ -358,7 +417,9 @@ export async function executeLocalSearch(params: SearchParams): Promise<GroupedS
       .sort((a, b) => a.score - b.score)
       .slice(0, 25);
 
-    const conversationFuseResults = conversationFuse.search(tokens[0] ?? q, { limit: 15 });
+    const conversationFuseResults = exactPhrase
+      ? exactPhraseSearch(conversationDocs, exactPhrase, CONVERSATION_SEARCH_KEYS, 15)
+      : conversationFuse.search(tokens[0] ?? q, { limit: 15 });
     const conversations: ConversationSearchResult[] = conversationFuseResults
       .sort((a, b) => (a.score ?? 1) - (b.score ?? 1))
       .map((r) => ({
@@ -371,7 +432,9 @@ export async function executeLocalSearch(params: SearchParams): Promise<GroupedS
         score: r.score ?? 1,
       }));
 
-    const commentFuseResults = commentFuse.search(tokens[0] ?? q, { limit: 15 });
+    const commentFuseResults = exactPhrase
+      ? exactPhraseSearch(commentDocs, exactPhrase, COMMENT_SEARCH_KEYS, 15)
+      : commentFuse.search(tokens[0] ?? q, { limit: 15 });
     const comments: CommentSearchResult[] = commentFuseResults
       .sort((a, b) => (a.score ?? 1) - (b.score ?? 1))
       .map((r) => ({
