@@ -152,7 +152,7 @@ export function BusinessValuePicker({
           className="fixed z-[9999] rounded-lg border border-border-default p-1.5"
           style={getPopoverStyle()}
         >
-          <div className="mb-1 px-0.5 text-[9px] font-semibold uppercase tracking-wider text-text-muted">
+          <div className="mb-2 px-0.5 text-[9px] font-semibold uppercase tracking-wider text-text-muted">
             Business value
           </div>
           <div className="flex items-center gap-1">

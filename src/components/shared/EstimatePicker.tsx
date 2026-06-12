@@ -237,8 +237,27 @@ export function EstimatePicker({
             onPointerDown={(e) => e.stopPropagation()}
             onClick={(e) => e.stopPropagation()}
           >
-            <div className="mb-1 px-0.5 text-[9px] font-semibold uppercase tracking-wider text-text-muted">
-              {committed ? "Story points" : "Guestimate"}
+            <div className="mb-2 flex items-center justify-between gap-3 px-0.5">
+              <span className="text-[9px] font-semibold uppercase tracking-wider text-text-muted">
+                {committed ? "Story points" : "Guestimate"}
+              </span>
+              {/* Skip the guess entirely on a fresh row: jump straight to story-point
+                  entry. Only offered while there is no guess yet to commit. */}
+              {showGuessActions && !committed && guestimation == null && !customMode && (
+                <button
+                  type="button"
+                  onClick={() => setSkipToSp(true)}
+                  className="group/skip flex items-center gap-1 text-[10px] text-text-tertiary transition-colors duration-100 hover:text-text-secondary cursor-pointer"
+                >
+                  skip to story points
+                  <ArrowRight
+                    size={11}
+                    strokeWidth={2}
+                    aria-hidden
+                    className="transition-transform duration-100 group-hover/skip:translate-x-0.5"
+                  />
+                </button>
+              )}
             </div>
 
             {customMode ? (
@@ -357,26 +376,6 @@ export function EstimatePicker({
                   className="transition-transform duration-100 group-hover/commit:translate-x-0.5"
                 />
               </button>
-            )}
-
-            {/* Skip the guess entirely on a fresh row: jump straight to story-point
-                entry. Only offered while there is no guess yet to commit. */}
-            {showGuessActions && !committed && guestimation == null && !customMode && (
-              <div className="mt-1.5 flex justify-end border-t border-border-subtle pt-1.5 text-[10px] text-text-tertiary">
-                <button
-                  type="button"
-                  onClick={() => setSkipToSp(true)}
-                  className="group/skip flex items-center gap-1 transition-colors duration-100 hover:text-text-secondary cursor-pointer"
-                >
-                  skip to story points
-                  <ArrowRight
-                    size={11}
-                    strokeWidth={2}
-                    aria-hidden
-                    className="transition-transform duration-100 group-hover/skip:translate-x-0.5"
-                  />
-                </button>
-              </div>
             )}
 
             {/* Revert a committed SP back to the preserved prior guess. */}
