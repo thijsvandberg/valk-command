@@ -65,6 +65,9 @@ export function EstimatePicker({
   const [hovered, setHovered] = useState(false);
   const [customMode, setCustomMode] = useState(false);
   const [customInput, setCustomInput] = useState("");
+  // Skips the guess phase for a fresh row: jump straight to story-point entry
+  // without first setting a guestimate. Resets when the popover closes.
+  const [skipToSp, setSkipToSp] = useState(false);
   const customInputRef = useRef<HTMLInputElement>(null);
 
   // The guess that existed when the popover opened. Commit keeps THIS as the
@@ -80,13 +83,16 @@ export function EstimatePicker({
     onClose: () => {
       setCustomMode(false);
       setCustomInput("");
+      setSkipToSp(false);
       onOpenChange?.(false);
     },
   });
 
   // Guess phase while planning and no real SP yet; otherwise the story-point phase.
   // guessOnly forces the guess phase (placeholders never carry real story points).
-  const phase: "guess" | "sp" = guessOnly || (planningMode && storyPoints == null) ? "guess" : "sp";
+  // skipToSp lets a fresh row bypass the guess and enter story points directly.
+  const phase: "guess" | "sp" =
+    (guessOnly || (planningMode && storyPoints == null)) && !skipToSp ? "guess" : "sp";
   const committed = phase === "sp";
   const activeValue = committed ? storyPoints : guestimation;
 
@@ -351,6 +357,26 @@ export function EstimatePicker({
                   className="transition-transform duration-100 group-hover/commit:translate-x-0.5"
                 />
               </button>
+            )}
+
+            {/* Skip the guess entirely on a fresh row: jump straight to story-point
+                entry. Only offered while there is no guess yet to commit. */}
+            {showGuessActions && !committed && guestimation == null && !customMode && (
+              <div className="mt-1.5 flex justify-end border-t border-border-subtle pt-1.5 text-[10px] text-text-tertiary">
+                <button
+                  type="button"
+                  onClick={() => setSkipToSp(true)}
+                  className="group/skip flex items-center gap-1 transition-colors duration-100 hover:text-text-secondary cursor-pointer"
+                >
+                  skip to story points
+                  <ArrowRight
+                    size={11}
+                    strokeWidth={2}
+                    aria-hidden
+                    className="transition-transform duration-100 group-hover/skip:translate-x-0.5"
+                  />
+                </button>
+              </div>
             )}
 
             {/* Revert a committed SP back to the preserved prior guess. */}

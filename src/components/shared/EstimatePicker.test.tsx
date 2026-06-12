@@ -91,6 +91,25 @@ describe("EstimatePicker — guess phase", () => {
     fireEvent.click(screen.getByTitle("Not applicable"));
     expect(onGuestimationChange).toHaveBeenCalledWith(0);
   });
+
+  it("skips the guess and writes story points directly via the skip link", () => {
+    const { onStoryPointsChange, onGuestimationChange } = setup();
+    fireEvent.click(screen.getByRole("button", { name: "Set guestimate or story points" }));
+    // Fresh guess phase offers a way out to direct SP entry.
+    fireEvent.click(screen.getByRole("button", { name: /skip to story points/i }));
+    // Header flips to the story-point phase; a pick now lands on SP, not the guess.
+    expect(screen.getByText("Story points")).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "5" }));
+    expect(onStoryPointsChange).toHaveBeenCalledWith(5);
+    expect(onGuestimationChange).not.toHaveBeenCalled();
+  });
+
+  it("hides the skip link once a guess is set (commit path takes over)", () => {
+    setup({ guestimation: 3 });
+    fireEvent.click(screen.getByRole("button", { name: "Guestimate: 3" }));
+    expect(screen.queryByRole("button", { name: /skip to story points/i })).not.toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /commit as story points/i })).toBeInTheDocument();
+  });
 });
 
 describe("EstimatePicker — commit (pencil to ink)", () => {
