@@ -382,7 +382,7 @@ describe("typed change events (BRDG-338)", () => {
     await upsertIssue(makeIssue({
       comment: {
         total: 1,
-        comments: [{ id: "c1", author: { accountId: "u1", displayName: "Robin", avatarUrls: {} }, body: "A new comment", created: "2024-01-02T00:00:00.000Z" }],
+        comments: [{ id: "c1", author: { accountId: "u1", displayName: "Robin", avatarUrls: {} }, body: "A new comment", created: "2024-01-02T00:00:00.000Z", updated: "2024-01-02T00:00:00.000Z" }],
       },
     }), "Sprint 1");
     expect(lastEmittedKinds()).toEqual(["comment"]);
