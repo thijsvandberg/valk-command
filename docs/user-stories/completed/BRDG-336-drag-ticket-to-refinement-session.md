@@ -1,6 +1,6 @@
 # BRDG-336: Drag a Ticket onto Another Refinement Session
 
-**Status:** Refined
+**Status:** Completed (2026-06-12)
 **Priority:** TBD
 **Type:** Story
 **Builds on:** BRDG-049 (sprint-board drag-and-drop), BRDG-281 (refinement overview side panel), BRDG-302 (refinement active row indicator)
@@ -91,3 +91,9 @@ Key facts from exploration:
 ## Dependencies
 
 None blocking. Coordinate with existing refinement queue DnD to avoid gesture conflicts.
+
+## Verification (2026-06-12)
+
+- 71 unit tests across the touched files pass; full suite (5701 tests) green; lint, typecheck and production build clean.
+- Verified live in the browser: list-row drag onto a session chip moves the ticket in (chip count updates, queue updates); duplicate drop is a no-op with toast "VPL-46442 is already in 2026-06-16"; drop on "Plan session" creates a new session holding the ticket; side-panel drag moves the ticket into the target AND out of its source session (true move). Drop affordances appear on all ready chips the moment a drag starts, with a stronger highlight on drag-over, and the drag ghost follows the pointer.
+- Integration note: BRDG-337 (built in parallel) made the create endpoint require a name or date; the drop-create path now stamps a default name `Refinement YYYY-MM-DD`.
