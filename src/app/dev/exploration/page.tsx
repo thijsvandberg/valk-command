@@ -8,7 +8,7 @@
  */
 
 import Link from "next/link";
-import { ArrowUpRight, LayoutGrid, Rows3, FlaskConical, Shapes, MousePointerClick, Type, PanelTop, PanelTopDashed, AppWindow, ListChecks, Gem, Gauge, Hash, SendHorizontal, BarChart3, History as HistoryIcon } from "lucide-react";
+import { ArrowUpRight, LayoutGrid, Rows3, FlaskConical, Shapes, MousePointerClick, Type, PanelTop, PanelTopDashed, AppWindow, ListChecks, Gem, Gauge, Hash, SendHorizontal, BarChart3, History as HistoryIcon, Sparkles } from "lucide-react";
 
 type Exploration = {
   slug: string;
@@ -22,6 +22,15 @@ type Exploration = {
 const ICON = "h-5 w-5";
 
 const EXPLORATIONS: Exploration[] = [
+  {
+    slug: "session-ending",
+    title: "Refinement session — the happy ending",
+    blurb:
+      "Two layers of happy ending for a refinement session. Endings for the Complete press (A toast, B button check-pop, C in-modal 'Session complete' summary, D ticket cascade with count-up totals, E full takeover with particle burst and streak chip) plus ambient/festive treatments on the wrap-up page itself, around the untouched modal (F breathing halo, G + 'Queue cleared' headline, H aurora with drifting motes, I confetti rain, J corner cannons). Chosen: J — aurora, halo, headline and one-shot corner bursts; written up as BRDG-341. Every stage is live and replayable.",
+    status: "Chosen",
+    ticket: "BRDG-341",
+    icon: <Sparkles className={ICON} strokeWidth={1.5} />,
+  },
   {
     slug: "recently-viewed",
     title: "Recently viewed — pills kept, layout explored",
