@@ -310,33 +310,38 @@ function renderTable(tableLines: string[], key: string, linkify: boolean): React
   // tableLines[1] is the separator row (--- | --- | ---)
   const dataRows = tableLines.slice(2).map(parseRow);
 
+  // Rendered as a single rounded surface card (matching Bridge's callout/expand
+  // blocks and the dev-pipeline table) rather than a full HTML grid: a strong
+  // outer frame, a subtle label-style header, and horizontal-only row dividers.
   return (
-    <div key={key} className="my-3 overflow-x-auto">
-      <table className="w-full border-collapse text-body-lg">
-        <thead>
-          <tr>
-            {headers.map((h, hi) => (
-              <th
-                key={hi}
-                className="border border-border-strong bg-overlay-subtle px-3 py-2 text-left text-body-sm font-semibold uppercase tracking-wider text-text-secondary"
-              >
-                {inlineFormat(h, linkify)}
-              </th>
-            ))}
-          </tr>
-        </thead>
-        <tbody>
-          {dataRows.map((row, ri) => (
-            <tr key={ri} className="border-b border-border-default transition-colors hover:bg-overlay-subtle">
-              {row.map((cell, ci) => (
-                <td key={ci} className="border border-border-default px-3 py-2 text-text-secondary">
-                  {inlineFormat(cell, linkify)}
-                </td>
+    <div key={key} className="my-3 overflow-hidden rounded-lg border border-border-strong">
+      <div className="overflow-x-auto">
+        <table className="w-full text-body-lg">
+          <thead>
+            <tr className="border-b border-border-strong bg-overlay-subtle">
+              {headers.map((h, hi) => (
+                <th
+                  key={hi}
+                  className="px-4 py-2.5 text-left text-label font-semibold uppercase tracking-wider text-text-tertiary"
+                >
+                  {inlineFormat(h, linkify)}
+                </th>
               ))}
             </tr>
-          ))}
-        </tbody>
-      </table>
+          </thead>
+          <tbody className="divide-y divide-border-default">
+            {dataRows.map((row, ri) => (
+              <tr key={ri} className="transition-colors hover:bg-overlay-subtle">
+                {row.map((cell, ci) => (
+                  <td key={ci} className="px-4 py-2.5 align-top text-text-secondary">
+                    {inlineFormat(cell, linkify)}
+                  </td>
+                ))}
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
     </div>
   );
 }
