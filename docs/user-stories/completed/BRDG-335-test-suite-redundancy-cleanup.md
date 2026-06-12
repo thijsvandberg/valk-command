@@ -1,6 +1,6 @@
 # BRDG-335: Test suite redundancy & obsolescence cleanup
 
-**Status:** To Do
+**Status:** Done
 **Priority:** Medium
 
 ## Description
@@ -105,10 +105,10 @@ Plan produced by a verification pass against the current tree (all audit claims 
 
 - [x] Section A: confirm each of the 8 sources is truly unreachable, move source + test to `deleted/` (or keep with a documented reason). All 8 re-verified at implementation time: zero non-test importers, no barrel re-exports, no dynamic imports. All moved to `deleted/src/<original path>`.
 - [x] Section B: `StoryWriterTitleSync.test.tsx` either retargeted to `useStoryWriterActions.ts` (asserting real `document.title` behavior) or removed. Retargeted: all 8 original cases now render the real hook via the `makeWriter` harness pattern from the sibling wrap-up test.
-- [ ] Section C: the 4 duplicate-flow items removed/slimmed as described; the unique cases called out are retained.
-- [ ] `npm run test` passes after the cleanup.
-- [ ] `npm run lint`, `npm run typecheck`, and `npm run build` pass (removing dead source must not break imports anywhere).
-- [ ] No reduction in **meaningful** coverage: every assertion removed is shown to be covered elsewhere (cite the file) or to cover dead code.
+- [x] Section C: the 4 duplicate-flow items removed/slimmed as described; the unique cases called out are retained. C2 additionally gained route-level coverage for `mode=plan`/`mode=reconcile` and rate-limit passthrough, which the old DB-backed test never exercised.
+- [x] `npm run test` passes after the cleanup. 520 files / 5614 tests green (run in an isolated worktree at the story's final commit, because the shared checkout carried in-flight parallel work).
+- [x] `npm run lint`, `npm run typecheck`, and `npm run build` pass (removing dead source must not break imports anywhere). All three green in the same isolated worktree.
+- [x] No reduction in **meaningful** coverage: every assertion removed is shown to be covered elsewhere (cite the file) or to cover dead code. Citations: A -> dead code (zero importers); B -> same assertions, now against the real hook; C1 -> `src/lib/edit-intent.test.ts`; C2 -> `src/lib/sync-tickets-service.test.ts` + `src/lib/upsert-issue.test.ts`; C3 -> `src/lib/deprecation-staleness.test.ts` (scoring math) + `src/lib/deprecation-staleness-runner.test.ts` (DB gathering); C4 -> `src/lib/deprecation-auto-enqueue.test.ts`.
 
 ## Out of Scope
 
