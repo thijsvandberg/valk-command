@@ -3,7 +3,8 @@
 import { useCallback, useRef, useEffect, useState } from "react";
 import { mutate as globalMutate } from "swr";
 import type { StoryWriterSessionRow, StoryWriterDraftRow } from "@/db/schema";
-import { storyWriter as storyWriterApi, tickets as ticketsApi, apiFetch, ApiError } from "@/lib/api-client";
+import { storyWriter as storyWriterApi, tickets as ticketsApi, apiFetch } from "@/lib/api-client";
+import { useLocalEditSaver, type LocalEditField } from "@/lib/local-edit-saver";
 
 interface DraftOptions {
   apiBase: string;
@@ -30,31 +31,16 @@ export function useStoryWriterDrafts(options: DraftOptions) {
   const targetTitleSaveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // Autosave bookkeeping: "saving" while edits are pending/in flight, "saved"
-  // once everything landed. Conflict = another tab saved the same field since
-  // we last did (server returned 409); autosave pauses until resolved.
+  // once everything landed. The token/conflict mechanics live in the shared
+  // saver (BRDG-340) so the detail editors behave identically.
   const [draftSaveState, setDraftSaveState] = useState<DraftSaveState>("idle");
-  const [draftConflict, setDraftConflict] = useState(false);
-  // `${ticketKey}:${field}` -> last modifiedAt this tab saw (concurrency token).
-  const baseModifiedAtRef = useRef<Record<string, string>>({});
+  const saver = useLocalEditSaver({ unmountedRef });
   // `${ticketKey}:${field}` -> value still awaiting a save (debounce pending).
   const pendingRef = useRef<Record<string, string>>({});
-  const conflictPausedRef = useRef(false);
-  const externallyPausedRef = useRef(false);
 
-  const isPaused = useCallback(
-    () => conflictPausedRef.current || externallyPausedRef.current,
-    [],
-  );
+  const { isPaused, isConflictPaused, setExternalPause: setAutosavePaused } = saver;
 
-  const setAutosavePaused = useCallback((paused: boolean) => {
-    externallyPausedRef.current = paused;
-  }, []);
-
-  /**
-   * Single choke point for writing a local edit. Sends the concurrency token
-   * (unless blind), records the returned modifiedAt as the next token, and
-   * flips the conflict flag on a 409.
-   */
+  /** Saver write + pending bookkeeping for this hook's debounce layer. */
   const persistLocalEdit = useCallback(async (
     key: string,
     field: string,
@@ -62,29 +48,16 @@ export function useStoryWriterDrafts(options: DraftOptions) {
     isDraft = true,
     opts?: { blind?: boolean },
   ) => {
+    const row = await saver.persistLocalEdit(key, field as LocalEditField, value, { isDraft, blind: opts?.blind });
     const mapKey = `${key}:${field}`;
-    const base = opts?.blind ? undefined : baseModifiedAtRef.current[mapKey];
-    try {
-      const row = await apiFetch(`/api/tickets/${encodeURIComponent(key)}/local-edits`, {
-        method: "PUT",
-        body: { field, localValue: value, isDraft, ...(base ? { baseModifiedAt: base } : {}) },
-      }) as { modifiedAt?: string } | null;
-      if (row?.modifiedAt) baseModifiedAtRef.current[mapKey] = row.modifiedAt;
-      if (pendingRef.current[mapKey] === value) delete pendingRef.current[mapKey];
-      return row;
-    } catch (err) {
-      if (err instanceof ApiError && err.status === 409) {
-        conflictPausedRef.current = true;
-        if (!unmountedRef.current) setDraftConflict(true);
-      }
-      throw err;
-    }
-  }, [unmountedRef]);
+    if (pendingRef.current[mapKey] === value) delete pendingRef.current[mapKey];
+    return row;
+  }, [saver]);
 
   const markSavedIfQuiet = useCallback(() => {
-    if (unmountedRef.current || conflictPausedRef.current) return;
+    if (unmountedRef.current || isConflictPaused()) return;
     if (Object.keys(pendingRef.current).length === 0) setDraftSaveState("saved");
-  }, [unmountedRef]);
+  }, [unmountedRef, isConflictPaused]);
 
   const clearTimers = useCallback(() => {
     if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
@@ -253,11 +226,11 @@ export function useStoryWriterDrafts(options: DraftOptions) {
 
     // The push flow flushes via saveDraft below; a debounce firing mid-push
     // would race it, so autosave pauses for the duration.
-    externallyPausedRef.current = true;
+    setAutosavePaused(true);
     try {
       await saveDraft(session);
     } finally {
-      externallyPausedRef.current = false;
+      setAutosavePaused(false);
     }
 
     let result = { success: true, conflict: false, contentChanged: false };
@@ -288,14 +261,14 @@ export function useStoryWriterDrafts(options: DraftOptions) {
     }
 
     return result;
-  }, [ticketKey, saveDraft, refreshSession]);
+  }, [ticketKey, saveDraft, refreshSession, setAutosavePaused]);
 
   // Flush pending edits when the tab loses focus; fire-and-forget beacon on
   // unload (the beacon cannot carry the 409 handshake, so it saves blind —
   // the next interactive save reconciles).
   useEffect(() => {
     const flushNow = () => {
-      if (conflictPausedRef.current) return;
+      if (isConflictPaused()) return;
       const entries = Object.entries(pendingRef.current);
       if (entries.length === 0) return;
       clearTimers();
@@ -323,7 +296,7 @@ export function useStoryWriterDrafts(options: DraftOptions) {
       window.removeEventListener("blur", flushNow);
       window.removeEventListener("beforeunload", beacon);
     };
-  }, [clearTimers, persistLocalEdit, markSavedIfQuiet]);
+  }, [clearTimers, persistLocalEdit, markSavedIfQuiet, isConflictPaused]);
 
   const resolveDraftConflict = useCallback(async (action: "reload" | "overwrite") => {
     if (action === "reload") {
@@ -334,7 +307,7 @@ export function useStoryWriterDrafts(options: DraftOptions) {
       await Promise.all(keys.map(async (k) => {
         try {
           const rows = await apiFetch(`/api/tickets/${encodeURIComponent(k)}/local-edits`) as Array<{ field: string; modifiedAt: string }>;
-          rows.forEach((r) => { baseModifiedAtRef.current[`${k}:${r.field}`] = r.modifiedAt; });
+          rows.forEach((r) => { saver.setToken(k, r.field, r.modifiedAt); });
         } catch { /* tokens reseed on the next successful save */ }
       }));
       await refreshSession();
@@ -350,12 +323,9 @@ export function useStoryWriterDrafts(options: DraftOptions) {
       await Promise.all(writes);
       pendingRef.current = {};
     }
-    conflictPausedRef.current = false;
-    if (!unmountedRef.current) {
-      setDraftConflict(false);
-      setDraftSaveState("saved");
-    }
-  }, [ticketKey, sessionRef, unmountedRef, clearTimers, persistLocalEdit, refreshSession]);
+    saver.clearConflict();
+    if (!unmountedRef.current) setDraftSaveState("saved");
+  }, [ticketKey, sessionRef, unmountedRef, clearTimers, persistLocalEdit, refreshSession, saver]);
 
   return {
     updateLocalDraft,
@@ -368,7 +338,7 @@ export function useStoryWriterDrafts(options: DraftOptions) {
     pushToJira,
     clearTimers,
     draftSaveState,
-    draftConflict,
+    draftConflict: saver.conflict,
     resolveDraftConflict,
     setAutosavePaused,
   };
