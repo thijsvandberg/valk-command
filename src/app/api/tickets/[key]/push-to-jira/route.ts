@@ -5,9 +5,10 @@ import { handleServiceError } from "@/services/handle-service-error";
 import { applyRateLimit } from "@/lib/rate-limiter";
 import { resolveDraftKey } from "@/lib/draft-sync";
 import { cache } from "@/lib/cache";
+import { originFromRequest } from "@/lib/ticket-events";
 
 export async function POST(
-  _request: Request,
+  request: Request,
   { params }: { params: Promise<{ key: string }> },
 ) {
   const limited = await applyRateLimit("write");
@@ -19,7 +20,7 @@ export async function POST(
   const key = resolveDraftKey(rawKey);
 
   try {
-    const result = await ticketService.pushToJira(key);
+    const result = await ticketService.pushToJira(key, originFromRequest(request));
 
     // Conflict is a valid outcome (not an error) — return it as-is
     if ("conflict" in result) {

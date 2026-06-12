@@ -4,6 +4,7 @@ import { useRouter } from "next/navigation";
 import { mutate as globalMutate } from "swr";
 import { useStoryWriter } from "@/hooks/useStoryWriter";
 import { useTicketEvents } from "@/hooks/useTicketEvents";
+import type { TicketEvent } from "@/lib/ticket-events";
 import { useNotification } from "@/hooks/useNotification";
 import { PAGE_TITLE_SUFFIX } from "@/hooks/usePageTitle";
 import { ApiError, apiFetch, jira, tickets } from "@/lib/api-client";
@@ -397,7 +398,10 @@ export function useStoryWriterActions({
   // agent sync) while this editor is open. Interpretation A: only an untouched
   // draft follows Jira; once the PO has their own work in the draft we never
   // overwrite it, we just re-evaluate the staleness banner.
-  const handleExternalContentChange = useCallback(() => {
+  const handleExternalContentChange = useCallback((event: TicketEvent) => {
+    // Only description/AC moves matter for the draft; comments, status and
+    // other field changes never invalidate Story Writer's baseline.
+    if (!event.kinds.includes("content")) return;
     // Mid-stream or mid-push this tab is the source of truth; the stream/push
     // completion path already refreshes, so reacting here would clobber it.
     if (writer.status === "streaming" || pushing) return;

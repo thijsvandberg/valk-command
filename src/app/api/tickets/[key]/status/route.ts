@@ -12,6 +12,7 @@ import { cache } from "@/lib/cache";
 import { syncJiraTimestamp } from "@/lib/sync-jira-timestamp";
 import { applyRateLimit } from "@/lib/rate-limiter";
 import type { JiraStatus } from "@/types/ticket";
+import { emitTicketEvent, originFromRequest } from "@/lib/ticket-events";
 
 type RouteContext = { params: Promise<{ key: string }> };
 
@@ -78,6 +79,10 @@ export async function PUT(request: Request, { params }: RouteContext) {
     scope: key,
     summary: `Changed status to ${status}${jiraError ? " (Bridge only — Jira transition unavailable)" : ""}`,
   });
+
+  if (existing.status !== status) {
+    emitTicketEvent({ type: "ticket:changed", ticketKey: key, kinds: ["status"], origin: originFromRequest(request) });
+  }
 
   return NextResponse.json({ status, ...(jiraError ? { jiraWarning: "Jira update failed" } : {}) });
 }

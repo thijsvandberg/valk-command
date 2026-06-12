@@ -4,7 +4,7 @@ import { eq, and, isNotNull, isNull } from "drizzle-orm";
 import { jiraClient, extractStoryPoints, extractSprints, extractEpicLink, extractAcceptanceCriteria, extractLastChangeAuthor, FLAGGED_FIELD, type JiraIssue, type JiraAttachment } from "@/lib/jira-client";
 import { adfToMarkdown } from "@/lib/adf-to-markdown";
 import { markdownEqualIgnoringSpacing } from "@/lib/normalize-markdown";
-import { emitTicketEvent } from "@/lib/ticket-events";
+import { emitTicketEvent, type TicketChangeKind } from "@/lib/ticket-events";
 import { createHash } from "crypto";
 
 export function normalizeIssueType(name: string): string {
@@ -135,14 +135,22 @@ export async function upsertIssue(issue: JiraIssue, sprintName: string, _signal?
   const localLinkMap = new Map(localLinks.map((l) => [l.linkedKey, l.id]));
 
   const inlineComments = fields.comment?.comments ?? [];
-  const existingCommentIds = new Set(
+  const existingComments = new Map(
     (await db
-      .select({ jiraCommentId: jiraComment.jiraCommentId })
+      .select({ jiraCommentId: jiraComment.jiraCommentId, content: jiraComment.content })
       .from(jiraComment)
       .where(eq(jiraComment.ticketKey, issue.key))
       .all()
-    ).map((c) => c.jiraCommentId),
+    ).map((c) => [c.jiraCommentId, c.content]),
   );
+
+  // Pre-read Jira-sourced link signatures so the terminal event can tell
+  // whether the delete-and-reinsert below actually changed anything.
+  const previousJiraLinks = await db
+    .select({ jiraLinkId: ticketLink.jiraLinkId, linkedKey: ticketLink.linkedKey, relation: ticketLink.relation, status: ticketLink.status, title: ticketLink.title })
+    .from(ticketLink)
+    .where(and(eq(ticketLink.ticketKey, issue.key), isNotNull(ticketLink.jiraLinkId)))
+    .all();
 
   const ticketData = {
     jiraKey: issue.key,
@@ -177,6 +185,46 @@ export async function upsertIssue(issue: JiraIssue, sprintName: string, _signal?
   // Detect story points change for auto-transition (checked before the transaction)
   const pointsChanged = !!existing && existing.storyPoints !== storyPoints;
   const statusChanged = existing && existing.status !== ticketData.status;
+
+  // Accumulate what changed so a single typed event fans out to open views
+  // after the transaction. Only updates count: a first sync of a new ticket
+  // has no open view to notify.
+  const changedKinds = new Set<TicketChangeKind>();
+  if (existing) {
+    if (statusChanged) changedKinds.add("status");
+    if (existing.assignee !== ticketData.assignee) changedKinds.add("assignee");
+    if (pointsChanged) changedKinds.add("points");
+    if (existing.sprintName !== ticketData.sprintName || existing.sprintIds !== ticketData.sprintIds) changedKinds.add("sprint");
+    if (existing.labels !== ticketData.labels || existing.flagged !== ticketData.flagged) changedKinds.add("labels");
+    if (needsNewVersion && !isOwnPushEcho) changedKinds.add("content");
+
+    for (const comment of inlineComments) {
+      const contentMarkdown = typeof comment.body === "string" ? comment.body : adfToMarkdown(comment.body);
+      const prev = existingComments.get(comment.id);
+      if (prev === undefined || prev !== contentMarkdown) {
+        changedKinds.add("comment");
+        break;
+      }
+    }
+
+    const linkSignature = (l: { linkedKey: string; relation: string | null; status: string | null; title: string | null }) =>
+      `${l.linkedKey}|${l.relation ?? ""}|${l.status ?? ""}|${l.title ?? ""}`;
+    const prevLinkSigs = previousJiraLinks.map(linkSignature).sort();
+    const nextLinkSigs = issuelinks
+      .map((link) => {
+        const linked = link.inwardIssue ?? link.outwardIssue;
+        if (!linked) return null;
+        return linkSignature({
+          linkedKey: linked.key,
+          relation: link.inwardIssue ? link.type.inward : link.type.outward,
+          status: normalizeStatus(linked.fields.status.name),
+          title: linked.fields.summary,
+        });
+      })
+      .filter((s): s is string => s !== null)
+      .sort();
+    if (prevLinkSigs.join("\n") !== nextLinkSigs.join("\n")) changedKinds.add("links");
+  }
 
   // All DB writes in a single transaction for SQLite performance
   db.transaction((tx) => {
@@ -302,6 +350,16 @@ export async function upsertIssue(issue: JiraIssue, sprintName: string, _signal?
     const existingSubMap = new Map(existingSubRows.map((r) => [r.subtaskKey, r]));
     tx.delete(ticketSubtask).where(eq(ticketSubtask.ticketKey, issue.key)).run();
     const subtasks = fields.subtasks ?? [];
+
+    if (existing) {
+      const prevSubSigs = existingSubRows
+        .map((r) => `${r.subtaskKey}|${r.title}|${r.status}`)
+        .sort();
+      const nextSubSigs = subtasks
+        .map((sub) => `${sub.key}|${sub.fields.summary}|${normalizeStatus(sub.fields.status.name)}`)
+        .sort();
+      if (prevSubSigs.join("\n") !== nextSubSigs.join("\n")) changedKinds.add("subtasks");
+    }
     for (const sub of subtasks) {
       const jiraAssignee = sub.fields.assignee?.displayName ?? null;
       const jiraAvatar = sub.fields.assignee?.avatarUrls?.["48x48"] ?? null;
@@ -390,7 +448,7 @@ export async function upsertIssue(issue: JiraIssue, sprintName: string, _signal?
       const authorName = comment.author?.displayName ?? "Unknown";
       const authorAvatar = comment.author?.avatarUrls?.["48x48"] ?? null;
 
-      if (existingCommentIds.has(comment.id)) {
+      if (existingComments.has(comment.id)) {
         tx.update(jiraComment)
           .set({ content: contentMarkdown, authorName, authorAvatar })
           .where(eq(jiraComment.jiraCommentId, comment.id))
@@ -409,19 +467,21 @@ export async function upsertIssue(issue: JiraIssue, sprintName: string, _signal?
     }
   });
 
-  // A new recorded version means the ticket's content moved on (webhook, sync,
-  // agent push). Notify any open editor subscribed to this ticket's stream --
-  // unless it is the echo of Bridge's own push, in which case rebase any
-  // active Story Writer session instead so its draft stays "current".
-  if (needsNewVersion) {
-    if (isOwnPushEcho) {
-      db.update(storyWriterSession)
-        .set({ baseVersionHash: hash, updatedAt: now })
-        .where(and(eq(storyWriterSession.ticketKey, issue.key), eq(storyWriterSession.status, "active")))
-        .run();
-    } else {
-      emitTicketEvent({ type: "content:changed", ticketKey: issue.key });
-    }
+  // A new version whose content matches the local mirror is the echo of
+  // Bridge's own push; rebase any active Story Writer session so its draft
+  // stays "current" instead of flagging it outdated.
+  if (needsNewVersion && isOwnPushEcho) {
+    db.update(storyWriterSession)
+      .set({ baseVersionHash: hash, updatedAt: now })
+      .where(and(eq(storyWriterSession.ticketKey, issue.key), eq(storyWriterSession.status, "active")))
+      .run();
+  }
+
+  // One coalesced event per upsert: every open view subscribed to this ticket
+  // (detail page, Story Writer, board/refinement streams) learns what moved.
+  // Syncs have no originating tab, so origin stays null and all tabs highlight.
+  if (changedKinds.size > 0) {
+    emitTicketEvent({ type: "ticket:changed", ticketKey: issue.key, kinds: Array.from(changedKinds), origin: null });
   }
 
   return {

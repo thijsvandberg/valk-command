@@ -7,9 +7,9 @@ export const dynamic = "force-dynamic";
 type RouteContext = { params: Promise<{ key: string }> };
 
 /**
- * SSE stream of content:changed events for a single ticket. An open editor (e.g.
- * Story Writer) subscribes so it can react when the ticket's content moves on in
- * another tab, a Jira webhook, or an agent sync, instead of polling.
+ * SSE stream of ticket:changed events for a single ticket. An open view (detail
+ * page, Story Writer) subscribes so it can react when the ticket's data moves on
+ * in another tab, a Jira sync, or an agent push, instead of polling.
  */
 export async function GET(_request: Request, { params }: RouteContext) {
   const { key: rawKey } = await params;

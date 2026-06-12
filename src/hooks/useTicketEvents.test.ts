@@ -67,20 +67,65 @@ describe("useTicketEvents", () => {
     expect(MockEventSource.instances).toHaveLength(0);
   });
 
-  it("invokes onChange when a content:changed event arrives", () => {
+  it("invokes onChange when a ticket:changed event arrives", () => {
     const onChange = vi.fn();
     renderHook(() => useTicketEvents("VPL-1", onChange));
     MockEventSource.latest().emit(
-      "content:changed",
-      JSON.stringify({ type: "content:changed", ticketKey: "VPL-1" }),
+      "ticket:changed",
+      JSON.stringify({ type: "ticket:changed", ticketKey: "VPL-1", kinds: ["comment"], origin: "tab-1" }),
     );
-    expect(onChange).toHaveBeenCalledWith({ type: "content:changed", ticketKey: "VPL-1" });
+    act(() => { vi.advanceTimersByTime(200); });
+    expect(onChange).toHaveBeenCalledWith({ type: "ticket:changed", ticketKey: "VPL-1", kinds: ["comment"], origin: "tab-1" });
+  });
+
+  it("coalesces a burst of events into a single callback with merged kinds", () => {
+    const onChange = vi.fn();
+    renderHook(() => useTicketEvents("VPL-1", onChange));
+    const es = MockEventSource.latest();
+    es.emit("ticket:changed", JSON.stringify({ type: "ticket:changed", ticketKey: "VPL-1", kinds: ["status"], origin: "tab-1" }));
+    es.emit("ticket:changed", JSON.stringify({ type: "ticket:changed", ticketKey: "VPL-1", kinds: ["points", "status"], origin: "tab-1" }));
+    es.emit("ticket:changed", JSON.stringify({ type: "ticket:changed", ticketKey: "VPL-1", kinds: ["comment"], origin: "tab-1" }));
+    act(() => { vi.advanceTimersByTime(200); });
+    expect(onChange).toHaveBeenCalledTimes(1);
+    const event = onChange.mock.calls[0][0];
+    expect([...event.kinds].sort()).toEqual(["comment", "points", "status"]);
+    expect(event.origin).toBe("tab-1");
+  });
+
+  it("drops the origin when a coalesced burst has mixed origins", () => {
+    const onChange = vi.fn();
+    renderHook(() => useTicketEvents("VPL-1", onChange));
+    const es = MockEventSource.latest();
+    es.emit("ticket:changed", JSON.stringify({ type: "ticket:changed", ticketKey: "VPL-1", kinds: ["status"], origin: "tab-1" }));
+    es.emit("ticket:changed", JSON.stringify({ type: "ticket:changed", ticketKey: "VPL-1", kinds: ["comment"], origin: null }));
+    act(() => { vi.advanceTimersByTime(200); });
+    expect(onChange).toHaveBeenCalledTimes(1);
+    expect(onChange.mock.calls[0][0].origin).toBeNull();
+  });
+
+  it("delivers immediately when coalescing is disabled", () => {
+    const onChange = vi.fn();
+    renderHook(() => useTicketEvents("VPL-1", onChange, { coalesceMs: 0 }));
+    MockEventSource.latest().emit(
+      "ticket:changed",
+      JSON.stringify({ type: "ticket:changed", ticketKey: "VPL-1", kinds: ["content"] }),
+    );
+    expect(onChange).toHaveBeenCalledTimes(1);
   });
 
   it("ignores malformed JSON", () => {
     const onChange = vi.fn();
     renderHook(() => useTicketEvents("VPL-1", onChange));
-    MockEventSource.latest().emit("content:changed", "not-json");
+    MockEventSource.latest().emit("ticket:changed", "not-json");
+    act(() => { vi.advanceTimersByTime(200); });
+    expect(onChange).not.toHaveBeenCalled();
+  });
+
+  it("ignores events without kinds", () => {
+    const onChange = vi.fn();
+    renderHook(() => useTicketEvents("VPL-1", onChange));
+    MockEventSource.latest().emit("ticket:changed", JSON.stringify({ type: "ticket:changed", ticketKey: "VPL-1", kinds: [] }));
+    act(() => { vi.advanceTimersByTime(200); });
     expect(onChange).not.toHaveBeenCalled();
   });
 
@@ -108,9 +153,10 @@ describe("useTicketEvents", () => {
     rerender({ cb: second });
     expect(MockEventSource.instances).toHaveLength(1);
     MockEventSource.latest().emit(
-      "content:changed",
-      JSON.stringify({ type: "content:changed", ticketKey: "VPL-1" }),
+      "ticket:changed",
+      JSON.stringify({ type: "ticket:changed", ticketKey: "VPL-1", kinds: ["content"] }),
     );
+    act(() => { vi.advanceTimersByTime(200); });
     expect(first).not.toHaveBeenCalled();
     expect(second).toHaveBeenCalledTimes(1);
   });

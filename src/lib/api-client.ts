@@ -3,6 +3,7 @@
 
 import type { Ticket, TicketDetail, Sprint, StoryVersion, StoredReview, RelatedSuggestionResponse, SubtaskSuggestionResponse, PlaceholderTicket } from "@/types/ticket";
 import type { Conversation, ConversationType, Message } from "@/types/chat";
+import { CLIENT_ID_HEADER, getClientId } from "@/lib/client-id";
 
 export interface LinkSearchResult {
   key: string;
@@ -47,6 +48,11 @@ export async function apiFetch<T>(url: string, options: ApiFetchOptions = {}): P
 
   const init: RequestInit = { method, signal };
   const mergedHeaders: Record<string, string> = { ...headers };
+
+  // Tag every call with this tab's id so write routes can mark the resulting
+  // ticket event with its origin (self-echo suppression for live updates).
+  const clientId = getClientId();
+  if (clientId) mergedHeaders[CLIENT_ID_HEADER] = clientId;
 
   if (body !== undefined) {
     mergedHeaders["Content-Type"] = "application/json";

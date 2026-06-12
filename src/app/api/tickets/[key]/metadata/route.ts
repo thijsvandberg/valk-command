@@ -8,6 +8,7 @@ import { applyRateLimit } from "@/lib/rate-limiter";
 import { resolveDraftKey } from "@/lib/draft-sync";
 import { db } from "@/db";
 import { cache } from "@/lib/cache";
+import { emitTicketEvent, originFromRequest } from "@/lib/ticket-events";
 
 export async function PUT(
   request: Request,
@@ -36,6 +37,12 @@ export async function PUT(
     });
     if (row?.epicKey) {
       cache.invalidate(`/api/tickets/${row.epicKey}`);
+    }
+
+    // Business value is Bridge-only metadata grouped under the "points" kind;
+    // other PO metadata (readiness, notes) has no live-update kind in v1.
+    if (body.businessValue !== undefined) {
+      emitTicketEvent({ type: "ticket:changed", ticketKey: key, kinds: ["points"], origin: originFromRequest(request) });
     }
 
     return NextResponse.json(result);

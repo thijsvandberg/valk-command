@@ -27,7 +27,13 @@ vi.mock("@/lib/cache", () => ({
   cache: { invalidate: vi.fn() },
 }));
 
+vi.mock("@/lib/ticket-events", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@/lib/ticket-events")>()),
+  emitTicketEvent: vi.fn(),
+}));
+
 import { POST } from "./route";
+import { emitTicketEvent } from "@/lib/ticket-events";
 
 function seedTicket(db: BetterSQLite3Database<typeof schema>, key: string) {
   db.insert(ticket).values({ jiraKey: key, title: `Ticket ${key}`, status: "TO DO" }).run();
@@ -84,6 +90,27 @@ describe("POST /api/tickets/[key]/jira-comments", () => {
     expect(stored).toHaveLength(1);
     expect(stored[0].ticketKey).toBe("VPL-100");
     expect(stored[0].jiraCommentId).toBe("10001");
+  });
+
+  it("emits a comment ticket event with the caller's origin", async () => {
+    seedTicket(testDb, "VPL-100");
+    mockAddComment.mockResolvedValue({
+      id: "10002",
+      author: { accountId: "abc", displayName: "Test User", avatarUrls: {} },
+      body: "A comment",
+      created: "2026-05-23T12:00:00.000Z",
+      updated: "2026-05-23T12:00:00.000Z",
+    });
+
+    const req = new Request("http://localhost:3100/api/tickets/VPL-100/jira-comments", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", "x-bridge-client": "tab-9" },
+      body: JSON.stringify({ content: "A comment" }),
+    });
+    const res = await POST(req, makeParams("VPL-100"));
+
+    expect(res.status).toBe(201);
+    expect(emitTicketEvent).toHaveBeenCalledWith({ type: "ticket:changed", ticketKey: "VPL-100", kinds: ["comment"], origin: "tab-9" });
   });
 
   it("rejects empty content", async () => {

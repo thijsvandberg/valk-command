@@ -8,6 +8,7 @@ import { registerSync, unregisterSync } from "@/lib/sync-abort";
 import { applyRateLimit } from "@/lib/rate-limiter";
 import { logger } from "@/lib/logger";
 import { errorResponse } from "@/lib/api-response";
+import { emitTicketEvent, originFromRequest } from "@/lib/ticket-events";
 
 /**
  * POST /api/jira/sync-comments?key=VPL-12345
@@ -44,6 +45,7 @@ export async function POST(request: Request) {
 
     const comments = await jiraClient.getComments(key, controller.signal);
     let synced = 0;
+    let changed = 0;
 
     for (const comment of comments) {
       const contentMarkdown = typeof comment.body === "string"
@@ -59,10 +61,12 @@ export async function POST(request: Request) {
       });
 
       if (existing) {
+        if (existing.content !== contentMarkdown) changed++;
         await db.update(jiraComment)
           .set({ content: contentMarkdown, authorName, authorAvatar })
           .where(eq(jiraComment.jiraCommentId, comment.id));
       } else {
+        changed++;
         await db.insert(jiraComment).values({
           id: `jc-${comment.id}`,
           ticketKey: key,
@@ -74,6 +78,12 @@ export async function POST(request: Request) {
         });
       }
       synced++;
+    }
+
+    // Fan the new/edited comments out to open views of this ticket. Origin is
+    // the syncing tab so it does not re-highlight data it just loaded itself.
+    if (changed > 0) {
+      emitTicketEvent({ type: "ticket:changed", ticketKey: key, kinds: ["comment"], origin: originFromRequest(request) });
     }
 
     const durationMs = Date.now() - new Date(startedAt).getTime();

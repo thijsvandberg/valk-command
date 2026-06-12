@@ -30,8 +30,14 @@ vi.mock("@/lib/jira-client", () => ({
   },
 }));
 
+vi.mock("@/lib/ticket-events", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@/lib/ticket-events")>()),
+  emitTicketEvent: vi.fn(),
+}));
+
 import { POST } from "./route";
 import { jiraClient } from "@/lib/jira-client";
+import { emitTicketEvent } from "@/lib/ticket-events";
 
 function makeRequest(key?: string): Request {
   const url = key
@@ -112,6 +118,33 @@ describe("POST /api/jira/sync-comments", () => {
     } finally {
       nowSpy.mockRestore();
     }
+  });
+
+  it("emits a comment ticket event when new comments land", async () => {
+    seedTicket(testDb, { jiraKey: "VPL-100" });
+    vi.mocked(jiraClient.getComments).mockResolvedValue([
+      { id: "c1", body: "plain text", author: { accountId: "a1", displayName: "Alice", avatarUrls: {} }, created: "2026-01-01T00:00:00Z", updated: "2026-01-01T00:00:00Z" },
+    ]);
+
+    const req = new Request("http://localhost:3100/api/jira/sync-comments?key=VPL-100", {
+      method: "POST",
+      headers: { "x-bridge-client": "tab-7" },
+    });
+    await POST(req);
+
+    expect(emitTicketEvent).toHaveBeenCalledWith({ type: "ticket:changed", ticketKey: "VPL-100", kinds: ["comment"], origin: "tab-7" });
+  });
+
+  it("does not emit when a re-sync changes nothing", async () => {
+    seedTicket(testDb, { jiraKey: "VPL-100" });
+    const sameComment = { id: "c1", body: "stable", author: { accountId: "a1", displayName: "Alice", avatarUrls: {} }, created: "2026-01-01T00:00:00Z", updated: "2026-01-01T00:00:00Z" };
+    vi.mocked(jiraClient.getComments).mockResolvedValue([sameComment]);
+
+    await POST(makeRequest("VPL-100"));
+    vi.mocked(emitTicketEvent).mockClear();
+    await POST(makeRequest("VPL-100"));
+
+    expect(emitTicketEvent).not.toHaveBeenCalled();
   });
 
   it("creates activity log entry with success status", async () => {

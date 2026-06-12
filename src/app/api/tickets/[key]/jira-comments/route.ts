@@ -10,6 +10,7 @@ import { db } from "@/db";
 import { jiraComment } from "@/db/schema";
 import { cache } from "@/lib/cache";
 import { userInitials, userColor } from "@/lib/user-utils";
+import { emitTicketEvent, originFromRequest } from "@/lib/ticket-events";
 
 export async function POST(
   request: Request,
@@ -65,6 +66,10 @@ export async function POST(
   });
 
   cache.invalidate(`/api/tickets/${key}`);
+
+  // Other open views of this ticket pick the comment up live; the posting tab
+  // is identified as origin so it does not highlight its own comment.
+  emitTicketEvent({ type: "ticket:changed", ticketKey: key, kinds: ["comment"], origin: originFromRequest(request) });
 
   return NextResponse.json({
     id,

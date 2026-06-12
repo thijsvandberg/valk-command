@@ -26,8 +26,8 @@ describe("GET /api/tickets/[key]/events", () => {
 
     // The listener is registered synchronously while constructing the stream,
     // so emitting after GET resolves is safe.
-    emitTicketEvent({ type: "content:changed", ticketKey: "VPL-2" });
-    emitTicketEvent({ type: "content:changed", ticketKey: "VPL-1" });
+    emitTicketEvent({ type: "ticket:changed", ticketKey: "VPL-2", kinds: ["status"] });
+    emitTicketEvent({ type: "ticket:changed", ticketKey: "VPL-1", kinds: ["comment"] });
 
     let text = "";
     for (let i = 0; i < 5; i++) {
@@ -37,8 +37,9 @@ describe("GET /api/tickets/[key]/events", () => {
       if (text.includes("VPL-1")) break;
     }
 
-    expect(text).toContain("event: content:changed");
+    expect(text).toContain("event: ticket:changed");
     expect(text).toContain("VPL-1");
+    expect(text).toContain('"kinds":["comment"]');
     expect(text).not.toContain("VPL-2");
     await reader.cancel();
   });

@@ -9,6 +9,7 @@ import { applyRateLimit } from "@/lib/rate-limiter";
 import { resolveDraftKey } from "@/lib/draft-sync";
 import { buildTicketDetail, updateTicketFields } from "@/lib/ticket-detail-builder";
 import { syncIndividualTickets } from "@/lib/sync-tickets-service";
+import { emitTicketEvent, originFromRequest } from "@/lib/ticket-events";
 import { db } from "@/db";
 
 /**
@@ -108,6 +109,10 @@ export async function PATCH(
   }
   if ("storyPoints" in body || "epicKey" in body) {
     cache.invalidate("/api/epics/progress");
+  }
+
+  if ("storyPoints" in body) {
+    emitTicketEvent({ type: "ticket:changed", ticketKey: key, kinds: ["points"], origin: originFromRequest(request) });
   }
 
   return NextResponse.json(outcome.result);

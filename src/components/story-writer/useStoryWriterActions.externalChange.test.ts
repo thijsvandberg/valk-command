@@ -2,7 +2,7 @@ import { renderHook, waitFor } from "@testing-library/react";
 import { describe, it, expect, vi, beforeEach } from "vitest";
 
 // Capture the callback the hook registers with useTicketEvents so we can drive
-// an external "content:changed" event directly, without the SSE layer.
+// an external ticket:changed event directly, without the SSE layer.
 const ticketEventCallbacks: Array<(...args: unknown[]) => void> = [];
 vi.mock("@/hooks/useTicketEvents", () => ({
   useTicketEvents: (_key: string | null, cb: (...args: unknown[]) => void) => {
@@ -76,7 +76,7 @@ describe("useStoryWriterActions external content change", () => {
     // localDraft equals the Jira description -> untouched draft -> clean.
     renderActions("same body", "same body");
     const cb = ticketEventCallbacks.at(-1)!;
-    cb();
+    cb({ type: "ticket:changed", ticketKey: TICKET_KEY, kinds: ["content"], origin: null });
 
     await waitFor(() => expect(tickets.pullFromJira).toHaveBeenCalledWith(TICKET_KEY));
     await waitFor(() =>
@@ -91,10 +91,21 @@ describe("useStoryWriterActions external content change", () => {
     // localDraft diverges from the Jira description -> the PO has own work.
     const { writer, mutateTicket } = renderActions("my own edits", "original jira body");
     const cb = ticketEventCallbacks.at(-1)!;
-    cb();
+    cb({ type: "ticket:changed", ticketKey: TICKET_KEY, kinds: ["content"], origin: null });
 
     await waitFor(() => expect(writer.refreshSession).toHaveBeenCalled());
     expect(mutateTicket).toHaveBeenCalled();
+    expect(tickets.pullFromJira).not.toHaveBeenCalled();
+  });
+
+  it("ignores non-content change kinds entirely", async () => {
+    const { writer, mutateTicket } = renderActions("my own edits", "original jira body");
+    const cb = ticketEventCallbacks.at(-1)!;
+    cb({ type: "ticket:changed", ticketKey: TICKET_KEY, kinds: ["comment", "status"], origin: null });
+
+    await new Promise((resolve) => setTimeout(resolve, 10));
+    expect(writer.refreshSession).not.toHaveBeenCalled();
+    expect(mutateTicket).not.toHaveBeenCalled();
     expect(tickets.pullFromJira).not.toHaveBeenCalled();
   });
 });

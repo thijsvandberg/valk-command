@@ -305,7 +305,7 @@ describe("own-push echo suppression", () => {
     expect(session.baseVersionHash).toBe(latest?.contentHash);
   });
 
-  it("emits content:changed and keeps the baseline for a genuine external change", async () => {
+  it("emits a content event and keeps the baseline for a genuine external change", async () => {
     await upsertIssue(makeIssue({ description: "Original content" }), "");
     const v1 = testDb.select().from(storyVersion).all()[0];
     seedActiveSession("VPL-1", v1.contentHash);
@@ -315,8 +315,99 @@ describe("own-push echo suppression", () => {
     await tick();
     await upsertIssue(makeIssue({ description: "External edit from Jira" }), "");
 
-    expect(emitTicketEvent).toHaveBeenCalledWith({ type: "content:changed", ticketKey: "VPL-1" });
+    expect(emitTicketEvent).toHaveBeenCalledWith({ type: "ticket:changed", ticketKey: "VPL-1", kinds: ["content"], origin: null });
     const session = testDb.select().from(storyWriterSession).all()[0];
     expect(session.baseVersionHash).toBe(v1.contentHash);
+  });
+});
+
+describe("typed change events (BRDG-338)", () => {
+  beforeEach(() => {
+    testDb = createTestDb();
+    vi.mocked(extractSprints).mockReturnValue([]);
+    vi.mocked(extractStoryPoints).mockReturnValue(null);
+    vi.mocked(emitTicketEvent).mockClear();
+  });
+
+  function lastEmittedKinds(): string[] {
+    const calls = vi.mocked(emitTicketEvent).mock.calls;
+    expect(calls.length).toBeGreaterThan(0);
+    return [...calls[calls.length - 1][0].kinds].sort();
+  }
+
+  it("does not emit for a brand-new ticket", async () => {
+    await upsertIssue(makeIssue(), "Sprint 1");
+    expect(emitTicketEvent).not.toHaveBeenCalled();
+  });
+
+  it("does not emit when nothing changed", async () => {
+    await upsertIssue(makeIssue(), "Sprint 1");
+    vi.mocked(emitTicketEvent).mockClear();
+    await upsertIssue(makeIssue(), "Sprint 1");
+    expect(emitTicketEvent).not.toHaveBeenCalled();
+  });
+
+  it("emits a status kind on a field-only status change", async () => {
+    await upsertIssue(makeIssue(), "Sprint 1");
+    vi.mocked(emitTicketEvent).mockClear();
+    await upsertIssue(makeIssue({ status: { name: "In Progress" } }), "Sprint 1");
+    expect(lastEmittedKinds()).toEqual(["status"]);
+  });
+
+  it("emits an assignee kind when the assignee moves", async () => {
+    await upsertIssue(makeIssue(), "Sprint 1");
+    vi.mocked(emitTicketEvent).mockClear();
+    await upsertIssue(makeIssue({ assignee: { accountId: "a1", displayName: "Robin", avatarUrls: {} } }), "Sprint 1");
+    expect(lastEmittedKinds()).toEqual(["assignee"]);
+  });
+
+  it("emits a points kind on a story points change without a content change", async () => {
+    await upsertIssue(makeIssue(), "Sprint 1");
+    vi.mocked(emitTicketEvent).mockClear();
+    vi.mocked(extractStoryPoints).mockReturnValue(8);
+    await upsertIssue(makeIssue(), "Sprint 1");
+    expect(lastEmittedKinds()).toEqual(["points"]);
+  });
+
+  it("emits sprint and labels kinds when those fields move", async () => {
+    await upsertIssue(makeIssue(), "Sprint 1");
+    vi.mocked(emitTicketEvent).mockClear();
+    await upsertIssue(makeIssue({ labels: ["backend"] }), "Sprint 2");
+    expect(lastEmittedKinds()).toEqual(["labels", "sprint"]);
+  });
+
+  it("emits a comment kind when a new inline comment lands", async () => {
+    await upsertIssue(makeIssue(), "Sprint 1");
+    vi.mocked(emitTicketEvent).mockClear();
+    await upsertIssue(makeIssue({
+      comment: {
+        total: 1,
+        comments: [{ id: "c1", author: { displayName: "Robin", avatarUrls: {} }, body: "A new comment", created: "2024-01-02T00:00:00.000Z" }],
+      },
+    }), "Sprint 1");
+    expect(lastEmittedKinds()).toEqual(["comment"]);
+  });
+
+  it("emits a subtasks kind when a subtask's status moves", async () => {
+    const withSub = (status: string) => makeIssue({
+      subtasks: [{
+        id: "20001",
+        key: "VPL-2",
+        fields: { summary: "Child", issuetype: { name: "Sub-task" }, status: { name: status }, assignee: null },
+      }],
+    });
+    await upsertIssue(withSub("To Do"), "Sprint 1");
+    vi.mocked(emitTicketEvent).mockClear();
+    await upsertIssue(withSub("Done"), "Sprint 1");
+    expect(lastEmittedKinds()).toContain("subtasks");
+  });
+
+  it("coalesces several field changes into one event", async () => {
+    await upsertIssue(makeIssue(), "Sprint 1");
+    vi.mocked(emitTicketEvent).mockClear();
+    vi.mocked(extractStoryPoints).mockReturnValue(5);
+    await upsertIssue(makeIssue({ status: { name: "In Progress" }, assignee: { accountId: "a1", displayName: "Robin", avatarUrls: {} } }), "Sprint 1");
+    expect(emitTicketEvent).toHaveBeenCalledTimes(1);
+    expect(lastEmittedKinds()).toEqual(["assignee", "points", "status"]);
   });
 });

@@ -48,7 +48,7 @@ export interface PushToJiraConflict {
 
 export type PushToJiraOutcome = PushToJiraResult | PushToJiraConflict;
 
-export async function pushToJira(key: string): Promise<PushToJiraOutcome> {
+export async function pushToJira(key: string, origin: string | null = null): Promise<PushToJiraOutcome> {
   if (!jiraClient.isLive) {
     throw new JiraUnavailableError();
   }
@@ -188,8 +188,8 @@ export async function pushToJira(key: string): Promise<PushToJiraOutcome> {
       summary: `Pushed ${pushedFields} to Jira`,
     });
 
-    // Let an open editor (e.g. Story Writer in another tab) react to the push.
-    emitTicketEvent({ type: "content:changed", ticketKey: key });
+    // Let open views (detail page, Story Writer in another tab) react to the push.
+    emitTicketEvent({ type: "ticket:changed", ticketKey: key, kinds: ["content"], origin });
 
     return {
       success: true,
