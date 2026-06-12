@@ -104,7 +104,7 @@ Plan produced by a verification pass against the current tree (all audit claims 
 ## Acceptance Criteria
 
 - [x] Section A: confirm each of the 8 sources is truly unreachable, move source + test to `deleted/` (or keep with a documented reason). All 8 re-verified at implementation time: zero non-test importers, no barrel re-exports, no dynamic imports. All moved to `deleted/src/<original path>`.
-- [ ] Section B: `StoryWriterTitleSync.test.tsx` either retargeted to `useStoryWriterActions.ts` (asserting real `document.title` behavior) or removed.
+- [x] Section B: `StoryWriterTitleSync.test.tsx` either retargeted to `useStoryWriterActions.ts` (asserting real `document.title` behavior) or removed. Retargeted: all 8 original cases now render the real hook via the `makeWriter` harness pattern from the sibling wrap-up test.
 - [ ] Section C: the 4 duplicate-flow items removed/slimmed as described; the unique cases called out are retained.
 - [ ] `npm run test` passes after the cleanup.
 - [ ] `npm run lint`, `npm run typecheck`, and `npm run build` pass (removing dead source must not break imports anywhere).
