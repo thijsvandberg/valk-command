@@ -66,9 +66,44 @@ The `TicketRow` -> `DroppableSprintColumn` -> `MultiSprintView` -> `/sprint-boar
 - **Refinement** layering (route DB CRUD vs context/hook in-memory queue vs UI) - clean separation.
 - Suspicious name-pairs all confirmed to target **different** sources: `chat/BulkActionBar` vs `sprint-board/BulkActionBar`; `sanitize` vs `sanitize-client` vs `sanitize-html-config`; `useLocalStorage` vs `useSessionStorage`; `cleanup-disposition` (helper / service / two routes); `markdown-to-adf` vs `adf-to-markdown` vs `normalize-markdown`; Picker/Option/Badge families.
 
+## Implementation Plan
+
+Plan produced by a verification pass against the current tree (all audit claims re-confirmed; line numbers below are corrected to current code, the story's ranges had drifted).
+
+### Phase 1 - Section A: retire 8 dead-code sources + tests
+1. Re-verify zero importers per file: `grep -rEn "from ['\"][^'\"]*/<basename>['\"]" src` for `ChatEmptyState`, `MessageDisplay`, `SessionStoryPointPicker`, `GuestimationPicker`, `PageIntro`, `SprintInsights`, `export-diff`, `useIncrementalSync`. (Verified: matches in `BoardRow.tsx`, `types/ticket.ts`, `EstimatePicker.tsx` are comments only.)
+2. Before any move: confirm `deleted/` is excluded in `vitest.config.ts`, `tsconfig.json`, `eslint.config.mjs` (existing `deleted/` already contains test files, implying it is).
+3. `git mv` each source + co-located test to `deleted/src/<same relative path>`.
+
+### Phase 2 - Section B: retarget StoryWriterTitleSync test
+4. Rewrite `StoryWriterTitleSync.test.tsx` to exercise the real `useStoryWriterActions` hook (the `document.title` effect lives at `useStoryWriterActions.ts:63-70`). Copy the mock harness (`makeWriter`/`renderActions`) from `useStoryWriterActions.wrapup.test.ts:1-61`. Assert four cases: no title, `localTitle` set, fallback to ticket title, `"Untitled draft"` suppressed. Precedence: `localTitle ?? ticketData.title ?? draftTitle` with the Untitled-draft guard.
+
+### Phase 3 - Section C: slim duplicate-flow tests
+5. C1 `messages/route.test.ts`: delete `describe("hasEditIntent")` (lines 341-399) AND the now-orphaned `hasEditIntent` import (line 33). Keep follow-up-prompt and match-epic blocks. Covered by `src/lib/edit-intent.test.ts`.
+6. C2 `sync-tickets/route.test.ts`: rewrite HTTP-only mirroring `push-to-jira/route.test.ts` pattern. Mock `@/lib/sync-tickets-service` (hoisted fns for `syncSprint`, `syncIndividualTickets`, `syncBacklog`, `planGroupKeys`, `reconcileGroupMembership`; re-export the REAL `SyncValidationError` via `importActual` so `instanceof` in route.ts:56/76/115 works). Delete DB-row cases (current lines 113-169). Keep/add: zod 400 cases, generic 500, mode routing (`plan`/`reconcile`), `SyncValidationError` -> status mapping. Covered by `sync-tickets-service.test.ts` + `upsert-issue.test.ts`.
+7. C3 `deprecation-staleness-scan.test.ts`: delete comment-activity block (139-197) and epic-dampener block (198-256), plus the now-unused `insertComment` helper (line 48) and `jiraComment` import (line 6). Keep lines 64-137 (wrapper-specific). Covered by `deprecation-staleness-runner.test.ts:106-130`.
+8. C4 `scheduled-tasks.test.ts`: delete `it("skips when auto scan is disabled (baseline)")` (352-355) only; keep subtask-exclusion `it` (357-365). Covered by `deprecation-auto-enqueue.test.ts:117-123`.
+
+### Phase 4 - Validation
+9. Foreground, one at a time: `npm run test`, `npm run lint`, `npm run typecheck`, `npm run build`.
+10. Coverage citations recorded per item above (AC 6).
+
+### Commits
+1. `chore: retire dead-code components and their tests (BRDG-335 A)`
+2. `test: retarget story-writer title-sync test to the real hook (BRDG-335 B)`
+3. `test: drop duplicated hasEditIntent block from messages route test (BRDG-335 C1)`
+4. `test: slim jira sync-tickets route test to HTTP-only with mocked service (BRDG-335 C2)`
+5. `test: remove duplicated staleness scoring blocks from scan test (BRDG-335 C3)`
+6. `test: drop duplicated auto-scan-disabled baseline from scheduled-tasks test (BRDG-335 C4)`
+
+### Risks
+- `deleted/` exclusion from vitest/tsc/eslint must be confirmed before moving (highest-risk item).
+- Hidden dead imports after block removal (C1 line 33; C3 lines 6/48) fail lint if missed.
+- C2 mock must preserve real `SyncValidationError` class identity.
+
 ## Acceptance Criteria
 
-- [ ] Section A: confirm each of the 8 sources is truly unreachable, move source + test to `deleted/` (or keep with a documented reason).
+- [x] Section A: confirm each of the 8 sources is truly unreachable, move source + test to `deleted/` (or keep with a documented reason). All 8 re-verified at implementation time: zero non-test importers, no barrel re-exports, no dynamic imports. All moved to `deleted/src/<original path>`.
 - [ ] Section B: `StoryWriterTitleSync.test.tsx` either retargeted to `useStoryWriterActions.ts` (asserting real `document.title` behavior) or removed.
 - [ ] Section C: the 4 duplicate-flow items removed/slimmed as described; the unique cases called out are retained.
 - [ ] `npm run test` passes after the cleanup.
