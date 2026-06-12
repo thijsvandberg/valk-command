@@ -110,14 +110,14 @@ describe("useStoryWriterDrafts", () => {
 
       expect(fetchSpy).toHaveBeenCalledWith(API_BASE, {
         method: "PATCH",
-        headers: { "Content-Type": "application/json" },
+        headers: expect.objectContaining({ "Content-Type": "application/json" }),
         body: JSON.stringify({ localDraft: "content" }),
       });
       expect(fetchSpy).toHaveBeenCalledWith(
         `/api/tickets/${TICKET_KEY}/local-edits`,
         {
           method: "PUT",
-          headers: { "Content-Type": "application/json" },
+          headers: expect.objectContaining({ "Content-Type": "application/json" }),
           body: JSON.stringify({ field: "description", localValue: "content", isDraft: true }),
         },
       );
@@ -149,7 +149,7 @@ describe("useStoryWriterDrafts", () => {
 
       expect(fetch).toHaveBeenCalledWith(API_BASE, {
         method: "PATCH",
-        headers: { "Content-Type": "application/json" },
+        headers: expect.objectContaining({ "Content-Type": "application/json" }),
         body: JSON.stringify({ acceptDraftId: "draft-1" }),
       });
       expect(setSession).toHaveBeenCalledWith(updatedSession);
@@ -178,7 +178,7 @@ describe("useStoryWriterDrafts", () => {
         `/api/tickets/${TICKET_KEY}/local-edits`,
         {
           method: "PUT",
-          headers: { "Content-Type": "application/json" },
+          headers: expect.objectContaining({ "Content-Type": "application/json" }),
           body: JSON.stringify({ field: "description", localValue: "new description", isDraft: true }),
         },
       );
@@ -221,7 +221,7 @@ describe("useStoryWriterDrafts", () => {
 
       expect(fetch).toHaveBeenCalledWith(
         `${API_BASE}/apply-draft?draftId=draft-1`,
-        { method: "DELETE" },
+        expect.objectContaining({ method: "DELETE" }),
       );
       expect(setAllDrafts).toHaveBeenCalled();
 
@@ -271,7 +271,7 @@ describe("useStoryWriterDrafts", () => {
         `/api/tickets/${TICKET_KEY}/push-to-jira`,
         {
           method: "POST",
-          headers: { "Content-Type": "application/json" },
+          headers: expect.objectContaining({ "Content-Type": "application/json" }),
           body: JSON.stringify({}),
         },
       );

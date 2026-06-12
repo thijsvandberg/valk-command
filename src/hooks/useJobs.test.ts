@@ -97,7 +97,7 @@ describe("useJobs", () => {
     expect(result.current.jobs).toEqual([mockJob]);
     expect(fetch).toHaveBeenCalledWith("/api/jobs", expect.objectContaining({
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: expect.objectContaining({ "Content-Type": "application/json" }),
       body: JSON.stringify({
         name: "Daily sync",
         cronExpression: "0 9 * * *",
@@ -185,7 +185,7 @@ describe("useJobs", () => {
     expect(result.current.jobs[0].name).toBe("Updated sync");
     expect(fetch).toHaveBeenCalledWith("/api/jobs/job-1", expect.objectContaining({
       method: "PUT",
-      headers: { "Content-Type": "application/json" },
+      headers: expect.objectContaining({ "Content-Type": "application/json" }),
       body: JSON.stringify({ name: "Updated sync" }),
     }));
   });

@@ -91,7 +91,7 @@ describe("useWorkspaceTask", () => {
     expect(result.current.skill).toBe("review");
     expect(fetch).toHaveBeenCalledWith("/api/workspace-tasks", expect.objectContaining({
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: expect.objectContaining({ "Content-Type": "application/json" }),
       body: JSON.stringify({ skill: "review", args: { key: "VPL-1" } }),
     }));
   });
@@ -110,7 +110,7 @@ describe("useWorkspaceTask", () => {
 
     expect(fetch).toHaveBeenCalledWith("/api/workspace-tasks", expect.objectContaining({
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: expect.objectContaining({ "Content-Type": "application/json" }),
       body: JSON.stringify({ skill: "review", args: { key: "VPL-1" }, conversationId: "conv-1" }),
     }));
   });

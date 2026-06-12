@@ -78,6 +78,7 @@ function resetHook(readiness: TicketReadiness | null, overrides: Record<string, 
     ticketSprintId: null,
     ticketSprintLabel: null,
     handleConflictResolved: vi.fn(),
+    liveChangeKinds: new Set(),
     ...overrides,
   });
 }
