@@ -273,8 +273,9 @@ describe("BoardRow (headerless, BRDG-239)", () => {
     expect(bv.parentElement?.className).toContain("hidden");
   });
 
-  // BRDG-323: in planning mode a guess is a resting estimate, but a ticket being
-  // refined is estimated with story points only — no guess on those rows.
+  // In planning mode a guess is a resting estimate. The board keeps the guestimate
+  // flow even for a ticket in a refinement session; SP-only entry is enforced inside
+  // the session view, not on the board row.
   it("shows a planning guess as a resting estimate when the row is not in a refinement session", () => {
     renderRow({
       ticket: makeTicket({ storyPoints: null, businessValue: null, guestimation: 3 }),
@@ -286,7 +287,7 @@ describe("BoardRow (headerless, BRDG-239)", () => {
     expect(screen.getByTestId("sp").parentElement?.className).not.toContain("hidden");
   });
 
-  it("drops the guess (story points only) on a ticket in a refinement session", () => {
+  it("keeps the guestimate flow on a board row that is in a refinement session", () => {
     renderRow({
       ticket: makeTicket({ storyPoints: null, businessValue: null, guestimation: 3 }),
       planningOn: true,
@@ -294,8 +295,8 @@ describe("BoardRow (headerless, BRDG-239)", () => {
       onGuestimationChange: vi.fn(),
       refinementSessions: [{ name: "Refine A" } as never],
     });
-    // No resting guess: the estimate collapses to an empty SP placeholder (hover-reveal).
-    expect(screen.getByTestId("sp").parentElement?.className).toContain("hidden");
+    // The planning guess still rests inline; it is not collapsed to an SP-only placeholder.
+    expect(screen.getByTestId("sp").parentElement?.className).not.toContain("hidden");
   });
 
   it("freezes the estimate in its slot while open, so a first pick does not remount it (BRDG-323)", () => {

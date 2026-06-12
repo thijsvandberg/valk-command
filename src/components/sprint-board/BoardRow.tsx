@@ -236,11 +236,10 @@ export const BoardRow = memo(forwardRef<HTMLTableRowElement, BoardRowBaseProps>(
   // empty). A set estimate (real SP, or a guess in planning mode) renders inline;
   // an all-empty cell surfaces as a hover placeholder.
   const guessEmpty = ticket.guestimation == null || ticket.guestimation === 0;
-  // A ticket being refined is estimated with real story points only — no guess to
-  // see or fill (BRDG-323). So the guess lifecycle is dropped on rows that are in a
-  // refinement session, even while planning mode is on elsewhere.
-  const inRefinementSession = Boolean(refinementSessions && refinementSessions.length > 0);
-  const estimatePlanning = planningOn && Boolean(onGuestimationChange) && !inRefinementSession;
+  // A ticket in a refinement session keeps the guestimate flow on the board: SP-only
+  // entry is enforced inside the session view (SessionStoryPointPicker), not here. So
+  // the board offers the guess lifecycle for every row whenever planning mode is on.
+  const estimatePlanning = planningOn && Boolean(onGuestimationChange);
   const estimateSet = !spEmpty || (estimatePlanning && !guessEmpty);
   // While the estimate popover is open, hold its slot fixed so picking a guess
   // does not remount it (which would close the dropdown before you can commit).
