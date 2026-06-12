@@ -1,5 +1,20 @@
 # Implementation Performance Log
 
+## BRDG-337 — Schedule a refinement session with a date (2026-06-12)
+
+| Phase | Notes |
+|---|---|
+| Plan (Opus) | Accurate; pre-identified the five label render sites, the timezone wrinkle in todayDate(), and that route tests require the migration to exist |
+| Schema | drizzle-kit generated a broken table-rebuild migration: the INSERT...SELECT referenced the new scheduled_for column on the old table; hand-corrected to SELECT NULL before applying |
+| Implement | Clean; nullable name fanned out to ~10 consumers but the sessionLabel helper absorbed nearly all of it |
+| Verify | Worktree-at-HEAD verification (per parallel-session hygiene memory) worked well; build + suite green for own scope on first run after one test-assertion fix |
+
+Key bottlenecks / lessons:
+- **Another session was actively committing into the same tree (BRDG-336/338) throughout the run.** Required hand-built zero-context patches (`git apply --cached --unidiff-zero`) to stage only own hunks in api-client.ts, RefinementPageContent.tsx and SavedSessionList.tsx; their commit later landed a fixture I had already patched, harmlessly. Two of their committed type errors (Jira comment fixture missing accountId/updated) broke typecheck at HEAD and were fixed here since they were one-liners blocking verification.
+- **Their x-bridge-client header refactor broke useStoryWriterDrafts (5) and useJobs (2) test assertions at HEAD.** Left for that session to fix (still in flight); full suite verified green excluding those two files.
+- **drizzle-kit generate is not trustworthy for add-column + drop-NOT-NULL combined changes on SQLite.** It rebuilds the table and selects the new column from the old table. Always read the generated SQL before db:migrate.
+- Browser verification surfaced a pre-existing render-phase setState (RefinementSessionMenu onOpenChange inside the setOpen updater); one-line fix committed.
+
 ## BRDG-335 — Test suite redundancy & obsolescence cleanup (2026-06-12)
 
 Test-only cleanup story (8 dead source+test pairs retired, 1 test retargeted, 4 duplicate-flow tests slimmed). The cleanup itself was mechanical and audit claims all held; every minute of friction came from sharing the working tree with a parallel session running BRDG-336/337/338.
