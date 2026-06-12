@@ -2,9 +2,10 @@
 
 import { useState, useEffect, useRef, useCallback, useMemo } from "react";
 import type { Attachment } from "@/types/ticket";
-import { CloudUpload, Loader2, ChevronDown, Save, RotateCcw } from "lucide-react";
+import { CloudUpload, Loader2, ChevronDown, Check, RotateCcw } from "lucide-react";
 import { Button } from "@/components/ui/Button";
-import { apiFetch, tickets } from "@/lib/api-client";
+import { apiFetch } from "@/lib/api-client";
+import { useLocalEditSaver, type LocalEditSaver } from "@/lib/local-edit-saver";
 import { useTicketEditStateSync } from "@/hooks/useTicketEditStateSync";
 import type { TicketEditState } from "@/types/ticket";
 import { markdownEqualIgnoringSpacing, normalizeMarkdownForCompare } from "@/lib/normalize-markdown";
@@ -65,10 +66,12 @@ export function EditableDescription({
   overrideConfirmed,
   onOverrideChange,
   toolbarPortalId,
+  saver: externalSaver,
+  onConflictReload,
 }: {
   ticketKey: string;
   initialDescription: string;
-  serverLocalEdit?: { value: string; isDraft: boolean };
+  serverLocalEdit?: { value: string; isDraft: boolean; modifiedAt?: string };
   attachments?: Attachment[];
   onLocalEdit: (hasEdit: boolean) => void;
   onEditingChange?: (isEditing: boolean) => void;
@@ -80,8 +83,14 @@ export function EditableDescription({
   overrideConfirmed?: boolean;
   onOverrideChange?: (val: boolean) => void;
   toolbarPortalId?: string;
+  /** Shared concurrency saver (detail page passes one shared with the title editor). */
+  saver?: LocalEditSaver;
+  /** When provided, the cross-tab conflict banner offers "Reload draft" via this handler. */
+  onConflictReload?: () => void | Promise<void>;
 }) {
   const syncEditState = useTicketEditStateSync();
+  const ownSaver = useLocalEditSaver();
+  const saver = externalSaver ?? ownSaver;
   const resolvedInitial = resolveLocalValue(serverLocalEdit?.value, initialDescription, attachments);
   // A server-side edit that differs from the Jira version only in cosmetic
   // blank-line spacing is a serializer round-trip artifact, not a real edit.
@@ -94,12 +103,24 @@ export function EditableDescription({
   const effectiveInitial = serverEditIsCosmetic ? undefined : resolvedInitial;
   const [editing, setEditing] = useState(false);
   const [localValue, setLocalValue] = useState<string | null>(effectiveInitial ?? null);
-  const [editIsDraft, setEditIsDraft] = useState(serverLocalEdit?.isDraft ?? false);
   const [showDraftDiff, setShowDraftDiff] = useState(false);
+  // Autosave is the only save; this drives the quiet Saving…/Saved indicator.
+  const [saveState, setSaveState] = useState<"idle" | "saving" | "saved">("idle");
   const autoSaveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const notifiedDescRef = useRef(false);
   // Only call onLocalEdit(true) once per editing session to avoid parent re-renders per keystroke
   const localEditNotifiedRef = useRef(false);
+
+  // Seed the concurrency token from the server payload so even the first save
+  // after load is protected against another surface's edits (BRDG-340).
+  const tokenSeededRef = useRef(false);
+  const seededModifiedAt = serverLocalEdit?.modifiedAt;
+  useEffect(() => {
+    if (!tokenSeededRef.current && seededModifiedAt) {
+      tokenSeededRef.current = true;
+      saver.setToken(ticketKey, "description", seededModifiedAt);
+    }
+  }, [seededModifiedAt, saver, ticketKey]);
 
   const hasLocalEdit = localValue !== null;
   const value = localValue ?? initialDescription;
@@ -136,16 +157,21 @@ export function EditableDescription({
     }
   }, [serverLocalEdit, onLocalEdit, serverEditIsCosmetic, ticketKey, syncEditState]);
 
-  // Auto-save draft on change (debounced)
+  // Auto-save on change (debounced). This IS the save — there is no Save
+  // button anymore (BRDG-340). Carries the concurrency token via the saver.
   const autoSaveDraft = useCallback((content: string) => {
     if (autoSaveTimerRef.current) clearTimeout(autoSaveTimerRef.current);
+    setSaveState("saving");
     autoSaveTimerRef.current = setTimeout(async () => {
+      autoSaveTimerRef.current = null;
+      if (saver.isPaused()) return;
       try {
-        await tickets.saveLocalEdit(ticketKey, { field: "description", localValue: content.trim(), isDraft: true });
+        await saver.persistLocalEdit(ticketKey, "description", content.trim(), { isDraft: true });
         syncEditState(ticketKey, "local_edits");
-      } catch { /* ignore */ }
+        setSaveState("saved");
+      } catch { /* 409 surfaces via saver.conflict; other errors retry on the next edit */ }
     }, 800);
-  }, [ticketKey, syncEditState]);
+  }, [ticketKey, syncEditState, saver]);
 
   // Flush pending draft on unmount (e.g. ticket navigation) via sendBeacon
   useEffect(() => {
@@ -178,7 +204,6 @@ export function EditableDescription({
   const handleChange = useCallback((newValue: string) => {
     setLocalValue(newValue);
     if (!markdownEqualIgnoringSpacing(newValue, initialDescription)) {
-      setEditIsDraft(true);
       if (!localEditNotifiedRef.current) {
         localEditNotifiedRef.current = true;
         onLocalEdit(true);
@@ -187,33 +212,41 @@ export function EditableDescription({
     }
   }, [initialDescription, onLocalEdit, autoSaveDraft]);
 
-  const saveLocal = useCallback(async () => {
+  /**
+   * Flush the pending debounce right now (close paths: Escape, Cmd-S, push).
+   * When the content reverted to the Jira version, clean the edit up instead.
+   */
+  const flushPending = useCallback(async () => {
+    if (autoSaveTimerRef.current) {
+      clearTimeout(autoSaveTimerRef.current);
+      autoSaveTimerRef.current = null;
+    }
     if (markdownEqualIgnoringSpacing(value, initialDescription)) {
       setLocalValue(null);
-      setEditIsDraft(false);
       localEditNotifiedRef.current = false;
       onLocalEdit(false);
-      // Clean up any draft
+      if (!hasLocalEdit && saveState === "idle") return;
       const res = await apiFetch<{ editState?: TicketEditState }>(`/api/tickets/${encodeURIComponent(ticketKey)}/local-edits?draftsOnly=true`, { method: "DELETE" });
       syncEditState(ticketKey, res?.editState ?? "clean");
+      setSaveState("idle");
       return;
     }
-    if (autoSaveTimerRef.current) clearTimeout(autoSaveTimerRef.current);
-    await tickets.saveLocalEdit(ticketKey, { field: "description", localValue: value.trim() });
+    if (saver.isPaused()) return;
+    await saver.persistLocalEdit(ticketKey, "description", value.trim(), { isDraft: true });
     setLocalValue(value.trim());
-    setEditIsDraft(false);
     onLocalEdit(true);
     syncEditState(ticketKey, "local_edits");
-  }, [ticketKey, value, initialDescription, onLocalEdit, syncEditState]);
+    setSaveState("saved");
+  }, [ticketKey, value, initialDescription, hasLocalEdit, saveState, onLocalEdit, syncEditState, saver]);
 
   const save = useCallback(async () => {
     setEditingState(false);
     try {
-      await saveLocal();
+      await flushPending();
     } catch (err) {
       console.error("Operation failed:", err);
     }
-  }, [saveLocal, setEditingState]);
+  }, [flushPending, setEditingState]);
 
   const handleDiscard = useCallback(() => {
     setEditingState(false);
@@ -225,31 +258,54 @@ export function EditableDescription({
 
   const handlePushToJira = useCallback(async () => {
     try {
-      await saveLocal();
+      await flushPending();
     } catch (err) {
       console.error("Failed to save before push:", err);
       return;
     }
     await onPushToJira?.();
-  }, [saveLocal, onPushToJira]);
+  }, [flushPending, onPushToJira]);
 
   useEffect(() => {
     if (!editing) return;
     function handleKeyDown(e: KeyboardEvent) {
       if (e.key === "Escape") {
         e.preventDefault();
-        setEditingState(false);
+        // Closing never loses work: flush whatever the debounce still holds.
+        void save();
       }
     }
     document.addEventListener("keydown", handleKeyDown);
     return () => document.removeEventListener("keydown", handleKeyDown);
-  }, [editing, setEditingState]);
+  }, [editing, save]);
 
   const isDirtyOrLocal = hasLocalEdit || !markdownEqualIgnoringSpacing(value, initialDescription);
   const showPush = isDirtyOrLocal && !!onPushToJira;
 
   return (
     <div className={!editing && hasLocalEdit ? "mt-2" : "mt-6"}>
+      {/* Cross-tab conflict: autosave is paused until the PO picks a side. */}
+      {saver.conflict && (
+        <div className="mb-3 flex items-center gap-3 rounded-md border border-amber-500/20 bg-amber-500/[0.04] px-3 py-2 text-body-sm text-amber-400">
+          <span className="flex-1">This draft was changed in another tab. Autosave is paused.</span>
+          {onConflictReload && (
+            <button
+              type="button"
+              onClick={() => { saver.clearConflict(); void onConflictReload(); }}
+              className="shrink-0 rounded-md border border-amber-500/20 bg-amber-500/10 px-2.5 py-1 text-body-sm font-medium text-amber-400 cursor-pointer hover:bg-amber-500/20 transition-colors duration-150"
+            >
+              Reload draft
+            </button>
+          )}
+          <button
+            type="button"
+            onClick={() => { void saver.overwrite().catch(() => {}); }}
+            className="shrink-0 rounded-md border border-amber-500/20 px-2.5 py-1 text-body-sm font-medium text-amber-400/80 cursor-pointer hover:bg-amber-500/10 transition-colors duration-150"
+          >
+            Overwrite
+          </button>
+        </div>
+      )}
       {/* Local-edit indicator badge: click to reveal an inline diff of the changes. */}
       {!editing && hasLocalEdit && (
         <div className="mb-3">
@@ -257,15 +313,11 @@ export function EditableDescription({
             type="button"
             onClick={() => setShowDraftDiff((v) => !v)}
             aria-expanded={showDraftDiff}
-            className={`inline-flex cursor-pointer items-center gap-1.5 rounded-md border px-2.5 py-1 text-body-sm font-medium focus-visible:outline-2 focus-visible:outline-offset-2 ${
-              editIsDraft
-                ? "border-[var(--color-icon-task)]/20 bg-[var(--color-icon-task)]/[0.06] text-[var(--color-icon-task)]/80 hover:bg-[var(--color-icon-task)]/[0.12] focus-visible:outline-[var(--color-icon-task)]/50"
-                : "border-[var(--color-brand-500)]/20 bg-[var(--color-brand-500)]/[0.06] text-[var(--color-brand-400)] hover:bg-[var(--color-brand-500)]/[0.12] focus-visible:outline-[var(--color-brand-500)]/50"
-            }`}
+            className="inline-flex cursor-pointer items-center gap-1.5 rounded-md border px-2.5 py-1 text-body-sm font-medium focus-visible:outline-2 focus-visible:outline-offset-2 border-[var(--color-brand-500)]/20 bg-[var(--color-brand-500)]/[0.06] text-[var(--color-brand-400)] hover:bg-[var(--color-brand-500)]/[0.12] focus-visible:outline-[var(--color-brand-500)]/50"
             style={{ transition: "background-color 0.15s ease" }}
           >
-            <span className={`inline-block h-1.5 w-1.5 rounded-full ${editIsDraft ? "bg-[var(--color-icon-task)]/70" : "bg-[var(--color-brand-500)]/70"}`} />
-            {editIsDraft ? "Unsaved changes" : "Local edits"}
+            <span className="inline-block h-1.5 w-1.5 rounded-full bg-[var(--color-brand-500)]/70" />
+            Local edits
             <ChevronDown
               size={14}
               strokeWidth={1.5}
@@ -353,6 +405,22 @@ export function EditableDescription({
                   <span className="text-caption text-text-tertiary">Override remote</span>
                 </label>
               )}
+              {/* Autosave is the save; this only reports it (BRDG-340). */}
+              {saveState !== "idle" && (
+                <span className="flex items-center gap-1.5 pr-1 text-label font-medium text-text-muted">
+                  {saveState === "saving" ? (
+                    <>
+                      <Loader2 size={12} strokeWidth={1.75} className="animate-spin" />
+                      Saving…
+                    </>
+                  ) : (
+                    <>
+                      <Check size={12} strokeWidth={2} className="text-[var(--color-brand-400)]" />
+                      Saved
+                    </>
+                  )}
+                </span>
+              )}
               <Button
                 variant="ghost"
                 size="md"
@@ -362,16 +430,6 @@ export function EditableDescription({
                 className="!text-text-tertiary hover:!text-text-secondary !text-body-sm"
               >
                 <span className="hidden @2xl:inline">Discard</span>
-              </Button>
-              <Button
-                variant="ghost"
-                size="md"
-                onClick={save}
-                title="Save"
-                icon={<Save size={13} strokeWidth={1.5} />}
-                className="!bg-overlay-strong !text-text-secondary hover:!bg-overlay-strong hover:!text-text-primary !text-body-sm"
-              >
-                <span className="hidden @2xl:inline">Save</span>
               </Button>
               {showPush && (
                 <Button

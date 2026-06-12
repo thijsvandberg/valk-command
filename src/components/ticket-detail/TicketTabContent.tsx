@@ -3,6 +3,7 @@
 import { useRef } from "react";
 import { Loader2, AlertTriangle, Flag } from "lucide-react";
 import type { Ticket, TicketDetail, JiraStatus, EpicChild } from "@/types/ticket";
+import type { LocalEditSaver } from "@/lib/local-edit-saver";
 import { Avatar } from "@/components/shared/Avatar";
 import { EditableTitle } from "./EditableTitle";
 import { EditableDescription } from "./EditableDescription";
@@ -63,7 +64,7 @@ export interface TicketTabContentProps {
   ticketKey: string;
   ticket: Ticket;
   detail: TicketDetail | undefined;
-  localEdits: Record<string, { value: string; isDraft: boolean }> | undefined;
+  localEdits: Record<string, { value: string; isDraft: boolean; modifiedAt?: string }> | undefined;
   activeTab: TicketTab;
   onActiveTabChange: (tab: TicketTab) => void;
   // Editing
@@ -95,6 +96,9 @@ export interface TicketTabContentProps {
   onEpicChildOptimistic?: (childKey: string, patch: Partial<EpicChild>) => void;
   onConflictResolved: () => Promise<void>;
   onSelectTicket: (key: string) => void;
+  /** Shared concurrency saver + reload handler for the cross-tab 409 banner (BRDG-340). */
+  editSaver?: LocalEditSaver;
+  onDraftConflictReload?: () => void | Promise<void>;
   // Badge counts
   reviewCount: number;
   versionCount: number;
@@ -140,6 +144,8 @@ export function TicketTabContent({
   onEpicChildOptimistic,
   onConflictResolved,
   onSelectTicket,
+  editSaver,
+  onDraftConflictReload,
   reviewCount,
   versionCount,
   historyResetKey,
@@ -267,6 +273,7 @@ export function TicketTabContent({
                   onEditingChange={onTitleEditingChange}
                   onViewDiff={onViewDiff}
                   onSaved={onMutate}
+                  saver={editSaver}
                 />
               </div>
               {ticket.assignee && (
@@ -335,6 +342,8 @@ export function TicketTabContent({
                 overrideConfirmed={overrideConfirmed}
                 onOverrideChange={onOverrideChange}
                 toolbarPortalId={toolbarPortalId}
+                saver={editSaver}
+                onConflictReload={onDraftConflictReload}
               />
               {detail && <AttachmentsSection attachments={detail.attachments} />}
               {!isEpic && (

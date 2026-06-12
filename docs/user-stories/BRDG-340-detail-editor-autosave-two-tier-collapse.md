@@ -64,15 +64,15 @@ Decisions on plan ambiguities: Reload resolves via remount (existing `draftDisca
 
 ## Acceptance criteria
 
-- [ ] Save button is gone from `EditableDescription`; toolbar shows Saving…/Saved indicator + Discard + Push to Jira
-- [ ] Closing the editor (Esc/outside click/unmount) flushes pending changes; nothing is lost without an explicit Discard
+- [x] Save button is gone from `EditableDescription`; toolbar shows Saving…/Saved indicator + Discard + Push to Jira
+- [x] Closing the editor (Esc/outside click/unmount) flushes pending changes; nothing is lost without an explicit Discard
 - [x] `TicketEditState` no longer has `draft`; `computeTicketEditState` returns `local_edits` for any edit and `conflict` for any edit on a stale Jira base (including former drafts)
 - [x] All `editState` UI surfaces show the single "Local edits" treatment; the amber "Unsaved changes" state is gone (board rows, status pill, side panel, filter bar, sprint insights, refinement lists, detail badge)
 - [x] FilterBar draft/local-edits filter options are merged into one
-- [ ] Description and title saves send `baseModifiedAt`; a 409 pauses autosave and shows the Reload/Overwrite banner on the detail page
-- [ ] Token-tracking save logic is shared between `useStoryWriterDrafts` and the detail editors (one lib implementation)
-- [ ] Refinement session view and board side panel inherit the new behavior via the shared component
-- [ ] Tests cover: autosave flush on close, collapsed editState computation (incl. stale-base draft → conflict), 409 pause + reload/overwrite in the detail editor, merged filter option, badge rendering
+- [x] Description and title saves send `baseModifiedAt`; a 409 pauses autosave and shows the Reload/Overwrite banner on the detail page
+- [x] Token-tracking save logic is shared between `useStoryWriterDrafts` and the detail editors (one lib implementation)
+- [x] Refinement session view and board side panel inherit the new behavior via the shared component
+- [x] Tests cover: autosave flush on close, collapsed editState computation (incl. stale-base draft → conflict), 409 pause + reload/overwrite in the detail editor, merged filter option, badge rendering
 - [ ] `npm run lint`, `npm run typecheck`, `npm run test`, `npm run build` pass
 
 ## Out of scope

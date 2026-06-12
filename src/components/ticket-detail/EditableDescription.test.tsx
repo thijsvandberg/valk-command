@@ -2,14 +2,15 @@ import { render, screen, fireEvent, waitFor } from "@testing-library/react";
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { EditableDescription, resolveLocalValue } from "./EditableDescription";
 
-const mockSaveLocalEdit = vi.fn();
 const mockApiFetch = vi.fn();
 const mockSyncEditState = vi.fn();
 
 vi.mock("@/lib/api-client", () => ({
-  tickets: {
-    saveLocalEdit: (...args: unknown[]) => mockSaveLocalEdit(...args),
+  ApiError: class ApiError extends Error {
+    status: number;
+    constructor(status: number) { super(`Request failed (${status})`); this.status = status; }
   },
+  tickets: {},
   apiFetch: (...args: unknown[]) => mockApiFetch(...args),
 }));
 
@@ -24,16 +25,19 @@ vi.mock("./renderMarkdown", () => ({
 vi.mock("@/components/rich-editor/RichEditor", () => ({
   RichEditor: ({
     value,
+    onChange,
     onSave,
     actions,
   }: {
     value: string;
+    onChange?: (v: string) => void;
     onSave: () => void;
     actions?: React.ReactNode;
   }) => (
     <div data-testid="rich-editor">
       <span data-testid="editor-value">{value}</span>
-      <button data-testid="editor-save" onClick={onSave}>Save</button>
+      <textarea data-testid="editor-input" value={value} onChange={(e) => onChange?.(e.target.value)} />
+      <button data-testid="editor-save" onClick={onSave}>trigger-save</button>
       {actions}
     </div>
   ),
@@ -75,6 +79,8 @@ function renderDesc(overrides: Partial<React.ComponentProps<typeof EditableDescr
       showConflictWarning={overrides.showConflictWarning}
       overrideConfirmed={overrides.overrideConfirmed}
       onOverrideChange={overrides.onOverrideChange}
+      saver={overrides.saver}
+      onConflictReload={overrides.onConflictReload}
     />,
   );
   return { ...result, onLocalEdit, onEditingChange };
@@ -106,7 +112,6 @@ describe("resolveLocalValue", () => {
 describe("EditableDescription", () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    mockSaveLocalEdit.mockResolvedValue({});
     mockApiFetch.mockResolvedValue({});
     // sendBeacon stub
     Object.defineProperty(navigator, "sendBeacon", {
@@ -169,7 +174,10 @@ describe("EditableDescription", () => {
       expect(screen.queryByTestId("rich-editor")).not.toBeInTheDocument();
     });
 
-    expect(mockSaveLocalEdit).not.toHaveBeenCalled();
+    expect(mockApiFetch).not.toHaveBeenCalledWith(
+      expect.stringContaining("local-edits"),
+      expect.objectContaining({ method: "PUT" }),
+    );
   });
 
   it("renders editor with RichEditor component", () => {
@@ -198,21 +206,21 @@ describe("EditableDescription", () => {
     });
   });
 
-  it("renders 'Unsaved changes' badge for draft local edits", () => {
+  it("renders the single 'Local edits' badge for autosaved local edits", () => {
     renderDesc({
       initialDescription: "Original",
       serverLocalEdit: { value: "Draft value", isDraft: true },
     });
-    expect(screen.getByText("Unsaved changes")).toBeInTheDocument();
+    expect(screen.getByText("Local edits")).toBeInTheDocument();
   });
 
-  it("expands the draft diff with resolve actions when 'Unsaved changes' is clicked", () => {
+  it("expands the draft diff with resolve actions when 'Local edits' is clicked", () => {
     renderDesc({
       initialDescription: "Original",
       serverLocalEdit: { value: "Draft value", isDraft: true },
       onPushToJira: vi.fn().mockResolvedValue(undefined),
     });
-    fireEvent.click(screen.getByText("Unsaved changes"));
+    fireEvent.click(screen.getByText("Local edits"));
     expect(screen.getByText("Discard")).toBeInTheDocument();
     expect(screen.getByText("Push to Jira")).toBeInTheDocument();
     // Plain Save is not a resolution: it would leave local changes diverged from Jira.
@@ -227,14 +235,17 @@ describe("EditableDescription", () => {
       serverLocalEdit: { value: "Draft value", isDraft: true },
       onPushToJira,
     });
-    fireEvent.click(screen.getByText("Unsaved changes"));
+    fireEvent.click(screen.getByText("Local edits"));
     fireEvent.click(screen.getByText("Push to Jira"));
 
     await waitFor(() => {
-      expect(mockSaveLocalEdit).toHaveBeenCalledWith("VPL-1", {
-        field: "description",
-        localValue: "Draft value",
-      });
+      expect(mockApiFetch).toHaveBeenCalledWith(
+        "/api/tickets/VPL-1/local-edits",
+        expect.objectContaining({
+          method: "PUT",
+          body: expect.objectContaining({ field: "description", localValue: "Draft value", isDraft: true }),
+        }),
+      );
     });
     await waitFor(() => {
       expect(onPushToJira).toHaveBeenCalled();
@@ -248,10 +259,13 @@ describe("EditableDescription", () => {
       serverLocalEdit: { value: "Draft value", isDraft: true },
       onDiscard,
     });
-    fireEvent.click(screen.getByText("Unsaved changes"));
+    fireEvent.click(screen.getByText("Local edits"));
     fireEvent.click(screen.getByText("Discard"));
     expect(onDiscard).toHaveBeenCalled();
-    expect(mockSaveLocalEdit).not.toHaveBeenCalled();
+    expect(mockApiFetch).not.toHaveBeenCalledWith(
+      expect.stringContaining("local-edits"),
+      expect.objectContaining({ method: "PUT" }),
+    );
   });
 
   it("shows 'Push to Jira' in the draft diff card when onPushToJira is provided", () => {
@@ -260,7 +274,7 @@ describe("EditableDescription", () => {
       serverLocalEdit: { value: "Draft value", isDraft: true },
       onPushToJira: vi.fn().mockResolvedValue(undefined),
     });
-    fireEvent.click(screen.getByText("Unsaved changes"));
+    fireEvent.click(screen.getByText("Local edits"));
     expect(screen.getByText("Push to Jira")).toBeInTheDocument();
   });
 
@@ -312,5 +326,157 @@ describe("EditableDescription", () => {
     });
     fireEvent.click(screen.getByTestId("rendered-markdown"));
     expect(screen.getByText("Push failed")).toBeInTheDocument();
+  });
+});
+
+describe("EditableDescription autosave-first flow (BRDG-340)", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    mockApiFetch.mockResolvedValue({ modifiedAt: "2026-06-12T10:00:00.000Z" });
+    Object.defineProperty(navigator, "sendBeacon", {
+      value: vi.fn(),
+      configurable: true,
+    });
+  });
+
+  it("renders no Save button in the editing toolbar", () => {
+    renderDesc({ initialDescription: "Original" });
+    fireEvent.click(screen.getByTestId("rendered-markdown"));
+    expect(screen.queryByText("Save")).not.toBeInTheDocument();
+    expect(screen.getByText("Discard")).toBeInTheDocument();
+  });
+
+  it("shows Saving… while the debounce is pending and Saved once it lands", async () => {
+    renderDesc({ ticketKey: "VPL-9", initialDescription: "Original" });
+    fireEvent.click(screen.getByTestId("rendered-markdown"));
+
+    fireEvent.change(screen.getByTestId("editor-input"), { target: { value: "New content" } });
+    expect(screen.getByText("Saving…")).toBeInTheDocument();
+
+    await waitFor(() => {
+      expect(screen.getByText("Saved")).toBeInTheDocument();
+    }, { timeout: 2500 });
+    expect(mockApiFetch).toHaveBeenCalledWith(
+      "/api/tickets/VPL-9/local-edits",
+      expect.objectContaining({
+        method: "PUT",
+        body: expect.objectContaining({ field: "description", localValue: "New content", isDraft: true }),
+      }),
+    );
+  });
+
+  it("flushes the pending edit when the editor closes via Cmd-S/save", async () => {
+    renderDesc({ ticketKey: "VPL-9", initialDescription: "Original", serverLocalEdit: { value: "Changed body", isDraft: true } });
+    fireEvent.click(screen.getByText("Local edits"));
+    // Open the editor from the rendered markdown (local value shown)
+    fireEvent.click(screen.getByTestId("rendered-markdown"));
+    fireEvent.click(screen.getByTestId("editor-save"));
+
+    await waitFor(() => {
+      expect(mockApiFetch).toHaveBeenCalledWith(
+        "/api/tickets/VPL-9/local-edits",
+        expect.objectContaining({
+          method: "PUT",
+          body: expect.objectContaining({ field: "description", localValue: "Changed body", isDraft: true }),
+        }),
+      );
+    });
+    expect(screen.queryByTestId("rich-editor")).not.toBeInTheDocument();
+  });
+
+  it("sends the seeded modifiedAt as baseModifiedAt and adopts the returned token", async () => {
+    renderDesc({
+      ticketKey: "VPL-9",
+      initialDescription: "Original",
+      serverLocalEdit: { value: "Changed body", isDraft: true, modifiedAt: "SEEDED" },
+    });
+    fireEvent.click(screen.getByTestId("rendered-markdown"));
+    fireEvent.click(screen.getByTestId("editor-save"));
+
+    await waitFor(() => {
+      expect(mockApiFetch).toHaveBeenCalledWith(
+        "/api/tickets/VPL-9/local-edits",
+        expect.objectContaining({
+          body: expect.objectContaining({ baseModifiedAt: "SEEDED" }),
+        }),
+      );
+    });
+  });
+
+  it("shows the cross-tab conflict banner on a 409 and pauses further saves", async () => {
+    const { ApiError } = await import("@/lib/api-client");
+    mockApiFetch.mockRejectedValueOnce(new (ApiError as unknown as new (s: number) => Error)(409));
+
+    renderDesc({
+      ticketKey: "VPL-9",
+      initialDescription: "Original",
+      serverLocalEdit: { value: "Changed body", isDraft: true },
+    });
+    fireEvent.click(screen.getByTestId("rendered-markdown"));
+    fireEvent.click(screen.getByTestId("editor-save"));
+
+    await waitFor(() => {
+      expect(screen.getByText(/changed in another tab/)).toBeInTheDocument();
+    });
+    expect(screen.getByText("Overwrite")).toBeInTheDocument();
+
+    // Paused: re-opening and saving again must not issue another PUT.
+    const putCalls = () => mockApiFetch.mock.calls.filter(([, init]) => (init as { method?: string })?.method === "PUT").length;
+    const before = putCalls();
+    fireEvent.click(screen.getByTestId("rendered-markdown"));
+    fireEvent.click(screen.getByTestId("editor-save"));
+    await waitFor(() => {
+      expect(screen.queryByTestId("rich-editor")).not.toBeInTheDocument();
+    });
+    expect(putCalls()).toBe(before);
+  });
+
+  it("Overwrite on the banner re-saves blind and clears the conflict", async () => {
+    const { ApiError } = await import("@/lib/api-client");
+    mockApiFetch.mockRejectedValueOnce(new (ApiError as unknown as new (s: number) => Error)(409));
+
+    renderDesc({
+      ticketKey: "VPL-9",
+      initialDescription: "Original",
+      serverLocalEdit: { value: "Changed body", isDraft: true },
+    });
+    fireEvent.click(screen.getByTestId("rendered-markdown"));
+    fireEvent.click(screen.getByTestId("editor-save"));
+    await waitFor(() => {
+      expect(screen.getByText("Overwrite")).toBeInTheDocument();
+    });
+
+    mockApiFetch.mockResolvedValue({ modifiedAt: "T2" });
+    fireEvent.click(screen.getByText("Overwrite"));
+
+    await waitFor(() => {
+      expect(screen.queryByText(/changed in another tab/)).not.toBeInTheDocument();
+    });
+    const lastPut = mockApiFetch.mock.calls.filter(([, init]) => (init as { method?: string })?.method === "PUT").at(-1)!;
+    expect((lastPut[1] as { body: { baseModifiedAt?: string } }).body.baseModifiedAt).toBeUndefined();
+  });
+
+  it("shows Reload draft only when onConflictReload is provided and invokes it", async () => {
+    const { ApiError } = await import("@/lib/api-client");
+    mockApiFetch.mockRejectedValueOnce(new (ApiError as unknown as new (s: number) => Error)(409));
+    const onConflictReload = vi.fn();
+
+    renderDesc({
+      ticketKey: "VPL-9",
+      initialDescription: "Original",
+      serverLocalEdit: { value: "Changed body", isDraft: true },
+      onConflictReload,
+    });
+    fireEvent.click(screen.getByTestId("rendered-markdown"));
+    fireEvent.click(screen.getByTestId("editor-save"));
+
+    await waitFor(() => {
+      expect(screen.getByText("Reload draft")).toBeInTheDocument();
+    });
+    fireEvent.click(screen.getByText("Reload draft"));
+    expect(onConflictReload).toHaveBeenCalled();
+    await waitFor(() => {
+      expect(screen.queryByText(/changed in another tab/)).not.toBeInTheDocument();
+    });
   });
 });

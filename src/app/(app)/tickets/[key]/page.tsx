@@ -676,6 +676,8 @@ export default function TicketDetailPage({
           onSubtaskStatusOptimistic={h.handleSubtaskJiraStatusChange}
           onEpicChildOptimistic={h.handleEpicChildPatch}
           onConflictResolved={h.handleConflictResolved}
+          editSaver={h.editSaver}
+          onDraftConflictReload={h.handleDraftConflictReload}
           onSelectTicket={selectTicket}
           reviewCount={h.reviewCount}
           versionCount={h.versionCount}

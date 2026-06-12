@@ -2,11 +2,14 @@ import { render, screen, fireEvent, waitFor } from "@testing-library/react";
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { EditableTitle } from "./EditableTitle";
 
-const mockSaveLocalEdit = vi.fn();
+const mockApiFetch = vi.fn();
 vi.mock("@/lib/api-client", () => ({
-  tickets: {
-    saveLocalEdit: (...args: unknown[]) => mockSaveLocalEdit(...args),
+  ApiError: class ApiError extends Error {
+    status: number;
+    constructor(status: number) { super(`Request failed (${status})`); this.status = status; }
   },
+  apiFetch: (...args: unknown[]) => mockApiFetch(...args),
+  tickets: {},
 }));
 
 vi.mock("@/components/shared/Tag", () => ({
@@ -18,7 +21,7 @@ vi.mock("@/components/shared/Tag", () => ({
 function renderTitle(overrides: {
   ticketKey?: string;
   initialTitle?: string;
-  serverLocalEdit?: { value: string; isDraft: boolean };
+  serverLocalEdit?: { value: string; isDraft: boolean; modifiedAt?: string };
   onLocalEdit?: (hasEdit: boolean) => void;
   onEditingChange?: (isEditing: boolean) => void;
   onViewDiff?: () => void;
@@ -43,7 +46,7 @@ function renderTitle(overrides: {
 describe("EditableTitle", () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    mockSaveLocalEdit.mockResolvedValue({});
+    mockApiFetch.mockResolvedValue({ modifiedAt: "2026-06-12T10:00:00.000Z" });
   });
 
   it("renders the initial title", () => {
@@ -87,10 +90,13 @@ describe("EditableTitle", () => {
     fireEvent.keyDown(textarea, { key: "Enter" });
 
     await waitFor(() => {
-      expect(mockSaveLocalEdit).toHaveBeenCalledWith("VPL-1", {
-        field: "title",
-        localValue: "New title",
-      });
+      expect(mockApiFetch).toHaveBeenCalledWith(
+        "/api/tickets/VPL-1/local-edits",
+        expect.objectContaining({
+          method: "PUT",
+          body: expect.objectContaining({ field: "title", localValue: "New title", isDraft: true }),
+        }),
+      );
     });
   });
 
@@ -103,10 +109,13 @@ describe("EditableTitle", () => {
     fireEvent.blur(textarea);
 
     await waitFor(() => {
-      expect(mockSaveLocalEdit).toHaveBeenCalledWith("VPL-1", {
-        field: "title",
-        localValue: "Saved via blur",
-      });
+      expect(mockApiFetch).toHaveBeenCalledWith(
+        "/api/tickets/VPL-1/local-edits",
+        expect.objectContaining({
+          method: "PUT",
+          body: expect.objectContaining({ field: "title", localValue: "Saved via blur", isDraft: true }),
+        }),
+      );
     });
   });
 
@@ -124,7 +133,7 @@ describe("EditableTitle", () => {
     });
 
     // Ensure save was not called
-    expect(mockSaveLocalEdit).not.toHaveBeenCalled();
+    expect(mockApiFetch).not.toHaveBeenCalled();
   });
 
   it("does not save when title is empty", async () => {
@@ -139,7 +148,7 @@ describe("EditableTitle", () => {
       expect(screen.queryByRole("textbox")).not.toBeInTheDocument();
     });
 
-    expect(mockSaveLocalEdit).not.toHaveBeenCalled();
+    expect(mockApiFetch).not.toHaveBeenCalled();
   });
 
   it("clears local edit when value matches initialTitle", async () => {
@@ -154,7 +163,7 @@ describe("EditableTitle", () => {
     await waitFor(() => {
       expect(onLocalEdit).toHaveBeenCalledWith(false);
     });
-    expect(mockSaveLocalEdit).not.toHaveBeenCalled();
+    expect(mockApiFetch).not.toHaveBeenCalled();
   });
 
   it("renders 'Locally modified' badge when serverLocalEdit is provided", () => {
@@ -212,6 +221,28 @@ describe("EditableTitle", () => {
     });
   });
 
+  it("sends the seeded modifiedAt as baseModifiedAt on save (BRDG-340)", async () => {
+    renderTitle({
+      ticketKey: "VPL-1",
+      initialTitle: "Original",
+      serverLocalEdit: { value: "Local override", isDraft: true, modifiedAt: "SEEDED" },
+    });
+    fireEvent.click(screen.getByText("Local override"));
+
+    const textarea = screen.getByRole("textbox");
+    fireEvent.change(textarea, { target: { value: "Newer title" } });
+    fireEvent.keyDown(textarea, { key: "Enter" });
+
+    await waitFor(() => {
+      expect(mockApiFetch).toHaveBeenCalledWith(
+        "/api/tickets/VPL-1/local-edits",
+        expect.objectContaining({
+          body: expect.objectContaining({ baseModifiedAt: "SEEDED" }),
+        }),
+      );
+    });
+  });
+
   it("calls onSaved when reverting to the initial title", async () => {
     const onSaved = vi.fn();
     renderTitle({ ticketKey: "VPL-1", initialTitle: "Original", onSaved });
@@ -224,6 +255,6 @@ describe("EditableTitle", () => {
     await waitFor(() => {
       expect(onSaved).toHaveBeenCalled();
     });
-    expect(mockSaveLocalEdit).not.toHaveBeenCalled();
+    expect(mockApiFetch).not.toHaveBeenCalled();
   });
 });

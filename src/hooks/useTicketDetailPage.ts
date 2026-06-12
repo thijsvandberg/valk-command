@@ -7,6 +7,7 @@ import { useFollowedTickets, useFollowTicket } from "@/hooks/usePipelines";
 import { apiFetch, jira, tickets } from "@/lib/api-client";
 import { patchTicketCaches, revalidateTicketCaches } from "@/lib/ticket-cache";
 import { useTicketEditStateSync } from "@/hooks/useTicketEditStateSync";
+import { useLocalEditSaver } from "@/lib/local-edit-saver";
 import { getJiraUrl } from "@/components/sprint-board/TicketTableCells";
 import { useToast } from "@/hooks/useToast";
 
@@ -52,8 +53,8 @@ export function useTicketDetailPage(key: string) {
     epicChildren: apiData.epicChildren ?? [],
   } : undefined, [apiData]);
 
-  const localEdits: Record<string, { value: string; isDraft: boolean }> | undefined =
-    (apiData as Record<string, unknown> | undefined)?.localEdits as Record<string, { value: string; isDraft: boolean }> | undefined;
+  const localEdits: Record<string, { value: string; isDraft: boolean; modifiedAt?: string }> | undefined =
+    (apiData as Record<string, unknown> | undefined)?.localEdits as Record<string, { value: string; isDraft: boolean; modifiedAt?: string }> | undefined;
 
   // Auto-fetch from Jira when ticket is not in local DB
   const [jiraCheckState, setJiraCheckState] = useState<"idle" | "checking" | "not-found">("idle");
@@ -154,6 +155,10 @@ export function useTicketDetailPage(key: string) {
   const [pushError, setPushError] = useState<string | null>(null);
   const [overrideConfirmed, setOverrideConfirmed] = useState(false);
   const [draftDiscardKey, setDraftDiscardKey] = useState(0);
+
+  // One concurrency saver shared by the title and description editors so a
+  // 409 in either pauses both and the banner reflects the page (BRDG-340).
+  const editSaver = useLocalEditSaver();
 
   const [flagOverride, setFlagOverride] = useState<boolean | null>(null);
   const isFlagged = flagOverride ?? ticket?.flagged ?? false;
@@ -273,6 +278,15 @@ export function useTicketDetailPage(key: string) {
     }
   }, [key, handleRemoteChanged, mutateTicket, showToast, syncEditState]);
 
+  // "Reload draft" on the cross-tab conflict banner: adopt the other tab's
+  // version. Fresh tokens reseed from the revalidated payload when the key
+  // bump remounts both editors.
+  const handleDraftConflictReload = useCallback(async () => {
+    editSaver.clearTokens();
+    await mutateTicket();
+    setDraftDiscardKey((k) => k + 1);
+  }, [editSaver, mutateTicket]);
+
   const handleRefreshFromJira = useCallback(async () => {
     setIsRefreshing(true);
     try {
@@ -370,6 +384,8 @@ export function useTicketDetailPage(key: string) {
     draftDiscardKey,
     handleDiscardDraft,
     handlePushToJira,
+    editSaver,
+    handleDraftConflictReload,
 
     // Transient feedback
     toast,

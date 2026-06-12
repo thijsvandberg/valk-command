@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef, useCallback } from "react";
 import { Tag } from "@/components/shared/Tag";
-import { tickets } from "@/lib/api-client";
+import { useLocalEditSaver, type LocalEditSaver } from "@/lib/local-edit-saver";
 import { useTicketEditStateSync } from "@/hooks/useTicketEditStateSync";
 
 export function EditableTitle({
@@ -13,18 +13,33 @@ export function EditableTitle({
   onEditingChange,
   onViewDiff,
   onSaved,
+  saver: externalSaver,
 }: {
   ticketKey: string;
   initialTitle: string;
-  serverLocalEdit?: { value: string; isDraft: boolean };
+  serverLocalEdit?: { value: string; isDraft: boolean; modifiedAt?: string };
   onLocalEdit: (hasEdit: boolean) => void;
   onEditingChange?: (isEditing: boolean) => void;
   onViewDiff?: () => void;
   /** Fires after a title edit is persisted (or reverted) so consumers can refresh
    *  surrounding views, e.g. an epic's children list that mirrors this title. */
   onSaved?: () => void;
+  /** Shared concurrency saver (detail page shares one with the description editor). */
+  saver?: LocalEditSaver;
 }) {
   const syncEditState = useTicketEditStateSync();
+  const ownSaver = useLocalEditSaver();
+  const saver = externalSaver ?? ownSaver;
+
+  // Seed the concurrency token from the server payload (BRDG-340).
+  const tokenSeededRef = useRef(false);
+  const seededModifiedAt = serverLocalEdit?.modifiedAt;
+  useEffect(() => {
+    if (!tokenSeededRef.current && seededModifiedAt) {
+      tokenSeededRef.current = true;
+      saver.setToken(ticketKey, "title", seededModifiedAt);
+    }
+  }, [seededModifiedAt, saver, ticketKey]);
   const [editing, setEditing] = useState(false);
   // Persisted local edit - only updated on save, drives the "Locally modified" badge
   const [localValue, setLocalValue] = useState<string | null>(serverLocalEdit?.value ?? null);
@@ -103,17 +118,18 @@ export function EditableTitle({
         onSaved?.();
         return;
       }
-      await tickets.saveLocalEdit(ticketKey, { field: "title", localValue: draft });
+      await saver.persistLocalEdit(ticketKey, "title", draft, { isDraft: true });
       setLocalValue(draft);
       onLocalEdit(true);
       syncEditState(ticketKey, "local_edits");
       onSaved?.();
     } catch (err) {
+      // A 409 surfaces via the shared saver's conflict banner; other errors just log.
       console.error("Operation failed:", err);
     } finally {
       savingRef.current = false;
     }
-  }, [ticketKey, initialTitle, onLocalEdit, onSaved, syncEditState]);
+  }, [ticketKey, initialTitle, onLocalEdit, onSaved, syncEditState, saver]);
 
   if (editing) {
     return (

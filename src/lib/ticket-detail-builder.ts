@@ -44,7 +44,7 @@ export function resolveAttachmentRefs(text: string, filenameToId: Map<string, st
 }
 
 export interface TicketDetailResponse extends Omit<Ticket, "reporter">, TicketDetail {
-  localEdits: Record<string, { value: string; isDraft: boolean }>;
+  localEdits: Record<string, { value: string; isDraft: boolean; modifiedAt: string }>;
   reviewCount: number;
   versionCount: number;
   chatMessageCount: number;
@@ -205,7 +205,7 @@ function transformQueryData(queryData: NonNullable<Awaited<ReturnType<typeof run
     linkedIssues,
     jiraComments,
     epicChildren,
-    localEdits: Object.fromEntries(localEdits.map((edit) => [edit.field, { value: edit.localValue, isDraft: edit.isDraft }])),
+    localEdits: Object.fromEntries(localEdits.map((edit) => [edit.field, { value: edit.localValue, isDraft: edit.isDraft, modifiedAt: edit.modifiedAt }])),
     reviewCount: reviewCountRows[0]?.value ?? 0,
     versionCount: versionCountRows[0]?.value ?? 0,
     chatMessageCount: chatCountRows[0]?.value ?? 0,

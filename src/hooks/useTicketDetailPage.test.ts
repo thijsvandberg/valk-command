@@ -128,6 +128,17 @@ describe("useTicketDetailPage", () => {
     expect(result.current.pushError).toBeNull();
   });
 
+  it("draft-conflict reload revalidates and remounts the editors (BRDG-340)", async () => {
+    const { result } = renderHook(() => useTicketDetailPage("VPL-42"));
+    const keyBefore = result.current.draftDiscardKey;
+
+    await act(async () => { await result.current.handleDraftConflictReload(); });
+
+    expect(mutateFn).toHaveBeenCalled();
+    expect(result.current.draftDiscardKey).toBe(keyBefore + 1);
+    expect(result.current.editSaver).toBeDefined();
+  });
+
   it("push to Jira optimistically clears the draft edit state", async () => {
     vi.mocked(tickets.pushToJira).mockResolvedValue({ success: true });
 
