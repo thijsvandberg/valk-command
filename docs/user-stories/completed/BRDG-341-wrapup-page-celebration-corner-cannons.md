@@ -45,7 +45,7 @@ Notes: the exploration hub already marks variant J as chosen, so no hub change i
 - [x] Confetti and ambience layers are `pointer-events: none` and never block interaction with the modal.
 - [x] No hydration warnings: any pseudo-random particle values are deterministic and precision-rounded (see exploration page for the `seededRand` + `toFixed` approach that fixed this).
 - [x] Tests cover the celebration component: renders headline with correct numbers, omits duration without a start time, renders the expected particle count, respects reduced motion.
-- [ ] `npm run lint`, `npm run typecheck`, `npm run test`, `npm run build` all pass.
+- [x] `npm run lint`, `npm run typecheck`, `npm run test`, `npm run build` all pass.
 
 ## Implementation notes
 
