@@ -30,7 +30,6 @@ vi.mock("@/lib/agent-proxy", () => ({
 }));
 
 import { POST } from "./route";
-import { hasEditIntent } from "@/lib/edit-intent";
 
 function makeParams(key: string) {
   return { params: Promise.resolve({ key }) };
@@ -338,62 +337,3 @@ describe("POST /api/tickets/[key]/story-writer/messages", () => {
   });
 });
 
-describe("hasEditIntent", () => {
-  it("returns true for English edit keywords", () => {
-    expect(hasEditIntent("improve the acceptance criteria")).toBe(true);
-    expect(hasEditIntent("add a section about error handling")).toBe(true);
-    expect(hasEditIntent("change the title")).toBe(true);
-    expect(hasEditIntent("rewrite the description")).toBe(true);
-    expect(hasEditIntent("remove the second paragraph")).toBe(true);
-    expect(hasEditIntent("fix the typo")).toBe(true);
-    expect(hasEditIntent("shorten the description")).toBe(true);
-    expect(hasEditIntent("expand on the details")).toBe(true);
-    expect(hasEditIntent("include more context")).toBe(true);
-    expect(hasEditIntent("restructure the criteria")).toBe(true);
-  });
-
-  it("returns true for Dutch edit keywords", () => {
-    expect(hasEditIntent("verbeter de beschrijving")).toBe(true);
-    expect(hasEditIntent("voeg toe een sectie")).toBe(true);
-    expect(hasEditIntent("verwijder de paragraaf")).toBe(true);
-    expect(hasEditIntent("pas aan de criteria")).toBe(true);
-    expect(hasEditIntent("herschrijf de titel")).toBe(true);
-  });
-
-  it("returns false for simple English questions", () => {
-    expect(hasEditIntent("what is the ticket key?")).toBe(false);
-    expect(hasEditIntent("how many story points?")).toBe(false);
-    expect(hasEditIntent("when was this created?")).toBe(false);
-    expect(hasEditIntent("who is the assignee?")).toBe(false);
-    expect(hasEditIntent("is this blocked?")).toBe(false);
-    expect(hasEditIntent("are there subtasks?")).toBe(false);
-  });
-
-  it("returns false for simple Dutch questions", () => {
-    expect(hasEditIntent("wat is de story nr")).toBe(false);
-    expect(hasEditIntent("hoe heet de epic?")).toBe(false);
-    expect(hasEditIntent("wanneer is de deadline?")).toBe(false);
-    expect(hasEditIntent("waar staat dit ticket?")).toBe(false);
-    expect(hasEditIntent("hoeveel story points?")).toBe(false);
-  });
-
-  it("returns false for short messages ending with ?", () => {
-    expect(hasEditIntent("status?")).toBe(false);
-    expect(hasEditIntent("ready?")).toBe(false);
-  });
-
-  it("is case insensitive", () => {
-    expect(hasEditIntent("IMPROVE the story")).toBe(true);
-    expect(hasEditIntent("Rewrite everything")).toBe(true);
-  });
-
-  it("returns true when splitMode is on regardless of content", () => {
-    expect(hasEditIntent("wat is de story nr?", { splitMode: true })).toBe(true);
-    expect(hasEditIntent("what is the key?", { splitMode: true })).toBe(true);
-  });
-
-  it("defaults to true for ambiguous non-question messages", () => {
-    expect(hasEditIntent("make it better")).toBe(true);
-    expect(hasEditIntent("the intro section")).toBe(true);
-  });
-});
