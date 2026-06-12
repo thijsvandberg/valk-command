@@ -64,6 +64,16 @@ describe("BusinessValuePicker", () => {
     expect(screen.getByText("-")).toBeInTheDocument();
   });
 
+  it("labels the open popover with a Business value heading", () => {
+    const { rerender } = render(<BusinessValuePicker value={null} onChange={vi.fn()} />);
+    // Open the portalled popover (mocked usePickerState toggles a module flag).
+    fireEvent.click(screen.getByTitle("Set Business Value"));
+    rerender(<BusinessValuePicker value={null} onChange={vi.fn()} />);
+    expect(screen.getByText("Business value")).toBeInTheDocument();
+    // Close again so the shared open flag does not leak into later tests.
+    fireEvent.click(screen.getByTitle("Set Business Value"));
+  });
+
   describe("showMetricIcon", () => {
     it("renders the trending-up icon in compact mode when set and value present", () => {
       render(<BusinessValuePicker value={3} onChange={vi.fn()} showMetricIcon />);

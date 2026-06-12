@@ -48,7 +48,7 @@ export function BusinessValuePicker({
   const { open, pos, triggerRef, popoverRef, handleOpen, handleClose, getPopoverStyle } = usePickerState({
     portal: true,
     align,
-    popoverHeight: 48,
+    popoverHeight: 64,
     onOpen: () => onOpenChange?.(true),
     onClose: () => onOpenChange?.(false),
   });
@@ -152,6 +152,9 @@ export function BusinessValuePicker({
           className="fixed z-[9999] rounded-lg border border-border-default p-1.5"
           style={getPopoverStyle()}
         >
+          <div className="mb-1 px-0.5 text-[9px] font-semibold uppercase tracking-wider text-text-muted">
+            Business value
+          </div>
           <div className="flex items-center gap-1">
             <button type="button" onClick={() => { onChange(0); handleClose(); }} title="Not applicable" className="flex h-7 w-7 items-center justify-center rounded-md cursor-pointer transition-colors duration-100 hover:opacity-80 active:opacity-60" style={{ color: isNA ? "#fff" : "#555a64", backgroundColor: isNA ? "#555a64" : "color-mix(in srgb, #555a64 8%, transparent)", boxShadow: isNA ? "0 0 0 1px color-mix(in srgb, #555a64 40%, transparent)" : undefined }}>
               <Minus size={12} strokeWidth={1.5} />
