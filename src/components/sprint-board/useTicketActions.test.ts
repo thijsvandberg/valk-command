@@ -3,6 +3,7 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 import type { Ticket } from "@/types/ticket";
 import { useTicketActions } from "./useTicketActions";
 import { saveStoryPoints, saveTicketMetadata } from "@/components/sprint-board/sprint-board-utils";
+import { apiFetch } from "@/lib/api-client";
 
 const toggleFlag = vi.fn();
 const moveSprint = vi.fn();
@@ -391,6 +392,137 @@ describe("useTicketActions - handleAssigneeChange", () => {
     });
 
     expect(showToast).toHaveBeenCalledWith("Failed to update assignee for A-1. Change reverted.");
+  });
+});
+
+describe("useTicketActions - handleJiraStatusChange (BRDG-339)", () => {
+  const apiFetchMock = vi.mocked(apiFetch);
+
+  beforeEach(() => {
+    apiFetchMock.mockReset();
+  });
+
+  // SWR-mutate stand-in: awaits the data promise (rethrowing so the hook's
+  // catch fires) and exposes the optimistic/populate updaters for assertion.
+  function setup(apiTickets: Ticket[]) {
+    const mutateTickets = vi.fn(async (data?: unknown, _opts?: unknown) => {
+      if (data && typeof (data as Promise<unknown>).then === "function") {
+        await data;
+      }
+    });
+    const showToast = vi.fn();
+    const { result } = renderHook(() =>
+      useTicketActions({
+        apiTickets,
+        mutateTickets: mutateTickets as unknown as Parameters<typeof useTicketActions>[0]["mutateTickets"],
+        activeListKey: null,
+        showToast,
+      }),
+    );
+    return { result, mutateTickets, showToast };
+  }
+
+  it("optimistically shows the new status and locks it in via populateCache", async () => {
+    apiFetchMock.mockResolvedValue(undefined);
+    const { result, mutateTickets } = setup([makeTicket("A-1", false)]);
+
+    await act(async () => {
+      await result.current.handleJiraStatusChange("A-1", "DONE");
+    });
+
+    expect(apiFetchMock).toHaveBeenCalledWith("/api/tickets/A-1/status", { method: "PUT", body: { status: "DONE" } });
+
+    const opts = mutateTickets.mock.calls[0][1] as {
+      optimisticData: (c?: Ticket[]) => Ticket[];
+      populateCache: (r: unknown, c?: Ticket[]) => Ticket[];
+      revalidate: boolean;
+    };
+    const current = [makeTicket("A-1", false)];
+    // revalidate:false is what makes SWR discard the focus revalidation that
+    // races the PUT and would otherwise revert the row to a stale Jira read.
+    expect(opts.revalidate).toBe(false);
+    expect(opts.optimisticData(current).find((t) => t.key === "A-1")?.jiraStatus).toBe("DONE");
+    expect(opts.populateCache(undefined, current).find((t) => t.key === "A-1")?.jiraStatus).toBe("DONE");
+  });
+
+  it("toasts a revert message when the status request fails", async () => {
+    apiFetchMock.mockRejectedValue(new Error("boom"));
+    const { result, showToast } = setup([makeTicket("A-1", false)]);
+
+    await act(async () => {
+      await result.current.handleJiraStatusChange("A-1", "DONE");
+    });
+
+    expect(showToast).toHaveBeenCalledWith("Failed to update status for A-1. Change reverted.");
+  });
+});
+
+describe("useTicketActions - handleBulkSetStatus (BRDG-339)", () => {
+  const apiFetchMock = vi.mocked(apiFetch);
+
+  beforeEach(() => {
+    apiFetchMock.mockReset();
+  });
+
+  function setup(apiTickets: Ticket[]) {
+    const mutateTickets = vi.fn(async (data?: unknown, _opts?: unknown) => {
+      if (data && typeof (data as Promise<unknown>).then === "function") {
+        await data;
+      }
+    });
+    const showToast = vi.fn();
+    const { result } = renderHook(() =>
+      useTicketActions({
+        apiTickets,
+        mutateTickets: mutateTickets as unknown as Parameters<typeof useTicketActions>[0]["mutateTickets"],
+        activeListKey: null,
+        showToast,
+      }),
+    );
+    return { result, mutateTickets, showToast };
+  }
+
+  it("optimistically sets the status on all checked tickets and toasts success", async () => {
+    apiFetchMock.mockResolvedValue(undefined);
+    const { result, mutateTickets, showToast } = setup([makeTicket("A-1", false), makeTicket("A-2", false), makeTicket("A-3", false)]);
+
+    await act(async () => {
+      await result.current.handleBulkSetStatus("DONE", new Set(["A-1", "A-2"]));
+    });
+
+    expect(apiFetchMock).toHaveBeenCalledTimes(2);
+    const opts = mutateTickets.mock.calls[0][1] as {
+      optimisticData: (c?: Ticket[]) => Ticket[];
+      revalidate: boolean;
+    };
+    const current = [makeTicket("A-1", false), makeTicket("A-2", false), makeTicket("A-3", false)];
+    expect(opts.revalidate).toBe(false);
+    const optimistic = opts.optimisticData(current);
+    expect(optimistic.find((t) => t.key === "A-1")?.jiraStatus).toBe("DONE");
+    expect(optimistic.find((t) => t.key === "A-2")?.jiraStatus).toBe("DONE");
+    expect(optimistic.find((t) => t.key === "A-3")?.jiraStatus).toBe("TO DO"); // unchecked, untouched
+    expect(showToast).toHaveBeenLastCalledWith("Status set to DONE for 2 tickets");
+  });
+
+  it("keeps the previous status on rows whose PUT rejected and toasts the failure count", async () => {
+    // A-1 succeeds, A-2 fails.
+    apiFetchMock.mockImplementation((url: string) =>
+      url.includes("A-2") ? Promise.reject(new Error("boom")) : Promise.resolve(undefined),
+    );
+    const { result, mutateTickets, showToast } = setup([makeTicket("A-1", false), makeTicket("A-2", false)]);
+
+    await act(async () => {
+      await result.current.handleBulkSetStatus("DONE", new Set(["A-1", "A-2"]));
+    });
+
+    const opts = mutateTickets.mock.calls[0][1] as {
+      populateCache: (failedKeys: Set<string>, c?: Ticket[]) => Ticket[];
+    };
+    const current = [makeTicket("A-1", false), makeTicket("A-2", false)];
+    const settled = opts.populateCache(new Set(["A-2"]), current);
+    expect(settled.find((t) => t.key === "A-1")?.jiraStatus).toBe("DONE");
+    expect(settled.find((t) => t.key === "A-2")?.jiraStatus).toBe("TO DO"); // reverted
+    expect(showToast).toHaveBeenLastCalledWith("Failed to update status for 1 ticket");
   });
 });
 

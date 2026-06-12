@@ -88,16 +88,28 @@ export function useTicketActions(deps: TicketActionsDeps) {
   }, [activeListKey, readinessMap, mutateTickets]);
 
   const handleJiraStatusChange = useCallback(async (key: string, status: JiraStatus) => {
-    const prev = apiTickets?.find((t) => t.key === key)?.jiraStatus;
-    mutateTickets((data) => data?.map((t) => t.key === key ? { ...t, jiraStatus: status } : t), { revalidate: false });
+    const withStatus = (data?: Ticket[]) => data?.map((t) => t.key === key ? { ...t, jiraStatus: status } : t);
     try {
-      await apiFetch(`/api/tickets/${encodeURIComponent(key)}/status`, { method: "PUT", body: { status } });
+      // Same SWR optimistic mutation as handleAssigneeChange: a bare
+      // mutate(revalidate:false) only patches the cache once, so the focus
+      // revalidation that fires when the status picker portal closes races the
+      // PUT, reads Jira before it has propagated the transition, and flips the
+      // row back to its old status. Tying optimisticData to the request makes
+      // SWR discard that racing revalidation; populateCache locks the new value
+      // in on success (BRDG-339).
+      await mutateTickets(
+        apiFetch(`/api/tickets/${encodeURIComponent(key)}/status`, { method: "PUT", body: { status } }).then(() => undefined as unknown as Ticket[]),
+        {
+          optimisticData: (current) => withStatus(current) ?? [],
+          populateCache: (_result, current) => withStatus(current) ?? [],
+          revalidate: false,
+          rollbackOnError: true,
+        },
+      );
     } catch {
-      if (prev !== undefined) {
-        mutateTickets((data) => data?.map((t) => t.key === key ? { ...t, jiraStatus: prev } : t), { revalidate: false });
-      }
+      showToast(`Failed to update status for ${key}. Change reverted.`);
     }
-  }, [apiTickets, mutateTickets]);
+  }, [mutateTickets, showToast]);
 
   const handleIssueTypeChange = useCallback(async (key: string, type: IssueType) => {
     const prev = apiTickets?.find((t) => t.key === key)?.type;
@@ -231,14 +243,34 @@ export function useTicketActions(deps: TicketActionsDeps) {
   const handleBulkSetStatus = useCallback(async (status: JiraStatus, checkedTickets: Set<string>) => {
     const keys = [...checkedTickets];
     const prevStatuses = Object.fromEntries(keys.map((k) => [k, apiTickets?.find((t) => t.key === k)?.jiraStatus]));
-    mutateTickets((data) => data?.map((t) => checkedTickets.has(t.key) ? { ...t, jiraStatus: status } : t), { revalidate: false });
-    const results = await Promise.allSettled(keys.map((k) => apiFetch(`/api/tickets/${encodeURIComponent(k)}/status`, { method: "PUT", body: { status } })));
-    const failedCount = results.filter((r) => r.status === "rejected").length;
+    const withStatus = (data?: Ticket[]) => data?.map((t) => checkedTickets.has(t.key) ? { ...t, jiraStatus: status } : t);
+    let failedCount = 0;
+    try {
+      // Optimistic mutation tied to the batch (see handleJiraStatusChange): keeps
+      // the focus revalidation from racing the PUTs and reverting the rows to a
+      // pre-transition Jira read. populateCache reflects only the rows that
+      // actually succeeded.
+      await mutateTickets(
+        Promise.allSettled(keys.map((k) => apiFetch(`/api/tickets/${encodeURIComponent(k)}/status`, { method: "PUT", body: { status } })))
+          .then((results) => {
+            const failedKeys = new Set(keys.filter((_, i) => results[i].status === "rejected"));
+            failedCount = failedKeys.size;
+            return failedKeys;
+          }) as unknown as Promise<Ticket[]>,
+        {
+          optimisticData: (current) => withStatus(current) ?? [],
+          populateCache: (failedKeys, current) => current?.map((t) => {
+            const failed = (failedKeys as unknown as Set<string>).has(t.key);
+            return checkedTickets.has(t.key) ? { ...t, jiraStatus: failed ? (prevStatuses[t.key] ?? t.jiraStatus) : status } : t;
+          }) ?? [],
+          revalidate: false,
+          rollbackOnError: true,
+        },
+      );
+    } catch {
+      failedCount = keys.length;
+    }
     if (failedCount > 0) {
-      mutateTickets((data) => data?.map((t) => {
-        const prev = prevStatuses[t.key];
-        return prev !== undefined && checkedTickets.has(t.key) ? { ...t, jiraStatus: prev } : t;
-      }), { revalidate: false });
       showToast(`Failed to update status for ${failedCount} ticket${failedCount === 1 ? "" : "s"}`);
     } else {
       showToast(`Status set to ${status} for ${keys.length} ticket${keys.length === 1 ? "" : "s"}`);
