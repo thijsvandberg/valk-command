@@ -247,14 +247,14 @@ export function EstimatePicker({
                 <button
                   type="button"
                   onClick={() => setSkipToSp(true)}
-                  className="group/skip flex items-center gap-1 text-[10px] text-text-tertiary transition-colors duration-100 hover:text-text-secondary cursor-pointer"
+                  className="group/skip flex items-center gap-0.5 text-[10px] text-text-muted transition-colors duration-100 hover:text-text-secondary cursor-pointer"
                 >
                   skip to story points
                   <ArrowRight
-                    size={11}
+                    size={10}
                     strokeWidth={2}
                     aria-hidden
-                    className="transition-transform duration-100 group-hover/skip:translate-x-0.5"
+                    className="opacity-0 transition-[opacity,transform] duration-100 group-hover/skip:opacity-100 group-hover/skip:translate-x-0.5"
                   />
                 </button>
               )}
