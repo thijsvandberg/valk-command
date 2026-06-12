@@ -10,6 +10,7 @@ import { StoryPointPicker } from "@/components/shared/StoryPointPicker";
 import { BusinessValuePicker } from "@/components/shared/BusinessValuePicker";
 import { EditStateDot } from "@/components/sprint-board/TicketTableCells";
 import { RefinementFilters } from "./RefinementFilters";
+import { TicketDragHandle } from "./RefinementDragDrop";
 import { useSectionVisibility } from "@/hooks/useSectionVisibility";
 import type { useRefinementFilters } from "@/hooks/useRefinementFilters";
 import type { useRefinementQueue } from "@/hooks/useRefinementQueue";
@@ -235,6 +236,9 @@ export function RefinementTicketList({
                 )}
               </div>
             );
+            // someChecked stays false: the checkbox is inline (always visible), so
+            // multiselect never claims the left gutter here and the BRDG-336 drag
+            // handle remains available while tickets are checked into the queue.
             return (
               <ChildIssueRow
                 key={ticket.key}
@@ -251,7 +255,8 @@ export function RefinementTicketList({
                 selectable
                 isChecked={isChecked}
                 isActive={ticket.key === previewTicketKey}
-                someChecked={queueHook.queue.length > 0}
+                someChecked={false}
+                dragHandleSlot={<TicketDragHandle ticketKey={ticket.key} source="list" />}
                 onCheckboxClick={(e) => queueHook.toggleTicket(ticket.key, idx, e.shiftKey)}
                 onSelect={(key) => onSelectTicket(key)}
                 sprints={sprints}

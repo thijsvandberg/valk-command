@@ -15,8 +15,10 @@ vi.mock("@/hooks/useSectionVisibility", () => ({
 }));
 
 vi.mock("@/components/ticket-detail/ChildIssueRow", () => ({
-  ChildIssueRow: ({ item, isChecked, isActive, onCheckboxClick, onSelect }: { item: Ticket; isChecked: boolean; isActive: boolean; onCheckboxClick: (e: { shiftKey: boolean }) => void; onSelect: (key: string, e: { metaKey: boolean; ctrlKey: boolean }) => void }) => (
+  ChildIssueRow: ({ item, isChecked, isActive, someChecked, onCheckboxClick, onSelect, dragHandleSlot }: { item: Ticket; isChecked: boolean; isActive: boolean; someChecked?: boolean; onCheckboxClick: (e: { shiftKey: boolean }) => void; onSelect: (key: string, e: { metaKey: boolean; ctrlKey: boolean }) => void; dragHandleSlot?: React.ReactNode }) => (
     <div data-testid={`ticket-row-${item.key}`} data-selected={isChecked} data-active={isActive}>
+      {/* Mirrors the real ChildIssueRow guard: the handle is hidden during multiselect. */}
+      {dragHandleSlot && !someChecked && dragHandleSlot}
       <button onClick={() => onSelect?.(item.key, { metaKey: false, ctrlKey: false })}>{item.title}</button>
       <button onClick={() => onCheckboxClick?.({ shiftKey: false })}>Toggle {item.key}</button>
     </div>
@@ -285,6 +287,20 @@ describe("RefinementTicketList", () => {
   it("does not show ready badge when readyCount is 0", () => {
     render(<RefinementTicketList {...defaultProps} />);
     expect(screen.queryByText(/ready to refine/)).not.toBeInTheDocument();
+  });
+
+  it("renders a drag handle per row, even while tickets are checked into the queue", () => {
+    const tickets = [makeTicket("VPL-1", "Ticket One"), makeTicket("VPL-2", "Ticket Two")];
+    const queueHook = makeQueueHook({ queue: ["VPL-1"] });
+    render(
+      <RefinementTicketList
+        {...defaultProps}
+        availableTickets={tickets}
+        queueHook={queueHook as AnyQueueHook}
+      />,
+    );
+    expect(screen.getByLabelText("Drag VPL-1 to a refinement session")).toBeInTheDocument();
+    expect(screen.getByLabelText("Drag VPL-2 to a refinement session")).toBeInTheDocument();
   });
 
   it("shows RefinementFilters when filtersOpen is true", () => {

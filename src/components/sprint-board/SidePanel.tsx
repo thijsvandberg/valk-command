@@ -69,6 +69,7 @@ export function SidePanel({
   defaultWidth,
   storageKey,
   epicActions,
+  dragHandle,
 }: {
   ticket: Ticket;
   poStatus: POStatus;
@@ -93,6 +94,10 @@ export function SidePanel({
     onClear: () => void;
     isFiltered: boolean;
   };
+  /** Optional drag handle rendered in the tab bar actions (BRDG-336: drag the
+      open ticket onto a refinement session). The host page owns the DndContext
+      and the draggable, keeping this panel dnd-agnostic. */
+  dragHandle?: React.ReactNode;
 }) {
   const router = useRouter();
 
@@ -350,6 +355,7 @@ export function SidePanel({
   // away with it; the floating close below keeps the panel dismissable.
   const headerActions = (
     <>
+      {dragHandle}
       {t.editState === "local_edits" && (
         <span className="rounded px-1.5 py-0.5 text-caption" style={{ backgroundColor: "var(--color-status-info-subtle)", color: "var(--color-icon-task)", opacity: 0.7 }} title="Has local changes not yet pushed to Jira">
           local changes

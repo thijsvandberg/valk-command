@@ -1,11 +1,11 @@
 # BRDG-336: Drag a Ticket onto Another Refinement Session
 
-**Status:** Placeholder
+**Status:** Refined
 **Priority:** TBD
 **Type:** Story
 **Builds on:** BRDG-049 (sprint-board drag-and-drop), BRDG-281 (refinement overview side panel), BRDG-302 (refinement active row indicator)
 
-> Placeholder / draft story. Scope is sketched but not yet refined. Details to be discussed before any implementation.
+> Open questions resolved on 2026-06-12 (see Decisions). Ready for build once approved.
 
 ## Description
 
@@ -25,23 +25,52 @@ Two drag origins, both on the overview page (`RefinementPageContent`):
 - The **session bar** at the top of the left column (`SavedSessionList`) - each session row/chip that is "ready" (status `draft` or `in_progress`, not `completed`) becomes a drop target.
 - Dropping a ticket onto a session adds its key to that session's `ticketKeys`.
 
-## Acceptance Criteria (draft - to refine)
+## Implementation Plan
 
-- [ ] A ticket can be dragged from the select ticket list onto any active session in the session bar
-- [ ] A ticket can be dragged from the open right side panel onto any active session in the session bar
-- [ ] Valid drop targets highlight on drag-over; the dragged item shows a clear drag preview
-- [ ] Dropping adds the ticket to the target session (reuse existing move/add logic, optimistic UI)
-- [ ] Dropping a ticket already in the target session is a no-op with subtle feedback
-- [ ] Completed sessions are not valid drop targets
-- [ ] A toast confirms "Added {KEY} to {session name}"
-- [ ] Keyboard / accessibility fallback retained (existing "move to session" action stays)
-- [ ] Works alongside the existing queue sortable DnD without gesture conflicts
+### Architecture
 
-## Open questions (discuss before build)
+One new overview-level `DndContext` in `RefinementPageContent.tsx` wrapping session bar + ticket list + side panel, kept **separate** from the queue's existing sortable `DndContext` (inside `RefinementQueuePanel.tsx`) so the two never share draggables/droppables and gesture conflicts are impossible. A new hook `src/hooks/useRefinementDragDrop.ts` (mirrors `useSprintBoardDragDrop.ts`) owns sensors (PointerSensor distance 5 + KeyboardSensor), `activeDragKey`, `overSessionId`, collision detection (`pointerWithin` for `session:<id>` / `plan-session` droppables), and drag handlers that call injected `onMove` / `onCreateFromTicket` / `onDuplicate` callbacks.
 
-- Move vs. copy: does dropping onto another session **move** the ticket out of the current queue/session, or **add** it (ticket can live in multiple sessions, per `ticketSessionMap`)?
-- Should dragging from the side panel be the whole panel header or a dedicated drag handle?
-- Do we also allow dropping onto the "Plan session" affordance to create a new session from the dragged ticket?
+Key facts from exploration:
+- The queue IS the active session's `ticketKeys` (`useRefinementQueue`); `handleMoveToSession` in `RefinementPageContent.tsx` already removes from the active queue and appends to the target via `refinementSessionsApi.update` with optimistic `mutateSessions` — reuse it, extended with a `sourceSessionId` so a ticket dragged from a non-active session is also stripped from that source (true move semantics).
+- PATCH `/api/refinement-sessions/[id]` already accepts `ticketKeys`; POST create accepts `{ name?, ticketKeys? }` — no new endpoints.
+- `ChildIssueRow` already supports a `dragHandleSlot` prop (hover-revealed left-gutter handle, hidden during multiselect) — exact fit for the per-item drag handle decision.
+- `SidePanel.tsx` is shared with the sprint board; it gets an optional `dragHandle?: React.ReactNode` prop so it stays dnd-agnostic. The refinement page supplies a `useDraggable` handle created under its own `DndContext`.
+- Drag preview: `DragOverlay` with the existing `snapToPointer` modifier + `DragGhostOverlay` from the sprint board.
+
+### Order
+
+1. `useRefinementDragDrop.ts` (new hook) + unit tests
+2. `SavedSessionList.tsx` — droppable session chips, drag-start base affordance + drag-over stronger highlight, completed sessions excluded
+3. `RefinementTicketList.tsx` — per-row drag handle via `dragHandleSlot` + `useDraggable`
+4. `RefinementPageContent.tsx` — DndContext + DragOverlay, move/duplicate/create wiring, "Plan session" droppable, toasts
+5. `SidePanel.tsx` — optional `dragHandle` prop, supplied from the refinement page
+6. Final verification
+
+### Decisions taken during planning
+
+- "Move" also strips the ticket from a non-active source session (carried via draggable `data.sourceSessionId`); for tickets in no session, move degenerates to add.
+- Dropping on "Plan session" creates the session (no name, like Save-as-session) and stays on the current view with a toast; no auto-navigation.
+
+## Acceptance Criteria
+
+- [x] A ticket can be dragged from the select ticket list onto any active session in the session bar
+- [x] A ticket can be dragged from the open right side panel onto any active session in the session bar
+- [x] All valid drop zones become visually recognizable the moment a drag starts (not only on drag-over); drag-over adds a stronger highlight, and the dragged item shows a clear drag preview
+- [x] Dropping **moves** the ticket: it is added to the target session and removed from its current session/queue (optimistic UI)
+- [x] Dropping a ticket already in the target session is a no-op with subtle feedback
+- [x] Completed sessions are not valid drop targets
+- [x] Dropping onto the "Plan session" affordance creates a new session containing the dragged ticket
+- [x] A toast confirms "Moved {KEY} to {session name}"
+- [x] Keyboard / accessibility fallback retained (existing "move to session" action stays)
+- [x] Works alongside the existing queue sortable DnD without gesture conflicts
+
+## Decisions (PO, 2026-06-12)
+
+- **Move, not copy:** dropping a ticket onto another session removes it from its current session/queue.
+- **Drag handle per item:** each draggable ticket (list rows and the side panel) gets a dedicated drag handle per item, not a draggable panel header.
+- **"Plan session" is a drop target:** dropping a ticket there creates a new session from it.
+- **Drop zones must be immediately recognizable:** as soon as a drag starts, all valid drop targets get a visible affordance.
 
 ## Technical Notes
 
@@ -52,11 +81,12 @@ Two drag origins, both on the overview page (`RefinementPageContent`):
 
 ## Tests
 
-- [ ] Drop from ticket list adds ticket to target session
-- [ ] Drop from side panel adds ticket to target session
-- [ ] Drop onto a completed session is rejected
-- [ ] Duplicate drop is a no-op
-- [ ] Existing menu-based "move to session" still works
+- [x] Drop from ticket list moves ticket to target session (added to target, removed from source)
+- [x] Drop from side panel moves ticket to target session
+- [x] Drop onto a completed session is rejected
+- [x] Drop onto "Plan session" creates a new session containing the ticket
+- [x] Duplicate drop is a no-op
+- [x] Existing menu-based "move to session" still works
 
 ## Dependencies
 

@@ -189,6 +189,16 @@ describe("SidePanel", () => {
     expect(screen.getAllByLabelText("Close panel").length).toBeGreaterThan(0);
   });
 
+  it("renders the optional drag handle in the bar when provided (BRDG-336)", () => {
+    render(<SidePanel {...defaultProps} dragHandle={<button aria-label="Drag PROJ-1 to a refinement session" />} />);
+    expect(screen.getByLabelText("Drag PROJ-1 to a refinement session")).toBeInTheDocument();
+  });
+
+  it("renders no drag handle when the prop is omitted (sprint board usage unchanged)", () => {
+    render(<SidePanel {...defaultProps} />);
+    expect(screen.queryByLabelText(/Drag .* to a refinement session/)).not.toBeInTheDocument();
+  });
+
   it("offers the story writer from the more menu (not a standalone bar button)", () => {
     render(<SidePanel {...defaultProps} />);
     fireEvent.click(screen.getByLabelText("More actions"));
