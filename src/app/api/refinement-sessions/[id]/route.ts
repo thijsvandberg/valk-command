@@ -60,10 +60,22 @@ export async function PATCH(
   };
 
   if (body.name !== undefined) {
-    if (typeof body.name !== "string" || body.name.trim() === "") {
-      return errorResponse("name must be a non-empty string", 400);
+    if (body.name !== null && typeof body.name !== "string") {
+      return errorResponse("name must be a string or null", 400);
     }
-    updates.name = body.name.trim();
+    updates.name =
+      typeof body.name === "string" && body.name.trim() ? body.name.trim() : null;
+  }
+
+  if (body.scheduledFor !== undefined) {
+    if (
+      body.scheduledFor !== null &&
+      (typeof body.scheduledFor !== "string" ||
+        !/^\d{4}-\d{2}-\d{2}$/.test(body.scheduledFor))
+    ) {
+      return errorResponse("scheduledFor must be a YYYY-MM-DD date or null", 400);
+    }
+    updates.scheduledFor = body.scheduledFor;
   }
 
   if (body.ticketKeys !== undefined) {
@@ -95,6 +107,14 @@ export async function PATCH(
       return errorResponse("currentIndex must be a non-negative integer", 400);
     }
     updates.currentIndex = body.currentIndex;
+  }
+
+  // A session must keep at least one identity: a name or a scheduled date
+  const nextName = "name" in updates ? updates.name : existing.name;
+  const nextScheduledFor =
+    "scheduledFor" in updates ? updates.scheduledFor : existing.scheduledFor;
+  if (!nextName && !nextScheduledFor) {
+    return errorResponse("Session needs a name or a date", 400);
   }
 
   await db

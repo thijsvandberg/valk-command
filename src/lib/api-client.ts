@@ -672,11 +672,12 @@ export type RefinementSessionStatus = "draft" | "in_progress" | "completed";
 
 export interface RefinementSessionResponse {
   id: string;
-  name: string;
+  name: string | null;
   ticketKeys: string[];
   ticketCount: number;
   status: RefinementSessionStatus;
   generalComment: string | null;
+  scheduledFor: string | null;
   currentIndex: number;
   createdAt: string;
   updatedAt: string;
@@ -697,11 +698,11 @@ export const refinementSessions = {
 
   list: (signal?: AbortSignal) =>
     apiFetch<RefinementSessionResponse[]>("/api/refinement-sessions", { signal }),
-  create: (data: { name?: string; ticketKeys?: string[] }, signal?: AbortSignal) =>
+  create: (data: { name?: string; scheduledFor?: string; ticketKeys?: string[] }, signal?: AbortSignal) =>
     apiFetch<RefinementSessionResponse>("/api/refinement-sessions", { method: "POST", body: data, signal }),
   get: (id: string, signal?: AbortSignal) =>
     apiFetch<RefinementSessionResponse>(`/api/refinement-sessions/${enc(id)}`, { signal }),
-  update: (id: string, data: Partial<{ name: string; ticketKeys: string[]; status: RefinementSessionStatus; generalComment: string | null; currentIndex: number }>, signal?: AbortSignal) =>
+  update: (id: string, data: Partial<{ name: string | null; ticketKeys: string[]; status: RefinementSessionStatus; generalComment: string | null; scheduledFor: string | null; currentIndex: number }>, signal?: AbortSignal) =>
     apiFetch<RefinementSessionResponse>(`/api/refinement-sessions/${enc(id)}`, { method: "PATCH", body: data, signal }),
   delete: (id: string, signal?: AbortSignal) =>
     apiFetch<void>(`/api/refinement-sessions/${enc(id)}`, { method: "DELETE", signal }),

@@ -33,9 +33,22 @@ export async function POST(request: Request) {
   const body = parsed.data as Record<string, unknown>;
 
   const name =
-    typeof body.name === "string" && body.name.trim()
-      ? body.name.trim()
-      : `Refinement ${new Date().toISOString().slice(0, 10)}`;
+    typeof body.name === "string" && body.name.trim() ? body.name.trim() : null;
+
+  let scheduledFor: string | null = null;
+  if (body.scheduledFor !== undefined && body.scheduledFor !== null) {
+    if (
+      typeof body.scheduledFor !== "string" ||
+      !/^\d{4}-\d{2}-\d{2}$/.test(body.scheduledFor)
+    ) {
+      return errorResponse("scheduledFor must be a YYYY-MM-DD date", 400);
+    }
+    scheduledFor = body.scheduledFor;
+  }
+
+  if (!name && !scheduledFor) {
+    return errorResponse("Provide a name or a date", 400);
+  }
 
   let ticketKeys: string[] = [];
   if (Array.isArray(body.ticketKeys)) {
@@ -50,6 +63,7 @@ export async function POST(request: Request) {
   await db.insert(refinementSession).values({
     id,
     name,
+    scheduledFor,
     ticketKeys: JSON.stringify(ticketKeys),
     status: "draft",
     createdAt: now,
