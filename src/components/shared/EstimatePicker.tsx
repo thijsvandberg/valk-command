@@ -237,25 +237,19 @@ export function EstimatePicker({
             onPointerDown={(e) => e.stopPropagation()}
             onClick={(e) => e.stopPropagation()}
           >
-            <div className="mb-2 flex items-center justify-between gap-3 px-0.5">
-              <span className="text-[9px] font-semibold uppercase tracking-wider text-text-muted">
-                {committed ? "Story points" : "Guestimate"}
-              </span>
+            <div className="mb-2 flex items-baseline gap-1 px-0.5 text-[9px] font-semibold uppercase tracking-wider text-text-muted">
+              <span>{committed ? "Story points" : "Guestimate"}</span>
               {/* Skip the guess entirely on a fresh row: jump straight to story-point
                   entry. Only offered while there is no guess yet to commit. */}
               {showGuessActions && !committed && guestimation == null && !customMode && (
                 <button
                   type="button"
                   onClick={() => setSkipToSp(true)}
-                  className="group/skip flex items-center gap-0.5 text-[10px] text-text-muted transition-colors duration-100 hover:text-text-secondary cursor-pointer"
+                  aria-label="skip to story points"
+                  title="Skip to story points"
+                  className="text-text-muted/60 transition-colors duration-100 hover:text-text-secondary cursor-pointer"
                 >
-                  skip to story points
-                  <ArrowRight
-                    size={10}
-                    strokeWidth={2}
-                    aria-hidden
-                    className="opacity-0 transition-[opacity,transform] duration-100 group-hover/skip:opacity-100 group-hover/skip:translate-x-0.5"
-                  />
+                  / SP
                 </button>
               )}
             </div>
