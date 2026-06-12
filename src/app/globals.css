@@ -552,3 +552,32 @@ details.expand-block[open] > summary .expand-arrow { transform: rotate(90deg); }
    old launcher's refinement behaviour. */
 body.refinement-session-active #view-header-portal { display: none; }
 body.refinement-session-active #main-content { border-radius: 0; }
+
+/* Live-update pulse (BRDG-338): a brand-tinted wash that swells and fades when
+   a ticket's data arrives from elsewhere (another tab, a sync, an agent push).
+   The wash lives on an overlay whose only animated property is opacity, so the
+   highlighted element never shifts layout and stays off the main thread. */
+@keyframes livePulse {
+  0% { opacity: 0; }
+  14% { opacity: 1; }
+  55% { opacity: 0.55; }
+  100% { opacity: 0; }
+}
+.live-pulse { position: relative; }
+.live-pulse::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background: color-mix(in srgb, var(--color-brand-400) 16%, transparent);
+  opacity: 0;
+  pointer-events: none;
+  animation: livePulse 1.8s ease-out;
+}
+@media (prefers-reduced-motion: reduce) {
+  /* A single soft appearance without the swell. */
+  @keyframes livePulse {
+    0% { opacity: 0.6; }
+    100% { opacity: 0; }
+  }
+}

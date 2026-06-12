@@ -10,6 +10,10 @@ import { useTicketEditStateSync } from "@/hooks/useTicketEditStateSync";
 import { useLocalEditSaver } from "@/lib/local-edit-saver";
 import { getJiraUrl } from "@/components/sprint-board/TicketTableCells";
 import { useToast } from "@/hooks/useToast";
+import { useTicketEvents } from "@/hooks/useTicketEvents";
+import { useChangeHighlight } from "@/hooks/useChangeHighlight";
+import { getClientId } from "@/lib/client-id";
+import type { TicketEvent } from "@/lib/ticket-events";
 
 export function useTicketDetailPage(key: string) {
   const { toast, toastLoading, showToast, dismissToast } = useToast();
@@ -221,6 +225,28 @@ export function useTicketDetailPage(key: string) {
     setMetadataOnlyConflict(!contentChanged);
     mutateTicket();
   }, [mutateTicket]);
+
+  // BRDG-338: keep the open ticket live. Any local DB write to this ticket
+  // (another tab, a Jira sync, an agent push) revalidates the detail payload
+  // within ~1-2s; the changed kinds drive a brief highlight unless this tab
+  // caused the write itself.
+  const { activeKinds: liveChangeKinds, trigger: triggerLiveHighlight } = useChangeHighlight();
+
+  const handleLiveTicketEvent = useCallback((event: TicketEvent) => {
+    const editingContent = isTitleEditing || isDescEditing || hasLocalTitleEdit || hasLocalDescEdit;
+    if (event.kinds.includes("content") && editingContent) {
+      // An in-progress edit must never be silently overwritten: surface the
+      // existing BRDG-243 conflict warning and let the PO decide.
+      handleRemoteChanged(true);
+    } else {
+      mutateTicket();
+    }
+    if (!event.origin || event.origin !== getClientId()) {
+      triggerLiveHighlight(event.kinds);
+    }
+  }, [isTitleEditing, isDescEditing, hasLocalTitleEdit, hasLocalDescEdit, handleRemoteChanged, mutateTicket, triggerLiveHighlight]);
+
+  useTicketEvents(key, handleLiveTicketEvent);
 
   const handleDiscardDraft = useCallback(async () => {
     setIsDiscarding(true);
@@ -439,6 +465,9 @@ export function useTicketDetailPage(key: string) {
     // Sprint
     ticketSprintId,
     ticketSprintLabel,
+
+    // Live updates (BRDG-338)
+    liveChangeKinds,
 
     // Conflict resolution
     handleConflictResolved,

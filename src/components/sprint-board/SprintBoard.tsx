@@ -53,8 +53,13 @@ const SprintListModal = dynamic(() => import("@/components/sprint-board/SprintLi
 const FinishSprintModal = dynamic(() => import("@/components/sprint-board/FinishSprintModal").then((m) => ({ default: m.FinishSprintModal })), { ssr: false });
 import { LoadingState } from "@/components/shared/LoadingState";
 import { useColumnConfig } from "@/hooks/useColumnConfig";
+import { useTicketEventsStream } from "@/hooks/useTicketEventsStream";
 
 export default function SprintBoard() {
+  // BRDG-338: one multiplexed SSE connection keeps every rendered row live;
+  // the 150s poll remains the fallback when the stream is down.
+  useTicketEventsStream();
+
   const { sprints: rawJiraSprints, backlogCount, data: sprintsData } = useJiraSprints();
   const sprints = useMemo(() => {
     const mapped = mapJiraSprints(rawJiraSprints);

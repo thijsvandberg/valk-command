@@ -24,6 +24,7 @@ import { BusinessValuePicker } from "@/components/shared/BusinessValuePicker";
 import { EstimatePicker } from "@/components/shared/EstimatePicker";
 import { TicketStatusPill } from "@/components/shared/TicketStatusPill";
 import { prefetchTicketPage } from "@/lib/prefetch";
+import { useLiveTicketChange } from "@/hooks/useLiveTicketChange";
 
 const ALL_TAGS: Set<InlineTagId> = new Set(["flag", "refinement", "quality", "notes", "poReadiness", "editState", "storyPoints", "businessValue", "epic", "assignee"]);
 
@@ -208,6 +209,10 @@ export const BoardRow = memo(forwardRef<HTMLTableRowElement, BoardRowBaseProps>(
     el.style.height = `${el.scrollHeight}px`;
   }, []);
 
+  // BRDG-338: pulse the row when this ticket's data just changed elsewhere
+  // (another tab, a sync, an agent push). Changes this tab made are silent.
+  const liveChangeKinds = useLiveTicketChange(ticket.key);
+
   const isFollowed = followedKeys?.includes(ticket.key) ?? false;
   const lastDeploy = lastDeployedMap?.[ticket.key];
   const health = healthMap?.[ticket.key];
@@ -338,7 +343,7 @@ export const BoardRow = memo(forwardRef<HTMLTableRowElement, BoardRowBaseProps>(
             : ticket.flagged
             ? "bg-[color-mix(in_srgb,var(--color-status-error)_6%,transparent)] border-l-[var(--color-status-error)] hover:bg-[color-mix(in_srgb,var(--color-status-error)_8%,transparent)]"
             : "border-l-transparent hover:bg-overlay-subtle hover:border-l-[var(--color-brand-400)]/25"
-        } ${isFocused && !isSelected && !isContextTarget ? "outline outline-1 -outline-offset-1 outline-[var(--color-brand-500)]/40" : ""} ${isRemoved ? "opacity-50" : isDeprecated ? "opacity-60" : isInflight ? "opacity-70" : ""} ${isLastInCard ? "rounded-b-[11px]" : ""}`}>
+        } ${isFocused && !isSelected && !isContextTarget ? "outline outline-1 -outline-offset-1 outline-[var(--color-brand-500)]/40" : ""} ${isRemoved ? "opacity-50" : isDeprecated ? "opacity-60" : isInflight ? "opacity-70" : ""} ${isLastInCard ? "rounded-b-[11px]" : ""} ${liveChangeKinds.size > 0 ? "live-pulse" : ""}`}>
           {/* Drag affordance in the left gutter (Jira-style). Visual only: the whole row is the
               drag activator, so this never needs its own listeners. Shown only when reordering
               is possible (dragListeners present) and never during multiselect. */}

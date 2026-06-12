@@ -96,3 +96,10 @@ export function moveTicketSprintCaches(ticket: { key: string; sprintId?: string 
 export function revalidateTicketCaches() {
   return globalMutate((k) => typeof k === "string" && k.startsWith("/api/tickets"));
 }
+
+// Revalidate only the caches that can hold this ticket: the lists plus its own
+// detail. Used by the live ticket-events stream so one changed ticket does not
+// refetch every open detail panel.
+export function revalidateTicketCachesFor(ticketKey: string) {
+  return globalMutate(ticketCacheMatcher(ticketKey));
+}

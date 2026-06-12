@@ -15,10 +15,13 @@ export function CommentsSection({
   ticketKey,
   jiraComments,
   onMutate,
+  liveHighlight = false,
 }: {
   ticketKey: string;
   jiraComments: TicketDetail["jiraComments"];
   onMutate?: () => void;
+  /** A comment just arrived via a live update: pulse the newest one (BRDG-338). */
+  liveHighlight?: boolean;
 }) {
   const [poComments, setPoComments] = useState<Array<{ id: string; author: string; content: string; createdAt: string }>>([]);
   const [newComment, setNewComment] = useState("");
@@ -152,6 +155,7 @@ export function CommentsSection({
         ticketKey={ticketKey}
         jiraComments={jiraComments}
         onMutate={onMutate}
+        liveHighlight={liveHighlight}
       />
     </div>
   );
@@ -161,10 +165,12 @@ function JiraCommentsSection({
   ticketKey,
   jiraComments,
   onMutate,
+  liveHighlight = false,
 }: {
   ticketKey: string;
   jiraComments: TicketDetail["jiraComments"];
   onMutate?: () => void;
+  liveHighlight?: boolean;
 }) {
   const [newJiraComment, setNewJiraComment] = useState("");
   const [posting, setPosting] = useState(false);
@@ -199,13 +205,15 @@ function JiraCommentsSection({
     <div>
       <SectionHeader title="Jira Comments" count={jiraComments.length} sectionKey={SECTION_KEYS.jiraComments}>
       <div className="mt-3 space-y-4">
-        {[...jiraComments].reverse().map((comment) => {
+        {[...jiraComments].reverse().map((comment, idx) => {
           const isFlagComment = /flag_on|Flag added|flag_off|Flag removed/i.test(comment.content);
+          // Newest first after the reverse: a live-arrived comment pulses once.
+          const pulse = liveHighlight && idx === 0;
           return (
             <div
               key={comment.id}
               id={`jira-comment-${comment.id}`}
-              className={`flex gap-3 ${isFlagComment ? "rounded-lg border-l-[3px] border-l-[var(--color-status-error)] bg-[var(--color-status-error)]/[0.04] py-3 pr-3 pl-2.5" : ""}`}
+              className={`flex gap-3 ${pulse ? "live-pulse rounded-lg" : ""} ${isFlagComment ? "rounded-lg border-l-[3px] border-l-[var(--color-status-error)] bg-[var(--color-status-error)]/[0.04] py-3 pr-3 pl-2.5" : ""}`}
             >
               <div
                 className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-caption font-semibold text-white"

@@ -625,20 +625,22 @@ export default function TicketDetailPage({
           </div>
         }
       >
-        <TicketStatusPill
-          ticketKey={key}
-          jiraStatus={ticket.jiraStatus}
-          readiness={ticket.removedFromJiraAt ? null : ticket.readiness}
-          onJiraStatusChange={ticket.removedFromJiraAt ? undefined : h.handleJiraStatusChange}
-          onReadinessChange={ticket.removedFromJiraAt ? undefined : h.handleReadinessChange}
-          issueType={ticket.type}
-          onIssueTypeChange={ticket.removedFromJiraAt ? undefined : h.handleTypeChange}
-          title={ticket.title}
-          size="lg"
-          onHeader
-          removedFromJira={Boolean(ticket.removedFromJiraAt)}
-          hoverData={getHoverData(key)}
-        />
+        <span className={`inline-flex rounded-full ${h.liveChangeKinds.has("status") ? "live-pulse" : ""}`}>
+          <TicketStatusPill
+            ticketKey={key}
+            jiraStatus={ticket.jiraStatus}
+            readiness={ticket.removedFromJiraAt ? null : ticket.readiness}
+            onJiraStatusChange={ticket.removedFromJiraAt ? undefined : h.handleJiraStatusChange}
+            onReadinessChange={ticket.removedFromJiraAt ? undefined : h.handleReadinessChange}
+            issueType={ticket.type}
+            onIssueTypeChange={ticket.removedFromJiraAt ? undefined : h.handleTypeChange}
+            title={ticket.title}
+            size="lg"
+            onHeader
+            removedFromJira={Boolean(ticket.removedFromJiraAt)}
+            hoverData={getHoverData(key)}
+          />
+        </span>
         <span className="min-w-0 flex-1 truncate font-[var(--font-display)] text-heading-sm font-semibold tracking-tight text-text-primary">
           {ticket.title}
         </span>
@@ -683,6 +685,7 @@ export default function TicketDetailPage({
           versionCount={h.versionCount}
           historyResetKey={historyResetKey}
           isFlagged={h.isFlagged}
+          liveCommentHighlight={h.liveChangeKinds.has("comment")}
         />
 
       {chatPaneOpen && ticket && (

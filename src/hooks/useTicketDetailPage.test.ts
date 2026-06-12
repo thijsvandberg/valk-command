@@ -31,7 +31,17 @@ vi.mock("@/components/sprint-board/TicketTableCells", () => ({
   getJiraUrl: (key: string) => `https://jira.example.com/browse/${key}`,
 }));
 
+// Capture the live-event callback the hook registers (BRDG-338) so tests can
+// drive ticket:changed events without the SSE layer.
+const ticketEventCallbacks: Array<(event: unknown) => void> = [];
+vi.mock("@/hooks/useTicketEvents", () => ({
+  useTicketEvents: (_key: string | null, cb: (event: unknown) => void) => {
+    ticketEventCallbacks.push(cb);
+  },
+}));
+
 import { useTicketDetailPage } from "./useTicketDetailPage";
+import { getClientId } from "@/lib/client-id";
 import { useTicketDetail } from "@/hooks/useSprintBoard";
 import { apiFetch, jira, tickets } from "@/lib/api-client";
 import { patchTicketCaches, revalidateTicketCaches } from "@/lib/ticket-cache";
@@ -73,6 +83,7 @@ const mutateFn = vi.fn().mockResolvedValue(undefined);
 describe("useTicketDetailPage", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    ticketEventCallbacks.length = 0;
     vi.mocked(useTicketDetail).mockReturnValue({
       data: mockApiData,
       isLoading: false,
@@ -332,6 +343,60 @@ describe("useTicketDetailPage", () => {
 
       const updater = mutateFn.mock.calls.at(-1)![0] as (prev: unknown) => unknown;
       expect(updater(undefined)).toBeUndefined();
+    });
+  });
+
+  describe("live ticket events (BRDG-338)", () => {
+    function fireEvent(kinds: string[], origin: string | null = null) {
+      const cb = ticketEventCallbacks.at(-1)!;
+      act(() => { cb({ type: "ticket:changed", ticketKey: "VPL-42", kinds, origin }); });
+    }
+
+    it("revalidates the detail payload when the ticket changes elsewhere", () => {
+      renderHook(() => useTicketDetailPage("VPL-42"));
+      mutateFn.mockClear();
+
+      fireEvent(["comment"]);
+
+      expect(mutateFn).toHaveBeenCalled();
+    });
+
+    it("highlights the changed kinds for a foreign change", () => {
+      const { result } = renderHook(() => useTicketDetailPage("VPL-42"));
+
+      fireEvent(["status", "comment"]);
+
+      expect(result.current.liveChangeKinds.has("status")).toBe(true);
+      expect(result.current.liveChangeKinds.has("comment")).toBe(true);
+    });
+
+    it("suppresses the highlight for a change this tab originated, but still revalidates", () => {
+      const { result } = renderHook(() => useTicketDetailPage("VPL-42"));
+      mutateFn.mockClear();
+
+      fireEvent(["status"], getClientId());
+
+      expect(mutateFn).toHaveBeenCalled();
+      expect(result.current.liveChangeKinds.size).toBe(0);
+    });
+
+    it("routes a content change during an active edit through the conflict warning (BRDG-243)", () => {
+      const { result } = renderHook(() => useTicketDetailPage("VPL-42"));
+      act(() => { result.current.setIsDescEditing(true); });
+
+      fireEvent(["content"]);
+
+      expect(result.current.showConflictDiff).toBe(true);
+    });
+
+    it("refreshes silently for a content change when nothing is being edited", () => {
+      const { result } = renderHook(() => useTicketDetailPage("VPL-42"));
+      mutateFn.mockClear();
+
+      fireEvent(["content"]);
+
+      expect(mutateFn).toHaveBeenCalled();
+      expect(result.current.showConflictDiff).toBe(false);
     });
   });
 });

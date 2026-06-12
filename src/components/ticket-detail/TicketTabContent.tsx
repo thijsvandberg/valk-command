@@ -104,6 +104,8 @@ export interface TicketTabContentProps {
   versionCount: number;
   historyResetKey: number;
   isFlagged: boolean;
+  /** A Jira comment just arrived via a live update (BRDG-338). */
+  liveCommentHighlight?: boolean;
 }
 
 export function TicketTabContent({
@@ -150,6 +152,7 @@ export function TicketTabContent({
   versionCount,
   historyResetKey,
   isFlagged,
+  liveCommentHighlight = false,
 }: TicketTabContentProps) {
   const isPanel = layout === "panel";
   // Epics split their breakdown (child issues) into a dedicated leading tab so the
@@ -360,6 +363,7 @@ export function TicketTabContent({
                 ticketKey={ticketKey}
                 jiraComments={detail?.jiraComments ?? []}
                 onMutate={onMutate}
+                liveHighlight={liveCommentHighlight}
               />
             </>
           )}
