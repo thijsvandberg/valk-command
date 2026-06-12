@@ -1,5 +1,20 @@
 # Implementation Performance Log
 
+## BRDG-339 — Story Writer footer rework: autosave + wrap up (2026-06-12)
+
+Smooth implementation (server 409 check -> drafts hook -> actions -> UI, committed per layer;
+full suite + build green first try). The only friction was browser verification.
+
+| Phase | Notes |
+|---|---|
+| Plan | Opus Plan agent found the decisive shortcut: the 500ms debounced save path already IS autosave, and `modifiedAt` works as the concurrency token — no migration |
+| Implement | Four layers, each lint/typecheck/test-clean before commit; one React Compiler lint trip (ref inside the spread `actions` object flagged all 52 `actions.*` accesses — destructure refs out) |
+| Verify | 5,630 tests + build green on first run; browser screenshots unusable (below), fell back to DOM assertions |
+
+Key bottlenecks / lessons:
+- **CDP screenshots timed out on every attempt** ("Page.captureScreenshot timed out after 30000ms") while the page itself was healthy — title, navigation, find and JS execution all worked. Lesson: when screenshots wedge, don't keep retrying; `javascript_tool` querying `document.body.textContent` + clicking real buttons verified every AC (panel options, Save-draft removal, overflow push disabled state) faster than screenshots would have.
+- **The `find` accessibility-tree tool missed the just-opened popover** (likely a render/snapshot race plus toggle-button double-clicks across separate batches). JS-driven click + 300ms wait + text assert in a single execution was reliable.
+
 ## BRDG-304 — Placeholder tickets for forward planning (2026-06-10)
 
 Large, multi-layer feature (new table + service + 3 routes + 2 grouped-view integrations + a
