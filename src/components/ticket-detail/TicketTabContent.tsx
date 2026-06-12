@@ -90,7 +90,7 @@ export interface TicketTabContentProps {
   onOverrideChange: (v: boolean) => void;
   // Handlers
   onDiscardDraft: () => Promise<void>;
-  onPushToJira: () => Promise<void>;
+  onPushToJira: (pushed?: { description?: string }) => Promise<void>;
   onMutate: () => void;
   onSubtaskStatusOptimistic?: (childKey: string, status: JiraStatus) => void;
   onEpicChildOptimistic?: (childKey: string, patch: Partial<EpicChild>) => void;

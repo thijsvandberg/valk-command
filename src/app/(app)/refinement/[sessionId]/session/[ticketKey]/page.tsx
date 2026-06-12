@@ -236,7 +236,7 @@ export default function RefinementSessionTicketPage({
     }
   }, [currentKey, mutate]);
 
-  const handlePushToJira = useCallback(async () => {
+  const handlePushToJira = useCallback(async (pushed?: { description?: string }) => {
     if (!currentKey) return;
     setIsPushing(true);
     setPushError(null);
@@ -250,11 +250,11 @@ export default function RefinementSessionTicketPage({
         setHasLocalTitleEdit(false);
         setHasLocalDescEdit(false);
         setOverrideConfirmed(false);
-        // Patch the pushed values in optimistically: the key bump remounts the
-        // editors and a dev-mode refetch can return stale cache, which would
-        // briefly show the pre-push content (BRDG-340).
+        // Patch the pushed values in client-side WITHOUT revalidating: a
+        // dev-mode refetch can return the stale pre-push payload and clobber
+        // the patch, showing the old content until a manual refresh (BRDG-340).
         const pushedTitle = localEdits?.title?.value;
-        const pushedDescription = localEdits?.description?.value;
+        const pushedDescription = pushed?.description ?? localEdits?.description?.value;
         await mutate(
           (prev) => prev ? {
             ...prev,
@@ -263,7 +263,7 @@ export default function RefinementSessionTicketPage({
             ...(pushedTitle ? { title: pushedTitle } : {}),
             ...(pushedDescription ? { description: pushedDescription } : {}),
           } : prev,
-          { revalidate: true },
+          { revalidate: false },
         );
         setDraftDiscardKey((k) => k + 1);
         // Invalidate list caches so sprint board reflects any changes

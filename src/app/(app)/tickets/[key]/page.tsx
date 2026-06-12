@@ -456,7 +456,7 @@ export default function TicketDetailPage({
               <Button
                 variant="primary"
                 size="md"
-                onClick={h.handlePushToJira}
+                onClick={() => h.handlePushToJira()}
                 disabled={h.isPushing}
                 title="Push local edits to Jira"
                 icon={h.isPushing

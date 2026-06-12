@@ -76,7 +76,7 @@ export function EditableDescription({
   onLocalEdit: (hasEdit: boolean) => void;
   onEditingChange?: (isEditing: boolean) => void;
   onDiscard?: () => void;
-  onPushToJira?: () => Promise<void>;
+  onPushToJira?: (pushed?: { description?: string }) => Promise<void>;
   isPushing?: boolean;
   pushError?: string | null;
   showConflictWarning?: boolean;
@@ -263,8 +263,11 @@ export function EditableDescription({
       console.error("Failed to save before push:", err);
       return;
     }
-    await onPushToJira?.();
-  }, [flushPending, onPushToJira]);
+    // Hand the pushed content to the page: the post-push cache patch needs the
+    // editor's value because the SWR cache does not track autosaved drafts and
+    // a dev-mode refetch can return stale data (BRDG-340).
+    await onPushToJira?.({ description: value.trim() });
+  }, [flushPending, onPushToJira, value]);
 
   useEffect(() => {
     if (!editing) return;

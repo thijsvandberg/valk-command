@@ -54,7 +54,7 @@ interface SessionTicketViewProps {
   onOverrideChange?: (val: boolean) => void;
   isPushing?: boolean;
   pushError?: string | null;
-  onPushToJira?: () => Promise<void>;
+  onPushToJira?: (pushed?: { description?: string }) => Promise<void>;
   onDiscard?: () => void;
   onLocalTitleEdit?: (has: boolean) => void;
   onLocalDescEdit?: (has: boolean) => void;

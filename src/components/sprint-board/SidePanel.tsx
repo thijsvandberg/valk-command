@@ -361,7 +361,7 @@ export function SidePanel({
             variant="primary"
             size="md"
             iconOnly
-            onClick={h.handlePushToJira}
+            onClick={() => h.handlePushToJira()}
             disabled={h.isPushing}
             aria-label="Push to Jira"
             icon={h.isPushing

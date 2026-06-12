@@ -247,7 +247,7 @@ export function useTicketDetailPage(key: string) {
     }
   }, [key, mutateTicket, syncEditState]);
 
-  const handlePushToJira = useCallback(async () => {
+  const handlePushToJira = useCallback(async (pushed?: { description?: string }) => {
     setIsPushing(true);
     setPushError(null);
     try {
@@ -258,14 +258,14 @@ export function useTicketDetailPage(key: string) {
         setHasLocalTitleEdit(false);
         setHasLocalDescEdit(false);
         setOverrideConfirmed(false);
-        // Clear the draft state optimistically; a plain revalidation can return
-        // the stale cached "draft" because server cache invalidation is
-        // unreliable in dev, leaving the badge stuck after a successful push.
-        // The pushed values themselves must be patched in too: the key bump
-        // below remounts the editors, and without this they render the stale
-        // pre-push description/title until the refetch lands (BRDG-340).
+        // Patch the post-push state client-side and do NOT revalidate right
+        // away: server cache invalidation is unreliable in dev, so the refetch
+        // can return the pre-push payload and clobber this patch — which is
+        // exactly the "old version until refresh" bug (BRDG-340). The editor
+        // hands its just-pushed content via `pushed` because the SWR cache
+        // does not track autosaved drafts.
         const pushedTitle = localEdits?.title?.value;
-        const pushedDescription = localEdits?.description?.value;
+        const pushedDescription = pushed?.description ?? localEdits?.description?.value;
         await mutateTicket(
           (prev) => prev ? {
             ...prev,
@@ -274,7 +274,7 @@ export function useTicketDetailPage(key: string) {
             ...(pushedTitle ? { title: pushedTitle } : {}),
             ...(pushedDescription ? { description: pushedDescription } : {}),
           } : prev,
-          { revalidate: true },
+          { revalidate: false },
         );
         setDraftDiscardKey((k) => k + 1);
         syncEditState(key, "clean");

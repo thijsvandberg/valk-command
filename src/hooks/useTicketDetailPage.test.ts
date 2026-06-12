@@ -142,6 +142,18 @@ describe("useTicketDetailPage", () => {
     expect(result.current.editSaver).toBeDefined();
   });
 
+  it("prefers the editor-provided pushed description over the cached local edit", async () => {
+    vi.mocked(tickets.pushToJira).mockResolvedValue({ success: true });
+
+    const { result } = renderHook(() => useTicketDetailPage("VPL-42"));
+
+    await act(async () => { await result.current.handlePushToJira({ description: "Editor latest" }); });
+
+    const optimisticCall = mutateFn.mock.calls.find((c) => typeof c[0] === "function");
+    const updater = optimisticCall![0] as (prev: typeof mockApiData) => typeof mockApiData;
+    expect(updater(mockApiData).description).toBe("Editor latest");
+  });
+
   it("push to Jira optimistically clears the draft edit state", async () => {
     vi.mocked(tickets.pushToJira).mockResolvedValue({ success: true });
 
@@ -159,7 +171,9 @@ describe("useTicketDetailPage", () => {
     // The pushed content itself is patched in too, so the remounted editor
     // shows the new version instead of the stale cached one (BRDG-340).
     expect(patched.description).toBe("Pushed new description");
-    expect(optimisticCall![1]).toMatchObject({ revalidate: true });
+    // No immediate revalidation: a dev-mode refetch can return the stale
+    // pre-push payload and clobber this patch (the old-version-until-refresh bug).
+    expect(optimisticCall![1]).toMatchObject({ revalidate: false });
   });
 
   it("push to Jira does not clear draft state on conflict", async () => {
