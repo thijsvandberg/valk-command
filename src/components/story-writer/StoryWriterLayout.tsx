@@ -4,7 +4,6 @@ import { useEffect, useMemo } from "react";
 import {
   CloudUpload,
   CloudDownload,
-  Save,
   Check,
   Trash2,
   Loader2,
@@ -14,9 +13,9 @@ import {
   MoreHorizontal,
   ArrowUpRight,
   NotebookPen,
-  SendHorizontal,
-  LogOut,
   Gem,
+  BadgeCheck,
+  Archive,
 } from "lucide-react";
 import Link from "next/link";
 import { useStoryWriter } from "@/hooks/useStoryWriter";
@@ -86,7 +85,7 @@ export function StoryWriterLayout({ ticketKey, draftTitle, draftType }: StoryWri
   }, [rawSprints]);
   const ticketHoverData = ticketData ? buildTicketHoverData(ticketData, sprintNames) : undefined;
 
-  const { moreMenuRef, ...actions } = useStoryWriterActions({
+  const { moreMenuRef, wrapUpMenuRef, ...actions } = useStoryWriterActions({
     ticketKey,
     writer,
     ticketData: ticketData as Record<string, unknown> | undefined,
@@ -124,56 +123,96 @@ export function StoryWriterLayout({ ticketKey, draftTitle, draftType }: StoryWri
                 </div>
               )}
 
-              {actions.isDraftDirty && (
-                <button
-                  onClick={actions.handleSaveDraft}
-                  disabled={actions.saving || actions.showSaved}
-                  className={`flex h-7 items-center gap-1.5 rounded-md border px-3 text-body-sm font-medium cursor-pointer focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)] active:scale-[0.98] transition-colors duration-150 disabled:cursor-not-allowed ${
-                    actions.showSaved
-                      ? "border-[var(--color-brand-500)]/30 bg-[var(--color-brand-500)]/10 text-[var(--color-brand-400)]"
-                      : "border-border-default bg-overlay-subtle text-text-secondary hover:bg-hover-list-item hover:text-text-secondary"
-                  }`}
-                >
-                  {actions.saving
-                    ? <Loader2 size={13} className="animate-spin" />
-                    : actions.showSaved
-                    ? <Check size={13} strokeWidth={2} />
-                    : <Save size={13} strokeWidth={1.5} />
-                  }
-                  {actions.showSaved ? "Saved" : "Save draft"}
-                </button>
+              {/* Autosave indicator: edits persist on their own; this only reports it. */}
+              {writer.draftSaveState !== "idle" && (
+                <span className="flex items-center gap-1.5 pr-1 text-label font-medium text-text-muted">
+                  {writer.draftSaveState === "saving" ? (
+                    <>
+                      <Loader2 size={12} strokeWidth={1.75} className="animate-spin" />
+                      Saving…
+                    </>
+                  ) : (
+                    <>
+                      <Check size={12} strokeWidth={2} className="text-[var(--color-brand-400)]" />
+                      Saved
+                    </>
+                  )}
+                </span>
               )}
 
-              {!isStillDraft && (actions.hasLocalSave ? (
-                <Button
-                  variant="primary"
-                  size="md"
-                  icon={actions.pushing ? <Loader2 size={13} className="animate-spin" /> : <CloudUpload size={13} strokeWidth={1.5} />}
-                  onClick={actions.handlePush}
-                  disabled={actions.pushing || actions.isDraftDirty}
-                >
-                  Push to Jira
-                </Button>
-              ) : actions.hasPushed ? (
-                <Button
-                  variant="primary"
-                  size="md"
-                  icon={<LogOut size={13} strokeWidth={1.5} />}
-                  onClick={actions.handleCloseAfterPush}
-                >
-                  Close
-                </Button>
-              ) : actions.isDraftDirty ? (
-                <Button
-                  variant="primary"
-                  size="md"
-                  icon={actions.pushing ? <Loader2 size={13} className="animate-spin" /> : <SendHorizontal size={13} strokeWidth={1.5} />}
-                  onClick={actions.handlePushAndClose}
-                  disabled={actions.pushing}
-                >
-                  Push &amp; Close
-                </Button>
-              ) : null)}
+              {/* Wrap up: the one primary action. Always pushes & closes the editor;
+                  the panel only decides readiness and whether the chat is kept. */}
+              {!isStillDraft && (
+                <div ref={wrapUpMenuRef} className="relative">
+                  <Button
+                    variant="primary"
+                    size="md"
+                    icon={actions.pushing ? <Loader2 size={13} className="animate-spin" /> : <Flag size={13} strokeWidth={1.75} />}
+                    onClick={() => actions.setShowWrapUpMenu((v: boolean) => !v)}
+                    disabled={actions.pushing}
+                    aria-expanded={actions.showWrapUpMenu}
+                  >
+                    Wrap up
+                  </Button>
+
+                  {actions.showWrapUpMenu && (
+                    <div className="absolute right-0 top-full z-30 mt-2 w-[320px] rounded-2xl border border-border-strong bg-[var(--color-surface-floating)] p-2 shadow-[var(--shadow-lg)]">
+                      <p className="px-2 pb-0.5 pt-1 text-[10px] font-semibold uppercase tracking-[0.14em] text-text-muted">
+                        Wrap up this story
+                      </p>
+                      <p className="px-2 pb-2 text-[11px] leading-[1.5] text-text-tertiary">
+                        Pushes to Jira &amp; closes the editor.
+                      </p>
+                      <button
+                        type="button"
+                        onClick={actions.handleWrapUpReady}
+                        className="group flex w-full items-start gap-3 rounded-xl p-2.5 text-left cursor-pointer transition-colors duration-150 hover:bg-[var(--color-brand-500)]/[0.08]"
+                      >
+                        <span className="grid h-9 w-9 shrink-0 place-items-center rounded-lg bg-[var(--color-brand-500)]/12 text-[var(--color-brand-400)] transition-colors duration-150 group-hover:bg-[var(--color-brand-500)]/20">
+                          <BadgeCheck size={16} strokeWidth={1.75} />
+                        </span>
+                        <span className="flex min-w-0 flex-col gap-0.5">
+                          <span className="text-body-sm font-semibold text-text-primary">Ready to refine</span>
+                          <span className="text-[11px] leading-[1.55] text-text-tertiary">
+                            Marks the story Ready to refine. The chat session is kept for later.
+                          </span>
+                        </span>
+                      </button>
+                      <button
+                        type="button"
+                        onClick={actions.handleWrapUpReadyClear}
+                        className="group flex w-full items-start gap-3 rounded-xl p-2.5 text-left cursor-pointer transition-colors duration-150 hover:bg-[var(--color-brand-500)]/[0.08]"
+                      >
+                        <span className="grid h-9 w-9 shrink-0 place-items-center rounded-lg bg-[var(--color-brand-500)]/12 text-[var(--color-brand-400)] transition-colors duration-150 group-hover:bg-[var(--color-brand-500)]/20">
+                          <Archive size={16} strokeWidth={1.75} />
+                        </span>
+                        <span className="flex min-w-0 flex-col gap-0.5">
+                          <span className="text-body-sm font-semibold text-text-primary">Ready to refine + clear session</span>
+                          <span className="text-[11px] leading-[1.55] text-text-tertiary">
+                            Same, but also archives this chat. The story is fully done.
+                          </span>
+                        </span>
+                      </button>
+                      <div className="mx-2 my-1 h-px bg-overlay-default" />
+                      <button
+                        type="button"
+                        onClick={actions.handleWrapUpClose}
+                        className="group flex w-full items-start gap-3 rounded-xl p-2.5 text-left cursor-pointer transition-colors duration-150 hover:bg-hover-interactive"
+                      >
+                        <span className="grid h-9 w-9 shrink-0 place-items-center rounded-lg bg-overlay-default text-text-tertiary transition-colors duration-150 group-hover:bg-overlay-strong">
+                          <Trash2 size={15} strokeWidth={1.75} />
+                        </span>
+                        <span className="flex min-w-0 flex-col gap-0.5">
+                          <span className="text-body-sm font-semibold text-text-primary">Close as-is</span>
+                          <span className="text-[11px] leading-[1.55] text-text-tertiary">
+                            Leaves readiness untouched. The story is parked, not flagged for refinement.
+                          </span>
+                        </span>
+                      </button>
+                    </div>
+                  )}
+                </div>
+              )}
 
               <div ref={moreMenuRef} className="relative">
                 <Button
@@ -207,36 +246,15 @@ export function StoryWriterLayout({ ticketKey, draftTitle, draftType }: StoryWri
                       <>
                         <div className="mx-2 my-1 h-px bg-overlay-default" />
 
-                        {actions.hasLocalSave ? (
-                          <button
-                            type="button"
-                            onClick={() => { actions.setShowMoreMenu(false); actions.handlePushAndClose(); }}
-                            disabled={actions.pushing || actions.isDraftDirty}
-                            className="flex w-full items-center gap-2.5 px-3 py-2 text-body-sm text-text-secondary cursor-pointer hover:bg-hover-interactive hover:text-text-primary transition-colors duration-150 disabled:opacity-40 disabled:cursor-not-allowed"
-                          >
-                            <SendHorizontal size={13} strokeWidth={1.5} className="shrink-0" />
-                            <span>Push &amp; Close</span>
-                          </button>
-                        ) : actions.hasPushed ? (
-                          <button
-                            type="button"
-                            onClick={() => { actions.setShowMoreMenu(false); actions.handleCloseAfterPush(); }}
-                            className="flex w-full items-center gap-2.5 px-3 py-2 text-body-sm text-text-secondary cursor-pointer hover:bg-hover-interactive hover:text-text-primary transition-colors duration-150"
-                          >
-                            <LogOut size={13} strokeWidth={1.5} className="shrink-0" />
-                            <span>Close</span>
-                          </button>
-                        ) : (
-                          <button
-                            type="button"
-                            onClick={() => { actions.setShowMoreMenu(false); actions.handlePush(); }}
-                            disabled={actions.pushing || actions.isDraftDirty}
-                            className="flex w-full items-center gap-2.5 px-3 py-2 text-body-sm text-text-secondary cursor-pointer hover:bg-hover-interactive hover:text-text-primary transition-colors duration-150 disabled:opacity-40 disabled:cursor-not-allowed"
-                          >
-                            <CloudUpload size={13} strokeWidth={1.5} className="shrink-0" />
-                            <span>Push to Jira</span>
-                          </button>
-                        )}
+                        <button
+                          type="button"
+                          onClick={() => { actions.setShowMoreMenu(false); actions.handlePush(); }}
+                          disabled={actions.pushing || !actions.isDraftDirty}
+                          className="flex w-full items-center gap-2.5 px-3 py-2 text-body-sm text-text-secondary cursor-pointer hover:bg-hover-interactive hover:text-text-primary transition-colors duration-150 disabled:opacity-40 disabled:cursor-not-allowed"
+                        >
+                          <CloudUpload size={13} strokeWidth={1.5} className="shrink-0" />
+                          <span>Push to Jira (stay open)</span>
+                        </button>
 
                         <button
                           type="button"
@@ -345,11 +363,11 @@ export function StoryWriterLayout({ ticketKey, draftTitle, draftType }: StoryWri
                       </>
                     )}
 
-                    {(((actions.isDraftDirty || actions.hasLocalSave) && writer.messages.length === 0) || writer.messages.length > 0) && (
+                    {((actions.isDraftDirty && writer.messages.length === 0) || writer.messages.length > 0) && (
                       <div className="mx-2 my-1 h-px bg-overlay-default" />
                     )}
 
-                    {(actions.isDraftDirty || actions.hasLocalSave) && writer.messages.length === 0 && (
+                    {actions.isDraftDirty && writer.messages.length === 0 && (
                       <button
                         type="button"
                         onClick={() => { actions.handleDelete(true); actions.setShowMoreMenu(false); }}
@@ -436,6 +454,27 @@ export function StoryWriterLayout({ ticketKey, draftTitle, draftType }: StoryWri
             </div>
           )}
 
+          {/* Cross-tab draft conflict: autosave is paused until resolved */}
+          {writer.draftConflict && (
+            <div className="flex items-center gap-3 border-b border-amber-500/20 bg-amber-500/[0.04] px-4 py-2 text-body-sm text-amber-400">
+              <span className="flex-1">This draft was changed in another tab. Autosave is paused.</span>
+              <button
+                type="button"
+                onClick={() => writer.resolveDraftConflict("reload")}
+                className="shrink-0 rounded-md border border-amber-500/20 bg-amber-500/10 px-2.5 py-1 text-body-sm font-medium text-amber-400 cursor-pointer hover:bg-amber-500/20 transition-colors duration-150"
+              >
+                Reload draft
+              </button>
+              <button
+                type="button"
+                onClick={() => writer.resolveDraftConflict("overwrite")}
+                className="shrink-0 rounded-md border border-amber-500/20 px-2.5 py-1 text-body-sm font-medium text-amber-400/80 cursor-pointer hover:bg-amber-500/10 transition-colors duration-150"
+              >
+                Overwrite
+              </button>
+            </div>
+          )}
+
           {/* Draft sync error */}
           {draftSync.syncStatus === "error" && (
             <div className="flex items-center gap-3 border-b border-amber-500/20 bg-amber-500/[0.04] px-4 py-2 text-body-sm text-amber-400">
@@ -469,23 +508,9 @@ export function StoryWriterLayout({ ticketKey, draftTitle, draftType }: StoryWri
             }
           />
 
-          <ConfirmDialog
-            open={actions.showRefinePrompt}
-            onClose={() => window.history.back()}
-            title="Mark as Ready to Refine?"
-            description="The session has been cleared. Would you like to mark this ticket as ready for refinement?"
-            cancelLabel="Skip"
-            confirmLabel="Yes, mark as Ready to Refine"
-            confirmVariant="primary"
-            onConfirm={async () => {
-              await actions.handleReadinessChange("ready_to_refine");
-              window.history.back();
-            }}
-          />
-
           <AddToRefinementModal
             open={actions.showAddToRefinement}
-            onClose={() => actions.setShowAddToRefinement(false)}
+            onClose={actions.handleAddToRefinementClose}
             ticketKeys={[ticketKey]}
           />
 

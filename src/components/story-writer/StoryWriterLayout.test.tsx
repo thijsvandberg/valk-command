@@ -110,20 +110,18 @@ import { usePaneContext } from "./panes/PaneContext";
 function makeDefaultActions() {
   return {
     moreMenuRef: { current: null },
+    wrapUpMenuRef: { current: null },
     writerContextValue: {},
     initialEditorOpen: true,
     isDraftDirty: false,
-    saving: false,
-    showSaved: false,
     pushing: false,
     pulling: false,
-    hasPushed: false,
-    hasLocalSave: false,
     showMoreMenu: false,
     setShowMoreMenu: vi.fn(),
+    showWrapUpMenu: false,
+    setShowWrapUpMenu: vi.fn(),
     showDeleteConfirm: false,
     setShowDeleteConfirm: vi.fn(),
-    showRefinePrompt: false,
     showSplitPicker: false,
     setShowSplitPicker: vi.fn(),
     showAddToRefinement: false,
@@ -135,10 +133,11 @@ function makeDefaultActions() {
     ticketSprintId: null,
     ticketAsTicket: null,
     localReadiness: null,
-    handleSaveDraft: vi.fn(),
     handlePush: vi.fn(),
-    handlePushAndClose: vi.fn(),
-    handleCloseAfterPush: vi.fn(),
+    handleWrapUpReady: vi.fn(),
+    handleWrapUpReadyClear: vi.fn(),
+    handleWrapUpClose: vi.fn(),
+    handleAddToRefinementClose: vi.fn(),
     handlePullFromJira: vi.fn().mockResolvedValue(undefined),
     handleDelete: vi.fn(),
     handleSplitButtonClick: vi.fn(),
@@ -150,6 +149,18 @@ function makeDefaultActions() {
     handleSprintChange: vi.fn(),
     handleFlagChange: vi.fn().mockResolvedValue(undefined),
     effectiveKey: "VPL-1",
+  };
+}
+
+function makeWriter(overrides: Record<string, unknown> = {}) {
+  return {
+    status: "ready",
+    session: { id: "s1", localTitle: "My Story", localDraft: "" },
+    messages: [],
+    draftSaveState: "idle",
+    draftConflict: false,
+    resolveDraftConflict: vi.fn(),
+    ...overrides,
   };
 }
 
@@ -244,12 +255,8 @@ describe("StoryWriterLayout", () => {
     expect(screen.getByText("Ticket Title")).toBeInTheDocument();
   });
 
-  it("shows save draft button when draft is dirty", () => {
-    (useStoryWriter as ReturnType<typeof vi.fn>).mockReturnValue({
-      status: "ready",
-      session: { id: "s1", localTitle: "Draft", localDraft: "content" },
-      messages: [],
-    });
+  it("renders no Save draft button and exactly one primary Wrap up action", () => {
+    (useStoryWriter as ReturnType<typeof vi.fn>).mockReturnValue(makeWriter());
     (useTicketDetail as ReturnType<typeof vi.fn>).mockReturnValue({ data: null, mutate: vi.fn() });
     (useStoryWriterActions as ReturnType<typeof vi.fn>).mockReturnValue({
       ...makeDefaultActions(),
@@ -258,25 +265,67 @@ describe("StoryWriterLayout", () => {
 
     render(<StoryWriterLayout ticketKey="VPL-1" />);
 
-    expect(screen.getByText("Save draft")).toBeInTheDocument();
+    expect(screen.queryByText("Save draft")).not.toBeInTheDocument();
+    expect(screen.getAllByText("Wrap up")).toHaveLength(1);
   });
 
-  it("shows saved state in save button when showSaved is true", () => {
-    (useStoryWriter as ReturnType<typeof vi.fn>).mockReturnValue({
-      status: "ready",
-      session: { id: "s1", localTitle: "Draft", localDraft: "content" },
-      messages: [],
-    });
+  it("shows the autosave indicator states from the writer", () => {
+    (useStoryWriter as ReturnType<typeof vi.fn>).mockReturnValue(makeWriter({ draftSaveState: "saving" }));
+    (useTicketDetail as ReturnType<typeof vi.fn>).mockReturnValue({ data: null, mutate: vi.fn() });
+
+    const { rerender } = render(<StoryWriterLayout ticketKey="VPL-1" />);
+    expect(screen.getByText("Saving…")).toBeInTheDocument();
+
+    (useStoryWriter as ReturnType<typeof vi.fn>).mockReturnValue(makeWriter({ draftSaveState: "saved" }));
+    rerender(<StoryWriterLayout ticketKey="VPL-1" />);
+    expect(screen.getByText("Saved")).toBeInTheDocument();
+  });
+
+  it("shows the three wrap-up options when the panel is open", () => {
+    (useStoryWriter as ReturnType<typeof vi.fn>).mockReturnValue(makeWriter());
+    (useTicketDetail as ReturnType<typeof vi.fn>).mockReturnValue({ data: null, mutate: vi.fn() });
+    const actions = { ...makeDefaultActions(), showWrapUpMenu: true };
+    (useStoryWriterActions as ReturnType<typeof vi.fn>).mockReturnValue(actions);
+
+    render(<StoryWriterLayout ticketKey="VPL-1" />);
+
+    expect(screen.getByText("Ready to refine")).toBeInTheDocument();
+    expect(screen.getByText("Ready to refine + clear session")).toBeInTheDocument();
+    expect(screen.getByText("Close as-is")).toBeInTheDocument();
+
+    screen.getByText("Ready to refine").closest("button")!.click();
+    expect(actions.handleWrapUpReady).toHaveBeenCalled();
+  });
+
+  it("shows the cross-tab conflict banner with Reload and Overwrite actions", () => {
+    const resolveDraftConflict = vi.fn();
+    (useStoryWriter as ReturnType<typeof vi.fn>).mockReturnValue(
+      makeWriter({ draftConflict: true, resolveDraftConflict }),
+    );
+    (useTicketDetail as ReturnType<typeof vi.fn>).mockReturnValue({ data: null, mutate: vi.fn() });
+
+    render(<StoryWriterLayout ticketKey="VPL-1" />);
+
+    expect(screen.getByText(/changed in another tab/)).toBeInTheDocument();
+    screen.getByText("Reload draft").click();
+    expect(resolveDraftConflict).toHaveBeenCalledWith("reload");
+    screen.getByText("Overwrite").click();
+    expect(resolveDraftConflict).toHaveBeenCalledWith("overwrite");
+  });
+
+  it("offers the plain push in the overflow menu, disabled when nothing is unpushed", () => {
+    (useStoryWriter as ReturnType<typeof vi.fn>).mockReturnValue(makeWriter());
     (useTicketDetail as ReturnType<typeof vi.fn>).mockReturnValue({ data: null, mutate: vi.fn() });
     (useStoryWriterActions as ReturnType<typeof vi.fn>).mockReturnValue({
       ...makeDefaultActions(),
-      isDraftDirty: true,
-      showSaved: true,
+      showMoreMenu: true,
+      isDraftDirty: false,
     });
 
     render(<StoryWriterLayout ticketKey="VPL-1" />);
 
-    expect(screen.getByText("Saved")).toBeInTheDocument();
+    const pushItem = screen.getByText("Push to Jira (stay open)").closest("button")!;
+    expect(pushItem).toBeDisabled();
   });
 
   it("shows push error banner when pushError is set", () => {

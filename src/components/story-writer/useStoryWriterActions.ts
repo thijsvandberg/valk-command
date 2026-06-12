@@ -38,21 +38,20 @@ export function useStoryWriterActions({
   const { notify } = useNotification();
 
   const [pushing, setPushing] = useState(false);
-  const [saving, setSaving] = useState(false);
   const [pulling, setPulling] = useState(false);
   const [pushError, setPushError] = useState<string | null>(null);
   const [isDraftDirty, setIsDraftDirty] = useState(false);
-  const [hasLocalSave, setHasLocalSave] = useState(false);
-  const [hasPushed, setHasPushed] = useState(false);
-  const [showSaved, setShowSaved] = useState(false);
-  const savedTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const editVersionRef = useRef(0);
   const initialDirtyChecked = useRef(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
-  const [showRefinePrompt, setShowRefinePrompt] = useState(false);
   const [showMoreMenu, setShowMoreMenu] = useState(false);
+  const [showWrapUpMenu, setShowWrapUpMenu] = useState(false);
   const [showAddToRefinement, setShowAddToRefinement] = useState(false);
+  // Set when a wrap-up flow opened the Add-to-refinement dialog: closing the
+  // dialog (Skip or Add) finishes the wrap-up by navigating away.
+  const [wrapUpNavPending, setWrapUpNavPending] = useState(false);
   const moreMenuRef = useRef<HTMLDivElement>(null);
+  const wrapUpMenuRef = useRef<HTMLDivElement>(null);
 
   // Local readiness state for optimistic updates
   const ticketReadiness = (ticketData?.readiness ?? null) as TicketReadiness | null;
@@ -75,9 +74,8 @@ export function useStoryWriterActions({
   const [showSplitPicker, setShowSplitPicker] = useState(false);
   const [targetTicketTitle, setTargetTicketTitle] = useState<string | null>(null);
 
-  useEffect(() => () => { if (savedTimerRef.current) clearTimeout(savedTimerRef.current); }, []);
-
   useOutsideClick(moreMenuRef, () => setShowMoreMenu(false), { enabled: showMoreMenu });
+  useOutsideClick(wrapUpMenuRef, () => setShowWrapUpMenu(false), { enabled: showWrapUpMenu });
 
   const targetTicketKey = writer.session?.targetTicketKey ?? null;
 
@@ -131,28 +129,6 @@ export function useStoryWriterActions({
     });
     mutateTicket();
   }, [ticketKey, mutateTicket]);
-
-  const handleSaveDraft = useCallback(async () => {
-    setSaving(true);
-    setPushError(null);
-    const versionAtSave = editVersionRef.current;
-    try {
-      await writer.saveDraft();
-      setHasLocalSave(true);
-      setShowSaved(true);
-      if (savedTimerRef.current) clearTimeout(savedTimerRef.current);
-      savedTimerRef.current = setTimeout(() => {
-        setShowSaved(false);
-        if (editVersionRef.current === versionAtSave) setIsDraftDirty(false);
-      }, 2000);
-    } catch (err) {
-      const detail = err instanceof ApiError ? (err.body as { error?: string })?.error : undefined;
-      setPushError(detail ?? "Save failed. Please try again.");
-    } finally {
-      // Always clear the spinner so the button stays usable even after a failure.
-      setSaving(false);
-    }
-  }, [writer]);
 
   const handleReadinessChange = useCallback(async (v: TicketReadiness | null) => {
     setLocalReadiness(v);
@@ -225,6 +201,8 @@ export function useStoryWriterActions({
     }
   }, [ticketKey, mutateTicket]);
 
+  // Plain publish: pushes to Jira and keeps working. Never touches readiness,
+  // never closes the editor (BRDG-339).
   const handlePush = useCallback(async () => {
     setPushing(true);
     setPushError(null);
@@ -233,9 +211,6 @@ export function useStoryWriterActions({
       const result = await writer.pushToJira();
       if (result.success) {
         if (editVersionRef.current === versionAtPush) setIsDraftDirty(false);
-        setHasLocalSave(false);
-        setHasPushed(true);
-        handleReadinessChange("ready_to_refine");
       } else if (result.conflict) {
         setPushError(result.contentChanged
           ? "Jira was updated externally. Review the diff on the ticket detail page."
@@ -247,80 +222,74 @@ export function useStoryWriterActions({
     } finally {
       setPushing(false);
     }
-  }, [writer, handleReadinessChange]);
+  }, [writer]);
 
   const handleDelete = useCallback(async (deleteConversation: boolean) => {
     await writer.deleteSession(deleteConversation);
     await globalMutate("/api/story-writer/active-sessions");
     setShowDeleteConfirm(false);
-    setShowRefinePrompt(true);
-  }, [writer]);
-
-  const handleCloseAfterPush = useCallback(() => {
     window.history.back();
-  }, []);
+  }, [writer]);
 
   const handleDraftChange = useCallback((content: string) => {
     editVersionRef.current += 1;
     setIsDraftDirty(true);
-    if (showSaved) {
-      setShowSaved(false);
-      if (savedTimerRef.current) clearTimeout(savedTimerRef.current);
-    }
     writer.updateLocalDraft(content);
-  }, [writer, showSaved]);
+  }, [writer]);
 
   const handleTitleChange = useCallback((title: string) => {
     editVersionRef.current += 1;
     setIsDraftDirty(true);
-    if (showSaved) {
-      setShowSaved(false);
-      if (savedTimerRef.current) clearTimeout(savedTimerRef.current);
-    }
     writer.updateLocalTitle(title);
-  }, [writer, showSaved]);
+  }, [writer]);
 
   const handleTargetDraftChange = useCallback((content: string) => {
     editVersionRef.current += 1;
     setIsDraftDirty(true);
-    if (showSaved) {
-      setShowSaved(false);
-      if (savedTimerRef.current) clearTimeout(savedTimerRef.current);
-    }
     writer.updateTargetLocalDraft(content);
-  }, [writer, showSaved]);
+  }, [writer]);
 
   const handleTargetTitleChange = useCallback((title: string) => {
     editVersionRef.current += 1;
     setIsDraftDirty(true);
-    if (showSaved) {
-      setShowSaved(false);
-      if (savedTimerRef.current) clearTimeout(savedTimerRef.current);
-    }
     writer.updateTargetLocalTitle(title);
-  }, [writer, showSaved]);
+  }, [writer]);
 
-  const handlePushAndClose = useCallback(async () => {
+  /**
+   * Wrap up: always pushes pending changes and ends with closing the editor.
+   * A push conflict aborts the close so nothing is lost. Variants only differ
+   * in what happens to readiness and the chat session (BRDG-339).
+   */
+  const performWrapUp = useCallback(async (opts: { readiness: boolean; clearSession: boolean }) => {
+    setShowWrapUpMenu(false);
     setPushing(true);
     setPushError(null);
     try {
       const result = await writer.pushToJira();
-      if (!result.success) {
-        if (result.conflict) {
-          setPushError(result.contentChanged
-            ? "Jira was updated externally. Review the diff on the ticket detail page."
-            : "Metadata changed in Jira. Try pushing again.");
-        } else {
-          setPushError("Push failed");
-        }
+      // success:false without conflict means there was nothing to push — the
+      // wrap-up continues. Only a real conflict aborts the close.
+      if (!result.success && result.conflict) {
+        setPushError(result.contentChanged
+          ? "Jira was updated externally. Review the diff on the ticket detail page."
+          : "Metadata changed in Jira. Try pushing again.");
         return;
       }
       setIsDraftDirty(false);
-      setHasLocalSave(false);
-      await writer.deleteSession(true);
-      await globalMutate("/api/story-writer/active-sessions");
-      await handleReadinessChange("ready_to_refine");
-      router.push(`/tickets/${encodeURIComponent(ticketKey)}`);
+      if (opts.readiness) {
+        await handleReadinessChange("ready_to_refine");
+      }
+      if (opts.clearSession) {
+        await writer.deleteSession(true);
+        await globalMutate("/api/story-writer/active-sessions");
+      }
+      if (opts.readiness) {
+        // Offer adding the ticket to a refinement before leaving; the dialog's
+        // close (Skip or Add) performs the deferred navigation.
+        setWrapUpNavPending(true);
+        setShowAddToRefinement(true);
+      } else {
+        router.push(`/tickets/${encodeURIComponent(ticketKey)}`);
+      }
     } catch (err) {
       const detail = err instanceof ApiError ? (err.body as { detail?: string })?.detail : undefined;
       setPushError(detail ?? "Push failed");
@@ -328,6 +297,27 @@ export function useStoryWriterActions({
       setPushing(false);
     }
   }, [writer, handleReadinessChange, router, ticketKey]);
+
+  const handleWrapUpReady = useCallback(
+    () => performWrapUp({ readiness: true, clearSession: false }),
+    [performWrapUp],
+  );
+  const handleWrapUpReadyClear = useCallback(
+    () => performWrapUp({ readiness: true, clearSession: true }),
+    [performWrapUp],
+  );
+  const handleWrapUpClose = useCallback(
+    () => performWrapUp({ readiness: false, clearSession: false }),
+    [performWrapUp],
+  );
+
+  const handleAddToRefinementClose = useCallback(() => {
+    setShowAddToRefinement(false);
+    if (wrapUpNavPending) {
+      setWrapUpNavPending(false);
+      router.push(`/tickets/${encodeURIComponent(ticketKey)}`);
+    }
+  }, [wrapUpNavPending, router, ticketKey]);
 
   const handleJiraStatusChange = useCallback(async (status: JiraStatus) => {
     mutateTicket((prev: Record<string, unknown> | undefined) => prev ? { ...prev, jiraStatus: status } : prev, { revalidate: false });
@@ -563,18 +553,16 @@ export function useStoryWriterActions({
     localReadiness,
     // UI state
     pushing,
-    saving,
     pulling,
     pushError,
     isDraftDirty,
-    hasLocalSave,
-    hasPushed,
-    showSaved,
     showDeleteConfirm,
     setShowDeleteConfirm,
-    showRefinePrompt,
     showMoreMenu,
     setShowMoreMenu,
+    showWrapUpMenu,
+    setShowWrapUpMenu,
+    wrapUpMenuRef,
     showAddToRefinement,
     setShowAddToRefinement,
     showSplitPicker,
@@ -585,11 +573,12 @@ export function useStoryWriterActions({
     targetTicketTitle,
     splitButtonLabel,
     // Handlers
-    handleSaveDraft,
     handlePush,
-    handlePushAndClose,
+    handleWrapUpReady,
+    handleWrapUpReadyClear,
+    handleWrapUpClose,
+    handleAddToRefinementClose,
     handleDelete,
-    handleCloseAfterPush,
     handlePullFromJira,
     handleSplitButtonClick,
     handleSplitConfirm,
