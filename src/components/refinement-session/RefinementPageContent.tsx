@@ -12,12 +12,17 @@ import { useRefinementFilters } from "@/hooks/useRefinementFilters";
 import { useRefinementQueue } from "@/hooks/useRefinementQueue";
 import { useBulkSuggest } from "@/hooks/useBulkSuggest";
 import { useRefinementStream } from "@/hooks/useRefinementStream";
-import { refinementSessions as refinementSessionsApi, jira as jiraApi } from "@/lib/api-client";
+import { refinementSessions as refinementSessionsApi, jira as jiraApi, type RefinementSessionResponse } from "@/lib/api-client";
 import { useTicketActions } from "@/components/sprint-board/useTicketActions";
 import { mapJiraSprints } from "@/components/sprint-board/sprint-board-utils";
 import { Boxes, Plus, Clock } from "lucide-react";
+import { DndContext, DragOverlay } from "@dnd-kit/core";
 import { Toast } from "@/components/ui/Toast";
 import { useToast } from "@/hooks/useToast";
+import { useRefinementDragDrop, NEW_SESSION_HINT_ID } from "@/hooks/useRefinementDragDrop";
+import { snapToPointer } from "@/components/sprint-board/SprintBoardDragDrop";
+import { DragGhostOverlay } from "@/components/sprint-board/DragGhostOverlay";
+import { TicketDragHandle, PlanSessionDropZone } from "./RefinementDragDrop";
 import { ViewHeader, ViewHeaderTitle } from "@/components/shared/ViewHeader";
 import { Button } from "@/components/ui/Button";
 import { SavedSessionList } from "@/components/refinement-session/SavedSessionList";
@@ -261,6 +266,126 @@ export function RefinementPageContent({
     [queueHook, sessions, mutateSessions],
   );
 
+  // --- Drag-and-drop onto session chips (BRDG-336) ---
+  // Move semantics: the dropped ticket leaves every non-completed session it is
+  // in (and the unsaved local queue) and lands in the target. All membership
+  // changes are applied to the SWR cache at once, then persisted directly; the
+  // queue's debounced persist is cancelled when the active session is a source,
+  // because its pending optimistic keys are already in the cache we read from.
+  const handleDropMove = useCallback(
+    async (ticketKey: string, targetSessionId: string) => {
+      const target = sessions.find((s) => s.id === targetSessionId);
+      if (!target || target.status === "completed") return;
+
+      const sourceSessions = sessions.filter(
+        (s) => s.id !== targetSessionId && s.status !== "completed" && s.ticketKeys.includes(ticketKey),
+      );
+      if (sourceSessions.some((s) => s.id === resolvedSessionId)) {
+        queueHook.flushPersistTimer();
+      }
+      if (queueHook.localQueue.includes(ticketKey)) {
+        queueHook.setLocalQueue(queueHook.localQueue.filter((k) => k !== ticketKey));
+      }
+
+      const targetKeys = [...target.ticketKeys, ticketKey];
+      mutateSessions(
+        (prev) =>
+          prev?.map((s) => {
+            if (s.id === targetSessionId) return { ...s, ticketKeys: targetKeys, ticketCount: targetKeys.length };
+            if (sourceSessions.some((src) => src.id === s.id)) {
+              const keys = s.ticketKeys.filter((k) => k !== ticketKey);
+              return { ...s, ticketKeys: keys, ticketCount: keys.length };
+            }
+            return s;
+          }),
+        false,
+      );
+
+      try {
+        await Promise.all([
+          refinementSessionsApi.update(targetSessionId, { ticketKeys: targetKeys }),
+          ...sourceSessions.map((s) =>
+            refinementSessionsApi.update(s.id, { ticketKeys: s.ticketKeys.filter((k) => k !== ticketKey) }),
+          ),
+        ]);
+        showToast(`Moved ${ticketKey} to ${sessionLabel(target)}`);
+      } catch {
+        showToast(`Failed to move ${ticketKey}. Changes reverted.`);
+      } finally {
+        await mutateSessions();
+      }
+    },
+    [sessions, resolvedSessionId, queueHook, mutateSessions, showToast],
+  );
+
+  // Dropping on "Plan session" creates a new session holding the ticket. Same
+  // move semantics; the view stays put (no auto-navigation) so a drag never
+  // yanks the PO off the current session.
+  const handleDropCreateSession = useCallback(
+    async (ticketKey: string) => {
+      const sourceSessions = sessions.filter(
+        (s) => s.status !== "completed" && s.ticketKeys.includes(ticketKey),
+      );
+      if (sourceSessions.some((s) => s.id === resolvedSessionId)) {
+        queueHook.flushPersistTimer();
+      }
+      if (queueHook.localQueue.includes(ticketKey)) {
+        queueHook.setLocalQueue(queueHook.localQueue.filter((k) => k !== ticketKey));
+      }
+      if (sourceSessions.length > 0) {
+        mutateSessions(
+          (prev) =>
+            prev?.map((s) => {
+              if (!sourceSessions.some((src) => src.id === s.id)) return s;
+              const keys = s.ticketKeys.filter((k) => k !== ticketKey);
+              return { ...s, ticketKeys: keys, ticketCount: keys.length };
+            }),
+          false,
+        );
+      }
+
+      try {
+        const [created] = await Promise.all([
+          refinementSessionsApi.create({ ticketKeys: [ticketKey] }),
+          ...sourceSessions.map((s) =>
+            refinementSessionsApi.update(s.id, { ticketKeys: s.ticketKeys.filter((k) => k !== ticketKey) }),
+          ),
+        ]);
+        showToast(`Moved ${ticketKey} to ${sessionLabel(created)}`);
+      } catch {
+        showToast(`Failed to create a session for ${ticketKey}.`);
+      } finally {
+        await mutateSessions();
+      }
+    },
+    [sessions, resolvedSessionId, queueHook, mutateSessions, showToast],
+  );
+
+  const handleAlreadyInSession = useCallback(
+    (ticketKey: string, session: RefinementSessionResponse) => {
+      showToast(`${ticketKey} is already in ${sessionLabel(session)}`);
+    },
+    [showToast],
+  );
+
+  const dnd = useRefinementDragDrop({
+    sessions,
+    onMove: handleDropMove,
+    onCreateFromTicket: handleDropCreateSession,
+    onAlreadyInSession: handleAlreadyInSession,
+  });
+
+  const dragTicket = dnd.activeDragKey ? (queueHook.allTicketMap.get(dnd.activeDragKey) ?? null) : null;
+  // Feeds the drag ghost's "Move to ..." hint; the Plan session target maps to
+  // a sentinel entry so the same overlay component covers both drop kinds.
+  const sessionDropHintMap = useMemo(
+    () => ({
+      ...Object.fromEntries(sessions.map((s) => [s.id, sessionLabel(s)])),
+      [NEW_SESSION_HINT_ID]: "a new session",
+    }),
+    [sessions],
+  );
+
   const { flushPersistTimer } = queueHook;
   const handleSelectSession = useCallback(
     (id: string) => {
@@ -360,17 +485,30 @@ export function RefinementPageContent({
   }, [sessions]);
 
   // --- Render ---
+  // The DndContext spans the header (Plan session drop), session chips, ticket
+  // list and side panel. It is intentionally separate from the queue's own
+  // sortable DndContext inside RefinementQueuePanel, so the two DnD surfaces
+  // can never interfere with each other.
   return (
-    <>
+    <DndContext
+      sensors={dnd.sensors}
+      collisionDetection={dnd.collisionDetection}
+      onDragStart={dnd.handleDragStart}
+      onDragOver={dnd.handleDragOver}
+      onDragEnd={dnd.handleDragEnd}
+      onDragCancel={dnd.handleDragCancel}
+    >
       {pageTitle}
       <ViewHeader
         icon={<Boxes size={16} strokeWidth={1.5} />}
         hideNotifications
         actions={
           <div className="flex items-center gap-2">
-            <Button variant="secondary" size="md" icon={<Plus size={13} strokeWidth={1.5} />} onClick={() => setCreateModalOpen(true)}>
-              Plan session
-            </Button>
+            <PlanSessionDropZone isDragActive={dnd.isDragActive}>
+              <Button variant="secondary" size="md" icon={<Plus size={13} strokeWidth={1.5} />} onClick={() => setCreateModalOpen(true)}>
+                Plan session
+              </Button>
+            </PlanSessionDropZone>
             <Link href="/refinement/history">
               <Button variant="ghost" size="md" icon={<Clock size={13} strokeWidth={1.5} />}>Sessions</Button>
             </Link>
@@ -387,7 +525,7 @@ export function RefinementPageContent({
           divides the row, shrinking the left column (and so the list) as it grows. */}
       <div className="flex">
         <div className="min-w-0 flex-1">
-          <SavedSessionList sessions={activeSessions} mutate={mutateSessions} activeSessionId={resolvedSessionId} onSelectSession={handleSelectSession} onSessionFinished={handleSessionFinished} />
+          <SavedSessionList sessions={activeSessions} mutate={mutateSessions} activeSessionId={resolvedSessionId} onSelectSession={handleSelectSession} onSessionFinished={handleSessionFinished} dragActive={dnd.isDragActive} />
 
           <div className="min-h-full">
             {/* On xl+ screens the container cap grows so the flex-1 ticket pane
@@ -461,6 +599,13 @@ export function RefinementPageContent({
               onMutate={() => mutateTickets()}
               onSelectTicket={setPreviewTicketKey}
               adjacentKeys={previewAdjacentKeys}
+              dragHandle={
+                <TicketDragHandle
+                  ticketKey={previewTicketKey}
+                  source="panel"
+                  className="flex h-7 w-7 shrink-0 cursor-grab items-center justify-center rounded-md text-text-muted hover:bg-overlay-default hover:text-text-secondary focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)] active:cursor-grabbing"
+                />
+              }
             />
           </div>
         )}
@@ -475,6 +620,20 @@ export function RefinementPageContent({
       )}
 
       <Toast toast={actionToast} loading={actionToastLoading} onDismiss={dismissToast} />
-    </>
+
+      {/* Drag preview: the same ghost the sprint board uses, snapped to the
+          pointer; the hint line shows the session under the cursor. */}
+      <DragOverlay dropAnimation={null} modifiers={[snapToPointer]}>
+        {dragTicket ? (
+          <DragGhostOverlay
+            dragTicket={dragTicket}
+            draggedKeys={[dragTicket.key]}
+            tickets={tickets ?? []}
+            targetSprintId={dnd.overSessionId}
+            sprintNameMap={sessionDropHintMap}
+          />
+        ) : null}
+      </DragOverlay>
+    </DndContext>
   );
 }

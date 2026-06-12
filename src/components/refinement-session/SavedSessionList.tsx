@@ -2,9 +2,11 @@
 
 import { useState, useRef, useEffect, useCallback } from "react";
 import { Check, Play } from "lucide-react";
+import { useDroppable } from "@dnd-kit/core";
 import { ConfirmDialog } from "@/components/shared/ConfirmDialog";
 import { BarContainer } from "@/components/shared/BarContainer";
 import { RefinementSessionMenu } from "@/components/refinement-session/RefinementSessionMenu";
+import { SESSION_DROP_PREFIX } from "@/hooks/useRefinementDragDrop";
 import { refinementSessions, type RefinementSessionResponse } from "@/lib/api-client";
 import { sessionLabel } from "./refinement-utils";
 import type { KeyedMutator } from "swr";
@@ -16,6 +18,27 @@ interface SavedSessionListProps {
   onSelectSession: (id: string) => void;
   /** Notifies the parent after a session is marked completed, so it can reset the prep view. */
   onSessionFinished?: (id: string) => void;
+  /** A ticket drag is in progress: every ready session chip shows its drop affordance. */
+  dragActive?: boolean;
+}
+
+/** Render-prop droppable so each chip registers as a BRDG-336 drop target
+    without restructuring the chip markup. Completed sessions are disabled. */
+function SessionDropTarget({
+  sessionId,
+  disabled,
+  children,
+}: {
+  sessionId: string;
+  disabled: boolean;
+  children: (drop: { setNodeRef: (el: HTMLElement | null) => void; isOver: boolean }) => React.ReactNode;
+}) {
+  const { setNodeRef, isOver } = useDroppable({
+    id: `${SESSION_DROP_PREFIX}${sessionId}`,
+    data: { sessionId },
+    disabled,
+  });
+  return <>{children({ setNodeRef, isOver })}</>;
 }
 
 export function SavedSessionList({
@@ -24,6 +47,7 @@ export function SavedSessionList({
   activeSessionId,
   onSelectSession,
   onSessionFinished,
+  dragActive = false,
 }: SavedSessionListProps) {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editValue, setEditValue] = useState("");
@@ -83,18 +107,29 @@ export function SavedSessionList({
           const isActive = activeSessionId === session.id;
           const isCompleted = session.status === "completed";
           const isInProgress = session.status === "in_progress";
+          const isDropTarget = dragActive && !isCompleted;
 
           return (
+            <SessionDropTarget key={session.id} sessionId={session.id} disabled={isCompleted}>
+              {({ setNodeRef, isOver }) => (
             <div
-              key={session.id}
-              className={`group relative flex shrink-0 items-center gap-1.5 px-3 text-body-sm font-medium ${
+              ref={setNodeRef}
+              data-drop-target={isDropTarget || undefined}
+              data-drop-over={(isDropTarget && isOver) || undefined}
+              className={`group relative flex shrink-0 items-center gap-1.5 rounded-md px-3 text-body-sm font-medium ${
                 isActive
                   ? "text-text-primary"
                   : isCompleted
                     ? "text-text-muted"
                     : "text-text-tertiary hover:text-text-secondary"
+              } ${
+                isDropTarget
+                  ? isOver
+                    ? "bg-[var(--color-brand-500)]/15 outline-2 outline-dashed outline-[var(--color-brand-400)] -outline-offset-3 text-text-primary"
+                    : "bg-[var(--color-brand-500)]/[0.06] outline-1 outline-dashed outline-[var(--color-brand-500)]/40 -outline-offset-3"
+                  : ""
               }`}
-              style={{ transition: "color 120ms" }}
+              style={{ transition: "color 120ms, background-color 120ms" }}
             >
               {isCompleted && (
                 <Check size={12} strokeWidth={2.5} className="shrink-0 text-[var(--color-brand-500)]" />
@@ -169,6 +204,8 @@ export function SavedSessionList({
                 <span className="absolute bottom-0 left-2 right-2 h-[2px] rounded-full bg-[var(--color-brand-400)] opacity-0 group-hover:opacity-20" style={{ transition: "opacity 150ms" }} />
               )}
             </div>
+              )}
+            </SessionDropTarget>
           );
         })}
 

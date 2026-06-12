@@ -20,6 +20,7 @@ const mockSessions: RefinementSessionResponse[] = [
     ticketCount: 2,
     status: "draft",
     generalComment: null,
+    scheduledFor: null,
     currentIndex: 0,
     createdAt: "2026-05-20T10:00:00Z",
     updatedAt: "2026-05-20T10:00:00Z",
@@ -31,6 +32,7 @@ const mockSessions: RefinementSessionResponse[] = [
     ticketCount: 1,
     status: "completed",
     generalComment: null,
+    scheduledFor: null,
     currentIndex: 0,
     createdAt: "2026-05-21T10:00:00Z",
     updatedAt: "2026-05-21T10:00:00Z",
@@ -186,6 +188,35 @@ describe("SavedSessionList", () => {
     await waitFor(() => {
       expect(onFinished).toHaveBeenCalledWith("s1");
     });
+  });
+
+  it("marks ready sessions as drop targets while a ticket drag is active", () => {
+    render(
+      <SavedSessionList
+        sessions={mockSessions}
+        mutate={mockMutate}
+        activeSessionId="s1"
+        onSelectSession={mockOnSelect}
+        dragActive
+      />,
+    );
+
+    expect(screen.getByText("Sprint 42").closest("[data-drop-target]")).not.toBeNull();
+    // Completed sessions never become drop targets.
+    expect(screen.getByText("Sprint 43").closest("[data-drop-target]")).toBeNull();
+  });
+
+  it("shows no drop affordance when no drag is active", () => {
+    const { container } = render(
+      <SavedSessionList
+        sessions={mockSessions}
+        mutate={mockMutate}
+        activeSessionId="s1"
+        onSelectSession={mockOnSelect}
+      />,
+    );
+
+    expect(container.querySelector("[data-drop-target]")).toBeNull();
   });
 
   it("does not offer a finish action for completed sessions", () => {
