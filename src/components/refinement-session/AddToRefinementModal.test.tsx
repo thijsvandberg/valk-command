@@ -188,7 +188,10 @@ describe("AddToRefinementModal", () => {
     );
     fireEvent.click(screen.getByText("New session"));
     await waitFor(() => {
-      expect(mockApiCreate).toHaveBeenCalledWith({ ticketKeys: ["VPL-5"] });
+      expect(mockApiCreate).toHaveBeenCalledWith({
+        name: expect.stringMatching(/^Refinement \d{4}-\d{2}-\d{2}$/),
+        ticketKeys: ["VPL-5"],
+      });
     });
     expect(mockMutate).toHaveBeenCalled();
   });
