@@ -13,6 +13,7 @@ import {
   NotebookPen,
   Users,
   Trash2,
+  FlaskConical,
   ChevronRight,
   ChevronDown,
   History,
@@ -47,6 +48,7 @@ const NAV_ITEMS: NavItem[] = [
   { label: "Pipelines", href: "/pipelines", icon: <GitBranch className={ICON} strokeWidth={1.5} />, tier: "rare" },
   { label: "Stakeholder", href: "/stakeholder", icon: <Users className={ICON} strokeWidth={1.5} />, tier: "rare" },
   { label: "Cleanup", href: "/cleanup", icon: <Trash2 className={ICON} strokeWidth={1.5} />, tier: "rare" },
+  { label: "Explorations", href: "/dev/exploration", icon: <FlaskConical className={ICON} strokeWidth={1.5} />, tier: "rare" },
 ];
 
 const PRIMARY = NAV_ITEMS.find((n) => n.tier === "primary")!;

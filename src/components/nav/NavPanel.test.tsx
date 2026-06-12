@@ -120,14 +120,14 @@ describe("NavPanel (header navigation dropdown)", () => {
     expect(within(hero).getByText(/2 done/)).toBeInTheDocument();
   });
 
-  it("renders the three common rows with counts and the four rare footer links", () => {
+  it("renders the three common rows with counts and the five rare footer links", () => {
     renderOpen();
     for (const label of ["Chat", "Story Writer", "Refinement"]) {
       expect(screen.getByRole("link", { name: new RegExp(label) })).toBeInTheDocument();
     }
     expect(screen.getByText("4")).toBeInTheDocument();
     expect(screen.getByText("8")).toBeInTheDocument();
-    for (const label of ["Epics", "Pipelines", "Stakeholder", "Cleanup"]) {
+    for (const label of ["Epics", "Pipelines", "Stakeholder", "Cleanup", "Explorations"]) {
       expect(screen.getByRole("link", { name: label })).toBeInTheDocument();
     }
   });
