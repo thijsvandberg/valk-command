@@ -491,8 +491,6 @@ export default function RefinementSessionTicketPage({
               {navMenuOpen && <NavPanel open onClose={() => setNavMenuOpen(false)} />}
             </div>
 
-            <div className="h-6 w-px shrink-0 bg-gradient-to-b from-transparent via-border-strong to-transparent" />
-
             {ticketData && (
               <>
                 <TicketStatusPill
