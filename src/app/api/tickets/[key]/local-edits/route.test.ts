@@ -167,6 +167,66 @@ describe("PUT /api/tickets/[key]/local-edits", () => {
     const data = await res.json();
     expect(data.isDraft).toBe(false);
   });
+
+  it("accepts a save with a matching baseModifiedAt and returns the new modifiedAt", async () => {
+    seedTicket(testDb, "VPL-100");
+    const first = await PUT(
+      putRequest("VPL-100", { field: "description", localValue: "v1", isDraft: true }),
+      makeParams("VPL-100"),
+    );
+    const row = await first.json();
+    expect(row.modifiedAt).toBeTruthy();
+
+    const res = await PUT(
+      putRequest("VPL-100", { field: "description", localValue: "v2", isDraft: true, baseModifiedAt: row.modifiedAt }),
+      makeParams("VPL-100"),
+    );
+    expect(res.status).toBe(200);
+    const updated = await res.json();
+    expect(updated.localValue).toBe("v2");
+    expect(updated.modifiedAt).toBeTruthy();
+  });
+
+  it("rejects a stale save with 409 when baseModifiedAt no longer matches", async () => {
+    seedTicket(testDb, "VPL-100");
+    const first = await PUT(
+      putRequest("VPL-100", { field: "description", localValue: "v1", isDraft: true }),
+      makeParams("VPL-100"),
+    );
+    const staleBase = (await first.json()).modifiedAt;
+
+    // Another tab saves in between, bumping modifiedAt.
+    await new Promise((r) => setTimeout(r, 5));
+    await PUT(
+      putRequest("VPL-100", { field: "description", localValue: "other tab", isDraft: true }),
+      makeParams("VPL-100"),
+    );
+
+    const res = await PUT(
+      putRequest("VPL-100", { field: "description", localValue: "stale write", isDraft: true, baseModifiedAt: staleBase }),
+      makeParams("VPL-100"),
+    );
+    expect(res.status).toBe(409);
+
+    // The stale write must not have overwritten the other tab's content.
+    const getRes = await GET(getRequest("VPL-100"), makeParams("VPL-100"));
+    const all = await getRes.json();
+    expect(all[0].localValue).toBe("other tab");
+  });
+
+  it("still blind-upserts when baseModifiedAt is omitted (legacy/sendBeacon path)", async () => {
+    seedTicket(testDb, "VPL-100");
+    await PUT(
+      putRequest("VPL-100", { field: "description", localValue: "v1", isDraft: true }),
+      makeParams("VPL-100"),
+    );
+    const res = await PUT(
+      putRequest("VPL-100", { field: "description", localValue: "blind overwrite", isDraft: true }),
+      makeParams("VPL-100"),
+    );
+    expect(res.status).toBe(200);
+    expect((await res.json()).localValue).toBe("blind overwrite");
+  });
 });
 
 describe("DELETE /api/tickets/[key]/local-edits", () => {

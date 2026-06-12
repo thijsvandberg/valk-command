@@ -15,6 +15,7 @@ import { emitTicketEvent } from "@/lib/ticket-events";
 import { computeTicketEditState } from "@/lib/ticket-state";
 import type { TicketEditState } from "@/types/ticket";
 import {
+  ConflictError,
   JiraUnavailableError,
   NotFoundError,
   ValidationError,
@@ -274,6 +275,13 @@ export interface UpsertLocalEditInput {
   localValue: unknown;
   baseJiraVersion?: string;
   isDraft?: boolean;
+  /**
+   * Optimistic-concurrency token: the modifiedAt the client last saw for this
+   * field. When provided and it no longer matches the stored row (another tab
+   * saved in between), the upsert is rejected with a 409 instead of silently
+   * overwriting. Absent = legacy blind upsert (sendBeacon, EditableDescription).
+   */
+  baseModifiedAt?: string;
 }
 
 export async function getLocalEdits(key: string): Promise<TicketLocalEditRow[]> {
@@ -288,7 +296,7 @@ export async function upsertLocalEdit(
   key: string,
   input: UpsertLocalEditInput,
 ): Promise<TicketLocalEditRow> {
-  const { field: rawField, localValue, baseJiraVersion, isDraft } = input;
+  const { field: rawField, localValue, baseJiraVersion, isDraft, baseModifiedAt } = input;
 
   if (!rawField || !["title", "description"].includes(rawField as string)) {
     throw new ValidationError("field must be 'title' or 'description'");
@@ -321,6 +329,10 @@ export async function upsertLocalEdit(
       ),
     )
     .get();
+
+  if (baseModifiedAt && existing && existing.modifiedAt !== baseModifiedAt) {
+    throw new ConflictError("Draft was modified elsewhere", { contentChanged: true });
+  }
 
   let resolvedBase: string | null = baseJiraVersion ?? existing?.baseJiraVersion ?? null;
   if (!resolvedBase) {
