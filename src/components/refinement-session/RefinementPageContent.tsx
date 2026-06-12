@@ -345,8 +345,11 @@ export function RefinementPageContent({
       }
 
       try {
+        // The create endpoint requires a name or a date (BRDG-337); a drop has
+        // no modal to ask, so stamp a dated default name the PO can rename.
+        const defaultName = `Refinement ${new Date().toISOString().slice(0, 10)}`;
         const [created] = await Promise.all([
-          refinementSessionsApi.create({ ticketKeys: [ticketKey] }),
+          refinementSessionsApi.create({ name: defaultName, ticketKeys: [ticketKey] }),
           ...sourceSessions.map((s) =>
             refinementSessionsApi.update(s.id, { ticketKeys: s.ticketKeys.filter((k) => k !== ticketKey) }),
           ),
