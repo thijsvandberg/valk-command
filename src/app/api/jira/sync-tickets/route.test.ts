@@ -1,200 +1,234 @@
 // @vitest-environment node
+// HTTP-only route test: the service layer is mocked. DB persistence behavior
+// (ticket/metadata/story-version rows, re-sync dedup) is covered by
+// src/lib/sync-tickets-service.test.ts and src/lib/upsert-issue.test.ts.
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { createTestDb } from "@/db/test-utils";
-import type { BetterSQLite3Database } from "drizzle-orm/better-sqlite3";
-import type * as schema from "@/db/schema";
 
-let testDb: BetterSQLite3Database<typeof schema>;
+vi.mock("server-only", () => ({}));
 
-vi.mock("@/db", () => ({
-  get db() {
-    return testDb;
-  },
-}));
+const mockApplyRateLimit = vi.hoisted(() => vi.fn());
+vi.mock("@/lib/rate-limiter", () => ({ applyRateLimit: mockApplyRateLimit }));
 
-vi.mock("@/lib/jira-client", () => ({
-  jiraClient: {
-    isLive: false,
-    getSprintIssues: vi.fn().mockResolvedValue([
-      {
-        id: "10001",
-        key: "VPL-101",
-        fields: {
-          summary: "Implement auth flow",
-          issuetype: { name: "Story" },
-          status: { name: "In Progress" },
-          priority: { name: "High" },
-          assignee: { displayName: "Alice", avatarUrls: { "48x48": "https://example.com/alice.png" } },
-          reporter: { displayName: "Bob" },
-          labels: ["backend"],
-          flagged: false,
-          description: "As a user I want to authenticate",
-          created: "2026-03-01T10:00:00.000Z",
-          updated: "2026-03-15T12:00:00.000Z",
-          components: [{ name: "auth" }],
-        },
-      },
-      {
-        id: "10002",
-        key: "VPL-102",
-        fields: {
-          summary: "Add dashboard widgets",
-          issuetype: { name: "Task" },
-          status: { name: "To Do" },
-          priority: { name: "Medium" },
-          assignee: null,
-          reporter: null,
-          labels: [],
-          flagged: false,
-          description: null,
-          created: "2026-03-02T10:00:00.000Z",
-          updated: "2026-03-16T12:00:00.000Z",
-          components: [],
-        },
-      },
-    ]),
-    getAttachments: vi.fn().mockResolvedValue([]),
-    getIssue: vi.fn().mockResolvedValue({}),
-  },
-  extractSprint: () => null,
-  extractSprints: () => [],
-  extractStoryPoints: () => null,
-  extractEpicLink: () => null,
-  extractAcceptanceCriteria: () => null,
-  extractLastChangeAuthor: () => null,
-  FLAGGED_FIELD: "customfield_10002",
-  JiraApiError: class JiraApiError extends Error {
+const mockSyncSprint = vi.hoisted(() => vi.fn());
+const mockSyncIndividualTickets = vi.hoisted(() => vi.fn());
+const mockSyncBacklog = vi.hoisted(() => vi.fn());
+const mockPlanGroupKeys = vi.hoisted(() => vi.fn());
+const mockReconcileGroupMembership = vi.hoisted(() => vi.fn());
+
+// Stub with the same shape as the real class. Both route.ts and this test
+// reference the mocked module's export, so instanceof checks in the route
+// resolve against this class.
+const { SyncValidationError } = vi.hoisted(() => {
+  class SyncValidationError extends Error {
     status: number;
-    constructor(status: number) {
-      super(`Jira API ${status}`);
+    constructor(message: string, status = 400) {
+      super(message);
+      this.name = "SyncValidationError";
       this.status = status;
     }
-  },
-}));
+  }
+  return { SyncValidationError };
+});
 
-vi.mock("@/lib/sync-abort", () => ({
-  registerSync: () => new AbortController(),
-  unregisterSync: () => {},
-}));
-
-vi.mock("@/lib/adf-to-markdown", () => ({
-  adfToMarkdown: (doc: unknown) => (typeof doc === "string" ? doc : ""),
+vi.mock("@/lib/sync-tickets-service", () => ({
+  syncSprint: mockSyncSprint,
+  syncIndividualTickets: mockSyncIndividualTickets,
+  syncBacklog: mockSyncBacklog,
+  planGroupKeys: mockPlanGroupKeys,
+  reconcileGroupMembership: mockReconcileGroupMembership,
+  SyncValidationError,
 }));
 
 import { POST } from "./route";
 
-function makeRequest(sprintId?: string): Request {
-  const url = sprintId
-    ? `http://localhost:3100/api/jira/sync-tickets?sprintId=${sprintId}`
+function makeRequest(query?: string, body?: unknown): Request {
+  const url = query
+    ? `http://localhost:3100/api/jira/sync-tickets?${query}`
     : "http://localhost:3100/api/jira/sync-tickets";
-  return new Request(url, { method: "POST" });
+  return new Request(url, {
+    method: "POST",
+    headers: body !== undefined ? { "Content-Type": "application/json" } : undefined,
+    body: body !== undefined ? JSON.stringify(body) : undefined,
+  });
 }
 
 describe("POST /api/jira/sync-tickets", () => {
   beforeEach(() => {
-    testDb = createTestDb();
+    vi.clearAllMocks();
+    mockApplyRateLimit.mockResolvedValue(null);
+    mockSyncSprint.mockResolvedValue({ count: 2, live: false });
+    mockSyncIndividualTickets.mockResolvedValue({ count: 1, live: false });
+    mockSyncBacklog.mockResolvedValue({ count: 5, live: false });
+    mockPlanGroupKeys.mockResolvedValue(["VPL-1", "VPL-2"]);
+    mockReconcileGroupMembership.mockResolvedValue({ reconciled: 0 });
   });
 
-  it("returns 400 when sprintId is missing", async () => {
-    const response = await POST(makeRequest());
-    expect(response.status).toBe(400);
+  it("returns the rate-limit response when limited", async () => {
+    const limited = new Response(JSON.stringify({ error: "Too many requests" }), { status: 429 });
+    mockApplyRateLimit.mockResolvedValueOnce(limited);
+
+    const response = await POST(makeRequest("sprintId=134"));
+
+    expect(response.status).toBe(429);
+    expect(mockSyncSprint).not.toHaveBeenCalled();
   });
 
-  it("syncs tickets for a sprint", async () => {
-    const response = await POST(makeRequest("134"));
-    const data = await response.json();
+  describe("sprint/backlog sync", () => {
+    it("delegates a sprint sync to syncSprint and returns its result", async () => {
+      const response = await POST(makeRequest("sprintId=134"));
+      const data = await response.json();
 
-    expect(response.status).toBe(200);
-    expect(data.count).toBeGreaterThan(0);
-    expect(data.live).toBe(false);
-    expect(data).not.toHaveProperty("ok");
-  });
-
-  it("creates ticket rows in the database", async () => {
-    await POST(makeRequest("134"));
-
-    const { ticket } = await import("@/db/schema");
-    const rows = testDb.select().from(ticket).all();
-    expect(rows.length).toBeGreaterThan(0);
-    expect(rows[0]).toHaveProperty("jiraKey");
-    expect(rows[0]).toHaveProperty("title");
-    expect(rows[0]).toHaveProperty("status");
-  });
-
-  it("creates ticket_metadata rows", async () => {
-    await POST(makeRequest("134"));
-
-    const { ticketMetadata } = await import("@/db/schema");
-    const rows = testDb.select().from(ticketMetadata).all();
-    expect(rows.length).toBeGreaterThan(0);
-  });
-
-  it("creates story_version rows", async () => {
-    await POST(makeRequest("134"));
-
-    const { storyVersion } = await import("@/db/schema");
-    const rows = testDb.select().from(storyVersion).all();
-    expect(rows.length).toBeGreaterThan(0);
-    expect(rows[0]).toHaveProperty("contentHash");
-  });
-
-  it("handles re-sync without duplicating data", async () => {
-    await POST(makeRequest("134"));
-    await POST(makeRequest("134"));
-
-    const { ticket } = await import("@/db/schema");
-    const rows = testDb.select().from(ticket).all();
-
-    // Each unique ticket key should appear exactly once
-    const keys = rows.map((r) => r.jiraKey);
-    const uniqueKeys = new Set(keys);
-    expect(keys.length).toBe(uniqueKeys.size);
-  });
-
-  it("does not duplicate story versions when content unchanged", async () => {
-    await POST(makeRequest("134"));
-    await POST(makeRequest("134"));
-
-    const { storyVersion } = await import("@/db/schema");
-    const rows = testDb.select().from(storyVersion).all();
-
-    // Group by jiraKey: each should have exactly 1 version (content didn't change)
-    const byKey: Record<string, number> = {};
-    for (const row of rows) {
-      byKey[row.jiraKey] = (byKey[row.jiraKey] ?? 0) + 1;
-    }
-    for (const count of Object.values(byKey)) {
-      expect(count).toBe(1);
-    }
-  });
-
-  it("returns 400 for invalid ticketKeys in body", async () => {
-    const request = new Request("http://localhost:3100/api/jira/sync-tickets", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ ticketKeys: [123, null] }),
+      expect(response.status).toBe(200);
+      expect(data).toEqual({ count: 2, live: false });
+      expect(mockSyncSprint).toHaveBeenCalledWith("134", "bulk", expect.anything());
     });
-    const response = await POST(request);
-    expect(response.status).toBe(400);
-  });
 
-  it("returns 400 for empty ticketKeys array", async () => {
-    const request = new Request("http://localhost:3100/api/jira/sync-tickets", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ ticketKeys: [] }),
+    it("passes the strategy query param through", async () => {
+      await POST(makeRequest("sprintId=134&strategy=timestamp-first"));
+      expect(mockSyncSprint).toHaveBeenCalledWith("134", "timestamp-first", expect.anything());
     });
-    const response = await POST(request);
-    expect(response.status).toBe(400);
+
+    it("routes __backlog__ to syncBacklog", async () => {
+      const response = await POST(makeRequest("sprintId=__backlog__"));
+      const data = await response.json();
+
+      expect(response.status).toBe(200);
+      expect(data).toEqual({ count: 5, live: false });
+      expect(mockSyncBacklog).toHaveBeenCalledWith("bulk", expect.anything());
+      expect(mockSyncSprint).not.toHaveBeenCalled();
+    });
+
+    it("maps SyncValidationError from the service to its status", async () => {
+      mockSyncSprint.mockRejectedValueOnce(new SyncValidationError("sprintId is required"));
+
+      const response = await POST(makeRequest());
+
+      expect(response.status).toBe(400);
+      const data = await response.json();
+      expect(data.error).toBe("sprintId is required");
+    });
+
+    it("maps a SyncValidationError with a custom status", async () => {
+      mockSyncSprint.mockRejectedValueOnce(new SyncValidationError("Sprint not found", 404));
+
+      const response = await POST(makeRequest("sprintId=999"));
+
+      expect(response.status).toBe(404);
+    });
+
+    it("returns 500 when the service throws a generic error", async () => {
+      mockSyncSprint.mockRejectedValueOnce(new Error("Network failure"));
+
+      const response = await POST(makeRequest("sprintId=134"));
+
+      expect(response.status).toBe(500);
+      const data = await response.json();
+      expect(data.error).toBeDefined();
+    });
   });
 
-  it("returns 500 when sync service throws a generic error", async () => {
-    const { jiraClient } = await import("@/lib/jira-client");
-    vi.mocked(jiraClient.getSprintIssues).mockRejectedValueOnce(new Error("Network failure"));
+  describe("individual ticket sync (body ticketKeys)", () => {
+    it("delegates listed tickets to syncIndividualTickets", async () => {
+      const response = await POST(makeRequest(undefined, { ticketKeys: ["VPL-1", "VPL-2"] }));
+      const data = await response.json();
 
-    const response = await POST(makeRequest("999"));
-    expect(response.status).toBe(500);
-    const data = await response.json();
-    expect(data.error).toBeDefined();
+      expect(response.status).toBe(200);
+      expect(data).toEqual({ count: 1, live: false });
+      expect(mockSyncIndividualTickets).toHaveBeenCalledWith(["VPL-1", "VPL-2"], expect.anything());
+      expect(mockSyncSprint).not.toHaveBeenCalled();
+    });
+
+    it("returns 400 for invalid ticketKeys in body", async () => {
+      const response = await POST(makeRequest(undefined, { ticketKeys: [123, null] }));
+
+      expect(response.status).toBe(400);
+      expect(mockSyncIndividualTickets).not.toHaveBeenCalled();
+    });
+
+    it("returns 400 for empty ticketKeys array", async () => {
+      const response = await POST(makeRequest(undefined, { ticketKeys: [] }));
+
+      expect(response.status).toBe(400);
+      expect(mockSyncIndividualTickets).not.toHaveBeenCalled();
+    });
+  });
+
+  describe("mode=plan", () => {
+    it("returns the planned keys for a sprint target", async () => {
+      const response = await POST(makeRequest("mode=plan&sprintId=134"));
+      const data = await response.json();
+
+      expect(response.status).toBe(200);
+      expect(data).toEqual({ keys: ["VPL-1", "VPL-2"] });
+      expect(mockPlanGroupKeys).toHaveBeenCalledWith({ kind: "sprint", id: "134" }, expect.anything());
+    });
+
+    it("resolves an epic target from epicKey", async () => {
+      await POST(makeRequest("mode=plan&epicKey=VPL-E1"));
+      expect(mockPlanGroupKeys).toHaveBeenCalledWith({ kind: "epic", id: "VPL-E1" }, expect.anything());
+    });
+
+    it("returns 400 when neither sprintId nor epicKey is given", async () => {
+      const response = await POST(makeRequest("mode=plan"));
+
+      expect(response.status).toBe(400);
+      expect(mockPlanGroupKeys).not.toHaveBeenCalled();
+    });
+
+    it("returns 500 when planning throws a generic error", async () => {
+      mockPlanGroupKeys.mockRejectedValueOnce(new Error("boom"));
+
+      const response = await POST(makeRequest("mode=plan&sprintId=134"));
+
+      expect(response.status).toBe(500);
+    });
+  });
+
+  describe("mode=reconcile", () => {
+    it("reconciles the posted keys against the target", async () => {
+      const response = await POST(makeRequest("mode=reconcile&sprintId=134", { keys: ["VPL-1"] }));
+      const data = await response.json();
+
+      expect(response.status).toBe(200);
+      expect(data).toEqual({ reconciled: 0 });
+      expect(mockReconcileGroupMembership).toHaveBeenCalledWith(
+        { kind: "sprint", id: "134" },
+        ["VPL-1"],
+        expect.anything(),
+      );
+    });
+
+    it("returns 400 for an invalid body", async () => {
+      const response = await POST(makeRequest("mode=reconcile&sprintId=134", { keys: "nope" }));
+
+      expect(response.status).toBe(400);
+      expect(mockReconcileGroupMembership).not.toHaveBeenCalled();
+    });
+
+    it("returns 400 when the body is not JSON", async () => {
+      const request = new Request("http://localhost:3100/api/jira/sync-tickets?mode=reconcile&sprintId=134", {
+        method: "POST",
+      });
+
+      const response = await POST(request);
+
+      expect(response.status).toBe(400);
+      expect(mockReconcileGroupMembership).not.toHaveBeenCalled();
+    });
+
+    it("returns 400 when neither sprintId nor epicKey is given", async () => {
+      const response = await POST(makeRequest("mode=reconcile", { keys: [] }));
+
+      expect(response.status).toBe(400);
+      expect(mockReconcileGroupMembership).not.toHaveBeenCalled();
+    });
+
+    it("returns 500 when reconciliation throws a generic error", async () => {
+      mockReconcileGroupMembership.mockRejectedValueOnce(new Error("boom"));
+
+      const response = await POST(makeRequest("mode=reconcile&sprintId=134", { keys: ["VPL-1"] }));
+
+      expect(response.status).toBe(500);
+    });
   });
 });
