@@ -43,9 +43,9 @@ row count. The per-tab spend is the remaining problem.
 
 ## Follow-up
 
-Tracked as [BRDG-342](../user-stories/BRDG-342-DRAFT-sse-connection-budget.md):
-consolidate per-tab SSE into one stream (or one shared connection via
-SharedWorker), or serve over HTTP/2.
+Tracked as [BRDG-342](../user-stories/completed/BRDG-342-sse-connection-budget.md)
+(implemented 2026-06-12): one unified `/api/events` stream, shared across all
+tabs through Web Locks leader election + BroadcastChannel fan-out.
 
 ## Unrelated note
 

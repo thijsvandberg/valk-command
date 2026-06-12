@@ -214,6 +214,12 @@ Proxy layer to the valk-agent backend. See [workspace-integration.md](workspace-
 | `/api/refinement-sessions/[id]/ticket-notes` | GET | List per-ticket PO notes for a session |
 | `/api/refinement-sessions/[id]/ticket-notes` | PUT | Upsert a ticket note (`ticketKey`, `content`); empty content deletes |
 
+## Live Events (SSE)
+
+| Route | Method | Purpose |
+|-------|--------|---------|
+| `/api/events` | GET | Unified SSE stream of ticket and refinement events (BRDG-342). Each message is a `BridgeEventEnvelope` (`{ channel: "ticket" \| "refinement", event }`); 15s heartbeat. Clients never connect directly: the shared event bus (`src/lib/event-bus.ts`) holds at most one connection per browser via Web Locks leader election + BroadcastChannel fan-out, and hooks (`useTicketEvents`, `useTicketEventsStream`, `useRefinementStream`) filter by channel/key client-side. Replaced `/api/tickets/[key]/events`, `/api/tickets/events`, and `/api/refinement-sessions/stream`. |
+
 ## Settings & Config
 
 | Route | Method | Purpose |
