@@ -9,6 +9,7 @@ import { EditStateDot } from "@/components/sprint-board/TicketTableCells";
 import type { Ticket } from "@/types/ticket";
 import { MetricBadge } from "@/components/shared/MetricBadge";
 import type { RefinementSessionResponse } from "@/lib/api-client";
+import { sessionLabel } from "./refinement-utils";
 
 export interface SortableQueueItemProps {
   ticket: Ticket;
@@ -121,7 +122,7 @@ export function SortableQueueItem({
                     }}
                     className="flex w-full cursor-pointer items-center gap-2 px-3 py-1.5 text-left text-body-sm text-text-secondary hover:bg-overlay-subtle"
                   >
-                    <span className="min-w-0 flex-1 truncate">{s.name}</span>
+                    <span className="min-w-0 flex-1 truncate">{sessionLabel(s)}</span>
                     <span className="shrink-0 text-[10px] tabular-nums text-text-muted">{s.ticketCount}</span>
                   </button>
                 ))}

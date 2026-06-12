@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/Button";
 import { Plus, Boxes, Check } from "lucide-react";
 import { useRefinementSessions } from "@/hooks/useRefinementSessions";
 import { refinementSessions as api } from "@/lib/api-client";
+import { sessionLabel } from "./refinement-utils";
 
 interface AddToRefinementModalProps {
   open: boolean;
@@ -40,7 +41,7 @@ export function AddToRefinementModal({
           await mutate();
         }
         setDone(sessionId);
-        onAdded?.(sessionId, session.name);
+        onAdded?.(sessionId, sessionLabel(session));
         setTimeout(() => {
           onClose();
           setDone(null);
@@ -55,10 +56,15 @@ export function AddToRefinementModal({
   const handleCreateNew = useCallback(async () => {
     setAdding("__new__");
     try {
-      const created = await api.create({ ticketKeys });
+      // Quick-create has no name input; default to a name so the
+      // name-or-date requirement on the create endpoint is met.
+      const created = await api.create({
+        name: `Refinement ${new Date().toISOString().slice(0, 10)}`,
+        ticketKeys,
+      });
       await mutate();
       setDone(created.id);
-      onAdded?.(created.id, created.name);
+      onAdded?.(created.id, sessionLabel(created));
       setTimeout(() => {
         onClose();
         setDone(null);
@@ -102,7 +108,7 @@ export function AddToRefinementModal({
               >
                 <div className="min-w-0 flex-1">
                   <div className="truncate text-body-lg font-medium text-text-primary">
-                    {session.name}
+                    {sessionLabel(session)}
                   </div>
                   <div className="text-[11px] text-text-muted">
                     {session.ticketCount} ticket{session.ticketCount !== 1 ? "s" : ""}

@@ -23,7 +23,7 @@ import { Button } from "@/components/ui/Button";
 import { SavedSessionList } from "@/components/refinement-session/SavedSessionList";
 import Link from "next/link";
 import { CreateSessionModal } from "@/components/refinement-session/CreateSessionModal";
-import { filterTickets, smartSort, MIN_TICKETS } from "./refinement-utils";
+import { filterTickets, smartSort, sessionLabel, compareSessions, MIN_TICKETS } from "./refinement-utils";
 import { ResizableQueuePane } from "./ResizableQueuePane";
 import { RefinementQueuePanel } from "./RefinementQueuePanel";
 import { RefinementTicketList } from "./RefinementTicketList";
@@ -88,7 +88,7 @@ export function RefinementPageContent({
       if (session.status === "completed") continue;
       for (const key of session.ticketKeys) {
         const existing = map.get(key);
-        const entry = { id: session.id, name: session.name };
+        const entry = { id: session.id, name: sessionLabel(session) };
         if (existing) existing.push(entry);
         else map.set(key, [entry]);
       }
@@ -334,9 +334,9 @@ export function RefinementPageContent({
 
   const [createModalOpen, setCreateModalOpen] = useState(false);
 
-  const handleCreateSession = useCallback(async (name: string) => {
+  const handleCreateSession = useCallback(async ({ name, scheduledFor }: { name?: string; scheduledFor?: string }) => {
     const currentQueue = queueHook.localQueue.length > 0 ? queueHook.localQueue : [];
-    const created = await refinementSessionsApi.create({ name, ticketKeys: currentQueue.length > 0 ? currentQueue : undefined });
+    const created = await refinementSessionsApi.create({ name, scheduledFor, ticketKeys: currentQueue.length > 0 ? currentQueue : undefined });
     if (currentQueue.length > 0) queueHook.setLocalQueue([]);
     setUserSelectedId(created.id);
     onSessionChange?.(created.id);
@@ -345,9 +345,19 @@ export function RefinementPageContent({
   }, [mutateSessions, onSessionChange, queueHook, router]);
 
   const activeSessions = useMemo(
-    () => sessions.filter((s) => s.status !== "completed"),
+    () => sessions.filter((s) => s.status !== "completed").slice().sort(compareSessions),
     [sessions],
   );
+
+  // Calendar markers for the create modal: which days already hold a session
+  const scheduledDates = useMemo(() => {
+    const map: Record<string, string[]> = {};
+    for (const s of sessions) {
+      if (s.status === "completed" || !s.scheduledFor) continue;
+      (map[s.scheduledFor] ??= []).push(sessionLabel(s));
+    }
+    return map;
+  }, [sessions]);
 
   // --- Render ---
   return (
@@ -456,7 +466,7 @@ export function RefinementPageContent({
         )}
       </div>
 
-      <CreateSessionModal open={createModalOpen} onClose={() => setCreateModalOpen(false)} onCreate={handleCreateSession} />
+      <CreateSessionModal open={createModalOpen} onClose={() => setCreateModalOpen(false)} onCreate={handleCreateSession} scheduledDates={scheduledDates} />
 
       {bulk.copyToast && (
         <div className="pointer-events-none fixed bottom-6 left-1/2 z-50 -translate-x-1/2 whitespace-nowrap rounded-lg border border-border-strong bg-[var(--color-surface-elevated)] px-4 py-2 text-body-lg text-text-secondary shadow-[var(--shadow-md)]">

@@ -1,5 +1,6 @@
 import { useMemo } from "react";
 import { useRefinementSessions } from "@/hooks/useRefinementSessions";
+import { sessionLabel } from "@/components/refinement-session/refinement-utils";
 
 export interface TicketSessionEntry {
   id: string;
@@ -25,7 +26,7 @@ export function useTicketSessionMap() {
         // ticketKeys is shared by reference across every member's entry (read-only).
         const entry: TicketSessionEntry = {
           id: session.id,
-          name: session.name,
+          name: sessionLabel(session),
           ticketKeys: session.ticketKeys,
           ticketCount: session.ticketCount,
         };

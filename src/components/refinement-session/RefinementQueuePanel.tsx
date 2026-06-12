@@ -8,7 +8,7 @@ import { SortableContext, verticalListSortingStrategy } from "@dnd-kit/sortable"
 import { Button } from "@/components/ui/Button";
 import { BulkSuggestPanel } from "@/components/refinement-session/BulkSuggestPanel";
 import { SortableQueueItem } from "./SortableQueueItem";
-import { MIN_TICKETS } from "./refinement-utils";
+import { MIN_TICKETS, sessionLabel } from "./refinement-utils";
 import type { RefinementSessionResponse } from "@/lib/api-client";
 import type { useRefinementQueue } from "@/hooks/useRefinementQueue";
 import type { useBulkSuggest } from "@/hooks/useBulkSuggest";
@@ -59,7 +59,7 @@ export function RefinementQueuePanel({
     <div className="sticky top-6">
       <div className="mb-4 flex items-center justify-between">
         <h2 className="min-w-0 truncate font-[var(--font-display)] text-heading-sm font-semibold tracking-tight text-text-primary">
-          {activeSession?.name ?? "Queue"}
+          {activeSession ? sessionLabel(activeSession) : "Queue"}
         </h2>
         <div className="flex items-center gap-2">
           {activeSession && queueHook.queue.length > 0 && (

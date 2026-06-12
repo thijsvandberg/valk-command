@@ -3,22 +3,26 @@
 import { useState, useRef, useEffect } from "react";
 import { Modal } from "@/components/shared/Modal";
 import { Button } from "@/components/ui/Button";
+import { DateTimePicker, todayLocalDate } from "@/components/shared/DateTimePicker";
 
-function todayDate(): string {
-  return new Date().toISOString().slice(0, 10);
+export interface CreateSessionInput {
+  name?: string;
+  scheduledFor?: string;
 }
 
 interface CreateSessionModalProps {
   open: boolean;
   onClose: () => void;
-  onCreate: (name: string) => void;
+  onCreate: (data: CreateSessionInput) => void;
+  /** Dates that already have sessions: "YYYY-MM-DD" -> session labels (calendar markers). */
+  scheduledDates?: Record<string, string[]>;
 }
 
-export function CreateSessionModal({ open, onClose, onCreate }: CreateSessionModalProps) {
+export function CreateSessionModal({ open, onClose, onCreate, scheduledDates }: CreateSessionModalProps) {
   return (
     <Modal open={open} onClose={onClose} aria-label="Create refinement session">
       {open && (
-        <CreateSessionForm onClose={onClose} onCreate={onCreate} />
+        <CreateSessionForm onClose={onClose} onCreate={onCreate} scheduledDates={scheduledDates} />
       )}
     </Modal>
   );
@@ -27,26 +31,30 @@ export function CreateSessionModal({ open, onClose, onCreate }: CreateSessionMod
 function CreateSessionForm({
   onClose,
   onCreate,
+  scheduledDates,
 }: {
   onClose: () => void;
-  onCreate: (name: string) => void;
+  onCreate: (data: CreateSessionInput) => void;
+  scheduledDates?: Record<string, string[]>;
 }) {
-  const [prefill] = useState(todayDate);
-  const [name, setName] = useState(prefill);
+  const [name, setName] = useState("");
+  const [scheduledFor, setScheduledFor] = useState("");
   const inputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     requestAnimationFrame(() => {
       inputRef.current?.focus();
-      inputRef.current?.select();
     });
   }, []);
 
+  const canSubmit = name.trim() !== "" || scheduledFor !== "";
+
   function handleSubmit() {
-    // An empty field falls back to today's date so "just click Create" still
-    // yields a sensible name.
-    const finalName = name.trim() || prefill;
-    onCreate(finalName);
+    if (!canSubmit) return;
+    onCreate({
+      name: name.trim() || undefined,
+      scheduledFor: scheduledFor || undefined,
+    });
     onClose();
   }
 
@@ -56,7 +64,7 @@ function CreateSessionForm({
         New refinement session
       </h3>
       <p className="mt-1.5 text-body-sm leading-relaxed text-text-tertiary">
-        Give this session a name to keep things organized.
+        Give it a name, pick a date, or both.
       </p>
 
       <input
@@ -70,23 +78,45 @@ function CreateSessionForm({
             handleSubmit();
           }
         }}
-        placeholder={prefill}
+        placeholder="Name (optional)"
         className="mt-4 w-full rounded-lg border border-border-default bg-overlay-subtle px-3 py-2 text-body-lg text-text-primary placeholder:text-text-muted outline-none focus:border-[var(--color-brand-500)] focus:ring-1 focus:ring-[var(--color-brand-500)]/30"
         style={{ transition: "border-color 0.15s ease, box-shadow 0.15s ease" }}
         data-testid="create-session-name-input"
       />
 
-      <div className="mt-5 flex items-center justify-end gap-2">
-        <Button variant="ghost" size="md" onClick={onClose} className="border-0">
-          Cancel
-        </Button>
-        <Button
-          variant="primary"
-          size="md"
-          onClick={handleSubmit}
+      <div className="mt-3" data-testid="create-session-date-picker">
+        <DateTimePicker
+          value={scheduledFor}
+          onChange={setScheduledFor}
+          ariaLabel="Session date"
+          placeholder="Date (optional)"
+          closeOnSelect
+          hideTime
+          minDate={todayLocalDate()}
+          markers={scheduledDates}
+        />
+      </div>
+
+      <div className="mt-5 flex items-center justify-between gap-2">
+        <span
+          aria-live="polite"
+          className={`text-[11px] text-text-muted ${canSubmit ? "invisible" : ""}`}
         >
-          Create
-        </Button>
+          Give it a name or pick a date
+        </span>
+        <div className="flex items-center gap-2">
+          <Button variant="ghost" size="md" onClick={onClose} className="border-0">
+            Cancel
+          </Button>
+          <Button
+            variant="primary"
+            size="md"
+            onClick={handleSubmit}
+            disabled={!canSubmit}
+          >
+            Create
+          </Button>
+        </div>
       </div>
     </div>
   );

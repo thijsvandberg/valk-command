@@ -13,6 +13,12 @@ interface DateTimePickerProps {
   placeholder?: string;
   /** Close the popover right after a day is picked (skips the time step). */
   closeOnSelect?: boolean;
+  /** Earliest pickable day ("YYYY-MM-DD"); days before it render disabled. */
+  minDate?: string;
+  /** Per-day marker dots: "YYYY-MM-DD" -> labels revealed on hover/focus. */
+  markers?: Record<string, string[]>;
+  /** Hide the optional time row (date-only pickers). */
+  hideTime?: boolean;
 }
 
 const WEEKDAYS = ["Mo", "Tu", "We", "Th", "Fr", "Sa", "Su"];
@@ -35,6 +41,11 @@ function parseValue(value: string): { date: Date | null; time: string } {
 
 function fmtDatePart(date: Date): string {
   return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}`;
+}
+
+/** Today as a local-time "YYYY-MM-DD" (UTC-based toISOString can be off by a day). */
+export function todayLocalDate(): string {
+  return fmtDatePart(new Date());
 }
 
 function combine(date: Date | null, time: string): string {
@@ -101,7 +112,7 @@ function buildCalendarCells(viewYear: number, viewMonth: number): CalendarCell[]
 const POPOVER_WIDTH = 288;
 const POPOVER_EST_HEIGHT = 364;
 
-export function DateTimePicker({ value, onChange, ariaLabel, placeholder = "Select date", closeOnSelect }: DateTimePickerProps) {
+export function DateTimePicker({ value, onChange, ariaLabel, placeholder = "Select date", closeOnSelect, minDate, markers, hideTime }: DateTimePickerProps) {
   const [open, setOpen] = useState(false);
   const triggerRef = useRef<HTMLButtonElement>(null);
   const popoverRef = useRef<HTMLDivElement>(null);
@@ -270,24 +281,41 @@ export function DateTimePicker({ value, onChange, ariaLabel, placeholder = "Sele
           {/* Day grid */}
           <div className="grid grid-cols-7 gap-0.5">
             {cells.map(({ date: day, inMonth }) => {
+              const dayKey = fmtDatePart(day);
               const isSelected = sameDay(day, selectedDate);
               const isToday = sameDay(day, today);
+              const isDisabled = !!minDate && dayKey < minDate;
+              const dayMarkers = markers?.[dayKey];
+              const markerLabel = dayMarkers?.length
+                ? `Scheduled: ${dayMarkers.join(", ")}`
+                : undefined;
               return (
                 <button
-                  key={fmtDatePart(day)}
+                  key={dayKey}
                   type="button"
                   onClick={() => handlePickDay(day)}
+                  disabled={isDisabled}
                   aria-pressed={isSelected}
-                  className={`relative flex h-8 items-center justify-center rounded-md text-body-sm cursor-pointer transition-colors duration-100
-                    ${isSelected
-                      ? "bg-[var(--color-brand-500)] font-semibold text-white"
-                      : inMonth
-                        ? "text-text-secondary hover:bg-overlay-default hover:text-text-primary"
-                        : "text-text-muted/60 hover:bg-overlay-default hover:text-text-secondary"}`}
+                  title={dayMarkers?.length ? dayMarkers.join("\n") : undefined}
+                  aria-label={markerLabel ? `${dayKey}. ${markerLabel}` : undefined}
+                  className={`relative flex h-8 items-center justify-center rounded-md text-body-sm transition-colors duration-100
+                    ${isDisabled
+                      ? "cursor-not-allowed text-text-muted/30"
+                      : isSelected
+                        ? "bg-[var(--color-brand-500)] font-semibold text-white cursor-pointer"
+                        : inMonth
+                          ? "text-text-secondary hover:bg-overlay-default hover:text-text-primary cursor-pointer"
+                          : "text-text-muted/60 hover:bg-overlay-default hover:text-text-secondary cursor-pointer"}`}
                 >
                   {day.getDate()}
-                  {isToday && !isSelected && (
+                  {isToday && !isSelected && !dayMarkers?.length && (
                     <span className="absolute bottom-1 h-1 w-1 rounded-full bg-[var(--color-brand-400)]" />
+                  )}
+                  {dayMarkers && dayMarkers.length > 0 && !isSelected && (
+                    <span
+                      data-testid={`day-marker-${dayKey}`}
+                      className="absolute bottom-1 h-1 w-1 rounded-full bg-violet-400"
+                    />
                   )}
                 </button>
               );
@@ -295,6 +323,7 @@ export function DateTimePicker({ value, onChange, ariaLabel, placeholder = "Sele
           </div>
 
           {/* Time field (optional) */}
+          {!hideTime && (
           <div className="mt-3 flex items-center gap-2 border-t border-border-default pt-3">
             <Clock size={13} strokeWidth={1.5} className="text-text-muted" />
             <span className="text-body-sm text-text-secondary">Time</span>
@@ -333,6 +362,7 @@ export function DateTimePicker({ value, onChange, ariaLabel, placeholder = "Sele
               )}
             </div>
           </div>
+          )}
 
           {/* Footer shortcuts */}
           <div className="mt-2 flex items-center justify-between">

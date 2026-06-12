@@ -38,6 +38,44 @@ export function filterTickets(
   });
 }
 
+/** Human-readable date for a YYYY-MM-DD value, e.g. "18 Jun 2026". */
+export function formatSessionDate(scheduledFor: string): string {
+  const [y, m, d] = scheduledFor.split("-").map(Number);
+  if (!y || !m || !d) return scheduledFor;
+  return new Date(y, m - 1, d).toLocaleDateString("en-GB", {
+    day: "numeric",
+    month: "short",
+    year: "numeric",
+  });
+}
+
+/** Display label for a session: "{date} - {name}", or whichever one is set. */
+export function sessionLabel(session: {
+  name: string | null;
+  scheduledFor?: string | null;
+}): string {
+  const date = session.scheduledFor ? formatSessionDate(session.scheduledFor) : "";
+  const name = session.name?.trim() ?? "";
+  if (date && name) return `${date} - ${name}`;
+  return date || name || "Untitled session";
+}
+
+/** Scheduled sessions first (soonest date on top), undated ones by newest created. */
+export function compareSessions(
+  a: { scheduledFor?: string | null; createdAt: string },
+  b: { scheduledFor?: string | null; createdAt: string },
+): number {
+  if (a.scheduledFor && b.scheduledFor) {
+    if (a.scheduledFor !== b.scheduledFor) {
+      return a.scheduledFor < b.scheduledFor ? -1 : 1;
+    }
+    return a.createdAt < b.createdAt ? 1 : -1;
+  }
+  if (a.scheduledFor) return -1;
+  if (b.scheduledFor) return 1;
+  return a.createdAt < b.createdAt ? 1 : -1;
+}
+
 export function readinessRank(r: string | null | undefined): number {
   if (r === "ready_to_refine") return 0;
   if (r === "drafting") return 1;

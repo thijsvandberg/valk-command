@@ -6,6 +6,7 @@ import { ConfirmDialog } from "@/components/shared/ConfirmDialog";
 import { BarContainer } from "@/components/shared/BarContainer";
 import { RefinementSessionMenu } from "@/components/refinement-session/RefinementSessionMenu";
 import { refinementSessions, type RefinementSessionResponse } from "@/lib/api-client";
+import { sessionLabel } from "./refinement-utils";
 import type { KeyedMutator } from "swr";
 
 interface SavedSessionListProps {
@@ -121,11 +122,11 @@ export function SavedSessionList({
                   onClick={() => onSelectSession(session.id)}
                   onDoubleClick={() => {
                     setEditingId(session.id);
-                    setEditValue(session.name);
+                    setEditValue(session.name ?? "");
                   }}
                   className="max-w-[160px] cursor-pointer truncate bg-transparent text-left"
                 >
-                  {session.name}
+                  {sessionLabel(session)}
                 </button>
               )}
 
@@ -145,12 +146,12 @@ export function SavedSessionList({
                   style={{ transition: "opacity 0.15s ease" }}
                 >
                   <RefinementSessionMenu
-                    sessionName={session.name}
+                    sessionName={sessionLabel(session)}
                     status={session.status}
                     onOpenChange={(o) => setMenuOpenId(o ? session.id : null)}
                     onRename={() => {
                       setEditingId(session.id);
-                      setEditValue(session.name);
+                      setEditValue(session.name ?? "");
                     }}
                     onFinish={() => handleFinish(session.id)}
                     onDelete={() => setDeleteTarget(session)}
@@ -177,7 +178,7 @@ export function SavedSessionList({
         open={deleteTarget !== null}
         onClose={() => setDeleteTarget(null)}
         title="Delete session"
-        description={`Delete "${deleteTarget?.name}"? This cannot be undone.`}
+        description={`Delete "${deleteTarget ? sessionLabel(deleteTarget) : ""}"? This cannot be undone.`}
         confirmLabel="Delete"
         confirmVariant="destructive"
         onConfirm={() => {

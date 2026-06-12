@@ -7,6 +7,7 @@ import { ConfirmDialog } from "@/components/shared/ConfirmDialog";
 import { RefinementSessionMenu } from "@/components/refinement-session/RefinementSessionMenu";
 import { refinementSessions, type RefinementSessionResponse } from "@/lib/api-client";
 import { relativeDate, formatAbsoluteDate } from "@/lib/date-utils";
+import { sessionLabel } from "./refinement-utils";
 
 interface RefinementHistoryListProps {
   sessions: RefinementSessionResponse[];
@@ -68,7 +69,7 @@ export function RefinementHistoryList({ sessions, onMutate }: RefinementHistoryL
                   <Check size={14} strokeWidth={2.5} className="shrink-0 text-[var(--color-brand-500)]" />
                 )}
                 <span className="min-w-0 flex-1 truncate text-body-lg font-medium text-text-primary">
-                  {session.name}
+                  {sessionLabel(session)}
                 </span>
                 {isInProgress && (
                   <span className="flex shrink-0 items-center rounded-md bg-amber-500/10 px-1.5 py-0.5 text-[10px] font-medium text-amber-400/80">
@@ -86,7 +87,7 @@ export function RefinementHistoryList({ sessions, onMutate }: RefinementHistoryL
                   {relativeDate(session.updatedAt)}
                 </span>
                 <RefinementSessionMenu
-                  sessionName={session.name}
+                  sessionName={sessionLabel(session)}
                   status={session.status}
                   onFinish={() => handleFinish(session.id)}
                   onReopen={() => handleReopen(session.id)}
@@ -111,7 +112,7 @@ export function RefinementHistoryList({ sessions, onMutate }: RefinementHistoryL
         open={deleteTarget !== null}
         onClose={() => setDeleteTarget(null)}
         title="Delete refinement"
-        description={`Delete "${deleteTarget?.name}"? This cannot be undone.`}
+        description={`Delete "${deleteTarget ? sessionLabel(deleteTarget) : ""}"? This cannot be undone.`}
         confirmLabel="Delete"
         confirmVariant="destructive"
         onConfirm={() => {
