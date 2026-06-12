@@ -152,15 +152,9 @@ async function runIncrementalSync(): Promise<TaskResult> {
       completedAt: new Date().toISOString(),
     });
 
-    // Notify only when tickets were actually updated — not on no-op runs
-    if (results.length > 0) {
-      const suffix = remaining > 0 ? ` (${remaining} more pending)` : "";
-      createNotification(
-        "sync",
-        `Jira sync: ${results.length} ticket${results.length === 1 ? "" : "s"} updated${suffix}`,
-        { category: "sync" },
-      );
-    }
+    // Routine sync successes stay out of the notification bell: the board
+    // updates itself and the run is already recorded in the activity log.
+    // Failures below still notify.
 
     return {
       count: results.length,

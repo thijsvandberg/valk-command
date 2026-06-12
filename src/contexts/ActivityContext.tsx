@@ -87,11 +87,34 @@ const RETRY_SYNC_MAP: Record<string, string> = {
   "incremental-sync": "tickets",
 };
 
+// Decides which newly observed activity-log entries surface as toasts and
+// marks them as seen by mutating knownIds, so each entry is evaluated exactly
+// once across polls. Most entries come from background syncs (scheduler,
+// hover prefetch, auto-fetch on ticket open), so routine completions stay
+// silent and only failures demand attention. Success confirmations for
+// explicit user actions (e.g. retry) are pushed locally by their call sites.
+// Running entries are left unmarked so their final status is evaluated later.
+export function collectNewToasts(entries: ActivityLogEntry[], knownIds: Set<string>): Toast[] {
+  const newToasts: Toast[] = [];
+  for (const entry of entries) {
+    if (entry.status === "running") continue;
+    if (knownIds.has(entry.id)) continue;
+    knownIds.add(entry.id);
+    if (entry.status === "failed") {
+      newToasts.push({ id: entry.id, entry });
+    }
+  }
+  return newToasts;
+}
+
 export function ActivityProvider({ children }: { children: ReactNode }) {
   const [toastEntries, setToastEntries] = useState<Toast[]>([]);
   const [dismissedIds, setDismissedIds] = useState<Set<string>>(new Set());
-  const [initialized, setInitialized] = useState(false);
-  const [knownIds, setKnownIds] = useState<Set<string>>(new Set());
+  // A ref (not state) so the seen-set can be updated inside the SWR callback
+  // without a side-effectful state updater, which StrictMode double-invokes
+  // in dev and which produced duplicate toasts. null until the first poll
+  // establishes the baseline; baseline entries never toast.
+  const knownIdsRef = useRef<Set<string> | null>(null);
 
   const { data: logEntries, mutate: mutateActivityLog } = useSWR<ActivityLogEntry[]>(
     "/api/activity-log?limit=20",
@@ -103,26 +126,13 @@ export function ActivityProvider({ children }: { children: ReactNode }) {
       },
       revalidateOnFocus: true,
       onSuccess: (data) => {
-        if (!initialized) {
-          setKnownIds(new Set(data.map((e) => e.id)));
-          setInitialized(true);
+        if (!knownIdsRef.current) {
+          knownIdsRef.current = new Set(
+            data.filter((e) => e.status !== "running").map((e) => e.id),
+          );
           return;
         }
-        const isHidden = typeof document !== "undefined" && document.hidden;
-        const newToasts: Toast[] = [];
-        setKnownIds((prev) => {
-          const next = new Set(prev);
-          for (const entry of data) {
-            if (entry.status === "running") continue;
-            if (next.has(entry.id)) continue;
-            next.add(entry.id);
-            // Don't show toasts for syncs that completed while the tab was hidden
-            if (!isHidden) {
-              newToasts.push({ id: entry.id, entry });
-            }
-          }
-          return next;
-        });
+        const newToasts = collectNewToasts(data, knownIdsRef.current);
         if (newToasts.length > 0) {
           setToastEntries((prev) => [...prev, ...newToasts].slice(-50));
         }
@@ -234,10 +244,30 @@ export function ActivityProvider({ children }: { children: ReactNode }) {
       const entry = entries.find((e) => e.id === id);
       if (!entry) return;
       const syncType = RETRY_SYNC_MAP[entry.type];
-      if (syncType) {
-        setDismissedIds((prev) => new Set([...prev, id]));
+      if (!syncType) return;
+      setDismissedIds((prev) => new Set([...prev, id]));
+      try {
         await triggerSync(syncType as "sprint" | "tickets" | "comments", entry.scope ?? undefined);
+      } catch {
+        // The failed run writes its own activity entry, which toasts via the poll.
+        return;
       }
+      // Retry is an explicit user action, so confirm success directly; the
+      // poll stays silent for successful runs.
+      const now = new Date().toISOString();
+      setToastEntries((prev) => [
+        ...prev,
+        {
+          id: `retry-${id}-${Date.now()}`,
+          entry: {
+            ...entry,
+            status: "success" as const,
+            summary: "Retry succeeded",
+            errorDetail: null,
+            completedAt: now,
+          },
+        },
+      ].slice(-50));
     },
     [entries, triggerSync],
   );
