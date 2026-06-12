@@ -2,14 +2,16 @@
 
 import { useEffect, useRef } from "react";
 import type { TicketChangeKind, TicketEvent } from "@/lib/ticket-events";
+import { subscribeEvents } from "@/lib/event-bus";
 
-const RECONNECT_DELAY_MS = 3_000;
 const DEFAULT_COALESCE_MS = 200;
 
 /**
- * Subscribes to a ticket's SSE stream and invokes `onChange` when the ticket's
- * data moves on elsewhere (another tab, Jira sync, agent push). Pass a null key
- * to disable the subscription.
+ * Subscribes to a ticket's live events and invokes `onChange` when the
+ * ticket's data moves on elsewhere (another tab, Jira sync, agent push). Pass
+ * a null key to disable the subscription. Events arrive over the shared
+ * event bus (one SSE connection per browser, BRDG-342); this hook filters
+ * the unified stream down to its own key client-side.
  *
  * Rapid bursts (a sync touching many fields fires several write paths) are
  * coalesced into a single callback whose `kinds` is the union of the burst.
@@ -31,10 +33,6 @@ export function useTicketEvents(
 
   useEffect(() => {
     if (!ticketKey || ticketKey.startsWith("DRAFT-")) return;
-
-    let es: EventSource | null = null;
-    let reconnectTimer: ReturnType<typeof setTimeout> | null = null;
-    let closed = false;
 
     let pendingKinds: Set<TicketChangeKind> | null = null;
     let pendingOrigin: string | null | undefined;
@@ -65,39 +63,16 @@ export function useTicketEvents(
       if (!flushTimer) flushTimer = setTimeout(flush, coalesceMs);
     }
 
-    function connect() {
-      if (closed || typeof EventSource === "undefined" || !ticketKey) return;
-      es = new EventSource(`/api/tickets/${encodeURIComponent(ticketKey)}/events`);
-
-      const handleEvent = (e: MessageEvent) => {
-        let event: TicketEvent;
-        try {
-          event = JSON.parse(e.data) as TicketEvent;
-        } catch {
-          return;
-        }
-        if (!Array.isArray(event.kinds) || event.kinds.length === 0) return;
-        enqueue(event);
-      };
-
-      es.addEventListener("ticket:changed", handleEvent);
-
-      es.onerror = () => {
-        es?.close();
-        es = null;
-        if (!closed) {
-          reconnectTimer = setTimeout(connect, RECONNECT_DELAY_MS);
-        }
-      };
-    }
-
-    connect();
+    const unsubscribe = subscribeEvents((envelope) => {
+      if (envelope.channel !== "ticket") return;
+      const event = envelope.event;
+      if (event.ticketKey !== ticketKey) return;
+      if (!Array.isArray(event.kinds) || event.kinds.length === 0) return;
+      enqueue(event);
+    });
 
     return () => {
-      closed = true;
-      es?.close();
-      es = null;
-      if (reconnectTimer) clearTimeout(reconnectTimer);
+      unsubscribe();
       if (flushTimer) clearTimeout(flushTimer);
     };
   }, [ticketKey, coalesceMs]);

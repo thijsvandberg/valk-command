@@ -1,63 +1,40 @@
 import { renderHook, act } from "@testing-library/react";
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
+import type { BridgeEventEnvelope } from "@/lib/event-envelope";
 
 vi.mock("@/lib/ticket-cache", () => ({
   revalidateTicketCachesFor: vi.fn(),
+}));
+
+const { busHandlers } = vi.hoisted(() => ({
+  busHandlers: new Set<(envelope: unknown) => void>(),
+}));
+
+vi.mock("@/lib/event-bus", () => ({
+  subscribeEvents: (handler: (envelope: unknown) => void) => {
+    busHandlers.add(handler);
+    return () => {
+      busHandlers.delete(handler);
+    };
+  },
 }));
 
 import { useTicketEventsStream } from "./useTicketEventsStream";
 import { subscribeTicketChange } from "@/lib/live-ticket-changes";
 import { revalidateTicketCachesFor } from "@/lib/ticket-cache";
 
-type Listener = (event: MessageEvent | Event) => void;
-
-class MockEventSource {
-  url: string;
-  listeners: Record<string, Listener[]> = {};
-  closed = false;
-  onerror: ((e: Event) => void) | null = null;
-
-  constructor(url: string) {
-    this.url = url;
-    MockEventSource.instances.push(this);
-  }
-
-  addEventListener(type: string, listener: Listener) {
-    if (!this.listeners[type]) this.listeners[type] = [];
-    this.listeners[type].push(listener);
-  }
-
-  close() {
-    this.closed = true;
-  }
-
-  emit(type: string, data: string) {
-    (this.listeners[type] ?? []).forEach((h) => h(new MessageEvent(type, { data })));
-  }
-
-  triggerError() {
-    this.onerror?.(new Event("error"));
-  }
-
-  static instances: MockEventSource[] = [];
-  static clear() { MockEventSource.instances = []; }
-  static latest(): MockEventSource {
-    return MockEventSource.instances[MockEventSource.instances.length - 1];
-  }
-}
-
 function emitChange(key: string, kinds: string[], origin: string | null = null) {
-  MockEventSource.latest().emit(
-    "ticket:changed",
-    JSON.stringify({ type: "ticket:changed", ticketKey: key, kinds, origin }),
-  );
+  const envelope = {
+    channel: "ticket",
+    event: { type: "ticket:changed", ticketKey: key, kinds, origin },
+  } as BridgeEventEnvelope;
+  busHandlers.forEach((handler) => handler(envelope));
 }
 
 beforeEach(() => {
   vi.useFakeTimers();
   vi.clearAllMocks();
-  MockEventSource.clear();
-  vi.stubGlobal("EventSource", MockEventSource);
+  busHandlers.clear();
 });
 
 afterEach(() => {
@@ -65,10 +42,9 @@ afterEach(() => {
 });
 
 describe("useTicketEventsStream", () => {
-  it("opens a single connection to the broadcast stream", () => {
+  it("subscribes once to the shared event bus", () => {
     renderHook(() => useTicketEventsStream());
-    expect(MockEventSource.instances).toHaveLength(1);
-    expect(MockEventSource.latest().url).toBe("/api/tickets/events");
+    expect(busHandlers.size).toBe(1);
   });
 
   it("revalidates the changed ticket's caches and publishes to row subscribers", () => {
@@ -96,6 +72,14 @@ describe("useTicketEventsStream", () => {
     expect(forOther).not.toHaveBeenCalled();
     expect(revalidateTicketCachesFor).not.toHaveBeenCalledWith("VPL-2");
     unsub();
+  });
+
+  it("ignores refinement envelopes", () => {
+    renderHook(() => useTicketEventsStream());
+    const envelope = { channel: "refinement", event: { type: "tickets:updated" } };
+    busHandlers.forEach((handler) => handler(envelope));
+    act(() => { vi.advanceTimersByTime(200); });
+    expect(revalidateTicketCachesFor).not.toHaveBeenCalled();
   });
 
   it("coalesces a burst for the same ticket into one revalidate", () => {
@@ -132,26 +116,25 @@ describe("useTicketEventsStream", () => {
     expect(revalidateTicketCachesFor).toHaveBeenCalledWith("VPL-2");
   });
 
-  it("ignores malformed JSON and empty kinds", () => {
+  it("ignores events with empty kinds", () => {
     renderHook(() => useTicketEventsStream());
-    MockEventSource.latest().emit("ticket:changed", "not-json");
     emitChange("VPL-1", []);
     act(() => { vi.advanceTimersByTime(200); });
     expect(revalidateTicketCachesFor).not.toHaveBeenCalled();
   });
 
-  it("reconnects after an error", () => {
-    renderHook(() => useTicketEventsStream());
-    expect(MockEventSource.instances).toHaveLength(1);
-    MockEventSource.latest().triggerError();
-    act(() => { vi.advanceTimersByTime(3000); });
-    expect(MockEventSource.instances).toHaveLength(2);
+  it("unsubscribes from the bus on unmount", () => {
+    const { unmount } = renderHook(() => useTicketEventsStream());
+    expect(busHandlers.size).toBe(1);
+    unmount();
+    expect(busHandlers.size).toBe(0);
   });
 
-  it("closes the connection on unmount", () => {
+  it("does not flush pending changes after unmount", () => {
     const { unmount } = renderHook(() => useTicketEventsStream());
-    const es = MockEventSource.latest();
+    emitChange("VPL-1", ["status"]);
     unmount();
-    expect(es.closed).toBe(true);
+    act(() => { vi.advanceTimersByTime(200); });
+    expect(revalidateTicketCachesFor).not.toHaveBeenCalled();
   });
 });

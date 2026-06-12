@@ -4,8 +4,8 @@ import { useEffect } from "react";
 import type { TicketChangeKind, TicketEvent } from "@/lib/ticket-events";
 import { publishTicketChange } from "@/lib/live-ticket-changes";
 import { revalidateTicketCachesFor } from "@/lib/ticket-cache";
+import { subscribeEvents } from "@/lib/event-bus";
 
-const RECONNECT_DELAY_MS = 3_000;
 const COALESCE_MS = 200;
 
 interface PendingChange {
@@ -15,18 +15,15 @@ interface PendingChange {
 }
 
 /**
- * Single multiplexed subscription to the broadcast ticket-events stream.
- * Mount once per list view (sprint board, refinement); for every changed
- * ticket it revalidates the SWR caches holding that ticket and fans the
- * event out to per-row subscribers via the live-ticket-changes bus (for
- * the highlight). Bursts are coalesced per ticket key. The 150s poll stays
- * as the fallback; this is the fast path.
+ * Broadcast subscription to ticket events on the shared event bus (one SSE
+ * connection per browser, BRDG-342). Mount once per list view (sprint board,
+ * refinement); for every changed ticket it revalidates the SWR caches holding
+ * that ticket and fans the event out to per-row subscribers via the
+ * live-ticket-changes bus (for the highlight). Bursts are coalesced per
+ * ticket key. The 150s poll stays as the fallback; this is the fast path.
  */
 export function useTicketEventsStream() {
   useEffect(() => {
-    let es: EventSource | null = null;
-    let reconnectTimer: ReturnType<typeof setTimeout> | null = null;
-    let closed = false;
     const pending = new Map<string, PendingChange>();
 
     function flush(ticketKey: string) {
@@ -57,37 +54,15 @@ export function useTicketEventsStream() {
       });
     }
 
-    function connect() {
-      if (closed || typeof EventSource === "undefined") return;
-      es = new EventSource("/api/tickets/events");
-
-      es.addEventListener("ticket:changed", (e: MessageEvent) => {
-        let event: TicketEvent;
-        try {
-          event = JSON.parse(e.data) as TicketEvent;
-        } catch {
-          return;
-        }
-        if (!event.ticketKey || !Array.isArray(event.kinds) || event.kinds.length === 0) return;
-        enqueue(event);
-      });
-
-      es.onerror = () => {
-        es?.close();
-        es = null;
-        if (!closed) {
-          reconnectTimer = setTimeout(connect, RECONNECT_DELAY_MS);
-        }
-      };
-    }
-
-    connect();
+    const unsubscribe = subscribeEvents((envelope) => {
+      if (envelope.channel !== "ticket") return;
+      const event = envelope.event;
+      if (!event.ticketKey || !Array.isArray(event.kinds) || event.kinds.length === 0) return;
+      enqueue(event);
+    });
 
     return () => {
-      closed = true;
-      es?.close();
-      es = null;
-      if (reconnectTimer) clearTimeout(reconnectTimer);
+      unsubscribe();
       for (const entry of pending.values()) clearTimeout(entry.timer);
       pending.clear();
     };
