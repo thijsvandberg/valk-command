@@ -1,4 +1,4 @@
-import { render, screen, fireEvent } from "@testing-library/react";
+import { render, screen, fireEvent, waitFor } from "@testing-library/react";
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { SessionTicketView, SessionMetadataPanel } from "./SessionTicketView";
 import type { Ticket, TicketDetail } from "@/types/ticket";
@@ -108,6 +108,11 @@ vi.mock("@/lib/api-client", () => ({
     moveSprint: vi.fn().mockResolvedValue({}),
     assign: vi.fn().mockResolvedValue({}),
   },
+}));
+
+vi.mock("@/lib/ticket-cache", () => ({
+  patchTicketCaches: vi.fn(),
+  revalidateTicketCaches: vi.fn(),
 }));
 
 vi.mock("@/hooks/useSprintBoard", () => ({
@@ -488,6 +493,33 @@ describe("SessionMetadataPanel", () => {
 
     fireEvent.click(screen.getByTestId("story-point-picker"));
     expect(ticketsMock.updateStoryPoints).toHaveBeenCalledWith("VPL-100", 5);
+  });
+
+  it("patches shared ticket caches immediately and revalidates after a story point change", async () => {
+    const { patchTicketCaches, revalidateTicketCaches } = await import("@/lib/ticket-cache");
+    render(<SessionMetadataPanel ticket={baseTicket} detail={baseDetail} onMutate={onMutate} />);
+
+    fireEvent.click(screen.getByTestId("story-point-picker"));
+    expect(patchTicketCaches).toHaveBeenCalledWith("VPL-100", { storyPoints: 5 });
+
+    await waitFor(() => expect(revalidateTicketCaches).toHaveBeenCalled());
+  });
+
+  it("rolls back the cache patch when the story point update fails", async () => {
+    const { tickets: ticketsMock } = await import("@/lib/api-client");
+    const { patchTicketCaches, revalidateTicketCaches } = await import("@/lib/ticket-cache");
+    vi.mocked(ticketsMock.updateStoryPoints).mockRejectedValueOnce(new Error("boom"));
+    const consoleSpy = vi.spyOn(console, "error").mockImplementation(() => {});
+    render(<SessionMetadataPanel ticket={baseTicket} detail={baseDetail} onMutate={onMutate} />);
+
+    fireEvent.click(screen.getByTestId("story-point-picker"));
+    expect(patchTicketCaches).toHaveBeenCalledWith("VPL-100", { storyPoints: 5 });
+
+    await waitFor(() =>
+      expect(patchTicketCaches).toHaveBeenCalledWith("VPL-100", { storyPoints: 3 }),
+    );
+    expect(revalidateTicketCaches).not.toHaveBeenCalled();
+    consoleSpy.mockRestore();
   });
 
   it("calls tickets.updateMetadata when business value picker changes", async () => {

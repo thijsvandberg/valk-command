@@ -17,6 +17,7 @@ import { SubtasksSection } from "@/components/ticket-detail/SubtasksSection";
 import { TicketChatPane } from "@/components/shared/TicketChatPane";
 import { tickets, apiFetch, jira as jiraApi } from "@/lib/api-client";
 import { recordTicketView } from "@/lib/recently-viewed-store";
+import { patchTicketCaches, revalidateTicketCaches } from "@/lib/ticket-cache";
 import { mutate as globalMutate } from "swr";
 import type { TicketReadiness, IssueType, JiraStatus } from "@/types/ticket";
 import { useLocalStorage } from "@/hooks/useLocalStorage";
@@ -279,15 +280,22 @@ export default function RefinementSessionTicketPage({
     async (v: number | null) => {
       const prev = storyPoints;
       setStoryPoints(v);
+      // The wrap-up modal and ticket lists read from the shared /api/tickets
+      // caches, which only refresh on their own interval; patch them so the
+      // chosen estimate is visible there immediately.
+      patchTicketCaches(currentKey!, { storyPoints: v });
       try {
         // The "set SP -> advance Ready-to-Refine to Ready-for-Development"
         // transition is owned by the server (ticket-detail-builder); mutate()
-        // pulls the updated readiness back into the session view.
+        // pulls the updated readiness back into the session view, and the
+        // cache revalidation pulls it into the shared ticket lists.
         await tickets.updateStoryPoints(currentKey!, v);
         mutate();
+        revalidateTicketCaches();
       } catch (err) {
         console.error("Failed to update story points:", err);
         setStoryPoints(prev);
+        patchTicketCaches(currentKey!, { storyPoints: prev });
       }
     },
     [currentKey, storyPoints, mutate],

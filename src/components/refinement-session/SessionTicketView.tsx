@@ -23,6 +23,7 @@ import { LabelPicker } from "@/components/shared/LabelPicker";
 import { JIRA_STATUS_COLORS } from "@/types/ticket";
 import { Tooltip } from "@/components/shared/Tooltip";
 import { tickets, jira } from "@/lib/api-client";
+import { patchTicketCaches, revalidateTicketCaches } from "@/lib/ticket-cache";
 import { useSectionCollapsed } from "@/hooks/useSectionCollapsed";
 import { SECTION_KEYS } from "@/lib/section-collapse-store";
 import { useJiraSprints } from "@/hooks/useSprintBoard";
@@ -271,12 +272,19 @@ export function SessionMetadataPanel({
   const handleStoryPointsChange = useCallback(async (v: number | null) => {
     const prev = storyPoints;
     setStoryPoints(v);
+    // The wrap-up modal and ticket lists read from the shared /api/tickets
+    // caches, which only refresh on their own interval; patch them so the
+    // chosen estimate is visible there immediately, then revalidate to pick
+    // up the server-owned readiness transition.
+    patchTicketCaches(ticket.key, { storyPoints: v });
     try {
       await tickets.updateStoryPoints(ticket.key, v);
       onMutate?.();
+      revalidateTicketCaches();
     } catch (err) {
       console.error("Operation failed:", err);
       setStoryPoints(prev);
+      patchTicketCaches(ticket.key, { storyPoints: prev });
     }
   }, [ticket.key, storyPoints, onMutate]);
 
