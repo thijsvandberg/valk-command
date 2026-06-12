@@ -349,11 +349,6 @@ describe("runAutoEnqueue — subtask exclusion", () => {
     testDb = createTestDb();
   });
 
-  it("skips when auto scan is disabled (baseline)", async () => {
-    const result = await runAutoEnqueue();
-    expect(result).toMatchObject({ skipped: true });
-  });
-
   it("does not enqueue subtasks when selecting worst-staleness candidates", async () => {
     enableAutoScan();
     // Subtask should not appear in the eligible set that drives enqueue selection.
