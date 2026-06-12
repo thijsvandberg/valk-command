@@ -1,5 +1,19 @@
 # Implementation Performance Log
 
+## BRDG-336 — Drag a ticket onto another refinement session (2026-06-12)
+
+| Phase | Notes |
+|---|---|
+| Plan (Opus) | Strong; found that the queue IS the active session's ticketKeys, that ChildIssueRow already had a dragHandleSlot, and pre-flagged the non-active-source-session removal ambiguity that became the move-semantics implementation |
+| Implement | Clean per-checkbox flow; separate DndContext from the queue's sortable avoided all gesture conflicts by construction |
+| Verify | Unit suites green first try; browser verification was the bottleneck (below); full suite (5701) + build green |
+
+Key bottlenecks / lessons:
+- **A parallel session's API change (BRDG-337: create requires name or date) silently broke my drop-create path between planning and verification.** Unit tests could not catch it (api-client mocked); only the live browser drop surfaced the 400. Fixed by stamping a default name. Lesson: when a parallel story touches an endpoint you call, re-read the route before final verification.
+- **CDP `left_click_drag` cannot activate dnd-kit's PointerSensor** (two silent no-ops). Scripted PointerEvent sequences (pointerdown → stepped pointermoves → pointerup) via javascript_tool work reliably and also let you assert mid-drag state (drop-target/drop-over data attributes).
+- **Two agents drove the same Chrome tab group and dev server concurrently.** Renderer froze twice mid-drag (45s CDP timeouts), the dev servers killed each other's port, and an unrelated test session appeared in my session bar mid-verification. The frozen-drag screenshot was accidentally useful: it proved the drag-start affordance visually.
+- **Shared-file commits needed sequencing, not splitting.** The parallel session had staged my two shared files; waiting for their commit to land and then committing the now-purely-mine remainder avoided hand-built patches this time.
+
 ## BRDG-337 — Schedule a refinement session with a date (2026-06-12)
 
 | Phase | Notes |
