@@ -14,7 +14,7 @@ import {
   ArrowUpRight,
   NotebookPen,
   Gem,
-  BadgeCheck,
+  CheckCircle2,
   Archive,
 } from "lucide-react";
 import Link from "next/link";
@@ -168,8 +168,8 @@ export function StoryWriterLayout({ ticketKey, draftTitle, draftType }: StoryWri
                         onClick={actions.handleWrapUpReady}
                         className="group flex w-full items-start gap-3 rounded-xl p-2.5 text-left cursor-pointer transition-colors duration-150 hover:bg-[var(--color-brand-500)]/[0.08]"
                       >
-                        <span className="grid h-9 w-9 shrink-0 place-items-center rounded-lg bg-[var(--color-brand-500)]/12 text-[var(--color-brand-400)] transition-colors duration-150 group-hover:bg-[var(--color-brand-500)]/20">
-                          <BadgeCheck size={16} strokeWidth={1.75} />
+                        <span className="grid h-9 w-9 shrink-0 place-items-center rounded-lg bg-[var(--color-status-done-subtle)] text-[var(--color-status-done)] transition-colors duration-150">
+                          <CheckCircle2 size={16} strokeWidth={1.75} />
                         </span>
                         <span className="flex min-w-0 flex-col gap-0.5">
                           <span className="text-body-sm font-semibold text-text-primary">Ready to refine</span>
@@ -183,7 +183,7 @@ export function StoryWriterLayout({ ticketKey, draftTitle, draftType }: StoryWri
                         onClick={actions.handleWrapUpReadyClear}
                         className="group flex w-full items-start gap-3 rounded-xl p-2.5 text-left cursor-pointer transition-colors duration-150 hover:bg-[var(--color-brand-500)]/[0.08]"
                       >
-                        <span className="grid h-9 w-9 shrink-0 place-items-center rounded-lg bg-[var(--color-brand-500)]/12 text-[var(--color-brand-400)] transition-colors duration-150 group-hover:bg-[var(--color-brand-500)]/20">
+                        <span className="grid h-9 w-9 shrink-0 place-items-center rounded-lg bg-[var(--color-status-done-subtle)] text-[var(--color-status-done)] transition-colors duration-150">
                           <Archive size={16} strokeWidth={1.75} />
                         </span>
                         <span className="flex min-w-0 flex-col gap-0.5">
