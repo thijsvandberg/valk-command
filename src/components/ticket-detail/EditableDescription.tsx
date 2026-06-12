@@ -142,7 +142,7 @@ export function EditableDescription({
     autoSaveTimerRef.current = setTimeout(async () => {
       try {
         await tickets.saveLocalEdit(ticketKey, { field: "description", localValue: content.trim(), isDraft: true });
-        syncEditState(ticketKey, "draft");
+        syncEditState(ticketKey, "local_edits");
       } catch { /* ignore */ }
     }, 800);
   }, [ticketKey, syncEditState]);

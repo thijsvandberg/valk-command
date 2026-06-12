@@ -263,8 +263,7 @@ export default function TicketDetailPage({
 
   const hasLocalEdits = h.hasLocalTitleEdit || h.hasLocalDescEdit;
   const isEditing = h.isTitleEditing || h.isDescEditing;
-  const isDraftOnly = h.ticket?.editState === "draft";
-  const showPushButton = hasLocalEdits && !h.showConflictWarning && !isEditing && !isDraftOnly;
+  const showPushButton = hasLocalEdits && !h.showConflictWarning && !isEditing;
 
   const handleTabChange = (tab: TicketTab) => {
     if (tab === "history" && activeTab === "history") {

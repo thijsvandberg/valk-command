@@ -178,7 +178,7 @@ describe("BoardRow (headerless, BRDG-239)", () => {
 
   it("gates quality, notes, edit-state and refinement tags on the visibility set", () => {
     renderRow({
-      ticket: makeTicket({ qualityScore: 80, notes: "check", editState: "draft" }),
+      ticket: makeTicket({ qualityScore: 80, notes: "check", editState: "local_edits" }),
       refinementSessions: [{ name: "Refine A" } as never],
       tags: ALL_TAGS,
     });
@@ -195,7 +195,7 @@ describe("BoardRow (headerless, BRDG-239)", () => {
 
   it("hides quality/notes/edit-state/refinement when their tags are off", () => {
     renderRow({
-      ticket: makeTicket({ qualityScore: 80, notes: "check", editState: "draft" }),
+      ticket: makeTicket({ qualityScore: 80, notes: "check", editState: "local_edits" }),
       refinementSessions: [{ name: "Refine A" } as never],
       tags: new Set<InlineTagId>(["flag"]),
     });

@@ -7,27 +7,27 @@ describe("computeTicketEditState", () => {
     expect(computeTicketEditState([], "abc")).toBe("clean");
   });
 
-  it("returns draft when only draft edits exist", () => {
+  it("returns local_edits for autosaved (draft-flagged) edits on a matching base", () => {
     const edits = [{ baseJiraVersion: "abc", isDraft: true }];
-    expect(computeTicketEditState(edits, "abc")).toBe("draft");
+    expect(computeTicketEditState(edits, "abc")).toBe("local_edits");
   });
 
-  it("returns local_edits when saved edits exist and base matches", () => {
+  it("returns local_edits for saved edits on a matching base", () => {
     const edits = [{ baseJiraVersion: "abc", isDraft: false }];
     expect(computeTicketEditState(edits, "abc")).toBe("local_edits");
   });
 
-  it("returns conflict when saved edits exist but base does not match", () => {
+  it("returns conflict when a saved edit sits on an outdated base", () => {
     const edits = [{ baseJiraVersion: "old", isDraft: false }];
     expect(computeTicketEditState(edits, "new")).toBe("conflict");
   });
 
-  it("returns draft when only drafts exist even with mismatched base", () => {
+  it("returns conflict for autosaved edits on an outdated base (formerly hidden as draft)", () => {
     const edits = [{ baseJiraVersion: "old", isDraft: true }];
-    expect(computeTicketEditState(edits, "new")).toBe("draft");
+    expect(computeTicketEditState(edits, "new")).toBe("conflict");
   });
 
-  it("returns local_edits with mixed draft and saved edits on matching base", () => {
+  it("ignores the isDraft flag entirely for mixed edits on a matching base", () => {
     const edits = [
       { baseJiraVersion: "abc", isDraft: true },
       { baseJiraVersion: "abc", isDraft: false },

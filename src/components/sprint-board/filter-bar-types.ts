@@ -12,7 +12,6 @@ export const PO_STATUS_COLORS: Record<string, { bg: string; text: string; dot: s
 
 // Edit state display config for filter labels
 export const EDIT_STATE_OPTIONS: { value: string; label: string; dotClass: string }[] = [
-  { value: "draft", label: "Unsaved draft", dotClass: "bg-[var(--color-icon-task)]/40" },
   { value: "local_edits", label: "Local changes", dotClass: "bg-[var(--color-icon-task)]/70" },
   { value: "conflict", label: "Conflict", dotClass: "bg-[var(--color-status-warning)]/70" },
   { value: "removed", label: "Removed from Jira", dotClass: "bg-red-400/60" },

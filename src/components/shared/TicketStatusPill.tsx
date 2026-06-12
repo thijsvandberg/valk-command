@@ -52,8 +52,7 @@ function qualityColor(score: number): string {
 
 // Local edit-state display config. Kept here (not imported from sprint-board cells) so the shared
 // pill stays decoupled from the board module (BRDG-239).
-const EDIT_STATE_CONFIG: Record<"draft" | "local_edits" | "conflict", { dotClass: string; accent: string; label: string }> = {
-  draft: { dotClass: "bg-[var(--color-icon-task)]/40", accent: "var(--color-icon-task)", label: "Unsaved draft" },
+const EDIT_STATE_CONFIG: Record<"local_edits" | "conflict", { dotClass: string; accent: string; label: string }> = {
   local_edits: { dotClass: "bg-[var(--color-icon-task)]/70", accent: "var(--color-icon-task)", label: "Local changes" },
   conflict: { dotClass: "bg-[var(--color-status-warning)]/70", accent: "var(--color-status-warning)", label: "Conflict" },
 };
@@ -400,8 +399,8 @@ export interface TicketPillHoverData {
   notes?: string | null;
   /** Whether the PO follows this ticket. The follow star now lives only in the card (BRDG-239). */
   followed?: boolean;
-  /** Local edit state (draft/local_edits/conflict), surfaced in the card (BRDG-239). */
-  editState?: "draft" | "local_edits" | "conflict" | null;
+  /** Local edit state (local_edits/conflict), surfaced in the card (BRDG-239). */
+  editState?: "local_edits" | "conflict" | null;
   /** Names of active refinement sessions containing this ticket (BRDG-239). */
   refinementNames?: string[];
 }

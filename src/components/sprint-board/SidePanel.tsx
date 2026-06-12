@@ -273,8 +273,7 @@ export function SidePanel({
 
   const hasLocalEdits = h.hasLocalTitleEdit || h.hasLocalDescEdit;
   const isEditing = h.isTitleEditing || h.isDescEditing;
-  const isDraftOnly = t.editState === "draft";
-  const showPushButton = hasLocalEdits && !h.showConflictWarning && !isEditing && !isDraftOnly;
+  const showPushButton = hasLocalEdits && !h.showConflictWarning && !isEditing;
 
   const refineEligible = !t.removedFromJiraAt && t.jiraStatus !== "DONE" && t.jiraStatus !== "DEPRECATED"
     && t.readiness === "ready_to_refine" && !isInRefinementSession;
@@ -351,11 +350,6 @@ export function SidePanel({
   // away with it; the floating close below keeps the panel dismissable.
   const headerActions = (
     <>
-      {t.editState === "draft" && (
-        <span className="rounded px-1.5 py-0.5 text-caption" style={{ backgroundColor: "var(--color-status-info-subtle)", color: "var(--color-icon-task)", opacity: 0.5 }} title="Unsaved draft">
-          draft
-        </span>
-      )}
       {t.editState === "local_edits" && (
         <span className="rounded px-1.5 py-0.5 text-caption" style={{ backgroundColor: "var(--color-status-info-subtle)", color: "var(--color-icon-task)", opacity: 0.7 }} title="Has local changes not yet pushed to Jira">
           local changes

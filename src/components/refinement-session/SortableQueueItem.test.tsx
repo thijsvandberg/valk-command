@@ -51,14 +51,6 @@ describe("SortableQueueItem edit state badges", () => {
     expect(smallDots.length).toBe(1);
   });
 
-  it("shows dot when editState is 'draft'", () => {
-    const { container } = render(
-      <SortableQueueItem ticket={makeTicket("draft")} onRemove={() => {}} />,
-    );
-    const smallDots = container.querySelectorAll(".h-1\\.5.w-1\\.5.rounded-full");
-    expect(smallDots.length).toBe(1);
-  });
-
   it("shows no dot when editState is 'clean'", () => {
     const { container } = render(
       <SortableQueueItem ticket={makeTicket("clean")} onRemove={() => {}} />,

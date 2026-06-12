@@ -123,9 +123,9 @@ describe("RefinementQueuePanel conflict count", () => {
     expect(screen.queryByText(/local edit/i)).not.toBeInTheDocument();
   });
 
-  it("shows local edits count for draft/local_edits tickets", () => {
+  it("shows local edits count for local_edits tickets", () => {
     const tickets = [
-      makeTicket("VPL-1", "draft"),
+      makeTicket("VPL-1", "local_edits"),
       makeTicket("VPL-2", "local_edits"),
       makeTicket("VPL-3", "clean"),
     ];
@@ -147,7 +147,7 @@ describe("RefinementQueuePanel conflict count", () => {
   it("shows combined counts when both conflicts and local edits exist", () => {
     const tickets = [
       makeTicket("VPL-1", "conflict"),
-      makeTicket("VPL-2", "draft"),
+      makeTicket("VPL-2", "local_edits"),
     ];
     render(
       <RefinementQueuePanel

@@ -9,15 +9,9 @@ import { Minus, Sparkles, Pencil, CircleDot, Check, Pause, Clock } from "lucide-
 import { ReviewPopover } from "@/components/sprint-board/ReviewPopover";
 import { Tooltip } from "@/components/shared/Tooltip";
 
-type EditState = "draft" | "local_edits" | "conflict";
+type EditState = "local_edits" | "conflict";
 
 export const EDIT_STATE_CONFIG: Record<EditState, { dotClass: string; accent: string; label: string; description: string }> = {
-  draft: {
-    dotClass: "bg-[var(--color-icon-task)]/40",
-    accent: "var(--color-icon-task)",
-    label: "Unsaved draft",
-    description: "A draft is in progress but has not been saved to Jira yet.",
-  },
   local_edits: {
     dotClass: "bg-[var(--color-icon-task)]/70",
     accent: "var(--color-icon-task)",

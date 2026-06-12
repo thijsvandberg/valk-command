@@ -412,7 +412,6 @@ export const BoardRow = memo(forwardRef<HTMLTableRowElement, BoardRowBaseProps>(
                 }}
               />
             </span>
-            {tags.has("editState") && !isRemoved && ticket.editState === "draft" && <EditStateDot state="draft" />}
             {tags.has("editState") && !isRemoved && ticket.editState === "local_edits" && <EditStateDot state="local_edits" />}
             {tags.has("editState") && !isRemoved && ticket.editState === "conflict" && <EditStateDot state="conflict" />}
           </div>

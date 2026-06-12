@@ -255,7 +255,6 @@ export const TicketRow = memo(forwardRef<HTMLTableRowElement, TicketRowBaseProps
                   }}
                 />
               </span>
-              {!isRemoved && ticket.editState === "draft" && <EditStateDot state="draft" />}
               {!isRemoved && ticket.editState === "local_edits" && <EditStateDot state="local_edits" />}
               {!isRemoved && ticket.editState === "conflict" && <EditStateDot state="conflict" />}
               {!preset && (

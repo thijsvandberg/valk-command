@@ -65,7 +65,6 @@ export function SortableQueueItem({
         </span>
       </span>
       <IssueTypeIcon type={ticket.type} size={14} />
-      {ticket.editState === "draft" && <EditStateDot state="draft" />}
       {ticket.editState === "local_edits" && <EditStateDot state="local_edits" />}
       {ticket.editState === "conflict" && <EditStateDot state="conflict" />}
       <span className="min-w-0 flex-1 truncate text-body-lg text-text-secondary">{ticket.title}</span>

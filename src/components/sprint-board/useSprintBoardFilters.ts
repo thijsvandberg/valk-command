@@ -66,7 +66,12 @@ export function useSprintBoardFilters(
   const epicFilter = useMemo(() => new Set(storedFilters.epic), [storedFilters.epic]);
   const assigneeFilter = useMemo(() => new Set(storedFilters.assignee), [storedFilters.assignee]);
   const readinessFilter = useMemo(() => new Set(storedFilters.readiness ?? []), [storedFilters.readiness]);
-  const editStateFilter = useMemo(() => new Set(storedFilters.editState ?? []), [storedFilters.editState]);
+  // Legacy stored filters may still carry the retired "draft" value (BRDG-340
+  // collapsed it into local_edits); map it so old saved filters keep matching.
+  const editStateFilter = useMemo(
+    () => new Set((storedFilters.editState ?? []).map((v) => (v === "draft" ? "local_edits" : v))),
+    [storedFilters.editState],
+  );
   const issueTypeFilter = useMemo(() => new Set(storedFilters.issueType ?? []), [storedFilters.issueType]);
   const gapsFilter = useMemo(() => new Set(storedFilters.gaps ?? []), [storedFilters.gaps]);
   const teamFilter = useMemo(() => new Set(storedFilters.team ?? []), [storedFilters.team]);

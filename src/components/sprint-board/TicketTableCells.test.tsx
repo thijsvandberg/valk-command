@@ -42,11 +42,6 @@ describe("getJiraUrl", () => {
 });
 
 describe("EditStateDot", () => {
-  it("renders for draft state", () => {
-    const { container } = render(<EditStateDot state="draft" />);
-    expect(container.querySelector(".rounded-full")).toBeInTheDocument();
-  });
-
   it("renders for local_edits state", () => {
     const { container } = render(<EditStateDot state="local_edits" />);
     expect(container.querySelector(".rounded-full")).toBeInTheDocument();

@@ -49,13 +49,26 @@ As the PO, I want every edit surface to behave like the new Story Writer: typing
 - On a 409: pause autosave and show the same banner — "This draft was changed in another tab. Autosave is paused." with **Reload draft** / **Overwrite**. Extract the token-tracking save helper from `useStoryWriterDrafts` into a small shared lib so both surfaces use one implementation.
 - The unload sendBeacon stays blind (fire-and-forget cannot handle a 409); the next interactive save reconciles. Unchanged from BRDG-339.
 
+## Implementation Plan
+
+Order: the `TicketEditState` type collapse goes FIRST (compile-breaking, fans out to ~10 consumers — the red typecheck is the worklist), then the shared saver extraction (additive), then the editor rework, then the banner wiring.
+
+1. **Type collapse** — `src/types/ticket.ts` (`TicketEditState` = `clean | local_edits | conflict`), `src/lib/ticket-state.ts` (`computeTicketEditState`: any edit → `local_edits`; stale `baseJiraVersion` → `conflict`, no more `hasSaved` gate). Fix all red consumers: `TicketTableCells` `EDIT_STATE_CONFIG`, `BoardRow`, legacy `TicketRow`, `SidePanel` (drop `isDraftOnly`), refinement x3 (`SortableQueueItem`, `RefinementTicketList`, `RefinementQueuePanel`), `TicketStatusPill`, `filter-bar-types` (one merged option "Local changes"), `useSprintBoardFilters` (map legacy persisted `"draft"` filter value → `local_edits` on read). Server callers (`ticket-detail-builder`, `/api/tickets` route, `deleteLocalEdits` broadcast) need no code change; their returned states shift per the new rule.
+2. **Shared saver** — new `src/lib/local-edit-saver.ts`: `useLocalEditSaver()` hook owning the `${key}:${field}` → `modifiedAt` token map, conflict/pause refs + `conflict` state, the PUT choke point (`persistLocalEdit(key, field, value, {isDraft, blind})`), a `lastRejected` map recorded on 409 so `overwrite()` can re-save blind, plus `setToken`/`clearTokens`/`clearConflict`/`setExternalPause`. Refactor `useStoryWriterDrafts` onto it with its public API unchanged (`draftSaveState`, `draftConflict`, `resolveDraftConflict`, `setAutosavePaused`) so BRDG-339 tests pass without churn.
+3. **EditableDescription rework** — remove the Save button, `editIsDraft` state and the promote-on-save path; single flush path (`flushPending`) used by Escape/outside-click/Cmd-S/unmount; Saving…/Saved indicator (same microcopy as Story Writer footer) in the toolbar actions; badge always the teal "Local edits" treatment; autosave routed through the saver (sends `baseModifiedAt`); built-in amber conflict banner (shown on `saver.conflict`) so every surface that embeds the editor gets it. Optional `saver` prop: the detail page passes a page-level instance shared with the title editor; other surfaces fall back to an own instance (Reload button only shows when an `onConflictReload` handler is provided; Overwrite always works via `saver.overwrite()`).
+4. **EditableTitle** — commit-save routed through the shared (page-level) saver so it carries `baseModifiedAt`; a title 409 raises the same shared conflict, surfaced by the description editor's banner.
+5. **Detail page wiring** — `useTicketDetailPage` creates the saver, provides `onConflictReload` (revalidate + `draftDiscardKey` bump remounts both editors and reseeds tokens); `TicketTabContent` passes saver + handler down.
+6. **Tests** — `ticket-state` rewrite (incl. stale-base draft → conflict), new `local-edit-saver` tests, `EditableDescription` churn (no Save button, indicator, Escape-flush, token round-trip, 409 pause), `EditableTitle` token test, `useStoryWriterDrafts` unchanged-API run, filter option merge, consumer dot tests, server fixtures expecting `"draft"`.
+
+Decisions on plan ambiguities: Reload resolves via remount (existing `draftDiscardKey` primitive; in-flight keystrokes in the other editor are dropped — acceptable, Reload means "take the other tab's version"); Overwrite re-saves the 409-rejected values recorded in the saver (covers simultaneous title+description conflicts); legacy persisted `"draft"` filter values map to `local_edits`; `isDraft` keeps being written (`true` for autosaves) but has no UI meaning; the saving indicator lives in the editing toolbar only (the collapsed diff card has no live editor).
+
 ## Acceptance criteria
 
 - [ ] Save button is gone from `EditableDescription`; toolbar shows Saving…/Saved indicator + Discard + Push to Jira
 - [ ] Closing the editor (Esc/outside click/unmount) flushes pending changes; nothing is lost without an explicit Discard
-- [ ] `TicketEditState` no longer has `draft`; `computeTicketEditState` returns `local_edits` for any edit and `conflict` for any edit on a stale Jira base (including former drafts)
-- [ ] All `editState` UI surfaces show the single "Local edits" treatment; the amber "Unsaved changes" state is gone (board rows, status pill, side panel, filter bar, sprint insights, refinement lists, detail badge)
-- [ ] FilterBar draft/local-edits filter options are merged into one
+- [x] `TicketEditState` no longer has `draft`; `computeTicketEditState` returns `local_edits` for any edit and `conflict` for any edit on a stale Jira base (including former drafts)
+- [x] All `editState` UI surfaces show the single "Local edits" treatment; the amber "Unsaved changes" state is gone (board rows, status pill, side panel, filter bar, sprint insights, refinement lists, detail badge)
+- [x] FilterBar draft/local-edits filter options are merged into one
 - [ ] Description and title saves send `baseModifiedAt`; a 409 pauses autosave and shows the Reload/Overwrite banner on the detail page
 - [ ] Token-tracking save logic is shared between `useStoryWriterDrafts` and the detail editors (one lib implementation)
 - [ ] Refinement session view and board side panel inherit the new behavior via the shared component

@@ -43,7 +43,7 @@ export function RefinementQueuePanel({
     let edits = 0;
     for (const t of queueHook.queueTickets) {
       if (t.editState === "conflict") conflicts++;
-      else if (t.editState === "local_edits" || t.editState === "draft") edits++;
+      else if (t.editState === "local_edits") edits++;
     }
     return { conflictCount: conflicts, localEditsCount: edits };
   }, [queueHook.queueTickets]);

@@ -239,7 +239,7 @@ export interface TicketDetail {
   resyncingSprints?: boolean;
 }
 
-export type TicketEditState = "clean" | "draft" | "local_edits" | "conflict";
+export type TicketEditState = "clean" | "local_edits" | "conflict";
 
 export interface Ticket {
   key: string;

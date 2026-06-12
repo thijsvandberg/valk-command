@@ -200,7 +200,6 @@ export function RefinementTicketList({
             const readiness = (readinessMap?.[ticket.key] ?? ticket.readiness) ?? null;
             const metadata = (
               <div className="flex shrink-0 items-center gap-1.5">
-                {ticket.editState === "draft" && <EditStateDot state="draft" />}
                 {ticket.editState === "local_edits" && <EditStateDot state="local_edits" />}
                 {ticket.editState === "conflict" && <EditStateDot state="conflict" />}
                 {showEpic && (ticket.epic

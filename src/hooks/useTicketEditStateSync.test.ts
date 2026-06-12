@@ -28,7 +28,7 @@ describe("patchTicketEditStateCaches", () => {
 
   it("matches only list keys and updates the target ticket in place", () => {
     const mutate = vi.fn() as unknown as ScopedMutator;
-    patchTicketEditStateCaches(mutate, "VPL-2", "draft");
+    patchTicketEditStateCaches(mutate, "VPL-2", "local_edits");
 
     const [listFilter, listUpdater] = (mutate as unknown as ReturnType<typeof vi.fn>).mock.calls[1];
     // The filter targets the list endpoints, never the detail key (which has a path segment).
@@ -41,7 +41,7 @@ describe("patchTicketEditStateCaches", () => {
       { key: "VPL-2", editState: "clean" } as Ticket,
     ];
     const next = listUpdater(list) as Ticket[];
-    expect(next.find((t) => t.key === "VPL-2")?.editState).toBe("draft");
+    expect(next.find((t) => t.key === "VPL-2")?.editState).toBe("local_edits");
     expect(next.find((t) => t.key === "VPL-1")?.editState).toBe("clean");
   });
 });
