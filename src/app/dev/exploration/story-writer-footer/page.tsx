@@ -55,19 +55,23 @@ import {
  * The editor's lifecycle, reduced to the three things that actually drive the
  * footer. `finished` is the terminal state reached via Finish.
  */
-type Scenario = "dirty" | "savedClean" | "pushedClean" | "finished";
+type Scenario = "dirty" | "savedClean" | "pushedClean" | "closedPlain" | "readyKept" | "finished";
 
 const SCENARIO_LABEL: Record<Scenario, string> = {
   dirty: "Unsaved edits",
   savedClean: "Saved · not pushed",
   pushedClean: "Pushed · no new edits",
-  finished: "Session finished",
+  closedPlain: "Closed · readiness untouched",
+  readyKept: "Closed · Ready · session kept",
+  finished: "Closed · Ready · session cleared",
 };
 
 const SCENARIO_BLURB: Record<Scenario, string> = {
   dirty: "You have local changes that are neither saved nor in Jira.",
   savedClean: "Draft is saved locally. Jira does not have these changes yet.",
   pushedClean: "Jira is up to date. Nothing new to push. Session is still open.",
+  closedPlain: "Draft pushed, editor closed. Readiness was left as it was.",
+  readyKept: "Draft pushed, marked Ready to refine, editor closed. The chat session is kept for later.",
   finished: "Draft pushed, session cleared, ticket marked Ready to refine.",
 };
 
@@ -85,12 +89,30 @@ export default function StoryWriterFooterPage() {
   const isDirty = scenario === "dirty";
   const hasUnpushed = scenario === "dirty" || scenario === "savedClean";
 
+  // Option E: mock "Add to refinement" modal shown right after Ready to refine.
+  const [showRefineModal, setShowRefineModal] = useState(false);
+
   // Flow transitions, shared across the option cards.
   const doEdit = () => setScenario("dirty");
   const doSave = () => setScenario("savedClean");
   const doPush = () => setScenario("pushedClean"); // implies save if dirty
+  const doClosePlain = () => setScenario("closedPlain"); // push + close, readiness untouched
   const doFinish = () => setScenario("finished");
+  const doReadyKeep = () => {
+    setScenario("readyKept");
+    setShowRefineModal(true);
+  };
+  const doFinishWithRefine = () => {
+    setScenario("finished");
+    setShowRefineModal(true);
+  };
   const reset = () => setScenario("dirty");
+
+  const done: DoneKind =
+    scenario === "finished" ? "ready"
+    : scenario === "readyKept" ? "readyKept"
+    : scenario === "closedPlain" ? "plain"
+    : undefined;
 
   return (
     <div className="min-h-screen bg-[var(--color-surface-base)] px-6 py-10 lg:px-10">
@@ -163,7 +185,7 @@ export default function StoryWriterFooterPage() {
             blurb="Every action gets its own button with a fixed meaning. Emphasis maps to frequency: Finish is the loud green terminal action, Push is a quieter publish, Save is a ghost that only shows when there is something to save."
             recommended
           >
-            <FooterBar finished={scenario === "finished"}>
+            <FooterBar done={done}>
               {isDirty && <SaveButton onClick={doSave} />}
               <PushButton onClick={doPush} disabled={!hasUnpushed} subtle />
               <FinishButton onClick={doFinish} />
@@ -176,7 +198,7 @@ export default function StoryWriterFooterPage() {
             title="Split button"
             blurb="Compact: Save plus one split control. The main click publishes and keeps the session open; the caret reveals Push & finish for the one-shot path. Fewer buttons, but Finish is one click hidden behind the caret."
           >
-            <FooterBar finished={scenario === "finished"}>
+            <FooterBar done={done}>
               {isDirty && <SaveButton onClick={doSave} />}
               <SplitPushButton onPush={doPush} onFinish={doFinish} disabled={!hasUnpushed} />
               <OverflowButton scenario={scenario} layout="B" />
@@ -188,7 +210,7 @@ export default function StoryWriterFooterPage() {
             title="Two buttons"
             blurb="Simplest bar: Save plus Finish. Push-without-finishing is treated as the edge case and lives in the ... menu. Best if you almost always finish in one go and rarely publish mid-flight."
           >
-            <FooterBar finished={scenario === "finished"}>
+            <FooterBar done={done}>
               {isDirty && <SaveButton onClick={doSave} />}
               <FinishButton onClick={doFinish} />
               <OverflowButton scenario={scenario} layout="C" onPush={doPush} pushDisabled={!hasUnpushed} />
@@ -218,7 +240,7 @@ export default function StoryWriterFooterPage() {
           >
             <FinishIconPicker value={finishIconKey} onChange={setFinishIconKey} />
             <OffTreatmentGallery value={offTreatment} onChange={setOffTreatment} Icon={FinishIcon} />
-            <FooterBar finished={scenario === "finished"}>
+            <FooterBar done={done}>
               <AutosaveIndicator dirty={isDirty} />
               <PushFinishToggle
                 onPush={doPush}
@@ -233,13 +255,13 @@ export default function StoryWriterFooterPage() {
 
           <OptionCard
             tag="Option E"
-            title="Autosave + split button"
-            blurb="Autosave plus a single split control. Main click = Push to Jira (stay open); caret = Push & finish. No Save button, no separate Finish button — just one control and the overflow."
+            title="Autosave + one Wrap up button"
+            blurb="Autosave plus a single visible button. Wrap up ALWAYS pushes and closes the editor; inside you choose: Ready to refine (session kept), Ready to refine + clear session, or Close as-is (readiness untouched). Both ready options immediately offer adding the ticket to a refinement. Push-and-keep-working lives in the ... menu only."
           >
-            <FooterBar finished={scenario === "finished"}>
+            <FooterBar done={done}>
               <AutosaveIndicator dirty={isDirty} />
-              <SplitPushButton onPush={doPush} onFinish={doFinish} disabled={!hasUnpushed} />
-              <OverflowButton scenario={scenario} layout="B" />
+              <WrapUpControl onReadyKeep={doReadyKeep} onReadyClear={doFinishWithRefine} onClose={doClosePlain} />
+              <OverflowButton scenario={scenario} layout="C" onPush={doPush} pushDisabled={!hasUnpushed} />
             </FooterBar>
           </OptionCard>
 
@@ -248,7 +270,7 @@ export default function StoryWriterFooterPage() {
             title="Single finish checkmark"
             blurb="The most minimal: autosave plus one subtle icon-only checkmark that finishes the session (push + clear + Ready to refine). Plain push-without-finishing is demoted to the ... menu. Almost no chrome — but the terminal action is also the quietest, so it leans on the tooltip and overflow for discoverability."
           >
-            <FooterBar finished={scenario === "finished"}>
+            <FooterBar done={done}>
               <AutosaveIndicator dirty={isDirty} />
               <FinishCheck onClick={doFinish} />
               <OverflowButton scenario={scenario} layout="C" onPush={doPush} pushDisabled={!hasUnpushed} />
@@ -263,6 +285,8 @@ export default function StoryWriterFooterPage() {
           Jira always matches what you leave behind.
         </p>
       </div>
+
+      {showRefineModal && <RefineModal onDone={() => setShowRefineModal(false)} />}
     </div>
   );
 }
@@ -303,15 +327,18 @@ function OptionCard({
   );
 }
 
+/** Terminal-state flavour shown in the footer once the editor is closed. */
+type DoneKind = "ready" | "readyKept" | "plain" | undefined;
+
 /** Mimics the real ViewHeader action area: faux ticket title left, actions right. */
-function FooterBar({ children, finished }: { children: React.ReactNode; finished?: boolean }) {
+function FooterBar({ children, done }: { children: React.ReactNode; done?: DoneKind }) {
   return (
     <div className="flex items-center justify-between gap-4 rounded-b-2xl bg-[var(--color-surface-base)] px-5 py-4">
       <div className="min-w-0">
         <p className="truncate font-mono text-[10px] uppercase tracking-[0.12em] text-text-muted">BRDG-000</p>
         <p className="truncate text-body-sm font-medium text-text-secondary">Refine the booking confirmation flow</p>
       </div>
-      <div className="flex shrink-0 items-center gap-2">{finished ? <FinishedBanner /> : children}</div>
+      <div className="flex shrink-0 items-center gap-2">{done ? <FinishedBanner kind={done} /> : children}</div>
     </div>
   );
 }
@@ -709,6 +736,168 @@ function SplitPushButton({
   );
 }
 
+/**
+ * Option E, final shape: ONE visible button. "Wrap up" always pushes and
+ * closes the editor; the panel decides readiness and whether the chat session
+ * is kept or cleared. Push-and-keep-working is intentionally NOT here — it
+ * lives in the ... overflow.
+ */
+function WrapUpControl({
+  onReadyKeep,
+  onReadyClear,
+  onClose,
+}: {
+  onReadyKeep: () => void;
+  onReadyClear: () => void;
+  onClose: () => void;
+}) {
+  const [open, setOpen] = useState(false);
+  return (
+    <div className="relative">
+      <button
+        onClick={() => setOpen((v) => !v)}
+        aria-expanded={open}
+        className={`flex h-8 items-center gap-1.5 rounded-lg px-3.5 text-body-sm font-semibold text-white cursor-pointer transition-colors duration-150 shadow-[0_2px_8px_color-mix(in_srgb,var(--color-brand-500)_30%,transparent)] active:scale-[0.97] ${
+          open ? "bg-[var(--color-brand-500)]" : "bg-[var(--color-brand-600)] hover:bg-[var(--color-brand-500)]"
+        }`}
+      >
+        <Flag size={13} strokeWidth={1.75} />
+        Wrap up
+      </button>
+
+      {open && (
+        <div className="absolute right-0 top-full z-30 mt-2 w-[320px] rounded-2xl border border-border-strong bg-[var(--color-surface-floating)] p-2 shadow-[var(--shadow-lg)]">
+          <p className="px-2 pb-0.5 pt-1 text-[10px] font-semibold uppercase tracking-[0.14em] text-text-muted">
+            Wrap up this story
+          </p>
+          <p className="px-2 pb-2 text-[11px] leading-[1.5] text-text-tertiary">
+            Pushes to Jira &amp; closes the editor.
+          </p>
+          <button
+            onClick={() => {
+              setOpen(false);
+              onReadyKeep();
+            }}
+            className="group flex w-full items-start gap-3 rounded-xl p-2.5 text-left cursor-pointer transition-colors duration-150 hover:bg-[var(--color-brand-500)]/[0.08]"
+          >
+            <span className="grid h-9 w-9 shrink-0 place-items-center rounded-lg bg-[var(--color-brand-500)]/12 text-[var(--color-brand-400)] transition-colors duration-150 group-hover:bg-[var(--color-brand-500)]/20">
+              <BadgeCheck size={16} strokeWidth={1.75} />
+            </span>
+            <span className="flex min-w-0 flex-col gap-0.5">
+              <span className="text-body-sm font-semibold text-text-primary">Ready to refine</span>
+              <span className="text-[11px] leading-[1.55] text-text-tertiary">
+                Marks the story Ready to refine. The chat session is kept for later.
+              </span>
+            </span>
+          </button>
+          <button
+            onClick={() => {
+              setOpen(false);
+              onReadyClear();
+            }}
+            className="group flex w-full items-start gap-3 rounded-xl p-2.5 text-left cursor-pointer transition-colors duration-150 hover:bg-[var(--color-brand-500)]/[0.08]"
+          >
+            <span className="grid h-9 w-9 shrink-0 place-items-center rounded-lg bg-[var(--color-brand-500)]/12 text-[var(--color-brand-400)] transition-colors duration-150 group-hover:bg-[var(--color-brand-500)]/20">
+              <Archive size={16} strokeWidth={1.75} />
+            </span>
+            <span className="flex min-w-0 flex-col gap-0.5">
+              <span className="text-body-sm font-semibold text-text-primary">Ready to refine + clear session</span>
+              <span className="text-[11px] leading-[1.55] text-text-tertiary">
+                Same, but also archives this chat. The story is fully done.
+              </span>
+            </span>
+          </button>
+          <div className="mx-2 my-1 h-px bg-overlay-default" />
+          <button
+            onClick={() => {
+              setOpen(false);
+              onClose();
+            }}
+            className="group flex w-full items-start gap-3 rounded-xl p-2.5 text-left cursor-pointer transition-colors duration-150 hover:bg-hover-interactive"
+          >
+            <span className="grid h-9 w-9 shrink-0 place-items-center rounded-lg bg-overlay-default text-text-tertiary transition-colors duration-150 group-hover:bg-overlay-strong">
+              <Trash2 size={15} strokeWidth={1.75} />
+            </span>
+            <span className="flex min-w-0 flex-col gap-0.5">
+              <span className="text-body-sm font-semibold text-text-primary">Close as-is</span>
+              <span className="text-[11px] leading-[1.55] text-text-tertiary">
+                Leaves readiness untouched. The story is parked, not flagged for refinement.
+              </span>
+            </span>
+          </button>
+        </div>
+      )}
+    </div>
+  );
+}
+
+/**
+ * Mock of the existing Add-to-refinement dialog, shown right after choosing
+ * Ready to refine so adding the story to a refinement is one click, not a
+ * separate trip through the board.
+ */
+function RefineModal({ onDone }: { onDone: () => void }) {
+  const [selected, setSelected] = useState("thu");
+  const sessions = [
+    { key: "thu", label: "Refinement · Thu 18 Jun", detail: "4 stories queued" },
+    { key: "wed", label: "Refinement · Wed 24 Jun", detail: "1 story queued" },
+  ];
+  return (
+    <div className="fixed inset-0 z-50 grid place-items-center bg-black/40 p-6">
+      <div className="w-full max-w-sm rounded-2xl border border-border-strong bg-[var(--color-surface-floating)] p-5 shadow-[var(--shadow-lg)]">
+        <div className="mb-1 flex items-center gap-2">
+          <span className="grid h-8 w-8 place-items-center rounded-lg bg-[var(--color-brand-500)]/12 text-[var(--color-brand-400)]">
+            <BadgeCheck size={15} strokeWidth={1.75} />
+          </span>
+          <h3 className="font-display text-[16px] font-semibold tracking-[-0.01em] text-text-primary">
+            Marked Ready to refine
+          </h3>
+        </div>
+        <p className="mb-4 text-body-sm leading-[1.6] text-text-tertiary">
+          Add BRDG-000 to an upcoming refinement?
+        </p>
+        <div className="mb-4 grid gap-2">
+          {sessions.map((s) => {
+            const active = selected === s.key;
+            return (
+              <button
+                key={s.key}
+                onClick={() => setSelected(s.key)}
+                aria-pressed={active}
+                className={`flex items-center justify-between rounded-xl border px-3 py-2.5 text-left cursor-pointer transition-colors duration-150 ${
+                  active
+                    ? "border-[var(--color-brand-500)]/50 bg-[var(--color-brand-500)]/[0.08]"
+                    : "border-border-default bg-overlay-subtle hover:bg-hover-interactive"
+                }`}
+              >
+                <span className="flex flex-col">
+                  <span className="text-body-sm font-medium text-text-primary">{s.label}</span>
+                  <span className="text-[11px] text-text-muted">{s.detail}</span>
+                </span>
+                {active && <Check size={14} strokeWidth={2.5} className="text-[var(--color-brand-400)]" />}
+              </button>
+            );
+          })}
+        </div>
+        <div className="flex justify-end gap-2">
+          <button
+            onClick={onDone}
+            className="flex h-8 items-center rounded-lg border border-border-default bg-overlay-subtle px-3 text-body-sm font-medium text-text-secondary cursor-pointer transition-colors duration-150 hover:bg-hover-interactive"
+          >
+            Skip
+          </button>
+          <button
+            onClick={onDone}
+            className="flex h-8 items-center gap-1.5 rounded-lg bg-[var(--color-brand-600)] px-3.5 text-body-sm font-semibold text-white cursor-pointer transition-colors duration-150 hover:bg-[var(--color-brand-500)]"
+          >
+            Add to refinement
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function OverflowButton({
   scenario,
   layout,
@@ -800,11 +989,15 @@ function MenuDivider() {
 }
 
 /* Render a tiny finished banner so the terminal state is visible inline. */
-function FinishedBanner() {
+function FinishedBanner({ kind }: { kind: "ready" | "readyKept" | "plain" }) {
   return (
     <div className="flex items-center gap-2 rounded-lg border border-[var(--color-status-done-subtle)] bg-[var(--color-status-done-subtle)] px-3 py-1.5 text-body-sm font-medium text-[var(--color-status-done)]">
       <CheckCircle2 size={14} strokeWidth={1.75} />
-      Pushed · session cleared · Ready to refine
+      {kind === "ready"
+        ? "Pushed · session cleared · Ready to refine"
+        : kind === "readyKept"
+        ? "Pushed · Ready to refine · session kept"
+        : "Pushed · closed · readiness untouched"}
     </div>
   );
 }
