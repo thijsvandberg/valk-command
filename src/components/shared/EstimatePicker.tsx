@@ -233,7 +233,7 @@ export function EstimatePicker({
           <div
             ref={popoverRef}
             className={`fixed z-[9999] rounded-lg border p-1.5 ${committed ? "border-border-default" : "border-dashed border-border-default"}`}
-            style={{ ...getPopoverStyle(), width: 296 }}
+            style={{ ...getPopoverStyle(), width: 268 }}
             onPointerDown={(e) => e.stopPropagation()}
             onClick={(e) => e.stopPropagation()}
           >
