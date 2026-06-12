@@ -533,6 +533,13 @@
       "when": 1781081341510,
       "tag": "0075_fair_talisman",
       "breakpoints": true
+    },
+    {
+      "idx": 76,
+      "version": "6",
+      "when": 1781275093482,
+      "tag": "0076_fresh_phil_sheldon",
+      "breakpoints": true
     }
   ]
 }

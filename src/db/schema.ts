@@ -859,10 +859,12 @@ export type RelatedStoryCandidateRow = typeof relatedStoryCandidate.$inferSelect
 // Saved refinement sessions: persisted ticket queues for refinement ceremonies
 export const refinementSession = sqliteTable("refinement_session", {
   id: text("id").primaryKey(),
-  name: text("name").notNull(),
+  name: text("name"),
   ticketKeys: text("ticket_keys").notNull().default("[]"),
   status: text("status", { enum: ["draft", "in_progress", "completed"] }).notNull().default("draft"),
   generalComment: text("general_comment"),
+  // Date-only (YYYY-MM-DD); nullable so unscheduled sessions keep working
+  scheduledFor: text("scheduled_for"),
   currentIndex: integer("current_index").notNull().default(0),
   createdAt: text("created_at")
     .notNull()
