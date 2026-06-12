@@ -261,8 +261,19 @@ export function useTicketDetailPage(key: string) {
         // Clear the draft state optimistically; a plain revalidation can return
         // the stale cached "draft" because server cache invalidation is
         // unreliable in dev, leaving the badge stuck after a successful push.
+        // The pushed values themselves must be patched in too: the key bump
+        // below remounts the editors, and without this they render the stale
+        // pre-push description/title until the refetch lands (BRDG-340).
+        const pushedTitle = localEdits?.title?.value;
+        const pushedDescription = localEdits?.description?.value;
         await mutateTicket(
-          (prev) => prev ? { ...prev, editState: "clean", localEdits: {} } : prev,
+          (prev) => prev ? {
+            ...prev,
+            editState: "clean",
+            localEdits: {},
+            ...(pushedTitle ? { title: pushedTitle } : {}),
+            ...(pushedDescription ? { description: pushedDescription } : {}),
+          } : prev,
           { revalidate: true },
         );
         setDraftDiscardKey((k) => k + 1);
@@ -276,7 +287,7 @@ export function useTicketDetailPage(key: string) {
     } finally {
       setIsPushing(false);
     }
-  }, [key, handleRemoteChanged, mutateTicket, showToast, syncEditState]);
+  }, [key, handleRemoteChanged, mutateTicket, showToast, syncEditState, localEdits]);
 
   // "Reload draft" on the cross-tab conflict banner: adopt the other tab's
   // version. Fresh tokens reseed from the revalidated payload when the key

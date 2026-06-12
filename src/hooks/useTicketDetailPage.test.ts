@@ -63,6 +63,9 @@ const mockApiData = {
   linkedIssues: [],
   jiraComments: [],
   epicChildren: [],
+  localEdits: {
+    description: { value: "Pushed new description", isDraft: true, modifiedAt: "2026-06-12T10:00:00.000Z" },
+  },
 };
 
 const mutateFn = vi.fn().mockResolvedValue(undefined);
@@ -151,7 +154,11 @@ describe("useTicketDetailPage", () => {
     const optimisticCall = mutateFn.mock.calls.find((c) => typeof c[0] === "function");
     expect(optimisticCall).toBeDefined();
     const updater = optimisticCall![0] as (prev: typeof mockApiData) => typeof mockApiData;
-    expect(updater({ ...mockApiData, editState: "draft" })).toMatchObject({ editState: "clean", localEdits: {} });
+    const patched = updater({ ...mockApiData, editState: "local_edits" });
+    expect(patched).toMatchObject({ editState: "clean", localEdits: {} });
+    // The pushed content itself is patched in too, so the remounted editor
+    // shows the new version instead of the stale cached one (BRDG-340).
+    expect(patched.description).toBe("Pushed new description");
     expect(optimisticCall![1]).toMatchObject({ revalidate: true });
   });
 

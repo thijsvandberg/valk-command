@@ -250,7 +250,21 @@ export default function RefinementSessionTicketPage({
         setHasLocalTitleEdit(false);
         setHasLocalDescEdit(false);
         setOverrideConfirmed(false);
-        await mutate();
+        // Patch the pushed values in optimistically: the key bump remounts the
+        // editors and a dev-mode refetch can return stale cache, which would
+        // briefly show the pre-push content (BRDG-340).
+        const pushedTitle = localEdits?.title?.value;
+        const pushedDescription = localEdits?.description?.value;
+        await mutate(
+          (prev) => prev ? {
+            ...prev,
+            editState: "clean" as const,
+            localEdits: {},
+            ...(pushedTitle ? { title: pushedTitle } : {}),
+            ...(pushedDescription ? { description: pushedDescription } : {}),
+          } : prev,
+          { revalidate: true },
+        );
         setDraftDiscardKey((k) => k + 1);
         // Invalidate list caches so sprint board reflects any changes
         await globalMutate(
@@ -266,7 +280,7 @@ export default function RefinementSessionTicketPage({
     } finally {
       setIsPushing(false);
     }
-  }, [currentKey, mutate]);
+  }, [currentKey, mutate, localEdits]);
 
   // Header state
   const [storyPoints, setStoryPoints] = useState<number | null>(ticketData?.storyPoints ?? null);
