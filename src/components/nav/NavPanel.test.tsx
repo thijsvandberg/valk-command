@@ -247,10 +247,10 @@ describe("NavPanel (header navigation dropdown)", () => {
       expect(mockPush).not.toHaveBeenCalled();
     });
 
-    it("widens the panel to 480px while the list is open and reverts on back", () => {
+    it("widens the panel to 640px while the list is open and reverts on back", () => {
       flipToRecent();
       const panel = screen.getByTestId("nav-panel");
-      expect(panel.className).toContain("w-[480px]");
+      expect(panel.className).toContain("w-[640px]");
       fireEvent.click(screen.getByRole("button", { name: /Back to menu/ }));
       expect(panel.className).toContain("w-[360px]");
     });

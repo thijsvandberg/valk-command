@@ -419,7 +419,7 @@ function MenuFlowDemo({
 // Page
 // ---------------------------------------------------------------------------
 
-const WIDTHS = [360, 420, 480] as const;
+const WIDTHS = [360, 480, 640] as const;
 
 export default function RecentlyViewedExplorationPage() {
   const [fill, setFill] = useState<Fill>("full");
