@@ -425,4 +425,166 @@ describe("useStoryWriterDrafts", () => {
       expect(() => result.current.clearTimers()).not.toThrow();
     });
   });
+
+  describe("autosave state (BRDG-339)", () => {
+    it("transitions saving -> saved around the debounced write", async () => {
+      vi.useFakeTimers();
+      vi.spyOn(global, "fetch").mockResolvedValue({
+        ok: true,
+        json: async () => ({ modifiedAt: "2026-06-12T10:00:00.000Z" }),
+      } as Response);
+
+      const opts = createOptions();
+      const { result } = renderHook(() => useStoryWriterDrafts(opts));
+
+      expect(result.current.draftSaveState).toBe("idle");
+
+      act(() => {
+        result.current.updateLocalDraft("content");
+      });
+      expect(result.current.draftSaveState).toBe("saving");
+
+      await act(async () => {
+        vi.advanceTimersByTime(500);
+      });
+      expect(result.current.draftSaveState).toBe("saved");
+
+      vi.useRealTimers();
+    });
+
+    it("sends the modifiedAt returned by the previous save as baseModifiedAt", async () => {
+      vi.useFakeTimers();
+      const fetchSpy = vi.spyOn(global, "fetch").mockResolvedValue({
+        ok: true,
+        json: async () => ({ modifiedAt: "2026-06-12T10:00:00.000Z" }),
+      } as Response);
+
+      const opts = createOptions();
+      const { result } = renderHook(() => useStoryWriterDrafts(opts));
+
+      act(() => { result.current.updateLocalDraft("v1"); });
+      await act(async () => { vi.advanceTimersByTime(500); });
+
+      act(() => { result.current.updateLocalDraft("v2"); });
+      await act(async () => { vi.advanceTimersByTime(500); });
+
+      const putCalls = fetchSpy.mock.calls.filter(([url]) => String(url).includes("local-edits"));
+      expect(JSON.parse(putCalls[0][1]!.body as string).baseModifiedAt).toBeUndefined();
+      expect(JSON.parse(putCalls[1][1]!.body as string).baseModifiedAt).toBe("2026-06-12T10:00:00.000Z");
+
+      vi.useRealTimers();
+    });
+
+    it("flags a conflict on 409 and pauses further autosaves", async () => {
+      vi.useFakeTimers();
+      const fetchSpy = vi.spyOn(global, "fetch").mockImplementation(async (url: RequestInfo | URL, init?: RequestInit) => {
+        if (String(url).includes("local-edits") && init?.method === "PUT") {
+          return { ok: false, status: 409, json: async () => ({ error: "Draft was modified elsewhere", code: "CONFLICT" }) } as Response;
+        }
+        return { ok: true, json: async () => ({}) } as Response;
+      });
+
+      const opts = createOptions();
+      const { result } = renderHook(() => useStoryWriterDrafts(opts));
+
+      act(() => { result.current.updateLocalDraft("v1"); });
+      await act(async () => { vi.advanceTimersByTime(500); });
+      await act(async () => { await Promise.resolve(); });
+
+      expect(result.current.draftConflict).toBe(true);
+
+      // Paused: the next debounce fires but writes nothing.
+      const callsBefore = fetchSpy.mock.calls.length;
+      act(() => { result.current.updateLocalDraft("v2"); });
+      await act(async () => { vi.advanceTimersByTime(500); });
+      expect(fetchSpy.mock.calls.length).toBe(callsBefore);
+
+      vi.useRealTimers();
+    });
+
+    it("resolveDraftConflict('reload') reseeds tokens, refreshes the session and clears the conflict", async () => {
+      const refreshSession = vi.fn().mockResolvedValue(undefined);
+      vi.spyOn(global, "fetch").mockResolvedValue({
+        ok: true,
+        json: async () => ([{ field: "description", modifiedAt: "2026-06-12T11:00:00.000Z" }]),
+      } as Response);
+
+      const opts = createOptions({ refreshSession });
+      const { result } = renderHook(() => useStoryWriterDrafts(opts));
+
+      await act(async () => {
+        await result.current.resolveDraftConflict("reload");
+      });
+
+      expect(fetch).toHaveBeenCalledWith(`/api/tickets/${TICKET_KEY}/local-edits`, expect.anything());
+      expect(refreshSession).toHaveBeenCalled();
+      expect(result.current.draftConflict).toBe(false);
+    });
+
+    it("resolveDraftConflict('overwrite') re-saves the current draft without a token", async () => {
+      const fetchSpy = vi.spyOn(global, "fetch").mockResolvedValue({
+        ok: true,
+        json: async () => ({ modifiedAt: "2026-06-12T12:00:00.000Z" }),
+      } as Response);
+
+      const opts = createOptions({ session: { ...mockSession, localDraft: "mine", localTitle: "my title" } });
+      const { result } = renderHook(() => useStoryWriterDrafts(opts));
+
+      await act(async () => {
+        await result.current.resolveDraftConflict("overwrite");
+      });
+
+      const putCalls = fetchSpy.mock.calls.filter(([url]) => String(url).includes("local-edits"));
+      expect(putCalls).toHaveLength(2);
+      for (const [, init] of putCalls) {
+        expect(JSON.parse(init!.body as string).baseModifiedAt).toBeUndefined();
+      }
+      expect(result.current.draftConflict).toBe(false);
+    });
+
+    it("flushes pending edits immediately when the window loses focus", async () => {
+      vi.useFakeTimers();
+      const fetchSpy = vi.spyOn(global, "fetch").mockResolvedValue({
+        ok: true,
+        json: async () => ({ modifiedAt: "2026-06-12T13:00:00.000Z" }),
+      } as Response);
+
+      const opts = createOptions();
+      const { result } = renderHook(() => useStoryWriterDrafts(opts));
+
+      act(() => { result.current.updateLocalDraft("pending content"); });
+      expect(fetchSpy).not.toHaveBeenCalled();
+
+      await act(async () => {
+        window.dispatchEvent(new Event("blur"));
+        await vi.runOnlyPendingTimersAsync();
+      });
+
+      const putCalls = fetchSpy.mock.calls.filter(([url]) => String(url).includes("local-edits"));
+      expect(putCalls.length).toBeGreaterThanOrEqual(1);
+      expect(JSON.parse(putCalls[0][1]!.body as string).localValue).toBe("pending content");
+
+      vi.useRealTimers();
+    });
+
+    it("skips the debounced save while autosave is externally paused (streaming/push)", async () => {
+      vi.useFakeTimers();
+      const fetchSpy = vi.spyOn(global, "fetch").mockResolvedValue({
+        ok: true,
+        json: async () => ({}),
+      } as Response);
+
+      const opts = createOptions();
+      const { result } = renderHook(() => useStoryWriterDrafts(opts));
+
+      act(() => {
+        result.current.setAutosavePaused(true);
+        result.current.updateLocalDraft("streamed chunk");
+      });
+      await act(async () => { vi.advanceTimersByTime(500); });
+      expect(fetchSpy).not.toHaveBeenCalled();
+
+      vi.useRealTimers();
+    });
+  });
 });

@@ -114,6 +114,13 @@ export function useStoryWriter(ticketKey: string, options?: UseStoryWriterOption
     refreshSession,
   });
 
+  // While the agent streams, the draft is being rewritten programmatically;
+  // autosave would persist every intermediate chunk, so it pauses (BRDG-339).
+  const { setAutosavePaused } = drafts;
+  useEffect(() => {
+    setAutosavePaused(status === "streaming");
+  }, [status, setAutosavePaused]);
+
   // Only run cleanup on actual unmount. The hook already self-cleans timers via
   // its own useEffect([], ...) cleanup. Using [drafts] here would fire cleanup
   // on every render (new object reference), killing debounce timers prematurely.
@@ -579,6 +586,9 @@ export function useStoryWriter(ticketKey: string, options?: UseStoryWriterOption
     saveDraft,
     pushToJira,
     deleteSession,
+    draftSaveState: drafts.draftSaveState,
+    draftConflict: drafts.draftConflict,
+    resolveDraftConflict: drafts.resolveDraftConflict,
     refreshSession,
     createLink,
     linkCandidate,
