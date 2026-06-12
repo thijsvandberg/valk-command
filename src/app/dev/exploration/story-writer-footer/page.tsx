@@ -123,15 +123,19 @@ export default function StoryWriterFooterPage() {
             /dev/exploration/story-writer-footer
           </p>
           <h1 className="font-display text-[28px] font-semibold tracking-[-0.03em] text-text-primary">
-            Story Writer footer — save / push / finish
+            Story Writer footer — save / push / wrap up
           </h1>
           <p className="mt-2 max-w-2xl text-body-lg leading-[1.7] text-text-secondary">
             Three primitives, no hidden coupling: <strong className="text-text-primary">Save</strong> keeps your
             work local, <strong className="text-text-primary">Push</strong> publishes to Jira and stays open, and{" "}
-            <strong className="text-text-primary">Finish</strong> is the terminal move — it pushes any pending
-            changes, clears the session and marks the ticket{" "}
-            <em className="text-[var(--color-brand-300)] not-italic">Ready to refine</em>. Walk a scenario below;
-            all three layouts react to the same state.
+            <strong className="text-text-primary">Wrap up</strong> is the terminal move. Walk a scenario below;
+            all layouts react to the same state.
+          </p>
+          <p className="mt-3 max-w-2xl rounded-xl border border-[var(--color-status-done-subtle)] bg-[var(--color-status-done-subtle)] px-4 py-3 text-body-sm leading-[1.6] text-[var(--color-status-done)]">
+            <strong>Shipped as BRDG-339:</strong> Option E below. Autosave replaced the Save button, Wrap up is the
+            single primary action (Ready to refine / Ready to refine + clear session / Close as-is, the ready
+            options open the Add-to-refinement dialog), plain push lives in the ... menu, and readiness is only
+            ever set via Wrap up. Options A-D were explorations on the way there.
           </p>
         </header>
 
@@ -256,7 +260,8 @@ export default function StoryWriterFooterPage() {
           <OptionCard
             tag="Option E"
             title="Autosave + one Wrap up button"
-            blurb="Autosave plus a single visible button. Wrap up ALWAYS pushes and closes the editor; inside you choose: Ready to refine (session kept), Ready to refine + clear session, or Close as-is (readiness untouched). Both ready options immediately offer adding the ticket to a refinement. Push-and-keep-working lives in the ... menu only."
+            blurb="Autosave plus a single visible button. Wrap up ALWAYS pushes and closes the editor; inside you choose: Ready to refine (session kept), Ready to refine + clear session, or Close as-is (readiness untouched). Both ready options immediately offer adding the ticket to a refinement. Push-and-keep-working lives in the ... menu only. This is what shipped, plus a cross-tab autosave safeguard (stale saves are rejected and surface a Reload/Overwrite banner)."
+            shipped
           >
             <FooterBar done={done}>
               <AutosaveIndicator dirty={isDirty} />
@@ -300,23 +305,30 @@ function OptionCard({
   title,
   blurb,
   recommended,
+  shipped,
   children,
 }: {
   tag: string;
   title: string;
   blurb: string;
   recommended?: boolean;
+  shipped?: boolean;
   children: React.ReactNode;
 }) {
   return (
-    <section className="rounded-2xl bg-[var(--color-surface-floating)] ring-1 ring-border-default">
+    <section className={`rounded-2xl bg-[var(--color-surface-floating)] ring-1 ${shipped ? "ring-[var(--color-status-done)]/40" : "ring-border-default"}`}>
       <div className="border-b border-border-subtle px-5 py-4">
         <div className="flex items-center gap-2.5">
           <span className="font-mono text-[10px] uppercase tracking-[0.14em] text-text-muted">{tag}</span>
           <h2 className="font-display text-[17px] font-semibold tracking-[-0.01em] text-text-primary">{title}</h2>
-          {recommended && (
+          {shipped && (
             <span className="rounded-full bg-[var(--color-status-done-subtle)] px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.1em] text-[var(--color-status-done)]">
-              Recommended
+              Shipped · BRDG-339
+            </span>
+          )}
+          {recommended && !shipped && (
+            <span className="rounded-full bg-overlay-default px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.1em] text-text-tertiary">
+              Was recommended
             </span>
           )}
         </div>

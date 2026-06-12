@@ -68,19 +68,31 @@ If there are unsaved/unpushed changes when a Wrap up option is clicked, they are
 - The post-delete "Mark as Ready to Refine?" confirm dialog (`showRefinePrompt`) is removed; deleting a session from the … menu is just a destructive action.
 - The dirty/saved/pushed button-swapping logic in `StoryWriterLayout` is replaced by the fixed three-element footer above.
 
+## Implementation Plan
+
+Key findings: the debounced per-field save path in `useStoryWriterDrafts.ts` already IS the autosave engine (500ms debounce + `sendBeacon` on unload via `EditableDescription` pattern); `ticket_local_edit.modifiedAt` already exists and is returned by `upsertLocalEdit`, so it serves as the version token with no migration.
+
+1. **Server version check** — add optional `baseModifiedAt` to `UpsertLocalEditInput`; in `ticket-service.upsertLocalEdit`, throw a new `ConflictError` (409 via `handle-service-error`) when an existing row's `modifiedAt` differs. Absent `baseModifiedAt` = legacy blind upsert (keeps `EditableDescription` + sendBeacon working). Files: `src/services/ticket-service.ts`, `src/services/errors.ts` (or equivalent), `src/services/handle-service-error.ts`, `src/app/api/tickets/[key]/local-edits/route.ts` (passthrough only).
+2. **Client save path + 409** — `useStoryWriterDrafts.ts`: track per-field `modifiedAt` from each successful PUT, send it as `baseModifiedAt`, surface a conflict signal on 409, add `flushDraft()` (clear debounce timer + immediate PUT), pause guard via ref mirrors of `pushing`/`writer.status` (mirror pattern already in the hook; React Compiler-safe).
+3. **Actions layer** — `useStoryWriterActions.ts`: replace `handleSaveDraft`/`showSaved` with derived `saveState` ("saving"/"saved"/"conflict"); remove readiness side effect from `handlePush`; remove `showRefinePrompt`; add three wrap-up handlers (`handleWrapUpReady`, `handleWrapUpReadyClear`, `handleWrapUpClose`) composing push → readiness → (deleteSession) → Add-to-refinement dialog → deferred navigation. Dialog shows BEFORE navigation (it needs the live hooks); Skip/Add/close all trigger the deferred `router.push`. Push conflict aborts the close.
+4. **Footer UI** — `StoryWriterLayout.tsx`: autosave indicator + one primary Wrap up button (Flag icon) + panel (three rich options per design) + conflict banner (Reload / Overwrite); overflow gains "Push to Jira (stay open)", loses the morphing entries; `ConfirmDialog` for refine-prompt removed.
+5. **Tests** — `route.test.ts` (409 cases), `useStoryWriterDrafts` tests (debounce/flush/guard/409), new `useStoryWriterActions.wrapup.test.ts` (three flows, conflict abort, plain-push regression), `StoryWriterLayout.test.tsx` updates.
+
+Decisions on plan ambiguities: keep the existing 500ms debounce (AC says debounced, not a specific duration; blur/unload flush covers the rest); Wrap up is the single primary in split mode too (`pushToJira` already pushes the target); "nothing new to push" = `isDraftDirty || hasLocalSave`; first save after load without a seeded base behaves as blind upsert (acceptable; every subsequent save carries the token).
+
 ## Acceptance criteria
 
-- [ ] Save draft button is gone; edits autosave (debounced) with a Saving…/Saved indicator
-- [ ] Autosave flushes on blur/unload and pauses during streaming and pushes
-- [ ] `local-edits` PUT rejects stale saves (409 on version mismatch); client pauses autosave and shows the "changed in another tab" banner with Reload / Overwrite
-- [ ] Footer shows exactly one primary button (Wrap up) plus the … overflow
-- [ ] Wrap up panel offers the three options with the specified effects (readiness / session / editor close)
-- [ ] Both Ready to refine options immediately open the Add to refinement dialog; Skip keeps the readiness change
-- [ ] Wrap up pushes pending changes first; a push conflict aborts the close and shows the existing conflict message
-- [ ] Plain push (… menu) never changes readiness and never closes the editor
-- [ ] Post-delete "Mark as Ready to Refine?" prompt is removed
-- [ ] Tests cover: autosave debounce + flush, 409 stale-save handling, each Wrap up option's effect chain, push-conflict abort, overflow push leaving readiness untouched
-- [ ] `npm run lint`, `npm run typecheck`, `npm run test`, `npm run build` pass
+- [x] Save draft button is gone; edits autosave (debounced) with a Saving…/Saved indicator
+- [x] Autosave flushes on blur/unload and pauses during streaming and pushes
+- [x] `local-edits` PUT rejects stale saves (409 on version mismatch); client pauses autosave and shows the "changed in another tab" banner with Reload / Overwrite
+- [x] Footer shows exactly one primary button (Wrap up) plus the … overflow
+- [x] Wrap up panel offers the three options with the specified effects (readiness / session / editor close)
+- [x] Both Ready to refine options immediately open the Add to refinement dialog; Skip keeps the readiness change
+- [x] Wrap up pushes pending changes first; a push conflict aborts the close and shows the existing conflict message
+- [x] Plain push (… menu) never changes readiness and never closes the editor
+- [x] Post-delete "Mark as Ready to Refine?" prompt is removed
+- [x] Tests cover: autosave debounce + flush, 409 stale-save handling, each Wrap up option's effect chain, push-conflict abort, overflow push leaving readiness untouched
+- [x] `npm run lint`, `npm run typecheck`, `npm run test`, `npm run build` pass
 
 ## Out of scope
 

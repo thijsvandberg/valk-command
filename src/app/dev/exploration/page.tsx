@@ -43,8 +43,8 @@ const EXPLORATIONS: Exploration[] = [
     slug: "story-writer-footer",
     title: "Story Writer footer — save / push / wrap up",
     blurb:
-      "Rethinks the save / push / clear footer, which used one primary button that silently changed identity (Push & Close -> Push to Jira -> Close) and set Ready to refine in two inconsistent ways. Chosen: Option E — autosave (no Save button) plus a single Wrap up button that always pushes & closes, with three choices: Ready to refine (session kept), Ready to refine + clear session (both open the Add-to-refinement dialog), or Close as-is. Plain push lives in the ... menu. Written up as BRDG-339.",
-    status: "Exploration",
+      "Rethinks the save / push / clear footer, which used one primary button that silently changed identity (Push & Close -> Push to Jira -> Close) and set Ready to refine in two inconsistent ways. Shipped: Option E — autosave (no Save button, quiet Saving/Saved indicator) plus a single Wrap up button that always pushes & closes the editor, with three choices: Ready to refine (session kept), Ready to refine + clear session (both open the Add-to-refinement dialog), or Close as-is. Plain push lives in the ... menu only and never touches readiness. Includes a cross-tab autosave safeguard (409 + Reload/Overwrite banner). Options A-D and the icon galleries kept for reference.",
+    status: "Shipped",
     ticket: "BRDG-339",
     icon: <SendHorizontal className={ICON} strokeWidth={1.5} />,
   },
