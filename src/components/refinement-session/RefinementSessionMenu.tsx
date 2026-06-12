@@ -40,12 +40,12 @@ export function RefinementSessionMenu({
   }, [onOpenChange]);
 
   const toggle = useCallback(() => {
-    setOpen((v) => {
-      const next = !v;
-      onOpenChange?.(next);
-      return next;
-    });
-  }, [onOpenChange]);
+    // Notify the parent outside the updater: React may run updaters during
+    // render, and calling the parent's setState there is a render-phase update.
+    const next = !open;
+    setOpen(next);
+    onOpenChange?.(next);
+  }, [open, onOpenChange]);
 
   // Anchor the portalled menu to the trigger, right-aligned, and keep it on
   // screen. Recomputed on scroll/resize while open since fixed positioning is
