@@ -41,6 +41,28 @@ describe("markdown round-trip (load -> serialize identity) - BRDG-280", () => {
     expect(roundTrip(input)).toBe(input);
   });
 
+  it("preserves a link whose text equals its url across save + reload", () => {
+    // tiptap-markdown serializes such links as angle-bracket autolinks (<url>).
+    // On reload the HTML-enabled parser used to mistake them for a tag and drop
+    // the link. The stored form below is exactly what a prior save produced.
+    const stored = [
+      "Zou dus opgelost moeten zijn in: rooms - <https://newstory.atlassian.net/browse/VPL-38475>",
+      "maar dat is niet het geval.",
+      "",
+      "Daarom hadden we deze issues: mapping - <https://newstory.atlassian.net/browse/VPL-46239>",
+    ].join("\n");
+    const out = roundTrip(stored);
+    expect(out).toContain("VPL-38475");
+    expect(out).toContain("VPL-46239");
+  });
+
+  it("leaves angle-bracket autolinks inside fenced code untouched", () => {
+    const input = "```\n<https://example.com>\n```";
+    const out = roundTrip(input);
+    expect(out).toContain("<https://example.com>");
+    expect(out).not.toContain("[https://example.com]");
+  });
+
   it("preserves square brackets in plain text", () => {
     expect(roundTrip("array[index] access")).toBe("array[index] access");
   });

@@ -79,9 +79,31 @@ export function normalizeMarkdownForEditor(markdown: string): string {
     .replace(/(?<!\*)\*([^*\n]+):\*(?!\*)/g, "*$1*:");
 }
 
+// tiptap-markdown serializes a link whose visible text equals its href as an
+// angle-bracket autolink (`<https://example.com>`). On reload the markdown is
+// parsed with HTML enabled, so `<https://...>` is mistaken for an HTML tag and
+// dropped — the link silently vanishes. Rewrite these autolinks to explicit
+// `[url](url)` syntax, which round-trips reliably. Skip fenced code blocks so
+// literal autolinks in code samples are left untouched.
+export function rewriteAngleAutolinks(markdown: string): string {
+  const autolink = /<((?:https?|ftp|mailto):[^>\s]+)>/g;
+  let insideFence = false;
+  return markdown
+    .split("\n")
+    .map((line) => {
+      if (/^\s*(```|~~~)/.test(line)) {
+        insideFence = !insideFence;
+        return line;
+      }
+      if (insideFence) return line;
+      return line.replace(autolink, "[$1]($1)");
+    })
+    .join("\n");
+}
+
 // Exported for testing only — the markdown -> editor-HTML load path.
 export function markdownToEditorHtml(markdown: string): string {
-  return calloutMarkdownToHtml(expandEmojiShortcodes(normalizeMarkdownForEditor(markdown)));
+  return calloutMarkdownToHtml(expandEmojiShortcodes(normalizeMarkdownForEditor(rewriteAngleAutolinks(markdown))));
 }
 
 // The production extension set, shared by the live editor and the round-trip test so the
