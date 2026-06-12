@@ -11,6 +11,7 @@ import { refinementSessions as refinementSessionsApi } from "@/lib/api-client";
 import { SessionTicketView, SessionMetadataPanel } from "@/components/refinement-session/SessionTicketView";
 import { TicketStatusPill } from "@/components/shared/TicketStatusPill";
 import { SessionEndModal } from "@/components/refinement-session/SessionEndModal";
+import { SessionWrapUpCelebration } from "@/components/refinement-session/SessionWrapUpCelebration";
 import { SessionNavigation } from "@/components/refinement-session/SessionNavigation";
 import { SubtasksPaneResizable } from "@/components/refinement-session/SubtasksPaneResizable";
 import { SubtasksSection } from "@/components/ticket-detail/SubtasksSection";
@@ -438,13 +439,17 @@ export default function RefinementSessionTicketPage({
     return null;
   }
 
-  // End modal: shown when exiting or after last ticket
+  // End modal: shown when exiting or after last ticket. The celebration
+  // wraps the modal (never lives inside it); leaving via Back to Session
+  // unmounts this branch, so a re-arrival replays the one-shot cannons.
   if (showingEndModal) {
     return (
       <>
         {pageTitle}
         <div className="flex h-full flex-col bg-[var(--color-surface-elevated)]">
-          <SessionEndModal />
+          <SessionWrapUpCelebration>
+            <SessionEndModal />
+          </SessionWrapUpCelebration>
         </div>
       </>
     );
