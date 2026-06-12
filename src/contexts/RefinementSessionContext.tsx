@@ -19,6 +19,10 @@ interface RefinementSessionState {
   showingEndModal: boolean;
   sessionStartedAt: number | null;
   savedSessionId: string | null;
+  // Story points chosen during this session, keyed by ticket. The wrap-up
+  // modal reads these instead of the shared ticket caches, which can lag
+  // behind (or be overwritten by a stale refetch) while a save is in flight.
+  sessionEstimates: Record<string, number | null>;
 }
 
 interface RefinementSessionActions {
@@ -28,6 +32,7 @@ interface RefinementSessionActions {
   goToTicket: (index: number) => void;
   toggleSidebarPanel: (panel: SidebarPanel) => void;
   reorderQueue: (fromIndex: number, toIndex: number) => void;
+  recordEstimate: (ticketKey: string, storyPoints: number | null) => void;
   openEndModal: () => void;
   closeEndModal: () => void;
   saveSession: (generalComment?: string | null) => void;
@@ -47,6 +52,7 @@ const INITIAL_STATE: RefinementSessionState = {
   showingEndModal: false,
   sessionStartedAt: null,
   savedSessionId: null,
+  sessionEstimates: {},
 };
 
 const INDEX_PERSIST_DELAY = 400;
@@ -72,7 +78,15 @@ export function RefinementSessionProvider({ children }: { children: ReactNode })
       showingEndModal: false,
       sessionStartedAt: Date.now(),
       savedSessionId: savedSessionId ?? null,
+      sessionEstimates: {},
     });
+  }, []);
+
+  const recordEstimate = useCallback((ticketKey: string, storyPoints: number | null) => {
+    setState((prev) => ({
+      ...prev,
+      sessionEstimates: { ...prev.sessionEstimates, [ticketKey]: storyPoints },
+    }));
   }, []);
 
   const nextTicket = useCallback(() => {
@@ -177,6 +191,7 @@ export function RefinementSessionProvider({ children }: { children: ReactNode })
         goToTicket,
         toggleSidebarPanel,
         reorderQueue,
+        recordEstimate,
         openEndModal,
         closeEndModal,
         saveSession,

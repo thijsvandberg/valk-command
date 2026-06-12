@@ -175,6 +175,33 @@ describe("RefinementSessionContext", () => {
     expect(state.queue).toEqual(["VPL-1"]);
   });
 
+  it("records estimates per ticket, including cleared ones", () => {
+    let state!: ReturnType<typeof useRefinementSession>;
+    renderWithProvider((s) => { state = s; });
+
+    act(() => { state.startSession(["VPL-1", "VPL-2"]); });
+    expect(state.sessionEstimates).toEqual({});
+
+    act(() => { state.recordEstimate("VPL-1", 5); });
+    act(() => { state.recordEstimate("VPL-2", 3); });
+    expect(state.sessionEstimates).toEqual({ "VPL-1": 5, "VPL-2": 3 });
+
+    act(() => { state.recordEstimate("VPL-1", null); });
+    expect(state.sessionEstimates).toEqual({ "VPL-1": null, "VPL-2": 3 });
+  });
+
+  it("clears recorded estimates when a new session starts", () => {
+    let state!: ReturnType<typeof useRefinementSession>;
+    renderWithProvider((s) => { state = s; });
+
+    act(() => { state.startSession(["VPL-1"]); });
+    act(() => { state.recordEstimate("VPL-1", 8); });
+    expect(state.sessionEstimates).toEqual({ "VPL-1": 8 });
+
+    act(() => { state.startSession(["VPL-2"]); });
+    expect(state.sessionEstimates).toEqual({});
+  });
+
   it("throws when used outside provider", () => {
     expect(() => {
       render(<TestConsumer onState={() => {}} />);

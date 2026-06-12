@@ -62,6 +62,7 @@ export default function RefinementSessionTicketPage({
     goToTicket,
     toggleSidebarPanel,
     reorderQueue,
+    recordEstimate,
     openEndModal,
     closeEndModal,
     saveSession,
@@ -280,9 +281,10 @@ export default function RefinementSessionTicketPage({
     async (v: number | null) => {
       const prev = storyPoints;
       setStoryPoints(v);
-      // The wrap-up modal and ticket lists read from the shared /api/tickets
-      // caches, which only refresh on their own interval; patch them so the
-      // chosen estimate is visible there immediately.
+      // Record the choice in the session context (the wrap-up modal reads it
+      // from there, immune to stale list refetches) and patch the shared
+      // ticket caches so open lists show it immediately too.
+      recordEstimate(currentKey!, v);
       patchTicketCaches(currentKey!, { storyPoints: v });
       try {
         // The "set SP -> advance Ready-to-Refine to Ready-for-Development"
@@ -295,10 +297,11 @@ export default function RefinementSessionTicketPage({
       } catch (err) {
         console.error("Failed to update story points:", err);
         setStoryPoints(prev);
+        recordEstimate(currentKey!, prev);
         patchTicketCaches(currentKey!, { storyPoints: prev });
       }
     },
-    [currentKey, storyPoints, mutate],
+    [currentKey, storyPoints, mutate, recordEstimate],
   );
 
   const handleReadinessChange = useCallback(
@@ -779,7 +782,7 @@ export default function RefinementSessionTicketPage({
           {activeSidebarPanel === "info" && ticketData && (
             <SubtasksPaneResizable width={sidebarWidth} onWidthChange={setSidebarWidth} zoom={zoomFactor}>
               <h3 className="mb-3 text-label font-semibold uppercase tracking-wider text-text-muted">Info</h3>
-              <SessionMetadataPanel ticket={ticketData} detail={ticketData} onMutate={() => mutate()} />
+              <SessionMetadataPanel ticket={ticketData} detail={ticketData} onMutate={() => mutate()} onEstimateChange={(v) => recordEstimate(ticketData.key, v)} />
             </SubtasksPaneResizable>
           )}
         </div>

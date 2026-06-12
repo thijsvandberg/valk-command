@@ -255,10 +255,14 @@ export function SessionMetadataPanel({
   ticket,
   detail,
   onMutate,
+  onEstimateChange,
 }: {
   ticket: Ticket;
   detail: TicketDetail;
   onMutate?: () => void;
+  // Lets the session page record the chosen estimate in the session context,
+  // so the wrap-up modal shows it without waiting on cache refreshes.
+  onEstimateChange?: (storyPoints: number | null) => void;
 }) {
   const { sprints } = useJiraSprints();
   const [currentSprintId, setCurrentSprintId] = useState<string | null>(ticket.sprintId ?? null);
@@ -272,10 +276,10 @@ export function SessionMetadataPanel({
   const handleStoryPointsChange = useCallback(async (v: number | null) => {
     const prev = storyPoints;
     setStoryPoints(v);
-    // The wrap-up modal and ticket lists read from the shared /api/tickets
-    // caches, which only refresh on their own interval; patch them so the
-    // chosen estimate is visible there immediately, then revalidate to pick
-    // up the server-owned readiness transition.
+    // Record in the session context and patch the shared /api/tickets caches
+    // so the wrap-up modal and open lists show the choice immediately; the
+    // revalidation afterwards picks up the server-owned readiness transition.
+    onEstimateChange?.(v);
     patchTicketCaches(ticket.key, { storyPoints: v });
     try {
       await tickets.updateStoryPoints(ticket.key, v);
@@ -284,9 +288,10 @@ export function SessionMetadataPanel({
     } catch (err) {
       console.error("Operation failed:", err);
       setStoryPoints(prev);
+      onEstimateChange?.(prev);
       patchTicketCaches(ticket.key, { storyPoints: prev });
     }
-  }, [ticket.key, storyPoints, onMutate]);
+  }, [ticket.key, storyPoints, onMutate, onEstimateChange]);
 
   const handleBusinessValueChange = useCallback(async (v: number | null) => {
     setBusinessValue(v);

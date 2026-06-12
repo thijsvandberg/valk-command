@@ -28,6 +28,7 @@ export function SessionEndModal() {
     queue,
     queueMeta,
     savedSessionId,
+    sessionEstimates,
     closeEndModal,
     saveSession,
     finishSession,
@@ -156,18 +157,10 @@ export function SessionEndModal() {
       .catch(() => {});
   }, [savedSessionId, generalComment]);
 
-  // Smart primary button logic
-  const allEstimated = useMemo(() => {
-    if (!allTickets || allTickets.length === 0) return false;
-    return queue.every((key) => {
-      const ticket = allTickets.find((t) => t.key === key);
-      if (!ticket) return true;
-      if (ticket.type === "spike") return true;
-      return ticket.storyPoints != null && ticket.storyPoints > 0;
-    });
-  }, [queue, allTickets]);
-
-  // Resolve ticket info for each queue item
+  // Resolve ticket info for each queue item. Story points chosen during the
+  // session take precedence over the shared ticket cache: the cache can still
+  // hold the pre-session value (or get overwritten by a stale refetch) while
+  // the save is in flight, and the wrap-up must show what was just picked.
   const ticketRows = useMemo(() => {
     return queue.map((key) => {
       const meta = queueMeta.find((m) => m.key === key);
@@ -178,12 +171,12 @@ export function SessionEndModal() {
         type: (ticket?.type ?? "task") as string,
         jiraStatus: (ticket?.jiraStatus ?? "TO DO") as JiraStatus,
         readiness: (ticket?.readiness ?? null) as TicketReadiness | null,
-        storyPoints: ticket?.storyPoints ?? null,
+        storyPoints: key in sessionEstimates ? sessionEstimates[key] : ticket?.storyPoints ?? null,
         isSpike: ticket?.type === "spike",
         subtaskCount: ticket?.totalSubtaskCount ?? 0,
       };
     });
-  }, [queue, queueMeta, allTickets]);
+  }, [queue, queueMeta, allTickets, sessionEstimates]);
 
   const handleSave = useCallback(async () => {
     await flushPendingNotes();

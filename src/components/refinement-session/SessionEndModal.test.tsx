@@ -20,7 +20,9 @@ const mockContext = {
   showingEndModal: true,
   sessionStartedAt: Date.now() - 15 * 60 * 1000,
   savedSessionId: "session-abc",
+  sessionEstimates: {} as Record<string, number | null>,
   startSession: vi.fn(),
+  recordEstimate: vi.fn(),
   nextTicket: vi.fn(),
   prevTicket: vi.fn(),
   goToTicket: vi.fn(),
@@ -88,6 +90,7 @@ vi.mock("@/lib/api-client", () => ({
 describe("SessionEndModal", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    mockContext.sessionEstimates = {};
   });
 
   it("renders ticket list with all session tickets", () => {
@@ -118,6 +121,23 @@ describe("SessionEndModal", () => {
   it("shows unestimated indicator for tickets without story points", () => {
     render(<SessionEndModal />);
     expect(screen.getByText("No estimate")).toBeInTheDocument();
+  });
+
+  it("prefers estimates recorded during the session over the (stale) ticket cache", () => {
+    // Cache still says VPL-2 has no points; the session picked 5 just now.
+    mockContext.sessionEstimates = { "VPL-2": 5 };
+    render(<SessionEndModal />);
+    expect(screen.queryByText("No estimate")).not.toBeInTheDocument();
+    expect(screen.getByText("5")).toBeInTheDocument();
+    expect(screen.queryByText(/unestimated/)).not.toBeInTheDocument();
+  });
+
+  it("shows a cleared session estimate as unestimated even when the cache has points", () => {
+    // Cache still says VPL-1 has 3 points; the session cleared the estimate.
+    mockContext.sessionEstimates = { "VPL-1": null };
+    render(<SessionEndModal />);
+    expect(screen.getAllByText("No estimate")).toHaveLength(2);
+    expect(screen.getByText(/2 unestimated/)).toBeInTheDocument();
   });
 
   it("shows a no-subtasks alert only for tickets without subtasks", () => {

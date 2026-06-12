@@ -495,6 +495,41 @@ describe("SessionMetadataPanel", () => {
     expect(ticketsMock.updateStoryPoints).toHaveBeenCalledWith("VPL-100", 5);
   });
 
+  it("notifies onEstimateChange when a story point is picked", () => {
+    const onEstimateChange = vi.fn();
+    render(
+      <SessionMetadataPanel
+        ticket={baseTicket}
+        detail={baseDetail}
+        onMutate={onMutate}
+        onEstimateChange={onEstimateChange}
+      />,
+    );
+
+    fireEvent.click(screen.getByTestId("story-point-picker"));
+    expect(onEstimateChange).toHaveBeenCalledWith(5);
+  });
+
+  it("notifies onEstimateChange with the previous value when the save fails", async () => {
+    const { tickets: ticketsMock } = await import("@/lib/api-client");
+    vi.mocked(ticketsMock.updateStoryPoints).mockRejectedValueOnce(new Error("boom"));
+    const consoleSpy = vi.spyOn(console, "error").mockImplementation(() => {});
+    const onEstimateChange = vi.fn();
+    render(
+      <SessionMetadataPanel
+        ticket={baseTicket}
+        detail={baseDetail}
+        onMutate={onMutate}
+        onEstimateChange={onEstimateChange}
+      />,
+    );
+
+    fireEvent.click(screen.getByTestId("story-point-picker"));
+    expect(onEstimateChange).toHaveBeenCalledWith(5);
+    await waitFor(() => expect(onEstimateChange).toHaveBeenCalledWith(3));
+    consoleSpy.mockRestore();
+  });
+
   it("patches shared ticket caches immediately and revalidates after a story point change", async () => {
     const { patchTicketCaches, revalidateTicketCaches } = await import("@/lib/ticket-cache");
     render(<SessionMetadataPanel ticket={baseTicket} detail={baseDetail} onMutate={onMutate} />);
