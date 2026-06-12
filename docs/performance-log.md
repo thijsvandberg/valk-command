@@ -1,5 +1,20 @@
 # Implementation Performance Log
 
+## BRDG-335 — Test suite redundancy & obsolescence cleanup (2026-06-12)
+
+Test-only cleanup story (8 dead source+test pairs retired, 1 test retargeted, 4 duplicate-flow tests slimmed). The cleanup itself was mechanical and audit claims all held; every minute of friction came from sharing the working tree with a parallel session running BRDG-336/337/338.
+
+| Phase | Notes |
+|---|---|
+| Plan (Opus) | Verified all audit claims, corrected the story's drifted line numbers, and pre-flagged the two hidden-dead-import traps (C1 `hasEditIntent` import, C3 `insertComment`/`jiraComment`) — both would have failed lint if missed |
+| Section A | Mechanical `git mv`; staged renames were swept into the parallel session's BRDG-341 commit, which then amended itself to give them back — resolved without history surgery |
+| Sections B/C | No rework; C2 rewrite gained mode=plan/reconcile coverage the old DB-backed test never had |
+| Verify | Blocked twice by parallel work: an in-flight broken migration 0076 failed every `createTestDb` test, then 40+ dirty files broke typecheck. Final verify ran in a throwaway git worktree at HEAD with symlinked `node_modules` — full suite (5614) + build green first try |
+
+Key bottlenecks / lessons:
+- **Stage-and-commit must be atomic when a parallel session is active.** A `git mv` left renames staged for ~2 minutes; the other session's commit picked them up. Always `git add <paths> && git commit` in one command.
+- **A throwaway worktree at HEAD (with `node_modules` symlinked from the main checkout) is the clean way to run final verification while the shared tree is dirty.** Polling for the tree to settle wasted 5 minutes and the tree only got dirtier; the worktree route took ~3 minutes total including build.
+
 ## BRDG-339 — Story Writer footer rework: autosave + wrap up (2026-06-12)
 
 Smooth implementation (server 409 check -> drafts hook -> actions -> UI, committed per layer;
