@@ -191,6 +191,7 @@ function makeSession(status: "draft" | "in_progress" | "completed") {
     ticketCount: 1,
     currentIndex: 0,
     generalComment: null,
+    scheduledFor: null,
     createdAt: "2026-06-02T00:00:00.000Z",
     updatedAt: "2026-06-02T00:00:00.000Z",
   };

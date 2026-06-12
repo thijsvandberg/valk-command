@@ -124,10 +124,60 @@ describe("PATCH /api/refinement-sessions/[id]", () => {
     expect(response.status).toBe(404);
   });
 
-  it("returns 400 when name is empty string", async () => {
+  it("returns 400 when clearing the name of a session without a date", async () => {
     const created = await createSession();
     const response = await PATCH(
       jsonRequest("PATCH", { name: "" }),
+      makeParams(created.id),
+    );
+
+    expect(response.status).toBe(400);
+  });
+
+  it("allows clearing the name when the session has a date", async () => {
+    const created = await createSession({ scheduledFor: "2030-06-18" });
+    const response = await PATCH(
+      jsonRequest("PATCH", { name: "" }),
+      makeParams(created.id),
+    );
+    const data = await response.json();
+
+    expect(response.status).toBe(200);
+    expect(data.name).toBeNull();
+    expect(data.scheduledFor).toBe("2030-06-18");
+  });
+
+  it("updates scheduledFor and round-trips it", async () => {
+    const created = await createSession();
+    const response = await PATCH(
+      jsonRequest("PATCH", { scheduledFor: "2030-07-01" }),
+      makeParams(created.id),
+    );
+    const data = await response.json();
+
+    expect(response.status).toBe(200);
+    expect(data.scheduledFor).toBe("2030-07-01");
+
+    const readBack = await GET(new Request("http://localhost"), makeParams(created.id));
+    expect((await readBack.json()).scheduledFor).toBe("2030-07-01");
+  });
+
+  it("clears scheduledFor with null when a name remains", async () => {
+    const created = await createSession({ scheduledFor: "2030-07-01" });
+    const response = await PATCH(
+      jsonRequest("PATCH", { scheduledFor: null }),
+      makeParams(created.id),
+    );
+    const data = await response.json();
+
+    expect(response.status).toBe(200);
+    expect(data.scheduledFor).toBeNull();
+  });
+
+  it("returns 400 for a malformed scheduledFor", async () => {
+    const created = await createSession();
+    const response = await PATCH(
+      jsonRequest("PATCH", { scheduledFor: "01-07-2030" }),
       makeParams(created.id),
     );
 

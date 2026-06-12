@@ -50,16 +50,55 @@ describe("POST /api/refinement-sessions", () => {
     testDb = createTestDb();
   });
 
-  it("creates a session with default name when none provided", async () => {
+  it("returns 400 when neither name nor date is provided", async () => {
     const response = await POST(jsonRequest({}));
+
+    expect(response.status).toBe(400);
+  });
+
+  it("creates a session with name only", async () => {
+    const response = await POST(jsonRequest({ name: "Sprint 42" }));
     const data = await response.json();
 
     expect(response.status).toBe(201);
-    expect(data.name).toMatch(/^Refinement \d{4}-\d{2}-\d{2}$/);
+    expect(data.name).toBe("Sprint 42");
+    expect(data.scheduledFor).toBeNull();
     expect(data.status).toBe("draft");
     expect(data.ticketKeys).toEqual([]);
     expect(data.ticketCount).toBe(0);
     expect(data.id).toBeDefined();
+  });
+
+  it("creates a session with date only and round-trips it through GET", async () => {
+    const response = await POST(jsonRequest({ scheduledFor: "2030-06-18" }));
+    const data = await response.json();
+
+    expect(response.status).toBe(201);
+    expect(data.name).toBeNull();
+    expect(data.scheduledFor).toBe("2030-06-18");
+
+    const listResponse = await GET();
+    const list = await listResponse.json();
+    expect(list[0].scheduledFor).toBe("2030-06-18");
+  });
+
+  it("creates a session with both name and date", async () => {
+    const response = await POST(
+      jsonRequest({ name: "Sprint 42", scheduledFor: "2030-06-18" }),
+    );
+    const data = await response.json();
+
+    expect(response.status).toBe(201);
+    expect(data.name).toBe("Sprint 42");
+    expect(data.scheduledFor).toBe("2030-06-18");
+  });
+
+  it("rejects a malformed scheduledFor", async () => {
+    const response = await POST(
+      jsonRequest({ name: "Sprint 42", scheduledFor: "18-06-2030" }),
+    );
+
+    expect(response.status).toBe(400);
   });
 
   it("creates a session with provided name and tickets", async () => {
@@ -76,7 +115,7 @@ describe("POST /api/refinement-sessions", () => {
 
   it("filters out non-string ticketKeys", async () => {
     const response = await POST(
-      jsonRequest({ ticketKeys: ["VPL-1", "", null, 42, "VPL-2"] }),
+      jsonRequest({ name: "S", ticketKeys: ["VPL-1", "", null, 42, "VPL-2"] }),
     );
     const data = await response.json();
 
@@ -104,7 +143,7 @@ describe("POST /api/refinement-sessions", () => {
 
   it("ignores non-string values in ticketKeys array", async () => {
     const response = await POST(
-      jsonRequest({ ticketKeys: [null, 42, false, undefined] }),
+      jsonRequest({ name: "S", ticketKeys: [null, 42, false, undefined] }),
     );
     const data = await response.json();
 
@@ -113,19 +152,18 @@ describe("POST /api/refinement-sessions", () => {
     expect(data.ticketCount).toBe(0);
   });
 
-  it("uses default name when name is empty string", async () => {
-    const response = await POST(jsonRequest({ name: "" }));
+  it("stores a null name when only a date is given with an empty name", async () => {
+    const response = await POST(jsonRequest({ name: "   ", scheduledFor: "2030-06-18" }));
     const data = await response.json();
 
     expect(response.status).toBe(201);
-    expect(data.name).toMatch(/^Refinement \d{4}-\d{2}-\d{2}$/);
+    expect(data.name).toBeNull();
+    expect(data.scheduledFor).toBe("2030-06-18");
   });
 
-  it("uses default name when name is whitespace only", async () => {
+  it("returns 400 when name is whitespace only and no date is given", async () => {
     const response = await POST(jsonRequest({ name: "   " }));
-    const data = await response.json();
 
-    expect(response.status).toBe(201);
-    expect(data.name).toMatch(/^Refinement \d{4}-\d{2}-\d{2}$/);
+    expect(response.status).toBe(400);
   });
 });

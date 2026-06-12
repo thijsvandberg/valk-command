@@ -95,4 +95,62 @@ describe("DateTimePicker", () => {
     fireEvent.click(screen.getByText("Clear"));
     expect(onChange).toHaveBeenCalledWith("");
   });
+
+  it("disables days before minDate and blocks picking them", () => {
+    const onChange = vi.fn();
+    render(
+      <DateTimePicker value="2026-05-22" onChange={onChange} ariaLabel="Start date" minDate="2026-05-15" />,
+    );
+    fireEvent.click(screen.getByLabelText("Start date"));
+
+    const day10 = screen.getByRole("button", { name: "10" });
+    expect(day10).toBeDisabled();
+    fireEvent.click(day10);
+    expect(onChange).not.toHaveBeenCalled();
+
+    fireEvent.click(screen.getByRole("button", { name: "20" }));
+    expect(onChange).toHaveBeenCalledWith("2026-05-20");
+  });
+
+  it("renders a single marker dot on a day with sessions and reveals names on hover/focus", () => {
+    render(
+      <DateTimePicker
+        value="2026-05-22"
+        onChange={vi.fn()}
+        ariaLabel="Start date"
+        markers={{ "2026-05-10": ["Sprint 44", "Backlog grooming"] }}
+      />,
+    );
+    fireEvent.click(screen.getByLabelText("Start date"));
+
+    expect(screen.getByTestId("day-marker-2026-05-10")).toBeInTheDocument();
+
+    const day = screen.getByLabelText(
+      "2026-05-10. Scheduled: Sprint 44, Backlog grooming",
+    );
+    expect(day).toHaveAttribute("title", "Sprint 44\nBacklog grooming");
+  });
+
+  it("renders no marker on days without sessions", () => {
+    render(
+      <DateTimePicker
+        value="2026-05-22"
+        onChange={vi.fn()}
+        ariaLabel="Start date"
+        markers={{ "2026-05-10": ["Sprint 44"] }}
+      />,
+    );
+    fireEvent.click(screen.getByLabelText("Start date"));
+
+    expect(screen.queryByTestId("day-marker-2026-05-11")).not.toBeInTheDocument();
+  });
+
+  it("hides the time row when hideTime is set", () => {
+    render(
+      <DateTimePicker value="2026-05-22" onChange={vi.fn()} ariaLabel="Start date" hideTime />,
+    );
+    fireEvent.click(screen.getByLabelText("Start date"));
+
+    expect(screen.queryByPlaceholderText("--:--")).not.toBeInTheDocument();
+  });
 });

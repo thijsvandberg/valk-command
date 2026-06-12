@@ -47,6 +47,7 @@ function makeSession(id: string, keys: string[]): RefinementSessionResponse {
     updatedAt: new Date().toISOString(),
     pinnedSprintIds: [],
     generalComment: null,
+    scheduledFor: null,
     currentIndex: 0,
   } as RefinementSessionResponse;
 }
