@@ -147,6 +147,7 @@ export interface TicketEvent {
 
 - **Wire the refinement lists** to the broadcast stream (mount `useTicketEventsStream()` in `RefinementPageContent`, row highlight via `useLiveTicketChange`). Deferred because those files carried uncommitted parallel work (BRDG-336/337) during implementation; the 150s poll covers refinement in the meantime.
 - **Side panel highlight**: the side panel already updates live through the shared `useTicketDetailPage` hook; only the visual pulse on its status pill was deferred because `SidePanel.tsx` carried uncommitted parallel work.
+- **BRDG-342 (SSE connection budget)**: with many Bridge tabs open, the per-tab SSE streams exhaust the browser's ~6-connections-per-origin HTTP/1.1 cap and starve regular fetches. Found during verification; see `docs/investigations/2026-06-12-sse-connection-budget.md`.
 
 ## Tests
 

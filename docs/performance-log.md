@@ -1,5 +1,21 @@
 # Implementation Performance Log
 
+## BRDG-338 — Live-update an open ticket when its local data changes (2026-06-12)
+
+Typed ticket events (9 change kinds + origin tab id) emitted from every local write path, per-key SSE subscription on the detail page, a new broadcast SSE stream + client bus for the board, opacity-only highlight pulse, self-echo suppression via an X-Bridge-Client header on every apiFetch. 4 commits, ~30 new tests; full suite (5,701) + build green.
+
+| Phase | Notes |
+|---|---|
+| Plan (Opus) | Strong; found the existing refinement broadcast-stream precedent, the ~6-connections-per-origin cap that rules out per-row EventSources, and that watchers are never stored locally (correctly descoped) |
+| Implement | Clean two-halves flow (server emit foundation, then client). Refinement wiring + SidePanel pulse deliberately skipped: those exact files carried BRDG-336/337 uncommitted parallel work |
+| Test fallout | The new global X-Bridge-Client header broke 9 exact-match fetch assertions across 4 unrelated test files (bail:5 hid them until two full-suite runs); relaxed to objectContaining |
+| Verify | Full suite + build green; browser verification was the bottleneck (below) but did prove the live chain once end-to-end on the real app |
+
+Key bottlenecks / lessons:
+- **A parallel `next build` raced mine on the shared `.next-build` dir** — two different ENOENT failures before spotting the other session's build process and waiting for it. Lesson: on this shared tree, check `ps` for a running `next build` before reacting to nonsensical build errors.
+- **Browser verification fought the environment, not the feature.** A freshly restarted dev server under open tabs produced stale-chunk failures + a crashed error boundary in one tab; a CDP `Runtime.evaluate` froze a renderer for 45s; and most importantly, 5-7 open Bridge tabs each holding SSE streams exhausted Chrome's ~6-per-origin HTTP/1.1 connection pool so fetches queued forever. That last one is a real product finding, filed as BRDG-342 + investigation doc.
+- **Adding a header to a central fetch wrapper is a cross-cutting test change.** Exact-match `toHaveBeenCalledWith(fetch, {...headers})` assertions anywhere in the suite become coupled to the wrapper; with `bail: 5` the failures surfaced in drips across multiple full runs instead of one list.
+
 ## BRDG-336 — Drag a ticket onto another refinement session (2026-06-12)
 
 | Phase | Notes |
