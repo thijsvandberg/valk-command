@@ -9,8 +9,8 @@
 // This is display-only; the editable trigger lives in StoryPointPicker /
 // BusinessValuePicker (which share the same icon + color treatment).
 
-import type { ReactNode } from "react";
-import { Hash, TrendingUp } from "lucide-react";
+import type { ReactNode, KeyboardEvent, MouseEvent } from "react";
+import { Hash, TrendingUp, ChevronUp, ChevronDown } from "lucide-react";
 import { getSpColor, getBvColor } from "@/types/ticket";
 import { Tooltip } from "@/components/shared/Tooltip";
 
@@ -26,6 +26,10 @@ export function MetricBadge({
   tooltipContent,
   size = "sm",
   className = "",
+  onClick,
+  onDoubleClick,
+  activeSortDir,
+  dimmed = false,
 }: {
   metric: MetricKind;
   value: number | null;
@@ -37,6 +41,14 @@ export function MetricBadge({
   tooltipContent?: ReactNode;
   size?: "xs" | "sm";
   className?: string;
+  // When provided, the badge becomes an interactive button (cursor, hover, focus, keyboard).
+  // Single activation fires onClick; a mouse double-click fires onDoubleClick.
+  onClick?: (e: MouseEvent | KeyboardEvent) => void;
+  onDoubleClick?: (e: MouseEvent) => void;
+  // When set, this metric currently drives the board sort; shows a direction caret + ring.
+  activeSortDir?: "asc" | "desc";
+  // When the per-row column for this metric is hidden, the header chip reads as "off the rows".
+  dimmed?: boolean;
 }) {
   const Icon = metric === "sp" ? Hash : TrendingUp;
   const palette = value != null ? (metric === "sp" ? getSpColor(value) : getBvColor(value)) : null;
@@ -53,15 +65,41 @@ export function MetricBadge({
     ? { wrap: "gap-0.5 px-1.5 py-0.5 text-caption", icon: 10 }
     : { wrap: "gap-1 px-1.5 py-0.5 text-body-sm", icon: 12 };
 
+  const interactive = !!onClick;
+  const Caret = activeSortDir === "asc" ? ChevronUp : ChevronDown;
+  // A transparent border is always present so toggling the dashed "hidden" outline
+  // never shifts the chip (and its neighbours) by a pixel.
+  const interactiveCls = interactive
+    ? "cursor-pointer border border-transparent transition-[box-shadow,opacity] duration-150 hover:shadow-[0_0_0_2px_color-mix(in_srgb,var(--color-brand-400)_35%,transparent)] focus-visible:outline-none focus-visible:shadow-[0_0_0_2px_var(--color-brand-400)]"
+    : "";
+  const activeCls = activeSortDir ? "shadow-[0_0_0_1.5px_var(--color-brand-400)]" : "";
+  const dimmedCls = dimmed ? "border-dashed border-border-strong opacity-55" : "";
+
   const badge = (
     <span
-      className={`inline-flex items-center rounded-md font-medium tabular-nums ${sz.wrap} ${className}`}
-      style={{ color: fg, backgroundColor: bg }}
+      className={`inline-flex items-center rounded-md font-medium tabular-nums ${sz.wrap} ${interactiveCls} ${activeCls} ${dimmedCls} ${className}`}
+      style={{ color: fg, backgroundColor: dimmed ? "transparent" : bg }}
       aria-label={title}
       title={tooltip ? undefined : title}
+      {...(interactive
+        ? {
+            role: "button",
+            tabIndex: 0,
+            onClick,
+            onDoubleClick,
+            "aria-pressed": activeSortDir ? true : undefined,
+            onKeyDown: (e: KeyboardEvent) => {
+              if (e.key === "Enter" || e.key === " ") {
+                e.preventDefault();
+                onClick?.(e);
+              }
+            },
+          }
+        : {})}
     >
       <Icon size={sz.icon} strokeWidth={2} aria-hidden />
       {display}
+      {activeSortDir && <Caret size={sz.icon} strokeWidth={2.5} aria-hidden />}
     </span>
   );
 

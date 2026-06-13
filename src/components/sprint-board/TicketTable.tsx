@@ -143,6 +143,8 @@ export function TicketTable({
   onRunReview,
   sortField,
   sortDir,
+  onMetricSort,
+  onMetricToggleColumn,
   externalDnd,
   externalActiveDragId,
   dragOverKey,
@@ -225,6 +227,10 @@ export function TicketTable({
   // sortField/sortDir only to reset the virtualizer scroll position on change.
   sortField?: SortField;
   sortDir?: SortDir;
+  // Single/double-click on a group header's SP/BV chip: sort by that metric, or
+  // toggle the metric's per-row column. Forwarded to each group's GroupStatBar.
+  onMetricSort?: (metric: "sp" | "bv") => void;
+  onMetricToggleColumn?: (metric: "sp" | "bv") => void;
   // When true, DndContext is owned by a parent component (SprintBoard).
   // The table only renders SortableContext; no internal DndContext or DragOverlay.
   externalDnd?: boolean;
@@ -750,6 +756,12 @@ export function TicketTable({
               <GroupStatBar
                 tickets={group.tickets}
                 label={group.label}
+                sortField={sortField}
+                sortDir={sortDir}
+                onMetricSort={onMetricSort}
+                onMetricToggleColumn={onMetricToggleColumn}
+                spColumnHidden={!visibleTags.has("storyPoints")}
+                bvColumnHidden={!visibleTags.has("businessValue")}
                 // Collapse the label zone to its own width so the item count sits
                 // tight against each group name instead of leaving dead space
                 // before a fixed-width alignment column.
