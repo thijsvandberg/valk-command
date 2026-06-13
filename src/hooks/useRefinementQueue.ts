@@ -28,6 +28,20 @@ export function useRefinementQueue(opts: {
     [activeSession, localQueue],
   );
 
+  // Selected tickets float to the top of the list (keeping their relative order),
+  // followed by the rest in their existing order. This is the order actually
+  // rendered, so the shift-range selection below slices the same array to stay
+  // aligned with the on-screen row indices.
+  const orderedTickets = useMemo(() => {
+    const queueSet = new Set(queue);
+    const selected: Ticket[] = [];
+    const rest: Ticket[] = [];
+    for (const t of availableTickets) {
+      (queueSet.has(t.key) ? selected : rest).push(t);
+    }
+    return [...selected, ...rest];
+  }, [availableTickets, queue]);
+
   const lastClickedIndexRef = useRef<number | null>(null);
   const persistTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -67,7 +81,7 @@ export function useRefinementQueue(opts: {
       if (shiftKey && lastClickedIndexRef.current !== null) {
         const from = Math.min(lastClickedIndexRef.current, index);
         const to = Math.max(lastClickedIndexRef.current, index);
-        const rangeKeys = availableTickets.slice(from, to + 1).map((t) => t.key);
+        const rangeKeys = orderedTickets.slice(from, to + 1).map((t) => t.key);
         const merged = Array.from(new Set([...queue, ...rangeKeys]));
         updateQueue(merged);
         lastClickedIndexRef.current = index;
@@ -82,7 +96,7 @@ export function useRefinementQueue(opts: {
         updateQueue([...queue, key]);
       }
     },
-    [availableTickets, queue, updateQueue],
+    [orderedTickets, queue, updateQueue],
   );
 
   const handleToggleReadyToRefine = useCallback(() => {
@@ -153,6 +167,7 @@ export function useRefinementQueue(opts: {
 
   return {
     queue,
+    orderedTickets,
     queueTickets,
     allTicketMap,
     toggleTicket,

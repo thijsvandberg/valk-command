@@ -41,17 +41,15 @@ export function SubtaskCountBadge({ open, total }: { open: number; total: number
   );
 }
 
-// In-refinement: Boxes-icon-only square chip (BRDG-321), theme-aware brand teal.
-// The session name(s) live in the tooltip.
+// In-refinement: bare Boxes icon, no chip background, matching the sprint board
+// row (BoardRow) for cross-view consistency. Theme-aware brand teal; the session
+// name(s) live in the tooltip.
 export function InRefinementBadge({ sessionNames }: { sessionNames?: string[] }) {
   if (!sessionNames || sessionNames.length === 0) return null;
   return (
     <Tooltip content={`In refinement: ${sessionNames.join(", ")}`}>
-      <span
-        className="inline-flex h-5 w-5 shrink-0 items-center justify-center rounded-md"
-        style={{ color: "var(--meta-refine-fg)", backgroundColor: "color-mix(in srgb, var(--color-brand-500) 16%, transparent)" }}
-      >
-        <Boxes size={11} strokeWidth={1.75} />
+      <span className="inline-flex h-5 shrink-0 items-center justify-center" style={{ color: "var(--meta-refine-fg)" }}>
+        <Boxes size={14} strokeWidth={1.75} />
       </span>
     </Tooltip>
   );

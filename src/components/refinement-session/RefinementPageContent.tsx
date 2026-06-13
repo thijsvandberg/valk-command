@@ -536,7 +536,7 @@ export function RefinementPageContent({
                 the row between the list and the queue (or the panel column). */}
             <div className="mx-auto flex max-w-6xl gap-6 p-6 xl:max-w-[1600px]">
               <RefinementTicketList
-                availableTickets={availableTickets}
+                availableTickets={queueHook.orderedTickets}
                 searchQuery={searchQuery}
                 onSearchChange={setSearchQuery}
                 filters={filters}

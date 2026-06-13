@@ -189,6 +189,25 @@ describe("useRefinementQueue", () => {
     expect(result.current.queue).not.toContain("VPL-2");
   });
 
+  it("orderedTickets floats selected tickets to the top, preserving relative order", () => {
+    const { result } = renderHook(() => useRefinementQueue(defaultOpts));
+    expect(result.current.orderedTickets.map((t) => t.key)).toEqual(["VPL-1", "VPL-2", "VPL-3"]);
+
+    act(() => { result.current.toggleTicket("VPL-2", 1, false); });
+    // VPL-2 jumps to the top; the rest keep their existing order.
+    expect(result.current.orderedTickets.map((t) => t.key)).toEqual(["VPL-2", "VPL-1", "VPL-3"]);
+  });
+
+  it("orderedTickets keeps multiple selected tickets in their available order", () => {
+    const session = makeSession("s1", ["VPL-3", "VPL-1"]);
+    const { result } = renderHook(() =>
+      useRefinementQueue({ ...defaultOpts, resolvedSessionId: "s1", activeSession: session }),
+    );
+    // Selected come first ordered by their position in availableTickets (1 then 3),
+    // not by queue order, followed by the unselected remainder.
+    expect(result.current.orderedTickets.map((t) => t.key)).toEqual(["VPL-1", "VPL-3", "VPL-2"]);
+  });
+
   it("remove from queue", () => {
     const { result } = renderHook(() => useRefinementQueue(defaultOpts));
     act(() => { result.current.toggleTicket("VPL-1", 0, false); });

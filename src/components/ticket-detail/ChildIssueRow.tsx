@@ -141,6 +141,7 @@ export function ChildIssueRow({
   return (
     <div
       ref={ref}
+      data-ticket-key={item.key}
       style={style}
       className={`group/row relative flex items-center gap-2 ${spacious ? "py-[10px]" : "py-[7px]"} pl-4 pr-3 ${
         onSelect && !isPending ? (isActive ? "cursor-pointer" : "cursor-pointer hover:bg-overlay-subtle") : ""

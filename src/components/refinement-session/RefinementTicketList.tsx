@@ -12,6 +12,7 @@ import { EditStateDot } from "@/components/sprint-board/TicketTableCells";
 import { RefinementFilters } from "./RefinementFilters";
 import { TicketDragHandle } from "./RefinementDragDrop";
 import { useSectionVisibility } from "@/hooks/useSectionVisibility";
+import { useFlipReorder } from "@/hooks/useFlipReorder";
 import type { useRefinementFilters } from "@/hooks/useRefinementFilters";
 import type { useRefinementQueue } from "@/hooks/useRefinementQueue";
 import type { Ticket, Sprint, JiraStatus, TicketReadiness } from "@/types/ticket";
@@ -82,6 +83,7 @@ export function RefinementTicketList({
   const { visible: pillFields, toggleField: togglePillField } = useSectionVisibility("refinement-pill", ["issueType", "key", "status", "epic", "subtasks", "sp", "bv", "sprint"]);
   const [pillSettingsOpen, setPillSettingsOpen] = useState(false);
   const pillSettingsRef = useRef<HTMLDivElement>(null);
+  const listRef = useFlipReorder(availableTickets.map((t) => t.key));
 
   useOutsideClick(pillSettingsRef, () => setPillSettingsOpen(false), { enabled: pillSettingsOpen });
 
@@ -192,7 +194,7 @@ export function RefinementTicketList({
 
       {/* Ticket list — unified ChildIssueRow with the shared 18px metadata badges. */}
       {availableTickets.length > 0 ? (
-        <div className="overflow-clip rounded-xl border border-border-subtle bg-[var(--color-surface-elevated)] shadow-[var(--shadow-sm)]">
+        <div ref={listRef} className="overflow-clip [overflow-clip-margin:14px] rounded-xl border border-border-subtle bg-[var(--color-surface-elevated)] shadow-[var(--shadow-sm)]">
           {availableTickets.map((ticket, idx) => {
             const sprintName = ticket.sprintId ? (sprintNameMap[ticket.sprintId] ?? null) : null;
             const sessionNames = ticketSessionMap.get(ticket.key)?.filter((s) => s.id !== resolvedSessionId).map((s) => s.name);

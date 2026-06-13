@@ -47,6 +47,7 @@ function makeTicket(key: string, editState: TicketEditState = "clean"): Ticket {
 function makeQueueHook(tickets: Ticket[]) {
   return {
     queue: tickets.map((t) => t.key),
+    orderedTickets: tickets,
     queueTickets: tickets,
     allTicketMap: new Map(tickets.map((t) => [t.key, t])),
     toggleTicket: vi.fn(),
