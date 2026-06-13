@@ -1,7 +1,8 @@
 "use client";
 
-import { memo, useRef, useState, type ReactNode } from "react";
+import { memo, useEffect, useRef, useState, type ReactNode } from "react";
 import type { Ticket, Sprint } from "@/types/ticket";
+import type { SortField, SortDir } from "@/components/sprint-board/filter-bar-types";
 import type { GroupSyncProgress, GroupSyncResult, GroupSyncState } from "@/lib/group-sync";
 import { getSpColor, getBvColor, effectivePoints } from "@/types/ticket";
 import { FullnessMeter } from "./FullnessMeter";
@@ -73,13 +74,35 @@ export interface GroupStatBarProps {
   /** Persist a new pencil capacity (null clears it). */
   onPencilCapacityChange?: (value: number | null) => void;
   /**
+   * Per-sprint capacity meter visibility for active sprints. The meter is hidden by
+   * default once a sprint is running; this re-shows it. Ignored for non-active sprints,
+   * where the meter follows planning mode as before.
+   */
+  capacityMeterShown?: boolean;
+  /** Toggles `capacityMeterShown` for this active sprint (surfaced in the "..." menu). */
+  onToggleCapacityMeter?: () => void;
+  /**
    * Override the meter's "used" value (BRDG-303). On the epic-children-by-sprint
    * view the group only holds the open epic's children, but the fullness meter
    * must reflect the WHOLE sprint's load; the consumer passes the sprint total
    * here. When omitted, "used" is summed from this group's tickets (sprint board).
    */
   usedPointsOverride?: number;
+  /** The board's current sort, used to mark the SP/BV chip that drives the order. */
+  sortField?: SortField;
+  sortDir?: SortDir;
+  /** Single-click on the SP/BV chip: sort the board by that metric (toggles direction). */
+  onMetricSort?: (metric: "sp" | "bv") => void;
+  /** Double-click on the SP/BV chip: show/hide that metric's per-row column. */
+  onMetricToggleColumn?: (metric: "sp" | "bv") => void;
+  /** Whether the per-row SP / BV column is currently hidden (dims the header chip). */
+  spColumnHidden?: boolean;
+  bvColumnHidden?: boolean;
 }
+
+// A real double-click also fires two clicks, so a single click waits this long for a
+// possible second click before committing to the sort. Short enough to feel responsive.
+const METRIC_CLICK_DELAY_MS = 200;
 
 // Two-row tooltip (total + average) styled like the estimate-hygiene warning tooltip:
 // a metric-colored dot per line for a tidier read than a single run-on sentence.
@@ -96,6 +119,29 @@ function metricTooltip(label: string, total: number, avg: string | null, suffix:
           {`Average ${avg} ${suffix}`}
         </span>
       )}
+    </div>
+  );
+}
+
+// Interactive variant of the metric tooltip: the same total/average lines plus a
+// hint describing the click-to-sort / double-click-to-hide affordance, and whether
+// the per-row column is currently hidden.
+function metricActionTooltip(label: string, total: number, avg: string | null, suffix: string, dotColor: string, hidden: boolean): ReactNode {
+  return (
+    <div className="flex flex-col gap-1.5">
+      <span className="flex items-center gap-2 whitespace-nowrap">
+        <span className="h-1.5 w-1.5 shrink-0 rounded-full" style={{ backgroundColor: dotColor }} aria-hidden />
+        {`${label}: ${total}`}
+      </span>
+      {avg && (
+        <span className="flex items-center gap-2 whitespace-nowrap text-text-tertiary">
+          <span className="h-1.5 w-1.5 shrink-0 rounded-full opacity-60" style={{ backgroundColor: dotColor }} aria-hidden />
+          {`Average ${avg} ${suffix}`}
+        </span>
+      )}
+      <span className="mt-0.5 border-t border-border-subtle pt-1.5 text-[11px] leading-relaxed text-text-tertiary">
+        {hidden ? "Click to sort and show the column" : "Click to sort · double-click to hide the column"}
+      </span>
     </div>
   );
 }
@@ -135,11 +181,39 @@ export const GroupStatBar = memo(function GroupStatBar({
   syncKind,
   createAction,
   planningOn = false,
+  capacityMeterShown = false,
+  onToggleCapacityMeter,
   pencilCapacity = null,
   onPencilCapacityChange,
   usedPointsOverride,
+  sortField,
+  sortDir,
+  onMetricSort,
+  onMetricToggleColumn,
+  spColumnHidden = false,
+  bvColumnHidden = false,
 }: GroupStatBarProps) {
   const [detailsOpen, setDetailsOpen] = useState(false);
+  // Pending single-click sort timers, keyed by metric, so a double-click can cancel the
+  // sort before it fires. Cleared on unmount so a late timer never calls a stale handler.
+  const metricClickTimers = useRef<Record<"sp" | "bv", ReturnType<typeof setTimeout> | null>>({ sp: null, bv: null });
+  useEffect(() => () => {
+    for (const t of Object.values(metricClickTimers.current)) if (t) clearTimeout(t);
+  }, []);
+
+  function handleMetricClick(metric: "sp" | "bv") {
+    if (!onMetricSort || metricClickTimers.current[metric]) return;
+    metricClickTimers.current[metric] = setTimeout(() => {
+      metricClickTimers.current[metric] = null;
+      onMetricSort(metric);
+    }, METRIC_CLICK_DELAY_MS);
+  }
+  function handleMetricDoubleClick(metric: "sp" | "bv") {
+    const pending = metricClickTimers.current[metric];
+    if (pending) { clearTimeout(pending); metricClickTimers.current[metric] = null; }
+    onMetricToggleColumn?.(metric);
+  }
+  const metricInteractive = !!onMetricSort || !!onMetricToggleColumn;
   const menuButtonRef = useRef<HTMLButtonElement>(null);
   // The sync lifecycle lives here (not in the popover) so a spinner can show in the
   // header bar while the menu is closed.
@@ -296,10 +370,16 @@ export const GroupStatBar = memo(function GroupStatBar({
           metric="sp"
           value={totalPoints}
           tinted
+          activeSortDir={sortField === "points" ? sortDir : undefined}
+          dimmed={spColumnHidden}
+          onClick={metricInteractive ? () => handleMetricClick("sp") : undefined}
+          onDoubleClick={metricInteractive ? () => handleMetricDoubleClick("sp") : undefined}
           tooltipContent={
-            showBvAvg && spAvg
-              ? metricTooltip("Story points", totalPoints, spAvg, "per estimated ticket", getSpColor(totalPoints).solid)
-              : undefined
+            metricInteractive
+              ? metricActionTooltip("Story points", totalPoints, showBvAvg ? spAvg : null, "per estimated ticket", getSpColor(totalPoints).solid, spColumnHidden)
+              : showBvAvg && spAvg
+                ? metricTooltip("Story points", totalPoints, spAvg, "per estimated ticket", getSpColor(totalPoints).solid)
+                : undefined
           }
         />
       )}
@@ -308,14 +388,20 @@ export const GroupStatBar = memo(function GroupStatBar({
           metric="bv"
           value={bvTotal}
           tinted
+          activeSortDir={sortField === "bv" ? sortDir : undefined}
+          dimmed={bvColumnHidden}
+          onClick={metricInteractive ? () => handleMetricClick("bv") : undefined}
+          onDoubleClick={metricInteractive ? () => handleMetricDoubleClick("bv") : undefined}
           tooltipContent={
-            showBvAvg && bvAvg
-              ? metricTooltip("Business value", bvTotal, bvAvg, "per scored ticket", getBvColor(bvTotal).solid)
-              : undefined
+            metricInteractive
+              ? metricActionTooltip("Business value", bvTotal, showBvAvg ? bvAvg : null, "per scored ticket", getBvColor(bvTotal).solid, bvColumnHidden)
+              : showBvAvg && bvAvg
+                ? metricTooltip("Business value", bvTotal, bvAvg, "per scored ticket", getBvColor(bvTotal).solid)
+                : undefined
           }
         />
       )}
-      {planningOn && onPencilCapacityChange && (
+      {planningOn && onPencilCapacityChange && (!isActive || capacityMeterShown) && (
         <FullnessMeter
           used={usedPointsOverride ?? usedEffective}
           capacity={pencilCapacity}
@@ -464,6 +550,8 @@ export const GroupStatBar = memo(function GroupStatBar({
                     onEdit: onEditSprintDetails ? () => onEditSprintDetails() : undefined,
                     onCloseSprint: onCloseSprint ? () => onCloseSprint() : undefined,
                     onStartSprint: onStartSprint ? () => onStartSprint() : undefined,
+                    onToggleCapacityMeter: planningOn && onToggleCapacityMeter ? () => onToggleCapacityMeter() : undefined,
+                    capacityMeterShown,
                   }
                 : {})}
             />

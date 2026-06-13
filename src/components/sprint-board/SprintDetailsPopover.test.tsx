@@ -185,6 +185,54 @@ describe("SprintDetailsPopover", () => {
     expect(screen.queryByText("Open in Jira")).not.toBeInTheDocument();
   });
 
+  describe("capacity meter toggle", () => {
+    it("shows 'Show capacity meter' for an active sprint and triggers the callback", () => {
+      const onToggleCapacityMeter = vi.fn();
+      render(
+        <SprintDetailsPopover
+          sprint={makeSprint({ state: "active" })}
+          open={true}
+          onClose={vi.fn()}
+          onEdit={vi.fn()}
+          onToggleCapacityMeter={onToggleCapacityMeter}
+        />,
+      );
+
+      fireEvent.click(screen.getByText("Show capacity meter"));
+      expect(onToggleCapacityMeter).toHaveBeenCalledTimes(1);
+    });
+
+    it("reads 'Hide capacity meter' when the meter is currently shown", () => {
+      render(
+        <SprintDetailsPopover
+          sprint={makeSprint({ state: "active" })}
+          open={true}
+          onClose={vi.fn()}
+          onEdit={vi.fn()}
+          onToggleCapacityMeter={vi.fn()}
+          capacityMeterShown
+        />,
+      );
+
+      expect(screen.getByText("Hide capacity meter")).toBeInTheDocument();
+      expect(screen.queryByText("Show capacity meter")).not.toBeInTheDocument();
+    });
+
+    it("hides the capacity meter toggle for non-active sprints", () => {
+      render(
+        <SprintDetailsPopover
+          sprint={makeSprint({ state: "future" })}
+          open={true}
+          onClose={vi.fn()}
+          onEdit={vi.fn()}
+          onToggleCapacityMeter={vi.fn()}
+        />,
+      );
+
+      expect(screen.queryByText("Show capacity meter")).not.toBeInTheDocument();
+    });
+  });
+
   describe("with sync action", () => {
     it("shows Sync and the sprint actions together in one flat menu", () => {
       render(

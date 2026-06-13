@@ -29,7 +29,7 @@ import { useExportTask } from "@/hooks/useExportTask";
 import { usePageTitle } from "@/hooks/usePageTitle";
 import { mapJiraSprints, saveSprintSlots, saveTicketMetadata, bulkReviewStories, bulkGenerateSubtasks, computeSprintStats, computeSprintWorkDays } from "@/components/sprint-board/sprint-board-utils";
 import { sprintToSlug, slugToSprintId, buildBoardUrl, nextSprintName, latestRegularSprint, isBacklogSprintName, isOverallRefinementSprint } from "@/lib/sprint-utils";
-import type { SavedView } from "@/components/sprint-board/filter-bar-types";
+import type { SavedView, InlineTagId } from "@/components/sprint-board/filter-bar-types";
 import { startDateFromPreviousEnd } from "@/lib/sprint-dates";
 import { prefetchTicketList, setRouterPrefetch } from "@/lib/prefetch";
 import { getJiraUrl } from "@/components/sprint-board/TicketTableCells";
@@ -157,6 +157,10 @@ export default function SprintBoard() {
   // Forward-planning mode (BRDG-303): per-view toggle that reveals pencil capacity,
   // the fullness meter and guestimation pickers. Off by default; persisted per view.
   const [planningVisible, setPlanningVisible] = useLocalStorage("sprint-board-planning-visible", false);
+  // The capacity meter is just committed-load noise once a sprint is running, so it's
+  // hidden by default on active sprints. This per-sprint flag re-shows it from the
+  // group's "..." menu. Keyed by sprint id; missing = hidden.
+  const [capacityMeterShownMap, setCapacityMeterShownMap] = useLocalStorage<Record<string, boolean>>("sprint-board-capacity-meter-shown", {});
   // Pencil capacity is fetched only while planning mode is on, so the board makes no
   // extra request in the default (planning-off) state.
   const { capacityMap: pencilCapacityMap, setCapacity: setPencilCapacity } = usePencilCapacity(planningVisible);
@@ -660,6 +664,27 @@ export default function SprintBoard() {
   // Single-sprint / backlog view (not All, not a saved view, not already grouped):
   // render the same stat header as the grouped view, but at the top of the FLAT card
   // so the proven flat row rendering (clicks, dnd, virtualization) stays intact.
+  // Group-header SP/BV chip actions (image-1 chips). Single-click sorts the board by
+  // that metric, flipping direction when it is already the active sort; both default
+  // to descending (highest first) so the first click surfaces the heaviest work.
+  // Clicking a hidden metric also reveals its per-row column, so a sort never points
+  // at a column you cannot see.
+  const handleMetricSort = useCallback((metric: "sp" | "bv") => {
+    const field: typeof f.sortField = metric === "sp" ? "points" : "bv";
+    const nextDir = f.sortField === field ? (f.sortDir === "asc" ? "desc" : "asc") : "desc";
+    f.setSortField(field);
+    f.setSortDir(nextDir);
+    const tag: InlineTagId = metric === "sp" ? "storyPoints" : "businessValue";
+    if (!f.visibleTags.has(tag)) toggleColumn(tag, true);
+  }, [f, toggleColumn]);
+
+  // Double-click toggles the metric's per-row column on/off. It writes the same
+  // visibility setting the column popout reads, so the checkbox there stays in sync.
+  const handleMetricToggleColumn = useCallback((metric: "sp" | "bv") => {
+    const tag: InlineTagId = metric === "sp" ? "storyPoints" : "businessValue";
+    toggleColumn(tag, !f.visibleTags.has(tag));
+  }, [f.visibleTags, toggleColumn]);
+
   const { activeViewId: fActiveViewId, statusFilter: fStatusFilter, setStatusFilter: fSetStatusFilter } = f;
   const singleSprintHeader = useMemo<ReactNode>(() => {
     if (isAllView || fActiveViewId || groups.length > 0) return undefined;
@@ -693,6 +718,12 @@ export default function SprintBoard() {
     return (
       <GroupStatBar
         createAction={createAction}
+        sortField={f.sortField}
+        sortDir={f.sortDir}
+        onMetricSort={handleMetricSort}
+        onMetricToggleColumn={handleMetricToggleColumn}
+        spColumnHidden={!f.visibleTags.has("storyPoints")}
+        bvColumnHidden={!f.visibleTags.has("businessValue")}
         // Use the unfiltered sprint set so the status breakdown always shows every
         // pill — otherwise filtering down to one status hides the others and you
         // can no longer click to toggle the filter back off.
@@ -742,11 +773,13 @@ export default function SprintBoard() {
               onPencilCapacityChange: (v: number | null) => setPencilCapacity(key, v),
               // Always the whole sprint, regardless of the active filter / warning lens.
               usedPointsOverride: sprintUsedMap[key] ?? 0,
+              capacityMeterShown: capacityMeterShownMap[key] ?? false,
+              onToggleCapacityMeter: () => setCapacityMeterShownMap((prev) => ({ ...prev, [key]: !(prev[key] ?? false) })),
             }
           : {})}
       />
     );
-  }, [isAllView, fActiveViewId, fStatusFilter, fSetStatusFilter, warningLensActive, groups.length, activeSprintId, activeSprint, allTickets, slotSprintsSet, handleAddSlotWithSprint, handleEditSprintFromGroup, handleCloseSprintFromGroup, handleSyncGroup, flatComposerOpen, planningVisible, pencilCapacityMap, setPencilCapacity, sprintUsedMap]);
+  }, [isAllView, fActiveViewId, fStatusFilter, fSetStatusFilter, warningLensActive, groups.length, activeSprintId, activeSprint, allTickets, slotSprintsSet, handleAddSlotWithSprint, handleEditSprintFromGroup, handleCloseSprintFromGroup, handleSyncGroup, flatComposerOpen, planningVisible, pencilCapacityMap, setPencilCapacity, sprintUsedMap, capacityMeterShownMap, setCapacityMeterShownMap, f.sortField, f.sortDir, f.visibleTags, handleMetricSort, handleMetricToggleColumn]);
 
   useEffect(() => {
     if (slotsInitialized.current || !sprintsData) return; slotsInitialized.current = true;
@@ -801,7 +834,7 @@ export default function SprintBoard() {
           // one card when ungrouped, one per group when grouped (BRDG-239, BRDG-267).
           <div className="min-h-full bg-[var(--color-surface-elevated)] px-4 pb-20 pt-3">
           <div className={boardMaxW}>
-          <TicketTable tickets={displayTickets} warningLensActive={warningLensActive} warningLensActiveSprint={!!flatIsActiveSprint} filterSignature={filterSignature} checkedTickets={checkedTickets} selectedTicket={selectedTicket} focusedTicketIdx={focusedTicketIdx} someChecked={someChecked} allChecked={allChecked} visibleTags={f.visibleTags} hideEpic={hideEpicChip} showSprint={showSprintOnRow} sprintNameMap={sprintNameMap} poStatuses={poStatuses} readinessMap={readinessMap} inflightKeys={inflightKeys} onToggleCheck={toggleCheck} onRangeCheck={handleRangeCheck} onToggleAll={toggleAll} onSelectTicket={setSelectedTicket} onRowContextMenu={handleRowContextMenu} contextMenuKeys={rowMenu?.targets} onPoStatusChange={ta.handlePoStatusChange} onReadinessChange={ta.handleReadinessChange} onBusinessValueChange={ta.handleBusinessValueChange} onStoryPointsChange={ta.handleStoryPointsChange} planningOn={planningVisible} onGuestimationChange={ta.handleGuestimationChange} pencilCapacityMap={pencilCapacityMap} onPencilCapacityChange={setPencilCapacity} sprintUsedMap={sprintUsedMap} onJiraStatusChange={ta.handleJiraStatusChange} onIssueTypeChange={ta.handleIssueTypeChange} onTitleChange={ta.handleTitleChange} onAssigneeChange={ta.handleAssigneeChange} onEpicChange={ta.handleEpicChange} onSprintChange={ta.handleSprintChange} sprints={sprints} onCloseSubtasks={ta.handleCloseSubtasks} onTableKeyDown={handleTableKeyDown} onRunReview={(key) => handleBulkReviewStory(new Set([key]))} sortField={f.sortField} sortDir={f.sortDir} groups={groups} flatHeader={singleSprintHeader} collapsedGroups={collapsedGroups} onToggleCollapse={toggleCollapse} groupBy={groupBy} pinnedSprintIds={slotSprintsSet} onPinSprint={handleAddSlotWithSprint} onEditSprint={handleEditSprintFromGroup} onCloseSprint={handleCloseSprintFromGroup} onSyncGroup={handleSyncGroup} onCreateTicket={handleCreateTicket} flatCreateTarget={flatCreateTarget} flatComposerOpen={flatComposerOpen} onCloseFlatComposer={closeFlatComposer} scrollContainerRef={contentScrollRef} refinementSessionMap={ticketSessionMap} onRemoveFromRefinement={handleRemoveFromRefinement} onViewRefinement={handleViewRefinement} placeholders={placeholdersForTable} onPlaceholderUpdate={handlePlaceholderUpdate} onPlaceholderDelete={handlePlaceholderDelete} onPlaceholderPromote={handlePlaceholderPromote} onPlaceholderCreate={planningVisible ? handlePlaceholderCreate : undefined} {...(dnd.jiraRankDndEnabled ? { externalDnd: true as const, externalActiveDragId: dnd.boardActiveDragId, dragOverKey: dnd.boardOverId } : { onReorder: f.sortField === "rank" && !f.activeViewId ? handleReorder : undefined })} />
+          <TicketTable tickets={displayTickets} warningLensActive={warningLensActive} warningLensActiveSprint={!!flatIsActiveSprint} filterSignature={filterSignature} checkedTickets={checkedTickets} selectedTicket={selectedTicket} focusedTicketIdx={focusedTicketIdx} someChecked={someChecked} allChecked={allChecked} visibleTags={f.visibleTags} hideEpic={hideEpicChip} showSprint={showSprintOnRow} sprintNameMap={sprintNameMap} poStatuses={poStatuses} readinessMap={readinessMap} inflightKeys={inflightKeys} onToggleCheck={toggleCheck} onRangeCheck={handleRangeCheck} onToggleAll={toggleAll} onSelectTicket={setSelectedTicket} onRowContextMenu={handleRowContextMenu} contextMenuKeys={rowMenu?.targets} onPoStatusChange={ta.handlePoStatusChange} onReadinessChange={ta.handleReadinessChange} onBusinessValueChange={ta.handleBusinessValueChange} onStoryPointsChange={ta.handleStoryPointsChange} planningOn={planningVisible} onGuestimationChange={ta.handleGuestimationChange} pencilCapacityMap={pencilCapacityMap} onPencilCapacityChange={setPencilCapacity} sprintUsedMap={sprintUsedMap} onJiraStatusChange={ta.handleJiraStatusChange} onIssueTypeChange={ta.handleIssueTypeChange} onTitleChange={ta.handleTitleChange} onAssigneeChange={ta.handleAssigneeChange} onEpicChange={ta.handleEpicChange} onSprintChange={ta.handleSprintChange} sprints={sprints} onCloseSubtasks={ta.handleCloseSubtasks} onTableKeyDown={handleTableKeyDown} onRunReview={(key) => handleBulkReviewStory(new Set([key]))} sortField={f.sortField} sortDir={f.sortDir} onMetricSort={handleMetricSort} onMetricToggleColumn={handleMetricToggleColumn} groups={groups} flatHeader={singleSprintHeader} collapsedGroups={collapsedGroups} onToggleCollapse={toggleCollapse} groupBy={groupBy} pinnedSprintIds={slotSprintsSet} onPinSprint={handleAddSlotWithSprint} onEditSprint={handleEditSprintFromGroup} onCloseSprint={handleCloseSprintFromGroup} onSyncGroup={handleSyncGroup} onCreateTicket={handleCreateTicket} flatCreateTarget={flatCreateTarget} flatComposerOpen={flatComposerOpen} onCloseFlatComposer={closeFlatComposer} scrollContainerRef={contentScrollRef} refinementSessionMap={ticketSessionMap} onRemoveFromRefinement={handleRemoveFromRefinement} onViewRefinement={handleViewRefinement} placeholders={placeholdersForTable} onPlaceholderUpdate={handlePlaceholderUpdate} onPlaceholderDelete={handlePlaceholderDelete} onPlaceholderPromote={handlePlaceholderPromote} onPlaceholderCreate={planningVisible ? handlePlaceholderCreate : undefined} {...(dnd.jiraRankDndEnabled ? { externalDnd: true as const, externalActiveDragId: dnd.boardActiveDragId, dragOverKey: dnd.boardOverId } : { onReorder: f.sortField === "rank" && !f.activeViewId ? handleReorder : undefined })} />
           </div>
           </div>
         )}

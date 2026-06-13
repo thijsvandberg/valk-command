@@ -354,6 +354,85 @@ describe("GroupStatBar", () => {
       await waitFor(() => expect(screen.queryByRole("status")).toBeNull());
     });
 
+    it("hides the capacity meter by default on an active sprint, even with planning on", () => {
+      render(
+        <GroupStatBar
+          tickets={TICKETS}
+          label="BT: 138"
+          sprint={SPRINT}
+          isActive
+          planningOn
+          pencilCapacity={25}
+          onPencilCapacityChange={vi.fn()}
+        />,
+      );
+      expect(screen.queryByLabelText("Sprint fullness")).toBeNull();
+    });
+
+    it("shows the capacity meter on an active sprint once re-enabled", () => {
+      render(
+        <GroupStatBar
+          tickets={TICKETS}
+          label="BT: 138"
+          sprint={SPRINT}
+          isActive
+          planningOn
+          pencilCapacity={25}
+          onPencilCapacityChange={vi.fn()}
+          capacityMeterShown
+        />,
+      );
+      expect(screen.getByLabelText("Sprint fullness")).toBeInTheDocument();
+    });
+
+    it("keeps the capacity meter visible on a non-active sprint regardless of the toggle", () => {
+      render(
+        <GroupStatBar
+          tickets={TICKETS}
+          label="BT: 138"
+          sprint={{ ...SPRINT, state: "future" }}
+          planningOn
+          pencilCapacity={25}
+          onPencilCapacityChange={vi.fn()}
+        />,
+      );
+      expect(screen.getByLabelText("Sprint fullness")).toBeInTheDocument();
+    });
+
+    it("offers a capacity meter toggle in the menu for an active sprint while planning is on", () => {
+      const onToggleCapacityMeter = vi.fn();
+      render(
+        <GroupStatBar
+          tickets={TICKETS}
+          label="BT: 138"
+          sprint={SPRINT}
+          isActive
+          planningOn
+          onEditSprintDetails={vi.fn()}
+          onPencilCapacityChange={vi.fn()}
+          onToggleCapacityMeter={onToggleCapacityMeter}
+        />,
+      );
+      fireEvent.click(screen.getByLabelText("Sprint options"));
+      fireEvent.click(screen.getByText("Show capacity meter"));
+      expect(onToggleCapacityMeter).toHaveBeenCalledTimes(1);
+    });
+
+    it("does not offer the capacity meter toggle when planning is off", () => {
+      render(
+        <GroupStatBar
+          tickets={TICKETS}
+          label="BT: 138"
+          sprint={SPRINT}
+          isActive
+          onEditSprintDetails={vi.fn()}
+          onToggleCapacityMeter={vi.fn()}
+        />,
+      );
+      fireEvent.click(screen.getByLabelText("Sprint options"));
+      expect(screen.queryByText("Show capacity meter")).toBeNull();
+    });
+
     it("renders an epic options menu with sync only", () => {
       const onSync = vi.fn().mockResolvedValue({ synced: 0, removed: 0 });
       render(
@@ -507,6 +586,81 @@ describe("GroupStatBar", () => {
       fireEvent.click(screen.getByLabelText("Pin to sprint bar"));
       expect(onPin).toHaveBeenCalledTimes(1);
       expect(onToggleCollapse).not.toHaveBeenCalled();
+    });
+  });
+
+  describe("metric chip sort / column toggle", () => {
+    it("does not make the SP chip interactive without the handlers", () => {
+      render(<GroupStatBar tickets={TICKETS} />);
+      expect(screen.getByLabelText("Story Points: 10").getAttribute("role")).toBeNull();
+    });
+
+    it("single-click on the SP chip sorts by points after the click delay", () => {
+      vi.useFakeTimers();
+      try {
+        const onMetricSort = vi.fn();
+        render(<GroupStatBar tickets={TICKETS} onMetricSort={onMetricSort} />);
+        fireEvent.click(screen.getByLabelText("Story Points: 10"));
+        // The sort waits out the double-click window before committing.
+        expect(onMetricSort).not.toHaveBeenCalled();
+        act(() => { vi.advanceTimersByTime(200); });
+        expect(onMetricSort).toHaveBeenCalledWith("sp");
+      } finally {
+        vi.useRealTimers();
+      }
+    });
+
+    it("single-click on the BV chip sorts by bv", () => {
+      vi.useFakeTimers();
+      try {
+        const onMetricSort = vi.fn();
+        const bvTickets = [makeTicket({ key: "VPL-1", businessValue: 4, storyPoints: 3 })];
+        render(<GroupStatBar tickets={bvTickets} onMetricSort={onMetricSort} />);
+        fireEvent.click(screen.getByLabelText("Business Value: 4"));
+        act(() => { vi.advanceTimersByTime(200); });
+        expect(onMetricSort).toHaveBeenCalledWith("bv");
+      } finally {
+        vi.useRealTimers();
+      }
+    });
+
+    it("double-click toggles the column and cancels the pending sort", () => {
+      vi.useFakeTimers();
+      try {
+        const onMetricSort = vi.fn();
+        const onMetricToggleColumn = vi.fn();
+        render(
+          <GroupStatBar
+            tickets={TICKETS}
+            onMetricSort={onMetricSort}
+            onMetricToggleColumn={onMetricToggleColumn}
+          />,
+        );
+        const chip = screen.getByLabelText("Story Points: 10");
+        // A real double-click fires a click first, then the dblclick.
+        fireEvent.click(chip);
+        fireEvent.doubleClick(chip);
+        act(() => { vi.advanceTimersByTime(200); });
+        expect(onMetricToggleColumn).toHaveBeenCalledWith("sp");
+        expect(onMetricSort).not.toHaveBeenCalled();
+      } finally {
+        vi.useRealTimers();
+      }
+    });
+
+    it("marks the SP chip as the active sort and dims it when its column is hidden", () => {
+      render(
+        <GroupStatBar
+          tickets={TICKETS}
+          onMetricSort={vi.fn()}
+          sortField="points"
+          sortDir="desc"
+          spColumnHidden
+        />,
+      );
+      const chip = screen.getByLabelText("Story Points: 10");
+      expect(chip.getAttribute("aria-pressed")).toBe("true");
+      expect(chip.className).toContain("opacity-55");
     });
   });
 

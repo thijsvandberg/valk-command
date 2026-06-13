@@ -6,7 +6,7 @@ import type { Sprint } from "@/types/ticket";
 import type { GroupSyncProgress, GroupSyncResult, GroupSyncState } from "@/lib/group-sync";
 import { Popover } from "@/components/shared/Popover";
 import { useOutsideClick } from "@/hooks/useOutsideClick";
-import { Sparkles, ExternalLink, CircleCheck, Play, RefreshCw, Check, Settings2 } from "lucide-react";
+import { Sparkles, ExternalLink, CircleCheck, Play, RefreshCw, Check, Settings2, Gauge } from "lucide-react";
 import Link from "next/link";
 
 interface SprintDetailsPopoverProps {
@@ -25,6 +25,13 @@ interface SprintDetailsPopoverProps {
   onStartSprint?: () => void;
   /** When provided, shows an "Open in Jira" link to the sprint's board backlog. */
   jiraUrl?: string | null;
+  /**
+   * When provided and the sprint is active, shows a toggle for the capacity meter.
+   * The meter is hidden by default on active sprints; this re-shows it per sprint.
+   */
+  onToggleCapacityMeter?: () => void;
+  /** Current visibility of the capacity meter for this (active) sprint. */
+  capacityMeterShown?: boolean;
   /**
    * When true, the menu's first level shows a "Sync" action. The sync lifecycle is
    * owned by the parent (so a header spinner can show while the menu is closed) and
@@ -56,6 +63,8 @@ export function SprintDetailsPopover({
   onCloseSprint,
   onStartSprint,
   jiraUrl,
+  onToggleCapacityMeter,
+  capacityMeterShown = false,
   canSync = false,
   syncState = "idle",
   syncProgress = null,
@@ -92,6 +101,7 @@ export function SprintDetailsPopover({
   const rowBase = "flex w-full items-center gap-2.5 px-3 py-2 text-body-sm cursor-pointer transition-colors duration-150";
   const neutralRow = `${rowBase} text-text-secondary hover:bg-hover-interactive hover:text-text-primary`;
   const brandRow = `${rowBase} text-[var(--color-brand-400)] hover:bg-[var(--color-brand-500)]/10 hover:text-[var(--color-brand-300)]`;
+  const activeToggleRow = `${rowBase} text-[var(--color-brand-400)] bg-[var(--color-brand-500)]/[0.08] hover:bg-[var(--color-brand-500)]/[0.12]`;
 
   const items: ReactNode[] = [];
 
@@ -146,6 +156,23 @@ export function SprintDetailsPopover({
       <button key="settings" type="button" onClick={() => { onClose(); onEdit(); }} className={neutralRow}>
         <Settings2 size={13} strokeWidth={1.5} className="shrink-0" />
         <span>Sprint settings</span>
+      </button>,
+    );
+  }
+
+  // Per-sprint capacity meter visibility. The meter is hidden by default on active
+  // sprints (it's just committed-load noise once a sprint is running); this re-shows it.
+  if (onToggleCapacityMeter && sprint?.state === "active") {
+    items.push(
+      <button
+        key="capacity-meter"
+        type="button"
+        onClick={onToggleCapacityMeter}
+        className={capacityMeterShown ? activeToggleRow : neutralRow}
+      >
+        <Gauge size={13} strokeWidth={1.5} className="shrink-0" />
+        <span>{capacityMeterShown ? "Hide capacity meter" : "Show capacity meter"}</span>
+        {capacityMeterShown && <Check size={13} strokeWidth={2} className="ml-auto shrink-0" />}
       </button>,
     );
   }
