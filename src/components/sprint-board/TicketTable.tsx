@@ -864,9 +864,18 @@ export function TicketTable({
               onCreatePlaceholder={onPlaceholderCreate ? (t) => onPlaceholderCreate(flatCreateTarget.sprintId, t) : undefined}
             />
           )}
+          {/* Empty sprint with a header: keep the empty state inside the card so it reads as the card's body. */}
+          {flatHeader && tickets.length === 0 && !flatComposerActive && (placeholders?.length ?? 0) === 0 && (
+            <EmptyState
+              icon={<Sheet className="h-5 w-5 text-text-muted" strokeWidth={1} />}
+              title="No tickets in this sprint"
+              description="Tickets will appear here once they are added to the sprint in Jira"
+              className="py-8"
+            />
+          )}
         </div>
       ))}
-      {tickets.length === 0 && !isGrouped && !flatComposerActive && (placeholders?.length ?? 0) === 0 && (
+      {tickets.length === 0 && !isGrouped && !flatHeader && !flatComposerActive && (placeholders?.length ?? 0) === 0 && (
         <EmptyState
           icon={<Sheet className="h-6 w-6 text-text-muted" strokeWidth={1} />}
           title="No tickets in this sprint"
