@@ -103,9 +103,14 @@ describe("SprintSlots views bar (BRDG-319)", () => {
     expect(within(screen.getByTitle("Backlogs")).getByText("BT: Backlog")).toBeTruthy();
   });
 
-  it("renders null Backlogs trigger when there are no backlogs", () => {
-    renderBar({ backlogSprints: [] });
+  it("renders null Backlogs trigger when there are no backlogs and no sprint actions", () => {
+    renderBar({ backlogSprints: [], onOpenSprintList: undefined, onCreateSprint: undefined });
     expect(screen.queryByTitle("Backlogs")).toBeNull();
+  });
+
+  it("keeps the Backlogs trigger for sprint actions even with no backlogs", () => {
+    renderBar({ backlogSprints: [] });
+    expect(screen.getByTitle("Backlogs")).toBeTruthy();
   });
 
   it("surfaces saved views (incl. Overall refinement preset) in the Saved menu", () => {
@@ -126,13 +131,13 @@ describe("SprintSlots views bar (BRDG-319)", () => {
     expect(props.onSaveCurrentView).toHaveBeenCalledWith("My filter");
   });
 
-  it("opens sprint overview and create sprint from the overflow menu", () => {
+  it("opens sprint list and create sprint from the Backlogs dropdown footer", () => {
     const props = renderBar();
-    fireEvent.click(screen.getByTitle("Sprint actions"));
-    fireEvent.click(screen.getByText("Sprint overview"));
+    fireEvent.click(screen.getByTitle("Backlogs"));
+    fireEvent.click(screen.getByText("Sprint list"));
     expect(props.onOpenSprintList).toHaveBeenCalled();
 
-    fireEvent.click(screen.getByTitle("Sprint actions"));
+    fireEvent.click(screen.getByTitle("Backlogs"));
     fireEvent.click(screen.getByText("New sprint"));
     expect(props.onCreateSprint).toHaveBeenCalled();
   });

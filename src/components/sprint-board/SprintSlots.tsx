@@ -3,14 +3,14 @@
 import { useState, useRef, useEffect, useCallback } from "react";
 import { useOutsideClick } from "@/hooks/useOutsideClick";
 import type { Sprint } from "@/types/ticket";
-import { ArrowUp, ArrowDown, ListFilter, Layers, X, Plus, Inbox, ChevronsDownUp, ChevronsUpDown, Bookmark, MoreHorizontal, ChevronDown, Check, ListTree, CalendarPlus } from "lucide-react";
+import { ArrowUp, ArrowDown, ListFilter, Layers, X, Plus, Inbox, ChevronsDownUp, ChevronsUpDown, Bookmark, ChevronDown, Check, Waypoints } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import type { SavedView, SortField, SortDir, InlineTagId } from "./FilterBar";
 import { BoardFieldToggle, SortDropdown, SORT_OPTIONS } from "./FilterBar";
 import type { GroupByOption } from "./useGroupBy";
 import { SprintSelector } from "./SprintSelector";
 import { isBacklogSprintName } from "@/lib/sprint-utils";
-import { BarContainer, BarDivider } from "@/components/shared/BarContainer";
+import { BarContainer } from "@/components/shared/BarContainer";
 import {
   DndContext,
   closestCenter,
@@ -160,27 +160,34 @@ function BacklogsDropdown({
   backlogSprints,
   activeBacklogId,
   onSelect,
+  onOpenSprintList,
+  onCreateSprint,
 }: {
   backlogSprints: Sprint[];
   activeBacklogId: string | null;
   onSelect: (sprintId: string) => void;
+  onOpenSprintList?: (anchor: { top: number; left: number }) => void;
+  onCreateSprint?: () => void;
 }) {
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
   useOutsideClick(ref, () => setOpen(false), { enabled: open });
 
-  if (backlogSprints.length === 0) return null;
+  const hasSprintActions = Boolean(onOpenSprintList || onCreateSprint);
+  if (backlogSprints.length === 0 && !hasSprintActions) return null;
   const active = backlogSprints.find((s) => s.id === activeBacklogId) ?? null;
 
-  // Primary backlogs surface first: the PO's own team (BT) then the team-less Backlog,
-  // separated from the rest by a divider (BRDG-319).
+  // Only the PO's own team backlog (BT) leads with an icon; the team-less Backlog
+  // and the other team backlogs sit below the divider as a plain, icon-free list so
+  // a column of identical Inbox glyphs no longer reads as noise (BRDG-319).
   const bt = backlogSprints.find((s) => /^bt:\s*backlog$/i.test(s.name.trim())) ?? null;
   const plain = backlogSprints.find((s) => s.id === "__backlog__") ?? null;
-  const primary = [bt, plain].filter((s): s is Sprint => s !== null);
+  const primary = [bt].filter((s): s is Sprint => s !== null);
   const primaryIds = new Set(primary.map((s) => s.id));
-  const rest = backlogSprints.filter((s) => !primaryIds.has(s.id));
+  const others = backlogSprints.filter((s) => !primaryIds.has(s.id) && s.id !== plain?.id);
+  const rest = [plain, ...others].filter((s): s is Sprint => s !== null);
 
-  const row = (s: Sprint, emphasised: boolean) => {
+  const row = (s: Sprint, showIcon: boolean) => {
     const isActive = s.id === activeBacklogId;
     return (
       <button
@@ -188,10 +195,10 @@ function BacklogsDropdown({
         type="button"
         onClick={() => { onSelect(s.id); setOpen(false); }}
         className={`flex w-full items-center gap-2 rounded-md px-2.5 py-1.5 text-left text-body-sm cursor-pointer hover:bg-hover-list-item ${
-          isActive ? "text-text-primary" : emphasised ? "font-medium text-text-secondary" : "text-text-tertiary"
+          isActive ? "text-text-primary" : showIcon ? "font-medium text-text-secondary" : "text-text-tertiary"
         }`}
       >
-        <Inbox className={`h-3.5 w-3.5 shrink-0 ${emphasised ? "text-text-secondary" : "text-text-tertiary"}`} strokeWidth={1.5} />
+        {showIcon && <Inbox className="h-3.5 w-3.5 shrink-0 text-text-secondary" strokeWidth={1.5} />}
         <span className="flex-1 truncate">{s.name}</span>
         {s.ticketCount > 0 && <span className="text-[11px] tabular-nums text-text-muted">{s.ticketCount}</span>}
         {isActive && <Check className="h-3.5 w-3.5 shrink-0 text-[var(--color-brand-400)]" strokeWidth={2} />}
@@ -220,7 +227,41 @@ function BacklogsDropdown({
         <div className="absolute top-full left-0 z-50 mt-1 max-h-[60vh] w-56 overflow-y-auto rounded-lg border border-border-strong bg-[var(--color-surface-floating)] p-1 shadow-[var(--shadow-lg)]">
           {primary.map((s) => row(s, true))}
           {primary.length > 0 && rest.length > 0 && <div className="my-1 h-px bg-border-subtle" />}
-          {rest.map((s) => row(s, false))}
+          {rest.map((s) => row(s, false))}{/* icon-free list */}
+          {/* Sprint management actions fold in here so the bar carries one navigator
+              instead of a separate overflow button (BRDG-319) */}
+          {hasSprintActions && (
+            <>
+              {backlogSprints.length > 0 && <div className="my-1 h-px bg-border-subtle" />}
+              {onOpenSprintList && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    // Anchor the sprint-list popover under the dropdown (which sits on the
+                    // left of the bar), left-aligned and clamped so its 384px width stays
+                    // on-screen.
+                    const r = ref.current?.getBoundingClientRect();
+                    if (r) onOpenSprintList({ top: r.bottom + 6, left: Math.max(8, Math.min(r.left, window.innerWidth - 384 - 8)) });
+                    setOpen(false);
+                  }}
+                  className="flex w-full items-center gap-2 rounded-md px-2.5 py-1.5 text-left text-body-sm text-text-secondary cursor-pointer hover:bg-hover-list-item hover:text-text-primary"
+                >
+                  <Waypoints className="h-4 w-4 shrink-0 text-text-tertiary" strokeWidth={1.5} />
+                  Sprint list
+                </button>
+              )}
+              {onCreateSprint && (
+                <button
+                  type="button"
+                  onClick={() => { onCreateSprint(); setOpen(false); }}
+                  className="flex w-full items-center gap-2 rounded-md px-2.5 py-1.5 text-left text-body-sm text-text-secondary cursor-pointer hover:bg-hover-list-item hover:text-text-primary"
+                >
+                  <Plus className="h-4 w-4 shrink-0 text-text-tertiary" strokeWidth={1.5} />
+                  New sprint
+                </button>
+              )}
+            </>
+          )}
         </div>
       )}
     </div>
@@ -320,66 +361,6 @@ function SavedViewsMenu({
                 </button>
               )}
             </>
-          )}
-        </div>
-      )}
-    </div>
-  );
-}
-
-// -- Sprint overflow menu (BRDG-319): sprint overview + create sprint --
-
-function SprintOverflowMenu({
-  onOpenSprintList,
-  onCreateSprint,
-}: {
-  onOpenSprintList?: (anchor: { top: number; right: number }) => void;
-  onCreateSprint?: () => void;
-}) {
-  const [open, setOpen] = useState(false);
-  const ref = useRef<HTMLDivElement>(null);
-  useOutsideClick(ref, () => setOpen(false), { enabled: open });
-
-  if (!onOpenSprintList && !onCreateSprint) return null;
-
-  return (
-    <div ref={ref} className="relative shrink-0 self-center">
-      <button
-        type="button"
-        onClick={() => setOpen((v) => !v)}
-        title="Sprint actions"
-        aria-label="Sprint actions"
-        className="grid h-6 w-6 place-items-center rounded-md text-text-muted cursor-pointer hover:bg-overlay-default hover:text-text-secondary focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)] transition-colors duration-100"
-      >
-        <MoreHorizontal size={14} strokeWidth={1.5} />
-      </button>
-      {open && (
-        <div className="absolute top-full left-0 z-50 mt-1 w-48 rounded-lg border border-border-strong bg-[var(--color-surface-floating)] p-1 shadow-[var(--shadow-lg)]">
-          {onOpenSprintList && (
-            <button
-              type="button"
-              onClick={() => {
-                // Anchor the sprint-list popover to the overflow button so it opens
-                // beneath it rather than at the board root (BRDG-319).
-                const r = ref.current?.getBoundingClientRect();
-                if (r) onOpenSprintList({ top: r.bottom + 6, right: Math.max(8, window.innerWidth - r.right) });
-                setOpen(false);
-              }}
-              className="flex w-full items-center gap-2 rounded-md px-2.5 py-1.5 text-left text-body-sm text-text-secondary cursor-pointer hover:bg-hover-list-item hover:text-text-primary"
-            >
-              <ListTree className="h-4 w-4 shrink-0 text-text-tertiary" strokeWidth={1.5} />
-              Sprint overview
-            </button>
-          )}
-          {onCreateSprint && (
-            <button
-              type="button"
-              onClick={() => { onCreateSprint(); setOpen(false); }}
-              className="flex w-full items-center gap-2 rounded-md px-2.5 py-1.5 text-left text-body-sm text-text-secondary cursor-pointer hover:bg-hover-list-item hover:text-text-primary"
-            >
-              <CalendarPlus className="h-4 w-4 shrink-0 text-text-tertiary" strokeWidth={1.5} />
-              New sprint
-            </button>
           )}
         </div>
       )}
@@ -489,7 +470,7 @@ export function SprintSlots({
   groupBy?: GroupByOption;
   onGroupByChange?: (v: GroupByOption) => void;
   onCreateSprint?: () => void;
-  onOpenSprintList?: (anchor: { top: number; right: number }) => void;
+  onOpenSprintList?: (anchor: { top: number; left: number }) => void;
   groupCount?: number;
   allGroupsCollapsed?: boolean;
   onToggleCollapseAll?: () => void;
@@ -534,16 +515,15 @@ export function SprintSlots({
       {/* Backlogs dropdown -- fixed leading, kept OUTSIDE the horizontal scroller so its
           menu is not clipped by overflow-x (BRDG-319) */}
       {onBacklogSelect && (
-        <BacklogsDropdown backlogSprints={backlogSprints} activeBacklogId={activeBacklogId} onSelect={onBacklogSelect} />
+        <BacklogsDropdown backlogSprints={backlogSprints} activeBacklogId={activeBacklogId} onSelect={onBacklogSelect} onOpenSprintList={onOpenSprintList} onCreateSprint={onCreateSprint} />
       )}
-
-      {pillSlotSprints.length > 0 && <BarDivider className="mx-2.5 self-center" />}
 
       {/* Scrollable sprint-pill area with fade indicators. The scroller hugs its
           content (no flex-grow) so the overflow/Saved zone sits right after the pills;
           the view-tools float right via ml-auto. When pills overflow, min-w-0 lets the
-          scroller shrink and scroll instead of stretching the bar. */}
-      <div className="relative flex min-w-0 h-full items-stretch">
+          scroller shrink and scroll instead of stretching the bar. A left margin keeps
+          breathing room from the Backlogs dropdown now the divider is gone. */}
+      <div className={`relative flex min-w-0 h-full items-stretch ${pillSlotSprints.length > 0 ? "ml-4" : ""}`}>
         {/* Left fade */}
         {canScrollLeft && (
           <div className="pointer-events-none absolute left-0 top-0 bottom-0 z-10 w-6 bg-gradient-to-r from-[var(--color-surface-base)] to-transparent" />
@@ -627,16 +607,10 @@ export function SprintSlots({
       </div>{/* end scrollable inner */}
       </div>{/* end scroll wrapper */}
 
-      {/* Sprint overflow: sprint overview + create sprint -- outside the scroller so the menu is not clipped */}
-      <SprintOverflowMenu onOpenSprintList={onOpenSprintList} onCreateSprint={onCreateSprint} />
-
-      <BarDivider className="mx-2.5 self-center" />
-
-      {/* Saved filters menu (BRDG-319) -- hugs the sprint zone; tools float right */}
-      <SavedViewsMenu savedViews={savedViews} activeViewId={activeViewId} onViewClick={onViewClick} onSaveCurrentView={onSaveCurrentView} />
-
-      {/* Right side: view tools, pushed to the far edge */}
+      {/* Right side: view tools, pushed to the far edge. Saved views live here too,
+          as a viewing tool rather than a sprint-zone neighbour (BRDG-319). */}
       <div className="ml-auto flex shrink-0 items-center gap-1 pl-2">
+        <SavedViewsMenu savedViews={savedViews} activeViewId={activeViewId} onViewClick={onViewClick} onSaveCurrentView={onSaveCurrentView} />
         {/* Active sort label — shown to the left of the icon group */}
         {sortField && sortField !== "rank" && sortDir && onSortChange && (
           <div className="flex items-center mr-1">

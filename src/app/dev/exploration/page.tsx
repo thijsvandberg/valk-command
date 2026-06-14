@@ -8,7 +8,7 @@
  */
 
 import Link from "next/link";
-import { ArrowUpRight, LayoutGrid, Rows3, FlaskConical, Shapes, MousePointerClick, Type, PanelTop, PanelTopDashed, AppWindow, ListChecks, Gem, Gauge, Hash, SendHorizontal, BarChart3, History as HistoryIcon, Sparkles } from "lucide-react";
+import { ArrowUpRight, LayoutGrid, Rows3, FlaskConical, Shapes, MousePointerClick, Type, PanelTop, PanelTopDashed, AppWindow, ListChecks, Gem, Gauge, Hash, SendHorizontal, BarChart3, History as HistoryIcon, Sparkles, RefreshCw } from "lucide-react";
 
 type Exploration = {
   slug: string;
@@ -22,6 +22,14 @@ type Exploration = {
 const ICON = "h-5 w-5";
 
 const EXPLORATIONS: Exploration[] = [
+  {
+    slug: "sprint-icon",
+    title: "Sprint icon — one glyph for a sprint",
+    blurb:
+      "Picks a single icon to represent 'a sprint', reused on the sprint pills in the views bar and on the 'Sprint overview' item in the Backlogs dropdown footer. Candidates grouped by meaning — iteration/cycle, time-box, goal, energy, neutral marker — each clickable to preview live on the pills and in the dropdown.",
+    status: "Exploration",
+    icon: <RefreshCw className={ICON} strokeWidth={1.5} />,
+  },
   {
     slug: "session-ending",
     title: "Refinement session — the happy ending",

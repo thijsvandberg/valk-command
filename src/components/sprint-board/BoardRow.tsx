@@ -37,6 +37,8 @@ export interface BoardRowBaseProps {
   isInflight?: boolean;
   /** Highlighted because the open row context menu targets this row. */
   isContextTarget?: boolean;
+  /** Drop the colored left accent on the row; the background tints still apply. */
+  hideRowAccent?: boolean;
   someChecked: boolean;
   isDragActive: boolean;
   /** Which secondary signals are shown inline. Omitted = all (BRDG-239). */
@@ -134,6 +136,7 @@ export const BoardRow = memo(forwardRef<HTMLTableRowElement, BoardRowBaseProps>(
     isFocused = false,
     isInflight = false,
     isContextTarget = false,
+    hideRowAccent = false,
     someChecked,
     isDragActive,
     tags = ALL_TAGS,
@@ -337,12 +340,24 @@ export const BoardRow = memo(forwardRef<HTMLTableRowElement, BoardRowBaseProps>(
           dragListeners ? "cursor-grab active:cursor-grabbing select-none" : "cursor-pointer"
         } ${
           isSelected || isContextTarget
-            ? "bg-[var(--color-brand-600)]/12 border-l-[var(--color-brand-300)]"
+            ? "bg-[var(--color-brand-600)]/12"
             : isChecked
-            ? "bg-[var(--color-brand-500)]/6 border-l-[var(--color-brand-300)] hover:bg-[var(--color-brand-500)]/10"
+            ? "bg-[var(--color-brand-500)]/6 hover:bg-[var(--color-brand-500)]/10"
             : ticket.flagged
-            ? "bg-[color-mix(in_srgb,var(--color-status-error)_6%,transparent)] border-l-[var(--color-status-error)] hover:bg-[color-mix(in_srgb,var(--color-status-error)_8%,transparent)]"
-            : "border-l-transparent hover:bg-overlay-subtle hover:border-l-[var(--color-brand-400)]/25"
+            ? "bg-[color-mix(in_srgb,var(--color-status-error)_6%,transparent)] hover:bg-[color-mix(in_srgb,var(--color-status-error)_8%,transparent)]"
+            : "hover:bg-overlay-subtle"
+        } ${
+          // The colored left accent is dropped when hideRowAccent is set; the
+          // background tints above still convey checked/selected/flagged.
+          hideRowAccent
+            ? "border-l-transparent"
+            : isSelected || isContextTarget
+            ? "border-l-[var(--color-brand-300)]"
+            : isChecked
+            ? "border-l-[var(--color-brand-300)]"
+            : ticket.flagged
+            ? "border-l-[var(--color-status-error)]"
+            : "border-l-transparent hover:border-l-[var(--color-brand-400)]/25"
         } ${isFocused && !isSelected && !isContextTarget ? "outline outline-1 -outline-offset-1 outline-[var(--color-brand-500)]/40" : ""} ${isRemoved ? "opacity-50" : isDeprecated ? "opacity-60" : isInflight ? "opacity-70" : ""} ${isLastInCard ? "rounded-b-[11px]" : ""} ${liveChangeKinds.size > 0 ? "live-pulse" : ""}`}>
           {/* Drag affordance in the left gutter (Jira-style). Visual only: the whole row is the
               drag activator, so this never needs its own listeners. Shown only when reordering
@@ -350,7 +365,11 @@ export const BoardRow = memo(forwardRef<HTMLTableRowElement, BoardRowBaseProps>(
           {dragListeners && !someChecked && (
             <span
               aria-hidden
-              className="pointer-events-none absolute -left-[3px] top-1/2 flex h-6 w-[18px] -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-md border border-border-subtle bg-[var(--color-surface-elevated)] text-text-tertiary opacity-0 shadow-[var(--shadow-sm)] transition-opacity duration-150 group-hover/row:opacity-100"
+              // pointer-events stay ON: the handle protrudes past the row's left
+              // edge, so without this its half would pass the cursor through to the
+              // background and the row would drop its hover. As a row descendant its
+              // pointer events bubble to the row's own drag listeners.
+              className="absolute -left-[3px] top-1/2 flex h-6 w-[18px] -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-md border border-border-subtle bg-[var(--color-surface-elevated)] text-text-tertiary opacity-0 shadow-[var(--shadow-sm)] transition-opacity duration-150 group-hover/row:opacity-100"
             >
               <GripVertical size={12} strokeWidth={1.5} />
             </span>

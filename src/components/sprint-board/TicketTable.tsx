@@ -111,6 +111,7 @@ export function TicketTable({
   visibleTags,
   hideEpic = false,
   showSprint = false,
+  hideRowAccent = false,
   sprintNameMap,
   poStatuses,
   readinessMap,
@@ -184,6 +185,8 @@ export function TicketTable({
   visibleTags: Set<InlineTagId>;
   /** Suppress the epic chip on every row (e.g. when grouped by epic). */
   hideEpic?: boolean;
+  /** Drop the per-row colored left accent across the board. */
+  hideRowAccent?: boolean;
   /** Show the sprint name on each row (when multiple sprints are visible). */
   showSprint?: boolean;
   sprintNameMap?: Record<string, string>;
@@ -411,6 +414,7 @@ export function TicketTable({
     isFocused: focusedTicketIdx === ticketIdx,
     isInflight: inflightKeys?.has(ticket.key) ?? false,
     isContextTarget: contextMenuKeys?.has(ticket.key) ?? false,
+    hideRowAccent,
     someChecked,
     isDragActive: activeDragId !== null,
     tags: visibleTags,
@@ -451,7 +455,7 @@ export function TicketTable({
     ticketInfoMap,
     onRemoveFromRefinement,
     onViewRefinement,
-  }), [checkedTickets, selectedTicket, focusedTicketIdx, someChecked, activeDragId, visibleTags, hideEpic, showSprint, sprintNameMap, poStatuses, readinessMap, inflightKeys, contextMenuKeys, onSelectTicket, onRowContextMenu, handleCheckboxClick, onPoStatusChange, onReadinessChange, onBusinessValueChange, onStoryPointsChange, planningOn, onGuestimationChange, onJiraStatusChange, onIssueTypeChange, onTitleChange, onAssigneeChange, onEpicChange, onSprintChange, sprints, onCloseSubtasks, editingTitleKey, reviewPopoverKey, handleToggleReviewPopover, onRunReview, followedKeys, followTicket, unfollowTicket, lastDeployedMap, healthMap, refinementSessionMap, ticketInfoMap, onRemoveFromRefinement, onViewRefinement]);
+  }), [checkedTickets, selectedTicket, focusedTicketIdx, someChecked, activeDragId, visibleTags, hideEpic, hideRowAccent, showSprint, sprintNameMap, poStatuses, readinessMap, inflightKeys, contextMenuKeys, onSelectTicket, onRowContextMenu, handleCheckboxClick, onPoStatusChange, onReadinessChange, onBusinessValueChange, onStoryPointsChange, planningOn, onGuestimationChange, onJiraStatusChange, onIssueTypeChange, onTitleChange, onAssigneeChange, onEpicChange, onSprintChange, sprints, onCloseSubtasks, editingTitleKey, reviewPopoverKey, handleToggleReviewPopover, onRunReview, followedKeys, followTicket, unfollowTicket, lastDeployedMap, healthMap, refinementSessionMap, ticketInfoMap, onRemoveFromRefinement, onViewRefinement]);
 
   // Placeholder rows (BRDG-304) render inside a table tbody as a single-cell row,
   // mirroring BoardRow's <tr><td> shape so they sit in the same column flow.
