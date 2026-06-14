@@ -581,3 +581,22 @@ body.refinement-session-active #main-content { border-radius: 0; }
     100% { opacity: 0; }
   }
 }
+
+/* Bulk/selection action bar entrance. The floating multiselect bar lives at the
+   bottom of its view, so it rises into place and settles with a soft spring
+   overshoot. Transform/opacity only so it stays off the main thread (BRDG-320).
+   Plays once on mount (the bar mounts when a selection becomes non-empty), so
+   changing the selection count never re-triggers it. */
+@keyframes bulkBarIn {
+  from { opacity: 0; transform: translateY(14px) scale(0.985); }
+  to   { opacity: 1; transform: translateY(0) scale(1); }
+}
+.bulk-bar-enter { animation: bulkBarIn 280ms cubic-bezier(0.34, 1.56, 0.64, 1) both; }
+@media (prefers-reduced-motion: reduce) {
+  /* Drop the rise and spring; keep a plain fade so the bar still announces itself. */
+  @keyframes bulkBarIn {
+    from { opacity: 0; }
+    to { opacity: 1; }
+  }
+  .bulk-bar-enter { animation-timing-function: ease-out; }
+}

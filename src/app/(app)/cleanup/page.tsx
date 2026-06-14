@@ -748,7 +748,7 @@ export default function CleanupPage() {
               <BarContainer
                 border
                 borderPosition="top"
-                className="sticky bottom-0 z-50 gap-2 bg-[var(--color-surface-base)] px-8 sm:gap-3"
+                className="bulk-bar-enter sticky bottom-0 z-50 gap-2 bg-[var(--color-surface-base)] px-8 sm:gap-3"
               >
                 {/* Select all / deselect all visible rows (mirrors the board's toggle). */}
                 <Tooltip content={allVisibleChecked ? "Deselect all" : "Select all visible"}>
