@@ -8,7 +8,7 @@
  */
 
 import Link from "next/link";
-import { ArrowUpRight, LayoutGrid, Rows3, FlaskConical, Shapes, MousePointerClick, Type, PanelTop, PanelTopDashed, AppWindow, ListChecks, Gem, Gauge, Hash, SendHorizontal, BarChart3, History as HistoryIcon, Sparkles, RefreshCw } from "lucide-react";
+import { ArrowUpRight, LayoutGrid, Rows3, FlaskConical, Shapes, MousePointerClick, Type, PanelTop, PanelTopDashed, AppWindow, ListChecks, Gem, Gauge, Hash, SendHorizontal, BarChart3, History as HistoryIcon, Sparkles, RefreshCw, Target } from "lucide-react";
 
 type Exploration = {
   slug: string;
@@ -22,6 +22,14 @@ type Exploration = {
 const ICON = "h-5 w-5";
 
 const EXPLORATIONS: Exploration[] = [
+  {
+    slug: "drop-zones",
+    title: "Drop zones & bar alignment",
+    blurb:
+      "Brings the sprint board bar and the refinement session bar into one shared regular-state anatomy (floating h-7 pills, gap, brand-400 active underline), then layers a single drop-target treatment for drag-and-drop. Shows the divergent bars today vs. the unified proposal, with five drop treatments (soft tint, brand ring + lift, solid fill, underline cue, spotlight) selectable live and a 'Simulate drag' toggle to preview the drop-over state on the real bars.",
+    status: "Exploration",
+    icon: <Target className={ICON} strokeWidth={1.5} />,
+  },
   {
     slug: "sprint-icon",
     title: "Sprint icon — one glyph for a sprint",

@@ -9,6 +9,7 @@ import {
   type CollisionDetection,
   type Modifier,
 } from "@dnd-kit/core";
+import { dropTargetClasses, dropTargetStyle } from "@/components/shared/dropZone";
 
 // Sprint drop zone shown when a ticket is being dragged
 export function SprintDropTile({
@@ -26,55 +27,76 @@ export function SprintDropTile({
   return (
     <div
       ref={setNodeRef}
-      className={`flex items-center gap-1.5 rounded-md border px-2.5 py-1 text-body-sm font-medium transition-colors duration-100 ${
-        isOver
-          ? "border-[var(--color-brand-500)]/50 bg-[var(--color-brand-500)]/12 text-[var(--color-brand-300)]"
-          : "border-border-default bg-overlay-subtle text-text-tertiary hover:border-border-strong hover:text-text-secondary"
-      }`}
+      className={`flex h-7 shrink-0 items-center gap-1.5 self-center rounded-md border px-2.5 text-body-sm font-medium ${dropTargetClasses(isOver)}`}
+      style={dropTargetStyle(isOver)}
     >
-      <ArrowRight size={10} strokeWidth={1.5} className="shrink-0 opacity-50" />
       <span className="truncate">{sprint.name}</span>
+      <ArrowRight size={11} strokeWidth={2} className="shrink-0" style={{ opacity: isOver ? 1 : 0.35, transition: "opacity 160ms ease" }} />
     </div>
   );
 }
 
-// Overlay that covers the sprint tab bar during a drag
+// The current view rendered as a plain, inert pill (never a drop target — you
+// can't move a ticket to where it already is). No leading sprint icon during a
+// drag: only the active dot + underline mark it, keeping the drop bar uncluttered.
+function PlainTab({ sprint, label }: { sprint: Sprint; label?: string }) {
+  return (
+    <span className="relative flex h-7 shrink-0 items-center gap-1.5 self-center px-2.5 text-body-sm font-medium text-text-primary">
+      {label ?? sprint.name}
+      {sprint.state === "active" && (
+        <span className="h-[7px] w-[7px] rounded-full bg-[var(--color-brand-400)]" style={{ boxShadow: "0 0 8px var(--color-brand-glow)" }} />
+      )}
+      <span className="absolute inset-x-2.5 bottom-0 h-[2px] rounded-full bg-[var(--color-brand-400)]" />
+    </span>
+  );
+}
+
+// Drag overlay (BRDG-336). Sits over the sprint tab bar during a ticket drag and
+// KEEPS the bar's regular chrome — the same toolbar surface and leading "All"
+// pill — rather than reskinning the whole strip. Only the drop tiles take the
+// brand drop styling. Targets are the pinned sprints plus a Backlog tile in the
+// "Backlogs" control's slot; the active view stays a plain pill. No other sprints
+// are added.
 export function SprintDropZoneBar({
   sprints,
-  slotSprints,
+  pillSlotSprints,
   activeSprintId,
+  allActive,
 }: {
   sprints: Sprint[];
-  slotSprints: string[];
+  /** Pinned SPRINT pills only — backlogs and saved views (e.g. "Overall
+   *  refinement") are already pulled out, so they never become drop targets.
+   *  The Backlog target is provided separately below. */
+  pillSlotSprints: string[];
   activeSprintId: string;
+  allActive: boolean;
 }) {
-  const targets = slotSprints.filter((id) => id !== activeSprintId);
-  const showBacklog = activeSprintId !== "__backlog__" && !targets.includes("__backlog__");
-  const backlogSprint = showBacklog ? sprints.find((s) => s.id === "__backlog__") : null;
+  const backlogSprint = sprints.find((s) => s.id === "__backlog__");
+  const pinned = pillSlotSprints.filter((id) => id !== "__backlog__");
   return (
-    <div className="absolute inset-0 z-10 flex items-center gap-2 bg-[var(--color-surface-elevated)] px-5">
-      <span className="shrink-0 text-caption font-medium uppercase tracking-widest text-text-muted">
-        Move to
+    <div className="absolute inset-0 z-10 flex items-center px-4">
+      {/* Mirrors the SprintSlots "All" pill so the leading chrome is unchanged. */}
+      <span
+        className={`mr-2 flex h-7 shrink-0 items-center self-center rounded-md px-2.5 text-body-sm font-semibold tracking-wide ${allActive ? "text-[var(--color-brand-600)]" : "text-[var(--color-brand-500)]"}`}
+        style={{ backgroundColor: allActive ? "color-mix(in srgb, var(--color-brand-400) 18%, transparent)" : "color-mix(in srgb, var(--color-brand-400) 12%, transparent)" }}
+      >
+        All
       </span>
-      <span className="h-3 w-px shrink-0 bg-overlay-default" />
-      {targets.map((sprintId) => {
-        const sprint = sprints.find((s) => s.id === sprintId);
-        if (!sprint) return null;
-        return (
-          <SprintDropTile
-            key={sprintId}
-            sprintId={sprintId}
-            sprint={sprint}
-          />
-        );
-      })}
-      {backlogSprint && (
-        <SprintDropTile
-          key="__backlog__"
-          sprintId="__backlog__"
-          sprint={backlogSprint}
-        />
-      )}
+      {/* Backlog target leads the drop tiles (in the old "Backlogs" control's
+          place) and shares their gap, so there is no extra margin before the
+          first sprint. */}
+      <div className="flex min-w-0 items-center gap-1 overflow-x-auto xl:gap-1.5 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+        {backlogSprint && (activeSprintId === "__backlog__"
+          ? <PlainTab sprint={backlogSprint} label="BT: Backlog" />
+          : <SprintDropTile sprintId="__backlog__" sprint={{ ...backlogSprint, name: "BT: Backlog" }} />)}
+        {pinned.map((sprintId) => {
+          const sprint = sprints.find((s) => s.id === sprintId);
+          if (!sprint) return null;
+          return sprintId === activeSprintId
+            ? <PlainTab key={sprintId} sprint={sprint} />
+            : <SprintDropTile key={sprintId} sprintId={sprintId} sprint={sprint} />;
+        })}
+      </div>
     </div>
   );
 }

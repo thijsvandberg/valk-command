@@ -32,29 +32,34 @@ describe("SprintDropZoneBar", () => {
     makeSprint({ id: "s1", name: "Sprint 1" }),
     makeSprint({ id: "s2", name: "Sprint 2" }),
     makeSprint({ id: "s3", name: "Sprint 3" }),
-    makeSprint({ id: "__backlog__", name: "Backlog" }),
+    makeSprint({ id: "__backlog__", name: "Backlog", state: "backlog" }),
   ];
 
-  it("renders 'Move to' label", () => {
-    render(<SprintDropZoneBar sprints={sprints} slotSprints={["s1", "s2", "s3"]} activeSprintId="s1" />);
-    expect(screen.getByText("Move to")).toBeInTheDocument();
+  it("keeps the bar chrome: renders the All pill, no 'Move to' label", () => {
+    render(<SprintDropZoneBar sprints={sprints} pillSlotSprints={["s1", "s2", "s3"]} activeSprintId="s1" allActive={false} />);
+    expect(screen.getByText("All")).toBeInTheDocument();
+    expect(screen.queryByText("Move to")).not.toBeInTheDocument();
   });
 
-  it("excludes the active sprint from drop targets", () => {
-    render(<SprintDropZoneBar sprints={sprints} slotSprints={["s1", "s2", "s3"]} activeSprintId="s1" />);
+  it("renders the backlog target as 'BT: Backlog' in the Backlogs slot", () => {
+    render(<SprintDropZoneBar sprints={sprints} pillSlotSprints={["s1", "s2"]} activeSprintId="s1" allActive={false} />);
+    expect(screen.getByText("BT: Backlog")).toBeInTheDocument();
+  });
+
+  it("makes pinned non-active sprints + backlog drop tiles, the active sprint a plain pill", () => {
+    render(<SprintDropZoneBar sprints={sprints} pillSlotSprints={["s1", "s2", "s3"]} activeSprintId="s1" allActive={false} />);
+    // s2, s3 and BT: Backlog each render an arrow cue (drop tiles); s1 is plain.
+    expect(screen.getAllByTestId("arrow-right")).toHaveLength(3);
+    expect(screen.getByText("Sprint 1")).toBeInTheDocument();
     expect(screen.getByText("Sprint 2")).toBeInTheDocument();
     expect(screen.getByText("Sprint 3")).toBeInTheDocument();
-    expect(screen.queryByText("Sprint 1")).not.toBeInTheDocument();
   });
 
-  it("shows backlog target when not active and not in slot list", () => {
-    render(<SprintDropZoneBar sprints={sprints} slotSprints={["s1", "s2"]} activeSprintId="s1" />);
-    expect(screen.getByText("Backlog")).toBeInTheDocument();
-  });
-
-  it("hides backlog when it is the active sprint", () => {
-    render(<SprintDropZoneBar sprints={sprints} slotSprints={["s1", "s2"]} activeSprintId="__backlog__" />);
-    expect(screen.queryByText("Backlog")).not.toBeInTheDocument();
+  it("renders the backlog as a plain pill when the backlog is the active view", () => {
+    render(<SprintDropZoneBar sprints={sprints} pillSlotSprints={["s1", "s2"]} activeSprintId="__backlog__" allActive={false} />);
+    expect(screen.getByText("BT: Backlog")).toBeInTheDocument();
+    // Only s1 and s2 are drop tiles; BT: Backlog is plain (no arrow).
+    expect(screen.getAllByTestId("arrow-right")).toHaveLength(2);
   });
 });
 

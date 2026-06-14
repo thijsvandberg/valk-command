@@ -3,6 +3,7 @@
 import { useDraggable, useDroppable } from "@dnd-kit/core";
 import { GripVertical } from "lucide-react";
 import { ticketDragId, PLAN_SESSION_DROP_ID } from "@/hooks/useRefinementDragDrop";
+import { dropTargetClasses, DROP_TARGET_TRANSITION } from "@/components/shared/dropZone";
 
 /**
  * Per-item drag handle for BRDG-336. The handle (not the row or panel header)
@@ -60,14 +61,17 @@ export function PlanSessionDropZone({
       ref={setNodeRef}
       data-drop-active={isDragActive || undefined}
       data-drop-over={isOver || undefined}
-      className={`rounded-lg ${
+      className={`rounded-lg border ${
         isDragActive
           ? isOver
-            ? "bg-[var(--color-brand-500)]/15 outline-2 outline-dashed outline-[var(--color-brand-400)] -outline-offset-1"
-            : "bg-[var(--color-brand-500)]/[0.06] outline-1 outline-dashed outline-[var(--color-brand-500)]/40 -outline-offset-1"
-          : ""
+            ? "border-[var(--color-brand-500)] bg-[var(--color-brand-500)]/15"
+            : dropTargetClasses(false)
+          : "border-transparent"
       }`}
-      style={{ transition: "background-color 120ms ease" }}
+      style={{
+        transition: DROP_TARGET_TRANSITION,
+        ...(isDragActive && isOver ? { transform: "scale(1.03)", boxShadow: "0 6px 18px -6px var(--color-brand-glow)" } : {}),
+      }}
     >
       {children}
     </div>

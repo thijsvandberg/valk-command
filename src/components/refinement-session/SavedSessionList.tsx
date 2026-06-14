@@ -1,12 +1,13 @@
 "use client";
 
 import { useState, useRef, useEffect, useCallback } from "react";
-import { Check, Play } from "lucide-react";
+import { Check, Play, ArrowRight } from "lucide-react";
 import { useDroppable } from "@dnd-kit/core";
 import { ConfirmDialog } from "@/components/shared/ConfirmDialog";
 import { BarContainer } from "@/components/shared/BarContainer";
 import { RefinementSessionMenu } from "@/components/refinement-session/RefinementSessionMenu";
 import { SESSION_DROP_PREFIX } from "@/hooks/useRefinementDragDrop";
+import { dropTargetClasses, dropTargetStyle, DROP_TARGET_TRANSITION } from "@/components/shared/dropZone";
 import { refinementSessions, type RefinementSessionResponse } from "@/lib/api-client";
 import { sessionLabel } from "./refinement-utils";
 import type { KeyedMutator } from "swr";
@@ -102,7 +103,7 @@ export function SavedSessionList({
 
   return (
     <>
-      <BarContainer className="items-stretch gap-0 overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+      <BarContainer className="gap-1.5 overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
         {sessions.map((session) => {
           const isActive = activeSessionId === session.id;
           const isCompleted = session.status === "completed";
@@ -116,25 +117,23 @@ export function SavedSessionList({
               ref={setNodeRef}
               data-drop-target={isDropTarget || undefined}
               data-drop-over={(isDropTarget && isOver) || undefined}
-              className={`group relative flex shrink-0 items-center gap-1.5 rounded-md px-3 text-body-sm font-medium ${
-                isActive
-                  ? "text-text-primary"
-                  : isCompleted
-                    ? "text-text-muted"
-                    : "text-text-tertiary hover:text-text-secondary"
-              } ${
+              className={`group relative flex h-7 shrink-0 items-center gap-1.5 self-center rounded-md border px-2.5 text-body-sm font-medium ${
                 isDropTarget
-                  ? isOver
-                    ? "bg-[var(--color-brand-500)]/15 outline-2 outline-dashed outline-[var(--color-brand-400)] -outline-offset-3 text-text-primary"
-                    : "bg-[var(--color-brand-500)]/[0.06] outline-1 outline-dashed outline-[var(--color-brand-500)]/40 -outline-offset-3"
-                  : ""
+                  ? dropTargetClasses(isOver)
+                  : `border-transparent ${
+                      isActive
+                        ? "text-text-primary"
+                        : isCompleted
+                          ? "text-text-muted"
+                          : "text-text-tertiary hover:text-text-secondary"
+                    }`
               }`}
-              style={{ transition: "color 120ms, background-color 120ms" }}
+              style={isDropTarget ? dropTargetStyle(isOver) : { transition: DROP_TARGET_TRANSITION }}
             >
-              {isCompleted && (
+              {!isDropTarget && isCompleted && (
                 <Check size={12} strokeWidth={2.5} className="shrink-0 text-[var(--color-brand-500)]" />
               )}
-              {isInProgress && (
+              {!isDropTarget && isInProgress && (
                 <Play size={10} strokeWidth={2.5} className="shrink-0 text-amber-400/80" />
               )}
 
@@ -165,17 +164,25 @@ export function SavedSessionList({
                 </button>
               )}
 
-              {/* Ticket count badge */}
-              <span className={`flex h-4 min-w-4 items-center justify-center rounded-full px-1 text-[10px] tabular-nums ${
-                isActive
-                  ? "bg-overlay-strong text-text-secondary"
-                  : "bg-overlay-default text-text-tertiary"
-              }`}>
-                {session.ticketCount}
-              </span>
+              {/* Ticket count badge — hidden while dragging so the drop tile reads
+                  as cleanly as the sprint board's (just name + arrow cue). */}
+              {!isDropTarget && (
+                <span className={`flex h-4 min-w-4 items-center justify-center rounded-full px-1 text-[10px] tabular-nums ${
+                  isActive
+                    ? "bg-overlay-strong text-text-secondary"
+                    : "bg-overlay-default text-text-tertiary"
+                }`}>
+                  {session.ticketCount}
+                </span>
+              )}
+
+              {/* Move/add cue, matching the sprint board drop tile. */}
+              {isDropTarget && (
+                <ArrowRight size={11} strokeWidth={2} className="shrink-0" style={{ opacity: isOver ? 1 : 0.35, transition: "opacity 160ms ease" }} />
+              )}
 
               {/* Overflow actions */}
-              {editingId !== session.id && (
+              {!isDropTarget && editingId !== session.id && (
                 <span
                   className={`flex items-center ${menuOpenId === session.id ? "opacity-100" : "opacity-0 group-hover:opacity-100"}`}
                   style={{ transition: "opacity 0.15s ease" }}
@@ -195,13 +202,13 @@ export function SavedSessionList({
               )}
 
               {/* Active underline */}
-              {isActive && (
-                <span className="absolute bottom-0 left-1.5 right-1.5 h-[2px] rounded-full bg-[var(--color-brand-400)]" />
+              {isActive && !isDropTarget && (
+                <span className="absolute inset-x-2.5 bottom-0 h-[2px] rounded-full bg-[var(--color-brand-400)]" />
               )}
 
               {/* Hover underline preview */}
-              {!isActive && !isCompleted && (
-                <span className="absolute bottom-0 left-2 right-2 h-[2px] rounded-full bg-[var(--color-brand-400)] opacity-0 group-hover:opacity-20" style={{ transition: "opacity 150ms" }} />
+              {!isActive && !isCompleted && !isDropTarget && (
+                <span className="absolute inset-x-2.5 bottom-0 h-[2px] rounded-full bg-[var(--color-brand-400)] opacity-0 group-hover:opacity-20" style={{ transition: "opacity 150ms" }} />
               )}
             </div>
               )}
