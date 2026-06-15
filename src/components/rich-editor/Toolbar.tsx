@@ -109,8 +109,6 @@ export function Toolbar({ editor, mode, beforeMore, endContent }: ToolbarProps) 
 
         <Divider />
 
-        {beforeMore}
-
         <Tooltip content={<TipLabel label={moreOpen ? "Fewer options" : "More options"} />}>
           <button
             type="button"
@@ -211,6 +209,13 @@ export function Toolbar({ editor, mode, beforeMore, endContent }: ToolbarProps) 
           <ExpandButton editor={editor} />
 
           <EmojiButton editor={editor} />
+
+          {beforeMore && (
+            <>
+              <Divider />
+              {beforeMore}
+            </>
+          )}
         </div>
       )}
     </div>

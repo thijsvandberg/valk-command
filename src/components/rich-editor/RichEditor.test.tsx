@@ -65,6 +65,12 @@ describe("normalizeMarkdownForEditor", () => {
   });
 });
 
+// The mode toggle ("Markdown" / "Rich Text") lives in the expandable second
+// toolbar row, so it is only visible after opening the "More options" menu.
+function openMore() {
+  fireEvent.click(screen.getByLabelText("More formatting options"));
+}
+
 describe("RichEditor", () => {
   it("renders without crashing", () => {
     const onChange = vi.fn();
@@ -77,6 +83,7 @@ describe("RichEditor", () => {
   it("renders mode toggle button", () => {
     render(<RichEditor value="" onChange={vi.fn()} />);
     // Default is rich mode; the toggle shows "Markdown" to switch to it
+    openMore();
     expect(screen.getByText("Markdown")).toBeTruthy();
   });
 
@@ -93,6 +100,7 @@ describe("RichEditor", () => {
       <RichEditor value="Some content" onChange={vi.fn()} />
     );
 
+    openMore();
     fireEvent.click(screen.getByText("Markdown"));
 
     const textarea = container.querySelector("textarea");
@@ -106,6 +114,7 @@ describe("RichEditor", () => {
       <RichEditor value="" onChange={onChange} />
     );
 
+    openMore();
     fireEvent.click(screen.getByText("Markdown"));
     const textarea = container.querySelector("textarea")!;
     fireEvent.change(textarea, { target: { value: "# New content" } });
@@ -116,6 +125,7 @@ describe("RichEditor", () => {
   it("persists mode preference in localStorage", () => {
     render(<RichEditor value="" onChange={vi.fn()} />);
 
+    openMore();
     fireEvent.click(screen.getByText("Markdown"));
     expect(localStorage.getItem("rich-editor-mode")).toBe("markdown");
 
@@ -146,6 +156,7 @@ describe("RichEditor", () => {
       <RichEditor value="" onChange={vi.fn()} minHeight={300} />
     );
 
+    openMore();
     fireEvent.click(screen.getByText("Markdown"));
     const textarea = container.querySelector("textarea");
     expect(textarea?.style.minHeight).toBe("300px");
@@ -160,6 +171,7 @@ describe("RichEditor", () => {
       />
     );
 
+    openMore();
     fireEvent.click(screen.getByText("Markdown"));
     const textarea = container.querySelector("textarea");
     expect(textarea?.placeholder).toBe("Write something...");
