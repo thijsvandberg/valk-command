@@ -14,18 +14,43 @@ On the "CLI/Bridge test story (don't delete)" (VPL-1337), a line like
 line. This is the leftover part of the round-trip corruption reported alongside the
 expand-title duplication (fixed) and the post-push title flicker (fixed).
 
-## What is already ruled out (investigated)
+## Root cause (REPRODUCED locally — it is NOT Jira-side)
 
-- **Local lib round-trip is byte-stable.** `adfToMarkdown(markdownToAdf(x))` leaves the escaped-image line unchanged across many cycles (verified).
-- **Local editor round-trip is idempotent, not cumulative.** The TipTap `RichEditor` load->serialize turns `\\![…]` into `\` + blank lines on the *first* pass, then stabilises (c2 = c3 = c4). It does **not** reproduce the observed `\\` -> `\\\\` doubling.
+The doubling only happens **inside an expand/callout fence**, and it is a local
+asymmetry in `callout-markdown.ts`, confirmed with the real VPL-1337 content
+(the image line lives inside `:::expand Expand`):
 
-So the doubling does not originate in `markdown-to-adf.ts`, `adf-to-markdown.ts`, or the TipTap serialization that the other fixes touched. The remaining suspect is the **Jira server round-trip**: `markdownToAdf` emits the literal `\` and `![…]` as separate text nodes; Jira may escape/normalise backslashes in its stored ADF text nodes, so the value read back (and re-pushed) gains backslashes each cycle.
+```
+inside :::expand:   \![…] -> \\![…] -> \\\\![…] -> \\\\\\\\![…]   (DOUBLES each cycle)
+at top level:       \![…] -> \![…]                                (stable)
+```
 
-## How to investigate
+- **Load** path for expand/callout inner content uses the custom
+  `markdownToBlockHtml`/`mdInlineToHtml` (`callout-markdown.ts`), which puts the
+  raw markdown text (including a literal `\`) into HTML **without unescaping**
+  markdown backslash escapes.
+- **Serialize** path goes through tiptap-markdown (the expand node's
+  `addStorage.markdown.serialize` calls `state.renderContent`), which **escapes**
+  every literal `\` to `\\`.
+- Top-level content does not grow because tiptap-markdown's own loader unescapes
+  on the way in, so its load/serialize is symmetric. The custom fence loader
+  breaks that symmetry, so backslashes double on every cycle.
 
-- Push a minimal description (`\![x.png](/api/attachments/att-1)`) from Bridge to a scratch Jira ticket, then read the raw ADF back from Jira (not via Bridge) and inspect the text node(s). Confirm whether Jira added the backslash. **Requires an explicit go-ahead to push to Jira.**
-- If Jira is the source: normalise the escaped-image representation on the write side so it round-trips through Jira cleanly (e.g. don't emit a bare leading `\`; or represent the image without the escape), or unescape on read.
-- If a local path is still involved: extend the editor round-trip test (`src/components/rich-editor/markdown-roundtrip.test.tsx`) with the failing case and fix the serializer.
+Ruled out: `markdown-to-adf.ts`/`adf-to-markdown.ts` (lib round-trip byte-stable)
+and the top-level TipTap path (stable). Jira is not involved.
+
+## Fix direction
+
+Make the expand/callout inner-content load symmetric with the serialize escaping,
+so the round-trip is idempotent (stops the growth). Options:
+- Unescape markdown backslash escapes in the fence inner-content load
+  (`markdownToBlockHtml`/`mdInlineToHtml`) the way tiptap-markdown's loader does,
+  taking care of ordering vs the inline `**`/`*`/`` ` `` regex replacements; or
+- Route expand/callout inner content through tiptap-markdown's own parser instead
+  of the custom HTML conversion, so load/serialize are symmetric by construction.
+- Add the failing case to `src/components/rich-editor/markdown-roundtrip.test.tsx`
+  (image inside an expand) and assert no backslash growth + idempotency, plus the
+  byte-stable goal where achievable.
 
 ## Out of scope
 
@@ -40,8 +65,7 @@ So the doubling does not originate in `markdown-to-adf.ts`, `adf-to-markdown.ts`
 
 ## Checklist
 
-- [ ] Reproduce against a real Jira push and capture the raw ADF Jira stores/returns
-- [ ] Pin whether the doubling is added by Jira or a local path
-- [ ] Fix so `\![x](url)` round-trips through a Jira push without gaining backslashes
-- [ ] Regression test (editor round-trip and/or a documented Jira-contract test)
+- [x] Reproduce locally and pin the source — expand/callout inner-content load/serialize asymmetry in `callout-markdown.ts` (NOT Jira)
+- [ ] Make the fence inner-content round-trip symmetric so backslashes stop doubling (idempotent)
+- [ ] Regression test: image inside an expand, asserts no backslash growth + idempotency
 - [ ] All tests pass, build succeeds
