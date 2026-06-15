@@ -102,9 +102,10 @@ The comparison normalization was implemented directly in this session after the 
 - [x] A real content change is still detected and shown, without the surrounding formatting-only noise - covered by the negative regression tests
 - [x] Regression tests: artefact pairs compare equal; a real one-word edit still compares unequal (`src/lib/normalize-markdown.test.ts`)
 - [x] (Optional / may be split) Stop persisting drafts that are cosmetically equal to the Jira baseline - **split to BRDG-350** <!-- deferred: file under active parallel edit; explicitly optional -->
-- [ ] All tests pass, build succeeds - my changes pass typecheck/lint/the normalize test suite; full `npm run build` is currently blocked by unrelated parallel work in `EditableTitle.tsx`/`SessionTicketView.tsx`, not by this change <!-- cannot verify build while the shared tree is mid-parallel-edit -->
+- [ ] All tests pass, build succeeds - `npm run build` PASSES; this change passes typecheck, lint, and the normalize-markdown suite (22/22). The full `npm run test` suite has 4 unrelated failures in `SprintAnalytics.test.tsx` caused by parallel work in `MetricBadge.tsx` (`activeSortDir`), not by this change <!-- global "all tests pass" is red only due to unrelated parallel work -->
 
 ## Status notes
 
-- Core comparison normalization + tests are committed (`d9cd178c` dot hover, `ef97e71b` the BRDG-348 fix).
-- This story is intentionally NOT archived: the final "build succeeds" gate cannot be honestly checked while a parallel session is mid-edit on `EditableTitle`/`SessionTicketView` (a known, unrelated breakage). Re-run `npm run build` and archive once the shared tree is clean.
+- Core comparison normalization + tests are committed (`d9cd178c` dot hover, `ef97e71b` the BRDG-348 fix, `b9245c53` docs/plan).
+- Build succeeds. This story's own scope (punt 1) is complete and verified.
+- This story is intentionally NOT archived yet: the global test suite is red only because a parallel session is mid-edit on `MetricBadge.tsx`/`SprintAnalytics.test.tsx` (a known, unrelated breakage). Re-run `npm run test` and archive once the shared tree is green.
