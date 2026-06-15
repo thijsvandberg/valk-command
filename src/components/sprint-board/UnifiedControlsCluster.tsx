@@ -34,16 +34,12 @@ export function UnifiedControlsCluster({
   useOutsideClick(filterRef, () => setFilterOpen(false), { enabled: filterOpen, escapeClose: true });
 
   return (
-    <div className="flex shrink-0 items-center gap-1 rounded-lg border border-border-default px-0.5">
-      {/* Search -- leading segment, expands inline */}
+    <div className="flex shrink-0 items-center gap-1">
+      {/* Search -- leading control, expands inline */}
       <ExpandableSearch value={searchQuery} onChange={onSearchChange} />
-
-      <span className="h-5 w-px bg-border-default" />
 
       {/* Sort -- self-contained dropdown, unchanged */}
       <SortDropdown field={sortField} direction={sortDir} onChange={onSortChange} />
-
-      <span className="h-5 w-px bg-border-default" />
 
       {/* Filter -- opens the two-pane panel */}
       <div ref={filterRef} className="relative">
