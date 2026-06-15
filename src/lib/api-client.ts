@@ -590,6 +590,10 @@ export const search = {
   // -- Actions --
   local: (data: Record<string, unknown>, signal?: AbortSignal) =>
     apiFetch<unknown>("/api/search/local", { method: "POST", body: data, signal }),
+  // Inline sprint-board deep-field key match (BRDG-345): returns the keys of every ticket
+  // matching the query across description, acceptance criteria, labels, notes and comments.
+  localKeys: (q: string, signal?: AbortSignal) =>
+    apiFetch<{ keys: string[] }>(`/api/search/local/keys${qs({ q })}`, { signal }),
   jira: (data: Record<string, unknown>, signal?: AbortSignal) =>
     apiFetch<unknown>("/api/search/jira", { method: "POST", body: data, signal }),
   filterOptions: (signal?: AbortSignal) =>

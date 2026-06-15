@@ -34,7 +34,7 @@ vi.mock("@/lib/logger", () => ({
   logger: { info: vi.fn(), warn: vi.fn(), error: vi.fn() },
 }));
 
-import { executeLocalSearch, type SearchParams } from "./local-search-engine";
+import { executeLocalSearch, executeLocalKeyMatch, type SearchParams } from "./local-search-engine";
 import { getSearchCache } from "@/lib/search-index-cache";
 
 function defaultParams(overrides?: Partial<SearchParams>): SearchParams {
@@ -362,5 +362,99 @@ describe("executeLocalSearch", () => {
     // After the first call, the real setSearchCache was called, so cache should exist
     // For the test, just verify the function was called with data
     expect(vi.mocked(getSearchCache)).toHaveBeenCalled();
+  });
+});
+
+// Inline sprint-board deep-field key match (BRDG-345). These fields (description, acceptance
+// criteria, labels, comments) are NOT on the board ticket object, so the only place to assert
+// they are searchable is at the engine level.
+describe("executeLocalKeyMatch", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    testDb = createTestDb();
+    vi.mocked(getSearchCache).mockReturnValue(null);
+  });
+
+  it("returns [] for a query shorter than 2 chars", async () => {
+    seedTestTicket("VPL-1", { title: "Authentication" });
+    expect(await executeLocalKeyMatch("a")).toEqual([]);
+    expect(await executeLocalKeyMatch(" ")).toEqual([]);
+  });
+
+  it("matches on description", async () => {
+    seedTestTicket("VPL-DESC", { title: "Unrelated title", description: "Kibana heartbeat channel monitoring" });
+    seedTestTicket("VPL-OTHER", { title: "Other ticket" });
+    const keys = await executeLocalKeyMatch("heartbeat");
+    expect(keys).toContain("VPL-DESC");
+    expect(keys).not.toContain("VPL-OTHER");
+  });
+
+  it("matches on acceptance criteria", async () => {
+    seedTestTicket("VPL-AC", { title: "Plain title", acceptanceCriteria: "User can reset password via email link" });
+    const keys = await executeLocalKeyMatch("reset password");
+    expect(keys).toContain("VPL-AC");
+  });
+
+  it("matches on labels", async () => {
+    seedTestTicket("VPL-LBL", { title: "Plain title", labels: "logging,observability" });
+    const keys = await executeLocalKeyMatch("observability");
+    expect(keys).toContain("VPL-LBL");
+  });
+
+  it("matches on PO notes", async () => {
+    seedTestTicket("VPL-NOTE", { title: "Plain title" });
+    seedTicketMetadata(testDb, { jiraKey: "VPL-NOTE", poNotes: "Needs design review before sprint" });
+    const keys = await executeLocalKeyMatch("design review");
+    expect(keys).toContain("VPL-NOTE");
+  });
+
+  it("matches on a PO comment body", async () => {
+    seedTestTicket("VPL-PC", { title: "Plain title" });
+    testDb.insert(poComment).values({
+      id: "pc-345",
+      ticketKey: "VPL-PC",
+      author: "PO",
+      content: "Discussed the group reservations edge case",
+      createdAt: new Date().toISOString(),
+    }).run();
+    const keys = await executeLocalKeyMatch("group reservations");
+    expect(keys).toContain("VPL-PC");
+  });
+
+  it("matches on a Jira comment body", async () => {
+    seedTestTicket("VPL-JC", { title: "Plain title" });
+    testDb.insert(jiraComment).values({
+      id: "jc-345",
+      ticketKey: "VPL-JC",
+      authorName: "Dev",
+      authorAvatar: null,
+      content: "Refactored the booking calendar restriction",
+      createdAt: new Date().toISOString(),
+    }).run();
+    const keys = await executeLocalKeyMatch("booking calendar");
+    expect(keys).toContain("VPL-JC");
+  });
+
+  it("matches case-insensitively", async () => {
+    seedTestTicket("VPL-CI", { title: "Plain title", description: "Kibana monitoring" });
+    expect(await executeLocalKeyMatch("KIBANA")).toContain("VPL-CI");
+  });
+
+  it("returns every match without a result cap", async () => {
+    for (let i = 0; i < 30; i++) {
+      seedTestTicket(`VPL-CAP${i}`, { title: `Ticket ${i}`, description: "shared deep field token zeta" });
+    }
+    const keys = await executeLocalKeyMatch("zeta");
+    expect(keys.length).toBe(30);
+  });
+
+  it("excludes tickets in DRAFTING / REPLACED states (not in the index)", async () => {
+    seedTestTicket("VPL-LIVE", { title: "Plain title", description: "shared omega token" });
+    seedTestTicket("VPL-DRAFTING", { title: "Plain title", description: "shared omega token", status: "DRAFTING" });
+    seedTestTicket("VPL-REPLACED", { title: "Plain title", description: "shared omega token", status: "REPLACED" });
+    const keys = await executeLocalKeyMatch("omega");
+    expect(keys).toContain("VPL-LIVE");
+    expect(keys).not.toContain("VPL-DRAFTING");
+    expect(keys).not.toContain("VPL-REPLACED");
   });
 });

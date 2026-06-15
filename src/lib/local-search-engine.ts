@@ -153,6 +153,35 @@ function exactPhraseSearch<T>(
   return results.slice(0, limit);
 }
 
+// Inline sprint-board search (BRDG-345): returns the keys of every ticket whose indexed
+// document contains the query as a case-insensitive substring across any weighted field
+// (title, description, acceptance criteria, labels, notes, PO + Jira comments, ...). Unlike
+// executeLocalSearch this does NOT rank, slice, or fuzzy-match — the board needs the full
+// matching set so it can intersect it with the currently filtered rows. Reuses the same
+// index/cache the Cmd+K modal uses so both stay in sync.
+export async function executeLocalKeyMatch(q: string): Promise<string[]> {
+  if (q.trim().length < 2) return [];
+
+  try {
+    const entry = getSearchCache() ?? (await buildIndex());
+    const needle = q.trim().toLowerCase();
+    const keys: string[] = [];
+
+    for (const doc of entry.docs) {
+      const hit = TICKET_SEARCH_KEYS.some(({ name }) => {
+        const raw = doc[name];
+        return typeof raw === "string" && raw.toLowerCase().includes(needle);
+      });
+      if (hit) keys.push(doc.key);
+    }
+
+    return keys;
+  } catch (err) {
+    logger.error("search-local", "key match failed", err);
+    throw err;
+  }
+}
+
 async function buildIndex() {
   const [tickets, metadataRows, jiraCommentRows, poCommentRows, localEditRows, sprintSetting, conversationRows, messageRows] =
     await Promise.all([
