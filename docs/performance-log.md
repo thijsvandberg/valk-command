@@ -484,3 +484,17 @@ Key bottlenecks / lessons:
 - **Dirty shared tree made the full suite unreadable as a pass/fail signal.** Two suite failures were NOT mine: `SprintAnalytics.test.tsx` (4, pre-existing — fails at clean HEAD) and `push-to-jira/route.test.ts` (passes at my clean HEAD, fails only with another session's uncommitted `schema.ts`/service changes). Confirming this needed a `git worktree add HEAD` + symlinked `node_modules` to run my tests against my commits in isolation (97 passed). Staging explicit paths only kept the commits clean.
 - **Browser verification was blocked: the Chrome extension was disconnected.** Logged and skipped per the anti-rabbit-hole rule rather than retrying. Real drag + auto-scroll on a 348-row list is also unreliable to automate; the affordances (sortable rows, Move-to-top/bottom menu items) are covered by unit tests, but live drag/auto-scroll behaviour still needs a manual pass.
 - **Build's stale-generated-types failure on first run** is a recurring false negative; a second `npm run build` is the fix, not a code change.
+
+## BRDG-352 — ticket_sprint bridge table (sprint-membership perf) (2026-06-16)
+
+Replaced the un-indexable `json_each` sprint-membership filter on `/api/tickets` with a normalized `ticket_sprint` bridge table (composite PK + `sprint_id` index), backfilled via migration `0078`, and maintained through one shared `syncTicketSprints` helper wired into all writers (upsert-issue in-transaction, create-ticket, move-sprint batch). Route membership is now an index-driven IN-subquery. Tests across 4 files (82 passing).
+
+| Phase | Notes |
+|---|---|
+| Plan (Opus) | Accurate and grounded; nailed the DbOrTx typing concern, the write-time-vs-query-time fallback shift, and the seed-helper test impact. No rework needed during impl |
+| Implement | Clean, lint/typecheck green per step; the 4 affected test files passed on first full run |
+| Verify | Worktree build + typecheck + lint green; full suite green except 4 pre-existing failures from parallel HEAD commits |
+
+Key bottlenecks / lessons:
+- **Same dirty-shared-tree hazard as BRDG-347, same two culprit files.** `npm run verify` first failed on another session's half-edited `settings/column-config/route.ts` (uncommitted, references `db`/`appSetting` it no longer imports). Verified my work in a throwaway `git worktree add --detach HEAD` + symlinked `node_modules`. There, the only suite failures were again `SprintAnalytics.test.tsx` (lucide-react mock missing a newly-added `ChevronDown`) and `push-to-jira/route.test.ts` (parallel change added a 3rd `pushToJira` arg) — both from other commits already on HEAD, neither touching sprint membership.
+- **A `git checkout HEAD~2` to A/B the pre-existing failures was correctly blocked by the no-branch-switch hook.** Not needed: `git status` (files unmodified) + `grep` (no references to changed symbols) + the failure messages themselves proved the failures were external.
