@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { db } from "@/db";
 import { ticket } from "@/db/schema";
-import { inArray } from "drizzle-orm";
+import { inArray, eq, asc } from "drizzle-orm";
 import { jiraClient } from "@/lib/jira-client";
 import { applyRateLimit } from "@/lib/rate-limiter";
 import { cache } from "@/lib/cache";
@@ -103,6 +103,34 @@ export async function POST(request: Request) {
       sprintIds: isBacklog ? null : JSON.stringify([targetSprintId]),
     })
     .where(inArray(ticket.jiraKey, issueKeys));
+
+  // Mirror the Jira rank-to-top/bottom locally so the board (which sorts by the
+  // local jiraRank) shows the new order immediately. Without this the optimistic
+  // move visibly snaps back on the next revalidation, because the move only set
+  // sprintName above and jiraRank stays stale until the next full Jira sync.
+  if (toTop || toBottom) {
+    try {
+      const localSprintName = isBacklog ? "" : targetSprintId;
+      const sprintTickets = await db
+        .select({ jiraKey: ticket.jiraKey, jiraRank: ticket.jiraRank })
+        .from(ticket)
+        .where(eq(ticket.sprintName, localSprintName))
+        .orderBy(asc(ticket.jiraRank));
+      const movedSet = new Set(issueKeys);
+      const without = sprintTickets.filter((t) => !movedSet.has(t.jiraKey));
+      const movedRows = issueKeys
+        .map((k) => sprintTickets.find((t) => t.jiraKey === k))
+        .filter((t): t is { jiraKey: string; jiraRank: number | null } => Boolean(t));
+      const reordered = toTop ? [...movedRows, ...without] : [...without, ...movedRows];
+      for (let i = 0; i < reordered.length; i++) {
+        if (reordered[i].jiraRank !== i) {
+          await db.update(ticket).set({ jiraRank: i }).where(eq(ticket.jiraKey, reordered[i].jiraKey));
+        }
+      }
+    } catch {
+      // Non-fatal: ranks may be stale until the next sync, but Jira is already updated.
+    }
+  }
 
   cache.invalidate("/api/tickets");
   // The cached sprints payload embeds backlogCount, which moves to/from the backlog change.

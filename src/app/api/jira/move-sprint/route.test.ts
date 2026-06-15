@@ -124,6 +124,34 @@ describe("POST /api/jira/move-sprint", () => {
     expect(mockRankToBottomOfBacklog).toHaveBeenCalledWith(["VPL-100"]);
   });
 
+  it("re-indexes local jiraRank so a top move does not snap back", async () => {
+    testDb.insert(ticket).values([
+      { jiraKey: "VPL-200", title: "a", status: "TO DO", sprintName: "456", jiraRank: 0 },
+      { jiraKey: "VPL-201", title: "b", status: "TO DO", sprintName: "456", jiraRank: 1 },
+    ]).run();
+
+    await POST(makeRequest({ issueKeys: ["VPL-100"], targetSprintId: "456", position: "top" }));
+
+    const rankOf = (k: string) => testDb.select().from(ticket).where(eq(ticket.jiraKey, k)).get()!.jiraRank;
+    expect(rankOf("VPL-100")).toBe(0);
+    expect(rankOf("VPL-200")).toBe(1);
+    expect(rankOf("VPL-201")).toBe(2);
+  });
+
+  it("re-indexes local jiraRank to the end on a bottom move", async () => {
+    testDb.insert(ticket).values([
+      { jiraKey: "VPL-200", title: "a", status: "TO DO", sprintName: "456", jiraRank: 0 },
+      { jiraKey: "VPL-201", title: "b", status: "TO DO", sprintName: "456", jiraRank: 1 },
+    ]).run();
+
+    await POST(makeRequest({ issueKeys: ["VPL-100"], targetSprintId: "456", position: "bottom" }));
+
+    const rankOf = (k: string) => testDb.select().from(ticket).where(eq(ticket.jiraKey, k)).get()!.jiraRank;
+    expect(rankOf("VPL-200")).toBe(0);
+    expect(rankOf("VPL-201")).toBe(1);
+    expect(rankOf("VPL-100")).toBe(2);
+  });
+
   it("still succeeds when ranking to top fails (rank is best-effort)", async () => {
     mockRankToTopOfSprint.mockRejectedValue(new Error("rank API down"));
     const req = makeRequest({ issueKeys: ["VPL-100"], targetSprintId: "456", position: "top" });
