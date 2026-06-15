@@ -2,7 +2,7 @@
 
 import { useRef, useState, type ReactNode } from "react";
 import { createPortal } from "react-dom";
-import { ChevronDown, Pencil } from "lucide-react";
+import { ChevronDown, Pencil, X } from "lucide-react";
 import { IssueTypeIcon } from "@/components/shared/IssueTypeIcon";
 import { usePickerState } from "@/components/shared/BasePicker";
 import type { IssueType } from "@/types/ticket";
@@ -204,6 +204,16 @@ export function ChildIssueComposer({
             </button>
           )}
           {trailing}
+          {onEscapeEmpty && (
+            <button
+              type="button"
+              onClick={onEscapeEmpty}
+              aria-label="Close"
+              className="shrink-0 cursor-pointer rounded p-1 text-text-muted transition-colors duration-150 hover:bg-overlay-subtle hover:text-text-secondary focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-[var(--color-brand-400)]"
+            >
+              <X size={14} strokeWidth={2} />
+            </button>
+          )}
         </div>
       </div>
     );
