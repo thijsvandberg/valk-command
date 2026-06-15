@@ -282,6 +282,19 @@ export function EpicChildrenSection({
 
   const isFiltered = filter !== "all" || (hideDeprecated && deprecatedCount > 0);
 
+  // Breakdown behind the "X of Y items" count badge, surfaced in its tooltip: how many
+  // children the status filter hides vs. how many are hidden because deprecated.
+  const deprecatedHiddenCount = hideDeprecated ? deprecatedCount : 0;
+  const statusHiddenCount = visibleItems.length - filtered.length;
+
+  // The count badge toggles the child set: from any filtered view it shows everything;
+  // clicking again restores the default view (deprecated hidden, no status filter).
+  const showingAll = filter === "all" && !hideDeprecated;
+  const handleToggleFilter = useCallback(() => {
+    setFilter("all");
+    setHideDeprecated(showingAll);
+  }, [showingAll, setHideDeprecated]);
+
   // --- Create child issue ---
 
   // Create a child issue, optionally targeted at a sprint. The optimistic placeholder
@@ -1113,6 +1126,10 @@ export function EpicChildrenSection({
         filteredCount={filtered.length}
         totalCount={mergedItems.length}
         isFiltered={isFiltered}
+        statusHiddenCount={statusHiddenCount}
+        deprecatedHiddenCount={deprecatedHiddenCount}
+        deprecatedCount={deprecatedCount}
+        onToggleFilter={handleToggleFilter}
         showStats={showStatsSummary}
         hidden={summaryHidden}
         actions={

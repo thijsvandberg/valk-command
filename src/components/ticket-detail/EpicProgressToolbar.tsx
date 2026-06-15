@@ -5,6 +5,7 @@ import type { EpicChild, Subtask, JiraStatus } from "@/types/ticket";
 import { STATUS_PILL_COLORS } from "@/components/sprint-board/SprintStatPill";
 import { Tooltip } from "@/components/shared/Tooltip";
 import { useLocalStorage } from "@/hooks/useLocalStorage";
+import { Filter, EyeOff, X } from "lucide-react";
 
 // The four working statuses. DEPRECATED is treated as noise and excluded from the
 // roll-up (matching the child list's default).
@@ -128,6 +129,10 @@ export function EpicProgressToolbar({
   filteredCount,
   totalCount,
   isFiltered,
+  statusHiddenCount = 0,
+  deprecatedHiddenCount = 0,
+  deprecatedCount = 0,
+  onToggleFilter,
   showStats = true,
   hidden = false,
   actions,
@@ -136,6 +141,14 @@ export function EpicProgressToolbar({
   filteredCount: number;
   totalCount: number;
   isFiltered: boolean;
+  /** Of the hidden children, how many the status filter excludes. */
+  statusHiddenCount?: number;
+  /** Of the hidden children, how many are hidden because they are deprecated. */
+  deprecatedHiddenCount?: number;
+  /** Total deprecated children — what the default view would hide from the show-all state. */
+  deprecatedCount?: number;
+  /** Toggles the count badge: filtered view → show all → back to default. */
+  onToggleFilter?: () => void;
   /** When false, only the count + actions render (no progress bar) — e.g. non-epic contexts. */
   showStats?: boolean;
   /** Hide the progress bar / percentage / metric toggle. Preference owned by the parent. */
@@ -180,17 +193,100 @@ export function EpicProgressToolbar({
 
   const countLabel =
     isFiltered && totalCount > 0
-      ? `${filteredCount} of ${totalCount}`
+      ? `${filteredCount} of ${totalCount} items`
       : totalCount > 0
-        ? `${totalCount}`
+        ? `${totalCount} items`
         : null;
+
+  // Badge interaction modes:
+  //  - "filtered":  something is hidden -> click shows all (X icon).
+  //  - "show-all":  everything is shown but the default would hide deprecated ->
+  //                 click restores the default (filter icon).
+  //  - "static":    nothing to toggle -> plain label.
+  const countMode = !onToggleFilter || countLabel === null
+    ? "static"
+    : isFiltered
+      ? "filtered"
+      : deprecatedCount > 0
+        ? "show-all"
+        : "static";
+  const hiddenTotal = statusHiddenCount + deprecatedHiddenCount;
+
+  const countTooltip = countMode === "filtered" ? (
+    <div className="flex w-max flex-col gap-1.5">
+      <div className="flex items-baseline gap-1.5">
+        <span className="font-semibold text-text-primary tabular-nums">{filteredCount} shown</span>
+        <span className="text-text-muted tabular-nums">of {totalCount} total</span>
+      </div>
+      {hiddenTotal > 0 && (
+        <div className="flex flex-col gap-1 border-t border-border-subtle pt-1.5">
+          {statusHiddenCount > 0 && (
+            <span className="inline-flex items-center gap-2 whitespace-nowrap text-text-secondary">
+              <Filter size={11} className="shrink-0 text-text-muted" />
+              <span className="tabular-nums font-medium">{statusHiddenCount}</span>
+              <span className="text-text-muted">hidden by status filter</span>
+            </span>
+          )}
+          {deprecatedHiddenCount > 0 && (
+            <span className="inline-flex items-center gap-2 whitespace-nowrap text-text-secondary">
+              <EyeOff size={11} className="shrink-0 text-text-muted" />
+              <span className="tabular-nums font-medium">{deprecatedHiddenCount}</span>
+              <span className="text-text-muted">deprecated, hidden</span>
+            </span>
+          )}
+        </div>
+      )}
+      <span className="border-t border-border-subtle pt-1.5 text-caption text-text-muted">
+        Click to show all
+      </span>
+    </div>
+  ) : (
+    <div className="flex w-max flex-col gap-1.5">
+      <div className="flex items-baseline gap-1.5">
+        <span className="font-semibold text-text-primary tabular-nums">All {totalCount} shown</span>
+      </div>
+      <div className="border-t border-border-subtle pt-1.5">
+        <span className="inline-flex items-center gap-2 whitespace-nowrap text-text-secondary">
+          <EyeOff size={11} className="shrink-0 text-text-muted" />
+          <span className="tabular-nums font-medium">{deprecatedCount}</span>
+          <span className="text-text-muted">deprecated, included</span>
+        </span>
+      </div>
+      <span className="border-t border-border-subtle pt-1.5 text-caption text-text-muted">
+        Click to hide deprecated
+      </span>
+    </div>
+  );
+
+  const countAria =
+    countMode === "filtered"
+      ? `${filteredCount} of ${totalCount} items shown — click to show all`
+      : `All ${totalCount} items shown — click to hide deprecated`;
 
   return (
     <div className="flex flex-wrap items-center gap-x-4 gap-y-2.5 border-b border-border-default pb-2">
       {countLabel && (
-        <span className="flex h-5 items-center rounded-full bg-overlay-default px-1.5 text-caption font-medium tabular-nums text-text-tertiary">
-          {countLabel}
-        </span>
+        countMode !== "static" ? (
+          <Tooltip content={countTooltip} delay={200}>
+            <button
+              type="button"
+              onClick={onToggleFilter}
+              aria-label={countAria}
+              className="group flex h-5 items-center gap-1 rounded-full bg-overlay-default pl-1.5 pr-1 text-caption font-medium tabular-nums text-text-tertiary cursor-pointer transition-[background-color,color] duration-150 hover:bg-overlay-strong hover:text-text-secondary focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-[var(--color-brand-400)]"
+            >
+              {countLabel}
+              {countMode === "filtered" ? (
+                <X size={11} strokeWidth={2} className="shrink-0 text-text-muted transition-colors duration-150 group-hover:text-text-secondary" />
+              ) : (
+                <EyeOff size={11} strokeWidth={2} className="shrink-0 text-text-muted transition-colors duration-150 group-hover:text-text-secondary" />
+              )}
+            </button>
+          </Tooltip>
+        ) : (
+          <span className="flex h-5 items-center rounded-full bg-overlay-default px-1.5 text-caption font-medium tabular-nums text-text-tertiary">
+            {countLabel}
+          </span>
+        )
       )}
 
       {showBar && (

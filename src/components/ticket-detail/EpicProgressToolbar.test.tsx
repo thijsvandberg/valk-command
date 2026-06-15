@@ -53,11 +53,11 @@ describe("EpicProgressToolbar", () => {
 
   it("shows the bare total when not filtered and 'X of Y' when filtered", () => {
     const { unmount } = renderToolbar({ items: [child("A", "TO DO")], totalCount: 5, isFiltered: false });
-    expect(screen.getByText("5")).toBeInTheDocument();
+    expect(screen.getByText("5 items")).toBeInTheDocument();
     unmount();
 
     renderToolbar({ items: [child("A", "TO DO")], filteredCount: 3, totalCount: 5, isFiltered: true });
-    expect(screen.getByText("3 of 5")).toBeInTheDocument();
+    expect(screen.getByText("3 of 5 items")).toBeInTheDocument();
   });
 
   it("never renders the loud status-pill labels", () => {
@@ -95,7 +95,7 @@ describe("EpicProgressToolbar", () => {
     renderToolbar({ items: [child("A", "DONE"), child("B", "TO DO")], totalCount: 2, hidden: true });
     expect(screen.queryByRole("progressbar")).toBeNull();
     expect(screen.queryByRole("button", { name: "SP" })).toBeNull();
-    expect(screen.getByText("2")).toBeInTheDocument();
+    expect(screen.getByText("2 items")).toBeInTheDocument();
   });
 
   it("renders only the count + actions (no bar) when showStats is false", () => {
@@ -107,6 +107,91 @@ describe("EpicProgressToolbar", () => {
     });
     expect(screen.queryByRole("progressbar")).toBeNull();
     expect(screen.getByRole("button", { name: "List options" })).toBeInTheDocument();
+  });
+
+  describe("interactive count badge", () => {
+    it("stays a plain label (not a button) when filtered but no toggle handler is given", () => {
+      renderToolbar({ items: [child("A", "TO DO")], filteredCount: 3, totalCount: 5, isFiltered: true });
+      expect(screen.getByText("3 of 5 items")).toBeInTheDocument();
+      expect(screen.queryByRole("button", { name: /click to show all/i })).toBeNull();
+    });
+
+    it("shows all when a filtered badge is clicked", () => {
+      const onToggleFilter = vi.fn();
+      render(
+        <EpicProgressToolbar
+          items={[child("A", "TO DO")]}
+          filteredCount={3}
+          totalCount={5}
+          isFiltered
+          statusHiddenCount={1}
+          deprecatedHiddenCount={1}
+          deprecatedCount={1}
+          onToggleFilter={onToggleFilter}
+        />,
+      );
+      fireEvent.click(screen.getByRole("button", { name: /click to show all/i }));
+      expect(onToggleFilter).toHaveBeenCalledTimes(1);
+    });
+
+    it("offers a hide-deprecated toggle while showing all, when deprecated children exist", () => {
+      const onToggleFilter = vi.fn();
+      render(
+        <EpicProgressToolbar
+          items={[child("A", "TO DO")]}
+          filteredCount={26}
+          totalCount={26}
+          isFiltered={false}
+          deprecatedCount={3}
+          onToggleFilter={onToggleFilter}
+        />,
+      );
+      const btn = screen.getByRole("button", { name: /click to hide deprecated/i });
+      expect(btn).toHaveTextContent("26 items");
+      fireEvent.click(btn);
+      expect(onToggleFilter).toHaveBeenCalledTimes(1);
+    });
+
+    it("is not interactive when nothing is filtered and there are no deprecated children", () => {
+      render(
+        <EpicProgressToolbar
+          items={[child("A", "TO DO")]}
+          filteredCount={5}
+          totalCount={5}
+          isFiltered={false}
+          deprecatedCount={0}
+          onToggleFilter={vi.fn()}
+        />,
+      );
+      expect(screen.getByText("5 items")).toBeInTheDocument();
+      expect(screen.queryByRole("button", { name: /shown/i })).toBeNull();
+    });
+
+    it("breaks down the hidden children (status filter vs deprecated) in the tooltip", () => {
+      vi.useFakeTimers();
+      try {
+        render(
+          <EpicProgressToolbar
+            items={[child("A", "TO DO")]}
+            filteredCount={3}
+            totalCount={26}
+            isFiltered
+            statusHiddenCount={20}
+            deprecatedHiddenCount={3}
+            deprecatedCount={3}
+            onToggleFilter={vi.fn()}
+          />,
+        );
+        fireEvent.mouseEnter(screen.getByRole("button", { name: /click to show all/i }));
+        act(() => vi.advanceTimersByTime(250));
+        expect(screen.getByText("3 shown")).toBeInTheDocument();
+        expect(screen.getByText("of 26 total")).toBeInTheDocument();
+        expect(screen.getByText("hidden by status filter")).toBeInTheDocument();
+        expect(screen.getByText("deprecated, hidden")).toBeInTheDocument();
+      } finally {
+        vi.useRealTimers();
+      }
+    });
   });
 
   describe("segment hover tooltip", () => {
