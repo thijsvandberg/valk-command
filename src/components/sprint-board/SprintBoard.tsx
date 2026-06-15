@@ -30,6 +30,7 @@ import { usePageTitle } from "@/hooks/usePageTitle";
 import { mapJiraSprints, saveSprintSlots, saveTicketMetadata, bulkReviewStories, bulkGenerateSubtasks, computeSprintStats, computeSprintWorkDays } from "@/components/sprint-board/sprint-board-utils";
 import { sprintToSlug, slugToSprintId, buildBoardUrl, nextSprintName, latestRegularSprint, isBacklogSprintName, isOverallRefinementSprint } from "@/lib/sprint-utils";
 import type { SavedView, InlineTagId } from "@/components/sprint-board/filter-bar-types";
+import { cycleMetricSort } from "@/components/sprint-board/filter-bar-types";
 import { startDateFromPreviousEnd } from "@/lib/sprint-dates";
 import { prefetchTicketList, setRouterPrefetch } from "@/lib/prefetch";
 import { getJiraUrl } from "@/components/sprint-board/TicketTableCells";
@@ -671,11 +672,15 @@ export default function SprintBoard() {
   // at a column you cannot see.
   const handleMetricSort = useCallback((metric: "sp" | "bv") => {
     const field: typeof f.sortField = metric === "sp" ? "points" : "bv";
-    const nextDir = f.sortField === field ? (f.sortDir === "asc" ? "desc" : "asc") : "desc";
-    f.setSortField(field);
-    f.setSortDir(nextDir);
-    const tag: InlineTagId = metric === "sp" ? "storyPoints" : "businessValue";
-    if (!f.visibleTags.has(tag)) toggleColumn(tag, true);
+    const next = cycleMetricSort({ field: f.sortField, direction: f.sortDir }, field);
+    f.setSortField(next.field);
+    f.setSortDir(next.direction);
+    // Reveal the metric's column only when the cycle actually lands on that sort, so the
+    // third click (back to rank) never re-shows a column the PO may have hidden.
+    if (next.field === field) {
+      const tag: InlineTagId = metric === "sp" ? "storyPoints" : "businessValue";
+      if (!f.visibleTags.has(tag)) toggleColumn(tag, true);
+    }
   }, [f, toggleColumn]);
 
   // Double-click toggles the metric's per-row column on/off. It writes the same

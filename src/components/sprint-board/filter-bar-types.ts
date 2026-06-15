@@ -178,6 +178,24 @@ export const SORT_OPTIONS: { field: SortField; label: string; defaultDir: SortDi
   { field: "readiness", label: "Readiness", defaultDir: "asc" },
 ];
 
+// The regular (default) board order: Jira rank, ascending. Clicking a metric chip
+// a third time returns to this.
+export const DEFAULT_SORT: { field: SortField; direction: SortDir } = { field: "rank", direction: "asc" };
+
+/**
+ * Two-state cycle for the SP/BV header chips: clicking an inactive metric sorts it
+ * descending (heaviest first), clicking the active metric again clears back to the
+ * regular rank order. Ascending is intentionally skipped (not relevant for these
+ * metrics). Clicking a different metric jumps straight to its descending sort.
+ */
+export function cycleMetricSort(
+  current: { field: SortField; direction: SortDir },
+  metricField: SortField,
+): { field: SortField; direction: SortDir } {
+  if (current.field === metricField) return { ...DEFAULT_SORT };
+  return { field: metricField, direction: "desc" };
+}
+
 // ---------------------------------------------------------------------------
 // Gaps options
 // ---------------------------------------------------------------------------
