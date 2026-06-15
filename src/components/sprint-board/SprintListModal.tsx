@@ -342,7 +342,7 @@ export function SprintListModal({
   onPin: (sprintId: string) => void;
   pinnedIds: Set<string>;
   alignLeft?: boolean;
-  portalAnchor?: { top: number; left: number };
+  portalAnchor?: { top: number; left?: number; right?: number };
   /** Multi-select mode: show checkboxes, stay open on toggle */
   multiSelect?: boolean;
   /** Currently selected sprint IDs (multi-select mode) */
@@ -463,6 +463,7 @@ export function SprintListModal({
       style={portalAnchor ? {
         top: portalAnchor.top,
         left: portalAnchor.left,
+        right: portalAnchor.right,
         boxShadow: "0 4px 24px rgba(0,0,0,0.22), 0 1px 6px rgba(0,0,0,0.12)",
         animation: "sprintListIn 0.15s ease-out",
       } : { animation: "sprintListIn 0.15s ease-out" }}
