@@ -588,6 +588,11 @@ export function TicketActionMenuContent({
 
   const hasUpdateAction = onSetStatus || onSetReadiness || onSetEpic || onMoveSprint || onMoveToTop || onMoveToBottom || onUpdateAssignee || onUpdateLabel;
   const hasAiAction = onReviewStory || onGenerateSubtasks || onRefine;
+  // The three "Move to …" actions form their own group, fenced by dividers from the
+  // set-* items above and the assignee/label items below.
+  const hasSetAction = onSetStatus || onSetReadiness || onSetEpic;
+  const hasMoveAction = (onMoveSprint && sprints) || onMoveToTop || onMoveToBottom;
+  const hasOtherUpdate = onUpdateAssignee || onUpdateLabel;
   const showFlag = Boolean(onSetFlagged);
   const showFlagItem = flagState !== "flagged"; // show "Flag" unless every target is already flagged
   const showUnflagItem = flagState !== "unflagged"; // show "Remove flag" unless every target is unflagged
@@ -598,9 +603,11 @@ export function TicketActionMenuContent({
         {onSetStatus && <MenuItem onClick={() => setSubView("status")}>Set Status</MenuItem>}
         {onSetReadiness && <MenuItem onClick={() => setSubView("readiness")}>Set Readiness</MenuItem>}
         {onSetEpic && <MenuItem onClick={() => setSubView("epic")}>Set Epic</MenuItem>}
+        {hasSetAction && hasMoveAction && <div className="mx-2 my-1 h-px bg-overlay-strong" />}
         {onMoveSprint && sprints && <MenuItem onClick={() => setSubView("sprint")}>Move to Sprint</MenuItem>}
         {onMoveToTop && <MenuItem onClick={() => { onMoveToTop(); close(); }}>Move to top</MenuItem>}
         {onMoveToBottom && <MenuItem onClick={() => { onMoveToBottom(); close(); }}>Move to bottom</MenuItem>}
+        {hasMoveAction && hasOtherUpdate && <div className="mx-2 my-1 h-px bg-overlay-strong" />}
         {onUpdateAssignee && <MenuItem onClick={() => setSubView("assignee")}>Update Assignee</MenuItem>}
         {onUpdateLabel && <MenuItem onClick={() => setSubView("label")}>Add/Update Label</MenuItem>}
 

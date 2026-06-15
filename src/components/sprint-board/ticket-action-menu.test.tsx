@@ -54,6 +54,20 @@ describe("TicketActionMenuContent", () => {
     expect(screen.getByText("Move to bottom")).toBeInTheDocument();
   });
 
+  it("fences the Move group with dividers from the set-* and assignee/label items", () => {
+    const { container } = render(
+      <TicketActionMenuContent
+        onSetEpic={vi.fn()}
+        onMoveToTop={vi.fn()}
+        onMoveToBottom={vi.fn()}
+        onUpdateAssignee={vi.fn()}
+        close={vi.fn()}
+      />,
+    );
+    // One divider above the move group (after Set Epic), one below (before Update Assignee).
+    expect(container.querySelectorAll("div.h-px.bg-overlay-strong")).toHaveLength(2);
+  });
+
   it("fires Move to top / Move to bottom and closes", () => {
     const onMoveToTop = vi.fn();
     const onMoveToBottom = vi.fn();

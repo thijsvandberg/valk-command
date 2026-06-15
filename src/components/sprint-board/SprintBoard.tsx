@@ -959,7 +959,7 @@ export default function SprintBoard() {
         />
 
         {dnd.jiraRankDndEnabled ? (
-          <DndContext sensors={dnd.boardSensors} collisionDetection={boardCollisionDetection} measuring={{ droppable: { strategy: MeasuringStrategy.Always } }} onDragStart={dnd.handleBoardDragStart} onDragOver={dnd.handleBoardDragOver} onDragEnd={dnd.handleBoardDragEnd}>
+          <DndContext sensors={dnd.boardSensors} collisionDetection={boardCollisionDetection} measuring={{ droppable: { strategy: MeasuringStrategy.Always } }} autoScroll={{ acceleration: 25, threshold: { x: 0, y: 0.2 } }} onDragStart={dnd.handleBoardDragStart} onDragOver={dnd.handleBoardDragOver} onDragEnd={dnd.handleBoardDragEnd}>
             {boardContent}
             <DragOverlay dropAnimation={null} modifiers={[snapToPointer]}>
               {dnd.boardActiveDragTicket && <DragGhostOverlay dragTicket={dnd.boardActiveDragTicket} draggedKeys={dnd.boardDraggedKeys} tickets={tickets} targetSprintId={dnd.boardDragTargetSprintId} sprintNameMap={sprintNameMap} />}
