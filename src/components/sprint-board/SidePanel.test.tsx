@@ -323,7 +323,7 @@ describe("SidePanel", () => {
     }
 
     it("renders the meta as its own column (not stacked) when the panel is wide", () => {
-      seed({ sprintBoardPanelWidth: "900" });
+      seed({ sprintBoardPanelWidth: "1100" });
       render(<SidePanel {...defaultProps} />);
       // Column mode: meta rendered with its collapse control, and NOT injected
       // under the Content tab.
@@ -347,7 +347,7 @@ describe("SidePanel", () => {
     });
 
     it("stacks the meta below the content when collapsed (instead of hiding it), even when wide", () => {
-      seed({ sprintBoardPanelWidth: "900", sprintBoardMetaCollapsed: "true" });
+      seed({ sprintBoardPanelWidth: "1100", sprintBoardMetaCollapsed: "true" });
       render(<SidePanel {...defaultProps} />);
       // Collapsed: no side column, but the meta is still rendered, stacked
       // under the Content tab in a single scroll.
@@ -357,20 +357,22 @@ describe("SidePanel", () => {
     });
 
     it("shows a 'Show sidebar' header button only when collapsed and wide enough for a column", () => {
-      seed({ sprintBoardPanelWidth: "900" });
+      seed({ sprintBoardPanelWidth: "1100" });
       render(<SidePanel {...defaultProps} />);
       expect(screen.queryByLabelText("Show sidebar")).not.toBeInTheDocument();
 
       window.localStorage.clear();
-      seed({ sprintBoardPanelWidth: "900", sprintBoardMetaCollapsed: "true" });
+      seed({ sprintBoardPanelWidth: "1100", sprintBoardMetaCollapsed: "true" });
       render(<SidePanel {...defaultProps} />);
       expect(screen.getByLabelText("Show sidebar")).toBeInTheDocument();
     });
 
     it("suppresses the 'Show sidebar' toggle when too narrow for a meta column (BRDG)", () => {
-      // A column can never fit at this width, so the meta stays stacked under the
-      // content and the toggle (which would only re-stack the same panel) is hidden.
-      seed({ sprintBoardPanelWidth: "400", sprintBoardMetaCollapsed: "true" });
+      // 800px no longer fits a column (content would dip below CONTENT_MIN_WIDTH),
+      // so the meta stays stacked under the content and the toggle (which would
+      // only re-stack the same panel) is hidden. This breakpoint moved up: a column
+      // now needs a panel ~940px+, not ~640px.
+      seed({ sprintBoardPanelWidth: "800", sprintBoardMetaCollapsed: "true" });
       render(<SidePanel {...defaultProps} />);
       expect(screen.queryByLabelText("Show sidebar")).not.toBeInTheDocument();
       expect(screen.getByTestId("tab-has-meta")).toBeInTheDocument();
@@ -378,7 +380,7 @@ describe("SidePanel", () => {
     });
 
     it("collapsing via the divider button persists the state and stacks the meta below content", () => {
-      seed({ sprintBoardPanelWidth: "900" });
+      seed({ sprintBoardPanelWidth: "1100" });
       render(<SidePanel {...defaultProps} />);
       fireEvent.click(screen.getByLabelText("Collapse sidebar"));
       expect(window.localStorage.getItem("sprintBoardMetaCollapsed")).toBe("true");
@@ -389,7 +391,7 @@ describe("SidePanel", () => {
     });
 
     it("the header 'Show sidebar' button restores the side column and persists the state", () => {
-      seed({ sprintBoardPanelWidth: "900", sprintBoardMetaCollapsed: "true" });
+      seed({ sprintBoardPanelWidth: "1100", sprintBoardMetaCollapsed: "true" });
       render(<SidePanel {...defaultProps} />);
       // Collapsed -> stacked, so no side column yet.
       expect(screen.queryByLabelText("Collapse sidebar")).not.toBeInTheDocument();
@@ -408,7 +410,7 @@ describe("SidePanel", () => {
     }
 
     it("double-clicking the resize handle collapses the meta", () => {
-      seed({ sprintBoardPanelWidth: "900" });
+      seed({ sprintBoardPanelWidth: "1100" });
       render(<SidePanel {...defaultProps} />);
       const handle = metaHandle();
       expect(handle).toBeTruthy();
@@ -417,7 +419,7 @@ describe("SidePanel", () => {
     });
 
     it("dragging the resize handle persists a (clamped) meta width", () => {
-      seed({ sprintBoardPanelWidth: "900" });
+      seed({ sprintBoardPanelWidth: "1100" });
       render(<SidePanel {...defaultProps} />);
       const handle = metaHandle();
       fireEvent.mouseDown(handle);

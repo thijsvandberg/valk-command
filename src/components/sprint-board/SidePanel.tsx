@@ -54,9 +54,11 @@ const META_WIDTH_KEY = "sprintBoardMetaWidth";
 const META_COLLAPSED_KEY = "sprintBoardMetaCollapsed";
 const DEFAULT_META_WIDTH = 340;
 const MIN_META_WIDTH = 280;
-// The tabbed content keeps at least this width; below it the meta drops below
-// the content (stacked) instead of sitting in its own column.
-const CONTENT_MIN_WIDTH = 360;
+// The tabbed content keeps at least this width before a meta column is allowed;
+// below it the meta drops under the content (stacked) instead of sitting in its
+// own column. Set generously so a side column only appears once the content can
+// still breathe (panel ~940px+); narrower drawers stack and hide the toggle (BRDG).
+const CONTENT_MIN_WIDTH = 600;
 
 export function SidePanel({
   ticket,
@@ -363,7 +365,7 @@ export function SidePanel({
     <>
       {dragHandle}
       {t.editState === "local_edits" && (
-        <span className="rounded px-1.5 py-0.5 text-caption" style={{ backgroundColor: "var(--color-status-info-subtle)", color: "var(--color-icon-task)", opacity: 0.7 }} title="Has local changes not yet pushed to Jira">
+        <span className="mr-1 inline-flex items-center rounded px-1.5 py-1 text-caption leading-none" style={{ backgroundColor: "var(--color-status-info-subtle)", color: "var(--color-icon-task)", opacity: 0.7 }} title="Has local changes not yet pushed to Jira">
           local changes
         </span>
       )}
