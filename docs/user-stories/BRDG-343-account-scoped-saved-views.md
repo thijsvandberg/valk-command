@@ -34,6 +34,26 @@ See background: [docs/investigations/2026-06-15-account-and-permissions-system.m
 
 (If any device-local item turns out to feel better per-account in practice, it can move later — the foundation makes that a one-line change.)
 
+## Implementation Plan (remaining per-account state)
+
+Reuses the shipped foundation: `createUserJsonSettingRoute` (server), `useAccountSetting` (client), and the `useSavedViews` one-time-import pattern. Two new minimal abstractions:
+- **Client:** `src/hooks/useMigratedAccountSetting.ts` — wraps `useAccountSetting` + a default-guarded, idempotent one-time localStorage import (generalizes `useSavedViews`). For scalars/objects (no merge-by-id), the import only runs when the server value is still the default, so a value already changed on another device is never clobbered. Guarded by a `<key>-migrated` flag.
+- **Server:** `seedUserSettingFromGlobal(key, userId, default)` in `user-settings.ts` — seed-on-read for the global `appSetting` re-scope: GET reads `userSetting`; if absent, seeds from the legacy global `appSetting` row (if any) and returns it; per-account row, once written, permanently shadows the global. The presence of the row is the idempotency flag; the global row is never mutated/deleted.
+
+Groups (each = new route(s) + hook/call-site swap + tests, committed per group):
+- **A — Sprint-board bundle (riskiest, done last among migrations):** `sprint-board-filters`, `sprint-board-all-filters`, `sprint-board-sort`, `sprint-board-row-fields` (in `useSprintBoardFilters.ts`), `sprint-board-po-priority-map` (in `SprintBoard.tsx`).
+- **B — Epic prefs:** `bridge:epic-filters`, `epic-children-view`, `epic-stats-metric`.
+- **C — Subtask prefs:** `subtask-status-filter`, `subtask-hide-deprecated`.
+- **D — Activity log:** `bridge:activity-types`, `bridge:activity-status`.
+- **E — Stakeholder:** `bridge:stakeholder-team`, `bridge:stakeholder-sprint`.
+- **F — Chat / pipelines:** `bridge:chat-filters`, `bridge:sidebar-groups-collapsed`, `bridge:pipeline-filters`.
+- **G — Theme:** keep localStorage as the synchronous SSR snapshot (avoids flash-of-wrong-theme); reconcile to the account as a secondary source. Lower priority; descope if reconciliation proves fragile.
+- **H — Global `appSetting` re-scope (seed-on-read, envelopes unchanged):** `saved_searches`, `sprint_board_column_config`, `story_writer_quick_prompts`, `default_sprint_id`, `notification_prefs`, `section_visibility`. These keep their bespoke `{ searches }`/`{ sprintId }`/… envelopes (NOT `{ value }`), so consumers are untouched; only the storage layer swaps to `readUserSetting`/`seedUserSettingFromGlobal`/`writeUserSetting`.
+
+Order: (1) shared helpers, (2) Group H, (3) leaf groups B–F, (4) Group A, (5) Group G, (6) WHY comments on device-local keys.
+
+Tests: per-route GET default / PUT validation / round-trip; seed-on-read + idempotency + per-account isolation for Group H; import-once + default-guard for the client hook.
+
 ## Acceptance Criteria
 
 ### Foundation

@@ -52,6 +52,31 @@ export async function writeUserSetting(key: string, userId: string, value: strin
 }
 
 /**
+ * Seed-on-read migration from the shared global `appSetting` table to per-account
+ * `userSetting` (BRDG-343). Returns the user's own value if it exists; otherwise
+ * falls back to the legacy global `appSetting` row, seeds the user's copy with it
+ * once, and returns that. The global row is never mutated, so every account can
+ * still seed from it on first read; once a user writes their own value it
+ * permanently shadows the global seed (presence of the row IS the idempotency
+ * flag). Returns null when neither a per-account nor a global value exists.
+ */
+export async function seedUserSettingFromGlobal(
+  key: string,
+  userId: string,
+): Promise<string | null> {
+  const existing = await readUserSetting(key, userId);
+  if (existing !== null) return existing;
+
+  const legacy = await db.query.appSetting.findFirst({
+    where: (r, { eq: eqFn }) => eqFn(r.key, key),
+  });
+  if (legacy?.value == null) return null;
+
+  await writeUserSetting(key, userId, legacy.value);
+  return legacy.value;
+}
+
+/**
  * Build GET/PUT handlers for a per-account JSON setting, so a new account-scoped
  * setting is a few lines (BRDG-343). The setting is stored as a JSON blob keyed
  * on the authenticated user and exchanged under a `{ value }` envelope. The
