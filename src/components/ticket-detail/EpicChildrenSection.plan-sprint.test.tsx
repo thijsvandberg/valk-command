@@ -98,9 +98,11 @@ describe("EpicChildrenSection create-the-next-sprint flow (BRDG-309)", () => {
     });
   });
 
-  it("passes onPlanNextSprint down to the by-sprint view", () => {
+  it("passes onPlanNextSprint down to the by-sprint view", async () => {
+    // The by-sprint view is restored from the account-scoped setting (BRDG-343),
+    // imported once from the seeded localStorage value, so it resolves async.
     renderSection();
-    expect(typeof lastPlanProps.onPlanNextSprint).toBe("function");
+    await waitFor(() => expect(typeof lastPlanProps.onPlanNextSprint).toBe("function"));
   });
 
   it("opens the Create Sprint modal prefilled with the predicted name", () => {
