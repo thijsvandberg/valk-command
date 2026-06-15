@@ -498,3 +498,17 @@ Replaced the un-indexable `json_each` sprint-membership filter on `/api/tickets`
 Key bottlenecks / lessons:
 - **Same dirty-shared-tree hazard as BRDG-347, same two culprit files.** `npm run verify` first failed on another session's half-edited `settings/column-config/route.ts` (uncommitted, references `db`/`appSetting` it no longer imports). Verified my work in a throwaway `git worktree add --detach HEAD` + symlinked `node_modules`. There, the only suite failures were again `SprintAnalytics.test.tsx` (lucide-react mock missing a newly-added `ChevronDown`) and `push-to-jira/route.test.ts` (parallel change added a 3rd `pushToJira` arg) — both from other commits already on HEAD, neither touching sprint membership.
 - **A `git checkout HEAD~2` to A/B the pre-existing failures was correctly blocked by the no-branch-switch hook.** Not needed: `git status` (files unmodified) + `grep` (no references to changed symbols) + the failure messages themselves proved the failures were external.
+
+## BRDG-343 — account-scoped settings (remaining per-account state) (2026-06-16)
+
+Migrated the rest of the per-account state onto the BRDG-343 foundation: re-scoped 5 global `appSetting` settings to per-account `userSetting` via a `seedUserSettingFromGlobal` seed-on-read helper (`notification_prefs` deferred — sender has no request context), and moved ~18 `localStorage` keys (sprint-board filters/sort/row-fields/po-priority, epic/subtask/activity/stakeholder/chat/pipeline prefs) onto a new `useMigratedAccountSetting` hook. Device-local keys annotated; `theme` deferred (SSR flash). Browser-verified end-to-end (GET/PUT 200, persists across reload, no console errors).
+
+| Phase | Notes |
+|---|---|
+| Implement | The synchronous-`useLocalStorage` → async-SWR swap was the whole cost. Three real bugs surfaced via tests: (1) an in-flight mount GET could clobber a fresh write; (2) a URL↔state sync effect (stakeholder) looped forever because `setValue` always made a new object; (3) `set-state-in-effect` lint. Fixed in `useAccountSetting` with a sticky local mirror, an unchanged-value no-op guard, and adjust-state-during-render reconciliation |
+| Verify | Full suite green except 5 files that are pre-existing/parallel (`push-to-jira`, `jira/sprints`, `SprintAnalytics` ×4, `ChatLayout`) — each confirmed to fail identically at my clean file state |
+
+Key bottlenecks / lessons:
+- **Running many jsdom test files at once OOM/hung the 16GB machine repeatedly.** Symptom: one worker pinned at ~100% CPU / 2GB RSS for minutes. Root cause was twofold — a genuine infinite render loop (bug 2 above) AND default file-parallelism. Fix: `--no-file-parallelism` for multi-file local runs, and run heavy files individually. The project's `bail: 5` also masked which failures were mine until raised to `--bail=10000`.
+- **Async storage changes ripple into every test that renders the component.** Tests that mocked `@/lib/api-client` without `apiFetch`, asserted `localStorage` directly, or asserted synchronously after an interaction all broke. A global `afterEach` that resets only the `/api/settings/*` SWR cache (not all keys — that starved `/api/jira/sprints`) fixed cross-test bleed.
+- **Same dirty-shared-tree hazard as BRDG-347/352.** Distinguished mine from parallel by swapping in `git show HEAD:<file>` versions and re-running — `ChatLayout`/`SprintAnalytics`/`push-to-jira`/`jira-sprints` all failed independently of my changes.
