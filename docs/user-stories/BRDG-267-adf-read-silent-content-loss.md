@@ -1,8 +1,14 @@
 # BRDG-267: Reading a Jira ticket silently drops some content, which can delete it on push
 
-**Status:** Not Started
+**Status:** Implemented + verified (build + serializer/round-trip suites green); archive deferred while unrelated parallel test failures are red
 **Priority:** High
 **Type:** Bugfix
+
+## Status notes
+
+- Implemented jointly with BRDG-268. Commits: `3a493e48` (read side), `2f240e42` (write side), `99f6369c` (round-trip test), `7c64f1e8` (docs).
+- `npm run build` passes; the serializer + round-trip suites pass (59/59).
+- The full `npm run test` has 5 failures in two files that are **unrelated parallel work**, not this change: `push-to-jira/route.test.ts` (a 3rd arg was added to `pushToJira` by another session) and `SprintAnalytics.test.tsx` (`MetricBadge`/`activeSortDir`). Archive both 267 and 268 once the shared tree is green.
 
 ## Description
 
