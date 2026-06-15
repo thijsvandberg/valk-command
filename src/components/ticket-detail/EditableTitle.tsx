@@ -1,7 +1,6 @@
 "use client";
 
 import { useState, useEffect, useRef, useCallback } from "react";
-import { Tag } from "@/components/shared/Tag";
 import { useLocalEditSaver, type LocalEditSaver } from "@/lib/local-edit-saver";
 import { useTicketEditStateSync } from "@/hooks/useTicketEditStateSync";
 
@@ -11,7 +10,6 @@ export function EditableTitle({
   serverLocalEdit,
   onLocalEdit,
   onEditingChange,
-  onViewDiff,
   onSaved,
   saver: externalSaver,
 }: {
@@ -23,7 +21,6 @@ export function EditableTitle({
    *  autosaved drafts). */
   onLocalEdit: (hasEdit: boolean, value?: string | null) => void;
   onEditingChange?: (isEditing: boolean) => void;
-  onViewDiff?: () => void;
   /** Fires after a title edit is persisted (or reverted) so consumers can refresh
    *  surrounding views, e.g. an epic's children list that mirrors this title. */
   onSaved?: () => void;
@@ -57,7 +54,6 @@ export function EditableTitle({
   // Set during an in-flight save so a subsequent onBlur doesn't double-save
   const savingRef = useRef(false);
 
-  const hasLocalEdit = localValue !== null;
   // Display value when not editing
   const displayValue = localValue ?? initialTitle;
 
@@ -158,22 +154,15 @@ export function EditableTitle({
   }
 
   return (
-    <div className="group flex items-start gap-2">
-      <h1
-        onClick={startEditing}
-        /* text-3xl: no token exists above text-heading-lg (24px); page title needs ~30px */
-        className="font-[var(--font-display)] cursor-pointer text-3xl font-bold tracking-[-0.03em] leading-tight text-text-primary hover:text-text-primary"
-        title="Click to edit"
-      >
-        {displayValue}
-      </h1>
-      {hasLocalEdit && (
-        <Tag
-          color="brand"
-          className={`mt-1 shrink-0${onViewDiff ? " cursor-pointer hover:opacity-80" : ""}`}
-          onClick={onViewDiff}
-        >Locally modified</Tag>
-      )}
-    </div>
+    // A local title edit surfaces through the unified "Local edits" badge above
+    // the content (rendered by EditableDescription), not an inline tag here.
+    <h1
+      onClick={startEditing}
+      /* text-3xl: no token exists above text-heading-lg (24px); page title needs ~30px */
+      className="font-[var(--font-display)] cursor-pointer text-3xl font-bold tracking-[-0.03em] leading-tight text-text-primary hover:text-text-primary"
+      title="Click to edit"
+    >
+      {displayValue}
+    </h1>
   );
 }

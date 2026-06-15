@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef } from "react";
+import { useCallback, useRef, useState } from "react";
 import { Loader2, AlertTriangle, Flag } from "lucide-react";
 import type { Ticket, TicketDetail, JiraStatus, EpicChild } from "@/types/ticket";
 import type { LocalEditSaver } from "@/lib/local-edit-saver";
@@ -80,7 +80,9 @@ export interface TicketTabContentProps {
   showConflictDiff: boolean;
   autoOpenDraftDiff: boolean;
   metadataOnlyConflict: boolean;
-  onViewDiff: () => void;
+  /** @deprecated No longer wired: local edits (incl. title-only) now surface via
+   *  the "Local edits" badge in EditableDescription, not a History jump. */
+  onViewDiff?: () => void;
   isDiscarding: boolean;
   discardError: string | null;
   // Push
@@ -135,7 +137,6 @@ export function TicketTabContent({
   showConflictDiff,
   autoOpenDraftDiff,
   metadataOnlyConflict,
-  onViewDiff,
   isDiscarding,
   discardError,
   isPushing,
@@ -172,6 +173,22 @@ export function TicketTabContent({
   // the first match in the document.
   const toolbarPortalId = isPanel ? "ticket-toolbar-portal-panel" : "ticket-toolbar-portal";
   const diffFooterPortalId = isPanel ? "diff-footer-portal-panel" : "diff-footer-portal";
+
+  // Mirror the title editor's just-typed value so the "Local edits" badge (in
+  // EditableDescription) appears the moment a title is saved, instead of waiting
+  // for the refetch to land localEdits.title. Reset on remount (draftDiscardKey
+  // bump after push/discard) via the derive-during-render pattern, not an effect.
+  const [liveTitle, setLiveTitle] = useState<string | null>(null);
+  const [prevDiscardKey, setPrevDiscardKey] = useState(draftDiscardKey);
+  if (prevDiscardKey !== draftDiscardKey) {
+    setPrevDiscardKey(draftDiscardKey);
+    setLiveTitle(null);
+  }
+  const handleTitleLocalEdit = useCallback((has: boolean, value?: string | null) => {
+    setLiveTitle(has ? (value ?? null) : null);
+    onTitleLocalEdit(has);
+  }, [onTitleLocalEdit]);
+  const titleLocalValue = liveTitle ?? localEdits?.title?.value ?? null;
 
   // Track whether the tab bar has scrolled out of view (bar is h-[44px]).
   const wasScrolledRef = useRef(false);
@@ -278,9 +295,8 @@ export function TicketTabContent({
                   ticketKey={ticketKey}
                   initialTitle={ticket.title}
                   serverLocalEdit={localEdits?.title}
-                  onLocalEdit={onTitleLocalEdit}
+                  onLocalEdit={handleTitleLocalEdit}
                   onEditingChange={onTitleEditingChange}
-                  onViewDiff={onViewDiff}
                   onSaved={onMutate}
                   saver={editSaver}
                 />
@@ -353,6 +369,8 @@ export function TicketTabContent({
                 toolbarPortalId={toolbarPortalId}
                 saver={editSaver}
                 onConflictReload={onDraftConflictReload}
+                titleInitial={ticket.title}
+                titleLocalValue={titleLocalValue}
               />
               {detail && <AttachmentsSection attachments={detail.attachments} />}
               {!isEpic && (
@@ -382,9 +400,8 @@ export function TicketTabContent({
                   ticketKey={ticketKey}
                   initialTitle={ticket.title}
                   serverLocalEdit={localEdits?.title}
-                  onLocalEdit={onTitleLocalEdit}
+                  onLocalEdit={handleTitleLocalEdit}
                   onEditingChange={onTitleEditingChange}
-                  onViewDiff={onViewDiff}
                   onSaved={onMutate}
                   saver={editSaver}
                 />

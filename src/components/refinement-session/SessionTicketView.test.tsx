@@ -406,7 +406,7 @@ describe("SessionTicketView", () => {
     expect(onLocalDescEdit).toHaveBeenCalledWith(true);
   });
 
-  it("passes onViewDiff to EditableTitle (description shows its own inline diff)", () => {
+  it("does not pass onViewDiff to the title or description editors (local edits surface via the inline badge)", () => {
     const onViewDiff = vi.fn();
     render(
       <SessionTicketView
@@ -414,9 +414,9 @@ describe("SessionTicketView", () => {
         onViewDiff={onViewDiff}
       />,
     );
-    fireEvent.click(screen.getByTestId("title-view-diff"));
-    expect(onViewDiff).toHaveBeenCalledTimes(1);
-    // EditableDescription no longer receives onViewDiff: it expands an inline diff itself.
+    // Title-only and description edits both surface through EditableDescription's
+    // own "Local edits" badge now; neither editor jumps to a History diff.
+    expect(screen.queryByTestId("title-view-diff")).not.toBeInTheDocument();
     expect(screen.queryByTestId("desc-view-diff")).not.toBeInTheDocument();
   });
 });

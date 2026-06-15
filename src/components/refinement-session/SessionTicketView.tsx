@@ -554,6 +554,23 @@ export function SessionTicketView({
   onViewDiff,
 }: SessionTicketViewProps) {
   const [hasLocalEdit, setHasLocalEdit] = useState(false);
+  // Mirror the title editor's just-typed value so the unified "Local edits"
+  // badge shows immediately, before the refetch lands localEdits.title. There is
+  // no remount key here, so clear it explicitly on discard/push.
+  const [liveTitle, setLiveTitle] = useState<string | null>(null);
+  const handleTitleLocalEdit = useCallback((has: boolean, value?: string | null) => {
+    setLiveTitle(has ? value ?? null : null);
+    (onLocalTitleEdit ?? setHasLocalEdit)(has);
+  }, [onLocalTitleEdit]);
+  const handleDiscard = useCallback(() => {
+    setLiveTitle(null);
+    onDiscard?.();
+  }, [onDiscard]);
+  const handlePushToJira = useCallback(async (pushed?: { description?: string }) => {
+    await onPushToJira?.(pushed);
+    setLiveTitle(null);
+  }, [onPushToJira]);
+  const titleLocalValue = liveTitle ?? localEdits?.title?.value ?? null;
 
   return (
     <div className="space-y-0">
@@ -572,7 +589,7 @@ export function SessionTicketView({
             <div className="mt-2 flex items-center gap-2">
               <button
                 type="button"
-                onClick={onDiscard}
+                onClick={handleDiscard}
                 className="rounded-lg border border-border-default bg-overlay-subtle px-3 py-1 text-body-sm font-medium text-text-secondary cursor-pointer hover:bg-overlay-default focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)] active:scale-[0.97]"
                 style={{ transition: "background-color 0.15s ease, transform 0.1s ease" }}
               >
@@ -598,8 +615,7 @@ export function SessionTicketView({
         ticketKey={ticket.key}
         initialTitle={ticket.title}
         serverLocalEdit={localEdits?.title}
-        onLocalEdit={onLocalTitleEdit ?? setHasLocalEdit}
-        onViewDiff={onViewDiff}
+        onLocalEdit={handleTitleLocalEdit}
       />
 
       {/* Description */}
@@ -609,13 +625,15 @@ export function SessionTicketView({
         serverLocalEdit={localEdits?.description}
         attachments={detail.attachments}
         onLocalEdit={onLocalDescEdit ?? setHasLocalEdit}
-        onDiscard={onDiscard}
-        onPushToJira={onPushToJira}
+        onDiscard={handleDiscard}
+        onPushToJira={handlePushToJira}
         isPushing={isPushing}
         pushError={pushError}
         showConflictWarning={showConflictWarning}
         overrideConfirmed={overrideConfirmed}
         onOverrideChange={onOverrideChange}
+        titleInitial={ticket.title}
+        titleLocalValue={titleLocalValue}
       />
 
       {/* Attachments (only when present, to keep the session flow clean) */}

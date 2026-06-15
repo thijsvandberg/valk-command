@@ -81,6 +81,8 @@ function renderDesc(overrides: Partial<React.ComponentProps<typeof EditableDescr
       onOverrideChange={overrides.onOverrideChange}
       saver={overrides.saver}
       onConflictReload={overrides.onConflictReload}
+      titleInitial={overrides.titleInitial}
+      titleLocalValue={overrides.titleLocalValue}
     />,
   );
   return { ...result, onLocalEdit, onEditingChange };
@@ -165,10 +167,11 @@ describe("EditableDescription", () => {
     });
   });
 
-  it("closes editor on Discard click without saving", async () => {
+  it("closes editor on Close click without saving", async () => {
     renderDesc({ initialDescription: "Original", onDiscard: vi.fn() });
     fireEvent.click(screen.getByTestId("rendered-markdown"));
-    fireEvent.click(screen.getByText("Discard"));
+    // Nothing changed yet, so the left action reads "Close", not "Discard".
+    fireEvent.click(screen.getByText("Close"));
 
     await waitFor(() => {
       expect(screen.queryByTestId("rich-editor")).not.toBeInTheDocument();
@@ -343,7 +346,39 @@ describe("EditableDescription autosave-first flow (BRDG-340)", () => {
     renderDesc({ initialDescription: "Original" });
     fireEvent.click(screen.getByTestId("rendered-markdown"));
     expect(screen.queryByText("Save")).not.toBeInTheDocument();
-    expect(screen.getByText("Discard")).toBeInTheDocument();
+    // Clean editing session: the left action is a neutral Close, not Discard.
+    expect(screen.getByText("Close")).toBeInTheDocument();
+  });
+
+  it("morphs the left action from Close to Discard once the content is dirty", async () => {
+    renderDesc({ ticketKey: "VPL-9", initialDescription: "Original" });
+    fireEvent.click(screen.getByTestId("rendered-markdown"));
+    expect(screen.getByText("Close")).toBeInTheDocument();
+
+    fireEvent.change(screen.getByTestId("editor-input"), { target: { value: "New content" } });
+    await waitFor(() => {
+      expect(screen.getByText("Discard")).toBeInTheDocument();
+    });
+    expect(screen.queryByText("Close")).not.toBeInTheDocument();
+  });
+
+  it("shows a Done link next to Saved that closes the editor without reverting", async () => {
+    const onDiscard = vi.fn();
+    renderDesc({ ticketKey: "VPL-9", initialDescription: "Original", onDiscard });
+    fireEvent.click(screen.getByTestId("rendered-markdown"));
+    fireEvent.change(screen.getByTestId("editor-input"), { target: { value: "New content" } });
+
+    await waitFor(() => {
+      expect(screen.getByText("Saved")).toBeInTheDocument();
+    }, { timeout: 2500 });
+    expect(screen.getByText("Done")).toBeInTheDocument();
+
+    fireEvent.click(screen.getByText("Done"));
+    await waitFor(() => {
+      expect(screen.queryByTestId("rich-editor")).not.toBeInTheDocument();
+    });
+    // Done keeps the autosaved work; it must not trigger a discard.
+    expect(onDiscard).not.toHaveBeenCalled();
   });
 
   it("shows Saving… while the debounce is pending and Saved once it lands", async () => {
@@ -382,6 +417,26 @@ describe("EditableDescription autosave-first flow (BRDG-340)", () => {
       );
     });
     expect(screen.queryByTestId("rich-editor")).not.toBeInTheDocument();
+  });
+
+  it("stays quiet (no Saved/Done) when pushing a pre-existing edit without typing", async () => {
+    const onPushToJira = vi.fn().mockResolvedValue(undefined);
+    renderDesc({
+      ticketKey: "VPL-9",
+      initialDescription: "Original",
+      serverLocalEdit: { value: "Changed body", isDraft: true },
+      onPushToJira,
+    });
+    // Open the editor on an existing local edit, type nothing, then push.
+    fireEvent.click(screen.getByTestId("rendered-markdown"));
+    expect(screen.queryByText("Saved")).not.toBeInTheDocument();
+    fireEvent.click(screen.getByText("Push to Jira"));
+
+    await waitFor(() => {
+      expect(onPushToJira).toHaveBeenCalled();
+    });
+    expect(screen.queryByText("Saved")).not.toBeInTheDocument();
+    expect(screen.queryByText("Done")).not.toBeInTheDocument();
   });
 
   it("sends the seeded modifiedAt as baseModifiedAt and adopts the returned token", async () => {
@@ -478,5 +533,55 @@ describe("EditableDescription autosave-first flow (BRDG-340)", () => {
     await waitFor(() => {
       expect(screen.queryByText(/changed in another tab/)).not.toBeInTheDocument();
     });
+  });
+});
+
+describe("EditableDescription title-only local edits (BRDG)", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    mockApiFetch.mockResolvedValue({});
+    Object.defineProperty(navigator, "sendBeacon", { value: vi.fn(), configurable: true });
+  });
+
+  it("shows the 'Local edits' badge for a title-only edit (description unchanged)", () => {
+    renderDesc({ initialDescription: "Original", titleInitial: "Old title", titleLocalValue: "New title" });
+    expect(screen.getByText("Local edits")).toBeInTheDocument();
+  });
+
+  it("does not show the badge when the local title equals the Jira title", () => {
+    renderDesc({ initialDescription: "Original", titleInitial: "Same title", titleLocalValue: "Same title" });
+    expect(screen.queryByText("Local edits")).not.toBeInTheDocument();
+  });
+
+  it("expands a title-only edit into a diff with Push and Discard", () => {
+    renderDesc({
+      initialDescription: "Original",
+      titleInitial: "Old title",
+      titleLocalValue: "New title",
+      onPushToJira: vi.fn().mockResolvedValue(undefined),
+    });
+    fireEvent.click(screen.getByText("Local edits"));
+    expect(screen.getByText("Discard")).toBeInTheDocument();
+    expect(screen.getByText("Push to Jira")).toBeInTheDocument();
+  });
+
+  it("discards a title-only edit from the badge", () => {
+    const onDiscard = vi.fn();
+    renderDesc({ initialDescription: "Original", titleInitial: "Old title", titleLocalValue: "New title", onDiscard });
+    fireEvent.click(screen.getByText("Local edits"));
+    fireEvent.click(screen.getByText("Discard"));
+    expect(onDiscard).toHaveBeenCalled();
+  });
+
+  it("labels Title and Description sections when both changed", () => {
+    renderDesc({
+      initialDescription: "Original",
+      serverLocalEdit: { value: "Changed body", isDraft: true },
+      titleInitial: "Old title",
+      titleLocalValue: "New title",
+    });
+    fireEvent.click(screen.getByText("Local edits"));
+    expect(screen.getByText("Title")).toBeInTheDocument();
+    expect(screen.getByText("Description")).toBeInTheDocument();
   });
 });

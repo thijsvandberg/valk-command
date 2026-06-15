@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef, useCallback, useMemo } from "react";
 import type { Attachment } from "@/types/ticket";
-import { CloudUpload, Loader2, ChevronDown, Check, RotateCcw } from "lucide-react";
+import { CloudUpload, Loader2, ChevronDown, Check, RotateCcw, X } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import { apiFetch } from "@/lib/api-client";
 import { useLocalEditSaver, type LocalEditSaver } from "@/lib/local-edit-saver";
@@ -68,6 +68,8 @@ export function EditableDescription({
   toolbarPortalId,
   saver: externalSaver,
   onConflictReload,
+  titleInitial,
+  titleLocalValue,
 }: {
   ticketKey: string;
   initialDescription: string;
@@ -87,6 +89,10 @@ export function EditableDescription({
   saver?: LocalEditSaver;
   /** When provided, the cross-tab conflict banner offers "Reload draft" via this handler. */
   onConflictReload?: () => void | Promise<void>;
+  /** Jira title and its current local value. A title-only edit surfaces through
+   *  this component's "Local edits" badge so all local edits share one affordance. */
+  titleInitial?: string;
+  titleLocalValue?: string | null;
 }) {
   const syncEditState = useTicketEditStateSync();
   const ownSaver = useLocalEditSaver();
@@ -135,6 +141,9 @@ export function EditableDescription({
   // Call onEditingChange synchronously so the parent hides the title header
   // in the same React render as the editor mounting — prevents a one-frame layout bounce.
   const setEditingState = useCallback((next: boolean) => {
+    // Reset the indicator on open so "Saved · Done" only appears after the PO
+    // actually types in this session, not because a prior session left it set.
+    if (next) setSaveState("idle");
     setEditing(next);
     onEditingChange?.(next);
   }, [onEditingChange]);
@@ -236,7 +245,9 @@ export function EditableDescription({
     setLocalValue(value.trim());
     onLocalEdit(true);
     syncEditState(ticketKey, "local_edits");
-    setSaveState("saved");
+    // Only surface "Saved" if the PO actually edited this session. Flushing a
+    // pre-existing local edit (e.g. on push without typing) should stay quiet.
+    if (saveState !== "idle") setSaveState("saved");
   }, [ticketKey, value, initialDescription, hasLocalEdit, saveState, onLocalEdit, syncEditState, saver]);
 
   const save = useCallback(async () => {
@@ -283,10 +294,15 @@ export function EditableDescription({
   }, [editing, save]);
 
   const isDirtyOrLocal = hasLocalEdit || !markdownEqualIgnoringSpacing(value, initialDescription);
-  const showPush = isDirtyOrLocal && !!onPushToJira;
+  // A title-only edit also surfaces here: the badge, diff and push/discard cover
+  // the whole local-edit set, not just the description.
+  const hasTitleEdit = titleLocalValue != null && titleLocalValue.trim() !== (titleInitial ?? "").trim();
+  const hasAnyLocalEdit = hasLocalEdit || hasTitleEdit;
+  const showPush = (isDirtyOrLocal || hasTitleEdit) && !!onPushToJira;
+  const showSectionHeaders = hasTitleEdit && hasLocalEdit;
 
   return (
-    <div className={!editing && hasLocalEdit ? "mt-2" : "mt-6"}>
+    <div className={!editing && hasAnyLocalEdit ? "mt-2" : "mt-6"}>
       {/* Cross-tab conflict: autosave is paused until the PO picks a side. */}
       {saver.conflict && (
         <div className="mb-3 flex items-center gap-3 rounded-md border border-amber-500/20 bg-amber-500/[0.04] px-3 py-2 text-body-sm text-amber-400">
@@ -309,8 +325,9 @@ export function EditableDescription({
           </button>
         </div>
       )}
-      {/* Local-edit indicator badge: click to reveal an inline diff of the changes. */}
-      {!editing && hasLocalEdit && (
+      {/* Local-edit indicator badge: click to reveal an inline diff of the changes.
+          Covers title-only edits too, so all local edits share one affordance. */}
+      {!editing && hasAnyLocalEdit && (
         <div className="mb-3">
           <button
             type="button"
@@ -329,12 +346,26 @@ export function EditableDescription({
           </button>
           {showDraftDiff && (
             <div className="mt-3 rounded-lg border border-border-strong">
-              <div className="p-3">
-                <StoryDiff
-                  oldText={normalizeMarkdownForCompare(initialDescription)}
-                  newText={normalizeMarkdownForCompare(value)}
-                  mode="unified"
-                />
+              <div className="space-y-4 p-3">
+                {hasTitleEdit && (
+                  <div>
+                    {/* Always label the title diff so a title-only change is unmistakably about the title. */}
+                    <div className="mb-1.5 text-caption font-medium uppercase tracking-wide text-text-muted">Title</div>
+                    <StoryDiff oldText={titleInitial ?? ""} newText={titleLocalValue ?? ""} mode="unified" />
+                  </div>
+                )}
+                {hasLocalEdit && (
+                  <div>
+                    {showSectionHeaders && (
+                      <div className="mb-1.5 text-caption font-medium uppercase tracking-wide text-text-muted">Description</div>
+                    )}
+                    <StoryDiff
+                      oldText={normalizeMarkdownForCompare(initialDescription)}
+                      newText={normalizeMarkdownForCompare(value)}
+                      mode="unified"
+                    />
+                  </div>
+                )}
               </div>
               {/* Sticky so the resolve actions stay reachable while scrolling a long diff. */}
               <div className="sticky bottom-0 z-10 flex items-center justify-end gap-1 rounded-b-lg border-t border-border-default bg-[var(--color-surface-elevated)]/95 px-3 py-3 backdrop-blur-sm">
@@ -356,7 +387,7 @@ export function EditableDescription({
                 <Button
                   variant="ghost"
                   size="md"
-                  onClick={handleDiscard}
+                  onClick={() => onDiscard?.()}
                   title="Discard local changes and revert to the Jira version"
                   className="!text-text-tertiary hover:!text-text-secondary !text-body-sm"
                 >
@@ -410,7 +441,7 @@ export function EditableDescription({
               )}
               {/* Autosave is the save; this only reports it (BRDG-340). */}
               {saveState !== "idle" && (
-                <span className="flex items-center gap-1.5 pr-1 text-label font-medium text-text-muted">
+                <span className="flex items-center gap-1.5 pr-3 text-label font-medium text-text-muted">
                   {saveState === "saving" ? (
                     <>
                       <Loader2 size={12} strokeWidth={1.75} className="animate-spin" />
@@ -420,6 +451,16 @@ export function EditableDescription({
                     <>
                       <Check size={12} strokeWidth={2} className="text-[var(--color-brand-400)]" />
                       Saved
+                      <span className="text-text-disabled" aria-hidden>·</span>
+                      {/* Autosave means closing never loses work; this is the calm "I'm done" exit. */}
+                      <button
+                        type="button"
+                        onClick={() => void save()}
+                        className="cursor-pointer font-medium text-text-tertiary underline underline-offset-2 decoration-1 hover:text-text-secondary focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-500)]/50"
+                        style={{ transition: "color 0.15s ease" }}
+                      >
+                        Done
+                      </button>
                     </>
                   )}
                 </span>
@@ -428,11 +469,11 @@ export function EditableDescription({
                 variant="ghost"
                 size="md"
                 onClick={handleDiscard}
-                title="Discard"
-                icon={<RotateCcw size={13} strokeWidth={2} />}
+                title={isDirtyOrLocal ? "Discard" : "Close"}
+                icon={isDirtyOrLocal ? <RotateCcw size={13} strokeWidth={2} /> : <X size={13} strokeWidth={2} />}
                 className="!text-text-tertiary hover:!text-text-secondary !text-body-sm"
               >
-                <span className="hidden @2xl:inline">Discard</span>
+                <span className="hidden @2xl:inline">{isDirtyOrLocal ? "Discard" : "Close"}</span>
               </Button>
               {showPush && (
                 <Button

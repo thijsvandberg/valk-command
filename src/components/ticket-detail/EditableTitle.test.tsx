@@ -12,19 +12,12 @@ vi.mock("@/lib/api-client", () => ({
   tickets: {},
 }));
 
-vi.mock("@/components/shared/Tag", () => ({
-  Tag: ({ children, onClick }: { children: React.ReactNode; onClick?: () => void }) => (
-    <button data-testid="tag" onClick={onClick}>{children}</button>
-  ),
-}));
-
 function renderTitle(overrides: {
   ticketKey?: string;
   initialTitle?: string;
   serverLocalEdit?: { value: string; isDraft: boolean; modifiedAt?: string };
   onLocalEdit?: (hasEdit: boolean, value?: string | null) => void;
   onEditingChange?: (isEditing: boolean) => void;
-  onViewDiff?: () => void;
   onSaved?: () => void;
 } = {}) {
   const onLocalEdit = vi.fn();
@@ -36,7 +29,6 @@ function renderTitle(overrides: {
       serverLocalEdit={overrides.serverLocalEdit}
       onLocalEdit={overrides.onLocalEdit ?? onLocalEdit}
       onEditingChange={overrides.onEditingChange ?? onEditingChange}
-      onViewDiff={overrides.onViewDiff}
       onSaved={overrides.onSaved}
     />,
   );
@@ -166,14 +158,6 @@ describe("EditableTitle", () => {
     expect(mockApiFetch).not.toHaveBeenCalled();
   });
 
-  it("renders 'Locally modified' badge when serverLocalEdit is provided", () => {
-    renderTitle({
-      initialTitle: "Original",
-      serverLocalEdit: { value: "Modified", isDraft: false },
-    });
-    expect(screen.getByText("Locally modified")).toBeInTheDocument();
-  });
-
   it("displays server local edit value instead of initialTitle", () => {
     renderTitle({
       initialTitle: "Server title",
@@ -190,21 +174,6 @@ describe("EditableTitle", () => {
     });
     expect(onLocalEdit).toHaveBeenCalledWith(true, "Modified");
     expect(onLocalEdit).toHaveBeenCalledTimes(1);
-  });
-
-  it("calls onViewDiff when badge is clicked", () => {
-    const onViewDiff = vi.fn();
-    renderTitle({
-      serverLocalEdit: { value: "Modified", isDraft: false },
-      onViewDiff,
-    });
-    fireEvent.click(screen.getByText("Locally modified"));
-    expect(onViewDiff).toHaveBeenCalled();
-  });
-
-  it("does not render badge when no local edit exists", () => {
-    renderTitle({ initialTitle: "Clean title" });
-    expect(screen.queryByText("Locally modified")).not.toBeInTheDocument();
   });
 
   it("calls onSaved after persisting a new title", async () => {

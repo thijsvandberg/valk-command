@@ -6,14 +6,20 @@ import type { TicketTab } from "./TicketTabContent";
 
 // Mock all child components to avoid deep dependency trees
 vi.mock("./EditableTitle", () => ({
-  EditableTitle: ({ initialTitle }: { initialTitle: string }) => (
-    <h1 data-testid="editable-title">{initialTitle}</h1>
+  EditableTitle: ({ initialTitle, onLocalEdit }: { initialTitle: string; onLocalEdit?: (has: boolean, value?: string | null) => void }) => (
+    <h1 data-testid="editable-title">
+      {initialTitle}
+      <button data-testid="title-edit-trigger" onClick={() => onLocalEdit?.(true, "New live title")}>edit</button>
+    </h1>
   ),
 }));
 
 vi.mock("./EditableDescription", () => ({
-  EditableDescription: ({ initialDescription }: { initialDescription: string }) => (
-    <div data-testid="editable-description">{initialDescription}</div>
+  EditableDescription: ({ initialDescription, titleLocalValue }: { initialDescription: string; titleLocalValue?: string | null }) => (
+    <div data-testid="editable-description">
+      {initialDescription}
+      <span data-testid="desc-title-local-value">{titleLocalValue ?? ""}</span>
+    </div>
   ),
 }));
 
@@ -265,6 +271,15 @@ describe("TicketTabContent", () => {
     it("renders editable description on content tab", () => {
       renderContent("content");
       expect(screen.getByTestId("editable-description")).toBeInTheDocument();
+    });
+
+    it("forwards the title's just-typed value to the description badge live, before localEdits refetches", () => {
+      renderContent("content");
+      expect(screen.getByTestId("desc-title-local-value")).toHaveTextContent("");
+      // The title editor reports a saved edit with its value...
+      fireEvent.click(screen.getByTestId("title-edit-trigger"));
+      // ...and EditableDescription receives it immediately, without localEdits changing.
+      expect(screen.getByTestId("desc-title-local-value")).toHaveTextContent("New live title");
     });
 
     it("renders attachments section on content tab", () => {
