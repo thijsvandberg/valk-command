@@ -52,10 +52,13 @@ export function UnifiedControlsCluster({
           onClick={() => setFilterOpen((v) => !v)}
           className={`flex h-7 items-center gap-1.5 rounded-md px-2.5 text-body-sm font-medium cursor-pointer focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)] ${
             activeFilterCount > 0 || filterOpen
-              ? "text-[var(--color-brand-600)]"
+              ? "font-semibold text-[var(--color-brand-600)]"
               : "text-text-secondary hover:bg-hover-list-item hover:text-text-primary"
           }`}
-          style={{ transition: "background-color 120ms, color 120ms" }}
+          style={{
+            transition: "background-color 120ms, color 120ms",
+            backgroundColor: activeFilterCount > 0 || filterOpen ? "color-mix(in srgb, var(--color-brand-500) 14%, transparent)" : undefined,
+          }}
           title="Filters"
           aria-label="Filters"
           aria-expanded={filterOpen}
@@ -64,8 +67,8 @@ export function UnifiedControlsCluster({
           <span>Filters</span>
           {activeFilterCount > 0 && (
             <span
-              className="flex h-[15px] min-w-[15px] items-center justify-center rounded-full px-0.5 text-caption font-semibold"
-              style={{ backgroundColor: "var(--color-brand-500)", color: "#fff" }}
+              className="flex h-[15px] min-w-[15px] items-center justify-center rounded-full px-1 text-caption font-bold text-[var(--color-brand-600)]"
+              style={{ backgroundColor: "color-mix(in srgb, var(--color-brand-500) 30%, transparent)" }}
             >
               {activeFilterCount}
             </span>

@@ -66,32 +66,27 @@ function SortableTab({
         type="button"
         onClick={onClick}
         onContextMenu={onContextMenu}
-        className={`group relative flex h-7 self-center items-center gap-1.5 px-2.5 text-body-sm font-medium cursor-pointer focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)] ${
+        className={`group relative flex h-7 self-center items-center gap-1.5 rounded-lg px-3 text-body-sm cursor-pointer focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)] ${
           isActive
-            ? "text-text-primary"
-            : "text-text-tertiary hover:text-text-secondary"
+            ? "font-semibold text-[var(--color-brand-600)]"
+            : "font-medium text-text-tertiary hover:bg-hover-interactive hover:text-text-secondary"
         }`}
-        style={{ transition: "color 120ms" }}
+        style={{
+          transition: "color 120ms, background-color 150ms",
+          backgroundColor: isActive ? "color-mix(in srgb, var(--color-brand-500) 14%, transparent)" : undefined,
+        }}
         {...attributes}
         {...listeners}
       >
         {sprint.state === "backlog" ? (
-          <Inbox className={`h-3 w-3 ${isActive ? "text-text-secondary" : "text-text-muted"}`} strokeWidth={1.5} />
+          <Inbox className={`h-3 w-3 ${isActive ? "text-[var(--color-brand-500)]" : "text-text-muted"}`} strokeWidth={1.5} />
         ) : sprint.state === "active" ? (
           <span
-            className={`h-[7px] w-[7px] rounded-full ${isActive ? "bg-[var(--color-brand-400)]" : "bg-overlay-strong"}`}
-            style={isActive ? { boxShadow: "0 0 8px var(--color-brand-glow)" } : undefined}
+            className={`h-[7px] w-[7px] rounded-full ${isActive ? "bg-[var(--color-status-success)]" : "bg-overlay-strong"}`}
+            style={isActive ? { boxShadow: "0 0 7px var(--color-status-success)" } : undefined}
           />
         ) : null}
         {sprint.name}
-        {/* Active underline -- aligned to the dot+label like the exploration */}
-        {isActive && (
-          <span className="absolute inset-x-2.5 bottom-0 h-[2px] rounded-full bg-[var(--color-brand-400)]" />
-        )}
-        {/* Hover underline preview */}
-        {!isActive && (
-          <span className="absolute inset-x-2.5 bottom-0 h-[2px] rounded-full bg-[var(--color-brand-400)] opacity-0 group-hover:opacity-20" style={{ transition: "opacity 150ms" }} />
-        )}
       </button>
     </div>
   );
