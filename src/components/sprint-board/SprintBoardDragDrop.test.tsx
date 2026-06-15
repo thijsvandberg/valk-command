@@ -1,5 +1,5 @@
 import { render, screen } from "@testing-library/react";
-import { describe, it, expect, vi } from "vitest";
+import { describe, it, expect, vi, beforeEach } from "vitest";
 import { SprintDropZoneBar, snapToPointer, boardCollisionDetection } from "./SprintBoardDragDrop";
 import type { Sprint } from "@/types/ticket";
 
@@ -7,11 +7,15 @@ vi.mock("lucide-react", () => ({
   ArrowRight: (props: Record<string, unknown>) => <span data-testid="arrow-right" {...props} />,
 }));
 
+// Capture every droppable id registered during a render so tests can assert which
+// sprint the backlog tile actually targets.
+const { droppableIds } = vi.hoisted(() => ({ droppableIds: [] as string[] }));
+
 vi.mock("@dnd-kit/core", () => ({
-  useDroppable: ({ id }: { id: string }) => ({
-    setNodeRef: vi.fn(),
-    isOver: false,
-  }),
+  useDroppable: ({ id }: { id: string }) => {
+    droppableIds.push(id);
+    return { setNodeRef: vi.fn(), isOver: false };
+  },
   pointerWithin: vi.fn(() => []),
   closestCenter: vi.fn(() => [{ id: "ticket-1" }]),
 }));
@@ -28,12 +32,19 @@ function makeSprint(overrides: Partial<Sprint> = {}): Sprint {
 }
 
 describe("SprintDropZoneBar", () => {
+  // "BT: Backlog" is a real Jira sprint with a numeric id; "__backlog__" is the
+  // generic sprint-less project backlog. The drop tile must point at the real sprint.
   const sprints = [
     makeSprint({ id: "s1", name: "Sprint 1" }),
     makeSprint({ id: "s2", name: "Sprint 2" }),
     makeSprint({ id: "s3", name: "Sprint 3" }),
+    makeSprint({ id: "628", name: "BT: Backlog", state: "backlog" }),
     makeSprint({ id: "__backlog__", name: "Backlog", state: "backlog" }),
   ];
+
+  beforeEach(() => {
+    droppableIds.length = 0;
+  });
 
   it("keeps the bar chrome: renders the All pill, no 'Move to' label", () => {
     render(<SprintDropZoneBar sprints={sprints} pillSlotSprints={["s1", "s2", "s3"]} activeSprintId="s1" allActive={false} />);
@@ -46,6 +57,12 @@ describe("SprintDropZoneBar", () => {
     expect(screen.getByText("BT: Backlog")).toBeInTheDocument();
   });
 
+  it("targets the real BT: Backlog sprint id, not the generic __backlog__", () => {
+    render(<SprintDropZoneBar sprints={sprints} pillSlotSprints={["s1", "s2"]} activeSprintId="s1" allActive={false} />);
+    expect(droppableIds).toContain("sprint-slot:628");
+    expect(droppableIds).not.toContain("sprint-slot:__backlog__");
+  });
+
   it("makes pinned non-active sprints + backlog drop tiles, the active sprint a plain pill", () => {
     render(<SprintDropZoneBar sprints={sprints} pillSlotSprints={["s1", "s2", "s3"]} activeSprintId="s1" allActive={false} />);
     // s2, s3 and BT: Backlog each render an arrow cue (drop tiles); s1 is plain.
@@ -55,8 +72,8 @@ describe("SprintDropZoneBar", () => {
     expect(screen.getByText("Sprint 3")).toBeInTheDocument();
   });
 
-  it("renders the backlog as a plain pill when the backlog is the active view", () => {
-    render(<SprintDropZoneBar sprints={sprints} pillSlotSprints={["s1", "s2"]} activeSprintId="__backlog__" allActive={false} />);
+  it("renders the backlog as a plain pill when the backlog sprint is the active view", () => {
+    render(<SprintDropZoneBar sprints={sprints} pillSlotSprints={["s1", "s2"]} activeSprintId="628" allActive={false} />);
     expect(screen.getByText("BT: Backlog")).toBeInTheDocument();
     // Only s1 and s2 are drop tiles; BT: Backlog is plain (no arrow).
     expect(screen.getAllByTestId("arrow-right")).toHaveLength(2);

@@ -69,4 +69,16 @@ describe("moveTicketSprintCaches", () => {
     const destUpdater = mutate.mock.calls[1][1] as (c: unknown) => unknown;
     expect(destUpdater([])).toEqual([{ key: "VPL-1", sprintId: undefined }]);
   });
+
+  it("places the ticket at the top of the destination with a leading rank when toTop is set", () => {
+    moveTicketSprintCaches({ key: "VPL-1", sprintId: "138" }, "139", true);
+    const destUpdater = mutate.mock.calls[1][1] as (c: unknown) => unknown;
+    const result = destUpdater([
+      { key: "VPL-9", jiraRank: 5 },
+      { key: "VPL-8", jiraRank: 10 },
+    ]) as Array<{ key: string; jiraRank?: number }>;
+    // Prepended and ranked below the current minimum so the rank sort shows it first.
+    expect(result.map((t) => t.key)).toEqual(["VPL-1", "VPL-9", "VPL-8"]);
+    expect(result[0].jiraRank).toBeLessThan(5);
+  });
 });

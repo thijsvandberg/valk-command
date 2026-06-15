@@ -14,7 +14,9 @@ import {
   type DragOverEvent,
 } from "@dnd-kit/core";
 import { jira, ApiError } from "@/lib/api-client";
-import { moveTicketSprintCaches } from "@/lib/ticket-cache";
+import { moveTicketSprintCaches, revalidateMovedSprintLists } from "@/lib/ticket-cache";
+import { registerPendingMove, clearPendingMove } from "@/components/sprint-board/pendingSprintMoves";
+import { sprintMoveToastContent } from "@/components/sprint-board/sprintMoveToast";
 
 const VIRTUALIZE_THRESHOLD = 40;
 
@@ -35,6 +37,9 @@ interface DragDropDeps {
   refreshMeter: () => void;
   sortField: SortField;
   activeViewId: string | null;
+  // Navigate to a sprint and dismiss the toast, for the move toast's "View" link.
+  onViewSprint: (sprintId: string) => void;
+  dismissToast: () => void;
 }
 
 export function useSprintBoardDragDrop(deps: DragDropDeps) {
@@ -42,6 +47,7 @@ export function useSprintBoardDragDrop(deps: DragDropDeps) {
     activeSprintId, isAllView, groupBy, checkedTickets, setCheckedTickets,
     tickets, apiTickets, mutateTickets, sprintNameMap, showToast,
     setPoPriorityOrder, refreshMeter, sortField, activeViewId,
+    onViewSprint, dismissToast,
   } = deps;
 
   const [boardActiveDragId, setBoardActiveDragId] = useState<string | null>(null);
@@ -86,6 +92,19 @@ export function useSprintBoardDragDrop(deps: DragDropDeps) {
     setBoardDragTargetSprintId(targetSprintId);
   }, []);
 
+  // Shared move-success toast (identical to the right-click/bulk move toast).
+  const showMoveToast = useCallback((targetSprintId: string, targetName: string, count: number) => {
+    showToast(
+      sprintMoveToastContent({
+        count,
+        destName: targetName,
+        isBacklog: targetSprintId === "__backlog__",
+        onView: () => { onViewSprint(targetSprintId); dismissToast(); },
+      }),
+      0,
+    );
+  }, [showToast, onViewSprint, dismissToast]);
+
   const handleBoardDragEnd = useCallback(async (event: DragEndEvent) => {
     const { active, over } = event;
     setBoardActiveDragId(null);
@@ -112,10 +131,14 @@ export function useSprintBoardDragDrop(deps: DragDropDeps) {
         .filter((t): t is Ticket => Boolean(t));
       // Move each row across the sprint caches at once: it leaves the source
       // list, lands in the destination list, and the open detail panel/sidebar
-      // follow. No revalidation follows on purpose: the move route and the
-      // tickets GET hold separate 30s caches in next dev, so a bare revalidate
-      // re-reads the stale list and the rows pop back. Mirrors the bulk-move path.
-      movedTickets.forEach((t) => moveTicketSprintCaches(t, targetSprintId));
+      // follow. The optimistic patch lands immediately; the move route's server
+      // cache invalidation is reconciled by a targeted revalidation AFTER the
+      // move resolves (below). Mirrors the bulk-move path.
+      movedTickets.forEach((t) => moveTicketSprintCaches(t, targetSprintId, true));
+      // Keep each moved row visible in the destination across revalidations until
+      // the slow Jira move resolves and the server list reflects it.
+      const now = Date.now();
+      movedTickets.forEach((t) => registerPendingMove(t, targetSprintId, now));
       setCheckedTickets((prev) => {
         const next = new Set(prev);
         keysToMove.forEach((k) => next.delete(k));
@@ -123,12 +146,18 @@ export function useSprintBoardDragDrop(deps: DragDropDeps) {
       });
 
       try {
-        await jira.moveSprint({ issueKeys: keysToMove, targetSprintId });
+        // position: "top" lands the dropped row at the top of the target sprint.
+        await jira.moveSprint({ issueKeys: keysToMove, targetSprintId, position: "top" });
         refreshMeter();
-        const label = keysToMove.length === 1 ? keysToMove[0] : `${keysToMove.length} tickets`;
-        showToast(`Moved ${label} to ${targetName}`);
+        // The server cache is now invalidated, so refresh the destination and
+        // origin lists: if the target view was opened mid-move and revalidated
+        // against stale data, this brings the moved row back promptly instead of
+        // waiting for the next focus/interval revalidation.
+        revalidateMovedSprintLists([targetSprintId, ...movedTickets.map((t) => t.sprintId)]);
+        showMoveToast(targetSprintId, targetName, keysToMove.length);
       } catch {
         movedTickets.forEach((t) => moveTicketSprintCaches(t, t.sprintId ?? "__backlog__"));
+        movedTickets.forEach((t) => clearPendingMove(t.key));
         showToast("Failed to move to sprint. Changes reverted.");
       }
       return;
@@ -158,9 +187,9 @@ export function useSprintBoardDragDrop(deps: DragDropDeps) {
       });
 
       try {
-        await jira.moveSprint({ issueKeys: keysToMove, targetSprintId });
-        const label = keysToMove.length === 1 ? keysToMove[0] : `${keysToMove.length} tickets`;
-        showToast(`Moved ${label} to ${targetName}`);
+        // Dropping on an (empty) sprint group lands the row at the top of it.
+        await jira.moveSprint({ issueKeys: keysToMove, targetSprintId, position: "top" });
+        showMoveToast(targetSprintId, targetName, keysToMove.length);
         mutateTickets();
         refreshMeter();
       } catch {
@@ -207,8 +236,7 @@ export function useSprintBoardDragDrop(deps: DragDropDeps) {
           sprintId: targetSprintId,
         });
         setPoPriorityOrder(null);
-        const label = keysToMove.length === 1 ? keysToMove[0] : `${keysToMove.length} tickets`;
-        showToast(`Moved ${label} to ${targetName}`);
+        showMoveToast(targetSprintId, targetName, keysToMove.length);
         mutateTickets();
         refreshMeter();
       } catch {
@@ -263,7 +291,7 @@ export function useSprintBoardDragDrop(deps: DragDropDeps) {
       const msg = err instanceof ApiError ? err.message : err instanceof Error ? err.message : "Failed to update rank in Jira";
       showToast(`${msg}. Reverted.`);
     }
-  }, [activeSprintId, isAllView, groupBy, checkedTickets, tickets, apiTickets, mutateTickets, sprintNameMap, showToast, setCheckedTickets, setPoPriorityOrder, refreshMeter]);
+  }, [activeSprintId, isAllView, groupBy, checkedTickets, tickets, apiTickets, mutateTickets, sprintNameMap, showToast, setCheckedTickets, setPoPriorityOrder, refreshMeter, showMoveToast]);
 
   const boardActiveDragTicket = boardActiveDragId ? tickets.find((t) => t.key === boardActiveDragId) : null;
   const boardDraggedKeys = useMemo(() => {

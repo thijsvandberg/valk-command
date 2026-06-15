@@ -27,6 +27,10 @@ const saveStoryPointsMock = vi.mocked(saveStoryPoints);
 vi.mock("swr", () => ({
   mutate: (...args: unknown[]) => globalMutate(...args),
 }));
+vi.mock("@/components/sprint-board/pendingSprintMoves", () => ({
+  registerPendingMove: vi.fn(),
+  clearPendingMove: vi.fn(),
+}));
 
 function makeTicket(key: string, flagged: boolean, sprintId?: string): Ticket {
   return {
@@ -236,7 +240,7 @@ describe("useTicketActions - handleBulkMoveSprint", () => {
     });
 
     expect(outcome).toEqual({ ok: true, count: 2 });
-    expect(moveSprint).toHaveBeenCalledWith({ issueKeys: ["A-1", "A-2"], targetSprintId: "200" });
+    expect(moveSprint).toHaveBeenCalledWith({ issueKeys: ["A-1", "A-2"], targetSprintId: "200", position: "top" });
 
     // Destination injection into the 200 key, with the new sprintId.
     const destCall = globalMutate.mock.calls.find((c) => c[0] === "/api/tickets?sprintId=200");
@@ -284,7 +288,7 @@ describe("useTicketActions - handleBulkMoveSprint", () => {
       await result.current.handleBulkMoveSprint("__backlog__", new Set(["A-1"]));
     });
 
-    expect(moveSprint).toHaveBeenCalledWith({ issueKeys: ["A-1"], targetSprintId: "__backlog__" });
+    expect(moveSprint).toHaveBeenCalledWith({ issueKeys: ["A-1"], targetSprintId: "__backlog__", position: "top" });
     const destCall = globalMutate.mock.calls.find((c) => c[0] === "/api/tickets?sprintId=__backlog__");
     expect(destCall).toBeDefined();
     const injected = runGlobalUpdater(destCall!, undefined);

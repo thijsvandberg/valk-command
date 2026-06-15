@@ -39,6 +39,8 @@ import { syncGroupInTranches, type GroupSyncTarget, type GroupSyncProgress } fro
 import { useSprintBoardFilters } from "@/components/sprint-board/useSprintBoardFilters";
 import { useGroupBy } from "@/components/sprint-board/useGroupBy";
 import { useSprintBoardDragDrop } from "@/components/sprint-board/useSprintBoardDragDrop";
+import { usePendingSprintMoves, applyPendingMoves, clearPendingMove } from "@/components/sprint-board/pendingSprintMoves";
+import { sprintMoveToastContent } from "@/components/sprint-board/sprintMoveToast";
 import { useSprintBoardShortcuts } from "@/components/sprint-board/useSprintBoardShortcuts";
 import { useTicketActions } from "@/components/sprint-board/useTicketActions";
 import { SprintBoardHeader } from "@/components/sprint-board/SprintBoardHeader";
@@ -237,7 +239,22 @@ export default function SprintBoard() {
   }, [activeSprintId, setPoPriorityMap]);
 
   const { data: apiTickets, isLoading: ticketsLoading, mutate: mutateTickets } = useTickets(activeSprintId || null);
-  const allTickets = useMemo(() => apiTickets ?? [], [apiTickets]);
+  // In-flight sprint moves: keep a moved row visible in its destination list (and
+  // out of its origin) until the slow Jira round-trip resolves and the server list
+  // reflects it, so a mid-move revalidation does not make it flicker away.
+  const pendingMoves = usePendingSprintMoves();
+  const allTickets = useMemo(
+    () => applyPendingMoves(apiTickets, activeSprintId || "__all__", pendingMoves, Date.now()) ?? [],
+    [apiTickets, activeSprintId, pendingMoves],
+  );
+  // Drop a pending move once the destination's server data includes the row.
+  useEffect(() => {
+    if (!apiTickets) return;
+    const present = new Set(apiTickets.map((t) => t.key));
+    pendingMoves.forEach((m, key) => {
+      if (m.targetSprintId === activeSprintId && present.has(key)) clearPendingMove(key);
+    });
+  }, [apiTickets, activeSprintId, pendingMoves]);
   const activeListKey = useMemo(() => {
     if (!activeSprintId) return null;
     return activeSprintId === "__all__" ? "/api/tickets" : `/api/tickets?sprintId=${encodeURIComponent(activeSprintId)}`;
@@ -471,13 +488,6 @@ export default function SprintBoard() {
     setSearchModalOpen, headerMenuRef, headerMenuOpen, setHeaderMenuOpen,
   });
 
-  // DnD
-  const dnd = useSprintBoardDragDrop({
-    activeSprintId, isAllView, groupBy, checkedTickets, setCheckedTickets,
-    tickets, apiTickets, mutateTickets, sprintNameMap, showToast,
-    setPoPriorityOrder, refreshMeter, sortField: f.sortField, activeViewId: f.activeViewId,
-  });
-
   // Prefetch adjacent sprints
   useEffect(() => {
     if (isAllView || slotSprints.length === 0) return;
@@ -521,6 +531,16 @@ export default function SprintBoard() {
   const setActiveSlot = useCallback((slot: number) => { const id = slotSprints[slot]; if (id) { setEphemeralSprintId(null); navigateToSprint(id); } }, [slotSprints, navigateToSprint]);
   const handleAllClick = useCallback(() => { setEphemeralSprintId(null); navigateToSprint("__all__"); }, [navigateToSprint]);
   const handleSprintListSelect = useCallback((id: string) => { setEphemeralSprintId(id); navigateToSprint(id); }, [navigateToSprint]);
+
+  // DnD (declared here so it can reuse handleSprintListSelect for the move toast's
+  // "View on sprint board" link, matching the right-click/bulk move toast).
+  const dnd = useSprintBoardDragDrop({
+    activeSprintId, isAllView, groupBy, checkedTickets, setCheckedTickets,
+    tickets, apiTickets, mutateTickets, sprintNameMap, showToast,
+    setPoPriorityOrder, refreshMeter, sortField: f.sortField, activeViewId: f.activeViewId,
+    onViewSprint: handleSprintListSelect, dismissToast,
+  });
+
   const handleEphemeralClick = useCallback(() => { if (ephemeralSprintId) navigateToSprint(ephemeralSprintId); }, [ephemeralSprintId, navigateToSprint]);
   const handleSlotEdit = useCallback((i: number) => { setEditingSlot((prev) => (prev === i ? null : i)); }, []);
   const handleSprintSelect = useCallback((id: string) => { if (editingSlot !== null) { setSlotSprints((prev) => { const next = [...prev]; next[editingSlot] = id; saveSprintSlots(next, sprints); return next; }); } }, [editingSlot, sprints]);
@@ -618,18 +638,12 @@ export default function SprintBoard() {
     // recompute for both source and destination sprint without a manual reload.
     refreshMeter();
     showToast(
-      <span>
-        Moved {count} ticket{count === 1 ? "" : "s"} to{" "}
-        <span className="font-semibold text-text-primary">{dest}</span>
-        <span className="mx-2 text-text-muted" aria-hidden>&middot;</span>
-        <a
-          href="#"
-          onClick={(e) => { e.preventDefault(); handleSprintListSelect(sprintId); dismissToast(); }}
-          className="font-medium text-[var(--color-brand-400)] underline underline-offset-2 hover:text-[var(--color-brand-300)]"
-        >
-          {isBacklog ? "View in backlog" : "View on sprint board"}
-        </a>
-      </span>,
+      sprintMoveToastContent({
+        count,
+        destName: dest,
+        isBacklog,
+        onView: () => { handleSprintListSelect(sprintId); dismissToast(); },
+      }),
       0,
     );
   }, [taBulkMoveSprint, checkedTickets, sprintNameMap, handleSprintListSelect, showToast, dismissToast, refreshMeter]);

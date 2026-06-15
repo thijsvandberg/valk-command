@@ -42,8 +42,15 @@ const BACKLOG_TARGET = "__backlog__";
 // destination, ensure it is present in the destination list, and update its
 // sprintId in the All view and the detail object. `ticket` is the current row so
 // the destination list can render it before revalidation arrives.
-// `targetSprintId` is the raw move value ("__backlog__" or a sprint id).
-export function moveTicketSprintCaches(ticket: { key: string; sprintId?: string | null }, targetSprintId: string) {
+// `targetSprintId` is the raw move value ("__backlog__" or a sprint id). When
+// `toTop` is set the row is placed at the top of the destination list (matching
+// the server's rankToTopOfSprint/Backlog), so it shows where it lands instead of
+// flashing mid-list until revalidation.
+export function moveTicketSprintCaches(
+  ticket: { key: string; sprintId?: string | null },
+  targetSprintId: string,
+  toTop = false,
+) {
   const newSprintId = targetSprintId === BACKLOG_TARGET ? undefined : targetSprintId;
   const destKey = `/api/tickets?sprintId=${encodeURIComponent(targetSprintId)}`;
   const detailKey = `/api/tickets/${encodeURIComponent(ticket.key)}`;
@@ -57,15 +64,21 @@ export function moveTicketSprintCaches(ticket: { key: string; sprintId?: string 
     { revalidate: false },
   );
 
-  // Ensure it appears in the destination list (de-duplicated).
+  // Ensure it appears in the destination list (de-duplicated). The list is sorted
+  // by jiraRank ascending, so a rank below the current minimum sorts it to the top.
   void globalMutate(
     destKey,
     (current: unknown) => {
-      const base = Array.isArray(current) ? (current as Array<{ key?: string }>) : [];
+      const base = Array.isArray(current) ? (current as Array<{ key?: string; jiraRank?: number | null }>) : [];
+      const topRank = Math.min(0, ...base.map((t) => t.jiraRank ?? 0)) - 1;
       const exists = base.some((t) => t.key === ticket.key);
-      return exists
-        ? base.map((t) => (t.key === ticket.key ? { ...t, sprintId: newSprintId } : t))
-        : [...base, moved];
+      if (exists) {
+        return base.map((t) =>
+          t.key === ticket.key ? { ...t, sprintId: newSprintId, ...(toTop ? { jiraRank: topRank } : {}) } : t,
+        );
+      }
+      const placed = toTop ? { ...moved, jiraRank: topRank } : moved;
+      return toTop ? [placed, ...base] : [...base, placed];
     },
     { revalidate: false },
   );
@@ -89,6 +102,22 @@ export function moveTicketSprintCaches(ticket: { key: string; sprintId?: string 
         : current,
     { revalidate: false },
   );
+}
+
+// Revalidate exactly the per-sprint lists touched by a move, plus the All view.
+// The optimistic patch already relocated the row, but if the destination list was
+// opened while the move was still in flight, SWR's mount revalidation can refetch
+// the still-stale server cache and drop the row. Calling this AFTER the move
+// resolves (the move route has invalidated the now-process-wide server cache by
+// then) refetches fresh data so the row reappears within a refresh instead of
+// waiting for the next focus/interval revalidation. `sprintIds` are the raw move
+// values (the destination plus each row's origin); undefined maps to the backlog.
+export function revalidateMovedSprintLists(sprintIds: Array<string | null | undefined>) {
+  const keys = new Set<string>(["/api/tickets"]);
+  for (const id of sprintIds) {
+    keys.add(`/api/tickets?sprintId=${encodeURIComponent(id ?? BACKLOG_TARGET)}`);
+  }
+  return Promise.all([...keys].map((k) => globalMutate(k)));
 }
 
 // Revalidate every ticket-related cache (list, sprint lists, all details) so a

@@ -8,6 +8,7 @@ import { apiFetch, jira, tickets as ticketsApi } from "@/lib/api-client";
 import { userInitials, userColor } from "@/lib/user-utils";
 import type { AssignableUser } from "@/components/shared/AssigneePicker";
 import type { EpicOption } from "@/components/shared/EpicPicker";
+import { registerPendingMove, clearPendingMove } from "@/components/sprint-board/pendingSprintMoves";
 
 interface TicketActionsDeps {
   apiTickets: Ticket[] | undefined;
@@ -177,13 +178,19 @@ export function useTicketActions(deps: TicketActionsDeps) {
   // Sprint move requires a Jira round-trip; revalidate rather than optimistically
   // rewrite (the board's sprintId field carries the sprint name, not its id).
   const handleSprintChange = useCallback(async (key: string, sprintId: string | null) => {
+    const target = sprintId ?? "__backlog__";
+    const moved = apiTickets?.find((t) => t.key === key);
+    // Keep the row visible in its destination until the slow Jira move resolves.
+    if (moved) registerPendingMove(moved, target, Date.now());
     try {
-      await jira.moveSprint({ issueKeys: [key], targetSprintId: sprintId ?? "__backlog__" });
+      // Moving a ticket to a sprint lands it at the top of that sprint.
+      await jira.moveSprint({ issueKeys: [key], targetSprintId: target, position: "top" });
       mutateTickets();
     } catch {
+      clearPendingMove(key);
       showToast(`Failed to move ${key} to sprint.`);
     }
-  }, [mutateTickets, showToast]);
+  }, [apiTickets, mutateTickets, showToast]);
 
   const handleCloseSubtasks = useCallback(async (key: string) => {
     const prev = apiTickets?.find((t) => t.key === key);
@@ -307,8 +314,12 @@ export function useTicketActions(deps: TicketActionsDeps) {
     const movedTickets = (apiTickets ?? [])
       .filter((t) => checkedTickets.has(t.key))
       .map((t) => ({ ...t, sprintId: newSprintId }));
+    // Keep the moved rows visible in their destination until the Jira move resolves.
+    const now = Date.now();
+    movedTickets.forEach((t) => registerPendingMove(t, targetSprintId, now));
     try {
-      await jira.moveSprint({ issueKeys: keys, targetSprintId });
+      // Bulk-moving lands the rows at the top of the target sprint.
+      await jira.moveSprint({ issueKeys: keys, targetSprintId, position: "top" });
 
       // Update the current list. In the All view the moved rows stay but get
       // the new sprintId (so grouping/labels follow them); in a per-sprint or
@@ -326,15 +337,20 @@ export function useTicketActions(deps: TicketActionsDeps) {
         );
       }
 
-      // Inject the moved tickets into the destination cache (de-duplicated) so
-      // they are already there when the user opens that sprint/backlog view.
+      // Inject the moved tickets at the TOP of the destination cache (de-duplicated)
+      // so they sit where they land. The list sorts by jiraRank ascending, so the
+      // moved rows get a rank below the current minimum.
       if (destKey !== activeListKey) {
         globalMutate<Ticket[]>(
           destKey,
           (current) => {
             const base = current ?? [];
             const existing = new Set(base.map((t) => t.key));
-            return [...base, ...movedTickets.filter((t) => !existing.has(t.key))];
+            const topRank = Math.min(0, ...base.map((t) => t.jiraRank ?? 0)) - 1;
+            const fresh = movedTickets
+              .filter((t) => !existing.has(t.key))
+              .map((t) => ({ ...t, jiraRank: topRank }));
+            return [...fresh, ...base];
           },
           { revalidate: false },
         );
@@ -342,6 +358,7 @@ export function useTicketActions(deps: TicketActionsDeps) {
 
       return { ok: true, count: keys.length };
     } catch {
+      keys.forEach((k) => clearPendingMove(k));
       return { ok: false, count: keys.length };
     }
   }, [apiTickets, mutateTickets, activeListKey]);

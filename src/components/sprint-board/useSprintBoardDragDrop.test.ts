@@ -11,8 +11,17 @@ vi.mock("@/lib/api-client", () => ({
 }));
 
 const moveTicketSprintCaches = vi.fn();
+const revalidateMovedSprintLists = vi.fn();
 vi.mock("@/lib/ticket-cache", () => ({
   moveTicketSprintCaches: (...a: unknown[]) => moveTicketSprintCaches(...a),
+  revalidateMovedSprintLists: (...a: unknown[]) => revalidateMovedSprintLists(...a),
+}));
+
+const registerPendingMove = vi.fn();
+const clearPendingMove = vi.fn();
+vi.mock("@/components/sprint-board/pendingSprintMoves", () => ({
+  registerPendingMove: (...a: unknown[]) => registerPendingMove(...a),
+  clearPendingMove: (...a: unknown[]) => clearPendingMove(...a),
 }));
 
 function makeTicket(key: string, sprintId?: string): Ticket {
@@ -41,6 +50,8 @@ function makeDeps(overrides: Record<string, unknown> = {}) {
     refreshMeter: vi.fn(),
     sortField: "rank" as const,
     activeViewId: null,
+    onViewSprint: vi.fn(),
+    dismissToast: vi.fn(),
     ...overrides,
   };
 }
@@ -56,9 +67,39 @@ describe("useSprintBoardDragDrop - sprint-slot drop zone", () => {
   beforeEach(() => {
     moveSprint.mockReset().mockResolvedValue({});
     moveTicketSprintCaches.mockReset();
+    revalidateMovedSprintLists.mockReset();
+    registerPendingMove.mockReset();
+    clearPendingMove.mockReset();
   });
 
-  it("optimistically moves the dropped ticket across caches without a reverting revalidation", async () => {
+  it("registers the moved row as a pending move so it survives revalidation", async () => {
+    const deps = makeDeps();
+    const { result } = renderHook(() => useSprintBoardDragDrop(deps));
+
+    await act(async () => {
+      await result.current.handleBoardDragEnd(dropEvent("VPL-1", "sprint-slot:140"));
+    });
+
+    expect(registerPendingMove).toHaveBeenCalledWith(
+      expect.objectContaining({ key: "VPL-1" }),
+      "140",
+      expect.any(Number),
+    );
+  });
+
+  it("clears the pending move when the drop move fails", async () => {
+    moveSprint.mockRejectedValueOnce(new Error("boom"));
+    const deps = makeDeps();
+    const { result } = renderHook(() => useSprintBoardDragDrop(deps));
+
+    await act(async () => {
+      await result.current.handleBoardDragEnd(dropEvent("VPL-1", "sprint-slot:140"));
+    });
+
+    expect(clearPendingMove).toHaveBeenCalledWith("VPL-1");
+  });
+
+  it("optimistically moves the dropped ticket across caches then revalidates the affected lists", async () => {
     const deps = makeDeps();
     const { result } = renderHook(() => useSprintBoardDragDrop(deps));
 
@@ -69,10 +110,24 @@ describe("useSprintBoardDragDrop - sprint-slot drop zone", () => {
     expect(moveTicketSprintCaches).toHaveBeenCalledWith(
       expect.objectContaining({ key: "VPL-1" }),
       "140",
+      true,
     );
-    await waitFor(() => expect(moveSprint).toHaveBeenCalledWith({ issueKeys: ["VPL-1"], targetSprintId: "140" }));
-    // The bug being fixed: no list revalidation after the move, so the row stays gone.
-    expect(deps.mutateTickets).not.toHaveBeenCalled();
+    await waitFor(() => expect(moveSprint).toHaveBeenCalledWith({ issueKeys: ["VPL-1"], targetSprintId: "140", position: "top" }));
+    // After the move resolves, revalidate the destination + origin lists so the
+    // row reappears promptly if the target view was opened mid-move.
+    expect(revalidateMovedSprintLists).toHaveBeenCalledWith(["140", "todo"]);
+  });
+
+  it("does not revalidate lists when the move fails (optimistic state is rolled back instead)", async () => {
+    moveSprint.mockRejectedValueOnce(new Error("boom"));
+    const deps = makeDeps();
+    const { result } = renderHook(() => useSprintBoardDragDrop(deps));
+
+    await act(async () => {
+      await result.current.handleBoardDragEnd(dropEvent("VPL-1", "sprint-slot:140"));
+    });
+
+    expect(revalidateMovedSprintLists).not.toHaveBeenCalled();
   });
 
   it("refreshes the capacity meter after a successful cross-sprint drop", async () => {
@@ -107,8 +162,8 @@ describe("useSprintBoardDragDrop - sprint-slot drop zone", () => {
       await result.current.handleBoardDragEnd(dropEvent("VPL-1", "sprint-slot:140"));
     });
 
-    // First call moves to the target, the rollback moves it back to "todo".
-    expect(moveTicketSprintCaches).toHaveBeenNthCalledWith(1, expect.objectContaining({ key: "VPL-1" }), "140");
+    // First call moves to the top of the target, the rollback moves it back to "todo".
+    expect(moveTicketSprintCaches).toHaveBeenNthCalledWith(1, expect.objectContaining({ key: "VPL-1" }), "140", true);
     expect(moveTicketSprintCaches).toHaveBeenNthCalledWith(2, expect.objectContaining({ key: "VPL-1" }), "todo");
     expect(deps.showToast).toHaveBeenCalledWith("Failed to move to sprint. Changes reverted.");
   });

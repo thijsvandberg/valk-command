@@ -11,6 +11,14 @@ import {
 } from "@dnd-kit/core";
 import { dropTargetClasses, dropTargetStyle } from "@/components/shared/dropZone";
 
+// The leading "Backlog" drop tile targets a real team-backlog SPRINT (which has a
+// numeric Jira sprint id), not the generic sprint-less project backlog. Dropping
+// there must ASSIGN that sprint so the ticket lands in the team's backlog; pointing
+// it at "__backlog__" instead only strips the sprint and drops the ticket into the
+// project-wide backlog. Fixed to the BT team for now; BRDG-346 turns this into a
+// user setting.
+const BACKLOG_DROP_SPRINT_NAME = "BT: Backlog";
+
 // Sprint drop zone shown when a ticket is being dragged
 export function SprintDropTile({
   sprintId,
@@ -71,8 +79,10 @@ export function SprintDropZoneBar({
   activeSprintId: string;
   allActive: boolean;
 }) {
-  const backlogSprint = sprints.find((s) => s.id === "__backlog__");
-  const pinned = pillSlotSprints.filter((id) => id !== "__backlog__");
+  const backlogSprint =
+    sprints.find((s) => s.name === BACKLOG_DROP_SPRINT_NAME) ??
+    sprints.find((s) => s.id === "__backlog__");
+  const pinned = pillSlotSprints.filter((id) => id !== backlogSprint?.id);
   return (
     <div className="absolute inset-0 z-10 flex items-center px-4">
       {/* Mirrors the SprintSlots "All" pill so the leading chrome is unchanged. */}
@@ -86,9 +96,9 @@ export function SprintDropZoneBar({
           place) and shares their gap, so there is no extra margin before the
           first sprint. */}
       <div className="flex min-w-0 items-center gap-1 overflow-x-auto xl:gap-1.5 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-        {backlogSprint && (activeSprintId === "__backlog__"
-          ? <PlainTab sprint={backlogSprint} label="BT: Backlog" />
-          : <SprintDropTile sprintId="__backlog__" sprint={{ ...backlogSprint, name: "BT: Backlog" }} />)}
+        {backlogSprint && (activeSprintId === backlogSprint.id
+          ? <PlainTab sprint={backlogSprint} />
+          : <SprintDropTile sprintId={backlogSprint.id} sprint={backlogSprint} />)}
         {pinned.map((sprintId) => {
           const sprint = sprints.find((s) => s.id === sprintId);
           if (!sprint) return null;
