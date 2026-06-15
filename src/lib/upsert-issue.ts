@@ -5,6 +5,7 @@ import { jiraClient, extractStoryPoints, extractSprints, extractEpicLink, extrac
 import { adfToMarkdown } from "@/lib/adf-to-markdown";
 import { markdownEqualIgnoringSpacing } from "@/lib/normalize-markdown";
 import { emitTicketEvent, type TicketChangeKind } from "@/lib/ticket-events";
+import { syncTicketSprints } from "@/lib/sprint-membership";
 import { createHash } from "crypto";
 
 export function normalizeIssueType(name: string): string {
@@ -246,6 +247,11 @@ export async function upsertIssue(
     } else {
       tx.insert(ticket).values(ticketData).run();
     }
+
+    // Keep the indexed sprint-membership bridge in lockstep with sprint_ids.
+    // sprintIdList is the source of truth here (sprintName is the fallback for
+    // the empty-list case, matching sprintIdsJson going null above).
+    syncTicketSprints(tx, issue.key, sprintIdList, sprintName);
 
     // Keep ticketSubtask rows in sync when this issue IS a subtask.
     // Incremental sync picks up the subtask itself but its parent may not

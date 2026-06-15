@@ -4,6 +4,7 @@ import { createTestDb } from "@/db/test-utils";
 import type { BetterSQLite3Database } from "drizzle-orm/better-sqlite3";
 import type * as schema from "@/db/schema";
 import { ticket, ticketMetadata } from "@/db/schema";
+import { syncTicketSprints } from "@/lib/sprint-membership";
 import { cache } from "@/lib/cache";
 
 let testDb: BetterSQLite3Database<typeof schema>;
@@ -45,6 +46,8 @@ function seedTicket(
       sprintIds: ids ? JSON.stringify(ids) : null,
     })
     .run();
+  // Mirror production: the indexed bridge is maintained on every sprint_ids write.
+  syncTicketSprints(db, key, sprintIds ?? null, sprintName);
 }
 
 describe("GET /api/tickets", () => {
@@ -105,7 +108,8 @@ describe("GET /api/tickets", () => {
   });
 
   it("falls back to sprint_name for tickets synced before sprint_ids existed", async () => {
-    // Legacy row: sprint_name set, sprint_ids still null (not yet re-synced).
+    // Legacy row: sprint_name set, sprint_ids still null (not yet re-synced). The
+    // helper folds that fallback into the bridge so membership resolves the same way.
     testDb.insert(ticket).values({
       jiraKey: "VPL-300",
       title: "Legacy ticket",
@@ -113,9 +117,22 @@ describe("GET /api/tickets", () => {
       sprintName: "555",
       sprintIds: null,
     }).run();
+    syncTicketSprints(testDb, "VPL-300", null, "555");
 
     const data = await (await GET(new Request("http://localhost:3100/api/tickets?sprintId=555"))).json();
     expect(data.map((t: { key: string }) => t.key)).toEqual(["VPL-300"]);
+  });
+
+  it("matches on sprint_ids, not sprint_name, when both are present", async () => {
+    // sprint_ids is the source of truth: a ticket whose primary sprint_name differs
+    // from its membership must surface only under the sprints in sprint_ids.
+    seedTicket(testDb, "VPL-400", "999", ["123"]);
+
+    const byMembership = await (await GET(new Request("http://localhost:3100/api/tickets?sprintId=123"))).json();
+    expect(byMembership.map((t: { key: string }) => t.key)).toEqual(["VPL-400"]);
+
+    const byPrimaryName = await (await GET(new Request("http://localhost:3100/api/tickets?sprintId=999"))).json();
+    expect(byPrimaryName).toEqual([]);
   });
 
   it("includes PO status from metadata when available", async () => {

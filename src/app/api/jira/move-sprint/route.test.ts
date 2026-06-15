@@ -39,8 +39,18 @@ vi.mock("@/lib/cache", () => ({
 
 import { POST } from "./route";
 import { cache } from "@/lib/cache";
-import { ticket } from "@/db/schema";
-import { eq } from "drizzle-orm";
+import { ticket, ticketSprint } from "@/db/schema";
+import { eq, asc } from "drizzle-orm";
+
+function bridgeFor(key: string): string[] {
+  return testDb
+    .select({ sprintId: ticketSprint.sprintId })
+    .from(ticketSprint)
+    .where(eq(ticketSprint.ticketKey, key))
+    .orderBy(asc(ticketSprint.sprintId))
+    .all()
+    .map((r) => r.sprintId);
+}
 
 function makeRequest(body: unknown): Request {
   return new NextRequest("http://localhost/api/jira/move-sprint", {
@@ -171,16 +181,31 @@ describe("POST /api/jira/move-sprint", () => {
 
     const t = testDb.select().from(ticket).where(eq(ticket.jiraKey, "VPL-100")).get();
     expect(t!.sprintIds).toBe(JSON.stringify(["456"]));
+    // The bridge collapses to the single target sprint, with no stale rows.
+    expect(bridgeFor("VPL-100")).toEqual(["456"]);
   });
 
   it("clears sprint_ids when moving to backlog", async () => {
     testDb.update(ticket).set({ sprintIds: JSON.stringify(["123"]) }).where(eq(ticket.jiraKey, "VPL-100")).run();
+    // Seed a stale bridge row to prove the backlog move clears membership.
+    testDb.insert(ticketSprint).values({ ticketKey: "VPL-100", sprintId: "123" }).run();
 
     const req = makeRequest({ issueKeys: ["VPL-100"], targetSprintId: "__backlog__" });
     await POST(req);
 
     const t = testDb.select().from(ticket).where(eq(ticket.jiraKey, "VPL-100")).get();
     expect(t!.sprintIds).toBeNull();
+    expect(bridgeFor("VPL-100")).toEqual([]);
+  });
+
+  it("updates the bridge for every ticket in a multi-key batch move", async () => {
+    testDb.insert(ticket).values({ jiraKey: "VPL-101", title: "Second", status: "TO DO", sprintName: "123" }).run();
+
+    const req = makeRequest({ issueKeys: ["VPL-100", "VPL-101"], targetSprintId: "456" });
+    await POST(req);
+
+    expect(bridgeFor("VPL-100")).toEqual(["456"]);
+    expect(bridgeFor("VPL-101")).toEqual(["456"]);
   });
 
   it("moves ticket to backlog by clearing sprint", async () => {

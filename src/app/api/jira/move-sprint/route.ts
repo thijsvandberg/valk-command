@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { db } from "@/db";
 import { ticket } from "@/db/schema";
 import { inArray, eq, asc } from "drizzle-orm";
+import { syncTicketSprints } from "@/lib/sprint-membership";
 import { jiraClient } from "@/lib/jira-client";
 import { applyRateLimit } from "@/lib/rate-limiter";
 import { cache } from "@/lib/cache";
@@ -103,6 +104,15 @@ export async function POST(request: Request) {
       sprintIds: isBacklog ? null : JSON.stringify([targetSprintId]),
     })
     .where(inArray(ticket.jiraKey, issueKeys));
+
+  // Mirror the move into the indexed bridge for the whole batch in one transaction.
+  // A move targets a single sprint, so each ticket collapses to that one membership
+  // (or none for a backlog move). Re-derived fully on the next Jira sync.
+  db.transaction((tx) => {
+    for (const key of issueKeys) {
+      syncTicketSprints(tx, key, isBacklog ? null : [targetSprintId], isBacklog ? "" : targetSprintId);
+    }
+  });
 
   // Mirror the Jira rank-to-top/bottom locally so the board (which sorts by the
   // local jiraRank) shows the new order immediately. Without this the optimistic

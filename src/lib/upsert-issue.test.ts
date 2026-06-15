@@ -3,10 +3,20 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 import { createTestDb } from "@/db/test-utils";
 import type { BetterSQLite3Database } from "drizzle-orm/better-sqlite3";
 import type * as schema from "@/db/schema";
-import { ticket, ticketSubtask, ticketMetadata, storyVersion, storyWriterSession, conversation } from "@/db/schema";
-import { eq } from "drizzle-orm";
+import { ticket, ticketSubtask, ticketMetadata, storyVersion, storyWriterSession, conversation, ticketSprint } from "@/db/schema";
+import { eq, asc } from "drizzle-orm";
 
 let testDb: BetterSQLite3Database<typeof schema>;
+
+function bridgeFor(key: string): string[] {
+  return testDb
+    .select({ sprintId: ticketSprint.sprintId })
+    .from(ticketSprint)
+    .where(eq(ticketSprint.ticketKey, key))
+    .orderBy(asc(ticketSprint.sprintId))
+    .all()
+    .map((r) => r.sprintId);
+}
 
 vi.mock("@/db", () => ({
   get db() {
@@ -161,6 +171,8 @@ describe("upsertIssue", () => {
     expect(row.sprintIds).toBe(JSON.stringify(["100", "200"]));
     // sprintName remains the single primary passed by the caller.
     expect(row.sprintName).toBe("200");
+    // The indexed bridge mirrors every membership.
+    expect(bridgeFor("VPL-1")).toEqual(["100", "200"]);
   });
 
   it("leaves sprint_ids null when the issue is in no sprint (backlog)", async () => {
@@ -170,6 +182,22 @@ describe("upsertIssue", () => {
 
     const row = testDb.select().from(ticket).all()[0];
     expect(row.sprintIds).toBeNull();
+    expect(bridgeFor("VPL-1")).toEqual([]);
+  });
+
+  it("removes stale bridge rows when a re-sync changes the membership", async () => {
+    vi.mocked(extractSprints).mockReturnValue([
+      { id: 100, name: "Sprint A", state: "closed" },
+      { id: 200, name: "Sprint B", state: "active" },
+    ] as JiraSprint[]);
+    await upsertIssue(makeIssue(), "200");
+    expect(bridgeFor("VPL-1")).toEqual(["100", "200"]);
+
+    vi.mocked(extractSprints).mockReturnValue([
+      { id: 300, name: "Sprint C", state: "active" },
+    ] as JiraSprint[]);
+    await upsertIssue(makeIssue(), "300");
+    expect(bridgeFor("VPL-1")).toEqual(["300"]);
   });
 
   it("updates an existing ticket on second upsert", async () => {

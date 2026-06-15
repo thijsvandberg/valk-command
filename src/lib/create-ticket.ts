@@ -1,5 +1,6 @@
 import { db } from "@/db";
 import { ticket, ticketMetadata } from "@/db/schema";
+import { syncTicketSprints } from "@/lib/sprint-membership";
 import { jiraClient } from "@/lib/jira-client";
 import { logActivity } from "@/lib/activity-logger";
 import { logger } from "@/lib/logger";
@@ -101,6 +102,9 @@ export async function createTicketWithJira(input: CreateTicketInput): Promise<Cr
     ...(assignedSprintId ? { sprintName: assignedSprintId, sprintIds: JSON.stringify([assignedSprintId]) } : {}),
     flagged: false,
   });
+
+  // Mirror the membership into the indexed bridge. Backlog (no sprint) → no rows.
+  syncTicketSprints(db, jiraResult.key, assignedSprintId ? [assignedSprintId] : null, assignedSprintId ?? null);
 
   // New tickets start in the PO "drafting" stage so they surface for refinement.
   await db

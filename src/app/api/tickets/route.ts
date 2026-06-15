@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { db } from "@/db";
-import { ticket, ticketMetadata, ticketLocalEdit, storyVersion, ticketSubtask, sprintNameCache } from "@/db/schema";
+import { ticket, ticketMetadata, ticketLocalEdit, storyVersion, ticketSubtask, sprintNameCache, ticketSprint } from "@/db/schema";
 import { eq, inArray, asc, isNull, sql, and, notInArray } from "drizzle-orm";
 import type { Ticket, IssueType, JiraStatus, POStatus, TicketReadiness, TicketEditState } from "@/types/ticket";
 import { computeTicketEditState } from "@/lib/ticket-state";
@@ -41,15 +41,14 @@ export async function GET(request: Request) {
         .leftJoin(ticketMetadata, eq(ticket.jiraKey, ticketMetadata.jiraKey))
         .leftJoin(sprintNameCache, eq(ticket.sprintName, sprintNameCache.sprintId));
 
-      // A ticket can be in several sprints at once, so sprint membership is matched
-      // against the sprint_ids JSON array (not the single primary sprint_name). The
-      // IS NOT NULL guard is required: json_each(NULL) raises "malformed JSON".
-      // Tickets synced before sprint_ids existed have a null array; fall back to the
-      // primary sprint_name for them so they keep showing until their next re-sync.
-      const memberOfSprint = sql`(
-        (${ticket.sprintIds} IS NOT NULL AND EXISTS (SELECT 1 FROM json_each(${ticket.sprintIds}) WHERE value = ${sprintId}))
-        OR (${ticket.sprintIds} IS NULL AND ${ticket.sprintName} = ${sprintId})
-      )`;
+      // A ticket can be in several sprints at once. Membership is resolved against
+      // the indexed ticket_sprint bridge (one row per membership) instead of a
+      // json_each scan over sprint_ids. The bridge already folds in the legacy
+      // sprint_name fallback at write time, so this is a plain indexed lookup.
+      const memberOfSprint = inArray(
+        ticket.jiraKey,
+        db.select({ k: ticketSprint.ticketKey }).from(ticketSprint).where(eq(ticketSprint.sprintId, sprintId!)),
+      );
 
       // Backlog = tickets with empty sprintName
       const sprintFilter = isBacklog
