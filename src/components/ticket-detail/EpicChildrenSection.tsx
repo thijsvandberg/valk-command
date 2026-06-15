@@ -505,12 +505,15 @@ export function EpicChildrenSection({
     try {
       await tickets.updateStoryPoints(childKey, value);
       onMutate();
+      // The fullness meter's sprint total is a separate server read; revalidate it so
+      // the count (and over-capacity colour) reflects the new points without a refresh.
+      refreshMeter();
     } catch (err) {
       console.error("Failed to update story points:", err);
       revertLocalMetric(childKey, "storyPoints");
       setJiraWarning(`Failed to update story points for ${childKey}`);
     }
-  }, [onMutate, revertLocalMetric]);
+  }, [onMutate, revertLocalMetric, refreshMeter]);
 
   const handleBusinessValueChange = useCallback(async (childKey: string, value: number | null) => {
     setLocalMetrics((prev) => ({ ...prev, [childKey]: { ...prev[childKey], businessValue: value } }));
@@ -529,12 +532,14 @@ export function EpicChildrenSection({
     try {
       await tickets.updateMetadata(childKey, { guestimation: value });
       onMutate();
+      // See handleStoryPointsChange: keep the fullness meter's sprint total in sync.
+      refreshMeter();
     } catch (err) {
       console.error("Failed to update guestimation:", err);
       revertLocalMetric(childKey, "guestimation");
       setJiraWarning(`Failed to update guestimation for ${childKey}`);
     }
-  }, [onMutate, revertLocalMetric]);
+  }, [onMutate, revertLocalMetric, refreshMeter]);
 
   // Move a child to another sprint (drag-drop or context menu). Optimistically
   // re-groups the row, then reverts and warns if the Jira round-trip fails.

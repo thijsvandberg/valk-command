@@ -405,6 +405,9 @@ export const GroupStatBar = memo(function GroupStatBar({
         <FullnessMeter
           used={usedPointsOverride ?? usedEffective}
           capacity={pencilCapacity}
+          // With an override (epic view), the group's own tickets are this epic's share
+          // of the sprint, so the bar can split it from the rest of the sprint's load.
+          ownUsed={usedPointsOverride != null ? usedEffective : undefined}
           onCapacityChange={onPencilCapacityChange}
         />
       )}

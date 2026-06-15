@@ -14,14 +14,24 @@ import { Tooltip } from "@/components/shared/Tooltip";
 // on a faint surface, with a teal fill bar. The ONLY over-capacity signal is the bar
 // turning red - text, numbers and pill stay neutral - so it is noticeable without
 // shouting (the loud full-red band treatment was rejected).
+//
+// On the epic view the bar is split (BRDG): `ownUsed` is the share of the sprint's
+// load that belongs to the open epic. Its segment is brand-coloured (this epic), the
+// remainder of the used points is dark grey (the rest of the sprint), and the open
+// capacity is the light grey track. Without `ownUsed` (sprint board) the bar is a
+// single fill, as before.
 
 export function FullnessMeter({
   used,
   capacity,
+  ownUsed,
   onCapacityChange,
 }: {
   used: number;
   capacity: number | null;
+  /** This epic's share of the sprint's used points. When set (and below `used`), the
+   *  bar splits into a brand "this epic" segment and a dark grey "rest of sprint" one. */
+  ownUsed?: number | null;
   onCapacityChange: (value: number | null) => void;
 }) {
   const inputRef = useRef<HTMLInputElement>(null);
@@ -51,15 +61,28 @@ export function FullnessMeter({
 
   const ratio = capacity != null && capacity > 0 ? used / capacity : null;
   const over = ratio != null && ratio > 1;
-  const fillPct = ratio != null ? Math.min(ratio, 1) * 100 : 0;
+  const usedPct = ratio != null ? Math.min(ratio, 1) * 100 : 0;
+
+  // This epic's own share. Without it, `own` collapses to `used` so the bar renders as
+  // a single fill (the brand segment fully covers the dark grey one). A split shows only
+  // when the epic accounts for less than the whole sprint's used points.
+  const own = ownUsed ?? used;
+  const ownRatio = capacity != null && capacity > 0 ? own / capacity : null;
+  // The epic's share is part of the sprint total, so its segment can never be wider
+  // than the used span. Capping at usedPct avoids a transient overshoot while the
+  // sprint total (a separate server read) catches up to an optimistic child edit.
+  const ownPct = ownRatio != null ? Math.min(Math.min(ownRatio, 1) * 100, usedPct) : 0;
+  const hasSplit = ownUsed != null && ownUsed < used;
 
   const tooltip = capacity != null
-    ? `Sprint fullness: ${used} of ${capacity} pts (${Math.round((ratio ?? 0) * 100)}%)${over ? " - over capacity" : ""}`
+    ? `Sprint fullness: ${used} of ${capacity} pts (${Math.round((ratio ?? 0) * 100)}%)${over ? " - over capacity" : ""}${hasSplit ? ` · this epic: ${ownUsed} pts` : ""}`
     : `Used ${used} pts. Set a pencil capacity to track fullness.`;
 
-  // The pill is always neutral; the slim bar carries the only colour - teal within
-  // capacity, red once over it.
+  // The pill is always neutral; the slim bar carries the only colour - teal for this
+  // epic's share, dark grey for the rest of the sprint, light grey track for the open
+  // capacity. Over capacity, the whole used span turns red (the only over signal).
   const fillColor = over ? "var(--color-status-error)" : "var(--color-brand-400)";
+  const restColor = over ? "var(--color-status-error)" : "color-mix(in srgb, currentColor 55%, transparent)";
 
   return (
     <Tooltip content={tooltip}>
@@ -84,17 +107,29 @@ export function FullnessMeter({
           <span
             aria-hidden
             data-testid="fullness-bar-track"
-            className="h-[3px] w-14 overflow-hidden rounded-full"
+            className="relative h-[3px] w-14 overflow-hidden rounded-full"
             style={{ backgroundColor: "color-mix(in srgb, currentColor 16%, transparent)" }}
           >
+            {/* The full used span (this epic + the rest of the sprint). Dark grey within
+                capacity, red once over it. Sits underneath the brand "own" segment. */}
+            <span
+              data-testid="fullness-bar-rest"
+              className="absolute inset-y-0 left-0 rounded-full"
+              style={{
+                width: `${used > 0 ? Math.max(usedPct, 2) : 0}%`,
+                backgroundColor: restColor,
+                transition: "width 0.25s ease, background-color 0.25s ease",
+              }}
+            />
+            {/* This epic's own share, layered on the left as the leading segment. When no
+                split is active it spans the whole used run, so the bar reads as one fill. */}
             <span
               data-testid="fullness-bar-fill"
-              className="block h-full rounded-full"
+              className={`absolute inset-y-0 left-0 ${hasSplit ? "rounded-l-full" : "rounded-full"}`}
               style={{
-                transform: `scaleX(${Math.max(fillPct, 2) / 100})`,
-                transformOrigin: "left",
-                transition: "transform 0.25s ease",
+                width: `${own > 0 ? Math.max(ownPct, 2) : 0}%`,
                 backgroundColor: fillColor,
+                transition: "width 0.25s ease, background-color 0.25s ease",
               }}
             />
           </span>

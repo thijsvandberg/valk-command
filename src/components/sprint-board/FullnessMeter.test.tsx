@@ -62,4 +62,21 @@ describe("FullnessMeter", () => {
     render(<FullnessMeter used={9} capacity={null} onCapacityChange={() => {}} />);
     expect(screen.queryByTestId("fullness-bar-fill")).not.toBeInTheDocument();
   });
+
+  it("splits the bar into the epic's brand share and a dark grey remainder when ownUsed is set", () => {
+    render(<FullnessMeter used={13} ownUsed={4} capacity={20} onCapacityChange={() => {}} />);
+    const own = screen.getByTestId("fullness-bar-fill");
+    const rest = screen.getByTestId("fullness-bar-rest");
+    expect(own.style.backgroundColor).toBe("var(--color-brand-400)");
+    // The brand segment covers this epic's 4/20, the dark grey one the full 13/20.
+    expect(own.style.width).toBe("20%");
+    expect(rest.style.width).toBe("65%");
+    expect(rest.style.backgroundColor.toLowerCase()).toContain("currentcolor");
+  });
+
+  it("turns the whole used span red when the sprint is over capacity, even when split", () => {
+    render(<FullnessMeter used={25} ownUsed={5} capacity={20} onCapacityChange={() => {}} />);
+    expect(screen.getByTestId("fullness-bar-fill").style.backgroundColor).toBe("var(--color-status-error)");
+    expect(screen.getByTestId("fullness-bar-rest").style.backgroundColor).toBe("var(--color-status-error)");
+  });
 });
