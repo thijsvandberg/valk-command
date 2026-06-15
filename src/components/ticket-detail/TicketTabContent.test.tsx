@@ -253,6 +253,15 @@ describe("TicketTabContent", () => {
       expect(screen.getByTestId("editable-title")).toBeInTheDocument();
     });
 
+    it("keeps the title visible while the description is being edited (BRDG)", () => {
+      renderContent("content", { isDescEditing: true });
+      // The title block must stay rendered and must not carry the `hidden`
+      // class while editing the body, so the PO never loses the page title.
+      const titleBlock = screen.getByTestId("editable-title").parentElement!.parentElement!;
+      expect(titleBlock).not.toHaveClass("hidden");
+      expect(titleBlock).toHaveClass("mt-3");
+    });
+
     it("renders editable description on content tab", () => {
       renderContent("content");
       expect(screen.getByTestId("editable-description")).toBeInTheDocument();

@@ -263,9 +263,11 @@ export function TicketTabContent({
             </div>
           )}
 
-          {/* Content tab */}
+          {/* Content tab. The title stays visible while the description is being
+              edited so the PO never loses the page title mid-edit; only the
+              editor toolbar pins to the top above it (BRDG). */}
           {activeTab === "content" && (
-            <div className={isDescEditing ? "hidden" : "mt-3"}>
+            <div className="mt-3">
               <div className="mt-3 flex items-start gap-2.5">
                 <EditableTitle
                   key={draftDiscardKey}
@@ -369,7 +371,22 @@ export function TicketTabContent({
           )}
 
           {activeTab === "children" && isEpic && detail && (
-            <EpicChildrenSection items={detail.epicChildren} ticketKey={ticketKey} onMutate={onMutate} onChildOptimistic={onEpicChildOptimistic} onSelectTicket={onSelectTicket} showStatsSummary />
+            <>
+              <div className="mt-3 mb-5 flex items-start gap-2.5">
+                <EditableTitle
+                  key={draftDiscardKey}
+                  ticketKey={ticketKey}
+                  initialTitle={ticket.title}
+                  serverLocalEdit={localEdits?.title}
+                  onLocalEdit={onTitleLocalEdit}
+                  onEditingChange={onTitleEditingChange}
+                  onViewDiff={onViewDiff}
+                  onSaved={onMutate}
+                  saver={editSaver}
+                />
+              </div>
+              <EpicChildrenSection items={detail.epicChildren} ticketKey={ticketKey} onMutate={onMutate} onChildOptimistic={onEpicChildOptimistic} onSelectTicket={onSelectTicket} showStatsSummary />
+            </>
           )}
 
           {activeTab === "history" && (

@@ -356,14 +356,25 @@ describe("SidePanel", () => {
       expect(screen.getByTestId("meta-content")).toBeInTheDocument();
     });
 
-    it("shows a 'Show sidebar' header button only when collapsed", () => {
+    it("shows a 'Show sidebar' header button only when collapsed and wide enough for a column", () => {
+      seed({ sprintBoardPanelWidth: "900" });
       render(<SidePanel {...defaultProps} />);
       expect(screen.queryByLabelText("Show sidebar")).not.toBeInTheDocument();
 
       window.localStorage.clear();
-      seed({ sprintBoardMetaCollapsed: "true" });
+      seed({ sprintBoardPanelWidth: "900", sprintBoardMetaCollapsed: "true" });
       render(<SidePanel {...defaultProps} />);
       expect(screen.getByLabelText("Show sidebar")).toBeInTheDocument();
+    });
+
+    it("suppresses the 'Show sidebar' toggle when too narrow for a meta column (BRDG)", () => {
+      // A column can never fit at this width, so the meta stays stacked under the
+      // content and the toggle (which would only re-stack the same panel) is hidden.
+      seed({ sprintBoardPanelWidth: "400", sprintBoardMetaCollapsed: "true" });
+      render(<SidePanel {...defaultProps} />);
+      expect(screen.queryByLabelText("Show sidebar")).not.toBeInTheDocument();
+      expect(screen.getByTestId("tab-has-meta")).toBeInTheDocument();
+      expect(screen.getByTestId("meta-content")).toBeInTheDocument();
     });
 
     it("collapsing via the divider button persists the state and stacks the meta below content", () => {

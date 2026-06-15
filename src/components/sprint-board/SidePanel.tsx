@@ -199,6 +199,12 @@ export function SidePanel({
     Math.min(panelWidth - CONTENT_MIN_WIDTH, metaWidth),
   );
 
+  // Whether a meta column can fit at all: even at its minimum width it must
+  // leave the content its minimum. When it can't, a column is never an option,
+  // so the meta always stacks under the content and the "Show sidebar" toggle
+  // is suppressed (offering it would only re-stack the same panel, BRDG).
+  const canFitMetaColumn = panelWidth - MIN_META_WIDTH >= CONTENT_MIN_WIDTH;
+
   // Column only when not collapsed and there is room for both; otherwise the
   // meta drops below the content in a single scroll. Collapsing the meta (the
   // divider control / header button) and a too-narrow panel both fall back to
@@ -371,13 +377,13 @@ export function SidePanel({
             disabled={h.isPushing}
             aria-label="Push to Jira"
             icon={h.isPushing
-              ? <Loader2 size={13} strokeWidth={1.5} className="animate-spin" />
-              : <CloudUpload size={13} strokeWidth={1.5} />}
+              ? <Loader2 size={13} strokeWidth={2} className="animate-spin" />
+              : <CloudUpload size={13} strokeWidth={2.5} />}
           />
         </Tooltip>
       )}
 
-      {metaCollapsed && (
+      {metaCollapsed && canFitMetaColumn && (
         <Tooltip content="Show sidebar">
           <button
             type="button"
@@ -385,7 +391,7 @@ export function SidePanel({
             aria-label="Show sidebar"
             className={iconBtnClass}
           >
-            <PanelRightClose size={14} strokeWidth={1.5} />
+            <PanelRightClose size={14} strokeWidth={2} />
           </button>
         </Tooltip>
       )}
@@ -398,7 +404,7 @@ export function SidePanel({
           aria-label="Open full view"
           className={iconBtnClass}
         >
-          <Maximize2 size={14} strokeWidth={1.5} />
+          <Maximize2 size={14} strokeWidth={2} />
         </Link>
       </Tooltip>
 
@@ -411,8 +417,8 @@ export function SidePanel({
           className={iconBtnClass}
         >
           {h.isRefreshing
-            ? <Loader2 size={14} strokeWidth={1.5} className="animate-spin" />
-            : <MoreHorizontal size={14} strokeWidth={1.5} />}
+            ? <Loader2 size={14} strokeWidth={2} className="animate-spin" />
+            : <MoreHorizontal size={14} strokeWidth={2} />}
         </button>
         <Popover open={moreMenuOpen} onClose={() => setMoreMenuOpen(false)} align="right">
           <div className="min-w-[220px] py-1">
@@ -572,7 +578,7 @@ export function SidePanel({
           aria-label="Close panel"
           className={iconBtnClass}
         >
-          <X className="h-3.5 w-3.5" strokeWidth={1.5} />
+          <X className="h-3.5 w-3.5" strokeWidth={2} />
         </button>
       </Tooltip>
     </>
@@ -648,7 +654,7 @@ export function SidePanel({
           className={`absolute right-3 top-3 z-30 flex h-7 w-7 items-center justify-center rounded-full border border-border-default bg-[var(--color-surface-elevated)] text-text-muted cursor-pointer hover:text-text-secondary hover:border-[var(--color-brand-500)]/40 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)] ${scrolled ? "opacity-100" : "pointer-events-none opacity-0"}`}
           style={{ transition: "opacity 0.2s ease, color 0.15s ease, border-color 0.15s ease", boxShadow: "0 6px 16px -4px rgba(15, 23, 42, 0.20)" }}
         >
-          <X className="h-3.5 w-3.5" strokeWidth={1.5} />
+          <X className="h-3.5 w-3.5" strokeWidth={2} />
         </button>
       </Tooltip>
 
