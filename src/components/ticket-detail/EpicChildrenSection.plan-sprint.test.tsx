@@ -69,7 +69,7 @@ vi.mock("@/lib/api-client", () => ({
 }));
 
 const CHILDREN: EpicChild[] = [
-  { key: "VPL-11", title: "Loose story", type: "story", jiraStatus: "TO DO", assignee: null, storyPoints: null, businessValue: null, sprintName: "BT: 139", subtaskCount: 0, readiness: null, jiraRank: null },
+  { key: "VPL-11", title: "Loose story", type: "story", jiraStatus: "TO DO", assignee: null, flagged: false, storyPoints: null, businessValue: null, sprintName: "BT: 139", subtaskCount: 0, readiness: null, jiraRank: null },
 ];
 
 function renderSection() {

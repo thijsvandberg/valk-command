@@ -63,9 +63,9 @@ vi.mock("@/lib/api-client", () => ({
 }));
 
 const SAMPLE_CHILDREN: EpicChild[] = [
-  { key: "VPL-10", title: "First story", type: "story", jiraStatus: "TO DO", assignee: null, storyPoints: 3, businessValue: 7, sprintName: "Sprint 1", subtaskCount: 2, readiness: null, jiraRank: null },
-  { key: "VPL-11", title: "Second task", type: "task", jiraStatus: "IN PROGRESS", assignee: null, storyPoints: null, businessValue: null, sprintName: null, subtaskCount: 0, readiness: "drafting", jiraRank: null },
-  { key: "VPL-12", title: "Done story", type: "story", jiraStatus: "DONE", assignee: null, storyPoints: 5, businessValue: 6, sprintName: "Sprint 1", subtaskCount: 1, readiness: null, jiraRank: null },
+  { key: "VPL-10", title: "First story", type: "story", jiraStatus: "TO DO", assignee: null, flagged: false, storyPoints: 3, businessValue: 7, sprintName: "Sprint 1", subtaskCount: 2, readiness: null, jiraRank: null },
+  { key: "VPL-11", title: "Second task", type: "task", jiraStatus: "IN PROGRESS", assignee: null, flagged: false, storyPoints: null, businessValue: null, sprintName: null, subtaskCount: 0, readiness: "drafting", jiraRank: null },
+  { key: "VPL-12", title: "Done story", type: "story", jiraStatus: "DONE", assignee: null, flagged: false, storyPoints: 5, businessValue: 6, sprintName: "Sprint 1", subtaskCount: 1, readiness: null, jiraRank: null },
 ];
 
 function renderSection(items: EpicChild[] = [], { openCreate = true } = {}) {
@@ -349,7 +349,7 @@ describe("EpicChildrenSection", () => {
     it("hides deprecated children by default and shows them when the toggle is turned off", () => {
       const withDeprecated: EpicChild[] = [
         ...SAMPLE_CHILDREN,
-        { key: "VPL-99", title: "Old story", type: "story", jiraStatus: "DEPRECATED", assignee: null, storyPoints: null, businessValue: null, sprintName: null, subtaskCount: 0, readiness: null, jiraRank: null },
+        { key: "VPL-99", title: "Old story", type: "story", jiraStatus: "DEPRECATED", assignee: null, flagged: false, storyPoints: null, businessValue: null, sprintName: null, subtaskCount: 0, readiness: null, jiraRank: null },
       ];
       renderSection(withDeprecated);
 
@@ -472,7 +472,7 @@ describe("EpicChildrenSection", () => {
         return false;
       };
       renderSection([
-        { key: "VPL-13", title: "N/A story", type: "story", jiraStatus: "TO DO", assignee: null, storyPoints: 0, businessValue: 0, sprintName: null, subtaskCount: 0, readiness: null, jiraRank: null },
+        { key: "VPL-13", title: "N/A story", type: "story", jiraStatus: "TO DO", assignee: null, flagged: false, storyPoints: 0, businessValue: 0, sprintName: null, subtaskCount: 0, readiness: null, jiraRank: null },
       ]);
       // Both SP and BV pickers carry the "N/A" label at value 0.
       for (const na of screen.getAllByLabelText("N/A")) {
@@ -739,8 +739,8 @@ describe("EpicChildrenSection", () => {
 
     it("orders sprint groups closed -> active (chronological)", async () => {
       const children: EpicChild[] = [
-        { key: "VPL-20", title: "Active item", type: "story", jiraStatus: "TO DO", assignee: null, storyPoints: 1, businessValue: 4, sprintName: "Sprint 1", subtaskCount: 0, readiness: null, jiraRank: null },
-        { key: "VPL-21", title: "Closed item", type: "story", jiraStatus: "DONE", assignee: null, storyPoints: 2, businessValue: 6, sprintName: "Sprint 2", subtaskCount: 0, readiness: null, jiraRank: null },
+        { key: "VPL-20", title: "Active item", type: "story", jiraStatus: "TO DO", assignee: null, flagged: false, storyPoints: 1, businessValue: 4, sprintName: "Sprint 1", subtaskCount: 0, readiness: null, jiraRank: null },
+        { key: "VPL-21", title: "Closed item", type: "story", jiraStatus: "DONE", assignee: null, flagged: false, storyPoints: 2, businessValue: 6, sprintName: "Sprint 2", subtaskCount: 0, readiness: null, jiraRank: null },
       ];
       renderSection(children);
       switchToSprintView();
@@ -830,8 +830,8 @@ describe("EpicChildrenSection", () => {
 
     it("filters a sprint group to its unpointed stories when the warning icon is clicked", async () => {
       const children: EpicChild[] = [
-        { key: "VPL-30", title: "Estimated story", type: "story", jiraStatus: "TO DO", assignee: null, storyPoints: 3, businessValue: null, sprintName: "Sprint 1", subtaskCount: 0, readiness: null, jiraRank: null },
-        { key: "VPL-31", title: "Unestimated story", type: "story", jiraStatus: "TO DO", assignee: null, storyPoints: null, businessValue: null, sprintName: "Sprint 1", subtaskCount: 0, readiness: null, jiraRank: null },
+        { key: "VPL-30", title: "Estimated story", type: "story", jiraStatus: "TO DO", assignee: null, flagged: false, storyPoints: 3, businessValue: null, sprintName: "Sprint 1", subtaskCount: 0, readiness: null, jiraRank: null },
+        { key: "VPL-31", title: "Unestimated story", type: "story", jiraStatus: "TO DO", assignee: null, flagged: false, storyPoints: null, businessValue: null, sprintName: "Sprint 1", subtaskCount: 0, readiness: null, jiraRank: null },
       ];
       renderSection(children);
       switchToSprintView();
@@ -1032,6 +1032,20 @@ describe("EpicChildrenSection", () => {
         expect(mockToggleFlag).toHaveBeenCalledWith("VPL-10", true);
       });
       expect(mockToggleFlag).toHaveBeenCalledTimes(1);
+    });
+
+    it("shows only Flag for an unflagged right-clicked row", () => {
+      renderSection(SAMPLE_CHILDREN);
+      fireEvent.contextMenu(screen.getByText("First story"));
+      expect(screen.getByText("Flag")).toBeInTheDocument();
+      expect(screen.queryByText("Remove flag")).not.toBeInTheDocument();
+    });
+
+    it("shows only Remove flag for a flagged right-clicked row", () => {
+      renderSection([{ ...SAMPLE_CHILDREN[0], flagged: true }]);
+      fireEvent.contextMenu(screen.getByText("First story"));
+      expect(screen.getByText("Remove flag")).toBeInTheDocument();
+      expect(screen.queryByText("Flag")).not.toBeInTheDocument();
     });
   });
 });

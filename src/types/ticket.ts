@@ -183,6 +183,7 @@ export interface Subtask {
 }
 
 export interface EpicChild extends Subtask {
+  flagged: boolean;
   storyPoints: number | null;
   // Forward-planning guestimation (BRDG-303): a PO placeholder estimate, present
   // only when there is no real storyPoints value. Bridge-local, never in Jira.

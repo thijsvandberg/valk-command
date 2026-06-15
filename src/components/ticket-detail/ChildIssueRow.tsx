@@ -8,7 +8,7 @@ import { Checkbox } from "@/components/shared/Checkbox";
 import type { AssignableUser } from "@/components/shared/AssigneePicker";
 import type { EpicOption } from "@/components/shared/EpicPicker";
 import { useTicketHoverData } from "@/hooks/useTicketHoverData";
-import { Loader2 } from "lucide-react";
+import { Loader2, Flag } from "lucide-react";
 
 interface ChildIssueRowProps {
   ref?: Ref<HTMLDivElement>;
@@ -49,6 +49,9 @@ interface ChildIssueRowProps {
   /** Multiselect: renders a leading checkbox when set. */
   selectable?: boolean;
   isChecked?: boolean;
+  /** Flagged ticket: tints the row red and shows the inline flag, mirroring the sprint
+      board (BoardRow). Subtasks carry no flag, so callers pass false for them. */
+  flagged?: boolean;
   /** True when this row's ticket is the one open in the detail sidebar. Independent of
       isChecked (queue membership): a row can be active, checked, both, or neither. Mirrors
       the Sprint Board's selected-row highlight and takes visual precedence over checked. */
@@ -107,6 +110,7 @@ export function ChildIssueRow({
   onMouseEnter,
   selectable = false,
   isChecked = false,
+  flagged = false,
   isActive = false,
   someChecked = false,
   onCheckboxClick,
@@ -150,12 +154,14 @@ export function ChildIssueRow({
       data-ticket-key={item.key}
       style={style}
       className={`group/row relative flex items-center gap-2 ${spacious ? "py-[10px]" : "py-[7px]"} pl-4 pr-3 ${
-        onSelect && !isPending ? (isActive ? "cursor-pointer" : "cursor-pointer hover:bg-overlay-subtle") : ""
+        onSelect && !isPending ? (isActive || isChecked || flagged ? "cursor-pointer" : "cursor-pointer hover:bg-overlay-subtle") : ""
       } ${isPending ? "opacity-50" : isDeprecated ? "opacity-60" : ""} ${
         isActive
           ? "bg-[var(--color-brand-600)]/12 shadow-[inset_3px_0_0_0_var(--color-brand-300)]"
           : isChecked
           ? "bg-[var(--color-brand-500)]/[0.06]"
+          : flagged
+          ? "bg-[color-mix(in_srgb,var(--color-status-error)_6%,transparent)] hover:bg-[color-mix(in_srgb,var(--color-status-error)_8%,transparent)] shadow-[inset_3px_0_0_0_var(--color-status-error)]"
           : ""
       } ${roundBottom ? "rounded-b-[11px]" : ""} ${className}`}
       onClick={handleClick}
@@ -244,6 +250,11 @@ export function ChildIssueRow({
         <span className="min-w-0 flex-1 truncate text-body-lg text-text-secondary">
           {item.title}
         </span>
+      )}
+
+      {/* Inline flag, mirroring the sprint board (BoardRow). */}
+      {flagged && !isEditing && (
+        <Flag className="h-3.5 w-3.5 shrink-0" style={{ color: "var(--color-status-error)" }} fill="currentColor" strokeWidth={0} />
       )}
 
       {/* Lifted above the actions overlay (z-20) and click-isolated so an interactive

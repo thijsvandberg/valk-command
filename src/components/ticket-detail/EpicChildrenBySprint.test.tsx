@@ -25,6 +25,7 @@ function child(key: string, sprintName: string | null): EpicChild {
     type: "story",
     jiraStatus: "TO DO",
     assignee: null,
+    flagged: false,
     storyPoints: null,
     businessValue: null,
     sprintName,

@@ -22,7 +22,7 @@ import { EpicProgressToolbar } from "./EpicProgressToolbar";
 import { EpicChildrenBySprint, type ChildReorder, type ChildMoveToPosition } from "./EpicChildrenBySprint";
 import type { StatusFilter } from "./FieldFilterPopover";
 import { BulkActionBar } from "@/components/sprint-board/BulkActionBar";
-import { CursorMenu, TicketActionMenuContent } from "@/components/sprint-board/ticket-action-menu";
+import { CursorMenu, TicketActionMenuContent, type FlagState } from "@/components/sprint-board/ticket-action-menu";
 import { CreateSprintModal, type CreatedSprint } from "@/components/sprint-board/CreateSprintModal";
 import { AddToRefinementModal } from "@/components/refinement-session/AddToRefinementModal";
 import { nextSprintName, latestRegularSprint } from "@/lib/sprint-utils";
@@ -69,6 +69,8 @@ interface EpicChildrenSectionProps {
   // changes show instantly instead of waiting on a revalidation of the cached epic.
   onChildOptimistic?: (childKey: string, patch: Partial<EpicChild>) => void;
   onSelectTicket?: (key: string) => void;
+  /** Child currently open in the SidePanel; its row renders as active (BRDG board parity). */
+  activeChildKey?: string | null;
   /** Render the read-only epic roll-up (count / status distribution / SP progress)
       above the list. Used by the side panel's epic view (BRDG-131). */
   showStatsSummary?: boolean;
@@ -135,6 +137,7 @@ export function EpicChildrenSection({
   onMutate,
   onChildOptimistic,
   onSelectTicket,
+  activeChildKey,
   showStatsSummary = false,
 }: EpicChildrenSectionProps) {
   const [filter, setFilter] = useState<StatusFilter>("all");
@@ -315,6 +318,7 @@ export function EpicChildrenSection({
         type,
         jiraStatus: "TO DO",
         assignee: null,
+        flagged: false,
         sprintName: target?.sprintName ?? null,
         storyPoints: null,
         businessValue: null,
@@ -906,6 +910,19 @@ export function EpicChildrenSection({
     setRowMenu({ x: e.clientX, y: e.clientY, targets });
   }, [checkedKeys]);
 
+  // Flag state of the right-clicked target(s), so the context menu shows only the
+  // relevant flag action. Subtasks carry no flag field and count as unflagged.
+  const rowMenuFlagState: FlagState = useMemo(() => {
+    if (!rowMenu) return "mixed";
+    const flags = [...rowMenu.targets].map((k) => {
+      const item = mergedItems.find((i) => i.key === k);
+      return Boolean(item && isEpicChild(item) && item.flagged);
+    });
+    if (flags.length > 0 && flags.every(Boolean)) return "flagged";
+    if (flags.every((f) => !f)) return "unflagged";
+    return "mixed";
+  }, [rowMenu, mergedItems]);
+
   // --- Render metadata slot for a child issue ---
   // hideSprint drops the sprint pill where the surrounding group already names the
   // sprint (the by-sprint view), avoiding a redundant per-row badge.
@@ -984,6 +1001,8 @@ export function EpicChildrenSection({
         onContextMenu={isPending ? undefined : (e) => { e.preventDefault(); handleRowContextMenu(child.key, e); }}
         selectable={selectionEnabled}
         isChecked={checkedKeys.has(child.key)}
+        isActive={child.key === activeChildKey}
+        flagged={!!epic?.flagged}
         someChecked={someChecked}
         onCheckboxClick={(e) => handleCheckboxClick(child.key, e)}
         metadataSlot={renderMetadata(child)}
@@ -1086,6 +1105,7 @@ export function EpicChildrenSection({
         ticketKey={ticketKey}
         visibleFields={visibleFields}
         renderMetadata={renderMetadata}
+        activeChildKey={activeChildKey}
         onJiraStatusChange={handleJiraStatusChange}
         onReadinessChange={handleReadinessChange}
         onSelect={onSelectTicket}
@@ -1223,7 +1243,7 @@ export function EpicChildrenSection({
             onUpdateAssignee={(accountId, name) => handleBulkAssignee(accountId, name, rowMenu.targets)}
             onUpdateLabel={(labels, mode) => handleBulkLabels(labels, mode, rowMenu.targets)}
             onSetFlagged={(flagged) => handleBulkFlag(flagged, rowMenu.targets)}
-            flagState="mixed"
+            flagState={rowMenuFlagState}
             onReviewStory={() => handleBulkReview(rowMenu.targets)}
             onGenerateSubtasks={() => handleBulkGenerate(rowMenu.targets)}
             onRefine={() => openRefine([...rowMenu.targets])}

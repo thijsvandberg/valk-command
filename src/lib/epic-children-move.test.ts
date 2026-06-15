@@ -23,6 +23,7 @@ function child(key: string, sprintName: string | null, storyPoints: number | nul
     type: "story",
     jiraStatus: "TO DO",
     assignee: null,
+    flagged: false,
     storyPoints,
     businessValue: null,
     sprintName,

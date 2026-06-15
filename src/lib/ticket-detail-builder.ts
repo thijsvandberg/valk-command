@@ -308,6 +308,7 @@ async function resolveEpicChildren(epicChildRows: Awaited<ReturnType<typeof runT
     title: titleEditMap.get(c.jiraKey) ?? c.title,
     type: (c.type ?? "task") as IssueType,
     jiraStatus: (c.status ?? "TO DO") as JiraStatus,
+    flagged: c.flagged ?? false,
     assignee: buildAssignee(c.assignee),
     storyPoints: c.storyPoints ?? null,
     guestimation: guestimationMap.get(c.jiraKey) ?? null,

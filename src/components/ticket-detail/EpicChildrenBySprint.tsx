@@ -40,6 +40,8 @@ interface EpicChildrenBySprintProps {
   visibleFields: Set<string>;
   /** The sprint group already labels the sprint, so the per-row pill is suppressed. */
   renderMetadata: (child: EpicChild | Subtask, hideSprint?: boolean) => ReactNode;
+  /** Child currently open in the SidePanel; its row renders as active. */
+  activeChildKey?: string | null;
   onJiraStatusChange: (childKey: string, status: JiraStatus) => void;
   onReadinessChange: (childKey: string, readiness: TicketReadiness | null) => void;
   onSelect?: (key: string) => void;
@@ -171,6 +173,7 @@ function SortableChildRow({
   onContextMenu,
   selectable,
   isChecked,
+  isActive,
   someChecked,
   onCheckboxClick,
 }: {
@@ -188,6 +191,7 @@ function SortableChildRow({
   onContextMenu?: (e: React.MouseEvent) => void;
   selectable?: boolean;
   isChecked?: boolean;
+  isActive?: boolean;
   someChecked?: boolean;
   onCheckboxClick?: (e: React.MouseEvent) => void;
 }) {
@@ -223,6 +227,8 @@ function SortableChildRow({
       onContextMenu={onContextMenu}
       selectable={selectable}
       isChecked={isChecked}
+      isActive={isActive}
+      flagged={!!epic?.flagged}
       someChecked={someChecked}
       onCheckboxClick={onCheckboxClick}
       metadataSlot={renderMetadata(child, true)}
@@ -349,6 +355,7 @@ export function EpicChildrenBySprint({
   ticketKey,
   visibleFields,
   renderMetadata,
+  activeChildKey,
   onJiraStatusChange,
   onReadinessChange,
   onSelect,
@@ -549,6 +556,7 @@ export function EpicChildrenBySprint({
     const isPending = child.key.startsWith("pending-");
     const isLast = idx === total - 1;
     const isChecked = !!checkedKeys?.has(child.key);
+    const isActive = child.key === activeChildKey;
     const checkboxClick = onCheckboxClick ? (e: React.MouseEvent) => onCheckboxClick(child.key, e) : undefined;
 
     const contextMenu =
@@ -578,6 +586,7 @@ export function EpicChildrenBySprint({
           onContextMenu={contextMenu}
           selectable={selectable}
           isChecked={isChecked}
+          isActive={isActive}
           someChecked={someChecked}
           onCheckboxClick={checkboxClick}
         />
@@ -601,6 +610,8 @@ export function EpicChildrenBySprint({
         onContextMenu={contextMenu}
         selectable={selectable}
         isChecked={isChecked}
+        isActive={isActive}
+        flagged={!!epic?.flagged}
         someChecked={someChecked}
         onCheckboxClick={checkboxClick}
         metadataSlot={renderMetadata(child, true)}
