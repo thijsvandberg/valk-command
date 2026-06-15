@@ -104,4 +104,29 @@ describe("markdown round-trip (load -> serialize identity) - BRDG-280", () => {
     expect(roundTrip("a \\\\ b")).toBe("a \\\\ b");
     expect(roundTrip("some \\\\ backslashes \\\\ here")).toBe("some \\\\ backslashes \\\\ here");
   });
+
+  it("does not grow backslashes before an escaped image inside an expand (BRDG-352)", () => {
+    // The custom fence loader used to leave `\!` literal in the HTML while tiptap-markdown's
+    // serializer re-escaped the `\`, doubling the backslash run on every load->serialize cycle.
+    const input = ":::expand Expand\n\\![image-20260404-222028.png](/api/attachments/att-235476)\n:::";
+    const once = roundTrip(input);
+    // Idempotent: the cycle reaches a fixed point and never grows again.
+    expect(roundTrip(once)).toBe(once);
+    // No backslash doubling: a single escape, never `\\!`.
+    expect(once).toContain("\\![image-20260404-222028.png]");
+    expect(once).not.toContain("\\\\!");
+    // Content survives untouched.
+    expect(once).toContain("image-20260404-222028.png");
+    expect(once).toContain("att-235476");
+  });
+
+  it("keeps an escaped emphasis mark literal inside an expand (BRDG-352)", () => {
+    // An escaped `\*` must stay a literal asterisk, not become emphasis, and must not
+    // accumulate backslashes across cycles.
+    const input = ":::expand Notes\nuse \\*literal\\* asterisks\n:::";
+    const once = roundTrip(input);
+    expect(roundTrip(once)).toBe(once);
+    expect(once).not.toContain("<em>");
+    expect(once.replace(/\\/g, "")).toContain("use *literal* asterisks");
+  });
 });

@@ -153,6 +153,24 @@ describe("calloutMarkdownToHtml (rich inner content)", () => {
     expect(html).toContain("Item two");
   });
 
+  it("unescapes a backslash-escaped image marker inside expand (BRDG-352)", () => {
+    // The loader must unescape `\!` to a literal `!` so it is the inverse of the
+    // tiptap-markdown serializer (which re-escapes literal `\`). Leaving `\!` literal
+    // doubled the backslash on every round-trip.
+    const md = ":::expand T\n\\![image-20260404-222028.png](/api/attachments/att-235476)\n:::";
+    const html = calloutMarkdownToHtml(md);
+    expect(html).toContain('!<a href="/api/attachments/att-235476">');
+    expect(html).not.toContain("\\!");
+  });
+
+  it("keeps an escaped asterisk literal (no emphasis) inside expand (BRDG-352)", () => {
+    const md = ":::expand T\nuse \\*literal\\* asterisks\n:::";
+    const html = calloutMarkdownToHtml(md);
+    expect(html).toContain("use *literal* asterisks");
+    expect(html).not.toContain("<em>");
+    expect(html).not.toContain("\\*");
+  });
+
   it("converts heading inside expand to HTML heading", () => {
     const md = ":::expand T\n## My Heading\n\nSome text.\n:::";
     const html = calloutMarkdownToHtml(md);

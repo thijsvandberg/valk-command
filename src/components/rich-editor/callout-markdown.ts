@@ -672,14 +672,39 @@ function markdownListToHtml(
   return { html: `<${tag}>${items.join("")}</${tag}>`, nextIdx: i };
 }
 
+// Matches a CommonMark backslash escape: `\` followed by an ASCII punctuation char.
+const BACKSLASH_ESCAPE = /\\([!-/:-@[-`{-~])/g;
+// Private-use sentinel delimiters used to shield an unescaped char while the mark
+// regexes run, so it cannot be re-parsed as markdown syntax.
+const SENTINEL_OPEN = "";
+const SENTINEL_CLOSE = "";
+
 // Converts inline markdown to HTML for use inside block HTML elements.
 // Color syntax is left as-is since calloutMarkdownToHtml's second pass handles it.
 function mdInlineToHtml(text: string): string {
-  return text
+  // Unescape CommonMark backslash escapes the way tiptap-markdown's own loader does, so the
+  // fence inner-content load is the inverse of its serialize (which re-escapes literal `\`).
+  // Without this, an escaped image like `\![img](url)` doubles its backslashes on every
+  // load->serialize cycle (BRDG-352). Sentinel-shielding the unescaped char before the mark
+  // regexes run also prevents an escaped mark (`\*`, `` \` ``, `\[`) from being treated as syntax.
+  const escaped: string[] = [];
+  const shielded = text.replace(BACKSLASH_ESCAPE, (_m, ch: string) => {
+    const token = `${SENTINEL_OPEN}${escaped.length}${SENTINEL_CLOSE}`;
+    escaped.push(ch);
+    return token;
+  });
+  const html = shielded
     .replace(/\*\*\*(.+?)\*\*\*/g, "<strong><em>$1</em></strong>")
     .replace(/\*\*(.+?)\*\*/g, "<strong>$1</strong>")
     .replace(/~~(.+?)~~/g, "<del>$1</del>")
     .replace(/\*(.+?)\*/g, "<em>$1</em>")
     .replace(/`(.+?)`/g, "<code>$1</code>")
     .replace(/\[(.+?)\]\((.+?)\)/g, '<a href="$2">$1</a>');
+  return html.replace(
+    new RegExp(`${SENTINEL_OPEN}(\\d+)${SENTINEL_CLOSE}`, "g"),
+    (_m, i: string) => {
+      const ch = escaped[Number(i)];
+      return ch === "<" ? "&lt;" : ch === ">" ? "&gt;" : ch === "&" ? "&amp;" : ch;
+    }
+  );
 }

@@ -52,6 +52,28 @@ so the round-trip is idempotent (stops the growth). Options:
   (image inside an expand) and assert no backslash growth + idempotency, plus the
   byte-stable goal where achievable.
 
+## Implementation Plan
+
+Root cause confirmed: `prosemirror-markdown`'s text escape (`esc()`) escapes `\` -> `\\` on
+serialize, but the fence loader `mdInlineToHtml` never unescapes markdown backslash escapes on
+load, breaking symmetry. Top level is stable because tiptap-markdown's own loader unescapes.
+
+1. **Fix `mdInlineToHtml` (checkbox 2)** in `src/components/rich-editor/callout-markdown.ts` —
+   the single chokepoint for all fence inner inline text (paragraphs, headings, list items).
+   - Before the mark/link regexes, protect every `\X` where X is a CommonMark ASCII-punctuation
+     char (`` ! " # $ % & ' ( ) * + , - . / : ; < = > ? @ [ \ ] ^ _ ` { | } ~ ``) with a
+     private-use sentinel encoding X. This unescapes the backslash AND shields escaped marks
+     (`\*`, `` \` ``, `\[`) from being matched as emphasis/code/link.
+   - Run the existing mark/link regexes unchanged.
+   - Restore sentinels to the literal char, HTML-escaping `<`, `>`, `&` so the literal survives
+     TipTap's HTML parse and re-serializes as a literal.
+   - Scope: do NOT touch `inlineMarkdownToHtml` (color spans) — its serialize inverse never
+     escapes backslashes, so it is already symmetric.
+2. **Regression test (checkbox 3)** in `markdown-roundtrip.test.tsx`: image inside an expand,
+   assert idempotency (`roundTrip(once) === once`), no `\\!` growth, and content survives. Add a
+   focused load-side unit test in `callout-markdown.test.ts`.
+3. **All tests pass + build (checkbox 4)**.
+
 ## Out of scope
 
 - Expand title duplication - fixed (commit `8bc56dcf`).
@@ -66,6 +88,6 @@ so the round-trip is idempotent (stops the growth). Options:
 ## Checklist
 
 - [x] Reproduce locally and pin the source — expand/callout inner-content load/serialize asymmetry in `callout-markdown.ts` (NOT Jira)
-- [ ] Make the fence inner-content round-trip symmetric so backslashes stop doubling (idempotent)
-- [ ] Regression test: image inside an expand, asserts no backslash growth + idempotency
+- [x] Make the fence inner-content round-trip symmetric so backslashes stop doubling (idempotent)
+- [x] Regression test: image inside an expand, asserts no backslash growth + idempotency
 - [ ] All tests pass, build succeeds
