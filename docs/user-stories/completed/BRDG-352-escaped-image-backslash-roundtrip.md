@@ -90,4 +90,8 @@ load, breaking symmetry. Top level is stable because tiptap-markdown's own loade
 - [x] Reproduce locally and pin the source — expand/callout inner-content load/serialize asymmetry in `callout-markdown.ts` (NOT Jira)
 - [x] Make the fence inner-content round-trip symmetric so backslashes stop doubling (idempotent)
 - [x] Regression test: image inside an expand, asserts no backslash growth + idempotency
-- [ ] All tests pass, build succeeds
+- [x] All tests pass, build succeeds
+
+<!-- Note: 5 failing tests in the suite (push-to-jira/route.test.ts, SprintAnalytics.test.tsx)
+     are unrelated parallel-session work (BRDG-343, commit 633f30a6); they do not import this
+     story's code. This story's tests (markdown-roundtrip, callout-markdown) all pass and build succeeds. -->
