@@ -72,17 +72,22 @@ export function ChildIssueComposer({
 
   const currentTypeConfig = CHILD_ISSUE_TYPES.find((t) => t.value === selectedType) ?? CHILD_ISSUE_TYPES[0];
 
+  const submit = () => {
+    const trimmed = title.trim();
+    if (!trimmed) return;
+    if (isPlaceholder && onCreatePlaceholder) {
+      onCreatePlaceholder(trimmed);
+    } else {
+      onCreate(trimmed, currentTypeConfig.jiraType);
+    }
+    setTitle("");
+    inputRef.current?.focus();
+  };
+
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === "Enter") {
       e.preventDefault();
-      const trimmed = title.trim();
-      if (!trimmed) return;
-      if (isPlaceholder && onCreatePlaceholder) {
-        onCreatePlaceholder(trimmed);
-      } else {
-        onCreate(trimmed, currentTypeConfig.jiraType);
-      }
-      setTitle("");
+      submit();
     } else if (e.key === "Escape") {
       if (title) {
         setTitle("");
@@ -189,9 +194,14 @@ export function ChildIssueComposer({
           {/* The hint and a trailing control would crowd the right edge; show the hint only when
               there is no trailing element (e.g. the epic view's "Link existing"). */}
           {!trailing && (
-            <span className="shrink-0 rounded border border-border-subtle px-1.5 py-0.5 text-label font-medium text-text-muted">
+            <button
+              type="button"
+              onClick={submit}
+              disabled={!title.trim()}
+              className="shrink-0 cursor-pointer rounded border border-border-subtle px-1.5 py-0.5 text-label font-medium text-text-muted transition-colors duration-150 hover:enabled:border-[var(--color-brand-400)] hover:enabled:text-text-secondary focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-[var(--color-brand-400)] disabled:cursor-default disabled:opacity-60"
+            >
               ↵ to add
-            </span>
+            </button>
           )}
           {trailing}
         </div>

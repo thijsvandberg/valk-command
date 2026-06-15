@@ -23,6 +23,26 @@ describe("ChildIssueComposer", () => {
     expect(document.activeElement).toBe(input);
   });
 
+  it("clicking the 'to add' hint creates the child, mirroring Enter", () => {
+    const onCreate = vi.fn();
+    render(<ChildIssueComposer variant="bar" onCreate={onCreate} placeholder="Create story in this sprint..." />);
+    const input = screen.getByPlaceholderText("Create story in this sprint...") as HTMLInputElement;
+    fireEvent.change(input, { target: { value: "Caching of pricing" } });
+    fireEvent.click(screen.getByText("↵ to add"));
+
+    expect(onCreate).toHaveBeenCalledWith("Caching of pricing", "Story");
+    expect(input.value).toBe("");
+  });
+
+  it("the 'to add' hint is disabled while the input is empty", () => {
+    const onCreate = vi.fn();
+    render(<ChildIssueComposer variant="bar" onCreate={onCreate} />);
+    const button = screen.getByText("↵ to add") as HTMLButtonElement;
+    expect(button.disabled).toBe(true);
+    fireEvent.click(button);
+    expect(onCreate).not.toHaveBeenCalled();
+  });
+
   it("does not create on Enter when the input is only whitespace", () => {
     const onCreate = vi.fn();
     render(<ChildIssueComposer variant="bar" onCreate={onCreate} />);
