@@ -8,6 +8,9 @@ import { applyRateLimit } from "@/lib/rate-limiter";
 import { errorResponse } from "@/lib/api-response";
 import { parseJsonBody } from "@/lib/request-parser";
 
+// Intentionally left in the global appSetting store (BRDG-343): column pixel
+// widths depend on screen geometry, so they are device-local rather than
+// per-account. Not migrated alongside the other column settings for that reason.
 const SETTING_KEY = "sprint_board_column_widths";
 
 type ColumnWidths = Record<string, number>;

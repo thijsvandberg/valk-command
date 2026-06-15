@@ -3,6 +3,7 @@
 import { useCallback } from "react";
 import { useLocalStorage } from "./useLocalStorage";
 
+// Device-local (BRDG-343): ephemeral recent-search list; low value to sync.
 const HISTORY_KEY = "search_history";
 const MAX_HISTORY = 5;
 const MIN_QUERY_LENGTH = 2;

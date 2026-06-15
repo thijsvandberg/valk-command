@@ -70,11 +70,13 @@ export default function RefinementSessionTicketPage({
     finishSession,
   } = useRefinementSession();
 
-  // Persisted sidebar width (shared across all sidebar panels and sessions)
+  // Persisted sidebar width (shared across all sidebar panels and sessions).
+  // Device-local (BRDG-343): width depends on this screen's geometry.
   const [sidebarWidth, setSidebarWidth] = useLocalStorage("bridge:refinement-sidebar-width", getDefaultPaneWidth());
 
   // Persisted zoom level for refinement session content. New key (v2) resets
-  // any legacy 100/120 values to the current 110/130 scale.
+  // any legacy 100/120 values to the current 110/130 scale. Device-local
+  // (BRDG-343): zoom is a per-display preference, not account intent.
   const [zoomLevel, setZoomLevel] = useLocalStorage<110 | 130>("bridge:refinement-zoom-v2", 110);
   const zoomFactor = zoomLevel / 100;
 

@@ -17,6 +17,7 @@ export const COMPARE_COL_WIDTHS: Record<ColumnId, number | undefined> = {
 };
 
 const COMPARE_LS_KEY = "bridge:compare-columns";
+// Device-local (BRDG-343): the split position depends on this screen's width.
 const COMPARE_SPLIT_LS_KEY = "bridge:compare-split";
 export const COMPARE_DEFAULT_VISIBLE: ColumnId[] = ["key", "title", "points", "assignee"];
 export const COMPARE_DEFAULT_ORDER: ColumnId[] = COLUMNS.map((c) => c.id);

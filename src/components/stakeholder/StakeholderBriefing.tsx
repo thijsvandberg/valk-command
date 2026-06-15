@@ -70,6 +70,7 @@ export function StakeholderBriefing({
   onDismiss,
   storedBriefRisks,
 }: StakeholderBriefingProps) {
+  // Device-local (BRDG-343): drawer width depends on this screen's geometry.
   const [drawerWidth, setDrawerWidth] = useLocalStorage<number>("bridge:ai-drawer-width", 520);
   const drawerRef = useRef<HTMLDivElement>(null);
   const resizeState = useRef<{ startX: number; startWidth: number } | null>(null);

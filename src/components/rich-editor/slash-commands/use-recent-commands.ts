@@ -1,5 +1,6 @@
 import { useState, useCallback } from "react";
 
+// Device-local (BRDG-343): ephemeral recent-commands list; low value to sync.
 const STORAGE_KEY = "slash-commands-recent";
 const MAX_RECENT = 5;
 

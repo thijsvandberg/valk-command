@@ -45,6 +45,8 @@ const AddToRefinementModal = dynamic(
   { ssr: false },
 );
 
+// Device-local (BRDG-343): panel widths depend on screen geometry, so syncing
+// them across a laptop and a large monitor would be worse, not better.
 const PANEL_STORAGE_KEY = "sprintBoardPanelWidth";
 const DEFAULT_PANEL_WIDTH = 400;
 const MIN_PANEL_WIDTH = 320;

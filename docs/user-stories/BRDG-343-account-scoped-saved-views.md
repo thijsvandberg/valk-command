@@ -1,6 +1,6 @@
 # BRDG-343: Account-Scoped Settings (starting with Saved Views)
 
-**Status:** In Progress (foundation + saved views done; remaining per-account state is a follow-up)
+**Status:** Done (foundation + saved views + all remaining per-account state migrated; `notification_prefs` and `theme` intentionally deferred with inline rationale)
 **Priority:** Medium
 **Type:** Feature
 
@@ -69,8 +69,8 @@ Tests: per-route GET default / PUT validation / round-trip; seed-on-read + idemp
 - [x] Loading/error states; a failed save surfaces a toast and does not drop the in-progress view. — SWR loading + `rollbackOnError` on write.
 
 ### Remaining per-account state (follow-up)
-- [ ] The per-account filters/sort/row-fields and the listed `appSetting` keys are moved onto the foundation, each with a one-time import from its old location (localStorage or global `appSetting`). <!-- in progress: shared helpers + Group H (saved_searches, sprint_board_column_config, story_writer_quick_prompts, default_sprint_id, section_visibility) done; notification_prefs intentionally descoped (see note); localStorage groups A-F next -->
-- [ ] Device-local keys listed above are explicitly left in `localStorage`, each with a short WHY comment.
+- [x] The per-account filters/sort/row-fields and the listed `appSetting` keys are moved onto the foundation, each with a one-time import from its old location (localStorage or global `appSetting`). — sprint-board filters/sort/row-fields/po-priority + epic/subtask/activity/stakeholder/chat/pipeline prefs via `useMigratedAccountSetting`; global `appSetting` keys (`saved_searches`, `sprint_board_column_config`, `story_writer_quick_prompts`, `default_sprint_id`, `section_visibility`) re-scoped via `seedUserSettingFromGlobal`. Two intentional exceptions: `notification_prefs` (sender reads it outside any request, no account context) and `theme` (synchronous SSR snapshot; per-account would reintroduce flash-of-wrong-theme) — both deferred with inline WHY comments.
+- [x] Device-local keys listed above are explicitly left in `localStorage`, each with a short WHY comment. — panel/sidebar/drawer widths, compare split, refinement zoom, column widths (stays global appSetting), search history, recent slash-commands.
 
 ### Tests
 - [x] API/store tests: GET/PUT, validation, per-account isolation, `"global"` fallback. — `route.test.ts` + `user-settings.test.ts`.

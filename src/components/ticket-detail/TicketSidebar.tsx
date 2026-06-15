@@ -9,6 +9,8 @@ import { TicketMetaContent } from "@/components/ticket-detail/TicketMetaContent"
 
 export const DEFAULT_SIDEBAR_WIDTH = 420;
 const MIN_SIDEBAR_WIDTH = 280;
+// Device-local (BRDG-343): a width tuned to this screen shouldn't follow the
+// account to a differently sized display; same for the collapse toggle.
 export const SIDEBAR_WIDTH_KEY = "ticket-sidebar-width";
 export const SIDEBAR_COLLAPSED_KEY = "ticket-sidebar-collapsed";
 

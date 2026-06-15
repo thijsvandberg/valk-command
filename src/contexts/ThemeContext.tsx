@@ -16,6 +16,11 @@ interface ThemeContextValue {
   toggleTheme: () => void;
 }
 
+// Theme stays in localStorage, read synchronously via useSyncExternalStore so
+// the correct theme is applied before first paint. Moving it to the async
+// per-account store (BRDG-343) would reintroduce a flash-of-wrong-theme on load,
+// so per-account theme is intentionally deferred (the story marks it low
+// priority; a per-device override is preferable anyway).
 const STORAGE_KEY = "theme";
 const THEME_COLOR_DARK = "#0b1316";
 const THEME_COLOR_LIGHT = "#f4f8f8";
