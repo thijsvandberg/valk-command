@@ -19,9 +19,11 @@ vi.mock("@/lib/ticket-cache", () => ({
 
 const registerPendingMove = vi.fn();
 const clearPendingMove = vi.fn();
+const confirmPendingMove = vi.fn();
 vi.mock("@/components/sprint-board/pendingSprintMoves", () => ({
   registerPendingMove: (...a: unknown[]) => registerPendingMove(...a),
   clearPendingMove: (...a: unknown[]) => clearPendingMove(...a),
+  confirmPendingMove: (...a: unknown[]) => confirmPendingMove(...a),
 }));
 
 function makeTicket(key: string, sprintId?: string): Ticket {
@@ -70,6 +72,18 @@ describe("useSprintBoardDragDrop - sprint-slot drop zone", () => {
     revalidateMovedSprintLists.mockReset();
     registerPendingMove.mockReset();
     clearPendingMove.mockReset();
+    confirmPendingMove.mockReset();
+  });
+
+  it("confirms the pending move after a successful drop to another sprint", async () => {
+    const deps = makeDeps();
+    const { result } = renderHook(() => useSprintBoardDragDrop(deps));
+
+    await act(async () => {
+      await result.current.handleBoardDragEnd(dropEvent("VPL-1", "sprint-slot:140"));
+    });
+
+    expect(confirmPendingMove).toHaveBeenCalledWith("VPL-1");
   });
 
   it("registers the moved row as a pending move so it survives revalidation", async () => {

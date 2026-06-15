@@ -30,6 +30,7 @@ vi.mock("swr", () => ({
 vi.mock("@/components/sprint-board/pendingSprintMoves", () => ({
   registerPendingMove: vi.fn(),
   clearPendingMove: vi.fn(),
+  confirmPendingMove: vi.fn(),
 }));
 
 function makeTicket(key: string, flagged: boolean, sprintId?: string): Ticket {

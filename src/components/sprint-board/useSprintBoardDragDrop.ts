@@ -15,7 +15,7 @@ import {
 } from "@dnd-kit/core";
 import { jira, ApiError } from "@/lib/api-client";
 import { moveTicketSprintCaches, revalidateMovedSprintLists } from "@/lib/ticket-cache";
-import { registerPendingMove, clearPendingMove } from "@/components/sprint-board/pendingSprintMoves";
+import { registerPendingMove, clearPendingMove, confirmPendingMove } from "@/components/sprint-board/pendingSprintMoves";
 import { sprintMoveToastContent } from "@/components/sprint-board/sprintMoveToast";
 
 interface DragDropDeps {
@@ -148,6 +148,9 @@ export function useSprintBoardDragDrop(deps: DragDropDeps) {
       try {
         // position: "top" lands the dropped row at the top of the target sprint.
         await jira.moveSprint({ issueKeys: keysToMove, targetSprintId, position: "top" });
+        // The move landed in Jira and the DB; the overlay may now release the rows
+        // once a refreshed list shows them.
+        keysToMove.forEach((k) => confirmPendingMove(k));
         refreshMeter();
         // The server cache is now invalidated, so refresh the destination and
         // origin lists: if the target view was opened mid-move and revalidated

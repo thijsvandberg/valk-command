@@ -8,7 +8,7 @@ import { apiFetch, jira, tickets as ticketsApi } from "@/lib/api-client";
 import { userInitials, userColor } from "@/lib/user-utils";
 import type { AssignableUser } from "@/components/shared/AssigneePicker";
 import type { EpicOption } from "@/components/shared/EpicPicker";
-import { registerPendingMove, clearPendingMove } from "@/components/sprint-board/pendingSprintMoves";
+import { registerPendingMove, clearPendingMove, confirmPendingMove } from "@/components/sprint-board/pendingSprintMoves";
 
 interface TicketActionsDeps {
   apiTickets: Ticket[] | undefined;
@@ -185,6 +185,7 @@ export function useTicketActions(deps: TicketActionsDeps) {
     try {
       // Moving a ticket to a sprint lands it at the top of that sprint.
       await jira.moveSprint({ issueKeys: [key], targetSprintId: target, position: "top" });
+      confirmPendingMove(key);
       mutateTickets();
     } catch {
       clearPendingMove(key);
@@ -320,6 +321,7 @@ export function useTicketActions(deps: TicketActionsDeps) {
     try {
       // Bulk-moving lands the rows at the top of the target sprint.
       await jira.moveSprint({ issueKeys: keys, targetSprintId, position: "top" });
+      keys.forEach((k) => confirmPendingMove(k));
 
       // Update the current list. In the All view the moved rows stay but get
       // the new sprintId (so grouping/labels follow them); in a per-sprint or

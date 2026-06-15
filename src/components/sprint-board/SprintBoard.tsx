@@ -247,12 +247,16 @@ export default function SprintBoard() {
     () => applyPendingMoves(apiTickets, activeSprintId || "__all__", pendingMoves, Date.now()) ?? [],
     [apiTickets, activeSprintId, pendingMoves],
   );
-  // Drop a pending move once the destination's server data includes the row.
+  // Drop a pending move once it is server-confirmed AND visible in the destination
+  // data. Gating on `confirmed` (not just presence) is essential: the optimistic
+  // cache patch makes the row "present" the moment you open the target, so clearing
+  // on presence alone would drop the overlay before the slow Jira move lands, and an
+  // in-flight revalidation would then make the row vanish until the move finished.
   useEffect(() => {
     if (!apiTickets) return;
     const present = new Set(apiTickets.map((t) => t.key));
     pendingMoves.forEach((m, key) => {
-      if (m.targetSprintId === activeSprintId && present.has(key)) clearPendingMove(key);
+      if (m.confirmed && m.targetSprintId === activeSprintId && present.has(key)) clearPendingMove(key);
     });
   }, [apiTickets, activeSprintId, pendingMoves]);
   const activeListKey = useMemo(() => {

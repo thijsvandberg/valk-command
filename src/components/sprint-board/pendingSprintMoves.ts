@@ -19,6 +19,10 @@ export interface PendingMove {
   ticket: Ticket; // snapshot rendered until the server list includes the row
   targetSprintId: string; // raw move value: "__backlog__" or a sprint id
   at: number;
+  // Set once the server move call has resolved. Until then the row is kept in the
+  // overlay no matter what the cache says, so an in-flight revalidation can't drop
+  // it. The board only clears a move after it is confirmed AND visible in the data.
+  confirmed: boolean;
 }
 
 // Replaced (not mutated) on every change so useSyncExternalStore sees a new
@@ -33,11 +37,21 @@ function commit(next: Map<string, PendingMove>) {
 
 export function registerPendingMove(ticket: Ticket, targetSprintId: string, now: number) {
   const next = new Map(moves);
-  next.set(ticket.key, { ticket, targetSprintId, at: now });
+  next.set(ticket.key, { ticket, targetSprintId, at: now, confirmed: false });
   commit(next);
   // Self-clear so an entry never sticks if its destination view is never opened
   // (the board's confirm-on-server effect only runs while that list is mounted).
   setTimeout(() => clearPendingMove(ticket.key), TTL_MS);
+}
+
+// Mark a move as server-confirmed: its move call has resolved, so the DB now holds
+// the new sprint/rank and the board may clear it as soon as the data shows it.
+export function confirmPendingMove(key: string) {
+  const move = moves.get(key);
+  if (!move || move.confirmed) return;
+  const next = new Map(moves);
+  next.set(key, { ...move, confirmed: true });
+  commit(next);
 }
 
 export function clearPendingMove(key: string) {
