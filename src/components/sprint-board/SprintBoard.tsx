@@ -22,6 +22,7 @@ const AddToRefinementModal = dynamic(() => import("@/components/refinement-sessi
 import { useJiraSprints, useTickets, useTicketDetail } from "@/hooks/useSprintBoard";
 import { useTicketSessionMap } from "@/hooks/useTicketSessionMap";
 import { useLocalStorage } from "@/hooks/useLocalStorage";
+import { useMigratedAccountSetting } from "@/hooks/useMigratedAccountSetting";
 import { usePencilCapacity } from "@/hooks/usePencilCapacity";
 import { useSprintUsedPoints } from "@/hooks/useSprintUsedPoints";
 import { usePlaceholders } from "@/hooks/usePlaceholders";
@@ -57,6 +58,9 @@ const FinishSprintModal = dynamic(() => import("@/components/sprint-board/Finish
 import { LoadingState } from "@/components/shared/LoadingState";
 import { useColumnConfig } from "@/hooks/useColumnConfig";
 import { useTicketEventsStream } from "@/hooks/useTicketEventsStream";
+
+// Stable default so the account-setting SWR fallback never churns identity (BRDG-343).
+const EMPTY_PO_PRIORITY: Record<string, string[]> = {};
 
 export default function SprintBoard() {
   // BRDG-338: one multiplexed SSE connection keeps every rendered row live;
@@ -153,7 +157,11 @@ export default function SprintBoard() {
   const [editingSlot, setEditingSlot] = useState<number | null>(null);
   const [checkedTickets, setCheckedTickets] = useState<Set<string>>(new Set());
   const [focusedTicketIdx, setFocusedTicketIdx] = useState<number>(-1);
-  const [poPriorityMap, setPoPriorityMap] = useLocalStorage<Record<string, string[]>>("sprint-board-po-priority-map", {});
+  const { value: poPriorityMap, setValue: setPoPriorityMap } = useMigratedAccountSetting<Record<string, string[]>>(
+    "/api/settings/sprint-board-po-priority",
+    "sprint-board-po-priority-map",
+    EMPTY_PO_PRIORITY,
+  );
   const [searchModalOpen, setSearchModalOpen] = useState(false);
   const [analyticsVisible, setAnalyticsVisible] = useLocalStorage("sprint-analytics-visible", false);
   // Forward-planning mode (BRDG-303): per-view toggle that reveals pencil capacity,

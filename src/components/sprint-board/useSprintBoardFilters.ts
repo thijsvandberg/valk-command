@@ -6,7 +6,7 @@ import type { Ticket, TicketReadiness } from "@/types/ticket";
 import type { SortField, SortDir, InlineTagId, SavedView } from "@/components/sprint-board/FilterBar";
 import { DEFAULT_VISIBLE_TAGS, columnsToTags } from "@/components/sprint-board/FilterBar";
 import { SPRINT_STATE_FILTER_PREFIX, SPRINT_STATE_CLOSED, isSprintStateFilter } from "@/components/sprint-board/filter-bar-types";
-import { useLocalStorage } from "@/hooks/useLocalStorage";
+import { useMigratedAccountSetting } from "@/hooks/useMigratedAccountSetting";
 import { useSavedViews } from "@/hooks/useSavedViews";
 import { useSearchParams, useRouter } from "next/navigation";
 import { extractTeamPrefix, buildBoardUrl, ALL_SPRINT_SLUG } from "@/lib/sprint-utils";
@@ -29,6 +29,11 @@ export interface StoredSort {
 }
 
 const defaultFilters: StoredFilters = { status: [], epic: [], assignee: [], readiness: [], editState: [], issueType: [], gaps: [], team: [], sprint: [] };
+
+// Stable defaults for the account-scoped settings so the SWR fallback never
+// churns identity (BRDG-343).
+const DEFAULT_SORT: StoredSort = { field: "rank", direction: "asc" };
+const DEFAULT_ROW_FIELDS: InlineTagId[] = [...DEFAULT_VISIBLE_TAGS];
 
 // Every sprint a ticket belongs to. A multi-sprint ticket matches a sprint filter
 // or team filter when ANY of its sprints qualifies. Falls back to the single
@@ -55,12 +60,28 @@ export function useSprintBoardFilters(
   // All restores the last selection across sessions, while sprint views share a working set that
   // is cleared on navigation. The active store is chosen by view, so all the getters/setters below
   // read and write the correct one transparently.
-  const [sprintViewFilters, setSprintViewFilters] = useLocalStorage<StoredFilters>("sprint-board-filters", defaultFilters);
-  const [allViewFilters, setAllViewFilters] = useLocalStorage<StoredFilters>("sprint-board-all-filters", defaultFilters);
+  const { value: sprintViewFilters, setValue: setSprintViewFilters } = useMigratedAccountSetting<StoredFilters>(
+    "/api/settings/sprint-board-filters",
+    "sprint-board-filters",
+    defaultFilters,
+  );
+  const { value: allViewFilters, setValue: setAllViewFilters } = useMigratedAccountSetting<StoredFilters>(
+    "/api/settings/sprint-board-all-filters",
+    "sprint-board-all-filters",
+    defaultFilters,
+  );
   const storedFilters = isAllView ? allViewFilters : sprintViewFilters;
   const setStoredFilters = isAllView ? setAllViewFilters : setSprintViewFilters;
-  const [storedSort, setStoredSort] = useLocalStorage<StoredSort>("sprint-board-sort", { field: "rank", direction: "asc" });
-  const [storedColumns, setStoredColumns] = useLocalStorage<InlineTagId[]>("sprint-board-row-fields", [...DEFAULT_VISIBLE_TAGS]);
+  const { value: storedSort, setValue: setStoredSort } = useMigratedAccountSetting<StoredSort>(
+    "/api/settings/sprint-board-sort",
+    "sprint-board-sort",
+    DEFAULT_SORT,
+  );
+  const { value: storedColumns, setValue: setStoredColumns } = useMigratedAccountSetting<InlineTagId[]>(
+    "/api/settings/sprint-board-row-fields",
+    "sprint-board-row-fields",
+    DEFAULT_ROW_FIELDS,
+  );
   const { savedViews, setSavedViews } = useSavedViews();
   const [searchQuery, setSearchQuery] = useState("");
 

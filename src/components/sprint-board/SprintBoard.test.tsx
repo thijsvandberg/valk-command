@@ -12,9 +12,13 @@ vi.mock("next/dynamic", () => ({
   default: () => () => null,
 }));
 
-vi.mock("lucide-react", () => ({
-  Check: () => <span data-testid="check-icon" />,
-}));
+// Keep the real lucide icons (account-scoped settings load async now, so more
+// render paths run, e.g. the single-sprint create button); only Check is stubbed
+// with a testid the assertions rely on.
+vi.mock("lucide-react", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("lucide-react")>();
+  return { ...actual, Check: () => <span data-testid="check-icon" /> };
+});
 
 vi.mock("@dnd-kit/core", () => ({
   DndContext: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,

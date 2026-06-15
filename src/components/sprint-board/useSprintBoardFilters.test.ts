@@ -11,13 +11,24 @@ vi.mock("next/navigation", () => ({
 }));
 
 const localKeysMock = vi.fn();
+// Account-scoped settings (BRDG-343) read/write via apiFetch. Echo the PUT body
+// so optimistic writes settle, and hand back a default-ish envelope for GETs.
+const apiFetchMock = vi.fn((url: string, opts?: { method?: string; body?: unknown }) =>
+  Promise.resolve(opts?.method === "PUT" ? (opts.body as object) : { value: undefined }),
+);
 vi.mock("@/lib/api-client", () => ({
   search: { localKeys: (...args: unknown[]) => localKeysMock(...args) },
-  // Saved views now load via SWR through the account-settings endpoint; stub the
-  // fetch/write so the hook renders without a real backend in these unit tests.
   swrFetcher: vi.fn(() => Promise.resolve({ value: [] })),
-  apiFetch: vi.fn(() => Promise.resolve({ value: [] })),
+  apiFetch: (...args: [string, { method?: string; body?: unknown }?]) => apiFetchMock(...args),
 }));
+
+// The last value PUT to a settings endpoint (exact url match), or undefined.
+function lastPutValue(url: string): Record<string, unknown> | undefined {
+  const call = [...apiFetchMock.mock.calls]
+    .reverse()
+    .find(([u, o]) => u === url && o?.method === "PUT");
+  return call ? (call[1]!.body as { value: Record<string, unknown> }).value : undefined;
+}
 
 function makeTicket(overrides: Partial<Ticket> = {}): Ticket {
   return {
@@ -118,6 +129,7 @@ describe("useSprintBoardFilters - sprint-state quick filters (BRDG-259)", () => 
 
   beforeEach(() => {
     localStorage.clear();
+    apiFetchMock.mockClear();
   });
 
   it("shows every sprint state by default (no sprint filter active)", () => {
@@ -156,11 +168,11 @@ describe("useSprintBoardFilters - sprint-state quick filters (BRDG-259)", () => 
     expect(result.current.forceShowSprintIds).toEqual(["act"]);
   });
 
-  it("persists state buckets in the sprint filter (localStorage)", () => {
+  it("persists state buckets in the sprint filter (account-scoped)", () => {
     const { result } = setupAll();
     act(() => result.current.setSprintFilter(new Set([SPRINT_STATE_CLOSED])));
-    const stored = JSON.parse(localStorage.getItem(STORAGE_KEY) ?? "{}");
-    expect(stored.sprint).toContain(SPRINT_STATE_CLOSED);
+    const stored = lastPutValue(`/api/settings/${STORAGE_KEY}`);
+    expect(stored?.sprint).toContain(SPRINT_STATE_CLOSED);
   });
 });
 
@@ -203,13 +215,14 @@ describe("useSprintBoardFilters - All-view filter memory (BRDG-281)", () => {
 
   beforeEach(() => {
     localStorage.clear();
+    apiFetchMock.mockClear();
   });
 
   it("persists All-view filters to a store separate from the sprint working set", () => {
     const { result } = renderHook(() => useSprintBoardFilters(ALL, {}, true, null));
     act(() => result.current.setTeamFilter(new Set(["BT"])));
-    expect(JSON.parse(localStorage.getItem(ALL_KEY) ?? "{}").team).toEqual(["BT"]);
-    expect(localStorage.getItem(SPRINT_KEY)).toBeNull();
+    expect(lastPutValue(`/api/settings/${ALL_KEY}`)?.team).toEqual(["BT"]);
+    expect(lastPutValue(`/api/settings/${SPRINT_KEY}`)).toBeUndefined();
   });
 
   it("keeps the All-view filters when the sprint working set is reset on navigation", () => {
@@ -217,7 +230,7 @@ describe("useSprintBoardFilters - All-view filter memory (BRDG-281)", () => {
     act(() => result.current.setTeamFilter(new Set(["BT"])));
     act(() => result.current.resetSprintViewFilters());
     expect(result.current.teamFilter.has("BT")).toBe(true);
-    expect(JSON.parse(localStorage.getItem(ALL_KEY) ?? "{}").team).toEqual(["BT"]);
+    expect(lastPutValue(`/api/settings/${ALL_KEY}`)?.team).toEqual(["BT"]);
   });
 
   it("restores remembered All-view filters when reopening the All view in a new session", () => {
@@ -237,7 +250,7 @@ describe("useSprintBoardFilters - All-view filter memory (BRDG-281)", () => {
   it("showOnlyEpicInAllView writes the epic to the All-view store from a sprint view", () => {
     const { result } = renderHook(() => useSprintBoardFilters(ALL, {}, false, null));
     act(() => result.current.showOnlyEpicInAllView("Onboarding"));
-    expect(JSON.parse(localStorage.getItem(ALL_KEY) ?? "{}").epic).toEqual(["Onboarding"]);
+    expect(lastPutValue(`/api/settings/${ALL_KEY}`)?.epic).toEqual(["Onboarding"]);
   });
 
   it("showOnlyEpicInAllView is reflected by the epic filter when the All view is active", () => {
