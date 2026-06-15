@@ -14,6 +14,7 @@ import type { SortField, SortDir } from "@/components/sprint-board/filter-bar-ty
 export function UnifiedControlsCluster({
   searchQuery,
   onSearchChange,
+  searchCount,
   sortField,
   sortDir,
   onSortChange,
@@ -22,6 +23,7 @@ export function UnifiedControlsCluster({
 }: {
   searchQuery: string;
   onSearchChange: (q: string) => void;
+  searchCount?: { matched: number; total: number };
   sortField: SortField;
   sortDir: SortDir;
   onSortChange: (field: SortField, dir: SortDir) => void;
@@ -36,7 +38,7 @@ export function UnifiedControlsCluster({
   return (
     <div className="flex shrink-0 items-center gap-1">
       {/* Search -- leading control, expands inline */}
-      <ExpandableSearch value={searchQuery} onChange={onSearchChange} />
+      <ExpandableSearch value={searchQuery} onChange={onSearchChange} count={searchCount} />
 
       {/* Sort -- self-contained dropdown, unchanged */}
       <SortDropdown field={sortField} direction={sortDir} onChange={onSortChange} />

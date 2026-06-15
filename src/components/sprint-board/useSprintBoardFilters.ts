@@ -1,11 +1,13 @@
 "use client";
 
-import { useState, useCallback, useMemo } from "react";
+import { useState, useCallback, useMemo, useEffect, useRef } from "react";
+import { search } from "@/lib/api-client";
 import type { Ticket, TicketReadiness } from "@/types/ticket";
 import type { SortField, SortDir, InlineTagId, SavedView } from "@/components/sprint-board/FilterBar";
 import { DEFAULT_VISIBLE_TAGS, columnsToTags } from "@/components/sprint-board/FilterBar";
 import { SPRINT_STATE_FILTER_PREFIX, SPRINT_STATE_CLOSED, isSprintStateFilter } from "@/components/sprint-board/filter-bar-types";
 import { useLocalStorage } from "@/hooks/useLocalStorage";
+import { useSavedViews } from "@/hooks/useSavedViews";
 import { useSearchParams, useRouter } from "next/navigation";
 import { extractTeamPrefix, buildBoardUrl, ALL_SPRINT_SLUG } from "@/lib/sprint-utils";
 
@@ -59,8 +61,34 @@ export function useSprintBoardFilters(
   const setStoredFilters = isAllView ? setAllViewFilters : setSprintViewFilters;
   const [storedSort, setStoredSort] = useLocalStorage<StoredSort>("sprint-board-sort", { field: "rank", direction: "asc" });
   const [storedColumns, setStoredColumns] = useLocalStorage<InlineTagId[]>("sprint-board-row-fields", [...DEFAULT_VISIBLE_TAGS]);
-  const [savedViews, setSavedViews] = useLocalStorage<SavedView[]>("sprint-board-saved-views", []);
+  const { savedViews, setSavedViews } = useSavedViews();
   const [searchQuery, setSearchQuery] = useState("");
+
+  // Deep-field inline search (BRDG-345): the instant client filter below can only reach the
+  // fields present on the board ticket object (title/key/assignee/notes). Description,
+  // acceptance criteria, labels and comments live solely in the server search index, so we
+  // debounce a fetch for the keys of every ticket matching those deeper fields and fold them
+  // into the visible set. Results are tagged with the query they belong to so a stale
+  // response (or one for a since-cleared query) is ignored at read time rather than needing
+  // a synchronous reset in the effect. Aborts in-flight requests on each keystroke.
+  const [indexMatch, setIndexMatch] = useState<{ query: string; keys: Set<string> }>({ query: "", keys: new Set() });
+  const searchAbortRef = useRef<AbortController | null>(null);
+  useEffect(() => {
+    const q = searchQuery.trim();
+    if (q.length < 2) {
+      searchAbortRef.current?.abort();
+      return;
+    }
+    const timer = setTimeout(() => {
+      searchAbortRef.current?.abort();
+      const controller = new AbortController();
+      searchAbortRef.current = controller;
+      search.localKeys(q, controller.signal)
+        .then((data) => setIndexMatch({ query: q, keys: new Set(data.keys) }))
+        .catch(() => { /* aborted or failed: instant matches still apply */ });
+    }, 150);
+    return () => clearTimeout(timer);
+  }, [searchQuery]);
 
   const statusFilter = useMemo(() => new Set(storedFilters.status), [storedFilters.status]);
   const epicFilter = useMemo(() => new Set(storedFilters.epic), [storedFilters.epic]);
@@ -246,14 +274,24 @@ export function useSprintBoardFilters(
   const forceShowSprintIds = useMemo(() => [...selectedSprintIds], [selectedSprintIds]);
 
   const filteredTickets = useMemo(() => {
-    if (searchQuery.trim().length < 2) return scopeFiltered;
-    const q = searchQuery.toLowerCase();
+    const trimmed = searchQuery.trim();
+    if (trimmed.length < 2) return scopeFiltered;
+    const q = trimmed.toLowerCase();
+    // Only trust index keys fetched for the current query; a response for an older query is
+    // ignored until the matching one lands.
+    const indexKeys = indexMatch.query === trimmed ? indexMatch.keys : null;
+    // Instant tier covers the fields on the board object; the index tier folds in
+    // description / acceptance criteria / labels / comment matches. Iterating scopeFiltered
+    // keeps the search within the current filters -- an index hit can never reintroduce a
+    // ticket the active filters already excluded (BRDG-345).
     return scopeFiltered.filter((t) => {
       return t.key.toLowerCase().includes(q)
         || t.title.toLowerCase().includes(q)
-        || (t.assignee?.name?.toLowerCase().includes(q) ?? false);
+        || (t.assignee?.name?.toLowerCase().includes(q) ?? false)
+        || (t.notes?.toLowerCase().includes(q) ?? false)
+        || (indexKeys?.has(t.key) ?? false);
     });
-  }, [scopeFiltered, searchQuery]);
+  }, [scopeFiltered, searchQuery, indexMatch]);
 
   const sortedTickets = useMemo(() => {
     if (sortField === "rank") {
@@ -442,6 +480,9 @@ export function useSprintBoardFilters(
     teamOptions,
     searchQuery,
     setSearchQuery,
+    // Inline search result count vs the filtered scope it narrows (BRDG-345).
+    searchResultCount: filteredTickets.length,
+    searchScopeCount: scopeFiltered.length,
     gapsFilter,
     setGapsFilter,
     savedViews,

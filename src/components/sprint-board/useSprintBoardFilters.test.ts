@@ -1,4 +1,4 @@
-import { renderHook, act } from "@testing-library/react";
+import { renderHook, act, waitFor } from "@testing-library/react";
 import { describe, it, expect, beforeEach, vi } from "vitest";
 import { useSprintBoardFilters } from "./useSprintBoardFilters";
 import { SPRINT_STATE_CLOSED, SPRINT_STATE_FILTER_PREFIX } from "./filter-bar-types";
@@ -8,6 +8,15 @@ import type { Ticket } from "@/types/ticket";
 vi.mock("next/navigation", () => ({
   useSearchParams: () => new URLSearchParams(),
   useRouter: () => ({ replace: vi.fn(), push: vi.fn(), prefetch: vi.fn() }),
+}));
+
+const localKeysMock = vi.fn();
+vi.mock("@/lib/api-client", () => ({
+  search: { localKeys: (...args: unknown[]) => localKeysMock(...args) },
+  // Saved views now load via SWR through the account-settings endpoint; stub the
+  // fetch/write so the hook renders without a real backend in these unit tests.
+  swrFetcher: vi.fn(() => Promise.resolve({ value: [] })),
+  apiFetch: vi.fn(() => Promise.resolve({ value: [] })),
 }));
 
 function makeTicket(overrides: Partial<Ticket> = {}): Ticket {
@@ -252,5 +261,75 @@ describe("useSprintBoardFilters - sprint-targeted saved view (BRDG-319)", () => 
     const { result } = renderHook(() => useSprintBoardFilters(ALL, {}, true, null));
     act(() => result.current.handleViewClick(SPRINT_VIEW));
     expect([...result.current.sprintFilter]).toEqual(["o1"]);
+  });
+});
+
+describe("useSprintBoardFilters - inline deep-field search (BRDG-345)", () => {
+  beforeEach(() => {
+    localStorage.clear();
+    localKeysMock.mockReset();
+    localKeysMock.mockResolvedValue({ keys: [] });
+  });
+
+  it("matches PO notes instantly (a board-object field)", async () => {
+    const t = makeTicket({ key: "VPL-N", title: "Unrelated title", notes: "kibana heartbeat channel" });
+    const { result } = renderHook(() => useSprintBoardFilters([t], {}, false, null));
+    act(() => result.current.setSearchQuery("heartbeat"));
+    expect(result.current.sortedTickets.map((x) => x.key)).toContain("VPL-N");
+    // let the debounced index fetch settle so no state update escapes act()
+    await waitFor(() => expect(localKeysMock).toHaveBeenCalledWith("heartbeat", expect.anything()));
+  });
+
+  it("folds in index-matched keys (description/comment hits) after the debounce", async () => {
+    localKeysMock.mockResolvedValue({ keys: ["VPL-DESC"] });
+    const a = makeTicket({ key: "VPL-DESC", title: "Unrelated title" });
+    const b = makeTicket({ key: "VPL-OTHER", title: "Other title" });
+    const { result } = renderHook(() => useSprintBoardFilters([a, b], {}, false, null));
+    act(() => result.current.setSearchQuery("heartbeat"));
+    // instant tier sees no match (title/notes don't contain it)
+    expect(result.current.sortedTickets.map((x) => x.key)).not.toContain("VPL-DESC");
+    // index tier folds it in once the fetch resolves
+    await waitFor(() => expect(result.current.sortedTickets.map((x) => x.key)).toContain("VPL-DESC"));
+    expect(result.current.sortedTickets.map((x) => x.key)).not.toContain("VPL-OTHER");
+  });
+
+  it("never reintroduces a filtered-out ticket via an index match", async () => {
+    // VPL-DONE matches the search content and is returned by the index, but the status
+    // filter excludes it -- it must stay hidden.
+    localKeysMock.mockResolvedValue({ keys: ["VPL-DONE"] });
+    const todo = makeTicket({ key: "VPL-TODO", jiraStatus: "TO DO", title: "shared token" });
+    const done = makeTicket({ key: "VPL-DONE", jiraStatus: "DONE", title: "shared token" });
+    const { result } = renderHook(() => useSprintBoardFilters([todo, done], {}, false, null));
+    act(() => result.current.setStatusFilter(new Set(["TO DO"])));
+    act(() => result.current.setSearchQuery("shared"));
+    await waitFor(() => expect(localKeysMock).toHaveBeenCalledWith("shared", expect.anything()));
+    const keys = result.current.sortedTickets.map((x) => x.key);
+    expect(keys).toContain("VPL-TODO");
+    expect(keys).not.toContain("VPL-DONE");
+  });
+
+  it("reports result count vs filtered scope and clears below 2 chars", async () => {
+    const a = makeTicket({ key: "VPL-1", title: "alpha ticket" });
+    const b = makeTicket({ key: "VPL-2", title: "beta ticket" });
+    const { result } = renderHook(() => useSprintBoardFilters([a, b], {}, false, null));
+    expect(result.current.searchScopeCount).toBe(2);
+    expect(result.current.searchResultCount).toBe(2);
+
+    act(() => result.current.setSearchQuery("alpha"));
+    expect(result.current.searchResultCount).toBe(1);
+    expect(result.current.searchScopeCount).toBe(2);
+
+    act(() => result.current.setSearchQuery("a")); // below the 2-char minimum
+    expect(result.current.searchResultCount).toBe(2);
+    await waitFor(() => expect(result.current.searchResultCount).toBe(2));
+  });
+
+  it("does not query the index for sub-2-char input", async () => {
+    const t = makeTicket({ key: "VPL-1", title: "alpha" });
+    const { result } = renderHook(() => useSprintBoardFilters([t], {}, false, null));
+    act(() => result.current.setSearchQuery("a"));
+    // give the debounce window a chance to (not) fire
+    await new Promise((r) => setTimeout(r, 200));
+    expect(localKeysMock).not.toHaveBeenCalled();
   });
 });

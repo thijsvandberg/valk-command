@@ -74,7 +74,7 @@ vi.mock("@/components/shared/IssueTypeIcon", () => ({
 }));
 
 vi.mock("@/components/shared/EmptyState", () => ({
-  EmptyState: () => <div data-testid="empty" />,
+  EmptyState: ({ title }: { title: string }) => <div data-testid="empty">{title}</div>,
 }));
 
 function makeTicket(key: string, title: string, jiraStatus: Ticket["jiraStatus"] = "TO DO"): Ticket {
@@ -133,6 +133,17 @@ describe("TicketTable (headerless, BRDG-239)", () => {
   it("shows empty state when no tickets", () => {
     render(<TicketTable {...defaultProps} tickets={[]} />);
     expect(screen.getByTestId("empty")).toBeInTheDocument();
+  });
+
+  it("uses the default empty copy when no search is active (BRDG-345)", () => {
+    render(<TicketTable {...defaultProps} tickets={[]} />);
+    expect(screen.getByText("No tickets in this sprint")).toBeInTheDocument();
+  });
+
+  it("swaps to a search-specific empty copy when a search is active (BRDG-345)", () => {
+    render(<TicketTable {...defaultProps} tickets={[]} searchActive />);
+    expect(screen.getByText("No tickets match your search")).toBeInTheDocument();
+    expect(screen.queryByText("No tickets in this sprint")).not.toBeInTheDocument();
   });
 });
 

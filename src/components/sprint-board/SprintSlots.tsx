@@ -420,6 +420,7 @@ export function SprintSlots({
   onSortChange,
   searchQuery,
   onSearchChange,
+  searchCount,
   filterProps,
   groupBy,
   onGroupByChange,
@@ -458,6 +459,7 @@ export function SprintSlots({
   onSortChange?: (field: SortField, dir: SortDir) => void;
   searchQuery?: string;
   onSearchChange?: (q: string) => void;
+  searchCount?: { matched: number; total: number };
   filterProps?: FilterControlsPanelProps;
   groupBy?: GroupByOption;
   onGroupByChange?: (v: GroupByOption) => void;
@@ -633,6 +635,7 @@ export function SprintSlots({
           <UnifiedControlsCluster
             searchQuery={searchQuery ?? ""}
             onSearchChange={onSearchChange}
+            searchCount={searchCount}
             sortField={sortField}
             sortDir={sortDir}
             onSortChange={onSortChange}
