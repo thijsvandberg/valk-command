@@ -1,13 +1,11 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
-import { db } from "@/db";
-import { appSetting } from "@/db/schema";
-import { eq } from "drizzle-orm";
 import { logger } from "@/lib/logger";
 import { safeJsonParse } from "@/lib/api-validation";
 import { applyRateLimit } from "@/lib/rate-limiter";
 import { errorResponse } from "@/lib/api-response";
 import { parseJsonBody } from "@/lib/request-parser";
+import { resolveUserId, seedUserSettingFromGlobal, writeUserSetting } from "@/lib/user-settings";
 
 const SETTING_KEY = "sprint_board_column_config";
 
@@ -23,15 +21,14 @@ const columnConfigBodySchema = z.object({
 
 export async function GET() {
   try {
-    const row = await db.query.appSetting.findFirst({
-      where: (r, { eq: eqFn }) => eqFn(r.key, SETTING_KEY),
-    });
-    if (!row) {
+    const userId = await resolveUserId();
+    const raw = await seedUserSettingFromGlobal(SETTING_KEY, userId);
+    if (raw === null) {
       return NextResponse.json({ order: null, visible: null }, {
         headers: { "Cache-Control": "private, no-store" },
       });
     }
-    const parsed = safeJsonParse<ColumnConfig>(row.value, { order: [], visible: [] }, "column-config");
+    const parsed = safeJsonParse<ColumnConfig>(raw, { order: [], visible: [] }, "column-config");
     return NextResponse.json({
       order: parsed.order ?? null,
       visible: parsed.visible ?? null,
@@ -55,20 +52,16 @@ export async function PUT(request: Request) {
 
     const { order, visible } = parsed.data;
 
-    const existing = await db.query.appSetting.findFirst({
-      where: (r, { eq: eqFn }) => eqFn(r.key, SETTING_KEY),
-    });
-
-    const current: ColumnConfig = safeJsonParse(existing?.value, { order: [], visible: [] }, "column-config");
+    const userId = await resolveUserId();
+    // Partial PUTs merge onto the account's current value, seeding from the legacy
+    // global config the first time so a partial update doesn't drop the other half.
+    const existing = await seedUserSettingFromGlobal(SETTING_KEY, userId);
+    const current: ColumnConfig = safeJsonParse(existing ?? undefined, { order: [], visible: [] }, "column-config");
 
     if (order !== undefined) current.order = order;
     if (visible !== undefined) current.visible = visible;
 
-    const payload = JSON.stringify(current);
-
-    await db.insert(appSetting)
-      .values({ key: SETTING_KEY, value: payload })
-      .onConflictDoUpdate({ target: appSetting.key, set: { value: payload } });
+    await writeUserSetting(SETTING_KEY, userId, JSON.stringify(current));
 
     return NextResponse.json({ order: current.order, visible: current.visible });
   } catch (err) {

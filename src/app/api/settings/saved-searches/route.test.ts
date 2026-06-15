@@ -5,11 +5,20 @@ import type { BetterSQLite3Database } from "drizzle-orm/better-sqlite3";
 import type * as schema from "@/db/schema";
 
 let testDb: BetterSQLite3Database<typeof schema>;
+let currentUser: string | null = null;
 
 vi.mock("@/db", () => ({
   get db() {
     return testDb;
   },
+}));
+
+// resolveUserId reads the forwarded Clerk user from this header; controlling it
+// lets us assert per-account isolation and the appSetting -> userSetting seed.
+vi.mock("next/headers", () => ({
+  headers: async () => ({
+    get: (key: string) => (key === "x-bridge-user-id" ? currentUser : null),
+  }),
 }));
 
 import { GET, PUT } from "./route";
@@ -127,5 +136,46 @@ describe("PUT /api/settings/saved-searches", () => {
     expect(response.status).toBe(200);
     const data = await response.json();
     expect(data.searches[0].id).toBe("new-id");
+  });
+});
+
+describe("/api/settings/saved-searches per-account scoping (BRDG-343)", () => {
+  beforeEach(() => {
+    testDb = createTestDb();
+    currentUser = null;
+  });
+
+  function put(searches: unknown) {
+    return PUT(
+      new Request("http://localhost:3100/api/settings/saved-searches", {
+        method: "PUT",
+        body: JSON.stringify({ searches }),
+        headers: { "Content-Type": "application/json" },
+      }),
+    );
+  }
+
+  it("seeds an account from the legacy global searches on first read", async () => {
+    testDb
+      .insert(appSetting)
+      .values({ key: "saved_searches", value: JSON.stringify([sampleSearch]) })
+      .run();
+
+    currentUser = "user-a";
+    const data = await (await GET()).json();
+    expect(data.searches).toHaveLength(1);
+    expect(data.searches[0].id).toBe("abc123");
+  });
+
+  it("isolates one account's searches from another", async () => {
+    currentUser = "user-a";
+    await put([{ ...sampleSearch, id: "a-only" }]);
+
+    currentUser = "user-b";
+    expect((await (await GET()).json()).searches).toEqual([]);
+    await put([{ ...sampleSearch, id: "b-only" }]);
+
+    currentUser = "user-a";
+    expect((await (await GET()).json()).searches[0].id).toBe("a-only");
   });
 });

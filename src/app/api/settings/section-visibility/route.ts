@@ -1,12 +1,11 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
-import { db } from "@/db";
-import { appSetting } from "@/db/schema";
 import { logger } from "@/lib/logger";
 import { safeJsonParse } from "@/lib/api-validation";
 import { applyRateLimit } from "@/lib/rate-limiter";
 import { errorResponse } from "@/lib/api-response";
 import { parseJsonBody } from "@/lib/request-parser";
+import { resolveUserId, seedUserSettingFromGlobal, writeUserSetting } from "@/lib/user-settings";
 
 function settingKey(section: string) {
   return `section_visibility_${section}`;
@@ -36,15 +35,14 @@ export async function GET(request: Request) {
   }
 
   try {
-    const row = await db.query.appSetting.findFirst({
-      where: (r, { eq: eqFn }) => eqFn(r.key, settingKey(section)),
-    });
-    if (!row) {
+    const userId = await resolveUserId();
+    const raw = await seedUserSettingFromGlobal(settingKey(section), userId);
+    if (raw === null) {
       return NextResponse.json({ visible: null }, {
         headers: { "Cache-Control": "private, no-store" },
       });
     }
-    const parsed = safeJsonParse<SectionVisibility>(row.value, { visible: [] }, "section-visibility");
+    const parsed = safeJsonParse<SectionVisibility>(raw, { visible: [] }, "section-visibility");
     return NextResponse.json({ visible: parsed.visible ?? null, allKnown: parsed.allKnown ?? null }, {
       headers: { "Cache-Control": "private, no-store" },
     });
@@ -64,11 +62,8 @@ export async function PUT(request: Request) {
     if ("error" in parsed) return parsed.error;
 
     const { section, visible, allKnown } = parsed.data;
-    const payload = JSON.stringify({ visible, allKnown });
-
-    await db.insert(appSetting)
-      .values({ key: settingKey(section), value: payload })
-      .onConflictDoUpdate({ target: appSetting.key, set: { value: payload } });
+    const userId = await resolveUserId();
+    await writeUserSetting(settingKey(section), userId, JSON.stringify({ visible, allKnown }));
 
     return NextResponse.json({ visible, allKnown });
   } catch (err) {

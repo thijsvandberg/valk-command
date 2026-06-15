@@ -1,12 +1,10 @@
 import { NextResponse } from "next/server";
-import { db } from "@/db";
-import { appSetting } from "@/db/schema";
-import { eq } from "drizzle-orm";
 import { z } from "zod";
 import { logger } from "@/lib/logger";
 import { applyRateLimit } from "@/lib/rate-limiter";
 import { errorResponse } from "@/lib/api-response";
 import { parseJsonBody } from "@/lib/request-parser";
+import { resolveUserId, seedUserSettingFromGlobal, writeUserSetting } from "@/lib/user-settings";
 
 export type QuickPrompt = {
   id: string;
@@ -104,15 +102,10 @@ const DEFAULT_PROMPTS: QuickPromptsConfig = {
 
 export async function GET() {
   try {
-    const row = await db.query.appSetting.findFirst({
-      where: (r, { eq: eqFn }) => eqFn(r.key, SETTING_KEY),
-    });
-    if (!row) {
-      return NextResponse.json({ prompts: DEFAULT_PROMPTS }, {
-        headers: { "Cache-Control": "private, no-store" },
-      });
-    }
-    return NextResponse.json({ prompts: JSON.parse(row.value) as QuickPromptsConfig }, {
+    const userId = await resolveUserId();
+    const raw = await seedUserSettingFromGlobal(SETTING_KEY, userId);
+    const prompts = raw === null ? DEFAULT_PROMPTS : (JSON.parse(raw) as QuickPromptsConfig);
+    return NextResponse.json({ prompts }, {
       headers: { "Cache-Control": "private, no-store" },
     });
   } catch {
@@ -141,17 +134,8 @@ export async function PUT(request: Request) {
     const parsed = await parseJsonBody(request, quickPromptsBodySchema);
     if ("error" in parsed) return parsed.error;
     const prompts = parsed.data.prompts;
-    const payload = JSON.stringify(prompts);
-
-    const existing = await db.query.appSetting.findFirst({
-      where: (r, { eq: eqFn }) => eqFn(r.key, SETTING_KEY),
-    });
-
-    if (existing) {
-      await db.update(appSetting).set({ value: payload }).where(eq(appSetting.key, SETTING_KEY));
-    } else {
-      await db.insert(appSetting).values({ key: SETTING_KEY, value: payload });
-    }
+    const userId = await resolveUserId();
+    await writeUserSetting(SETTING_KEY, userId, JSON.stringify(prompts));
 
     return NextResponse.json({ prompts });
   } catch (err) {

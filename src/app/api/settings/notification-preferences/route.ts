@@ -15,6 +15,12 @@ import { parseJsonBody } from "@/lib/request-parser";
 
 export type { NotificationCategory, NotificationPreferences } from "@/lib/notification-preferences";
 
+// Intentionally NOT re-scoped per-account in BRDG-343: the notification sender
+// (src/lib/notifications.ts) reads these preferences synchronously from outside
+// any request to decide whether to deliver a system event, so it has no
+// resolvable account. Re-scoping only this route would split the toggles the PO
+// sees from the gate the sender checks. Deferred until notification delivery
+// itself becomes per-recipient (out of scope here: notifications are shared).
 export async function GET() {
   return NextResponse.json({ preferences: getPreferences() }, {
     headers: { "Cache-Control": "private, no-store" },

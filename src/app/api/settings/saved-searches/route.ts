@@ -1,13 +1,12 @@
 import { NextResponse } from "next/server";
-import { db } from "@/db";
-import { appSetting } from "@/db/schema";
-import { eq } from "drizzle-orm";
 import { z } from "zod";
 import { logger } from "@/lib/logger";
 import { applyRateLimit } from "@/lib/rate-limiter";
 import { errorResponse } from "@/lib/api-response";
 import { parseJsonBody } from "@/lib/request-parser";
+import { resolveUserId, seedUserSettingFromGlobal, writeUserSetting } from "@/lib/user-settings";
 
+// Re-scoped to the account (BRDG-343); envelope stays { searches }.
 const SETTING_KEY = "saved_searches";
 const MAX_SAVED = 10;
 
@@ -49,15 +48,10 @@ const bodySchema = z.object({
 
 export async function GET() {
   try {
-    const row = await db.query.appSetting.findFirst({
-      where: (r, { eq: eqFn }) => eqFn(r.key, SETTING_KEY),
-    });
-    if (!row) {
-      return NextResponse.json({ searches: [] }, {
-        headers: { "Cache-Control": "private, no-store" },
-      });
-    }
-    return NextResponse.json({ searches: JSON.parse(row.value) as SavedSearch[] }, {
+    const userId = await resolveUserId();
+    const raw = await seedUserSettingFromGlobal(SETTING_KEY, userId);
+    const searches = raw === null ? [] : (JSON.parse(raw) as SavedSearch[]);
+    return NextResponse.json({ searches }, {
       headers: { "Cache-Control": "private, no-store" },
     });
   } catch {
@@ -75,16 +69,8 @@ export async function PUT(request: Request) {
     const parsed = await parseJsonBody(request, bodySchema);
     if ("error" in parsed) return parsed.error;
     const searches = parsed.data.searches;
-    const payload = JSON.stringify(searches);
-
-    const existing = await db.query.appSetting.findFirst({
-      where: (r, { eq: eqFn }) => eqFn(r.key, SETTING_KEY),
-    });
-    if (existing) {
-      await db.update(appSetting).set({ value: payload }).where(eq(appSetting.key, SETTING_KEY));
-    } else {
-      await db.insert(appSetting).values({ key: SETTING_KEY, value: payload });
-    }
+    const userId = await resolveUserId();
+    await writeUserSetting(SETTING_KEY, userId, JSON.stringify(searches));
 
     return NextResponse.json({ searches });
   } catch (err) {

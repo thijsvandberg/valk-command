@@ -69,7 +69,7 @@ Tests: per-route GET default / PUT validation / round-trip; seed-on-read + idemp
 - [x] Loading/error states; a failed save surfaces a toast and does not drop the in-progress view. — SWR loading + `rollbackOnError` on write.
 
 ### Remaining per-account state (follow-up)
-- [ ] The per-account filters/sort/row-fields and the listed `appSetting` keys are moved onto the foundation, each with a one-time import from its old location (localStorage or global `appSetting`).
+- [ ] The per-account filters/sort/row-fields and the listed `appSetting` keys are moved onto the foundation, each with a one-time import from its old location (localStorage or global `appSetting`). <!-- in progress: shared helpers + Group H (saved_searches, sprint_board_column_config, story_writer_quick_prompts, default_sprint_id, section_visibility) done; notification_prefs intentionally descoped (see note); localStorage groups A-F next -->
 - [ ] Device-local keys listed above are explicitly left in `localStorage`, each with a short WHY comment.
 
 ### Tests

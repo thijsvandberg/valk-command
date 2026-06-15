@@ -1,21 +1,20 @@
 import { NextResponse } from "next/server";
-import { db } from "@/db";
-import { appSetting } from "@/db/schema";
-import { eq } from "drizzle-orm";
 import { z } from "zod";
 import { logger } from "@/lib/logger";
 import { applyRateLimit } from "@/lib/rate-limiter";
 import { errorResponse } from "@/lib/api-response";
 import { parseJsonBody } from "@/lib/request-parser";
+import { resolveUserId, seedUserSettingFromGlobal, writeUserSetting } from "@/lib/user-settings";
 
+// Re-scoped to the account (BRDG-343): the stored sprintId is a raw string, so it
+// round-trips through the user store directly. Legacy global values seed the
+// account on first read; the envelope stays { sprintId } so consumers are unchanged.
 const SETTING_KEY = "default_sprint_id";
 
 export async function GET() {
   try {
-    const row = await db.query.appSetting.findFirst({
-      where: (r, { eq: eqFn }) => eqFn(r.key, SETTING_KEY),
-    });
-    const sprintId = row?.value ?? "";
+    const userId = await resolveUserId();
+    const sprintId = (await seedUserSettingFromGlobal(SETTING_KEY, userId)) ?? "";
     return NextResponse.json({ sprintId }, {
       headers: { "Cache-Control": "private, no-store" },
     });
@@ -39,15 +38,8 @@ export async function PUT(request: Request) {
     if ("error" in parsed) return parsed.error;
     const { sprintId } = parsed.data;
 
-    const existing = await db.query.appSetting.findFirst({
-      where: (r, { eq: eqFn }) => eqFn(r.key, SETTING_KEY),
-    });
-
-    if (existing) {
-      await db.update(appSetting).set({ value: sprintId }).where(eq(appSetting.key, SETTING_KEY));
-    } else {
-      await db.insert(appSetting).values({ key: SETTING_KEY, value: sprintId });
-    }
+    const userId = await resolveUserId();
+    await writeUserSetting(SETTING_KEY, userId, sprintId);
 
     return NextResponse.json({ sprintId });
   } catch (err) {
