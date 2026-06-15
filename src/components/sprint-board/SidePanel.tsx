@@ -13,6 +13,7 @@ import { useRefinementSessions } from "@/hooks/useRefinementSessions";
 import { prefetchTicketPage } from "@/lib/prefetch";
 import { recordTicketView } from "@/lib/recently-viewed-store";
 import { TicketTabContent, type TicketTab } from "@/components/ticket-detail/TicketTabContent";
+import { EditStateDot } from "@/components/sprint-board/TicketTableCells";
 import { TicketMetaContent } from "@/components/ticket-detail/TicketMetaContent";
 import { useLocalStorage } from "@/hooks/useLocalStorage";
 import {
@@ -284,7 +285,9 @@ export function SidePanel({
   // top a floating close button takes over so the panel is always dismissable.
   const [scrolled, setScrolled] = useState(false);
 
-  const hasLocalEdits = h.hasLocalTitleEdit || h.hasLocalDescEdit;
+  // editState is the persisted truth (title or description), so a title-only edit
+  // still surfaces the push button after a remount when the client-only flags reset.
+  const hasLocalEdits = h.hasLocalTitleEdit || h.hasLocalDescEdit || t.editState === "local_edits";
   const isEditing = h.isTitleEditing || h.isDescEditing;
   const showPushButton = hasLocalEdits && !h.showConflictWarning && !isEditing;
 
@@ -365,8 +368,8 @@ export function SidePanel({
     <>
       {dragHandle}
       {t.editState === "local_edits" && (
-        <span className="mr-1 inline-flex items-center rounded px-1.5 py-1 text-caption leading-none" style={{ backgroundColor: "var(--color-status-info-subtle)", color: "var(--color-icon-task)", opacity: 0.7 }} title="Has local changes not yet pushed to Jira">
-          local changes
+        <span className="mr-1 inline-flex items-center">
+          <EditStateDot state="local_edits" />
         </span>
       )}
       {showPushButton && (
@@ -398,18 +401,6 @@ export function SidePanel({
         </Tooltip>
       )}
 
-      <Tooltip content="Open full view">
-        {/* Anchor (not a button) so cmd/ctrl/middle-click opens the full ticket in
-            a new tab; plain click stays a client-side navigation. */}
-        <Link
-          href={`/tickets/${ticket.key}`}
-          aria-label="Open full view"
-          className={iconBtnClass}
-        >
-          <Maximize2 size={14} strokeWidth={2} />
-        </Link>
-      </Tooltip>
-
       <div className="relative">
         <button
           type="button"
@@ -424,6 +415,16 @@ export function SidePanel({
         </button>
         <Popover open={moreMenuOpen} onClose={() => setMoreMenuOpen(false)} align="right">
           <div className="min-w-[220px] py-1">
+            {/* Anchor (not a button) so cmd/ctrl/middle-click opens the full ticket
+                in a new tab; plain click stays a client-side navigation. */}
+            <Link
+              href={`/tickets/${ticket.key}`}
+              className="flex w-full cursor-pointer items-center gap-2.5 px-3 py-2 text-body-sm text-text-secondary hover:bg-overlay-default active:bg-overlay-strong"
+              style={{ transition: "background-color 0.1s ease" }}
+            >
+              <Maximize2 size={13} strokeWidth={1.5} className="text-text-muted" />
+              Open full view
+            </Link>
             <a
               href={`/tickets/${ticket.key}/write`}
               className="flex w-full cursor-pointer items-center gap-2.5 px-3 py-2 text-body-sm text-text-secondary hover:bg-overlay-default active:bg-overlay-strong"
@@ -439,22 +440,19 @@ export function SidePanel({
               )}
             </a>
             {!isSubtask && (
-              <>
-                <div className="mx-2 my-1 h-px bg-overlay-default" />
-                <button
-                  onClick={() => { setMoreMenuOpen(false); handleTabChange("review"); }}
-                  className="flex w-full cursor-pointer items-center gap-2.5 px-3 py-2 text-body-sm text-text-secondary hover:bg-overlay-default active:bg-overlay-strong"
-                  style={{ transition: "background-color 0.1s ease" }}
-                >
-                  <ClipboardCheck size={13} strokeWidth={1.5} className={activeTab === "review" ? "text-[var(--color-brand-400)]" : "text-text-muted"} />
-                  Review
-                  {h.reviewCount > 0 && (
-                    <span className="ml-auto flex h-4 min-w-4 items-center justify-center rounded-full bg-[var(--color-brand-500)]/15 px-1 text-caption font-medium text-[var(--color-brand-400)]">
-                      {h.reviewCount}
-                    </span>
-                  )}
-                </button>
-              </>
+              <button
+                onClick={() => { setMoreMenuOpen(false); handleTabChange("review"); }}
+                className="flex w-full cursor-pointer items-center gap-2.5 px-3 py-2 text-body-sm text-text-secondary hover:bg-overlay-default active:bg-overlay-strong"
+                style={{ transition: "background-color 0.1s ease" }}
+              >
+                <ClipboardCheck size={13} strokeWidth={1.5} className={activeTab === "review" ? "text-[var(--color-brand-400)]" : "text-text-muted"} />
+                Review
+                {h.reviewCount > 0 && (
+                  <span className="ml-auto flex h-4 min-w-4 items-center justify-center rounded-full bg-[var(--color-brand-500)]/15 px-1 text-caption font-medium text-[var(--color-brand-400)]">
+                    {h.reviewCount}
+                  </span>
+                )}
+              </button>
             )}
             <div className="mx-2 my-1 h-px bg-overlay-default" />
             <button
@@ -465,7 +463,6 @@ export function SidePanel({
               <Star size={13} strokeWidth={1.5} className={h.isFollowed ? "text-amber-400 fill-amber-400" : "text-text-muted"} />
               {h.isFollowed ? "Unfollow ticket" : "Follow ticket"}
             </button>
-            <div className="mx-2 my-1 h-px bg-overlay-default" />
             <button
               onClick={() => { setMoreMenuOpen(false); h.handleCopyLink(); }}
               className="flex w-full cursor-pointer items-center gap-2.5 px-3 py-2 text-body-sm text-text-secondary hover:bg-overlay-default active:bg-overlay-strong"
@@ -504,18 +501,18 @@ export function SidePanel({
                 Remove flag
               </button>
             )}
+            {(refineEligible || h.hasActiveSession) && (
+              <div className="mx-2 my-1 h-px bg-overlay-default" />
+            )}
             {refineEligible && (
-              <>
-                <div className="mx-2 my-1 h-px bg-overlay-default" />
-                <button
-                  onClick={() => { setMoreMenuOpen(false); setShowAddToRefinement(true); }}
-                  className="flex w-full cursor-pointer items-center gap-2.5 px-3 py-2 text-body-sm text-text-secondary hover:bg-overlay-default active:bg-overlay-strong"
-                  style={{ transition: "background-color 0.1s ease" }}
-                >
-                  <Boxes size={13} strokeWidth={1.5} className="text-text-muted" />
-                  Add to refinement
-                </button>
-              </>
+              <button
+                onClick={() => { setMoreMenuOpen(false); setShowAddToRefinement(true); }}
+                className="flex w-full cursor-pointer items-center gap-2.5 px-3 py-2 text-body-sm text-text-secondary hover:bg-overlay-default active:bg-overlay-strong"
+                style={{ transition: "background-color 0.1s ease" }}
+              >
+                <Boxes size={13} strokeWidth={1.5} className="text-text-muted" />
+                Add to refinement
+              </button>
             )}
             {h.hasActiveSession && (
               <button
