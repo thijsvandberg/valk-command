@@ -124,6 +124,40 @@ function convertNode(node: AdfNode): string {
       return mentionText;
     }
 
+    case "date": {
+      // Inline date node. Markdown has no date primitive, so we round-trip the
+      // raw epoch-millis timestamp inside a {date:...} token (mirrors the
+      // {color:...} convention) that markdownToAdf restores to a date node.
+      const ts = node.attrs?.timestamp;
+      const tsStr = ts === undefined || ts === null ? "" : String(ts);
+      return tsStr ? `{date:${tsStr}}` : "";
+    }
+
+    case "status": {
+      // Status lozenge. The label lives in attrs.text; preserve it (with its
+      // colour) inside a {status:colour|text} token so it survives a round-trip
+      // and is never re-detected as a heading/list block on the way back.
+      const statusText = (node.attrs?.text as string) || "";
+      if (!statusText) return "";
+      const color = (node.attrs?.color as string) || "neutral";
+      return `{status:${color}|${statusText}}`;
+    }
+
+    case "layoutSection":
+      // Multi-column layout. Markdown cannot represent columns; preserve the
+      // text content (structure is intentionally flattened, BRDG-267).
+      return convertChildren(node) + "\n\n";
+
+    case "layoutColumn":
+      return convertChildren(node);
+
+    case "decisionList":
+      // Markdown has no decision primitive; preserve each decision's text.
+      return convertChildren(node) + "\n";
+
+    case "decisionItem":
+      return convertChildren(node).trim() + "\n";
+
     case "emoji": {
       const shortName = (node.attrs?.shortName as string) || "";
       return shortName;
@@ -200,9 +234,10 @@ function applyMarks(text: string, marks?: AdfMark[]): string {
         break;
       }
       case "underline":
-        // Markdown has no underline; keep as-is
-        break;
       case "subsup":
+        // Decision (BRDG-267): markdown has no underline / super-subscript, so
+        // the mark is dropped but the text content is always preserved. The
+        // round-trip bar is "no text loss", not full mark fidelity.
         break;
     }
   }
@@ -233,7 +268,9 @@ function convertTaskList(node: AdfNode): string {
   return node.content
     .map((item) => {
       const state = (item.attrs?.state as string) || "TODO";
-      const prefix = state === "DONE" ? "- [x] " : "- [] ";
+      // Standard GFM task syntax (`- [ ] `) so the round-trip back through
+      // markdownToAdf re-detects it as a task item (BRDG-268).
+      const prefix = state === "DONE" ? "- [x] " : "- [ ] ";
       const inner = convertChildren(item).trim();
       if (!inner) return null;
       return `${prefix}${inner}`;

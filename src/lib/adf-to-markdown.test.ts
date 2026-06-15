@@ -345,7 +345,89 @@ describe("adfToMarkdown", () => {
         },
       ],
     };
-    expect(adfToMarkdown(adf)).toBe("- [] Unchecked item\n- [x] Checked item");
+    expect(adfToMarkdown(adf)).toBe("- [ ] Unchecked item\n- [x] Checked item");
+  });
+
+  it("preserves a date node as a round-trippable token (BRDG-267)", () => {
+    const adf = {
+      type: "doc",
+      content: [
+        {
+          type: "paragraph",
+          content: [
+            { type: "text", text: "Due " },
+            { type: "date", attrs: { timestamp: "1718409600000" } },
+          ],
+        },
+      ],
+    };
+    expect(adfToMarkdown(adf)).toBe("Due {date:1718409600000}");
+  });
+
+  it("preserves a status lozenge label and colour (BRDG-267)", () => {
+    const adf = {
+      type: "doc",
+      content: [
+        {
+          type: "paragraph",
+          content: [
+            { type: "status", attrs: { text: "In Progress", color: "blue" } },
+          ],
+        },
+      ],
+    };
+    expect(adfToMarkdown(adf)).toBe("{status:blue|In Progress}");
+  });
+
+  it("preserves text from layout columns instead of dropping it (BRDG-267)", () => {
+    const adf = {
+      type: "doc",
+      content: [
+        {
+          type: "layoutSection",
+          content: [
+            { type: "layoutColumn", content: [{ type: "paragraph", content: [{ type: "text", text: "Left" }] }] },
+            { type: "layoutColumn", content: [{ type: "paragraph", content: [{ type: "text", text: "Right" }] }] },
+          ],
+        },
+      ],
+    };
+    const md = adfToMarkdown(adf);
+    expect(md).toContain("Left");
+    expect(md).toContain("Right");
+  });
+
+  it("preserves decision list text (BRDG-267)", () => {
+    const adf = {
+      type: "doc",
+      content: [
+        {
+          type: "decisionList",
+          attrs: { localId: "d" },
+          content: [
+            { type: "decisionItem", attrs: { localId: "d1", state: "DECIDED" }, content: [{ type: "text", text: "Ship it" }] },
+          ],
+        },
+      ],
+    };
+    expect(adfToMarkdown(adf)).toContain("Ship it");
+  });
+
+  it("keeps text of underline and subsup marked nodes (mark dropped, BRDG-267)", () => {
+    const adf = {
+      type: "doc",
+      content: [
+        {
+          type: "paragraph",
+          content: [
+            { type: "text", text: "underlined", marks: [{ type: "underline" }] },
+            { type: "text", text: " and " },
+            { type: "text", text: "super", marks: [{ type: "subsup", attrs: { type: "sup" } }] },
+          ],
+        },
+      ],
+    };
+    expect(adfToMarkdown(adf)).toBe("underlined and super");
   });
 
   it("converts panel nodes to callout fence syntax", () => {
