@@ -385,14 +385,18 @@ describe("useTicketDetailPage", () => {
       expect(result.current.liveChangeKinds.has("comment")).toBe(true);
     });
 
-    it("suppresses the highlight for a change this tab originated, but still revalidates", () => {
+    it("ignores a change this tab originated: no revalidate, no highlight so the optimistic patch survives", () => {
+      // A push/autosave echoes back as an own-origin event. Revalidating here
+      // would refetch a stale dev payload and clobber the post-push patch (the
+      // "title reverts until refresh" bug). Own writes are self-managed.
       const { result } = renderHook(() => useTicketDetailPage("VPL-42"));
       mutateFn.mockClear();
 
-      fireEvent(["status"], getClientId());
+      fireEvent(["content"], getClientId());
 
-      expect(mutateFn).toHaveBeenCalled();
+      expect(mutateFn).not.toHaveBeenCalled();
       expect(result.current.liveChangeKinds.size).toBe(0);
+      expect(result.current.showConflictDiff).toBe(false);
     });
 
     it("routes a content change during an active edit through the conflict warning (BRDG-243)", () => {

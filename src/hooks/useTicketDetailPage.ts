@@ -240,6 +240,14 @@ export function useTicketDetailPage(key: string) {
   const { activeKinds: liveChangeKinds, trigger: triggerLiveHighlight } = useChangeHighlight();
 
   const handleLiveTicketEvent = useCallback((event: TicketEvent) => {
+    // A write this tab made itself (push, autosave, metadata change) echoes back
+    // as a live event tagged with our own client id. We have already applied the
+    // optimistic post-write patch, so revalidating here would refetch a possibly
+    // stale payload (server cache invalidation lags in dev) and clobber it — the
+    // "title reverts to the old value until refresh" bug. Own writes are
+    // self-managed; only react to writes from other origins (tabs, agents, sync).
+    if (event.origin && event.origin === getClientId()) return;
+
     const editingContent = isTitleEditing || isDescEditing || hasLocalTitleEdit || hasLocalDescEdit;
     if (event.kinds.includes("content") && editingContent) {
       // An in-progress edit must never be silently overwritten: surface the
@@ -248,9 +256,7 @@ export function useTicketDetailPage(key: string) {
     } else {
       mutateTicket();
     }
-    if (!event.origin || event.origin !== getClientId()) {
-      triggerLiveHighlight(event.kinds);
-    }
+    triggerLiveHighlight(event.kinds);
   }, [isTitleEditing, isDescEditing, hasLocalTitleEdit, hasLocalDescEdit, handleRemoteChanged, mutateTicket, triggerLiveHighlight]);
 
   useTicketEvents(key, handleLiveTicketEvent);
