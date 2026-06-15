@@ -48,7 +48,13 @@ export function cacheSprintName(sprintId: string, displayName: string) {
     .run();
 }
 
-export async function upsertIssue(issue: JiraIssue, sprintName: string, _signal?: AbortSignal, jiraRank?: number) {
+export async function upsertIssue(
+  issue: JiraIssue,
+  sprintName: string,
+  _signal?: AbortSignal,
+  jiraRank?: number,
+  pushAuthor?: { name: string | null; avatar: string | null } | null,
+) {
   const fields = issue.fields;
   const extractedStoryPoints = extractStoryPoints(fields);
   // Record every sprint the issue belongs to so it shows in each sprint column.
@@ -113,6 +119,12 @@ export async function upsertIssue(issue: JiraIssue, sprintName: string, _signal?
   const changeAuthor = needsNewVersion && latestVersion
     ? (extractLastChangeAuthor(issue) ?? await jiraClient.getLastChangeAuthor(issue.key, _signal))
     : null;
+
+  // Bridge pushes round-trip through Jira under the shared API token, so the
+  // Jira changelog cannot tell which Bridge user actually made the edit. When
+  // this version is the echo of our own push, attribute it to the signed-in
+  // user we captured at push time instead of the changelog author.
+  const versionAuthor = isOwnPushEcho && pushAuthor ? pushAuthor : changeAuthor;
 
   const attachments: JiraAttachment[] = issue.fields.attachment ?? [];
   const existingAttachments = new Map(
@@ -317,8 +329,8 @@ export async function upsertIssue(issue: JiraIssue, sprintName: string, _signal?
         description: descriptionMarkdown || JSON.stringify(fields.description ?? ""),
         acceptanceCriteria: ac,
         contentHash: hash,
-        updatedBy: changeAuthor?.name ?? null,
-        updatedByAvatar: changeAuthor?.avatar ?? null,
+        updatedBy: versionAuthor?.name ?? null,
+        updatedByAvatar: versionAuthor?.avatar ?? null,
       }).run();
     }
 

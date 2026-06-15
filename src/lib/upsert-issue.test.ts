@@ -35,7 +35,7 @@ vi.mock("@/lib/ticket-events", () => ({
 }));
 
 import { normalizeIssueType, normalizeStatus, userColor, upsertIssue } from "./upsert-issue";
-import { extractSprints, extractStoryPoints } from "@/lib/jira-client";
+import { extractSprints, extractStoryPoints, extractLastChangeAuthor } from "@/lib/jira-client";
 import { emitTicketEvent } from "@/lib/ticket-events";
 import type { JiraIssue, JiraSprint } from "@/lib/jira-client";
 
@@ -303,6 +303,45 @@ describe("own-push echo suppression", () => {
     const session = testDb.select().from(storyWriterSession).all()[0];
     expect(latest).toBeDefined();
     expect(session.baseVersionHash).toBe(latest?.contentHash);
+  });
+
+  it("attributes an own-push echo version to the signed-in user, not the Jira changelog author", async () => {
+    vi.mocked(extractLastChangeAuthor).mockReturnValue({ name: "Marek van der Hoeven", avatar: "marek.png" });
+
+    await upsertIssue(makeIssue({ description: "Original content" }), "");
+    const v1 = testDb.select().from(storyVersion).all()[0];
+
+    // Bridge pushed "New content"; the push wrote the mirror directly
+    testDb.update(ticket).set({ description: "New content" }).where(eq(ticket.jiraKey, "VPL-1")).run();
+
+    await tick();
+    // The push echoes back through sync, carrying the signed-in user captured at push time
+    await upsertIssue(makeIssue({ description: "New content" }), "", undefined, undefined, {
+      name: "Robin Bänffer",
+      avatar: "robin.png",
+    });
+
+    const latest = testDb.select().from(storyVersion).all().find((v) => v.contentHash !== v1.contentHash);
+    expect(latest?.updatedBy).toBe("Robin Bänffer");
+    expect(latest?.updatedByAvatar).toBe("robin.png");
+
+    vi.mocked(extractLastChangeAuthor).mockReturnValue(null);
+  });
+
+  it("keeps the Jira changelog author for a genuine external change even when a push author is absent", async () => {
+    vi.mocked(extractLastChangeAuthor).mockReturnValue({ name: "Marek van der Hoeven", avatar: "marek.png" });
+
+    await upsertIssue(makeIssue({ description: "Original content" }), "");
+    const v1 = testDb.select().from(storyVersion).all()[0];
+
+    await tick();
+    // Someone edited the description in Jira; the mirror still has the old text, so this is not an echo
+    await upsertIssue(makeIssue({ description: "External edit from Jira" }), "");
+
+    const latest = testDb.select().from(storyVersion).all().find((v) => v.contentHash !== v1.contentHash);
+    expect(latest?.updatedBy).toBe("Marek van der Hoeven");
+
+    vi.mocked(extractLastChangeAuthor).mockReturnValue(null);
   });
 
   it("emits a content event and keeps the baseline for a genuine external change", async () => {

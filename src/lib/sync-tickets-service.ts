@@ -50,11 +50,15 @@ async function updateWatermark(value: string) {
  * cache + upsertIssue). Lets push-to-jira record the confirmed post-push
  * state without a second fetch or an activity-log entry per save.
  */
-export async function ingestIssue(issue: JiraIssue, signal?: AbortSignal) {
+export async function ingestIssue(
+  issue: JiraIssue,
+  signal?: AbortSignal,
+  pushAuthor?: { name: string | null; avatar: string | null } | null,
+) {
   const sprint = extractSprint(issue.fields);
   const sprintName = sprint ? String(sprint.id) : "";
   if (sprint) cacheSprintName(String(sprint.id), sprint.name);
-  return upsertIssue(issue, sprintName, signal);
+  return upsertIssue(issue, sprintName, signal, undefined, pushAuthor);
 }
 
 export async function syncIndividualTickets(ticketKeys: string[], requestSignal?: AbortSignal): Promise<SyncResult> {

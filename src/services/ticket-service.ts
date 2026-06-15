@@ -48,7 +48,11 @@ export interface PushToJiraConflict {
 
 export type PushToJiraOutcome = PushToJiraResult | PushToJiraConflict;
 
-export async function pushToJira(key: string, origin: string | null = null): Promise<PushToJiraOutcome> {
+export async function pushToJira(
+  key: string,
+  origin: string | null = null,
+  pushAuthor: { name: string | null; avatar: string | null } | null = null,
+): Promise<PushToJiraOutcome> {
   if (!jiraClient.isLive) {
     throw new JiraUnavailableError();
   }
@@ -154,7 +158,7 @@ export async function pushToJira(key: string, origin: string | null = null): Pro
       }
       if (fresh.fields.updated === remoteUpdated) continue;
       try {
-        await ingestIssue(fresh);
+        await ingestIssue(fresh, undefined, pushAuthor);
       } catch (ingestErr) {
         logger.warn("push-to-jira", `post-push ingest failed for ${key}:`, ingestErr);
       }

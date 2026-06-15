@@ -6,6 +6,7 @@ import { applyRateLimit } from "@/lib/rate-limiter";
 import { resolveDraftKey } from "@/lib/draft-sync";
 import { cache } from "@/lib/cache";
 import { originFromRequest } from "@/lib/ticket-events";
+import { getActingUser } from "@/lib/acting-user";
 
 export async function POST(
   request: Request,
@@ -20,7 +21,8 @@ export async function POST(
   const key = resolveDraftKey(rawKey);
 
   try {
-    const result = await ticketService.pushToJira(key, originFromRequest(request));
+    const actingUser = await getActingUser();
+    const result = await ticketService.pushToJira(key, originFromRequest(request), actingUser);
 
     // Conflict is a valid outcome (not an error) — return it as-is
     if ("conflict" in result) {
