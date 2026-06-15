@@ -433,6 +433,20 @@ Key-value store for application configuration.
 
 The "already built" deep-scan topic (BRDG-287, `src/lib/topics/already-built-topic.ts`) uses the key pattern `already-built-scan:<YYYY-MM-DD>` (UTC date) to track the daily count of codebase-research agent calls. The value is the integer count as a string. A new key is created each day automatically; the prior day's key is left in place (no cleanup needed — it simply stops being incremented). Skipped tickets (cap hit) are logged via `logger.warn` and left with no `alreadyBuilt` entry in `scanScores`, making them eligible for retry on a future deep-scan batch.
 
+`app_setting` is **global** (one shared row per key). Settings that should follow an individual account live in `user_setting` instead (see below).
+
+#### `user_setting`
+
+Per-account key-value store for settings/preferences that should follow the logged-in user across browsers, ports, and devices (BRDG-343). Same shape as `app_setting` but scoped by the authenticated Clerk user. Reads/writes go through `src/lib/user-settings.ts` (`resolveUserId` reads the `x-bridge-user-id` header forwarded by middleware, falling back to the reserved `"global"` owner for the dev bypass and unit tests). New per-account JSON settings are added with one `createUserJsonSettingRoute(key, schema, default)` route + the `useAccountSetting` client hook. First consumer: saved sprint-board views (`sprint_board_saved_views`, served at `/api/settings/saved-views`).
+
+| Column | Type | Notes |
+|--------|------|-------|
+| `user_id` | text | Clerk user id, or `"global"` fallback. Part of composite PK |
+| `key` | text | Setting key, e.g. `sprint_board_saved_views`. Part of composite PK |
+| `value` | text | Serialized JSON value |
+
+Primary key is `(user_id, key)`, so the same key is independent per account.
+
 #### `deprecation_scan_queue`
 
 Persisted Tier-2 deep-dive queue for the [Backlog Deprecation Review epic](../plans/2026-06-04-backlog-deprecation-review-epic.md) (BRDG-284). Durable so the background runner resumes across restarts. See [scheduler.md](scheduler.md#backlog-deep-scan-every-2m).

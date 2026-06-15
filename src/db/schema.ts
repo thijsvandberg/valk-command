@@ -1,4 +1,4 @@
-import { sqliteTable, text, integer, real, index, uniqueIndex } from "drizzle-orm/sqlite-core";
+import { sqliteTable, text, integer, real, index, uniqueIndex, primaryKey } from "drizzle-orm/sqlite-core";
 import { sql } from "drizzle-orm";
 
 export const conversation = sqliteTable("conversation", {
@@ -314,6 +314,20 @@ export const appSetting = sqliteTable("app_setting", {
   key: text("key").primaryKey(),
   value: text("value").notNull(),
 });
+
+// Per-account settings/preferences (BRDG-343). Same key-value shape as appSetting
+// but scoped to the authenticated Clerk user so saved views, filters, and other
+// per-account state follow the person across browsers/ports/devices instead of
+// living in browser localStorage. The reserved userId "global" holds settings
+// written without a resolvable session (dev bypass, unit tests), mirroring the
+// rate-limiter's fallback segment.
+export const userSetting = sqliteTable("user_setting", {
+  userId: text("user_id").notNull(),
+  key: text("key").notNull(),
+  value: text("value").notNull(),
+}, (table) => [
+  primaryKey({ columns: [table.userId, table.key] }),
+]);
 
 export const storyVersion = sqliteTable("story_version", {
   id: text("id").primaryKey(),

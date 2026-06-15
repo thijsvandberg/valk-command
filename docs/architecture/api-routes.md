@@ -174,6 +174,7 @@ Proxy layer to the valk-agent backend. See [workspace-integration.md](workspace-
 | Route | Method | Purpose |
 |-------|--------|---------|
 | `/api/search/local` | GET | Fuzzy search local DB via Fuse.js. `?q=text`. Wrapping the query in double quotes (`?q="exact phrase"`) switches to a literal, case-insensitive phrase match (no fuzzy). |
+| `/api/search/local/keys` | GET | Inline sprint-board deep-field match (BRDG-345). `?q=text` returns `{ keys: string[] }` for every ticket matching across description, acceptance criteria, labels, notes and PO/Jira comments (substring, no rank/cap). The board intersects these with its filtered rows. |
 | `/api/search/jira` | GET | Live Jira search. `?q=text` or `?jql=...` |
 
 ## Activity Log
@@ -231,6 +232,8 @@ Proxy layer to the valk-agent backend. See [workspace-integration.md](workspace-
 | `/api/settings/quick-prompts` | POST | Save quick prompt templates |
 | `/api/settings/section-visibility` | GET | Get field visibility for a section (`?section=epic-children\|subtasks`) |
 | `/api/settings/section-visibility` | PUT | Save field visibility for a section |
+| `/api/settings/saved-views` | GET | Get the account's saved sprint-board views (per-user `user_setting`, BRDG-343) |
+| `/api/settings/saved-views` | PUT | Save the account's saved views `{ value: SavedView[] }` |
 | `/api/sprint-slots` | GET | Get sprint slot assignments |
 | `/api/sprint-slots` | POST | Save sprint slot assignments |
 
