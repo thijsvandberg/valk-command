@@ -215,4 +215,93 @@ describe("markdownToAdf", () => {
       expect(list.content).toHaveLength(2);
     });
   });
+
+  describe("task lists (BRDG-268)", () => {
+    it("emits a taskList with TODO and DONE states, not a bullet list", () => {
+      const md = "- [ ] Unchecked item\n- [x] Checked item";
+      const doc = markdownToAdf(md);
+      const list = doc.content![0];
+      expect(list.type).toBe("taskList");
+      expect(typeof list.attrs!.localId).toBe("string");
+      expect(list.content).toHaveLength(2);
+
+      const [todo, done] = list.content!;
+      expect(todo.type).toBe("taskItem");
+      expect(todo.attrs!.state).toBe("TODO");
+      expect(todo.content![0].text).toBe("Unchecked item");
+      expect(typeof todo.attrs!.localId).toBe("string");
+
+      expect(done.attrs!.state).toBe("DONE");
+      expect(done.content![0].text).toBe("Checked item");
+    });
+
+    it("accepts uppercase [X] and `* [ ]` markers", () => {
+      const doc = markdownToAdf("* [X] done\n* [ ] todo");
+      const list = doc.content![0];
+      expect(list.type).toBe("taskList");
+      expect(list.content![0].attrs!.state).toBe("DONE");
+      expect(list.content![1].attrs!.state).toBe("TODO");
+    });
+
+    it("parses inline marks inside a task item", () => {
+      const doc = markdownToAdf("- [ ] **bold** task");
+      const item = doc.content![0].content![0];
+      expect(item.content![0].marks).toEqual([{ type: "strong" }]);
+    });
+
+    it("does not let a task item leak into a preceding bullet list", () => {
+      const doc = markdownToAdf("- normal bullet\n- [ ] task");
+      expect(doc.content![0].type).toBe("bulletList");
+      expect(doc.content![0].content).toHaveLength(1);
+      expect(doc.content![1].type).toBe("taskList");
+    });
+  });
+
+  describe("images (BRDG-268)", () => {
+    it("preserves an inline image reference verbatim instead of mangling it", () => {
+      const doc = markdownToAdf("See ![alt text](http://example.com/x.png) here");
+      const nodes = doc.content![0].content!;
+      const joined = nodes.map((n) => n.text ?? "").join("");
+      expect(joined).toBe("See ![alt text](http://example.com/x.png) here");
+      // No node should be a bare link created by mangling the `!`.
+      expect(nodes.some((n) => n.marks?.some((m) => m.type === "link"))).toBe(false);
+    });
+  });
+
+  describe("mentions (BRDG-268)", () => {
+    it("passes @name through as plain text without corruption", () => {
+      const doc = markdownToAdf("ping @john.doe about this");
+      const joined = doc.content![0].content!.map((n) => n.text ?? "").join("");
+      expect(joined).toBe("ping @john.doe about this");
+    });
+  });
+
+  describe("date and status tokens (BRDG-267 round-trip)", () => {
+    it("restores a date node from {date:...}", () => {
+      const doc = markdownToAdf("Due {date:1718409600000}");
+      const nodes = doc.content![0].content!;
+      const date = nodes.find((n) => n.type === "date");
+      expect(date!.attrs!.timestamp).toBe("1718409600000");
+    });
+
+    it("restores a status node from {status:color|text} and clamps unknown colours", () => {
+      const ok = markdownToAdf("{status:green|Done}").content![0].content![0];
+      expect(ok.type).toBe("status");
+      expect(ok.attrs).toEqual({ text: "Done", color: "green" });
+
+      const clamped = markdownToAdf("{status:fuchsia|Weird}").content![0].content![0];
+      expect(clamped.attrs!.color).toBe("neutral");
+    });
+  });
+
+  describe("nested expand (BRDG-268)", () => {
+    it("demotes an expand nested inside an expand to nestedExpand", () => {
+      const md = ":::expand Outer\n:::expand Inner\nbody\n:::\n:::";
+      const doc = markdownToAdf(md);
+      const outer = doc.content![0];
+      expect(outer.type).toBe("expand");
+      const inner = outer.content!.find((n) => n.type === "nestedExpand" || n.type === "expand");
+      expect(inner!.type).toBe("nestedExpand");
+    });
+  });
 });

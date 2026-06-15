@@ -15,6 +15,19 @@ interface AdfMark {
   attrs?: Record<string, unknown>;
 }
 
+// A GFM task-list item: `- [ ] text`, `- [x] text`, `* [X] text`. Checked
+// before the generic bullet rule so the checkbox is not swallowed as literal
+// "[ ] text" (BRDG-268).
+const TASK_ITEM_RE = /^[-*]\s+\[( |x|X)\](\s|$)/;
+
+// Monotonic source of unique ADF localId values. Jira requires a localId on
+// taskList/taskItem; uniqueness within the document is all that matters.
+let localIdCounter = 0;
+function nextLocalId(): string {
+  localIdCounter += 1;
+  return `bridge-task-${localIdCounter}`;
+}
+
 // Lines that start a block-level element (should not be grouped into paragraphs)
 function isBlockLine(line: string): boolean {
   const t = line.trim();
@@ -64,8 +77,11 @@ export function markdownToAdf(markdown: string): AdfNode {
         content.push({
           type: "expand",
           attrs: { title: fenceArg },
+          // Jira ADF only allows nestedExpand (not expand) directly inside an
+          // expand; demote inner expands and flatten any deeper nesting so the
+          // push validates instead of being rejected (BRDG-268).
           content: innerAdf.content && innerAdf.content.length > 0
-            ? innerAdf.content
+            ? demoteExpandsForNesting(innerAdf.content)
             : [{ type: "paragraph", content: [{ type: "text", text: "" }] }],
         });
       } else {
@@ -127,6 +143,15 @@ export function markdownToAdf(markdown: string): AdfNode {
       }
       const tableNode = parseTable(tableLines);
       if (tableNode) content.push(tableNode);
+      continue;
+    }
+
+    // Task list (- [ ] / - [x]) — must be checked before the generic list rule,
+    // otherwise the checkbox is swallowed as literal "[ ] ..." text (BRDG-268).
+    if (TASK_ITEM_RE.test(line)) {
+      const result = parseTaskListBlock(lines, i);
+      content.push(result.node);
+      i = result.nextIdx;
       continue;
     }
 
@@ -264,6 +289,10 @@ function parseListBlock(
       continue;
     }
 
+    // A task item ends the bullet/ordered run; the main loop picks it up as a
+    // separate taskList so the checkbox is not swallowed as literal text.
+    if (TASK_ITEM_RE.test(trimmed)) break;
+
     const lineIndent = line.length - line.trimStart().length;
     // Match the marker followed by whitespace OR end-of-line. After trim() an
     // empty item ("- ") collapses to just the marker ("-"), so requiring a
@@ -349,6 +378,63 @@ function parseListBlock(
   return { node: { type: listType, content: items }, nextIdx: i };
 }
 
+// Parses a contiguous run of GFM task items into an ADF taskList. Flat only
+// (task lists rarely nest); nested task items degrade to their text via the
+// normal list/paragraph handling.
+function parseTaskListBlock(
+  lines: string[],
+  startIdx: number,
+): { node: AdfNode; nextIdx: number } {
+  const items: AdfNode[] = [];
+  let i = startIdx;
+
+  while (i < lines.length) {
+    const m = lines[i].match(/^[-*]\s+\[( |x|X)\](?:\s+(.*))?$/);
+    if (!m) break;
+    const state = m[1].toLowerCase() === "x" ? "DONE" : "TODO";
+    const text = (m[2] ?? "").trim();
+    items.push({
+      type: "taskItem",
+      attrs: { localId: nextLocalId(), state },
+      content: text ? parseInline(text) : [],
+    });
+    i++;
+  }
+
+  return {
+    node: { type: "taskList", attrs: { localId: nextLocalId() }, content: items },
+    nextIdx: i,
+  };
+}
+
+// Demote expand children to nestedExpand (Jira allows only nestedExpand inside
+// an expand) and flatten anything deeper, since nestedExpand cannot itself
+// contain an expand/nestedExpand.
+function demoteExpandsForNesting(nodes: AdfNode[]): AdfNode[] {
+  return nodes.map((n) => {
+    if (n.type === "expand" || n.type === "nestedExpand") {
+      return {
+        type: "nestedExpand",
+        attrs: n.attrs,
+        content: flattenExpands(n.content ?? []),
+      };
+    }
+    return n;
+  });
+}
+
+function flattenExpands(nodes: AdfNode[]): AdfNode[] {
+  const out: AdfNode[] = [];
+  for (const n of nodes) {
+    if (n.type === "expand" || n.type === "nestedExpand") {
+      out.push(...flattenExpands(n.content ?? []));
+    } else {
+      out.push(n);
+    }
+  }
+  return out;
+}
+
 // Jira ADF textColor only accepts hex (#RGB or #RRGGBB). Convert rgb/rgba to hex.
 function toHexColor(color: string): string {
   if (color.startsWith("#")) return color;
@@ -388,6 +474,37 @@ function parseInline(text: string): AdfNode[] {
       applyMark(innerNodes, { type: "textColor", attrs: { color } });
       nodes.push(...innerNodes);
       remaining = remaining.slice(colorMatch[0].length);
+      continue;
+    }
+
+    // Date token {date:<epochMillis>} — restores the ADF date node emitted by
+    // adfToMarkdown so a date survives the round-trip (BRDG-267).
+    const dateMatch = remaining.match(/^\{date:(\d+)\}/);
+    if (dateMatch) {
+      nodes.push({ type: "date", attrs: { timestamp: dateMatch[1] } });
+      remaining = remaining.slice(dateMatch[0].length);
+      continue;
+    }
+
+    // Status token {status:<color>|<text>} — restores the ADF status lozenge
+    // (BRDG-267). Colour is constrained to the ADF enum, default neutral.
+    const statusMatch = remaining.match(/^\{status:([a-zA-Z]+)\|([^}]*)\}/);
+    if (statusMatch) {
+      const allowed = ["neutral", "green", "yellow", "red", "blue", "purple"];
+      const color = allowed.includes(statusMatch[1]) ? statusMatch[1] : "neutral";
+      nodes.push({ type: "status", attrs: { text: statusMatch[2], color } });
+      remaining = remaining.slice(statusMatch[0].length);
+      continue;
+    }
+
+    // Image ![alt](url) — must come before the link rule, otherwise the `!` is
+    // left as plain text and the rest becomes a bare link (BRDG-268). Markdown
+    // carries no Jira file id, so preserve the literal reference verbatim as a
+    // non-corrupting placeholder rather than fabricating a media node.
+    const imageMatch = remaining.match(/^!\[(.*?)\]\((.+?)\)/);
+    if (imageMatch) {
+      nodes.push({ type: "text", text: imageMatch[0] });
+      remaining = remaining.slice(imageMatch[0].length);
       continue;
     }
 
@@ -464,8 +581,10 @@ function parseInline(text: string): AdfNode[] {
       continue;
     }
 
-    // Plain text up to next special char
-    const plainMatch = remaining.match(/^[^*`~[\]{:]+/);
+    // Plain text up to next special char. `!` is a stop char so an image
+    // `![alt](url)` reaches the image rule instead of being split (BRDG-268);
+    // a lone `!` falls through to the single-char fallback below.
+    const plainMatch = remaining.match(/^[^*`~[\]{:!]+/);
     if (plainMatch) {
       nodes.push({ type: "text", text: plainMatch[0] });
       remaining = remaining.slice(plainMatch[0].length);
