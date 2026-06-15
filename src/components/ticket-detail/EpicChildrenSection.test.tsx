@@ -705,7 +705,7 @@ describe("EpicChildrenSection", () => {
       expect(screen.getByRole("radio", { name: "By sprint" })).toBeInTheDocument();
     });
 
-    it("defaults to list view and persists the choice to localStorage", () => {
+    it("defaults to list view and persists the choice to the account", () => {
       renderSection(SAMPLE_CHILDREN);
       openListMenu();
       expect(screen.getByRole("radio", { name: "List" })).toHaveAttribute("aria-checked", "true");
@@ -713,7 +713,11 @@ describe("EpicChildrenSection", () => {
       fireEvent.click(screen.getByRole("radio", { name: "By sprint" }));
 
       expect(screen.getByRole("radio", { name: "By sprint" })).toHaveAttribute("aria-checked", "true");
-      expect(localStorage.getItem("epic-children-view")).toBe('"sprint"');
+      // Persisted per-account (BRDG-343) rather than to localStorage.
+      expect(mockApiFetch).toHaveBeenCalledWith(
+        "/api/settings/epic-children-view",
+        expect.objectContaining({ method: "PUT", body: { value: "sprint" } }),
+      );
     });
 
     it("restores the persisted view on mount", () => {

@@ -73,10 +73,10 @@ describe("EpicProgressToolbar", () => {
     });
     // Default metric is items: 1 done of 3 -> 33%
     expect(screen.getByRole("progressbar").getAttribute("aria-valuenow")).toBe("33");
-    // Switch to SP: 4 done of 11 -> 36%
+    // Switch to SP: 4 done of 11 -> 36%. The metric is persisted per-account
+    // (BRDG-343) rather than to localStorage; the recomputed bar confirms the toggle.
     fireEvent.click(screen.getByRole("button", { name: "SP" }));
     expect(screen.getByRole("progressbar").getAttribute("aria-valuenow")).toBe("36");
-    expect(localStorage.getItem("epic-stats-metric")).toBe('"sp"');
   });
 
   it("gives each colored segment an explicit height and a flex wrapper so it fills the track", () => {

@@ -4,7 +4,7 @@ import { useMemo } from "react";
 import type { EpicChild, Subtask, JiraStatus } from "@/types/ticket";
 import { STATUS_PILL_COLORS } from "@/components/sprint-board/SprintStatPill";
 import { Tooltip } from "@/components/shared/Tooltip";
-import { useLocalStorage } from "@/hooks/useLocalStorage";
+import { useMigratedAccountSetting } from "@/hooks/useMigratedAccountSetting";
 import { Filter, EyeOff, X } from "lucide-react";
 
 // The four working statuses. DEPRECATED is treated as noise and excluded from the
@@ -156,7 +156,11 @@ export function EpicProgressToolbar({
   /** Right-aligned controls — the child-list options ⋯ menu. */
   actions?: React.ReactNode;
 }) {
-  const [metric, setMetric] = useLocalStorage<Metric>("epic-stats-metric", "items");
+  const { value: metric, setValue: setMetric } = useMigratedAccountSetting<Metric>(
+    "/api/settings/epic-stats-metric",
+    "epic-stats-metric",
+    "items",
+  );
 
   const stats = useMemo(() => {
     const active = items.filter((i) => i.jiraStatus !== "DEPRECATED");

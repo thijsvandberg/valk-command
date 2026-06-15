@@ -1,4 +1,4 @@
-import { render, screen, fireEvent } from "@testing-library/react";
+import { render, screen, fireEvent, waitFor } from "@testing-library/react";
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import type { EpicProgressItem } from "@/app/api/epics/progress/route";
 
@@ -54,6 +54,13 @@ describe("EpicsPage", () => {
     vi.clearAllMocks();
     localStorage.clear();
     mockUseEpicTickets.mockReturnValue({ data: [], isLoading: false });
+    // Epic filters are account-scoped (BRDG-343): echo PUT writes so optimistic
+    // filter changes stick instead of rolling back on a failed save.
+    vi.spyOn(globalThis, "fetch").mockImplementation((_input, init) => {
+      const body = (init as RequestInit | undefined)?.body;
+      const payload = typeof body === "string" ? JSON.parse(body) : { value: {} };
+      return Promise.resolve(new Response(JSON.stringify(payload), { status: 200 }));
+    });
   });
 
   it("shows a skeleton while loading", () => {
@@ -105,7 +112,7 @@ describe("EpicsPage", () => {
     expect(screen.queryByText("Beta")).not.toBeInTheDocument();
   });
 
-  it("filters epics by status, combined with team", () => {
+  it("filters epics by status, combined with team", async () => {
     mockUseEpicProgress.mockReturnValue({
       data: [
         makeEpic({ key: "VPL-A", name: "Alpha", teams: ["BT"], status: "DONE" }),
@@ -113,10 +120,12 @@ describe("EpicsPage", () => {
       ],
       isLoading: false,
     });
+    // Filters are account-scoped (BRDG-343) and imported from localStorage once
+    // on mount, so the applied filter resolves asynchronously.
     localStorage.setItem("bridge:epic-filters", JSON.stringify({ teams: ["BT"], statuses: ["DONE"] }));
     render(<EpicsPage />);
     expect(screen.getByText("Alpha")).toBeInTheDocument();
-    expect(screen.queryByText("Beta")).not.toBeInTheDocument();
+    await waitFor(() => expect(screen.queryByText("Beta")).not.toBeInTheDocument());
   });
 
   it("hides non-recent epics by default", () => {

@@ -1,12 +1,12 @@
 "use client";
 
-import { useState, useMemo, useCallback, useEffect, useRef } from "react";
+import { useState, useMemo, useCallback, useEffect } from "react";
 import { GitBranch, RefreshCw, Unlink } from "lucide-react";
 import { ViewHeader, ViewHeaderTitle } from "@/components/shared/ViewHeader";
 import { Button } from "@/components/ui/Button";
 import { usePipelines } from "@/hooks/usePipelines";
 import { useJiraSprints, useTickets } from "@/hooks/useSprintBoard";
-import { useLocalStorage } from "@/hooks/useLocalStorage";
+import { useMigratedAccountSetting } from "@/hooks/useMigratedAccountSetting";
 import {
   PAGE_SIZE,
   STORAGE_KEY,
@@ -23,21 +23,15 @@ import { PipelineSkeleton, SyncStatusBanner } from "./PipelineSkeleton";
 
 const EMPTY_FILTERS: PersistedFilters = {};
 
-// Read the initial persisted sprint selection synchronously so we can guard
-// against overwriting it with an auto-selection before hydration completes.
-function readInitialSprints(): string[] | undefined {
-  try {
-    const raw = typeof window !== "undefined" ? localStorage.getItem(STORAGE_KEY) : null;
-    if (raw) return (JSON.parse(raw) as PersistedFilters).sprints;
-  } catch { /* noop */ }
-  return undefined;
-}
-
 export default function PipelinesPage() {
-  const [persisted, setPersisted] = useLocalStorage<PersistedFilters>(STORAGE_KEY, EMPTY_FILTERS);
-  // Captured once so auto-selection doesn't overwrite a stored sprint list that
-  // is still being hydrated from localStorage by useLocalStorage.
-  const initialPersistedSprints = useRef<string[] | undefined>(readInitialSprints());
+  // Account-scoped (BRDG-343); filtersLoading gates the active-sprint auto-select
+  // so it can't overwrite a stored sprint list before it has loaded.
+  const { value: persisted, setValue: setPersisted, isLoading: filtersLoading } =
+    useMigratedAccountSetting<PersistedFilters>(
+      "/api/settings/pipeline-filters",
+      STORAGE_KEY,
+      EMPTY_FILTERS,
+    );
 
   const repoFilter = persisted.repo ?? null;
   const sprintFilters = useMemo(() => persisted.sprints ?? [], [persisted.sprints]);
@@ -83,8 +77,9 @@ export default function PipelinesPage() {
 
   const { sprints } = useJiraSprints();
 
-  // Default to active sprint on first load (only if no persisted filters)
-  if (sprints && sprintFilters.length === 0 && !sprintAutoSelected && !initialPersistedSprints.current?.length) {
+  // Default to active sprint on first load (only once stored filters have loaded
+  // and none are set, so we never clobber a persisted selection).
+  if (sprints && !filtersLoading && sprintFilters.length === 0 && !sprintAutoSelected) {
     const active = sprints.find((s) => s.state === "active");
     if (active) {
       setSprintFilters([String(active.id)]);

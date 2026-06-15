@@ -3,7 +3,7 @@
 import { useState, useCallback, useMemo, useEffect, useRef } from "react";
 import { usePageTitle } from "@/hooks/usePageTitle";
 import { useActivityContext } from "@/contexts/ActivityContext";
-import { useLocalStorage } from "@/hooks/useLocalStorage";
+import { useMigratedAccountSetting } from "@/hooks/useMigratedAccountSetting";
 import { useJiraSprints } from "@/hooks/useSprintBoard";
 import useSWR from "swr";
 import {
@@ -27,6 +27,9 @@ import { RecurringFailures } from "./RecurringFailures";
 import { EventTimeline } from "./EventTimeline";
 import { ActivityTable, SelectFilter } from "./ActivityTable";
 
+// Stable default so the account-setting SWR fallback never churns identity.
+const EMPTY_TYPES: string[] = [];
+
 export default function ActivityLogPage() {
   const pageTitle = usePageTitle("Activity Log");
   const { acknowledgeAllErrors, mutateActivityLog } = useActivityContext();
@@ -35,9 +38,17 @@ export default function ActivityLogPage() {
     acknowledgeAllErrors();
   }, [acknowledgeAllErrors]);
 
-  const [storedTypes, setStoredTypes] = useLocalStorage<string[]>("bridge:activity-types", []);
+  const { value: storedTypes, setValue: setStoredTypes } = useMigratedAccountSetting<string[]>(
+    "/api/settings/activity-types",
+    "bridge:activity-types",
+    EMPTY_TYPES,
+  );
   const selectedTypes = useMemo(() => new Set(storedTypes), [storedTypes]);
-  const [statusFilter, setStatusFilter] = useLocalStorage<string>("bridge:activity-status", "");
+  const { value: statusFilter, setValue: setStatusFilter } = useMigratedAccountSetting<string>(
+    "/api/settings/activity-status",
+    "bridge:activity-status",
+    "",
+  );
   const [offset, setOffset] = useState(0);
   const [expandedIds, setExpandedIds] = useState<Set<string>>(new Set());
   const [jumpTarget, setJumpTarget] = useState<string | null>(null);

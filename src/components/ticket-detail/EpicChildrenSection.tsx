@@ -29,6 +29,7 @@ import { nextSprintName, latestRegularSprint } from "@/lib/sprint-utils";
 import { startDateFromPreviousEnd } from "@/lib/sprint-dates";
 import { useSectionVisibility } from "@/hooks/useSectionVisibility";
 import { useLocalStorage } from "@/hooks/useLocalStorage";
+import { useMigratedAccountSetting } from "@/hooks/useMigratedAccountSetting";
 import { usePencilCapacity } from "@/hooks/usePencilCapacity";
 import { useSprintUsedPoints } from "@/hooks/useSprintUsedPoints";
 import { useJiraSprints, useSprintSlots } from "@/hooks/useSprintBoard";
@@ -191,7 +192,11 @@ export function EpicChildrenSection({
 
   const { visible: visibleFields, toggleField } = useSectionVisibility("epic-children", DEFAULT_VISIBLE);
   const [summaryHidden, setSummaryHidden] = useLocalStorage<boolean>("epic-stats-summary-hidden", false);
-  const [viewMode, setViewMode] = useLocalStorage<ChildIssueViewMode>("epic-children-view", "list");
+  const { value: viewMode, setValue: setViewMode } = useMigratedAccountSetting<ChildIssueViewMode>(
+    "/api/settings/epic-children-view",
+    "epic-children-view",
+    "list",
+  );
   // Forward-planning mode (BRDG-303): per-view toggle, independent from the sprint
   // board's. Off by default; reveals guestimation pickers and the fullness meter.
   const [planningOn, setPlanningOn] = useLocalStorage<boolean>("epic-children-planning-visible", false);

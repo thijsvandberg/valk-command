@@ -8,7 +8,7 @@ import { Toast } from "@/components/ui/Toast";
 import { useToast } from "@/hooks/useToast";
 import { useEpicProgress } from "@/hooks/useEpics";
 import { useJiraSprints } from "@/hooks/useSprintBoard";
-import { useLocalStorage } from "@/hooks/useLocalStorage";
+import { useMigratedAccountSetting } from "@/hooks/useMigratedAccountSetting";
 import type { Team } from "@/lib/sprint-utils";
 import type { JiraStatus } from "@/types/ticket";
 import {
@@ -20,13 +20,20 @@ import { EpicFilterBar } from "./EpicFilterBar";
 import { EpicListSkeleton } from "./loading";
 import { CreateEpicModal } from "./CreateEpicModal";
 
+// Stable default so the account-setting SWR fallback never churns identity.
+const EMPTY_EPIC_FILTERS: PersistedEpicFilters = {};
+
 export default function EpicsPage() {
   const { data: epics, isLoading } = useEpicProgress();
   const { sprints } = useJiraSprints();
   const { toast, toastLoading, showToast, dismissToast } = useToast();
   const [createOpen, setCreateOpen] = useState(false);
 
-  const [filters, setFilters] = useLocalStorage<PersistedEpicFilters>(STORAGE_KEY, {});
+  const { value: filters, setValue: setFilters } = useMigratedAccountSetting<PersistedEpicFilters>(
+    "/api/settings/epic-filters",
+    STORAGE_KEY,
+    EMPTY_EPIC_FILTERS,
+  );
   const teamFilter = useMemo(() => filters.teams ?? [], [filters.teams]);
   const statusFilter = useMemo(() => filters.statuses ?? [], [filters.statuses]);
   const noTeam = filters.noTeam ?? false;

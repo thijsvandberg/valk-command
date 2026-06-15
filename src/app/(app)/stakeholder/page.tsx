@@ -12,7 +12,7 @@ import { useVelocityData } from "@/hooks/useVelocityData";
 import { LoadingState } from "@/components/shared/LoadingState";
 import { useStakeholderAnalysis, type AnalysisType } from "@/hooks/useStakeholderAnalysis";
 import { swrFetcher, apiFetch } from "@/lib/api-client";
-import { useLocalStorage } from "@/hooks/useLocalStorage";
+import { useMigratedAccountSetting } from "@/hooks/useMigratedAccountSetting";
 import {
   ViewHeader,
   ViewHeaderTitle,
@@ -84,8 +84,16 @@ function StakeholderView() {
   const router = useRouter();
   const { mutate: globalMutate } = useSWRConfig();
 
-  const [storedTeam, setStoredTeam] = useLocalStorage<string | null>(LS_KEY_TEAM, null);
-  const [storedSprint, setStoredSprint] = useLocalStorage<string | null>(LS_KEY_SPRINT, null);
+  const { value: storedTeam, setValue: setStoredTeam } = useMigratedAccountSetting<string | null>(
+    "/api/settings/stakeholder-team",
+    LS_KEY_TEAM,
+    null,
+  );
+  const { value: storedSprint, setValue: setStoredSprint } = useMigratedAccountSetting<string | null>(
+    "/api/settings/stakeholder-sprint",
+    LS_KEY_SPRINT,
+    null,
+  );
 
   const urlTeam = searchParams.get("team") ?? storedTeam;
   const urlSprintId = (() => {

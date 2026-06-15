@@ -27,6 +27,10 @@ vi.mock("@/lib/api-client", () => ({
   jira: {
     assign: (...args: unknown[]) => mockAssign(...args),
   },
+  // Subtask filter prefs are account-scoped (BRDG-343): echo PUT writes so the
+  // optimistic filter change sticks; GET returns an empty envelope.
+  apiFetch: (_url: string, opts?: { body?: unknown }) =>
+    Promise.resolve(opts?.body ?? { value: undefined }),
   ApiError: class ApiError extends Error {
     constructor(message: string, public status = 500, public body?: unknown) {
       super(message);

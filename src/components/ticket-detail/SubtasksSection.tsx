@@ -10,7 +10,7 @@ import { FieldFilterPopover, type StatusFilter } from "./FieldFilterPopover";
 import { useSectionVisibility } from "@/hooks/useSectionVisibility";
 import { useSectionCollapsed } from "@/hooks/useSectionCollapsed";
 import { SECTION_KEYS } from "@/lib/section-collapse-store";
-import { useLocalStorage } from "@/hooks/useLocalStorage";
+import { useMigratedAccountSetting } from "@/hooks/useMigratedAccountSetting";
 import { tickets, jira } from "@/lib/api-client";
 import { ApiError } from "@/lib/api-client";
 import { GripVertical, Filter, Sparkles, Undo2, Loader2, X, SquarePen, AlertTriangle } from "lucide-react";
@@ -210,8 +210,16 @@ export function SubtasksSection({
   showDragHandles,
   disableCollapse,
 }: SubtasksSectionProps) {
-  const [filter, setFilter] = useLocalStorage<StatusFilter>("subtask-status-filter", "all");
-  const [hideDeprecated, setHideDeprecated] = useLocalStorage<boolean>("subtask-hide-deprecated", true);
+  const { value: filter, setValue: setFilter } = useMigratedAccountSetting<StatusFilter>(
+    "/api/settings/subtask-status-filter",
+    "subtask-status-filter",
+    "all",
+  );
+  const { value: hideDeprecated, setValue: setHideDeprecated } = useMigratedAccountSetting<boolean>(
+    "/api/settings/subtask-hide-deprecated",
+    "subtask-hide-deprecated",
+    true,
+  );
   const [newTitle, setNewTitle] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [jiraWarning, setJiraWarning] = useState<string | null>(null);

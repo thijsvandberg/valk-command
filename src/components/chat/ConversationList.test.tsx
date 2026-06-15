@@ -37,12 +37,20 @@ beforeEach(() => {
     },
     writable: true,
   });
+  // Group-collapse state is account-scoped (BRDG-343): echo PUT writes so the
+  // optimistic toggle sticks instead of rolling back on a failed save.
+  vi.spyOn(globalThis, "fetch").mockImplementation((_input, init) => {
+    const body = (init as RequestInit | undefined)?.body;
+    const payload = typeof body === "string" ? JSON.parse(body) : { value: [] };
+    return Promise.resolve(new Response(JSON.stringify(payload), { status: 200 }));
+  });
   vi.useFakeTimers();
   vi.setSystemTime(new Date(now));
 });
 
 afterEach(() => {
   vi.useRealTimers();
+  vi.restoreAllMocks();
 });
 
 describe("ConversationList", () => {

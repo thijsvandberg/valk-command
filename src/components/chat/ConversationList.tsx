@@ -2,6 +2,7 @@
 
 import { useState, useCallback, useRef, useEffect, useMemo } from "react";
 import { useOutsideClick } from "@/hooks/useOutsideClick";
+import { useMigratedAccountSetting } from "@/hooks/useMigratedAccountSetting";
 import { createPortal } from "react-dom";
 import type { Conversation, ConversationType } from "@/types/chat";
 import { Trash2, Filter, Search, X, ChevronRight, Pin, PanelLeftClose, PanelLeftOpen, CheckSquare, Mail, MailOpen } from "lucide-react";
@@ -16,23 +17,12 @@ import BulkActionBar from "./BulkActionBar";
 import { deriveCategory, CATEGORY_CONFIG, type ConversationCategory } from "@/lib/conversation-category";
 import { groupByDate, type DateGroupLabel } from "@/lib/date-groups";
 
+// Legacy browser-local key; the collapsed groups are now account-scoped (BRDG-343)
+// and the value is imported once from here by useMigratedAccountSetting.
 const GROUPS_COLLAPSED_KEY = "bridge:sidebar-groups-collapsed";
 
-function readCollapsedGroups(): Set<string> {
-  try {
-    const raw = localStorage.getItem(GROUPS_COLLAPSED_KEY);
-    if (!raw) return new Set();
-    return new Set(JSON.parse(raw) as string[]);
-  } catch {
-    return new Set();
-  }
-}
-
-function writeCollapsedGroups(groups: Set<string>): void {
-  try {
-    localStorage.setItem(GROUPS_COLLAPSED_KEY, JSON.stringify([...groups]));
-  } catch { /* ignore */ }
-}
+// Stable default so the account-setting SWR fallback never churns identity.
+const EMPTY_COLLAPSED: string[] = [];
 
 interface ConversationListProps {
   conversations: Conversation[];
@@ -139,18 +129,22 @@ export default function ConversationList({
   // Check full list (not search-filtered) so the hint doesn't flicker during search
   const hasPinnedConversations = useMemo(() => conversations.some((c) => c.pinned), [conversations]);
 
-  // Group collapse state
-  const [collapsedGroups, setCollapsedGroups] = useState<Set<string>>(readCollapsedGroups);
+  // Group collapse state (account-scoped, stored as a string[] of labels).
+  const { value: collapsedArr, setValue: setCollapsedArr } = useMigratedAccountSetting<string[]>(
+    "/api/settings/sidebar-groups-collapsed",
+    GROUPS_COLLAPSED_KEY,
+    EMPTY_COLLAPSED,
+  );
+  const collapsedGroups = useMemo(() => new Set(collapsedArr), [collapsedArr]);
 
   const toggleGroup = useCallback((label: string) => {
-    setCollapsedGroups((prev) => {
+    setCollapsedArr((prev) => {
       const next = new Set(prev);
       if (next.has(label)) next.delete(label);
       else next.add(label);
-      writeCollapsedGroups(next);
-      return next;
+      return Array.from(next);
     });
-  }, []);
+  }, [setCollapsedArr]);
 
   // Track which conversation's overflow menu is open so we can keep the trigger visible
   const [openOverflowId, setOpenOverflowId] = useState<string | null>(null);

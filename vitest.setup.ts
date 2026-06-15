@@ -46,6 +46,24 @@ afterEach(() => {
   if (typeof localStorage?.clear === "function") localStorage.clear();
 });
 
+// Reset the account-scoped settings entries in SWR's global cache between tests.
+// useAccountSetting (BRDG-343) reads/writes /api/settings/* in the default SWR
+// cache; without this a value written in one test would persist into the next
+// and pollute it. Scoped to settings keys so unrelated caches (e.g. sprints)
+// keep their cross-test behaviour.
+afterEach(async () => {
+  try {
+    const { mutate } = await import("swr");
+    await mutate(
+      (key) => typeof key === "string" && key.startsWith("/api/settings/"),
+      undefined,
+      { revalidate: false },
+    );
+  } catch {
+    // swr not used in this suite
+  }
+});
+
 afterAll(() => {
   closeAllTestDbs();
 });

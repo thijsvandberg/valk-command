@@ -1,7 +1,25 @@
-import { describe, it, expect, beforeEach } from "vitest";
-import { renderHook, act } from "@testing-library/react";
+import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
+import { renderHook, act, waitFor } from "@testing-library/react";
+import { SWRConfig } from "swr";
+import { createElement } from "react";
 import { useConversationFilters } from "./useConversationFilters";
 import type { Conversation } from "@/types/chat";
+
+// chat-filters are account-scoped (BRDG-343): GET returns { value }, PUT echoes
+// the sent value so optimistic toggles settle without reverting.
+function wrapper({ children }: { children: React.ReactNode }) {
+  return createElement(SWRConfig, { value: { provider: () => new Map() } }, children);
+}
+
+function mockServer() {
+  return vi.spyOn(globalThis, "fetch").mockImplementation((_input, init) => {
+    if ((init as RequestInit | undefined)?.method === "PUT") {
+      const body = JSON.parse((init as RequestInit).body as string);
+      return Promise.resolve(new Response(JSON.stringify(body), { status: 200 }));
+    }
+    return Promise.resolve(new Response(JSON.stringify({ value: [] }), { status: 200 }));
+  });
+}
 
 function makeConv(id: string, title: string, type: "chat" | "investigation" = "chat"): Conversation {
   return { id, title, type, createdAt: "2026-05-22T10:00:00Z", relatedTicket: null, metadata: null, pinned: false, readAt: null };
@@ -21,17 +39,21 @@ const conversations: Conversation[] = [
 describe("useConversationFilters", () => {
   beforeEach(() => {
     try { localStorage.clear(); } catch { /* jsdom may not support localStorage.clear */ }
-    try { localStorage.removeItem("bridge:chat-filters"); } catch { /* ignore */ }
+    mockServer();
+  });
+
+  afterEach(() => {
+    vi.restoreAllMocks();
   });
 
   it("returns all conversations when no filters are active", () => {
-    const { result } = renderHook(() => useConversationFilters(conversations));
+    const { result } = renderHook(() => useConversationFilters(conversations), { wrapper });
     expect(result.current.filteredConversations).toHaveLength(conversations.length);
     expect(result.current.activeFilters.size).toBe(0);
   });
 
   it("computes correct category counts", () => {
-    const { result } = renderHook(() => useConversationFilters(conversations));
+    const { result } = renderHook(() => useConversationFilters(conversations), { wrapper });
     expect(result.current.categoryCounts["sprint-goal"]).toBe(2);
     expect(result.current.categoryCounts["story-writer"]).toBe(1);
     expect(result.current.categoryCounts.stakeholder).toBe(1);
@@ -41,10 +63,10 @@ describe("useConversationFilters", () => {
     expect(result.current.categoryCounts.review).toBe(1);
   });
 
-  it("filters conversations by toggled category", () => {
-    const { result } = renderHook(() => useConversationFilters(conversations));
+  it("filters conversations by toggled category", async () => {
+    const { result } = renderHook(() => useConversationFilters(conversations), { wrapper });
 
-    act(() => {
+    await act(async () => {
       result.current.toggleFilter("sprint-goal");
     });
 
@@ -52,53 +74,53 @@ describe("useConversationFilters", () => {
     expect(result.current.filteredConversations.every((c) => c.title.startsWith("Sprint Goal:"))).toBe(true);
   });
 
-  it("supports multiple active filters (additive)", () => {
-    const { result } = renderHook(() => useConversationFilters(conversations));
+  it("supports multiple active filters (additive)", async () => {
+    const { result } = renderHook(() => useConversationFilters(conversations), { wrapper });
 
-    act(() => {
+    await act(async () => {
       result.current.toggleFilter("sprint-goal");
     });
-    act(() => {
+    await act(async () => {
       result.current.toggleFilter("stakeholder");
     });
 
+    await waitFor(() => expect(result.current.activeFilters.size).toBe(2));
     expect(result.current.filteredConversations).toHaveLength(3);
-    expect(result.current.activeFilters.size).toBe(2);
   });
 
-  it("toggling a filter off removes it", () => {
-    const { result } = renderHook(() => useConversationFilters(conversations));
+  it("toggling a filter off removes it", async () => {
+    const { result } = renderHook(() => useConversationFilters(conversations), { wrapper });
 
-    act(() => {
+    await act(async () => {
       result.current.toggleFilter("sprint-goal");
     });
-    act(() => {
+    await act(async () => {
       result.current.toggleFilter("sprint-goal");
     });
 
+    await waitFor(() => expect(result.current.activeFilters.size).toBe(0));
     expect(result.current.filteredConversations).toHaveLength(conversations.length);
-    expect(result.current.activeFilters.size).toBe(0);
   });
 
-  it("clearFilters resets to showing all", () => {
-    const { result } = renderHook(() => useConversationFilters(conversations));
+  it("clearFilters resets to showing all", async () => {
+    const { result } = renderHook(() => useConversationFilters(conversations), { wrapper });
 
-    act(() => {
+    await act(async () => {
       result.current.toggleFilter("chat");
     });
-    act(() => {
+    await act(async () => {
       result.current.clearFilters();
     });
 
+    await waitFor(() => expect(result.current.activeFilters.size).toBe(0));
     expect(result.current.filteredConversations).toHaveLength(conversations.length);
-    expect(result.current.activeFilters.size).toBe(0);
   });
 
-  it("returns empty array when filter matches nothing", () => {
+  it("returns empty array when filter matches nothing", async () => {
     const onlyChats = [makeConv("1", "New conversation")];
-    const { result } = renderHook(() => useConversationFilters(onlyChats));
+    const { result } = renderHook(() => useConversationFilters(onlyChats), { wrapper });
 
-    act(() => {
+    await act(async () => {
       result.current.toggleFilter("sprint-goal");
     });
 

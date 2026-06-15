@@ -1,13 +1,16 @@
 "use client";
 
 import { useMemo, useCallback } from "react";
-import { useLocalStorage } from "./useLocalStorage";
+import { useMigratedAccountSetting } from "./useMigratedAccountSetting";
 import type { Conversation } from "@/types/chat";
 import {
   deriveCategory,
   ALL_CATEGORIES,
   type ConversationCategory,
 } from "@/lib/conversation-category";
+
+// Stable default so the account-setting SWR fallback never churns identity.
+const EMPTY_FILTERS: ConversationCategory[] = [];
 
 interface UseConversationFiltersReturn {
   activeFilters: Set<ConversationCategory>;
@@ -20,10 +23,12 @@ interface UseConversationFiltersReturn {
 export function useConversationFilters(
   conversations: Conversation[],
 ): UseConversationFiltersReturn {
-  const [storedFilters, setStoredFilters] = useLocalStorage<ConversationCategory[]>(
-    "bridge:chat-filters",
-    [],
-  );
+  const { value: storedFilters, setValue: setStoredFilters } =
+    useMigratedAccountSetting<ConversationCategory[]>(
+      "/api/settings/chat-filters",
+      "bridge:chat-filters",
+      EMPTY_FILTERS,
+    );
 
   const activeFilters = useMemo(() => new Set(storedFilters), [storedFilters]);
 
