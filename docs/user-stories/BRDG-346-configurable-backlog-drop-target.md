@@ -21,7 +21,7 @@ This story follows the bugfix where the backlog drop tile was wired to the gener
 - **Where the target is chosen:** `SprintDropZoneBar` in `src/components/sprint-board/SprintBoardDragDrop.tsx` resolves `backlogSprint` by matching `BACKLOG_DROP_SPRINT_NAME` against the passed `sprints`, falling back to `__backlog__`.
 - **The drop handler is already target-agnostic:** `src/components/sprint-board/useSprintBoardDragDrop.ts` (`handleBoardDragEnd`, the `sprint-slot:` branch) just reads whatever sprint id the tile carries and calls `jira.moveSprint`. No change needed there.
 - **Backlog sprints are recognised by name:** `isBacklogSprintName` in `src/lib/sprint-utils.ts` matches names ending in "Backlog" (`BT: Backlog`, `GXP: Backlog`, plain `Backlog`). The team prefix can be extracted with `extractTeamPrefix` (same file).
-- **Existing settings precedent:** `BRDG-187-default-sprint-setting` introduced a per-user "default sprint" preference — reuse that storage/UI pattern rather than inventing a new one. Confirm where it persists (local setting vs DB) and follow it.
+- **Settings storage (use the account-scoped foundation):** persist this preference in the per-account `userSetting` store introduced by [BRDG-343](BRDG-343-account-scoped-saved-views.md), so the chosen backlog target lives in the **user table** and follows the PO's Clerk account across browsers/ports/devices — not in the global `appSetting` table. Add a route via `createUserJsonSettingRoute` (e.g. key `sprint_board_backlog_drop_target`) and read it client-side with `useAccountSetting`. Mirror BRDG-187's settings **UI** placement, but not its global-`appSetting` storage.
 - **Available backlog sprints come from** the live sprints list (`useJiraSprints`), already passed into the board.
 
 ## Open decision (needs PO input)
@@ -43,8 +43,8 @@ To be confirmed before implementation.
 - [ ] If the configured/derived backlog sprint does not exist in the current sprint list, the tile degrades gracefully (hidden, or a clearly-labelled fallback) rather than silently targeting the wrong place.
 
 ### Settings UX (if approach 1 or 3)
-- [ ] The PO can pick the target team backlog from a list of available `*: Backlog` sprints, following the existing default-sprint setting pattern (BRDG-187).
-- [ ] The choice persists across sessions and reloads.
+- [ ] The PO can pick the target team backlog from a list of available `*: Backlog` sprints, following the existing default-sprint setting UI placement (BRDG-187).
+- [ ] The choice persists per account in the `userSetting` store (BRDG-343) and reloads consistently across sessions, browsers, ports, and devices.
 
 ### Consistency
 - [ ] Behaviour is unchanged for the single-team (BT) PO who keeps the default.
@@ -56,4 +56,4 @@ To be confirmed before implementation.
 ## Technical Notes
 - Keep the change localised to `SprintBoardDragDrop.tsx` (target resolution + label) and the settings surface; do not touch `useSprintBoardDragDrop.ts` (already target-agnostic) or the move route.
 - Reuse `isBacklogSprintName` / `extractTeamPrefix` from `sprint-utils.ts` for discovering and labelling backlog sprints; do not re-implement name parsing.
-- Follow BRDG-187's storage and settings-UI approach for the new preference so settings stay consistent.
+- Store the new preference in the per-account `userSetting` foundation (BRDG-343, `createUserJsonSettingRoute` + `useAccountSetting`); follow BRDG-187 only for the settings-UI placement, not its global storage.
