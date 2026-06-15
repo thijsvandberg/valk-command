@@ -1073,6 +1073,31 @@ export class JiraClient {
   }
 
   /**
+   * Rank the given issues to the very bottom of a sprint: below the sprint's current
+   * lowest-ranked issue (excluding the ones being moved). A no-op when the sprint has
+   * no other issues.
+   */
+  async rankToBottomOfSprint(issueKeys: string[], sprintId: number, signal?: AbortSignal): Promise<void> {
+    if (!isConfigured() || issueKeys.length === 0) return;
+    const exclude = ` AND key NOT IN (${issueKeys.join(",")})`;
+    const bottom = await this.searchIssues(`sprint = ${sprintId}${exclude} ORDER BY rank DESC`, ["summary"], 1, signal);
+    if (bottom.length > 0) await this.rankIssues(issueKeys, undefined, bottom[0].key, signal);
+  }
+
+  /**
+   * Rank the given issues to the very bottom of the backlog (sprint-less issues), below
+   * the backlog's current lowest-ranked issue. A no-op when the backlog is otherwise empty.
+   */
+  async rankToBottomOfBacklog(issueKeys: string[], signal?: AbortSignal): Promise<void> {
+    if (!isConfigured() || issueKeys.length === 0) return;
+    const cfg = getConfig();
+    const exclude = ` AND key NOT IN (${issueKeys.join(",")})`;
+    const jql = `sprint is EMPTY AND project = ${cfg.projectKey} AND issuetype not in (Epic)${exclude} ORDER BY rank DESC`;
+    const bottom = await this.searchIssues(jql, ["summary"], 1, signal);
+    if (bottom.length > 0) await this.rankIssues(issueKeys, undefined, bottom[0].key, signal);
+  }
+
+  /**
    * Move one or more issues to a different sprint.
    * Updates the sprint custom field on each issue via REST API v3.
    */

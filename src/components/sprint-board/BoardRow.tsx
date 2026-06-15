@@ -775,8 +775,11 @@ export const BoardRow = memo(forwardRef<HTMLTableRowElement, BoardRowBaseProps>(
   );
 }));
 
-export const SortableBoardRow = memo(function SortableBoardRow(props: Omit<BoardRowBaseProps, "rowStyle" | "dragListeners" | "dragAttributes" | "data-index"> & {
+export const SortableBoardRow = memo(function SortableBoardRow(props: Omit<BoardRowBaseProps, "rowStyle" | "dragListeners" | "dragAttributes"> & {
   sortableData?: Record<string, unknown>;
+  // In a virtualized list the same <tr> must feed the virtualizer's measureElement;
+  // compose it with the sortable node ref so dynamic row heights keep working.
+  measureRef?: (el: HTMLElement | null) => void;
 }) {
   const {
     attributes,
@@ -790,6 +793,12 @@ export const SortableBoardRow = memo(function SortableBoardRow(props: Omit<Board
     data: props.sortableData ?? { sprintId: props.ticket.sprintId },
   });
 
+  const { measureRef } = props;
+  const composedRef = useCallback((el: HTMLTableRowElement | null) => {
+    setNodeRef(el);
+    measureRef?.(el);
+  }, [setNodeRef, measureRef]);
+
   const rowStyle = useMemo<React.CSSProperties>(() => ({
     transform: isDragging ? undefined : CSS.Transform.toString(transform) || undefined,
     transition: isDragging ? undefined : transition ?? undefined,
@@ -800,12 +809,12 @@ export const SortableBoardRow = memo(function SortableBoardRow(props: Omit<Board
     } : {}),
   }), [isDragging, transform, transition]);
 
-  const { sortableData: _sortableData, ...rowProps } = props;
+  const { sortableData: _sortableData, measureRef: _measureRef, ...rowProps } = props;
 
   return (
     <BoardRow
       {...rowProps}
-      ref={setNodeRef}
+      ref={composedRef}
       rowStyle={rowStyle}
       dragListeners={listeners}
       dragAttributes={attributes}

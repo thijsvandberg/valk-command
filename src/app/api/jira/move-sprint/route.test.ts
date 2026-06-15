@@ -17,6 +17,8 @@ const mockMoveToSprint = vi.fn().mockResolvedValue(undefined);
 const mockMoveToBacklog = vi.fn().mockResolvedValue(undefined);
 const mockRankToTopOfSprint = vi.fn().mockResolvedValue(undefined);
 const mockRankToTopOfBacklog = vi.fn().mockResolvedValue(undefined);
+const mockRankToBottomOfSprint = vi.fn().mockResolvedValue(undefined);
+const mockRankToBottomOfBacklog = vi.fn().mockResolvedValue(undefined);
 
 vi.mock("@/lib/jira-client", () => ({
   jiraClient: {
@@ -24,6 +26,8 @@ vi.mock("@/lib/jira-client", () => ({
     moveToBacklog: (...args: unknown[]) => mockMoveToBacklog(...args),
     rankToTopOfSprint: (...args: unknown[]) => mockRankToTopOfSprint(...args),
     rankToTopOfBacklog: (...args: unknown[]) => mockRankToTopOfBacklog(...args),
+    rankToBottomOfSprint: (...args: unknown[]) => mockRankToBottomOfSprint(...args),
+    rankToBottomOfBacklog: (...args: unknown[]) => mockRankToBottomOfBacklog(...args),
   },
 }));
 
@@ -53,6 +57,8 @@ describe("POST /api/jira/move-sprint", () => {
     mockMoveToBacklog.mockReset().mockResolvedValue(undefined);
     mockRankToTopOfSprint.mockReset().mockResolvedValue(undefined);
     mockRankToTopOfBacklog.mockReset().mockResolvedValue(undefined);
+    mockRankToBottomOfSprint.mockReset().mockResolvedValue(undefined);
+    mockRankToBottomOfBacklog.mockReset().mockResolvedValue(undefined);
 
     testDb.insert(ticket).values({
       jiraKey: "VPL-100",
@@ -99,6 +105,23 @@ describe("POST /api/jira/move-sprint", () => {
     expect((await res.json()).ok).toBe(true);
     expect(mockMoveToBacklog).toHaveBeenCalledWith(["VPL-100"]);
     expect(mockRankToTopOfBacklog).toHaveBeenCalledWith(["VPL-100"]);
+  });
+
+  it("ranks to the bottom of the sprint when position is 'bottom'", async () => {
+    const req = makeRequest({ issueKeys: ["VPL-100"], targetSprintId: "456", position: "bottom" });
+    const res = await POST(req);
+    expect((await res.json()).ok).toBe(true);
+    expect(mockMoveToSprint).toHaveBeenCalledWith(["VPL-100"], 456);
+    expect(mockRankToBottomOfSprint).toHaveBeenCalledWith(["VPL-100"], 456);
+    expect(mockRankToTopOfSprint).not.toHaveBeenCalled();
+  });
+
+  it("ranks to the bottom of the backlog when position is 'bottom'", async () => {
+    const req = makeRequest({ issueKeys: ["VPL-100"], targetSprintId: "__backlog__", position: "bottom" });
+    const res = await POST(req);
+    expect((await res.json()).ok).toBe(true);
+    expect(mockMoveToBacklog).toHaveBeenCalledWith(["VPL-100"]);
+    expect(mockRankToBottomOfBacklog).toHaveBeenCalledWith(["VPL-100"]);
   });
 
   it("still succeeds when ranking to top fails (rank is best-effort)", async () => {

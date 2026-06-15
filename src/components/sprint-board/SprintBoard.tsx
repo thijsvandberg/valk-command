@@ -49,7 +49,7 @@ import { SprintDropZoneBar, snapToPointer, boardCollisionDetection } from "@/com
 import { ExportToasts } from "@/components/sprint-board/ExportToasts";
 import { Toast } from "@/components/ui/Toast";
 import { useToast } from "@/hooks/useToast";
-import { DndContext, DragOverlay } from "@dnd-kit/core";
+import { DndContext, DragOverlay, MeasuringStrategy } from "@dnd-kit/core";
 const SprintEditModal = dynamic(() => import("@/components/sprint-board/SprintEditModal").then((m) => ({ default: m.SprintEditModal })), { ssr: false });
 const CreateSprintModal = dynamic(() => import("@/components/sprint-board/CreateSprintModal").then((m) => ({ default: m.CreateSprintModal })), { ssr: false });
 const SprintListModal = dynamic(() => import("@/components/sprint-board/SprintListModal").then((m) => ({ default: m.SprintListModal })), { ssr: false });
@@ -589,6 +589,33 @@ export default function SprintBoard() {
     if (oi === -1 || ni === -1) return; const next = [...order]; next.splice(oi, 1); next.splice(ni, 0, activeKey); setPoPriorityOrder(next);
   }, [poPriorityOrder, tickets, setPoPriorityOrder]);
 
+  // Move to top / bottom of the current sprint (whole sprint, filter-independent):
+  // a one-click alternative to dragging across a 200+ list. Reuses the move-sprint
+  // route with the active sprint as target + a position, and optimistically pins the
+  // rows to the top/bottom of the full list (re-indexing jiraRank) so it shows at once.
+  const handleRankToEdge = useCallback(async (targets: Set<string>, position: "top" | "bottom") => {
+    const keys = [...targets];
+    if (keys.length === 0 || !activeSprintId || activeSprintId === "__all__") return;
+    mutateTickets((current) => {
+      if (!current) return current;
+      const movedSet = new Set(keys);
+      const moved = current.filter((t) => movedSet.has(t.key));
+      const rest = current.filter((t) => !movedSet.has(t.key));
+      const reordered = position === "top" ? [...moved, ...rest] : [...rest, ...moved];
+      return reordered.map((t, i) => ({ ...t, jiraRank: i }));
+    }, { revalidate: false });
+    setPoPriorityOrder(null);
+    try {
+      await jira.moveSprint({ issueKeys: keys, targetSprintId: activeSprintId, position });
+      refreshMeter();
+      const label = keys.length === 1 ? keys[0] : `${keys.length} tickets`;
+      showToast(`Moved ${label} to ${position}`);
+    } catch {
+      mutateTickets();
+      showToast(`Failed to move to ${position}. Reverted.`);
+    }
+  }, [activeSprintId, mutateTickets, setPoPriorityOrder, refreshMeter, showToast]);
+
   // Bulk actions. Each accepts an explicit target set (defaulting to the current
   // checkbox selection) so the same handlers serve both the toolbar and the
   // right-click row context menu.
@@ -884,7 +911,7 @@ export default function SprintBoard() {
             overlay takes over, so the drop tiles sit on the page background —
             matching the refinement bar's in-place drag treatment. */}
         <div className={dnd.boardActiveDragId ? "invisible" : ""}>
-        <SprintSlots slotSprints={slotSprints} pillSlotSprints={pillSlotSprints} activeSprintId={activeSprintId} allActive={isAllView && !f.activeViewId} sprints={sprints} backlogCount={backlogCount} backlogSprints={backlogSprints} activeBacklogId={activeBacklog?.id ?? null} onBacklogSelect={handleSprintListSelect} onSlotClick={setActiveSlot} onAllClick={handleAllClick} editingSlot={editingSlot} onSlotEdit={handleSlotEdit} onSprintSelect={handleSprintSelect} onEditClose={() => setEditingSlot(null)} onReorderSlots={handleReorderSlots} ephemeralSprintId={ephemeralSprintId} ephemeralIsActive={ephemeralIsActive} onEphemeralClick={handleEphemeralClick} activeFilterCount={activeFilterCount} savedViews={presetViews} activeViewId={f.activeViewId} onViewClick={f.handleViewClick} onSaveCurrentView={f.handleSaveView} sortField={f.sortField} sortDir={f.sortDir} onSortChange={sortChange} searchQuery={f.searchQuery} onSearchChange={f.setSearchQuery} filterProps={filterControlsProps} groupBy={groupBy} onGroupByChange={setGroupBy} onCreateSprint={() => setCreateSprintModalOpen(true)} onOpenSprintList={(anchor) => setBarSprintListAnchor(anchor)} groupCount={groups.length} allGroupsCollapsed={allCollapsed} onToggleCollapseAll={toggleAllGroups} />
+        <SprintSlots slotSprints={slotSprints} pillSlotSprints={pillSlotSprints} activeSprintId={activeSprintId} allActive={isAllView && !f.activeViewId} sprints={sprints} backlogCount={backlogCount} backlogSprints={backlogSprints} activeBacklogId={activeBacklog?.id ?? null} onBacklogSelect={handleSprintListSelect} onSlotClick={setActiveSlot} onAllClick={handleAllClick} editingSlot={editingSlot} onSlotEdit={handleSlotEdit} onSprintSelect={handleSprintSelect} onEditClose={() => setEditingSlot(null)} onReorderSlots={handleReorderSlots} ephemeralSprintId={ephemeralSprintId} ephemeralIsActive={ephemeralIsActive} onEphemeralClick={handleEphemeralClick} activeFilterCount={activeFilterCount} savedViews={presetViews} activeViewId={f.activeViewId} onViewClick={f.handleViewClick} onSaveCurrentView={f.handleSaveView} sortField={f.sortField} sortDir={f.sortDir} onSortChange={sortChange} searchQuery={f.searchQuery} onSearchChange={f.setSearchQuery} searchCount={f.searchQuery.trim().length >= 2 ? { matched: f.searchResultCount, total: f.searchScopeCount } : undefined} filterProps={filterControlsProps} groupBy={groupBy} onGroupByChange={setGroupBy} onCreateSprint={() => setCreateSprintModalOpen(true)} onOpenSprintList={(anchor) => setBarSprintListAnchor(anchor)} groupCount={groups.length} allGroupsCollapsed={allCollapsed} onToggleCollapseAll={toggleAllGroups} />
         </div>
         {dnd.jiraRankDndEnabled && dnd.boardActiveDragId && <SprintDropZoneBar sprints={sprints} pillSlotSprints={pillSlotSprints} activeSprintId={activeSprintId} allActive={isAllView && !f.activeViewId} />}
       </div>
@@ -896,7 +923,7 @@ export default function SprintBoard() {
           // one card when ungrouped, one per group when grouped (BRDG-239, BRDG-267).
           <div className="min-h-full bg-[var(--color-surface-elevated)] px-4 pb-20 pt-3">
           <div className={boardMaxW}>
-          <TicketTable tickets={displayTickets} hideRowAccent warningLensActive={warningLensActive} warningLensActiveSprint={!!flatIsActiveSprint} filterSignature={filterSignature} checkedTickets={checkedTickets} selectedTicket={selectedTicket} focusedTicketIdx={focusedTicketIdx} someChecked={someChecked} allChecked={allChecked} visibleTags={f.visibleTags} hideEpic={hideEpicChip} showSprint={showSprintOnRow} sprintNameMap={sprintNameMap} poStatuses={poStatuses} readinessMap={readinessMap} inflightKeys={inflightKeys} onToggleCheck={toggleCheck} onRangeCheck={handleRangeCheck} onToggleAll={toggleAll} onSelectTicket={setSelectedTicket} onRowContextMenu={handleRowContextMenu} contextMenuKeys={rowMenu?.targets} onPoStatusChange={ta.handlePoStatusChange} onReadinessChange={ta.handleReadinessChange} onBusinessValueChange={ta.handleBusinessValueChange} onStoryPointsChange={ta.handleStoryPointsChange} planningOn={planningVisible} onGuestimationChange={ta.handleGuestimationChange} pencilCapacityMap={pencilCapacityMap} onPencilCapacityChange={setPencilCapacity} sprintUsedMap={sprintUsedMap} onJiraStatusChange={ta.handleJiraStatusChange} onIssueTypeChange={ta.handleIssueTypeChange} onTitleChange={ta.handleTitleChange} onAssigneeChange={ta.handleAssigneeChange} onEpicChange={ta.handleEpicChange} onSprintChange={ta.handleSprintChange} sprints={sprints} onCloseSubtasks={ta.handleCloseSubtasks} onTableKeyDown={handleTableKeyDown} onRunReview={(key) => handleBulkReviewStory(new Set([key]))} sortField={f.sortField} sortDir={f.sortDir} onMetricSort={handleMetricSort} onMetricToggleColumn={handleMetricToggleColumn} groups={groups} flatHeader={singleSprintHeader} collapsedGroups={collapsedGroups} onToggleCollapse={toggleCollapse} groupBy={groupBy} pinnedSprintIds={slotSprintsSet} onPinSprint={handleAddSlotWithSprint} onEditSprint={handleEditSprintFromGroup} onCloseSprint={handleCloseSprintFromGroup} onSyncGroup={handleSyncGroup} onCreateTicket={handleCreateTicket} flatCreateTarget={flatCreateTarget} flatComposerOpen={flatComposerOpen} onCloseFlatComposer={closeFlatComposer} scrollContainerRef={contentScrollRef} refinementSessionMap={ticketSessionMap} onRemoveFromRefinement={handleRemoveFromRefinement} onViewRefinement={handleViewRefinement} placeholders={placeholdersForTable} onPlaceholderUpdate={handlePlaceholderUpdate} onPlaceholderDelete={handlePlaceholderDelete} onPlaceholderPromote={handlePlaceholderPromote} onPlaceholderCreate={planningVisible ? handlePlaceholderCreate : undefined} {...(dnd.jiraRankDndEnabled ? { externalDnd: true as const, externalActiveDragId: dnd.boardActiveDragId, dragOverKey: dnd.boardOverId } : { onReorder: f.sortField === "rank" && !f.activeViewId ? handleReorder : undefined })} />
+          <TicketTable tickets={displayTickets} hideRowAccent warningLensActive={warningLensActive} warningLensActiveSprint={!!flatIsActiveSprint} filterSignature={filterSignature} searchActive={f.searchQuery.trim().length >= 2} checkedTickets={checkedTickets} selectedTicket={selectedTicket} focusedTicketIdx={focusedTicketIdx} someChecked={someChecked} allChecked={allChecked} visibleTags={f.visibleTags} hideEpic={hideEpicChip} showSprint={showSprintOnRow} sprintNameMap={sprintNameMap} poStatuses={poStatuses} readinessMap={readinessMap} inflightKeys={inflightKeys} onToggleCheck={toggleCheck} onRangeCheck={handleRangeCheck} onToggleAll={toggleAll} onSelectTicket={setSelectedTicket} onRowContextMenu={handleRowContextMenu} contextMenuKeys={rowMenu?.targets} onPoStatusChange={ta.handlePoStatusChange} onReadinessChange={ta.handleReadinessChange} onBusinessValueChange={ta.handleBusinessValueChange} onStoryPointsChange={ta.handleStoryPointsChange} planningOn={planningVisible} onGuestimationChange={ta.handleGuestimationChange} pencilCapacityMap={pencilCapacityMap} onPencilCapacityChange={setPencilCapacity} sprintUsedMap={sprintUsedMap} onJiraStatusChange={ta.handleJiraStatusChange} onIssueTypeChange={ta.handleIssueTypeChange} onTitleChange={ta.handleTitleChange} onAssigneeChange={ta.handleAssigneeChange} onEpicChange={ta.handleEpicChange} onSprintChange={ta.handleSprintChange} sprints={sprints} onCloseSubtasks={ta.handleCloseSubtasks} onTableKeyDown={handleTableKeyDown} onRunReview={(key) => handleBulkReviewStory(new Set([key]))} sortField={f.sortField} sortDir={f.sortDir} onMetricSort={handleMetricSort} onMetricToggleColumn={handleMetricToggleColumn} groups={groups} flatHeader={singleSprintHeader} collapsedGroups={collapsedGroups} onToggleCollapse={toggleCollapse} groupBy={groupBy} pinnedSprintIds={slotSprintsSet} onPinSprint={handleAddSlotWithSprint} onEditSprint={handleEditSprintFromGroup} onCloseSprint={handleCloseSprintFromGroup} onSyncGroup={handleSyncGroup} onCreateTicket={handleCreateTicket} flatCreateTarget={flatCreateTarget} flatComposerOpen={flatComposerOpen} onCloseFlatComposer={closeFlatComposer} scrollContainerRef={contentScrollRef} refinementSessionMap={ticketSessionMap} onRemoveFromRefinement={handleRemoveFromRefinement} onViewRefinement={handleViewRefinement} placeholders={placeholdersForTable} onPlaceholderUpdate={handlePlaceholderUpdate} onPlaceholderDelete={handlePlaceholderDelete} onPlaceholderPromote={handlePlaceholderPromote} onPlaceholderCreate={planningVisible ? handlePlaceholderCreate : undefined} {...(dnd.jiraRankDndEnabled ? { externalDnd: true as const, externalActiveDragId: dnd.boardActiveDragId, dragOverKey: dnd.boardOverId } : { onReorder: f.sortField === "rank" && !f.activeViewId ? handleReorder : undefined })} />
           </div>
           </div>
         )}
@@ -932,7 +959,7 @@ export default function SprintBoard() {
         />
 
         {dnd.jiraRankDndEnabled ? (
-          <DndContext sensors={dnd.boardSensors} collisionDetection={boardCollisionDetection} onDragStart={dnd.handleBoardDragStart} onDragOver={dnd.handleBoardDragOver} onDragEnd={dnd.handleBoardDragEnd}>
+          <DndContext sensors={dnd.boardSensors} collisionDetection={boardCollisionDetection} measuring={{ droppable: { strategy: MeasuringStrategy.Always } }} onDragStart={dnd.handleBoardDragStart} onDragOver={dnd.handleBoardDragOver} onDragEnd={dnd.handleBoardDragEnd}>
             {boardContent}
             <DragOverlay dropAnimation={null} modifiers={[snapToPointer]}>
               {dnd.boardActiveDragTicket && <DragGhostOverlay dragTicket={dnd.boardActiveDragTicket} draggedKeys={dnd.boardDraggedKeys} tickets={tickets} targetSprintId={dnd.boardDragTargetSprintId} sprintNameMap={sprintNameMap} />}
@@ -984,6 +1011,8 @@ export default function SprintBoard() {
             onSetReadiness={(r) => handleBulkSetReadiness(r, rowMenu.targets)}
             onSetEpic={(epicKey) => handleBulkSetEpic(epicKey, rowMenu.targets)}
             onMoveSprint={(sprintId) => handleBulkMoveSprint(sprintId, rowMenu.targets)}
+            onMoveToTop={!isAllView && f.sortField === "rank" ? () => handleRankToEdge(rowMenu.targets, "top") : undefined}
+            onMoveToBottom={!isAllView && f.sortField === "rank" ? () => handleRankToEdge(rowMenu.targets, "bottom") : undefined}
             onUpdateAssignee={(accountId, name) => handleBulkUpdateAssignee(accountId, name, rowMenu.targets)}
             onUpdateLabel={(labels, mode) => handleBulkUpdateLabels(labels, mode, rowMenu.targets)}
             onSetFlagged={(flagged) => handleSetFlagged(flagged, rowMenu.targets)}

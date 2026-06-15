@@ -552,6 +552,8 @@ export function TicketActionMenuContent({
   onSetReadiness,
   onSetEpic,
   onMoveSprint,
+  onMoveToTop,
+  onMoveToBottom,
   onUpdateAssignee,
   onUpdateLabel,
   onSetFlagged,
@@ -567,6 +569,9 @@ export function TicketActionMenuContent({
   onSetReadiness?: (readiness: TicketReadiness | null) => void;
   onSetEpic?: (epicKey: string | null) => void;
   onMoveSprint?: (sprintId: string) => void;
+  /** Rank the target(s) to the top/bottom of the current sprint (whole sprint). */
+  onMoveToTop?: () => void;
+  onMoveToBottom?: () => void;
   onUpdateAssignee?: (accountId: string | null, name: string | null) => void;
   onUpdateLabel?: (labels: string[], mode: "add" | "set") => void;
   /** When supplied, renders Flag / Remove flag items. `true` flags, `false` unflags. */
@@ -581,7 +586,7 @@ export function TicketActionMenuContent({
 }) {
   const [subView, setSubView] = useState<UpdateSubView>("menu");
 
-  const hasUpdateAction = onSetStatus || onSetReadiness || onSetEpic || onMoveSprint || onUpdateAssignee || onUpdateLabel;
+  const hasUpdateAction = onSetStatus || onSetReadiness || onSetEpic || onMoveSprint || onMoveToTop || onMoveToBottom || onUpdateAssignee || onUpdateLabel;
   const hasAiAction = onReviewStory || onGenerateSubtasks || onRefine;
   const showFlag = Boolean(onSetFlagged);
   const showFlagItem = flagState !== "flagged"; // show "Flag" unless every target is already flagged
@@ -594,6 +599,8 @@ export function TicketActionMenuContent({
         {onSetReadiness && <MenuItem onClick={() => setSubView("readiness")}>Set Readiness</MenuItem>}
         {onSetEpic && <MenuItem onClick={() => setSubView("epic")}>Set Epic</MenuItem>}
         {onMoveSprint && sprints && <MenuItem onClick={() => setSubView("sprint")}>Move to Sprint</MenuItem>}
+        {onMoveToTop && <MenuItem onClick={() => { onMoveToTop(); close(); }}>Move to top</MenuItem>}
+        {onMoveToBottom && <MenuItem onClick={() => { onMoveToBottom(); close(); }}>Move to bottom</MenuItem>}
         {onUpdateAssignee && <MenuItem onClick={() => setSubView("assignee")}>Update Assignee</MenuItem>}
         {onUpdateLabel && <MenuItem onClick={() => setSubView("label")}>Add/Update Label</MenuItem>}
 

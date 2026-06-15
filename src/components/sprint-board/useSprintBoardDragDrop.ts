@@ -18,8 +18,6 @@ import { moveTicketSprintCaches, revalidateMovedSprintLists } from "@/lib/ticket
 import { registerPendingMove, clearPendingMove } from "@/components/sprint-board/pendingSprintMoves";
 import { sprintMoveToastContent } from "@/components/sprint-board/sprintMoveToast";
 
-const VIRTUALIZE_THRESHOLD = 40;
-
 interface DragDropDeps {
   activeSprintId: string;
   isAllView: boolean;
@@ -54,13 +52,15 @@ export function useSprintBoardDragDrop(deps: DragDropDeps) {
   const [boardOverId, setBoardOverId] = useState<string | null>(null);
   const [boardDragTargetSprintId, setBoardDragTargetSprintId] = useState<string | null>(null);
 
+  // DnD (rank reorder + cross-sprint drop) is available whenever rank sort is the
+  // active order and we are not in a saved view. It no longer depends on list size:
+  // large lists stay virtualized (TicketTable owns that, for perf) but their rows
+  // are still drag-enabled, so a 200+ backlog can be reordered and dragged out
+  // (BRDG-347). The All view only enables it when grouped by sprint.
   const jiraRankDndEnabled = (
     sortField === "rank" &&
     !activeViewId &&
-    (
-      (!isAllView && tickets.length <= VIRTUALIZE_THRESHOLD) ||
-      (isAllView && groupBy === "sprint")
-    )
+    (!isAllView || groupBy === "sprint")
   );
 
   const boardSensors = useSensors(
@@ -258,17 +258,22 @@ export function useSprintBoardDragDrop(deps: DragDropDeps) {
       : [activeKey];
 
     const movedSet = new Set(keysToMove);
-    const without = currentTickets.filter((t) => !movedSet.has(t.key));
-    const anchorWithout = without.findIndex((t) => t.key === overId);
-    const insertAt = oldIndex > overIndex ? anchorWithout : anchorWithout + 1;
-    const movedTickets = keysToMove.map((k) => currentTickets.find((t) => t.key === k)!).filter(Boolean);
-    const reordered = [...without.slice(0, insertAt), ...movedTickets, ...without.slice(insertAt)];
+    // Direction comes from the visible order (and matches rankBeforeKey/rankAfterKey
+    // below). The optimistic reorder runs against the FULL list, not the filtered
+    // `currentTickets`, so a row hidden by an active filter is never dropped from
+    // the cache; the moved rows land next to the visible `over` neighbour (BRDG-347).
+    const placeAbove = oldIndex > overIndex;
 
     mutateTickets(
       (current) => {
         if (!current) return current;
-        const map = new Map(current.map((t) => [t.key, t]));
-        return reordered.map((t, i) => ({ ...map.get(t.key)!, jiraRank: i }));
+        const withoutFull = current.filter((t) => !movedSet.has(t.key));
+        const anchorIdx = withoutFull.findIndex((t) => t.key === overId);
+        if (anchorIdx === -1) return current;
+        const insertAt = placeAbove ? anchorIdx : anchorIdx + 1;
+        const movedRows = keysToMove.map((k) => current.find((t) => t.key === k)!).filter(Boolean);
+        const reordered = [...withoutFull.slice(0, insertAt), ...movedRows, ...withoutFull.slice(insertAt)];
+        return reordered.map((t, i) => ({ ...t, jiraRank: i }));
       },
       { revalidate: false },
     );

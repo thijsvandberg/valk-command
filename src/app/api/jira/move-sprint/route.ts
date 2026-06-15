@@ -37,8 +37,11 @@ export async function POST(request: Request) {
   }
 
   const isBacklog = targetSprintId === "__backlog__";
-  // When dropped on a sprint/backlog zone (not between two rows), land at the very top.
+  // When dropped on a sprint/backlog zone (not between two rows), land at the very
+  // top; the "Move to bottom" action lands at the very bottom. Both rank the issue
+  // across the whole sprint/backlog, independent of any active board filter.
   const toTop = position === "top";
+  const toBottom = position === "bottom";
 
   if (!isBacklog) {
     const sprintIdNum = parseInt(targetSprintId, 10);
@@ -60,6 +63,12 @@ export async function POST(request: Request) {
       } catch (err) {
         logger.warn("jira", "Failed to rank moved issues to top of sprint", err instanceof Error ? err.message : String(err));
       }
+    } else if (toBottom) {
+      try {
+        await jiraClient.rankToBottomOfSprint(issueKeys, sprintIdNum);
+      } catch (err) {
+        logger.warn("jira", "Failed to rank moved issues to bottom of sprint", err instanceof Error ? err.message : String(err));
+      }
     }
   } else {
     try {
@@ -74,6 +83,12 @@ export async function POST(request: Request) {
         await jiraClient.rankToTopOfBacklog(issueKeys);
       } catch (err) {
         logger.warn("jira", "Failed to rank moved issues to top of backlog", err instanceof Error ? err.message : String(err));
+      }
+    } else if (toBottom) {
+      try {
+        await jiraClient.rankToBottomOfBacklog(issueKeys);
+      } catch (err) {
+        logger.warn("jira", "Failed to rank moved issues to bottom of backlog", err instanceof Error ? err.message : String(err));
       }
     }
   }

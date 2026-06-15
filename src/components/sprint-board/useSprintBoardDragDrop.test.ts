@@ -180,3 +180,45 @@ describe("useSprintBoardDragDrop - sprint-slot drop zone", () => {
     expect(moveSprint).not.toHaveBeenCalled();
   });
 });
+
+describe("useSprintBoardDragDrop - jiraRankDndEnabled (no longer size-gated, BRDG-347)", () => {
+  it("is enabled for a single-sprint rank view regardless of list size", () => {
+    const many = Array.from({ length: 200 }, (_, i) => makeTicket(`VPL-${i}`, "todo"));
+    const deps = makeDeps({ tickets: many, apiTickets: many });
+    const { result } = renderHook(() => useSprintBoardDragDrop(deps));
+    expect(result.current.jiraRankDndEnabled).toBe(true);
+  });
+
+  it("is disabled inside a saved view or when not sorting by rank", () => {
+    const view = renderHook(() => useSprintBoardDragDrop(makeDeps({ activeViewId: "v1" })));
+    expect(view.result.current.jiraRankDndEnabled).toBe(false);
+
+    const byBv = renderHook(() => useSprintBoardDragDrop(makeDeps({ sortField: "bv" })));
+    expect(byBv.result.current.jiraRankDndEnabled).toBe(false);
+  });
+});
+
+describe("useSprintBoardDragDrop - filter-correct reorder (BRDG-347)", () => {
+  it("preserves tickets hidden by a filter when reordering two visible rows", async () => {
+    // Only VPL-1 and VPL-2 are visible (filtered); VPL-3 is hidden but still in the cache.
+    const visible = [makeTicket("VPL-1", "todo"), makeTicket("VPL-2", "todo")];
+    const deps = makeDeps({ tickets: visible, apiTickets: visible });
+    const { result } = renderHook(() => useSprintBoardDragDrop(deps));
+
+    await act(async () => {
+      await result.current.handleBoardDragEnd(dropEvent("VPL-1", "VPL-2"));
+    });
+
+    // The optimistic reorder must run against the FULL list passed to its updater.
+    const reorderCall = (deps.mutateTickets as ReturnType<typeof vi.fn>).mock.calls.find(
+      (c) => typeof c[0] === "function",
+    );
+    expect(reorderCall).toBeDefined();
+    const updater = reorderCall![0] as (current: Ticket[]) => Ticket[];
+    const fullList = [makeTicket("VPL-1", "todo"), makeTicket("VPL-2", "todo"), makeTicket("VPL-3", "todo")];
+    const next = updater(fullList);
+    // Hidden VPL-3 is kept; VPL-1 lands just after the visible neighbour VPL-2.
+    expect(next.map((t) => t.key)).toEqual(["VPL-2", "VPL-1", "VPL-3"]);
+    expect(next.find((t) => t.key === "VPL-3")).toBeDefined();
+  });
+});

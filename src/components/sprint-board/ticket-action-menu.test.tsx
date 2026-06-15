@@ -44,6 +44,29 @@ describe("TicketActionMenuContent", () => {
     expect(close).toHaveBeenCalledTimes(1);
   });
 
+  it("renders Move to top/bottom only when their callbacks are supplied", () => {
+    const { rerender } = render(<TicketActionMenuContent onSetStatus={vi.fn()} close={vi.fn()} />);
+    expect(screen.queryByText("Move to top")).not.toBeInTheDocument();
+    expect(screen.queryByText("Move to bottom")).not.toBeInTheDocument();
+
+    rerender(<TicketActionMenuContent onMoveToTop={vi.fn()} onMoveToBottom={vi.fn()} close={vi.fn()} />);
+    expect(screen.getByText("Move to top")).toBeInTheDocument();
+    expect(screen.getByText("Move to bottom")).toBeInTheDocument();
+  });
+
+  it("fires Move to top / Move to bottom and closes", () => {
+    const onMoveToTop = vi.fn();
+    const onMoveToBottom = vi.fn();
+    const close = vi.fn();
+    render(<TicketActionMenuContent onMoveToTop={onMoveToTop} onMoveToBottom={onMoveToBottom} close={close} />);
+    fireEvent.click(screen.getByText("Move to top"));
+    expect(onMoveToTop).toHaveBeenCalledTimes(1);
+    expect(close).toHaveBeenCalledTimes(1);
+    fireEvent.click(screen.getByText("Move to bottom"));
+    expect(onMoveToBottom).toHaveBeenCalledTimes(1);
+    expect(close).toHaveBeenCalledTimes(2);
+  });
+
   describe("flag items follow flagState", () => {
     it("shows only Flag when all targets are unflagged", () => {
       render(<TicketActionMenuContent onSetFlagged={vi.fn()} flagState="unflagged" close={vi.fn()} />);

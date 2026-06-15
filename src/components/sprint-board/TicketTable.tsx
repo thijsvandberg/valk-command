@@ -170,6 +170,7 @@ export function TicketTable({
   warningLensActive = false,
   warningLensActiveSprint = false,
   filterSignature,
+  searchActive = false,
   placeholders,
   onPlaceholderUpdate,
   onPlaceholderDelete,
@@ -280,6 +281,9 @@ export function TicketTable({
   // A stable signature of the global filters; when it changes, any active per-group
   // warning/status filter is cleared so the warning mode never leaves a stale narrowing.
   filterSignature?: string;
+  // A search query is applied (BRDG-345); swaps the empty state to a search-specific message
+  // so an empty result reads as "no matches" rather than "no tickets in this sprint".
+  searchActive?: boolean;
   // Forward-planning placeholders (BRDG-304): active placeholders in scope. Grouped
   // by sprint they bucket into each group by sprintId; in the flat single-sprint view
   // they all render below the tickets. Shown only when planning mode is on (the parent
@@ -480,29 +484,61 @@ export function TicketTable({
     [showSprint, sprintNameMap, onPlaceholderUpdate, onPlaceholderDelete, onPlaceholderPromote],
   );
 
-  const virtualizedTable = (
-    <table className="w-full table-fixed border-collapse text-body-lg">
-      <tbody>
-        {paddingTop > 0 && (
-          <tr><td style={{ height: paddingTop, padding: 0, border: "none" }} /></tr>
-        )}
-        {virtualRows.map((virtualRow) => {
-          const ticket = tickets[virtualRow.index];
+  const activeInsertIdx = externalActiveDragId ? tickets.findIndex((t) => t.key === externalActiveDragId) : -1;
+  const overInsertIdx = dragOverKey ? tickets.findIndex((t) => t.key === dragOverKey) : -1;
+
+  // Virtualized rows are drag-enabled when the parent owns the DnD context
+  // (externalDnd): each mounted row registers as a SortableBoardRow so a 200+
+  // list can be reordered and dragged out (BRDG-347). The SortableContext is keyed
+  // on all ticketIds (cheap) even though only the visible rows are mounted; the
+  // spacer rows stay outside it. The sortable node ref is composed with the
+  // virtualizer's measureElement so dynamic heights keep working.
+  const virtualBody = (
+    <tbody>
+      {paddingTop > 0 && (
+        <tr><td style={{ height: paddingTop, padding: 0, border: "none" }} /></tr>
+      )}
+      {virtualRows.map((virtualRow) => {
+        const ticket = tickets[virtualRow.index];
+        if (externalDnd) {
+          let insertLine: "above" | "below" | undefined;
+          if (dragOverKey && ticket.key === dragOverKey && activeInsertIdx !== -1 && overInsertIdx !== -1) {
+            insertLine = activeInsertIdx > overInsertIdx ? "above" : "below";
+          }
           return (
-            <BoardRow
+            <SortableBoardRow
               key={ticket.key}
-              ref={rowVirtualizer.measureElement}
+              measureRef={rowVirtualizer.measureElement}
               data-index={virtualRow.index}
               {...makeRowProps(ticket, virtualRow.index)}
+              insertLine={insertLine}
               isLastInCard={virtualRow.index === tickets.length - 1}
               warningLabels={warningLensActive ? ticketWarningLabels(ticket, warningLensActiveSprint) : undefined}
             />
           );
-        })}
-        {paddingBottom > 0 && (
-          <tr><td style={{ height: paddingBottom, padding: 0, border: "none" }} /></tr>
-        )}
-      </tbody>
+        }
+        return (
+          <BoardRow
+            key={ticket.key}
+            ref={rowVirtualizer.measureElement}
+            data-index={virtualRow.index}
+            {...makeRowProps(ticket, virtualRow.index)}
+            isLastInCard={virtualRow.index === tickets.length - 1}
+            warningLabels={warningLensActive ? ticketWarningLabels(ticket, warningLensActiveSprint) : undefined}
+          />
+        );
+      })}
+      {paddingBottom > 0 && (
+        <tr><td style={{ height: paddingBottom, padding: 0, border: "none" }} /></tr>
+      )}
+    </tbody>
+  );
+
+  const virtualizedTable = (
+    <table className="w-full table-fixed border-collapse text-body-lg">
+      {externalDnd
+        ? <SortableContext items={ticketIds} strategy={() => null}>{virtualBody}</SortableContext>
+        : virtualBody}
     </table>
   );
 
@@ -549,9 +585,6 @@ export function TicketTable({
       </tbody>
     </table>
   );
-
-  const activeInsertIdx = externalActiveDragId ? tickets.findIndex((t) => t.key === externalActiveDragId) : -1;
-  const overInsertIdx = dragOverKey ? tickets.findIndex((t) => t.key === dragOverKey) : -1;
 
   // When externalDnd, rows must not shift during drag. undefined falls back to
   // dnd-kit's default rectSortingStrategy, which still moves items. A null-returning
@@ -884,8 +917,8 @@ export function TicketTable({
           {flatHeader && tickets.length === 0 && !flatComposerActive && (placeholders?.length ?? 0) === 0 && (
             <EmptyState
               icon={<Sheet className="h-5 w-5 text-text-muted" strokeWidth={1} />}
-              title="No tickets in this sprint"
-              description="Tickets will appear here once they are added to the sprint in Jira"
+              title={searchActive ? "No tickets match your search" : "No tickets in this sprint"}
+              description={searchActive ? "Try a different term, or clear the search to see all tickets." : "Tickets will appear here once they are added to the sprint in Jira"}
               className="py-8"
             />
           )}
@@ -894,16 +927,16 @@ export function TicketTable({
       {tickets.length === 0 && !isGrouped && !flatHeader && !flatComposerActive && (placeholders?.length ?? 0) === 0 && (
         <EmptyState
           icon={<Sheet className="h-6 w-6 text-text-muted" strokeWidth={1} />}
-          title="No tickets in this sprint"
-          description="Tickets will appear here once they are added to the sprint in Jira"
+          title={searchActive ? "No tickets match your search" : "No tickets in this sprint"}
+          description={searchActive ? "Try a different term, or clear the search to see all tickets." : "Tickets will appear here once they are added to the sprint in Jira"}
           className="py-16"
         />
       )}
       {isGrouped && groups.every((g) => g.tickets.length === 0) && (placeholders?.length ?? 0) === 0 && (
         <EmptyState
           icon={<Sheet className="h-6 w-6 text-text-muted" strokeWidth={1} />}
-          title="No tickets"
-          description="Tickets will appear here once they are added in Jira"
+          title={searchActive ? "No tickets match your search" : "No tickets"}
+          description={searchActive ? "Try a different term, or clear the search to see all tickets." : "Tickets will appear here once they are added in Jira"}
           className="py-16"
         />
       )}
