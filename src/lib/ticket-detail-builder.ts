@@ -1,7 +1,7 @@
 import { db } from "@/db";
 import { ticket, ticketLocalEdit, jiraComment, ticketSubtask, storedReview, storyVersion, conversation, message, subtaskSuggestion, sprintNameCache, ticketMetadata } from "@/db/schema";
 import { eq, sql, count } from "drizzle-orm";
-import type { Ticket, TicketDetail, IssueType, JiraStatus, POStatus, TicketReadiness, Assignee, Attachment, JiraComment, Subtask, EpicChild, LinkedIssue } from "@/types/ticket";
+import type { Ticket, TicketDetail, IssueType, JiraStatus, POStatus, TicketReadiness, Assignee, Attachment, JiraComment, Subtask, EpicChild, LinkedIssue, TicketEditState } from "@/types/ticket";
 import { computeTicketEditState } from "@/lib/ticket-state";
 import { timedQuery } from "@/lib/query-timer";
 import { jiraClient, STORY_POINTS_FIELD, FLAGGED_FIELD, extractSprint } from "@/lib/jira-client";
@@ -226,9 +226,13 @@ async function resolveEpicChildren(epicChildRows: Awaited<ReturnType<typeof runT
   // immediately visible in the epic's children list (not stuck on the synced
   // Jira title until a push).
   const titleEditMap = new Map<string, string>();
+  // Edit state per child, so the epic's children list shows the same "Local
+  // changes" dot as the sprint board. Built from each child's local edits vs its
+  // latest mirror version (same computation as the single-ticket path).
+  const editStateMap = new Map<string, TicketEditState>();
 
   if (epicChildKeys.length > 0) {
-    const [subtaskCountResult, metaRows, titleEditRows] = await Promise.all([
+    const [subtaskCountResult, metaRows, localEditRows, versionRows] = await Promise.all([
       db
         .select({
           ticketKey: ticketSubtask.ticketKey,
@@ -242,9 +246,19 @@ async function resolveEpicChildren(epicChildRows: Awaited<ReturnType<typeof runT
         where: (m, { sql: sqlFn }) => sqlFn`${m.jiraKey} IN (${sql.join(epicChildKeys.map((k) => sql`${k}`), sql`, `)})`,
       }),
       db
-        .select({ ticketKey: ticketLocalEdit.ticketKey, localValue: ticketLocalEdit.localValue })
+        .select({
+          ticketKey: ticketLocalEdit.ticketKey,
+          field: ticketLocalEdit.field,
+          localValue: ticketLocalEdit.localValue,
+          baseJiraVersion: ticketLocalEdit.baseJiraVersion,
+          isDraft: ticketLocalEdit.isDraft,
+        })
         .from(ticketLocalEdit)
-        .where(sql`${ticketLocalEdit.field} = 'title' AND ${ticketLocalEdit.ticketKey} IN (${sql.join(epicChildKeys.map((k) => sql`${k}`), sql`, `)})`),
+        .where(sql`${ticketLocalEdit.ticketKey} IN (${sql.join(epicChildKeys.map((k) => sql`${k}`), sql`, `)})`),
+      db
+        .select({ jiraKey: storyVersion.jiraKey, contentHash: storyVersion.contentHash, createdAt: storyVersion.createdAt })
+        .from(storyVersion)
+        .where(sql`${storyVersion.jiraKey} IN (${sql.join(epicChildKeys.map((k) => sql`${k}`), sql`, `)})`),
     ]);
     for (const row of subtaskCountResult) {
       subtaskCountMap.set(row.ticketKey, { total: row.total, open: Number(row.open) });
@@ -254,8 +268,27 @@ async function resolveEpicChildren(epicChildRows: Awaited<ReturnType<typeof runT
       businessValueMap.set(row.jiraKey, row.businessValue ?? null);
       guestimationMap.set(row.jiraKey, row.guestimation ?? null);
     }
-    for (const row of titleEditRows) {
-      if (row.localValue) titleEditMap.set(row.ticketKey, row.localValue);
+
+    // Latest mirror-version hash per child (createdAt sorts lexically), and the
+    // local edits grouped per child; both feed computeTicketEditState below.
+    const latestHashByKey = new Map<string, string>();
+    const latestCreatedByKey = new Map<string, string>();
+    for (const row of versionRows) {
+      const prev = latestCreatedByKey.get(row.jiraKey);
+      if (!prev || row.createdAt > prev) {
+        latestCreatedByKey.set(row.jiraKey, row.createdAt);
+        latestHashByKey.set(row.jiraKey, row.contentHash);
+      }
+    }
+    const editsByKey = new Map<string, { baseJiraVersion: string | null; isDraft: boolean }[]>();
+    for (const row of localEditRows) {
+      if (row.field === "title" && row.localValue) titleEditMap.set(row.ticketKey, row.localValue);
+      const list = editsByKey.get(row.ticketKey) ?? [];
+      list.push({ baseJiraVersion: row.baseJiraVersion, isDraft: row.isDraft });
+      editsByKey.set(row.ticketKey, list);
+    }
+    for (const key of epicChildKeys) {
+      editStateMap.set(key, computeTicketEditState(editsByKey.get(key) ?? [], latestHashByKey.get(key) ?? null));
     }
 
     const sprintIds = [...new Set(epicChildRows.map((c) => c.sprintName).filter(Boolean))] as string[];
@@ -285,6 +318,7 @@ async function resolveEpicChildren(epicChildRows: Awaited<ReturnType<typeof runT
     totalSubtaskCount: subtaskCountMap.get(c.jiraKey)?.total ?? 0,
     readiness: readinessMap.get(c.jiraKey) ?? null,
     jiraRank: c.jiraRank ?? null,
+    editState: editStateMap.get(c.jiraKey) ?? "clean",
   }));
 }
 

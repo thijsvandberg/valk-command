@@ -197,6 +197,10 @@ export interface EpicChild extends Subtask {
   // Jira's global LexoRank index for the issue. Drives the within-sprint order in
   // the epic's by-sprint view; null when the issue has never been ranked.
   jiraRank: number | null;
+  // Local-edit state, mirroring the sprint board so a child with pending local
+  // edits shows the same "Local changes" dot. Optional: optimistic placeholders
+  // omit it (treated as clean).
+  editState?: TicketEditState;
 }
 
 export interface LinkedIssue {

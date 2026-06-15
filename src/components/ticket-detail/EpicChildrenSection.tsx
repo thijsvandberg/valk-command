@@ -977,6 +977,7 @@ export function EpicChildrenSection({
         showKey={visibleFields.has("issueKey")}
         showStatus={visibleFields.has("status")}
         readiness={epic?.readiness}
+        editState={epic?.editState}
         onJiraStatusChange={(s) => handleJiraStatusChange(child.key, s)}
         onReadinessChange={(r) => handleReadinessChange(child.key, r)}
         onSelect={onSelectTicket}

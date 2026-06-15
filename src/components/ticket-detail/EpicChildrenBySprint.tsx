@@ -216,6 +216,7 @@ function SortableChildRow({
       showKey={visibleFields.has("issueKey")}
       showStatus={visibleFields.has("status")}
       readiness={epic?.readiness}
+      editState={epic?.editState}
       onJiraStatusChange={(s) => onJiraStatusChange(child.key, s)}
       onReadinessChange={(r) => onReadinessChange(child.key, r)}
       onSelect={onSelect}

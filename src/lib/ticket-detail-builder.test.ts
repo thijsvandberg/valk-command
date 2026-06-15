@@ -3,7 +3,7 @@ import { createTestDb } from "@/db/test-utils";
 import type { BetterSQLite3Database } from "drizzle-orm/better-sqlite3";
 import type * as schema from "@/db/schema";
 import { seedTicket, seedTicketMetadata } from "@/test/builders";
-import { ticketLocalEdit } from "@/db/schema";
+import { ticketLocalEdit, storyVersion } from "@/db/schema";
 
 let testDb: BetterSQLite3Database<typeof schema>;
 
@@ -72,6 +72,46 @@ describe("buildTicketDetail epic children ordering", () => {
     const children = built!.data.epicChildren;
     expect(children.find((c) => c.key === "VPL-10")?.title).toBe("Locally edited title");
     expect(children.find((c) => c.key === "VPL-20")?.title).toBe("Untouched title");
+  });
+
+  it("computes editState per child so the epic list can show the local-changes dot", async () => {
+    seedTicket(testDb, { jiraKey: "VPL-1", title: "Epic", type: "epic" });
+    seedTicket(testDb, { jiraKey: "VPL-10", title: "Edited", epicKey: "VPL-1", jiraRank: 0 });
+    seedTicket(testDb, { jiraKey: "VPL-20", title: "Clean", epicKey: "VPL-1", jiraRank: 1 });
+    // A pending edit on a base version that matches the (absent) latest mirror is "local_edits".
+    testDb.insert(ticketLocalEdit).values({
+      id: "edit-1",
+      ticketKey: "VPL-10",
+      field: "description",
+      localValue: "local body",
+      baseJiraVersion: null,
+    }).run();
+
+    const built = await buildTicketDetail("VPL-1");
+    const children = built!.data.epicChildren;
+    expect(children.find((c) => c.key === "VPL-10")?.editState).toBe("local_edits");
+    expect(children.find((c) => c.key === "VPL-20")?.editState).toBe("clean");
+  });
+
+  it("marks a child conflicted when its local edit is based on a stale mirror version", async () => {
+    seedTicket(testDb, { jiraKey: "VPL-1", title: "Epic", type: "epic" });
+    seedTicket(testDb, { jiraKey: "VPL-10", title: "Stale edit", epicKey: "VPL-1", jiraRank: 0 });
+    testDb.insert(storyVersion).values({
+      id: "ver-1",
+      jiraKey: "VPL-10",
+      description: "latest",
+      contentHash: "new-hash",
+    }).run();
+    testDb.insert(ticketLocalEdit).values({
+      id: "edit-1",
+      ticketKey: "VPL-10",
+      field: "description",
+      localValue: "local body",
+      baseJiraVersion: "old-hash",
+    }).run();
+
+    const built = await buildTicketDetail("VPL-1");
+    expect(built!.data.epicChildren.find((c) => c.key === "VPL-10")?.editState).toBe("conflict");
   });
 
   it("flags epic children whose sprint is stored as a legacy name (no id) for re-sync", async () => {

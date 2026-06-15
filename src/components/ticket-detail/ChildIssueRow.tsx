@@ -1,8 +1,9 @@
 "use client";
 
 import type { ComponentProps, Ref } from "react";
-import type { Subtask, TicketReadiness, JiraStatus, IssueType, Sprint } from "@/types/ticket";
+import type { Subtask, TicketReadiness, JiraStatus, IssueType, Sprint, TicketEditState } from "@/types/ticket";
 import { TicketStatusPill } from "@/components/shared/TicketStatusPill";
+import { EditStateDot } from "@/components/sprint-board/TicketTableCells";
 import { Checkbox } from "@/components/shared/Checkbox";
 import type { AssignableUser } from "@/components/shared/AssigneePicker";
 import type { EpicOption } from "@/components/shared/EpicPicker";
@@ -24,6 +25,8 @@ interface ChildIssueRowProps {
   /** Controls the readiness indicator. Defaults to true; subtasks pass false since they have no readiness. */
   showReadiness?: boolean;
   readiness?: TicketReadiness | null;
+  /** Local-edit state, mirroring the sprint board's "Local changes" dot. */
+  editState?: TicketEditState;
   onJiraStatusChange?: (status: JiraStatus) => void;
   onReadinessChange?: (readiness: TicketReadiness | null) => void;
   // Optional hover-card edit callbacks, forwarded to the status pill (key already bound by the caller).
@@ -88,6 +91,7 @@ export function ChildIssueRow({
   showStatus = true,
   showReadiness = true,
   readiness,
+  editState,
   onJiraStatusChange,
   onReadinessChange,
   onIssueTypeChange,
@@ -134,6 +138,8 @@ export function ChildIssueRow({
 
   const hasPill = (showTypeIcon || showKey || showStatus) && !isPending;
   const showCheckbox = selectable && !isPending;
+  // Deprecated children fade like the sprint board (BoardRow) so the two views match.
+  const isDeprecated = item.jiraStatus === "DEPRECATED";
 
   // Visual checkbox box, reused by the bulk-mode gutter and the hover overlay.
   const checkboxBox = <Checkbox checked={isChecked} />;
@@ -145,7 +151,7 @@ export function ChildIssueRow({
       style={style}
       className={`group/row relative flex items-center gap-2 ${spacious ? "py-[10px]" : "py-[7px]"} pl-4 pr-3 ${
         onSelect && !isPending ? (isActive ? "cursor-pointer" : "cursor-pointer hover:bg-overlay-subtle") : ""
-      } ${isPending ? "opacity-50" : ""} ${
+      } ${isPending ? "opacity-50" : isDeprecated ? "opacity-60" : ""} ${
         isActive
           ? "bg-[var(--color-brand-600)]/12 shadow-[inset_3px_0_0_0_var(--color-brand-300)]"
           : isChecked
@@ -215,6 +221,10 @@ export function ChildIssueRow({
           />
         </span>
       )}
+
+      {/* Local-changes / conflict dot, matching the sprint board (BoardRow). */}
+      {!isPending && editState === "local_edits" && <EditStateDot state="local_edits" />}
+      {!isPending && editState === "conflict" && <EditStateDot state="conflict" />}
 
       {isEditing ? (
         <input

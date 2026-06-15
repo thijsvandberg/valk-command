@@ -332,4 +332,42 @@ describe("ChildIssueRow", () => {
     const { container } = render(<ChildIssueRow item={baseSub} isLast={false} />);
     expect(container.firstChild).not.toHaveClass("border-b");
   });
+
+  describe("local-changes dot (BRDG-343 parity with sprint board)", () => {
+    it("shows the local-changes dot when editState is local_edits", () => {
+      const { container } = render(<ChildIssueRow item={baseSub} isLast={false} editState="local_edits" />);
+      const dot = container.querySelector("span.rounded-full");
+      expect(dot).toBeInTheDocument();
+      expect(dot?.className).toContain("color-icon-task");
+    });
+
+    it("shows the conflict dot when editState is conflict", () => {
+      const { container } = render(<ChildIssueRow item={baseSub} isLast={false} editState="conflict" />);
+      const dot = container.querySelector("span.rounded-full");
+      expect(dot).toBeInTheDocument();
+      expect(dot?.className).toContain("status-warning");
+    });
+
+    it("shows no edit-state dot when clean or unset", () => {
+      const { container } = render(<ChildIssueRow item={baseSub} isLast={false} editState="clean" />);
+      expect(container.querySelector("span.rounded-full")).not.toBeInTheDocument();
+    });
+
+    it("does not show the dot on pending rows", () => {
+      const pending = { ...baseSub, key: "pending-1" };
+      const { container } = render(<ChildIssueRow item={pending} isLast={false} isPending editState="local_edits" />);
+      expect(container.querySelector("span.rounded-full")).not.toBeInTheDocument();
+    });
+  });
+
+  it("fades deprecated rows with opacity-60 to match the sprint board", () => {
+    const depr: Subtask = { ...baseSub, jiraStatus: "DEPRECATED" };
+    const { container } = render(<ChildIssueRow item={depr} isLast={false} />);
+    expect(container.firstChild).toHaveClass("opacity-60");
+  });
+
+  it("does not fade non-deprecated rows", () => {
+    const { container } = render(<ChildIssueRow item={baseSub} isLast={false} />);
+    expect(container.firstChild).not.toHaveClass("opacity-60");
+  });
 });

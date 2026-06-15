@@ -330,13 +330,13 @@ export const BoardRow = memo(forwardRef<HTMLTableRowElement, BoardRowBaseProps>(
       <td className="p-0">
         {/* Horizontal gutters: pl-4 + the issue-icon's internal padding reads as ~24px on the
             left, so the right uses pr-[23px] to make the assignee sit the same distance from
-            the edge as the issue icon does on the left. Rows are line-less and use py-3 for an
-            airier rhythm (BRDG-239, "B+C").
+            the edge as the issue icon does on the left. Rows are line-less and use py-[7px] to
+            match the epic view's tighter row height (BRDG-239, "B+C").
             The row surface (background, left accent, hover) lives on this div rather than the
             <tr>: a div honours border-radius, so the last row can round its bottom corners to
             the card edge. A <tr>/<td> with border-collapse ignores radius, which is why the
             hover fill used to bleed square into the card's rounded corners. */}
-        <div className={`group/row @container/boardrow relative flex items-center gap-2 border-l-[3px] py-2.5 pl-4 pr-[23px] transition-colors duration-100 ${
+        <div className={`group/row @container/boardrow relative flex items-center gap-2 border-l-[3px] py-[7px] pl-4 pr-[23px] transition-colors duration-100 ${
           dragListeners ? "cursor-grab active:cursor-grabbing select-none" : "cursor-pointer"
         } ${
           isSelected || isContextTarget
