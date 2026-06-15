@@ -4,11 +4,10 @@ import { SidePanel } from "./SidePanel";
 import { readRecentlyViewed } from "@/lib/recently-viewed-store";
 import type { Ticket } from "@/types/ticket";
 
-vi.mock("lucide-react", () => {
-  const stub = () => null;
-  const names = ["Maximize2", "X", "Gem", "NotebookPen", "MoreHorizontal", "Star", "Copy", "Check", "CloudDownload", "CloudUpload", "Flag", "MessageSquare", "Loader2", "Trash2", "ChevronRight", "PanelRightClose", "Filter", "FilterX", "Layers", "ClipboardCheck"];
-  return Object.fromEntries(names.map((n) => [n, stub]));
-});
+// Use the real icon set: transitively imported icons (e.g. EditStateDot pulling
+// in the issue-type icons) would otherwise need to be listed by hand and silently
+// break the suite at import time whenever a new icon enters the graph.
+vi.mock("lucide-react", async (importOriginal) => await importOriginal());
 
 vi.mock("next/link", () => ({
   default: ({ href, children, ...rest }: Record<string, unknown>) => (
@@ -182,9 +181,11 @@ describe("SidePanel", () => {
     expect(screen.queryByTestId("ticket-key")).not.toBeInTheDocument();
   });
 
-  it("exposes the open-full and close actions in the bar", () => {
+  it("exposes the open-full action in the more-menu and a close action in the bar", () => {
     render(<SidePanel {...defaultProps} />);
-    expect(screen.getByLabelText("Open full view")).toBeInTheDocument();
+    // The full-view link now lives in the more-menu rather than the bar.
+    fireEvent.click(screen.getByLabelText("More actions"));
+    expect(screen.getByText("Open full view")).toBeInTheDocument();
     // Two closes exist: the in-bar one (scrolls away) and the floating fallback.
     expect(screen.getAllByLabelText("Close panel").length).toBeGreaterThan(0);
   });
@@ -260,6 +261,14 @@ describe("SidePanel", () => {
   it("shows a push-to-jira action when there are local edits", () => {
     hookValue = makeHook({ hasLocalTitleEdit: true });
     render(<SidePanel {...defaultProps} />);
+    expect(screen.getByLabelText("Push to Jira")).toBeInTheDocument();
+  });
+
+  it("shows push for a persisted local edit even when the client flags reset (title-only)", () => {
+    // After a remount the client-only edit flags are false, but editState is the
+    // persisted truth: a title-only edit must still expose the push action.
+    hookValue = makeHook({ hasLocalTitleEdit: false, hasLocalDescEdit: false });
+    render(<SidePanel {...defaultProps} ticket={makeTicket({ editState: "local_edits" })} />);
     expect(screen.getByLabelText("Push to Jira")).toBeInTheDocument();
   });
 

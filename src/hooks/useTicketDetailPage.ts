@@ -167,7 +167,14 @@ export function useTicketDetailPage(key: string) {
   const [flagOverride, setFlagOverride] = useState<boolean | null>(null);
   const isFlagged = flagOverride ?? ticket?.flagged ?? false;
 
-  const handleTitleLocalEdit = useCallback((has: boolean) => setHasLocalTitleEdit(has), []);
+  // The latest title draft value, mirrored from the editor. Push reads this so the
+  // post-push cache patch shows the just-typed title without a refetch, mirroring
+  // how the description value is handed in (the SWR cache does not track drafts).
+  const latestTitleEditRef = useRef<string | null>(null);
+  const handleTitleLocalEdit = useCallback((has: boolean, value?: string | null) => {
+    setHasLocalTitleEdit(has);
+    latestTitleEditRef.current = has ? (value ?? null) : null;
+  }, []);
   const handleDescLocalEdit = useCallback((has: boolean) => setHasLocalDescEdit(has), []);
 
   const handleReadinessChange = useCallback(async (v: TicketReadiness | null) => {
@@ -255,6 +262,7 @@ export function useTicketDetailPage(key: string) {
       await apiFetch(`/api/tickets/${key}/local-edits`, { method: "DELETE" });
       setHasLocalTitleEdit(false);
       setHasLocalDescEdit(false);
+      latestTitleEditRef.current = null;
       setPushError(null);
       setOverrideConfirmed(false);
       setShowConflictDiff(false);
@@ -290,7 +298,8 @@ export function useTicketDetailPage(key: string) {
         // exactly the "old version until refresh" bug (BRDG-340). The editor
         // hands its just-pushed content via `pushed` because the SWR cache
         // does not track autosaved drafts.
-        const pushedTitle = localEdits?.title?.value;
+        const pushedTitle = latestTitleEditRef.current ?? localEdits?.title?.value;
+        latestTitleEditRef.current = null;
         const pushedDescription = pushed?.description ?? localEdits?.description?.value;
         await mutateTicket(
           (prev) => prev ? {
@@ -373,6 +382,7 @@ export function useTicketDetailPage(key: string) {
     setMetadataOnlyConflict(false);
     setHasLocalTitleEdit(false);
     setHasLocalDescEdit(false);
+    latestTitleEditRef.current = null;
     setDiscardError(null);
     await mutateTicket(
       (prev) => prev ? { ...prev, editState: "clean", localEdits: {} } : prev,

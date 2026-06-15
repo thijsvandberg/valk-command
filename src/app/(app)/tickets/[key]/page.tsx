@@ -261,7 +261,9 @@ export default function TicketDetailPage({
   const [showAddToRefinement, setShowAddToRefinement] = useState(false);
   const [showFlagDialog, setShowFlagDialog] = useState(false);
 
-  const hasLocalEdits = h.hasLocalTitleEdit || h.hasLocalDescEdit;
+  // editState is the persisted truth (title or description), so a title-only edit
+  // still surfaces the push button after a remount when the client-only flags reset.
+  const hasLocalEdits = h.hasLocalTitleEdit || h.hasLocalDescEdit || h.ticket?.editState === "local_edits";
   const isEditing = h.isTitleEditing || h.isDescEditing;
   const showPushButton = hasLocalEdits && !h.showConflictWarning && !isEditing;
 

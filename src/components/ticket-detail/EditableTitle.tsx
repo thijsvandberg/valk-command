@@ -18,7 +18,10 @@ export function EditableTitle({
   ticketKey: string;
   initialTitle: string;
   serverLocalEdit?: { value: string; isDraft: boolean; modifiedAt?: string };
-  onLocalEdit: (hasEdit: boolean) => void;
+  /** Reports whether a local title edit exists; the value lets the page push the
+   *  just-typed title without waiting on a refetch (the SWR cache does not track
+   *  autosaved drafts). */
+  onLocalEdit: (hasEdit: boolean, value?: string | null) => void;
   onEditingChange?: (isEditing: boolean) => void;
   onViewDiff?: () => void;
   /** Fires after a title edit is persisted (or reverted) so consumers can refresh
@@ -64,7 +67,7 @@ export function EditableTitle({
   useEffect(() => {
     if (serverLocalEdit && !notifiedRef.current) {
       notifiedRef.current = true;
-      onLocalEdit(true);
+      onLocalEdit(true, serverLocalEdit.value);
     }
   }, [serverLocalEdit, onLocalEdit]);
 
@@ -107,6 +110,7 @@ export function EditableTitle({
     savingRef.current = true;
     setEditing(false);
     const draft = editDraftRef.current.trim();
+    const previous = localValue;
     try {
       // Empty title: discard silently, don't persist garbage
       if (draft === "") {
@@ -118,18 +122,22 @@ export function EditableTitle({
         onSaved?.();
         return;
       }
-      await saver.persistLocalEdit(ticketKey, "title", draft, { isDraft: true });
+      // Show the new title immediately and revert only on a failed persist, so the
+      // heading never flashes back to the old value during the network round-trip.
       setLocalValue(draft);
-      onLocalEdit(true);
+      onLocalEdit(true, draft);
+      await saver.persistLocalEdit(ticketKey, "title", draft, { isDraft: true });
       syncEditState(ticketKey, "local_edits");
       onSaved?.();
     } catch (err) {
       // A 409 surfaces via the shared saver's conflict banner; other errors just log.
+      setLocalValue(previous);
+      onLocalEdit(previous !== null, previous);
       console.error("Operation failed:", err);
     } finally {
       savingRef.current = false;
     }
-  }, [ticketKey, initialTitle, onLocalEdit, onSaved, syncEditState, saver]);
+  }, [ticketKey, initialTitle, localValue, onLocalEdit, onSaved, syncEditState, saver]);
 
   if (editing) {
     return (

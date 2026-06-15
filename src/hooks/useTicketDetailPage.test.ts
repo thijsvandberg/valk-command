@@ -165,6 +165,21 @@ describe("useTicketDetailPage", () => {
     expect(updater(mockApiData).description).toBe("Editor latest");
   });
 
+  it("patches the editor's title into the cache on push so it does not flash back", async () => {
+    vi.mocked(tickets.pushToJira).mockResolvedValue({ success: true });
+
+    const { result } = renderHook(() => useTicketDetailPage("VPL-42"));
+
+    // The title editor reports its live value; the SWR localEdits payload has no
+    // title entry (drafts are not tracked there), so the push must use this value.
+    act(() => { result.current.handleTitleLocalEdit(true, "Editor title"); });
+    await act(async () => { await result.current.handlePushToJira(); });
+
+    const optimisticCall = mutateFn.mock.calls.find((c) => typeof c[0] === "function");
+    const updater = optimisticCall![0] as (prev: typeof mockApiData) => typeof mockApiData;
+    expect(updater(mockApiData).title).toBe("Editor title");
+  });
+
   it("push to Jira optimistically clears the draft edit state", async () => {
     vi.mocked(tickets.pushToJira).mockResolvedValue({ success: true });
 

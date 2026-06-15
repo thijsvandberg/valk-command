@@ -22,7 +22,7 @@ function renderTitle(overrides: {
   ticketKey?: string;
   initialTitle?: string;
   serverLocalEdit?: { value: string; isDraft: boolean; modifiedAt?: string };
-  onLocalEdit?: (hasEdit: boolean) => void;
+  onLocalEdit?: (hasEdit: boolean, value?: string | null) => void;
   onEditingChange?: (isEditing: boolean) => void;
   onViewDiff?: () => void;
   onSaved?: () => void;
@@ -182,13 +182,13 @@ describe("EditableTitle", () => {
     expect(screen.getByText("Local override")).toBeInTheDocument();
   });
 
-  it("calls onLocalEdit(true) once on mount when serverLocalEdit exists", () => {
+  it("calls onLocalEdit(true, value) once on mount when serverLocalEdit exists", () => {
     const onLocalEdit = vi.fn();
     renderTitle({
       serverLocalEdit: { value: "Modified", isDraft: false },
       onLocalEdit,
     });
-    expect(onLocalEdit).toHaveBeenCalledWith(true);
+    expect(onLocalEdit).toHaveBeenCalledWith(true, "Modified");
     expect(onLocalEdit).toHaveBeenCalledTimes(1);
   });
 
@@ -241,6 +241,52 @@ describe("EditableTitle", () => {
         }),
       );
     });
+  });
+
+  it("hands the typed value to onLocalEdit so push can use it without a refetch", async () => {
+    const onLocalEdit = vi.fn();
+    renderTitle({ ticketKey: "VPL-1", initialTitle: "Old title", onLocalEdit });
+    fireEvent.click(screen.getByText("Old title"));
+
+    const textarea = screen.getByRole("textbox");
+    fireEvent.change(textarea, { target: { value: "New title" } });
+    fireEvent.keyDown(textarea, { key: "Enter" });
+
+    await waitFor(() => {
+      expect(onLocalEdit).toHaveBeenCalledWith(true, "New title");
+    });
+  });
+
+  it("shows the new title after save without flashing back to the old one", async () => {
+    renderTitle({ ticketKey: "VPL-1", initialTitle: "Old title" });
+    fireEvent.click(screen.getByText("Old title"));
+
+    const textarea = screen.getByRole("textbox");
+    fireEvent.change(textarea, { target: { value: "New title" } });
+    fireEvent.keyDown(textarea, { key: "Enter" });
+
+    // The heading reflects the new title immediately and the old one is gone.
+    await waitFor(() => {
+      expect(screen.getByText("New title")).toBeInTheDocument();
+    });
+    expect(screen.queryByText("Old title")).not.toBeInTheDocument();
+  });
+
+  it("reverts to the previous title when the persist fails", async () => {
+    mockApiFetch.mockRejectedValueOnce(new Error("network down"));
+    const onLocalEdit = vi.fn();
+    renderTitle({ ticketKey: "VPL-1", initialTitle: "Old title", onLocalEdit });
+    fireEvent.click(screen.getByText("Old title"));
+
+    const textarea = screen.getByRole("textbox");
+    fireEvent.change(textarea, { target: { value: "New title" } });
+    fireEvent.keyDown(textarea, { key: "Enter" });
+
+    await waitFor(() => {
+      expect(screen.getByText("Old title")).toBeInTheDocument();
+    });
+    // The last edit signal clears the local-edit flag since nothing persisted.
+    expect(onLocalEdit).toHaveBeenLastCalledWith(false, null);
   });
 
   it("calls onSaved when reverting to the initial title", async () => {
