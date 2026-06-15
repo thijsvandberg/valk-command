@@ -3,10 +3,9 @@
 import { useState, useRef, useEffect, useCallback } from "react";
 import { useOutsideClick } from "@/hooks/useOutsideClick";
 import type { Sprint } from "@/types/ticket";
-import { ArrowUp, ArrowDown, Layers, X, Plus, Inbox, ChevronsDownUp, ChevronsUpDown, Bookmark, ChevronDown, Check, Waypoints } from "lucide-react";
+import { Layers, Plus, Inbox, ChevronsDownUp, ChevronsUpDown, Bookmark, ChevronDown, Check, Waypoints } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import type { SavedView, SortField, SortDir } from "./FilterBar";
-import { SORT_OPTIONS } from "./FilterBar";
 import { UnifiedControlsCluster } from "@/components/sprint-board/UnifiedControlsCluster";
 import type { FilterControlsPanelProps } from "@/components/sprint-board/FilterControlsPanel";
 import type { GroupByOption } from "./useGroupBy";
@@ -604,31 +603,6 @@ export function SprintSlots({
           as a viewing tool rather than a sprint-zone neighbour (BRDG-319). */}
       <div className="ml-auto flex shrink-0 items-center gap-1 pl-2">
         <SavedViewsMenu savedViews={savedViews} activeViewId={activeViewId} onViewClick={onViewClick} onSaveCurrentView={onSaveCurrentView} />
-        {/* Active sort label — shown to the left of the icon group */}
-        {sortField && sortField !== "rank" && sortDir && onSortChange && (
-          <div className="flex items-center mr-1">
-            <button
-              type="button"
-              onClick={() => onSortChange(sortField, sortDir === "asc" ? "desc" : "asc")}
-              className="flex items-center gap-1 rounded-l px-1.5 py-0.5 text-[11px] text-[var(--color-brand-400)] cursor-pointer hover:bg-overlay-subtle active:bg-overlay-default"
-              title={`Sorted: ${SORT_OPTIONS.find((o) => o.field === sortField)?.label} (${sortDir === "asc" ? "ascending" : "descending"}). Click to toggle.`}
-            >
-              <span>{SORT_OPTIONS.find((o) => o.field === sortField)?.label ?? "Sort"}</span>
-              {sortDir === "asc"
-                ? <ArrowUp className="h-3 w-3" strokeWidth={1.5} />
-                : <ArrowDown className="h-3 w-3" strokeWidth={1.5} />
-              }
-            </button>
-            <button
-              type="button"
-              onClick={() => onSortChange("rank", "asc")}
-              className="flex items-center rounded-r px-0.5 py-0.5 text-[var(--color-brand-400)] cursor-pointer hover:bg-overlay-subtle active:bg-overlay-default hover:text-text-primary"
-              title="Reset sort"
-            >
-              <X className="h-3 w-3" strokeWidth={1.5} />
-            </button>
-          </div>
-        )}
 
         {/* Group by -- only visible in the All view */}
         {allActive && groupBy !== undefined && onGroupByChange && (
