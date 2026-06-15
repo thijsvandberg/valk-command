@@ -863,7 +863,9 @@ export default function SprintBoard() {
   const boardMaxW = "mx-auto w-full max-w-[1280px]";
   const boardContent = (
     <>
-      <div className={`${dnd.jiraRankDndEnabled ? "relative " : ""}bg-[var(--color-surface-elevated)]`}>
+      {/* The views bar shares the header's chrome tint so the two rows read as one
+          continuous console, joined only by the header's faint seam (BRDG-344). */}
+      <div className={`${dnd.jiraRankDndEnabled ? "relative " : ""}bg-[var(--color-surface-chrome)]`}>
         {/* During a ticket drag the real bar is hidden and the (transparent) drop
             overlay takes over, so the drop tiles sit on the page background —
             matching the refinement bar's in-place drag treatment. */}

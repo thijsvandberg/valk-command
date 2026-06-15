@@ -82,8 +82,10 @@ vi.mock("@/components/sprint-board/SprintSlots", () => ({
   SprintSlots: () => <div data-testid="sprint-slots">Sprint Slots</div>,
 }));
 
+// FilterBar is no longer rendered (its controls moved into the views-bar cluster),
+// but other modules still import its re-exported constants from this barrel; stub
+// it so the real module's heavy icon imports don't load under the partial lucide mock.
 vi.mock("@/components/sprint-board/FilterBar", () => ({
-  FilterBar: () => <div data-testid="filter-bar" />,
   COLUMNS: [{ id: "key", label: "Key" }],
   SortDropdown: () => null,
   ColumnToggle: () => null,
@@ -222,9 +224,10 @@ describe("SprintBoard", () => {
     expect(screen.getByTestId("ticket-table")).toBeInTheDocument();
   });
 
-  it("renders filter bar", () => {
+  it("renders the views bar that hosts the unified filter controls (BRDG-344)", () => {
     render(<SprintBoard />);
-    expect(screen.getByTestId("filter-bar")).toBeInTheDocument();
+    // The standalone filter bar was folded into the views bar's controls cluster.
+    expect(screen.getByTestId("sprint-slots")).toBeInTheDocument();
   });
 
   it("renders board header", () => {

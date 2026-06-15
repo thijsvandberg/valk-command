@@ -2,7 +2,7 @@
 
 import { useState, useLayoutEffect, useRef, useCallback, type ReactNode } from "react";
 import { createPortal } from "react-dom";
-import { Minimize2, Menu } from "lucide-react";
+import { Minimize2 } from "lucide-react";
 import { NotificationBell } from "@/components/NotificationBell";
 import { NavPanel } from "@/components/nav/NavPanel";
 import { useFocusModeContext } from "@/contexts/FocusModeContext";
@@ -45,9 +45,12 @@ export function ViewHeader({ icon, children, actions, className, hideNotificatio
   if (!target) return null;
 
   return createPortal(
-    <div className={`relative flex items-center justify-between border-b border-border-strong bg-[var(--color-surface-chrome)] px-5 py-3.5${className ? ` ${className}` : ""}`}>
+    <div className={`relative flex items-center justify-between bg-[var(--color-surface-chrome)] px-5 py-3.5${className ? ` ${className}` : ""}`}>
       {/* Top accent gradient */}
       <div className="pointer-events-none absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-[var(--color-brand-glow)] to-transparent" />
+      {/* Bottom seam: a faint fading hairline instead of a hard rule, so the header
+          and the views bar read as one continuous console (BRDG-344). */}
+      <div className="pointer-events-none absolute bottom-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-border-default to-transparent" />
       {/* Left glow — anchors the command capsule to the brand */}
       <div className="pointer-events-none absolute left-0 top-0 h-full w-80 bg-[radial-gradient(ellipse_at_left_center,color-mix(in_srgb,var(--color-brand-500)_14%,transparent)_0%,transparent_70%)]" />
       {/* Right glow */}
@@ -66,7 +69,6 @@ export function ViewHeader({ icon, children, actions, className, hideNotificatio
             aria-label="Open navigation"
             className="group flex items-center gap-2 rounded-lg px-1.5 py-1 cursor-pointer transition-colors duration-150 hover:bg-hover-interactive focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)]"
           >
-            <Menu className="h-4 w-4 shrink-0 text-text-muted transition-colors duration-150 group-hover:text-[var(--color-brand-300)]" strokeWidth={2} />
             <span className="font-[family-name:var(--font-space-mono)] text-[19px] font-bold lowercase tracking-[-0.02em] text-text-primary">
               bridge<span className="bridge-caret text-[var(--color-brand-400)]">_</span>
             </span>
