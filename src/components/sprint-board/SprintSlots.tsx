@@ -3,10 +3,12 @@
 import { useState, useRef, useEffect, useCallback } from "react";
 import { useOutsideClick } from "@/hooks/useOutsideClick";
 import type { Sprint } from "@/types/ticket";
-import { ArrowUp, ArrowDown, ListFilter, Layers, X, Plus, Inbox, ChevronsDownUp, ChevronsUpDown, Bookmark, ChevronDown, Check, Waypoints } from "lucide-react";
+import { ArrowUp, ArrowDown, Layers, X, Plus, Inbox, ChevronsDownUp, ChevronsUpDown, Bookmark, ChevronDown, Check, Waypoints } from "lucide-react";
 import { Button } from "@/components/ui/Button";
-import type { SavedView, SortField, SortDir, InlineTagId } from "./FilterBar";
-import { BoardFieldToggle, SortDropdown, SORT_OPTIONS } from "./FilterBar";
+import type { SavedView, SortField, SortDir } from "./FilterBar";
+import { SORT_OPTIONS } from "./FilterBar";
+import { UnifiedControlsCluster } from "@/components/sprint-board/UnifiedControlsCluster";
+import type { FilterControlsPanelProps } from "@/components/sprint-board/FilterControlsPanel";
 import type { GroupByOption } from "./useGroupBy";
 import { SprintSelector } from "./SprintSelector";
 import { isBacklogSprintName } from "@/lib/sprint-utils";
@@ -414,9 +416,7 @@ export function SprintSlots({
   ephemeralSprintId = null,
   ephemeralIsActive = false,
   onEphemeralClick,
-  filtersCollapsed = false,
   activeFilterCount = 0,
-  onToggleFilters,
   savedViews = [],
   activeViewId = null,
   onViewClick,
@@ -424,9 +424,9 @@ export function SprintSlots({
   sortField,
   sortDir,
   onSortChange,
-  columnVisible,
-  onColumnToggle,
-  onColumnReset,
+  searchQuery,
+  onSearchChange,
+  filterProps,
   groupBy,
   onGroupByChange,
   onCreateSprint,
@@ -454,9 +454,7 @@ export function SprintSlots({
   ephemeralSprintId?: string | null;
   ephemeralIsActive?: boolean;
   onEphemeralClick?: () => void;
-  filtersCollapsed?: boolean;
   activeFilterCount?: number;
-  onToggleFilters?: () => void;
   savedViews?: SavedView[];
   activeViewId?: string | null;
   onViewClick?: (view: SavedView) => void;
@@ -464,9 +462,9 @@ export function SprintSlots({
   sortField?: SortField;
   sortDir?: SortDir;
   onSortChange?: (field: SortField, dir: SortDir) => void;
-  columnVisible?: Set<InlineTagId>;
-  onColumnToggle?: (id: InlineTagId, show: boolean) => void;
-  onColumnReset?: () => void;
+  searchQuery?: string;
+  onSearchChange?: (q: string) => void;
+  filterProps?: FilterControlsPanelProps;
   groupBy?: GroupByOption;
   onGroupByChange?: (v: GroupByOption) => void;
   onCreateSprint?: () => void;
@@ -660,43 +658,17 @@ export function SprintSlots({
           />
         )}
 
-        {/* Field show/hide (BRDG-239) */}
-        {columnVisible && onColumnToggle && (
-          <BoardFieldToggle
-            visible={columnVisible}
-            onChange={onColumnToggle}
-            onReset={onColumnReset}
-          />
-        )}
-
-        {/* Sort */}
-        {sortField && sortDir && onSortChange && (
-          <SortDropdown
-            field={sortField}
-            direction={sortDir}
-            onChange={onSortChange}
-          />
-        )}
-
-
-        {/* Toggle filter bar visibility */}
-        {onToggleFilters && (
-          <Button
-            variant="ghost"
-            size="md"
-            iconOnly
-            onClick={onToggleFilters}
-            title={filtersCollapsed ? "Show filters" : "Hide filters"}
-            aria-label={filtersCollapsed ? "Show filters" : "Hide filters"}
-            icon={
-              <span className="relative flex items-center justify-center">
-                <ListFilter className="h-3.5 w-3.5" strokeWidth={1.5} />
-                {activeFilterCount > 0 && (
-                  <span className="absolute -top-0.5 -right-1 h-[6px] w-[6px] rounded-full bg-[var(--color-brand-400)] ring-2 ring-[var(--color-surface-base)]" />
-                )}
-              </span>
-            }
-            className={activeFilterCount > 0 ? "border-0 bg-transparent text-[var(--color-brand-400)] hover:bg-hover-list-item" : "border-0 bg-transparent text-text-tertiary hover:bg-hover-list-item hover:text-text-secondary"}
+        {/* Unified controls: search · sort · filter (BRDG-344). The standalone
+            field-toggle, sort and filter-bar buttons fold into this one cluster. */}
+        {filterProps && sortField && sortDir && onSortChange && onSearchChange && (
+          <UnifiedControlsCluster
+            searchQuery={searchQuery ?? ""}
+            onSearchChange={onSearchChange}
+            sortField={sortField}
+            sortDir={sortDir}
+            onSortChange={onSortChange}
+            activeFilterCount={activeFilterCount}
+            filterProps={filterProps}
           />
         )}
       </div>

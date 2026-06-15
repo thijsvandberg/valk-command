@@ -99,8 +99,12 @@ describe("SprintBoardPage", () => {
     expect(screen.getByText(/Monitoring Kibana/)).toBeInTheDocument();
   });
 
-  it("renders filter buttons", () => {
+  it("exposes filters via the unified controls cluster (BRDG-344)", () => {
     render(<SprintBoardPage />);
+    // The eight inline dropdowns now live behind one Filters trigger; opening it
+    // reveals the category rail (Status, Epic, ...).
+    const trigger = screen.getByLabelText("Filters");
+    fireEvent.click(trigger);
     expect(screen.getAllByText("Status").length).toBeGreaterThanOrEqual(1);
     expect(screen.getAllByText("Epic").length).toBeGreaterThanOrEqual(1);
   });

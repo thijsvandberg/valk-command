@@ -2,7 +2,7 @@ import { render, screen, fireEvent, within } from "@testing-library/react";
 import { describe, it, expect, vi } from "vitest";
 import { SprintSlots } from "./SprintSlots";
 import type { Sprint } from "@/types/ticket";
-import type { SavedView } from "./filter-bar-types";
+import type { SavedView, InlineTagId } from "./filter-bar-types";
 
 function makeSprint(overrides: Partial<Sprint> = {}): Sprint {
   return { id: "1", name: "BT: 139", state: "active", dateRange: "", ticketCount: 0, ...overrides };
@@ -23,6 +23,31 @@ const OVERALL_PRESET: SavedView = {
   filters: { status: [], epic: [], assignee: [], readiness: [], editState: [], sprint: ["o1"] },
   sort: { field: "rank", direction: "asc" },
 };
+
+function makeFilterProps() {
+  return {
+    statusFilter: new Set<string>(),
+    epicFilter: new Set<string>(),
+    assigneeFilter: new Set<string>(),
+    readinessFilter: new Set<string>(),
+    editStateFilter: new Set<string>(),
+    issueTypeFilter: new Set<string>(),
+    onStatusFilterChange: vi.fn(),
+    onEpicFilterChange: vi.fn(),
+    onAssigneeFilterChange: vi.fn(),
+    onReadinessFilterChange: vi.fn(),
+    onEditStateFilterChange: vi.fn(),
+    onIssueTypeFilterChange: vi.fn(),
+    statusOptions: [],
+    epicOptions: [],
+    assigneeOptions: [],
+    issueTypeOptions: [],
+    onClearAll: vi.fn(),
+    columnVisible: new Set<InlineTagId>(),
+    onColumnToggle: vi.fn(),
+    onColumnReset: vi.fn(),
+  };
+}
 
 function renderBar(overrides: Partial<Parameters<typeof SprintSlots>[0]> = {}) {
   const props = {
@@ -146,6 +171,25 @@ describe("SprintSlots views bar (BRDG-319)", () => {
     const props = renderBar();
     fireEvent.click(screen.getByText("All"));
     expect(props.onAllClick).toHaveBeenCalled();
+  });
+
+  it("does not render the standalone field-toggle, sort or filter-bar buttons (BRDG-344)", () => {
+    renderBar();
+    expect(screen.queryByTitle("Toggle fields")).toBeNull();
+    expect(screen.queryByTitle("Show filters")).toBeNull();
+    expect(screen.queryByTitle("Hide filters")).toBeNull();
+  });
+
+  it("renders the unified controls cluster when filter props are supplied (BRDG-344)", () => {
+    renderBar({
+      sortField: "rank",
+      sortDir: "asc",
+      onSortChange: vi.fn(),
+      searchQuery: "",
+      onSearchChange: vi.fn(),
+      filterProps: makeFilterProps(),
+    });
+    expect(screen.getByLabelText("Filters")).toBeTruthy();
   });
 
   it("closes the Backlogs dropdown on Escape and on outside click", () => {

@@ -9,7 +9,7 @@ import { matchesWarningFilter } from "@/components/sprint-board/warning-filter";
 import { useSearchParams, useRouter, usePathname } from "next/navigation";
 import type { Sprint, Ticket, IssueType, PlaceholderTicket } from "@/types/ticket";
 import { SprintSlots } from "@/components/sprint-board/SprintSlots";
-import { FilterBar } from "@/components/sprint-board/FilterBar";
+import type { FilterControlsPanelProps } from "@/components/sprint-board/FilterControlsPanel";
 import { TicketTable } from "@/components/sprint-board/TicketTable";
 import { BulkActionBar } from "@/components/sprint-board/BulkActionBar";
 import { CursorMenu, TicketActionMenuContent, type FlagState } from "@/components/sprint-board/ticket-action-menu";
@@ -153,7 +153,6 @@ export default function SprintBoard() {
   const [focusedTicketIdx, setFocusedTicketIdx] = useState<number>(-1);
   const [poPriorityMap, setPoPriorityMap] = useLocalStorage<Record<string, string[]>>("sprint-board-po-priority-map", {});
   const [searchModalOpen, setSearchModalOpen] = useState(false);
-  const [barsCollapsed, setBarsCollapsed] = useLocalStorage("sprint-bars-collapsed", false);
   const [analyticsVisible, setAnalyticsVisible] = useLocalStorage("sprint-analytics-visible", false);
   // Forward-planning mode (BRDG-303): per-view toggle that reveals pencil capacity,
   // the fullness meter and guestimation pickers. Off by default; persisted per view.
@@ -326,9 +325,11 @@ export default function SprintBoard() {
     return [preset, ...f.savedViews];
   }, [overallRefinementSprint, f.savedViews]);
   const tickets = f.sortedTickets;
+  // Search has its own segment in the unified cluster (BRDG-344), so the filter
+  // badge counts active filter categories only -- not the search query.
   const activeFilterCount = useMemo(() =>
-    [f.statusFilter, f.epicFilter, f.assigneeFilter, f.readinessFilter, f.editStateFilter, f.issueTypeFilter, f.gapsFilter, f.teamFilter].filter((s) => s.size > 0).length + (f.searchQuery ? 1 : 0),
-  [f.statusFilter, f.epicFilter, f.assigneeFilter, f.readinessFilter, f.editStateFilter, f.issueTypeFilter, f.gapsFilter, f.teamFilter, f.searchQuery]);
+    [f.statusFilter, f.epicFilter, f.assigneeFilter, f.readinessFilter, f.editStateFilter, f.issueTypeFilter, f.gapsFilter, f.teamFilter, f.sprintFilter].filter((s) => s.size > 0).length,
+  [f.statusFilter, f.epicFilter, f.assigneeFilter, f.readinessFilter, f.editStateFilter, f.issueTypeFilter, f.gapsFilter, f.teamFilter, f.sprintFilter]);
   const { groupBy, setGroupBy, collapsedGroups, toggleCollapse, allCollapsed, toggleAllGroups, groups } = useGroupBy(tickets, sprints, sprintNameMap, isAllView, slotSprints, f.includeClosedSprints, f.forceShowSprintIds, placeholderSprintIds);
   // When grouping by epic, the epic chip is redundant on every row (the group header
   // already names it), so suppress it. Other groupings keep the chip (BRDG-239).
@@ -814,6 +815,46 @@ export default function SprintBoard() {
     f.setEpicFilter(new Set());
   }, [f]);
 
+  // Props for the unified controls' two-pane filter panel (BRDG-344). Sprint
+  // filtering is only meaningful in the All view, so those props are spread in
+  // there, mirroring the old FilterBar wiring. Clear-all clears the filter sets
+  // only; the panel's Display view drives field visibility independently.
+  const filterControlsProps: FilterControlsPanelProps = {
+    statusFilter: f.statusFilter,
+    epicFilter: f.epicFilter,
+    assigneeFilter: f.assigneeFilter,
+    readinessFilter: f.readinessFilter,
+    editStateFilter: f.editStateFilter,
+    issueTypeFilter: f.issueTypeFilter,
+    gapsFilter: f.gapsFilter,
+    teamFilter: f.teamFilter,
+    onStatusFilterChange: f.setStatusFilter,
+    onEpicFilterChange: f.setEpicFilter,
+    onAssigneeFilterChange: f.setAssigneeFilter,
+    onReadinessFilterChange: f.setReadinessFilter,
+    onEditStateFilterChange: f.setEditStateFilter,
+    onIssueTypeFilterChange: f.setIssueTypeFilter,
+    onGapsFilterChange: f.setGapsFilter,
+    onTeamFilterChange: f.setTeamFilter,
+    statusOptions: f.statusOptions,
+    epicOptions: f.epicOptions,
+    assigneeOptions: f.assigneeOptions,
+    issueTypeOptions: f.issueTypeOptions,
+    teamOptions: f.teamOptions,
+    onClearAll: f.resetFilters,
+    columnVisible: f.visibleTags,
+    onColumnToggle: toggleColumn,
+    onColumnReset: resetToDefaults,
+    ...(isAllView
+      ? {
+          sprintFilter: f.sprintFilter,
+          onSprintFilterChange: f.setSprintFilter,
+          sprintOptions: f.sprintOptions,
+          sprintNameMap,
+        }
+      : {}),
+  };
+
   // Shared board content rendered once, conditionally wrapped in DndContext.
   // The list would otherwise span the full viewport, stranding the right-hand metadata far from
   // the title on wide screens (BRDG-315). Cap the inner content of the toolbar, the filter bar,
@@ -827,15 +868,10 @@ export default function SprintBoard() {
             overlay takes over, so the drop tiles sit on the page background —
             matching the refinement bar's in-place drag treatment. */}
         <div className={dnd.boardActiveDragId ? "invisible" : ""}>
-        <SprintSlots slotSprints={slotSprints} pillSlotSprints={pillSlotSprints} activeSprintId={activeSprintId} allActive={isAllView && !f.activeViewId} sprints={sprints} backlogCount={backlogCount} backlogSprints={backlogSprints} activeBacklogId={activeBacklog?.id ?? null} onBacklogSelect={handleSprintListSelect} onSlotClick={setActiveSlot} onAllClick={handleAllClick} editingSlot={editingSlot} onSlotEdit={handleSlotEdit} onSprintSelect={handleSprintSelect} onEditClose={() => setEditingSlot(null)} onReorderSlots={handleReorderSlots} ephemeralSprintId={ephemeralSprintId} ephemeralIsActive={ephemeralIsActive} onEphemeralClick={handleEphemeralClick} filtersCollapsed={barsCollapsed} activeFilterCount={activeFilterCount} onToggleFilters={() => setBarsCollapsed((v) => !v)} savedViews={presetViews} activeViewId={f.activeViewId} onViewClick={f.handleViewClick} onSaveCurrentView={f.handleSaveView} sortField={f.sortField} sortDir={f.sortDir} onSortChange={sortChange} columnVisible={f.visibleTags} onColumnToggle={toggleColumn} onColumnReset={resetToDefaults} groupBy={groupBy} onGroupByChange={setGroupBy} onCreateSprint={() => setCreateSprintModalOpen(true)} onOpenSprintList={(anchor) => setBarSprintListAnchor(anchor)} groupCount={groups.length} allGroupsCollapsed={allCollapsed} onToggleCollapseAll={toggleAllGroups} />
+        <SprintSlots slotSprints={slotSprints} pillSlotSprints={pillSlotSprints} activeSprintId={activeSprintId} allActive={isAllView && !f.activeViewId} sprints={sprints} backlogCount={backlogCount} backlogSprints={backlogSprints} activeBacklogId={activeBacklog?.id ?? null} onBacklogSelect={handleSprintListSelect} onSlotClick={setActiveSlot} onAllClick={handleAllClick} editingSlot={editingSlot} onSlotEdit={handleSlotEdit} onSprintSelect={handleSprintSelect} onEditClose={() => setEditingSlot(null)} onReorderSlots={handleReorderSlots} ephemeralSprintId={ephemeralSprintId} ephemeralIsActive={ephemeralIsActive} onEphemeralClick={handleEphemeralClick} activeFilterCount={activeFilterCount} savedViews={presetViews} activeViewId={f.activeViewId} onViewClick={f.handleViewClick} onSaveCurrentView={f.handleSaveView} sortField={f.sortField} sortDir={f.sortDir} onSortChange={sortChange} searchQuery={f.searchQuery} onSearchChange={f.setSearchQuery} filterProps={filterControlsProps} groupBy={groupBy} onGroupByChange={setGroupBy} onCreateSprint={() => setCreateSprintModalOpen(true)} onOpenSprintList={(anchor) => setBarSprintListAnchor(anchor)} groupCount={groups.length} allGroupsCollapsed={allCollapsed} onToggleCollapseAll={toggleAllGroups} />
         </div>
         {dnd.jiraRankDndEnabled && dnd.boardActiveDragId && <SprintDropZoneBar sprints={sprints} pillSlotSprints={pillSlotSprints} activeSprintId={activeSprintId} allActive={isAllView && !f.activeViewId} />}
       </div>
-      {!barsCollapsed && (
-        <div className="border-b border-border-default bg-[var(--color-surface-toolbar)]">
-          <FilterBar statusFilter={f.statusFilter} epicFilter={f.epicFilter} assigneeFilter={f.assigneeFilter} readinessFilter={f.readinessFilter} editStateFilter={f.editStateFilter} issueTypeFilter={f.issueTypeFilter} onStatusFilterChange={f.setStatusFilter} onEpicFilterChange={f.setEpicFilter} onAssigneeFilterChange={f.setAssigneeFilter} onReadinessFilterChange={f.setReadinessFilter} onEditStateFilterChange={f.setEditStateFilter} onIssueTypeFilterChange={f.setIssueTypeFilter} gapsFilter={f.gapsFilter} onGapsFilterChange={f.setGapsFilter} statusOptions={f.statusOptions} epicOptions={f.epicOptions} assigneeOptions={f.assigneeOptions} issueTypeOptions={f.issueTypeOptions} teamFilter={f.teamFilter} onTeamFilterChange={f.setTeamFilter} teamOptions={f.teamOptions} {... (isAllView ? { sprintFilter: f.sprintFilter, onSprintFilterChange: f.setSprintFilter, sprintOptions: f.sprintOptions, sprintNameMap } : {})} noBorder searchQuery={f.searchQuery} onSearchChange={f.setSearchQuery} onSaveView={f.handleSaveView} onDeleteView={f.activeViewId && !f.activeViewId.startsWith("__preset:") ? () => f.handleDeleteView(f.activeViewId!) : undefined} activeView={f.activeView} />
-        </div>
-      )}
       <div ref={contentScrollRef} className="min-h-0 flex-1 overflow-y-auto">
         {!ticketsLoading && analyticsVisible && <SprintAnalytics tickets={allTickets} onClose={() => setAnalyticsVisible(false)} sprintId={activeSprintId} />}
         {ticketsLoading && <LoadingState variant="spinner" label="Loading tickets..." className="min-h-[200px]" />}
