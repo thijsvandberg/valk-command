@@ -49,11 +49,27 @@ In `src/lib/adf-to-markdown.ts`, `convertNode` has no case for these, so they hi
 - File: `src/lib/adf-to-markdown.ts`, `convertNode` (switch ends at the `default` branch around lines 140-145) and `applyMarks` (underline/subsup around lines 202-207).
 - Read path that feeds the story writer: `selectCurrentDescription` / `buildFirstMessageBody` in `src/lib/story-writer-messages.ts` use the converted description as the AI's baseline; the same converted text is what the editor shows and what gets pushed back via `markdownToAdf`.
 
+## Implementation Plan
+
+Implemented jointly with BRDG-268 (shared serializer contract + one round-trip test). Ordered sequence:
+
+1. **Task lists (cross-story dependency, first):** read side - fix `convertTaskList` TODO prefix `"- [] "` -> `"- [ ] "` (adf-to-markdown.ts ~236). Write side (268) emits `taskList`/`taskItem`. The two must agree.
+2. **Read-direction node coverage** (`adf-to-markdown.ts` `convertNode`, new cases before `default`):
+   - `date` (attrs.timestamp epoch ms) -> emit `{date:<ms>}` token (mirrors the existing `{color:...}` convention; round-trips via a matching `parseInline` rule). Plain-text fallback if no timestamp.
+   - `status` (attrs.text/color) -> emit `{status:<color>|<text>}` token; color constrained to the ADF enum (neutral/green/yellow/red/blue/purple), default neutral. The `{...}` wrapper prevents the label being re-detected as a heading/list block on write.
+   - `layoutSection`/`layoutColumn` -> explicit cases returning child text (with block separation) instead of relying on the `default` branch.
+   - `decisionList`/`decisionItem` -> explicit cases preserving child text (newline-separated). Structure not preserved (out of scope); text is.
+   - `underline`/`subsup` marks -> decision: keep text, drop the mark (markdown has no equivalent). Made explicit + tested.
+3. **Write-direction re-parse rules** (268, `markdown-to-adf.ts` `parseInline`): `{date:...}` and `{status:...|...}` rules so the new tokens round-trip back to ADF nodes.
+4. **Shared bidirectional round-trip test** `src/lib/adf-markdown-roundtrip.test.ts`: representative ADF (paragraph, headings, lists, task list TODO+DONE, table, panel, date, status, decisionList, underline/subsup) asserting adf->md->adf preserves all **text** (text-level compare, since marks/structure may legitimately differ) and md->adf->md is second-pass stable.
+
+Notes / risks: the round-trip is content-stable (text preserved), not byte-stable - marks like underline are intentionally lost. `{date}`/`{status}` tokens render as literal text in non-Jira markdown previews (acceptable for fidelity).
+
 ## Checklist
 
-- [ ] Reproduce: a ticket whose description contains a date and a status lozenge loses them when opened in the story writer
-- [ ] Add `convertNode` cases for `date` and `status` that preserve their text and survive a round-trip back through `markdownToAdf`
-- [ ] Ensure `layoutSection`/`layoutColumn` and `decisionList`/`decisionItem` preserve child text rather than emptying
-- [ ] Decide handling for `underline`/`subsup` marks (preserve text at minimum)
-- [ ] Add a round-trip test asserting no text content is lost for a representative ADF document
-- [ ] All tests pass, build succeeds
+- [x] Reproduce: a ticket whose description contains a date and a status lozenge loses them when opened in the story writer - captured as regression tests in `adf-to-markdown.test.ts` (the date/status nodes that previously dropped now emit `{date:...}`/`{status:...}`)
+- [x] Add `convertNode` cases for `date` and `status` that preserve their text and survive a round-trip back through `markdownToAdf` (`{date:<ms>}`, `{status:<color>|<text>}` + matching `parseInline` rules)
+- [x] Ensure `layoutSection`/`layoutColumn` and `decisionList`/`decisionItem` preserve child text rather than emptying
+- [x] Decide handling for `underline`/`subsup` marks (preserve text at minimum) - text kept, mark dropped; made explicit + tested
+- [x] Add a round-trip test asserting no text content is lost for a representative ADF document (`src/lib/adf-markdown-roundtrip.test.ts`)
+- [x] All tests pass, build succeeds - serializer + round-trip suites pass (59/59); see Status notes re: full-suite/build
