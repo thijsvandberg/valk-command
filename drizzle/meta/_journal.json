@@ -547,6 +547,13 @@
       "when": 1781546300002,
       "tag": "0077_real_madelyne_pryor",
       "breakpoints": true
+    },
+    {
+      "idx": 78,
+      "version": "6",
+      "when": 1781560764456,
+      "tag": "0078_curvy_drax",
+      "breakpoints": true
     }
   ]
 }

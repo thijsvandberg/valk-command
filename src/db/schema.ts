@@ -82,6 +82,21 @@ export const ticket = sqliteTable("ticket", {
   index("ticket_sprint_status_idx").on(table.sprintName, table.status),
 ]);
 
+// Indexed projection of ticket.sprintIds: one row per (ticket, sprint) membership.
+// sprintIds stays the source of truth on the ticket row (drives card labels and the
+// API response); this bridge exists purely so "which tickets are in sprint X" is an
+// indexed lookup instead of an un-indexable json_each scan over every ticket. Kept in
+// sync via syncTicketSprints on every sprint_ids write (see src/lib/sprint-membership.ts).
+export const ticketSprint = sqliteTable("ticket_sprint", {
+  ticketKey: text("ticket_key")
+    .notNull()
+    .references(() => ticket.jiraKey, { onDelete: "cascade" }),
+  sprintId: text("sprint_id").notNull(),
+}, (table) => [
+  primaryKey({ columns: [table.ticketKey, table.sprintId] }),
+  index("ticket_sprint_sprint_id_idx").on(table.sprintId),
+]);
+
 export const ticketMetadata = sqliteTable("ticket_metadata", {
   jiraKey: text("jira_key")
     .primaryKey()
@@ -640,6 +655,8 @@ export type ActivityLog = typeof activityLog.$inferSelect;
 export type NewActivityLog = typeof activityLog.$inferInsert;
 export type Ticket = typeof ticket.$inferSelect;
 export type NewTicket = typeof ticket.$inferInsert;
+export type TicketSprintRow = typeof ticketSprint.$inferSelect;
+export type NewTicketSprintRow = typeof ticketSprint.$inferInsert;
 export type StoredReviewRow = typeof storedReview.$inferSelect;
 export type NewStoredReviewRow = typeof storedReview.$inferInsert;
 
