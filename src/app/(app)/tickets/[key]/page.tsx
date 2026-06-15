@@ -181,7 +181,6 @@ export default function TicketDetailPage({
   // default; the default itself is kept out of the URL (canonical bare link).
   const activeTab = resolveTicketTab(searchParams.get("tab"), h.ticket?.type ?? "");
   const [historyResetKey, setHistoryResetKey] = useState(0);
-  const [openDraftDiff, setOpenDraftDiff] = useState(false);
   const [searchOpen, setSearchOpen] = useState(false);
   const [sidebarCollapsed, setSidebarCollapsed] = useLocalStorage(SIDEBAR_COLLAPSED_KEY, false);
   // The open child panel is URL-driven (?ticket=). An unknown or stale key
@@ -274,17 +273,7 @@ export default function TicketDetailPage({
     if (tab === "history" && h.showConflictWarning) {
       h.setShowConflictDiff(true);
     }
-    // Direct History navigation shows the version list, not the auto-opened diff.
-    if (tab === "history") {
-      setOpenDraftDiff(false);
-    }
     selectTab(tab);
-  };
-
-  // "Local edits" click: jump to History and auto-open the draft-vs-Jira diff.
-  const handleViewDiff = () => {
-    setOpenDraftDiff(true);
-    selectTab("history");
   };
 
   if (h.ticketLoading) {
@@ -665,9 +654,7 @@ export default function TicketDetailPage({
           onDescLocalEdit={h.handleDescLocalEdit}
           showConflictWarning={h.showConflictWarning}
           showConflictDiff={h.showConflictDiff}
-          autoOpenDraftDiff={openDraftDiff}
           metadataOnlyConflict={h.metadataOnlyConflict}
-          onViewDiff={handleViewDiff}
           isDiscarding={h.isDiscarding}
           discardError={h.discardError}
           isPushing={h.isPushing}

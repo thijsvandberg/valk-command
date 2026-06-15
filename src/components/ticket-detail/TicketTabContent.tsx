@@ -78,11 +78,7 @@ export interface TicketTabContentProps {
   // Conflict
   showConflictWarning: boolean;
   showConflictDiff: boolean;
-  autoOpenDraftDiff: boolean;
   metadataOnlyConflict: boolean;
-  /** @deprecated No longer wired: local edits (incl. title-only) now surface via
-   *  the "Local edits" badge in EditableDescription, not a History jump. */
-  onViewDiff?: () => void;
   isDiscarding: boolean;
   discardError: string | null;
   // Push
@@ -135,7 +131,6 @@ export function TicketTabContent({
   onDescLocalEdit,
   showConflictWarning,
   showConflictDiff,
-  autoOpenDraftDiff,
   metadataOnlyConflict,
   isDiscarding,
   discardError,
@@ -415,7 +410,6 @@ export function TicketTabContent({
               ticket={ticket}
               diffFooterPortalId={diffFooterPortalId}
               showConflictDiff={showConflictDiff}
-              autoOpenDraftDiff={autoOpenDraftDiff}
               metadataOnlyConflict={metadataOnlyConflict}
               resetKey={historyResetKey}
               onConflictResolved={async (): Promise<void> => {

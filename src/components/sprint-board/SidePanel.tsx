@@ -253,7 +253,6 @@ export function SidePanel({
   // -- Tabs + conflict/diff plumbing (mirrors /tickets/[key]) --
   const [activeTab, setActiveTab] = useState<TicketTab>("content");
   const [historyResetKey, setHistoryResetKey] = useState(0);
-  const [openDraftDiff, setOpenDraftDiff] = useState(false);
 
   // Epics lead with their child-issue breakdown; everything else lands on Content.
   // Keyed on the displayed ticket so a panel that swaps tickets (drill-down or a
@@ -268,13 +267,7 @@ export function SidePanel({
   const handleTabChange = (tab: TicketTab) => {
     if (tab === "history" && activeTab === "history") setHistoryResetKey((k) => k + 1);
     if (tab === "history" && h.showConflictWarning) h.setShowConflictDiff(true);
-    if (tab === "history") setOpenDraftDiff(false);
     setActiveTab(tab);
-  };
-
-  const handleViewDiff = () => {
-    setOpenDraftDiff(true);
-    setActiveTab("history");
   };
 
   // -- Header action menus / dialogs --
@@ -606,9 +599,7 @@ export function SidePanel({
       onDescLocalEdit={h.handleDescLocalEdit}
       showConflictWarning={h.showConflictWarning}
       showConflictDiff={h.showConflictDiff}
-      autoOpenDraftDiff={openDraftDiff}
       metadataOnlyConflict={h.metadataOnlyConflict}
-      onViewDiff={handleViewDiff}
       isDiscarding={h.isDiscarding}
       discardError={h.discardError}
       isPushing={h.isPushing}

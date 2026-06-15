@@ -218,14 +218,14 @@ describe("TicketHistory", () => {
     });
   });
 
-  it("auto-opens the draft diff when autoOpenDraftDiff is set", async () => {
+  it("auto-opens the conflict diff when showConflictDiff is set", async () => {
     mockApiFetch.mockResolvedValueOnce(makeVersionData(2)); // includes a "current"
     mockApiFetch.mockResolvedValueOnce({ aiDrafts: [] });
     mockGetLocalEdits.mockResolvedValue([
       { field: "description", localValue: "My draft", modifiedAt: new Date().toISOString() },
     ]);
 
-    render(<TicketHistory ticket={makeTicket()} autoOpenDraftDiff />);
+    render(<TicketHistory ticket={makeTicket()} showConflictDiff />);
 
     await waitFor(() => {
       expect(screen.getByTestId("diff-viewer")).toBeInTheDocument();
@@ -233,7 +233,7 @@ describe("TicketHistory", () => {
     expect(screen.queryByTestId("version-list")).not.toBeInTheDocument();
   });
 
-  it("shows the version list (no auto-open) without autoOpenDraftDiff", async () => {
+  it("shows the version list by default (no auto-open)", async () => {
     mockApiFetch.mockResolvedValueOnce(makeVersionData(2));
     mockApiFetch.mockResolvedValueOnce({ aiDrafts: [] });
     mockGetLocalEdits.mockResolvedValue([
