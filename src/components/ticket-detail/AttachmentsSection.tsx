@@ -14,14 +14,9 @@ const COLLAPSED_COUNT = 3;
 export function AttachmentsSection({ attachments }: { attachments: Attachment[] }) {
   const [expanded, setExpanded] = useState(false);
 
+  // A story with no attachments shouldn't show an empty section at all.
   if (attachments.length === 0) {
-    return (
-      <div className="mt-8">
-        <SectionHeader title="Attachments" sectionKey={SECTION_KEYS.attachments}>
-          <p className="mt-3 text-body-lg text-text-muted">No attachments</p>
-        </SectionHeader>
-      </div>
-    );
+    return null;
   }
 
   const isCollapsible = attachments.length > COLLAPSED_COUNT;

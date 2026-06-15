@@ -43,9 +43,10 @@ function makeAttachment(overrides: Partial<Attachment> = {}): Attachment {
 }
 
 describe("AttachmentsSection", () => {
-  it("renders 'No attachments' when list is empty", () => {
-    render(<AttachmentsSection attachments={[]} />);
-    expect(screen.getByText("No attachments")).toBeInTheDocument();
+  it("renders nothing when the list is empty", () => {
+    const { container } = render(<AttachmentsSection attachments={[]} />);
+    expect(container).toBeEmptyDOMElement();
+    expect(screen.queryByText("Attachments")).not.toBeInTheDocument();
   });
 
   it("renders section header with count when attachments exist", () => {
