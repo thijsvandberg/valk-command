@@ -14,6 +14,44 @@
 // normalized output to Jira: collapsing blank lines around lists can change
 // markdown semantics (e.g. a following paragraph could be absorbed into a list).
 
+// ASCII punctuation whose backslash escape is a guaranteed rendering no-op: the
+// character has no structural markdown meaning, so `\:` and `:` are identical.
+// The two serializers disagree on which of these to escape, producing phantom
+// diffs. Structurally significant punctuation (* _ ` [ ] ( ) ! # + - . | < > ~)
+// is deliberately NOT folded here: there an escaped vs unescaped form can render
+// differently, so treating them as equal could hide real round-trip corruption
+// (BRDG-280/267/268) rather than cosmetic noise.
+const INERT_PUNCT = new Set([":", ";", ",", "'", '"', "/", "@", "%", "=", "?", "^"]);
+
+function unescapeInertPunctuation(s: string): string {
+  let out = "";
+  for (let i = 0; i < s.length; i++) {
+    if (s[i] === "\\" && i + 1 < s.length && INERT_PUNCT.has(s[i + 1])) {
+      out += s[i + 1];
+      i++;
+      continue;
+    }
+    out += s[i];
+  }
+  return out;
+}
+
+// Emphasis/strikethrough delimiters (* _ ~) can be serialized in different
+// nesting orders for the same combined marks, e.g. `~~***x***~~` vs
+// `***~~x~~***`. Sorting each contiguous run of two or more of these characters
+// canonicalizes the order so the two compare equal without altering what they
+// render to. Lone delimiters (single `*`/`_`/`~`, snake_case, a stray tilde) are
+// left untouched.
+const DELIM_RUN = /[*_~]{2,}/g;
+function canonicalizeMarkOrder(s: string): string {
+  return s.replace(DELIM_RUN, (run) => run.split("").sort().join(""));
+}
+
+/** Fold serializer round-trip artefacts (inert-escape, mark ordering) on a single content line. */
+function canonicalizeInline(line: string): string {
+  return canonicalizeMarkOrder(unescapeInertPunctuation(line));
+}
+
 const LIST_LINE = /^\s*(?:[-*+]|\d+[.)])\s+/;
 // A list marker with no content after it ("- ", "*", "1."). The rich editor
 // keeps an accidental empty bullet and re-serializes it, while the original
@@ -27,8 +65,12 @@ const PANEL_FENCE = /^\s*:::/;
 /**
  * Returns a canonical form where blank lines adjacent to list items are removed
  * (equalizing the tight-vs-loose serializer mismatch) and any remaining run of
- * blank lines is collapsed to one. Content inside fenced code blocks is left
- * untouched. The result is trimmed of leading/trailing blank lines.
+ * blank lines is collapsed to one. Content lines are additionally folded for two
+ * serializer round-trip artefacts: backslash escapes on inert punctuation are
+ * removed, and runs of emphasis/strikethrough delimiters are sorted so different
+ * nesting orders of the same combined marks compare equal. Content inside fenced
+ * code blocks is left untouched. The result is trimmed of leading/trailing blank
+ * lines.
  */
 export function normalizeMarkdownForCompare(md: string): string {
   if (!md) return "";
@@ -56,7 +98,7 @@ export function normalizeMarkdownForCompare(md: string): string {
       // Drop empty list markers entirely so an accidental empty bullet does not
       // register as a real content difference between serializers.
       if (EMPTY_LIST_LINE.test(line)) continue;
-      out.push(line);
+      out.push(canonicalizeInline(line));
       continue;
     }
 

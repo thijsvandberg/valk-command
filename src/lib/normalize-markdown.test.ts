@@ -94,4 +94,45 @@ describe("normalizeMarkdownForCompare", () => {
     const source = ":::info\n**Timebox**: 2h\n:::\n\n### Summary";
     expect(markdownEqualIgnoringSpacing(fromEditor, source)).toBe(true);
   });
+
+  // BRDG-348: the two serializers nest combined emphasis/strikethrough marks in
+  // different orders for identical rendered content; treat the order as cosmetic.
+  it("equalizes combined mark delimiter ordering (bold+italic+strikethrough)", () => {
+    const a = "This is ~~***bolditalicstrikethrough***~~ done";
+    const b = "This is ***~~bolditalicstrikethrough~~*** done";
+    expect(markdownEqualIgnoringSpacing(a, b)).toBe(true);
+  });
+
+  it("equalizes mark ordering inside a list item", () => {
+    const fromAdf = "- ~~***combo***~~ and **bold**";
+    const fromEditor = "- ***~~combo~~*** and **bold**";
+    expect(markdownEqualIgnoringSpacing(fromAdf, fromEditor)).toBe(true);
+  });
+
+  // BRDG-348: a backslash escape on punctuation with no markdown meaning is a
+  // no-op; the serializers disagree on whether to emit it.
+  it("ignores backslash escapes on inert punctuation", () => {
+    expect(markdownEqualIgnoringSpacing("End of sentence\\:", "End of sentence:")).toBe(true);
+    expect(markdownEqualIgnoringSpacing("a\\, b\\; c", "a, b; c")).toBe(true);
+  });
+
+  // Guard: escaping of structurally significant punctuation is NOT folded, since
+  // escaped vs unescaped can render differently (real corruption, not noise).
+  it("keeps escaped vs unescaped emphasis markers distinct", () => {
+    // `\*\*x\*\*` renders as literal text, `**x**` renders as bold: different content.
+    expect(markdownEqualIgnoringSpacing("\\*\\*x\\*\\*", "**x**")).toBe(false);
+  });
+
+  it("does not fold mark ordering inside fenced code blocks", () => {
+    const a = "```\n~~***x***~~\n```";
+    const b = "```\n***~~x~~***\n```";
+    // Code content is verbatim; these are genuinely different code.
+    expect(markdownEqualIgnoringSpacing(a, b)).toBe(false);
+  });
+
+  it("keeps a single emphasis delimiter untouched", () => {
+    expect(normalizeMarkdownForCompare("*italic* and snake_case_name")).toBe(
+      "*italic* and snake_case_name",
+    );
+  });
 });
