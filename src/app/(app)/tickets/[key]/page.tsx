@@ -681,6 +681,7 @@ export default function TicketDetailPage({
           editSaver={h.editSaver}
           onDraftConflictReload={h.handleDraftConflictReload}
           onSelectTicket={selectTicket}
+          activeChildKey={previewTicketKey}
           reviewCount={h.reviewCount}
           versionCount={h.versionCount}
           historyResetKey={historyResetKey}

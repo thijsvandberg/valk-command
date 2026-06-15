@@ -96,6 +96,9 @@ export interface TicketTabContentProps {
   onEpicChildOptimistic?: (childKey: string, patch: Partial<EpicChild>) => void;
   onConflictResolved: () => Promise<void>;
   onSelectTicket: (key: string) => void;
+  /** Key of the child currently open in the SidePanel (?ticket=), highlighted in
+      the child/subtask lists so the open row reads as active (mirrors the board). */
+  activeChildKey?: string | null;
   /** Shared concurrency saver + reload handler for the cross-tab 409 banner (BRDG-340). */
   editSaver?: LocalEditSaver;
   onDraftConflictReload?: () => void | Promise<void>;
@@ -146,6 +149,7 @@ export function TicketTabContent({
   onEpicChildOptimistic,
   onConflictResolved,
   onSelectTicket,
+  activeChildKey,
   editSaver,
   onDraftConflictReload,
   reviewCount,
@@ -385,7 +389,7 @@ export function TicketTabContent({
                   saver={editSaver}
                 />
               </div>
-              <EpicChildrenSection items={detail.epicChildren} ticketKey={ticketKey} onMutate={onMutate} onChildOptimistic={onEpicChildOptimistic} onSelectTicket={onSelectTicket} showStatsSummary />
+              <EpicChildrenSection items={detail.epicChildren} ticketKey={ticketKey} onMutate={onMutate} onChildOptimistic={onEpicChildOptimistic} onSelectTicket={onSelectTicket} activeChildKey={activeChildKey} showStatsSummary />
             </>
           )}
 

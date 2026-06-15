@@ -370,4 +370,42 @@ describe("ChildIssueRow", () => {
     const { container } = render(<ChildIssueRow item={baseSub} isLast={false} />);
     expect(container.firstChild).not.toHaveClass("opacity-60");
   });
+
+  describe("flagged (sprint-board parity)", () => {
+    it("tints the row and shows the inline flag when flagged", () => {
+      const { container } = render(<ChildIssueRow item={baseSub} isLast={false} flagged />);
+      const row = container.firstChild as HTMLElement;
+      expect(row.className).toContain("color-status-error");
+      expect(container.querySelector("svg.lucide-flag")).toBeInTheDocument();
+    });
+
+    it("shows no flag tint or icon when not flagged", () => {
+      const { container } = render(<ChildIssueRow item={baseSub} isLast={false} />);
+      const row = container.firstChild as HTMLElement;
+      expect(row.className).not.toContain("color-status-error");
+      expect(container.querySelector("svg.lucide-flag")).not.toBeInTheDocument();
+    });
+
+    it("active state takes visual precedence over flagged", () => {
+      const { container } = render(<ChildIssueRow item={baseSub} isLast={false} flagged isActive />);
+      const row = container.firstChild as HTMLElement;
+      expect(row.className).toContain("var(--color-brand-600)");
+      expect(row.className).not.toContain("color-status-error");
+    });
+  });
+
+  describe("active row highlight (open in sidebar)", () => {
+    it("applies the active background and accent when isActive", () => {
+      const { container } = render(<ChildIssueRow item={baseSub} isLast={false} isActive />);
+      const row = container.firstChild as HTMLElement;
+      expect(row.className).toContain("var(--color-brand-600)");
+      expect(row.className).toContain("var(--color-brand-300)");
+    });
+
+    it("does not apply the active background by default", () => {
+      const { container } = render(<ChildIssueRow item={baseSub} isLast={false} />);
+      const row = container.firstChild as HTMLElement;
+      expect(row.className).not.toContain("var(--color-brand-600)");
+    });
+  });
 });
