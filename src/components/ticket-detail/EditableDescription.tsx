@@ -329,7 +329,7 @@ export function EditableDescription({
           </button>
           {showDraftDiff && (
             <div className="mt-3 rounded-lg border border-border-strong">
-              <div className="p-3 pb-0">
+              <div className="p-3">
                 <StoryDiff
                   oldText={normalizeMarkdownForCompare(initialDescription)}
                   newText={normalizeMarkdownForCompare(value)}
@@ -369,7 +369,7 @@ export function EditableDescription({
                     disabled={isPushing || (showConflictWarning && !overrideConfirmed)}
                     title={showConflictWarning && !overrideConfirmed ? "Review the diff and confirm before pushing" : undefined}
                     onClick={handlePushToJira}
-                    icon={isPushing ? <Loader2 size={12} strokeWidth={1.5} className="animate-spin" /> : <CloudUpload size={12} strokeWidth={1.5} />}
+                    icon={isPushing ? <Loader2 size={12} strokeWidth={2} className="animate-spin" /> : <CloudUpload size={12} strokeWidth={2.5} />}
                     className="!text-body-sm"
                   >
                     {isPushing ? "Pushing..." : "Push to Jira"}
@@ -429,7 +429,7 @@ export function EditableDescription({
                 size="md"
                 onClick={handleDiscard}
                 title="Discard"
-                icon={<RotateCcw size={13} strokeWidth={1.5} />}
+                icon={<RotateCcw size={13} strokeWidth={2} />}
                 className="!text-text-tertiary hover:!text-text-secondary !text-body-sm"
               >
                 <span className="hidden @2xl:inline">Discard</span>
@@ -441,7 +441,7 @@ export function EditableDescription({
                   disabled={isPushing || (showConflictWarning && !overrideConfirmed)}
                   title={showConflictWarning && !overrideConfirmed ? "Review the diff and confirm before pushing" : "Push to Jira"}
                   onClick={handlePushToJira}
-                  icon={isPushing ? <Loader2 size={12} strokeWidth={1.5} className="animate-spin" /> : <CloudUpload size={12} strokeWidth={1.5} />}
+                  icon={isPushing ? <Loader2 size={12} strokeWidth={2} className="animate-spin" /> : <CloudUpload size={12} strokeWidth={2.5} />}
                   className="!text-body-sm"
                 >
                   <span className="hidden @2xl:inline">{isPushing ? "Pushing..." : "Push to Jira"}</span>
