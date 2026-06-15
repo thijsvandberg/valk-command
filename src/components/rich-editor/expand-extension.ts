@@ -30,7 +30,15 @@ export const ExpandExtension = Node.create({
   },
 
   parseHTML() {
-    return [{ tag: "details[data-expand-title]" }];
+    // Content lives in the inner <div>; without contentElement ProseMirror also
+    // parses the <summary> text as a child block, duplicating the title into the
+    // body on every load->serialize cycle (the recurring extra "Expand" line).
+    return [
+      {
+        tag: "details[data-expand-title]",
+        contentElement: (element) => element.querySelector("div") ?? (element as HTMLElement),
+      },
+    ];
   },
 
   renderHTML({ HTMLAttributes, node }) {

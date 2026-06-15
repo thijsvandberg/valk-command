@@ -1,6 +1,7 @@
 import { describe, it, expect } from "vitest";
 import { Editor } from "@tiptap/core";
 import { buildEditorExtensions, markdownToEditorHtml, getEditorMarkdown } from "./RichEditor";
+import { markdownEqualIgnoringSpacing } from "@/lib/normalize-markdown";
 
 // BRDG-280: end-to-end load -> serialize identity over a representative corpus, using a real
 // TipTap editor built from the exact production extension set. Before the fixes, the multi-line
@@ -73,5 +74,34 @@ describe("markdown round-trip (load -> serialize identity) - BRDG-280", () => {
     const out = roundTrip("2 * 3 = 6");
     expect(out).not.toContain("<");
     expect(out.replace(/\\/g, "")).toBe("2 * 3 = 6");
+  });
+
+  it("does not duplicate the expand title into its body (BRDG-280 follow-up)", () => {
+    // The <summary> used to be parsed as a content block, copying the title into
+    // the body and growing an extra title line on every load->serialize cycle.
+    const input = ":::expand Expand\nbody text\n:::";
+    const once = roundTrip(input);
+    // Title appears exactly once (on the fence line), never copied into the body.
+    expect(once.match(/Expand/g)?.length).toBe(1);
+    // No content is lost or added; the only diff is cosmetic fence spacing that
+    // normalizeMarkdownForCompare folds, so the app shows no phantom edit.
+    expect(markdownEqualIgnoringSpacing(input, once)).toBe(true);
+    // Idempotent: never grows on subsequent cycles.
+    expect(roundTrip(once)).toBe(once);
+  });
+
+  it("keeps a multi-line expand body stable and content-equal across passes", () => {
+    const input = ":::expand More details\nfirst line\nsecond line\n:::";
+    const once = roundTrip(input);
+    expect(once.match(/More details/g)?.length).toBe(1);
+    expect(once).toContain("first line");
+    expect(once).toContain("second line");
+    expect(markdownEqualIgnoringSpacing(input, once)).toBe(true);
+    expect(roundTrip(once)).toBe(once);
+  });
+
+  it("preserves literal backslashes in prose", () => {
+    expect(roundTrip("a \\\\ b")).toBe("a \\\\ b");
+    expect(roundTrip("some \\\\ backslashes \\\\ here")).toBe("some \\\\ backslashes \\\\ here");
   });
 });
