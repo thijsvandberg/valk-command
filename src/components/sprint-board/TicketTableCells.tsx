@@ -38,7 +38,8 @@ export function EditStateDot({ state }: { state: EditState }) {
         </span>
       }
     >
-      <span className="inline-flex cursor-default">
+      {/* Negative margin keeps the dot's visual footprint while padding enlarges the hover/hit area */}
+      <span className="-m-2 inline-flex cursor-default items-center justify-center p-2">
         <span className={`inline-block h-1.5 w-1.5 shrink-0 rounded-full ${cfg.dotClass}`} />
       </span>
     </Tooltip>
