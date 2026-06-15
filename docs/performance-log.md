@@ -469,3 +469,18 @@ Total: roughly one hour of agent time for the remaining scope (refinement wiring
 Key bottlenecks / lessons:
 - **Two agent sessions sharing one working tree is the real hazard.** The tree carried another session's uncommitted work the entire run (story-writer routes, ticket-service, hover-data). Consequences: a transient typecheck failure from their half-edited file, two audit fixes (versionCount, chatMessageCount invalidation) deliberately skipped because the write paths live in their dirty files, and the metadata epic-invalidation placed in the route handler instead of ticket-service to avoid touching it. Staging explicit paths only (per standing rule) is what kept the commits clean.
 - **Read-only Explore agents cannot deliver a file, and summarise instead.** For "produce a document" audits, use an agent that may write the single output file; instructing it that the investigation doc is its only permitted write worked well.
+
+## BRDG-347 — Drag-and-drop on large virtualized sprint lists (2026-06-15)
+
+Decoupled the DnD gate from the 40-row threshold, made virtualized rows sortable (ref composed with the virtualizer's measureElement, MeasuringStrategy.Always), fixed filter-correct optimistic reorder against the full list, and added Move-to-top/bottom row actions (new rankToBottomOf* Jira-client methods + a `position: "bottom"` route branch). New/updated tests across 3 files; verified green in a clean worktree.
+
+| Phase | Notes |
+|---|---|
+| Plan (Opus) | Accurate and grounded; correctly flagged the SortableBoardRow/measureElement ref-composition risk and the filter-drops-hidden-rows bug. One simplification found during impl: move-to-top/bottom reuses the existing move-sprint route + `position`, so no rank-route change was needed |
+| Implement | Clean, no logic rework; lint/typecheck green per step |
+| Verify | Build's first run failed on a stale `.next` generated `routes.js` types file, then passed on re-run (known issue). Full suite isolation required a throwaway worktree (below) |
+
+Key bottlenecks / lessons:
+- **Dirty shared tree made the full suite unreadable as a pass/fail signal.** Two suite failures were NOT mine: `SprintAnalytics.test.tsx` (4, pre-existing — fails at clean HEAD) and `push-to-jira/route.test.ts` (passes at my clean HEAD, fails only with another session's uncommitted `schema.ts`/service changes). Confirming this needed a `git worktree add HEAD` + symlinked `node_modules` to run my tests against my commits in isolation (97 passed). Staging explicit paths only kept the commits clean.
+- **Browser verification was blocked: the Chrome extension was disconnected.** Logged and skipped per the anti-rabbit-hole rule rather than retrying. Real drag + auto-scroll on a 348-row list is also unreliable to automate; the affordances (sortable rows, Move-to-top/bottom menu items) are covered by unit tests, but live drag/auto-scroll behaviour still needs a manual pass.
+- **Build's stale-generated-types failure on first run** is a recurring false negative; a second `npm run build` is the fix, not a code change.
