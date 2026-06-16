@@ -137,6 +137,22 @@ describe("FilterControlsPanel (BRDG-344)", () => {
     expect(onColumnReset).not.toHaveBeenCalled();
   });
 
+  it("limits the rail to the category whitelist, in order (BRDG-357 inbox)", () => {
+    render(
+      <FilterControlsPanel
+        {...makeProps({ categoryWhitelist: ["status", "epic", "assignee", "type", "team", "sprint"] })}
+      />,
+    );
+    // Whitelisted categories present...
+    expect(screen.getByRole("button", { name: /^Status/ })).toBeTruthy();
+    expect(screen.getByRole("button", { name: /^Type/ })).toBeTruthy();
+    expect(screen.getByRole("button", { name: /^Sprint/ })).toBeTruthy();
+    // ...excluded categories gone.
+    expect(screen.queryByRole("button", { name: /^Readiness/ })).toBeNull();
+    expect(screen.queryByRole("button", { name: /^Changes/ })).toBeNull();
+    expect(screen.queryByRole("button", { name: /^Gaps/ })).toBeNull();
+  });
+
   it("Display toggle swaps to the field list, whose Reset clears visibility only", () => {
     const onClearAll = vi.fn();
     const onColumnReset = vi.fn();

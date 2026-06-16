@@ -70,6 +70,12 @@ export interface FilterControlsPanelProps {
   columnVisible: Set<InlineTagId>;
   onColumnToggle: (id: InlineTagId, show: boolean) => void;
   onColumnReset: () => void;
+  /**
+   * Restrict the filter categories to this set of keys, in order (BRDG-357). The
+   * New story inbox passes a subset (no Readiness/Changes/Gaps). Omitted on the
+   * board, which keeps the full, unfiltered category list.
+   */
+  categoryWhitelist?: string[];
 }
 
 function ChangesDot({ value }: { value: string }) {
@@ -225,6 +231,12 @@ export function FilterControlsPanel(props: FilterControlsPanelProps) {
         leadingLabel: "By state",
         renderOption: (id) => <span>{nameMap[id] ?? id}</span>,
       });
+    }
+    if (props.categoryWhitelist) {
+      const allowed = props.categoryWhitelist;
+      return list
+        .filter((c) => allowed.includes(c.key))
+        .sort((a, b) => allowed.indexOf(a.key) - allowed.indexOf(b.key));
     }
     return list;
   }, [props, orderedAssigneeOptions, readinessOptions, editStateValues]);
