@@ -388,9 +388,21 @@ export function LinkedIssuesSection({ issues, ticketKey, onMutate, onSelectTicke
   // and the composer stays hidden (the user opts in via the "+"/menu). Driven by an
   // adjust-state-during-render transition (not an effect) so the composer opens on the very render
   // that expands the empty section, and reopening is skipped once the user closes it.
+  //
+  // The empty case uses ephemeral, per-ticket state instead of the shared collapse store: expanding
+  // an empty section is a transient "add a link to THIS ticket" action, not a durable layout
+  // preference. Persisting it (as the store does) would replay "expanded" on every other ticket that
+  // also has no links, re-opening the composer unprompted. Reset on ticketKey change so it never
+  // leaks. Non-empty sections keep the persisted store: collapsing a real list is a sticky choice.
   const isEmpty = allIssues.length === 0;
   const { isCollapsed } = useSectionCollapsed();
-  const collapsed = isCollapsed(SECTION_KEYS.linkedIssues, isEmpty);
+  const [emptyExpanded, setEmptyExpanded] = useState(false);
+  const [prevTicketKey, setPrevTicketKey] = useState(ticketKey);
+  if (ticketKey !== prevTicketKey) {
+    setPrevTicketKey(ticketKey);
+    setEmptyExpanded(false);
+  }
+  const collapsed = isEmpty ? !emptyExpanded : isCollapsed(SECTION_KEYS.linkedIssues, false);
   const expandedEmpty = !collapsed && isEmpty;
   const [prevExpandedEmpty, setPrevExpandedEmpty] = useState(false);
   if (expandedEmpty !== prevExpandedEmpty) {
@@ -699,8 +711,9 @@ export function LinkedIssuesSection({ issues, ticketKey, onMutate, onSelectTicke
         title="Linked Issues"
         count={allIssues.length}
         actions={headerMenu}
-        sectionKey={SECTION_KEYS.linkedIssues}
-        defaultCollapsed={isEmpty}
+        sectionKey={isEmpty ? undefined : SECTION_KEYS.linkedIssues}
+        collapsed={isEmpty ? collapsed : undefined}
+        onToggle={isEmpty ? () => setEmptyExpanded((v) => !v) : undefined}
       >
 
       {allIssues.length > 0 && (

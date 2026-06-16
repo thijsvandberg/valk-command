@@ -1,7 +1,7 @@
 import { render, screen, fireEvent, waitFor } from "@testing-library/react";
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { LinkedIssuesSection } from "./LinkedIssuesSection";
-import { __resetSectionCollapseStore } from "@/lib/section-collapse-store";
+import { __resetSectionCollapseStore, setSectionCollapsed, SECTION_KEYS } from "@/lib/section-collapse-store";
 import type { LinkedIssue } from "@/types/ticket";
 
 // Mock next/link
@@ -117,6 +117,15 @@ describe("LinkedIssuesSection", () => {
     expect(screen.queryByLabelText("Linked issues actions")).toBeNull();
     expandSection();
     expect(screen.getByPlaceholderText("Link issue...")).toBeInTheDocument();
+  });
+
+  it("stays collapsed when empty even if the section was previously expanded on another ticket", () => {
+    // Expanding an empty section once persists "expanded" in the shared store. That choice must not
+    // replay onto other ticketless sections and re-open the composer unprompted (BRDG regression).
+    setSectionCollapsed(SECTION_KEYS.linkedIssues, false);
+    renderSection([], { openLink: false });
+    expect(screen.queryByPlaceholderText("Link issue...")).toBeNull();
+    expect(screen.queryByLabelText("Linked issues actions")).toBeNull();
   });
 
   it("does not auto-open the composer when links exist; the menu toggles it", () => {

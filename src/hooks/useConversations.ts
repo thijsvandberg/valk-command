@@ -28,9 +28,10 @@ export function useConversations(): UseConversationsReturn {
     setError(null);
     try {
       const data = await conversationsApi.list();
-      const json = JSON.stringify(data);
+      const safe = Array.isArray(data) ? data : [];
+      const json = JSON.stringify(safe);
       lastJsonRef.current = json;
-      setConversations(data);
+      setConversations(safe);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Unknown error");
     } finally {
@@ -47,10 +48,11 @@ export function useConversations(): UseConversationsReturn {
     const poll = async () => {
       try {
         const data = await conversationsApi.list();
-        const json = JSON.stringify(data);
+        const safe = Array.isArray(data) ? data : [];
+        const json = JSON.stringify(safe);
         if (json !== lastJsonRef.current) {
           lastJsonRef.current = json;
-          setConversations(data);
+          setConversations(safe);
         }
       } catch {
         // Silently ignore poll errors

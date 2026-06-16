@@ -51,9 +51,12 @@ export function useConversationFilters(
     setStoredFilters([]);
   }, [setStoredFilters]);
 
+  // A loading/empty fetch can hand us null before the list resolves; treat it as empty.
+  const safeConversations = useMemo(() => conversations ?? [], [conversations]);
+
   const conversationsWithCategory = useMemo(
-    () => conversations.map((c) => ({ conversation: c, category: deriveCategory(c) })),
-    [conversations],
+    () => safeConversations.map((c) => ({ conversation: c, category: deriveCategory(c) })),
+    [safeConversations],
   );
 
   const categoryCounts = useMemo(() => {
@@ -66,11 +69,11 @@ export function useConversationFilters(
   }, [conversationsWithCategory]);
 
   const filteredConversations = useMemo(() => {
-    if (activeFilters.size === 0) return conversations;
+    if (activeFilters.size === 0) return safeConversations;
     return conversationsWithCategory
       .filter(({ category }) => activeFilters.has(category))
       .map(({ conversation }) => conversation);
-  }, [conversations, conversationsWithCategory, activeFilters]);
+  }, [safeConversations, conversationsWithCategory, activeFilters]);
 
   return {
     activeFilters,

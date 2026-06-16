@@ -59,6 +59,12 @@ export interface GroupStatBarProps {
   showDot?: boolean;
   /** When false, the per-status (TO DO / IN PROGRESS / TEST / DONE) count pills are hidden. */
   showStatusCounts?: boolean;
+  /**
+   * When false, the estimate-hygiene warning indicator (the AlertTriangle) and its
+   * underlying per-ticket checks are skipped entirely. Used on the new-story inbox,
+   * where sprint-estimate hygiene is not relevant.
+   */
+  showWarnings?: boolean;
   /** When false, the "avg N" business-value average next to the BV total is hidden. */
   showBvAvg?: boolean;
   /** When provided, renders a pin toggle next to the label (used to pin a sprint group to the tab bar). */
@@ -194,6 +200,7 @@ export const GroupStatBar = memo(function GroupStatBar({
   labelWidthClass = "w-48",
   showDot = false,
   showStatusCounts = true,
+  showWarnings = true,
   showBvAvg = true,
   onPin,
   isPinned = false,
@@ -294,12 +301,14 @@ export const GroupStatBar = memo(function GroupStatBar({
   let noSubtasksCount = 0;
   let deprecatedWithSp = 0;
   let closedWithOpenSubtasks = 0;
-  for (const t of tickets) {
-    for (const kind of ticketWarnings(t, isActive)) {
-      if (kind === "unpointed") noPointsCount++;
-      else if (kind === "no_subtasks") noSubtasksCount++;
-      else if (kind === "deprecated_with_points") deprecatedWithSp++;
-      else closedWithOpenSubtasks++;
+  if (showWarnings) {
+    for (const t of tickets) {
+      for (const kind of ticketWarnings(t, isActive)) {
+        if (kind === "unpointed") noPointsCount++;
+        else if (kind === "no_subtasks") noSubtasksCount++;
+        else if (kind === "deprecated_with_points") deprecatedWithSp++;
+        else closedWithOpenSubtasks++;
+      }
     }
   }
   // When every ticket shares the same status, the per-status pill just echoes the "X items"

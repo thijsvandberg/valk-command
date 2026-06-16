@@ -60,9 +60,12 @@ vi.mock("next/server", async (importOriginal) => {
   return { ...orig, after: vi.fn() };
 });
 
-vi.mock("@/lib/sprint-cache", () => ({
-  ensureSprintsCached: vi.fn().mockResolvedValue(0),
-}));
+// Keep getBackfillCandidateIds real so it derives the referenced ids from the test DB; only stub
+// the fetch step (ensureSprintsCached) we assert against.
+vi.mock("@/lib/sprint-cache", async (importOriginal) => {
+  const orig = await importOriginal<typeof import("@/lib/sprint-cache")>();
+  return { ...orig, ensureSprintsCached: vi.fn().mockResolvedValue(0) };
+});
 
 import { jiraClient, JiraApiError } from "@/lib/jira-client";
 import { cache } from "@/lib/cache";

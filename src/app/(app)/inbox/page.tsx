@@ -277,6 +277,8 @@ export default function InboxPage() {
                               tickets={group.rows.map(rowToTicket)}
                               label={group.label}
                               labelWidthClass=""
+                              showStatusCounts={false}
+                              showWarnings={false}
                               isCollapsed={isCollapsed}
                               onToggleCollapse={() => toggleCollapse(group.key)}
                               onSelectAll={() => toggleGroup(groupKeys)}
