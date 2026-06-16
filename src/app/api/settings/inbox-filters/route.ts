@@ -14,12 +14,13 @@ const filtersSchema = z
     status: stringArray.optional(),
     epic: stringArray.optional(),
     assignee: stringArray.optional(),
+    creator: stringArray.optional(),
     issueType: stringArray.optional(),
     team: stringArray.optional(),
     sprint: stringArray.optional(),
   })
   .passthrough();
 
-const DEFAULT = { status: [], epic: [], assignee: [], issueType: [], team: [], sprint: [] };
+const DEFAULT = { status: [], epic: [], assignee: [], creator: [], issueType: [], team: [], sprint: [] };
 
 export const { GET, PUT } = createUserJsonSettingRoute(SETTING_KEY, filtersSchema, DEFAULT);

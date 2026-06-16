@@ -12,7 +12,7 @@ import type { InboxGroupBy } from "@/lib/new-stories-grouping";
 const GROUP_BY_OPTIONS: { value: InboxGroupBy; label: string }[] = [
   { value: "date", label: "Date" },
   { value: "epic", label: "Epic" },
-  { value: "creator", label: "Creator" },
+  { value: "creator", label: "Reporter" },
   { value: "sprint", label: "Sprint" },
 ];
 

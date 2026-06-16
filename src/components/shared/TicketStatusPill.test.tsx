@@ -678,12 +678,12 @@ describe("TicketStatusPill hover card", () => {
     expect(screen.getByText("2 open of 5 subtasks")).toBeTruthy();
   });
 
-  it("shows Creator read-only even when assignee is editable", () => {
+  it("shows Reporter read-only even when assignee is editable", () => {
     const { container } = render(
       <TicketStatusPill ticketKey="VPL-1" jiraStatus="TO DO" hoverData={fullData} onAssigneeChange={vi.fn()} />,
     );
     openCard(container);
-    // Creator has no editor (Jira reporters are immutable); the name shows but no picker title.
+    // Reporter has no editor (Jira reporters are immutable); the name shows but no picker title.
     expect(screen.getByText("Bob")).toBeTruthy();
     expect(screen.queryByTitle("Assignee: Bob")).toBeNull();
   });

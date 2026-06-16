@@ -105,7 +105,8 @@ export type InlineTagId =
   | "storyPoints"
   | "businessValue"
   | "epic"
-  | "assignee";
+  | "assignee"
+  | "creator";
 
 // Toggleable row fields, split into the secondary signals and the always-present
 // badges (SP/BV/epic/assignee). The `group` boundary drives a divider in the
@@ -121,9 +122,12 @@ export const ROW_FIELDS: { id: InlineTagId; label: string; group: "signal" | "ba
   { id: "businessValue", label: "Business value (BV)", group: "badge" },
   { id: "epic", label: "Epic", group: "badge" },
   { id: "assignee", label: "Assignee", group: "badge" },
+  { id: "creator", label: "Reporter", group: "badge" },
 ];
 
-export const DEFAULT_VISIBLE_TAGS: InlineTagId[] = ROW_FIELDS.map((f) => f.id);
+// The board shows every row field by default except Reporter, which is an opt-in
+// signal surfaced primarily in the inbox (where it is on by default below).
+export const DEFAULT_VISIBLE_TAGS: InlineTagId[] = ROW_FIELDS.map((f) => f.id).filter((id) => id !== "creator");
 
 // Badge fields added after the initial headerless board (BRDG-299). They were
 // always shown before, so an existing persisted set that predates them must keep
@@ -133,7 +137,7 @@ export const BADGE_DEFAULT_TAGS: InlineTagId[] = ["storyPoints", "businessValue"
 // New story inbox default inline fields (BRDG-357): a lean subset, since the
 // inbox is a quick triage view. Epic/SP/Assignee on; refinement/QS/notes/PO
 // readiness/edit-state/BV off by default. The PO can toggle the rest via Display.
-export const INBOX_DEFAULT_VISIBLE_TAGS: InlineTagId[] = ["epic", "storyPoints", "assignee"];
+export const INBOX_DEFAULT_VISIBLE_TAGS: InlineTagId[] = ["epic", "storyPoints", "assignee", "creator"];
 
 // Migration map from the legacy column ids to the new inline tag ids (BRDG-239).
 // Note: poReadiness/refinement/editState have no legacy column equivalent, so they are
@@ -145,7 +149,7 @@ export const COLUMN_TO_TAG: Partial<Record<ColumnId, InlineTagId>> = {
   notes: "notes",
 };
 
-const TAG_ID_SET = new Set<string>(DEFAULT_VISIBLE_TAGS);
+const TAG_ID_SET = new Set<string>(ROW_FIELDS.map((f) => f.id));
 
 /** True when every id is already a valid inline tag (i.e. data is post-migration). */
 export function isTagVisibility(ids: string[]): boolean {

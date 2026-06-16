@@ -660,7 +660,7 @@ function TicketHoverCard({
           )}
         </InfoRow>
 
-        <InfoRow icon={<UserRound size={12} strokeWidth={1.75} />} label="Creator">
+        <InfoRow icon={<UserRound size={12} strokeWidth={1.75} />} label="Reporter">
           <PersonValue person={data.reporter} />
         </InfoRow>
 

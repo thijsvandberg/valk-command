@@ -258,12 +258,12 @@ export function FilterControlsPanel(props: FilterControlsPanelProps) {
     if (props.creatorFilter && props.onCreatorFilterChange && props.creatorOptions) {
       list.push({
         key: "creator",
-        label: "Creator",
+        label: "Reporter",
         options: props.creatorOptions,
         selected: props.creatorFilter,
         onChange: props.onCreatorFilterChange,
         searchable: true,
-        searchPlaceholder: "Search creators...",
+        searchPlaceholder: "Search reporters...",
         labelMap: props.creatorLabelMap,
         renderOption: (token) => {
           const name = props.creatorLabelMap?.[token] ?? token;

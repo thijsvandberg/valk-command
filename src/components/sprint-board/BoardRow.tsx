@@ -26,7 +26,7 @@ import { TicketStatusPill } from "@/components/shared/TicketStatusPill";
 import { prefetchTicketPage } from "@/lib/prefetch";
 import { useLiveTicketChange } from "@/hooks/useLiveTicketChange";
 
-const ALL_TAGS: Set<InlineTagId> = new Set(["flag", "refinement", "quality", "notes", "poReadiness", "editState", "storyPoints", "businessValue", "epic", "assignee"]);
+const ALL_TAGS: Set<InlineTagId> = new Set(["flag", "refinement", "quality", "notes", "poReadiness", "editState", "storyPoints", "businessValue", "epic", "assignee", "creator"]);
 
 export interface BoardRowBaseProps {
   ticket: Ticket;
@@ -114,6 +114,12 @@ export interface BoardRowBaseProps {
    * which never passes it.
    */
   onMarkRead?: (key: string) => void;
+  /**
+   * New story inbox (BRDG-358): preformatted created-date chip shown on the row.
+   * The inbox passes it only when grouped by something other than Date, where the
+   * group header no longer conveys the creation date. Absent elsewhere.
+   */
+  createdAtLabel?: string;
   sessionTimeAgo?: string;
   sessionJiraChanged?: boolean;
   splitTarget?: string | null;
@@ -186,6 +192,7 @@ export const BoardRow = memo(forwardRef<HTMLTableRowElement, BoardRowBaseProps>(
     onActivate,
     onDiscard,
     onMarkRead,
+    createdAtLabel,
     sessionTimeAgo,
     sessionJiraChanged = false,
     splitTarget,
@@ -724,6 +731,28 @@ export const BoardRow = memo(forwardRef<HTMLTableRowElement, BoardRowBaseProps>(
                 <span className="flex shrink-0 items-center gap-1 whitespace-nowrap text-label text-text-tertiary">
                   <Clock size={10} strokeWidth={1.75} className="text-text-muted" aria-hidden />
                   {sessionTimeAgo}
+                </span>
+              )}
+
+              {/* Created date (BRDG-358) — shown by the inbox only when its grouping
+                  no longer conveys it (i.e. not grouped by Date). Absent elsewhere. */}
+              {createdAtLabel && (
+                <span className="flex shrink-0 items-center gap-1 whitespace-nowrap text-label text-text-tertiary">
+                  <Clock size={10} strokeWidth={1.75} className="text-text-muted" aria-hidden />
+                  {createdAtLabel}
+                </span>
+              )}
+
+              {/* Reporter — read-only "by <name>" chip rather than a second avatar,
+                  so it is never mistaken for the editable assignee. */}
+              {tags.has("creator") && ticket.reporter && (
+                <span
+                  className="inline-flex h-5 min-w-0 max-w-[140px] shrink-0 items-center gap-1 whitespace-nowrap rounded-md px-1.5 text-[11px] leading-none text-text-tertiary"
+                  style={{ backgroundColor: "var(--color-overlay-subtle)" }}
+                  title={`Reported by ${ticket.reporter.name}`}
+                >
+                  <span className="shrink-0 opacity-60">by</span>
+                  <span className="truncate">{ticket.reporter.name}</span>
                 </span>
               )}
 

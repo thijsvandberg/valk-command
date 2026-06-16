@@ -131,6 +131,28 @@ describe("BoardRow (headerless, BRDG-239)", () => {
     expect(onMarkRead).toHaveBeenCalledWith("VPL-1");
   });
 
+  it("renders the reporter chip only when the creator tag is on and a reporter exists (BRDG-358)", () => {
+    const reporter = { name: "Alice", initials: "A", color: "#000" };
+    // Creator tag on + reporter present -> labelled chip shown.
+    renderRow({ ticket: makeTicket({ reporter }), tags: new Set<InlineTagId>(["creator"]) });
+    expect(screen.getByTitle("Reported by Alice")).toBeInTheDocument();
+
+    // Creator tag off -> no creator avatar even though a reporter exists.
+    renderRow({ ticket: makeTicket({ reporter }), tags: new Set<InlineTagId>(["assignee"]) });
+    expect(screen.getAllByTitle("Reported by Alice")).toHaveLength(1);
+
+    // No reporter -> nothing, even with the tag on.
+    renderRow({ ticket: makeTicket({ reporter: null }), tags: new Set<InlineTagId>(["creator"]) });
+    expect(screen.getAllByTitle("Reported by Alice")).toHaveLength(1);
+  });
+
+  it("renders the created-date chip only when createdAtLabel is supplied (BRDG-358)", () => {
+    renderRow();
+    expect(screen.queryByText("3d ago")).toBeNull();
+    renderRow({ createdAtLabel: "3d ago" });
+    expect(screen.getByText("3d ago")).toBeInTheDocument();
+  });
+
   it("shows the epic chip by default and hides it when hideEpic is set", () => {
     const { rerender } = renderRow();
     expect(screen.getByText("Onboarding")).toBeInTheDocument();

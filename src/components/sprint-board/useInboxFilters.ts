@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useMigratedAccountSetting } from "@/hooks/useMigratedAccountSetting";
 import { extractTeamPrefix } from "@/lib/sprint-utils";
 import type { NewStoryRow } from "@/lib/new-stories-types";
@@ -19,17 +19,18 @@ export interface StoredInboxFilters {
   status: string[];
   epic: string[];
   assignee: string[];
+  creator: string[];
   issueType: string[];
   team: string[];
   sprint: string[];
 }
 
-const DEFAULT_FILTERS: StoredInboxFilters = { status: [], epic: [], assignee: [], issueType: [], team: [], sprint: [] };
+const DEFAULT_FILTERS: StoredInboxFilters = { status: [], epic: [], assignee: [], creator: [], issueType: [], team: [], sprint: [] };
 const DEFAULT_TAGS: InlineTagId[] = [...INBOX_DEFAULT_VISIBLE_TAGS];
 
 // The inbox filter categories, in display order. Drives the FilterControlsPanel
 // whitelist so Readiness/Changes/Gaps never appear.
-const INBOX_CATEGORIES = ["status", "epic", "assignee", "type", "team", "sprint"];
+const INBOX_CATEGORIES = ["status", "epic", "assignee", "creator", "type", "team", "sprint"];
 
 function uniqueSorted(values: (string | null | undefined)[]): string[] {
   return [...new Set(values.filter((v): v is string => Boolean(v)))].sort((a, b) => a.localeCompare(b));
@@ -47,11 +48,24 @@ export function useInboxFilters(rows: NewStoryRow[]) {
     "inbox-filters",
     DEFAULT_FILTERS,
   );
-  const { value: storedTags, setValue: setStoredTags } = useMigratedAccountSetting<InlineTagId[]>(
+  const { value: storedTags, setValue: setStoredTags, isLoading: tagsLoading } = useMigratedAccountSetting<InlineTagId[]>(
     "/api/settings/inbox-row-fields",
     "inbox-row-fields",
     DEFAULT_TAGS,
   );
+
+  // One-time correction: the Creator row field (BRDG-358) shipped after some users
+  // had already persisted their inbox row fields, so it would stay hidden for them.
+  // Surface it once after the stored set has loaded, then respect their toggle.
+  const creatorFixRef = useRef(false);
+  useEffect(() => {
+    if (tagsLoading || creatorFixRef.current || typeof window === "undefined") return;
+    creatorFixRef.current = true;
+    const FIX_KEY = "inbox-creator-field-default-fix";
+    if (localStorage.getItem(FIX_KEY) === "1") return;
+    localStorage.setItem(FIX_KEY, "1");
+    setStoredTags((prev) => (prev.includes("creator") ? prev : [...prev, "creator"]));
+  }, [tagsLoading, setStoredTags]);
 
   const [searchQuery, setSearchQuery] = useState("");
   const [sortField, setSortField] = useState<SortField>(INBOX_DEFAULT_SORT.field);
@@ -60,6 +74,7 @@ export function useInboxFilters(rows: NewStoryRow[]) {
   const statusFilter = useMemo(() => new Set(stored.status), [stored.status]);
   const epicFilter = useMemo(() => new Set(stored.epic), [stored.epic]);
   const assigneeFilter = useMemo(() => new Set(stored.assignee), [stored.assignee]);
+  const creatorFilter = useMemo(() => new Set(stored.creator), [stored.creator]);
   const issueTypeFilter = useMemo(() => new Set(stored.issueType), [stored.issueType]);
   const teamFilter = useMemo(() => new Set(stored.team), [stored.team]);
   const sprintFilter = useMemo(() => new Set(stored.sprint), [stored.sprint]);
@@ -67,6 +82,7 @@ export function useInboxFilters(rows: NewStoryRow[]) {
   const setStatusFilter = useCallback((v: Set<string>) => setStored((p) => ({ ...p, status: [...v] })), [setStored]);
   const setEpicFilter = useCallback((v: Set<string>) => setStored((p) => ({ ...p, epic: [...v] })), [setStored]);
   const setAssigneeFilter = useCallback((v: Set<string>) => setStored((p) => ({ ...p, assignee: [...v] })), [setStored]);
+  const setCreatorFilter = useCallback((v: Set<string>) => setStored((p) => ({ ...p, creator: [...v] })), [setStored]);
   const setIssueTypeFilter = useCallback((v: Set<string>) => setStored((p) => ({ ...p, issueType: [...v] })), [setStored]);
   const setTeamFilter = useCallback((v: Set<string>) => setStored((p) => ({ ...p, team: [...v] })), [setStored]);
   const setSprintFilter = useCallback((v: Set<string>) => setStored((p) => ({ ...p, sprint: [...v] })), [setStored]);
@@ -85,6 +101,7 @@ export function useInboxFilters(rows: NewStoryRow[]) {
   const statusOptions = useMemo(() => uniqueSorted(rows.map((r) => r.jiraStatus)), [rows]);
   const epicOptions = useMemo(() => uniqueSorted(rows.map((r) => r.epic)), [rows]);
   const assigneeOptions = useMemo(() => uniqueSorted(rows.map((r) => r.assignee?.name)), [rows]);
+  const creatorOptions = useMemo(() => uniqueSorted(rows.map((r) => r.reporter?.name)), [rows]);
   const issueTypeOptions = useMemo(() => uniqueSorted(rows.map((r) => r.type)), [rows]);
   const teamOptions = useMemo(
     () => uniqueSorted(rows.map((r) => (r.sprintName ? extractTeamPrefix(r.sprintName) : null))),
@@ -107,6 +124,10 @@ export function useInboxFilters(rows: NewStoryRow[]) {
         const name = r.assignee?.name;
         if (!name || !assigneeFilter.has(name)) return false;
       }
+      if (creatorFilter.size > 0) {
+        const name = r.reporter?.name;
+        if (!name || !creatorFilter.has(name)) return false;
+      }
       if (issueTypeFilter.size > 0 && !issueTypeFilter.has(r.type)) return false;
       if (teamFilter.size > 0) {
         const prefix = r.sprintName ? extractTeamPrefix(r.sprintName) : null;
@@ -114,7 +135,7 @@ export function useInboxFilters(rows: NewStoryRow[]) {
       }
       if (sprintFilter.size > 0 && (!r.sprintName || !sprintFilter.has(r.sprintName))) return false;
       if (q.length >= 1) {
-        const haystack = `${r.key} ${r.title} ${r.assignee?.name ?? ""} ${r.epic ?? ""}`.toLowerCase();
+        const haystack = `${r.key} ${r.title} ${r.assignee?.name ?? ""} ${r.reporter?.name ?? ""} ${r.epic ?? ""}`.toLowerCase();
         if (!haystack.includes(q)) return false;
       }
       return true;
@@ -142,10 +163,10 @@ export function useInboxFilters(rows: NewStoryRow[]) {
       }
     });
     return sorted;
-  }, [rows, searchQuery, statusFilter, epicFilter, assigneeFilter, issueTypeFilter, teamFilter, sprintFilter, sortField, sortDir]);
+  }, [rows, searchQuery, statusFilter, epicFilter, assigneeFilter, creatorFilter, issueTypeFilter, teamFilter, sprintFilter, sortField, sortDir]);
 
   const activeFilterCount =
-    statusFilter.size + epicFilter.size + assigneeFilter.size + issueTypeFilter.size + teamFilter.size + sprintFilter.size;
+    statusFilter.size + epicFilter.size + assigneeFilter.size + creatorFilter.size + issueTypeFilter.size + teamFilter.size + sprintFilter.size;
 
   const resetFilters = useCallback(() => setStored(DEFAULT_FILTERS), [setStored]);
 
@@ -163,6 +184,7 @@ export function useInboxFilters(rows: NewStoryRow[]) {
       statusFilter,
       epicFilter,
       assigneeFilter,
+      creatorFilter,
       readinessFilter: new Set<string>(),
       editStateFilter: new Set<string>(),
       issueTypeFilter,
@@ -171,6 +193,7 @@ export function useInboxFilters(rows: NewStoryRow[]) {
       onStatusFilterChange: setStatusFilter,
       onEpicFilterChange: setEpicFilter,
       onAssigneeFilterChange: setAssigneeFilter,
+      onCreatorFilterChange: setCreatorFilter,
       onReadinessFilterChange: noop,
       onEditStateFilterChange: noop,
       onIssueTypeFilterChange: setIssueTypeFilter,
@@ -179,6 +202,7 @@ export function useInboxFilters(rows: NewStoryRow[]) {
       statusOptions,
       epicOptions,
       assigneeOptions,
+      creatorOptions,
       issueTypeOptions,
       teamOptions,
       sprintOptions,
@@ -191,9 +215,9 @@ export function useInboxFilters(rows: NewStoryRow[]) {
       hideSprintStateOptions: true,
     }),
     [
-      statusFilter, epicFilter, assigneeFilter, issueTypeFilter, teamFilter, sprintFilter,
-      setStatusFilter, setEpicFilter, setAssigneeFilter, setIssueTypeFilter, setTeamFilter, setSprintFilter,
-      statusOptions, epicOptions, assigneeOptions, issueTypeOptions, teamOptions, sprintOptions, sprintNameMap,
+      statusFilter, epicFilter, assigneeFilter, creatorFilter, issueTypeFilter, teamFilter, sprintFilter,
+      setStatusFilter, setEpicFilter, setAssigneeFilter, setCreatorFilter, setIssueTypeFilter, setTeamFilter, setSprintFilter,
+      statusOptions, epicOptions, assigneeOptions, creatorOptions, issueTypeOptions, teamOptions, sprintOptions, sprintNameMap,
       resetFilters, visibleTags, handleColumnToggle, resetColumns, noop,
     ],
   );

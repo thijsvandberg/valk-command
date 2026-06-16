@@ -137,6 +137,22 @@ describe("FilterControlsPanel (BRDG-344)", () => {
     expect(onColumnReset).not.toHaveBeenCalled();
   });
 
+  it("renders a Reporter category only when its props are supplied, and toggles it (BRDG-358)", () => {
+    // Absent by default (board does not pass reporter props).
+    render(<FilterControlsPanel {...makeProps()} />);
+    expect(screen.queryByRole("button", { name: /^Reporter/ })).toBeNull();
+
+    const onCreatorFilterChange = vi.fn();
+    render(
+      <FilterControlsPanel
+        {...makeProps({ creatorFilter: new Set(), onCreatorFilterChange, creatorOptions: ["Alice", "Bob"] })}
+      />,
+    );
+    fireEvent.click(screen.getByRole("button", { name: /^Reporter/ }));
+    fireEvent.click(screen.getByText("Alice"));
+    expect(onCreatorFilterChange).toHaveBeenCalledWith(new Set(["Alice"]));
+  });
+
   it("limits the rail to the category whitelist, in order (BRDG-357 inbox)", () => {
     render(
       <FilterControlsPanel

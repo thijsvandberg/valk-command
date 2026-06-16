@@ -83,7 +83,7 @@ describe("useInboxFilters (BRDG-357)", () => {
   it("whitelists only the inbox filter categories and hides sprint-state options", () => {
     const { result } = renderHook(() => useInboxFilters(ROWS));
     expect(result.current.filterProps.categoryWhitelist).toEqual([
-      "status", "epic", "assignee", "type", "team", "sprint",
+      "status", "epic", "assignee", "creator", "type", "team", "sprint",
     ]);
     expect(result.current.filterProps.hideSprintStateOptions).toBe(true);
   });
@@ -104,13 +104,37 @@ describe("useInboxFilters (BRDG-357)", () => {
     expect(writes).not.toContain("/api/settings/sprint-board-filters");
   });
 
-  it("defaults the inbox display tags to a lean Epic/SP/Assignee subset", () => {
+  it("defaults the inbox display tags to a lean Epic/SP/Assignee/Creator subset", () => {
     const { result } = renderHook(() => useInboxFilters(ROWS));
     const tags = result.current.visibleTags;
     expect(tags.has("epic")).toBe(true);
     expect(tags.has("storyPoints")).toBe(true);
     expect(tags.has("assignee")).toBe(true);
+    expect(tags.has("creator")).toBe(true);
     expect(tags.has("notes")).toBe(false);
     expect(tags.has("quality")).toBe(false);
+  });
+
+  it("derives creator options from the rows' reporters", () => {
+    const rows = [
+      row({ key: "A", reporter: { name: "Alice", initials: "A", color: "#000" } }),
+      row({ key: "B", reporter: { name: "Bob", initials: "B", color: "#111" } }),
+      row({ key: "C", reporter: { name: "Alice", initials: "A", color: "#000" } }),
+      row({ key: "D" }),
+    ];
+    const { result } = renderHook(() => useInboxFilters(rows));
+    expect(result.current.filterProps.creatorOptions).toEqual(["Alice", "Bob"]);
+  });
+
+  it("filters the list by selected creator (reporter)", () => {
+    const rows = [
+      row({ key: "A", reporter: { name: "Alice", initials: "A", color: "#000" } }),
+      row({ key: "B", reporter: { name: "Bob", initials: "B", color: "#111" } }),
+      row({ key: "C" }),
+    ];
+    const { result } = renderHook(() => useInboxFilters(rows));
+    act(() => result.current.filterProps.onCreatorFilterChange?.(new Set(["Alice"])));
+    expect(result.current.filteredRows.map((r) => r.key)).toEqual(["A"]);
+    expect(result.current.activeFilterCount).toBe(1);
   });
 });

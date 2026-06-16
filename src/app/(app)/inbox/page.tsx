@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useMemo, useRef, useState } from "react";
 import useSWR, { mutate as globalMutate } from "swr";
 import dynamic from "next/dynamic";
 import { Inbox, Check, Undo2 } from "lucide-react";
@@ -23,6 +23,7 @@ import { useInboxGroupBy } from "@/components/sprint-board/useInboxGroupBy";
 import { INBOX_SORT_OPTIONS } from "@/components/sprint-board/filter-bar-types";
 import { saveTicketMetadata } from "@/components/sprint-board/sprint-board-utils";
 import { CONTENT_MAX } from "@/lib/layout";
+import { relativeDate } from "@/lib/date-utils";
 import type { JiraStatus, Ticket } from "@/types/ticket";
 import type { NewStoriesResponse, NewStoryRow } from "@/lib/new-stories-types";
 
@@ -67,7 +68,7 @@ function rowToTicket(row: NewStoryRow): Ticket {
 }
 
 export default function InboxPage() {
-  const pageTitle = usePageTitle("New story inbox");
+  const pageTitle = usePageTitle("Inbox");
   const { toast, showToast, dismissToast } = useToast();
 
   const { data, isLoading, mutate: mutateList } = useSWR<NewStoriesResponse>(LIST_KEY);
@@ -101,6 +102,16 @@ export default function InboxPage() {
     for (const r of rows) if (r.sprintName) map[r.sprintName] = r.sprintName;
     return map;
   }, [rows]);
+
+  // Suppress the chip that just repeats the active group's value: grouped by
+  // Reporter drops the "by <name>" chip (handled by removing the creator tag);
+  // Epic and Sprint are suppressed below via hideEpic / showSprint (BRDG-358).
+  const rowTags = useMemo(() => {
+    if (groupBy !== "creator") return visibleTags;
+    const next = new Set(visibleTags);
+    next.delete("creator");
+    return next;
+  }, [visibleTags, groupBy]);
 
   const refreshCount = useCallback(() => void globalMutate(COUNT_KEY), []);
 
@@ -169,14 +180,39 @@ export default function InboxPage() {
     [mutateList, refreshCount, showToast, undoMarkRead],
   );
 
-  const onCheckboxClick = useCallback((key: string) => {
-    setCheckedKeys((prev) => {
-      const next = new Set(prev);
-      if (next.has(key)) next.delete(key);
-      else next.add(key);
-      return next;
-    });
-  }, []);
+  // Shift-click range selection, scoped to a single group so it behaves the same
+  // in every grouping mode (date / sprint / epic / creator). The anchor records
+  // the last plain click; a subsequent shift-click in the same group applies that
+  // click's resulting checked-state across the whole span (mirrors the board).
+  const rangeAnchorRef = useRef<{ groupKey: string; index: number; checked: boolean } | null>(null);
+  const handleRowCheckbox = useCallback(
+    (groupKey: string, groupKeys: string[], key: string, idx: number, shiftKey: boolean) => {
+      const anchor = rangeAnchorRef.current;
+      if (shiftKey && anchor && anchor.groupKey === groupKey) {
+        const from = Math.min(anchor.index, idx);
+        const to = Math.max(anchor.index, idx);
+        const rangeKeys = groupKeys.slice(from, to + 1);
+        setCheckedKeys((prev) => {
+          const next = new Set(prev);
+          for (const k of rangeKeys) {
+            if (anchor.checked) next.add(k);
+            else next.delete(k);
+          }
+          return next;
+        });
+        return;
+      }
+      setCheckedKeys((prev) => {
+        const next = new Set(prev);
+        const willBeChecked = !next.has(key);
+        rangeAnchorRef.current = { groupKey, index: idx, checked: willBeChecked };
+        if (willBeChecked) next.add(key);
+        else next.delete(key);
+        return next;
+      });
+    },
+    [],
+  );
 
   const allChecked = filteredRows.length > 0 && filteredRows.every((r) => checkedKeys.has(r.key));
   const toggleAll = useCallback(() => {
@@ -212,8 +248,31 @@ export default function InboxPage() {
     <>
       {pageTitle}
       <div className="flex h-full flex-col">
-        <ViewHeader icon={<Inbox size={16} strokeWidth={1.5} />}>
-          <ViewHeaderTitle>New story inbox</ViewHeaderTitle>
+        {/* Controls live in the header's actions slot (group-by · search · sort ·
+            filter), so the inbox needs no separate controls bar. Notifications are
+            hidden here: the inbox is a triage surface, not a place to react to alerts. */}
+        <ViewHeader
+          icon={<Inbox size={16} strokeWidth={1.5} />}
+          hideNotifications
+          actions={
+            <div className="flex items-center gap-1">
+              <InboxGroupByDropdown value={groupBy} onChange={setGroupBy} />
+              <UnifiedControlsCluster
+                searchQuery={searchQuery}
+                onSearchChange={setSearchQuery}
+                searchCount={searchCount}
+                sortField={sortField}
+                sortDir={sortDir}
+                onSortChange={onSortChange}
+                sortOptions={INBOX_SORT_OPTIONS}
+                sortDefaultField="created"
+                activeFilterCount={activeFilterCount}
+                filterProps={filterProps}
+              />
+            </div>
+          }
+        >
+          <ViewHeaderTitle>Inbox</ViewHeaderTitle>
           {data && (
             <span className="ml-2 rounded-full bg-overlay-subtle px-2 py-0.5 text-label tabular-nums text-text-tertiary">
               {rows.length}
@@ -221,28 +280,9 @@ export default function InboxPage() {
           )}
         </ViewHeader>
 
-        {/* Controls bar: search · sort · filter, mirroring the Sprint Board. */}
-        <BarContainer>
-          <div className={`${CONTENT_MAX} flex h-full items-center justify-end gap-1`}>
-            <InboxGroupByDropdown value={groupBy} onChange={setGroupBy} />
-            <UnifiedControlsCluster
-              searchQuery={searchQuery}
-              onSearchChange={setSearchQuery}
-              searchCount={searchCount}
-              sortField={sortField}
-              sortDir={sortDir}
-              onSortChange={onSortChange}
-              sortOptions={INBOX_SORT_OPTIONS}
-              sortDefaultField="created"
-              activeFilterCount={activeFilterCount}
-              filterProps={filterProps}
-            />
-          </div>
-        </BarContainer>
-
         <div className="flex flex-1 overflow-hidden">
           <div className="flex min-w-0 flex-1 flex-col overflow-hidden">
-            <div className="flex-1 overflow-y-auto px-8 py-5">
+            <div className={`flex-1 overflow-y-auto px-8 py-5 ${checkedKeys.size > 0 ? "pb-28" : ""}`}>
               <div className={CONTENT_MAX}>
                 {isLoading && !data ? (
                   <div className="space-y-2">
@@ -304,12 +344,16 @@ export default function InboxPage() {
                                   isSelected={row.key === selectedKey}
                                   someChecked={checkedKeys.size > 0}
                                   isDragActive={false}
-                                  tags={visibleTags}
-                                  showSprint
+                                  tags={rowTags}
+                                  hideEpic={groupBy === "epic"}
+                                  showSprint={groupBy !== "sprint"}
                                   sprintNameMap={sprintNameMap}
                                   selectedTicket={selectedKey}
                                   onSelectTicket={(key) => setSelectedKey(key)}
-                                  onCheckboxClick={(key) => onCheckboxClick(key)}
+                                  onCheckboxClick={(key, clickIdx, shiftKey) =>
+                                    handleRowCheckbox(group.key, groupKeys, key, clickIdx, shiftKey)
+                                  }
+                                  createdAtLabel={groupBy !== "date" ? relativeDate(row.jiraCreatedAt) : undefined}
                                   onMarkRead={(key) => void markRead([key])}
                                   isLastInCard={idx === group.rows.length - 1}
                                 />
@@ -325,48 +369,49 @@ export default function InboxPage() {
             </div>
 
             {checkedKeys.size > 0 && (
-              <BarContainer
-                border
-                borderPosition="top"
-                className="bulk-bar-enter sticky bottom-0 z-50 bg-[var(--color-surface-base)] px-8"
-              >
-                <div className={`${CONTENT_MAX} flex items-center gap-2 sm:gap-3`}>
-                  <Tooltip content={allChecked ? "Deselect all" : "Select all"}>
-                    <button
-                      type="button"
-                      onClick={toggleAll}
-                      aria-label={allChecked ? "Deselect all" : "Select all"}
-                      className="flex shrink-0 items-center justify-center cursor-pointer"
-                    >
-                      <Checkbox checked={allChecked} indeterminate={!allChecked} />
-                    </button>
-                  </Tooltip>
-
-                  <span className="shrink-0 text-body-sm font-medium text-text-secondary whitespace-nowrap tabular-nums">
-                    {checkedKeys.size}/{filteredRows.length} selected
-                  </span>
-
-                  <BarDivider />
-
-                  <Tooltip content="Mark the selected stories as read; they leave the inbox (undoable)">
-                    <Button variant="primary" size="md" onClick={() => void markRead([...checkedKeys])}>
-                      <Check className="h-3.5 w-3.5 shrink-0" strokeWidth={2} />
-                      Mark {checkedKeys.size} as read
-                    </Button>
-                  </Tooltip>
-
-                  <div className="flex-1" />
-
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    className="shrink-0 border-0 bg-transparent text-text-tertiary hover:bg-transparent hover:text-text-secondary"
-                    onClick={() => setCheckedKeys(new Set())}
+              <div className="pointer-events-none fixed inset-x-0 bottom-0 z-50 flex justify-center px-4 pb-6">
+                <div className="pointer-events-auto w-full max-w-5xl px-3 sm:px-4">
+                  <BarContainer
+                    border={false}
+                    className="bulk-bar-enter -mx-3 gap-2 rounded-xl border border-border-default bg-[var(--color-surface-floating)] shadow-[var(--shadow-lg)] sm:-mx-4 sm:gap-3"
                   >
-                    Clear
-                  </Button>
+                    <Tooltip content={allChecked ? "Deselect all" : "Select all"}>
+                      <button
+                        type="button"
+                        onClick={toggleAll}
+                        aria-label={allChecked ? "Deselect all" : "Select all"}
+                        className="flex shrink-0 items-center justify-center cursor-pointer"
+                      >
+                        <Checkbox checked={allChecked} indeterminate={!allChecked} />
+                      </button>
+                    </Tooltip>
+
+                    <span className="shrink-0 text-body-sm font-medium text-text-secondary whitespace-nowrap tabular-nums">
+                      {checkedKeys.size}/{filteredRows.length} selected
+                    </span>
+
+                    <BarDivider />
+
+                    <Tooltip content="Mark the selected stories as read; they leave the inbox (undoable)">
+                      <Button variant="primary" size="md" onClick={() => void markRead([...checkedKeys])}>
+                        <Check className="h-3.5 w-3.5 shrink-0" strokeWidth={2} />
+                        Mark {checkedKeys.size} as read
+                      </Button>
+                    </Tooltip>
+
+                    <div className="flex-1" />
+
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="shrink-0 border-0 bg-transparent text-text-tertiary hover:bg-transparent hover:text-text-secondary"
+                      onClick={() => setCheckedKeys(new Set())}
+                    >
+                      Clear
+                    </Button>
+                  </BarContainer>
                 </div>
-              </BarContainer>
+              </div>
             )}
           </div>
 
