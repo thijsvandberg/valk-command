@@ -7,10 +7,16 @@ const mutate = vi.fn();
 const apiFetch = vi.fn().mockResolvedValue({ ok: true });
 let swrData: SessionTicket[] | undefined;
 let swrLoading = false;
+let swrKey: unknown;
+let swrFetcher: (() => Promise<unknown>) | undefined;
 
 vi.mock("next/navigation", () => ({ useRouter: () => ({ push }) }));
 vi.mock("swr", () => ({
-  default: () => ({ data: swrData, error: undefined, isLoading: swrLoading, mutate }),
+  default: (key: unknown, fetcher: () => Promise<unknown>) => {
+    swrKey = key;
+    swrFetcher = fetcher;
+    return { data: swrData, error: undefined, isLoading: swrLoading, mutate };
+  },
 }));
 vi.mock("@/lib/api-client", async (importOriginal) => ({
   ...(await importOriginal<typeof import("@/lib/api-client")>()),
@@ -110,6 +116,21 @@ describe("StoryWriterLandingPage (BRDG-325)", () => {
     apiFetch.mockClear();
     swrLoading = false;
     swrData = undefined;
+  });
+
+  // The sidebar's useActiveWriterSessions caches the same endpoint as a raw
+  // ActiveSession[] (no `key`). If this view shared that endpoint URL as its SWR key, the
+  // raw shape leaked in on soft navigation and crashed TicketStatusPill. This view must
+  // therefore use a cache key that is NOT the raw endpoint URL, while still fetching it.
+  it("uses a cache key distinct from the raw active-sessions endpoint, but still fetches it", async () => {
+    swrData = [];
+    render(<StoryWriterLandingPage />);
+    expect(swrKey).toBeDefined();
+    expect(swrKey).not.toBe("/api/story-writer/active-sessions");
+
+    apiFetch.mockResolvedValueOnce([]);
+    await swrFetcher?.();
+    expect(apiFetch).toHaveBeenCalledWith("/api/story-writer/active-sessions");
   });
 
   it("shows the empty state (no card heading) when there are no sessions", () => {

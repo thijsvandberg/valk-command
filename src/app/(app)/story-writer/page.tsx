@@ -33,16 +33,23 @@ const StoryWriterLauncherModal = dynamic(
   { ssr: false },
 );
 
-// One stable key shared by the SWR hook and useTicketActions' activeListKey, so the
-// optimistic globalMutate writes in saveTicketMetadata/saveStoryPoints land on the same
-// cache entry the table reads (BRDG-325).
-const SESSIONS_KEY = "/api/story-writer/active-sessions";
+const SESSIONS_API = "/api/story-writer/active-sessions";
+
+// This view owns a cache key distinct from the raw endpoint URL. The same endpoint is
+// also consumed by the sidebar's useActiveWriterSessions, which caches the raw
+// ActiveSession[] shape (no `key`). Sharing one SWR key let that raw shape leak into this
+// view on a soft navigation and crash TicketStatusPill (`key` is undefined), while a hard
+// refresh worked because the cache was cold and this view's own fetcher ran. A dedicated
+// key keeps the two shapes from colliding. useTicketActions' activeListKey points at this
+// same key, so the optimistic globalMutate writes in saveTicketMetadata/saveStoryPoints
+// still land on the entry the table reads (BRDG-325).
+const SESSIONS_KEY = "story-writer/board-sessions";
 
 // Fetch active sessions and map them to SessionTickets (Ticket + session fields). The
 // cache holds the mapped tickets so useTicketActions' optimistic spreads operate on the
 // Ticket shape it expects; the session fields ride along and survive every spread.
 const fetchSessions = () =>
-  apiFetch<ActiveSession[]>(SESSIONS_KEY).then((data) => data.map(sessionToSessionTicket));
+  apiFetch<ActiveSession[]>(SESSIONS_API).then((data) => data.map(sessionToSessionTicket));
 
 // Inline signals shown on a row here. Story Points and the epic chip stay (read-only,
 // see the omitted edit handlers below); Business Value and the assignee are intentionally
@@ -87,7 +94,7 @@ export default function StoryWriterLandingPage() {
   }, [tickets, syncFromApiTickets]);
 
   const handleDiscard = useCallback(async (sessionId: string) => {
-    await apiFetch(`${SESSIONS_KEY}?sessionId=${sessionId}`, { method: "DELETE" });
+    await apiFetch(`${SESSIONS_API}?sessionId=${sessionId}`, { method: "DELETE" });
     mutate();
   }, [mutate]);
 
