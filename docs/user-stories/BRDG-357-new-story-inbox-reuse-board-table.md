@@ -64,6 +64,28 @@ Reuse the existing `SidePanel` selection path (already used by the BRDG-356 page
 6. Remove the now-dead bespoke table code (move to `deleted/` per repo rule, not delete).
 7. Tests: filter subset renders, row uses `TicketStatusPill`, mark-as-read still works, display toggles persist under the inbox key.
 
+## Implementation Plan
+
+Decided during implementation (Opus plan + codebase verification):
+
+**A. Render `BoardRow` directly in a flat `<table>`, NOT through `TicketTable`.** `TicketTable` is hard-coupled to board-only concerns (drag-drop, virtualization, grouping, pipelines, ~50 props). The Story Writer landing (`src/app/(app)/story-writer/page.tsx`) already establishes the sanctioned pattern: a plain `<table><tbody>` mapping `BoardRow` with `tags`/`showSprint`/`onDiscard`. The inbox mirrors that. Grouping is removed here (returns in BRDG-358), so the table's grouping value is moot.
+
+**B. Build a lighter `useInboxFilters` hook, NOT parameterise `useSprintBoardFilters` in place.** The board hook is wired to URL routing, saved views, dual all/sprint stores, sprint-state buckets, deep-index search and three hardcoded board settings endpoints; threading inbox keys through it is high-risk and touches the board's hottest hook. Instead reuse the already-decoupled primitives — `FilterControlsPanel`, `UnifiedControlsCluster`, `BoardFieldList`, `filter-bar-types`, `useMigratedAccountSetting` — inside a small new hook with inbox settings keys. This best guarantees AC #7 (board untouched).
+
+**C. Add a real `jiraStatus` to `NewStoryRow`** (from `ticket.status`, cheap) so the status pill and the Status filter are meaningful rather than a hardcoded "TO DO".
+
+Steps:
+1. `NewStoryRow` + `listNewStories`: add `jiraStatus`. Update query test.
+2. New settings routes `/api/settings/inbox-filters` + `/api/settings/inbox-row-fields` via `createUserJsonSettingRoute`.
+3. `FilterControlsPanel`: add optional `categoryWhitelist?: string[]` to drop Readiness/Changes/Gaps for the inbox. Board passes nothing -> unchanged.
+4. `BoardRow`: add optional `onMarkRead?: (key) => void` rendering a hover-revealed trailing Check action (mirrors the `onDiscard` overlay), inert on the board.
+5. New `useInboxFilters` hook (filter/sort/search over `NewStoryRow[]` + display config under inbox keys). Default display tags: Epic, SP, Assignee on.
+6. Rebuild page at `src/app/(app)/inbox/page.tsx`: `UnifiedControlsCluster` + flat `BoardRow` list fed by `useInboxFilters`, keep markRead optimistic+undo and `SidePanel`. Bulk mark-as-read keeps the existing bespoke bottom bar. Move old `new-stories/page.tsx` + test to `deleted/`. Keep `new-stories-grouping.ts` in place (unused; BRDG-358 reuses it).
+7. Nav `href`+label, `routes.test.tsx`, page title. Count endpoint stays `/api/new-stories/count`.
+8. Tests per the Tests section.
+
+Risk/notes: Team/Sprint filter for the inbox is derived from `sprintName` (no sprintId on the row) via `extractTeamPrefix`; sort is a client sort over the row fields (no rank/index context).
+
 ## Acceptance Criteria
 
 - [ ] The inbox renders rows with the **same `BoardRow`** used on the Sprint Board (same status pill, epic chip, SP/BV, assignee, etc.).

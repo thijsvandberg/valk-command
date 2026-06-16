@@ -85,6 +85,12 @@ describe("listNewStories (BRDG-356)", () => {
     expect(rows[0].reporter?.name).toBe("Bob");
     expect(rows[0].assignee?.name).toBe("Carol");
   });
+
+  it("exposes the ticket's Jira status on the row", async () => {
+    seed("VPL-1", { status: "IN PROGRESS" });
+    const rows = await listNewStories();
+    expect(rows[0].jiraStatus).toBe("IN PROGRESS");
+  });
 });
 
 describe("countNewStories (BRDG-356)", () => {

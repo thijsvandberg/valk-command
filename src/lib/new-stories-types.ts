@@ -1,4 +1,4 @@
-import type { Assignee, IssueType } from "@/types/ticket";
+import type { Assignee, IssueType, JiraStatus } from "@/types/ticket";
 
 // One row of the New stories inbox (BRDG-356): a recently-created, still-unread
 // ticket with just the fields the review table renders. Deliberately lighter
@@ -7,6 +7,8 @@ export interface NewStoryRow {
   key: string;
   title: string;
   type: IssueType;
+  /** Current Jira status, so the inbox row shows the real status pill and can be filtered. */
+  jiraStatus: JiraStatus;
   epic: string | null;
   epicKey: string | null;
   storyPoints: number | null;

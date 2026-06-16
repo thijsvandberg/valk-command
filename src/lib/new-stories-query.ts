@@ -2,7 +2,7 @@ import { db } from "@/db";
 import { ticket, ticketMetadata, sprintNameCache } from "@/db/schema";
 import { and, or, eq, isNull, inArray, notInArray, desc, sql } from "drizzle-orm";
 import { buildAssignee } from "@/lib/user-utils";
-import type { IssueType } from "@/types/ticket";
+import type { IssueType, JiraStatus } from "@/types/ticket";
 import type { NewStoryRow } from "@/lib/new-stories-types";
 
 // Issue types the PO reviews in the inbox. Sub-tasks are deliberately excluded
@@ -39,6 +39,7 @@ export async function listNewStories(): Promise<NewStoryRow[]> {
     key: t.jiraKey,
     title: t.title,
     type: (t.type ?? "story") as IssueType,
+    jiraStatus: (t.status ?? "TO DO") as JiraStatus,
     epic: t.epic ?? null,
     epicKey: t.epicKey ?? null,
     storyPoints: t.storyPoints ?? null,

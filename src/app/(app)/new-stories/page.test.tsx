@@ -45,6 +45,7 @@ function row(key: string, title: string) {
     key,
     title,
     type: "story" as const,
+    jiraStatus: "TO DO" as const,
     epic: null,
     epicKey: null,
     storyPoints: null,

@@ -15,6 +15,7 @@ function row(partial: Partial<NewStoryRow> & { key: string }): NewStoryRow {
   return {
     title: partial.title ?? partial.key,
     type: partial.type ?? "story",
+    jiraStatus: partial.jiraStatus ?? "TO DO",
     epic: partial.epic ?? null,
     epicKey: partial.epicKey ?? null,
     storyPoints: partial.storyPoints ?? null,

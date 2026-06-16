@@ -130,6 +130,11 @@ export const DEFAULT_VISIBLE_TAGS: InlineTagId[] = ROW_FIELDS.map((f) => f.id);
 // them visible; useColumnConfig applies this once on load.
 export const BADGE_DEFAULT_TAGS: InlineTagId[] = ["storyPoints", "businessValue", "epic", "assignee"];
 
+// New story inbox default inline fields (BRDG-357): a lean subset, since the
+// inbox is a quick triage view. Epic/SP/Assignee on; refinement/QS/notes/PO
+// readiness/edit-state/BV off by default. The PO can toggle the rest via Display.
+export const INBOX_DEFAULT_VISIBLE_TAGS: InlineTagId[] = ["epic", "storyPoints", "assignee"];
+
 // Migration map from the legacy column ids to the new inline tag ids (BRDG-239).
 // Note: poReadiness/refinement/editState have no legacy column equivalent, so they are
 // NOT listed here and always default to visible (poStatus was never an actual column,
