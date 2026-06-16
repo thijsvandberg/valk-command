@@ -17,6 +17,7 @@ import { IssueTypeIcon } from "@/components/shared/IssueTypeIcon";
 import { Avatar } from "@/components/shared/Avatar";
 import { ChildIssueRow } from "@/components/ticket-detail/ChildIssueRow";
 import { relativeDate, formatAbsoluteDate } from "@/lib/date-utils";
+import { CONTENT_MAX } from "@/lib/layout";
 import { useTicketDetail } from "@/hooks/useSprintBoard";
 import { saveTicketMetadata } from "@/components/sprint-board/sprint-board-utils";
 import type { Ticket, JiraStatus, IssueType, Subtask } from "@/types/ticket";
@@ -452,7 +453,8 @@ export default function CleanupPage() {
                 queue; row 2 = the multi-select facet filters (type/epic/assignee/
                 reporter/last-activity) plus the revival toggle. Every control carries
                 a tooltip explaining what it does (PO feedback #3). */}
-            <div className="flex flex-col gap-2 border-b border-border-subtle px-8 py-3">
+            <div className="border-b border-border-subtle px-8 py-3">
+              <div className={`${CONTENT_MAX} flex flex-col gap-2`}>
               <div className="flex flex-wrap items-center gap-2">
                 <Tooltip content="Order the list by deprecation score, revival score, staleness, last-scanned time, or ticket key">
                   <LabeledSelect
@@ -639,6 +641,7 @@ export default function CleanupPage() {
                   </button>
                 </Tooltip>
               </div>
+              </div>
             </div>
 
             {/* Ticket list. Reuses the app's standard ChildIssueRow (and its
@@ -648,6 +651,7 @@ export default function CleanupPage() {
                 is no horizontal scroll. The full per-topic breakdown lives in the
                 DispositionPanel drawer. */}
             <div className="flex-1 overflow-y-auto px-8 py-5">
+              <div className={CONTENT_MAX}>
               {isLoading && !data ? (
                 <div className="space-y-2">
                   {Array.from({ length: 6 }).map((_, i) => (
@@ -737,6 +741,7 @@ export default function CleanupPage() {
                   })}
                 </div>
               )}
+              </div>
             </div>
 
             {/* Multi-select bulk bar, restyled to match the sprint board's
@@ -748,8 +753,9 @@ export default function CleanupPage() {
               <BarContainer
                 border
                 borderPosition="top"
-                className="bulk-bar-enter sticky bottom-0 z-50 gap-2 bg-[var(--color-surface-base)] px-8 sm:gap-3"
+                className="bulk-bar-enter sticky bottom-0 z-50 bg-[var(--color-surface-base)] px-8"
               >
+                <div className={`${CONTENT_MAX} flex items-center gap-2 sm:gap-3`}>
                 {/* Select all / deselect all visible rows (mirrors the board's toggle). */}
                 <Tooltip content={allVisibleChecked ? "Deselect all" : "Select all visible"}>
                   <button
@@ -836,6 +842,7 @@ export default function CleanupPage() {
                 >
                   Clear
                 </Button>
+                </div>
               </BarContainer>
             )}
           </div>

@@ -207,6 +207,14 @@ describe("CleanupPage", () => {
     expect(within(screen.getByTestId("row-BT-1")).getByText(/Ancient ticket/)).toBeInTheDocument();
   });
 
+  it("caps and centers the controls and list content on wide screens (BRDG-361)", () => {
+    swrData = RESPONSE;
+    const { container } = render(<CleanupPage />);
+    // Controls block + list content + bulk-bar inner all share the same cap class.
+    const caps = container.querySelectorAll(".max-w-\\[1536px\\]");
+    expect(caps.length).toBeGreaterThanOrEqual(2);
+  });
+
   it("renders the scan rationale inline for rows that have one, and omits it otherwise", () => {
     swrData = RESPONSE;
     render(<CleanupPage />);

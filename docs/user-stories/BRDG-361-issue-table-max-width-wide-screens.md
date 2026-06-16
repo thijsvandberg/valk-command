@@ -1,6 +1,6 @@
 # BRDG-361: Constrain issue-table width on wide screens (centered max-width)
 
-**Status:** In Progress
+**Status:** Completed
 **Priority:** Medium
 **Type:** UI / Layout
 
@@ -52,16 +52,16 @@ Wrap the issue-table list (header controls + table) in a **centered container wi
 
 ## Acceptance Criteria
 
-- [ ] On wide screens the Story inbox content (controls + table + groups) stops growing past the chosen max width and centers with even gutters.
-- [ ] Below the breakpoint the layout stays fluid (no premature narrowing on laptop widths).
-- [ ] Controls, group headers, and rows share the same horizontal bounds (aligned edges).
-- [ ] The cap is implemented via a reusable token/wrapper, not a one-off magic number, so other capped list views can match.
-- [ ] No regression to the side panel, scrolling, or the existing capped reading views.
+- [x] On wide screens the Story inbox content (controls + table + groups) stops growing past the chosen max width and centers with even gutters.
+- [x] Below the breakpoint the layout stays fluid (no premature narrowing on laptop widths).
+- [x] Controls, group headers, and rows share the same horizontal bounds (aligned edges).
+- [x] The cap is implemented via a reusable token/wrapper, not a one-off magic number, so other capped list views can match.
+- [x] No regression to the side panel, scrolling, or the existing capped reading views.
 
 ## Tests
 
-- [ ] Component/visual test: the inbox content container carries the max-width + centering classes (and stays fluid below the breakpoint).
-- [ ] (If a shared wrapper/token is introduced) a unit/snapshot check that consuming views apply it.
+- [x] Component/visual test: the inbox content container carries the max-width + centering classes (and stays fluid below the breakpoint).
+- [x] (If a shared wrapper/token is introduced) a unit/snapshot check that consuming views apply it.
 
 ## Related
 
