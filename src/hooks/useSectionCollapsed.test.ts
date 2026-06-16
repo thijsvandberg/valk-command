@@ -34,12 +34,21 @@ describe("useSectionCollapsed", () => {
     expect(JSON.parse(raw as string)).toEqual({ "jira-comments": true });
   });
 
-  it("does not persist a section once it is expanded again", () => {
+  it("persists an explicit expand so a collapsed-by-default section stays open", () => {
     const { result } = renderHook(() => useSectionCollapsed());
-    act(() => result.current.toggle("confluence"));
-    act(() => result.current.toggle("confluence"));
+    act(() => result.current.toggle("confluence")); // collapse
+    act(() => result.current.toggle("confluence")); // expand again
     const raw = window.localStorage.getItem("bridge:section-collapsed");
-    expect(JSON.parse(raw as string)).toEqual({});
+    expect(JSON.parse(raw as string)).toEqual({ confluence: false });
+  });
+
+  it("honours a fallback default until the section is explicitly toggled", () => {
+    const { result } = renderHook(() => useSectionCollapsed());
+    // Never toggled: the fallback decides the state.
+    expect(result.current.isCollapsed("linked-issues", true)).toBe(true);
+    // Toggling from the collapsed fallback expands it and overrides the fallback thereafter.
+    act(() => result.current.toggle("linked-issues", true));
+    expect(result.current.isCollapsed("linked-issues", true)).toBe(false);
   });
 
   it("shares state across separate hook instances (same document)", () => {

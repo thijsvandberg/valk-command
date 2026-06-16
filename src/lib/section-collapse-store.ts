@@ -35,8 +35,10 @@ function hydrate(): void {
     if (!raw) return;
     const parsed = JSON.parse(raw) as Record<string, boolean>;
     if (parsed && typeof parsed === "object") {
+      // Both true and false are stored so an explicit "keep expanded" choice can override a
+      // section whose default is collapsed (e.g. empty Linked Issues).
       for (const [key, value] of Object.entries(parsed)) {
-        if (value) collapsed.set(key, true);
+        collapsed.set(key, Boolean(value));
       }
     }
   } catch {
@@ -49,7 +51,7 @@ function persist(): void {
   try {
     const obj: Record<string, boolean> = {};
     for (const [key, value] of collapsed) {
-      if (value) obj[key] = true;
+      obj[key] = value;
     }
     window.localStorage.setItem(STORAGE_KEY, JSON.stringify(obj));
   } catch {
@@ -91,22 +93,24 @@ export function getServerSectionCollapseVersion(): number {
   return 0;
 }
 
-export function isSectionCollapsed(key: string): boolean {
+// `fallback` is the collapse state to assume when the user has never toggled this section, so a
+// section can default to collapsed (e.g. empty Linked Issues) without losing an explicit choice.
+export function isSectionCollapsed(key: string, fallback = false): boolean {
   hydrate();
-  return collapsed.get(key) === true;
+  const stored = collapsed.get(key);
+  return stored === undefined ? fallback : stored;
 }
 
 export function setSectionCollapsed(key: string, value: boolean): void {
   hydrate();
-  if ((collapsed.get(key) === true) === value) return;
-  if (value) collapsed.set(key, true);
-  else collapsed.delete(key);
+  if (collapsed.get(key) === value) return;
+  collapsed.set(key, value);
   persist();
   emit();
 }
 
-export function toggleSectionCollapsed(key: string): void {
-  setSectionCollapsed(key, !isSectionCollapsed(key));
+export function toggleSectionCollapsed(key: string, fallback = false): void {
+  setSectionCollapsed(key, !isSectionCollapsed(key, fallback));
 }
 
 // Test-only: clear in-memory + persisted state so the module-level store does

@@ -14,8 +14,8 @@ import {
 // section is toggled, so collapsing a heading on one surface updates it on the
 // others immediately.
 export function useSectionCollapsed(): {
-  isCollapsed: (key: string) => boolean;
-  toggle: (key: string) => void;
+  isCollapsed: (key: string, fallback?: boolean) => boolean;
+  toggle: (key: string, fallback?: boolean) => void;
 } {
   useSyncExternalStore(
     subscribeSectionCollapse,
@@ -23,8 +23,8 @@ export function useSectionCollapsed(): {
     getServerSectionCollapseVersion,
   );
 
-  const isCollapsed = useCallback((key: string) => isSectionCollapsed(key), []);
-  const toggle = useCallback((key: string) => toggleSectionCollapsed(key), []);
+  const isCollapsed = useCallback((key: string, fallback?: boolean) => isSectionCollapsed(key, fallback), []);
+  const toggle = useCallback((key: string, fallback?: boolean) => toggleSectionCollapsed(key, fallback), []);
 
   return { isCollapsed, toggle };
 }

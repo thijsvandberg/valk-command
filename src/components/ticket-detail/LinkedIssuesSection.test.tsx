@@ -1,6 +1,7 @@
 import { render, screen, fireEvent, waitFor } from "@testing-library/react";
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { LinkedIssuesSection } from "./LinkedIssuesSection";
+import { __resetSectionCollapseStore } from "@/lib/section-collapse-store";
 import type { LinkedIssue } from "@/types/ticket";
 
 // Mock next/link
@@ -75,10 +76,15 @@ const SAMPLE_ISSUES: LinkedIssue[] = [
 ];
 
 // The header "+" and AI-suggest actions now live behind one "..." menu; opening the link composer
-// means opening that menu and clicking its "Link an issue" item.
+// on a non-empty section means opening that menu and clicking its "Link an issue" item.
 function openLinkComposer() {
   fireEvent.click(screen.getByLabelText("Linked issues actions"));
   fireEvent.click(screen.getByRole("menuitem", { name: "Link an issue" }));
+}
+
+// An empty section starts collapsed; clicking the heading expands it (and auto-reveals the composer).
+function expandSection() {
+  fireEvent.click(screen.getByRole("button", { name: /Linked Issues/i }));
 }
 
 function renderSection(issues: LinkedIssue[] = [], { openLink = true } = {}) {
@@ -86,22 +92,36 @@ function renderSection(issues: LinkedIssue[] = [], { openLink = true } = {}) {
   const result = render(
     <LinkedIssuesSection issues={issues} ticketKey="VPL-1" onMutate={onMutate} />,
   );
-  // The inline link composer is hidden until the header "+" opens it (BRDG-315); most tests here
-  // exercise that composer, so open it by default.
-  if (openLink) openLinkComposer();
+  // Empty sections are collapsed and auto-open the composer on expand; non-empty sections stay
+  // expanded with the composer hidden until the "..." menu opens it.
+  if (openLink) {
+    if (issues.length === 0) expandSection();
+    else openLinkComposer();
+  }
   return { ...result, onMutate };
 }
 
 describe("LinkedIssuesSection", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    __resetSectionCollapseStore();
     mockRecentlyUpdated.mockResolvedValue({ results: [], hasMore: false });
     mockSearchForLinkWithJira.mockResolvedValue({ results: [], hasMore: false });
     mockGetRelatedSuggestions.mockResolvedValue({ suggestions: [], cachedAt: null });
   });
 
-  it("hides the link composer until the header menu's Link action is clicked, and it toggles", () => {
+  it("starts collapsed when empty and auto-reveals the composer on expand", () => {
     renderSection([], { openLink: false });
+    // Collapsed: neither the composer nor the actions menu are shown.
+    expect(screen.queryByPlaceholderText("Link issue...")).toBeNull();
+    expect(screen.queryByLabelText("Linked issues actions")).toBeNull();
+    expandSection();
+    expect(screen.getByPlaceholderText("Link issue...")).toBeInTheDocument();
+  });
+
+  it("does not auto-open the composer when links exist; the menu toggles it", () => {
+    renderSection(SAMPLE_ISSUES, { openLink: false });
+    // Section is expanded (it has content) but the composer stays hidden until requested.
     expect(screen.queryByPlaceholderText("Link issue...")).toBeNull();
     openLinkComposer();
     expect(screen.getByPlaceholderText("Link issue...")).toBeInTheDocument();
@@ -293,7 +313,7 @@ describe("LinkedIssuesSection", () => {
     });
   });
 
-  it("clears input on Escape", async () => {
+  it("closes the composer on Escape", async () => {
     renderSection();
     const input = screen.getByPlaceholderText("Link issue...");
     fireEvent.change(input, { target: { value: "test" } });
@@ -304,9 +324,54 @@ describe("LinkedIssuesSection", () => {
 
     fireEvent.keyDown(input, { key: "Escape" });
 
-    await waitFor(() => {
-      expect(input).toHaveValue("");
+    expect(screen.queryByPlaceholderText("Link issue...")).toBeNull();
+  });
+
+  it("closes the composer when clicking outside it", () => {
+    renderSection();
+    expect(screen.getByPlaceholderText("Link issue...")).toBeInTheDocument();
+    fireEvent.mouseDown(document.body);
+    expect(screen.queryByPlaceholderText("Link issue...")).toBeNull();
+  });
+
+  it("closes the composer via the X button", () => {
+    renderSection();
+    expect(screen.getByPlaceholderText("Link issue...")).toBeInTheDocument();
+    fireEvent.click(screen.getByLabelText("Close"));
+    expect(screen.queryByPlaceholderText("Link issue...")).toBeNull();
+  });
+
+  // The optimistic row must persist after the link is saved, even while the parent ticket refetch
+  // is still in flight (which can take seconds) — otherwise the row vanishes and reappears late.
+  it("keeps the linked row visible after the link is saved, before the refetch lands", async () => {
+    mockSearchForLink.mockResolvedValue({ results: [
+      { key: "VPL-200", title: "Target issue", type: "task", status: "TO DO" },
+    ], hasMore: false });
+    mockCreateLink.mockResolvedValue({
+      key: "VPL-200",
+      title: "Target issue",
+      type: "task",
+      jiraStatus: "TO DO",
+      assignee: null,
+      relation: "relates to",
     });
+
+    const { onMutate } = renderSection();
+    const input = screen.getByPlaceholderText("Link issue...");
+    fireEvent.change(input, { target: { value: "VPL" } });
+
+    await waitFor(() => {
+      expect(screen.getByText("VPL-200")).toBeInTheDocument();
+    });
+
+    fireEvent.mouseDown(screen.getByText("Target issue"));
+
+    await waitFor(() => {
+      expect(onMutate).toHaveBeenCalled();
+    });
+
+    // The parent has not pushed refreshed `issues` yet; the optimistic row stays put.
+    expect(document.querySelector('[data-ticket-key="VPL-200"]')).toBeInTheDocument();
   });
 
   // BRDG-332: linked-issue rows open in the SidePanel like subtasks/epic children.

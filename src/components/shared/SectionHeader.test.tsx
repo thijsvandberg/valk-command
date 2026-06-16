@@ -65,6 +65,19 @@ describe("SectionHeader (collapsible)", () => {
     expect(screen.getByText("5")).toBeInTheDocument();
   });
 
+  it("starts collapsed when defaultCollapsed is set, until toggled open", () => {
+    render(
+      <SectionHeader title="Linked Issues" sectionKey="linked-issues" defaultCollapsed>
+        <div>body content</div>
+      </SectionHeader>,
+    );
+    const toggle = screen.getByRole("button", { name: /Linked Issues/ });
+    expect(toggle).toHaveAttribute("aria-expanded", "false");
+    expect(screen.queryByText("body content")).not.toBeInTheDocument();
+    fireEvent.click(toggle);
+    expect(screen.getByText("body content")).toBeInTheDocument();
+  });
+
   it("re-expands on a second click", () => {
     render(
       <SectionHeader title="Confluence" sectionKey="confluence">

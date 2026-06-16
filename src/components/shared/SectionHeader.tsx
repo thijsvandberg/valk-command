@@ -9,6 +9,7 @@ export function SectionHeader({
   countLabel,
   actions,
   sectionKey,
+  defaultCollapsed = false,
   children,
 }: {
   title: string;
@@ -18,13 +19,16 @@ export function SectionHeader({
   // When set, the heading becomes collapsible and its collapse state is shared
   // globally (per key) across every surface via the section-collapse store.
   sectionKey?: string;
+  // Collapse state to assume until the user toggles this section. Lets a section
+  // start collapsed (e.g. an empty list) while still honouring an explicit toggle.
+  defaultCollapsed?: boolean;
   // Body rendered below the header when expanded. Simple sections pass their
   // body here; complex list sections gate their own body instead.
   children?: React.ReactNode;
 }) {
   const { isCollapsed, toggle } = useSectionCollapsed();
   const collapsible = sectionKey !== undefined;
-  const collapsed = collapsible ? isCollapsed(sectionKey) : false;
+  const collapsed = collapsible ? isCollapsed(sectionKey, defaultCollapsed) : false;
 
   const badge = countLabel ? (
     <span className="flex h-5 items-center rounded-full bg-overlay-default px-1.5 text-caption font-medium tabular-nums text-text-tertiary">
@@ -55,7 +59,7 @@ export function SectionHeader({
       <div className="flex items-center gap-2 border-b border-border-default pb-2">
         <button
           type="button"
-          onClick={() => toggle(sectionKey)}
+          onClick={() => toggle(sectionKey, defaultCollapsed)}
           aria-expanded={!collapsed}
           className="group/section flex min-w-0 items-center gap-2 rounded-sm border-0 bg-transparent p-0 text-left cursor-pointer focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)] active:opacity-80"
         >

@@ -7,6 +7,7 @@ import { LinkedIssueRow } from "./LinkedIssueRow";
 import { useTickets } from "@/hooks/useSprintBoard";
 import { SectionHeader } from "@/components/shared/SectionHeader";
 import { SECTION_KEYS } from "@/lib/section-collapse-store";
+import { useSectionCollapsed } from "@/hooks/useSectionCollapsed";
 import { LinkIssueDialog } from "./LinkIssueDialog";
 import { useLinkTypes } from "@/hooks/useLinkTypes";
 import { useLinkIssueSearch } from "@/hooks/useLinkIssueSearch";
@@ -84,6 +85,8 @@ export function LinkedIssuesSection({ issues, ticketKey, onMutate, onSelectTicke
   }, []);
   const inlineDropdownRef = useRef<HTMLDivElement>(null);
   const interactingWithDropdownRef = useRef(false);
+  // Closing the whole composer on outside-click mirrors what Escape does on an empty input.
+  const composerRef = useRef<HTMLDivElement>(null);
 
   // Header actions menu (BRDG): the AI-suggest and link actions live behind one "..." trigger.
   const [headerMenuOpen, setHeaderMenuOpen] = useState(false);
@@ -92,6 +95,19 @@ export function LinkedIssuesSection({ issues, ticketKey, onMutate, onSelectTicke
 
   // Shared search hook
   const search = useLinkIssueSearch(ticketKey);
+
+  const closeComposer = useCallback(() => {
+    setComposerAt(null);
+    search.resetSearch();
+    setInlineError(null);
+  }, [search]);
+
+  // Click outside the composer closes the whole flow, like Escape on an empty input. Suspended
+  // while the expanded dialog is open, since that modal lives outside the composer's DOM.
+  useOutsideClick(composerRef, closeComposer, {
+    enabled: composerAt !== null && !showLinkDialog,
+    escapeClose: false,
+  });
 
   // AI suggestions state (managed here, like SubtasksSection)
   const [suggestions, setSuggestions] = useState<RelatedSuggestion[]>([]);
@@ -307,7 +323,9 @@ export function LinkedIssuesSection({ issues, ticketKey, onMutate, onSelectTicke
       direction: linkTypeInfo?.direction,
     })
       .then(() => {
-        setInlinePending((prev) => prev.filter((p) => !(p.key === result.key && p.relation === pendingRelation)));
+        // Keep the pending placeholder visible until the refetch surfaces the real link; the
+        // dedup in `allIssues` drops it automatically once `issues` contains it. Removing it here
+        // caused the row to vanish during a slow refetch and reappear seconds later (BRDG).
         onMutate();
       })
       .catch((err) => {
@@ -326,16 +344,18 @@ export function LinkedIssuesSection({ issues, ticketKey, onMutate, onSelectTicke
       return;
     }
 
-    const activeList = search.showResults ? search.filteredResults : (search.query.length < 2 ? search.recentResults : []);
-    if (activeList.length === 0) {
-      if (e.key === "Escape") {
-        search.resetSearch();
-        inlineInputRef.current?.blur();
-        // Escape on an empty input closes the composer (parity with the sprint board create row).
-        if (!search.query) setComposerAt(null);
-      }
+    // Escape closes the whole composer (parity with click-outside). stopPropagation keeps it from
+    // also closing an enclosing panel that listens for Escape.
+    if (e.key === "Escape") {
+      e.preventDefault();
+      e.stopPropagation();
+      inlineInputRef.current?.blur();
+      closeComposer();
       return;
     }
+
+    const activeList = search.showResults ? search.filteredResults : (search.query.length < 2 ? search.recentResults : []);
+    if (activeList.length === 0) return;
 
     if (e.key === "ArrowDown") {
       e.preventDefault();
@@ -349,13 +369,8 @@ export function LinkedIssuesSection({ issues, ticketKey, onMutate, onSelectTicke
       if (idx < activeList.length) {
         handleInlineLink(activeList[idx]);
       }
-    } else if (e.key === "Escape") {
-      e.preventDefault();
-      search.setShowResults(false);
-      search.resetSearch();
-      inlineInputRef.current?.blur();
     }
-  }, [search, handleInlineLink, inlineRelation]);
+  }, [search, handleInlineLink, inlineRelation, closeComposer]);
 
   const allIssues = [
     ...issues.filter((i) => !effectiveDeletingKeys.has(`${i.key}:${i.relation}`)),
@@ -367,6 +382,21 @@ export function LinkedIssuesSection({ issues, ticketKey, onMutate, onSelectTicke
     acc[issue.relation].push(issue);
     return acc;
   }, {});
+
+  // An empty Linked Issues section starts collapsed; expanding it surfaces the link composer right
+  // away so the only useful action is one click in. With existing links the section stays expanded
+  // and the composer stays hidden (the user opts in via the "+"/menu). Driven by an
+  // adjust-state-during-render transition (not an effect) so the composer opens on the very render
+  // that expands the empty section, and reopening is skipped once the user closes it.
+  const isEmpty = allIssues.length === 0;
+  const { isCollapsed } = useSectionCollapsed();
+  const collapsed = isCollapsed(SECTION_KEYS.linkedIssues, isEmpty);
+  const expandedEmpty = !collapsed && isEmpty;
+  const [prevExpandedEmpty, setPrevExpandedEmpty] = useState(false);
+  if (expandedEmpty !== prevExpandedEmpty) {
+    setPrevExpandedEmpty(expandedEmpty);
+    if (expandedEmpty) setComposerAt((prev) => prev ?? "__bottom__");
+  }
 
   const showRecentPicks = inlineFocused && search.query.length < 2 && !search.showResults && search.recentResults.length > 0;
 
@@ -446,7 +476,7 @@ export function LinkedIssuesSection({ issues, ticketKey, onMutate, onSelectTicke
   // The link composer (one shared instance) renders under whichever group's "+" is active, or at
   // the bottom when opened from the header "+" — styled as the shared raised inset bar (BRDG-315).
   const linkComposer = (
-      <div className="mt-3 rounded-lg bg-[var(--color-surface-chrome)]/40 p-3 lg:p-4">
+      <div ref={composerRef} className="mt-3 rounded-lg bg-[var(--color-surface-chrome)]/40 p-3 lg:p-4">
       <div className="relative rounded-lg border border-border-default bg-[var(--color-surface-elevated)] shadow-[var(--shadow-sm)]">
         <div className="flex items-center gap-3 px-3 py-2">
           <div ref={inlineRelationRef} className="relative shrink-0">
@@ -568,6 +598,16 @@ export function LinkedIssuesSection({ issues, ticketKey, onMutate, onSelectTicke
           >
             <Maximize2 size={13} strokeWidth={1.5} />
           </button>
+          <button
+            type="button"
+            onClick={closeComposer}
+            aria-label="Close"
+            className="flex shrink-0 cursor-pointer items-center justify-center rounded-md p-1 text-text-muted hover:bg-overlay-subtle hover:text-text-secondary focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-[var(--color-brand-400)] active:bg-overlay-default"
+            style={{ transition: "background-color 0.15s ease, color 0.15s ease" }}
+            title="Close"
+          >
+            <X size={14} strokeWidth={1.5} />
+          </button>
         </div>
 
         {/* Search results dropdown */}
@@ -660,6 +700,7 @@ export function LinkedIssuesSection({ issues, ticketKey, onMutate, onSelectTicke
         count={allIssues.length}
         actions={headerMenu}
         sectionKey={SECTION_KEYS.linkedIssues}
+        defaultCollapsed={isEmpty}
       >
 
       {allIssues.length > 0 && (
