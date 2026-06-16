@@ -104,7 +104,12 @@ function AssigneePickerInner({
   );
 
   function renderUserRow(u: AssignableUser) {
-    const isSelected = value?.name === u.displayName;
+    // Selection keys on the stable accountId when both sides have one (BRDG-365),
+    // so a renamed person stays highlighted; falls back to the display name for
+    // people without a captured id. Mirrors samePerson's precedence.
+    const isSelected = value?.accountId && u.accountId
+      ? value.accountId === u.accountId
+      : value?.name === u.displayName;
     const tempAssignee: Assignee = { name: u.displayName, initials: userInitials(u.displayName), color: userColor(u.displayName) };
     return (
       <BasePicker.Item

@@ -214,6 +214,42 @@ describe("AssigneePicker", () => {
     });
   });
 
+  describe("accountId-based selection (BRDG-365)", () => {
+    it("highlights the directory row by accountId even when the cached name is stale", () => {
+      // value carries a pre-rename name but the stable accountId of "Alice".
+      render(
+        <AssigneePicker
+          value={{ name: "Old Alice Name", initials: "AL", color: "red", accountId: "alice" }}
+          onChange={onChange}
+        />,
+      );
+      fireEvent.click(screen.getByRole("button"));
+
+      // The directory shows the current label "Alice", and that row is the selected one.
+      const aliceLabel = screen.getByText("Alice");
+      expect(aliceLabel).toBeInTheDocument();
+      expect(aliceLabel.className).toContain("font-medium");
+      expect(aliceLabel.className).toContain("text-text-primary");
+    });
+
+    it("falls back to name matching when the value has no accountId", () => {
+      render(
+        <AssigneePicker
+          value={{ name: "Charlie", initials: "CH", color: "red" }}
+          onChange={onChange}
+        />,
+      );
+      fireEvent.click(screen.getByRole("button"));
+
+      // The trigger also shows "Charlie"; assert the popover row is the selected one.
+      const selectedRow = screen
+        .getAllByText("Charlie")
+        .find((el) => el.className.includes("flex-1"));
+      expect(selectedRow).toBeDefined();
+      expect(selectedRow!.className).toContain("font-medium");
+    });
+  });
+
   it("calls onChange with null when Unassigned is clicked", () => {
     render(
       <AssigneePicker
