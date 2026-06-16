@@ -164,7 +164,7 @@ export function ScanControls({ onRan }: ScanControlsProps) {
         </button>
       </Tooltip>
 
-      <Popover open={open} onClose={() => setOpen(false)} align="left" className="w-[360px]">
+      <Popover open={open} onClose={() => setOpen(false)} align="right" className="w-[360px]">
         <div role="dialog" aria-label="Scan controls" className="flex flex-col">
           <div className="border-b border-border-subtle px-4 py-3">
             <h3 className="text-body-sm font-semibold text-text-primary">Scans</h3>
