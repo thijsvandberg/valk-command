@@ -88,20 +88,24 @@ Risk/notes: Team/Sprint filter for the inbox is derived from `sprintName` (no sp
 
 ## Acceptance Criteria
 
-- [ ] The inbox renders rows with the **same `BoardRow`** used on the Sprint Board (same status pill, epic chip, SP/BV, assignee, etc.).
-- [ ] The ticket key is the **standard ticket pill** with click-to-edit options and the hover card.
-- [ ] A **Filters** popover offers Status, Epic, Assignee, Type, Team, Sprint (no Readiness / Changes / Gaps) and filters the list.
-- [ ] A **Display** popover toggles which inline fields show, persisted under an inbox-specific key (independent of the board's).
-- [ ] Mark-as-read (single + multi-select) still works with optimistic update + undo.
-- [ ] The feature is labelled **"New story inbox"** in the nav and page title.
-- [ ] The board's own filters/display/sort are unaffected (separate storage keys).
+- [x] The inbox renders rows with the **same `BoardRow`** used on the Sprint Board (same status pill, epic chip, SP/BV, assignee, etc.).
+- [x] The ticket key is the **standard ticket pill** with click-to-edit options and the hover card.
+- [x] A **Filters** popover offers Status, Epic, Assignee, Type, Team, Sprint (no Readiness / Changes / Gaps) and filters the list.
+- [x] A **Display** popover toggles which inline fields show, persisted under an inbox-specific key (independent of the board's).
+- [x] Mark-as-read (single + multi-select) still works with optimistic update + undo.
+- [x] The feature is labelled **"New story inbox"** in the nav and page title.
+- [x] The board's own filters/display/sort are unaffected (separate storage keys).
 
 ## Tests
 
-- [ ] Filter panel renders only the inbox category whitelist; selecting a Status filters the rows.
-- [ ] Display toggle persists under the inbox key and does not mutate the board's row-fields setting.
-- [ ] Row renders via `BoardRow`/`TicketStatusPill` (key is a pill, not plain text).
-- [ ] Mark-as-read (row + bulk) fires the existing endpoints and optimistically removes rows; undo restores.
+- [x] Filter panel renders only the inbox category whitelist; selecting a Status filters the rows. <!-- FilterControlsPanel.test (whitelist) + useInboxFilters.test (status filters rows) -->
+- [x] Display toggle persists under the inbox key and does not mutate the board's row-fields setting. <!-- useInboxFilters.test -->
+- [x] Row renders via `BoardRow`/`TicketStatusPill` (key is a pill, not plain text). <!-- BoardRow.test (pill) + inbox page.test (BoardRow integration) -->
+- [x] Mark-as-read (row + bulk) fires the existing endpoints and optimistically removes rows; undo restores. <!-- inbox page.test -->
+
+## Status
+
+**Status:** Done — all acceptance criteria met. Route moved to `/inbox`, labelled "New story inbox". The inbox renders the shared `BoardRow` with an inbox-scoped filter/display/sort hook (`useInboxFilters`) persisting under `inbox-filters` / `inbox-row-fields`; the board's settings are untouched. Date/team grouping was removed here as planned (returns in BRDG-358). The bespoke `new-stories` page/test moved to `deleted/`; `new-stories-grouping.ts` is kept (unused) for BRDG-358.
 
 ## Related
 
