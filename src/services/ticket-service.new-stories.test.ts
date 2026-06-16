@@ -3,8 +3,8 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 import { createTestDb } from "@/db/test-utils";
 import type { BetterSQLite3Database } from "drizzle-orm/better-sqlite3";
 import type * as schema from "@/db/schema";
-import { ticket, ticketMetadata } from "@/db/schema";
-import { eq } from "drizzle-orm";
+import { ticket, ticketMetadata, newStoryRead } from "@/db/schema";
+import { and, eq } from "drizzle-orm";
 
 let testDb: BetterSQLite3Database<typeof schema>;
 
@@ -34,49 +34,70 @@ vi.mock("@/lib/sync-tickets-service", () => ({
 vi.stubGlobal("fetch", vi.fn().mockResolvedValue({ ok: true }));
 
 import {
-  updateTicketMetadata,
+  markNewStoryReadForUser,
   bulkMarkNewStoriesRead,
 } from "@/services/ticket-service";
-import { ValidationError } from "@/services/errors";
+import { ValidationError, NotFoundError } from "@/services/errors";
 
 function seedTicket(key: string) {
   testDb.insert(ticket).values({ jiraKey: key, title: `Ticket ${key}`, status: "TO DO" }).run();
 }
 
-function readState(key: string): string | null {
+function readState(userId: string, key: string): string | null {
+  const row = testDb
+    .select()
+    .from(newStoryRead)
+    .where(and(eq(newStoryRead.userId, userId), eq(newStoryRead.ticketKey, key)))
+    .get();
+  return row?.readAt ?? null;
+}
+
+function legacyState(key: string): string | null {
   const row = testDb.select().from(ticketMetadata).where(eq(ticketMetadata.jiraKey, key)).get();
   return row?.newStoryReadAt ?? null;
 }
 
-describe("updateTicketMetadata newStoryRead (BRDG-356)", () => {
+describe("markNewStoryReadForUser (BRDG-359)", () => {
   beforeEach(() => {
     testDb = createTestDb();
     invalidate.mockClear();
   });
 
-  it("stamps newStoryReadAt when marked read", async () => {
+  it("records a per-user read row when marked read", async () => {
     seedTicket("VPL-1");
-    const result = await updateTicketMetadata("VPL-1", { newStoryRead: true });
-    expect(result.newStoryReadAt).toBeTruthy();
+    await markNewStoryReadForUser("user-a", "VPL-1", true);
+    expect(readState("user-a", "VPL-1")).toBeTruthy();
   });
 
-  it("clears newStoryReadAt back to null when marked unread", async () => {
+  it("scopes read state to the acting user", async () => {
     seedTicket("VPL-1");
-    await updateTicketMetadata("VPL-1", { newStoryRead: true });
-    const result = await updateTicketMetadata("VPL-1", { newStoryRead: false });
-    expect(result.newStoryReadAt).toBeNull();
+    await markNewStoryReadForUser("user-a", "VPL-1", true);
+    expect(readState("user-a", "VPL-1")).toBeTruthy();
+    expect(readState("user-b", "VPL-1")).toBeNull();
   });
 
-  it("rejects a non-boolean newStoryRead", async () => {
+  it("clears the per-user read row when marked unread", async () => {
     seedTicket("VPL-1");
+    await markNewStoryReadForUser("user-a", "VPL-1", true);
+    await markNewStoryReadForUser("user-a", "VPL-1", false);
+    expect(readState("user-a", "VPL-1")).toBeNull();
+  });
+
+  it("never writes the deprecated shared metadata column", async () => {
+    seedTicket("VPL-1");
+    await markNewStoryReadForUser("user-a", "VPL-1", true);
+    expect(legacyState("VPL-1")).toBeNull();
+  });
+
+  it("throws NotFoundError for an unknown ticket", async () => {
     await expect(
-      updateTicketMetadata("VPL-1", { newStoryRead: "yes" as unknown as boolean }),
-    ).rejects.toBeInstanceOf(ValidationError);
+      markNewStoryReadForUser("user-a", "GHOST-9", true),
+    ).rejects.toBeInstanceOf(NotFoundError);
   });
 
   it("invalidates the new-stories cache on a read toggle", async () => {
     seedTicket("VPL-1");
-    await updateTicketMetadata("VPL-1", { newStoryRead: true });
+    await markNewStoryReadForUser("user-a", "VPL-1", true);
     const invalidatedNewStories = invalidate.mock.calls.some(
       ([arg]) => arg instanceof RegExp && arg.test("/api/new-stories"),
     );
@@ -84,38 +105,44 @@ describe("updateTicketMetadata newStoryRead (BRDG-356)", () => {
   });
 });
 
-describe("bulkMarkNewStoriesRead (BRDG-356)", () => {
+describe("bulkMarkNewStoriesRead (BRDG-359)", () => {
   beforeEach(() => {
     testDb = createTestDb();
     invalidate.mockClear();
   });
 
-  it("marks multiple tickets read in one call (creating metadata as needed)", async () => {
+  it("marks multiple tickets read for the acting user in one call", async () => {
     seedTicket("VPL-1");
     seedTicket("VPL-2");
-    const result = await bulkMarkNewStoriesRead(["VPL-1", "VPL-2"], true);
+    const result = await bulkMarkNewStoriesRead("user-a", ["VPL-1", "VPL-2"], true);
     expect(result.updated).toBe(2);
-    expect(readState("VPL-1")).toBeTruthy();
-    expect(readState("VPL-2")).toBeTruthy();
+    expect(readState("user-a", "VPL-1")).toBeTruthy();
+    expect(readState("user-a", "VPL-2")).toBeTruthy();
+  });
+
+  it("leaves a different user's read state untouched", async () => {
+    seedTicket("VPL-1");
+    await bulkMarkNewStoriesRead("user-a", ["VPL-1"], true);
+    expect(readState("user-b", "VPL-1")).toBeNull();
   });
 
   it("clears read state for multiple tickets when read=false", async () => {
     seedTicket("VPL-1");
-    await bulkMarkNewStoriesRead(["VPL-1"], true);
-    await bulkMarkNewStoriesRead(["VPL-1"], false);
-    expect(readState("VPL-1")).toBeNull();
+    await bulkMarkNewStoriesRead("user-a", ["VPL-1"], true);
+    await bulkMarkNewStoriesRead("user-a", ["VPL-1"], false);
+    expect(readState("user-a", "VPL-1")).toBeNull();
   });
 
-  it("skips unknown keys without creating orphan metadata", async () => {
+  it("skips unknown keys without recording read state", async () => {
     seedTicket("VPL-1");
-    const result = await bulkMarkNewStoriesRead(["VPL-1", "GHOST-9"], true);
+    const result = await bulkMarkNewStoriesRead("user-a", ["VPL-1", "GHOST-9"], true);
     expect(result.updated).toBe(1);
-    expect(readState("GHOST-9")).toBeNull();
+    expect(readState("user-a", "GHOST-9")).toBeNull();
   });
 
   it("rejects non-boolean read", async () => {
     await expect(
-      bulkMarkNewStoriesRead(["VPL-1"], "yes" as unknown as boolean),
+      bulkMarkNewStoriesRead("user-a", ["VPL-1"], "yes" as unknown as boolean),
     ).rejects.toBeInstanceOf(ValidationError);
   });
 });

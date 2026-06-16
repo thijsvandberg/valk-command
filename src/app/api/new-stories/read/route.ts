@@ -1,10 +1,12 @@
 import { NextResponse } from "next/server";
 import { parseJsonBody } from "@/lib/request-parser";
 import { applyRateLimit } from "@/lib/rate-limiter";
+import { resolveUserId } from "@/lib/user-settings";
 import * as ticketService from "@/services/ticket-service";
 import { handleServiceError } from "@/services/handle-service-error";
 
-// PUT /api/new-stories/read - mark a single ticket read/unread in the inbox.
+// PUT /api/new-stories/read - mark a single ticket read/unread for the acting
+// user (BRDG-359: read state is per-user).
 export async function PUT(request: Request) {
   const limited = await applyRateLimit("write");
   if (limited) return limited;
@@ -18,16 +20,16 @@ export async function PUT(request: Request) {
   }
 
   try {
-    const result = await ticketService.updateTicketMetadata(key, {
-      newStoryRead: read ?? true,
-    });
+    const userId = await resolveUserId();
+    const result = await ticketService.markNewStoryReadForUser(userId, key, read ?? true);
     return NextResponse.json(result);
   } catch (err) {
     return handleServiceError(err);
   }
 }
 
-// POST /api/new-stories/read - bulk mark many tickets read/unread (multi-select).
+// POST /api/new-stories/read - bulk mark many tickets read/unread for the acting
+// user (multi-select).
 export async function POST(request: Request) {
   const limited = await applyRateLimit("write");
   if (limited) return limited;
@@ -41,7 +43,8 @@ export async function POST(request: Request) {
   }
 
   try {
-    const result = await ticketService.bulkMarkNewStoriesRead(keys, read ?? true);
+    const userId = await resolveUserId();
+    const result = await ticketService.bulkMarkNewStoriesRead(userId, keys, read ?? true);
     return NextResponse.json(result);
   } catch (err) {
     return handleServiceError(err);

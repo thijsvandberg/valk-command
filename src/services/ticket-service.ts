@@ -13,6 +13,10 @@ import { logger } from "@/lib/logger";
 import { cache } from "@/lib/cache";
 import { emitTicketEvent } from "@/lib/ticket-events";
 import { computeTicketEditState } from "@/lib/ticket-state";
+import {
+  markNewStoryRead as storeMarkNewStoryRead,
+  bulkMarkNewStoriesRead as storeBulkMarkNewStoriesRead,
+} from "@/lib/new-story-read-store";
 import type { TicketEditState } from "@/types/ticket";
 import {
   ConflictError,
@@ -490,10 +494,6 @@ export interface UpdateMetadataInput {
   poNotes?: string | null;
   businessValue?: number | null;
   guestimation?: number | null;
-  // New stories inbox (BRDG-356): true marks the ticket "read" (stamps now),
-  // false clears it back to unread. The public input is a boolean; the stored
-  // timestamp is an implementation detail.
-  newStoryRead?: boolean;
 }
 
 // Forward-planning guestimation (BRDG-303): same Fibonacci scale as story points.
@@ -602,13 +602,6 @@ export async function updateTicketMetadata(
     updates.guestimation = input.guestimation;
   }
 
-  if (input.newStoryRead !== undefined) {
-    if (typeof input.newStoryRead !== "boolean") {
-      throw new ValidationError("newStoryRead must be a boolean");
-    }
-    updates.newStoryReadAt = input.newStoryRead ? new Date().toISOString() : null;
-  }
-
   if (existing) {
     await db
       .update(ticketMetadata)
@@ -627,11 +620,6 @@ export async function updateTicketMetadata(
 
   cache.invalidate(`/api/tickets/${key}`);
   cache.invalidate(/^\/api\/tickets(\?|$)/);
-  // The new-stories inbox (BRDG-356) is derived from newStoryReadAt, so any
-  // metadata write that could flip read state must drop its cached list/count.
-  if (updates.newStoryReadAt !== undefined) {
-    cache.invalidate(/^\/api\/new-stories/);
-  }
 
   const changedFields = Object.keys(updates).join(", ");
   await logActivity({
@@ -644,13 +632,47 @@ export async function updateTicketMetadata(
 }
 
 /**
- * Bulk mark-as-read for the new-stories inbox (BRDG-356). Stamps (or clears)
- * `newStoryReadAt` for many tickets in one pass so the multi-select "Mark N as
- * read" action is a single round trip. Upserts metadata rows that do not exist
- * yet (a ticket with no PO metadata is still markable). Returns the count of
- * tickets actually touched (unknown keys are skipped).
+ * Mark a single ticket read/unread in the inbox for the acting user (BRDG-359).
+ * Read state is per-user, so this delegates to the per-user read store keyed on
+ * `userId` rather than the deprecated shared `newStoryReadAt` column. Validates
+ * the ticket exists (NotFoundError otherwise) and drops the cached inbox.
+ */
+export async function markNewStoryReadForUser(
+  userId: string,
+  key: string,
+  read: boolean,
+): Promise<{ key: string; read: boolean }> {
+  if (typeof read !== "boolean") {
+    throw new ValidationError("newStoryRead must be a boolean");
+  }
+  const t = await db.query.ticket.findFirst({
+    where: (row, { eq: eqFn }) => eqFn(row.jiraKey, key),
+  });
+  if (!t) {
+    throw new NotFoundError("Ticket", key);
+  }
+
+  await storeMarkNewStoryRead(userId, key, read);
+
+  cache.invalidate(/^\/api\/new-stories/);
+
+  await logActivity({
+    type: "metadata-update",
+    scope: key,
+    summary: `Marked ${read ? "read" : "unread"} in new stories`,
+  });
+
+  return { key, read };
+}
+
+/**
+ * Bulk mark-as-read for the new-stories inbox (BRDG-359). Records (or clears) the
+ * read flag for many tickets in one pass so the multi-select "Mark N as read"
+ * action is a single round trip. Read state is per-user, so it is keyed on
+ * `userId`. Returns the count of tickets actually touched (unknown keys skipped).
  */
 export async function bulkMarkNewStoriesRead(
+  userId: string,
   keys: string[],
   read: boolean,
 ): Promise<{ updated: number }> {
@@ -660,47 +682,17 @@ export async function bulkMarkNewStoriesRead(
   if (typeof read !== "boolean") {
     throw new ValidationError("read must be a boolean");
   }
-  const unique = [...new Set(keys.filter((k) => typeof k === "string" && k.length > 0))];
-  if (unique.length === 0) return { updated: 0 };
 
-  const readAt = read ? new Date().toISOString() : null;
-
-  // Only operate on keys that resolve to a real ticket, so a stray key cannot
-  // create an orphan metadata row (jiraKey is an FK to ticket).
-  const existingTickets = await db
-    .select({ jiraKey: ticket.jiraKey })
-    .from(ticket)
-    .where(inArray(ticket.jiraKey, unique));
-  const validKeys = existingTickets.map((t) => t.jiraKey);
-  if (validKeys.length === 0) return { updated: 0 };
-
-  const withMeta = await db
-    .select({ jiraKey: ticketMetadata.jiraKey })
-    .from(ticketMetadata)
-    .where(inArray(ticketMetadata.jiraKey, validKeys));
-  const haveMeta = new Set(withMeta.map((m) => m.jiraKey));
-
-  await db
-    .update(ticketMetadata)
-    .set({ newStoryReadAt: readAt })
-    .where(inArray(ticketMetadata.jiraKey, validKeys));
-
-  const missing = validKeys.filter((k) => !haveMeta.has(k));
-  if (missing.length > 0) {
-    await db.insert(ticketMetadata).values(
-      missing.map((k) => ({ jiraKey: k, newStoryReadAt: readAt })),
-    );
-  }
+  const { updated } = await storeBulkMarkNewStoriesRead(userId, keys, read);
+  if (updated === 0) return { updated: 0 };
 
   cache.invalidate(/^\/api\/new-stories/);
-  cache.invalidate(/^\/api\/tickets(\?|$)/);
-  for (const k of validKeys) cache.invalidate(`/api/tickets/${k}`);
 
   await logActivity({
     type: "metadata-update",
-    scope: validKeys.join(", "),
-    summary: `Marked ${validKeys.length} ${read ? "read" : "unread"} in new stories`,
+    scope: `${updated} tickets`,
+    summary: `Marked ${updated} ${read ? "read" : "unread"} in new stories`,
   });
 
-  return { updated: validKeys.length };
+  return { updated };
 }
