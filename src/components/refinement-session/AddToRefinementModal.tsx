@@ -7,6 +7,7 @@ import { Plus, Boxes, Check } from "lucide-react";
 import { useRefinementSessions } from "@/hooks/useRefinementSessions";
 import { refinementSessions as api } from "@/lib/api-client";
 import { sessionLabel } from "./refinement-utils";
+import { CreateSessionModal, type CreateSessionInput } from "./CreateSessionModal";
 
 interface AddToRefinementModalProps {
   open: boolean;
@@ -27,6 +28,7 @@ export function AddToRefinementModal({
   const draftSessions = sessions.filter((s) => s.status !== "completed");
   const [adding, setAdding] = useState<string | null>(null);
   const [done, setDone] = useState<string | null>(null);
+  const [showCreate, setShowCreate] = useState(false);
 
   const handleAddToSession = useCallback(
     async (sessionId: string) => {
@@ -55,33 +57,37 @@ export function AddToRefinementModal({
     [sessions, ticketKeys, mutate, onAdded, onClose],
   );
 
-  const handleCreateNew = useCallback(async () => {
-    setAdding("__new__");
-    try {
-      // Quick-create has no name input; default to a name so the
-      // name-or-date requirement on the create endpoint is met.
-      const created = await api.create({
-        name: `Refinement ${new Date().toISOString().slice(0, 10)}`,
-        ticketKeys,
-      });
-      await mutate();
-      setDone(created.id);
-      onAdded?.(created.id, sessionLabel(created));
-      setTimeout(() => {
-        onClose();
-        setDone(null);
-      }, 600);
-    } finally {
-      setAdding(null);
-    }
-  }, [ticketKeys, mutate, onAdded, onClose]);
+  const handleCreateNew = useCallback(
+    async (data: CreateSessionInput) => {
+      setShowCreate(false);
+      setAdding("__new__");
+      try {
+        const created = await api.create({
+          name: data.name,
+          scheduledFor: data.scheduledFor,
+          ticketKeys,
+        });
+        await mutate();
+        setDone(created.id);
+        onAdded?.(created.id, sessionLabel(created));
+        setTimeout(() => {
+          onClose();
+          setDone(null);
+        }, 600);
+      } finally {
+        setAdding(null);
+      }
+    },
+    [ticketKeys, mutate, onAdded, onClose],
+  );
 
   const ticketLabel = ticketKeys.length === 1
     ? `1 ticket`
     : `${ticketKeys.length} tickets`;
 
   return (
-    <Modal open={open} onClose={onClose}>
+    <>
+    <Modal open={open && !showCreate} onClose={onClose}>
       <div className="w-full max-w-sm rounded-xl border border-border-strong bg-[var(--color-surface-elevated)] p-5 shadow-[var(--shadow-2xl)]">
         <div className="flex items-center gap-2">
           <Boxes size={16} strokeWidth={1.5} className="text-[var(--color-brand-400)]" />
@@ -142,7 +148,7 @@ export function AddToRefinementModal({
             variant="dashed"
             size="md"
             icon={<Plus size={13} strokeWidth={2} />}
-            onClick={handleCreateNew}
+            onClick={() => setShowCreate(true)}
             disabled={adding !== null}
             className="flex-1"
           >
@@ -157,5 +163,12 @@ export function AddToRefinementModal({
         </div>
       </div>
     </Modal>
+
+    <CreateSessionModal
+      open={open && showCreate}
+      onClose={() => setShowCreate(false)}
+      onCreate={handleCreateNew}
+    />
+    </>
   );
 }

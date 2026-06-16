@@ -177,8 +177,7 @@ describe("AddToRefinementModal", () => {
     });
   });
 
-  it("calls api.create and mutate when creating a new session", async () => {
-    mockApiCreate.mockResolvedValue({ id: "new-session", name: "Refinement 2026-05-29" });
+  it("opens the create-session form before creating, instead of creating immediately", () => {
     render(
       <AddToRefinementModal
         open={true}
@@ -187,9 +186,29 @@ describe("AddToRefinementModal", () => {
       />,
     );
     fireEvent.click(screen.getByText("New session"));
+    // The name/date form is now shown and nothing has been created yet.
+    expect(screen.getByTestId("create-session-name-input")).toBeInTheDocument();
+    expect(mockApiCreate).not.toHaveBeenCalled();
+  });
+
+  it("creates a new session with the entered name and the selected tickets", async () => {
+    mockApiCreate.mockResolvedValue({ id: "new-session", name: "My Session" });
+    render(
+      <AddToRefinementModal
+        open={true}
+        onClose={vi.fn()}
+        ticketKeys={["VPL-5"]}
+      />,
+    );
+    fireEvent.click(screen.getByText("New session"));
+    fireEvent.change(screen.getByTestId("create-session-name-input"), {
+      target: { value: "My Session" },
+    });
+    fireEvent.click(screen.getByText("Create"));
     await waitFor(() => {
       expect(mockApiCreate).toHaveBeenCalledWith({
-        name: expect.stringMatching(/^Refinement \d{4}-\d{2}-\d{2}$/),
+        name: "My Session",
+        scheduledFor: undefined,
         ticketKeys: ["VPL-5"],
       });
     });
@@ -197,7 +216,7 @@ describe("AddToRefinementModal", () => {
   });
 
   it("calls onAdded after creating a new session", async () => {
-    mockApiCreate.mockResolvedValue({ id: "new-session", name: "Refinement 2026-05-29" });
+    mockApiCreate.mockResolvedValue({ id: "new-session", name: "My Session" });
     const onAdded = vi.fn();
     render(
       <AddToRefinementModal
@@ -208,8 +227,12 @@ describe("AddToRefinementModal", () => {
       />,
     );
     fireEvent.click(screen.getByText("New session"));
+    fireEvent.change(screen.getByTestId("create-session-name-input"), {
+      target: { value: "My Session" },
+    });
+    fireEvent.click(screen.getByText("Create"));
     await waitFor(() => {
-      expect(onAdded).toHaveBeenCalledWith("new-session", "Refinement 2026-05-29");
+      expect(onAdded).toHaveBeenCalledWith("new-session", "My Session");
     });
   });
 
