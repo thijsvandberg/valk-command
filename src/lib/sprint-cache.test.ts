@@ -3,7 +3,7 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 import { createTestDb } from "@/db/test-utils";
 import type { BetterSQLite3Database } from "drizzle-orm/better-sqlite3";
 import type * as schema from "@/db/schema";
-import { appSetting, sprintNameCache } from "@/db/schema";
+import { appSetting, missingSprint, sprintNameCache, ticket, ticketSprint } from "@/db/schema";
 import { eq } from "drizzle-orm";
 
 let testDb: BetterSQLite3Database<typeof schema>;
@@ -31,7 +31,7 @@ vi.mock("@/lib/logger", () => ({
   logger: { info: vi.fn(), warn: vi.fn(), error: vi.fn() },
 }));
 
-import { ensureSprintsCached } from "./sprint-cache";
+import { ensureSprintsCached, getBackfillCandidateIds } from "./sprint-cache";
 import { jiraClient, JiraApiError } from "@/lib/jira-client";
 import { cacheSprintName } from "@/lib/upsert-issue";
 import { cache } from "@/lib/cache";
@@ -54,6 +54,50 @@ function seedSprintName(sprintId: string, displayName: string) {
 
 function readSprintName(sprintId: string): string | undefined {
   return testDb.select().from(sprintNameCache).where(eq(sprintNameCache.sprintId, sprintId)).get()?.displayName;
+}
+
+function seedMissingSprint(sprintId: string, missingAt: string) {
+  testDb.insert(missingSprint).values({ sprintId, missingAt }).run();
+}
+
+function readMissingSprint(sprintId: string): string | undefined {
+  return testDb.select().from(missingSprint).where(eq(missingSprint.sprintId, sprintId)).get()?.missingAt;
+}
+
+function seedTicket(jiraKey: string, sprintName: string | null, sprintIds: string[] | null) {
+  testDb
+    .insert(ticket)
+    .values({
+      jiraKey,
+      title: jiraKey,
+      status: "DONE",
+      sprintName,
+      sprintIds: sprintIds === null ? null : JSON.stringify(sprintIds),
+    })
+    .run();
+  if (sprintName || (sprintIds && sprintIds.length > 0)) {
+    const ids = sprintIds && sprintIds.length > 0 ? sprintIds : sprintName ? [sprintName] : [];
+    if (ids.length > 0) {
+      testDb.insert(ticketSprint).values(ids.map((sprintId) => ({ ticketKey: jiraKey, sprintId }))).run();
+    }
+  }
+}
+
+function readTicket(jiraKey: string) {
+  return testDb.select().from(ticket).where(eq(ticket.jiraKey, jiraKey)).get();
+}
+
+function readTicketSprintIds(jiraKey: string): string[] {
+  return testDb
+    .select()
+    .from(ticketSprint)
+    .where(eq(ticketSprint.ticketKey, jiraKey))
+    .all()
+    .map((r) => r.sprintId);
+}
+
+function hoursAgoIso(hours: number): string {
+  return new Date(Date.now() - hours * 60 * 60 * 1000).toISOString();
 }
 
 describe("ensureSprintsCached", () => {
@@ -139,7 +183,93 @@ describe("ensureSprintsCached", () => {
     // Other cached sprints are untouched; the missing one is gone from both stores.
     expect(readSprintCache().map((s) => s.id)).toEqual([10]);
     expect(readSprintName("66")).toBeUndefined();
+    // The 404 is recorded in the negative cache so it is not re-fetched next pass.
+    expect(readMissingSprint("66")).toBeDefined();
     expect(cache.invalidate).toHaveBeenCalledWith("/api/jira/sprints");
+  });
+
+  it("does not re-fetch a sprint suppressed by the negative cache within the window", async () => {
+    // First pass: a 404 records the id as known-missing.
+    vi.mocked(jiraClient.getSprint).mockRejectedValue(
+      new JiraApiError(404, "Not Found", "", "/rest/agile/1.0/sprint/10048"),
+    );
+    await ensureSprintsCached(["10048"]);
+    expect(jiraClient.getSprint).toHaveBeenCalledTimes(1);
+    expect(readMissingSprint("10048")).toBeDefined();
+
+    // Second pass within the window: no further Jira call for the same id.
+    vi.mocked(jiraClient.getSprint).mockClear();
+    const added = await ensureSprintsCached(["10048"]);
+    expect(added).toBe(0);
+    expect(jiraClient.getSprint).not.toHaveBeenCalled();
+  });
+
+  it("re-probes a missing sprint once its suppression window has lapsed (recovery)", async () => {
+    // An expired negative-cache entry must not block a fresh fetch.
+    seedMissingSprint("10048", hoursAgoIso(25));
+    vi.mocked(jiraClient.getSprint).mockResolvedValue({
+      id: 10048,
+      name: "Sprint 10048",
+      state: "active",
+    });
+
+    const added = await ensureSprintsCached(["10048"]);
+
+    expect(added).toBe(1);
+    expect(jiraClient.getSprint).toHaveBeenCalledWith(10048, undefined);
+    expect(readSprintCache().map((s) => s.id)).toEqual([10048]);
+    // The expired record is pruned; the recovered sprint stays cached.
+    expect(readMissingSprint("10048")).toBeUndefined();
+  });
+
+  it("clears the negative-cache record when a previously-missing sprint reappears", async () => {
+    // Window not yet expired, but force the found path to prove clear-on-reappearance.
+    seedMissingSprint("10048", hoursAgoIso(25));
+    vi.mocked(jiraClient.getSprint).mockResolvedValue({
+      id: 10048,
+      name: "Sprint 10048",
+      state: "active",
+    });
+
+    await ensureSprintsCached(["10048"]);
+
+    expect(readMissingSprint("10048")).toBeUndefined();
+  });
+
+  it("cleans orphaned ticket references when a sprint 404s (local-only cleanup)", async () => {
+    // The dead id is the ticket's sole sprint plus appears in its sprintIds array.
+    seedTicket("VPL-43900", "10048", ["10048"]);
+    // A second ticket belongs to the dead sprint AND a live one: only the dead id is stripped.
+    seedTicket("VPL-1", "200", ["200", "10048"]);
+    vi.mocked(jiraClient.getSprint).mockRejectedValue(
+      new JiraApiError(404, "Not Found", "", "/rest/agile/1.0/sprint/10048"),
+    );
+
+    await ensureSprintsCached(["10048"]);
+
+    const orphan = readTicket("VPL-43900");
+    expect(orphan?.sprintName).toBe("");
+    expect(JSON.parse(orphan?.sprintIds ?? "[]")).toEqual([]);
+    expect(readTicketSprintIds("VPL-43900")).toEqual([]);
+
+    const mixed = readTicket("VPL-1");
+    expect(mixed?.sprintName).toBe("200");
+    expect(JSON.parse(mixed?.sprintIds ?? "[]")).toEqual(["200"]);
+    expect(readTicketSprintIds("VPL-1")).toEqual(["200"]);
+  });
+
+  it("does not record a missing row or touch tickets on a transient (non-404) error", async () => {
+    seedTicket("VPL-43900", "99", ["99"]);
+    vi.mocked(jiraClient.getSprint).mockRejectedValue(
+      new JiraApiError(503, "Service Unavailable", "", "/rest/agile/1.0/sprint/99"),
+    );
+
+    await ensureSprintsCached(["99"]);
+
+    expect(readMissingSprint("99")).toBeUndefined();
+    const t = readTicket("VPL-43900");
+    expect(t?.sprintName).toBe("99");
+    expect(JSON.parse(t?.sprintIds ?? "[]")).toEqual(["99"]);
   });
 
   it("leaves the cache intact on a transient (non-404) error", async () => {
@@ -194,5 +324,52 @@ describe("ensureSprintsCached", () => {
     await Promise.all([first, second]);
 
     expect(jiraClient.getSprint).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe("getBackfillCandidateIds", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    testDb = createTestDb();
+  });
+
+  it("excludes known-missing ids even though they still appear in ticket.sprintName", async () => {
+    seedTicket("VPL-43900", "10048", ["10048"]);
+    seedTicket("VPL-1", "200", ["200"]);
+    seedMissingSprint("10048", hoursAgoIso(1));
+
+    const ids = await getBackfillCandidateIds();
+
+    expect(ids).toEqual(["200"]);
+  });
+
+  it("excludes ids already cached with complete metadata", async () => {
+    seedTicket("VPL-1", "200", ["200"]);
+    seedTicket("VPL-2", "201", ["201"]);
+    seedSprintCache([{ id: 200, name: "Sprint 200", state: "active" }]);
+
+    const ids = await getBackfillCandidateIds();
+
+    expect(ids).toEqual(["201"]);
+  });
+
+  it("prunes an expired negative-cache entry so the id becomes a candidate again", async () => {
+    seedTicket("VPL-43900", "10048", ["10048"]);
+    seedMissingSprint("10048", hoursAgoIso(25));
+
+    const ids = await getBackfillCandidateIds();
+
+    expect(ids).toEqual(["10048"]);
+    expect(readMissingSprint("10048")).toBeUndefined();
+  });
+
+  it("ignores backlog ('') and non-numeric sprint names", async () => {
+    seedTicket("VPL-1", "", null);
+    seedTicket("VPL-2", "abc", null);
+    seedTicket("VPL-3", "300", ["300"]);
+
+    const ids = await getBackfillCandidateIds();
+
+    expect(ids).toEqual(["300"]);
   });
 });

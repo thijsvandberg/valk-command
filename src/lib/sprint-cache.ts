@@ -1,12 +1,18 @@
 import { db } from "@/db";
-import { appSetting, sprintNameCache } from "@/db/schema";
-import { eq } from "drizzle-orm";
+import { appSetting, missingSprint, sprintNameCache, ticket } from "@/db/schema";
+import { eq, ne } from "drizzle-orm";
 import { jiraClient, JiraApiError, type JiraSprint } from "@/lib/jira-client";
 import { cacheSprintName } from "@/lib/upsert-issue";
+import { syncTicketSprints } from "@/lib/sprint-membership";
 import { cache } from "@/lib/cache";
 import { logger } from "@/lib/logger";
 
 const SPRINTS_KEY = "jira_sprints";
+
+// How long a 404'd ("missing") sprint id is suppressed from re-fetch (BRDG-351). Long
+// enough to kill the per-request loop (the board polls ~every 10s), short enough that a
+// recreated/reappearing sprint recovers within a day. Expiry re-probes exactly once.
+const MISSING_SPRINT_TTL_MS = 24 * 60 * 60 * 1000;
 
 // Outcome of a single sprint fetch, shared across dedup callers so the 404-vs-transient
 // decision is made once per id.
@@ -38,6 +44,72 @@ function fetchSprintOutcome(id: string, signal?: AbortSignal): Promise<FetchOutc
 
   inFlight.set(id, promise);
   return promise;
+}
+
+// Read the negative cache, pruning any entry whose suppression window has lapsed (so an expired id
+// is re-probed on the next pass and can recover). Returns the set of ids still suppressed.
+function loadSuppressedSprintIds(): Set<string> {
+  const rows = db.select().from(missingSprint).all();
+  const suppressed = new Set<string>();
+  const now = Date.now();
+  for (const row of rows) {
+    const missingAtMs = Date.parse(row.missingAt);
+    if (Number.isNaN(missingAtMs) || now - missingAtMs >= MISSING_SPRINT_TTL_MS) {
+      db.delete(missingSprint).where(eq(missingSprint.sprintId, row.sprintId)).run();
+    } else {
+      suppressed.add(row.sprintId);
+    }
+  }
+  return suppressed;
+}
+
+// Strip a 404'd sprint id from every local store that would otherwise re-surface it in the UI or
+// re-seed the backfill loop (BRDG-351). Strictly local: no Jira write. Clearing ticket.sprintName is
+// what actually stops the loop, since scheduleSprintBackfill seeds candidates from distinct
+// ticket.sprintName. Tickets are kept (valid closed issues); only their dead sprint reference is
+// dropped. The id is recorded in the negative cache so even a lingering reference is suppressed.
+function recordMissingSprint(id: string): void {
+  const now = new Date(Date.now()).toISOString();
+  db.insert(missingSprint)
+    .values({ sprintId: id, missingAt: now })
+    .onConflictDoUpdate({ target: missingSprint.sprintId, set: { missingAt: now } })
+    .run();
+
+  db.delete(sprintNameCache).where(eq(sprintNameCache.sprintId, id)).run();
+
+  // Reconcile each ticket that still carries the dead id: blank sprintName when it IS the dead id,
+  // strip the id from the sprintIds JSON array (a ticket may legitimately belong to other, live
+  // sprints), then converge the ticketSprint bridge.
+  const orphans = db
+    .select({ jiraKey: ticket.jiraKey, sprintName: ticket.sprintName, sprintIds: ticket.sprintIds })
+    .from(ticket)
+    .all()
+    .filter((t) => t.sprintName === id || hasSprintId(t.sprintIds, id));
+
+  for (const orphan of orphans) {
+    const remainingIds = parseSprintIds(orphan.sprintIds).filter((sid) => sid !== id);
+    const nextSprintIds = orphan.sprintIds == null ? null : JSON.stringify(remainingIds);
+    const nextSprintName = orphan.sprintName === id ? "" : orphan.sprintName;
+    db.update(ticket)
+      .set({ sprintName: nextSprintName, sprintIds: nextSprintIds })
+      .where(eq(ticket.jiraKey, orphan.jiraKey))
+      .run();
+    syncTicketSprints(db, orphan.jiraKey, nextSprintIds ? remainingIds : null, nextSprintName);
+  }
+}
+
+function parseSprintIds(raw: string | null): string[] {
+  if (!raw) return [];
+  try {
+    const parsed = JSON.parse(raw);
+    return Array.isArray(parsed) ? parsed.map(String) : [];
+  } catch {
+    return [];
+  }
+}
+
+function hasSprintId(raw: string | null, id: string): boolean {
+  return parseSprintIds(raw).includes(id);
 }
 
 // A cached sprint needs no re-fetch only when its metadata is complete enough to render. A closed
@@ -104,10 +176,11 @@ export async function ensureSprintsCached(sprintIds: Iterable<string>, signal?: 
     }
   }
 
-  // Skip ids that are already cached with complete metadata; everything else (missing or
-  // partially-known) is a fetch candidate.
+  // Skip ids that are already cached with complete metadata, and ids in the negative cache whose
+  // suppression window has not lapsed; everything else (missing or partially-known) is a candidate.
   const complete = new Set(cached.filter(isComplete).map((s) => String(s.id)));
-  const toFetch = ids.filter((id) => !complete.has(id));
+  const suppressed = loadSuppressedSprintIds();
+  const toFetch = ids.filter((id) => !complete.has(id) && !suppressed.has(id));
   if (toFetch.length === 0) return 0;
 
   const fetched: StoredSprint[] = [];
@@ -117,8 +190,11 @@ export async function ensureSprintsCached(sprintIds: Iterable<string>, signal?: 
     if (outcome.kind === "found") {
       fetched.push(toStored(outcome.sprint));
       cacheSprintName(id, outcome.sprint.name);
+      // A reappeared sprint sheds its known-missing record so it stays cached.
+      db.delete(missingSprint).where(eq(missingSprint.sprintId, id)).run();
     } else if (outcome.kind === "missing") {
       deleted.push(id);
+      recordMissingSprint(id);
     }
     // "error" (transient): leave the cached copy untouched.
   }
@@ -138,10 +214,41 @@ export async function ensureSprintsCached(sprintIds: Iterable<string>, signal?: 
     .insert(appSetting)
     .values({ key: SPRINTS_KEY, value: payload })
     .onConflictDoUpdate({ target: appSetting.key, set: { value: payload } });
-  for (const id of deleted) {
-    db.delete(sprintNameCache).where(eq(sprintNameCache.sprintId, id)).run();
-  }
+  // 404'd ids are scrubbed from sprintNameCache and orphaned tickets inside recordMissingSprint.
   cache.invalidate("/api/jira/sprints");
 
   return fetched.length;
+}
+
+/**
+ * Resolve the set of sprint ids worth backfilling: every distinct id a ticket references, minus the
+ * ids already cached with complete metadata (positive cache) and the ids suppressed by the negative
+ * cache (BRDG-351). Reconciling the ticket-derived candidate source against both caches here is what
+ * keeps a Jira-deleted sprint out of the fetch loop, since the raw candidate list never drops it.
+ */
+export async function getBackfillCandidateIds(): Promise<string[]> {
+  const rows = await db
+    .selectDistinct({ sprintId: ticket.sprintName })
+    .from(ticket)
+    .where(ne(ticket.sprintName, ""))
+    .all();
+  const ids = rows
+    .map((r) => r.sprintId)
+    .filter((id): id is string => !!id && /^\d+$/.test(id));
+  if (ids.length === 0) return [];
+
+  const existingRow = await db.query.appSetting.findFirst({
+    where: (row, { eq: eqFn }) => eqFn(row.key, SPRINTS_KEY),
+  });
+  let cached: StoredSprint[] = [];
+  if (existingRow) {
+    try {
+      cached = JSON.parse(existingRow.value);
+    } catch {
+      // ignore corrupt cache; treat as empty
+    }
+  }
+  const complete = new Set(cached.filter(isComplete).map((s) => String(s.id)));
+  const suppressed = loadSuppressedSprintIds();
+  return ids.filter((id) => !complete.has(id) && !suppressed.has(id));
 }

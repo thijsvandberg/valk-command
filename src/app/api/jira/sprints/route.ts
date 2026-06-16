@@ -1,11 +1,11 @@
 import { NextRequest, NextResponse, after } from "next/server";
 import { db } from "@/db";
 import { appSetting, ticket } from "@/db/schema";
-import { eq, and, ne, notInArray, sql } from "drizzle-orm";
+import { eq, and, notInArray, sql } from "drizzle-orm";
 import { jiraClient, JiraApiError } from "@/lib/jira-client";
 import { cache } from "@/lib/cache";
 import { logger } from "@/lib/logger";
-import { ensureSprintsCached } from "@/lib/sprint-cache";
+import { ensureSprintsCached, getBackfillCandidateIds } from "@/lib/sprint-cache";
 import { env } from "@/lib/env";
 import { safeJsonParse } from "@/lib/api-validation";
 import { applyRateLimit } from "@/lib/rate-limiter";
@@ -40,12 +40,7 @@ async function getHiddenIds(): Promise<Set<string>> {
 function scheduleSprintBackfill() {
   after(async () => {
     try {
-      const rows = await db
-        .selectDistinct({ sprintId: ticket.sprintName })
-        .from(ticket)
-        .where(ne(ticket.sprintName, ""))
-        .all();
-      const ids = rows.map((r) => r.sprintId).filter((id): id is string => !!id);
+      const ids = await getBackfillCandidateIds();
       if (ids.length > 0) await ensureSprintsCached(ids);
     } catch (err) {
       logger.warn("jira", "read-path sprint backfill failed", err instanceof Error ? err.message : String(err));
