@@ -34,6 +34,7 @@ import { sprintToSlug, slugToSprintId, buildBoardUrl, nextSprintName, latestRegu
 import type { SavedView, InlineTagId } from "@/components/sprint-board/filter-bar-types";
 import { cycleMetricSort } from "@/components/sprint-board/filter-bar-types";
 import { startDateFromPreviousEnd } from "@/lib/sprint-dates";
+import { BOARD_CONTENT_MAX } from "@/lib/layout";
 import { prefetchTicketList, setRouterPrefetch } from "@/lib/prefetch";
 import { getJiraUrl } from "@/components/sprint-board/TicketTableCells";
 import { apiFetch, jira, tickets as ticketsApi, refinementSessions as refinementSessionsApi } from "@/lib/api-client";
@@ -945,7 +946,7 @@ export default function SprintBoard() {
   // the title on wide screens (BRDG-315). Cap the inner content of the toolbar, the filter bar,
   // and the list to one shared centred width so all three stay aligned; the section backgrounds
   // still span full width behind them.
-  const boardMaxW = "mx-auto w-full max-w-[1280px]";
+  const boardMaxW = BOARD_CONTENT_MAX;
   const boardContent = (
     <>
       {/* The views bar shares the header's chrome tint so the two rows read as one

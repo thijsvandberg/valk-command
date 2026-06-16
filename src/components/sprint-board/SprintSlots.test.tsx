@@ -86,6 +86,13 @@ describe("SprintSlots views bar (BRDG-319)", () => {
     expect(screen.getByText("All")).toBeTruthy();
   });
 
+  it("caps the views bar to the board content width so it aligns with the ticket list (BRDG-361)", () => {
+    renderBar();
+    const cap = document.body.querySelector(".max-w-\\[1280px\\]");
+    expect(cap).toBeTruthy();
+    expect(cap).toContainElement(screen.getByText("All"));
+  });
+
   it("does not render backlog or Overall-refinement sprints as pills", () => {
     renderBar();
     // Backlogs live behind the dropdown trigger, not as inline pills.

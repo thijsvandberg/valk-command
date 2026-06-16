@@ -46,7 +46,7 @@ export function ViewHeader({ icon, children, actions, className, hideNotificatio
   if (!target) return null;
 
   return createPortal(
-    <div className={`relative flex bg-[var(--color-surface-chrome)] px-5 py-3.5${className ? ` ${className}` : ""}`}>
+    <div className={`relative flex bg-[var(--color-surface-chrome)] px-8 py-3.5${className ? ` ${className}` : ""}`}>
       {/* Top accent gradient */}
       <div className="pointer-events-none absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-[var(--color-brand-glow)] to-transparent" />
       {/* Bottom seam: a faint fading hairline instead of a hard rule, so the header
@@ -63,7 +63,7 @@ export function ViewHeader({ icon, children, actions, className, hideNotificatio
       <div className={`${CONTENT_MAX} relative flex items-center justify-between`}>
       {/* Command capsule: the wordmark menu trigger + view context grouped into
           one brand-tinted console unit, distinct from the right-side tools. */}
-      <div className="relative flex min-w-0 items-center gap-3 py-1.5 pl-2 pr-3.5">
+      <div className="relative flex min-w-0 items-center gap-3 py-1.5 pr-3.5">
         {/* Trigger + dropdown live in one wrapper so outside-click ignores both. */}
         <div ref={menuRef} className="relative shrink-0">
           <button
@@ -72,7 +72,7 @@ export function ViewHeader({ icon, children, actions, className, hideNotificatio
             aria-haspopup="menu"
             aria-expanded={menuOpen}
             aria-label="Open navigation"
-            className="group flex items-center gap-2 rounded-lg px-1.5 py-1 cursor-pointer transition-colors duration-150 hover:bg-hover-interactive focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)]"
+            className="group -ml-1.5 flex items-center gap-2 rounded-lg px-1.5 py-1 cursor-pointer transition-colors duration-150 hover:bg-hover-interactive focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)]"
           >
             <span className="font-[family-name:var(--font-space-mono)] text-[19px] font-bold lowercase tracking-[-0.02em] text-text-primary">
               bridge<span className="bridge-caret text-[var(--color-brand-400)]">_</span>

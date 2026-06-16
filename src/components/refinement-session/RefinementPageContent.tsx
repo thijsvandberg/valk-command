@@ -13,6 +13,7 @@ import { useRefinementQueue } from "@/hooks/useRefinementQueue";
 import { useBulkSuggest } from "@/hooks/useBulkSuggest";
 import { useRefinementStream } from "@/hooks/useRefinementStream";
 import { refinementSessions as refinementSessionsApi, jira as jiraApi, type RefinementSessionResponse } from "@/lib/api-client";
+import { CONTENT_MAX } from "@/lib/layout";
 import { useTicketActions } from "@/components/sprint-board/useTicketActions";
 import { mapJiraSprints } from "@/components/sprint-board/sprint-board-utils";
 import { Boxes, Plus, Clock } from "lucide-react";
@@ -534,7 +535,7 @@ export function RefinementPageContent({
             {/* On xl+ screens the container cap grows so the flex-1 ticket pane
                 gets the extra room. The queue keeps its size; the resizer divides
                 the row between the list and the queue (or the panel column). */}
-            <div className="mx-auto flex max-w-6xl gap-6 p-6 xl:max-w-[1600px]">
+            <div className={`${CONTENT_MAX} flex gap-6 p-6`}>
               <RefinementTicketList
                 availableTickets={queueHook.orderedTickets}
                 searchQuery={searchQuery}

@@ -12,6 +12,7 @@ import type { GroupByOption } from "./useGroupBy";
 import { SprintSelector } from "./SprintSelector";
 import { isBacklogSprintName } from "@/lib/sprint-utils";
 import { BarContainer } from "@/components/shared/BarContainer";
+import { BOARD_CONTENT_MAX } from "@/lib/layout";
 import {
   DndContext,
   closestCenter,
@@ -486,6 +487,7 @@ export function SprintSlots({
 
   return (
     <BarContainer>
+      <div className={`${BOARD_CONTENT_MAX} flex h-full items-center`}>
       {/* All tab -- fixed leading, filled pill, brand-tinted bg */}
       <button
         type="button"
@@ -643,6 +645,7 @@ export function SprintSlots({
             filterProps={filterProps}
           />
         )}
+      </div>
       </div>
     </BarContainer>
   );

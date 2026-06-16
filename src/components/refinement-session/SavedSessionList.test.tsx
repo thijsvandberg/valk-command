@@ -64,6 +64,20 @@ describe("SavedSessionList", () => {
     expect(screen.getByText("Sprint 43")).toBeInTheDocument();
   });
 
+  it("caps the session bar to the shared content width so it aligns with the list below (BRDG-361)", () => {
+    const { container } = render(
+      <SavedSessionList
+        sessions={mockSessions}
+        mutate={mockMutate}
+        activeSessionId="s1"
+        onSelectSession={mockOnSelect}
+      />,
+    );
+    const cap = container.querySelector(".max-w-\\[1536px\\]");
+    expect(cap).toBeTruthy();
+    expect(cap).toContainElement(screen.getByText("Sprint 42"));
+  });
+
   it("shows ticket count badges", () => {
     render(
       <SavedSessionList

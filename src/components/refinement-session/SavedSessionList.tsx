@@ -5,6 +5,7 @@ import { Check, Play, ArrowRight } from "lucide-react";
 import { useDroppable } from "@dnd-kit/core";
 import { ConfirmDialog } from "@/components/shared/ConfirmDialog";
 import { BarContainer } from "@/components/shared/BarContainer";
+import { CONTENT_MAX } from "@/lib/layout";
 import { RefinementSessionMenu } from "@/components/refinement-session/RefinementSessionMenu";
 import { SESSION_DROP_PREFIX } from "@/hooks/useRefinementDragDrop";
 import { dropTargetClasses, dropTargetStyle, DROP_TARGET_TRANSITION } from "@/components/shared/dropZone";
@@ -103,7 +104,8 @@ export function SavedSessionList({
 
   return (
     <>
-      <BarContainer className="gap-1.5 overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+      <BarContainer padding="none">
+        <div className={`${CONTENT_MAX} flex h-full items-center gap-1.5 px-6 overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden`}>
         {sessions.map((session) => {
           const isActive = activeSessionId === session.id;
           const isCompleted = session.status === "completed";
@@ -215,7 +217,7 @@ export function SavedSessionList({
             </SessionDropTarget>
           );
         })}
-
+        </div>
       </BarContainer>
 
       <ConfirmDialog
