@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo, useState, useEffect } from "react";
+import useSWR from "swr";
 import type { Sprint } from "@/types/ticket";
 import { useJiraSprints, useTickets, useActiveWriterSessions } from "@/hooks/useSprintBoard";
 import { useConversations } from "@/hooks/useConversations";
@@ -34,6 +35,7 @@ export interface SidebarData {
   chat: SidebarCount;
   storyWriter: SidebarCount;
   refinement: SidebarCount;
+  newStories: SidebarCount;
 }
 
 /**
@@ -67,6 +69,7 @@ export function useSidebarData(): SidebarData {
   const { data: writerSessions } = useActiveWriterSessions();
   const { conversations, loading: conversationsLoading } = useConversations();
   const { sessions: refinementSessions, isLoading: refinementLoading } = useRefinementSessions();
+  const { data: newStoriesData } = useSWR<{ count: number }>("/api/new-stories/count");
 
   // Last-known-good snapshot read once on mount; used as a fallback per field
   // while that field's live source is still loading.
@@ -112,6 +115,11 @@ export function useSidebarData(): SidebarData {
     [writerSessions],
   );
 
+  const newStories = useMemo<SidebarCount>(
+    () => ({ count: newStoriesData ? newStoriesData.count : null, note: "unread" }),
+    [newStoriesData],
+  );
+
   const refinement = useMemo<SidebarCount>(() => {
     if (refinementLoading) return { count: null, note: "to refine" };
     // "Next refinement" = the in-progress session if one is running, otherwise
@@ -128,6 +136,7 @@ export function useSidebarData(): SidebarData {
   // ready once their loading flag clears (writer uses SWR's undefined-while-loading).
   const heroReady = !sprintsLoading && (!activeSprint || tickets != null);
   const writerReady = writerSessions !== undefined;
+  const newStoriesReady = newStoriesData !== undefined;
 
   // Merge: prefer the live value once its source is ready, otherwise fall back
   // to the snapshot so the row stays populated during revalidation.
@@ -137,17 +146,18 @@ export function useSidebarData(): SidebarData {
       chat: !conversationsLoading ? chat : (snapshot?.chat ?? chat),
       storyWriter: writerReady ? storyWriter : (snapshot?.storyWriter ?? storyWriter),
       refinement: !refinementLoading ? refinement : (snapshot?.refinement ?? refinement),
+      newStories: newStoriesReady ? newStories : (snapshot?.newStories ?? newStories),
     }),
-    [heroReady, liveHero, conversationsLoading, chat, writerReady, storyWriter, refinementLoading, refinement, snapshot],
+    [heroReady, liveHero, conversationsLoading, chat, writerReady, storyWriter, refinementLoading, refinement, newStoriesReady, newStories, snapshot],
   );
 
   // Persist only a fully-live frame, so the snapshot never captures a half-loaded
   // mix of live values and stale fallbacks.
   useEffect(() => {
-    if (heroReady && !conversationsLoading && writerReady && !refinementLoading) {
-      writeSidebarSnapshot({ hero: liveHero, chat, storyWriter, refinement });
+    if (heroReady && !conversationsLoading && writerReady && !refinementLoading && newStoriesReady) {
+      writeSidebarSnapshot({ hero: liveHero, chat, storyWriter, refinement, newStories });
     }
-  }, [heroReady, conversationsLoading, writerReady, refinementLoading, liveHero, chat, storyWriter, refinement]);
+  }, [heroReady, conversationsLoading, writerReady, refinementLoading, newStoriesReady, liveHero, chat, storyWriter, refinement, newStories]);
 
   return result;
 }

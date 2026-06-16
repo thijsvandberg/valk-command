@@ -15,6 +15,7 @@ const SAMPLE: SidebarData = {
   chat: { count: 35, note: "unread" },
   storyWriter: { count: 9, note: "drafts" },
   refinement: { count: 4, note: "to refine" },
+  newStories: { count: 5, note: "unread" },
 };
 
 describe("sidebar-snapshot", () => {

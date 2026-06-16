@@ -13,6 +13,7 @@ import {
   NotebookPen,
   Users,
   Trash2,
+  Inbox,
   FlaskConical,
   ChevronRight,
   ChevronDown,
@@ -27,7 +28,7 @@ import { RecentlyViewedView } from "@/components/nav/RecentlyViewedView";
 import { revealStyle } from "@/components/nav/revealStyle";
 
 type Tier = "primary" | "common" | "rare";
-type DataKey = "chat" | "storyWriter" | "refinement";
+type DataKey = "chat" | "storyWriter" | "refinement" | "newStories";
 
 interface NavItem {
   label: string;
@@ -44,11 +45,12 @@ const NAV_ITEMS: NavItem[] = [
   { label: "Chat", href: "/chat", icon: <MessageCircle className={ICON} strokeWidth={1.5} />, tier: "common", dataKey: "chat" },
   { label: "Story Writer", href: "/story-writer", icon: <NotebookPen className={ICON} strokeWidth={1.5} />, tier: "common", dataKey: "storyWriter" },
   { label: "Refinement", href: "/refinement", icon: <Boxes className={ICON} strokeWidth={1.5} />, tier: "common", dataKey: "refinement" },
+  { label: "New stories", href: "/new-stories", icon: <Inbox className={ICON} strokeWidth={1.5} />, tier: "common", dataKey: "newStories" },
   { label: "Epics", href: "/epics", icon: <Zap className={ICON} strokeWidth={1.5} />, tier: "rare" },
   { label: "Pipelines", href: "/pipelines", icon: <GitBranch className={ICON} strokeWidth={1.5} />, tier: "rare" },
   { label: "Stakeholder", href: "/stakeholder", icon: <Users className={ICON} strokeWidth={1.5} />, tier: "rare" },
   { label: "Cleanup", href: "/cleanup", icon: <Trash2 className={ICON} strokeWidth={1.5} />, tier: "rare" },
-  { label: "Explorations", href: "/dev/exploration", icon: <FlaskConical className={ICON} strokeWidth={1.5} />, tier: "rare" },
+  { label: "Explore", href: "/dev/exploration", icon: <FlaskConical className={ICON} strokeWidth={1.5} />, tier: "rare" },
 ];
 
 const PRIMARY = NAV_ITEMS.find((n) => n.tier === "primary")!;
@@ -177,7 +179,7 @@ export function NavPanel({ open, onClose }: { open: boolean; onClose: () => void
             isActive={isActive}
             onNavigate={onClose}
             onOpenRecent={() => setRecentOpen(true)}
-            counts={{ chat: data.chat, storyWriter: data.storyWriter, refinement: data.refinement }}
+            counts={{ chat: data.chat, storyWriter: data.storyWriter, refinement: data.refinement, newStories: data.newStories }}
           />
         )}
       </div>

@@ -75,6 +75,7 @@ function fullData(): SidebarData {
     chat: { count: 4, note: "unread" },
     storyWriter: { count: 2, note: "drafts" },
     refinement: { count: 8, note: "to refine" },
+    newStories: { count: 5, note: "unread" },
   };
 }
 
@@ -84,6 +85,7 @@ function emptyData(): SidebarData {
     chat: { count: null, note: "unread" },
     storyWriter: { count: null, note: "drafts" },
     refinement: { count: null, note: "to refine" },
+    newStories: { count: null, note: "unread" },
   };
 }
 
@@ -127,7 +129,7 @@ describe("NavPanel (header navigation dropdown)", () => {
     }
     expect(screen.getByText("4")).toBeInTheDocument();
     expect(screen.getByText("8")).toBeInTheDocument();
-    for (const label of ["Epics", "Pipelines", "Stakeholder", "Cleanup", "Explorations"]) {
+    for (const label of ["Epics", "Pipelines", "Stakeholder", "Cleanup", "Explore"]) {
       expect(screen.getByRole("link", { name: label })).toBeInTheDocument();
     }
   });
