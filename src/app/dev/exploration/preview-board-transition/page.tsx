@@ -178,7 +178,7 @@ export default function BoardTransitionPreview() {
       <div className="mx-auto max-w-5xl">
         <header className="mb-8">
           <p className="text-label font-medium uppercase tracking-wide text-text-muted">BRDG-239 · tijdelijke preview</p>
-          <h1 className="mt-1 text-2xl font-semibold text-text-primary">Overgang header → tabel</h1>
+          <h1 className="mt-1 text-heading-lg font-semibold text-text-primary">Overgang header → tabel</h1>
           <p className="mt-2 max-w-3xl text-body text-text-secondary">
             Vergelijking van manieren om de overgang van de toolbar naar de ticketlijst rustiger te maken.
             Let op de naad tussen de tab-balk en de eerste rij, en de algehele dichtheid van de lijst.

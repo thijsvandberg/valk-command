@@ -8,7 +8,7 @@
  */
 
 import Link from "next/link";
-import { ArrowUpRight, LayoutGrid, Rows3, FlaskConical, Shapes, MousePointerClick, Type, PanelTop, PanelTopDashed, AppWindow, ListChecks, Gem, Gauge, Hash, SendHorizontal, BarChart3, History as HistoryIcon, Sparkles, RefreshCw, Target } from "lucide-react";
+import { ArrowUpRight, LayoutGrid, Rows3, FlaskConical, Shapes, MousePointerClick, Type, PanelTop, PanelTopDashed, AppWindow, ListChecks, Gem, Gauge, Hash, SendHorizontal, BarChart3, History as HistoryIcon, Sparkles, RefreshCw, Target, PanelsTopLeft, SlidersHorizontal } from "lucide-react";
 
 type Exploration = {
   slug: string;
@@ -22,6 +22,24 @@ type Exploration = {
 const ICON = "h-5 w-5";
 
 const EXPLORATIONS: Exploration[] = [
+  {
+    slug: "board-chrome",
+    title: "Header, sprint & filter bars",
+    blurb:
+      "Treats the three stacked board bars (header, views/sprint, filter) as one console instead of three separate flat strips, each mock sitting over a real slice of the board (group header + ticket rows) for context. Header is hamburger-less - the bridge_ wordmark is the sole menu trigger. Five directions over a faithful 'today' mock: A unified slab (one surface, faded seams, ghost chips), B floating clusters (recessed base, floating cards, segmented sprint switcher), C editorial rail (brand rail, airy rows, small-caps tabs), D two-row console (views + filter merged into one toolbar, filters folded into a trigger), E brand spine (one teal spine runs from chrome into the board's group header). Chosen: D (two-row console), built out in the two-row-console exploration and spec'd as BRDG-344.",
+    status: "Chosen",
+    ticket: "BRDG-344",
+    icon: <PanelsTopLeft className={ICON} strokeWidth={1.5} />,
+  },
+  {
+    slug: "two-row-console",
+    title: "Two-row console + filter dropdown",
+    blurb:
+      "Chosen board-chrome direction, built out: two rows, with search + sort + filter folded into one unified-controls cluster on the right (no separate filter bar). Filter opens a two-pane dropdown (category rail + options) that keeps today's per-category search and styled option badges; the display / field-visibility settings (row fields, not table columns) sit behind a 'Display' button in the dropdown header. Sort opens a real field + direction menu, search expands inline. All interactive. Spec'd as BRDG-344.",
+    status: "Shipped",
+    ticket: "BRDG-344",
+    icon: <SlidersHorizontal className={ICON} strokeWidth={1.5} />,
+  },
   {
     slug: "drop-zones",
     title: "Drop zones & bar alignment",
