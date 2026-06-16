@@ -531,11 +531,10 @@ export function RefinementPageContent({
         <div className="min-w-0 flex-1">
           <SavedSessionList sessions={activeSessions} mutate={mutateSessions} activeSessionId={resolvedSessionId} onSelectSession={handleSelectSession} onSessionFinished={handleSessionFinished} dragActive={dnd.isDragActive} />
 
-          <div className="min-h-full">
-            {/* On xl+ screens the container cap grows so the flex-1 ticket pane
-                gets the extra room. The queue keeps its size; the resizer divides
-                the row between the list and the queue (or the panel column). */}
-            <div className={`${CONTENT_MAX} flex gap-6 p-6`}>
+          <div className="min-h-full px-8 py-6">
+            {/* Gutter sits outside the cap so the content edge aligns flush with
+                the header/date-tabs cap edge on wide screens (BRDG-361). */}
+            <div className={`${CONTENT_MAX} flex gap-6`}>
               <RefinementTicketList
                 availableTickets={queueHook.orderedTickets}
                 searchQuery={searchQuery}

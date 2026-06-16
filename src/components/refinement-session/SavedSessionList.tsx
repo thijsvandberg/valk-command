@@ -105,7 +105,8 @@ export function SavedSessionList({
   return (
     <>
       <BarContainer padding="none">
-        <div className={`${CONTENT_MAX} flex h-full items-center gap-1.5 px-6 overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden`}>
+        <div className="flex h-full w-full px-8">
+        <div className={`${CONTENT_MAX} flex h-full items-center gap-1.5 overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden`}>
         {sessions.map((session) => {
           const isActive = activeSessionId === session.id;
           const isCompleted = session.status === "completed";
@@ -217,6 +218,7 @@ export function SavedSessionList({
             </SessionDropTarget>
           );
         })}
+        </div>
         </div>
       </BarContainer>
 
