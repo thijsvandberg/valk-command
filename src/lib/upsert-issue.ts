@@ -1,7 +1,7 @@
 import { db } from "@/db";
-import { ticket, ticketMetadata, storyVersion, ticketAttachment, ticketSubtask, ticketLink, jiraComment, sprintNameCache, ticketStatusChange, storyWriterSession } from "@/db/schema";
+import { ticket, ticketMetadata, storyVersion, ticketAttachment, ticketSubtask, ticketLink, jiraComment, sprintNameCache, ticketStatusChange, storyWriterSession, jiraUser } from "@/db/schema";
 import { eq, and, isNotNull, isNull } from "drizzle-orm";
-import { jiraClient, extractStoryPoints, extractSprints, extractEpicLink, extractAcceptanceCriteria, extractLastChangeAuthor, FLAGGED_FIELD, type JiraIssue, type JiraAttachment } from "@/lib/jira-client";
+import { jiraClient, extractStoryPoints, extractSprints, extractEpicLink, extractAcceptanceCriteria, extractLastChangeAuthor, FLAGGED_FIELD, type JiraIssue, type JiraAttachment, type JiraUser } from "@/lib/jira-client";
 import { adfToMarkdown } from "@/lib/adf-to-markdown";
 import { markdownEqualIgnoringSpacing } from "@/lib/normalize-markdown";
 import { emitTicketEvent, type TicketChangeKind } from "@/lib/ticket-events";
@@ -39,6 +39,39 @@ export function userColor(name: string): string {
   }
   const hue = Math.abs(hash) % 360;
   return `hsl(${hue}, 55%, 50%)`;
+}
+
+/**
+ * Upsert a person into the canonical jira_user directory (BRDG-363). Keyed on the
+ * stable accountId, so a rename in Jira touches exactly one row. Skips people
+ * without an accountId (privacy-hidden, external, or absent) — the denormalized
+ * name on the ticket row remains their fallback label. Runs inside the issue
+ * transaction so the directory stays in lockstep with the synced data.
+ */
+function upsertJiraUser(
+  tx: Parameters<Parameters<typeof db.transaction>[0]>[0],
+  person: JiraUser | null | undefined,
+  now: string,
+) {
+  if (!person?.accountId) return;
+  tx.insert(jiraUser)
+    .values({
+      accountId: person.accountId,
+      displayName: person.displayName ?? null,
+      email: person.emailAddress ?? null,
+      avatar: person.avatarUrls?.["48x48"] ?? null,
+      updatedAt: now,
+    })
+    .onConflictDoUpdate({
+      target: jiraUser.accountId,
+      set: {
+        displayName: person.displayName ?? null,
+        email: person.emailAddress ?? null,
+        avatar: person.avatarUrls?.["48x48"] ?? null,
+        updatedAt: now,
+      },
+    })
+    .run();
 }
 
 export function cacheSprintName(sprintId: string, displayName: string) {
@@ -249,6 +282,10 @@ export async function upsertIssue(
 
   // All DB writes in a single transaction for SQLite performance
   db.transaction((tx) => {
+    // Canonical person directory (BRDG-363): record everyone seen on this issue.
+    upsertJiraUser(tx, fields.reporter, now);
+    upsertJiraUser(tx, fields.assignee, now);
+
     // Ticket upsert
     if (existing) {
       tx.update(ticket).set(ticketData).where(eq(ticket.jiraKey, issue.key)).run();
@@ -387,6 +424,7 @@ export async function upsertIssue(
       if (prevSubSigs.join("\n") !== nextSubSigs.join("\n")) changedKinds.add("subtasks");
     }
     for (const sub of subtasks) {
+      upsertJiraUser(tx, sub.fields.assignee, now);
       const jiraAssignee = sub.fields.assignee?.displayName ?? null;
       const jiraAvatar = sub.fields.assignee?.avatarUrls?.["48x48"] ?? null;
 
@@ -441,6 +479,7 @@ export async function upsertIssue(
     for (const link of issuelinks) {
       const linked = link.inwardIssue ?? link.outwardIssue;
       if (!linked) continue;
+      upsertJiraUser(tx, linked.fields.assignee, now);
       const relation = link.inwardIssue ? link.type.inward : link.type.outward;
       const localLinkId = localLinkMap.get(linked.key);
 
@@ -468,6 +507,7 @@ export async function upsertIssue(
 
     // Comments
     for (const comment of inlineComments) {
+      upsertJiraUser(tx, comment.author, now);
       const contentMarkdown = typeof comment.body === "string"
         ? comment.body
         : adfToMarkdown(comment.body);

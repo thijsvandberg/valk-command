@@ -22,6 +22,22 @@ export interface PersonRef {
   avatar: string | null;
 }
 
+/** A person's label as held in the canonical jira_user directory (BRDG-363). */
+export interface JiraUserLabel {
+  displayName: string | null;
+  email: string | null;
+  avatar: string | null;
+}
+
+/**
+ * Look up a person's current label by accountId. Backed by the jira_user table
+ * (see getJiraUserLookup), this is what lets a rename in Jira reflect everywhere:
+ * the resolver prefers this label over the ticket's denormalized snapshot.
+ * Returns null/undefined when the account is unknown, so resolution falls back to
+ * the ticket's cached name.
+ */
+export type JiraUserLookup = (accountId: string) => JiraUserLabel | null | undefined;
+
 /** Subset of a ticket row carrying reporter identity. */
 export interface ReporterFields {
   reporter: string | null;
@@ -38,25 +54,34 @@ export interface AssigneeFields {
   assigneeEmail: string | null;
 }
 
-/** Resolve the reporter of a ticket row to a PersonRef, or null when absent. */
-export function resolveReporter(row: ReporterFields): PersonRef | null {
+/**
+ * Resolve the reporter of a ticket row to a PersonRef, or null when absent.
+ *
+ * When a jira_user lookup is supplied and the row has an accountId, the directory
+ * label wins (so a Jira rename reflects here); otherwise the ticket's cached
+ * name/email/avatar is the fallback. Without a lookup, behaviour is unchanged
+ * (pure over the row) so existing consumers keep working.
+ */
+export function resolveReporter(row: ReporterFields, lookup?: JiraUserLookup): PersonRef | null {
   if (!row.reporter && !row.reporterAccountId && !row.reporterEmail) return null;
+  const fromTable = row.reporterAccountId && lookup ? lookup(row.reporterAccountId) : null;
   return {
     accountId: row.reporterAccountId ?? null,
-    displayName: row.reporter ?? null,
-    email: row.reporterEmail ?? null,
-    avatar: row.reporterAvatar ?? null,
+    displayName: fromTable?.displayName ?? row.reporter ?? null,
+    email: fromTable?.email ?? row.reporterEmail ?? null,
+    avatar: fromTable?.avatar ?? row.reporterAvatar ?? null,
   };
 }
 
 /** Resolve the assignee of a ticket row to a PersonRef, or null when absent. */
-export function resolveAssignee(row: AssigneeFields): PersonRef | null {
+export function resolveAssignee(row: AssigneeFields, lookup?: JiraUserLookup): PersonRef | null {
   if (!row.assignee && !row.assigneeAccountId && !row.assigneeEmail) return null;
+  const fromTable = row.assigneeAccountId && lookup ? lookup(row.assigneeAccountId) : null;
   return {
     accountId: row.assigneeAccountId ?? null,
-    displayName: row.assignee ?? null,
-    email: row.assigneeEmail ?? null,
-    avatar: row.assigneeAvatar ?? null,
+    displayName: fromTable?.displayName ?? row.assignee ?? null,
+    email: fromTable?.email ?? row.assigneeEmail ?? null,
+    avatar: fromTable?.avatar ?? row.assigneeAvatar ?? null,
   };
 }
 

@@ -3,7 +3,7 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 import { createTestDb } from "@/db/test-utils";
 import type { BetterSQLite3Database } from "drizzle-orm/better-sqlite3";
 import type * as schema from "@/db/schema";
-import { ticket, ticketSubtask, ticketMetadata, storyVersion, storyWriterSession, conversation, ticketSprint } from "@/db/schema";
+import { ticket, ticketSubtask, ticketMetadata, storyVersion, storyWriterSession, conversation, ticketSprint, jiraUser } from "@/db/schema";
 import { eq, asc } from "drizzle-orm";
 
 let testDb: BetterSQLite3Database<typeof schema>;
@@ -290,6 +290,52 @@ describe("upsertIssue", () => {
     const row = testDb.select().from(ticket).all()[0];
     expect(row.reporter).toBe("Thijs vd Berg");
     expect(row.reporterAccountId).toBe("acc-reporter-1");
+  });
+
+  it("populates the jira_user directory for reporter and assignee", async () => {
+    await upsertIssue(makeIssue({
+      reporter: { accountId: "acc-rep", displayName: "Thijs", emailAddress: "thijs@newstory.nl", avatarUrls: { "48x48": "https://example.com/thijs.png" } },
+      assignee: { accountId: "acc-asg", displayName: "Robin", emailAddress: "robin@newstory.nl", avatarUrls: { "48x48": "https://example.com/robin.png" } },
+    }), "Sprint 1");
+
+    const users = testDb.select().from(jiraUser).all();
+    const byId = new Map(users.map((u) => [u.accountId, u]));
+    expect(byId.get("acc-rep")).toMatchObject({ displayName: "Thijs", email: "thijs@newstory.nl", avatar: "https://example.com/thijs.png" });
+    expect(byId.get("acc-asg")).toMatchObject({ displayName: "Robin", email: "robin@newstory.nl" });
+  });
+
+  it("records comment authors, subtask assignees and linked-issue assignees in jira_user", async () => {
+    await upsertIssue(makeIssue({
+      comment: {
+        total: 1,
+        comments: [{ id: "c1", author: { accountId: "acc-author", displayName: "Author", avatarUrls: {} }, body: "hi", created: "2024-01-02T00:00:00.000Z", updated: "2024-01-02T00:00:00.000Z" }],
+      },
+      subtasks: [{
+        id: "20001", key: "VPL-2",
+        fields: { summary: "Child", issuetype: { name: "Sub-task" }, status: { name: "To Do" }, assignee: { accountId: "acc-sub", displayName: "Subbie", avatarUrls: {} } },
+      }],
+      issuelinks: [{
+        id: "l1", type: { name: "Blocks", inward: "is blocked by", outward: "blocks" },
+        outwardIssue: { id: "30001", key: "VPL-9", fields: { summary: "Linked", status: { name: "Done" }, issuetype: { name: "Story" }, assignee: { accountId: "acc-link", displayName: "Linker", avatarUrls: {} } } },
+      }],
+    }), "Sprint 1");
+
+    const ids = testDb.select().from(jiraUser).all().map((u) => u.accountId).sort();
+    expect(ids).toEqual(["acc-author", "acc-link", "acc-sub"]);
+  });
+
+  it("updates the single jira_user row when a person is renamed in Jira", async () => {
+    await upsertIssue(makeIssue({ reporter: { accountId: "acc-rep", displayName: "Thijs van den Berg", avatarUrls: {} } }), "Sprint 1");
+    await upsertIssue(makeIssue({ reporter: { accountId: "acc-rep", displayName: "Thijs vd Berg", avatarUrls: {} } }), "Sprint 1");
+
+    const users = testDb.select().from(jiraUser).where(eq(jiraUser.accountId, "acc-rep")).all();
+    expect(users).toHaveLength(1);
+    expect(users[0].displayName).toBe("Thijs vd Berg");
+  });
+
+  it("skips people without an accountId (no jira_user row)", async () => {
+    await upsertIssue(makeIssue({ reporter: { accountId: "", displayName: "Anon", avatarUrls: {} } as never }), "Sprint 1");
+    expect(testDb.select().from(jiraUser).all()).toHaveLength(0);
   });
 
   it("updates parent ticketSubtask row when syncing a subtask directly", async () => {

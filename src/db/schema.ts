@@ -90,6 +90,21 @@ export const ticket = sqliteTable("ticket", {
   index("ticket_sprint_status_idx").on(table.sprintName, table.status),
 ]);
 
+// Canonical Jira person directory (BRDG-363), keyed on the stable accountId.
+// Single source of truth for a person's label: a rename in Jira updates one row
+// here instead of every denormalized copy. Populated during sync from every
+// person seen on an issue (reporter, assignee, comment author, subtask/link
+// assignee). The denormalized name on the ticket row is kept as a fallback for
+// people without an accountId (privacy-hidden, external, or legacy rows), so a
+// missing id never blanks out a name.
+export const jiraUser = sqliteTable("jira_user", {
+  accountId: text("account_id").primaryKey(),
+  displayName: text("display_name"),
+  email: text("email"),
+  avatar: text("avatar"),
+  updatedAt: text("updated_at"),
+});
+
 // Indexed projection of ticket.sprintIds: one row per (ticket, sprint) membership.
 // sprintIds stays the source of truth on the ticket row (drives card labels and the
 // API response); this bridge exists purely so "which tickets are in sprint X" is an

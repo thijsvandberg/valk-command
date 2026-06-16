@@ -35,6 +35,29 @@ describe("resolveReporter", () => {
     const ref = resolveReporter({ reporter: "Legacy Name", reporterAccountId: null, reporterAvatar: null, reporterEmail: null });
     expect(ref).toEqual({ accountId: null, displayName: "Legacy Name", email: null, avatar: null });
   });
+
+  it("prefers the jira_user directory label over the ticket's cached name", () => {
+    const lookup = (id: string) =>
+      id === "acc-1" ? { displayName: "Thijs (renamed)", email: "new@newstory.nl", avatar: "new.png" } : undefined;
+    const ref = resolveReporter(reporterRow, lookup);
+    expect(ref).toEqual({ accountId: "acc-1", displayName: "Thijs (renamed)", email: "new@newstory.nl", avatar: "new.png" });
+  });
+
+  it("falls back to the ticket's cached name when the accountId is unknown to the directory", () => {
+    const lookup = () => undefined;
+    const ref = resolveReporter(reporterRow, lookup);
+    expect(ref?.displayName).toBe("Thijs van den Berg");
+    expect(ref?.avatar).toBe("https://example.com/thijs.png");
+  });
+
+  it("does not blank a label when the row has no accountId even with a lookup", () => {
+    const lookup = () => ({ displayName: "Should not be used", email: null, avatar: null });
+    const ref = resolveReporter(
+      { reporter: "Legacy Name", reporterAccountId: null, reporterAvatar: null, reporterEmail: null },
+      lookup,
+    );
+    expect(ref?.displayName).toBe("Legacy Name");
+  });
 });
 
 describe("resolveAssignee", () => {

@@ -11,6 +11,7 @@ import { logger } from "@/lib/logger";
 import { syncJiraTimestamp } from "@/lib/sync-jira-timestamp";
 import { userInitials, userColor } from "@/lib/user-utils";
 import { resolveReporter } from "@/lib/person-ref";
+import { getJiraUserLookup } from "@/lib/jira-user-directory";
 
 export function buildAssignee(name: string | null): Assignee | null {
   if (!name) return null;
@@ -102,6 +103,10 @@ async function runTicketQueries(key: string) {
 
   if (!t) return null;
 
+  // Canonical label for the reporter (BRDG-363): prefer the jira_user directory
+  // so a Jira rename reflects here, falling back to the ticket's cached name.
+  const reporterLookup = await getJiraUserLookup([t.reporterAccountId]);
+
   const parentTicket = parentRows.length > 0
     ? {
         key: parentRows[0].ticketKey,
@@ -111,11 +116,11 @@ async function runTicketQueries(key: string) {
       }
     : null;
 
-  return { t, meta, attachmentRows, jiraCommentRows, subtaskRows, linkRows, epicChildRows, localEdits, latestVersion, parentTicket, reviewCountRows, versionCountRows, chatCountRows, suggestionCountRows };
+  return { t, meta, attachmentRows, jiraCommentRows, subtaskRows, linkRows, epicChildRows, localEdits, latestVersion, parentTicket, reviewCountRows, versionCountRows, chatCountRows, suggestionCountRows, reporterLookup };
 }
 
 function transformQueryData(queryData: NonNullable<Awaited<ReturnType<typeof runTicketQueries>>>): TicketDetailResponse {
-  const { t, meta, attachmentRows, jiraCommentRows, subtaskRows, linkRows, epicChildRows, localEdits, latestVersion, parentTicket, reviewCountRows, versionCountRows, chatCountRows, suggestionCountRows } = queryData;
+  const { t, meta, attachmentRows, jiraCommentRows, subtaskRows, linkRows, epicChildRows, localEdits, latestVersion, parentTicket, reviewCountRows, versionCountRows, chatCountRows, suggestionCountRows, reporterLookup } = queryData;
 
   const attachments: Attachment[] = attachmentRows.map((a) => ({
     id: a.id,
@@ -197,7 +202,7 @@ function transformQueryData(queryData: NonNullable<Awaited<ReturnType<typeof run
     // Proof-of-concept consumer of the canonical person resolver (BRDG-360):
     // identity now flows through resolveReporter (keyed on accountId) rather than
     // reading the raw name string. Display is unchanged (still name + avatar).
-    reporter: buildAssignee(resolveReporter(t)?.displayName ?? null),
+    reporter: buildAssignee(resolveReporter(t, reporterLookup)?.displayName ?? null),
     parent: parentTicket,
     labels,
     components,
