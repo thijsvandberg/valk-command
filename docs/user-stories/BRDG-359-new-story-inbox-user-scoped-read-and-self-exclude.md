@@ -32,6 +32,7 @@ Two related changes to the New story inbox, both keyed on "who is the logged-in 
 ### Exclude self-authored
 - Resolve the logged-in user's name via `getActingUser()` and exclude rows where `reporter` equals that name from `listNewStories`/`countNewStories`.
 - **Name-matching is an interim.** `reporter` is a free-text display name today, so this matches on the string. The robust fix — keying people on a stable identifier (Jira `accountId`) — is **[[BRDG-360-stable-person-identifier-reporter-assignee]]**; when that lands, switch self-exclusion to match on the id. Until then, an optional per-user "my Jira display name" override (on the `userSetting` foundation) can correct a Clerk-name/Jira-name mismatch.
+- **UPDATE (BRDG-360/363/364 have landed):** the stable-identifier work is now done — `reporter.accountId` is captured on tickets, the `jira_user` directory exists, and `getActingUserJiraIdentity()` resolves the logged-in user's Jira `accountId` (per-account `my_jira_identity` setting). **Build self-exclusion directly on `accountId`** (compare `ticket.reporterAccountId` to `getActingUserJiraIdentity()?.accountId`, falling back to the name when the id is absent) instead of the name-matching interim. No separate "my Jira display name" override is needed.
 
 ## Open Questions
 
