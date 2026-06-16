@@ -11,14 +11,6 @@ import {
 } from "@dnd-kit/core";
 import { dropTargetClasses, dropTargetStyle } from "@/components/shared/dropZone";
 
-// The leading "Backlog" drop tile targets a real team-backlog SPRINT (which has a
-// numeric Jira sprint id), not the generic sprint-less project backlog. Dropping
-// there must ASSIGN that sprint so the ticket lands in the team's backlog; pointing
-// it at "__backlog__" instead only strips the sprint and drops the ticket into the
-// project-wide backlog. Fixed to the BT team for now; BRDG-346 turns this into a
-// user setting.
-const BACKLOG_DROP_SPRINT_NAME = "BT: Backlog";
-
 // Sprint drop zone shown when a ticket is being dragged
 export function SprintDropTile({
   sprintId,
@@ -70,6 +62,7 @@ export function SprintDropZoneBar({
   pillSlotSprints,
   activeSprintId,
   allActive,
+  backlogTargetName,
 }: {
   sprints: Sprint[];
   /** Pinned SPRINT pills only — backlogs and saved views (e.g. "Overall
@@ -78,10 +71,17 @@ export function SprintDropZoneBar({
   pillSlotSprints: string[];
   activeSprintId: string;
   allActive: boolean;
+  /** The per-account "default backlog" sprint NAME (BRDG-346). The leading
+   *  drop tile targets the live sprint with this name — a real team-backlog
+   *  SPRINT (numeric Jira id), so dropping ASSIGNS that sprint rather than
+   *  stripping the sprint via "__backlog__". */
+  backlogTargetName: string;
 }) {
-  const backlogSprint =
-    sprints.find((s) => s.name === BACKLOG_DROP_SPRINT_NAME) ??
-    sprints.find((s) => s.id === "__backlog__");
+  // Resolve strictly by the configured name and never fall back to the generic
+  // "__backlog__" target: if the configured backlog is absent from the live
+  // list, the tile is hidden (guarded below) rather than silently dropping into
+  // the wrong, project-wide backlog.
+  const backlogSprint = sprints.find((s) => s.name === backlogTargetName);
   const pinned = pillSlotSprints.filter((id) => id !== backlogSprint?.id);
   return (
     <div className="absolute inset-0 z-10 flex items-center px-4">

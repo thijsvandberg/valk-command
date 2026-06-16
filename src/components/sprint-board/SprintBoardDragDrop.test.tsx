@@ -39,6 +39,7 @@ describe("SprintDropZoneBar", () => {
     makeSprint({ id: "s2", name: "Sprint 2" }),
     makeSprint({ id: "s3", name: "Sprint 3" }),
     makeSprint({ id: "628", name: "BT: Backlog", state: "backlog" }),
+    makeSprint({ id: "742", name: "GXP: Backlog", state: "backlog" }),
     makeSprint({ id: "__backlog__", name: "Backlog", state: "backlog" }),
   ];
 
@@ -47,24 +48,42 @@ describe("SprintDropZoneBar", () => {
   });
 
   it("keeps the bar chrome: renders the All pill, no 'Move to' label", () => {
-    render(<SprintDropZoneBar sprints={sprints} pillSlotSprints={["s1", "s2", "s3"]} activeSprintId="s1" allActive={false} />);
+    render(<SprintDropZoneBar sprints={sprints} pillSlotSprints={["s1", "s2", "s3"]} activeSprintId="s1" allActive={false} backlogTargetName="BT: Backlog" />);
     expect(screen.getByText("All")).toBeInTheDocument();
     expect(screen.queryByText("Move to")).not.toBeInTheDocument();
   });
 
   it("renders the backlog target as 'BT: Backlog' in the Backlogs slot", () => {
-    render(<SprintDropZoneBar sprints={sprints} pillSlotSprints={["s1", "s2"]} activeSprintId="s1" allActive={false} />);
+    render(<SprintDropZoneBar sprints={sprints} pillSlotSprints={["s1", "s2"]} activeSprintId="s1" allActive={false} backlogTargetName="BT: Backlog" />);
     expect(screen.getByText("BT: Backlog")).toBeInTheDocument();
   });
 
   it("targets the real BT: Backlog sprint id, not the generic __backlog__", () => {
-    render(<SprintDropZoneBar sprints={sprints} pillSlotSprints={["s1", "s2"]} activeSprintId="s1" allActive={false} />);
+    render(<SprintDropZoneBar sprints={sprints} pillSlotSprints={["s1", "s2"]} activeSprintId="s1" allActive={false} backlogTargetName="BT: Backlog" />);
     expect(droppableIds).toContain("sprint-slot:628");
     expect(droppableIds).not.toContain("sprint-slot:__backlog__");
   });
 
+  it("follows the configured target: labels and targets GXP: Backlog when chosen", () => {
+    render(<SprintDropZoneBar sprints={sprints} pillSlotSprints={["s1", "s2"]} activeSprintId="s1" allActive={false} backlogTargetName="GXP: Backlog" />);
+    expect(screen.getByText("GXP: Backlog")).toBeInTheDocument();
+    expect(droppableIds).toContain("sprint-slot:742");
+    // The non-chosen BT backlog and the generic backlog are never targeted.
+    expect(droppableIds).not.toContain("sprint-slot:628");
+    expect(droppableIds).not.toContain("sprint-slot:__backlog__");
+  });
+
+  it("hides the tile and never falls back to __backlog__ when the target is absent", () => {
+    render(<SprintDropZoneBar sprints={sprints} pillSlotSprints={["s1", "s2"]} activeSprintId="s1" allActive={false} backlogTargetName="HT: Backlog" />);
+    expect(screen.queryByText("HT: Backlog")).not.toBeInTheDocument();
+    expect(droppableIds).not.toContain("sprint-slot:__backlog__");
+    expect(droppableIds).not.toContain("sprint-slot:628");
+    // s1 is the active (plain) pill, s2 is the only drop tile; no backlog tile.
+    expect(screen.getAllByTestId("arrow-right")).toHaveLength(1);
+  });
+
   it("makes pinned non-active sprints + backlog drop tiles, the active sprint a plain pill", () => {
-    render(<SprintDropZoneBar sprints={sprints} pillSlotSprints={["s1", "s2", "s3"]} activeSprintId="s1" allActive={false} />);
+    render(<SprintDropZoneBar sprints={sprints} pillSlotSprints={["s1", "s2", "s3"]} activeSprintId="s1" allActive={false} backlogTargetName="BT: Backlog" />);
     // s2, s3 and BT: Backlog each render an arrow cue (drop tiles); s1 is plain.
     expect(screen.getAllByTestId("arrow-right")).toHaveLength(3);
     expect(screen.getByText("Sprint 1")).toBeInTheDocument();
@@ -73,7 +92,7 @@ describe("SprintDropZoneBar", () => {
   });
 
   it("renders the backlog as a plain pill when the backlog sprint is the active view", () => {
-    render(<SprintDropZoneBar sprints={sprints} pillSlotSprints={["s1", "s2"]} activeSprintId="628" allActive={false} />);
+    render(<SprintDropZoneBar sprints={sprints} pillSlotSprints={["s1", "s2"]} activeSprintId="628" allActive={false} backlogTargetName="BT: Backlog" />);
     expect(screen.getByText("BT: Backlog")).toBeInTheDocument();
     // Only s1 and s2 are drop tiles; BT: Backlog is plain (no arrow).
     expect(screen.getAllByTestId("arrow-right")).toHaveLength(2);

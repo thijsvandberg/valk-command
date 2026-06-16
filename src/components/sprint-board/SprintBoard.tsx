@@ -20,6 +20,7 @@ import dynamic from "next/dynamic";
 const SearchModal = dynamic(() => import("@/components/sprint-board/SearchModal").then((m) => ({ default: m.SearchModal })), { ssr: false });
 const AddToRefinementModal = dynamic(() => import("@/components/refinement-session/AddToRefinementModal").then((m) => ({ default: m.AddToRefinementModal })), { ssr: false });
 import { useJiraSprints, useTickets, useTicketDetail } from "@/hooks/useSprintBoard";
+import { useBacklogDropTarget } from "@/hooks/useBacklogDropTarget";
 import { useTicketSessionMap } from "@/hooks/useTicketSessionMap";
 import { useLocalStorage } from "@/hooks/useLocalStorage";
 import { useMigratedAccountSetting } from "@/hooks/useMigratedAccountSetting";
@@ -68,6 +69,7 @@ export default function SprintBoard() {
   useTicketEventsStream();
 
   const { sprints: rawJiraSprints, backlogCount, data: sprintsData } = useJiraSprints();
+  const { backlogTargetName } = useBacklogDropTarget();
   const sprints = useMemo(() => {
     const mapped = mapJiraSprints(rawJiraSprints);
     mapped.push({ id: "__backlog__", name: "Backlog", dateRange: "", state: "backlog", ticketCount: backlogCount, startDate: null, endDate: null, goal: null });
@@ -925,7 +927,7 @@ export default function SprintBoard() {
         <div className={dnd.boardActiveDragId ? "invisible" : ""}>
         <SprintSlots slotSprints={slotSprints} pillSlotSprints={pillSlotSprints} activeSprintId={activeSprintId} allActive={isAllView && !f.activeViewId} sprints={sprints} backlogCount={backlogCount} backlogSprints={backlogSprints} activeBacklogId={activeBacklog?.id ?? null} onBacklogSelect={handleSprintListSelect} onSlotClick={setActiveSlot} onAllClick={handleAllClick} editingSlot={editingSlot} onSlotEdit={handleSlotEdit} onSprintSelect={handleSprintSelect} onEditClose={() => setEditingSlot(null)} onReorderSlots={handleReorderSlots} ephemeralSprintId={ephemeralSprintId} ephemeralIsActive={ephemeralIsActive} onEphemeralClick={handleEphemeralClick} activeFilterCount={activeFilterCount} savedViews={presetViews} activeViewId={f.activeViewId} onViewClick={f.handleViewClick} onSaveCurrentView={f.handleSaveView} sortField={f.sortField} sortDir={f.sortDir} onSortChange={sortChange} searchQuery={f.searchQuery} onSearchChange={f.setSearchQuery} searchCount={f.searchQuery.trim().length >= 2 ? { matched: f.searchResultCount, total: f.searchScopeCount } : undefined} filterProps={filterControlsProps} groupBy={groupBy} onGroupByChange={setGroupBy} onCreateSprint={() => setCreateSprintModalOpen(true)} onOpenSprintList={(anchor) => setBarSprintListAnchor(anchor)} groupCount={groups.length} allGroupsCollapsed={allCollapsed} onToggleCollapseAll={toggleAllGroups} />
         </div>
-        {dnd.jiraRankDndEnabled && dnd.boardActiveDragId && <SprintDropZoneBar sprints={sprints} pillSlotSprints={pillSlotSprints} activeSprintId={activeSprintId} allActive={isAllView && !f.activeViewId} />}
+        {dnd.jiraRankDndEnabled && dnd.boardActiveDragId && <SprintDropZoneBar sprints={sprints} pillSlotSprints={pillSlotSprints} activeSprintId={activeSprintId} allActive={isAllView && !f.activeViewId} backlogTargetName={backlogTargetName} />}
       </div>
       <div ref={contentScrollRef} className="min-h-0 flex-1 overflow-y-auto">
         {!ticketsLoading && analyticsVisible && <SprintAnalytics tickets={allTickets} onClose={() => setAnalyticsVisible(false)} sprintId={activeSprintId} />}
