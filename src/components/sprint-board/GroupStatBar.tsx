@@ -65,6 +65,8 @@ export interface GroupStatBarProps {
    * where sprint-estimate hygiene is not relevant.
    */
   showWarnings?: boolean;
+  /** When false, the SP and BV total badges are hidden. Used on the new-story inbox. */
+  showMetrics?: boolean;
   /** When false, the "avg N" business-value average next to the BV total is hidden. */
   showBvAvg?: boolean;
   /** When provided, renders a pin toggle next to the label (used to pin a sprint group to the tab bar). */
@@ -201,6 +203,7 @@ export const GroupStatBar = memo(function GroupStatBar({
   showDot = false,
   showStatusCounts = true,
   showWarnings = true,
+  showMetrics = true,
   showBvAvg = true,
   onPin,
   isPinned = false,
@@ -430,7 +433,7 @@ export const GroupStatBar = memo(function GroupStatBar({
       <StatPill size="sm" variant="default">
         {tickets.length} {pluralize(tickets.length, "item")}
       </StatPill>
-      {totalPoints > 0 && (
+      {showMetrics && totalPoints > 0 && (
         <MetricBadge
           metric="sp"
           value={totalPoints}
@@ -448,7 +451,7 @@ export const GroupStatBar = memo(function GroupStatBar({
           }
         />
       )}
-      {bvTickets.length > 0 && (
+      {showMetrics && bvTickets.length > 0 && (
         <MetricBadge
           metric="bv"
           value={bvTotal}
