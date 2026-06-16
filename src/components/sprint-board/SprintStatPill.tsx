@@ -484,6 +484,7 @@ export function StatusPill({
     <button
       type="button"
       onClick={onClick}
+      aria-pressed={active}
       className={`${base} cursor-pointer transition-colors duration-100 hover:opacity-80 active:opacity-60 ${className}`}
       style={style}
     >

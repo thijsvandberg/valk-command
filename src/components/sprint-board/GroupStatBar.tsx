@@ -36,6 +36,14 @@ export interface GroupStatBarProps {
   /** A selection exists somewhere; keeps the select-all checkbox visible (not hover-gated). */
   selectionActive?: boolean;
   activeCriterion?: StatCriterion | null;
+  /**
+   * Multi-select status filter: when provided, the four status pills derive their
+   * active state from set membership and clicking a pill always emits that raw
+   * criterion (the parent toggles it in/out of its set). Without this prop the bar
+   * stays single-select, driven by `activeCriterion` (used by the legacy compare view).
+   * The "unpointed" warning lens is never multi-select; it keeps using `activeCriterion`.
+   */
+  activeCriteria?: Set<StatCriterion>;
   onFilterChange?: (criterion: StatCriterion | null) => void;
   isCollapsed?: boolean;
   onToggleCollapse?: () => void;
@@ -179,6 +187,7 @@ export const GroupStatBar = memo(function GroupStatBar({
   selectAllIndeterminate = false,
   selectionActive = false,
   activeCriterion = null,
+  activeCriteria,
   onFilterChange,
   isCollapsed,
   onToggleCollapse,
@@ -325,9 +334,20 @@ export const GroupStatBar = memo(function GroupStatBar({
   // deprecated-with-points); the consumer filters to the matching items.
   const canFilterWarnings = warningLabel !== "" && onFilterChange !== undefined;
 
+  // In multi-select mode the parent owns the set, so a pill click emits its raw
+  // criterion and the parent toggles membership. The single-select fallback (and the
+  // "unpointed" warning lens, which is never multi-select) collapses a re-click of the
+  // active pill to null.
+  const multiSelect = activeCriteria !== undefined;
   function toggle(criterion: StatCriterion) {
+    if (multiSelect && criterion !== "unpointed") {
+      onFilterChange?.(criterion);
+      return;
+    }
     onFilterChange?.(activeCriterion === criterion ? null : criterion);
   }
+  const isCriterionActive = (criterion: StatCriterion) =>
+    multiSelect ? activeCriteria!.has(criterion) : activeCriterion === criterion;
 
   return (
     <div className="@container flex w-full items-center gap-2">
@@ -460,7 +480,7 @@ export const GroupStatBar = memo(function GroupStatBar({
               label="TO DO"
               count={todoCount}
               showDot={showDot}
-              active={activeCriterion === "todo"}
+              active={isCriterionActive("todo")}
               onClick={onFilterChange ? (e) => { e.stopPropagation(); toggle("todo"); } : undefined}
             />
           )}
@@ -471,7 +491,7 @@ export const GroupStatBar = memo(function GroupStatBar({
               label="IN PROGRESS"
               count={inProgressCount}
               showDot={showDot}
-              active={activeCriterion === "in-progress"}
+              active={isCriterionActive("in-progress")}
               onClick={onFilterChange ? (e) => { e.stopPropagation(); toggle("in-progress"); } : undefined}
             />
           )}
@@ -482,7 +502,7 @@ export const GroupStatBar = memo(function GroupStatBar({
               label="TEST"
               count={testCount}
               showDot={showDot}
-              active={activeCriterion === "test"}
+              active={isCriterionActive("test")}
               onClick={onFilterChange ? (e) => { e.stopPropagation(); toggle("test"); } : undefined}
             />
           )}
@@ -493,7 +513,7 @@ export const GroupStatBar = memo(function GroupStatBar({
               label="DONE"
               count={doneCount}
               showDot={showDot}
-              active={activeCriterion === "done"}
+              active={isCriterionActive("done")}
               onClick={onFilterChange ? (e) => { e.stopPropagation(); toggle("done"); } : undefined}
             />
           )}

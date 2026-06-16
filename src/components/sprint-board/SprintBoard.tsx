@@ -777,10 +777,12 @@ export default function SprintBoard() {
     const key = isBacklog ? "__backlog__" : activeSprint!.id;
     const CRIT_TO_STATUS: Record<string, string> = { todo: "TO DO", "in-progress": "IN PROGRESS", test: "TEST", done: "DONE" };
     const STATUS_TO_CRIT: Record<string, StatCriterion> = { "TO DO": "todo", "IN PROGRESS": "in-progress", TEST: "test", DONE: "done" };
-    const onlyStatus = fStatusFilter.size === 1 ? [...fStatusFilter][0] : null;
-    const activeCriterion: StatCriterion | null = warningLensActive
-      ? "unpointed"
-      : onlyStatus ? (STATUS_TO_CRIT[onlyStatus] ?? null) : null;
+    // Multi-select: every filtered status lights up its pill. The warning lens stays a
+    // separate single criterion handled via activeCriterion.
+    const activeCriteria = new Set<StatCriterion>(
+      [...fStatusFilter].map((s) => STATUS_TO_CRIT[s]).filter(Boolean) as StatCriterion[],
+    );
+    const activeCriterion: StatCriterion | null = warningLensActive ? "unpointed" : null;
     // The "+" lives in the header next to "...", matching the grouped/All view's per-group create
     // button. Jira rejects creating into a closed sprint, so it only shows where creation is allowed.
     const canCreate = isBacklog || activeSprint?.state !== "closed";
@@ -816,11 +818,11 @@ export default function SprintBoard() {
         isActive={!isBacklog && activeSprint?.state === "active"}
         leadingIcon={isBacklog ? <Inbox className="h-3.5 w-3.5" strokeWidth={1.5} /> : undefined}
         activeCriterion={activeCriterion}
+        activeCriteria={activeCriteria}
         onFilterChange={(crit) => {
           if (crit === null) {
-            // GroupStatBar collapses a re-click of the active pill to null. While the lens
-            // is on it is the active pill, so null here means "turn the warning lens off"
-            // (BRDG-313, req 2); otherwise it clears the status filter.
+            // Only the warning lens emits null (a re-click of its active pill). While the
+            // lens is on, null means "turn it off" (BRDG-313, req 2).
             if (warningLensActive) { setWarningLensActive(false); return; }
             fSetStatusFilter(new Set());
             return;
@@ -833,7 +835,13 @@ export default function SprintBoard() {
           }
           const status = CRIT_TO_STATUS[crit];
           if (!status) return;
-          fSetStatusFilter(activeCriterion === crit ? new Set() : new Set([status]));
+          // Toggle the status in/out of the filter set so clicks expand the filter
+          // instead of replacing it. Activating a status leaves the warning lens.
+          if (warningLensActive) setWarningLensActive(false);
+          const next = new Set(fStatusFilter);
+          if (next.has(status)) next.delete(status);
+          else next.add(status);
+          fSetStatusFilter(next);
         }}
         {...(!isBacklog && activeSprint
           ? {

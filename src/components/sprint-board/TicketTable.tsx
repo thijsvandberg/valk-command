@@ -10,7 +10,7 @@ import { IssueTypeIcon } from "@/components/shared/IssueTypeIcon";
 import { EmptyState } from "@/components/shared/EmptyState";
 import { ChildIssueComposer } from "@/components/ticket-detail/ChildIssueComposer";
 import { Sheet, Inbox, Plus } from "lucide-react";
-import { GroupStatBar } from "@/components/sprint-board/GroupStatBar";
+import { GroupStatBar, type StatCriterion } from "@/components/sprint-board/GroupStatBar";
 import { matchesWarningFilter, ticketWarningLabels } from "@/components/sprint-board/warning-filter";
 import { GroupCard, GROUP_CARD_CLASS } from "@/components/sprint-board/GroupCard";
 import { trailingDoneDepStart } from "@/lib/sprint-insert-position";
@@ -321,7 +321,9 @@ export function TicketTable({
 
   const lastCheckRef = useRef<{ idx: number; checked: boolean } | null>(null);
 
-  const [groupFilter, setGroupFilter] = useState<{ groupKey: string; criterion: "todo" | "in-progress" | "test" | "done" | "unpointed" } | null>(null);
+  // A per-group narrowing: either a multi-select set of status criteria, or the single
+  // "unpointed" warning lens (mutually exclusive with statuses, mirroring the flat view).
+  const [groupFilter, setGroupFilter] = useState<{ groupKey: string; criteria: Set<StatCriterion> } | null>(null);
 
   // Changing any global filter exits a per-group warning/status narrowing so the mode
   // never restores onto a stale set (BRDG-313, req 3). Mirrors the flat-view lens exit.
@@ -686,30 +688,42 @@ export function TicketTable({
         const createTargetSprintId = isBacklogGroup ? null : group.key;
         const isComposerOpen = composerGroupKey === group.key;
 
-        const activeCriterion = groupFilter?.groupKey === group.key ? groupFilter.criterion : null;
+        const groupCriteria = groupFilter?.groupKey === group.key ? groupFilter.criteria : null;
         // While this group's warning mode is on, each row gets its own hygiene labels
         // (BRDG-313), gated by whether the group is the active sprint for the unpointed kind.
         const groupIsActiveSprint = groupBy === "sprint" && activeSprintIds.has(group.key);
-        const showGroupWarningLabels = activeCriterion === "unpointed";
-        const visibleGroupTickets = activeCriterion === "todo"
-          ? group.tickets.filter((t) => t.jiraStatus === "TO DO")
-          : activeCriterion === "in-progress"
-            ? group.tickets.filter((t) => t.jiraStatus === "IN PROGRESS")
-            : activeCriterion === "test"
-              ? group.tickets.filter((t) => t.jiraStatus === "TEST")
-              : activeCriterion === "done"
-                ? group.tickets.filter((t) => t.jiraStatus === "DONE")
-                : activeCriterion === "unpointed"
-                  ? group.tickets.filter((t) =>
-                      matchesWarningFilter(t, groupBy === "sprint" && activeSprintIds.has(group.key)))
-                  : group.tickets;
+        const showGroupWarningLabels = groupCriteria?.has("unpointed") ?? false;
+        const CRIT_STATUS: Record<string, string> = { todo: "TO DO", "in-progress": "IN PROGRESS", test: "TEST", done: "DONE" };
+        const statusCriteria = groupCriteria
+          ? [...groupCriteria].filter((c) => c !== "unpointed")
+          : [];
+        const wantedStatuses = new Set(statusCriteria.map((c) => CRIT_STATUS[c]));
+        const visibleGroupTickets = showGroupWarningLabels
+          ? group.tickets.filter((t) => matchesWarningFilter(t, groupIsActiveSprint))
+          : wantedStatuses.size > 0
+            ? group.tickets.filter((t) => wantedStatuses.has(t.jiraStatus))
+            : group.tickets;
+        // Highlight: status pills via the set; the warning lens via activeCriterion.
+        const activeCriterion: StatCriterion | null = showGroupWarningLabels ? "unpointed" : null;
+        const isGroupFiltered = (groupCriteria?.size ?? 0) > 0;
 
-        function toggleGroupFilter(criterion: "todo" | "in-progress" | "test" | "done" | "unpointed") {
-          setGroupFilter((prev) =>
-            prev?.groupKey === group.key && prev.criterion === criterion
-              ? null
-              : { groupKey: group.key, criterion },
-          );
+        // Toggle a status in/out of this group's set so clicks expand the filter. The
+        // "unpointed" warning lens is exclusive: it replaces any status set and vice versa.
+        function toggleGroupFilter(criterion: StatCriterion) {
+          setGroupFilter((prev) => {
+            const sameGroup = prev?.groupKey === group.key;
+            if (criterion === "unpointed") {
+              return sameGroup && prev!.criteria.has("unpointed")
+                ? null
+                : { groupKey: group.key, criteria: new Set<StatCriterion>(["unpointed"]) };
+            }
+            const next = new Set<StatCriterion>(
+              sameGroup ? [...prev!.criteria].filter((c) => c !== "unpointed") : [],
+            );
+            if (next.has(criterion)) next.delete(criterion);
+            else next.add(criterion);
+            return next.size === 0 ? null : { groupKey: group.key, criteria: next };
+          });
         }
 
         const groupTicketIds = visibleGroupTickets.map((t) => t.key);
@@ -718,7 +732,7 @@ export function TicketTable({
         // Only when grouped by sprint; backlog placeholders map null -> "__backlog__".
         // A warning/status narrowing hides them (they are neither a status nor pointed).
         const groupPlaceholders =
-          (isSprintGroup || isBacklogGroup) && !activeCriterion
+          (isSprintGroup || isBacklogGroup) && !isGroupFiltered
             ? (placeholders ?? []).filter((p) => (p.sprintId ?? "__backlog__") === group.key)
             : [];
         const hasPlaceholders = groupPlaceholders.length > 0;
@@ -807,6 +821,7 @@ export function TicketTable({
                 leadingIcon={group.key === "__backlog__" ? <Inbox className="h-3.5 w-3.5" strokeWidth={1.5} /> : undefined}
                 isActive={groupBy === "sprint" && activeSprintIds.has(group.key)}
                 activeCriterion={activeCriterion}
+                activeCriteria={groupCriteria ?? new Set<StatCriterion>()}
                 onFilterChange={(criterion) => {
                   if (criterion === null) {
                     setGroupFilter(null);

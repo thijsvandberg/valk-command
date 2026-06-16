@@ -204,6 +204,65 @@ describe("GroupStatBar", () => {
     expect(onFilterChange).toHaveBeenCalledWith(null);
   });
 
+  describe("multi-select status filter (activeCriteria)", () => {
+    it("emits the raw clicked criterion (no null collapse) so the parent can toggle it", () => {
+      const onFilterChange = vi.fn();
+      render(
+        <GroupStatBar
+          tickets={TICKETS}
+          activeCriteria={new Set(["done"])}
+          onFilterChange={onFilterChange}
+        />,
+      );
+      // Even though DONE is already active, a re-click sends "done" (the parent removes
+      // it from its set) rather than null, which is the single-select collapse behavior.
+      fireEvent.click(screen.getByText(/DONE/));
+      expect(onFilterChange).toHaveBeenCalledWith("done");
+    });
+
+    it("emits a second criterion to expand the filter", () => {
+      const onFilterChange = vi.fn();
+      render(
+        <GroupStatBar
+          tickets={TICKETS}
+          activeCriteria={new Set(["done"])}
+          onFilterChange={onFilterChange}
+        />,
+      );
+      fireEvent.click(screen.getByText(/IN PROGRESS/));
+      expect(onFilterChange).toHaveBeenCalledWith("in-progress");
+    });
+
+    it("marks every pill in the set as active", () => {
+      render(
+        <GroupStatBar
+          tickets={TICKETS}
+          activeCriteria={new Set(["done", "test"])}
+          onFilterChange={vi.fn()}
+        />,
+      );
+      // Active pills carry aria-pressed=true (StatusPill exposes it when active).
+      expect(screen.getByText(/DONE/).closest("[aria-pressed]")?.getAttribute("aria-pressed")).toBe("true");
+      expect(screen.getByText(/TEST/).closest("[aria-pressed]")?.getAttribute("aria-pressed")).toBe("true");
+      expect(screen.getByText(/TO DO/).closest("[aria-pressed]")?.getAttribute("aria-pressed")).toBe("false");
+    });
+
+    it("still collapses the warning lens to null on re-click even in multi-select mode", () => {
+      const onFilterChange = vi.fn();
+      render(
+        <GroupStatBar
+          tickets={TICKETS}
+          isActive
+          activeCriterion="unpointed"
+          activeCriteria={new Set(["done"])}
+          onFilterChange={onFilterChange}
+        />,
+      );
+      fireEvent.click(screen.getByLabelText(/without a story point estimate/));
+      expect(onFilterChange).toHaveBeenCalledWith(null);
+    });
+  });
+
   it("no longer renders the average inline (only on hover)", () => {
     const bvTickets = [
       makeTicket({ key: "VPL-1", businessValue: 4, storyPoints: 3 }),
