@@ -225,4 +225,19 @@ describe("AddToRefinementModal", () => {
     fireEvent.click(screen.getByText("Cancel"));
     expect(onClose).toHaveBeenCalled();
   });
+
+  it("uses a custom cancelLabel when provided", () => {
+    const onClose = vi.fn();
+    render(
+      <AddToRefinementModal
+        open={true}
+        onClose={onClose}
+        ticketKeys={["VPL-5"]}
+        cancelLabel="Skip"
+      />,
+    );
+    expect(screen.queryByText("Cancel")).not.toBeInTheDocument();
+    fireEvent.click(screen.getByText("Skip"));
+    expect(onClose).toHaveBeenCalled();
+  });
 });

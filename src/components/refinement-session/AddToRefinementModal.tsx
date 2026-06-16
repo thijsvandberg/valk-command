@@ -13,6 +13,7 @@ interface AddToRefinementModalProps {
   onClose: () => void;
   ticketKeys: string[];
   onAdded?: (sessionId: string, sessionName: string) => void;
+  cancelLabel?: string;
 }
 
 export function AddToRefinementModal({
@@ -20,6 +21,7 @@ export function AddToRefinementModal({
   onClose,
   ticketKeys,
   onAdded,
+  cancelLabel = "Cancel",
 }: AddToRefinementModalProps) {
   const { sessions, mutate } = useRefinementSessions();
   const draftSessions = sessions.filter((s) => s.status !== "completed");
@@ -150,7 +152,7 @@ export function AddToRefinementModal({
 
         <div className="mt-3 flex justify-end">
           <Button variant="ghost" size="md" onClick={onClose} className="border-0">
-            Cancel
+            {cancelLabel}
           </Button>
         </div>
       </div>

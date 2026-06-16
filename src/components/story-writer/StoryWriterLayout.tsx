@@ -512,6 +512,7 @@ export function StoryWriterLayout({ ticketKey, draftTitle, draftType }: StoryWri
             open={actions.showAddToRefinement}
             onClose={actions.handleAddToRefinementClose}
             ticketKeys={[ticketKey]}
+            cancelLabel="Skip"
           />
 
           <SplitStoryPicker
