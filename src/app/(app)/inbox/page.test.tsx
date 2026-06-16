@@ -164,3 +164,36 @@ describe("InboxPage (BRDG-357)", () => {
     expect(listMutate).toHaveBeenCalled();
   });
 });
+
+describe("InboxPage group select-all (BRDG-358)", () => {
+  beforeEach(() => {
+    // Both rows created "now" land in a single Today group under the default date grouping.
+    listData = { rows: [row("VPL-1", "First story"), row("VPL-2", "Second story")] };
+    listMutate.mockClear();
+    globalMutateSpy.mockClear();
+    fetchMock.mockClear();
+    sessionStorage.clear();
+  });
+
+  it("group header select-all selects exactly that group's rows and feeds the bulk action", async () => {
+    render(<InboxPage />);
+    const groupSelectAll = screen.getByRole("checkbox", { name: "Select all items in this group" });
+    expect(groupSelectAll).toHaveAttribute("aria-checked", "false");
+
+    fireEvent.click(groupSelectAll);
+
+    // Both rows in the group are now selected; the bulk bar reflects the count.
+    expect(await screen.findByRole("button", { name: /Mark 2 as read/ })).toBeInTheDocument();
+    expect(groupSelectAll).toHaveAttribute("aria-checked", "true");
+  });
+
+  it("renders an indeterminate header when only some of the group is selected", async () => {
+    render(<InboxPage />);
+    const groupSelectAll = screen.getByRole("checkbox", { name: "Select all items in this group" });
+    fireEvent.click(groupSelectAll); // select all
+    fireEvent.click(screen.getAllByRole("button", { name: "Select" })[0]); // deselect one row
+
+    await waitFor(() => expect(groupSelectAll).toHaveAttribute("aria-checked", "mixed"));
+    expect(screen.getByRole("button", { name: /Mark 1 as read/ })).toBeInTheDocument();
+  });
+});

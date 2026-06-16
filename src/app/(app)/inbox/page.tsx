@@ -14,8 +14,12 @@ import { Toast } from "@/components/ui/Toast";
 import { useToast } from "@/hooks/useToast";
 import { useTicketDetail } from "@/hooks/useSprintBoard";
 import { BoardRow } from "@/components/sprint-board/BoardRow";
+import { GroupCard } from "@/components/sprint-board/GroupCard";
+import { GroupStatBar } from "@/components/sprint-board/GroupStatBar";
 import { UnifiedControlsCluster } from "@/components/sprint-board/UnifiedControlsCluster";
+import { InboxGroupByDropdown } from "@/components/sprint-board/InboxGroupByDropdown";
 import { useInboxFilters } from "@/components/sprint-board/useInboxFilters";
+import { useInboxGroupBy } from "@/components/sprint-board/useInboxGroupBy";
 import { INBOX_SORT_OPTIONS } from "@/components/sprint-board/filter-bar-types";
 import { saveTicketMetadata } from "@/components/sprint-board/sprint-board-utils";
 import { CONTENT_MAX } from "@/lib/layout";
@@ -85,6 +89,10 @@ export default function InboxPage() {
     visibleTags,
     filterProps,
   } = useInboxFilters(rows);
+
+  // Configurable grouping over the already filtered + sorted rows, so search /
+  // filter / sort still apply within each group (BRDG-358).
+  const { groupBy, setGroupBy, groups, collapsedGroups, toggleCollapse } = useInboxGroupBy(filteredRows);
 
   // Identity sprint-name map so the BoardRow sprint chip shows the display name
   // (the inbox stores the name in sprintId, see rowToTicket).
@@ -178,6 +186,20 @@ export default function InboxPage() {
     });
   }, [filteredRows]);
 
+  // Per-group select-all: toggles exactly that group's keys in the shared
+  // checkedKeys set, feeding the same mark-as-read bulk action (BRDG-358).
+  const toggleGroup = useCallback((groupKeys: string[]) => {
+    setCheckedKeys((prev) => {
+      const next = new Set(prev);
+      const allSelected = groupKeys.every((k) => next.has(k));
+      for (const k of groupKeys) {
+        if (allSelected) next.delete(k);
+        else next.add(k);
+      }
+      return next;
+    });
+  }, []);
+
   // Build the panel ticket from the in-list row so it opens without a round trip;
   // fall back to a detail fetch only if the key is no longer in the list.
   const selectedRow = rows.find((r) => r.key === selectedKey) ?? null;
@@ -201,7 +223,8 @@ export default function InboxPage() {
 
         {/* Controls bar: search · sort · filter, mirroring the Sprint Board. */}
         <BarContainer>
-          <div className={`${CONTENT_MAX} flex h-full items-center justify-end`}>
+          <div className={`${CONTENT_MAX} flex h-full items-center justify-end gap-1`}>
+            <InboxGroupByDropdown value={groupBy} onChange={setGroupBy} />
             <UnifiedControlsCluster
               searchQuery={searchQuery}
               onSearchChange={setSearchQuery}
@@ -236,30 +259,63 @@ export default function InboxPage() {
                 ) : filteredRows.length === 0 ? (
                   <NoMatchState />
                 ) : (
-                  <div className="overflow-hidden rounded-xl border border-border-subtle bg-[var(--color-surface-elevated)] shadow-[var(--shadow-sm)]">
-                    <table className="w-full table-fixed border-collapse text-body-lg">
-                      <tbody>
-                        {filteredRows.map((row, idx) => (
-                          <BoardRow
-                            key={row.key}
-                            ticket={rowToTicket(row)}
-                            ticketIdx={idx}
-                            isChecked={checkedKeys.has(row.key)}
-                            isSelected={row.key === selectedKey}
-                            someChecked={checkedKeys.size > 0}
-                            isDragActive={false}
-                            tags={visibleTags}
-                            showSprint
-                            sprintNameMap={sprintNameMap}
-                            selectedTicket={selectedKey}
-                            onSelectTicket={(key) => setSelectedKey(key)}
-                            onCheckboxClick={(key) => onCheckboxClick(key)}
-                            onMarkRead={(key) => void markRead([key])}
-                            isLastInCard={idx === filteredRows.length - 1}
-                          />
-                        ))}
-                      </tbody>
-                    </table>
+                  <div className="space-y-3">
+                    {groups.map((group) => {
+                      const groupKeys = group.rows.map((r) => r.key);
+                      const selectAllChecked =
+                        groupKeys.length > 0 && groupKeys.every((k) => checkedKeys.has(k));
+                      const selectAllIndeterminate =
+                        !selectAllChecked && groupKeys.some((k) => checkedKeys.has(k));
+                      const isCollapsed = collapsedGroups.has(group.key);
+                      return (
+                        <GroupCard
+                          key={group.key}
+                          isCollapsed={isCollapsed}
+                          onToggleCollapse={() => toggleCollapse(group.key)}
+                          header={
+                            <GroupStatBar
+                              tickets={group.rows.map(rowToTicket)}
+                              label={group.label}
+                              labelWidthClass=""
+                              isCollapsed={isCollapsed}
+                              onToggleCollapse={() => toggleCollapse(group.key)}
+                              onSelectAll={() => toggleGroup(groupKeys)}
+                              selectAllChecked={selectAllChecked}
+                              selectAllIndeterminate={selectAllIndeterminate}
+                              selectionActive={checkedKeys.size > 0}
+                              sortField={sortField}
+                              sortDir={sortDir}
+                              spColumnHidden={!visibleTags.has("storyPoints")}
+                              bvColumnHidden={!visibleTags.has("businessValue")}
+                            />
+                          }
+                        >
+                          <table className="w-full table-fixed border-collapse text-body-lg">
+                            <tbody>
+                              {group.rows.map((row, idx) => (
+                                <BoardRow
+                                  key={row.key}
+                                  ticket={rowToTicket(row)}
+                                  ticketIdx={idx}
+                                  isChecked={checkedKeys.has(row.key)}
+                                  isSelected={row.key === selectedKey}
+                                  someChecked={checkedKeys.size > 0}
+                                  isDragActive={false}
+                                  tags={visibleTags}
+                                  showSprint
+                                  sprintNameMap={sprintNameMap}
+                                  selectedTicket={selectedKey}
+                                  onSelectTicket={(key) => setSelectedKey(key)}
+                                  onCheckboxClick={(key) => onCheckboxClick(key)}
+                                  onMarkRead={(key) => void markRead([key])}
+                                  isLastInCard={idx === group.rows.length - 1}
+                                />
+                              ))}
+                            </tbody>
+                          </table>
+                        </GroupCard>
+                      );
+                    })}
                   </div>
                 )}
               </div>
