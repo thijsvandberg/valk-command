@@ -4,6 +4,12 @@ import type { Ticket } from "@/types/ticket";
 import { useTicketActions } from "./useTicketActions";
 import { saveStoryPoints, saveTicketMetadata } from "@/components/sprint-board/sprint-board-utils";
 import { apiFetch } from "@/lib/api-client";
+import {
+  applyPendingEdits,
+  hasPendingEdit,
+  __getPendingEdits,
+  __resetPendingEdits,
+} from "@/components/sprint-board/pendingTicketEdits";
 
 const toggleFlag = vi.fn();
 const moveSprint = vi.fn();
@@ -45,6 +51,7 @@ function makeTicket(key: string, flagged: boolean, sprintId?: string): Ticket {
 describe("useTicketActions - handleBulkSetFlagged", () => {
   beforeEach(() => {
     toggleFlag.mockReset();
+    __resetPendingEdits();
   });
 
   function setup(apiTickets: Ticket[]) {
@@ -58,7 +65,7 @@ describe("useTicketActions - handleBulkSetFlagged", () => {
 
   it("flags all targets and posts the reason, then toasts success", async () => {
     toggleFlag.mockResolvedValue({ flagged: true });
-    const { result, mutateTickets, showToast } = setup([makeTicket("A-1", false), makeTicket("A-2", false)]);
+    const { result, showToast } = setup([makeTicket("A-1", false), makeTicket("A-2", false)]);
 
     await act(async () => {
       await result.current.handleBulkSetFlagged(true, "blocked by API", new Set(["A-1", "A-2"]));
@@ -67,8 +74,9 @@ describe("useTicketActions - handleBulkSetFlagged", () => {
     expect(toggleFlag).toHaveBeenCalledTimes(2);
     expect(toggleFlag).toHaveBeenCalledWith("A-1", true, "blocked by API");
     expect(toggleFlag).toHaveBeenCalledWith("A-2", true, "blocked by API");
-    // Optimistic write
-    expect(mutateTickets).toHaveBeenCalled();
+    // Optimistic overlay applied to both rows and confirmed on success.
+    const overlaid = applyPendingEdits([makeTicket("A-1", false), makeTicket("A-2", false)], __getPendingEdits(), Date.now())!;
+    expect(overlaid.every((t) => t.flagged)).toBe(true);
     expect(showToast).toHaveBeenLastCalledWith("Flagged 2 tickets");
   });
 
@@ -97,14 +105,14 @@ describe("useTicketActions - handleBulkSetFlagged", () => {
 
   it("reverts and reports failure when a request rejects", async () => {
     toggleFlag.mockRejectedValue(new Error("boom"));
-    const { result, mutateTickets, showToast } = setup([makeTicket("A-1", false)]);
+    const { result, showToast } = setup([makeTicket("A-1", false)]);
 
     await act(async () => {
       await result.current.handleBulkSetFlagged(true, null, new Set(["A-1"]));
     });
 
-    // Optimistic write + revert write
-    expect(mutateTickets.mock.calls.length).toBeGreaterThanOrEqual(2);
+    // The overlay edit is cleared, so the row falls back to server data.
+    expect(hasPendingEdit("A-1", "flagged")).toBe(false);
     expect(showToast).toHaveBeenLastCalledWith("Failed to flag 1 ticket");
   });
 });
@@ -113,6 +121,7 @@ describe("useTicketActions - handleStoryPointsChange readiness transition", () =
   beforeEach(() => {
     saveStoryPointsMock.mockReset();
     saveStoryPointsMock.mockResolvedValue(true);
+    __resetPendingEdits();
   });
 
   function setup(apiTickets: Ticket[]) {
@@ -180,6 +189,7 @@ describe("useTicketActions - capacity meter refresh on estimate change", () => {
     globalMutate.mockReset();
     saveStoryPointsMock.mockReset().mockResolvedValue(true);
     saveTicketMetadataMock.mockReset().mockResolvedValue(true);
+    __resetPendingEdits();
   });
 
   function setup() {
@@ -213,6 +223,7 @@ describe("useTicketActions - handleBulkMoveSprint", () => {
   beforeEach(() => {
     moveSprint.mockReset();
     globalMutate.mockReset();
+    __resetPendingEdits();
   });
 
   function setup(apiTickets: Ticket[], activeListKey: string | null) {
@@ -330,33 +341,23 @@ describe("useTicketActions - handleBulkMoveSprint", () => {
 describe("useTicketActions - handleAssigneeChange", () => {
   beforeEach(() => {
     assign.mockReset();
+    __resetPendingEdits();
   });
 
-  // A minimal SWR-mutate stand-in: awaits the data promise (rethrowing so the
-  // hook's catch fires) and exposes the optimistic/populate updaters for assertion.
   function setup(apiTickets: Ticket[]) {
-    const mutateTickets = vi.fn(async (data?: unknown, _opts?: unknown) => {
-      if (data && typeof (data as Promise<unknown>).then === "function") {
-        await data; // rejects -> mutateTickets rejects -> hook catch runs
-      }
-    });
+    const mutateTickets = vi.fn();
     const showToast = vi.fn();
     const { result } = renderHook(() =>
-      useTicketActions({
-        apiTickets,
-        mutateTickets: mutateTickets as unknown as Parameters<typeof useTicketActions>[0]["mutateTickets"],
-        activeListKey: null,
-        showToast,
-      }),
+      useTicketActions({ apiTickets, mutateTickets, activeListKey: null, showToast }),
     );
     return { result, mutateTickets, showToast };
   }
 
   const user = { accountId: "acc-real-1", displayName: "Frank van den Nouland", avatarUrl: null };
 
-  it("assigns with the real accountId and optimistically shows the new assignee", async () => {
+  it("assigns with the real accountId and optimistically shows the new assignee via the overlay", async () => {
     assign.mockResolvedValue(undefined);
-    const { result, mutateTickets } = setup([makeTicket("A-1", false)]);
+    const { result } = setup([makeTicket("A-1", false)]);
 
     await act(async () => {
       await result.current.handleAssigneeChange("A-1", user);
@@ -364,31 +365,25 @@ describe("useTicketActions - handleAssigneeChange", () => {
 
     expect(assign).toHaveBeenCalledWith({ issueKey: "A-1", accountId: "acc-real-1", name: "Frank van den Nouland", avatar: null });
 
-    const opts = mutateTickets.mock.calls[0][1] as {
-      optimisticData: (c?: Ticket[]) => Ticket[];
-      populateCache: (r: unknown, c?: Ticket[]) => Ticket[];
-      revalidate: boolean;
-    };
-    const current = [makeTicket("A-1", false)];
-    expect(opts.revalidate).toBe(false);
-    expect(opts.optimisticData(current).find((t) => t.key === "A-1")?.assignee?.name).toBe("Frank van den Nouland");
-    expect(opts.populateCache(undefined, current).find((t) => t.key === "A-1")?.assignee?.name).toBe("Frank van den Nouland");
+    const overlaid = applyPendingEdits([makeTicket("A-1", false)], __getPendingEdits(), Date.now())!;
+    expect(overlaid.find((t) => t.key === "A-1")?.assignee?.name).toBe("Frank van den Nouland");
   });
 
   it("clears the assignee when unassigning (null user)", async () => {
     assign.mockResolvedValue(undefined);
-    const { result, mutateTickets } = setup([{ ...makeTicket("A-1", false), assignee: { name: "X", initials: "X", color: "#000" } } as Ticket]);
+    const seeded = { ...makeTicket("A-1", false), assignee: { name: "X", initials: "X", color: "#000" } } as Ticket;
+    const { result } = setup([seeded]);
 
     await act(async () => {
       await result.current.handleAssigneeChange("A-1", null);
     });
 
     expect(assign).toHaveBeenCalledWith({ issueKey: "A-1", accountId: null, name: null, avatar: null });
-    const opts = mutateTickets.mock.calls[0][1] as { optimisticData: (c?: Ticket[]) => Ticket[] };
-    expect(opts.optimisticData([makeTicket("A-1", false)]).find((t) => t.key === "A-1")?.assignee).toBeNull();
+    const overlaid = applyPendingEdits([seeded], __getPendingEdits(), Date.now())!;
+    expect(overlaid.find((t) => t.key === "A-1")?.assignee).toBeNull();
   });
 
-  it("toasts a revert message when the assign request fails", async () => {
+  it("clears the overlay and toasts a revert message when the assign request fails", async () => {
     assign.mockRejectedValue(new Error("boom"));
     const { result, showToast } = setup([makeTicket("A-1", false)]);
 
@@ -396,40 +391,31 @@ describe("useTicketActions - handleAssigneeChange", () => {
       await result.current.handleAssigneeChange("A-1", user);
     });
 
+    expect(hasPendingEdit("A-1", "assignee")).toBe(false);
     expect(showToast).toHaveBeenCalledWith("Failed to update assignee for A-1. Change reverted.");
   });
 });
 
-describe("useTicketActions - handleJiraStatusChange (BRDG-339)", () => {
+describe("useTicketActions - handleJiraStatusChange (BRDG-357)", () => {
   const apiFetchMock = vi.mocked(apiFetch);
 
   beforeEach(() => {
     apiFetchMock.mockReset();
+    __resetPendingEdits();
   });
 
-  // SWR-mutate stand-in: awaits the data promise (rethrowing so the hook's
-  // catch fires) and exposes the optimistic/populate updaters for assertion.
   function setup(apiTickets: Ticket[]) {
-    const mutateTickets = vi.fn(async (data?: unknown, _opts?: unknown) => {
-      if (data && typeof (data as Promise<unknown>).then === "function") {
-        await data;
-      }
-    });
+    const mutateTickets = vi.fn();
     const showToast = vi.fn();
     const { result } = renderHook(() =>
-      useTicketActions({
-        apiTickets,
-        mutateTickets: mutateTickets as unknown as Parameters<typeof useTicketActions>[0]["mutateTickets"],
-        activeListKey: null,
-        showToast,
-      }),
+      useTicketActions({ apiTickets, mutateTickets, activeListKey: null, showToast }),
     );
     return { result, mutateTickets, showToast };
   }
 
-  it("optimistically shows the new status and locks it in via populateCache", async () => {
+  it("registers a status overlay that survives a stale refetch, and confirms it on success", async () => {
     apiFetchMock.mockResolvedValue(undefined);
-    const { result, mutateTickets } = setup([makeTicket("A-1", false)]);
+    const { result } = setup([makeTicket("A-1", false)]);
 
     await act(async () => {
       await result.current.handleJiraStatusChange("A-1", "DONE");
@@ -437,20 +423,15 @@ describe("useTicketActions - handleJiraStatusChange (BRDG-339)", () => {
 
     expect(apiFetchMock).toHaveBeenCalledWith("/api/tickets/A-1/status", { method: "PUT", body: { status: "DONE" } });
 
-    const opts = mutateTickets.mock.calls[0][1] as {
-      optimisticData: (c?: Ticket[]) => Ticket[];
-      populateCache: (r: unknown, c?: Ticket[]) => Ticket[];
-      revalidate: boolean;
-    };
-    const current = [makeTicket("A-1", false)];
-    // revalidate:false is what makes SWR discard the focus revalidation that
-    // races the PUT and would otherwise revert the row to a stale Jira read.
-    expect(opts.revalidate).toBe(false);
-    expect(opts.optimisticData(current).find((t) => t.key === "A-1")?.jiraStatus).toBe("DONE");
-    expect(opts.populateCache(undefined, current).find((t) => t.key === "A-1")?.jiraStatus).toBe("DONE");
+    // A refetch that still carries the pre-write status ("TO DO") must not win:
+    // the overlay re-applies "DONE" on top of it. This is the core anti-snap-back guarantee.
+    const staleRefetch = [makeTicket("A-1", false)]; // jiraStatus: "TO DO"
+    const overlaid = applyPendingEdits(staleRefetch, __getPendingEdits(), Date.now())!;
+    expect(overlaid.find((t) => t.key === "A-1")?.jiraStatus).toBe("DONE");
+    expect(hasPendingEdit("A-1", "jiraStatus")).toBe(true);
   });
 
-  it("toasts a revert message when the status request fails", async () => {
+  it("clears the overlay and toasts a revert message when the status request fails", async () => {
     apiFetchMock.mockRejectedValue(new Error("boom"));
     const { result, showToast } = setup([makeTicket("A-1", false)]);
 
@@ -458,75 +439,63 @@ describe("useTicketActions - handleJiraStatusChange (BRDG-339)", () => {
       await result.current.handleJiraStatusChange("A-1", "DONE");
     });
 
+    expect(hasPendingEdit("A-1", "jiraStatus")).toBe(false);
     expect(showToast).toHaveBeenCalledWith("Failed to update status for A-1. Change reverted.");
   });
 });
 
-describe("useTicketActions - handleBulkSetStatus (BRDG-339)", () => {
+describe("useTicketActions - handleBulkSetStatus (BRDG-357)", () => {
   const apiFetchMock = vi.mocked(apiFetch);
 
   beforeEach(() => {
     apiFetchMock.mockReset();
+    __resetPendingEdits();
   });
 
   function setup(apiTickets: Ticket[]) {
-    const mutateTickets = vi.fn(async (data?: unknown, _opts?: unknown) => {
-      if (data && typeof (data as Promise<unknown>).then === "function") {
-        await data;
-      }
-    });
+    const mutateTickets = vi.fn();
     const showToast = vi.fn();
     const { result } = renderHook(() =>
-      useTicketActions({
-        apiTickets,
-        mutateTickets: mutateTickets as unknown as Parameters<typeof useTicketActions>[0]["mutateTickets"],
-        activeListKey: null,
-        showToast,
-      }),
+      useTicketActions({ apiTickets, mutateTickets, activeListKey: null, showToast }),
     );
     return { result, mutateTickets, showToast };
   }
 
-  it("optimistically sets the status on all checked tickets and toasts success", async () => {
+  it("overlays the status on all checked tickets and toasts success", async () => {
     apiFetchMock.mockResolvedValue(undefined);
-    const { result, mutateTickets, showToast } = setup([makeTicket("A-1", false), makeTicket("A-2", false), makeTicket("A-3", false)]);
+    const { result, showToast } = setup([makeTicket("A-1", false), makeTicket("A-2", false), makeTicket("A-3", false)]);
 
     await act(async () => {
       await result.current.handleBulkSetStatus("DONE", new Set(["A-1", "A-2"]));
     });
 
     expect(apiFetchMock).toHaveBeenCalledTimes(2);
-    const opts = mutateTickets.mock.calls[0][1] as {
-      optimisticData: (c?: Ticket[]) => Ticket[];
-      revalidate: boolean;
-    };
-    const current = [makeTicket("A-1", false), makeTicket("A-2", false), makeTicket("A-3", false)];
-    expect(opts.revalidate).toBe(false);
-    const optimistic = opts.optimisticData(current);
-    expect(optimistic.find((t) => t.key === "A-1")?.jiraStatus).toBe("DONE");
-    expect(optimistic.find((t) => t.key === "A-2")?.jiraStatus).toBe("DONE");
-    expect(optimistic.find((t) => t.key === "A-3")?.jiraStatus).toBe("TO DO"); // unchecked, untouched
+    const overlaid = applyPendingEdits(
+      [makeTicket("A-1", false), makeTicket("A-2", false), makeTicket("A-3", false)],
+      __getPendingEdits(),
+      Date.now(),
+    )!;
+    expect(overlaid.find((t) => t.key === "A-1")?.jiraStatus).toBe("DONE");
+    expect(overlaid.find((t) => t.key === "A-2")?.jiraStatus).toBe("DONE");
+    expect(overlaid.find((t) => t.key === "A-3")?.jiraStatus).toBe("TO DO"); // unchecked, untouched
     expect(showToast).toHaveBeenLastCalledWith("Status set to DONE for 2 tickets");
   });
 
-  it("keeps the previous status on rows whose PUT rejected and toasts the failure count", async () => {
+  it("clears the overlay on rows whose PUT rejected and toasts the failure count", async () => {
     // A-1 succeeds, A-2 fails.
     apiFetchMock.mockImplementation((url: string) =>
       url.includes("A-2") ? Promise.reject(new Error("boom")) : Promise.resolve(undefined),
     );
-    const { result, mutateTickets, showToast } = setup([makeTicket("A-1", false), makeTicket("A-2", false)]);
+    const { result, showToast } = setup([makeTicket("A-1", false), makeTicket("A-2", false)]);
 
     await act(async () => {
       await result.current.handleBulkSetStatus("DONE", new Set(["A-1", "A-2"]));
     });
 
-    const opts = mutateTickets.mock.calls[0][1] as {
-      populateCache: (failedKeys: Set<string>, c?: Ticket[]) => Ticket[];
-    };
-    const current = [makeTicket("A-1", false), makeTicket("A-2", false)];
-    const settled = opts.populateCache(new Set(["A-2"]), current);
-    expect(settled.find((t) => t.key === "A-1")?.jiraStatus).toBe("DONE");
-    expect(settled.find((t) => t.key === "A-2")?.jiraStatus).toBe("TO DO"); // reverted
+    const overlaid = applyPendingEdits([makeTicket("A-1", false), makeTicket("A-2", false)], __getPendingEdits(), Date.now())!;
+    expect(overlaid.find((t) => t.key === "A-1")?.jiraStatus).toBe("DONE"); // kept
+    expect(hasPendingEdit("A-2", "jiraStatus")).toBe(false); // failed -> reverted to server data
+    expect(overlaid.find((t) => t.key === "A-2")?.jiraStatus).toBe("TO DO");
     expect(showToast).toHaveBeenLastCalledWith("Failed to update status for 1 ticket");
   });
 });
@@ -537,6 +506,7 @@ describe("useTicketActions - syncFromApiTickets reconciliation (BRDG-334)", () =
   beforeEach(() => {
     saveTicketMetadataMock.mockReset();
     saveTicketMetadataMock.mockResolvedValue(true);
+    __resetPendingEdits();
   });
 
   function setup(apiTickets: Ticket[]) {

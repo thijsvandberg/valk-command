@@ -43,6 +43,7 @@ Detailed technical documentation lives in `docs/architecture/`:
 - [Workspace Integration](docs/architecture/workspace-integration.md) - Agent proxy, SSE, skills, Bitbucket
 - [Story Writer](docs/architecture/story-writer.md) - AI-assisted editing, split mode, related stories
 - [Scheduler](docs/architecture/scheduler.md) - Lazy-cron pattern, background tasks
+- [Optimistic Updates](docs/architecture/optimistic-updates.md) - Pending-edits overlay that prevents board edits from "snapping back" to stale data. READ THIS before adding or changing any editable board field.
 
 ## Project Structure
 

@@ -42,6 +42,7 @@ import { useSprintBoardFilters } from "@/components/sprint-board/useSprintBoardF
 import { useGroupBy } from "@/components/sprint-board/useGroupBy";
 import { useSprintBoardDragDrop } from "@/components/sprint-board/useSprintBoardDragDrop";
 import { usePendingSprintMoves, applyPendingMoves, clearPendingMove } from "@/components/sprint-board/pendingSprintMoves";
+import { usePendingTicketEdits, applyPendingEdits, clearPendingEdit, valuesMatch } from "@/components/sprint-board/pendingTicketEdits";
 import { sprintMoveToastContent } from "@/components/sprint-board/sprintMoveToast";
 import { useSprintBoardShortcuts } from "@/components/sprint-board/useSprintBoardShortcuts";
 import { useTicketActions } from "@/components/sprint-board/useTicketActions";
@@ -253,9 +254,17 @@ export default function SprintBoard() {
   // out of its origin) until the slow Jira round-trip resolves and the server list
   // reflects it, so a mid-move revalidation does not make it flicker away.
   const pendingMoves = usePendingSprintMoves();
+  // In-flight field edits (status, assignee, scores, ...): re-applied on top of the
+  // list on every render so a refetch (poll/focus/sync) that returns pre-write data
+  // cannot snap the row back. See docs/architecture/optimistic-updates.md (BRDG-357).
+  const pendingEdits = usePendingTicketEdits();
   const allTickets = useMemo(
-    () => applyPendingMoves(apiTickets, activeSprintId || "__all__", pendingMoves, Date.now()) ?? [],
-    [apiTickets, activeSprintId, pendingMoves],
+    () => applyPendingEdits(
+      applyPendingMoves(apiTickets, activeSprintId || "__all__", pendingMoves, Date.now()),
+      pendingEdits,
+      Date.now(),
+    ) ?? [],
+    [apiTickets, activeSprintId, pendingMoves, pendingEdits],
   );
   // Drop a pending move once it is server-confirmed AND visible in the destination
   // data. Gating on `confirmed` (not just presence) is essential: the optimistic
@@ -269,6 +278,19 @@ export default function SprintBoard() {
       if (m.confirmed && m.targetSprintId === activeSprintId && present.has(key)) clearPendingMove(key);
     });
   }, [apiTickets, activeSprintId, pendingMoves]);
+  // Self-heal field edits: drop the overlay once the write is confirmed AND the
+  // server list reflects the value (gating on confirmed, like sprint moves, so an
+  // in-flight revalidation can't clear it before the write lands). A TTL inside the
+  // store is the safety net if the server never catches up.
+  useEffect(() => {
+    if (!apiTickets) return;
+    const byKey = new Map(apiTickets.map((t) => [t.key, t as unknown as Record<string, unknown>]));
+    pendingEdits.forEach((edit) => {
+      if (!edit.confirmed) return;
+      const server = byKey.get(edit.key);
+      if (server && valuesMatch(server[edit.field], edit.value)) clearPendingEdit(edit.key, edit.field);
+    });
+  }, [apiTickets, pendingEdits]);
   const activeListKey = useMemo(() => {
     if (!activeSprintId) return null;
     return activeSprintId === "__all__" ? "/api/tickets" : `/api/tickets?sprintId=${encodeURIComponent(activeSprintId)}`;

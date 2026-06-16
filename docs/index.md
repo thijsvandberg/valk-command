@@ -24,3 +24,4 @@ PO Command Center for Valk Platform.
 - [Workspace Integration](architecture/workspace-integration.md) - Agent proxy, SSE streaming, skill invocation, Bitbucket integration
 - [Story Writer](architecture/story-writer.md) - AI-assisted story editing, split mode, related stories
 - [Scheduler](architecture/scheduler.md) - Lazy-cron pattern, task registry, background sync
+- [Optimistic Updates](architecture/optimistic-updates.md) - Pending-edits overlay; read before adding any editable board field

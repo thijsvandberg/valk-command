@@ -9,6 +9,7 @@ import { userInitials, userColor } from "@/lib/user-utils";
 import type { AssignableUser } from "@/components/shared/AssigneePicker";
 import type { EpicOption } from "@/components/shared/EpicPicker";
 import { registerPendingMove, clearPendingMove, confirmPendingMove } from "@/components/sprint-board/pendingSprintMoves";
+import { registerPendingEdit, confirmPendingEdit, clearPendingEdit, hasPendingEdit } from "@/components/sprint-board/pendingTicketEdits";
 
 interface TicketActionsDeps {
   apiTickets: Ticket[] | undefined;
@@ -27,10 +28,15 @@ export function useTicketActions(deps: TicketActionsDeps) {
   const handlePoStatusChange = useCallback((key: string, status: POStatus) => {
     const prevStatus = poStatuses[key];
     setPoStatuses((prev) => ({ ...prev, [key]: status }));
-    setInflightKeys((prev) => new Set(prev).add(key));
+    // Overlay keeps the value past the in-flight window: a refetch that lands after
+    // the save resolves (e.g. one served from the stale response cache) would
+    // otherwise reconcile the map back via syncFromApiTickets.
+    registerPendingEdit(key, "poStatus", status, Date.now());
     saveTicketMetadata(key, { poStatus: status }, activeListKey).then((ok) => {
-      setInflightKeys((prev) => { const next = new Set(prev); next.delete(key); return next; });
-      if (!ok) {
+      if (ok) {
+        confirmPendingEdit(key, "poStatus");
+      } else {
+        clearPendingEdit(key, "poStatus");
         setPoStatuses((prev) => ({ ...prev, [key]: prevStatus }));
         showToast(`Failed to update ${key}. Change reverted.`);
       }
@@ -40,10 +46,12 @@ export function useTicketActions(deps: TicketActionsDeps) {
   const handleReadinessChange = useCallback((key: string, readiness: TicketReadiness | null) => {
     const prev = readinessMap[key];
     setReadinessMap((m) => ({ ...m, [key]: readiness }));
-    setInflightKeys((s) => new Set(s).add(key));
+    registerPendingEdit(key, "readiness", readiness, Date.now());
     saveTicketMetadata(key, { readiness }, activeListKey).then((ok) => {
-      setInflightKeys((s) => { const next = new Set(s); next.delete(key); return next; });
-      if (!ok) {
+      if (ok) {
+        confirmPendingEdit(key, "readiness");
+      } else {
+        clearPendingEdit(key, "readiness");
         setReadinessMap((m) => ({ ...m, [key]: prev }));
         showToast(`Failed to update ${key}. Change reverted.`);
       }
@@ -51,129 +59,115 @@ export function useTicketActions(deps: TicketActionsDeps) {
   }, [readinessMap, activeListKey, showToast]);
 
   const handleBusinessValueChange = useCallback((key: string, value: number | null) => {
-    saveTicketMetadata(key, { businessValue: value }, activeListKey);
+    registerPendingEdit(key, "businessValue", value, Date.now());
+    saveTicketMetadata(key, { businessValue: value }, activeListKey).then((ok) => {
+      if (ok) confirmPendingEdit(key, "businessValue");
+      else clearPendingEdit(key, "businessValue");
+    });
   }, [activeListKey]);
 
   const handleGuestimationChange = useCallback((key: string, value: number | null) => {
+    registerPendingEdit(key, "guestimation", value, Date.now());
     // The capacity meter reads a server-computed effective-points total (real SP
     // or guestimation), separate from the ticket list, so refresh it after the save.
     saveTicketMetadata(key, { guestimation: value }, activeListKey).then((ok) => {
-      if (ok) globalMutate("/api/sprints/used-points");
+      if (ok) { confirmPendingEdit(key, "guestimation"); globalMutate("/api/sprints/used-points"); }
+      else clearPendingEdit(key, "guestimation");
     });
   }, [activeListKey]);
 
   const handleStoryPointsChange = useCallback((key: string, value: number | null) => {
+    registerPendingEdit(key, "storyPoints", value, Date.now());
     // Mirror the server rule (ticket-detail-builder): estimating a ticket that
     // sits at "Ready to Refine" advances it to "Ready for Development". The
-    // board's readiness pill reads from this optimistic map, which the SP save
-    // would not refresh on its own, so update it here too (and revert on fail).
-    if (value != null && (readinessMap[key] ?? null) === "ready_to_refine") {
-      const prev = readinessMap[key];
+    // board's readiness pill reads from the optimistic map, so update it here too
+    // (and register an overlay edit so a refetch does not revert the pill).
+    const advancesReadiness = value != null && (readinessMap[key] ?? null) === "ready_to_refine";
+    const prevReadiness = readinessMap[key];
+    if (advancesReadiness) {
       setReadinessMap((m) => ({ ...m, [key]: null }));
-      // Keep the SWR list in step so the reconciling syncFromApiTickets does not
-      // revert the pill to the stale cached readiness.
-      mutateTickets((data) => data?.map((t) => t.key === key ? { ...t, readiness: null } : t), { revalidate: false });
-      saveStoryPoints(key, value, activeListKey).then((ok) => {
-        if (!ok) {
-          setReadinessMap((m) => ({ ...m, [key]: prev }));
-          mutateTickets((data) => data?.map((t) => t.key === key ? { ...t, readiness: prev ?? null } : t), { revalidate: false });
-          return;
-        }
-        globalMutate("/api/sprints/used-points");
-      });
-      return;
+      registerPendingEdit(key, "readiness", null, Date.now());
     }
     saveStoryPoints(key, value, activeListKey).then((ok) => {
-      if (ok) globalMutate("/api/sprints/used-points");
+      if (ok) {
+        confirmPendingEdit(key, "storyPoints");
+        if (advancesReadiness) confirmPendingEdit(key, "readiness");
+        globalMutate("/api/sprints/used-points");
+      } else {
+        clearPendingEdit(key, "storyPoints");
+        if (advancesReadiness) {
+          clearPendingEdit(key, "readiness");
+          setReadinessMap((m) => ({ ...m, [key]: prevReadiness ?? null }));
+        }
+      }
     });
-  }, [activeListKey, readinessMap, mutateTickets]);
+  }, [activeListKey, readinessMap]);
 
+  // All these edits go through the pendingTicketEdits overlay (BRDG-357): register
+  // the optimistic value, call the API, then confirm on success / clear on failure.
+  // The overlay re-applies the value on top of every revalidation until the server
+  // catches up, so the focus/poll/sync refetch can no longer flip the row back to a
+  // pre-write Jira read (the old optimisticData/cache-patch only survived one round).
   const handleJiraStatusChange = useCallback(async (key: string, status: JiraStatus) => {
-    const withStatus = (data?: Ticket[]) => data?.map((t) => t.key === key ? { ...t, jiraStatus: status } : t);
+    registerPendingEdit(key, "jiraStatus", status, Date.now());
     try {
-      // Same SWR optimistic mutation as handleAssigneeChange: a bare
-      // mutate(revalidate:false) only patches the cache once, so the focus
-      // revalidation that fires when the status picker portal closes races the
-      // PUT, reads Jira before it has propagated the transition, and flips the
-      // row back to its old status. Tying optimisticData to the request makes
-      // SWR discard that racing revalidation; populateCache locks the new value
-      // in on success (BRDG-339).
-      await mutateTickets(
-        apiFetch(`/api/tickets/${encodeURIComponent(key)}/status`, { method: "PUT", body: { status } }).then(() => undefined as unknown as Ticket[]),
-        {
-          optimisticData: (current) => withStatus(current) ?? [],
-          populateCache: (_result, current) => withStatus(current) ?? [],
-          revalidate: false,
-          rollbackOnError: true,
-        },
-      );
+      await apiFetch(`/api/tickets/${encodeURIComponent(key)}/status`, { method: "PUT", body: { status } });
+      confirmPendingEdit(key, "jiraStatus");
     } catch {
+      clearPendingEdit(key, "jiraStatus");
       showToast(`Failed to update status for ${key}. Change reverted.`);
     }
-  }, [mutateTickets, showToast]);
+  }, [showToast]);
 
   const handleIssueTypeChange = useCallback(async (key: string, type: IssueType) => {
-    const prev = apiTickets?.find((t) => t.key === key)?.type;
-    mutateTickets((data) => data?.map((t) => t.key === key ? { ...t, type } : t), { revalidate: false });
+    registerPendingEdit(key, "type", type, Date.now());
     try {
       await apiFetch(`/api/tickets/${encodeURIComponent(key)}`, { method: "PATCH", body: { type } });
+      confirmPendingEdit(key, "type");
     } catch {
-      if (prev !== undefined) {
-        mutateTickets((data) => data?.map((t) => t.key === key ? { ...t, type: prev } : t), { revalidate: false });
-      }
+      clearPendingEdit(key, "type");
     }
-  }, [apiTickets, mutateTickets]);
+  }, []);
 
   const handleTitleChange = useCallback(async (key: string, title: string) => {
-    const prev = apiTickets?.find((t) => t.key === key)?.title;
-    mutateTickets((data) => data?.map((t) => t.key === key ? { ...t, title } : t), { revalidate: false });
+    registerPendingEdit(key, "title", title, Date.now());
     try {
       await apiFetch(`/api/tickets/${encodeURIComponent(key)}/summary`, { method: "PUT", body: { title } });
+      confirmPendingEdit(key, "title");
     } catch {
-      if (prev !== undefined) {
-        mutateTickets((data) => data?.map((t) => t.key === key ? { ...t, title: prev } : t), { revalidate: false });
-      }
+      clearPendingEdit(key, "title");
     }
-  }, [apiTickets, mutateTickets]);
+  }, []);
 
   const handleAssigneeChange = useCallback(async (key: string, user: AssignableUser | null) => {
     const optimistic: Assignee | null = user
       ? { name: user.displayName, initials: userInitials(user.displayName), color: userColor(user.displayName) }
       : null;
-    const withAssignee = (data?: Ticket[]) => data?.map((t) => t.key === key ? { ...t, assignee: optimistic } : t);
+    registerPendingEdit(key, "assignee", optimistic, Date.now());
     try {
-      // SWR optimistic mutation: optimisticData shows the new assignee for the
-      // whole request and makes SWR discard any revalidation that races it (the
-      // board revalidates on focus, which fires when the picker portal closes
-      // and would otherwise flash the stale value). populateCache locks the new
-      // value in on success; revalidate:false avoids a refetch flip.
-      await mutateTickets(
-        jira.assign({ issueKey: key, accountId: user?.accountId ?? null, name: user?.displayName ?? null, avatar: user?.avatarUrl ?? null }).then(() => undefined as unknown as Ticket[]),
-        {
-          optimisticData: (current) => withAssignee(current) ?? [],
-          populateCache: (_result, current) => withAssignee(current) ?? [],
-          revalidate: false,
-          rollbackOnError: true,
-        },
-      );
+      await jira.assign({ issueKey: key, accountId: user?.accountId ?? null, name: user?.displayName ?? null, avatar: user?.avatarUrl ?? null });
+      confirmPendingEdit(key, "assignee");
     } catch {
+      clearPendingEdit(key, "assignee");
       showToast(`Failed to update assignee for ${key}. Change reverted.`);
     }
-  }, [mutateTickets, showToast]);
+  }, [showToast]);
 
   const handleEpicChange = useCallback(async (key: string, epic: EpicOption | null) => {
-    const prevTicket = apiTickets?.find((t) => t.key === key);
-    const prevEpic = prevTicket?.epic ?? null;
-    const prevEpicKey = prevTicket?.epicKey ?? null;
-    mutateTickets((data) => data?.map((t) => t.key === key ? { ...t, epic: epic?.name ?? null, epicKey: epic?.key ?? null } : t), { revalidate: false });
+    const now = Date.now();
+    registerPendingEdit(key, "epic", epic?.name ?? null, now);
+    registerPendingEdit(key, "epicKey", epic?.key ?? null, now);
     try {
       await apiFetch(`/api/tickets/${encodeURIComponent(key)}`, { method: "PATCH", body: { epicKey: epic?.key ?? null } });
+      confirmPendingEdit(key, "epic");
+      confirmPendingEdit(key, "epicKey");
       mutateTickets();
     } catch {
-      mutateTickets((data) => data?.map((t) => t.key === key ? { ...t, epic: prevEpic, epicKey: prevEpicKey } : t), { revalidate: false });
+      clearPendingEdit(key, "epic");
+      clearPendingEdit(key, "epicKey");
       showToast(`Failed to update epic for ${key}. Change reverted.`);
     }
-  }, [apiTickets, mutateTickets, showToast]);
+  }, [mutateTickets, showToast]);
 
   // Sprint move requires a Jira round-trip; revalidate rather than optimistically
   // rewrite (the board's sprintId field carries the sprint name, not its id).
@@ -194,18 +188,14 @@ export function useTicketActions(deps: TicketActionsDeps) {
   }, [apiTickets, mutateTickets, showToast]);
 
   const handleCloseSubtasks = useCallback(async (key: string) => {
-    const prev = apiTickets?.find((t) => t.key === key);
-    if (prev) {
-      mutateTickets((data) => data?.map((t) => t.key === key ? { ...t, openSubtaskCount: 0 } : t), { revalidate: false });
-    }
+    registerPendingEdit(key, "openSubtaskCount", 0, Date.now());
     try {
       await apiFetch(`/api/tickets/${encodeURIComponent(key)}/subtasks/close`, { method: "POST" });
+      confirmPendingEdit(key, "openSubtaskCount");
     } catch {
-      if (prev) {
-        mutateTickets((data) => data?.map((t) => t.key === key ? { ...t, openSubtaskCount: prev.openSubtaskCount } : t), { revalidate: false });
-      }
+      clearPendingEdit(key, "openSubtaskCount");
     }
-  }, [apiTickets, mutateTickets]);
+  }, []);
 
   // Reconcile the optimistic PO maps with fresh API data. Values follow the SWR list
   // (so edits made on other surfaces, e.g. the ticket detail page, show up when the
@@ -217,6 +207,9 @@ export function useTicketActions(deps: TicketActionsDeps) {
       const next = { ...prev };
       tickets.forEach((t) => {
         if (inflightKeys.has(t.key)) return;
+        // A live overlay edit (BRDG-357) owns the value until the server catches up,
+        // so a stale revalidation must not reconcile the map back to the old value.
+        if (hasPendingEdit(t.key, "poStatus")) return;
         if (next[t.key] !== t.poStatus) { next[t.key] = t.poStatus; changed = true; }
       });
       return changed ? next : prev;
@@ -226,6 +219,7 @@ export function useTicketActions(deps: TicketActionsDeps) {
       const next = { ...prev };
       tickets.forEach((t) => {
         if (inflightKeys.has(t.key)) return;
+        if (hasPendingEdit(t.key, "readiness")) return;
         if (next[t.key] !== t.readiness) { next[t.key] = t.readiness; changed = true; }
       });
       return changed ? next : prev;
@@ -235,13 +229,16 @@ export function useTicketActions(deps: TicketActionsDeps) {
   const handleBulkSetReadiness = useCallback(async (readiness: TicketReadiness | null, checkedTickets: Set<string>) => {
     const keys = [...checkedTickets];
     const prevReadiness = Object.fromEntries(keys.map((k) => [k, readinessMap[k]]));
+    const now = Date.now();
     setReadinessMap((prev) => { const next = { ...prev }; keys.forEach((k) => { next[k] = readiness; }); return next; });
     setInflightKeys((prev) => { const next = new Set(prev); keys.forEach((k) => next.add(k)); return next; });
+    keys.forEach((k) => registerPendingEdit(k, "readiness", readiness, now));
     const results = await Promise.all(keys.map((k) => saveTicketMetadata(k, { readiness }, activeListKey)));
     setInflightKeys((prev) => { const next = new Set(prev); keys.forEach((k) => next.delete(k)); return next; });
+    keys.forEach((k, i) => { if (results[i]) confirmPendingEdit(k, "readiness"); else clearPendingEdit(k, "readiness"); });
     const failedCount = results.filter((ok) => !ok).length;
     if (failedCount > 0) {
-      setReadinessMap((prev) => ({ ...prev, ...prevReadiness }));
+      setReadinessMap((prev) => { const next = { ...prev }; keys.forEach((k, i) => { if (!results[i]) next[k] = prevReadiness[k]; }); return next; });
       showToast(`Failed to update ${failedCount} ticket${failedCount === 1 ? "" : "s"}. Changes reverted.`);
     } else {
       showToast(`Readiness set for ${keys.length} ticket${keys.length === 1 ? "" : "s"}`);
@@ -250,40 +247,20 @@ export function useTicketActions(deps: TicketActionsDeps) {
 
   const handleBulkSetStatus = useCallback(async (status: JiraStatus, checkedTickets: Set<string>) => {
     const keys = [...checkedTickets];
-    const prevStatuses = Object.fromEntries(keys.map((k) => [k, apiTickets?.find((t) => t.key === k)?.jiraStatus]));
-    const withStatus = (data?: Ticket[]) => data?.map((t) => checkedTickets.has(t.key) ? { ...t, jiraStatus: status } : t);
+    const now = Date.now();
+    keys.forEach((k) => registerPendingEdit(k, "jiraStatus", status, now));
+    const results = await Promise.allSettled(keys.map((k) => apiFetch(`/api/tickets/${encodeURIComponent(k)}/status`, { method: "PUT", body: { status } })));
     let failedCount = 0;
-    try {
-      // Optimistic mutation tied to the batch (see handleJiraStatusChange): keeps
-      // the focus revalidation from racing the PUTs and reverting the rows to a
-      // pre-transition Jira read. populateCache reflects only the rows that
-      // actually succeeded.
-      await mutateTickets(
-        Promise.allSettled(keys.map((k) => apiFetch(`/api/tickets/${encodeURIComponent(k)}/status`, { method: "PUT", body: { status } })))
-          .then((results) => {
-            const failedKeys = new Set(keys.filter((_, i) => results[i].status === "rejected"));
-            failedCount = failedKeys.size;
-            return failedKeys;
-          }) as unknown as Promise<Ticket[]>,
-        {
-          optimisticData: (current) => withStatus(current) ?? [],
-          populateCache: (failedKeys, current) => current?.map((t) => {
-            const failed = (failedKeys as unknown as Set<string>).has(t.key);
-            return checkedTickets.has(t.key) ? { ...t, jiraStatus: failed ? (prevStatuses[t.key] ?? t.jiraStatus) : status } : t;
-          }) ?? [],
-          revalidate: false,
-          rollbackOnError: true,
-        },
-      );
-    } catch {
-      failedCount = keys.length;
-    }
+    keys.forEach((k, i) => {
+      if (results[i].status === "fulfilled") confirmPendingEdit(k, "jiraStatus");
+      else { clearPendingEdit(k, "jiraStatus"); failedCount++; }
+    });
     if (failedCount > 0) {
       showToast(`Failed to update status for ${failedCount} ticket${failedCount === 1 ? "" : "s"}`);
     } else {
       showToast(`Status set to ${status} for ${keys.length} ticket${keys.length === 1 ? "" : "s"}`);
     }
-  }, [apiTickets, mutateTickets, showToast]);
+  }, [showToast]);
 
   const handleBulkSetEpic = useCallback(async (epicKey: string | null, checkedTickets: Set<string>) => {
     const keys = [...checkedTickets];
@@ -401,20 +378,20 @@ export function useTicketActions(deps: TicketActionsDeps) {
   // A reason, when given, is posted as a Jira comment per ticket by the PATCH route.
   const handleBulkSetFlagged = useCallback(async (flagged: boolean, reason: string | null, checkedTickets: Set<string>) => {
     const keys = [...checkedTickets];
-    const prevFlagged = Object.fromEntries(keys.map((k) => [k, apiTickets?.find((t) => t.key === k)?.flagged]));
-    mutateTickets((data) => data?.map((t) => checkedTickets.has(t.key) ? { ...t, flagged } : t), { revalidate: false });
+    const now = Date.now();
+    keys.forEach((k) => registerPendingEdit(k, "flagged", flagged, now));
     const results = await Promise.allSettled(keys.map((k) => ticketsApi.toggleFlag(k, flagged, reason ?? undefined)));
-    const failedCount = results.filter((r) => r.status === "rejected").length;
+    let failedCount = 0;
+    keys.forEach((k, i) => {
+      if (results[i].status === "fulfilled") confirmPendingEdit(k, "flagged");
+      else { clearPendingEdit(k, "flagged"); failedCount++; }
+    });
     if (failedCount > 0) {
-      mutateTickets((data) => data?.map((t) => {
-        const prev = prevFlagged[t.key];
-        return prev !== undefined && checkedTickets.has(t.key) ? { ...t, flagged: prev } : t;
-      }), { revalidate: false });
       showToast(`Failed to ${flagged ? "flag" : "unflag"} ${failedCount} ticket${failedCount === 1 ? "" : "s"}`);
     } else {
       showToast(`${flagged ? "Flagged" : "Unflagged"} ${keys.length} ticket${keys.length === 1 ? "" : "s"}`);
     }
-  }, [apiTickets, mutateTickets, showToast]);
+  }, [showToast]);
 
   return {
     poStatuses,
