@@ -76,6 +76,12 @@ export interface FilterControlsPanelProps {
    * board, which keeps the full, unfiltered category list.
    */
   categoryWhitelist?: string[];
+  /**
+   * Hide the Sprint category's "By state" (active/future/closed) leading options
+   * (BRDG-357). The inbox filters sprints by display name, with no sprint-state
+   * data, so the state buckets would be inert.
+   */
+  hideSprintStateOptions?: boolean;
 }
 
 function ChangesDot({ value }: { value: string }) {
@@ -227,8 +233,10 @@ export function FilterControlsPanel(props: FilterControlsPanelProps) {
         searchable: true,
         searchPlaceholder: "Search sprints...",
         labelMap: nameMap,
-        leadingOptions: SPRINT_STATE_FILTER_OPTIONS.map((o) => ({ value: o.value, label: o.label, dot: o.dot })),
-        leadingLabel: "By state",
+        leadingOptions: props.hideSprintStateOptions
+          ? undefined
+          : SPRINT_STATE_FILTER_OPTIONS.map((o) => ({ value: o.value, label: o.label, dot: o.dot })),
+        leadingLabel: props.hideSprintStateOptions ? undefined : "By state",
         renderOption: (id) => <span>{nameMap[id] ?? id}</span>,
       });
     }

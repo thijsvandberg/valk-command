@@ -21,7 +21,7 @@ export const EDIT_STATE_OPTIONS: { value: string; label: string; dotClass: strin
 // Sort types
 // ---------------------------------------------------------------------------
 
-export type SortField = "rank" | "quality" | "bv" | "points" | "key" | "title" | "epic" | "jiraStatus" | "assignee" | "readiness" | "lastChanged";
+export type SortField = "rank" | "quality" | "bv" | "points" | "key" | "title" | "epic" | "jiraStatus" | "assignee" | "readiness" | "lastChanged" | "created";
 export type SortDir = "asc" | "desc";
 
 // ---------------------------------------------------------------------------
@@ -182,6 +182,21 @@ export const SORT_OPTIONS: { field: SortField; label: string; defaultDir: SortDi
   { field: "assignee", label: "Assignee", defaultDir: "asc" },
   { field: "readiness", label: "Readiness", defaultDir: "asc" },
 ];
+
+// New story inbox sort options (BRDG-357): only the fields the inbox row carries.
+// Created-date is the natural default (newest unread first), replacing the board's
+// Jira-rank default which has no meaning for the flat inbox list.
+export const INBOX_SORT_OPTIONS: { field: SortField; label: string; defaultDir: SortDir }[] = [
+  { field: "created", label: "Created date (default)", defaultDir: "desc" },
+  { field: "key", label: "Ticket key", defaultDir: "asc" },
+  { field: "title", label: "Title", defaultDir: "asc" },
+  { field: "jiraStatus", label: "Jira status", defaultDir: "asc" },
+  { field: "points", label: "Story points", defaultDir: "desc" },
+  { field: "epic", label: "Epic", defaultDir: "asc" },
+  { field: "assignee", label: "Assignee", defaultDir: "asc" },
+];
+
+export const INBOX_DEFAULT_SORT: { field: SortField; direction: SortDir } = { field: "created", direction: "desc" };
 
 // The regular (default) board order: Jira rank, ascending. Clicking a metric chip
 // a third time returns to this.

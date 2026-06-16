@@ -18,6 +18,8 @@ export function UnifiedControlsCluster({
   sortField,
   sortDir,
   onSortChange,
+  sortOptions,
+  sortDefaultField,
   activeFilterCount,
   filterProps,
 }: {
@@ -27,6 +29,9 @@ export function UnifiedControlsCluster({
   sortField: SortField;
   sortDir: SortDir;
   onSortChange: (field: SortField, dir: SortDir) => void;
+  /** Curated sort options + default field (BRDG-357 inbox passes a subset). */
+  sortOptions?: { field: SortField; label: string; defaultDir: SortDir }[];
+  sortDefaultField?: SortField;
   activeFilterCount: number;
   filterProps: FilterControlsPanelProps;
 }) {
@@ -41,7 +46,7 @@ export function UnifiedControlsCluster({
       <ExpandableSearch value={searchQuery} onChange={onSearchChange} count={searchCount} />
 
       {/* Sort -- self-contained dropdown, unchanged */}
-      <SortDropdown field={sortField} direction={sortDir} onChange={onSortChange} />
+      <SortDropdown field={sortField} direction={sortDir} onChange={onSortChange} options={sortOptions} defaultField={sortDefaultField} />
 
       {/* Filter -- opens the two-pane panel */}
       <div ref={filterRef} className="relative">

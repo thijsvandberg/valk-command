@@ -11,18 +11,24 @@ export function SortDropdown({
   field,
   direction,
   onChange,
+  options = SORT_OPTIONS,
+  defaultField = "rank",
 }: {
   field: SortField;
   direction: SortDir;
   onChange: (field: SortField, dir: SortDir) => void;
+  /** Curated option list (BRDG-357 inbox passes a subset). Defaults to the board's. */
+  options?: { field: SortField; label: string; defaultDir: SortDir }[];
+  /** The "unsorted/default" field for the active indicator and Reset. */
+  defaultField?: SortField;
 }) {
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
 
   useOutsideClick(ref, () => setOpen(false), { enabled: open });
 
-  const isActive = field !== "rank";
-  const activeLabel = SORT_OPTIONS.find((o) => o.field === field)?.label ?? "Sort";
+  const isActive = field !== defaultField;
+  const activeLabel = options.find((o) => o.field === field)?.label ?? "Sort";
 
   return (
     <div ref={ref} className="relative flex items-center gap-1">
@@ -46,7 +52,7 @@ export function SortDropdown({
 
       {open && (
         <div className="absolute top-full right-0 z-50 mt-1 w-52 rounded-lg border border-border-strong bg-[var(--color-surface-floating)] py-1 shadow-[var(--shadow-lg)]">
-          {SORT_OPTIONS.map((opt) => (
+          {options.map((opt) => (
             <button
               key={opt.field}
               type="button"
@@ -81,7 +87,7 @@ export function SortDropdown({
               <button
                 type="button"
                 onClick={() => {
-                  onChange("rank", "asc");
+                  onChange(defaultField, options.find((o) => o.field === defaultField)?.defaultDir ?? "asc");
                   setOpen(false);
                 }}
                 className="flex w-full items-center px-3 py-1.5 text-body-sm text-text-tertiary cursor-pointer hover:bg-hover-list-item hover:text-text-secondary"
