@@ -120,6 +120,17 @@ describe("BoardRow (headerless, BRDG-239)", () => {
     expect(screen.getByTestId("avatar")).toBeInTheDocument();
   });
 
+  it("renders a Mark-as-read action only when onMarkRead is supplied, and fires it (BRDG-357)", () => {
+    renderRow();
+    expect(screen.queryByRole("button", { name: "Mark as read" })).toBeNull();
+
+    const onMarkRead = vi.fn();
+    renderRow({ onMarkRead });
+    const btn = screen.getByRole("button", { name: "Mark as read" });
+    fireEvent.click(btn);
+    expect(onMarkRead).toHaveBeenCalledWith("VPL-1");
+  });
+
   it("shows the epic chip by default and hides it when hideEpic is set", () => {
     const { rerender } = renderRow();
     expect(screen.getByText("Onboarding")).toBeInTheDocument();

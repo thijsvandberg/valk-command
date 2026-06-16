@@ -108,6 +108,12 @@ export interface BoardRowBaseProps {
    */
   onActivate?: (key: string) => void;
   onDiscard?: (key: string) => void;
+  /**
+   * New story inbox (BRDG-357): renders a hover-revealed trailing "Mark as read"
+   * action (same floating-overlay concept as onDiscard). Inert on the board,
+   * which never passes it.
+   */
+  onMarkRead?: (key: string) => void;
   sessionTimeAgo?: string;
   sessionJiraChanged?: boolean;
   splitTarget?: string | null;
@@ -179,6 +185,7 @@ export const BoardRow = memo(forwardRef<HTMLTableRowElement, BoardRowBaseProps>(
     insertLine,
     onActivate,
     onDiscard,
+    onMarkRead,
     sessionTimeAgo,
     sessionJiraChanged = false,
     splitTarget,
@@ -766,6 +773,27 @@ export const BoardRow = memo(forwardRef<HTMLTableRowElement, BoardRowBaseProps>(
               >
                 <X size={14} strokeWidth={2} />
                 <span>Clear session</span>
+              </button>
+            </div>
+          )}
+
+          {/* Mark-as-read overlay (BRDG-357): floats over the row's right edge on hover,
+              same gradient-fade concept as onDiscard. Inert on the board (onMarkRead absent). */}
+          {onMarkRead && !isEditingTitle && (
+            <div
+              className="absolute inset-y-0 right-0 z-10 flex items-center pl-8 pr-4 opacity-0 transition-opacity duration-150 group-hover/row:opacity-100"
+              style={{ background: "linear-gradient(to right, transparent, var(--color-surface-elevated) 24px)" }}
+            >
+              <button
+                type="button"
+                title="Mark as read"
+                aria-label="Mark as read"
+                onPointerDown={(e) => e.stopPropagation()}
+                onClick={(e) => { e.stopPropagation(); onMarkRead(ticket.key); }}
+                className="flex shrink-0 cursor-pointer items-center gap-1 rounded-md px-2 py-1 text-[11px] font-medium text-text-muted transition-[background-color,color] duration-150 hover:bg-[var(--color-brand-subtle)] hover:text-[var(--color-brand-300)] focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-[var(--color-brand-400)] active:bg-[color-mix(in_srgb,var(--color-brand-500)_18%,transparent)]"
+              >
+                <Check size={14} strokeWidth={2} />
+                <span>Mark read</span>
               </button>
             </div>
           )}
