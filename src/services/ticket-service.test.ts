@@ -652,6 +652,10 @@ describe("pushToJira", () => {
 
     const result = await pushToJira("VPL-1");
     expect("success" in result && result.success).toBe(true);
+    // The throwaway conflict-check sync must be skipped for brand-new tickets:
+    // it is slow Jira work whose result is discarded and can time out, aborting
+    // the very first wrap-up (BRDG-353).
+    expect(syncIndividualTickets).not.toHaveBeenCalled();
   });
 
   it("returns conflict result when remote content changed", async () => {
