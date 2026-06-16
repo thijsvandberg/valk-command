@@ -2,9 +2,11 @@ import { NextResponse } from "next/server";
 import { db } from "@/db";
 import { ticket, ticketMetadata } from "@/db/schema";
 import { jiraClient } from "@/lib/jira-client";
+import { syncTicketSprints } from "@/lib/sprint-membership";
 import { logActivity } from "@/lib/activity-logger";
 import { applyRateLimit } from "@/lib/rate-limiter";
 import { logger } from "@/lib/logger";
+import { cache } from "@/lib/cache";
 
 /**
  * Creates a brand-new Jira story and a minimal local ticket record.
@@ -27,12 +29,13 @@ export async function POST(request: Request) {
   }
 
   const issueType = body.issueType ?? "story";
+  const sprintId =
+    typeof body.sprintId === "string" && body.sprintId.trim() ? body.sprintId.trim() : undefined;
 
   let newKey: string;
   try {
     const result = await jiraClient.createIssue({
       summary: title,
-      sprintId: body.sprintId,
       issueType,
       // Empty ADF doc prevents Jira from applying its default issue type template
       description: { type: "doc", version: 1, content: [] },
@@ -46,12 +49,37 @@ export async function POST(request: Request) {
     );
   }
 
+  // Jira Cloud silently ignores the sprint field on create, so assign it via the
+  // same field-edit path as drag-to-sprint once the issue exists, then land it at
+  // the top of the sprint (BRDG-354). Only persist the sprint locally when Jira
+  // confirms the move; a rank failure is best-effort and must not undo the move.
+  let assignedSprintId: string | undefined;
+  if (sprintId) {
+    const sprintIdNum = parseInt(sprintId, 10);
+    if (!Number.isNaN(sprintIdNum)) {
+      try {
+        await jiraClient.moveToSprint([newKey], sprintIdNum);
+        assignedSprintId = sprintId;
+      } catch (err) {
+        logger.error("story-writer-create", `Created ${newKey} but sprint assignment to ${sprintId} failed: ${err}`);
+      }
+      if (assignedSprintId) {
+        try {
+          await jiraClient.rankToTopOfSprint([newKey], sprintIdNum);
+        } catch (err) {
+          logger.warn("story-writer-create", `Created ${newKey} but rank-to-top in sprint ${assignedSprintId} failed: ${err}`);
+        }
+      }
+    }
+  }
+
   await Promise.all([
     db.insert(ticket).values({
       jiraKey: newKey,
       title,
       type: issueType,
       status: "TO DO",
+      ...(assignedSprintId ? { sprintName: assignedSprintId, sprintIds: JSON.stringify([assignedSprintId]) } : {}),
     }),
     db.insert(ticketMetadata).values({
       jiraKey: newKey,
@@ -63,6 +91,13 @@ export async function POST(request: Request) {
       summary: `Created new story: ${newKey} — ${title}`,
     }),
   ]);
+
+  // Mirror the sprint membership into the indexed bridge so the by-sprint board
+  // shows the new story in its column. Backlog (no sprint) leaves no rows.
+  syncTicketSprints(db, newKey, assignedSprintId ? [assignedSprintId] : null, assignedSprintId ?? null);
+
+  cache.invalidate(/^\/api\/tickets(\?|$)/);
+  if (assignedSprintId) cache.invalidate("/api/jira/sprints");
 
   return NextResponse.json({ key: newKey }, { status: 201 });
 }
