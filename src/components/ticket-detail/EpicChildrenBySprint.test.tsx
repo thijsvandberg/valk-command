@@ -111,6 +111,57 @@ describe("EpicChildrenBySprint row context menu", () => {
   });
 });
 
+// Select-all-in-sprint: the group header checkbox toggles the whole group's selection.
+describe("EpicChildrenBySprint select-all-in-group", () => {
+  const SELECTABLE = {
+    visibleFields: new Set(["issueKey", "status", "checkboxes"]),
+    onCheckboxClick: vi.fn(),
+  };
+
+  it("renders a select-all checkbox per group only when onSelectGroup is wired", () => {
+    setup({ ...SELECTABLE });
+    expect(screen.queryByRole("checkbox", { name: "Select all items in this group" })).toBeNull();
+    setup({ ...SELECTABLE, onSelectGroup: vi.fn() });
+    expect(screen.getAllByRole("checkbox", { name: "Select all items in this group" }).length).toBe(2);
+  });
+
+  it("selects the group's keys when none are checked", () => {
+    const onSelectGroup = vi.fn();
+    setup({
+      ...SELECTABLE,
+      items: [child("VPL-10", "Sprint 1"), child("VPL-12", "Sprint 1"), child("VPL-11", "Sprint 2")],
+      onSelectGroup,
+    });
+    // Sprint 1 group header is the first select-all checkbox.
+    fireEvent.click(screen.getAllByRole("checkbox", { name: "Select all items in this group" })[0]);
+    expect(onSelectGroup).toHaveBeenCalledWith(["VPL-10", "VPL-12"], true);
+  });
+
+  it("deselects the group when all its keys are already checked", () => {
+    const onSelectGroup = vi.fn();
+    setup({
+      ...SELECTABLE,
+      items: [child("VPL-10", "Sprint 1"), child("VPL-12", "Sprint 1")],
+      checkedKeys: new Set(["VPL-10", "VPL-12"]),
+      onSelectGroup,
+    });
+    fireEvent.click(screen.getAllByRole("checkbox", { name: "Select all items in this group" })[0]);
+    expect(onSelectGroup).toHaveBeenCalledWith(["VPL-10", "VPL-12"], false);
+  });
+
+  it("shows the mixed state when only some of the group is checked", () => {
+    setup({
+      ...SELECTABLE,
+      items: [child("VPL-10", "Sprint 1"), child("VPL-12", "Sprint 1")],
+      checkedKeys: new Set(["VPL-10"]),
+      onSelectGroup: vi.fn(),
+    });
+    expect(
+      screen.getAllByRole("checkbox", { name: "Select all items in this group" })[0].getAttribute("aria-checked"),
+    ).toBe("mixed");
+  });
+});
+
 // Forward-planning placeholders (BRDG-304) in the epic-by-sprint view.
 describe("EpicChildrenBySprint placeholders", () => {
   const PLACEHOLDER = {

@@ -10,6 +10,7 @@ import { ChevronRight, ChevronDown, Pin, AlertTriangle, MoreHorizontal, RefreshC
 import { StatPill, StatusPill } from "./SprintStatPill";
 import { MetricBadge } from "@/components/shared/MetricBadge";
 import { Tooltip } from "@/components/shared/Tooltip";
+import { Checkbox } from "@/components/shared/Checkbox";
 import { SprintDetailsPopover } from "./SprintDetailsPopover";
 import { getJiraSprintUrl } from "@/lib/jira-url";
 import { pluralize } from "@/lib/pluralize";
@@ -22,6 +23,18 @@ export interface GroupStatBarProps {
   label?: string;
   /** Optional icon rendered just before the label (e.g. the backlog icon). */
   leadingIcon?: ReactNode;
+  /**
+   * Multiselect: when provided, a tri-state "select all in this group" checkbox is
+   * rendered at the head of the label zone (left of the chevron). Clicking it toggles
+   * the whole group's selection. Mirrors the row checkboxes' hover-reveal behavior.
+   */
+  onSelectAll?: () => void;
+  /** All of the group's selectable rows are currently checked. */
+  selectAllChecked?: boolean;
+  /** Some but not all of the group's rows are checked (partial state). */
+  selectAllIndeterminate?: boolean;
+  /** A selection exists somewhere; keeps the select-all checkbox visible (not hover-gated). */
+  selectionActive?: boolean;
   activeCriterion?: StatCriterion | null;
   onFilterChange?: (criterion: StatCriterion | null) => void;
   isCollapsed?: boolean;
@@ -161,6 +174,10 @@ export const GroupStatBar = memo(function GroupStatBar({
   tickets,
   label,
   leadingIcon,
+  onSelectAll,
+  selectAllChecked = false,
+  selectAllIndeterminate = false,
+  selectionActive = false,
   activeCriterion = null,
   onFilterChange,
   isCollapsed,
@@ -317,6 +334,25 @@ export const GroupStatBar = memo(function GroupStatBar({
       {/* Fixed-width label zone so the stats (item count onward) start at the same x
           across every group row, regardless of sprint name length (BRDG-239). */}
       <div className={`flex shrink-0 items-center gap-2 ${label ? `${labelWidthClass} min-w-0` : ""}`}>
+        {/* Select-all-in-group checkbox: stops propagation so it never toggles the
+            header's collapse. Mirrors the row checkbox visibility (hidden until the
+            header is hovered, unless a selection is already active). */}
+        {onSelectAll && (
+          <button
+            type="button"
+            role="checkbox"
+            aria-checked={selectAllChecked ? "true" : selectAllIndeterminate ? "mixed" : "false"}
+            aria-label="Select all items in this group"
+            onClick={(e) => { e.stopPropagation(); onSelectAll(); }}
+            className={`flex h-5 w-5 shrink-0 cursor-pointer items-center justify-center rounded focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-[var(--color-brand-400)] [transition:opacity_.12s_ease] ${
+              selectAllChecked || selectAllIndeterminate || selectionActive
+                ? "opacity-100"
+                : "opacity-0 group-hover/grouprow:opacity-100"
+            }`}
+          >
+            <Checkbox checked={selectAllChecked} indeterminate={selectAllIndeterminate} />
+          </button>
+        )}
         {isCollapsible && (
           isCollapsed
             ? <ChevronRight className="h-3 w-3 shrink-0 text-text-tertiary" strokeWidth={1.5} />

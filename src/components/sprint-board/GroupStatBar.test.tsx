@@ -723,4 +723,51 @@ describe("GroupStatBar", () => {
       expect(screen.getByText("22")).toBeInTheDocument();
     });
   });
+
+  describe("select-all-in-group checkbox", () => {
+    it("renders no checkbox when onSelectAll is omitted", () => {
+      render(<GroupStatBar tickets={TICKETS} label="BT: 138" />);
+      expect(screen.queryByRole("checkbox", { name: "Select all items in this group" })).toBeNull();
+    });
+
+    it("renders the checkbox and fires onSelectAll on click", () => {
+      const onSelectAll = vi.fn();
+      render(<GroupStatBar tickets={TICKETS} label="BT: 138" onSelectAll={onSelectAll} />);
+      const box = screen.getByRole("checkbox", { name: "Select all items in this group" });
+      fireEvent.click(box);
+      expect(onSelectAll).toHaveBeenCalledTimes(1);
+    });
+
+    it("reflects checked / mixed / empty state via aria-checked", () => {
+      const { rerender } = render(
+        <GroupStatBar tickets={TICKETS} label="BT: 138" onSelectAll={() => {}} />,
+      );
+      expect(
+        screen.getByRole("checkbox", { name: "Select all items in this group" }).getAttribute("aria-checked"),
+      ).toBe("false");
+      rerender(<GroupStatBar tickets={TICKETS} label="BT: 138" onSelectAll={() => {}} selectAllIndeterminate />);
+      expect(
+        screen.getByRole("checkbox", { name: "Select all items in this group" }).getAttribute("aria-checked"),
+      ).toBe("mixed");
+      rerender(<GroupStatBar tickets={TICKETS} label="BT: 138" onSelectAll={() => {}} selectAllChecked />);
+      expect(
+        screen.getByRole("checkbox", { name: "Select all items in this group" }).getAttribute("aria-checked"),
+      ).toBe("true");
+    });
+
+    it("stops the click from bubbling to the collapsible header wrapper", () => {
+      // The header sits in a click-to-collapse wrapper (GroupCard); the checkbox must
+      // not trigger that. Stand in for the wrapper with a parent onClick spy.
+      const parentClick = vi.fn();
+      const onSelectAll = vi.fn();
+      render(
+        <div onClick={parentClick}>
+          <GroupStatBar tickets={TICKETS} label="BT: 138" onToggleCollapse={() => {}} onSelectAll={onSelectAll} />
+        </div>,
+      );
+      fireEvent.click(screen.getByRole("checkbox", { name: "Select all items in this group" }));
+      expect(onSelectAll).toHaveBeenCalledTimes(1);
+      expect(parentClick).not.toHaveBeenCalled();
+    });
+  });
 });

@@ -72,6 +72,10 @@ interface EpicChildrenBySprintProps {
   checkedKeys?: Set<string>;
   someChecked?: boolean;
   onCheckboxClick?: (key: string, e: React.MouseEvent) => void;
+  /** Multiselect: toggle the selection of every selectable row in a sprint group at
+   *  once. When supplied (with onCheckboxClick), each group header renders a tri-state
+   *  "select all in this group" checkbox. */
+  onSelectGroup?: (keys: string[], select: boolean) => void;
   /** Forward-planning mode (BRDG-303): shows the fullness meter on resolvable sprint groups. */
   planningOn?: boolean;
   /** sprintId -> pencil capacity, for the fullness meter. */
@@ -369,6 +373,7 @@ export function EpicChildrenBySprint({
   checkedKeys,
   someChecked,
   onCheckboxClick,
+  onSelectGroup,
   planningOn = false,
   pencilCapacityMap,
   onPencilCapacityChange,
@@ -643,12 +648,28 @@ export function EpicChildrenBySprint({
     const planningSprintId = !isSynthetic && !isUnscheduled && group.sprintName
       ? sprints.find((s) => s.name === group.sprintName)?.id
       : undefined;
+    // Select-all-in-group: only real groups with selectable (non-pending) rows expose
+    // the header checkbox. State is derived from the parent's checkedKeys so it stays
+    // in sync with per-row toggles and the bulk bar.
+    const groupSelectableKeys = !isSynthetic
+      ? group.items.filter((c) => !c.key.startsWith("pending-")).map((c) => c.key)
+      : [];
+    const groupAllChecked = groupSelectableKeys.length > 0 && groupSelectableKeys.every((k) => checkedKeys?.has(k));
+    const groupSomeChecked = !groupAllChecked && groupSelectableKeys.some((k) => checkedKeys?.has(k));
     const header = (
       <GroupStatBar
         tickets={group.items.map(toStatTicket)}
         label={group.label}
         sprint={group.sprintName ? sprints.find((s) => s.name === group.sprintName) : undefined}
         isActive={group.isActive}
+        {...(selectable && onSelectGroup && groupSelectableKeys.length > 0
+          ? {
+              onSelectAll: () => onSelectGroup(groupSelectableKeys, !groupAllChecked),
+              selectAllChecked: groupAllChecked,
+              selectAllIndeterminate: groupSomeChecked,
+              selectionActive: someChecked,
+            }
+          : {})}
         {...(planningOn && planningSprintId && onPencilCapacityChange
           ? {
               planningOn: true,

@@ -800,6 +800,18 @@ export function EpicChildrenSection({
     setCheckedKeys(allChecked ? new Set() : new Set(orderedVisibleKeys));
   }, [allChecked, orderedVisibleKeys]);
 
+  // Select-all-in-sprint: add or remove an entire sprint group's keys at once. Anchors
+  // the next shift-click to the last key touched so range-select continues naturally.
+  const selectGroup = useCallback((keys: string[], select: boolean) => {
+    setCheckedKeys((prev) => {
+      const next = new Set(prev);
+      if (select) keys.forEach((k) => next.add(k));
+      else keys.forEach((k) => next.delete(k));
+      return next;
+    });
+    if (select && keys.length > 0) lastCheckedRef.current = keys[keys.length - 1];
+  }, []);
+
   const clearSelection = useCallback(() => {
     setCheckedKeys(new Set());
     lastCheckedRef.current = null;
@@ -1124,6 +1136,7 @@ export function EpicChildrenSection({
         checkedKeys={checkedKeys}
         someChecked={someChecked}
         onCheckboxClick={selectionEnabled ? handleCheckboxClick : undefined}
+        onSelectGroup={selectionEnabled ? selectGroup : undefined}
         planningOn={planningOn}
         pencilCapacityMap={pencilCapacityMap}
         onPencilCapacityChange={setPencilCapacity}
