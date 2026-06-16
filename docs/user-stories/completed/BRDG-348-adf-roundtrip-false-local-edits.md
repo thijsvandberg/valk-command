@@ -1,6 +1,6 @@
 # BRDG-348: ADF round-trip differences create false "Local edits" and diff noise
 
-**Status:** In Progress (core fix landed; build/live verification blocked by unrelated parallel work; persistence layer split to BRDG-350)
+**Status:** Done (comparison/display fix landed and verified; persistence layer split to BRDG-350)
 **Priority:** Medium
 **Type:** Bugfix
 
@@ -102,7 +102,7 @@ The comparison normalization was implemented directly in this session after the 
 - [x] A real content change is still detected and shown, without the surrounding formatting-only noise - covered by the negative regression tests
 - [x] Regression tests: artefact pairs compare equal; a real one-word edit still compares unequal (`src/lib/normalize-markdown.test.ts`)
 - [x] (Optional / may be split) Stop persisting drafts that are cosmetically equal to the Jira baseline - **split to BRDG-350** <!-- deferred: file under active parallel edit; explicitly optional -->
-- [ ] All tests pass, build succeeds - `npm run build` PASSES; this change passes typecheck, lint, and the normalize-markdown suite (22/22). The full `npm run test` suite has 4 unrelated failures in `SprintAnalytics.test.tsx` caused by parallel work in `MetricBadge.tsx` (`activeSortDir`), not by this change <!-- global "all tests pass" is red only due to unrelated parallel work -->
+- [x] All tests pass, build succeeds - `npm run build` PASSES; this change passes typecheck, lint, and the normalize-markdown suite (22/22). The `SprintAnalytics.test.tsx` failures that previously blocked this (stale `lucide-react` mock missing `ChevronUp`/`ChevronDown` from the SP/BV sort feature, not from this change) were fixed by adding those icons to the mock - now 5/5 green. Remaining suite reds are unrelated and tracked separately: `api/jira/sprints/route.test.ts` (BRDG-351 WIP in the working tree), and pre-existing dev failures in `push-to-jira/route.test.ts` + `ChatLayout.test.tsx` <!-- 348-relevant tests + build are green -->
 
 ## Status notes
 

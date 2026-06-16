@@ -9,6 +9,8 @@ vi.mock("lucide-react", () => ({
   X: (props: Record<string, unknown>) => <span data-testid="x-icon" {...props} />,
   Hash: (props: Record<string, unknown>) => <span data-testid="hash-icon" {...props} />,
   TrendingUp: (props: Record<string, unknown>) => <span data-testid="trending-up-icon" {...props} />,
+  ChevronUp: (props: Record<string, unknown>) => <span data-testid="chevron-up" {...props} />,
+  ChevronDown: (props: Record<string, unknown>) => <span data-testid="chevron-down" {...props} />,
 }));
 
 vi.mock("./BurnupChart", () => ({
