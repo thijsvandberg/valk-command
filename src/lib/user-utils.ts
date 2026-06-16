@@ -19,8 +19,13 @@ export function userColor(name: string): string {
 }
 
 // Builds the display Assignee shape from a stored name, deriving initials + a
-// stable color. Returns null for an absent assignee.
-export function buildAssignee(name: string | null | undefined): Assignee | null {
+// stable color. Returns null for an absent assignee. The optional accountId
+// (BRDG-365) carries the stable Jira identity for rename-proof matching;
+// name-only callers omit it and get accountId: null.
+export function buildAssignee(
+  name: string | null | undefined,
+  accountId?: string | null,
+): Assignee | null {
   if (!name) return null;
-  return { name, initials: userInitials(name), color: userColor(name) };
+  return { name, initials: userInitials(name), color: userColor(name), accountId: accountId ?? null };
 }

@@ -261,6 +261,15 @@ describe("buildAssignee", () => {
     expect(result).not.toBeNull();
     expect(result!.name).toBe("Admin");
   });
+
+  it("carries the accountId when provided (BRDG-365)", () => {
+    const result = buildAssignee("John Doe", "acc-jd");
+    expect(result!.accountId).toBe("acc-jd");
+  });
+
+  it("defaults accountId to null when omitted (no name-only regression)", () => {
+    expect(buildAssignee("John Doe")!.accountId).toBeNull();
+  });
 });
 
 describe("attachmentColor", () => {

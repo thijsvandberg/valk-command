@@ -137,7 +137,7 @@ export async function GET(request: Request) {
       jiraStatus: (t.status ?? "TO DO") as JiraStatus,
       storyPoints: t.storyPoints ?? null,
       guestimation: meta?.guestimation ?? null,
-      assignee: buildAssignee(t.assignee),
+      assignee: buildAssignee(t.assignee, t.assigneeAccountId),
       reporter: buildAssignee(t.reporter),
       flagged: t.flagged ?? false,
       readiness: (meta?.readiness ?? null) as TicketReadiness | null,

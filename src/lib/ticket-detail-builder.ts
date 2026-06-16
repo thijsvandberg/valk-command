@@ -13,9 +13,9 @@ import { userInitials, userColor } from "@/lib/user-utils";
 import { resolveReporter } from "@/lib/person-ref";
 import { getJiraUserLookup } from "@/lib/jira-user-directory";
 
-export function buildAssignee(name: string | null): Assignee | null {
+export function buildAssignee(name: string | null, accountId?: string | null): Assignee | null {
   if (!name) return null;
-  return { name, initials: userInitials(name), color: userColor(name) };
+  return { name, initials: userInitials(name), color: userColor(name), accountId: accountId ?? null };
 }
 
 export function attachmentColor(mimeType: string): string {
@@ -148,7 +148,7 @@ function transformQueryData(queryData: NonNullable<Awaited<ReturnType<typeof run
     epicKey: t.epicKey ?? null,
     jiraStatus: (t.status ?? "TO DO") as JiraStatus,
     storyPoints: t.storyPoints ?? null,
-    assignee: buildAssignee(t.assignee),
+    assignee: buildAssignee(t.assignee, t.assigneeAccountId),
     flagged: t.flagged ?? false,
     readiness: (meta?.readiness ?? null) as TicketReadiness | null,
     poStatus: (meta?.poStatus ?? null) as POStatus,

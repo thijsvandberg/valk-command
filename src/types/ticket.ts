@@ -161,6 +161,11 @@ export interface Assignee {
   name: string;
   initials: string;
   color: string;
+  // Stable Jira accountId (BRDG-365), when sync has captured it. Null for legacy
+  // rows or privacy-hidden/external people. Used to key the board assignee filter
+  // and AssigneePicker selection on a rename-proof identifier; name stays the
+  // display label and the fallback match key.
+  accountId?: string | null;
 }
 
 export interface Attachment {
