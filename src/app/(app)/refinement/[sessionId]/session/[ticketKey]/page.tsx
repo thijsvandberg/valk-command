@@ -18,6 +18,7 @@ import { SubtasksSection } from "@/components/ticket-detail/SubtasksSection";
 import { TicketChatPane } from "@/components/shared/TicketChatPane";
 import { tickets, apiFetch, jira as jiraApi } from "@/lib/api-client";
 import { recordTicketView } from "@/lib/recently-viewed-store";
+import { CONTENT_MAX } from "@/lib/layout";
 import { patchTicketCaches, revalidateTicketCaches } from "@/lib/ticket-cache";
 import { mutate as globalMutate } from "swr";
 import type { TicketReadiness, IssueType, JiraStatus } from "@/types/ticket";
@@ -477,12 +478,15 @@ export default function RefinementSessionTicketPage({
       {pageTitle}
       <div className="flex h-full flex-col bg-[var(--color-surface-elevated)]">
         {/* Top bar - matches ViewHeader styling */}
-        <div className="relative flex shrink-0 items-center justify-between border-b border-border-strong bg-[var(--color-surface-chrome)] px-5 py-3.5">
+        <div className="relative flex shrink-0 border-b border-border-strong bg-[var(--color-surface-chrome)] px-8 py-3.5">
           {/* Decorative accents (from ViewHeader) */}
           <div className="pointer-events-none absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-[var(--color-brand-glow)] to-transparent" />
           <div className="pointer-events-none absolute left-0 top-0 h-full w-72 bg-[radial-gradient(ellipse_at_left_center,color-mix(in_srgb,var(--color-brand-500)_10%,transparent)_0%,transparent_70%)]" />
           <div className="pointer-events-none absolute right-0 top-0 h-full w-48 bg-[radial-gradient(ellipse_at_right_center,color-mix(in_srgb,var(--color-brand-500)_5%,transparent)_0%,transparent_70%)]" />
 
+          {/* Inner content capped + centered so the chrome matches the shared
+              ViewHeader on wide screens (BRDG-361). */}
+          <div className={`${CONTENT_MAX} relative flex items-center justify-between`}>
           {/* Left: brand + exit + previous + ticket info */}
           <div className="relative flex items-center gap-3">
             {/* Brand mark — command capsule trigger, matches ViewHeader */}
@@ -493,7 +497,7 @@ export default function RefinementSessionTicketPage({
                 aria-haspopup="menu"
                 aria-expanded={navMenuOpen}
                 aria-label="Open navigation"
-                className="group flex items-center gap-2 rounded-lg px-1.5 py-1 cursor-pointer transition-colors duration-150 hover:bg-hover-interactive focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)]"
+                className="group -ml-1.5 flex items-center gap-2 rounded-lg px-1.5 py-1 cursor-pointer transition-colors duration-150 hover:bg-hover-interactive focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)]"
               >
                 <span className="font-[family-name:var(--font-space-mono)] text-[19px] font-bold lowercase tracking-[-0.02em] text-text-primary">
                   bridge<span className="bridge-caret text-[var(--color-brand-400)]">_</span>
@@ -724,6 +728,7 @@ export default function RefinementSessionTicketPage({
               )}
             </div>
 
+          </div>
           </div>
         </div>
 
