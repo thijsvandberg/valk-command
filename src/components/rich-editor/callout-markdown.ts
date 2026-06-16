@@ -252,6 +252,10 @@ function inlineHtmlToMarkdown(html: string): string {
     .replace(/<del>(.*?)<\/del>/g, "~~$1~~")
     .replace(/<s>(.*?)<\/s>/g, "~~$1~~")
     .replace(/<code>(.*?)<\/code>/g, "`$1`")
+    // Drop underline tags before links are converted, otherwise a <u> wrapping
+    // the link text survives inside the [..](..) label as a literal tag. Markdown
+    // has no underline and it is dropped toward Jira/ADF anyway.
+    .replace(/<\/?u>/gi, "")
     .replace(/<a\s[^>]*href="([^"]*)"[^>]*>(.*?)<\/a>/g, "[$2]($1)")
     .replace(/<br\s*\/?>/g, "\n")
     .replace(/<[^>]+>/g, ""); // strip any remaining tags

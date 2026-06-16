@@ -32,7 +32,6 @@ import {
   MessageSquareText,
   ZoomIn,
   ZoomOut,
-  Menu,
 } from "lucide-react";
 
 function getDefaultPaneWidth() {
@@ -64,6 +63,7 @@ export default function RefinementSessionTicketPage({
     toggleSidebarPanel,
     reorderQueue,
     recordEstimate,
+    recordSubtaskCount,
     openEndModal,
     closeEndModal,
     saveSession,
@@ -294,6 +294,13 @@ export default function RefinementSessionTicketPage({
   // eslint-disable-next-line react-hooks/exhaustive-deps -- only sync on key/storyPoints change
   }, [ticketData?.key, ticketData?.storyPoints]);
 
+  // Record the live subtask count into the session so the wrap-up reflects
+  // subtasks just created on this ticket, even when the shared list cache is
+  // still stale (BRDG: wrap-up "No subtasks" on the last refined ticket).
+  useEffect(() => {
+    if (ticketData?.key) recordSubtaskCount(ticketData.key, ticketData.subtasks?.length ?? 0);
+  }, [ticketData?.key, ticketData?.subtasks?.length, recordSubtaskCount]);
+
   const handleStoryPointsChange = useCallback(
     async (v: number | null) => {
       const prev = storyPoints;
@@ -415,14 +422,17 @@ export default function RefinementSessionTicketPage({
       const tag = (e.target as HTMLElement)?.tagName;
       const isInput = tag === "INPUT" || tag === "TEXTAREA" || (e.target as HTMLElement)?.getAttribute("contenteditable");
 
+      // Bail before any shortcut while editing a field: the field's own
+      // handlers (e.g. Cmd+Enter to save the description) own those keys, and
+      // session navigation must not steal them out from under an active edit.
+      if (isInput) return;
+
       // Cmd+Enter: next ticket / end session
       if ((e.metaKey || e.ctrlKey) && e.key === "Enter" && sessionActive) {
         e.preventDefault();
         handleNext();
         return;
       }
-
-      if (isInput) return;
 
       // P: toggle notes
       if (e.key === "p" || e.key === "P") {
@@ -485,7 +495,6 @@ export default function RefinementSessionTicketPage({
                 aria-label="Open navigation"
                 className="group flex items-center gap-2 rounded-lg px-1.5 py-1 cursor-pointer transition-colors duration-150 hover:bg-hover-interactive focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)]"
               >
-                <Menu className="h-4 w-4 shrink-0 text-text-muted transition-colors duration-150 group-hover:text-[var(--color-brand-300)]" strokeWidth={2} />
                 <span className="font-[family-name:var(--font-space-mono)] text-[19px] font-bold lowercase tracking-[-0.02em] text-text-primary">
                   bridge<span className="bridge-caret text-[var(--color-brand-400)]">_</span>
                 </span>

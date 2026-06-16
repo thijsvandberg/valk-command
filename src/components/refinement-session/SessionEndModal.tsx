@@ -29,6 +29,7 @@ export function SessionEndModal() {
     queueMeta,
     savedSessionId,
     sessionEstimates,
+    sessionSubtaskCounts,
     closeEndModal,
     saveSession,
     finishSession,
@@ -173,10 +174,10 @@ export function SessionEndModal() {
         readiness: (ticket?.readiness ?? null) as TicketReadiness | null,
         storyPoints: key in sessionEstimates ? sessionEstimates[key] : ticket?.storyPoints ?? null,
         isSpike: ticket?.type === "spike",
-        subtaskCount: ticket?.totalSubtaskCount ?? 0,
+        subtaskCount: key in sessionSubtaskCounts ? sessionSubtaskCounts[key] : ticket?.totalSubtaskCount ?? 0,
       };
     });
-  }, [queue, queueMeta, allTickets, sessionEstimates]);
+  }, [queue, queueMeta, allTickets, sessionEstimates, sessionSubtaskCounts]);
 
   const handleSave = useCallback(async () => {
     await flushPendingNotes();

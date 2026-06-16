@@ -23,6 +23,11 @@ interface RefinementSessionState {
   // modal reads these instead of the shared ticket caches, which can lag
   // behind (or be overwritten by a stale refetch) while a save is in flight.
   sessionEstimates: Record<string, number | null>;
+  // Subtask counts observed during this session, keyed by ticket. Same reason
+  // as sessionEstimates: subtasks created moments before opening the wrap-up
+  // are not yet reflected in the shared ticket cache, so the last ticket would
+  // otherwise show "No subtasks" despite having them.
+  sessionSubtaskCounts: Record<string, number>;
 }
 
 interface RefinementSessionActions {
@@ -33,6 +38,7 @@ interface RefinementSessionActions {
   toggleSidebarPanel: (panel: SidebarPanel) => void;
   reorderQueue: (fromIndex: number, toIndex: number) => void;
   recordEstimate: (ticketKey: string, storyPoints: number | null) => void;
+  recordSubtaskCount: (ticketKey: string, count: number) => void;
   openEndModal: () => void;
   closeEndModal: () => void;
   saveSession: (generalComment?: string | null) => void;
@@ -53,6 +59,7 @@ const INITIAL_STATE: RefinementSessionState = {
   sessionStartedAt: null,
   savedSessionId: null,
   sessionEstimates: {},
+  sessionSubtaskCounts: {},
 };
 
 const INDEX_PERSIST_DELAY = 400;
@@ -79,6 +86,7 @@ export function RefinementSessionProvider({ children }: { children: ReactNode })
       sessionStartedAt: Date.now(),
       savedSessionId: savedSessionId ?? null,
       sessionEstimates: {},
+      sessionSubtaskCounts: {},
     });
   }, []);
 
@@ -87,6 +95,16 @@ export function RefinementSessionProvider({ children }: { children: ReactNode })
       ...prev,
       sessionEstimates: { ...prev.sessionEstimates, [ticketKey]: storyPoints },
     }));
+  }, []);
+
+  const recordSubtaskCount = useCallback((ticketKey: string, count: number) => {
+    setState((prev) => {
+      if (prev.sessionSubtaskCounts[ticketKey] === count) return prev;
+      return {
+        ...prev,
+        sessionSubtaskCounts: { ...prev.sessionSubtaskCounts, [ticketKey]: count },
+      };
+    });
   }, []);
 
   const nextTicket = useCallback(() => {
@@ -192,6 +210,7 @@ export function RefinementSessionProvider({ children }: { children: ReactNode })
         toggleSidebarPanel,
         reorderQueue,
         recordEstimate,
+        recordSubtaskCount,
         openEndModal,
         closeEndModal,
         saveSession,

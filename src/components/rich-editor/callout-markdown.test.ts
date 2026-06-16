@@ -124,6 +124,15 @@ describe("htmlToCalloutMarkdown", () => {
     expect(md).toContain("~~strike~~");
   });
 
+  it("strips underline tags wrapping a link instead of leaking them into the label", () => {
+    const html =
+      '<details data-expand-title="T" class="expand-block"><summary>T</summary><div><p>See <u><a href="https://github.com/org/pg_partman">pg_partman</a></u></p></div></details>';
+    const md = htmlToCalloutMarkdown(html);
+    expect(md).toContain("[pg_partman](https://github.com/org/pg_partman)");
+    expect(md).not.toContain("<u>");
+    expect(md).not.toContain("</u>");
+  });
+
   it("preserves bullet list inside callout block", () => {
     const html =
       '<div data-callout-type="info" class="callout-block"><ul><li><p>Item A</p></li><li><p>Item B</p></li></ul></div>';

@@ -553,6 +553,18 @@ describe("EditableDescription title-only local edits (BRDG)", () => {
     expect(screen.queryByText("Local edits")).not.toBeInTheDocument();
   });
 
+  it("shows a visible Push to Jira for a title-only edit without expanding the diff", () => {
+    renderDesc({
+      initialDescription: "Original",
+      titleInitial: "Old title",
+      titleLocalValue: "New title",
+      onPushToJira: vi.fn().mockResolvedValue(undefined),
+    });
+    // The description editor never opens for a title-only edit, so the push must
+    // be reachable straight from the badge row, not only inside the diff.
+    expect(screen.getByText("Push to Jira")).toBeInTheDocument();
+  });
+
   it("expands a title-only edit into a diff with Push and Discard", () => {
     renderDesc({
       initialDescription: "Original",

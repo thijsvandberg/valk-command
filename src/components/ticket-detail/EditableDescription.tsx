@@ -345,21 +345,44 @@ export function EditableDescription({
           Covers title-only edits too, so all local edits share one affordance. */}
       {!editing && hasAnyLocalEdit && (
         <div className="mb-3">
-          <button
-            type="button"
-            onClick={() => setShowDraftDiff((v) => !v)}
-            aria-expanded={showDraftDiff}
-            className="inline-flex cursor-pointer items-center gap-1.5 rounded-md border px-2.5 py-1 text-body-sm font-medium focus-visible:outline-2 focus-visible:outline-offset-2 border-[var(--color-brand-500)]/20 bg-[var(--color-brand-500)]/[0.06] text-[var(--color-brand-400)] hover:bg-[var(--color-brand-500)]/[0.12] focus-visible:outline-[var(--color-brand-500)]/50"
-            style={{ transition: "background-color 0.15s ease" }}
-          >
-            <span className="inline-block h-1.5 w-1.5 rounded-full bg-[var(--color-brand-500)]/70" />
-            Local edits
-            <ChevronDown
-              size={14}
-              strokeWidth={1.5}
-              style={{ transition: "transform 0.15s ease", transform: showDraftDiff ? "rotate(180deg)" : "rotate(0deg)" }}
-            />
-          </button>
+          {/* The push lives here too, not only inside the expanded diff: a
+              title-only edit never opens the description editor, so without this
+              the only push affordance would be hidden behind the diff toggle. */}
+          <div className="flex flex-wrap items-center gap-2">
+            <button
+              type="button"
+              onClick={() => setShowDraftDiff((v) => !v)}
+              aria-expanded={showDraftDiff}
+              className="inline-flex cursor-pointer items-center gap-1.5 rounded-md border px-2.5 py-1 text-body-sm font-medium focus-visible:outline-2 focus-visible:outline-offset-2 border-[var(--color-brand-500)]/20 bg-[var(--color-brand-500)]/[0.06] text-[var(--color-brand-400)] hover:bg-[var(--color-brand-500)]/[0.12] focus-visible:outline-[var(--color-brand-500)]/50"
+              style={{ transition: "background-color 0.15s ease" }}
+            >
+              <span className="inline-block h-1.5 w-1.5 rounded-full bg-[var(--color-brand-500)]/70" />
+              Local edits
+              <ChevronDown
+                size={14}
+                strokeWidth={1.5}
+                style={{ transition: "transform 0.15s ease", transform: showDraftDiff ? "rotate(180deg)" : "rotate(0deg)" }}
+              />
+            </button>
+            {/* Only when collapsed: once expanded, the diff card's own sticky
+                push (with the override control) takes over. */}
+            {showPush && !showDraftDiff && (
+              <Button
+                variant="primary"
+                size="md"
+                disabled={isPushing || (showConflictWarning && !overrideConfirmed)}
+                title={showConflictWarning && !overrideConfirmed ? "Expand the diff to review and confirm before pushing" : "Push to Jira"}
+                onClick={handlePushToJira}
+                icon={isPushing ? <Loader2 size={12} strokeWidth={2} className="animate-spin" /> : <CloudUpload size={12} strokeWidth={2.5} />}
+                className="!text-body-sm"
+              >
+                {isPushing ? "Pushing..." : "Push to Jira"}
+              </Button>
+            )}
+            {pushError && !showDraftDiff && (
+              <span className="text-label text-[var(--color-status-error)]">{pushError}</span>
+            )}
+          </div>
           {showDraftDiff && (
             <div className="mt-3 rounded-lg border border-border-strong">
               <div className="space-y-4 p-3">

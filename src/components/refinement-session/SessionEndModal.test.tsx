@@ -21,8 +21,10 @@ const mockContext = {
   sessionStartedAt: Date.now() - 15 * 60 * 1000,
   savedSessionId: "session-abc",
   sessionEstimates: {} as Record<string, number | null>,
+  sessionSubtaskCounts: {} as Record<string, number>,
   startSession: vi.fn(),
   recordEstimate: vi.fn(),
+  recordSubtaskCount: vi.fn(),
   nextTicket: vi.fn(),
   prevTicket: vi.fn(),
   goToTicket: vi.fn(),
@@ -91,6 +93,7 @@ describe("SessionEndModal", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mockContext.sessionEstimates = {};
+    mockContext.sessionSubtaskCounts = {};
   });
 
   it("renders ticket list with all session tickets", () => {
@@ -144,6 +147,14 @@ describe("SessionEndModal", () => {
     render(<SessionEndModal />);
     // VPL-2 and VPL-3 have no subtasks; VPL-1 has 2, so it is not flagged.
     expect(screen.getAllByText("No subtasks")).toHaveLength(2);
+  });
+
+  it("prefers subtask counts observed during the session over the (stale) ticket cache", () => {
+    // Cache still says VPL-2 has no subtasks; the session created one just now.
+    mockContext.sessionSubtaskCounts = { "VPL-2": 1 };
+    render(<SessionEndModal />);
+    // Only VPL-3 remains flagged; VPL-2 is no longer a false "No subtasks".
+    expect(screen.getAllByText("No subtasks")).toHaveLength(1);
   });
 
   it("shows back to session button", () => {
