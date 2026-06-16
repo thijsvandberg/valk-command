@@ -6,8 +6,9 @@ import useSWR from "swr";
 import { swrFetcher, settings, sprintSlots as sprintSlotsApi } from "@/lib/api-client";
 import type { SprintSlot } from "@/components/command-palette/types";
 import { useBacklogDropTarget } from "@/hooks/useBacklogDropTarget";
+import { useDefaultTeam } from "@/hooks/useDefaultTeam";
 import { useJiraSprints } from "@/hooks/useSprintBoard";
-import { isBacklogSprintName } from "@/lib/sprint-utils";
+import { isBacklogSprintName, TEAMS } from "@/lib/sprint-utils";
 
 export default function GeneralSettingsPage() {
   const [saving, setSaving] = useState(false);
@@ -25,6 +26,7 @@ export default function GeneralSettingsPage() {
   );
 
   const { backlogTargetName, setBacklogTargetName } = useBacklogDropTarget();
+  const { defaultTeam, setDefaultTeam } = useDefaultTeam();
   const { sprints } = useJiraSprints();
   const backlogOptions = sprints.filter((s) => isBacklogSprintName(s.name));
   // The drop tile resolves the target by name; when the configured backlog is
@@ -158,6 +160,50 @@ export default function GeneralSettingsPage() {
 
       <p className="mt-4 text-label leading-relaxed text-text-muted">
         The generic project backlog stays reachable through the Backlogs dropdown; this setting only governs the drag-overlay drop tile.
+      </p>
+
+      <h2 className="mb-5 mt-10 text-body-sm font-medium uppercase tracking-[0.06em] text-text-secondary">
+        Teams
+      </h2>
+
+      <div className="rounded-xl border border-border-default bg-overlay-subtle p-4">
+        <div className="flex items-center justify-between gap-4">
+          <div className="min-w-0">
+            <p className="text-body-lg font-medium text-text-primary">Default team</p>
+            <p className="mt-0.5 text-body-sm leading-relaxed text-text-tertiary">
+              Your own team. Used to surface your team&apos;s work first, such as in the New stories inbox.
+            </p>
+          </div>
+
+          <div className="relative shrink-0">
+            <select
+              value={defaultTeam ?? ""}
+              onChange={(e) => setDefaultTeam(e.target.value === "" ? null : (e.target.value as (typeof TEAMS)[number]))}
+              className="appearance-none rounded-md border border-border-strong bg-[var(--color-surface-floating)] py-1.5 pl-3 pr-8 text-body-lg text-text-primary transition-colors duration-150 cursor-pointer focus:border-[var(--color-brand-500)]/40 focus:outline-none hover:border-[var(--color-brand-500)]/30"
+            >
+              <option value="">None</option>
+              {TEAMS.map((team) => (
+                <option key={team} value={team}>
+                  {team}
+                </option>
+              ))}
+            </select>
+            <ChevronDown
+              size={13}
+              strokeWidth={1.5}
+              className="pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2 text-text-tertiary"
+            />
+          </div>
+        </div>
+
+        <div className="mt-3 flex items-center gap-1.5 text-body-sm text-text-muted">
+          <Check size={12} strokeWidth={2} className="text-emerald-400/70" />
+          <span>{defaultTeam ? `Set to ${defaultTeam}` : "No default team set"}</span>
+        </div>
+      </div>
+
+      <p className="mt-4 text-label leading-relaxed text-text-muted">
+        This is the source of truth for &ldquo;which team is mine&rdquo;. When set, views that group work by team put yours at the top; when unset, they fall back to plain ordering.
       </p>
     </>
   );
