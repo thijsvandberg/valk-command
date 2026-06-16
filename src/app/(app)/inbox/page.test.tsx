@@ -72,7 +72,12 @@ vi.mock("@/components/sprint-board/BoardRow", () => ({
 const fetchMock = vi.fn().mockResolvedValue({ ok: true, json: async () => ({}) });
 vi.stubGlobal("fetch", fetchMock);
 
+// Deterministic "today" timestamps that strictly decrease per call, so the
+// inbox's default created-desc sort keeps rows in call order (VPL-1 before
+// VPL-2) regardless of real-clock millisecond ties under load.
+let rowSeq = 0;
 function row(key: string, title: string) {
+  const createdAt = new Date(Date.now() - rowSeq++ * 1000).toISOString();
   return {
     key,
     title,
@@ -84,7 +89,7 @@ function row(key: string, title: string) {
     assignee: null,
     reporter: { name: "Alice", initials: "A", color: "#000" },
     sprintName: null,
-    jiraCreatedAt: new Date().toISOString(),
+    jiraCreatedAt: createdAt,
   };
 }
 
