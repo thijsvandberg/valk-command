@@ -155,6 +155,10 @@ export const ticketMetadata = sqliteTable("ticket_metadata", {
   revivalScore: real("revival_score"),
   // Human-readable reason naming the recent/planned work it complements.
   revivalRationale: text("revival_rationale"),
+  // New stories inbox (BRDG-356): ISO timestamp the PO marked this ticket as
+  // "read" in the newly-created-stories review list; null = still unread/unseen.
+  // Local-only PO state, never synced to Jira (like bookmarks/poNotes).
+  newStoryReadAt: text("new_story_read_at"),
 });
 
 // Backlog Deprecation Review (BRDG-284): persisted Tier-2 deep-dive queue.
@@ -267,6 +271,21 @@ export const sprintNameCache = sqliteTable("sprint_name_cache", {
   sprintId: text("sprint_id").primaryKey(),
   displayName: text("display_name").notNull(),
 });
+
+// Negative cache of sprint ids Jira reported as 404 ("deleted", BRDG-351). Without
+// this, a sprint id still carried on an (orphaned, closed) ticket is re-fetched on
+// every read-path backfill pass, 404ing forever and burning Jira API budget. A row
+// here suppresses re-fetch for MISSING_SPRINT_TTL_MS; the timestamp gives a path back
+// (expiry re-probes), so it is a suppression window, not a permanent blacklist.
+// String-keyed to match sprintNameCache/ticketSprint and the ids flowing through
+// ensureSprintsCached. Strictly local; never reflects a Jira write.
+export const missingSprint = sqliteTable("missing_sprint", {
+  sprintId: text("sprint_id").primaryKey(),
+  missingAt: text("missing_at").notNull().default(sql`(datetime('now'))`),
+});
+
+export type MissingSprintRow = typeof missingSprint.$inferSelect;
+export type NewMissingSprintRow = typeof missingSprint.$inferInsert;
 
 // Forward-planning pencil capacity (BRDG-303): a PO's rough story-point capacity
 // guess per sprint, the denominator for the fullness meter. Bridge-local, never

@@ -1,0 +1,1 @@
+ALTER TABLE `ticket_metadata` ADD `new_story_read_at` text;

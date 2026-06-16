@@ -1,7 +1,7 @@
 import { db } from "@/db";
 import { ticket, ticketLocalEdit, ticketMetadata, storyVersion, storyWriterSession } from "@/db/schema";
 import type { TicketLocalEdit, TicketMetadata } from "@/db/schema";
-import { eq, and, desc } from "drizzle-orm";
+import { eq, and, desc, inArray } from "drizzle-orm";
 import { randomUUID, createHash } from "crypto";
 import { jiraClient, JiraApiError, FLAGGED_FIELD } from "@/lib/jira-client";
 import { markdownToAdf } from "@/lib/markdown-to-adf";
@@ -83,35 +83,37 @@ export async function pushToJira(
 
     const baseHash = localEdits[0].baseJiraVersion;
 
-    if (localTicket.jiraUpdatedAt !== remoteUpdated) {
+    // Only sync + conflict-check when we have a previous baseline to compare
+    // against. Tickets created via Bridge start with jiraUpdatedAt=null and no
+    // storyVersion, so there is nothing meaningful to conflict with and the
+    // sync result would just be discarded. That sync still hits Jira (including
+    // sprint backfill) and can exceed the request timeout, which aborts the
+    // very first wrap-up of a brand-new story (BRDG-353). Skip it for those and
+    // go straight to the update.
+    if (localTicket.jiraUpdatedAt !== null && localTicket.jiraUpdatedAt !== remoteUpdated) {
       // Remote changed since our mirror; refresh the mirror then check content.
       // Call the sync service directly rather than via an HTTP request to our
       // own server: a self-fetch in next dev can stall indefinitely and, unlike
       // the Jira client, carries no request timeout, which hung the push.
       await syncIndividualTickets([key]);
 
-      // Only check for conflicts when we have a previous sync baseline.
-      // Tickets created via Bridge start with jiraUpdatedAt=null and no
-      // storyVersion, so there is nothing meaningful to conflict with.
-      if (localTicket.jiraUpdatedAt !== null) {
-        const newLatestVersion = await db.query.storyVersion.findFirst({
-          where: (sv, { eq: eqFn }) => eqFn(sv.jiraKey, key),
-          orderBy: (sv, { desc: descFn }) => [descFn(sv.createdAt)],
-        });
+      const newLatestVersion = await db.query.storyVersion.findFirst({
+        where: (sv, { eq: eqFn }) => eqFn(sv.jiraKey, key),
+        orderBy: (sv, { desc: descFn }) => [descFn(sv.createdAt)],
+      });
 
-        const contentChanged = baseHash !== null && newLatestVersion?.contentHash !== baseHash;
+      const contentChanged = baseHash !== null && newLatestVersion?.contentHash !== baseHash;
 
-        if (contentChanged) {
-          return {
-            conflict: true,
-            contentChanged: true,
-            message: "Jira was updated since your edit. Review the diff before pushing.",
-          };
-        }
-        // Metadata-only drift (status, assignee, our own previous push bumping
-        // `updated`) is not a content conflict: pushing title/description
-        // cannot clobber it, so proceed without prompting.
+      if (contentChanged) {
+        return {
+          conflict: true,
+          contentChanged: true,
+          message: "Jira was updated since your edit. Review the diff before pushing.",
+        };
       }
+      // Metadata-only drift (status, assignee, our own previous push bumping
+      // `updated`) is not a content conflict: pushing title/description
+      // cannot clobber it, so proceed without prompting.
     }
 
     const fields: Record<string, unknown> = {};
@@ -488,6 +490,10 @@ export interface UpdateMetadataInput {
   poNotes?: string | null;
   businessValue?: number | null;
   guestimation?: number | null;
+  // New stories inbox (BRDG-356): true marks the ticket "read" (stamps now),
+  // false clears it back to unread. The public input is a boolean; the stored
+  // timestamp is an implementation detail.
+  newStoryRead?: boolean;
 }
 
 // Forward-planning guestimation (BRDG-303): same Fibonacci scale as story points.
@@ -596,6 +602,13 @@ export async function updateTicketMetadata(
     updates.guestimation = input.guestimation;
   }
 
+  if (input.newStoryRead !== undefined) {
+    if (typeof input.newStoryRead !== "boolean") {
+      throw new ValidationError("newStoryRead must be a boolean");
+    }
+    updates.newStoryReadAt = input.newStoryRead ? new Date().toISOString() : null;
+  }
+
   if (existing) {
     await db
       .update(ticketMetadata)
@@ -614,6 +627,11 @@ export async function updateTicketMetadata(
 
   cache.invalidate(`/api/tickets/${key}`);
   cache.invalidate(/^\/api\/tickets(\?|$)/);
+  // The new-stories inbox (BRDG-356) is derived from newStoryReadAt, so any
+  // metadata write that could flip read state must drop its cached list/count.
+  if (updates.newStoryReadAt !== undefined) {
+    cache.invalidate(/^\/api\/new-stories/);
+  }
 
   const changedFields = Object.keys(updates).join(", ");
   await logActivity({
@@ -623,4 +641,66 @@ export async function updateTicketMetadata(
   });
 
   return result!;
+}
+
+/**
+ * Bulk mark-as-read for the new-stories inbox (BRDG-356). Stamps (or clears)
+ * `newStoryReadAt` for many tickets in one pass so the multi-select "Mark N as
+ * read" action is a single round trip. Upserts metadata rows that do not exist
+ * yet (a ticket with no PO metadata is still markable). Returns the count of
+ * tickets actually touched (unknown keys are skipped).
+ */
+export async function bulkMarkNewStoriesRead(
+  keys: string[],
+  read: boolean,
+): Promise<{ updated: number }> {
+  if (!Array.isArray(keys)) {
+    throw new ValidationError("keys must be an array of ticket keys");
+  }
+  if (typeof read !== "boolean") {
+    throw new ValidationError("read must be a boolean");
+  }
+  const unique = [...new Set(keys.filter((k) => typeof k === "string" && k.length > 0))];
+  if (unique.length === 0) return { updated: 0 };
+
+  const readAt = read ? new Date().toISOString() : null;
+
+  // Only operate on keys that resolve to a real ticket, so a stray key cannot
+  // create an orphan metadata row (jiraKey is an FK to ticket).
+  const existingTickets = await db
+    .select({ jiraKey: ticket.jiraKey })
+    .from(ticket)
+    .where(inArray(ticket.jiraKey, unique));
+  const validKeys = existingTickets.map((t) => t.jiraKey);
+  if (validKeys.length === 0) return { updated: 0 };
+
+  const withMeta = await db
+    .select({ jiraKey: ticketMetadata.jiraKey })
+    .from(ticketMetadata)
+    .where(inArray(ticketMetadata.jiraKey, validKeys));
+  const haveMeta = new Set(withMeta.map((m) => m.jiraKey));
+
+  await db
+    .update(ticketMetadata)
+    .set({ newStoryReadAt: readAt })
+    .where(inArray(ticketMetadata.jiraKey, validKeys));
+
+  const missing = validKeys.filter((k) => !haveMeta.has(k));
+  if (missing.length > 0) {
+    await db.insert(ticketMetadata).values(
+      missing.map((k) => ({ jiraKey: k, newStoryReadAt: readAt })),
+    );
+  }
+
+  cache.invalidate(/^\/api\/new-stories/);
+  cache.invalidate(/^\/api\/tickets(\?|$)/);
+  for (const k of validKeys) cache.invalidate(`/api/tickets/${k}`);
+
+  await logActivity({
+    type: "metadata-update",
+    scope: validKeys.join(", "),
+    summary: `Marked ${validKeys.length} ${read ? "read" : "unread"} in new stories`,
+  });
+
+  return { updated: validKeys.length };
 }
