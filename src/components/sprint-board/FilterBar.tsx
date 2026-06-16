@@ -42,6 +42,7 @@ export function FilterBar({
   statusOptions,
   epicOptions,
   assigneeOptions,
+  assigneeLabelMap,
   issueTypeOptions,
   teamFilter,
   onTeamFilterChange,
@@ -74,6 +75,10 @@ export function FilterBar({
   statusOptions: string[];
   epicOptions: string[];
   assigneeOptions: string[];
+  // Token (accountId or name) -> display name, for rendering the assignee options
+  // whose values are now stable accountIds (BRDG-365). Optional; the token
+  // doubles as the label when absent.
+  assigneeLabelMap?: Record<string, string>;
   issueTypeOptions: string[];
   teamFilter?: Set<string>;
   onTeamFilterChange?: (next: Set<string>) => void;
@@ -99,16 +104,19 @@ export function FilterBar({
     swrFetcher,
     { revalidateOnFocus: false, dedupingInterval: 60000 },
   );
-  const favoriteNames = useMemo(() => {
+  // Favourite tokens (BRDG-365): match the assignee options, which are now
+  // accountId tokens (name fallback), so favourites float to the top regardless
+  // of a rename. Falls back to the display name for people without a captured id.
+  const favoriteTokens = useMemo(() => {
     const set = new Set<string>();
-    for (const u of assignableData?.users ?? []) if (u.isFavorite) set.add(u.displayName);
+    for (const u of assignableData?.users ?? []) if (u.isFavorite) set.add(u.accountId ?? u.displayName);
     return set;
   }, [assignableData]);
   const orderedAssigneeOptions = useMemo(() => {
-    const favs = assigneeOptions.filter((n) => favoriteNames.has(n));
-    const rest = assigneeOptions.filter((n) => !favoriteNames.has(n));
+    const favs = assigneeOptions.filter((t) => favoriteTokens.has(t));
+    const rest = assigneeOptions.filter((t) => !favoriteTokens.has(t));
     return [...favs, ...rest];
-  }, [assigneeOptions, favoriteNames]);
+  }, [assigneeOptions, favoriteTokens]);
   const editStateValues = EDIT_STATE_OPTIONS.map((o) => o.value);
   const hasActiveFilters = statusFilter.size > 0 || epicFilter.size > 0 || assigneeFilter.size > 0 ||
     readinessFilter.size > 0 || editStateFilter.size > 0 || issueTypeFilter.size > 0 ||
@@ -156,12 +164,16 @@ export function FilterBar({
         onChange={onAssigneeFilterChange}
         searchable
         searchPlaceholder="Search assignees..."
-        renderOption={(v) => (
-          <span className="flex items-center gap-2">
-            <Avatar assignee={{ name: v, initials: userInitials(v), color: userColor(v) }} size={20} />
-            <span className="truncate">{v}</span>
-          </span>
-        )}
+        labelMap={assigneeLabelMap}
+        renderOption={(token) => {
+          const name = assigneeLabelMap?.[token] ?? token;
+          return (
+            <span className="flex items-center gap-2">
+              <Avatar assignee={{ name, initials: userInitials(name), color: userColor(name) }} size={20} />
+              <span className="truncate">{name}</span>
+            </span>
+          );
+        }}
       />
       <FilterDropdown
         label="Readiness"

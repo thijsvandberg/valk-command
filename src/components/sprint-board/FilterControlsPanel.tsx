@@ -42,6 +42,7 @@ export interface FilterControlsPanelProps {
   statusFilter: Set<string>;
   epicFilter: Set<string>;
   assigneeFilter: Set<string>;
+  creatorFilter?: Set<string>;
   readinessFilter: Set<string>;
   editStateFilter: Set<string>;
   issueTypeFilter: Set<string>;
@@ -51,6 +52,7 @@ export interface FilterControlsPanelProps {
   onStatusFilterChange: (next: Set<string>) => void;
   onEpicFilterChange: (next: Set<string>) => void;
   onAssigneeFilterChange: (next: Set<string>) => void;
+  onCreatorFilterChange?: (next: Set<string>) => void;
   onReadinessFilterChange: (next: Set<string>) => void;
   onEditStateFilterChange: (next: Set<string>) => void;
   onIssueTypeFilterChange: (next: Set<string>) => void;
@@ -60,6 +62,13 @@ export interface FilterControlsPanelProps {
   statusOptions: string[];
   epicOptions: string[];
   assigneeOptions: string[];
+  // Token (accountId or name) -> display name for the assignee options (BRDG-365).
+  // Optional: surfaces (e.g. the inbox) whose assignee options are still names
+  // omit it and the token doubles as the label.
+  assigneeLabelMap?: Record<string, string>;
+  creatorOptions?: string[];
+  /** Token -> display name for the creator (reporter) options; omit to use the token as label. */
+  creatorLabelMap?: Record<string, string>;
   issueTypeOptions: string[];
   teamOptions?: string[];
   sprintOptions?: string[];
@@ -132,10 +141,12 @@ export function FilterControlsPanel(props: FilterControlsPanelProps) {
     { revalidateOnFocus: false, dedupingInterval: 60000 },
   );
   const orderedAssigneeOptions = useMemo(() => {
-    const favoriteNames = new Set<string>();
-    for (const u of assignableData?.users ?? []) if (u.isFavorite) favoriteNames.add(u.displayName);
-    const favs = props.assigneeOptions.filter((n) => favoriteNames.has(n));
-    const rest = props.assigneeOptions.filter((n) => !favoriteNames.has(n));
+    // Favourite tokens (BRDG-365): the options are accountId tokens (name
+    // fallback), so favourites are matched by id where captured.
+    const favoriteTokens = new Set<string>();
+    for (const u of assignableData?.users ?? []) if (u.isFavorite) favoriteTokens.add(u.accountId ?? u.displayName);
+    const favs = props.assigneeOptions.filter((t) => favoriteTokens.has(t));
+    const rest = props.assigneeOptions.filter((t) => !favoriteTokens.has(t));
     return [...favs, ...rest];
   }, [props.assigneeOptions, assignableData]);
 
@@ -169,12 +180,16 @@ export function FilterControlsPanel(props: FilterControlsPanelProps) {
         onChange: props.onAssigneeFilterChange,
         searchable: true,
         searchPlaceholder: "Search assignees...",
-        renderOption: (v) => (
-          <span className="flex items-center gap-2">
-            <Avatar assignee={{ name: v, initials: userInitials(v), color: userColor(v) }} size={20} />
-            <span className="truncate">{v}</span>
-          </span>
-        ),
+        labelMap: props.assigneeLabelMap,
+        renderOption: (token) => {
+          const name = props.assigneeLabelMap?.[token] ?? token;
+          return (
+            <span className="flex items-center gap-2">
+              <Avatar assignee={{ name, initials: userInitials(name), color: userColor(name) }} size={20} />
+              <span className="truncate">{name}</span>
+            </span>
+          );
+        },
       },
       {
         key: "readiness",
@@ -238,6 +253,27 @@ export function FilterControlsPanel(props: FilterControlsPanelProps) {
           : SPRINT_STATE_FILTER_OPTIONS.map((o) => ({ value: o.value, label: o.label, dot: o.dot })),
         leadingLabel: props.hideSprintStateOptions ? undefined : "By state",
         renderOption: (id) => <span>{nameMap[id] ?? id}</span>,
+      });
+    }
+    if (props.creatorFilter && props.onCreatorFilterChange && props.creatorOptions) {
+      list.push({
+        key: "creator",
+        label: "Creator",
+        options: props.creatorOptions,
+        selected: props.creatorFilter,
+        onChange: props.onCreatorFilterChange,
+        searchable: true,
+        searchPlaceholder: "Search creators...",
+        labelMap: props.creatorLabelMap,
+        renderOption: (token) => {
+          const name = props.creatorLabelMap?.[token] ?? token;
+          return (
+            <span className="flex items-center gap-2">
+              <Avatar assignee={{ name, initials: userInitials(name), color: userColor(name) }} size={20} />
+              <span className="truncate">{name}</span>
+            </span>
+          );
+        },
       });
     }
     if (props.categoryWhitelist) {
@@ -413,7 +449,7 @@ export function FilterControlsPanel(props: FilterControlsPanelProps) {
                       key={opt}
                       type="button"
                       onClick={() => toggleOption(active, opt)}
-                      className="flex w-full items-center gap-2.5 rounded-md px-2 py-1.5 text-left cursor-pointer hover:bg-hover-list-item"
+                      className="flex w-full items-center gap-2.5 rounded-md px-2 py-1.5 text-left text-body-sm cursor-pointer hover:bg-hover-list-item"
                     >
                       <Checkbox checked={on} />
                       {active.renderOption(opt)}

@@ -112,6 +112,77 @@ describe("useSprintBoardFilters - DELETED status handling", () => {
   });
 });
 
+describe("useSprintBoardFilters - assignee filter on accountId (BRDG-365)", () => {
+  function withAssignee(key: string, name: string, accountId: string | null): Ticket {
+    return makeTicket({
+      key,
+      assignee: { name, initials: "XX", color: "#000", accountId },
+    });
+  }
+
+  beforeEach(() => {
+    localStorage.clear();
+  });
+
+  it("collapses a renamed person (same accountId, two names) to one option and matches both", () => {
+    // Two tickets for the same person whose cached name differs across syncs.
+    const a = withAssignee("VPL-1", "Old Name", "acc-x");
+    const b = withAssignee("VPL-2", "New Name", "acc-x");
+    const { result } = renderHook(() => useSprintBoardFilters([a, b], {}, false, null));
+
+    // One option, keyed on the accountId.
+    expect(result.current.assigneeOptions).toEqual(["acc-x"]);
+
+    act(() => result.current.setAssigneeFilter(new Set(["acc-x"])));
+    expect(result.current.sortedTickets.map((t) => t.key).sort()).toEqual(["VPL-1", "VPL-2"]);
+  });
+
+  it("falls back to the name for a person without a captured accountId", () => {
+    const carol = withAssignee("VPL-1", "Carol", null);
+    const dave = withAssignee("VPL-2", "Dave", null);
+    const { result } = renderHook(() => useSprintBoardFilters([carol, dave], {}, false, null));
+
+    expect(result.current.assigneeOptions).toEqual(["Carol", "Dave"]);
+    act(() => result.current.setAssigneeFilter(new Set(["Carol"])));
+    expect(result.current.sortedTickets.map((t) => t.key)).toEqual(["VPL-1"]);
+  });
+
+  it("migrates a legacy name-based stored filter onto the accountId", () => {
+    // Persisted filter still holds the display name from before the re-key.
+    localStorage.setItem(
+      "sprint-board-filters",
+      JSON.stringify({ status: [], epic: [], assignee: ["Alice"], readiness: [], editState: [], issueType: [], gaps: [], team: [], sprint: [] }),
+    );
+    const alice = withAssignee("VPL-1", "Alice", "acc-alice");
+    const bob = withAssignee("VPL-2", "Bob", "acc-bob");
+    const { result } = renderHook(() => useSprintBoardFilters([alice, bob], {}, false, null));
+
+    // The stored name resolves to the accountId for matching...
+    expect([...result.current.assigneeFilter]).toEqual(["acc-alice"]);
+    // ...and still selects the right ticket, even though the token is now an id.
+    expect(result.current.sortedTickets.map((t) => t.key)).toEqual(["VPL-1"]);
+  });
+
+  it("tolerates a legacy stored name with no captured accountId (kept as-is)", () => {
+    localStorage.setItem(
+      "sprint-board-filters",
+      JSON.stringify({ status: [], epic: [], assignee: ["Ghost"], readiness: [], editState: [], issueType: [], gaps: [], team: [], sprint: [] }),
+    );
+    const ghost = withAssignee("VPL-1", "Ghost", null);
+    const { result } = renderHook(() => useSprintBoardFilters([ghost], {}, false, null));
+
+    expect([...result.current.assigneeFilter]).toEqual(["Ghost"]);
+    expect(result.current.sortedTickets.map((t) => t.key)).toEqual(["VPL-1"]);
+  });
+
+  it("exposes a token -> display-name label map", () => {
+    const a = withAssignee("VPL-1", "Alice", "acc-alice");
+    const ghost = withAssignee("VPL-2", "Ghost", null);
+    const { result } = renderHook(() => useSprintBoardFilters([a, ghost], {}, false, null));
+    expect(result.current.assigneeLabelMap).toEqual({ "acc-alice": "Alice", Ghost: "Ghost" });
+  });
+});
+
 describe("useSprintBoardFilters - sprint-state quick filters (BRDG-259)", () => {
   // The All view persists to its own store so its filters survive returning from a sprint view.
   const STORAGE_KEY = "sprint-board-all-filters";

@@ -111,9 +111,41 @@ export function useSprintBoardFilters(
     return () => clearTimeout(timer);
   }, [searchQuery]);
 
+  // Assignee identity (BRDG-365): the board filter keys on the stable Jira
+  // accountId, not the display-name string. Each option is a TOKEN = the
+  // assignee's accountId when captured, else the bare name (the fallback for
+  // people without an id). `assigneeLabelMap` maps a token back to a display
+  // name for the chips/dropdown, and `nameToAccountId` migrates legacy
+  // name-based stored filters onto the id. Deduping by token collapses a renamed
+  // person (one accountId, possibly two cached names) to a single option.
+  const { assigneeOptions, assigneeLabelMap, nameToAccountId } = useMemo(() => {
+    const labelMap: Record<string, string> = {};
+    const nameToId = new Map<string, string>();
+    const order: string[] = [];
+    const seen = new Set<string>();
+    for (const t of allTickets) {
+      const a = t.assignee;
+      if (!a?.name) continue;
+      const token = a.accountId ?? a.name;
+      if (!seen.has(token)) {
+        seen.add(token);
+        order.push(token);
+      }
+      labelMap[token] = a.name;
+      if (a.accountId) nameToId.set(a.name, a.accountId);
+    }
+    return { assigneeOptions: order, assigneeLabelMap: labelMap, nameToAccountId: nameToId };
+  }, [allTickets]);
+
   const statusFilter = useMemo(() => new Set(storedFilters.status), [storedFilters.status]);
   const epicFilter = useMemo(() => new Set(storedFilters.epic), [storedFilters.epic]);
-  const assigneeFilter = useMemo(() => new Set(storedFilters.assignee), [storedFilters.assignee]);
+  // Migrate any legacy stored name onto its accountId (best-effort via the
+  // currently-loaded people); names without a captured id are tolerated as-is so
+  // a saved filter never silently empties.
+  const assigneeFilter = useMemo(
+    () => new Set(storedFilters.assignee.map((token) => nameToAccountId.get(token) ?? token)),
+    [storedFilters.assignee, nameToAccountId],
+  );
   const readinessFilter = useMemo(() => new Set(storedFilters.readiness ?? []), [storedFilters.readiness]);
   // Legacy stored filters may still carry the retired "draft" value (BRDG-340
   // collapsed it into local_edits); map it so old saved filters keep matching.
@@ -179,7 +211,6 @@ export function useSprintBoardFilters(
     return opts;
   }, [allTickets]);
   const epicOptions = useMemo(() => [...new Set(allTickets.map((t) => t.epic).filter(Boolean) as string[])], [allTickets]);
-  const assigneeOptions = useMemo(() => [...new Set(allTickets.map((t) => t.assignee?.name).filter(Boolean) as string[])], [allTickets]);
   const sprintOptions = useMemo(
     () => [...new Set(allTickets.flatMap((t) => ticketSprintIds(t)))],
     [allTickets],
@@ -218,8 +249,15 @@ export function useSprintBoardFilters(
       }
       if (epicFilter.size > 0 && (!t.epic || !epicFilter.has(t.epic))) return false;
       if (assigneeFilter.size > 0) {
-        const name = t.assignee?.name;
-        if (!name || !assigneeFilter.has(name)) return false;
+        // Dual-match (BRDG-365): a ticket is in scope when its assignee's stable
+        // accountId is selected, OR (for people/filters without an id) its name
+        // is. The id branch is what keeps a renamed person matching a saved filter.
+        const a = t.assignee;
+        const matches = !!a && (
+          (!!a.accountId && assigneeFilter.has(a.accountId)) ||
+          (!!a.name && assigneeFilter.has(a.name))
+        );
+        if (!matches) return false;
       }
       if (editStateFilter.size > 0) {
         const effectiveState = isRemoved ? "removed" : t.editState;
@@ -445,7 +483,9 @@ export function useSprintBoardFilters(
     setAllViewFilters({
       status: view.filters.status,
       epic: view.filters.epic,
-      assignee: view.filters.assignee,
+      // Migrate a saved view's name-based assignee filter onto accountIds so it
+      // survives a Jira rename (BRDG-365); unknown names are kept as-is.
+      assignee: view.filters.assignee.map((token) => nameToAccountId.get(token) ?? token),
       // Support legacy saved views that stored poStatus before the rename.
       readiness: view.filters.readiness ?? view.filters.poStatus ?? [],
       editState: view.filters.editState ?? [],
@@ -463,7 +503,7 @@ export function useSprintBoardFilters(
     const params = new URLSearchParams(searchParams.toString());
     params.set("view", view.id);
     router.replace(buildBoardUrl(ALL_SPRINT_SLUG, null, params.toString()), { scroll: false });
-  }, [setAllViewFilters, setStoredSort, onApplyColumnConfig, searchParams, router]);
+  }, [setAllViewFilters, setStoredSort, onApplyColumnConfig, searchParams, router, nameToAccountId]);
 
   const handleDeleteView = useCallback((id: string) => {
     setSavedViews((prev) => prev.filter((v) => v.id !== id));
@@ -520,6 +560,7 @@ export function useSprintBoardFilters(
     statusOptions,
     epicOptions,
     assigneeOptions,
+    assigneeLabelMap,
     sprintOptions,
     issueTypeOptions,
     filteredTickets,

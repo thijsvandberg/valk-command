@@ -925,6 +925,7 @@ export default function SprintBoard() {
     statusOptions: f.statusOptions,
     epicOptions: f.epicOptions,
     assigneeOptions: f.assigneeOptions,
+    assigneeLabelMap: f.assigneeLabelMap,
     issueTypeOptions: f.issueTypeOptions,
     teamOptions: f.teamOptions,
     onClearAll: f.resetFilters,
