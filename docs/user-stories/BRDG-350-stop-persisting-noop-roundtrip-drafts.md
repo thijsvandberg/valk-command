@@ -42,10 +42,22 @@ This is the deferred second layer of BRDG-348. BRDG-348 fixed the **detection/di
 
 - BRDG-348 (the detection/display fix; this is its deferred persistence layer).
 
+## Implementation Plan
+
+Verified against the code: the autosave-START guard in `handleChange` (only calls `autoSaveDraft` when `!markdownEqualIgnoringSpacing`) already prevents a cosmetic-equal value from ever starting the debounce timer, and `flushPending` (blur/Escape/Cmd-S/push) already DELETEs an existing no-op draft on revert. The remaining real gaps are the two `sendBeacon` paths plus an in-place stale-timer-after-revert case.
+
+1. **Baseline ref** (`EditableDescription.tsx`): add `initialDescriptionRef` mirrored via effect, so the empty-dep unmount cleanup compares against the current Jira baseline rather than the first-render closure.
+2. **Guard unmount `sendBeacon` flush**: still `clearTimeout` a pending timer, but only beacon when `!markdownEqualIgnoringSpacing(valueRef.current, initialDescriptionRef.current)`.
+3. **Guard `beforeunload` flush**: same cosmetic guard before beaconing; add `initialDescription` to deps.
+4. **Stale-timer-after-revert** (`handleChange`): when the new value is cosmetically equal, clear any pending `autoSaveTimerRef` and reset `saveState` to idle, so a real-edit-then-revert while staying mounted does not autosave the pre-revert value. DELETE-on-revert stays in `flushPending` to avoid duplicating cleanup.
+5. **Tests** (`EditableDescription.test.tsx`): (a) no-op value does not beacon on unmount; (b) genuine edit still beacons on unmount; (c) revert-to-cosmetic-equal does not beacon/persist the stale value; (d) revert cleanup via `flushPending` still issues the `draftsOnly` DELETE.
+
+No DB/API changes; the `DELETE ?draftsOnly=true` and `PUT` endpoints already exist.
+
 ## Checklist
 
-- [ ] Autosave does not persist a draft when the value is cosmetically equal to the Jira baseline
-- [ ] Unmount `sendBeacon` flush and `beforeunload` handler skip a no-op value
-- [ ] A genuine edit still persists; reverting to a cosmetically-equal value cleans up any existing no-op draft
-- [ ] Tests cover the no-op-skip and genuine-edit-persists paths
+- [x] Autosave does not persist a draft when the value is cosmetically equal to the Jira baseline - already guarded by the autosave-START check in `handleChange` (only calls `autoSaveDraft` when `!markdownEqualIgnoringSpacing`); hardened so reverting to a cosmetic-equal value also cancels a still-pending timer
+- [x] Unmount `sendBeacon` flush and `beforeunload` handler skip a no-op value - both now gated on `!markdownEqualIgnoringSpacing` (unmount compares via `initialDescriptionRef` to avoid the empty-dep stale closure)
+- [x] A genuine edit still persists; reverting to a cosmetically-equal value cleans up any existing no-op draft - genuine edits still beacon/persist; `flushPending` DELETEs the draft (`?draftsOnly=true`) on revert+close
+- [x] Tests cover the no-op-skip and genuine-edit-persists paths - 4 tests added in `EditableDescription.test.tsx` (no-op unmount skip, genuine edit beacons, revert skip, revert cleanup DELETE); 43/43 pass
 - [ ] All tests pass, build succeeds

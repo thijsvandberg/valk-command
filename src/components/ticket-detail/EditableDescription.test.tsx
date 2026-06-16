@@ -585,3 +585,55 @@ describe("EditableDescription title-only local edits (BRDG)", () => {
     expect(screen.getByText("Description")).toBeInTheDocument();
   });
 });
+
+describe("EditableDescription no-op draft persistence (BRDG-350)", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    mockApiFetch.mockResolvedValue({ editState: "clean" });
+    Object.defineProperty(navigator, "sendBeacon", { value: vi.fn(), configurable: true });
+  });
+
+  it("does not beacon a cosmetic-only value on unmount", () => {
+    const { unmount } = renderDesc({ ticketKey: "VPL-9", initialDescription: "Original" });
+    fireEvent.click(screen.getByTestId("rendered-markdown"));
+    // Trailing blank lines are a serializer round-trip artefact, not a real edit.
+    fireEvent.change(screen.getByTestId("editor-input"), { target: { value: "Original\n\n" } });
+    unmount();
+    expect(vi.mocked(navigator.sendBeacon)).not.toHaveBeenCalled();
+  });
+
+  it("still beacons a genuine pending edit on unmount", () => {
+    const { unmount } = renderDesc({ ticketKey: "VPL-9", initialDescription: "Original" });
+    fireEvent.click(screen.getByTestId("rendered-markdown"));
+    // Unmount before the 800ms debounce lands so a timer is still pending.
+    fireEvent.change(screen.getByTestId("editor-input"), { target: { value: "New content" } });
+    unmount();
+    expect(vi.mocked(navigator.sendBeacon)).toHaveBeenCalledTimes(1);
+    expect(vi.mocked(navigator.sendBeacon).mock.calls[0][0]).toBe("/api/tickets/VPL-9/local-edits");
+  });
+
+  it("does not beacon when a real edit is reverted to a cosmetic-only value", () => {
+    const { unmount } = renderDesc({ ticketKey: "VPL-9", initialDescription: "Original" });
+    fireEvent.click(screen.getByTestId("rendered-markdown"));
+    fireEvent.change(screen.getByTestId("editor-input"), { target: { value: "New content" } });
+    // Reverting cancels the pending autosave so the pre-revert value is not flushed.
+    fireEvent.change(screen.getByTestId("editor-input"), { target: { value: "Original\n\n" } });
+    unmount();
+    expect(vi.mocked(navigator.sendBeacon)).not.toHaveBeenCalled();
+  });
+
+  it("cleans up an existing draft when reverting to a cosmetic-only value and closing", async () => {
+    renderDesc({ ticketKey: "VPL-9", initialDescription: "Original" });
+    fireEvent.click(screen.getByTestId("rendered-markdown"));
+    fireEvent.change(screen.getByTestId("editor-input"), { target: { value: "New content" } });
+    fireEvent.change(screen.getByTestId("editor-input"), { target: { value: "Original\n\n" } });
+    fireEvent.click(screen.getByTestId("editor-save"));
+
+    await waitFor(() => {
+      expect(mockApiFetch).toHaveBeenCalledWith(
+        "/api/tickets/VPL-9/local-edits?draftsOnly=true",
+        expect.objectContaining({ method: "DELETE" }),
+      );
+    });
+  });
+});

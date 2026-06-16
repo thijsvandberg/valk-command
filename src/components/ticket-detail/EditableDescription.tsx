@@ -134,8 +134,12 @@ export function EditableDescription({
   // Ref mirrors for unmount flush (cleanup closures cannot read latest state)
   const valueRef = useRef(value);
   const ticketKeyRef = useRef(ticketKey);
+  // The Jira baseline, mirrored so the empty-dep unmount cleanup compares the
+  // current value against the current baseline (not the first-render closure).
+  const initialDescriptionRef = useRef(initialDescription);
   useEffect(() => { valueRef.current = value; }, [value]);
   useEffect(() => { ticketKeyRef.current = ticketKey; }, [ticketKey]);
+  useEffect(() => { initialDescriptionRef.current = initialDescription; }, [initialDescription]);
   usePrismLanguages(value);
 
   // Call onEditingChange synchronously so the parent hides the title header
@@ -182,11 +186,14 @@ export function EditableDescription({
     }, 800);
   }, [ticketKey, syncEditState, saver]);
 
-  // Flush pending draft on unmount (e.g. ticket navigation) via sendBeacon
+  // Flush pending draft on unmount (e.g. ticket navigation) via sendBeacon.
+  // Skip the beacon for a cosmetic-only value (round-trip artefacts): persisting
+  // it would leave a no-op draft masquerading as a pending change (BRDG-350).
   useEffect(() => {
     return () => {
       if (autoSaveTimerRef.current) {
         clearTimeout(autoSaveTimerRef.current);
+        if (markdownEqualIgnoringSpacing(valueRef.current, initialDescriptionRef.current)) return;
         const body = JSON.stringify({ field: "description", localValue: valueRef.current.trim(), isDraft: true });
         navigator.sendBeacon(
           `/api/tickets/${ticketKeyRef.current}/local-edits`,
@@ -196,11 +203,13 @@ export function EditableDescription({
     };
   }, []);
 
-  // beforeunload: flush pending draft save synchronously
+  // beforeunload: flush pending draft save synchronously. Same cosmetic-only
+  // skip as the unmount flush so a round-trip no-op is never persisted (BRDG-350).
   useEffect(() => {
     function handleBeforeUnload() {
       if (autoSaveTimerRef.current) {
         clearTimeout(autoSaveTimerRef.current);
+        if (markdownEqualIgnoringSpacing(value, initialDescription)) return;
         // Use sendBeacon for a last-chance save
         const body = JSON.stringify({ field: "description", localValue: value.trim(), isDraft: true });
         navigator.sendBeacon(`/api/tickets/${ticketKey}/local-edits`, new Blob([body], { type: "application/json" }));
@@ -208,7 +217,7 @@ export function EditableDescription({
     }
     window.addEventListener("beforeunload", handleBeforeUnload);
     return () => window.removeEventListener("beforeunload", handleBeforeUnload);
-  }, [ticketKey, value]);
+  }, [ticketKey, value, initialDescription]);
 
   const handleChange = useCallback((newValue: string) => {
     setLocalValue(newValue);
@@ -218,6 +227,13 @@ export function EditableDescription({
         onLocalEdit(true);
       }
       autoSaveDraft(newValue);
+    } else if (autoSaveTimerRef.current) {
+      // Reverted to a cosmetic-only value: cancel the pending autosave so the
+      // pre-revert value is not persisted in-place (BRDG-350). The existing
+      // draft, if any, is cleaned up by flushPending on blur/close.
+      clearTimeout(autoSaveTimerRef.current);
+      autoSaveTimerRef.current = null;
+      setSaveState("idle");
     }
   }, [initialDescription, onLocalEdit, autoSaveDraft]);
 
