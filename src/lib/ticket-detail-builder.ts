@@ -10,6 +10,7 @@ import { logActivity } from "@/lib/activity-logger";
 import { logger } from "@/lib/logger";
 import { syncJiraTimestamp } from "@/lib/sync-jira-timestamp";
 import { userInitials, userColor } from "@/lib/user-utils";
+import { resolveReporter } from "@/lib/person-ref";
 
 export function buildAssignee(name: string | null): Assignee | null {
   if (!name) return null;
@@ -193,7 +194,10 @@ function transformQueryData(queryData: NonNullable<Awaited<ReturnType<typeof run
   return {
     ...ticketBase,
     description,
-    reporter: buildAssignee(t.reporter),
+    // Proof-of-concept consumer of the canonical person resolver (BRDG-360):
+    // identity now flows through resolveReporter (keyed on accountId) rather than
+    // reading the raw name string. Display is unchanged (still name + avatar).
+    reporter: buildAssignee(resolveReporter(t)?.displayName ?? null),
     parent: parentTicket,
     labels,
     components,
