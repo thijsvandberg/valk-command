@@ -27,15 +27,25 @@ export async function GET() {
       }
     }
 
+    // Favourite/team lookups keyed by both accountId and name (BRDG-364): the
+    // stable id matches first so a Jira rename does not drop a favourite/team,
+    // with the name as the fallback for rows that have no captured accountId.
     const favRows = db.select().from(favoriteUser).all();
-    const favSet = new Set(favRows.map((r) => r.displayName));
+    const favByName = new Set(favRows.map((r) => r.displayName));
+    const favByAccountId = new Set(favRows.map((r) => r.accountId).filter((id): id is string => !!id));
 
     const teamRows = db.select().from(userTeamAssignment).all();
-    const teamMap = new Map<string, string[]>();
+    const teamByName = new Map<string, string[]>();
+    const teamByAccountId = new Map<string, string[]>();
     for (const row of teamRows) {
-      const list = teamMap.get(row.displayName) ?? [];
-      list.push(row.team);
-      teamMap.set(row.displayName, list);
+      const byName = teamByName.get(row.displayName) ?? [];
+      byName.push(row.team);
+      teamByName.set(row.displayName, byName);
+      if (row.accountId) {
+        const byId = teamByAccountId.get(row.accountId) ?? [];
+        byId.push(row.team);
+        teamByAccountId.set(row.accountId, byId);
+      }
     }
 
     const users = [...accountIdByName.entries()]
@@ -53,8 +63,8 @@ export async function GET() {
           displayName: name,
           avatarUrl: null,
           initials,
-          isFavorite: favSet.has(name),
-          teams: teamMap.get(name) ?? [],
+          isFavorite: (accountId != null && favByAccountId.has(accountId)) || favByName.has(name),
+          teams: (accountId != null ? teamByAccountId.get(accountId) : undefined) ?? teamByName.get(name) ?? [],
         };
       });
 

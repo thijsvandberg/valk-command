@@ -60,9 +60,9 @@ export default function PeoplePage() {
 
     await mutate(async () => {
       if (newFav) {
-        await favoriteUsers.add(user.displayName);
+        await favoriteUsers.add(user.displayName, user.accountId);
       } else {
-        await favoriteUsers.remove(user.displayName);
+        await favoriteUsers.remove(user.displayName, user.accountId);
       }
       return optimistic;
     }, { optimisticData: optimistic, rollbackOnError: true });
@@ -81,7 +81,7 @@ export default function PeoplePage() {
     };
 
     await mutate(async () => {
-      await userTeams.set(user.displayName, newTeams);
+      await userTeams.set(user.displayName, newTeams, user.accountId);
       return optimistic;
     }, { optimisticData: optimistic, rollbackOnError: true });
   };

@@ -64,10 +64,18 @@ describe("PUT /api/settings/user-teams", () => {
     const res = await PUT(makeRequest("PUT", { displayName: "Alice", teams: ["BT", "BM"] }));
     expect(res.status).toBe(200);
     const data = await res.json();
-    expect(data).toEqual({ displayName: "Alice", teams: ["BT", "BM"] });
+    expect(data).toMatchObject({ displayName: "Alice", teams: ["BT", "BM"] });
 
     const rows = testDb.select().from(userTeamAssignment).all();
     expect(rows).toHaveLength(2);
+  });
+
+  it("persists the accountId on each team row when provided (BRDG-364)", async () => {
+    const res = await PUT(makeRequest("PUT", { displayName: "Alice", accountId: "acc-alice", teams: ["BT", "BM"] }));
+    expect(res.status).toBe(200);
+    const rows = testDb.select().from(userTeamAssignment).all();
+    expect(rows).toHaveLength(2);
+    expect(rows.every((r) => r.accountId === "acc-alice")).toBe(true);
   });
 
   it("replaces existing teams", async () => {

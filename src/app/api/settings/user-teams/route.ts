@@ -10,6 +10,9 @@ import { parseJsonBody } from "@/lib/request-parser";
 
 const setTeamsSchema = z.object({
   displayName: z.string().min(1).max(200),
+  // Stable Jira accountId (BRDG-364). Optional: stored on each team row so the
+  // mapping survives a rename; name remains the fallback.
+  accountId: z.string().min(1).max(200).optional(),
   teams: z.array(z.enum(TEAMS)).max(TEAMS.length),
 });
 
@@ -43,7 +46,7 @@ export async function PUT(request: Request) {
   const parsed = await parseJsonBody(request, setTeamsSchema);
   if ("error" in parsed) return parsed.error;
 
-  const { displayName, teams } = parsed.data;
+  const { displayName, accountId, teams } = parsed.data;
 
   db.delete(userTeamAssignment)
     .where(eq(userTeamAssignment.displayName, displayName))
@@ -51,10 +54,10 @@ export async function PUT(request: Request) {
 
   for (const team of teams) {
     db.insert(userTeamAssignment)
-      .values({ id: randomUUID(), displayName, team })
+      .values({ id: randomUUID(), displayName, accountId: accountId ?? null, team })
       .onConflictDoNothing()
       .run();
   }
 
-  return NextResponse.json({ displayName, teams });
+  return NextResponse.json({ displayName, accountId: accountId ?? null, teams });
 }

@@ -895,10 +895,10 @@ export const favoriteUsers = {
 
   list: (signal?: AbortSignal) =>
     apiFetch<{ favorites: string[] }>("/api/settings/favorite-users", { signal }),
-  add: (displayName: string, signal?: AbortSignal) =>
-    apiFetch<{ displayName: string }>("/api/settings/favorite-users", { method: "POST", body: { displayName }, signal }),
-  remove: (displayName: string, signal?: AbortSignal) =>
-    apiFetch<{ displayName: string }>(`/api/settings/favorite-users${qs({ displayName })}`, { method: "DELETE", signal }),
+  add: (displayName: string, accountId?: string | null, signal?: AbortSignal) =>
+    apiFetch<{ displayName: string }>("/api/settings/favorite-users", { method: "POST", body: { displayName, ...(accountId ? { accountId } : {}) }, signal }),
+  remove: (displayName: string, accountId?: string | null, signal?: AbortSignal) =>
+    apiFetch<{ displayName: string }>(`/api/settings/favorite-users${qs({ displayName, accountId: accountId ?? undefined })}`, { method: "DELETE", signal }),
 };
 
 export const userTeams = {
@@ -906,8 +906,8 @@ export const userTeams = {
 
   list: (signal?: AbortSignal) =>
     apiFetch<{ assignments: Array<{ displayName: string; teams: string[] }> }>("/api/settings/user-teams", { signal }),
-  set: (displayName: string, teams: string[], signal?: AbortSignal) =>
-    apiFetch<{ displayName: string; teams: string[] }>("/api/settings/user-teams", { method: "PUT", body: { displayName, teams }, signal }),
+  set: (displayName: string, teams: string[], accountId?: string | null, signal?: AbortSignal) =>
+    apiFetch<{ displayName: string; teams: string[] }>("/api/settings/user-teams", { method: "PUT", body: { displayName, teams, ...(accountId ? { accountId } : {}) }, signal }),
 };
 
 // ---------------------------------------------------------------------------

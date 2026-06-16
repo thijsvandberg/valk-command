@@ -996,6 +996,10 @@ export type NewSubtaskSuggestionRow = typeof subtaskSuggestion.$inferInsert;
 export const favoriteUser = sqliteTable("favorite_user", {
   id: text("id").primaryKey(),
   displayName: text("display_name").notNull(),
+  // Stable Jira accountId (BRDG-364): the match key, so a favourite survives a
+  // Jira rename. Nullable — display name stays the fallback for people without
+  // a captured accountId.
+  accountId: text("account_id"),
   createdAt: text("created_at")
     .notNull()
     .default(sql`(datetime('now'))`),
@@ -1007,6 +1011,9 @@ export const favoriteUser = sqliteTable("favorite_user", {
 export const userTeamAssignment = sqliteTable("user_team_assignment", {
   id: text("id").primaryKey(),
   displayName: text("display_name").notNull(),
+  // Stable Jira accountId (BRDG-364): the match key, so a team mapping survives a
+  // Jira rename. Nullable — display name stays the fallback.
+  accountId: text("account_id"),
   team: text("team").notNull(),
   createdAt: text("created_at")
     .notNull()

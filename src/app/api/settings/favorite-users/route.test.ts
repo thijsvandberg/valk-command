@@ -61,11 +61,26 @@ describe("POST /api/settings/favorite-users", () => {
     const res = await POST(makeRequest("POST", { displayName: "Alice" }));
     expect(res.status).toBe(200);
     const data = await res.json();
-    expect(data).toEqual({ displayName: "Alice" });
+    expect(data).toMatchObject({ displayName: "Alice" });
 
     const rows = testDb.select().from(favoriteUser).all();
     expect(rows).toHaveLength(1);
     expect(rows[0].displayName).toBe("Alice");
+  });
+
+  it("persists the accountId when provided (BRDG-364)", async () => {
+    const res = await POST(makeRequest("POST", { displayName: "Alice", accountId: "acc-alice" }));
+    expect(res.status).toBe(200);
+    const rows = testDb.select().from(favoriteUser).all();
+    expect(rows[0].accountId).toBe("acc-alice");
+  });
+
+  it("backfills the accountId on a repeat add once it becomes available", async () => {
+    await POST(makeRequest("POST", { displayName: "Alice" }));
+    await POST(makeRequest("POST", { displayName: "Alice", accountId: "acc-alice" }));
+    const rows = testDb.select().from(favoriteUser).all();
+    expect(rows).toHaveLength(1);
+    expect(rows[0].accountId).toBe("acc-alice");
   });
 
   it("is idempotent: adding twice does not create duplicates", async () => {
@@ -106,13 +121,22 @@ describe("DELETE /api/settings/favorite-users", () => {
     const res = await DELETE(makeRequest("DELETE", undefined, "?displayName=Alice"));
     expect(res.status).toBe(200);
     const data = await res.json();
-    expect(data).toEqual({ displayName: "Alice" });
+    expect(data).toMatchObject({ displayName: "Alice" });
 
     const rows = testDb.select().from(favoriteUser).all();
     expect(rows).toHaveLength(0);
   });
 
-  it("returns 400 when displayName param is missing", async () => {
+  it("removes by accountId regardless of the current display name (BRDG-364)", async () => {
+    testDb.insert(favoriteUser).values({ id: "1", displayName: "Thijs van den Berg", accountId: "acc-thijs" }).run();
+
+    const res = await DELETE(makeRequest("DELETE", undefined, "?displayName=Thijs%20vd%20Berg&accountId=acc-thijs"));
+    expect(res.status).toBe(200);
+    const rows = testDb.select().from(favoriteUser).all();
+    expect(rows).toHaveLength(0);
+  });
+
+  it("returns 400 when neither displayName nor accountId is given", async () => {
     const res = await DELETE(makeRequest("DELETE"));
     expect(res.status).toBe(400);
   });

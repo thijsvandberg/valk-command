@@ -97,6 +97,44 @@ describe("GET /api/jira/assignable-users", () => {
     expect(data.users[0].teams).toEqual(expect.arrayContaining(["BT", "BM"]));
   });
 
+  it("matches a favourite by accountId after the display name changed (rename)", async () => {
+    // Ticket carries the renamed display name + stable accountId; favourite was
+    // saved under the old name but with the accountId (BRDG-364).
+    testDb.insert(ticket).values({
+      jiraKey: "VPL-1", title: "T1", status: "TO DO", assignee: "Thijs vd Berg", assigneeAccountId: "acc-thijs",
+    }).run();
+    testDb.insert(favoriteUser).values({ id: "fav-1", displayName: "Thijs van den Berg", accountId: "acc-thijs" }).run();
+
+    const res = await GET();
+    const data = await res.json();
+    const thijs = data.users.find((u: { displayName: string }) => u.displayName === "Thijs vd Berg");
+    expect(thijs.isFavorite).toBe(true);
+  });
+
+  it("matches team assignments by accountId after a rename", async () => {
+    testDb.insert(ticket).values({
+      jiraKey: "VPL-1", title: "T1", status: "TO DO", assignee: "Thijs vd Berg", assigneeAccountId: "acc-thijs",
+    }).run();
+    testDb.insert(userTeamAssignment).values([
+      { id: "uta-1", displayName: "Thijs van den Berg", accountId: "acc-thijs", team: "BT" },
+    ]).run();
+
+    const res = await GET();
+    const data = await res.json();
+    expect(data.users[0].teams).toEqual(["BT"]);
+  });
+
+  it("still matches a name-only favourite (no accountId) by name", async () => {
+    testDb.insert(ticket).values({
+      jiraKey: "VPL-1", title: "T1", status: "TO DO", assignee: "Alice Smith", assigneeAccountId: "acc-alice",
+    }).run();
+    testDb.insert(favoriteUser).values({ id: "fav-1", displayName: "Alice Smith", accountId: null }).run();
+
+    const res = await GET();
+    const data = await res.json();
+    expect(data.users[0].isFavorite).toBe(true);
+  });
+
   it("returns empty users array when tickets table is empty", async () => {
     const res = await GET();
     const data = await res.json();
