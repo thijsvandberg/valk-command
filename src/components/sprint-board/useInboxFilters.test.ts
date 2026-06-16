@@ -13,7 +13,7 @@ vi.mock("@/hooks/useMigratedAccountSetting", () => {
   const { useState } = require("react");
   return {
     useMigratedAccountSetting: <T,>(url: string, _localKey: string, defaultValue: T) => {
-      const [value, setLocal] = useState<T>(() => (stores.has(url) ? (stores.get(url) as T) : defaultValue));
+      const [value, setLocal] = useState(() => (stores.has(url) ? (stores.get(url) as T) : defaultValue)) as [T, (u: (p: T) => T) => void];
       const setValue = (next: T | ((prev: T) => T)) => {
         setLocal((prev: T) => {
           const resolved = typeof next === "function" ? (next as (p: T) => T)(prev) : next;
