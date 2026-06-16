@@ -512,3 +512,16 @@ Key bottlenecks / lessons:
 - **Running many jsdom test files at once OOM/hung the 16GB machine repeatedly.** Symptom: one worker pinned at ~100% CPU / 2GB RSS for minutes. Root cause was twofold — a genuine infinite render loop (bug 2 above) AND default file-parallelism. Fix: `--no-file-parallelism` for multi-file local runs, and run heavy files individually. The project's `bail: 5` also masked which failures were mine until raised to `--bail=10000`.
 - **Async storage changes ripple into every test that renders the component.** Tests that mocked `@/lib/api-client` without `apiFetch`, asserted `localStorage` directly, or asserted synchronously after an interaction all broke. A global `afterEach` that resets only the `/api/settings/*` SWR cache (not all keys — that starved `/api/jira/sprints`) fixed cross-test bleed.
 - **Same dirty-shared-tree hazard as BRDG-347/352.** Distinguished mine from parallel by swapping in `git show HEAD:<file>` versions and re-running — `ChatLayout`/`SprintAnalytics`/`push-to-jira`/`jira-sprints` all failed independently of my changes.
+
+## BRDG-346 — configurable backlog drop target (2026-06-16)
+
+Replaced the hard-coded `BT: Backlog` drop tile with a per-account "default backlog" setting on the BRDG-343 foundation: new `/api/settings/backlog-drop-target` route + `useBacklogDropTarget` hook, a `backlogTargetName` prop on `SprintDropZoneBar` (resolves by name, no `__backlog__` fallback so an absent target hides the tile), and a "Backlog drop target" card on the General settings page. Tests across 2 files (route round-trip/isolation/validation + 10 drag-bar cases incl. graceful fallback). Browser-verified end-to-end (GET default -> PUT GXP -> GET persisted -> restored).
+
+| Phase | Notes |
+|---|---|
+| Plan (Opus) | Accurate; chose store-by-name + default `BT: Backlog` and the prop-injection shape that kept the component test-only. Flagged the two gaps (string-default support, `useJiraSprints` carries backlogs) which I verified before coding |
+| Implement | Clean; one trivial test fix (arrow-count expectation in the absent-target case). Placed the card under a new "Sprint Board" section rather than mislabeling it a Story Writer default |
+| Verify | Native `<select>` keyboard change didn't commit (OS popup, screenshot can't see it); pivoted to a same-origin fetch round-trip in the page context to prove persistence through the real route + DB, then restored the original value |
+
+Key bottlenecks / lessons:
+- **Same dirty-shared-tree hazard as BRDG-347/352/343** (`jira/sprints`, `push-to-jira`, `ChatLayout`). Confirmed external by stashing only the parallel sprint-cache/route files (`jira/sprints` then passed) and reading the `push-to-jira` failure (a parallel 3rd-arg `pushToJira` signature change with a stale test). None touch this story; my files are isolated and green.
