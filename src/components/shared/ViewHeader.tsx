@@ -7,6 +7,7 @@ import { NotificationBell } from "@/components/NotificationBell";
 import { NavPanel } from "@/components/nav/NavPanel";
 import { useFocusModeContext } from "@/contexts/FocusModeContext";
 import { useOutsideClick } from "@/hooks/useOutsideClick";
+import { CONTENT_MAX } from "@/lib/layout";
 
 interface ViewHeaderProps {
   icon?: ReactNode;
@@ -45,7 +46,7 @@ export function ViewHeader({ icon, children, actions, className, hideNotificatio
   if (!target) return null;
 
   return createPortal(
-    <div className={`relative flex items-center justify-between bg-[var(--color-surface-chrome)] px-5 py-3.5${className ? ` ${className}` : ""}`}>
+    <div className={`relative flex bg-[var(--color-surface-chrome)] px-5 py-3.5${className ? ` ${className}` : ""}`}>
       {/* Top accent gradient */}
       <div className="pointer-events-none absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-[var(--color-brand-glow)] to-transparent" />
       {/* Bottom seam: a faint fading hairline instead of a hard rule, so the header
@@ -56,6 +57,10 @@ export function ViewHeader({ icon, children, actions, className, hideNotificatio
       {/* Right glow */}
       <div className="pointer-events-none absolute right-0 top-0 h-full w-48 bg-[radial-gradient(ellipse_at_right_center,color-mix(in_srgb,var(--color-brand-500)_5%,transparent)_0%,transparent_70%)]" />
 
+      {/* Inner content is capped + centered (BRDG-361) so the wordmark and tools
+          align with the list/table content below on wide screens; the bar
+          background and glow decorations above stay full width. */}
+      <div className={`${CONTENT_MAX} relative flex items-center justify-between`}>
       {/* Command capsule: the wordmark menu trigger + view context grouped into
           one brand-tinted console unit, distinct from the right-side tools. */}
       <div className="relative flex min-w-0 items-center gap-3 py-1.5 pl-2 pr-3.5">
@@ -122,6 +127,7 @@ export function ViewHeader({ icon, children, actions, className, hideNotificatio
             </div>
           </>
         )}
+      </div>
       </div>
     </div>,
     target,

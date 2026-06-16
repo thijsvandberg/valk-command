@@ -59,6 +59,20 @@ describe("ViewHeader command bar", () => {
     expect(screen.getByRole("button", { name: "Toggle focus mode" })).toBeInTheDocument();
   });
 
+  it("caps and centers the inner content while the bar background stays full width (BRDG-361)", () => {
+    renderHeader();
+    const portal = document.getElementById("view-header-portal")!;
+    // The cap wrapper holds both the wordmark trigger and the right-side actions.
+    const cap = portal.querySelector(".max-w-\\[1536px\\]");
+    expect(cap).toBeTruthy();
+    expect(cap).toContainElement(trigger());
+    expect(cap).toContainElement(screen.getByRole("button", { name: "Action" }));
+    // The outer bar (chrome background) must NOT carry the cap, so glows span edge-to-edge.
+    const bar = portal.firstElementChild!;
+    expect(bar.className).not.toContain("max-w-[1536px]");
+    expect(bar).not.toBe(cap);
+  });
+
   it("is closed by default (aria-expanded=false, no panel)", () => {
     renderHeader();
     expect(trigger()).toHaveAttribute("aria-expanded", "false");
