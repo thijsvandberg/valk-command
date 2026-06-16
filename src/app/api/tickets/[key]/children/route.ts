@@ -78,6 +78,16 @@ export async function POST(request: Request, { params }: RouteContext) {
         logger.error("child-create", `Created ${jiraResult.key} but sprint assignment to ${sprintId} failed: ${err}`);
       }
     }
+
+    // Land the new child at the top of its sprint (BRDG-354). Best-effort: a
+    // rank failure must not undo the successful sprint assignment.
+    if (assignedSprintId) {
+      try {
+        await jiraClient.rankToTopOfSprint([jiraResult.key], sprintIdNum);
+      } catch (err) {
+        logger.warn("child-create", `Created ${jiraResult.key} but rank-to-top in sprint ${assignedSprintId} failed: ${err}`);
+      }
+    }
   }
 
   await db.insert(ticket).values({

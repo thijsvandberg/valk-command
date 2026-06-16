@@ -15,6 +15,7 @@ vi.mock("@/lib/jira-client", () => ({
   jiraClient: {
     createIssue: vi.fn().mockResolvedValue({ key: "VPL-999", id: "99999" }),
     moveToSprint: vi.fn().mockResolvedValue(undefined),
+    rankToTopOfSprint: vi.fn().mockResolvedValue(undefined),
   },
 }));
 
@@ -180,6 +181,45 @@ describe("POST /api/tickets/[key]/children", () => {
     expect(res.status).toBe(200);
     const child = testDb.select().from(ticket).all().find((r) => r.jiraKey === "VPL-999");
     expect(child!.sprintName).toBeNull();
+  });
+
+  it("ranks the child to the top of its sprint after assignment (BRDG-354)", async () => {
+    seedEpic("VPL-100");
+    const { jiraClient } = await import("@/lib/jira-client");
+
+    await POST(
+      postRequest("VPL-100", { title: "Into sprint", sprintId: "42" }),
+      makeParams("VPL-100"),
+    );
+
+    expect(jiraClient.rankToTopOfSprint).toHaveBeenCalledWith(["VPL-999"], 42);
+  });
+
+  it("does not rank when no sprint is assigned", async () => {
+    seedEpic("VPL-100");
+    const { jiraClient } = await import("@/lib/jira-client");
+
+    await POST(
+      postRequest("VPL-100", { title: "No sprint" }),
+      makeParams("VPL-100"),
+    );
+
+    expect(jiraClient.rankToTopOfSprint).not.toHaveBeenCalled();
+  });
+
+  it("tolerates a rank failure: the child is still created", async () => {
+    seedEpic("VPL-100");
+    const { jiraClient } = await import("@/lib/jira-client");
+    (jiraClient.rankToTopOfSprint as ReturnType<typeof vi.fn>).mockRejectedValueOnce(new Error("rank API down"));
+
+    const res = await POST(
+      postRequest("VPL-100", { title: "Into sprint", sprintId: "42" }),
+      makeParams("VPL-100"),
+    );
+
+    expect(res.status).toBe(200);
+    const child = testDb.select().from(ticket).all().find((r) => r.jiraKey === "VPL-999");
+    expect(child!.sprintName).toBe("42");
   });
 
   it("does not assign a sprint when absent or blank", async () => {
