@@ -279,6 +279,7 @@ export default function InboxPage() {
                               labelWidthClass=""
                               showStatusCounts={false}
                               showWarnings={false}
+                              showMetrics={false}
                               isCollapsed={isCollapsed}
                               onToggleCollapse={() => toggleCollapse(group.key)}
                               onSelectAll={() => toggleGroup(groupKeys)}
