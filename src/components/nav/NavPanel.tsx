@@ -45,7 +45,7 @@ const NAV_ITEMS: NavItem[] = [
   { label: "Chat", href: "/chat", icon: <MessageCircle className={ICON} strokeWidth={1.5} />, tier: "common", dataKey: "chat" },
   { label: "Story Writer", href: "/story-writer", icon: <NotebookPen className={ICON} strokeWidth={1.5} />, tier: "common", dataKey: "storyWriter" },
   { label: "Refinement", href: "/refinement", icon: <Boxes className={ICON} strokeWidth={1.5} />, tier: "common", dataKey: "refinement" },
-  { label: "New stories", href: "/new-stories", icon: <Inbox className={ICON} strokeWidth={1.5} />, tier: "common", dataKey: "newStories" },
+  { label: "New story inbox", href: "/inbox", icon: <Inbox className={ICON} strokeWidth={1.5} />, tier: "common", dataKey: "newStories" },
   { label: "Epics", href: "/epics", icon: <Zap className={ICON} strokeWidth={1.5} />, tier: "rare" },
   { label: "Pipelines", href: "/pipelines", icon: <GitBranch className={ICON} strokeWidth={1.5} />, tier: "rare" },
   { label: "Stakeholder", href: "/stakeholder", icon: <Users className={ICON} strokeWidth={1.5} />, tier: "rare" },
