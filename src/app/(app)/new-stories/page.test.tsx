@@ -73,6 +73,14 @@ describe("NewStoriesPage (BRDG-356)", () => {
     expect(screen.getByText("Second story")).toBeInTheDocument();
   });
 
+  it("caps and centers the inbox content on wide screens (BRDG-361)", () => {
+    const { container } = render(<NewStoriesPage />);
+    const cap = container.querySelector(".max-w-\\[1536px\\]");
+    expect(cap).toBeTruthy();
+    // The capped wrapper holds the table content.
+    expect(cap).toHaveTextContent("First story");
+  });
+
   it("opens the side panel when a row title is clicked", async () => {
     render(<NewStoriesPage />);
     fireEvent.click(screen.getByText("First story"));

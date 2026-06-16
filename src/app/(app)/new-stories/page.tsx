@@ -19,6 +19,7 @@ import { useDefaultTeam } from "@/hooks/useDefaultTeam";
 import { useTicketDetail } from "@/hooks/useSprintBoard";
 import { saveTicketMetadata } from "@/components/sprint-board/sprint-board-utils";
 import { relativeDate, formatAbsoluteDate } from "@/lib/date-utils";
+import { CONTENT_MAX } from "@/lib/layout";
 import type { JiraStatus, Ticket } from "@/types/ticket";
 import type { NewStoriesResponse, NewStoryRow } from "@/lib/new-stories-types";
 import {
@@ -215,6 +216,7 @@ export default function NewStoriesPage() {
         <div className="flex flex-1 overflow-hidden">
           <div className="flex min-w-0 flex-1 flex-col overflow-hidden">
             <div className="flex-1 overflow-y-auto px-8 py-5">
+              <div className={CONTENT_MAX}>
               {isLoading && !data ? (
                 <div className="space-y-2">
                   {Array.from({ length: 6 }).map((_, i) => (
@@ -260,14 +262,16 @@ export default function NewStoriesPage() {
                   ))}
                 </div>
               )}
+              </div>
             </div>
 
             {checkedKeys.size > 0 && (
               <BarContainer
                 border
                 borderPosition="top"
-                className="bulk-bar-enter sticky bottom-0 z-50 gap-2 bg-[var(--color-surface-base)] px-8 sm:gap-3"
+                className="bulk-bar-enter sticky bottom-0 z-50 bg-[var(--color-surface-base)] px-8"
               >
+                <div className={`${CONTENT_MAX} flex items-center gap-2 sm:gap-3`}>
                 <Tooltip content={allChecked ? "Deselect all" : "Select all"}>
                   <button
                     type="button"
@@ -306,6 +310,7 @@ export default function NewStoriesPage() {
                 >
                   Clear
                 </Button>
+                </div>
               </BarContainer>
             )}
           </div>
