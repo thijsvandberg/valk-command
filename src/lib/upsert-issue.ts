@@ -69,7 +69,11 @@ export async function upsertIssue(
   const assigneeName = fields.assignee?.displayName ?? null;
   const assigneeAvatar = fields.assignee?.avatarUrls?.["48x48"] ?? null;
   const assigneeAccountId = fields.assignee?.accountId ?? null;
+  const assigneeEmail = fields.assignee?.emailAddress ?? null;
   const reporterName = fields.reporter?.displayName ?? null;
+  const reporterAccountId = fields.reporter?.accountId ?? null;
+  const reporterAvatar = fields.reporter?.avatarUrls?.["48x48"] ?? null;
+  const reporterEmail = fields.reporter?.emailAddress ?? null;
   const priority = fields.priority?.name ?? null;
   const componentsArr = fields.components ?? [];
   const componentsJson = componentsArr.length > 0
@@ -174,6 +178,7 @@ export async function upsertIssue(
     assignee: assigneeName,
     assigneeAvatar,
     assigneeAccountId,
+    assigneeEmail,
     epic: epicValue,
     epicKey: epicKeyValue,
     flagged: (() => {
@@ -181,6 +186,9 @@ export async function upsertIssue(
       return Array.isArray(raw) ? raw.length > 0 : Boolean(raw);
     })(),
     reporter: reporterName,
+    reporterAccountId,
+    reporterAvatar,
+    reporterEmail,
     description: descriptionMarkdown || null,
     acceptanceCriteria: ac,
     storyPoints,

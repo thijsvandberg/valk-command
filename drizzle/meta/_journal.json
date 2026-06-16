@@ -568,6 +568,13 @@
       "when": 1781601177249,
       "tag": "0080_big_blink",
       "breakpoints": true
+    },
+    {
+      "idx": 81,
+      "version": "6",
+      "when": 1781621961260,
+      "tag": "0081_serious_magneto",
+      "breakpoints": true
     }
   ]
 }

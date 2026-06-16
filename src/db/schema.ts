@@ -51,10 +51,18 @@ export const ticket = sqliteTable("ticket", {
   // The user-search API is outside the token's scope, so this captured id is the
   // only way to assign people by their real id (the picker keys people by name).
   assigneeAccountId: text("assignee_account_id"),
+  // Secondary human-readable key for the assignee, harvested from issue data.
+  // accountId is the stable key; email is a label (can change / be hidden).
+  assigneeEmail: text("assignee_email"),
   epic: text("epic"),
   epicKey: text("epic_key"),
   flagged: integer("flagged", { mode: "boolean" }).notNull().default(false),
   reporter: text("reporter"),
+  // Stable reporter identity, mirroring the assignee trio (BRDG-360). accountId
+  // is the only globally stable Jira key; reporter avatar/email are labels.
+  reporterAccountId: text("reporter_account_id"),
+  reporterAvatar: text("reporter_avatar"),
+  reporterEmail: text("reporter_email"),
   description: text("description"),
   acceptanceCriteria: text("acceptance_criteria"),
   storyPoints: real("story_points"),

@@ -243,6 +243,55 @@ describe("upsertIssue", () => {
     expect(row.storyPoints).toBeNull();
   });
 
+  it("captures the reporter's stable identity (accountId, avatar, email) from the issue payload", async () => {
+    const issue = makeIssue({
+      reporter: {
+        accountId: "acc-reporter-1",
+        displayName: "Thijs van den Berg",
+        emailAddress: "thijs@newstory.nl",
+        avatarUrls: { "48x48": "https://example.com/thijs.png" },
+      },
+    });
+    await upsertIssue(issue, "Sprint 1");
+
+    const row = testDb.select().from(ticket).all()[0];
+    expect(row.reporter).toBe("Thijs van den Berg");
+    expect(row.reporterAccountId).toBe("acc-reporter-1");
+    expect(row.reporterEmail).toBe("thijs@newstory.nl");
+    expect(row.reporterAvatar).toBe("https://example.com/thijs.png");
+  });
+
+  it("captures the assignee's email alongside the existing accountId", async () => {
+    const issue = makeIssue({
+      assignee: {
+        accountId: "acc-assignee-1",
+        displayName: "Robin",
+        emailAddress: "robin@newstory.nl",
+        avatarUrls: { "48x48": "https://example.com/robin.png" },
+      },
+    });
+    await upsertIssue(issue, "Sprint 1");
+
+    const row = testDb.select().from(ticket).all()[0];
+    expect(row.assigneeAccountId).toBe("acc-assignee-1");
+    expect(row.assigneeEmail).toBe("robin@newstory.nl");
+  });
+
+  it("keeps the same reporter accountId after a display-name rename", async () => {
+    await upsertIssue(makeIssue({
+      reporter: { accountId: "acc-reporter-1", displayName: "Thijs van den Berg", avatarUrls: {} },
+    }), "Sprint 1");
+
+    // Same person, renamed in Jira.
+    await upsertIssue(makeIssue({
+      reporter: { accountId: "acc-reporter-1", displayName: "Thijs vd Berg", avatarUrls: {} },
+    }), "Sprint 1");
+
+    const row = testDb.select().from(ticket).all()[0];
+    expect(row.reporter).toBe("Thijs vd Berg");
+    expect(row.reporterAccountId).toBe("acc-reporter-1");
+  });
+
   it("updates parent ticketSubtask row when syncing a subtask directly", async () => {
     // Simulate a parent with a subtask already stored
     const parent = makeIssue({
