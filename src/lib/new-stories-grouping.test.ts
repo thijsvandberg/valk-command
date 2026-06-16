@@ -1,6 +1,7 @@
 import { describe, it, expect } from "vitest";
 import {
   groupNewStories,
+  groupInboxStories,
   resolveTeam,
   dateBucket,
   buildTeamMap,
@@ -42,6 +43,7 @@ describe("dateBucket", () => {
     expect(dateBucket("2026-06-16T08:00:00Z", NOW)).toBe("today");
     expect(dateBucket("2026-06-15T23:00:00Z", NOW)).toBe("yesterday");
     expect(dateBucket("2026-06-12T10:00:00Z", NOW)).toBe("this_week");
+    expect(dateBucket("2026-06-06T10:00:00Z", NOW)).toBe("previous_week");
     expect(dateBucket("2026-06-01T10:00:00Z", NOW)).toBe("older");
   });
 
@@ -117,5 +119,70 @@ describe("groupNewStories", () => {
     });
     const bt = result.sections.find((s) => s.team === "BT")!;
     expect(bt.dateGroups.map((g) => g.bucket)).toEqual(["today", "this_week"]);
+  });
+});
+
+describe("groupInboxStories", () => {
+  it("date mode produces the five buckets in order, dropping empties", () => {
+    const rows = [
+      row({ key: "OLD-1", jiraCreatedAt: "2026-06-01T10:00:00Z" }),
+      row({ key: "PREV-1", jiraCreatedAt: "2026-06-06T10:00:00Z" }),
+      row({ key: "WEEK-1", jiraCreatedAt: "2026-06-12T10:00:00Z" }),
+      row({ key: "YEST-1", jiraCreatedAt: "2026-06-15T10:00:00Z" }),
+      row({ key: "TODAY-1", jiraCreatedAt: "2026-06-16T08:00:00Z" }),
+    ];
+    const groups = groupInboxStories(rows, { groupBy: "date", now: NOW });
+    expect(groups.map((g) => g.key)).toEqual([
+      "today",
+      "yesterday",
+      "this_week",
+      "previous_week",
+      "older",
+    ]);
+    expect(groups.map((g) => g.label)).toEqual([
+      "Today",
+      "Yesterday",
+      "This week",
+      "Previous week",
+      "Older",
+    ]);
+
+    const sparse = groupInboxStories(
+      [row({ key: "TODAY-1", jiraCreatedAt: "2026-06-16T08:00:00Z" }), row({ key: "OLD-1", jiraCreatedAt: "2026-06-01T10:00:00Z" })],
+      { groupBy: "date", now: NOW },
+    );
+    expect(sparse.map((g) => g.key)).toEqual(["today", "older"]);
+  });
+
+  it("creator mode buckets by reporter alphabetically with unknown last", () => {
+    const rows = [
+      row({ key: "Z-1", reporter: reporter("Zoe") }),
+      row({ key: "N-1", reporter: null }),
+      row({ key: "A-1", reporter: reporter("Alice") }),
+      row({ key: "A-2", reporter: reporter("Alice") }),
+    ];
+    const groups = groupInboxStories(rows, { groupBy: "creator", now: NOW });
+    expect(groups.map((g) => g.label)).toEqual(["Alice", "Zoe", "Unknown reporter"]);
+    expect(groups[0].rows.map((r) => r.key)).toEqual(["A-1", "A-2"]);
+  });
+
+  it("epic mode sorts named epics alphabetically with 'No epic' last", () => {
+    const rows = [
+      row({ key: "B-1", epic: "Billing" }),
+      row({ key: "N-1", epic: null }),
+      row({ key: "A-1", epic: "Auth" }),
+    ];
+    const groups = groupInboxStories(rows, { groupBy: "epic", now: NOW });
+    expect(groups.map((g) => g.label)).toEqual(["Auth", "Billing", "No epic"]);
+  });
+
+  it("sprint mode sorts sprint names alphabetically with 'No sprint' last", () => {
+    const rows = [
+      row({ key: "S2-1", sprintName: "BT: Sprint 2" }),
+      row({ key: "BL-1", sprintName: null }),
+      row({ key: "S1-1", sprintName: "BT: Sprint 1" }),
+    ];
+    const groups = groupInboxStories(rows, { groupBy: "sprint", now: NOW });
+    expect(groups.map((g) => g.label)).toEqual(["BT: Sprint 1", "BT: Sprint 2", "No sprint"]);
   });
 });
