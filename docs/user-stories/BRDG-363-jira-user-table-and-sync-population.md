@@ -1,6 +1,6 @@
 # BRDG-363: Canonical `jira_user` table + sync population (people keyed on accountId)
 
-**Status:** Not Started
+**Status:** Completed
 **Priority:** Medium
 **Type:** Tech debt / Data integrity
 
@@ -30,17 +30,17 @@ Broad re-keying of every display path (subtasks, links, comments, board cards) o
 
 ## Acceptance Criteria
 
-- [ ] A `jira_user` table exists, keyed on `accountId`, holding displayName/email/avatar.
-- [ ] Sync upserts every person seen on an issue (reporter, assignee, comment author, subtask assignee, linked-issue assignee) into `jira_user`.
-- [ ] A rename in Jira updates the single `jira_user` row; the new name resolves everywhere the resolver is used (demonstrated by a test).
-- [ ] The resolver reads `jira_user` for the label and falls back to the ticket's cached name/avatar when the accountId is null or has no row — no blank names (demonstrated by a test).
-- [ ] No regression: the BRDG-360 ticket-detail reporter consumer renders the same name/avatar as before.
+- [x] A `jira_user` table exists, keyed on `accountId`, holding displayName/email/avatar.
+- [x] Sync upserts every person seen on an issue (reporter, assignee, comment author, subtask assignee, linked-issue assignee) into `jira_user`.
+- [x] A rename in Jira updates the single `jira_user` row; the new name resolves everywhere the resolver is used (demonstrated by a test).
+- [x] The resolver reads `jira_user` for the label and falls back to the ticket's cached name/avatar when the accountId is null or has no row — no blank names (demonstrated by a test).
+- [x] No regression: the BRDG-360 ticket-detail reporter consumer renders the same name/avatar as before.
 
 ## Tests
 
-- [ ] Sync upserts a person into `jira_user`; a second sync with a changed display name updates the same row (one row, new name).
-- [ ] Resolver returns the `jira_user` label by accountId.
-- [ ] Resolver falls back to the ticket's cached name when the accountId is null/unknown (no blank).
+- [x] Sync upserts a person into `jira_user`; a second sync with a changed display name updates the same row (one row, new name).
+- [x] Resolver returns the `jira_user` label by accountId.
+- [x] Resolver falls back to the ticket's cached name when the accountId is null/unknown (no blank).
 
 ## Related
 
