@@ -90,6 +90,17 @@ export async function createTicketWithJira(input: CreateTicketInput): Promise<Cr
         logger.error("ticket-create", `Created ${jiraResult.key} but sprint assignment to ${sprintId} failed: ${err}`);
       }
     }
+
+    // Land the new ticket at the top of its sprint so it surfaces for the PO
+    // without scrolling (BRDG-354). Best-effort: a rank failure must not roll
+    // back the successful sprint assignment, so it lives in its own try/catch.
+    if (assignedSprintId) {
+      try {
+        await jiraClient.rankToTopOfSprint([jiraResult.key], sprintIdNum);
+      } catch (err) {
+        logger.warn("ticket-create", `Created ${jiraResult.key} but rank-to-top in sprint ${assignedSprintId} failed: ${err}`);
+      }
+    }
   }
 
   await db.insert(ticket).values({
