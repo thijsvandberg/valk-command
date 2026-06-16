@@ -65,35 +65,37 @@ Resolved (see Decisions above): surface = dedicated route; list = unread-only, n
 
 ## Implementation Plan
 
-1. **Schema + migration** — add `newStoryReadAt` to `ticketMetadata` (`src/db/schema.ts`); generate Drizzle migration.
-2. **Service** — extend `UpdateMetadataInput` with `newStoryRead?: boolean`; in `updateTicketMetadata` translate to `newStoryReadAt` set/clear (`src/services/ticket-service.ts`). Add a bulk variant for multiple keys. Validate inputs.
-3. **Read endpoint** — `GET /api/new-stories` returning the table rows (author, sprint, epic, SP, assignee, created date) + resolved team, filtered to unread (`newStoryReadAt IS NULL`) and types Story/Bug/Task/Epic/Spike (no sub-tasks), ordered by `jiraCreatedAt` desc.
-4. **Team resolution** — join the ticket's **`reporter`** to `userTeamAssignment` (People settings); resolve "my team" from the **Default team** setting (`useDefaultTeam` / `GET /api/settings/default-team`) so the view can sort it to the top; unmapped authors fall into an "Unassigned team" bucket sorted last.
-5. **Table UI** — new view/route with the 7 columns, team-then-date grouping, collapsible group headings (BRDG-300), `TicketRefPill` titles that open the side panel.
-6. **Mark-as-read UI** — per-row toggle (optimistic, BRDG-334) + undo toast (BRDG-241 shared toast).
-7. **Multi-select** — selection state + bulk "Mark as read" toolbar reusing the multi-select toolbar (BRDG-212), calling the bulk endpoint.
-8. **Nav badge** — unread count surfaced in the nav (reuse the count pattern from notifications/chat).
-9. **Cache/invalidations** — mark-as-read invalidates `/api/new-stories` and the ticket's keys so the list and any badge refresh without manual reload.
-10. **Tests** — see below.
+Refined file-level plan (from Plan subagent). Confirmed: `IssueType` is lowercase (`src/types/ticket.ts:7`); `/api/tickets` excludes epics so a separate query is needed; side panel reuses the cleanup-page pattern (`SidePanel` driven by local `selectedKey`, no URL sync); nav counts come from `useSidebarData` (mounts when nav panel opens); toast Undo is an inline `ReactNode` button via `useToast`; multi-select via `useMultiselect`.
+
+1. **Schema + migration** — add `newStoryReadAt: text("new_story_read_at")` to `ticketMetadata` (`src/db/schema.ts`); generate Drizzle migration (0080).
+2. **Service** — extend `UpdateMetadataInput` with `newStoryRead?: boolean` (true -> ISO now, false -> null); add `bulkMarkNewStoriesRead(keys, read)`; invalidate ticket + new-stories caches (`src/services/ticket-service.ts`).
+3. **List endpoint** — `GET /api/new-stories`: own query (ticket ⋈ ticketMetadata ⋈ sprintNameCache) filtered to types story/bug/task/epic/spike, `newStoryReadAt IS NULL`, draft filter, not-removed; ordered by `jiraCreatedAt` desc.
+4. **Count endpoint** — `GET /api/new-stories/count` (same filter) for the nav badge.
+5. **Mark-read endpoints** — `PUT /api/new-stories/read` (single) + `POST` bulk; wrap the service functions.
+6. **api-client** — add `newStories` helpers (`src/lib/api-client.ts`).
+7. **Grouping util** — `src/lib/new-stories-grouping.ts` (+ test): resolve reporter -> team from user-teams; group team (defaultTeam first, Unassigned last) then date bucket (Today/Yesterday/This week/Older); date-only when no defaultTeam.
+8. **Route page** — `src/app/(app)/new-stories/page.tsx` mirroring `cleanup/page.tsx`: SWR list + user-teams + `useDefaultTeam`; collapsible team/date groups; 7-column table; optimistic mark-read + undo toast; multi-select bulk bar; lazy `SidePanel`.
+9. **Nav** — add nav item + `newStories` count to `NavPanel.tsx` / `useSidebarData.ts`.
+10. **Tests** — grouping util unit test + page component test (groups, mark-read, bulk, undo).
 
 ## Acceptance Criteria
 
-- [ ] I can open a "New stories" view that lists recently created stories as a table with columns: Title, Author, Sprint, Epic, SP, Assignee, Created date.
-- [ ] Rows are grouped by created date (Today / Yesterday / This week / Older), and groups are collapsible.
-- [ ] Stories are ordered so my own team's stories appear at the top, ahead of other teams.
-- [ ] I can mark a single story as read; it leaves the unread list immediately (optimistic) and stays read across reloads.
-- [ ] I can multi-select several stories and mark them all as read in one action.
-- [ ] "Read" state persists in the Bridge database (shared across devices), not just localStorage.
-- [ ] Clicking a story's title/pill opens the ticket (side panel) without losing my place in the list.
-- [ ] An unread count is visible in the nav so I know when new stories are waiting; it updates after I mark stories as read.
+- [x] I can open a "New stories" view that lists recently created stories as a table with columns: Title, Author, Sprint, Epic, SP, Assignee, Created date.
+- [x] Rows are grouped by created date (Today / Yesterday / This week / Older), and groups are collapsible.
+- [x] Stories are ordered so my own team's stories appear at the top, ahead of other teams.
+- [x] I can mark a single story as read; it leaves the unread list immediately (optimistic) and stays read across reloads.
+- [x] I can multi-select several stories and mark them all as read in one action.
+- [x] "Read" state persists in the Bridge database (shared across devices), not just localStorage.
+- [x] Clicking a story's title/pill opens the ticket (side panel) without losing my place in the list.
+- [x] An unread count is visible in the nav so I know when new stories are waiting; it updates after I mark stories as read.
 
 ## Tests
 
-- [ ] Service test: `updateTicketMetadata({ newStoryRead: true })` sets `newStoryReadAt`; `{ newStoryRead: false }` clears it to `null`; the bulk variant marks multiple keys; non-boolean is rejected.
-- [ ] `GET /api/new-stories` returns only unread tickets, excludes sub-tasks (includes Story/Bug/Task/Epic/Spike), is ordered by created date desc, and includes author, sprint, epic, SP, assignee and resolved team.
-- [ ] Team ordering: a ticket whose **reporter** belongs to "my team" sorts ahead of one from another team; a ticket whose reporter has no team mapping lands in the "Unassigned team" bucket sorted last.
-- [ ] Marking read invalidates the new-stories cache (and unread count) so the list/badge update without manual refresh.
-- [ ] Component test: table renders the 7 columns and date group headings; multi-select + bulk "Mark as read" fires the bulk update and removes the rows optimistically; undo toast restores them.
+- [x] Service test: `updateTicketMetadata({ newStoryRead: true })` sets `newStoryReadAt`; `{ newStoryRead: false }` clears it to `null`; the bulk variant marks multiple keys; non-boolean is rejected.
+- [x] `GET /api/new-stories` (via `listNewStories`/`countNewStories`) returns only unread tickets, excludes sub-tasks (includes Story/Bug/Task/Epic/Spike), is ordered by created date desc, and includes author, sprint, epic, SP, assignee. (Team is resolved client-side in the grouping util.)
+- [x] Team ordering: a ticket whose **reporter** belongs to "my team" sorts ahead of one from another team; a ticket whose reporter has no team mapping lands in the "Unassigned team" bucket sorted last.
+- [x] Marking read invalidates the new-stories cache (and unread count) so the list/badge update without manual refresh.
+- [x] Component test: table renders the 7 columns and date group headings; multi-select + bulk "Mark as read" fires the bulk update and removes the rows optimistically; undo toast restores them.
 
 ## Related
 
