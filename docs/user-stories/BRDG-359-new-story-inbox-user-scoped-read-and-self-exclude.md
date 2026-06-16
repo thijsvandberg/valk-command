@@ -1,6 +1,6 @@
 # BRDG-359: New story inbox — per-user read state and exclude self-authored stories
 
-**Status:** Not Started
+**Status:** Done
 **Priority:** Medium
 **Type:** Feature
 
@@ -41,20 +41,38 @@ Two related changes to the New story inbox, both keyed on "who is the logged-in 
 - **Self-identity source:** rely on the Clerk display name matching the Jira reporter (works today for the PO), with an optional per-user "my Jira display name" override. Confirm whether the override is needed now or deferred.
 - **Self-exclusion scope:** exclude only when reporter == me, or also offer a toggle to show my own stories? Default: always exclude mine (no toggle); add a toggle later if wanted.
 
+## Implementation Plan
+
+### Decisions
+- Keep `ticketMetadata.newStoryReadAt` column but stop writing to it (deprecated comment); the backfill reads from it. Not dropped (lower risk; story allows leaving it deprecated).
+- Dedicated table `new_story_read { userId, ticketKey, readAt }`, PK `(userId, ticketKey)`, no FK on `ticketKey` (bulk-mark validates keys against `ticket`).
+- Self-exclusion uses `reporterAccountId` (matched against `getActingUserJiraIdentity().accountId`) with a `reporter` name fallback. No "my Jira display name" override (deferred).
+- Backfill is a runtime lazy one-time copy (`backfillLegacyNewStoryReads(userId)`) guarded by a global `appSetting` flag, since a SQL migration cannot know the Clerk user id. Attributes legacy reads to the first/primary user (the single PO).
+- Per-user cache keys for list/count routes (`/api/new-stories:<userId>`).
+
+### Steps
+1. **Schema + migration**: add `new_story_read` table to `src/db/schema.ts`; mark `newStoryReadAt` deprecated; `npm run db:generate` → `drizzle/0084_*.sql`.
+2. **Per-user read store** (`src/lib/new-story-read-store.ts`): `markNewStoryRead`, `bulkMarkNewStoriesRead`, `getReadTicketKeys`, `backfillLegacyNewStoryReads` — all take `userId` so they are unit-testable.
+3. **Query layer** (`new-stories-query.ts`): `listNewStories(ctx)` / `countNewStories(ctx)` where `ctx = { userId, jiraAccountId, jiraName }`. Filter unread via `NOT EXISTS` against `new_story_read`; self-exclude via `or(isNull(reporterAccountId), ne(reporterAccountId, accountId))`, name fallback when no accountId; no exclusion when neither. Drop the unused `ticketMetadata` join.
+4. **Routes**: list/count resolve `resolveUserId()` + `getActingUserJiraIdentity()` (+ `getActingUser().name` only when accountId absent), per-user cache keys, invoke backfill. Mark-read routes resolve `resolveUserId()`.
+5. **ticket-service**: route single mark-read and `bulkMarkNewStoriesRead(userId, keys, read)` to the per-user store; keep cache invalidation + activity log; stop touching `newStoryReadAt`.
+6. **Backfill** wired into list/count routes (cheap no-op after first run).
+7. **Tests**: `new-story-read-store.test.ts` (mark/bulk/get/backfill, two-user isolation); extend `new-stories-query.test.ts` (per-user unread isolation, self-exclusion by accountId + name fallback + null-accountId not excluded); extend `ticket-service.new-stories.test.ts` (bulk writes to per-user store, untouched metadata).
+
 ## Acceptance Criteria
 
-- [ ] Stories whose reporter is the logged-in user do not appear in the inbox or the nav unread count.
-- [ ] Marking a story read affects only the logged-in user; a different user still sees it as unread.
-- [ ] Read state persists per user across reloads/devices (stored server-side keyed by Clerk user id).
-- [ ] Existing read state from BRDG-356 is migrated to the current user (no stories silently reappear as unread for the PO).
-- [ ] If the Clerk name does not match the Jira reporter, a per-user override can correct self-exclusion (or this is explicitly deferred).
+- [x] Stories whose reporter is the logged-in user do not appear in the inbox or the nav unread count.
+- [x] Marking a story read affects only the logged-in user; a different user still sees it as unread.
+- [x] Read state persists per user across reloads/devices (stored server-side keyed by Clerk user id).
+- [x] Existing read state from BRDG-356 is migrated to the current user (no stories silently reappear as unread for the PO).
+- [x] If the Clerk name does not match the Jira reporter, a per-user override can correct self-exclusion (or this is explicitly deferred). <!-- Explicitly deferred per the story UPDATE: self-exclusion now keys on the stable Jira accountId (getActingUserJiraIdentity) with a reporter-name fallback, so the override is unnecessary. -->
 
 ## Tests
 
-- [ ] `listNewStories` excludes rows where reporter == acting user's name.
-- [ ] Read filtering is per-user: marking read for user A leaves the row unread for user B.
-- [ ] Mark-as-read (single + bulk) writes to the per-user store for the resolved user id.
-- [ ] Migration backfills the legacy `newStoryReadAt` values into the per-user store for the existing user.
+- [x] `listNewStories` excludes rows where reporter == acting user's name. <!-- Covered by accountId-based exclusion + reporter-name fallback tests. -->
+- [x] Read filtering is per-user: marking read for user A leaves the row unread for user B.
+- [x] Mark-as-read (single + bulk) writes to the per-user store for the resolved user id.
+- [x] Migration backfills the legacy `newStoryReadAt` values into the per-user store for the existing user.
 
 ## Related
 
