@@ -13,3 +13,5 @@ docs/investigations/2026-03-28-project-setup-session.md
 *.db-shm
 deleted/
 backups/
+# dev memory-guard restart changelog (local only)
+tools/scripts/dev-guard-restarts.log

@@ -29,7 +29,7 @@ Single-user web app for the Product Owner of Valk Platform. Chat-driven interfac
 ## Stack
 
 - Next.js 15 (App Router) + TypeScript + Tailwind CSS v4
-- Dev server: `npm run dev` (port 3100). This script auto-kills any existing process on port 3100 before starting. When restarting the dev server manually, always kill port 3100 first: `lsof -ti:3100 | xargs kill -9 2>/dev/null`
+- Dev server: `npm run dev` (port 3100). Runs `tools/scripts/dev-with-memory-guard.sh`, which kills any existing process on port 3100, starts `next dev --turbopack`, and auto-restarts it whenever its memory (read via `footprint` phys_footprint) crosses `DEV_MEM_LIMIT_MB` (default 4096MB) — Turbopack leaks memory over long sessions. Every restart is appended to a changelog at `tools/scripts/dev-guard-restarts.log` (gitignored) with timestamp, memory at the time, and uptime, so you can spot a too-tight limit. Flap protection: if the server crosses the limit within `DEV_FLAP_WINDOW` seconds of starting (default 60), the guard stops instead of restarting (it would otherwise loop without ever serving). Tunables (env): `DEV_PORT`, `DEV_MEM_LIMIT_MB`, `DEV_MEM_INTERVAL`, `DEV_FLAP_WINDOW`, `DEV_GUARD_LOG`. Use `npm run dev:plain` for the raw `next dev` without the guard. When restarting manually, always kill port 3100 first: `lsof -ti:3100 | xargs kill -9 2>/dev/null`
 - Database: SQLite + Drizzle ORM. Schema in `src/db/schema.ts`, migrations in `drizzle/`
 - Environment: copy `.env.example` to `.env.local`
 
