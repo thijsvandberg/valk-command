@@ -63,6 +63,15 @@ Order: (1) create-ticket.ts + new test, (2) children route + test, (3) story-wri
 - [x] Unit test: a thrown `rankToTopOfSprint` does not fail the create.
 - [x] Unit test for the Story Writer create route: `rankToTopOfSprint` is called when `sprintId` is provided and skipped when it is not.
 
+## Follow-up fix (post-test)
+
+First pass landed the rank call in the create paths but the story still appeared at the **bottom** when created via the Story Writer. Two gaps:
+
+1. **Wrong path.** The Story Writer modal does not call `POST /api/story-writer/create`. It uses the **draft flow**: `create-draft` → background `syncDraftToJira()` (which creates the Jira issue) → `finalizeDraft()`. That path had no sprint assignment or ranking. Fixed in `src/lib/draft-sync.ts`: `syncDraftToJira` now assigns the sprint via `moveToSprint`, passes the sprint to `finalizeDraft`, and ranks to top; `finalizeDraft` now writes `sprintIds` + the `ticket_sprint` membership bridge so the story shows in the column.
+2. **Local rank never set.** The board sorts by the local `jiraRank` (nulls last), so a freshly created ticket — whose `jiraRank` is null until the next full Jira sync — sorted to the bottom even though Jira had it at the top. Introduced `src/lib/sprint-rank.ts` → `landTicketAtTopOfSprint(key, sprintId)`, which does both layers: `jiraClient.rankToTopOfSprint` (survives the next sync) **and** sets the local `jiraRank` just below the sprint's current minimum (immediate board position). All four create paths now call this single helper.
+
+Files: `src/lib/sprint-rank.ts` (new), `src/lib/draft-sync.ts`, `src/lib/create-ticket.ts`, `src/app/api/tickets/[key]/children/route.ts`, `src/app/api/story-writer/create/route.ts`. Tests: `src/lib/sprint-rank.test.ts` (new) + updated draft-sync / create-ticket / children / story-writer-create tests.
+
 ## Related
 
 - [[BRDG-353-story-writer-wrapup-abort-new-story]] — same new-story-from-Story-Writer flow.

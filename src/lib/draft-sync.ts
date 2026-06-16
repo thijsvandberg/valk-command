@@ -1,6 +1,9 @@
 import { db } from "@/db";
 import { ticket, ticketMetadata, ticketLocalEdit, storyWriterSession, conversation, activityLog } from "@/db/schema";
 import { jiraClient } from "@/lib/jira-client";
+import { syncTicketSprints } from "@/lib/sprint-membership";
+import { landTicketAtTopOfSprint } from "@/lib/sprint-rank";
+import { cache } from "@/lib/cache";
 import { logger } from "@/lib/logger";
 import { eq } from "drizzle-orm";
 
@@ -31,7 +34,6 @@ export async function syncDraftToJira(draftKey: string, params: DraftSyncParams)
   try {
     const result = await jiraClient.createIssue({
       summary: params.title || "Untitled draft",
-      sprintId: params.sprintId,
       issueType: params.issueType,
       description: { type: "doc", version: 1, content: [] },
     });
@@ -45,7 +47,32 @@ export async function syncDraftToJira(draftKey: string, params: DraftSyncParams)
     return;
   }
 
-  finalizeDraft(draftKey, realKey);
+  // Jira ignores the sprint field on create, so assign it via the field-edit path
+  // once the issue exists, mirroring the board create flow (BRDG-354).
+  let assignedSprintId: string | undefined;
+  const sprintId =
+    typeof params.sprintId === "string" && params.sprintId.trim() ? params.sprintId.trim() : undefined;
+  if (sprintId) {
+    const sprintIdNum = parseInt(sprintId, 10);
+    if (!Number.isNaN(sprintIdNum)) {
+      try {
+        await jiraClient.moveToSprint([realKey], sprintIdNum);
+        assignedSprintId = sprintId;
+      } catch (err) {
+        logger.error("draft-sync", `Created ${realKey} but sprint assignment to ${sprintId} failed: ${err}`);
+      }
+    }
+  }
+
+  finalizeDraft(draftKey, realKey, assignedSprintId);
+
+  // Land it at the top of its sprint (BRDG-354) now that the real row exists.
+  if (assignedSprintId) {
+    await landTicketAtTopOfSprint(realKey, parseInt(assignedSprintId, 10));
+  }
+
+  cache.invalidate(/^\/api\/tickets(\?|$)/);
+  if (assignedSprintId) cache.invalidate("/api/jira/sprints");
 }
 
 /**
@@ -62,6 +89,7 @@ export function finalizeDraft(draftKey: string, realKey: string, sprintName?: st
         jiraKey: realKey,
         status: "TO DO",
         sprintName: sprintName ?? null,
+        sprintIds: sprintName ? JSON.stringify([sprintName]) : null,
         description: draft.status === "DRAFT_FAILED" ? null : draft.description,
       }).run();
 
@@ -97,6 +125,12 @@ export function finalizeDraft(draftKey: string, realKey: string, sprintName?: st
         .set({ status: "REPLACED", description: realKey })
         .where(eq(ticket.jiraKey, draftKey))
         .run();
+
+      // Mirror sprint membership into the indexed bridge so the by-sprint board
+      // shows the finalized story in its column (BRDG-354).
+      if (sprintName) {
+        syncTicketSprints(tx, realKey, [sprintName], sprintName);
+      }
     });
 
     logger.info("draft-sync", `Finalized ${draftKey} -> ${realKey}`);

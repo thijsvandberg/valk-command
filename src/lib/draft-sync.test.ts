@@ -3,7 +3,7 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 import { createTestDb } from "@/db/test-utils";
 import type { BetterSQLite3Database } from "drizzle-orm/better-sqlite3";
 import type * as schema from "@/db/schema";
-import { ticket, ticketMetadata, ticketLocalEdit, storyWriterSession, conversation, activityLog } from "@/db/schema";
+import { ticket, ticketMetadata, ticketLocalEdit, storyWriterSession, conversation, activityLog, ticketSprint } from "@/db/schema";
 import { eq } from "drizzle-orm";
 
 let testDb: BetterSQLite3Database<typeof schema>;
@@ -17,12 +17,17 @@ vi.mock("@/db", () => ({
 vi.mock("@/lib/jira-client", () => ({
   jiraClient: {
     createIssue: vi.fn(),
+    moveToSprint: vi.fn().mockResolvedValue(undefined),
+    rankToTopOfSprint: vi.fn().mockResolvedValue(undefined),
   },
 }));
+
+vi.mock("@/lib/cache", () => ({ cache: { invalidate: vi.fn() } }));
 
 vi.mock("@/lib/logger", () => ({
   logger: {
     info: vi.fn(),
+    warn: vi.fn(),
     error: vi.fn(),
   },
 }));
@@ -129,14 +134,49 @@ describe("syncDraftToJira", () => {
 
     expect(jiraClient.createIssue).toHaveBeenCalledWith({
       summary: "My Story",
-      sprintId: undefined,
       issueType: "story",
       description: { type: "doc", version: 1, content: [] },
     });
+    // No sprint given → no move/rank.
+    expect(jiraClient.moveToSprint).not.toHaveBeenCalled();
+    expect(jiraClient.rankToTopOfSprint).not.toHaveBeenCalled();
 
     const real = testDb.select().from(ticket).where(eq(ticket.jiraKey, "VPL-500")).get();
     expect(real).toBeDefined();
     expect(real!.status).toBe("TO DO");
+  });
+
+  it("assigns the sprint and lands the new story at the top (BRDG-354)", async () => {
+    seedDraft(testDb, "DRAFT-sprint");
+    vi.mocked(jiraClient.createIssue).mockResolvedValue({ key: "VPL-700", id: "70000" });
+
+    await syncDraftToJira("DRAFT-sprint", { title: "Sprint story", sprintId: "42", issueType: "story" });
+
+    // Jira ignores sprint-on-create, so it is applied via the field-edit path...
+    expect(jiraClient.moveToSprint).toHaveBeenCalledWith(["VPL-700"], 42);
+    // ...then ranked to the top of the sprint.
+    expect(jiraClient.rankToTopOfSprint).toHaveBeenCalledWith(["VPL-700"], 42);
+
+    const real = testDb.select().from(ticket).where(eq(ticket.jiraKey, "VPL-700")).get();
+    expect(real!.sprintName).toBe("42");
+    // Local rank set so the board shows it at the top immediately (no ranked peers → 0).
+    expect(real!.jiraRank).toBe(0);
+
+    // Membership bridge written so the by-sprint board shows it in the column.
+    const membership = testDb.select().from(ticketSprint).where(eq(ticketSprint.ticketKey, "VPL-700")).all();
+    expect(membership.map((m) => m.sprintId)).toContain("42");
+  });
+
+  it("tolerates a rank failure: the story is still finalized in the sprint", async () => {
+    seedDraft(testDb, "DRAFT-rankfail");
+    vi.mocked(jiraClient.createIssue).mockResolvedValue({ key: "VPL-701", id: "70100" });
+    vi.mocked(jiraClient.rankToTopOfSprint).mockRejectedValueOnce(new Error("rank API down"));
+
+    await syncDraftToJira("DRAFT-rankfail", { title: "Sprint story", sprintId: "42", issueType: "story" });
+
+    const real = testDb.select().from(ticket).where(eq(ticket.jiraKey, "VPL-701")).get();
+    expect(real!.status).toBe("TO DO");
+    expect(real!.sprintName).toBe("42");
   });
 
   it("marks draft as DRAFT_FAILED on Jira error", async () => {

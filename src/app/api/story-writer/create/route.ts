@@ -3,6 +3,7 @@ import { db } from "@/db";
 import { ticket, ticketMetadata } from "@/db/schema";
 import { jiraClient } from "@/lib/jira-client";
 import { syncTicketSprints } from "@/lib/sprint-membership";
+import { landTicketAtTopOfSprint } from "@/lib/sprint-rank";
 import { logActivity } from "@/lib/activity-logger";
 import { applyRateLimit } from "@/lib/rate-limiter";
 import { logger } from "@/lib/logger";
@@ -63,13 +64,6 @@ export async function POST(request: Request) {
       } catch (err) {
         logger.error("story-writer-create", `Created ${newKey} but sprint assignment to ${sprintId} failed: ${err}`);
       }
-      if (assignedSprintId) {
-        try {
-          await jiraClient.rankToTopOfSprint([newKey], sprintIdNum);
-        } catch (err) {
-          logger.warn("story-writer-create", `Created ${newKey} but rank-to-top in sprint ${assignedSprintId} failed: ${err}`);
-        }
-      }
     }
   }
 
@@ -95,6 +89,11 @@ export async function POST(request: Request) {
   // Mirror the sprint membership into the indexed bridge so the by-sprint board
   // shows the new story in its column. Backlog (no sprint) leaves no rows.
   syncTicketSprints(db, newKey, assignedSprintId ? [assignedSprintId] : null, assignedSprintId ?? null);
+
+  // Land it at the top of its sprint (BRDG-354), in Jira and the local mirror.
+  if (assignedSprintId) {
+    await landTicketAtTopOfSprint(newKey, parseInt(assignedSprintId, 10));
+  }
 
   cache.invalidate(/^\/api\/tickets(\?|$)/);
   if (assignedSprintId) cache.invalidate("/api/jira/sprints");

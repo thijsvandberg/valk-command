@@ -55,6 +55,8 @@ describe("createTicketWithJira — rank to top of sprint (BRDG-354)", () => {
     expect(result.sprintId).toBe("42");
     const row = testDb.select().from(ticket).all().find((r) => r.jiraKey === "VPL-999");
     expect(row!.sprintName).toBe("42");
+    // Local rank set so the board shows it at the top immediately (no peers → 0).
+    expect(row!.jiraRank).toBe(0);
   });
 
   it("does not rank when no sprint is assigned (backlog create)", async () => {

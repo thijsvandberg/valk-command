@@ -1,6 +1,7 @@
 import { db } from "@/db";
 import { ticket, ticketMetadata } from "@/db/schema";
 import { syncTicketSprints } from "@/lib/sprint-membership";
+import { landTicketAtTopOfSprint } from "@/lib/sprint-rank";
 import { jiraClient } from "@/lib/jira-client";
 import { logActivity } from "@/lib/activity-logger";
 import { logger } from "@/lib/logger";
@@ -90,17 +91,6 @@ export async function createTicketWithJira(input: CreateTicketInput): Promise<Cr
         logger.error("ticket-create", `Created ${jiraResult.key} but sprint assignment to ${sprintId} failed: ${err}`);
       }
     }
-
-    // Land the new ticket at the top of its sprint so it surfaces for the PO
-    // without scrolling (BRDG-354). Best-effort: a rank failure must not roll
-    // back the successful sprint assignment, so it lives in its own try/catch.
-    if (assignedSprintId) {
-      try {
-        await jiraClient.rankToTopOfSprint([jiraResult.key], sprintIdNum);
-      } catch (err) {
-        logger.warn("ticket-create", `Created ${jiraResult.key} but rank-to-top in sprint ${assignedSprintId} failed: ${err}`);
-      }
-    }
   }
 
   await db.insert(ticket).values({
@@ -116,6 +106,12 @@ export async function createTicketWithJira(input: CreateTicketInput): Promise<Cr
 
   // Mirror the membership into the indexed bridge. Backlog (no sprint) → no rows.
   syncTicketSprints(db, jiraResult.key, assignedSprintId ? [assignedSprintId] : null, assignedSprintId ?? null);
+
+  // Land it at the top of its sprint (BRDG-354), in Jira and the local mirror, so
+  // the board shows it on top straight away instead of at the bottom. Best-effort.
+  if (assignedSprintId) {
+    await landTicketAtTopOfSprint(jiraResult.key, parseInt(assignedSprintId, 10));
+  }
 
   // New tickets start in the PO "drafting" stage so they surface for refinement.
   await db

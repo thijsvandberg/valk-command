@@ -5,6 +5,8 @@ import { validatePathParam } from "@/lib/api-validation";
 import { db } from "@/db";
 import { ticket, ticketMetadata } from "@/db/schema";
 import { jiraClient } from "@/lib/jira-client";
+import { syncTicketSprints } from "@/lib/sprint-membership";
+import { landTicketAtTopOfSprint } from "@/lib/sprint-rank";
 import { logActivity } from "@/lib/activity-logger";
 import { logger } from "@/lib/logger";
 import { cache } from "@/lib/cache";
@@ -78,16 +80,6 @@ export async function POST(request: Request, { params }: RouteContext) {
         logger.error("child-create", `Created ${jiraResult.key} but sprint assignment to ${sprintId} failed: ${err}`);
       }
     }
-
-    // Land the new child at the top of its sprint (BRDG-354). Best-effort: a
-    // rank failure must not undo the successful sprint assignment.
-    if (assignedSprintId) {
-      try {
-        await jiraClient.rankToTopOfSprint([jiraResult.key], sprintIdNum);
-      } catch (err) {
-        logger.warn("child-create", `Created ${jiraResult.key} but rank-to-top in sprint ${assignedSprintId} failed: ${err}`);
-      }
-    }
   }
 
   await db.insert(ticket).values({
@@ -100,9 +92,16 @@ export async function POST(request: Request, { params }: RouteContext) {
     epicKey: key,
     // The sprint_name column stores the sprint id; the detail builder resolves it
     // to a display name via sprintNameCache (same convention as the Jira sync).
-    ...(assignedSprintId ? { sprintName: assignedSprintId } : {}),
+    ...(assignedSprintId ? { sprintName: assignedSprintId, sprintIds: JSON.stringify([assignedSprintId]) } : {}),
     flagged: false,
   });
+
+  // Mirror the membership into the indexed bridge so the by-sprint board shows
+  // the new child, then land it at the top of its sprint (BRDG-354). Best-effort.
+  if (assignedSprintId) {
+    syncTicketSprints(db, jiraResult.key, [assignedSprintId], assignedSprintId);
+    await landTicketAtTopOfSprint(jiraResult.key, parseInt(assignedSprintId, 10));
+  }
 
   // New child issues start in the PO "drafting" stage so they surface for
   // refinement. Readiness is Bridge-only metadata (ticket_metadata), which the
