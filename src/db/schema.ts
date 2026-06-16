@@ -180,7 +180,9 @@ export const ticketMetadata = sqliteTable("ticket_metadata", {
   revivalRationale: text("revival_rationale"),
   // New stories inbox (BRDG-356): ISO timestamp the PO marked this ticket as
   // "read" in the newly-created-stories review list; null = still unread/unseen.
-  // Local-only PO state, never synced to Jira (like bookmarks/poNotes).
+  // DEPRECATED (BRDG-359): read state is now per-user in the `new_story_read`
+  // table. This column is no longer written; it is only read once by the lazy
+  // legacy backfill (backfillLegacyNewStoryReads) and otherwise left in place.
   newStoryReadAt: text("new_story_read_at"),
 });
 
@@ -384,6 +386,22 @@ export const userSetting = sqliteTable("user_setting", {
   value: text("value").notNull(),
 }, (table) => [
   primaryKey({ columns: [table.userId, table.key] }),
+]);
+
+// Per-user read state for the New story inbox (BRDG-359). Re-scopes the read
+// flag that BRDG-356 stored globally on ticketMetadata.newStoryReadAt: marking a
+// story read now records a row keyed on the acting Clerk user, so a different
+// user still sees it as unread. A dedicated table (not a JSON blob in
+// userSetting) because a user may accumulate thousands of read entries and the
+// inbox list/count filters against them on every load. No FK on ticketKey: the
+// mark-read path validates keys against `ticket` before writing, and the lazy
+// legacy backfill copies in rows without ordering against ticket lifecycle.
+export const newStoryRead = sqliteTable("new_story_read", {
+  userId: text("user_id").notNull(),
+  ticketKey: text("ticket_key").notNull(),
+  readAt: text("read_at").notNull().default(sql`(datetime('now'))`),
+}, (table) => [
+  primaryKey({ columns: [table.userId, table.ticketKey] }),
 ]);
 
 export const storyVersion = sqliteTable("story_version", {
@@ -1025,3 +1043,4 @@ export const userTeamAssignment = sqliteTable("user_team_assignment", {
 
 export type FavoriteUserRow = typeof favoriteUser.$inferSelect;
 export type UserTeamAssignmentRow = typeof userTeamAssignment.$inferSelect;
+export type NewStoryReadRow = typeof newStoryRead.$inferSelect;
