@@ -15,3 +15,5 @@ deleted/
 backups/
 # dev memory-guard restart changelog (local only)
 tools/scripts/dev-guard-restarts.log
+# prod server logs (local only)
+logs/
