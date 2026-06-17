@@ -143,40 +143,49 @@ export function EditableDescription({
   const sizePushError = pushError === CONTENT_LIMIT_MESSAGE;
   const otherPushError = pushError && !sizePushError ? pushError : null;
 
+  // The size figures are an estimate: Jira validates the rendered ADF, not the raw
+  // markdown we count here, so the copy and the "~" prefix keep it advisory rather
+  // than a hard cutoff. The push toast remains the authoritative check.
+  const APPROX_TITLE =
+    "Estimate — Jira measures the rendered content, so the exact limit may differ.";
+  const charsLeft = Math.max(0, JIRA_DESCRIPTION_LIMIT - value.length);
+
   // Single full-width notice row beneath the toolbar buttons. Priority: a real
-  // non-size push failure, then the live over/near size state.
+  // non-size push failure, then the live over/near size estimate.
   const noticeRow: React.ReactNode = otherPushError ? (
     <div
-      className="flex items-center gap-2 border-t border-[var(--color-status-error)]/20 bg-[var(--color-status-error)]/10 px-3 py-1.5"
+      className="flex items-center gap-2.5 border-t border-[var(--color-status-error)]/20 bg-[var(--color-status-error)]/10 px-3.5 py-2.5"
       style={{ animation: "fadeInUp 0.18s ease-out" }}
       role="alert"
     >
-      <AlertTriangle size={13} strokeWidth={2} className="shrink-0 text-[var(--color-status-error)]" />
-      <span className="text-label font-medium text-[var(--color-status-error)]">{otherPushError}</span>
+      <AlertTriangle size={14} strokeWidth={2} className="shrink-0 text-[var(--color-status-error)]" />
+      <span className="text-body-sm font-medium text-[var(--color-status-error)]">{otherPushError}</span>
     </div>
   ) : descSize.state === "over" ? (
     <div
-      className="flex items-center gap-2 border-t border-[var(--color-status-error)]/20 bg-[var(--color-status-error)]/10 px-3 py-1.5"
+      className="flex items-center gap-2.5 border-t border-[var(--color-status-error)]/20 bg-[var(--color-status-error)]/10 px-3.5 py-2.5"
       style={{ animation: "fadeInUp 0.18s ease-out" }}
       role="alert"
+      title={APPROX_TITLE}
     >
-      <AlertTriangle size={13} strokeWidth={2} className="shrink-0 text-[var(--color-status-error)]" />
-      <span className="text-label font-medium text-[var(--color-status-error)]">
-        This description is too large for Jira. Trim it to push.
+      <AlertTriangle size={14} strokeWidth={2} className="shrink-0 text-[var(--color-status-error)]" />
+      <span className="text-body-sm font-medium text-[var(--color-status-error)]">
+        Likely too large for Jira &mdash; trim before pushing
       </span>
-      <span className="ml-auto shrink-0 rounded-full bg-[var(--color-status-error)]/15 px-2 py-0.5 text-label font-semibold tabular-nums text-[var(--color-status-error)]">
-        {descSize.over.toLocaleString()} over limit
+      <span className="ml-auto shrink-0 rounded-full bg-[var(--color-status-error)]/15 px-2.5 py-0.5 text-body-sm font-semibold tabular-nums text-[var(--color-status-error)]">
+        ~{descSize.over.toLocaleString()} characters over
       </span>
     </div>
   ) : descSize.state === "near" ? (
     <div
-      className="flex items-center gap-2 border-t border-border-default bg-[var(--color-surface-base)] px-3 py-1.5"
+      className="flex items-center gap-2.5 border-t border-border-default bg-[var(--color-surface-base)] px-3.5 py-2.5"
       style={{ animation: "fadeInUp 0.18s ease-out" }}
+      title={APPROX_TITLE}
     >
-      <Info size={13} strokeWidth={2} className="shrink-0 text-text-muted" />
-      <span className="text-label font-medium text-text-muted">Approaching Jira&apos;s size limit</span>
-      <span className="ml-auto shrink-0 text-label tabular-nums text-text-muted">
-        {Math.max(0, JIRA_DESCRIPTION_LIMIT - value.length).toLocaleString()} left
+      <Info size={14} strokeWidth={2} className="shrink-0 text-text-muted" />
+      <span className="text-body-sm font-medium text-text-secondary">Getting close to Jira&apos;s size limit</span>
+      <span className="ml-auto shrink-0 text-body-sm tabular-nums text-text-muted">
+        ~{charsLeft.toLocaleString()} characters left
       </span>
     </div>
   ) : null;

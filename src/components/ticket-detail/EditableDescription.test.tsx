@@ -664,27 +664,28 @@ describe("EditableDescription no-op draft persistence (BRDG-350)", () => {
     it("shows a subtle near-limit hint within ~10% of the limit", () => {
       renderDesc({ initialDescription: "x".repeat(30000) });
       fireEvent.click(screen.getByTestId("rendered-markdown"));
-      expect(screen.getByText("Approaching Jira's size limit")).toBeInTheDocument();
-      expect(screen.queryByText(/over limit/i)).not.toBeInTheDocument();
+      expect(screen.getByText("Getting close to Jira's size limit")).toBeInTheDocument();
+      expect(screen.getByText(/characters left/)).toBeInTheDocument();
+      expect(screen.queryByText(/over/i)).not.toBeInTheDocument();
     });
 
-    it("shows the exact amount over once the limit is exceeded", () => {
+    it("shows the approximate amount over once the limit is exceeded", () => {
       renderDesc({ initialDescription: "x".repeat(32767 + 1240) });
       fireEvent.click(screen.getByTestId("rendered-markdown"));
-      expect(screen.getByText("1,240 over limit")).toBeInTheDocument();
-      expect(screen.getByText("This description is too large for Jira. Trim it to push.")).toBeInTheDocument();
-      expect(screen.queryByText("Approaching Jira's size limit")).not.toBeInTheDocument();
+      expect(screen.getByText("~1,240 characters over")).toBeInTheDocument();
+      expect(screen.getByText(/Likely too large for Jira/)).toBeInTheDocument();
+      expect(screen.queryByText("Getting close to Jira's size limit")).not.toBeInTheDocument();
     });
 
     it("transitions from the over banner to the near hint as the PO trims back under the limit", () => {
       renderDesc({ initialDescription: "x".repeat(32767 + 500) });
       fireEvent.click(screen.getByTestId("rendered-markdown"));
-      expect(screen.getByText("500 over limit")).toBeInTheDocument();
+      expect(screen.getByText("~500 characters over")).toBeInTheDocument();
 
       // Trim back to the near band.
       fireEvent.change(screen.getByTestId("editor-input"), { target: { value: "x".repeat(30000) } });
-      expect(screen.queryByText(/over limit/i)).not.toBeInTheDocument();
-      expect(screen.getByText("Approaching Jira's size limit")).toBeInTheDocument();
+      expect(screen.queryByText("~500 characters over")).not.toBeInTheDocument();
+      expect(screen.getByText("Getting close to Jira's size limit")).toBeInTheDocument();
     });
 
     it("clears a stale content-limit push error once trimmed back under the limit", () => {
@@ -699,7 +700,7 @@ describe("EditableDescription no-op draft persistence (BRDG-350)", () => {
       expect(
         screen.queryByText("This description is too large for Jira. Trim it and try again."),
       ).not.toBeInTheDocument();
-      expect(screen.getByText("Approaching Jira's size limit")).toBeInTheDocument();
+      expect(screen.getByText("Getting close to Jira's size limit")).toBeInTheDocument();
     });
 
     it("keeps showing a non-size push error", () => {
