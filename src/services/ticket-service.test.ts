@@ -211,10 +211,32 @@ describe("upsertLocalEdit", () => {
     ).rejects.toBeInstanceOf(ValidationError);
   });
 
-  it("throws ValidationError when title exceeds 500 chars", async () => {
+  it("rejects a title over Jira's 255-char limit with a friendly message (BRDG-349)", async () => {
     await expect(
-      upsertLocalEdit("VPL-1", { field: "title", localValue: "x".repeat(501) }),
-    ).rejects.toBeInstanceOf(ValidationError);
+      upsertLocalEdit("VPL-1", { field: "title", localValue: "x".repeat(256) }),
+    ).rejects.toThrow(/too long for Jira \(max 255 characters\)/);
+  });
+
+  it("accepts a title at exactly Jira's 255-char limit (BRDG-349)", async () => {
+    seedTicket(testDb, "VPL-1");
+    const result = await upsertLocalEdit("VPL-1", { field: "title", localValue: "x".repeat(255) });
+    expect(result.localValue).toHaveLength(255);
+  });
+
+  it("rejects a description over Jira's 32,767-char limit with a friendly message (BRDG-349)", async () => {
+    await expect(
+      upsertLocalEdit("VPL-1", { field: "description", localValue: "x".repeat(32768), isDraft: true }),
+    ).rejects.toThrow(/too large for Jira/);
+  });
+
+  it("accepts a description at exactly Jira's 32,767-char limit (BRDG-349)", async () => {
+    seedTicket(testDb, "VPL-1");
+    const result = await upsertLocalEdit("VPL-1", {
+      field: "description",
+      localValue: "x".repeat(32767),
+      isDraft: true,
+    });
+    expect(result.localValue).toHaveLength(32767);
   });
 
   it("uses provided baseJiraVersion", async () => {
