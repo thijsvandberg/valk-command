@@ -8,6 +8,7 @@ PO Command Center for Valk Platform.
 - [architecture/](architecture/) - Technical architecture documentation
 - [user-stories/](user-stories/) - Feature specifications as user stories
 - [investigations/](investigations/) - Ad-hoc codebase investigations
+  - [Unifying BoardRow and ChildIssueRow](investigations/2026-06-17-unified-issue-row.md) - BRDG-347: recommend extracting a shared row-surface state machine, not a full merge
 - [todo.md](todo.md) - Backlog and task tracking
 - [performance-log.md](performance-log.md) - Notable bottlenecks from `/implement-story` runs
 

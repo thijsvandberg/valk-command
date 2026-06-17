@@ -1,6 +1,6 @@
 # BRDG-347: Investigate Unifying the Board Row and Child Issue Row
 
-**Status:** Not Started
+**Status:** Done
 **Priority:** Medium
 **Type:** Investigation
 
@@ -63,13 +63,13 @@ A written investigation at `docs/investigations/2026-XX-XX-unified-issue-row.md`
 
 ## Acceptance Criteria
 
-- [ ] Both row components and their state/styling are catalogued in a comparison matrix
-- [ ] Prior unification stories (BRDG-208, BRDG-129, BRDG-130) reviewed and their lessons reflected
-- [ ] `TicketRow.tsx` scope confirmed (legacy/excluded or folded in)
-- [ ] A reasoned recommendation is documented (full merge / partial extract / keep-separate-with-drift-guard)
-- [ ] If merge is viable, a concrete component API and migration plan are included
-- [ ] Investigation doc saved under `docs/investigations/` and linked from `docs/index.md`
-- [ ] No production code changes in this story (investigation only)
+- [x] Both row components and their state/styling are catalogued in a comparison matrix
+- [x] Prior unification stories (BRDG-208, BRDG-129, BRDG-130) reviewed and their lessons reflected
+- [x] `TicketRow.tsx` scope confirmed (legacy/excluded or folded in) <!-- legacy, excluded: only consumed by Compare via DroppableSprintColumn, being phased out -->
+- [x] A reasoned recommendation is documented (full merge / partial extract / keep-separate-with-drift-guard) <!-- recommendation: (b) partial extract -->
+- [x] If merge is viable, a concrete component API and migration plan are included <!-- rowSurfaceClasses helper + accent variant + draft follow-up story -->
+- [x] Investigation doc saved under `docs/investigations/` and linked from `docs/index.md`
+- [x] No production code changes in this story (investigation only)
 
 ## Out of scope
 
