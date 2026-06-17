@@ -14,7 +14,9 @@ function row(partial: Partial<NewStoryRow> & { key: string }): NewStoryRow {
     assignee: null,
     reporter: partial.reporter ?? null,
     sprintName: partial.sprintName ?? null,
-    jiraCreatedAt: partial.jiraCreatedAt ?? "2026-06-16T08:00:00Z",
+    // Relative to the current day so the "today" date bucket assertion holds on
+    // any run date (bucketing is day-granular UTC). A fixed string would rot.
+    jiraCreatedAt: partial.jiraCreatedAt ?? new Date().toISOString(),
     key: partial.key,
   };
 }
