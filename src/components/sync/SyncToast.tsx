@@ -1,10 +1,11 @@
 "use client";
 
 import { useEffect, useRef } from "react";
-import { CheckCircle2, AlertTriangle, X, RotateCw } from "lucide-react";
+import { CheckCircle2, AlertTriangle, X, RotateCw, ExternalLink } from "lucide-react";
 import { useActivityContext } from "@/contexts/ActivityContext";
 import { Button } from "@/components/ui/Button";
 import { mapPushErrorMessage } from "@/lib/push-error-message";
+import { getJiraUrl } from "@/lib/jira-url";
 
 export function ActivityToast() {
   const { toasts, dismissToast, acknowledgeError, retryEntry } = useActivityContext();
@@ -22,16 +23,20 @@ export function ActivityToast() {
 
   return (
     <div className="fixed bottom-4 right-4 z-modal flex flex-col gap-2 pointer-events-none">
-      {visibleToasts.map((toast) => (
+      {visibleToasts.map((toast) => {
+        // Push failures carry the raw Jira reason; map it to clean toast copy
+        // (without the "Trim it" instruction) and link straight to the ticket so
+        // the PO can open it in Jira (BRDG-349). `scope` holds the issue key.
+        const isPush = toast.entry.type === "push-to-jira";
+        const ticketKey = isPush ? toast.entry.scope : null;
+        return (
         <ToastItem
           key={toast.id}
           id={toast.id}
           status={toast.entry.status}
           summary={toast.entry.summary}
-          // Push failures carry the raw Jira reason; map it to the same friendly
-          // copy the editor uses so the toast reads cleanly instead of "Jira 400:
-          // description: CONTENT_LIMIT_EXCEEDED" (BRDG-349).
-          error={toast.entry.type === "push-to-jira" ? mapPushErrorMessage(toast.entry.errorDetail) : toast.entry.errorDetail}
+          error={isPush ? mapPushErrorMessage(toast.entry.errorDetail, { short: true }) : toast.entry.errorDetail}
+          link={ticketKey ? { href: getJiraUrl(ticketKey), label: `Open ${ticketKey} in Jira` } : undefined}
           retryable={toast.entry.status === "failed" && ["sprint-sync", "ticket-sync", "comment-sync", "incremental-sync"].includes(toast.entry.type)}
           onRetry={() => retryEntry(toast.id)}
           onDismiss={() => {
@@ -42,7 +47,8 @@ export function ActivityToast() {
             }
           }}
         />
-      ))}
+        );
+      })}
     </div>
   );
 }
@@ -52,6 +58,7 @@ function ToastItem({
   status,
   summary,
   error,
+  link,
   retryable,
   onRetry,
   onDismiss,
@@ -60,6 +67,7 @@ function ToastItem({
   status: "success" | "failed" | "running" | "cancelled";
   summary: string | null;
   error: string | null;
+  link?: { href: string; label: string };
   retryable?: boolean;
   onRetry?: () => void;
   onDismiss: () => void;
@@ -103,6 +111,17 @@ function ToastItem({
         <p className="text-label text-text-tertiary font-[var(--font-body)] line-clamp-2 mt-0.5">
           {isError ? (error ?? "Unknown error") : isCancelled ? "Cancelled by user" : (summary ?? "Done")}
         </p>
+        {isError && link && (
+          <a
+            href={link.href}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="mt-1.5 inline-flex items-center gap-1 text-label font-medium text-[var(--color-brand-400)] underline-offset-2 transition-colors duration-150 hover:text-[var(--color-brand-300)] hover:underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-500)]/50"
+          >
+            {link.label}
+            <ExternalLink className="h-3 w-3" strokeWidth={2} />
+          </a>
+        )}
       </div>
       <div className="flex items-center gap-0.5 shrink-0 mt-0.5">
         {retryable && onRetry && (

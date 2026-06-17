@@ -8,6 +8,18 @@ describe("mapPushErrorMessage", () => {
     ).toBe("This description is too large for Jira. Trim it and try again.");
   });
 
+  it("drops the trim instruction for the short (toast) variant", () => {
+    expect(
+      mapPushErrorMessage("Jira 400: description: CONTENT_LIMIT_EXCEEDED", { short: true }),
+    ).toBe("This description is too large for Jira.");
+  });
+
+  it("ignores the short flag for non-content-limit reasons (raw detail kept)", () => {
+    expect(
+      mapPushErrorMessage("Jira 403: you are not a project admin", { short: true }),
+    ).toBe("Jira 403: you are not a project admin");
+  });
+
   it("maps the human content-limit phrasing too", () => {
     expect(
       mapPushErrorMessage("Jira 400: description: The content exceeds the maximum allowed length"),
