@@ -16,7 +16,10 @@
     "test:watch": "vitest",
     "db:push": "drizzle-kit push",
     "db:generate": "drizzle-kit generate",
-    "db:migrate": "drizzle-kit migrate"
+    "db:migrate": "drizzle-kit migrate",
+    "vrw:dev": "npm --prefix /Users/thijsvandenberg/valk-workspace/tools/valk-remote-workspace run dev",
+    "vrw:build": "npm --prefix /Users/thijsvandenberg/valk-workspace/tools/valk-remote-workspace run build",
+    "vrw:prod": "npm --prefix /Users/thijsvandenberg/valk-workspace/tools/valk-remote-workspace run build && npm --prefix /Users/thijsvandenberg/valk-workspace/tools/valk-remote-workspace start"
   },
   "dependencies": {
     "@clerk/nextjs": "^7.4.2",
