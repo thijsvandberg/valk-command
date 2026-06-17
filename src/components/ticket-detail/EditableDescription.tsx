@@ -150,6 +150,13 @@ export function EditableDescription({
     "Estimate — Jira measures the rendered content, so the exact limit may differ.";
   const charsLeft = Math.max(0, JIRA_DESCRIPTION_LIMIT - value.length);
 
+  // The over-limit banner is a WARNING (orange) while it is only our estimate:
+  // the push is still allowed. It escalates to an ERROR (red) once a push has
+  // actually been rejected by Jira for the content limit (sizePushError) - the
+  // real failure, not a guess. Trimming back under the limit clears both.
+  const overFailed = descSize.state === "over" && sizePushError;
+  const overWarn = descSize.state === "over" && !sizePushError;
+
   // Single full-width notice row beneath the toolbar buttons. Priority: a real
   // non-size push failure, then the live over/near size estimate.
   const noticeRow: React.ReactNode = otherPushError ? (
@@ -161,18 +168,32 @@ export function EditableDescription({
       <AlertTriangle size={14} strokeWidth={2} className="shrink-0 text-[var(--color-status-error)]" />
       <span className="text-body-sm font-medium text-[var(--color-status-error)]">{otherPushError}</span>
     </div>
-  ) : descSize.state === "over" ? (
+  ) : overFailed ? (
     <div
       className="flex items-center gap-2.5 border-t border-[var(--color-status-error)]/20 bg-[var(--color-status-error)]/10 px-3.5 py-2.5"
       style={{ animation: "fadeInUp 0.18s ease-out" }}
       role="alert"
-      title={APPROX_TITLE}
     >
       <AlertTriangle size={14} strokeWidth={2} className="shrink-0 text-[var(--color-status-error)]" />
       <span className="text-body-sm font-medium text-[var(--color-status-error)]">
-        Likely too large for Jira &mdash; trim before pushing
+        Jira rejected this description &mdash; it is too large. Trim it and push again.
       </span>
       <span className="ml-auto shrink-0 rounded-full bg-[var(--color-status-error)]/15 px-2.5 py-0.5 text-body-sm font-semibold tabular-nums text-[var(--color-status-error)]">
+        ~{descSize.over.toLocaleString()} characters over
+      </span>
+    </div>
+  ) : overWarn ? (
+    <div
+      className="flex items-center gap-2.5 border-t border-[var(--color-status-warning)]/20 bg-[var(--color-status-warning)]/10 px-3.5 py-2.5"
+      style={{ animation: "fadeInUp 0.18s ease-out" }}
+      role="status"
+      title={APPROX_TITLE}
+    >
+      <AlertTriangle size={14} strokeWidth={2} className="shrink-0 text-[var(--color-status-warning)]" />
+      <span className="text-body-sm font-medium text-[var(--color-status-warning)]">
+        Likely too large for Jira &mdash; trim before pushing
+      </span>
+      <span className="ml-auto shrink-0 rounded-full bg-[var(--color-status-warning)]/15 px-2.5 py-0.5 text-body-sm font-semibold tabular-nums text-[var(--color-status-warning)]">
         ~{descSize.over.toLocaleString()} characters over
       </span>
     </div>

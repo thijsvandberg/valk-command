@@ -147,7 +147,7 @@ describe("useTicketDetailPage", () => {
     expect(result.current.pushError).toBeNull();
   });
 
-  it("surfaces the Jira content-limit reason in the toolbar and a toast (BRDG-349)", async () => {
+  it("surfaces the Jira content-limit reason in the toolbar banner (BRDG-349)", async () => {
     vi.mocked(tickets.pushToJira).mockRejectedValue(
       new ApiError(502, {
         error: "Failed to push to Jira",
@@ -162,7 +162,9 @@ describe("useTicketDetailPage", () => {
 
     const friendly = "This description is too large for Jira. Trim it and try again.";
     expect(result.current.pushError).toBe(friendly);
-    expect(result.current.toast).toBe(friendly);
+    // The bottom-right failure toast is owned by the global ActivityToast, so the
+    // hook must NOT also fire its own toast (would double-toast).
+    expect(result.current.toast).toBeNull();
     expect(result.current.isPushing).toBe(false);
   });
 
@@ -180,7 +182,7 @@ describe("useTicketDetailPage", () => {
     await act(async () => { await result.current.handlePushToJira(); });
 
     expect(result.current.pushError).toBe("Jira 403: you are not a project admin");
-    expect(result.current.toast).toBe("Jira 403: you are not a project admin");
+    expect(result.current.toast).toBeNull();
   });
 
   it("uses the error field when a failed push has no detail (BRDG-349)", async () => {

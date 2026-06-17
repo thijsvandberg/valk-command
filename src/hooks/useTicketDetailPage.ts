@@ -328,11 +328,12 @@ export function useTicketDetailPage(key: string) {
       // The push route returns a non-2xx with { error, code, detail }, where
       // `detail` carries the parsed Jira reason (e.g. CONTENT_LIMIT_EXCEEDED).
       // apiFetch throws an ApiError that retains that body, so surface the real
-      // reason in both the toolbar and a failure toast instead of a bare message.
+      // reason in the editor toolbar banner. The bottom-right failure toast is
+      // owned by the global ActivityToast (driven by the logged activity entry),
+      // so we deliberately do NOT showToast here - that would double-toast.
       const body = err instanceof ApiError ? err.body : null;
       const message = mapPushErrorMessage(body?.detail ?? body?.error);
       setPushError(message);
-      showToast(message);
     } finally {
       setIsPushing(false);
     }

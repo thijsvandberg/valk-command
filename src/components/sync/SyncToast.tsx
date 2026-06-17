@@ -4,6 +4,7 @@ import { useEffect, useRef } from "react";
 import { CheckCircle2, AlertTriangle, X, RotateCw } from "lucide-react";
 import { useActivityContext } from "@/contexts/ActivityContext";
 import { Button } from "@/components/ui/Button";
+import { mapPushErrorMessage } from "@/lib/push-error-message";
 
 export function ActivityToast() {
   const { toasts, dismissToast, acknowledgeError, retryEntry } = useActivityContext();
@@ -27,7 +28,10 @@ export function ActivityToast() {
           id={toast.id}
           status={toast.entry.status}
           summary={toast.entry.summary}
-          error={toast.entry.errorDetail}
+          // Push failures carry the raw Jira reason; map it to the same friendly
+          // copy the editor uses so the toast reads cleanly instead of "Jira 400:
+          // description: CONTENT_LIMIT_EXCEEDED" (BRDG-349).
+          error={toast.entry.type === "push-to-jira" ? mapPushErrorMessage(toast.entry.errorDetail) : toast.entry.errorDetail}
           retryable={toast.entry.status === "failed" && ["sprint-sync", "ticket-sync", "comment-sync", "incremental-sync"].includes(toast.entry.type)}
           onRetry={() => retryEntry(toast.id)}
           onDismiss={() => {
@@ -96,7 +100,7 @@ function ToastItem({
         <p className="text-body-sm font-medium text-text-primary font-[var(--font-body)]">
           {isError ? "Action failed" : isCancelled ? "Action cancelled" : "Action complete"}
         </p>
-        <p className="text-label text-text-tertiary font-[var(--font-body)] truncate mt-0.5">
+        <p className="text-label text-text-tertiary font-[var(--font-body)] line-clamp-2 mt-0.5">
           {isError ? (error ?? "Unknown error") : isCancelled ? "Cancelled by user" : (summary ?? "Done")}
         </p>
       </div>

@@ -669,12 +669,26 @@ describe("EditableDescription no-op draft persistence (BRDG-350)", () => {
       expect(screen.queryByText(/over/i)).not.toBeInTheDocument();
     });
 
-    it("shows the approximate amount over once the limit is exceeded", () => {
+    it("warns (not errors) while only the estimate says it is over", () => {
       renderDesc({ initialDescription: "x".repeat(32767 + 1240) });
       fireEvent.click(screen.getByTestId("rendered-markdown"));
       expect(screen.getByText("~1,240 characters over")).toBeInTheDocument();
       expect(screen.getByText(/Likely too large for Jira/)).toBeInTheDocument();
+      // Still a warning - no confirmed-failure copy yet.
+      expect(screen.queryByText(/Jira rejected this description/)).not.toBeInTheDocument();
       expect(screen.queryByText("Getting close to Jira's size limit")).not.toBeInTheDocument();
+    });
+
+    it("escalates to a confirmed error after a content-limit push actually fails", () => {
+      renderDesc({
+        initialDescription: "x".repeat(32767 + 1240),
+        pushError: "This description is too large for Jira. Trim it and try again.",
+      });
+      fireEvent.click(screen.getByTestId("rendered-markdown"));
+      expect(screen.getByText(/Jira rejected this description/)).toBeInTheDocument();
+      expect(screen.getByText("~1,240 characters over")).toBeInTheDocument();
+      // The optimistic warning copy is replaced by the confirmed-failure copy.
+      expect(screen.queryByText(/Likely too large for Jira/)).not.toBeInTheDocument();
     });
 
     it("transitions from the over banner to the near hint as the PO trims back under the limit", () => {
@@ -696,10 +710,8 @@ describe("EditableDescription no-op draft persistence (BRDG-350)", () => {
         pushError: "This description is too large for Jira. Trim it and try again.",
       });
       fireEvent.click(screen.getByTestId("rendered-markdown"));
-      // Not over limit anymore -> the hard content-limit error is suppressed.
-      expect(
-        screen.queryByText("This description is too large for Jira. Trim it and try again."),
-      ).not.toBeInTheDocument();
+      // Not over limit anymore -> the confirmed-failure error is suppressed.
+      expect(screen.queryByText(/Jira rejected this description/)).not.toBeInTheDocument();
       expect(screen.getByText("Getting close to Jira's size limit")).toBeInTheDocument();
     });
 
