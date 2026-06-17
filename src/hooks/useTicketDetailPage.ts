@@ -339,6 +339,11 @@ export function useTicketDetailPage(key: string) {
     }
   }, [key, handleRemoteChanged, mutateTicket, showToast, syncEditState, localEdits]);
 
+  // Drop a stale push failure once the PO edits the description again (BRDG-349):
+  // a confirmed content-limit rejection outranks our estimate, so the editor needs
+  // an explicit way to clear it when the content changes.
+  const clearPushError = useCallback(() => setPushError(null), []);
+
   // "Reload draft" on the cross-tab conflict banner: adopt the other tab's
   // version. Fresh tokens reseed from the revalidated payload when the key
   // bump remounts both editors.
@@ -441,6 +446,7 @@ export function useTicketDetailPage(key: string) {
     discardError,
     isPushing,
     pushError,
+    clearPushError,
     overrideConfirmed,
     setOverrideConfirmed,
     draftDiscardKey,

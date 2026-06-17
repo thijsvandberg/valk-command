@@ -84,6 +84,7 @@ export interface TicketTabContentProps {
   // Push
   isPushing: boolean;
   pushError: string | null;
+  onClearPushError?: () => void;
   overrideConfirmed: boolean;
   onOverrideChange: (v: boolean) => void;
   // Handlers
@@ -136,6 +137,7 @@ export function TicketTabContent({
   discardError,
   isPushing,
   pushError,
+  onClearPushError,
   overrideConfirmed,
   onOverrideChange,
   onDiscardDraft,
@@ -358,6 +360,7 @@ export function TicketTabContent({
                 onPushToJira={onPushToJira}
                 isPushing={isPushing}
                 pushError={pushError}
+                onClearPushError={onClearPushError}
                 showConflictWarning={showConflictWarning}
                 overrideConfirmed={overrideConfirmed}
                 onOverrideChange={onOverrideChange}

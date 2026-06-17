@@ -79,6 +79,7 @@ function renderDesc(overrides: Partial<React.ComponentProps<typeof EditableDescr
       onPushToJira={overrides.onPushToJira}
       isPushing={overrides.isPushing}
       pushError={overrides.pushError}
+      onClearPushError={overrides.onClearPushError}
       showConflictWarning={overrides.showConflictWarning}
       overrideConfirmed={overrides.overrideConfirmed}
       onOverrideChange={overrides.onOverrideChange}
@@ -686,9 +687,20 @@ describe("EditableDescription no-op draft persistence (BRDG-350)", () => {
       });
       fireEvent.click(screen.getByTestId("rendered-markdown"));
       expect(screen.getByText(/Jira rejected this description/)).toBeInTheDocument();
-      expect(screen.getByText("~1,240 characters over")).toBeInTheDocument();
       // The optimistic warning copy is replaced by the confirmed-failure copy.
       expect(screen.queryByText(/Likely too large for Jira/)).not.toBeInTheDocument();
+    });
+
+    it("shows the confirmed error even when the estimate still reads under the limit", () => {
+      // Jira measures the rendered ADF, which can exceed our markdown estimate, so a
+      // real content-limit rejection must outrank an "under limit" estimate (BRDG-349).
+      renderDesc({
+        initialDescription: "x".repeat(30000),
+        pushError: "This description is too large for Jira. Trim it and try again.",
+      });
+      fireEvent.click(screen.getByTestId("rendered-markdown"));
+      expect(screen.getByText(/Jira rejected this description/)).toBeInTheDocument();
+      expect(screen.queryByText("Getting close to Jira's size limit")).not.toBeInTheDocument();
     });
 
     it("transitions from the over banner to the near hint as the PO trims back under the limit", () => {
@@ -702,17 +714,19 @@ describe("EditableDescription no-op draft persistence (BRDG-350)", () => {
       expect(screen.getByText("Getting close to Jira's size limit")).toBeInTheDocument();
     });
 
-    it("clears a stale content-limit push error once trimmed back under the limit", () => {
-      // A push failed while over the limit; the hard error must not linger once the
-      // content is no longer over (BRDG-349 follow-up).
+    it("clears a stale push failure as soon as the PO edits the description", () => {
+      // Editing invalidates the previous push result, so the confirmed-failure
+      // banner must be dismissed via onClearPushError (BRDG-349).
+      const onClearPushError = vi.fn();
       renderDesc({
         initialDescription: "x".repeat(30000),
         pushError: "This description is too large for Jira. Trim it and try again.",
+        onClearPushError,
       });
       fireEvent.click(screen.getByTestId("rendered-markdown"));
-      // Not over limit anymore -> the confirmed-failure error is suppressed.
-      expect(screen.queryByText(/Jira rejected this description/)).not.toBeInTheDocument();
-      expect(screen.getByText("Getting close to Jira's size limit")).toBeInTheDocument();
+      expect(onClearPushError).not.toHaveBeenCalled();
+      fireEvent.change(screen.getByTestId("editor-input"), { target: { value: "x".repeat(28000) } });
+      expect(onClearPushError).toHaveBeenCalled();
     });
 
     it("keeps showing a non-size push error", () => {

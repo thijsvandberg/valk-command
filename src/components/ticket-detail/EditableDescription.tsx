@@ -64,6 +64,7 @@ export function EditableDescription({
   onPushToJira,
   isPushing,
   pushError,
+  onClearPushError,
   showConflictWarning,
   overrideConfirmed,
   onOverrideChange,
@@ -83,6 +84,8 @@ export function EditableDescription({
   onPushToJira?: (pushed?: { description?: string }) => Promise<void>;
   isPushing?: boolean;
   pushError?: string | null;
+  /** Clears a stale push failure once the PO edits the description (BRDG-349). */
+  onClearPushError?: () => void;
   showConflictWarning?: boolean;
   overrideConfirmed?: boolean;
   onOverrideChange?: (val: boolean) => void;
@@ -136,29 +139,28 @@ export function EditableDescription({
   // from `value` (no state/effect) - approximate, see jira-content-limits.ts.
   const descSize = describeDescriptionSize(value.length);
 
-  // A failed push reports its reason via `pushError`. A content-limit failure is
-  // really the same state as "over limit", so once the PO trims back under the
-  // limit we suppress that stale hard error and let the live size state speak -
-  // a non-size push error (e.g. permissions) still shows until the next push.
+  // A failed push reports its reason via `pushError`. A content-limit rejection
+  // is the authoritative truth (Jira measured the rendered ADF), so it outranks
+  // our local estimate - even when the estimate still reads "near/under", because
+  // the rendered ADF is larger than the markdown we count. The stale failure is
+  // cleared the moment the PO edits the description (handleChange -> onClearPushError).
   const sizePushError = pushError === CONTENT_LIMIT_MESSAGE;
   const otherPushError = pushError && !sizePushError ? pushError : null;
 
   // The size figures are an estimate: Jira validates the rendered ADF, not the raw
   // markdown we count here, so the copy and the "~" prefix keep it advisory rather
-  // than a hard cutoff. The push toast remains the authoritative check.
+  // than a hard cutoff. The push toast / confirmed-failure banner is authoritative.
   const APPROX_TITLE =
     "Estimate — Jira measures the rendered content, so the exact limit may differ.";
   const charsLeft = Math.max(0, JIRA_DESCRIPTION_LIMIT - value.length);
 
   // The over-limit banner is a WARNING (orange) while it is only our estimate:
-  // the push is still allowed. It escalates to an ERROR (red) once a push has
-  // actually been rejected by Jira for the content limit (sizePushError) - the
-  // real failure, not a guess. Trimming back under the limit clears both.
-  const overFailed = descSize.state === "over" && sizePushError;
+  // the push is still allowed. It escalates to a confirmed ERROR (red) once a push
+  // is actually rejected by Jira for the content limit, regardless of the estimate.
   const overWarn = descSize.state === "over" && !sizePushError;
 
   // Single full-width notice row beneath the toolbar buttons. Priority: a real
-  // non-size push failure, then the live over/near size estimate.
+  // push failure (confirmed by Jira), then the live over/near size estimate.
   const noticeRow: React.ReactNode = otherPushError ? (
     <div
       className="flex items-center gap-2.5 border-t border-[var(--color-status-error)]/20 bg-[var(--color-status-error)]/10 px-3.5 py-2.5"
@@ -168,7 +170,7 @@ export function EditableDescription({
       <AlertTriangle size={14} strokeWidth={2} className="shrink-0 text-[var(--color-status-error)]" />
       <span className="text-body-sm font-medium text-[var(--color-status-error)]">{otherPushError}</span>
     </div>
-  ) : overFailed ? (
+  ) : sizePushError ? (
     <div
       className="flex items-center gap-2.5 border-t border-[var(--color-status-error)]/20 bg-[var(--color-status-error)]/10 px-3.5 py-2.5"
       style={{ animation: "fadeInUp 0.18s ease-out" }}
@@ -177,9 +179,6 @@ export function EditableDescription({
       <AlertTriangle size={14} strokeWidth={2} className="shrink-0 text-[var(--color-status-error)]" />
       <span className="text-body-sm font-medium text-[var(--color-status-error)]">
         Jira rejected this description &mdash; it is too large. Trim it and push again.
-      </span>
-      <span className="ml-auto shrink-0 rounded-full bg-[var(--color-status-error)]/15 px-2.5 py-0.5 text-body-sm font-semibold tabular-nums text-[var(--color-status-error)]">
-        ~{descSize.over.toLocaleString()} characters over
       </span>
     </div>
   ) : overWarn ? (
@@ -301,6 +300,9 @@ export function EditableDescription({
 
   const handleChange = useCallback((newValue: string) => {
     setLocalValue(newValue);
+    // Any edit invalidates the previous push result, so drop a stale failure
+    // banner (e.g. the content-limit error) the moment the PO starts fixing it.
+    if (pushError) onClearPushError?.();
     if (!markdownEqualIgnoringSpacing(newValue, initialDescription)) {
       if (!localEditNotifiedRef.current) {
         localEditNotifiedRef.current = true;
@@ -315,7 +317,7 @@ export function EditableDescription({
       autoSaveTimerRef.current = null;
       setSaveState("idle");
     }
-  }, [initialDescription, onLocalEdit, autoSaveDraft]);
+  }, [initialDescription, onLocalEdit, autoSaveDraft, pushError, onClearPushError]);
 
   /**
    * Flush the pending debounce right now (close paths: Escape, Cmd-S, push).

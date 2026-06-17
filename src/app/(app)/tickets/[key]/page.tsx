@@ -659,6 +659,7 @@ export default function TicketDetailPage({
           discardError={h.discardError}
           isPushing={h.isPushing}
           pushError={h.pushError}
+          onClearPushError={h.clearPushError}
           overrideConfirmed={h.overrideConfirmed}
           onOverrideChange={h.setOverrideConfirmed}
           onDiscardDraft={h.handleDiscardDraft}
