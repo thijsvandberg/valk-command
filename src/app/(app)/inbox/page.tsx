@@ -344,6 +344,7 @@ export default function InboxPage() {
                                   isSelected={row.key === selectedKey}
                                   someChecked={checkedKeys.size > 0}
                                   isDragActive={false}
+                                  hideRowAccent
                                   tags={rowTags}
                                   hideEpic={groupBy === "epic"}
                                   showSprint={groupBy !== "sprint"}
