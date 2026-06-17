@@ -119,6 +119,8 @@ Do it in two phases, lowest-risk first, so the adapter and tweaks are proven bef
 
 ## Proposed follow-up stories (draft)
 
+> Captured as **BRDG-367** (`docs/user-stories/BRDG-367-epic-children-adopt-board-row.md`), which carries both phases plus the clean-tree / no-parallel-process / PO-confirmation guardrails.
+
 **BRDG-XXX (Phase 1): Render the epic-children flat list with the shared `BoardRow`**
 
 - [ ] Add an `epicChildToTicket()` adapter (lightweight `Ticket` from `EpicChild`)
