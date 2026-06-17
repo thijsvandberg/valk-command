@@ -14,6 +14,7 @@ import { Checkbox } from "@/components/shared/Checkbox";
 import { RichEditor } from "@/components/rich-editor/RichEditor";
 import { StoryDiff } from "@/components/story-diff/StoryDiff";
 import { usePrismLanguages } from "@/hooks/usePrismLanguages";
+import { describeDescriptionSize } from "@/lib/jira-content-limits";
 
 /** Resolve attachment placeholders in a local edit value. */
 export function resolveLocalValue(
@@ -130,6 +131,9 @@ export function EditableDescription({
 
   const hasLocalEdit = localValue !== null;
   const value = localValue ?? initialDescription;
+  // Live size feedback against Jira's content limit (BRDG-349). Derived in render
+  // from `value` (no state/effect) - approximate, see jira-content-limits.ts.
+  const descSize = describeDescriptionSize(value.length);
 
   // Ref mirrors for unmount flush (cleanup closures cannot read latest state)
   const valueRef = useRef(value);
@@ -477,6 +481,23 @@ export function EditableDescription({
                   />
                   <span className="text-caption text-text-tertiary">Override remote</span>
                 </label>
+              )}
+              {descSize.state !== "hidden" && (
+                <span
+                  className={`flex items-center pr-3 text-label font-medium tabular-nums ${
+                    descSize.state === "over" ? "text-[var(--color-status-error)]" : "text-text-muted"
+                  }`}
+                  style={{ transition: "color 0.15s ease, opacity 0.15s ease" }}
+                  title={
+                    descSize.state === "over"
+                      ? "This description exceeds Jira's size limit and may fail to push."
+                      : "Approaching Jira's description size limit."
+                  }
+                >
+                  {descSize.state === "over"
+                    ? `${descSize.over.toLocaleString()} over limit`
+                    : "Near Jira size limit"}
+                </span>
               )}
               {/* Autosave is the save; this only reports it (BRDG-340). */}
               {saveState !== "idle" && (

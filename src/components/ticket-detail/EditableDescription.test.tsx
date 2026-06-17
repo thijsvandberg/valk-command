@@ -648,4 +648,28 @@ describe("EditableDescription no-op draft persistence (BRDG-350)", () => {
       );
     });
   });
+
+  // BRDG-349: live size indicator in the editor toolbar.
+  describe("Jira size indicator", () => {
+    it("stays hidden when the description is comfortably under the limit", () => {
+      renderDesc({ initialDescription: "Short enough" });
+      fireEvent.click(screen.getByTestId("rendered-markdown"));
+      expect(screen.queryByText(/Jira size limit/i)).not.toBeInTheDocument();
+      expect(screen.queryByText(/over limit/i)).not.toBeInTheDocument();
+    });
+
+    it("shows a subtle near-limit hint within ~10% of the limit", () => {
+      renderDesc({ initialDescription: "x".repeat(30000) });
+      fireEvent.click(screen.getByTestId("rendered-markdown"));
+      expect(screen.getByText("Near Jira size limit")).toBeInTheDocument();
+      expect(screen.queryByText(/over limit/i)).not.toBeInTheDocument();
+    });
+
+    it("shows the exact amount over once the limit is exceeded", () => {
+      renderDesc({ initialDescription: "x".repeat(32767 + 1240) });
+      fireEvent.click(screen.getByTestId("rendered-markdown"));
+      expect(screen.getByText("1,240 over limit")).toBeInTheDocument();
+      expect(screen.queryByText("Near Jira size limit")).not.toBeInTheDocument();
+    });
+  });
 });
