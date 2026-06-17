@@ -35,6 +35,7 @@ export type EditableField =
   | "guestimation"
   | "storyPoints"
   | "openSubtaskCount"
+  | "totalSubtaskCount"
   | "poStatus"
   | "readiness";
 

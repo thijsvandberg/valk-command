@@ -209,14 +209,16 @@ export const DEFAULT_SORT: { field: SortField; direction: SortDir } = { field: "
 /**
  * Two-state cycle for the SP/BV header chips: clicking an inactive metric sorts it
  * descending (heaviest first), clicking the active metric again clears back to the
- * regular rank order. Ascending is intentionally skipped (not relevant for these
- * metrics). Clicking a different metric jumps straight to its descending sort.
+ * regular rank order. Toggling off only happens when this metric is already the active
+ * DESCENDING sort, so an ascending order left over from the sort menu is corrected to
+ * descending on the first click rather than clearing it. Ascending is never produced by
+ * the chip (not relevant for these metrics).
  */
 export function cycleMetricSort(
   current: { field: SortField; direction: SortDir },
   metricField: SortField,
 ): { field: SortField; direction: SortDir } {
-  if (current.field === metricField) return { ...DEFAULT_SORT };
+  if (current.field === metricField && current.direction === "desc") return { ...DEFAULT_SORT };
   return { field: metricField, direction: "desc" };
 }
 

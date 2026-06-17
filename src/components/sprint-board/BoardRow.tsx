@@ -12,7 +12,8 @@ import { Checkbox } from "@/components/shared/Checkbox";
 import type { InlineTagId } from "@/components/sprint-board/filter-bar-types";
 import { Avatar } from "@/components/shared/Avatar";
 import { Flag, MessageSquare, Pencil, Check, X, Boxes, IterationCw, GripVertical, AlertTriangle, Scissors, Clock } from "lucide-react";
-import { OpenSubtasksIndicator } from "@/components/sprint-board/OpenSubtasksIndicator";
+import { WarningBadge } from "@/components/sprint-board/WarningBadge";
+import { type WarningKind } from "@/components/sprint-board/warning-filter";
 import type { TicketSessionEntry } from "@/hooks/useTicketSessionMap";
 import { RefinementGemTrigger, type RefinementCardTicketInfo } from "@/components/sprint-board/RefinementGemHoverCard";
 import type { PipelineHealthEntry, LastDeployedInfo } from "@/hooks/usePipelines";
@@ -46,11 +47,13 @@ export interface BoardRowBaseProps {
   /** Suppress the epic chip (e.g. when the board is grouped by epic). */
   hideEpic?: boolean;
   /**
-   * Estimate-hygiene problems for this ticket, shown as width-gated labels while the
+   * Estimate-hygiene problems for this ticket, shown as width-gated badges while the
    * warning filter mode is active (BRDG-313). Empty/undefined renders nothing, so the
-   * labels only appear when the parent sets them (i.e. while the mode is on).
+   * badges only appear when the parent sets them (i.e. while the mode is on). Some
+   * kinds are interactive: "no_subtasks" opens the add-subtasks modal and
+   * "closed_with_open_subtasks" opens the subtask popover (BRDG-366).
    */
-  warningLabels?: string[];
+  warnings?: WarningKind[];
   /** Show the sprint name inline (when multiple sprints are visible: All view / saved view). */
   showSprint?: boolean;
   sprintNameMap?: Record<string, string>;
@@ -81,6 +84,8 @@ export interface BoardRowBaseProps {
   onSprintChange?: (key: string, sprintId: string | null) => void;
   sprints?: Sprint[];
   onCloseSubtasks?: (key: string) => Promise<void>;
+  /** Optimistically record subtasks added from the row's "No subtasks" badge (BRDG-366). */
+  onSubtasksAdded?: (key: string, count: number) => void;
   editingTitleKey?: string | null;
   onEditingTitleKeyChange?: (key: string | null) => void;
   reviewPopoverKey?: string | null;
@@ -153,7 +158,7 @@ export const BoardRow = memo(forwardRef<HTMLTableRowElement, BoardRowBaseProps>(
     isDragActive,
     tags = ALL_TAGS,
     hideEpic = false,
-    warningLabels,
+    warnings,
     showSprint = false,
     sprintNameMap = {},
     readinessMap = {},
@@ -179,6 +184,7 @@ export const BoardRow = memo(forwardRef<HTMLTableRowElement, BoardRowBaseProps>(
     onSprintChange,
     sprints,
     onCloseSubtasks,
+    onSubtasksAdded,
     editingTitleKey = null,
     onEditingTitleKeyChange,
     reviewPopoverKey = null,
@@ -510,14 +516,6 @@ export const BoardRow = memo(forwardRef<HTMLTableRowElement, BoardRowBaseProps>(
             <>
               {/* Title — the only element that yields space (BRDG-239). */}
               <div className="flex min-w-0 flex-1 items-center gap-1.5 text-text-primary">
-                {/* Warning: open subtasks on an otherwise-done ticket. Self-hides in every other case. */}
-                <OpenSubtasksIndicator
-                  ticketKey={ticket.key}
-                  jiraStatus={ticket.jiraStatus}
-                  openCount={ticket.openSubtaskCount ?? 0}
-                  totalCount={ticket.totalSubtaskCount ?? 0}
-                  onCloseSubtasks={onCloseSubtasks}
-                />
                 <span className="min-w-0 truncate text-body-lg">{ticket.title}</span>
                 {/* Split target title (BRDG-325): the destination story, muted, after the
                     source. Yields width with the source title. */}
@@ -547,25 +545,6 @@ export const BoardRow = memo(forwardRef<HTMLTableRowElement, BoardRowBaseProps>(
                   </button>
                 )}
               </div>
-
-              {/* Per-row estimate-hygiene labels (BRDG-313). Shown only while the warning
-                  filter mode is active (the parent only passes warningLabels then) and only
-                  when the row is wide enough: gated by display (not opacity) so narrow rows
-                  reserve no space. shrink-0 + placement after the truncating title means the
-                  title yields width first. Same warning tokens as the header triangle. */}
-              {warningLabels && warningLabels.length > 0 && (
-                <span className="hidden shrink-0 items-center gap-1.5 @[52rem]/boardrow:inline-flex">
-                  {warningLabels.map((labelText) => (
-                    <span
-                      key={labelText}
-                      className="inline-flex h-5 items-center gap-1 whitespace-nowrap rounded-md px-2 text-[11px] leading-none text-[color-mix(in_srgb,var(--color-status-warning)_80%,var(--color-text-secondary))] bg-[color-mix(in_srgb,var(--color-status-warning)_6%,transparent)]"
-                    >
-                      <AlertTriangle size={11} strokeWidth={2} className="shrink-0 opacity-70" aria-hidden />
-                      {labelText}
-                    </span>
-                  ))}
-                </span>
-              )}
 
               {/* Hover-revealed placeholders for the still-empty planning fields
                   (BRDG-310). They reserve no space (HoverRevealSlot) and open on row
@@ -603,6 +582,28 @@ export const BoardRow = memo(forwardRef<HTMLTableRowElement, BoardRowBaseProps>(
                     richTooltip
                   />
                 </HoverRevealSlot>
+              )}
+
+              {/* Per-row estimate-hygiene badges (BRDG-313/366). Shown only while the warning
+                  filter mode is active (the parent only passes warnings then) and only when the
+                  row is wide enough: gated by display (not opacity) so narrow rows reserve no
+                  space. Rendered AFTER the hover-revealed planning placeholders above so that
+                  revealing those placeholders on hover never shifts these badges out from under
+                  the cursor - the placeholders open to the badges' left and the badges stay put
+                  (BRDG-366). Same warning tokens as the header triangle; "No subtasks" and
+                  "Closed with open subtasks" are interactive (WarningBadge). */}
+              {warnings && warnings.length > 0 && (
+                <span className="hidden shrink-0 items-center gap-1.5 @[52rem]/boardrow:inline-flex">
+                  {warnings.map((kind) => (
+                    <WarningBadge
+                      key={kind}
+                      kind={kind}
+                      ticket={ticket}
+                      onCloseSubtasks={onCloseSubtasks}
+                      onSubtasksAdded={onSubtasksAdded}
+                    />
+                  ))}
+                </span>
               )}
 
               {/* Notes + refinement signals, placed just left of the epic chip. */}

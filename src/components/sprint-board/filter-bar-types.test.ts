@@ -6,8 +6,13 @@ describe("cycleMetricSort", () => {
     expect(cycleMetricSort(DEFAULT_SORT, "points")).toEqual({ field: "points", direction: "desc" });
   });
 
-  it("second click on the active metric clears back to the default rank order", () => {
+  it("second click on the active descending metric clears back to the default rank order", () => {
     expect(cycleMetricSort({ field: "points", direction: "desc" }, "points")).toEqual(DEFAULT_SORT);
+  });
+
+  it("corrects an ascending sort left over from the sort menu to descending instead of clearing it", () => {
+    expect(cycleMetricSort({ field: "points", direction: "asc" }, "points")).toEqual({ field: "points", direction: "desc" });
+    expect(cycleMetricSort({ field: "bv", direction: "asc" }, "bv")).toEqual({ field: "bv", direction: "desc" });
   });
 
   it("switching to a different metric jumps straight to its descending sort", () => {

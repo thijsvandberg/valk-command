@@ -197,6 +197,18 @@ export function useTicketActions(deps: TicketActionsDeps) {
     }
   }, []);
 
+  // Subtasks were created from the board (BRDG-366 add-subtasks modal). The writes
+  // already succeeded, so overlay the new total immediately and mark it confirmed:
+  // this clears the "No subtasks" warning before the list refetch catches up (the
+  // warning is computed from totalSubtaskCount). Self-heal drops the overlay once the
+  // server reflects the count.
+  const handleSubtasksAdded = useCallback((key: string, addedCount: number) => {
+    if (addedCount <= 0) return;
+    const current = apiTickets?.find((t) => t.key === key)?.totalSubtaskCount ?? 0;
+    registerPendingEdit(key, "totalSubtaskCount", current + addedCount, Date.now());
+    confirmPendingEdit(key, "totalSubtaskCount");
+  }, [apiTickets]);
+
   // Reconcile the optimistic PO maps with fresh API data. Values follow the SWR list
   // (so edits made on other surfaces, e.g. the ticket detail page, show up when the
   // board re-renders) except for keys with an in-flight save, whose optimistic value
@@ -409,6 +421,7 @@ export function useTicketActions(deps: TicketActionsDeps) {
     handleEpicChange,
     handleSprintChange,
     handleCloseSubtasks,
+    handleSubtasksAdded,
     syncFromApiTickets,
     handleBulkSetReadiness,
     handleBulkSetStatus,

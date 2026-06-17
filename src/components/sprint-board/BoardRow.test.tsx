@@ -27,6 +27,18 @@ vi.mock("@/components/shared/IssueMetaBadges", () => ({
   EpicBadge: ({ epic }: { epic: string }) => <span data-testid="epic-badge">{epic}</span>,
 }));
 
+// The warning chips render their own interactive popover/modal; the row test only cares
+// that one chip renders per warning kind, so stub it to the human label text (BRDG-366).
+vi.mock("./WarningBadge", () => {
+  const LABELS: Record<string, string> = {
+    unpointed: "No story point estimate",
+    no_subtasks: "No subtasks",
+    deprecated_with_points: "Deprecated but still has story points",
+    closed_with_open_subtasks: "Closed with open subtasks",
+  };
+  return { WarningBadge: ({ kind }: { kind: string }) => <span data-testid={`warning-${kind}`}>{LABELS[kind]}</span> };
+});
+
 vi.mock("@/components/shared/AddEpicPill", () => ({
   AddEpicPill: ({ ticketKey }: { ticketKey: string }) => <span data-testid="add-epic" data-ticket={ticketKey} />,
 }));
@@ -477,29 +489,29 @@ describe("BoardRow (headerless, BRDG-239)", () => {
     expect(screen.queryByTestId("icon-gitbranch")).toBeNull();
   });
 
-  // Warning filter mode: per-row hygiene labels (BRDG-313).
-  it("renders a warning label per problem when warningLabels is set", () => {
-    renderRow({ warningLabels: ["No story point estimate", "Closed with open subtasks"] });
+  // Warning filter mode: per-row hygiene badges (BRDG-313/366).
+  it("renders a warning badge per problem when warnings is set", () => {
+    renderRow({ warnings: ["unpointed", "closed_with_open_subtasks"] });
     expect(screen.getByText("No story point estimate")).toBeInTheDocument();
     expect(screen.getByText("Closed with open subtasks")).toBeInTheDocument();
   });
 
-  it("renders no warning labels when the prop is absent or empty (mode off)", () => {
-    const { rerender } = renderRow({ warningLabels: undefined });
+  it("renders no warning badges when the prop is absent or empty (mode off)", () => {
+    const { rerender } = renderRow({ warnings: undefined });
     expect(screen.queryByText("No story point estimate")).toBeNull();
     rerender(
       <table><tbody>
-        <BoardRow ticket={makeTicket()} ticketIdx={0} isChecked={false} isSelected={false} someChecked={false} isDragActive={false} tags={ALL_TAGS} warningLabels={[]} selectedTicket={null} onSelectTicket={vi.fn()} onCheckboxClick={vi.fn()} />
+        <BoardRow ticket={makeTicket()} ticketIdx={0} isChecked={false} isSelected={false} someChecked={false} isDragActive={false} tags={ALL_TAGS} warnings={[]} selectedTicket={null} onSelectTicket={vi.fn()} onCheckboxClick={vi.fn()} />
       </tbody></table>,
     );
     expect(screen.queryByText("No story point estimate")).toBeNull();
   });
 
-  it("width-gates the label cluster (hidden until the container is wide enough)", () => {
+  it("width-gates the badge cluster (hidden until the container is wide enough)", () => {
     // jsdom can't evaluate container queries, so assert the display-toggle gating class is
     // present: the cluster is `hidden` and only reveals at the @[52rem]/boardrow breakpoint,
     // so it reserves no space on narrow rows.
-    renderRow({ warningLabels: ["No story point estimate"] });
+    renderRow({ warnings: ["unpointed"] });
     const labelEl = screen.getByText("No story point estimate");
     const cluster = labelEl.parentElement!;
     expect(cluster.className).toContain("hidden");

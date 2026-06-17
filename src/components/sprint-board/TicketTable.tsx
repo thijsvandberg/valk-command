@@ -11,7 +11,7 @@ import { EmptyState } from "@/components/shared/EmptyState";
 import { ChildIssueComposer } from "@/components/ticket-detail/ChildIssueComposer";
 import { Sheet, Inbox, Plus } from "lucide-react";
 import { GroupStatBar, type StatCriterion } from "@/components/sprint-board/GroupStatBar";
-import { matchesWarningFilter, ticketWarningLabels } from "@/components/sprint-board/warning-filter";
+import { matchesWarningFilter, ticketWarnings } from "@/components/sprint-board/warning-filter";
 import { GroupCard, GROUP_CARD_CLASS } from "@/components/sprint-board/GroupCard";
 import { trailingDoneDepStart } from "@/lib/sprint-insert-position";
 import type { TicketGroup, GroupByOption } from "@/components/sprint-board/useGroupBy";
@@ -139,6 +139,7 @@ export function TicketTable({
   onSprintChange,
   sprints,
   onCloseSubtasks,
+  onSubtasksAdded,
   onTableKeyDown,
   onReorder,
   onRunReview,
@@ -223,6 +224,7 @@ export function TicketTable({
   onSprintChange?: (key: string, sprintId: string | null) => void;
   sprints?: Sprint[];
   onCloseSubtasks?: (key: string) => Promise<void>;
+  onSubtasksAdded?: (key: string, count: number) => void;
   onTableKeyDown: (e: React.KeyboardEvent) => void;
   onReorder?: (activeKey: string, overKey: string) => void;
   /** Request a quality review for a ticket (surfaced in the hover card when unscored). */
@@ -452,6 +454,7 @@ export function TicketTable({
     onSprintChange,
     sprints,
     onCloseSubtasks,
+    onSubtasksAdded,
     editingTitleKey,
     onEditingTitleKeyChange: setEditingTitleKey,
     reviewPopoverKey,
@@ -461,7 +464,7 @@ export function TicketTable({
     ticketInfoMap,
     onRemoveFromRefinement,
     onViewRefinement,
-  }), [checkedTickets, selectedTicket, focusedTicketIdx, someChecked, activeDragId, visibleTags, hideEpic, hideRowAccent, showSprint, sprintNameMap, poStatuses, readinessMap, inflightKeys, contextMenuKeys, onSelectTicket, onRowContextMenu, handleCheckboxClick, onPoStatusChange, onReadinessChange, onBusinessValueChange, onStoryPointsChange, planningOn, onGuestimationChange, onJiraStatusChange, onIssueTypeChange, onTitleChange, onAssigneeChange, onEpicChange, onSprintChange, sprints, onCloseSubtasks, editingTitleKey, reviewPopoverKey, handleToggleReviewPopover, onRunReview, followedKeys, followTicket, unfollowTicket, lastDeployedMap, healthMap, refinementSessionMap, ticketInfoMap, onRemoveFromRefinement, onViewRefinement]);
+  }), [checkedTickets, selectedTicket, focusedTicketIdx, someChecked, activeDragId, visibleTags, hideEpic, hideRowAccent, showSprint, sprintNameMap, poStatuses, readinessMap, inflightKeys, contextMenuKeys, onSelectTicket, onRowContextMenu, handleCheckboxClick, onPoStatusChange, onReadinessChange, onBusinessValueChange, onStoryPointsChange, planningOn, onGuestimationChange, onJiraStatusChange, onIssueTypeChange, onTitleChange, onAssigneeChange, onEpicChange, onSprintChange, sprints, onCloseSubtasks, onSubtasksAdded, editingTitleKey, reviewPopoverKey, handleToggleReviewPopover, onRunReview, followedKeys, followTicket, unfollowTicket, lastDeployedMap, healthMap, refinementSessionMap, ticketInfoMap, onRemoveFromRefinement, onViewRefinement]);
 
   // Placeholder rows (BRDG-304) render inside a table tbody as a single-cell row,
   // mirroring BoardRow's <tr><td> shape so they sit in the same column flow.
@@ -515,7 +518,7 @@ export function TicketTable({
               {...makeRowProps(ticket, virtualRow.index)}
               insertLine={insertLine}
               isLastInCard={virtualRow.index === tickets.length - 1}
-              warningLabels={warningLensActive ? ticketWarningLabels(ticket, warningLensActiveSprint) : undefined}
+              warnings={warningLensActive ? ticketWarnings(ticket, warningLensActiveSprint) : undefined}
             />
           );
         }
@@ -526,7 +529,7 @@ export function TicketTable({
             data-index={virtualRow.index}
             {...makeRowProps(ticket, virtualRow.index)}
             isLastInCard={virtualRow.index === tickets.length - 1}
-            warningLabels={warningLensActive ? ticketWarningLabels(ticket, warningLensActiveSprint) : undefined}
+            warnings={warningLensActive ? ticketWarnings(ticket, warningLensActiveSprint) : undefined}
           />
         );
       })}
@@ -578,7 +581,7 @@ export function TicketTable({
               key={ticket.key}
               {...makeRowProps(ticket, ticketIdx)}
               isLastInCard={ticketIdx === tickets.length - 1 && !flatComposerAtEnd}
-              warningLabels={warningLensActive ? ticketWarningLabels(ticket, warningLensActiveSprint) : undefined}
+              warnings={warningLensActive ? ticketWarnings(ticket, warningLensActiveSprint) : undefined}
             />
           );
           return ticketIdx === flatInsertIdx ? [flatComposerRow, row] : [row];
@@ -605,7 +608,7 @@ export function TicketTable({
               {...makeRowProps(ticket, ticketIdx)}
               insertLine={insertLine}
               isLastInCard={ticketIdx === tickets.length - 1 && !flatComposerAtEnd}
-              warningLabels={warningLensActive ? ticketWarningLabels(ticket, warningLensActiveSprint) : undefined}
+              warnings={warningLensActive ? ticketWarnings(ticket, warningLensActiveSprint) : undefined}
             />
           );
           return ticketIdx === flatInsertIdx ? [flatComposerRow, row] : [row];
@@ -743,8 +746,8 @@ export function TicketTable({
           if (dragOverKey && ticket.key === dragOverKey && activeInsertIdx !== -1 && overInsertIdx !== -1) {
             insertLine = activeInsertIdx > overInsertIdx ? "above" : "below";
           }
-          const warningLabels = showGroupWarningLabels
-            ? ticketWarningLabels(ticket, groupIsActiveSprint)
+          const warnings = showGroupWarningLabels
+            ? ticketWarnings(ticket, groupIsActiveSprint)
             : undefined;
           // Last row of the group's table rounds its bottom corners to the card edge. When
           // placeholders follow the tickets, the last placeholder rounds instead, so a ticket
@@ -756,14 +759,14 @@ export function TicketTable({
               {...makeRowProps(ticket, flatIdx)}
               insertLine={insertLine}
               isLastInCard={isLastInCard}
-              warningLabels={warningLabels}
+              warnings={warnings}
             />
           ) : (
             <BoardRow
               key={ticket.key}
               {...makeRowProps(ticket, flatIdx)}
               isLastInCard={isLastInCard}
-              warningLabels={warningLabels}
+              warnings={warnings}
             />
           );
         });

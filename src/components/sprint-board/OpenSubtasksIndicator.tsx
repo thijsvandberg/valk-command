@@ -22,7 +22,7 @@ interface OpenSubtasksIndicatorProps {
 
 const DONE_STATUSES = new Set(["DONE", "DEPRECATED", "Done", "Closed"]);
 
-function IndicatorPopover({
+export function IndicatorPopover({
   ticketKey,
   openCount,
   totalCount,
@@ -120,8 +120,8 @@ function IndicatorPopover({
         {/* Header */}
         <div className="px-3 pt-2.5 pb-2 border-b border-border-subtle">
           <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2 text-body-sm font-medium text-text-secondary">
-              <AlertTriangle size={12} strokeWidth={1.75} className="text-amber-400/80 shrink-0" />
+            <div className="flex items-center gap-2 text-body-sm font-medium text-text-primary">
+              <AlertTriangle size={12} strokeWidth={2} className="text-amber-400 shrink-0" />
               <span>{openCount} of {totalCount} subtasks open</span>
             </div>
           </div>
@@ -146,7 +146,7 @@ function IndicatorPopover({
               {/* Open subtasks */}
               {openSubtasks.map((sub) => (
                 <div key={sub.key} className="flex items-start gap-2 px-3 py-1.5">
-                  <Circle size={12} strokeWidth={1.5} className="text-amber-400/70 shrink-0 mt-0.5" />
+                  <Circle size={12} strokeWidth={1.75} className="text-amber-400/90 shrink-0 mt-0.5" />
                   <div className="min-w-0">
                     <span className="text-body-sm text-text-primary leading-snug line-clamp-2">{sub.title}</span>
                     <span className="block text-[10px] text-text-muted mt-0.5">{sub.key} · {sub.status}</span>
@@ -180,7 +180,7 @@ function IndicatorPopover({
               type="button"
               onClick={handleClose}
               disabled={closing}
-              className="flex w-full items-center justify-center gap-1.5 rounded-md px-3 py-1.5 text-body-sm font-medium transition-colors duration-150 cursor-pointer bg-amber-500/12 text-amber-300 hover:bg-amber-500/20 active:bg-amber-500/25 disabled:opacity-50 disabled:cursor-not-allowed"
+              className="flex w-full items-center justify-center gap-1.5 rounded-md px-3 py-1.5 text-body-sm font-semibold transition-colors duration-150 cursor-pointer text-[color-mix(in_srgb,var(--color-status-warning)_78%,var(--color-text-primary))] bg-[color-mix(in_srgb,var(--color-status-warning)_16%,transparent)] hover:bg-[color-mix(in_srgb,var(--color-status-warning)_26%,transparent)] active:bg-[color-mix(in_srgb,var(--color-status-warning)_32%,transparent)] disabled:opacity-50 disabled:cursor-not-allowed"
             >
               {closing ? (
                 <>
@@ -226,7 +226,7 @@ export function OpenSubtasksIndicator({
           setPopoverOpen((o) => !o);
         }}
         onPointerDown={(e) => e.stopPropagation()}
-        className="inline-flex items-center justify-center gap-1 rounded px-1.5 py-1 text-[10px] font-medium tabular-nums leading-none transition-colors duration-150 cursor-pointer bg-amber-500/10 text-amber-400/80 hover:bg-amber-500/18 hover:text-amber-300 active:bg-amber-500/25"
+        className="inline-flex items-center justify-center gap-1 rounded px-1.5 py-1 text-[10px] font-medium tabular-nums leading-none transition-colors duration-150 cursor-pointer bg-amber-500/15 text-amber-400 hover:bg-amber-500/25 hover:text-amber-300 active:bg-amber-500/30"
         title={`${openCount} of ${totalCount} subtasks still open`}
       >
         <AlertTriangle size={10} strokeWidth={1.75} className="shrink-0" />

@@ -36,11 +36,18 @@ vi.mock("@tanstack/react-virtual", () => ({
 }));
 
 // Render the row key plus any warning labels so the test can assert both which rows are
-// visible and which carry labels.
+// visible and which carry labels. The table now passes warning KINDS (BRDG-366); map them
+// back to their human label so the existing assertions hold.
+const WARNING_LABELS: Record<string, string> = {
+  unpointed: "No story point estimate",
+  no_subtasks: "No subtasks",
+  deprecated_with_points: "Deprecated but still has story points",
+  closed_with_open_subtasks: "Closed with open subtasks",
+};
 vi.mock("./BoardRow", () => ({
-  BoardRow: ({ ticket, warningLabels }: { ticket: Ticket; warningLabels?: string[] }) => (
+  BoardRow: ({ ticket, warnings }: { ticket: Ticket; warnings?: string[] }) => (
     <tr data-testid={`row-${ticket.key}`}>
-      <td>{ticket.title}{(warningLabels ?? []).map((l) => <span key={l} data-testid={`label-${ticket.key}`}>{l}</span>)}</td>
+      <td>{ticket.title}{(warnings ?? []).map((k) => <span key={k} data-testid={`label-${ticket.key}`}>{WARNING_LABELS[k]}</span>)}</td>
     </tr>
   ),
   SortableBoardRow: ({ ticket }: { ticket: Ticket }) => <tr data-testid={`row-${ticket.key}`}><td>{ticket.title}</td></tr>,
