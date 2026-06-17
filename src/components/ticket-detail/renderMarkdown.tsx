@@ -410,7 +410,13 @@ function renderMarkdownUncached(text: string, linkifyRefs: boolean): ReactNode[]
   // Local shorthand so every block-level inline render carries the doc-level
   // linkify flag without threading it through each call individually.
   const fmt = (t: string): ReactNode => inlineFormat(t, linkifyRefs);
-  const lines = decodeHtmlEntities(text).split("\n");
+  // A prior editor save could glue the block after an image onto the image's
+  // own line (e.g. "![a](url)### Design"), which then renders as literal text
+  // because the line no longer starts with a block marker. Re-insert the missing
+  // blank line so already-corrupted descriptions still render correctly.
+  const lines = decodeHtmlEntities(text)
+    .replace(/(!\[[^\]]*\]\([^)]*\))(?=\S)/g, "$1\n\n")
+    .split("\n");
   const elements: ReactNode[] = [];
   let codeBlockLines: string[] | null = null;
   let codeBlockLang = "";

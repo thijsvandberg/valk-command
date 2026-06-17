@@ -129,4 +129,27 @@ describe("markdown round-trip (load -> serialize identity) - BRDG-280", () => {
     expect(once).not.toContain("<em>");
     expect(once.replace(/\\/g, "")).toContain("use *literal* asterisks");
   });
+
+  it("keeps a heading after an image on its own line (BRDG-366)", () => {
+    // tiptap-markdown serializes a block image without a trailing block
+    // separator, gluing the next block onto the image line ("![a](url)### x").
+    // renderMarkdown then renders the heading as literal text.
+    const input = "![trace](/api/attachments/att-1)\n\n### Design\n\nbody text";
+    const out = roundTrip(input);
+    expect(out).toContain("![trace](/api/attachments/att-1)\n\n### Design");
+    expect(out).not.toContain(")### Design");
+    // Idempotent: a second pass never re-glues or grows separators.
+    expect(roundTrip(out)).toBe(out);
+  });
+
+  it("separates any block following an image (BRDG-366)", () => {
+    // The glue is not heading-specific: paragraphs, lists and consecutive
+    // images are all affected. Each must end up on its own line.
+    expect(roundTrip("![a](/api/attachments/att-1)\n\nSome paragraph"))
+      .not.toContain(")Some paragraph");
+    expect(roundTrip("![a](/api/attachments/att-1)\n\n- item one\n- item two"))
+      .not.toContain(")- item one");
+    expect(roundTrip("![a](/api/attachments/att-1)\n\n![b](/api/attachments/att-2)"))
+      .not.toContain(")![b]");
+  });
 });

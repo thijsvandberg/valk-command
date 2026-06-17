@@ -187,3 +187,22 @@ describe("renderMarkdown — untagged code fence highlighting (BRDG-316)", () =>
     expect(tokens(container).length).toBeGreaterThan(0);
   });
 });
+
+describe("renderMarkdown — block glued onto an image line (BRDG-366)", () => {
+  it("renders a heading glued to an image as a real heading", () => {
+    // A prior editor save dropped the blank line, producing "![..](url)### Design".
+    const md = "![trace](/api/attachments/att-1)### Design\n\nbody text";
+    const { container } = render(<div>{renderMarkdown(md)}</div>);
+    const h3 = container.querySelector("h3");
+    expect(h3?.textContent).toBe("Design");
+    expect(container.querySelector("figure img")).toBeTruthy();
+    expect(container.textContent).not.toContain("### Design");
+  });
+
+  it("renders a bullet list glued to an image as a list", () => {
+    const md = "![trace](/api/attachments/att-1)- first\n- second";
+    const { container } = render(<div>{renderMarkdown(md)}</div>);
+    expect(container.querySelectorAll("li").length).toBe(2);
+    expect(container.querySelector("figure img")).toBeTruthy();
+  });
+});
