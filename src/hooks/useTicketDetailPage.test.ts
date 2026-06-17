@@ -13,14 +13,19 @@ vi.mock("@/hooks/usePipelines", () => ({
   useFollowTicket: vi.fn().mockReturnValue({ follow: vi.fn(), unfollow: vi.fn() }),
 }));
 
-vi.mock("@/lib/api-client", () => ({
-  apiFetch: vi.fn().mockResolvedValue({}),
-  jira: { syncTickets: vi.fn().mockResolvedValue({ count: 0 }) },
-  tickets: {
-    pushToJira: vi.fn().mockResolvedValue({ success: true }),
-    toggleFlag: vi.fn().mockResolvedValue({}),
-  },
-}));
+vi.mock("@/lib/api-client", async (importActual) => {
+  const actual = await importActual<typeof import("@/lib/api-client")>();
+  return {
+    apiFetch: vi.fn().mockResolvedValue({}),
+    jira: { syncTickets: vi.fn().mockResolvedValue({ count: 0 }) },
+    tickets: {
+      pushToJira: vi.fn().mockResolvedValue({ success: true }),
+      toggleFlag: vi.fn().mockResolvedValue({}),
+    },
+    // Real ApiError so the hook's `err instanceof ApiError` check matches.
+    ApiError: actual.ApiError,
+  };
+});
 
 vi.mock("@/lib/ticket-cache", () => ({
   patchTicketCaches: vi.fn(),
@@ -43,7 +48,7 @@ vi.mock("@/hooks/useTicketEvents", () => ({
 import { useTicketDetailPage } from "./useTicketDetailPage";
 import { getClientId } from "@/lib/client-id";
 import { useTicketDetail } from "@/hooks/useSprintBoard";
-import { apiFetch, jira, tickets } from "@/lib/api-client";
+import { apiFetch, jira, tickets, ApiError } from "@/lib/api-client";
 import { patchTicketCaches, revalidateTicketCaches } from "@/lib/ticket-cache";
 
 const mockApiData = {
@@ -140,6 +145,54 @@ describe("useTicketDetailPage", () => {
     expect(tickets.pushToJira).toHaveBeenCalledWith("VPL-42");
     expect(result.current.isPushing).toBe(false);
     expect(result.current.pushError).toBeNull();
+  });
+
+  it("surfaces the Jira content-limit reason in the toolbar and a toast (BRDG-349)", async () => {
+    vi.mocked(tickets.pushToJira).mockRejectedValue(
+      new ApiError(502, {
+        error: "Failed to push to Jira",
+        code: "JIRA_OPERATION_ERROR",
+        detail: "Jira 400: description: CONTENT_LIMIT_EXCEEDED",
+      }),
+    );
+
+    const { result } = renderHook(() => useTicketDetailPage("VPL-42"));
+
+    await act(async () => { await result.current.handlePushToJira(); });
+
+    const friendly = "This description is too large for Jira. Trim it and try again.";
+    expect(result.current.pushError).toBe(friendly);
+    expect(result.current.toast).toBe(friendly);
+    expect(result.current.isPushing).toBe(false);
+  });
+
+  it("falls back to the raw Jira detail for an unmapped push failure (BRDG-349)", async () => {
+    vi.mocked(tickets.pushToJira).mockRejectedValue(
+      new ApiError(502, {
+        error: "Failed to push to Jira",
+        code: "JIRA_OPERATION_ERROR",
+        detail: "Jira 403: you are not a project admin",
+      }),
+    );
+
+    const { result } = renderHook(() => useTicketDetailPage("VPL-42"));
+
+    await act(async () => { await result.current.handlePushToJira(); });
+
+    expect(result.current.pushError).toBe("Jira 403: you are not a project admin");
+    expect(result.current.toast).toBe("Jira 403: you are not a project admin");
+  });
+
+  it("uses the error field when a failed push has no detail (BRDG-349)", async () => {
+    vi.mocked(tickets.pushToJira).mockRejectedValue(
+      new ApiError(400, { error: "This description is too large for Jira (max 32,767 characters)." }),
+    );
+
+    const { result } = renderHook(() => useTicketDetailPage("VPL-42"));
+
+    await act(async () => { await result.current.handlePushToJira(); });
+
+    expect(result.current.pushError).toBe("This description is too large for Jira. Trim it and try again.");
   });
 
   it("draft-conflict reload revalidates and remounts the editors (BRDG-340)", async () => {

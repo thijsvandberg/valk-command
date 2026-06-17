@@ -4,7 +4,8 @@ import { useState, useEffect, useCallback, useMemo, useRef } from "react";
 import type { Ticket, TicketDetail, TicketReadiness, IssueType, JiraStatus, EpicChild } from "@/types/ticket";
 import { useTicketDetail, useJiraSprints, useTicketReviews, useActiveWriterSessions } from "@/hooks/useSprintBoard";
 import { useFollowedTickets, useFollowTicket } from "@/hooks/usePipelines";
-import { apiFetch, jira, tickets } from "@/lib/api-client";
+import { apiFetch, jira, tickets, ApiError } from "@/lib/api-client";
+import { mapPushErrorMessage } from "@/lib/push-error-message";
 import { patchTicketCaches, revalidateTicketCaches } from "@/lib/ticket-cache";
 import { useTicketEditStateSync } from "@/hooks/useTicketEditStateSync";
 import { useLocalEditSaver } from "@/lib/local-edit-saver";
@@ -323,8 +324,15 @@ export function useTicketDetailPage(key: string) {
       } else {
         setPushError(data.error ?? "Push failed");
       }
-    } catch {
-      setPushError("Failed to push to Jira");
+    } catch (err) {
+      // The push route returns a non-2xx with { error, code, detail }, where
+      // `detail` carries the parsed Jira reason (e.g. CONTENT_LIMIT_EXCEEDED).
+      // apiFetch throws an ApiError that retains that body, so surface the real
+      // reason in both the toolbar and a failure toast instead of a bare message.
+      const body = err instanceof ApiError ? err.body : null;
+      const message = mapPushErrorMessage(body?.detail ?? body?.error);
+      setPushError(message);
+      showToast(message);
     } finally {
       setIsPushing(false);
     }

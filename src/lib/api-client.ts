@@ -21,9 +21,9 @@ export interface LinkSearchResult {
 export class ApiError extends Error {
   status: number;
   code: string | undefined;
-  body: { error: string; code?: string } | null;
+  body: { error: string; code?: string; detail?: string } | null;
 
-  constructor(status: number, body: { error: string; code?: string } | null) {
+  constructor(status: number, body: { error: string; code?: string; detail?: string } | null) {
     super(body?.error ?? `Request failed (${status})`);
     this.name = "ApiError";
     this.status = status;
@@ -66,7 +66,7 @@ export async function apiFetch<T>(url: string, options: ApiFetchOptions = {}): P
   const res = await fetch(url, init);
 
   if (!res.ok) {
-    let parsed: { error: string; code?: string } | null = null;
+    let parsed: { error: string; code?: string; detail?: string } | null = null;
     try {
       parsed = await res.json();
     } catch {
