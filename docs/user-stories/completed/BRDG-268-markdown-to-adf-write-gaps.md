@@ -1,6 +1,6 @@
 # BRDG-268: Pushing a draft to Jira drops or mangles checkboxes, images, and mentions
 
-**Status:** Implemented + verified (build + serializer/round-trip suites green); archive deferred while unrelated parallel test failures are red
+**Status:** Completed + archived (2026-06-17). The previously-red parallel failures (`push-to-jira/route.test.ts`, `SprintAnalytics.test.tsx`) now pass; serializer + round-trip suites green (59/59).
 **Priority:** High
 **Type:** Bugfix
 

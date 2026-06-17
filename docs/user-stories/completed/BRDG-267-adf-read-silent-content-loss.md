@@ -1,6 +1,6 @@
 # BRDG-267: Reading a Jira ticket silently drops some content, which can delete it on push
 
-**Status:** Implemented + verified (build + serializer/round-trip suites green); archive deferred while unrelated parallel test failures are red
+**Status:** Done + archived (the unrelated parallel test failures that had blocked archiving are now green)
 **Priority:** High
 **Type:** Bugfix
 
