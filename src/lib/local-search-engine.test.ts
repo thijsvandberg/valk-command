@@ -155,15 +155,15 @@ describe("executeLocalSearch", () => {
     expect(keys).not.toContain("VPL-SUB");
   });
 
-  it("includes subtasks when the subtask type filter is active", async () => {
+  it("keeps subtasks out of search even when the subtask type filter is active", async () => {
+    // Subtasks are excluded at the index source, so no filter can bring them back.
     seedTestTicket("VPL-SUB", { title: "Subtask omega work", type: "Sub-task" });
     seedTestTicket("VPL-STD", { title: "Story omega work", type: "Story" });
 
     const result = await executeLocalSearch(defaultParams({ q: "omega", typeFilter: ["subtask"] }));
 
     const keys = result.results.map((r) => r.key);
-    expect(keys).toContain("VPL-SUB");
-    // Selecting only "subtask" narrows to subtasks, excluding the story.
+    expect(keys).not.toContain("VPL-SUB");
     expect(keys).not.toContain("VPL-STD");
   });
 
@@ -456,5 +456,13 @@ describe("executeLocalKeyMatch", () => {
     expect(keys).toContain("VPL-LIVE");
     expect(keys).not.toContain("VPL-DRAFTING");
     expect(keys).not.toContain("VPL-REPLACED");
+  });
+
+  it("excludes subtasks (not in the index)", async () => {
+    seedTestTicket("VPL-STORY", { title: "Plain title", description: "shared omega token", type: "Story" });
+    seedTestTicket("VPL-SUB", { title: "Plain title", description: "shared omega token", type: "Sub-task" });
+    const keys = await executeLocalKeyMatch("omega");
+    expect(keys).toContain("VPL-STORY");
+    expect(keys).not.toContain("VPL-SUB");
   });
 });

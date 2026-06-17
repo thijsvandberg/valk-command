@@ -1,6 +1,6 @@
 import { db } from "@/db";
 import { ticket, ticketMetadata, jiraComment, poComment, ticketLocalEdit, appSetting, conversation, message } from "@/db/schema";
-import { eq, notInArray } from "drizzle-orm";
+import { and, eq, notInArray, sql } from "drizzle-orm";
 import { adfToMarkdown } from "@/lib/adf-to-markdown";
 import { env } from "@/lib/env";
 import {
@@ -185,7 +185,20 @@ export async function executeLocalKeyMatch(q: string): Promise<string[]> {
 async function buildIndex() {
   const [tickets, metadataRows, jiraCommentRows, poCommentRows, localEditRows, sprintSetting, conversationRows, messageRows] =
     await Promise.all([
-      db.select().from(ticket).where(notInArray(ticket.status, ["DRAFTING", "REPLACED", "DRAFT_FAILED"])),
+      // Sub-tasks are deliberately excluded from the search index: they dominate the row count
+      // (~35k of ~44k) and bloat the in-memory index without adding search value. They stay in
+      // the db and remain visible elsewhere in Bridge; only free-text search (Cmd+K + inline
+      // board) skips them. Match the normalized type so display variants ("Sub-task", "Subtask")
+      // are all caught regardless of how Jira sent them.
+      db
+        .select()
+        .from(ticket)
+        .where(
+          and(
+            notInArray(ticket.status, ["DRAFTING", "REPLACED", "DRAFT_FAILED"]),
+            sql`lower(replace(replace(coalesce(${ticket.type}, ''), ' ', ''), '-', '')) != 'subtask'`,
+          ),
+        ),
       db.select().from(ticketMetadata).all(),
       db.select().from(jiraComment).all(),
       db.select().from(poComment).all(),
@@ -415,9 +428,8 @@ export async function executeLocalSearch(params: SearchParams): Promise<GroupedS
         if (statusFilter.length > 0 && !statusFilter.includes(r.status.toUpperCase())) return false;
         if (poStatusFilter.length > 0 && !(r.poStatus && poStatusFilter.some((p) => p.toLowerCase() === r.poStatus!.toLowerCase()))) return false;
 
+        // Subtasks are excluded at the index source (see buildIndex), so they never reach here.
         const normType = normalizeType(r.issueType);
-        // Subtasks are hidden by default; only an explicit `subtask` Type filter brings them back.
-        if (!typeFilter.includes("subtask") && normType === "subtask") return false;
         if (typeFilter.length > 0 && !(normType && typeFilter.includes(normType))) return false;
 
         if (readinessFilter.length > 0) {
