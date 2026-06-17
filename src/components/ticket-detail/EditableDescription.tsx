@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef, useCallback, useMemo } from "react";
 import type { Attachment } from "@/types/ticket";
-import { CloudUpload, Loader2, ChevronDown, Check, RotateCcw, X } from "lucide-react";
+import { CloudUpload, Loader2, ChevronDown, Check, RotateCcw, X, AlertTriangle, Info } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import { apiFetch } from "@/lib/api-client";
 import { useLocalEditSaver, type LocalEditSaver } from "@/lib/local-edit-saver";
@@ -14,7 +14,8 @@ import { Checkbox } from "@/components/shared/Checkbox";
 import { RichEditor } from "@/components/rich-editor/RichEditor";
 import { StoryDiff } from "@/components/story-diff/StoryDiff";
 import { usePrismLanguages } from "@/hooks/usePrismLanguages";
-import { describeDescriptionSize } from "@/lib/jira-content-limits";
+import { describeDescriptionSize, JIRA_DESCRIPTION_LIMIT } from "@/lib/jira-content-limits";
+import { CONTENT_LIMIT_MESSAGE } from "@/lib/push-error-message";
 
 /** Resolve attachment placeholders in a local edit value. */
 export function resolveLocalValue(
@@ -134,6 +135,51 @@ export function EditableDescription({
   // Live size feedback against Jira's content limit (BRDG-349). Derived in render
   // from `value` (no state/effect) - approximate, see jira-content-limits.ts.
   const descSize = describeDescriptionSize(value.length);
+
+  // A failed push reports its reason via `pushError`. A content-limit failure is
+  // really the same state as "over limit", so once the PO trims back under the
+  // limit we suppress that stale hard error and let the live size state speak -
+  // a non-size push error (e.g. permissions) still shows until the next push.
+  const sizePushError = pushError === CONTENT_LIMIT_MESSAGE;
+  const otherPushError = pushError && !sizePushError ? pushError : null;
+
+  // Single full-width notice row beneath the toolbar buttons. Priority: a real
+  // non-size push failure, then the live over/near size state.
+  const noticeRow: React.ReactNode = otherPushError ? (
+    <div
+      className="flex items-center gap-2 border-t border-[var(--color-status-error)]/20 bg-[var(--color-status-error)]/10 px-3 py-1.5"
+      style={{ animation: "fadeInUp 0.18s ease-out" }}
+      role="alert"
+    >
+      <AlertTriangle size={13} strokeWidth={2} className="shrink-0 text-[var(--color-status-error)]" />
+      <span className="text-label font-medium text-[var(--color-status-error)]">{otherPushError}</span>
+    </div>
+  ) : descSize.state === "over" ? (
+    <div
+      className="flex items-center gap-2 border-t border-[var(--color-status-error)]/20 bg-[var(--color-status-error)]/10 px-3 py-1.5"
+      style={{ animation: "fadeInUp 0.18s ease-out" }}
+      role="alert"
+    >
+      <AlertTriangle size={13} strokeWidth={2} className="shrink-0 text-[var(--color-status-error)]" />
+      <span className="text-label font-medium text-[var(--color-status-error)]">
+        This description is too large for Jira. Trim it to push.
+      </span>
+      <span className="ml-auto shrink-0 rounded-full bg-[var(--color-status-error)]/15 px-2 py-0.5 text-label font-semibold tabular-nums text-[var(--color-status-error)]">
+        {descSize.over.toLocaleString()} over limit
+      </span>
+    </div>
+  ) : descSize.state === "near" ? (
+    <div
+      className="flex items-center gap-2 border-t border-border-default bg-[var(--color-surface-base)] px-3 py-1.5"
+      style={{ animation: "fadeInUp 0.18s ease-out" }}
+    >
+      <Info size={13} strokeWidth={2} className="shrink-0 text-text-muted" />
+      <span className="text-label font-medium text-text-muted">Approaching Jira&apos;s size limit</span>
+      <span className="ml-auto shrink-0 text-label tabular-nums text-text-muted">
+        {Math.max(0, JIRA_DESCRIPTION_LIMIT - value.length).toLocaleString()} left
+      </span>
+    </div>
+  ) : null;
 
   // Ref mirrors for unmount flush (cleanup closures cannot read latest state)
   const valueRef = useRef(value);
@@ -465,11 +511,9 @@ export function EditableDescription({
           stickyToolbar
           fullWidthToolbar
           toolbarPortalId={toolbarPortalId}
+          toolbarNotice={noticeRow}
           actions={
             <div className="flex items-center gap-1">
-              {pushError && (
-                <span className="text-label text-[var(--color-status-error)]">{pushError}</span>
-              )}
               {showConflictWarning && (
                 <label className="flex items-center gap-1.5 cursor-pointer">
                   <Checkbox checked={!!overrideConfirmed} />
@@ -481,23 +525,6 @@ export function EditableDescription({
                   />
                   <span className="text-caption text-text-tertiary">Override remote</span>
                 </label>
-              )}
-              {descSize.state !== "hidden" && (
-                <span
-                  className={`flex items-center pr-3 text-label font-medium tabular-nums ${
-                    descSize.state === "over" ? "text-[var(--color-status-error)]" : "text-text-muted"
-                  }`}
-                  style={{ transition: "color 0.15s ease, opacity 0.15s ease" }}
-                  title={
-                    descSize.state === "over"
-                      ? "This description exceeds Jira's size limit and may fail to push."
-                      : "Approaching Jira's description size limit."
-                  }
-                >
-                  {descSize.state === "over"
-                    ? `${descSize.over.toLocaleString()} over limit`
-                    : "Near Jira size limit"}
-                </span>
               )}
               {/* Autosave is the save; this only reports it (BRDG-340). */}
               {saveState !== "idle" && (

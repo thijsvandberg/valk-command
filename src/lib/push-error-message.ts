@@ -5,7 +5,7 @@
 
 const GENERIC_PUSH_ERROR = "Failed to push to Jira";
 
-const CONTENT_LIMIT_MESSAGE =
+export const CONTENT_LIMIT_MESSAGE =
   "This description is too large for Jira. Trim it and try again.";
 
 /**

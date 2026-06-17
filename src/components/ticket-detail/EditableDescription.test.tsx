@@ -28,16 +28,19 @@ vi.mock("@/components/rich-editor/RichEditor", () => ({
     onChange,
     onSave,
     actions,
+    toolbarNotice,
   }: {
     value: string;
     onChange?: (v: string) => void;
     onSave: () => void;
     actions?: React.ReactNode;
+    toolbarNotice?: React.ReactNode;
   }) => (
     <div data-testid="rich-editor">
       <span data-testid="editor-value">{value}</span>
       <textarea data-testid="editor-input" value={value} onChange={(e) => onChange?.(e.target.value)} />
       <button data-testid="editor-save" onClick={onSave}>trigger-save</button>
+      {toolbarNotice}
       {actions}
     </div>
   ),
@@ -649,19 +652,19 @@ describe("EditableDescription no-op draft persistence (BRDG-350)", () => {
     });
   });
 
-  // BRDG-349: live size indicator in the editor toolbar.
-  describe("Jira size indicator", () => {
+  // BRDG-349: live size notice row beneath the toolbar.
+  describe("Jira size notice", () => {
     it("stays hidden when the description is comfortably under the limit", () => {
       renderDesc({ initialDescription: "Short enough" });
       fireEvent.click(screen.getByTestId("rendered-markdown"));
-      expect(screen.queryByText(/Jira size limit/i)).not.toBeInTheDocument();
+      expect(screen.queryByText(/size limit/i)).not.toBeInTheDocument();
       expect(screen.queryByText(/over limit/i)).not.toBeInTheDocument();
     });
 
     it("shows a subtle near-limit hint within ~10% of the limit", () => {
       renderDesc({ initialDescription: "x".repeat(30000) });
       fireEvent.click(screen.getByTestId("rendered-markdown"));
-      expect(screen.getByText("Near Jira size limit")).toBeInTheDocument();
+      expect(screen.getByText("Approaching Jira's size limit")).toBeInTheDocument();
       expect(screen.queryByText(/over limit/i)).not.toBeInTheDocument();
     });
 
@@ -669,7 +672,43 @@ describe("EditableDescription no-op draft persistence (BRDG-350)", () => {
       renderDesc({ initialDescription: "x".repeat(32767 + 1240) });
       fireEvent.click(screen.getByTestId("rendered-markdown"));
       expect(screen.getByText("1,240 over limit")).toBeInTheDocument();
-      expect(screen.queryByText("Near Jira size limit")).not.toBeInTheDocument();
+      expect(screen.getByText("This description is too large for Jira. Trim it to push.")).toBeInTheDocument();
+      expect(screen.queryByText("Approaching Jira's size limit")).not.toBeInTheDocument();
+    });
+
+    it("transitions from the over banner to the near hint as the PO trims back under the limit", () => {
+      renderDesc({ initialDescription: "x".repeat(32767 + 500) });
+      fireEvent.click(screen.getByTestId("rendered-markdown"));
+      expect(screen.getByText("500 over limit")).toBeInTheDocument();
+
+      // Trim back to the near band.
+      fireEvent.change(screen.getByTestId("editor-input"), { target: { value: "x".repeat(30000) } });
+      expect(screen.queryByText(/over limit/i)).not.toBeInTheDocument();
+      expect(screen.getByText("Approaching Jira's size limit")).toBeInTheDocument();
+    });
+
+    it("clears a stale content-limit push error once trimmed back under the limit", () => {
+      // A push failed while over the limit; the hard error must not linger once the
+      // content is no longer over (BRDG-349 follow-up).
+      renderDesc({
+        initialDescription: "x".repeat(30000),
+        pushError: "This description is too large for Jira. Trim it and try again.",
+      });
+      fireEvent.click(screen.getByTestId("rendered-markdown"));
+      // Not over limit anymore -> the hard content-limit error is suppressed.
+      expect(
+        screen.queryByText("This description is too large for Jira. Trim it and try again."),
+      ).not.toBeInTheDocument();
+      expect(screen.getByText("Approaching Jira's size limit")).toBeInTheDocument();
+    });
+
+    it("keeps showing a non-size push error", () => {
+      renderDesc({
+        initialDescription: "Short",
+        pushError: "Jira 403: you are not a project admin",
+      });
+      fireEvent.click(screen.getByTestId("rendered-markdown"));
+      expect(screen.getByText("Jira 403: you are not a project admin")).toBeInTheDocument();
     });
   });
 });

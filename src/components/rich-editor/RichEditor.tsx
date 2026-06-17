@@ -39,6 +39,8 @@ interface RichEditorProps {
   borderless?: boolean;
   /** Extra buttons rendered in the toolbar bar, before the mode toggle */
   actions?: React.ReactNode;
+  /** Full-width row rendered beneath the toolbar buttons (e.g. a size warning) */
+  toolbarNotice?: React.ReactNode;
   /** Makes the toolbar bar sticky so it stays visible when the page scrolls */
   stickyToolbar?: boolean;
   /** Breaks the toolbar out to the full width of the nearest CSS container, with buttons centered at max-w-4xl */
@@ -184,7 +186,14 @@ export function getEditorMarkdown(editor: ReturnType<typeof useEditor>): string 
     // tiptap-markdown HTML-encodes < and > in text nodes (escapeHTML in its
     // text serializer). Unescape so stored markdown contains raw characters.
     .replace(/&lt;/g, "<")
-    .replace(/&gt;/g, ">");
+    .replace(/&gt;/g, ">")
+    // tiptap-markdown serializes a block image node without a trailing block
+    // separator, so the next block (heading, list, paragraph, another image)
+    // is glued onto the image's line (e.g. "![a](url)### Design"). renderMarkdown
+    // then fails to recognize that block. Images here are always block-level and
+    // standalone, so re-insert the missing blank line after any image token that
+    // is immediately followed by more content on the same line.
+    .replace(/(!\[[^\]]*\]\([^)]*\))(?=\S)/g, "$1\n\n");
 }
 
 export function RichEditor({
@@ -196,6 +205,7 @@ export function RichEditor({
   minHeight = 200,
   borderless = false,
   actions,
+  toolbarNotice,
   stickyToolbar = false,
   fullWidthToolbar = false,
   slotBeforeContent,
@@ -299,6 +309,7 @@ export function RichEditor({
       mode={mode}
       beforeMore={<ModeToggle mode={mode} onToggle={handleModeToggle} />}
       endContent={actions ?? undefined}
+      notice={toolbarNotice ?? undefined}
     />
   );
 

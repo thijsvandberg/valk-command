@@ -18,18 +18,23 @@ interface ToolbarProps {
   mode: EditorMode;
   beforeMore?: React.ReactNode;
   endContent?: React.ReactNode;
+  /** Full-width row rendered beneath the toolbar buttons (e.g. a size warning). */
+  notice?: React.ReactNode;
 }
 
-export function Toolbar({ editor, mode, beforeMore, endContent }: ToolbarProps) {
+export function Toolbar({ editor, mode, beforeMore, endContent, notice }: ToolbarProps) {
   const [moreOpen, setMoreOpen] = useState(false);
 
   if (!editor || mode !== "rich") {
-    if (!beforeMore && !endContent) return null;
+    if (!beforeMore && !endContent && !notice) return null;
     return (
-      <div className="flex min-h-[42.5px] flex-wrap items-center justify-end gap-1 gap-y-1.5 px-2">
-        {beforeMore}
-        {beforeMore && endContent && <div className="h-5 w-px bg-overlay-strong" />}
-        {endContent}
+      <div className="flex flex-col">
+        <div className="flex min-h-[42.5px] flex-wrap items-center justify-end gap-1 gap-y-1.5 px-2">
+          {beforeMore}
+          {beforeMore && endContent && <div className="h-5 w-px bg-overlay-strong" />}
+          {endContent}
+        </div>
+        {notice}
       </div>
     );
   }
@@ -126,6 +131,8 @@ export function Toolbar({ editor, mode, beforeMore, endContent }: ToolbarProps) 
         </Tooltip>
         {endContent && <div className="ml-auto flex shrink-0 flex-wrap items-center justify-end gap-1">{endContent}</div>}
       </div>
+
+      {notice}
 
       {moreOpen && (
         <div className="flex h-[42.5px] items-center gap-0.5 border-t border-border-default px-2">
