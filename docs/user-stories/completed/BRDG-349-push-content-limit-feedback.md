@@ -134,6 +134,7 @@ markdown.length is a conservative over-estimate of ADF text length (syntax chars
 - [x] Live size indicator in the description editor toolbar: subtle near the limit, red "N over limit" when exceeded
 - [ ] (If PO confirms) block the Push button while over the limit, with an explanatory tooltip
   <!-- skipped: PO chose to keep the Push button ENABLED (open question 1). Push fails and surfaces the failure toast instead. -->
-- [x] Align server guards in `ticket-service.ts` to Jira's real limits (title 255, description ~32,767 with margin) so oversized content is rejected with a clear message before the Jira round-trip
+- [ ] Align server guards in `ticket-service.ts` to Jira's real limits (title 255, description ~32,767 with margin) so oversized content is rejected with a clear message before the Jira round-trip
+  <!-- not done by design: the `ticket-service.ts` guard sits on the LOCAL draft-save path (upsertLocalEdit), not the push. Tightening it to Jira's limit blocked autosave of oversized drafts (the PO would lose work) - caught in review. Kept the generous local sanity cap (title 500, description 50000). Jira's limit is communicated by the live editor counter (pre-push) and the failure toast (post-push), consistent with the PO decision to keep Push enabled. No hard pre-flight reject (the markdown-length count is approximate and could falsely block a valid push). -->
 - [x] Tests: error-detail surfacing (toast + toolbar), guard rejection messages, and the live-counter threshold states
 - [x] All tests pass, build succeeds

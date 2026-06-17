@@ -8,7 +8,6 @@ import { markdownToAdf } from "@/lib/markdown-to-adf";
 import { adfToMarkdown } from "@/lib/adf-to-markdown";
 import { logActivity } from "@/lib/activity-logger";
 import { sanitizeText } from "@/lib/sanitize";
-import { DESCRIPTION_GUARD_MAX, JIRA_TITLE_LIMIT } from "@/lib/jira-content-limits";
 import { syncIndividualTickets, ingestIssue } from "@/lib/sync-tickets-service";
 import { logger } from "@/lib/logger";
 import { cache } from "@/lib/cache";
@@ -318,16 +317,14 @@ export async function upsertLocalEdit(
     throw new ValidationError("localValue must be a string");
   }
 
-  // Aligned to Jira's real ceilings (BRDG-349) so oversized content is rejected
-  // before the push round-trip, with a message the PO actually sees in the toast.
-  const maxLen = field === "title" ? JIRA_TITLE_LIMIT : DESCRIPTION_GUARD_MAX;
+  // This is the LOCAL draft-save path, not the push. A draft must always save
+  // even when it is too large for Jira (BRDG-349) - the PO is told about the
+  // Jira limit by the live editor counter and, if a push fails, the toast. So
+  // this guard is only a generous sanity cap to bound the stored row, NOT Jira's
+  // real ceiling.
+  const maxLen = field === "title" ? 500 : 50000;
   if (localValue.length > maxLen) {
-    const overBy = localValue.length - maxLen;
-    throw new ValidationError(
-      field === "title"
-        ? `Title is too long for Jira (max ${maxLen} characters). Remove ${overBy} and try again.`
-        : `This description is too large for Jira (max ${maxLen.toLocaleString()} characters, ${overBy.toLocaleString()} over). Trim it and try again.`,
-    );
+    throw new ValidationError(`localValue must not exceed ${maxLen} characters`);
   }
 
   // Title: strip HTML tags. Description: store raw markdown (rendered safely via React JSX).

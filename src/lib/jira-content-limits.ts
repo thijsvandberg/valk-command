@@ -6,9 +6,13 @@
 // document, so neither markdown.length nor ADF JSON size equals the other exactly:
 // markdown syntax (`#`, `*`, `[]()`, table pipes) drops out of the visible text,
 // while structural blocks (expand/panel/table) add ADF overhead. We therefore use
-// raw markdown length as an APPROXIMATION for the live counter and the pre-flight
-// guard. This can warn slightly early or late depending on content structure; the
-// authoritative check remains Jira's own response, surfaced as a failure toast.
+// raw markdown length as an APPROXIMATION for the live counter only. This can warn
+// slightly early or late depending on content structure; the authoritative check
+// remains Jira's own response, surfaced as a failure toast on push.
+//
+// These limits are NOT enforced as a local-save guard: a draft must always save
+// locally even when it is too large for Jira, so the PO never loses work. The
+// limit is purely advisory while editing and enforced by Jira at push time.
 // Empirical confirmation of the exact threshold against our instance is a manual
 // follow-up (requires graduated test pushes with live Jira write access).
 
@@ -17,14 +21,6 @@ export const JIRA_DESCRIPTION_LIMIT = 32767;
 
 /** Documented Jira limit for the summary (title) field - plain string. */
 export const JIRA_TITLE_LIMIT = 255;
-
-/**
- * Server-side guard ceiling for a description draft (raw markdown length). Set to
- * the documented Jira limit: markdown at/above this almost certainly exceeds Jira's
- * ADF ceiling, so we reject before the round-trip. Looser cases still fail at Jira
- * and surface via the toast.
- */
-export const DESCRIPTION_GUARD_MAX = JIRA_DESCRIPTION_LIMIT;
 
 /** Show the live counter once content reaches this fraction of the limit. */
 export const NEAR_LIMIT_RATIO = 0.9;
