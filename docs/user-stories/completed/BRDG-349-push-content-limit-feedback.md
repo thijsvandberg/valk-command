@@ -1,6 +1,6 @@
 # BRDG-349: Surface Jira content-limit failures before and after push
 
-**Status:** Not Started
+**Status:** Done
 **Priority:** Medium
 **Type:** Improvement
 
