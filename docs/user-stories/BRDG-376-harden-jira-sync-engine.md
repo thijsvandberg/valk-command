@@ -108,7 +108,7 @@ sequential calls.
 - [x] Two concurrent `upsertIssue` calls for the same key cannot produce duplicate `story_version`
       rows or diff against stale state (snapshot reads are inside the write transaction).
 - [x] Same-millisecond double-upserts no longer abort the ticket sync (UUID ids or onConflict).
-- [ ] An incremental sync window with >50 changed tickets eventually mirrors all of them (no
+- [x] An incremental sync window with >50 changed tickets eventually mirrors all of them (no
       silently dropped edits); `remaining` drives the drain loop.
 - [ ] Overlapping scan-queue ticks cannot double-claim the same row; `requeueStuckRunning` only
       requeues genuinely-stuck rows.
@@ -119,7 +119,7 @@ sequential calls.
 - [x] `upsert-issue` test simulating an interleaved second upsert asserts a single version row and
       a correct diff.
 - [x] `upsert-issue` test: two upserts with a stubbed identical timestamp both succeed (no PK clash).
-- [ ] `sync-incremental` test: >50 stale items across two calls mirrors every item and advances
+- [x] `sync-incremental` test: >50 stale items across two calls mirrors every item and advances
       the watermark only when drained.
 - [ ] `deprecation-scan-queue` test: two `claimPendingBatch` calls return disjoint id sets;
       `requeueStuckRunning` leaves a fresh running row untouched.

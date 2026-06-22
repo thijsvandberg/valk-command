@@ -159,12 +159,30 @@ export async function POST() {
       results.push(info);
     }
 
-    // Advance watermark once after processing the entire batch (issues are
-    // sorted by updated asc, so the last entry is the most recent).
-    const lastUpdated = issues[issues.length - 1]?.fields.updated;
-    if (lastUpdated) {
-      await upsertSetting(WATERMARK_KEY, lastUpdated);
+    // Advance the watermark in the space getUpdatedSince defines (the `updated`
+    // values it returned), never by the re-fetched issue timestamps.
+    //
+    // While draining (remaining > 0) we must NOT advance past the earliest stale
+    // item we have not processed yet: getUpdatedSince only returns items newer
+    // than the watermark, so an unprocessed stale item left below it would be
+    // silently dropped from the mirror. Pin the watermark to the oldest
+    // unprocessed stale item so the next tick re-queries it (and everything
+    // newer). Only when fully drained do we advance to the newest `updated`
+    // across the whole changed window.
+    let newWatermark: string;
+    if (remaining > 0) {
+      const unprocessed = staleItems.slice(batch.length);
+      newWatermark = unprocessed.reduce(
+        (min, it) => (it.updated < min ? it.updated : min),
+        unprocessed[0].updated,
+      );
+    } else {
+      newWatermark = changed.reduce(
+        (max, it) => (it.updated > max ? it.updated : max),
+        changed[0].updated,
+      );
     }
+    await upsertSetting(WATERMARK_KEY, newWatermark);
 
     invalidateSearchCache();
     cache.invalidate("/api/tickets");
@@ -187,7 +205,7 @@ export async function POST() {
       count: results.length,
       checked: changed.length,
       remaining,
-      watermark: issues[issues.length - 1]?.fields.updated ?? watermark,
+      watermark: newWatermark,
       tickets: results.map((r) => r.key),
       sprintMetaRefreshed,
     });
