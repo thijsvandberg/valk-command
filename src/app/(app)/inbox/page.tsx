@@ -22,8 +22,12 @@ import { useInboxFilters } from "@/components/sprint-board/useInboxFilters";
 import { useInboxGroupBy } from "@/components/sprint-board/useInboxGroupBy";
 import { INBOX_SORT_OPTIONS } from "@/components/sprint-board/filter-bar-types";
 import { saveTicketMetadata } from "@/components/sprint-board/sprint-board-utils";
+import { buildTeamMap } from "@/lib/new-stories-grouping";
+import { poUsers, userTeams } from "@/lib/api-client";
+import { useDefaultTeam } from "@/hooks/useDefaultTeam";
 import { CONTENT_MAX } from "@/lib/layout";
 import { relativeDate } from "@/lib/date-utils";
+import type { Team } from "@/lib/sprint-utils";
 import type { JiraStatus, Ticket } from "@/types/ticket";
 import type { NewStoriesResponse, NewStoryRow } from "@/lib/new-stories-types";
 
@@ -91,9 +95,32 @@ export default function InboxPage() {
     filterProps,
   } = useInboxFilters(rows);
 
+  // Relevance grouping inputs (BRDG-372): my team, who is on each team, and who
+  // the POs are. Fetched here so the inbox stays the single owner of grouping.
+  const { defaultTeam } = useDefaultTeam();
+  const { data: teamData } = useSWR<{ assignments: Array<{ displayName: string; teams: string[] }> }>(
+    userTeams.listUrl(),
+  );
+  const { data: poData } = useSWR<{ pos: string[]; accountIds: string[] }>(poUsers.listUrl());
+
+  const relevanceOptions = useMemo(
+    () => ({
+      myTeam: defaultTeam,
+      teamMap: buildTeamMap(
+        (teamData?.assignments ?? []).map((a) => ({ displayName: a.displayName, teams: a.teams as Team[] })),
+      ),
+      poAccountIds: new Set(poData?.accountIds ?? []),
+      poNames: new Set(poData?.pos ?? []),
+    }),
+    [defaultTeam, teamData, poData],
+  );
+
   // Configurable grouping over the already filtered + sorted rows, so search /
   // filter / sort still apply within each group (BRDG-358).
-  const { groupBy, setGroupBy, groups, collapsedGroups, toggleCollapse } = useInboxGroupBy(filteredRows);
+  const { groupBy, setGroupBy, groups, collapsedGroups, toggleCollapse } = useInboxGroupBy(
+    filteredRows,
+    relevanceOptions,
+  );
 
   // Identity sprint-name map so the BoardRow sprint chip shows the display name
   // (the inbox stores the name in sprintId, see rowToTicket).
@@ -256,7 +283,7 @@ export default function InboxPage() {
           hideNotifications
           actions={
             <div className="flex items-center gap-1">
-              <InboxGroupByDropdown value={groupBy} onChange={setGroupBy} />
+              <InboxGroupByDropdown value={groupBy} onChange={setGroupBy} showRelevance={!!defaultTeam} />
               <UnifiedControlsCluster
                 searchQuery={searchQuery}
                 onSearchChange={setSearchQuery}

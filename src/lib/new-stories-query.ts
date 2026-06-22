@@ -80,7 +80,9 @@ export async function listNewStories(ctx: NewStoryQueryCtx): Promise<NewStoryRow
     epicKey: t.epicKey ?? null,
     storyPoints: t.storyPoints ?? null,
     assignee: buildAssignee(t.assignee),
-    reporter: buildAssignee(t.reporter),
+    // Carry the reporter's stable accountId (BRDG-372) so the inbox Relevance
+    // grouping can match a creator against the PO list by id, not just by name.
+    reporter: buildAssignee(t.reporter, t.reporterAccountId),
     sprintName: sprintDisplayName ?? (t.sprintName ? t.sprintName : null),
     jiraCreatedAt: t.jiraCreatedAt ?? null,
   }));

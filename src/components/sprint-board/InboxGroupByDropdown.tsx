@@ -14,21 +14,29 @@ const GROUP_BY_OPTIONS: { value: InboxGroupBy; label: string }[] = [
   { value: "epic", label: "Epic" },
   { value: "creator", label: "Reporter" },
   { value: "sprint", label: "Sprint" },
+  // Relevance is team-relative; only offered when a default team is set.
+  { value: "relevance", label: "Relevance" },
 ];
 
 export function InboxGroupByDropdown({
   value,
   onChange,
+  showRelevance = false,
 }: {
   value: InboxGroupBy;
   onChange: (v: InboxGroupBy) => void;
+  showRelevance?: boolean;
 }) {
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
 
   useOutsideClick(ref, () => setOpen(false), { enabled: open, escapeClose: true });
 
-  const activeLabel = GROUP_BY_OPTIONS.find((o) => o.value === value)?.label ?? "Date";
+  const options = showRelevance
+    ? GROUP_BY_OPTIONS
+    : GROUP_BY_OPTIONS.filter((o) => o.value !== "relevance");
+
+  const activeLabel = options.find((o) => o.value === value)?.label ?? "Date";
 
   return (
     <div ref={ref} className="relative">
@@ -54,7 +62,7 @@ export function InboxGroupByDropdown({
           role="menu"
           className="absolute top-full right-0 z-50 mt-1 w-36 rounded-lg border border-border-strong bg-[var(--color-surface-floating)] py-1 shadow-[var(--shadow-lg)]"
         >
-          {GROUP_BY_OPTIONS.map((opt) => (
+          {options.map((opt) => (
             <button
               key={opt.value}
               type="button"

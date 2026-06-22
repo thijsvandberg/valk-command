@@ -6,6 +6,7 @@ import {
   groupInboxStories,
   type InboxGroup,
   type InboxGroupBy,
+  type RelevanceOptions,
 } from "@/lib/new-stories-grouping";
 import type { NewStoryRow } from "@/lib/new-stories-types";
 
@@ -16,11 +17,18 @@ import type { NewStoryRow } from "@/lib/new-stories-types";
 const GROUP_BY_KEY = "inbox-group-by";
 const COLLAPSED_KEY = "inbox-collapsed-groups";
 
-export function useInboxGroupBy(rows: NewStoryRow[]) {
+export function useInboxGroupBy(rows: NewStoryRow[], relevance?: RelevanceOptions) {
   const [groupBy, setGroupBy] = useSessionStorage<InboxGroupBy>(GROUP_BY_KEY, "date");
   const [collapsedArr, setCollapsedArr] = useSessionStorage<string[]>(COLLAPSED_KEY, []);
 
   const collapsedGroups = useMemo(() => new Set(collapsedArr), [collapsedArr]);
+
+  // Relevance has no meaning without a default team: render as date instead of
+  // an empty view, but leave the stored choice untouched so re-selecting a team
+  // restores Relevance (BRDG-372 AC6).
+  const hasTeam = !!relevance?.myTeam;
+  const effectiveGroupBy: InboxGroupBy =
+    groupBy === "relevance" && !hasTeam ? "date" : groupBy;
 
   const toggleCollapse = useCallback(
     (groupKey: string) => {
@@ -35,11 +43,11 @@ export function useInboxGroupBy(rows: NewStoryRow[]) {
   );
 
   // Date bucketing is day-granular, so a per-render `now` is fine; recomputed
-  // only when the rows or the grouping mode change.
+  // only when the rows, the grouping mode, or the relevance inputs change.
   const groups = useMemo<InboxGroup[]>(
-    () => groupInboxStories(rows, { groupBy, now: new Date() }),
-    [rows, groupBy],
+    () => groupInboxStories(rows, { groupBy: effectiveGroupBy, now: new Date(), relevance }),
+    [rows, effectiveGroupBy, relevance],
   );
 
-  return { groupBy, setGroupBy, groups, collapsedGroups, toggleCollapse };
+  return { groupBy: effectiveGroupBy, setGroupBy, groups, collapsedGroups, toggleCollapse };
 }

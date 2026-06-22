@@ -2,12 +2,15 @@ import { describe, it, expect } from "vitest";
 import {
   groupNewStories,
   groupInboxStories,
+  classifyInboxRelevance,
   resolveTeam,
   dateBucket,
   buildTeamMap,
   UNASSIGNED_TEAM_LABEL,
   type UserTeamAssignment,
+  type RelevanceOptions,
 } from "./new-stories-grouping";
+import type { Team } from "@/lib/sprint-utils";
 import type { NewStoryRow } from "./new-stories-types";
 
 const NOW = new Date("2026-06-16T12:00:00.000Z");
@@ -184,5 +187,109 @@ describe("groupInboxStories", () => {
     ];
     const groups = groupInboxStories(rows, { groupBy: "sprint", now: NOW });
     expect(groups.map((g) => g.label)).toEqual(["BT: Sprint 1", "BT: Sprint 2", "No sprint"]);
+  });
+});
+
+// --- Relevance grouping (BRDG-372) ----------------------------------------
+
+function poReporter(name: string, accountId: string) {
+  return { name, initials: "X", color: "#000", accountId };
+}
+
+// Alice (BT, my team), Bob (BM, other team), Pam (BT teammate + a PO),
+// Quinn (no team + a PO). poNames/accountIds flag Pam and Quinn.
+function relevanceOpts(overrides?: Partial<RelevanceOptions>): RelevanceOptions {
+  const teamMap = buildTeamMap([
+    { displayName: "Alice", teams: ["BT"] as Team[] },
+    { displayName: "Bob", teams: ["BM"] as Team[] },
+    { displayName: "Pam", teams: ["BT"] as Team[] },
+  ]);
+  return {
+    myTeam: "BT" as Team,
+    teamMap,
+    poAccountIds: new Set(["acc-quinn", "acc-pam"]),
+    poNames: new Set(["Quinn", "Pam"]),
+    ...overrides,
+  };
+}
+
+describe("classifyInboxRelevance", () => {
+  const opts = relevanceOpts();
+
+  it("buckets a story on my team's sprint by a non-teammate as team_board", () => {
+    const r = row({ key: "x", sprintName: "BT: 138", reporter: reporter("Bob") });
+    expect(classifyInboxRelevance(r, opts)).toBe("team_board");
+  });
+
+  it("buckets my team's backlog by a non-teammate as team_board", () => {
+    const r = row({ key: "x", sprintName: "BT: Backlog", reporter: reporter("Bob") });
+    expect(classifyInboxRelevance(r, opts)).toBe("team_board");
+  });
+
+  it("buckets a story created by a teammate as teammates, wherever it sits", () => {
+    const onMine = row({ key: "x", sprintName: "BT: 138", reporter: reporter("Alice") });
+    const elsewhere = row({ key: "y", sprintName: "BM: 12", reporter: reporter("Alice") });
+    expect(classifyInboxRelevance(onMine, opts)).toBe("teammates");
+    expect(classifyInboxRelevance(elsewhere, opts)).toBe("teammates");
+  });
+
+  it("buckets a no-sprint story by a non-teammate as generic_backlog", () => {
+    const r = row({ key: "x", sprintName: null, reporter: reporter("Bob") });
+    expect(classifyInboxRelevance(r, opts)).toBe("generic_backlog");
+  });
+
+  it("buckets a leftover story by a non-team non-PO as everything_else", () => {
+    const r = row({ key: "x", sprintName: "BM: 12", reporter: reporter("Bob") });
+    expect(classifyInboxRelevance(r, opts)).toBe("everything_else");
+  });
+
+  it("sinks a leftover PO-created story to other_pos (matched by accountId)", () => {
+    const r = row({ key: "x", sprintName: "BM: 12", reporter: poReporter("Quinn", "acc-quinn") });
+    expect(classifyInboxRelevance(r, opts)).toBe("other_pos");
+  });
+
+  it("matches a PO by display name when no accountId is captured", () => {
+    const r = row({ key: "x", sprintName: "BM: 12", reporter: reporter("Quinn") });
+    expect(classifyInboxRelevance(r, opts)).toBe("other_pos");
+  });
+
+  it("keeps a PO-created story in its natural bucket when it matches 1-3", () => {
+    // Pam is both a teammate (BT) and a PO: teammates wins, not other_pos.
+    const r = row({ key: "x", sprintName: "BM: 12", reporter: poReporter("Pam", "acc-pam") });
+    expect(classifyInboxRelevance(r, opts)).toBe("teammates");
+  });
+});
+
+describe("groupInboxStories relevance mode", () => {
+  it("emits non-empty buckets in ladder order, newest-first within a bucket", () => {
+    const rows = [
+      row({ key: "PO-1", sprintName: "BM: 12", reporter: poReporter("Quinn", "acc-quinn") }),
+      row({ key: "ELSE-1", sprintName: "BM: 12", reporter: reporter("Bob") }),
+      row({ key: "BL-1", sprintName: null, reporter: reporter("Bob") }),
+      row({ key: "MATE-1", sprintName: "BM: 12", reporter: reporter("Alice") }),
+      row({ key: "BOARD-1", sprintName: "BT: 138", reporter: reporter("Bob") }),
+      row({ key: "BOARD-2", sprintName: "BT: Backlog", reporter: reporter("Bob") }),
+    ];
+    const groups = groupInboxStories(rows, { groupBy: "relevance", now: NOW, relevance: relevanceOpts() });
+    expect(groups.map((g) => g.label)).toEqual([
+      "On your team's board",
+      "From your teammates",
+      "Generic backlog",
+      "Everything else",
+      "From other POs",
+    ]);
+    // Two rows landed in team_board, preserving incoming order.
+    expect(groups[0].rows.map((r) => r.key)).toEqual(["BOARD-1", "BOARD-2"]);
+  });
+
+  it("falls back to date grouping when no team is set", () => {
+    const rows = [row({ key: "A-1", reporter: reporter("Alice") })];
+    const groups = groupInboxStories(rows, {
+      groupBy: "relevance",
+      now: NOW,
+      relevance: relevanceOpts({ myTeam: null }),
+    });
+    // Date buckets, not relevance buckets.
+    expect(groups[0].label).toBe("Today");
   });
 });
