@@ -1,6 +1,6 @@
 # BRDG-369: Default quick-move options in move menus
 
-**Status:** To Do
+**Status:** Completed
 **Priority:** Medium
 **Type:** UX / Sprint board
 **Related:** Consumes the placement rule from [BRDG-370](BRDG-370-unified-sprint-placement-policy.md). Reuses the create-sprint flow from [BRDG-309](completed/BRDG-309-epic-create-sprint-drop-zone.md) / [CreateSprintModal](../../src/components/sprint-board/CreateSprintModal.tsx).
@@ -159,7 +159,7 @@ New optional props `quickMoves?: QuickMoveOption[]`, `onQuickMove?: (opt) => voi
 - [x] Wire all three through the bulk action bar (`UpdateDropdown`) and the epic-children menu
 - [x] Apply the BRDG-370 placement rule (`topKeys`) on every quick move
 - [x] Tests: helper; visibility (already-there hiding, multi-sprint, de-dup); active/next/backlog dispatch; auto-create-then-move
-- [ ] `lint`, `typecheck`, `test`, `build` pass
+- [x] `lint`, `typecheck`, `test`, `build` pass
 
 **Implementation notes:**
 - Shared pure logic in [quick-moves.ts](../../src/lib/quick-moves.ts) (`computeQuickMoves`) +
