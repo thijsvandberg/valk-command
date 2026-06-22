@@ -1,8 +1,24 @@
 # BRDG-373: Inbox row context menu + full bulk actions
 
-**Status:** Not Started
+**Status:** Done
 **Priority:** Medium
 **Type:** Feature / UX — Inbox
+
+## Status
+
+**Done** — all acceptance criteria met. The `/inbox` rows now get the board's right-click action
+menu (`CursorMenu` + `TicketActionMenuContent`) and the shared `BulkActionBar`, driven by a new
+self-contained `src/app/(app)/inbox/useInboxRowActions.ts` hook (modelled on `EpicChildrenSection`,
+deliberately NOT `useTicketActions`, which would patch the board's caches). Moves overlay the
+destination sprint name and keep the row in the inbox; only Mark-as-read removes a row.
+`BulkActionBar` gained an additive optional `onMarkRead`/`markReadCount` so the board/epic bars are
+byte-identical. Verified: `npm run verify` (6246 tests) + `npm run build` green. Browser screenshots
+were not captured (the route is Clerk-auth-gated and no browser-automation tool is available); the
+menu + bar are covered by jsdom integration tests that mount the real components.
+
+**Known limitation (in scope):** `NewStoryRow` has no `flagged`/`readiness`/`businessValue`, so those
+menu actions are write-through (they fire correctly) but don't reflect current state; flag-state is
+`"mixed"`. Enriching the row model is left to a follow-up.
 
 ## Description
 
