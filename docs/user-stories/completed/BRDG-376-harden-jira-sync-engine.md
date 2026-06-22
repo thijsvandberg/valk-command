@@ -1,6 +1,6 @@
 # BRDG-376: Harden the Jira sync engine (atomicity & correctness)
 
-**Status:** Not Started
+**Status:** Completed
 **Priority:** High
 **Type:** Stability — sync / data integrity
 
