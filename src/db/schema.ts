@@ -1025,6 +1025,22 @@ export const favoriteUser = sqliteTable("favorite_user", {
   uniqueIndex("favorite_user_display_name_idx").on(table.displayName),
 ]);
 
+// PO users (BRDG-372): people flagged as Product Owners. Used by the inbox's
+// "Relevance" grouping to sink stories created by another PO to the bottom.
+// Independent of favoriteUser; mirrors its accountId-first match (BRDG-364).
+export const poUser = sqliteTable("po_user", {
+  id: text("id").primaryKey(),
+  displayName: text("display_name").notNull(),
+  // Stable Jira accountId (BRDG-364): the match key, so the flag survives a
+  // Jira rename. Nullable — display name stays the fallback.
+  accountId: text("account_id"),
+  createdAt: text("created_at")
+    .notNull()
+    .default(sql`(datetime('now'))`),
+}, (table) => [
+  uniqueIndex("po_user_display_name_idx").on(table.displayName),
+]);
+
 // User-team assignments: maps users to fixed teams (BT, BM, BO, GXP, HT)
 export const userTeamAssignment = sqliteTable("user_team_assignment", {
   id: text("id").primaryKey(),
@@ -1042,5 +1058,6 @@ export const userTeamAssignment = sqliteTable("user_team_assignment", {
 ]);
 
 export type FavoriteUserRow = typeof favoriteUser.$inferSelect;
+export type PoUserRow = typeof poUser.$inferSelect;
 export type UserTeamAssignmentRow = typeof userTeamAssignment.$inferSelect;
 export type NewStoryReadRow = typeof newStoryRead.$inferSelect;

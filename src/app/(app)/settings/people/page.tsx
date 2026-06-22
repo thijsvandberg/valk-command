@@ -1,9 +1,9 @@
 "use client";
 
 import { useState } from "react";
-import { Star, Search } from "lucide-react";
+import { Star, BadgeCheck, Search } from "lucide-react";
 import useSWR from "swr";
-import { swrFetcher, favoriteUsers, userTeams } from "@/lib/api-client";
+import { swrFetcher, favoriteUsers, poUsers, userTeams } from "@/lib/api-client";
 import { Avatar } from "@/components/shared/Avatar";
 import { TEAMS } from "@/lib/sprint-utils";
 import type { Assignee } from "@/types/ticket";
@@ -14,6 +14,7 @@ interface AssignableUser {
   avatarUrl: string | null;
   initials: string;
   isFavorite: boolean;
+  isPo: boolean;
   teams: string[];
 }
 
@@ -63,6 +64,24 @@ export default function PeoplePage() {
         await favoriteUsers.add(user.displayName, user.accountId);
       } else {
         await favoriteUsers.remove(user.displayName, user.accountId);
+      }
+      return optimistic;
+    }, { optimisticData: optimistic, rollbackOnError: true });
+  };
+
+  const handleTogglePo = async (user: AssignableUser) => {
+    const newPo = !user.isPo;
+    const optimistic = {
+      users: users.map((u) =>
+        u.displayName === user.displayName ? { ...u, isPo: newPo } : u,
+      ),
+    };
+
+    await mutate(async () => {
+      if (newPo) {
+        await poUsers.add(user.displayName, user.accountId);
+      } else {
+        await poUsers.remove(user.displayName, user.accountId);
       }
       return optimistic;
     }, { optimisticData: optimistic, rollbackOnError: true });
@@ -179,6 +198,23 @@ export default function PeoplePage() {
                   })}
                 </div>
 
+                {/* PO toggle (BRDG-372): violet, kept visually distinct from
+                    the amber favorite star so the two roles never blur. */}
+                <button
+                  type="button"
+                  onClick={() => handleTogglePo(user)}
+                  title={user.isPo ? "Unmark as Product Owner" : "Mark as Product Owner"}
+                  aria-pressed={user.isPo}
+                  className="ml-1 rounded-md p-1.5 cursor-pointer focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-[var(--color-brand-400)] hover:bg-overlay-default active:opacity-60"
+                  style={{ transition: "background-color 0.15s ease" }}
+                >
+                  <BadgeCheck
+                    size={14}
+                    strokeWidth={1.5}
+                    className={user.isPo ? "fill-violet-500 text-white" : "text-text-muted"}
+                  />
+                </button>
+
                 {/* Favorite toggle */}
                 <button
                   type="button"
@@ -200,7 +236,7 @@ export default function PeoplePage() {
       )}
 
       <p className="mt-4 text-label leading-relaxed text-text-muted">
-        Favorited users appear at the top of all assignee pickers. Team assignments enable team-based filtering when selecting assignees.
+        Favorited users appear at the top of all assignee pickers. Team assignments enable team-based filtering when selecting assignees. The Product Owner marker sinks stories created by other POs to the bottom of the inbox&apos;s Relevance grouping.
       </p>
     </>
   );
