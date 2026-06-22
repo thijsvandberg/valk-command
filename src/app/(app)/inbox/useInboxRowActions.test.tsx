@@ -123,8 +123,8 @@ describe("useInboxRowActions (BRDG-373)", () => {
     expect(apiFetch).toHaveBeenCalledWith("/api/tickets/VPL-1/status", { method: "PUT", body: { status: "DONE" } });
     expect(apiFetch).toHaveBeenCalledWith("/api/tickets/VPL-2/status", { method: "PUT", body: { status: "DONE" } });
 
-    await act(async () => { await result.current.handleBulkReadiness("ready_for_development", keys); });
-    expect(tickets.updateMetadata).toHaveBeenCalledWith("VPL-1", { readiness: "ready_for_development" });
+    await act(async () => { await result.current.handleBulkReadiness("ready_to_refine", keys); });
+    expect(tickets.updateMetadata).toHaveBeenCalledWith("VPL-1", { readiness: "ready_to_refine" });
 
     await act(async () => { await result.current.handleBulkEpic("VPL-10", keys); });
     expect(tickets.updateEpic).toHaveBeenCalledWith("VPL-1", "VPL-10");
