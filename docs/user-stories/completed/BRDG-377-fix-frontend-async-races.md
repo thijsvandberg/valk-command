@@ -1,6 +1,6 @@
 # BRDG-377: Fix frontend async races and lifecycle bugs
 
-**Status:** Not Started
+**Status:** Completed
 **Priority:** High
 **Type:** Stability — hooks, contexts, components
 
@@ -73,25 +73,55 @@ correctness and render purity, **not** adding manual memoization.
 No user-facing behaviour change beyond fixing the bugs (correct conversation/comments shown,
 burnup seeds for every sprint, theme unchanged visually).
 
+## Implementation Plan
+
+React Compiler is on: no manual memoization except the explicit context-value memo (item 6).
+Ref writes live only in effects/cleanup/handlers (lint blocks ref writes in render).
+Order: 1, 3, 2, 8, 7, 5, then 4 before 6 (same file; 6's deps depend on 4's final callbacks).
+
+1. **useWorkspaceTask** (`src/hooks/useWorkspaceTask.ts`): in the unmount effect (57-64) add
+   `unmountedRef.current = false;` as the first statement, before `return`. Matches sibling hooks.
+2. **useMessages** (`src/hooks/useMessages.ts`): `fetchMessages` is exported as `refresh`, so the
+   guard cannot live inside it. Replace the `useEffect(fetchMessages)` with a self-contained effect
+   that fetches inline, gates `setMessages`/`setError`/`setLoading` on a local `let ignore = false`,
+   and returns `() => { ignore = true; }`. Deps: `[conversationId]`.
+3. **CommentsSection** (`src/components/ticket-detail/CommentsSection.tsx`): in the `loadComments`
+   effect (33-45) add `let cancelled = false`, gate `setPoComments`/`setLoading` on `!cancelled`,
+   add `setLoading(true)` at effect start (skeleton on ticket switch), cleanup sets `cancelled=true`.
+4. **RefinementSessionContext** save/finish (172-200): add `const stateRef = useRef(state)` synced via
+   `useEffect(() => { stateRef.current = state; }, [state])`. In `saveSession`/`finishSession` read
+   `{savedSessionId, currentIndex}` from `stateRef.current`, call `refinementSessionsApi.update(...)`
+   outside the updater; updater only flips `sessionActive`/`showingEndModal`. Fires once under StrictMode.
+5. **ThemeContext** (`src/contexts/ThemeContext.tsx`): `getThemeSnapshot` returns `resolveTheme()` only
+   (no `applyTheme`). Add `useEffect(() => applyTheme(theme), [theme])` in the provider. `public/theme-init.js`
+   (beforeInteractive in layout) already applies theme pre-paint, so no flash. `setTheme` still applies sync.
+6. **Refinement context value** (202-219): wrap the value object in `useMemo` keyed on `[state, ...12 callbacks]`.
+   Do after item 4 so callback identities are final.
+7. **BurnupChart** (`src/components/sprint-board/BurnupChart.tsx`): change `seedAttempted` to
+   `useRef<string | null>(null)`; in the seed effect guard on `seedAttempted.current === sprintId`,
+   then set `seedAttempted.current = sprintId`. Per-sprint guard (chart not keyed by sprintId).
+8. **TicketGroup** (`src/components/stakeholder/TicketGroup.tsx`): `key={t.jiraKey ?? t.title}`;
+   drop the now-unused `i` from the map callback.
+
 ## Acceptance Criteria
 
-- [ ] In dev, the chat workspace-task UI keeps updating after StrictMode's remount (no permanent
+- [x] In dev, the chat workspace-task UI keeps updating after StrictMode's remount (no permanent
       `safeSetState` no-op).
-- [ ] Switching conversations / tickets quickly never renders the previous entity's
+- [x] Switching conversations / tickets quickly never renders the previous entity's
       messages/comments (in-flight responses are ignored).
-- [ ] Saving/finishing a refinement session fires exactly one PATCH (no duplicate under StrictMode).
-- [ ] `getThemeSnapshot` is pure; theme still applies correctly on load and toggle.
-- [ ] The refinement provider value is stable across renders that don't change it.
-- [ ] Every never-seeded sprint auto-seeds its burnup; stakeholder rows keep correct state on
+- [x] Saving/finishing a refinement session fires exactly one PATCH (no duplicate under StrictMode).
+- [x] `getThemeSnapshot` is pure; theme still applies correctly on load and toggle.
+- [x] The refinement provider value is stable across renders that don't change it.
+- [x] Every never-seeded sprint auto-seeds its burnup; stakeholder rows keep correct state on
       sort/filter.
 
 ## Tests
 
-- [ ] `useWorkspaceTask`: a mount→unmount→remount cycle still applies state updates.
-- [ ] `useMessages` / `CommentsSection`: a late response for the previous id/key is discarded.
-- [ ] `RefinementSessionContext`: save/finish invoke the API once even if the updater runs twice.
-- [ ] `BurnupChart`: switching to a second unseeded sprint triggers auto-seed.
-- [ ] `TicketGroup`: reordering preserves per-row state (keyed by `jiraKey`).
+- [x] `useWorkspaceTask`: a mount→unmount→remount cycle still applies state updates.
+- [x] `useMessages` / `CommentsSection`: a late response for the previous id/key is discarded.
+- [x] `RefinementSessionContext`: save/finish invoke the API once even if the updater runs twice.
+- [x] `BurnupChart`: switching to a second unseeded sprint triggers auto-seed.
+- [x] `TicketGroup`: reordering preserves per-row state (keyed by `jiraKey`).
 
 ## Open Questions
 
