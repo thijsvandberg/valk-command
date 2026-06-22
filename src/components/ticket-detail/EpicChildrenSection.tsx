@@ -38,6 +38,8 @@ import { tickets, jira, apiFetch, ApiError } from "@/lib/api-client";
 import { getJiraUrl } from "@/lib/jira-url";
 import { applyLocalMoves, sprintNameForTarget } from "@/lib/epic-children-move";
 import { placementForMove, topKeysForMove } from "@/lib/sprint-placement";
+import { computeQuickMoves, type QuickMoveOption } from "@/lib/quick-moves";
+import { useBacklogDropTarget } from "@/hooks/useBacklogDropTarget";
 import { applyLocalOrder } from "@/lib/epic-children-reorder";
 import { groupChildrenBySprint } from "@/lib/epic-children-grouping";
 import { Loader2, Search, AlertTriangle } from "lucide-react";
@@ -240,6 +242,10 @@ export function EpicChildrenSection({
 
   const { sprints: rawSprints, mutate: mutateSprints } = useJiraSprints();
   const sprints = useMemo(() => mapJiraSprints(rawSprints), [rawSprints]);
+  const { backlogTargetName } = useBacklogDropTarget();
+  // Quick-move auto-create (BRDG-369): when "Move to next sprint" targets a sprint that
+  // does not exist yet, open the create modal prefilled, then move these keys into it.
+  const [quickCreate, setQuickCreate] = useState<{ name: string; keys: Set<string> } | null>(null);
   // Prediction props for the BRDG-309 create-the-next-sprint flow, mirroring SprintBoard.
   const latestRegular = useMemo(() => latestRegularSprint(sprints), [sprints]);
   const suggestedSprintName = useMemo(() => nextSprintName(sprints), [sprints]);
@@ -367,6 +373,15 @@ export function EpicChildrenSection({
     mergedItems.forEach((i) => { map[i.key] = i.jiraStatus; });
     return map;
   }, [mergedItems]);
+  // Child key -> current sprint NAME (local-move overlay wins over the server value),
+  // for the BRDG-369 quick-move options.
+  const sprintNameByKey = useMemo(() => {
+    const map: Record<string, string | null> = {};
+    mergedItems.forEach((i) => {
+      map[i.key] = i.key in localMoves ? localMoves[i.key] : (isEpicChild(i) ? i.sprintName : null);
+    });
+    return map;
+  }, [mergedItems, localMoves]);
 
   const doSearch = useCallback((q: string) => {
     if (searchDebounceRef.current) clearTimeout(searchDebounceRef.current);
@@ -900,6 +915,21 @@ export function EpicChildrenSection({
       });
   }, [checkedKeys, sprints, statusByKey, onMutate, showToast]);
 
+  // Quick-move options (BRDG-369) for a key set: resolve each child's current sprint name.
+  const quickMovesFor = useCallback((targets: Set<string>): QuickMoveOption[] => {
+    const currentSprintNames = [...targets].map((k) => sprintNameByKey[k] ?? null);
+    return computeQuickMoves({ currentSprintNames, sprints, backlogTargetName });
+  }, [sprintNameByKey, sprints, backlogTargetName]);
+  const handleQuickMove = useCallback((opt: QuickMoveOption, targets: Set<string> = checkedKeys) => {
+    if (targets.size === 0) return;
+    if (opt.createName) {
+      setPendingPlanSprintName(opt.createName); // feeds planPrevSprint's date prediction
+      setQuickCreate({ name: opt.createName, keys: new Set(targets) });
+      return;
+    }
+    if (opt.targetSprintId) handleBulkMoveSprint(opt.targetSprintId, targets);
+  }, [checkedKeys, handleBulkMoveSprint]);
+
   const handleBulkReview = useCallback(async (targetKeys?: Set<string>) => {
     const keys = [...(targetKeys ?? checkedKeys)];
     if (!keys.length) return;
@@ -1253,6 +1283,8 @@ export function EpicChildrenSection({
           onSetReadiness={handleBulkReadiness}
           onSetEpic={handleBulkEpic}
           onMoveSprint={handleBulkMoveSprint}
+          quickMoves={quickMovesFor(checkedKeys)}
+          onQuickMove={(opt) => handleQuickMove(opt, checkedKeys)}
           onUpdateAssignee={handleBulkAssignee}
           onUpdateLabel={handleBulkLabels}
           onSetFlagged={handleBulkFlag}
@@ -1274,6 +1306,8 @@ export function EpicChildrenSection({
             onSetReadiness={(r) => handleBulkReadiness(r, rowMenu.targets)}
             onSetEpic={(epicKey) => handleBulkEpic(epicKey, rowMenu.targets)}
             onMoveSprint={(sprintId) => handleBulkMoveSprint(sprintId, rowMenu.targets)}
+            quickMoves={quickMovesFor(rowMenu.targets)}
+            onQuickMove={(opt) => handleQuickMove(opt, rowMenu.targets)}
             onUpdateAssignee={(accountId, name) => handleBulkAssignee(accountId, name, rowMenu.targets)}
             onUpdateLabel={(labels, mode) => handleBulkLabels(labels, mode, rowMenu.targets)}
             onSetFlagged={(flagged) => handleBulkFlag(flagged, rowMenu.targets)}
@@ -1301,6 +1335,33 @@ export function EpicChildrenSection({
           onCreated={handlePlanSprintCreated}
           showToast={showToast}
           suggestedName={pendingPlanSprintName ?? suggestedSprintName}
+          suggestedStartDate={startDateFromPreviousEnd(planPrevSprint?.sprint.endDate)}
+          previousSprintName={planPrevSprint?.sprint.name}
+          previousSprintEndIso={planPrevSprint?.sprint.endDate ?? null}
+        />
+      )}
+
+      {quickCreate && (
+        <CreateSprintModal
+          onClose={() => { setQuickCreate(null); setPendingPlanSprintName(null); }}
+          onCreated={(sprint) => {
+            const keys = quickCreate.keys;
+            setQuickCreate(null);
+            setPendingPlanSprintName(null);
+            // Inject the created sprint into the cached list so its group renders with
+            // metadata (mirrors handlePlanSprintCreated), then bulk-move the selection in.
+            void mutateSprints(
+              (cur) =>
+                cur && !cur.sprints.some((s) => s.id === sprint.id)
+                  ? { ...cur, sprints: [...cur.sprints, { id: sprint.id, name: sprint.name, state: sprint.state, startDate: sprint.startDate, endDate: sprint.endDate, goal: sprint.goal }] }
+                  : cur,
+              { revalidate: false },
+            );
+            handleBulkMoveSprint(String(sprint.id), keys);
+            showToast(`Created ${sprint.name} and moved ${keys.size} issue${keys.size === 1 ? "" : "s"} in`);
+          }}
+          showToast={showToast}
+          suggestedName={quickCreate.name}
           suggestedStartDate={startDateFromPreviousEnd(planPrevSprint?.sprint.endDate)}
           previousSprintName={planPrevSprint?.sprint.name}
           previousSprintEndIso={planPrevSprint?.sprint.endDate ?? null}

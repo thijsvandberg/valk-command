@@ -68,6 +68,39 @@ describe("TicketActionMenuContent", () => {
     expect(container.querySelectorAll("div.h-px.bg-overlay-strong")).toHaveLength(2);
   });
 
+  it("renders quick-move items above Move to Sprint and fires onQuickMove + close (BRDG-369)", () => {
+    const onQuickMove = vi.fn();
+    const close = vi.fn();
+    const quickMoves = [
+      { id: "next" as const, label: 'Move to "BT: 140"', targetSprintId: "3" },
+      { id: "backlog" as const, label: 'Move to "BT: Backlog"', targetSprintId: "9" },
+    ];
+    const { container } = render(
+      <TicketActionMenuContent
+        quickMoves={quickMoves}
+        onQuickMove={onQuickMove}
+        onMoveSprint={vi.fn()}
+        sprints={[]}
+        close={close}
+      />,
+    );
+    const labels = Array.from(container.querySelectorAll("button")).map((b) => b.textContent);
+    const nextIdx = labels.findIndex((t) => t === 'Move to "BT: 140"');
+    const moveSprintIdx = labels.findIndex((t) => t === "Move to Sprint");
+    expect(nextIdx).toBeGreaterThanOrEqual(0);
+    expect(nextIdx).toBeLessThan(moveSprintIdx); // quick moves render above Move to Sprint
+
+    fireEvent.click(screen.getByText('Move to "BT: 140"'));
+    expect(onQuickMove).toHaveBeenCalledWith(quickMoves[0]);
+    expect(close).toHaveBeenCalledTimes(1);
+  });
+
+  it("renders no quick-move items when none are supplied", () => {
+    render(<TicketActionMenuContent onMoveSprint={vi.fn()} sprints={[]} close={vi.fn()} />);
+    expect(screen.queryByText(/^Move to "/)).not.toBeInTheDocument();
+    expect(screen.getByText("Move to Sprint")).toBeInTheDocument();
+  });
+
   it("fires Move to top / Move to bottom and closes", () => {
     const onMoveToTop = vi.fn();
     const onMoveToBottom = vi.fn();

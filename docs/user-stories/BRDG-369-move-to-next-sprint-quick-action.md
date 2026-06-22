@@ -151,12 +151,24 @@ New optional props `quickMoves?: QuickMoveOption[]`, `onQuickMove?: (opt) => voi
 
 ## Checklist
 
-- [ ] Add `nextSprintNameFrom(currentName)` helper + tests in `sprint-utils.ts`
-- [ ] Compute a `quickMoves` descriptor (active / next / backlog targets + `needsCreate`) from the selection in `SprintBoard` and `EpicChildrenSection`
-- [ ] Add the quick-move `MenuItem`s to `TicketActionMenuContent`, de-duplicated, each shown only when its target resolves
-- [ ] Hide each option when the selection is already entirely in that destination; hide "next" for multi-sprint / backlog / non-numbered selections
-- [ ] Auto-create: when the next sprint is absent, open `CreateSprintModal` prefilled, then move the selection into the created sprint (reuse the epic-page `handlePlanSprintCreated` flow)
-- [ ] Wire all three through the bulk action bar (`UpdateDropdown`) and the epic-children menu
-- [ ] Apply the BRDG-370 placement rule (`topKeys`) on every quick move
-- [ ] Tests: helper; visibility (already-there hiding, multi-sprint, de-dup); active/next/backlog dispatch; auto-create-then-move
+- [x] Add `nextSprintNameFrom(currentName)` helper + tests in `sprint-utils.ts`
+- [x] Compute a `quickMoves` descriptor (active / next / backlog targets + `needsCreate`) from the selection in `SprintBoard` and `EpicChildrenSection`
+- [x] Add the quick-move `MenuItem`s to `TicketActionMenuContent`, de-duplicated, each shown only when its target resolves
+- [x] Hide each option when the selection is already entirely in that destination; hide "next" for multi-sprint / backlog / non-numbered selections
+- [x] Auto-create: when the next sprint is absent, open `CreateSprintModal` prefilled, then move the selection into the created sprint (reuse the epic-page `handlePlanSprintCreated` flow)
+- [x] Wire all three through the bulk action bar (`UpdateDropdown`) and the epic-children menu
+- [x] Apply the BRDG-370 placement rule (`topKeys`) on every quick move
+- [x] Tests: helper; visibility (already-there hiding, multi-sprint, de-dup); active/next/backlog dispatch; auto-create-then-move
 - [ ] `lint`, `typecheck`, `test`, `build` pass
+
+**Implementation notes:**
+- Shared pure logic in [quick-moves.ts](../../src/lib/quick-moves.ts) (`computeQuickMoves`) +
+  [nextSprintNameFrom](../../src/lib/sprint-utils.ts); both parents call `quickMovesFor(targets)`
+  and a `handleQuickMove(opt, targets)` dispatcher.
+- The backlog quick-move uses the configured backlog's **real sprint id** (not the
+  `__backlog__` sentinel), so the move + BRDG-370 placement + toast name all resolve correctly.
+- **Auto-create dispatch** is covered by the `computeQuickMoves` `createName` case + the menu
+  test asserting `onQuickMove` fires with that option; a full-board mount test of the modal-open
+  path was judged too costly for the marginal coverage and skipped.
+- SprintBoard auto-create fires the move before `handleSprintCreated` navigates, so the
+  pending-move overlay keeps the rows visible.

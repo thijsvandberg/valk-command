@@ -4,6 +4,7 @@ import { useState, useRef, useMemo, useLayoutEffect, type ReactNode, type RefObj
 import { createPortal } from "react-dom";
 import useSWR from "swr";
 import type { TicketReadiness, JiraStatus, Sprint } from "@/types/ticket";
+import type { QuickMoveOption } from "@/lib/quick-moves";
 import { swrFetcher } from "@/lib/api-client";
 import { Search, Flag, ArrowLeft } from "lucide-react";
 import {
@@ -554,6 +555,8 @@ export function TicketActionMenuContent({
   onMoveSprint,
   onMoveToTop,
   onMoveToBottom,
+  quickMoves,
+  onQuickMove,
   onUpdateAssignee,
   onUpdateLabel,
   onSetFlagged,
@@ -572,6 +575,9 @@ export function TicketActionMenuContent({
   /** Rank the target(s) to the top/bottom of the current sprint (whole sprint). */
   onMoveToTop?: () => void;
   onMoveToBottom?: () => void;
+  /** One-click move destinations shown above "Move to Sprint" (BRDG-369). */
+  quickMoves?: QuickMoveOption[];
+  onQuickMove?: (opt: QuickMoveOption) => void;
   onUpdateAssignee?: (accountId: string | null, name: string | null) => void;
   onUpdateLabel?: (labels: string[], mode: "add" | "set") => void;
   /** When supplied, renders Flag / Remove flag items. `true` flags, `false` unflags. */
@@ -586,12 +592,13 @@ export function TicketActionMenuContent({
 }) {
   const [subView, setSubView] = useState<UpdateSubView>("menu");
 
-  const hasUpdateAction = onSetStatus || onSetReadiness || onSetEpic || onMoveSprint || onMoveToTop || onMoveToBottom || onUpdateAssignee || onUpdateLabel;
+  const hasQuickMoves = Boolean(onQuickMove && quickMoves && quickMoves.length > 0);
+  const hasUpdateAction = onSetStatus || onSetReadiness || onSetEpic || hasQuickMoves || onMoveSprint || onMoveToTop || onMoveToBottom || onUpdateAssignee || onUpdateLabel;
   const hasAiAction = onReviewStory || onGenerateSubtasks || onRefine;
-  // The three "Move to …" actions form their own group, fenced by dividers from the
+  // The "Move to …" actions form their own group, fenced by dividers from the
   // set-* items above and the assignee/label items below.
   const hasSetAction = onSetStatus || onSetReadiness || onSetEpic;
-  const hasMoveAction = (onMoveSprint && sprints) || onMoveToTop || onMoveToBottom;
+  const hasMoveAction = hasQuickMoves || (onMoveSprint && sprints) || onMoveToTop || onMoveToBottom;
   const hasOtherUpdate = onUpdateAssignee || onUpdateLabel;
   const showFlag = Boolean(onSetFlagged);
   const showFlagItem = flagState !== "flagged"; // show "Flag" unless every target is already flagged
@@ -604,6 +611,10 @@ export function TicketActionMenuContent({
         {onSetReadiness && <MenuItem onClick={() => setSubView("readiness")}>Set Readiness</MenuItem>}
         {onSetEpic && <MenuItem onClick={() => setSubView("epic")}>Set Epic</MenuItem>}
         {hasSetAction && hasMoveAction && <div className="mx-2 my-1 h-px bg-overlay-strong" />}
+        {hasQuickMoves && quickMoves!.map((opt) => (
+          <MenuItem key={opt.id} onClick={() => { onQuickMove!(opt); close(); }}>{opt.label}</MenuItem>
+        ))}
+        {hasQuickMoves && ((onMoveSprint && sprints) || onMoveToTop || onMoveToBottom) && <div className="mx-2 my-1 h-px bg-overlay-strong" />}
         {onMoveSprint && sprints && <MenuItem onClick={() => setSubView("sprint")}>Move to Sprint</MenuItem>}
         {onMoveToTop && <MenuItem onClick={() => { onMoveToTop(); close(); }}>Move to top</MenuItem>}
         {onMoveToBottom && <MenuItem onClick={() => { onMoveToBottom(); close(); }}>Move to bottom</MenuItem>}

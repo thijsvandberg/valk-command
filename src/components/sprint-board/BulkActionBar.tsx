@@ -17,6 +17,7 @@ import {
 } from "lucide-react";
 import { BarContainer, BarDivider } from "@/components/shared/BarContainer";
 import { AnchoredMenu, MenuItem, TicketActionMenuContent, type FlagState } from "@/components/sprint-board/ticket-action-menu";
+import type { QuickMoveOption } from "@/lib/quick-moves";
 
 // ---------------------------------------------------------------------------
 // Update dropdown (Set Status, Set Readiness, Set Epic, Move to Sprint,
@@ -28,6 +29,8 @@ function UpdateDropdown({
   onSetReadiness,
   onSetEpic,
   onMoveSprint,
+  quickMoves,
+  onQuickMove,
   onUpdateAssignee,
   onUpdateLabel,
   onSetFlagged,
@@ -39,6 +42,8 @@ function UpdateDropdown({
   onSetReadiness?: (readiness: TicketReadiness | null) => void;
   onSetEpic?: (epicKey: string | null) => void;
   onMoveSprint?: (sprintId: string) => void;
+  quickMoves?: QuickMoveOption[];
+  onQuickMove?: (opt: QuickMoveOption) => void;
   onUpdateAssignee?: (accountId: string | null, name: string | null) => void;
   onUpdateLabel?: (labels: string[], mode: "add" | "set") => void;
   onSetFlagged?: (flagged: boolean) => void;
@@ -52,7 +57,7 @@ function UpdateDropdown({
 
   useOutsideClick([ref, menuRef], () => setOpen(false), { enabled: open });
 
-  const hasAnyAction = onSetStatus || onSetReadiness || onSetEpic || onMoveSprint || onUpdateAssignee || onUpdateLabel || onSetFlagged;
+  const hasAnyAction = onSetStatus || onSetReadiness || onSetEpic || onMoveSprint || (onQuickMove && quickMoves && quickMoves.length > 0) || onUpdateAssignee || onUpdateLabel || onSetFlagged;
   if (!hasAnyAction) return null;
 
   return (
@@ -75,6 +80,8 @@ function UpdateDropdown({
             onSetReadiness={onSetReadiness}
             onSetEpic={onSetEpic}
             onMoveSprint={onMoveSprint}
+            quickMoves={quickMoves}
+            onQuickMove={onQuickMove}
             onUpdateAssignee={onUpdateAssignee}
             onUpdateLabel={onUpdateLabel}
             onSetFlagged={onSetFlagged}
@@ -187,6 +194,8 @@ export function BulkActionBar({
   onSetStatus,
   onSetEpic,
   onMoveSprint,
+  quickMoves,
+  onQuickMove,
   onUpdateAssignee,
   onUpdateLabel,
   onSetFlagged,
@@ -218,6 +227,9 @@ export function BulkActionBar({
   onSetStatus?: (status: JiraStatus) => void;
   onSetEpic?: (epicKey: string | null) => void;
   onMoveSprint?: (sprintId: string) => void;
+  /** One-click move destinations shown above "Move to Sprint" (BRDG-369). */
+  quickMoves?: QuickMoveOption[];
+  onQuickMove?: (opt: QuickMoveOption) => void;
   onUpdateAssignee?: (accountId: string | null, name: string | null) => void;
   onUpdateLabel?: (labels: string[], mode: "add" | "set") => void;
   onSetFlagged?: (flagged: boolean) => void;
@@ -286,6 +298,8 @@ export function BulkActionBar({
         onSetReadiness={onSetReadiness}
         onSetEpic={onSetEpic}
         onMoveSprint={onMoveSprint}
+        quickMoves={quickMoves}
+        onQuickMove={onQuickMove}
         onUpdateAssignee={onUpdateAssignee}
         onUpdateLabel={onUpdateLabel}
         onSetFlagged={onSetFlagged}
