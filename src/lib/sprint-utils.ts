@@ -71,6 +71,17 @@ export function nextSprintName(sprints: NamedSprint[]): string {
   return latest ? `${latest.prefix}: ${latest.number + 1}` : "";
 }
 
+/**
+ * Next name relative to ONE given sprint name ("BT: 139" -> "BT: 140"), or "" when the
+ * given name is not a regular numbered sprint. Unlike `nextSprintName`, which looks at the
+ * latest across a list, this is the next of a specific sprint (BRDG-369 quick-move).
+ */
+export function nextSprintNameFrom(currentName: string): string {
+  if (!isRegularSprint(currentName)) return "";
+  const prefix = extractTeamPrefix(currentName)!;
+  return `${prefix}: ${sprintNumber(currentName) + 1}`;
+}
+
 // --- Sprint URL slugs (BRDG-270) ---------------------------------------------
 // The Sprint Board encodes the active sprint as a path segment so the board is
 // deep-linkable. The numeric Jira id is not human-readable, so we slugify the

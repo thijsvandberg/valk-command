@@ -108,6 +108,47 @@ action computes `topKeys` via the BRDG-370 helper; it adds no ranking logic of i
 - **Backlog target.** Use the per-account `sprint_board_backlog_drop_target` setting
   (default `BT: Backlog`); if it is unset/unresolved, hide the backlog quick option.
 
+## Implementation Plan
+
+All decision logic lives in one pure module so both parents and the tests share it.
+
+### 1. `nextSprintNameFrom(currentName)` — [sprint-utils.ts](../../src/lib/sprint-utils.ts)
+`"<prefix>: <N+1>"` when `isRegularSprint(currentName)`, else `""` (reuse `extractTeamPrefix`/`sprintNumber`). +tests.
+
+### 2. New pure module `src/lib/quick-moves.ts`
+```
+QuickMoveOption = { id: "next"|"active"|"backlog"; label; targetSprintId: string|null; createName?: string }
+computeQuickMoves({ currentSprintNames: (string|null)[], sprints, backlogTargetName }): QuickMoveOption[]
+```
+Order: next, active, backlog. Rules:
+- **next** — only when the selection shares exactly ONE current sprint that `isRegularSprint`; `nextName = nextSprintNameFrom(it)`; resolve to existing id, else `createName: nextName`.
+- **active** — only when the selection has exactly ONE team prefix; the active-state sprint of that prefix; omit if all items already in it.
+- **backlog** — resolve `backlogTargetName`→id; omit if unresolved or all items already in it. (Uses the named backlog's real id, not the `__backlog__` sentinel.)
+- **de-dup** by resolved `targetSprintId` (keep earliest); `createName` options never collide.
+Label = `Move to ${name}`. +full unit-test matrix (single/multi-sprint, multi-team, already-there hiding, dedup, missing-next createName, unresolved backlog, empty).
+
+### 3. `TicketActionMenuContent` — [ticket-action-menu.tsx](../../src/components/sprint-board/ticket-action-menu.tsx)
+New optional props `quickMoves?: QuickMoveOption[]`, `onQuickMove?: (opt) => void`. Render a `MenuItem` per option ABOVE "Move to Sprint", fenced by a divider. Each item: `onQuickMove(opt); close()`. Backward-compatible.
+
+### 4. Thread props
+`BulkActionBar` + its `UpdateDropdown` gain `quickMoves`/`onQuickMove` and forward to the menu. SprintBoard passes them to the bulk bar and row menu; EpicChildrenSection to its bulk + row menus.
+
+### 5. SprintBoard wiring
+- `quickMovesFor(targets)` — map each key→current sprint NAME (`sprintNameMap[t.sprintId] ?? null`), call `computeQuickMoves` (`backlogTargetName` already in scope).
+- `handleQuickMove(opt, targets)` — `createName` → open new `quickCreate:{name,targets}` modal; else `handleBulkMoveSprint(opt.targetSprintId!, targets)` (BRDG-370 placement already inside).
+- Second `CreateSprintModal` for `quickCreate`: on created → fire the move into `String(sprint.id)` then `handleSprintCreated` (slot + navigate); cancel = no-op.
+
+### 6. EpicChildrenSection wiring
+- Add `useBacklogDropTarget`. `quickMovesFor(targets)` reads each item's `sprintName` from the local-moves-overlaid list. Dispatch via its own `handleBulkMoveSprint`. Auto-create via a parallel `quickCreate:{name,keys}` modal that injects the sprint into the cache then bulk-moves.
+
+### 7. Tests
+`sprint-utils.test` (`nextSprintNameFrom`), new `quick-moves.test` (the matrix), `ticket-action-menu.test` (renders/hides/dedup/divider/click), plus a render-level auto-create check where practical.
+
+### Risks
+- **SprintBoard auto-create navigation race:** fire the move before/independently of `navigateToSprint`; pending-move overlay keeps rows visible. (Epic page doesn't navigate.)
+- `nextSprintNameFrom("BT: 130 - Align")` → `"BT: 131"` (suffix dropped, consistent with `sprintNumber`).
+- Adding `useBacklogDropTarget` to EpicChildrenSection: hook falls back to default `BT: Backlog` if its fetch is unmocked in tests.
+
 ## Checklist
 
 - [ ] Add `nextSprintNameFrom(currentName)` helper + tests in `sprint-utils.ts`

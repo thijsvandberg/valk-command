@@ -13,6 +13,7 @@ import {
   isOverallRefinementSprint,
   latestRegularSprint,
   nextSprintName,
+  nextSprintNameFrom,
   ALL_SPRINT_ID,
   BACKLOG_SPRINT_ID,
 } from "./sprint-utils";
@@ -139,6 +140,25 @@ describe("nextSprintName", () => {
   it("returns an empty string when no regular sprint exists", () => {
     expect(nextSprintName([])).toBe("");
     expect(nextSprintName([{ name: "Backlog" }])).toBe("");
+  });
+});
+
+describe("nextSprintNameFrom", () => {
+  it("increments the number relative to the given sprint", () => {
+    expect(nextSprintNameFrom("BT: 139")).toBe("BT: 140");
+    expect(nextSprintNameFrom("GXP: 7")).toBe("GXP: 8");
+  });
+
+  it("uses the first numeric token and drops any goal suffix", () => {
+    expect(nextSprintNameFrom("BT: 130 - Align sidebars")).toBe("BT: 131");
+  });
+
+  it("returns an empty string for non-regular sprints", () => {
+    expect(nextSprintNameFrom("BT: Backlog")).toBe("");
+    expect(nextSprintNameFrom("BT: TODO")).toBe("");
+    expect(nextSprintNameFrom("Backlog")).toBe("");
+    expect(nextSprintNameFrom("Sprint 42")).toBe("");
+    expect(nextSprintNameFrom("")).toBe("");
   });
 });
 
