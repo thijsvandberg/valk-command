@@ -105,7 +105,7 @@ menu callers passing only `(epicKey)` are fine (extra name arg ignored); keep th
 
 ## Acceptance Criteria
 
-- [ ] Sidebar/board-row picker and the row/bulk-menu picker render the **same** `EpicPickerBody`;
+- [x] Sidebar/board-row picker and the row/bulk-menu picker render the **same** `EpicPickerBody`;
       no second implementation of the search/list/suggest/actions markup exists.
 - [x] No default **"No epic"** row. When the (single) target already has an epic, the body shows
       the **Unlink** action (and View), matching the sidebar; the selected epic shows its checkmark.
@@ -115,7 +115,7 @@ menu callers passing only `(epicKey)` are fine (extra name arg ignored); keep th
       overlay preserved) and a newly created epic still appears via auto-sync / refresh.
 - [x] The 14 existing `EpicPicker` tests pass unchanged; sidebar behaviour (trigger, View-in-sidebar
       vs. link, row key links, stale indicator) is unchanged.
-- [ ] `EpicListPanel` is removed (moved to `deleted/`); no references remain.
+- [x] `EpicListPanel` is removed (moved to `deleted/`); no references remain.
 
 ## Tests
 
