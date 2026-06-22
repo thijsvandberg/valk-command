@@ -10,7 +10,7 @@
 
 import { db } from "@/db";
 import { deprecationScanQueue, ticket, type DeprecationScanQueueRow } from "@/db/schema";
-import { and, eq, inArray, asc, desc, or, isNull, notInArray } from "drizzle-orm";
+import { and, eq, inArray, asc, desc, or, isNull, isNotNull, lt, notInArray } from "drizzle-orm";
 import { EXCLUDED_SCAN_TYPES } from "@/lib/ticket-status";
 
 // Going-forward guard against stale subtask queue rows. Scan ELIGIBILITY already
@@ -67,6 +67,12 @@ export type RemoveQueueResult = "removed" | "not_found" | "running";
 
 const DEFAULT_RECENT_LIMIT = 50;
 
+// How long a row may sit in `running` before requeueStuckRunning treats it as
+// crashed and recovers it. Must exceed the longest realistic deep-scan so a row
+// that is genuinely in flight (claimed by another tick) is never clobbered back
+// to pending. Tunable: raise if scans legitimately run longer than this.
+const STUCK_THRESHOLD_MS = 10 * 60_000;
+
 /**
  * Idempotently enqueue tickets for deep scanning. Tickets already pending or
  * running are skipped (not double-queued). Returns the keys that were actually
@@ -108,28 +114,35 @@ export async function enqueueDeepScan(
  * dropping it.
  */
 export async function claimPendingBatch(limit: number): Promise<DeprecationScanQueueRow[]> {
-  // Left-join the ticket so subtask-typed rows are never claimed (see
-  // NOT_SUBTASK_TICKET). Rows whose ticket was deleted locally have a null type
-  // and remain claimable so the runner can still resolve/clear them.
-  const claimable = await db
-    .select({ queue: deprecationScanQueue })
-    .from(deprecationScanQueue)
-    .leftJoin(ticket, eq(deprecationScanQueue.jiraKey, ticket.jiraKey))
-    .where(and(eq(deprecationScanQueue.status, "pending"), NOT_SUBTASK_TICKET))
-    .orderBy(asc(deprecationScanQueue.enqueuedAt))
-    .limit(Math.max(0, limit));
-  const pending = claimable.map((r) => r.queue);
-
-  if (pending.length === 0) return [];
-
-  const ids = pending.map((r) => r.id);
   const startedAt = new Date().toISOString();
-  await db
-    .update(deprecationScanQueue)
-    .set({ status: "running", startedAt })
-    .where(inArray(deprecationScanQueue.id, ids));
+  // SELECT and UPDATE run in one synchronous transaction so two overlapping
+  // ticks cannot read the same pending ids and both mark them running — the
+  // double-claim the doc comment used to (wrongly) promise was atomic (BRDG-376).
+  return db.transaction((tx) => {
+    // Left-join the ticket so subtask-typed rows are never claimed (see
+    // NOT_SUBTASK_TICKET). Rows whose ticket was deleted locally have a null type
+    // and remain claimable so the runner can still resolve/clear them.
+    const claimable = tx
+      .select({ queue: deprecationScanQueue })
+      .from(deprecationScanQueue)
+      .leftJoin(ticket, eq(deprecationScanQueue.jiraKey, ticket.jiraKey))
+      .where(and(eq(deprecationScanQueue.status, "pending"), NOT_SUBTASK_TICKET))
+      .orderBy(asc(deprecationScanQueue.enqueuedAt))
+      .limit(Math.max(0, limit))
+      .all();
+    const pending = claimable.map((r) => r.queue);
 
-  return pending.map((r) => ({ ...r, status: "running" as const, startedAt }));
+    if (pending.length === 0) return [];
+
+    const ids = pending.map((r) => r.id);
+    tx
+      .update(deprecationScanQueue)
+      .set({ status: "running", startedAt })
+      .where(inArray(deprecationScanQueue.id, ids))
+      .run();
+
+    return pending.map((r) => ({ ...r, status: "running" as const, startedAt }));
+  });
 }
 
 /** Mark a claimed row done and clear its active flag so it can be re-queued later. */
@@ -161,18 +174,35 @@ export async function queueStatusCounts(): Promise<QueueStatusCounts> {
 /**
  * Recover rows stuck in `running` (e.g. a crash mid-batch) back to pending so
  * the next tick retries them. Called at the start of each runner tick.
+ *
+ * Only rows whose `startedAt` is older than STUCK_THRESHOLD_MS are recovered:
+ * resetting every running row would clobber a row an overlapping tick just
+ * claimed and is still actively scanning, re-queueing it for a duplicate deep
+ * scan (BRDG-376). A crashed row is recovered once it crosses the threshold.
  */
 export async function requeueStuckRunning(): Promise<number> {
-  const stuck = await db
-    .select({ id: deprecationScanQueue.id })
-    .from(deprecationScanQueue)
-    .where(eq(deprecationScanQueue.status, "running"));
-  if (stuck.length === 0) return 0;
-  await db
-    .update(deprecationScanQueue)
-    .set({ status: "pending", startedAt: null })
-    .where(and(eq(deprecationScanQueue.status, "running")));
-  return stuck.length;
+  const cutoff = new Date(Date.now() - STUCK_THRESHOLD_MS).toISOString();
+  const stuckCondition = and(
+    eq(deprecationScanQueue.status, "running"),
+    isNotNull(deprecationScanQueue.startedAt),
+    lt(deprecationScanQueue.startedAt, cutoff),
+  );
+  // Count and reset in one transaction so the returned number matches exactly
+  // what was requeued even under a concurrent claim.
+  return db.transaction((tx) => {
+    const stuck = tx
+      .select({ id: deprecationScanQueue.id })
+      .from(deprecationScanQueue)
+      .where(stuckCondition)
+      .all();
+    if (stuck.length === 0) return 0;
+    tx
+      .update(deprecationScanQueue)
+      .set({ status: "pending", startedAt: null })
+      .where(stuckCondition)
+      .run();
+    return stuck.length;
+  });
 }
 
 /**

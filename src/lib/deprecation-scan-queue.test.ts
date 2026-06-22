@@ -118,14 +118,43 @@ describe("deprecation deep-scan queue", () => {
     expect(counts.error).toBe(1);
   });
 
-  it("requeues rows stuck in running back to pending (crash recovery / resume)", async () => {
-    await enqueueDeepScan(["BT-1", "BT-2"]);
-    await claimPendingBatch(5); // both -> running
+  it("two overlapping claims return disjoint id sets (BRDG-376)", async () => {
+    testDb.insert(deprecationScanQueue).values([
+      { id: "a", jiraKey: "BT-1", activeKey: "BT-1", enqueuedAt: "2026-01-01T00:00:00Z" },
+      { id: "b", jiraKey: "BT-2", activeKey: "BT-2", enqueuedAt: "2026-01-02T00:00:00Z" },
+      { id: "c", jiraKey: "BT-3", activeKey: "BT-3", enqueuedAt: "2026-01-03T00:00:00Z" },
+      { id: "d", jiraKey: "BT-4", activeKey: "BT-4", enqueuedAt: "2026-01-04T00:00:00Z" },
+    ]).run();
+
+    const first = await claimPendingBatch(2);
+    const second = await claimPendingBatch(2);
+
+    const firstIds = first.map((r) => r.id);
+    const secondIds = second.map((r) => r.id);
+    expect(firstIds).toEqual(["a", "b"]);
+    expect(secondIds).toEqual(["c", "d"]);
+    // No id appears in both claims.
+    expect(firstIds.filter((id) => secondIds.includes(id))).toEqual([]);
+  });
+
+  it("requeues only genuinely-stuck running rows, leaving fresh ones untouched (BRDG-376)", async () => {
+    const old = new Date(Date.now() - 30 * 60_000).toISOString(); // 30 min ago: stuck
+    const fresh = new Date().toISOString(); // just claimed by an overlapping tick
+    testDb.insert(deprecationScanQueue).values([
+      { id: "stuck", jiraKey: "BT-1", activeKey: "BT-1", status: "running", startedAt: old, enqueuedAt: "2026-01-01T00:00:00Z" },
+      { id: "live", jiraKey: "BT-2", activeKey: "BT-2", status: "running", startedAt: fresh, enqueuedAt: "2026-01-02T00:00:00Z" },
+    ]).run();
+
     const recovered = await requeueStuckRunning();
-    expect(recovered).toBe(2);
-    const counts = await queueStatusCounts();
-    expect(counts.pending).toBe(2);
-    expect(counts.running).toBe(0);
+    expect(recovered).toBe(1);
+
+    const stuck = testDb.select().from(deprecationScanQueue).where(eq(deprecationScanQueue.id, "stuck")).get();
+    const live = testDb.select().from(deprecationScanQueue).where(eq(deprecationScanQueue.id, "live")).get();
+    expect(stuck?.status).toBe("pending");
+    expect(stuck?.startedAt).toBeNull();
+    // The freshly-claimed row is still running — not clobbered.
+    expect(live?.status).toBe("running");
+    expect(live?.startedAt).toBe(fresh);
   });
 
   describe("listQueue", () => {

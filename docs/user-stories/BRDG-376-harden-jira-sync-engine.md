@@ -110,7 +110,7 @@ sequential calls.
 - [x] Same-millisecond double-upserts no longer abort the ticket sync (UUID ids or onConflict).
 - [x] An incremental sync window with >50 changed tickets eventually mirrors all of them (no
       silently dropped edits); `remaining` drives the drain loop.
-- [ ] Overlapping scan-queue ticks cannot double-claim the same row; `requeueStuckRunning` only
+- [x] Overlapping scan-queue ticks cannot double-claim the same row; `requeueStuckRunning` only
       requeues genuinely-stuck rows.
 - [ ] Reorder / rank / move-sprint reindex is atomic — a mid-loop failure leaves no partial ordering.
 
@@ -121,7 +121,7 @@ sequential calls.
 - [x] `upsert-issue` test: two upserts with a stubbed identical timestamp both succeed (no PK clash).
 - [x] `sync-incremental` test: >50 stale items across two calls mirrors every item and advances
       the watermark only when drained.
-- [ ] `deprecation-scan-queue` test: two `claimPendingBatch` calls return disjoint id sets;
+- [x] `deprecation-scan-queue` test: two `claimPendingBatch` calls return disjoint id sets;
       `requeueStuckRunning` leaves a fresh running row untouched.
 - [ ] reorder/rank tests assert all-or-nothing ordering when one update throws.
 
