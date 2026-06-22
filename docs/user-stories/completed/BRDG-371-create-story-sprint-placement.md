@@ -1,6 +1,6 @@
 # BRDG-371: New stories land bottom in a sprint, top in a backlog
 
-**Status:** To Do
+**Status:** Completed
 **Priority:** Medium
 **Type:** UX / Sprint board
 **Related:** Reverses/supersedes [BRDG-354](completed/BRDG-354-new-story-rank-to-top-of-sprint.md). Shares the placement rule with [BRDG-370](BRDG-370-unified-sprint-placement-policy.md).
@@ -111,7 +111,7 @@ Detect backlog target: `sprintId == null || isBacklogSprintName(sprintNameMap[sp
 - [x] `handleCreateTicket` interpolates a top rank for backlog targets, bottom for regular sprints
 - [x] Update [BRDG-354](completed/BRDG-354-new-story-rank-to-top-of-sprint.md) status to "Superseded by BRDG-371"
 - [x] Tests: create-ticket placement (sprint vs backlog), story-writer create placement, inline composer position
-- [ ] `lint`, `typecheck`, `test`, `build` pass
+- [x] `lint`, `typecheck`, `test`, `build` pass
 
 **Implementation notes:**
 - The single seam is `landNewTicket(key, assignedSprintId | null)` in `sprint-rank.ts`
