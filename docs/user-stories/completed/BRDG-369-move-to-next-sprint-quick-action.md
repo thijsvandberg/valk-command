@@ -17,9 +17,13 @@ the existing **Move to Sprint** entry, each labelled with the real destination n
 
 1. **Move to next sprint** — `<PREFIX>: <N+1>` relative to the selection's current sprint
    (e.g. **Move to "BT: 140"** when the selection is in `BT: 139`).
-2. **Move to the active sprint** — the current active sprint (e.g. **Move to "BT: 140"**).
+2. **Move to the active sprint** — the current active sprint, tagged with a small **active**
+   marker.
 3. **Move to the backlog** — the team backlog (the configurable backlog drop target,
    default `BT: Backlog`; see [BRDG-346](completed/BRDG-346-configurable-backlog-drop-target.md)).
+
+The options are ordered **low-to-high by sprint number** (so the active sprint sits at the
+top in the common case), with the backlog last (post-launch tweak).
 
 ### Visibility rules
 

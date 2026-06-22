@@ -1,5 +1,5 @@
 import type { Sprint } from "@/types/ticket";
-import { extractTeamPrefix, isRegularSprint, nextSprintNameFrom } from "@/lib/sprint-utils";
+import { extractTeamPrefix, isRegularSprint, nextSprintNameFrom, sprintNumber } from "@/lib/sprint-utils";
 
 // Default quick-move options shown above "Move to Sprint" in every move menu (BRDG-369):
 // one-click destinations a PO reaches for constantly. All visibility/de-dup logic lives
@@ -17,6 +17,8 @@ export interface QuickMoveOption {
   targetSprintId: string | null;
   /** Present only on the "next" option when the computed next sprint does not exist yet. */
   createName?: string;
+  /** Small marker shown next to the label (e.g. "active" for the current sprint). */
+  badge?: string;
 }
 
 interface ComputeArgs {
@@ -32,9 +34,10 @@ function moveLabel(name: string): string {
 }
 
 /**
- * Build the ordered, de-duplicated quick-move options for a selection. Order is fixed:
- * next, active, backlog. Each option is omitted when it does not apply (see BRDG-369):
- * a destination the selection is already entirely in is never offered.
+ * Build the de-duplicated quick-move options for a selection, ordered low-to-high by
+ * sprint number (the active sprint therefore sits at the top in the common case), with
+ * the backlog (no number) last. Each option is omitted when it does not apply (see
+ * BRDG-369): a destination the selection is already entirely in is never offered.
  */
 export function computeQuickMoves({ currentSprintNames, sprints, backlogTargetName }: ComputeArgs): QuickMoveOption[] {
   if (currentSprintNames.length === 0) return [];
@@ -43,7 +46,21 @@ export function computeQuickMoves({ currentSprintNames, sprints, backlogTargetNa
   const nonNullNames = currentSprintNames.filter((n): n is string => n !== null);
   const idForName = (name: string): string | undefined => sprints.find((s) => s.name === name)?.id;
 
-  const options: QuickMoveOption[] = [];
+  // Each candidate carries the destination name so the list can be sorted by sprint
+  // number afterwards (backlog has no number -> sprintNumber returns Infinity -> last).
+  const candidates: { opt: QuickMoveOption; sortName: string }[] = [];
+
+  // active: only when the selection has exactly one team prefix and that team has an
+  // active sprint the selection is not already entirely in. Built first so it wins the
+  // de-dup tie-break (and keeps its "active" badge) when it coincides with "next".
+  const prefixes = new Set(nonNullNames.map((n) => extractTeamPrefix(n)).filter((p): p is string => p !== null));
+  if (prefixes.size === 1) {
+    const prefix = [...prefixes][0];
+    const active = sprints.find((s) => s.state === "active" && extractTeamPrefix(s.name) === prefix);
+    if (active && !(nameSet.size === 1 && nameSet.has(active.name))) {
+      candidates.push({ opt: { id: "active", label: moveLabel(active.name), targetSprintId: active.id, badge: "active" }, sortName: active.name });
+    }
+  }
 
   // next: only when the selection shares exactly one regular numbered sprint.
   if (nameSet.size === 1) {
@@ -52,39 +69,35 @@ export function computeQuickMoves({ currentSprintNames, sprints, backlogTargetNa
       const nextName = nextSprintNameFrom(only);
       if (nextName) {
         const existingId = idForName(nextName);
-        options.push(
-          existingId
+        candidates.push({
+          opt: existingId
             ? { id: "next", label: moveLabel(nextName), targetSprintId: existingId }
             : { id: "next", label: moveLabel(nextName), targetSprintId: null, createName: nextName },
-        );
+          sortName: nextName,
+        });
       }
-    }
-  }
-
-  // active: only when the selection has exactly one team prefix and that team has an
-  // active sprint the selection is not already entirely in.
-  const prefixes = new Set(nonNullNames.map((n) => extractTeamPrefix(n)).filter((p): p is string => p !== null));
-  if (prefixes.size === 1) {
-    const prefix = [...prefixes][0];
-    const active = sprints.find((s) => s.state === "active" && extractTeamPrefix(s.name) === prefix);
-    if (active && !(nameSet.size === 1 && nameSet.has(active.name))) {
-      options.push({ id: "active", label: moveLabel(active.name), targetSprintId: active.id });
     }
   }
 
   // backlog: the configured team backlog, unless unresolved or the selection is already in it.
   const backlogId = idForName(backlogTargetName);
   if (backlogId && !(nameSet.size === 1 && nameSet.has(backlogTargetName))) {
-    options.push({ id: "backlog", label: moveLabel(backlogTargetName), targetSprintId: backlogId });
+    candidates.push({ opt: { id: "backlog", label: moveLabel(backlogTargetName), targetSprintId: backlogId }, sortName: backlogTargetName });
   }
 
-  // De-duplicate by resolved target id (keep the earliest in next/active/backlog order).
+  // De-duplicate by resolved target id (keep the earliest built — active over next).
   // Options pending creation (targetSprintId null) never collide with a real id.
   const seen = new Set<string>();
-  return options.filter((opt) => {
+  const deduped = candidates.filter(({ opt }) => {
     if (opt.targetSprintId === null) return true;
     if (seen.has(opt.targetSprintId)) return false;
     seen.add(opt.targetSprintId);
     return true;
   });
+
+  // Sort low-to-high by sprint number; the backlog (Infinity) sinks to the bottom. Stable
+  // for equal numbers, so the build order (active before next) breaks any tie.
+  return deduped
+    .sort((a, b) => sprintNumber(a.sortName) - sprintNumber(b.sortName))
+    .map((c) => c.opt);
 }

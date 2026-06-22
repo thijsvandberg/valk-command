@@ -612,7 +612,14 @@ export function TicketActionMenuContent({
         {onSetEpic && <MenuItem onClick={() => setSubView("epic")}>Set Epic</MenuItem>}
         {hasSetAction && hasMoveAction && <div className="mx-2 my-1 h-px bg-overlay-strong" />}
         {hasQuickMoves && quickMoves!.map((opt) => (
-          <MenuItem key={opt.id} onClick={() => { onQuickMove!(opt); close(); }}>{opt.label}</MenuItem>
+          <MenuItem key={opt.id} onClick={() => { onQuickMove!(opt); close(); }}>
+            <span className="flex items-center gap-1.5">
+              {opt.label}
+              {opt.badge && (
+                <span className="text-[10px] font-semibold uppercase tracking-wide text-[var(--color-brand-400)]">{opt.badge}</span>
+              )}
+            </span>
+          </MenuItem>
         ))}
         {hasQuickMoves && ((onMoveSprint && sprints) || onMoveToTop || onMoveToBottom) && <div className="mx-2 my-1 h-px bg-overlay-strong" />}
         {onMoveSprint && sprints && <MenuItem onClick={() => setSubView("sprint")}>Move to Sprint</MenuItem>}

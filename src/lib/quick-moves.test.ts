@@ -23,33 +23,31 @@ function ids(names: (string | null)[], sprints = SPRINTS, backlog = BACKLOG) {
     targetSprintId: o.targetSprintId,
     createName: o.createName,
     label: o.label,
+    badge: o.badge,
   }));
 }
 
 describe("computeQuickMoves", () => {
-  it("offers next, active, and backlog for a single regular sprint selection", () => {
-    // Selection in BT: 139 -> next BT: 140 (id 3), active BT: 139 is current so... wait,
-    // the selection IS in BT: 139 which is the active sprint, so active is hidden.
+  it("offers next then backlog when the selection is already in the active sprint", () => {
+    // Selection IS in BT: 139 (the active sprint), so active is hidden; next BT: 140 (id 3).
     const result = ids(["BT: 139"]);
     expect(result.map((o) => o.id)).toEqual(["next", "backlog"]);
     expect(result.find((o) => o.id === "next")).toMatchObject({ targetSprintId: "3", label: 'Move to "BT: 140"' });
     expect(result.find((o) => o.id === "backlog")).toMatchObject({ targetSprintId: "9" });
   });
 
-  it("shows the active sprint when the selection is in a different sprint of the same team", () => {
-    // Selection in the closed BT: 138 -> next BT: 139 (active, id 2), active BT: 139, backlog.
+  it("keeps the active option (with badge) when it coincides with next, de-duped", () => {
+    // Selection in the closed BT: 138 -> next is BT: 139, which is also the active sprint.
     const result = ids(["BT: 138"]);
-    // next resolves to BT: 139 (id 2); active also resolves to BT: 139 (id 2) -> de-duped.
-    expect(result.map((o) => o.id)).toEqual(["next", "backlog"]);
-    expect(result.find((o) => o.id === "next")).toMatchObject({ targetSprintId: "2", label: 'Move to "BT: 139"' });
+    expect(result.map((o) => o.id)).toEqual(["active", "backlog"]);
+    expect(result.find((o) => o.id === "active")).toMatchObject({ targetSprintId: "2", label: 'Move to "BT: 139"', badge: "active" });
   });
 
-  it("marks the next sprint for creation when it does not exist yet", () => {
-    const result = ids(["BT: 140"]); // next BT: 141 does not exist
-    const next = result.find((o) => o.id === "next");
-    expect(next).toMatchObject({ targetSprintId: null, createName: "BT: 141", label: 'Move to "BT: 141"' });
-    // active (BT: 139) and backlog still present.
-    expect(result.map((o) => o.id)).toEqual(["next", "active", "backlog"]);
+  it("orders low-to-high by sprint number: active above next, backlog last", () => {
+    const result = ids(["BT: 140"]); // active BT: 139, next BT: 141 (does not exist)
+    expect(result.map((o) => o.id)).toEqual(["active", "next", "backlog"]);
+    expect(result.find((o) => o.id === "active")).toMatchObject({ targetSprintId: "2", badge: "active" });
+    expect(result.find((o) => o.id === "next")).toMatchObject({ targetSprintId: null, createName: "BT: 141", label: 'Move to "BT: 141"' });
   });
 
   it("hides the active option when all items are already in the active sprint", () => {

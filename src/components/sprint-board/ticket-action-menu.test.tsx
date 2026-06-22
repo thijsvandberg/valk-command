@@ -72,6 +72,7 @@ describe("TicketActionMenuContent", () => {
     const onQuickMove = vi.fn();
     const close = vi.fn();
     const quickMoves = [
+      { id: "active" as const, label: 'Move to "BT: 139"', targetSprintId: "2", badge: "active" },
       { id: "next" as const, label: 'Move to "BT: 140"', targetSprintId: "3" },
       { id: "backlog" as const, label: 'Move to "BT: Backlog"', targetSprintId: "9" },
     ];
@@ -85,13 +86,15 @@ describe("TicketActionMenuContent", () => {
       />,
     );
     const labels = Array.from(container.querySelectorAll("button")).map((b) => b.textContent);
-    const nextIdx = labels.findIndex((t) => t === 'Move to "BT: 140"');
+    const activeIdx = labels.findIndex((t) => t?.startsWith('Move to "BT: 139"'));
     const moveSprintIdx = labels.findIndex((t) => t === "Move to Sprint");
-    expect(nextIdx).toBeGreaterThanOrEqual(0);
-    expect(nextIdx).toBeLessThan(moveSprintIdx); // quick moves render above Move to Sprint
+    expect(activeIdx).toBeGreaterThanOrEqual(0);
+    expect(activeIdx).toBeLessThan(moveSprintIdx); // quick moves render above Move to Sprint
+    // The active option carries a small "active" marker.
+    expect(screen.getByText("active")).toBeInTheDocument();
 
     fireEvent.click(screen.getByText('Move to "BT: 140"'));
-    expect(onQuickMove).toHaveBeenCalledWith(quickMoves[0]);
+    expect(onQuickMove).toHaveBeenCalledWith(quickMoves[1]);
     expect(close).toHaveBeenCalledTimes(1);
   });
 
