@@ -470,6 +470,7 @@ export default function InboxPage() {
       {rowMenu && (
         <CursorMenu x={rowMenu.x} y={rowMenu.y} onClose={() => actions.setRowMenu(null)}>
           <TicketActionMenuContent
+            onMarkRead={() => void markRead([...rowMenu.targets])}
             onSetStatus={(s) => actions.handleBulkStatus(s, rowMenu.targets)}
             onSetReadiness={(r) => actions.handleBulkReadiness(r, rowMenu.targets)}
             onSetEpic={(epicKey) => actions.handleBulkEpic(epicKey, rowMenu.targets)}

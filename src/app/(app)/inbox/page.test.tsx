@@ -195,10 +195,25 @@ describe("InboxPage (BRDG-357)", () => {
     render(<InboxPage />);
     fireEvent.click(screen.getByRole("button", { name: "ctx-VPL-1" }));
 
-    // The real TicketActionMenuContent renders at the cursor with the board's items.
+    // The real TicketActionMenuContent renders at the cursor with the board's items
+    // plus the inbox-only "Mark as read" option.
     expect(await screen.findByText("Move to Sprint")).toBeInTheDocument();
     expect(screen.getByText("Set Status")).toBeInTheDocument();
     expect(screen.getByText("Add to Refinement")).toBeInTheDocument();
+    expect(screen.getByText("Mark as read")).toBeInTheDocument();
+  });
+
+  it("marks a story read from the right-click menu (BRDG-373)", async () => {
+    render(<InboxPage />);
+    fireEvent.click(screen.getByRole("button", { name: "ctx-VPL-1" }));
+    fireEvent.click(await screen.findByText("Mark as read"));
+
+    await waitFor(() => {
+      expect(fetchMock).toHaveBeenCalledWith(
+        "/api/new-stories/read",
+        expect.objectContaining({ method: "PUT" }),
+      );
+    });
   });
 
   it("the multi-select bar reuses the board actions alongside Mark as read (BRDG-373 AC #4)", () => {

@@ -6,7 +6,7 @@ import useSWR from "swr";
 import type { TicketReadiness, JiraStatus, Sprint } from "@/types/ticket";
 import type { QuickMoveOption } from "@/lib/quick-moves";
 import { swrFetcher } from "@/lib/api-client";
-import { Search, Flag, ArrowLeft } from "lucide-react";
+import { Search, Flag, ArrowLeft, Check } from "lucide-react";
 import {
   READINESS_OPTIONS,
   READINESS_CONFIG,
@@ -564,6 +564,7 @@ export function TicketActionMenuContent({
   onReviewStory,
   onGenerateSubtasks,
   onRefine,
+  onMarkRead,
   sprints,
   pinnedSprintIds,
   close,
@@ -586,6 +587,9 @@ export function TicketActionMenuContent({
   onReviewStory?: () => void;
   onGenerateSubtasks?: () => void;
   onRefine?: () => void;
+  /** New story inbox (BRDG-373): renders a leading "Mark as read" item. Omitted on
+   *  the board / epic children, whose menu is unchanged. */
+  onMarkRead?: () => void;
   sprints?: Sprint[];
   pinnedSprintIds?: string[];
   close: () => void;
@@ -607,6 +611,17 @@ export function TicketActionMenuContent({
   if (subView === "menu") {
     return (
       <>
+        {onMarkRead && (
+          <>
+            <MenuItem
+              icon={<Check className="h-3.5 w-3.5" strokeWidth={2} />}
+              onClick={() => { onMarkRead(); close(); }}
+            >
+              Mark as read
+            </MenuItem>
+            {(hasUpdateAction || showFlag || hasAiAction) && <div className="mx-2 my-1 h-px bg-overlay-strong" />}
+          </>
+        )}
         {onSetStatus && <MenuItem onClick={() => setSubView("status")}>Set Status</MenuItem>}
         {onSetReadiness && <MenuItem onClick={() => setSubView("readiness")}>Set Readiness</MenuItem>}
         {onSetEpic && <MenuItem onClick={() => setSubView("epic")}>Set Epic</MenuItem>}

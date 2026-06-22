@@ -44,6 +44,19 @@ describe("TicketActionMenuContent", () => {
     expect(close).toHaveBeenCalledTimes(1);
   });
 
+  // BRDG-373: the inbox passes onMarkRead; the board / epic children do not.
+  it("renders 'Mark as read' only when onMarkRead is supplied, and invokes + closes", () => {
+    const { rerender } = render(<TicketActionMenuContent onSetStatus={vi.fn()} close={vi.fn()} />);
+    expect(screen.queryByText("Mark as read")).not.toBeInTheDocument();
+
+    const onMarkRead = vi.fn();
+    const close = vi.fn();
+    rerender(<TicketActionMenuContent onMarkRead={onMarkRead} onSetStatus={vi.fn()} close={close} />);
+    fireEvent.click(screen.getByText("Mark as read"));
+    expect(onMarkRead).toHaveBeenCalledTimes(1);
+    expect(close).toHaveBeenCalledTimes(1);
+  });
+
   it("renders Move to top/bottom only when their callbacks are supplied", () => {
     const { rerender } = render(<TicketActionMenuContent onSetStatus={vi.fn()} close={vi.fn()} />);
     expect(screen.queryByText("Move to top")).not.toBeInTheDocument();

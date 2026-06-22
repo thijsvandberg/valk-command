@@ -12,7 +12,9 @@ self-contained `src/app/(app)/inbox/useInboxRowActions.ts` hook (modelled on `Ep
 deliberately NOT `useTicketActions`, which would patch the board's caches). Moves overlay the
 destination sprint name and keep the row in the inbox; only Mark-as-read removes a row.
 `BulkActionBar` gained an additive optional `onMarkRead`/`markReadCount` so the board/epic bars are
-byte-identical. Verified: `npm run verify` (6246 tests) + `npm run build` green. Browser screenshots
+byte-identical, and `TicketActionMenuContent` gained an additive optional `onMarkRead` so the
+right-click menu offers **Mark as read** as its leading item on the inbox (omitted on the board /
+epic children). Verified: `npm run verify` + `npm run build` green. Browser screenshots
 were not captured (the route is Clerk-auth-gated and no browser-automation tool is available); the
 menu + bar are covered by jsdom integration tests that mount the real components.
 
