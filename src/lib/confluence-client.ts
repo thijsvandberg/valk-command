@@ -10,6 +10,7 @@
  */
 import { env } from "@/lib/env";
 import { trackOutboundCall } from "@/lib/rate-limiter";
+import { escapeCql } from "@/lib/jql";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -137,17 +138,19 @@ class ConfluenceClient {
 
   async searchPages(query: string, spaceKey?: string): Promise<ConfluenceSearchResult[]> {
     const space = spaceKey ?? this.spaceKey;
+    const q = escapeCql(query);
     const cql = space
-      ? `title~"${query}" AND space="${space}" AND type=page`
-      : `title~"${query}" AND type=page`;
+      ? `title~"${q}" AND space="${escapeCql(space)}" AND type=page`
+      : `title~"${q}" AND type=page`;
     return this.fetchSearchResults(cql);
   }
 
   async searchByText(query: string, spaceKey?: string): Promise<ConfluenceSearchResult[]> {
     const space = spaceKey ?? this.spaceKey;
+    const q = escapeCql(query);
     const cql = space
-      ? `text~"${query}" AND space="${space}" AND type=page`
-      : `text~"${query}" AND type=page`;
+      ? `text~"${q}" AND space="${escapeCql(space)}" AND type=page`
+      : `text~"${q}" AND type=page`;
     return this.fetchSearchResults(cql);
   }
 

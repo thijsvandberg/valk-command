@@ -232,6 +232,40 @@ describe("GET /api/tickets/search", () => {
     });
   });
 
+  describe("LIKE wildcard escaping", () => {
+    it("treats % in the query as a literal, not a wildcard", async () => {
+      testDb.insert(ticket).values([
+        { jiraKey: "VPL-200", title: "100% complete", status: "TO DO", type: "story" },
+        { jiraKey: "VPL-201", title: "1009 done", status: "TO DO", type: "story" },
+      ]).run();
+
+      const res = await GET(makeRequest({ q: "100%", jira: "0" }));
+      const data: SearchResponse = await res.json();
+      expect(data.results.map((r) => r.key)).toEqual(["VPL-200"]);
+    });
+
+    it("treats _ in the query as a literal, not a single-char wildcard", async () => {
+      testDb.insert(ticket).values([
+        { jiraKey: "VPL-300", title: "a_b marker", status: "TO DO", type: "story" },
+        { jiraKey: "VPL-301", title: "axb marker", status: "TO DO", type: "story" },
+      ]).run();
+
+      const res = await GET(makeRequest({ q: "a_b", jira: "0" }));
+      const data: SearchResponse = await res.json();
+      expect(data.results.map((r) => r.key)).toEqual(["VPL-300"]);
+    });
+
+    it("matches a literal backslash without raising a SQL error", async () => {
+      testDb.insert(ticket).values([
+        { jiraKey: "VPL-400", title: "path a\\b here", status: "TO DO", type: "story" },
+      ]).run();
+
+      const res = await GET(makeRequest({ q: "a\\b", jira: "0" }));
+      const data: SearchResponse = await res.json();
+      expect(data.results.map((r) => r.key)).toEqual(["VPL-400"]);
+    });
+  });
+
   describe("Jira fallback", () => {
     it("queries Jira when local results are sparse (< 5)", async () => {
       seedTickets(3);

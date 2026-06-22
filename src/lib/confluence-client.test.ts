@@ -100,6 +100,37 @@ describe("confluenceClient", () => {
     expect(result.displayName).toBe("user@test.com");
   });
 
+  function lastCql(): string {
+    const calls = mockFetch.mock.calls;
+    const url = new URL(calls[calls.length - 1][0] as string);
+    return url.searchParams.get("cql") ?? "";
+  }
+
+  it("escapes double quotes in the query so CQL structure is preserved", async () => {
+    mockFetch.mockResolvedValue({ ok: true, json: async () => ({ results: [] }) });
+    await confluenceClient.searchPages('a" OR title~"b');
+    expect(lastCql()).toContain('title~"a\\" OR title~\\"b"');
+  });
+
+  it("escapes a trailing backslash in the query", async () => {
+    mockFetch.mockResolvedValue({ ok: true, json: async () => ({ results: [] }) });
+    await confluenceClient.searchByText("a\\");
+    expect(lastCql()).toContain('text~"a\\\\"');
+  });
+
+  it("escapes the space key", async () => {
+    mockFetch.mockResolvedValue({ ok: true, json: async () => ({ results: [] }) });
+    await confluenceClient.searchPages("doc", 'X" OR type=page AND title~"');
+    expect(lastCql()).toContain('space="X\\" OR type=page AND title~\\""');
+  });
+
+  it("passes a raw CQL query through unchanged (mode=cql)", async () => {
+    mockFetch.mockResolvedValue({ ok: true, json: async () => ({ results: [] }) });
+    const raw = 'title~"exact phrase" AND label="x"';
+    await confluenceClient.searchByCql(raw);
+    expect(lastCql()).toBe(raw);
+  });
+
   it("mapSearchResults strips HTML from excerpts", async () => {
     mockFetch.mockResolvedValue({
       ok: true,
