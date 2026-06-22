@@ -81,6 +81,7 @@ function UpdateDropdown({
             onSetStatus={onSetStatus}
             onSetReadiness={onSetReadiness}
             onSetEpic={onSetEpic}
+            epicClearable
             onMoveSprint={onMoveSprint}
             quickMoves={quickMoves}
             onQuickMove={onQuickMove}

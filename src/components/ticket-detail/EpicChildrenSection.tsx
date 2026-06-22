@@ -1305,6 +1305,8 @@ export function EpicChildrenSection({
             onSetStatus={(s) => handleBulkStatus(s, rowMenu.targets)}
             onSetReadiness={(r) => handleBulkReadiness(r, rowMenu.targets)}
             onSetEpic={(epicKey) => handleBulkEpic(epicKey, rowMenu.targets)}
+            epicSuggestTicketKey={rowMenu.targets.size === 1 ? [...rowMenu.targets][0] : undefined}
+            epicClearable
             onMoveSprint={(sprintId) => handleBulkMoveSprint(sprintId, rowMenu.targets)}
             quickMoves={quickMovesFor(rowMenu.targets)}
             onQuickMove={(opt) => handleQuickMove(opt, rowMenu.targets)}

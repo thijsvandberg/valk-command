@@ -107,11 +107,11 @@ menu callers passing only `(epicKey)` are fine (extra name arg ignored); keep th
 
 - [ ] Sidebar/board-row picker and the row/bulk-menu picker render the **same** `EpicPickerBody`;
       no second implementation of the search/list/suggest/actions markup exists.
-- [ ] No default **"No epic"** row. When the (single) target already has an epic, the body shows
+- [x] No default **"No epic"** row. When the (single) target already has an epic, the body shows
       the **Unlink** action (and View), matching the sidebar; the selected epic shows its checkmark.
-- [ ] **AI suggest** (sparkle) appears for a single-row right-click and is hidden for multi-select.
+- [x] **AI suggest** (sparkle) appears for a single-row right-click and is hidden for multi-select.
 - [x] The epic panel in the right-click / bulk menu has **no Back row**.
-- [ ] Setting/unlinking an epic from the menu still updates the board chip instantly (optimistic
+- [x] Setting/unlinking an epic from the menu still updates the board chip instantly (optimistic
       overlay preserved) and a newly created epic still appears via auto-sync / refresh.
 - [x] The 14 existing `EpicPicker` tests pass unchanged; sidebar behaviour (trigger, View-in-sidebar
       vs. link, row key links, stale indicator) is unchanged.
@@ -119,13 +119,13 @@ menu callers passing only `(epicKey)` are fine (extra name arg ignored); keep th
 
 ## Tests
 
-- [ ] `EpicPickerBody`: renders list + keys, filters by query, selects (key + name), shows
+- [x] `EpicPickerBody`: renders list + keys, filters by query, selects (key + name), shows
       checkmark for `value`, shows View/Unlink only when `value` set, fires AI suggest when
       `ticketKey` given and hides it otherwise.
-- [ ] `EpicPicker` regression suite passes after the wrapper refactor.
-- [ ] Menu integration: single-row right-click shows checkmark + Unlink + sparkle; multi-select
+- [x] `EpicPicker` regression suite passes after the wrapper refactor.
+- [x] Menu integration: single-row right-click shows checkmark + Unlink + sparkle; multi-select
       shows neither sparkle nor a pre-selected check.
-- [ ] `handleBulkSetEpic` optimistic-overlay tests still pass.
+- [x] `handleBulkSetEpic` optimistic-overlay tests still pass.
 
 ## Decisions
 

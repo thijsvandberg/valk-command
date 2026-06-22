@@ -10,6 +10,7 @@ import { Toast } from "@/components/ui/Toast";
 import { useToast } from "@/hooks/useToast";
 import { useTicketDetail } from "@/hooks/useSprintBoard";
 import { BoardRow } from "@/components/sprint-board/BoardRow";
+import type { EpicOption } from "@/components/shared/EpicPicker";
 import { GroupCard } from "@/components/sprint-board/GroupCard";
 import { GroupStatBar } from "@/components/sprint-board/GroupStatBar";
 import { UnifiedControlsCluster } from "@/components/sprint-board/UnifiedControlsCluster";
@@ -110,6 +111,14 @@ export default function InboxPage() {
     visibleTags,
     filterProps,
   } = useInboxFilters(rows);
+
+  // The right-clicked row's current epic (single target only), so the Set Epic
+  // panel shows the checkmark + Unlink like the sidebar (BRDG-381).
+  const rowMenuEpic = useMemo<EpicOption | null>(() => {
+    if (!rowMenu || rowMenu.targets.size !== 1) return null;
+    const r = filteredRows.find((x) => x.key === [...rowMenu.targets][0]);
+    return r?.epic && r?.epicKey ? { key: r.epicKey, name: r.epic } : null;
+  }, [rowMenu, filteredRows]);
 
   // Relevance grouping inputs (BRDG-372): my team, who is on each team, and who
   // the POs are. Fetched here so the inbox stays the single owner of grouping.
@@ -474,6 +483,9 @@ export default function InboxPage() {
             onSetStatus={(s) => actions.handleBulkStatus(s, rowMenu.targets)}
             onSetReadiness={(r) => actions.handleBulkReadiness(r, rowMenu.targets)}
             onSetEpic={(epicKey) => actions.handleBulkEpic(epicKey, rowMenu.targets)}
+            epicValue={rowMenuEpic}
+            epicSuggestTicketKey={rowMenu.targets.size === 1 ? [...rowMenu.targets][0] : undefined}
+            epicClearable={rowMenu.targets.size > 1}
             onMoveSprint={(sprintId) => actions.handleBulkMoveSprint(sprintId, rowMenu.targets)}
             quickMoves={actions.quickMovesFor(rowMenu.targets)}
             onQuickMove={(opt) => actions.handleQuickMove(opt, rowMenu.targets)}

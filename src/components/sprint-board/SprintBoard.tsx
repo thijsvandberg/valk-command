@@ -13,6 +13,7 @@ import type { FilterControlsPanelProps } from "@/components/sprint-board/FilterC
 import { TicketTable } from "@/components/sprint-board/TicketTable";
 import { BulkActionBar } from "@/components/sprint-board/BulkActionBar";
 import { CursorMenu, TicketActionMenuContent, type FlagState } from "@/components/sprint-board/ticket-action-menu";
+import type { EpicOption } from "@/components/shared/EpicPicker";
 import { ConfirmDialog } from "@/components/shared/ConfirmDialog";
 import { SidePanel } from "@/components/sprint-board/SidePanel";
 import { SprintAnalytics } from "@/components/sprint-board/SprintAnalytics";
@@ -421,6 +422,13 @@ export default function SprintBoard() {
     () => (isFlatView && warningLensActive ? tickets.filter((t) => matchesWarningFilter(t, !!flatIsActiveSprint)) : tickets),
     [isFlatView, warningLensActive, tickets, flatIsActiveSprint],
   );
+  // The right-clicked row's current epic (single target only), read from the
+  // overlay-aware list so the Set Epic panel's checkmark + Unlink match the chip.
+  const rowMenuEpic = useMemo<EpicOption | null>(() => {
+    if (!rowMenu || rowMenu.targets.size !== 1) return null;
+    const t = displayTickets.find((d) => d.key === [...rowMenu.targets][0]);
+    return t?.epic && t?.epicKey ? { key: t.epicKey, name: t.epic } : null;
+  }, [rowMenu, displayTickets]);
   // A change to any persistent filter, the search query, or the active view/sprint exits the
   // lens so it never narrows onto a stale set (req 3). Same signature feeds the grouped view.
   const { currentFiltersSnapshot, searchQuery: fSearchQuery, activeViewId } = f;
@@ -1110,7 +1118,9 @@ export default function SprintBoard() {
             onSetStatus={(s) => handleBulkSetStatus(s, rowMenu.targets)}
             onSetReadiness={(r) => handleBulkSetReadiness(r, rowMenu.targets)}
             onSetEpic={(epicKey, epicName) => handleBulkSetEpic(epicKey, epicName, rowMenu.targets)}
+            epicValue={rowMenuEpic}
             epicSuggestTicketKey={rowMenu.targets.size === 1 ? Array.from(rowMenu.targets)[0] : undefined}
+            epicClearable={rowMenu.targets.size > 1}
             onMoveSprint={(sprintId) => handleBulkMoveSprint(sprintId, rowMenu.targets)}
             quickMoves={quickMovesFor(rowMenu.targets)}
             onQuickMove={(opt) => handleQuickMove(opt, rowMenu.targets)}
