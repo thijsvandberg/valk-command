@@ -76,7 +76,7 @@ function UpdateDropdown({
       </Button>
 
       {open && (
-        <AnchoredMenu anchorRef={ref} menuRef={menuRef} width="w-56">
+        <AnchoredMenu anchorRef={ref} menuRef={menuRef} width="w-[320px]">
           <TicketActionMenuContent
             onSetStatus={onSetStatus}
             onSetReadiness={onSetReadiness}

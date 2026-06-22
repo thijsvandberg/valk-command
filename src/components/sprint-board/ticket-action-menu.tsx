@@ -88,7 +88,7 @@ export function AnchoredMenu({
 export function CursorMenu({
   x,
   y,
-  width = "w-60",
+  width = "w-[320px]",
   onClose,
   children,
 }: {

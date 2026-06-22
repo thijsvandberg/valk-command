@@ -121,7 +121,7 @@ function EpicPickerInner({
         )}
       </BasePicker.Trigger>
 
-      <BasePicker.Popover width="w-[280px]">
+      <BasePicker.Popover width="w-[320px]">
         <EpicPickerBody
           value={value}
           onChange={onChange}
