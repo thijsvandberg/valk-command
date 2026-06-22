@@ -564,6 +564,9 @@ export function TicketTable({
   // When the composer is appended after the last ticket it becomes the visual last row, so
   // the last ticket should not round its bottom corners (the card edge sits below the composer).
   const flatComposerAtEnd = flatComposerActive && flatInsertIdx === tickets.length;
+  // The "bar" composer is styled as a footer strip; when a backlog lands it at the TOP
+  // (BRDG-371) it would butt straight against the first row, so add a divider beneath it.
+  const flatComposerAtTop = flatComposerActive && flatInsertIdx === 0 && tickets.length > 0;
   const flatComposerRow = flatComposerActive ? (
     <tr key="__flat_composer__">
       <td className="p-0">
@@ -572,12 +575,13 @@ export function TicketTable({
           autoFocus
           onCreate={(title, jiraType) => onCreateTicket!(flatCreateTarget!.sprintId, title, jiraType)}
           onEscapeEmpty={onCloseFlatComposer}
-          placeholder={flatCreateTarget!.sprintId === null ? "Create story in the backlog..." : "Create story in this sprint..."}
+          placeholder={flatIsBacklog ? "Create story in the backlog..." : "Create story in this sprint..."}
           allowPlaceholder={!!onPlaceholderCreate}
           onCreatePlaceholder={onPlaceholderCreate ? (t) => onPlaceholderCreate(flatCreateTarget!.sprintId, t) : undefined}
           // Bleed 2px left to cover the table's collapsed-border inset (from BoardRow's left
-          // selection border) so the tinted strip is flush with the card edge (BRDG-315).
-          className="-ml-0.5"
+          // selection border) so the tinted strip is flush with the card edge (BRDG-315). A
+          // top-placed composer gets a bottom divider so it reads as distinct from the rows.
+          className={`-ml-0.5${flatComposerAtTop ? " border-b border-border-subtle" : ""}`}
         />
       </td>
     </tr>
@@ -880,7 +884,8 @@ export function TicketTable({
             }
           >
             {/* Backlog groups land new stories at the top, so the create card renders
-                above the rows; regular sprints keep it below (BRDG-371). */}
+                above the rows; regular sprints keep it below (BRDG-371). A divider keeps
+                the top-placed bar distinct from the rows beneath it. */}
             {isComposerOpen && canCreateInGroup && onCreateTicket && isBacklogGroup && (
               <ChildIssueComposer
                 variant="bar"
@@ -890,6 +895,7 @@ export function TicketTable({
                 placeholder="Create story in the backlog..."
                 allowPlaceholder={!!onPlaceholderCreate}
                 onCreatePlaceholder={onPlaceholderCreate ? (t) => onPlaceholderCreate(createTargetSprintId, t) : undefined}
+                className="border-b border-border-subtle"
               />
             )}
             <table className="w-full table-fixed border-collapse text-body-lg">

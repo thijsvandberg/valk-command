@@ -221,7 +221,7 @@ describe("TicketTable flat create composer (BRDG-315)", () => {
     expect(composerIdx).toBeLessThan(firstRowIdx);
   });
 
-  it("renders the composer at the TOP for a named backlog sprint", () => {
+  it("renders the composer at the TOP for a named backlog sprint, with backlog wording", () => {
     const { container } = render(
       <TicketTable
         {...flatProps}
@@ -231,7 +231,8 @@ describe("TicketTable flat create composer (BRDG-315)", () => {
       />,
     );
     const rows = Array.from(container.querySelectorAll("tbody tr"));
-    const composerIdx = rows.findIndex((r) => r.querySelector(`input[placeholder="${COMPOSER_PLACEHOLDER}"]`));
+    // A named backlog flat view uses the backlog wording, not "in this sprint".
+    const composerIdx = rows.findIndex((r) => r.querySelector(`input[placeholder="${BACKLOG_PLACEHOLDER}"]`));
     const firstRowIdx = rows.findIndex((r) => r.getAttribute("data-testid") === "row-T-1");
     expect(composerIdx).toBeGreaterThanOrEqual(0);
     expect(composerIdx).toBeLessThan(firstRowIdx);
