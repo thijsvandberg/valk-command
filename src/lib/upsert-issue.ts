@@ -1,12 +1,12 @@
 import { db } from "@/db";
 import { ticket, ticketMetadata, storyVersion, ticketAttachment, ticketSubtask, ticketLink, jiraComment, sprintNameCache, ticketStatusChange, storyWriterSession, jiraUser } from "@/db/schema";
-import { eq, and, isNotNull, isNull } from "drizzle-orm";
+import { eq, and, isNotNull, isNull, desc } from "drizzle-orm";
 import { jiraClient, extractStoryPoints, extractSprints, extractEpicLink, extractAcceptanceCriteria, extractLastChangeAuthor, FLAGGED_FIELD, type JiraIssue, type JiraAttachment, type JiraUser } from "@/lib/jira-client";
 import { adfToMarkdown } from "@/lib/adf-to-markdown";
 import { markdownEqualIgnoringSpacing } from "@/lib/normalize-markdown";
 import { emitTicketEvent, type TicketChangeKind } from "@/lib/ticket-events";
 import { syncTicketSprints } from "@/lib/sprint-membership";
-import { createHash } from "crypto";
+import { createHash, randomUUID } from "crypto";
 
 export function normalizeIssueType(name: string): string {
   const lower = name.toLowerCase();
@@ -118,170 +118,188 @@ export async function upsertIssue(
     : adfToMarkdown(fields.description);
 
   const now = new Date().toISOString();
-
-  // Pre-read: gather current DB state outside the write transaction
-  const existing = await db.query.ticket.findFirst({
-    where: (row, { eq: eqFn }) => eqFn(row.jiraKey, issue.key),
-  });
-
-  // "-" (stored locally as 0) is a Bridge-only "not applicable" marker. Jira has
-  // no concept of 0 story points, so a "-" ticket pushes an empty value to Jira;
-  // a later sync reading that empty field back must not clobber the local 0 and
-  // revert "-" to "?". A real (non-empty) Jira value still wins.
-  const storyPoints = extractedStoryPoints == null && existing?.storyPoints === 0 ? 0 : extractedStoryPoints;
-  const meta = await db.query.ticketMetadata.findFirst({
-    where: (m, { eq: eqFn }) => eqFn(m.jiraKey, issue.key),
-  });
   const hash = contentHash(fields.description, ac);
-  const latestVersion = await db.query.storyVersion.findFirst({
+
+  // The changelog-author fallback is async and cannot run inside the synchronous
+  // write transaction below, so resolve it up front. Prefer the inline changelog
+  // (from expand=changelog) to avoid an extra API call per issue; the separate
+  // fetch only fires for issues pulled without changelog expansion (e.g.
+  // single-issue views). A pre-read of the latest version gates that fallback so
+  // a no-op sync does not trigger a needless Jira call — the authoritative
+  // new-version decision is re-made inside the transaction against committed state.
+  const inlineChangeAuthor = extractLastChangeAuthor(issue);
+  const preLatestVersion = await db.query.storyVersion.findFirst({
     where: (sv, { eq: eqFn }) => eqFn(sv.jiraKey, issue.key),
     orderBy: (sv, { desc }) => [desc(sv.createdAt)],
   });
-
-  // Determine who made the latest change. Prefer inline changelog (from expand=changelog)
-  // to avoid an extra API call per issue. Fall back to a separate fetch only when
-  // the issue was fetched without changelog expansion (e.g. single-issue views).
-  const needsNewVersion = !latestVersion || latestVersion.contentHash !== hash;
-
-  // A new version whose visible content already matches the local mirror is
-  // the echo of Bridge's own push returning through sync (the push round-trips
-  // through ADF, so the raw content hash still moves), not an external edit.
-  // Record it for history, but keep open editors quiet and carry any active
-  // Story Writer baseline along so the draft is not falsely flagged outdated.
-  const isOwnPushEcho =
-    needsNewVersion &&
-    !!existing &&
-    markdownEqualIgnoringSpacing(descriptionMarkdown ?? "", existing.description ?? "") &&
-    (ac ?? "") === (existing.acceptanceCriteria ?? "");
-
-  const changeAuthor = needsNewVersion && latestVersion
-    ? (extractLastChangeAuthor(issue) ?? await jiraClient.getLastChangeAuthor(issue.key, _signal))
-    : null;
-
-  // Bridge pushes round-trip through Jira under the shared API token, so the
-  // Jira changelog cannot tell which Bridge user actually made the edit. When
-  // this version is the echo of our own push, attribute it to the signed-in
-  // user we captured at push time instead of the changelog author.
-  const versionAuthor = isOwnPushEcho && pushAuthor ? pushAuthor : changeAuthor;
+  const resolvedChangeAuthor =
+    inlineChangeAuthor ??
+    (!preLatestVersion || preLatestVersion.contentHash !== hash
+      ? await jiraClient.getLastChangeAuthor(issue.key, _signal)
+      : null);
 
   const attachments: JiraAttachment[] = issue.fields.attachment ?? [];
-  const existingAttachments = new Map(
-    (await db
-      .select({ id: ticketAttachment.id, jiraAttachmentId: ticketAttachment.jiraAttachmentId, jiraUrl: ticketAttachment.jiraUrl })
-      .from(ticketAttachment)
-      .where(eq(ticketAttachment.ticketKey, issue.key))
-      .all()
-    ).map((a) => [a.jiraAttachmentId, a]),
-  );
-
   const issuelinks = fields.issuelinks ?? [];
-  const localLinks = await db
-    .select({ id: ticketLink.id, linkedKey: ticketLink.linkedKey })
-    .from(ticketLink)
-    .where(
-      and(eq(ticketLink.ticketKey, issue.key), isNull(ticketLink.jiraLinkId)),
-    )
-    .all();
-  const localLinkMap = new Map(localLinks.map((l) => [l.linkedKey, l.id]));
-
   const inlineComments = fields.comment?.comments ?? [];
-  const existingComments = new Map(
-    (await db
-      .select({ jiraCommentId: jiraComment.jiraCommentId, content: jiraComment.content })
-      .from(jiraComment)
-      .where(eq(jiraComment.ticketKey, issue.key))
-      .all()
-    ).map((c) => [c.jiraCommentId, c.content]),
-  );
 
-  // Pre-read Jira-sourced link signatures so the terminal event can tell
-  // whether the delete-and-reinsert below actually changed anything.
-  const previousJiraLinks = await db
-    .select({ jiraLinkId: ticketLink.jiraLinkId, linkedKey: ticketLink.linkedKey, relation: ticketLink.relation, status: ticketLink.status, title: ticketLink.title })
-    .from(ticketLink)
-    .where(and(eq(ticketLink.ticketKey, issue.key), isNotNull(ticketLink.jiraLinkId)))
-    .all();
-
-  const ticketData = {
-    jiraKey: issue.key,
-    jiraId: issue.id,
-    title: fields.summary,
-    type: normalizeIssueType(fields.issuetype.name),
-    status: normalizeStatus(fields.status.name),
-    assignee: assigneeName,
-    assigneeAvatar,
-    assigneeAccountId,
-    assigneeEmail,
-    epic: epicValue,
-    epicKey: epicKeyValue,
-    flagged: (() => {
-      const raw = (fields as unknown as Record<string, unknown>)[FLAGGED_FIELD];
-      return Array.isArray(raw) ? raw.length > 0 : Boolean(raw);
-    })(),
-    reporter: reporterName,
-    reporterAccountId,
-    reporterAvatar,
-    reporterEmail,
-    description: descriptionMarkdown || null,
-    acceptanceCriteria: ac,
-    storyPoints,
-    sprintName,
-    sprintIds: sprintIdsJson,
-    labels: fields.labels.length > 0 ? JSON.stringify(fields.labels) : null,
-    priority,
-    components: componentsJson,
-    ...(jiraRank !== undefined ? { jiraRank } : {}),
-    jiraCreatedAt: fields.created ?? null,
-    jiraUpdatedAt: fields.updated ?? null,
-    lastSyncedAt: now,
-  };
-
-  // Detect story points change for auto-transition (checked before the transaction)
-  const pointsChanged = !!existing && existing.storyPoints !== storyPoints;
-  const statusChanged = existing && existing.status !== ticketData.status;
-
-  // Accumulate what changed so a single typed event fans out to open views
-  // after the transaction. Only updates count: a first sync of a new ticket
-  // has no open view to notify.
+  // Computed inside the transaction below but consumed after it commits (Story
+  // Writer rebase, coalesced change event), so capture them in the outer scope.
+  let needsNewVersion = false;
+  let isOwnPushEcho = false;
   const changedKinds = new Set<TicketChangeKind>();
-  if (existing) {
-    if (statusChanged) changedKinds.add("status");
-    if (existing.assignee !== ticketData.assignee) changedKinds.add("assignee");
-    if (pointsChanged) changedKinds.add("points");
-    if (existing.sprintName !== ticketData.sprintName || existing.sprintIds !== ticketData.sprintIds) changedKinds.add("sprint");
-    if (existing.labels !== ticketData.labels || existing.flagged !== ticketData.flagged) changedKinds.add("labels");
-    if (needsNewVersion && !isOwnPushEcho) changedKinds.add("content");
 
-    for (const comment of inlineComments) {
-      const contentMarkdown = typeof comment.body === "string" ? comment.body : adfToMarkdown(comment.body);
-      const prev = existingComments.get(comment.id);
-      if (prev === undefined || prev !== contentMarkdown) {
-        changedKinds.add("comment");
-        break;
+  // All reads and writes run in one synchronous better-sqlite3 transaction so the
+  // diff is computed against committed state: a concurrent upsert of the same key
+  // cannot commit between the snapshot read and the write (BRDG-376).
+  db.transaction((tx) => {
+    // Re-read current state inside the transaction (not before it) so the diff
+    // decisions are never made against a snapshot a racing writer has superseded.
+    const existing = tx.select().from(ticket).where(eq(ticket.jiraKey, issue.key)).get();
+
+    // "-" (stored locally as 0) is a Bridge-only "not applicable" marker. Jira has
+    // no concept of 0 story points, so a "-" ticket pushes an empty value to Jira;
+    // a later sync reading that empty field back must not clobber the local 0 and
+    // revert "-" to "?". A real (non-empty) Jira value still wins.
+    const storyPoints = extractedStoryPoints == null && existing?.storyPoints === 0 ? 0 : extractedStoryPoints;
+    const meta = tx.select().from(ticketMetadata).where(eq(ticketMetadata.jiraKey, issue.key)).get();
+    const latestVersion = tx
+      .select()
+      .from(storyVersion)
+      .where(eq(storyVersion.jiraKey, issue.key))
+      .orderBy(desc(storyVersion.createdAt))
+      .limit(1)
+      .get();
+
+    needsNewVersion = !latestVersion || latestVersion.contentHash !== hash;
+
+    // A new version whose visible content already matches the local mirror is
+    // the echo of Bridge's own push returning through sync (the push round-trips
+    // through ADF, so the raw content hash still moves), not an external edit.
+    // Record it for history, but keep open editors quiet and carry any active
+    // Story Writer baseline along so the draft is not falsely flagged outdated.
+    isOwnPushEcho =
+      needsNewVersion &&
+      !!existing &&
+      markdownEqualIgnoringSpacing(descriptionMarkdown ?? "", existing.description ?? "") &&
+      (ac ?? "") === (existing.acceptanceCriteria ?? "");
+
+    // Bridge pushes round-trip through Jira under the shared API token, so the
+    // Jira changelog cannot tell which Bridge user actually made the edit. When
+    // this version is the echo of our own push, attribute it to the signed-in
+    // user we captured at push time instead of the changelog author.
+    const changeAuthor = needsNewVersion && latestVersion ? resolvedChangeAuthor : null;
+    const versionAuthor = isOwnPushEcho && pushAuthor ? pushAuthor : changeAuthor;
+
+    const existingAttachments = new Map(
+      tx
+        .select({ id: ticketAttachment.id, jiraAttachmentId: ticketAttachment.jiraAttachmentId, jiraUrl: ticketAttachment.jiraUrl })
+        .from(ticketAttachment)
+        .where(eq(ticketAttachment.ticketKey, issue.key))
+        .all()
+        .map((a) => [a.jiraAttachmentId, a]),
+    );
+
+    const localLinks = tx
+      .select({ id: ticketLink.id, linkedKey: ticketLink.linkedKey })
+      .from(ticketLink)
+      .where(and(eq(ticketLink.ticketKey, issue.key), isNull(ticketLink.jiraLinkId)))
+      .all();
+    const localLinkMap = new Map(localLinks.map((l) => [l.linkedKey, l.id]));
+
+    const existingComments = new Map(
+      tx
+        .select({ jiraCommentId: jiraComment.jiraCommentId, content: jiraComment.content })
+        .from(jiraComment)
+        .where(eq(jiraComment.ticketKey, issue.key))
+        .all()
+        .map((c) => [c.jiraCommentId, c.content]),
+    );
+
+    // Snapshot Jira-sourced link signatures so the change event can tell whether
+    // the delete-and-reinsert below actually changed anything.
+    const previousJiraLinks = tx
+      .select({ jiraLinkId: ticketLink.jiraLinkId, linkedKey: ticketLink.linkedKey, relation: ticketLink.relation, status: ticketLink.status, title: ticketLink.title })
+      .from(ticketLink)
+      .where(and(eq(ticketLink.ticketKey, issue.key), isNotNull(ticketLink.jiraLinkId)))
+      .all();
+
+    const ticketData = {
+      jiraKey: issue.key,
+      jiraId: issue.id,
+      title: fields.summary,
+      type: normalizeIssueType(fields.issuetype.name),
+      status: normalizeStatus(fields.status.name),
+      assignee: assigneeName,
+      assigneeAvatar,
+      assigneeAccountId,
+      assigneeEmail,
+      epic: epicValue,
+      epicKey: epicKeyValue,
+      flagged: (() => {
+        const raw = (fields as unknown as Record<string, unknown>)[FLAGGED_FIELD];
+        return Array.isArray(raw) ? raw.length > 0 : Boolean(raw);
+      })(),
+      reporter: reporterName,
+      reporterAccountId,
+      reporterAvatar,
+      reporterEmail,
+      description: descriptionMarkdown || null,
+      acceptanceCriteria: ac,
+      storyPoints,
+      sprintName,
+      sprintIds: sprintIdsJson,
+      labels: fields.labels.length > 0 ? JSON.stringify(fields.labels) : null,
+      priority,
+      components: componentsJson,
+      ...(jiraRank !== undefined ? { jiraRank } : {}),
+      jiraCreatedAt: fields.created ?? null,
+      jiraUpdatedAt: fields.updated ?? null,
+      lastSyncedAt: now,
+    };
+
+    // Detect story points / status change for auto-transition and event fan-out.
+    const pointsChanged = !!existing && existing.storyPoints !== storyPoints;
+    const statusChanged = existing && existing.status !== ticketData.status;
+
+    // Accumulate what changed so a single typed event fans out to open views
+    // after the transaction. Only updates count: a first sync of a new ticket
+    // has no open view to notify.
+    if (existing) {
+      if (statusChanged) changedKinds.add("status");
+      if (existing.assignee !== ticketData.assignee) changedKinds.add("assignee");
+      if (pointsChanged) changedKinds.add("points");
+      if (existing.sprintName !== ticketData.sprintName || existing.sprintIds !== ticketData.sprintIds) changedKinds.add("sprint");
+      if (existing.labels !== ticketData.labels || existing.flagged !== ticketData.flagged) changedKinds.add("labels");
+      if (needsNewVersion && !isOwnPushEcho) changedKinds.add("content");
+
+      for (const comment of inlineComments) {
+        const contentMarkdown = typeof comment.body === "string" ? comment.body : adfToMarkdown(comment.body);
+        const prev = existingComments.get(comment.id);
+        if (prev === undefined || prev !== contentMarkdown) {
+          changedKinds.add("comment");
+          break;
+        }
       }
+
+      const linkSignature = (l: { linkedKey: string; relation: string | null; status: string | null; title: string | null }) =>
+        `${l.linkedKey}|${l.relation ?? ""}|${l.status ?? ""}|${l.title ?? ""}`;
+      const prevLinkSigs = previousJiraLinks.map(linkSignature).sort();
+      const nextLinkSigs = issuelinks
+        .map((link) => {
+          const linked = link.inwardIssue ?? link.outwardIssue;
+          if (!linked) return null;
+          return linkSignature({
+            linkedKey: linked.key,
+            relation: link.inwardIssue ? link.type.inward : link.type.outward,
+            status: normalizeStatus(linked.fields.status.name),
+            title: linked.fields.summary,
+          });
+        })
+        .filter((s): s is string => s !== null)
+        .sort();
+      if (prevLinkSigs.join("\n") !== nextLinkSigs.join("\n")) changedKinds.add("links");
     }
 
-    const linkSignature = (l: { linkedKey: string; relation: string | null; status: string | null; title: string | null }) =>
-      `${l.linkedKey}|${l.relation ?? ""}|${l.status ?? ""}|${l.title ?? ""}`;
-    const prevLinkSigs = previousJiraLinks.map(linkSignature).sort();
-    const nextLinkSigs = issuelinks
-      .map((link) => {
-        const linked = link.inwardIssue ?? link.outwardIssue;
-        if (!linked) return null;
-        return linkSignature({
-          linkedKey: linked.key,
-          relation: link.inwardIssue ? link.type.inward : link.type.outward,
-          status: normalizeStatus(linked.fields.status.name),
-          title: linked.fields.summary,
-        });
-      })
-      .filter((s): s is string => s !== null)
-      .sort();
-    if (prevLinkSigs.join("\n") !== nextLinkSigs.join("\n")) changedKinds.add("links");
-  }
-
-  // All DB writes in a single transaction for SQLite performance
-  db.transaction((tx) => {
     // Canonical person directory (BRDG-363): record everyone seen on this issue.
     upsertJiraUser(tx, fields.reporter, now);
     upsertJiraUser(tx, fields.assignee, now);
@@ -353,7 +371,7 @@ export async function upsertIssue(
     // Record status transition for burnup chart
     if (statusChanged) {
       tx.insert(ticketStatusChange).values({
-        id: `sc-${issue.key}-${Date.now()}`,
+        id: `sc-${issue.key}-${randomUUID()}`,
         ticketKey: issue.key,
         fromStatus: existing!.status,
         toStatus: ticketData.status,
@@ -375,7 +393,7 @@ export async function upsertIssue(
     // Story version
     if (needsNewVersion) {
       tx.insert(storyVersion).values({
-        id: `sv-${issue.key}-${Date.now()}`,
+        id: `sv-${issue.key}-${randomUUID()}`,
         jiraKey: issue.key,
         description: descriptionMarkdown || JSON.stringify(fields.description ?? ""),
         acceptanceCriteria: ac,

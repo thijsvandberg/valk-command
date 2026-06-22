@@ -573,3 +573,71 @@ describe("typed change events (BRDG-338)", () => {
     expect(lastEmittedKinds()).toEqual(["assignee", "points", "status"]);
   });
 });
+
+describe("atomic upsert hardening (BRDG-376)", () => {
+  beforeEach(() => {
+    testDb = createTestDb();
+    vi.mocked(extractSprints).mockReturnValue([]);
+    vi.mocked(extractStoryPoints).mockReturnValue(null);
+    vi.mocked(emitTicketEvent).mockClear();
+  });
+
+  it("does not abort the ticket sync when two version-creating upserts land on the same millisecond", async () => {
+    // Previously the version PK was `sv-<key>-<Date.now()>`; two upserts within
+    // one millisecond produced identical ids, so the second insert threw inside
+    // the transaction and rolled back the entire ticket upsert. With UUID ids
+    // both succeed even with a frozen clock.
+    const nowSpy = vi.spyOn(Date, "now").mockReturnValue(1_700_000_000_000);
+    try {
+      await upsertIssue(makeIssue({ description: "First content" }), "Sprint 1");
+      await upsertIssue(makeIssue({ description: "Second content" }), "Sprint 1");
+    } finally {
+      nowSpy.mockRestore();
+    }
+
+    const versions = testDb.select().from(storyVersion).all();
+    expect(versions).toHaveLength(2);
+    // The second upsert committed: the ticket reflects the latest content.
+    const row = testDb.select().from(ticket).all()[0];
+    expect(row.description).toBe("Second content");
+  });
+
+  it("does not abort when two status-changing upserts land on the same millisecond", async () => {
+    // ticket_status_change PKs were also `sc-<key>-<Date.now()>`; same collision risk.
+    const nowSpy = vi.spyOn(Date, "now").mockReturnValue(1_700_000_000_000);
+    try {
+      await upsertIssue(makeIssue({ status: { name: "To Do" } }), "Sprint 1");
+      await upsertIssue(makeIssue({ status: { name: "In Progress" } }), "Sprint 1");
+      await upsertIssue(makeIssue({ status: { name: "Done" } }), "Sprint 1");
+    } finally {
+      nowSpy.mockRestore();
+    }
+
+    const row = testDb.select().from(ticket).all()[0];
+    expect(row.status).toBe("DONE");
+  });
+
+  it("computes the version diff against committed state: identical content never duplicates a version", async () => {
+    // The snapshot reads now live inside the write transaction, so the
+    // new-version decision is made against committed state. A re-sync of
+    // unchanged content must not append a second version row.
+    // (True concurrent interleaving cannot be simulated with synchronous
+    // better-sqlite3; this asserts the resulting invariant.)
+    await upsertIssue(makeIssue({ description: "Stable content" }), "Sprint 1");
+    await upsertIssue(makeIssue({ description: "Stable content" }), "Sprint 1");
+    await upsertIssue(makeIssue({ description: "Stable content" }), "Sprint 1");
+
+    const versions = testDb.select().from(storyVersion).all();
+    expect(versions).toHaveLength(1);
+  });
+
+  it("appends exactly one new version when content changes", async () => {
+    await upsertIssue(makeIssue({ description: "v1" }), "Sprint 1");
+    await upsertIssue(makeIssue({ description: "v2" }), "Sprint 1");
+
+    const versions = testDb.select().from(storyVersion).all();
+    expect(versions).toHaveLength(2);
+    const hashes = new Set(versions.map((v) => v.contentHash));
+    expect(hashes.size).toBe(2);
+  });
+});

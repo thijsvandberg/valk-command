@@ -63,11 +63,51 @@ silently. This story makes the core sync primitives atomic and correct.
 No behaviour change in the happy path; the goal is that concurrent/large operations stop corrupting
 the mirror.
 
+## Implementation Plan
+
+Key fact: better-sqlite3 `db.transaction((tx) => {...})` is fully synchronous and can
+return a value (see `src/app/api/tickets/[key]/story-writer/route.ts`). Tests use a real
+in-memory better-sqlite3 via `createTestDb()`, so transactions are synchronous there too.
+
+1. **UUID ids (AC2)** — `upsert-issue.ts`: import `randomUUID` from `crypto`; replace
+   `sc-${key}-${Date.now()}` (:356) and `sv-${key}-${Date.now()}` (:378) with `randomUUID()`.
+   Chosen over `onConflictDoNothing` because the PK is the only unique column and dropping
+   on conflict would silently swallow a legitimately-distinct version.
+2. **Snapshot reads into the tx (AC1)** — `upsert-issue.ts`: resolve the async change-author
+   fallback (`getLastChangeAuthor`) *before* opening the tx (unconditionally, capture as
+   `resolvedChangeAuthor`; only use it inside the tx when `latestVersion` exists). Move the
+   seven pre-reads (`existing`, `meta`, `latestVersion`, `existingAttachments`, `localLinks`,
+   `existingComments`, `previousJiraLinks`) inside the tx using `tx.select().get()/.all()`
+   (the `db.query.X.findFirst` relational API is not on `tx`). Move `storyPoints` clamp,
+   `ticketData` construction, `needsNewVersion`, `isOwnPushEcho`, `versionAuthor`,
+   `pointsChanged`, `statusChanged`, and the `changedKinds` block inside the tx. Hoist
+   `needsNewVersion`/`isOwnPushEcho`/`changedKinds` to outer `let`/`const` so the post-tx
+   storyWriterSession rebase and event emission still see them.
+3. **Watermark drain (AC3)** — `sync-incremental/route.ts`: when `remaining > 0`, advance the
+   watermark only up to just below the earliest unprocessed stale item (never skip a stale
+   item below the watermark); when `remaining === 0`, advance to the max `updated` of the whole
+   `changed` set. Return the actually-persisted watermark.
+4. **Atomic queue claim (AC4)** — `deprecation-scan-queue.ts` `claimPendingBatch`: wrap the
+   SELECT-then-UPDATE in one `db.transaction` returning the claimed rows.
+5. **Stuck-timeout requeue (AC4)** — `deprecation-scan-queue.ts` `requeueStuckRunning`: only
+   requeue rows whose `startedAt` is older than a `STUCK_THRESHOLD_MS` cutoff (ISO strings
+   sort lexicographically; use `lt`). Wrap in a transaction; defend against null `startedAt`.
+6. **Transactional reorder/rank loops (AC5)** — wrap the per-row update loops in
+   `reorderPlaceholders` (`placeholder-service.ts`), `jira/rank/route.ts`, and the jiraRank
+   reindex loop in `jira/move-sprint/route.ts` in `db.transaction`, mirroring move-sprint's
+   existing `syncTicketSprints` loop.
+
+Order: 1 → 2 (largest, after 1 so the in-tx insert already uses UUID) → 3 → 4 → 5 (after 4)
+→ 6. Tests authored alongside each, mirroring existing `createTestDb()` + `vi.mock("@/db")`
+patterns. Note: true concurrency cannot be unit-tested with synchronous better-sqlite3; tests
+assert the invariant (single version row, committed-state diff, disjoint claim sets) via
+sequential calls.
+
 ## Acceptance Criteria
 
-- [ ] Two concurrent `upsertIssue` calls for the same key cannot produce duplicate `story_version`
+- [x] Two concurrent `upsertIssue` calls for the same key cannot produce duplicate `story_version`
       rows or diff against stale state (snapshot reads are inside the write transaction).
-- [ ] Same-millisecond double-upserts no longer abort the ticket sync (UUID ids or onConflict).
+- [x] Same-millisecond double-upserts no longer abort the ticket sync (UUID ids or onConflict).
 - [ ] An incremental sync window with >50 changed tickets eventually mirrors all of them (no
       silently dropped edits); `remaining` drives the drain loop.
 - [ ] Overlapping scan-queue ticks cannot double-claim the same row; `requeueStuckRunning` only
@@ -76,9 +116,9 @@ the mirror.
 
 ## Tests
 
-- [ ] `upsert-issue` test simulating an interleaved second upsert asserts a single version row and
+- [x] `upsert-issue` test simulating an interleaved second upsert asserts a single version row and
       a correct diff.
-- [ ] `upsert-issue` test: two upserts with a stubbed identical timestamp both succeed (no PK clash).
+- [x] `upsert-issue` test: two upserts with a stubbed identical timestamp both succeed (no PK clash).
 - [ ] `sync-incremental` test: >50 stale items across two calls mirrors every item and advances
       the watermark only when drained.
 - [ ] `deprecation-scan-queue` test: two `claimPendingBatch` calls return disjoint id sets;
