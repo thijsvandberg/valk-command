@@ -155,11 +155,14 @@ export async function POST(request: Request) {
       const topRows = topList.map(rowFor).filter((t): t is { jiraKey: string; jiraRank: number | null } => Boolean(t));
       const bottomRows = bottomList.map(rowFor).filter((t): t is { jiraKey: string; jiraRank: number | null } => Boolean(t));
       const reordered = [...topRows, ...middle, ...bottomRows];
-      for (let i = 0; i < reordered.length; i++) {
-        if (reordered[i].jiraRank !== i) {
-          await db.update(ticket).set({ jiraRank: i }).where(eq(ticket.jiraKey, reordered[i].jiraKey));
+      // One transaction so a mid-loop failure leaves no partial reindex (BRDG-376).
+      db.transaction((tx) => {
+        for (let i = 0; i < reordered.length; i++) {
+          if (reordered[i].jiraRank !== i) {
+            tx.update(ticket).set({ jiraRank: i }).where(eq(ticket.jiraKey, reordered[i].jiraKey)).run();
+          }
         }
-      }
+      });
     } catch {
       // Non-fatal: ranks may be stale until the next sync, but Jira is already updated.
     }

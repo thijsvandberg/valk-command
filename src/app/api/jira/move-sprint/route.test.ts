@@ -40,7 +40,7 @@ vi.mock("@/lib/cache", () => ({
 import { POST } from "./route";
 import { cache } from "@/lib/cache";
 import { ticket, ticketSprint } from "@/db/schema";
-import { eq, asc } from "drizzle-orm";
+import { eq, asc, sql } from "drizzle-orm";
 
 function bridgeFor(key: string): string[] {
   return testDb
@@ -146,6 +146,32 @@ describe("POST /api/jira/move-sprint", () => {
     expect(rankOf("VPL-100")).toBe(0);
     expect(rankOf("VPL-200")).toBe(1);
     expect(rankOf("VPL-201")).toBe(2);
+  });
+
+  it("local rank reindex is all-or-nothing: a mid-loop failure leaves ranks unchanged (BRDG-376)", async () => {
+    testDb.insert(ticket).values([
+      { jiraKey: "VPL-200", title: "a", status: "TO DO", sprintName: "456", jiraRank: 0 },
+      { jiraKey: "VPL-201", title: "b", status: "TO DO", sprintName: "456", jiraRank: 1 },
+    ]).run();
+
+    // Top move reindexes [VPL-100=0, VPL-200=1, VPL-201=2]. Abort the final
+    // write (jira_rank = 2) so the first two must roll back if and only if the
+    // reindex loop is transactional. The route swallows the error (rank is
+    // best-effort), so we assert on the persisted ranks.
+    testDb.run(sql`
+      CREATE TRIGGER fail_on_move_rank_two BEFORE UPDATE OF jira_rank ON ticket
+      WHEN NEW.jira_rank = 2 BEGIN SELECT RAISE(ABORT, 'boom'); END;
+    `);
+
+    const res = await POST(makeRequest({ issueKeys: ["VPL-100"], targetSprintId: "456", position: "top" }));
+    expect((await res.json()).ok).toBe(true);
+
+    testDb.run(sql`DROP TRIGGER fail_on_move_rank_two`);
+
+    const rankOf = (k: string) => testDb.select().from(ticket).where(eq(ticket.jiraKey, k)).get()!.jiraRank;
+    // The two existing occupants keep their original ranks — no partial reindex.
+    expect(rankOf("VPL-200")).toBe(0);
+    expect(rankOf("VPL-201")).toBe(1);
   });
 
   it("re-indexes local jiraRank to the end on a bottom move", async () => {

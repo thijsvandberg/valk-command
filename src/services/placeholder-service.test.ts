@@ -4,7 +4,7 @@ import { createTestDb } from "@/db/test-utils";
 import type { BetterSQLite3Database } from "drizzle-orm/better-sqlite3";
 import type * as schema from "@/db/schema";
 import { ticket, ticketMetadata, ticketLocalEdit, placeholderTicket } from "@/db/schema";
-import { eq } from "drizzle-orm";
+import { eq, sql } from "drizzle-orm";
 
 let testDb: BetterSQLite3Database<typeof schema>;
 
@@ -120,6 +120,31 @@ describe("ordering (BRDG-328)", () => {
     const rows = await listPlaceholders({ sprintId: "9" });
     expect(rows.map((r) => r.title)).toEqual(["C", "A", "B"]);
     expect(rows.map((r) => r.orderIndex)).toEqual([0, 1, 2]);
+  });
+
+  it("reorderPlaceholders is all-or-nothing: a mid-loop failure leaves the order unchanged (BRDG-376)", async () => {
+    const a = await createPlaceholder({ title: "A", sprintId: "9" }); // orderIndex 0
+    const b = await createPlaceholder({ title: "B", sprintId: "9" }); // orderIndex 1
+    const c = await createPlaceholder({ title: "C", sprintId: "9" }); // orderIndex 2
+
+    // Make the third write in the reorder loop (order_index = 2) abort, so the
+    // first two writes must roll back if and only if the loop is transactional.
+    testDb.run(sql`
+      CREATE TRIGGER fail_on_order_two BEFORE UPDATE OF order_index ON placeholder_ticket
+      WHEN NEW.order_index = 2 BEGIN SELECT RAISE(ABORT, 'boom'); END;
+    `);
+
+    await expect(reorderPlaceholders([c.id, a.id, b.id])).rejects.toThrow();
+
+    testDb.run(sql`DROP TRIGGER fail_on_order_two`);
+
+    // No partial ordering: every row keeps its original orderIndex.
+    const byId = Object.fromEntries(
+      testDb.select().from(placeholderTicket).all().map((r) => [r.id, r.orderIndex]),
+    );
+    expect(byId[a.id]).toBe(0);
+    expect(byId[b.id]).toBe(1);
+    expect(byId[c.id]).toBe(2);
   });
 
   it("appends to the target group's order when moved to another sprint", async () => {

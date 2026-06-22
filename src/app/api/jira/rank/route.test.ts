@@ -5,7 +5,7 @@ import type { BetterSQLite3Database } from "drizzle-orm/better-sqlite3";
 import type * as schema from "@/db/schema";
 import { seedTicket } from "@/test/builders";
 import { ticket } from "@/db/schema";
-import { eq } from "drizzle-orm";
+import { eq, sql } from "drizzle-orm";
 
 let testDb: BetterSQLite3Database<typeof schema>;
 
@@ -101,6 +101,39 @@ describe("POST /api/jira/rank", () => {
 
     const rankMap = Object.fromEntries(rows.map((r) => [r.jiraKey, r.jiraRank]));
     expect(rankMap["VPL-3"]).toBeLessThan(rankMap["VPL-1"]!);
+  });
+
+  it("local reindex is all-or-nothing: a mid-loop failure leaves ranks unchanged (BRDG-376)", async () => {
+    seedTicket(testDb, { jiraKey: "VPL-1", sprintName: "sprint-10", jiraRank: 0 });
+    seedTicket(testDb, { jiraKey: "VPL-2", sprintName: "sprint-10", jiraRank: 1 });
+    seedTicket(testDb, { jiraKey: "VPL-3", sprintName: "sprint-10", jiraRank: 2 });
+
+    // Moving VPL-3 before VPL-1 reindexes to [VPL-3=0, VPL-1=1, VPL-2=2]. Abort
+    // the final write (jira_rank = 2) so the first two must roll back if and only
+    // if the reindex loop is transactional. The route swallows the error, so we
+    // assert on the persisted ranks rather than the response status.
+    testDb.run(sql`
+      CREATE TRIGGER fail_on_rank_two BEFORE UPDATE OF jira_rank ON ticket
+      WHEN NEW.jira_rank = 2 BEGIN SELECT RAISE(ABORT, 'boom'); END;
+    `);
+
+    const res = await POST(makeRequest({
+      issueKeys: ["VPL-3"],
+      rankBeforeKey: "VPL-1",
+      sprintId: "sprint-10",
+    }));
+    expect(res.status).toBe(200);
+
+    testDb.run(sql`DROP TRIGGER fail_on_rank_two`);
+
+    const rankMap = Object.fromEntries(
+      testDb.select({ jiraKey: ticket.jiraKey, jiraRank: ticket.jiraRank })
+        .from(ticket).where(eq(ticket.sprintName, "sprint-10")).all()
+        .map((r) => [r.jiraKey, r.jiraRank]),
+    );
+    expect(rankMap["VPL-1"]).toBe(0);
+    expect(rankMap["VPL-2"]).toBe(1);
+    expect(rankMap["VPL-3"]).toBe(2);
   });
 
   it("returns 500 when Jira API fails", async () => {

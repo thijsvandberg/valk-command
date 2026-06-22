@@ -250,12 +250,16 @@ export async function reorderPlaceholders(orderedIds: string[]): Promise<void> {
     throw new ValidationError("orderedIds must be an array of placeholder ids");
   }
   const now = new Date().toISOString();
-  for (let i = 0; i < orderedIds.length; i++) {
-    await db
-      .update(placeholderTicket)
-      .set({ orderIndex: i, updatedAt: now })
-      .where(eq(placeholderTicket.id, orderedIds[i]));
-  }
+  // One transaction so a mid-loop failure leaves no half-applied ordering (BRDG-376).
+  db.transaction((tx) => {
+    for (let i = 0; i < orderedIds.length; i++) {
+      tx
+        .update(placeholderTicket)
+        .set({ orderIndex: i, updatedAt: now })
+        .where(eq(placeholderTicket.id, orderedIds[i]))
+        .run();
+    }
+  });
   invalidateTicketCaches();
 }
 

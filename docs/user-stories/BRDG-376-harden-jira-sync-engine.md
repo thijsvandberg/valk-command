@@ -112,7 +112,7 @@ sequential calls.
       silently dropped edits); `remaining` drives the drain loop.
 - [x] Overlapping scan-queue ticks cannot double-claim the same row; `requeueStuckRunning` only
       requeues genuinely-stuck rows.
-- [ ] Reorder / rank / move-sprint reindex is atomic — a mid-loop failure leaves no partial ordering.
+- [x] Reorder / rank / move-sprint reindex is atomic — a mid-loop failure leaves no partial ordering.
 
 ## Tests
 
@@ -123,7 +123,7 @@ sequential calls.
       the watermark only when drained.
 - [x] `deprecation-scan-queue` test: two `claimPendingBatch` calls return disjoint id sets;
       `requeueStuckRunning` leaves a fresh running row untouched.
-- [ ] reorder/rank tests assert all-or-nothing ordering when one update throws.
+- [x] reorder/rank tests assert all-or-nothing ordering when one update throws.
 
 ## Open Questions
 
