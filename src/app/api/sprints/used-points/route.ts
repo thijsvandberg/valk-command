@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { eq, notInArray } from "drizzle-orm";
+import { and, eq, isNull, notInArray } from "drizzle-orm";
 import { db } from "@/db";
 import { ticket, ticketMetadata, placeholderTicket } from "@/db/schema";
 import { effectivePoints } from "@/types/ticket";
@@ -11,8 +11,10 @@ import { effectivePoints } from "@/types/ticket";
 //
 // Sprint membership mirrors GET /api/tickets: a ticket counts toward every
 // sprint in its sprint_ids array, falling back to its primary sprint_name when
-// that array is absent (pre-sprintIds tickets). Backlog tickets (empty name) and
-// drafts are excluded.
+// that array is absent (pre-sprintIds tickets). Backlog tickets (empty name),
+// drafts, and soft-deleted (removed-from-Jira) tickets are excluded — the latter
+// are hidden from the board body, so they must not inflate the fullness meter
+// either.
 
 export async function GET() {
   const rows = await db
@@ -24,7 +26,12 @@ export async function GET() {
     })
     .from(ticket)
     .leftJoin(ticketMetadata, eq(ticket.jiraKey, ticketMetadata.jiraKey))
-    .where(notInArray(ticket.status, ["DRAFTING", "REPLACED", "DRAFT_FAILED"]));
+    .where(
+      and(
+        notInArray(ticket.status, ["DRAFTING", "REPLACED", "DRAFT_FAILED"]),
+        isNull(ticket.removedFromJiraAt),
+      ),
+    );
 
   const totals: Record<string, number> = {};
   for (const row of rows) {

@@ -270,15 +270,19 @@ export const GroupStatBar = memo(function GroupStatBar({
       setSyncState("error");
     }
   }
-  const totalPoints = tickets.reduce((sum, t) => sum + (t.storyPoints ?? 0), 0);
+  // Soft-deleted tickets (removed from Jira) are hidden from the board body by
+  // default, so they must not inflate the header's item count, SP/BV totals, or
+  // status pills — otherwise an empty sprint still reads as having items.
+  const liveTickets = tickets.filter((t) => !t.removedFromJiraAt);
+  const totalPoints = liveTickets.reduce((sum, t) => sum + (t.storyPoints ?? 0), 0);
   // Effective points for the fullness meter: real SP wins, else the guestimation,
   // so the meter reflects both refined and penciled work (BRDG-303).
-  const usedEffective = tickets.reduce((sum, t) => sum + effectivePoints(t.storyPoints, t.guestimation), 0);
-  const bvTickets = tickets.filter((t) => t.businessValue != null && t.businessValue >= 1 && t.jiraStatus !== "DEPRECATED");
+  const usedEffective = liveTickets.reduce((sum, t) => sum + effectivePoints(t.storyPoints, t.guestimation), 0);
+  const bvTickets = liveTickets.filter((t) => t.businessValue != null && t.businessValue >= 1 && t.jiraStatus !== "DEPRECATED");
   const bvTotal = bvTickets.reduce((sum, t) => sum + (t.businessValue ?? 0), 0);
   const bvAvg = bvTickets.length > 0 ? (bvTotal / bvTickets.length).toFixed(1) : null;
   // Average effort per estimated (pointed, non-deprecated) ticket, surfaced on the SP badge hover.
-  const spTickets = tickets.filter((t) => t.storyPoints != null && t.storyPoints > 0 && t.jiraStatus !== "DEPRECATED");
+  const spTickets = liveTickets.filter((t) => t.storyPoints != null && t.storyPoints > 0 && t.jiraStatus !== "DEPRECATED");
   const spAvg = spTickets.length > 0 ? (spTickets.reduce((sum, t) => sum + (t.storyPoints ?? 0), 0) / spTickets.length).toFixed(1) : null;
   const showSprintMenu = onSync != null || (sprint != null && (onEditSprintDetails != null || onCloseSprint != null));
   const menuKind = syncKind ?? (sprint != null ? "sprint" : "epic");
@@ -292,10 +296,10 @@ export const GroupStatBar = memo(function GroupStatBar({
         : syncProgress && syncProgress.total > 0
           ? `Synced ${syncProgress.done} of ${syncProgress.total} tickets`
           : `Syncing ${menuKind} from Jira`;
-  const todoCount = tickets.filter((t) => t.jiraStatus === "TO DO").length;
-  const inProgressCount = tickets.filter((t) => t.jiraStatus === "IN PROGRESS").length;
-  const testCount = tickets.filter((t) => t.jiraStatus === "TEST").length;
-  const doneCount = tickets.filter((t) => t.jiraStatus === "DONE").length;
+  const todoCount = liveTickets.filter((t) => t.jiraStatus === "TO DO").length;
+  const inProgressCount = liveTickets.filter((t) => t.jiraStatus === "IN PROGRESS").length;
+  const testCount = liveTickets.filter((t) => t.jiraStatus === "TEST").length;
+  const doneCount = liveTickets.filter((t) => t.jiraStatus === "DONE").length;
   // Tally the per-kind warning counts from the shared ticketWarnings helper so the
   // tooltip lines below and the per-row labels (BoardRow) can never describe different
   // problems (BRDG-313). The unpointed kind already requires the active sprint inside
@@ -305,7 +309,7 @@ export const GroupStatBar = memo(function GroupStatBar({
   let deprecatedWithSp = 0;
   let closedWithOpenSubtasks = 0;
   if (showWarnings) {
-    for (const t of tickets) {
+    for (const t of liveTickets) {
       for (const kind of ticketWarnings(t, isActive)) {
         if (kind === "unpointed") noPointsCount++;
         else if (kind === "no_subtasks") noSubtasksCount++;
@@ -316,7 +320,7 @@ export const GroupStatBar = memo(function GroupStatBar({
   }
   // When every ticket shares the same status, the per-status pill just echoes the "X items"
   // count, so suppress the breakdown to cut noise (e.g. an all-TO DO sprint).
-  const showStatusBreakdown = showStatusCounts && new Set(tickets.map((t) => t.jiraStatus)).size > 1;
+  const showStatusBreakdown = showStatusCounts && new Set(liveTickets.map((t) => t.jiraStatus)).size > 1;
 
   const isCollapsible = onToggleCollapse !== undefined;
 
@@ -431,7 +435,7 @@ export const GroupStatBar = memo(function GroupStatBar({
         )}
       </div>
       <StatPill size="sm" variant="default">
-        {tickets.length} {pluralize(tickets.length, "item")}
+        {liveTickets.length} {pluralize(liveTickets.length, "item")}
       </StatPill>
       {showMetrics && totalPoints > 0 && (
         <MetricBadge

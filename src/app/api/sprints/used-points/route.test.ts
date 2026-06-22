@@ -56,6 +56,13 @@ describe("GET /api/sprints/used-points", () => {
     expect(await getMap()).toEqual({ "5895": 3 });
   });
 
+  it("excludes soft-deleted (removed-from-Jira) tickets", async () => {
+    seedTicket(testDb, { jiraKey: "VPL-1", sprintName: "5895", storyPoints: 3 });
+    seedTicket(testDb, { jiraKey: "VPL-2", sprintName: "5895", storyPoints: 5, removedFromJiraAt: "2026-06-20T00:00:00Z" });
+
+    expect(await getMap()).toEqual({ "5895": 3 });
+  });
+
   // Forward-planning placeholders (BRDG-304) count via their guestimation.
   it("counts an active placeholder's guestimation toward its sprint", async () => {
     seedTicket(testDb, { jiraKey: "VPL-1", sprintName: "5895", storyPoints: 2 });

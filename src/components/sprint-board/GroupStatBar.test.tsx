@@ -42,6 +42,19 @@ describe("GroupStatBar", () => {
     expect(screen.getByText("5 items")).toBeTruthy();
   });
 
+  it("excludes soft-deleted tickets from the count and story points", () => {
+    // Removed-from-Jira tickets are hidden from the board body by default, so they
+    // must not inflate the header either. Here only VPL-1 (3 SP) is live.
+    const tickets = [
+      makeTicket({ key: "VPL-1", jiraStatus: "TO DO", storyPoints: 3 }),
+      makeTicket({ key: "VPL-2", jiraStatus: "TO DO", storyPoints: 5, removedFromJiraAt: "2026-06-20T00:00:00Z" }),
+      makeTicket({ key: "VPL-3", jiraStatus: "TO DO", storyPoints: 8, removedFromJiraAt: "2026-06-21T00:00:00Z" }),
+    ];
+    render(<GroupStatBar tickets={tickets} />);
+    expect(screen.getByText("1 item")).toBeTruthy();
+    expect(screen.getByLabelText("Story Points: 3")).toBeTruthy();
+  });
+
   it("renders the active-sprint dot only when isActive", () => {
     const { rerender } = render(<GroupStatBar tickets={TICKETS} label="BT: 138" />);
     expect(screen.queryByLabelText("Active sprint")).toBeNull();
