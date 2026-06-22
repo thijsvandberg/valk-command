@@ -40,6 +40,28 @@ export function isFinishedStatus(status: string | null | undefined): boolean {
 }
 
 /**
+ * Statuses that represent work already underway ("in flight"). When a ticket is
+ * moved into a sprint, an in-flight ticket lands at the top of that sprint even
+ * if the destination rule would otherwise send it to the bottom (BRDG-370): the
+ * PO wants work that is being actively progressed visible at the top.
+ *
+ * Values are the normalized uppercase JiraStatus strings ("IN PROGRESS", "TEST").
+ */
+export const IN_FLIGHT_STATUSES: readonly string[] = ["IN PROGRESS", "TEST"] as const;
+
+const IN_FLIGHT_STATUSES_SET = new Set<string>(IN_FLIGHT_STATUSES);
+
+/**
+ * Returns true when a ticket status means the work is actively in progress or in
+ * testing. Comparison is case-insensitive so it works against both normalized
+ * (uppercase) and raw Jira values.
+ */
+export function isInFlightStatus(status: string | null | undefined): boolean {
+  if (!status) return false;
+  return IN_FLIGHT_STATUSES_SET.has(status.toUpperCase().trim());
+}
+
+/**
  * Issue types excluded from deprecation scanning.
  *
  * Only Subtask is excluded: subtasks are cleaned up together with their parent,
