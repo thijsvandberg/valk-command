@@ -162,6 +162,94 @@ describe("POST /api/jira/move-sprint", () => {
     expect(rankOf("VPL-100")).toBe(2);
   });
 
+  it("splits a batch into a sprint: topKeys to the top, the rest to the bottom", async () => {
+    testDb.insert(ticket).values([
+      { jiraKey: "VPL-101", title: "b", status: "IN PROGRESS", sprintName: "123" },
+      { jiraKey: "VPL-102", title: "c", status: "TO DO", sprintName: "123" },
+    ]).run();
+
+    const req = makeRequest({
+      issueKeys: ["VPL-100", "VPL-101", "VPL-102"],
+      targetSprintId: "456",
+      topKeys: ["VPL-101"],
+    });
+    const res = await POST(req);
+    expect((await res.json()).ok).toBe(true);
+
+    expect(mockMoveToSprint).toHaveBeenCalledWith(["VPL-100", "VPL-101", "VPL-102"], 456);
+    // Bottom subset is ranked first, then the top subset, so the top wins the head.
+    expect(mockRankToBottomOfSprint).toHaveBeenCalledWith(["VPL-100", "VPL-102"], 456);
+    expect(mockRankToTopOfSprint).toHaveBeenCalledWith(["VPL-101"], 456);
+  });
+
+  it("reindexes local jiraRank for a split: top, untouched middle, bottom", async () => {
+    // Existing sprint occupant that should stay in the middle.
+    testDb.insert(ticket).values([
+      { jiraKey: "VPL-300", title: "existing", status: "TO DO", sprintName: "456", jiraRank: 0 },
+      { jiraKey: "VPL-101", title: "moving-top", status: "IN PROGRESS", sprintName: "123" },
+      { jiraKey: "VPL-102", title: "moving-bottom", status: "TO DO", sprintName: "123" },
+    ]).run();
+
+    await POST(makeRequest({
+      issueKeys: ["VPL-101", "VPL-102"],
+      targetSprintId: "456",
+      topKeys: ["VPL-101"],
+    }));
+
+    const rankOf = (k: string) => testDb.select().from(ticket).where(eq(ticket.jiraKey, k)).get()!.jiraRank;
+    expect(rankOf("VPL-101")).toBe(0); // top
+    expect(rankOf("VPL-300")).toBe(1); // untouched middle
+    expect(rankOf("VPL-102")).toBe(2); // bottom
+  });
+
+  it("split with empty topKeys ranks the whole batch to the bottom", async () => {
+    const req = makeRequest({
+      issueKeys: ["VPL-100"],
+      targetSprintId: "456",
+      topKeys: [],
+    });
+    await POST(req);
+    expect(mockRankToBottomOfSprint).toHaveBeenCalledWith(["VPL-100"], 456);
+    expect(mockRankToTopOfSprint).not.toHaveBeenCalled();
+  });
+
+  it("split where topKeys covers every key ranks the whole batch to the top", async () => {
+    const req = makeRequest({
+      issueKeys: ["VPL-100"],
+      targetSprintId: "456",
+      topKeys: ["VPL-100"],
+    });
+    await POST(req);
+    expect(mockRankToTopOfSprint).toHaveBeenCalledWith(["VPL-100"], 456);
+    expect(mockRankToBottomOfSprint).not.toHaveBeenCalled();
+  });
+
+  it("splits a batch into the backlog (all keys top since backlog is always top)", async () => {
+    testDb.insert(ticket).values({ jiraKey: "VPL-101", title: "b", status: "TO DO", sprintName: "123" }).run();
+    const req = makeRequest({
+      issueKeys: ["VPL-100", "VPL-101"],
+      targetSprintId: "__backlog__",
+      topKeys: ["VPL-100", "VPL-101"],
+    });
+    await POST(req);
+    expect(mockMoveToBacklog).toHaveBeenCalledWith(["VPL-100", "VPL-101"]);
+    expect(mockRankToTopOfBacklog).toHaveBeenCalledWith(["VPL-100", "VPL-101"]);
+    expect(mockRankToBottomOfBacklog).not.toHaveBeenCalled();
+  });
+
+  it("still succeeds when a split rank call fails (rank is best-effort)", async () => {
+    mockRankToTopOfSprint.mockRejectedValue(new Error("rank API down"));
+    const req = makeRequest({
+      issueKeys: ["VPL-100"],
+      targetSprintId: "456",
+      topKeys: ["VPL-100"],
+    });
+    const res = await POST(req);
+    expect((await res.json()).ok).toBe(true);
+    const t = testDb.select().from(ticket).where(eq(ticket.jiraKey, "VPL-100")).get();
+    expect(t!.sprintName).toBe("456");
+  });
+
   it("still succeeds when ranking to top fails (rank is best-effort)", async () => {
     mockRankToTopOfSprint.mockRejectedValue(new Error("rank API down"));
     const req = makeRequest({ issueKeys: ["VPL-100"], targetSprintId: "456", position: "top" });

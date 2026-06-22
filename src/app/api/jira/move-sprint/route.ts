@@ -19,6 +19,10 @@ import { parseJsonBody } from "@/lib/request-parser";
  * Body:
  *   issueKeys:     string[] - keys to move
  *   targetSprintId: string  - destination sprint ID
+ *   position?:     "top" | "bottom" - rank the whole batch at one edge
+ *   topKeys?:      string[] - split mode: this subset ranks to the top, the rest to
+ *                  the bottom, in one move (BRDG-370 placement rule). Takes precedence
+ *                  over `position` when present.
  */
 export async function POST(request: Request) {
   const limited = await applyRateLimit("sync");
@@ -28,7 +32,7 @@ export async function POST(request: Request) {
   if ("error" in parsed) return parsed.error;
   const body = parsed.data as Record<string, unknown>;
 
-  const { issueKeys, targetSprintId, position } = body as { issueKeys?: string[]; targetSprintId?: string; position?: string };
+  const { issueKeys, targetSprintId, position, topKeys } = body as { issueKeys?: string[]; targetSprintId?: string; position?: string; topKeys?: string[] };
 
   if (!Array.isArray(issueKeys) || issueKeys.length === 0) {
     return errorResponse("issueKeys must be a non-empty array", 400);
@@ -38,11 +42,24 @@ export async function POST(request: Request) {
   }
 
   const isBacklog = targetSprintId === "__backlog__";
-  // When dropped on a sprint/backlog zone (not between two rows), land at the very
-  // top; the "Move to bottom" action lands at the very bottom. Both rank the issue
-  // across the whole sprint/backlog, independent of any active board filter.
-  const toTop = position === "top";
-  const toBottom = position === "bottom";
+
+  // Decide which keys rank to the top vs. the bottom of the destination. Split
+  // mode (`topKeys`) lets one move place an in-flight subset at the top and the
+  // rest at the bottom (BRDG-370); otherwise `position` ranks the whole batch at
+  // one edge ("Move to top/bottom", drag-between-rows). Ranking is filter-
+  // independent: it spans the whole sprint/backlog regardless of any board filter.
+  let topList: string[] = [];
+  let bottomList: string[] = [];
+  if (Array.isArray(topKeys)) {
+    const topSet = new Set(topKeys);
+    topList = issueKeys.filter((k) => topSet.has(k));
+    bottomList = issueKeys.filter((k) => !topSet.has(k));
+  } else if (position === "top") {
+    topList = issueKeys;
+  } else if (position === "bottom") {
+    bottomList = issueKeys;
+  }
+  const shouldReorder = topList.length > 0 || bottomList.length > 0;
 
   if (!isBacklog) {
     const sprintIdNum = parseInt(targetSprintId, 10);
@@ -57,18 +74,21 @@ export async function POST(request: Request) {
       logger.error("jira", "Failed to move issues", message);
       return errorResponse("Failed to move issues", 500);
     }
-    // Best-effort: ranking is secondary to the move, so a failure here never fails it.
-    if (toTop) {
+    // Best-effort: ranking is secondary to the move, so a failure here never fails
+    // it. Rank the bottom subset first, then the top subset, so the top subset wins
+    // the head of the list when both groups are present in one split move.
+    if (bottomList.length > 0) {
       try {
-        await jiraClient.rankToTopOfSprint(issueKeys, sprintIdNum);
-      } catch (err) {
-        logger.warn("jira", "Failed to rank moved issues to top of sprint", err instanceof Error ? err.message : String(err));
-      }
-    } else if (toBottom) {
-      try {
-        await jiraClient.rankToBottomOfSprint(issueKeys, sprintIdNum);
+        await jiraClient.rankToBottomOfSprint(bottomList, sprintIdNum);
       } catch (err) {
         logger.warn("jira", "Failed to rank moved issues to bottom of sprint", err instanceof Error ? err.message : String(err));
+      }
+    }
+    if (topList.length > 0) {
+      try {
+        await jiraClient.rankToTopOfSprint(topList, sprintIdNum);
+      } catch (err) {
+        logger.warn("jira", "Failed to rank moved issues to top of sprint", err instanceof Error ? err.message : String(err));
       }
     }
   } else {
@@ -79,17 +99,18 @@ export async function POST(request: Request) {
       logger.error("jira", "Failed to move issues to backlog", message);
       return errorResponse("Failed to move issues to backlog", 500);
     }
-    if (toTop) {
+    if (bottomList.length > 0) {
       try {
-        await jiraClient.rankToTopOfBacklog(issueKeys);
-      } catch (err) {
-        logger.warn("jira", "Failed to rank moved issues to top of backlog", err instanceof Error ? err.message : String(err));
-      }
-    } else if (toBottom) {
-      try {
-        await jiraClient.rankToBottomOfBacklog(issueKeys);
+        await jiraClient.rankToBottomOfBacklog(bottomList);
       } catch (err) {
         logger.warn("jira", "Failed to rank moved issues to bottom of backlog", err instanceof Error ? err.message : String(err));
+      }
+    }
+    if (topList.length > 0) {
+      try {
+        await jiraClient.rankToTopOfBacklog(topList);
+      } catch (err) {
+        logger.warn("jira", "Failed to rank moved issues to top of backlog", err instanceof Error ? err.message : String(err));
       }
     }
   }
@@ -117,8 +138,10 @@ export async function POST(request: Request) {
   // Mirror the Jira rank-to-top/bottom locally so the board (which sorts by the
   // local jiraRank) shows the new order immediately. Without this the optimistic
   // move visibly snaps back on the next revalidation, because the move only set
-  // sprintName above and jiraRank stays stale until the next full Jira sync.
-  if (toTop || toBottom) {
+  // sprintName above and jiraRank stays stale until the next full Jira sync. The
+  // split (top subset + bottom subset) is reflected in one reindex pass: top rows,
+  // then the untouched middle in its existing rank order, then bottom rows.
+  if (shouldReorder) {
     try {
       const localSprintName = isBacklog ? "" : targetSprintId;
       const sprintTickets = await db
@@ -126,12 +149,12 @@ export async function POST(request: Request) {
         .from(ticket)
         .where(eq(ticket.sprintName, localSprintName))
         .orderBy(asc(ticket.jiraRank));
-      const movedSet = new Set(issueKeys);
-      const without = sprintTickets.filter((t) => !movedSet.has(t.jiraKey));
-      const movedRows = issueKeys
-        .map((k) => sprintTickets.find((t) => t.jiraKey === k))
-        .filter((t): t is { jiraKey: string; jiraRank: number | null } => Boolean(t));
-      const reordered = toTop ? [...movedRows, ...without] : [...without, ...movedRows];
+      const movedSet = new Set([...topList, ...bottomList]);
+      const middle = sprintTickets.filter((t) => !movedSet.has(t.jiraKey));
+      const rowFor = (k: string) => sprintTickets.find((t) => t.jiraKey === k);
+      const topRows = topList.map(rowFor).filter((t): t is { jiraKey: string; jiraRank: number | null } => Boolean(t));
+      const bottomRows = bottomList.map(rowFor).filter((t): t is { jiraKey: string; jiraRank: number | null } => Boolean(t));
+      const reordered = [...topRows, ...middle, ...bottomRows];
       for (let i = 0; i < reordered.length; i++) {
         if (reordered[i].jiraRank !== i) {
           await db.update(ticket).set({ jiraRank: i }).where(eq(ticket.jiraKey, reordered[i].jiraKey));
