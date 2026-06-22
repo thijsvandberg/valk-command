@@ -1,6 +1,6 @@
 // @vitest-environment node
 import { describe, it, expect, beforeEach } from "vitest";
-import { JiraClient, _requestTimestamps, filterDescriptionChanges, extractSprint, extractSprints, selectPrimarySprint, SPRINT_FIELD, type ChangelogEntry, type JiraSprint, type JiraIssueFields } from "./jira-client";
+import { JiraClient, issuePath, JiraApiError, _requestTimestamps, filterDescriptionChanges, extractSprint, extractSprints, selectPrimarySprint, SPRINT_FIELD, type ChangelogEntry, type JiraSprint, type JiraIssueFields } from "./jira-client";
 
 describe("JiraClient (unconfigured mode)", () => {
   const client = new JiraClient();
@@ -64,6 +64,32 @@ describe("JiraClient (unconfigured mode)", () => {
 
   it("removeWatcher throws when not configured", async () => {
     await expect(client.removeWatcher("VPL-100", "acc-1")).rejects.toThrow("not configured");
+  });
+});
+
+describe("issuePath", () => {
+  it("builds an encoded /issue path for a valid key", () => {
+    expect(issuePath("VPL-123")).toBe("/rest/api/3/issue/VPL-123");
+    expect(issuePath("VPL-123", "/comment")).toBe("/rest/api/3/issue/VPL-123/comment");
+    expect(issuePath("vpl-1", "?fields=summary")).toBe("/rest/api/3/issue/vpl-1?fields=summary");
+  });
+
+  it("rejects keys that would inject extra path/query segments", () => {
+    expect(() => issuePath("VPL-1/transitions")).toThrow(JiraApiError);
+    expect(() => issuePath("VPL-1?expand=changelog")).toThrow(JiraApiError);
+    expect(() => issuePath("VPL-1#frag")).toThrow(JiraApiError);
+    expect(() => issuePath("../../secret")).toThrow(JiraApiError);
+    expect(() => issuePath("VPL-1&foo=bar")).toThrow(JiraApiError);
+  });
+
+  it("throws a 400 JiraApiError for malformed keys", () => {
+    try {
+      issuePath("not a key");
+      expect.unreachable("should have thrown");
+    } catch (err) {
+      expect(err).toBeInstanceOf(JiraApiError);
+      expect((err as JiraApiError).status).toBe(400);
+    }
   });
 });
 

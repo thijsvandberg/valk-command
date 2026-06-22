@@ -1,8 +1,10 @@
 import { NextResponse } from "next/server";
 import { db } from "@/db";
 import { ticket, sprintNameCache } from "@/db/schema";
-import { like, or, ne, and, desc, isNull, sql, eq } from "drizzle-orm";
+import { or, ne, and, desc, isNull, sql, eq } from "drizzle-orm";
 import { jiraClient } from "@/lib/jira-client";
+import { escapeLikePattern } from "@/lib/api-validation";
+import { escapeJql } from "@/lib/jql";
 
 const JIRA_KEY_RE = /^[A-Z][A-Z0-9]+-\d+$/i;
 const SPARSE_THRESHOLD = 5;
@@ -73,11 +75,13 @@ export async function GET(request: Request) {
 
   const isKeySearch = JIRA_KEY_RE.test(q);
 
-  const pattern = `%${q}%`;
+  // Escape the LIKE escape char first, then the % / _ wildcards, so a query
+  // containing those characters matches them literally (see ESCAPE clause below).
+  const pattern = `%${escapeLikePattern(q.replace(/\\/g, "\\\\"))}%`;
   const conditions = [
     or(
-      like(ticket.jiraKey, pattern),
-      like(ticket.title, pattern),
+      sql`${ticket.jiraKey} LIKE ${pattern} ESCAPE '\\'`,
+      sql`${ticket.title} LIKE ${pattern} ESCAPE '\\'`,
     ),
     notDeleted,
   ];
@@ -139,7 +143,7 @@ export async function GET(request: Request) {
         });
       }
     } else {
-      const jql = `text ~ "${q.replace(/"/g, '\\"')}" ORDER BY updated DESC`;
+      const jql = `text ~ "${escapeJql(q)}" ORDER BY updated DESC`;
       const issues = await jiraClient.searchIssues(jql, ["summary", "status", "issuetype"], 10);
       for (const i of issues) {
         if (i.key === exclude || localKeys.has(i.key)) continue;

@@ -10,6 +10,7 @@
 import { env } from "@/lib/env";
 import { logger } from "@/lib/logger";
 import { trackOutboundCall, isOutboundLimitApproaching } from "@/lib/rate-limiter";
+import { isValidJiraKey, escapeJql } from "@/lib/jql";
 
 // ---------------------------------------------------------------------------
 // Custom field IDs for new-story.atlassian.net (must match jira-mcp config)
@@ -255,6 +256,19 @@ export class JiraApiError extends Error {
     super(`Jira API ${status} ${statusText} on ${path}: ${responseBody}`);
     this.name = "JiraApiError";
   }
+}
+
+/**
+ * Build a `/rest/api/3/issue/{key}` path with the key URL-encoded and its shape
+ * validated, so a malformed or hostile key (containing `/ ? # &`) cannot inject
+ * extra path or query segments into the authenticated Jira request. `suffix` is
+ * appended verbatim after the encoded key.
+ */
+export function issuePath(key: string, suffix = ""): string {
+  if (!isValidJiraKey(key)) {
+    throw new JiraApiError(400, "Bad Request", `Invalid Jira issue key: ${key}`, "/rest/api/3/issue");
+  }
+  return `/rest/api/3/issue/${encodeURIComponent(key)}${suffix}`;
 }
 
 function isRetryable(status: number): boolean {
@@ -732,7 +746,7 @@ export class JiraClient {
     }
 
     return jiraFetch<JiraIssue>(
-      `/rest/api/3/issue/${key}?fields=${ISSUE_FIELDS}`,
+      issuePath(key, `?fields=${ISSUE_FIELDS}`),
       signal,
     );
   }
@@ -746,7 +760,7 @@ export class JiraClient {
     }
 
     const result = await jiraFetch<JiraCommentResponse>(
-      `/rest/api/3/issue/${key}/comment?maxResults=100`,
+      issuePath(key, `/comment?maxResults=100`),
       signal,
     );
     return result.comments;
@@ -767,7 +781,7 @@ export class JiraClient {
     }));
 
     return jiraPost<JiraComment>(
-      `/rest/api/3/issue/${key}/comment`,
+      issuePath(key, `/comment`),
       {
         body: {
           type: "doc",
@@ -806,7 +820,7 @@ export class JiraClient {
     }));
 
     await jiraPost<unknown>(
-      `/rest/api/3/issue/${key}/comment`,
+      issuePath(key, `/comment`),
       {
         body: {
           type: "doc",
@@ -827,7 +841,7 @@ export class JiraClient {
     }
 
     const issue = await jiraFetch<{ fields: { attachment: JiraAttachment[] } }>(
-      `/rest/api/3/issue/${key}?fields=attachment`,
+      issuePath(key, `?fields=attachment`),
       signal,
     );
     return issue.fields.attachment ?? [];
@@ -886,7 +900,11 @@ export class JiraClient {
       return [];
     }
 
-    const jql = `parent = ${epicKey} ORDER BY rank ASC`;
+    // A malformed/hostile epic key must not be able to alter the JQL structure.
+    if (!isValidJiraKey(epicKey)) {
+      return [];
+    }
+    const jql = `parent = "${escapeJql(epicKey)}" ORDER BY rank ASC`;
     let all: Array<{ key: string; updated: string }> = [];
     let pageToken: string | undefined;
 
@@ -968,7 +986,7 @@ export class JiraClient {
           author: { displayName: string; avatarUrls?: Record<string, string> };
         }>;
       }>(
-        `/rest/api/3/issue/${key}/changelog?maxResults=1`,
+        issuePath(key, `/changelog?maxResults=1`),
         signal,
       );
       const entry = result.values?.[result.values.length - 1];
@@ -992,7 +1010,7 @@ export class JiraClient {
     }
 
     const data = await jiraFetch<{ transitions: { id: string; to: { name: string } }[] }>(
-      `/rest/api/3/issue/${key}/transitions`,
+      issuePath(key, `/transitions`),
     );
 
     const upper = targetStatus.toUpperCase();
@@ -1010,7 +1028,7 @@ export class JiraClient {
       throw new Error(`No available transition to "${targetStatus}" for issue ${key}`);
     }
 
-    await jiraPost<void>(`/rest/api/3/issue/${key}/transitions`, { transition: { id: transition.id } });
+    await jiraPost<void>(issuePath(key, `/transitions`), { transition: { id: transition.id } });
   }
 
   /**
@@ -1022,7 +1040,7 @@ export class JiraClient {
       throw new Error("Jira is not configured");
     }
 
-    await jiraPut(`/rest/api/3/issue/${key}`, { fields }, signal);
+    await jiraPut(issuePath(key), { fields }, signal);
   }
 
   /**
@@ -1339,7 +1357,7 @@ export class JiraClient {
       throw new Error("Jira is not configured");
     }
 
-    await jiraPut(`/rest/api/3/issue/${key}/assignee`, { accountId }, signal);
+    await jiraPut(issuePath(key, `/assignee`), { accountId }, signal);
   }
 
   /**
@@ -1375,7 +1393,7 @@ export class JiraClient {
     }
 
     const data = await jiraFetch<{ watchers?: { accountId: string; displayName: string; avatarUrls?: Record<string, string> }[] }>(
-      `/rest/api/3/issue/${key}/watchers`,
+      issuePath(key, `/watchers`),
       signal,
     );
 
@@ -1397,7 +1415,7 @@ export class JiraClient {
       throw new Error("Jira is not configured");
     }
 
-    await jiraPostNoContent(`/rest/api/3/issue/${key}/watchers`, accountId, signal);
+    await jiraPostNoContent(issuePath(key, `/watchers`), accountId, signal);
   }
 
   /**
@@ -1408,7 +1426,7 @@ export class JiraClient {
       throw new Error("Jira is not configured");
     }
 
-    await jiraDelete(`/rest/api/3/issue/${key}/watchers?accountId=${encodeURIComponent(accountId)}`, signal);
+    await jiraDelete(issuePath(key, `/watchers?accountId=${encodeURIComponent(accountId)}`), signal);
   }
 
   /**
@@ -1620,7 +1638,7 @@ export class JiraClient {
           }>;
         }>;
       }>(
-        `/rest/api/3/issue/${key}/changelog?startAt=${startAt}&maxResults=${maxResults}`,
+        issuePath(key, `/changelog?startAt=${startAt}&maxResults=${maxResults}`),
         signal,
       );
 
@@ -1668,7 +1686,7 @@ export class JiraClient {
         isLast: boolean;
         values: ChangelogEntry[];
       }>(
-        `/rest/api/3/issue/${key}/changelog?startAt=${startAt}&maxResults=${maxResults}`,
+        issuePath(key, `/changelog?startAt=${startAt}&maxResults=${maxResults}`),
         signal,
       );
 

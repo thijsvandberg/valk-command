@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { jiraClient, extractSprint } from "@/lib/jira-client";
 import { env } from "@/lib/env";
 import { logger } from "@/lib/logger";
+import { escapeJql, isKnownIssueType } from "@/lib/jql";
 
 export interface JiraSearchResult {
   key: string;
@@ -30,6 +31,10 @@ export async function GET(request: Request) {
     return NextResponse.json({ error: "JQL query too long" }, { status: 400 });
   }
 
+  if (issuetype.trim() && !isKnownIssueType(issuetype)) {
+    return NextResponse.json({ error: "Invalid issuetype" }, { status: 400 });
+  }
+
   // Cancel any previous in-flight request before starting a new one
   if (inFlightController) {
     inFlightController.abort();
@@ -44,10 +49,10 @@ export async function GET(request: Request) {
       jql = jqlOverride.trim();
     } else {
       const parts = [`project = ${cfg.projectKey}`];
-      if (issuetype.trim()) parts.push(`issuetype = "${issuetype.trim()}"`);
+      if (issuetype.trim()) parts.push(`issuetype = "${escapeJql(issuetype.trim())}"`);
       // Subtasks are hidden by default to match local search; an explicit issuetype opts back in.
       else parts.push(`issuetype != subtask`);
-      if (q.trim()) parts.push(`text ~ "${q.replace(/"/g, '\\"')}"`);
+      if (q.trim()) parts.push(`text ~ "${escapeJql(q.trim())}"`);
       jql = `${parts.join(" AND ")} ORDER BY updated DESC`;
     }
 

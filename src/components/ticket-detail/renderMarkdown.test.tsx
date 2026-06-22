@@ -206,3 +206,24 @@ describe("renderMarkdown — block glued onto an image line (BRDG-366)", () => {
     expect(container.querySelector("figure img")).toBeTruthy();
   });
 });
+
+describe("renderMarkdown — unsafe link neutralization", () => {
+  it("does not render a javascript: link as an anchor but keeps the label text", () => {
+    const { container } = render(<div>{renderMarkdown("[click me](javascript:alert(1))")}</div>);
+    expect(container.querySelector("a")).toBeNull();
+    expect(container.textContent).toContain("click me");
+  });
+
+  it("does not render a data: link as an anchor", () => {
+    const { container } = render(<div>{renderMarkdown("[x](data:text/html,evil)")}</div>);
+    expect(container.querySelector("a")).toBeNull();
+    expect(container.textContent).toContain("x");
+  });
+
+  it("still renders a safe https link as an anchor", () => {
+    const { container } = render(<div>{renderMarkdown("[ok](https://example.com)")}</div>);
+    const a = container.querySelector("a");
+    expect(a).toBeTruthy();
+    expect(a?.getAttribute("href")).toBe("https://example.com");
+  });
+});

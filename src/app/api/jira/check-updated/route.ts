@@ -3,6 +3,7 @@ import { db } from "@/db";
 import { ticket } from "@/db/schema";
 import { eq } from "drizzle-orm";
 import { jiraClient, JiraApiError } from "@/lib/jira-client";
+import { isValidJiraKey } from "@/lib/jql";
 import { logger } from "@/lib/logger";
 
 /**
@@ -21,6 +22,10 @@ export async function GET(request: Request) {
 
   if (!key) {
     return NextResponse.json({ error: "key query parameter is required" }, { status: 400 });
+  }
+
+  if (!isValidJiraKey(key)) {
+    return NextResponse.json({ error: "Invalid issue key" }, { status: 400 });
   }
 
   if (!jiraClient.isLive) {

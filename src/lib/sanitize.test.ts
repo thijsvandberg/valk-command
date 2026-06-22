@@ -33,6 +33,28 @@ describe("sanitizeHtml", () => {
     expect(result).toContain("<table>");
     expect(result).toContain("<td>cell</td>");
   });
+
+  it("forces rel=noopener noreferrer on target links (reverse tabnabbing)", () => {
+    const result = sanitizeHtml('<a href="https://example.com" target="_blank">link</a>');
+    expect(result).toContain('rel="noopener noreferrer"');
+    expect(result).toContain('target="_blank"');
+  });
+
+  it("overrides an attacker-supplied rel on a target link", () => {
+    const result = sanitizeHtml('<a href="https://example.com" target="_blank" rel="opener">link</a>');
+    expect(result).toContain('rel="noopener noreferrer"');
+    expect(result).not.toContain('rel="opener"');
+  });
+
+  it("strips data: image URIs", () => {
+    const result = sanitizeHtml('<img src="data:image/png;base64,iVBORw0KGgo=">');
+    expect(result).not.toContain("data:");
+  });
+
+  it("keeps legitimate image sources", () => {
+    const result = sanitizeHtml('<img src="https://example.com/a.png">');
+    expect(result).toContain('src="https://example.com/a.png"');
+  });
 });
 
 describe("sanitizeText", () => {

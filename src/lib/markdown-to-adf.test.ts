@@ -304,4 +304,27 @@ describe("markdownToAdf", () => {
       expect(inner!.type).toBe("nestedExpand");
     });
   });
+
+  describe("link safety", () => {
+    it("keeps a safe https link as a link mark", () => {
+      const doc = markdownToAdf("[label](https://example.com)");
+      const node = doc.content![0].content![0];
+      expect(node.text).toBe("label");
+      expect(node.marks).toEqual([{ type: "link", attrs: { href: "https://example.com" } }]);
+    });
+
+    it("drops a javascript: link to plain text so it cannot round-trip into Jira", () => {
+      const doc = markdownToAdf("[label](javascript:alert)");
+      const node = doc.content![0].content![0];
+      expect(node.text).toBe("label");
+      expect(node.marks).toBeUndefined();
+    });
+
+    it("drops a data: link to plain text", () => {
+      const doc = markdownToAdf("[label](data:text/html)");
+      const node = doc.content![0].content![0];
+      expect(node.text).toBe("label");
+      expect(node.marks).toBeUndefined();
+    });
+  });
 });

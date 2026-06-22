@@ -139,4 +139,30 @@ describe("GET /api/search/jira", () => {
     expect(jql).toContain('issuetype = "Epic"');
     expect(jql).toContain('text ~ "platform"');
   });
+
+  it("escapes double quotes in the text query so it cannot alter JQL structure", async () => {
+    (jiraClient.searchIssues as Mock).mockResolvedValueOnce([]);
+
+    await GET(makeRequest({ q: 'a" OR project = X' }));
+
+    const [jql] = (jiraClient.searchIssues as Mock).mock.calls[0];
+    expect(jql).toContain('text ~ "a\\" OR project = X"');
+  });
+
+  it("escapes a trailing backslash so it cannot escape the closing quote", async () => {
+    (jiraClient.searchIssues as Mock).mockResolvedValueOnce([]);
+
+    await GET(makeRequest({ q: "a\\" }));
+
+    const [jql] = (jiraClient.searchIssues as Mock).mock.calls[0];
+    expect(jql).toContain('text ~ "a\\\\"');
+  });
+
+  it("rejects an unknown/injected issuetype with 400 and does not query Jira", async () => {
+    const res = await GET(makeRequest({ issuetype: 'Epic" OR 1=1' }));
+    expect(res.status).toBe(400);
+    const body = await res.json();
+    expect(body.error).toBe("Invalid issuetype");
+    expect(jiraClient.searchIssues).not.toHaveBeenCalled();
+  });
 });
