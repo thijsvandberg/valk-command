@@ -206,6 +206,36 @@ describe("TicketTable flat create composer (BRDG-315)", () => {
     const lastRowIdx = rows.findIndex((r) => r.getAttribute("data-testid") === "row-T-2");
     expect(composerIdx).toBeGreaterThan(lastRowIdx);
   });
+
+  // BRDG-371: a backlog flat view lands the create row at the TOP.
+  const BACKLOG_PLACEHOLDER = "Create story in the backlog...";
+
+  it("renders the composer at the TOP for the generic backlog", () => {
+    const { container } = render(
+      <TicketTable {...flatProps} flatCreateTarget={{ sprintId: null }} flatComposerOpen />,
+    );
+    const rows = Array.from(container.querySelectorAll("tbody tr"));
+    const composerIdx = rows.findIndex((r) => r.querySelector(`input[placeholder="${BACKLOG_PLACEHOLDER}"]`));
+    const firstRowIdx = rows.findIndex((r) => r.getAttribute("data-testid") === "row-T-1");
+    expect(composerIdx).toBeGreaterThanOrEqual(0);
+    expect(composerIdx).toBeLessThan(firstRowIdx);
+  });
+
+  it("renders the composer at the TOP for a named backlog sprint", () => {
+    const { container } = render(
+      <TicketTable
+        {...flatProps}
+        flatCreateTarget={{ sprintId: "9" }}
+        sprintNameMap={{ "9": "BT: Backlog" }}
+        flatComposerOpen
+      />,
+    );
+    const rows = Array.from(container.querySelectorAll("tbody tr"));
+    const composerIdx = rows.findIndex((r) => r.querySelector(`input[placeholder="${COMPOSER_PLACEHOLDER}"]`));
+    const firstRowIdx = rows.findIndex((r) => r.getAttribute("data-testid") === "row-T-1");
+    expect(composerIdx).toBeGreaterThanOrEqual(0);
+    expect(composerIdx).toBeLessThan(firstRowIdx);
+  });
 });
 
 describe("TicketTable collapsed-group drop target", () => {
@@ -257,3 +287,8 @@ describe("TicketTable collapsed-group drop target", () => {
     expect(droppableIds()).not.toContain("group-zone:2");
   });
 });
+
+// Note: the grouped create-composer position (above the rows for a backlog group) is
+// not unit-tested here because this file stubs GroupStatBar (and thus the "+" trigger)
+// to null, so the grouped composer can't be opened. The flat-composer tests above cover
+// the backlog-top placement, and the grouped path uses the same isBacklogGroup predicate.

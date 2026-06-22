@@ -464,17 +464,25 @@ export default function SprintBoard() {
     const trimmed = title.trim();
     if (!trimmed) return;
     const placeholderKey = `pending-${Date.now()}`;
-    // Land the new ticket at the bottom of its sprint but above the trailing done/deprecated block,
-    // and have it appear there instantly with no resort/jump: pick a jiraRank between the two
-    // neighbours at the insertion point so the rank sort keeps it in place (BRDG-315).
+    // Placement rule (BRDG-371): a backlog (the generic backlog, or a named one like
+    // "BT: Backlog") lands the new story at the TOP; a regular sprint lands it at the
+    // BOTTOM, above the trailing done/deprecated block. The optimistic row gets a
+    // jiraRank that keeps it in that spot under the rank sort with no resort/jump.
     const sprintTickets = displayTickets.filter((t) =>
       sprintId === null ? t.sprintId == null : t.sprintId === sprintId,
     );
-    const insertIdx = trailingDoneDepStart(sprintTickets);
-    const placeholderRank = interpolateRank(
-      sprintTickets[insertIdx - 1]?.jiraRank,
-      sprintTickets[insertIdx]?.jiraRank,
-    );
+    const destName = sprintId == null ? null : (sprintNameMap[sprintId] ?? null);
+    const isBacklogDest = sprintId == null || (destName != null && isBacklogSprintName(destName));
+    let placeholderRank: number | null;
+    if (isBacklogDest) {
+      placeholderRank = interpolateRank(undefined, sprintTickets[0]?.jiraRank);
+    } else {
+      const insertIdx = trailingDoneDepStart(sprintTickets);
+      placeholderRank = interpolateRank(
+        sprintTickets[insertIdx - 1]?.jiraRank,
+        sprintTickets[insertIdx]?.jiraRank,
+      );
+    }
     const placeholder: Ticket = {
       key: placeholderKey,
       title: trimmed,
@@ -514,7 +522,7 @@ export default function SprintBoard() {
         mutateTickets((data) => data?.filter((t) => t.key !== placeholderKey), { revalidate: false });
         showToast("Failed to create story");
       });
-  }, [mutateTickets, showToast, displayTickets]);
+  }, [mutateTickets, showToast, displayTickets, sprintNameMap]);
 
   // Sync PO data from API
   useEffect(() => { if (apiTickets && apiTickets.length > 0) syncFromApiTickets(apiTickets); }, [apiTickets, syncFromApiTickets]);

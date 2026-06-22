@@ -3,7 +3,7 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 import { createTestDb } from "@/db/test-utils";
 import type { BetterSQLite3Database } from "drizzle-orm/better-sqlite3";
 import type * as schema from "@/db/schema";
-import { ticket, ticketMetadata } from "@/db/schema";
+import { ticket, ticketMetadata, sprintNameCache } from "@/db/schema";
 
 let testDb: BetterSQLite3Database<typeof schema>;
 
@@ -24,6 +24,8 @@ vi.mock("@/lib/jira-client", () => ({
     createIssue: vi.fn().mockResolvedValue({ key: "VPL-999" }),
     moveToSprint: vi.fn().mockResolvedValue(undefined),
     rankToTopOfSprint: vi.fn().mockResolvedValue(undefined),
+    rankToBottomOfSprint: vi.fn().mockResolvedValue(undefined),
+    rankToTopOfBacklog: vi.fn().mockResolvedValue(undefined),
   },
 }));
 
@@ -36,6 +38,10 @@ function makeRequest(body: unknown): Request {
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(body),
   });
+}
+
+function cacheName(sprintId: string, displayName: string) {
+  testDb.insert(sprintNameCache).values({ sprintId, displayName }).run();
 }
 
 describe("POST /api/story-writer/create", () => {
@@ -90,24 +96,28 @@ describe("POST /api/story-writer/create", () => {
     expect(row[0].type).toBe("task");
   });
 
-  it("assigns the sprint and ranks the new story to the top when sprintId is given (BRDG-354)", async () => {
+  it("assigns the sprint and ranks the new story to the BOTTOM of a regular sprint (BRDG-371)", async () => {
+    cacheName("42", "BT: 140");
     const res = await POST(makeRequest({ title: "Into sprint", sprintId: "42" }));
     expect(res.status).toBe(201);
 
     // Jira ignores sprint-on-create, so it is applied via the field-edit path...
     expect((jiraClient.createIssue as ReturnType<typeof vi.fn>).mock.calls[0][0]).not.toHaveProperty("sprintId");
     expect(jiraClient.moveToSprint).toHaveBeenCalledWith(["VPL-999"], 42);
-    // ...then ranked to the top of the sprint.
-    expect(jiraClient.rankToTopOfSprint).toHaveBeenCalledWith(["VPL-999"], 42);
+    // ...then ranked to the bottom of the regular sprint.
+    expect(jiraClient.rankToBottomOfSprint).toHaveBeenCalledWith(["VPL-999"], 42);
+    expect(jiraClient.rankToTopOfSprint).not.toHaveBeenCalled();
 
     const row = testDb.select().from(ticket).all();
     expect(row[0].sprintName).toBe("42");
   });
 
-  it("does not move or rank when no sprintId is given", async () => {
+  it("ranks a no-sprintId create to the TOP of the backlog", async () => {
     await POST(makeRequest({ title: "Backlog story" }));
 
     expect(jiraClient.moveToSprint).not.toHaveBeenCalled();
+    expect(jiraClient.rankToTopOfBacklog).toHaveBeenCalledWith(["VPL-999"]);
+    expect(jiraClient.rankToBottomOfSprint).not.toHaveBeenCalled();
     expect(jiraClient.rankToTopOfSprint).not.toHaveBeenCalled();
 
     const row = testDb.select().from(ticket).all();
@@ -115,7 +125,8 @@ describe("POST /api/story-writer/create", () => {
   });
 
   it("tolerates a rank failure: the story is still created and assigned", async () => {
-    (jiraClient.rankToTopOfSprint as ReturnType<typeof vi.fn>).mockRejectedValueOnce(new Error("rank API down"));
+    cacheName("42", "BT: 140");
+    (jiraClient.rankToBottomOfSprint as ReturnType<typeof vi.fn>).mockRejectedValueOnce(new Error("rank API down"));
 
     const res = await POST(makeRequest({ title: "Into sprint", sprintId: "42" }));
     expect(res.status).toBe(201);
@@ -124,13 +135,15 @@ describe("POST /api/story-writer/create", () => {
     expect(row[0].sprintName).toBe("42");
   });
 
-  it("does not persist a sprint locally when the move fails", async () => {
+  it("falls back to the backlog (top) when the move fails", async () => {
+    cacheName("42", "BT: 140");
     (jiraClient.moveToSprint as ReturnType<typeof vi.fn>).mockRejectedValueOnce(new Error("sprint closed"));
 
     const res = await POST(makeRequest({ title: "Into sprint", sprintId: "42" }));
     expect(res.status).toBe(201);
-    // No rank attempt when the move failed.
-    expect(jiraClient.rankToTopOfSprint).not.toHaveBeenCalled();
+    // The story fell back to the backlog, so it ranks to the top of the backlog.
+    expect(jiraClient.rankToTopOfBacklog).toHaveBeenCalledWith(["VPL-999"]);
+    expect(jiraClient.rankToBottomOfSprint).not.toHaveBeenCalled();
 
     const row = testDb.select().from(ticket).all();
     expect(row[0].sprintName).toBeNull();

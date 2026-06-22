@@ -3,7 +3,7 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 import { createTestDb } from "@/db/test-utils";
 import type { BetterSQLite3Database } from "drizzle-orm/better-sqlite3";
 import type * as schema from "@/db/schema";
-import { ticket } from "@/db/schema";
+import { ticket, sprintNameCache } from "@/db/schema";
 
 let testDb: BetterSQLite3Database<typeof schema>;
 
@@ -16,6 +16,8 @@ vi.mock("@/lib/jira-client", () => ({
     createIssue: vi.fn().mockResolvedValue({ key: "VPL-999", id: "99999" }),
     moveToSprint: vi.fn().mockResolvedValue(undefined),
     rankToTopOfSprint: vi.fn().mockResolvedValue(undefined),
+    rankToBottomOfSprint: vi.fn().mockResolvedValue(undefined),
+    rankToTopOfBacklog: vi.fn().mockResolvedValue(undefined),
   },
 }));
 
@@ -39,47 +41,68 @@ import { createTicketWithJira } from "./create-ticket";
 import { jiraClient } from "@/lib/jira-client";
 
 const rankToTop = jiraClient.rankToTopOfSprint as ReturnType<typeof vi.fn>;
+const rankToBottom = jiraClient.rankToBottomOfSprint as ReturnType<typeof vi.fn>;
+const rankToTopOfBacklog = jiraClient.rankToTopOfBacklog as ReturnType<typeof vi.fn>;
 const moveToSprint = jiraClient.moveToSprint as ReturnType<typeof vi.fn>;
 
-describe("createTicketWithJira — rank to top of sprint (BRDG-354)", () => {
+function cacheName(sprintId: string, displayName: string) {
+  testDb.insert(sprintNameCache).values({ sprintId, displayName }).run();
+}
+
+describe("createTicketWithJira — placement rule (BRDG-371)", () => {
   beforeEach(() => {
     testDb = createTestDb();
     vi.clearAllMocks();
   });
 
-  it("ranks the new ticket to the top of its sprint once the move succeeds", async () => {
+  it("ranks a new ticket to the BOTTOM of a regular sprint once the move succeeds", async () => {
+    cacheName("42", "BT: 140");
     const result = await createTicketWithJira({ title: "New story", issueType: "Story", sprintId: "42" });
 
     expect(moveToSprint).toHaveBeenCalledWith(["VPL-999"], 42);
-    expect(rankToTop).toHaveBeenCalledWith(["VPL-999"], 42);
+    expect(rankToBottom).toHaveBeenCalledWith(["VPL-999"], 42);
+    expect(rankToTop).not.toHaveBeenCalled();
     expect(result.sprintId).toBe("42");
     const row = testDb.select().from(ticket).all().find((r) => r.jiraKey === "VPL-999");
     expect(row!.sprintName).toBe("42");
-    // Local rank set so the board shows it at the top immediately (no peers → 0).
+    // Local rank set so the board shows it at the bottom immediately (no peers → 0).
     expect(row!.jiraRank).toBe(0);
   });
 
-  it("does not rank when no sprint is assigned (backlog create)", async () => {
+  it("ranks a new ticket to the TOP of a named backlog", async () => {
+    cacheName("55", "BT: Backlog");
+    await createTicketWithJira({ title: "Into backlog sprint", issueType: "Story", sprintId: "55" });
+
+    expect(rankToTop).toHaveBeenCalledWith(["VPL-999"], 55);
+    expect(rankToBottom).not.toHaveBeenCalled();
+  });
+
+  it("ranks a no-sprint create to the TOP of the backlog", async () => {
     await createTicketWithJira({ title: "Backlog story", issueType: "Story" });
 
     expect(moveToSprint).not.toHaveBeenCalled();
+    expect(rankToTopOfBacklog).toHaveBeenCalledWith(["VPL-999"]);
     expect(rankToTop).not.toHaveBeenCalled();
+    expect(rankToBottom).not.toHaveBeenCalled();
   });
 
-  it("does not rank when the sprint assignment itself fails", async () => {
+  it("falls back to the backlog (top) when the sprint assignment itself fails", async () => {
+    cacheName("42", "BT: 140");
     moveToSprint.mockRejectedValueOnce(new Error("sprint closed"));
 
     const result = await createTicketWithJira({ title: "Into sprint", issueType: "Story", sprintId: "42" });
 
-    expect(rankToTop).not.toHaveBeenCalled();
-    // Ticket still created, just left in the backlog.
+    // The ticket fell back to the backlog, so it ranks to the top of the backlog.
+    expect(rankToTopOfBacklog).toHaveBeenCalledWith(["VPL-999"]);
+    expect(rankToBottom).not.toHaveBeenCalled();
     expect(result.sprintId).toBeNull();
     const row = testDb.select().from(ticket).all().find((r) => r.jiraKey === "VPL-999");
     expect(row!.sprintName).toBeNull();
   });
 
   it("tolerates a rank failure: the ticket is still created and assigned to the sprint", async () => {
-    rankToTop.mockRejectedValueOnce(new Error("rank API down"));
+    cacheName("42", "BT: 140");
+    rankToBottom.mockRejectedValueOnce(new Error("rank API down"));
 
     const result = await createTicketWithJira({ title: "Into sprint", issueType: "Story", sprintId: "42" });
 

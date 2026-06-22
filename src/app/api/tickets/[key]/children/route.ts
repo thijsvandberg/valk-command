@@ -6,7 +6,7 @@ import { db } from "@/db";
 import { ticket, ticketMetadata } from "@/db/schema";
 import { jiraClient } from "@/lib/jira-client";
 import { syncTicketSprints } from "@/lib/sprint-membership";
-import { landTicketAtTopOfSprint } from "@/lib/sprint-rank";
+import { landNewTicket } from "@/lib/sprint-rank";
 import { logActivity } from "@/lib/activity-logger";
 import { logger } from "@/lib/logger";
 import { cache } from "@/lib/cache";
@@ -97,10 +97,11 @@ export async function POST(request: Request, { params }: RouteContext) {
   });
 
   // Mirror the membership into the indexed bridge so the by-sprint board shows
-  // the new child, then land it at the top of its sprint (BRDG-354). Best-effort.
+  // the new child, then place it per the unified create rule (BRDG-371): bottom of
+  // a regular sprint, top of a backlog. Best-effort.
   if (assignedSprintId) {
     syncTicketSprints(db, jiraResult.key, [assignedSprintId], assignedSprintId);
-    await landTicketAtTopOfSprint(jiraResult.key, parseInt(assignedSprintId, 10));
+    await landNewTicket(jiraResult.key, assignedSprintId);
   }
 
   // New child issues start in the PO "drafting" stage so they surface for
