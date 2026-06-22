@@ -106,8 +106,12 @@ describe("runDeprecationDeepScan", () => {
   it("resumes across restarts: a row left running is requeued then processed", async () => {
     insertTicket("BT-1");
     await enqueueDeepScan(["BT-1"]);
-    // Simulate a crash mid-batch: row is stuck running.
-    testDb.update(deprecationScanQueue).set({ status: "running" }).run();
+    // Simulate a crash mid-batch: the row is stuck running with a startedAt old
+    // enough to cross the stuck threshold, so it is genuinely recoverable (a
+    // freshly-claimed row from an overlapping tick is left alone — BRDG-376).
+    testDb.update(deprecationScanQueue)
+      .set({ status: "running", startedAt: new Date(Date.now() - 30 * 60_000).toISOString() })
+      .run();
 
     const result = await runDeprecationDeepScan();
     expect(result.recovered).toBe(1);
