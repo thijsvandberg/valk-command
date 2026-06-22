@@ -8,7 +8,9 @@ import { useRouter } from "next/navigation";
 import { ChevronDown, AlertTriangle, Play, Boxes } from "lucide-react";
 import { TicketStatusPill } from "@/components/shared/TicketStatusPill";
 import { tickets, jira, apiFetch } from "@/lib/api-client";
-import { patchTicketCaches, moveTicketSprintCaches } from "@/lib/ticket-cache";
+import { patchTicketCaches, patchTicketDetailCache, moveTicketSprintCaches } from "@/lib/ticket-cache";
+import { registerPendingEdit, confirmPendingEdit, clearPendingEdit } from "@/components/sprint-board/pendingTicketEdits";
+import { userInitials, userColor } from "@/lib/user-utils";
 import { Avatar } from "@/components/shared/Avatar";
 import { QualityBadge } from "@/components/sprint-board/TicketTable";
 import { ReadinessCell } from "@/components/shared/ReadinessCell";
@@ -166,45 +168,62 @@ export function TicketMetaContent({
     onReadinessChange?.(v);
   }, [onReadinessChange]);
 
+  // Fields below also live on the board row. Setting one from the sidebar must use
+  // the pendingTicketEdits overlay (registerPendingEdit), not just a one-shot cache
+  // patch: the board refetches its list constantly (poll/focus/sync/picker-close), so
+  // a single patch is overwritten by the next refetch before Jira catches up and the
+  // change "snaps back" until a manual refresh (BRDG-382). The overlay re-applies the
+  // value on every render until the server confirms it. patchTicketDetailCache keeps
+  // this sidebar's own picker in sync without patching the list cache, which would let
+  // the board's self-heal clear the overlay early. Mirrors useTicketActions.
   const handleBusinessValueChange = useCallback(async (v: number | null) => {
     const prev = businessValue;
     setBusinessValue(v);
-    patchTicketCaches(ticket.key, { businessValue: v });
+    registerPendingEdit(ticket.key, "businessValue", v, Date.now());
+    patchTicketDetailCache(ticket.key, { businessValue: v });
     try {
       await tickets.updateMetadata(ticket.key, { businessValue: v });
+      confirmPendingEdit(ticket.key, "businessValue");
       onMutate?.();
     } catch (err) {
       console.error("Operation failed:", err);
       setBusinessValue(prev);
-      patchTicketCaches(ticket.key, { businessValue: prev });
+      clearPendingEdit(ticket.key, "businessValue");
+      patchTicketDetailCache(ticket.key, { businessValue: prev });
     }
   }, [ticket.key, businessValue, onMutate]);
 
   const handleStoryPointsChange = useCallback(async (v: number | null) => {
     const prev = storyPoints;
     setStoryPoints(v);
-    patchTicketCaches(ticket.key, { storyPoints: v });
+    registerPendingEdit(ticket.key, "storyPoints", v, Date.now());
+    patchTicketDetailCache(ticket.key, { storyPoints: v });
     try {
       await tickets.updateStoryPoints(ticket.key, v);
+      confirmPendingEdit(ticket.key, "storyPoints");
       onMutate?.();
     } catch (err) {
       console.error("Operation failed:", err);
       setStoryPoints(prev);
-      patchTicketCaches(ticket.key, { storyPoints: prev });
+      clearPendingEdit(ticket.key, "storyPoints");
+      patchTicketDetailCache(ticket.key, { storyPoints: prev });
     }
   }, [ticket.key, storyPoints, onMutate]);
 
   const handleJiraStatusChange = useCallback(async (status: JiraStatus) => {
     const prev = jiraStatus;
     setJiraStatus(status);
-    patchTicketCaches(ticket.key, { jiraStatus: status });
+    registerPendingEdit(ticket.key, "jiraStatus", status, Date.now());
+    patchTicketDetailCache(ticket.key, { jiraStatus: status });
     try {
       await apiFetch(`/api/tickets/${encodeURIComponent(ticket.key)}/status`, { method: "PUT", body: { status } });
+      confirmPendingEdit(ticket.key, "jiraStatus");
       onMutate?.();
     } catch (err) {
       console.error("Operation failed:", err);
       setJiraStatus(prev);
-      patchTicketCaches(ticket.key, { jiraStatus: prev });
+      clearPendingEdit(ticket.key, "jiraStatus");
+      patchTicketDetailCache(ticket.key, { jiraStatus: prev });
     }
   }, [ticket.key, jiraStatus, onMutate]);
 
@@ -242,49 +261,56 @@ export function TicketMetaContent({
 
   const handleAssigneeChange = useCallback(async (user: { accountId: string | null; displayName: string; avatarUrl: string | null } | null) => {
     const prev = assignee;
-    let next: typeof assignee = null;
-    if (user) {
-      const name = user.displayName;
-      const parts = name.trim().split(/\s+/);
-      const initials = parts.length === 1 ? parts[0].slice(0, 2).toUpperCase() : (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
-      let hash = 0;
-      for (let i = 0; i < name.length; i++) hash = name.charCodeAt(i) + ((hash << 5) - hash);
-      const hue = ((hash % 360) + 360) % 360;
-      next = { name, initials, color: `hsl(${hue}, 55%, 50%)` };
-    }
+    // Derive initials/color the same way the rest of the app does so the optimistic
+    // value matches what the server returns, letting the overlay's self-heal clear on
+    // the first matching refetch instead of waiting out the TTL.
+    const next: typeof assignee = user
+      ? { name: user.displayName, initials: userInitials(user.displayName), color: userColor(user.displayName) }
+      : null;
     setAssignee(next);
-    patchTicketCaches(ticket.key, { assignee: next });
+    registerPendingEdit(ticket.key, "assignee", next, Date.now());
+    patchTicketDetailCache(ticket.key, { assignee: next });
     try {
       await jira.assign({
         issueKey: ticket.key,
         accountId: user?.accountId ?? null,
         name: user?.displayName ?? null,
       });
+      confirmPendingEdit(ticket.key, "assignee");
       onMutate?.();
     } catch (err) {
       console.error("Operation failed:", err);
       setAssignee(prev);
-      patchTicketCaches(ticket.key, { assignee: prev });
+      clearPendingEdit(ticket.key, "assignee");
+      patchTicketDetailCache(ticket.key, { assignee: prev });
     }
   }, [ticket.key, assignee, onMutate]);
 
   const handleEpicChange = useCallback(async (epic: EpicOption | null) => {
     const prevName = epicName;
     const prevKey = epicKey;
+    const now = Date.now();
     setEpicName(epic?.name ?? null);
     setEpicKey(epic?.key ?? null);
-    // Patch the board/list caches immediately so the epic chip appears at once;
-    // relying on onMutate revalidation alone shows stale data because server
-    // cache invalidation is unreliable in dev.
-    patchTicketCaches(ticket.key, { epic: epic?.name ?? null, epicKey: epic?.key ?? null });
+    // Both fields go through the overlay: the board row only renders the epic chip
+    // when name AND key are set, and a one-shot list patch is clobbered by the next
+    // refetch before Jira reflects the write, so the chip never appeared until a
+    // manual refresh (BRDG-382, the reported bug).
+    registerPendingEdit(ticket.key, "epic", epic?.name ?? null, now);
+    registerPendingEdit(ticket.key, "epicKey", epic?.key ?? null, now);
+    patchTicketDetailCache(ticket.key, { epic: epic?.name ?? null, epicKey: epic?.key ?? null });
     try {
       await tickets.updateEpic(ticket.key, epic?.key ?? null);
+      confirmPendingEdit(ticket.key, "epic");
+      confirmPendingEdit(ticket.key, "epicKey");
       onMutate?.();
     } catch (err) {
       console.error("Operation failed:", err);
       setEpicName(prevName);
       setEpicKey(prevKey);
-      patchTicketCaches(ticket.key, { epic: prevName, epicKey: prevKey });
+      clearPendingEdit(ticket.key, "epic");
+      clearPendingEdit(ticket.key, "epicKey");
+      patchTicketDetailCache(ticket.key, { epic: prevName, epicKey: prevKey });
     }
   }, [ticket.key, epicName, epicKey, onMutate]);
 

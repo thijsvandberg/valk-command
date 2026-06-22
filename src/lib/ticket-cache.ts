@@ -34,6 +34,26 @@ export function patchTicketCaches(ticketKey: string, patch: Record<string, unkno
   );
 }
 
+// Patch ONLY the per-key detail cache, leaving the board/list caches untouched.
+// The ticket detail sidebar uses this for fields that also live on the board row
+// (epic, assignee, status, points, business value): the board list is kept current
+// by the pendingTicketEdits overlay (registerPendingEdit), and patching the list
+// here too would let the board's self-heal mistake this one-shot client patch for a
+// real server read and clear the overlay early, snapping the row back to stale data
+// (see docs/architecture/optimistic-updates.md). The sidebar's own pickers re-seed
+// from the detail object, so that cache still needs the immediate patch.
+export function patchTicketDetailCache(ticketKey: string, patch: Record<string, unknown>) {
+  const detailKey = `/api/tickets/${encodeURIComponent(ticketKey)}`;
+  return globalMutate(
+    detailKey,
+    (current: unknown) =>
+      current && typeof current === "object" && (current as { key?: string }).key === ticketKey
+        ? { ...current, ...patch }
+        : current,
+    { revalidate: false },
+  );
+}
+
 // Sentinel the move-sprint endpoint uses for "send to backlog".
 const BACKLOG_TARGET = "__backlog__";
 

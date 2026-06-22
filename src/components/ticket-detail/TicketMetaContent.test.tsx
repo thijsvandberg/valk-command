@@ -1,7 +1,14 @@
 import { render, screen, fireEvent, waitFor } from "@testing-library/react";
-import { describe, it, expect, vi } from "vitest";
+import { describe, it, expect, vi, beforeEach } from "vitest";
 import { TicketMetaContent } from "./TicketMetaContent";
 import type { Ticket, TicketDetail } from "@/types/ticket";
+import {
+  applyPendingEdits,
+  hasPendingEdit,
+  __getPendingEdits,
+  __resetPendingEdits,
+} from "@/components/sprint-board/pendingTicketEdits";
+import { userInitials, userColor } from "@/lib/user-utils";
 
 vi.mock("lucide-react", () => {
   const stub = () => null;
@@ -56,9 +63,9 @@ vi.mock("@/components/shared/WatchersRow", () => ({ WatchersRow: ({ ticketKey }:
 vi.mock("@/components/shared/Tooltip", () => ({ Tooltip: ({ children }: { children: React.ReactNode }) => <span>{children}</span> }));
 vi.mock("@/components/shared/Tag", () => ({ Tag: ({ children }: { children: React.ReactNode }) => <span>{children}</span> }));
 vi.mock("@/components/shared/ReadinessCell", () => ({ ReadinessCell: () => <span data-testid="readiness-cell" /> }));
-vi.mock("@/components/shared/BusinessValuePicker", () => ({ BusinessValuePicker: ({ value }: { value: number | null }) => <span data-testid="bv-picker">{value}</span> }));
+vi.mock("@/components/shared/BusinessValuePicker", () => ({ BusinessValuePicker: ({ value, onChange }: { value: number | null; onChange?: (v: number | null) => void }) => <button data-testid="bv-picker" onClick={() => onChange?.(8)}>{value}</button> }));
 vi.mock("@/components/shared/StoryPointPicker", () => ({ StoryPointPicker: ({ value, onChange }: { value: number | null; onChange: (v: number | null) => void }) => <button data-testid="sp-picker" onClick={() => onChange(8)}>{value}</button> }));
-vi.mock("@/components/shared/AssigneePicker", () => ({ AssigneePicker: ({ value }: { value: { name: string } | null }) => <span data-testid="assignee-picker">{value?.name}</span> }));
+vi.mock("@/components/shared/AssigneePicker", () => ({ AssigneePicker: ({ value, onChange }: { value: { name: string } | null; onChange?: (u: { accountId: string | null; displayName: string; avatarUrl: string | null } | null) => void }) => <button data-testid="assignee-picker" onClick={() => onChange?.({ accountId: "acc-bob", displayName: "Bob Jones", avatarUrl: null })}>{value?.name}</button> }));
 vi.mock("@/components/shared/EpicPicker", () => ({
   EpicPicker: ({ value, onChange }: { value: { name: string } | null; onChange?: (epic: { key: string; name: string } | null) => void }) => (
     <button data-testid="epic-picker" onClick={() => onChange?.({ key: "EPIC-9", name: "Epic Nine" })}>{value?.name}</button>
@@ -66,9 +73,11 @@ vi.mock("@/components/shared/EpicPicker", () => ({
 }));
 
 const patchTicketCaches = vi.fn();
+const patchTicketDetailCache = vi.fn();
 const moveTicketSprintCaches = vi.fn();
 vi.mock("@/lib/ticket-cache", () => ({
   patchTicketCaches: (...args: unknown[]) => patchTicketCaches(...args),
+  patchTicketDetailCache: (...args: unknown[]) => patchTicketDetailCache(...args),
   moveTicketSprintCaches: (...args: unknown[]) => moveTicketSprintCaches(...args),
 }));
 vi.mock("@/components/shared/LabelPicker", () => ({ LabelPicker: ({ value }: { value: string[] }) => <span data-testid="label-picker">{value.join(",")}</span> }));
@@ -122,6 +131,12 @@ const detail: TicketDetail = {
 };
 
 describe("TicketMetaContent", () => {
+  beforeEach(() => {
+    __resetPendingEdits();
+    patchTicketCaches.mockClear();
+    patchTicketDetailCache.mockClear();
+  });
+
   it("renders story points and business value", () => {
     render(<TicketMetaContent ticket={makeTicket()} detail={detail} />);
     expect(screen.getByTestId("sp-picker")).toHaveTextContent("5");
@@ -193,13 +208,25 @@ describe("TicketMetaContent", () => {
     });
   });
 
-  it("patches the ticket caches immediately when the epic changes, then persists and notifies", async () => {
-    patchTicketCaches.mockClear();
+  it("registers a durable board overlay edit and patches only the detail cache when the epic changes (BRDG-382)", async () => {
     const onMutate = vi.fn();
-    render(<TicketMetaContent ticket={makeTicket()} detail={detail} onMutate={onMutate} />);
+    render(<TicketMetaContent ticket={makeTicket({ key: "PROJ-42", epic: null, epicKey: null })} detail={detail} onMutate={onMutate} />);
     fireEvent.click(screen.getByTestId("epic-picker"));
-    // Cache patch happens synchronously so the board chip appears at once.
-    expect(patchTicketCaches).toHaveBeenCalledWith("PROJ-42", { epic: "Epic Nine", epicKey: "EPIC-9" });
+
+    // The overlay carries the change synchronously so the board chip appears at once,
+    // and re-applies it on top of a stale refetch that has not yet caught up to Jira.
+    expect(hasPendingEdit("PROJ-42", "epic")).toBe(true);
+    expect(hasPendingEdit("PROJ-42", "epicKey")).toBe(true);
+    const stale = [makeTicket({ key: "PROJ-42", epic: null, epicKey: null })];
+    const merged = applyPendingEdits(stale, __getPendingEdits(), Date.now());
+    expect(merged?.[0].epic).toBe("Epic Nine");
+    expect(merged?.[0].epicKey).toBe("EPIC-9");
+
+    // Only the per-key detail cache is patched; patching the list would defeat the
+    // board overlay's self-heal (see docs/architecture/optimistic-updates.md).
+    expect(patchTicketDetailCache).toHaveBeenCalledWith("PROJ-42", { epic: "Epic Nine", epicKey: "EPIC-9" });
+    expect(patchTicketCaches).not.toHaveBeenCalled();
+
     await waitFor(() => {
       expect(updateEpic).toHaveBeenCalledWith("PROJ-42", "EPIC-9");
       expect(onMutate).toHaveBeenCalled();
@@ -228,12 +255,45 @@ describe("TicketMetaContent", () => {
     expect(onMutate).not.toHaveBeenCalled();
   });
 
-  it("patches the ticket caches immediately when story points change", async () => {
-    patchTicketCaches.mockClear();
+  it("registers a durable overlay edit and patches only the detail cache when story points change (BRDG-382)", async () => {
     render(<TicketMetaContent ticket={makeTicket()} detail={detail} onMutate={vi.fn()} />);
     fireEvent.click(screen.getByTestId("sp-picker"));
-    expect(patchTicketCaches).toHaveBeenCalledWith("PROJ-42", { storyPoints: 8 });
+    expect(hasPendingEdit("PROJ-42", "storyPoints")).toBe(true);
+    expect(patchTicketDetailCache).toHaveBeenCalledWith("PROJ-42", { storyPoints: 8 });
+    expect(patchTicketCaches).not.toHaveBeenCalled();
     await waitFor(() => expect(updateStoryPoints).toHaveBeenCalled());
+  });
+
+  it("registers a durable overlay edit when the business value changes (BRDG-382)", async () => {
+    render(<TicketMetaContent ticket={makeTicket()} detail={detail} onMutate={vi.fn()} />);
+    fireEvent.click(screen.getByTestId("bv-picker"));
+    expect(hasPendingEdit("PROJ-42", "businessValue")).toBe(true);
+    expect(patchTicketDetailCache).toHaveBeenCalledWith("PROJ-42", { businessValue: 8 });
+    await waitFor(() => expect(updateMetadata).toHaveBeenCalledWith("PROJ-42", { businessValue: 8 }));
+  });
+
+  it("registers a durable overlay edit when the Jira status changes (BRDG-382)", async () => {
+    render(<TicketMetaContent ticket={makeTicket()} detail={detail} onMutate={vi.fn()} />);
+    fireEvent.click(screen.getByTestId("status-pill"));
+    expect(hasPendingEdit("PROJ-42", "jiraStatus")).toBe(true);
+    const stale = [makeTicket({ key: "PROJ-42", jiraStatus: "IN PROGRESS" })];
+    const merged = applyPendingEdits(stale, __getPendingEdits(), Date.now());
+    expect(merged?.[0].jiraStatus).toBe("DONE");
+    await waitFor(() => expect(apiFetch).toHaveBeenCalledWith("/api/tickets/PROJ-42/status", { method: "PUT", body: { status: "DONE" } }));
+  });
+
+  it("registers a durable overlay edit with app-consistent initials/color when the assignee changes (BRDG-382)", async () => {
+    render(<TicketMetaContent ticket={makeTicket()} detail={detail} onMutate={vi.fn()} />);
+    fireEvent.click(screen.getByTestId("assignee-picker"));
+    expect(hasPendingEdit("PROJ-42", "assignee")).toBe(true);
+    const stale = [makeTicket({ key: "PROJ-42" })];
+    const merged = applyPendingEdits(stale, __getPendingEdits(), Date.now());
+    // Matches the shape the server/list produces so self-heal clears on first match.
+    expect(merged?.[0].assignee).toEqual({
+      name: "Bob Jones",
+      initials: userInitials("Bob Jones"),
+      color: userColor("Bob Jones"),
+    });
   });
 
   // BRDG-333: subtasks are not estimated, scored, reviewed, or developed on their own, so the

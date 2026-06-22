@@ -76,6 +76,28 @@ straight off the list object. They use the same store: their handlers register a
 and `syncFromApiTickets` skips reconciling a field while `hasPendingEdit` is true, so a
 stale refetch cannot reconcile the map back to the old value.
 
+### Edits made from the ticket-detail sidebar (BRDG-382)
+
+The sidebar (`TicketMetaContent.tsx`) edits several fields that also render on the board
+row: epic, assignee, status, story points, business value. When the board is open
+beside the sidebar (column layout), those edits must survive the board's refetches too,
+so each handler registers on this same overlay (`registerPendingEdit` / `confirmPendingEdit`
+/ `clearPendingEdit`), exactly like `useTicketActions`.
+
+The catch: the sidebar's own pickers render from local React state that is re-seeded from
+the `ticket` prop whenever it changes (the reset effect in `TicketMetaContent.tsx`), and
+that prop comes from the per-key **detail** cache. So the sidebar still patches the detail
+cache immediately - but via `patchTicketDetailCache` (`ticket-cache.ts`), which patches
+**only** `/api/tickets/<key>`, never the list caches. Patching the list cache here would
+be self-defeating: the board's self-heal compares the overlay value against the list data,
+so a client-side list patch looks like the server "catching up" and clears the overlay
+early, letting the next stale refetch win - the exact snap-back this overlay prevents.
+
+Rule for any sidebar field that also lives on the board row: overlay for the board list,
+`patchTicketDetailCache` for the sidebar's own re-seed, never `patchTicketCaches` (which
+patches the list). Fields with no board-row presence (PO notes, labels) may keep using
+`patchTicketCaches`.
+
 ## Adding a new editable board field (checklist)
 
 1. Add the field name to `EditableField` in `pendingTicketEdits.ts`.
@@ -98,3 +120,6 @@ overlay; it should be migrated so the multi-column view gets the same guarantee.
 - `pendingSprintMoves.ts` - original single-field overlay (sprint moves).
 - BRDG-357 - generalized the pattern to all editable fields and removed the fragile
   per-handler cache patches.
+- BRDG-382 - wired the ticket-detail sidebar edits (epic, assignee, status, points,
+  business value) into the overlay and added `patchTicketDetailCache` so the sidebar no
+  longer patches the list cache (which defeated the overlay's self-heal).
