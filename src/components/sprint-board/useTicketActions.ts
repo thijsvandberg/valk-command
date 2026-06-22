@@ -291,10 +291,28 @@ export function useTicketActions(deps: TicketActionsDeps) {
     }
   }, [showToast]);
 
-  const handleBulkSetEpic = useCallback(async (epicKey: string | null, checkedTickets: Set<string>) => {
+  // Overlay both fields the board row reads (epic name + epicKey) so the chip
+  // appears instantly, instead of waiting for the PATCH + refetch round-trip
+  // (the row only renders the epic when both are set). Mirrors handleEpicChange.
+  const handleBulkSetEpic = useCallback(async (epicKey: string | null, epicName: string | null, checkedTickets: Set<string>) => {
     const keys = [...checkedTickets];
+    const now = Date.now();
+    keys.forEach((k) => {
+      registerPendingEdit(k, "epic", epicName, now);
+      registerPendingEdit(k, "epicKey", epicKey, now);
+    });
     const results = await Promise.allSettled(keys.map((k) => apiFetch(`/api/tickets/${encodeURIComponent(k)}`, { method: "PATCH", body: { epicKey } })));
-    const failedCount = results.filter((r) => r.status === "rejected").length;
+    let failedCount = 0;
+    keys.forEach((k, i) => {
+      if (results[i].status === "fulfilled") {
+        confirmPendingEdit(k, "epic");
+        confirmPendingEdit(k, "epicKey");
+      } else {
+        clearPendingEdit(k, "epic");
+        clearPendingEdit(k, "epicKey");
+        failedCount++;
+      }
+    });
     mutateTickets();
     if (failedCount > 0) {
       showToast(`Failed to update epic for ${failedCount} ticket${failedCount === 1 ? "" : "s"}`);

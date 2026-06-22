@@ -42,7 +42,7 @@ function UpdateDropdown({
 }: {
   onSetStatus?: (status: JiraStatus) => void;
   onSetReadiness?: (readiness: TicketReadiness | null) => void;
-  onSetEpic?: (epicKey: string | null) => void;
+  onSetEpic?: (epicKey: string | null, epicName: string | null) => void;
   onMoveSprint?: (sprintId: string) => void;
   quickMoves?: QuickMoveOption[];
   onQuickMove?: (opt: QuickMoveOption) => void;
@@ -237,7 +237,7 @@ export function BulkActionBar({
   // Update dropdown
   onSetReadiness?: (readiness: TicketReadiness | null) => void;
   onSetStatus?: (status: JiraStatus) => void;
-  onSetEpic?: (epicKey: string | null) => void;
+  onSetEpic?: (epicKey: string | null, epicName: string | null) => void;
   onMoveSprint?: (sprintId: string) => void;
   /** One-click move destinations shown above "Move to Sprint" (BRDG-369). */
   quickMoves?: QuickMoveOption[];

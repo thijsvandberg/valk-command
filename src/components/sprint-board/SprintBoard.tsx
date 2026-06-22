@@ -697,7 +697,7 @@ export default function SprintBoard() {
   }, [refinementSessionList, mutateRefinementSessions, showToast]);
   const handleRefineSelected = useCallback(() => { openRefine(Array.from(checkedTickets)); }, [checkedTickets, openRefine]);
   const handleBulkSetStatus = useCallback(async (status: Parameters<typeof taBulkSetStatus>[0], targets: Set<string> = checkedTickets) => { await taBulkSetStatus(status, targets); }, [taBulkSetStatus, checkedTickets]);
-  const handleBulkSetEpic = useCallback(async (epicKey: string | null, targets: Set<string> = checkedTickets) => { await taBulkSetEpic(epicKey, targets); }, [taBulkSetEpic, checkedTickets]);
+  const handleBulkSetEpic = useCallback(async (epicKey: string | null, epicName: string | null, targets: Set<string> = checkedTickets) => { await taBulkSetEpic(epicKey, epicName, targets); }, [taBulkSetEpic, checkedTickets]);
   const handleBulkMoveSprint = useCallback(async (sprintId: string, targets: Set<string> = checkedTickets) => {
     const isBacklog = sprintId === "__backlog__";
     const dest = sprintNameMap[sprintId] ?? (isBacklog ? "backlog" : "sprint");
@@ -1109,7 +1109,8 @@ export default function SprintBoard() {
           <TicketActionMenuContent
             onSetStatus={(s) => handleBulkSetStatus(s, rowMenu.targets)}
             onSetReadiness={(r) => handleBulkSetReadiness(r, rowMenu.targets)}
-            onSetEpic={(epicKey) => handleBulkSetEpic(epicKey, rowMenu.targets)}
+            onSetEpic={(epicKey, epicName) => handleBulkSetEpic(epicKey, epicName, rowMenu.targets)}
+            epicSuggestTicketKey={rowMenu.targets.size === 1 ? Array.from(rowMenu.targets)[0] : undefined}
             onMoveSprint={(sprintId) => handleBulkMoveSprint(sprintId, rowMenu.targets)}
             quickMoves={quickMovesFor(rowMenu.targets)}
             onQuickMove={(opt) => handleQuickMove(opt, rowMenu.targets)}

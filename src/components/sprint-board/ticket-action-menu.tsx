@@ -17,6 +17,7 @@ import { ReadinessIcon } from "@/components/shared/ReadinessCell";
 import { useOutsideClick } from "@/hooks/useOutsideClick";
 import { Card } from "@/components/shared/Card";
 import { Checkbox } from "@/components/shared/Checkbox";
+import { EpicListPanel } from "@/components/shared/EpicListPanel";
 
 // ---------------------------------------------------------------------------
 // Anchored portal menu
@@ -340,67 +341,6 @@ function SprintSubPanel({
 }
 
 // ---------------------------------------------------------------------------
-// Sub-panel: Epic picker
-// ---------------------------------------------------------------------------
-
-interface EpicListItem {
-  key: string;
-  name: string;
-  status: string;
-}
-
-function EpicSubPanel({ onSelect }: { onSelect: (epicKey: string | null, epicName: string | null) => void }) {
-  const { data } = useSWR<EpicListItem[]>("/api/epics", swrFetcher);
-  const [query, setQuery] = useState("");
-  const filtered = useMemo(() => {
-    if (!data) return [];
-    if (!query) return data;
-    const q = query.toLowerCase();
-    return data.filter((e) => e.name.toLowerCase().includes(q) || e.key.toLowerCase().includes(q));
-  }, [data, query]);
-
-  return (
-    <div className="py-1">
-      <div className="px-2 pb-1">
-        <div className="flex items-center gap-1.5 rounded-md border border-border-default bg-[var(--color-surface-base)] px-2 py-1">
-          <Search className="h-3 w-3 shrink-0 text-text-muted" strokeWidth={1.5} />
-          <input
-            type="text"
-            value={query}
-            onChange={(e) => setQuery(e.target.value)}
-            placeholder="Search epics..."
-            className="w-full bg-transparent text-body-sm text-text-primary outline-none placeholder:text-text-muted"
-            autoFocus
-          />
-        </div>
-      </div>
-      <button
-        type="button"
-        onClick={() => onSelect(null, null)}
-        className="flex w-full items-center gap-2.5 px-3 py-1.5 text-body-sm text-text-tertiary cursor-pointer hover:bg-hover-list-item active:bg-overlay-default"
-      >
-        No epic
-      </button>
-      <div className="max-h-[200px] overflow-y-auto">
-        {filtered.map((epic) => (
-          <button
-            key={epic.key}
-            type="button"
-            onClick={() => onSelect(epic.key, epic.name)}
-            className="flex w-full items-center gap-2.5 px-3 py-1.5 text-body-sm text-text-secondary cursor-pointer hover:bg-hover-list-item active:bg-overlay-default"
-          >
-            <span className="truncate">{epic.name}</span>
-            <span className="ml-auto shrink-0 text-[10px] text-text-muted">{epic.key}</span>
-          </button>
-        ))}
-        {!data && <div className="px-3 py-2 text-body-sm text-text-tertiary">Loading...</div>}
-        {data && filtered.length === 0 && <div className="px-3 py-2 text-body-sm text-text-tertiary">No epics found</div>}
-      </div>
-    </div>
-  );
-}
-
-// ---------------------------------------------------------------------------
 // Sub-panel: Assignee picker
 // ---------------------------------------------------------------------------
 
@@ -565,13 +505,17 @@ export function TicketActionMenuContent({
   onGenerateSubtasks,
   onRefine,
   onMarkRead,
+  epicSuggestTicketKey,
   sprints,
   pinnedSprintIds,
   close,
 }: {
   onSetStatus?: (status: JiraStatus) => void;
   onSetReadiness?: (readiness: TicketReadiness | null) => void;
-  onSetEpic?: (epicKey: string | null) => void;
+  onSetEpic?: (epicKey: string | null, epicName: string | null) => void;
+  /** When exactly one ticket is targeted, its key enables the AI suggest-epic
+   *  action in the Set Epic panel (single-ticket only, like the sidebar). */
+  epicSuggestTicketKey?: string;
   onMoveSprint?: (sprintId: string) => void;
   /** Rank the target(s) to the top/bottom of the current sprint (whole sprint). */
   onMoveToTop?: () => void;
@@ -683,7 +627,7 @@ export function TicketActionMenuContent({
       {subView === "sprint" && sprints && (
         <SprintSubPanel sprints={sprints} pinnedSprintIds={pinnedSprintIds} onSelect={(id) => { onMoveSprint?.(id); close(); }} />
       )}
-      {subView === "epic" && <EpicSubPanel onSelect={(key) => { onSetEpic?.(key); close(); }} />}
+      {subView === "epic" && <EpicListPanel ticketKey={epicSuggestTicketKey} onSelect={(key, name) => { onSetEpic?.(key, name); close(); }} />}
       {subView === "assignee" && <AssigneeSubPanel onSelect={(accountId, name) => { onUpdateAssignee?.(accountId, name); close(); }} />}
       {subView === "label" && <LabelSubPanel onSelect={(labels, mode) => { onUpdateLabel?.(labels, mode); close(); }} />}
     </>

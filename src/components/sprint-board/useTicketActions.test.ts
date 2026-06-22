@@ -579,3 +579,49 @@ describe("useTicketActions - syncFromApiTickets reconciliation (BRDG-334)", () =
     expect(result.current.readinessMap["A-1"]).toBe("on_hold");
   });
 });
+
+describe("useTicketActions - handleBulkSetEpic", () => {
+  beforeEach(() => {
+    vi.mocked(apiFetch).mockReset();
+    __resetPendingEdits();
+  });
+
+  function setup(apiTickets: Ticket[]) {
+    const mutateTickets = vi.fn();
+    const showToast = vi.fn();
+    const { result } = renderHook(() =>
+      useTicketActions({ apiTickets, mutateTickets, activeListKey: null, sprintNameMap: {}, showToast }),
+    );
+    return { result, mutateTickets, showToast };
+  }
+
+  it("optimistically overlays the epic name + key on every target so the board chip shows at once", async () => {
+    vi.mocked(apiFetch).mockResolvedValue({} as never);
+    const { result, mutateTickets, showToast } = setup([makeTicket("A-1", false), makeTicket("A-2", false)]);
+
+    await act(async () => {
+      await result.current.handleBulkSetEpic("VPL-100", "Checkout", new Set(["A-1", "A-2"]));
+    });
+
+    expect(apiFetch).toHaveBeenCalledWith("/api/tickets/A-1", { method: "PATCH", body: { epicKey: "VPL-100" } });
+    expect(apiFetch).toHaveBeenCalledWith("/api/tickets/A-2", { method: "PATCH", body: { epicKey: "VPL-100" } });
+    // The row renders the chip from both fields, so both must be overlaid.
+    const overlaid = applyPendingEdits([makeTicket("A-1", false), makeTicket("A-2", false)], __getPendingEdits(), Date.now())!;
+    expect(overlaid.every((t) => t.epic === "Checkout" && t.epicKey === "VPL-100")).toBe(true);
+    expect(mutateTickets).toHaveBeenCalled();
+    expect(showToast).toHaveBeenLastCalledWith("Epic updated for 2 tickets");
+  });
+
+  it("clears the overlay and reports failure when a request rejects", async () => {
+    vi.mocked(apiFetch).mockRejectedValue(new Error("boom"));
+    const { result, showToast } = setup([makeTicket("A-1", false)]);
+
+    await act(async () => {
+      await result.current.handleBulkSetEpic("VPL-100", "Checkout", new Set(["A-1"]));
+    });
+
+    expect(hasPendingEdit("A-1", "epic")).toBe(false);
+    expect(hasPendingEdit("A-1", "epicKey")).toBe(false);
+    expect(showToast).toHaveBeenLastCalledWith("Failed to update epic for 1 ticket");
+  });
+});

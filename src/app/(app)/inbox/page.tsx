@@ -430,7 +430,7 @@ export default function InboxPage() {
                     markReadCount={checkedKeys.size}
                     onSetStatus={actions.handleBulkStatus}
                     onSetReadiness={actions.handleBulkReadiness}
-                    onSetEpic={actions.handleBulkEpic}
+                    onSetEpic={(epicKey) => actions.handleBulkEpic(epicKey)}
                     onMoveSprint={actions.handleBulkMoveSprint}
                     quickMoves={actions.quickMovesFor(checkedKeys)}
                     onQuickMove={actions.handleQuickMove}

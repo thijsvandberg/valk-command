@@ -1281,7 +1281,7 @@ export function EpicChildrenSection({
           onClear={clearSelection}
           onSetStatus={handleBulkStatus}
           onSetReadiness={handleBulkReadiness}
-          onSetEpic={handleBulkEpic}
+          onSetEpic={(epicKey) => handleBulkEpic(epicKey)}
           onMoveSprint={handleBulkMoveSprint}
           quickMoves={quickMovesFor(checkedKeys)}
           onQuickMove={(opt) => handleQuickMove(opt, checkedKeys)}
