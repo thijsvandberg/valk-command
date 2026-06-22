@@ -348,7 +348,7 @@ export default function SprintBoard() {
   }, [sprints]);
 
   // Ticket actions hook (must be before useSprintBoardFilters which needs readinessMap)
-  const ta = useTicketActions({ apiTickets, mutateTickets, activeListKey, showToast });
+  const ta = useTicketActions({ apiTickets, mutateTickets, activeListKey, sprintNameMap, showToast });
   const { poStatuses, readinessMap, inflightKeys } = ta;
   // Stable useCallback refs from the actions hook, aliased so the local bulk
   // wrappers below can depend on them directly. Depending on `ta` itself would

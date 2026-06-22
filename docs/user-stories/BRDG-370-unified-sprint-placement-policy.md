@@ -148,10 +148,10 @@ which already builds it).
 
 ## Checklist
 
-- [ ] Add `isInFlightStatus` (`IN PROGRESS`, `TEST`) + `IN_FLIGHT_STATUSES` to `ticket-status.ts` (+ tests)
-- [ ] Add shared `placementForMove(destSprintName, status)` helper using `isBacklogSprintName` / `isRegularSprint` (+ tests)
-- [ ] Extend `move-sprint` API to place a top subset and a bottom subset in one batch; reflect in local `jiraRank` reorder (+ route tests)
-- [ ] Apply policy in `handleBulkMoveSprint` (board + epic children) — compute split from selection statuses
-- [ ] Apply policy to drag-onto-sprint (`MultiSprintView` / board zones), replacing always-top
-- [ ] Verify Move to top / Move to bottom and drag-between-rows are unchanged
+- [x] Add `isInFlightStatus` (`IN PROGRESS`, `TEST`) + `IN_FLIGHT_STATUSES` to `ticket-status.ts` (+ tests)
+- [x] Add shared `placementForMove(destSprintName, status)` helper using `isBacklogSprintName` / `isRegularSprint` (+ tests)
+- [x] Extend `move-sprint` API to place a top subset and a bottom subset in one batch; reflect in local `jiraRank` reorder (+ route tests)
+- [x] Apply policy in `handleBulkMoveSprint` (board + epic children) — compute split from selection statuses
+- [x] Apply policy to drag-onto-sprint (`MultiSprintView` / board zones), replacing always-top
+- [x] Verify Move to top / Move to bottom and drag-between-rows are unchanged
 - [ ] `lint`, `typecheck`, `test`, `build` pass

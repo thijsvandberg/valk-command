@@ -58,7 +58,7 @@ describe("useTicketActions - handleBulkSetFlagged", () => {
     const mutateTickets = vi.fn();
     const showToast = vi.fn();
     const { result } = renderHook(() =>
-      useTicketActions({ apiTickets, mutateTickets, activeListKey: null, showToast }),
+      useTicketActions({ apiTickets, mutateTickets, activeListKey: null, sprintNameMap: {}, showToast }),
     );
     return { result, mutateTickets, showToast };
   }
@@ -128,7 +128,7 @@ describe("useTicketActions - handleStoryPointsChange readiness transition", () =
     const mutateTickets = vi.fn();
     const showToast = vi.fn();
     const { result } = renderHook(() =>
-      useTicketActions({ apiTickets, mutateTickets, activeListKey: null, showToast }),
+      useTicketActions({ apiTickets, mutateTickets, activeListKey: null, sprintNameMap: {}, showToast }),
     );
     // Seed the optimistic readiness map from the API tickets, as the board does.
     act(() => result.current.syncFromApiTickets(apiTickets));
@@ -194,7 +194,7 @@ describe("useTicketActions - capacity meter refresh on estimate change", () => {
 
   function setup() {
     const { result } = renderHook(() =>
-      useTicketActions({ apiTickets: [], mutateTickets: vi.fn(), activeListKey: null, showToast: vi.fn() }),
+      useTicketActions({ apiTickets: [], mutateTickets: vi.fn(), activeListKey: null, sprintNameMap: {}, showToast: vi.fn() }),
     );
     return { result };
   }
@@ -226,13 +226,19 @@ describe("useTicketActions - handleBulkMoveSprint", () => {
     __resetPendingEdits();
   });
 
-  function setup(apiTickets: Ticket[], activeListKey: string | null) {
+  // "200" is a regular numbered sprint, so by the BRDG-370 placement rule a TO DO
+  // ticket lands at the bottom (topKeys excludes it); in-flight tickets land at top.
+  function setup(apiTickets: Ticket[], activeListKey: string | null, sprintNameMap: Record<string, string> = { "200": "BT: 200", "300": "BT: 300" }) {
     const mutateTickets = vi.fn();
     const showToast = vi.fn();
     const { result } = renderHook(() =>
-      useTicketActions({ apiTickets, mutateTickets, activeListKey, showToast }),
+      useTicketActions({ apiTickets, mutateTickets, activeListKey, sprintNameMap, showToast }),
     );
     return { result, mutateTickets, showToast };
+  }
+
+  function makeTicketWithStatus(key: string, status: Ticket["jiraStatus"], sprintId?: string): Ticket {
+    return { ...makeTicket(key, false, sprintId), jiraStatus: status };
   }
 
   // The cache updater is the first arg to a (key, updater, opts) mutate call.
@@ -252,7 +258,8 @@ describe("useTicketActions - handleBulkMoveSprint", () => {
     });
 
     expect(outcome).toEqual({ ok: true, count: 2 });
-    expect(moveSprint).toHaveBeenCalledWith({ issueKeys: ["A-1", "A-2"], targetSprintId: "200", position: "top" });
+    // Regular sprint + TO DO tickets -> bottom, so no keys are sent as topKeys.
+    expect(moveSprint).toHaveBeenCalledWith({ issueKeys: ["A-1", "A-2"], targetSprintId: "200", topKeys: [] });
 
     // Destination injection into the 200 key, with the new sprintId.
     const destCall = globalMutate.mock.calls.find((c) => c[0] === "/api/tickets?sprintId=200");
@@ -300,11 +307,32 @@ describe("useTicketActions - handleBulkMoveSprint", () => {
       await result.current.handleBulkMoveSprint("__backlog__", new Set(["A-1"]));
     });
 
-    expect(moveSprint).toHaveBeenCalledWith({ issueKeys: ["A-1"], targetSprintId: "__backlog__", position: "top" });
+    // Backlog destination -> everything lands at the top (all keys in topKeys).
+    expect(moveSprint).toHaveBeenCalledWith({ issueKeys: ["A-1"], targetSprintId: "__backlog__", topKeys: ["A-1"] });
     const destCall = globalMutate.mock.calls.find((c) => c[0] === "/api/tickets?sprintId=__backlog__");
     expect(destCall).toBeDefined();
     const injected = runGlobalUpdater(destCall!, undefined);
     expect(injected[0].sprintId).toBeUndefined();
+  });
+
+  it("splits the batch into a regular sprint: in-flight tickets go top, the rest stay bottom", async () => {
+    moveSprint.mockResolvedValue(undefined);
+    const source = [
+      makeTicketWithStatus("A-1", "TO DO", "100"),
+      makeTicketWithStatus("A-2", "IN PROGRESS", "100"),
+      makeTicketWithStatus("A-3", "TEST", "100"),
+    ];
+    const { result } = setup(source, "/api/tickets?sprintId=100");
+
+    await act(async () => {
+      await result.current.handleBulkMoveSprint("200", new Set(["A-1", "A-2", "A-3"]));
+    });
+
+    expect(moveSprint).toHaveBeenCalledWith({
+      issueKeys: ["A-1", "A-2", "A-3"],
+      targetSprintId: "200",
+      topKeys: ["A-2", "A-3"],
+    });
   });
 
   it("does not duplicate a ticket already present in the destination cache", async () => {
@@ -348,7 +376,7 @@ describe("useTicketActions - handleAssigneeChange", () => {
     const mutateTickets = vi.fn();
     const showToast = vi.fn();
     const { result } = renderHook(() =>
-      useTicketActions({ apiTickets, mutateTickets, activeListKey: null, showToast }),
+      useTicketActions({ apiTickets, mutateTickets, activeListKey: null, sprintNameMap: {}, showToast }),
     );
     return { result, mutateTickets, showToast };
   }
@@ -408,7 +436,7 @@ describe("useTicketActions - handleJiraStatusChange (BRDG-357)", () => {
     const mutateTickets = vi.fn();
     const showToast = vi.fn();
     const { result } = renderHook(() =>
-      useTicketActions({ apiTickets, mutateTickets, activeListKey: null, showToast }),
+      useTicketActions({ apiTickets, mutateTickets, activeListKey: null, sprintNameMap: {}, showToast }),
     );
     return { result, mutateTickets, showToast };
   }
@@ -456,7 +484,7 @@ describe("useTicketActions - handleBulkSetStatus (BRDG-357)", () => {
     const mutateTickets = vi.fn();
     const showToast = vi.fn();
     const { result } = renderHook(() =>
-      useTicketActions({ apiTickets, mutateTickets, activeListKey: null, showToast }),
+      useTicketActions({ apiTickets, mutateTickets, activeListKey: null, sprintNameMap: {}, showToast }),
     );
     return { result, mutateTickets, showToast };
   }
@@ -513,7 +541,7 @@ describe("useTicketActions - syncFromApiTickets reconciliation (BRDG-334)", () =
     const mutateTickets = vi.fn();
     const showToast = vi.fn();
     const { result } = renderHook(() =>
-      useTicketActions({ apiTickets, mutateTickets, activeListKey: null, showToast }),
+      useTicketActions({ apiTickets, mutateTickets, activeListKey: null, sprintNameMap: {}, showToast }),
     );
     return { result };
   }

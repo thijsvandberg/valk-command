@@ -14,6 +14,7 @@ import {
   type DragOverEvent,
 } from "@dnd-kit/core";
 import { jira, ApiError } from "@/lib/api-client";
+import { topKeysForMove } from "@/lib/sprint-placement";
 import { moveTicketSprintCaches, revalidateMovedSprintLists } from "@/lib/ticket-cache";
 import { registerPendingMove, clearPendingMove, confirmPendingMove } from "@/components/sprint-board/pendingSprintMoves";
 import { sprintMoveToastContent } from "@/components/sprint-board/sprintMoveToast";
@@ -146,8 +147,11 @@ export function useSprintBoardDragDrop(deps: DragDropDeps) {
       });
 
       try {
-        // position: "top" lands the dropped row at the top of the target sprint.
-        await jira.moveSprint({ issueKeys: keysToMove, targetSprintId, position: "top" });
+        // Placement rule (BRDG-370): in-flight rows (and any backlog drop) land at
+        // the top, the rest at the bottom of the target sprint.
+        const destName = targetSprintId === "__backlog__" ? null : (sprintNameMap[targetSprintId] ?? null);
+        const topKeys = topKeysForMove(keysToMove, destName, (k) => movedTickets.find((t) => t.key === k)?.jiraStatus);
+        await jira.moveSprint({ issueKeys: keysToMove, targetSprintId, topKeys });
         // The move landed in Jira and the DB; the overlay may now release the rows
         // once a refreshed list shows them.
         keysToMove.forEach((k) => confirmPendingMove(k));
@@ -190,8 +194,11 @@ export function useSprintBoardDragDrop(deps: DragDropDeps) {
       });
 
       try {
-        // Dropping on an (empty) sprint group lands the row at the top of it.
-        await jira.moveSprint({ issueKeys: keysToMove, targetSprintId, position: "top" });
+        // Placement rule (BRDG-370): dropping on a sprint group lands in-flight rows
+        // (and any backlog drop) at the top, the rest at the bottom.
+        const destName = targetSprintId === "__backlog__" ? null : (sprintNameMap[targetSprintId] ?? null);
+        const topKeys = topKeysForMove(keysToMove, destName, (k) => apiTickets?.find((t) => t.key === k)?.jiraStatus);
+        await jira.moveSprint({ issueKeys: keysToMove, targetSprintId, topKeys });
         showMoveToast(targetSprintId, targetName, keysToMove.length);
         mutateTickets();
         refreshMeter();

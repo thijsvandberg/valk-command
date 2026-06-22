@@ -37,6 +37,7 @@ import { mapJiraSprints, bulkReviewStories, bulkGenerateSubtasks } from "@/compo
 import { tickets, jira, apiFetch, ApiError } from "@/lib/api-client";
 import { getJiraUrl } from "@/lib/jira-url";
 import { applyLocalMoves, sprintNameForTarget } from "@/lib/epic-children-move";
+import { placementForMove, topKeysForMove } from "@/lib/sprint-placement";
 import { applyLocalOrder } from "@/lib/epic-children-reorder";
 import { groupChildrenBySprint } from "@/lib/epic-children-grouping";
 import { Loader2, Search, AlertTriangle } from "lucide-react";
@@ -360,6 +361,12 @@ export function EpicChildrenSection({
   // --- Search existing ---
 
   const existingKeys = useMemo(() => new Set(mergedItems.map((i) => i.key)), [mergedItems]);
+  // Child key -> Jira status, for the sprint-placement rule (BRDG-370).
+  const statusByKey = useMemo(() => {
+    const map: Record<string, string> = {};
+    mergedItems.forEach((i) => { map[i.key] = i.jiraStatus; });
+    return map;
+  }, [mergedItems]);
 
   const doSearch = useCallback((q: string) => {
     if (searchDebounceRef.current) clearTimeout(searchDebounceRef.current);
@@ -569,7 +576,9 @@ export function EpicChildrenSection({
     const newName = sprintNameForTarget(targetSprintId, sprints);
     setJiraWarning(null);
     setLocalMoves((prev) => ({ ...prev, [childKey]: newName }));
-    jira.moveSprint({ issueKeys: [childKey], targetSprintId })
+    // Placement rule (BRDG-370): backlog / in-flight -> top, regular sprint -> bottom.
+    const position = placementForMove(newName, statusByKey[childKey]);
+    jira.moveSprint({ issueKeys: [childKey], targetSprintId, position })
       .then(() => onMutate())
       .catch((err) => {
         setLocalMoves((prev) => {
@@ -581,7 +590,7 @@ export function EpicChildrenSection({
         setJiraWarning(`Failed to move ${childKey} to sprint: ${detail}`);
         console.error("Failed to move child to sprint:", err);
       });
-  }, [sprints, onMutate]);
+  }, [sprints, statusByKey, onMutate]);
 
   // BRDG-309: dropping onto the create zone stashes the child (and the predicted
   // sprint name) and opens the Create Sprint modal. Cancelling clears the stash.
@@ -669,8 +678,11 @@ export function EpicChildrenSection({
       setLocalOrder((prev) => ({ ...prev, [targetGroupKey]: newOrder }));
       // The backlog has no sprint id to refresh local ranks against, so omit it there.
       const rankSprintId = targetSprintName === null ? undefined : targetSprintId;
+      // Dropped onto a zone/header (toTop): the placement rule decides the edge
+      // (BRDG-370) - backlog / in-flight to the top, a regular sprint to the bottom.
+      // Dropped onto a specific row: rank relative to that row (explicit position).
       const persist = toTop
-        ? jira.moveSprint({ issueKeys: [activeKey], targetSprintId, position: "top" })
+        ? jira.moveSprint({ issueKeys: [activeKey], targetSprintId, position: placementForMove(targetSprintName, statusByKey[activeKey]) })
         : jira.moveSprint({ issueKeys: [activeKey], targetSprintId })
             .then(() => jira.rank({ issueKeys: [activeKey], rankBeforeKey, rankAfterKey, ...(rankSprintId ? { sprintId: rankSprintId } : {}) }));
       persist
@@ -691,7 +703,7 @@ export function EpicChildrenSection({
           console.error("Failed to move child to position:", err);
         });
     },
-    [onMutate],
+    [onMutate, statusByKey],
   );
 
   // Drop optimistic overrides once the refetched children confirm the new sprint,
@@ -875,14 +887,18 @@ export function EpicChildrenSection({
     const newName = sprintNameForTarget(targetSprintId, sprints);
     setJiraWarning(null);
     setLocalMoves((prev) => { const next = { ...prev }; keys.forEach((k) => { next[k] = newName; }); return next; });
-    jira.moveSprint({ issueKeys: keys, targetSprintId })
+    // Placement rule (BRDG-370): in-flight children (and any backlog move) land at
+    // the top of the destination, the rest at the bottom. newName is null for the
+    // generic backlog, which placementForMove treats as "top".
+    const topKeys = topKeysForMove(keys, newName, (k) => statusByKey[k]);
+    jira.moveSprint({ issueKeys: keys, targetSprintId, topKeys })
       .then(() => { onMutate(); showToast(`Moved ${keys.length} issue${keys.length === 1 ? "" : "s"} to sprint`); })
       .catch((err) => {
         setLocalMoves((prev) => { const next = { ...prev }; keys.forEach((k) => delete next[k]); return next; });
         const detail = err instanceof ApiError ? err.message : "Jira API error";
         setJiraWarning(`Failed to move ${keys.length} issue${keys.length === 1 ? "" : "s"} to sprint: ${detail}`);
       });
-  }, [checkedKeys, sprints, onMutate, showToast]);
+  }, [checkedKeys, sprints, statusByKey, onMutate, showToast]);
 
   const handleBulkReview = useCallback(async (targetKeys?: Set<string>) => {
     const keys = [...(targetKeys ?? checkedKeys)];

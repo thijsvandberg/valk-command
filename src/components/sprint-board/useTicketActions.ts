@@ -10,16 +10,31 @@ import type { AssignableUser } from "@/components/shared/AssigneePicker";
 import type { EpicOption } from "@/components/shared/EpicPicker";
 import { registerPendingMove, clearPendingMove, confirmPendingMove } from "@/components/sprint-board/pendingSprintMoves";
 import { registerPendingEdit, confirmPendingEdit, clearPendingEdit, hasPendingEdit } from "@/components/sprint-board/pendingTicketEdits";
+import { placementForMove, topKeysForMove } from "@/lib/sprint-placement";
 
 interface TicketActionsDeps {
   apiTickets: Ticket[] | undefined;
   mutateTickets: KeyedMutator<Ticket[]>;
   activeListKey: string | null;
+  // Sprint id -> display name, used to apply the placement rule (BRDG-370): the
+  // destination name decides whether moved rows land at the top or the bottom.
+  // Optional: contexts that never move tickets between sprints (story writer,
+  // refinement) may omit it, in which case unknown destinations default to top.
+  sprintNameMap?: Record<string, string>;
   showToast: (message: React.ReactNode, durationMs?: number) => void;
 }
 
 export function useTicketActions(deps: TicketActionsDeps) {
-  const { apiTickets, mutateTickets, activeListKey, showToast } = deps;
+  const { apiTickets, mutateTickets, activeListKey, sprintNameMap = {}, showToast } = deps;
+
+  // Resolve a move target id to the destination sprint NAME for the placement
+  // rule. The generic backlog sentinel and unknown ids resolve to null (treated
+  // as "top" by placementForMove).
+  const destNameFor = useCallback(
+    (targetSprintId: string): string | null =>
+      targetSprintId === "__backlog__" ? null : (sprintNameMap[targetSprintId] ?? null),
+    [sprintNameMap],
+  );
 
   const [poStatuses, setPoStatuses] = useState<Record<string, POStatus>>({});
   const [readinessMap, setReadinessMap] = useState<Record<string, TicketReadiness | null>>({});
@@ -177,15 +192,17 @@ export function useTicketActions(deps: TicketActionsDeps) {
     // Keep the row visible in its destination until the slow Jira move resolves.
     if (moved) registerPendingMove(moved, target, Date.now());
     try {
-      // Moving a ticket to a sprint lands it at the top of that sprint.
-      await jira.moveSprint({ issueKeys: [key], targetSprintId: target, position: "top" });
+      // Placement rule (BRDG-370): a backlog or an in-flight ticket lands at the
+      // top; a regular sprint lands at the bottom.
+      const position = placementForMove(destNameFor(target), moved?.jiraStatus);
+      await jira.moveSprint({ issueKeys: [key], targetSprintId: target, position });
       confirmPendingMove(key);
       mutateTickets();
     } catch {
       clearPendingMove(key);
       showToast(`Failed to move ${key} to sprint.`);
     }
-  }, [apiTickets, mutateTickets, showToast]);
+  }, [apiTickets, mutateTickets, showToast, destNameFor]);
 
   const handleCloseSubtasks = useCallback(async (key: string) => {
     registerPendingEdit(key, "openSubtaskCount", 0, Date.now());
@@ -308,8 +325,11 @@ export function useTicketActions(deps: TicketActionsDeps) {
     const now = Date.now();
     movedTickets.forEach((t) => registerPendingMove(t, targetSprintId, now));
     try {
-      // Bulk-moving lands the rows at the top of the target sprint.
-      await jira.moveSprint({ issueKeys: keys, targetSprintId, position: "top" });
+      // Placement rule (BRDG-370): split the batch so in-flight rows (and any
+      // backlog move) land at the top and the rest at the bottom of the target.
+      const destName = destNameFor(targetSprintId);
+      const topKeys = topKeysForMove(keys, destName, (k) => apiTickets?.find((t) => t.key === k)?.jiraStatus);
+      await jira.moveSprint({ issueKeys: keys, targetSprintId, topKeys });
       keys.forEach((k) => confirmPendingMove(k));
 
       // Update the current list. In the All view the moved rows stay but get
@@ -352,7 +372,7 @@ export function useTicketActions(deps: TicketActionsDeps) {
       keys.forEach((k) => clearPendingMove(k));
       return { ok: false, count: keys.length };
     }
-  }, [apiTickets, mutateTickets, activeListKey]);
+  }, [apiTickets, mutateTickets, activeListKey, destNameFor]);
 
   const handleBulkUpdateAssignee = useCallback(async (accountId: string | null, name: string | null, checkedTickets: Set<string>) => {
     const keys = [...checkedTickets];
