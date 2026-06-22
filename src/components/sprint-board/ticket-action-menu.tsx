@@ -613,10 +613,15 @@ export function TicketActionMenuContent({
         {hasSetAction && hasMoveAction && <div className="mx-2 my-1 h-px bg-overlay-strong" />}
         {hasQuickMoves && quickMoves!.map((opt) => (
           <MenuItem key={opt.id} onClick={() => { onQuickMove!(opt); close(); }}>
-            <span className="flex items-center gap-1.5">
+            <span className="flex items-center gap-2">
               {opt.label}
               {opt.badge && (
-                <span className="text-[10px] font-semibold uppercase tracking-wide text-[var(--color-brand-400)]">{opt.badge}</span>
+                <span
+                  className="h-[7px] w-[7px] shrink-0 rounded-full bg-[var(--color-status-success)]"
+                  style={{ boxShadow: "0 0 6px var(--color-status-success)" }}
+                  title={opt.badge}
+                  aria-label={opt.badge}
+                />
               )}
             </span>
           </MenuItem>

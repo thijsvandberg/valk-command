@@ -90,8 +90,8 @@ describe("TicketActionMenuContent", () => {
     const moveSprintIdx = labels.findIndex((t) => t === "Move to Sprint");
     expect(activeIdx).toBeGreaterThanOrEqual(0);
     expect(activeIdx).toBeLessThan(moveSprintIdx); // quick moves render above Move to Sprint
-    // The active option carries a small "active" marker.
-    expect(screen.getByText("active")).toBeInTheDocument();
+    // The active option carries a small "active" dot marker.
+    expect(screen.getByTitle("active")).toBeInTheDocument();
 
     fireEvent.click(screen.getByText('Move to "BT: 140"'));
     expect(onQuickMove).toHaveBeenCalledWith(quickMoves[1]);
