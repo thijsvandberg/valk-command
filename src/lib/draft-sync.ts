@@ -2,7 +2,7 @@ import { db } from "@/db";
 import { ticket, ticketMetadata, ticketLocalEdit, storyWriterSession, conversation, activityLog } from "@/db/schema";
 import { jiraClient } from "@/lib/jira-client";
 import { syncTicketSprints } from "@/lib/sprint-membership";
-import { landTicketAtTopOfSprint } from "@/lib/sprint-rank";
+import { landNewTicket } from "@/lib/sprint-rank";
 import { cache } from "@/lib/cache";
 import { logger } from "@/lib/logger";
 import { eq } from "drizzle-orm";
@@ -66,9 +66,10 @@ export async function syncDraftToJira(draftKey: string, params: DraftSyncParams)
 
   finalizeDraft(draftKey, realKey, assignedSprintId);
 
-  // Land it at the top of its sprint (BRDG-354) now that the real row exists.
+  // Place it per the unified create rule (BRDG-371) now that the real row exists:
+  // bottom of a regular sprint, top of a backlog. Best-effort.
   if (assignedSprintId) {
-    await landTicketAtTopOfSprint(realKey, parseInt(assignedSprintId, 10));
+    await landNewTicket(realKey, assignedSprintId);
   }
 
   cache.invalidate(/^\/api\/tickets(\?|$)/);

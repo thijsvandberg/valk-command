@@ -616,4 +616,59 @@ describe("BoardRow (headerless, BRDG-239)", () => {
       expect(screen.getAllByTestId("avatar")).toHaveLength(1);
     });
   });
+
+  // BRDG-368: sprint board hides the assignee on terminal/unassigned rows until hover.
+  // The wrapper always reserves the 26px width, so reveal is opacity-only (no layout shift).
+  // Assertions read the assignee wrapper's className since Avatar is mocked.
+  describe("hide-assignee-until-hover (BRDG-368)", () => {
+    const ASSIGNED = { name: "Jane", initials: "J", color: "#000" };
+    // The assignee wrapper is the trailing `.ml-1.5` cluster; query it directly.
+    const wrapper = (container: HTMLElement) => container.querySelector("div.ml-1\\.5") as HTMLElement;
+
+    it("hides the avatar by default on a DONE row and reveals it on hover/focus", () => {
+      const { container } = renderRow({
+        ticket: makeTicket({ jiraStatus: "DONE", assignee: ASSIGNED }),
+        hideAssigneeUntilHover: true,
+      });
+      const cls = wrapper(container).className;
+      expect(cls).toContain("opacity-0");
+      expect(cls).toContain("group-hover/row:opacity-100");
+      expect(cls).toContain("focus-within:opacity-100");
+      // Opacity-only transition, never transition-all.
+      expect(cls).toContain("transition-opacity");
+      expect(cls).not.toContain("transition-all");
+    });
+
+    it("collapses Closed/Resolved onto DONE via the canonical normalizer", () => {
+      for (const status of ["Closed", "Resolved", "DEPRECATED"]) {
+        const { container } = renderRow({
+          ticket: makeTicket({ jiraStatus: status as never, assignee: ASSIGNED }),
+          hideAssigneeUntilHover: true,
+        });
+        expect(wrapper(container).className).toContain("opacity-0");
+      }
+    });
+
+    it("hides an unassigned active row's picker until hover", () => {
+      const { container } = renderRow({
+        ticket: makeTicket({ jiraStatus: "TO DO", assignee: null }),
+        hideAssigneeUntilHover: true,
+      });
+      expect(wrapper(container).className).toContain("group-hover/row:opacity-100");
+    });
+
+    it("keeps the avatar always visible on an active, assigned row (regression guard)", () => {
+      const { container } = renderRow({
+        ticket: makeTicket({ jiraStatus: "IN PROGRESS", assignee: ASSIGNED }),
+        hideAssigneeUntilHover: true,
+      });
+      expect(wrapper(container).className).not.toContain("opacity-0");
+    });
+
+    it("leaves the avatar always visible when the prop is omitted (non-board hosts unchanged)", () => {
+      // Terminal + unassigned, the worst case, still shows because the host did not opt in.
+      const { container } = renderRow({ ticket: makeTicket({ jiraStatus: "DONE", assignee: null }) });
+      expect(wrapper(container).className).not.toContain("opacity-0");
+    });
+  });
 });

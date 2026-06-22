@@ -1,7 +1,7 @@
 import { db } from "@/db";
 import { ticket, ticketMetadata } from "@/db/schema";
 import { syncTicketSprints } from "@/lib/sprint-membership";
-import { landTicketAtTopOfSprint } from "@/lib/sprint-rank";
+import { landNewTicket } from "@/lib/sprint-rank";
 import { jiraClient } from "@/lib/jira-client";
 import { logActivity } from "@/lib/activity-logger";
 import { logger } from "@/lib/logger";
@@ -107,11 +107,9 @@ export async function createTicketWithJira(input: CreateTicketInput): Promise<Cr
   // Mirror the membership into the indexed bridge. Backlog (no sprint) → no rows.
   syncTicketSprints(db, jiraResult.key, assignedSprintId ? [assignedSprintId] : null, assignedSprintId ?? null);
 
-  // Land it at the top of its sprint (BRDG-354), in Jira and the local mirror, so
-  // the board shows it on top straight away instead of at the bottom. Best-effort.
-  if (assignedSprintId) {
-    await landTicketAtTopOfSprint(jiraResult.key, parseInt(assignedSprintId, 10));
-  }
+  // Place it per the unified create rule (BRDG-371): bottom of a regular sprint, top
+  // of a backlog (named or generic). Applied in Jira and the local mirror. Best-effort.
+  await landNewTicket(jiraResult.key, assignedSprintId ?? null);
 
   // New tickets start in the PO "drafting" stage so they surface for refinement.
   await db

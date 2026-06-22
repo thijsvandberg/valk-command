@@ -1,6 +1,7 @@
 import type { ReactNode } from "react";
 import { Check } from "lucide-react";
 import { sanitizePrismOutput } from "@/lib/sanitize-client";
+import { safeHref } from "@/lib/safe-href";
 import { ImageLightbox } from "@/components/shared/ImageLightbox";
 import { TicketRefPill } from "@/components/shared/TicketRefPill";
 import { CodeBlock } from "./CodeBlock";
@@ -195,13 +196,14 @@ function inlineFormat(text: string, linkify = false): ReactNode {
       // Link: [text](url). A Jira browse link to a project ticket becomes a pill
       // (only when linkification is enabled); every other link stays an anchor.
       const refKey = linkify ? browseRefKey(match[6]) : null;
+      const safe = refKey ? null : safeHref(match[6]);
       if (refKey) {
         parts.push(<TicketRefPill key={i++} ticketKey={refKey} />);
-      } else {
+      } else if (safe) {
         parts.push(
           <a
             key={i++}
-            href={match[6]}
+            href={safe}
             target="_blank"
             rel="noopener noreferrer"
             className="text-[var(--color-brand-400)] underline decoration-[var(--color-brand-400)]/30 underline-offset-2 hover:decoration-[var(--color-brand-400)]/60 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)]"
@@ -210,6 +212,9 @@ function inlineFormat(text: string, linkify = false): ReactNode {
             {match[5]}
           </a>
         );
+      } else {
+        // Unsafe scheme (javascript:/data:/vbscript:): drop the anchor, keep the label as plain text.
+        parts.push(<span key={i++}>{match[5]}</span>);
       }
     } else if (match[7] !== undefined) {
       // Strikethrough: ~~text~~
@@ -235,13 +240,14 @@ function inlineFormat(text: string, linkify = false): ReactNode {
       // is a plain anchor. Either way the angle brackets are markup, not content.
       const url = match[17];
       const refKey = linkify ? browseRefKey(url) : null;
+      const safe = refKey ? null : safeHref(url);
       if (refKey) {
         parts.push(<TicketRefPill key={i++} ticketKey={refKey} />);
-      } else {
+      } else if (safe) {
         parts.push(
           <a
             key={i++}
-            href={url}
+            href={safe}
             target="_blank"
             rel="noopener noreferrer"
             className="text-[var(--color-brand-400)] underline decoration-[var(--color-brand-400)]/30 underline-offset-2 hover:decoration-[var(--color-brand-400)]/60 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)]"
@@ -250,6 +256,9 @@ function inlineFormat(text: string, linkify = false): ReactNode {
             {url}
           </a>
         );
+      } else {
+        // Unsafe scheme: drop the anchor, keep the label as plain text.
+        parts.push(<span key={i++}>{url}</span>);
       }
     }
     lastIndex = match.index + match[0].length;

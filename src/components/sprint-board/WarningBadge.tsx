@@ -67,7 +67,7 @@ function ClosedSubtasksBadge({
   const triggerRef = useRef<HTMLButtonElement>(null);
 
   return (
-    <span className="relative inline-flex shrink-0" onPointerDown={(e) => e.stopPropagation()} onClick={(e) => e.stopPropagation()}>
+    <span className="relative inline-flex shrink-0" onPointerDown={(e) => e.stopPropagation()} onClick={(e) => e.stopPropagation()} onKeyDown={(e) => e.stopPropagation()}>
       <button
         ref={triggerRef}
         type="button"
@@ -106,7 +106,7 @@ function NoSubtasksBadge({
   const [open, setOpen] = useState(false);
 
   return (
-    <span className="inline-flex shrink-0" onPointerDown={(e) => e.stopPropagation()} onClick={(e) => e.stopPropagation()}>
+    <span className="inline-flex shrink-0" onPointerDown={(e) => e.stopPropagation()} onClick={(e) => e.stopPropagation()} onKeyDown={(e) => e.stopPropagation()}>
       <button
         type="button"
         onClick={(e) => { e.stopPropagation(); setOpen(true); }}

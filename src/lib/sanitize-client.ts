@@ -1,11 +1,12 @@
 import DOMPurify from "isomorphic-dompurify";
-import { SANITIZE_HTML_OPTIONS } from "./sanitize-html-config";
+import { SANITIZE_HTML_OPTIONS, ensureSanitizeHooks } from "./sanitize-html-config";
 
 /**
  * Client-safe HTML sanitizer using the same config as the server.
  * Defense-in-depth: catches any content that slips past server sanitization.
  */
 export function sanitizeHtmlClient(dirty: string): string {
+  ensureSanitizeHooks();
   return DOMPurify.sanitize(dirty, SANITIZE_HTML_OPTIONS);
 }
 

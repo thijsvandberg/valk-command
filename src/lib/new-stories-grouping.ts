@@ -1,4 +1,4 @@
-import { TEAMS, type Team } from "@/lib/sprint-utils";
+import { TEAMS, extractTeamPrefix, type Team } from "@/lib/sprint-utils";
 import type { NewStoryRow } from "@/lib/new-stories-types";
 
 // New stories inbox grouping (BRDG-356). Pure functions so the team resolution,
@@ -166,7 +166,73 @@ export function groupNewStories(rows: NewStoryRow[], opts: GroupOptions): NewSto
 // group. GroupStatBar/GroupCard render the headers, so a group only needs a
 // key, label and its rows.
 
-export type InboxGroupBy = "date" | "epic" | "creator" | "sprint";
+export type InboxGroupBy = "date" | "epic" | "creator" | "sprint" | "relevance";
+
+// --- Relevance ladder (BRDG-372) ------------------------------------------
+// Orders incoming stories by how relevant they are to the PO and their team.
+// First-match-wins down the ladder, except `other_pos` is only reached after
+// the team/backlog buckets, so a PO-created story that lands on my team's
+// board or comes from a teammate keeps that (higher) bucket.
+
+export type RelevanceBucket =
+  | "team_board"
+  | "teammates"
+  | "generic_backlog"
+  | "everything_else"
+  | "other_pos";
+
+export const RELEVANCE_BUCKETS: RelevanceBucket[] = [
+  "team_board",
+  "teammates",
+  "generic_backlog",
+  "everything_else",
+  "other_pos",
+];
+
+export const RELEVANCE_BUCKET_LABELS: Record<RelevanceBucket, string> = {
+  team_board: "On your team's board",
+  teammates: "From your teammates",
+  generic_backlog: "Generic backlog",
+  everything_else: "Everything else",
+  other_pos: "From other POs",
+};
+
+export interface RelevanceOptions {
+  /** The PO's own team ("which team is mine"). */
+  myTeam: Team | null;
+  /** Reporter-name → teams map (see buildTeamMap). */
+  teamMap: Map<string, Team[]>;
+  /** AccountIds of people flagged as POs. */
+  poAccountIds: Set<string>;
+  /** Display names of people flagged as POs (fallback for name-only entries). */
+  poNames: Set<string>;
+}
+
+function reporterIsPo(row: NewStoryRow, opts: RelevanceOptions): boolean {
+  const accountId = row.reporter?.accountId;
+  if (accountId && opts.poAccountIds.has(accountId)) return true;
+  const name = row.reporter?.name;
+  return !!name && opts.poNames.has(name);
+}
+
+// Classifies a single row into one relevance bucket. Reuses extractTeamPrefix /
+// resolveTeam so no new sprint-naming logic is introduced (BRDG-372 AC7).
+export function classifyInboxRelevance(row: NewStoryRow, opts: RelevanceOptions): RelevanceBucket {
+  const { myTeam, teamMap } = opts;
+  const reporterOnMyTeam = !!myTeam && resolveTeam(row.reporter?.name, teamMap, myTeam) === myTeam;
+
+  // 1. On my team's sprint or backlog ("BT: 138" / "BT: Backlog"), but created
+  //    by someone who is not a teammate.
+  if (myTeam && row.sprintName && extractTeamPrefix(row.sprintName) === myTeam && !reporterOnMyTeam) {
+    return "team_board";
+  }
+  // 2. Created by a teammate, wherever it sits.
+  if (reporterOnMyTeam) return "teammates";
+  // 3. On the generic project backlog (no sprint).
+  if (row.sprintName == null) return "generic_backlog";
+  // 4/5. Remaining rows: another PO's work sinks below everything else.
+  return reporterIsPo(row, opts) ? "other_pos" : "everything_else";
+}
 
 export interface InboxGroup {
   /** Unique group key (bucket name, epic key, reporter name, or a sentinel). */
@@ -178,6 +244,8 @@ export interface InboxGroup {
 export interface InboxGroupOptions {
   groupBy: InboxGroupBy;
   now: Date;
+  /** Relevance inputs; required only when groupBy === "relevance". */
+  relevance?: RelevanceOptions;
 }
 
 const NO_EPIC_KEY = "__no_epic__";
@@ -211,6 +279,22 @@ function groupByField(
   return ordered.map((key) => ({ key, label: labels.get(key)!, rows: byKey.get(key)! }));
 }
 
+// Buckets rows by relevance, emitting non-empty buckets in ladder order and
+// preserving incoming row order (the endpoint already sorts newest-first).
+function groupByRelevance(rows: NewStoryRow[], opts: RelevanceOptions): InboxGroup[] {
+  const byBucket = new Map<RelevanceBucket, NewStoryRow[]>();
+  for (const row of rows) {
+    const bucket = classifyInboxRelevance(row, opts);
+    if (!byBucket.has(bucket)) byBucket.set(bucket, []);
+    byBucket.get(bucket)!.push(row);
+  }
+  return RELEVANCE_BUCKETS.filter((b) => byBucket.has(b)).map((bucket) => ({
+    key: bucket,
+    label: RELEVANCE_BUCKET_LABELS[bucket],
+    rows: byBucket.get(bucket)!,
+  }));
+}
+
 function groupByDate(rows: NewStoryRow[], now: Date): InboxGroup[] {
   const byBucket = new Map<DateBucket, NewStoryRow[]>();
   for (const row of rows) {
@@ -233,6 +317,12 @@ export function groupInboxStories(rows: NewStoryRow[], opts: InboxGroupOptions):
       return groupByField(rows, (r) => r.reporter?.name, UNKNOWN_REPORTER_KEY, "Unknown reporter");
     case "sprint":
       return groupByField(rows, (r) => r.sprintName, NO_SPRINT_KEY, "No sprint");
+    case "relevance":
+      // Relevance needs a team; without one (or its inputs) fall back to date so
+      // the inbox never renders empty (BRDG-372).
+      return opts.relevance && opts.relevance.myTeam
+        ? groupByRelevance(rows, opts.relevance)
+        : groupByDate(rows, opts.now);
     case "date":
     default:
       return groupByDate(rows, opts.now);

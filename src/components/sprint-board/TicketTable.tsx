@@ -14,6 +14,7 @@ import { GroupStatBar, type StatCriterion } from "@/components/sprint-board/Grou
 import { matchesWarningFilter, ticketWarnings } from "@/components/sprint-board/warning-filter";
 import { GroupCard, GROUP_CARD_CLASS } from "@/components/sprint-board/GroupCard";
 import { trailingDoneDepStart } from "@/lib/sprint-insert-position";
+import { isBacklogSprintName } from "@/lib/sprint-utils";
 import type { TicketGroup, GroupByOption } from "@/components/sprint-board/useGroupBy";
 import type { GroupSyncTarget, GroupSyncProgress, GroupSyncResult } from "@/lib/group-sync";
 import {
@@ -427,6 +428,10 @@ export function TicketTable({
     isDragActive: activeDragId !== null,
     tags: visibleTags,
     hideEpic,
+    // BRDG-368: the sprint board opts into hiding the assignee on terminal/unassigned
+    // rows until hover. Other hosts (inbox, story-writer) render BoardRow directly and
+    // keep showing the avatar.
+    hideAssigneeUntilHover: true,
     showSprint,
     sprintNameMap: sprintNameMap ?? EMPTY_STRING_MAP,
     poStatuses,
@@ -547,12 +552,21 @@ export function TicketTable({
     </table>
   );
 
-  // The flat (single-sprint) create row, rendered at the insertion point: just above the trailing
-  // contiguous done/deprecated block so the PO sees where the new story will land (BRDG-315).
-  const flatInsertIdx = flatComposerActive ? trailingDoneDepStart(tickets) : -1;
+  // The flat (single-sprint) create row, rendered at the insertion point. A backlog
+  // (generic or named) lands the create row at the TOP (BRDG-371); a regular sprint
+  // lands it just above the trailing contiguous done/deprecated block (BRDG-315) so
+  // the PO sees where the new story will land.
+  const flatIsBacklog =
+    !!flatCreateTarget &&
+    (flatCreateTarget.sprintId === null ||
+      isBacklogSprintName(sprintNameMap?.[flatCreateTarget.sprintId] ?? ""));
+  const flatInsertIdx = !flatComposerActive ? -1 : flatIsBacklog ? 0 : trailingDoneDepStart(tickets);
   // When the composer is appended after the last ticket it becomes the visual last row, so
   // the last ticket should not round its bottom corners (the card edge sits below the composer).
   const flatComposerAtEnd = flatComposerActive && flatInsertIdx === tickets.length;
+  // The "bar" composer is styled as a footer strip; when a backlog lands it at the TOP
+  // (BRDG-371) it would butt straight against the first row, so add a divider beneath it.
+  const flatComposerAtTop = flatComposerActive && flatInsertIdx === 0 && tickets.length > 0;
   const flatComposerRow = flatComposerActive ? (
     <tr key="__flat_composer__">
       <td className="p-0">
@@ -561,12 +575,13 @@ export function TicketTable({
           autoFocus
           onCreate={(title, jiraType) => onCreateTicket!(flatCreateTarget!.sprintId, title, jiraType)}
           onEscapeEmpty={onCloseFlatComposer}
-          placeholder={flatCreateTarget!.sprintId === null ? "Create story in the backlog..." : "Create story in this sprint..."}
+          placeholder={flatIsBacklog ? "Create story in the backlog..." : "Create story in this sprint..."}
           allowPlaceholder={!!onPlaceholderCreate}
           onCreatePlaceholder={onPlaceholderCreate ? (t) => onPlaceholderCreate(flatCreateTarget!.sprintId, t) : undefined}
           // Bleed 2px left to cover the table's collapsed-border inset (from BoardRow's left
-          // selection border) so the tinted strip is flush with the card edge (BRDG-315).
-          className="-ml-0.5"
+          // selection border) so the tinted strip is flush with the card edge (BRDG-315). A
+          // top-placed composer gets a bottom divider so it reads as distinct from the rows.
+          className={`-ml-0.5${flatComposerAtTop ? " border-b border-border-subtle" : ""}`}
         />
       </td>
     </tr>
@@ -668,7 +683,11 @@ export function TicketTable({
       {groups.map((group) => {
         const isCollapsed = collapsedGroups?.has(group.key) ?? false;
         const isSprintGroup = groupBy === "sprint" && group.key !== "__backlog__";
-        const isBacklogGroup = groupBy === "sprint" && group.key === "__backlog__";
+        // A backlog group is the generic backlog (__backlog__) or a named one ("BT:
+        // Backlog"); both land new stories at the top per BRDG-371. createTargetSprintId
+        // still posts the named backlog's real id (only __backlog__ maps to null).
+        const isBacklogGroup =
+          groupBy === "sprint" && (group.key === "__backlog__" || isBacklogSprintName(group.label));
         const groupSprint = isSprintGroup ? sprints?.find((s) => s.id === group.key) : undefined;
 
         // A real sprint or epic group can be synced from Jira in tranches. The backlog
@@ -688,7 +707,8 @@ export function TicketTable({
         // (no sprint) or any non-closed sprint. Jira rejects creating into closed sprints.
         const canCreateInGroup =
           !!onCreateTicket && (isBacklogGroup || (!!groupSprint && groupSprint.state !== "closed"));
-        const createTargetSprintId = isBacklogGroup ? null : group.key;
+        // Only the generic backlog posts a null sprint; a named backlog posts its real id.
+        const createTargetSprintId = group.key === "__backlog__" ? null : group.key;
         const isComposerOpen = composerGroupKey === group.key;
 
         const groupCriteria = groupFilter?.groupKey === group.key ? groupFilter.criteria : null;
@@ -863,19 +883,34 @@ export function TicketTable({
               />
             }
           >
+            {/* Backlog groups land new stories at the top, so the create card renders
+                above the rows; regular sprints keep it below (BRDG-371). A divider keeps
+                the top-placed bar distinct from the rows beneath it. */}
+            {isComposerOpen && canCreateInGroup && onCreateTicket && isBacklogGroup && (
+              <ChildIssueComposer
+                variant="bar"
+                autoFocus
+                onCreate={(title, jiraType) => onCreateTicket(createTargetSprintId, title, jiraType)}
+                onEscapeEmpty={() => setComposerGroupKey(null)}
+                placeholder="Create story in the backlog..."
+                allowPlaceholder={!!onPlaceholderCreate}
+                onCreatePlaceholder={onPlaceholderCreate ? (t) => onPlaceholderCreate(createTargetSprintId, t) : undefined}
+                className="border-b border-border-subtle"
+              />
+            )}
             <table className="w-full table-fixed border-collapse text-body-lg">
               <tbody>
                 {groupRows}
                 {!isCollapsed && hasPlaceholders && renderPlaceholderRows(groupPlaceholders)}
               </tbody>
             </table>
-            {isComposerOpen && canCreateInGroup && onCreateTicket && (
+            {isComposerOpen && canCreateInGroup && onCreateTicket && !isBacklogGroup && (
               <ChildIssueComposer
                 variant="bar"
                 autoFocus
                 onCreate={(title, jiraType) => onCreateTicket(createTargetSprintId, title, jiraType)}
                 onEscapeEmpty={() => setComposerGroupKey(null)}
-                placeholder={isBacklogGroup ? "Create story in the backlog..." : `Create story in ${group.label}...`}
+                placeholder={`Create story in ${group.label}...`}
                 allowPlaceholder={!!onPlaceholderCreate}
                 onCreatePlaceholder={onPlaceholderCreate ? (t) => onPlaceholderCreate(createTargetSprintId, t) : undefined}
               />

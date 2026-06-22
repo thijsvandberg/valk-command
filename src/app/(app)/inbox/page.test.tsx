@@ -21,8 +21,22 @@ vi.mock("swr", () => ({
 }));
 
 vi.mock("@/hooks/usePageTitle", () => ({ usePageTitle: () => null }));
-vi.mock("@/hooks/useSprintBoard", () => ({ useTicketDetail: () => ({ data: null }) }));
-vi.mock("@/components/sprint-board/sprint-board-utils", () => ({ saveTicketMetadata: vi.fn() }));
+vi.mock("@/hooks/useSprintBoard", () => ({
+  useTicketDetail: () => ({ data: null }),
+  // Row-action hook (BRDG-373) inputs; sprints empty is fine for the wiring tests.
+  useJiraSprints: () => ({ sprints: [], mutate: vi.fn() }),
+  useSprintSlots: () => ({ data: [] }),
+}));
+vi.mock("@/hooks/useBacklogDropTarget", () => ({ useBacklogDropTarget: () => ({ backlogTargetName: "BT: Backlog" }) }));
+vi.mock("@/components/sprint-board/sprint-board-utils", () => ({
+  saveTicketMetadata: vi.fn(),
+  mapJiraSprints: () => [],
+  bulkReviewStories: vi.fn(),
+  bulkGenerateSubtasks: vi.fn(),
+}));
+// The modals are not under test here; the hook test covers the quick-create flow.
+vi.mock("@/components/refinement-session/AddToRefinementModal", () => ({ AddToRefinementModal: () => null }));
+vi.mock("@/components/sprint-board/CreateSprintModal", () => ({ CreateSprintModal: () => null }));
 vi.mock("@/components/sprint-board/SidePanel", () => ({
   SidePanel: ({ ticket, onClose }: { ticket: { key: string }; onClose: () => void }) => (
     <div data-testid="side-panel">
@@ -48,12 +62,14 @@ vi.mock("@/components/sprint-board/BoardRow", () => ({
     onMarkRead,
     onCheckboxClick,
     onSelectTicket,
+    onRowContextMenu,
   }: {
     ticket: { key: string; title: string };
     tags?: Set<string>;
     onMarkRead?: (key: string) => void;
     onCheckboxClick: (key: string) => void;
     onSelectTicket: (key: string) => void;
+    onRowContextMenu?: (key: string, e: React.MouseEvent) => void;
   }) => (
     <tr>
       <td>
@@ -63,6 +79,12 @@ vi.mock("@/components/sprint-board/BoardRow", () => ({
           <span>{ticket.title}</span>
         </button>
         {onMarkRead && <button aria-label="Mark as read" onClick={() => onMarkRead(ticket.key)} />}
+        {onRowContextMenu && (
+          <button
+            aria-label={`ctx-${ticket.key}`}
+            onClick={() => onRowContextMenu(ticket.key, { clientX: 5, clientY: 5 } as React.MouseEvent)}
+          />
+        )}
         <span data-testid={`tags-${ticket.key}`}>{[...(tags ?? [])].join(",")}</span>
       </td>
     </tr>
@@ -167,6 +189,42 @@ describe("InboxPage (BRDG-357)", () => {
       );
     });
     expect(listMutate).toHaveBeenCalled();
+  });
+
+  it("right-clicking a row opens the shared action menu with the move + edit actions (BRDG-373 AC #1)", async () => {
+    render(<InboxPage />);
+    fireEvent.click(screen.getByRole("button", { name: "ctx-VPL-1" }));
+
+    // The real TicketActionMenuContent renders at the cursor with the board's items
+    // plus the inbox-only "Mark as read" option.
+    expect(await screen.findByText("Move to Sprint")).toBeInTheDocument();
+    expect(screen.getByText("Set Status")).toBeInTheDocument();
+    expect(screen.getByText("Add to Refinement")).toBeInTheDocument();
+    expect(screen.getByText("Mark as read")).toBeInTheDocument();
+  });
+
+  it("marks a story read from the right-click menu (BRDG-373)", async () => {
+    render(<InboxPage />);
+    fireEvent.click(screen.getByRole("button", { name: "ctx-VPL-1" }));
+    fireEvent.click(await screen.findByText("Mark as read"));
+
+    await waitFor(() => {
+      expect(fetchMock).toHaveBeenCalledWith(
+        "/api/new-stories/read",
+        expect.objectContaining({ method: "PUT" }),
+      );
+    });
+  });
+
+  it("the multi-select bar reuses the board actions alongside Mark as read (BRDG-373 AC #4)", () => {
+    render(<InboxPage />);
+    const selects = screen.getAllByRole("button", { name: "Select" });
+    fireEvent.click(selects[0]);
+    fireEvent.click(selects[1]);
+
+    expect(screen.getByRole("button", { name: /Mark 2 as read/ })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /Update/ })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /AI Assist/ })).toBeInTheDocument();
   });
 });
 

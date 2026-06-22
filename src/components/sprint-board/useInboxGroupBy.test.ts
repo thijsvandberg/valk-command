@@ -1,7 +1,18 @@
 import { describe, it, expect, beforeEach } from "vitest";
 import { renderHook, act } from "@testing-library/react";
 import { useInboxGroupBy } from "./useInboxGroupBy";
+import { buildTeamMap, type RelevanceOptions } from "@/lib/new-stories-grouping";
+import type { Team } from "@/lib/sprint-utils";
 import type { NewStoryRow } from "@/lib/new-stories-types";
+
+function relevanceOpts(myTeam: Team | null): RelevanceOptions {
+  return {
+    myTeam,
+    teamMap: buildTeamMap([{ displayName: "Alice", teams: ["BT"] as Team[] }]),
+    poAccountIds: new Set<string>(),
+    poNames: new Set<string>(),
+  };
+}
 
 function row(partial: Partial<NewStoryRow> & { key: string }): NewStoryRow {
   return {
@@ -55,5 +66,27 @@ describe("useInboxGroupBy", () => {
 
     act(() => result.current.toggleCollapse("today"));
     expect(result.current.collapsedGroups.has("today")).toBe(false);
+  });
+
+  it("groups by relevance and persists the choice when a team is set (BRDG-372)", () => {
+    const rows = [row({ key: "BT-1", sprintName: "BT: 138", reporter: { name: "Bob", initials: "B", color: "#000" } })];
+    const { result } = renderHook(() => useInboxGroupBy(rows, relevanceOpts("BT" as Team)));
+
+    act(() => result.current.setGroupBy("relevance"));
+
+    expect(result.current.groupBy).toBe("relevance");
+    expect(JSON.parse(sessionStorage.getItem("inbox-group-by")!)).toBe("relevance");
+    expect(result.current.groups[0].label).toBe("On your team's board");
+  });
+
+  it("falls back to date when relevance is persisted but no team is set, leaving storage intact", () => {
+    sessionStorage.setItem("inbox-group-by", JSON.stringify("relevance"));
+    const { result } = renderHook(() => useInboxGroupBy([row({ key: "A-1" })], relevanceOpts(null)));
+
+    // Effective mode is date, but the stored choice is preserved so re-adding a
+    // team restores Relevance.
+    expect(result.current.groupBy).toBe("date");
+    expect(result.current.groups[0].key).toBe("today");
+    expect(JSON.parse(sessionStorage.getItem("inbox-group-by")!)).toBe("relevance");
   });
 });

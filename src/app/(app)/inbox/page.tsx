@@ -3,27 +3,34 @@
 import { useCallback, useMemo, useRef, useState } from "react";
 import useSWR, { mutate as globalMutate } from "swr";
 import dynamic from "next/dynamic";
-import { Inbox, Check, Undo2 } from "lucide-react";
+import { Inbox, Undo2 } from "lucide-react";
 import { usePageTitle } from "@/hooks/usePageTitle";
-import { Button } from "@/components/ui/Button";
 import { ViewHeader, ViewHeaderTitle } from "@/components/shared/ViewHeader";
-import { Tooltip } from "@/components/shared/Tooltip";
-import { Checkbox } from "@/components/shared/Checkbox";
-import { BarContainer, BarDivider } from "@/components/shared/BarContainer";
 import { Toast } from "@/components/ui/Toast";
 import { useToast } from "@/hooks/useToast";
 import { useTicketDetail } from "@/hooks/useSprintBoard";
 import { BoardRow } from "@/components/sprint-board/BoardRow";
+import type { EpicOption } from "@/components/shared/EpicPicker";
 import { GroupCard } from "@/components/sprint-board/GroupCard";
 import { GroupStatBar } from "@/components/sprint-board/GroupStatBar";
 import { UnifiedControlsCluster } from "@/components/sprint-board/UnifiedControlsCluster";
 import { InboxGroupByDropdown } from "@/components/sprint-board/InboxGroupByDropdown";
+import { BulkActionBar } from "@/components/sprint-board/BulkActionBar";
+import { CursorMenu, TicketActionMenuContent } from "@/components/sprint-board/ticket-action-menu";
+import { CreateSprintModal } from "@/components/sprint-board/CreateSprintModal";
+import { AddToRefinementModal } from "@/components/refinement-session/AddToRefinementModal";
+import { startDateFromPreviousEnd } from "@/lib/sprint-dates";
 import { useInboxFilters } from "@/components/sprint-board/useInboxFilters";
 import { useInboxGroupBy } from "@/components/sprint-board/useInboxGroupBy";
+import { useInboxRowActions } from "./useInboxRowActions";
 import { INBOX_SORT_OPTIONS } from "@/components/sprint-board/filter-bar-types";
 import { saveTicketMetadata } from "@/components/sprint-board/sprint-board-utils";
+import { buildTeamMap } from "@/lib/new-stories-grouping";
+import { poUsers, userTeams } from "@/lib/api-client";
+import { useDefaultTeam } from "@/hooks/useDefaultTeam";
 import { CONTENT_MAX } from "@/lib/layout";
 import { relativeDate } from "@/lib/date-utils";
+import type { Team } from "@/lib/sprint-utils";
 import type { JiraStatus, Ticket } from "@/types/ticket";
 import type { NewStoriesResponse, NewStoryRow } from "@/lib/new-stories-types";
 
@@ -39,10 +46,12 @@ const LIST_KEY = "/api/new-stories";
 const COUNT_KEY = "/api/new-stories/count";
 const JSON_HEADERS = { "Content-Type": "application/json" };
 
-function rowToTicket(row: NewStoryRow): Ticket {
+function rowToTicket(row: NewStoryRow, effectiveSprintName: string | null = row.sprintName): Ticket {
   // Lightweight Ticket so the BoardRow paints instantly; SidePanel re-derives the
   // full content via its own detail fetch. The sprint name doubles as the sprint
   // id so the row's sprint chip renders (the inbox has no real sprint ids).
+  // effectiveSprintName carries the optimistic move overlay (BRDG-373) so a moved
+  // row's chip updates while the row stays in the inbox.
   return {
     key: row.key,
     title: row.title,
@@ -60,8 +69,8 @@ function rowToTicket(row: NewStoryRow): Ticket {
     businessValue: null,
     editState: "clean",
     notes: "",
-    sprintId: row.sprintName ?? undefined,
-    sprintDisplayName: row.sprintName,
+    sprintId: effectiveSprintName ?? undefined,
+    sprintDisplayName: effectiveSprintName,
     openSubtaskCount: 0,
     totalSubtaskCount: 0,
   };
@@ -78,6 +87,18 @@ export default function InboxPage() {
 
   const rows = useMemo(() => data?.rows ?? [], [data]);
 
+  // Right-click context menu + multi-select bulk actions (BRDG-373). Self-contained
+  // dispatch layer that touches only the inbox list (never the board's caches).
+  const actions = useInboxRowActions({ rows, checkedKeys, mutateList, showToast });
+  const { rowMenu, quickCreate, localMoves } = actions;
+
+  // Paint a row, applying the optimistic sprint-move overlay so a moved row's chip
+  // updates while it stays in the inbox (AC #7).
+  const toTicket = useCallback(
+    (row: NewStoryRow): Ticket => rowToTicket(row, row.key in localMoves ? localMoves[row.key] : row.sprintName),
+    [localMoves],
+  );
+
   const {
     filteredRows,
     searchQuery,
@@ -91,9 +112,40 @@ export default function InboxPage() {
     filterProps,
   } = useInboxFilters(rows);
 
+  // The right-clicked row's current epic (single target only), so the Set Epic
+  // panel shows the checkmark + Unlink like the sidebar (BRDG-381).
+  const rowMenuEpic = useMemo<EpicOption | null>(() => {
+    if (!rowMenu || rowMenu.targets.size !== 1) return null;
+    const r = filteredRows.find((x) => x.key === [...rowMenu.targets][0]);
+    return r?.epic && r?.epicKey ? { key: r.epicKey, name: r.epic } : null;
+  }, [rowMenu, filteredRows]);
+
+  // Relevance grouping inputs (BRDG-372): my team, who is on each team, and who
+  // the POs are. Fetched here so the inbox stays the single owner of grouping.
+  const { defaultTeam } = useDefaultTeam();
+  const { data: teamData } = useSWR<{ assignments: Array<{ displayName: string; teams: string[] }> }>(
+    userTeams.listUrl(),
+  );
+  const { data: poData } = useSWR<{ pos: string[]; accountIds: string[] }>(poUsers.listUrl());
+
+  const relevanceOptions = useMemo(
+    () => ({
+      myTeam: defaultTeam,
+      teamMap: buildTeamMap(
+        (teamData?.assignments ?? []).map((a) => ({ displayName: a.displayName, teams: a.teams as Team[] })),
+      ),
+      poAccountIds: new Set(poData?.accountIds ?? []),
+      poNames: new Set(poData?.pos ?? []),
+    }),
+    [defaultTeam, teamData, poData],
+  );
+
   // Configurable grouping over the already filtered + sorted rows, so search /
   // filter / sort still apply within each group (BRDG-358).
-  const { groupBy, setGroupBy, groups, collapsedGroups, toggleCollapse } = useInboxGroupBy(filteredRows);
+  const { groupBy, setGroupBy, groups, collapsedGroups, toggleCollapse } = useInboxGroupBy(
+    filteredRows,
+    relevanceOptions,
+  );
 
   // Identity sprint-name map so the BoardRow sprint chip shows the display name
   // (the inbox stores the name in sprintId, see rowToTicket).
@@ -241,7 +293,7 @@ export default function InboxPage() {
   const selectedRow = rows.find((r) => r.key === selectedKey) ?? null;
   const fallback = useTicketDetail(selectedKey && !selectedRow ? selectedKey : null);
   const panelTicket: Ticket | null = selectedRow
-    ? rowToTicket(selectedRow)
+    ? toTicket(selectedRow)
     : (fallback.data ?? null);
 
   return (
@@ -256,7 +308,7 @@ export default function InboxPage() {
           hideNotifications
           actions={
             <div className="flex items-center gap-1">
-              <InboxGroupByDropdown value={groupBy} onChange={setGroupBy} />
+              <InboxGroupByDropdown value={groupBy} onChange={setGroupBy} showRelevance={!!defaultTeam} />
               <UnifiedControlsCluster
                 searchQuery={searchQuery}
                 onSearchChange={setSearchQuery}
@@ -314,7 +366,7 @@ export default function InboxPage() {
                           onToggleCollapse={() => toggleCollapse(group.key)}
                           header={
                             <GroupStatBar
-                              tickets={group.rows.map(rowToTicket)}
+                              tickets={group.rows.map(toTicket)}
                               label={group.label}
                               labelWidthClass=""
                               showStatusCounts={false}
@@ -338,14 +390,16 @@ export default function InboxPage() {
                               {group.rows.map((row, idx) => (
                                 <BoardRow
                                   key={row.key}
-                                  ticket={rowToTicket(row)}
+                                  ticket={toTicket(row)}
                                   ticketIdx={idx}
                                   isChecked={checkedKeys.has(row.key)}
                                   isSelected={row.key === selectedKey}
+                                  isContextTarget={rowMenu?.targets.has(row.key) ?? false}
                                   someChecked={checkedKeys.size > 0}
                                   isDragActive={false}
                                   hideRowAccent
                                   tags={rowTags}
+                                  onRowContextMenu={actions.handleRowContextMenu}
                                   hideEpic={groupBy === "epic"}
                                   showSprint={groupBy !== "sprint"}
                                   sprintNameMap={sprintNameMap}
@@ -372,45 +426,35 @@ export default function InboxPage() {
             {checkedKeys.size > 0 && (
               <div className="pointer-events-none fixed inset-x-0 bottom-0 z-50 flex justify-center px-4 pb-6">
                 <div className="pointer-events-auto w-full max-w-5xl px-3 sm:px-4">
-                  <BarContainer
-                    border={false}
-                    className="bulk-bar-enter -mx-3 gap-2 rounded-xl border border-border-default bg-[var(--color-surface-floating)] shadow-[var(--shadow-lg)] sm:-mx-4 sm:gap-3"
-                  >
-                    <Tooltip content={allChecked ? "Deselect all" : "Select all"}>
-                      <button
-                        type="button"
-                        onClick={toggleAll}
-                        aria-label={allChecked ? "Deselect all" : "Select all"}
-                        className="flex shrink-0 items-center justify-center cursor-pointer"
-                      >
-                        <Checkbox checked={allChecked} indeterminate={!allChecked} />
-                      </button>
-                    </Tooltip>
-
-                    <span className="shrink-0 text-body-sm font-medium text-text-secondary whitespace-nowrap tabular-nums">
-                      {checkedKeys.size}/{filteredRows.length} selected
-                    </span>
-
-                    <BarDivider />
-
-                    <Tooltip content="Mark the selected stories as read; they leave the inbox (undoable)">
-                      <Button variant="primary" size="md" onClick={() => void markRead([...checkedKeys])}>
-                        <Check className="h-3.5 w-3.5 shrink-0" strokeWidth={2} />
-                        Mark {checkedKeys.size} as read
-                      </Button>
-                    </Tooltip>
-
-                    <div className="flex-1" />
-
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      className="shrink-0 border-0 bg-transparent text-text-tertiary hover:bg-transparent hover:text-text-secondary"
-                      onClick={() => setCheckedKeys(new Set())}
-                    >
-                      Clear
-                    </Button>
-                  </BarContainer>
+                  {/* Shared board bulk bar (BRDG-373) with the inbox's prominent
+                      "Mark as read" as the leading primary action. */}
+                  <BulkActionBar
+                    floating
+                    count={checkedKeys.size}
+                    totalCount={filteredRows.length}
+                    allChecked={allChecked}
+                    onToggleAll={toggleAll}
+                    onClear={() => setCheckedKeys(new Set())}
+                    onMarkRead={() => void markRead([...checkedKeys])}
+                    markReadCount={checkedKeys.size}
+                    onSetStatus={actions.handleBulkStatus}
+                    onSetReadiness={actions.handleBulkReadiness}
+                    onSetEpic={(epicKey) => actions.handleBulkEpic(epicKey)}
+                    onMoveSprint={actions.handleBulkMoveSprint}
+                    quickMoves={actions.quickMovesFor(checkedKeys)}
+                    onQuickMove={actions.handleQuickMove}
+                    onUpdateAssignee={actions.handleBulkAssignee}
+                    onUpdateLabel={actions.handleBulkLabels}
+                    onSetFlagged={actions.handleBulkFlag}
+                    flagState={actions.rowMenuFlagState}
+                    sprints={actions.sprints}
+                    pinnedSprintIds={actions.pinnedSprintIds}
+                    onReviewStory={() => actions.handleBulkReview()}
+                    onGenerateSubtasks={() => actions.handleBulkGenerate()}
+                    isGeneratingSubtasks={actions.isGeneratingSubtasks}
+                    onCopyToClipboard={actions.handleCopySelected}
+                    onRefine={() => actions.openRefine([...checkedKeys])}
+                  />
                 </div>
               </div>
             )}
@@ -432,6 +476,54 @@ export default function InboxPage() {
           )}
         </div>
       </div>
+      {rowMenu && (
+        <CursorMenu x={rowMenu.x} y={rowMenu.y} onClose={() => actions.setRowMenu(null)}>
+          <TicketActionMenuContent
+            onMarkRead={() => void markRead([...rowMenu.targets])}
+            onSetStatus={(s) => actions.handleBulkStatus(s, rowMenu.targets)}
+            onSetReadiness={(r) => actions.handleBulkReadiness(r, rowMenu.targets)}
+            onSetEpic={(epicKey) => actions.handleBulkEpic(epicKey, rowMenu.targets)}
+            epicValue={rowMenuEpic}
+            epicSuggestTicketKey={rowMenu.targets.size === 1 ? [...rowMenu.targets][0] : undefined}
+            epicClearable={rowMenu.targets.size > 1}
+            onMoveSprint={(sprintId) => actions.handleBulkMoveSprint(sprintId, rowMenu.targets)}
+            quickMoves={actions.quickMovesFor(rowMenu.targets)}
+            onQuickMove={(opt) => actions.handleQuickMove(opt, rowMenu.targets)}
+            onUpdateAssignee={(accountId, name) => actions.handleBulkAssignee(accountId, name, rowMenu.targets)}
+            onUpdateLabel={(labels, mode) => actions.handleBulkLabels(labels, mode, rowMenu.targets)}
+            onSetFlagged={(flagged) => actions.handleBulkFlag(flagged, rowMenu.targets)}
+            flagState={actions.rowMenuFlagState}
+            onReviewStory={() => actions.handleBulkReview(rowMenu.targets)}
+            onGenerateSubtasks={() => actions.handleBulkGenerate(rowMenu.targets)}
+            onRefine={() => actions.openRefine([...rowMenu.targets])}
+            sprints={actions.sprints}
+            pinnedSprintIds={actions.pinnedSprintIds}
+            close={() => actions.setRowMenu(null)}
+          />
+        </CursorMenu>
+      )}
+
+      <AddToRefinementModal
+        open={actions.refineModalOpen}
+        onClose={() => actions.setRefineModalOpen(false)}
+        ticketKeys={actions.refineKeys}
+        onAdded={(_id, name) =>
+          showToast(`Added ${actions.refineKeys.length} issue${actions.refineKeys.length === 1 ? "" : "s"} to "${name}"`)
+        }
+      />
+
+      {quickCreate && (
+        <CreateSprintModal
+          onClose={actions.closeQuickCreate}
+          onCreated={actions.confirmQuickCreate}
+          showToast={showToast}
+          suggestedName={quickCreate.name}
+          suggestedStartDate={startDateFromPreviousEnd(actions.planPrevSprint?.endDate)}
+          previousSprintName={actions.planPrevSprint?.name}
+          previousSprintEndIso={actions.planPrevSprint?.endDate ?? null}
+        />
+      )}
+
       <Toast toast={toast} onDismiss={dismissToast} />
     </>
   );

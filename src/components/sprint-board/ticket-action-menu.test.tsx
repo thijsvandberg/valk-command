@@ -3,7 +3,14 @@ import { describe, it, expect, vi } from "vitest";
 import { TicketActionMenuContent, CursorMenu } from "./ticket-action-menu";
 
 // Sub-panels (Epic/Assignee/Label) fetch via SWR; stub so they never hit the network.
-vi.mock("swr", () => ({ default: () => ({ data: undefined }) }));
+vi.mock("swr", () => ({ default: () => ({ data: undefined, mutate: vi.fn() }) }));
+// The Epic panel renders the shared EpicPickerBody, which pulls in these.
+vi.mock("@/lib/api-client", () => ({
+  apiFetch: vi.fn().mockResolvedValue({}),
+  swrFetcher: vi.fn(),
+  ApiError: class ApiError extends Error { status = 500; body = {}; },
+}));
+vi.mock("@/hooks/useTaskStream", () => ({ useTaskStream: vi.fn() }));
 
 describe("TicketActionMenuContent", () => {
   it("renders only the update items whose callbacks are supplied", () => {
@@ -44,6 +51,19 @@ describe("TicketActionMenuContent", () => {
     expect(close).toHaveBeenCalledTimes(1);
   });
 
+  // BRDG-373: the inbox passes onMarkRead; the board / epic children do not.
+  it("renders 'Mark as read' only when onMarkRead is supplied, and invokes + closes", () => {
+    const { rerender } = render(<TicketActionMenuContent onSetStatus={vi.fn()} close={vi.fn()} />);
+    expect(screen.queryByText("Mark as read")).not.toBeInTheDocument();
+
+    const onMarkRead = vi.fn();
+    const close = vi.fn();
+    rerender(<TicketActionMenuContent onMarkRead={onMarkRead} onSetStatus={vi.fn()} close={close} />);
+    fireEvent.click(screen.getByText("Mark as read"));
+    expect(onMarkRead).toHaveBeenCalledTimes(1);
+    expect(close).toHaveBeenCalledTimes(1);
+  });
+
   it("renders Move to top/bottom only when their callbacks are supplied", () => {
     const { rerender } = render(<TicketActionMenuContent onSetStatus={vi.fn()} close={vi.fn()} />);
     expect(screen.queryByText("Move to top")).not.toBeInTheDocument();
@@ -52,6 +72,35 @@ describe("TicketActionMenuContent", () => {
     rerender(<TicketActionMenuContent onMoveToTop={vi.fn()} onMoveToBottom={vi.fn()} close={vi.fn()} />);
     expect(screen.getByText("Move to top")).toBeInTheDocument();
     expect(screen.getByText("Move to bottom")).toBeInTheDocument();
+  });
+
+  it("opens the Epic panel without a Back row (it reads like the sidebar)", () => {
+    render(<TicketActionMenuContent onSetEpic={vi.fn()} close={vi.fn()} />);
+    fireEvent.click(screen.getByText("Set Epic"));
+    expect(screen.getByPlaceholderText("Search epics...")).toBeInTheDocument();
+    expect(screen.queryByText("Back")).not.toBeInTheDocument();
+  });
+
+  it("shows the AI suggest action in the Epic panel only with a single-target ticket key", () => {
+    const { unmount } = render(<TicketActionMenuContent onSetEpic={vi.fn()} close={vi.fn()} />);
+    fireEvent.click(screen.getByText("Set Epic"));
+    expect(screen.queryByLabelText("Suggest epic with AI")).not.toBeInTheDocument();
+    unmount();
+
+    render(<TicketActionMenuContent onSetEpic={vi.fn()} epicSuggestTicketKey="VPL-1" close={vi.fn()} />);
+    fireEvent.click(screen.getByText("Set Epic"));
+    expect(screen.getByLabelText("Suggest epic with AI")).toBeInTheDocument();
+  });
+
+  it("shows a 'Remove epic' action in the Epic panel only when clearable (bulk)", () => {
+    const { unmount } = render(<TicketActionMenuContent onSetEpic={vi.fn()} close={vi.fn()} />);
+    fireEvent.click(screen.getByText("Set Epic"));
+    expect(screen.queryByText("Remove epic")).not.toBeInTheDocument();
+    unmount();
+
+    render(<TicketActionMenuContent onSetEpic={vi.fn()} epicClearable close={vi.fn()} />);
+    fireEvent.click(screen.getByText("Set Epic"));
+    expect(screen.getByText("Remove epic")).toBeInTheDocument();
   });
 
   it("fences the Move group with dividers from the set-* and assignee/label items", () => {
@@ -66,6 +115,42 @@ describe("TicketActionMenuContent", () => {
     );
     // One divider above the move group (after Set Epic), one below (before Update Assignee).
     expect(container.querySelectorAll("div.h-px.bg-overlay-strong")).toHaveLength(2);
+  });
+
+  it("renders quick-move items above Move to Sprint and fires onQuickMove + close (BRDG-369)", () => {
+    const onQuickMove = vi.fn();
+    const close = vi.fn();
+    const quickMoves = [
+      { id: "active" as const, label: 'Move to "BT: 139"', targetSprintId: "2", badge: "active" },
+      { id: "next" as const, label: 'Move to "BT: 140"', targetSprintId: "3" },
+      { id: "backlog" as const, label: 'Move to "BT: Backlog"', targetSprintId: "9" },
+    ];
+    const { container } = render(
+      <TicketActionMenuContent
+        quickMoves={quickMoves}
+        onQuickMove={onQuickMove}
+        onMoveSprint={vi.fn()}
+        sprints={[]}
+        close={close}
+      />,
+    );
+    const labels = Array.from(container.querySelectorAll("button")).map((b) => b.textContent);
+    const activeIdx = labels.findIndex((t) => t?.startsWith('Move to "BT: 139"'));
+    const moveSprintIdx = labels.findIndex((t) => t === "Move to Sprint");
+    expect(activeIdx).toBeGreaterThanOrEqual(0);
+    expect(activeIdx).toBeLessThan(moveSprintIdx); // quick moves render above Move to Sprint
+    // The active option carries a small "active" dot marker.
+    expect(screen.getByTitle("active")).toBeInTheDocument();
+
+    fireEvent.click(screen.getByText('Move to "BT: 140"'));
+    expect(onQuickMove).toHaveBeenCalledWith(quickMoves[1]);
+    expect(close).toHaveBeenCalledTimes(1);
+  });
+
+  it("renders no quick-move items when none are supplied", () => {
+    render(<TicketActionMenuContent onMoveSprint={vi.fn()} sprints={[]} close={vi.fn()} />);
+    expect(screen.queryByText(/^Move to "/)).not.toBeInTheDocument();
+    expect(screen.getByText("Move to Sprint")).toBeInTheDocument();
   });
 
   it("fires Move to top / Move to bottom and closes", () => {

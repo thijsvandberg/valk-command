@@ -3,7 +3,7 @@ import { db } from "@/db";
 import { ticket, ticketMetadata } from "@/db/schema";
 import { jiraClient } from "@/lib/jira-client";
 import { syncTicketSprints } from "@/lib/sprint-membership";
-import { landTicketAtTopOfSprint } from "@/lib/sprint-rank";
+import { landNewTicket } from "@/lib/sprint-rank";
 import { logActivity } from "@/lib/activity-logger";
 import { applyRateLimit } from "@/lib/rate-limiter";
 import { logger } from "@/lib/logger";
@@ -51,8 +51,8 @@ export async function POST(request: Request) {
   }
 
   // Jira Cloud silently ignores the sprint field on create, so assign it via the
-  // same field-edit path as drag-to-sprint once the issue exists, then land it at
-  // the top of the sprint (BRDG-354). Only persist the sprint locally when Jira
+  // same field-edit path as drag-to-sprint once the issue exists, then place it per
+  // the unified create rule (BRDG-371). Only persist the sprint locally when Jira
   // confirms the move; a rank failure is best-effort and must not undo the move.
   let assignedSprintId: string | undefined;
   if (sprintId) {
@@ -90,10 +90,9 @@ export async function POST(request: Request) {
   // shows the new story in its column. Backlog (no sprint) leaves no rows.
   syncTicketSprints(db, newKey, assignedSprintId ? [assignedSprintId] : null, assignedSprintId ?? null);
 
-  // Land it at the top of its sprint (BRDG-354), in Jira and the local mirror.
-  if (assignedSprintId) {
-    await landTicketAtTopOfSprint(newKey, parseInt(assignedSprintId, 10));
-  }
+  // Place it per the unified create rule (BRDG-371): bottom of a regular sprint, top
+  // of a backlog (named or generic). Applied in Jira and the local mirror.
+  await landNewTicket(newKey, assignedSprintId ?? null);
 
   cache.invalidate(/^\/api\/tickets(\?|$)/);
   if (assignedSprintId) cache.invalidate("/api/jira/sprints");

@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { db } from "@/db";
-import { ticket, favoriteUser, userTeamAssignment } from "@/db/schema";
+import { ticket, favoriteUser, poUser, userTeamAssignment } from "@/db/schema";
 import { isNotNull, sql } from "drizzle-orm";
 
 /**
@@ -34,6 +34,11 @@ export async function GET() {
     const favByName = new Set(favRows.map((r) => r.displayName));
     const favByAccountId = new Set(favRows.map((r) => r.accountId).filter((id): id is string => !!id));
 
+    // PO flag (BRDG-372): same accountId-first match as favourites.
+    const poRows = db.select().from(poUser).all();
+    const poByName = new Set(poRows.map((r) => r.displayName));
+    const poByAccountId = new Set(poRows.map((r) => r.accountId).filter((id): id is string => !!id));
+
     const teamRows = db.select().from(userTeamAssignment).all();
     const teamByName = new Map<string, string[]>();
     const teamByAccountId = new Map<string, string[]>();
@@ -64,6 +69,7 @@ export async function GET() {
           avatarUrl: null,
           initials,
           isFavorite: (accountId != null && favByAccountId.has(accountId)) || favByName.has(name),
+          isPo: (accountId != null && poByAccountId.has(accountId)) || poByName.has(name),
           teams: (accountId != null ? teamByAccountId.get(accountId) : undefined) ?? teamByName.get(name) ?? [],
         };
       });

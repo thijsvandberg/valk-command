@@ -868,7 +868,7 @@ describe("EpicChildrenSection", () => {
       moveViaContextMenu("Second task", "Sprint 3");
 
       await waitFor(() => {
-        expect(mockMoveSprint).toHaveBeenCalledWith({ issueKeys: ["VPL-11"], targetSprintId: "3" });
+        expect(mockMoveSprint).toHaveBeenCalledWith({ issueKeys: ["VPL-11"], targetSprintId: "3", topKeys: ["VPL-11"] });
       });
       // Optimistically the row leaves Unscheduled and a Sprint 3 group appears.
       expect(screen.queryByText("Unscheduled")).not.toBeInTheDocument();
@@ -976,7 +976,7 @@ describe("EpicChildrenSection", () => {
       openBulkMenu("Move to Sprint");
       fireEvent.click(screen.getByText("Sprint 3"));
       await waitFor(() => {
-        expect(mockMoveSprint).toHaveBeenCalledWith({ issueKeys: ["VPL-10", "VPL-12"], targetSprintId: "3" });
+        expect(mockMoveSprint).toHaveBeenCalledWith({ issueKeys: ["VPL-10", "VPL-12"], targetSprintId: "3", topKeys: ["VPL-10", "VPL-12"] });
       });
     });
 

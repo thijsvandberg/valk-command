@@ -18,6 +18,7 @@ import { Button } from "@/components/ui/Button";
 import { useTickets } from "@/hooks/useSprintBoard";
 import { useTicketSessionMap } from "@/hooks/useTicketSessionMap";
 import { apiFetch, jira } from "@/lib/api-client";
+import { topKeysForMove } from "@/lib/sprint-placement";
 import { pluralize } from "@/lib/pluralize";
 import {
   DndContext,
@@ -374,13 +375,20 @@ export function MultiSprintView({
       });
 
       const targetSprintId = targetColumnId === "left" ? leftSprint : rightSprint;
-      const targetName = sprints.find((s) => s.id === targetSprintId)?.name ?? "target sprint";
+      const destSprint = sprints.find((s) => s.id === targetSprintId);
+      const targetName = destSprint?.name ?? "target sprint";
 
       try {
-        await jira.moveSprint({ issueKeys: keysToMove, targetSprintId });
         if (targetOverKey) {
-          // Rank is best-effort — don't let a rank failure revert a successful sprint move
+          // Dropped onto a specific row: rank relative to it (explicit position).
+          // Rank is best-effort — don't let a rank failure revert a successful move.
+          await jira.moveSprint({ issueKeys: keysToMove, targetSprintId });
           jira.rank({ issueKeys: keysToMove, rankBeforeKey: targetOverKey, sprintId: targetSprintId }).catch(() => {});
+        } else {
+          // Dropped onto the column/zone: the placement rule decides the edge
+          // (BRDG-370) - in-flight rows to the top, the rest to the bottom.
+          const topKeys = topKeysForMove(keysToMove, destSprint?.name ?? null, (k) => ticketsToMove.find((t) => t.key === k)?.jiraStatus);
+          await jira.moveSprint({ issueKeys: keysToMove, targetSprintId, topKeys });
         }
         showToast(`Moved ${keysToMove.length} ticket${keysToMove.length === 1 ? "" : "s"} to ${targetName}`);
         // Update SWR caches with the optimistic state; skip refetch to avoid racing Jira.

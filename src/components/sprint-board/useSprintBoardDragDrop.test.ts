@@ -126,10 +126,23 @@ describe("useSprintBoardDragDrop - sprint-slot drop zone", () => {
       "140",
       true,
     );
-    await waitFor(() => expect(moveSprint).toHaveBeenCalledWith({ issueKeys: ["VPL-1"], targetSprintId: "140", position: "top" }));
+    // TO DO ticket into a regular sprint -> bottom, so topKeys is empty (BRDG-370).
+    await waitFor(() => expect(moveSprint).toHaveBeenCalledWith({ issueKeys: ["VPL-1"], targetSprintId: "140", topKeys: [] }));
     // After the move resolves, revalidate the destination + origin lists so the
     // row reappears promptly if the target view was opened mid-move.
     expect(revalidateMovedSprintLists).toHaveBeenCalledWith(["140", "todo"]);
+  });
+
+  it("sends an in-flight ticket to the top of a regular sprint (topKeys includes it)", async () => {
+    const inProgress = { ...makeTicket("VPL-1", "todo"), jiraStatus: "IN PROGRESS" } as Ticket;
+    const deps = makeDeps({ tickets: [inProgress, makeTicket("VPL-2", "todo")], apiTickets: [inProgress, makeTicket("VPL-2", "todo")] });
+    const { result } = renderHook(() => useSprintBoardDragDrop(deps));
+
+    await act(async () => {
+      await result.current.handleBoardDragEnd(dropEvent("VPL-1", "sprint-slot:140"));
+    });
+
+    await waitFor(() => expect(moveSprint).toHaveBeenCalledWith({ issueKeys: ["VPL-1"], targetSprintId: "140", topKeys: ["VPL-1"] }));
   });
 
   it("does not revalidate lists when the move fails (optimistic state is rolled back instead)", async () => {

@@ -4,8 +4,9 @@ import { useState, useRef, useMemo, useLayoutEffect, type ReactNode, type RefObj
 import { createPortal } from "react-dom";
 import useSWR from "swr";
 import type { TicketReadiness, JiraStatus, Sprint } from "@/types/ticket";
+import type { QuickMoveOption } from "@/lib/quick-moves";
 import { swrFetcher } from "@/lib/api-client";
-import { Search, Flag, ArrowLeft } from "lucide-react";
+import { Search, Flag, ArrowLeft, Check } from "lucide-react";
 import {
   READINESS_OPTIONS,
   READINESS_CONFIG,
@@ -16,6 +17,7 @@ import { ReadinessIcon } from "@/components/shared/ReadinessCell";
 import { useOutsideClick } from "@/hooks/useOutsideClick";
 import { Card } from "@/components/shared/Card";
 import { Checkbox } from "@/components/shared/Checkbox";
+import { EpicPickerBody, type EpicOption } from "@/components/shared/EpicPicker";
 
 // ---------------------------------------------------------------------------
 // Anchored portal menu
@@ -339,67 +341,6 @@ function SprintSubPanel({
 }
 
 // ---------------------------------------------------------------------------
-// Sub-panel: Epic picker
-// ---------------------------------------------------------------------------
-
-interface EpicListItem {
-  key: string;
-  name: string;
-  status: string;
-}
-
-function EpicSubPanel({ onSelect }: { onSelect: (epicKey: string | null, epicName: string | null) => void }) {
-  const { data } = useSWR<EpicListItem[]>("/api/epics", swrFetcher);
-  const [query, setQuery] = useState("");
-  const filtered = useMemo(() => {
-    if (!data) return [];
-    if (!query) return data;
-    const q = query.toLowerCase();
-    return data.filter((e) => e.name.toLowerCase().includes(q) || e.key.toLowerCase().includes(q));
-  }, [data, query]);
-
-  return (
-    <div className="py-1">
-      <div className="px-2 pb-1">
-        <div className="flex items-center gap-1.5 rounded-md border border-border-default bg-[var(--color-surface-base)] px-2 py-1">
-          <Search className="h-3 w-3 shrink-0 text-text-muted" strokeWidth={1.5} />
-          <input
-            type="text"
-            value={query}
-            onChange={(e) => setQuery(e.target.value)}
-            placeholder="Search epics..."
-            className="w-full bg-transparent text-body-sm text-text-primary outline-none placeholder:text-text-muted"
-            autoFocus
-          />
-        </div>
-      </div>
-      <button
-        type="button"
-        onClick={() => onSelect(null, null)}
-        className="flex w-full items-center gap-2.5 px-3 py-1.5 text-body-sm text-text-tertiary cursor-pointer hover:bg-hover-list-item active:bg-overlay-default"
-      >
-        No epic
-      </button>
-      <div className="max-h-[200px] overflow-y-auto">
-        {filtered.map((epic) => (
-          <button
-            key={epic.key}
-            type="button"
-            onClick={() => onSelect(epic.key, epic.name)}
-            className="flex w-full items-center gap-2.5 px-3 py-1.5 text-body-sm text-text-secondary cursor-pointer hover:bg-hover-list-item active:bg-overlay-default"
-          >
-            <span className="truncate">{epic.name}</span>
-            <span className="ml-auto shrink-0 text-[10px] text-text-muted">{epic.key}</span>
-          </button>
-        ))}
-        {!data && <div className="px-3 py-2 text-body-sm text-text-tertiary">Loading...</div>}
-        {data && filtered.length === 0 && <div className="px-3 py-2 text-body-sm text-text-tertiary">No epics found</div>}
-      </div>
-    </div>
-  );
-}
-
-// ---------------------------------------------------------------------------
 // Sub-panel: Assignee picker
 // ---------------------------------------------------------------------------
 
@@ -554,6 +495,8 @@ export function TicketActionMenuContent({
   onMoveSprint,
   onMoveToTop,
   onMoveToBottom,
+  quickMoves,
+  onQuickMove,
   onUpdateAssignee,
   onUpdateLabel,
   onSetFlagged,
@@ -561,17 +504,33 @@ export function TicketActionMenuContent({
   onReviewStory,
   onGenerateSubtasks,
   onRefine,
+  onMarkRead,
+  epicValue,
+  epicSuggestTicketKey,
+  epicClearable,
   sprints,
   pinnedSprintIds,
   close,
 }: {
   onSetStatus?: (status: JiraStatus) => void;
   onSetReadiness?: (readiness: TicketReadiness | null) => void;
-  onSetEpic?: (epicKey: string | null) => void;
+  onSetEpic?: (epicKey: string | null, epicName: string | null) => void;
+  /** The single target's current epic, so the Set Epic panel shows the checkmark
+   *  + View/Unlink actions exactly like the sidebar (null for multi-select). */
+  epicValue?: EpicOption | null;
+  /** When exactly one ticket is targeted, its key enables the AI suggest-epic
+   *  action in the Set Epic panel (single-ticket only, like the sidebar). */
+  epicSuggestTicketKey?: string;
+  /** Multi-select only: show a single "Remove epic" action (no single value to
+   *  unlink). Omitted for single-row, which unlinks via its current epic. */
+  epicClearable?: boolean;
   onMoveSprint?: (sprintId: string) => void;
   /** Rank the target(s) to the top/bottom of the current sprint (whole sprint). */
   onMoveToTop?: () => void;
   onMoveToBottom?: () => void;
+  /** One-click move destinations shown above "Move to Sprint" (BRDG-369). */
+  quickMoves?: QuickMoveOption[];
+  onQuickMove?: (opt: QuickMoveOption) => void;
   onUpdateAssignee?: (accountId: string | null, name: string | null) => void;
   onUpdateLabel?: (labels: string[], mode: "add" | "set") => void;
   /** When supplied, renders Flag / Remove flag items. `true` flags, `false` unflags. */
@@ -580,18 +539,22 @@ export function TicketActionMenuContent({
   onReviewStory?: () => void;
   onGenerateSubtasks?: () => void;
   onRefine?: () => void;
+  /** New story inbox (BRDG-373): renders a leading "Mark as read" item. Omitted on
+   *  the board / epic children, whose menu is unchanged. */
+  onMarkRead?: () => void;
   sprints?: Sprint[];
   pinnedSprintIds?: string[];
   close: () => void;
 }) {
   const [subView, setSubView] = useState<UpdateSubView>("menu");
 
-  const hasUpdateAction = onSetStatus || onSetReadiness || onSetEpic || onMoveSprint || onMoveToTop || onMoveToBottom || onUpdateAssignee || onUpdateLabel;
+  const hasQuickMoves = Boolean(onQuickMove && quickMoves && quickMoves.length > 0);
+  const hasUpdateAction = onSetStatus || onSetReadiness || onSetEpic || hasQuickMoves || onMoveSprint || onMoveToTop || onMoveToBottom || onUpdateAssignee || onUpdateLabel;
   const hasAiAction = onReviewStory || onGenerateSubtasks || onRefine;
-  // The three "Move to …" actions form their own group, fenced by dividers from the
+  // The "Move to …" actions form their own group, fenced by dividers from the
   // set-* items above and the assignee/label items below.
   const hasSetAction = onSetStatus || onSetReadiness || onSetEpic;
-  const hasMoveAction = (onMoveSprint && sprints) || onMoveToTop || onMoveToBottom;
+  const hasMoveAction = hasQuickMoves || (onMoveSprint && sprints) || onMoveToTop || onMoveToBottom;
   const hasOtherUpdate = onUpdateAssignee || onUpdateLabel;
   const showFlag = Boolean(onSetFlagged);
   const showFlagItem = flagState !== "flagged"; // show "Flag" unless every target is already flagged
@@ -600,10 +563,37 @@ export function TicketActionMenuContent({
   if (subView === "menu") {
     return (
       <>
+        {onMarkRead && (
+          <>
+            <MenuItem
+              icon={<Check className="h-3.5 w-3.5" strokeWidth={2} />}
+              onClick={() => { onMarkRead(); close(); }}
+            >
+              Mark as read
+            </MenuItem>
+            {(hasUpdateAction || showFlag || hasAiAction) && <div className="mx-2 my-1 h-px bg-overlay-strong" />}
+          </>
+        )}
         {onSetStatus && <MenuItem onClick={() => setSubView("status")}>Set Status</MenuItem>}
         {onSetReadiness && <MenuItem onClick={() => setSubView("readiness")}>Set Readiness</MenuItem>}
         {onSetEpic && <MenuItem onClick={() => setSubView("epic")}>Set Epic</MenuItem>}
         {hasSetAction && hasMoveAction && <div className="mx-2 my-1 h-px bg-overlay-strong" />}
+        {hasQuickMoves && quickMoves!.map((opt) => (
+          <MenuItem key={opt.id} onClick={() => { onQuickMove!(opt); close(); }}>
+            <span className="flex items-center gap-2">
+              {opt.label}
+              {opt.badge && (
+                <span
+                  className="h-[7px] w-[7px] shrink-0 rounded-full bg-[var(--color-status-success)]"
+                  style={{ boxShadow: "0 0 6px var(--color-status-success)" }}
+                  title={opt.badge}
+                  aria-label={opt.badge}
+                />
+              )}
+            </span>
+          </MenuItem>
+        ))}
+        {hasQuickMoves && ((onMoveSprint && sprints) || onMoveToTop || onMoveToBottom) && <div className="mx-2 my-1 h-px bg-overlay-strong" />}
         {onMoveSprint && sprints && <MenuItem onClick={() => setSubView("sprint")}>Move to Sprint</MenuItem>}
         {onMoveToTop && <MenuItem onClick={() => { onMoveToTop(); close(); }}>Move to top</MenuItem>}
         {onMoveToBottom && <MenuItem onClick={() => { onMoveToBottom(); close(); }}>Move to bottom</MenuItem>}
@@ -637,6 +627,20 @@ export function TicketActionMenuContent({
     );
   }
 
+  // The epic panel renders the shared EpicPickerBody, whose own search row sits at
+  // the top, so it skips the Back row to read like the sidebar EpicPicker (BRDG-381).
+  if (subView === "epic") {
+    return (
+      <EpicPickerBody
+        value={epicValue ?? null}
+        ticketKey={epicSuggestTicketKey}
+        clearable={epicClearable}
+        onChange={(epic) => { onSetEpic?.(epic?.key ?? null, epic?.name ?? null); close(); }}
+        onClose={close}
+      />
+    );
+  }
+
   return (
     <>
       <BackButton onClick={() => setSubView("menu")} />
@@ -645,7 +649,6 @@ export function TicketActionMenuContent({
       {subView === "sprint" && sprints && (
         <SprintSubPanel sprints={sprints} pinnedSprintIds={pinnedSprintIds} onSelect={(id) => { onMoveSprint?.(id); close(); }} />
       )}
-      {subView === "epic" && <EpicSubPanel onSelect={(key) => { onSetEpic?.(key); close(); }} />}
       {subView === "assignee" && <AssigneeSubPanel onSelect={(accountId, name) => { onUpdateAssignee?.(accountId, name); close(); }} />}
       {subView === "label" && <LabelSubPanel onSelect={(labels, mode) => { onUpdateLabel?.(labels, mode); close(); }} />}
     </>

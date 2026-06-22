@@ -901,6 +901,17 @@ export const favoriteUsers = {
     apiFetch<{ displayName: string }>(`/api/settings/favorite-users${qs({ displayName, accountId: accountId ?? undefined })}`, { method: "DELETE", signal }),
 };
 
+export const poUsers = {
+  listUrl: () => "/api/settings/po-users" as const,
+
+  list: (signal?: AbortSignal) =>
+    apiFetch<{ pos: string[]; accountIds: string[] }>("/api/settings/po-users", { signal }),
+  add: (displayName: string, accountId?: string | null, signal?: AbortSignal) =>
+    apiFetch<{ displayName: string }>("/api/settings/po-users", { method: "POST", body: { displayName, ...(accountId ? { accountId } : {}) }, signal }),
+  remove: (displayName: string, accountId?: string | null, signal?: AbortSignal) =>
+    apiFetch<{ displayName: string }>(`/api/settings/po-users${qs({ displayName, accountId: accountId ?? undefined })}`, { method: "DELETE", signal }),
+};
+
 export const userTeams = {
   listUrl: () => "/api/settings/user-teams" as const,
 

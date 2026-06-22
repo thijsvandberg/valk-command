@@ -13,6 +13,7 @@ import type { FilterControlsPanelProps } from "@/components/sprint-board/FilterC
 import { TicketTable } from "@/components/sprint-board/TicketTable";
 import { BulkActionBar } from "@/components/sprint-board/BulkActionBar";
 import { CursorMenu, TicketActionMenuContent, type FlagState } from "@/components/sprint-board/ticket-action-menu";
+import type { EpicOption } from "@/components/shared/EpicPicker";
 import { ConfirmDialog } from "@/components/shared/ConfirmDialog";
 import { SidePanel } from "@/components/sprint-board/SidePanel";
 import { SprintAnalytics } from "@/components/sprint-board/SprintAnalytics";
@@ -21,6 +22,7 @@ const SearchModal = dynamic(() => import("@/components/sprint-board/SearchModal"
 const AddToRefinementModal = dynamic(() => import("@/components/refinement-session/AddToRefinementModal").then((m) => ({ default: m.AddToRefinementModal })), { ssr: false });
 import { useJiraSprints, useTickets, useTicketDetail } from "@/hooks/useSprintBoard";
 import { useBacklogDropTarget } from "@/hooks/useBacklogDropTarget";
+import { computeQuickMoves, type QuickMoveOption } from "@/lib/quick-moves";
 import { useTicketSessionMap } from "@/hooks/useTicketSessionMap";
 import { useLocalStorage } from "@/hooks/useLocalStorage";
 import { useMigratedAccountSetting } from "@/hooks/useMigratedAccountSetting";
@@ -186,6 +188,9 @@ export default function SprintBoard() {
   const [editModalOpen, setEditModalOpen] = useState(false);
   const [autoSuggest, setAutoSuggest] = useState(false);
   const [createSprintModalOpen, setCreateSprintModalOpen] = useState(false);
+  // Quick-move auto-create (BRDG-369): when "Move to next sprint" targets a sprint that
+  // does not exist yet, open the create modal prefilled, then move these targets into it.
+  const [quickCreate, setQuickCreate] = useState<{ name: string; targets: Set<string> } | null>(null);
   // Sprint overview opened from the views bar's overflow menu (BRDG-319); the header
   // keeps its own entry, so this is a separate instance with its own open state. The
   // anchor positions the popover beneath the overflow (⋯) button.
@@ -348,7 +353,7 @@ export default function SprintBoard() {
   }, [sprints]);
 
   // Ticket actions hook (must be before useSprintBoardFilters which needs readinessMap)
-  const ta = useTicketActions({ apiTickets, mutateTickets, activeListKey, showToast });
+  const ta = useTicketActions({ apiTickets, mutateTickets, activeListKey, sprintNameMap, showToast });
   const { poStatuses, readinessMap, inflightKeys } = ta;
   // Stable useCallback refs from the actions hook, aliased so the local bulk
   // wrappers below can depend on them directly. Depending on `ta` itself would
@@ -417,6 +422,13 @@ export default function SprintBoard() {
     () => (isFlatView && warningLensActive ? tickets.filter((t) => matchesWarningFilter(t, !!flatIsActiveSprint)) : tickets),
     [isFlatView, warningLensActive, tickets, flatIsActiveSprint],
   );
+  // The right-clicked row's current epic (single target only), read from the
+  // overlay-aware list so the Set Epic panel's checkmark + Unlink match the chip.
+  const rowMenuEpic = useMemo<EpicOption | null>(() => {
+    if (!rowMenu || rowMenu.targets.size !== 1) return null;
+    const t = displayTickets.find((d) => d.key === [...rowMenu.targets][0]);
+    return t?.epic && t?.epicKey ? { key: t.epicKey, name: t.epic } : null;
+  }, [rowMenu, displayTickets]);
   // A change to any persistent filter, the search query, or the active view/sprint exits the
   // lens so it never narrows onto a stale set (req 3). Same signature feeds the grouped view.
   const { currentFiltersSnapshot, searchQuery: fSearchQuery, activeViewId } = f;
@@ -464,17 +476,25 @@ export default function SprintBoard() {
     const trimmed = title.trim();
     if (!trimmed) return;
     const placeholderKey = `pending-${Date.now()}`;
-    // Land the new ticket at the bottom of its sprint but above the trailing done/deprecated block,
-    // and have it appear there instantly with no resort/jump: pick a jiraRank between the two
-    // neighbours at the insertion point so the rank sort keeps it in place (BRDG-315).
+    // Placement rule (BRDG-371): a backlog (the generic backlog, or a named one like
+    // "BT: Backlog") lands the new story at the TOP; a regular sprint lands it at the
+    // BOTTOM, above the trailing done/deprecated block. The optimistic row gets a
+    // jiraRank that keeps it in that spot under the rank sort with no resort/jump.
     const sprintTickets = displayTickets.filter((t) =>
       sprintId === null ? t.sprintId == null : t.sprintId === sprintId,
     );
-    const insertIdx = trailingDoneDepStart(sprintTickets);
-    const placeholderRank = interpolateRank(
-      sprintTickets[insertIdx - 1]?.jiraRank,
-      sprintTickets[insertIdx]?.jiraRank,
-    );
+    const destName = sprintId == null ? null : (sprintNameMap[sprintId] ?? null);
+    const isBacklogDest = sprintId == null || (destName != null && isBacklogSprintName(destName));
+    let placeholderRank: number | null;
+    if (isBacklogDest) {
+      placeholderRank = interpolateRank(undefined, sprintTickets[0]?.jiraRank);
+    } else {
+      const insertIdx = trailingDoneDepStart(sprintTickets);
+      placeholderRank = interpolateRank(
+        sprintTickets[insertIdx - 1]?.jiraRank,
+        sprintTickets[insertIdx]?.jiraRank,
+      );
+    }
     const placeholder: Ticket = {
       key: placeholderKey,
       title: trimmed,
@@ -514,7 +534,7 @@ export default function SprintBoard() {
         mutateTickets((data) => data?.filter((t) => t.key !== placeholderKey), { revalidate: false });
         showToast("Failed to create story");
       });
-  }, [mutateTickets, showToast, displayTickets]);
+  }, [mutateTickets, showToast, displayTickets, sprintNameMap]);
 
   // Sync PO data from API
   useEffect(() => { if (apiTickets && apiTickets.length > 0) syncFromApiTickets(apiTickets); }, [apiTickets, syncFromApiTickets]);
@@ -685,7 +705,7 @@ export default function SprintBoard() {
   }, [refinementSessionList, mutateRefinementSessions, showToast]);
   const handleRefineSelected = useCallback(() => { openRefine(Array.from(checkedTickets)); }, [checkedTickets, openRefine]);
   const handleBulkSetStatus = useCallback(async (status: Parameters<typeof taBulkSetStatus>[0], targets: Set<string> = checkedTickets) => { await taBulkSetStatus(status, targets); }, [taBulkSetStatus, checkedTickets]);
-  const handleBulkSetEpic = useCallback(async (epicKey: string | null, targets: Set<string> = checkedTickets) => { await taBulkSetEpic(epicKey, targets); }, [taBulkSetEpic, checkedTickets]);
+  const handleBulkSetEpic = useCallback(async (epicKey: string | null, epicName: string | null, targets: Set<string> = checkedTickets) => { await taBulkSetEpic(epicKey, epicName, targets); }, [taBulkSetEpic, checkedTickets]);
   const handleBulkMoveSprint = useCallback(async (sprintId: string, targets: Set<string> = checkedTickets) => {
     const isBacklog = sprintId === "__backlog__";
     const dest = sprintNameMap[sprintId] ?? (isBacklog ? "backlog" : "sprint");
@@ -711,6 +731,20 @@ export default function SprintBoard() {
       0,
     );
   }, [taBulkMoveSprint, checkedTickets, sprintNameMap, handleSprintListSelect, showToast, dismissToast, refreshMeter]);
+  // Quick-move options (BRDG-369) for a given target set: resolve each target's current
+  // sprint name, then derive next/active/backlog destinations.
+  const quickMovesFor = useCallback((targets: Set<string>): QuickMoveOption[] => {
+    const currentSprintNames = [...targets].map((key) => {
+      const t = displayTickets.find((d) => d.key === key);
+      return t?.sprintId ? (sprintNameMap[t.sprintId] ?? null) : null;
+    });
+    return computeQuickMoves({ currentSprintNames, sprints, backlogTargetName });
+  }, [displayTickets, sprintNameMap, sprints, backlogTargetName]);
+  const handleQuickMove = useCallback((opt: QuickMoveOption, targets: Set<string> = checkedTickets) => {
+    if (targets.size === 0) return;
+    if (opt.createName) { setQuickCreate({ name: opt.createName, targets: new Set(targets) }); return; }
+    if (opt.targetSprintId) void handleBulkMoveSprint(opt.targetSprintId, targets);
+  }, [checkedTickets, handleBulkMoveSprint]);
   const handleBulkUpdateAssignee = useCallback(async (accountId: string | null, name: string | null, targets: Set<string> = checkedTickets) => { await taBulkUpdateAssignee(accountId, name, targets); }, [taBulkUpdateAssignee, checkedTickets]);
   const handleBulkUpdateLabels = useCallback(async (labels: string[], mode: "add" | "set", targets: Set<string> = checkedTickets) => { await taBulkUpdateLabels(labels, mode, targets); }, [taBulkUpdateLabels, checkedTickets]);
   const handleBulkGenerateSubtasks = useCallback(async (targets: Set<string> = checkedTickets) => { const keys = Array.from(targets); setBulkGenerating(true); showToast(`Generating subtasks for ${keys.length} ticket${keys.length === 1 ? "" : "s"}...`); try { const { succeeded, failed } = await bulkGenerateSubtasks(keys); if (failed > 0) { showToast(`Generated subtasks for ${succeeded} ticket${succeeded === 1 ? "" : "s"}, ${failed} failed`); } else { showToast(`Subtask suggestions sent for ${succeeded} ticket${succeeded === 1 ? "" : "s"}`); } mutateTickets(); } finally { setBulkGenerating(false); } }, [checkedTickets, showToast, mutateTickets]);
@@ -990,7 +1024,7 @@ export default function SprintBoard() {
   // overflow over the panel when the list column is narrowed.
   const bulkActionBar = someChecked && (() => {
     const sel = tickets.filter((t) => checkedTickets.has(t.key));
-    return <BulkActionBar floating count={checkedTickets.size} totalCount={tickets.length} selectedPoints={sel.reduce((s, t) => s + (t.storyPoints ?? 0), 0)} selectedBV={sel.reduce((s, t) => s + (t.businessValue ?? 0), 0)} allChecked={allChecked} onToggleAll={toggleAll} onClear={() => setCheckedTickets(new Set())} onSetReadiness={handleBulkSetReadiness} onSetStatus={handleBulkSetStatus} onSetEpic={handleBulkSetEpic} onMoveSprint={handleBulkMoveSprint} onUpdateAssignee={handleBulkUpdateAssignee} onUpdateLabel={handleBulkUpdateLabels} onSetFlagged={(flagged) => handleSetFlagged(flagged)} flagState={computeFlagState(checkedTickets)} sprints={sprints} pinnedSprintIds={slotSprints} onRefreshFromJira={handleBulkRefresh} onReviewStory={handleBulkReviewStory} onCopyToClipboard={handleCopyToClipboard} onExportForStakeholders={handleExportForStakeholders} isRefreshing={bulkRefreshing} isExporting={exportTask.isActive} onGenerateSubtasks={handleBulkGenerateSubtasks} isGeneratingSubtasks={bulkGenerating} onRefine={handleRefineSelected} />;
+    return <BulkActionBar floating count={checkedTickets.size} totalCount={tickets.length} selectedPoints={sel.reduce((s, t) => s + (t.storyPoints ?? 0), 0)} selectedBV={sel.reduce((s, t) => s + (t.businessValue ?? 0), 0)} allChecked={allChecked} onToggleAll={toggleAll} onClear={() => setCheckedTickets(new Set())} onSetReadiness={handleBulkSetReadiness} onSetStatus={handleBulkSetStatus} onSetEpic={handleBulkSetEpic} onMoveSprint={handleBulkMoveSprint} quickMoves={quickMovesFor(checkedTickets)} onQuickMove={(opt) => handleQuickMove(opt, checkedTickets)} onUpdateAssignee={handleBulkUpdateAssignee} onUpdateLabel={handleBulkUpdateLabels} onSetFlagged={(flagged) => handleSetFlagged(flagged)} flagState={computeFlagState(checkedTickets)} sprints={sprints} pinnedSprintIds={slotSprints} onRefreshFromJira={handleBulkRefresh} onReviewStory={handleBulkReviewStory} onCopyToClipboard={handleCopyToClipboard} onExportForStakeholders={handleExportForStakeholders} isRefreshing={bulkRefreshing} isExporting={exportTask.isActive} onGenerateSubtasks={handleBulkGenerateSubtasks} isGeneratingSubtasks={bulkGenerating} onRefine={handleRefineSelected} />;
   })();
 
   return (
@@ -1044,6 +1078,25 @@ export default function SprintBoard() {
       <SearchModal open={searchModalOpen} initialQuery={f.searchQuery} onClose={() => setSearchModalOpen(false)} onSelectTicket={(key: string) => setSelectedTicket(key)} sprintNameMap={sprintNameMap} />
       {editModalOpen && editSprint && <SprintEditModal sprint={editSprint} tickets={editSprintTickets} onClose={() => { setEditModalOpen(false); setAutoSuggest(false); setEditSprintId(null); }} showToast={showToast} autoSuggest={autoSuggest} />}
       {createSprintModalOpen && <CreateSprintModal onClose={() => setCreateSprintModalOpen(false)} onCreated={handleSprintCreated} showToast={showToast} suggestedName={suggestedSprintName} suggestedStartDate={suggestedSprintStartDate} previousSprintName={latestRegular?.sprint.name} previousSprintEndIso={latestRegular?.sprint.endDate ?? null} />}
+      {quickCreate && (
+        <CreateSprintModal
+          onClose={() => setQuickCreate(null)}
+          onCreated={(sprint) => {
+            const id = String(sprint.id);
+            const targets = quickCreate.targets;
+            setQuickCreate(null);
+            // Move the selection in first so the pending-move overlay keeps the rows
+            // visible across the navigation the slot-add triggers, then pin + navigate.
+            void handleBulkMoveSprint(id, targets);
+            handleSprintCreated(sprint);
+          }}
+          showToast={showToast}
+          suggestedName={quickCreate.name}
+          suggestedStartDate={suggestedSprintStartDate}
+          previousSprintName={latestRegular?.sprint.name}
+          previousSprintEndIso={latestRegular?.sprint.endDate ?? null}
+        />
+      )}
       {barSprintListAnchor && <SprintListModal onClose={() => setBarSprintListAnchor(null)} onSelect={handleSprintListSelect} onPin={handleAddSlotWithSprint} pinnedIds={slotSprintsSet} portalAnchor={barSprintListAnchor} />}
       {finishModalOpen && finishSprint && (
         <FinishSprintModal
@@ -1064,8 +1117,13 @@ export default function SprintBoard() {
           <TicketActionMenuContent
             onSetStatus={(s) => handleBulkSetStatus(s, rowMenu.targets)}
             onSetReadiness={(r) => handleBulkSetReadiness(r, rowMenu.targets)}
-            onSetEpic={(epicKey) => handleBulkSetEpic(epicKey, rowMenu.targets)}
+            onSetEpic={(epicKey, epicName) => handleBulkSetEpic(epicKey, epicName, rowMenu.targets)}
+            epicValue={rowMenuEpic}
+            epicSuggestTicketKey={rowMenu.targets.size === 1 ? Array.from(rowMenu.targets)[0] : undefined}
+            epicClearable={rowMenu.targets.size > 1}
             onMoveSprint={(sprintId) => handleBulkMoveSprint(sprintId, rowMenu.targets)}
+            quickMoves={quickMovesFor(rowMenu.targets)}
+            onQuickMove={(opt) => handleQuickMove(opt, rowMenu.targets)}
             onMoveToTop={!isAllView && f.sortField === "rank" ? () => handleRankToEdge(rowMenu.targets, "top") : undefined}
             onMoveToBottom={!isAllView && f.sortField === "rank" ? () => handleRankToEdge(rowMenu.targets, "bottom") : undefined}
             onUpdateAssignee={(accountId, name) => handleBulkUpdateAssignee(accountId, name, rowMenu.targets)}

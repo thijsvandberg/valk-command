@@ -14,9 +14,12 @@ import {
   Sparkles,
   Settings2,
   RefreshCw,
+  Check,
 } from "lucide-react";
+import { Tooltip } from "@/components/shared/Tooltip";
 import { BarContainer, BarDivider } from "@/components/shared/BarContainer";
 import { AnchoredMenu, MenuItem, TicketActionMenuContent, type FlagState } from "@/components/sprint-board/ticket-action-menu";
+import type { QuickMoveOption } from "@/lib/quick-moves";
 
 // ---------------------------------------------------------------------------
 // Update dropdown (Set Status, Set Readiness, Set Epic, Move to Sprint,
@@ -28,6 +31,8 @@ function UpdateDropdown({
   onSetReadiness,
   onSetEpic,
   onMoveSprint,
+  quickMoves,
+  onQuickMove,
   onUpdateAssignee,
   onUpdateLabel,
   onSetFlagged,
@@ -37,8 +42,10 @@ function UpdateDropdown({
 }: {
   onSetStatus?: (status: JiraStatus) => void;
   onSetReadiness?: (readiness: TicketReadiness | null) => void;
-  onSetEpic?: (epicKey: string | null) => void;
+  onSetEpic?: (epicKey: string | null, epicName: string | null) => void;
   onMoveSprint?: (sprintId: string) => void;
+  quickMoves?: QuickMoveOption[];
+  onQuickMove?: (opt: QuickMoveOption) => void;
   onUpdateAssignee?: (accountId: string | null, name: string | null) => void;
   onUpdateLabel?: (labels: string[], mode: "add" | "set") => void;
   onSetFlagged?: (flagged: boolean) => void;
@@ -52,7 +59,7 @@ function UpdateDropdown({
 
   useOutsideClick([ref, menuRef], () => setOpen(false), { enabled: open });
 
-  const hasAnyAction = onSetStatus || onSetReadiness || onSetEpic || onMoveSprint || onUpdateAssignee || onUpdateLabel || onSetFlagged;
+  const hasAnyAction = onSetStatus || onSetReadiness || onSetEpic || onMoveSprint || (onQuickMove && quickMoves && quickMoves.length > 0) || onUpdateAssignee || onUpdateLabel || onSetFlagged;
   if (!hasAnyAction) return null;
 
   return (
@@ -74,7 +81,10 @@ function UpdateDropdown({
             onSetStatus={onSetStatus}
             onSetReadiness={onSetReadiness}
             onSetEpic={onSetEpic}
+            epicClearable
             onMoveSprint={onMoveSprint}
+            quickMoves={quickMoves}
+            onQuickMove={onQuickMove}
             onUpdateAssignee={onUpdateAssignee}
             onUpdateLabel={onUpdateLabel}
             onSetFlagged={onSetFlagged}
@@ -182,11 +192,16 @@ export function BulkActionBar({
   totalCount,
   onToggleAll,
   onClear,
+  // Inbox-specific prominent primary action (BRDG-373); inert elsewhere.
+  onMarkRead,
+  markReadCount,
   // Update dropdown actions
   onSetReadiness,
   onSetStatus,
   onSetEpic,
   onMoveSprint,
+  quickMoves,
+  onQuickMove,
   onUpdateAssignee,
   onUpdateLabel,
   onSetFlagged,
@@ -213,11 +228,21 @@ export function BulkActionBar({
   totalCount?: number;
   onToggleAll?: () => void;
   onClear: () => void;
+  /**
+   * Inbox "Mark as read" (BRDG-373): when provided, a prominent leading primary
+   * button is rendered before the Update dropdown. The board / epic children omit
+   * it, so their bar renders unchanged.
+   */
+  onMarkRead?: () => void;
+  markReadCount?: number;
   // Update dropdown
   onSetReadiness?: (readiness: TicketReadiness | null) => void;
   onSetStatus?: (status: JiraStatus) => void;
-  onSetEpic?: (epicKey: string | null) => void;
+  onSetEpic?: (epicKey: string | null, epicName: string | null) => void;
   onMoveSprint?: (sprintId: string) => void;
+  /** One-click move destinations shown above "Move to Sprint" (BRDG-369). */
+  quickMoves?: QuickMoveOption[];
+  onQuickMove?: (opt: QuickMoveOption) => void;
   onUpdateAssignee?: (accountId: string | null, name: string | null) => void;
   onUpdateLabel?: (labels: string[], mode: "add" | "set") => void;
   onSetFlagged?: (flagged: boolean) => void;
@@ -280,12 +305,28 @@ export function BulkActionBar({
 
       <BarDivider />
 
+      {/* Inbox primary action (BRDG-373): prominent "Mark as read", first in the bar. */}
+      {onMarkRead && (
+        <>
+          <Tooltip content="Mark the selected stories as read; they leave the inbox (undoable)">
+            <Button variant="primary" size="md" onClick={onMarkRead}>
+              <Check className="h-3.5 w-3.5 shrink-0" strokeWidth={2} />
+              <span className="hidden sm:inline">Mark {markReadCount} as read</span>
+              <span className="sm:hidden">Read</span>
+            </Button>
+          </Tooltip>
+          <BarDivider />
+        </>
+      )}
+
       {/* Update dropdown */}
       <UpdateDropdown
         onSetStatus={onSetStatus}
         onSetReadiness={onSetReadiness}
         onSetEpic={onSetEpic}
         onMoveSprint={onMoveSprint}
+        quickMoves={quickMoves}
+        onQuickMove={onQuickMove}
         onUpdateAssignee={onUpdateAssignee}
         onUpdateLabel={onUpdateLabel}
         onSetFlagged={onSetFlagged}

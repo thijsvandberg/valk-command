@@ -72,4 +72,34 @@ describe("WarningBadge (BRDG-366)", () => {
     fireEvent.click(screen.getByRole("button", { name: /closed with open subtasks/i }));
     expect(screen.getByTestId("subtask-popover")).toBeInTheDocument();
   });
+
+  // The badge sits inside a draggable BoardRow whose dnd-kit keyboard sensor reacts to
+  // Space/Enter. Modal/popover content renders through a portal but is still a React-tree
+  // descendant of the badge, so keystrokes would otherwise bubble to the row and pick it up
+  // for dragging (swallowing the space in the subtask input). The wrapper must absorb them.
+  it("does not let keystrokes from the add-subtasks modal bubble to the row handler", () => {
+    const onRowKeyDown = vi.fn();
+    render(
+      <div onKeyDown={onRowKeyDown}>
+        <WarningBadge kind="no_subtasks" ticket={makeTicket({ jiraStatus: "TO DO", totalSubtaskCount: 0 })} onSubtasksAdded={vi.fn()} />
+      </div>,
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: /no subtasks/i }));
+    fireEvent.keyDown(screen.getByTestId("add-modal"), { key: " ", code: "Space" });
+    expect(onRowKeyDown).not.toHaveBeenCalled();
+  });
+
+  it("does not let keystrokes from the closed-subtasks popover bubble to the row handler", () => {
+    const onRowKeyDown = vi.fn();
+    render(
+      <div onKeyDown={onRowKeyDown}>
+        <WarningBadge kind="closed_with_open_subtasks" ticket={makeTicket()} onCloseSubtasks={vi.fn()} />
+      </div>,
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: /closed with open subtasks/i }));
+    fireEvent.keyDown(screen.getByTestId("subtask-popover"), { key: " ", code: "Space" });
+    expect(onRowKeyDown).not.toHaveBeenCalled();
+  });
 });

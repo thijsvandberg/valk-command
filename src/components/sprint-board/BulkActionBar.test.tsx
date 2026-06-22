@@ -300,4 +300,18 @@ describe("BulkActionBar", () => {
     render(<BulkActionBar {...defaultProps} onToggleAll={vi.fn()} allChecked={true} />);
     expect(screen.getByTitle("Deselect all")).toBeTruthy();
   });
+
+  // BRDG-373: the inbox-only "Mark as read" primary action.
+  it("renders the Mark as read button and calls onMarkRead when provided", () => {
+    const onMarkRead = vi.fn();
+    render(<BulkActionBar {...defaultProps} onMarkRead={onMarkRead} markReadCount={3} />);
+    const btn = screen.getByRole("button", { name: /Mark 3 as read/ });
+    fireEvent.click(btn);
+    expect(onMarkRead).toHaveBeenCalledOnce();
+  });
+
+  it("does not render the Mark as read button by default (board / epic bar unchanged)", () => {
+    render(<BulkActionBar {...defaultProps} onSetStatus={vi.fn()} />);
+    expect(screen.queryByText(/Mark .* as read/)).toBeNull();
+  });
 });

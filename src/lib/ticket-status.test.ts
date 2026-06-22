@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { FINISHED_STATUSES, isFinishedStatus, EXCLUDED_SCAN_TYPES, isScannableType } from "./ticket-status";
+import { FINISHED_STATUSES, isFinishedStatus, IN_FLIGHT_STATUSES, isInFlightStatus, EXCLUDED_SCAN_TYPES, isScannableType } from "./ticket-status";
 
 describe("FINISHED_STATUSES", () => {
   it("includes DONE and DEPRECATED", () => {
@@ -45,6 +45,41 @@ describe("isFinishedStatus", () => {
 
   it("returns false for empty string", () => {
     expect(isFinishedStatus("")).toBe(false);
+  });
+});
+
+describe("IN_FLIGHT_STATUSES", () => {
+  it("contains exactly IN PROGRESS and TEST", () => {
+    expect(IN_FLIGHT_STATUSES).toContain("IN PROGRESS");
+    expect(IN_FLIGHT_STATUSES).toContain("TEST");
+    expect(IN_FLIGHT_STATUSES).not.toContain("TO DO");
+    expect(IN_FLIGHT_STATUSES).not.toContain("DONE");
+  });
+});
+
+describe("isInFlightStatus", () => {
+  it("returns true for IN PROGRESS and TEST (exact uppercase)", () => {
+    expect(isInFlightStatus("IN PROGRESS")).toBe(true);
+    expect(isInFlightStatus("TEST")).toBe(true);
+  });
+
+  it("returns true for case-insensitive variants", () => {
+    expect(isInFlightStatus("in progress")).toBe(true);
+    expect(isInFlightStatus("In Progress")).toBe(true);
+    expect(isInFlightStatus("test")).toBe(true);
+    expect(isInFlightStatus("  Test  ")).toBe(true);
+  });
+
+  it("returns false for not-yet-started and finished statuses", () => {
+    expect(isInFlightStatus("TO DO")).toBe(false);
+    expect(isInFlightStatus("DONE")).toBe(false);
+    expect(isInFlightStatus("DEPRECATED")).toBe(false);
+  });
+
+  it("returns false for null, undefined and empty string", () => {
+    expect(isInFlightStatus(null)).toBe(false);
+    expect(isInFlightStatus(undefined)).toBe(false);
+    expect(isInFlightStatus("")).toBe(false);
   });
 });
 

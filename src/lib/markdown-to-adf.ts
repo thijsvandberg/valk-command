@@ -2,6 +2,8 @@
 // Handles the subset of markdown features used in story descriptions.
 // ADF spec: https://developer.atlassian.com/cloud/jira/platform/apis/document/structure/
 
+import { safeHref } from "./safe-href";
+
 interface AdfNode {
   type: string;
   content?: AdfNode[];
@@ -569,14 +571,16 @@ function parseInline(text: string): AdfNode[] {
       continue;
     }
 
-    // Link [text](url)
+    // Link [text](url). An unsafe scheme (javascript:/data:/vbscript:) is dropped
+    // to plain text so it cannot round-trip a script-executing link back into Jira.
     const linkMatch = remaining.match(/^\[(.+?)\]\((.+?)\)/);
     if (linkMatch) {
-      nodes.push({
-        type: "text",
-        text: linkMatch[1],
-        marks: [{ type: "link", attrs: { href: linkMatch[2] } }],
-      });
+      const safe = safeHref(linkMatch[2]);
+      nodes.push(
+        safe
+          ? { type: "text", text: linkMatch[1], marks: [{ type: "link", attrs: { href: safe } }] }
+          : { type: "text", text: linkMatch[1] },
+      );
       remaining = remaining.slice(linkMatch[0].length);
       continue;
     }

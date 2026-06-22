@@ -1,5 +1,5 @@
 import DOMPurify from "isomorphic-dompurify";
-import { SANITIZE_HTML_OPTIONS } from "./sanitize-html-config";
+import { SANITIZE_HTML_OPTIONS, ensureSanitizeHooks } from "./sanitize-html-config";
 
 /**
  * Sanitize HTML/markdown content before database storage.
@@ -7,6 +7,7 @@ import { SANITIZE_HTML_OPTIONS } from "./sanitize-html-config";
  * while stripping dangerous tags and attributes.
  */
 export function sanitizeHtml(dirty: string): string {
+  ensureSanitizeHooks();
   return DOMPurify.sanitize(dirty, SANITIZE_HTML_OPTIONS);
 }
 

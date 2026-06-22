@@ -26,6 +26,7 @@ import { EstimatePicker } from "@/components/shared/EstimatePicker";
 import { TicketStatusPill } from "@/components/shared/TicketStatusPill";
 import { prefetchTicketPage } from "@/lib/prefetch";
 import { useLiveTicketChange } from "@/hooks/useLiveTicketChange";
+import { normalizeEpicStatus } from "@/lib/epic-filters";
 
 const ALL_TAGS: Set<InlineTagId> = new Set(["flag", "refinement", "quality", "notes", "poReadiness", "editState", "storyPoints", "businessValue", "epic", "assignee", "creator"]);
 
@@ -132,6 +133,13 @@ export interface BoardRowBaseProps {
    *  Story Writer landing). Off by default so the board keeps its checkbox. */
   hideCheckbox?: boolean;
   /**
+   * Sprint board (BRDG-368): hide the assignee avatar by default and reveal it on row
+   * hover when it is pure noise — terminal tickets (DONE / DEPRECATED) and unassigned
+   * tickets. Active-status assigned rows are unaffected. Off by default so other hosts
+   * (inbox, epic children) keep showing the avatar as today.
+   */
+  hideAssigneeUntilHover?: boolean;
+  /**
    * Last row in its card: rounds the row surface's bottom corners so the hover/selection
    * fill follows the card's rounded edge instead of bleeding square into the corners. The
    * card lets content bleed past its edge (overflow-clip-margin) so the drag handle can
@@ -203,6 +211,7 @@ export const BoardRow = memo(forwardRef<HTMLTableRowElement, BoardRowBaseProps>(
     sessionJiraChanged = false,
     splitTarget,
     hideCheckbox = false,
+    hideAssigneeUntilHover = false,
     isLastInCard = false,
     rowStyle,
     dragListeners,
@@ -222,6 +231,10 @@ export const BoardRow = memo(forwardRef<HTMLTableRowElement, BoardRowBaseProps>(
   // remount the picker, dropping the open dropdown before you can commit. So we
   // freeze which slot it renders in for as long as its popover is open (BRDG-323).
   const [estimateSlotFrozen, setEstimateSlotFrozen] = useState<null | "value" | "placeholder">(null);
+  // BRDG-368: keep the hover-revealed assignee visible while its picker popover is
+  // open, so moving the cursor off the row into the open dropdown does not fade the
+  // trigger out from under it (mirrors metaPickerOpen for the planning cluster).
+  const [assigneePickerOpen, setAssigneePickerOpen] = useState(false);
   const titleInputRef = useRef<HTMLTextAreaElement>(null);
   const titleEditContainerRef = useRef<HTMLDivElement>(null);
 
@@ -244,6 +257,12 @@ export const BoardRow = memo(forwardRef<HTMLTableRowElement, BoardRowBaseProps>(
   // entirely here (no hover placeholder). A deprecated ticket that still carries a
   // value keeps showing it.
   const isDeprecated = ticket.jiraStatus === "DEPRECATED";
+  // BRDG-368: on the sprint board the assignee is pure noise on terminal tickets
+  // (DONE / DEPRECATED, via the canonical normalizer so Closed/Resolved collapse to
+  // DONE) and on unassigned rows. In those cases hide it by default and reveal on row
+  // hover/focus; active-status assigned rows keep the avatar always visible.
+  const isTerminalStatus = ["DONE", "DEPRECATED"].includes(normalizeEpicStatus(ticket.jiraStatus));
+  const hideAssignee = hideAssigneeUntilHover && (isTerminalStatus || !ticket.assignee);
 
   // Epic / SP / BV placement (BRDG-310): everything that is *set* renders in its
   // natural slot; the still-empty (but applicable) planning fields reserve no space and
@@ -761,7 +780,15 @@ export const BoardRow = memo(forwardRef<HTMLTableRowElement, BoardRowBaseProps>(
                   picker inline, mirroring the ticket sidebar. */}
               {tags.has("assignee") && (
                 <div
-                  className="ml-1.5 shrink-0"
+                  // The wrapper always reserves the 26px avatar width (BRDG-325), so
+                  // fading the avatar in/out via opacity never shifts the row (BRDG-368).
+                  // Opacity-only transition, matching the row's other hover overlays;
+                  // focus-within keeps keyboard/focus-visible access to the picker.
+                  className={`ml-1.5 shrink-0${
+                    hideAssignee && !assigneePickerOpen
+                      ? " opacity-0 transition-opacity duration-150 group-hover/row:opacity-100 focus-within:opacity-100"
+                      : ""
+                  }`}
                   onPointerDown={(e) => e.stopPropagation()}
                   onClick={(e) => e.stopPropagation()}
                 >
@@ -769,6 +796,7 @@ export const BoardRow = memo(forwardRef<HTMLTableRowElement, BoardRowBaseProps>(
                     <AssigneePicker
                       value={ticket.assignee ?? null}
                       onChange={(u) => onAssigneeChange(ticket.key, u)}
+                      onOpenChange={setAssigneePickerOpen}
                       variant="avatar"
                       avatarSize={26}
                       align="right"
