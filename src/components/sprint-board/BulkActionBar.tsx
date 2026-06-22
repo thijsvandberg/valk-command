@@ -14,7 +14,9 @@ import {
   Sparkles,
   Settings2,
   RefreshCw,
+  Check,
 } from "lucide-react";
+import { Tooltip } from "@/components/shared/Tooltip";
 import { BarContainer, BarDivider } from "@/components/shared/BarContainer";
 import { AnchoredMenu, MenuItem, TicketActionMenuContent, type FlagState } from "@/components/sprint-board/ticket-action-menu";
 import type { QuickMoveOption } from "@/lib/quick-moves";
@@ -189,6 +191,9 @@ export function BulkActionBar({
   totalCount,
   onToggleAll,
   onClear,
+  // Inbox-specific prominent primary action (BRDG-373); inert elsewhere.
+  onMarkRead,
+  markReadCount,
   // Update dropdown actions
   onSetReadiness,
   onSetStatus,
@@ -222,6 +227,13 @@ export function BulkActionBar({
   totalCount?: number;
   onToggleAll?: () => void;
   onClear: () => void;
+  /**
+   * Inbox "Mark as read" (BRDG-373): when provided, a prominent leading primary
+   * button is rendered before the Update dropdown. The board / epic children omit
+   * it, so their bar renders unchanged.
+   */
+  onMarkRead?: () => void;
+  markReadCount?: number;
   // Update dropdown
   onSetReadiness?: (readiness: TicketReadiness | null) => void;
   onSetStatus?: (status: JiraStatus) => void;
@@ -291,6 +303,20 @@ export function BulkActionBar({
       </span>
 
       <BarDivider />
+
+      {/* Inbox primary action (BRDG-373): prominent "Mark as read", first in the bar. */}
+      {onMarkRead && (
+        <>
+          <Tooltip content="Mark the selected stories as read; they leave the inbox (undoable)">
+            <Button variant="primary" size="md" onClick={onMarkRead}>
+              <Check className="h-3.5 w-3.5 shrink-0" strokeWidth={2} />
+              <span className="hidden sm:inline">Mark {markReadCount} as read</span>
+              <span className="sm:hidden">Read</span>
+            </Button>
+          </Tooltip>
+          <BarDivider />
+        </>
+      )}
 
       {/* Update dropdown */}
       <UpdateDropdown
