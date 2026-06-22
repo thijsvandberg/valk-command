@@ -110,7 +110,7 @@ menu callers passing only `(epicKey)` are fine (extra name arg ignored); keep th
 - [ ] No default **"No epic"** row. When the (single) target already has an epic, the body shows
       the **Unlink** action (and View), matching the sidebar; the selected epic shows its checkmark.
 - [ ] **AI suggest** (sparkle) appears for a single-row right-click and is hidden for multi-select.
-- [ ] The epic panel in the right-click / bulk menu has **no Back row**.
+- [x] The epic panel in the right-click / bulk menu has **no Back row**.
 - [ ] Setting/unlinking an epic from the menu still updates the board chip instantly (optimistic
       overlay preserved) and a newly created epic still appears via auto-sync / refresh.
 - [x] The 14 existing `EpicPicker` tests pass unchanged; sidebar behaviour (trigger, View-in-sidebar

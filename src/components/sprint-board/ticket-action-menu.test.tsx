@@ -3,7 +3,14 @@ import { describe, it, expect, vi } from "vitest";
 import { TicketActionMenuContent, CursorMenu } from "./ticket-action-menu";
 
 // Sub-panels (Epic/Assignee/Label) fetch via SWR; stub so they never hit the network.
-vi.mock("swr", () => ({ default: () => ({ data: undefined }) }));
+vi.mock("swr", () => ({ default: () => ({ data: undefined, mutate: vi.fn() }) }));
+// The Epic panel renders the shared EpicPickerBody, which pulls in these.
+vi.mock("@/lib/api-client", () => ({
+  apiFetch: vi.fn().mockResolvedValue({}),
+  swrFetcher: vi.fn(),
+  ApiError: class ApiError extends Error { status = 500; body = {}; },
+}));
+vi.mock("@/hooks/useTaskStream", () => ({ useTaskStream: vi.fn() }));
 
 describe("TicketActionMenuContent", () => {
   it("renders only the update items whose callbacks are supplied", () => {
@@ -65,6 +72,35 @@ describe("TicketActionMenuContent", () => {
     rerender(<TicketActionMenuContent onMoveToTop={vi.fn()} onMoveToBottom={vi.fn()} close={vi.fn()} />);
     expect(screen.getByText("Move to top")).toBeInTheDocument();
     expect(screen.getByText("Move to bottom")).toBeInTheDocument();
+  });
+
+  it("opens the Epic panel without a Back row (it reads like the sidebar)", () => {
+    render(<TicketActionMenuContent onSetEpic={vi.fn()} close={vi.fn()} />);
+    fireEvent.click(screen.getByText("Set Epic"));
+    expect(screen.getByPlaceholderText("Search epics...")).toBeInTheDocument();
+    expect(screen.queryByText("Back")).not.toBeInTheDocument();
+  });
+
+  it("shows the AI suggest action in the Epic panel only with a single-target ticket key", () => {
+    const { unmount } = render(<TicketActionMenuContent onSetEpic={vi.fn()} close={vi.fn()} />);
+    fireEvent.click(screen.getByText("Set Epic"));
+    expect(screen.queryByLabelText("Suggest epic with AI")).not.toBeInTheDocument();
+    unmount();
+
+    render(<TicketActionMenuContent onSetEpic={vi.fn()} epicSuggestTicketKey="VPL-1" close={vi.fn()} />);
+    fireEvent.click(screen.getByText("Set Epic"));
+    expect(screen.getByLabelText("Suggest epic with AI")).toBeInTheDocument();
+  });
+
+  it("shows a 'Remove epic' action in the Epic panel only when clearable (bulk)", () => {
+    const { unmount } = render(<TicketActionMenuContent onSetEpic={vi.fn()} close={vi.fn()} />);
+    fireEvent.click(screen.getByText("Set Epic"));
+    expect(screen.queryByText("Remove epic")).not.toBeInTheDocument();
+    unmount();
+
+    render(<TicketActionMenuContent onSetEpic={vi.fn()} epicClearable close={vi.fn()} />);
+    fireEvent.click(screen.getByText("Set Epic"));
+    expect(screen.getByText("Remove epic")).toBeInTheDocument();
   });
 
   it("fences the Move group with dividers from the set-* and assignee/label items", () => {

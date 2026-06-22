@@ -17,7 +17,7 @@ import { ReadinessIcon } from "@/components/shared/ReadinessCell";
 import { useOutsideClick } from "@/hooks/useOutsideClick";
 import { Card } from "@/components/shared/Card";
 import { Checkbox } from "@/components/shared/Checkbox";
-import { EpicListPanel } from "@/components/shared/EpicListPanel";
+import { EpicPickerBody, type EpicOption } from "@/components/shared/EpicPicker";
 
 // ---------------------------------------------------------------------------
 // Anchored portal menu
@@ -505,7 +505,9 @@ export function TicketActionMenuContent({
   onGenerateSubtasks,
   onRefine,
   onMarkRead,
+  epicValue,
   epicSuggestTicketKey,
+  epicClearable,
   sprints,
   pinnedSprintIds,
   close,
@@ -513,9 +515,15 @@ export function TicketActionMenuContent({
   onSetStatus?: (status: JiraStatus) => void;
   onSetReadiness?: (readiness: TicketReadiness | null) => void;
   onSetEpic?: (epicKey: string | null, epicName: string | null) => void;
+  /** The single target's current epic, so the Set Epic panel shows the checkmark
+   *  + View/Unlink actions exactly like the sidebar (null for multi-select). */
+  epicValue?: EpicOption | null;
   /** When exactly one ticket is targeted, its key enables the AI suggest-epic
    *  action in the Set Epic panel (single-ticket only, like the sidebar). */
   epicSuggestTicketKey?: string;
+  /** Multi-select only: show a single "Remove epic" action (no single value to
+   *  unlink). Omitted for single-row, which unlinks via its current epic. */
+  epicClearable?: boolean;
   onMoveSprint?: (sprintId: string) => void;
   /** Rank the target(s) to the top/bottom of the current sprint (whole sprint). */
   onMoveToTop?: () => void;
@@ -619,6 +627,20 @@ export function TicketActionMenuContent({
     );
   }
 
+  // The epic panel renders the shared EpicPickerBody, whose own search row sits at
+  // the top, so it skips the Back row to read like the sidebar EpicPicker (BRDG-381).
+  if (subView === "epic") {
+    return (
+      <EpicPickerBody
+        value={epicValue ?? null}
+        ticketKey={epicSuggestTicketKey}
+        clearable={epicClearable}
+        onChange={(epic) => { onSetEpic?.(epic?.key ?? null, epic?.name ?? null); close(); }}
+        onClose={close}
+      />
+    );
+  }
+
   return (
     <>
       <BackButton onClick={() => setSubView("menu")} />
@@ -627,7 +649,6 @@ export function TicketActionMenuContent({
       {subView === "sprint" && sprints && (
         <SprintSubPanel sprints={sprints} pinnedSprintIds={pinnedSprintIds} onSelect={(id) => { onMoveSprint?.(id); close(); }} />
       )}
-      {subView === "epic" && <EpicListPanel ticketKey={epicSuggestTicketKey} onSelect={(key, name) => { onSetEpic?.(key, name); close(); }} />}
       {subView === "assignee" && <AssigneeSubPanel onSelect={(accountId, name) => { onUpdateAssignee?.(accountId, name); close(); }} />}
       {subView === "label" && <LabelSubPanel onSelect={(labels, mode) => { onUpdateLabel?.(labels, mode); close(); }} />}
     </>
