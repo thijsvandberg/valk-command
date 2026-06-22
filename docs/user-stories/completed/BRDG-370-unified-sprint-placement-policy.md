@@ -1,6 +1,6 @@
 # BRDG-370: Unified placement rule for moving tickets into a sprint
 
-**Status:** To Do
+**Status:** Completed
 **Priority:** Medium
 **Type:** UX / Sprint board
 **Related:** move-sprint API, BulkActionBar, ticket-action-menu, MultiSprintView (drag), EpicChildrenSection. Foundation for [BRDG-369](BRDG-369-move-to-next-sprint-quick-action.md) and [BRDG-371](BRDG-371-create-story-sprint-placement.md).
@@ -154,4 +154,4 @@ which already builds it).
 - [x] Apply policy in `handleBulkMoveSprint` (board + epic children) — compute split from selection statuses
 - [x] Apply policy to drag-onto-sprint (`MultiSprintView` / board zones), replacing always-top
 - [x] Verify Move to top / Move to bottom and drag-between-rows are unchanged
-- [ ] `lint`, `typecheck`, `test`, `build` pass
+- [x] `lint`, `typecheck`, `test`, `build` pass
