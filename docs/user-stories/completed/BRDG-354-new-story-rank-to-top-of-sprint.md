@@ -1,8 +1,12 @@
 # BRDG-354: New stories should land at the top of their sprint
 
-**Status:** Done
+**Status:** Done (Superseded by [BRDG-371](../BRDG-371-create-story-sprint-placement.md))
 **Priority:** Medium
 **Type:** Feature
+
+> **Superseded:** BRDG-371 reverses this. New stories now land at the **bottom** of a
+> regular sprint and at the **top** of a backlog, matching the unified move rule
+> ([BRDG-370](../BRDG-370-unified-sprint-placement-policy.md)).
 
 ## Description
 
