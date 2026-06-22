@@ -427,6 +427,10 @@ export function TicketTable({
     isDragActive: activeDragId !== null,
     tags: visibleTags,
     hideEpic,
+    // BRDG-368: the sprint board opts into hiding the assignee on terminal/unassigned
+    // rows until hover. Other hosts (inbox, story-writer) render BoardRow directly and
+    // keep showing the avatar.
+    hideAssigneeUntilHover: true,
     showSprint,
     sprintNameMap: sprintNameMap ?? EMPTY_STRING_MAP,
     poStatuses,
