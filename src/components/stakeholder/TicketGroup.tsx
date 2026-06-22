@@ -99,9 +99,9 @@ export function TicketGroup({ tickets, showKeys = false, showAssignee = false, c
             {epic}
           </div>
           <ul className="space-y-1.5">
-            {items.map((t, i) => (
+            {items.map((t) => (
               <li
-                key={i}
+                key={t.jiraKey ?? t.title}
                 className={`flex items-start gap-2.5 group${deemphasizeUnscored && t.businessValue === null ? " opacity-50" : ""}`}
               >
                 <StatusDot status={t.status} />

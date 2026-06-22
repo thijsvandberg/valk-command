@@ -230,4 +230,23 @@ describe("TicketGroup", () => {
     );
     expect(screen.queryByText("carried")).not.toBeInTheDocument();
   });
+
+  // Regression: rows used index keys, so reordering reassigned per-row state to the
+  // wrong ticket. Keying by jiraKey preserves each row's DOM identity across reorder.
+  it("preserves per-row DOM identity when the list is reordered", () => {
+    const alpha = makeTicket("Alpha", { jiraKey: "VPL-1", epic: "E" });
+    const beta = makeTicket("Beta", { jiraKey: "VPL-2", epic: "E" });
+
+    const { rerender } = render(<TicketGroup tickets={[alpha, beta]} />);
+
+    const alphaRow = screen.getByText("Alpha").closest("li") as HTMLLIElement;
+    alphaRow.dataset.marker = "alpha";
+
+    // Swap order: with index keys Alpha's text would land on an unmarked node;
+    // with jiraKey keys the marked node travels with Alpha.
+    rerender(<TicketGroup tickets={[beta, alpha]} />);
+
+    const alphaRowAfter = screen.getByText("Alpha").closest("li") as HTMLLIElement;
+    expect(alphaRowAfter.dataset.marker).toBe("alpha");
+  });
 });

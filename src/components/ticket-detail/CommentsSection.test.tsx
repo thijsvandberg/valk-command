@@ -1,4 +1,4 @@
-import { render, screen, fireEvent, waitFor } from "@testing-library/react";
+import { render, screen, fireEvent, waitFor, act } from "@testing-library/react";
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { CommentsSection } from "./CommentsSection";
 import type { JiraComment } from "@/types/ticket";
@@ -238,6 +238,38 @@ describe("CommentsSection", () => {
     await waitFor(() => {
       expect(mockDeleteComment).toHaveBeenCalledWith("VPL-1", "po-1");
     });
+  });
+
+  it("discards a late response for the previous ticket (container is not keyed)", async () => {
+    let resolveOld!: () => void;
+    mockGetComments.mockImplementation((key: string) => {
+      if (key === "VPL-1") {
+        return new Promise((r) => {
+          resolveOld = () =>
+            r({ poComments: [{ id: "old", author: "PO", content: "Old ticket comment", createdAt: "2024-01-01T00:00:00Z" }] });
+        });
+      }
+      return Promise.resolve({
+        poComments: [{ id: "new", author: "PO", content: "New ticket comment", createdAt: "2024-01-02T00:00:00Z" }],
+      });
+    });
+
+    const { rerender } = render(
+      <CommentsSection ticketKey="VPL-1" jiraComments={[]} onMutate={vi.fn()} />,
+    );
+
+    // Switch tickets in place while VPL-1's fetch is still pending.
+    rerender(<CommentsSection ticketKey="VPL-2" jiraComments={[]} onMutate={vi.fn()} />);
+    await waitFor(() => expect(screen.getByText("New ticket comment")).toBeInTheDocument());
+
+    // The stale VPL-1 response arrives and must not overwrite the panel.
+    await act(async () => {
+      resolveOld();
+      await Promise.resolve();
+    });
+
+    expect(screen.queryByText("Old ticket comment")).not.toBeInTheDocument();
+    expect(screen.getByText("New ticket comment")).toBeInTheDocument();
   });
 
   it("renders Jira comments", () => {

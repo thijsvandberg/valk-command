@@ -44,9 +44,32 @@ export function useMessages(
     }
   }, [conversationId]);
 
+  // Self-contained initial fetch with an ignore guard. fetchMessages is exposed as `refresh`,
+  // so the guard lives in the effect (not the callback): switching conversations fast must not
+  // let an old response overwrite with the previous conversation's messages.
   useEffect(() => {
-    fetchMessages();
-  }, [fetchMessages]);
+    if (!conversationId) {
+      setMessages([]);
+      return;
+    }
+    let ignore = false;
+    setLoading(true);
+    setError(null);
+    (async () => {
+      try {
+        const data = await conversationsApi.get(conversationId) as Conversation & { messages?: Message[] };
+        if (!ignore) {
+          setMessages(data.messages ?? []);
+          lastActivityRef.current = Date.now();
+        }
+      } catch (err) {
+        if (!ignore) setError(err instanceof Error ? err.message : "Unknown error");
+      } finally {
+        if (!ignore) setLoading(false);
+      }
+    })();
+    return () => { ignore = true; };
+  }, [conversationId]);
 
   // Background polling for new messages
   const hasRunningTask = options?.hasRunningTask ?? false;

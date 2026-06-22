@@ -4,6 +4,7 @@ import {
   createContext,
   useContext,
   useCallback,
+  useEffect,
   useSyncExternalStore,
   type ReactNode,
 } from "react";
@@ -75,10 +76,10 @@ function subscribeToTheme(callback: () => void) {
   };
 }
 
+// Must be pure: useSyncExternalStore runs getSnapshot during render. Applying the theme
+// (a DOM mutation) lives in an effect instead. theme-init.js applies it before first paint.
 function getThemeSnapshot(): Theme {
-  const t = resolveTheme();
-  applyTheme(t);
-  return t;
+  return resolveTheme();
 }
 
 function getThemeServerSnapshot(): Theme {
@@ -91,6 +92,12 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
     getThemeSnapshot,
     getThemeServerSnapshot,
   );
+
+  // Apply the resolved theme as a side effect (covers initial mount and system/storage-driven
+  // changes that flow through the store). setTheme also applies synchronously for instant toggle.
+  useEffect(() => {
+    applyTheme(theme);
+  }, [theme]);
 
   const setTheme = useCallback((t: Theme) => {
     try {

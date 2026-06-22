@@ -69,7 +69,9 @@ export function BurnupChart({
   const containerRef = useRef<HTMLDivElement>(null);
   const [width, setWidth] = useState(0);
   const [hoverX, setHoverX] = useState<number | null>(null);
-  const seedAttempted = useRef(false);
+  // Holds the sprintId we last attempted to seed (the chart is not keyed by sprintId, so a
+  // boolean guard would only ever let the first sprint viewed in a session auto-seed).
+  const seedAttempted = useRef<string | null>(null);
 
   const { data, mutate, isValidating } = useSWR<BurnupResponse>(
     sprintId ? burnup.url(sprintId) : null,
@@ -79,8 +81,8 @@ export function BurnupChart({
 
   // Auto-seed when no data exists
   useEffect(() => {
-    if (!data || data.seeded || seedAttempted.current) return;
-    seedAttempted.current = true;
+    if (!data || data.seeded || seedAttempted.current === sprintId) return;
+    seedAttempted.current = sprintId;
     burnup.seed(sprintId).finally(() => mutate());
   }, [data, sprintId, mutate]);
 

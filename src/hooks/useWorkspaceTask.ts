@@ -53,8 +53,11 @@ export function useWorkspaceTask(conversationId?: string): UseWorkspaceTaskRetur
   const streamTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const unmountedRef = useRef(false);
 
-  // Cleanup on unmount: close EventSource, clear timeout, prevent further setState calls
+  // Cleanup on unmount: close EventSource, clear timeout, prevent further setState calls.
+  // Reset the flag on (re)mount so StrictMode's dev mount->unmount->remount cycle does not
+  // leave safeSetState permanently disabled (the three sibling hooks do the same).
   useEffect(() => {
+    unmountedRef.current = false;
     return () => {
       unmountedRef.current = true;
       eventSourceRef.current?.close();

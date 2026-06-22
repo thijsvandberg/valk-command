@@ -1,5 +1,6 @@
 import { renderHook, act, waitFor } from "@testing-library/react";
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
+import { StrictMode } from "react";
 import { useWorkspaceTask } from "./useWorkspaceTask";
 
 type Listener = (event: MessageEvent | Event) => void;
@@ -461,5 +462,23 @@ describe("useWorkspaceTask", () => {
     });
 
     expect(result.current.progressText).toBe("Using some_tool...");
+  });
+
+  // Regression: under StrictMode's mount->unmount->remount dev cycle, unmountedRef
+  // must be reset on the second mount or every safeSetState becomes a permanent no-op.
+  it("keeps applying state updates after a StrictMode remount", async () => {
+    vi.spyOn(global, "fetch").mockResolvedValueOnce({
+      ok: true,
+      json: async () => ({ id: "task-strict" }),
+    } as Response);
+
+    const { result } = renderHook(() => useWorkspaceTask(), { wrapper: StrictMode });
+
+    await act(async () => {
+      await result.current.submitAndStream("review", {});
+    });
+
+    expect(result.current.status).toBe("streaming");
+    expect(result.current.taskId).toBe("task-strict");
   });
 });

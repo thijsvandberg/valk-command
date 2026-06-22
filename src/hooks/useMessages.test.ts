@@ -139,6 +139,41 @@ describe("useMessages", () => {
     expect(result.current.error).toBe("Request failed (500)");
   });
 
+  it("discards a late initial response for the previous conversation", async () => {
+    const msgs1 = [mockMessages[0]];
+    const msgs2 = [mockMessages[1]];
+
+    let resolveA!: () => void;
+    vi.spyOn(global, "fetch")
+      .mockImplementationOnce(
+        () =>
+          new Promise((res) => {
+            resolveA = () =>
+              res({ ok: true, json: async () => ({ id: "conv-1", messages: msgs1 }) } as Response);
+          }),
+      )
+      .mockImplementation(
+        async () => ({ ok: true, json: async () => ({ id: "conv-2", messages: msgs2 }) }) as Response,
+      );
+
+    const { result, rerender } = renderHook(
+      ({ id }) => useMessages(id),
+      { initialProps: { id: "conv-1" as string | null } },
+    );
+
+    // Switch to conv-2 while conv-1's fetch is still in flight.
+    rerender({ id: "conv-2" });
+    await waitFor(() => expect(result.current.messages).toEqual(msgs2));
+
+    // The stale conv-1 response now arrives and must be ignored.
+    await act(async () => {
+      resolveA();
+      await Promise.resolve();
+    });
+
+    expect(result.current.messages).toEqual(msgs2);
+  });
+
   it("refetches when conversationId changes", async () => {
     const msgs1 = [mockMessages[0]];
     const msgs2 = [mockMessages[1]];

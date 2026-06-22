@@ -1,6 +1,6 @@
 "use client";
 
-import { createContext, useContext, useState, useCallback, useRef, type ReactNode } from "react";
+import { createContext, useContext, useState, useCallback, useEffect, useMemo, useRef, type ReactNode } from "react";
 import { refinementSessions as refinementSessionsApi } from "@/lib/api-client";
 
 export interface QueueTicketMeta {
@@ -67,6 +67,10 @@ const INDEX_PERSIST_DELAY = 400;
 export function RefinementSessionProvider({ children }: { children: ReactNode }) {
   const [state, setState] = useState<RefinementSessionState>(INITIAL_STATE);
   const indexTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  // Mirror of the latest committed state, read by save/finish so their API call can run
+  // outside the setState updater (updaters must be pure; StrictMode runs them twice).
+  const stateRef = useRef(state);
+  useEffect(() => { stateRef.current = state; }, [state]);
 
   const persistCurrentIndex = useCallback((sessionId: string, index: number) => {
     if (indexTimerRef.current) clearTimeout(indexTimerRef.current);
@@ -170,53 +174,70 @@ export function RefinementSessionProvider({ children }: { children: ReactNode })
   }, []);
 
   const saveSession = useCallback((generalComment?: string | null) => {
-    setState((prev) => {
-      if (prev.savedSessionId) {
-        refinementSessionsApi
-          .update(prev.savedSessionId, {
-            status: "in_progress",
-            currentIndex: prev.currentIndex,
-            ...(generalComment !== undefined ? { generalComment } : {}),
-          })
-          .catch(() => {});
-      }
-      return { ...prev, sessionActive: false, showingEndModal: false };
-    });
+    const { savedSessionId, currentIndex } = stateRef.current;
+    if (savedSessionId) {
+      refinementSessionsApi
+        .update(savedSessionId, {
+          status: "in_progress",
+          currentIndex,
+          ...(generalComment !== undefined ? { generalComment } : {}),
+        })
+        .catch(() => {});
+    }
+    setState((prev) => ({ ...prev, sessionActive: false, showingEndModal: false }));
   }, []);
 
   const finishSession = useCallback((generalComment?: string | null) => {
-    setState((prev) => {
-      if (prev.savedSessionId) {
-        refinementSessionsApi
-          .update(prev.savedSessionId, {
-            status: "completed",
-            currentIndex: prev.currentIndex,
-            ...(generalComment !== undefined ? { generalComment } : {}),
-          })
-          .catch(() => {});
-      }
-      return { ...prev, sessionActive: false, showingEndModal: false };
-    });
+    const { savedSessionId, currentIndex } = stateRef.current;
+    if (savedSessionId) {
+      refinementSessionsApi
+        .update(savedSessionId, {
+          status: "completed",
+          currentIndex,
+          ...(generalComment !== undefined ? { generalComment } : {}),
+        })
+        .catch(() => {});
+    }
+    setState((prev) => ({ ...prev, sessionActive: false, showingEndModal: false }));
   }, []);
 
+  // Stable value so renders that do not change state don't re-render the whole fullscreen
+  // refinement subtree. All callbacks are already stable; state is the only changing dep.
+  const value = useMemo<RefinementSessionContextType>(
+    () => ({
+      ...state,
+      startSession,
+      nextTicket,
+      prevTicket,
+      goToTicket,
+      toggleSidebarPanel,
+      reorderQueue,
+      recordEstimate,
+      recordSubtaskCount,
+      openEndModal,
+      closeEndModal,
+      saveSession,
+      finishSession,
+    }),
+    [
+      state,
+      startSession,
+      nextTicket,
+      prevTicket,
+      goToTicket,
+      toggleSidebarPanel,
+      reorderQueue,
+      recordEstimate,
+      recordSubtaskCount,
+      openEndModal,
+      closeEndModal,
+      saveSession,
+      finishSession,
+    ],
+  );
+
   return (
-    <RefinementSessionContext.Provider
-      value={{
-        ...state,
-        startSession,
-        nextTicket,
-        prevTicket,
-        goToTicket,
-        toggleSidebarPanel,
-        reorderQueue,
-        recordEstimate,
-        recordSubtaskCount,
-        openEndModal,
-        closeEndModal,
-        saveSession,
-        finishSession,
-      }}
-    >
+    <RefinementSessionContext.Provider value={value}>
       {children}
     </RefinementSessionContext.Provider>
   );

@@ -78,6 +78,19 @@ describe("ThemeContext", () => {
     expect(store["theme"]).toBe("light");
   });
 
+  // getThemeSnapshot is now pure (no DOM mutation); the provider applies the resolved
+  // theme via an effect instead. Verify the document still gets the right attribute on mount.
+  it("applies the resolved theme to the document on mount (default dark)", () => {
+    renderWithProvider(() => {});
+    expect(document.documentElement.getAttribute("data-theme")).toBe("dark");
+  });
+
+  it("applies the stored theme to the document on mount", () => {
+    store["theme"] = "light";
+    renderWithProvider(() => {});
+    expect(document.documentElement.getAttribute("data-theme")).toBe("light");
+  });
+
   it("useTheme throws outside provider", () => {
     expect(() => {
       render(<TestConsumer onState={() => {}} />);

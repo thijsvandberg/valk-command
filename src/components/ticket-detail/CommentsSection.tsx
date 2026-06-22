@@ -31,17 +31,22 @@ export function CommentsSection({
   usePrismLanguages(allCommentText);
 
   useEffect(() => {
+    // The container (TicketTabContent) is not keyed by ticket.key, so ticketKey changes in
+    // place: guard against an in-flight response for the previous ticket overwriting the panel.
+    let cancelled = false;
+    setLoading(true);
     async function loadComments() {
       try {
         const data = await tickets.getComments(ticketKey) as { poComments?: Array<{ id: string; author: string; content: string; createdAt: string }> };
-        setPoComments(data.poComments ?? []);
+        if (!cancelled) setPoComments(data.poComments ?? []);
       } catch (err) {
         console.error("Failed to load comments:", err);
       } finally {
-        setLoading(false);
+        if (!cancelled) setLoading(false);
       }
     }
     loadComments();
+    return () => { cancelled = true; };
   }, [ticketKey]);
 
   const handleAddComment = useCallback(async () => {
