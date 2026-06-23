@@ -370,17 +370,35 @@ describe("SessionEndModal", () => {
       expect(carryCheckbox("VPL-3")).toHaveAttribute("aria-checked", "true");
     });
 
-    it("updates the carry-over count as rows are toggled and via select all / none", () => {
-      render(<SessionEndModal />);
+    it("updates the carry-over count as rows are toggled", () => {
+      render(<SessionEndModal />); // default carried = {VPL-2}
       expect(screen.getByTestId("carry-summary")).toHaveTextContent("1 ticket will move");
-
-      fireEvent.click(screen.getByText("Select all"));
-      expect(screen.getByTestId("carry-summary")).toHaveTextContent("3 tickets will move");
 
       fireEvent.click(carryCheckbox("VPL-1"));
       expect(screen.getByTestId("carry-summary")).toHaveTextContent("2 tickets will move");
 
-      fireEvent.click(screen.getByText("None"));
+      fireEvent.click(carryCheckbox("VPL-3"));
+      expect(screen.getByTestId("carry-summary")).toHaveTextContent("3 tickets will move");
+
+      fireEvent.click(carryCheckbox("VPL-2"));
+      expect(screen.getByTestId("carry-summary")).toHaveTextContent("2 tickets will move");
+    });
+
+    it("hides checkboxes and the segment when every ticket was refined, revealing them via the link", () => {
+      // Make all rows handled: VPL-1 already is; estimate + subtask VPL-2; VPL-3 is an exempt, reached spike.
+      mockContext.sessionEstimates = { "VPL-2": 5 };
+      mockContext.sessionSubtaskCounts = { "VPL-2": 1 };
+      render(<SessionEndModal />);
+
+      // No pre-checked rows, no checkboxes, no segment - just the opt-in link.
+      expect(screen.queryByLabelText("Carry VPL-1 to next refinement")).not.toBeInTheDocument();
+      expect(screen.queryByTestId("carry-summary")).not.toBeInTheDocument();
+      const link = screen.getByText("Carry tickets to a next refinement");
+
+      fireEvent.click(link);
+
+      // Now the checkboxes appear (none pre-selected) and the prompt shows.
+      expect(screen.getByLabelText("Carry VPL-1 to next refinement")).toHaveAttribute("aria-checked", "false");
       expect(screen.getByText(/did not finish/)).toBeInTheDocument();
     });
 
@@ -432,9 +450,9 @@ describe("SessionEndModal", () => {
 
     it("carrying zero tickets behaves exactly like today (no create, no ticketKeys write)", async () => {
       const { refinementSessions } = await import("@/lib/api-client");
-      render(<SessionEndModal />);
+      render(<SessionEndModal />); // default carried = {VPL-2}
 
-      fireEvent.click(screen.getByText("None"));
+      fireEvent.click(carryCheckbox("VPL-2")); // deselect the only pre-checked row
       fireEvent.click(screen.getByText("Complete"));
 
       await waitFor(() => expect(mockContext.finishSession).toHaveBeenCalled());

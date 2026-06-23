@@ -20,7 +20,6 @@ import {
   Save,
   CheckCircle2,
   MessageSquarePlus,
-  ArrowRightToLine,
   Check,
   X,
 } from "lucide-react";
@@ -59,6 +58,10 @@ export function SessionEndModal() {
   const noteTimerRef = useRef<Record<string, ReturnType<typeof setTimeout>>>({});
 
   // Carry-over: which tickets to push into a follow-up session, and where.
+  // The whole section stays hidden until there is something to carry: it opens
+  // automatically when the session left tickets unhandled, or on demand via the
+  // "Carry tickets" link when everything was refined.
+  const [carryActive, setCarryActive] = useState(false);
   const [carriedKeys, setCarriedKeys] = useState<Set<string>>(new Set());
   const carrySeededRef = useRef(false);
   const [targetMode, setTargetMode] = useState<"new" | "existing">("new");
@@ -224,7 +227,11 @@ export function SessionEndModal() {
     for (const row of ticketRows) {
       if (row.isUnhandled) initial.add(row.key);
     }
-    if (initial.size > 0) setCarriedKeys(initial); // eslint-disable-line react-hooks/set-state-in-effect -- one-time heuristic seed once the ticket cache has loaded
+    if (initial.size > 0) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- one-time heuristic seed once the ticket cache has loaded
+      setCarriedKeys(initial);
+      setCarryActive(true);
+    }
   }, [allTickets, ticketRows]);
 
   // Candidate follow-up sessions: every ready session except this one.
@@ -258,14 +265,6 @@ export function SessionEndModal() {
       else next.add(key);
       return next;
     });
-  }, []);
-
-  const selectAllCarried = useCallback(() => {
-    setCarriedKeys(new Set(queue));
-  }, [queue]);
-
-  const selectNoneCarried = useCallback(() => {
-    setCarriedKeys(new Set());
   }, []);
 
   // Push the selected tickets into the target session and strip them from this
@@ -441,22 +440,24 @@ export function SessionEndModal() {
               return (
                 <div key={row.key}>
                   <div className="flex items-center gap-2 rounded-lg px-3 py-2 hover:bg-overlay-subtle" style={{ transition: "background-color 0.12s ease" }}>
-                    <button
-                      type="button"
-                      role="checkbox"
-                      aria-checked={carriedKeys.has(row.key)}
-                      aria-label={`Carry ${row.key} to next refinement`}
-                      onClick={() => toggleCarried(row.key)}
-                      className={`flex h-[18px] w-[18px] flex-none cursor-pointer items-center justify-center rounded-[5px] border focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)] active:scale-90 ${
-                        carriedKeys.has(row.key)
-                          ? "border-[var(--color-brand-500)] bg-[var(--color-brand-500)] text-white shadow-[0_1px_3px_color-mix(in_srgb,var(--color-brand-500)_45%,transparent)]"
-                          : "border-border-strong text-transparent hover:border-[var(--color-brand-400)]"
-                      }`}
-                      style={{ transition: "background-color 0.15s ease, border-color 0.15s ease, transform 0.1s ease" }}
-                      title="Carry to next refinement"
-                    >
-                      <Check size={12} strokeWidth={3} />
-                    </button>
+                    {carryActive && (
+                      <button
+                        type="button"
+                        role="checkbox"
+                        aria-checked={carriedKeys.has(row.key)}
+                        aria-label={`Carry ${row.key} to next refinement`}
+                        onClick={() => toggleCarried(row.key)}
+                        className={`flex h-[18px] w-[18px] flex-none cursor-pointer items-center justify-center rounded-[5px] border focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)] active:scale-90 ${
+                          carriedKeys.has(row.key)
+                            ? "border-[var(--color-brand-500)] bg-[var(--color-brand-500)] text-white shadow-[0_1px_3px_color-mix(in_srgb,var(--color-brand-500)_45%,transparent)]"
+                            : "border-border-strong text-transparent hover:border-[var(--color-brand-400)]"
+                        }`}
+                        style={{ transition: "background-color 0.15s ease, border-color 0.15s ease, transform 0.1s ease" }}
+                        title="Carry to next refinement"
+                      >
+                        <Check size={12} strokeWidth={3} />
+                      </button>
+                    )}
                     <TicketStatusPill
                       ticketKey={row.key}
                       jiraStatus={row.jiraStatus}
@@ -521,45 +522,33 @@ export function SessionEndModal() {
 
         {/* Carry over to a next refinement */}
         <div className="border-t border-border-subtle px-6 py-4">
-          <div className="mb-2 flex items-center justify-between">
-            <p className="flex items-center gap-1.5 text-caption font-medium uppercase tracking-wider text-text-muted">
-              <ArrowRightToLine size={12} strokeWidth={2} />
-              Carry over
-            </p>
-            <div className="flex items-center gap-1 text-[11px] font-medium">
-              <button
-                type="button"
-                onClick={selectAllCarried}
-                className="cursor-pointer rounded-md px-1.5 py-0.5 text-text-muted hover:bg-overlay-subtle hover:text-text-secondary focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)]"
-                style={{ transition: "background-color 0.15s ease, color 0.15s ease" }}
-              >
-                Select all
-              </button>
-              <span className="text-border-strong">/</span>
-              <button
-                type="button"
-                onClick={selectNoneCarried}
-                className="cursor-pointer rounded-md px-1.5 py-0.5 text-text-muted hover:bg-overlay-subtle hover:text-text-secondary focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)]"
-                style={{ transition: "background-color 0.15s ease, color 0.15s ease" }}
-              >
-                None
-              </button>
-            </div>
-          </div>
-
-          {carriedCount === 0 ? (
-            <p className="text-body-sm text-text-muted">
-              Tick the tickets you did not finish to move them to a next refinement.
-            </p>
+          {!carryActive ? (
+            <button
+              type="button"
+              onClick={() => setCarryActive(true)}
+              className="cursor-pointer rounded-md text-body-sm font-medium text-text-muted hover:text-[var(--color-brand-400)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)]"
+              style={{ transition: "color 0.15s ease" }}
+            >
+              Carry tickets to a next refinement
+            </button>
           ) : (
             <>
-              <p className="text-body-sm text-text-secondary" data-testid="carry-summary">
-                <span className="font-semibold text-[var(--color-brand-400)]">{carriedCount}</span>{" "}
-                ticket{carriedCount !== 1 ? "s" : ""} will move to{" "}
-                {targetMode === "new" ? "a new session" : "the selected session"}.
+              <p className="mb-2 text-caption font-medium uppercase tracking-wider text-text-muted">
+                Carry over
               </p>
+              {carriedCount === 0 ? (
+                <p className="text-body-sm text-text-muted">
+                  Tick the tickets you did not finish to move them to a next refinement.
+                </p>
+              ) : (
+                <>
+                  <p className="text-body-sm text-text-secondary" data-testid="carry-summary">
+                    <span className="font-semibold text-[var(--color-brand-400)]">{carriedCount}</span>{" "}
+                    ticket{carriedCount !== 1 ? "s" : ""} will move to{" "}
+                    {targetMode === "new" ? "a new session" : "the selected session"}.
+                  </p>
 
-              <div className="mt-3 flex gap-1.5">
+                  <div className="mt-3 flex gap-1.5">
                 <button
                   type="button"
                   onClick={() => setTargetMode("new")}
@@ -617,6 +606,8 @@ export function SessionEndModal() {
                     </option>
                   ))}
                 </select>
+              )}
+                </>
               )}
             </>
           )}

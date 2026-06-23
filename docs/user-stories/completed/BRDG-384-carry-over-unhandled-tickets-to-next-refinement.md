@@ -26,8 +26,10 @@ Every row in the wrap-up modal gets a carry-over checkbox; rows matching the "un
 
 ## Proposed UX (in the Wrap Up modal)
 
-1. Each ticket row gets a carry-over toggle (checkbox/affordance) in the existing row layout next to the PO-message button.
-2. A summary line + bulk control: "Carry N tickets to next refinement" with select-all / select-none for the flagged set.
+> UX revision (2026-06-23, post-build): the carry-over section is hidden by default. It opens automatically (checkboxes on rows + segment, unhandled rows pre-checked) only when the session left tickets unhandled. When everything was refined, the modal shows just a subtle "Carry tickets to a next refinement" link that reveals the checkboxes/segment on click. The select-all/select-none control and the section icon were dropped.
+
+1. Each ticket row gets a carry-over toggle (checkbox/affordance) in the existing row layout next to the PO-message button. Checkboxes only render once the carry-over section is active.
+2. A summary line "N tickets will move to …". (Select-all/select-none was removed in the UX revision.)
 3. A target picker for where the carried tickets go:
    - **New session** (default) — creates a follow-up session, reusing the BRDG-337 create flow. The PO is **prompted for a date** so the follow-up is scheduled; default name pattern consistent with existing create (`Refinement YYYY-MM-DD`).
    - **Existing session** — pick any ready (`draft` / `in_progress`, not `completed`) session, reusing the same target list as BRDG-336's "move to session".
