@@ -908,7 +908,7 @@ describe("EpicChildrenSection", () => {
       fireEvent.contextMenu(screen.getByText("First story"));
       fireEvent.click(screen.getByText("Flag"));
       await waitFor(() => {
-        expect(mockToggleFlag).toHaveBeenCalledWith("VPL-10", true);
+        expect(mockToggleFlag).toHaveBeenCalledWith("VPL-10", true, undefined);
       });
       expect(mockToggleFlag).toHaveBeenCalledTimes(1);
     });
@@ -923,8 +923,8 @@ describe("EpicChildrenSection", () => {
       await waitFor(() => {
         expect(mockToggleFlag).toHaveBeenCalledTimes(2);
       });
-      expect(mockToggleFlag).toHaveBeenCalledWith("VPL-10", true);
-      expect(mockToggleFlag).toHaveBeenCalledWith("VPL-12", true);
+      expect(mockToggleFlag).toHaveBeenCalledWith("VPL-10", true, undefined);
+      expect(mockToggleFlag).toHaveBeenCalledWith("VPL-12", true, undefined);
     });
   });
 
@@ -981,8 +981,8 @@ describe("EpicChildrenSection", () => {
       await waitFor(() => {
         expect(mockToggleFlag).toHaveBeenCalledTimes(2);
       });
-      expect(mockToggleFlag).toHaveBeenCalledWith("VPL-10", true);
-      expect(mockToggleFlag).toHaveBeenCalledWith("VPL-11", true);
+      expect(mockToggleFlag).toHaveBeenCalledWith("VPL-10", true, undefined);
+      expect(mockToggleFlag).toHaveBeenCalledWith("VPL-11", true, undefined);
     });
 
     it("shift-click selects a contiguous range", () => {
@@ -1015,7 +1015,7 @@ describe("EpicChildrenSection", () => {
       fireEvent.contextMenu(screen.getByText("First story"));
       fireEvent.click(screen.getByText("Flag"));
       await waitFor(() => {
-        expect(mockToggleFlag).toHaveBeenCalledWith("VPL-10", true);
+        expect(mockToggleFlag).toHaveBeenCalledWith("VPL-10", true, undefined);
       });
       expect(mockToggleFlag).toHaveBeenCalledTimes(1);
     });

@@ -3,7 +3,7 @@
 import { useState, useRef, useCallback, useEffect, useMemo } from "react";
 import { mutate as globalMutate } from "swr";
 import { useOutsideClick } from "@/hooks/useOutsideClick";
-import type { TicketDetail, JiraStatus, TicketReadiness, Subtask, EpicChild, IssueType, PlaceholderTicket } from "@/types/ticket";
+import type { TicketDetail, JiraStatus, TicketReadiness, Subtask, EpicChild, IssueType, PlaceholderTicket, Ticket } from "@/types/ticket";
 import { usePlaceholders } from "@/hooks/usePlaceholders";
 import { EstimatePicker } from "@/components/shared/EstimatePicker";
 import { BusinessValuePicker } from "@/components/shared/BusinessValuePicker";
@@ -22,8 +22,10 @@ import { EpicProgressToolbar } from "./EpicProgressToolbar";
 import { EpicChildrenBySprint, type ChildReorder, type ChildMoveToPosition } from "./EpicChildrenBySprint";
 import type { StatusFilter } from "./FieldFilterPopover";
 import { BulkActionBar } from "@/components/sprint-board/BulkActionBar";
-import { CursorMenu, TicketActionMenuContent, type FlagState } from "@/components/sprint-board/ticket-action-menu";
+import { CursorMenu, TicketActionMenuContent } from "@/components/sprint-board/ticket-action-menu";
 import { CreateSprintModal, type CreatedSprint } from "@/components/sprint-board/CreateSprintModal";
+import { useRowActions } from "@/components/sprint-board/row-actions/useRowActions";
+import { makeEpicDispatchAdapter, type RowDataAdapter } from "@/components/sprint-board/row-actions/adapter";
 import { AddToRefinementModal } from "@/components/refinement-session/AddToRefinementModal";
 import { nextSprintName, latestRegularSprint } from "@/lib/sprint-utils";
 import { startDateFromPreviousEnd } from "@/lib/sprint-dates";
@@ -33,12 +35,10 @@ import { useMigratedAccountSetting } from "@/hooks/useMigratedAccountSetting";
 import { usePencilCapacity } from "@/hooks/usePencilCapacity";
 import { useSprintUsedPoints } from "@/hooks/useSprintUsedPoints";
 import { useJiraSprints, useSprintSlots } from "@/hooks/useSprintBoard";
-import { mapJiraSprints, bulkReviewStories, bulkGenerateSubtasks } from "@/components/sprint-board/sprint-board-utils";
-import { tickets, jira, apiFetch, ApiError } from "@/lib/api-client";
-import { getJiraUrl } from "@/lib/jira-url";
+import { mapJiraSprints } from "@/components/sprint-board/sprint-board-utils";
+import { tickets, jira, ApiError } from "@/lib/api-client";
 import { applyLocalMoves, sprintNameForTarget } from "@/lib/epic-children-move";
-import { placementForMove, topKeysForMove } from "@/lib/sprint-placement";
-import { computeQuickMoves, type QuickMoveOption } from "@/lib/quick-moves";
+import { placementForMove } from "@/lib/sprint-placement";
 import { useBacklogDropTarget } from "@/hooks/useBacklogDropTarget";
 import { applyLocalOrder } from "@/lib/epic-children-reorder";
 import { groupChildrenBySprint, isEpicChild } from "@/lib/epic-children-grouping";
@@ -157,13 +157,6 @@ export function EpicChildrenSection({
   >({});
   // Multiselect: checked child keys for the bulk-action toolbar.
   const [checkedKeys, setCheckedKeys] = useState<Set<string>>(new Set());
-  const [refineModalOpen, setRefineModalOpen] = useState(false);
-  // Keys the refinement modal acts on: the checked set (bulk bar) or the
-  // right-clicked target set (row context menu).
-  const [refineKeys, setRefineKeys] = useState<string[]>([]);
-  // Right-click action menu: cursor position plus the keys it acts on.
-  const [rowMenu, setRowMenu] = useState<{ x: number; y: number; targets: Set<string> } | null>(null);
-  const [bulkGenerating, setBulkGenerating] = useState(false);
   const lastCheckedRef = useRef<string | null>(null);
 
   // Search existing state
@@ -239,9 +232,6 @@ export function EpicChildrenSection({
   const { sprints: rawSprints, mutate: mutateSprints } = useJiraSprints();
   const sprints = useMemo(() => mapJiraSprints(rawSprints), [rawSprints]);
   const { backlogTargetName } = useBacklogDropTarget();
-  // Quick-move auto-create (BRDG-369): when "Move to next sprint" targets a sprint that
-  // does not exist yet, open the create modal prefilled, then move these keys into it.
-  const [quickCreate, setQuickCreate] = useState<{ name: string; keys: Set<string> } | null>(null);
   // Prediction props for the BRDG-309 create-the-next-sprint flow, mirroring SprintBoard.
   const latestRegular = useMemo(() => latestRegularSprint(sprints), [sprints]);
   const suggestedSprintName = useMemo(() => nextSprintName(sprints), [sprints]);
@@ -720,7 +710,9 @@ export function EpicChildrenSection({
   // Drop optimistic overrides once the refetched children confirm the new sprint,
   // so a stale override never masks server truth on later syncs.
   useEffect(() => {
-     
+    // Reconciles the optimistic overlay against freshly-refetched server data; a
+    // genuine external-data sync, not a render-derivable reset (BRDG-374).
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setLocalMoves((prev) => {
       if (Object.keys(prev).length === 0) return prev;
       let changed = false;
@@ -741,6 +733,8 @@ export function EpicChildrenSection({
   // Drop a reorder override once the refetched children's rank order matches it for
   // that group, so a stale override never masks server truth on later syncs.
   useEffect(() => {
+    // Reconciles the optimistic reorder against refetched rank order (external sync).
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setLocalOrder((prev) => {
       if (Object.keys(prev).length === 0) return prev;
       const serverGroups = groupChildrenBySprint(items, sprints);
@@ -762,7 +756,8 @@ export function EpicChildrenSection({
   // Drop optimistic SP/BV overrides once the refetched children confirm the value,
   // so a stale override never masks server truth on later syncs.
   useEffect(() => {
-     
+    // Reconciles the optimistic SP/BV overrides against refetched values (external sync).
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setLocalMetrics((prev) => {
       if (Object.keys(prev).length === 0) return prev;
       let changed = false;
@@ -844,143 +839,59 @@ export function EpicChildrenSection({
   const selectedPoints = checkedItems.reduce((s, i) => s + (isEpicChild(i) ? (i.storyPoints ?? 0) : 0), 0);
   const selectedBV = checkedItems.reduce((s, i) => s + (isEpicChild(i) ? (i.businessValue ?? 0) : 0), 0);
 
-  // Runs an async op per key, refetches, and reports a single toast. Defaults to
-  // the checked selection (bulk bar); an explicit set targets the right-clicked row(s).
-  const runBulk = useCallback(async (verb: string, fn: (key: string) => Promise<unknown>, targetKeys?: Set<string>) => {
-    const keys = [...(targetKeys ?? checkedKeys)];
-    if (keys.length === 0) return;
-    const results = await Promise.allSettled(keys.map(fn));
-    onMutate();
-    const failed = results.filter((r) => r.status === "rejected").length;
-    showToast(failed
-      ? `Failed for ${failed} issue${failed === 1 ? "" : "s"}${failed < keys.length ? ` (${keys.length - failed} updated)` : ""}`
-      : `${verb} ${keys.length} issue${keys.length === 1 ? "" : "s"}`);
-  }, [checkedKeys, onMutate, showToast]);
+  // Shared row-actions dispatch (BRDG-374). The epic adapter reflects status/readiness
+  // through onChildOptimistic and overlays sprint moves on the by-sprint grouping
+  // (localMoves), confirming or rolling them back on the closing revalidation. DnD
+  // moves/reorders and the create-zone plan-sprint flow stay in this host.
+  const adapter = useMemo(() => {
+    const ticketFor = (item: EpicChild | Subtask): Ticket => ({
+      key: item.key,
+      title: item.title,
+      type: item.type,
+      jiraStatus: item.jiraStatus,
+      flagged: isEpicChild(item) ? Boolean(item.flagged) : false,
+      sprintId: (sprintNameByKey[item.key] ?? null) ?? undefined,
+      epic: null,
+      epicKey: null,
+      storyPoints: isEpicChild(item) ? (item.storyPoints ?? null) : null,
+      businessValue: null,
+      assignee: item.assignee ?? null,
+      qualityScore: null,
+      readiness: isEpicChild(item) ? (item.readiness ?? null) : null,
+      poStatus: null,
+      editState: "clean",
+      notes: "",
+    } as Ticket);
+    const data: RowDataAdapter = {
+      getTicket: (key) => { const i = mergedItems.find((x) => x.key === key); return i ? ticketFor(i) : undefined; },
+      getTickets: () => mergedItems.map(ticketFor),
+      mutate: onMutate,
+      activeListKey: null,
+      sprintNameMap: {},
+    };
+    return makeEpicDispatchAdapter(data, { setLocalMoves }, onChildOptimistic);
+  }, [mergedItems, sprintNameByKey, onMutate, onChildOptimistic]);
 
-  const handleBulkStatus = useCallback((status: JiraStatus, keys?: Set<string>) => {
-    // Patch the rows up front; runBulk's closing onMutate() confirms (or reverts) them.
-    [...(keys ?? checkedKeys)].forEach((k) => onChildOptimistic?.(k, { jiraStatus: status }));
-    return runBulk("Status set for", (k) => apiFetch(`/api/tickets/${encodeURIComponent(k)}/status`, { method: "PUT", body: { status } }), keys);
-  }, [runBulk, checkedKeys, onChildOptimistic]);
-
-  const handleBulkReadiness = useCallback((readiness: TicketReadiness | null, keys?: Set<string>) => {
-    [...(keys ?? checkedKeys)].forEach((k) => onChildOptimistic?.(k, { readiness }));
-    return runBulk("Readiness set for", (k) => tickets.updateMetadata(k, { readiness }), keys);
-  }, [runBulk, checkedKeys, onChildOptimistic]);
-
-  const handleBulkEpic = useCallback((epicKey: string | null, keys?: Set<string>) =>
-    runBulk("Epic updated for", (k) => tickets.updateEpic(k, epicKey), keys),
-    [runBulk]);
-
-  const handleBulkAssignee = useCallback((accountId: string | null, name: string | null, keys?: Set<string>) =>
-    runBulk("Assignee updated for", (k) => jira.assign({ issueKey: k, accountId, name }), keys),
-    [runBulk]);
-
-  const handleBulkFlag = useCallback((flagged: boolean, keys?: Set<string>) =>
-    runBulk(flagged ? "Flagged" : "Unflagged", (k) => tickets.toggleFlag(k, flagged), keys),
-    [runBulk]);
-
-  const handleBulkLabels = useCallback((labels: string[], mode: "add" | "set", keys?: Set<string>) =>
-    runBulk("Labels updated for", async (k) => {
-      let finalLabels = labels;
-      if (mode === "add") {
-        const detail = await tickets.get(k);
-        finalLabels = [...new Set([...(detail.labels ?? []), ...labels])];
-      }
-      return tickets.updateLabels(k, finalLabels);
-    }, keys),
-    [runBulk]);
-
-  // Sprint moves go through one bulk call with optimistic re-grouping for every key.
-  const handleBulkMoveSprint = useCallback((targetSprintId: string, targetKeys?: Set<string>) => {
-    const keys = [...(targetKeys ?? checkedKeys)];
-    if (keys.length === 0) return;
-    const newName = sprintNameForTarget(targetSprintId, sprints);
-    setJiraWarning(null);
-    setLocalMoves((prev) => { const next = { ...prev }; keys.forEach((k) => { next[k] = newName; }); return next; });
-    // Placement rule (BRDG-370): in-flight children (and any backlog move) land at
-    // the top of the destination, the rest at the bottom. newName is null for the
-    // generic backlog, which placementForMove treats as "top".
-    const topKeys = topKeysForMove(keys, newName, (k) => statusByKey[k]);
-    jira.moveSprint({ issueKeys: keys, targetSprintId, topKeys })
-      .then(() => { onMutate(); showToast(`Moved ${keys.length} issue${keys.length === 1 ? "" : "s"} to sprint`); })
-      .catch((err) => {
-        setLocalMoves((prev) => { const next = { ...prev }; keys.forEach((k) => delete next[k]); return next; });
-        const detail = err instanceof ApiError ? err.message : "Jira API error";
-        setJiraWarning(`Failed to move ${keys.length} issue${keys.length === 1 ? "" : "s"} to sprint: ${detail}`);
-      });
-  }, [checkedKeys, sprints, statusByKey, onMutate, showToast]);
-
-  // Quick-move options (BRDG-369) for a key set: resolve each child's current sprint name.
-  const quickMovesFor = useCallback((targets: Set<string>): QuickMoveOption[] => {
-    const currentSprintNames = [...targets].map((k) => sprintNameByKey[k] ?? null);
-    return computeQuickMoves({ currentSprintNames, sprints, backlogTargetName });
-  }, [sprintNameByKey, sprints, backlogTargetName]);
-  const handleQuickMove = useCallback((opt: QuickMoveOption, targets: Set<string> = checkedKeys) => {
-    if (targets.size === 0) return;
-    if (opt.createName) {
-      setPendingPlanSprintName(opt.createName); // feeds planPrevSprint's date prediction
-      setQuickCreate({ name: opt.createName, keys: new Set(targets) });
-      return;
-    }
-    if (opt.targetSprintId) handleBulkMoveSprint(opt.targetSprintId, targets);
-  }, [checkedKeys, handleBulkMoveSprint]);
-
-  const handleBulkReview = useCallback(async (targetKeys?: Set<string>) => {
-    const keys = [...(targetKeys ?? checkedKeys)];
-    if (!keys.length) return;
-    showToast(`Reviewing ${keys.length} issue${keys.length === 1 ? "" : "s"}...`);
-    await bulkReviewStories(keys);
-    onMutate();
-    showToast(`Reviewed ${keys.length} issue${keys.length === 1 ? "" : "s"}`);
-  }, [checkedKeys, onMutate, showToast]);
-
-  const handleBulkGenerate = useCallback(async (targetKeys?: Set<string>) => {
-    const keys = [...(targetKeys ?? checkedKeys)];
-    if (!keys.length) return;
-    setBulkGenerating(true);
-    showToast(`Generating subtasks for ${keys.length} issue${keys.length === 1 ? "" : "s"}...`);
-    try {
-      const { succeeded, failed } = await bulkGenerateSubtasks(keys);
-      showToast(failed ? `Generated for ${succeeded}, ${failed} failed` : `Subtask suggestions sent for ${succeeded} issue${succeeded === 1 ? "" : "s"}`);
-      onMutate();
-    } finally {
-      setBulkGenerating(false);
-    }
-  }, [checkedKeys, onMutate, showToast]);
-
-  const handleCopySelected = useCallback(() => {
-    const sel = mergedItems.filter((i) => checkedKeys.has(i.key));
-    if (!sel.length) return;
-    navigator.clipboard.writeText(sel.map((i) => `${i.title} - ${getJiraUrl(i.key)}`).join("\n"))
-      .then(() => showToast(`Copied ${sel.length} issue${sel.length === 1 ? "" : "s"} to clipboard`))
-      .catch(() => showToast("Failed to copy to clipboard"));
-  }, [mergedItems, checkedKeys, showToast]);
-
-  const openRefine = useCallback((keys: string[]) => {
-    setRefineKeys(keys);
-    setRefineModalOpen(true);
-  }, []);
-
-  // Right-clicking a checked row acts on the whole selection; otherwise on that
-  // single row. Mirrors the sprint board's row context-menu behaviour.
-  const handleRowContextMenu = useCallback((key: string, e: React.MouseEvent) => {
-    const targets = checkedKeys.has(key) && checkedKeys.size > 0 ? new Set(checkedKeys) : new Set([key]);
-    setRowMenu({ x: e.clientX, y: e.clientY, targets });
-  }, [checkedKeys]);
-
-  // Flag state of the right-clicked target(s), so the context menu shows only the
-  // relevant flag action. Subtasks carry no flag field and count as unflagged.
-  const rowMenuFlagState: FlagState = useMemo(() => {
-    if (!rowMenu) return "mixed";
-    const flags = [...rowMenu.targets].map((k) => {
-      const item = mergedItems.find((i) => i.key === k);
-      return Boolean(item && isEpicChild(item) && item.flagged);
-    });
-    if (flags.length > 0 && flags.every(Boolean)) return "flagged";
-    if (flags.every((f) => !f)) return "unflagged";
-    return "mixed";
-  }, [rowMenu, mergedItems]);
+  const ra = useRowActions({
+    adapter,
+    selectedKeys: checkedKeys,
+    sprints,
+    pinnedSprintIds,
+    backlogTargetName,
+    showToast,
+    flagSource: "ticket",
+    currentSprintName: (key) => sprintNameByKey[key] ?? null,
+    onMoveError: setJiraWarning,
+    injectSprint: (sprint) =>
+      mutateSprints(
+        (cur) =>
+          cur && !cur.sprints.some((s) => s.id === sprint.id)
+            ? { ...cur, sprints: [...cur.sprints, { id: sprint.id, name: sprint.name, state: sprint.state, startDate: sprint.startDate, endDate: sprint.endDate, goal: sprint.goal }] }
+            : cur,
+        { revalidate: false },
+      ),
+  });
+  const { rowMenu } = ra;
 
   // --- Render metadata slot for a child issue ---
   // hideSprint drops the sprint pill where the surrounding group already names the
@@ -1057,7 +968,7 @@ export function EpicChildrenSection({
         onJiraStatusChange={(s) => handleJiraStatusChange(child.key, s)}
         onReadinessChange={(r) => handleReadinessChange(child.key, r)}
         onSelect={onSelectTicket}
-        onContextMenu={isPending ? undefined : (e) => { e.preventDefault(); handleRowContextMenu(child.key, e); }}
+        onContextMenu={isPending ? undefined : (e) => { e.preventDefault(); ra.handleRowContextMenu(child.key, e); }}
         selectable={selectionEnabled}
         isChecked={checkedKeys.has(child.key)}
         isActive={child.key === activeChildKey}
@@ -1169,7 +1080,7 @@ export function EpicChildrenSection({
         onReadinessChange={handleReadinessChange}
         onSelect={onSelectTicket}
         onMoveChild={handleMoveChild}
-        onRowContextMenu={handleRowContextMenu}
+        onRowContextMenu={ra.handleRowContextMenu}
         onReorderChild={handleReorderChild}
         onMoveChildToPosition={handleMoveChildToPosition}
         onMoveError={setJiraWarning}
@@ -1275,56 +1186,56 @@ export function EpicChildrenSection({
           allChecked={allChecked}
           onToggleAll={toggleAll}
           onClear={clearSelection}
-          onSetStatus={handleBulkStatus}
-          onSetReadiness={handleBulkReadiness}
-          onSetEpic={(epicKey) => handleBulkEpic(epicKey)}
-          onMoveSprint={handleBulkMoveSprint}
-          quickMoves={quickMovesFor(checkedKeys)}
-          onQuickMove={(opt) => handleQuickMove(opt, checkedKeys)}
-          onUpdateAssignee={handleBulkAssignee}
-          onUpdateLabel={handleBulkLabels}
-          onSetFlagged={handleBulkFlag}
-          flagState="mixed"
+          onSetStatus={ra.bulkSetStatus}
+          onSetReadiness={ra.bulkSetReadiness}
+          onSetEpic={(epicKey) => ra.bulkSetEpic(epicKey)}
+          onMoveSprint={(sprintId) => ra.moveSprint(sprintId)}
+          quickMoves={ra.quickMovesFor(checkedKeys)}
+          onQuickMove={(opt) => ra.handleQuickMove(opt, checkedKeys)}
+          onUpdateAssignee={ra.bulkUpdateAssignee}
+          onUpdateLabel={ra.bulkUpdateLabels}
+          onSetFlagged={(flagged) => ra.bulkSetFlagged(flagged, null)}
+          flagState={ra.computeFlagState(checkedKeys)}
           sprints={sprints}
           pinnedSprintIds={pinnedSprintIds}
-          onReviewStory={handleBulkReview}
-          onGenerateSubtasks={handleBulkGenerate}
-          isGeneratingSubtasks={bulkGenerating}
-          onCopyToClipboard={handleCopySelected}
-          onRefine={() => openRefine([...checkedKeys])}
+          onReviewStory={() => ra.handleBulkReview()}
+          onGenerateSubtasks={() => ra.handleBulkGenerate()}
+          isGeneratingSubtasks={ra.isGeneratingSubtasks}
+          onCopyToClipboard={() => ra.copySelected()}
+          onRefine={() => ra.openRefine([...checkedKeys])}
         />
       )}
 
       {rowMenu && (
-        <CursorMenu x={rowMenu.x} y={rowMenu.y} onClose={() => setRowMenu(null)}>
+        <CursorMenu x={rowMenu.x} y={rowMenu.y} onClose={() => ra.setRowMenu(null)}>
           <TicketActionMenuContent
-            onSetStatus={(s) => handleBulkStatus(s, rowMenu.targets)}
-            onSetReadiness={(r) => handleBulkReadiness(r, rowMenu.targets)}
-            onSetEpic={(epicKey) => handleBulkEpic(epicKey, rowMenu.targets)}
+            onSetStatus={(s) => ra.bulkSetStatus(s, rowMenu.targets)}
+            onSetReadiness={(r) => ra.bulkSetReadiness(r, rowMenu.targets)}
+            onSetEpic={(epicKey) => ra.bulkSetEpic(epicKey, null, rowMenu.targets)}
             epicSuggestTicketKey={rowMenu.targets.size === 1 ? [...rowMenu.targets][0] : undefined}
             epicClearable
-            onMoveSprint={(sprintId) => handleBulkMoveSprint(sprintId, rowMenu.targets)}
-            quickMoves={quickMovesFor(rowMenu.targets)}
-            onQuickMove={(opt) => handleQuickMove(opt, rowMenu.targets)}
-            onUpdateAssignee={(accountId, name) => handleBulkAssignee(accountId, name, rowMenu.targets)}
-            onUpdateLabel={(labels, mode) => handleBulkLabels(labels, mode, rowMenu.targets)}
-            onSetFlagged={(flagged) => handleBulkFlag(flagged, rowMenu.targets)}
-            flagState={rowMenuFlagState}
-            onReviewStory={() => handleBulkReview(rowMenu.targets)}
-            onGenerateSubtasks={() => handleBulkGenerate(rowMenu.targets)}
-            onRefine={() => openRefine([...rowMenu.targets])}
+            onMoveSprint={(sprintId) => ra.moveSprint(sprintId, rowMenu.targets)}
+            quickMoves={ra.quickMovesFor(rowMenu.targets)}
+            onQuickMove={(opt) => ra.handleQuickMove(opt, rowMenu.targets)}
+            onUpdateAssignee={(accountId, name) => ra.bulkUpdateAssignee(accountId, name, rowMenu.targets)}
+            onUpdateLabel={(labels, mode) => ra.bulkUpdateLabels(labels, mode, rowMenu.targets)}
+            onSetFlagged={(flagged) => ra.bulkSetFlagged(flagged, null, rowMenu.targets)}
+            flagState={ra.computeFlagState(rowMenu.targets)}
+            onReviewStory={() => ra.handleBulkReview(rowMenu.targets)}
+            onGenerateSubtasks={() => ra.handleBulkGenerate(rowMenu.targets)}
+            onRefine={() => ra.openRefine([...rowMenu.targets])}
             sprints={sprints}
             pinnedSprintIds={pinnedSprintIds}
-            close={() => setRowMenu(null)}
+            close={() => ra.setRowMenu(null)}
           />
         </CursorMenu>
       )}
 
       <AddToRefinementModal
-        open={refineModalOpen}
-        onClose={() => setRefineModalOpen(false)}
-        ticketKeys={refineKeys}
-        onAdded={(_id, name) => showToast(`Added ${refineKeys.length} issue${refineKeys.length === 1 ? "" : "s"} to "${name}"`)}
+        open={ra.refineModalOpen}
+        onClose={() => ra.setRefineModalOpen(false)}
+        ticketKeys={ra.refineKeys}
+        onAdded={(_id, name) => showToast(`Added ${ra.refineKeys.length} issue${ra.refineKeys.length === 1 ? "" : "s"} to "${name}"`)}
       />
 
       {pendingPlanChildKey && (
@@ -1339,30 +1250,15 @@ export function EpicChildrenSection({
         />
       )}
 
-      {quickCreate && (
+      {ra.quickCreate && (
         <CreateSprintModal
-          onClose={() => { setQuickCreate(null); setPendingPlanSprintName(null); }}
-          onCreated={(sprint) => {
-            const keys = quickCreate.keys;
-            setQuickCreate(null);
-            setPendingPlanSprintName(null);
-            // Inject the created sprint into the cached list so its group renders with
-            // metadata (mirrors handlePlanSprintCreated), then bulk-move the selection in.
-            void mutateSprints(
-              (cur) =>
-                cur && !cur.sprints.some((s) => s.id === sprint.id)
-                  ? { ...cur, sprints: [...cur.sprints, { id: sprint.id, name: sprint.name, state: sprint.state, startDate: sprint.startDate, endDate: sprint.endDate, goal: sprint.goal }] }
-                  : cur,
-              { revalidate: false },
-            );
-            handleBulkMoveSprint(String(sprint.id), keys);
-            showToast(`Created ${sprint.name} and moved ${keys.size} issue${keys.size === 1 ? "" : "s"} in`);
-          }}
+          onClose={ra.closeQuickCreate}
+          onCreated={ra.confirmQuickCreate}
           showToast={showToast}
-          suggestedName={quickCreate.name}
-          suggestedStartDate={startDateFromPreviousEnd(planPrevSprint?.sprint.endDate)}
-          previousSprintName={planPrevSprint?.sprint.name}
-          previousSprintEndIso={planPrevSprint?.sprint.endDate ?? null}
+          suggestedName={ra.quickCreate.name}
+          suggestedStartDate={startDateFromPreviousEnd(ra.planPrevSprint?.endDate)}
+          previousSprintName={ra.planPrevSprint?.name}
+          previousSprintEndIso={ra.planPrevSprint?.endDate ?? null}
         />
       )}
 
