@@ -45,6 +45,12 @@ function childSprintName(child: EpicChild | Subtask): string | null {
   return "sprintName" in child ? child.sprintName : null;
 }
 
+// An epic child carries story points; a plain Subtask does not. Shared type guard
+// so the epic-children components narrow EpicChild | Subtask the same way.
+export function isEpicChild(child: EpicChild | Subtask): child is EpicChild {
+  return "storyPoints" in child;
+}
+
 /**
  * Sorts named sprint groups chronologically (closed → active → future → backlog),
  * then dated sprints by start date with undated/unmatched ones last. Mutates and

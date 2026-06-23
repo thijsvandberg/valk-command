@@ -41,7 +41,7 @@ import { placementForMove, topKeysForMove } from "@/lib/sprint-placement";
 import { computeQuickMoves, type QuickMoveOption } from "@/lib/quick-moves";
 import { useBacklogDropTarget } from "@/hooks/useBacklogDropTarget";
 import { applyLocalOrder } from "@/lib/epic-children-reorder";
-import { groupChildrenBySprint } from "@/lib/epic-children-grouping";
+import { groupChildrenBySprint, isEpicChild } from "@/lib/epic-children-grouping";
 import { Loader2, Search, AlertTriangle } from "lucide-react";
 
 const EPIC_CHILD_FIELDS = [
@@ -78,10 +78,6 @@ interface EpicChildrenSectionProps {
   /** Render the read-only epic roll-up (count / status distribution / SP progress)
       above the list. Used by the side panel's epic view (BRDG-131). */
   showStatsSummary?: boolean;
-}
-
-function isEpicChild(child: EpicChild | Subtask): child is EpicChild {
-  return "storyPoints" in child;
 }
 
 // One unified SP + guess chip per child row (BRDG-323). Holds the same slot-freeze

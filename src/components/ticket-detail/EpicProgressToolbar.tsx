@@ -5,6 +5,7 @@ import type { EpicChild, Subtask, JiraStatus } from "@/types/ticket";
 import { STATUS_PILL_COLORS } from "@/components/sprint-board/SprintStatPill";
 import { Tooltip } from "@/components/shared/Tooltip";
 import { useMigratedAccountSetting } from "@/hooks/useMigratedAccountSetting";
+import { isEpicChild } from "@/lib/epic-children-grouping";
 import { Filter, EyeOff, X } from "lucide-react";
 
 // The four working statuses. DEPRECATED is treated as noise and excluded from the
@@ -26,9 +27,6 @@ const METRICS: { key: Metric; label: string }[] = [
   { key: "bv", label: "BV" },
 ];
 
-function isEpicChild(child: EpicChild | Subtask): child is EpicChild {
-  return "storyPoints" in child;
-}
 
 const zeroByStatus = () => Object.fromEntries(DISTRIBUTION.map((s) => [s, 0])) as Record<JiraStatus, number>;
 const segColor = (s: JiraStatus) => STATUS_PILL_COLORS[s].dot ?? STATUS_PILL_COLORS[s].text;

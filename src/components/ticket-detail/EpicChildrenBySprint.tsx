@@ -7,7 +7,7 @@ import { GroupStatBar } from "@/components/sprint-board/GroupStatBar";
 import { GroupCard } from "@/components/sprint-board/GroupCard";
 import { ChildIssueRow } from "./ChildIssueRow";
 import { ChildIssueComposer } from "./ChildIssueComposer";
-import { groupChildrenBySprint, nextRegularSprintGroup, nextRegularSprintCreateGroup, placeNextCreateZone, backlogDropGroups, sortNamedGroups, UNSCHEDULED_GROUP_KEY, type ChildGroup } from "@/lib/epic-children-grouping";
+import { groupChildrenBySprint, nextRegularSprintGroup, nextRegularSprintCreateGroup, placeNextCreateZone, backlogDropGroups, sortNamedGroups, isEpicChild, UNSCHEDULED_GROUP_KEY, type ChildGroup } from "@/lib/epic-children-grouping";
 import { resolveDragEnd, insertLineForRow, type ChildReorder, type ChildMoveToPosition } from "@/lib/epic-children-reorder";
 import { useSessionStorage } from "@/hooks/useSessionStorage";
 import { isBacklogSprintName } from "@/lib/sprint-utils";
@@ -100,9 +100,6 @@ interface EpicChildrenBySprintProps {
   onPlaceholderReorder?: (orderedIds: string[]) => void;
 }
 
-function isEpicChild(child: EpicChild | Subtask): child is EpicChild {
-  return "storyPoints" in child;
-}
 
 // True when the dragged row's center sits below the hovered row's center, i.e. the
 // cursor is in the row's bottom half, so a drop should land after it. Lets a target

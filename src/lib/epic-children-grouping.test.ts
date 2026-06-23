@@ -8,6 +8,7 @@ import {
   backlogDropGroups,
   CREATE_NEXT_SPRINT_GROUP_KEY,
   sortNamedGroups,
+  isEpicChild,
   UNSCHEDULED_GROUP_KEY,
   type ChildGroup,
 } from "./epic-children-grouping";
@@ -42,6 +43,25 @@ function sprint(name: string, state: Sprint["state"], startDate: string | null):
     goal: null,
   };
 }
+
+describe("isEpicChild", () => {
+  it("returns true for an epic child (has storyPoints)", () => {
+    expect(isEpicChild(child("A", "Sprint 1", 5))).toBe(true);
+    // storyPoints present but null still counts: the key exists on the object.
+    expect(isEpicChild(child("B", "Sprint 1", null))).toBe(true);
+  });
+
+  it("returns false for a plain Subtask (no storyPoints key)", () => {
+    const subtask: Subtask = {
+      key: "SUB-1",
+      title: "A subtask",
+      type: "subtask",
+      jiraStatus: "TO DO",
+      assignee: null,
+    };
+    expect(isEpicChild(subtask)).toBe(false);
+  });
+});
 
 describe("groupChildrenBySprint", () => {
   it("groups children that share a sprint name into one group", () => {
