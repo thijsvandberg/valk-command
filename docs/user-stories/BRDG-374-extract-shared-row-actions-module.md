@@ -1,8 +1,27 @@
 # BRDG-374: Shared, group-based row-actions module (menu + bulk bar + dispatch)
 
-**Status:** Design locked (prototype validated) — implementation not started
+**Status:** In progress — foundation landed (pass 1, 2026-06-23); dispatch unification + migration paused (see Progress)
 **Priority:** Medium
 **Type:** Refactor + UX — Sprint board / shared components
+
+## Progress (implementation pass 1 — 2026-06-23)
+
+**Landed (committed, tested, green):**
+- Group registry `src/components/sprint-board/row-actions/groups.ts` + `groups.test.ts` — the
+  declarative group model + per-surface composition (groups + `rank`/`metrics` capabilities).
+- Quick-move labels switched to purpose-led ("Move to active/next/backlog") with a `target` chip
+  (destination sprint name), rendered in the shared menu/bar. Live on all three surfaces;
+  `quick-moves.test.ts` + `ticket-action-menu.test.tsx` updated.
+
+**Paused — needs staged, reviewed work (NOT safe to rush in one pass):** generalising
+`useTicketActions` onto a shared adapter and migrating the inbox/epic dispatch onto it. Investigation
+found the three surfaces use **three different optimism models** (board: global `pendingTicketEdits`/
+`pendingSprintMoves` overlay + `saveTicketMetadata`; inbox/epic: local React maps / `onChildOptimistic`,
+deliberately NOT the overlay). Unifying them is a real behavioral change to the app's most
+heavily-tested components, not the thin adapter swap the AC implies. See
+[../investigations/2026-06-23-row-actions-dispatch-unification-risk.md](../investigations/2026-06-23-row-actions-dispatch-unification-risk.md)
+for the finding + recommended incremental path (adapter seam → wrappers as pass-throughs → presentation
+UX-fold per change → migrate inbox then epic, choosing ONE optimism model explicitly).
 
 ## Goal
 
