@@ -10,6 +10,7 @@ import { ChildIssueComposer } from "./ChildIssueComposer";
 import { groupChildrenBySprint, nextRegularSprintGroup, nextRegularSprintCreateGroup, placeNextCreateZone, backlogDropGroups, sortNamedGroups, UNSCHEDULED_GROUP_KEY, type ChildGroup } from "@/lib/epic-children-grouping";
 import { resolveDragEnd, insertLineForRow, type ChildReorder, type ChildMoveToPosition } from "@/lib/epic-children-reorder";
 import { useSessionStorage } from "@/hooks/useSessionStorage";
+import { isBacklogSprintName } from "@/lib/sprint-utils";
 import {
   DndContext,
   DragOverlay,
@@ -644,8 +645,10 @@ export function EpicChildrenBySprint({
     // the label's own width keeps every group's count tight to its label.
     // Resolve a real sprint id for planning: only named (non-synthetic) groups whose
     // sprint resolves to an id get the fullness meter; the create/unscheduled/backlog
-    // zones do not (BRDG-303).
-    const planningSprintId = !isSynthetic && !isUnscheduled && group.sprintName
+    // zones do not (BRDG-303). Backlog sprints ("GXP: Backlog") arrive from Jira as
+    // regular future sprints, so they're excluded by name: a backlog has no planning
+    // capacity to track fullness against.
+    const planningSprintId = !isSynthetic && !isUnscheduled && group.sprintName && !isBacklogSprintName(group.sprintName)
       ? sprints.find((s) => s.name === group.sprintName)?.id
       : undefined;
     // Select-all-in-group: only real groups with selectable (non-pending) rows expose

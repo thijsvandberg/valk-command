@@ -211,6 +211,42 @@ describe("EpicChildrenBySprint placeholders", () => {
   });
 });
 
+// The pencil-capacity fullness meter only belongs on real sprint groups. A backlog
+// ("GXP: Backlog") has no planning capacity to fill, so it must not show the meter.
+describe("EpicChildrenBySprint fullness meter", () => {
+  // A future (non-active) sprint: the meter shows there by default, unlike the active
+  // sprint where it is toggled on. The backlog must stay meter-free regardless.
+  const PLANNING_SPRINTS: Sprint[] = [
+    { id: "139", name: "BT: 139", dateRange: "5 Jun - 18 Jun", state: "future", ticketCount: 0, startDate: "2026-06-05", endDate: null, goal: null },
+    { id: "142", name: "GXP: Backlog", dateRange: "", state: "future", ticketCount: 0, startDate: null, endDate: null, goal: null },
+  ];
+
+  function setupPlanning() {
+    render(
+      <EpicChildrenBySprint
+        items={[child("VPL-30", "BT: 139"), child("VPL-31", "GXP: Backlog")]}
+        sprints={PLANNING_SPRINTS}
+        ticketKey="VPL-3"
+        visibleFields={new Set(["issueKey", "status"])}
+        renderMetadata={() => null}
+        onJiraStatusChange={vi.fn()}
+        onReadinessChange={vi.fn()}
+        onMoveChild={vi.fn()}
+        onRowContextMenu={vi.fn()}
+        onMoveError={vi.fn()}
+        planningOn
+        onPencilCapacityChange={vi.fn()}
+      />,
+    );
+  }
+
+  it("shows the meter on a real sprint group but not on a backlog group", () => {
+    setupPlanning();
+    // One meter total: the active sprint. The backlog group gets none.
+    expect(screen.getAllByRole("group", { name: "Sprint fullness" })).toHaveLength(1);
+  });
+});
+
 // The next-sprint drop zone (BRDG-306) needs regular `PREFIX: N` sprint names so the
 // series helpers engage. jsdom cannot complete a keyboard drag across droppables (no
 // measured rects), so the move-resolution itself is unit-tested in epic-children-reorder;
