@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import useSWR, { mutate as globalMutate } from "swr";
 import dynamic from "next/dynamic";
 import { Inbox, Undo2 } from "lucide-react";
@@ -8,7 +8,10 @@ import { usePageTitle } from "@/hooks/usePageTitle";
 import { ViewHeader, ViewHeaderTitle } from "@/components/shared/ViewHeader";
 import { Toast } from "@/components/ui/Toast";
 import { useToast } from "@/hooks/useToast";
-import { useTicketDetail } from "@/hooks/useSprintBoard";
+import { useTicketDetail, useJiraSprints, useSprintSlots } from "@/hooks/useSprintBoard";
+import { useBacklogDropTarget } from "@/hooks/useBacklogDropTarget";
+import { useRowActions } from "@/components/sprint-board/row-actions/useRowActions";
+import { makeInboxDispatchAdapter, type RowDataAdapter } from "@/components/sprint-board/row-actions/adapter";
 import { BoardRow } from "@/components/sprint-board/BoardRow";
 import type { EpicOption } from "@/components/shared/EpicPicker";
 import { GroupCard } from "@/components/sprint-board/GroupCard";
@@ -22,9 +25,8 @@ import { AddToRefinementModal } from "@/components/refinement-session/AddToRefin
 import { startDateFromPreviousEnd } from "@/lib/sprint-dates";
 import { useInboxFilters } from "@/components/sprint-board/useInboxFilters";
 import { useInboxGroupBy } from "@/components/sprint-board/useInboxGroupBy";
-import { useInboxRowActions } from "./useInboxRowActions";
 import { INBOX_SORT_OPTIONS } from "@/components/sprint-board/filter-bar-types";
-import { saveTicketMetadata } from "@/components/sprint-board/sprint-board-utils";
+import { saveTicketMetadata, mapJiraSprints } from "@/components/sprint-board/sprint-board-utils";
 import { buildTeamMap } from "@/lib/new-stories-grouping";
 import { poUsers, userTeams } from "@/lib/api-client";
 import { useDefaultTeam } from "@/hooks/useDefaultTeam";
@@ -87,10 +89,31 @@ export default function InboxPage() {
 
   const rows = useMemo(() => data?.rows ?? [], [data]);
 
-  // Right-click context menu + multi-select bulk actions (BRDG-373). Self-contained
-  // dispatch layer that touches only the inbox list (never the board's caches).
-  const actions = useInboxRowActions({ rows, checkedKeys, mutateList, showToast });
-  const { rowMenu, quickCreate, localMoves } = actions;
+  // Sprint metadata for the move actions + the quick-move / create-sprint pickers.
+  const { sprints: rawSprints, mutate: mutateSprints } = useJiraSprints();
+  const sprints = useMemo(() => mapJiraSprints(rawSprints), [rawSprints]);
+  const { backlogTargetName } = useBacklogDropTarget();
+  const { data: sprintSlots } = useSprintSlots();
+  const pinnedSprintIds = useMemo(
+    () => [...(sprintSlots ?? [])].sort((a, b) => a.slotIndex - b.slotIndex).map((s) => s.sprintId),
+    [sprintSlots],
+  );
+
+  // Optimistic sprint reassignments (key -> new sprint name, null for backlog). The row
+  // stays in the inbox; only the chip changes. Self-heal drops the override once a
+  // revalidated row reports the new sprint name (BRDG-374 shared dispatch / AC #7).
+  const [localMoves, setLocalMoves] = useState<Record<string, string | null>>({});
+  useEffect(() => {
+    setLocalMoves((prev) => {
+      if (Object.keys(prev).length === 0) return prev;
+      let changed = false;
+      const next = { ...prev };
+      for (const r of rows) {
+        if (r.key in next && (r.sprintName ?? null) === next[r.key]) { delete next[r.key]; changed = true; }
+      }
+      return changed ? next : prev;
+    });
+  }, [rows]);
 
   // Paint a row, applying the optimistic sprint-move overlay so a moved row's chip
   // updates while it stays in the inbox (AC #7).
@@ -98,6 +121,52 @@ export default function InboxPage() {
     (row: NewStoryRow): Ticket => rowToTicket(row, row.key in localMoves ? localMoves[row.key] : row.sprintName),
     [localMoves],
   );
+
+  // Identity sprint-name map: the inbox stores the name in sprintId (see rowToTicket),
+  // so name -> name keeps the placement rule + quick-moves resolving correctly.
+  const moveSprintNameMap = useMemo(() => {
+    const map: Record<string, string> = {};
+    for (const r of rows) if (r.sprintName) map[r.sprintName] = r.sprintName;
+    return map;
+  }, [rows]);
+
+  // Shared row-actions dispatch (BRDG-374). The inbox adapter reflects only sprint moves
+  // optimistically (the row carries no flag/readiness state, so field edits are
+  // write-through) and never touches the board's caches.
+  const adapter = useMemo(() => {
+    const sprintNameForKey = (key: string): string | null => {
+      const r = rows.find((x) => x.key === key);
+      return r ? (key in localMoves ? localMoves[key] : r.sprintName) : null;
+    };
+    const dataAdapter: RowDataAdapter = {
+      getTicket: (key) => { const r = rows.find((x) => x.key === key); return r ? rowToTicket(r, sprintNameForKey(key)) : undefined; },
+      getTickets: () => rows.map((r) => rowToTicket(r, sprintNameForKey(r.key))),
+      mutate: () => { void mutateList(); },
+      activeListKey: LIST_KEY,
+      sprintNameMap: moveSprintNameMap,
+    };
+    return makeInboxDispatchAdapter(dataAdapter, { setLocalMoves });
+  }, [rows, localMoves, mutateList, moveSprintNameMap]);
+
+  const ra = useRowActions({
+    adapter,
+    selectedKeys: checkedKeys,
+    sprints,
+    pinnedSprintIds,
+    backlogTargetName,
+    showToast,
+    flagSource: "mixed",
+    currentSprintName: (key) => (key in localMoves ? localMoves[key] : (rows.find((r) => r.key === key)?.sprintName ?? null)),
+    injectSprint: (sprint) =>
+      mutateSprints(
+        (cur) =>
+          cur && !cur.sprints.some((s) => s.id === sprint.id)
+            ? { ...cur, sprints: [...cur.sprints, { id: sprint.id, name: sprint.name, state: sprint.state, startDate: sprint.startDate, endDate: sprint.endDate, goal: sprint.goal }] }
+            : cur,
+        { revalidate: false },
+      ),
+  });
+  const { rowMenu, quickCreate } = ra;
 
   const {
     filteredRows,
@@ -399,7 +468,7 @@ export default function InboxPage() {
                                   isDragActive={false}
                                   hideRowAccent
                                   tags={rowTags}
-                                  onRowContextMenu={actions.handleRowContextMenu}
+                                  onRowContextMenu={ra.handleRowContextMenu}
                                   hideEpic={groupBy === "epic"}
                                   showSprint={groupBy !== "sprint"}
                                   sprintNameMap={sprintNameMap}
@@ -437,23 +506,23 @@ export default function InboxPage() {
                     onClear={() => setCheckedKeys(new Set())}
                     onMarkRead={() => void markRead([...checkedKeys])}
                     markReadCount={checkedKeys.size}
-                    onSetStatus={actions.handleBulkStatus}
-                    onSetReadiness={actions.handleBulkReadiness}
-                    onSetEpic={(epicKey) => actions.handleBulkEpic(epicKey)}
-                    onMoveSprint={actions.handleBulkMoveSprint}
-                    quickMoves={actions.quickMovesFor(checkedKeys)}
-                    onQuickMove={actions.handleQuickMove}
-                    onUpdateAssignee={actions.handleBulkAssignee}
-                    onUpdateLabel={actions.handleBulkLabels}
-                    onSetFlagged={actions.handleBulkFlag}
-                    flagState={actions.rowMenuFlagState}
-                    sprints={actions.sprints}
-                    pinnedSprintIds={actions.pinnedSprintIds}
-                    onReviewStory={() => actions.handleBulkReview()}
-                    onGenerateSubtasks={() => actions.handleBulkGenerate()}
-                    isGeneratingSubtasks={actions.isGeneratingSubtasks}
-                    onCopyToClipboard={actions.handleCopySelected}
-                    onRefine={() => actions.openRefine([...checkedKeys])}
+                    onSetStatus={ra.bulkSetStatus}
+                    onSetReadiness={ra.bulkSetReadiness}
+                    onSetEpic={(epicKey) => ra.bulkSetEpic(epicKey)}
+                    onMoveSprint={(sprintId) => ra.moveSprint(sprintId)}
+                    quickMoves={ra.quickMovesFor(checkedKeys)}
+                    onQuickMove={ra.handleQuickMove}
+                    onUpdateAssignee={ra.bulkUpdateAssignee}
+                    onUpdateLabel={ra.bulkUpdateLabels}
+                    onSetFlagged={(flagged) => ra.bulkSetFlagged(flagged, null)}
+                    flagState={ra.computeFlagState(checkedKeys)}
+                    sprints={sprints}
+                    pinnedSprintIds={pinnedSprintIds}
+                    onReviewStory={() => ra.handleBulkReview()}
+                    onGenerateSubtasks={() => ra.handleBulkGenerate()}
+                    isGeneratingSubtasks={ra.isGeneratingSubtasks}
+                    onCopyToClipboard={() => ra.copySelected()}
+                    onRefine={() => ra.openRefine([...checkedKeys])}
                   />
                 </div>
               </div>
@@ -477,50 +546,50 @@ export default function InboxPage() {
         </div>
       </div>
       {rowMenu && (
-        <CursorMenu x={rowMenu.x} y={rowMenu.y} onClose={() => actions.setRowMenu(null)}>
+        <CursorMenu x={rowMenu.x} y={rowMenu.y} onClose={() => ra.setRowMenu(null)}>
           <TicketActionMenuContent
             onMarkRead={() => void markRead([...rowMenu.targets])}
-            onSetStatus={(s) => actions.handleBulkStatus(s, rowMenu.targets)}
-            onSetReadiness={(r) => actions.handleBulkReadiness(r, rowMenu.targets)}
-            onSetEpic={(epicKey) => actions.handleBulkEpic(epicKey, rowMenu.targets)}
+            onSetStatus={(s) => ra.bulkSetStatus(s, rowMenu.targets)}
+            onSetReadiness={(r) => ra.bulkSetReadiness(r, rowMenu.targets)}
+            onSetEpic={(epicKey) => ra.bulkSetEpic(epicKey, null, rowMenu.targets)}
             epicValue={rowMenuEpic}
             epicSuggestTicketKey={rowMenu.targets.size === 1 ? [...rowMenu.targets][0] : undefined}
             epicClearable={rowMenu.targets.size > 1}
-            onMoveSprint={(sprintId) => actions.handleBulkMoveSprint(sprintId, rowMenu.targets)}
-            quickMoves={actions.quickMovesFor(rowMenu.targets)}
-            onQuickMove={(opt) => actions.handleQuickMove(opt, rowMenu.targets)}
-            onUpdateAssignee={(accountId, name) => actions.handleBulkAssignee(accountId, name, rowMenu.targets)}
-            onUpdateLabel={(labels, mode) => actions.handleBulkLabels(labels, mode, rowMenu.targets)}
-            onSetFlagged={(flagged) => actions.handleBulkFlag(flagged, rowMenu.targets)}
-            flagState={actions.rowMenuFlagState}
-            onReviewStory={() => actions.handleBulkReview(rowMenu.targets)}
-            onGenerateSubtasks={() => actions.handleBulkGenerate(rowMenu.targets)}
-            onRefine={() => actions.openRefine([...rowMenu.targets])}
-            sprints={actions.sprints}
-            pinnedSprintIds={actions.pinnedSprintIds}
-            close={() => actions.setRowMenu(null)}
+            onMoveSprint={(sprintId) => ra.moveSprint(sprintId, rowMenu.targets)}
+            quickMoves={ra.quickMovesFor(rowMenu.targets)}
+            onQuickMove={(opt) => ra.handleQuickMove(opt, rowMenu.targets)}
+            onUpdateAssignee={(accountId, name) => ra.bulkUpdateAssignee(accountId, name, rowMenu.targets)}
+            onUpdateLabel={(labels, mode) => ra.bulkUpdateLabels(labels, mode, rowMenu.targets)}
+            onSetFlagged={(flagged) => ra.bulkSetFlagged(flagged, null, rowMenu.targets)}
+            flagState={ra.computeFlagState(rowMenu.targets)}
+            onReviewStory={() => ra.handleBulkReview(rowMenu.targets)}
+            onGenerateSubtasks={() => ra.handleBulkGenerate(rowMenu.targets)}
+            onRefine={() => ra.openRefine([...rowMenu.targets])}
+            sprints={sprints}
+            pinnedSprintIds={pinnedSprintIds}
+            close={() => ra.setRowMenu(null)}
           />
         </CursorMenu>
       )}
 
       <AddToRefinementModal
-        open={actions.refineModalOpen}
-        onClose={() => actions.setRefineModalOpen(false)}
-        ticketKeys={actions.refineKeys}
+        open={ra.refineModalOpen}
+        onClose={() => ra.setRefineModalOpen(false)}
+        ticketKeys={ra.refineKeys}
         onAdded={(_id, name) =>
-          showToast(`Added ${actions.refineKeys.length} issue${actions.refineKeys.length === 1 ? "" : "s"} to "${name}"`)
+          showToast(`Added ${ra.refineKeys.length} issue${ra.refineKeys.length === 1 ? "" : "s"} to "${name}"`)
         }
       />
 
       {quickCreate && (
         <CreateSprintModal
-          onClose={actions.closeQuickCreate}
-          onCreated={actions.confirmQuickCreate}
+          onClose={ra.closeQuickCreate}
+          onCreated={ra.confirmQuickCreate}
           showToast={showToast}
           suggestedName={quickCreate.name}
-          suggestedStartDate={startDateFromPreviousEnd(actions.planPrevSprint?.endDate)}
-          previousSprintName={actions.planPrevSprint?.name}
-          previousSprintEndIso={actions.planPrevSprint?.endDate ?? null}
+          suggestedStartDate={startDateFromPreviousEnd(ra.planPrevSprint?.endDate)}
+          previousSprintName={ra.planPrevSprint?.name}
+          previousSprintEndIso={ra.planPrevSprint?.endDate ?? null}
         />
       )}
 
