@@ -21,8 +21,13 @@ const DEFAULT_PROMPTS: QuickPromptsConfig = {
   story: [
     {
       id: "d-story-0",
-      label: "Improve my story",
+      label: "Improve story",
       text: "Improve my story. Make the problem statement sharper, the acceptance criteria more testable, and the scope clearer. Keep the original intent.",
+    },
+    {
+      id: "d-story-4",
+      label: "Make more concise",
+      text: "Make this story more concise. Cut redundancy and filler and tighten the wording, while keeping all essential information and the original intent intact.",
     },
     { id: "d-story-1", label: "Add test scenarios", text: "Add test scenarios" },
     {
@@ -43,6 +48,11 @@ const DEFAULT_PROMPTS: QuickPromptsConfig = {
       label: "Improve this bug report",
       text: "Improve this bug report. Make the reproduction steps precise and complete, separate expected from actual behavior, and add any missing context that would help a developer reproduce it.",
     },
+    {
+      id: "d-bug-4",
+      label: "Make more concise",
+      text: "Make this bug report more concise. Cut redundancy and filler and tighten the wording, while keeping the reproduction steps and all essential details intact.",
+    },
     { id: "d-bug-1", label: "Add test scenarios", text: "Add test scenarios" },
     {
       id: "d-bug-2",
@@ -62,6 +72,11 @@ const DEFAULT_PROMPTS: QuickPromptsConfig = {
       label: "Improve this task",
       text: "Improve this task description. Make the goal and deliverable explicit, add a clear definition of done, and remove any ambiguity about scope.",
     },
+    {
+      id: "d-task-3",
+      label: "Make more concise",
+      text: "Make this task more concise. Cut redundancy and filler and tighten the wording, while keeping the goal and definition of done intact.",
+    },
     { id: "d-task-1", label: "Add test scenarios", text: "Add test scenarios" },
     {
       id: "d-task-2",
@@ -74,6 +89,11 @@ const DEFAULT_PROMPTS: QuickPromptsConfig = {
       id: "d-subtask-0",
       label: "Improve this subtask",
       text: "Improve this subtask. Make it describe exactly one atomic unit of work, with a clear output and enough detail for a developer to start without asking questions.",
+    },
+    {
+      id: "d-subtask-2",
+      label: "Make more concise",
+      text: "Make this subtask more concise. Cut redundancy and filler and tighten the wording, while keeping the work description and intended output intact.",
     },
     {
       id: "d-subtask-1",
@@ -91,6 +111,11 @@ const DEFAULT_PROMPTS: QuickPromptsConfig = {
       id: "d-spike-1",
       label: "Structure investigation",
       text: "Structure this spike as an investigation with clear questions to answer, approach, and definition of done.",
+    },
+    {
+      id: "d-spike-3",
+      label: "Make more concise",
+      text: "Make this spike more concise. Cut redundancy and filler and tighten the wording, while keeping the research question and definition of done intact.",
     },
     {
       id: "d-spike-2",

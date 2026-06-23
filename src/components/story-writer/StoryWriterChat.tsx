@@ -126,6 +126,8 @@ export type ChipContext = {
 type ContextualPrompt = QuickPrompt & {
   visible: (ctx: ChipContext) => boolean;
   order: number;
+  /** Whether the chip sits before ("lead") or after ("trail") the API prompts */
+  placement: "lead" | "trail";
   /** When set, the chip triggers this action ID instead of sending text */
   actionId?: string;
 };
@@ -133,9 +135,10 @@ type ContextualPrompt = QuickPrompt & {
 const CONTEXTUAL_PROMPTS: ContextualPrompt[] = [
   {
     id: "ctx-find-related",
-    label: "Find related stories",
+    label: "Find related",
     text: "Find related stories",
     order: 0,
+    placement: "lead",
     actionId: "find-related",
     visible: ({ hasTitle, hasRelated, hasLinkedIssues }) =>
       hasTitle && !hasRelated && !hasLinkedIssues,
@@ -145,9 +148,14 @@ const CONTEXTUAL_PROMPTS: ContextualPrompt[] = [
     label: "Review story",
     text: "Review this story. Score its quality and provide specific feedback on completeness, clarity, acceptance criteria, and testability.",
     order: 1,
+    // Trails the editable prompts so it is the first chip dropped once the cap is hit
+    placement: "trail",
     visible: ({ hasDraft }) => hasDraft,
   },
 ];
+
+/** Maximum number of chips rendered; trailing chips are dropped first. */
+export const MAX_VISIBLE_CHIPS = 5;
 
 /** Pure helper: merge API prompts with contextual prompts based on story state */
 export function getVisibleChips(
@@ -161,11 +169,21 @@ export function getVisibleChips(
     return true;
   });
 
-  const contextual = CONTEXTUAL_PROMPTS.filter((cp) => cp.visible(ctx))
-    .sort((a, b) => a.order - b.order)
-    .map(({ visible: _v, order: _o, actionId: _a, ...rest }) => rest);
+  const stripInternal = ({
+    visible: _v,
+    order: _o,
+    placement: _p,
+    actionId: _a,
+    ...rest
+  }: ContextualPrompt): QuickPrompt => rest;
 
-  return [...contextual, ...filtered];
+  const visible = CONTEXTUAL_PROMPTS.filter((cp) => cp.visible(ctx)).sort(
+    (a, b) => a.order - b.order
+  );
+  const lead = visible.filter((cp) => cp.placement === "lead").map(stripInternal);
+  const trail = visible.filter((cp) => cp.placement === "trail").map(stripInternal);
+
+  return [...lead, ...filtered, ...trail].slice(0, MAX_VISIBLE_CHIPS);
 }
 
 const promptsFetcher = (url: string) => fetch(url).then((r) => r.json());

@@ -37,7 +37,7 @@ describe("getVisibleChips", () => {
     const ctx = { ...DEFAULT_CTX, hasTitle: true };
     const chips = getVisibleChips(SAMPLE_API_PROMPTS, ctx);
     expect(chips[0].id).toBe("ctx-find-related");
-    expect(chips[0].label).toBe("Find related stories");
+    expect(chips[0].label).toBe("Find related");
   });
 
   it("hides 'Find related stories' when related candidates already exist", () => {
@@ -60,15 +60,43 @@ describe("getVisibleChips", () => {
     expect(review!.label).toBe("Review story");
   });
 
-  it("puts contextual chips before API chips", () => {
+  it("keeps 'Find related stories' leading and 'Review story' trailing the API chips", () => {
     const ctx = { ...DEFAULT_CTX, hasTitle: true, hasDraft: true };
     const chips = getVisibleChips(SAMPLE_API_PROMPTS, ctx);
-    const ctxIds = chips.filter((c) => c.id.startsWith("ctx-")).map((c) => c.id);
-    const apiIds = chips.filter((c) => !c.id.startsWith("ctx-")).map((c) => c.id);
-    // All contextual chips should come before all API chips
-    const lastCtxIdx = chips.findIndex((c) => c.id === ctxIds[ctxIds.length - 1]);
-    const firstApiIdx = chips.findIndex((c) => c.id === apiIds[0]);
-    expect(lastCtxIdx).toBeLessThan(firstApiIdx);
+    expect(chips[0].id).toBe("ctx-find-related");
+    expect(chips[chips.length - 1].id).toBe("ctx-review-story");
+    const firstApiIdx = chips.findIndex((c) => !c.id.startsWith("ctx-"));
+    const reviewIdx = chips.findIndex((c) => c.id === "ctx-review-story");
+    expect(firstApiIdx).toBeLessThan(reviewIdx);
+  });
+
+  it("caps the chip list at 5", () => {
+    const manyPrompts: QuickPrompt[] = [
+      { id: "p0", label: "Improve", text: "..." },
+      { id: "p1", label: "Concise", text: "..." },
+      { id: "p2", label: "Tests", text: "..." },
+      { id: "p3", label: "Technical", text: "..." },
+      { id: "p4", label: "Extra", text: "..." },
+    ];
+    const ctx = { ...DEFAULT_CTX, hasTitle: true, hasDraft: true };
+    const chips = getVisibleChips(manyPrompts, ctx);
+    expect(chips.length).toBe(5);
+  });
+
+  it("drops the trailing 'Review story' chip before any API chip when over the cap", () => {
+    const manyPrompts: QuickPrompt[] = [
+      { id: "p0", label: "Improve", text: "..." },
+      { id: "p1", label: "Concise", text: "..." },
+      { id: "p2", label: "Tests", text: "..." },
+      { id: "p3", label: "Technical", text: "..." },
+    ];
+    // lead (find-related) + 4 API = 5, leaving no room for the trailing review chip
+    const ctx = { ...DEFAULT_CTX, hasTitle: true, hasDraft: true };
+    const chips = getVisibleChips(manyPrompts, ctx);
+    expect(chips.length).toBe(5);
+    expect(chips.find((c) => c.id === "ctx-review-story")).toBeUndefined();
+    expect(chips.find((c) => c.id === "ctx-find-related")).toBeDefined();
+    expect(chips.filter((c) => !c.id.startsWith("ctx-")).length).toBe(4);
   });
 
   it("handles empty API prompts", () => {
@@ -99,6 +127,7 @@ describe("getVisibleChips", () => {
     expect(findRelated).toBeDefined();
     expect("visible" in findRelated!).toBe(false);
     expect("order" in findRelated!).toBe(false);
+    expect("placement" in findRelated!).toBe(false);
     expect("actionId" in findRelated!).toBe(false);
   });
 });
