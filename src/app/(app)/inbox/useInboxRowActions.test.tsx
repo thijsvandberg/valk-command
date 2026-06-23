@@ -160,7 +160,7 @@ describe("useInboxRowActions (BRDG-373)", () => {
     const { result } = setup();
     act(() => {
       result.current.handleQuickMove(
-        { id: "next", label: "Move to BT: 200", targetSprintId: null, createName: "BT: 200" },
+        { id: "next", label: "Move to next", target: "BT: 200", targetSprintId: null, createName: "BT: 200" },
         new Set(["VPL-1"]),
       );
     });

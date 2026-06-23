@@ -121,9 +121,9 @@ describe("TicketActionMenuContent", () => {
     const onQuickMove = vi.fn();
     const close = vi.fn();
     const quickMoves = [
-      { id: "active" as const, label: 'Move to "BT: 139"', targetSprintId: "2", badge: "active" },
-      { id: "next" as const, label: 'Move to "BT: 140"', targetSprintId: "3" },
-      { id: "backlog" as const, label: 'Move to "BT: Backlog"', targetSprintId: "9" },
+      { id: "active" as const, label: "Move to active", target: "BT: 139", targetSprintId: "2", badge: "active" },
+      { id: "next" as const, label: "Move to next", target: "BT: 140", targetSprintId: "3" },
+      { id: "backlog" as const, label: "Move to backlog", target: "BT: Backlog", targetSprintId: "9" },
     ];
     const { container } = render(
       <TicketActionMenuContent
@@ -135,21 +135,23 @@ describe("TicketActionMenuContent", () => {
       />,
     );
     const labels = Array.from(container.querySelectorAll("button")).map((b) => b.textContent);
-    const activeIdx = labels.findIndex((t) => t?.startsWith('Move to "BT: 139"'));
+    const activeIdx = labels.findIndex((t) => t?.startsWith("Move to active"));
     const moveSprintIdx = labels.findIndex((t) => t === "Move to Sprint");
     expect(activeIdx).toBeGreaterThanOrEqual(0);
     expect(activeIdx).toBeLessThan(moveSprintIdx); // quick moves render above Move to Sprint
-    // The active option carries a small "active" dot marker.
+    // The active option shows its destination chip, tagged with the "active" marker.
     expect(screen.getByTitle("active")).toBeInTheDocument();
+    expect(screen.getByText("BT: 139")).toBeInTheDocument();
 
-    fireEvent.click(screen.getByText('Move to "BT: 140"'));
+    fireEvent.click(screen.getByText("Move to next"));
     expect(onQuickMove).toHaveBeenCalledWith(quickMoves[1]);
     expect(close).toHaveBeenCalledTimes(1);
   });
 
   it("renders no quick-move items when none are supplied", () => {
     render(<TicketActionMenuContent onMoveSprint={vi.fn()} sprints={[]} close={vi.fn()} />);
-    expect(screen.queryByText(/^Move to "/)).not.toBeInTheDocument();
+    expect(screen.queryByText("Move to active")).not.toBeInTheDocument();
+    expect(screen.queryByText("Move to next")).not.toBeInTheDocument();
     expect(screen.getByText("Move to Sprint")).toBeInTheDocument();
   });
 

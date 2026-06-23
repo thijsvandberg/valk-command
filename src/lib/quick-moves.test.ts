@@ -23,6 +23,7 @@ function ids(names: (string | null)[], sprints = SPRINTS, backlog = BACKLOG) {
     targetSprintId: o.targetSprintId,
     createName: o.createName,
     label: o.label,
+    target: o.target,
     badge: o.badge,
   }));
 }
@@ -32,7 +33,7 @@ describe("computeQuickMoves", () => {
     // Selection IS in BT: 139 (the active sprint), so active is hidden; next BT: 140 (id 3).
     const result = ids(["BT: 139"]);
     expect(result.map((o) => o.id)).toEqual(["next", "backlog"]);
-    expect(result.find((o) => o.id === "next")).toMatchObject({ targetSprintId: "3", label: 'Move to "BT: 140"' });
+    expect(result.find((o) => o.id === "next")).toMatchObject({ targetSprintId: "3", label: "Move to next", target: "BT: 140" });
     expect(result.find((o) => o.id === "backlog")).toMatchObject({ targetSprintId: "9" });
   });
 
@@ -40,14 +41,14 @@ describe("computeQuickMoves", () => {
     // Selection in the closed BT: 138 -> next is BT: 139, which is also the active sprint.
     const result = ids(["BT: 138"]);
     expect(result.map((o) => o.id)).toEqual(["active", "backlog"]);
-    expect(result.find((o) => o.id === "active")).toMatchObject({ targetSprintId: "2", label: 'Move to "BT: 139"', badge: "active" });
+    expect(result.find((o) => o.id === "active")).toMatchObject({ targetSprintId: "2", label: "Move to active", target: "BT: 139", badge: "active" });
   });
 
   it("orders low-to-high by sprint number: active above next, backlog last", () => {
     const result = ids(["BT: 140"]); // active BT: 139, next BT: 141 (does not exist)
     expect(result.map((o) => o.id)).toEqual(["active", "next", "backlog"]);
     expect(result.find((o) => o.id === "active")).toMatchObject({ targetSprintId: "2", badge: "active" });
-    expect(result.find((o) => o.id === "next")).toMatchObject({ targetSprintId: null, createName: "BT: 141", label: 'Move to "BT: 141"' });
+    expect(result.find((o) => o.id === "next")).toMatchObject({ targetSprintId: null, createName: "BT: 141", label: "Move to next", target: "BT: 141" });
   });
 
   it("hides the active option when all items are already in the active sprint", () => {

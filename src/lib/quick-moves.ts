@@ -7,8 +7,10 @@ import { extractTeamPrefix, isRegularSprint, nextSprintNameFrom, sprintNumber } 
 
 export interface QuickMoveOption {
   id: "next" | "active" | "backlog";
-  /** Rendered label, e.g. 'Move to "BT: 140"'. */
+  /** Purpose-led label: "Move to active" / "Move to next" / "Move to backlog" (BRDG-374). */
   label: string;
+  /** Destination sprint name, rendered as a trailing chip next to the label (e.g. "BT: 140"). */
+  target: string;
   /**
    * Resolved destination sprint id. Null only when `createName` is set (the sprint does
    * not exist yet and must be created first). The backlog option uses the named backlog
@@ -29,9 +31,12 @@ interface ComputeArgs {
   backlogTargetName: string;
 }
 
-function moveLabel(name: string): string {
-  return `Move to "${name}"`;
-}
+// Purpose-led labels (BRDG-374); the destination sprint name rides along as `target`.
+const QUICK_MOVE_LABELS: Record<QuickMoveOption["id"], string> = {
+  active: "Move to active",
+  next: "Move to next",
+  backlog: "Move to backlog",
+};
 
 /**
  * Build the de-duplicated quick-move options for a selection, ordered low-to-high by
@@ -58,7 +63,7 @@ export function computeQuickMoves({ currentSprintNames, sprints, backlogTargetNa
     const prefix = [...prefixes][0];
     const active = sprints.find((s) => s.state === "active" && extractTeamPrefix(s.name) === prefix);
     if (active && !(nameSet.size === 1 && nameSet.has(active.name))) {
-      candidates.push({ opt: { id: "active", label: moveLabel(active.name), targetSprintId: active.id, badge: "active" }, sortName: active.name });
+      candidates.push({ opt: { id: "active", label: QUICK_MOVE_LABELS.active, target: active.name, targetSprintId: active.id, badge: "active" }, sortName: active.name });
     }
   }
 
@@ -71,8 +76,8 @@ export function computeQuickMoves({ currentSprintNames, sprints, backlogTargetNa
         const existingId = idForName(nextName);
         candidates.push({
           opt: existingId
-            ? { id: "next", label: moveLabel(nextName), targetSprintId: existingId }
-            : { id: "next", label: moveLabel(nextName), targetSprintId: null, createName: nextName },
+            ? { id: "next", label: QUICK_MOVE_LABELS.next, target: nextName, targetSprintId: existingId }
+            : { id: "next", label: QUICK_MOVE_LABELS.next, target: nextName, targetSprintId: null, createName: nextName },
           sortName: nextName,
         });
       }
@@ -82,7 +87,7 @@ export function computeQuickMoves({ currentSprintNames, sprints, backlogTargetNa
   // backlog: the configured team backlog, unless unresolved or the selection is already in it.
   const backlogId = idForName(backlogTargetName);
   if (backlogId && !(nameSet.size === 1 && nameSet.has(backlogTargetName))) {
-    candidates.push({ opt: { id: "backlog", label: moveLabel(backlogTargetName), targetSprintId: backlogId }, sortName: backlogTargetName });
+    candidates.push({ opt: { id: "backlog", label: QUICK_MOVE_LABELS.backlog, target: backlogTargetName, targetSprintId: backlogId }, sortName: backlogTargetName });
   }
 
   // De-duplicate by resolved target id (keep the earliest built — active over next).
