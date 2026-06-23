@@ -3,12 +3,15 @@
 import { useState, useCallback, useEffect, useRef, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import { useRefinementSession } from "@/contexts/RefinementSessionContext";
+import { useRefinementSessions } from "@/hooks/useRefinementSessions";
 import { useTickets } from "@/hooks/useSprintBoard";
 import { refinementSessions as refinementSessionsApi } from "@/lib/api-client";
 import type { RefinementSessionTicketNoteResponse } from "@/lib/api-client";
 import { Button } from "@/components/ui/Button";
 import { TicketStatusPill } from "@/components/shared/TicketStatusPill";
 import { IssueTypeIcon } from "@/components/shared/IssueTypeIcon";
+import { DateTimePicker, todayLocalDate } from "@/components/shared/DateTimePicker";
+import { sessionLabel, compareSessions } from "./refinement-utils";
 import { tickets, apiFetch } from "@/lib/api-client";
 import { patchTicketCaches } from "@/lib/ticket-cache";
 import type { JiraStatus, TicketReadiness, IssueType } from "@/types/ticket";
@@ -17,16 +20,24 @@ import {
   Save,
   CheckCircle2,
   MessageSquarePlus,
+  ArrowRightToLine,
+  Check,
   X,
 } from "lucide-react";
 
 const NOTE_SAVE_DELAY = 600;
+
+// Read once on the refinement overview after navigation to surface the
+// "Carried N tickets" confirmation; the modal that performs the carry-over
+// unmounts on navigation, so a modal-local toast would never be seen.
+export const CARRY_OVER_TOAST_KEY = "bridge:refinement-toast";
 
 export function SessionEndModal() {
   const router = useRouter();
   const {
     queue,
     queueMeta,
+    currentIndex,
     savedSessionId,
     sessionEstimates,
     sessionSubtaskCounts,
@@ -36,6 +47,7 @@ export function SessionEndModal() {
   } = useRefinementSession();
 
   const { data: allTickets } = useTickets("__all__");
+  const { sessions, mutate: mutateSessions } = useRefinementSessions();
 
   // General comment state
   const [generalComment, setGeneralComment] = useState("");
@@ -45,6 +57,13 @@ export function SessionEndModal() {
   const [ticketNotes, setTicketNotes] = useState<Record<string, string>>({});
   const [expandedNotes, setExpandedNotes] = useState<Set<string>>(new Set());
   const noteTimerRef = useRef<Record<string, ReturnType<typeof setTimeout>>>({});
+
+  // Carry-over: which tickets to push into a follow-up session, and where.
+  const [carriedKeys, setCarriedKeys] = useState<Set<string>>(new Set());
+  const carrySeededRef = useRef(false);
+  const [targetMode, setTargetMode] = useState<"new" | "existing">("new");
+  const [targetDate, setTargetDate] = useState("");
+  const [targetExistingId, setTargetExistingId] = useState<string | null>(null);
 
   // Load session data and existing notes
   useEffect(() => {
@@ -163,30 +182,155 @@ export function SessionEndModal() {
   // hold the pre-session value (or get overwritten by a stale refetch) while
   // the save is in flight, and the wrap-up must show what was just picked.
   const ticketRows = useMemo(() => {
-    return queue.map((key) => {
+    return queue.map((key, index) => {
       const meta = queueMeta.find((m) => m.key === key);
       const ticket = allTickets?.find((t) => t.key === key);
+      const isSpike = ticket?.type === "spike";
+      const storyPoints = key in sessionEstimates ? sessionEstimates[key] : ticket?.storyPoints ?? null;
+      const readiness = (ticket?.readiness ?? null) as TicketReadiness | null;
+      const subtaskCount = key in sessionSubtaskCounts ? sessionSubtaskCounts[key] : ticket?.totalSubtaskCount ?? 0;
+
+      // "Unhandled" = anything the session did not actually finish refining.
+      // Spikes are exempt from the estimate/subtask checks (they are never
+      // estimated and rarely broken into subtasks), so a reached, ready spike
+      // is treated as handled.
+      const neverReached = index > currentIndex;
+      const noEstimate = !isSpike && (storyPoints == null || storyPoints === 0);
+      const noSubtasks = !isSpike && subtaskCount === 0;
+      const notReady = readiness === "ready_to_refine";
+
       return {
         key,
+        index,
         title: meta?.title ?? ticket?.title ?? key,
         type: (ticket?.type ?? "task") as string,
         jiraStatus: (ticket?.jiraStatus ?? "TO DO") as JiraStatus,
-        readiness: (ticket?.readiness ?? null) as TicketReadiness | null,
-        storyPoints: key in sessionEstimates ? sessionEstimates[key] : ticket?.storyPoints ?? null,
-        isSpike: ticket?.type === "spike",
-        subtaskCount: key in sessionSubtaskCounts ? sessionSubtaskCounts[key] : ticket?.totalSubtaskCount ?? 0,
+        readiness,
+        storyPoints,
+        isSpike,
+        subtaskCount,
+        isUnhandled: neverReached || noEstimate || noSubtasks || notReady,
       };
     });
-  }, [queue, queueMeta, allTickets, sessionEstimates, sessionSubtaskCounts]);
+  }, [queue, queueMeta, allTickets, sessionEstimates, sessionSubtaskCounts, currentIndex]);
+
+  // Seed the carry-over selection once, after the ticket cache has loaded so
+  // the heuristic reads real estimates/subtask counts. Pre-checks every row the
+  // session did not finish refining; the PO can override freely from there.
+  useEffect(() => {
+    if (carrySeededRef.current || !allTickets) return;
+    carrySeededRef.current = true;
+    const initial = new Set<string>();
+    for (const row of ticketRows) {
+      if (row.isUnhandled) initial.add(row.key);
+    }
+    if (initial.size > 0) setCarriedKeys(initial); // eslint-disable-line react-hooks/set-state-in-effect -- one-time heuristic seed once the ticket cache has loaded
+  }, [allTickets, ticketRows]);
+
+  // Candidate follow-up sessions: every ready session except this one.
+  const targetSessions = useMemo(
+    () =>
+      sessions
+        .filter((s) => s.id !== savedSessionId && s.status !== "completed")
+        .slice()
+        .sort(compareSessions),
+    [sessions, savedSessionId],
+  );
+
+  // Effective existing-session target: the explicit pick when still valid,
+  // otherwise the top of the list. Derived during render (no effect) so the
+  // picker is never in an "existing but nothing chosen" limbo.
+  const effectiveTargetId =
+    targetExistingId && targetSessions.some((s) => s.id === targetExistingId)
+      ? targetExistingId
+      : targetSessions[0]?.id ?? null;
+
+  const carriedInQueue = useMemo(
+    () => queue.filter((k) => carriedKeys.has(k)),
+    [queue, carriedKeys],
+  );
+  const carriedCount = carriedInQueue.length;
+
+  const toggleCarried = useCallback((key: string) => {
+    setCarriedKeys((prev) => {
+      const next = new Set(prev);
+      if (next.has(key)) next.delete(key);
+      else next.add(key);
+      return next;
+    });
+  }, []);
+
+  const selectAllCarried = useCallback(() => {
+    setCarriedKeys(new Set(queue));
+  }, [queue]);
+
+  const selectNoneCarried = useCallback(() => {
+    setCarriedKeys(new Set());
+  }, []);
+
+  // Push the selected tickets into the target session and strip them from this
+  // session. No-op when nothing is selected, so Save/Complete behave exactly as
+  // before. Source removal is persist-only: navigation unmounts the session
+  // subtree, so mutating the in-memory queue would have no visible effect.
+  const applyCarryOver = useCallback(async () => {
+    if (!savedSessionId || carriedInQueue.length === 0) return;
+    const carried = carriedInQueue;
+    const remaining = queue.filter((k) => !carriedKeys.has(k));
+
+    let targetName = "";
+    const existingTarget =
+      targetMode === "existing" && effectiveTargetId
+        ? sessions.find((s) => s.id === effectiveTargetId)
+        : undefined;
+
+    if (existingTarget) {
+      const newKeys = Array.from(new Set([...existingTarget.ticketKeys, ...carried]));
+      await refinementSessionsApi.update(existingTarget.id, { ticketKeys: newKeys });
+      targetName = sessionLabel(existingTarget);
+    } else {
+      const date = targetDate || todayLocalDate();
+      const created = await refinementSessionsApi.create({
+        name: `Refinement ${date}`,
+        scheduledFor: targetDate || undefined,
+        ticketKeys: carried,
+      });
+      targetName = sessionLabel(created);
+    }
+
+    await refinementSessionsApi.update(savedSessionId, { ticketKeys: remaining });
+    await mutateSessions();
+
+    try {
+      sessionStorage.setItem(
+        CARRY_OVER_TOAST_KEY,
+        `Carried ${carried.length} ticket${carried.length !== 1 ? "s" : ""} to ${targetName}`,
+      );
+    } catch {
+      // sessionStorage can be unavailable (private mode); the carry-over itself
+      // already succeeded, so a missing confirmation toast is acceptable.
+    }
+  }, [
+    savedSessionId,
+    carriedInQueue,
+    queue,
+    carriedKeys,
+    targetMode,
+    effectiveTargetId,
+    sessions,
+    targetDate,
+    mutateSessions,
+  ]);
 
   const handleSave = useCallback(async () => {
     await flushPendingNotes();
+    await applyCarryOver();
     saveSession(generalComment || null);
     router.push(savedSessionId ? `/refinement/${savedSessionId}` : "/refinement");
-  }, [flushPendingNotes, saveSession, generalComment, router, savedSessionId]);
+  }, [flushPendingNotes, applyCarryOver, saveSession, generalComment, router, savedSessionId]);
 
   const handleFinish = useCallback(async () => {
     await flushPendingNotes();
+    await applyCarryOver();
 
     // Spikes are never estimated, so they miss the "points added -> ready for
     // development" transition. On completion, promote spikes that were prepped
@@ -204,7 +348,7 @@ export function SessionEndModal() {
     // Completed sessions leave the overview; navigate without a guid so we
     // don't land back on the just-finished refinement.
     router.push("/refinement");
-  }, [flushPendingNotes, ticketRows, finishSession, generalComment, router]);
+  }, [flushPendingNotes, applyCarryOver, ticketRows, finishSession, generalComment, router]);
 
   const handleGoBack = useCallback(() => {
     closeEndModal();
@@ -297,6 +441,22 @@ export function SessionEndModal() {
               return (
                 <div key={row.key}>
                   <div className="flex items-center gap-2 rounded-lg px-3 py-2 hover:bg-overlay-subtle" style={{ transition: "background-color 0.12s ease" }}>
+                    <button
+                      type="button"
+                      role="checkbox"
+                      aria-checked={carriedKeys.has(row.key)}
+                      aria-label={`Carry ${row.key} to next refinement`}
+                      onClick={() => toggleCarried(row.key)}
+                      className={`flex h-[18px] w-[18px] flex-none cursor-pointer items-center justify-center rounded-[5px] border focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)] active:scale-90 ${
+                        carriedKeys.has(row.key)
+                          ? "border-[var(--color-brand-500)] bg-[var(--color-brand-500)] text-white shadow-[0_1px_3px_color-mix(in_srgb,var(--color-brand-500)_45%,transparent)]"
+                          : "border-border-strong text-transparent hover:border-[var(--color-brand-400)]"
+                      }`}
+                      style={{ transition: "background-color 0.15s ease, border-color 0.15s ease, transform 0.1s ease" }}
+                      title="Carry to next refinement"
+                    >
+                      <Check size={12} strokeWidth={3} />
+                    </button>
                     <TicketStatusPill
                       ticketKey={row.key}
                       jiraStatus={row.jiraStatus}
@@ -357,6 +517,109 @@ export function SessionEndModal() {
               );
             })}
           </div>
+        </div>
+
+        {/* Carry over to a next refinement */}
+        <div className="border-t border-border-subtle px-6 py-4">
+          <div className="mb-2 flex items-center justify-between">
+            <p className="flex items-center gap-1.5 text-caption font-medium uppercase tracking-wider text-text-muted">
+              <ArrowRightToLine size={12} strokeWidth={2} />
+              Carry over
+            </p>
+            <div className="flex items-center gap-1 text-[11px] font-medium">
+              <button
+                type="button"
+                onClick={selectAllCarried}
+                className="cursor-pointer rounded-md px-1.5 py-0.5 text-text-muted hover:bg-overlay-subtle hover:text-text-secondary focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)]"
+                style={{ transition: "background-color 0.15s ease, color 0.15s ease" }}
+              >
+                Select all
+              </button>
+              <span className="text-border-strong">/</span>
+              <button
+                type="button"
+                onClick={selectNoneCarried}
+                className="cursor-pointer rounded-md px-1.5 py-0.5 text-text-muted hover:bg-overlay-subtle hover:text-text-secondary focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)]"
+                style={{ transition: "background-color 0.15s ease, color 0.15s ease" }}
+              >
+                None
+              </button>
+            </div>
+          </div>
+
+          {carriedCount === 0 ? (
+            <p className="text-body-sm text-text-muted">
+              Tick the tickets you did not finish to move them to a next refinement.
+            </p>
+          ) : (
+            <>
+              <p className="text-body-sm text-text-secondary" data-testid="carry-summary">
+                <span className="font-semibold text-[var(--color-brand-400)]">{carriedCount}</span>{" "}
+                ticket{carriedCount !== 1 ? "s" : ""} will move to{" "}
+                {targetMode === "new" ? "a new session" : "the selected session"}.
+              </p>
+
+              <div className="mt-3 flex gap-1.5">
+                <button
+                  type="button"
+                  onClick={() => setTargetMode("new")}
+                  className={`cursor-pointer rounded-lg px-3 py-1.5 text-body-sm font-medium focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)] ${
+                    targetMode === "new"
+                      ? "bg-[var(--color-brand-600)]/12 text-[var(--color-brand-400)] ring-1 ring-inset ring-[var(--color-brand-500)]/40"
+                      : "text-text-muted hover:bg-overlay-subtle hover:text-text-secondary"
+                  }`}
+                  style={{ transition: "background-color 0.15s ease, color 0.15s ease" }}
+                >
+                  New session
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setTargetMode("existing")}
+                  disabled={targetSessions.length === 0}
+                  className={`rounded-lg px-3 py-1.5 text-body-sm font-medium focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)] disabled:cursor-not-allowed disabled:opacity-40 ${
+                    targetMode === "existing"
+                      ? "bg-[var(--color-brand-600)]/12 text-[var(--color-brand-400)] ring-1 ring-inset ring-[var(--color-brand-500)]/40"
+                      : "cursor-pointer text-text-muted hover:bg-overlay-subtle hover:text-text-secondary"
+                  }`}
+                  style={{ transition: "background-color 0.15s ease, color 0.15s ease" }}
+                  title={targetSessions.length === 0 ? "No other open sessions yet" : undefined}
+                >
+                  Existing session
+                </button>
+              </div>
+
+              {targetMode === "new" ? (
+                <div className="mt-3">
+                  <DateTimePicker
+                    value={targetDate}
+                    onChange={setTargetDate}
+                    ariaLabel="Next refinement date"
+                    placeholder="Pick a date (optional)"
+                    closeOnSelect
+                    hideTime
+                    minDate={todayLocalDate()}
+                  />
+                  <p className="mt-1.5 text-[11px] text-text-muted">
+                    Named <span className="font-medium text-text-tertiary">Refinement {targetDate || todayLocalDate()}</span>
+                  </p>
+                </div>
+              ) : (
+                <select
+                  value={effectiveTargetId ?? ""}
+                  onChange={(e) => setTargetExistingId(e.target.value)}
+                  aria-label="Target refinement session"
+                  className="mt-3 w-full cursor-pointer rounded-lg border border-border-strong bg-overlay-subtle px-3 py-2 text-body-sm text-text-secondary focus:border-[var(--color-brand-500)]/40 focus:outline-none"
+                  style={{ transition: "border-color 0.15s ease" }}
+                >
+                  {targetSessions.map((s) => (
+                    <option key={s.id} value={s.id}>
+                      {sessionLabel(s)}
+                    </option>
+                  ))}
+                </select>
+              )}
+            </>
+          )}
         </div>
 
         {/* General comment */}

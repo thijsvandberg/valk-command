@@ -1,6 +1,6 @@
 import { render, screen, fireEvent, waitFor } from "@testing-library/react";
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { SessionEndModal } from "./SessionEndModal";
+import { SessionEndModal, CARRY_OVER_TOAST_KEY } from "./SessionEndModal";
 
 const mockPush = vi.fn();
 vi.mock("next/navigation", () => ({
@@ -50,6 +50,29 @@ vi.mock("@/hooks/useSprintBoard", () => ({
   useTickets: () => ({ data: mockTickets }),
 }));
 
+// Mutable across tests; the hook factory reads the current value at render.
+let mockSessions: Array<{
+  id: string;
+  name: string | null;
+  scheduledFor: string | null;
+  status: string;
+  ticketKeys: string[];
+  createdAt: string;
+}> = [];
+const mockMutateSessions = vi.fn();
+
+vi.mock("@/hooks/useRefinementSessions", () => ({
+  useRefinementSessions: () => ({ sessions: mockSessions, mutate: mockMutateSessions, isLoading: false }),
+}));
+
+// Stub the date picker so tests can drive it with a plain input.
+vi.mock("@/components/shared/DateTimePicker", () => ({
+  DateTimePicker: ({ value, onChange, ariaLabel }: { value: string; onChange: (v: string) => void; ariaLabel?: string }) => (
+    <input aria-label={ariaLabel} value={value} onChange={(e) => onChange(e.target.value)} />
+  ),
+  todayLocalDate: () => "2026-06-23",
+}));
+
 vi.mock("@/lib/ticket-cache", () => ({
   patchTicketCaches: vi.fn(),
 }));
@@ -81,6 +104,13 @@ vi.mock("@/lib/api-client", () => ({
     }),
     ticketNotes: vi.fn().mockResolvedValue([]),
     update: vi.fn().mockResolvedValue({}),
+    create: vi.fn().mockResolvedValue({
+      id: "new-session",
+      name: "Refinement 2026-06-23",
+      scheduledFor: null,
+      status: "draft",
+      ticketKeys: [],
+    }),
     upsertTicketNote: vi.fn().mockResolvedValue({}),
   },
   tickets: {
@@ -94,6 +124,13 @@ describe("SessionEndModal", () => {
     vi.clearAllMocks();
     mockContext.sessionEstimates = {};
     mockContext.sessionSubtaskCounts = {};
+    mockContext.currentIndex = 2;
+    mockSessions = [];
+    try {
+      sessionStorage.clear();
+    } catch {
+      // ignore
+    }
   });
 
   it("renders ticket list with all session tickets", () => {
@@ -307,6 +344,140 @@ describe("SessionEndModal", () => {
       await waitFor(() =>
         expect(patchTicketCaches).toHaveBeenCalledWith("VPL-2", { type: "story" }),
       );
+    });
+  });
+
+  describe("carry-over to next refinement (BRDG-384)", () => {
+    const carryCheckbox = (key: string) =>
+      screen.getByLabelText(`Carry ${key} to next refinement`);
+
+    it("pre-selects only the unhandled rows and leaves refined rows and spikes alone", () => {
+      // VPL-1: estimated + has subtasks + reached -> handled, not pre-checked.
+      // VPL-2: no estimate -> unhandled, pre-checked.
+      // VPL-3: spike with no points (exempt) + reached + ready -> handled.
+      render(<SessionEndModal />);
+      expect(carryCheckbox("VPL-1")).toHaveAttribute("aria-checked", "false");
+      expect(carryCheckbox("VPL-2")).toHaveAttribute("aria-checked", "true");
+      expect(carryCheckbox("VPL-3")).toHaveAttribute("aria-checked", "false");
+    });
+
+    it("pre-selects tickets that were never reached", () => {
+      // currentIndex 0 means only VPL-1 was reached; VPL-2 and VPL-3 are unhandled.
+      mockContext.currentIndex = 0;
+      render(<SessionEndModal />);
+      expect(carryCheckbox("VPL-1")).toHaveAttribute("aria-checked", "false");
+      expect(carryCheckbox("VPL-2")).toHaveAttribute("aria-checked", "true");
+      expect(carryCheckbox("VPL-3")).toHaveAttribute("aria-checked", "true");
+    });
+
+    it("updates the carry-over count as rows are toggled and via select all / none", () => {
+      render(<SessionEndModal />);
+      expect(screen.getByTestId("carry-summary")).toHaveTextContent("1 ticket will move");
+
+      fireEvent.click(screen.getByText("Select all"));
+      expect(screen.getByTestId("carry-summary")).toHaveTextContent("3 tickets will move");
+
+      fireEvent.click(carryCheckbox("VPL-1"));
+      expect(screen.getByTestId("carry-summary")).toHaveTextContent("2 tickets will move");
+
+      fireEvent.click(screen.getByText("None"));
+      expect(screen.getByText(/did not finish/)).toBeInTheDocument();
+    });
+
+    it("Complete creates a new follow-up session with the chosen date and exactly the selected tickets", async () => {
+      const { refinementSessions } = await import("@/lib/api-client");
+      render(<SessionEndModal />); // default carried = {VPL-2}, mode = new
+
+      fireEvent.change(screen.getByLabelText("Next refinement date"), {
+        target: { value: "2026-07-01" },
+      });
+      fireEvent.click(screen.getByText("Complete"));
+
+      await waitFor(() =>
+        expect(refinementSessions.create).toHaveBeenCalledWith({
+          name: "Refinement 2026-07-01",
+          scheduledFor: "2026-07-01",
+          ticketKeys: ["VPL-2"],
+        }),
+      );
+      // The carried ticket is stripped from this session.
+      expect(refinementSessions.update).toHaveBeenCalledWith("session-abc", {
+        ticketKeys: ["VPL-1", "VPL-3"],
+      });
+      expect(mockContext.finishSession).toHaveBeenCalled();
+    });
+
+    it("Save appends to an existing session, deduped, and removes carried tickets from this session", async () => {
+      mockSessions = [
+        { id: "session-xyz", name: "Backlog grooming", scheduledFor: null, status: "draft", ticketKeys: ["VPL-2", "VPL-9"], createdAt: "2026-06-20" },
+      ];
+      const { refinementSessions } = await import("@/lib/api-client");
+      render(<SessionEndModal />); // default carried = {VPL-2}
+
+      fireEvent.click(screen.getByText("Existing session"));
+      fireEvent.click(screen.getByText("Save"));
+
+      await waitFor(() =>
+        // VPL-2 already present -> no duplicate.
+        expect(refinementSessions.update).toHaveBeenCalledWith("session-xyz", {
+          ticketKeys: ["VPL-2", "VPL-9"],
+        }),
+      );
+      expect(refinementSessions.update).toHaveBeenCalledWith("session-abc", {
+        ticketKeys: ["VPL-1", "VPL-3"],
+      });
+      expect(refinementSessions.create).not.toHaveBeenCalled();
+      expect(mockContext.saveSession).toHaveBeenCalled();
+    });
+
+    it("carrying zero tickets behaves exactly like today (no create, no ticketKeys write)", async () => {
+      const { refinementSessions } = await import("@/lib/api-client");
+      render(<SessionEndModal />);
+
+      fireEvent.click(screen.getByText("None"));
+      fireEvent.click(screen.getByText("Complete"));
+
+      await waitFor(() => expect(mockContext.finishSession).toHaveBeenCalled());
+      expect(refinementSessions.create).not.toHaveBeenCalled();
+      expect(refinementSessions.update).not.toHaveBeenCalledWith(
+        "session-abc",
+        expect.objectContaining({ ticketKeys: expect.anything() }),
+      );
+    });
+
+    it("hands a carry-over confirmation toast to the overview via sessionStorage", async () => {
+      const { refinementSessions } = await import("@/lib/api-client");
+      render(<SessionEndModal />); // default carried = {VPL-2}, new session named Refinement 2026-06-23
+
+      fireEvent.click(screen.getByText("Complete"));
+
+      await waitFor(() => expect(refinementSessions.create).toHaveBeenCalled());
+      await waitFor(() =>
+        expect(sessionStorage.getItem(CARRY_OVER_TOAST_KEY)).toBe(
+          "Carried 1 ticket to Refinement 2026-06-23",
+        ),
+      );
+    });
+
+    it("flushes pending PO notes before running carry-over", async () => {
+      const { refinementSessions } = await import("@/lib/api-client");
+      render(<SessionEndModal />);
+
+      const noteButtons = screen.getAllByTitle("Add PO message");
+      fireEvent.click(noteButtons[0]);
+      fireEvent.change(screen.getByPlaceholderText("PO message for this ticket..."), {
+        target: { value: "Carry note" },
+      });
+      fireEvent.click(screen.getByText("Complete"));
+
+      // Both the note flush and the carry-over write must have happened.
+      await waitFor(() =>
+        expect(refinementSessions.upsertTicketNote).toHaveBeenCalledWith("session-abc", {
+          ticketKey: "VPL-1",
+          content: "Carry note",
+        }),
+      );
+      expect(refinementSessions.create).toHaveBeenCalled();
     });
   });
 });

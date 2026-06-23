@@ -48,13 +48,13 @@ Carry-over writes happen **directly in `SessionEndModal`** before calling `saveS
 
 ## Acceptance Criteria
 
-- [ ] The wrap-up modal lets me select which tickets to carry to a next refinement
-- [ ] Tickets matching the unhandled heuristic are pre-selected, and I can override the selection freely
-- [ ] I can choose the target: a new follow-up session, or an existing ready session
-- [ ] Creating a new follow-up session reuses the existing create flow and prompts for a date — no parallel create path
-- [ ] Save and Complete both append the selected tickets to the target session (deduped, optimistic UI) and remove them from this session's queue
-- [ ] A toast confirms how many tickets were carried and to which session
-- [ ] Carrying zero tickets behaves exactly like today's Save/Complete (no empty session created, no target prompt forced)
+- [x] The wrap-up modal lets me select which tickets to carry to a next refinement
+- [x] Tickets matching the unhandled heuristic are pre-selected, and I can override the selection freely
+- [x] I can choose the target: a new follow-up session, or an existing ready session
+- [x] Creating a new follow-up session reuses the existing create flow and prompts for a date — no parallel create path
+- [x] Save and Complete both append the selected tickets to the target session (deduped, optimistic UI) and remove them from this session's queue
+- [x] A toast confirms how many tickets were carried and to which session
+- [x] Carrying zero tickets behaves exactly like today's Save/Complete (no empty session created, no target prompt forced)
 
 ## Decisions (PO, 2026-06-23)
 
@@ -74,14 +74,14 @@ Carry-over writes happen **directly in `SessionEndModal`** before calling `saveS
 
 ## Tests
 
-- [ ] Heuristic pre-selects the right rows (no estimate / no subtasks / not reached / not ready) and skips fully-refined rows and spikes-with-points
-- [ ] Selecting/deselecting rows updates the carry-over count
-- [ ] Save and Complete both append the selected tickets to the target and remove them from this session's queue
-- [ ] New target creates one follow-up session (with the chosen date) containing exactly the selected tickets
-- [ ] Existing target appends selected tickets, deduped against its current queue
-- [ ] Carrying zero tickets is identical to today's Save/Complete (no session created, queue untouched)
-- [ ] Toast reports the correct count and target name
-- [ ] Pending PO notes still flush correctly when carry-over runs
+- [x] Heuristic pre-selects the right rows (no estimate / no subtasks / not reached / not ready) and skips fully-refined rows and spikes-with-points
+- [x] Selecting/deselecting rows updates the carry-over count
+- [x] Save and Complete both append the selected tickets to the target and remove them from this session's queue
+- [x] New target creates one follow-up session (with the chosen date) containing exactly the selected tickets
+- [x] Existing target appends selected tickets, deduped against its current queue
+- [x] Carrying zero tickets is identical to today's Save/Complete (no session created, queue untouched)
+- [x] Toast reports the correct count and target name
+- [x] Pending PO notes still flush correctly when carry-over runs
 
 ## Dependencies
 

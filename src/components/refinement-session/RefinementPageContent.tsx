@@ -24,6 +24,7 @@ import { useRefinementDragDrop, NEW_SESSION_HINT_ID } from "@/hooks/useRefinemen
 import { snapToPointer } from "@/components/sprint-board/SprintBoardDragDrop";
 import { DragGhostOverlay } from "@/components/sprint-board/DragGhostOverlay";
 import { TicketDragHandle, PlanSessionDropZone } from "./RefinementDragDrop";
+import { CARRY_OVER_TOAST_KEY } from "./SessionEndModal";
 import { ViewHeader, ViewHeaderTitle } from "@/components/shared/ViewHeader";
 import { Button } from "@/components/ui/Button";
 import { SavedSessionList } from "@/components/refinement-session/SavedSessionList";
@@ -122,6 +123,19 @@ export function RefinementPageContent({
 
   // --- Inline editing (reuses the sprint-board ticket actions) ---
   const { toast: actionToast, toastLoading: actionToastLoading, showToast, dismissToast } = useToast();
+
+  // Surface the carry-over confirmation handed off from the wrap-up modal,
+  // which navigates here after pushing leftover tickets to a follow-up session.
+  useEffect(() => {
+    let message: string | null = null;
+    try {
+      message = sessionStorage.getItem(CARRY_OVER_TOAST_KEY);
+      if (message) sessionStorage.removeItem(CARRY_OVER_TOAST_KEY);
+    } catch {
+      // sessionStorage may be unavailable; nothing to surface.
+    }
+    if (message) showToast(message);
+  }, [showToast]);
 
   const editableSprints = useMemo(() => mapJiraSprints(sprints), [sprints]);
   const ta = useTicketActions({ apiTickets: tickets, mutateTickets, activeListKey: "/api/tickets", showToast });
