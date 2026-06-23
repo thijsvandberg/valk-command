@@ -216,15 +216,14 @@ describe("BulkActionBar", () => {
     expect(onSetStatus).toHaveBeenCalledWith("DONE");
   });
 
-  it("navigates Update -> readiness sub-panel with back button", () => {
+  it("reveals Update's Set Readiness options in a hover flyout (no Back)", () => {
     const onSetReadiness = vi.fn();
     render(<BulkActionBar {...defaultProps} onSetReadiness={onSetReadiness} />);
     openGroup("Update");
-    fireEvent.click(screen.getByText("Set Readiness"));
-    expect(screen.getByText("Drafting")).toBeTruthy();
-    expect(screen.getByText("Back")).toBeTruthy();
-    fireEvent.click(screen.getByText("Back"));
+    // The Set Readiness flyout + its options render in the DOM (shown on hover); no Back.
     expect(screen.getByText("Set Readiness")).toBeTruthy();
+    expect(screen.getByText("Drafting")).toBeTruthy();
+    expect(screen.queryByText("Back")).toBeNull();
   });
 
   it("does not render the Update group when no update actions", () => {

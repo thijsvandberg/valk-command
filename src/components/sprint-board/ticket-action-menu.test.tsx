@@ -222,15 +222,13 @@ describe("TicketActionMenuContent", () => {
     });
   });
 
-  it("navigates Update -> Set Status sub-panel and back", () => {
+  it("reveals Update's Set Status options in a hover flyout (no Back)", () => {
     render(<TicketActionMenuContent onSetStatus={vi.fn()} close={vi.fn()} />);
-    fireEvent.click(screen.getByText("Update"));
-    fireEvent.click(screen.getByText("Set Status"));
-    expect(screen.getByText("Back")).toBeInTheDocument();
-    // Status options are now visible
-    expect(screen.getByText("TO DO")).toBeInTheDocument();
-    fireEvent.click(screen.getByText("Back"));
+    expect(screen.getByText("Update")).toBeInTheDocument();
+    // The Set Status flyout and its options live in the DOM (shown on hover) - no Back row.
     expect(screen.getByText("Set Status")).toBeInTheDocument();
+    expect(screen.getByText("TO DO")).toBeInTheDocument();
+    expect(screen.queryByText("Back")).not.toBeInTheDocument();
   });
 });
 

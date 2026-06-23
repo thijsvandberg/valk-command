@@ -6,7 +6,7 @@ import useSWR from "swr";
 import type { TicketReadiness, JiraStatus, Sprint } from "@/types/ticket";
 import type { QuickMoveOption } from "@/lib/quick-moves";
 import { swrFetcher } from "@/lib/api-client";
-import { Search, Flag, ArrowLeft, ArrowDownToLine, ArrowUpToLine, Boxes, Check, ChevronRight, FilePen, Sparkles } from "lucide-react";
+import { Search, Flag, ArrowDownToLine, ArrowUpToLine, Boxes, Check, ChevronRight, FilePen, Sparkles } from "lucide-react";
 import {
   READINESS_OPTIONS,
   READINESS_CONFIG,
@@ -67,7 +67,7 @@ export function AnchoredMenu({
   if (!pos) return null;
   return createPortal(
     <div ref={menuRef} className="fixed z-[9999]" style={{ left: pos.left, top: pos.top, bottom: pos.bottom }}>
-      <Card variant="floating" className={`${width} overflow-y-auto py-1`} style={{ maxHeight: pos.maxHeight }}>
+      <Card variant="floating" className={`${width} overflow-visible py-1`} style={{ maxHeight: pos.maxHeight }}>
         {children}
       </Card>
     </div>,
@@ -133,7 +133,7 @@ export function CursorMenu({
       className="fixed z-[9999]"
       style={{ left: pos?.left ?? x, top: pos?.top ?? y, visibility: pos ? "visible" : "hidden" }}
     >
-      <Card variant="floating" className={`${width} overflow-y-auto py-1`} style={{ maxHeight: pos?.maxHeight }}>
+      <Card variant="floating" className={`${width} overflow-visible py-1`} style={{ maxHeight: pos?.maxHeight }}>
         {children}
       </Card>
     </div>,
@@ -169,19 +169,30 @@ export function MenuItem({
   );
 }
 
-function BackButton({ onClick }: { onClick: () => void }) {
+// Floating-card styling shared by the hover flyouts and the menu surfaces.
+const FLYOUT_PANEL = "rounded-xl border border-border-default bg-[var(--color-surface-floating)] shadow-[var(--shadow-lg)]";
+
+/**
+ * A menu row whose sub-content opens to the SIDE on hover (BRDG-374), matching the
+ * /dev/exploration prototype - no click, no Back. Nesting works because
+ * `group-hover/fly` targets the nearest `group/fly` ancestor and hovering any
+ * descendant keeps every ancestor hovered; the `pl-1` gap bridges trigger -> panel.
+ */
+function Flyout({ icon, label, width = "w-[240px]", children }: { icon?: ReactNode; label: ReactNode; width?: string; children: ReactNode }) {
   return (
-    <>
+    <div className="group/fly relative">
       <button
         type="button"
-        onClick={onClick}
-        className="flex w-full items-center gap-1.5 px-3 py-1.5 text-body-sm text-text-tertiary cursor-pointer hover:bg-hover-list-item"
+        className="flex w-full items-center gap-2.5 px-3 py-1.5 text-body-sm text-text-secondary cursor-pointer hover:bg-hover-list-item group-hover/fly:bg-hover-list-item"
       >
-        <ArrowLeft className="h-3 w-3" strokeWidth={1.5} />
-        Back
+        {icon && <span className="flex h-4 w-4 shrink-0 items-center justify-center text-text-tertiary">{icon}</span>}
+        {label}
+        <ChevronRight className="ml-auto h-3.5 w-3.5 text-text-muted" strokeWidth={1.5} />
       </button>
-      <div className="mx-2 my-0.5 h-px bg-overlay-strong" />
-    </>
+      <div className="invisible absolute left-full top-0 z-20 pl-1 opacity-0 transition-opacity duration-100 group-hover/fly:visible group-hover/fly:opacity-100">
+        <div className={`${FLYOUT_PANEL} ${width} max-h-[min(70vh,440px)] overflow-y-auto py-1`}>{children}</div>
+      </div>
+    </div>
   );
 }
 
@@ -483,21 +494,9 @@ function LabelSubPanel({ onSelect }: { onSelect: (labels: string[], mode: "add" 
 // Each item only renders when its corresponding callback is supplied.
 // ---------------------------------------------------------------------------
 
-// Navigation views. The root "menu" is the full right-click menu; "update"/"move"/
-// "assist"/"flag" are group views the bar opens directly via `initialView`; the rest
-// are the leaf pickers. A view stack drives Back so the same content composes in both.
-type MenuView =
-  | "menu"
-  | "update"
-  | "move"
-  | "assist"
-  | "flag"
-  | "status"
-  | "readiness"
-  | "sprint"
-  | "epic"
-  | "assignee"
-  | "label";
+// The root "menu" is the full right-click menu; "update"/"move"/"flag"/"assist" are the
+// group views the bar opens directly via `initialView`. Deeper pickers are hover flyouts.
+type MenuView = "menu" | "update" | "move" | "flag" | "assist";
 
 /** Aggregate flag state of the targeted tickets, used to pick which flag item to show. */
 export type FlagState = "flagged" | "unflagged" | "mixed";
@@ -563,11 +562,6 @@ export function TicketActionMenuContent({
   initialView?: MenuView;
   close: () => void;
 }) {
-  const [stack, setStack] = useState<MenuView[]>([initialView]);
-  const view = stack[stack.length - 1];
-  const go = (v: MenuView) => setStack((s) => [...s, v]);
-  const back = () => setStack((s) => (s.length > 1 ? s.slice(0, -1) : s));
-
   const hasQuickMoves = Boolean(onQuickMove && quickMoves && quickMoves.length > 0);
   const hasMove = hasQuickMoves || (onMoveSprint && sprints) || onMoveToTop || onMoveToBottom;
   const hasUpdate = onSetStatus || onSetReadiness || onSetEpic || onUpdateAssignee || onUpdateLabel;
@@ -578,9 +572,9 @@ export function TicketActionMenuContent({
 
   const divider = <div className="mx-2 my-1 h-px bg-overlay-strong" />;
 
-  // Move group (BRDG-374): named quick-moves with a destination chip, then the
-  // searchable "More sprints" picker, then the rank actions. Shared by the root menu
-  // (inline, most-used) and the bar's Move dropdown (initialView="move").
+  // Move group (BRDG-374): named quick-moves with a destination chip, the searchable
+  // "More sprints" hover flyout, then the rank actions. Shared by the root menu (inline,
+  // most-used) and the bar's Move dropdown (initialView="move").
   const moveItems = (
     <>
       {hasQuickMoves &&
@@ -598,10 +592,9 @@ export function TicketActionMenuContent({
           </MenuItem>
         ))}
       {onMoveSprint && sprints && (
-        <MenuItem icon={<span className="h-3.5 w-3.5" />} onClick={() => go("sprint")}>
-          More sprints
-          <ChevronRight className="ml-auto h-3.5 w-3.5 text-text-muted" strokeWidth={1.5} />
-        </MenuItem>
+        <Flyout icon={<span className="h-3.5 w-3.5" />} label="More sprints" width="w-[260px]">
+          <SprintSubPanel sprints={sprints} pinnedSprintIds={pinnedSprintIds} onSelect={(id) => { onMoveSprint?.(id); close(); }} />
+        </Flyout>
       )}
       {onMoveToTop && (
         <MenuItem icon={<ArrowUpToLine className="h-3.5 w-3.5" strokeWidth={1.5} />} onClick={() => { onMoveToTop(); close(); }}>
@@ -616,13 +609,40 @@ export function TicketActionMenuContent({
     </>
   );
 
-  const updateListItems = (
+  // Each set-field opens its picker in a hover flyout (no click/Back).
+  const updateItems = (
     <>
-      {onSetStatus && <MenuItem onClick={() => go("status")}>Set Status</MenuItem>}
-      {onSetReadiness && <MenuItem onClick={() => go("readiness")}>Set Readiness</MenuItem>}
-      {onSetEpic && <MenuItem onClick={() => go("epic")}>Set Epic</MenuItem>}
-      {onUpdateAssignee && <MenuItem onClick={() => go("assignee")}>Update Assignee</MenuItem>}
-      {onUpdateLabel && <MenuItem onClick={() => go("label")}>Add/Update Label</MenuItem>}
+      {onSetStatus && (
+        <Flyout label="Set Status" width="w-[200px]">
+          <StatusSubPanel onSelect={(s) => { onSetStatus?.(s); close(); }} />
+        </Flyout>
+      )}
+      {onSetReadiness && (
+        <Flyout label="Set Readiness" width="w-[220px]">
+          <ReadinessSubPanel onSelect={(r) => { onSetReadiness?.(r); close(); }} />
+        </Flyout>
+      )}
+      {onSetEpic && (
+        <Flyout label="Set Epic" width="w-[300px]">
+          <EpicPickerBody
+            value={epicValue ?? null}
+            ticketKey={epicSuggestTicketKey}
+            clearable={epicClearable}
+            onChange={(epic) => { onSetEpic?.(epic?.key ?? null, epic?.name ?? null); close(); }}
+            onClose={close}
+          />
+        </Flyout>
+      )}
+      {onUpdateAssignee && (
+        <Flyout label="Update Assignee" width="w-[240px]">
+          <AssigneeSubPanel onSelect={(accountId, name) => { onUpdateAssignee?.(accountId, name); close(); }} />
+        </Flyout>
+      )}
+      {onUpdateLabel && (
+        <Flyout label="Add/Update Label" width="w-[240px]">
+          <LabelSubPanel onSelect={(labels, mode) => { onUpdateLabel?.(labels, mode); close(); }} />
+        </Flyout>
+      )}
     </>
   );
 
@@ -651,74 +671,45 @@ export function TicketActionMenuContent({
     </>
   );
 
-  if (view === "menu") {
-    // Clusters, one divider between each: Triage · Move · (Update + Flag) · (Assist + Refinement).
-    // Related single-item actions share a cluster so the menu doesn't read as a stack of dividers.
-    const updateItem = hasUpdate ? (
-      <MenuItem icon={<FilePen className="h-3.5 w-3.5" strokeWidth={1.5} />} onClick={() => go("update")}>
-        Update
-        <ChevronRight className="ml-auto h-3.5 w-3.5 text-text-muted" strokeWidth={1.5} />
-      </MenuItem>
-    ) : null;
-    const assistItem = hasAssist ? (
-      <MenuItem icon={<Sparkles className="h-3.5 w-3.5" strokeWidth={1.5} />} onClick={() => go("assist")}>
-        Assist
-        <ChevronRight className="ml-auto h-3.5 w-3.5 text-text-muted" strokeWidth={1.5} />
-      </MenuItem>
-    ) : null;
-    const refineItem = onRefine ? (
-      <MenuItem icon={<Boxes className="h-3.5 w-3.5" strokeWidth={1.5} />} onClick={() => { onRefine(); close(); }}>
-        Add to refinement
-      </MenuItem>
-    ) : null;
-    const blocks: (ReactNode | null)[] = [
-      onMarkRead ? (
-        <MenuItem icon={<Check className="h-3.5 w-3.5 text-[var(--color-brand-400)]" strokeWidth={2} />} onClick={() => { onMarkRead(); close(); }}>
-          Mark as read
-        </MenuItem>
-      ) : null,
-      hasMove ? moveItems : null,
-      showFlag || hasUpdate || hasAssist ? (
-        <>
-          {showFlag ? flagItems : null}
-          {updateItem}
-          {assistItem}
-        </>
-      ) : null,
-      onRefine ? refineItem : null,
-    ];
-    const present = blocks.filter((b) => b !== null);
-    return <>{present.map((b, i) => <Fragment key={i}>{i > 0 && divider}{b}</Fragment>)}</>;
-  }
+  // Bar dropdowns open straight into one group's items (no root menu, no Back).
+  if (initialView === "update") return <>{updateItems}</>;
+  if (initialView === "move") return <>{moveItems}</>;
+  if (initialView === "flag") return <>{flagItems}</>;
+  if (initialView === "assist") return <>{assistItems}</>;
 
-  // The epic panel renders the shared EpicPickerBody, whose own search row sits at the
-  // top, so it skips the Back row to read like the sidebar EpicPicker (BRDG-381).
-  if (view === "epic") {
-    return (
-      <EpicPickerBody
-        value={epicValue ?? null}
-        ticketKey={epicSuggestTicketKey}
-        clearable={epicClearable}
-        onChange={(epic) => { onSetEpic?.(epic?.key ?? null, epic?.name ?? null); close(); }}
-        onClose={stack.length > 1 ? back : close}
-      />
-    );
-  }
-
-  return (
-    <>
-      {stack.length > 1 && <BackButton onClick={back} />}
-      {view === "update" && updateListItems}
-      {view === "move" && moveItems}
-      {view === "assist" && assistItems}
-      {view === "flag" && flagItems}
-      {view === "status" && <StatusSubPanel onSelect={(s) => { onSetStatus?.(s); close(); }} />}
-      {view === "readiness" && <ReadinessSubPanel onSelect={(r) => { onSetReadiness?.(r); close(); }} />}
-      {view === "sprint" && sprints && (
-        <SprintSubPanel sprints={sprints} pinnedSprintIds={pinnedSprintIds} onSelect={(id) => { onMoveSprint?.(id); close(); }} />
-      )}
-      {view === "assignee" && <AssigneeSubPanel onSelect={(accountId, name) => { onUpdateAssignee?.(accountId, name); close(); }} />}
-      {view === "label" && <LabelSubPanel onSelect={(labels, mode) => { onUpdateLabel?.(labels, mode); close(); }} />}
-    </>
-  );
+  // Root right-click menu, one divider between clusters: Triage · Move · (Flag + Update +
+  // Assist) · Refinement. Update and Assist nest as hover flyouts.
+  const updateGroup = hasUpdate ? (
+    <Flyout icon={<FilePen className="h-3.5 w-3.5" strokeWidth={1.5} />} label="Update" width="w-[220px]">
+      {updateItems}
+    </Flyout>
+  ) : null;
+  const assistGroup = hasAssist ? (
+    <Flyout icon={<Sparkles className="h-3.5 w-3.5" strokeWidth={1.5} />} label="Assist" width="w-[200px]">
+      {assistItems}
+    </Flyout>
+  ) : null;
+  const refineItem = onRefine ? (
+    <MenuItem icon={<Boxes className="h-3.5 w-3.5" strokeWidth={1.5} />} onClick={() => { onRefine(); close(); }}>
+      Add to refinement
+    </MenuItem>
+  ) : null;
+  const blocks: (ReactNode | null)[] = [
+    onMarkRead ? (
+      <MenuItem icon={<Check className="h-3.5 w-3.5 text-[var(--color-brand-400)]" strokeWidth={2} />} onClick={() => { onMarkRead(); close(); }}>
+        Mark as read
+      </MenuItem>
+    ) : null,
+    hasMove ? moveItems : null,
+    showFlag || hasUpdate || hasAssist ? (
+      <>
+        {showFlag ? flagItems : null}
+        {updateGroup}
+        {assistGroup}
+      </>
+    ) : null,
+    onRefine ? refineItem : null,
+  ];
+  const present = blocks.filter((b) => b !== null);
+  return <>{present.map((b, i) => <Fragment key={i}>{i > 0 && divider}{b}</Fragment>)}</>;
 }
