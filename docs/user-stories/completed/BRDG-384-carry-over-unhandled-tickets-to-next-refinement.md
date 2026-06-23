@@ -1,6 +1,6 @@
 # BRDG-384: Carry Unhandled Tickets Over to a Next Refinement
 
-**Status:** Ready for build (PO decisions resolved 2026-06-23)
+**Status:** Completed (2026-06-23)
 **Priority:** TBD
 **Type:** Story
 **Builds on:** BRDG-170 (refinement session v2), BRDG-166 (saved refinement sessions), BRDG-336 (drag ticket onto another session), BRDG-337 (schedule refinement session with date)
