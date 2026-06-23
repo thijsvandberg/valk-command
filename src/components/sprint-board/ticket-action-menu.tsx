@@ -652,7 +652,25 @@ export function TicketActionMenuContent({
   );
 
   if (view === "menu") {
-    // Order: Triage -> Move (inline) -> Update (nested) -> Flag -> Assist (nested) -> Refinement.
+    // Clusters, one divider between each: Triage · Move · (Update + Flag) · (Assist + Refinement).
+    // Related single-item actions share a cluster so the menu doesn't read as a stack of dividers.
+    const updateItem = hasUpdate ? (
+      <MenuItem icon={<FilePen className="h-3.5 w-3.5" strokeWidth={1.5} />} onClick={() => go("update")}>
+        Update
+        <ChevronRight className="ml-auto h-3.5 w-3.5 text-text-muted" strokeWidth={1.5} />
+      </MenuItem>
+    ) : null;
+    const assistItem = hasAssist ? (
+      <MenuItem icon={<Sparkles className="h-3.5 w-3.5" strokeWidth={1.5} />} onClick={() => go("assist")}>
+        Assist
+        <ChevronRight className="ml-auto h-3.5 w-3.5 text-text-muted" strokeWidth={1.5} />
+      </MenuItem>
+    ) : null;
+    const refineItem = onRefine ? (
+      <MenuItem icon={<Boxes className="h-3.5 w-3.5" strokeWidth={1.5} />} onClick={() => { onRefine(); close(); }}>
+        Add to refinement
+      </MenuItem>
+    ) : null;
     const blocks: (ReactNode | null)[] = [
       onMarkRead ? (
         <MenuItem icon={<Check className="h-3.5 w-3.5 text-[var(--color-brand-400)]" strokeWidth={2} />} onClick={() => { onMarkRead(); close(); }}>
@@ -660,23 +678,17 @@ export function TicketActionMenuContent({
         </MenuItem>
       ) : null,
       hasMove ? moveItems : null,
-      hasUpdate ? (
-        <MenuItem icon={<FilePen className="h-3.5 w-3.5" strokeWidth={1.5} />} onClick={() => go("update")}>
-          Update
-          <ChevronRight className="ml-auto h-3.5 w-3.5 text-text-muted" strokeWidth={1.5} />
-        </MenuItem>
+      hasUpdate || showFlag ? (
+        <>
+          {updateItem}
+          {showFlag ? flagItems : null}
+        </>
       ) : null,
-      showFlag ? flagItems : null,
-      hasAssist ? (
-        <MenuItem icon={<Sparkles className="h-3.5 w-3.5" strokeWidth={1.5} />} onClick={() => go("assist")}>
-          Assist
-          <ChevronRight className="ml-auto h-3.5 w-3.5 text-text-muted" strokeWidth={1.5} />
-        </MenuItem>
-      ) : null,
-      onRefine ? (
-        <MenuItem icon={<Boxes className="h-3.5 w-3.5" strokeWidth={1.5} />} onClick={() => { onRefine(); close(); }}>
-          Add to refinement
-        </MenuItem>
+      hasAssist || onRefine ? (
+        <>
+          {assistItem}
+          {refineItem}
+        </>
       ) : null,
     ];
     const present = blocks.filter((b) => b !== null);
