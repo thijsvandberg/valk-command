@@ -854,7 +854,7 @@ describe("EpicChildrenSection", () => {
 
     function moveViaContextMenu(rowTitle: string, sprintLabel: string) {
       fireEvent.contextMenu(screen.getByText(rowTitle));
-      fireEvent.click(screen.getByText("Move to Sprint"));
+      fireEvent.click(screen.getByText("More sprints"));
       fireEvent.click(screen.getByText(sprintLabel));
     }
 
@@ -890,24 +890,16 @@ describe("EpicChildrenSection", () => {
       expect(screen.queryByText("Sprint 3")).not.toBeInTheDocument();
     });
 
-    it("exposes the full action menu on right-click, not just Move to Sprint", () => {
+    it("exposes the grouped action menu on right-click (Move inline, Update/Assist nested)", () => {
       renderSection(SAMPLE_CHILDREN);
       switchToSprintView();
       fireEvent.contextMenu(screen.getByText("First story"));
-      for (const label of [
-        "Set Status",
-        "Set Readiness",
-        "Set Epic",
-        "Move to Sprint",
-        "Update Assignee",
-        "Add/Update Label",
-        "Flag",
-        "Review Story",
-        "Generate Subtasks",
-        "Add to Refinement",
-      ]) {
+      for (const label of ["More sprints", "Update", "Flag", "Assist", "Add to refinement"]) {
         expect(screen.getByText(label)).toBeInTheDocument();
       }
+      fireEvent.click(screen.getByText("Update"));
+      expect(screen.getByText("Set Status")).toBeInTheDocument();
+      expect(screen.getByText("Update Assignee")).toBeInTheDocument();
     });
 
     it("flags only the right-clicked row when nothing is selected", async () => {
@@ -940,9 +932,10 @@ describe("EpicChildrenSection", () => {
     function selectRow(key: string) {
       fireEvent.click(screen.getByLabelText(`Select ${key}`));
     }
-    function openBulkMenu(label: string) {
-      fireEvent.click(screen.getByText("Update"));
-      fireEvent.click(screen.getByText(label));
+    // Bar groups are icon-only (BRDG-374): open by accessible name, then click the item.
+    function openBulkMenu(group: string, item: string) {
+      fireEvent.click(screen.getByRole("button", { name: group }));
+      fireEvent.click(screen.getByText(item));
     }
     function switchToSprintView() {
       if (!menuIsOpen()) openListMenu();
@@ -956,7 +949,7 @@ describe("EpicChildrenSection", () => {
       expect(screen.queryByText(/selected/)).not.toBeInTheDocument();
       selectRow("VPL-10");
       expect(screen.getByText(/1\/3 selected/)).toBeInTheDocument();
-      expect(screen.getByText("Update")).toBeInTheDocument();
+      expect(screen.getByRole("button", { name: "Update" })).toBeInTheDocument();
     });
 
     it("select-all checks every visible row and Clear deselects", () => {
@@ -973,7 +966,7 @@ describe("EpicChildrenSection", () => {
       renderSection(SAMPLE_CHILDREN);
       selectRow("VPL-10");
       selectRow("VPL-12");
-      openBulkMenu("Move to Sprint");
+      openBulkMenu("Move", "More sprints");
       fireEvent.click(screen.getByText("Sprint 3"));
       await waitFor(() => {
         expect(mockMoveSprint).toHaveBeenCalledWith({ issueKeys: ["VPL-10", "VPL-12"], targetSprintId: "3", topKeys: ["VPL-10", "VPL-12"] });
@@ -984,7 +977,7 @@ describe("EpicChildrenSection", () => {
       renderSection(SAMPLE_CHILDREN);
       selectRow("VPL-10");
       selectRow("VPL-11");
-      openBulkMenu("Flag");
+      openBulkMenu("Flag", "Flag");
       await waitFor(() => {
         expect(mockToggleFlag).toHaveBeenCalledTimes(2);
       });
@@ -1009,21 +1002,10 @@ describe("EpicChildrenSection", () => {
   });
 
   describe("list view context menu", () => {
-    it("exposes the full action menu on right-click in the default list view", () => {
+    it("exposes the grouped action menu on right-click in the default list view", () => {
       renderSection(SAMPLE_CHILDREN);
       fireEvent.contextMenu(screen.getByText("First story"));
-      for (const label of [
-        "Set Status",
-        "Set Readiness",
-        "Set Epic",
-        "Move to Sprint",
-        "Update Assignee",
-        "Add/Update Label",
-        "Flag",
-        "Review Story",
-        "Generate Subtasks",
-        "Add to Refinement",
-      ]) {
+      for (const label of ["More sprints", "Update", "Flag", "Assist", "Add to refinement"]) {
         expect(screen.getByText(label)).toBeInTheDocument();
       }
     });
