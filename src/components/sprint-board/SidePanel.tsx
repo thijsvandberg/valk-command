@@ -637,13 +637,14 @@ export function SidePanel({
 
       {/* Floating close: the in-bar close scrolls away with the merged tab bar,
           so this fades in once the bar clears the top to keep the panel
-          dismissable. */}
+          dismissable. Hidden while editing, since the sticky editor toolbar
+          (with its own Save/Done controls) occupies the same top-right corner. */}
       <Tooltip content="Close panel">
         <button
           type="button"
           onClick={onClose}
           aria-label="Close panel"
-          className={`absolute right-3 top-3 z-30 flex h-7 w-7 items-center justify-center rounded-full border border-border-default bg-[var(--color-surface-elevated)] text-text-muted cursor-pointer hover:text-text-secondary hover:border-[var(--color-brand-500)]/40 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)] ${scrolled ? "opacity-100" : "pointer-events-none opacity-0"}`}
+          className={`absolute right-3 top-3 z-30 flex h-7 w-7 items-center justify-center rounded-full border border-border-default bg-[var(--color-surface-elevated)] text-text-muted cursor-pointer hover:text-text-secondary hover:border-[var(--color-brand-500)]/40 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)] ${scrolled && !h.isDescEditing && !h.isTitleEditing ? "opacity-100" : "pointer-events-none opacity-0"}`}
           style={{ transition: "opacity 0.2s ease, color 0.15s ease, border-color 0.15s ease", boxShadow: "0 6px 16px -4px rgba(15, 23, 42, 0.20)" }}
         >
           <X className="h-3.5 w-3.5" strokeWidth={2} />
