@@ -1446,7 +1446,10 @@ export class JiraClient {
       throw new Error("Jira is not configured");
     }
 
-    const issueTypeName = params.issueType ?? (params.parentKey ? "Sub-task" : "Story");
+    // Jira Cloud next-gen projects (e.g. VPL) name the subtask type "Subtask";
+    // classic projects use "Sub-task". Try the next-gen name first and fall
+    // back below, so the common case no longer always logs a probe 400.
+    const issueTypeName = params.issueType ?? (params.parentKey ? "Subtask" : "Story");
     const baseFields = {
       project: { key: params.projectKey ?? "VPL" },
       summary: params.summary,
@@ -1466,9 +1469,9 @@ export class JiraClient {
       );
       return { key: result.key, id: result.id };
     } catch (err) {
-      // Jira Cloud next-gen projects use "Subtask" instead of "Sub-task"
-      if (err instanceof JiraApiError && err.status === 400 && issueTypeName === "Sub-task") {
-        body = { fields: { ...baseFields, issuetype: { name: "Subtask" } } };
+      // Classic projects use "Sub-task" instead of "Subtask"
+      if (err instanceof JiraApiError && err.status === 400 && issueTypeName === "Subtask") {
+        body = { fields: { ...baseFields, issuetype: { name: "Sub-task" } } };
       } else {
         throw err;
       }

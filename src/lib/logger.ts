@@ -17,9 +17,17 @@ export function _setLevel(level: Level) {
   currentLevel = LEVELS[level];
 }
 
+// Local time in "YYYY-MM-DD HH:MM:SS" to match the [start-prod] log marker,
+// so app log lines and the process start line read on the same clock.
+function timestamp(): string {
+  const d = new Date();
+  const p = (n: number) => String(n).padStart(2, "0");
+  return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())} ${p(d.getHours())}:${p(d.getMinutes())}:${p(d.getSeconds())}`;
+}
+
 function log(method: Level, tag: string, message: string, ...args: unknown[]) {
   if (LEVELS[method] < currentLevel) return;
-  const prefix = `[${tag}] ${message}`;
+  const prefix = `${timestamp()} [${tag}] ${message}`;
   switch (method) {
     case "debug": console.debug(prefix, ...args); break;
     case "info":  console.log(prefix, ...args);   break;

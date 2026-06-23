@@ -18,35 +18,44 @@ describe("logger", () => {
     vi.restoreAllMocks();
   });
 
-  it("formats output as [tag] message", () => {
+  // Lines are prefixed with a local "YYYY-MM-DD HH:MM:SS" timestamp.
+  const TS = /^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2} /;
+
+  it("prefixes a timestamp before [tag] message", () => {
     logger.info("my-tag", "hello world");
-    expect(console.log).toHaveBeenCalledWith("[my-tag] hello world");
+    expect(console.log).toHaveBeenCalledWith(
+      expect.stringMatching(/^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2} \[my-tag\] hello world$/),
+    );
   });
 
   it("debug calls console.debug", () => {
     logger.debug("tag", "msg");
-    expect(console.debug).toHaveBeenCalledWith("[tag] msg");
+    expect(console.debug).toHaveBeenCalledWith(expect.stringMatching(/^.* \[tag\] msg$/));
+    expect((console.debug as ReturnType<typeof vi.fn>).mock.calls[0][0]).toMatch(TS);
   });
 
   it("info calls console.log", () => {
     logger.info("tag", "msg");
-    expect(console.log).toHaveBeenCalledWith("[tag] msg");
+    expect((console.log as ReturnType<typeof vi.fn>).mock.calls[0][0]).toMatch(TS);
   });
 
   it("warn calls console.warn", () => {
     logger.warn("tag", "msg");
-    expect(console.warn).toHaveBeenCalledWith("[tag] msg");
+    expect((console.warn as ReturnType<typeof vi.fn>).mock.calls[0][0]).toMatch(TS);
   });
 
   it("error calls console.error", () => {
     logger.error("tag", "msg");
-    expect(console.error).toHaveBeenCalledWith("[tag] msg");
+    expect((console.error as ReturnType<typeof vi.fn>).mock.calls[0][0]).toMatch(TS);
   });
 
   it("forwards extra args to console method", () => {
     const err = new Error("boom");
     logger.error("tag", "failed", err);
-    expect(console.error).toHaveBeenCalledWith("[tag] failed", err);
+    expect(console.error).toHaveBeenCalledWith(
+      expect.stringMatching(/^.* \[tag\] failed$/),
+      err,
+    );
   });
 
   it("suppresses debug when level is info", () => {
