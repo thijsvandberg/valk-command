@@ -171,6 +171,46 @@ describe("POST /api/jira/sync-comments", () => {
     expect(logs[0].status).toBe("failed");
   });
 
+  it("preloads existing comments with a single query (no per-comment lookup)", async () => {
+    seedTicket(testDb, { jiraKey: "VPL-100" });
+    vi.mocked(jiraClient.getComments).mockResolvedValue(
+      Array.from({ length: 5 }, (_, i) => ({
+        id: `c${i}`,
+        body: `comment ${i}`,
+        author: { accountId: `a${i}`, displayName: `User ${i}`, avatarUrls: {} },
+        created: "2026-01-01T00:00:00Z",
+        updated: "2026-01-01T00:00:00Z",
+      })),
+    );
+
+    const selectSpy = vi.spyOn(testDb, "select");
+    const res = await POST(makeRequest("VPL-100"));
+    expect(res.status).toBe(200);
+
+    // One preload SELECT for the whole payload, not one per comment.
+    expect(selectSpy).toHaveBeenCalledTimes(1);
+    selectSpy.mockRestore();
+
+    const rows = testDb.select().from(jiraComment).all();
+    expect(rows).toHaveLength(5);
+  });
+
+  it("does not double-insert when the same jiraCommentId arrives twice", async () => {
+    seedTicket(testDb, { jiraKey: "VPL-100" });
+    vi.mocked(jiraClient.getComments).mockResolvedValue([
+      { id: "dup", body: "first copy", author: { accountId: "a1", displayName: "Alice", avatarUrls: {} }, created: "2026-01-01T00:00:00Z", updated: "2026-01-01T00:00:00Z" },
+      { id: "dup", body: "second copy", author: { accountId: "a1", displayName: "Alice", avatarUrls: {} }, created: "2026-01-01T00:00:00Z", updated: "2026-01-02T00:00:00Z" },
+    ]);
+
+    const res = await POST(makeRequest("VPL-100"));
+    expect(res.status).toBe(200);
+
+    const rows = testDb.select().from(jiraComment).all();
+    expect(rows).toHaveLength(1);
+    // onConflictDoUpdate keeps the last write to win.
+    expect(rows[0].content).toBe("second copy");
+  });
+
   it("returns 499 on AbortError", async () => {
     const abortErr = new DOMException("Aborted", "AbortError");
     vi.mocked(jiraClient.getComments).mockRejectedValue(abortErr);

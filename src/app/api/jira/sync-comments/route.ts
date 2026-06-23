@@ -44,6 +44,17 @@ export async function POST(request: Request) {
     const controller = registerSync(logId);
 
     const comments = await jiraClient.getComments(key, controller.signal);
+
+    // Preload existing comment content once (O(1) lookups instead of one
+    // findFirst per comment); mirrors the upsertIssue inline-comment path.
+    const existingContent = new Map(
+      (await db
+        .select({ jiraCommentId: jiraComment.jiraCommentId, content: jiraComment.content })
+        .from(jiraComment)
+        .where(eq(jiraComment.ticketKey, key)))
+        .map((c) => [c.jiraCommentId, c.content]),
+    );
+
     let synced = 0;
     let changed = 0;
 
@@ -55,28 +66,26 @@ export async function POST(request: Request) {
       const authorName = comment.author?.displayName ?? "Unknown";
       const authorAvatar = comment.author?.avatarUrls?.["48x48"] ?? null;
 
-      // Upsert by jiraCommentId
-      const existing = await db.query.jiraComment.findFirst({
-        where: (c, { eq: eqFn }) => eqFn(c.jiraCommentId, comment.id),
-      });
-
-      if (existing) {
-        if (existing.content !== contentMarkdown) changed++;
-        await db.update(jiraComment)
-          .set({ content: contentMarkdown, authorName, authorAvatar })
-          .where(eq(jiraComment.jiraCommentId, comment.id));
+      if (existingContent.has(comment.id)) {
+        if (existingContent.get(comment.id) !== contentMarkdown) changed++;
       } else {
         changed++;
-        await db.insert(jiraComment).values({
-          id: `jc-${comment.id}`,
-          ticketKey: key,
-          jiraCommentId: comment.id,
-          authorName,
-          authorAvatar,
-          content: contentMarkdown,
-          createdAt: comment.created,
-        });
       }
+
+      // Conflict on the jiraCommentId unique index so a concurrent sync cannot
+      // double-insert the same comment.
+      await db.insert(jiraComment).values({
+        id: `jc-${comment.id}`,
+        ticketKey: key,
+        jiraCommentId: comment.id,
+        authorName,
+        authorAvatar,
+        content: contentMarkdown,
+        createdAt: comment.created,
+      }).onConflictDoUpdate({
+        target: jiraComment.jiraCommentId,
+        set: { content: contentMarkdown, authorName, authorAvatar },
+      });
       synced++;
     }
 

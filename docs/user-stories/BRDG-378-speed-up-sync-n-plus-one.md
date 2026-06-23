@@ -46,12 +46,37 @@ fetch loops.
 This changes sync timing/ordering internally but **not** the resulting mirror state; behaviour as
 observed by the PO is unchanged (same tickets, same sprints, faster).
 
+## Implementation Plan
+
+### Phase A — Schema + migration (first; everything depends on the unique index)
+1. Add `uniqueIndex("jira_comment_jira_comment_id_idx").on(table.jiraCommentId)` to the `jiraComment` table in `src/db/schema.ts`. `jiraCommentId` stays nullable; SQLite allows multiple NULLs under a unique index.
+2. Generate the migration with `npx drizzle-kit generate` (next is `0086_*`). Critical: `createTestDb()` runs `migrate()` against `drizzle/`, not a schema push, so the index only exists in tests once the migration file is present.
+
+### Phase B — sync-comments route (depends on A)
+3. In `src/app/api/jira/sync-comments/route.ts`, preload one `Map(jiraCommentId -> content)` for the ticket (mirroring `upsert-issue.ts`). Drop the per-comment `findFirst`; compute `changed` from the Map; replace insert/update with a single `onConflictDoUpdate({ target: jiraComment.jiraCommentId, set: { content, authorName, authorAvatar } })`.
+
+### Phase C — sync-tickets-service bulk fetch (independent of B)
+4. `syncSprint` removedKeys loop (`:253-271`) → one `getIssuesByKeys(removedKeys)`; present → set sprint; absent (404) → `removedFromJiraAt` + `sprintName=sprintId`, `removedCount++`.
+5. `syncBacklog` leftBacklog loop (`:386-402`) → one `getIssuesByKeys`; present → set sprint; absent → `removedFromJiraAt`.
+6. `reconcileGroupMembership` left loop (`:528-553`) → one `getIssuesByKeys`; present + sprint kind → set sprint; present + epic kind → set epic/epicKey; absent → `removedFromJiraAt`, `removedFromJira++`. Non-404 HTTP errors now throw from the bulk call (equivalent to the old `else throw`).
+
+### Phase D — getSprints micro-opt (independent)
+7. In `src/lib/jira-client.ts` `getSprints` enrichment (`:651-665`), skip the per-sprint Agile `goal` fetch when `sp.goal` is already defined.
+
+### Phase E — Tests
+8. sync-comments: M-comment payload → one preload, same rows; duplicate `jiraCommentId` does not double-insert.
+9. sync-tickets-service: multi-ticket departure → single `getIssuesByKeys`, correct per-key sprint; absent key (404) still sets `removedFromJiraAt`.
+10. `npm run build` + full vitest green; verify the new migration applies in `createTestDb`.
+
+### Optional cleanup
+11. `upsert-issue.ts` comment writes already preload a Map (O(1)); switching to `onConflictDoUpdate` is optional symmetry, not required by ACs.
+
 ## Acceptance Criteria
 
 - [ ] A sprint/backlog/group reconcile that moves N tickets issues a bounded number of Jira calls
       (one bulk fetch), not N sequential `getIssue` calls.
-- [ ] Comment sync for a ticket runs O(1) DB lookups (one preloaded Map), not one per comment.
-- [ ] `jira_comment.jiraCommentId` is indexed and unique; comment writes use `onConflict`.
+- [x] Comment sync for a ticket runs O(1) DB lookups (one preloaded Map), not one per comment.
+- [x] `jira_comment.jiraCommentId` is indexed and unique; comment writes use `onConflict`.
 - [ ] `getSprints` does not re-fetch `goal` when it is already known.
 - [ ] The synced mirror state is identical to before (departed tickets get the right new sprint,
       404s still mark `removedFromJiraAt`, comments match Jira).
@@ -60,7 +85,7 @@ observed by the PO is unchanged (same tickets, same sprints, faster).
 
 - [ ] `sync-tickets-service` test: a multi-ticket departure triggers a single `getIssuesByKeys`
       and assigns correct new sprints; a 404 in the bulk result still sets `removedFromJiraAt`.
-- [ ] `sync-comments` test: an M-comment payload does one preload query and produces the same rows
+- [x] `sync-comments` test: an M-comment payload does one preload query and produces the same rows
       as the per-comment path did; a duplicate `jiraCommentId` does not double-insert.
 - [ ] Migration test/check: the new unique index exists and `npm run build` is green.
 
