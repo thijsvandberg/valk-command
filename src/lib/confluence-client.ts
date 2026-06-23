@@ -11,6 +11,7 @@
 import { env } from "@/lib/env";
 import { trackOutboundCall } from "@/lib/rate-limiter";
 import { escapeCql } from "@/lib/jql";
+import { httpFetch } from "@/lib/http-client";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -65,20 +66,20 @@ class ConfluenceClient {
   }
 
   private async fetch<T>(path: string): Promise<T> {
-    trackOutboundCall("confluence");
     const url = `${this.baseUrl}${path}`;
-    const res = await fetch(url, {
+    // Built on the shared httpClient for a bounded timeout; no retry (preserves prior behaviour).
+    const result = await httpFetch<T>(url, {
       headers: {
         Authorization: this.authHeader(),
         Accept: "application/json",
       },
-      next: { revalidate: 0 },
+      init: { next: { revalidate: 0 } } as RequestInit,
+      onRequest: () => trackOutboundCall("confluence"),
     });
-    if (!res.ok) {
-      const body = await res.text().catch(() => "");
-      throw new Error(`Confluence API ${res.status}: ${body.slice(0, 200)}`);
+    if (!result.ok) {
+      throw new Error(`Confluence API ${result.status}: ${(result.error.body ?? "").slice(0, 200)}`);
     }
-    return res.json() as Promise<T>;
+    return result.data;
   }
 
   async checkHealth(): Promise<{ displayName: string; accountId: string }> {

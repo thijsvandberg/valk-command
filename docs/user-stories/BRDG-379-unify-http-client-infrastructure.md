@@ -1,6 +1,6 @@
 # BRDG-379: Unify HTTP client infrastructure (timeouts, retry, error mapping)
 
-**Status:** Not Started
+**Status:** Complete
 **Priority:** Medium
 **Type:** Structure / Stability — integration clients
 
@@ -71,21 +71,21 @@ timeouts/retries and a single place to fix resilience bugs.
 
 ## Acceptance Criteria
 
-- [ ] Every outbound integration request (Jira, agent, Bitbucket, Confluence, pipeline-sync) has a
-      bounded timeout; a hung upstream cannot wedge a sync tick.
-- [ ] One shared HTTP helper provides timeout, backoff, `Retry-After`, and a consistent error
-      contract; the clients are built on it.
-- [ ] The Bitbucket config/fetch/deploy-heuristic logic exists once, imported by both
-      `bitbucket-client.ts` and `pipeline-sync.ts`.
-- [ ] No behavioural change for existing callers (same data, same error surfacing) — verified by
+- [x] Every outbound integration request (Jira, agent, Bitbucket, Confluence, pipeline-sync) has a
+      bounded timeout; a hung upstream cannot wedge a sync tick. <!-- Jira/agent already had timeouts; Bitbucket/Confluence/pipeline-sync now bound every request via httpClient's AbortSignal.timeout. -->
+- [x] One shared HTTP helper provides timeout, backoff, `Retry-After`, and a consistent error
+      contract; the clients are built on it. <!-- src/lib/http-client.ts; Bitbucket + Confluence migrated onto it. Jira/agent retain their own well-tested equivalents per the scope decision. -->
+- [x] The Bitbucket config/fetch/deploy-heuristic logic exists once, imported by both
+      `bitbucket-client.ts` and `pipeline-sync.ts`. <!-- bitbucket-fetch.ts (config+auth+fetch) + bitbucket-deploy-heuristics.ts (env + step classification). -->
+- [x] No behavioural change for existing callers (same data, same error surfacing) — verified by
       the existing client test suites passing.
 
 ## Tests
 
 - [x] `http-client.test.ts`: times out a hung request; retries the configured statuses with backoff;
       honors `Retry-After`; surfaces the agreed error contract.
-- [ ] Bitbucket/Confluence client tests: a timeout produces a clean error, not a hang.
-- [ ] Existing `jira-client` / `bitbucket-client` / `confluence-client` / `pipeline-sync` tests
+- [x] Bitbucket/Confluence client tests: a timeout produces a clean error, not a hang.
+- [x] Existing `jira-client` / `bitbucket-client` / `confluence-client` / `pipeline-sync` tests
       stay green after migration.
 
 ## Open Questions

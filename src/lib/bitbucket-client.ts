@@ -1,6 +1,10 @@
-import { env } from "@/lib/env";
-import { trackOutboundCall } from "@/lib/rate-limiter";
 import { logger } from "@/lib/logger";
+import { bbFetch, getBitbucketConfig, isBitbucketConfigured } from "@/lib/bitbucket-fetch";
+import { detectEnvironment, shortRepoName } from "@/lib/bitbucket-deploy-heuristics";
+
+// Re-exported so existing importers (and the test suite) keep their public surface.
+export { shortRepoName, detectEnvironment };
+export const isConfigured = isBitbucketConfigured;
 
 // Normalised shapes returned to the client
 export interface DevBranch {
@@ -138,42 +142,6 @@ interface BbPaginatedResponse<T> {
   next?: string;
 }
 
-function getBitbucketConfig() {
-  const repoSlugs = env.BITBUCKET_REPO_SLUG
-    .split(",")
-    .map((s) => s.trim())
-    .filter(Boolean);
-  return {
-    workspace: env.BITBUCKET_WORKSPACE,
-    repoSlugs,
-    email: env.BITBUCKET_EMAIL || env.JIRA_EMAIL,
-    token: env.BITBUCKET_APP_PASSWORD || env.BITBUCKET_API_TOKEN,
-  };
-}
-
-export function isConfigured() {
-  const cfg = getBitbucketConfig();
-  return Boolean(cfg.workspace && cfg.repoSlugs.length > 0 && cfg.email && cfg.token);
-}
-
-async function bbFetch<T>(repoSlug: string, path: string): Promise<T | null> {
-  const cfg = getBitbucketConfig();
-  const auth = Buffer.from(`${cfg.email}:${cfg.token}`).toString("base64");
-  const url = `https://api.bitbucket.org/2.0/repositories/${cfg.workspace}/${repoSlug}${path}`;
-
-  trackOutboundCall("bitbucket");
-  const res = await fetch(url, {
-    redirect: "follow",
-    headers: {
-      Authorization: `Basic ${auth}`,
-      Accept: "application/json",
-    },
-  });
-
-  if (!res.ok) return null;
-  return res.json() as Promise<T>;
-}
-
 export function extractAuthor(raw?: string, user?: { display_name: string }): string {
   if (user?.display_name) return user.display_name;
   if (raw) {
@@ -209,30 +177,10 @@ function normalisePipelineState(pipeline: BbPipeline): DevBuild["state"] {
   return "IN_PROGRESS";
 }
 
-export function shortRepoName(slug: string): string {
-  return slug.replace(/^valk-/, "");
-}
-
 // Ensures a ticket key like VPL-1337 does not match VPL-13371 (substring false positive)
 export function containsExactKey(text: string, key: string): boolean {
   const escaped = key.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
   return new RegExp(`${escaped}(?!\\d)`).test(text);
-}
-
-const ENV_PATTERNS: Array<{ pattern: RegExp; environment: string; type: DevDeployment["environmentType"] }> = [
-  { pattern: /prod(uction)?/i, environment: "Production", type: "Production" },
-  { pattern: /uat\s*3/i, environment: "UAT3", type: "Staging" },
-  { pattern: /uat\s*2/i, environment: "UAT2", type: "Staging" },
-  { pattern: /uat\s*1/i, environment: "UAT1", type: "Staging" },
-  { pattern: /staging/i, environment: "Staging", type: "Staging" },
-  { pattern: /test/i, environment: "Test", type: "Test" },
-];
-
-export function detectEnvironment(stepName: string): { environment: string; type: DevDeployment["environmentType"] } | null {
-  for (const ep of ENV_PATTERNS) {
-    if (ep.pattern.test(stepName)) return { environment: ep.environment, type: ep.type };
-  }
-  return null;
 }
 
 function normalisePipelineStepState(step: BbPipelineStep): DevBuild["state"] {

@@ -1,59 +1,26 @@
 import "server-only";
 import { db } from "@/db";
 import { pipelineRun, alert, ticketMetadata, appSetting } from "@/db/schema";
-import { env } from "@/lib/env";
-import { trackOutboundCall } from "@/lib/rate-limiter";
 import { createNotification, isTicketFollowed } from "@/lib/notifications";
 import { logger } from "@/lib/logger";
+import {
+  getBitbucketConfig,
+  isBitbucketConfigured,
+  bbFetch,
+  bbFetchUrl,
+  bbFetchStatus,
+  isTransientStatus,
+} from "@/lib/bitbucket-fetch";
+import {
+  detectEnvironment,
+  inferEnvironmentFromBranch,
+  classifyStepsForDeployment,
+  shortRepoName,
+} from "@/lib/bitbucket-deploy-heuristics";
 import { eq, and, isNull, isNotNull, gte, lt, inArray, like, desc } from "drizzle-orm";
 
-// -- Environment detection --
-
-type EnvType = "Production" | "Staging" | "Test";
-
-// Order matters: production wins, then a specific UAT number (any N, space/-/_ separators,
-// covers uat-4), then generic staging, then test.
-function detectEnvironment(text: string): { environment: string; type: EnvType } | null {
-  if (/prod(uction)?/i.test(text)) return { environment: "Production", type: "Production" };
-  const uat = text.match(/uat[\s_-]*(\d+)/i);
-  if (uat) return { environment: `UAT${uat[1]}`, type: "Staging" };
-  if (/staging/i.test(text)) return { environment: "Staging", type: "Staging" };
-  if (/test/i.test(text)) return { environment: "Test", type: "Test" };
-  return null;
-}
-
-/**
- * Infer a deployment environment from a branch name, restricted to the staging deploy
- * convention (`staging/...` or exactly `staging`). Some repos auto-deploy on these branches
- * via GitOps with no `deploy` step in the pipeline, so the branch is the only signal. The
- * restriction prevents ordinary feature branches that merely contain "uat"/"test" from being
- * misread as deployments (BRDG-257).
- */
-export function inferEnvironmentFromBranch(branch: string): { environment: string; type: EnvType } | null {
-  const b = branch.toLowerCase();
-  if (b !== "staging" && !b.startsWith("staging/")) return null;
-  return detectEnvironment(branch) ?? { environment: "Staging", type: "Staging" };
-}
-
-/**
- * Pure deployment classifier: given a pipeline's steps, return the deployment
- * environment if any step is a deploy step matching an environment pattern.
- * Single source of truth for the deploy-step heuristic; no I/O so it is unit-testable.
- */
-export function classifyStepsForDeployment(
-  steps: Array<{ name: string }>,
-): { environment: string; type: "Production" | "Staging" | "Test" } | null {
-  let detectedEnv: { environment: string; type: "Production" | "Staging" | "Test" } | null = null;
-  for (const step of steps) {
-    const envFromStep = detectEnvironment(step.name);
-    if (envFromStep) detectedEnv = envFromStep;
-    const lower = step.name.toLowerCase();
-    if (lower.includes("deploy") && !lower.includes("set build") && detectedEnv) {
-      return detectedEnv;
-    }
-  }
-  return null;
-}
+// Re-exported so the existing test suite keeps importing these from this module.
+export { inferEnvironmentFromBranch, classifyStepsForDeployment, detectEnvironment };
 
 // -- Ticket key extraction --
 
@@ -93,22 +60,11 @@ function extractMergeInfo(msg: string) {
   };
 }
 
-// -- Bitbucket config & fetch --
+// -- Bitbucket types & config --
 
-function getBitbucketConfig() {
-  const repoSlugs = env.BITBUCKET_REPO_SLUG.split(",").map((s) => s.trim()).filter(Boolean);
-  return {
-    workspace: env.BITBUCKET_WORKSPACE,
-    repoSlugs,
-    email: env.BITBUCKET_EMAIL || env.JIRA_EMAIL,
-    token: env.BITBUCKET_APP_PASSWORD || env.BITBUCKET_API_TOKEN,
-  };
-}
-
-export function isPipelineConfigured() {
-  const cfg = getBitbucketConfig();
-  return Boolean(cfg.workspace && cfg.repoSlugs.length > 0 && cfg.email && cfg.token);
-}
+// Config, auth, and fetch variants live in `bitbucket-fetch.ts`; the deploy heuristics
+// (environment detection, step classification) in `bitbucket-deploy-heuristics.ts`.
+export const isPipelineConfigured = isBitbucketConfigured;
 
 interface BbPipelineStep { uuid: string; name: string; state?: { name: string; result?: { name: string } }; completed_on?: string }
 interface BbPipeline {
@@ -123,57 +79,6 @@ interface BbPipeline {
   links?: { html?: { href: string } };
 }
 interface BbPaginatedResponse<T> { values: T[]; next?: string }
-
-function bbAuthHeaders() {
-  const cfg = getBitbucketConfig();
-  const auth = Buffer.from(`${cfg.email}:${cfg.token}`).toString("base64");
-  return { Authorization: `Basic ${auth}`, Accept: "application/json" };
-}
-
-async function bbFetch<T>(repoSlug: string, path: string, silent404 = false): Promise<T | null> {
-  const cfg = getBitbucketConfig();
-  const url = `https://api.bitbucket.org/2.0/repositories/${cfg.workspace}/${repoSlug}${path}`;
-  trackOutboundCall("bitbucket");
-  const res = await fetch(url, { redirect: "follow", headers: bbAuthHeaders() });
-  if (!res.ok) {
-    if (!(silent404 && res.status === 404)) {
-      logger.info("pipeline-sync", `bbFetch ${res.status} for ${path} on ${repoSlug}`);
-    }
-    return null;
-  }
-  return res.json() as Promise<T>;
-}
-
-async function bbFetchUrl<T>(url: string): Promise<T | null> {
-  trackOutboundCall("bitbucket");
-  const res = await fetch(url, { redirect: "follow", headers: bbAuthHeaders() });
-  if (!res.ok) return null;
-  return res.json() as Promise<T>;
-}
-
-/**
- * Status-aware fetch used where a 404 must be distinguished from a transient error. The range
- * walk anchors on a commit hash, but staging branches are force-pushed (GitOps), so historical
- * deploy commits get orphaned and 404 permanently; a network blip or 429/5xx is transient.
- * status === 0 means the request threw.
- */
-async function bbFetchStatus<T>(repoSlug: string, path: string): Promise<{ status: number; data: T | null }> {
-  const cfg = getBitbucketConfig();
-  const url = `https://api.bitbucket.org/2.0/repositories/${cfg.workspace}/${repoSlug}${path}`;
-  trackOutboundCall("bitbucket");
-  try {
-    const res = await fetch(url, { redirect: "follow", headers: bbAuthHeaders() });
-    if (!res.ok) return { status: res.status, data: null };
-    return { status: res.status, data: (await res.json()) as T };
-  } catch {
-    return { status: 0, data: null };
-  }
-}
-
-/** A non-ok status worth retrying later (network throw, auth blip, rate limit, server error). */
-function isTransientStatus(status: number): boolean {
-  return status === 0 || status === 401 || status === 403 || status === 429 || status >= 500;
-}
 
 // -- Deployment detection (shared, idempotent) --
 
@@ -263,8 +168,6 @@ function normalisePipelineState(p: BbPipeline): "SUCCESSFUL" | "FAILED" | "IN_PR
   if (s === "IN_PROGRESS" && st === "PAUSED") return "PAUSED";
   return "IN_PROGRESS";
 }
-
-function shortRepoName(slug: string): string { return slug.replace(/^valk-/, ""); }
 
 // -- Watermark: same pattern as Jira sync --
 

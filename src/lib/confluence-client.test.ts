@@ -88,6 +88,11 @@ describe("confluenceClient", () => {
     await expect(confluenceClient.checkHealth()).rejects.toThrow("Confluence API 403");
   });
 
+  it("throws (does not hang) when the request times out", async () => {
+    mockFetch.mockRejectedValue(new DOMException("aborted", "AbortError"));
+    await expect(confluenceClient.checkHealth()).rejects.toThrow();
+  });
+
   it("checkHealth calls spaces endpoint", async () => {
     mockFetch.mockResolvedValue({
       ok: true,

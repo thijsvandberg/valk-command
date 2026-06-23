@@ -107,12 +107,12 @@ async function singleFetch<T>(
     const res = await fetch(url, fetchOptions);
 
     if (!res.ok) {
-      const text = await res.text().catch(() => "");
+      const text = typeof res.text === "function" ? await res.text().catch(() => "") : "";
       return {
         ok: false,
         error: classifyHttpError(res.status, text),
         status: res.status,
-        retryAfterMs: parseRetryAfter(res.headers.get("Retry-After")) ?? undefined,
+        retryAfterMs: parseRetryAfter(res.headers?.get?.("Retry-After") ?? null) ?? undefined,
       };
     }
 
