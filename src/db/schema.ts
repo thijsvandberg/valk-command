@@ -496,6 +496,10 @@ export const jiraComment = sqliteTable("jira_comment", {
     .default(sql`(datetime('now'))`),
 }, (table) => [
   index("jira_comment_ticket_key_idx").on(table.ticketKey),
+  // jiraCommentId is upserted/filtered on; unique guards against a race
+  // double-inserting a comment. Nullable, so local-flag comments (null id)
+  // are unaffected (SQLite allows multiple NULLs under a unique index).
+  uniqueIndex("jira_comment_jira_comment_id_idx").on(table.jiraCommentId),
 ]);
 
 // Phase 4: Local edits

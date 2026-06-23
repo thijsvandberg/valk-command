@@ -1,0 +1,1 @@
+CREATE UNIQUE INDEX `jira_comment_jira_comment_id_idx` ON `jira_comment` (`jira_comment_id`);
