@@ -1,4 +1,4 @@
-import { useState, useCallback } from "react";
+import { useState, useCallback, useEffect, useRef } from "react";
 import useSWR, { mutate } from "swr";
 import { refinementSessions as refinementSessionsApi, swrFetcher } from "@/lib/api-client";
 import { getJiraUrl } from "@/lib/jira-url";
@@ -40,11 +40,20 @@ export function useBulkSuggest(opts: {
   const suggestionCounts = suggestionCountsData?.counts ?? {};
 
   const [copyToast, setCopyToast] = useState(false);
+  // Track the toast timer so it is cleared on unmount and never fires setState
+  // on a gone component (the clipboard .then() resolves after the click).
+  const copyToastTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  useEffect(() => {
+    return () => {
+      if (copyToastTimer.current) clearTimeout(copyToastTimer.current);
+    };
+  }, []);
   const handleCopyStories = useCallback(() => {
     const text = queueTickets.map((t) => `${t.title} - ${getJiraUrl(t.key)}`).join("\n");
     navigator.clipboard.writeText(text).then(() => {
       setCopyToast(true);
-      setTimeout(() => setCopyToast(false), 1500);
+      if (copyToastTimer.current) clearTimeout(copyToastTimer.current);
+      copyToastTimer.current = setTimeout(() => setCopyToast(false), 1500);
     }).catch(() => {
       // ignore
     });

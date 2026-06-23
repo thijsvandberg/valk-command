@@ -6,6 +6,9 @@ const STREAM_URL = "/api/events";
 const CHANNEL_NAME = "bridge-events";
 const LEADER_LOCK_NAME = "bridge-events-leader";
 const RECONNECT_DELAY_MS = 3_000;
+// Cap the exponential backoff so a long outage settles at a steady retry cadence
+// rather than hammering the server every 3s indefinitely.
+const RECONNECT_MAX_DELAY_MS = 30_000;
 
 type EnvelopeHandler = (envelope: BridgeEventEnvelope) => void;
 
@@ -25,6 +28,7 @@ const handlers = new Set<EnvelopeHandler>();
 let started = false;
 let es: EventSource | null = null;
 let reconnectTimer: ReturnType<typeof setTimeout> | null = null;
+let reconnectAttempts = 0;
 let channel: BroadcastChannel | null = null;
 let lockAbort: AbortController | null = null;
 let releaseLeadership: (() => void) | null = null;
@@ -37,6 +41,12 @@ function connect() {
   if (es || !started || typeof EventSource === "undefined") return;
   const source = new EventSource(STREAM_URL);
   es = source;
+
+  // A clean (re)connection resets the backoff so a recovered link retries
+  // promptly the next time it drops, instead of inheriting a long delay.
+  source.onopen = () => {
+    reconnectAttempts = 0;
+  };
 
   source.addEventListener("message", (e: MessageEvent) => {
     let parsed: unknown;
@@ -57,10 +67,12 @@ function connect() {
     source.close();
     if (es === source) es = null;
     if (started && !reconnectTimer) {
+      const delay = Math.min(RECONNECT_DELAY_MS * 2 ** reconnectAttempts, RECONNECT_MAX_DELAY_MS);
+      reconnectAttempts++;
       reconnectTimer = setTimeout(() => {
         reconnectTimer = null;
         connect();
-      }, RECONNECT_DELAY_MS);
+      }, delay);
     }
   };
 }
@@ -102,6 +114,7 @@ function start() {
 
 function stop() {
   started = false;
+  reconnectAttempts = 0;
   if (reconnectTimer) {
     clearTimeout(reconnectTimer);
     reconnectTimer = null;

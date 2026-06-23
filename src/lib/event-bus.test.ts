@@ -220,6 +220,25 @@ describe("subscribeEvents (single tab)", () => {
     expect(MockEventSource.open()).toHaveLength(1);
   });
 
+  it("backs off exponentially across repeated connection errors", async () => {
+    const bus = await openTab();
+    bus.subscribeEvents(vi.fn());
+    await flushMicrotasks();
+    expect(MockEventSource.instances).toHaveLength(1);
+
+    // First error: reconnect after the base 3s delay.
+    MockEventSource.latest().triggerError();
+    await vi.advanceTimersByTimeAsync(3000);
+    expect(MockEventSource.instances).toHaveLength(2);
+
+    // Second error: the delay doubles to 6s, so 3s is not enough yet.
+    MockEventSource.latest().triggerError();
+    await vi.advanceTimersByTimeAsync(3000);
+    expect(MockEventSource.instances).toHaveLength(2);
+    await vi.advanceTimersByTimeAsync(3000);
+    expect(MockEventSource.instances).toHaveLength(3);
+  });
+
   it("connects directly when Web Locks is unavailable", async () => {
     vi.stubGlobal("navigator", {});
     const bus = await openTab();
