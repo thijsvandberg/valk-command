@@ -1,112 +1,208 @@
-# BRDG-374: Extract a reusable row-actions module (menu + bulk bar + dispatch)
+# BRDG-374: Shared, group-based row-actions module (menu + bulk bar + dispatch)
 
-**Status:** Not Started
+**Status:** Design locked (prototype validated) — implementation not started
 **Priority:** Medium
-**Type:** Refactor — Sprint board / shared components
+**Type:** Refactor + UX — Sprint board / shared components
 
-## Description
+## Goal
 
 The ticket row-actions surface (right-click menu + multi-select bulk bar + their dispatch
-handlers) is **partly shared and partly copy-pasted**. The presentation components and the
-dispatch hook already exist as reusable pieces, but the **orchestration that glues them
-together** lives inline in `SprintBoard` and is duplicated in `EpicChildrenSection`. Adding the
-same surface to a third place (the inbox, [[BRDG-373-inbox-row-context-menu-and-bulk-actions]])
-means copying that glue a third time and fighting a data-shape mismatch.
+handlers) is **partly shared and partly copy-pasted**, and the two presentations have **drifted**
+(e.g. Review Story is a top-level menu item but lives under an "AI Assist" dropdown in the bar).
+The presentation components are reused, but each surface re-derives ~20 props and ships its own
+dispatch layer, so adding an action means editing several places and the menu/bar fall out of sync.
 
-This story extracts the whole surface into a **drop-in module** so any list of tickets gets the
-full menu + bulk bar by supplying only: its data source, its selection set, and `showToast`.
-This is the enabler that makes BRDG-373 (and future surfaces) trivial.
+Replace the loose prop-by-prop wiring with a **group-based module**: actions live in a small set of
+cohesive **groups**; a surface declares which groups (and capabilities) it wants; **both** the
+right-click menu and the bulk bar render from the **same group definitions**. Net result: one source
+of truth, the menu and bar cannot drift, and a new action added to a group appears everywhere that
+group is enabled.
 
-## Current Behaviour — what is and isn't shared
+The design below was explored and validated interactively at
+**`/dev/exploration/row-actions`** (surface presets, live group toggles, both presentations, an
+interactive right-click + selection demo, and a group x surface matrix). Keep that page as the living
+reference until the real module lands.
 
-**Already reusable:**
+## The group model
 
-- Presentation: `TicketActionMenuContent`, `CursorMenu`, `AnchoredMenu`, `MenuItem`
-  ([ticket-action-menu.tsx](../../src/components/sprint-board/ticket-action-menu.tsx)) and
-  [`BulkActionBar`](../../src/components/sprint-board/BulkActionBar.tsx).
-- Dispatch: [`useTicketActions`](../../src/components/sprint-board/useTicketActions.ts) — per-row
-  and bulk handlers with optimistic edits via `pendingTicketEdits` / `pendingSprintMoves`.
-- Pure logic: [`computeQuickMoves`](../../src/lib/quick-moves.ts), `sprint-placement` helpers.
+Actions are organised into groups. Each group has an id, a label, an icon, an ordered set of actions,
+and flags for how it renders. A surface enables a subset of groups plus a few capabilities.
 
-**Not shared — duplicated glue (in `SprintBoard`, mirrored in `EpicChildrenSection`):**
+| Group | Icon | Actions | In menu | In bar |
+|-------|------|---------|---------|--------|
+| **Triage** | mail-open | Mark as read | leading item (check icon) | **labelled primary** ("Mark N as read") |
+| **Move** | swap (arrow-right-left) | Move to active, Move to next, Move to backlog, **More sprints ▸**, Move to top, Move to bottom | top-level / inline (most used) | dropdown |
+| **Update** | file-pen | Status, Readiness, Epic, Assignee, Label | nested ("Update ▸") | dropdown |
+| **Flag** | flag | Flag, Remove flag | inline | dropdown |
+| **Assist** | sparkles | Review story, Generate subtasks, Export summary | nested ("Assist ▸") | dropdown |
+| **Refinement** | boxes | **Add to refinement ▸** → scheduled sessions + "New refinement…" | nested | dropdown |
+| **Copy** | copy | Copy list | — (bar only) | plain icon |
+| **Refresh** | refresh-cw | Refresh from Jira | — (bar only) | plain icon |
+| **Bookmark** | bookmark | Bookmark | reserved (future) | reserved (future) |
 
-- `rowMenu: { x, y, targets }` state + `handleRowContextMenu` (cursor position, target = single
-  row vs. current selection) + the `<CursorMenu><TicketActionMenuContent/></CursorMenu>` render.
-- `quickMovesFor(targets)` + `handleQuickMove` + the `CreateSprintModal` auto-create flow.
-- `computeFlagState`, `openRefine` + the refine modal, `handleBulkReviewStory`,
-  `handleBulkGenerateSubtasks` (orchestration, busy state, and toasts not in `useTicketActions`).
-- The `<BulkActionBar ...>` prop-mapping block (~20 props).
-- The data fetches the surface needs: `useJiraSprints`, `useBacklogDropTarget`.
+### Presentation 1 — right-click menu
 
-**The data-shape mismatch:** `useTicketActions` is typed to `apiTickets: Ticket[]` +
-`mutateTickets: KeyedMutator<Ticket[]>` and optimistically patches that exact cache. The inbox's
-cache is `NewStoriesResponse` (`{ rows: NewStoryRow[] }`), so the hook can't be dropped on it
-without an adapter. Generalising this contract is the core of the refactor.
+- Order: **Triage → Move → Update → Flag → Assist → Refinement**. Dividers only between
+  clusters that are actually present.
+- **Move is top-level and inline** (it is the most-used action). The named quick-moves
+  (active/next/backlog) render directly with the **destination sprint name as a trailing chip**.
+  The remaining pinned sprints + generic buckets + custom pick sit behind **More sprints ▸**.
+  Rank items (Move to top/bottom) only render when the surface has a manual order.
+- **Update** and **Assist** each collapse to a single parent item that opens a sub-menu
+  ("Update ▸", "Assist ▸") — one level deeper, keeps the top of the menu short.
+- **Refinement** is "Add to refinement ▸" → the list of scheduled refinements + "New refinement…".
+- **Copy and Refresh are bar-only** (list-level ops; they don't belong on a single right-clicked row).
 
-## Proposed Approach
+### Presentation 2 — multi-select bar
 
-Introduce a single composition layer that owns the glue and depends only on a small,
-surface-agnostic adapter.
+- **Icon-only for compactness.** A group with one action is a plain icon button; a group with
+  more than one action opens a **dropdown**, signalled by a **caret** beside the icon (the chosen
+  cue — see "Dropdown cue" below).
+- **Triage stays a labelled primary** button ("Mark N as read") — it is the headline inbox action;
+  not collapsed to an icon.
+- Left side: **select-all checkbox**, an "N/total selected" counter, and **optional SP / BV counters**.
+- Two clusters separated by a divider: edit/act (**Update, Move, Flag, Assist**) then list-ops
+  (**Refinement, Copy, Refresh**), then **Clear**.
+- The bar hugs its content (its background always fits exactly; no overflow past the rounded edge).
 
-1. **`useRowActions(...)` hook** — wraps `useTicketActions` and additionally owns: `rowMenu`
-   state + `handleRowContextMenu`, `quickMovesFor` + `handleQuickMove` + create-sprint signalling,
-   `computeFlagState`, and the review/subtasks/refine orchestration. Returns ready-made props for
-   the menu and the bulk bar plus the modal signals the host renders.
-2. **Generalise the data contract.** Replace the hard `Ticket[]` / `KeyedMutator<Ticket[]>`
-   dependency with a thin adapter: `getTicket(key) → Ticket`, `patch(key, partial)` (optimistic),
-   and `mutate()` (revalidate). The board passes its `Ticket[]` cache; the inbox passes a
-   `NewStoryRow`-backed adapter. Optimistic mechanics (`pendingTicketEdits`/`pendingSprintMoves`)
-   stay intact.
-3. **Thin wrapper components** — `<RowContextMenu surface={...} />` and `<RowBulkBar surface={...} />`
-   so a host renders two components instead of re-deriving ~20 props. The host still owns row
-   rendering (`BoardRow`), selection state, and modal mounting.
-4. **Migrate all three call sites** onto the module: `SprintBoard`, `EpicChildrenSection`, and
-   the inbox (the inbox migration is delivered by BRDG-373). Net result: one source of truth,
-   no behavioural change on the board or epic page.
-5. **Keep `SprintBoard` slimmer.** This continues the god-component decomposition direction
-   (cf. BRDG-202a) by lifting the row-actions glue out of the page component.
+### Per-surface composition
+
+| Group / capability | Sprint Board | Epic children | Inbox |
+|--------------------|:------------:|:-------------:|:-----:|
+| Triage (Mark as read) | – | – | ✓ (labelled primary) |
+| Move | ✓ | ✓ | ✓ |
+| Update | ✓ | ✓ | ✓ |
+| Flag | ✓ | ✓ | ✓ (write-through*) |
+| Assist | ✓ | ✓ | ✓ |
+| Refinement | ✓ | ✓ | ✓ |
+| Copy | ✓ | ✓ | ✓ |
+| Refresh | ✓ | – | – |
+| Bookmark | reserved | reserved | reserved |
+| **Capability: rank** (Move to top/bottom) | ✓ | – | – |
+| **Capability: SP / BV counters** | ✓ | ✓ | **off** |
+
+\* Inbox `NewStoryRow` carries no `flagged`/`readiness`/`businessValue`, so Flag/Readiness are
+write-through (they fire but don't reflect current state). Enriching the row model is a follow-up
+(noted in BRDG-373).
+
+### Dropdown cue (bar)
+
+Chosen: **Caret** — a legible chevron beside the icon on dropdown groups (the icon button becomes a
+small pill). Single-action groups (Copy, Refresh) stay square icons, so "opens a menu" vs "fires now"
+is visible at a glance. Rejected alternatives explored in the sandbox: None (no affordance),
+Underline (too subtle), Recessed (faint tint — clean but less explicit). The sandbox keeps all four
+toggleable for reference.
+
+## Naming & labels (decisions)
+
+- **"Update"** is the group name for the field-setters (Status / Readiness / Epic / Assignee / Label).
+  Chosen over Set / Edit / Fields / Properties. Icon: **file-pen**.
+- **"Assist"** is the group name for the AI helpers (was "AI Assist"). Icon: sparkles.
+- **Move** icon: **swap (arrow-right-left)**. Rank items use **arrow-up-to-line / arrow-down-to-line**.
+- **Quick-move labels:** purpose-led label + destination sprint chip —
+  **"Move to active" · `BT: 140`**, **"Move to next" · `BT: 142`**, **"Move to backlog" · `BT: Backlog`**
+  (order: active, then next, then backlog). This replaces the current
+  [`computeQuickMoves`](../../src/lib/quick-moves.ts) label format `Move to "BT: 140"` + an `active`
+  badge. **Use "active" (not "current")** — it matches the Jira sprint `state === "active"` and the
+  existing `badge: "active"`, so code and UI agree.
+- **More sprints ▸** contains: remaining pinned sprints, the generic buckets **Overall refinement**
+  and **Backlog**, then **Choose sprint…** (custom pick).
+- **Refinement:** the entry is **"Add to refinement"** opening the list of scheduled refinement
+  sessions + **"New refinement…"** (no separate "add to next refinement" quick item).
+
+## Architecture (the refactor underneath)
+
+The group model needs one shared dispatch path so an action is written once. Today there are three:
+[`useTicketActions`](../../src/components/sprint-board/useTicketActions.ts) (board, bound to
+`Ticket[]` + `KeyedMutator<Ticket[]>`), an inline `runBulk` in
+[`EpicChildrenSection`](../../src/components/ticket-detail/EpicChildrenSection.tsx), and
+[`useInboxRowActions`](../../src/app/(app)/inbox/useInboxRowActions.ts) (mirrors the epic pattern for
+`NewStoriesResponse`). BRDG-373 shipped the inbox with this local adapter on the understanding that
+374 collapses it.
+
+1. **Group registry** — declarative definition of the groups + actions above, surface-agnostic. Both
+   presentations and the dispatch read from it.
+2. **`useRowActions(...)` composition hook** — wraps the dispatch and owns the glue currently inline
+   in `SprintBoard`/`EpicChildrenSection`/inbox: `rowMenu` state + `handleRowContextMenu`,
+   `quickMovesFor` + `handleQuickMove` + create-sprint signalling, flag-state, and the
+   review/subtasks/refine orchestration. Returns ready-made props for the menu and bar plus the modal
+   signals the host renders.
+3. **Generalise the data contract.** Replace the hard `Ticket[]` / `KeyedMutator<Ticket[]>` dependency
+   with a thin adapter: `getTicket(key) → Ticket`, `patch(key, partial)` (optimistic), `mutate()`
+   (revalidate). Board passes its `Ticket[]` cache; inbox passes a `NewStoryRow`-backed adapter; epic
+   passes its callback-backed adapter. Optimistic mechanics (`pendingTicketEdits`/`pendingSprintMoves`)
+   stay intact — see [optimistic-updates.md](../architecture/optimistic-updates.md).
+4. **Thin wrapper components** — `<RowContextMenu surface={...} />` and `<RowBulkBar surface={...} />`
+   render the menu/bar from the group registry + a surface descriptor (enabled groups + capabilities:
+   `rank`, `metrics`, triage), so a host mounts two components instead of re-deriving ~20 props. The
+   host still owns row rendering (`BoardRow`), selection state, and modal mounting.
+5. **Migrate all three surfaces** onto the module: `SprintBoard`, `EpicChildrenSection`, inbox —
+   collapsing `useInboxRowActions` and the epic inline `runBulk` into the shared path, **no
+   behavioural change** beyond the agreed UX (menu/bar parity, named moves, refinement list, caret).
+
+## Scope
+
+**In:** Sprint Board, Epic children, Inbox.
+
+**Out (confirmed):**
+- **MultiSprintView** — EOL; moving to other tables.
+- **`/cleanup`** — its own bespoke bar with cleanup-specific actions (disposition, enqueue).
+- **Chat / ConversationList** — a *different domain* (conversations) with its own
+  [chat/BulkActionBar](../../src/components/chat/BulkActionBar.tsx); same UX shape, non-overlapping
+  actions. Do not fold in.
+- **SprintSlots** — right-click on the sprint slot tab (slot management), not a row.
+- **Legacy `TicketRow` / `/compare`** — being phased out.
 
 ## Acceptance Criteria
 
-- [ ] A new surface gets the full right-click menu + bulk bar by supplying only a data adapter,
-      a selection set, and `showToast` — no copied glue.
+- [ ] Actions are defined once in a group registry; both the right-click menu and the bulk bar render
+      from it (no separately-maintained per-presentation lists). Adding an action to a group surfaces
+      it in both presentations wherever that group is enabled.
+- [ ] A surface gets the full menu + bar by supplying a data adapter, its enabled groups, capabilities
+      (`rank`, `metrics`, triage), and `showToast` — no copied glue.
 - [ ] `useTicketActions`' data dependency is generalised so a non-`Ticket[]` cache (the inbox's
-      `NewStoriesResponse`) works without forking the hook.
-- [ ] `rowMenu` state, `quickMovesFor`/`handleQuickMove`, flag-state, and review/subtasks/refine
-      orchestration live in the shared module, not inline in `SprintBoard`.
-- [ ] `SprintBoard` and `EpicChildrenSection` are migrated to the module with **no behavioural
-      change** (same menu items, same bulk actions, same optimistic updates, same toasts).
-- [ ] Optimistic-update mechanics (`pendingTicketEdits` / `pendingSprintMoves`) are preserved
-      exactly; [optimistic-updates.md](../architecture/optimistic-updates.md) is updated to
-      describe the shared module.
-- [ ] No regression in board/epic context-menu, bulk-bar, quick-move, or auto-create behaviour.
+      `NewStoriesResponse`) works through the adapter without forking the hook.
+- [ ] Right-click menu matches the design: Triage leads (inbox only), **Move top-level with named
+      sprint chips + More sprints ▸**, **Update ▸** and **Assist ▸** nested, Flag inline, **Add to
+      refinement ▸**; Copy/Refresh absent from the menu.
+- [ ] Bulk bar matches the design: icon-only with the **caret** cue on dropdown groups, **Mark as read
+      labelled primary** (inbox), select-all checkbox + counter, **SP/BV counters optional per surface
+      (off on inbox)**, edit/list-op clusters split by a divider, Clear at the end, background hugs content.
+- [ ] Quick-move labels use "Move to active/next/backlog" + destination sprint chip, "active" wording,
+      with More sprints holding remaining pinned + Overall refinement + Backlog + Choose sprint…
+- [ ] `SprintBoard` and `EpicChildrenSection` migrate to the module; `useInboxRowActions` and the epic
+      inline dispatch collapse into the shared path. Optimistic mechanics preserved exactly.
+- [ ] No regression in board/epic/inbox context-menu, bulk-bar, quick-move, or auto-create behaviour.
+- [ ] [optimistic-updates.md](../architecture/optimistic-updates.md) updated to describe the shared module.
 
 ## Tests
 
-- [ ] The module renders the menu/bulk bar from a minimal adapter and dispatches the right
-      API calls for each action.
-- [ ] Board and epic regression: existing context-menu / bulk-bar / quick-move tests pass
-      unchanged after migration.
-- [ ] The generalised adapter applies optimistic patches and reverts on failure for both a
-      `Ticket[]` source and a row-list source.
-- [ ] Quick-move computation + auto-create signalling work through the shared module.
+- [ ] The module renders the menu/bar from a surface descriptor + minimal adapter and dispatches the
+      right API call for each action (per group).
+- [ ] Per-surface composition: rank items appear only with `rank`; SP/BV counters only with `metrics`;
+      Mark-as-read primary only with triage; Copy/Refresh never in the menu.
+- [ ] The generalised adapter applies optimistic patches and reverts on failure for both a `Ticket[]`
+      source and a `NewStoryRow` source.
+- [ ] Quick-move computation + auto-create signalling work through the shared module (labels + "active"
+      badge/wording, More sprints contents).
+- [ ] Board / epic / inbox regression: existing context-menu, bulk-bar, quick-move, mark-as-read+undo
+      tests pass after migration.
 
 ## Open Questions
 
-- **Scope of extraction.** Minimal (just lift the inline glue) vs. fuller (also fold the modal
-  state — create-sprint, refine — into the module via host-rendered slots). Recommend: lift the
-  glue + adapter now; keep modal mounting in the host to avoid portal/ownership churn.
-- **Adapter vs. union type.** A small adapter object (recommended) vs. widening `useTicketActions`
-  to accept a discriminated union of cache shapes. Adapter keeps the hook unaware of cache
-  internals.
-- **Sequencing.** Recommended to land this before
-  [[BRDG-373-inbox-row-context-menu-and-bulk-actions]] so the inbox is a clean consumer; if the
-  PO wants the inbox value sooner, 373 ships with a local adapter and this story collapses it.
+- **Modal ownership.** Keep create-sprint / refine modal mounting in the host (recommended, avoids
+  portal churn) vs. fold into the module via slots.
+- **Adapter vs. union type.** Small adapter object (recommended) vs. widening the hook to a
+  discriminated union of cache shapes.
+- **Inbox row enrichment.** Whether to enrich `NewStoryRow` with `flagged`/`readiness`/`businessValue`
+  so Flag/Update reflect state (vs. write-through). Tracked from BRDG-373; likely a separate story.
 
 ## Related
 
-- [[BRDG-373-inbox-row-context-menu-and-bulk-actions]] — the first consumer of this module.
-- [[BRDG-369-move-to-next-sprint-quick-action]] — quick-move logic folded into the module.
-- [[BRDG-367-epic-children-adopt-board-row]] / `EpicChildrenSection` — the second call site to migrate.
-- Touch points: `useTicketActions`, `ticket-action-menu.tsx`, `BulkActionBar.tsx`,
-  `quick-moves.ts`, `pendingTicketEdits`, `pendingSprintMoves`.
+- [[BRDG-373-inbox-row-context-menu-and-bulk-actions]] — shipped the inbox surface with a local
+  adapter this story collapses.
+- [[BRDG-369-move-to-next-sprint-quick-action]] — quick-move logic folded into the Move group.
+- [[BRDG-367-epic-children-adopt-board-row]] / `EpicChildrenSection` — second call site to migrate.
+- Prototype: `src/app/dev/exploration/row-actions/page.tsx` (reachable at `/dev/exploration/row-actions`).
+- Touch points: `useTicketActions`, `ticket-action-menu.tsx`, `BulkActionBar.tsx`, `quick-moves.ts`,
+  `useInboxRowActions.ts`, `pendingTicketEdits`, `pendingSprintMoves`.

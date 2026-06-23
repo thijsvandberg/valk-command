@@ -8,7 +8,7 @@
  */
 
 import Link from "next/link";
-import { ArrowUpRight, LayoutGrid, Rows3, FlaskConical, Shapes, MousePointerClick, Type, PanelTop, PanelTopDashed, AppWindow, ListChecks, Gem, Gauge, Hash, SendHorizontal, BarChart3, History as HistoryIcon, Sparkles, RefreshCw, Target, PanelsTopLeft, SlidersHorizontal } from "lucide-react";
+import { ArrowUpRight, LayoutGrid, Rows3, FlaskConical, Shapes, MousePointerClick, Type, PanelTop, PanelTopDashed, AppWindow, ListChecks, Gem, Gauge, Hash, SendHorizontal, BarChart3, History as HistoryIcon, Sparkles, RefreshCw, Target, PanelsTopLeft, SlidersHorizontal, SquareStack } from "lucide-react";
 
 type Exploration = {
   slug: string;
@@ -22,6 +22,15 @@ type Exploration = {
 const ICON = "h-5 w-5";
 
 const EXPLORATIONS: Exploration[] = [
+  {
+    slug: "row-actions",
+    title: "Row actions — shared groups",
+    blurb:
+      "Models BRDG-374: a shared, group-based row-actions module so the right-click menu and the multi-select bar stop drifting and a new action benefits every surface at once. Actions live in cohesive groups (Triage / Update / Move / Flag / Assist / Refinement / Copy / Refresh, plus a reserved Bookmark); a surface declares which groups + capabilities (rank, SP/BV counters) it wants and both presentations render from the same definitions. Pick a surface preset (Board / Epic / Inbox), toggle groups live, tune the Set/Move icons + name + dropdown cue, and see the menu (Move top-level with named sprint chips, Update/Assist nested) and the icon-only bar (caret on dropdown groups, Mark-as-read primary on inbox) react. Interactive mock rows for right-click + selection; a group x surface matrix; actions land in an on-page log. Design locked and spec'd as BRDG-374.",
+    status: "Chosen",
+    ticket: "BRDG-374",
+    icon: <SquareStack className={ICON} strokeWidth={1.5} />,
+  },
   {
     slug: "board-chrome",
     title: "Header, sprint & filter bars",
