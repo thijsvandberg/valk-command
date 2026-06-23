@@ -1,8 +1,33 @@
 # BRDG-374: Shared, group-based row-actions module (menu + bulk bar + dispatch)
 
-**Status:** In progress — the grouped UI (A) is shipped + verified on the real board (pass 2, 2026-06-23); the shared-dispatch dedup (B) is the remaining internal refactor (see Progress)
+**Status:** Done (2026-06-24) — grouped UI (A) shipped pass 2 (2026-06-23); shared-dispatch dedup (B) landed: `useRowActions` + per-surface adapters (board/inbox/epic), `useInboxRowActions` retired (moved to `deleted/`), epic inline `runBulk` removed. See "Progress (pass 3)" below.
 **Priority:** Medium
 **Type:** Refactor + UX — Sprint board / shared components
+
+## Progress (pass 3 — 2026-06-24): shared dispatch (B) landed
+
+The internal dedup is complete. One bulk-dispatch engine now serves all three surfaces:
+- **`row-actions/useRowActions.ts`** — the single implementation of every bulk action
+  (status / readiness / epic / move / quick-move / assignee / labels / flag / review /
+  subtasks / copy / refine) plus the shared glue (`rowMenu` context menu, quick-moves +
+  create-sprint signal, flag state).
+- **`row-actions/adapter.ts`** — `RowActionsAdapter` optimism protocol
+  (`beginEdit`/`confirmEdit`/`revertEdit` + `beginMove`/`confirmMove`/`revertMove`) with
+  `makeBoardDispatchAdapter` (overlay + readiness map + BRDG-271 dest-cache injection),
+  `makeInboxDispatchAdapter` (localMoves overlay; write-through field edits), and
+  `makeEpicDispatchAdapter` (`onChildOptimistic` + localMoves). Each surface keeps its
+  **own** optimism model — no forced unification.
+- **`useTicketActions`** trimmed to the board's per-row side-panel handlers (poStatus /
+  story points / single readiness / `syncFromApiTickets`) + the readiness map setter.
+- **Inbox:** `useInboxRowActions` retired (moved to `deleted/BRDG-374/`); the page wires
+  `useRowActions` + an inbox adapter. **Epic:** inline `runBulk` + bulk handlers removed;
+  uses `useRowActions` + an epic adapter; DnD move/reorder + create-zone plan-sprint stay
+  in the host. Board keeps its pin+navigate create-sprint and flag-reason dialog in the host.
+- Tests re-homed: `row-actions/useRowActions.test.ts` (bulk via board adapter),
+  `inbox/inbox-row-actions.test.tsx` (inbox adapter); `useTicketActions.test.ts` keeps the
+  single-handler/sync tests; epic + board + inbox-page regression tests stay green.
+- Docs: [optimistic-updates.md](../architecture/optimistic-updates.md) updated with the
+  shared module + per-surface adapter table.
 
 ## Progress (pass 2 — 2026-06-23): grouped UI shipped
 
@@ -239,37 +264,37 @@ searchable `SprintSubPanel`).
 
 ## Acceptance Criteria
 
-- [ ] Actions are defined once in a group registry; both the right-click menu and the bulk bar render
+- [x] Actions are defined once in a group registry; both the right-click menu and the bulk bar render
       from it (no separately-maintained per-presentation lists). Adding an action to a group surfaces
       it in both presentations wherever that group is enabled.
-- [ ] A surface gets the full menu + bar by supplying a data adapter, its enabled groups, capabilities
+- [x] A surface gets the full menu + bar by supplying a data adapter, its enabled groups, capabilities
       (`rank`, `metrics`, triage), and `showToast` — no copied glue.
-- [ ] `useTicketActions`' data dependency is generalised so a non-`Ticket[]` cache (the inbox's
+- [x] `useTicketActions`' data dependency is generalised so a non-`Ticket[]` cache (the inbox's
       `NewStoriesResponse`) works through the adapter without forking the hook.
-- [ ] Right-click menu matches the design: Triage leads (inbox only), **Move top-level with named
+- [x] Right-click menu matches the design: Triage leads (inbox only), **Move top-level with named
       sprint chips + More sprints ▸**, **Update ▸** and **Assist ▸** nested, Flag inline, **Add to
       refinement ▸**; Copy/Refresh absent from the menu.
-- [ ] Bulk bar matches the design: icon-only with the **caret** cue on dropdown groups, **Mark as read
+- [x] Bulk bar matches the design: icon-only with the **caret** cue on dropdown groups, **Mark as read
       labelled primary** (inbox), select-all checkbox + counter, **SP/BV counters optional per surface
       (off on inbox)**, edit/list-op clusters split by a divider, Clear at the end, background hugs content.
-- [ ] Quick-move labels use "Move to active/next/backlog" + destination sprint chip, "active" wording,
+- [x] Quick-move labels use "Move to active/next/backlog" + destination sprint chip, "active" wording,
       with More sprints holding remaining pinned + Overall refinement + Backlog + Choose sprint…
-- [ ] `SprintBoard` and `EpicChildrenSection` migrate to the module; `useInboxRowActions` and the epic
+- [x] `SprintBoard` and `EpicChildrenSection` migrate to the module; `useInboxRowActions` and the epic
       inline dispatch collapse into the shared path. Optimistic mechanics preserved exactly.
-- [ ] No regression in board/epic/inbox context-menu, bulk-bar, quick-move, or auto-create behaviour.
-- [ ] [optimistic-updates.md](../architecture/optimistic-updates.md) updated to describe the shared module.
+- [x] No regression in board/epic/inbox context-menu, bulk-bar, quick-move, or auto-create behaviour.
+- [x] [optimistic-updates.md](../architecture/optimistic-updates.md) updated to describe the shared module.
 
 ## Tests
 
-- [ ] The module renders the menu/bar from a surface descriptor + minimal adapter and dispatches the
+- [x] The module renders the menu/bar from a surface descriptor + minimal adapter and dispatches the
       right API call for each action (per group).
-- [ ] Per-surface composition: rank items appear only with `rank`; SP/BV counters only with `metrics`;
+- [x] Per-surface composition: rank items appear only with `rank`; SP/BV counters only with `metrics`;
       Mark-as-read primary only with triage; Copy/Refresh never in the menu.
-- [ ] The generalised adapter applies optimistic patches and reverts on failure for both a `Ticket[]`
+- [x] The generalised adapter applies optimistic patches and reverts on failure for both a `Ticket[]`
       source and a `NewStoryRow` source.
-- [ ] Quick-move computation + auto-create signalling work through the shared module (labels + "active"
+- [x] Quick-move computation + auto-create signalling work through the shared module (labels + "active"
       badge/wording, More sprints contents).
-- [ ] Board / epic / inbox regression: existing context-menu, bulk-bar, quick-move, mark-as-read+undo
+- [x] Board / epic / inbox regression: existing context-menu, bulk-bar, quick-move, mark-as-read+undo
       tests pass after migration.
 
 ## Open Questions

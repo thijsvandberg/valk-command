@@ -124,6 +124,29 @@ outright was not an option.
 5. Add a test asserting the value survives a stale refetch (see
    `pendingTicketEdits.test.ts` and the handler tests in `useTicketActions.test.ts`).
 
+## Shared row-actions dispatch + per-surface adapters (BRDG-374)
+
+The bulk row actions (status / readiness / epic / move / quick-move / assignee / labels /
+flag / review / subtasks / copy / refine) are written **once** in
+`src/components/sprint-board/row-actions/useRowActions.ts`. Each surface — Sprint Board,
+Epic children, Inbox — supplies a `RowActionsAdapter` (see `row-actions/adapter.ts`) that
+reflects the change in **its own** optimism model. The dispatch never forces one model:
+
+| Step | What the dispatch does | What the adapter does per surface |
+|------|------------------------|-----------------------------------|
+| `beginEdit(keys, field, value)` | before the write | **Board:** `registerPendingEdit` (+ the readiness map the row renders from). **Epic:** `onChildOptimistic` for status/readiness. **Inbox:** nothing (row carries no flag/readiness state). |
+| write per key | shared API call (`apiFetch` / `tickets.*` / `jira.*`) | — |
+| `confirmEdit(okKeys)` / `revertEdit(failedKeys)` | after settle | **Board:** confirm/clear the overlay (+ restore the readiness map on revert; revalidate for epic/assignee/labels). **Epic/Inbox:** `mutate()` to revalidate. |
+| `beginMove` / `confirmMove` / `revertMove` | sprint move | **Board:** `registerPendingMove` then the BRDG-271 destination-cache injection. **Epic/Inbox:** a local `localMoves` name overlay, then `mutate()`; self-heal drops the override when the refetch reflects the move. |
+
+So the board keeps the global `pendingTicketEdits` / `pendingSprintMoves` overlay described
+above, while epic and inbox keep their local React-state overlays — all behind one dispatch.
+`useTicketActions` is now only the board's **per-row side-panel** handlers (poStatus / story
+points / single readiness / `syncFromApiTickets`) plus the readiness map; its old bulk
+handlers moved into `useRowActions`. The board's quick-move + create-sprint (it pins +
+navigates) and the flag-reason dialog stay in `SprintBoard`; the epic's DnD move/reorder and
+create-zone plan-sprint stay in `EpicChildrenSection`.
+
 ## Known follow-up
 
 `MultiSprintView.tsx` has its own duplicated optimistic maps and does not yet use this
