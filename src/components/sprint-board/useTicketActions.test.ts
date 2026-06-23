@@ -146,7 +146,7 @@ describe("useTicketActions - handleStoryPointsChange readiness transition", () =
       result.current.handleStoryPointsChange("A-1", 5);
     });
 
-    expect(saveStoryPointsMock).toHaveBeenCalledWith("A-1", 5, null);
+    expect(saveStoryPointsMock).toHaveBeenCalledWith("A-1", 5, null, { patchList: false });
     expect(result.current.readinessMap["A-1"]).toBeNull();
   });
 
@@ -623,5 +623,58 @@ describe("useTicketActions - handleBulkSetEpic", () => {
     expect(hasPendingEdit("A-1", "epic")).toBe(false);
     expect(hasPendingEdit("A-1", "epicKey")).toBe(false);
     expect(showToast).toHaveBeenLastCalledWith("Failed to update epic for 1 ticket");
+  });
+});
+
+// BRDG-383: board-row edits own their display via the pendingTicketEdits overlay, so the
+// save helpers must NOT also patch the SWR list cache (that defeats the board's self-heal
+// and causes the value to snap back). Every board overlay handler must opt out with
+// { patchList: false }.
+describe("useTicketActions - board edits opt out of the list-cache patch (BRDG-383)", () => {
+  const saveTicketMetadataMock = vi.mocked(saveTicketMetadata);
+
+  beforeEach(() => {
+    saveTicketMetadataMock.mockReset().mockResolvedValue(true);
+    saveStoryPointsMock.mockReset().mockResolvedValue(true);
+    __resetPendingEdits();
+  });
+
+  const LIST_KEY = "/api/tickets?sprintId=42";
+
+  function setup() {
+    const { result } = renderHook(() =>
+      useTicketActions({ apiTickets: [], mutateTickets: vi.fn(), activeListKey: LIST_KEY, sprintNameMap: {}, showToast: vi.fn() }),
+    );
+    return { result };
+  }
+
+  it("business value passes patchList: false", async () => {
+    const { result } = setup();
+    await act(async () => { result.current.handleBusinessValueChange("A-1", 5); });
+    expect(saveTicketMetadataMock).toHaveBeenCalledWith("A-1", { businessValue: 5 }, LIST_KEY, { patchList: false });
+  });
+
+  it("guestimation passes patchList: false", async () => {
+    const { result } = setup();
+    await act(async () => { result.current.handleGuestimationChange("A-1", 3); });
+    expect(saveTicketMetadataMock).toHaveBeenCalledWith("A-1", { guestimation: 3 }, LIST_KEY, { patchList: false });
+  });
+
+  it("PO status passes patchList: false", async () => {
+    const { result } = setup();
+    await act(async () => { result.current.handlePoStatusChange("A-1", "Ready"); });
+    expect(saveTicketMetadataMock).toHaveBeenCalledWith("A-1", { poStatus: "Ready" }, LIST_KEY, { patchList: false });
+  });
+
+  it("readiness passes patchList: false", async () => {
+    const { result } = setup();
+    await act(async () => { result.current.handleReadinessChange("A-1", "on_hold"); });
+    expect(saveTicketMetadataMock).toHaveBeenCalledWith("A-1", { readiness: "on_hold" }, LIST_KEY, { patchList: false });
+  });
+
+  it("story points passes patchList: false", async () => {
+    const { result } = setup();
+    await act(async () => { result.current.handleStoryPointsChange("A-1", 8); });
+    expect(saveStoryPointsMock).toHaveBeenCalledWith("A-1", 8, LIST_KEY, { patchList: false });
   });
 });

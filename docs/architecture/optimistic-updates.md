@@ -98,13 +98,27 @@ Rule for any sidebar field that also lives on the board row: overlay for the boa
 patches the list). Fields with no board-row presence (PO notes, labels) may keep using
 `patchTicketCaches`.
 
+### The save helpers must not patch the list cache for overlay fields (BRDG-383)
+
+`saveTicketMetadata` and `saveStoryPoints` optimistically patch the SWR **list** cache by
+default. For a board-row edit that already registers on the overlay, that patch is
+self-defeating in exactly the way the sidebar section describes: the client-side list patch
+makes the list look like the server caught up, so the self-heal clears the overlay early and
+the next stale refetch wins (the value snaps back). The board handlers therefore call the
+helpers with `{ patchList: false }`; the overlay is the only display mechanism. The detail-cache
+patch stays (the sidebar re-seed). `MultiSprintView` does **not** use the overlay yet, so it
+keeps the default (`patchList: true`) for its own optimism - which is why removing the patch
+outright was not an option.
+
 ## Adding a new editable board field (checklist)
 
 1. Add the field name to `EditableField` in `pendingTicketEdits.ts`.
 2. In the handler: `registerPendingEdit(key, field, value, Date.now())` before the API
    call; `confirmPendingEdit` on success; `clearPendingEdit` on failure.
 3. Do **not** add a bespoke `mutate(..., { revalidate: false })` optimistic patch - the
-   overlay already handles display; that pattern is what caused the snap-back bug.
+   overlay already handles display; that pattern is what caused the snap-back bug. If the
+   handler saves via `saveTicketMetadata` / `saveStoryPoints`, pass `{ patchList: false }`
+   so the helper does not patch the list cache either (BRDG-383).
 4. If the field renders from a separate map (like poStatus/readiness) rather than the
    list object, guard its reconciliation with `hasPendingEdit`.
 5. Add a test asserting the value survives a stale refetch (see

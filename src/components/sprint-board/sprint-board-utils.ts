@@ -41,7 +41,13 @@ export async function saveTicketMetadata(
   jiraKey: string,
   updates: { readiness?: TicketReadiness | null; poStatus?: POStatus | undefined; poNotes?: string | undefined; qualityScore?: number | null; businessValue?: number | null; guestimation?: number | null },
   activeListKey?: string | null,
+  // patchList=false: caller manages board display via the pendingTicketEdits overlay, so a
+  // list-cache patch here would defeat the board's self-heal and cause snap-back (BRDG-383).
+  // See docs/architecture/optimistic-updates.md. Callers without the overlay (e.g.
+  // MultiSprintView) keep the default so their optimistic display still works.
+  options: { patchList?: boolean } = {},
 ): Promise<boolean> {
+  const patchList = options.patchList ?? true;
   const updateTicket = (ticket: Ticket): Ticket => {
     const patched = { ...ticket };
     if (updates.readiness !== undefined) patched.readiness = updates.readiness;
@@ -56,7 +62,7 @@ export async function saveTicketMetadata(
   const detailKey = `/api/tickets/${encodeURIComponent(jiraKey)}`;
 
   // Optimistically update only the active ticket list (not all sprint lists)
-  if (activeListKey) {
+  if (activeListKey && patchList) {
     globalMutate(
       activeListKey,
       (current: Ticket[] | undefined) => current?.map((t) => t.key === jiraKey ? updateTicket(t) : t),
@@ -82,7 +88,7 @@ export async function saveTicketMetadata(
     return true;
   } catch (err) {
     console.error("Failed to save ticket metadata:", err);
-    if (activeListKey) globalMutate(activeListKey);
+    if (activeListKey && patchList) globalMutate(activeListKey);
     globalMutate(detailKey);
     return false;
   }
@@ -92,10 +98,13 @@ export async function saveStoryPoints(
   jiraKey: string,
   storyPoints: number | null,
   activeListKey?: string | null,
+  // See saveTicketMetadata: patchList=false when the overlay owns board display (BRDG-383).
+  options: { patchList?: boolean } = {},
 ): Promise<boolean> {
+  const patchList = options.patchList ?? true;
   const detailKey = `/api/tickets/${encodeURIComponent(jiraKey)}`;
 
-  if (activeListKey) {
+  if (activeListKey && patchList) {
     globalMutate(
       activeListKey,
       (current: Ticket[] | undefined) => current?.map((t) => t.key === jiraKey ? { ...t, storyPoints } : t),
@@ -113,7 +122,7 @@ export async function saveStoryPoints(
     return true;
   } catch (err) {
     console.error("Failed to save story points:", err);
-    if (activeListKey) globalMutate(activeListKey);
+    if (activeListKey && patchList) globalMutate(activeListKey);
     globalMutate(detailKey);
     return false;
   }

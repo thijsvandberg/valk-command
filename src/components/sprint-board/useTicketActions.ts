@@ -47,7 +47,7 @@ export function useTicketActions(deps: TicketActionsDeps) {
     // the save resolves (e.g. one served from the stale response cache) would
     // otherwise reconcile the map back via syncFromApiTickets.
     registerPendingEdit(key, "poStatus", status, Date.now());
-    saveTicketMetadata(key, { poStatus: status }, activeListKey).then((ok) => {
+    saveTicketMetadata(key, { poStatus: status }, activeListKey, { patchList: false }).then((ok) => {
       if (ok) {
         confirmPendingEdit(key, "poStatus");
       } else {
@@ -62,7 +62,7 @@ export function useTicketActions(deps: TicketActionsDeps) {
     const prev = readinessMap[key];
     setReadinessMap((m) => ({ ...m, [key]: readiness }));
     registerPendingEdit(key, "readiness", readiness, Date.now());
-    saveTicketMetadata(key, { readiness }, activeListKey).then((ok) => {
+    saveTicketMetadata(key, { readiness }, activeListKey, { patchList: false }).then((ok) => {
       if (ok) {
         confirmPendingEdit(key, "readiness");
       } else {
@@ -75,7 +75,7 @@ export function useTicketActions(deps: TicketActionsDeps) {
 
   const handleBusinessValueChange = useCallback((key: string, value: number | null) => {
     registerPendingEdit(key, "businessValue", value, Date.now());
-    saveTicketMetadata(key, { businessValue: value }, activeListKey).then((ok) => {
+    saveTicketMetadata(key, { businessValue: value }, activeListKey, { patchList: false }).then((ok) => {
       if (ok) confirmPendingEdit(key, "businessValue");
       else clearPendingEdit(key, "businessValue");
     });
@@ -85,7 +85,7 @@ export function useTicketActions(deps: TicketActionsDeps) {
     registerPendingEdit(key, "guestimation", value, Date.now());
     // The capacity meter reads a server-computed effective-points total (real SP
     // or guestimation), separate from the ticket list, so refresh it after the save.
-    saveTicketMetadata(key, { guestimation: value }, activeListKey).then((ok) => {
+    saveTicketMetadata(key, { guestimation: value }, activeListKey, { patchList: false }).then((ok) => {
       if (ok) { confirmPendingEdit(key, "guestimation"); globalMutate("/api/sprints/used-points"); }
       else clearPendingEdit(key, "guestimation");
     });
@@ -103,7 +103,7 @@ export function useTicketActions(deps: TicketActionsDeps) {
       setReadinessMap((m) => ({ ...m, [key]: null }));
       registerPendingEdit(key, "readiness", null, Date.now());
     }
-    saveStoryPoints(key, value, activeListKey).then((ok) => {
+    saveStoryPoints(key, value, activeListKey, { patchList: false }).then((ok) => {
       if (ok) {
         confirmPendingEdit(key, "storyPoints");
         if (advancesReadiness) confirmPendingEdit(key, "readiness");
@@ -262,7 +262,7 @@ export function useTicketActions(deps: TicketActionsDeps) {
     setReadinessMap((prev) => { const next = { ...prev }; keys.forEach((k) => { next[k] = readiness; }); return next; });
     setInflightKeys((prev) => { const next = new Set(prev); keys.forEach((k) => next.add(k)); return next; });
     keys.forEach((k) => registerPendingEdit(k, "readiness", readiness, now));
-    const results = await Promise.all(keys.map((k) => saveTicketMetadata(k, { readiness }, activeListKey)));
+    const results = await Promise.all(keys.map((k) => saveTicketMetadata(k, { readiness }, activeListKey, { patchList: false })));
     setInflightKeys((prev) => { const next = new Set(prev); keys.forEach((k) => next.delete(k)); return next; });
     keys.forEach((k, i) => { if (results[i]) confirmPendingEdit(k, "readiness"); else clearPendingEdit(k, "readiness"); });
     const failedCount = results.filter((ok) => !ok).length;
