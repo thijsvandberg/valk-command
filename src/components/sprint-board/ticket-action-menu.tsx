@@ -517,6 +517,8 @@ export function TicketActionMenuContent({
   onReviewStory,
   onGenerateSubtasks,
   onRefine,
+  refinements,
+  onAddToRefinement,
   onMarkRead,
   epicValue,
   epicSuggestTicketKey,
@@ -552,7 +554,12 @@ export function TicketActionMenuContent({
   flagState?: FlagState;
   onReviewStory?: () => void;
   onGenerateSubtasks?: () => void;
+  /** "New refinement…": opens the create-session modal. */
   onRefine?: () => void;
+  /** Scheduled refinement sessions; when present, "Add to refinement" becomes a list
+   *  of sessions + "New refinement…" (BRDG-374). */
+  refinements?: { id: string; name: string }[];
+  onAddToRefinement?: (sessionId: string) => void;
   /** New story inbox (BRDG-373): renders a leading "Mark as read" item. Omitted on
    *  the board / epic children, whose menu is unchanged. */
   onMarkRead?: () => void;
@@ -689,10 +696,27 @@ export function TicketActionMenuContent({
       {assistItems}
     </Flyout>
   ) : null;
-  const refineItem = onRefine ? (
-    <MenuItem icon={<Boxes className="h-3.5 w-3.5" strokeWidth={1.5} />} onClick={() => { onRefine(); close(); }}>
-      Add to refinement
-    </MenuItem>
+  const hasRefineSessions = Boolean(refinements && refinements.length > 0 && onAddToRefinement);
+  const refineItem = onRefine || hasRefineSessions ? (
+    hasRefineSessions ? (
+      <Flyout icon={<Boxes className="h-3.5 w-3.5" strokeWidth={1.5} />} label="Add to refinement" width="w-[240px]">
+        {refinements!.map((r) => (
+          <MenuItem key={r.id} onClick={() => { onAddToRefinement!(r.id); close(); }}>
+            {r.name}
+          </MenuItem>
+        ))}
+        {onRefine && (
+          <>
+            <div className="mx-2 my-1 h-px bg-overlay-strong" />
+            <MenuItem onClick={() => { onRefine(); close(); }}>New refinement…</MenuItem>
+          </>
+        )}
+      </Flyout>
+    ) : (
+      <MenuItem icon={<Boxes className="h-3.5 w-3.5" strokeWidth={1.5} />} onClick={() => { onRefine!(); close(); }}>
+        Add to refinement
+      </MenuItem>
+    )
   ) : null;
   const blocks: (ReactNode | null)[] = [
     onMarkRead ? (
@@ -708,7 +732,7 @@ export function TicketActionMenuContent({
         {assistGroup}
       </>
     ) : null,
-    onRefine ? refineItem : null,
+    refineItem,
   ];
   const present = blocks.filter((b) => b !== null);
   return <>{present.map((b, i) => <Fragment key={i}>{i > 0 && divider}{b}</Fragment>)}</>;

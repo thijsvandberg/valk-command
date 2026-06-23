@@ -145,6 +145,8 @@ export function BulkActionBar({
   onRefreshFromJira,
   onCopyToClipboard,
   onRefine,
+  refinements,
+  onAddToRefinement,
   isRefreshing,
   floating,
 }: {
@@ -186,7 +188,12 @@ export function BulkActionBar({
   // List-level
   onRefreshFromJira?: () => void;
   onCopyToClipboard?: () => void;
+  /** "New refinement…": opens the create-session modal. */
   onRefine?: () => void;
+  /** Scheduled refinement sessions; when present, Refinement becomes a dropdown of
+   *  sessions + "New refinement…" (BRDG-374). */
+  refinements?: { id: string; name: string }[];
+  onAddToRefinement?: (sessionId: string) => void;
   isRefreshing?: boolean;
   /**
    * Renders the bar as a self-contained, rounded, elevated pill that floats a
@@ -325,7 +332,30 @@ export function BulkActionBar({
       {hasGroup && hasListOps && <BarDivider />}
 
       {/* List-level single actions */}
-      {onRefine && <IconAction label="Add to refinement" icon={Boxes} onClick={onRefine} />}
+      {refinements && refinements.length > 0 && onAddToRefinement ? (
+        <GroupDropdown
+          label="Add to refinement"
+          icon={Boxes}
+          width="w-56"
+          render={(close) => (
+            <>
+              {refinements.map((r) => (
+                <MenuItem key={r.id} onClick={() => { onAddToRefinement(r.id); close(); }}>
+                  {r.name}
+                </MenuItem>
+              ))}
+              {onRefine && (
+                <>
+                  <div className="mx-2 my-1 h-px bg-overlay-strong" />
+                  <MenuItem onClick={() => { onRefine(); close(); }}>New refinement…</MenuItem>
+                </>
+              )}
+            </>
+          )}
+        />
+      ) : (
+        onRefine && <IconAction label="Add to refinement" icon={Boxes} onClick={onRefine} />
+      )}
       {onCopyToClipboard && <IconAction label="Copy list" icon={Copy} onClick={onCopyToClipboard} />}
       {onRefreshFromJira && (
         <IconAction label={isRefreshing ? "Syncing..." : "Refresh from Jira"} icon={RefreshCw} busy={isRefreshing} onClick={onRefreshFromJira} />

@@ -704,6 +704,30 @@ export default function SprintBoard() {
     }
   }, [refinementSessionList, mutateRefinementSessions, showToast]);
   const handleRefineSelected = useCallback(() => { openRefine(Array.from(checkedTickets)); }, [checkedTickets, openRefine]);
+  // Add targets straight into an existing refinement session (BRDG-374); "New refinement…"
+  // still opens the create modal via openRefine.
+  const handleAddToRefinement = useCallback(async (sessionId: string, targets: Set<string> = checkedTickets) => {
+    const session = refinementSessionList.find((s) => s.id === sessionId);
+    if (!session) return;
+    const keys = [...targets];
+    const nextKeys = [...new Set([...session.ticketKeys, ...keys])];
+    const optimistic = refinementSessionList.map((s) =>
+      s.id === sessionId ? { ...s, ticketKeys: nextKeys, ticketCount: nextKeys.length } : s,
+    );
+    try {
+      await mutateRefinementSessions(
+        async () => {
+          await refinementSessionsApi.update(sessionId, { ticketKeys: nextKeys });
+          return refinementSessionsApi.list();
+        },
+        { optimisticData: optimistic, rollbackOnError: true, revalidate: true },
+      );
+      showToast(`Added ${keys.length} ticket${keys.length === 1 ? "" : "s"} to "${session.name}"`);
+    } catch {
+      showToast(`Couldn't add to "${session.name}"`);
+    }
+  }, [refinementSessionList, checkedTickets, mutateRefinementSessions, showToast]);
+  const refinementOptions = useMemo(() => refinementSessionList.map((s) => ({ id: s.id, name: s.name ?? "Untitled refinement" })), [refinementSessionList]);
   const handleBulkSetStatus = useCallback(async (status: Parameters<typeof taBulkSetStatus>[0], targets: Set<string> = checkedTickets) => { await taBulkSetStatus(status, targets); }, [taBulkSetStatus, checkedTickets]);
   const handleBulkSetEpic = useCallback(async (epicKey: string | null, epicName: string | null, targets: Set<string> = checkedTickets) => { await taBulkSetEpic(epicKey, epicName, targets); }, [taBulkSetEpic, checkedTickets]);
   const handleBulkMoveSprint = useCallback(async (sprintId: string, targets: Set<string> = checkedTickets) => {
@@ -1024,7 +1048,7 @@ export default function SprintBoard() {
   // overflow over the panel when the list column is narrowed.
   const bulkActionBar = someChecked && (() => {
     const sel = tickets.filter((t) => checkedTickets.has(t.key));
-    return <BulkActionBar floating count={checkedTickets.size} totalCount={tickets.length} selectedPoints={sel.reduce((s, t) => s + (t.storyPoints ?? 0), 0)} selectedBV={sel.reduce((s, t) => s + (t.businessValue ?? 0), 0)} allChecked={allChecked} onToggleAll={toggleAll} onClear={() => setCheckedTickets(new Set())} onSetReadiness={handleBulkSetReadiness} onSetStatus={handleBulkSetStatus} onSetEpic={handleBulkSetEpic} onMoveSprint={handleBulkMoveSprint} quickMoves={quickMovesFor(checkedTickets)} onQuickMove={(opt) => handleQuickMove(opt, checkedTickets)} onUpdateAssignee={handleBulkUpdateAssignee} onUpdateLabel={handleBulkUpdateLabels} onSetFlagged={(flagged) => handleSetFlagged(flagged)} flagState={computeFlagState(checkedTickets)} sprints={sprints} pinnedSprintIds={slotSprints} onRefreshFromJira={handleBulkRefresh} onReviewStory={handleBulkReviewStory} onCopyToClipboard={handleCopyToClipboard} onExportForStakeholders={handleExportForStakeholders} isRefreshing={bulkRefreshing} isExporting={exportTask.isActive} onGenerateSubtasks={handleBulkGenerateSubtasks} isGeneratingSubtasks={bulkGenerating} onRefine={handleRefineSelected} />;
+    return <BulkActionBar floating count={checkedTickets.size} totalCount={tickets.length} selectedPoints={sel.reduce((s, t) => s + (t.storyPoints ?? 0), 0)} selectedBV={sel.reduce((s, t) => s + (t.businessValue ?? 0), 0)} allChecked={allChecked} onToggleAll={toggleAll} onClear={() => setCheckedTickets(new Set())} onSetReadiness={handleBulkSetReadiness} onSetStatus={handleBulkSetStatus} onSetEpic={handleBulkSetEpic} onMoveSprint={handleBulkMoveSprint} quickMoves={quickMovesFor(checkedTickets)} onQuickMove={(opt) => handleQuickMove(opt, checkedTickets)} onUpdateAssignee={handleBulkUpdateAssignee} onUpdateLabel={handleBulkUpdateLabels} onSetFlagged={(flagged) => handleSetFlagged(flagged)} flagState={computeFlagState(checkedTickets)} sprints={sprints} pinnedSprintIds={slotSprints} onRefreshFromJira={handleBulkRefresh} onReviewStory={handleBulkReviewStory} onCopyToClipboard={handleCopyToClipboard} onExportForStakeholders={handleExportForStakeholders} isRefreshing={bulkRefreshing} isExporting={exportTask.isActive} onGenerateSubtasks={handleBulkGenerateSubtasks} isGeneratingSubtasks={bulkGenerating} onRefine={handleRefineSelected} refinements={refinementOptions} onAddToRefinement={(id) => handleAddToRefinement(id, checkedTickets)} />;
   })();
 
   return (
@@ -1134,6 +1158,8 @@ export default function SprintBoard() {
             onReviewStory={() => handleBulkReviewStory(rowMenu.targets)}
             onGenerateSubtasks={() => handleBulkGenerateSubtasks(rowMenu.targets)}
             onRefine={() => openRefine(Array.from(rowMenu.targets))}
+            refinements={refinementOptions}
+            onAddToRefinement={(id) => handleAddToRefinement(id, rowMenu.targets)}
             sprints={sprints}
             pinnedSprintIds={slotSprints}
             close={() => setRowMenu(null)}
