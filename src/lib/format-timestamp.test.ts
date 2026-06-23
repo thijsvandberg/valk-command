@@ -27,9 +27,9 @@ describe("formatTimestamp", () => {
     expect(result).toMatch(/\d{1,2} \w{3} \d{2}:\d{2}/);
   });
 
-  it("handles invalid date input without throwing", () => {
-    const result = formatTimestamp("not-a-date");
-    expect(typeof result).toBe("string");
+  it("returns empty string (not 'Invalid Date') on unparseable input", () => {
+    expect(formatTimestamp("not-a-date")).toBe("");
+    expect(formatTimestamp("")).toBe("");
   });
 });
 

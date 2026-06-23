@@ -9,6 +9,7 @@
 
 import { db } from "@/db";
 import { appSetting } from "@/db/schema";
+import { safeJsonParse } from "@/lib/api-validation";
 import { eq } from "drizzle-orm";
 
 export interface IndependentTaskStatus {
@@ -76,7 +77,7 @@ export function getIndependentTaskStatuses(): IndependentTaskStatus[] {
       intervalMs: task.intervalMs,
       enabled: true,
       lastRunAt: lastRunRow?.value ?? null,
-      lastResult: lastResultRow ? JSON.parse(lastResultRow.value) : null,
+      lastResult: safeJsonParse<Record<string, unknown> | null>(lastResultRow?.value, null, "task-registry"),
     };
   });
 }

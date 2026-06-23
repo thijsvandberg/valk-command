@@ -13,6 +13,7 @@
 import { db } from "@/db";
 import { appSetting } from "@/db/schema";
 import { createNotification } from "@/lib/notifications";
+import { safeJsonParse } from "@/lib/api-validation";
 import { logger } from "@/lib/logger";
 
 // ---------------------------------------------------------------------------
@@ -242,7 +243,7 @@ export async function getTaskStatuses(): Promise<TaskStatus[]> {
       // toggle in its real state, not the transient in-memory flag.
       enabled: await isTaskEnabled(task),
       lastRunAt: lastRunRow?.value ?? null,
-      lastResult: lastResultRow ? JSON.parse(lastResultRow.value) : null,
+      lastResult: safeJsonParse<TaskResult | null>(lastResultRow?.value, null, "scheduler"),
     });
   }
 

@@ -216,6 +216,21 @@ describe("scheduler", () => {
     });
   });
 
+  describe("getTaskStatuses", () => {
+    it("yields null lastResult on a corrupt stored row instead of throwing", async () => {
+      const name = uniqueName();
+      defineTask(name, "Corrupt Result", "Desc", 60_000, async () => ({}));
+      testDb.insert(appSetting).values({
+        key: `scheduler:${name}:last_result`,
+        value: "{broken json",
+      }).run();
+
+      const statuses = await getTaskStatuses();
+      const status = statuses.find((t) => t.name === name);
+      expect(status?.lastResult).toBeNull();
+    });
+  });
+
   describe("runTaskNow", () => {
     it("runs a disabled task on manual trigger (manual override)", async () => {
       const name = uniqueName();

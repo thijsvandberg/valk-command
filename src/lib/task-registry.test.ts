@@ -103,6 +103,25 @@ describe("task-registry", () => {
     expect(status.enabled).toBe(true);
   });
 
+  it("getIndependentTaskStatuses yields null lastResult on a corrupt stored row (no throw)", async () => {
+    const { registerIndependentTask, getIndependentTaskStatuses } = await importRegistry();
+
+    testDb.insert(appSetting).values({ key: "task-bad:lastResult", value: "{not valid json" }).run();
+
+    registerIndependentTask({
+      name: "task-bad",
+      label: "Task Bad",
+      description: "Corrupt result row",
+      intervalMs: 5000,
+      lastRunKey: "task-bad:lastRun",
+      lastResultKey: "task-bad:lastResult",
+    });
+
+    const statuses = getIndependentTaskStatuses();
+    const status = statuses.find((s) => s.name === "task-bad")!;
+    expect(status.lastResult).toBeNull();
+  });
+
   it("getIndependentTaskStatuses handles missing DB rows", async () => {
     const { registerIndependentTask, getIndependentTaskStatuses } = await importRegistry();
     registerIndependentTask({

@@ -1,6 +1,9 @@
 export function formatTimestamp(iso: string): string {
   try {
     const d = new Date(iso);
+    // new Date("garbage") yields an Invalid Date that does not throw; guard it
+    // explicitly so formatting never returns the literal "Invalid Date".
+    if (Number.isNaN(d.getTime())) return "";
     const now = new Date();
     const isToday = d.toDateString() === now.toDateString();
     const yesterday = new Date(now);
