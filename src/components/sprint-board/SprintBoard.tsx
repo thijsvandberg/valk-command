@@ -727,7 +727,7 @@ export default function SprintBoard() {
       showToast(`Couldn't add to "${session.name}"`);
     }
   }, [refinementSessionList, checkedTickets, mutateRefinementSessions, showToast]);
-  const refinementOptions = useMemo(() => refinementSessionList.map((s) => ({ id: s.id, name: s.name ?? "Untitled refinement" })), [refinementSessionList]);
+  const refinementOptions = useMemo(() => (refinementSessionList ?? []).map((s) => ({ id: s.id, name: s.name ?? "Untitled refinement" })), [refinementSessionList]);
   const handleBulkSetStatus = useCallback(async (status: Parameters<typeof taBulkSetStatus>[0], targets: Set<string> = checkedTickets) => { await taBulkSetStatus(status, targets); }, [taBulkSetStatus, checkedTickets]);
   const handleBulkSetEpic = useCallback(async (epicKey: string | null, epicName: string | null, targets: Set<string> = checkedTickets) => { await taBulkSetEpic(epicKey, epicName, targets); }, [taBulkSetEpic, checkedTickets]);
   const handleBulkMoveSprint = useCallback(async (sprintId: string, targets: Set<string> = checkedTickets) => {
