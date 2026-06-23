@@ -40,6 +40,7 @@ import {
   type TopicScoreResult,
 } from "@/lib/deprecation-topics";
 import { runAgentTaskToCompletion, type RunAgentTaskOptions } from "@/lib/agent-task-result";
+import { parseScanScoresRaw } from "@/lib/cleanup-types";
 
 // ---------------------------------------------------------------------------
 // Constants
@@ -161,13 +162,8 @@ async function readCheaperTopicSum(jiraKey: string): Promise<number> {
 
   if (!meta?.scanScores) return 0;
 
-  let parsed: Record<string, { score?: number }> = {};
-  try {
-    const raw = JSON.parse(meta.scanScores);
-    if (raw && typeof raw === "object") parsed = raw as typeof parsed;
-  } catch {
-    return 0;
-  }
+  // Corrupt/missing JSON degrades to {} → each topic falls through to 0 below.
+  const parsed = parseScanScoresRaw(meta.scanScores) as Record<string, { score?: number }>;
 
   const staleness = typeof parsed.staleness?.score === "number" ? parsed.staleness.score : 0;
   const replaced = typeof parsed.replaced?.score === "number" ? parsed.replaced.score : 0;

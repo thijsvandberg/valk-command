@@ -29,6 +29,7 @@ import {
   STALENESS_CANDIDATE_THRESHOLD,
   effectiveLastActivity,
 } from "@/lib/deprecation-staleness";
+import { parseScanScoresRaw } from "@/lib/cleanup-types";
 
 /**
  * The row shape the scoring core needs. Mirrors the columns the scheduled task
@@ -138,15 +139,7 @@ export async function scoreRows(
     if (result.score >= STALENESS_CANDIDATE_THRESHOLD) candidates++;
 
     // Preserve any deep-scan topic scores; only overwrite the staleness entry.
-    let scores: Record<string, unknown> = {};
-    if (row.scanScores) {
-      try {
-        const parsed = JSON.parse(row.scanScores);
-        if (parsed && typeof parsed === "object") scores = parsed;
-      } catch {
-        // Corrupt JSON is discarded; the scan recomputes from scratch.
-      }
-    }
+    const scores = parseScanScoresRaw(row.scanScores);
     scores.staleness = { score: result.score, rationale: result.rationale };
 
     const fields = {

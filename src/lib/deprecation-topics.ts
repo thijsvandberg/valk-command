@@ -24,7 +24,7 @@ import { db } from "@/db";
 import { ticket, ticketMetadata } from "@/db/schema";
 import { eq } from "drizzle-orm";
 import type { ScanTopicKey } from "@/lib/cleanup-types";
-import { REVIVAL_CANDIDATE_THRESHOLD } from "@/lib/cleanup-types";
+import { REVIVAL_CANDIDATE_THRESHOLD, parseScanScoresRaw } from "@/lib/cleanup-types";
 import type { AnalyzerResult } from "@/lib/deprecation-analyzer";
 
 // ---------------------------------------------------------------------------
@@ -258,15 +258,10 @@ export async function runDeepScan(
   };
 
   // Existing scores survive: deep dive merges into, never wipes, the map.
-  const scores: Record<string, { score: number; evidence?: unknown; rationale?: string }> = {};
-  if (row.scanScores) {
-    try {
-      const parsed = JSON.parse(row.scanScores);
-      if (parsed && typeof parsed === "object") Object.assign(scores, parsed);
-    } catch {
-      // Corrupt JSON is discarded; the scan rebuilds what it can.
-    }
-  }
+  const scores = parseScanScoresRaw(row.scanScores) as Record<
+    string,
+    { score: number; evidence?: unknown; rationale?: string }
+  >;
 
   const topicsRun: string[] = [];
   const rationaleLines: string[] = [];

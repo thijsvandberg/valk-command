@@ -156,21 +156,31 @@ export type CleanupSort =
 export type ScannedFilter = "all" | "scanned" | "never" | "deep";
 
 /**
+ * Parse the stored scanScores JSON into a raw per-topic object. Bad or missing
+ * JSON (and non-object payloads) degrade to an empty object rather than throwing,
+ * so one corrupt row never takes down a scan or list. Callers that merge or read
+ * arbitrary topic keys use this; parseScanScores narrows it to the number map.
+ */
+export function parseScanScoresRaw(raw: string | null | undefined): Record<string, unknown> {
+  if (!raw) return {};
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(raw);
+  } catch {
+    return {};
+  }
+  if (!parsed || typeof parsed !== "object") return {};
+  return parsed as Record<string, unknown>;
+}
+
+/**
  * Parse the stored scanScores JSON into a defensive per-topic number map. Bad or
  * missing JSON degrades to an empty map rather than throwing, so one corrupt row
  * never takes down the whole list.
  */
 export function parseScanScores(raw: string | null | undefined): Partial<Record<ScanTopicKey, number | null>> {
   const out: Partial<Record<ScanTopicKey, number | null>> = {};
-  if (!raw) return out;
-  let parsed: unknown;
-  try {
-    parsed = JSON.parse(raw);
-  } catch {
-    return out;
-  }
-  if (!parsed || typeof parsed !== "object") return out;
-  const map = parsed as Record<string, unknown>;
+  const map = parseScanScoresRaw(raw);
   for (const topic of SCAN_TOPICS) {
     const entry = map[topic.key];
     if (entry && typeof entry === "object" && typeof (entry as ScanTopicScore).score === "number") {
