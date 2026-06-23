@@ -153,6 +153,53 @@ The group model needs one shared dispatch path so an action is written once. Tod
 - **SprintSlots** — right-click on the sprint slot tab (slot management), not a row.
 - **Legacy `TicketRow` / `/compare`** — being phased out.
 
+## Implementation Plan
+
+Decided via an Opus plan + codebase verification. Build order keeps the tree green at every commit:
+introduce registry + adapter + wrappers behind the existing components, then migrate one surface at a time.
+
+**Resolved open questions:** modals stay host-mounted (hook returns signals); small **adapter object** (no
+union type); inbox row enrichment stays out of scope (flag/readiness write-through, `flagState:"mixed"`).
+
+**Data contract — `RowActionsAdapter`:** `getTicket(key) → TicketLike | undefined`, `patch(key, partial)`
+(optimistic display write), `mutate()` (revalidate). Each surface wires `patch`/`mutate` to its EXISTING
+optimism so nothing regresses — board → `registerPendingEdit`/`registerPendingMove` overlay (never list
+cache); epic → `onChildOptimistic` + `setLocalMoves`/`setLocalMetrics`; inbox → `setLocalMoves` (write-through).
+
+**Steps (each a commit):**
+1. **Group registry** — new `src/components/sprint-board/row-actions/groups.ts`: typed `GroupId`/`Group`/`Action`/
+   `SurfaceDescriptor` ported from the prototype, locked names/icons. Pure, no wiring. + `groups.test.ts`.
+2. **Quick-move labels** — `src/lib/quick-moves.ts`: labels become "Move to active/next/backlog" + add a
+   `target` field (destination chip). Keep ids/ordering/de-dup/`badge:"active"`. Update `quick-moves.test.ts`,
+   `ticket-action-menu.test.tsx`.
+3. **Generalise `useTicketActions` onto the adapter** — replace `apiTickets`/`mutateTickets` deps with the
+   adapter; `find` → `getTicket`, `mutate` → `adapter.mutate`. Board-specific bulk-move destination-cache
+   injection becomes an optional `adapter.onBulkMoveCommitted` capability (board-only; inbox/epic no-op).
+   Provide `makeBoardAdapter(...)`. Update `useTicketActions.test.ts`; keep `SprintBoard.moveMeter.test.tsx` green.
+4. **`useRowActions` composition hook** — new; owns `rowMenu`+`handleRowContextMenu`, `quickMovesFor`/
+   `handleQuickMove`+create-sprint signal, flag-state (`getTicket().flagged`, "mixed" when absent),
+   `flagPolicy` capability (board="confirm", others="immediate"), review/subtasks/refine orchestration.
+   Returns `{ menuProps, barProps, signals }`. + `useRowActions.test.ts`.
+5. **Thin wrappers** `RowContextMenu` + `RowBulkBar` — first as adapters over existing `TicketActionMenuContent`/
+   `BulkActionBar` (behaviourally identical, tests stay green), then fold registry-driven rendering + agreed UX
+   (named moves+chips, More sprints ▸ with generic buckets, Update/Assist nested, Add to refinement ▸, caret
+   cue, Mark-as-read primary, SP/BV optional, clusters, hug). Rewrite `BulkActionBar.test.tsx`/
+   `ticket-action-menu.test.tsx` only at the UX-fold. + `RowContextMenu.test.tsx` / `RowBulkBar.test.tsx`.
+6. **Migrate Inbox** — replace + delete `useInboxRowActions.ts`; inbox adapter; `markRead` stays in page as
+   Triage action. Re-home `useInboxRowActions.test.tsx`; keep `inbox/page.test.tsx` green.
+7. **Migrate EpicChildrenSection** — remove inline `runBulk`; epic adapter; keep DnD handlers + plan-sprint flow
+   in host. Keep `.optimistic/.plan-sprint/.reorder` tests green.
+8. **Migrate SprintBoard** — board adapter; replace inline `CursorMenu`/`BulkActionBar` with wrappers; keep
+   refresh/copy/export/create-sprint/flag-dialog in host wired from signals; `handleRankToEdge` = `rank` cap.
+9. **Docs** — update `optimistic-updates.md` to describe the shared module + per-surface adapters.
+
+**Risks / gaps flagged:** (a) board bulk-move destination-cache injection (BRDG-271) — model as `onBulkMoveCommitted`
+capability, guard with moveMeter test; (b) `flagState` source via adapter (`getTicket().flagged` optional);
+(c) flag-reason dialog divergence → `flagPolicy` capability; (d) "Export summary" is board-only → registry needs
+**per-surface action gating** within an enabled group (prototype only gates at group level); (e) "More sprints ▸"
+must partition pinned vs generic buckets (Overall refinement / Backlog) and host "Choose sprint…" (the current
+searchable `SprintSubPanel`).
+
 ## Acceptance Criteria
 
 - [ ] Actions are defined once in a group registry; both the right-click menu and the bulk bar render
