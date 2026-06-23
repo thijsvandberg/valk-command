@@ -1,6 +1,6 @@
 import useSWR, { mutate as globalMutate, useSWRConfig } from "swr";
 import { useRef, useMemo, useEffect, useCallback } from "react";
-import type { Ticket, TicketDetail, ActivityLogEntry, StoredReview, StoryVersion } from "@/types/ticket";
+import type { Ticket, TicketDetail, StoredReview, StoryVersion } from "@/types/ticket";
 import type { DevInfoPayload } from "@/lib/bitbucket-client";
 import { swrFetcher, tickets as ticketsApi, jira as jiraApi } from "@/lib/api-client";
 export { useDebouncedCallback } from "./useDebouncedCallback";
@@ -166,15 +166,6 @@ export function useTicketAttachments(ticketKey: string | null) {
     ticketKey ? `/api/tickets/${encodeURIComponent(ticketKey)}/attachments` : null,
     swrFetcher,
     { revalidateOnFocus: false, dedupingInterval: 60000 },
-  );
-}
-
-// Polls recent activity log entries (latest N results)
-export function useActivityStatus(limit = 10) {
-  return useSWR<ActivityLogEntry[]>(
-    `/api/activity-log?limit=${limit}`,
-    swrFetcher,
-    { refreshInterval: 10000, revalidateOnFocus: true },
   );
 }
 

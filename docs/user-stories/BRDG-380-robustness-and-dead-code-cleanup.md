@@ -102,7 +102,7 @@ fetcher change is the only one that touches error semantics app-wide — verify 
 - [x] `formatTimestamp` returns empty (not "Invalid Date") on unparseable input.
 - [x] `adf-to-markdown` renders headerless tables correctly (no phantom header row), with no dead branch.
 - [~] Team-prefix extraction, `isEpicChild`, and `scanScores` parsing each live in one place. (team-prefix + scanScores done; isEpicChild pending)
-- [ ] The dead `useActivityStatus` export and `backlog` state key are removed.
+- [x] The dead `useActivityStatus` export and `backlog` state key are removed.
 - [ ] SWR errors surface for keys on the default fetcher; the intentional soft consumers still work.
 
 ## Tests
