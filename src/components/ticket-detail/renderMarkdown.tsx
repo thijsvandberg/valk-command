@@ -106,8 +106,14 @@ function inlineFormat(text: string, linkify = false): ReactNode {
     }
     if (last < seg.length) parts.push(seg.slice(last));
   };
-  const pushText = (chunk: string) => {
-    if (!chunk) return;
+  const pushText = (raw: string) => {
+    if (!raw) return;
+    // Existing descriptions stored before the serializer fix contain a lone "~"
+    // escaped as "\~" (tiptap-markdown escapes it to prevent accidental
+    // strikethrough). Unescape a single tilde here so it renders as "~" instead
+    // of a literal backslash. Genuine strikethrough (~~text~~) is matched by the
+    // regex above and never reaches pushText, so it is unaffected.
+    const chunk = raw.replace(/\\~(?!~)/g, "~");
     if (!linkify) {
       parts.push(chunk);
       return;

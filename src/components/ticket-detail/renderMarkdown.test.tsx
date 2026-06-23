@@ -207,6 +207,21 @@ describe("renderMarkdown — block glued onto an image line (BRDG-366)", () => {
   });
 });
 
+describe("renderMarkdown — escaped tilde", () => {
+  it("renders a stored escaped tilde as a plain tilde, not a literal backslash", () => {
+    // Descriptions saved before the serializer fix contain "\~P95".
+    const { container } = render(<div>{renderMarkdown("\\~P95 < 200ms")}</div>);
+    expect(container.textContent).toContain("~P95 < 200ms");
+    expect(container.textContent).not.toContain("\\~");
+  });
+
+  it("still renders genuine strikethrough", () => {
+    const { container } = render(<div>{renderMarkdown("~~gone~~ stays")}</div>);
+    expect(container.querySelector("s")?.textContent).toBe("gone");
+    expect(container.textContent).not.toContain("~~");
+  });
+});
+
 describe("renderMarkdown — unsafe link neutralization", () => {
   it("does not render a javascript: link as an anchor but keeps the label text", () => {
     const { container } = render(<div>{renderMarkdown("[click me](javascript:alert(1))")}</div>);

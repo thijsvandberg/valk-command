@@ -68,6 +68,16 @@ describe("markdown round-trip (load -> serialize identity) - BRDG-280", () => {
     expect(roundTrip("array[index] access")).toBe("array[index] access");
   });
 
+  it("preserves a lone tilde without escaping it", () => {
+    // tiptap-markdown escapes a standalone "~" to "\~"; the serializer must
+    // unescape it so the backslash never leaks into the stored markdown.
+    expect(roundTrip("~P95 < 200ms")).toBe("~P95 < 200ms");
+  });
+
+  it("keeps genuine strikethrough intact", () => {
+    expect(roundTrip("~~obsolete~~ value")).toBe("~~obsolete~~ value");
+  });
+
   it("does not over-strip an intentional literal asterisk", () => {
     // A literal `*` between spaces is not emphasis; it must NOT be turned into a mark, and the
     // visible text must survive. (Whether it serializes as `*` or `\*` is acceptable escaping.)

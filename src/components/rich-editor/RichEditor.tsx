@@ -183,6 +183,11 @@ export function getEditorMarkdown(editor: ReturnType<typeof useEditor>): string 
     // We never use markdown link syntax (links are ADF marks), so these escapes
     // accumulate each round-trip through the HTML-wrapped paragraph path.
     .replace(/\\+([\[\]])/g, "$1")
+    // tiptap-markdown escapes a lone ~ in plain text to prevent accidental
+    // strikethrough markup, so "~P95" serializes as "\~P95" and the backslash
+    // leaks into the stored markdown. Unescape a single tilde (one not followed
+    // by another tilde) so genuine strikethrough (~~text~~) is left untouched.
+    .replace(/\\~(?!~)/g, "~")
     // tiptap-markdown HTML-encodes < and > in text nodes (escapeHTML in its
     // text serializer). Unescape so stored markdown contains raw characters.
     .replace(/&lt;/g, "<")
