@@ -1,6 +1,6 @@
 # BRDG-380: Robustness fixes and dead-code cleanup
 
-**Status:** Not Started
+**Status:** Completed
 **Priority:** Medium
 **Type:** Best-practice / Stability — small fixes grab-bag
 
@@ -107,7 +107,7 @@ fetcher change is the only one that touches error semantics app-wide — verify 
 
 ## Tests
 
-- [ ] `draft-sync` test: a finalize failure leaves the row `DRAFT_FAILED`.
+- [x] `draft-sync` test: a finalize failure leaves the row `DRAFT_FAILED`.
 - [x] `scheduler`/`task-registry`: a corrupt stored value yields `null`, not a thrown status call.
 - [x] `format-timestamp`: bad input → `""`.
 - [x] `adf-to-markdown`: a headerless table renders without a separator row.
