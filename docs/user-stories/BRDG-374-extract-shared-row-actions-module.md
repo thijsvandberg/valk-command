@@ -1,8 +1,26 @@
 # BRDG-374: Shared, group-based row-actions module (menu + bulk bar + dispatch)
 
-**Status:** In progress — foundation landed (pass 1, 2026-06-23); dispatch unification + migration paused (see Progress)
+**Status:** In progress — the grouped UI (A) is shipped + verified on the real board (pass 2, 2026-06-23); the shared-dispatch dedup (B) is the remaining internal refactor (see Progress)
 **Priority:** Medium
 **Type:** Refactor + UX — Sprint board / shared components
+
+## Progress (pass 2 — 2026-06-23): grouped UI shipped
+
+The full visible redesign (A) now ships in the **shared** components, so all three surfaces
+(board, epic children, inbox) get it at once — verified on the real board via headless screenshots:
+- **Right-click menu** restructured: Move top-level/inline with named quick-moves + destination chips
+  + **More sprints ▸**; **Update ▸** (file-pen) and **Assist ▸** (sparkles) nested; Flag inline;
+  **Add to refinement**. Driven by a view stack so the same content composes in both presentations.
+- **Multi-select bar** rebuilt icon-only: Update / Move / Flag / Assist as icon+caret dropdowns
+  (content reused from the menu via `initialView`), then a divider, then Refinement / Copy / Refresh
+  icons; **Mark-as-read** stays the labelled primary; SP/BV counters optional (off on inbox).
+- Prop interfaces unchanged, so no caller edits were needed. Full suite (6418 tests) + `npm run build`
+  green. Commits: group registry, quick-move labels, grouped menu+bar, test updates.
+
+**Still remaining — B (shared dispatch):** collapse the three dispatch layers (`useTicketActions`,
+the epic inline `runBulk`, `useInboxRowActions`) behind one `useRowActions` + adapter. This is the
+internal dedup; it does not change behaviour or the UI. It carries the optimism-model risk documented
+below and is best done as its own reviewed increment.
 
 ## Progress (implementation pass 1 — 2026-06-23)
 
