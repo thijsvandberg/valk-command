@@ -127,17 +127,31 @@ vi.mock("@/components/sprint-board/useSprintBoardShortcuts", () => ({
   useSprintBoardShortcuts: () => ({ handleTableKeyDown: vi.fn() }),
 }));
 
-const bulkMoveSprint = vi.fn().mockResolvedValue({ ok: true });
+const bulkMoveSprint = vi.fn().mockResolvedValue({ ok: true, count: 1, destName: "Sprint 2" });
 
 vi.mock("@/components/sprint-board/useTicketActions", () => ({
   useTicketActions: () => ({
-    handlePoStatusChange: vi.fn(), handleReadinessChange: vi.fn(), handleBVChange: vi.fn(), handleSPChange: vi.fn(),
+    handlePoStatusChange: vi.fn(), handleReadinessChange: vi.fn(), handleBusinessValueChange: vi.fn(), handleStoryPointsChange: vi.fn(),
     handleJiraStatusChange: vi.fn(), handleIssueTypeChange: vi.fn(), handleTitleChange: vi.fn(),
-    handleCloseSubtasks: vi.fn(), handleNotesChange: vi.fn(), handleRefreshFromJira: vi.fn(),
-    handleBulkSetReadiness: vi.fn(), handleBulkSetStatus: vi.fn(), handleBulkSetEpic: vi.fn(),
-    handleBulkMoveSprint: bulkMoveSprint,
-    handleBulkUpdateAssignee: vi.fn(), handleBulkUpdateLabels: vi.fn(), handleBulkSetFlagged: vi.fn(),
-    poStatuses: {}, readinessMap: {}, inflightKeys: new Set(), syncFromApiTickets: vi.fn(),
+    handleAssigneeChange: vi.fn(), handleEpicChange: vi.fn(), handleSprintChange: vi.fn(),
+    handleCloseSubtasks: vi.fn(), handleSubtasksAdded: vi.fn(), handleGuestimationChange: vi.fn(),
+    poStatuses: {}, readinessMap: {}, setReadinessMap: vi.fn(), syncFromApiTickets: vi.fn(),
+  }),
+}));
+
+// The shared bulk dispatch now lives in useRowActions; the board's move wrapper calls
+// its bulkMoveSprint and refreshes the capacity meter on success.
+vi.mock("@/components/sprint-board/row-actions/useRowActions", () => ({
+  useRowActions: () => ({
+    rowMenu: null, setRowMenu: vi.fn(), handleRowContextMenu: vi.fn(), computeFlagState: () => "unflagged",
+    bulkSetStatus: vi.fn(), bulkSetReadiness: vi.fn(), bulkSetEpic: vi.fn(),
+    bulkUpdateAssignee: vi.fn(), bulkUpdateLabels: vi.fn(), bulkSetFlagged: vi.fn(),
+    bulkMoveSprint, moveSprint: vi.fn(), quickMovesFor: () => [], handleQuickMove: vi.fn(),
+    inflightKeys: new Set(), handleBulkReview: vi.fn(), handleBulkGenerate: vi.fn(),
+    isGeneratingSubtasks: false, copySelected: vi.fn(), openRefine: vi.fn(),
+    refineModalOpen: false, setRefineModalOpen: vi.fn(), refineKeys: [],
+    quickCreate: null, closeQuickCreate: vi.fn(), confirmQuickCreate: vi.fn(),
+    suggestedSprintName: "", planPrevSprint: null,
   }),
 }));
 

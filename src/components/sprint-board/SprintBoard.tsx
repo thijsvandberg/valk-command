@@ -7,7 +7,7 @@ import { trailingDoneDepStart, interpolateRank } from "@/lib/sprint-insert-posit
 import { GroupStatBar, type StatCriterion } from "@/components/sprint-board/GroupStatBar";
 import { matchesWarningFilter } from "@/components/sprint-board/warning-filter";
 import { useSearchParams, useRouter, usePathname } from "next/navigation";
-import type { Sprint, Ticket, IssueType, PlaceholderTicket } from "@/types/ticket";
+import type { Sprint, Ticket, IssueType, PlaceholderTicket, TicketReadiness, JiraStatus } from "@/types/ticket";
 import { SprintSlots } from "@/components/sprint-board/SprintSlots";
 import type { FilterControlsPanelProps } from "@/components/sprint-board/FilterControlsPanel";
 import { TicketTable } from "@/components/sprint-board/TicketTable";
@@ -49,7 +49,8 @@ import { usePendingTicketEdits, applyPendingEdits, clearPendingEdit, valuesMatch
 import { sprintMoveToastContent } from "@/components/sprint-board/sprintMoveToast";
 import { useSprintBoardShortcuts } from "@/components/sprint-board/useSprintBoardShortcuts";
 import { useTicketActions } from "@/components/sprint-board/useTicketActions";
-import { makeBoardAdapter } from "@/components/sprint-board/row-actions/adapter";
+import { makeBoardAdapter, makeBoardDispatchAdapter } from "@/components/sprint-board/row-actions/adapter";
+import { useRowActions } from "@/components/sprint-board/row-actions/useRowActions";
 import { SprintBoardHeader } from "@/components/sprint-board/SprintBoardHeader";
 import { DragGhostOverlay } from "@/components/sprint-board/DragGhostOverlay";
 import { SprintDropZoneBar, snapToPointer, boardCollisionDetection } from "@/components/sprint-board/SprintBoardDragDrop";
@@ -73,7 +74,7 @@ export default function SprintBoard() {
   // the 150s poll remains the fallback when the stream is down.
   useTicketEventsStream();
 
-  const { sprints: rawJiraSprints, backlogCount, data: sprintsData } = useJiraSprints();
+  const { sprints: rawJiraSprints, backlogCount, data: sprintsData, mutate: mutateJiraSprints } = useJiraSprints();
   const { backlogTargetName } = useBacklogDropTarget();
   const sprints = useMemo(() => {
     const mapped = mapJiraSprints(rawJiraSprints);
@@ -353,26 +354,23 @@ export default function SprintBoard() {
     return map;
   }, [sprints]);
 
-  // Ticket actions hook (must be before useSprintBoardFilters which needs readinessMap)
+  // Ticket actions hook (must be before useSprintBoardFilters which needs readinessMap).
+  // useTicketActions keeps the per-row side-panel handlers (poStatus / story points /
+  // single readiness / sync); the shared bulk dispatch lives in useRowActions (below),
+  // driven by the board dispatch adapter so each edit still flows through the board's
+  // pendingTicketEdits / pendingSprintMoves overlay + readiness map (BRDG-374).
   const boardAdapter = useMemo(
     () => makeBoardAdapter(apiTickets, mutateTickets, activeListKey, sprintNameMap),
     [apiTickets, mutateTickets, activeListKey, sprintNameMap],
   );
   const ta = useTicketActions({ adapter: boardAdapter, showToast });
-  const { poStatuses, readinessMap, inflightKeys } = ta;
-  // Stable useCallback refs from the actions hook, aliased so the local bulk
-  // wrappers below can depend on them directly. Depending on `ta` itself would
-  // re-run those hooks every render, since `ta` is a fresh object each time.
-  const {
-    syncFromApiTickets,
-    handleBulkSetReadiness: taBulkSetReadiness,
-    handleBulkSetStatus: taBulkSetStatus,
-    handleBulkSetEpic: taBulkSetEpic,
-    handleBulkMoveSprint: taBulkMoveSprint,
-    handleBulkUpdateAssignee: taBulkUpdateAssignee,
-    handleBulkUpdateLabels: taBulkUpdateLabels,
-    handleBulkSetFlagged: taBulkSetFlagged,
-  } = ta;
+  const { poStatuses, readinessMap, setReadinessMap, syncFromApiTickets } = ta;
+  // Snapshot of pre-edit readiness values so a failed bulk write can restore the map.
+  const prevReadinessRef = useRef<Record<string, TicketReadiness | null>>({});
+  const boardDispatchAdapter = useMemo(
+    () => makeBoardDispatchAdapter(boardAdapter, { setReadinessMap, prevRef: prevReadinessRef }),
+    [boardAdapter, setReadinessMap],
+  );
 
   const { visible: columnVisible, toggleColumn, applyVisible, resetToDefaults } = useColumnConfig();
   const f = useSprintBoardFilters(allTickets, readinessMap, isAllView, poPriorityOrder, columnVisible, applyVisible, sprintNameMap, sprintStateMap);
@@ -427,6 +425,19 @@ export default function SprintBoard() {
     () => (isFlatView && warningLensActive ? tickets.filter((t) => matchesWarningFilter(t, !!flatIsActiveSprint)) : tickets),
     [isFlatView, warningLensActive, tickets, flatIsActiveSprint],
   );
+  // Shared bulk dispatch (BRDG-374). The board keeps its own quick-move / create-sprint
+  // (it pins + navigates) and flag dialog, so it consumes only the bulk handlers, which
+  // flow through the board dispatch adapter's overlay optimism.
+  const ra = useRowActions({
+    adapter: boardDispatchAdapter,
+    selectedKeys: checkedTickets,
+    sprints,
+    pinnedSprintIds: slotSprints,
+    backlogTargetName,
+    showToast,
+    flagSource: "ticket",
+  });
+  const { inflightKeys } = ra;
   // The right-clicked row's current epic (single target only), read from the
   // overlay-aware list so the Set Epic panel's checkmark + Unlink match the chip.
   const rowMenuEpic = useMemo<EpicOption | null>(() => {
@@ -681,7 +692,7 @@ export default function SprintBoard() {
   // Bulk actions. Each accepts an explicit target set (defaulting to the current
   // checkbox selection) so the same handlers serve both the toolbar and the
   // right-click row context menu.
-  const handleBulkSetReadiness = useCallback(async (readiness: Parameters<typeof taBulkSetReadiness>[0], targets: Set<string> = checkedTickets) => { await taBulkSetReadiness(readiness, targets); }, [taBulkSetReadiness, checkedTickets]);
+  const handleBulkSetReadiness = useCallback(async (readiness: TicketReadiness | null, targets: Set<string> = checkedTickets) => { await ra.bulkSetReadiness(readiness, targets); }, [ra, checkedTickets]);
   const handleBulkRefresh = useCallback(async () => { setBulkRefreshing(true); try { await jira.syncTickets({ sprintId: slotSprints[activeSlot] }); showToast(`Refreshed ${checkedTickets.size} ticket${checkedTickets.size === 1 ? "" : "s"} from Jira`); } finally { setBulkRefreshing(false); } }, [slotSprints, activeSlot, checkedTickets.size, showToast]);
   const handleBulkReviewStory = useCallback(async (targets: Set<string> = checkedTickets) => { const keys = Array.from(targets); showToast(`Reviewing ${keys.length} ticket${keys.length === 1 ? "" : "s"}...`); await bulkReviewStories(keys); mutateTickets(); showToast(`Reviewed ${keys.length} ticket${keys.length === 1 ? "" : "s"}`); }, [checkedTickets, showToast, mutateTickets]);
   const handleCopyToClipboard = useCallback(() => { const sel = tickets.filter((t) => checkedTickets.has(t.key)); navigator.clipboard.writeText(sel.map((t) => `${t.title} - ${getJiraUrl(t.key)}`).join("\n")).then(() => showToast(`Copied ${sel.length} ticket${sel.length === 1 ? "" : "s"} to clipboard`)).catch(() => showToast("Failed to copy to clipboard")); }, [tickets, checkedTickets, showToast]);
@@ -733,8 +744,8 @@ export default function SprintBoard() {
     }
   }, [refinementSessionList, checkedTickets, mutateRefinementSessions, showToast]);
   const refinementOptions = useMemo(() => (refinementSessionList ?? []).map((s) => ({ id: s.id, name: s.name ?? "Untitled refinement" })), [refinementSessionList]);
-  const handleBulkSetStatus = useCallback(async (status: Parameters<typeof taBulkSetStatus>[0], targets: Set<string> = checkedTickets) => { await taBulkSetStatus(status, targets); }, [taBulkSetStatus, checkedTickets]);
-  const handleBulkSetEpic = useCallback(async (epicKey: string | null, epicName: string | null, targets: Set<string> = checkedTickets) => { await taBulkSetEpic(epicKey, epicName, targets); }, [taBulkSetEpic, checkedTickets]);
+  const handleBulkSetStatus = useCallback(async (status: JiraStatus, targets: Set<string> = checkedTickets) => { await ra.bulkSetStatus(status, targets); }, [ra, checkedTickets]);
+  const handleBulkSetEpic = useCallback(async (epicKey: string | null, epicName: string | null, targets: Set<string> = checkedTickets) => { await ra.bulkSetEpic(epicKey, epicName, targets); }, [ra, checkedTickets]);
   const handleBulkMoveSprint = useCallback(async (sprintId: string, targets: Set<string> = checkedTickets) => {
     const isBacklog = sprintId === "__backlog__";
     const dest = sprintNameMap[sprintId] ?? (isBacklog ? "backlog" : "sprint");
@@ -745,7 +756,7 @@ export default function SprintBoard() {
       0,
       { loading: true },
     );
-    const { ok } = await taBulkMoveSprint(sprintId, targets);
+    const { ok } = await ra.bulkMoveSprint(sprintId, targets);
     if (!ok) { showToast("Failed to move tickets to sprint"); return; }
     // The capacity meter reads a separate server total; refresh it so used points
     // recompute for both source and destination sprint without a manual reload.
@@ -759,7 +770,7 @@ export default function SprintBoard() {
       }),
       0,
     );
-  }, [taBulkMoveSprint, checkedTickets, sprintNameMap, handleSprintListSelect, showToast, dismissToast, refreshMeter]);
+  }, [ra, checkedTickets, sprintNameMap, handleSprintListSelect, showToast, dismissToast, refreshMeter]);
   // Quick-move options (BRDG-369) for a given target set: resolve each target's current
   // sprint name, then derive next/active/backlog destinations.
   const quickMovesFor = useCallback((targets: Set<string>): QuickMoveOption[] => {
@@ -774,15 +785,15 @@ export default function SprintBoard() {
     if (opt.createName) { setQuickCreate({ name: opt.createName, targets: new Set(targets) }); return; }
     if (opt.targetSprintId) void handleBulkMoveSprint(opt.targetSprintId, targets);
   }, [checkedTickets, handleBulkMoveSprint]);
-  const handleBulkUpdateAssignee = useCallback(async (accountId: string | null, name: string | null, targets: Set<string> = checkedTickets) => { await taBulkUpdateAssignee(accountId, name, targets); }, [taBulkUpdateAssignee, checkedTickets]);
-  const handleBulkUpdateLabels = useCallback(async (labels: string[], mode: "add" | "set", targets: Set<string> = checkedTickets) => { await taBulkUpdateLabels(labels, mode, targets); }, [taBulkUpdateLabels, checkedTickets]);
+  const handleBulkUpdateAssignee = useCallback(async (accountId: string | null, name: string | null, targets: Set<string> = checkedTickets) => { await ra.bulkUpdateAssignee(accountId, name, targets); }, [ra, checkedTickets]);
+  const handleBulkUpdateLabels = useCallback(async (labels: string[], mode: "add" | "set", targets: Set<string> = checkedTickets) => { await ra.bulkUpdateLabels(labels, mode, targets); }, [ra, checkedTickets]);
   const handleBulkGenerateSubtasks = useCallback(async (targets: Set<string> = checkedTickets) => { const keys = Array.from(targets); setBulkGenerating(true); showToast(`Generating subtasks for ${keys.length} ticket${keys.length === 1 ? "" : "s"}...`); try { const { succeeded, failed } = await bulkGenerateSubtasks(keys); if (failed > 0) { showToast(`Generated subtasks for ${succeeded} ticket${succeeded === 1 ? "" : "s"}, ${failed} failed`); } else { showToast(`Subtask suggestions sent for ${succeeded} ticket${succeeded === 1 ? "" : "s"}`); } mutateTickets(); } finally { setBulkGenerating(false); } }, [checkedTickets, showToast, mutateTickets]);
   // Flag: "Flag" opens a reason dialog (reason synced to Jira as a comment); "Remove flag" is immediate.
   const handleSetFlagged = useCallback((flagged: boolean, targets: Set<string> = checkedTickets) => {
     if (targets.size === 0) return;
     if (flagged) { setFlagReason(""); setFlagDialog({ targets }); }
-    else { void taBulkSetFlagged(false, null, targets); }
-  }, [taBulkSetFlagged, checkedTickets]);
+    else { void ra.bulkSetFlagged(false, null, targets); }
+  }, [ra, checkedTickets]);
   const computeFlagState = useCallback((keys: Set<string>): FlagState => {
     const sel = tickets.filter((t) => keys.has(t.key));
     if (sel.length === 0) return "mixed";
@@ -1179,7 +1190,7 @@ export default function SprintBoard() {
         description="Add an optional reason for flagging. This will be synced to Jira as a comment."
         confirmLabel="Flag"
         confirmVariant="destructive"
-        onConfirm={() => { if (flagDialog) void ta.handleBulkSetFlagged(true, flagReason.trim() || null, flagDialog.targets); setFlagDialog(null); setFlagReason(""); }}
+        onConfirm={() => { if (flagDialog) void ra.bulkSetFlagged(true, flagReason.trim() || null, flagDialog.targets); setFlagDialog(null); setFlagReason(""); }}
         extra={
           <textarea
             value={flagReason}
