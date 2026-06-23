@@ -194,7 +194,7 @@ describe("syncSprint", () => {
   it("detects tickets removed from sprint and records scope changes", async () => {
     seedTicket(testDb, { jiraKey: "VPL-OLD", sprintName: "100" });
     vi.mocked(jiraClient.getSprintIssues).mockResolvedValue([]);
-    vi.mocked(jiraClient.getIssue).mockResolvedValue(makeIssue("VPL-OLD"));
+    vi.mocked(jiraClient.getIssuesByKeys).mockResolvedValue([makeIssue("VPL-OLD")]);
 
     await syncSprint("100", "full");
 
@@ -204,17 +204,37 @@ describe("syncSprint", () => {
     expect(changes[0].action).toBe("removed");
   });
 
-  it("marks removed tickets as deleted from Jira on 404", async () => {
+  it("uses a single bulk fetch for departed tickets and assigns their new sprint", async () => {
+    seedTicket(testDb, { jiraKey: "VPL-A", sprintName: "100" });
+    seedTicket(testDb, { jiraKey: "VPL-B", sprintName: "100" });
+    vi.mocked(jiraClient.getSprintIssues).mockResolvedValue([]);
+    vi.mocked(jiraClient.getIssuesByKeys).mockResolvedValue([makeIssue("VPL-A"), makeIssue("VPL-B")]);
+    vi.mocked(extractSprint).mockImplementation(((fields: { summary: string }) =>
+      fields.summary.includes("VPL-A")
+        ? { id: 200, name: "Sprint 200", state: "active" }
+        : { id: 300, name: "Sprint 300", state: "active" }) as typeof extractSprint);
+
+    await syncSprint("100", "full");
+
+    expect(jiraClient.getIssuesByKeys).toHaveBeenCalledTimes(1);
+    expect(jiraClient.getIssue).not.toHaveBeenCalled();
+    const a = testDb.select().from(ticket).where(eq(ticket.jiraKey, "VPL-A")).get();
+    const b = testDb.select().from(ticket).where(eq(ticket.jiraKey, "VPL-B")).get();
+    expect(a!.sprintName).toBe("200");
+    expect(b!.sprintName).toBe("300");
+  });
+
+  it("marks removed tickets as deleted from Jira when absent from the bulk result", async () => {
     seedTicket(testDb, { jiraKey: "VPL-GONE", sprintName: "100" });
     vi.mocked(jiraClient.getSprintIssues).mockResolvedValue([]);
-    vi.mocked(jiraClient.getIssue).mockRejectedValue(
-      new JiraApiError(404, "Not Found", "", ""),
-    );
+    // Key not returned by the bulk fetch = no longer exists in Jira.
+    vi.mocked(jiraClient.getIssuesByKeys).mockResolvedValue([]);
 
     await syncSprint("100", "full");
 
     const t = testDb.select().from(ticket).where(eq(ticket.jiraKey, "VPL-GONE")).get();
     expect(t!.removedFromJiraAt).toBeTruthy();
+    expect(t!.sprintName).toBe("100");
   });
 
   it("updates activity log with summary", async () => {
@@ -242,7 +262,7 @@ describe("syncSprint", () => {
 
     // For removed ticket path
     seedTicket(testDb, { jiraKey: "VPL-REM", sprintName: "100" });
-    vi.mocked(jiraClient.getIssue).mockResolvedValue(makeIssue("VPL-REM"));
+    vi.mocked(jiraClient.getIssuesByKeys).mockResolvedValue([makeIssue("VPL-REM")]);
     vi.mocked(extractSprint).mockReturnValue({ id: 200, name: "Sprint 200", state: "active" } as never);
 
     await syncSprint("100", "full");
@@ -355,11 +375,13 @@ describe("reconcileGroupMembership", () => {
     seedTicket(testDb, { jiraKey: "VPL-STAY", sprintName: "42" });
     seedTicket(testDb, { jiraKey: "VPL-LEFT", sprintName: "42" });
     vi.mocked(extractSprint).mockReturnValue({ id: 77, name: "Sprint 8" } as ReturnType<typeof extractSprint>);
-    vi.mocked(jiraClient.getIssue).mockResolvedValue(makeIssue("VPL-LEFT"));
+    vi.mocked(jiraClient.getIssuesByKeys).mockResolvedValue([makeIssue("VPL-LEFT")]);
 
     const result = await reconcileGroupMembership({ kind: "sprint", id: "42" }, ["VPL-STAY"]);
 
     expect(result.removed).toBe(1);
+    expect(jiraClient.getIssuesByKeys).toHaveBeenCalledTimes(1);
+    expect(jiraClient.getIssue).not.toHaveBeenCalled();
     const left = testDb.select().from(ticket).where(eq(ticket.jiraKey, "VPL-LEFT")).get();
     expect(left!.sprintName).toBe("77");
   });
@@ -367,7 +389,7 @@ describe("reconcileGroupMembership", () => {
   it("updates epic fields for a ticket that left an epic", async () => {
     seedTicket(testDb, { jiraKey: "VPL-IN", epicKey: "VPL-100" });
     seedTicket(testDb, { jiraKey: "VPL-OUT", epicKey: "VPL-100" });
-    vi.mocked(jiraClient.getIssue).mockResolvedValue(makeIssue("VPL-OUT"));
+    vi.mocked(jiraClient.getIssuesByKeys).mockResolvedValue([makeIssue("VPL-OUT")]);
     vi.mocked(extractEpicLink).mockReturnValue({ name: "Other epic", key: "VPL-200" });
 
     const result = await reconcileGroupMembership({ kind: "epic", id: "VPL-100" }, ["VPL-IN"]);
@@ -378,9 +400,9 @@ describe("reconcileGroupMembership", () => {
     expect(out!.epic).toBe("Other epic");
   });
 
-  it("marks a removed-from-Jira ticket on 404", async () => {
+  it("marks a removed-from-Jira ticket when absent from the bulk result", async () => {
     seedTicket(testDb, { jiraKey: "VPL-GONE", sprintName: "42" });
-    vi.mocked(jiraClient.getIssue).mockRejectedValue(new JiraApiError(404, "Not Found", "", ""));
+    vi.mocked(jiraClient.getIssuesByKeys).mockResolvedValue([]);
 
     await reconcileGroupMembership({ kind: "sprint", id: "42" }, []);
 

@@ -250,24 +250,27 @@ export async function syncSprint(sprintId: string | null, strategy: string, requ
         .set({ sprintName: "" })
         .where(inArray(ticket.jiraKey, removedKeys));
 
+      // One bulk fetch instead of a serialized getIssue per departed ticket.
+      // A key missing from the result no longer exists in Jira (the old 404).
+      const removedIssues = await jiraClient.getIssuesByKeys(removedKeys, controller.signal);
+      const removedIssueMap = new Map(removedIssues.map((iss) => [iss.key, iss]));
+      const removedAt = new Date().toISOString();
       for (const key of removedKeys) {
-        try {
-          const issue = await jiraClient.getIssue(key, controller.signal);
-          const sprint = extractSprint(issue.fields);
-          const newSprintName = sprint ? String(sprint.id) : "";
-          if (sprint) cacheSprintName(String(sprint.id), sprint.name);
-          if (newSprintName) discoveredSprintIds.add(newSprintName);
+        const issue = removedIssueMap.get(key);
+        if (!issue) {
           await db.update(ticket)
-            .set({ sprintName: newSprintName })
+            .set({ removedFromJiraAt: removedAt, sprintName: sprintId })
             .where(eq(ticket.jiraKey, key));
-        } catch (err) {
-          if (err instanceof JiraApiError && err.status === 404) {
-            await db.update(ticket)
-              .set({ removedFromJiraAt: new Date().toISOString(), sprintName: sprintId })
-              .where(eq(ticket.jiraKey, key));
-            removedCount++;
-          }
+          removedCount++;
+          continue;
         }
+        const sprint = extractSprint(issue.fields);
+        const newSprintName = sprint ? String(sprint.id) : "";
+        if (sprint) cacheSprintName(String(sprint.id), sprint.name);
+        if (newSprintName) discoveredSprintIds.add(newSprintName);
+        await db.update(ticket)
+          .set({ sprintName: newSprintName })
+          .where(eq(ticket.jiraKey, key));
       }
     }
 
@@ -383,21 +386,26 @@ export async function syncBacklog(strategy: string, requestSignal?: AbortSignal)
     const leftBacklog = localBacklogTickets
       .filter((t) => !allJiraKeys.has(t.jiraKey));
 
-    for (const { jiraKey: key } of leftBacklog) {
-      try {
-        const issue = await jiraClient.getIssue(key, controller.signal);
+    if (leftBacklog.length > 0) {
+      // One bulk fetch instead of a serialized getIssue per departed ticket.
+      const leftKeys = leftBacklog.map((t) => t.jiraKey);
+      const leftIssues = await jiraClient.getIssuesByKeys(leftKeys, controller.signal);
+      const leftIssueMap = new Map(leftIssues.map((iss) => [iss.key, iss]));
+      const leftAt = new Date().toISOString();
+      for (const key of leftKeys) {
+        const issue = leftIssueMap.get(key);
+        if (!issue) {
+          await db.update(ticket)
+            .set({ removedFromJiraAt: leftAt })
+            .where(eq(ticket.jiraKey, key));
+          continue;
+        }
         const sprint = extractSprint(issue.fields);
         const newSprintName = sprint ? String(sprint.id) : "";
         if (sprint) cacheSprintName(String(sprint.id), sprint.name);
         await db.update(ticket)
           .set({ sprintName: newSprintName })
           .where(eq(ticket.jiraKey, key));
-      } catch (err) {
-        if (err instanceof JiraApiError && err.status === 404) {
-          await db.update(ticket)
-            .set({ removedFromJiraAt: new Date().toISOString() })
-            .where(eq(ticket.jiraKey, key));
-        }
       }
     }
 
@@ -525,9 +533,23 @@ export async function reconcileGroupMembership(
     // For a sprint target, the synced sprint plus any sprint a departing ticket
     // moves to may be missing from the cached list; backfill them at the end.
     const discoveredSprintIds = new Set<string>(target.kind === "sprint" ? [target.id] : []);
-    for (const { jiraKey: key } of left) {
-      try {
-        const issue = await jiraClient.getIssue(key, controller.signal);
+    if (left.length > 0) {
+      // One bulk fetch instead of a serialized getIssue per departed ticket.
+      // A key missing from the result no longer exists in Jira (the old 404);
+      // a non-404 transport error now throws from the bulk call and propagates.
+      const leftKeys = left.map((t) => t.jiraKey);
+      const leftIssues = await jiraClient.getIssuesByKeys(leftKeys, controller.signal);
+      const leftIssueMap = new Map(leftIssues.map((iss) => [iss.key, iss]));
+      const leftAt = new Date().toISOString();
+      for (const key of leftKeys) {
+        const issue = leftIssueMap.get(key);
+        if (!issue) {
+          await db.update(ticket)
+            .set({ removedFromJiraAt: leftAt })
+            .where(eq(ticket.jiraKey, key));
+          removedFromJira++;
+          continue;
+        }
         if (target.kind === "sprint") {
           const sprint = extractSprint(issue.fields);
           const newSprintName = sprint ? String(sprint.id) : "";
@@ -539,15 +561,6 @@ export async function reconcileGroupMembership(
           await db.update(ticket)
             .set({ epic: epicData?.name ?? null, epicKey: epicData?.key ?? null })
             .where(eq(ticket.jiraKey, key));
-        }
-      } catch (err) {
-        if (err instanceof JiraApiError && err.status === 404) {
-          await db.update(ticket)
-            .set({ removedFromJiraAt: new Date().toISOString() })
-            .where(eq(ticket.jiraKey, key));
-          removedFromJira++;
-        } else {
-          throw err;
         }
       }
     }

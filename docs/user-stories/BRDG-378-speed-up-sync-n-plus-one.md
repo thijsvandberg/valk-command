@@ -73,7 +73,7 @@ observed by the PO is unchanged (same tickets, same sprints, faster).
 
 ## Acceptance Criteria
 
-- [ ] A sprint/backlog/group reconcile that moves N tickets issues a bounded number of Jira calls
+- [x] A sprint/backlog/group reconcile that moves N tickets issues a bounded number of Jira calls
       (one bulk fetch), not N sequential `getIssue` calls.
 - [x] Comment sync for a ticket runs O(1) DB lookups (one preloaded Map), not one per comment.
 - [x] `jira_comment.jiraCommentId` is indexed and unique; comment writes use `onConflict`.
@@ -83,7 +83,7 @@ observed by the PO is unchanged (same tickets, same sprints, faster).
 
 ## Tests
 
-- [ ] `sync-tickets-service` test: a multi-ticket departure triggers a single `getIssuesByKeys`
+- [x] `sync-tickets-service` test: a multi-ticket departure triggers a single `getIssuesByKeys`
       and assigns correct new sprints; a 404 in the bulk result still sets `removedFromJiraAt`.
 - [x] `sync-comments` test: an M-comment payload does one preload query and produces the same rows
       as the per-comment path did; a duplicate `jiraCommentId` does not double-insert.
