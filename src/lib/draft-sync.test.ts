@@ -118,6 +118,22 @@ describe("finalizeDraft", () => {
     // No draft seeded
     expect(() => finalizeDraft("DRAFT-missing", "VPL-999")).not.toThrow();
   });
+
+  it("marks the draft DRAFT_FAILED when the finalize transaction throws", () => {
+    seedDraft(testDb, "DRAFT-boom");
+    // Pre-seed the real key so the transaction's insert hits a unique-constraint
+    // violation and rolls back, exercising the catch block.
+    testDb.insert(ticket)
+      .values({ jiraKey: "VPL-911", title: "Existing", type: "story", status: "TO DO" })
+      .run();
+
+    expect(() => finalizeDraft("DRAFT-boom", "VPL-911")).not.toThrow();
+
+    // The catch-block write must persist (regression: missing .run()).
+    const draft = testDb.select().from(ticket).where(eq(ticket.jiraKey, "DRAFT-boom")).get();
+    expect(draft!.status).toBe("DRAFT_FAILED");
+    expect(draft!.description).toBe("Internal error during finalization");
+  });
 });
 
 describe("syncDraftToJira", () => {

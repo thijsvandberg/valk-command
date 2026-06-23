@@ -139,6 +139,7 @@ export function finalizeDraft(draftKey: string, realKey: string, sprintName?: st
     logger.error("draft-sync", "Finalize transaction failed:", err);
     db.update(ticket)
       .set({ status: "DRAFT_FAILED", description: "Internal error during finalization" })
-      .where(eq(ticket.jiraKey, draftKey));
+      .where(eq(ticket.jiraKey, draftKey))
+      .run();
   }
 }
