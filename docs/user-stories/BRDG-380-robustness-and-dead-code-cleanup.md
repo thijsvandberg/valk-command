@@ -103,7 +103,7 @@ fetcher change is the only one that touches error semantics app-wide — verify 
 - [x] `adf-to-markdown` renders headerless tables correctly (no phantom header row), with no dead branch.
 - [x] Team-prefix extraction, `isEpicChild`, and `scanScores` parsing each live in one place.
 - [x] The dead `useActivityStatus` export and `backlog` state key are removed.
-- [ ] SWR errors surface for keys on the default fetcher; the intentional soft consumers still work.
+- [x] SWR errors surface for keys on the default fetcher; the intentional soft consumers still work.
 
 ## Tests
 
@@ -112,7 +112,7 @@ fetcher change is the only one that touches error semantics app-wide — verify 
 - [x] `format-timestamp`: bad input → `""`.
 - [x] `adf-to-markdown`: a headerless table renders without a separator row.
 - [x] Consolidated `extractTeamPrefix`/`isEpicChild`/`scanScores` keep existing call-site behaviour.
-- [ ] SWR fetcher: a non-ok response surfaces an SWR `error` for a default-fetcher key.
+- [x] SWR fetcher: a non-ok response surfaces an SWR `error` for a default-fetcher key.
 
 ## Open Questions
 
