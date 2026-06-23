@@ -77,8 +77,8 @@ observed by the PO is unchanged (same tickets, same sprints, faster).
       (one bulk fetch), not N sequential `getIssue` calls.
 - [x] Comment sync for a ticket runs O(1) DB lookups (one preloaded Map), not one per comment.
 - [x] `jira_comment.jiraCommentId` is indexed and unique; comment writes use `onConflict`.
-- [ ] `getSprints` does not re-fetch `goal` when it is already known.
-- [ ] The synced mirror state is identical to before (departed tickets get the right new sprint,
+- [x] `getSprints` does not re-fetch `goal` when it is already known.
+- [x] The synced mirror state is identical to before (departed tickets get the right new sprint,
       404s still mark `removedFromJiraAt`, comments match Jira).
 
 ## Tests
@@ -87,7 +87,7 @@ observed by the PO is unchanged (same tickets, same sprints, faster).
       and assigns correct new sprints; a 404 in the bulk result still sets `removedFromJiraAt`.
 - [x] `sync-comments` test: an M-comment payload does one preload query and produces the same rows
       as the per-comment path did; a duplicate `jiraCommentId` does not double-insert.
-- [ ] Migration test/check: the new unique index exists and `npm run build` is green.
+- [x] Migration test/check: the new unique index exists and `npm run build` is green.
 
 ## Open Questions
 

@@ -649,9 +649,11 @@ export class JiraClient {
     }
 
     // The sprint object embedded in issue custom fields does not include `goal`.
-    // Enrich each sprint with the Agile API to pick it up.
+    // Enrich each sprint with the Agile API to pick it up, but skip the call when
+    // `goal` is already known (e.g. carried over from getSprintsLightweight).
     const enriched = await Promise.all(
       sprints.map(async (sp) => {
+        if (sp.goal !== undefined) return sp;
         try {
           const full = await jiraFetch<{ id: number; goal?: string }>(
             `/rest/agile/1.0/sprint/${sp.id}`,
