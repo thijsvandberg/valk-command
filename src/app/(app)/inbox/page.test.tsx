@@ -195,11 +195,11 @@ describe("InboxPage (BRDG-357)", () => {
     render(<InboxPage />);
     fireEvent.click(screen.getByRole("button", { name: "ctx-VPL-1" }));
 
-    // The real TicketActionMenuContent renders at the cursor with the board's items
-    // plus the inbox-only "Mark as read" option.
-    expect(await screen.findByText("Move to Sprint")).toBeInTheDocument();
-    expect(screen.getByText("Set Status")).toBeInTheDocument();
-    expect(screen.getByText("Add to Refinement")).toBeInTheDocument();
+    // The real TicketActionMenuContent renders at the cursor with the board's grouped
+    // items (Move inline, Update nested) plus the inbox-only "Mark as read" option.
+    expect(await screen.findByText("More sprints")).toBeInTheDocument();
+    expect(screen.getByText("Update")).toBeInTheDocument();
+    expect(screen.getByText("Add to refinement")).toBeInTheDocument();
     expect(screen.getByText("Mark as read")).toBeInTheDocument();
   });
 
@@ -223,8 +223,8 @@ describe("InboxPage (BRDG-357)", () => {
     fireEvent.click(selects[1]);
 
     expect(screen.getByRole("button", { name: /Mark 2 as read/ })).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: /Update/ })).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: /AI Assist/ })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Update" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Assist" })).toBeInTheDocument();
   });
 });
 

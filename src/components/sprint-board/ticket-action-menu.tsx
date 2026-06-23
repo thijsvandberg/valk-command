@@ -1,12 +1,12 @@
 "use client";
 
-import { useState, useRef, useMemo, useLayoutEffect, type ReactNode, type RefObject } from "react";
+import { Fragment, useState, useRef, useMemo, useLayoutEffect, type ReactNode, type RefObject } from "react";
 import { createPortal } from "react-dom";
 import useSWR from "swr";
 import type { TicketReadiness, JiraStatus, Sprint } from "@/types/ticket";
 import type { QuickMoveOption } from "@/lib/quick-moves";
 import { swrFetcher } from "@/lib/api-client";
-import { Search, Flag, ArrowLeft, Check } from "lucide-react";
+import { Search, Flag, ArrowLeft, ArrowDownToLine, ArrowUpToLine, Boxes, Check, ChevronRight, FilePen, Sparkles } from "lucide-react";
 import {
   READINESS_OPTIONS,
   READINESS_CONFIG,
@@ -483,7 +483,21 @@ function LabelSubPanel({ onSelect }: { onSelect: (labels: string[], mode: "add" 
 // Each item only renders when its corresponding callback is supplied.
 // ---------------------------------------------------------------------------
 
-type UpdateSubView = "menu" | "status" | "readiness" | "sprint" | "epic" | "assignee" | "label";
+// Navigation views. The root "menu" is the full right-click menu; "update"/"move"/
+// "assist"/"flag" are group views the bar opens directly via `initialView`; the rest
+// are the leaf pickers. A view stack drives Back so the same content composes in both.
+type MenuView =
+  | "menu"
+  | "update"
+  | "move"
+  | "assist"
+  | "flag"
+  | "status"
+  | "readiness"
+  | "sprint"
+  | "epic"
+  | "assignee"
+  | "label";
 
 /** Aggregate flag state of the targeted tickets, used to pick which flag item to show. */
 export type FlagState = "flagged" | "unflagged" | "mixed";
@@ -510,6 +524,7 @@ export function TicketActionMenuContent({
   epicClearable,
   sprints,
   pinnedSprintIds,
+  initialView = "menu",
   close,
 }: {
   onSetStatus?: (status: JiraStatus) => void;
@@ -544,41 +559,32 @@ export function TicketActionMenuContent({
   onMarkRead?: () => void;
   sprints?: Sprint[];
   pinnedSprintIds?: string[];
+  /** Open straight into a group view (used by the bar's per-group icon dropdowns). */
+  initialView?: MenuView;
   close: () => void;
 }) {
-  const [subView, setSubView] = useState<UpdateSubView>("menu");
+  const [stack, setStack] = useState<MenuView[]>([initialView]);
+  const view = stack[stack.length - 1];
+  const go = (v: MenuView) => setStack((s) => [...s, v]);
+  const back = () => setStack((s) => (s.length > 1 ? s.slice(0, -1) : s));
 
   const hasQuickMoves = Boolean(onQuickMove && quickMoves && quickMoves.length > 0);
-  const hasUpdateAction = onSetStatus || onSetReadiness || onSetEpic || hasQuickMoves || onMoveSprint || onMoveToTop || onMoveToBottom || onUpdateAssignee || onUpdateLabel;
-  const hasAiAction = onReviewStory || onGenerateSubtasks || onRefine;
-  // The "Move to …" actions form their own group, fenced by dividers from the
-  // set-* items above and the assignee/label items below.
-  const hasSetAction = onSetStatus || onSetReadiness || onSetEpic;
-  const hasMoveAction = hasQuickMoves || (onMoveSprint && sprints) || onMoveToTop || onMoveToBottom;
-  const hasOtherUpdate = onUpdateAssignee || onUpdateLabel;
+  const hasMove = hasQuickMoves || (onMoveSprint && sprints) || onMoveToTop || onMoveToBottom;
+  const hasUpdate = onSetStatus || onSetReadiness || onSetEpic || onUpdateAssignee || onUpdateLabel;
+  const hasAssist = onReviewStory || onGenerateSubtasks;
   const showFlag = Boolean(onSetFlagged);
   const showFlagItem = flagState !== "flagged"; // show "Flag" unless every target is already flagged
   const showUnflagItem = flagState !== "unflagged"; // show "Remove flag" unless every target is unflagged
 
-  if (subView === "menu") {
-    return (
-      <>
-        {onMarkRead && (
-          <>
-            <MenuItem
-              icon={<Check className="h-3.5 w-3.5" strokeWidth={2} />}
-              onClick={() => { onMarkRead(); close(); }}
-            >
-              Mark as read
-            </MenuItem>
-            {(hasUpdateAction || showFlag || hasAiAction) && <div className="mx-2 my-1 h-px bg-overlay-strong" />}
-          </>
-        )}
-        {onSetStatus && <MenuItem onClick={() => setSubView("status")}>Set Status</MenuItem>}
-        {onSetReadiness && <MenuItem onClick={() => setSubView("readiness")}>Set Readiness</MenuItem>}
-        {onSetEpic && <MenuItem onClick={() => setSubView("epic")}>Set Epic</MenuItem>}
-        {hasSetAction && hasMoveAction && <div className="mx-2 my-1 h-px bg-overlay-strong" />}
-        {hasQuickMoves && quickMoves!.map((opt) => (
+  const divider = <div className="mx-2 my-1 h-px bg-overlay-strong" />;
+
+  // Move group (BRDG-374): named quick-moves with a destination chip, then the
+  // searchable "More sprints" picker, then the rank actions. Shared by the root menu
+  // (inline, most-used) and the bar's Move dropdown (initialView="move").
+  const moveItems = (
+    <>
+      {hasQuickMoves &&
+        quickMoves!.map((opt) => (
           <MenuItem key={opt.id} onClick={() => { onQuickMove!(opt); close(); }}>
             <span className="flex-1">{opt.label}</span>
             <span
@@ -590,64 +596,120 @@ export function TicketActionMenuContent({
             </span>
           </MenuItem>
         ))}
-        {hasQuickMoves && ((onMoveSprint && sprints) || onMoveToTop || onMoveToBottom) && <div className="mx-2 my-1 h-px bg-overlay-strong" />}
-        {onMoveSprint && sprints && <MenuItem onClick={() => setSubView("sprint")}>Move to Sprint</MenuItem>}
-        {onMoveToTop && <MenuItem onClick={() => { onMoveToTop(); close(); }}>Move to top</MenuItem>}
-        {onMoveToBottom && <MenuItem onClick={() => { onMoveToBottom(); close(); }}>Move to bottom</MenuItem>}
-        {hasMoveAction && hasOtherUpdate && <div className="mx-2 my-1 h-px bg-overlay-strong" />}
-        {onUpdateAssignee && <MenuItem onClick={() => setSubView("assignee")}>Update Assignee</MenuItem>}
-        {onUpdateLabel && <MenuItem onClick={() => setSubView("label")}>Add/Update Label</MenuItem>}
+      {onMoveSprint && sprints && (
+        <MenuItem onClick={() => go("sprint")}>
+          <span className="flex-1">More sprints</span>
+          <ChevronRight className="ml-auto h-3.5 w-3.5 text-text-muted" strokeWidth={1.5} />
+        </MenuItem>
+      )}
+      {onMoveToTop && (
+        <MenuItem icon={<ArrowUpToLine className="h-3.5 w-3.5" strokeWidth={1.5} />} onClick={() => { onMoveToTop(); close(); }}>
+          Move to top
+        </MenuItem>
+      )}
+      {onMoveToBottom && (
+        <MenuItem icon={<ArrowDownToLine className="h-3.5 w-3.5" strokeWidth={1.5} />} onClick={() => { onMoveToBottom(); close(); }}>
+          Move to bottom
+        </MenuItem>
+      )}
+    </>
+  );
 
-        {showFlag && hasUpdateAction && <div className="mx-2 my-1 h-px bg-overlay-strong" />}
-        {showFlag && showFlagItem && (
-          <MenuItem
-            icon={<Flag className="h-3.5 w-3.5" strokeWidth={1.5} />}
-            onClick={() => { onSetFlagged?.(true); close(); }}
-          >
-            Flag
-          </MenuItem>
-        )}
-        {showFlag && showUnflagItem && (
-          <MenuItem
-            icon={<Flag className="h-3.5 w-3.5 text-[var(--color-status-error)]" fill="var(--color-status-error)" strokeWidth={0} />}
-            onClick={() => { onSetFlagged?.(false); close(); }}
-          >
-            Remove flag
-          </MenuItem>
-        )}
+  const updateListItems = (
+    <>
+      {onSetStatus && <MenuItem onClick={() => go("status")}>Set Status</MenuItem>}
+      {onSetReadiness && <MenuItem onClick={() => go("readiness")}>Set Readiness</MenuItem>}
+      {onSetEpic && <MenuItem onClick={() => go("epic")}>Set Epic</MenuItem>}
+      {onUpdateAssignee && <MenuItem onClick={() => go("assignee")}>Update Assignee</MenuItem>}
+      {onUpdateLabel && <MenuItem onClick={() => go("label")}>Add/Update Label</MenuItem>}
+    </>
+  );
 
-        {hasAiAction && (hasUpdateAction || showFlag) && <div className="mx-2 my-1 h-px bg-overlay-strong" />}
-        {onReviewStory && <MenuItem onClick={() => { onReviewStory(); close(); }}>Review Story</MenuItem>}
-        {onGenerateSubtasks && <MenuItem onClick={() => { onGenerateSubtasks(); close(); }}>Generate Subtasks</MenuItem>}
-        {onRefine && <MenuItem onClick={() => { onRefine(); close(); }}>Add to Refinement</MenuItem>}
-      </>
-    );
+  const flagItems = (
+    <>
+      {showFlagItem && (
+        <MenuItem icon={<Flag className="h-3.5 w-3.5" strokeWidth={1.5} />} onClick={() => { onSetFlagged?.(true); close(); }}>
+          Flag
+        </MenuItem>
+      )}
+      {showUnflagItem && (
+        <MenuItem
+          icon={<Flag className="h-3.5 w-3.5 text-[var(--color-status-error)]" fill="var(--color-status-error)" strokeWidth={0} />}
+          onClick={() => { onSetFlagged?.(false); close(); }}
+        >
+          Remove flag
+        </MenuItem>
+      )}
+    </>
+  );
+
+  const assistItems = (
+    <>
+      {onReviewStory && <MenuItem onClick={() => { onReviewStory(); close(); }}>Review Story</MenuItem>}
+      {onGenerateSubtasks && <MenuItem onClick={() => { onGenerateSubtasks(); close(); }}>Generate Subtasks</MenuItem>}
+    </>
+  );
+
+  if (view === "menu") {
+    // Order: Triage -> Move (inline) -> Update (nested) -> Flag -> Assist (nested) -> Refinement.
+    const blocks: (ReactNode | null)[] = [
+      onMarkRead ? (
+        <MenuItem icon={<Check className="h-3.5 w-3.5 text-[var(--color-brand-400)]" strokeWidth={2} />} onClick={() => { onMarkRead(); close(); }}>
+          Mark as read
+        </MenuItem>
+      ) : null,
+      hasMove ? moveItems : null,
+      hasUpdate ? (
+        <MenuItem icon={<FilePen className="h-3.5 w-3.5" strokeWidth={1.5} />} onClick={() => go("update")}>
+          <span className="flex-1">Update</span>
+          <ChevronRight className="ml-auto h-3.5 w-3.5 text-text-muted" strokeWidth={1.5} />
+        </MenuItem>
+      ) : null,
+      showFlag ? flagItems : null,
+      hasAssist ? (
+        <MenuItem icon={<Sparkles className="h-3.5 w-3.5" strokeWidth={1.5} />} onClick={() => go("assist")}>
+          <span className="flex-1">Assist</span>
+          <ChevronRight className="ml-auto h-3.5 w-3.5 text-text-muted" strokeWidth={1.5} />
+        </MenuItem>
+      ) : null,
+      onRefine ? (
+        <MenuItem icon={<Boxes className="h-3.5 w-3.5" strokeWidth={1.5} />} onClick={() => { onRefine(); close(); }}>
+          Add to refinement
+        </MenuItem>
+      ) : null,
+    ];
+    const present = blocks.filter((b) => b !== null);
+    return <>{present.map((b, i) => <Fragment key={i}>{i > 0 && divider}{b}</Fragment>)}</>;
   }
 
-  // The epic panel renders the shared EpicPickerBody, whose own search row sits at
-  // the top, so it skips the Back row to read like the sidebar EpicPicker (BRDG-381).
-  if (subView === "epic") {
+  // The epic panel renders the shared EpicPickerBody, whose own search row sits at the
+  // top, so it skips the Back row to read like the sidebar EpicPicker (BRDG-381).
+  if (view === "epic") {
     return (
       <EpicPickerBody
         value={epicValue ?? null}
         ticketKey={epicSuggestTicketKey}
         clearable={epicClearable}
         onChange={(epic) => { onSetEpic?.(epic?.key ?? null, epic?.name ?? null); close(); }}
-        onClose={close}
+        onClose={stack.length > 1 ? back : close}
       />
     );
   }
 
   return (
     <>
-      <BackButton onClick={() => setSubView("menu")} />
-      {subView === "status" && <StatusSubPanel onSelect={(s) => { onSetStatus?.(s); close(); }} />}
-      {subView === "readiness" && <ReadinessSubPanel onSelect={(r) => { onSetReadiness?.(r); close(); }} />}
-      {subView === "sprint" && sprints && (
+      {stack.length > 1 && <BackButton onClick={back} />}
+      {view === "update" && updateListItems}
+      {view === "move" && moveItems}
+      {view === "assist" && assistItems}
+      {view === "flag" && flagItems}
+      {view === "status" && <StatusSubPanel onSelect={(s) => { onSetStatus?.(s); close(); }} />}
+      {view === "readiness" && <ReadinessSubPanel onSelect={(r) => { onSetReadiness?.(r); close(); }} />}
+      {view === "sprint" && sprints && (
         <SprintSubPanel sprints={sprints} pinnedSprintIds={pinnedSprintIds} onSelect={(id) => { onMoveSprint?.(id); close(); }} />
       )}
-      {subView === "assignee" && <AssigneeSubPanel onSelect={(accountId, name) => { onUpdateAssignee?.(accountId, name); close(); }} />}
-      {subView === "label" && <LabelSubPanel onSelect={(labels, mode) => { onUpdateLabel?.(labels, mode); close(); }} />}
+      {view === "assignee" && <AssigneeSubPanel onSelect={(accountId, name) => { onUpdateAssignee?.(accountId, name); close(); }} />}
+      {view === "label" && <LabelSubPanel onSelect={(labels, mode) => { onUpdateLabel?.(labels, mode); close(); }} />}
     </>
   );
 }

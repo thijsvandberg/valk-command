@@ -1,20 +1,23 @@
 "use client";
 
-import { useState, useRef } from "react";
+import { useState, useRef, type ReactNode } from "react";
 import type { TicketReadiness, JiraStatus, Sprint } from "@/types/ticket";
 import { useOutsideClick } from "@/hooks/useOutsideClick";
 import { Button } from "@/components/ui/Button";
 import { MetricBadge } from "@/components/shared/MetricBadge";
 import { Checkbox } from "@/components/shared/Checkbox";
 import {
-  Copy,
-  Loader2,
+  type LucideIcon,
+  ArrowRightLeft,
   Boxes,
-  ChevronDown,
-  Sparkles,
-  Settings2,
-  RefreshCw,
   Check,
+  ChevronDown,
+  Copy,
+  FilePen,
+  Flag,
+  Loader2,
+  RefreshCw,
+  Sparkles,
 } from "lucide-react";
 import { Tooltip } from "@/components/shared/Tooltip";
 import { BarContainer, BarDivider } from "@/components/shared/BarContainer";
@@ -22,161 +25,85 @@ import { AnchoredMenu, MenuItem, TicketActionMenuContent, type FlagState } from 
 import type { QuickMoveOption } from "@/lib/quick-moves";
 
 // ---------------------------------------------------------------------------
-// Update dropdown (Set Status, Set Readiness, Set Epic, Move to Sprint,
-//                  Update Assignee, Add/Update Label, Flag/Remove flag)
+// Bar building blocks (BRDG-374): icon-only group dropdowns + single-action
+// icons. A group with a menu opens a dropdown (caret cue beside the icon); a
+// single action fires immediately. Both read their content from the shared
+// TicketActionMenuContent so the bar and the right-click menu cannot drift.
 // ---------------------------------------------------------------------------
 
-function UpdateDropdown({
-  onSetStatus,
-  onSetReadiness,
-  onSetEpic,
-  onMoveSprint,
-  quickMoves,
-  onQuickMove,
-  onUpdateAssignee,
-  onUpdateLabel,
-  onSetFlagged,
-  flagState,
-  sprints,
-  pinnedSprintIds,
+function GroupDropdown({
+  label,
+  icon: Icon,
+  busy,
+  width = "w-[300px]",
+  render,
 }: {
-  onSetStatus?: (status: JiraStatus) => void;
-  onSetReadiness?: (readiness: TicketReadiness | null) => void;
-  onSetEpic?: (epicKey: string | null, epicName: string | null) => void;
-  onMoveSprint?: (sprintId: string) => void;
-  quickMoves?: QuickMoveOption[];
-  onQuickMove?: (opt: QuickMoveOption) => void;
-  onUpdateAssignee?: (accountId: string | null, name: string | null) => void;
-  onUpdateLabel?: (labels: string[], mode: "add" | "set") => void;
-  onSetFlagged?: (flagged: boolean) => void;
-  flagState?: FlagState;
-  sprints?: Sprint[];
-  pinnedSprintIds?: string[];
+  label: string;
+  icon: LucideIcon;
+  busy?: boolean;
+  width?: string;
+  render: (close: () => void) => ReactNode;
 }) {
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
   const menuRef = useRef<HTMLDivElement>(null);
-
   useOutsideClick([ref, menuRef], () => setOpen(false), { enabled: open });
-
-  const hasAnyAction = onSetStatus || onSetReadiness || onSetEpic || onMoveSprint || (onQuickMove && quickMoves && quickMoves.length > 0) || onUpdateAssignee || onUpdateLabel || onSetFlagged;
-  if (!hasAnyAction) return null;
 
   return (
     <div ref={ref} className="relative">
-      <Button
-        variant="ghost"
-        size="md"
-        onClick={() => setOpen((v) => !v)}
-        className="border-0 text-text-secondary hover:text-text-primary"
-      >
-        <Settings2 className="mr-1.5 h-3.5 w-3.5 shrink-0" strokeWidth={1.5} />
-        <span className="hidden sm:inline">Update</span>
-        <ChevronDown className="ml-1 h-3 w-3 shrink-0" strokeWidth={1.5} />
-      </Button>
-
+      <Tooltip content={label}>
+        <button
+          type="button"
+          aria-label={label}
+          onClick={() => setOpen((v) => !v)}
+          className="flex h-9 cursor-pointer items-center gap-0.5 rounded-lg pl-2 pr-1.5 text-text-secondary transition-colors duration-150 hover:bg-overlay-default hover:text-text-primary"
+        >
+          {busy ? (
+            <Loader2 className="h-[18px] w-[18px] animate-spin" strokeWidth={1.5} />
+          ) : (
+            <Icon className="h-[18px] w-[18px]" strokeWidth={1.5} />
+          )}
+          <ChevronDown className="h-3.5 w-3.5 text-text-muted" strokeWidth={2} />
+        </button>
+      </Tooltip>
       {open && (
-        <AnchoredMenu anchorRef={ref} menuRef={menuRef} width="w-[320px]">
-          <TicketActionMenuContent
-            onSetStatus={onSetStatus}
-            onSetReadiness={onSetReadiness}
-            onSetEpic={onSetEpic}
-            epicClearable
-            onMoveSprint={onMoveSprint}
-            quickMoves={quickMoves}
-            onQuickMove={onQuickMove}
-            onUpdateAssignee={onUpdateAssignee}
-            onUpdateLabel={onUpdateLabel}
-            onSetFlagged={onSetFlagged}
-            flagState={flagState}
-            sprints={sprints}
-            pinnedSprintIds={pinnedSprintIds}
-            close={() => setOpen(false)}
-          />
+        <AnchoredMenu anchorRef={ref} menuRef={menuRef} width={width}>
+          {render(() => setOpen(false))}
         </AnchoredMenu>
       )}
     </div>
   );
 }
 
-// ---------------------------------------------------------------------------
-// AI Assist dropdown (Review Story, Generate Subtasks, Summarized List)
-// ---------------------------------------------------------------------------
-
-function AiAssistDropdown({
-  onReviewStory,
-  onGenerateSubtasks,
-  onSummarizedList,
-  isExporting,
-  isGeneratingSubtasks,
+function IconAction({
+  label,
+  icon: Icon,
+  onClick,
+  disabled,
+  busy,
 }: {
-  onReviewStory?: () => void;
-  onGenerateSubtasks?: () => void;
-  onSummarizedList?: () => void;
-  isExporting?: boolean;
-  isGeneratingSubtasks?: boolean;
+  label: string;
+  icon: LucideIcon;
+  onClick?: () => void;
+  disabled?: boolean;
+  busy?: boolean;
 }) {
-  const [open, setOpen] = useState(false);
-  const ref = useRef<HTMLDivElement>(null);
-  const menuRef = useRef<HTMLDivElement>(null);
-
-  useOutsideClick([ref, menuRef], () => setOpen(false), { enabled: open });
-
-  const hasAnyAction = onReviewStory || onGenerateSubtasks || onSummarizedList;
-  if (!hasAnyAction) return null;
-
-  const isBusy = isExporting || isGeneratingSubtasks;
-
   return (
-    <div ref={ref} className="relative">
-      <Button
-        variant="ghost"
-        size="md"
-        onClick={() => setOpen(!open)}
-        className="border-0 text-text-secondary hover:text-text-primary"
+    <Tooltip content={label}>
+      <button
+        type="button"
+        aria-label={label}
+        onClick={onClick}
+        disabled={disabled || busy}
+        className="grid h-9 w-9 cursor-pointer place-items-center rounded-lg text-text-secondary transition-colors duration-150 hover:bg-overlay-default hover:text-text-primary disabled:cursor-not-allowed disabled:opacity-40"
       >
-        {isBusy ? (
-          <Loader2 className="mr-1.5 h-3.5 w-3.5 shrink-0 animate-spin" strokeWidth={1.5} />
+        {busy ? (
+          <Loader2 className="h-[18px] w-[18px] animate-spin" strokeWidth={1.5} />
         ) : (
-          <Sparkles className="mr-1.5 h-3.5 w-3.5 shrink-0" strokeWidth={1.5} />
+          <Icon className="h-[18px] w-[18px]" strokeWidth={1.5} />
         )}
-        <span className="hidden sm:inline">AI Assist</span>
-        <ChevronDown className="ml-1 h-3 w-3 shrink-0" strokeWidth={1.5} />
-      </Button>
-
-      {open && (
-        <AnchoredMenu anchorRef={ref} menuRef={menuRef} width="w-52">
-          {onReviewStory && (
-            <MenuItem onClick={() => { onReviewStory(); setOpen(false); }}>
-              Review Story
-            </MenuItem>
-          )}
-          {onGenerateSubtasks && (
-            <MenuItem
-              onClick={() => { onGenerateSubtasks(); setOpen(false); }}
-              disabled={isGeneratingSubtasks}
-            >
-              {isGeneratingSubtasks ? "Generating..." : "Generate Subtasks"}
-            </MenuItem>
-          )}
-          {onSummarizedList && (
-            <MenuItem
-              onClick={() => { onSummarizedList(); setOpen(false); }}
-              disabled={isExporting}
-            >
-              {isExporting ? (
-                <>
-                  <Loader2 className="h-3.5 w-3.5 animate-spin" strokeWidth={1.5} />
-                  Generating...
-                </>
-              ) : (
-                "Summarized List"
-              )}
-            </MenuItem>
-          )}
-        </AnchoredMenu>
-      )}
-    </div>
+      </button>
+    </Tooltip>
   );
 }
 
@@ -195,7 +122,7 @@ export function BulkActionBar({
   // Inbox-specific prominent primary action (BRDG-373); inert elsewhere.
   onMarkRead,
   markReadCount,
-  // Update dropdown actions
+  // Update group actions
   onSetReadiness,
   onSetStatus,
   onSetEpic,
@@ -208,13 +135,13 @@ export function BulkActionBar({
   flagState,
   sprints,
   pinnedSprintIds,
-  // AI Assist dropdown actions
+  // Assist group actions
   onReviewStory,
   onGenerateSubtasks,
   onExportForStakeholders,
   isExporting,
   isGeneratingSubtasks,
-  // Standalone actions
+  // List-level actions
   onRefreshFromJira,
   onCopyToClipboard,
   onRefine,
@@ -230,17 +157,17 @@ export function BulkActionBar({
   onClear: () => void;
   /**
    * Inbox "Mark as read" (BRDG-373): when provided, a prominent leading primary
-   * button is rendered before the Update dropdown. The board / epic children omit
-   * it, so their bar renders unchanged.
+   * button is rendered before the action groups. The board / epic children omit
+   * it, so their bar renders without it.
    */
   onMarkRead?: () => void;
   markReadCount?: number;
-  // Update dropdown
+  // Update group
   onSetReadiness?: (readiness: TicketReadiness | null) => void;
   onSetStatus?: (status: JiraStatus) => void;
   onSetEpic?: (epicKey: string | null, epicName: string | null) => void;
   onMoveSprint?: (sprintId: string) => void;
-  /** One-click move destinations shown above "Move to Sprint" (BRDG-369). */
+  /** One-click move destinations shown above "More sprints" (BRDG-369). */
   quickMoves?: QuickMoveOption[];
   onQuickMove?: (opt: QuickMoveOption) => void;
   onUpdateAssignee?: (accountId: string | null, name: string | null) => void;
@@ -250,13 +177,13 @@ export function BulkActionBar({
   sprints?: Sprint[];
   /** Pinned (slot) sprint IDs, in pinned order; shown first in the Move to Sprint list. */
   pinnedSprintIds?: string[];
-  // AI Assist dropdown
+  // Assist group
   onReviewStory?: () => void;
   onGenerateSubtasks?: () => void;
   onExportForStakeholders?: () => void;
   isExporting?: boolean;
   isGeneratingSubtasks?: boolean;
-  // Standalone
+  // List-level
   onRefreshFromJira?: () => void;
   onCopyToClipboard?: () => void;
   onRefine?: () => void;
@@ -270,14 +197,20 @@ export function BulkActionBar({
    */
   floating?: boolean;
 }) {
+  const hasUpdate = onSetStatus || onSetReadiness || onSetEpic || onUpdateAssignee || onUpdateLabel;
+  const hasMove = (onQuickMove && quickMoves && quickMoves.length > 0) || (onMoveSprint && sprints);
+  const hasAssist = onReviewStory || onGenerateSubtasks || onExportForStakeholders;
+  const hasGroup = hasUpdate || hasMove || onSetFlagged || hasAssist;
+  const hasListOps = onRefine || onCopyToClipboard || onRefreshFromJira;
+
   return (
     <BarContainer
       border={!floating}
       borderPosition="top"
       className={
         floating
-          ? "bulk-bar-enter sticky bottom-3 z-50 -mx-3 mt-3 gap-2 rounded-xl border border-border-default bg-[var(--color-surface-floating)] shadow-[var(--shadow-lg)] sm:-mx-4 sm:gap-3"
-          : "bulk-bar-enter sticky bottom-0 z-50 gap-2 bg-[var(--color-surface-base)] sm:gap-3"
+          ? "bulk-bar-enter sticky bottom-3 z-50 -mx-3 mt-3 gap-2 rounded-xl border border-border-default bg-[var(--color-surface-floating)] shadow-[var(--shadow-lg)] sm:-mx-4 sm:gap-2.5"
+          : "bulk-bar-enter sticky bottom-0 z-50 gap-2 bg-[var(--color-surface-base)] sm:gap-2.5"
       }
     >
       {/* Select all / deselect all checkbox */}
@@ -292,7 +225,7 @@ export function BulkActionBar({
         </button>
       )}
 
-      {/* Selection counter with SP and BV badges */}
+      {/* Selection counter with optional SP and BV badges (off where not tracked, e.g. inbox) */}
       <span className="shrink-0 flex items-center gap-2 text-body-sm font-medium text-text-secondary whitespace-nowrap tabular-nums">
         <span>{count}{totalCount ? `/${totalCount}` : ""} selected</span>
         {selectedPoints !== undefined && selectedPoints > 0 && (
@@ -319,74 +252,86 @@ export function BulkActionBar({
         </>
       )}
 
-      {/* Update dropdown */}
-      <UpdateDropdown
-        onSetStatus={onSetStatus}
-        onSetReadiness={onSetReadiness}
-        onSetEpic={onSetEpic}
-        onMoveSprint={onMoveSprint}
-        quickMoves={quickMoves}
-        onQuickMove={onQuickMove}
-        onUpdateAssignee={onUpdateAssignee}
-        onUpdateLabel={onUpdateLabel}
-        onSetFlagged={onSetFlagged}
-        flagState={flagState}
-        sprints={sprints}
-        pinnedSprintIds={pinnedSprintIds}
-      />
-
-      {/* AI Assist dropdown */}
-      <AiAssistDropdown
-        onReviewStory={onReviewStory}
-        onGenerateSubtasks={onGenerateSubtasks}
-        onSummarizedList={onExportForStakeholders}
-        isExporting={isExporting}
-        isGeneratingSubtasks={isGeneratingSubtasks}
-      />
-
-      <BarDivider />
-
-      {/* Standalone: Copy List */}
-      {onCopyToClipboard && (
-        <Button
-          variant="ghost"
-          size="md"
-          onClick={onCopyToClipboard}
-          className="shrink-0 border-0 text-text-secondary hover:text-text-primary"
-        >
-          <Copy className="mr-1.5 h-3.5 w-3.5 shrink-0" strokeWidth={1.5} />
-          <span className="hidden sm:inline">Copy List</span>
-        </Button>
+      {/* Action groups: icon + caret, content shared with the right-click menu. */}
+      {hasUpdate && (
+        <GroupDropdown
+          label="Update"
+          icon={FilePen}
+          render={(close) => (
+            <TicketActionMenuContent
+              onSetStatus={onSetStatus}
+              onSetReadiness={onSetReadiness}
+              onSetEpic={onSetEpic}
+              epicClearable
+              onUpdateAssignee={onUpdateAssignee}
+              onUpdateLabel={onUpdateLabel}
+              initialView="update"
+              close={close}
+            />
+          )}
+        />
+      )}
+      {hasMove && (
+        <GroupDropdown
+          label="Move"
+          icon={ArrowRightLeft}
+          render={(close) => (
+            <TicketActionMenuContent
+              onMoveSprint={onMoveSprint}
+              quickMoves={quickMoves}
+              onQuickMove={onQuickMove}
+              sprints={sprints}
+              pinnedSprintIds={pinnedSprintIds}
+              initialView="move"
+              close={close}
+            />
+          )}
+        />
+      )}
+      {onSetFlagged && (
+        <GroupDropdown
+          label="Flag"
+          icon={Flag}
+          width="w-52"
+          render={(close) => (
+            <TicketActionMenuContent onSetFlagged={onSetFlagged} flagState={flagState} initialView="flag" close={close} />
+          )}
+        />
+      )}
+      {hasAssist && (
+        <GroupDropdown
+          label="Assist"
+          icon={Sparkles}
+          busy={isExporting || isGeneratingSubtasks}
+          width="w-52"
+          render={(close) => (
+            <>
+              {onReviewStory && <MenuItem onClick={() => { onReviewStory(); close(); }}>Review Story</MenuItem>}
+              {onGenerateSubtasks && (
+                <MenuItem disabled={isGeneratingSubtasks} onClick={() => { onGenerateSubtasks(); close(); }}>
+                  {isGeneratingSubtasks ? "Generating..." : "Generate Subtasks"}
+                </MenuItem>
+              )}
+              {onExportForStakeholders && (
+                <MenuItem disabled={isExporting} onClick={() => { onExportForStakeholders(); close(); }}>
+                  {isExporting ? "Exporting..." : "Summarized List"}
+                </MenuItem>
+              )}
+            </>
+          )}
+        />
       )}
 
-      {/* Standalone: Refresh from Jira */}
+      {hasGroup && hasListOps && <BarDivider />}
+
+      {/* List-level single actions */}
+      {onRefine && <IconAction label="Add to refinement" icon={Boxes} onClick={onRefine} />}
+      {onCopyToClipboard && <IconAction label="Copy list" icon={Copy} onClick={onCopyToClipboard} />}
       {onRefreshFromJira && (
-        <Button
-          variant="ghost"
-          size="md"
-          disabled={isRefreshing}
-          onClick={onRefreshFromJira}
-          className="shrink-0 border-0 text-text-secondary hover:text-text-primary"
-        >
-          <RefreshCw className={`mr-1.5 h-3.5 w-3.5 shrink-0 ${isRefreshing ? "animate-spin" : ""}`} strokeWidth={1.5} />
-          <span className="hidden sm:inline">{isRefreshing ? "Syncing..." : "Refresh from Jira"}</span>
-        </Button>
+        <IconAction label={isRefreshing ? "Syncing..." : "Refresh from Jira"} icon={RefreshCw} busy={isRefreshing} onClick={onRefreshFromJira} />
       )}
 
       <div className="flex-1" />
-
-      {/* Standalone: Add to Refinement */}
-      {onRefine && (
-        <Button
-          variant="ghost"
-          size="md"
-          onClick={onRefine}
-          className="shrink-0 border-0 text-text-secondary hover:text-text-primary"
-        >
-          <Boxes className="mr-1.5 h-3.5 w-3.5 shrink-0" strokeWidth={1.5} />
-          <span className="hidden sm:inline">Add to Refinement</span>
-        </Button>
-      )}
 
       <Button
         variant="ghost"

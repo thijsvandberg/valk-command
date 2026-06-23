@@ -13,7 +13,7 @@ vi.mock("@/lib/api-client", () => ({
 vi.mock("@/hooks/useTaskStream", () => ({ useTaskStream: vi.fn() }));
 
 describe("TicketActionMenuContent", () => {
-  it("renders only the update items whose callbacks are supplied", () => {
+  it("nests the set items under Update; only supplied ones render (BRDG-374)", () => {
     render(
       <TicketActionMenuContent
         onSetStatus={vi.fn()}
@@ -22,13 +22,16 @@ describe("TicketActionMenuContent", () => {
         close={vi.fn()}
       />,
     );
+    // Move is top-level; the set items sit behind "Update".
+    expect(screen.getByText("More sprints")).toBeInTheDocument();
+    expect(screen.getByText("Update")).toBeInTheDocument();
+    fireEvent.click(screen.getByText("Update"));
     expect(screen.getByText("Set Status")).toBeInTheDocument();
-    expect(screen.getByText("Move to Sprint")).toBeInTheDocument();
     expect(screen.queryByText("Set Readiness")).not.toBeInTheDocument();
     expect(screen.queryByText("Update Assignee")).not.toBeInTheDocument();
   });
 
-  it("renders direct-action items (review, subtasks, refine) when supplied", () => {
+  it("nests Review/Generate under Assist; Add to refinement stays top-level", () => {
     render(
       <TicketActionMenuContent
         onReviewStory={vi.fn()}
@@ -37,15 +40,18 @@ describe("TicketActionMenuContent", () => {
         close={vi.fn()}
       />,
     );
+    expect(screen.getByText("Add to refinement")).toBeInTheDocument();
+    expect(screen.getByText("Assist")).toBeInTheDocument();
+    fireEvent.click(screen.getByText("Assist"));
     expect(screen.getByText("Review Story")).toBeInTheDocument();
     expect(screen.getByText("Generate Subtasks")).toBeInTheDocument();
-    expect(screen.getByText("Add to Refinement")).toBeInTheDocument();
   });
 
-  it("invokes the action and closes when an item is clicked", () => {
+  it("invokes the action and closes when an Assist item is clicked", () => {
     const onReviewStory = vi.fn();
     const close = vi.fn();
     render(<TicketActionMenuContent onReviewStory={onReviewStory} close={close} />);
+    fireEvent.click(screen.getByText("Assist"));
     fireEvent.click(screen.getByText("Review Story"));
     expect(onReviewStory).toHaveBeenCalledTimes(1);
     expect(close).toHaveBeenCalledTimes(1);
@@ -74,8 +80,9 @@ describe("TicketActionMenuContent", () => {
     expect(screen.getByText("Move to bottom")).toBeInTheDocument();
   });
 
-  it("opens the Epic panel without a Back row (it reads like the sidebar)", () => {
+  it("opens the Epic panel (via Update) without a Back row (it reads like the sidebar)", () => {
     render(<TicketActionMenuContent onSetEpic={vi.fn()} close={vi.fn()} />);
+    fireEvent.click(screen.getByText("Update"));
     fireEvent.click(screen.getByText("Set Epic"));
     expect(screen.getByPlaceholderText("Search epics...")).toBeInTheDocument();
     expect(screen.queryByText("Back")).not.toBeInTheDocument();
@@ -83,27 +90,31 @@ describe("TicketActionMenuContent", () => {
 
   it("shows the AI suggest action in the Epic panel only with a single-target ticket key", () => {
     const { unmount } = render(<TicketActionMenuContent onSetEpic={vi.fn()} close={vi.fn()} />);
+    fireEvent.click(screen.getByText("Update"));
     fireEvent.click(screen.getByText("Set Epic"));
     expect(screen.queryByLabelText("Suggest epic with AI")).not.toBeInTheDocument();
     unmount();
 
     render(<TicketActionMenuContent onSetEpic={vi.fn()} epicSuggestTicketKey="VPL-1" close={vi.fn()} />);
+    fireEvent.click(screen.getByText("Update"));
     fireEvent.click(screen.getByText("Set Epic"));
     expect(screen.getByLabelText("Suggest epic with AI")).toBeInTheDocument();
   });
 
   it("shows a 'Remove epic' action in the Epic panel only when clearable (bulk)", () => {
     const { unmount } = render(<TicketActionMenuContent onSetEpic={vi.fn()} close={vi.fn()} />);
+    fireEvent.click(screen.getByText("Update"));
     fireEvent.click(screen.getByText("Set Epic"));
     expect(screen.queryByText("Remove epic")).not.toBeInTheDocument();
     unmount();
 
     render(<TicketActionMenuContent onSetEpic={vi.fn()} epicClearable close={vi.fn()} />);
+    fireEvent.click(screen.getByText("Update"));
     fireEvent.click(screen.getByText("Set Epic"));
     expect(screen.getByText("Remove epic")).toBeInTheDocument();
   });
 
-  it("fences the Move group with dividers from the set-* and assignee/label items", () => {
+  it("separates the prominent Move group from the nested Update group with a divider", () => {
     const { container } = render(
       <TicketActionMenuContent
         onSetEpic={vi.fn()}
@@ -113,11 +124,11 @@ describe("TicketActionMenuContent", () => {
         close={vi.fn()}
       />,
     );
-    // One divider above the move group (after Set Epic), one below (before Update Assignee).
-    expect(container.querySelectorAll("div.h-px.bg-overlay-strong")).toHaveLength(2);
+    // Two clusters at the root: Move (top/bottom) and Update -> one divider between.
+    expect(container.querySelectorAll("div.h-px.bg-overlay-strong")).toHaveLength(1);
   });
 
-  it("renders quick-move items above Move to Sprint and fires onQuickMove + close (BRDG-369)", () => {
+  it("renders named quick-moves inline with a chip, above More sprints, and fires onQuickMove (BRDG-369/374)", () => {
     const onQuickMove = vi.fn();
     const close = vi.fn();
     const quickMoves = [
@@ -136,9 +147,9 @@ describe("TicketActionMenuContent", () => {
     );
     const labels = Array.from(container.querySelectorAll("button")).map((b) => b.textContent);
     const activeIdx = labels.findIndex((t) => t?.startsWith("Move to active"));
-    const moveSprintIdx = labels.findIndex((t) => t === "Move to Sprint");
+    const moreIdx = labels.findIndex((t) => t === "More sprints");
     expect(activeIdx).toBeGreaterThanOrEqual(0);
-    expect(activeIdx).toBeLessThan(moveSprintIdx); // quick moves render above Move to Sprint
+    expect(activeIdx).toBeLessThan(moreIdx); // quick moves render above More sprints
     // The active option shows its destination chip, tagged with the "active" marker.
     expect(screen.getByTitle("active")).toBeInTheDocument();
     expect(screen.getByText("BT: 139")).toBeInTheDocument();
@@ -152,7 +163,7 @@ describe("TicketActionMenuContent", () => {
     render(<TicketActionMenuContent onMoveSprint={vi.fn()} sprints={[]} close={vi.fn()} />);
     expect(screen.queryByText("Move to active")).not.toBeInTheDocument();
     expect(screen.queryByText("Move to next")).not.toBeInTheDocument();
-    expect(screen.getByText("Move to Sprint")).toBeInTheDocument();
+    expect(screen.getByText("More sprints")).toBeInTheDocument();
   });
 
   it("fires Move to top / Move to bottom and closes", () => {
@@ -166,6 +177,14 @@ describe("TicketActionMenuContent", () => {
     fireEvent.click(screen.getByText("Move to bottom"));
     expect(onMoveToBottom).toHaveBeenCalledTimes(1);
     expect(close).toHaveBeenCalledTimes(2);
+  });
+
+  it("opens a group view directly via initialView (used by the bar's icon dropdowns)", () => {
+    render(<TicketActionMenuContent onSetStatus={vi.fn()} onSetReadiness={vi.fn()} initialView="update" close={vi.fn()} />);
+    // No "Update" wrapper item; the set items show immediately, with no Back at the root view.
+    expect(screen.getByText("Set Status")).toBeInTheDocument();
+    expect(screen.getByText("Set Readiness")).toBeInTheDocument();
+    expect(screen.queryByText("Back")).not.toBeInTheDocument();
   });
 
   describe("flag items follow flagState", () => {
@@ -203,8 +222,9 @@ describe("TicketActionMenuContent", () => {
     });
   });
 
-  it("navigates into the Set Status sub-panel and back", () => {
+  it("navigates Update -> Set Status sub-panel and back", () => {
     render(<TicketActionMenuContent onSetStatus={vi.fn()} close={vi.fn()} />);
+    fireEvent.click(screen.getByText("Update"));
     fireEvent.click(screen.getByText("Set Status"));
     expect(screen.getByText("Back")).toBeInTheDocument();
     // Status options are now visible

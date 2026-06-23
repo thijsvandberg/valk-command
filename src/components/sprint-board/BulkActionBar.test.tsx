@@ -9,6 +9,9 @@ describe("BulkActionBar", () => {
     onClear: vi.fn(),
   };
 
+  // Group icons are icon-only (BRDG-374): the label is the button's accessible name.
+  const openGroup = (name: string) => fireEvent.click(screen.getByRole("button", { name }));
+
   it("renders selection counter with count", () => {
     render(<BulkActionBar {...defaultProps} />);
     expect(screen.getByText(/3\/10 selected/)).toBeTruthy();
@@ -32,27 +35,27 @@ describe("BulkActionBar", () => {
     expect(screen.getByLabelText("Business Value: 7")).toBeTruthy();
   });
 
-  it("hides SP when 0", () => {
+  it("hides SP when 0 (optional counters, e.g. inbox)", () => {
     render(<BulkActionBar {...defaultProps} selectedPoints={0} />);
     expect(screen.queryByLabelText(/Story Points/)).toBeNull();
   });
 
-  it("hides BV when 0", () => {
+  it("hides BV when 0 (optional counters, e.g. inbox)", () => {
     render(<BulkActionBar {...defaultProps} selectedBV={0} />);
     expect(screen.queryByLabelText(/Business Value/)).toBeNull();
   });
 
-  it("renders Copy List button when onCopyToClipboard is provided", () => {
+  it("renders the Copy icon when onCopyToClipboard is provided", () => {
     const onCopy = vi.fn();
     render(<BulkActionBar {...defaultProps} onCopyToClipboard={onCopy} />);
-    fireEvent.click(screen.getByText("Copy List"));
+    fireEvent.click(screen.getByRole("button", { name: "Copy list" }));
     expect(onCopy).toHaveBeenCalledOnce();
   });
 
-  it("renders Add to Refinement button when onRefine is provided", () => {
+  it("renders the Refinement icon when onRefine is provided", () => {
     const onRefine = vi.fn();
     render(<BulkActionBar {...defaultProps} onRefine={onRefine} />);
-    fireEvent.click(screen.getByText("Add to Refinement"));
+    fireEvent.click(screen.getByRole("button", { name: "Add to refinement" }));
     expect(onRefine).toHaveBeenCalledOnce();
   });
 
@@ -63,29 +66,17 @@ describe("BulkActionBar", () => {
     expect(onClear).toHaveBeenCalledOnce();
   });
 
-  it("renders Update dropdown when update actions are provided", () => {
-    render(
-      <BulkActionBar
-        {...defaultProps}
-        onSetStatus={vi.fn()}
-        onSetReadiness={vi.fn()}
-      />,
-    );
-    expect(screen.getByText("Update")).toBeTruthy();
+  it("renders the Update icon group when update actions are provided", () => {
+    render(<BulkActionBar {...defaultProps} onSetStatus={vi.fn()} onSetReadiness={vi.fn()} />);
+    expect(screen.getByRole("button", { name: "Update" })).toBeTruthy();
   });
 
-  it("renders AI Assist dropdown when AI actions are provided", () => {
-    render(
-      <BulkActionBar
-        {...defaultProps}
-        onReviewStory={vi.fn()}
-        onGenerateSubtasks={vi.fn()}
-      />,
-    );
-    expect(screen.getByText("AI Assist")).toBeTruthy();
+  it("renders the Assist icon group when AI actions are provided", () => {
+    render(<BulkActionBar {...defaultProps} onReviewStory={vi.fn()} onGenerateSubtasks={vi.fn()} />);
+    expect(screen.getByRole("button", { name: "Assist" })).toBeTruthy();
   });
 
-  it("opens Update dropdown and shows menu items", () => {
+  it("opens the Update dropdown and shows the set items (Move lives in its own group)", () => {
     render(
       <BulkActionBar
         {...defaultProps}
@@ -95,41 +86,31 @@ describe("BulkActionBar", () => {
         sprints={[{ id: "1", name: "Sprint 1", dateRange: "", state: "active", ticketCount: 5 }]}
       />,
     );
-    fireEvent.click(screen.getByText("Update"));
+    openGroup("Update");
     expect(screen.getByText("Set Status")).toBeTruthy();
     expect(screen.getByText("Set Readiness")).toBeTruthy();
-    expect(screen.getByText("Move to Sprint")).toBeTruthy();
+    // Move is now a separate icon group, not inside Update.
+    expect(screen.queryByText("More sprints")).toBeNull();
+    expect(screen.getByRole("button", { name: "Move" })).toBeTruthy();
   });
 
-  it("shows the Flag item in the Update dropdown when onSetFlagged is provided", () => {
+  it("opens the Flag icon group and fires onSetFlagged(true)", () => {
     const onSetFlagged = vi.fn();
-    render(
-      <BulkActionBar
-        {...defaultProps}
-        onSetStatus={vi.fn()}
-        onSetFlagged={onSetFlagged}
-        flagState="unflagged"
-      />,
-    );
-    fireEvent.click(screen.getByText("Update"));
+    render(<BulkActionBar {...defaultProps} onSetFlagged={onSetFlagged} flagState="unflagged" />);
+    openGroup("Flag");
     fireEvent.click(screen.getByText("Flag"));
     expect(onSetFlagged).toHaveBeenCalledWith(true);
   });
 
-  it("shows Remove flag in the Update dropdown when targets are already flagged", () => {
-    render(
-      <BulkActionBar
-        {...defaultProps}
-        onSetFlagged={vi.fn()}
-        flagState="flagged"
-      />,
-    );
-    fireEvent.click(screen.getByText("Update"));
+  it("shows Remove flag in the Flag group when targets are already flagged", () => {
+    render(<BulkActionBar {...defaultProps} onSetFlagged={vi.fn()} flagState="flagged" />);
+    openGroup("Flag");
     expect(screen.getByText("Remove flag")).toBeTruthy();
+    // No "Flag" menu item (only the icon trigger's aria-label, which getByText ignores).
     expect(screen.queryByText("Flag")).toBeNull();
   });
 
-  it("lists pinned sprints first, in pinned order, in the Move to Sprint sub-panel", () => {
+  it("lists pinned sprints first, in pinned order, under More sprints", () => {
     render(
       <BulkActionBar
         {...defaultProps}
@@ -142,8 +123,8 @@ describe("BulkActionBar", () => {
         pinnedSprintIds={["3", "1"]}
       />,
     );
-    fireEvent.click(screen.getByText("Update"));
-    fireEvent.click(screen.getByText("Move to Sprint"));
+    openGroup("Move");
+    fireEvent.click(screen.getByText("More sprints"));
     const c = screen.getByText("Sprint C");
     const a = screen.getByText("Sprint A");
     const b = screen.getByText("Sprint B");
@@ -152,7 +133,7 @@ describe("BulkActionBar", () => {
     expect(a.compareDocumentPosition(b) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
   });
 
-  it("filters the Move to Sprint list via the search box", () => {
+  it("filters the More sprints list via the search box", () => {
     render(
       <BulkActionBar
         {...defaultProps}
@@ -163,8 +144,8 @@ describe("BulkActionBar", () => {
         ]}
       />,
     );
-    fireEvent.click(screen.getByText("Update"));
-    fireEvent.click(screen.getByText("Move to Sprint"));
+    openGroup("Move");
+    fireEvent.click(screen.getByText("More sprints"));
     fireEvent.change(screen.getByPlaceholderText("Search sprints..."), { target: { value: "beta" } });
     expect(screen.queryByText("Sprint Alpha")).toBeNull();
     expect(screen.getByText("Sprint Beta")).toBeTruthy();
@@ -179,75 +160,52 @@ describe("BulkActionBar", () => {
         sprints={[{ id: "42", name: "Sprint 42", dateRange: "", state: "active", ticketCount: 5 }]}
       />,
     );
-    fireEvent.click(screen.getByText("Update"));
-    fireEvent.click(screen.getByText("Move to Sprint"));
+    openGroup("Move");
+    fireEvent.click(screen.getByText("More sprints"));
     fireEvent.click(screen.getByText("Sprint 42"));
     expect(onMoveSprint).toHaveBeenCalledWith("42");
   });
 
-  it("opens AI Assist dropdown and shows menu items", () => {
-    const onReview = vi.fn();
+  it("opens the Assist dropdown and shows menu items", () => {
     render(
       <BulkActionBar
         {...defaultProps}
-        onReviewStory={onReview}
+        onReviewStory={vi.fn()}
         onGenerateSubtasks={vi.fn()}
         onExportForStakeholders={vi.fn()}
       />,
     );
-    fireEvent.click(screen.getByText("AI Assist"));
+    openGroup("Assist");
     expect(screen.getByText("Review Story")).toBeTruthy();
     expect(screen.getByText("Generate Subtasks")).toBeTruthy();
     expect(screen.getByText("Summarized List")).toBeTruthy();
   });
 
-  it("shows a spinner on the collapsed AI Assist trigger while exporting", () => {
-    const { container } = render(
-      <BulkActionBar
-        {...defaultProps}
-        onExportForStakeholders={vi.fn()}
-        isExporting
-      />,
-    );
+  it("shows a spinner on the collapsed Assist trigger while exporting", () => {
+    const { container } = render(<BulkActionBar {...defaultProps} onExportForStakeholders={vi.fn()} isExporting />);
     // Menu is closed, but the trigger button itself should spin.
     expect(screen.queryByText("Summarized List")).toBeNull();
     expect(container.querySelector(".animate-spin")).toBeTruthy();
   });
 
-  it("shows a spinner on the collapsed AI Assist trigger while generating subtasks", () => {
-    const { container } = render(
-      <BulkActionBar
-        {...defaultProps}
-        onGenerateSubtasks={vi.fn()}
-        isGeneratingSubtasks
-      />,
-    );
+  it("shows a spinner on the collapsed Assist trigger while generating subtasks", () => {
+    const { container } = render(<BulkActionBar {...defaultProps} onGenerateSubtasks={vi.fn()} isGeneratingSubtasks />);
     expect(screen.queryByText("Generating...")).toBeNull();
     expect(container.querySelector(".animate-spin")).toBeTruthy();
   });
 
-  it("calls onReviewStory when Review Story is clicked in AI Assist dropdown", () => {
+  it("calls onReviewStory when Review Story is clicked in the Assist dropdown", () => {
     const onReview = vi.fn();
-    render(
-      <BulkActionBar
-        {...defaultProps}
-        onReviewStory={onReview}
-      />,
-    );
-    fireEvent.click(screen.getByText("AI Assist"));
+    render(<BulkActionBar {...defaultProps} onReviewStory={onReview} />);
+    openGroup("Assist");
     fireEvent.click(screen.getByText("Review Story"));
     expect(onReview).toHaveBeenCalledOnce();
   });
 
-  it("navigates to status sub-panel and selects a status", () => {
+  it("navigates Update -> status sub-panel and selects a status", () => {
     const onSetStatus = vi.fn();
-    render(
-      <BulkActionBar
-        {...defaultProps}
-        onSetStatus={onSetStatus}
-      />,
-    );
-    fireEvent.click(screen.getByText("Update"));
+    render(<BulkActionBar {...defaultProps} onSetStatus={onSetStatus} />);
+    openGroup("Update");
     fireEvent.click(screen.getByText("Set Status"));
     expect(screen.getByText("TO DO")).toBeTruthy();
     expect(screen.getAllByText("DONE").length).toBeGreaterThan(0);
@@ -258,15 +216,10 @@ describe("BulkActionBar", () => {
     expect(onSetStatus).toHaveBeenCalledWith("DONE");
   });
 
-  it("navigates to readiness sub-panel with back button", () => {
+  it("navigates Update -> readiness sub-panel with back button", () => {
     const onSetReadiness = vi.fn();
-    render(
-      <BulkActionBar
-        {...defaultProps}
-        onSetReadiness={onSetReadiness}
-      />,
-    );
-    fireEvent.click(screen.getByText("Update"));
+    render(<BulkActionBar {...defaultProps} onSetReadiness={onSetReadiness} />);
+    openGroup("Update");
     fireEvent.click(screen.getByText("Set Readiness"));
     expect(screen.getByText("Drafting")).toBeTruthy();
     expect(screen.getByText("Back")).toBeTruthy();
@@ -274,20 +227,20 @@ describe("BulkActionBar", () => {
     expect(screen.getByText("Set Readiness")).toBeTruthy();
   });
 
-  it("does not render Update dropdown when no update actions", () => {
+  it("does not render the Update group when no update actions", () => {
     render(<BulkActionBar {...defaultProps} />);
-    expect(screen.queryByText("Update")).toBeNull();
+    expect(screen.queryByRole("button", { name: "Update" })).toBeNull();
   });
 
-  it("does not render AI Assist dropdown when no AI actions", () => {
+  it("does not render the Assist group when no AI actions", () => {
     render(<BulkActionBar {...defaultProps} />);
-    expect(screen.queryByText("AI Assist")).toBeNull();
+    expect(screen.queryByRole("button", { name: "Assist" })).toBeNull();
   });
 
-  it("renders Refresh from Jira button", () => {
+  it("renders the Refresh icon", () => {
     const onRefresh = vi.fn();
     render(<BulkActionBar {...defaultProps} onRefreshFromJira={onRefresh} />);
-    fireEvent.click(screen.getByText("Refresh from Jira"));
+    fireEvent.click(screen.getByRole("button", { name: "Refresh from Jira" }));
     expect(onRefresh).toHaveBeenCalledOnce();
   });
 
