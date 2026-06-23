@@ -1032,7 +1032,7 @@ export default function SprintBoard() {
       {pageTitle}
       <div className="flex h-full min-h-0 flex-col">
       <div className="flex min-h-0 flex-1 overflow-hidden">
-      <div className="flex min-w-0 min-h-0 flex-1 flex-col overflow-hidden">
+      <div className="relative flex min-w-0 min-h-0 flex-1 flex-col overflow-hidden">
         <SprintBoardHeader
           isAllView={isAllView} activeSprint={activeSprint} activeSprintId={activeSprintId}
           allTickets={allTickets} tickets={tickets} ticketsLoading={ticketsLoading}
@@ -1055,6 +1055,14 @@ export default function SprintBoard() {
             </DragOverlay>
           </DndContext>
         ) : boardContent}
+
+        {/* Bulk bar: anchored to the list column (not the viewport) so it stays centered
+            in the list and never overlaps the ticket detail pane when it is open. */}
+        {bulkActionBar && (
+          <div className="pointer-events-none absolute inset-x-0 bottom-0 z-50 flex justify-center pb-5 pl-20 pr-2 sm:pl-24 sm:pr-4">
+            <div className="pointer-events-auto px-3 sm:px-4">{bulkActionBar}</div>
+          </div>
+        )}
       </div>
 
       {panelTicket && (() => {
@@ -1063,13 +1071,6 @@ export default function SprintBoard() {
         return <SidePanel key={panelTicket.key} ticket={panelTicket} poStatus={poStatuses[panelTicket.key] ?? null} readiness={readinessMap[panelTicket.key] ?? null} onPoStatusChange={(v) => ta.handlePoStatusChange(panelTicket.key, v)} onReadinessChange={(v) => ta.handleReadinessChange(panelTicket.key, v)} onNotesChange={(notes) => { saveTicketMetadata(panelTicket.key, { poNotes: notes }, activeListKey); }} onClose={() => setSelectedTicket(null)} onShowToast={showToast} onMutate={mutateTickets} onSelectTicket={setSelectedTicket} adjacentKeys={adjacentKeys} epicActions={{ onShowOnly: handleFilterByEpic, onShowAcrossAllSprints: handleShowEpicAcrossAllSprints, onClear: handleClearEpicFilter, isFiltered: f.epicFilter.size > 0 }} />;
       })()}
       </div>
-      {bulkActionBar && (
-        <div className="pointer-events-none fixed inset-x-0 bottom-0 z-50 flex justify-center pb-5 pl-20 pr-2 sm:pl-24 sm:pr-4">
-          <div className="pointer-events-auto px-3 sm:px-4">
-            {bulkActionBar}
-          </div>
-        </div>
-      )}
 
       <Toast toast={toast} loading={toastLoading} onDismiss={dismissToast} />
 

@@ -678,18 +678,14 @@ export function TicketActionMenuContent({
         </MenuItem>
       ) : null,
       hasMove ? moveItems : null,
-      hasUpdate || showFlag ? (
+      showFlag || hasUpdate || hasAssist ? (
         <>
-          {updateItem}
           {showFlag ? flagItems : null}
-        </>
-      ) : null,
-      hasAssist || onRefine ? (
-        <>
+          {updateItem}
           {assistItem}
-          {refineItem}
         </>
       ) : null,
+      onRefine ? refineItem : null,
     ];
     const present = blocks.filter((b) => b !== null);
     return <>{present.map((b, i) => <Fragment key={i}>{i > 0 && divider}{b}</Fragment>)}</>;
