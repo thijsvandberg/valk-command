@@ -585,8 +585,9 @@ export function TicketActionMenuContent({
     <>
       {hasQuickMoves &&
         quickMoves!.map((opt) => (
-          <MenuItem key={opt.id} onClick={() => { onQuickMove!(opt); close(); }}>
-            <span className="flex-1">{opt.label}</span>
+          // Empty icon slot keeps the label left-aligned with the icon-bearing rows.
+          <MenuItem key={opt.id} icon={<span className="h-3.5 w-3.5" />} onClick={() => { onQuickMove!(opt); close(); }}>
+            {opt.label}
             <span
               className="ml-auto shrink-0 rounded bg-overlay-default px-1.5 py-0.5 text-caption font-medium text-text-tertiary"
               title={opt.badge}
@@ -597,8 +598,8 @@ export function TicketActionMenuContent({
           </MenuItem>
         ))}
       {onMoveSprint && sprints && (
-        <MenuItem onClick={() => go("sprint")}>
-          <span className="flex-1">More sprints</span>
+        <MenuItem icon={<span className="h-3.5 w-3.5" />} onClick={() => go("sprint")}>
+          More sprints
           <ChevronRight className="ml-auto h-3.5 w-3.5 text-text-muted" strokeWidth={1.5} />
         </MenuItem>
       )}
@@ -661,14 +662,14 @@ export function TicketActionMenuContent({
       hasMove ? moveItems : null,
       hasUpdate ? (
         <MenuItem icon={<FilePen className="h-3.5 w-3.5" strokeWidth={1.5} />} onClick={() => go("update")}>
-          <span className="flex-1">Update</span>
+          Update
           <ChevronRight className="ml-auto h-3.5 w-3.5 text-text-muted" strokeWidth={1.5} />
         </MenuItem>
       ) : null,
       showFlag ? flagItems : null,
       hasAssist ? (
         <MenuItem icon={<Sparkles className="h-3.5 w-3.5" strokeWidth={1.5} />} onClick={() => go("assist")}>
-          <span className="flex-1">Assist</span>
+          Assist
           <ChevronRight className="ml-auto h-3.5 w-3.5 text-text-muted" strokeWidth={1.5} />
         </MenuItem>
       ) : null,

@@ -333,6 +333,8 @@ export function BulkActionBar({
 
       <div className="flex-1" />
 
+      <BarDivider />
+
       <Button
         variant="ghost"
         size="sm"
