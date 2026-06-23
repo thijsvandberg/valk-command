@@ -2,6 +2,7 @@
 import { describe, it, expect } from "vitest";
 import {
   extractTeamPrefix,
+  sprintTeamToken,
   TEAMS,
   slugifySprint,
   sprintToSlug,
@@ -33,6 +34,19 @@ describe("extractTeamPrefix", () => {
     expect(extractTeamPrefix("Sprint 42")).toBeNull();
     expect(extractTeamPrefix("")).toBeNull();
     expect(extractTeamPrefix("lowercase: sprint")).toBeNull();
+  });
+});
+
+describe("sprintTeamToken", () => {
+  it("returns the case-preserving part before the first colon", () => {
+    expect(sprintTeamToken("BT: 141")).toBe("BT");
+    // Diverges from extractTeamPrefix: mixed-case tokens are kept verbatim.
+    expect(sprintTeamToken("Design: Backlog")).toBe("Design");
+  });
+
+  it("returns null when there is no colon", () => {
+    expect(sprintTeamToken("Backlog")).toBeNull();
+    expect(sprintTeamToken("")).toBeNull();
   });
 });
 

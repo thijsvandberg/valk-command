@@ -248,6 +248,41 @@ describe("adfToMarkdown", () => {
     expect(result).toContain("| A | 1 |");
   });
 
+  it("renders a headerless table (only tableCell rows) with a separator row", () => {
+    const adf = {
+      type: "doc",
+      content: [
+        {
+          type: "table",
+          content: [
+            {
+              type: "tableRow",
+              content: [
+                { type: "tableCell", content: [{ type: "paragraph", content: [{ type: "text", text: "A" }] }] },
+                { type: "tableCell", content: [{ type: "paragraph", content: [{ type: "text", text: "B" }] }] },
+              ],
+            },
+            {
+              type: "tableRow",
+              content: [
+                { type: "tableCell", content: [{ type: "paragraph", content: [{ type: "text", text: "C" }] }] },
+                { type: "tableCell", content: [{ type: "paragraph", content: [{ type: "text", text: "D" }] }] },
+              ],
+            },
+          ],
+        },
+      ],
+    };
+    const result = adfToMarkdown(adf);
+    const lines = result.trim().split("\n");
+    // GFM requires a header + separator; row 0 is promoted, separator follows once.
+    expect(lines[0]).toBe("| A | B |");
+    expect(lines[1]).toBe("| --- | --- |");
+    expect(lines[2]).toBe("| C | D |");
+    // Exactly one separator row (no phantom duplicate).
+    expect(lines.filter((l) => l.includes("---"))).toHaveLength(1);
+  });
+
   it("handles horizontal rule", () => {
     const adf = {
       type: "doc",

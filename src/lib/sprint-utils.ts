@@ -6,6 +6,15 @@ export function extractTeamPrefix(sprintName: string): string | null {
   return match ? match[1] : null;
 }
 
+// The team token of a sprint name: the part before the first colon ("BT: 141" ->
+// "BT", "Design: Backlog" -> "Design"), or null when there is no colon ("Backlog").
+// Unlike extractTeamPrefix this is case-preserving and not restricted to uppercase
+// runs, so it is the right helper for grouping epic children by their sprint team.
+export function sprintTeamToken(name: string): string | null {
+  const idx = name.indexOf(":");
+  return idx > 0 ? name.slice(0, idx).trim() : null;
+}
+
 // --- Regular sprint series (BRDG-305, reused by BRDG-306) ---------------------
 // A "regular" sprint follows the `PREFIX: <number>` shape (e.g. `BT: 138`). The
 // number drives ordering and the next-sprint suggestion; placeholder sprints
@@ -132,7 +141,7 @@ export function slugToSprintId(slug: string | undefined | null, sprints: SlugSpr
   if (matches.length === 0) return null;
   if (matches.length === 1) return matches[0].id;
   // Ambiguous: prefer active, then future, then closed, else first.
-  const order: Record<string, number> = { active: 0, future: 1, closed: 2, backlog: 3 };
+  const order: Record<string, number> = { active: 0, future: 1, closed: 2 };
   const sorted = [...matches].sort((a, b) => (order[a.state ?? ""] ?? 9) - (order[b.state ?? ""] ?? 9));
   return sorted[0].id;
 }

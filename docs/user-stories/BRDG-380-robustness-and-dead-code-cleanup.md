@@ -100,7 +100,7 @@ fetcher change is the only one that touches error semantics app-wide — verify 
 - [x] A corrupt `*_last_result` / `lastResult` row no longer breaks the Scheduled Jobs / System
       Tasks status views (guarded parse).
 - [x] `formatTimestamp` returns empty (not "Invalid Date") on unparseable input.
-- [ ] `adf-to-markdown` renders headerless tables correctly (no phantom header row), with no dead branch.
+- [x] `adf-to-markdown` renders headerless tables correctly (no phantom header row), with no dead branch.
 - [ ] Team-prefix extraction, `isEpicChild`, and `scanScores` parsing each live in one place.
 - [ ] The dead `useActivityStatus` export and `backlog` state key are removed.
 - [ ] SWR errors surface for keys on the default fetcher; the intentional soft consumers still work.
@@ -110,7 +110,7 @@ fetcher change is the only one that touches error semantics app-wide — verify 
 - [ ] `draft-sync` test: a finalize failure leaves the row `DRAFT_FAILED`.
 - [x] `scheduler`/`task-registry`: a corrupt stored value yields `null`, not a thrown status call.
 - [x] `format-timestamp`: bad input → `""`.
-- [ ] `adf-to-markdown`: a headerless table renders without a separator row.
+- [x] `adf-to-markdown`: a headerless table renders without a separator row.
 - [ ] Consolidated `extractTeamPrefix`/`isEpicChild`/`scanScores` keep existing call-site behaviour.
 - [ ] SWR fetcher: a non-ok response surfaces an SWR `error` for a default-fetcher key.
 

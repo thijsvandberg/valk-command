@@ -1,5 +1,5 @@
 import type { EpicChild, Subtask, Sprint } from "@/types/ticket";
-import { isBacklogSprintName, isRegularSprint, nextSprintName, sprintNumber } from "./sprint-utils";
+import { isBacklogSprintName, isRegularSprint, nextSprintName, sprintNumber, sprintTeamToken } from "./sprint-utils";
 
 export const UNSCHEDULED_GROUP_KEY = "__unscheduled__";
 
@@ -61,7 +61,7 @@ export function sortNamedGroups(named: ChildGroup[], sprints: Sprint[]): ChildGr
     // Matched sprints sort ahead of unmatched (unknown) ones.
     if (!!aSprint !== !!bSprint) return aSprint ? -1 : 1;
     if (aSprint && bSprint) {
-      const order = STATE_ORDER[aSprint.state] - STATE_ORDER[bSprint.state];
+      const order = (STATE_ORDER[aSprint.state] ?? 9) - (STATE_ORDER[bSprint.state] ?? 9);
       if (order !== 0) return order;
       // Within a state, dated sprints lead and order by start date; sprints
       // without a schedule (e.g. a backlog-style sprint) are "the rest" and
@@ -209,13 +209,6 @@ export function nextRegularSprintCreateGroup(
     isCreateZone: true,
     isDropZone: true,
   };
-}
-
-// The team token of a sprint name: the part before the first colon ("BT: 141" ->
-// "BT", "Design: Backlog" -> "Design"), or null when there is no colon ("Backlog").
-function sprintTeamToken(name: string): string | null {
-  const idx = name.indexOf(":");
-  return idx > 0 ? name.slice(0, idx).trim() : null;
 }
 
 /**

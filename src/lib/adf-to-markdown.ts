@@ -283,13 +283,11 @@ function convertTable(node: AdfNode): string {
   if (!node.content) return "";
 
   const rows: string[][] = [];
-  let hasHeader = false;
 
   for (const row of node.content) {
     if (row.type !== "tableRow" || !row.content) continue;
     const cells: string[] = [];
     for (const cell of row.content) {
-      if (cell.type === "tableHeader") hasHeader = true;
       cells.push(convertChildren(cell).trim().replace(/\n/g, " "));
     }
     rows.push(cells);
@@ -303,19 +301,14 @@ function convertTable(node: AdfNode): string {
     return r;
   });
 
+  // GitHub-flavored markdown tables require a header row; ADF tables without an
+  // explicit tableHeader cell have no distinct header, so row 0 is promoted to
+  // the header regardless (the prior header/headerless branches were identical).
   const lines: string[] = [];
   lines.push("| " + normalized[0].join(" | ") + " |");
-
-  if (hasHeader) {
-    lines.push("| " + normalized[0].map(() => "---").join(" | ") + " |");
-    for (let i = 1; i < normalized.length; i++) {
-      lines.push("| " + normalized[i].join(" | ") + " |");
-    }
-  } else {
-    lines.push("| " + normalized[0].map(() => "---").join(" | ") + " |");
-    for (let i = 1; i < normalized.length; i++) {
-      lines.push("| " + normalized[i].join(" | ") + " |");
-    }
+  lines.push("| " + normalized[0].map(() => "---").join(" | ") + " |");
+  for (let i = 1; i < normalized.length; i++) {
+    lines.push("| " + normalized[i].join(" | ") + " |");
   }
 
   return lines.join("\n");
