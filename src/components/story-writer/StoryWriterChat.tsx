@@ -81,14 +81,6 @@ interface StoryWriterChatProps {
  */
 const SPECIAL_ACTIONS: QuickAction[] = [
   {
-    id: "review",
-    label: "Review Story",
-    icon: Star,
-    prompt:
-      "Review this story. Score its quality and provide specific feedback on completeness, clarity, acceptance criteria, and testability.",
-    enabled: true,
-  },
-  {
     id: "find-related",
     label: "Find Related",
     icon: Search,
@@ -97,6 +89,14 @@ const SPECIAL_ACTIONS: QuickAction[] = [
     // Opens the related-stories panel instead of sending a message, so the
     // inline "send now" affordance does not apply here.
     sendable: false,
+  },
+  {
+    id: "review",
+    label: "Review Story",
+    icon: Star,
+    prompt:
+      "Review this story. Score its quality and provide specific feedback on completeness, clarity, acceptance criteria, and testability.",
+    enabled: true,
   },
   {
     id: "match-epic",
