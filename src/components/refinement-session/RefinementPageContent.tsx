@@ -15,6 +15,7 @@ import { useRefinementStream } from "@/hooks/useRefinementStream";
 import { refinementSessions as refinementSessionsApi, jira as jiraApi, type RefinementSessionResponse } from "@/lib/api-client";
 import { CONTENT_MAX } from "@/lib/layout";
 import { useTicketActions } from "@/components/sprint-board/useTicketActions";
+import { makeBoardAdapter } from "@/components/sprint-board/row-actions/adapter";
 import { mapJiraSprints } from "@/components/sprint-board/sprint-board-utils";
 import { Boxes, Plus, Clock } from "lucide-react";
 import { DndContext, DragOverlay } from "@dnd-kit/core";
@@ -138,7 +139,8 @@ export function RefinementPageContent({
   }, [showToast]);
 
   const editableSprints = useMemo(() => mapJiraSprints(sprints), [sprints]);
-  const ta = useTicketActions({ apiTickets: tickets, mutateTickets, activeListKey: "/api/tickets", showToast });
+  const taAdapter = useMemo(() => makeBoardAdapter(tickets, mutateTickets, "/api/tickets", {}), [tickets, mutateTickets]);
+  const ta = useTicketActions({ adapter: taAdapter, showToast });
 
   // --- Filters ---
   const filters = useRefinementFilters(pinnedSprintIds, sprintNameMap);

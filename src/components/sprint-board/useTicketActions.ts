@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useCallback } from "react";
-import { mutate as globalMutate, type KeyedMutator } from "swr";
+import { mutate as globalMutate } from "swr";
 import type { POStatus, TicketReadiness, Ticket, IssueType, JiraStatus, Assignee } from "@/types/ticket";
 import { saveTicketMetadata, saveStoryPoints } from "@/components/sprint-board/sprint-board-utils";
 import { apiFetch, jira, tickets as ticketsApi } from "@/lib/api-client";
@@ -11,21 +11,18 @@ import type { EpicOption } from "@/components/shared/EpicPicker";
 import { registerPendingMove, clearPendingMove, confirmPendingMove } from "@/components/sprint-board/pendingSprintMoves";
 import { registerPendingEdit, confirmPendingEdit, clearPendingEdit, hasPendingEdit } from "@/components/sprint-board/pendingTicketEdits";
 import { placementForMove, topKeysForMove } from "@/lib/sprint-placement";
+import type { RowActionsAdapter } from "@/components/sprint-board/row-actions/adapter";
 
 interface TicketActionsDeps {
-  apiTickets: Ticket[] | undefined;
-  mutateTickets: KeyedMutator<Ticket[]>;
-  activeListKey: string | null;
-  // Sprint id -> display name, used to apply the placement rule (BRDG-370): the
-  // destination name decides whether moved rows land at the top or the bottom.
-  // Optional: contexts that never move tickets between sprints (story writer,
-  // refinement) may omit it, in which case unknown destinations default to top.
-  sprintNameMap?: Record<string, string>;
+  // Surface-agnostic data access + optimistic commit (BRDG-374). The board passes a
+  // makeBoardAdapter over its Ticket[] caches; other surfaces pass their own.
+  adapter: RowActionsAdapter;
   showToast: (message: React.ReactNode, durationMs?: number) => void;
 }
 
 export function useTicketActions(deps: TicketActionsDeps) {
-  const { apiTickets, mutateTickets, activeListKey, sprintNameMap = {}, showToast } = deps;
+  const { adapter, showToast } = deps;
+  const { activeListKey, sprintNameMap } = adapter;
 
   // Resolve a move target id to the destination sprint NAME for the placement
   // rule. The generic backlog sentinel and unknown ids resolve to null (treated
@@ -176,19 +173,19 @@ export function useTicketActions(deps: TicketActionsDeps) {
       await apiFetch(`/api/tickets/${encodeURIComponent(key)}`, { method: "PATCH", body: { epicKey: epic?.key ?? null } });
       confirmPendingEdit(key, "epic");
       confirmPendingEdit(key, "epicKey");
-      mutateTickets();
+      adapter.mutate();
     } catch {
       clearPendingEdit(key, "epic");
       clearPendingEdit(key, "epicKey");
       showToast(`Failed to update epic for ${key}. Change reverted.`);
     }
-  }, [mutateTickets, showToast]);
+  }, [adapter, showToast]);
 
   // Sprint move requires a Jira round-trip; revalidate rather than optimistically
   // rewrite (the board's sprintId field carries the sprint name, not its id).
   const handleSprintChange = useCallback(async (key: string, sprintId: string | null) => {
     const target = sprintId ?? "__backlog__";
-    const moved = apiTickets?.find((t) => t.key === key);
+    const moved = adapter.getTicket(key);
     // Keep the row visible in its destination until the slow Jira move resolves.
     if (moved) registerPendingMove(moved, target, Date.now());
     try {
@@ -197,12 +194,12 @@ export function useTicketActions(deps: TicketActionsDeps) {
       const position = placementForMove(destNameFor(target), moved?.jiraStatus);
       await jira.moveSprint({ issueKeys: [key], targetSprintId: target, position });
       confirmPendingMove(key);
-      mutateTickets();
+      adapter.mutate();
     } catch {
       clearPendingMove(key);
       showToast(`Failed to move ${key} to sprint.`);
     }
-  }, [apiTickets, mutateTickets, showToast, destNameFor]);
+  }, [adapter, showToast, destNameFor]);
 
   const handleCloseSubtasks = useCallback(async (key: string) => {
     registerPendingEdit(key, "openSubtaskCount", 0, Date.now());
@@ -221,10 +218,10 @@ export function useTicketActions(deps: TicketActionsDeps) {
   // server reflects the count.
   const handleSubtasksAdded = useCallback((key: string, addedCount: number) => {
     if (addedCount <= 0) return;
-    const current = apiTickets?.find((t) => t.key === key)?.totalSubtaskCount ?? 0;
+    const current = adapter.getTicket(key)?.totalSubtaskCount ?? 0;
     registerPendingEdit(key, "totalSubtaskCount", current + addedCount, Date.now());
     confirmPendingEdit(key, "totalSubtaskCount");
-  }, [apiTickets]);
+  }, [adapter]);
 
   // Reconcile the optimistic PO maps with fresh API data. Values follow the SWR list
   // (so edits made on other surfaces, e.g. the ticket detail page, show up when the
@@ -313,13 +310,13 @@ export function useTicketActions(deps: TicketActionsDeps) {
         failedCount++;
       }
     });
-    mutateTickets();
+    adapter.mutate();
     if (failedCount > 0) {
       showToast(`Failed to update epic for ${failedCount} ticket${failedCount === 1 ? "" : "s"}`);
     } else {
       showToast(`Epic updated for ${keys.length} ticket${keys.length === 1 ? "" : "s"}`);
     }
-  }, [mutateTickets, showToast]);
+  }, [adapter, showToast]);
 
   // Returns the outcome so the caller can render richer feedback (sprint name + link),
   // which needs sprint metadata/navigation only available at the board level.
@@ -335,74 +332,41 @@ export function useTicketActions(deps: TicketActionsDeps) {
     const isBacklog = targetSprintId === "__backlog__";
     // Mirror the route's `t.sprintName || undefined`: backlog clears the sprint.
     const newSprintId = isBacklog ? undefined : targetSprintId;
-    const destKey = `/api/tickets?sprintId=${encodeURIComponent(targetSprintId)}`;
-    const movedTickets = (apiTickets ?? [])
+    const moved = adapter
+      .getTickets()
       .filter((t) => checkedTickets.has(t.key))
       .map((t) => ({ ...t, sprintId: newSprintId }));
     // Keep the moved rows visible in their destination until the Jira move resolves.
     const now = Date.now();
-    movedTickets.forEach((t) => registerPendingMove(t, targetSprintId, now));
+    moved.forEach((t) => registerPendingMove(t, targetSprintId, now));
     try {
       // Placement rule (BRDG-370): split the batch so in-flight rows (and any
       // backlog move) land at the top and the rest at the bottom of the target.
       const destName = destNameFor(targetSprintId);
-      const topKeys = topKeysForMove(keys, destName, (k) => apiTickets?.find((t) => t.key === k)?.jiraStatus);
+      const topKeys = topKeysForMove(keys, destName, (k) => adapter.getTicket(k)?.jiraStatus);
       await jira.moveSprint({ issueKeys: keys, targetSprintId, topKeys });
       keys.forEach((k) => confirmPendingMove(k));
-
-      // Update the current list. In the All view the moved rows stay but get
-      // the new sprintId (so grouping/labels follow them); in a per-sprint or
-      // backlog source view they leave the list. Skip removal when the active
-      // list IS the destination (a no-op move within the same view).
-      if (activeListKey === "/api/tickets") {
-        mutateTickets(
-          (data) => data?.map((t) => checkedTickets.has(t.key) ? { ...t, sprintId: newSprintId } : t),
-          { revalidate: false },
-        );
-      } else if (activeListKey !== destKey) {
-        mutateTickets(
-          (data) => data?.filter((t) => !checkedTickets.has(t.key)),
-          { revalidate: false },
-        );
-      }
-
-      // Inject the moved tickets at the TOP of the destination cache (de-duplicated)
-      // so they sit where they land. The list sorts by jiraRank ascending, so the
-      // moved rows get a rank below the current minimum.
-      if (destKey !== activeListKey) {
-        globalMutate<Ticket[]>(
-          destKey,
-          (current) => {
-            const base = current ?? [];
-            const existing = new Set(base.map((t) => t.key));
-            const topRank = Math.min(0, ...base.map((t) => t.jiraRank ?? 0)) - 1;
-            const fresh = movedTickets
-              .filter((t) => !existing.has(t.key))
-              .map((t) => ({ ...t, jiraRank: topRank }));
-            return [...fresh, ...base];
-          },
-          { revalidate: false },
-        );
-      }
-
+      // Surface-specific cache write (board: patch current list + inject into the
+      // destination cache; other surfaces: their own overlay). See RowActionsAdapter.
+      adapter.commitBulkMove({ moved, keys, targetSprintId, newSprintId });
       return { ok: true, count: keys.length };
     } catch {
       keys.forEach((k) => clearPendingMove(k));
       return { ok: false, count: keys.length };
     }
-  }, [apiTickets, mutateTickets, activeListKey, destNameFor]);
+  }, [adapter, destNameFor]);
 
   const handleBulkUpdateAssignee = useCallback(async (accountId: string | null, name: string | null, checkedTickets: Set<string>) => {
     const keys = [...checkedTickets];
     const results = await Promise.allSettled(keys.map((k) => jira.assign({ issueKey: k, accountId, name })));
     const failedCount = results.filter((r) => r.status === "rejected").length;
-    mutateTickets();
+    adapter.mutate();
     if (failedCount > 0) {
       showToast(`Failed to update assignee for ${failedCount} ticket${failedCount === 1 ? "" : "s"}`);
     } else {
       showToast(`Assignee updated for ${keys.length} ticket${keys.length === 1 ? "" : "s"}`);
     }
-  }, [mutateTickets, showToast]);
+  }, [adapter, showToast]);
 
   const handleBulkUpdateLabels = useCallback(async (labels: string[], mode: "add" | "set", checkedTickets: Set<string>) => {
     const keys = [...checkedTickets];
@@ -416,14 +380,14 @@ export function useTicketActions(deps: TicketActionsDeps) {
       return apiFetch(`/api/tickets/${encodeURIComponent(k)}`, { method: "PATCH", body: { labels: finalLabels } });
     }));
     const failedCount = results.filter((r) => r.status === "rejected").length;
-    mutateTickets();
+    adapter.mutate();
     if (failedCount > 0) {
       showToast(`Failed to update labels for ${failedCount} ticket${failedCount === 1 ? "" : "s"}`);
     } else {
       const verb = mode === "add" ? "Added" : "Set";
       showToast(`${verb} labels for ${keys.length} ticket${keys.length === 1 ? "" : "s"}`);
     }
-  }, [mutateTickets, showToast]);
+  }, [adapter, showToast]);
 
   // A reason, when given, is posted as a Jira comment per ticket by the PATCH route.
   const handleBulkSetFlagged = useCallback(async (flagged: boolean, reason: string | null, checkedTickets: Set<string>) => {

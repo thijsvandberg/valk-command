@@ -2,6 +2,7 @@ import { renderHook, act } from "@testing-library/react";
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import type { Ticket } from "@/types/ticket";
 import { useTicketActions } from "./useTicketActions";
+import { makeBoardAdapter } from "@/components/sprint-board/row-actions/adapter";
 import { saveStoryPoints, saveTicketMetadata } from "@/components/sprint-board/sprint-board-utils";
 import { apiFetch } from "@/lib/api-client";
 import {
@@ -58,7 +59,7 @@ describe("useTicketActions - handleBulkSetFlagged", () => {
     const mutateTickets = vi.fn();
     const showToast = vi.fn();
     const { result } = renderHook(() =>
-      useTicketActions({ apiTickets, mutateTickets, activeListKey: null, sprintNameMap: {}, showToast }),
+      useTicketActions({ adapter: makeBoardAdapter(apiTickets, mutateTickets, null, {}), showToast }),
     );
     return { result, mutateTickets, showToast };
   }
@@ -128,7 +129,7 @@ describe("useTicketActions - handleStoryPointsChange readiness transition", () =
     const mutateTickets = vi.fn();
     const showToast = vi.fn();
     const { result } = renderHook(() =>
-      useTicketActions({ apiTickets, mutateTickets, activeListKey: null, sprintNameMap: {}, showToast }),
+      useTicketActions({ adapter: makeBoardAdapter(apiTickets, mutateTickets, null, {}), showToast }),
     );
     // Seed the optimistic readiness map from the API tickets, as the board does.
     act(() => result.current.syncFromApiTickets(apiTickets));
@@ -194,7 +195,7 @@ describe("useTicketActions - capacity meter refresh on estimate change", () => {
 
   function setup() {
     const { result } = renderHook(() =>
-      useTicketActions({ apiTickets: [], mutateTickets: vi.fn(), activeListKey: null, sprintNameMap: {}, showToast: vi.fn() }),
+      useTicketActions({ adapter: makeBoardAdapter([], vi.fn(), null, {}), showToast: vi.fn() }),
     );
     return { result };
   }
@@ -232,7 +233,7 @@ describe("useTicketActions - handleBulkMoveSprint", () => {
     const mutateTickets = vi.fn();
     const showToast = vi.fn();
     const { result } = renderHook(() =>
-      useTicketActions({ apiTickets, mutateTickets, activeListKey, sprintNameMap, showToast }),
+      useTicketActions({ adapter: makeBoardAdapter(apiTickets, mutateTickets, activeListKey, sprintNameMap), showToast }),
     );
     return { result, mutateTickets, showToast };
   }
@@ -376,7 +377,7 @@ describe("useTicketActions - handleAssigneeChange", () => {
     const mutateTickets = vi.fn();
     const showToast = vi.fn();
     const { result } = renderHook(() =>
-      useTicketActions({ apiTickets, mutateTickets, activeListKey: null, sprintNameMap: {}, showToast }),
+      useTicketActions({ adapter: makeBoardAdapter(apiTickets, mutateTickets, null, {}), showToast }),
     );
     return { result, mutateTickets, showToast };
   }
@@ -436,7 +437,7 @@ describe("useTicketActions - handleJiraStatusChange (BRDG-357)", () => {
     const mutateTickets = vi.fn();
     const showToast = vi.fn();
     const { result } = renderHook(() =>
-      useTicketActions({ apiTickets, mutateTickets, activeListKey: null, sprintNameMap: {}, showToast }),
+      useTicketActions({ adapter: makeBoardAdapter(apiTickets, mutateTickets, null, {}), showToast }),
     );
     return { result, mutateTickets, showToast };
   }
@@ -484,7 +485,7 @@ describe("useTicketActions - handleBulkSetStatus (BRDG-357)", () => {
     const mutateTickets = vi.fn();
     const showToast = vi.fn();
     const { result } = renderHook(() =>
-      useTicketActions({ apiTickets, mutateTickets, activeListKey: null, sprintNameMap: {}, showToast }),
+      useTicketActions({ adapter: makeBoardAdapter(apiTickets, mutateTickets, null, {}), showToast }),
     );
     return { result, mutateTickets, showToast };
   }
@@ -541,7 +542,7 @@ describe("useTicketActions - syncFromApiTickets reconciliation (BRDG-334)", () =
     const mutateTickets = vi.fn();
     const showToast = vi.fn();
     const { result } = renderHook(() =>
-      useTicketActions({ apiTickets, mutateTickets, activeListKey: null, sprintNameMap: {}, showToast }),
+      useTicketActions({ adapter: makeBoardAdapter(apiTickets, mutateTickets, null, {}), showToast }),
     );
     return { result };
   }
@@ -590,7 +591,7 @@ describe("useTicketActions - handleBulkSetEpic", () => {
     const mutateTickets = vi.fn();
     const showToast = vi.fn();
     const { result } = renderHook(() =>
-      useTicketActions({ apiTickets, mutateTickets, activeListKey: null, sprintNameMap: {}, showToast }),
+      useTicketActions({ adapter: makeBoardAdapter(apiTickets, mutateTickets, null, {}), showToast }),
     );
     return { result, mutateTickets, showToast };
   }
@@ -643,7 +644,7 @@ describe("useTicketActions - board edits opt out of the list-cache patch (BRDG-3
 
   function setup() {
     const { result } = renderHook(() =>
-      useTicketActions({ apiTickets: [], mutateTickets: vi.fn(), activeListKey: LIST_KEY, sprintNameMap: {}, showToast: vi.fn() }),
+      useTicketActions({ adapter: makeBoardAdapter([], vi.fn(), LIST_KEY, {}), showToast: vi.fn() }),
     );
     return { result };
   }

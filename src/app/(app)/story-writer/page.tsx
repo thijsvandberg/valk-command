@@ -23,6 +23,7 @@ import { Toast } from "@/components/ui/Toast";
 import { BoardRow } from "@/components/sprint-board/BoardRow";
 import type { InlineTagId } from "@/components/sprint-board/filter-bar-types";
 import { useTicketActions } from "@/components/sprint-board/useTicketActions";
+import { makeBoardAdapter } from "@/components/sprint-board/row-actions/adapter";
 import { mapJiraSprints } from "@/components/sprint-board/sprint-board-utils";
 import { useToast } from "@/hooks/useToast";
 import { useJiraSprints } from "@/hooks/useSprintBoard";
@@ -79,12 +80,8 @@ export default function StoryWriterLandingPage() {
 
   const sessionTickets = (tickets ?? []) as SessionTicket[];
 
-  const ta = useTicketActions({
-    apiTickets: tickets,
-    mutateTickets: mutate,
-    activeListKey: SESSIONS_KEY,
-    showToast,
-  });
+  const taAdapter = useMemo(() => makeBoardAdapter(tickets, mutate, SESSIONS_KEY, {}), [tickets, mutate]);
+  const ta = useTicketActions({ adapter: taAdapter, showToast });
 
   // Seed the readiness/PO map from the loaded rows: BoardRow reads the readiness pill
   // segment from this map, not from ticket.readiness directly.

@@ -49,6 +49,7 @@ import { usePendingTicketEdits, applyPendingEdits, clearPendingEdit, valuesMatch
 import { sprintMoveToastContent } from "@/components/sprint-board/sprintMoveToast";
 import { useSprintBoardShortcuts } from "@/components/sprint-board/useSprintBoardShortcuts";
 import { useTicketActions } from "@/components/sprint-board/useTicketActions";
+import { makeBoardAdapter } from "@/components/sprint-board/row-actions/adapter";
 import { SprintBoardHeader } from "@/components/sprint-board/SprintBoardHeader";
 import { DragGhostOverlay } from "@/components/sprint-board/DragGhostOverlay";
 import { SprintDropZoneBar, snapToPointer, boardCollisionDetection } from "@/components/sprint-board/SprintBoardDragDrop";
@@ -353,7 +354,11 @@ export default function SprintBoard() {
   }, [sprints]);
 
   // Ticket actions hook (must be before useSprintBoardFilters which needs readinessMap)
-  const ta = useTicketActions({ apiTickets, mutateTickets, activeListKey, sprintNameMap, showToast });
+  const boardAdapter = useMemo(
+    () => makeBoardAdapter(apiTickets, mutateTickets, activeListKey, sprintNameMap),
+    [apiTickets, mutateTickets, activeListKey, sprintNameMap],
+  );
+  const ta = useTicketActions({ adapter: boardAdapter, showToast });
   const { poStatuses, readinessMap, inflightKeys } = ta;
   // Stable useCallback refs from the actions hook, aliased so the local bulk
   // wrappers below can depend on them directly. Depending on `ta` itself would
