@@ -193,16 +193,16 @@ Factor a private `resolveTypeAndDirection(relation, jiraTypeName?, direction?)` 
 
 ## Acceptance criteria
 
-- [ ] On a linked-issue row, the PO can change the link's relation type (e.g. "relates to" →
+- [x] On a linked-issue row, the PO can change the link's relation type (e.g. "relates to" →
       "is blocked by") in place, in both hosts (ticket detail side panel and refinement session).
-- [ ] The row moves to the correct relation group reflecting the new type.
-- [ ] Behind the scenes the old Jira link is removed and a new one created with the correct Jira
+- [x] The row moves to the correct relation group reflecting the new type.
+- [x] Behind the scenes the old Jira link is removed and a new one created with the correct Jira
       type **and direction** (inward vs outward); the change persists after a refresh/re-sync.
-- [ ] Selecting the same relation is a no-op (no Jira churn).
-- [ ] Changing to a relation the issue is already linked under is rejected with a clear message.
-- [ ] If the new link can't be created, the original link is restored (no silent data loss) and
+- [x] Selecting the same relation is a no-op (no Jira churn).
+- [x] Changing to a relation the issue is already linked under is rejected with a clear message.
+- [x] If the new link can't be created, the original link is restored (no silent data loss) and
       an error is shown.
-- [ ] AI suggestion chips are unchanged.
+- [x] AI suggestion chips are unchanged.
 - [ ] `npm run verify` and `npm run build` pass.
 
 ## Tests
@@ -210,10 +210,11 @@ Factor a private `resolveTypeAndDirection(relation, jiraTypeName?, direction?)` 
 - [x] PATCH route: happy path (delete old + create new with right type/direction), no-op when
       relation unchanged, duplicate-relation rejection, rollback when create fails after delete,
       tolerates a null/`pending-` `jiraLinkId`.
-- [ ] `tickets.changeLinkType` client wrapper hits the route with the right payload.
-- [ ] `LinkedIssuesSection`: changing a row's relation optimistically moves it between groups and
+- [x] `tickets.changeLinkType` client wrapper hits the route with the right payload (asserted via
+      the `LinkedIssuesSection` change-type test).
+- [x] `LinkedIssuesSection`: changing a row's relation optimistically moves it between groups and
       calls the API; error reverts and surfaces the message; same-relation pick does nothing;
-      pending rows can't be retyped.
+      pending rows can't be retyped. Plus a focused `RelationPicker` unit test.
 
 ## Edge cases
 

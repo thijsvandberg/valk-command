@@ -16,6 +16,7 @@ const mockSearchForLink = vi.fn();
 const mockSearchForLinkWithJira = vi.fn();
 const mockCreateLink = vi.fn();
 const mockDeleteLink = vi.fn();
+const mockChangeLinkType = vi.fn();
 const mockRecentlyUpdated = vi.fn();
 const mockGetRelatedSuggestions = vi.fn();
 vi.mock("@/lib/api-client", () => ({
@@ -24,6 +25,7 @@ vi.mock("@/lib/api-client", () => ({
     searchForLinkWithJira: (...args: unknown[]) => mockSearchForLinkWithJira(...args),
     createLink: (...args: unknown[]) => mockCreateLink(...args),
     deleteLink: (...args: unknown[]) => mockDeleteLink(...args),
+    changeLinkType: (...args: unknown[]) => mockChangeLinkType(...args),
     recentlyUpdated: (...args: unknown[]) => mockRecentlyUpdated(...args),
     getRelatedSuggestions: (...args: unknown[]) => mockGetRelatedSuggestions(...args),
   },
@@ -423,6 +425,87 @@ describe("LinkedIssuesSection", () => {
       render(<LinkedIssuesSection issues={SAMPLE_ISSUES} ticketKey="VPL-1" onMutate={vi.fn()} onSelectTicket={vi.fn()} activeKey="VPL-100" />);
       const row = screen.getByText("Existing linked issue").closest("div");
       expect(row?.className).toContain("brand-600");
+    });
+  });
+
+  // BRDG-385: change a linked issue's relation type in place.
+  describe("change link type (BRDG-385)", () => {
+    function openChangeType() {
+      fireEvent.click(screen.getByTitle("Change link type"));
+    }
+
+    it("optimistically moves the row to the new group and calls changeLinkType with the resolved type", async () => {
+      mockChangeLinkType.mockResolvedValue({
+        key: "VPL-100", title: "Existing linked issue", type: "story", jiraStatus: "IN PROGRESS", assignee: null, relation: "is blocked by",
+      });
+      const { onMutate } = renderSection(SAMPLE_ISSUES, { openLink: false });
+
+      openChangeType();
+      fireEvent.mouseDown(screen.getByText("Is blocked by"));
+
+      expect(mockChangeLinkType).toHaveBeenCalledWith("VPL-1", {
+        jiraLinkId: "link-1",
+        linkedKey: "VPL-100",
+        currentRelation: "relates to",
+        relation: "is blocked by",
+        jiraTypeName: "Blocks",
+        direction: "inward",
+      });
+
+      // Row moves to the "is blocked by" group; the old "relates to" group disappears.
+      await waitFor(() => {
+        expect(screen.getByText("is blocked by")).toBeInTheDocument();
+        expect(screen.queryByText("relates to")).toBeNull();
+      });
+      await waitFor(() => expect(onMutate).toHaveBeenCalled());
+    });
+
+    it("reverts the move and surfaces an error when the change fails", async () => {
+      mockChangeLinkType.mockRejectedValue(new Error("boom"));
+      renderSection(SAMPLE_ISSUES, { openLink: false });
+
+      openChangeType();
+      fireEvent.mouseDown(screen.getByText("Is blocked by"));
+
+      await waitFor(() => {
+        expect(screen.getByText("Failed to change link type for VPL-100")).toBeInTheDocument();
+      });
+      // Reverted: the row is back under its original "relates to" group.
+      expect(screen.getByText("relates to")).toBeInTheDocument();
+    });
+
+    it("does nothing when the same relation is picked", () => {
+      renderSection(SAMPLE_ISSUES, { openLink: false });
+
+      openChangeType();
+      // The picker's filter input confirms it is open.
+      expect(screen.getByPlaceholderText("Filter...")).toBeInTheDocument();
+      fireEvent.mouseDown(screen.getByText("Relates to"));
+
+      expect(mockChangeLinkType).not.toHaveBeenCalled();
+      // Picker closes after the no-op pick.
+      expect(screen.queryByPlaceholderText("Filter...")).toBeNull();
+    });
+
+    it("rejects changing to a relation the issue is already linked under", () => {
+      const issues: LinkedIssue[] = [
+        { ...SAMPLE_ISSUES[0] },
+        { ...SAMPLE_ISSUES[0], relation: "blocks", jiraLinkId: "link-2" },
+      ];
+      renderSection(issues, { openLink: false });
+
+      // Open the change-type editor on the "relates to" row (first Type button).
+      fireEvent.click(screen.getAllByTitle("Change link type")[0]);
+      fireEvent.mouseDown(screen.getByText("Blocks"));
+
+      expect(mockChangeLinkType).not.toHaveBeenCalled();
+      expect(screen.getByText('VPL-100 is already linked as "blocks"')).toBeInTheDocument();
+    });
+
+    it("does not offer a change-type action on pending rows", () => {
+      const pending: LinkedIssue = { ...SAMPLE_ISSUES[0], key: "VPL-101", title: "Pending issue", jiraLinkId: "pending-123" };
+      renderSection([pending], { openLink: false });
+      expect(screen.queryByTitle("Change link type")).toBeNull();
     });
   });
 });

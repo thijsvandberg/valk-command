@@ -237,6 +237,9 @@ export const tickets = {
     apiFetch<import("@/types/ticket").LinkedIssue>(`/api/tickets/${enc(key)}/links`, { method: "POST", body: data, signal }),
   deleteLink: (key: string, data: { jiraLinkId?: string; linkedKey: string; relation?: string }, signal?: AbortSignal) =>
     apiFetch<void>(`/api/tickets/${enc(key)}/links`, { method: "DELETE", body: data, signal }),
+  // Change the relation TYPE of an existing link (delete old + create new, server-side).
+  changeLinkType: (key: string, data: { jiraLinkId?: string; linkedKey: string; currentRelation: string; relation: string; jiraTypeName?: string; direction?: "inward" | "outward" }, signal?: AbortSignal) =>
+    apiFetch<import("@/types/ticket").LinkedIssue>(`/api/tickets/${enc(key)}/links`, { method: "PATCH", body: data, signal }),
 
   // Related suggestions (AI-powered)
   getRelatedSuggestions: (key: string, signal?: AbortSignal) =>

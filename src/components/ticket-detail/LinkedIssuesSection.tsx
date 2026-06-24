@@ -19,7 +19,8 @@ import { ScrollSentinel } from "./ScrollSentinel";
 import { tickets } from "@/lib/api-client";
 import { useTaskStream } from "@/hooks/useTaskStream";
 import { friendlyStreamError, isRetryableStreamError } from "@/lib/agent-errors";
-import { X, Sparkles, Loader2, Link2, ChevronDown, Maximize2, Clock, Plus, MoreHorizontal } from "lucide-react";
+import { RelationPicker } from "./RelationPicker";
+import { X, Sparkles, Loader2, Link2, ChevronDown, Maximize2, Clock, Plus, MoreHorizontal, ArrowLeftRight } from "lucide-react";
 
 interface LinkedIssuesSectionProps {
   issues: TicketDetail["linkedIssues"];
@@ -47,6 +48,27 @@ function DeleteButton({ onClick }: { onClick: () => void }) {
   );
 }
 
+function ChangeTypeButton({ onClick, active, disabled }: { onClick: () => void; active: boolean; disabled: boolean }) {
+  return (
+    <button
+      type="button"
+      onClick={(e) => { e.stopPropagation(); onClick(); }}
+      disabled={disabled}
+      aria-pressed={active}
+      className={`flex shrink-0 cursor-pointer items-center gap-1 rounded-md px-2 py-1 text-[11px] font-medium focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-[var(--color-brand-400)] disabled:cursor-not-allowed disabled:opacity-60 ${
+        active
+          ? "bg-[var(--color-brand-500)]/[0.08] text-[var(--color-brand-400)]"
+          : "text-text-muted hover:bg-overlay-subtle hover:text-text-secondary active:bg-overlay-default"
+      }`}
+      style={{ transition: "background-color 0.15s ease, color 0.15s ease" }}
+      title="Change link type"
+    >
+      {disabled ? <Loader2 size={13} strokeWidth={2} className="animate-spin" /> : <ArrowLeftRight size={13} strokeWidth={2} />}
+      <span>Type</span>
+    </button>
+  );
+}
+
 export function LinkedIssuesSection({ issues, ticketKey, onMutate, onSelectTicket, activeKey }: LinkedIssuesSectionProps) {
   const { linkTypes } = useLinkTypes();
   // The shared board list lets linked rows refresh from live ticket data instead
@@ -63,13 +85,15 @@ export function LinkedIssuesSection({ issues, ticketKey, onMutate, onSelectTicke
   // Inline link input state
   const [inlineRelation, setInlineRelation] = useState("relates to");
   const [inlineRelationOpen, setInlineRelationOpen] = useState(false);
-  const [inlineRelationFilter, setInlineRelationFilter] = useState("");
-  const [inlineRelationHighlight, setInlineRelationHighlight] = useState(-1);
   const inlineRelationRef = useRef<HTMLDivElement>(null);
-  const inlineRelationFilterRef = useRef<HTMLInputElement>(null);
   const [inlinePending, setInlinePending] = useState<LinkedIssue[]>([]);
   const [inlineError, setInlineError] = useState<string | null>(null);
   const [deletingKeys, setDeletingKeys] = useState<Set<string>>(new Set());
+  // Per-row change-type editor (BRDG-385): which row's relation picker is open (composite
+  // "key:relation"), and which rows have a retype in flight (disables their action).
+  const [editingKey, setEditingKey] = useState<string | null>(null);
+  const [retypingKeys, setRetypingKeys] = useState<Set<string>>(new Set());
+  const editPanelRef = useRef<HTMLDivElement>(null);
   const [inlineFocused, setInlineFocused] = useState(false);
   const inlineInputRef = useRef<HTMLInputElement>(null);
   // Which create composer is open (BRDG-315): null = closed, "__bottom__" = the header "+", or a
@@ -141,6 +165,7 @@ export function LinkedIssuesSection({ issues, ticketKey, onMutate, onSelectTicke
   })();
 
   useOutsideClick(inlineRelationRef, () => setInlineRelationOpen(false), { enabled: inlineRelationOpen, escapeClose: false });
+  useOutsideClick(editPanelRef, () => setEditingKey(null), { enabled: editingKey !== null, escapeClose: false });
 
   useEffect(() => {
     if (!inlineRelationOpen) return;
@@ -286,6 +311,55 @@ export function LinkedIssuesSection({ issues, ticketKey, onMutate, onSelectTicke
       console.error("Failed to delete link:", err);
     }
   }, [ticketKey, onMutate]);
+
+  // Change the relation type of an existing link (BRDG-385). Jira can't edit a link's type,
+  // so the server deletes + recreates; here we optimistically move the row to the new relation
+  // group and revert if the call fails.
+  const handleChangeType = useCallback((item: LinkedIssue, newRelation: string) => {
+    if (newRelation === item.relation) {
+      setEditingKey(null);
+      return;
+    }
+    const alreadyLinked = issues.some((i) => i.key === item.key && i.relation === newRelation)
+      || inlinePending.some((i) => i.key === item.key && i.relation === newRelation);
+    if (alreadyLinked) {
+      setInlineError(`${item.key} is already linked as "${newRelation}"`);
+      return;
+    }
+
+    setEditingKey(null);
+    setInlineError(null);
+
+    const oldComposite = `${item.key}:${item.relation}`;
+    const newComposite = `${item.key}:${newRelation}`;
+
+    // Optimistic move: hide the row in its old group, surface a placeholder in the new one.
+    // Both overlays self-prune once the parent refetch lands (same pattern as inline create).
+    setDeletingKeys((prev) => new Set(prev).add(oldComposite));
+    setInlinePending((prev) => [...prev, { ...item, relation: newRelation }]);
+    setRetypingKeys((prev) => new Set(prev).add(newComposite));
+
+    const linkTypeInfo = linkTypes.find((lt) => lt.value === newRelation);
+    tickets.changeLinkType(ticketKey, {
+      jiraLinkId: item.jiraLinkId,
+      linkedKey: item.key,
+      currentRelation: item.relation,
+      relation: newRelation,
+      jiraTypeName: linkTypeInfo?.jiraTypeName,
+      direction: linkTypeInfo?.direction,
+    })
+      .then(() => {
+        onMutate();
+        setRetypingKeys((prev) => { const next = new Set(prev); next.delete(newComposite); return next; });
+      })
+      .catch((err) => {
+        setDeletingKeys((prev) => { const next = new Set(prev); next.delete(oldComposite); return next; });
+        setInlinePending((prev) => prev.filter((p) => !(p.key === item.key && p.relation === newRelation)));
+        setRetypingKeys((prev) => { const next = new Set(prev); next.delete(newComposite); return next; });
+        setInlineError(`Failed to change link type for ${item.key}`);
+        console.error("Failed to change link type:", err);
+      });
+  }, [issues, inlinePending, linkTypes, ticketKey, onMutate]);
 
   const handleLinkCreated = useCallback(() => {
     setShowLinkDialog(false);
@@ -494,16 +568,7 @@ export function LinkedIssuesSection({ issues, ticketKey, onMutate, onSelectTicke
           <div ref={inlineRelationRef} className="relative shrink-0">
             <button
               type="button"
-              onClick={() => {
-                setInlineRelationOpen((v) => {
-                  if (!v) {
-                    setInlineRelationFilter("");
-                    setInlineRelationHighlight(-1);
-                    requestAnimationFrame(() => inlineRelationFilterRef.current?.focus());
-                  }
-                  return !v;
-                });
-              }}
+              onClick={() => setInlineRelationOpen((v) => !v)}
               className="flex items-center gap-1 rounded-md border border-border-default bg-overlay-subtle px-2 py-1 text-label font-medium text-text-secondary cursor-pointer hover:bg-overlay-default hover:border-border-strong active:bg-overlay-strong transition-colors duration-150"
             >
               <Link2 size={11} strokeWidth={1.5} className="shrink-0 text-text-muted" />
@@ -513,70 +578,17 @@ export function LinkedIssuesSection({ issues, ticketKey, onMutate, onSelectTicke
               <ChevronDown size={10} strokeWidth={2} className="text-text-muted" />
             </button>
             {inlineRelationOpen && (
-              <div
-                className="absolute left-0 top-full z-50 mt-1 w-56 rounded-lg border border-border-strong bg-[var(--color-surface-elevated)] shadow-[var(--shadow-lg)]"
-              >
-                <div className="px-2 pt-2 pb-1">
-                  <input
-                    ref={inlineRelationFilterRef}
-                    type="text"
-                    value={inlineRelationFilter}
-                    onChange={(e) => { setInlineRelationFilter(e.target.value); setInlineRelationHighlight(0); }}
-                    onKeyDown={(e) => {
-                      const filtered = linkTypes.filter((opt) => !inlineRelationFilter || opt.label.toLowerCase().includes(inlineRelationFilter.toLowerCase()));
-                      if (e.key === "ArrowDown") {
-                        e.preventDefault();
-                        setInlineRelationHighlight((i) => Math.min(i + 1, filtered.length - 1));
-                      } else if (e.key === "ArrowUp") {
-                        e.preventDefault();
-                        setInlineRelationHighlight((i) => Math.max(i - 1, 0));
-                      } else if (e.key === "Enter") {
-                        e.preventDefault();
-                        const idx = inlineRelationHighlight >= 0 ? inlineRelationHighlight : 0;
-                        if (idx < filtered.length) {
-                          setInlineRelation(filtered[idx].value);
-                          setInlineRelationOpen(false);
-                          requestAnimationFrame(() => inlineInputRef.current?.focus());
-                        }
-                      } else if (e.key === "Escape") {
-                        e.stopPropagation();
-                        setInlineRelationOpen(false);
-                      }
-                    }}
-                    placeholder="Filter..."
-                    className="w-full rounded-md border border-border-default bg-[var(--color-surface-default)] px-2 py-1 text-body-sm text-text-primary placeholder:text-text-muted outline-none focus:border-[var(--color-brand-500)]/50"
-                  />
-                </div>
-                <div
-                  className="max-h-52 overflow-y-auto py-1"
-                  style={{ scrollbarWidth: "thin", scrollbarColor: "var(--color-overlay-strong) transparent" }}
-                >
-                  {linkTypes
-                    .filter((opt) => !inlineRelationFilter || opt.label.toLowerCase().includes(inlineRelationFilter.toLowerCase()))
-                    .map((opt, idx) => (
-                    <button
-                      key={opt.value}
-                      type="button"
-                      onMouseDown={(e) => {
-                        e.preventDefault();
-                        setInlineRelation(opt.value);
-                        setInlineRelationOpen(false);
-                        requestAnimationFrame(() => inlineInputRef.current?.focus());
-                      }}
-                      onMouseEnter={() => setInlineRelationHighlight(idx)}
-                      className={`flex w-full items-center px-3 py-1.5 text-body-sm cursor-pointer transition-colors duration-150 ${
-                        idx === inlineRelationHighlight
-                          ? "text-[var(--color-brand-400)] bg-[var(--color-brand-500)]/[0.08]"
-                          : inlineRelation === opt.value
-                            ? "text-[var(--color-brand-400)]"
-                            : "text-text-secondary hover:bg-hover-interactive hover:text-text-primary"
-                      }`}
-                    >
-                      {opt.label}
-                    </button>
-                  ))}
-                </div>
-              </div>
+              <RelationPicker
+                value={inlineRelation}
+                linkTypes={linkTypes}
+                onSelect={(v) => {
+                  setInlineRelation(v);
+                  setInlineRelationOpen(false);
+                  requestAnimationFrame(() => inlineInputRef.current?.focus());
+                }}
+                onClose={() => setInlineRelationOpen(false)}
+                className="absolute left-0 top-full z-50 mt-1 w-56"
+              />
             )}
           </div>
           <input
@@ -743,10 +755,11 @@ export function LinkedIssuesSection({ issues, ticketKey, onMutate, onSelectTicke
               <div className="overflow-hidden rounded-lg border border-border-default">
                 {items.map((item, idx) => {
                   const isPending = item.jiraLinkId?.startsWith("pending-");
+                  const composite = `${item.key}:${item.relation}`;
 
                   return (
                     <LinkedIssueRow
-                      key={item.key}
+                      key={composite}
                       item={item}
                       isLast={idx === items.length - 1}
                       isPending={Boolean(isPending)}
@@ -754,12 +767,40 @@ export function LinkedIssuesSection({ issues, ticketKey, onMutate, onSelectTicke
                       isActive={item.key === activeKey}
                       boardTicket={boardTicketByKey.get(item.key)}
                       actionsSlot={!isPending ? (
-                        <DeleteButton onClick={() => handleDelete(item)} />
+                        <>
+                          <ChangeTypeButton
+                            onClick={() => setEditingKey((cur) => (cur === composite ? null : composite))}
+                            active={editingKey === composite}
+                            disabled={retypingKeys.has(composite)}
+                          />
+                          <DeleteButton onClick={() => handleDelete(item)} />
+                        </>
                       ) : undefined}
                     />
                   );
                 })}
               </div>
+              {/* Per-row change-type editor (BRDG-385): rendered under the group, not in the
+                  hover-only actions overlay, so its picker stays open and unclipped. */}
+              {(() => {
+                const editingItem = items.find((i) => `${i.key}:${i.relation}` === editingKey);
+                if (!editingItem) return null;
+                return (
+                  <div ref={editPanelRef} className="mt-2 rounded-lg bg-[var(--color-surface-chrome)]/40 p-3">
+                    <div className="mb-1.5 flex items-center gap-1.5 text-label font-medium uppercase tracking-wider text-text-muted">
+                      <ArrowLeftRight size={11} strokeWidth={1.5} />
+                      <span>Change link type for <span className="font-mono normal-case text-text-secondary">{editingItem.key}</span></span>
+                    </div>
+                    <RelationPicker
+                      value={editingItem.relation}
+                      linkTypes={linkTypes}
+                      onSelect={(v) => handleChangeType(editingItem, v)}
+                      onClose={() => setEditingKey(null)}
+                      className="w-full max-w-[260px]"
+                    />
+                  </div>
+                );
+              })()}
               {composerAt === relation && linkComposer}
             </div>
           ))}
@@ -768,6 +809,14 @@ export function LinkedIssuesSection({ issues, ticketKey, onMutate, onSelectTicke
 
       {/* Header "+" opens the composer at the bottom; a group "+" opens it within that group. */}
       {composerAt === "__bottom__" && linkComposer}
+
+      {/* Row-level action errors (delete, change-type) surface here when the composer that
+          normally hosts the inline error isn't open, so they're never silently swallowed. */}
+      {inlineError && composerAt === null && (
+        <div className="mt-3 rounded-lg border border-red-500/30 bg-red-500/[0.06] px-3 py-2 text-body-sm text-red-400/90">
+          {inlineError}
+        </div>
+      )}
 
       <RelatedSuggestions
         suggestions={suggestions}
