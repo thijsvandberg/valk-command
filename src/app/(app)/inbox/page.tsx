@@ -28,7 +28,9 @@ import { useInboxGroupBy } from "@/components/sprint-board/useInboxGroupBy";
 import { INBOX_SORT_OPTIONS } from "@/components/sprint-board/filter-bar-types";
 import { saveTicketMetadata, mapJiraSprints } from "@/components/sprint-board/sprint-board-utils";
 import { buildTeamMap } from "@/lib/new-stories-grouping";
-import { poUsers, userTeams } from "@/lib/api-client";
+import { poUsers, userTeams, refinementSessions } from "@/lib/api-client";
+import { useRefinementSessions } from "@/hooks/useRefinementSessions";
+import { sessionLabel, compareSessions } from "@/components/refinement-session/refinement-utils";
 import { useDefaultTeam } from "@/hooks/useDefaultTeam";
 import { CONTENT_MAX } from "@/lib/layout";
 import { relativeDate } from "@/lib/date-utils";
@@ -155,7 +157,9 @@ export default function InboxPage() {
     pinnedSprintIds,
     backlogTargetName,
     showToast,
-    flagSource: "mixed",
+    // Inbox rows are unflagged new stories (rowToTicket carries flagged:false), so the
+    // menu offers only "Flag" - "Remove flag" appears only once a row is actually flagged.
+    flagSource: "ticket",
     currentSprintName: (key) => (key in localMoves ? localMoves[key] : (rows.find((r) => r.key === key)?.sprintName ?? null)),
     injectSprint: (sprint) =>
       mutateSprints(
@@ -167,6 +171,37 @@ export default function InboxPage() {
       ),
   });
   const { rowMenu, quickCreate } = ra;
+
+  // Refinement sessions for the "Add to refinement" picker, matching the board: only
+  // not-completed sessions, labelled / sorted / counted exactly like /refinement.
+  const { sessions: refinementSessionList, mutate: mutateRefinementSessions } = useRefinementSessions();
+  const refinementOptions = useMemo(
+    () =>
+      (refinementSessionList ?? [])
+        .filter((s) => s.status !== "completed")
+        .sort(compareSessions)
+        .map((s) => ({ id: s.id, name: sessionLabel(s), count: s.ticketCount })),
+    [refinementSessionList],
+  );
+  const handleAddToRefinement = useCallback(
+    async (sessionId: string, targets: Set<string>) => {
+      const session = refinementSessionList?.find((s) => s.id === sessionId);
+      if (!session) return;
+      const keys = [...targets];
+      const nextKeys = [...new Set([...session.ticketKeys, ...keys])];
+      const optimistic = refinementSessionList!.map((s) => (s.id === sessionId ? { ...s, ticketKeys: nextKeys, ticketCount: nextKeys.length } : s));
+      try {
+        await mutateRefinementSessions(
+          async () => { await refinementSessions.update(sessionId, { ticketKeys: nextKeys }); return refinementSessions.list(); },
+          { optimisticData: optimistic, rollbackOnError: true, revalidate: true },
+        );
+        showToast(`Added ${keys.length} issue${keys.length === 1 ? "" : "s"} to "${sessionLabel(session)}"`);
+      } catch {
+        showToast(`Couldn't add to "${sessionLabel(session)}"`);
+      }
+    },
+    [refinementSessionList, mutateRefinementSessions, showToast],
+  );
 
   const {
     filteredRows,
@@ -523,6 +558,8 @@ export default function InboxPage() {
                     onGenerateSubtasks={() => ra.handleBulkGenerate()}
                     isGeneratingSubtasks={ra.isGeneratingSubtasks}
                     onCopyToClipboard={() => ra.copySelected()}
+                    refinements={refinementOptions}
+                    onAddToRefinement={(id) => handleAddToRefinement(id, checkedKeys)}
                     onRefine={() => ra.openRefine([...checkedKeys])}
                   />
                 </div>
@@ -566,6 +603,8 @@ export default function InboxPage() {
             flagState={ra.computeFlagState(rowMenu.targets)}
             onReviewStory={() => ra.handleBulkReview(rowMenu.targets)}
             onGenerateSubtasks={() => ra.handleBulkGenerate(rowMenu.targets)}
+            refinements={refinementOptions}
+            onAddToRefinement={(id) => handleAddToRefinement(id, rowMenu.targets)}
             onRefine={() => ra.openRefine([...rowMenu.targets])}
             sprints={sprints}
             pinnedSprintIds={pinnedSprintIds}
