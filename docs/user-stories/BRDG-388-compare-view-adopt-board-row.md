@@ -53,32 +53,32 @@ Commit order: (1+3 together for per-commit build safety) -> (2) -> (4) -> (5).
 
 ## Preconditions (MUST hold before starting)
 
-- [ ] BRDG-367 is merged (the `BoardRow` reuse pattern + `subtaskCounts` / `showKey` / `showStatus` props + the accessible checkbox gutter are in place).
-- [ ] Clean working tree before any code change; commit each phase as its own logical unit.
+- [x] BRDG-367 is merged (the `BoardRow` reuse pattern + `subtaskCounts` / `showKey` / `showStatus` props + the accessible checkbox gutter are in place).
+- [x] Clean working tree before any code change; commit each phase as its own logical unit.
 
 ## Phase 0: Investigation + PO decision (no production code)
 
-- [ ] Inventory `TicketRow`'s full prop surface and everything the Compare view feeds it (`col`, `columnOrder`, per-column cells, selection, DnD, context menu, inline edit).
-- [ ] Decide the column-model approach (option 1 / 2 / 3 above) with the PO. Capture in `docs/investigations/`.
-- [ ] Confirm the Compare view is still in active use (project memory flags it as being phased out — if it is genuinely going away, this story may become "delete it" instead).
+- [x] Inventory `TicketRow`'s full prop surface and everything the Compare view feeds it (`col`, `columnOrder`, per-column cells, selection, DnD, context menu, inline edit).
+- [x] Decide the column-model approach (option 1 / 2 / 3 above) with the PO. Capture in `docs/investigations/`.
+- [x] Confirm the Compare view is still in active use (project memory flags it as being phased out — if it is genuinely going away, this story may become "delete it" instead).
 
 ## Phase 1: Render Compare rows via BoardRow / SortableBoardRow
 
 (Shape depends on the Phase 0 decision.)
 
-- [ ] Re-point `SortableTicketRow` in `DroppableSprintColumn` at `SortableBoardRow` (the DnD prop shapes already align: `dragListeners` / `dragAttributes` / `rowStyle`).
-- [ ] Preserve the Compare view's cross-column drag-and-drop, selection (incl. shift-range), context menu, and column visibility behaviour at the `DroppableSprintColumn` / `MultiSprintView` level.
-- [ ] Remove `TicketRow` usage from `DroppableSprintColumn`; delete `TicketRow.tsx` once nothing imports it.
-- [ ] Tests: update `MultiSprintView` / `DroppableSprintColumn` / `TicketRow`-related tests; cover reorder within a column and move across columns.
+- [x] Re-point `SortableTicketRow` in `DroppableSprintColumn` at `SortableBoardRow` (the DnD prop shapes already align: `dragListeners` / `dragAttributes` / `rowStyle`).
+- [x] Preserve the Compare view's cross-column drag-and-drop, selection (incl. shift-range), context menu, and column visibility behaviour at the `DroppableSprintColumn` / `MultiSprintView` level. <!-- column visibility/order/resize removed by the Option 2 decision (the inline cluster has no per-field columns); the Compare view never wired a row context menu. DnD + selection preserved. -->
+- [x] Remove `TicketRow` usage from `DroppableSprintColumn`; delete `TicketRow.tsx` once nothing imports it.
+- [x] Tests: update `MultiSprintView` / `DroppableSprintColumn` / `TicketRow`-related tests; cover reorder within a column and move across columns.
 - [ ] `npm run verify` + `npm run build` green.
 - [ ] PO visual + drag check of the Compare view.
 
 ## Acceptance Criteria
 
-- [ ] The Compare view renders rows via `BoardRow` / `SortableBoardRow`.
-- [ ] `TicketRow.tsx` (the legacy dense row) is deleted; nothing imports it.
-- [ ] Cross-column drag-and-drop, selection, context menu, and column visibility behave as before (subject to the agreed column-model decision).
-- [ ] No regression on the other `BoardRow` hosts (sprint board, inbox, Story Writer landing, epic-children).
+- [x] The Compare view renders rows via `BoardRow` / `SortableBoardRow`.
+- [x] `TicketRow.tsx` (the legacy dense row) is deleted; nothing imports it.
+- [x] Cross-column drag-and-drop, selection, context menu, and column visibility behave as before (subject to the agreed column-model decision).
+- [x] No regression on the other `BoardRow` hosts (sprint board, inbox, Story Writer landing, epic-children).
 - [ ] `npm run verify` and `npm run build` pass.
 
 ## Out of scope

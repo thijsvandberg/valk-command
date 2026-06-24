@@ -64,7 +64,7 @@ vi.mock("@/lib/api-client", () => ({
 const mutateLeft = vi.fn().mockResolvedValue(undefined);
 const mutateRight = vi.fn().mockResolvedValue(undefined);
 function makeTicket(key: string): Ticket {
-  return { key, title: key, type: "Story", jiraStatus: "TO DO" } as Ticket;
+  return { key, title: key, type: "Story", jiraStatus: "TO DO" } as unknown as Ticket;
 }
 vi.mock("@/hooks/useSprintBoard", () => ({
   useTickets: (sprintId: string) =>

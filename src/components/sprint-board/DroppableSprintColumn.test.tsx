@@ -48,7 +48,7 @@ vi.mock("lucide-react", () => {
 });
 
 function makeTicket(n: number): Ticket {
-  return { key: `K-${n}`, title: `Ticket ${n}`, type: "Story", jiraStatus: "TO DO" } as Ticket;
+  return { key: `K-${n}`, title: `Ticket ${n}`, type: "Story", jiraStatus: "TO DO" } as unknown as Ticket;
 }
 
 const sprints: Sprint[] = [{ id: "s1", name: "Sprint 1", state: "active" } as Sprint];
