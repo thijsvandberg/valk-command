@@ -178,9 +178,22 @@ const FLYOUT_PANEL = "rounded-xl border border-border-default bg-[var(--color-su
  * `group-hover/fly` targets the nearest `group/fly` ancestor and hovering any
  * descendant keeps every ancestor hovered; the `pl-1` gap bridges trigger -> panel.
  */
-function Flyout({ icon, label, width = "w-[240px]", children }: { icon?: ReactNode; label: ReactNode; width?: string; children: ReactNode }) {
+// `nested` flyouts hold other flyouts (e.g. Update), so their panel must NOT clip:
+// overflow-y-auto computes overflow-x to auto too, which would cut off a child flyout
+// that opens beside it. Leaf flyouts keep overflow-y-auto so a long picker can scroll.
+function Flyout({ icon, label, width = "w-[240px]", nested = false, children }: { icon?: ReactNode; label: ReactNode; width?: string; nested?: boolean; children: ReactNode }) {
+  const ref = useRef<HTMLDivElement>(null);
+  const [side, setSide] = useState<"right" | "left">("right");
+  // Open to the left when the panel would run off the right edge (e.g. the bulk bar's
+  // dropdowns sit far right). Measured from the trigger's position on hover.
+  const placeSide = () => {
+    const el = ref.current;
+    if (!el) return;
+    const panelWidth = parseInt(/\d+/.exec(width)?.[0] ?? "240", 10);
+    setSide(window.innerWidth - el.getBoundingClientRect().right < panelWidth + 16 ? "left" : "right");
+  };
   return (
-    <div className="group/fly relative">
+    <div ref={ref} className="group/fly relative" onPointerEnter={placeSide}>
       <button
         type="button"
         className="flex w-full items-center gap-2.5 px-3 py-1.5 text-body-sm text-text-secondary cursor-pointer hover:bg-hover-list-item group-hover/fly:bg-hover-list-item"
@@ -189,8 +202,8 @@ function Flyout({ icon, label, width = "w-[240px]", children }: { icon?: ReactNo
         {label}
         <ChevronRight className="ml-auto h-3.5 w-3.5 text-text-muted" strokeWidth={1.5} />
       </button>
-      <div className="invisible absolute left-full top-0 z-20 pl-1 opacity-0 transition-opacity duration-100 group-hover/fly:visible group-hover/fly:opacity-100">
-        <div className={`${FLYOUT_PANEL} ${width} max-h-[min(70vh,440px)] overflow-y-auto py-1`}>{children}</div>
+      <div className={`invisible absolute top-0 z-20 opacity-0 transition-opacity duration-100 group-hover/fly:visible group-hover/fly:opacity-100 ${side === "left" ? "right-full pr-1" : "left-full pl-1"}`}>
+        <div className={`${FLYOUT_PANEL} ${width} ${nested ? "overflow-visible" : "max-h-[min(70vh,440px)] overflow-y-auto"} py-1`}>{children}</div>
       </div>
     </div>
   );
@@ -687,7 +700,7 @@ export function TicketActionMenuContent({
   // Root right-click menu, one divider between clusters: Triage · Move · (Flag + Update +
   // Assist) · Refinement. Update and Assist nest as hover flyouts.
   const updateGroup = hasUpdate ? (
-    <Flyout icon={<FilePen className="h-3.5 w-3.5" strokeWidth={1.5} />} label="Update" width="w-[220px]">
+    <Flyout icon={<FilePen className="h-3.5 w-3.5" strokeWidth={1.5} />} label="Update" width="w-[220px]" nested>
       {updateItems}
     </Flyout>
   ) : null;
