@@ -1,6 +1,6 @@
 # BRDG-387: Frontend memory guardrails — bound the SWR cache and stop over-fetching
 
-**Status:** To Do
+**Status:** Done (core shipped: bounded SWR cache + 2 scoped fetches + list-payload invariant + docs). Remaining acceptance items (4 of 6 `__all__` sites, grouped-board + remaining-list virtualization) are deferred and tracked in BRDG-391 / BRDG-392 / BRDG-393.
 **Priority:** High
 
 ## Description
