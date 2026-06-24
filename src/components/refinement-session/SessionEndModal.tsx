@@ -4,7 +4,7 @@ import { useState, useCallback, useEffect, useRef, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import { useRefinementSession } from "@/contexts/RefinementSessionContext";
 import { useRefinementSessions } from "@/hooks/useRefinementSessions";
-import { useTickets } from "@/hooks/useSprintBoard";
+import { useTicketsByKeysWithState } from "@/hooks/useSprintBoard";
 import { refinementSessions as refinementSessionsApi } from "@/lib/api-client";
 import type { RefinementSessionTicketNoteResponse } from "@/lib/api-client";
 import { Button } from "@/components/ui/Button";
@@ -45,7 +45,11 @@ export function SessionEndModal() {
     finishSession,
   } = useRefinementSession();
 
-  const { data: allTickets } = useTickets("__all__");
+  // Scope to the session's queue rather than the whole backlog (BRDG-391).
+  // ticketsLoading gates the one-time seeding effects below: useTicketsByKeys*
+  // returns [] (not undefined) before load, so a `!allTickets` gate would fire
+  // against empty data and the one-time refs would never re-seed.
+  const { tickets: allTickets, isLoading: ticketsLoading } = useTicketsByKeysWithState(queue);
   const { sessions, mutate: mutateSessions } = useRefinementSessions();
 
   // General comment state
@@ -123,7 +127,7 @@ export function SessionEndModal() {
   // they are visible and editable here. Runs once after both sources load.
   const seededPoNotesRef = useRef(false);
   useEffect(() => {
-    if (seededPoNotesRef.current || !commentLoaded || !allTickets) return;
+    if (seededPoNotesRef.current || !commentLoaded || ticketsLoading) return;
     seededPoNotesRef.current = true;
     const additions: Record<string, string> = {};
     for (const key of queue) {
@@ -139,7 +143,7 @@ export function SessionEndModal() {
       seededKeys.forEach((k) => next.add(k));
       return next;
     });
-  }, [commentLoaded, allTickets, queue]);
+  }, [commentLoaded, ticketsLoading, allTickets, queue]);
 
   // Notes auto-save on a debounce; saving/completing the session can navigate
   // away before that timer fires. Flush any pending note saves first so a note
@@ -221,7 +225,7 @@ export function SessionEndModal() {
   // the heuristic reads real estimates/subtask counts. Pre-checks every row the
   // session did not finish refining; the PO can override freely from there.
   useEffect(() => {
-    if (carrySeededRef.current || !allTickets) return;
+    if (carrySeededRef.current || ticketsLoading) return;
     carrySeededRef.current = true;
     const initial = new Set<string>();
     for (const row of ticketRows) {
@@ -232,7 +236,7 @@ export function SessionEndModal() {
       setCarriedKeys(initial);
       setCarryActive(true);
     }
-  }, [allTickets, ticketRows]);
+  }, [ticketsLoading, ticketRows]);
 
   // Candidate follow-up sessions: every ready session except this one.
   const targetSessions = useMemo(
