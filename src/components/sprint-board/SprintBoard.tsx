@@ -24,6 +24,7 @@ import { useJiraSprints, useTickets, useTicketDetail } from "@/hooks/useSprintBo
 import { useBacklogDropTarget } from "@/hooks/useBacklogDropTarget";
 import { computeQuickMoves, type QuickMoveOption } from "@/lib/quick-moves";
 import { useTicketSessionMap } from "@/hooks/useTicketSessionMap";
+import { sessionLabel, compareSessions } from "@/components/refinement-session/refinement-utils";
 import { useLocalStorage } from "@/hooks/useLocalStorage";
 import { useMigratedAccountSetting } from "@/hooks/useMigratedAccountSetting";
 import { usePencilCapacity } from "@/hooks/usePencilCapacity";
@@ -744,15 +745,16 @@ export default function SprintBoard() {
     }
   }, [refinementSessionList, checkedTickets, mutateRefinementSessions, showToast]);
   // Only offer not-yet-finished sessions in the "Add to refinement" picker; completed
-  // refinements are done and would just clutter the list. An unnamed session falls back
-  // to its scheduled/created date, and each carries its ticket count (BRDG-374 feedback).
-  const refinementOptions = useMemo(() => {
-    const fmtDate = (iso: string | null) =>
-      iso ? new Date(iso).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" }) : "Untitled refinement";
-    return (refinementSessionList ?? [])
-      .filter((s) => s.status !== "completed")
-      .map((s) => ({ id: s.id, name: s.name?.trim() || fmtDate(s.scheduledFor ?? s.createdAt), count: s.ticketCount }));
-  }, [refinementSessionList]);
+  // refinements are done and would just clutter the list. Labelled, sorted and counted
+  // exactly like /refinement (sessionLabel + compareSessions) so the two stay in sync.
+  const refinementOptions = useMemo(
+    () =>
+      (refinementSessionList ?? [])
+        .filter((s) => s.status !== "completed")
+        .sort(compareSessions)
+        .map((s) => ({ id: s.id, name: sessionLabel(s), count: s.ticketCount })),
+    [refinementSessionList],
+  );
   const handleBulkSetStatus = useCallback(async (status: JiraStatus, targets: Set<string> = checkedTickets) => { await ra.bulkSetStatus(status, targets); }, [ra, checkedTickets]);
   const handleBulkSetEpic = useCallback(async (epicKey: string | null, epicName: string | null, targets: Set<string> = checkedTickets) => { await ra.bulkSetEpic(epicKey, epicName, targets); }, [ra, checkedTickets]);
   const handleBulkMoveSprint = useCallback(async (sprintId: string, targets: Set<string> = checkedTickets) => {

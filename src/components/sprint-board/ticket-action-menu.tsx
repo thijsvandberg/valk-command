@@ -7,7 +7,7 @@ import type { TicketReadiness, JiraStatus, Sprint } from "@/types/ticket";
 import type { QuickMoveOption } from "@/lib/quick-moves";
 import { isBacklogSprintName, isOverallRefinementSprint, extractTeamPrefix, sprintNumber } from "@/lib/sprint-utils";
 import { swrFetcher } from "@/lib/api-client";
-import { Search, Flag, ArrowDownToLine, ArrowUpToLine, Boxes, Check, ChevronRight, FilePen, Sparkles } from "lucide-react";
+import { Search, Flag, ArrowDownToLine, ArrowUpToLine, Boxes, Check, ChevronRight, FilePen, Sparkles, CircleDot, ArrowRight, Inbox, ArrowRightLeft } from "lucide-react";
 import {
   READINESS_OPTIONS,
   READINESS_CONFIG,
@@ -179,6 +179,14 @@ export function MenuItem({
 // Floating-card styling shared by the hover flyouts and the menu surfaces.
 const FLYOUT_PANEL = "rounded-xl border border-border-default bg-[var(--color-surface-floating)] shadow-[var(--shadow-lg)]";
 
+// Per-destination icons for the inline quick-moves (BRDG-374): active = a dot, next =
+// arrow-right, backlog = inbox. "More sprints" uses the move (arrow-left-right) icon.
+const QUICK_MOVE_ICON: Record<QuickMoveOption["id"], ReactNode> = {
+  active: <CircleDot className="h-3.5 w-3.5" strokeWidth={1.5} />,
+  next: <ArrowRight className="h-3.5 w-3.5" strokeWidth={1.5} />,
+  backlog: <Inbox className="h-3.5 w-3.5" strokeWidth={1.5} />,
+};
+
 /**
  * A menu row whose sub-content opens to the SIDE on hover (BRDG-374), matching the
  * /dev/exploration prototype - no click, no Back. Nesting works because
@@ -197,18 +205,21 @@ function Flyout({ icon, label, width = "w-[240px]", nested = false, children }: 
   const ref = useRef<HTMLDivElement>(null);
   const [open, setOpen] = useState(false);
   const [side, setSide] = useState<"right" | "left">("right");
-  // Open to the left when the panel would run off the right edge (e.g. the bulk bar's
-  // dropdowns sit far right). Measured from the trigger's position on hover.
-  const handleEnter = () => {
+  // Open to the left when the panel would run off the right edge (e.g. a deep cascade,
+  // or the bulk bar's right-most dropdowns). Measured once the flyout opens, in a layout
+  // effect so the trigger's final on-screen position is known (a pointer-enter handler
+  // can fire before the parent panel has settled, leaving a nested flyout mis-sided).
+  useLayoutEffect(() => {
+    if (!open) return;
     const el = ref.current;
-    if (el) {
-      const panelWidth = parseInt(/\d+/.exec(width)?.[0] ?? "240", 10);
-      setSide(window.innerWidth - el.getBoundingClientRect().right < panelWidth + 16 ? "left" : "right");
-    }
-    setOpen(true);
-  };
+    if (!el) return;
+    const panelWidth = parseInt(/\d+/.exec(width)?.[0] ?? "240", 10);
+    const room = window.innerWidth - el.getBoundingClientRect().right;
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setSide(room < panelWidth + 16 ? "left" : "right");
+  }, [open, width]);
   return (
-    <div ref={ref} className="relative" onPointerEnter={handleEnter} onPointerLeave={() => setOpen(false)}>
+    <div ref={ref} className="relative" onPointerEnter={() => setOpen(true)} onPointerLeave={() => setOpen(false)}>
       <button
         type="button"
         className={`flex w-full items-center gap-2.5 px-3 py-1.5 text-body-sm text-text-secondary cursor-pointer hover:bg-hover-list-item ${open ? "bg-hover-list-item" : ""}`}
@@ -646,8 +657,8 @@ export function TicketActionMenuContent({
     <>
       {hasQuickMoves &&
         quickMoves!.map((opt) => (
-          // Empty icon slot keeps the label left-aligned with the icon-bearing rows.
-          <MenuItem key={opt.id} icon={<span className="h-3.5 w-3.5" />} onClick={() => { onQuickMove!(opt); close(); }}>
+          // Per-destination icon: active = dot, next = arrow-right, backlog = inbox.
+          <MenuItem key={opt.id} icon={QUICK_MOVE_ICON[opt.id]} onClick={() => { onQuickMove!(opt); close(); }}>
             {opt.label}
             <span
               className="ml-auto shrink-0 rounded bg-overlay-default px-1.5 py-0.5 text-caption font-medium text-text-tertiary"
@@ -659,7 +670,7 @@ export function TicketActionMenuContent({
           </MenuItem>
         ))}
       {onMoveSprint && sprints && (
-        <Flyout icon={<span className="h-3.5 w-3.5" />} label="More sprints" width="w-[260px]">
+        <Flyout icon={<ArrowRightLeft className="h-3.5 w-3.5" strokeWidth={1.5} />} label="More sprints" width="w-[260px]">
           <SprintSubPanel sprints={sprints} pinnedSprintIds={pinnedSprintIds} excludeSprintIds={excludeSprintIds} onSelect={(id) => { onMoveSprint?.(id); close(); }} />
         </Flyout>
       )}
