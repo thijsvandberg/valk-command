@@ -26,3 +26,4 @@ PO Command Center for Valk Platform.
 - [Story Writer](architecture/story-writer.md) - AI-assisted story editing, split mode, related stories
 - [Scheduler](architecture/scheduler.md) - Lazy-cron pattern, task registry, background sync
 - [Optimistic Updates](architecture/optimistic-updates.md) - Pending-edits overlay; read before adding any editable board field
+- [Client Data & Memory](architecture/client-data-and-memory.md) - SWR cache cap, no whole-backlog fetches, virtualize growable lists; read before adding a fetch, a list view, or a ticket-payload field

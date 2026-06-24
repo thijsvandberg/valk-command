@@ -44,6 +44,7 @@ Detailed technical documentation lives in `docs/architecture/`:
 - [Story Writer](docs/architecture/story-writer.md) - AI-assisted editing, split mode, related stories
 - [Scheduler](docs/architecture/scheduler.md) - Lazy-cron pattern, background tasks
 - [Optimistic Updates](docs/architecture/optimistic-updates.md) - Pending-edits overlay that prevents board edits from "snapping back" to stale data. READ THIS before adding or changing any editable board field.
+- [Client Data & Memory](docs/architecture/client-data-and-memory.md) - Bounded SWR cache, no whole-backlog fetches, virtualize growable lists, list-vs-detail payload split. READ THIS before adding a client fetch, a list view, or a field to the ticket payload.
 
 ## Project Structure
 

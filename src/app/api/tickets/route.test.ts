@@ -76,6 +76,22 @@ describe("GET /api/tickets", () => {
     expect(data).toHaveLength(2);
   });
 
+  it("list payload carries summaries only, never heavy detail fields (BRDG-387)", async () => {
+    seedTicket(testDb, "VPL-100", "Sprint 1");
+
+    const response = await GET(new Request("http://localhost:3100/api/tickets"));
+    const data = await response.json();
+
+    expect(data).toHaveLength(1);
+    // The board list must stay lightweight: ADF descriptions, comments and
+    // attachments load lazily from the per-ticket detail endpoint, never on the
+    // list, or every long-lived tab balloons. See
+    // docs/architecture/client-data-and-memory.md.
+    for (const heavyField of ["description", "jiraComments", "comments", "attachments", "subtasks"]) {
+      expect(data[0]).not.toHaveProperty(heavyField);
+    }
+  });
+
   it("filters tickets by sprintId", async () => {
     seedTicket(testDb, "VPL-100", "Sprint 1");
     seedTicket(testDb, "VPL-101", "Sprint 2");
