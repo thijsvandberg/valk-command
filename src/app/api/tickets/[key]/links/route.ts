@@ -63,6 +63,60 @@ async function getRelationMapping(): Promise<Record<string, { type: string; dire
   return mapping;
 }
 
+/**
+ * Resolve a display relation to its Jira link type + direction. Prefers the
+ * frontend-supplied jiraTypeName/direction (already resolved from the link-types API);
+ * otherwise derives from the server-side mapping, defaulting to "Relates"/outward.
+ */
+async function resolveTypeAndDirection(
+  relation: string | undefined,
+  jiraTypeName?: string,
+  direction?: "inward" | "outward",
+  linkTypeFallback?: string,
+): Promise<{ jiraLinkType: string; isInward: boolean }> {
+  if (jiraTypeName && direction) {
+    return { jiraLinkType: jiraTypeName, isInward: direction === "inward" };
+  }
+  const relationMap = await getRelationMapping();
+  const mapping = relation ? relationMap[relation.toLowerCase()] : null;
+  return {
+    jiraLinkType: linkTypeFallback ?? mapping?.type ?? "Relates",
+    isInward: mapping?.direction === "inward",
+  };
+}
+
+/**
+ * Find the Jira link id for an existing link when the local row never recorded it
+ * (a Bridge-created link whose id a sync hasn't backfilled yet). Fetches the issue's
+ * links from Jira and matches on the relation's Jira type + the linked issue on the
+ * correct side. Returns null if nothing matches or Jira is unreachable, so the caller
+ * tolerates a missing id the same way DELETE does.
+ */
+async function resolveJiraLinkId(
+  parentKey: string,
+  linkedKey: string,
+  currentRelation: string,
+): Promise<string | null> {
+  const relationMap = await getRelationMapping();
+  const mapping = relationMap[currentRelation.toLowerCase()];
+  const isInward = mapping?.direction === "inward";
+  try {
+    const issues = await jiraClient.getIssueLinksByKeys([parentKey]);
+    const links = issues[0]?.fields?.issuelinks ?? [];
+    for (const link of links) {
+      if (mapping?.type && link.type?.name !== mapping.type) continue;
+      // createIssueLink stores source as inwardIssue, dest as outwardIssue. For an
+      // outward relation the parent is the source, so the linked issue sits on the
+      // outward side; for an inward relation it sits on the inward side.
+      const linkedSide = isInward ? link.inwardIssue : link.outwardIssue;
+      if (linkedSide?.key === linkedKey) return link.id;
+    }
+  } catch {
+    return null;
+  }
+  return null;
+}
+
 export async function POST(request: Request, { params }: RouteContext) {
   const { key: rawKey } = await params;
   const invalid = validatePathParam(rawKey);
@@ -90,18 +144,9 @@ export async function POST(request: Request, { params }: RouteContext) {
 
   // Use jiraTypeName/direction from the frontend when available (already resolved from link-types API).
   // Fall back to server-side mapping derivation for backwards compatibility.
-  let jiraLinkType: string;
-  let isInward: boolean;
-
-  if (body.jiraTypeName && body.direction) {
-    jiraLinkType = body.jiraTypeName;
-    isInward = body.direction === "inward";
-  } else {
-    const relationMap = await getRelationMapping();
-    const mapping = relation ? relationMap[relation.toLowerCase()] : null;
-    jiraLinkType = body.linkType ?? mapping?.type ?? "Relates";
-    isInward = mapping?.direction === "inward";
-  }
+  const { jiraLinkType, isInward } = await resolveTypeAndDirection(
+    relation, body.jiraTypeName, body.direction, body.linkType,
+  );
   const sourceKey = isInward ? targetKey : key;
   const destKey = isInward ? key : targetKey;
 
@@ -212,4 +257,155 @@ export async function DELETE(request: Request, { params }: RouteContext) {
   });
 
   return new Response(null, { status: 204 });
+}
+
+/**
+ * Change the relation TYPE of an existing link (e.g. "relates to" -> "is blocked by").
+ * Jira's API cannot edit a link's type, so this deletes the old link and creates a new
+ * one. The two-step is hidden behind one call, with rollback if the create fails after a
+ * successful delete so the link is never silently lost.
+ */
+export async function PATCH(request: Request, { params }: RouteContext) {
+  const { key: rawKey } = await params;
+  const invalid = validatePathParam(rawKey);
+  if (invalid) return invalid;
+  const key = resolveDraftKey(rawKey);
+
+  const t = await db.query.ticket.findFirst({
+    where: (row, { eq: eqFn }) => eqFn(row.jiraKey, key),
+  });
+  if (!t) {
+    return errorResponse("Ticket not found", 404);
+  }
+
+  const parsed = await parseJsonBody(request);
+  if ("error" in parsed) return parsed.error;
+  const body = parsed.data as {
+    jiraLinkId?: string;
+    linkedKey?: string;
+    currentRelation?: string;
+    relation?: string;
+    jiraTypeName?: string;
+    direction?: "inward" | "outward";
+  };
+
+  const linkedKey = body.linkedKey?.trim();
+  const relation = body.relation?.trim();
+  const currentRelation = body.currentRelation?.trim() ?? "";
+
+  if (!linkedKey || !relation) {
+    return errorResponse("linkedKey and relation are required", 400);
+  }
+
+  const targetTicket = await db.query.ticket.findFirst({
+    where: (row, { eq: eqFn }) => eqFn(row.jiraKey, linkedKey),
+  });
+
+  function linkResponse() {
+    return NextResponse.json({
+      relation,
+      key: linkedKey,
+      title: targetTicket?.title ?? linkedKey,
+      type: targetTicket?.type ?? "task",
+      jiraStatus: targetTicket?.status ?? "TO DO",
+      assignee: null,
+    });
+  }
+
+  // No-op: relation unchanged, nothing to do in Jira or locally.
+  if (relation.toLowerCase() === currentRelation.toLowerCase()) {
+    return linkResponse();
+  }
+
+  // Duplicate guard: this issue is already linked under the target relation.
+  const existingNew = await db.query.ticketLink.findFirst({
+    where: (row, { eq: eqFn, and: andFn }) =>
+      andFn(eqFn(row.ticketKey, key), eqFn(row.linkedKey, linkedKey), eqFn(row.relation, relation)),
+  });
+  if (existingNew) {
+    return errorResponse(`${linkedKey} is already linked as "${relation}"`, 409);
+  }
+
+  const { jiraLinkType: newType, isInward: newInward } = await resolveTypeAndDirection(
+    relation, body.jiraTypeName, body.direction,
+  );
+  const oldResolved = await resolveTypeAndDirection(currentRelation);
+  const newSource = newInward ? linkedKey : key;
+  const newDest = newInward ? key : linkedKey;
+  const oldSource = oldResolved.isInward ? linkedKey : key;
+  const oldDest = oldResolved.isInward ? key : linkedKey;
+
+  // Delete the existing Jira link. A still-pending placeholder has no Jira link yet, so
+  // skip the delete. A synced row without a recorded id needs its id resolved on demand.
+  const isPendingPlaceholder = body.jiraLinkId?.startsWith("pending-") ?? false;
+  let deletedLinkId: string | null = null;
+
+  if (!isPendingPlaceholder) {
+    const idToDelete = body.jiraLinkId ?? (await resolveJiraLinkId(key, linkedKey, currentRelation));
+    if (idToDelete) {
+      try {
+        await jiraClient.deleteIssueLink(idToDelete);
+        deletedLinkId = idToDelete;
+      } catch (err) {
+        logger.error("links", `Failed to delete Jira link during retype: ${err}`);
+        return errorResponse("Failed to change link type", 502);
+      }
+    }
+  }
+
+  // Create the new link; roll back to the original if this fails after a delete.
+  try {
+    await jiraClient.createIssueLink(newSource, newDest, newType);
+  } catch (err) {
+    logger.error("links", `Failed to create new Jira link during retype: ${err}`);
+    if (deletedLinkId) {
+      try {
+        await jiraClient.createIssueLink(oldSource, oldDest, oldResolved.jiraLinkType);
+        return errorResponse("Failed to change link type; original link restored", 502);
+      } catch (rollbackErr) {
+        logger.error("links", `Failed to restore original link after retype failure: ${rollbackErr}`);
+        return errorResponse("Failed to change link type and could not restore the original link", 502);
+      }
+    }
+    return errorResponse("Failed to change link type", 502);
+  }
+
+  // Swap the local row to the new relation. jiraLinkId stays null; the next sync backfills it.
+  await db.delete(ticketLink).where(and(
+    eq(ticketLink.ticketKey, key),
+    eq(ticketLink.linkedKey, linkedKey),
+    eq(ticketLink.relation, currentRelation),
+  ));
+  await db.insert(ticketLink).values({
+    id: randomUUID(),
+    ticketKey: key,
+    jiraLinkId: null,
+    relation,
+    linkedKey,
+    title: targetTicket?.title ?? linkedKey,
+    type: targetTicket?.type ?? "task",
+    status: targetTicket?.status ?? "TO DO",
+    assignee: targetTicket?.assignee ?? null,
+    assigneeAvatar: null,
+  });
+
+  try {
+    await syncJiraTimestamp(key);
+  } catch (err) {
+    logger.warn("links", `Failed to sync Jira timestamp after link retype: ${err}`);
+  }
+
+  cache.invalidate(`/api/tickets/${key}`);
+  cache.invalidate(`/api/tickets/${linkedKey}`);
+  cache.invalidate(/^\/api\/tickets(\?|$)/);
+
+  await db.delete(relatedSuggestionCache).where(eq(relatedSuggestionCache.ticketKey, key));
+
+  await logActivity({
+    type: "metadata-update",
+    scope: key,
+    summary: `Changed link type: ${linkedKey} ${currentRelation} -> ${relation}`,
+  });
+
+  return linkResponse();
 }

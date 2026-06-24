@@ -40,7 +40,7 @@ vi.mock("@/lib/cache", () => ({
   cache: { invalidate: vi.fn(), get: vi.fn().mockReturnValue(undefined), set: vi.fn() },
 }));
 
-import { POST, DELETE } from "./route";
+import { POST, DELETE, PATCH } from "./route";
 
 function makeParams(key: string) {
   return { params: Promise.resolve({ key }) };
@@ -60,6 +60,32 @@ function deleteRequest(key: string, body: unknown): Request {
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(body),
   });
+}
+
+function patchRequest(key: string, body: unknown): Request {
+  return new Request(`http://localhost:3100/api/tickets/${key}/links`, {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(body),
+  });
+}
+
+function seedLink(
+  key: string,
+  linkedKey: string,
+  relation: string,
+  jiraLinkId: string | null,
+) {
+  testDb.insert(ticketLink).values({
+    id: `link-${key}-${linkedKey}-${relation}`.replace(/\s+/g, "-"),
+    ticketKey: key,
+    jiraLinkId,
+    relation,
+    linkedKey,
+    title: `Target ${linkedKey}`,
+    type: "task",
+    status: "TO DO",
+  }).run();
 }
 
 function seed(key: string, title?: string) {
@@ -334,5 +360,208 @@ describe("jiraUpdatedAt sync after link operations", () => {
 
     const row = testDb.select().from(ticket).where(eq(ticket.jiraKey, "VPL-300")).get();
     expect(row?.jiraUpdatedAt).toBe("2024-09-02T11:00:00.000Z");
+  });
+});
+
+describe("PATCH /api/tickets/[key]/links (change link type)", () => {
+  beforeEach(() => {
+    testDb = createTestDb();
+    vi.clearAllMocks();
+  });
+
+  it("deletes the old Jira link and creates the new one with the swapped direction", async () => {
+    seed("VPL-100");
+    seed("VPL-200", "Target ticket");
+    seedLink("VPL-100", "VPL-200", "relates to", "jira-1");
+
+    const { jiraClient } = await import("@/lib/jira-client");
+
+    const res = await PATCH(
+      patchRequest("VPL-100", {
+        jiraLinkId: "jira-1",
+        linkedKey: "VPL-200",
+        currentRelation: "relates to",
+        relation: "is blocked by",
+      }),
+      makeParams("VPL-100"),
+    );
+
+    expect(res.status).toBe(200);
+    expect(jiraClient.deleteIssueLink).toHaveBeenCalledWith("jira-1");
+    // "is blocked by" is inward, so source/dest are swapped.
+    expect(jiraClient.createIssueLink).toHaveBeenCalledWith("VPL-200", "VPL-100", "Blocks");
+
+    const rows = testDb.select().from(ticketLink).all();
+    expect(rows).toHaveLength(1);
+    expect(rows[0].relation).toBe("is blocked by");
+    expect(rows[0].linkedKey).toBe("VPL-200");
+  });
+
+  it("is a no-op when the relation is unchanged", async () => {
+    seed("VPL-100");
+    seedLink("VPL-100", "VPL-200", "relates to", "jira-1");
+
+    const { jiraClient } = await import("@/lib/jira-client");
+
+    const res = await PATCH(
+      patchRequest("VPL-100", {
+        jiraLinkId: "jira-1",
+        linkedKey: "VPL-200",
+        currentRelation: "relates to",
+        relation: "relates to",
+      }),
+      makeParams("VPL-100"),
+    );
+
+    expect(res.status).toBe(200);
+    expect(jiraClient.deleteIssueLink).not.toHaveBeenCalled();
+    expect(jiraClient.createIssueLink).not.toHaveBeenCalled();
+  });
+
+  it("rejects with 409 when already linked under the target relation", async () => {
+    seed("VPL-100");
+    seedLink("VPL-100", "VPL-200", "relates to", "jira-1");
+    seedLink("VPL-100", "VPL-200", "blocks", "jira-2");
+
+    const { jiraClient } = await import("@/lib/jira-client");
+
+    const res = await PATCH(
+      patchRequest("VPL-100", {
+        jiraLinkId: "jira-1",
+        linkedKey: "VPL-200",
+        currentRelation: "relates to",
+        relation: "blocks",
+      }),
+      makeParams("VPL-100"),
+    );
+
+    expect(res.status).toBe(409);
+    const data = await res.json();
+    expect(data.error).toContain('already linked as "blocks"');
+    expect(jiraClient.deleteIssueLink).not.toHaveBeenCalled();
+    expect(jiraClient.createIssueLink).not.toHaveBeenCalled();
+  });
+
+  it("restores the original link when the create fails after the delete", async () => {
+    seed("VPL-100");
+    seedLink("VPL-100", "VPL-200", "relates to", "jira-1");
+
+    const { jiraClient } = await import("@/lib/jira-client");
+    vi.mocked(jiraClient.createIssueLink).mockRejectedValueOnce(new Error("Jira down"));
+
+    const res = await PATCH(
+      patchRequest("VPL-100", {
+        jiraLinkId: "jira-1",
+        linkedKey: "VPL-200",
+        currentRelation: "relates to",
+        relation: "is blocked by",
+      }),
+      makeParams("VPL-100"),
+    );
+
+    expect(res.status).toBe(502);
+    expect(jiraClient.deleteIssueLink).toHaveBeenCalledWith("jira-1");
+    // First the (failed) new link, then the rollback re-creating the original "relates to".
+    expect(jiraClient.createIssueLink).toHaveBeenNthCalledWith(1, "VPL-200", "VPL-100", "Blocks");
+    expect(jiraClient.createIssueLink).toHaveBeenNthCalledWith(2, "VPL-100", "VPL-200", "Relates");
+
+    // Local row is untouched on failure.
+    const rows = testDb.select().from(ticketLink).all();
+    expect(rows).toHaveLength(1);
+    expect(rows[0].relation).toBe("relates to");
+  });
+
+  it("resolves the Jira link id on demand when the local row has none", async () => {
+    seed("VPL-100");
+    seedLink("VPL-100", "VPL-200", "relates to", null);
+
+    const { jiraClient } = await import("@/lib/jira-client");
+    // "relates to" is outward, so the linked issue sits on the outward side.
+    vi.mocked(jiraClient.getIssueLinksByKeys).mockResolvedValueOnce([
+      {
+        key: "VPL-100",
+        fields: {
+          issuelinks: [
+            {
+              id: "resolved-1",
+              type: { name: "Relates", inward: "relates to", outward: "relates to" },
+              outwardIssue: { key: "VPL-200" },
+            },
+          ],
+        },
+      },
+    ] as unknown as Awaited<ReturnType<typeof jiraClient.getIssueLinksByKeys>>);
+
+    const res = await PATCH(
+      patchRequest("VPL-100", {
+        linkedKey: "VPL-200",
+        currentRelation: "relates to",
+        relation: "blocks",
+      }),
+      makeParams("VPL-100"),
+    );
+
+    expect(res.status).toBe(200);
+    expect(jiraClient.deleteIssueLink).toHaveBeenCalledWith("resolved-1");
+    expect(jiraClient.createIssueLink).toHaveBeenCalledWith("VPL-100", "VPL-200", "Blocks");
+  });
+
+  it("skips the Jira delete for a still-pending placeholder", async () => {
+    seed("VPL-100");
+    seedLink("VPL-100", "VPL-200", "relates to", null);
+
+    const { jiraClient } = await import("@/lib/jira-client");
+
+    const res = await PATCH(
+      patchRequest("VPL-100", {
+        jiraLinkId: "pending-12345",
+        linkedKey: "VPL-200",
+        currentRelation: "relates to",
+        relation: "blocks",
+      }),
+      makeParams("VPL-100"),
+    );
+
+    expect(res.status).toBe(200);
+    expect(jiraClient.deleteIssueLink).not.toHaveBeenCalled();
+    expect(jiraClient.getIssueLinksByKeys).not.toHaveBeenCalled();
+    expect(jiraClient.createIssueLink).toHaveBeenCalledWith("VPL-100", "VPL-200", "Blocks");
+  });
+
+  it("does not swap direction for a symmetric relation", async () => {
+    seed("VPL-100");
+    seedLink("VPL-100", "VPL-200", "blocks", "jira-1");
+
+    const { jiraClient } = await import("@/lib/jira-client");
+
+    await PATCH(
+      patchRequest("VPL-100", {
+        jiraLinkId: "jira-1",
+        linkedKey: "VPL-200",
+        currentRelation: "blocks",
+        relation: "relates to",
+      }),
+      makeParams("VPL-100"),
+    );
+
+    // "relates to" is symmetric (inward === outward) -> outward, no swap.
+    expect(jiraClient.createIssueLink).toHaveBeenCalledWith("VPL-100", "VPL-200", "Relates");
+  });
+
+  it("returns 400 when linkedKey or relation is missing", async () => {
+    seed("VPL-100");
+    const res = await PATCH(
+      patchRequest("VPL-100", { currentRelation: "relates to" }),
+      makeParams("VPL-100"),
+    );
+    expect(res.status).toBe(400);
+  });
+
+  it("returns 404 for a non-existent source ticket", async () => {
+    const res = await PATCH(
+      patchRequest("VPL-999", { linkedKey: "VPL-200", currentRelation: "relates to", relation: "blocks" }),
+      makeParams("VPL-999"),
+    );
+    expect(res.status).toBe(404);
   });
 });
