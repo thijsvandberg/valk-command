@@ -203,7 +203,8 @@ Factor a private `resolveTypeAndDirection(relation, jiraTypeName?, direction?)` 
 - [x] If the new link can't be created, the original link is restored (no silent data loss) and
       an error is shown.
 - [x] AI suggestion chips are unchanged.
-- [ ] `npm run verify` and `npm run build` pass.
+- [x] `npm run verify` and `npm run build` pass (verified in an isolated worktree: 6439 tests
+      pass, lint + typecheck clean, build succeeds).
 
 ## Tests
 
