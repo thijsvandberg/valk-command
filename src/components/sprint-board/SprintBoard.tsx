@@ -743,7 +743,12 @@ export default function SprintBoard() {
       showToast(`Couldn't add to "${session.name}"`);
     }
   }, [refinementSessionList, checkedTickets, mutateRefinementSessions, showToast]);
-  const refinementOptions = useMemo(() => (refinementSessionList ?? []).map((s) => ({ id: s.id, name: s.name ?? "Untitled refinement" })), [refinementSessionList]);
+  // Only offer not-yet-finished sessions in the "Add to refinement" picker; completed
+  // refinements are done and would just clutter the list.
+  const refinementOptions = useMemo(
+    () => (refinementSessionList ?? []).filter((s) => s.status !== "completed").map((s) => ({ id: s.id, name: s.name ?? "Untitled refinement" })),
+    [refinementSessionList],
+  );
   const handleBulkSetStatus = useCallback(async (status: JiraStatus, targets: Set<string> = checkedTickets) => { await ra.bulkSetStatus(status, targets); }, [ra, checkedTickets]);
   const handleBulkSetEpic = useCallback(async (epicKey: string | null, epicName: string | null, targets: Set<string> = checkedTickets) => { await ra.bulkSetEpic(epicKey, epicName, targets); }, [ra, checkedTickets]);
   const handleBulkMoveSprint = useCallback(async (sprintId: string, targets: Set<string> = checkedTickets) => {
