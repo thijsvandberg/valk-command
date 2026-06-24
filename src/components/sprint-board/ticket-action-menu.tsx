@@ -758,7 +758,7 @@ export function TicketActionMenuContent({
       )}
       {showUnflagItem && (
         <MenuItem
-          icon={<Flag className="h-3.5 w-3.5 text-[var(--color-status-error)]" fill="var(--color-status-error)" strokeWidth={0} />}
+          icon={<Flag className="h-3.5 w-3.5 text-[var(--color-status-error)]" fill="var(--color-status-error)" strokeWidth={1.5} />}
           onClick={() => { onSetFlagged?.(false); close(); }}
         >
           Remove flag

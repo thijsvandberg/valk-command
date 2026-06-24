@@ -256,6 +256,13 @@ describe("TicketActionMenuContent", () => {
       expect(screen.queryByText("Flag")).not.toBeInTheDocument();
     });
 
+    it("Remove flag keeps the flag's pole (stroke drawn, not strokeWidth 0) (BRDG-374)", () => {
+      render(<TicketActionMenuContent onSetFlagged={vi.fn()} flagState="flagged" close={vi.fn()} />);
+      const svg = screen.getByText("Remove flag").closest("button")!.querySelector("svg")!;
+      // strokeWidth 0 would hide the pole, leaving only the filled banner.
+      expect(svg.getAttribute("stroke-width")).not.toBe("0");
+    });
+
     it("shows both for a mixed selection", () => {
       render(<TicketActionMenuContent onSetFlagged={vi.fn()} flagState="mixed" close={vi.fn()} />);
       expect(screen.getByText("Flag")).toBeInTheDocument();
