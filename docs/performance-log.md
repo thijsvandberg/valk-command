@@ -1,5 +1,19 @@
 # Implementation Performance Log
 
+## BRDG-387 — Frontend memory guardrails: bound the SWR cache + stop over-fetching (2026-06-24)
+
+Replaced SWR's unbounded default cache with an access-order LRU provider (soft cap 300, 60s freshness window, `$`-key protection), wired into SWRProvider; scoped 2 of 6 whole-backlog `useTickets("__all__")` fetches to bounded key sets; locked the list-vs-detail payload split with a route test; added the `client-data-and-memory` architecture doc. 6 commits + archive; full suite (6,465) + build green. Oversized remainder split into BRDG-391/392/393.
+
+| Phase | Notes |
+|---|---|
+| Plan (Opus) | Strong: confirmed SWR 2.4.1's `provider` contract, that subscriber bookkeeping lives in a WeakMap (so eviction is safe), that checkbox 7 was already satisfied, and pre-flagged which `__all__` sites were drop-in vs oversized |
+| Implement | The LRU + the 2 clean swaps went smoothly; sites 3/5 turned out to rely on undefined-until-loaded gating that `useTicketsByKeys` (returns `[]`) would silently break, so they were deferred not forced |
+| Verify | Full suite (6,465) + build green; the global SWRProvider change broke zero tests |
+
+Key bottlenecks / lessons:
+- **A parallel session claimed BRDG-388/389 on `dev` mid-run.** I scanned correctly at the start (max was 386) and picked 388-390 for follow-ups, but a concurrent session committed its own BRDG-388/389 while I worked, duplicating the numbers. Renumbered mine to 391/392/393 after the fact. Lesson: on this shared branch, re-scan ticket numbers immediately before writing follow-up story files, not just at task start.
+- **An untracked parallel test file (`DroppableSprintColumn.test.tsx`, a bad `{} as Ticket` cast) failed whole-project typecheck mid-run, then vanished** once the parallel session committed its own fix. A transient, not-mine blocker. Lesson: when a typecheck error points at a file you never touched, check `git status` for `??` parallel churn before reacting.
+
 ## BRDG-338 — Live-update an open ticket when its local data changes (2026-06-12)
 
 Typed ticket events (9 change kinds + origin tab id) emitted from every local write path, per-key SSE subscription on the detail page, a new broadcast SSE stream + client bus for the board, opacity-only highlight pulse, self-echo suppression via an X-Bridge-Client header on every apiFetch. 4 commits, ~30 new tests; full suite (5,701) + build green.
