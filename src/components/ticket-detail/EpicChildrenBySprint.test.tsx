@@ -45,7 +45,6 @@ function setup(overrides: Partial<Parameters<typeof EpicChildrenBySprint>[0]> = 
       sprints={SPRINTS}
       ticketKey="VPL-1"
       visibleFields={new Set(["issueKey", "status"])}
-      renderMetadata={() => null}
       onJiraStatusChange={vi.fn()}
       onReadinessChange={vi.fn()}
       onMoveChild={onMoveChild}
@@ -85,10 +84,10 @@ describe("EpicChildrenBySprint row context menu", () => {
 
   it("suppresses the context menu while a keyboard drag is active", () => {
     const { onRowContextMenu } = setup();
-    const handle = screen.getByLabelText("Drag VPL-10 to reorder or move it to another sprint");
-    handle.focus();
-    // Space picks up the draggable via dnd-kit's KeyboardSensor (sets the drag flag).
-    fireEvent.keyDown(handle, { key: " ", code: "Space" });
+    // The whole row is the drag activator (SortableBoardRow); focus it and press Space.
+    const row = screen.getByText("Title VPL-10").closest("tr")!;
+    row.focus();
+    fireEvent.keyDown(row, { key: " ", code: "Space" });
     // The pickup mirrors the title into the DragOverlay, so target the original row.
     fireEvent.contextMenu(screen.getAllByText("Title VPL-10")[0]);
     expect(onRowContextMenu).not.toHaveBeenCalled();
@@ -100,14 +99,33 @@ describe("EpicChildrenBySprint row context menu", () => {
         items={[]}
         sprints={SPRINTS}
         ticketKey="VPL-1"
-        visibleFields={new Set()}
-        renderMetadata={() => null}
-        onJiraStatusChange={vi.fn()}
+        visibleFields={new Set()}        onJiraStatusChange={vi.fn()}
         onReadinessChange={vi.fn()}
         onMoveChild={vi.fn()}
       />,
     );
     expect(container).toBeEmptyDOMElement();
+  });
+});
+
+// BRDG-367: rows render through the shared BoardRow (a <tr> inside a per-card table)
+// and the whole row is the drag activator, replacing the old ChildIssueRow + grip.
+// The reorder / cross-sprint move resolution itself lives in resolveDragEnd and is
+// unit-tested in epic-children-reorder.test.ts; here we verify the row wiring.
+describe("EpicChildrenBySprint row migration (BRDG-367)", () => {
+  it("renders child rows through BoardRow inside a per-card table", () => {
+    setup();
+    const row = screen.getByText("Title VPL-10").closest("tr");
+    expect(row).not.toBeNull();
+    expect(row!.closest("table")).not.toBeNull();
+  });
+
+  it("makes each child row a sortable drag activator", () => {
+    setup();
+    // SortableBoardRow spreads dnd-kit's sortable attributes onto the row itself,
+    // so the whole row is draggable (no standalone grip handle to target).
+    const row = screen.getByText("Title VPL-10").closest("tr")!;
+    expect(row).toHaveAttribute("aria-roledescription", "sortable");
   });
 });
 
@@ -227,9 +245,7 @@ describe("EpicChildrenBySprint fullness meter", () => {
         items={[child("VPL-30", "BT: 139"), child("VPL-31", "GXP: Backlog")]}
         sprints={PLANNING_SPRINTS}
         ticketKey="VPL-3"
-        visibleFields={new Set(["issueKey", "status"])}
-        renderMetadata={() => null}
-        onJiraStatusChange={vi.fn()}
+        visibleFields={new Set(["issueKey", "status"])}        onJiraStatusChange={vi.fn()}
         onReadinessChange={vi.fn()}
         onMoveChild={vi.fn()}
         onRowContextMenu={vi.fn()}
@@ -265,9 +281,7 @@ describe("EpicChildrenBySprint next-sprint drop zone", () => {
         items={[child("VPL-20", "BT: 138"), child("VPL-21", "GXP: Backlog")]}
         sprints={REGULAR}
         ticketKey="VPL-2"
-        visibleFields={new Set(["issueKey", "status"])}
-        renderMetadata={() => null}
-        onJiraStatusChange={vi.fn()}
+        visibleFields={new Set(["issueKey", "status"])}        onJiraStatusChange={vi.fn()}
         onReadinessChange={vi.fn()}
         onMoveChild={onMoveChild}
         onCreateChild={vi.fn()}
@@ -278,9 +292,11 @@ describe("EpicChildrenBySprint next-sprint drop zone", () => {
   }
 
   function startKeyboardDrag(childKey: string) {
-    const handle = screen.getByLabelText(`Drag ${childKey} to reorder or move it to another sprint`);
-    handle.focus();
-    fireEvent.keyDown(handle, { key: " ", code: "Space" });
+    // The whole row is the drag activator now (SortableBoardRow, BRDG-367), so focus the
+    // row and press Space to begin a keyboard drag instead of a separate labelled grip.
+    const row = screen.getByText(`Title ${childKey}`).closest("tr")!;
+    row.focus();
+    fireEvent.keyDown(row, { key: " ", code: "Space" });
   }
 
   it("does not show the next sprint as a group when no drag is active", () => {
@@ -334,9 +350,7 @@ describe("EpicChildrenBySprint create-next-sprint drop zone (BRDG-309)", () => {
         items={[child("VPL-30", "BT: 139")]}
         sprints={REGULAR}
         ticketKey="VPL-3"
-        visibleFields={new Set(["issueKey", "status"])}
-        renderMetadata={() => null}
-        onJiraStatusChange={vi.fn()}
+        visibleFields={new Set(["issueKey", "status"])}        onJiraStatusChange={vi.fn()}
         onReadinessChange={vi.fn()}
         onMoveChild={vi.fn()}
         onCreateChild={vi.fn()}
@@ -348,9 +362,11 @@ describe("EpicChildrenBySprint create-next-sprint drop zone (BRDG-309)", () => {
   }
 
   function startKeyboardDrag(childKey: string) {
-    const handle = screen.getByLabelText(`Drag ${childKey} to reorder or move it to another sprint`);
-    handle.focus();
-    fireEvent.keyDown(handle, { key: " ", code: "Space" });
+    // The whole row is the drag activator now (SortableBoardRow, BRDG-367), so focus the
+    // row and press Space to begin a keyboard drag instead of a separate labelled grip.
+    const row = screen.getByText(`Title ${childKey}`).closest("tr")!;
+    row.focus();
+    fireEvent.keyDown(row, { key: " ", code: "Space" });
   }
 
   it("does not show the create zone until a drag begins", () => {
@@ -430,9 +446,7 @@ describe("EpicChildrenBySprint backlog drop zones", () => {
         items={[child("VPL-40", "BT: 138")]}
         sprints={WITH_BACKLOGS}
         ticketKey="VPL-4"
-        visibleFields={new Set(["issueKey", "status"])}
-        renderMetadata={() => null}
-        onJiraStatusChange={vi.fn()}
+        visibleFields={new Set(["issueKey", "status"])}        onJiraStatusChange={vi.fn()}
         onReadinessChange={vi.fn()}
         onMoveChild={vi.fn()}
       />,
@@ -440,9 +454,11 @@ describe("EpicChildrenBySprint backlog drop zones", () => {
   }
 
   function startKeyboardDrag(childKey: string) {
-    const handle = screen.getByLabelText(`Drag ${childKey} to reorder or move it to another sprint`);
-    handle.focus();
-    fireEvent.keyDown(handle, { key: " ", code: "Space" });
+    // The whole row is the drag activator now (SortableBoardRow, BRDG-367), so focus the
+    // row and press Space to begin a keyboard drag instead of a separate labelled grip.
+    const row = screen.getByText(`Title ${childKey}`).closest("tr")!;
+    row.focus();
+    fireEvent.keyDown(row, { key: " ", code: "Space" });
   }
 
   it("does not show backlog zones until a drag begins", () => {
@@ -483,9 +499,7 @@ describe("EpicChildrenBySprint inline create", () => {
         ]}
         sprints={SPRINTS}
         ticketKey="VPL-1"
-        visibleFields={new Set(["issueKey", "status"])}
-        renderMetadata={() => null}
-        onJiraStatusChange={vi.fn()}
+        visibleFields={new Set(["issueKey", "status"])}        onJiraStatusChange={vi.fn()}
         onReadinessChange={vi.fn()}
         onCreateChild={onCreateChild}
         {...overrides}

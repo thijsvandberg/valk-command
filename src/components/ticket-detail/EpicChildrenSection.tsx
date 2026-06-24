@@ -5,14 +5,8 @@ import { mutate as globalMutate } from "swr";
 import { useOutsideClick } from "@/hooks/useOutsideClick";
 import type { TicketDetail, JiraStatus, TicketReadiness, Subtask, EpicChild, IssueType, PlaceholderTicket, Ticket } from "@/types/ticket";
 import { usePlaceholders } from "@/hooks/usePlaceholders";
-import { EstimatePicker } from "@/components/shared/EstimatePicker";
-import { BusinessValuePicker } from "@/components/shared/BusinessValuePicker";
 import { IssueTypeIcon } from "@/components/shared/IssueTypeIcon";
-import { SubtaskCountBadge } from "@/components/shared/IssueMetaBadges";
-import { HoverRevealSlot } from "@/components/shared/HoverRevealSlot";
-import { Avatar } from "@/components/shared/Avatar";
 import { StatusBadge } from "@/components/shared/StatusBadge";
-import { Tooltip } from "@/components/shared/Tooltip";
 import { Toast } from "@/components/ui/Toast";
 import { useToast } from "@/hooks/useToast";
 import { BoardRow } from "@/components/sprint-board/BoardRow";
@@ -79,57 +73,6 @@ interface EpicChildrenSectionProps {
   /** Render the read-only epic roll-up (count / status distribution / SP progress)
       above the list. Used by the side panel's epic view (BRDG-131). */
   showStatsSummary?: boolean;
-}
-
-// One unified SP + guess chip per child row (BRDG-323). Holds the same slot-freeze
-// as the board: while the popover is open the chip stays in its slot (placeholder
-// vs inline value) so picking a guess does not remount and close the dropdown
-// before you can commit.
-function ChildEstimateCell({
-  storyPoints,
-  guestimation,
-  onStoryPointsChange,
-  onGuestimationChange,
-  planningMode,
-}: {
-  storyPoints: number | null;
-  guestimation: number | null;
-  onStoryPointsChange: (v: number | null) => void;
-  onGuestimationChange: (v: number | null) => void;
-  planningMode: boolean;
-}) {
-  const [open, setOpen] = useState(false);
-  const [frozen, setFrozen] = useState<null | "value" | "placeholder">(null);
-  const spEmpty = storyPoints == null || storyPoints === 0;
-  const guessEmpty = guestimation == null || guestimation === 0;
-  const estimateSet = !spEmpty || (planningMode && !guessEmpty);
-  const inValue = frozen ? frozen === "value" : estimateSet;
-
-  const picker = (
-    <EstimatePicker
-      storyPoints={storyPoints}
-      guestimation={guestimation}
-      onStoryPointsChange={onStoryPointsChange}
-      onGuestimationChange={onGuestimationChange}
-      planningMode={planningMode}
-      onOpenChange={(o) => {
-        setOpen(o);
-        setFrozen(o ? (estimateSet ? "value" : "placeholder") : null);
-      }}
-      dense
-      showMetricIcon
-      richTooltip
-    />
-  );
-
-  if (inValue) {
-    return (
-      <span className="shrink-0" onClick={(e) => e.stopPropagation()} onPointerDown={(e) => e.stopPropagation()}>
-        {picker}
-      </span>
-    );
-  }
-  return <HoverRevealSlot forceOpen={open}>{picker}</HoverRevealSlot>;
 }
 
 export function EpicChildrenSection({
@@ -888,64 +831,6 @@ export function EpicChildrenSection({
   });
   const { rowMenu } = ra;
 
-  // --- Render metadata slot for a child issue ---
-  // hideSprint drops the sprint pill where the surrounding group already names the
-  // sprint (the by-sprint view), avoiding a redundant per-row badge.
-  function renderMetadata(child: EpicChild | Subtask, hideSprint = false) {
-    const epic = isEpicChild(child) ? child : null;
-    // SP/BV placement (BRDG-310): metrics keep their natural order (SP then BV). An
-    // empty metric reserves no space and surfaces only on row hover (HoverRevealSlot);
-    // a set value renders inline in the same slot.
-    const bvPicker = epic && (
-      <BusinessValuePicker
-        value={epic.businessValue}
-        onChange={(v) => handleBusinessValueChange(child.key, v)}
-        dense
-        showMetricIcon
-        richTooltip
-      />
-    );
-    const metricCell = (node: React.ReactNode) => (
-      <span
-        className="shrink-0"
-        onClick={(e) => e.stopPropagation()}
-        onPointerDown={(e) => e.stopPropagation()}
-      >
-        {node}
-      </span>
-    );
-    return (
-      <>
-        {/* Estimate (SP + guess) as ONE chip, then BV (BRDG-323). Empty -> hover-reveal
-            slot, set -> inline. N/A (value 0) is treated like unset so the resting list
-            stays calm; only real estimates keep an inline badge (BRDG-310). */}
-        {visibleFields.has("storyPoints") && epic && (
-          <ChildEstimateCell
-            storyPoints={epic.storyPoints}
-            guestimation={epic.guestimation ?? null}
-            onStoryPointsChange={(v) => handleStoryPointsChange(child.key, v)}
-            onGuestimationChange={(v) => handleGuestimationChange(child.key, v)}
-            planningMode={planningOn}
-          />
-        )}
-        {visibleFields.has("businessValue") && epic && (
-          epic.businessValue == null || epic.businessValue === 0 ? <HoverRevealSlot>{bvPicker}</HoverRevealSlot> : metricCell(bvPicker)
-        )}
-        {visibleFields.has("subtaskCount") && epic && (
-          <SubtaskCountBadge open={epic.openSubtaskCount ?? 0} total={epic.totalSubtaskCount ?? epic.subtaskCount} />
-        )}
-        {!hideSprint && visibleFields.has("sprint") && epic?.sprintName && (
-          <Tooltip content={epic.sprintName}>
-            <span className="shrink-0 max-w-[100px] truncate rounded-md bg-overlay-subtle px-1.5 py-0.5 text-[10px] font-medium text-text-muted">
-              {epic.sprintName}
-            </span>
-          </Tooltip>
-        )}
-        {visibleFields.has("assignee") && <Avatar assignee={child.assignee} size={24} />}
-      </>
-    );
-  }
-
   // BoardRow reads the readiness dot from readinessMap[key] (not ticket.readiness),
   // so project the visible children's readiness for the leading pill.
   const readinessByKey: Record<string, TicketReadiness | null> = {};
@@ -1100,10 +985,12 @@ export function EpicChildrenSection({
         sprints={sprints}
         ticketKey={ticketKey}
         visibleFields={visibleFields}
-        renderMetadata={renderMetadata}
         activeChildKey={activeChildKey}
         onJiraStatusChange={handleJiraStatusChange}
         onReadinessChange={handleReadinessChange}
+        onStoryPointsChange={handleStoryPointsChange}
+        onBusinessValueChange={handleBusinessValueChange}
+        onGuestimationChange={handleGuestimationChange}
         onSelect={onSelectTicket}
         onMoveChild={handleMoveChild}
         onRowContextMenu={ra.handleRowContextMenu}
@@ -1114,7 +1001,7 @@ export function EpicChildrenSection({
         onCreateChild={(target, title, jiraType) => handleCreate(title, jiraType, target)}
         checkedKeys={checkedKeys}
         someChecked={someChecked}
-        onCheckboxClick={selectionEnabled ? (key, e) => handleCheckboxClick(key, e.shiftKey) : undefined}
+        onCheckboxClick={selectionEnabled ? handleCheckboxClick : undefined}
         onSelectGroup={selectionEnabled ? selectGroup : undefined}
         planningOn={planningOn}
         pencilCapacityMap={pencilCapacityMap}

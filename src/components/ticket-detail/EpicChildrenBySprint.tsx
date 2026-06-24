@@ -5,9 +5,10 @@ import type { EpicChild, Subtask, Sprint, Ticket, JiraStatus, TicketReadiness, P
 import { PlaceholderRow } from "@/components/sprint-board/PlaceholderRow";
 import { GroupStatBar } from "@/components/sprint-board/GroupStatBar";
 import { GroupCard } from "@/components/sprint-board/GroupCard";
-import { ChildIssueRow } from "./ChildIssueRow";
+import { BoardRow, SortableBoardRow } from "@/components/sprint-board/BoardRow";
+import type { InlineTagId } from "@/components/sprint-board/filter-bar-types";
 import { ChildIssueComposer } from "./ChildIssueComposer";
-import { groupChildrenBySprint, nextRegularSprintGroup, nextRegularSprintCreateGroup, placeNextCreateZone, backlogDropGroups, sortNamedGroups, isEpicChild, UNSCHEDULED_GROUP_KEY, type ChildGroup } from "@/lib/epic-children-grouping";
+import { groupChildrenBySprint, nextRegularSprintGroup, nextRegularSprintCreateGroup, placeNextCreateZone, backlogDropGroups, sortNamedGroups, isEpicChild, epicChildToTicket, UNSCHEDULED_GROUP_KEY, type ChildGroup } from "@/lib/epic-children-grouping";
 import { resolveDragEnd, insertLineForRow, type ChildReorder, type ChildMoveToPosition } from "@/lib/epic-children-reorder";
 import { useSessionStorage } from "@/hooks/useSessionStorage";
 import { isBacklogSprintName } from "@/lib/sprint-utils";
@@ -39,12 +40,14 @@ interface EpicChildrenBySprintProps {
   /** Epic key, namespaces the per-session collapse state so epics do not collide. */
   ticketKey: string;
   visibleFields: Set<string>;
-  /** The sprint group already labels the sprint, so the per-row pill is suppressed. */
-  renderMetadata: (child: EpicChild | Subtask, hideSprint?: boolean) => ReactNode;
   /** Child currently open in the SidePanel; its row renders as active. */
   activeChildKey?: string | null;
   onJiraStatusChange: (childKey: string, status: JiraStatus) => void;
   onReadinessChange: (childKey: string, readiness: TicketReadiness | null) => void;
+  // SP / BV / guess edits, forwarded straight to BoardRow's pickers (BRDG-367).
+  onStoryPointsChange?: (childKey: string, value: number | null) => void;
+  onBusinessValueChange?: (childKey: string, value: number | null) => void;
+  onGuestimationChange?: (childKey: string, value: number | null) => void;
   onSelect?: (key: string) => void;
   /** Move a child to a sprint (id or "__backlog__"). Enables drag. */
   onMoveChild?: (childKey: string, targetSprintId: string) => void;
@@ -72,7 +75,7 @@ interface EpicChildrenBySprintProps {
   /** Multiselect: when supplied, rows render a leading checkbox. */
   checkedKeys?: Set<string>;
   someChecked?: boolean;
-  onCheckboxClick?: (key: string, e: React.MouseEvent) => void;
+  onCheckboxClick?: (key: string, shiftKey: boolean) => void;
   /** Multiselect: toggle the selection of every selectable row in a sprint group at
    *  once. When supplied (with onCheckboxClick), each group header renders a tri-state
    *  "select all in this group" checkbox. */
@@ -155,104 +158,7 @@ function SprintStateChip({ state, className = "" }: { state: Sprint["state"]; cl
   );
 }
 
-// A row that can be picked up to reorder within its sprint group or dropped onto
-// another sprint group. useSortable makes the row both draggable and a drop target,
-// so a sibling row resolves the reorder anchor while a group card resolves a move.
-// Drag bits go on the grip (PointerSensor's 8px threshold keeps a plain click for
-// selection); the grip is also the keyboard activator via dnd-kit attributes.
-function SortableChildRow({
-  child,
-  isLast,
-  roundBottom,
-  sprintName,
-  state,
-  insertLine,
-  visibleFields,
-  renderMetadata,
-  onJiraStatusChange,
-  onReadinessChange,
-  onSelect,
-  onContextMenu,
-  selectable,
-  isChecked,
-  isActive,
-  someChecked,
-  onCheckboxClick,
-}: {
-  child: EpicChild | Subtask;
-  isLast: boolean;
-  roundBottom: boolean;
-  sprintName: string | null;
-  state: Sprint["state"] | null;
-  insertLine?: "above" | "below";
-  visibleFields: Set<string>;
-  renderMetadata: (child: EpicChild | Subtask, hideSprint?: boolean) => ReactNode;
-  onJiraStatusChange: (childKey: string, status: JiraStatus) => void;
-  onReadinessChange: (childKey: string, readiness: TicketReadiness | null) => void;
-  onSelect?: (key: string) => void;
-  onContextMenu?: (e: React.MouseEvent) => void;
-  selectable?: boolean;
-  isChecked?: boolean;
-  isActive?: boolean;
-  someChecked?: boolean;
-  onCheckboxClick?: (e: React.MouseEvent) => void;
-}) {
-  const epic = isEpicChild(child) ? child : null;
-  const { attributes, listeners, setNodeRef, setActivatorNodeRef, transform, transition, isDragging } = useSortable({
-    id: child.key,
-    data: { type: "child", sprintName, state },
-  });
-
-  // The drop-indicator bar is a 2px inset brand line on the hovered row, matching
-  // the sprint board's reorder cue (above when inserting before, below when after).
-  const insertLineShadow =
-    insertLine === "above"
-      ? "inset 0 2px 0 var(--color-brand-500)"
-      : insertLine === "below"
-        ? "inset 0 -2px 0 var(--color-brand-500)"
-        : undefined;
-
-  return (
-    <ChildIssueRow
-      ref={setNodeRef}
-      item={child}
-      isLast={isLast}
-      roundBottom={roundBottom}
-      showTypeIcon
-      showKey={visibleFields.has("issueKey")}
-      showStatus={visibleFields.has("status")}
-      readiness={epic?.readiness}
-      editState={epic?.editState}
-      onJiraStatusChange={(s) => onJiraStatusChange(child.key, s)}
-      onReadinessChange={(r) => onReadinessChange(child.key, r)}
-      onSelect={onSelect}
-      onContextMenu={onContextMenu}
-      selectable={selectable}
-      isChecked={isChecked}
-      isActive={isActive}
-      flagged={!!epic?.flagged}
-      someChecked={someChecked}
-      onCheckboxClick={onCheckboxClick}
-      metadataSlot={renderMetadata(child, true)}
-      className={isDragging ? "opacity-40" : ""}
-      style={{ transform: CSS.Translate.toString(transform), transition, ...(insertLineShadow ? { boxShadow: insertLineShadow } : {}) }}
-      dndProps={{ ...attributes }}
-      dragHandleSlot={
-        <span
-          ref={setActivatorNodeRef}
-          {...listeners}
-          onClick={(e) => e.stopPropagation()}
-          className="flex shrink-0 cursor-grab items-center text-text-muted hover:!opacity-100 focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-[var(--color-brand-400)] active:cursor-grabbing"
-          aria-label={`Drag ${child.key} to reorder or move it to another sprint`}
-        >
-          <GripVertical size={12} strokeWidth={1.5} />
-        </span>
-      }
-    />
-  );
-}
-
-// Draggable placeholder row (BRDG-328): mirrors SortableChildRow so placeholders can be
+// Draggable placeholder row (BRDG-328): mirrors the sortable child rows so placeholders can be
 // reordered within their block and moved between sprint groups. data.type="placeholder"
 // lets handleDragEnd route it to the placeholder reorder/move path, away from the
 // Jira-rank child logic.
@@ -356,10 +262,12 @@ export function EpicChildrenBySprint({
   sprints,
   ticketKey,
   visibleFields,
-  renderMetadata,
   activeChildKey,
   onJiraStatusChange,
   onReadinessChange,
+  onStoryPointsChange,
+  onBusinessValueChange,
+  onGuestimationChange,
   onSelect,
   onMoveChild,
   onRowContextMenu,
@@ -554,72 +462,82 @@ export function EpicChildrenBySprint({
 
   const selectable = !!onCheckboxClick;
 
-  const renderRow = (child: EpicChild | Subtask, group: ChildGroup, idx: number, total: number, roundBottom: boolean) => {
+  // Which inline signals BoardRow renders per child row (BRDG-367). Mirrors the flat
+  // list: readiness dot + edit-state dot + flag always on; SP / BV / assignee follow
+  // the field-visibility toggles. The per-row sprint chip is suppressed via
+  // showSprint=false below, since the group header already names the sprint.
+  const epicRowTags = new Set<InlineTagId>(["poReadiness", "editState", "flag"]);
+  if (visibleFields.has("storyPoints")) epicRowTags.add("storyPoints");
+  if (visibleFields.has("businessValue")) epicRowTags.add("businessValue");
+  if (visibleFields.has("assignee")) epicRowTags.add("assignee");
+
+  // BoardRow reads the readiness dot from readinessMap[key] (not ticket.readiness).
+  const readinessByKey: Record<string, TicketReadiness | null> = {};
+  items.forEach((c) => { readinessByKey[c.key] = isEpicChild(c) ? c.readiness : null; });
+
+  const renderRow = (child: EpicChild | Subtask, group: ChildGroup, idx: number, roundBottom: boolean) => {
     const epic = isEpicChild(child) ? child : null;
     const isPending = child.key.startsWith("pending-");
-    const isLast = idx === total - 1;
     const isChecked = !!checkedKeys?.has(child.key);
     const isActive = child.key === activeChildKey;
-    const checkboxClick = onCheckboxClick ? (e: React.MouseEvent) => onCheckboxClick(child.key, e) : undefined;
 
+    // BoardRow preventDefaults the context menu and guards isDragActive itself; the
+    // draggingRef guard covers the synchronous drag-start before activeDragKey settles.
     const contextMenu =
       onRowContextMenu && !isPending
-        ? (e: React.MouseEvent) => {
-            e.preventDefault();
+        ? (key: string, e: React.MouseEvent) => {
             if (draggingRef.current) return;
-            onRowContextMenu(child.key, e);
+            onRowContextMenu(key, e);
           }
         : undefined;
 
+    // Shared props for both the draggable (SortableBoardRow) and static-pending (BoardRow)
+    // variants. epicChildToTicket projects the child; the group header names the sprint, so
+    // the per-row sprint chip is suppressed (showSprint=false).
+    const rowProps = {
+      ticket: epicChildToTicket(child),
+      ticketIdx: idx,
+      isChecked,
+      isSelected: isActive,
+      isInflight: isPending,
+      someChecked: !!someChecked,
+      hideEpic: true,
+      tags: epicRowTags,
+      showKey: visibleFields.has("issueKey"),
+      showStatus: visibleFields.has("status"),
+      showSprint: false,
+      subtaskCounts:
+        visibleFields.has("subtaskCount") && epic
+          ? { open: epic.openSubtaskCount ?? 0, total: epic.totalSubtaskCount ?? epic.subtaskCount }
+          : undefined,
+      readinessMap: readinessByKey,
+      hideCheckbox: !selectable,
+      selectedTicket: activeChildKey ?? null,
+      onSelectTicket: (key: string | null) => { if (key) onSelect?.(key); },
+      onCheckboxClick: (key: string, _idx: number, shiftKey: boolean) => onCheckboxClick?.(key, shiftKey),
+      onRowContextMenu: contextMenu,
+      onJiraStatusChange,
+      onReadinessChange,
+      onStoryPointsChange,
+      onBusinessValueChange,
+      onGuestimationChange,
+      planningOn,
+      isLastInCard: roundBottom,
+    };
+
     if (dndEnabled && !isPending) {
       return (
-        <SortableChildRow
+        <SortableBoardRow
           key={child.key}
-          child={child}
-          isLast={isLast}
-          roundBottom={roundBottom}
-          sprintName={group.sprintName}
-          state={group.state}
+          {...rowProps}
+          isDragActive={activeDragKey !== null}
+          sortableData={{ type: "child", sprintName: group.sprintName, state: group.state }}
           insertLine={insertLineForRow({ rowKey: child.key, activeKey: activeDragKey, overKey: dragOverKey, insertAfter: dragInsertAfter, groups: dragGroups })}
-          visibleFields={visibleFields}
-          renderMetadata={renderMetadata}
-          onJiraStatusChange={onJiraStatusChange}
-          onReadinessChange={onReadinessChange}
-          onSelect={onSelect}
-          onContextMenu={contextMenu}
-          selectable={selectable}
-          isChecked={isChecked}
-          isActive={isActive}
-          someChecked={someChecked}
-          onCheckboxClick={checkboxClick}
         />
       );
     }
 
-    return (
-      <ChildIssueRow
-        key={child.key}
-        item={child}
-        isLast={isLast}
-        roundBottom={roundBottom}
-        isPending={isPending}
-        showTypeIcon
-        showKey={visibleFields.has("issueKey")}
-        showStatus={visibleFields.has("status")}
-        readiness={epic?.readiness}
-        onJiraStatusChange={(s) => onJiraStatusChange(child.key, s)}
-        onReadinessChange={(r) => onReadinessChange(child.key, r)}
-        onSelect={onSelect}
-        onContextMenu={contextMenu}
-        selectable={selectable}
-        isChecked={isChecked}
-        isActive={isActive}
-        flagged={!!epic?.flagged}
-        someChecked={someChecked}
-        onCheckboxClick={checkboxClick}
-        metadataSlot={renderMetadata(child, true)}
-      />
-    );
+    return <BoardRow key={child.key} {...rowProps} isDragActive={false} />;
   };
 
   const groupCards = dragGroups.map((group) => {
@@ -775,7 +693,7 @@ export function EpicChildrenBySprint({
     const lastDataRowIsBottom = groupPlaceholders.length === 0 && !composerRendered;
     const lastPlaceholderIsBottom = !composerRendered;
     const rows = visibleItems.map((child, idx) =>
-      renderRow(child, group, idx, visibleItems.length, lastDataRowIsBottom && idx === visibleItems.length - 1),
+      renderRow(child, group, idx, lastDataRowIsBottom && idx === visibleItems.length - 1),
     );
 
     const placeholderBlock =
@@ -827,13 +745,20 @@ export function EpicChildrenBySprint({
       </div>
     ) : (
       <>
-        {dndEnabled ? (
-          <SortableContext items={sortableIds} strategy={verticalListSortingStrategy}>
-            {rows}
-          </SortableContext>
-        ) : (
-          rows
-        )}
+        {/* BoardRow renders a <tr>, so the data rows live in a small per-card table
+            (the inbox reuse pattern). Placeholders + composer stay as sibling blocks
+            below it, aligned to the same gutters (BRDG-367). */}
+        <table className="w-full table-fixed border-collapse text-body-lg">
+          <tbody>
+            {dndEnabled ? (
+              <SortableContext items={sortableIds} strategy={verticalListSortingStrategy}>
+                {rows}
+              </SortableContext>
+            ) : (
+              rows
+            )}
+          </tbody>
+        </table>
         {placeholderBlock}
         {isComposerOpen && onCreateChild && (
           <ChildIssueComposer

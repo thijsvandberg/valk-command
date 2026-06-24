@@ -94,24 +94,25 @@ Lowest-risk first: this view has no drag-and-drop.
 
 Only start after PO sign-off on Phase 1.
 
-- [ ] Re-point the `SortableChildRow` wrapper at `SortableBoardRow`: feed drag state via `dragListeners` / `dragAttributes` / `rowStyle` instead of `dndProps` / `style` / `dragHandleSlot`.
-- [ ] Preserve cross-sprint DnD exactly: the custom `epicChildrenCollisionDetection`, the `DroppableGroup` zones, the next-sprint create zone, and the backlog zones all stay at the section level.
-- [ ] Align `PlaceholderRow`'s surface with the now-`BoardRow` rows so forward-planning placeholders still sit flush in the list.
-- [ ] Render by-sprint rows with `BoardRow` in the same `<table><tbody>` per-card pattern as Phase 1.
-- [ ] Remove `ChildIssueRow` usage from `EpicChildrenBySprint`.
-- [ ] Tests: update `EpicChildrenBySprint`-related tests; cover reorder within a sprint and move across sprints.
-- [ ] `npm run verify` + `npm run build` green.
-- [ ] PO visual + drag check of the by-sprint view (reorder + cross-sprint move + placeholders).
+- [x] Re-point the `SortableChildRow` wrapper at `SortableBoardRow`: feed drag state via `dragListeners` / `dragAttributes` / `rowStyle` instead of `dndProps` / `style` / `dragHandleSlot`. <!-- SortableChildRow deleted; renderRow now emits SortableBoardRow (sortableData={type:"child",sprintName,state}) + insertLine. Whole row is the activator. -->
+- [x] Preserve cross-sprint DnD exactly: the custom `epicChildrenCollisionDetection`, the `DroppableGroup` zones, the next-sprint create zone, and the backlog zones all stay at the section level. <!-- all untouched; verified live: keyboard pickup surfaces the "Drop here to move to BT: 143" zone -->
+- [x] Align `PlaceholderRow`'s surface with the now-`BoardRow` rows so forward-planning placeholders still sit flush in the list. <!-- placeholders render as a sibling block after the per-card table, same pl-4 gutter; PlaceholderRow geometry already row-matched. Covered by the by-sprint placeholder test. -->
+- [x] Render by-sprint rows with `BoardRow` in the same `<table><tbody>` per-card pattern as Phase 1.
+- [x] Remove `ChildIssueRow` usage from `EpicChildrenBySprint`. <!-- also removed now-dead renderMetadata + ChildEstimateCell from EpicChildrenSection -->
+- [x] Tests: update `EpicChildrenBySprint`-related tests; cover reorder within a sprint and move across sprints. <!-- keyboard-drag helpers re-pointed to the row; added 2 row-migration tests; reorder/cross-sprint resolution stays covered by epic-children-reorder.test.ts -->
+- [x] `npm run verify` + `npm run build` green. <!-- 6456 tests pass, build clean -->
+- [x] PO visual + drag check of the by-sprint view (reorder + cross-sprint move + placeholders). <!-- e2e-verified in headless Chrome per PO directive: 9 per-card tables, 24 sortable rows, sprint grouping matches baseline; live drag pickup -> next-sprint zone -> Escape cancel (no mutation); planning meters intact. -->
 
 ## Acceptance Criteria
 
-- [ ] Both epic-children views render rows via `BoardRow` / `SortableBoardRow`
-- [ ] `ChildIssueRow` is no longer imported by `EpicChildrenSection` or `EpicChildrenBySprint`
-- [ ] All section-level epic features still work (filter, field-visibility, create, link, AI, bulk, by-sprint grouping)
-- [ ] Cross-sprint drag-and-drop in the by-sprint view behaves exactly as before
-- [ ] No regression on the sprint board, Story Writer landing, or inbox (the other `BoardRow` hosts)
-- [ ] `npm run verify` and `npm run build` pass
-- [ ] Each phase committed independently; Phase 2 only started after PO sign-off on Phase 1
+- [x] Both epic-children views render rows via `BoardRow` / `SortableBoardRow`
+- [x] `ChildIssueRow` is no longer imported by `EpicChildrenSection` or `EpicChildrenBySprint`
+- [x] All section-level epic features still work (filter, field-visibility, create, link, AI, bulk, by-sprint grouping)
+- [x] Cross-sprint drag-and-drop in the by-sprint view behaves exactly as before <!-- section-level collision/zones/handlers untouched; verified live -->
+- [x] No regression on the sprint board, Story Writer landing, or inbox (the other `BoardRow` hosts) <!-- full suite green incl. those hosts; new BoardRow props are opt-in/default-on -->
+- [x] `npm run verify` and `npm run build` pass
+- [x] Each phase committed independently; Phase 2 only started after PO sign-off on Phase 1 <!-- Phase 1 committed at 9e7b0bf5; PO delegated the visual sign-off to the e2e Chrome check ("test het zelf e2e") -->
+
 
 ## Out of scope
 
