@@ -24,9 +24,9 @@ Opus-planned against the real code. `@tanstack/react-virtual@3.13.23` matches wh
 
 ## Acceptance Criteria
 
-- [ ] Inbox and Cleanup lists mount only visible rows plus overscan.
-- [ ] The Refinement queue is virtualized OR the FLIP animation is reconciled with windowing (or consciously dropped for large lists), with no broken reorder animation.
-- [ ] No visual or interaction regression on any of the three lists.
+- [ ] Inbox and Cleanup lists mount only visible rows plus overscan. <!-- partial: Cleanup done (per-row <tbody> window, threshold 40, tests for windowing + selection-survival). Inbox deferred (nested GroupCard/per-group <tbody> blocks cannot share one virtualizer; needs a flatten-then-virtualize rewrite). -->
+- [ ] The Refinement queue is virtualized OR the FLIP animation is reconciled with windowing (or consciously dropped for large lists), with no broken reorder animation. <!-- skipped: conflicts with useFlipReorder (windowing removes the DOM nodes FLIP measures); needs a gating spike. Stays open. -->
+- [x] No visual or interaction regression on the Cleanup list (verified: unit tests + browser scroll check; Inbox/Refinement unchanged from before).
 
 ## Technical Notes
 
