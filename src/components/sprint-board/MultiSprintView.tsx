@@ -386,8 +386,8 @@ export function MultiSprintView({
           jira.rank({ issueKeys: keysToMove, rankBeforeKey: targetOverKey, sprintId: targetSprintId }).catch(() => {});
         } else {
           // Dropped onto the column/zone: the placement rule decides the edge
-          // (BRDG-370) - in-flight rows to the top, the rest to the bottom.
-          const topKeys = topKeysForMove(keysToMove, destSprint?.name ?? null, (k) => ticketsToMove.find((t) => t.key === k)?.jiraStatus);
+          // (BRDG-370) - a regular sprint takes the batch at the bottom, a backlog at the top.
+          const topKeys = topKeysForMove(keysToMove, destSprint?.name ?? null);
           await jira.moveSprint({ issueKeys: keysToMove, targetSprintId, topKeys });
         }
         showToast(`Moved ${keysToMove.length} ticket${keysToMove.length === 1 ? "" : "s"} to ${targetName}`);

@@ -231,7 +231,7 @@ describe("useRowActions - bulkMoveSprint (board overlay + dest-cache injection)"
     expect(runGlobalUpdater(destCall!, undefined)[0].sprintId).toBeUndefined();
   });
 
-  it("splits the batch into a regular sprint: in-flight tickets go top, the rest stay bottom", async () => {
+  it("sends the whole batch to the bottom of a regular sprint regardless of status", async () => {
     const source = [
       makeTicket("A-1", false, "100", "TO DO"),
       makeTicket("A-2", false, "100", "IN PROGRESS"),
@@ -240,7 +240,7 @@ describe("useRowActions - bulkMoveSprint (board overlay + dest-cache injection)"
     const { result } = setup(source, "/api/tickets?sprintId=100");
     await act(async () => { await result.current.bulkMoveSprint("200", new Set(["A-1", "A-2", "A-3"])); });
 
-    expect(moveSprint).toHaveBeenCalledWith({ issueKeys: ["A-1", "A-2", "A-3"], targetSprintId: "200", topKeys: ["A-2", "A-3"] });
+    expect(moveSprint).toHaveBeenCalledWith({ issueKeys: ["A-1", "A-2", "A-3"], targetSprintId: "200", topKeys: [] });
   });
 
   it("does not duplicate a ticket already present in the destination cache", async () => {

@@ -147,10 +147,10 @@ export function useSprintBoardDragDrop(deps: DragDropDeps) {
       });
 
       try {
-        // Placement rule (BRDG-370): in-flight rows (and any backlog drop) land at
-        // the top, the rest at the bottom of the target sprint.
+        // Placement rule (BRDG-370): a backlog drop lands at the top, a regular
+        // sprint takes the whole batch at the bottom.
         const destName = targetSprintId === "__backlog__" ? null : (sprintNameMap[targetSprintId] ?? null);
-        const topKeys = topKeysForMove(keysToMove, destName, (k) => movedTickets.find((t) => t.key === k)?.jiraStatus);
+        const topKeys = topKeysForMove(keysToMove, destName);
         await jira.moveSprint({ issueKeys: keysToMove, targetSprintId, topKeys });
         // The move landed in Jira and the DB; the overlay may now release the rows
         // once a refreshed list shows them.
@@ -194,10 +194,10 @@ export function useSprintBoardDragDrop(deps: DragDropDeps) {
       });
 
       try {
-        // Placement rule (BRDG-370): dropping on a sprint group lands in-flight rows
-        // (and any backlog drop) at the top, the rest at the bottom.
+        // Placement rule (BRDG-370): dropping on a regular sprint lands the whole
+        // batch at the bottom; a backlog drop lands it at the top.
         const destName = targetSprintId === "__backlog__" ? null : (sprintNameMap[targetSprintId] ?? null);
-        const topKeys = topKeysForMove(keysToMove, destName, (k) => apiTickets?.find((t) => t.key === k)?.jiraStatus);
+        const topKeys = topKeysForMove(keysToMove, destName);
         await jira.moveSprint({ issueKeys: keysToMove, targetSprintId, topKeys });
         showMoveToast(targetSprintId, targetName, keysToMove.length);
         mutateTickets();

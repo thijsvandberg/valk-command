@@ -166,9 +166,9 @@ export function useRowActions(opts: UseRowActionsOpts) {
       const moved = adapter.getTickets().filter((t) => keys.has(t.key)).map((t) => ({ ...t, sprintId: newSprintId }));
       adapter.beginMove(moved, targetSprintId, destName);
       try {
-        // Placement rule (BRDG-370): split the batch so in-flight rows (and any
-        // backlog move) land at the top and the rest at the bottom of the target.
-        const topKeys = topKeysForMove(list, destName, (k) => adapter.getTicket(k)?.jiraStatus);
+        // Placement rule (BRDG-370): a regular sprint takes the whole batch at the
+        // bottom; a backlog destination takes it at the top.
+        const topKeys = topKeysForMove(list, destName);
         await jira.moveSprint({ issueKeys: list, targetSprintId, topKeys });
         adapter.confirmMove({ moved, keys: list, targetSprintId, newSprintId });
         return { ok: true, count: list.length, destName: destName ?? "backlog" };

@@ -1,5 +1,4 @@
 import { isBacklogSprintName, isRegularSprint } from "@/lib/sprint-utils";
-import { isInFlightStatus } from "@/lib/ticket-status";
 
 /**
  * Unified rule for where a ticket lands when it is moved INTO a destination
@@ -7,11 +6,10 @@ import { isInFlightStatus } from "@/lib/ticket-status";
  * picker, drag-onto-a-sprint, the epic-children move, the "move to next sprint"
  * quick action):
  *
+ * - A regular numbered sprint (e.g. "BT: 140") -> bottom. EVERY move into a
+ *   regular sprint lands at the bottom, regardless of the ticket's status.
  * - A backlog destination (a named backlog like "BT: Backlog", or the generic
  *   project backlog which callers resolve to a `null` name) -> top.
- * - A regular numbered sprint (e.g. "BT: 140") -> bottom.
- * - Status exception: a ticket whose status is in flight (In Progress / Testing)
- *   always lands at the top, even into a regular sprint.
  * - Any other non-regular named destination (e.g. "BT: TODO", "Unscheduled")
  *   -> top, the safe default: never silently bury a ticket in an unrecognized
  *   placeholder column.
@@ -19,26 +17,19 @@ import { isInFlightStatus } from "@/lib/ticket-status";
  * Callers resolve the destination NAME before calling and pass `null` for the
  * generic backlog sentinel ("__backlog__").
  */
-export function placementForMove(
-  destSprintName: string | null,
-  status: string | null | undefined,
-): "top" | "bottom" {
+export function placementForMove(destSprintName: string | null): "top" | "bottom" {
   if (destSprintName === null) return "top";
   if (isBacklogSprintName(destSprintName)) return "top";
-  if (isInFlightStatus(status)) return "top";
   if (isRegularSprint(destSprintName)) return "bottom";
   return "top";
 }
 
 /**
  * Splits a batch of moved keys into the subset that should land at the top of the
- * destination per {@link placementForMove}. The remaining keys land at the bottom.
- * `statusOf` returns the ticket's Jira status for a key (undefined if unknown).
+ * destination per {@link placementForMove}. Placement now depends only on the
+ * destination, so either every key lands at the top (backlog / non-regular) or
+ * none do (a regular sprint -> all to the bottom).
  */
-export function topKeysForMove(
-  keys: string[],
-  destSprintName: string | null,
-  statusOf: (key: string) => string | null | undefined,
-): string[] {
-  return keys.filter((k) => placementForMove(destSprintName, statusOf(k)) === "top");
+export function topKeysForMove(keys: string[], destSprintName: string | null): string[] {
+  return placementForMove(destSprintName) === "top" ? [...keys] : [];
 }

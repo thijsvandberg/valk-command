@@ -192,7 +192,7 @@ export function useTicketActions(deps: TicketActionsDeps) {
     try {
       // Placement rule (BRDG-370): a backlog or an in-flight ticket lands at the
       // top; a regular sprint lands at the bottom.
-      const position = placementForMove(destNameFor(target), moved?.jiraStatus);
+      const position = placementForMove(destNameFor(target));
       await jira.moveSprint({ issueKeys: [key], targetSprintId: target, position });
       confirmPendingMove(key);
       adapter.mutate();

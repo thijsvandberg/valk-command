@@ -133,7 +133,7 @@ describe("useSprintBoardDragDrop - sprint-slot drop zone", () => {
     expect(revalidateMovedSprintLists).toHaveBeenCalledWith(["140", "todo"]);
   });
 
-  it("sends an in-flight ticket to the top of a regular sprint (topKeys includes it)", async () => {
+  it("sends an in-flight ticket to the bottom of a regular sprint too (no status exception)", async () => {
     const inProgress = { ...makeTicket("VPL-1", "todo"), jiraStatus: "IN PROGRESS" } as Ticket;
     const deps = makeDeps({ tickets: [inProgress, makeTicket("VPL-2", "todo")], apiTickets: [inProgress, makeTicket("VPL-2", "todo")] });
     const { result } = renderHook(() => useSprintBoardDragDrop(deps));
@@ -142,7 +142,7 @@ describe("useSprintBoardDragDrop - sprint-slot drop zone", () => {
       await result.current.handleBoardDragEnd(dropEvent("VPL-1", "sprint-slot:140"));
     });
 
-    await waitFor(() => expect(moveSprint).toHaveBeenCalledWith({ issueKeys: ["VPL-1"], targetSprintId: "140", topKeys: ["VPL-1"] }));
+    await waitFor(() => expect(moveSprint).toHaveBeenCalledWith({ issueKeys: ["VPL-1"], targetSprintId: "140", topKeys: [] }));
   });
 
   it("does not revalidate lists when the move fails (optimistic state is rolled back instead)", async () => {

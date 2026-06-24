@@ -353,12 +353,6 @@ export function EpicChildrenSection({
   // --- Search existing ---
 
   const existingKeys = useMemo(() => new Set(mergedItems.map((i) => i.key)), [mergedItems]);
-  // Child key -> Jira status, for the sprint-placement rule (BRDG-370).
-  const statusByKey = useMemo(() => {
-    const map: Record<string, string> = {};
-    mergedItems.forEach((i) => { map[i.key] = i.jiraStatus; });
-    return map;
-  }, [mergedItems]);
   // Child key -> current sprint NAME (local-move overlay wins over the server value),
   // for the BRDG-369 quick-move options.
   const sprintNameByKey = useMemo(() => {
@@ -578,7 +572,7 @@ export function EpicChildrenSection({
     setJiraWarning(null);
     setLocalMoves((prev) => ({ ...prev, [childKey]: newName }));
     // Placement rule (BRDG-370): backlog / in-flight -> top, regular sprint -> bottom.
-    const position = placementForMove(newName, statusByKey[childKey]);
+    const position = placementForMove(newName);
     jira.moveSprint({ issueKeys: [childKey], targetSprintId, position })
       .then(() => onMutate())
       .catch((err) => {
@@ -591,7 +585,7 @@ export function EpicChildrenSection({
         setJiraWarning(`Failed to move ${childKey} to sprint: ${detail}`);
         console.error("Failed to move child to sprint:", err);
       });
-  }, [sprints, statusByKey, onMutate]);
+  }, [sprints, onMutate]);
 
   // BRDG-309: dropping onto the create zone stashes the child (and the predicted
   // sprint name) and opens the Create Sprint modal. Cancelling clears the stash.
@@ -683,7 +677,7 @@ export function EpicChildrenSection({
       // (BRDG-370) - backlog / in-flight to the top, a regular sprint to the bottom.
       // Dropped onto a specific row: rank relative to that row (explicit position).
       const persist = toTop
-        ? jira.moveSprint({ issueKeys: [activeKey], targetSprintId, position: placementForMove(targetSprintName, statusByKey[activeKey]) })
+        ? jira.moveSprint({ issueKeys: [activeKey], targetSprintId, position: placementForMove(targetSprintName) })
         : jira.moveSprint({ issueKeys: [activeKey], targetSprintId })
             .then(() => jira.rank({ issueKeys: [activeKey], rankBeforeKey, rankAfterKey, ...(rankSprintId ? { sprintId: rankSprintId } : {}) }));
       persist
@@ -704,7 +698,7 @@ export function EpicChildrenSection({
           console.error("Failed to move child to position:", err);
         });
     },
-    [onMutate, statusByKey],
+    [onMutate],
   );
 
   // Drop optimistic overrides once the refetched children confirm the new sprint,
