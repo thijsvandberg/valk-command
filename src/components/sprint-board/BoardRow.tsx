@@ -164,6 +164,25 @@ export interface BoardRowBaseProps {
   dragListeners?: ReturnType<typeof useSortable>["listeners"];
   dragAttributes?: ReturnType<typeof useSortable>["attributes"];
   "data-index"?: number;
+  /**
+   * Opt-in list-host extensions (BRDG-389). All default-off and inert for the board /
+   * inbox / Story Writer / epic hosts. The cleanup and refinement lists use these to
+   * render through BoardRow instead of the legacy ChildIssueRow.
+   */
+  /** Extra vertical row padding (py-[10px] vs py-[7px]) for a more relaxed list. */
+  spacious?: boolean;
+  /** Keep the selection checkbox always visible in the content flow instead of
+   *  hover-revealing it, so an external drag handle stays usable while rows are checked. */
+  inlineCheckbox?: boolean;
+  /** Trailing host-specific metadata (cleanup score/disposition badges, refinement
+   *  session badges). Rendered click-isolated after the native metadata cluster. */
+  metadataSlot?: React.ReactNode;
+  /** External drag handle in the left gutter for a cross-list drag (refinement "drag into
+   *  queue", BRDG-336). Distinct from the built-in reorder grip; when present it replaces
+   *  the native grip. Hidden during multiselect, like the native grip. */
+  dragHandleSlot?: React.ReactNode;
+  /** Stable row key for FLIP reorder hosts (useFlipReorder queries [data-ticket-key]). */
+  "data-ticket-key"?: string;
 }
 
 export const BoardRow = memo(forwardRef<HTMLTableRowElement, BoardRowBaseProps>(function BoardRow(
@@ -234,6 +253,11 @@ export const BoardRow = memo(forwardRef<HTMLTableRowElement, BoardRowBaseProps>(
     dragListeners,
     dragAttributes,
     "data-index": dataIndex,
+    spacious = false,
+    inlineCheckbox = false,
+    metadataSlot,
+    dragHandleSlot,
+    "data-ticket-key": dataTicketKey,
   },
   ref
 ) {
@@ -320,8 +344,9 @@ export const BoardRow = memo(forwardRef<HTMLTableRowElement, BoardRowBaseProps>(
   };
   const showEpicPlaceholder = tags.has("epic") && !hideEpic && !ticket.epic && Boolean(onEpicChange) && !isRemoved;
 
-  // Checkbox always visible when checked or when any row is checked (bulk mode)
-  const showCheckbox = isChecked || someChecked;
+  // Checkbox always visible when checked or when any row is checked (bulk mode).
+  // inlineCheckbox (BRDG-389) keeps it permanently in the content flow for list hosts.
+  const showCheckbox = isChecked || someChecked || inlineCheckbox;
 
   const checkbox = (
     <Checkbox
@@ -355,6 +380,7 @@ export const BoardRow = memo(forwardRef<HTMLTableRowElement, BoardRowBaseProps>(
     <tr
       ref={ref}
       data-index={dataIndex}
+      data-ticket-key={dataTicketKey}
       style={{
         ...style,
         ...(isEditingTitle ? { position: "relative" as const, zIndex: 5 } : {}),
@@ -392,7 +418,7 @@ export const BoardRow = memo(forwardRef<HTMLTableRowElement, BoardRowBaseProps>(
             <tr>: a div honours border-radius, so the last row can round its bottom corners to
             the card edge. A <tr>/<td> with border-collapse ignores radius, which is why the
             hover fill used to bleed square into the card's rounded corners. */}
-        <div className={`group/row @container/boardrow relative flex items-center gap-2 border-l-[3px] py-[7px] pl-4 pr-[23px] transition-colors duration-100 ${
+        <div className={`group/row @container/boardrow relative flex items-center gap-2 border-l-[3px] ${spacious ? "py-[10px]" : "py-[7px]"} pl-4 pr-[23px] transition-colors duration-100 ${
           dragListeners ? "cursor-grab active:cursor-grabbing select-none" : "cursor-pointer"
         } ${
           isSelected || isContextTarget
@@ -417,8 +443,9 @@ export const BoardRow = memo(forwardRef<HTMLTableRowElement, BoardRowBaseProps>(
         } ${isFocused && !isSelected && !isContextTarget ? "outline outline-1 -outline-offset-1 outline-[var(--color-brand-500)]/40" : ""} ${isRemoved ? "opacity-50" : isDeprecated ? "opacity-60" : isInflight ? "opacity-70" : ""} ${isLastInCard ? "rounded-b-[11px]" : ""} ${liveChangeKinds.size > 0 ? "live-pulse" : ""}`}>
           {/* Drag affordance in the left gutter (Jira-style). Visual only: the whole row is the
               drag activator, so this never needs its own listeners. Shown only when reordering
-              is possible (dragListeners present) and never during multiselect. */}
-          {dragListeners && !someChecked && (
+              is possible (dragListeners present) and never during multiselect. Suppressed when a
+              host supplies its own dragHandleSlot (BRDG-389) so the two grips never stack. */}
+          {dragListeners && !dragHandleSlot && !someChecked && (
             <span
               aria-hidden
               // pointer-events stay ON: the handle protrudes past the row's left
@@ -428,6 +455,16 @@ export const BoardRow = memo(forwardRef<HTMLTableRowElement, BoardRowBaseProps>(
               className="absolute -left-[3px] top-1/2 flex h-6 w-[18px] -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-md border border-border-subtle bg-[var(--color-surface-elevated)] text-text-tertiary opacity-0 shadow-[var(--shadow-sm)] transition-opacity duration-150 group-hover/row:opacity-100"
             >
               <GripVertical size={12} strokeWidth={1.5} />
+            </span>
+          )}
+
+          {/* External drag handle (BRDG-389): a host-supplied cross-list drag activator (e.g.
+              refinement "drag into queue", BRDG-336). Lives over the row's leading edge like the
+              native grip and is hidden during multiselect, so the inline checkbox + handle can
+              coexist while rows are checked. Mirrors the ChildIssueRow gutter treatment. */}
+          {dragHandleSlot && !someChecked && (
+            <span className="absolute -left-[3px] top-1/2 z-10 flex h-6 w-[18px] -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-md border border-border-subtle bg-[var(--color-surface-elevated)] text-text-tertiary opacity-0 shadow-[var(--shadow-sm)] transition-opacity duration-150 group-hover/row:opacity-100 focus-within:opacity-100">
+              {dragHandleSlot}
             </span>
           )}
 
@@ -840,6 +877,16 @@ export const BoardRow = memo(forwardRef<HTMLTableRowElement, BoardRowBaseProps>(
                     <span aria-hidden className="block h-[26px] w-[26px]" />
                   )}
                 </div>
+              )}
+
+              {/* Host-specific trailing metadata (BRDG-389): cleanup score/disposition badges,
+                  refinement session badges. Click-isolated + lifted (z-20) so an interactive
+                  control inside it (e.g. the BV/SP picker) stays reachable and its clicks never
+                  bubble to row-select. Inert on the board (metadataSlot absent). */}
+              {metadataSlot && (
+                <span className="relative z-20 flex shrink-0 items-center gap-1.5" onPointerDown={(e) => e.stopPropagation()} onClick={(e) => e.stopPropagation()}>
+                  {metadataSlot}
+                </span>
               )}
             </>
           )}

@@ -37,15 +37,52 @@ Both lists render `ChildIssueRow` with:
   This needs a small decision during implementation.
 - The queue side (`SortableQueueItem`) and its DnD are separate and out of scope unless they also render `ChildIssueRow`.
 
+## Implementation Plan
+
+> Produced by an Opus Plan agent against the current tree (2026-06-24). File/symbol-level reference for the three phases.
+
+### Key decisions (resolved up front)
+
+- **A — the `metadataSlot` gap.** Add an opt-in `metadataSlot?: React.ReactNode` to `BoardRow` in **Phase 1** (both later phases need it). Render it once, trailing, click-isolated, `z-20`, mirroring `ChildIssueRow`. For **refinement** and **cleanup**, put ALL list metadata into the slot (`tags={new Set()}` so BoardRow renders no native metadata of its own). Rationale: refinement's `InRefinementBadge` / "In other session" text have no native BoardRow equivalent, and cleanup's badges (deprecation/revival/disposition/last-scanned) are entirely bespoke; passing the existing metadata block through the slot is the minimal-change, lowest-regression path.
+- **B — refinement drag handle.** Add an optional external `dragHandleSlot?: React.ReactNode` to `BoardRow`, rendered in the left gutter exactly as `ChildIssueRow` (absolute, hidden when `someChecked`), and suppress BoardRow's native grip when a `dragHandleSlot` is present. Rationale: the refinement list does not reorder (no `SortableBoardRow`), so the native grip is irrelevant; the BRDG-336 `TicketDragHandle` must stay a gutter descendant to preserve the affordance + the `getByLabelText("Drag … to a refinement session")` test.
+- **C — cleanup adapter.** Add a dedicated `cleanupRowToTicket(row: CleanupRow): Ticket` in `src/lib/cleanup-types.ts` (already client-safe, owns `CleanupRow`), mirroring `epicChildToTicket`. Do NOT reuse the in-page `rowToTicket` (that is the SidePanel adapter). `sprintId` is omitted on purpose (metadata is slot-rendered; `tags` empty so the native sprint chip never fires). Add a unit test.
+- **D — refinement FLIP.** `useFlipReorder` queries `[data-ticket-key]`; BoardRow exposes only `data-index`. Add an opt-in `"data-ticket-key"?: string` pass-through to BoardRow's `<tr>` and have `RefinementTicketList` pass `data-ticket-key={ticket.key}`.
+
+### Phase 1 — BoardRow opt-in props (no host changes)
+- `spacious?: boolean` → inner content `<div>` padding `py-[10px]` vs `py-[7px]`.
+- `inlineCheckbox?: boolean` → `showCheckbox = isChecked || someChecked || inlineCheckbox` (box stays `opacity-100`).
+- `metadataSlot?: React.ReactNode` → trailing, after the assignee block, `z-20` click-isolated span.
+- `dragHandleSlot?: React.ReactNode` → left-gutter absolute span (hidden when `someChecked`); native grip guard gains `&& !dragHandleSlot`.
+- `"data-ticket-key"?: string` → pass-through on the `<tr>`.
+- Keep `memo(forwardRef)` + React-Compiler clean (no new hooks). `SortableBoardRow` forwards them automatically via `...rowProps`.
+- Tests in `BoardRow.test.tsx`: spacious padding, inlineCheckbox always-visible, metadataSlot renders/inert, dragHandleSlot renders + suppresses native grip + hidden on `someChecked`.
+
+### Phase 2 — Cleanup list migration
+- Add `cleanupRowToTicket` to `cleanup-types.ts` + unit test.
+- `cleanup/page.tsx`: replace `ChildIssueRow` import with `BoardRow` + adapter. Per-card `<div className="overflow-clip rounded-xl border …"><table className="w-full table-fixed border-collapse text-body-lg"><tbody>…</tbody></table></div>`. Each row is a `<BoardRow>` `<tr>`; the `RationaleLine` moves into a second `<tr><td className="p-0">…</td></tr>` in the same `<tbody>` (only when `row.scanRationale`).
+- BoardRow props: `ticket={cleanupRowToTicket(row)}`, `spacious`, `inlineCheckbox`, `tags={EMPTY_TAGS}`, `isChecked`, `someChecked={checkedKeys.size>0}`, `onCheckboxClick={(key)=>toggleRow(key)}`, `isSelected={active}`, `selectedTicket={null}` + `onSelectTicket={(key)=>key && setReviewKey(key)}` (preserve "click always opens"), `isLastInCard`, `metadataSlot={metadata}` (the existing block verbatim).
+- Remove `rowToSubtask`. Keep `rowToTicket` (SidePanel) untouched.
+- `page.test.tsx`: re-point the `ChildIssueRow` mock to `BoardRow` (props `ticket`/`onSelectTicket`/`onCheckboxClick(key,idx,shiftKey)`/`metadataSlot`); drop the `data-show-type-icon` assertion (BoardRow's list pill always shows the type icon).
+
+### Phase 3 — Refinement list migration
+- `RefinementTicketList.tsx`: replace `ChildIssueRow` with `BoardRow` (tickets are already full `Ticket`s → no adapter). Inner container becomes `<div ref={listRef} …><table …><tbody>…</tbody></table></div>` (FLIP wrapper keeps `listRef`).
+- Per row: `ticket={ticket}`, `spacious`, `inlineCheckbox`, `tags={EMPTY_TAGS}`, `isChecked`, `isSelected={ticket.key===previewTicketKey}`, `someChecked={false}` (preserve), `data-ticket-key={ticket.key}`, `dragHandleSlot={<TicketDragHandle ticketKey={ticket.key} source="list" />}`, `onCheckboxClick` → `queueHook.toggleTicket(key,idx,shiftKey)`, `selectedTicket={null}` + `onSelectTicket={(key)=>key && onSelectTicket(key)}`, edit callbacks straight through, `readinessMap` built once (preserve optimistic readiness), `sprintNameMap` passed so derived hoverData resolves, drop the explicit `hoverData` block, `metadataSlot={metadata}` (existing block verbatim, field-visibility still drives it). `showKey`/`showStatus` map to BoardRow; the "Type icon" toggle becomes a no-op (align with board, annotate — same as BRDG-367 R2).
+- `RefinementTicketList.test.tsx`: re-point mock to `BoardRow`, `data-active` now from `isSelected`, preserve drag-handle + toggleTicket + onSelectTicket assertions.
+
+### Risks
+- R-typeicon-toggle: refinement "Type icon" toggle can no longer hide the leading icon (BoardRow list pill always shows it). Align with the board, annotate.
+- R-cleanup-tint: active tint moves to the row `<tr>` only, not the rationale `<tr>` (minor; acceptable).
+- R-selectedTicket-toggle: BoardRow's toggle-to-null differs from "always open"; resolved via `selectedTicket={null}` + guarded `onSelectTicket`.
+
 ## Preconditions
 
-- [ ] BRDG-367 merged (the `BoardRow` reuse pattern is in place).
-- [ ] Clean working tree; commit each phase as its own logical unit.
+- [x] BRDG-367 merged (the `BoardRow` reuse pattern is in place).
+- [x] Clean working tree; commit each phase as its own logical unit. <!-- Tree carries unrelated parallel work in src/app/(app)/tickets/[key]/page.tsx, TicketTabContent.tsx, ticket-detail-url.ts (ticket-detail, no overlap with this story's BoardRow/cleanup/refinement scope). Staging explicit paths only; never stage all. -->
 
 ## Phase 1: Add `spacious` + `inlineCheckbox` to `BoardRow`
 
-- [ ] Add `spacious?: boolean` (extra row padding) and `inlineCheckbox?: boolean` (always-visible in-flow checkbox) to `BoardRow`, both default-off and inert for existing hosts.
-- [ ] Unit-test the two variants on `BoardRow`; confirm no visual change for the board / inbox / Story Writer / epic hosts.
+- [x] Add `spacious?: boolean` (extra row padding) and `inlineCheckbox?: boolean` (always-visible in-flow checkbox) to `BoardRow`, both default-off and inert for existing hosts. <!-- also added the host-inert metadataSlot + dragHandleSlot + data-ticket-key pass-through here (decisions A/B/D) since both later phases need them; SortableBoardRow forwards them via ...rowProps -->
+- [x] Unit-test the two variants on `BoardRow`; confirm no visual change for the board / inbox / Story Writer / epic hosts. <!-- 61 BoardRow tests pass incl. new spacious/inlineCheckbox/metadataSlot/dragHandleSlot/data-ticket-key cases; all new props default-off so existing host tests unchanged -->
 
 ## Phase 2: Migrate the cleanup list
 

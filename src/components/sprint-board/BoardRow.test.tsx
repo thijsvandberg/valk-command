@@ -671,4 +671,63 @@ describe("BoardRow (headerless, BRDG-239)", () => {
       expect(wrapper(container).className).not.toContain("opacity-0");
     });
   });
+
+  // BRDG-389: opt-in list-host extensions so the cleanup + refinement lists can render
+  // through BoardRow. All default-off and inert for the board / inbox / Story Writer / epic.
+  describe("list-host extensions (BRDG-389)", () => {
+    // The row's content surface is the `group/row` div inside the single <td>.
+    const contentDiv = (container: HTMLElement) => container.querySelector("td > div") as HTMLElement;
+
+    it("uses the default tight padding and switches to relaxed padding when spacious", () => {
+      const { container: tight } = renderRow();
+      expect(contentDiv(tight).className).toContain("py-[7px]");
+      expect(contentDiv(tight).className).not.toContain("py-[10px]");
+
+      const { container: relaxed } = renderRow({ spacious: true });
+      expect(contentDiv(relaxed).className).toContain("py-[10px]");
+      expect(contentDiv(relaxed).className).not.toContain("py-[7px]");
+    });
+
+    it("keeps the checkbox always visible (no hover) when inlineCheckbox is set, with no selection active", () => {
+      const { container } = renderRow({ inlineCheckbox: true, someChecked: false, isChecked: false });
+      const box = container.querySelector("div.w-3\\.5 span");
+      expect(box?.className).toContain("opacity-100");
+      expect(box?.className).not.toContain("opacity-0");
+    });
+
+    it("renders a trailing metadata slot only when supplied, click-isolated", () => {
+      renderRow();
+      expect(screen.queryByTestId("meta-slot")).toBeNull();
+
+      const { container } = renderRow({ metadataSlot: <span data-testid="meta-slot">scores</span> });
+      const slot = screen.getByTestId("meta-slot");
+      expect(slot).toBeInTheDocument();
+      // Wrapped in the z-20 click-isolated span so inner pickers stay reachable.
+      expect(slot.parentElement?.className).toContain("z-20");
+      // Slot sits inside the row content surface.
+      expect(contentDiv(container).contains(slot)).toBe(true);
+    });
+
+    it("renders an external drag-handle slot and suppresses the native reorder grip", () => {
+      // dragListeners present alone -> native grip shows.
+      const native = renderRow({ dragListeners: {} as never });
+      expect(native.container.querySelector('[data-testid="icon-grip"]')).toBeInTheDocument();
+
+      // A host drag handle replaces the native grip so the two never stack.
+      renderRow({ dragListeners: {} as never, dragHandleSlot: <button aria-label="drag-into-queue" /> });
+      expect(screen.getByLabelText("drag-into-queue")).toBeInTheDocument();
+      // Only the one native grip from the first render; the second render adds none.
+      expect(screen.getAllByTestId("icon-grip")).toHaveLength(1);
+    });
+
+    it("hides the external drag-handle slot during multiselect (someChecked)", () => {
+      renderRow({ dragHandleSlot: <button aria-label="drag-into-queue" />, someChecked: true });
+      expect(screen.queryByLabelText("drag-into-queue")).toBeNull();
+    });
+
+    it("exposes data-ticket-key on the row for FLIP reorder hosts", () => {
+      const { container } = renderRow({ "data-ticket-key": "VPL-1" } as Partial<BoardRowBaseProps>);
+      expect(container.querySelector('tr[data-ticket-key="VPL-1"]')).toBeInTheDocument();
+    });
+  });
 });
