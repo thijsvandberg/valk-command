@@ -69,6 +69,24 @@ describe("ChildIssueRow", () => {
     expect(onSelect).not.toHaveBeenCalled();
   });
 
+  it("rounds top corners only when roundTop is set, so a colored background cannot bleed past the card's rounded corner", () => {
+    const { container, rerender } = render(<ChildIssueRow item={baseSub} isLast={false} />);
+    const row = () => container.querySelector('[data-ticket-key="VPL-100"]') as HTMLElement;
+    expect(row().className).not.toContain("rounded-t-[11px]");
+
+    rerender(<ChildIssueRow item={baseSub} isLast={false} roundTop />);
+    expect(row().className).toContain("rounded-t-[11px]");
+  });
+
+  it("rounds bottom corners only when roundBottom is set", () => {
+    const { container, rerender } = render(<ChildIssueRow item={baseSub} isLast roundBottom />);
+    const row = () => container.querySelector('[data-ticket-key="VPL-100"]') as HTMLElement;
+    expect(row().className).toContain("rounded-b-[11px]");
+
+    rerender(<ChildIssueRow item={baseSub} isLast />);
+    expect(row().className).not.toContain("rounded-b-[11px]");
+  });
+
   it("renders metadata slot", () => {
     render(
       <ChildIssueRow

@@ -246,6 +246,8 @@ export function RefinementTicketList({
                 key={ticket.key}
                 item={ticket}
                 isLast={idx === availableTickets.length - 1}
+                roundTop={idx === 0}
+                roundBottom={idx === availableTickets.length - 1}
                 spacious
                 inlineCheckbox
                 showTypeIcon={showIssueType}
