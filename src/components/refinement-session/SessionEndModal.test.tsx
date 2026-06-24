@@ -46,14 +46,8 @@ const mockTickets = [
   { key: "VPL-3", title: "Spike investigation", type: "spike", storyPoints: null, jiraStatus: "TO DO", readiness: null, totalSubtaskCount: 0 },
 ];
 
-// Mutable so a test can simulate the not-loaded -> loaded transition.
-let mockTicketsLoading = false;
-
 vi.mock("@/hooks/useSprintBoard", () => ({
-  useTicketsByKeysWithState: () => ({
-    tickets: mockTicketsLoading ? [] : mockTickets,
-    isLoading: mockTicketsLoading,
-  }),
+  useTickets: () => ({ data: mockTickets }),
 }));
 
 // Mutable across tests; the hook factory reads the current value at render.
@@ -128,7 +122,6 @@ vi.mock("@/lib/api-client", () => ({
 describe("SessionEndModal", () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    mockTicketsLoading = false;
     mockContext.sessionEstimates = {};
     mockContext.sessionSubtaskCounts = {};
     mockContext.currentIndex = 2;
@@ -375,27 +368,6 @@ describe("SessionEndModal", () => {
       expect(carryCheckbox("VPL-1")).toHaveAttribute("aria-checked", "false");
       expect(carryCheckbox("VPL-2")).toHaveAttribute("aria-checked", "true");
       expect(carryCheckbox("VPL-3")).toHaveAttribute("aria-checked", "true");
-    });
-
-    it("seeds carry-over only after ticket data loads, never against the empty pre-load array (BRDG-391)", () => {
-      mockContext.currentIndex = 0; // VPL-2 and VPL-3 are unhandled once data is present
-
-      // Render while the keyed fetch is still in flight (tickets = [], isLoading = true).
-      mockTicketsLoading = true;
-      const { rerender } = render(<SessionEndModal />);
-
-      // Nothing seeded yet. A naive swap to a hook returning [] (truthy) would
-      // have fired the one-time carry-over seed here against empty data and
-      // never re-run, silently wiping the pre-selection.
-      expect(screen.queryByTestId("carry-summary")).not.toBeInTheDocument();
-
-      // Data arrives.
-      mockTicketsLoading = false;
-      rerender(<SessionEndModal />);
-
-      // Now the unhandled rows are pre-selected.
-      expect(screen.getByTestId("carry-summary")).toBeInTheDocument();
-      expect(carryCheckbox("VPL-2")).toHaveAttribute("aria-checked", "true");
     });
 
     it("updates the carry-over count as rows are toggled", () => {

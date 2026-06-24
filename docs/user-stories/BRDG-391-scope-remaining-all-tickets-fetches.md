@@ -16,18 +16,20 @@ The global LRU cap from BRDG-387 already bounds the memory these cause; this sto
 3. **[refinement/[sessionId]/session/[ticketKey]/page.tsx:87](src/app/(app)/refinement/[sessionId]/session/[ticketKey]/page.tsx#L87)** — same undefined-gating in the rehydration effect, and the keys are only known *after* an async `refinementSessionsApi.get`, so `useTicketsByKeys(session.ticketKeys)` cannot be called at first render. Needs a two-phase fetch (store keys in state, fetch reactively) or to read titles from the session record.
 4. **[RefinementPageContent.tsx:114](src/components/refinement-session/RefinementPageContent.tsx#L114)** — genuine whole-pool free-text browse/search over all selectable tickets. `useTicketsByKeys` does not fit; needs a **server-side search/filter endpoint** (e.g. `/api/tickets?search=&readiness=&status=` returning a scoped page) plus debounced client wiring and ideally a virtualized result list.
 
-## Implementation Plan (safe slice: sites 2 + 3; sites 1 + 4 deferred)
+## Finding: there is no independently-beneficial "safe slice" — do this story as a unit
 
-Opus-planned against the real code. BRDG-387's LRU cap already bounds memory, so this is a perf/over-fetch fix. We land before the not-yet-started BRDG-389 (row adoption), the agreed sequencing.
+An attempt to land the "safe parts" (sites 2 + 3, with a loading-signal hook) was implemented and then **backed out**, because verifying against the real render tree showed the over-fetch removal is gated on the risky **Site 1**:
 
-1. **A1 prerequisite — loading signal.** Add a sibling hook `useTicketsByKeysWithState(keys): { tickets, isLoading }` in [useSprintBoard.ts](src/hooks/useSprintBoard.ts) by extracting the shared SWR fetcher; keep `useTicketsByKeys` returning `Ticket[]` unchanged (3 existing callers + tests stay green). WHY: `useTicketsByKeys` returns `[]` (not `undefined`) before load, which would defeat `!allTickets` gates.
-2. **Site 2 — SessionEndModal.** Swap `useTickets("__all__")` (L48) for `useTicketsByKeysWithState(queue)`; replace both `!allTickets` gates (PO-note seeding ~L126, carry-over seeding ~L224) with `isLoading`. WHY: the carry-over seeding effect has a one-time ref guard; firing it against `[]` silently wipes the carry-over selection (a latent data-loss bug). Gate on `isLoading` so it fires only after data arrives.
-3. **Site 3 — in-session ticket page.** Two-phase fetch: load the session (keys known only after `refinementSessionsApi.get`), store keys in state, then `useTicketsByKeysWithState(sessionKeys)`. Decouple the rehydration effect from `allTickets`. Session response carries no titles, so non-active queue titles briefly show the key until the keyed fetch resolves (acceptable; active ticket always has full detail).
-4. **Tests.** `useSprintBoard.test.ts` (isLoading transition), `SessionEndModal.test.tsx` (mock swap + a regression test proving carry-over seeds only after load), plus a focused site-3 test.
+- `useTicketHoverData` (Site 1) itself calls `useTickets("__all__")`, and it is mounted on **every** refinement page that the other sites live on: the in-session ticket page ([page.tsx:178](src/app/(app)/refinement/[sessionId]/session/[ticketKey]/page.tsx#L178)) and, via `ChildIssueRow`/`SessionQueueItem`, the prep view.
+- `SessionEndModal` (Site 2) is rendered **only** inside that session page ([page.tsx:464](src/app/(app)/refinement/[sessionId]/session/[ticketKey]/page.tsx#L464)).
+- So while any of these pages is open, `__all__` is fetched regardless (for hover). Scoping Site 2/3 to keyed fetches does **not** remove the `__all__` fetch; it just **adds** redundant per-ticket fetches (each `/api/tickets/{key}` also triggers a Jira sync) on top of the `__all__` that hover keeps alive. Net: slower, noisier, zero byte savings.
 
-### Deferred (stay open in this story)
-- **Site 1 (`useTicketHoverData` lazy refactor):** high-risk, 5 synchronous-at-render consumers + `TicketStatusPill`. Needs its own design pass.
-- **Site 4 (`RefinementPageContent` server search):** needs a new `/api/tickets?search=` endpoint; the heaviest piece.
+**Conclusion:** Site 1 (`useTicketHoverData`) is the linchpin — it is the common `__all__` consumer across all these pages. Sites 2/3/4 only pay off once Site 1 stops fetching `__all__`. This story should be done as a unit (Site 1 first), not sliced. The "loading-signal" complication (a `!data` gate breaking on `useTicketsByKeys`'s `[]`) only arises *because* of the swap; with `__all__` still present via hover there is no bug to fix and nothing to gain.
+
+### The sites (do together, Site 1 first)
+1. **Site 1 — `useTicketHoverData` lazy refactor.** The linchpin. High-risk: 5 synchronous-at-render consumers + `TicketStatusPill`. Needs its own design pass (keep the synchronous `(key) => data | undefined` signature; resolve lazily per key, undefined until resolved).
+2. **Site 2 — SessionEndModal** and **Site 3 — in-session ticket page.** Once Site 1 no longer pulls `__all__`, swap these to `useTicketsByKeys(queue/sessionKeys)`. Site 2's seeding effects gate on `!allTickets` (undefined-until-loaded); since `useTicketsByKeys` returns `[]`, add a loading signal (a `useTicketsByKeysWithState` sibling) so the one-time carry-over seed fires only after load (else it silently wipes the selection).
+3. **Site 4 — `RefinementPageContent` server search.** Needs a new `/api/tickets?search=` endpoint; the heaviest piece.
 
 ## Acceptance Criteria
 

@@ -6,7 +6,6 @@ import {
   useTickets,
   useTicketDetail,
   useTicketsByKeys,
-  useTicketsByKeysWithState,
   useJiraSprints,
   useTicketReviews,
 } from "./useSprintBoard";
@@ -275,38 +274,6 @@ describe("useTicketsByKeys", () => {
     const { result } = renderHook(() => useTicketsByKeys([]), { wrapper: swrWrapper });
 
     expect(result.current).toEqual([]);
-    expect(fetch).not.toHaveBeenCalled();
-  });
-});
-
-// ---------------------------------------------------------------------------
-// useTicketsByKeysWithState
-// ---------------------------------------------------------------------------
-describe("useTicketsByKeysWithState", () => {
-  it("reports isLoading true until data arrives, then false with the tickets", async () => {
-    vi.spyOn(global, "fetch").mockImplementation(async (url) => {
-      const u = typeof url === "string" ? url : url.toString();
-      if (u === "/api/tickets/BRDG-101") return { ok: true, json: async () => mockTicketDetail } as Response;
-      return { ok: false, status: 404, json: async () => null } as Response;
-    });
-
-    const { result } = renderHook(() => useTicketsByKeysWithState(["BRDG-101"]), { wrapper: swrWrapper });
-
-    // First render: a fetch is in flight, no cached data yet.
-    expect(result.current.isLoading).toBe(true);
-    expect(result.current.tickets).toEqual([]);
-
-    await waitFor(() => expect(result.current.isLoading).toBe(false));
-    expect(result.current.tickets.map((t) => t.key)).toEqual(["BRDG-101"]);
-  });
-
-  it("is never loading for an empty key list (ready, empty)", () => {
-    vi.spyOn(global, "fetch");
-
-    const { result } = renderHook(() => useTicketsByKeysWithState([]), { wrapper: swrWrapper });
-
-    expect(result.current.isLoading).toBe(false);
-    expect(result.current.tickets).toEqual([]);
     expect(fetch).not.toHaveBeenCalled();
   });
 });
