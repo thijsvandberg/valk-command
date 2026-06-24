@@ -179,31 +179,41 @@ const FLYOUT_PANEL = "rounded-xl border border-border-default bg-[var(--color-su
  * `group-hover/fly` targets the nearest `group/fly` ancestor and hovering any
  * descendant keeps every ancestor hovered; the `pl-1` gap bridges trigger -> panel.
  */
+// Each flyout owns its open state rather than relying on CSS `group-hover`: nested
+// flyouts reused the same `group/fly` name, so a child's `group-hover/fly` also matched
+// the parent's hover and every sub-panel opened at once. Tracking hover per instance
+// (onPointerEnter/Leave) keeps each level independent.
+//
 // `nested` flyouts hold other flyouts (e.g. Update), so their panel must NOT clip:
 // overflow-y-auto computes overflow-x to auto too, which would cut off a child flyout
 // that opens beside it. Leaf flyouts keep overflow-y-auto so a long picker can scroll.
 function Flyout({ icon, label, width = "w-[240px]", nested = false, children }: { icon?: ReactNode; label: ReactNode; width?: string; nested?: boolean; children: ReactNode }) {
   const ref = useRef<HTMLDivElement>(null);
+  const [open, setOpen] = useState(false);
   const [side, setSide] = useState<"right" | "left">("right");
   // Open to the left when the panel would run off the right edge (e.g. the bulk bar's
   // dropdowns sit far right). Measured from the trigger's position on hover.
-  const placeSide = () => {
+  const handleEnter = () => {
     const el = ref.current;
-    if (!el) return;
-    const panelWidth = parseInt(/\d+/.exec(width)?.[0] ?? "240", 10);
-    setSide(window.innerWidth - el.getBoundingClientRect().right < panelWidth + 16 ? "left" : "right");
+    if (el) {
+      const panelWidth = parseInt(/\d+/.exec(width)?.[0] ?? "240", 10);
+      setSide(window.innerWidth - el.getBoundingClientRect().right < panelWidth + 16 ? "left" : "right");
+    }
+    setOpen(true);
   };
   return (
-    <div ref={ref} className="group/fly relative" onPointerEnter={placeSide}>
+    <div ref={ref} className="relative" onPointerEnter={handleEnter} onPointerLeave={() => setOpen(false)}>
       <button
         type="button"
-        className="flex w-full items-center gap-2.5 px-3 py-1.5 text-body-sm text-text-secondary cursor-pointer hover:bg-hover-list-item group-hover/fly:bg-hover-list-item"
+        className={`flex w-full items-center gap-2.5 px-3 py-1.5 text-body-sm text-text-secondary cursor-pointer hover:bg-hover-list-item ${open ? "bg-hover-list-item" : ""}`}
       >
         {icon && <span className="flex h-4 w-4 shrink-0 items-center justify-center text-text-tertiary">{icon}</span>}
         {label}
         <ChevronRight className="ml-auto h-3.5 w-3.5 text-text-muted" strokeWidth={1.5} />
       </button>
-      <div className={`invisible absolute top-0 z-20 opacity-0 transition-opacity duration-100 group-hover/fly:visible group-hover/fly:opacity-100 ${side === "left" ? "right-full pr-1" : "left-full pl-1"}`}>
+      {/* Panel stays mounted (so it can be measured/queried) but is only shown for this
+          flyout's own hover. */}
+      <div className={`absolute top-0 z-20 transition-opacity duration-100 ${open ? "visible opacity-100" : "invisible opacity-0"} ${side === "left" ? "right-full pr-1" : "left-full pl-1"}`}>
         <div className={`${FLYOUT_PANEL} ${width} ${nested ? "overflow-visible" : "max-h-[min(70vh,440px)] overflow-y-auto"} py-1`}>{children}</div>
       </div>
     </div>
