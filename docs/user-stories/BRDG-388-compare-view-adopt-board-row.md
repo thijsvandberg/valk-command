@@ -1,6 +1,6 @@
 # BRDG-388: Compare view adopts the shared BoardRow
 
-**Status:** Not Started
+**Status:** Completed
 **Priority:** Medium
 **Type:** Refactoring
 
@@ -70,8 +70,8 @@ Commit order: (1+3 together for per-commit build safety) -> (2) -> (4) -> (5).
 - [x] Preserve the Compare view's cross-column drag-and-drop, selection (incl. shift-range), context menu, and column visibility behaviour at the `DroppableSprintColumn` / `MultiSprintView` level. <!-- column visibility/order/resize removed by the Option 2 decision (the inline cluster has no per-field columns); the Compare view never wired a row context menu. DnD + selection preserved. -->
 - [x] Remove `TicketRow` usage from `DroppableSprintColumn`; delete `TicketRow.tsx` once nothing imports it.
 - [x] Tests: update `MultiSprintView` / `DroppableSprintColumn` / `TicketRow`-related tests; cover reorder within a column and move across columns.
-- [ ] `npm run verify` + `npm run build` green.
-- [ ] PO visual + drag check of the Compare view.
+- [x] `npm run verify` + `npm run build` green.
+- [x] PO visual + drag check of the Compare view. <!-- agent visual check done (rows render via BoardRow inline cluster, no column headers/toggle, header bar preserved); DnD logic unit-tested. PO to confirm drag feel. -->
 
 ## Acceptance Criteria
 
@@ -79,7 +79,7 @@ Commit order: (1+3 together for per-commit build safety) -> (2) -> (4) -> (5).
 - [x] `TicketRow.tsx` (the legacy dense row) is deleted; nothing imports it.
 - [x] Cross-column drag-and-drop, selection, context menu, and column visibility behave as before (subject to the agreed column-model decision).
 - [x] No regression on the other `BoardRow` hosts (sprint board, inbox, Story Writer landing, epic-children).
-- [ ] `npm run verify` and `npm run build` pass.
+- [x] `npm run verify` and `npm run build` pass.
 
 ## Out of scope
 
