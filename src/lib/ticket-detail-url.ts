@@ -8,7 +8,7 @@ import type { TicketTab } from "@/components/ticket-detail/TicketTabContent";
 // must fall back to the default rather than render a blank pane, so resolution
 // is per-type. Mirrors the tab-bar availability rules in TicketTabContent.
 export function availableTicketTabs(type: string): readonly TicketTab[] {
-  if (type === "epic") return ["children", "content", "history"];
+  if (type === "epic") return ["children", "content", "history", "meta"];
   if (type === "subtask") return ["content", "history"];
   return ["content", "history", "review", "development"];
 }

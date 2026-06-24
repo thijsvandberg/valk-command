@@ -2,7 +2,7 @@
 
 import { useCallback, useRef, useState } from "react";
 import { Loader2, AlertTriangle, Flag } from "lucide-react";
-import type { Ticket, TicketDetail, JiraStatus, EpicChild } from "@/types/ticket";
+import type { Ticket, TicketDetail, JiraStatus, EpicChild, TicketReadiness } from "@/types/ticket";
 import type { LocalEditSaver } from "@/lib/local-edit-saver";
 import { Avatar } from "@/components/shared/Avatar";
 import { EditableTitle } from "./EditableTitle";
@@ -12,6 +12,7 @@ import { SubtasksSection } from "./SubtasksSection";
 import { LinkedIssuesSection } from "./LinkedIssuesSection";
 import { EpicChildrenSection } from "./EpicChildrenSection";
 import { CommentsSection } from "./CommentsSection";
+import { TicketMetaContent } from "./TicketMetaContent";
 import { Tab } from "@/components/shared/TabBar";
 import dynamic from "next/dynamic";
 
@@ -36,7 +37,7 @@ const TicketDevelopment = dynamic(
   { loading: TabLoadingFallback },
 );
 
-export type TicketTab = "children" | "content" | "history" | "review" | "development";
+export type TicketTab = "children" | "content" | "history" | "review" | "development" | "meta";
 
 export interface TicketTabContentProps {
   // Layout context: "page" centers content in a max-w-4xl column with wide
@@ -64,6 +65,9 @@ export interface TicketTabContentProps {
   ticketKey: string;
   ticket: Ticket;
   detail: TicketDetail | undefined;
+  /** Drives the readiness vs. reviewed-version freshness check in the epic Meta
+   *  info tab's `TicketMetaContent`; mirrors the prop the sidebar receives. */
+  reviewData?: { reviews: { storyVersionHash?: string | null; overallScore: number }[]; currentVersionHash: string | null } | undefined;
   localEdits: Record<string, { value: string; isDraft: boolean; modifiedAt?: string }> | undefined;
   activeTab: TicketTab;
   onActiveTabChange: (tab: TicketTab) => void;
@@ -95,6 +99,8 @@ export interface TicketTabContentProps {
   onEpicChildOptimistic?: (childKey: string, patch: Partial<EpicChild>) => void;
   onConflictResolved: () => Promise<void>;
   onSelectTicket: (key: string) => void;
+  /** Readiness change from the epic Meta info tab; same handler the sidebar uses. */
+  onReadinessChange?: (v: TicketReadiness | null) => void;
   /** Key of the child currently open in the SidePanel (?ticket=), highlighted in
       the child/subtask lists so the open row reads as active (mirrors the board). */
   activeChildKey?: string | null;
@@ -120,6 +126,7 @@ export function TicketTabContent({
   ticketKey,
   ticket,
   detail,
+  reviewData,
   localEdits,
   activeTab,
   onActiveTabChange,
@@ -147,6 +154,7 @@ export function TicketTabContent({
   onEpicChildOptimistic,
   onConflictResolved,
   onSelectTicket,
+  onReadinessChange,
   activeChildKey,
   editSaver,
   onDraftConflictReload,
@@ -212,6 +220,10 @@ export function TicketTabContent({
                 { id: "history" as const, label: "History", badge: versionCount as number | undefined, badgeHighlight: false },
                 ...((reviewInMenu || isEpic || isSubtask) ? [] : [{ id: "review" as const, label: "Review", badge: (reviewCount || undefined) as number | undefined, badgeHighlight: (reviewCount ?? 0) > 0 }]),
                 ...((isEpic || isSubtask) ? [] : [{ id: "development" as const, label: "Development", badge: undefined as number | undefined, badgeHighlight: false }]),
+                // Epics relocate their own metadata into a trailing tab so the
+                // right column is free for the clicked child, not the epic's
+                // rarely-needed meta (BRDG-386). Kept last in the bar.
+                ...(isEpic ? [{ id: "meta" as const, label: "Meta info", badge: undefined as number | undefined, badgeHighlight: false }] : []),
               ]).map((tab) => (
                 <Tab
                   key={tab.id}
@@ -423,6 +435,23 @@ export function TicketTabContent({
           )}
           {activeTab === "review" && !isSubtask && <TicketReview ticketKey={ticketKey} />}
           {activeTab === "development" && !isSubtask && <TicketDevelopment ticketKey={ticketKey} />}
+
+          {/* Epic metadata lives in a tab rather than the right rail (BRDG-386).
+              The shared meta panel needs a px-5 host (its footer bleeds via
+              -mx-5); max-w-2xl keeps it reading as a panel inside the wide rail
+              instead of stretching across the full content column. */}
+          {activeTab === "meta" && isEpic && (
+            <div className="mt-3">
+              <TicketMetaContent
+                ticket={ticket}
+                detail={detail}
+                reviewData={reviewData}
+                onReadinessChange={onReadinessChange}
+                onMutate={onMutate}
+                className="max-w-2xl px-5"
+              />
+            </div>
+          )}
 
           {activeTab !== "history" && <div className="h-12" />}
         </div>

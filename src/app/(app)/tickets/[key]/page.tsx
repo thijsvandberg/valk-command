@@ -602,7 +602,9 @@ export default function TicketDetailPage({
                 {isEpic ? "Epic writer" : "Story writer"}
               </Link>
             )}
-            {sidebarCollapsed && (
+            {/* Epics have no meta sidebar to reopen (BRDG-386); the affordance
+                only applies to types that still carry the right-rail. */}
+            {sidebarCollapsed && !isEpic && (
               <Button
                 variant="ghost"
                 size="md"
@@ -642,6 +644,7 @@ export default function TicketDetailPage({
           ticketKey={key}
           ticket={ticket}
           detail={h.detail}
+          reviewData={h.reviewData}
           localEdits={h.localEdits}
           activeTab={activeTab}
           onActiveTabChange={handleTabChange}
@@ -671,6 +674,7 @@ export default function TicketDetailPage({
           editSaver={h.editSaver}
           onDraftConflictReload={h.handleDraftConflictReload}
           onSelectTicket={selectTicket}
+          onReadinessChange={h.handleReadinessChange}
           activeChildKey={previewTicketKey}
           reviewCount={h.reviewCount}
           versionCount={h.versionCount}
@@ -722,11 +726,11 @@ export default function TicketDetailPage({
             storageKey={SIDEBAR_WIDTH_KEY}
           />
         </div>
-      ) : (
-        <div key="epic-meta" className="sticky top-0 min-h-full self-stretch overflow-visible" style={{ animation: "fadeIn 0.15s ease" }}>
+      ) : !isEpic ? (
+        <div key="ticket-meta" className="sticky top-0 min-h-full self-stretch overflow-visible" style={{ animation: "fadeIn 0.15s ease" }}>
           <TicketSidebar ticket={ticket} detail={h.detail} reviewData={h.reviewData} collapsed={sidebarCollapsed} onCollapsedChange={setSidebarCollapsed} onNavigateToReview={() => selectTab("review")} onNavigateToDev={() => selectTab("development")} onReadinessChange={h.handleReadinessChange} />
         </div>
-      )}
+      ) : null}
       </div>
     </div>
     </ErrorBoundary>

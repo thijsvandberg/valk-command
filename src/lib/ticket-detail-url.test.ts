@@ -7,8 +7,8 @@ import {
 } from "./ticket-detail-url";
 
 describe("availableTicketTabs", () => {
-  it("gives epics children/content/history but no review or development", () => {
-    expect(availableTicketTabs("epic")).toEqual(["children", "content", "history"]);
+  it("gives epics children/content/history/meta but no review or development (BRDG-386)", () => {
+    expect(availableTicketTabs("epic")).toEqual(["children", "content", "history", "meta"]);
   });
 
   it("gives subtasks only content and history", () => {
@@ -35,6 +35,13 @@ describe("resolveTicketTab", () => {
     expect(resolveTicketTab("history", "story")).toBe("history");
     expect(resolveTicketTab("review", "story")).toBe("review");
     expect(resolveTicketTab("children", "epic")).toBe("children");
+    // The epic Meta info tab is a valid deep-link target (BRDG-386).
+    expect(resolveTicketTab("meta", "epic")).toBe("meta");
+  });
+
+  it("does not expose the epic-only meta tab to other ticket types", () => {
+    expect(resolveTicketTab("meta", "story")).toBe("content");
+    expect(resolveTicketTab("meta", "subtask")).toBe("content");
   });
 
   it("falls back to the default for an unknown tab value", () => {

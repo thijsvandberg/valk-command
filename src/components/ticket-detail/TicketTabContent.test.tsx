@@ -43,6 +43,12 @@ vi.mock("./CommentsSection", () => ({
   CommentsSection: () => <div data-testid="comments-section" />,
 }));
 
+vi.mock("./TicketMetaContent", () => ({
+  TicketMetaContent: ({ className }: { className?: string }) => (
+    <div data-testid="ticket-meta-content" data-classname={className} />
+  ),
+}));
+
 vi.mock("@/components/shared/TabBar", () => ({
   Tab: ({ label, active, onClick, badge }: { label: string; active: boolean; onClick: () => void; badge?: number }) => (
     <button
@@ -207,6 +213,23 @@ describe("TicketTabContent", () => {
       expect(screen.getByTestId("tab-history")).toBeInTheDocument();
     });
 
+    it("appends a Meta info tab as the last entry for epics (BRDG-386)", () => {
+      renderContent("children", { ticket: makeTicket({ type: "epic" }) });
+      const tabs = screen.getAllByRole("tab");
+      const labels = tabs.map((t) => t.getAttribute("data-testid"));
+      expect(labels).toEqual(["tab-child issues", "tab-content", "tab-history", "tab-meta info"]);
+    });
+
+    it("does not render a Meta info tab for non-epic tickets", () => {
+      renderContent("content");
+      expect(screen.queryByTestId("tab-meta info")).not.toBeInTheDocument();
+    });
+
+    it("does not render a Meta info tab for subtasks", () => {
+      renderContent("content", { ticket: makeTicket({ type: "subtask" }) });
+      expect(screen.queryByTestId("tab-meta info")).not.toBeInTheDocument();
+    });
+
     it("keeps the Review and Development tabs for non-epic tickets", () => {
       renderContent("content");
       expect(screen.getByTestId("tab-review")).toBeInTheDocument();
@@ -248,6 +271,33 @@ describe("TicketTabContent", () => {
       renderContent("children", { ticket: epicTicket(), detail: makeDetail({ epicChildren: [] }) });
       const childTab = screen.getByTestId("tab-child issues");
       expect(childTab).not.toHaveTextContent(/\d/);
+    });
+  });
+
+  describe("epic meta info tab (BRDG-386)", () => {
+    const epicTicket = () => makeTicket({ type: "epic" });
+
+    it("renders the shared meta panel on the meta tab for epics", () => {
+      renderContent("meta", { ticket: epicTicket() });
+      expect(screen.getByTestId("ticket-meta-content")).toBeInTheDocument();
+    });
+
+    it("hosts the meta panel with px-5 padding (its footer bleeds via -mx-5)", () => {
+      renderContent("meta", { ticket: epicTicket() });
+      const meta = screen.getByTestId("ticket-meta-content");
+      expect(meta.getAttribute("data-classname")).toContain("px-5");
+    });
+
+    it("does not render the meta panel inline on a non-meta tab", () => {
+      renderContent("children", { ticket: epicTicket() });
+      expect(screen.queryByTestId("ticket-meta-content")).not.toBeInTheDocument();
+    });
+
+    it("does not render the meta panel for non-epics even when the tab is forced to meta", () => {
+      // A stale ?tab=meta on a non-epic never reaches the tab bar, but the body
+      // guard must also refuse to render the epic-only panel for other types.
+      renderContent("meta", { ticket: makeTicket({ type: "story" }) });
+      expect(screen.queryByTestId("ticket-meta-content")).not.toBeInTheDocument();
     });
   });
 

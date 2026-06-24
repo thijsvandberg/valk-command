@@ -60,14 +60,14 @@ Non-epic and subtask tickets keep their current layout (meta sidebar + collapse 
 
 ## Acceptance Criteria
 
-- [ ] Opening an epic shows **no meta sidebar** in the right column; the tab content uses the full width and the right column is empty until a child is opened.
-- [ ] The epic tab bar shows a `Meta info` tab as the **last** entry: `Child issues · Content · History · Meta info`.
-- [ ] The `Meta info` tab renders the epic's metadata (the existing `TicketMetaContent`: status, assignee, watchers, reporter, dates, components, labels, readiness, PO note, Confluence, Development panel).
-- [ ] Opening an epic still defaults to the **Child issues** tab.
-- [ ] Clicking a child issue opens that child in the right-hand **side panel** (`?ticket=`), as it does today; closing it returns to the empty right column (no epic meta sidebar reappears).
-- [ ] The header "Open sidebar" button does not appear on epics.
-- [ ] `?tab=meta` deep-links to the Meta info tab on an epic; an invalid/stale `?tab=` still degrades to `children`.
-- [ ] Non-epic tickets and subtasks are unchanged: meta sidebar present, collapse/`[`/"Open sidebar" intact, no `Meta info` tab.
+- [x] Opening an epic shows **no meta sidebar** in the right column; the tab content uses the full width and the right column is empty until a child is opened.
+- [x] The epic tab bar shows a `Meta info` tab as the **last** entry: `Child issues · Content · History · Meta info`.
+- [x] The `Meta info` tab renders the epic's metadata (the existing `TicketMetaContent`: status, assignee, watchers, reporter, dates, components, labels, readiness, PO note, Confluence, Development panel).
+- [x] Opening an epic still defaults to the **Child issues** tab.
+- [x] Clicking a child issue opens that child in the right-hand **side panel** (`?ticket=`), as it does today; closing it returns to the empty right column (no epic meta sidebar reappears).
+- [x] The header "Open sidebar" button does not appear on epics.
+- [x] `?tab=meta` deep-links to the Meta info tab on an epic; an invalid/stale `?tab=` still degrades to `children`.
+- [x] Non-epic tickets and subtasks are unchanged: meta sidebar present, collapse/`[`/"Open sidebar" intact, no `Meta info` tab.
 
 ## Technical Notes
 

@@ -103,7 +103,10 @@ vi.mock("@/hooks/useRefinementSessions", () => ({
   useRefinementSessions: () => ({ sessions: mockSessions, mutate: vi.fn(), isLoading: false }),
 }));
 vi.mock("@/hooks/usePageTitle", () => ({ usePageTitle: () => null }));
-vi.mock("@/hooks/useLocalStorage", () => ({ useLocalStorage: () => [false, vi.fn()] }));
+// page.tsx only reads SIDEBAR_COLLAPSED_KEY via useLocalStorage; expose the
+// value so a test can simulate a collapsed sidebar (BRDG-386).
+const { localStorageState } = vi.hoisted(() => ({ localStorageState: { sidebarCollapsed: false } }));
+vi.mock("@/hooks/useLocalStorage", () => ({ useLocalStorage: () => [localStorageState.sidebarCollapsed, vi.fn()] }));
 
 vi.mock("@/components/shared/ViewHeader", () => ({
   ViewHeader: ({ actions, children }: { actions?: ReactNode; children?: ReactNode }) => (
@@ -463,6 +466,71 @@ describe("TicketDetailPage - URL <-> panel/tab sync (BRDG-329)", () => {
     urlState.search = new URLSearchParams("tab=development");
     await renderPage();
     expect(screen.getByTestId("active-tab")).toHaveTextContent("children");
+  });
+
+  it("resolves ?tab=meta to the Meta info tab on an epic (BRDG-386)", async () => {
+    resetHook(null, { ticket: { ...baseTicket, type: "epic" } });
+    urlState.search = new URLSearchParams("tab=meta");
+    await renderPage();
+    expect(screen.getByTestId("active-tab")).toHaveTextContent("meta");
+  });
+
+  it("degrades ?tab=meta to content on a non-epic (the tab does not exist there)", async () => {
+    resetHook(null, { ticket: { ...baseTicket, type: "story" } });
+    urlState.search = new URLSearchParams("tab=meta");
+    await renderPage();
+    expect(screen.getByTestId("active-tab")).toHaveTextContent("content");
+  });
+});
+
+// BRDG-386: epics drop the default meta sidebar; the right column stays empty
+// until a child is opened, and the epic's meta moves into a tab instead.
+describe("TicketDetailPage - epic meta layout (BRDG-386)", () => {
+  beforeEach(() => {
+    resetHook(null);
+    mockSessions = [];
+    localStorageState.sidebarCollapsed = false;
+  });
+
+  afterEach(() => {
+    cleanup();
+    localStorageState.sidebarCollapsed = false;
+  });
+
+  it("renders no meta sidebar for an epic with no child open", async () => {
+    resetHook(null, { ticket: { ...baseTicket, type: "epic" } });
+    await renderPage();
+    expect(screen.queryByTestId("sidebar")).not.toBeInTheDocument();
+  });
+
+  it("still renders the meta sidebar for a non-epic with no child open", async () => {
+    resetHook(null, { ticket: { ...baseTicket, type: "story" } });
+    await renderPage();
+    expect(screen.getByTestId("sidebar")).toBeInTheDocument();
+  });
+
+  it("does not bring back a meta sidebar for an epic when its child panel closes", async () => {
+    // A child open shows the SidePanel; closing returns to an empty right
+    // column, not the epic meta sidebar.
+    resetHook(null, { ticket: { ...baseTicket, type: "epic" } });
+    urlState.search = new URLSearchParams("ticket=VPL-200");
+    await renderPage();
+    expect(await screen.findByTestId("side-panel")).toBeInTheDocument();
+    expect(screen.queryByTestId("sidebar")).not.toBeInTheDocument();
+  });
+
+  it("hides the 'Open sidebar' header button for epics even when collapsed", async () => {
+    localStorageState.sidebarCollapsed = true;
+    resetHook(null, { ticket: { ...baseTicket, type: "epic" } });
+    await renderPage();
+    expect(screen.queryByRole("button", { name: "Open sidebar" })).not.toBeInTheDocument();
+  });
+
+  it("shows the 'Open sidebar' header button for a non-epic when collapsed", async () => {
+    localStorageState.sidebarCollapsed = true;
+    resetHook(null, { ticket: { ...baseTicket, type: "story" } });
+    await renderPage();
+    expect(screen.getByRole("button", { name: "Open sidebar" })).toBeInTheDocument();
   });
 });
 
