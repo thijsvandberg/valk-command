@@ -862,6 +862,7 @@ export function EpicChildrenSection({
         isInflight={isPending}
         someChecked={someChecked}
         isDragActive={false}
+        hideRowAccent
         hideEpic
         tags={epicRowTags}
         showKey={visibleFields.has("issueKey")}

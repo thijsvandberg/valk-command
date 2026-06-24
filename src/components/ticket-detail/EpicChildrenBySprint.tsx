@@ -501,6 +501,7 @@ export function EpicChildrenBySprint({
       isSelected: isActive,
       isInflight: isPending,
       someChecked: !!someChecked,
+      hideRowAccent: true,
       hideEpic: true,
       tags: epicRowTags,
       showKey: visibleFields.has("issueKey"),
