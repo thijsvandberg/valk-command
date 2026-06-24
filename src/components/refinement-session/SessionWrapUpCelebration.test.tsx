@@ -19,7 +19,7 @@ const mockTickets = [
 ];
 
 vi.mock("@/hooks/useSprintBoard", () => ({
-  useTickets: () => ({ data: mockTickets }),
+  useTicketsByKeys: () => mockTickets,
 }));
 
 function stubMatchMedia(reducedMotion: boolean) {

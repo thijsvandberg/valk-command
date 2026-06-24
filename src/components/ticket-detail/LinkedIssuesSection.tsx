@@ -4,7 +4,7 @@ import { useState, useCallback, useRef, useEffect, useMemo } from "react";
 import { useOutsideClick } from "@/hooks/useOutsideClick";
 import type { TicketDetail, LinkedIssue, Ticket } from "@/types/ticket";
 import { LinkedIssueRow } from "./LinkedIssueRow";
-import { useTickets } from "@/hooks/useSprintBoard";
+import { useTicketsByKeys } from "@/hooks/useSprintBoard";
 import { SectionHeader } from "@/components/shared/SectionHeader";
 import { SECTION_KEYS } from "@/lib/section-collapse-store";
 import { useSectionCollapsed } from "@/hooks/useSectionCollapsed";
@@ -71,12 +71,14 @@ function ChangeTypeButton({ onClick, active, disabled }: { onClick: () => void; 
 
 export function LinkedIssuesSection({ issues, ticketKey, onMutate, onSelectTicket, activeKey }: LinkedIssuesSectionProps) {
   const { linkTypes } = useLinkTypes();
-  // The shared board list lets linked rows refresh from live ticket data instead
-  // of their cached link snapshot (BRDG-333 follow-up).
-  const { data: boardTickets } = useTickets("__all__");
+  // Resolve live data for exactly the linked issues (a bounded set), so linked
+  // rows can refresh from current ticket data instead of their cached link
+  // snapshot (BRDG-333 follow-up) without loading the whole backlog (BRDG-387).
+  const linkedKeys = useMemo(() => issues.map((i) => i.key), [issues]);
+  const boardTickets = useTicketsByKeys(linkedKeys);
   const boardTicketByKey = useMemo(() => {
     const m = new Map<string, Ticket>();
-    (boardTickets ?? []).forEach((t) => m.set(t.key, t));
+    boardTickets.forEach((t) => m.set(t.key, t));
     return m;
   }, [boardTickets]);
   const [showLinkDialog, setShowLinkDialog] = useState(false);

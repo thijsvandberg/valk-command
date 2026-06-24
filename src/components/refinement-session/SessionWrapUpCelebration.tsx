@@ -3,7 +3,7 @@
 import { useState, useSyncExternalStore } from "react";
 import { Sparkles } from "lucide-react";
 import { useRefinementSession } from "@/contexts/RefinementSessionContext";
-import { useTickets } from "@/hooks/useSprintBoard";
+import { useTicketsByKeys } from "@/hooks/useSprintBoard";
 
 /* Celebration layers around the refinement wrap-up modal (BRDG-341), ported
  * from /dev/exploration/session-ending variant J (corner cannons). Everything
@@ -129,7 +129,8 @@ function CannonSide({ side }: { side: "left" | "right" }) {
 
 export function SessionWrapUpCelebration({ children }: { children: React.ReactNode }) {
   const { queue, sessionEstimates, sessionStartedAt } = useRefinementSession();
-  const { data: allTickets } = useTickets("__all__");
+  // Scope to the session's queue rather than loading the whole backlog (BRDG-387).
+  const allTickets = useTicketsByKeys(queue);
   const reducedMotion = useReducedMotion();
 
   // Session estimates take precedence over the shared ticket cache, matching
