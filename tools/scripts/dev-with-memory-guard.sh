@@ -26,6 +26,14 @@ log_event() {
   printf '%s\t%s\n' "$(date '+%Y-%m-%d %H:%M:%S')" "$1" >>"$GUARD_LOG"
 }
 
+# The PID(s) bound to the port as a LISTEN socket — i.e. the actual dev server.
+# WHY: a plain `lsof -ti:PORT` also returns processes that merely have a
+# *connection* to the port (e.g. a browser tab open on localhost:3100). Picking
+# one of those by `head -1` made the guard measure a 66MB browser helper instead
+# of the 7GB server, so it never restarted. Restricting to LISTEN owners targets
+# the server itself and frees the port without SIGKILLing connected browser tabs.
+port_listeners() { lsof -nP -iTCP:"$PORT" -sTCP:LISTEN -t 2>/dev/null; }
+
 phys_mb() {
   local pid=$1 line val unit
   line=$(/usr/bin/footprint -p "$pid" 2>/dev/null | grep -m1 'phys_footprint:')
@@ -40,17 +48,27 @@ phys_mb() {
   esac
 }
 
-# Singleton: refuse to start if another guard is already running. WHY: two
-# guards on the same port stomp on each other — each loop iteration starts by
-# killing whatever holds the port, so guard B kills guard A's server (and vice
-# versa) every CHECK_INTERVAL, an endless ping-pong logged as "exited on its
-# own". Match only the bash invocation, not the npm/sh wrapper that launched us.
-others=$(pgrep -f "bash.*dev-with-memory-guard\.sh" 2>/dev/null | grep -v "^$$\$" || true)
+# Singleton takeover: if another guard is already running, kill it and take
+# over. WHY: starting a fresh dev should replace a stale guard, not bail out.
+# Two live guards on the same port stomp on each other — each loop iteration
+# starts by killing whatever holds the port, so guard B kills guard A's server
+# (and vice versa) every CHECK_INTERVAL, an endless ping-pong. Match only the
+# bash invocation, not the npm/sh wrapper that launched us.
+guards() { pgrep -f "bash.*dev-with-memory-guard\.sh" 2>/dev/null | grep -v "^$$\$" || true; }
+others=$(guards)
 if [[ -n "$others" ]]; then
-  echo "[dev-guard] another guard is already running (PID $(echo "$others" | tr '\n' ' ')) — not starting a second one."
-  echo "[dev-guard] kill it first if you really want a fresh start: kill $others"
-  log_event "refused to start: guard already running (PID $(echo "$others" | tr '\n' ' '))"
-  exit 1
+  echo "[dev-guard] another guard is running (PID $(echo "$others" | tr '\n' ' ')) — killing it and taking over."
+  log_event "takeover: killing existing guard (PID $(echo "$others" | tr '\n' ' '))"
+  # TERM first so the old guard runs its cleanup trap (frees the port), then
+  # wait for it to actually exit. WHY: if its cleanup ran after we started our
+  # own `next dev`, it would kill our fresh server. Hard-kill any that ignore it.
+  echo "$others" | xargs kill 2>/dev/null
+  for _ in $(seq 1 50); do
+    [[ -z "$(guards)" ]] && break
+    sleep 0.1
+  done
+  stragglers=$(guards)
+  [[ -n "$stragglers" ]] && echo "$stragglers" | xargs kill -9 2>/dev/null
 fi
 
 DEV_PID=""
@@ -58,7 +76,7 @@ cleanup() {
   echo ""
   echo "[dev-guard] stopping"
   [[ -n "$DEV_PID" ]] && kill "$DEV_PID" 2>/dev/null
-  lsof -ti:"$PORT" | xargs kill -9 2>/dev/null
+  port_listeners | xargs kill -9 2>/dev/null
   exit 0
 }
 trap cleanup INT TERM
@@ -67,7 +85,7 @@ echo "[dev-guard] watching :$PORT — restart above ${THRESHOLD_MB}MB, checking 
 log_event "guard started (limit=${THRESHOLD_MB}MB interval=${CHECK_INTERVAL}s flap-window=${FLAP_WINDOW}s)"
 
 while true; do
-  lsof -ti:"$PORT" | xargs kill -9 2>/dev/null
+  port_listeners | xargs kill -9 2>/dev/null
   next dev --turbopack --port "$PORT" &
   DEV_PID=$!
   start_ts=$SECONDS
@@ -75,7 +93,7 @@ while true; do
 
   while kill -0 "$DEV_PID" 2>/dev/null; do
     sleep "$CHECK_INTERVAL"
-    srv_pid=$(lsof -ti:"$PORT" 2>/dev/null | head -1)
+    srv_pid=$(port_listeners | head -1)
     [[ -z "$srv_pid" ]] && continue
     mb=$(phys_mb "$srv_pid")
     if (( mb > THRESHOLD_MB )); then
@@ -87,7 +105,7 @@ while true; do
 
   uptime_s=$(( SECONDS - start_ts ))
   kill "$DEV_PID" 2>/dev/null
-  lsof -ti:"$PORT" | xargs kill -9 2>/dev/null
+  port_listeners | xargs kill -9 2>/dev/null
 
   if (( hit_mb > 0 )); then
     log_event "restart: hit ${hit_mb}MB > ${THRESHOLD_MB}MB after ${uptime_s}s uptime"
