@@ -5,7 +5,7 @@ import { useOutsideClick } from "@/hooks/useOutsideClick";
 import type { Ticket, POStatus, TicketReadiness, IssueType, JiraStatus, Sprint } from "@/types/ticket";
 import { AssigneePicker, type AssignableUser } from "@/components/shared/AssigneePicker";
 import { EpicPicker, type EpicOption } from "@/components/shared/EpicPicker";
-import { EpicBadge } from "@/components/shared/IssueMetaBadges";
+import { EpicBadge, SubtaskCountBadge } from "@/components/shared/IssueMetaBadges";
 import { AddEpicPill } from "@/components/shared/AddEpicPill";
 import { HoverRevealSlot } from "@/components/shared/HoverRevealSlot";
 import { Checkbox } from "@/components/shared/Checkbox";
@@ -47,6 +47,20 @@ export interface BoardRowBaseProps {
   tags?: Set<InlineTagId>;
   /** Suppress the epic chip (e.g. when the board is grouped by epic). */
   hideEpic?: boolean;
+  /**
+   * Open/total subtask-count chip (epic-children list, BRDG-367). Opt-in: only the epic
+   * hosts pass it, so the board / inbox / Story Writer landing never grow the chip even
+   * though they populate `ticket.openSubtaskCount`/`totalSubtaskCount` for the hover card.
+   * Distinct from the "closed with open subtasks" warning badge. Hidden when total <= 0.
+   */
+  subtaskCounts?: { open: number; total: number };
+  /**
+   * Forwarded to the status pill so a host can hide the issue-key / status segments
+   * (epic-children field toggles, BRDG-367). Both default to true, so the board / inbox /
+   * Story Writer landing keep showing the key and status exactly as today.
+   */
+  showKey?: boolean;
+  showStatus?: boolean;
   /**
    * Estimate-hygiene problems for this ticket, shown as width-gated badges while the
    * warning filter mode is active (BRDG-313). Empty/undefined renders nothing, so the
@@ -166,6 +180,9 @@ export const BoardRow = memo(forwardRef<HTMLTableRowElement, BoardRowBaseProps>(
     isDragActive,
     tags = ALL_TAGS,
     hideEpic = false,
+    subtaskCounts,
+    showKey = true,
+    showStatus = true,
     warnings,
     showSprint = false,
     sprintNameMap = {},
@@ -421,6 +438,9 @@ export const BoardRow = memo(forwardRef<HTMLTableRowElement, BoardRowBaseProps>(
           {!hideCheckbox && (
             <div
               className="flex w-3.5 shrink-0 cursor-pointer items-center justify-center"
+              role="checkbox"
+              aria-checked={isChecked}
+              aria-label={`Select ${ticket.key}`}
               onPointerDown={(e) => e.stopPropagation()}
               onClick={(e) => { e.stopPropagation(); onCheckboxClick(ticket.key, ticketIdx, e.shiftKey); }}
             >
@@ -442,6 +462,8 @@ export const BoardRow = memo(forwardRef<HTMLTableRowElement, BoardRowBaseProps>(
                 onIssueTypeChange={isRemoved ? undefined : (onIssueTypeChange ? (t) => onIssueTypeChange(ticket.key, t) : undefined)}
                 variant="list"
                 size="lg"
+                showKey={showKey}
+                showStatus={showStatus}
                 removedFromJira={isRemoved}
                 onStoryPointsChange={isRemoved ? undefined : (onStoryPointsChange ? (v) => onStoryPointsChange(ticket.key, v) : undefined)}
                 onBusinessValueChange={isRemoved ? undefined : (onBusinessValueChange ? (v) => onBusinessValueChange(ticket.key, v) : undefined)}
@@ -742,6 +764,15 @@ export const BoardRow = memo(forwardRef<HTMLTableRowElement, BoardRowBaseProps>(
                     showMetricIcon
                     richTooltip
                   />
+                </span>
+              )}
+
+              {/* Open/total subtask-count chip (BRDG-367) — epic-children hosts only.
+                  Display-only; SubtaskCountBadge self-hides when total <= 0. Sits after the
+                  SP/BV metrics so the cluster reads SP -> BV -> subtasks -> sprint -> assignee. */}
+              {subtaskCounts && (
+                <span className="shrink-0" onPointerDown={(e) => e.stopPropagation()} onClick={(e) => e.stopPropagation()}>
+                  <SubtaskCountBadge open={subtaskCounts.open} total={subtaskCounts.total} />
                 </span>
               )}
 

@@ -9,6 +9,7 @@ import {
   CREATE_NEXT_SPRINT_GROUP_KEY,
   sortNamedGroups,
   isEpicChild,
+  epicChildToTicket,
   UNSCHEDULED_GROUP_KEY,
   type ChildGroup,
 } from "./epic-children-grouping";
@@ -434,5 +435,94 @@ describe("backlogDropGroups", () => {
   it("returns nothing when there are no backlog-named sprints", () => {
     const sprints = [sprint("BT: 141", "active", "2026-07-03")];
     expect(backlogDropGroups([group("BT: 141")], sprints)).toEqual([]);
+  });
+});
+
+describe("epicChildToTicket", () => {
+  function fullChild(): EpicChild {
+    return {
+      key: "VPL-10",
+      title: "A child story",
+      type: "story",
+      jiraStatus: "IN PROGRESS",
+      assignee: { name: "Jane", initials: "J", color: "#000" },
+      flagged: true,
+      storyPoints: 5,
+      guestimation: 3,
+      businessValue: 8,
+      sprintName: "BT: 141",
+      subtaskCount: 4,
+      openSubtaskCount: 1,
+      totalSubtaskCount: 4,
+      readiness: "drafting",
+      jiraRank: 42,
+      editState: "local_edits",
+    };
+  }
+
+  it("maps every EpicChild field onto the lightweight Ticket", () => {
+    const t = epicChildToTicket(fullChild());
+    expect(t.key).toBe("VPL-10");
+    expect(t.title).toBe("A child story");
+    expect(t.type).toBe("story");
+    expect(t.jiraStatus).toBe("IN PROGRESS");
+    expect(t.storyPoints).toBe(5);
+    expect(t.guestimation).toBe(3);
+    expect(t.businessValue).toBe(8);
+    expect(t.assignee).toEqual({ name: "Jane", initials: "J", color: "#000" });
+    expect(t.flagged).toBe(true);
+    expect(t.readiness).toBe("drafting");
+    expect(t.editState).toBe("local_edits");
+    expect(t.jiraRank).toBe(42);
+    // The epic owns the list, so a child carries no epic chip of its own.
+    expect(t.epic).toBeNull();
+    expect(t.epicKey).toBeNull();
+    expect(t.poStatus).toBeNull();
+    expect(t.qualityScore).toBeNull();
+    expect(t.notes).toBe("");
+  });
+
+  it("stores the sprint name in sprintId (inbox pattern), undefined when unscheduled", () => {
+    expect(epicChildToTicket(fullChild()).sprintId).toBe("BT: 141");
+    expect(epicChildToTicket(fullChild()).sprintDisplayName).toBe("BT: 141");
+    const unscheduled = epicChildToTicket({ ...fullChild(), sprintName: null });
+    expect(unscheduled.sprintId).toBeUndefined();
+    expect(unscheduled.sprintDisplayName).toBeNull();
+  });
+
+  it("lets opts.sprintName override the child's sprint (the local-move overlay)", () => {
+    const t = epicChildToTicket(fullChild(), { sprintName: "BT: 142" });
+    expect(t.sprintId).toBe("BT: 142");
+    expect(t.sprintDisplayName).toBe("BT: 142");
+  });
+
+  it("falls back to subtaskCount when totalSubtaskCount is absent; open defaults to 0", () => {
+    const { openSubtaskCount, totalSubtaskCount, ...rest } = fullChild();
+    void openSubtaskCount;
+    void totalSubtaskCount;
+    const t = epicChildToTicket(rest as EpicChild);
+    expect(t.totalSubtaskCount).toBe(4); // from subtaskCount
+    expect(t.openSubtaskCount).toBe(0);
+  });
+
+  it("defaults the EpicChild-only fields for a plain Subtask (optimistic placeholder)", () => {
+    const subtask: Subtask = {
+      key: "pending-1",
+      title: "Pending item",
+      type: "subtask",
+      jiraStatus: "TO DO",
+      assignee: null,
+    };
+    const t = epicChildToTicket(subtask);
+    expect(t.flagged).toBe(false);
+    expect(t.storyPoints).toBeNull();
+    expect(t.businessValue).toBeNull();
+    expect(t.guestimation).toBeNull();
+    expect(t.readiness).toBeNull();
+    expect(t.editState).toBe("clean");
+    expect(t.jiraRank).toBeNull();
+    expect(t.openSubtaskCount).toBe(0);
+    expect(t.totalSubtaskCount).toBe(0);
+    expect(t.sprintId).toBeUndefined();
   });
 });

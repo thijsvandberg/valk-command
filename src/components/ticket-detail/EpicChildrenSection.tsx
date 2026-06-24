@@ -15,7 +15,8 @@ import { StatusBadge } from "@/components/shared/StatusBadge";
 import { Tooltip } from "@/components/shared/Tooltip";
 import { Toast } from "@/components/ui/Toast";
 import { useToast } from "@/hooks/useToast";
-import { ChildIssueRow } from "./ChildIssueRow";
+import { BoardRow } from "@/components/sprint-board/BoardRow";
+import type { InlineTagId } from "@/components/sprint-board/filter-bar-types";
 import { ChildIssueComposer } from "./ChildIssueComposer";
 import { ChildIssueListHeader, type ChildIssueViewMode } from "./ChildIssueListHeader";
 import { EpicProgressToolbar } from "./EpicProgressToolbar";
@@ -41,7 +42,7 @@ import { applyLocalMoves, sprintNameForTarget } from "@/lib/epic-children-move";
 import { placementForMove } from "@/lib/sprint-placement";
 import { useBacklogDropTarget } from "@/hooks/useBacklogDropTarget";
 import { applyLocalOrder } from "@/lib/epic-children-reorder";
-import { groupChildrenBySprint, isEpicChild } from "@/lib/epic-children-grouping";
+import { groupChildrenBySprint, isEpicChild, epicChildToTicket } from "@/lib/epic-children-grouping";
 import { Loader2, Search, AlertTriangle } from "lucide-react";
 
 const EPIC_CHILD_FIELDS = [
@@ -792,8 +793,8 @@ export function EpicChildrenSection({
   const someChecked = selectionEnabled && checkedKeys.size > 0;
   const allChecked = orderedVisibleKeys.length > 0 && orderedVisibleKeys.every((k) => checkedKeys.has(k));
 
-  const handleCheckboxClick = useCallback((key: string, e: React.MouseEvent) => {
-    if (e.shiftKey && lastCheckedRef.current) {
+  const handleCheckboxClick = useCallback((key: string, shiftKey: boolean) => {
+    if (shiftKey && lastCheckedRef.current) {
       const a = orderedVisibleKeys.indexOf(lastCheckedRef.current);
       const b = orderedVisibleKeys.indexOf(key);
       if (a !== -1 && b !== -1) {
@@ -945,31 +946,60 @@ export function EpicChildrenSection({
     );
   }
 
+  // BoardRow reads the readiness dot from readinessMap[key] (not ticket.readiness),
+  // so project the visible children's readiness for the leading pill.
+  const readinessByKey: Record<string, TicketReadiness | null> = {};
+  filtered.forEach((child) => { readinessByKey[child.key] = isEpicChild(child) ? child.readiness : null; });
+
+  // Which inline signals BoardRow renders for an epic-child row. The readiness dot, the
+  // local-edits/conflict dot and the flag are always on; SP / BV / assignee follow the
+  // field-visibility toggles. Epic chip, reporter, refinement, quality and notes never
+  // applied to the epic-children list, so they stay off (plus hideEpic on each row).
+  const epicRowTags = useMemo(() => {
+    const t = new Set<InlineTagId>(["poReadiness", "editState", "flag"]);
+    if (visibleFields.has("storyPoints")) t.add("storyPoints");
+    if (visibleFields.has("businessValue")) t.add("businessValue");
+    if (visibleFields.has("assignee")) t.add("assignee");
+    return t;
+  }, [visibleFields]);
+
   const childRows = filtered.map((child, idx) => {
     const epic = isEpicChild(child) ? child : null;
     const isPending = child.key.startsWith("pending-");
     return (
-      <ChildIssueRow
+      <BoardRow
         key={child.key}
-        item={child}
-        isLast={idx === filtered.length - 1}
-        isPending={isPending}
-        showTypeIcon
+        ticket={epicChildToTicket(child, { sprintName: sprintNameByKey[child.key] })}
+        ticketIdx={idx}
+        isChecked={checkedKeys.has(child.key)}
+        isSelected={child.key === activeChildKey}
+        isContextTarget={rowMenu?.targets.has(child.key) ?? false}
+        isInflight={isPending}
+        someChecked={someChecked}
+        isDragActive={false}
+        hideEpic
+        tags={epicRowTags}
         showKey={visibleFields.has("issueKey")}
         showStatus={visibleFields.has("status")}
-        readiness={epic?.readiness}
-        editState={epic?.editState}
-        onJiraStatusChange={(s) => handleJiraStatusChange(child.key, s)}
-        onReadinessChange={(r) => handleReadinessChange(child.key, r)}
-        onSelect={onSelectTicket}
-        onContextMenu={isPending ? undefined : (e) => { e.preventDefault(); ra.handleRowContextMenu(child.key, e); }}
-        selectable={selectionEnabled}
-        isChecked={checkedKeys.has(child.key)}
-        isActive={child.key === activeChildKey}
-        flagged={!!epic?.flagged}
-        someChecked={someChecked}
-        onCheckboxClick={(e) => handleCheckboxClick(child.key, e)}
-        metadataSlot={renderMetadata(child)}
+        showSprint={visibleFields.has("sprint")}
+        subtaskCounts={
+          visibleFields.has("subtaskCount") && epic
+            ? { open: epic.openSubtaskCount ?? 0, total: epic.totalSubtaskCount ?? epic.subtaskCount }
+            : undefined
+        }
+        readinessMap={readinessByKey}
+        hideCheckbox={!selectionEnabled}
+        selectedTicket={activeChildKey ?? null}
+        onSelectTicket={(key) => { if (key) onSelectTicket?.(key); }}
+        onCheckboxClick={(key, _idx, shiftKey) => handleCheckboxClick(key, shiftKey)}
+        onRowContextMenu={isPending ? undefined : ra.handleRowContextMenu}
+        onJiraStatusChange={handleJiraStatusChange}
+        onReadinessChange={handleReadinessChange}
+        onStoryPointsChange={handleStoryPointsChange}
+        onBusinessValueChange={handleBusinessValueChange}
+        onGuestimationChange={handleGuestimationChange}
+        planningOn={planningOn}
+        isLastInCard={idx === filtered.length - 1}
       />
     );
   });
@@ -1050,7 +1080,9 @@ export function EpicChildrenSection({
     <div className="mt-3">
       {filtered.length > 0 && (
         <div className={`overflow-hidden rounded-lg border border-border-default ${createOpen ? "rounded-b-none border-b-0" : ""}`}>
-          {childRows}
+          <table className="w-full table-fixed border-collapse text-body-lg">
+            <tbody>{childRows}</tbody>
+          </table>
         </div>
       )}
       {createOpen && (
@@ -1082,7 +1114,7 @@ export function EpicChildrenSection({
         onCreateChild={(target, title, jiraType) => handleCreate(title, jiraType, target)}
         checkedKeys={checkedKeys}
         someChecked={someChecked}
-        onCheckboxClick={selectionEnabled ? handleCheckboxClick : undefined}
+        onCheckboxClick={selectionEnabled ? (key, e) => handleCheckboxClick(key, e.shiftKey) : undefined}
         onSelectGroup={selectionEnabled ? selectGroup : undefined}
         planningOn={planningOn}
         pencilCapacityMap={pencilCapacityMap}

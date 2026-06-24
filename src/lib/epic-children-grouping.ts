@@ -1,4 +1,4 @@
-import type { EpicChild, Subtask, Sprint } from "@/types/ticket";
+import type { EpicChild, Subtask, Sprint, Ticket } from "@/types/ticket";
 import { isBacklogSprintName, isRegularSprint, nextSprintName, sprintNumber, sprintTeamToken } from "./sprint-utils";
 
 export const UNSCHEDULED_GROUP_KEY = "__unscheduled__";
@@ -49,6 +49,52 @@ function childSprintName(child: EpicChild | Subtask): string | null {
 // so the epic-children components narrow EpicChild | Subtask the same way.
 export function isEpicChild(child: EpicChild | Subtask): child is EpicChild {
   return "storyPoints" in child;
+}
+
+/**
+ * Projects an epic child (or a locally-added Subtask) into a lightweight Ticket so the
+ * shared sprint-board row (BoardRow) can render the epic-children list (BRDG-367).
+ *
+ * Mirrors the inbox's `rowToTicket`: the sprint NAME doubles as `sprintId` because the
+ * epic list has no real sprint ids — the row resolves the chip label through an identity
+ * sprint-name map. This is a pure per-render projection of items that already carry every
+ * optimistic overlay (SP/BV edits, local moves), so the section's optimistic updates stay
+ * visible without any extra wiring. `opts.sprintName` carries the local-move overlay
+ * (`sprintNameByKey[key]`) so a just-moved child shows its new sprint immediately.
+ *
+ * The epic owns the whole list, so a child has no epic chip of its own: `epic`/`epicKey`
+ * are null and the host passes `hideEpic` to the row. A plain Subtask (locally-added,
+ * optimistic placeholder) lacks the EpicChild fields, so those default to clean/empty.
+ */
+export function epicChildToTicket(
+  child: EpicChild | Subtask,
+  opts?: { sprintName?: string | null },
+): Ticket {
+  const epicChild = isEpicChild(child) ? child : null;
+  const sprintName = opts?.sprintName ?? (epicChild ? epicChild.sprintName : null);
+  return {
+    key: child.key,
+    title: child.title,
+    type: child.type,
+    epic: null,
+    epicKey: null,
+    jiraStatus: child.jiraStatus,
+    storyPoints: epicChild ? epicChild.storyPoints : null,
+    guestimation: epicChild ? epicChild.guestimation ?? null : null,
+    assignee: child.assignee,
+    flagged: epicChild ? epicChild.flagged : false,
+    readiness: epicChild ? epicChild.readiness : null,
+    poStatus: null,
+    qualityScore: null,
+    businessValue: epicChild ? epicChild.businessValue : null,
+    editState: epicChild ? epicChild.editState ?? "clean" : "clean",
+    notes: "",
+    jiraRank: epicChild ? epicChild.jiraRank : null,
+    sprintId: sprintName ?? undefined,
+    sprintDisplayName: sprintName,
+    openSubtaskCount: epicChild ? epicChild.openSubtaskCount ?? 0 : 0,
+    totalSubtaskCount: epicChild ? epicChild.totalSubtaskCount ?? epicChild.subtaskCount : 0,
+  };
 }
 
 /**

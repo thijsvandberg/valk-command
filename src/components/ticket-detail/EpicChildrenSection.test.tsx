@@ -684,7 +684,9 @@ describe("EpicChildrenSection", () => {
     it("calls onSelectTicket when clicking a child", () => {
       const { onSelectTicket } = renderSection(SAMPLE_CHILDREN);
       fireEvent.click(screen.getByText("First story"));
-      expect(onSelectTicket).toHaveBeenCalledWith("VPL-10", expect.anything());
+      // BoardRow forwards just the key (it toggles null on re-click of the active row);
+      // the section ignores null, so a fresh click selects with the key alone.
+      expect(onSelectTicket).toHaveBeenCalledWith("VPL-10");
     });
   });
 

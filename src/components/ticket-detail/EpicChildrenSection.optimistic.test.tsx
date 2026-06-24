@@ -4,19 +4,22 @@ import { EpicChildrenSection } from "./EpicChildrenSection";
 import type { EpicChild, JiraStatus, TicketReadiness } from "@/types/ticket";
 
 // BRDG-334: child status/readiness changes must patch the epic's cached detail
-// optimistically. The row is stubbed to expose the change callbacks as buttons;
-// the assertions cover the handler flow, not the pill UI.
-vi.mock("./ChildIssueRow", () => ({
-  ChildIssueRow: ({ item, onJiraStatusChange, onReadinessChange }: {
-    item: { key: string; title: string };
-    onJiraStatusChange?: (s: JiraStatus) => void;
-    onReadinessChange?: (r: TicketReadiness | null) => void;
+// optimistically. The shared BoardRow (BRDG-367) is stubbed to expose the change
+// callbacks as buttons; the assertions cover the handler flow, not the pill UI.
+// BoardRow binds the key into its callbacks, so the stub calls them with (key, value).
+vi.mock("@/components/sprint-board/BoardRow", () => ({
+  BoardRow: ({ ticket, onJiraStatusChange, onReadinessChange }: {
+    ticket: { key: string; title: string };
+    onJiraStatusChange?: (key: string, s: JiraStatus) => void;
+    onReadinessChange?: (key: string, r: TicketReadiness | null) => void;
   }) => (
-    <div data-testid={`child-row-${item.key}`}>
-      <span>{item.title}</span>
-      <button aria-label={`set-status-${item.key}`} onClick={() => onJiraStatusChange?.("IN PROGRESS")} />
-      <button aria-label={`set-readiness-${item.key}`} onClick={() => onReadinessChange?.("drafting")} />
-    </div>
+    <tr data-testid={`child-row-${ticket.key}`}>
+      <td>
+        <span>{ticket.title}</span>
+        <button aria-label={`set-status-${ticket.key}`} onClick={() => onJiraStatusChange?.(ticket.key, "IN PROGRESS")} />
+        <button aria-label={`set-readiness-${ticket.key}`} onClick={() => onReadinessChange?.(ticket.key, "drafting")} />
+      </td>
+    </tr>
   ),
 }));
 
