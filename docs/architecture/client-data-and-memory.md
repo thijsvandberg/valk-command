@@ -66,16 +66,16 @@ anti-pattern. Fetch only what the screen needs:
   endpoint and page the results; do not load everything and filter on the client.
 
 Remaining `__all__` sites are tracked in
-[BRDG-388](../user-stories/BRDG-388-scope-remaining-all-tickets-fetches.md).
+[BRDG-391](../user-stories/BRDG-391-scope-remaining-all-tickets-fetches.md).
 
 ### 3. Virtualize every growable list
 
 Any list whose row count can grow (boards, queues, inbox, cleanup, search) must be
 windowed (`@tanstack/react-virtual`) so only visible rows mount to the DOM. The
 flat Sprint Board already does this above 40 rows. Open gaps: the grouped Sprint
-Board ([BRDG-389](../user-stories/BRDG-389-virtualize-grouped-sprint-board.md)) and
+Board ([BRDG-392](../user-stories/BRDG-392-virtualize-grouped-sprint-board.md)) and
 the Refinement/Inbox/Cleanup lists
-([BRDG-390](../user-stories/BRDG-390-virtualize-remaining-lists.md)).
+([BRDG-393](../user-stories/BRDG-393-virtualize-remaining-lists.md)).
 
 ## The list-vs-detail payload split (invariant)
 

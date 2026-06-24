@@ -1,4 +1,4 @@
-# BRDG-389: Virtualize the grouped Sprint Board
+# BRDG-392: Virtualize the grouped Sprint Board
 
 **Status:** To Do
 **Priority:** Medium

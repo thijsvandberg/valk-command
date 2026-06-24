@@ -1,4 +1,4 @@
-# BRDG-388: Scope the remaining whole-backlog (`useTickets("__all__")`) fetches
+# BRDG-391: Scope the remaining whole-backlog (`useTickets("__all__")`) fetches
 
 **Status:** To Do
 **Priority:** Medium

@@ -119,20 +119,20 @@ Produced with an Opus planning pass against the real code (SWR 2.4.1). Key findi
 
 ### Deferred to follow-up stories (oversized / regression-prone)
 
-- **BRDG-388** — Refinement queue server-side search/scoping ([RefinementPageContent.tsx:114](src/components/refinement-session/RefinementPageContent.tsx#L114)): a genuine whole-pool free-text browse; needs a new server search endpoint, not `useTicketsByKeys`. Closes the last part of checkbox 4.
-- **BRDG-389** — Virtualize the grouped Sprint Board (checkbox 5): blocked by "multiple tbodies vs uniform virtual indices" and entangled with DnD/collapse/pinning in a 998-line component.
-- **BRDG-390** — Virtualize remaining lists (checkbox 6): Inbox/Cleanup are low-risk drop-ins; `RefinementTicketList` conflicts with its FLIP reorder animation and needs care.
+- **BRDG-391** — Refinement queue server-side search/scoping ([RefinementPageContent.tsx:114](src/components/refinement-session/RefinementPageContent.tsx#L114)): a genuine whole-pool free-text browse; needs a new server search endpoint, not `useTicketsByKeys`. Closes the last part of checkbox 4.
+- **BRDG-392** — Virtualize the grouped Sprint Board (checkbox 5): blocked by "multiple tbodies vs uniform virtual indices" and entangled with DnD/collapse/pinning in a 998-line component.
+- **BRDG-393** — Virtualize remaining lists (checkbox 6): Inbox/Cleanup are low-risk drop-ins; `RefinementTicketList` conflicts with its FLIP reorder animation and needs care.
 
-> Checkbox 4 closes for 2 of 6 sites here (the clean bounded swaps); the other 4 move to BRDG-388 (the `useTicketHoverData` synchronous-lookup API and the `SessionEndModal`/session-page undefined-until-loaded gating proved more coupled than a drop-in). Checkboxes 5/6 move to BRDG-389/390. The LRU (steps 1-3) is the global memory bound and is independently the highest-value, lowest-risk slice.
+> Checkbox 4 closes for 2 of 6 sites here (the clean bounded swaps); the other 4 move to BRDG-391 (the `useTicketHoverData` synchronous-lookup API and the `SessionEndModal`/session-page undefined-until-loaded gating proved more coupled than a drop-in). Checkboxes 5/6 move to BRDG-392/390. The LRU (steps 1-3) is the global memory bound and is independently the highest-value, lowest-risk slice.
 
 ## Acceptance Criteria
 
 - [x] The global SWR cache is bounded by an access-order LRU; entry count never exceeds the cap during a long session.
 - [x] Optimistic board edits and sprint moves still survive a stale refetch **and** survive an SWR cache eviction of the underlying list key (test-proven).
 - [x] Navigating across many sprints/tickets for an extended period does not grow tab memory without bound (cache size stabilises at the cap).
-- [ ] No view uses `useTickets("__all__")`; the 6 listed sites fetch only scoped data. <!-- partial: 2/6 done (LinkedIssuesSection, SessionWrapUpCelebration). The other 4 (useTicketHoverData synchronous-lookup API across 6 consumers; SessionEndModal + session page rely on undefined-until-loaded gating; RefinementPageContent needs a server search endpoint) moved to BRDG-388. -->
-- [ ] The grouped Sprint Board renders only visible rows (virtualized); large grouped boards no longer mount every row. <!-- skipped: oversized/regression-prone (multiple tbodies vs uniform virtual indices, entangled with DnD/collapse/pinning). Moved to BRDG-389. -->
-- [ ] The Refinement queue and Inbox/Cleanup lists are virtualized. <!-- skipped: RefinementTicketList conflicts with its FLIP reorder animation; Inbox/Cleanup are low-risk follow-ups. Moved to BRDG-390. -->
+- [ ] No view uses `useTickets("__all__")`; the 6 listed sites fetch only scoped data. <!-- partial: 2/6 done (LinkedIssuesSection, SessionWrapUpCelebration). The other 4 (useTicketHoverData synchronous-lookup API across 6 consumers; SessionEndModal + session page rely on undefined-until-loaded gating; RefinementPageContent needs a server search endpoint) moved to BRDG-391. -->
+- [ ] The grouped Sprint Board renders only visible rows (virtualized); large grouped boards no longer mount every row. <!-- skipped: oversized/regression-prone (multiple tbodies vs uniform virtual indices, entangled with DnD/collapse/pinning). Moved to BRDG-392. -->
+- [ ] The Refinement queue and Inbox/Cleanup lists are virtualized. <!-- skipped: RefinementTicketList conflicts with its FLIP reorder animation; Inbox/Cleanup are low-risk follow-ups. Moved to BRDG-393. -->
 - [x] List payloads carry summaries only; full ADF/comments load on detail open. (Verified: `/api/tickets` maps the `Ticket` summary shape only; locked by an invariant test in `route.test.ts`.)
 - [x] `docs/architecture/client-data-and-memory.md` exists and is linked from `docs/index.md` and `CLAUDE.md`.
 

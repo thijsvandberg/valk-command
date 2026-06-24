@@ -1,4 +1,4 @@
-# BRDG-390: Virtualize the remaining growable lists (Refinement queue, Inbox, Cleanup)
+# BRDG-393: Virtualize the remaining growable lists (Refinement queue, Inbox, Cleanup)
 
 **Status:** To Do
 **Priority:** Low
