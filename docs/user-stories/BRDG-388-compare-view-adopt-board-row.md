@@ -36,6 +36,21 @@ These two layouts do not map 1:1. Adopting `BoardRow` as-is would drop the Compa
 2. **Give BoardRow an optional column mode** (a `columns`/`columnOrder` prop that renders the metadata as aligned `<td>`s). Bigger change to a perf-critical shared component; benefits every host but is real scope.
 3. **Keep the fallback** (BRDG-367's pattern): extract only the shared row-surface state machine so `TicketRow` stops drifting visually, without full adoption. Does not retire `TicketRow`.
 
+## Implementation Plan
+
+**Phase 0 decision (PO, 2026-06-24): Option 2 — accept BoardRow's inline cluster.** The Compare view stops being a spreadsheet grid and renders like the board; `TicketRow` is retired and the per-column machinery (headers, show/hide, reorder, resize, localStorage persistence) is removed. See [docs/investigations/2026-06-24-BRDG-388-compare-column-model.md](../investigations/2026-06-24-BRDG-388-compare-column-model.md).
+
+The headless single-`<td>` table is already the proven board pattern (`TicketTable.tsx` renders `<table table-fixed><SortableContext><tbody>` of `SortableBoardRow` with no `<colgroup>`/`<thead>`); Compare adopts the same shape.
+
+1. **`DroppableSprintColumn.tsx`** — swap import `SortableTicketRow` -> `SortableBoardRow`. Rewrite the `<table>`: drop `<colgroup>`, `<thead>`, `ColumnResizeHandle`, `activeOrder`, `colVisible`. Body maps tickets to `SortableBoardRow` (single `<td>`). Map across all existing props (`ticket`, selection incl. shift-range, `sortableData={{columnId}}`, DnD, inline edit, metadata handlers); drop dead `col`/`columnOrder` and the five column props from the signature. `colSpan` 1. Checkbox gutter is handled inside BoardRow (`someChecked` stays; no `hideCheckbox`).
+2. **`MultiSprintView.tsx`** — remove `compareColState` state/derived/`persistColState`, the column toggle/reorder/reset/resize handlers, `<ColumnToggle>`, and the five column props at both `DroppableSprintColumn` call sites. Keep split ratio, DnD (`handleDragStart/Over/End`, `compareCollisionDetection`), selection (`checkedKeys`, per-column + bulk toggles), `DragOverlay`, metadata handlers.
+3. **`multi-sprint-utils.ts`** — delete column exports (`COMPARE_HEADER_LABELS`, `COMPARE_COL_WIDTHS`, `COMPARE_LS_KEY`, defaults, `CompareColState`, `loadCompareColumns`, `saveCompareColumns`). Keep `loadSplitRatio`/`saveSplitRatio`.
+4. **Retire `TicketRow`** — move `TicketRow.tsx` + `TicketRow.test.tsx` to `deleted/` once nothing imports them.
+5. **Tests** — add `DroppableSprintColumn`/`MultiSprintView` coverage: renders via BoardRow (no per-field headers), selection + shift-range, within-column reorder (`jira.rank`), cross-column move (`jira.moveSprint`), no `ColumnToggle` in header.
+6. **Verify** — `npm run verify` + `npm run build`; confirm other BoardRow hosts unaffected; PO visual + drag check.
+
+Commit order: (1+3 together for per-commit build safety) -> (2) -> (4) -> (5).
+
 ## Preconditions (MUST hold before starting)
 
 - [ ] BRDG-367 is merged (the `BoardRow` reuse pattern + `subtaskCounts` / `showKey` / `showStatus` props + the accessible checkbox gutter are in place).
