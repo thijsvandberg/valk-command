@@ -2,6 +2,7 @@ import { render, screen, fireEvent } from "@testing-library/react";
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { DroppableSprintColumn } from "./DroppableSprintColumn";
 import type { Ticket, Sprint } from "@/types/ticket";
+import type { InlineTagId } from "./filter-bar-types";
 
 // BRDG-388: the Compare view now renders rows through the shared BoardRow. Stub
 // SortableBoardRow so the test asserts the wiring (which props flow through, the
@@ -107,6 +108,17 @@ describe("DroppableSprintColumn (BRDG-388 BoardRow migration)", () => {
     expect(first).not.toHaveProperty("col");
     expect(first).not.toHaveProperty("columnOrder");
     expect(first.sortableData).toEqual({ columnId: "left" });
+  });
+
+  it("drops the left accent on every row (hideRowAccent)", () => {
+    render(<DroppableSprintColumn {...baseProps()} />);
+    expect(rowProps.every((p) => p.hideRowAccent === true)).toBe(true);
+  });
+
+  it("forwards the configured inline badge set as `tags`", () => {
+    const visibleTags = new Set<InlineTagId>(["storyPoints", "epic"]);
+    render(<DroppableSprintColumn {...baseProps({ visibleTags })} />);
+    expect(rowProps[0].tags).toBe(visibleTags);
   });
 
   it("toggles a single ticket on a plain checkbox click", () => {

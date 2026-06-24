@@ -8,6 +8,7 @@ import type { StatCriterion } from "./GroupStatBar";
 import { matchesWarningFilter } from "./warning-filter";
 import { SprintSelector } from "./SprintSelector";
 import { SortableBoardRow } from "./BoardRow";
+import type { InlineTagId } from "./filter-bar-types";
 import { CalendarRange, RefreshCw, X, ChevronDown, Search, Sheet } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import type { TicketSessionEntry } from "@/hooks/useTicketSessionMap";
@@ -96,6 +97,7 @@ export function DroppableSprintColumn({
   onStoryPointsChange,
   onJiraStatusChange,
   onIssueTypeChange,
+  visibleTags,
   paneFlex,
   refinementSessionMap,
 }: {
@@ -123,6 +125,8 @@ export function DroppableSprintColumn({
   onStoryPointsChange?: (key: string, value: number | null) => void;
   onJiraStatusChange: (key: string, status: JiraStatus) => void;
   onIssueTypeChange: (key: string, type: IssueType) => void;
+  /** Which inline badges/signals to show on each row (shared BoardRow `tags`). */
+  visibleTags?: Set<InlineTagId>;
   paneFlex?: number;
   refinementSessionMap?: Map<string, TicketSessionEntry[]>;
 }) {
@@ -278,6 +282,8 @@ export function DroppableSprintColumn({
                     key={ticket.key}
                     ticket={ticket}
                     ticketIdx={idx}
+                    tags={visibleTags}
+                    hideRowAccent
                     isChecked={checkedKeys.has(ticket.key)}
                     isSelected={selectedKey === ticket.key}
                     someChecked={someChecked}

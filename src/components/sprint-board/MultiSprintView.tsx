@@ -6,6 +6,9 @@ import { IssueTypeIcon } from "@/components/shared/IssueTypeIcon";
 import { ViewHeader, ViewHeaderTitle, ViewHeaderDivider } from "@/components/shared/ViewHeader";
 import { SidePanel } from "./SidePanel";
 import { BulkActionBar } from "./BulkActionBar";
+import { BoardFieldToggle } from "./BoardFieldToggle";
+import { DEFAULT_VISIBLE_TAGS, type InlineTagId } from "./filter-bar-types";
+import { useAccountSetting } from "@/hooks/useAccountSetting";
 import { saveTicketMetadata, saveStoryPoints } from "./sprint-board-utils";
 import { DroppableSprintColumn, PaneDivider } from "./DroppableSprintColumn";
 import { getJiraUrl } from "./TicketTableCells";
@@ -94,6 +97,23 @@ export function MultiSprintView({
   const [poStatuses, setPoStatuses] = useState<Record<string, POStatus>>({});
   const [editingTitleKey, setEditingTitleKey] = useState<string | null>(null);
   const [readinessMap, setReadinessMap] = useState<Record<string, TicketReadiness | null>>({});
+
+  // Inline badge/signal visibility. Account-scoped but kept independent from the
+  // main sprint board's row fields, so toggling here only affects the Compare view.
+  const { value: storedTags, setValue: setStoredTags } = useAccountSetting<InlineTagId[]>(
+    "/api/settings/compare-row-fields",
+    [...DEFAULT_VISIBLE_TAGS],
+  );
+  const visibleTags = useMemo(() => new Set(storedTags), [storedTags]);
+  const handleFieldToggle = useCallback((id: InlineTagId, show: boolean) => {
+    setStoredTags((prev) => {
+      const next = new Set(prev);
+      if (show) next.add(id);
+      else next.delete(id);
+      return [...next];
+    });
+  }, [setStoredTags]);
+  const resetFields = useCallback(() => setStoredTags([...DEFAULT_VISIBLE_TAGS]), [setStoredTags]);
 
   // Pane split ratio
   const [splitRatio, setSplitRatio] = useState(() => loadSplitRatio());
@@ -422,14 +442,21 @@ export function MultiSprintView({
         <ViewHeader
           icon={<Columns2 size={15} strokeWidth={1.5} className="text-text-tertiary" />}
           actions={
-            <Button
-              variant="ghost"
-              size="md"
-              iconOnly
-              icon={<X className="h-3.5 w-3.5" strokeWidth={1.5} />}
-              onClick={onClose}
-              title="Close compare view"
-            />
+            <>
+              <BoardFieldToggle
+                visible={visibleTags}
+                onChange={handleFieldToggle}
+                onReset={resetFields}
+              />
+              <Button
+                variant="ghost"
+                size="md"
+                iconOnly
+                icon={<X className="h-3.5 w-3.5" strokeWidth={1.5} />}
+                onClick={onClose}
+                title="Close compare view"
+              />
+            </>
           }
         >
           <ViewHeaderTitle>Compare Sprints</ViewHeaderTitle>
@@ -470,6 +497,7 @@ export function MultiSprintView({
               onStoryPointsChange={handleStoryPointsChange}
               onJiraStatusChange={handleJiraStatusChange}
               onIssueTypeChange={handleIssueTypeChange}
+              visibleTags={visibleTags}
               paneFlex={splitRatio}
               refinementSessionMap={ticketSessionMap}
             />
@@ -507,6 +535,7 @@ export function MultiSprintView({
               onStoryPointsChange={handleStoryPointsChange}
               onJiraStatusChange={handleJiraStatusChange}
               onIssueTypeChange={handleIssueTypeChange}
+              visibleTags={visibleTags}
               paneFlex={1 - splitRatio}
               refinementSessionMap={ticketSessionMap}
             />

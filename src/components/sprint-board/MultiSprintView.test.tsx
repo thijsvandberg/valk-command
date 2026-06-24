@@ -33,6 +33,22 @@ vi.mock("./DroppableSprintColumn", () => ({
 
 vi.mock("./SidePanel", () => ({ SidePanel: () => <div data-testid="side-panel" /> }));
 vi.mock("./BulkActionBar", () => ({ BulkActionBar: () => <div data-testid="bulk-bar" /> }));
+
+// Capture the field-toggle wiring so the test can flip a badge and assert the
+// setting write, without rendering the real popover.
+const fieldToggleProps: Record<string, unknown>[] = [];
+vi.mock("./BoardFieldToggle", () => ({
+  BoardFieldToggle: (props: Record<string, unknown>) => {
+    fieldToggleProps.push(props);
+    const onChange = props.onChange as (id: string, show: boolean) => void;
+    return <button data-testid="field-toggle" onClick={() => onChange("assignee", false)}>fields</button>;
+  },
+}));
+
+const setStoredTags = vi.fn();
+vi.mock("@/hooks/useAccountSetting", () => ({
+  useAccountSetting: () => ({ value: ["storyPoints", "epic", "assignee"], setValue: setStoredTags, isLoading: false }),
+}));
 vi.mock("./TicketTableCells", () => ({ getJiraUrl: (k: string) => `https://jira/${k}` }));
 vi.mock("@/components/shared/IssueTypeIcon", () => ({ IssueTypeIcon: () => <span data-testid="type-icon" /> }));
 vi.mock("@/components/ui/Toast", () => ({ Toast: () => null }));
@@ -87,10 +103,12 @@ function renderView() {
 describe("MultiSprintView (BRDG-388 BoardRow migration)", () => {
   beforeEach(() => {
     columnProps.length = 0;
+    fieldToggleProps.length = 0;
     jiraMock.rank.mockClear();
     jiraMock.moveSprint.mockClear();
     mutateLeft.mockClear();
     mutateRight.mockClear();
+    setStoredTags.mockClear();
     dnd.onDragEnd = undefined;
   });
 
@@ -107,6 +125,24 @@ describe("MultiSprintView (BRDG-388 BoardRow migration)", () => {
     expect(left).not.toHaveProperty("columnOrder");
     expect(left).not.toHaveProperty("columnWidths");
     expect(left).not.toHaveProperty("onToggleAll");
+  });
+
+  it("passes the stored badge set to both columns as visibleTags", () => {
+    renderView();
+    const left = columnProps.find((p) => p.columnId === "left")!;
+    const right = columnProps.find((p) => p.columnId === "right")!;
+    expect(left.visibleTags).toBeInstanceOf(Set);
+    expect((left.visibleTags as Set<string>).has("storyPoints")).toBe(true);
+    expect((right.visibleTags as Set<string>).has("epic")).toBe(true);
+  });
+
+  it("persists a badge toggle via the Compare-specific setting", () => {
+    renderView();
+    screen.getByTestId("field-toggle").click();
+    expect(setStoredTags).toHaveBeenCalledTimes(1);
+    // The updater removes "assignee" from the prior set.
+    const updater = setStoredTags.mock.calls[0][0] as (prev: string[]) => string[];
+    expect(updater(["storyPoints", "epic", "assignee"])).toEqual(["storyPoints", "epic"]);
   });
 
   it("ranks within a column when a row is dropped onto a sibling", async () => {
