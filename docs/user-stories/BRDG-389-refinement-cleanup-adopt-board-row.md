@@ -86,11 +86,11 @@ Both lists render `ChildIssueRow` with:
 
 ## Phase 2: Migrate the cleanup list
 
-- [ ] Add a `*->Ticket` adapter for the cleanup items (or reuse one if a Subtask adapter exists).
-- [ ] Render the cleanup list rows via `BoardRow` inside a per-card `<table><tbody>`, with `spacious` + `inlineCheckbox`.
-- [ ] Preserve selection, the metadata shown, and any cleanup-specific behaviour at the page level.
-- [ ] Remove `ChildIssueRow` from `src/app/(app)/cleanup/page.tsx`.
-- [ ] Update cleanup tests; `npm run verify` + `npm run build` green; PO visual check.
+- [x] Add a `*->Ticket` adapter for the cleanup items (or reuse one if a Subtask adapter exists). <!-- cleanupRowToTicket in src/lib/cleanup-types.ts (mirrors epicChildToTicket); sprintId intentionally omitted; + unit tests -->
+- [x] Render the cleanup list rows via `BoardRow` inside a per-card `<table><tbody>`, with `spacious` + `inlineCheckbox`. <!-- tags={EMPTY_TAGS} so all metadata stays in the slot; hideRowAccent for the flat-list look; rationale moved to its own single-column <tr> -->
+- [x] Preserve selection, the metadata shown, and any cleanup-specific behaviour at the page level. <!-- existing metadata block passed verbatim via metadataSlot; active tint via isSelected; selectedTicket=null + guarded onSelectTicket keeps "click always opens the review drawer" -->
+- [x] Remove `ChildIssueRow` from `src/app/(app)/cleanup/page.tsx`. <!-- import + rowToSubtask removed; rowToTicket (SidePanel adapter) kept -->
+- [x] Update cleanup tests; `npm run verify` + `npm run build` green; PO visual check. <!-- mock re-pointed to BoardRow; data-show-type-icon assertion dropped (list pill always shows the type icon); cleanup page (19) + adapter (11) tests pass. Full verify + build + visual in final verification. -->
 
 ## Phase 3: Migrate the refinement list
 

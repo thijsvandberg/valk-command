@@ -50,39 +50,42 @@ vi.mock("./DispositionPanel", () => ({
   ),
 }));
 
-// The cleanup list reuses the app-standard ChildIssueRow (which renders the
-// TicketStatusPill). Stub it so the test asserts the wiring contract — the ticket
-// item it receives, its checkbox/selection callbacks, and the trailing badges
-// supplied in metadataSlot — without mounting the full ticket-detail pill tree.
-vi.mock("@/components/ticket-detail/ChildIssueRow", () => ({
-  ChildIssueRow: ({
-    item,
+// The cleanup list now renders through the shared sprint-board BoardRow (BRDG-389),
+// which draws the TicketStatusPill. Stub it so the test asserts the wiring contract —
+// the ticket it receives, its checkbox/selection callbacks, and the trailing badges
+// supplied in metadataSlot — without mounting the full board pill tree. BoardRow is a
+// table row, so the stub renders a <tr> to keep the surrounding <table> valid.
+vi.mock("@/components/sprint-board/BoardRow", () => ({
+  BoardRow: ({
+    ticket,
+    ticketIdx,
     isChecked,
-    showTypeIcon,
-    onSelect,
+    onSelectTicket,
     onCheckboxClick,
     metadataSlot,
   }: {
-    item: { key: string; title: string; type: string };
+    ticket: { key: string; title: string; type: string };
+    ticketIdx: number;
     isChecked: boolean;
-    showTypeIcon?: boolean;
-    onSelect?: (key: string) => void;
-    onCheckboxClick?: (e: unknown) => void;
+    onSelectTicket?: (key: string | null) => void;
+    onCheckboxClick?: (key: string, idx: number, shiftKey: boolean) => void;
     metadataSlot?: ReactNode;
   }) => (
-    <div data-testid={`row-${item.key}`} data-type={item.type} data-show-type-icon={String(Boolean(showTypeIcon))}>
-      <button data-testid={`open-${item.key}`} onClick={() => onSelect?.(item.key)}>
-        {item.key} {item.title}
-      </button>
-      <button
-        data-testid={`check-${item.key}`}
-        aria-pressed={isChecked}
-        onClick={() => onCheckboxClick?.({})}
-      >
-        select
-      </button>
-      <div data-testid={`meta-${item.key}`}>{metadataSlot}</div>
-    </div>
+    <tr data-testid={`row-${ticket.key}`} data-type={ticket.type}>
+      <td>
+        <button data-testid={`open-${ticket.key}`} onClick={() => onSelectTicket?.(ticket.key)}>
+          {ticket.key} {ticket.title}
+        </button>
+        <button
+          data-testid={`check-${ticket.key}`}
+          aria-pressed={isChecked}
+          onClick={() => onCheckboxClick?.(ticket.key, ticketIdx, false)}
+        >
+          select
+        </button>
+        <div data-testid={`meta-${ticket.key}`}>{metadataSlot}</div>
+      </td>
+    </tr>
   ),
 }));
 
@@ -198,7 +201,7 @@ describe("CleanupPage", () => {
     expect(screen.getByText(/Tier-1 staleness runs in the background/i)).toBeInTheDocument();
   });
 
-  it("renders one standard row per ticket via ChildIssueRow", () => {
+  it("renders one standard row per ticket via BoardRow", () => {
     swrData = RESPONSE;
     render(<CleanupPage />);
     expect(screen.getByTestId("row-BT-1")).toBeInTheDocument();
@@ -238,14 +241,13 @@ describe("CleanupPage", () => {
     expect(within(screen.getByTestId("meta-BT-2")).getByText("never")).toBeInTheDocument();
   });
 
-  it("feeds the real issue type to the row and enables the type icon", () => {
+  it("feeds the real issue type to the row (the BoardRow list pill always shows its type icon)", () => {
     swrData = RESPONSE;
     render(<CleanupPage />);
     const row = screen.getByTestId("row-BT-1");
-    // BT-1 is a bug in the fixture; the row must receive that real type (PO #1)
-    // and have the leading type icon enabled.
+    // BT-1 is a bug in the fixture; the row must receive that real type (PO #1). The
+    // leading type icon is intrinsic to BoardRow's list pill (no showTypeIcon toggle).
     expect(row).toHaveAttribute("data-type", "bug");
-    expect(row).toHaveAttribute("data-show-type-icon", "true");
   });
 
   it("renders epic and story-point badges in the row metadata", () => {

@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState, useCallback } from "react";
+import { Fragment, useMemo, useState, useCallback } from "react";
 import useSWR, { mutate as globalMutate } from "swr";
 import dynamic from "next/dynamic";
 import { Trash2, Telescope, Clock, Flame, Check, BellOff, TrendingUp, Sparkles, Zap } from "lucide-react";
@@ -15,13 +15,15 @@ import { EpicBadge, SubtaskCountBadge, MetricChip, SprintOrBacklogBadge, EpicChi
 import { BACKLOG_FACET_VALUE, BACKLOG_FACET_LABEL } from "@/lib/cleanup-types";
 import { IssueTypeIcon } from "@/components/shared/IssueTypeIcon";
 import { Avatar } from "@/components/shared/Avatar";
-import { ChildIssueRow } from "@/components/ticket-detail/ChildIssueRow";
+import { BoardRow } from "@/components/sprint-board/BoardRow";
+import type { InlineTagId } from "@/components/sprint-board/filter-bar-types";
 import { relativeDate, formatAbsoluteDate } from "@/lib/date-utils";
 import { CONTENT_MAX } from "@/lib/layout";
 import { useTicketDetail } from "@/hooks/useSprintBoard";
 import { saveTicketMetadata } from "@/components/sprint-board/sprint-board-utils";
-import type { Ticket, JiraStatus, IssueType, Subtask } from "@/types/ticket";
+import type { Ticket, JiraStatus, IssueType } from "@/types/ticket";
 import {
+  cleanupRowToTicket,
   type CleanupResponse,
   type CleanupRow,
   type CleanupSort,
@@ -176,19 +178,11 @@ const DISPOSITION_ROW_BADGE: Record<NonNullable<Disposition>, { label: string; c
   dismissed: { label: "Dismissed", color: "var(--color-status-neutral)", bg: "var(--color-status-neutral-subtle)" },
 };
 
-// ChildIssueRow renders the shared ticket pill from a Subtask-shaped item; map the
-// cleanup row onto that shape so /cleanup uses the same row/pill as the rest of
-// the app and naturally fits the viewport (no bespoke wide table).
-function rowToSubtask(row: CleanupRow): Subtask {
-  return {
-    key: row.key,
-    title: row.title,
-    // Real issue type drives the leading type icon in ChildIssueRow (PO feedback #1).
-    type: row.type,
-    jiraStatus: (row.status as JiraStatus) ?? "TO DO",
-    assignee: row.assignee,
-  };
-}
+// The cleanup list feeds ALL of its metadata through BoardRow's metadataSlot, so the
+// row renders no native metadata of its own: an empty tag set switches off every
+// inline signal (epic / SP / BV / assignee / flag / ...) BoardRow would otherwise draw.
+// Module-level so the memoised BoardRow keeps a stable reference (no re-render churn).
+const EMPTY_TAGS = new Set<InlineTagId>();
 
 function rowToTicket(row: CleanupRow): Ticket {
   // A lightweight Ticket so the panel header renders instantly; the panel
@@ -662,6 +656,8 @@ export default function CleanupPage() {
                 <EmptyState hasData={Boolean(data && data.total > 0)} />
               ) : (
                 <div className="overflow-clip rounded-xl border border-border-subtle bg-[var(--color-surface-elevated)] shadow-[var(--shadow-sm)]">
+                  <table className="w-full table-fixed border-collapse text-body-lg">
+                  <tbody>
                   {rows.map((row, idx) => {
                     const active = row.key === reviewKey || row.key === selectedKey;
                     const isChecked = checkedKeys.has(row.key);
@@ -710,35 +706,43 @@ export default function CleanupPage() {
                       </div>
                     );
                     return (
-                      <div
-                        key={row.key}
-                        // Wrapper groups the row pill with its optional rationale
-                        // line so they read as one block; the active tint moves here.
-                        className={active ? "bg-[var(--color-brand-600)]/12" : ""}
-                      >
-                        <ChildIssueRow
-                          item={rowToSubtask(row)}
-                          isLast={idx === rows.length - 1}
+                      <Fragment key={row.key}>
+                        <BoardRow
+                          ticket={cleanupRowToTicket(row)}
+                          ticketIdx={idx}
+                          tags={EMPTY_TAGS}
                           spacious
                           inlineCheckbox
-                          showStatus
-                          showTypeIcon
-                          selectable
+                          hideRowAccent
                           isChecked={isChecked}
+                          isSelected={active}
                           someChecked={checkedKeys.size > 0}
-                          onCheckboxClick={() => toggleRow(row.key)}
-                          onSelect={(key) => setReviewKey(key)}
+                          isDragActive={false}
+                          selectedTicket={null}
+                          // The cleanup list always opens the clicked ticket in the review
+                          // drawer; BoardRow's toggle-to-null never fires here because
+                          // selectedTicket is null (so key is always the ticket key).
+                          onSelectTicket={(key) => { if (key) setReviewKey(key); }}
+                          onCheckboxClick={(key) => toggleRow(key)}
                           metadataSlot={metadata}
                         />
                         {row.scanRationale && (
-                          <RationaleLine
-                            rationale={row.scanRationale}
-                            onClick={() => setReviewKey(row.key)}
-                          />
+                          // The rationale is a full-width line under the row; in a table it
+                          // lives in its own single-column <tr> right after the row's <tr>.
+                          <tr>
+                            <td className="p-0">
+                              <RationaleLine
+                                rationale={row.scanRationale}
+                                onClick={() => setReviewKey(row.key)}
+                              />
+                            </td>
+                          </tr>
                         )}
-                      </div>
+                      </Fragment>
                     );
                   })}
+                  </tbody>
+                  </table>
                 </div>
               )}
               </div>

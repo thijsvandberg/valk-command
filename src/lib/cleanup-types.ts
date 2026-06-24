@@ -6,7 +6,7 @@
  * of the surface follows automatically.
  */
 
-import type { IssueType } from "@/types/ticket";
+import type { IssueType, JiraStatus, Ticket } from "@/types/ticket";
 
 export type Disposition = "candidate" | "dismissed" | "confirmed" | null;
 
@@ -111,6 +111,46 @@ export interface CleanupRow {
   // render a "worth pulling up" badge/filter. null when no analyzer has run.
   revivalScore: number | null;
   revivalRationale: string | null;
+}
+
+/**
+ * Projects a cleanup row into a lightweight Ticket so the shared sprint-board row
+ * (BoardRow) can render the cleanup list (BRDG-389), mirroring `epicChildToTicket`.
+ *
+ * The cleanup list feeds ALL of its metadata through BoardRow's `metadataSlot` and
+ * passes an empty `tags` set, so BoardRow renders no native metadata of its own. That
+ * is why `sprintId` is intentionally omitted (the sprint chip is shown by the slot's
+ * own SprintOrBacklogBadge, not the row's native chip) and the planning fields default
+ * to clean/empty: nothing here drives the resting list, only the panel/hover read it.
+ *
+ * Distinct from the in-page `rowToTicket`, which is the SidePanel adapter and carries
+ * different sprint semantics (sprintDisplayName for the panel header).
+ */
+export function cleanupRowToTicket(row: CleanupRow): Ticket {
+  return {
+    key: row.key,
+    title: row.title,
+    type: row.type,
+    epic: row.epic,
+    epicKey: row.epicKey,
+    // `||` (not `??`) so an empty-string status also falls back, avoiding a blank
+    // status pill on the BoardRow.
+    jiraStatus: (row.status || "TO DO") as JiraStatus,
+    storyPoints: row.storyPoints,
+    assignee: row.assignee,
+    reporter: row.reporter,
+    flagged: false,
+    readiness: null,
+    poStatus: null,
+    qualityScore: null,
+    businessValue: null,
+    editState: "clean",
+    notes: "",
+    jiraUpdatedAt: row.jiraUpdatedAt,
+    sprintDisplayName: row.sprintName,
+    openSubtaskCount: row.openSubtaskCount,
+    totalSubtaskCount: row.totalSubtaskCount,
+  };
 }
 
 // Distinct option lists for the view's dropdown filters, computed server-side so
