@@ -133,6 +133,29 @@ export function useTicketDetail(ticketKey: string | null) {
   return swr;
 }
 
+const EMPTY_TICKETS: Ticket[] = [];
+
+// Fetches full ticket data for an explicit set of keys, tolerating keys that are
+// not found (404). Unlike useTickets("__all__"), the single-ticket endpoint has
+// no status filter, so this resolves tickets the board feed excludes (status
+// DRAFTING / REPLACED / DRAFT_FAILED). Used to keep refinement-session tickets
+// visible in the queue even when their status drops them from the board feed.
+export function useTicketsByKeys(keys: string[]) {
+  const sortedKeys = useMemo(() => [...keys].sort(), [keys]);
+  const swrKey = sortedKeys.length > 0 ? `ticketsByKeys:${sortedKeys.join(",")}` : null;
+  const { data } = useSWR<Ticket[]>(
+    swrKey,
+    async () => {
+      const results = await Promise.all(
+        sortedKeys.map((key) => ticketsApi.get(key).catch(() => null)),
+      );
+      return results.filter((t): t is Ticket & TicketDetail => t != null);
+    },
+    { revalidateOnFocus: false, dedupingInterval: 30000 },
+  );
+  return data ?? EMPTY_TICKETS;
+}
+
 // Fetches ticket versions for the side panel (lazy: only when ticketKey is provided)
 export function useTicketVersions(ticketKey: string | null) {
   return useSWR<StoryVersion[]>(

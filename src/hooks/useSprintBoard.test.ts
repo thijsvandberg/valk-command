@@ -5,6 +5,7 @@ import { createElement, type ReactNode } from "react";
 import {
   useTickets,
   useTicketDetail,
+  useTicketsByKeys,
   useJiraSprints,
   useTicketReviews,
 } from "./useSprintBoard";
@@ -233,6 +234,48 @@ describe("useTicketDetail", () => {
       expect(sprintCalls.length).toBeGreaterThanOrEqual(2);
     }, { timeout: 8000 });
   }, 10000);
+});
+
+// ---------------------------------------------------------------------------
+// useTicketsByKeys
+// ---------------------------------------------------------------------------
+describe("useTicketsByKeys", () => {
+  it("fetches each provided key via the single-ticket endpoint", async () => {
+    vi.spyOn(global, "fetch").mockImplementation(async (url) => {
+      const u = typeof url === "string" ? url : url.toString();
+      if (u === "/api/tickets/BRDG-101") return { ok: true, json: async () => mockTicketDetail } as Response;
+      if (u === "/api/tickets/BRDG-202") return { ok: true, json: async () => ({ ...mockTicketDetail, key: "BRDG-202" }) } as Response;
+      return { ok: false, status: 500, json: async () => null } as Response;
+    });
+
+    const { result } = renderHook(() => useTicketsByKeys(["BRDG-202", "BRDG-101"]), { wrapper: swrWrapper });
+
+    await waitFor(() => expect(result.current.length).toBe(2));
+    expect(result.current.map((t) => t.key).sort()).toEqual(["BRDG-101", "BRDG-202"]);
+  });
+
+  it("tolerates a not-found key and returns the rest", async () => {
+    vi.spyOn(global, "fetch").mockImplementation(async (url) => {
+      const u = typeof url === "string" ? url : url.toString();
+      if (u === "/api/tickets/BRDG-101") return { ok: true, json: async () => mockTicketDetail } as Response;
+      // BRDG-GONE no longer exists in the DB
+      return { ok: false, status: 404, json: async () => null } as Response;
+    });
+
+    const { result } = renderHook(() => useTicketsByKeys(["BRDG-101", "BRDG-GONE"]), { wrapper: swrWrapper });
+
+    await waitFor(() => expect(result.current.length).toBe(1));
+    expect(result.current[0].key).toBe("BRDG-101");
+  });
+
+  it("does not fetch when the key list is empty", async () => {
+    vi.spyOn(global, "fetch");
+
+    const { result } = renderHook(() => useTicketsByKeys([]), { wrapper: swrWrapper });
+
+    expect(result.current).toEqual([]);
+    expect(fetch).not.toHaveBeenCalled();
+  });
 });
 
 // ---------------------------------------------------------------------------

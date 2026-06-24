@@ -18,6 +18,28 @@ export function resolveDraftKey(key: string): string {
   return key;
 }
 
+/**
+ * Normalizes a refinement session's stored ticket keys for display and counting:
+ * promotes any finalized DRAFT-xxx key to its real Jira key, then drops duplicates
+ * (a draft can resolve to a key already present in the queue, e.g. when both the
+ * draft and its promoted ticket were added). Order is preserved by first occurrence.
+ * The resolver is injectable so the dedup logic can be unit-tested without a DB.
+ */
+export function resolveSessionTicketKeys(
+  keys: string[],
+  resolve: (key: string) => string = resolveDraftKey,
+): string[] {
+  const seen = new Set<string>();
+  const out: string[] = [];
+  for (const key of keys) {
+    const resolved = resolve(key);
+    if (seen.has(resolved)) continue;
+    seen.add(resolved);
+    out.push(resolved);
+  }
+  return out;
+}
+
 interface DraftSyncParams {
   title?: string;
   sprintId?: string;

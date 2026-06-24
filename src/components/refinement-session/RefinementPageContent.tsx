@@ -4,7 +4,7 @@ import { useState, useCallback, useMemo, useRef, useEffect } from "react";
 import dynamic from "next/dynamic";
 import { useRouter } from "next/navigation";
 import { usePageTitle } from "@/hooks/usePageTitle";
-import { useJiraSprints, useTickets, useSprintSlots, useTicketDetail } from "@/hooks/useSprintBoard";
+import { useJiraSprints, useTickets, useSprintSlots, useTicketDetail, useTicketsByKeys } from "@/hooks/useSprintBoard";
 import { saveTicketMetadata } from "@/components/sprint-board/sprint-board-utils";
 import { useRefinementSession } from "@/contexts/RefinementSessionContext";
 import { useRefinementSessions } from "@/hooks/useRefinementSessions";
@@ -113,6 +113,23 @@ export function RefinementPageContent({
 
   const { data: tickets, mutate: mutateTickets, isValidating: ticketsValidating } = useTickets("__all__");
 
+  // A ticket added to a session can drop out of the board feed (/api/tickets
+  // filters out status DRAFTING/REPLACED/DRAFT_FAILED), which would silently
+  // shrink the queue below the session's ticket count. Fetch any such keys
+  // directly so everything the PO put in a session stays visible in the queue.
+  const loadedTicketKeys = useMemo(() => new Set((tickets ?? []).map((t) => t.key)), [tickets]);
+  const missingSessionKeys = useMemo(
+    () => (activeSession?.ticketKeys ?? []).filter((k) => !loadedTicketKeys.has(k)),
+    [activeSession, loadedTicketKeys],
+  );
+  const extraSessionTickets = useTicketsByKeys(missingSessionKeys);
+  const allTickets = useMemo(() => {
+    if (extraSessionTickets.length === 0) return tickets;
+    const base = tickets ?? [];
+    const seen = new Set(base.map((t) => t.key));
+    return [...base, ...extraSessionTickets.filter((t) => !seen.has(t.key))];
+  }, [tickets, extraSessionTickets]);
+
   // Re-validate ticket edit states on mount
   const mountedRef = useRef(false);
   useEffect(() => {
@@ -196,7 +213,7 @@ export function RefinementPageContent({
     activeSession,
     mutateSessions,
     availableTickets,
-    allTickets: tickets,
+    allTickets,
   });
 
   // Re-validate ticket edit states when the queue changes

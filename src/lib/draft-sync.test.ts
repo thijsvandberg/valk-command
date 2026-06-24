@@ -32,7 +32,7 @@ vi.mock("@/lib/logger", () => ({
   },
 }));
 
-import { finalizeDraft, syncDraftToJira } from "./draft-sync";
+import { finalizeDraft, syncDraftToJira, resolveSessionTicketKeys } from "./draft-sync";
 import { jiraClient } from "@/lib/jira-client";
 
 function seedDraft(db: BetterSQLite3Database<typeof schema>, draftKey: string) {
@@ -133,6 +133,50 @@ describe("finalizeDraft", () => {
     const draft = testDb.select().from(ticket).where(eq(ticket.jiraKey, "DRAFT-boom")).get();
     expect(draft!.status).toBe("DRAFT_FAILED");
     expect(draft!.description).toBe("Internal error during finalization");
+  });
+});
+
+describe("resolveSessionTicketKeys", () => {
+  beforeEach(() => {
+    testDb = createTestDb();
+  });
+
+  it("resolves drafts and dedups, preserving first-occurrence order (injected resolver)", () => {
+    const map: Record<string, string> = {
+      "DRAFT-aaa": "VPL-100",
+      "DRAFT-bbb": "VPL-200", // resolves to a key that appears later as a literal
+    };
+    const resolve = (k: string) => map[k] ?? k;
+
+    const result = resolveSessionTicketKeys(
+      ["VPL-1", "DRAFT-aaa", "DRAFT-bbb", "VPL-200", "VPL-1"],
+      resolve,
+    );
+
+    // DRAFT-aaa -> VPL-100; DRAFT-bbb -> VPL-200 which then dedups the literal
+    // VPL-200; the trailing duplicate VPL-1 is dropped too.
+    expect(result).toEqual(["VPL-1", "VPL-100", "VPL-200"]);
+  });
+
+  it("leaves non-draft and still-pending draft keys unchanged", () => {
+    const result = resolveSessionTicketKeys(
+      ["VPL-1", "DRAFT-pending", "VPL-2"],
+      (k) => k,
+    );
+    expect(result).toEqual(["VPL-1", "DRAFT-pending", "VPL-2"]);
+  });
+
+  it("promotes a finalized draft to its real key via the DB and dedups against an existing key", () => {
+    // Mirrors the real bug: the session holds a DRAFT key that was promoted to a
+    // real ticket already present in the queue (so the raw count over-reports).
+    testDb.insert(ticket).values({ jiraKey: "VPL-890", title: "Forgot password", type: "story", status: "TO DO" }).run();
+    testDb.insert(ticket).values({ jiraKey: "DRAFT-dup", title: "Untitled draft", type: "story", status: "REPLACED", description: "VPL-890" }).run();
+    testDb.insert(ticket).values({ jiraKey: "VPL-885", title: "Hotel logout", type: "story", status: "TO DO" }).run();
+    testDb.insert(ticket).values({ jiraKey: "DRAFT-new", title: "404 logout", type: "story", status: "REPLACED", description: "VPL-885" }).run();
+
+    const result = resolveSessionTicketKeys(["VPL-1", "DRAFT-new", "DRAFT-dup", "VPL-890"]);
+
+    expect(result).toEqual(["VPL-1", "VPL-885", "VPL-890"]);
   });
 });
 

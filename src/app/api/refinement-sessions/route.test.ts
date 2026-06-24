@@ -4,6 +4,7 @@ import { createTestDb } from "@/db/test-utils";
 import type { BetterSQLite3Database } from "drizzle-orm/better-sqlite3";
 import type * as schema from "@/db/schema";
 import { buildJson } from "@/test/request-helpers";
+import { ticket } from "@/db/schema";
 
 let testDb: BetterSQLite3Database<typeof schema>;
 
@@ -42,6 +43,26 @@ describe("GET /api/refinement-sessions", () => {
     expect(data).toHaveLength(2);
     expect(data[0].ticketKeys).toBeInstanceOf(Array);
     expect(data[0].ticketCount).toBeDefined();
+  });
+
+  it("promotes finalized DRAFT keys to their real ticket and dedups, so the count matches the visible queue", async () => {
+    // A draft promoted to a brand-new real ticket (would otherwise be a ghost)...
+    testDb.insert(ticket).values({ jiraKey: "VPL-885", title: "Hotel logout", type: "story", status: "TO DO" }).run();
+    testDb.insert(ticket).values({ jiraKey: "DRAFT-new", title: "404 logout", type: "story", status: "REPLACED", description: "VPL-885" }).run();
+    // ...and a draft promoted to a ticket already in the session (duplicate, over-counts).
+    testDb.insert(ticket).values({ jiraKey: "VPL-890", title: "Forgot password", type: "story", status: "TO DO" }).run();
+    testDb.insert(ticket).values({ jiraKey: "DRAFT-dup", title: "Untitled draft", type: "story", status: "REPLACED", description: "VPL-890" }).run();
+
+    await POST(jsonRequest({
+      name: "24 Jun",
+      ticketKeys: ["VPL-869", "DRAFT-new", "DRAFT-dup", "VPL-890"],
+    }));
+
+    const response = await GET();
+    const data = await response.json();
+
+    expect(data[0].ticketKeys).toEqual(["VPL-869", "VPL-885", "VPL-890"]);
+    expect(data[0].ticketCount).toBe(3);
   });
 });
 

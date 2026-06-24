@@ -85,6 +85,12 @@ On a successful push, `pushToJira` then rebases the active session's `baseVersio
 
 Conflicts are content-only: if Jira's `updated` moved but the latest synced content hash still matches the edit's `baseJiraVersion` (metadata-only drift such as status changes or Bridge's own earlier push), the push proceeds without prompting.
 
+### Draft key promotion
+
+A brand-new story starts as a `DRAFT-<uuid>` placeholder row in `ticket`. When it is pushed to Jira, `syncDraftToJira` / `finalizeDraft` (`src/lib/draft-sync.ts`) create the real issue and swap the key across the related tables; the old draft row is kept with `status = "REPLACED"` and its `description` set to the new real key. `resolveDraftKey(key)` reads that pointer to map a finalized `DRAFT-` key to its real key (returning the key unchanged for non-drafts and still-pending drafts).
+
+Anything that persists draft keys must resolve them on read, or it references a ghost once the draft is promoted. Refinement sessions store ticket keys, so the `/api/refinement-sessions` reads run `resolveSessionTicketKeys` (resolve each key, then dedup — a draft can resolve to a key already in the queue) before returning `ticketKeys` / `ticketCount`. This keeps a session's count and queue aligned with the live tickets.
+
 ### Outdated-draft detection (BRDG-243)
 
 When the Jira version of a ticket moves on after a draft's baseline was recorded (for example, the same ticket is edited and pushed from the single story view in another tab), the editor surfaces a warning so the PO does not keep editing a stale draft.

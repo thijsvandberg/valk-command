@@ -7,9 +7,13 @@ import { applyRateLimit } from "@/lib/rate-limiter";
 import { emitRefinementEvent } from "@/lib/refinement-events";
 import { errorResponse } from "@/lib/api-response";
 import { parseJsonBody } from "@/lib/request-parser";
+import { resolveSessionTicketKeys } from "@/lib/draft-sync";
 
 function withParsedKeys(row: typeof refinementSession.$inferSelect) {
-  const keys = JSON.parse(row.ticketKeys) as string[];
+  // Promote finalized DRAFT keys to their real Jira keys and dedup, so a session
+  // that still references a since-promoted draft shows the live ticket and an
+  // accurate count instead of a ghost key (see resolveSessionTicketKeys).
+  const keys = resolveSessionTicketKeys(JSON.parse(row.ticketKeys) as string[]);
   return { ...row, ticketKeys: keys, ticketCount: keys.length };
 }
 

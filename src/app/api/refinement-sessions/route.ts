@@ -7,6 +7,7 @@ import { applyRateLimit } from "@/lib/rate-limiter";
 import { emitRefinementEvent } from "@/lib/refinement-events";
 import { errorResponse } from "@/lib/api-response";
 import { parseJsonBody } from "@/lib/request-parser";
+import { resolveSessionTicketKeys } from "@/lib/draft-sync";
 
 export async function GET() {
   const rows = await db
@@ -15,11 +16,10 @@ export async function GET() {
     .orderBy(desc(refinementSession.createdAt))
     .limit(50);
 
-  const result = rows.map((r) => ({
-    ...r,
-    ticketKeys: JSON.parse(r.ticketKeys) as string[],
-    ticketCount: (JSON.parse(r.ticketKeys) as string[]).length,
-  }));
+  const result = rows.map((r) => {
+    const ticketKeys = resolveSessionTicketKeys(JSON.parse(r.ticketKeys) as string[]);
+    return { ...r, ticketKeys, ticketCount: ticketKeys.length };
+  });
 
   return NextResponse.json(result);
 }
@@ -80,11 +80,12 @@ export async function POST(request: Request) {
 
   emitRefinementEvent({ type: "session:created", sessionId: id });
 
+  const resolvedKeys = resolveSessionTicketKeys(JSON.parse(created.ticketKeys) as string[]);
   return NextResponse.json(
     {
       ...created,
-      ticketKeys: JSON.parse(created.ticketKeys) as string[],
-      ticketCount: ticketKeys.length,
+      ticketKeys: resolvedKeys,
+      ticketCount: resolvedKeys.length,
     },
     { status: 201 },
   );
