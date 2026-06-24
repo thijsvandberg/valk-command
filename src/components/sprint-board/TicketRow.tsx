@@ -482,7 +482,7 @@ export const TicketRow = memo(forwardRef<HTMLTableRowElement, TicketRowBaseProps
       case "flagged":
         return (
           <td key={id} className="overflow-hidden py-2 pr-2">
-            {ticket.flagged && <Flag className="h-3.5 w-3.5" style={{ color: "var(--color-status-error)" }} fill="currentColor" strokeWidth={0} />}
+            {ticket.flagged && <Flag className="h-3.5 w-3.5" style={{ color: "var(--color-status-error)" }} fill="currentColor" strokeWidth={1.5} />}
           </td>
         );
       case "poStatus":

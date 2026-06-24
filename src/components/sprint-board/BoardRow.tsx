@@ -696,7 +696,7 @@ export const BoardRow = memo(forwardRef<HTMLTableRowElement, BoardRowBaseProps>(
 
               {/* Conditional inline tags (do not yield space). */}
               {tags.has("flag") && ticket.flagged && (
-                <Flag className="h-3.5 w-3.5 shrink-0" style={{ color: "var(--color-status-error)" }} fill="currentColor" strokeWidth={0} />
+                <Flag className="h-3.5 w-3.5 shrink-0" style={{ color: "var(--color-status-error)" }} fill="currentColor" strokeWidth={1.5} />
               )}
               {/* Quality Score: only shown once a review exists. Unscored tickets show nothing
                   here; a review can be requested from the hover card instead (BRDG-239). */}

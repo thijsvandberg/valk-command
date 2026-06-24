@@ -14,6 +14,11 @@ interface ChildIssueRowProps {
   ref?: Ref<HTMLDivElement>;
   item: Subtask;
   isLast: boolean;
+  /** When this row is the card's top-most element, round its top corners so its
+      hover/active background cannot bleed past the card's rounded corner (same reason
+      as roundBottom: the overflow-clip-margin kept for the drag handle otherwise lets
+      a square background into the corner). */
+  roundTop?: boolean;
   /** When this row is the card's bottom-most element, round its bottom corners so its
       hover/active background cannot bleed past the card's rounded corner (the GroupCard's
       overflow-clip-margin, kept for the drag handle, otherwise lets it into the corner). */
@@ -87,6 +92,7 @@ interface ChildIssueRowProps {
 export function ChildIssueRow({
   ref,
   item,
+  roundTop = false,
   roundBottom = false,
   isPending = false,
   showTypeIcon = false,
@@ -163,7 +169,7 @@ export function ChildIssueRow({
           : flagged
           ? "bg-[color-mix(in_srgb,var(--color-status-error)_6%,transparent)] hover:bg-[color-mix(in_srgb,var(--color-status-error)_8%,transparent)] shadow-[inset_3px_0_0_0_var(--color-status-error)]"
           : ""
-      } ${roundBottom ? "rounded-b-[11px]" : ""} ${className}`}
+      } ${roundTop ? "rounded-t-[11px]" : ""} ${roundBottom ? "rounded-b-[11px]" : ""} ${className}`}
       onClick={handleClick}
       onContextMenu={onContextMenu}
       onMouseEnter={onMouseEnter}
@@ -254,7 +260,7 @@ export function ChildIssueRow({
 
       {/* Inline flag, mirroring the sprint board (BoardRow). */}
       {flagged && !isEditing && (
-        <Flag className="h-3.5 w-3.5 shrink-0" style={{ color: "var(--color-status-error)" }} fill="currentColor" strokeWidth={0} />
+        <Flag className="h-3.5 w-3.5 shrink-0" style={{ color: "var(--color-status-error)" }} fill="currentColor" strokeWidth={1.5} />
       )}
 
       {/* Lifted above the actions overlay (z-20) and click-isolated so an interactive

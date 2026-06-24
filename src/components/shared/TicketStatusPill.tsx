@@ -728,7 +728,7 @@ function TicketHoverCard({
         <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1.5 border-t border-border-subtle pt-2">
           {data.flagged && (
             <span className="flex items-center gap-1.5">
-              <Flag size={11} strokeWidth={0} fill="currentColor" style={{ color: "var(--color-status-error)" }} />
+              <Flag size={11} strokeWidth={1.5} fill="currentColor" style={{ color: "var(--color-status-error)" }} />
               <span className="text-label font-medium" style={{ color: "var(--color-status-error)" }}>Flagged</span>
             </span>
           )}
