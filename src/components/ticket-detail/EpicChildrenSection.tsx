@@ -1171,9 +1171,10 @@ export function EpicChildrenSection({
       )}
 
       {someChecked && (
-        // Hug the bar's content + center it, like the sprint board (the bar is otherwise
-        // a full-width block); the bar keeps its own sticky-to-bottom behaviour.
-        <div className="flex justify-center">
+        // The WRAPPER is the sticky element (a direct child of the tall section, so it has
+        // room to travel and pins to the scroll viewport's bottom); `flex justify-center`
+        // then hugs + centers the bar within it, like the sprint board.
+        <div className="sticky bottom-3 z-50 flex justify-center">
         <BulkActionBar
           floating
           count={checkedKeys.size}
