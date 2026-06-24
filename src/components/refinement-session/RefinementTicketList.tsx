@@ -1,9 +1,10 @@
 "use client";
 
-import { useState, useRef } from "react";
+import { useMemo, useState, useRef } from "react";
 import { useOutsideClick } from "@/hooks/useOutsideClick";
 import { Search, SlidersHorizontal, X, ListFilter, Check } from "lucide-react";
-import { ChildIssueRow } from "@/components/ticket-detail/ChildIssueRow";
+import { BoardRow } from "@/components/sprint-board/BoardRow";
+import type { InlineTagId } from "@/components/sprint-board/filter-bar-types";
 import { EpicBadge, SubtaskCountBadge, InRefinementBadge, SprintBadge } from "@/components/shared/IssueMetaBadges";
 import { AddEpicPill } from "@/components/shared/AddEpicPill";
 import { StoryPointPicker } from "@/components/shared/StoryPointPicker";
@@ -29,6 +30,12 @@ const PILL_FIELDS = [
   { id: "bv", label: "Business value" },
   { id: "sprint", label: "Sprint" },
 ];
+
+// All refinement metadata is rendered through BoardRow's metadataSlot, so the only
+// native signal we keep is the readiness dot in the status pill; everything else
+// (epic / SP / BV / subtasks / sprint / edit-state / refinement-session) lives in the
+// slot. Module-level so the memoised BoardRow keeps a stable tags reference.
+const REFINEMENT_TAGS = new Set<InlineTagId>(["poReadiness"]);
 
 interface RefinementTicketListProps {
   availableTickets: Ticket[];
@@ -85,9 +92,20 @@ export function RefinementTicketList({
   const pillSettingsRef = useRef<HTMLDivElement>(null);
   const listRef = useFlipReorder(availableTickets.map((t) => t.key));
 
+  // Readiness shown on each row's pill: the optimistic override wins, else the ticket's
+  // persisted value. Memoised so the memoised BoardRow gets a stable map reference and
+  // does not re-render every row on each parent render.
+  const readinessByKey = useMemo(() => {
+    const m: Record<string, TicketReadiness | null> = {};
+    for (const t of availableTickets) m[t.key] = (readinessMap?.[t.key] ?? t.readiness) ?? null;
+    return m;
+  }, [availableTickets, readinessMap]);
+
   useOutsideClick(pillSettingsRef, () => setPillSettingsOpen(false), { enabled: pillSettingsOpen });
 
-  const showIssueType = pillFields.has("issueType");
+  // NOTE: the "Type icon" pill toggle (issueType) is now a no-op for the icon: BoardRow's
+  // list pill always shows the issue-type icon and offers no segment toggle for it. The
+  // menu entry is kept (it still persists) so the settings UI is unchanged (BRDG-389).
   const showKey = pillFields.has("key");
   const showStatus = pillFields.has("status");
   const showEpic = pillFields.has("epic");
@@ -192,15 +210,16 @@ export function RefinementTicketList({
 
       {filters.filtersOpen && <RefinementFilters filters={filters} pinnedSprintIds={pinnedSprintIds} epicOptions={epicOptions} />}
 
-      {/* Ticket list — unified ChildIssueRow with the shared 18px metadata badges. */}
+      {/* Ticket list — unified through the shared sprint-board BoardRow (BRDG-389). */}
       {availableTickets.length > 0 ? (
         <div ref={listRef} className="overflow-clip [overflow-clip-margin:14px] rounded-xl border border-border-subtle bg-[var(--color-surface-elevated)] shadow-[var(--shadow-sm)]">
+          <table className="w-full table-fixed border-collapse text-body-lg">
+            <tbody>
           {availableTickets.map((ticket, idx) => {
             const sprintName = ticket.sprintId ? (sprintNameMap[ticket.sprintId] ?? null) : null;
             const sessionNames = ticketSessionMap.get(ticket.key)?.filter((s) => s.id !== resolvedSessionId).map((s) => s.name);
             const isOtherSession = (ticketSessionMap.get(ticket.key)?.some((s) => s.id !== resolvedSessionId)) ?? false;
             const isChecked = queueHook.queue.includes(ticket.key);
-            const readiness = (readinessMap?.[ticket.key] ?? ticket.readiness) ?? null;
             const metadata = (
               <div className="flex shrink-0 items-center gap-1.5">
                 {ticket.editState === "local_edits" && <EditStateDot state="local_edits" />}
@@ -242,54 +261,45 @@ export function RefinementTicketList({
             // multiselect never claims the left gutter here and the BRDG-336 drag
             // handle remains available while tickets are checked into the queue.
             return (
-              <ChildIssueRow
+              <BoardRow
                 key={ticket.key}
-                item={ticket}
-                isLast={idx === availableTickets.length - 1}
-                roundTop={idx === 0}
-                roundBottom={idx === availableTickets.length - 1}
+                ticket={ticket}
+                ticketIdx={idx}
+                data-ticket-key={ticket.key}
+                tags={REFINEMENT_TAGS}
                 spacious
                 inlineCheckbox
-                showTypeIcon={showIssueType}
+                hideRowAccent
+                isChecked={isChecked}
+                isSelected={ticket.key === previewTicketKey}
+                someChecked={false}
+                isDragActive={false}
+                isFirstInCard={idx === 0}
+                isLastInCard={idx === availableTickets.length - 1}
                 showKey={showKey}
                 showStatus={showStatus}
-                readiness={readiness}
-                onJiraStatusChange={onJiraStatusChange ? (s) => onJiraStatusChange(ticket.key, s) : undefined}
-                onReadinessChange={onReadinessChange ? (r) => onReadinessChange(ticket.key, r) : undefined}
-                selectable
-                isChecked={isChecked}
-                isActive={ticket.key === previewTicketKey}
-                someChecked={false}
-                dragHandleSlot={<TicketDragHandle ticketKey={ticket.key} source="list" />}
-                onCheckboxClick={(e) => queueHook.toggleTicket(ticket.key, idx, e.shiftKey)}
-                onSelect={(key) => onSelectTicket(key)}
+                readinessMap={readinessByKey}
+                sprintNameMap={sprintNameMap}
                 sprints={sprints}
-                onAssigneeChange={onAssigneeChange ? (u) => onAssigneeChange(ticket.key, u) : undefined}
-                onEpicChange={onEpicChange ? (epic) => onEpicChange(ticket.key, epic) : undefined}
-                onSprintChange={onSprintChange ? (s) => onSprintChange(ticket.key, s) : undefined}
-                onStoryPointsChange={onStoryPointsChange ? (v) => onStoryPointsChange(ticket.key, v) : undefined}
-                onBusinessValueChange={onBusinessValueChange ? (v) => onBusinessValueChange(ticket.key, v) : undefined}
-                hoverData={{
-                  title: ticket.title,
-                  storyPoints: ticket.storyPoints,
-                  businessValue: ticket.businessValue,
-                  sprintId: ticket.sprintId ?? null,
-                  sprintName,
-                  epicKey: ticket.epicKey,
-                  epic: ticket.epic,
-                  assignee: ticket.assignee ?? null,
-                  reporter: ticket.reporter ?? null,
-                  openSubtaskCount: ticket.openSubtaskCount ?? 0,
-                  totalSubtaskCount: ticket.totalSubtaskCount ?? 0,
-                  flagged: ticket.flagged,
-                  readiness,
-                  qualityScore: ticket.qualityScore,
-                  notes: ticket.notes || null,
-                }}
+                dragHandleSlot={<TicketDragHandle ticketKey={ticket.key} source="list" />}
+                selectedTicket={null}
+                // The refinement list always opens the clicked ticket in the side panel;
+                // BoardRow's toggle-to-null never fires here because selectedTicket is null.
+                onSelectTicket={(key) => { if (key) onSelectTicket(key); }}
+                onCheckboxClick={(key, clickIdx, shiftKey) => queueHook.toggleTicket(key, clickIdx, shiftKey)}
+                onJiraStatusChange={onJiraStatusChange}
+                onReadinessChange={onReadinessChange}
+                onAssigneeChange={onAssigneeChange}
+                onEpicChange={onEpicChange}
+                onSprintChange={onSprintChange}
+                onStoryPointsChange={onStoryPointsChange}
+                onBusinessValueChange={onBusinessValueChange}
                 metadataSlot={metadata}
               />
             );
           })}
+            </tbody>
+          </table>
         </div>
       ) : (
         <p className="py-8 text-center text-body-lg text-text-muted">

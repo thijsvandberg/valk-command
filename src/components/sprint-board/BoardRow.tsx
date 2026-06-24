@@ -160,6 +160,14 @@ export interface BoardRowBaseProps {
    * straddle the left border, which is why the corners need rounding here per-row.
    */
   isLastInCard?: boolean;
+  /**
+   * First row in its card: rounds the row surface's top corners, the mirror of
+   * isLastInCard. Needed by hosts whose card keeps an overflow-clip margin (for a
+   * bleeding drag handle / FLIP animation) instead of clipping per-row corners, so the
+   * top row's hover/selection fill follows the card's rounded edge (BRDG-389). Off by
+   * default; hosts whose card fully clips (overflow-hidden/clip) never set it.
+   */
+  isFirstInCard?: boolean;
   rowStyle?: React.CSSProperties;
   dragListeners?: ReturnType<typeof useSortable>["listeners"];
   dragAttributes?: ReturnType<typeof useSortable>["attributes"];
@@ -249,6 +257,7 @@ export const BoardRow = memo(forwardRef<HTMLTableRowElement, BoardRowBaseProps>(
     hideCheckbox = false,
     hideAssigneeUntilHover = false,
     isLastInCard = false,
+    isFirstInCard = false,
     rowStyle,
     dragListeners,
     dragAttributes,
@@ -440,7 +449,7 @@ export const BoardRow = memo(forwardRef<HTMLTableRowElement, BoardRowBaseProps>(
             : ticket.flagged
             ? "border-l-[var(--color-status-error)]"
             : "border-l-transparent hover:border-l-[var(--color-brand-400)]/25"
-        } ${isFocused && !isSelected && !isContextTarget ? "outline outline-1 -outline-offset-1 outline-[var(--color-brand-500)]/40" : ""} ${isRemoved ? "opacity-50" : isDeprecated ? "opacity-60" : isInflight ? "opacity-70" : ""} ${isLastInCard ? "rounded-b-[11px]" : ""} ${liveChangeKinds.size > 0 ? "live-pulse" : ""}`}>
+        } ${isFocused && !isSelected && !isContextTarget ? "outline outline-1 -outline-offset-1 outline-[var(--color-brand-500)]/40" : ""} ${isRemoved ? "opacity-50" : isDeprecated ? "opacity-60" : isInflight ? "opacity-70" : ""} ${isFirstInCard ? "rounded-t-[11px]" : ""} ${isLastInCard ? "rounded-b-[11px]" : ""} ${liveChangeKinds.size > 0 ? "live-pulse" : ""}`}>
           {/* Drag affordance in the left gutter (Jira-style). Visual only: the whole row is the
               drag activator, so this never needs its own listeners. Shown only when reordering
               is possible (dragListeners present) and never during multiselect. Suppressed when a

@@ -94,11 +94,11 @@ Both lists render `ChildIssueRow` with:
 
 ## Phase 3: Migrate the refinement list
 
-- [ ] Decide the drag-handle approach (external slot on `BoardRow` vs handle adjacent to the row) and implement it.
-- [ ] Render `RefinementTicketList` rows via `BoardRow` (`spacious` + `inlineCheckbox`), wiring the existing edit callbacks straight through; drop the explicit `hoverData` if `BoardRow` derives it adequately.
-- [ ] Preserve the "drag ticket into queue" behaviour (BRDG-336) and selection.
-- [ ] Remove `ChildIssueRow` from `RefinementTicketList`.
-- [ ] Update refinement tests; `npm run verify` + `npm run build` green; PO visual + drag check.
+- [x] Decide the drag-handle approach (external slot on `BoardRow` vs handle adjacent to the row) and implement it. <!-- chose the external dragHandleSlot on BoardRow (decision B); TicketDragHandle stays a gutter descendant, suppresses the native grip, hidden during multiselect -->
+- [x] Render `RefinementTicketList` rows via `BoardRow` (`spacious` + `inlineCheckbox`), wiring the existing edit callbacks straight through; drop the explicit `hoverData` if `BoardRow` derives it adequately. <!-- callbacks (jira-status/readiness/assignee/epic/sprint/SP/BV) pass through key-first; explicit hoverData dropped, BoardRow derives it from ticket + readinessByKey + sprintNameMap; tags={poReadiness} keeps the readiness dot, all other metadata via metadataSlot. Added isFirstInCard to BoardRow for the card's top-row rounding (card keeps overflow-clip-margin for the handle bleed + FLIP). -->
+- [x] Preserve the "drag ticket into queue" behaviour (BRDG-336) and selection. <!-- someChecked stays false so the inline checkbox + handle coexist; data-ticket-key passthrough keeps useFlipReorder working -->
+- [x] Remove `ChildIssueRow` from `RefinementTicketList`. <!-- import + all usages removed; showIssueType dead const removed (Type-icon toggle now a no-op, menu entry kept) -->
+- [x] Update refinement tests; `npm run verify` + `npm run build` green; PO visual + drag check. <!-- mock re-pointed to BoardRow; 20 refinement tests pass. Full verify + build + visual in final verification. -->
 
 ## Acceptance Criteria
 

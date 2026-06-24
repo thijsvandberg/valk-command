@@ -14,14 +14,16 @@ vi.mock("@/hooks/useSectionVisibility", () => ({
   }),
 }));
 
-vi.mock("@/components/ticket-detail/ChildIssueRow", () => ({
-  ChildIssueRow: ({ item, isChecked, isActive, someChecked, onCheckboxClick, onSelect, dragHandleSlot }: { item: Ticket; isChecked: boolean; isActive: boolean; someChecked?: boolean; onCheckboxClick: (e: { shiftKey: boolean }) => void; onSelect: (key: string, e: { metaKey: boolean; ctrlKey: boolean }) => void; dragHandleSlot?: React.ReactNode }) => (
-    <div data-testid={`ticket-row-${item.key}`} data-selected={isChecked} data-active={isActive}>
-      {/* Mirrors the real ChildIssueRow guard: the handle is hidden during multiselect. */}
-      {dragHandleSlot && !someChecked && dragHandleSlot}
-      <button onClick={() => onSelect?.(item.key, { metaKey: false, ctrlKey: false })}>{item.title}</button>
-      <button onClick={() => onCheckboxClick?.({ shiftKey: false })}>Toggle {item.key}</button>
-    </div>
+vi.mock("@/components/sprint-board/BoardRow", () => ({
+  BoardRow: ({ ticket, ticketIdx, isChecked, isSelected, someChecked, onCheckboxClick, onSelectTicket, dragHandleSlot }: { ticket: Ticket; ticketIdx: number; isChecked: boolean; isSelected: boolean; someChecked?: boolean; onCheckboxClick: (key: string, idx: number, shiftKey: boolean) => void; onSelectTicket: (key: string | null) => void; dragHandleSlot?: React.ReactNode }) => (
+    <tr data-testid={`ticket-row-${ticket.key}`} data-selected={isChecked} data-active={isSelected}>
+      <td>
+        {/* Mirrors the real BoardRow guard: the external drag handle is hidden during multiselect. */}
+        {dragHandleSlot && !someChecked && dragHandleSlot}
+        <button onClick={() => onSelectTicket?.(ticket.key)}>{ticket.title}</button>
+        <button onClick={() => onCheckboxClick?.(ticket.key, ticketIdx, false)}>Toggle {ticket.key}</button>
+      </td>
+    </tr>
   ),
 }));
 

@@ -729,5 +729,16 @@ describe("BoardRow (headerless, BRDG-239)", () => {
       const { container } = renderRow({ "data-ticket-key": "VPL-1" } as Partial<BoardRowBaseProps>);
       expect(container.querySelector('tr[data-ticket-key="VPL-1"]')).toBeInTheDocument();
     });
+
+    it("rounds the top corners only when isFirstInCard, the mirror of isLastInCard", () => {
+      const { container: plain } = renderRow();
+      expect(contentDiv(plain).className).not.toContain("rounded-t-[11px]");
+
+      const { container: first } = renderRow({ isFirstInCard: true });
+      expect(contentDiv(first).className).toContain("rounded-t-[11px]");
+
+      const { container: last } = renderRow({ isLastInCard: true });
+      expect(contentDiv(last).className).toContain("rounded-b-[11px]");
+    });
   });
 });
