@@ -18,6 +18,19 @@ vi.mock("swr", () => ({
   mutate: vi.fn(),
 }));
 
+// Drive the virtualizer deterministically: jsdom has no layout, so we control
+// exactly which rows are "in the window" to assert the windowed render path.
+let mockVirtualItems: Array<{ index: number; start: number; end: number; key: number }> = [];
+let mockTotalSize = 0;
+vi.mock("@tanstack/react-virtual", () => ({
+  useVirtualizer: () => ({
+    getVirtualItems: () => mockVirtualItems,
+    getTotalSize: () => mockTotalSize,
+    measureElement: vi.fn(),
+    scrollToIndex: vi.fn(),
+  }),
+}));
+
 // The panel is a heavy dynamic import; stub it so the test asserts wiring
 // (which ticket key it opens) without rendering the full ticket detail tree.
 vi.mock("@/components/sprint-board/SidePanel", () => ({
@@ -192,6 +205,8 @@ describe("CleanupPage", () => {
     swrData = undefined;
     swrLoading = false;
     swrSpy.mockClear();
+    mockVirtualItems = [];
+    mockTotalSize = 0;
   });
 
   it("shows the never-scanned empty state when there is no data", () => {
@@ -199,6 +214,71 @@ describe("CleanupPage", () => {
     render(<CleanupPage />);
     expect(screen.getByText("Nothing scanned yet")).toBeInTheDocument();
     expect(screen.getByText(/Tier-1 staleness runs in the background/i)).toBeInTheDocument();
+  });
+
+  // --- Virtualization (BRDG-393) ---
+
+  const makeManyRows = (n: number): CleanupResponse["rows"] =>
+    Array.from({ length: n }, (_, i) => ({
+      ...ROW_DEFAULTS,
+      key: `BT-${i + 1}`,
+      title: `Candidate ${i + 1}`,
+      status: "TO DO",
+      lastScannedAt: null,
+      topicScores: {},
+      scanOverall: null,
+      disposition: null,
+      revivalScore: null,
+      revivalRationale: null,
+    }));
+
+  const windowItems = (indices: number[]) =>
+    indices.map((index) => ({ index, start: index * 52, end: (index + 1) * 52, key: index }));
+
+  it("virtualizes a large list: only the windowed rows mount", () => {
+    swrData = { total: 50, topics: RESPONSE.topics, rows: makeManyRows(50), facets: EMPTY_FACETS };
+    mockVirtualItems = windowItems([0, 1, 2]);
+    mockTotalSize = 50 * 52;
+
+    render(<CleanupPage />);
+
+    expect(screen.getByTestId("row-BT-1")).toBeInTheDocument();
+    expect(screen.getByTestId("row-BT-3")).toBeInTheDocument();
+    // A row far outside the window is never mounted.
+    expect(screen.queryByTestId("row-BT-50")).not.toBeInTheDocument();
+  });
+
+  it("renders all rows (no windowing) below the virtualization threshold", () => {
+    swrData = { total: 5, topics: RESPONSE.topics, rows: makeManyRows(5), facets: EMPTY_FACETS };
+    // Even if the virtualizer reported a window, a 5-row list takes the plain path.
+    mockVirtualItems = windowItems([0]);
+
+    render(<CleanupPage />);
+
+    for (let i = 1; i <= 5; i++) {
+      expect(screen.getByTestId(`row-BT-${i}`)).toBeInTheDocument();
+    }
+  });
+
+  it("keeps a row's selection when it scrolls out of and back into the window", () => {
+    swrData = { total: 50, topics: RESPONSE.topics, rows: makeManyRows(50), facets: EMPTY_FACETS };
+    mockVirtualItems = windowItems([0, 1, 2]);
+    mockTotalSize = 50 * 52;
+
+    const { rerender } = render(<CleanupPage />);
+    fireEvent.click(screen.getByTestId("check-BT-1"));
+    expect(screen.getByTestId("check-BT-1")).toHaveAttribute("aria-pressed", "true");
+
+    // BT-1 scrolls out of the window and unmounts.
+    mockVirtualItems = windowItems([10, 11, 12]);
+    rerender(<CleanupPage />);
+    expect(screen.queryByTestId("row-BT-1")).not.toBeInTheDocument();
+
+    // Back into the window: the checked state survived because selection is
+    // data (checkedKeys), not DOM (BRDG-393 regression guard).
+    mockVirtualItems = windowItems([0, 1, 2]);
+    rerender(<CleanupPage />);
+    expect(screen.getByTestId("check-BT-1")).toHaveAttribute("aria-pressed", "true");
   });
 
   it("renders one standard row per ticket via BoardRow", () => {

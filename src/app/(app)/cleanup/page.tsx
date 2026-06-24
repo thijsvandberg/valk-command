@@ -1,6 +1,7 @@
 "use client";
 
-import { Fragment, useMemo, useState, useCallback } from "react";
+import { Fragment, useMemo, useState, useCallback, useRef } from "react";
+import { useVirtualizer } from "@tanstack/react-virtual";
 import useSWR, { mutate as globalMutate } from "swr";
 import dynamic from "next/dynamic";
 import { Trash2, Telescope, Clock, Flame, Check, BellOff, TrendingUp, Sparkles, Zap } from "lucide-react";
@@ -41,6 +42,16 @@ import {
 } from "./cleanup-utils";
 import { ScanControls } from "./ScanControls";
 import { DeepScanQueuePanel, type QueueData } from "./DeepScanQueuePanel";
+
+// Virtualize the candidate list above this many rows so a large cleanup backlog
+// mounts only a visible window of rows (BRDG-393). Mirrors the sprint board
+// (TicketTable). Each logical row is a BoardRow plus an optional rationale line,
+// so the measured unit is a per-row <tbody> wrapping both <tr>s; that keeps the
+// virtualizer's total-size math correct (measuring only the BoardRow <tr> would
+// undercount and drift). Below the threshold the plain list renders unchanged.
+const VIRTUALIZE_THRESHOLD = 40;
+const ROW_HEIGHT_ESTIMATE = 52;
+const VIRTUALIZER_OVERSCAN = 20;
 
 // Title-case label for an issue type, used in the type-filter dropdown.
 const ISSUE_TYPE_LABEL: Record<IssueType, string> = {
@@ -361,6 +372,115 @@ export default function CleanupPage() {
     return sortRows(filterRows(data.rows, filters), sort);
   }, [data, filters, sort]);
 
+  // Virtualize large lists (BRDG-393). scrollRef is the scrolling container,
+  // tableRef the table inside it; scrollMargin accounts for the padding/card
+  // chrome above the table so the windowed rows land at the right offset.
+  const scrollRef = useRef<HTMLDivElement>(null);
+  const tableRef = useRef<HTMLTableElement>(null);
+  const enableVirtualization = rows.length > VIRTUALIZE_THRESHOLD;
+  const rowVirtualizer = useVirtualizer({
+    count: enableVirtualization ? rows.length : 0,
+    getScrollElement: () => scrollRef.current,
+    estimateSize: () => ROW_HEIGHT_ESTIMATE,
+    overscan: VIRTUALIZER_OVERSCAN,
+    measureElement: (el) => el.getBoundingClientRect().height,
+    scrollMargin: tableRef.current?.offsetTop ?? 0,
+  });
+
+  // Reset scroll to the top when the sort or the filtered set changes, so the
+  // window never lingers on an offset that no longer has rows.
+  const prevListRef = useRef({ sort, count: rows.length });
+  if (enableVirtualization && (prevListRef.current.sort !== sort || prevListRef.current.count !== rows.length)) {
+    prevListRef.current = { sort, count: rows.length };
+    rowVirtualizer.scrollToIndex(0);
+  }
+
+  const virtualRows = enableVirtualization ? rowVirtualizer.getVirtualItems() : [];
+  const scrollMarginValue = tableRef.current?.offsetTop ?? 0;
+  const paddingTop = virtualRows.length > 0 ? virtualRows[0].start - scrollMarginValue : 0;
+  const paddingBottom = virtualRows.length > 0
+    ? rowVirtualizer.getTotalSize() - virtualRows[virtualRows.length - 1].end
+    : 0;
+
+  // One logical row: the shared BoardRow plus an optional full-width rationale
+  // line. Shared by the plain and virtualized render paths so they stay identical.
+  const renderRowContent = (row: CleanupRow, idx: number) => {
+    const active = row.key === reviewKey || row.key === selectedKey;
+    const isChecked = checkedKeys.has(row.key);
+    const badge = row.disposition ? DISPOSITION_ROW_BADGE[row.disposition] : null;
+    const revival = isRevivalCandidate(row);
+    const metadata = (
+      <div className="flex shrink-0 items-center gap-1.5">
+        {row.epic && <EpicBadge epic={row.epic} className="max-w-[140px]" />}
+        <SprintOrBacklogBadge sprintName={row.sprintName} />
+        {row.type === "epic" ? (
+          <EpicChildCountBadge count={row.epicChildCount} />
+        ) : (
+          <SubtaskCountBadge open={row.openSubtaskCount} total={row.totalSubtaskCount} />
+        )}
+        {row.storyPoints != null && row.storyPoints > 0 && (
+          <MetricChip metric="sp" value={row.storyPoints} />
+        )}
+        {row.assignee && (
+          <Tooltip content={`Assignee: ${row.assignee.name}`}>
+            <Avatar assignee={row.assignee} size={18} />
+          </Tooltip>
+        )}
+        {revival && row.revivalScore != null && <RevivalBadge score={row.revivalScore} />}
+        <DeprecationScoreBadge score={row.scanOverall} />
+        {badge && (
+          <span
+            className="inline-flex h-5 shrink-0 items-center rounded-md px-1.5 text-[11px] font-medium leading-none"
+            style={{ color: badge.color, backgroundColor: badge.bg }}
+          >
+            {badge.label}
+          </span>
+        )}
+        <span
+          className="shrink-0 text-[11px] tabular-nums text-text-muted"
+          title={row.lastScannedAt ? `Last scanned ${formatAbsoluteDate(row.lastScannedAt)}` : "Never scanned"}
+        >
+          {row.lastScannedAt ? relativeDate(row.lastScannedAt) : "never"}
+        </span>
+      </div>
+    );
+    return (
+      <>
+        <BoardRow
+          ticket={cleanupRowToTicket(row)}
+          ticketIdx={idx}
+          tags={EMPTY_TAGS}
+          spacious
+          inlineCheckbox
+          hideRowAccent
+          isChecked={isChecked}
+          isSelected={active}
+          someChecked={checkedKeys.size > 0}
+          isDragActive={false}
+          selectedTicket={null}
+          // The cleanup list always opens the clicked ticket in the review
+          // drawer; BoardRow's toggle-to-null never fires here because
+          // selectedTicket is null (so key is always the ticket key).
+          onSelectTicket={(key) => { if (key) setReviewKey(key); }}
+          onCheckboxClick={(key) => toggleRow(key)}
+          metadataSlot={metadata}
+        />
+        {row.scanRationale && (
+          // The rationale is a full-width line under the row; in a table it
+          // lives in its own single-column <tr> right after the row's <tr>.
+          <tr>
+            <td className="p-0">
+              <RationaleLine
+                rationale={row.scanRationale}
+                onClick={() => setReviewKey(row.key)}
+              />
+            </td>
+          </tr>
+        )}
+      </>
+    );
+  };
+
   const toggleRow = useCallback((key: string) => {
     setCheckedKeys((prev) => {
       const next = new Set(prev);
@@ -644,7 +764,7 @@ export default function CleanupPage() {
                 collapsed into trailing badges in the row's metadata slot, so there
                 is no horizontal scroll. The full per-topic breakdown lives in the
                 DispositionPanel drawer. */}
-            <div className="flex-1 overflow-y-auto px-8 py-5">
+            <div ref={scrollRef} className="relative flex-1 overflow-y-auto px-8 py-5">
               <div className={CONTENT_MAX}>
               {isLoading && !data ? (
                 <div className="space-y-2">
@@ -656,92 +776,34 @@ export default function CleanupPage() {
                 <EmptyState hasData={Boolean(data && data.total > 0)} />
               ) : (
                 <div className="overflow-clip rounded-xl border border-border-subtle bg-[var(--color-surface-elevated)] shadow-[var(--shadow-sm)]">
-                  <table className="w-full table-fixed border-collapse text-body-lg">
-                  <tbody>
-                  {rows.map((row, idx) => {
-                    const active = row.key === reviewKey || row.key === selectedKey;
-                    const isChecked = checkedKeys.has(row.key);
-                    const badge = row.disposition ? DISPOSITION_ROW_BADGE[row.disposition] : null;
-                    const revival = isRevivalCandidate(row);
-                    const metadata = (
-                      <div className="flex shrink-0 items-center gap-1.5">
-                        {/* Standard issue-metadata badges (PO feedback #5): epic,
-                            subtask count, story points — same chips the rest of the
-                            app uses, fed the row's real data. */}
-                        {row.epic && <EpicBadge epic={row.epic} className="max-w-[140px]" />}
-                        {/* Sprint/backlog placement (BRDG-298): every row shows where
-                            it lives; backlog-only eligibility means most read "Backlog". */}
-                        <SprintOrBacklogBadge sprintName={row.sprintName} />
-                        {/* Epics show their child-story count; everything else shows the
-                            subtask count. The two are mutually exclusive per row. */}
-                        {row.type === "epic" ? (
-                          <EpicChildCountBadge count={row.epicChildCount} />
-                        ) : (
-                          <SubtaskCountBadge open={row.openSubtaskCount} total={row.totalSubtaskCount} />
-                        )}
-                        {row.storyPoints != null && row.storyPoints > 0 && (
-                          <MetricChip metric="sp" value={row.storyPoints} />
-                        )}
-                        {row.assignee && (
-                          <Tooltip content={`Assignee: ${row.assignee.name}`}>
-                            <Avatar assignee={row.assignee} size={18} />
-                          </Tooltip>
-                        )}
-                        {revival && row.revivalScore != null && <RevivalBadge score={row.revivalScore} />}
-                        <DeprecationScoreBadge score={row.scanOverall} />
-                        {badge && (
-                          <span
-                            className="inline-flex h-5 shrink-0 items-center rounded-md px-1.5 text-[11px] font-medium leading-none"
-                            style={{ color: badge.color, backgroundColor: badge.bg }}
-                          >
-                            {badge.label}
-                          </span>
-                        )}
-                        <span
-                          className="shrink-0 text-[11px] tabular-nums text-text-muted"
-                          title={row.lastScannedAt ? `Last scanned ${formatAbsoluteDate(row.lastScannedAt)}` : "Never scanned"}
-                        >
-                          {row.lastScannedAt ? relativeDate(row.lastScannedAt) : "never"}
-                        </span>
-                      </div>
-                    );
-                    return (
-                      <Fragment key={row.key}>
-                        <BoardRow
-                          ticket={cleanupRowToTicket(row)}
-                          ticketIdx={idx}
-                          tags={EMPTY_TAGS}
-                          spacious
-                          inlineCheckbox
-                          hideRowAccent
-                          isChecked={isChecked}
-                          isSelected={active}
-                          someChecked={checkedKeys.size > 0}
-                          isDragActive={false}
-                          selectedTicket={null}
-                          // The cleanup list always opens the clicked ticket in the review
-                          // drawer; BoardRow's toggle-to-null never fires here because
-                          // selectedTicket is null (so key is always the ticket key).
-                          onSelectTicket={(key) => { if (key) setReviewKey(key); }}
-                          onCheckboxClick={(key) => toggleRow(key)}
-                          metadataSlot={metadata}
-                        />
-                        {row.scanRationale && (
-                          // The rationale is a full-width line under the row; in a table it
-                          // lives in its own single-column <tr> right after the row's <tr>.
-                          <tr>
-                            <td className="p-0">
-                              <RationaleLine
-                                rationale={row.scanRationale}
-                                onClick={() => setReviewKey(row.key)}
-                              />
-                            </td>
-                          </tr>
-                        )}
-                      </Fragment>
-                    );
-                  })}
-                  </tbody>
+                  <table ref={tableRef} className="w-full table-fixed border-collapse text-body-lg">
+                  {enableVirtualization ? (
+                    // Windowed: only the visible rows mount. Each row is its own
+                    // <tbody> so the virtualizer measures the BoardRow + rationale
+                    // together; spacer <tbody>s hold the off-screen height.
+                    <>
+                      {paddingTop > 0 && (
+                        <tbody><tr><td style={{ height: paddingTop, padding: 0, border: "none" }} /></tr></tbody>
+                      )}
+                      {virtualRows.map((virtualRow) => {
+                        const row = rows[virtualRow.index];
+                        return (
+                          <tbody key={row.key} ref={rowVirtualizer.measureElement} data-index={virtualRow.index}>
+                            {renderRowContent(row, virtualRow.index)}
+                          </tbody>
+                        );
+                      })}
+                      {paddingBottom > 0 && (
+                        <tbody><tr><td style={{ height: paddingBottom, padding: 0, border: "none" }} /></tr></tbody>
+                      )}
+                    </>
+                  ) : (
+                    <tbody>
+                      {rows.map((row, idx) => (
+                        <Fragment key={row.key}>{renderRowContent(row, idx)}</Fragment>
+                      ))}
+                    </tbody>
+                  )}
                   </table>
                 </div>
               )}
