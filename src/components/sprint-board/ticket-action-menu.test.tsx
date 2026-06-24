@@ -165,6 +165,8 @@ describe("TicketActionMenuContent", () => {
       { id: "next", name: "BT: 141", state: "future" as const, dateRange: "", ticketCount: 0, startDate: null, endDate: null, goal: null },
       { id: "cur", name: "BT: 143", state: "future" as const, dateRange: "", ticketCount: 0, startDate: null, endDate: null, goal: null },
       { id: "other", name: "BT: 142", state: "future" as const, dateRange: "", ticketCount: 0, startDate: null, endDate: null, goal: null },
+      { id: "other2", name: "BT: 144", state: "future" as const, dateRange: "", ticketCount: 0, startDate: null, endDate: null, goal: null },
+      { id: "todo", name: "BT: TODO", state: "future" as const, dateRange: "", ticketCount: 0, startDate: null, endDate: null, goal: null },
       { id: "nbl", name: "BT: Backlog", state: "backlog" as const, dateRange: "", ticketCount: 0, startDate: null, endDate: null, goal: null },
       { id: "ovr", name: "Overall refinement", state: "future" as const, dateRange: "", ticketCount: 0, startDate: null, endDate: null, goal: null },
     ];
@@ -173,7 +175,7 @@ describe("TicketActionMenuContent", () => {
       { id: "active" as const, label: "Move to active", target: "BT: 140", targetSprintId: "act", badge: "active" },
       { id: "next" as const, label: "Move to next", target: "BT: 141", targetSprintId: "next" },
     ];
-    render(
+    const { container } = render(
       <TicketActionMenuContent
         quickMoves={quickMoves}
         onQuickMove={vi.fn()}
@@ -195,6 +197,22 @@ describe("TicketActionMenuContent", () => {
     // active / next appear ONLY as the quick-move chips above, never again in the list.
     expect(screen.getAllByText("BT: 140")).toHaveLength(1);
     expect(screen.getAllByText("BT: 141")).toHaveLength(1);
+    // Remaining sprints sort by number ascending within the team; "TODO" (no number) last.
+    const labels = Array.from(container.querySelectorAll("button")).map((b) => b.textContent);
+    expect(labels.indexOf("BT: 142")).toBeLessThan(labels.indexOf("BT: 144"));
+    expect(labels.indexOf("BT: 144")).toBeLessThan(labels.indexOf("BT: TODO"));
+  });
+
+  it("Add to refinement shows each session's ticket count (BRDG-374)", () => {
+    render(
+      <TicketActionMenuContent
+        refinements={[{ id: "s1", name: "24 Jun 2026", count: 6 }]}
+        onAddToRefinement={vi.fn()}
+        close={vi.fn()}
+      />,
+    );
+    expect(screen.getByText("24 Jun 2026")).toBeInTheDocument();
+    expect(screen.getByText("6")).toBeInTheDocument();
   });
 
   it("renders no quick-move items when none are supplied", () => {

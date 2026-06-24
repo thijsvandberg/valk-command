@@ -49,23 +49,26 @@ function GroupDropdown({
   const menuRef = useRef<HTMLDivElement>(null);
   useOutsideClick([ref, menuRef], () => setOpen(false), { enabled: open });
 
+  // The hover tooltip is suppressed while the dropdown is open, otherwise it lingers
+  // on top of the just-opened menu (BRDG-374 feedback).
+  const trigger = (
+    <button
+      type="button"
+      aria-label={label}
+      onClick={() => setOpen((v) => !v)}
+      className="flex h-9 cursor-pointer items-center gap-0.5 rounded-lg pl-2 pr-1.5 text-text-secondary transition-colors duration-150 hover:bg-overlay-default hover:text-text-primary"
+    >
+      {busy ? (
+        <Loader2 className="h-[18px] w-[18px] animate-spin" strokeWidth={1.5} />
+      ) : (
+        <Icon className="h-[18px] w-[18px]" strokeWidth={1.5} />
+      )}
+      <ChevronDown className="h-3.5 w-3.5 text-text-muted" strokeWidth={2} />
+    </button>
+  );
   return (
     <div ref={ref} className="relative">
-      <Tooltip content={label}>
-        <button
-          type="button"
-          aria-label={label}
-          onClick={() => setOpen((v) => !v)}
-          className="flex h-9 cursor-pointer items-center gap-0.5 rounded-lg pl-2 pr-1.5 text-text-secondary transition-colors duration-150 hover:bg-overlay-default hover:text-text-primary"
-        >
-          {busy ? (
-            <Loader2 className="h-[18px] w-[18px] animate-spin" strokeWidth={1.5} />
-          ) : (
-            <Icon className="h-[18px] w-[18px]" strokeWidth={1.5} />
-          )}
-          <ChevronDown className="h-3.5 w-3.5 text-text-muted" strokeWidth={2} />
-        </button>
-      </Tooltip>
+      {open ? trigger : <Tooltip content={label}>{trigger}</Tooltip>}
       {open && (
         <AnchoredMenu anchorRef={ref} menuRef={menuRef} width={width}>
           {render(() => setOpen(false))}
@@ -195,7 +198,7 @@ export function BulkActionBar({
   onRefine?: () => void;
   /** Scheduled refinement sessions; when present, Refinement becomes a dropdown of
    *  sessions + "New refinement…" (BRDG-374). */
-  refinements?: { id: string; name: string }[];
+  refinements?: { id: string; name: string; count?: number }[];
   onAddToRefinement?: (sessionId: string) => void;
   isRefreshing?: boolean;
   /**
@@ -345,7 +348,12 @@ export function BulkActionBar({
             <>
               {refinements.map((r) => (
                 <MenuItem key={r.id} onClick={() => { onAddToRefinement(r.id); close(); }}>
-                  {r.name}
+                  <span className="truncate">{r.name}</span>
+                  {r.count != null && (
+                    <span className="ml-auto shrink-0 rounded bg-overlay-default px-1.5 py-0.5 text-caption font-medium tabular-nums text-text-tertiary">
+                      {r.count}
+                    </span>
+                  )}
                 </MenuItem>
               ))}
               {onRefine && (

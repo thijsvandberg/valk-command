@@ -5,7 +5,7 @@ import { createPortal } from "react-dom";
 import useSWR from "swr";
 import type { TicketReadiness, JiraStatus, Sprint } from "@/types/ticket";
 import type { QuickMoveOption } from "@/lib/quick-moves";
-import { isBacklogSprintName, isOverallRefinementSprint } from "@/lib/sprint-utils";
+import { isBacklogSprintName, isOverallRefinementSprint, extractTeamPrefix, sprintNumber } from "@/lib/sprint-utils";
 import { swrFetcher } from "@/lib/api-client";
 import { Search, Flag, ArrowDownToLine, ArrowUpToLine, Boxes, Check, ChevronRight, FilePen, Sparkles } from "lucide-react";
 import {
@@ -50,8 +50,14 @@ export function AnchoredMenu({
       const spaceAbove = r.top;
       const spaceBelow = window.innerHeight - r.bottom;
       const flipUp = spaceAbove >= spaceBelow;
+      // Clamp horizontally so the panel never runs off the right edge (the bar's
+      // right-most dropdowns would otherwise overflow). Nested flyouts then flip
+      // their own side from the clamped position.
+      const menuWidth = parseInt(/\d+/.exec(width)?.[0] ?? "300", 10);
+      const margin = 8;
+      const left = Math.max(margin, Math.min(r.left, window.innerWidth - menuWidth - margin));
       setPos({
-        left: r.left,
+        left,
         ...(flipUp ? { bottom: window.innerHeight - r.top + 6 } : { top: r.bottom + 6 }),
         maxHeight: (flipUp ? spaceAbove : spaceBelow) - 16,
       });
@@ -63,7 +69,7 @@ export function AnchoredMenu({
       window.removeEventListener("scroll", update, true);
       window.removeEventListener("resize", update);
     };
-  }, [anchorRef]);
+  }, [anchorRef, width]);
 
   if (!pos) return null;
   return createPortal(
@@ -316,14 +322,21 @@ function SprintSubPanel({
         !isOverallRefinementSprint(s.name) &&
         !exclude.has(s.id),
     );
+    // Group by team, then ascending by sprint number so a team's sprints read in
+    // series (BT: 143, BT: 144, BT: 145…); non-numbered names (e.g. "BT: TODO") sort
+    // last within their team. Pinned (slot) sprints lead, in slot order.
     const pinnedOrder = pinnedSprintIds ?? [];
     return [...eligible].sort((a, b) => {
       const ai = pinnedOrder.indexOf(a.id);
       const bi = pinnedOrder.indexOf(b.id);
-      if (ai !== -1 && bi !== -1) return ai - bi;
-      if (ai !== -1) return -1;
-      if (bi !== -1) return 1;
-      return 0;
+      if (ai !== -1 || bi !== -1) {
+        if (ai !== -1 && bi !== -1) return ai - bi;
+        return ai !== -1 ? -1 : 1;
+      }
+      const teamA = extractTeamPrefix(a.name) ?? "";
+      const teamB = extractTeamPrefix(b.name) ?? "";
+      if (teamA !== teamB) return teamA.localeCompare(teamB);
+      return sprintNumber(a.name) - sprintNumber(b.name);
     });
   }, [sprints, pinnedSprintIds, excludeSprintIds]);
 
@@ -595,7 +608,7 @@ export function TicketActionMenuContent({
   onRefine?: () => void;
   /** Scheduled refinement sessions; when present, "Add to refinement" becomes a list
    *  of sessions + "New refinement…" (BRDG-374). */
-  refinements?: { id: string; name: string }[];
+  refinements?: { id: string; name: string; count?: number }[];
   onAddToRefinement?: (sessionId: string) => void;
   /** New story inbox (BRDG-373): renders a leading "Mark as read" item. Omitted on
    *  the board / epic children, whose menu is unchanged. */
@@ -749,7 +762,12 @@ export function TicketActionMenuContent({
       <Flyout icon={<Boxes className="h-3.5 w-3.5" strokeWidth={1.5} />} label="Add to refinement" width="w-[240px]">
         {refinements!.map((r) => (
           <MenuItem key={r.id} onClick={() => { onAddToRefinement!(r.id); close(); }}>
-            {r.name}
+            <span className="truncate">{r.name}</span>
+            {r.count != null && (
+              <span className="ml-auto shrink-0 rounded bg-overlay-default px-1.5 py-0.5 text-caption font-medium tabular-nums text-text-tertiary">
+                {r.count}
+              </span>
+            )}
           </MenuItem>
         ))}
         {onRefine && (
