@@ -203,25 +203,45 @@ const QUICK_MOVE_ICON: Record<QuickMoveOption["id"], ReactNode> = {
 // overflow-y-auto computes overflow-x to auto too, which would cut off a child flyout
 // that opens beside it. Leaf flyouts keep overflow-y-auto so a long picker can scroll.
 function Flyout({ icon, label, width = "w-[240px]", nested = false, children }: { icon?: ReactNode; label: ReactNode; width?: string; nested?: boolean; children: ReactNode }) {
+  const outerRef = useRef<HTMLDivElement>(null);
   const panelRef = useRef<HTMLDivElement>(null);
   const [open, setOpen] = useState(false);
   const [side, setSide] = useState<"right" | "left">("right");
-  // Flip to the other side when the panel actually overflows the viewport (e.g. a deep
-  // cascade, or the bulk bar's right-most dropdowns). Measuring the RENDERED panel - not
-  // predicting from the trigger - is robust to however deep the flyout is nested.
+  // How far to shift the panel UP from its trigger-aligned position so it never runs off
+  // the bottom of the viewport (the panel opens downward; a low trigger would clip it).
+  const [topShift, setTopShift] = useState(0);
+  // Keep the rendered panel inside the viewport: flip horizontally when it overruns the
+  // right/left edge, and shift up when it overruns the bottom. Measured from the actual
+  // panel + trigger, so it is robust however deep the flyout is nested.
   useLayoutEffect(() => {
     if (!open) return;
     const panel = panelRef.current;
-    if (!panel) return;
+    const outer = outerRef.current;
+    if (!panel || !outer) return;
     const margin = 8;
     const rect = panel.getBoundingClientRect();
+    if (side === "right" && rect.right > window.innerWidth - margin) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      setSide("left");
+    } else if (side === "left" && rect.left < margin) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      setSide("right");
+    }
+    // Vertical: the panel's top sits at `outerTop + topShift`; compute the shift that keeps
+    // its bottom on-screen without pushing its top above the margin. Absolute (not
+    // incremental), so it settles in one correction.
+    const outerTop = outer.getBoundingClientRect().top;
+    const height = panel.offsetHeight;
+    let nextShift = 0;
+    if (outerTop + height > window.innerHeight - margin) {
+      nextShift = window.innerHeight - margin - height - outerTop;
+      if (outerTop + nextShift < margin) nextShift = margin - outerTop;
+    }
     // eslint-disable-next-line react-hooks/set-state-in-effect
-    if (side === "right" && rect.right > window.innerWidth - margin) setSide("left");
-    // eslint-disable-next-line react-hooks/set-state-in-effect
-    else if (side === "left" && rect.left < margin) setSide("right");
-  }, [open, side]);
+    if (nextShift !== topShift) setTopShift(nextShift);
+  }, [open, side, topShift]);
   return (
-    <div className="relative" onPointerEnter={() => setOpen(true)} onPointerLeave={() => setOpen(false)}>
+    <div ref={outerRef} className="relative" onPointerEnter={() => setOpen(true)} onPointerLeave={() => { setOpen(false); setTopShift(0); }}>
       <button
         type="button"
         className={`flex w-full items-center gap-2.5 px-3 py-1.5 text-body-sm text-text-secondary cursor-pointer hover:bg-hover-list-item ${open ? "bg-hover-list-item" : ""}`}
@@ -232,7 +252,10 @@ function Flyout({ icon, label, width = "w-[240px]", nested = false, children }: 
       </button>
       {/* Panel stays mounted (so it can be measured/queried) but is only shown for this
           flyout's own hover. */}
-      <div className={`absolute top-0 z-20 transition-opacity duration-100 ${open ? "visible opacity-100" : "invisible opacity-0"} ${side === "left" ? "right-full pr-1" : "left-full pl-1"}`}>
+      <div
+        style={{ top: topShift }}
+        className={`absolute z-20 transition-opacity duration-100 ${open ? "visible opacity-100" : "invisible opacity-0"} ${side === "left" ? "right-full pr-1" : "left-full pl-1"}`}
+      >
         <div ref={panelRef} className={`${FLYOUT_PANEL} ${width} ${nested ? "overflow-visible" : "max-h-[min(70vh,440px)] overflow-y-auto"} py-1`}>{children}</div>
       </div>
     </div>
