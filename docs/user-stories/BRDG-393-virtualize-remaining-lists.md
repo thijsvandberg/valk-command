@@ -11,6 +11,17 @@ Follow-up to [BRDG-387](completed/BRDG-387-frontend-memory-guardrails.md). Three
 - **Inbox new-stories** — [inbox/page.tsx:87](src/app/(app)/inbox/page.tsx#L87), plain `.map()`. Low-risk `@tanstack/react-virtual` drop-in (no FLIP).
 - **Cleanup candidates** — [cleanup/page.tsx](src/app/(app)/cleanup/page.tsx), plain `.map()`. Low-risk drop-in.
 
+## Implementation Plan (this slice: Cleanup only; Inbox + Refinement deferred)
+
+Opus-planned against the real code. `@tanstack/react-virtual@3.13.23` matches what [TicketTable.tsx](src/components/sprint-board/TicketTable.tsx) already uses in production (the pattern to copy: `VIRTUALIZE_THRESHOLD=40`, `overscan=20`, `ROW_HEIGHT_ESTIMATE=44`, spacer rows, `measureElement`, `scrollMargin`).
+
+1. **Cleanup — GO.** [cleanup/page.tsx](src/app/(app)/cleanup/page.tsx) renders a single flat `rows` array in one `<tbody>`. Virtualize it with the TicketTable pattern, gated above 40 rows so small lists stay byte-for-byte unchanged. Wrinkle: a logical row can be two `<tr>`s (BoardRow + optional rationale line); make each logical row its own measured unit so the virtualizer's total size includes the rationale height (no scroll drift). Reset scroll to top on sort/filter change. Selection/bulk actions operate on the `rows` data array, not the DOM, so they are unaffected by windowing.
+2. **Tests.** A >40-row render mounts only a window of `BoardRow`s while the total count badge stays full; a ≤40-row list renders all rows (threshold gate); select-all + bulk actions still cover the full filtered set with only a window mounted.
+
+### Deferred (stay open in this story)
+- **Inbox — DEFER.** It renders nested `GroupCard` + per-group `<table><tbody>` blocks. A single virtualizer cannot span multiple `<tbody>` sections with interleaved collapsible headers — the same limitation TicketTable documents for its own grouped view. Needs a flatten-then-virtualize rewrite; pair with BRDG-389's row migration.
+- **Refinement queue — DEFER.** Conflicts with the `useFlipReorder` FLIP animation (windowing removes the DOM nodes FLIP measures). Needs a spike to gate virtualization to large lists while keeping FLIP for small ones.
+
 ## Acceptance Criteria
 
 - [ ] Inbox and Cleanup lists mount only visible rows plus overscan.

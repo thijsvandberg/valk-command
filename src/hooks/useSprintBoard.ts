@@ -140,10 +140,10 @@ const EMPTY_TICKETS: Ticket[] = [];
 // no status filter, so this resolves tickets the board feed excludes (status
 // DRAFTING / REPLACED / DRAFT_FAILED). Used to keep refinement-session tickets
 // visible in the queue even when their status drops them from the board feed.
-export function useTicketsByKeys(keys: string[]) {
+function useTicketsByKeysSWR(keys: string[]) {
   const sortedKeys = useMemo(() => [...keys].sort(), [keys]);
   const swrKey = sortedKeys.length > 0 ? `ticketsByKeys:${sortedKeys.join(",")}` : null;
-  const { data } = useSWR<Ticket[]>(
+  return useSWR<Ticket[]>(
     swrKey,
     async () => {
       const results = await Promise.all(
@@ -153,7 +153,21 @@ export function useTicketsByKeys(keys: string[]) {
     },
     { revalidateOnFocus: false, dedupingInterval: 30000 },
   );
+}
+
+export function useTicketsByKeys(keys: string[]) {
+  const { data } = useTicketsByKeysSWR(keys);
   return data ?? EMPTY_TICKETS;
+}
+
+// Same fetch as useTicketsByKeys, but exposes load state so callers can tell
+// "not loaded yet" from "loaded, empty". WHY: useTicketsByKeys returns [] (not
+// undefined) before data arrives, which silently defeats `!data`-style gates
+// that wait for load (BRDG-391). An empty key list is never loading (swrKey is
+// null, so SWR never fetches), which is the correct "ready, empty" signal.
+export function useTicketsByKeysWithState(keys: string[]): { tickets: Ticket[]; isLoading: boolean } {
+  const { data, isLoading } = useTicketsByKeysSWR(keys);
+  return { tickets: data ?? EMPTY_TICKETS, isLoading };
 }
 
 // Fetches ticket versions for the side panel (lazy: only when ticketKey is provided)
