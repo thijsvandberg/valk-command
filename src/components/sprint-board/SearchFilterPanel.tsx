@@ -39,7 +39,9 @@ export const STATUS_LABEL_MAP: Record<string, string> = {
   DEPRECATED: "Deprecated",
 };
 
-export const TYPE_OPTIONS = ["story", "bug", "task", "spike", "epic", "subtask"];
+// Subtasks are excluded from the local search index (see local-search-engine.ts), so they can
+// never be a search result. Omitting them here keeps the type filter honest.
+export const TYPE_OPTIONS = ["story", "bug", "task", "spike", "epic"];
 
 export const TYPE_LABEL_MAP: Record<string, string> = {
   story: "Story",
@@ -47,7 +49,6 @@ export const TYPE_LABEL_MAP: Record<string, string> = {
   task: "Task",
   spike: "Spike",
   epic: "Epic",
-  subtask: "Subtask",
 };
 
 // Readiness filter options: the four lifecycle states plus a "none" sentinel
