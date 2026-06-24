@@ -1,5 +1,21 @@
 # Implementation Performance Log
 
+## BRDG-391 (safe parts) + BRDG-393 (Cleanup) — scope fetches / virtualize lists (2026-06-24)
+
+Asked to land the "safe parts of 391" plus 393. Net delivered: BRDG-393 Cleanup virtualization (per-row `<tbody>` window, threshold 40, unit tests + browser-verified scroll). BRDG-391's safe parts were implemented (A1 sibling hook + SessionEndModal swap) and then **backed out**; 391 left open as do-as-a-unit. Full suite (6,499) + build green.
+
+| Phase | Notes |
+|---|---|
+| Plan (Opus) | Good: confirmed the sibling-hook approach, the SessionEndModal data-loss trap, and correctly called Inbox a non-mechanical defer (nested per-group tbodies) and Cleanup a go |
+| Implement 391 | Built A1 + Site 2 with tests (green), then a render-tree check revealed the win is illusory (below) — backed out cleanly via `git checkout <pre>~ -- files` after confirming no parallel edits to those files |
+| Implement 393 | Cleanup virtualization; chose per-row `<tbody>` over "measure the row, fold rationale into the estimate" to avoid cumulative scroll drift on the two-`<tr>` rows |
+| Verify | Full suite green; browser-verified Cleanup at 280 candidates: windowing live (29→51 tbodies mounted of 280, ~16k px scroll height), rationale lines stay paired, no layout breakage on scroll |
+
+Key bottlenecks / lessons:
+- **A "safe slice" can be net-negative if a sibling component holds the same fetch.** Scoping `SessionEndModal`/the session page off `useTickets("__all__")` looked safe, but `useTicketHoverData` (the deferred, risky Site 1) calls `__all__` on the very same pages. So scoping the others keeps `__all__` alive (for hover) AND adds redundant per-key fetches (each triggers a Jira sync) — slower, not faster. Lesson: before scoping a fetch, grep the whole render tree for *other* consumers of the same key; the benefit is gated on the last consumer, not the first.
+- **Implemented-then-reverted is the right call when verification invalidates the premise.** Cheaper to back out 2 green commits than to ship a regression. The finding (Site 1 is the linchpin) is more valuable than the code would have been.
+- **Two-`<tr>` rows need a per-row `<tbody>` to virtualize without drift.** Measuring only the first `<tr>` (the plan's fold-into-estimate option) undercounts every rationale row and accumulates scroll error; wrapping each logical row in its own measured `<tbody>` keeps `getTotalSize` honest. Browser scroll confirmed the offsets stay correct.
+
 ## BRDG-387 — Frontend memory guardrails: bound the SWR cache + stop over-fetching (2026-06-24)
 
 Replaced SWR's unbounded default cache with an access-order LRU provider (soft cap 300, 60s freshness window, `$`-key protection), wired into SWRProvider; scoped 2 of 6 whole-backlog `useTickets("__all__")` fetches to bounded key sets; locked the list-vs-detail payload split with a route test; added the `client-data-and-memory` architecture doc. 6 commits + archive; full suite (6,465) + build green. Oversized remainder split into BRDG-391/392/393.
