@@ -135,6 +135,7 @@ export function BulkActionBar({
   flagState,
   sprints,
   pinnedSprintIds,
+  currentSprintIds,
   // Assist group actions
   onReviewStory,
   onGenerateSubtasks,
@@ -171,6 +172,8 @@ export function BulkActionBar({
   onMoveSprint?: (sprintId: string) => void;
   /** One-click move destinations shown above "More sprints" (BRDG-369). */
   quickMoves?: QuickMoveOption[];
+  /** The selection's current sprint id(s); excluded from the Move dropdown's "More sprints". */
+  currentSprintIds?: string[];
   onQuickMove?: (opt: QuickMoveOption) => void;
   onUpdateAssignee?: (accountId: string | null, name: string | null) => void;
   onUpdateLabel?: (labels: string[], mode: "add" | "set") => void;
@@ -289,6 +292,7 @@ export function BulkActionBar({
               onQuickMove={onQuickMove}
               sprints={sprints}
               pinnedSprintIds={pinnedSprintIds}
+              currentSprintIds={currentSprintIds}
               initialView="move"
               close={close}
             />

@@ -785,6 +785,15 @@ export default function SprintBoard() {
     });
     return computeQuickMoves({ currentSprintNames, sprints, backlogTargetName });
   }, [displayTickets, sprintNameMap, sprints, backlogTargetName]);
+  // The selection's current sprint id, excluded from "More sprints" - only when every
+  // target shares the same sprint (a mixed selection excludes nothing). The board's
+  // ticket.sprintId already IS the sprint id keyed by sprintNameMap (BRDG-374).
+  const currentSprintIdsFor = useCallback((targets: Set<string>): string[] => {
+    const ids = new Set([...targets].map((key) => displayTickets.find((d) => d.key === key)?.sprintId ?? null));
+    if (ids.size !== 1) return [];
+    const id = [...ids][0];
+    return id ? [id] : [];
+  }, [displayTickets]);
   const handleQuickMove = useCallback((opt: QuickMoveOption, targets: Set<string> = checkedTickets) => {
     if (targets.size === 0) return;
     if (opt.createName) { setQuickCreate({ name: opt.createName, targets: new Set(targets) }); return; }
@@ -1069,7 +1078,7 @@ export default function SprintBoard() {
   // overflow over the panel when the list column is narrowed.
   const bulkActionBar = someChecked && (() => {
     const sel = tickets.filter((t) => checkedTickets.has(t.key));
-    return <BulkActionBar floating count={checkedTickets.size} totalCount={tickets.length} selectedPoints={sel.reduce((s, t) => s + (t.storyPoints ?? 0), 0)} selectedBV={sel.reduce((s, t) => s + (t.businessValue ?? 0), 0)} allChecked={allChecked} onToggleAll={toggleAll} onClear={() => setCheckedTickets(new Set())} onSetReadiness={handleBulkSetReadiness} onSetStatus={handleBulkSetStatus} onSetEpic={handleBulkSetEpic} onMoveSprint={handleBulkMoveSprint} quickMoves={quickMovesFor(checkedTickets)} onQuickMove={(opt) => handleQuickMove(opt, checkedTickets)} onUpdateAssignee={handleBulkUpdateAssignee} onUpdateLabel={handleBulkUpdateLabels} onSetFlagged={(flagged) => handleSetFlagged(flagged)} flagState={computeFlagState(checkedTickets)} sprints={sprints} pinnedSprintIds={slotSprints} onRefreshFromJira={handleBulkRefresh} onReviewStory={handleBulkReviewStory} onCopyToClipboard={handleCopyToClipboard} onExportForStakeholders={handleExportForStakeholders} isRefreshing={bulkRefreshing} isExporting={exportTask.isActive} onGenerateSubtasks={handleBulkGenerateSubtasks} isGeneratingSubtasks={bulkGenerating} onRefine={handleRefineSelected} refinements={refinementOptions} onAddToRefinement={(id) => handleAddToRefinement(id, checkedTickets)} />;
+    return <BulkActionBar floating count={checkedTickets.size} totalCount={tickets.length} selectedPoints={sel.reduce((s, t) => s + (t.storyPoints ?? 0), 0)} selectedBV={sel.reduce((s, t) => s + (t.businessValue ?? 0), 0)} allChecked={allChecked} onToggleAll={toggleAll} onClear={() => setCheckedTickets(new Set())} onSetReadiness={handleBulkSetReadiness} onSetStatus={handleBulkSetStatus} onSetEpic={handleBulkSetEpic} onMoveSprint={handleBulkMoveSprint} quickMoves={quickMovesFor(checkedTickets)} currentSprintIds={currentSprintIdsFor(checkedTickets)} onQuickMove={(opt) => handleQuickMove(opt, checkedTickets)} onUpdateAssignee={handleBulkUpdateAssignee} onUpdateLabel={handleBulkUpdateLabels} onSetFlagged={(flagged) => handleSetFlagged(flagged)} flagState={computeFlagState(checkedTickets)} sprints={sprints} pinnedSprintIds={slotSprints} onRefreshFromJira={handleBulkRefresh} onReviewStory={handleBulkReviewStory} onCopyToClipboard={handleCopyToClipboard} onExportForStakeholders={handleExportForStakeholders} isRefreshing={bulkRefreshing} isExporting={exportTask.isActive} onGenerateSubtasks={handleBulkGenerateSubtasks} isGeneratingSubtasks={bulkGenerating} onRefine={handleRefineSelected} refinements={refinementOptions} onAddToRefinement={(id) => handleAddToRefinement(id, checkedTickets)} />;
   })();
 
   return (
@@ -1169,6 +1178,7 @@ export default function SprintBoard() {
             epicClearable={rowMenu.targets.size > 1}
             onMoveSprint={(sprintId) => handleBulkMoveSprint(sprintId, rowMenu.targets)}
             quickMoves={quickMovesFor(rowMenu.targets)}
+            currentSprintIds={currentSprintIdsFor(rowMenu.targets)}
             onQuickMove={(opt) => handleQuickMove(opt, rowMenu.targets)}
             onMoveToTop={!isAllView && f.sortField === "rank" ? () => handleRankToEdge(rowMenu.targets, "top") : undefined}
             onMoveToBottom={!isAllView && f.sortField === "rank" ? () => handleRankToEdge(rowMenu.targets, "bottom") : undefined}

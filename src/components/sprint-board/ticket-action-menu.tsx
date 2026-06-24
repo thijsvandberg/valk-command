@@ -5,6 +5,7 @@ import { createPortal } from "react-dom";
 import useSWR from "swr";
 import type { TicketReadiness, JiraStatus, Sprint } from "@/types/ticket";
 import type { QuickMoveOption } from "@/lib/quick-moves";
+import { isBacklogSprintName, isOverallRefinementSprint } from "@/lib/sprint-utils";
 import { swrFetcher } from "@/lib/api-client";
 import { Search, Flag, ArrowDownToLine, ArrowUpToLine, Boxes, Check, ChevronRight, FilePen, Sparkles } from "lucide-react";
 import {
@@ -281,18 +282,32 @@ function ReadinessSubPanel({ onSelect }: { onSelect: (readiness: TicketReadiness
 function SprintSubPanel({
   sprints,
   pinnedSprintIds,
+  excludeSprintIds,
   onSelect,
 }: {
   sprints: Sprint[];
   pinnedSprintIds?: string[];
+  /** Sprints already offered one level up (active / next / named backlog quick-moves)
+   *  plus the selection's current sprint; omitted from the list to avoid duplicates. */
+  excludeSprintIds?: Set<string>;
   onSelect: (sprintId: string) => void;
 }) {
   const [query, setQuery] = useState("");
+  // The two generic buckets lead the list (BRDG-374). The named backlog (e.g. "BT:
+  // Backlog") is dropped here - the generic "Backlog" + the parent "Move to backlog"
+  // already cover it - and "Overall refinement" is pinned at the top as its own bucket.
+  const overall = useMemo(() => sprints.find((s) => isOverallRefinementSprint(s.name)) ?? null, [sprints]);
   const sorted = useMemo(() => {
-    const eligible = sprints.filter((s) => s.state === "active" || s.state === "future");
+    const exclude = excludeSprintIds ?? new Set<string>();
+    const eligible = sprints.filter(
+      (s) =>
+        (s.state === "active" || s.state === "future") &&
+        !isBacklogSprintName(s.name) &&
+        !isOverallRefinementSprint(s.name) &&
+        !exclude.has(s.id),
+    );
     const pinnedOrder = pinnedSprintIds ?? [];
-    // Show pinned (slot) sprints first, in pinned order, then the rest.
-    const byPinned = [...eligible].sort((a, b) => {
+    return [...eligible].sort((a, b) => {
       const ai = pinnedOrder.indexOf(a.id);
       const bi = pinnedOrder.indexOf(b.id);
       if (ai !== -1 && bi !== -1) return ai - bi;
@@ -300,14 +315,14 @@ function SprintSubPanel({
       if (bi !== -1) return 1;
       return 0;
     });
-    if (!query) return byPinned;
-    const q = query.toLowerCase();
-    return byPinned.filter((s) => s.name.toLowerCase().includes(q));
-  }, [sprints, pinnedSprintIds, query]);
+  }, [sprints, pinnedSprintIds, excludeSprintIds]);
 
-  const showBacklog = !query || "backlog".includes(query.toLowerCase());
-  // Divider only when not searching, since the pinned/rest split is meaningless once filtered.
-  const lastPinnedIdx = query ? -1 : sorted.reduce((acc, s, i) => ((pinnedSprintIds ?? []).includes(s.id) ? i : acc), -1);
+  const q = query.toLowerCase();
+  const matches = (name: string) => !query || name.toLowerCase().includes(q);
+  const showBacklog = matches("Backlog");
+  const showOverall = overall != null && matches(overall.name);
+  const filtered = query ? sorted.filter((s) => matches(s.name)) : sorted;
+  const hasTopBuckets = showBacklog || showOverall;
 
   return (
     <div className="py-1">
@@ -334,30 +349,28 @@ function SprintSubPanel({
             Backlog
           </button>
         )}
-        {sorted.map((s, i) => (
-          <div key={s.id}>
-            <button
-              type="button"
-              onClick={() => onSelect(s.id)}
-              className="flex w-full items-center gap-2.5 px-3 py-1.5 text-body-sm text-text-secondary cursor-pointer hover:bg-hover-list-item active:bg-overlay-default"
-            >
-              {s.name}
-              {s.state === "active" && (
-                <span className="ml-auto rounded px-1.5 py-0.5 text-[10px] font-medium bg-[var(--color-brand-500)]/10 text-[var(--color-brand-400)]">
-                  Active
-                </span>
-              )}
-            </button>
-            {lastPinnedIdx >= 0 && i === lastPinnedIdx && i < sorted.length - 1 && (
-              <div className="mx-2 my-0.5 h-px bg-overlay-strong" />
-            )}
-          </div>
-        ))}
-        {sorted.length === 0 && !showBacklog && (
-          <div className="px-3 py-2 text-body-sm text-text-tertiary">No sprints found</div>
+        {showOverall && overall && (
+          <button
+            type="button"
+            onClick={() => onSelect(overall.id)}
+            className="flex w-full items-center gap-2.5 px-3 py-1.5 text-body-sm text-text-tertiary cursor-pointer hover:bg-hover-list-item active:bg-overlay-default"
+          >
+            {overall.name}
+          </button>
         )}
-        {sorted.length === 0 && !query && (
-          <div className="px-3 py-2 text-body-sm text-text-tertiary">No sprints available</div>
+        {hasTopBuckets && filtered.length > 0 && <div className="mx-2 my-0.5 h-px bg-overlay-strong" />}
+        {filtered.map((s) => (
+          <button
+            key={s.id}
+            type="button"
+            onClick={() => onSelect(s.id)}
+            className="flex w-full items-center gap-2.5 px-3 py-1.5 text-body-sm text-text-secondary cursor-pointer hover:bg-hover-list-item active:bg-overlay-default"
+          >
+            {s.name}
+          </button>
+        ))}
+        {filtered.length === 0 && !hasTopBuckets && (
+          <div className="px-3 py-2 text-body-sm text-text-tertiary">{query ? "No sprints found" : "No sprints available"}</div>
         )}
       </div>
     </div>
@@ -538,6 +551,7 @@ export function TicketActionMenuContent({
   epicClearable,
   sprints,
   pinnedSprintIds,
+  currentSprintIds,
   initialView = "menu",
   close,
 }: {
@@ -578,11 +592,21 @@ export function TicketActionMenuContent({
   onMarkRead?: () => void;
   sprints?: Sprint[];
   pinnedSprintIds?: string[];
+  /** The selection's current sprint id(s), excluded from "More sprints". Pass the one
+   *  shared sprint when every target sits in it; empty when the selection is mixed. */
+  currentSprintIds?: string[];
   /** Open straight into a group view (used by the bar's per-group icon dropdowns). */
   initialView?: MenuView;
   close: () => void;
 }) {
   const hasQuickMoves = Boolean(onQuickMove && quickMoves && quickMoves.length > 0);
+  // "More sprints" drops what is already reachable one level up: the active / next /
+  // named-backlog quick-moves, plus the selection's current sprint (BRDG-374).
+  const excludeSprintIds = useMemo(() => {
+    const ids = new Set<string>(currentSprintIds ?? []);
+    for (const q of quickMoves ?? []) if (q.targetSprintId) ids.add(q.targetSprintId);
+    return ids;
+  }, [quickMoves, currentSprintIds]);
   const hasMove = hasQuickMoves || (onMoveSprint && sprints) || onMoveToTop || onMoveToBottom;
   const hasUpdate = onSetStatus || onSetReadiness || onSetEpic || onUpdateAssignee || onUpdateLabel;
   const hasAssist = onReviewStory || onGenerateSubtasks;
@@ -613,7 +637,7 @@ export function TicketActionMenuContent({
         ))}
       {onMoveSprint && sprints && (
         <Flyout icon={<span className="h-3.5 w-3.5" />} label="More sprints" width="w-[260px]">
-          <SprintSubPanel sprints={sprints} pinnedSprintIds={pinnedSprintIds} onSelect={(id) => { onMoveSprint?.(id); close(); }} />
+          <SprintSubPanel sprints={sprints} pinnedSprintIds={pinnedSprintIds} excludeSprintIds={excludeSprintIds} onSelect={(id) => { onMoveSprint?.(id); close(); }} />
         </Flyout>
       )}
       {onMoveToTop && (

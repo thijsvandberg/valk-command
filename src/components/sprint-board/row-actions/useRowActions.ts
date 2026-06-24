@@ -206,6 +206,20 @@ export function useRowActions(opts: UseRowActionsOpts) {
     [currentSprintName, sprints, backlogTargetName],
   );
 
+  // The selection's current sprint id, for excluding it from "More sprints". Only when
+  // EVERY target sits in the same (named) sprint; a mixed selection excludes nothing.
+  const currentSprintIdsFor = useCallback(
+    (targets: Set<string>): string[] => {
+      const names = new Set([...targets].map((k) => currentSprintName(k)));
+      if (names.size !== 1) return [];
+      const name = [...names][0];
+      if (!name) return [];
+      const id = sprints.find((s) => s.name === name)?.id;
+      return id ? [id] : [];
+    },
+    [currentSprintName, sprints],
+  );
+
   const handleQuickMove = useCallback(
     (opt: QuickMoveOption, targets: Set<string> = selectedKeys) => {
       if (targets.size === 0) return;
@@ -336,6 +350,7 @@ export function useRowActions(opts: UseRowActionsOpts) {
     bulkMoveSprint,
     moveSprint,
     quickMovesFor,
+    currentSprintIdsFor,
     handleQuickMove,
     inflightKeys,
     // AI assist + list ops

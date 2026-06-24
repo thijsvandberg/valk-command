@@ -159,6 +159,44 @@ describe("TicketActionMenuContent", () => {
     expect(close).toHaveBeenCalledTimes(1);
   });
 
+  it("More sprints leads with Backlog + Overall refinement and drops what's offered above (BRDG-374)", () => {
+    const sprints = [
+      { id: "act", name: "BT: 140", state: "active" as const, dateRange: "", ticketCount: 0, startDate: null, endDate: null, goal: null },
+      { id: "next", name: "BT: 141", state: "future" as const, dateRange: "", ticketCount: 0, startDate: null, endDate: null, goal: null },
+      { id: "cur", name: "BT: 143", state: "future" as const, dateRange: "", ticketCount: 0, startDate: null, endDate: null, goal: null },
+      { id: "other", name: "BT: 142", state: "future" as const, dateRange: "", ticketCount: 0, startDate: null, endDate: null, goal: null },
+      { id: "nbl", name: "BT: Backlog", state: "backlog" as const, dateRange: "", ticketCount: 0, startDate: null, endDate: null, goal: null },
+      { id: "ovr", name: "Overall refinement", state: "future" as const, dateRange: "", ticketCount: 0, startDate: null, endDate: null, goal: null },
+    ];
+    // active + next are offered as quick-moves one level up; "cur" is the selection's sprint.
+    const quickMoves = [
+      { id: "active" as const, label: "Move to active", target: "BT: 140", targetSprintId: "act", badge: "active" },
+      { id: "next" as const, label: "Move to next", target: "BT: 141", targetSprintId: "next" },
+    ];
+    render(
+      <TicketActionMenuContent
+        quickMoves={quickMoves}
+        onQuickMove={vi.fn()}
+        onMoveSprint={vi.fn()}
+        sprints={sprints}
+        currentSprintIds={["cur"]}
+        initialView="move"
+        close={vi.fn()}
+      />,
+    );
+    // Top buckets present.
+    expect(screen.getByText("Backlog")).toBeInTheDocument();
+    expect(screen.getByText("Overall refinement")).toBeInTheDocument();
+    // A plain remaining sprint stays.
+    expect(screen.getByText("BT: 142")).toBeInTheDocument();
+    // The named backlog and the current sprint are dropped from the list entirely.
+    expect(screen.queryByText("BT: Backlog")).not.toBeInTheDocument();
+    expect(screen.queryByText("BT: 143")).not.toBeInTheDocument();
+    // active / next appear ONLY as the quick-move chips above, never again in the list.
+    expect(screen.getAllByText("BT: 140")).toHaveLength(1);
+    expect(screen.getAllByText("BT: 141")).toHaveLength(1);
+  });
+
   it("renders no quick-move items when none are supplied", () => {
     render(<TicketActionMenuContent onMoveSprint={vi.fn()} sprints={[]} close={vi.fn()} />);
     expect(screen.queryByText("Move to active")).not.toBeInTheDocument();

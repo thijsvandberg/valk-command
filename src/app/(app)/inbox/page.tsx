@@ -511,6 +511,7 @@ export default function InboxPage() {
                     onSetEpic={(epicKey) => ra.bulkSetEpic(epicKey)}
                     onMoveSprint={(sprintId) => ra.moveSprint(sprintId)}
                     quickMoves={ra.quickMovesFor(checkedKeys)}
+                    currentSprintIds={ra.currentSprintIdsFor(checkedKeys)}
                     onQuickMove={ra.handleQuickMove}
                     onUpdateAssignee={ra.bulkUpdateAssignee}
                     onUpdateLabel={ra.bulkUpdateLabels}
@@ -557,6 +558,7 @@ export default function InboxPage() {
             epicClearable={rowMenu.targets.size > 1}
             onMoveSprint={(sprintId) => ra.moveSprint(sprintId, rowMenu.targets)}
             quickMoves={ra.quickMovesFor(rowMenu.targets)}
+            currentSprintIds={ra.currentSprintIdsFor(rowMenu.targets)}
             onQuickMove={(opt) => ra.handleQuickMove(opt, rowMenu.targets)}
             onUpdateAssignee={(accountId, name) => ra.bulkUpdateAssignee(accountId, name, rowMenu.targets)}
             onUpdateLabel={(labels, mode) => ra.bulkUpdateLabels(labels, mode, rowMenu.targets)}
