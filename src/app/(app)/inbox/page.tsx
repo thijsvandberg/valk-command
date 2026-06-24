@@ -529,7 +529,8 @@ export default function InboxPage() {
 
             {checkedKeys.size > 0 && (
               <div className="pointer-events-none fixed inset-x-0 bottom-0 z-50 flex justify-center px-4 pb-6">
-                <div className="pointer-events-auto w-full max-w-5xl px-3 sm:px-4">
+                {/* Hug the bar's content + center it, like the sprint board (no w-full). */}
+                <div className="pointer-events-auto">
                   {/* Shared board bulk bar (BRDG-373) with the inbox's prominent
                       "Mark as read" as the leading primary action. */}
                   <BulkActionBar

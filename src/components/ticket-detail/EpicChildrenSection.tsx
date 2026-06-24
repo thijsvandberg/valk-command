@@ -1171,6 +1171,9 @@ export function EpicChildrenSection({
       )}
 
       {someChecked && (
+        // Hug the bar's content + center it, like the sprint board (the bar is otherwise
+        // a full-width block); the bar keeps its own sticky-to-bottom behaviour.
+        <div className="flex justify-center">
         <BulkActionBar
           floating
           count={checkedKeys.size}
@@ -1199,6 +1202,7 @@ export function EpicChildrenSection({
           onCopyToClipboard={() => ra.copySelected()}
           onRefine={() => ra.openRefine([...checkedKeys])}
         />
+        </div>
       )}
 
       {rowMenu && (

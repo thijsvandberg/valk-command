@@ -7,7 +7,7 @@ import type { TicketReadiness, JiraStatus, Sprint } from "@/types/ticket";
 import type { QuickMoveOption } from "@/lib/quick-moves";
 import { isBacklogSprintName, isOverallRefinementSprint, extractTeamPrefix, sprintNumber } from "@/lib/sprint-utils";
 import { swrFetcher } from "@/lib/api-client";
-import { Search, Flag, ArrowDownToLine, ArrowUpToLine, Boxes, Check, ChevronRight, FilePen, Sparkles, CircleDot, ArrowRight, Inbox, ArrowRightLeft } from "lucide-react";
+import { Search, Flag, ArrowDownToLine, ArrowUpToLine, Boxes, Check, ChevronRight, FilePen, Sparkles, ArrowRight, Inbox, ArrowRightLeft } from "lucide-react";
 import {
   READINESS_OPTIONS,
   READINESS_CONFIG,
@@ -182,7 +182,8 @@ const FLYOUT_PANEL = "rounded-xl border border-border-default bg-[var(--color-su
 // Per-destination icons for the inline quick-moves (BRDG-374): active = a dot, next =
 // arrow-right, backlog = inbox. "More sprints" uses the move (arrow-left-right) icon.
 const QUICK_MOVE_ICON: Record<QuickMoveOption["id"], ReactNode> = {
-  active: <CircleDot className="h-3.5 w-3.5" strokeWidth={1.5} />,
+  // Solid green dot, matching the "active sprint" indicator on the board (GroupStatBar).
+  active: <span className="h-2 w-2 rounded-full bg-[var(--color-status-success)]" />,
   next: <ArrowRight className="h-3.5 w-3.5" strokeWidth={1.5} />,
   backlog: <Inbox className="h-3.5 w-3.5" strokeWidth={1.5} />,
 };
