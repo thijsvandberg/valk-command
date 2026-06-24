@@ -202,24 +202,25 @@ const QUICK_MOVE_ICON: Record<QuickMoveOption["id"], ReactNode> = {
 // overflow-y-auto computes overflow-x to auto too, which would cut off a child flyout
 // that opens beside it. Leaf flyouts keep overflow-y-auto so a long picker can scroll.
 function Flyout({ icon, label, width = "w-[240px]", nested = false, children }: { icon?: ReactNode; label: ReactNode; width?: string; nested?: boolean; children: ReactNode }) {
-  const ref = useRef<HTMLDivElement>(null);
+  const panelRef = useRef<HTMLDivElement>(null);
   const [open, setOpen] = useState(false);
   const [side, setSide] = useState<"right" | "left">("right");
-  // Open to the left when the panel would run off the right edge (e.g. a deep cascade,
-  // or the bulk bar's right-most dropdowns). Measured once the flyout opens, in a layout
-  // effect so the trigger's final on-screen position is known (a pointer-enter handler
-  // can fire before the parent panel has settled, leaving a nested flyout mis-sided).
+  // Flip to the other side when the panel actually overflows the viewport (e.g. a deep
+  // cascade, or the bulk bar's right-most dropdowns). Measuring the RENDERED panel - not
+  // predicting from the trigger - is robust to however deep the flyout is nested.
   useLayoutEffect(() => {
     if (!open) return;
-    const el = ref.current;
-    if (!el) return;
-    const panelWidth = parseInt(/\d+/.exec(width)?.[0] ?? "240", 10);
-    const room = window.innerWidth - el.getBoundingClientRect().right;
+    const panel = panelRef.current;
+    if (!panel) return;
+    const margin = 8;
+    const rect = panel.getBoundingClientRect();
     // eslint-disable-next-line react-hooks/set-state-in-effect
-    setSide(room < panelWidth + 16 ? "left" : "right");
-  }, [open, width]);
+    if (side === "right" && rect.right > window.innerWidth - margin) setSide("left");
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    else if (side === "left" && rect.left < margin) setSide("right");
+  }, [open, side]);
   return (
-    <div ref={ref} className="relative" onPointerEnter={() => setOpen(true)} onPointerLeave={() => setOpen(false)}>
+    <div className="relative" onPointerEnter={() => setOpen(true)} onPointerLeave={() => setOpen(false)}>
       <button
         type="button"
         className={`flex w-full items-center gap-2.5 px-3 py-1.5 text-body-sm text-text-secondary cursor-pointer hover:bg-hover-list-item ${open ? "bg-hover-list-item" : ""}`}
@@ -231,7 +232,7 @@ function Flyout({ icon, label, width = "w-[240px]", nested = false, children }: 
       {/* Panel stays mounted (so it can be measured/queried) but is only shown for this
           flyout's own hover. */}
       <div className={`absolute top-0 z-20 transition-opacity duration-100 ${open ? "visible opacity-100" : "invisible opacity-0"} ${side === "left" ? "right-full pr-1" : "left-full pl-1"}`}>
-        <div className={`${FLYOUT_PANEL} ${width} ${nested ? "overflow-visible" : "max-h-[min(70vh,440px)] overflow-y-auto"} py-1`}>{children}</div>
+        <div ref={panelRef} className={`${FLYOUT_PANEL} ${width} ${nested ? "overflow-visible" : "max-h-[min(70vh,440px)] overflow-y-auto"} py-1`}>{children}</div>
       </div>
     </div>
   );
