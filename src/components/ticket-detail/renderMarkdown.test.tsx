@@ -207,12 +207,26 @@ describe("renderMarkdown — block glued onto an image line (BRDG-366)", () => {
   });
 });
 
-describe("renderMarkdown — escaped tilde", () => {
+describe("renderMarkdown — backslash escapes", () => {
   it("renders a stored escaped tilde as a plain tilde, not a literal backslash", () => {
     // Descriptions saved before the serializer fix contain "\~P95".
     const { container } = render(<div>{renderMarkdown("\\~P95 < 200ms")}</div>);
     expect(container.textContent).toContain("~P95 < 200ms");
     expect(container.textContent).not.toContain("\\~");
+  });
+
+  it("renders an escaped leading dash without the backslash", () => {
+    // The serializer escapes a leading "-" as "\-" so it isn't read as a list
+    // marker; the backslash must not leak into the rendered text.
+    const { container } = render(<div>{renderMarkdown("\\-> user sees a message")}</div>);
+    expect(container.textContent).toContain("-> user sees a message");
+    expect(container.textContent).not.toContain("\\-");
+  });
+
+  it("resolves other escaped punctuation (e.g. angle brackets)", () => {
+    const { container } = render(<div>{renderMarkdown("compare a \\> b")}</div>);
+    expect(container.textContent).toContain("compare a > b");
+    expect(container.textContent).not.toContain("\\>");
   });
 
   it("still renders genuine strikethrough", () => {

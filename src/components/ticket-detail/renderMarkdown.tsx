@@ -108,12 +108,13 @@ function inlineFormat(text: string, linkify = false): ReactNode {
   };
   const pushText = (raw: string) => {
     if (!raw) return;
-    // Existing descriptions stored before the serializer fix contain a lone "~"
-    // escaped as "\~" (tiptap-markdown escapes it to prevent accidental
-    // strikethrough). Unescape a single tilde here so it renders as "~" instead
-    // of a literal backslash. Genuine strikethrough (~~text~~) is matched by the
-    // regex above and never reaches pushText, so it is unaffected.
-    const chunk = raw.replace(/\\~(?!~)/g, "~");
+    // The serializer backslash-escapes punctuation (e.g. a leading "-" becomes
+    // "\-" so it isn't read as a list marker, "~" becomes "\~" to avoid
+    // accidental strikethrough). Resolve all CommonMark backslash escapes here
+    // so the backslash never leaks into the rendered text. Genuine emphasis /
+    // strikethrough / links are matched by the regex above and never reach
+    // pushText, so they are unaffected.
+    const chunk = raw.replace(/\\([!-/:-@[-`{-~])/g, "$1");
     if (!linkify) {
       parts.push(chunk);
       return;
