@@ -1,6 +1,6 @@
 # BRDG-389: Refinement list and cleanup list adopt the shared BoardRow
 
-**Status:** Not Started
+**Status:** Completed
 **Priority:** Medium
 **Type:** Refactoring
 
@@ -102,11 +102,11 @@ Both lists render `ChildIssueRow` with:
 
 ## Acceptance Criteria
 
-- [ ] The cleanup list and the refinement available-tickets list render rows via `BoardRow`.
-- [ ] `ChildIssueRow` is no longer imported by the cleanup page or `RefinementTicketList`.
-- [ ] Selection, metadata, and the refinement "drag into queue" affordance behave as before.
-- [ ] No regression on the other `BoardRow` hosts (board, inbox, Story Writer, epic-children).
-- [ ] `npm run verify` and `npm run build` pass.
+- [x] The cleanup list and the refinement available-tickets list render rows via `BoardRow`. <!-- e2e-verified in headless Chrome: cleanup 280 BoardRow rows, refinement 43 BoardRow rows -->
+- [x] `ChildIssueRow` is no longer imported by the cleanup page or `RefinementTicketList`. <!-- both imports removed; ChildIssueRow.tsx still serves SubtasksSection / LinkedIssueRow (out of scope) -->
+- [x] Selection, metadata, and the refinement "drag into queue" affordance behave as before. <!-- cleanup selection -> "1/280 selected" bulk bar + row tint; refinement queued rows show in the queue panel; 43 "Drag … to a refinement session" handles present; readiness dot + epic/SP/BV/subtasks/sprint badges render; no console / DOM-nesting errors -->
+- [x] No regression on the other `BoardRow` hosts (board, inbox, Story Writer, epic-children). <!-- full suite (6496) green incl. those hosts; all new BoardRow props default-off -->
+- [x] `npm run verify` and `npm run build` pass. <!-- verify: lint + typecheck clean, 6496 tests pass; build clean -->
 
 ## Out of scope
 

@@ -638,7 +638,7 @@ export default function CleanupPage() {
               </div>
             </div>
 
-            {/* Ticket list. Reuses the app's standard ChildIssueRow (and its
+            {/* Ticket list. Reuses the shared sprint-board BoardRow (and its
                 TicketStatusPill) so /cleanup matches every other ticket list and
                 fits the viewport width: the former per-topic score columns are
                 collapsed into trailing badges in the row's metadata slot, so there
