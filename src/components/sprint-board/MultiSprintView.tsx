@@ -1,13 +1,11 @@
 "use client";
 
-import { useState, useMemo, useCallback, useRef, useEffect } from "react";
+import { useState, useMemo, useCallback, useRef } from "react";
 import type { Ticket, Sprint, POStatus, TicketReadiness, JiraStatus, IssueType } from "@/types/ticket";
 import { IssueTypeIcon } from "@/components/shared/IssueTypeIcon";
 import { ViewHeader, ViewHeaderTitle, ViewHeaderDivider } from "@/components/shared/ViewHeader";
 import { SidePanel } from "./SidePanel";
 import { BulkActionBar } from "./BulkActionBar";
-import { ColumnToggle } from "./FilterBar";
-import type { ColumnId } from "./FilterBar";
 import { saveTicketMetadata, saveStoryPoints } from "./sprint-board-utils";
 import { DroppableSprintColumn, PaneDivider } from "./DroppableSprintColumn";
 import { getJiraUrl } from "./TicketTableCells";
@@ -33,15 +31,7 @@ import {
   pointerWithin,
 } from "@dnd-kit/core";
 import { arrayMove } from "@dnd-kit/sortable";
-import {
-  COMPARE_DEFAULT_VISIBLE,
-  COMPARE_DEFAULT_ORDER,
-  loadCompareColumns,
-  saveCompareColumns,
-  loadSplitRatio,
-  saveSplitRatio,
-  type CompareColState,
-} from "./multi-sprint-utils";
+import { loadSplitRatio, saveSplitRatio } from "./multi-sprint-utils";
 
 // Prefer the most specific droppable (ticket row) over the large column container.
 // Ticket rows are checked first with pointerWithin; if the pointer is between rows or
@@ -104,63 +94,6 @@ export function MultiSprintView({
   const [poStatuses, setPoStatuses] = useState<Record<string, POStatus>>({});
   const [editingTitleKey, setEditingTitleKey] = useState<string | null>(null);
   const [readinessMap, setReadinessMap] = useState<Record<string, TicketReadiness | null>>({});
-
-  // Column configuration (persisted in localStorage)
-  const [compareColState, setCompareColState] = useState(() => loadCompareColumns());
-  const compareVisible = useMemo(() => new Set(compareColState.visible), [compareColState.visible]);
-  const compareOrder = compareColState.order;
-  const compareWidths = compareColState.widths;
-
-  const persistColState = useCallback((next: CompareColState) => {
-    setCompareColState(next);
-    saveCompareColumns(next);
-  }, []);
-
-  const handleCompareColumnToggle = useCallback((id: ColumnId, show: boolean) => {
-    setCompareColState((prev) => {
-      const next: CompareColState = show
-        ? { ...prev, visible: [...prev.visible, id], order: prev.order.includes(id) ? prev.order : [...prev.order, id] }
-        : { ...prev, visible: prev.visible.filter((c) => c !== id) };
-      saveCompareColumns(next);
-      return next;
-    });
-  }, []);
-
-  const handleCompareColumnReorder = useCallback((activeId: ColumnId, overId: ColumnId) => {
-    setCompareColState((prev) => {
-      const oldIdx = prev.order.indexOf(activeId);
-      const newIdx = prev.order.indexOf(overId);
-      if (oldIdx === -1 || newIdx === -1) return prev;
-      const next = [...prev.order];
-      next.splice(oldIdx, 1);
-      next.splice(newIdx, 0, activeId);
-      const result: CompareColState = { ...prev, order: next };
-      saveCompareColumns(result);
-      return result;
-    });
-  }, []);
-
-  const handleCompareColumnReset = useCallback(() => {
-    const result: CompareColState = { visible: COMPARE_DEFAULT_VISIBLE, order: COMPARE_DEFAULT_ORDER, widths: {} };
-    persistColState(result);
-  }, [persistColState]);
-
-  const handleColumnResize = useCallback((id: ColumnId, width: number) => {
-    setCompareColState((prev) => {
-      const next: CompareColState = { ...prev, widths: { ...prev.widths, [id]: Math.round(width) } };
-      saveCompareColumns(next);
-      return next;
-    });
-  }, []);
-
-  const handleColumnResizeReset = useCallback((id: ColumnId) => {
-    setCompareColState((prev) => {
-      const { [id]: _, ...rest } = prev.widths;
-      const next: CompareColState = { ...prev, widths: rest };
-      saveCompareColumns(next);
-      return next;
-    });
-  }, []);
 
   // Pane split ratio
   const [splitRatio, setSplitRatio] = useState(() => loadSplitRatio());
@@ -466,24 +399,6 @@ export function MultiSprintView({
   const rightAllChecked = rightTickets.length > 0 && rightTickets.every((t) => checkedKeys.has(t.key));
   const rightSomeChecked = rightTickets.some((t) => checkedKeys.has(t.key));
 
-  const toggleLeftAll = useCallback(() => {
-    setCheckedKeys((prev) => {
-      const next = new Set(prev);
-      if (leftAllChecked) leftTickets.forEach((t) => next.delete(t.key));
-      else leftTickets.forEach((t) => next.add(t.key));
-      return next;
-    });
-  }, [leftAllChecked, leftTickets]);
-
-  const toggleRightAll = useCallback(() => {
-    setCheckedKeys((prev) => {
-      const next = new Set(prev);
-      if (rightAllChecked) rightTickets.forEach((t) => next.delete(t.key));
-      else rightTickets.forEach((t) => next.add(t.key));
-      return next;
-    });
-  }, [rightAllChecked, rightTickets]);
-
   const totalItems = leftTickets.length + rightTickets.length;
   const allBothChecked = leftAllChecked && rightAllChecked && totalItems > 0;
   const someBothChecked = leftSomeChecked || rightSomeChecked;
@@ -507,23 +422,14 @@ export function MultiSprintView({
         <ViewHeader
           icon={<Columns2 size={15} strokeWidth={1.5} className="text-text-tertiary" />}
           actions={
-            <>
-              <ColumnToggle
-                visible={compareVisible}
-                order={compareOrder}
-                onChange={handleCompareColumnToggle}
-                onReorder={handleCompareColumnReorder}
-                onReset={handleCompareColumnReset}
-              />
-              <Button
-                variant="ghost"
-                size="md"
-                iconOnly
-                icon={<X className="h-3.5 w-3.5" strokeWidth={1.5} />}
-                onClick={onClose}
-                title="Close compare view"
-              />
-            </>
+            <Button
+              variant="ghost"
+              size="md"
+              iconOnly
+              icon={<X className="h-3.5 w-3.5" strokeWidth={1.5} />}
+              onClick={onClose}
+              title="Close compare view"
+            />
           }
         >
           <ViewHeaderTitle>Compare Sprints</ViewHeaderTitle>
@@ -544,8 +450,6 @@ export function MultiSprintView({
               onRefresh={handleRefreshLeft}
               onToggleCheck={toggleCheck}
               onSelect={setSelectedKey}
-              onToggleAll={toggleLeftAll}
-              allChecked={leftAllChecked}
               someChecked={leftSomeChecked}
               sprints={sprints}
               backlogCount={backlogCount}
@@ -566,11 +470,6 @@ export function MultiSprintView({
               onStoryPointsChange={handleStoryPointsChange}
               onJiraStatusChange={handleJiraStatusChange}
               onIssueTypeChange={handleIssueTypeChange}
-              visibleColumns={compareVisible}
-              columnOrder={compareOrder}
-              columnWidths={compareWidths}
-              onColumnResize={handleColumnResize}
-              onColumnResizeReset={handleColumnResizeReset}
               paneFlex={splitRatio}
               refinementSessionMap={ticketSessionMap}
             />
@@ -588,8 +487,6 @@ export function MultiSprintView({
               onRefresh={handleRefreshRight}
               onToggleCheck={toggleCheck}
               onSelect={setSelectedKey}
-              onToggleAll={toggleRightAll}
-              allChecked={rightAllChecked}
               someChecked={rightSomeChecked}
               sprints={sprints}
               backlogCount={backlogCount}
@@ -610,11 +507,6 @@ export function MultiSprintView({
               onStoryPointsChange={handleStoryPointsChange}
               onJiraStatusChange={handleJiraStatusChange}
               onIssueTypeChange={handleIssueTypeChange}
-              visibleColumns={compareVisible}
-              columnOrder={compareOrder}
-              columnWidths={compareWidths}
-              onColumnResize={handleColumnResize}
-              onColumnResizeReset={handleColumnResizeReset}
               paneFlex={1 - splitRatio}
               refinementSessionMap={ticketSessionMap}
             />

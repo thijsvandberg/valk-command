@@ -7,78 +7,13 @@ import { GroupStatBar } from "./GroupStatBar";
 import type { StatCriterion } from "./GroupStatBar";
 import { matchesWarningFilter } from "./warning-filter";
 import { SprintSelector } from "./SprintSelector";
-import { SortableTicketRow } from "./TicketRow";
-import type { ColumnId } from "./FilterBar";
+import { SortableBoardRow } from "./BoardRow";
 import { CalendarRange, RefreshCw, X, ChevronDown, Search, Sheet } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import type { TicketSessionEntry } from "@/hooks/useTicketSessionMap";
 import { useDroppable } from "@dnd-kit/core";
 import { SortableContext } from "@dnd-kit/sortable";
-import {
-  COMPARE_HEADER_LABELS,
-  COMPARE_COL_WIDTHS,
-  COMPARE_MIN_COL_WIDTH,
-} from "./multi-sprint-utils";
 import { saveSplitRatio } from "./multi-sprint-utils";
-
-// --- Column resize handle ---
-
-export function ColumnResizeHandle({
-  colId,
-  onResize,
-  onReset,
-}: {
-  colId: ColumnId;
-  onResize: (id: ColumnId, width: number) => void;
-  onReset: (id: ColumnId) => void;
-}) {
-  const handleMouseDown = useCallback(
-    (e: React.MouseEvent) => {
-      e.preventDefault();
-      e.stopPropagation();
-      const th = (e.target as HTMLElement).closest("th");
-      if (!th) return;
-      const startX = e.clientX;
-      const startWidth = th.offsetWidth;
-
-      const onMouseMove = (ev: MouseEvent) => {
-        const newWidth = Math.max(COMPARE_MIN_COL_WIDTH, startWidth + ev.clientX - startX);
-        onResize(colId, newWidth);
-      };
-      const onMouseUp = () => {
-        document.removeEventListener("mousemove", onMouseMove);
-        document.removeEventListener("mouseup", onMouseUp);
-        document.body.style.cursor = "";
-        document.body.style.userSelect = "";
-      };
-      document.body.style.cursor = "col-resize";
-      document.body.style.userSelect = "none";
-      document.addEventListener("mousemove", onMouseMove);
-      document.addEventListener("mouseup", onMouseUp);
-    },
-    [colId, onResize],
-  );
-
-  const handleDoubleClick = useCallback(
-    (e: React.MouseEvent) => {
-      e.preventDefault();
-      e.stopPropagation();
-      onReset(colId);
-    },
-    [colId, onReset],
-  );
-
-  return (
-    <div
-      onMouseDown={handleMouseDown}
-      onDoubleClick={handleDoubleClick}
-      className="absolute right-0 top-0 z-10 h-full w-[5px] cursor-col-resize opacity-0 hover:opacity-100"
-      style={{ background: "var(--color-brand-500)", opacity: undefined }}
-      onMouseEnter={(e) => { (e.currentTarget as HTMLElement).style.opacity = "0.3"; }}
-      onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.opacity = "0"; }}
-    />
-  );
-}
 
 // --- Pane divider (resizable left/right split) ---
 
@@ -146,8 +81,6 @@ export function DroppableSprintColumn({
   onRefresh,
   onToggleCheck,
   onSelect,
-  onToggleAll,
-  allChecked,
   someChecked,
   sprints,
   backlogCount = 0,
@@ -163,11 +96,6 @@ export function DroppableSprintColumn({
   onStoryPointsChange,
   onJiraStatusChange,
   onIssueTypeChange,
-  visibleColumns,
-  columnOrder,
-  columnWidths,
-  onColumnResize,
-  onColumnResizeReset,
   paneFlex,
   refinementSessionMap,
 }: {
@@ -180,8 +108,6 @@ export function DroppableSprintColumn({
   onRefresh: () => void;
   onToggleCheck: (key: string) => void;
   onSelect: (key: string | null) => void;
-  onToggleAll: () => void;
-  allChecked: boolean;
   someChecked: boolean;
   sprints: Sprint[];
   backlogCount?: number;
@@ -197,11 +123,6 @@ export function DroppableSprintColumn({
   onStoryPointsChange?: (key: string, value: number | null) => void;
   onJiraStatusChange: (key: string, status: JiraStatus) => void;
   onIssueTypeChange: (key: string, type: IssueType) => void;
-  visibleColumns: Set<ColumnId>;
-  columnOrder: ColumnId[];
-  columnWidths: Partial<Record<ColumnId, number>>;
-  onColumnResize: (id: ColumnId, width: number) => void;
-  onColumnResizeReset: (id: ColumnId) => void;
   paneFlex?: number;
   refinementSessionMap?: Map<string, TicketSessionEntry[]>;
 }) {
@@ -212,13 +133,6 @@ export function DroppableSprintColumn({
   const [activeCriterion, setActiveCriterion] = useState<StatCriterion | null>(null);
 
   const currentSprint = sprints.find((s) => s.id === sprintId);
-
-  // Only show visible columns in their configured order
-  const activeOrder = useMemo(
-    () => columnOrder.filter((id) => visibleColumns.has(id)),
-    [columnOrder, visibleColumns],
-  );
-  const colVisible = useCallback((id: ColumnId) => visibleColumns.has(id), [visibleColumns]);
 
   const filteredTickets = useMemo(() => {
     let result = allTickets;
@@ -350,36 +264,6 @@ export function DroppableSprintColumn({
           />
         ) : (
           <table className="w-full table-fixed border-collapse text-body-lg">
-            <colgroup>
-              {/* Checkbox gutter: a small breathing gap by default; widens into a real gutter in bulk mode. */}
-              <col style={{ width: someChecked ? 36 : 12 }} />
-              {activeOrder.map((colId) => {
-                const w = columnWidths[colId] ?? COMPARE_COL_WIDTHS[colId];
-                return <col key={colId} style={w ? { width: w } : undefined} />;
-              })}
-            </colgroup>
-            <thead className="sticky top-0 z-10 bg-[var(--color-surface-base)]">
-              <tr className="h-[44px] border-b border-border-subtle text-left">
-                <th className="w-9 py-2 pl-1 pr-1" />
-                {activeOrder.map((colId) => {
-                  const label = COMPARE_HEADER_LABELS[colId] ?? "";
-                  const isCenter = colId === "points" || colId === "bv";
-                  return (
-                    <th
-                      key={colId}
-                      className={`relative py-2 pr-2 text-body-sm font-medium text-text-muted select-none${isCenter ? " text-center" : ""}`}
-                    >
-                      {label || "\u00A0"}
-                      <ColumnResizeHandle
-                        colId={colId}
-                        onResize={onColumnResize}
-                        onReset={onColumnResizeReset}
-                      />
-                    </th>
-                  );
-                })}
-              </tr>
-            </thead>
             <SortableContext items={filteredTickets.map((t) => t.key)} strategy={() => null}>
             <tbody>
               {filteredTickets.map((ticket, idx) => {
@@ -390,12 +274,10 @@ export function DroppableSprintColumn({
                     : "above";
                 }
                 return (
-                  <SortableTicketRow
+                  <SortableBoardRow
                     key={ticket.key}
                     ticket={ticket}
                     ticketIdx={idx}
-                    col={colVisible}
-                    columnOrder={activeOrder}
                     isChecked={checkedKeys.has(ticket.key)}
                     isSelected={selectedKey === ticket.key}
                     someChecked={someChecked}
@@ -435,14 +317,14 @@ export function DroppableSprintColumn({
               })}
               {filteredTickets.length === 0 && isFiltered && (
                 <tr>
-                  <td colSpan={1 + activeOrder.length} className="py-12 text-center text-body-sm text-text-muted">
+                  <td className="py-12 text-center text-body-sm text-text-muted">
                     No matching tickets
                   </td>
                 </tr>
               )}
               {isOver && filteredTickets.length === 0 && (
                 <tr>
-                  <td colSpan={1 + activeOrder.length} className="py-6 text-center text-body-sm text-[var(--color-brand-400)]/50">
+                  <td className="py-6 text-center text-body-sm text-[var(--color-brand-400)]/50">
                     Drop here to move
                   </td>
                 </tr>
