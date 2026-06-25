@@ -27,13 +27,13 @@ export interface LinkSearchFacets {
 }
 
 // Server-side filters for the Link issue modal. All optional; an empty object is
-// a plain search. `types` is sent as a comma-joined CSV.
+// a plain search. Multi-value facets are sent as comma-joined CSV.
 export interface LinkSearchFilters {
   types?: string[];
-  sprint?: string | null;
-  epic?: string | null;
-  assignee?: string | null;
-  project?: string | null;
+  sprints?: string[];
+  epics?: string[];
+  assignees?: string[];
+  projects?: string[];
   updatedWithin?: string | null;
   preset?: "epic" | "sprint" | null;
 }
@@ -135,12 +135,13 @@ function qs(params: Record<string, string | number | boolean | undefined | null>
 // empty/undefined values, so absent filters add nothing to the URL.
 function linkFilterParams(f?: LinkSearchFilters): Record<string, string | undefined> {
   if (!f) return {};
+  const join = (a?: string[]) => (a && a.length > 0 ? a.join(",") : undefined);
   return {
-    types: f.types && f.types.length > 0 ? f.types.join(",") : undefined,
-    sprint: f.sprint ?? undefined,
-    epic: f.epic ?? undefined,
-    assignee: f.assignee ?? undefined,
-    project: f.project ?? undefined,
+    types: join(f.types),
+    sprint: join(f.sprints),
+    epic: join(f.epics),
+    assignee: join(f.assignees),
+    project: join(f.projects),
     updatedWithin: f.updatedWithin ?? undefined,
     preset: f.preset ?? undefined,
   };
@@ -361,6 +362,11 @@ export const storyWriter = {
     apiFetch<unknown>(`/api/tickets/${enc(key)}/story-writer/apply-related`, { method: "POST", body: data, signal }),
   toggleRelated: (key: string, data: Record<string, unknown>, signal?: AbortSignal) =>
     apiFetch<unknown>(`/api/tickets/${enc(key)}/story-writer/apply-related`, { method: "PATCH", body: data, signal }),
+  // Auto-chained targeted related search from a chat <related-request> tag (BRDG-397).
+  relatedRequest: (key: string, data: { query: string; sprint: string | null }, signal?: AbortSignal) =>
+    apiFetch<{ taskId: string; streamUrl: string; sprintId: string | null; sprintName: string | null }>(
+      `/api/tickets/${enc(key)}/story-writer/related-request`, { method: "POST", body: data, signal },
+    ),
 
   activateSplit: (key: string, data: Record<string, unknown>, signal?: AbortSignal) =>
     apiFetch<unknown>(`/api/tickets/${enc(key)}/story-writer/split`, { method: "POST", body: data, signal }),

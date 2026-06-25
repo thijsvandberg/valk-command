@@ -7,6 +7,8 @@ import {
   ticketConfluenceLink,
   ticketAttachment,
   epicChildDraft,
+  appSetting,
+  sprintNameCache,
 } from "@/db/schema";
 import { eq, and, ne, sql } from "drizzle-orm";
 import { randomUUID, createHash } from "crypto";
@@ -14,6 +16,118 @@ import { agentFetch, type AgentError as AgentFetchError } from "@/lib/agent-fetc
 import { logActivity } from "@/lib/activity-logger";
 import { nextSequence } from "@/db/next-sequence";
 import { hasEditIntent } from "@/lib/edit-intent";
+import { resolveSprintMention } from "@/lib/sprint-utils";
+
+// find-related does keyword extraction + scoring, not deep reasoning, so it runs on a
+// lighter, faster model by default regardless of the compose model the PO selected.
+// This is the single biggest lever on find-related latency (BRDG-397).
+export const FIND_RELATED_MODEL = "claude-haiku-4-5";
+
+export interface FindRelatedArgs {
+  key: string;
+  // Topic to search for. When set, find-related runs a targeted search instead of a
+  // broad sweep over the source ticket. Falls back to the key when absent.
+  query?: string;
+  // Resolved Jira sprint id + name. When present the skill applies a hard sprint
+  // filter; absent means search the topic without a sprint constraint.
+  sprintId?: string;
+  sprintName?: string;
+}
+
+// Build the /api/tasks body for a find-related run. The `args.args` string carries the
+// query (or key) so even the not-yet-updated skill degrades to a topic search; the
+// structured fields drive the targeted/hard-filter behaviour once the skill reads them.
+export function buildFindRelatedTaskBody(
+  args: FindRelatedArgs,
+  conversationId: string,
+  model: string = FIND_RELATED_MODEL,
+): Record<string, unknown> {
+  const query = args.query?.trim();
+  const innerArgs: Record<string, unknown> = { args: query || args.key, key: args.key, depth: "quick" };
+  if (query) innerArgs.query = query;
+  if (args.sprintId) {
+    innerArgs.sprintId = args.sprintId;
+    if (args.sprintName) innerArgs.sprintName = args.sprintName;
+  }
+  return { skill: "find-related", args: innerArgs, conversationId, model };
+}
+
+// The cached sprint list lives in app_setting (jira_sprints), written by sync-sprints.
+// Read synchronously from the local DB so no Jira round-trip lands on the chat path.
+async function loadCachedSprints(): Promise<{ id: string; name: string; state?: string }[]> {
+  const row = await db.select().from(appSetting).where(eq(appSetting.key, "jira_sprints")).get();
+  if (!row) return [];
+  try {
+    const parsed = JSON.parse(row.value);
+    if (!Array.isArray(parsed)) return [];
+    return parsed.map((s: { id: number | string; name: string; state?: string }) => ({
+      id: String(s.id),
+      name: s.name,
+      state: s.state,
+    }));
+  } catch {
+    return [];
+  }
+}
+
+// The source ticket's sprint display name, used to infer the team prefix when the PO's
+// mention omits it. ticket.sprintName stores the sprint id; resolve it via the cache.
+async function currentTicketSprintName(key: string): Promise<string | null> {
+  const t = await db.select({ sprintName: ticket.sprintName }).from(ticket).where(eq(ticket.jiraKey, key)).get();
+  const sid = t?.sprintName;
+  if (!sid) return null;
+  if (!/^\d+$/.test(sid)) return sid; // legacy name stored directly
+  const n = await db.select().from(sprintNameCache).where(eq(sprintNameCache.sprintId, sid)).get();
+  return n?.displayName ?? null;
+}
+
+export interface TargetedRelatedParams {
+  key: string;
+  query: string;
+  sprint: string | null;
+}
+
+export interface TargetedRelatedResult {
+  taskId: string;
+  streamUrl: string;
+  sprintId: string | null;
+  sprintName: string | null;
+}
+
+// Auto-chained from a chat message that asked to find/link a related story. Resolves
+// the loose sprint mention against the cached list and dispatches a targeted
+// find-related into the same conversation, so its <related-stories> output flows
+// through the existing apply-related path (BRDG-397).
+export async function dispatchTargetedRelated(params: TargetedRelatedParams): Promise<TargetedRelatedResult> {
+  const { key, query, sprint } = params;
+  const session = await db
+    .select()
+    .from(storyWriterSession)
+    .where(and(eq(storyWriterSession.ticketKey, key), eq(storyWriterSession.status, "active")))
+    .get();
+  if (!session) throw new StoryWriterError("No active story writer session", 404);
+
+  let resolved: { id: string; name: string } | null = null;
+  if (sprint) {
+    const [sprints, currentName] = await Promise.all([loadCachedSprints(), currentTicketSprintName(key)]);
+    resolved = resolveSprintMention(sprint, currentName, sprints);
+  }
+
+  const body = buildFindRelatedTaskBody(
+    { key, query, sprintId: resolved?.id, sprintName: resolved?.name },
+    session.conversationId,
+  );
+  const result = await agentFetch<TaskResponse>("/api/tasks", { method: "POST", body, retries: 2 });
+  if (!result.ok) throw new StoryWriterAgentError(result.error, result.status || 502);
+
+  const taskId = result.data.id ?? "";
+  return {
+    taskId,
+    streamUrl: `/api/workspace-tasks/${taskId}/stream`,
+    sprintId: resolved?.id ?? null,
+    sprintName: resolved?.name ?? null,
+  };
+}
 
 export interface SendMessageParams {
   key: string;
@@ -607,12 +721,7 @@ export async function sendStoryWriterMessage(params: SendMessageParams): Promise
   if (skill === "find-related") {
     const result = await agentFetch<TaskResponse>("/api/tasks", {
       method: "POST",
-      body: {
-        skill: "find-related",
-        args: { args: key },
-        conversationId: session.conversationId,
-        model,
-      },
+      body: buildFindRelatedTaskBody({ key }, session.conversationId),
       retries: 2,
     });
 

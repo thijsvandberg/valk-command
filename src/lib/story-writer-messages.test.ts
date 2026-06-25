@@ -1,5 +1,47 @@
 import { describe, it, expect } from "vitest";
-import { computeContentHash, ticketNeedsTitle, buildFollowUpContent, selectCurrentDescription } from "./story-writer-messages";
+import { computeContentHash, ticketNeedsTitle, buildFollowUpContent, selectCurrentDescription, buildFindRelatedTaskBody, FIND_RELATED_MODEL } from "./story-writer-messages";
+
+describe("buildFindRelatedTaskBody", () => {
+  it("defaults to the lighter find-related model", () => {
+    const body = buildFindRelatedTaskBody({ key: "VPL-1" }, "conv-1");
+    expect(body.model).toBe(FIND_RELATED_MODEL);
+    expect(body.skill).toBe("find-related");
+    expect(body.conversationId).toBe("conv-1");
+  });
+
+  it("falls back to the key as the search arg when no query is given (button path)", () => {
+    const body = buildFindRelatedTaskBody({ key: "VPL-1" }, "conv-1");
+    expect(body.args).toMatchObject({ args: "VPL-1", key: "VPL-1", depth: "quick" });
+    expect((body.args as Record<string, unknown>).query).toBeUndefined();
+    expect((body.args as Record<string, unknown>).sprintId).toBeUndefined();
+  });
+
+  it("carries the query and sprint scoping when targeted", () => {
+    const body = buildFindRelatedTaskBody(
+      { key: "VPL-1", query: "domain resolving", sprintId: "100", sprintName: "BT: 139" },
+      "conv-1",
+    );
+    expect(body.args).toMatchObject({
+      args: "domain resolving",
+      key: "VPL-1",
+      query: "domain resolving",
+      sprintId: "100",
+      sprintName: "BT: 139",
+      depth: "quick",
+    });
+  });
+
+  it("omits sprintName when only an id is present", () => {
+    const body = buildFindRelatedTaskBody({ key: "VPL-1", query: "x", sprintId: "100" }, "conv-1");
+    expect((body.args as Record<string, unknown>).sprintId).toBe("100");
+    expect((body.args as Record<string, unknown>).sprintName).toBeUndefined();
+  });
+
+  it("honours an explicit model override", () => {
+    const body = buildFindRelatedTaskBody({ key: "VPL-1" }, "conv-1", "claude-opus-4-6");
+    expect(body.model).toBe("claude-opus-4-6");
+  });
+});
 
 describe("computeContentHash", () => {
   it("produces consistent hash for same input", () => {
