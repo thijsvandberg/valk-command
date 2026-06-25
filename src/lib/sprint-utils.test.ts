@@ -15,6 +15,7 @@ import {
   latestRegularSprint,
   nextSprintName,
   nextSprintNameFrom,
+  resolveSprintMention,
   ALL_SPRINT_ID,
   BACKLOG_SPRINT_ID,
 } from "./sprint-utils";
@@ -257,6 +258,57 @@ describe("slugToSprintId", () => {
       { id: "2", name: "BT 134", state: "active" },
     ];
     expect(slugToSprintId("bt-134", collide)).toBe("2");
+  });
+});
+
+describe("resolveSprintMention", () => {
+  const sprints = [
+    { id: "100", name: "BT: 139", state: "active" },
+    { id: "101", name: "BT: 138", state: "closed" },
+    { id: "102", name: "GXP: 12", state: "future" },
+    { id: "103", name: "BO: 139", state: "active" },
+  ];
+
+  it("resolves a bare number using the source ticket's team prefix", () => {
+    expect(resolveSprintMention("139", "BT: 141", sprints)).toEqual({ id: "100", name: "BT: 139" });
+  });
+
+  it("lets an explicit prefix in the mention override the ticket prefix", () => {
+    expect(resolveSprintMention("GXP 12", "BT: 141", sprints)).toEqual({ id: "102", name: "GXP: 12" });
+    expect(resolveSprintMention("GXP: 12", "BT: 141", sprints)).toEqual({ id: "102", name: "GXP: 12" });
+  });
+
+  it("handles the no-separator form (BT139)", () => {
+    expect(resolveSprintMention("BT139", null, sprints)).toEqual({ id: "100", name: "BT: 139" });
+  });
+
+  it("prefers active > future > closed on ties", () => {
+    const collide = [
+      { id: "1", name: "BT: 139", state: "closed" },
+      { id: "2", name: "BT: 139", state: "active" },
+      { id: "3", name: "BT: 139", state: "future" },
+    ];
+    expect(resolveSprintMention("139", "BT: 141", collide)).toEqual({ id: "2", name: "BT: 139" });
+  });
+
+  it("returns null when no number can be parsed", () => {
+    expect(resolveSprintMention("the backlog", "BT: 141", sprints)).toBeNull();
+  });
+
+  it("returns null for an empty or whitespace mention", () => {
+    expect(resolveSprintMention("", "BT: 141", sprints)).toBeNull();
+    expect(resolveSprintMention("   ", "BT: 141", sprints)).toBeNull();
+    expect(resolveSprintMention(null, "BT: 141", sprints)).toBeNull();
+  });
+
+  it("returns null on a cold cache", () => {
+    expect(resolveSprintMention("139", "BT: 141", [])).toBeNull();
+  });
+
+  it("returns null when the prefix cannot be inferred and no number matches that team", () => {
+    // No prefix in mention, no source ticket prefix -> matches any team's number.
+    // Two teams have 139, both active -> first wins (deterministic, not null).
+    expect(resolveSprintMention("139", null, sprints)).toEqual({ id: "100", name: "BT: 139" });
   });
 });
 

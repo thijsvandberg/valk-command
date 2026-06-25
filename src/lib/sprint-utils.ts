@@ -91,6 +91,65 @@ export function nextSprintNameFrom(currentName: string): string {
   return `${prefix}: ${sprintNumber(currentName) + 1}`;
 }
 
+// --- Fuzzy sprint mention resolution (BRDG-397) ------------------------------
+// The PO types a loose sprint reference in chat ("139", "BT 139", "GXP: 12") that
+// must resolve to a real cached sprint ("BT: 139"). The mention rarely carries the
+// team prefix, so it is inferred from the source ticket's own sprint unless the
+// mention states one explicitly. Pure and synchronous: the caller passes the
+// already-loaded cached sprint list, so no Jira round-trip lands on the chat path.
+
+// Active beats future beats closed when several sprints share a number/prefix.
+const SPRINT_STATE_ORDER: Record<string, number> = { active: 0, future: 1, closed: 2 };
+
+interface ResolvableSprint {
+  id: string;
+  name: string;
+  state?: string;
+}
+
+// Split a loose mention into an optional uppercase team prefix and a number.
+// Handles "139", "BT 139", "BT: 139", "BT139" (case-insensitive prefix).
+function parseSprintMention(mention: string): { prefix: string | null; number: number | null } {
+  const trimmed = mention.trim();
+  const m = trimmed.match(/^([A-Za-z]+)?\s*:?\s*(\d+)/);
+  if (!m) return { prefix: null, number: null };
+  const prefix = m[1] ? m[1].toUpperCase() : null;
+  return { prefix, number: parseInt(m[2], 10) };
+}
+
+/**
+ * Resolve a loose sprint mention to a cached sprint. The prefix comes from the
+ * mention when stated, otherwise from the source ticket's sprint name. Returns the
+ * single best match (active > future > closed on ties) or null when nothing matches
+ * — a null result means "search without a sprint filter".
+ */
+export function resolveSprintMention(
+  mention: string | null,
+  currentTicketSprintName: string | null,
+  sprints: ResolvableSprint[],
+): { id: string; name: string } | null {
+  if (!mention || !mention.trim()) return null;
+
+  const { prefix: mentionPrefix, number } = parseSprintMention(mention);
+  if (number === null) return null;
+
+  // Explicit prefix in the mention wins; otherwise inherit the source ticket's team.
+  const prefix = mentionPrefix
+    ?? (currentTicketSprintName ? extractTeamPrefix(currentTicketSprintName) : null);
+
+  const matches = sprints.filter((s) => {
+    if (sprintNumber(s.name) !== number) return false;
+    if (prefix && extractTeamPrefix(s.name) !== prefix) return false;
+    return true;
+  });
+  if (matches.length === 0) return null;
+
+  const sorted = [...matches].sort(
+    (a, b) => (SPRINT_STATE_ORDER[a.state ?? ""] ?? 9) - (SPRINT_STATE_ORDER[b.state ?? ""] ?? 9),
+  );
+  return { id: sorted[0].id, name: sorted[0].name };
+}
+
 // --- Sprint URL slugs (BRDG-270) ---------------------------------------------
 // The Sprint Board encodes the active sprint as a path segment so the board is
 // deep-linkable. The numeric Jira id is not human-readable, so we slugify the
@@ -141,8 +200,7 @@ export function slugToSprintId(slug: string | undefined | null, sprints: SlugSpr
   if (matches.length === 0) return null;
   if (matches.length === 1) return matches[0].id;
   // Ambiguous: prefer active, then future, then closed, else first.
-  const order: Record<string, number> = { active: 0, future: 1, closed: 2 };
-  const sorted = [...matches].sort((a, b) => (order[a.state ?? ""] ?? 9) - (order[b.state ?? ""] ?? 9));
+  const sorted = [...matches].sort((a, b) => (SPRINT_STATE_ORDER[a.state ?? ""] ?? 9) - (SPRINT_STATE_ORDER[b.state ?? ""] ?? 9));
   return sorted[0].id;
 }
 
