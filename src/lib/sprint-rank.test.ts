@@ -27,12 +27,12 @@ vi.mock("@/lib/logger", () => ({
 import { landNewTicket } from "./sprint-rank";
 import { jiraClient } from "@/lib/jira-client";
 
-function seed(key: string, sprintName: string | null, jiraRank: number | null) {
+function seed(key: string, sprintName: string | null, jiraRank: number | null, status = "TO DO") {
   testDb.insert(ticket).values({
     jiraKey: key,
     title: key,
     type: "story",
-    status: "TO DO",
+    status,
     ...(sprintName !== null ? { sprintName } : {}),
     ...(jiraRank != null ? { jiraRank } : {}),
   }).run();
@@ -79,6 +79,36 @@ describe("landNewTicket (BRDG-371)", () => {
       seed("VPL-NEW", "42", null);
       await landNewTicket("VPL-NEW", "42");
       expect(rankOf("VPL-NEW")).toBe(0);
+    });
+
+    it("lands above the trailing done/deprecated block, shifting it down", async () => {
+      cacheName("42", "BT: 140");
+      seed("VPL-A", "42", 0, "TO DO");
+      seed("VPL-B", "42", 1, "IN PROGRESS");
+      seed("VPL-DONE", "42", 2, "DONE");
+      seed("VPL-DEP", "42", 3, "DEPRECATED");
+      seed("VPL-NEW", "42", null);
+
+      await landNewTicket("VPL-NEW", "42");
+
+      expect(rankOf("VPL-A")).toBe(0);
+      expect(rankOf("VPL-B")).toBe(1);
+      expect(rankOf("VPL-NEW")).toBe(2);
+      expect(rankOf("VPL-DONE")).toBe(3);
+      expect(rankOf("VPL-DEP")).toBe(4);
+    });
+
+    it("appends at the bottom when a finished ticket is not in the trailing block", async () => {
+      cacheName("42", "BT: 140");
+      seed("VPL-DONE-MID", "42", 0, "DONE");
+      seed("VPL-ACTIVE", "42", 1, "TO DO");
+      seed("VPL-NEW", "42", null);
+
+      await landNewTicket("VPL-NEW", "42");
+
+      expect(rankOf("VPL-DONE-MID")).toBe(0);
+      expect(rankOf("VPL-ACTIVE")).toBe(1);
+      expect(rankOf("VPL-NEW")).toBe(2);
     });
   });
 

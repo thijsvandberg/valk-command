@@ -1093,15 +1093,34 @@ export class JiraClient {
   }
 
   /**
-   * Rank the given issues to the very bottom of a sprint: below the sprint's current
-   * lowest-ranked issue (excluding the ones being moved). A no-op when the sprint has
-   * no other issues.
+   * Rank the given issues to the bottom of a sprint's ACTIVE work: below the lowest-ranked
+   * unfinished issue but ABOVE the trailing done/deprecated block (BRDG-315/371), rather
+   * than below everything. Falls back to ranking above the finished block when no active
+   * issues remain, and is a no-op when the sprint has no other issues.
    */
   async rankToBottomOfSprint(issueKeys: string[], sprintId: number, signal?: AbortSignal): Promise<void> {
     if (!isConfigured() || issueKeys.length === 0) return;
     const exclude = ` AND key NOT IN (${issueKeys.join(",")})`;
-    const bottom = await this.searchIssues(`sprint = ${sprintId}${exclude} ORDER BY rank DESC`, ["summary"], 1, signal);
-    if (bottom.length > 0) await this.rankIssues(issueKeys, undefined, bottom[0].key, signal);
+    // statusCategory = Done covers the green "finished" statuses (Done/Closed/Resolved and
+    // typically Cancelled/Deprecated); excluding it finds the last still-active issue.
+    const active = await this.searchIssues(
+      `sprint = ${sprintId}${exclude} AND statusCategory != Done ORDER BY rank DESC`,
+      ["summary"],
+      1,
+      signal,
+    );
+    if (active.length > 0) {
+      await this.rankIssues(issueKeys, undefined, active[0].key, signal);
+      return;
+    }
+    // No active issues: keep the new story ahead of any finished work in the sprint.
+    const finishedTop = await this.searchIssues(
+      `sprint = ${sprintId}${exclude} ORDER BY rank ASC`,
+      ["summary"],
+      1,
+      signal,
+    );
+    if (finishedTop.length > 0) await this.rankIssues(issueKeys, finishedTop[0].key, undefined, signal);
   }
 
   /**
