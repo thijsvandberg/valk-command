@@ -8,14 +8,16 @@ const PAGE_SIZE = 25;
 
 export type { LinkSearchResult, LinkSearchFilters, LinkSearchFacets };
 
-const EMPTY_FACETS: LinkSearchFacets = { types: [], projects: [], assignees: [] };
+const EMPTY_FACETS: LinkSearchFacets = { types: [], statuses: [], projects: [], assignees: [] };
 
 // Filters that survive a query change. Multi-value facets mirror the board's
 // FilterDropdown idiom (Set-backed). `preset` is one-shot (resolved server-side
 // against the current ticket) and shares the epic/sprint slots.
 export interface LinkFilterState {
   types: string[];
+  statuses: string[];
   sprints: string[];
+  teams: string[];
   epics: string[];
   assignees: string[];
   projects: string[];
@@ -25,7 +27,9 @@ export interface LinkFilterState {
 
 const EMPTY_FILTERS: LinkFilterState = {
   types: [],
+  statuses: [],
   sprints: [],
+  teams: [],
   epics: [],
   assignees: [],
   projects: [],
@@ -36,7 +40,9 @@ const EMPTY_FILTERS: LinkFilterState = {
 function hasActiveFilters(f: LinkFilterState): boolean {
   return (
     f.types.length > 0 ||
+    f.statuses.length > 0 ||
     f.sprints.length > 0 ||
+    f.teams.length > 0 ||
     f.epics.length > 0 ||
     f.assignees.length > 0 ||
     f.projects.length > 0 ||
@@ -98,7 +104,9 @@ export function useLinkIssueSearch(ticketKey: string): UseLinkIssueSearchReturn 
   function toApiFilters(f: LinkFilterState): LinkSearchFilters {
     return {
       types: f.types,
+      statuses: f.statuses,
       sprints: f.sprints,
+      teams: f.teams,
       epics: f.epics,
       assignees: f.assignees,
       projects: f.projects,

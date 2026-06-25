@@ -22,6 +22,7 @@ export interface LinkSearchResult {
 // the whole candidate pool, so the dropdowns never collapse to the current filter.
 export interface LinkSearchFacets {
   types: string[];
+  statuses: string[];
   projects: string[];
   assignees: string[];
 }
@@ -30,7 +31,9 @@ export interface LinkSearchFacets {
 // a plain search. Multi-value facets are sent as comma-joined CSV.
 export interface LinkSearchFilters {
   types?: string[];
+  statuses?: string[];
   sprints?: string[];
+  teams?: string[];
   epics?: string[];
   assignees?: string[];
   projects?: string[];
@@ -138,7 +141,9 @@ function linkFilterParams(f?: LinkSearchFilters): Record<string, string | undefi
   const join = (a?: string[]) => (a && a.length > 0 ? a.join(",") : undefined);
   return {
     types: join(f.types),
+    status: join(f.statuses),
     sprint: join(f.sprints),
+    team: join(f.teams),
     epic: join(f.epics),
     assignee: join(f.assignees),
     project: join(f.projects),

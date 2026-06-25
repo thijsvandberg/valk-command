@@ -6,8 +6,10 @@ import { swrFetcher, epics as epicsApi } from "@/lib/api-client";
 import { FilterDropdown } from "@/components/shared/FilterDropdown";
 import { FilterChip } from "@/components/shared/FilterChip";
 import { IssueTypeOption } from "@/components/shared/IssueTypeOption";
+import { StatusOption } from "@/components/shared/StatusOption";
 import { Avatar } from "@/components/shared/Avatar";
 import { userInitials, userColor } from "@/components/shared/AssigneePicker";
+import { extractTeamPrefix } from "@/lib/sprint-utils";
 import { Link2, X } from "lucide-react";
 import type { LinkFilterState, LinkSearchFacets } from "@/hooks/useLinkIssueSearch";
 
@@ -52,19 +54,40 @@ export function LinkIssueFilterBar({
     dedupingInterval: 60_000,
   });
 
-  const { sprintOptions, sprintLabelMap } = useMemo(() => {
-    const sprints = sprintData?.sprints ?? [];
-    const labelMap: Record<string, string> = {};
-    // Active sprints first, then future, then closed, newest id first within each.
+  // Active-first, then future, then closed; newest id first within each bucket.
+  const orderedSprints = useMemo(() => {
     const rank: Record<string, number> = { active: 0, future: 1, closed: 2 };
-    const ordered = [...sprints].sort((a, b) => {
+    return [...(sprintData?.sprints ?? [])].sort((a, b) => {
       const ra = rank[a.state] ?? 3;
       const rb = rank[b.state] ?? 3;
       return ra !== rb ? ra - rb : b.id - a.id;
     });
-    for (const s of ordered) labelMap[String(s.id)] = `${s.name} (${s.state})`;
-    return { sprintOptions: ordered.map((s) => String(s.id)), sprintLabelMap: labelMap };
   }, [sprintData]);
+
+  // Teams are derived from the sprint-name prefix ("BT: 138" -> BT).
+  const teamOptions = useMemo(() => {
+    const set = new Set<string>();
+    for (const s of orderedSprints) {
+      const team = extractTeamPrefix(s.name);
+      if (team) set.add(team);
+    }
+    return [...set].sort();
+  }, [orderedSprints]);
+
+  // Selecting a team narrows the (long) sprint list to that team's sprints, so
+  // you no longer have to hunt for the right team's sprint.
+  const { sprintOptions, sprintLabelMap } = useMemo(() => {
+    const teamSet = new Set(filters.teams);
+    const visible = teamSet.size > 0
+      ? orderedSprints.filter((s) => {
+          const team = extractTeamPrefix(s.name);
+          return team ? teamSet.has(team) : false;
+        })
+      : orderedSprints;
+    const labelMap: Record<string, string> = {};
+    for (const s of orderedSprints) labelMap[String(s.id)] = `${s.name} (${s.state})`;
+    return { sprintOptions: visible.map((s) => String(s.id)), sprintLabelMap: labelMap };
+  }, [orderedSprints, filters.teams]);
 
   const { epicOptions, epicLabelMap } = useMemo(() => {
     const list = epicData ?? [];
@@ -73,8 +96,8 @@ export function LinkIssueFilterBar({
     return { epicOptions: list.map((e) => e.key), epicLabelMap: labelMap };
   }, [epicData]);
 
-  // Issue types come from the server facets; normalize to lowercase so the
-  // selection matches what the route compares against.
+  // Issue types / statuses come from the server facets; types are normalized to
+  // lowercase so the selection matches what the route compares against.
   const typeOptions = useMemo(
     () => Array.from(new Set(facets.types.map((t) => t.toLowerCase()))).sort(),
     [facets.types],
@@ -88,6 +111,16 @@ export function LinkIssueFilterBar({
 
   return (
     <div className="mt-3 flex flex-wrap items-center gap-1.5">
+      {facets.statuses.length > 0 && (
+        <FilterDropdown
+          label="Status"
+          options={facets.statuses}
+          selected={asSet(filters.statuses)}
+          onChange={(next) => setFilter("statuses", [...next])}
+          renderOption={(v) => <StatusOption value={v} />}
+        />
+      )}
+
       <FilterDropdown
         label="Type"
         options={typeOptions}
@@ -96,7 +129,16 @@ export function LinkIssueFilterBar({
         renderOption={(v) => <IssueTypeOption value={v} />}
       />
 
-      {sprintOptions.length > 0 && (
+      {teamOptions.length > 0 && (
+        <FilterDropdown
+          label="Team"
+          options={teamOptions}
+          selected={asSet(filters.teams)}
+          onChange={(next) => setFilter("teams", [...next])}
+        />
+      )}
+
+      {orderedSprints.length > 0 && (
         <FilterDropdown
           label="Sprint"
           options={sprintOptions}
@@ -149,6 +191,8 @@ export function LinkIssueFilterBar({
           onChange={(next) => setFilter("projects", [...next])}
         />
       )}
+
+      <span className="mx-0.5 h-5 w-px self-center bg-border-default" aria-hidden />
 
       {/* Last updated: single-pick buckets ("within X"). */}
       <div className="flex items-center gap-1">

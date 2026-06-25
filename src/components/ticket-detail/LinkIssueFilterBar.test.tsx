@@ -24,7 +24,11 @@ vi.mock("@/components/shared/IssueTypeIcon", () => ({
 vi.mock("@/components/shared/Avatar", () => ({ Avatar: () => <span data-testid="avatar" /> }));
 vi.mock("@/components/shared/AssigneePicker", () => ({ userInitials: () => "XX", userColor: () => "#000" }));
 
-const mockSprints = { sprints: [{ id: 10, name: "Sprint 10", state: "active" }] };
+const mockSprints = { sprints: [
+  { id: 10, name: "BT: 138", state: "active" },
+  { id: 11, name: "GXP: 42", state: "future" },
+  { id: 12, name: "BT: 137", state: "closed" },
+] };
 const mockEpics = [{ key: "VPL-1", name: "Checkout epic" }];
 
 vi.mock("swr", () => ({
@@ -41,7 +45,7 @@ vi.mock("@/lib/api-client", () => ({
 }));
 
 const EMPTY: LinkFilterState = {
-  types: [], sprints: [], epics: [], assignees: [], projects: [], updatedWithin: null, preset: null,
+  types: [], statuses: [], sprints: [], teams: [], epics: [], assignees: [], projects: [], updatedWithin: null, preset: null,
 };
 
 function renderBar(overrides: Partial<{
@@ -54,7 +58,7 @@ function renderBar(overrides: Partial<{
 }> = {}) {
   const props = {
     filters: overrides.filters ?? EMPTY,
-    facets: overrides.facets ?? { types: ["story", "bug"], projects: ["VPL"], assignees: ["Ada"] },
+    facets: overrides.facets ?? { types: ["story", "bug"], statuses: ["TO DO", "DONE"], projects: ["VPL"], assignees: ["Ada"] },
     filtersActive: overrides.filtersActive ?? false,
     setFilter: overrides.setFilter ?? vi.fn(),
     applyPreset: overrides.applyPreset ?? vi.fn(),
@@ -77,13 +81,47 @@ describe("LinkIssueFilterBar", () => {
     expect(screen.getByText("Same sprint")).toBeInTheDocument();
   });
 
+  it("renders the status dropdown from facets and forwards selection", () => {
+    const setFilter = vi.fn();
+    renderBar({ setFilter });
+    const status = screen.getByTestId("dropdown-status");
+    expect(status).toBeInTheDocument();
+    fireEvent.click(status);
+    expect(setFilter).toHaveBeenCalledWith("statuses", ["TO DO"]);
+  });
+
+  it("hides the status dropdown when there are no status facets", () => {
+    renderBar({ facets: { types: ["story"], statuses: [], projects: ["VPL"], assignees: [] } });
+    expect(screen.queryByTestId("dropdown-status")).not.toBeInTheDocument();
+  });
+
+  it("derives team options from sprint-name prefixes and forwards selection", () => {
+    const setFilter = vi.fn();
+    renderBar({ setFilter });
+    const team = screen.getByTestId("dropdown-team");
+    expect(team).toBeInTheDocument();
+    // teams sorted: BT, GXP -> first option BT
+    fireEvent.click(team);
+    expect(setFilter).toHaveBeenCalledWith("teams", ["BT"]);
+  });
+
+  it("narrows the sprint dropdown to the selected team's sprints", () => {
+    const setFilter = vi.fn();
+    // With team BT selected, only BT sprints (ids 10, 12) are offered; clicking
+    // the sprint dropdown fires onChange with the first remaining option.
+    renderBar({ setFilter, filters: { ...EMPTY, teams: ["BT"] }, filtersActive: true });
+    fireEvent.click(screen.getByTestId("dropdown-sprint"));
+    // ordered active-first: BT 138 (active, id 10) before BT 137 (closed, id 12)
+    expect(setFilter).toHaveBeenCalledWith("sprints", ["10"]);
+  });
+
   it("hides the project dropdown when only one project exists", () => {
-    renderBar({ facets: { types: ["story"], projects: ["VPL"], assignees: [] } });
+    renderBar({ facets: { types: ["story"], statuses: [], projects: ["VPL"], assignees: [] } });
     expect(screen.queryByTestId("dropdown-project")).not.toBeInTheDocument();
   });
 
   it("shows the project dropdown when more than one project exists", () => {
-    renderBar({ facets: { types: ["story"], projects: ["VPL", "ABC"], assignees: [] } });
+    renderBar({ facets: { types: ["story"], statuses: [], projects: ["VPL", "ABC"], assignees: [] } });
     expect(screen.getByTestId("dropdown-project")).toBeInTheDocument();
   });
 
@@ -120,7 +158,7 @@ describe("LinkIssueFilterBar", () => {
     const { rerender } = render(
       <LinkIssueFilterBar
         filters={EMPTY}
-        facets={{ types: [], projects: [], assignees: [] }}
+        facets={{ types: [], statuses: [], projects: [], assignees: [] }}
         filtersActive={false}
         setFilter={vi.fn()}
         applyPreset={vi.fn()}
@@ -131,7 +169,7 @@ describe("LinkIssueFilterBar", () => {
     rerender(
       <LinkIssueFilterBar
         filters={{ ...EMPTY, types: ["bug"] }}
-        facets={{ types: ["bug"], projects: [], assignees: [] }}
+        facets={{ types: ["bug"], statuses: [], projects: [], assignees: [] }}
         filtersActive
         setFilter={vi.fn()}
         applyPreset={vi.fn()}

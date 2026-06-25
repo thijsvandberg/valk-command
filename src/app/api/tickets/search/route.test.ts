@@ -3,7 +3,7 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 import { createTestDb } from "@/db/test-utils";
 import type { BetterSQLite3Database } from "drizzle-orm/better-sqlite3";
 import type * as schema from "@/db/schema";
-import { ticket } from "@/db/schema";
+import { ticket, sprintNameCache } from "@/db/schema";
 
 let testDb: BetterSQLite3Database<typeof schema>;
 
@@ -565,6 +565,72 @@ describe("GET /api/tickets/search", () => {
       const res = await GET(makeRequest({ q: "Ticket", offset: "25", jira: "0" }));
       const data: SearchResponse = await res.json();
       expect(data.facets).toBeUndefined();
+    });
+  });
+
+  describe("status filter (BRDG-396)", () => {
+    it("filters by status", async () => {
+      seedFilterFixtures();
+      const res = await GET(makeRequest({ q: "marker", jira: "0", status: "in progress" }));
+      const data: SearchResponse = await res.json();
+      expect(data.results.map((r) => r.key)).toEqual(["VPL-101"]);
+    });
+
+    it("accepts multiple statuses", async () => {
+      seedFilterFixtures();
+      const res = await GET(makeRequest({ q: "marker", jira: "0", status: "to do,done" }));
+      const data: SearchResponse = await res.json();
+      // TO DO: VPL-100, ABC-200 (VPL-102 is a hidden subtask); DONE: VPL-103
+      expect(data.results.map((r) => r.key).sort()).toEqual(["ABC-200", "VPL-100", "VPL-103"]);
+    });
+
+    it("returns status facets covering the pool", async () => {
+      seedFilterFixtures();
+      const res = await GET(makeRequest({ q: "marker", jira: "0" }));
+      const data: SearchResponse = await res.json();
+      expect(data.facets!.statuses).toEqual(expect.arrayContaining(["TO DO", "IN PROGRESS", "DONE"]));
+    });
+  });
+
+  describe("team filter (BRDG-396)", () => {
+    function seedTeamFixtures() {
+      testDb.insert(sprintNameCache).values([
+        { sprintId: "10", displayName: "BT: 138" },
+        { sprintId: "20", displayName: "GXP: 42" },
+        { sprintId: "30", displayName: "BT 139" },
+      ]).run();
+      testDb.insert(ticket).values([
+        { jiraKey: "VPL-100", title: "team marker a", status: "TO DO", type: "story", sprintName: "10" },
+        { jiraKey: "VPL-101", title: "team marker b", status: "TO DO", type: "story", sprintName: "20" },
+        { jiraKey: "VPL-102", title: "team marker c", status: "TO DO", type: "story", sprintName: "30" },
+        { jiraKey: "VPL-103", title: "team marker d", status: "TO DO", type: "story", sprintName: null },
+      ]).run();
+    }
+
+    it("filters to a team via the sprint-name prefix (colon and space forms)", async () => {
+      seedTeamFixtures();
+      const res = await GET(makeRequest({ q: "marker", jira: "0", team: "BT" }));
+      const data: SearchResponse = await res.json();
+      // BT: 138 (VPL-100) and BT 139 (VPL-102); GXP and no-sprint excluded
+      expect(data.results.map((r) => r.key).sort()).toEqual(["VPL-100", "VPL-102"]);
+    });
+
+    it("supports multiple teams", async () => {
+      seedTeamFixtures();
+      const res = await GET(makeRequest({ q: "marker", jira: "0", team: "BT,GXP" }));
+      const data: SearchResponse = await res.json();
+      expect(data.results.map((r) => r.key).sort()).toEqual(["VPL-100", "VPL-101", "VPL-102"]);
+    });
+
+    it("composes team with status", async () => {
+      testDb.insert(sprintNameCache).values([{ sprintId: "10", displayName: "BT: 138" }]).run();
+      testDb.insert(ticket).values([
+        { jiraKey: "VPL-100", title: "team marker a", status: "TO DO", type: "story", sprintName: "10" },
+        { jiraKey: "VPL-101", title: "team marker b", status: "DONE", type: "story", sprintName: "10" },
+      ]).run();
+      const res = await GET(makeRequest({ q: "marker", jira: "0", team: "BT", status: "done" }));
+      const data: SearchResponse = await res.json();
+      expect(data.results.map((r) => r.key)).toEqual(["VPL-101"]);
     });
   });
 

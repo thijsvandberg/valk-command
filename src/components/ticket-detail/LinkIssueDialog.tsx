@@ -7,7 +7,6 @@ import { Button } from "@/components/ui/Button";
 import { useLinkIssueSearch } from "@/hooks/useLinkIssueSearch";
 import type { LinkSearchResult } from "@/lib/api-client";
 import { LinkSearchResultRow } from "./LinkSearchResultRow";
-import { StatusFilterChips } from "./StatusFilterChips";
 import { LinkIssueFilterBar } from "./LinkIssueFilterBar";
 import { ScrollSentinel } from "./ScrollSentinel";
 import { tickets } from "@/lib/api-client";
@@ -293,12 +292,6 @@ export function LinkIssueDialog({
         >
           {search.showResults || search.filteredResults.length > 0 || search.isSearching ? (
             <>
-              <StatusFilterChips
-                statuses={search.availableStatuses}
-                activeStatuses={search.activeStatuses}
-                onToggle={search.toggleStatus}
-                onClear={search.clearStatusFilter}
-              />
               {search.filteredResults.length > 0 ? (
                 <>
                   {search.filteredResults.map((r, idx) => (

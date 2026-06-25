@@ -26,6 +26,7 @@ interface SearchResult {
 
 interface SearchFacets {
   types: string[];
+  statuses: string[];
   projects: string[];
   assignees: string[];
 }
@@ -97,11 +98,23 @@ function updatedCutoff(bucket: string | null): string | null {
 
 interface ParsedFilters {
   types: string[];
+  statuses: string[];
   sprints: string[];
+  teams: string[];
   epics: string[];
   assignees: string[];
   projects: string[];
   updatedCutoffIso: string | null;
+}
+
+// Team is encoded in the sprint-name prefix ("BT: 138" -> BT), matching
+// extractTeamPrefix in sprint-utils. The route resolves the primary sprint's
+// display name via the sprintNameCache join, so the team can be filtered there.
+function teamCondition(team: string): SQL {
+  return or(
+    sql`${sprintNameCache.displayName} LIKE ${`${team}:%`}`,
+    sql`${sprintNameCache.displayName} LIKE ${`${team} %`}`,
+  )!;
 }
 
 // Filter conditions shared by browse and text modes so they compose identically.
@@ -118,7 +131,9 @@ function buildFilterConditions(f: ParsedFilters, isKeySearch: boolean): SQL[] {
     conds.push(notSubTask);
   }
 
+  if (f.statuses.length > 0) conds.push(or(...f.statuses.map((s) => sql`LOWER(${ticket.status}) = ${s}`))!);
   if (f.sprints.length > 0) conds.push(or(...f.sprints.map((s) => eq(ticket.sprintName, s)))!);
+  if (f.teams.length > 0) conds.push(or(...f.teams.map(teamCondition))!);
   if (f.epics.length > 0) conds.push(or(...f.epics.map((e) => eq(ticket.epicKey, e)))!);
   if (f.assignees.length > 0) conds.push(or(...f.assignees.map((a) => eq(ticket.assignee, a)))!);
   if (f.projects.length > 0) conds.push(or(...f.projects.map((p) => sql`${ticket.jiraKey} LIKE ${`${p}-%`}`))!);
@@ -137,8 +152,9 @@ function csv(value: string | null, lower = false): string[] {
 }
 
 async function computeFacets(): Promise<SearchFacets> {
-  const [typeRows, projectRows, assigneeRows] = await Promise.all([
+  const [typeRows, statusRows, projectRows, assigneeRows] = await Promise.all([
     db.selectDistinct({ type: ticket.type }).from(ticket).where(notDeleted),
+    db.selectDistinct({ status: ticket.status }).from(ticket).where(notDeleted),
     db
       .selectDistinct({
         project: sql<string>`substr(${ticket.jiraKey}, 1, instr(${ticket.jiraKey}, '-') - 1)`,
@@ -150,6 +166,7 @@ async function computeFacets(): Promise<SearchFacets> {
 
   return {
     types: typeRows.map((r) => r.type).filter((t): t is string => !!t).sort(),
+    statuses: statusRows.map((r) => r.status).filter((s): s is string => !!s).sort(),
     projects: projectRows.map((r) => r.project).filter((p): p is string => !!p).sort(),
     assignees: assigneeRows.map((r) => r.assignee).filter((a): a is string => !!a).sort(),
   };
@@ -167,7 +184,9 @@ export async function GET(request: Request) {
 
   const filters: ParsedFilters = {
     types: csv(url.searchParams.get("types"), true),
+    statuses: csv(url.searchParams.get("status"), true),
     sprints: csv(url.searchParams.get("sprint")),
+    teams: csv(url.searchParams.get("team")),
     epics: csv(url.searchParams.get("epic")),
     assignees: csv(url.searchParams.get("assignee")),
     projects: csv(url.searchParams.get("project")),
@@ -201,7 +220,9 @@ export async function GET(request: Request) {
 
   const hasUserFilters = Boolean(
     filters.types.length > 0 ||
+      filters.statuses.length > 0 ||
       filters.sprints.length > 0 ||
+      filters.teams.length > 0 ||
       filters.epics.length > 0 ||
       filters.assignees.length > 0 ||
       filters.projects.length > 0 ||
