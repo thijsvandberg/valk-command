@@ -93,7 +93,6 @@ function SortableSubtaskRow({
   sub,
   isLast,
   roundTop,
-  roundBottom,
   onSelect,
   showTypeIcon,
   showKey,
@@ -114,7 +113,6 @@ function SortableSubtaskRow({
   sub: Subtask;
   isLast: boolean;
   roundTop: boolean;
-  roundBottom: boolean;
   onSelect?: (key: string) => void;
   showTypeIcon: boolean;
   showKey: boolean;
@@ -168,7 +166,6 @@ function SortableSubtaskRow({
       item={itemWithTitle}
       isLast={isLast}
       roundTop={roundTop}
-      roundBottom={roundBottom}
       hideRowAccent
       showTypeIcon={showTypeIcon}
       showReadiness={false}
@@ -668,7 +665,6 @@ export function SubtasksSection({
           sub={sub}
           isLast={idx === filtered.length - 1}
           roundTop={idx === 0}
-          roundBottom={idx === filtered.length - 1}
           onSelect={onSelectTicket}
           showTypeIcon={showType}
           showKey={showKey}
@@ -697,7 +693,6 @@ export function SubtasksSection({
         item={itemWithTitle}
         isLast={idx === filtered.length - 1}
         roundTop={idx === 0}
-        roundBottom={idx === filtered.length - 1}
         hideRowAccent
         isPending={isPending}
         showTypeIcon={showType}
