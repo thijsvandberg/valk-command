@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { trailingDoneDepStart, interpolateRank } from "./sprint-insert-position";
+import { trailingDoneDepStart, interpolateRank, spliceKeyIntoOrder } from "./sprint-insert-position";
 
 const row = (jiraStatus: string) => ({ jiraStatus });
 
@@ -57,5 +57,47 @@ describe("interpolateRank", () => {
     const r = interpolateRank(100, 101)!;
     expect(r).toBeGreaterThan(100);
     expect(r).toBeLessThan(101);
+  });
+});
+
+describe("spliceKeyIntoOrder", () => {
+  it("inserts the new key above the trailing done/deprecated block", () => {
+    const order = ["A", "B", "DONE1", "DEP1"];
+    // displayed order matches `order`; the trailing finished block starts at index 2.
+    const result = spliceKeyIntoOrder(order, ["A", "B", "DONE1", "DEP1"], 2, "NEW");
+    expect(result).toEqual(["A", "B", "NEW", "DONE1", "DEP1"]);
+  });
+
+  it("inserts at the top for a backlog (insertIdx 0)", () => {
+    const order = ["A", "B", "C"];
+    const result = spliceKeyIntoOrder(order, ["A", "B", "C"], 0, "NEW");
+    expect(result).toEqual(["NEW", "A", "B", "C"]);
+  });
+
+  it("appends after the sprint's last row when there is no trailing finished block", () => {
+    const order = ["A", "B", "C"];
+    // insertIdx === displayKeys.length -> no anchor below, fall to after the last key.
+    const result = spliceKeyIntoOrder(order, ["A", "B", "C"], 3, "NEW");
+    expect(result).toEqual(["A", "B", "C", "NEW"]);
+  });
+
+  it("anchors within the destination sprint's rows in a multi-sprint order", () => {
+    // order spans two sprints (S1: A,B ; S2: X,Y); the new key targets S2 above its done block.
+    const order = ["A", "B", "X", "DONEY"];
+    const result = spliceKeyIntoOrder(order, ["X", "DONEY"], 1, "NEW");
+    expect(result).toEqual(["A", "B", "X", "NEW", "DONEY"]);
+  });
+
+  it("is a no-op (copy) when the key is already present", () => {
+    const order = ["A", "NEW", "B"];
+    const result = spliceKeyIntoOrder(order, ["A", "NEW", "B"], 2, "NEW");
+    expect(result).toEqual(["A", "NEW", "B"]);
+    expect(result).not.toBe(order);
+  });
+
+  it("appends when neither anchor is found in the order", () => {
+    const order = ["A", "B"];
+    const result = spliceKeyIntoOrder(order, ["X", "Y"], 0, "NEW");
+    expect(result).toEqual(["A", "B", "NEW"]);
   });
 });
