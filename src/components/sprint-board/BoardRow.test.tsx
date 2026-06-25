@@ -20,6 +20,7 @@ vi.mock("lucide-react", () => {
     Trash2: stub("trash"),
     Scissors: stub("scissors"),
     Clock: stub("clock"),
+    NotebookPen: stub("notebook"),
   };
 });
 
@@ -156,6 +157,15 @@ describe("BoardRow (headerless, BRDG-239)", () => {
     // No reporter -> nothing, even with the tag on.
     renderRow({ ticket: makeTicket({ reporter: null }), tags: new Set<InlineTagId>(["creator"]) });
     expect(screen.getAllByTitle("Reported by Alice")).toHaveLength(1);
+  });
+
+  it("renders the Story Writer link only when showStoryWriterLink is set, pointing at /write (BRDG-395)", () => {
+    renderRow();
+    expect(screen.queryByRole("link", { name: /Open in Story Writer/i })).toBeNull();
+
+    renderRow({ showStoryWriterLink: true });
+    const link = screen.getByRole("link", { name: /Open in Story Writer/i });
+    expect(link).toHaveAttribute("href", "/tickets/VPL-1/write");
   });
 
   it("renders the created-date chip only when createdAtLabel is supplied (BRDG-358)", () => {

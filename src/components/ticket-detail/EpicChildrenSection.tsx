@@ -114,6 +114,10 @@ export function EpicChildrenSection({
   // The inline create-child composer is hidden until the header "+" opens it (BRDG-315),
   // mirroring the sprint board's single-sprint create row.
   const [createOpen, setCreateOpen] = useState(false);
+  // BRDG-395: keys created via the inline quick-add this session, driving the "Open in
+  // Story Writer" pill on the fresh row. Plain state: survives the onMutate() refetch and
+  // clears on unmount. Serves both epic view modes (flat list + by-sprint).
+  const [freshlyCreatedKeys, setFreshlyCreatedKeys] = useState<Set<string>>(() => new Set());
   const handleToggleCreate = useCallback(() => {
     setCreateOpen((v) => !v);
     setSearchMode(false);
@@ -281,6 +285,11 @@ export function EpicChildrenSection({
                 : i,
             ),
           );
+          setFreshlyCreatedKeys((prev) => {
+            const next = new Set(prev);
+            next.add(created.key);
+            return next;
+          });
           showToast(`${created.key} created`);
           onMutate();
         })
@@ -864,6 +873,7 @@ export function EpicChildrenSection({
         isDragActive={false}
         hideRowAccent
         hideEpic
+        showStoryWriterLink={freshlyCreatedKeys.has(child.key)}
         tags={epicRowTags}
         showKey={visibleFields.has("issueKey")}
         showStatus={visibleFields.has("status")}
@@ -1000,6 +1010,7 @@ export function EpicChildrenSection({
         onMoveError={setJiraWarning}
         onPlanNextSprint={handlePlanNextSprint}
         onCreateChild={(target, title, jiraType) => handleCreate(title, jiraType, target)}
+        freshlyCreatedKeys={freshlyCreatedKeys}
         checkedKeys={checkedKeys}
         someChecked={someChecked}
         onCheckboxClick={selectionEnabled ? handleCheckboxClick : undefined}

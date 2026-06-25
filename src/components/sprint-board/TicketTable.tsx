@@ -166,6 +166,7 @@ export function TicketTable({
   onRemoveFromRefinement,
   onViewRefinement,
   onCreateTicket,
+  freshlyCreatedKeys,
   flatCreateTarget,
   flatComposerOpen = false,
   onCloseFlatComposer,
@@ -269,6 +270,9 @@ export function TicketTable({
   onViewRefinement?: (sessionId: string) => void;
   /** Create a story/task/bug into a sprint (id), or the backlog (null). Enables the inline composer. */
   onCreateTicket?: (sprintId: string | null, title: string, jiraType: string) => void;
+  /** BRDG-395: keys created via the inline quick-add this session; the matching row shows
+   *  the "Open in Story Writer" pill. Absent on hosts without inline create. */
+  freshlyCreatedKeys?: Set<string>;
   /** Target for the ungrouped list's composer. When set, the header "+" can open the inline composer. */
   flatCreateTarget?: { sprintId: string | null };
   /** Whether the flat (single-sprint) composer is open. Toggled by the "+" in the single-sprint header. */
@@ -469,7 +473,8 @@ export function TicketTable({
     ticketInfoMap,
     onRemoveFromRefinement,
     onViewRefinement,
-  }), [checkedTickets, selectedTicket, focusedTicketIdx, someChecked, activeDragId, visibleTags, hideEpic, hideRowAccent, showSprint, sprintNameMap, poStatuses, readinessMap, inflightKeys, contextMenuKeys, onSelectTicket, onRowContextMenu, handleCheckboxClick, onPoStatusChange, onReadinessChange, onBusinessValueChange, onStoryPointsChange, planningOn, onGuestimationChange, onJiraStatusChange, onIssueTypeChange, onTitleChange, onAssigneeChange, onEpicChange, onSprintChange, sprints, onCloseSubtasks, onSubtasksAdded, editingTitleKey, reviewPopoverKey, handleToggleReviewPopover, onRunReview, followedKeys, followTicket, unfollowTicket, lastDeployedMap, healthMap, refinementSessionMap, ticketInfoMap, onRemoveFromRefinement, onViewRefinement]);
+    showStoryWriterLink: freshlyCreatedKeys?.has(ticket.key) ?? false,
+  }), [checkedTickets, selectedTicket, focusedTicketIdx, someChecked, activeDragId, visibleTags, hideEpic, hideRowAccent, showSprint, sprintNameMap, poStatuses, readinessMap, inflightKeys, contextMenuKeys, onSelectTicket, onRowContextMenu, handleCheckboxClick, onPoStatusChange, onReadinessChange, onBusinessValueChange, onStoryPointsChange, planningOn, onGuestimationChange, onJiraStatusChange, onIssueTypeChange, onTitleChange, onAssigneeChange, onEpicChange, onSprintChange, sprints, onCloseSubtasks, onSubtasksAdded, editingTitleKey, reviewPopoverKey, handleToggleReviewPopover, onRunReview, followedKeys, followTicket, unfollowTicket, lastDeployedMap, healthMap, refinementSessionMap, ticketInfoMap, onRemoveFromRefinement, onViewRefinement, freshlyCreatedKeys]);
 
   // Placeholder rows (BRDG-304) render inside a table tbody as a single-cell row,
   // mirroring BoardRow's <tr><td> shape so they sit in the same column flow.

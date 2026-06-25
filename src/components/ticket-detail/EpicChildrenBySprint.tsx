@@ -72,6 +72,9 @@ interface EpicChildrenBySprintProps {
    * reveals a "+" that opens an inline composer.
    */
   onCreateChild?: (target: { sprintId: string | null; sprintName: string | null }, title: string, jiraType: string) => void;
+  /** BRDG-395: keys created via the inline quick-add this session; the matching row shows
+   *  the "Open in Story Writer" pill. */
+  freshlyCreatedKeys?: Set<string>;
   /** Multiselect: when supplied, rows render a leading checkbox. */
   checkedKeys?: Set<string>;
   someChecked?: boolean;
@@ -276,6 +279,7 @@ export function EpicChildrenBySprint({
   onMoveError,
   onPlanNextSprint,
   onCreateChild,
+  freshlyCreatedKeys,
   checkedKeys,
   someChecked,
   onCheckboxClick,
@@ -524,6 +528,7 @@ export function EpicChildrenBySprint({
       onGuestimationChange,
       planningOn,
       isLastInCard: roundBottom,
+      showStoryWriterLink: freshlyCreatedKeys?.has(child.key) ?? false,
     };
 
     if (dndEnabled && !isPending) {

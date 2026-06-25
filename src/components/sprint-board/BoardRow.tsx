@@ -11,7 +11,7 @@ import { HoverRevealSlot } from "@/components/shared/HoverRevealSlot";
 import { Checkbox } from "@/components/shared/Checkbox";
 import type { InlineTagId } from "@/components/sprint-board/filter-bar-types";
 import { Avatar } from "@/components/shared/Avatar";
-import { Flag, MessageSquare, Pencil, Check, X, Boxes, IterationCw, GripVertical, AlertTriangle, Scissors, Clock } from "lucide-react";
+import { Flag, MessageSquare, Pencil, Check, X, Boxes, IterationCw, GripVertical, AlertTriangle, Scissors, Clock, NotebookPen } from "lucide-react";
 import { WarningBadge } from "@/components/sprint-board/WarningBadge";
 import { type WarningKind } from "@/components/sprint-board/warning-filter";
 import type { TicketSessionEntry } from "@/hooks/useTicketSessionMap";
@@ -136,6 +136,13 @@ export interface BoardRowBaseProps {
    */
   onMarkRead?: (key: string) => void;
   /**
+   * Freshly inline-created story (BRDG-395): renders an always-visible "Open in Story
+   * Writer" pill next to the title, linking to /tickets/{key}/write. Set by the list host
+   * only for the row(s) created via the inline quick-add this session; cleared on unmount /
+   * reload. Off by default and inert on every existing host.
+   */
+  showStoryWriterLink?: boolean;
+  /**
    * New story inbox (BRDG-358): preformatted created-date chip shown on the row.
    * The inbox passes it only when grouped by something other than Date, where the
    * group header no longer conveys the creation date. Absent elsewhere.
@@ -251,6 +258,7 @@ export const BoardRow = memo(forwardRef<HTMLTableRowElement, BoardRowBaseProps>(
     onActivate,
     onDiscard,
     onMarkRead,
+    showStoryWriterLink = false,
     createdAtLabel,
     sessionTimeAgo,
     sessionJiraChanged = false,
@@ -624,6 +632,18 @@ export const BoardRow = memo(forwardRef<HTMLTableRowElement, BoardRowBaseProps>(
                   >
                     <Pencil size={11} strokeWidth={1.5} />
                   </button>
+                )}
+                {showStoryWriterLink && (
+                  <a
+                    href={`/tickets/${ticket.key}/write`}
+                    onPointerDown={(e) => e.stopPropagation()}
+                    onClick={(e) => e.stopPropagation()}
+                    className="ml-1 inline-flex shrink-0 cursor-pointer items-center gap-1 rounded-md bg-[var(--color-brand-500)]/[0.1] px-1.5 py-0.5 text-label font-medium leading-none text-[var(--color-brand-500)] transition-[opacity,transform] duration-150 hover:bg-[var(--color-brand-500)]/[0.16] hover:text-[var(--color-brand-400)] focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-[var(--color-brand-400)] active:scale-95"
+                    title="Open in Story Writer"
+                  >
+                    <NotebookPen size={11} strokeWidth={1.75} aria-hidden />
+                    <span>Open in Story Writer</span>
+                  </a>
                 )}
               </div>
 

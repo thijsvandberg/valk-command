@@ -46,8 +46,12 @@ vi.mock("@tanstack/react-virtual", () => ({
 
 // The headerless board renders a forked flex row (BoardRow), not the legacy TicketRow.
 vi.mock("./BoardRow", () => ({
-  BoardRow: ({ ticket }: { ticket: Ticket }) => <tr data-testid={`row-${ticket.key}`}><td>{ticket.title}</td></tr>,
-  SortableBoardRow: ({ ticket }: { ticket: Ticket }) => <tr data-testid={`row-${ticket.key}`}><td>{ticket.title}</td></tr>,
+  BoardRow: ({ ticket, showStoryWriterLink }: { ticket: Ticket; showStoryWriterLink?: boolean }) => (
+    <tr data-testid={`row-${ticket.key}`}><td>{ticket.title}{showStoryWriterLink && <span data-testid={`sw-link-${ticket.key}`} />}</td></tr>
+  ),
+  SortableBoardRow: ({ ticket, showStoryWriterLink }: { ticket: Ticket; showStoryWriterLink?: boolean }) => (
+    <tr data-testid={`row-${ticket.key}`}><td>{ticket.title}{showStoryWriterLink && <span data-testid={`sw-link-${ticket.key}`} />}</td></tr>
+  ),
 }));
 
 vi.mock("@/hooks/usePipelines", () => ({
@@ -122,6 +126,18 @@ describe("TicketTable (headerless, BRDG-239)", () => {
     render(<TicketTable {...defaultProps} />);
     expect(screen.getByTestId("row-T-1")).toBeInTheDocument();
     expect(screen.getByTestId("row-T-2")).toBeInTheDocument();
+  });
+
+  it("flags only the rows whose key is in freshlyCreatedKeys (BRDG-395)", () => {
+    render(<TicketTable {...defaultProps} freshlyCreatedKeys={new Set(["T-2"])} />);
+    expect(screen.queryByTestId("sw-link-T-1")).toBeNull();
+    expect(screen.getByTestId("sw-link-T-2")).toBeInTheDocument();
+  });
+
+  it("flags no rows when freshlyCreatedKeys is absent (BRDG-395)", () => {
+    render(<TicketTable {...defaultProps} />);
+    expect(screen.queryByTestId("sw-link-T-1")).toBeNull();
+    expect(screen.queryByTestId("sw-link-T-2")).toBeNull();
   });
 
   it("renders no column headers", () => {
