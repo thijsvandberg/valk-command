@@ -49,6 +49,9 @@ interface SubtasksSectionProps {
   // row updates instantly instead of waiting on a revalidation that returns stale data.
   onSubtaskStatusOptimistic?: (childKey: string, status: JiraStatus) => void;
   onSelectTicket?: (key: string) => void;
+  /** Subtask currently open in the SidePanel (?ticket=); its row renders active, mirroring
+      the sprint board's selected row and the epic-children list. */
+  activeKey?: string | null;
   hideHeader?: boolean;
   compactFilters?: boolean;
   defaultHideKeys?: boolean;
@@ -93,6 +96,7 @@ function SortableSubtaskRow({
   sub,
   isLast,
   roundTop,
+  isActive,
   onSelect,
   showTypeIcon,
   showKey,
@@ -113,6 +117,7 @@ function SortableSubtaskRow({
   sub: Subtask;
   isLast: boolean;
   roundTop: boolean;
+  isActive: boolean;
   onSelect?: (key: string) => void;
   showTypeIcon: boolean;
   showKey: boolean;
@@ -166,6 +171,7 @@ function SortableSubtaskRow({
       item={itemWithTitle}
       isLast={isLast}
       roundTop={roundTop}
+      isActive={isActive}
       hideRowAccent
       showTypeIcon={showTypeIcon}
       showReadiness={false}
@@ -208,6 +214,7 @@ export function SubtasksSection({
   onMutate,
   onSubtaskStatusOptimistic,
   onSelectTicket,
+  activeKey,
   hideHeader,
   compactFilters,
   defaultHideKeys,
@@ -665,6 +672,7 @@ export function SubtasksSection({
           sub={sub}
           isLast={idx === filtered.length - 1}
           roundTop={idx === 0}
+          isActive={sub.key === activeKey}
           onSelect={onSelectTicket}
           showTypeIcon={showType}
           showKey={showKey}
@@ -693,6 +701,7 @@ export function SubtasksSection({
         item={itemWithTitle}
         isLast={idx === filtered.length - 1}
         roundTop={idx === 0}
+        isActive={sub.key === activeKey}
         hideRowAccent
         isPending={isPending}
         showTypeIcon={showType}
