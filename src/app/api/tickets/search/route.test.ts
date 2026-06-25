@@ -38,6 +38,7 @@ interface SearchResult {
 
 interface SearchFacets {
   types: string[];
+  statuses: string[];
   projects: string[];
   assignees: string[];
 }
