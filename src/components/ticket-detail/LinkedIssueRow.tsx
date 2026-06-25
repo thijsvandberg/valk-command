@@ -43,6 +43,7 @@ export function LinkedIssueRow({ item, isLast, isPending, isActive, onSelect, bo
       isPending={isPending}
       onSelect={!isPending ? onSelect : undefined}
       isActive={isActive}
+      hideRowAccent
       showTypeIcon
       showKey
       showStatus

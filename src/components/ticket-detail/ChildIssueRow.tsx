@@ -63,6 +63,9 @@ interface ChildIssueRowProps {
       isChecked (queue membership): a row can be active, checked, both, or neither. Mirrors
       the Sprint Board's selected-row highlight and takes visual precedence over checked. */
   isActive?: boolean;
+  /** Drop the colored left accent (the background tint still conveys state), matching the
+      sprint board's hideRowAccent. The ticket-detail subtask/linked lists use this (BRDG-390). */
+  hideRowAccent?: boolean;
   /** True when any row in the surrounding list is checked (pins the gutter open). */
   someChecked?: boolean;
   onCheckboxClick?: (e: React.MouseEvent) => void;
@@ -120,6 +123,7 @@ export function ChildIssueRow({
   isChecked = false,
   flagged = false,
   isActive = false,
+  hideRowAccent = false,
   someChecked = false,
   onCheckboxClick,
   inlineCheckbox = false,
@@ -176,7 +180,7 @@ export function ChildIssueRow({
         inflight: isPending,
         lastInCard: roundBottom,
         firstInCard: roundTop,
-        hideAccent: false,
+        hideAccent: hideRowAccent,
         livePulse: liveChangeKinds.size > 0,
       })} ${className}`}
       onClick={handleClick}

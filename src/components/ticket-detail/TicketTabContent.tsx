@@ -385,7 +385,7 @@ export function TicketTabContent({
               {detail && <AttachmentsSection attachments={detail.attachments} />}
               {!isEpic && (
                 <>
-                  {detail && <SubtasksSection subtasks={detail.subtasks} ticketKey={ticketKey} onMutate={onMutate} onSubtaskStatusOptimistic={onSubtaskStatusOptimistic} onSelectTicket={onSelectTicket} />}
+                  {detail && <SubtasksSection subtasks={detail.subtasks} ticketKey={ticketKey} onMutate={onMutate} onSubtaskStatusOptimistic={onSubtaskStatusOptimistic} onSelectTicket={onSelectTicket} showDragHandles />}
                   {detail && <LinkedIssuesSection issues={detail.linkedIssues} ticketKey={ticketKey} onMutate={onMutate} onSelectTicket={onSelectTicket} activeKey={ticketKey} />}
                 </>
               )}
