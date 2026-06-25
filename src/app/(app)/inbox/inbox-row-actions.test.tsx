@@ -131,7 +131,7 @@ describe("inbox row actions on the shared dispatch (BRDG-374)", () => {
     const { result } = setup();
     act(() => {
       result.current.ra.handleQuickMove(
-        { id: "next", label: "Move to next", target: "BT: 200", targetSprintId: null, createName: "BT: 200" },
+        { id: "next", label: "Move to next sprint", target: "BT: 200", targetSprintId: null, createName: "BT: 200" },
         new Set(["VPL-1"]),
       );
     });

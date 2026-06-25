@@ -90,7 +90,7 @@ describe("BulkActionBar", () => {
     expect(screen.getByText("Set Status")).toBeTruthy();
     expect(screen.getByText("Set Readiness")).toBeTruthy();
     // Move is now a separate icon group, not inside Update.
-    expect(screen.queryByText("More sprints")).toBeNull();
+    expect(screen.queryByText("Move to other sprint…")).toBeNull();
     expect(screen.getByRole("button", { name: "Move" })).toBeTruthy();
   });
 
@@ -110,7 +110,7 @@ describe("BulkActionBar", () => {
     expect(screen.queryByText("Flag")).toBeNull();
   });
 
-  it("lists pinned sprints first, in pinned order, under More sprints", () => {
+  it("lists pinned sprints first, in pinned order, under the other-sprint picker", () => {
     render(
       <BulkActionBar
         {...defaultProps}
@@ -124,7 +124,7 @@ describe("BulkActionBar", () => {
       />,
     );
     openGroup("Move");
-    fireEvent.click(screen.getByText("More sprints"));
+    fireEvent.click(screen.getByText("Move to other sprint…"));
     const c = screen.getByText("Sprint C");
     const a = screen.getByText("Sprint A");
     const b = screen.getByText("Sprint B");
@@ -133,7 +133,7 @@ describe("BulkActionBar", () => {
     expect(a.compareDocumentPosition(b) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
   });
 
-  it("filters the More sprints list via the search box", () => {
+  it("filters the other-sprint list via the search box", () => {
     render(
       <BulkActionBar
         {...defaultProps}
@@ -145,7 +145,7 @@ describe("BulkActionBar", () => {
       />,
     );
     openGroup("Move");
-    fireEvent.click(screen.getByText("More sprints"));
+    fireEvent.click(screen.getByText("Move to other sprint…"));
     fireEvent.change(screen.getByPlaceholderText("Search sprints..."), { target: { value: "beta" } });
     expect(screen.queryByText("Sprint Alpha")).toBeNull();
     expect(screen.getByText("Sprint Beta")).toBeTruthy();
@@ -161,7 +161,7 @@ describe("BulkActionBar", () => {
       />,
     );
     openGroup("Move");
-    fireEvent.click(screen.getByText("More sprints"));
+    fireEvent.click(screen.getByText("Move to other sprint…"));
     fireEvent.click(screen.getByText("Sprint 42"));
     expect(onMoveSprint).toHaveBeenCalledWith("42");
   });

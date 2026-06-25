@@ -7,7 +7,7 @@ import { extractTeamPrefix, isRegularSprint, nextSprintNameFrom, sprintNumber } 
 
 export interface QuickMoveOption {
   id: "next" | "active" | "backlog";
-  /** Purpose-led label: "Move to active" / "Move to next" / "Move to backlog" (BRDG-374). */
+  /** Purpose-led label: "Move to active sprint" / "Move to next sprint" / "Move to backlog" (BRDG-374). */
   label: string;
   /** Destination sprint name, rendered as a trailing chip next to the label (e.g. "BT: 140"). */
   target: string;
@@ -33,8 +33,8 @@ interface ComputeArgs {
 
 // Purpose-led labels (BRDG-374); the destination sprint name rides along as `target`.
 const QUICK_MOVE_LABELS: Record<QuickMoveOption["id"], string> = {
-  active: "Move to active",
-  next: "Move to next",
+  active: "Move to active sprint",
+  next: "Move to next sprint",
   backlog: "Move to backlog",
 };
 
@@ -59,28 +59,35 @@ export function computeQuickMoves({ currentSprintNames, sprints, backlogTargetNa
   // active sprint the selection is not already entirely in. Built first so it wins the
   // de-dup tie-break (and keeps its "active" badge) when it coincides with "next".
   const prefixes = new Set(nonNullNames.map((n) => extractTeamPrefix(n)).filter((p): p is string => p !== null));
+  let activeSprint: Sprint | undefined;
   if (prefixes.size === 1) {
     const prefix = [...prefixes][0];
-    const active = sprints.find((s) => s.state === "active" && extractTeamPrefix(s.name) === prefix);
-    if (active && !(nameSet.size === 1 && nameSet.has(active.name))) {
-      candidates.push({ opt: { id: "active", label: QUICK_MOVE_LABELS.active, target: active.name, targetSprintId: active.id, badge: "active" }, sortName: active.name });
+    activeSprint = sprints.find((s) => s.state === "active" && extractTeamPrefix(s.name) === prefix);
+    if (activeSprint && !(nameSet.size === 1 && nameSet.has(activeSprint.name))) {
+      candidates.push({ opt: { id: "active", label: QUICK_MOVE_LABELS.active, target: activeSprint.name, targetSprintId: activeSprint.id, badge: "active" }, sortName: activeSprint.name });
     }
   }
 
-  // next: only when the selection shares exactly one regular numbered sprint.
+  // next: relative to the selection's own regular sprint ("BT: 139" -> "BT: 140"). When the
+  // selection sits in a non-numbered sprint (a team backlog) or is unscheduled, there is no
+  // number to step from, so fall back to the team's active sprint + 1 — this is what "next"
+  // means from the inbox, where tickets live in the backlog rather than in a numbered sprint.
   if (nameSet.size === 1) {
     const only = currentSprintNames[0];
+    let nextName = "";
     if (only !== null && isRegularSprint(only)) {
-      const nextName = nextSprintNameFrom(only);
-      if (nextName) {
-        const existingId = idForName(nextName);
-        candidates.push({
-          opt: existingId
-            ? { id: "next", label: QUICK_MOVE_LABELS.next, target: nextName, targetSprintId: existingId }
-            : { id: "next", label: QUICK_MOVE_LABELS.next, target: nextName, targetSprintId: null, createName: nextName },
-          sortName: nextName,
-        });
-      }
+      nextName = nextSprintNameFrom(only);
+    } else if (activeSprint && isRegularSprint(activeSprint.name)) {
+      nextName = nextSprintNameFrom(activeSprint.name);
+    }
+    if (nextName) {
+      const existingId = idForName(nextName);
+      candidates.push({
+        opt: existingId
+          ? { id: "next", label: QUICK_MOVE_LABELS.next, target: nextName, targetSprintId: existingId }
+          : { id: "next", label: QUICK_MOVE_LABELS.next, target: nextName, targetSprintId: null, createName: nextName },
+        sortName: nextName,
+      });
     }
   }
 

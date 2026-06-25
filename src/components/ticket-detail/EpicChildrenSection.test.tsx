@@ -856,7 +856,7 @@ describe("EpicChildrenSection", () => {
 
     function moveViaContextMenu(rowTitle: string, sprintLabel: string) {
       fireEvent.contextMenu(screen.getByText(rowTitle));
-      fireEvent.click(screen.getByText("More sprints"));
+      fireEvent.click(screen.getByText("Move to other sprint…"));
       fireEvent.click(screen.getByText(sprintLabel));
     }
 
@@ -896,7 +896,7 @@ describe("EpicChildrenSection", () => {
       renderSection(SAMPLE_CHILDREN);
       switchToSprintView();
       fireEvent.contextMenu(screen.getByText("First story"));
-      for (const label of ["More sprints", "Update", "Flag", "Assist", "Add to refinement"]) {
+      for (const label of ["Move to other sprint…", "Update", "Flag", "Assist", "Add to refinement"]) {
         expect(screen.getByText(label)).toBeInTheDocument();
       }
       fireEvent.click(screen.getByText("Update"));
@@ -968,7 +968,7 @@ describe("EpicChildrenSection", () => {
       renderSection(SAMPLE_CHILDREN);
       selectRow("VPL-10");
       selectRow("VPL-12");
-      openBulkMenu("Move", "More sprints");
+      openBulkMenu("Move", "Move to other sprint…");
       fireEvent.click(screen.getByText("Sprint 3"));
       await waitFor(() => {
         expect(mockMoveSprint).toHaveBeenCalledWith({ issueKeys: ["VPL-10", "VPL-12"], targetSprintId: "3", topKeys: ["VPL-10", "VPL-12"] });
@@ -1007,7 +1007,7 @@ describe("EpicChildrenSection", () => {
     it("exposes the grouped action menu on right-click in the default list view", () => {
       renderSection(SAMPLE_CHILDREN);
       fireEvent.contextMenu(screen.getByText("First story"));
-      for (const label of ["More sprints", "Update", "Flag", "Assist", "Add to refinement"]) {
+      for (const label of ["Move to other sprint…", "Update", "Flag", "Assist", "Add to refinement"]) {
         expect(screen.getByText(label)).toBeInTheDocument();
       }
     });

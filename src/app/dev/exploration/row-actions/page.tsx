@@ -95,10 +95,10 @@ const GROUPS: Group[] = [
     Icon: ArrowRightLeft,
     prominent: true,
     actions: [
-      { id: "active", label: "Move to active", target: "BT: 140" },
-      { id: "next", label: "Move to next", target: "BT: 142" },
+      { id: "active", label: "Move to active sprint", target: "BT: 140" },
+      { id: "next", label: "Move to next sprint", target: "BT: 142" },
       { id: "backlog", label: "Move to backlog", target: "BT: Backlog" },
-      { id: "more", label: "More sprints", flyout: MORE_SPRINTS },
+      { id: "more", label: "Move to other sprint…", flyout: MORE_SPRINTS },
       { id: "top", label: "Move to top", rankOnly: true },
       { id: "bottom", label: "Move to bottom", rankOnly: true },
     ],
@@ -804,7 +804,7 @@ export default function RowActionsExploration() {
         <div>
           <h2 className="text-heading-sm font-semibold text-text-primary">Right-click menu</h2>
           <p className="mt-1 mb-4 max-w-[480px] text-body-sm leading-[1.6] text-text-muted">
-            Move is top-level with named sprint targets; the rest sit under &ldquo;More sprints&rdquo;. Set and Assist nest one level
+            Move is top-level with named sprint targets; the rest sit under &ldquo;Move to other sprint&rdquo;. Set and Assist nest one level
             deeper — hover them for the sub-menu.
           </p>
           <ActionMenu cfg={cfg} onAction={fire} />

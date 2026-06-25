@@ -695,7 +695,7 @@ export function TicketActionMenuContent({
           </MenuItem>
         ))}
       {onMoveSprint && sprints && (
-        <Flyout icon={<ArrowRightLeft className="h-3.5 w-3.5" strokeWidth={1.5} />} label="More sprints" width="w-[260px]">
+        <Flyout icon={<ArrowRightLeft className="h-3.5 w-3.5" strokeWidth={1.5} />} label="Move to other sprint…" width="w-[260px]">
           <SprintSubPanel sprints={sprints} pinnedSprintIds={pinnedSprintIds} excludeSprintIds={excludeSprintIds} onSelect={(id) => { onMoveSprint?.(id); close(); }} />
         </Flyout>
       )}

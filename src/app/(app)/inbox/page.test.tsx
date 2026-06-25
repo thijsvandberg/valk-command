@@ -197,7 +197,7 @@ describe("InboxPage (BRDG-357)", () => {
 
     // The real TicketActionMenuContent renders at the cursor with the board's grouped
     // items (Move inline, Update nested) plus the inbox-only "Mark as read" option.
-    expect(await screen.findByText("More sprints")).toBeInTheDocument();
+    expect(await screen.findByText("Move to other sprint…")).toBeInTheDocument();
     expect(screen.getByText("Update")).toBeInTheDocument();
     expect(screen.getByText("Add to refinement")).toBeInTheDocument();
     expect(screen.getByText("Mark as read")).toBeInTheDocument();

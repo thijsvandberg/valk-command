@@ -33,7 +33,7 @@ describe("computeQuickMoves", () => {
     // Selection IS in BT: 139 (the active sprint), so active is hidden; next BT: 140 (id 3).
     const result = ids(["BT: 139"]);
     expect(result.map((o) => o.id)).toEqual(["next", "backlog"]);
-    expect(result.find((o) => o.id === "next")).toMatchObject({ targetSprintId: "3", label: "Move to next", target: "BT: 140" });
+    expect(result.find((o) => o.id === "next")).toMatchObject({ targetSprintId: "3", label: "Move to next sprint", target: "BT: 140" });
     expect(result.find((o) => o.id === "backlog")).toMatchObject({ targetSprintId: "9" });
   });
 
@@ -41,14 +41,14 @@ describe("computeQuickMoves", () => {
     // Selection in the closed BT: 138 -> next is BT: 139, which is also the active sprint.
     const result = ids(["BT: 138"]);
     expect(result.map((o) => o.id)).toEqual(["active", "backlog"]);
-    expect(result.find((o) => o.id === "active")).toMatchObject({ targetSprintId: "2", label: "Move to active", target: "BT: 139", badge: "active" });
+    expect(result.find((o) => o.id === "active")).toMatchObject({ targetSprintId: "2", label: "Move to active sprint", target: "BT: 139", badge: "active" });
   });
 
   it("orders low-to-high by sprint number: active above next, backlog last", () => {
     const result = ids(["BT: 140"]); // active BT: 139, next BT: 141 (does not exist)
     expect(result.map((o) => o.id)).toEqual(["active", "next", "backlog"]);
     expect(result.find((o) => o.id === "active")).toMatchObject({ targetSprintId: "2", badge: "active" });
-    expect(result.find((o) => o.id === "next")).toMatchObject({ targetSprintId: null, createName: "BT: 141", label: "Move to next", target: "BT: 141" });
+    expect(result.find((o) => o.id === "next")).toMatchObject({ targetSprintId: null, createName: "BT: 141", label: "Move to next sprint", target: "BT: 141" });
   });
 
   it("hides the active option when all items are already in the active sprint", () => {
@@ -56,11 +56,21 @@ describe("computeQuickMoves", () => {
     expect(result.map((o) => o.id)).not.toContain("active");
   });
 
-  it("hides the backlog option when all items are already in that backlog", () => {
+  it("offers active and next (active + 1) for a backlog selection, backlog itself hidden", () => {
+    // Selection in BT: Backlog: active resolves (prefix BT -> BT: 139), and next falls back
+    // to active + 1 (BT: 140) since the backlog has no number to step from. Backlog hidden.
     const result = ids(["BT: Backlog"]);
     expect(result.map((o) => o.id)).not.toContain("backlog");
-    // next is hidden (non-regular), active resolves (prefix BT).
-    expect(result.map((o) => o.id)).toEqual(["active"]);
+    expect(result.map((o) => o.id)).toEqual(["active", "next"]);
+    expect(result.find((o) => o.id === "next")).toMatchObject({ targetSprintId: "3", label: "Move to next sprint", target: "BT: 140" });
+  });
+
+  it("falls back to active + 1 for next even when that sprint does not exist yet", () => {
+    // BT: 140 is the active sprint and nothing higher exists -> next is BT: 141 (pending create).
+    const sprints = SPRINTS.map((s) => (s.name === "BT: 139" ? sprint(s.id, s.name, "closed") : s.name === "BT: 140" ? sprint(s.id, s.name, "active") : s));
+    const result = computeQuickMoves({ currentSprintNames: ["BT: Backlog"], sprints, backlogTargetName: BACKLOG }).map((o) => ({ id: o.id, createName: o.createName, target: o.target }));
+    expect(result.map((o) => o.id)).toEqual(["active", "next"]);
+    expect(result.find((o) => o.id === "next")).toMatchObject({ createName: "BT: 141", target: "BT: 141" });
   });
 
   it("hides next for a multi-sprint selection but keeps active (single team) and backlog", () => {

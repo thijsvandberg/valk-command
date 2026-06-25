@@ -23,7 +23,7 @@ describe("TicketActionMenuContent", () => {
       />,
     );
     // Move is top-level; the set items sit behind "Update".
-    expect(screen.getByText("More sprints")).toBeInTheDocument();
+    expect(screen.getByText("Move to other sprint…")).toBeInTheDocument();
     expect(screen.getByText("Update")).toBeInTheDocument();
     fireEvent.click(screen.getByText("Update"));
     expect(screen.getByText("Set Status")).toBeInTheDocument();
@@ -128,12 +128,12 @@ describe("TicketActionMenuContent", () => {
     expect(container.querySelectorAll("div.h-px.bg-overlay-strong")).toHaveLength(1);
   });
 
-  it("renders named quick-moves inline with a chip, above More sprints, and fires onQuickMove (BRDG-369/374)", () => {
+  it("renders named quick-moves inline with a chip, above the other-sprint picker, and fires onQuickMove (BRDG-369/374)", () => {
     const onQuickMove = vi.fn();
     const close = vi.fn();
     const quickMoves = [
-      { id: "active" as const, label: "Move to active", target: "BT: 139", targetSprintId: "2", badge: "active" },
-      { id: "next" as const, label: "Move to next", target: "BT: 140", targetSprintId: "3" },
+      { id: "active" as const, label: "Move to active sprint", target: "BT: 139", targetSprintId: "2", badge: "active" },
+      { id: "next" as const, label: "Move to next sprint", target: "BT: 140", targetSprintId: "3" },
       { id: "backlog" as const, label: "Move to backlog", target: "BT: Backlog", targetSprintId: "9" },
     ];
     const { container } = render(
@@ -147,19 +147,19 @@ describe("TicketActionMenuContent", () => {
     );
     const labels = Array.from(container.querySelectorAll("button")).map((b) => b.textContent);
     const activeIdx = labels.findIndex((t) => t?.startsWith("Move to active"));
-    const moreIdx = labels.findIndex((t) => t === "More sprints");
+    const moreIdx = labels.findIndex((t) => t === "Move to other sprint…");
     expect(activeIdx).toBeGreaterThanOrEqual(0);
-    expect(activeIdx).toBeLessThan(moreIdx); // quick moves render above More sprints
+    expect(activeIdx).toBeLessThan(moreIdx); // quick moves render above the other-sprint picker
     // The active option shows its destination chip, tagged with the "active" marker.
     expect(screen.getByTitle("active")).toBeInTheDocument();
     expect(screen.getByText("BT: 139")).toBeInTheDocument();
 
-    fireEvent.click(screen.getByText("Move to next"));
+    fireEvent.click(screen.getByText("Move to next sprint"));
     expect(onQuickMove).toHaveBeenCalledWith(quickMoves[1]);
     expect(close).toHaveBeenCalledTimes(1);
   });
 
-  it("More sprints leads with Backlog + Overall refinement and drops what's offered above (BRDG-374)", () => {
+  it("the other-sprint picker leads with Backlog + Overall refinement and drops what's offered above (BRDG-374)", () => {
     const sprints = [
       { id: "act", name: "BT: 140", state: "active" as const, dateRange: "", ticketCount: 0, startDate: null, endDate: null, goal: null },
       { id: "next", name: "BT: 141", state: "future" as const, dateRange: "", ticketCount: 0, startDate: null, endDate: null, goal: null },
@@ -172,8 +172,8 @@ describe("TicketActionMenuContent", () => {
     ];
     // active + next are offered as quick-moves one level up; "cur" is the selection's sprint.
     const quickMoves = [
-      { id: "active" as const, label: "Move to active", target: "BT: 140", targetSprintId: "act", badge: "active" },
-      { id: "next" as const, label: "Move to next", target: "BT: 141", targetSprintId: "next" },
+      { id: "active" as const, label: "Move to active sprint", target: "BT: 140", targetSprintId: "act", badge: "active" },
+      { id: "next" as const, label: "Move to next sprint", target: "BT: 141", targetSprintId: "next" },
     ];
     const { container } = render(
       <TicketActionMenuContent
@@ -217,9 +217,9 @@ describe("TicketActionMenuContent", () => {
 
   it("renders no quick-move items when none are supplied", () => {
     render(<TicketActionMenuContent onMoveSprint={vi.fn()} sprints={[]} close={vi.fn()} />);
-    expect(screen.queryByText("Move to active")).not.toBeInTheDocument();
-    expect(screen.queryByText("Move to next")).not.toBeInTheDocument();
-    expect(screen.getByText("More sprints")).toBeInTheDocument();
+    expect(screen.queryByText("Move to active sprint")).not.toBeInTheDocument();
+    expect(screen.queryByText("Move to next sprint")).not.toBeInTheDocument();
+    expect(screen.getByText("Move to other sprint…")).toBeInTheDocument();
   });
 
   it("fires Move to top / Move to bottom and closes", () => {
