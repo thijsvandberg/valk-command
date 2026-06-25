@@ -56,7 +56,7 @@ export function UnifiedControlsCluster({
           className={`flex h-7 items-center gap-1.5 rounded-md px-2.5 text-body-sm font-medium cursor-pointer focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)] ${
             activeFilterCount > 0 || filterOpen
               ? "font-semibold text-[var(--color-brand-600)]"
-              : "text-text-secondary hover:bg-hover-list-item hover:text-text-primary"
+              : "text-text-tertiary hover:bg-hover-list-item hover:text-text-secondary"
           }`}
           style={{
             transition: "background-color 120ms, color 120ms",
@@ -66,7 +66,7 @@ export function UnifiedControlsCluster({
           aria-label="Filters"
           aria-expanded={filterOpen}
         >
-          <SlidersHorizontal className="h-3.5 w-3.5" strokeWidth={1.75} />
+          <SlidersHorizontal className="h-3.5 w-3.5" strokeWidth={1.5} />
           <span>Filters</span>
           {activeFilterCount > 0 && (
             <span
