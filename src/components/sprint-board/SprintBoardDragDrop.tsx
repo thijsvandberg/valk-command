@@ -10,6 +10,7 @@ import {
   type Modifier,
 } from "@dnd-kit/core";
 import { dropTargetClasses, dropTargetStyle } from "@/components/shared/dropZone";
+import { BOARD_CONTENT_MAX } from "@/lib/layout";
 
 // Sprint drop zone shown when a ticket is being dragged
 export function SprintDropTile({
@@ -84,28 +85,34 @@ export function SprintDropZoneBar({
   const backlogSprint = sprints.find((s) => s.name === backlogTargetName);
   const pinned = pillSlotSprints.filter((id) => id !== backlogSprint?.id);
   return (
+    // The outer px-4 matches the bar's BarContainer gutter; the inner
+    // BOARD_CONTENT_MAX wrapper mirrors SprintSlots so the drop tiles stay
+    // centred/capped at the shared board width instead of jumping to the
+    // far-left gutter on wide screens during a drag (BRDG-336 alignment).
     <div className="absolute inset-0 z-10 flex items-center px-4">
-      {/* Mirrors the SprintSlots "All" pill so the leading chrome is unchanged. */}
-      <span
-        className={`mr-2 flex h-7 shrink-0 items-center self-center rounded-md px-2.5 text-body-sm font-semibold tracking-wide ${allActive ? "text-[var(--color-brand-600)]" : "text-[var(--color-brand-500)]"}`}
-        style={{ backgroundColor: allActive ? "color-mix(in srgb, var(--color-brand-400) 18%, transparent)" : "color-mix(in srgb, var(--color-brand-400) 12%, transparent)" }}
-      >
-        All
-      </span>
-      {/* Backlog target leads the drop tiles (in the old "Backlogs" control's
-          place) and shares their gap, so there is no extra margin before the
-          first sprint. */}
-      <div className="flex min-w-0 items-center gap-1 overflow-x-auto xl:gap-1.5 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-        {backlogSprint && (activeSprintId === backlogSprint.id
-          ? <PlainTab sprint={backlogSprint} />
-          : <SprintDropTile sprintId={backlogSprint.id} sprint={backlogSprint} />)}
-        {pinned.map((sprintId) => {
-          const sprint = sprints.find((s) => s.id === sprintId);
-          if (!sprint) return null;
-          return sprintId === activeSprintId
-            ? <PlainTab key={sprintId} sprint={sprint} />
-            : <SprintDropTile key={sprintId} sprintId={sprintId} sprint={sprint} />;
-        })}
+      <div className={`${BOARD_CONTENT_MAX} flex h-full items-center`}>
+        {/* Mirrors the SprintSlots "All" pill so the leading chrome is unchanged. */}
+        <span
+          className={`mr-2 flex h-7 shrink-0 items-center self-center rounded-md px-2.5 text-body-sm font-semibold tracking-wide ${allActive ? "text-[var(--color-brand-600)]" : "text-[var(--color-brand-500)]"}`}
+          style={{ backgroundColor: allActive ? "color-mix(in srgb, var(--color-brand-400) 18%, transparent)" : "color-mix(in srgb, var(--color-brand-400) 12%, transparent)" }}
+        >
+          All
+        </span>
+        {/* Backlog target leads the drop tiles (in the old "Backlogs" control's
+            place) and shares their gap, so there is no extra margin before the
+            first sprint. */}
+        <div className="flex min-w-0 items-center gap-1 overflow-x-auto xl:gap-1.5 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+          {backlogSprint && (activeSprintId === backlogSprint.id
+            ? <PlainTab sprint={backlogSprint} />
+            : <SprintDropTile sprintId={backlogSprint.id} sprint={backlogSprint} />)}
+          {pinned.map((sprintId) => {
+            const sprint = sprints.find((s) => s.id === sprintId);
+            if (!sprint) return null;
+            return sprintId === activeSprintId
+              ? <PlainTab key={sprintId} sprint={sprint} />
+              : <SprintDropTile key={sprintId} sprintId={sprintId} sprint={sprint} />;
+          })}
+        </div>
       </div>
     </div>
   );
