@@ -27,6 +27,7 @@ import { TicketStatusPill } from "@/components/shared/TicketStatusPill";
 import { prefetchTicketPage } from "@/lib/prefetch";
 import { useLiveTicketChange } from "@/hooks/useLiveTicketChange";
 import { normalizeEpicStatus } from "@/lib/epic-filters";
+import { rowSurfaceClasses } from "./row-surface";
 
 const ALL_TAGS: Set<InlineTagId> = new Set(["flag", "refinement", "quality", "notes", "poReadiness", "editState", "storyPoints", "businessValue", "epic", "assignee", "creator"]);
 
@@ -427,29 +428,22 @@ export const BoardRow = memo(forwardRef<HTMLTableRowElement, BoardRowBaseProps>(
             <tr>: a div honours border-radius, so the last row can round its bottom corners to
             the card edge. A <tr>/<td> with border-collapse ignores radius, which is why the
             hover fill used to bleed square into the card's rounded corners. */}
-        <div className={`group/row @container/boardrow relative flex items-center gap-2 border-l-[3px] ${spacious ? "py-[10px]" : "py-[7px]"} pl-4 pr-[23px] transition-colors duration-100 ${
+        <div className={`group/row @container/boardrow relative flex items-center gap-2 ${spacious ? "py-[10px]" : "py-[7px]"} pl-4 pr-[23px] transition-colors duration-100 ${
           dragListeners ? "cursor-grab active:cursor-grabbing select-none" : "cursor-pointer"
-        } ${
-          isSelected || isContextTarget
-            ? "bg-[var(--color-brand-600)]/12"
-            : isChecked
-            ? "bg-[var(--color-brand-500)]/6 hover:bg-[var(--color-brand-500)]/10"
-            : ticket.flagged
-            ? "bg-[color-mix(in_srgb,var(--color-status-error)_6%,transparent)] hover:bg-[color-mix(in_srgb,var(--color-status-error)_8%,transparent)]"
-            : "hover:bg-overlay-subtle"
-        } ${
-          // The colored left accent is dropped when hideRowAccent is set; the
-          // background tints above still convey checked/selected/flagged.
-          hideRowAccent
-            ? "border-l-transparent"
-            : isSelected || isContextTarget
-            ? "border-l-[var(--color-brand-300)]"
-            : isChecked
-            ? "border-l-[var(--color-brand-300)]"
-            : ticket.flagged
-            ? "border-l-[var(--color-status-error)]"
-            : "border-l-transparent hover:border-l-[var(--color-brand-400)]/25"
-        } ${isFocused && !isSelected && !isContextTarget ? "outline outline-1 -outline-offset-1 outline-[var(--color-brand-500)]/40" : ""} ${isRemoved ? "opacity-50" : isDeprecated ? "opacity-60" : isInflight ? "opacity-70" : ""} ${isFirstInCard ? "rounded-t-[11px]" : ""} ${isLastInCard ? "rounded-b-[11px]" : ""} ${liveChangeKinds.size > 0 ? "live-pulse" : ""}`}>
+        } ${rowSurfaceClasses({
+          selected: isSelected,
+          contextTarget: isContextTarget,
+          checked: isChecked,
+          flagged: Boolean(ticket.flagged),
+          focused: isFocused,
+          removed: isRemoved,
+          deprecated: isDeprecated,
+          inflight: isInflight,
+          lastInCard: isLastInCard,
+          firstInCard: isFirstInCard,
+          hideAccent: hideRowAccent,
+          livePulse: liveChangeKinds.size > 0,
+        })}`}>
           {/* Drag affordance in the left gutter (Jira-style). Visual only: the whole row is the
               drag activator, so this never needs its own listeners. Shown only when reordering
               is possible (dragListeners present) and never during multiselect. Suppressed when a

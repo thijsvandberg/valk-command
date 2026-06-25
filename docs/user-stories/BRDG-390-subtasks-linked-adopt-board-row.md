@@ -50,15 +50,44 @@ Folding these two onto `BoardRow` (deleting `ChildIssueRow`) was considered and 
 
 If a future need makes full merge worthwhile, it is a separate decision; this story deliberately does not pursue it.
 
+## Implementation Plan
+
+> Produced by an Opus Plan agent against the current tree (2026-06-25). File/symbol-level reference.
+
+### Helper: `src/components/sprint-board/row-surface.ts` (new, pure, no React)
+`rowSurfaceClasses(state: RowSurfaceState, opts?: { accent?: "border" | "none" }): string` returning ONLY the surface-state classes (base `border-l-[3px]`, bg-tint group, accent-color group, focus outline, opacity fade, rounding, `live-pulse`). Layout classes (`group/row`, `@container/boardrow`, flex/padding/cursor/transition) stay inline per host. `RowSurfaceState` fields: `selected, contextTarget, checked, flagged, focused, removed, deprecated, inflight, lastInCard, firstInCard, hideAccent, livePulse`. It must reproduce BoardRow's CURRENT class strings verbatim (selected/context -> `bg-brand-600/12`; checked -> `bg-brand-500/6 hover:/10`; flagged -> error tint + hover; resting -> `hover:bg-overlay-subtle`; accent group border-l colors with `hideAccent`->transparent; focus outline; removed `opacity-50` > deprecated `opacity-60` > inflight `opacity-70`; `rounded-t/b-[11px]`; `live-pulse`). Keep both `checked` and `selected` accent branches literal (same color, two branches) so the drift-guard stays meaningful.
+
+### Phase 1 (one commit, ZERO board change)
+- Add `row-surface.ts` + `row-surface.test.ts` (Layer A: pin the exact output string for every state + precedence combo + `accent:"none"`).
+- Re-point `BoardRow.tsx`'s surface `<div>` (lines ~430-452): keep the layout prefix inline, replace the state ternaries with one `rowSurfaceClasses({...})` call (`selected:isSelected, contextTarget:isContextTarget, checked:isChecked, flagged:Boolean(ticket.flagged), focused:isFocused, removed:isRemoved, deprecated:isDeprecated, inflight:isInflight, lastInCard:isLastInCard, firstInCard:isFirstInCard, hideAccent:hideRowAccent, livePulse:liveChangeKinds.size>0`). Base `border-l-[3px]` stays first (no content shift). Existing BoardRow tests (py-/rounded- assertions) prove zero change.
+
+### Phase 2 (one commit) — ChildIssueRow adopts the helper
+- Re-point `ChildIssueRow.tsx`'s surface `<div>` (lines ~162-172) at `rowSurfaceClasses`; add `useLiveTicketChange(item.key)`. Prop map: `selected:isActive, checked:isChecked, flagged, deprecated:isDeprecated, inflight:isPending, lastInCard:roundBottom, firstInCard:roundTop`; `contextTarget/focused/removed:false` (gained but inert; `Subtask`/`LinkedIssue` have no `removedFromJiraAt`).
+- **Accent standardisation:** drop the `shadow-[inset_3px_0_0_0_...]` accent; the helper's `border-l` wins. Align ChildIssueRow's drag-handle offset to `-left-[3px]` to straddle the new border like BoardRow.
+- **Cursor/hover consolidation:** host keeps only `onSelect && !isPending ? "cursor-pointer" : ""`; the resting `hover:bg-overlay-subtle` now comes from the helper (omitted on active/checked/flagged, exactly as before). Preserves the "no hover bg on active row" test.
+- Add `row-surface.drift.test.tsx` (Layer B: BoardRow and ChildIssueRow emit the same helper-owned tokens for the same state, across the matrix). Landed in Phase 2 so Phase 1 stays green.
+- Update `ChildIssueRow.test.tsx`: active accent `shadow-[inset...brand-300]` -> `border-l-[var(--color-brand-300)]`; checked `bg-brand-500/[0.06]` -> `bg-brand-500/6`; add a pending -> `opacity-70` assertion. Verify flagged / active-beats-flagged / roundTop-bottom / "no hover bg on active" still pass.
+
+### Intended visual deltas for subtasks/linked (flag at PO visual check)
+- **+3px constant left border** (was inset shadow reserving no space): all content shifts 3px right uniformly (no per-state jump), matching the board. Fallback if rejected: `-ml-[3px]` compensator (do NOT pre-apply).
+- pending fade `opacity-50` -> `opacity-70`; checked alpha `/[0.06]` -> `/6` (identical render). Gains: context-target/focus/removed fields (inert today), resting hover accent, checked accent, and live-pulse.
+
+### Out of scope / future
+- `PlaceholderRow.tsx` is a third partial copy of the surface (hover + last-in-card only); it can adopt `rowSurfaceClasses` later with no helper change. Not in this story.
+
+### Risks
+- The 3px shift (primary; constant, matches board, confirm visually). `<div>` vs `<tr>` is a non-issue (BoardRow's surface is itself a div; no class is table-dependent). `useLiveTicketChange` added to ChildIssueRow is an unconditional top-level hook (rules-safe).
+
 ## Preconditions
 
 - [ ] Clean working tree; commit each phase as its own logical unit.
 
 ## Phase 1: Extract the shared surface from `BoardRow`
 
-- [ ] Add `rowSurfaceClasses(state, opts)` (its own module, e.g. `src/components/sprint-board/row-surface.ts`).
-- [ ] Re-point `BoardRow`'s surface `<div>` at the helper; confirm **zero** visual/behavioural change for the board / inbox / Story Writer / epic / compare / refinement / cleanup hosts (snapshot + the existing host tests).
-- [ ] Add the drift-guard test.
+- [x] Add `rowSurfaceClasses(state, opts)` (its own module, e.g. `src/components/sprint-board/row-surface.ts`). <!-- + row-surface.test.ts (Layer A: pins the exact class string per state, the drift contract) -->
+- [x] Re-point `BoardRow`'s surface `<div>` at the helper; confirm **zero** visual/behavioural change for the board / inbox / Story Writer / epic / compare / refinement / cleanup hosts (snapshot + the existing host tests). <!-- BoardRow's existing py-/rounded- assertions pass unchanged -->
+- [x] Add the drift-guard test. <!-- Layer A (string-pin) lands in Phase 1; the Layer B both-rows-agree guard lands in Phase 2 alongside the ChildIssueRow change so each commit stays green -->
+
 
 ## Phase 2: Point `ChildIssueRow` at the same surface
 
