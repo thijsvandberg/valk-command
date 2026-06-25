@@ -1,8 +1,16 @@
 # BRDG-397: Targeted related-story search from chat + faster find-related + sprint name on cards
 
-**Status:** Not Started
+**Status:** Completed
 **Priority:** Medium
 **Type:** Feature (Story Writer)
+
+> Implemented across Bridge (sprint resolver, related-request parser, candidate
+> sprint-name enrichment, lighter find-related model, targeted dispatch + auto-chain,
+> hover sprint name) and the VRW skills (`write-story-draft` emits `<related-request>`;
+> `find-related` reads scoping args + applies a hard `sprint in (<id>)` filter). The
+> live auto-chain/search depends on the remote workspace agent, so it was not
+> exercised end-to-end in a local browser check; logic is covered by unit/integration
+> tests. Open: confirm Haiku produces sensible candidates on a couple of real tickets.
 
 ## Description
 
