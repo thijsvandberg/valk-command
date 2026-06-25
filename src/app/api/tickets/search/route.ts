@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { db } from "@/db";
 import { ticket, sprintNameCache } from "@/db/schema";
-import { or, ne, and, desc, isNull, sql, eq } from "drizzle-orm";
+import { or, ne, and, desc, isNull, sql, eq, type SQL } from "drizzle-orm";
 import { jiraClient } from "@/lib/jira-client";
 import { escapeLikePattern } from "@/lib/api-validation";
 import { escapeJql } from "@/lib/jql";
@@ -17,7 +17,17 @@ interface SearchResult {
   type: string;
   status: string;
   sprintName: string | null;
+  epicKey: string | null;
+  assignee: string | null;
+  jiraUpdatedAt: string | null;
+  project: string | null;
   source: "local" | "jira" | "recent";
+}
+
+interface SearchFacets {
+  types: string[];
+  projects: string[];
+  assignees: string[];
 }
 
 const notDeleted = and(
@@ -25,8 +35,115 @@ const notDeleted = and(
   isNull(ticket.removedFromJiraAt),
 );
 
-// Sub-tasks are excluded unless the query looks like a specific Jira key
-const notSubTask = sql`LOWER(${ticket.type}) != 'sub-task'`;
+// Sub-tasks are hidden by default. The VPL subtask issue type is "Subtask" (one
+// word), so the comparison must match that, not the old "sub-task" (BRDG-396).
+const notSubTask = sql`LOWER(${ticket.type}) != 'subtask'`;
+
+// Columns selected for every candidate row, in both browse and text modes.
+const candidateColumns = {
+  key: ticket.jiraKey,
+  title: ticket.title,
+  type: ticket.type,
+  status: ticket.status,
+  sprintId: ticket.sprintName,
+  sprintDisplayName: sprintNameCache.displayName,
+  epicKey: ticket.epicKey,
+  assignee: ticket.assignee,
+  jiraUpdatedAt: ticket.jiraUpdatedAt,
+};
+
+type CandidateRow = {
+  key: string;
+  title: string;
+  type: string | null;
+  status: string;
+  sprintId: string | null;
+  sprintDisplayName: string | null;
+  epicKey: string | null;
+  assignee: string | null;
+  jiraUpdatedAt: string | null;
+};
+
+function projectOf(key: string): string | null {
+  const idx = key.indexOf("-");
+  return idx > 0 ? key.slice(0, idx) : null;
+}
+
+function mapRow(r: CandidateRow, source: "local" | "recent"): SearchResult {
+  return {
+    key: r.key,
+    title: r.title,
+    type: r.type ?? "task",
+    status: r.status,
+    sprintName: r.sprintDisplayName ?? r.sprintId,
+    epicKey: r.epicKey ?? null,
+    assignee: r.assignee ?? null,
+    jiraUpdatedAt: r.jiraUpdatedAt ?? null,
+    project: projectOf(r.key),
+    source,
+  };
+}
+
+// Relative "last updated" buckets -> ISO cutoff. jiraUpdatedAt is stored as
+// ISO-8601 text, so a lexicographic `>=` compares correctly.
+function updatedCutoff(bucket: string | null): string | null {
+  if (!bucket || bucket === "any") return null;
+  const day = 86_400_000;
+  const spans: Record<string, number> = { "24h": day, "7d": 7 * day, "30d": 30 * day };
+  const span = spans[bucket];
+  if (!span) return null;
+  return new Date(Date.now() - span).toISOString();
+}
+
+interface ParsedFilters {
+  types: string[] | null;
+  sprint: string | null;
+  epic: string | null;
+  assignee: string | null;
+  project: string | null;
+  updatedCutoffIso: string | null;
+}
+
+// Filter conditions shared by browse and text modes so they compose identically.
+function buildFilterConditions(f: ParsedFilters, isKeySearch: boolean): SQL[] {
+  const conds: SQL[] = [];
+
+  if (f.types && f.types.length > 0) {
+    // OR of equals keeps the lowercased comparison explicit and portable.
+    conds.push(or(...f.types.map((t) => sql`LOWER(${ticket.type}) = ${t}`))!);
+  } else if (!isKeySearch) {
+    // Default: hide subtasks. Key searches bypass the type filter entirely so a
+    // subtask can always be linked by its exact key.
+    conds.push(notSubTask);
+  }
+
+  if (f.sprint) conds.push(eq(ticket.sprintName, f.sprint));
+  if (f.epic) conds.push(eq(ticket.epicKey, f.epic));
+  if (f.assignee) conds.push(eq(ticket.assignee, f.assignee));
+  if (f.project) conds.push(sql`${ticket.jiraKey} LIKE ${`${f.project}-%`}`);
+  if (f.updatedCutoffIso) conds.push(sql`${ticket.jiraUpdatedAt} >= ${f.updatedCutoffIso}`);
+
+  return conds;
+}
+
+async function computeFacets(): Promise<SearchFacets> {
+  const [typeRows, projectRows, assigneeRows] = await Promise.all([
+    db.selectDistinct({ type: ticket.type }).from(ticket).where(notDeleted),
+    db
+      .selectDistinct({
+        project: sql<string>`substr(${ticket.jiraKey}, 1, instr(${ticket.jiraKey}, '-') - 1)`,
+      })
+      .from(ticket)
+      .where(notDeleted),
+    db.selectDistinct({ assignee: ticket.assignee }).from(ticket).where(notDeleted),
+  ]);
+
+  return {
+    types: typeRows.map((r) => r.type).filter((t): t is string => !!t).sort(),
+    projects: projectRows.map((r) => r.project).filter((p): p is string => !!p).sort(),
+    assignees: assigneeRows.map((r) => r.assignee).filter((a): a is string => !!a).sort(),
+  };
+}
 
 export async function GET(request: Request) {
   const url = new URL(request.url);
@@ -36,74 +153,106 @@ export async function GET(request: Request) {
   const recentOnly = url.searchParams.get("recent") === "1";
   const offset = parseInt(url.searchParams.get("offset") ?? "0", 10) || 0;
 
-  // Recently updated tickets mode (empty state)
-  if (recentOnly) {
-    const conditions = [notDeleted, notSubTask];
+  const typesParam = url.searchParams.get("types");
+  const types = typesParam
+    ? typesParam.split(",").map((t) => t.trim().toLowerCase()).filter(Boolean)
+    : null;
+  const preset = url.searchParams.get("preset"); // "epic" | "sprint"
+
+  const filters: ParsedFilters = {
+    types,
+    sprint: url.searchParams.get("sprint") || null,
+    epic: url.searchParams.get("epic") || null,
+    assignee: url.searchParams.get("assignee") || null,
+    project: url.searchParams.get("project") || null,
+    updatedCutoffIso: updatedCutoff(url.searchParams.get("updatedWithin")),
+  };
+
+  // Facets describe the whole candidate pool, independent of the current filter,
+  // so the option lists never collapse to what the filter already selected. Only
+  // needed on the first page; load-more keeps the previously fetched facets.
+  const facets = offset === 0 ? await computeFacets() : undefined;
+  const empty = (extra?: Partial<{ facets: SearchFacets }>) =>
+    NextResponse.json({ results: [], hasMore: false, facets, ...extra });
+
+  // Presets resolve against the current ticket (the excluded key): "same epic" /
+  // "same sprint" read that ticket's epicKey / sprintName and apply it as a
+  // filter. They override any explicit epic/sprint param.
+  if (preset && exclude) {
+    const [row] = await db
+      .select({ epicKey: ticket.epicKey, sprintName: ticket.sprintName })
+      .from(ticket)
+      .where(eq(ticket.jiraKey, exclude))
+      .limit(1);
+    if (preset === "epic") {
+      if (!row?.epicKey) return empty();
+      filters.epic = row.epicKey;
+    } else if (preset === "sprint") {
+      if (!row?.sprintName) return empty();
+      filters.sprint = row.sprintName;
+    }
+  }
+
+  const hasUserFilters = Boolean(
+    (filters.types && filters.types.length > 0) ||
+      filters.sprint ||
+      filters.epic ||
+      filters.assignee ||
+      filters.project ||
+      filters.updatedCutoffIso,
+  );
+  const hasQuery = Boolean(q && q.length >= 2);
+  const isKeySearch = hasQuery ? JIRA_KEY_RE.test(q!) : false;
+
+  // Browse mode: the explicit "recently updated" empty state, or any time filters
+  // are set without a usable text query. Filtered browse paginates like search;
+  // the bare recent state keeps its small fixed window.
+  if (recentOnly || (!hasQuery && hasUserFilters)) {
+    const conditions = [notDeleted, ...buildFilterConditions(filters, false)];
     if (exclude) conditions.push(ne(ticket.jiraKey, exclude));
 
-    const recentTickets = await db
-      .select({
-        key: ticket.jiraKey,
-        title: ticket.title,
-        type: ticket.type,
-        status: ticket.status,
-        sprintId: ticket.sprintName,
-        sprintDisplayName: sprintNameCache.displayName,
-      })
+    const paginated = hasUserFilters;
+    const rows = await db
+      .select(candidateColumns)
       .from(ticket)
       .leftJoin(sprintNameCache, eq(ticket.sprintName, sprintNameCache.sprintId))
       .where(and(...conditions))
       .orderBy(desc(ticket.jiraUpdatedAt))
-      .limit(RECENT_LIMIT);
+      .limit(paginated ? PAGE_SIZE + 1 : RECENT_LIMIT)
+      .offset(paginated ? offset : 0);
+
+    const hasMore = paginated && rows.length > PAGE_SIZE;
+    if (hasMore) rows.pop();
 
     return NextResponse.json({
-      results: recentTickets.map((r) => ({
-        key: r.key,
-        title: r.title,
-        type: r.type ?? "task",
-        status: r.status,
-        sprintName: r.sprintDisplayName ?? r.sprintId,
-        source: "recent" as const,
-      })),
-      hasMore: false,
+      results: rows.map((r) => mapRow(r, "recent")),
+      hasMore,
+      facets,
     });
   }
 
-  if (!q || q.length < 2) {
-    return NextResponse.json({ results: [], hasMore: false });
+  if (!hasQuery) {
+    return empty();
   }
-
-  const isKeySearch = JIRA_KEY_RE.test(q);
 
   // Escape the LIKE escape char first, then the % / _ wildcards, so a query
   // containing those characters matches them literally (see ESCAPE clause below).
-  const pattern = `%${escapeLikePattern(q.replace(/\\/g, "\\\\"))}%`;
+  const pattern = `%${escapeLikePattern(q!.replace(/\\/g, "\\\\"))}%`;
   const conditions = [
     or(
       sql`${ticket.jiraKey} LIKE ${pattern} ESCAPE '\\'`,
       sql`${ticket.title} LIKE ${pattern} ESCAPE '\\'`,
     ),
     notDeleted,
+    ...buildFilterConditions(filters, isKeySearch),
   ];
-
-  // Only filter out sub-tasks for text searches, not when searching for a specific key
-  if (!isKeySearch) {
-    conditions.push(notSubTask);
-  }
 
   if (exclude) {
     conditions.push(ne(ticket.jiraKey, exclude));
   }
 
   const localResults = await db
-    .select({
-      key: ticket.jiraKey,
-      title: ticket.title,
-      type: ticket.type,
-      status: ticket.status,
-      sprintId: ticket.sprintName,
-      sprintDisplayName: sprintNameCache.displayName,
-    })
+    .select(candidateColumns)
     .from(ticket)
     .leftJoin(sprintNameCache, eq(ticket.sprintName, sprintNameCache.sprintId))
     .where(and(...conditions))
@@ -113,25 +262,20 @@ export async function GET(request: Request) {
   const hasMore = localResults.length > PAGE_SIZE;
   if (hasMore) localResults.pop();
 
-  const results: SearchResult[] = localResults.map((r) => ({
-    key: r.key,
-    title: r.title,
-    type: r.type ?? "task",
-    status: r.status,
-    sprintName: r.sprintDisplayName ?? r.sprintId,
-    source: "local" as const,
-  }));
+  const results: SearchResult[] = localResults.map((r) => mapRow(r, "local"));
 
-  // Skip Jira fallback on paginated requests, when we have enough, or when disabled
-  if (offset > 0 || results.length >= SPARSE_THRESHOLD || !jiraEnabled) {
-    return NextResponse.json({ results, hasMore });
+  // Skip Jira fallback on paginated requests, when we have enough, when disabled,
+  // or when user filters are active (the Jira text search can't honor them, so it
+  // would surface results that violate the chosen filters).
+  if (offset > 0 || results.length >= SPARSE_THRESHOLD || !jiraEnabled || hasUserFilters) {
+    return NextResponse.json({ results, hasMore, facets });
   }
 
   // Fallback to Jira when local results are sparse
   const localKeys = new Set(results.map((r) => r.key));
   try {
     if (isKeySearch) {
-      const issue = await jiraClient.getIssue(q.toUpperCase());
+      const issue = await jiraClient.getIssue(q!.toUpperCase());
       if (issue && (!exclude || issue.key !== exclude) && !localKeys.has(issue.key)) {
         results.push({
           key: issue.key,
@@ -139,11 +283,15 @@ export async function GET(request: Request) {
           type: issue.fields.issuetype?.name?.toLowerCase() ?? "task",
           status: issue.fields.status?.name ?? "To Do",
           sprintName: null,
+          epicKey: null,
+          assignee: issue.fields.assignee?.displayName ?? null,
+          jiraUpdatedAt: null,
+          project: projectOf(issue.key),
           source: "jira",
         });
       }
     } else {
-      const jql = `text ~ "${escapeJql(q)}" ORDER BY updated DESC`;
+      const jql = `text ~ "${escapeJql(q!)}" ORDER BY updated DESC`;
       const issues = await jiraClient.searchIssues(jql, ["summary", "status", "issuetype"], 10);
       for (const i of issues) {
         if (i.key === exclude || localKeys.has(i.key)) continue;
@@ -153,6 +301,10 @@ export async function GET(request: Request) {
           type: i.fields.issuetype?.name?.toLowerCase() ?? "task",
           status: i.fields.status?.name ?? "To Do",
           sprintName: null,
+          epicKey: null,
+          assignee: null,
+          jiraUpdatedAt: null,
+          project: projectOf(i.key),
           source: "jira",
         });
       }
@@ -161,5 +313,5 @@ export async function GET(request: Request) {
     // Jira unavailable: return whatever local results we have
   }
 
-  return NextResponse.json({ results, hasMore });
+  return NextResponse.json({ results, hasMore, facets });
 }

@@ -11,7 +11,37 @@ export interface LinkSearchResult {
   type: string;
   status: string;
   sprintName: string | null;
+  epicKey: string | null;
+  assignee: string | null;
+  jiraUpdatedAt: string | null;
+  project: string | null;
   source: "local" | "jira" | "recent";
+}
+
+// Server-computed option lists for the Link issue filter bar (BRDG-396). Covers
+// the whole candidate pool, so the dropdowns never collapse to the current filter.
+export interface LinkSearchFacets {
+  types: string[];
+  projects: string[];
+  assignees: string[];
+}
+
+// Server-side filters for the Link issue modal. All optional; an empty object is
+// a plain search. `types` is sent as a comma-joined CSV.
+export interface LinkSearchFilters {
+  types?: string[];
+  sprint?: string | null;
+  epic?: string | null;
+  assignee?: string | null;
+  project?: string | null;
+  updatedWithin?: string | null;
+  preset?: "epic" | "sprint" | null;
+}
+
+export interface LinkSearchResponse {
+  results: LinkSearchResult[];
+  hasMore: boolean;
+  facets?: LinkSearchFacets;
 }
 
 // ---------------------------------------------------------------------------
@@ -99,6 +129,21 @@ function qs(params: Record<string, string | number | boolean | undefined | null>
   }
   const s = p.toString();
   return s ? `?${s}` : "";
+}
+
+// Serializes Link issue filters into query params (BRDG-396). `qs()` drops
+// empty/undefined values, so absent filters add nothing to the URL.
+function linkFilterParams(f?: LinkSearchFilters): Record<string, string | undefined> {
+  if (!f) return {};
+  return {
+    types: f.types && f.types.length > 0 ? f.types.join(",") : undefined,
+    sprint: f.sprint ?? undefined,
+    epic: f.epic ?? undefined,
+    assignee: f.assignee ?? undefined,
+    project: f.project ?? undefined,
+    updatedWithin: f.updatedWithin ?? undefined,
+    preset: f.preset ?? undefined,
+  };
 }
 
 // ---------------------------------------------------------------------------
@@ -253,13 +298,13 @@ export const tickets = {
   clearRelatedSuggestions: (key: string, signal?: AbortSignal) =>
     apiFetch<void>(`/api/tickets/${enc(key)}/related-suggestions`, { method: "DELETE", signal }),
 
-  // Ticket search (for autocomplete)
-  searchForLink: (query: string, excludeKey?: string, offset?: number, signal?: AbortSignal) =>
-    apiFetch<{ results: LinkSearchResult[]; hasMore: boolean }>(`/api/tickets/search${qs({ q: query, exclude: excludeKey, jira: "0", offset: offset ? String(offset) : undefined })}`, { signal }),
-  searchForLinkWithJira: (query: string, excludeKey?: string, offset?: number, signal?: AbortSignal) =>
-    apiFetch<{ results: LinkSearchResult[]; hasMore: boolean }>(`/api/tickets/search${qs({ q: query, exclude: excludeKey, offset: offset ? String(offset) : undefined })}`, { signal }),
-  recentlyUpdated: (excludeKey?: string, signal?: AbortSignal) =>
-    apiFetch<{ results: LinkSearchResult[]; hasMore: boolean }>(`/api/tickets/search${qs({ recent: "1", exclude: excludeKey })}`, { signal }),
+  // Ticket search (for autocomplete + the Link issue filter bar, BRDG-396)
+  searchForLink: (query: string, excludeKey?: string, offset?: number, filters?: LinkSearchFilters, signal?: AbortSignal) =>
+    apiFetch<LinkSearchResponse>(`/api/tickets/search${qs({ q: query, exclude: excludeKey, jira: "0", offset: offset ? String(offset) : undefined, ...linkFilterParams(filters) })}`, { signal }),
+  searchForLinkWithJira: (query: string, excludeKey?: string, offset?: number, filters?: LinkSearchFilters, signal?: AbortSignal) =>
+    apiFetch<LinkSearchResponse>(`/api/tickets/search${qs({ q: query, exclude: excludeKey, offset: offset ? String(offset) : undefined, ...linkFilterParams(filters) })}`, { signal }),
+  recentlyUpdated: (excludeKey?: string, offset?: number, filters?: LinkSearchFilters, signal?: AbortSignal) =>
+    apiFetch<LinkSearchResponse>(`/api/tickets/search${qs({ recent: "1", exclude: excludeKey, offset: offset ? String(offset) : undefined, ...linkFilterParams(filters) })}`, { signal }),
 
   suggestSubtasks: (ticketKey: string, signal?: AbortSignal) =>
     apiFetch<{ taskId: string; streamUrl: string }>(

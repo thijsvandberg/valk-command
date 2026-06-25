@@ -29,12 +29,23 @@ interface SearchResult {
   type: string;
   status: string;
   sprintName: string | null;
+  epicKey: string | null;
+  assignee: string | null;
+  jiraUpdatedAt: string | null;
+  project: string | null;
   source: "local" | "jira" | "recent";
+}
+
+interface SearchFacets {
+  types: string[];
+  projects: string[];
+  assignees: string[];
 }
 
 interface SearchResponse {
   results: SearchResult[];
   hasMore: boolean;
+  facets?: SearchFacets;
 }
 
 function makeRequest(params: Record<string, string>): Request {
@@ -356,6 +367,217 @@ describe("GET /api/tickets/search", () => {
       const res = await GET(makeRequest({ q: "VPL-999" }));
       const data: SearchResponse = await res.json();
       expect(data.results[0].sprintName).toBeNull();
+    });
+  });
+
+  // BRDG-396: server-side filters for the Link issue modal
+  function isoDaysAgo(days: number): string {
+    return new Date(Date.now() - days * 86_400_000).toISOString();
+  }
+
+  function seedFilterFixtures() {
+    testDb.insert(ticket).values([
+      { jiraKey: "VPL-100", title: "Login marker bug", status: "TO DO", type: "bug", sprintName: "10", epicKey: "VPL-1", assignee: "Ada", jiraUpdatedAt: isoDaysAgo(1) },
+      { jiraKey: "VPL-101", title: "Login marker story", status: "IN PROGRESS", type: "story", sprintName: "20", epicKey: "VPL-2", assignee: "Bob", jiraUpdatedAt: isoDaysAgo(10) },
+      { jiraKey: "VPL-102", title: "Login marker subtask", status: "TO DO", type: "Subtask", sprintName: "10", epicKey: "VPL-1", assignee: "Ada", jiraUpdatedAt: isoDaysAgo(2) },
+      { jiraKey: "VPL-103", title: "Login marker task", status: "DONE", type: "task", sprintName: "10", epicKey: "VPL-1", assignee: "Bob", jiraUpdatedAt: isoDaysAgo(40) },
+      { jiraKey: "ABC-200", title: "Login marker other project", status: "TO DO", type: "story", sprintName: "30", epicKey: "ABC-1", assignee: "Cleo", jiraUpdatedAt: isoDaysAgo(1) },
+    ]).run();
+  }
+
+  describe("issue type filtering (BRDG-396)", () => {
+    it("hides Subtask-typed tickets by default", async () => {
+      seedFilterFixtures();
+      const res = await GET(makeRequest({ q: "marker", jira: "0" }));
+      const data: SearchResponse = await res.json();
+      const keys = data.results.map((r) => r.key);
+      expect(keys).not.toContain("VPL-102");
+      expect(keys).toContain("VPL-100");
+    });
+
+    it("includes subtasks when types opts them in", async () => {
+      seedFilterFixtures();
+      const res = await GET(makeRequest({ q: "marker", jira: "0", types: "subtask" }));
+      const data: SearchResponse = await res.json();
+      expect(data.results.map((r) => r.key)).toEqual(["VPL-102"]);
+    });
+
+    it("key search bypasses the default subtask exclusion", async () => {
+      seedFilterFixtures();
+      const res = await GET(makeRequest({ q: "VPL-102", jira: "0" }));
+      const data: SearchResponse = await res.json();
+      expect(data.results.map((r) => r.key)).toEqual(["VPL-102"]);
+    });
+
+    it("filters to the requested types", async () => {
+      seedFilterFixtures();
+      const res = await GET(makeRequest({ q: "marker", jira: "0", types: "bug,task" }));
+      const data: SearchResponse = await res.json();
+      expect(data.results.map((r) => r.key).sort()).toEqual(["VPL-100", "VPL-103"]);
+    });
+  });
+
+  describe("scalar filters (BRDG-396)", () => {
+    it("filters by sprint", async () => {
+      seedFilterFixtures();
+      const res = await GET(makeRequest({ q: "marker", jira: "0", sprint: "10" }));
+      const data: SearchResponse = await res.json();
+      // sprint 10 has VPL-100, VPL-103 (VPL-102 is a hidden subtask)
+      expect(data.results.map((r) => r.key).sort()).toEqual(["VPL-100", "VPL-103"]);
+    });
+
+    it("filters by epic", async () => {
+      seedFilterFixtures();
+      const res = await GET(makeRequest({ q: "marker", jira: "0", epic: "VPL-2" }));
+      const data: SearchResponse = await res.json();
+      expect(data.results.map((r) => r.key)).toEqual(["VPL-101"]);
+    });
+
+    it("filters by assignee", async () => {
+      seedFilterFixtures();
+      const res = await GET(makeRequest({ q: "marker", jira: "0", assignee: "Bob" }));
+      const data: SearchResponse = await res.json();
+      expect(data.results.map((r) => r.key).sort()).toEqual(["VPL-101", "VPL-103"]);
+    });
+
+    it("filters by project", async () => {
+      seedFilterFixtures();
+      const res = await GET(makeRequest({ q: "marker", jira: "0", project: "ABC" }));
+      const data: SearchResponse = await res.json();
+      expect(data.results.map((r) => r.key)).toEqual(["ABC-200"]);
+    });
+
+    it("filters by last-updated window", async () => {
+      seedFilterFixtures();
+      const res = await GET(makeRequest({ q: "marker", jira: "0", updatedWithin: "7d" }));
+      const data: SearchResponse = await res.json();
+      // within 7 days: VPL-100 (1d), VPL-102 (2d, but subtask hidden), ABC-200 (1d)
+      expect(data.results.map((r) => r.key).sort()).toEqual(["ABC-200", "VPL-100"]);
+    });
+
+    it("treats updatedWithin=any as no constraint", async () => {
+      seedFilterFixtures();
+      const res = await GET(makeRequest({ q: "marker", jira: "0", updatedWithin: "any" }));
+      const data: SearchResponse = await res.json();
+      // all non-subtask matches regardless of age
+      expect(data.results.map((r) => r.key).sort()).toEqual(["ABC-200", "VPL-100", "VPL-101", "VPL-103"]);
+    });
+
+    it("composes filters with the text query", async () => {
+      seedFilterFixtures();
+      const res = await GET(makeRequest({ q: "marker", jira: "0", sprint: "10", assignee: "Ada" }));
+      const data: SearchResponse = await res.json();
+      expect(data.results.map((r) => r.key)).toEqual(["VPL-100"]);
+    });
+  });
+
+  describe("browse without query (BRDG-396)", () => {
+    it("returns filtered results when a filter is set but there is no query", async () => {
+      seedFilterFixtures();
+      const res = await GET(makeRequest({ sprint: "10" }));
+      const data: SearchResponse = await res.json();
+      expect(data.results.map((r) => r.key).sort()).toEqual(["VPL-100", "VPL-103"]);
+    });
+
+    it("paginates browse results", async () => {
+      // 30 tickets in one sprint, all recent
+      const values = Array.from({ length: 30 }, (_, i) => ({
+        jiraKey: `VPL-${200 + i}`,
+        title: `Browse ${200 + i}`,
+        status: "TO DO",
+        type: "story",
+        sprintName: "55",
+        jiraUpdatedAt: isoDaysAgo(1),
+      }));
+      testDb.insert(ticket).values(values).run();
+
+      const first: SearchResponse = await (await GET(makeRequest({ sprint: "55" }))).json();
+      expect(first.results).toHaveLength(25);
+      expect(first.hasMore).toBe(true);
+
+      const second: SearchResponse = await (await GET(makeRequest({ sprint: "55", offset: "25" }))).json();
+      expect(second.results).toHaveLength(5);
+      expect(second.hasMore).toBe(false);
+    });
+
+    it("returns empty when there is neither a query nor a filter", async () => {
+      seedFilterFixtures();
+      const res = await GET(makeRequest({}));
+      const data: SearchResponse = await res.json();
+      expect(data.results).toEqual([]);
+    });
+  });
+
+  describe("presets (BRDG-396)", () => {
+    it("same-epic returns only candidates sharing the current ticket's epic", async () => {
+      seedFilterFixtures();
+      // VPL-101 is in epic VPL-2; nothing else shares it -> empty (it is excluded)
+      const res = await GET(makeRequest({ preset: "epic", exclude: "VPL-100" }));
+      const data: SearchResponse = await res.json();
+      // VPL-100's epic is VPL-1: shared by VPL-103 (VPL-102 is a hidden subtask)
+      expect(data.results.map((r) => r.key)).toEqual(["VPL-103"]);
+    });
+
+    it("same-sprint returns only candidates in the current ticket's sprint", async () => {
+      seedFilterFixtures();
+      const res = await GET(makeRequest({ preset: "sprint", exclude: "VPL-100" }));
+      const data: SearchResponse = await res.json();
+      // VPL-100's sprint is 10: shared by VPL-103 (VPL-102 hidden as subtask)
+      expect(data.results.map((r) => r.key)).toEqual(["VPL-103"]);
+    });
+
+    it("same-epic returns empty when the current ticket has no epic", async () => {
+      testDb.insert(ticket).values([
+        { jiraKey: "VPL-500", title: "No epic", status: "TO DO", type: "story" },
+        { jiraKey: "VPL-501", title: "Other", status: "TO DO", type: "story", epicKey: "VPL-9" },
+      ]).run();
+      const res = await GET(makeRequest({ preset: "epic", exclude: "VPL-500" }));
+      const data: SearchResponse = await res.json();
+      expect(data.results).toEqual([]);
+    });
+  });
+
+  describe("payload + facets (BRDG-396)", () => {
+    it("returns the extended payload fields", async () => {
+      seedFilterFixtures();
+      const res = await GET(makeRequest({ q: "marker", jira: "0", sprint: "20" }));
+      const data: SearchResponse = await res.json();
+      const row = data.results.find((r) => r.key === "VPL-101")!;
+      expect(row.epicKey).toBe("VPL-2");
+      expect(row.assignee).toBe("Bob");
+      expect(row.project).toBe("VPL");
+      expect(typeof row.jiraUpdatedAt).toBe("string");
+    });
+
+    it("returns facets covering the whole pool on the first page", async () => {
+      seedFilterFixtures();
+      const res = await GET(makeRequest({ q: "marker", jira: "0" }));
+      const data: SearchResponse = await res.json();
+      expect(data.facets).toBeDefined();
+      expect(data.facets!.projects.sort()).toEqual(["ABC", "VPL"]);
+      expect(data.facets!.assignees.sort()).toEqual(["Ada", "Bob", "Cleo"]);
+      expect(data.facets!.types).toContain("bug");
+      expect(data.facets!.types).toContain("Subtask");
+    });
+
+    it("omits facets on paginated requests", async () => {
+      seedTickets(30);
+      const res = await GET(makeRequest({ q: "Ticket", offset: "25", jira: "0" }));
+      const data: SearchResponse = await res.json();
+      expect(data.facets).toBeUndefined();
+    });
+  });
+
+  describe("Jira fallback with filters (BRDG-396)", () => {
+    it("skips Jira fallback when user filters are active", async () => {
+      seedFilterFixtures();
+      mockSearchIssues.mockResolvedValue([
+        { key: "VPL-900", fields: { summary: "Jira", issuetype: { name: "Bug" }, status: { name: "Open" } } },
+      ]);
+      const res = await GET(makeRequest({ q: "marker", sprint: "20" }));
+      const data: SearchResponse = await res.json();
+      expect(mockSearchIssues).not.toHaveBeenCalled();
+      expect(data.results.every((r) => r.source === "local")).toBe(true);
     });
   });
 });
