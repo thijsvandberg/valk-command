@@ -1,90 +1,93 @@
-# BRDG-390: Subtasks and linked-issues lists adopt the shared BoardRow
+# BRDG-390: Subtasks + linked-issues rows share one surface with BoardRow
 
 **Status:** Not Started
-**Priority:** Low
+**Priority:** Medium
 **Type:** Refactoring
 
 ## Description
 
-As a developer, I want the **subtasks list** (`SubtasksSection`) and the **linked-issues list** (`LinkedIssuesSection` -> `LinkedIssueRow`) on the ticket-detail page to render through the shared `BoardRow` instead of `ChildIssueRow`, finishing the row-unification series (BRDG-367 epic-children, BRDG-388 Compare, BRDG-389 refinement + cleanup).
+As a developer, I want the **subtasks list** (`SubtasksSection`) and the **linked-issues list** (`LinkedIssuesSection` -> `LinkedIssueRow`) to look like, and stay in sync with, the shared sprint-board row, **without** forcing them onto `BoardRow`.
 
-These are the **last and hardest** `ChildIssueRow` hosts. They are hard precisely because they lean on the slot flexibility that `BoardRow` deliberately does not have. So this story is **not** a copy of BRDG-367: it starts with a genuine go/no-go decision about whether the payoff is worth growing `BoardRow`.
+The goal here is **not** "one row component". It is:
+- **goed in elkaar** — a clean separation between the row's *look + state behaviour* and its *per-host content*;
+- **op elkaar lijkt** — subtasks/linked rows render the same surface as every other list (board, inbox, epic, compare, refinement, cleanup);
+- **één plek aanpassen** — a visual or surface-state change is made once and lands everywhere, instead of being hand-copied per row.
 
-## Why these two are hard
+So the chosen approach is: **keep `ChildIssueRow`** (its slots are a feature for these two hosts), but **extract the duplicated row "skin" into one shared source** that both `BoardRow` and `ChildIssueRow` consume.
 
-`ChildIssueRow` is a thin shell with open slots (`metadataSlot` / `actionsSlot` / `dragHandleSlot`) plus an inline-edit mode; `BoardRow` is a fat, board-tuned row with fixed props and no generic action/inline-edit affordance. Subtasks and linked issues use exactly the missing pieces:
+## Current state (after BRDG-367 / 388 / 389)
 
-### Subtasks (`SubtasksSection`) — hardest
-- **Inline rename:** externally-controlled edit mode (`isEditing` / `editValue` / `onEditChange` / `onSaveEdit` / `onCancelEdit`) rendering a plain `<input>`. `BoardRow` has its *own* rename (a pencil-triggered `<textarea>` via `onTitleChange`) with different ergonomics, so the two models must be reconciled.
-- **`actionsSlot`:** per-row **Edit + Delete** hover buttons. `BoardRow` has no generic actions overlay (only the fixed `onDiscard` / `onMarkRead` single-button treatments).
-- **`dragHandleSlot`:** subtask reorder, plus custom drag styling. Would re-point to `SortableBoardRow`.
-- **`metadataSlot`:** an editable `AssigneePicker` avatar (maps to `BoardRow`'s built-in assignee).
-- Data: `Subtask` (needs a `Subtask -> Ticket` adapter); has a static / pending variant too.
+The row-unification series is otherwise complete:
+- `BoardRow` / `SortableBoardRow` renders the sprint board, inbox, Story Writer landing, epic-children (both views), the **Compare view** (BRDG-388, legacy `TicketRow` deleted) and the **refinement + cleanup** lists (BRDG-389).
+- `ChildIssueRow` (~286 lines) is now imported by **only two** hosts: `SubtasksSection` and `LinkedIssueRow`.
 
-### Linked issues (`LinkedIssuesSection` -> `LinkedIssueRow`) — somewhat easier
-- **`actionsSlot`:** an **unlink** action (passed from the parent). Same "BoardRow has no generic actions slot" gap as subtasks.
-- **The relation:** each link carries a `relation` ("blocks" / "is blocked by" / "relates to", ...) that the parent manages and lets the PO change inline. There is no place for a relation label/editor in a `Ticket` or in `BoardRow`'s cluster, so it needs a new slot/prop or stays a host-level concern.
-- **Lazy hover-data:** the row fetches the linked ticket's details on hover (`useLinkedTicketData`, `onMouseEnter`), falling back to a `boardTicket` snapshot. `BoardRow` builds its hover card from the `Ticket` it is given, so the host must pre-load or inject that data.
-- Data: `LinkedIssue` (needs a `LinkedIssue -> Ticket` adapter); no inline rename, no reorder, so simpler than subtasks.
+These two stayed on `ChildIssueRow` on purpose: they use the slot flexibility `BoardRow` deliberately lacks (per-row Edit/Delete and unlink actions via `actionsSlot`, inline rename on subtasks, and the editable **relation** on linked issues). That flexibility is correct to keep; it is the *visual + state drift* between the two row implementations that this story removes.
 
-## The core decision (Phase 0)
+## The drift to remove
 
-The blocker both share is **`BoardRow` has no generic per-row action slot, and its inline rename differs from the subtask one.** To adopt `BoardRow` here, one of:
+Both rows hand-maintain the **same surface state machine** (precedence, highest first: selected / context-target > checked > flagged > focus > hover, plus independent opacity fades for deprecated / removed-from-jira / inflight, plus last-in-card rounding). Because it is written twice, it drifts. The 2026-06-17 investigation matrix documented it: `ChildIssueRow` is missing context-target, keyboard-focus, removed-from-jira and live-pulse states, and it uses a different accent mechanism (`box-shadow: inset 3px 0`) than `BoardRow` (`border-l-[3px]`). The recent left-accent tweak (BRDG-367) is a concrete example: it had to be reasoned about separately because the surfaces are separate.
 
-1. **Grow `BoardRow`** with an opt-in generic actions slot (a `rowActions?: ReactNode` overlay) and reconcile/extend inline edit. Lets everything share one row, but adds surface and regression risk to a perf-critical component used across the whole board.
-2. **Keep `ChildIssueRow` for these two** and accept that "slotted" lists (actions + inline edit + relation) keep a thin slotted row, while board-shaped lists use `BoardRow`. Two row components by design, not by drift.
-3. **Shared-surface fallback:** extract only the row-surface state machine (`rowSurfaceClasses(state, { accent })`) so `ChildIssueRow` stops drifting from `BoardRow` visually, without merging them. Keeps the slot flexibility, removes the visual drift, retires nothing.
+## Approach: extract a shared row surface
 
-Phase 0 must pick one, with the PO, **before** any migration code. Given how much `BoardRow` would have to grow, option 2 or 3 is a legitimate outcome here (it is fine for this story to conclude "don't fully merge these").
+1. **Extract `rowSurfaceClasses(state, opts)`** — a pure helper that returns the className string for the row's surface element, given a state object (`{ selected, contextTarget, checked, flagged, focused, deprecated, removed, inflight, lastInCard, hideAccent }`) and options (e.g. `accent`). Lift it from `BoardRow` (the more complete implementation), so the board's surface is unchanged.
+2. **`BoardRow` consumes the helper** for its surface `<div>` (inside its `<tr><td>`). No visual change to any existing `BoardRow` host.
+3. **`ChildIssueRow` consumes the same helper** for its surface `<div>`. This pulls in the states it was missing (context-target, focus, removed, live-pulse) and makes subtasks/linked match the board.
+4. **Standardise the accent mechanism** so the rows actually look alike (pick one: `BoardRow`'s `border-l` is the natural choice; `ChildIssueRow`'s inset shadow goes away).
+5. **Drift-guard test** — assert that `BoardRow` and `ChildIssueRow` produce the same surface classes for the same state, so the two cannot silently diverge again.
+
+The element wrapper stays per-component (`BoardRow` is a `<tr><td><div>`, `ChildIssueRow` is a `<div>`); only the **surface classes on that div** are shared, which is exactly the part that drifts.
+
+What stays per-component (unchanged):
+- `BoardRow`: its inline metadata cluster (SP/BV/epic/sprint/quality/assignee/warnings/session decorations) and its `SortableBoardRow` DnD.
+- `ChildIssueRow`: `metadataSlot` / `actionsSlot` / `dragHandleSlot`, inline rename, lazy hover-data, and the linked-issue relation handling.
+
+## Considered and rejected: merge subtasks/linked into BoardRow
+
+Folding these two onto `BoardRow` (deleting `ChildIssueRow`) was considered and rejected:
+- It would require **growing `BoardRow`** with a generic per-row actions overlay and an externally-controlled inline-rename mode, adding surface and regression risk to the most perf-critical, widely-used row in the app.
+- The payoff is only "delete a 286-line component" — and with the shared surface above, that component no longer drifts anyway.
+- "One component" is explicitly **not** a goal; "consistent + maintainable" is, and the shared surface delivers that at a fraction of the risk.
+
+If a future need makes full merge worthwhile, it is a separate decision; this story deliberately does not pursue it.
 
 ## Preconditions
 
-- [ ] BRDG-367 merged (the `BoardRow` reuse pattern is in place).
 - [ ] Clean working tree; commit each phase as its own logical unit.
 
-## Phase 0: Investigation + decision (no production code)
+## Phase 1: Extract the shared surface from `BoardRow`
 
-- [ ] Inventory exactly what `SubtasksSection` and `LinkedIssuesSection` feed `ChildIssueRow` (slots, inline-edit wiring, relation handling, lazy hover-data, pending rows).
-- [ ] Decide option 1 / 2 / 3 above with the PO. Capture in `docs/investigations/`.
-- [ ] If option 2 or 3: this story becomes the shared-surface extraction (or a close-out), not a full migration.
+- [ ] Add `rowSurfaceClasses(state, opts)` (its own module, e.g. `src/components/sprint-board/row-surface.ts`).
+- [ ] Re-point `BoardRow`'s surface `<div>` at the helper; confirm **zero** visual/behavioural change for the board / inbox / Story Writer / epic / compare / refinement / cleanup hosts (snapshot + the existing host tests).
+- [ ] Add the drift-guard test.
 
-## Phase 1 (only if option 1): grow `BoardRow`
+## Phase 2: Point `ChildIssueRow` at the same surface
 
-- [ ] Add an opt-in generic actions overlay to `BoardRow` (e.g. `rowActions?: ReactNode`), inert for existing hosts, reusing the existing hover-fade overlay treatment.
-- [ ] Reconcile inline rename so an externally-controlled edit mode is supported alongside the pencil trigger.
-- [ ] Unit-test both additions; confirm no change for the board / inbox / Story Writer / epic / (BRDG-389) refinement + cleanup hosts.
-
-## Phase 2 (option 1): migrate linked issues
-
-- [ ] Add a `LinkedIssue -> Ticket` adapter; feed hover-data (pre-loaded or injected) so the on-hover card still works.
-- [ ] Render `LinkedIssueRow` via `BoardRow` in a per-card `<table><tbody>`; wire the unlink action through the new actions overlay; keep the relation label/editor at the section level (or via a new slot).
-- [ ] Remove `ChildIssueRow` from `LinkedIssueRow`; update tests; `verify` + `build` green; PO visual check.
-
-## Phase 3 (option 1): migrate subtasks
-
-- [ ] Add a `Subtask -> Ticket` adapter (incl. the pending/static variant).
-- [ ] Render subtasks via `BoardRow` / `SortableBoardRow` (reorder), wiring Edit + Delete through the actions overlay and rename through the reconciled inline edit.
-- [ ] Remove `ChildIssueRow` from `SubtasksSection`; update tests (reorder, rename, delete); `verify` + `build` green; PO visual + drag check.
+- [ ] Re-point `ChildIssueRow`'s surface `<div>` at `rowSurfaceClasses`, standardising on the shared accent (drop the inset-shadow accent).
+- [ ] Verify subtasks (`SubtasksSection`) and linked issues (`LinkedIssuesSection`): all surface states (selected / context-target / checked / flagged / focus / hover / deprecated / removed / inflight / last-in-card rounding) now match the board, while Edit/Delete, inline rename, drag-reorder, unlink and relation-change behave exactly as before.
+- [ ] Update the affected tests; `npm run verify` + `npm run build` green; PO visual check of the ticket-detail subtasks + linked-issues lists.
 
 ## Acceptance Criteria
 
-- [ ] A decision is recorded (full adoption vs keep-`ChildIssueRow` vs shared-surface).
-- [ ] If full adoption: subtasks and linked issues render via `BoardRow`; `ChildIssueRow` is no longer imported by `SubtasksSection` or `LinkedIssueRow`; with it gone from all hosts, `ChildIssueRow.tsx` is deleted.
-- [ ] Subtask reorder + rename + delete, and linked-issue unlink + relation change, behave as before.
-- [ ] No regression on any other `BoardRow` host.
+- [ ] One shared source (`rowSurfaceClasses` or equivalent) defines the row surface state machine, consumed by both `BoardRow` and `ChildIssueRow`.
+- [ ] Subtasks and linked-issues rows visually match the board rows across all surface states; a surface change made once applies to both.
+- [ ] `ChildIssueRow` keeps its slots, inline rename, lazy hover-data and relation handling; subtasks/linked behaviour is unchanged.
+- [ ] A drift-guard test prevents the two surfaces from diverging again.
+- [ ] No regression on any `BoardRow` host.
 - [ ] `npm run verify` and `npm run build` pass.
+- [ ] Explicitly out: subtasks/linked are **not** moved onto `BoardRow`, and `ChildIssueRow` is **not** deleted.
 
 ## Out of scope
 
-- The other row migrations: epic-children (BRDG-367, done), Compare view (BRDG-388), refinement + cleanup (BRDG-389). The inbox already uses `BoardRow`.
-- Any change to subtask/linked-issue data models, link types, or the ticket-detail layout.
+- Merging subtasks/linked into `BoardRow` or deleting `ChildIssueRow` (rejected above).
+- The other row migrations: epic-children (BRDG-367), Compare (BRDG-388), refinement + cleanup (BRDG-389) — all done. Inbox already used `BoardRow`.
+- Sharing the gutters (checkbox + grip) and the hover-actions overlay as a `<RowShell>` component. A reasonable later step if drift reappears beyond the surface classes, but not required to meet this story's goal.
 
 ## Fallback
 
-Option 3 above is the built-in fallback: extract the shared row-surface state machine and add a drift-guard test, keeping `ChildIssueRow`'s slots. This is the same fallback BRDG-367 / 388 / 389 define, and for these two hosts it may well be the recommended end state rather than a last resort.
+If the two surface `<div>`s turn out to diverge too much to share one helper cleanly, the minimum acceptable outcome is the drift-guard test plus a short documented surface-state checklist, so the duplication is at least guarded and the gaps (context-target, focus, removed, live-pulse) are closed by hand once.
 
 ## References
 
-- [BRDG-367: Epic-children list adopts the shared BoardRow](completed/BRDG-367-epic-children-adopt-board-row.md) — the precedent.
-- [BRDG-388: Compare view](BRDG-388-compare-view-adopt-board-row.md) · [BRDG-389: refinement + cleanup](BRDG-389-refinement-cleanup-adopt-board-row.md) — sibling migrations.
-- [docs/investigations/2026-06-17-unified-issue-row.md](../investigations/2026-06-17-unified-issue-row.md) — original analysis (lists `ChildIssueRow`'s hosts and the slot model).
+- [BRDG-367: Epic-children list adopts the shared BoardRow](completed/BRDG-367-epic-children-adopt-board-row.md) — the precedent; the left-accent tweak that motivated a shared surface.
+- [BRDG-388: Compare view](BRDG-388-compare-view-adopt-board-row.md) · [BRDG-389: refinement + cleanup](BRDG-389-refinement-cleanup-adopt-board-row.md) — completed sibling migrations.
+- [docs/investigations/2026-06-17-unified-issue-row.md](../investigations/2026-06-17-unified-issue-row.md) — the surface-state comparison matrix (documents the exact drift this story removes).
