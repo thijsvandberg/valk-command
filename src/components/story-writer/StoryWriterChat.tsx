@@ -23,7 +23,7 @@ import {
 } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import type { WorkspaceUsage } from "@/hooks/useStoryWriter";
-import type { RelatedStoryCandidateRow } from "@/db/schema";
+import type { RelatedStoryCandidate } from "@/types/story-writer";
 import {
   ChatMessage,
   DraftCard,
@@ -52,7 +52,7 @@ interface StoryWriterChatProps {
   onFindRelated?: () => void;
   onOpenRelatedPanel?: () => void;
   onStoryKeyClick?: (key: string) => void;
-  relatedCandidates?: RelatedStoryCandidateRow[];
+  relatedCandidates?: RelatedStoryCandidate[];
   onLinkCandidate?: (candidateId: string, isLinked: boolean) => Promise<void>;
   messageDraftMap: Record<string, string>;
   draftContentMap: Record<string, string>;

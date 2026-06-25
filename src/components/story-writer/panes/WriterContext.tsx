@@ -2,9 +2,9 @@
 
 import { createContext, useContext } from "react";
 import type { ReactNode } from "react";
-import type { StoryWriterSessionRow, StoryWriterDraftRow, RelatedStoryCandidateRow } from "@/db/schema";
+import type { StoryWriterSessionRow, StoryWriterDraftRow } from "@/db/schema";
 import type { Message } from "@/types/chat";
-import type { StoryWriterStatus } from "@/types/story-writer";
+import type { StoryWriterStatus, RelatedStoryCandidate } from "@/types/story-writer";
 import type { WorkspaceUsage } from "@/hooks/useStoryWriter";
 import type { Ticket, TicketDetail, IssueType, Assignee } from "@/types/ticket";
 
@@ -17,7 +17,7 @@ export interface WriterContextValue {
   messages: Message[];
   aiDrafts: StoryWriterDraftRow[];
   targetAiDrafts: StoryWriterDraftRow[];
-  relatedCandidates: RelatedStoryCandidateRow[];
+  relatedCandidates: RelatedStoryCandidate[];
   status: StoryWriterStatus;
   streamProgress: string;
   streamError: string | null;

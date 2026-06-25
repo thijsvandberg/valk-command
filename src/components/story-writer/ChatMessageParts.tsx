@@ -1,9 +1,9 @@
 "use client";
 
-import { useEffect, useRef, useState, useCallback } from "react";
+import { useEffect, useRef, useState, useCallback, useMemo } from "react";
 import { useOutsideClick } from "@/hooks/useOutsideClick";
 import type { Message } from "@/types/chat";
-import type { RelatedStoryCandidateRow } from "@/db/schema";
+import type { RelatedStoryCandidate } from "@/types/story-writer";
 import {
   FileText,
   ChevronDown,
@@ -330,6 +330,7 @@ export function ChatMessage({
         let c = message.content
           .replace(/<story-draft>[\s\S]*?<\/story-draft>/g, "")
           .replace(/<related-stories>[\s\S]*?<\/related-stories>/g, "")
+          .replace(/<related-request\b[^>]*?\/?>(?:<\/related-request>)?/gi, "")
           .replace(/<html-report>[\s\S]*?<\/html-report>/g, "")
           .replace(/<summary>[\s\S]*?<\/summary>/g, "")
           .replace(/<type-suggestion>[\s\S]*?<\/type-suggestion>/g, "")
@@ -663,12 +664,20 @@ export function RelatedStoriesInline({
   onLink,
   onOpenPanel,
 }: {
-  candidates: RelatedStoryCandidateRow[];
+  candidates: RelatedStoryCandidate[];
   onLink: (candidateId: string, isLinked: boolean) => Promise<void>;
   onOpenPanel?: () => void;
 }) {
   const [linkingId, setLinkingId] = useState<string | null>(null);
   const [hoverByKey, setHoverByKey] = useState<Record<string, TicketPillHoverData>>({});
+
+  // The resolved sprint name comes from the candidate (server-enriched), keyed by
+  // jiraKey so the hover effect can fold it in without re-fetching.
+  const sprintNameByKey = useMemo(() => {
+    const map: Record<string, string | null> = {};
+    for (const c of candidates) map[c.jiraKey] = c.sprintName ?? null;
+    return map;
+  }, [candidates]);
 
   useEffect(() => {
     let cancelled = false;
@@ -687,8 +696,8 @@ export function RelatedStoriesInline({
               title: data.title,
               storyPoints: data.storyPoints,
               businessValue: data.businessValue,
-              sprintId: null,
-              sprintName: data.sprintId ?? null,
+              sprintId: data.sprintId ?? null,
+              sprintName: sprintNameByKey[key] ?? null,
               epicKey: data.epicKey,
               epic: data.epic,
               assignee: data.assignee ?? null,
@@ -755,7 +764,11 @@ export function RelatedStoriesInline({
             title={c.title}
             size="sm"
             variant="list"
-            hoverData={hoverByKey[c.jiraKey]}
+            hoverData={
+              hoverByKey[c.jiraKey]
+                ? { ...hoverByKey[c.jiraKey], sprintName: c.sprintName ?? hoverByKey[c.jiraKey].sprintName }
+                : undefined
+            }
           />
           <span className="min-w-0 flex-1 truncate text-label text-text-secondary">
             {c.title}

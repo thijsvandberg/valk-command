@@ -1,7 +1,11 @@
-import type { StoryWriterSessionRow, StoryWriterDraftRow, Message } from "@/db/schema";
+import type { StoryWriterSessionRow, StoryWriterDraftRow, Message, RelatedStoryCandidateRow } from "@/db/schema";
 import type { Ticket, Assignee, IssueType, JiraStatus, TicketReadiness } from "@/types/ticket";
 
 export type StoryWriterStatus = "idle" | "loading" | "ready" | "sending" | "streaming";
+
+// Related-story candidate as served to the UI: the stored row plus the sprint name
+// resolved server-side from the candidate's ticket (not a stored column, BRDG-397).
+export type RelatedStoryCandidate = RelatedStoryCandidateRow & { sprintName?: string | null };
 
 export type StoryWriterSessionStatus = "active" | "completed" | "discarded";
 

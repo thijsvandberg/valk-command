@@ -3,7 +3,7 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 import { createTestDb } from "@/db/test-utils";
 import type { BetterSQLite3Database } from "drizzle-orm/better-sqlite3";
 import type * as schema from "@/db/schema";
-import { ticket, storyVersion, storyWriterDraft, storyWriterSession, conversation, ticketLocalEdit } from "@/db/schema";
+import { ticket, storyVersion, storyWriterDraft, storyWriterSession, conversation, ticketLocalEdit, relatedStoryCandidate, sprintNameCache } from "@/db/schema";
 import { eq } from "drizzle-orm";
 
 let testDb: BetterSQLite3Database<typeof schema>;
@@ -144,6 +144,36 @@ describe("Story Writer Session CRUD", () => {
         .where(eq(storyWriterSession.id, "sws-200"))
         .get();
       expect(persisted?.localDraft).toBe("Description that arrived after the session");
+    });
+
+    it("enriches related candidates with the resolved sprint name (BRDG-397)", async () => {
+      seedTicket(testDb, "VPL-100");
+      seedVersion(testDb, "VPL-100");
+      // The candidate's ticket, synced locally with its sprint id + name cached.
+      testDb.insert(ticket).values({
+        jiraKey: "VPL-555", title: "Candidate", status: "IN PROGRESS", sprintName: "900",
+      }).run();
+      testDb.insert(sprintNameCache).values({ sprintId: "900", displayName: "BT: 139" }).run();
+
+      const createRes = await POST(
+        makeRequest(`${BASE}/VPL-100/story-writer`, { method: "POST" }),
+        makeParams("VPL-100"),
+      );
+      const created = await createRes.json();
+
+      testDb.insert(relatedStoryCandidate).values({
+        id: "cand-1", sessionId: created.session.id, ticketKey: "VPL-100",
+        jiraKey: "VPL-555", score: 80, title: "Candidate", status: "IN PROGRESS", isLinked: false,
+        createdAt: new Date().toISOString(),
+      }).run();
+
+      const res = await GET(
+        makeRequest(`${BASE}/VPL-100/story-writer`),
+        makeParams("VPL-100"),
+      );
+      const data = await res.json();
+      const cand = data.relatedCandidates.find((c: { jiraKey: string }) => c.jiraKey === "VPL-555");
+      expect(cand.sprintName).toBe("BT: 139");
     });
   });
 

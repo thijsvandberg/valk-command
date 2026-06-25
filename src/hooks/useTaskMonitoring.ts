@@ -1,9 +1,9 @@
 "use client";
 
 import { useCallback, useRef, useEffect } from "react";
-import type { StoryWriterStatus } from "@/types/story-writer";
-import type { RelatedStoryCandidateRow } from "@/db/schema";
+import type { StoryWriterStatus, RelatedStoryCandidate } from "@/types/story-writer";
 import { apiFetch, ApiError } from "@/lib/api-client";
+import { parseRelatedRequest } from "@/lib/parse-related-request";
 import { attachTaskStreamListeners } from "./useStreamingTask";
 
 export interface WorkspaceUsage {
@@ -25,7 +25,7 @@ interface TaskMonitoringOptions {
   onError: (s: string | null) => void;
   onUsage: (u: WorkspaceUsage) => void;
   onDuration: (d: number) => void;
-  onRelatedCandidates: (c: RelatedStoryCandidateRow[]) => void;
+  onRelatedCandidates: (c: RelatedStoryCandidate[]) => void;
   refreshSession: () => Promise<void>;
 }
 
@@ -62,6 +62,9 @@ export function useTaskMonitoring(options: TaskMonitoringOptions) {
   const cancelledRef = useRef(false);
   const refreshSessionRef = useRef<() => Promise<void>>(async () => {});
   useEffect(() => { refreshSessionRef.current = options.refreshSession; }, [options.refreshSession]);
+  // Self-reference so applyResult can chain a follow-up task (the targeted related
+  // search) without a circular useCallback dependency.
+  const startMonitoringRef = useRef<(taskId: string, progressMessage?: string) => void>(() => {});
 
   useEffect(() => {
     return () => {
@@ -112,7 +115,7 @@ export function useTaskMonitoring(options: TaskMonitoringOptions) {
       const applyRelatedPromise = hasRelatedTags
         ? (async () => {
             try {
-              const relatedData = await apiFetch<{ candidates?: RelatedStoryCandidateRow[] }>(`${apiBase}/apply-related`, {
+              const relatedData = await apiFetch<{ candidates?: RelatedStoryCandidate[] }>(`${apiBase}/apply-related`, {
                 method: "POST",
                 body: { output, taskId },
               });
@@ -151,6 +154,25 @@ export function useTaskMonitoring(options: TaskMonitoringOptions) {
           onDuration(Date.now() - sendStartRef.current);
           sendStartRef.current = null;
         }
+
+        // Auto-chain: a compose turn that asked to find/link related stories emits a
+        // <related-request> tag. Kick off a targeted find-related and hand status over
+        // to monitoring the chained task. find-related output uses <related-stories>,
+        // not <related-request>, so this never recurses.
+        const relatedReq = ticketKey ? parseRelatedRequest(output) : null;
+        if (relatedReq) {
+          try {
+            const res = await apiFetch<{ taskId?: string }>(`${apiBase}/related-request`, {
+              method: "POST",
+              body: { query: relatedReq.query, sprint: relatedReq.sprint },
+            });
+            if (res.taskId && !unmountedRef.current) {
+              startMonitoringRef.current(res.taskId, "Searching related stories...");
+              return;
+            }
+          } catch { /* non-critical: fall through to ready */ }
+        }
+
         onStatus("ready");
         onProgress("");
       }
@@ -257,6 +279,8 @@ export function useTaskMonitoring(options: TaskMonitoringOptions) {
       },
     });
   }, [apiBase, applyOutputBase, ticketKey, unmountedRef, onStatus, onProgress, onError, onUsage, onDuration, onRelatedCandidates]);
+
+  useEffect(() => { startMonitoringRef.current = startMonitoring; }, [startMonitoring]);
 
   const cancelTask = useCallback((_taskId: string) => {
     // Prevent any in-flight poll/SSE result from being applied

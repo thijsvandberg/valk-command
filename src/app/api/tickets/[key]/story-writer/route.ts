@@ -9,6 +9,7 @@ import { eq, and, desc, sql } from "drizzle-orm";
 import { randomUUID } from "crypto";
 import { logActivity } from "@/lib/activity-logger";
 import { markdownEqualIgnoringSpacing } from "@/lib/normalize-markdown";
+import { enrichCandidatesWithSprintName } from "@/lib/related-candidate-sprint";
 import { logger } from "@/lib/logger";
 import { applyRateLimit } from "@/lib/rate-limiter";
 import { resolveDraftKey } from "@/lib/draft-sync";
@@ -138,7 +139,7 @@ export async function GET(request: Request, { params }: RouteContext) {
         createdAt: now,
       }));
 
-    const relatedCandidates = [...sessionCandidates, ...linkCandidates];
+    const relatedCandidates = await enrichCandidatesWithSprintName([...sessionCandidates, ...linkCandidates]);
 
     // Outdated detection: the Jira version moved on after this draft's baseline.
     // Mirrors the conflict semantics in ticket-service.pushToJira (null-guarded).

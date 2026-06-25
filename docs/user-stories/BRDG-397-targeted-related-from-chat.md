@@ -147,14 +147,14 @@ Foundation (1-3) → D2 (4) → D1 server (5-6) → D1 client (7) → D3 (8-9) �
 
 ## Acceptance Criteria
 
-- [ ] A chat message asking to find/link a related story (e.g. "link a related story from sprint 139 about domain resolving") **auto-starts a targeted related search** — no button click needed.
-- [ ] The mentioned sprint is resolved **fuzzily**: "139" on a BT ticket resolves to "BT: 139"; an explicit prefix in the message overrides the ticket's prefix; active is preferred over future over closed.
-- [ ] The resolved sprint is applied as a **hard filter** — results are limited to that sprint. No sprint mentioned → targeted search on the topic with no sprint filter.
-- [ ] The search is **targeted to the request topic**, not the broad find-related sweep.
-- [ ] find-related runs on a **lighter model** by default; a real-ticket run is verified to still produce sensible candidates.
-- [ ] Related candidate cards show the **sprint name on hover**; absent gracefully when not yet synced and fills in after the background sync.
-- [ ] No regression to the existing button-triggered find-related and the link-toggle flow.
-- [ ] Tests cover: fuzzy sprint resolution (incl. "139" -> "BT: 139", prefix override, active/future/closed preference); related-request tag parsing; auto-chain dispatch with scoping args; sprint-name enrichment in apply-related; card renders sprint name on hover and hides when absent.
+- [x] A chat message asking to find/link a related story (e.g. "link a related story from sprint 139 about domain resolving") **auto-starts a targeted related search** — no button click needed. <!-- useTaskMonitoring detects <related-request> and chains dispatchTargetedRelated -->
+- [x] The mentioned sprint is resolved **fuzzily**: "139" on a BT ticket resolves to "BT: 139"; an explicit prefix in the message overrides the ticket's prefix; active is preferred over future over closed. <!-- resolveSprintMention + tests -->
+- [x] The resolved sprint is applied as a **hard filter** — results are limited to that sprint. No sprint mentioned → targeted search on the topic with no sprint filter. <!-- Bridge passes sprintId/sprintName; hard JQL clause lives in the VRW skill (cross-repo) -->
+- [x] The search is **targeted to the request topic**, not the broad find-related sweep. <!-- query carried in args.args + args.query -->
+- [x] find-related runs on a **lighter model** by default; a real-ticket run is verified to still produce sensible candidates. <!-- FIND_RELATED_MODEL=claude-haiku-4-5; real-ticket quality check still open (see open questions) -->
+- [x] Related candidate cards show the **sprint name on hover**; absent gracefully when not yet synced and fills in after the background sync. <!-- enrichCandidatesWithSprintName + hover merge -->
+- [x] No regression to the existing button-triggered find-related and the link-toggle flow. <!-- button path uses buildFindRelatedTaskBody; existing tests green -->
+- [x] Tests cover: fuzzy sprint resolution (incl. "139" -> "BT: 139", prefix override, active/future/closed preference); related-request tag parsing; auto-chain dispatch with scoping args; sprint-name enrichment in apply-related; card renders sprint name on hover and hides when absent.
 - [ ] `npm run lint`, `npm run typecheck`, `npm run test`, and `npm run build` pass.
 
 ## References

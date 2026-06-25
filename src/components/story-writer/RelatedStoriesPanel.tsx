@@ -7,11 +7,11 @@ import { Button } from "@/components/ui/Button";
 import { IssueTypeIcon } from "@/components/shared/IssueTypeIcon";
 import { StatusBadge } from "@/components/shared/StatusBadge";
 import type { JiraStatus } from "@/types/ticket";
-import type { RelatedStoryCandidateRow } from "@/db/schema";
+import type { RelatedStoryCandidate } from "@/types/story-writer";
 import { renderMarkdown } from "@/components/ticket-detail/renderMarkdown";
 
 interface RelatedStoriesPanelProps {
-  candidates: RelatedStoryCandidateRow[];
+  candidates: RelatedStoryCandidate[];
   onLink: (candidateId: string, isLinked: boolean) => Promise<void>;
   onClose: () => void;
   selectedKey: string | null;
@@ -53,7 +53,7 @@ function CandidateCard({
   onSelect,
   isSelected,
 }: {
-  candidate: RelatedStoryCandidateRow;
+  candidate: RelatedStoryCandidate;
   onLink: (isLinked: boolean) => Promise<void>;
   onSelect: () => void;
   isSelected: boolean;
@@ -106,6 +106,14 @@ function CandidateCard({
           {candidate.jiraKey}
         </a>
         <MiniStatusBadge status={candidate.status} />
+        {candidate.sprintName && (
+          <span
+            title={candidate.sprintName}
+            className="min-w-0 truncate text-caption text-text-tertiary opacity-0 transition-opacity duration-150 group-hover:opacity-100"
+          >
+            {candidate.sprintName}
+          </span>
+        )}
         <div className="ml-auto shrink-0">
           <button
             type="button"

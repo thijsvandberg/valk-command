@@ -1,9 +1,9 @@
 "use client";
 
 import { useState, useCallback, useRef, useEffect } from "react";
-import type { StoryWriterSessionRow, StoryWriterDraftRow, RelatedStoryCandidateRow } from "@/db/schema";
+import type { StoryWriterSessionRow, StoryWriterDraftRow } from "@/db/schema";
 import type { Message } from "@/types/chat";
-import type { StoryWriterStatus } from "@/types/story-writer";
+import type { StoryWriterStatus, RelatedStoryCandidate } from "@/types/story-writer";
 import { useTaskMonitoring, type WorkspaceUsage } from "./useTaskMonitoring";
 import { useStoryWriterDrafts } from "./useStoryWriterDrafts";
 import { friendlyAgentError } from "@/lib/agent-errors";
@@ -29,7 +29,7 @@ export function useStoryWriter(ticketKey: string, options?: UseStoryWriterOption
   }, []);
   const [messages, setMessages] = useState<Message[]>([]);
   const [allDrafts, setAllDrafts] = useState<StoryWriterDraftRow[]>([]);
-  const [relatedCandidates, setRelatedCandidates] = useState<RelatedStoryCandidateRow[]>([]);
+  const [relatedCandidates, setRelatedCandidates] = useState<RelatedStoryCandidate[]>([]);
   const [cards, setCards] = useState<EpicChildCardWithSprint[]>([]);
   const [outdated, setOutdated] = useState(false);
   const [targetOutdated, setTargetOutdated] = useState(false);
@@ -78,7 +78,7 @@ export function useStoryWriter(ticketKey: string, options?: UseStoryWriterOption
           );
         });
         setAllDrafts(((data as Record<string, unknown>).aiDrafts as StoryWriterDraftRow[] | undefined) ?? []);
-        setRelatedCandidates(((data as Record<string, unknown>).relatedCandidates as RelatedStoryCandidateRow[] | undefined) ?? []);
+        setRelatedCandidates(((data as Record<string, unknown>).relatedCandidates as RelatedStoryCandidate[] | undefined) ?? []);
         setOutdated(((data as Record<string, unknown>).outdated as boolean | undefined) ?? false);
         setTargetOutdated(((data as Record<string, unknown>).targetOutdated as boolean | undefined) ?? false);
         setCards(((data as Record<string, unknown>).cards as EpicChildCardWithSprint[] | undefined) ?? []);
@@ -159,7 +159,7 @@ export function useStoryWriter(ticketKey: string, options?: UseStoryWriterOption
             setSession(data.session as StoryWriterSessionRow);
             setMessages(data.messages as Message[]);
             setAllDrafts((data.aiDrafts as StoryWriterDraftRow[] | undefined) ?? []);
-            setRelatedCandidates((data.relatedCandidates as RelatedStoryCandidateRow[] | undefined) ?? []);
+            setRelatedCandidates((data.relatedCandidates as RelatedStoryCandidate[] | undefined) ?? []);
             setOutdated((data.outdated as boolean | undefined) ?? false);
             setTargetOutdated((data.targetOutdated as boolean | undefined) ?? false);
             setCards((data.cards as EpicChildCardWithSprint[] | undefined) ?? []);
@@ -194,7 +194,7 @@ export function useStoryWriter(ticketKey: string, options?: UseStoryWriterOption
                       setSession(refreshed.session as StoryWriterSessionRow);
                       setMessages(refreshed.messages as Message[]);
                       setAllDrafts((refreshed.aiDrafts as StoryWriterDraftRow[] | undefined) ?? []);
-                      setRelatedCandidates((refreshed.relatedCandidates as RelatedStoryCandidateRow[] | undefined) ?? []);
+                      setRelatedCandidates((refreshed.relatedCandidates as RelatedStoryCandidate[] | undefined) ?? []);
                       setOutdated((refreshed.outdated as boolean | undefined) ?? false);
                       setTargetOutdated((refreshed.targetOutdated as boolean | undefined) ?? false);
                       setCards((refreshed.cards as EpicChildCardWithSprint[] | undefined) ?? []);
@@ -240,7 +240,7 @@ export function useStoryWriter(ticketKey: string, options?: UseStoryWriterOption
                   setSession(retryData.session as StoryWriterSessionRow);
                   setMessages((retryData.messages as Message[] | undefined) ?? []);
                   setAllDrafts((retryData.aiDrafts as StoryWriterDraftRow[] | undefined) ?? []);
-                  setRelatedCandidates((retryData.relatedCandidates as RelatedStoryCandidateRow[] | undefined) ?? []);
+                  setRelatedCandidates((retryData.relatedCandidates as RelatedStoryCandidate[] | undefined) ?? []);
                 } else {
                   throw new Error("Failed to create session");
                 }
@@ -398,7 +398,7 @@ export function useStoryWriter(ticketKey: string, options?: UseStoryWriterOption
 
   const linkCandidate = useCallback(async (candidateId: string, isLinked: boolean) => {
     try {
-      const result = await storyWriterApi.toggleRelated(ticketKey, { candidateId, isLinked }) as { candidate?: RelatedStoryCandidateRow };
+      const result = await storyWriterApi.toggleRelated(ticketKey, { candidateId, isLinked }) as { candidate?: RelatedStoryCandidate };
       if (!unmountedRef.current && result.candidate) {
         // Virtual candidates (from ticketLink) are removed when unlinked
         if (candidateId.startsWith("link-") && !isLinked) {

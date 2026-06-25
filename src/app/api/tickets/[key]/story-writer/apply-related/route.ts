@@ -13,6 +13,7 @@ import { logActivity } from "@/lib/activity-logger";
 import { logger } from "@/lib/logger";
 import { applyRateLimit } from "@/lib/rate-limiter";
 import { parseRelatedStories } from "@/lib/parse-related-stories";
+import { enrichCandidatesWithSprintName } from "@/lib/related-candidate-sprint";
 
 type RouteContext = { params: Promise<{ key: string }> };
 
@@ -59,7 +60,7 @@ export async function POST(request: Request, { params }: RouteContext) {
       .from(relatedStoryCandidate)
       .where(eq(relatedStoryCandidate.sessionId, session.id))
       .all();
-    return NextResponse.json({ candidates: existing, found: false });
+    return NextResponse.json({ candidates: await enrichCandidatesWithSprintName(existing), found: false });
   }
 
   // Replace previous candidates for this session
@@ -86,11 +87,12 @@ export async function POST(request: Request, { params }: RouteContext) {
 
   await db.insert(relatedStoryCandidate).values(rows);
 
-  const candidates = await db
+  const candidateRows = await db
     .select()
     .from(relatedStoryCandidate)
     .where(eq(relatedStoryCandidate.sessionId, session.id))
     .all();
+  const candidates = await enrichCandidatesWithSprintName(candidateRows);
 
   // Background sync: pull all found stories into local DB so they're available for preview.
   // Fire-and-forget; do not await so the response returns immediately.
@@ -324,5 +326,5 @@ export async function GET(_request: Request, { params }: RouteContext) {
     .where(eq(relatedStoryCandidate.sessionId, session.id))
     .all();
 
-  return NextResponse.json({ candidates });
+  return NextResponse.json({ candidates: await enrichCandidatesWithSprintName(candidates) });
 }

@@ -56,6 +56,14 @@ describe("ChatMessage ticket-reference linkification", () => {
     fireEvent.click(screen.getByText("Draft updated"));
     expect(screen.getByText("Draft mentions VPL-789")).toHaveAttribute("data-linkify", "true");
   });
+
+  it("strips the <related-request> signal tag from the displayed message (BRDG-397)", () => {
+    render(<ChatMessage message={makeMessage({ content: 'Looking now. <related-request query="x" sprint="139" /> done' })} />);
+    const body = screen.getByTestId("markdown");
+    expect(body.textContent).not.toContain("related-request");
+    expect(body.textContent).toContain("Looking now.");
+    expect(body.textContent).toContain("done");
+  });
 });
 
 describe("ChatMessage long-text overflow (BRDG-261)", () => {

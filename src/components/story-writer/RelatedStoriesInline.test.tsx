@@ -1,17 +1,23 @@
 import { render, screen, fireEvent } from "@testing-library/react";
 import { describe, it, expect, vi } from "vitest";
 import { RelatedStoriesInline } from "./ChatMessageParts";
-import type { RelatedStoryCandidateRow } from "@/db/schema";
+import type { RelatedStoryCandidate } from "@/types/story-writer";
 
+const ticketsGet = vi.fn(() => Promise.resolve(null as unknown));
 vi.mock("@/lib/api-client", () => ({
-  tickets: { get: vi.fn(() => Promise.resolve(null)) },
+  tickets: { get: (...args: unknown[]) => ticketsGet(...args) },
 }));
 
 vi.mock("@/components/shared/TicketStatusPill", () => ({
-  TicketStatusPill: ({ ticketKey }: { ticketKey: string }) => <span>{ticketKey}</span>,
+  TicketStatusPill: ({ ticketKey, hoverData }: { ticketKey: string; hoverData?: { sprintName?: string | null } }) => (
+    <span>
+      {ticketKey}
+      {hoverData?.sprintName ? ` [${hoverData.sprintName}]` : ""}
+    </span>
+  ),
 }));
 
-function makeCandidate(overrides: Partial<RelatedStoryCandidateRow> = {}): RelatedStoryCandidateRow {
+function makeCandidate(overrides: Partial<RelatedStoryCandidate> = {}): RelatedStoryCandidate {
   return {
     id: "c1",
     sessionId: "s1",
@@ -76,5 +82,36 @@ describe("RelatedStoriesInline", () => {
     expect(onOpenPanel).toHaveBeenCalledTimes(1);
     // The row stays visible (card not collapsed by the click bubbling up).
     expect(screen.getByText("A related story")).toBeInTheDocument();
+  });
+
+  it("surfaces the candidate's sprint name in the pill hover once ticket data resolves", async () => {
+    ticketsGet.mockResolvedValueOnce({
+      title: "T", storyPoints: null, businessValue: null, sprintId: "555",
+      epicKey: null, epic: null, assignee: null, reporter: null,
+      openSubtaskCount: 0, totalSubtaskCount: 0, flagged: false,
+    });
+    render(
+      <RelatedStoriesInline
+        candidates={[makeCandidate({ sprintName: "BT: 139" })]}
+        onLink={vi.fn()}
+      />,
+    );
+    expect(await screen.findByText("VPL-100 [BT: 139]")).toBeInTheDocument();
+  });
+
+  it("renders gracefully when no sprint name is present", async () => {
+    ticketsGet.mockResolvedValueOnce({
+      title: "T", storyPoints: null, businessValue: null, sprintId: null,
+      epicKey: null, epic: null, assignee: null, reporter: null,
+      openSubtaskCount: 0, totalSubtaskCount: 0, flagged: false,
+    });
+    render(
+      <RelatedStoriesInline
+        candidates={[makeCandidate({ sprintName: null })]}
+        onLink={vi.fn()}
+      />,
+    );
+    expect(await screen.findByText("VPL-100")).toBeInTheDocument();
+    expect(screen.queryByText(/\[/)).toBeNull();
   });
 });
