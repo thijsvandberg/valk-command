@@ -1,5 +1,20 @@
 # Implementation Performance Log
 
+## BRDG-396 — Filters for the Link issue modal (2026-06-25)
+
+Added server-side filters (issue type w/ default subtask exclusion, sprint-with-state, epic, last-updated, project, assignee + same-epic/same-sprint presets) to `/api/tickets/search`, threaded through the api-client and `useLinkIssueSearch`, and built `LinkIssueFilterBar` reusing the board's `FilterDropdown`/`FilterChip`. Fixed a latent bug: the subtask exclusion compared `'sub-task'` but the type is `'Subtask'`, so subtasks were leaking in. 4 commits + archive; isolated full suite (6,597) + build green.
+
+| Phase | Notes |
+|---|---|
+| Plan (Opus) | Strong: caught that sprint state lives in the `appSetting` JSON blob (not `sprintNameCache`), recommended reusing `/api/jira/sprints` + `/api/epics` + server facets over any new endpoint, and correctly flagged the single-project-hide and Jira-fallback-vs-filters edge cases |
+| Implement | Mid-flight switched filters from single-value to multi-select (CSV) to match the board's `FilterDropdown` idiom — more consistent and less custom UI than building single-selects; backward compatible with the already-written single-value route tests |
+| Verify | Shared tree was non-compiling due to a **parallel session's** in-progress story-writer refactor (`src/types/story-writer.ts` importing a not-yet-existing `RelatedStoryCandidateRow`). Verified my work in a throwaway worktree at HEAD (symlinked `node_modules`): typecheck + build + 6,597 tests all green. Browser-confirmed the filter bar renders correctly in the modal |
+
+Key bottlenecks / lessons:
+- **Same dirty-shared-tree hazard as BRDG-343/347/352.** A concurrent session left the working tree non-compiling; `npm run verify` in the main tree failed on *their* files. Confirmed external (the break was entirely in story-writer files I never touched), then verified in an isolated worktree so the contamination couldn't mask or fake my result. Staged only explicit paths throughout.
+- **The user's screenshot was the inline link editor, not the modal.** The full `LinkIssueDialog` (where the filter bar lives) opens via the inline editor's "Expand search" (Cmd+Shift+K) control — worth knowing for future link-modal work.
+- **Portal-based `FilterDropdown` triggers are awkward to drive via synthetic clicks** (dispatching on the wrapper closed the modal). Render verification + unit-tested behavior was the pragmatic stopping point rather than fighting the automation.
+
 ## BRDG-391 (safe parts) + BRDG-393 (Cleanup) — scope fetches / virtualize lists (2026-06-24)
 
 Asked to land the "safe parts of 391" plus 393. Net delivered: BRDG-393 Cleanup virtualization (per-row `<tbody>` window, threshold 40, unit tests + browser-verified scroll). BRDG-391's safe parts were implemented (A1 sibling hook + SessionEndModal swap) and then **backed out**; 391 left open as do-as-a-unit. Full suite (6,499) + build green.
