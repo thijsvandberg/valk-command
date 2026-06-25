@@ -1,8 +1,16 @@
 # BRDG-396: Filters for the "Link issue" (find related) modal
 
-**Status:** Not Started
+**Status:** Done
 **Priority:** Medium
 **Type:** Feature (UX)
+
+> **Follow-up (post-ship, 2026-06-25):** Added a **Team** filter (derived from the
+> sprint-name prefix, BT/GXP/...) that also narrows the Sprint dropdown to the
+> selected team's sprints — so you no longer hunt for the right team's sprint.
+> Moved **Status** into the bar as a proper server-side `FilterDropdown` (like the
+> rest), replacing the separate status chip row in the modal (the inline link
+> editor keeps its own chips). Reordered the bar and added a divider for
+> consistency with the board's FilterBar.
 
 ## Description
 
