@@ -1,3 +1,4 @@
+import type { ComponentProps } from "react";
 import { render, screen, fireEvent } from "@testing-library/react";
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { LinkIssueFilterBar } from "./LinkIssueFilterBar";
@@ -59,7 +60,7 @@ function renderBar(overrides: Partial<{
     applyPreset: overrides.applyPreset ?? vi.fn(),
     clearFilters: overrides.clearFilters ?? vi.fn(),
   };
-  render(<LinkIssueFilterBar {...props} />);
+  render(<LinkIssueFilterBar {...(props as ComponentProps<typeof LinkIssueFilterBar>)} />);
   return props;
 }
 
