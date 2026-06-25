@@ -86,6 +86,25 @@ describe("createLruProvider", () => {
     expect(keys).toContain("$inf$x");
   });
 
+  it("does not infinite-loop when get() is called while iterating keys() (SWR broadcast pattern)", () => {
+    // get() reorders the store (delete + re-insert) to keep access order. If
+    // keys() exposed the live store iterator, moving the current key to the tail
+    // mid-iteration would make the iterator re-visit it forever — a synchronous
+    // freeze of the whole app. keys() must therefore return a snapshot. The cap
+    // turns a regression into a failed assertion instead of a hung test runner.
+    const cache = createLruProvider({ maxEntries: 100 })();
+    for (let i = 0; i < 5; i++) cache.set(`k${i}`, v(i));
+
+    let visited = 0;
+    const CAP = 1000;
+    for (const key of cache.keys()) {
+      cache.get(key); // mirrors SWR reading each key during a mutate/revalidate sweep
+      if (++visited > CAP) break;
+    }
+
+    expect(visited).toBe(5);
+  });
+
   it("seeds from the cache SWR passes in at install time", () => {
     const seed = new Map<string, State<unknown, unknown>>([["pre-existing", v(42)]]);
     const cache = createLruProvider()(seed as unknown as Cache);

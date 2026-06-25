@@ -90,7 +90,13 @@ export function createLruProvider(
 
     const cache: Cache = {
       keys() {
-        return store.keys();
+        // Return a snapshot iterator, NOT store.keys() (a live view). `get`
+        // reorders the store (delete + re-insert) to maintain access order, so
+        // a consumer that iterates keys() while calling get() in the loop (SWR
+        // does this on mutate/revalidate broadcasts) would otherwise re-visit
+        // the moved key forever — a synchronous infinite loop that freezes the
+        // whole app (regression from the access-order LRU in BRDG-387).
+        return [...store.keys()][Symbol.iterator]();
       },
       get(key: string) {
         const value = store.get(key);
