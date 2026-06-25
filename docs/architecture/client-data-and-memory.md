@@ -65,17 +65,21 @@ anti-pattern. Fetch only what the screen needs:
 - For **search/browse over the whole pool**, add a server-side filtered/searched
   endpoint and page the results; do not load everything and filter on the client.
 
-Remaining `__all__` sites are tracked in
-[BRDG-391](../user-stories/BRDG-391-scope-remaining-all-tickets-fetches.md).
+The remaining `__all__` sites were reviewed in
+[BRDG-391](../user-stories/completed/BRDG-391-scope-remaining-all-tickets-fetches.md)
+and not pursued: the cap already bounds memory, and they cannot be removed in safe
+pieces (the shared `useTicketHoverData` keeps `__all__` alive on the same pages).
 
 ### 3. Virtualize every growable list
 
 Any list whose row count can grow (boards, queues, inbox, cleanup, search) must be
 windowed (`@tanstack/react-virtual`) so only visible rows mount to the DOM. The
-flat Sprint Board already does this above 40 rows. Open gaps: the grouped Sprint
-Board ([BRDG-392](../user-stories/BRDG-392-virtualize-grouped-sprint-board.md)) and
-the Refinement/Inbox/Cleanup lists
-([BRDG-393](../user-stories/BRDG-393-virtualize-remaining-lists.md)).
+flat Sprint Board and the Cleanup list
+([BRDG-393](../user-stories/completed/BRDG-393-virtualize-remaining-lists.md)) do this
+above 40 rows. The grouped Sprint Board
+([BRDG-392](../user-stories/completed/BRDG-392-virtualize-grouped-sprint-board.md)),
+the Inbox, and the Refinement queue still render all rows; virtualizing them was
+reviewed and not pursued (memory is bounded by the cap, so it is a perf nice-to-have).
 
 ## The list-vs-detail payload split (invariant)
 
