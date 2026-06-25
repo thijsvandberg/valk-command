@@ -96,19 +96,20 @@ function updatedCutoff(bucket: string | null): string | null {
 }
 
 interface ParsedFilters {
-  types: string[] | null;
-  sprint: string | null;
-  epic: string | null;
-  assignee: string | null;
-  project: string | null;
+  types: string[];
+  sprints: string[];
+  epics: string[];
+  assignees: string[];
+  projects: string[];
   updatedCutoffIso: string | null;
 }
 
 // Filter conditions shared by browse and text modes so they compose identically.
+// Each multi-value facet is an OR within itself and ANDs with the others.
 function buildFilterConditions(f: ParsedFilters, isKeySearch: boolean): SQL[] {
   const conds: SQL[] = [];
 
-  if (f.types && f.types.length > 0) {
+  if (f.types.length > 0) {
     // OR of equals keeps the lowercased comparison explicit and portable.
     conds.push(or(...f.types.map((t) => sql`LOWER(${ticket.type}) = ${t}`))!);
   } else if (!isKeySearch) {
@@ -117,13 +118,22 @@ function buildFilterConditions(f: ParsedFilters, isKeySearch: boolean): SQL[] {
     conds.push(notSubTask);
   }
 
-  if (f.sprint) conds.push(eq(ticket.sprintName, f.sprint));
-  if (f.epic) conds.push(eq(ticket.epicKey, f.epic));
-  if (f.assignee) conds.push(eq(ticket.assignee, f.assignee));
-  if (f.project) conds.push(sql`${ticket.jiraKey} LIKE ${`${f.project}-%`}`);
+  if (f.sprints.length > 0) conds.push(or(...f.sprints.map((s) => eq(ticket.sprintName, s)))!);
+  if (f.epics.length > 0) conds.push(or(...f.epics.map((e) => eq(ticket.epicKey, e)))!);
+  if (f.assignees.length > 0) conds.push(or(...f.assignees.map((a) => eq(ticket.assignee, a)))!);
+  if (f.projects.length > 0) conds.push(or(...f.projects.map((p) => sql`${ticket.jiraKey} LIKE ${`${p}-%`}`))!);
   if (f.updatedCutoffIso) conds.push(sql`${ticket.jiraUpdatedAt} >= ${f.updatedCutoffIso}`);
 
   return conds;
+}
+
+// Splits a comma-separated query param into a trimmed, non-empty list.
+function csv(value: string | null, lower = false): string[] {
+  if (!value) return [];
+  return value
+    .split(",")
+    .map((v) => (lower ? v.trim().toLowerCase() : v.trim()))
+    .filter(Boolean);
 }
 
 async function computeFacets(): Promise<SearchFacets> {
@@ -153,18 +163,14 @@ export async function GET(request: Request) {
   const recentOnly = url.searchParams.get("recent") === "1";
   const offset = parseInt(url.searchParams.get("offset") ?? "0", 10) || 0;
 
-  const typesParam = url.searchParams.get("types");
-  const types = typesParam
-    ? typesParam.split(",").map((t) => t.trim().toLowerCase()).filter(Boolean)
-    : null;
   const preset = url.searchParams.get("preset"); // "epic" | "sprint"
 
   const filters: ParsedFilters = {
-    types,
-    sprint: url.searchParams.get("sprint") || null,
-    epic: url.searchParams.get("epic") || null,
-    assignee: url.searchParams.get("assignee") || null,
-    project: url.searchParams.get("project") || null,
+    types: csv(url.searchParams.get("types"), true),
+    sprints: csv(url.searchParams.get("sprint")),
+    epics: csv(url.searchParams.get("epic")),
+    assignees: csv(url.searchParams.get("assignee")),
+    projects: csv(url.searchParams.get("project")),
     updatedCutoffIso: updatedCutoff(url.searchParams.get("updatedWithin")),
   };
 
@@ -186,19 +192,19 @@ export async function GET(request: Request) {
       .limit(1);
     if (preset === "epic") {
       if (!row?.epicKey) return empty();
-      filters.epic = row.epicKey;
+      filters.epics = [row.epicKey];
     } else if (preset === "sprint") {
       if (!row?.sprintName) return empty();
-      filters.sprint = row.sprintName;
+      filters.sprints = [row.sprintName];
     }
   }
 
   const hasUserFilters = Boolean(
-    (filters.types && filters.types.length > 0) ||
-      filters.sprint ||
-      filters.epic ||
-      filters.assignee ||
-      filters.project ||
+    filters.types.length > 0 ||
+      filters.sprints.length > 0 ||
+      filters.epics.length > 0 ||
+      filters.assignees.length > 0 ||
+      filters.projects.length > 0 ||
       filters.updatedCutoffIso,
   );
   const hasQuery = Boolean(q && q.length >= 2);

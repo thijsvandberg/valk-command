@@ -10,24 +10,25 @@ export type { LinkSearchResult, LinkSearchFilters, LinkSearchFacets };
 
 const EMPTY_FACETS: LinkSearchFacets = { types: [], projects: [], assignees: [] };
 
-// Filters that survive a query change. `preset` is one-shot (resolved server-side
-// against the current ticket) and lives alongside the explicit filters.
+// Filters that survive a query change. Multi-value facets mirror the board's
+// FilterDropdown idiom (Set-backed). `preset` is one-shot (resolved server-side
+// against the current ticket) and shares the epic/sprint slots.
 export interface LinkFilterState {
   types: string[];
-  sprint: string | null;
-  epic: string | null;
-  assignee: string | null;
-  project: string | null;
+  sprints: string[];
+  epics: string[];
+  assignees: string[];
+  projects: string[];
   updatedWithin: string | null;
   preset: "epic" | "sprint" | null;
 }
 
 const EMPTY_FILTERS: LinkFilterState = {
   types: [],
-  sprint: null,
-  epic: null,
-  assignee: null,
-  project: null,
+  sprints: [],
+  epics: [],
+  assignees: [],
+  projects: [],
   updatedWithin: null,
   preset: null,
 };
@@ -35,10 +36,10 @@ const EMPTY_FILTERS: LinkFilterState = {
 function hasActiveFilters(f: LinkFilterState): boolean {
   return (
     f.types.length > 0 ||
-    !!f.sprint ||
-    !!f.epic ||
-    !!f.assignee ||
-    !!f.project ||
+    f.sprints.length > 0 ||
+    f.epics.length > 0 ||
+    f.assignees.length > 0 ||
+    f.projects.length > 0 ||
     !!f.updatedWithin ||
     !!f.preset
   );
@@ -97,20 +98,24 @@ export function useLinkIssueSearch(ticketKey: string): UseLinkIssueSearchReturn 
   function toApiFilters(f: LinkFilterState): LinkSearchFilters {
     return {
       types: f.types,
-      sprint: f.sprint,
-      epic: f.epic,
-      assignee: f.assignee,
-      project: f.project,
+      sprints: f.sprints,
+      epics: f.epics,
+      assignees: f.assignees,
+      projects: f.projects,
       updatedWithin: f.updatedWithin,
       preset: f.preset,
     };
   }
 
-  // Fetch recently updated tickets on mount
+  // Fetch recently updated tickets on mount. This also seeds the filter facets
+  // (type/project/assignee option lists) so the dropdowns are populated before
+  // the first search.
   useEffect(() => {
     let cancelled = false;
     tickets.recentlyUpdated(ticketKey).then((data) => {
-      if (!cancelled) setRecentResults(data.results);
+      if (cancelled) return;
+      setRecentResults(data.results);
+      if (data.facets) setFacets(data.facets);
     }).catch(() => {});
     return () => { cancelled = true; };
   }, [ticketKey]);
@@ -234,7 +239,7 @@ export function useLinkIssueSearch(ticketKey: string): UseLinkIssueSearchReturn 
     // Toggle off if the same preset is active again.
     const next: LinkFilterState = current.preset === preset
       ? { ...current, preset: null }
-      : { ...current, preset, epic: null, sprint: null };
+      : { ...current, preset, epics: [], sprints: [] };
     applyFilters(next);
   }, [applyFilters]);
 

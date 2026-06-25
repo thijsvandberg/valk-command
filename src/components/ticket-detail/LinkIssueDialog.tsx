@@ -8,6 +8,7 @@ import { useLinkIssueSearch } from "@/hooks/useLinkIssueSearch";
 import type { LinkSearchResult } from "@/lib/api-client";
 import { LinkSearchResultRow } from "./LinkSearchResultRow";
 import { StatusFilterChips } from "./StatusFilterChips";
+import { LinkIssueFilterBar } from "./LinkIssueFilterBar";
 import { ScrollSentinel } from "./ScrollSentinel";
 import { tickets } from "@/lib/api-client";
 import { useLinkTypes } from "@/hooks/useLinkTypes";
@@ -274,6 +275,16 @@ export function LinkIssueDialog({
             </div>
           )}
         </div>
+
+        {/* Filters (server-side; also enable browse without a query) */}
+        <LinkIssueFilterBar
+          filters={search.filters}
+          facets={search.facets}
+          filtersActive={search.filtersActive}
+          setFilter={search.setFilter}
+          applyPreset={search.applyPreset}
+          clearFilters={search.clearFilters}
+        />
 
         {/* Inline results list (scrollable within the modal) */}
         <div

@@ -41,10 +41,22 @@ const mockSearch = {
   clearStatusFilter: vi.fn(),
   loadMore: vi.fn(),
   resetSearch: vi.fn(),
+  filters: { types: [], sprints: [], epics: [], assignees: [], projects: [], updatedWithin: null, preset: null },
+  facets: { types: [], projects: [], assignees: [] },
+  filtersActive: false,
+  setFilter: vi.fn(),
+  applyPreset: vi.fn(),
+  clearFilters: vi.fn(),
 };
 
 vi.mock("@/hooks/useLinkIssueSearch", () => ({
   useLinkIssueSearch: () => mockSearch,
+}));
+
+// The filter bar has its own test; stub it here so this suite stays focused on
+// the dialog (and so it doesn't pull in SWR without a provider).
+vi.mock("./LinkIssueFilterBar", () => ({
+  LinkIssueFilterBar: () => <div data-testid="link-issue-filter-bar" />,
 }));
 
 vi.mock("@/components/shared/Modal", () => ({

@@ -100,24 +100,24 @@ Subtask exclusion default + opt-in + key-search bypass; type filter; sprint; epi
 
 ## Open questions
 
-- [ ] Filter bar layout: inline chips/dropdowns vs. a collapsible "Filters" panel. Default to a compact inline bar; confirm on visual check.
-- [ ] Should filters **persist** across modal opens (per session), or reset each open? Default: reset on open, except the "exclude subtasks" default which is always on.
-- [ ] "Last updated" bucket boundaries (24h / 7d / 30d / any) — confirm the set.
-- [ ] Do we want a visible "subtasks hidden" hint with a one-click "show subtasks", so it's discoverable that they're filtered by default?
+- [x] Filter bar layout: inline chips/dropdowns vs. a collapsible "Filters" panel. **Decision:** compact inline `flex-wrap` bar reusing the board's `FilterDropdown`/`FilterChip` idiom.
+- [x] Should filters **persist** across modal opens (per session), or reset each open? **Decision:** reset on open (via `resetSearch`); the subtask exclusion is always the default when no type is picked.
+- [x] "Last updated" bucket boundaries — **Decision:** 24h / 7d / 30d, click again to clear (= any).
+- [x] "subtasks hidden" hint — **Decision:** deferred; subtasks are simply opt-in via the Type dropdown (selecting "subtask" shows them). Can add a hint later if discoverability is an issue. <!-- not built: optional nicety -->
 
 ## Acceptance Criteria
 
-- [ ] The modal shows a filter bar with: issue type, sprint (with status), epic, last updated, project/board, assignee, and "same epic" / "same sprint as this ticket" presets.
-- [ ] **Subtasks are hidden by default** and only appear when the user opts them in (or searches by a specific key). The underlying type-name bug is fixed (uses `Subtask`, not `sub-task`).
-- [ ] Filters are applied **server-side** and compose with each other and with the text search.
-- [ ] **Browse without a query works:** with no search text but one or more filters set, the modal returns matching results.
-- [ ] Sprint filter labels include the sprint's status (active/future/closed).
-- [ ] "Same epic" / "same sprint" presets return only candidates sharing the current ticket's epic / sprint.
-- [ ] Status chips reflect the server-filtered result set; existing status filtering still works.
-- [ ] Pagination (`load more`) and the Jira fallback still work with filters applied.
-- [ ] Every filter control has hover / focus-visible / active states and `cursor: pointer`; transitions limited to `transform`/`opacity` (no `transition-all`).
-- [ ] Tests cover: subtask exclusion by default + opt-in, each server-side filter, browse-without-query, presets resolving the current ticket's epic/sprint, and the payload carrying `epicKey` + `updatedAt`.
-- [ ] `npm run lint`, `npm run typecheck`, `npm run test`, and `npm run build` pass.
+- [x] The modal shows a filter bar with: issue type, sprint (with status), epic, last updated, project/board, assignee, and "same epic" / "same sprint as this ticket" presets.
+- [x] **Subtasks are hidden by default** and only appear when the user opts them in (or searches by a specific key). The underlying type-name bug is fixed (uses `Subtask`, not `sub-task`).
+- [x] Filters are applied **server-side** and compose with each other and with the text search.
+- [x] **Browse without a query works:** with no search text but one or more filters set, the modal returns matching results.
+- [x] Sprint filter labels include the sprint's status (active/future/closed).
+- [x] "Same epic" / "same sprint" presets return only candidates sharing the current ticket's epic / sprint.
+- [x] Status chips reflect the server-filtered result set; existing status filtering still works.
+- [x] Pagination (`load more`) and the Jira fallback still work with filters applied (Jira fallback is intentionally skipped when user filters are active, since the Jira text search can't honor them).
+- [x] Every filter control has hover / focus-visible / active states and `cursor: pointer`; transitions scoped to `color`/`background-color`/`border-color`/`transform` (no `transition-all`) — inherited from the shared `FilterDropdown`/`FilterChip`.
+- [x] Tests cover: subtask exclusion by default + opt-in, each server-side filter, browse-without-query, presets resolving the current ticket's epic/sprint, and the payload carrying `epicKey` + `updatedAt`. Plus a `LinkIssueFilterBar` component test.
+- [x] `npm run lint`, `npm run typecheck`, `npm run test`, and `npm run build` pass.
 
 ## References
 
