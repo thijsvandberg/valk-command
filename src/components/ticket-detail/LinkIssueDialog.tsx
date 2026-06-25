@@ -11,6 +11,7 @@ import { LinkIssueFilterBar } from "./LinkIssueFilterBar";
 import { ScrollSentinel } from "./ScrollSentinel";
 import { tickets } from "@/lib/api-client";
 import { useLinkTypes } from "@/hooks/useLinkTypes";
+import { useDefaultTeam } from "@/hooks/useDefaultTeam";
 import { Loader2, Search, ChevronDown, Check, Clock } from "lucide-react";
 
 interface LinkIssueDialogProps {
@@ -45,6 +46,12 @@ export function LinkIssueDialog({
   const searchRef = useRef<HTMLInputElement>(null);
 
   const search = useLinkIssueSearch(ticketKey);
+  const { defaultTeam, isLoading: defaultTeamLoading } = useDefaultTeam();
+  // Whether this open carried a query (expanded from the inline search or a
+  // specific target key); if so we skip the team default so a filter can't hide
+  // the exact issue the user is looking for.
+  const openedWithQuery = useRef(false);
+  const defaultTeamApplied = useRef(false);
 
   // Reset state when dialog opens
   useEffect(() => {
@@ -57,6 +64,8 @@ export function LinkIssueDialog({
       search.resetSearch();
       // Carry over query from inline search or default target key
       const startQuery = initialQuery ?? defaultTargetKey ?? "";
+      openedWithQuery.current = !!startQuery;
+      defaultTeamApplied.current = false;
       if (startQuery) {
         search.setQuery(startQuery);
       }
@@ -64,6 +73,17 @@ export function LinkIssueDialog({
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open]);
+
+  // Default the Team filter to the PO's own team (general setting) when browsing
+  // from scratch. Runs once per open, after the setting resolves.
+  useEffect(() => {
+    if (!open || defaultTeamLoading || defaultTeamApplied.current) return;
+    defaultTeamApplied.current = true;
+    if (defaultTeam && !openedWithQuery.current) {
+      search.setFilter("teams", [defaultTeam]);
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open, defaultTeamLoading, defaultTeam]);
 
   useOutsideClick(relationRef, () => setRelationOpen(false), { enabled: relationOpen, escapeClose: false });
 

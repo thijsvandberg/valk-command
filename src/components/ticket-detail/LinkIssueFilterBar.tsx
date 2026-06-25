@@ -9,7 +9,7 @@ import { IssueTypeOption } from "@/components/shared/IssueTypeOption";
 import { StatusOption } from "@/components/shared/StatusOption";
 import { Avatar } from "@/components/shared/Avatar";
 import { userInitials, userColor } from "@/components/shared/AssigneePicker";
-import { extractTeamPrefix } from "@/lib/sprint-utils";
+import { extractTeamPrefix, TEAMS } from "@/lib/sprint-utils";
 import { Link2, X } from "lucide-react";
 import type { LinkFilterState, LinkSearchFacets } from "@/hooks/useLinkIssueSearch";
 
@@ -64,14 +64,16 @@ export function LinkIssueFilterBar({
     });
   }, [sprintData]);
 
-  // Teams are derived from the sprint-name prefix ("BT: 138" -> BT).
+  // Teams are derived from the sprint-name prefix ("BT: 138" -> BT), then
+  // intersected with the canonical TEAMS so stray prefixes (e.g. "VPL: ...")
+  // don't leak in as fake teams. Canonical order is preserved.
   const teamOptions = useMemo(() => {
-    const set = new Set<string>();
+    const present = new Set<string>();
     for (const s of orderedSprints) {
       const team = extractTeamPrefix(s.name);
-      if (team) set.add(team);
+      if (team) present.add(team);
     }
-    return [...set].sort();
+    return TEAMS.filter((t) => present.has(t));
   }, [orderedSprints]);
 
   // Selecting a team narrows the (long) sprint list to that team's sprints, so

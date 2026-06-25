@@ -36,6 +36,10 @@ vi.mock("@/lib/api-client", () => ({
 }));
 
 // Mock useLinkTypes hook
+vi.mock("@/hooks/useDefaultTeam", () => ({
+  useDefaultTeam: () => ({ defaultTeam: null, setDefaultTeam: () => {}, isLoading: false }),
+}));
+
 vi.mock("@/hooks/useLinkTypes", () => ({
   useLinkTypes: () => ({
     linkTypes: [

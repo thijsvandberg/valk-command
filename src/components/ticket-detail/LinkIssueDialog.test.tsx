@@ -12,6 +12,11 @@ vi.mock("@/lib/api-client", () => ({
   LinkSearchResult: {},
 }));
 
+let mockDefaultTeam: string | null = null;
+vi.mock("@/hooks/useDefaultTeam", () => ({
+  useDefaultTeam: () => ({ defaultTeam: mockDefaultTeam, setDefaultTeam: vi.fn(), isLoading: false }),
+}));
+
 vi.mock("@/hooks/useLinkTypes", () => ({
   useLinkTypes: () => ({
     linkTypes: [
@@ -128,6 +133,7 @@ function renderDialog(overrides: Partial<React.ComponentProps<typeof LinkIssueDi
 describe("LinkIssueDialog", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    mockDefaultTeam = null;
     mockSearch.query = "";
     mockSearch.filteredResults = [];
     mockSearch.recentResults = [];
@@ -292,5 +298,25 @@ describe("LinkIssueDialog", () => {
     mockSearch.isSearching = false;
     renderDialog();
     expect(screen.getByText(/No issues found for/)).toBeInTheDocument();
+  });
+
+  describe("default team (BRDG-396)", () => {
+    it("defaults the team filter to the PO's own team when browsing from scratch", () => {
+      mockDefaultTeam = "BT";
+      renderDialog();
+      expect(mockSearch.setFilter).toHaveBeenCalledWith("teams", ["BT"]);
+    });
+
+    it("does not apply the team default when opened with a carried-over query", () => {
+      mockDefaultTeam = "BT";
+      renderDialog({ initialQuery: "VPL-999" });
+      expect(mockSearch.setFilter).not.toHaveBeenCalledWith("teams", ["BT"]);
+    });
+
+    it("does not apply a team default when no own-team is set", () => {
+      mockDefaultTeam = null;
+      renderDialog();
+      expect(mockSearch.setFilter).not.toHaveBeenCalled();
+    });
   });
 });
