@@ -1,8 +1,10 @@
 # BRDG-262: Story writer draft must contain only story content, no leaked markup
 
-**Status:** Not Started
+**Status:** Archived (not reproduced) — 2026-06-25
 **Priority:** Medium
 **Type:** Bugfix
+
+> Archived without implementation: the leaked `</thinking>` markup in story drafts is no longer observed in practice. Reopen if the artefact reappears in a draft preview.
 
 ## Description
 
