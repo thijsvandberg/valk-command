@@ -179,7 +179,7 @@ describe("LinkedIssuesSection", () => {
     fireEvent.change(input, { target: { value: "VPL" } });
 
     await waitFor(() => {
-      expect(mockSearchForLink).toHaveBeenCalledWith("VPL", "VPL-1", 0, expect.any(AbortSignal));
+      expect(mockSearchForLink).toHaveBeenCalledWith("VPL", "VPL-1", 0, expect.any(Object), expect.any(AbortSignal));
     });
 
     await waitFor(() => {
@@ -262,7 +262,7 @@ describe("LinkedIssuesSection", () => {
     });
 
     await waitFor(() => {
-      expect(mockSearchForLink).toHaveBeenCalledWith("VPL-999", "VPL-1", 0, expect.any(AbortSignal));
+      expect(mockSearchForLink).toHaveBeenCalledWith("VPL-999", "VPL-1", 0, expect.any(Object), expect.any(AbortSignal));
     });
   });
 
