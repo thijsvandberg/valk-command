@@ -1,7 +1,28 @@
 import { agentFetchStream } from "@/lib/agent-fetch";
 import { validatePathParam } from "@/lib/api-validation";
+import { logger } from "@/lib/logger";
 
 const INACTIVITY_TIMEOUT_MS = 180_000;
+
+/**
+ * A mid-stream pipe error that means "the client (or our own inactivity timer)
+ * cut the connection" rather than "the upstream broke". These are routine for an
+ * SSE proxy and must not be logged as errors. Mirrors the abort-detection style
+ * in instrumentation.ts; kept local because route.ts must export handlers only.
+ */
+function isExpectedAbort(err: unknown): boolean {
+  if (typeof err !== "object" || err === null) return false;
+  const name = (err as { name?: unknown }).name;
+  if (name === "AbortError" || name === "ResponseAborted") return true;
+  const code = (err as { code?: unknown }).code;
+  if (code === "ECONNRESET" || code === "ERR_STREAM_PREMATURE_CLOSE") return true;
+  const message = (err as { message?: unknown }).message;
+  if (typeof message === "string") {
+    const m = message.toLowerCase();
+    if (m.includes("abort") || m.includes("the stream has been aborted")) return true;
+  }
+  return false;
+}
 
 export async function GET(
   request: Request,
@@ -66,8 +87,18 @@ export async function GET(
 
   upstream.body
     .pipeTo(transform.writable, { signal: upstreamAbort.signal })
-    .catch(() => {
+    .catch((err: unknown) => {
       if (inactivityTimer) clearTimeout(inactivityTimer);
+      // A genuine upstream failure mid-stream (the agent died, the connection
+      // dropped on its side) was swallowed before, so a half-finished proxied
+      // task left no trace. Expected client aborts stay silent (BRDG-402).
+      if (!isExpectedAbort(err)) {
+        logger.warn("workspace-task-stream", "pipe failed", {
+          event: "task_stream_pipe_failed",
+          taskId: id,
+          cause: err instanceof Error ? err.message : String(err),
+        });
+      }
     });
 
   return new Response(transform.readable, {

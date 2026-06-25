@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { executeLocalKeyMatch } from "@/lib/local-search-engine";
+import { logger } from "@/lib/logger";
 
 // Inline sprint-board search (BRDG-345): returns every ticket key whose indexed document
 // matches the query across deep fields (description, acceptance criteria, labels, notes,
@@ -14,7 +15,8 @@ export async function GET(request: Request) {
     return NextResponse.json({ keys }, {
       headers: { "Cache-Control": "private, no-store" },
     });
-  } catch {
+  } catch (err) {
+    logger.error("search-local-keys", "local key match failed", err);
     return NextResponse.json({ error: "Search failed" }, { status: 500 });
   }
 }

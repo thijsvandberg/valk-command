@@ -28,8 +28,15 @@ vi.mock("@/lib/notifications", () => ({
   createNotification: vi.fn(),
 }));
 
+const loggerWarn = vi.fn();
+const loggerError = vi.fn();
 vi.mock("@/lib/logger", () => ({
-  logger: { info: vi.fn(), warn: vi.fn() },
+  logger: {
+    debug: vi.fn(),
+    info: vi.fn(),
+    warn: (...a: unknown[]) => loggerWarn(...a),
+    error: (...a: unknown[]) => loggerError(...a),
+  },
 }));
 
 import { captureTaskStream } from "./task-stream-handler";
@@ -73,6 +80,8 @@ describe("captureTaskStream", () => {
 
   beforeEach(() => {
     vi.restoreAllMocks();
+    loggerWarn.mockReset();
+    loggerError.mockReset();
     testDb = createTestDb();
     seedConversation(convId);
   });
@@ -283,5 +292,67 @@ describe("captureTaskStream", () => {
     const task = testDb.select().from(workspaceTask).where(eq(workspaceTask.id, "task-1")).get();
     expect(task!.status).toBe("failed");
     expect(task!.error).toContain("did not return a result");
+  });
+
+  // BRDG-402: the agent's failure body was thrown away — a failed stream recorded
+  // only "Stream failed: HTTP <status>". Now a truncated body is captured and warned.
+  it("captures and logs a truncated upstream error body on a non-ok stream response", async () => {
+    const bigBody = "x".repeat(900);
+    vi.spyOn(global, "fetch").mockResolvedValue({
+      ok: false,
+      status: 502,
+      body: null,
+      text: async () => `agent crashed: ${bigBody}`,
+    } as unknown as Response);
+
+    await captureTaskStream(baseParams);
+
+    const task = testDb.select().from(workspaceTask).where(eq(workspaceTask.id, "task-1")).get();
+    expect(task!.status).toBe("failed");
+    expect(task!.error).toContain("HTTP 502");
+    expect(task!.error).toContain("agent crashed");
+    // Persisted error stays bounded (status + ~500 chars of body + ellipsis), not 900+.
+    expect(task!.error!.length).toBeLessThan(600);
+
+    const warn = loggerWarn.mock.calls.find((c) => c[1] === "stream_http_error");
+    expect(warn).toBeDefined();
+    const ctx = warn![2] as Record<string, unknown>;
+    expect(ctx.taskId).toBe("task-1");
+    expect(ctx.status).toBe(502);
+    expect((ctx.body as string).length).toBeLessThanOrEqual(500);
+  });
+
+  // BRDG-402: the after() wrapper must never leave a task stuck "running". An
+  // unexpected throw (here: the leading insert hitting a duplicate id) is logged
+  // with task context and the row is flipped to "failed".
+  it("logs task context and marks the row 'failed' when the capture body throws unexpectedly", async () => {
+    // Pre-seed the row so the leading db.insert in runCapture collides and throws,
+    // exercising the outer safety net rather than the normal stream path.
+    testDb.insert(workspaceTask).values({
+      id: "task-1",
+      skillName: "review",
+      status: "running",
+      startedAt: new Date().toISOString(),
+      conversationId: convId,
+      relatedTicket: "VALK-1",
+    }).run();
+
+    // fetch should never be reached because the insert throws first.
+    const fetchSpy = vi.spyOn(global, "fetch");
+
+    await expect(captureTaskStream(baseParams)).resolves.toBeUndefined();
+
+    expect(fetchSpy).not.toHaveBeenCalled();
+
+    const task = testDb.select().from(workspaceTask).where(eq(workspaceTask.id, "task-1")).get();
+    expect(task!.status).toBe("failed");
+    expect(task!.error).toBeTruthy();
+
+    const errCall = loggerError.mock.calls.find((c) => c[1] === "capture_failed");
+    expect(errCall).toBeDefined();
+    const ctx = errCall![2] as Record<string, unknown>;
+    expect(ctx.taskId).toBe("task-1");
+    expect(ctx.skillName).toBe("review");
+    expect(ctx.conversationId).toBe(convId);
   });
 });

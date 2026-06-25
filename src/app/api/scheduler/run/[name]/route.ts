@@ -8,6 +8,19 @@ import { applyRateLimit } from "@/lib/rate-limiter";
 // Ensure all tasks are registered
 registerScheduledTasks();
 
+// A run is honest about failure (BRDG-401): runTaskNow swallows the handler error
+// and returns it as a stored { error } result, so the route used to answer 200
+// "ran:true" for a failed run. Treat a result carrying a non-empty `error` string
+// as a 500 so the caller (and any monitoring) sees the failure.
+function resultFailed(result: unknown): boolean {
+  return (
+    typeof result === "object" &&
+    result !== null &&
+    typeof (result as { error?: unknown }).error === "string" &&
+    (result as { error: string }).error.length > 0
+  );
+}
+
 /**
  * POST /api/scheduler/run/[name]
  *
@@ -31,13 +44,15 @@ export async function POST(
   // Try shared scheduler tasks first
   const sharedResult = await runTaskNow(name);
   if (sharedResult !== null) {
-    return NextResponse.json({ ran: true, result: sharedResult });
+    const status = resultFailed(sharedResult) ? 500 : 200;
+    return NextResponse.json({ ran: true, result: sharedResult }, { status });
   }
 
   // Try independent tasks
   const independentResult = await runIndependentTaskNow(name);
   if (independentResult !== null) {
-    return NextResponse.json({ ran: true, result: independentResult });
+    const status = resultFailed(independentResult) ? 500 : 200;
+    return NextResponse.json({ ran: true, result: independentResult }, { status });
   }
 
   return NextResponse.json({ error: "Task not found" }, { status: 404 });

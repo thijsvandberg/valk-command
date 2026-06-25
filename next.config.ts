@@ -1,4 +1,5 @@
 import type { NextConfig } from "next";
+import path from "node:path";
 
 const securityHeaders = [
   {
@@ -82,6 +83,31 @@ const nextConfig: NextConfig = {
         headers: securityHeaders,
       },
     ];
+  },
+  // instrumentation.ts is compiled for both the Node and Edge runtimes. Its
+  // register() eager-inits the DB and reads env, but only behind a
+  // NEXT_RUNTIME === "nodejs" guard, so that code never runs in Edge. Webpack
+  // (used by `next build`) still traces the dynamic import("@/db") into the Edge
+  // bundle, where better-sqlite3's node-only deps (path/fs) cannot resolve and
+  // the build fails. Nothing legitimately reachable in the Edge runtime — only
+  // middleware, which imports neither — uses these modules, so stub them out for
+  // the Edge layer to keep the unreachable boot code from breaking that build.
+  webpack(config, { nextRuntime }) {
+    if (nextRuntime === "edge") {
+      // Alias by both the source request and its resolved absolute path:
+      // Next resolves "@/..." via a tsconfig-paths plugin, so the bare-specifier
+      // alias alone may be bypassed. `false` makes webpack treat the module as
+      // empty for this layer only.
+      const emptyForEdge = {
+        "@/db$": false as const,
+        "@/lib/env$": false as const,
+        [path.resolve(__dirname, "src/db/index.ts")]: false as const,
+        [path.resolve(__dirname, "src/lib/env.ts")]: false as const,
+      };
+      config.resolve = config.resolve ?? {};
+      config.resolve.alias = { ...(config.resolve.alias ?? {}), ...emptyForEdge };
+    }
+    return config;
   },
 };
 

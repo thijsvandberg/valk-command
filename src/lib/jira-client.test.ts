@@ -1,6 +1,6 @@
 // @vitest-environment node
-import { describe, it, expect, beforeEach } from "vitest";
-import { JiraClient, issuePath, JiraApiError, _requestTimestamps, filterDescriptionChanges, extractSprint, extractSprints, selectPrimarySprint, SPRINT_FIELD, type ChangelogEntry, type JiraSprint, type JiraIssueFields } from "./jira-client";
+import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
+import { JiraClient, issuePath, JiraApiError, _requestTimestamps, filterDescriptionChanges, extractSprint, extractSprints, selectPrimarySprint, SPRINT_FIELD, ISSUE_FIELDS, redactJiraPath, _noteRateLimitApproaching, _resetRateWarn, type ChangelogEntry, type JiraSprint, type JiraIssueFields } from "./jira-client";
 
 describe("JiraClient (unconfigured mode)", () => {
   const client = new JiraClient();
@@ -237,5 +237,86 @@ describe("extractSprints", () => {
 
   it("dedupes by id", () => {
     expect(extractSprints(fieldsWithSprints([ACTIVE, ACTIVE, CLOSED_OLD])).map((s) => s.id)).toEqual([ACTIVE.id, CLOSED_OLD.id]);
+  });
+});
+
+describe("redactJiraPath", () => {
+  it("collapses the long static fields= list to a count", () => {
+    const path = `/rest/api/3/issue/VPL-1?fields=${ISSUE_FIELDS}`;
+    const redacted = redactJiraPath(path);
+    expect(redacted).not.toContain(ISSUE_FIELDS);
+    expect(redacted).toMatch(/fields=<\d+ fields>/);
+    // The issue key and the rest of the path are preserved.
+    expect(redacted).toContain("/rest/api/3/issue/VPL-1?");
+  });
+
+  it("collapses a url-encoded fields list too", () => {
+    const path = `/rest/api/3/search/jql?jql=x&fields=${encodeURIComponent(ISSUE_FIELDS)}&maxResults=100`;
+    const redacted = redactJiraPath(path);
+    expect(redacted).toMatch(/fields=<\d+ fields>/);
+    // Trailing query params after the fields value are kept.
+    expect(redacted).toContain("&maxResults=100");
+  });
+
+  it("leaves a short single-field value untouched", () => {
+    expect(redactJiraPath("/rest/api/3/issue/VPL-1?fields=summary")).toBe(
+      "/rest/api/3/issue/VPL-1?fields=summary",
+    );
+  });
+
+  it("is a no-op when there is no fields= segment", () => {
+    expect(redactJiraPath("/rest/api/3/issue/VPL-1/comment")).toBe(
+      "/rest/api/3/issue/VPL-1/comment",
+    );
+  });
+});
+
+describe("Jira rate-limit warn throttling", () => {
+  beforeEach(() => {
+    _resetRateWarn();
+    vi.spyOn(console, "warn").mockImplementation(() => {});
+  });
+
+  afterEach(() => {
+    vi.restoreAllMocks();
+    _resetRateWarn();
+  });
+
+  function warnCount(): number {
+    return (console.warn as ReturnType<typeof vi.fn>).mock.calls.filter((c) =>
+      String(c[0]).includes("Approaching Jira API rate limit"),
+    ).length;
+  }
+
+  it("warns on the first hit of a window", () => {
+    _noteRateLimitApproaching(1_000);
+    expect(warnCount()).toBe(1);
+  });
+
+  it("suppresses repeated hits within the same window instead of one line per call", () => {
+    const base = 1_000;
+    // 20 hits inside the 60s window: still only the single opening warn.
+    for (let i = 0; i < 20; i++) _noteRateLimitApproaching(base + i);
+    expect(warnCount()).toBe(1);
+  });
+
+  it("emits an aggregated count line every 25th suppressed hit", () => {
+    const base = 1_000;
+    // 25 hits: opening warn (#1) + the aggregate at the 25th.
+    for (let i = 0; i < 25; i++) _noteRateLimitApproaching(base + i);
+    expect(warnCount()).toBe(2);
+    const aggregate = (console.warn as ReturnType<typeof vi.fn>).mock.calls
+      .map((c) => String(c[0]))
+      .find((l) => /x\d+ in the last/.test(l));
+    expect(aggregate).toContain("x25");
+  });
+
+  it("opens a new window (and warns again) after the window elapses", () => {
+    _noteRateLimitApproaching(1_000);
+    _noteRateLimitApproaching(2_000);
+    expect(warnCount()).toBe(1);
+    // 60s later a fresh window starts and warns immediately.
+    _noteRateLimitApproaching(1_000 + 60_000);
+    expect(warnCount()).toBe(2);
   });
 });

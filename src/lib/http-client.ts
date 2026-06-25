@@ -8,6 +8,8 @@
  * client can adapt the result back to its own public surface.
  */
 
+import { logger } from "@/lib/logger";
+
 export type HttpErrorCode =
   | "TIMEOUT"
   | "UNREACHABLE"
@@ -78,6 +80,17 @@ function classifyNetworkError(err: unknown): HttpError {
 
 function defaultSleep(ms: number): Promise<void> {
   return new Promise((r) => setTimeout(r, ms));
+}
+
+// Host only — never the full URL (it may carry query secrets) and never headers
+// (Authorization/tokens). This is the single failure-logging point every client
+// inherits (BRDG-402), so the secret-free contract lives here.
+function hostOf(url: string): string {
+  try {
+    return new URL(url).host;
+  } catch {
+    return "unknown-host";
+  }
 }
 
 // Parses a `Retry-After` header (delta-seconds form). Returns null when absent/invalid.
@@ -170,9 +183,24 @@ export async function httpFetch<T = unknown>(
       continue;
     }
 
+    // Final non-ok outcome. Logged here so every client built on httpFetch
+    // (Bitbucket, Confluence, ...) inherits failure visibility for free
+    // (BRDG-402). Secret-free: host + classification only, no body, no headers.
+    logger.warn("http-client", "request failed", {
+      host: hostOf(url),
+      status: result.status,
+      code: result.error.code,
+      retryCount: attempt,
+    });
     return { ok: false, error: result.error, status: result.status, retryCount: attempt };
   }
 
   // Unreachable in practice (loop always returns), but satisfies the type checker.
+  logger.warn("http-client", "request failed", {
+    host: hostOf(url),
+    status: last!.status,
+    code: last!.error.code,
+    retryCount: maxRetries,
+  });
   return { ok: false, error: last!.error, status: last!.status, retryCount: maxRetries };
 }

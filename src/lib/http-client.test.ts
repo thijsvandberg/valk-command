@@ -1,5 +1,11 @@
 // @vitest-environment node
 import { describe, it, expect, vi, beforeEach } from "vitest";
+
+const loggerWarn = vi.fn();
+vi.mock("@/lib/logger", () => ({
+  logger: { debug: vi.fn(), info: vi.fn(), warn: (...a: unknown[]) => loggerWarn(...a), error: vi.fn() },
+}));
+
 import { httpFetch } from "./http-client";
 
 const mockFetch = vi.fn();
@@ -122,5 +128,54 @@ describe("httpFetch", () => {
     const onRequest = vi.fn();
     await httpFetch("https://x.test/track", { maxRetries: 2, sleep: async () => {}, onRequest });
     expect(onRequest).toHaveBeenCalledTimes(2);
+  });
+
+  // BRDG-402: every client built on httpFetch inherits one warn on the final
+  // non-ok outcome — host + classification only, never the URL query or headers.
+  describe("non-ok logging (BRDG-402)", () => {
+    it("warns the final non-ok outcome with host, status, code and retryCount", async () => {
+      mockFetch.mockResolvedValue(jsonResponse("boom", false, 500));
+      await httpFetch("https://api.example.test/v2/things?secret=abc", {
+        maxRetries: 1,
+        sleep: async () => {},
+      });
+
+      const call = loggerWarn.mock.calls.find((c) => c[1] === "request failed");
+      expect(call).toBeDefined();
+      const ctx = call![2] as Record<string, unknown>;
+      expect(ctx.host).toBe("api.example.test");
+      expect(ctx.status).toBe(500);
+      expect(ctx.code).toBe("SERVER_ERROR");
+      expect(typeof ctx.retryCount).toBe("number");
+    });
+
+    it("does NOT warn on a successful response", async () => {
+      mockFetch.mockResolvedValue(jsonResponse({ ok: 1 }));
+      await httpFetch("https://x.test/ok");
+      expect(loggerWarn.mock.calls.find((c) => c[1] === "request failed")).toBeUndefined();
+    });
+
+    it("logs only the host — never the query string or any auth header", async () => {
+      mockFetch.mockResolvedValue(jsonResponse("no", false, 401));
+      await httpFetch("https://x.test/secure?token=topsecret123", {
+        headers: { Authorization: "Bearer topsecret123" },
+      });
+
+      const serialized = JSON.stringify(loggerWarn.mock.calls);
+      expect(serialized).not.toContain("topsecret123");
+      expect(serialized).not.toContain("Authorization");
+      expect(serialized).not.toContain("token=");
+    });
+
+    it("warns once with a network timeout (status 0, TIMEOUT)", async () => {
+      mockFetch.mockRejectedValue(new DOMException("aborted", "AbortError"));
+      await httpFetch("https://x.test/hung");
+
+      const call = loggerWarn.mock.calls.find((c) => c[1] === "request failed");
+      expect(call).toBeDefined();
+      const ctx = call![2] as Record<string, unknown>;
+      expect(ctx.status).toBe(0);
+      expect(ctx.code).toBe("TIMEOUT");
+    });
   });
 });

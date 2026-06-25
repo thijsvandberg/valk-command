@@ -20,6 +20,7 @@ Scheduler (src/lib/scheduler.ts)
     +-- deprecation-staleness-scan (every 5m)
     +-- revalidate-deleted-tickets (every 10m)
     +-- deprecation-auto-enqueue (every 10m, opt-in)
+    +-- reconcile-stuck-tasks (every 10m)
     +-- cleanup-removed-tickets (every 24h)
     |
     v
@@ -197,6 +198,12 @@ Detects tickets deleted from Jira that the incremental sync cannot catch (delete
 **Result includes `queueSize`** for monitoring in the settings UI.
 
 Only tickets that users actually view are checked, avoiding unnecessary API calls for dormant tickets.
+
+#### Reconcile Stuck Tasks (every 10m)
+
+Backstop (BRDG-402) for background agent captures that crashed before recording an outcome. `reconcileStuckTasks` flips `workspace_task` rows still in `running` past a 30-minute threshold to `failed`, stamping `completedAt` and an explanatory `error`. Rows with a null `startedAt` are skipped (no reliable age).
+
+The threshold (`STUCK_TASK_THRESHOLD_MS = 30m`) sits deliberately far above the stream handler's own 10-minute timeout (`STREAM_TIMEOUT_MS`), so a task that is genuinely still streaming is never killed. `captureTaskStream` already wraps its whole body and best-effort marks a row `failed` on any unexpected throw; this reconciler only catches the harder case where the process died mid-capture. It logs a `warn` naming the reconciled task ids.
 
 #### Cleanup Removed Tickets (every 24h)
 

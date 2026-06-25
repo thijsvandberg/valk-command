@@ -3,6 +3,7 @@ import { applyRateLimit } from "@/lib/rate-limiter";
 import { finalizeDraft } from "@/lib/draft-sync";
 import { errorResponse } from "@/lib/api-response";
 import { parseJsonBody } from "@/lib/request-parser";
+import { logger } from "@/lib/logger";
 
 /**
  * Finalizes a draft ticket by swapping the DRAFT-xxx key for the real Jira key.
@@ -23,7 +24,8 @@ export async function POST(request: Request) {
   try {
     finalizeDraft(draftKey, realKey, sprintName);
     return NextResponse.json({ success: true, realKey });
-  } catch {
+  } catch (err) {
+    logger.error("finalize-draft", "failed to finalize draft", err);
     return errorResponse("Failed to finalize draft", 500);
   }
 }

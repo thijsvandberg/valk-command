@@ -13,12 +13,18 @@ vi.mock("@/lib/agent-proxy", () => ({
   }),
 }));
 
+const loggerWarn = vi.fn();
+vi.mock("@/lib/logger", () => ({
+  logger: { debug: vi.fn(), info: vi.fn(), warn: (...a: unknown[]) => loggerWarn(...a), error: vi.fn() },
+}));
+
 import { agentFetch, agentFetchStream } from "./agent-fetch";
 
 const mockFetch = vi.fn();
 
 beforeEach(() => {
   mockFetch.mockReset();
+  loggerWarn.mockReset();
   vi.stubGlobal("fetch", mockFetch);
   vi.spyOn(console, "warn").mockImplementation(() => {});
 });
@@ -173,7 +179,9 @@ describe("agentFetch", () => {
       expect(result.ok).toBe(true);
       if (result.ok) expect(result.data.id).toBe("task_ok");
       expect(mockFetch).toHaveBeenCalledTimes(2);
-      expect(console.warn).toHaveBeenCalledTimes(1);
+      // The retry warning now goes through the structured logger, not console.
+      const retryWarns = loggerWarn.mock.calls.filter((c) => c[1] === "retry");
+      expect(retryWarns).toHaveLength(1);
     });
 
     it("retries on network error and succeeds", async () => {
@@ -228,7 +236,73 @@ describe("agentFetch", () => {
         expect(result.error.code).toBe("SERVER_ERROR");
       }
       expect(mockFetch).toHaveBeenCalledTimes(3);
-      expect(console.warn).toHaveBeenCalledTimes(2);
+      const retryWarns = loggerWarn.mock.calls.filter((c) => c[1] === "retry");
+      expect(retryWarns).toHaveLength(2);
+    });
+  });
+
+  // BRDG-402: a failed agent call kept only a generic code; the transport cause
+  // (and a 4xx agent explanation) was discarded. These lock in that it is logged
+  // and retained without changing the returned discriminated-union shape.
+  describe("terminal failure logging (BRDG-402)", () => {
+    it("logs the transport cause before returning the classified network error", async () => {
+      mockFetch.mockRejectedValueOnce(new TypeError("ECONNREFUSED 127.0.0.1:3001"));
+
+      const result = await agentFetch("/api/tasks");
+
+      // Shape unchanged: still the same { ok:false, error, status, retryCount } union.
+      expect(result.ok).toBe(false);
+      if (!result.ok) {
+        expect(result.error.code).toBe("UNREACHABLE");
+        expect(result.status).toBe(0);
+        expect(result.retryCount).toBe(0);
+      }
+
+      const call = loggerWarn.mock.calls.find((c) => c[1] === "terminal failure");
+      expect(call).toBeDefined();
+      const ctx = call![2] as Record<string, unknown>;
+      expect(ctx.path).toBe("/api/tasks");
+      expect(ctx.code).toBe("UNREACHABLE");
+      expect(ctx.cause).toContain("ECONNREFUSED");
+    });
+
+    it("retains a truncated 4xx body in the classified error message", async () => {
+      mockFetch.mockResolvedValueOnce(
+        new Response("missing required arg: ticketKey", {
+          status: 422,
+          headers: { "Content-Type": "text/plain" },
+        }),
+      );
+
+      const result = await agentFetch("/api/tasks");
+
+      expect(result.ok).toBe(false);
+      if (!result.ok) {
+        expect(result.error.code).toBe("SERVER_ERROR");
+        expect(result.status).toBe(422);
+        // The agent's explanation now survives, not just "Workspace returned 422".
+        expect(result.error.error).toContain("missing required arg: ticketKey");
+      }
+    });
+
+    it("prefers a JSON {error} message for a 4xx over the raw body", async () => {
+      mockFetch.mockResolvedValueOnce(jsonResponse({ error: "bad skill arg" }, 422));
+
+      const result = await agentFetch("/api/tasks");
+
+      expect(result.ok).toBe(false);
+      if (!result.ok) expect(result.error.error).toBe("bad skill arg");
+    });
+
+    it("never logs the Authorization header or bearer token value", async () => {
+      mockFetch.mockRejectedValueOnce(new TypeError("fetch failed"));
+
+      await agentFetch("/api/tasks");
+
+      const serialized = JSON.stringify(loggerWarn.mock.calls);
+      expect(serialized).not.toContain("test-key");
+      expect(serialized).not.toContain("Authorization");
+      expect(serialized.toLowerCase()).not.toContain("bearer");
     });
   });
 });
@@ -277,5 +351,16 @@ describe("agentFetchStream", () => {
     if (!result.ok) {
       expect(result.error.code).toBe("UNREACHABLE");
     }
+  });
+
+  it("logs the transport cause on a stream network failure (BRDG-402)", async () => {
+    loggerWarn.mockReset();
+    mockFetch.mockRejectedValueOnce(new TypeError("socket hang up"));
+
+    await agentFetchStream("/api/tasks/1/stream");
+
+    const call = loggerWarn.mock.calls.find((c) => c[1] === "terminal failure");
+    expect(call).toBeDefined();
+    expect((call![2] as Record<string, unknown>).cause).toContain("socket hang up");
   });
 });

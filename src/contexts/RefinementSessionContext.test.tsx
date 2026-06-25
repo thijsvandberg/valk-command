@@ -10,6 +10,13 @@ vi.mock("@/lib/api-client", () => ({
   },
 }));
 
+// BRDG-401: a failed session status write must be forwarded to the server sink
+// instead of the old silent `.catch(() => {})`.
+const reportClientError = vi.fn();
+vi.mock("@/lib/client-error", () => ({
+  reportClientError: (...args: unknown[]) => reportClientError(...args),
+}));
+
 function TestConsumer({ onState }: { onState: (state: ReturnType<typeof useRefinementSession>) => void }) {
   const state = useRefinementSession();
   onState(state);
@@ -28,6 +35,7 @@ describe("RefinementSessionContext", () => {
   beforeEach(() => {
     mockUpdate.mockReset();
     mockUpdate.mockResolvedValue({});
+    reportClientError.mockClear();
   });
 
   it("starts with empty state", () => {
@@ -270,6 +278,54 @@ describe("RefinementSessionContext", () => {
 
     act(() => { state.startSession(["VPL-2"]); });
     expect(state.sessionEstimates).toEqual({});
+  });
+
+  // BRDG-401: the status write used to be `.catch(() => {})`, so a failure left
+  // the session at the wrong status with no trace. It must now report server-side
+  // (sessionId in the context, no field values), without breaking the local state
+  // transition (the modal navigates away regardless).
+  it("reports to the server sink when the saveSession status write fails", async () => {
+    mockUpdate.mockRejectedValueOnce(new Error("boom"));
+    let state!: ReturnType<typeof useRefinementSession>;
+    renderWithProvider((s) => { state = s; });
+
+    act(() => { state.startSession(["VPL-1"], undefined, "sess-err"); });
+    await act(async () => { state.saveSession("note"); });
+
+    expect(reportClientError).toHaveBeenCalledTimes(1);
+    const [context, , extra] = reportClientError.mock.calls[0];
+    expect(context).toContain("save-session");
+    expect(context).toContain("sess-err");
+    expect(extra).toEqual({ source: "refinement" });
+    // The general comment value must not leak into the report.
+    expect(JSON.stringify(reportClientError.mock.calls)).not.toContain("note");
+    // Local transition still completes.
+    expect(state.sessionActive).toBe(false);
+  });
+
+  it("reports to the server sink when the finishSession status write fails", async () => {
+    mockUpdate.mockRejectedValueOnce(new Error("boom"));
+    let state!: ReturnType<typeof useRefinementSession>;
+    renderWithProvider((s) => { state = s; });
+
+    act(() => { state.startSession(["VPL-1"], undefined, "sess-fin"); });
+    await act(async () => { state.finishSession(); });
+
+    expect(reportClientError).toHaveBeenCalledTimes(1);
+    const [context] = reportClientError.mock.calls[0];
+    expect(context).toContain("finish-session");
+    expect(context).toContain("sess-fin");
+    expect(state.sessionActive).toBe(false);
+  });
+
+  it("does not report when the status write succeeds", async () => {
+    let state!: ReturnType<typeof useRefinementSession>;
+    renderWithProvider((s) => { state = s; });
+
+    act(() => { state.startSession(["VPL-1"], undefined, "sess-ok"); });
+    await act(async () => { state.finishSession(); });
+
+    expect(reportClientError).not.toHaveBeenCalled();
   });
 
   it("throws when used outside provider", () => {

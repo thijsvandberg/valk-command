@@ -58,10 +58,11 @@ vi.mock("@/db", () => ({
   },
 }));
 
-import { cleanupActivityLog, cleanupOldNotifications, revalidateDeletedTickets, runDeprecationStalenessScan, runAutoEnqueue } from "./scheduled-tasks";
+import { cleanupActivityLog, cleanupOldNotifications, revalidateDeletedTickets, runDeprecationStalenessScan, runAutoEnqueue, reconcileStuckTasks } from "./scheduled-tasks";
 import { jiraClient, JiraApiError } from "@/lib/jira-client";
+import { logger } from "@/lib/logger";
 import { enqueue, _reset as resetQueue } from "@/lib/revalidation-queue";
-import { activityLog, alert, ticket, appSetting } from "@/db/schema";
+import { activityLog, alert, ticket, appSetting, workspaceTask } from "@/db/schema";
 import { eq } from "drizzle-orm";
 
 describe("cleanupActivityLog", () => {
@@ -357,5 +358,73 @@ describe("runAutoEnqueue — subtask exclusion", () => {
     const result = await runAutoEnqueue();
     // Enqueued count must not include BT-SUB; only BT-STORY is eligible.
     expect((result as { enqueued: number }).enqueued).toBe(1);
+  });
+});
+
+// BRDG-402: the stuck-task reconciler is the final backstop for a background
+// capture that crashed before recording an outcome. The 30-minute threshold MUST
+// stay well clear of the 10-minute stream timeout so a live task is never killed.
+describe("reconcileStuckTasks", () => {
+  beforeEach(() => {
+    testDb = createTestDb();
+    vi.mocked(logger.warn).mockClear();
+  });
+
+  function insertTask(id: string, status: "running" | "completed" | "failed", ageMs: number) {
+    testDb.insert(workspaceTask).values({
+      id,
+      skillName: "review",
+      status,
+      startedAt: new Date(Date.now() - ageMs).toISOString(),
+      conversationId: "conv-1",
+    }).run();
+  }
+
+  const THIRTY_MIN = 30 * 60 * 1000;
+
+  it("flips a running task older than 30 minutes to failed", async () => {
+    insertTask("old-running", "running", THIRTY_MIN + 60_000);
+
+    const result = await reconcileStuckTasks();
+
+    expect((result as { reconciled: number }).reconciled).toBe(1);
+    const row = testDb.select().from(workspaceTask).where(eq(workspaceTask.id, "old-running")).get();
+    expect(row!.status).toBe("failed");
+    expect(row!.completedAt).toBeTruthy();
+    expect(row!.error).toContain("stuck in running");
+  });
+
+  it("does NOT touch a running task younger than 30 minutes (margin above the 10m stream timeout)", async () => {
+    // 20 minutes: older than the 10m stream timeout but still inside the safe window.
+    insertTask("live-running", "running", 20 * 60 * 1000);
+
+    const result = await reconcileStuckTasks();
+
+    expect((result as { reconciled: number }).reconciled).toBe(0);
+    const row = testDb.select().from(workspaceTask).where(eq(workspaceTask.id, "live-running")).get();
+    expect(row!.status).toBe("running");
+  });
+
+  it("ignores tasks that already completed or failed even if old", async () => {
+    insertTask("done-old", "completed", THIRTY_MIN * 2);
+    insertTask("failed-old", "failed", THIRTY_MIN * 2);
+
+    const result = await reconcileStuckTasks();
+
+    expect((result as { reconciled: number }).reconciled).toBe(0);
+    expect(testDb.select().from(workspaceTask).where(eq(workspaceTask.id, "done-old")).get()!.status).toBe("completed");
+  });
+
+  it("logs a warn naming the reconciled task ids", async () => {
+    insertTask("stuck-a", "running", THIRTY_MIN + 60_000);
+    insertTask("stuck-b", "running", THIRTY_MIN + 60_000);
+
+    await reconcileStuckTasks();
+
+    const call = vi.mocked(logger.warn).mock.calls.find((c) => c[1] === "reconciled_stuck_tasks");
+    expect(call).toBeDefined();
+    const ctx = call![2] as Record<string, unknown>;
+    expect(ctx.count).toBe(2);
+    expect(ctx.taskIds).toEqual(expect.arrayContaining(["stuck-a", "stuck-b"]));
   });
 });

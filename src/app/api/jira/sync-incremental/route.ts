@@ -11,6 +11,7 @@ import { upsertSetting } from "@/lib/upsert-setting";
 import { applyRateLimit } from "@/lib/rate-limiter";
 import { cache } from "@/lib/cache";
 import { logger } from "@/lib/logger";
+import { withRequestLog } from "@/lib/request-log";
 import { safeJsonParse } from "@/lib/api-validation";
 import { refreshSprintMetadata } from "@/lib/refresh-sprint-metadata";
 
@@ -33,7 +34,7 @@ const COOLDOWN_MS = 120_000;
  * Also refreshes sprint metadata (state, goal, dates) on a separate
  * 5-minute cooldown, independent of the ticket sync cooldown.
  */
-export async function POST() {
+async function runIncrementalSync() {
   const limited = await applyRateLimit("sync");
   if (limited) return limited;
 
@@ -223,3 +224,7 @@ export async function POST() {
     unregisterSync(syncId);
   }
 }
+
+// One access-log line per request (BRDG-400); see src/lib/request-log.ts.
+// The handler ignores its arguments, so adapt it to the wrapper's signature.
+export const POST = withRequestLog(() => runIncrementalSync());

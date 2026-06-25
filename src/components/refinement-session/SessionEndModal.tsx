@@ -14,6 +14,9 @@ import { DateTimePicker, todayLocalDate } from "@/components/shared/DateTimePick
 import { sessionLabel, compareSessions } from "./refinement-utils";
 import { tickets, apiFetch } from "@/lib/api-client";
 import { patchTicketCaches } from "@/lib/ticket-cache";
+import { reportClientError } from "@/lib/client-error";
+import { Toast } from "@/components/ui/Toast";
+import { useToast } from "@/hooks/useToast";
 import type { JiraStatus, TicketReadiness, IssueType } from "@/types/ticket";
 import {
   ArrowLeft,
@@ -47,6 +50,17 @@ export function SessionEndModal() {
 
   const { data: allTickets } = useTickets("__all__");
   const { sessions, mutate: mutateSessions } = useRefinementSessions();
+  const { toast, showToast, dismissToast } = useToast();
+
+  // A failed note/PO-note write must not vanish silently (BRDG-401): these used
+  // to be `.catch(() => {})`, so a dropped save meant the PO's note was lost with
+  // no trace. The operation + ticket key (and session id) are folded into the
+  // reported context so they land in the [client] log line; never the note text.
+  // The toast tells the PO so they can retry instead of assuming it saved.
+  const reportNoteSaveFailure = useCallback((operation: string, ticketKey: string, err: unknown) => {
+    reportClientError(`refinement ${operation} ${ticketKey} session=${savedSessionId ?? "none"}`, err, { source: "refinement" });
+    showToast(`Failed to save note for ${ticketKey}. Please try again.`);
+  }, [savedSessionId, showToast]);
 
   // General comment state
   const [generalComment, setGeneralComment] = useState("");
@@ -103,10 +117,12 @@ export function SessionEndModal() {
     if (!savedSessionId) return;
     if (noteTimerRef.current[ticketKey]) clearTimeout(noteTimerRef.current[ticketKey]);
     noteTimerRef.current[ticketKey] = setTimeout(() => {
-      refinementSessionsApi.upsertTicketNote(savedSessionId, { ticketKey, content }).catch(() => {});
-      tickets.updateMetadata(ticketKey, { poNotes: content }).catch(() => {});
+      refinementSessionsApi.upsertTicketNote(savedSessionId, { ticketKey, content })
+        .catch((err) => reportNoteSaveFailure("ticket-note-autosave", ticketKey, err));
+      tickets.updateMetadata(ticketKey, { poNotes: content })
+        .catch((err) => reportNoteSaveFailure("po-note-autosave", ticketKey, err));
     }, NOTE_SAVE_DELAY);
-  }, [savedSessionId]);
+  }, [savedSessionId, reportNoteSaveFailure]);
 
   const handleNoteChange = useCallback((ticketKey: string, value: string) => {
     setTicketNotes((prev) => ({ ...prev, [ticketKey]: value }));
@@ -154,11 +170,17 @@ export function SessionEndModal() {
       clearTimeout(timers[key]);
       delete timers[key];
       const content = ticketNotesRef.current[key] ?? "";
-      saves.push(refinementSessionsApi.upsertTicketNote(savedSessionId, { ticketKey: key, content }).catch(() => {}));
-      saves.push(tickets.updateMetadata(key, { poNotes: content }).catch(() => {}));
+      saves.push(
+        refinementSessionsApi.upsertTicketNote(savedSessionId, { ticketKey: key, content })
+          .catch((err) => reportNoteSaveFailure("ticket-note-flush", key, err)),
+      );
+      saves.push(
+        tickets.updateMetadata(key, { poNotes: content })
+          .catch((err) => reportNoteSaveFailure("po-note-flush", key, err)),
+      );
     }
     await Promise.all(saves);
-  }, [savedSessionId]);
+  }, [savedSessionId, reportNoteSaveFailure]);
 
   const toggleNoteExpand = useCallback((ticketKey: string) => {
     setExpandedNotes((prev) => {
@@ -177,8 +199,13 @@ export function SessionEndModal() {
     if (!savedSessionId) return;
     refinementSessionsApi
       .update(savedSessionId, { generalComment: generalComment || null })
-      .catch(() => {});
-  }, [savedSessionId, generalComment]);
+      .catch((err) => {
+        // The general comment is PO-authored data; a dropped save must not vanish
+        // silently (BRDG-401). Report the operation + session id, never the text.
+        reportClientError(`refinement general-comment-save session=${savedSessionId}`, err, { source: "refinement" });
+        showToast("Failed to save comment. Please try again.");
+      });
+  }, [savedSessionId, generalComment, showToast]);
 
   // Resolve ticket info for each queue item. Story points chosen during the
   // session take precedence over the shared ticket cache: the cache can still
@@ -339,7 +366,13 @@ export function SessionEndModal() {
     );
     await Promise.all(
       spikesToPromote.map((t) =>
-        tickets.updateMetadata(t.key, { readiness: null }).catch(() => {}),
+        tickets.updateMetadata(t.key, { readiness: null }).catch((err) => {
+          // A failed readiness promotion is a real data write too (BRDG-401):
+          // surface it instead of swallowing, so the spike isn't silently left
+          // at the wrong readiness. Key + session in the context, no values.
+          reportClientError(`refinement spike-readiness-promote ${t.key} session=${savedSessionId ?? "none"}`, err, { source: "refinement" });
+          showToast(`Failed to update readiness for ${t.key}. Please try again.`);
+        }),
       ),
     );
 
@@ -347,7 +380,7 @@ export function SessionEndModal() {
     // Completed sessions leave the overview; navigate without a guid so we
     // don't land back on the just-finished refinement.
     router.push("/refinement");
-  }, [flushPendingNotes, applyCarryOver, ticketRows, finishSession, generalComment, router]);
+  }, [flushPendingNotes, applyCarryOver, ticketRows, finishSession, generalComment, router, savedSessionId, showToast]);
 
   const handleGoBack = useCallback(() => {
     closeEndModal();
@@ -391,6 +424,7 @@ export function SessionEndModal() {
   ).length;
 
   return (
+    <>
     <div className="flex h-full items-start justify-center overflow-y-auto py-12 px-4">
       <div
         className="w-full max-w-2xl rounded-2xl border border-border-default bg-[var(--color-surface-elevated)] shadow-[0_8px_40px_rgba(0,0,0,0.25),0_2px_12px_color-mix(in_srgb,var(--color-brand-500)_8%,transparent)]"
@@ -659,5 +693,7 @@ export function SessionEndModal() {
         </div>
       </div>
     </div>
+    <Toast toast={toast} onDismiss={dismissToast} />
+    </>
   );
 }

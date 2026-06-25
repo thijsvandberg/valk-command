@@ -77,6 +77,27 @@ vi.mock("@/lib/ticket-cache", () => ({
   patchTicketCaches: vi.fn(),
 }));
 
+// BRDG-401: a failed note/status write must report to the server sink and toast
+// the PO, instead of the old silent `.catch(() => {})`.
+const reportClientError = vi.fn();
+vi.mock("@/lib/client-error", () => ({
+  reportClientError: (...args: unknown[]) => reportClientError(...args),
+}));
+
+const showToast = vi.fn();
+let lastToast: React.ReactNode = null;
+vi.mock("@/hooks/useToast", () => ({
+  useToast: () => ({
+    toast: lastToast,
+    toastLoading: false,
+    showToast: (msg: React.ReactNode) => { lastToast = msg; showToast(msg); },
+    dismissToast: () => { lastToast = null; },
+  }),
+}));
+vi.mock("@/components/ui/Toast", () => ({
+  Toast: ({ toast }: { toast: React.ReactNode }) => (toast ? <div role="status">{toast}</div> : null),
+}));
+
 // Stub the pill with buttons that fire the change callbacks, keeping the
 // ticket key visible for the render assertions.
 vi.mock("@/components/shared/TicketStatusPill", () => ({
@@ -126,6 +147,7 @@ describe("SessionEndModal", () => {
     mockContext.sessionSubtaskCounts = {};
     mockContext.currentIndex = 2;
     mockSessions = [];
+    lastToast = null;
     try {
       sessionStorage.clear();
     } catch {
@@ -496,6 +518,110 @@ describe("SessionEndModal", () => {
         }),
       );
       expect(refinementSessions.create).toHaveBeenCalled();
+    });
+  });
+
+  // BRDG-401: note/status writes used to be `.catch(() => {})`. A failed write
+  // must now report to the server sink AND toast the PO, with no value in the log.
+  describe("failed data writes are reported + toasted (BRDG-401)", () => {
+    it("reports + toasts when the session-note flush write fails", async () => {
+      const { refinementSessions } = await import("@/lib/api-client");
+      vi.mocked(refinementSessions.upsertTicketNote).mockRejectedValueOnce(new Error("boom"));
+      render(<SessionEndModal />);
+
+      const noteButtons = screen.getAllByTitle("Add PO message");
+      fireEvent.click(noteButtons[0]);
+      fireEvent.change(screen.getByPlaceholderText("PO message for this ticket..."), {
+        target: { value: "Important decision" },
+      });
+      fireEvent.click(screen.getByText("Complete"));
+
+      await waitFor(() => expect(reportClientError).toHaveBeenCalled());
+      const [context, , extra] = reportClientError.mock.calls[0];
+      expect(context).toContain("ticket-note-flush");
+      expect(context).toContain("VPL-1");
+      expect(extra).toEqual({ source: "refinement" });
+      // The note CONTENT must never be logged (no PII).
+      expect(JSON.stringify(reportClientError.mock.calls)).not.toContain("Important decision");
+      // The PO is told the save failed.
+      await waitFor(() => expect(showToast).toHaveBeenCalledWith("Failed to save note for VPL-1. Please try again."));
+      expect(screen.getByRole("status")).toHaveTextContent("Failed to save note for VPL-1. Please try again.");
+    });
+
+    it("reports + toasts when the PO-note (ticket metadata) flush write fails", async () => {
+      const { tickets } = await import("@/lib/api-client");
+      vi.mocked(tickets.updateMetadata).mockRejectedValueOnce(new Error("boom"));
+      render(<SessionEndModal />);
+
+      const noteButtons = screen.getAllByTitle("Add PO message");
+      fireEvent.click(noteButtons[0]);
+      fireEvent.change(screen.getByPlaceholderText("PO message for this ticket..."), {
+        target: { value: "Secret note" },
+      });
+      fireEvent.click(screen.getByText("Complete"));
+
+      await waitFor(() => expect(reportClientError).toHaveBeenCalled());
+      const [context] = reportClientError.mock.calls[0];
+      expect(context).toContain("po-note-flush");
+      expect(context).toContain("VPL-1");
+      expect(JSON.stringify(reportClientError.mock.calls)).not.toContain("Secret note");
+      await waitFor(() => expect(showToast).toHaveBeenCalled());
+    });
+
+    it("reports + toasts when a spike readiness promotion fails on Complete", async () => {
+      const original = mockTickets[2].readiness;
+      mockTickets[2].readiness = "ready_to_refine";
+      const { tickets } = await import("@/lib/api-client");
+      // VPL-3 is the spike promoted to readiness:null on Complete; make it fail.
+      vi.mocked(tickets.updateMetadata).mockRejectedValueOnce(new Error("boom"));
+      try {
+        render(<SessionEndModal />);
+        fireEvent.click(screen.getByText("Complete"));
+
+        await waitFor(() => expect(reportClientError).toHaveBeenCalled());
+        const [context, , extra] = reportClientError.mock.calls[0];
+        expect(context).toContain("spike-readiness-promote");
+        expect(context).toContain("VPL-3");
+        expect(extra).toEqual({ source: "refinement" });
+        await waitFor(() =>
+          expect(showToast).toHaveBeenCalledWith("Failed to update readiness for VPL-3. Please try again."),
+        );
+      } finally {
+        mockTickets[2].readiness = original;
+      }
+    });
+
+    it("does not report or toast when the note flush writes succeed", async () => {
+      render(<SessionEndModal />);
+      const noteButtons = screen.getAllByTitle("Add PO message");
+      fireEvent.click(noteButtons[0]);
+      fireEvent.change(screen.getByPlaceholderText("PO message for this ticket..."), {
+        target: { value: "All good" },
+      });
+      fireEvent.click(screen.getByText("Complete"));
+
+      await waitFor(() => expect(mockContext.finishSession).toHaveBeenCalled());
+      expect(reportClientError).not.toHaveBeenCalled();
+      expect(showToast).not.toHaveBeenCalled();
+    });
+
+    it("reports + toasts when the general-comment blur write fails", async () => {
+      const { refinementSessions } = await import("@/lib/api-client");
+      vi.mocked(refinementSessions.update).mockRejectedValueOnce(new Error("boom"));
+      render(<SessionEndModal />);
+
+      const field = screen.getByPlaceholderText("Session notes, decisions, follow-ups...");
+      fireEvent.change(field, { target: { value: "Confidential remark" } });
+      fireEvent.blur(field);
+
+      await waitFor(() => expect(reportClientError).toHaveBeenCalled());
+      const [context, , extra] = reportClientError.mock.calls[0];
+      expect(context).toContain("general-comment-save");
+      expect(context).toContain("session-abc");
+      expect(extra).toEqual({ source: "refinement" });
+      // The comment CONTENT (PO-authored data) must never be logged.
+      expect(JSON.stringify(reportClientError.mock.calls)).not.toContain("Confidential remark");
+      await waitFor(() => expect(showToast).toHaveBeenCalledWith("Failed to save comment. Please try again."));
     });
   });
 });

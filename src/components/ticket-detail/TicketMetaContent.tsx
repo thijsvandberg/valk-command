@@ -10,6 +10,9 @@ import { TicketStatusPill } from "@/components/shared/TicketStatusPill";
 import { tickets, jira, apiFetch } from "@/lib/api-client";
 import { patchTicketCaches, patchTicketDetailCache, moveTicketSprintCaches } from "@/lib/ticket-cache";
 import { registerPendingEdit, confirmPendingEdit, clearPendingEdit } from "@/components/sprint-board/pendingTicketEdits";
+import { reportClientError } from "@/lib/client-error";
+import { Toast } from "@/components/ui/Toast";
+import { useToast } from "@/hooks/useToast";
 import { userInitials, userColor } from "@/lib/user-utils";
 import { Avatar } from "@/components/shared/Avatar";
 import { QualityBadge } from "@/components/sprint-board/TicketTable";
@@ -98,7 +101,20 @@ export function TicketMetaContent({
   style,
 }: TicketMetaContentProps) {
   const router = useRouter();
+  const { toast, showToast, dismissToast } = useToast();
   const readiness = ticket.readiness;
+
+  // A failed sidebar edit must not vanish into the console (BRDG-401): the board
+  // already reports + toasts on its edit handlers, and this sidebar edits the same
+  // fields, so it mirrors that pattern. The operation + ticket key are folded into
+  // the reported context (not the payload's free fields) so they land in the
+  // [client] log line; only the key is included, never the edited value. The toast
+  // tells the PO the change was reverted. The optimistic rollback at the call site
+  // stays intact.
+  const reportEditFailure = useCallback((operation: string, err: unknown) => {
+    reportClientError(`ticket-detail ${operation} ${ticket.key}`, err, { source: "ticket-detail" });
+    showToast(`Failed to update ${ticket.key}. Change reverted.`);
+  }, [ticket.key, showToast]);
   const [businessValue, setBusinessValue] = useState<number | null>(ticket.businessValue);
   const [storyPoints, setStoryPoints] = useState<number | null>(ticket.storyPoints);
   const [poNotes, setPoNotes] = useState(ticket.notes);
@@ -186,12 +202,12 @@ export function TicketMetaContent({
       confirmPendingEdit(ticket.key, "businessValue");
       onMutate?.();
     } catch (err) {
-      console.error("Operation failed:", err);
       setBusinessValue(prev);
       clearPendingEdit(ticket.key, "businessValue");
       patchTicketDetailCache(ticket.key, { businessValue: prev });
+      reportEditFailure("business-value", err);
     }
-  }, [ticket.key, businessValue, onMutate]);
+  }, [ticket.key, businessValue, onMutate, reportEditFailure]);
 
   const handleStoryPointsChange = useCallback(async (v: number | null) => {
     const prev = storyPoints;
@@ -203,12 +219,12 @@ export function TicketMetaContent({
       confirmPendingEdit(ticket.key, "storyPoints");
       onMutate?.();
     } catch (err) {
-      console.error("Operation failed:", err);
       setStoryPoints(prev);
       clearPendingEdit(ticket.key, "storyPoints");
       patchTicketDetailCache(ticket.key, { storyPoints: prev });
+      reportEditFailure("story-points", err);
     }
-  }, [ticket.key, storyPoints, onMutate]);
+  }, [ticket.key, storyPoints, onMutate, reportEditFailure]);
 
   const handleJiraStatusChange = useCallback(async (status: JiraStatus) => {
     const prev = jiraStatus;
@@ -220,12 +236,12 @@ export function TicketMetaContent({
       confirmPendingEdit(ticket.key, "jiraStatus");
       onMutate?.();
     } catch (err) {
-      console.error("Operation failed:", err);
       setJiraStatus(prev);
       clearPendingEdit(ticket.key, "jiraStatus");
       patchTicketDetailCache(ticket.key, { jiraStatus: prev });
+      reportEditFailure("jira-status", err);
     }
-  }, [ticket.key, jiraStatus, onMutate]);
+  }, [ticket.key, jiraStatus, onMutate, reportEditFailure]);
 
   const handleSprintChange = useCallback(async (sprintId: string | null) => {
     if (!sprintId) return;
@@ -241,11 +257,11 @@ export function TicketMetaContent({
     try {
       await jira.moveSprint({ issueKeys: [ticket.key], targetSprintId: sprintId });
     } catch (err) {
-      console.error("Operation failed:", err);
       setCurrentSprintId(prev);
       moveTicketSprintCaches(ticket, prev ?? "__backlog__");
+      reportEditFailure("sprint", err);
     }
-  }, [ticket, currentSprintId]);
+  }, [ticket, currentSprintId, reportEditFailure]);
 
   const handleSprintModalSelect = useCallback((sprintId: string) => {
     handleSprintChange(sprintId);
@@ -279,12 +295,12 @@ export function TicketMetaContent({
       confirmPendingEdit(ticket.key, "assignee");
       onMutate?.();
     } catch (err) {
-      console.error("Operation failed:", err);
       setAssignee(prev);
       clearPendingEdit(ticket.key, "assignee");
       patchTicketDetailCache(ticket.key, { assignee: prev });
+      reportEditFailure("assignee", err);
     }
-  }, [ticket.key, assignee, onMutate]);
+  }, [ticket.key, assignee, onMutate, reportEditFailure]);
 
   const handleEpicChange = useCallback(async (epic: EpicOption | null) => {
     const prevName = epicName;
@@ -305,14 +321,14 @@ export function TicketMetaContent({
       confirmPendingEdit(ticket.key, "epicKey");
       onMutate?.();
     } catch (err) {
-      console.error("Operation failed:", err);
       setEpicName(prevName);
       setEpicKey(prevKey);
       clearPendingEdit(ticket.key, "epic");
       clearPendingEdit(ticket.key, "epicKey");
       patchTicketDetailCache(ticket.key, { epic: prevName, epicKey: prevKey });
+      reportEditFailure("epic", err);
     }
-  }, [ticket.key, epicName, epicKey, onMutate]);
+  }, [ticket.key, epicName, epicKey, onMutate, reportEditFailure]);
 
   const handleLabelsChange = useCallback(async (newLabels: string[]) => {
     const prev = labels;
@@ -322,11 +338,11 @@ export function TicketMetaContent({
       await tickets.updateLabels(ticket.key, newLabels);
       onMutate?.();
     } catch (err) {
-      console.error("Operation failed:", err);
       setLabelsOverride(prev);
       patchTicketCaches(ticket.key, { labels: prev });
+      reportEditFailure("labels", err);
     }
-  }, [ticket.key, labels, onMutate]);
+  }, [ticket.key, labels, onMutate, reportEditFailure]);
 
   const handleNotesChange = useCallback(async (notes: string) => {
     const prev = poNotes;
@@ -336,11 +352,11 @@ export function TicketMetaContent({
       await tickets.updateMetadata(ticket.key, { poNotes: notes });
       onMutate?.();
     } catch (err) {
-      console.error("Operation failed:", err);
       setPoNotes(prev);
       patchTicketCaches(ticket.key, { notes: prev });
+      reportEditFailure("po-notes", err);
     }
-  }, [ticket.key, poNotes, onMutate]);
+  }, [ticket.key, poNotes, onMutate, reportEditFailure]);
 
   const description = detail?.description ?? "";
   const hasDescription = description.trim().length > 20;
@@ -407,6 +423,7 @@ export function TicketMetaContent({
   ) : null;
 
   return (
+    <>
     <div className={`flex flex-col ${className ?? ""}`} style={style}>
       {/* Details */}
       <div className="space-y-3">
@@ -738,5 +755,7 @@ export function TicketMetaContent({
         )}
       </div>
     </div>
+    <Toast toast={toast} onDismiss={dismissToast} />
+    </>
   );
 }

@@ -10,6 +10,7 @@ import { eq, and } from "drizzle-orm";
 import { randomUUID } from "crypto";
 import { captureTaskStream } from "@/lib/task-stream-handler";
 import { nextSequence } from "@/db/next-sequence";
+import { withRequestLog } from "@/lib/request-log";
 
 /**
  * Build a human-readable title for a task conversation based on skill + args.
@@ -119,7 +120,7 @@ function buildPromptSummary(skillName: string, args: Record<string, unknown>): s
   }
 }
 
-export async function POST(request: Request) {
+async function createWorkspaceTask(request: Request) {
   const limited = await applyRateLimit("workspace");
   if (limited) return limited;
 
@@ -233,7 +234,7 @@ export async function POST(request: Request) {
   return NextResponse.json({ ...taskData, conversationId }, { status: result.status });
 }
 
-export async function GET(request: Request) {
+async function listWorkspaceTasks(request: Request) {
   const url = new URL(request.url);
   const filterConversationId = url.searchParams.get("conversationId");
   const filterStatus = url.searchParams.get("status");
@@ -264,3 +265,7 @@ export async function GET(request: Request) {
 
   return NextResponse.json(proxyResult.data, { status: proxyResult.status });
 }
+
+// One access-log line per request (BRDG-400); see src/lib/request-log.ts.
+export const POST = withRequestLog(createWorkspaceTask);
+export const GET = withRequestLog(listWorkspaceTasks);

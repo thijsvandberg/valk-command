@@ -10,6 +10,11 @@ import { nextSequence } from "@/db/next-sequence";
 
 const STREAM_TIMEOUT_MS = 10 * 60 * 1000; // 10 minutes
 
+// The agent's failure body (auth message, bad skill arg, crash trace) is the one
+// clue to WHY a task failed; keep enough to identify it without bloating the
+// persisted error or the log (BRDG-402).
+const MAX_ERROR_BODY_LEN = 500;
+
 interface CaptureParams {
   taskId: string;
   skillName: string;
@@ -86,11 +91,46 @@ async function saveAssistantMessage(
 }
 
 /**
- * Background handler that connects to the VRW SSE stream and captures
- * the task result server-side, independently of the browser connection.
- * Called via after() so it runs after the HTTP response is sent.
+ * Background handler that connects to the VRW SSE stream and captures the task
+ * result server-side, independently of the browser connection. Called via
+ * after() so it runs after the HTTP response is sent.
+ *
+ * This is the outer safety net (BRDG-402): the work runs in runCapture, and any
+ * error it does not handle itself (a DB write failing, the leading insert, an
+ * unexpected throw) is logged with task context and the row is best-effort
+ * flipped to "failed". Without this the error became a context-less unhandled
+ * rejection inside after() and the task stayed "running" forever.
  */
 export async function captureTaskStream(params: CaptureParams): Promise<void> {
+  try {
+    await runCapture(params);
+  } catch (err) {
+    const { taskId, skillName, conversationId } = params;
+    logger.error("task-stream-handler", "capture_failed", {
+      event: "task_capture_failed",
+      taskId,
+      skillName,
+      conversationId,
+      error: err instanceof Error ? err.message : String(err),
+    });
+    // Best-effort: never leave the row stuck "running". A second failure here
+    // (e.g. the DB is the thing that broke) is swallowed so after() does not get
+    // an unhandled rejection; the stuck-task reconciler is the final backstop.
+    try {
+      await db.update(workspaceTask)
+        .set({
+          status: "failed",
+          completedAt: new Date().toISOString(),
+          error: err instanceof Error ? err.message : "Background capture failed",
+        })
+        .where(eq(workspaceTask.id, params.taskId));
+    } catch {
+      /* swallow: reconciler will catch a row that is still running */
+    }
+  }
+}
+
+async function runCapture(params: CaptureParams): Promise<void> {
   const { taskId, skillName, conversationId, relatedTicket } = params;
 
   // Record the task in Bridge's local DB
@@ -119,7 +159,25 @@ export async function captureTaskStream(params: CaptureParams): Promise<void> {
     });
 
     if (!res.ok || !res.body) {
-      errorMessage = `Stream failed: HTTP ${res.status}`;
+      // Capture the upstream body so a failed stream records the agent's
+      // explanation, not just the bare HTTP status (BRDG-402). Guard the
+      // res.text call: not every response exposes one (e.g. a bodyless 500).
+      let body = "";
+      if (typeof res.text === "function") {
+        body = await res.text().catch(() => "");
+      }
+      const truncated = body.trim().slice(0, MAX_ERROR_BODY_LEN);
+      errorMessage = truncated
+        ? `Stream failed: HTTP ${res.status}: ${truncated}`
+        : `Stream failed: HTTP ${res.status}`;
+      logger.warn("task-stream-handler", "stream_http_error", {
+        event: "task_stream_http_error",
+        taskId,
+        skillName,
+        conversationId,
+        status: res.status,
+        body: truncated,
+      });
     } else {
       for await (const { event, data } of parseSSE(res.body, abortController.signal)) {
         if (event === "result") {

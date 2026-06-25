@@ -4,6 +4,7 @@ import { CheckCircle2, XCircle, AlertCircle, RefreshCw, ExternalLink } from "luc
 import { useJiraHealth } from "@/hooks/useSprintBoard";
 import { useConfluenceHealth } from "@/hooks/useSprintBoard";
 import useSWR from "swr";
+import { QueryStatsWidget } from "@/components/settings/QueryStatsWidget";
 
 const fetcher = (url: string) => fetch(url).then((r) => r.json());
 
@@ -152,6 +153,8 @@ export default function IntegrationsPage() {
           All tokens are server-side only and are never exposed to the browser.
         </p>
       </div>
+
+      <QueryStatsWidget />
     </>
   );
 }

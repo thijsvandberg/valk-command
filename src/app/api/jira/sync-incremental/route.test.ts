@@ -51,6 +51,13 @@ vi.mock("@/lib/sync-abort", () => ({
 
 import { POST } from "./route";
 
+// The handler ignores its request, but the wrapped export (BRDG-400) is typed
+// to receive one, matching how the App Router invokes it. Supply a minimal
+// Request so the call shape mirrors production.
+function syncReq(): Request {
+  return new Request("http://localhost:3100/api/jira/sync-incremental", { method: "POST" });
+}
+
 describe("POST /api/jira/sync-incremental", () => {
   beforeEach(() => {
     testDb = createTestDb();
@@ -62,7 +69,7 @@ describe("POST /api/jira/sync-incremental", () => {
   });
 
   it("returns needsFullSync when no watermark exists", async () => {
-    const res = await POST();
+    const res = await POST(syncReq());
     const data = await res.json();
 
     expect(data.needsFullSync).toBe(true);
@@ -78,7 +85,7 @@ describe("POST /api/jira/sync-incremental", () => {
 
     mockGetUpdatedSince.mockResolvedValue([]);
 
-    const res = await POST();
+    const res = await POST(syncReq());
     const data = await res.json();
 
     expect(data.ok).toBe(true);
@@ -117,7 +124,7 @@ describe("POST /api/jira/sync-incremental", () => {
       },
     ]);
 
-    const res = await POST();
+    const res = await POST(syncReq());
     const data = await res.json();
 
     expect(data.ok).toBe(true);
@@ -152,7 +159,7 @@ describe("POST /api/jira/sync-incremental", () => {
       { key: "VPL-300", updated: "2026-04-02T10:00:00.000Z" },
     ]);
 
-    const res = await POST();
+    const res = await POST(syncReq());
     const data = await res.json();
 
     expect(data.ok).toBe(true);
@@ -173,7 +180,7 @@ describe("POST /api/jira/sync-incremental", () => {
       value: new Date().toISOString(),
     }).run();
 
-    const res = await POST();
+    const res = await POST(syncReq());
     const data = await res.json();
 
     expect(data.ok).toBe(true);
@@ -197,7 +204,7 @@ describe("POST /api/jira/sync-incremental", () => {
 
     mockGetUpdatedSince.mockResolvedValue([]);
 
-    const res = await POST();
+    const res = await POST(syncReq());
     const data = await res.json();
 
     expect(data.ok).toBe(true);
@@ -220,7 +227,7 @@ describe("POST /api/jira/sync-incremental", () => {
       value: JSON.stringify({ count: 5, remaining: 12 }),
     }).run();
 
-    const res = await POST();
+    const res = await POST(syncReq());
     const data = await res.json();
 
     expect(data.skipped).toBe(true);
@@ -238,7 +245,7 @@ describe("POST /api/jira/sync-incremental", () => {
 
     mockGetUpdatedSince.mockRejectedValue(new Error("Jira unreachable"));
 
-    const res = await POST();
+    const res = await POST(syncReq());
     const data = await res.json();
 
     expect(res.status).toBe(500);
@@ -264,7 +271,7 @@ describe("POST /api/jira/sync-incremental", () => {
 
       mockRefreshSprintMetadata.mockResolvedValue(true);
 
-      const res = await POST();
+      const res = await POST(syncReq());
       const data = await res.json();
 
       expect(data.sprintMetaRefreshed).toBe(true);
@@ -280,7 +287,7 @@ describe("POST /api/jira/sync-incremental", () => {
 
       mockRefreshSprintMetadata.mockResolvedValue(false);
 
-      const res = await POST();
+      const res = await POST(syncReq());
       const data = await res.json();
 
       expect(data.sprintMetaRefreshed).toBe(false);
@@ -299,7 +306,7 @@ describe("POST /api/jira/sync-incremental", () => {
 
       mockRefreshSprintMetadata.mockResolvedValue(true);
 
-      const res = await POST();
+      const res = await POST(syncReq());
       const data = await res.json();
 
       expect(data.skipped).toBe(true);
@@ -316,7 +323,7 @@ describe("POST /api/jira/sync-incremental", () => {
       mockRefreshSprintMetadata.mockRejectedValue(new Error("Agile API down"));
       mockGetUpdatedSince.mockResolvedValue([]);
 
-      const res = await POST();
+      const res = await POST(syncReq());
       const data = await res.json();
 
       expect(data.ok).toBe(true);
@@ -366,7 +373,7 @@ describe("POST /api/jira/sync-incremental", () => {
 
       // First call: 50 of 60 processed, 10 remaining. The watermark must NOT
       // advance past the oldest unprocessed item (VPL-51), or it would be dropped.
-      const res1 = await POST();
+      const res1 = await POST(syncReq());
       const data1 = await res1.json();
       expect(data1.count).toBe(50);
       expect(data1.remaining).toBe(10);
@@ -381,7 +388,7 @@ describe("POST /api/jira/sync-incremental", () => {
 
       // Second call: the remaining 10 are still stale (no local row yet); the
       // first 50 are now up to date and filtered out. Drains fully.
-      const res2 = await POST();
+      const res2 = await POST(syncReq());
       const data2 = await res2.json();
       expect(data2.count).toBe(10);
       expect(data2.remaining).toBe(0);
@@ -420,7 +427,7 @@ describe("POST /api/jira/sync-incremental", () => {
         },
       }]);
 
-      const res = await POST();
+      const res = await POST(syncReq());
       const data = await res.json();
 
       expect(data.ok).toBe(true);
@@ -455,7 +462,7 @@ describe("POST /api/jira/sync-incremental", () => {
         value: "2026-04-01T00:00:00.000Z",
       }).run();
 
-      const res = await POST();
+      const res = await POST(syncReq());
       const data = await res.json();
 
       expect(data.ok).toBe(true);

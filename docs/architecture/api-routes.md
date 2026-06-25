@@ -11,6 +11,7 @@ All routes (API and page) are protected by Clerk middleware (`@clerk/nextjs`). T
 | Unauthenticated page requests | Redirects to `/login` |
 | Org restriction | `CLERK_ORG_ID` env var restricts access to one Clerk org |
 | Dev bypass | `BYPASS_AUTH=true` disables auth in `NODE_ENV=development` |
+| Correlation id | Every response carries an `x-request-id` header; the same id is forwarded to the handler and appears in server logs (see Request Correlation & Access Logging) |
 
 The `CLERK_ORG_ID` check requires the signed-in user to have the Bridge Clerk organization set as their active organization. The login UI is the embedded Clerk `<SignIn />` component rendered at `/login`.
 
@@ -236,6 +237,7 @@ Proxy layer to the valk-agent backend. See [workspace-integration.md](workspace-
 | `/api/settings/saved-views` | PUT | Save the account's saved views `{ value: SavedView[] }` |
 | `/api/sprint-slots` | GET | Get sprint slot assignments |
 | `/api/sprint-slots` | POST | Save sprint slot assignments |
+| `/api/dev/query-stats` | GET | Slow-query aggregates for the diagnostics widget (dev-only, 404 in prod; BRDG-404) |
 
 ## Pipelines (BRDG-078)
 
@@ -460,3 +462,27 @@ Workspace task routes proxy to the valk-agent backend using `agentUrl()` and `ag
 ### Activity Logging
 
 Write operations that affect ticket data log to the `activity_log` table for audit and UI feedback.
+
+### Request Correlation & Access Logging (BRDG-400)
+
+Every request gets a correlation id. The middleware (`src/middleware.ts`) generates a `crypto.randomUUID()` per request, echoes it on the response as the `x-request-id` header, and forwards it to the handler on the request headers. The same id is set on the auth/body-cap rejections (401/403/413) too.
+
+Server logs can carry that id automatically. `src/lib/request-context.ts` holds an `AsyncLocalStorage` request context; the logger (`src/lib/logger.ts`) appends `reqId=<id>` to any line emitted while a context is active, and `instrumentation.ts` `onRequestError` includes it, so a 500 and its catch-block logs all correlate to the access line.
+
+The access log is one info line per request:
+
+```
+2026-06-25 10:15:03 INFO [access] POST /api/tickets 201 42ms user=user_123 reqId=2f1c...
+```
+
+It is produced by the `withRequestLog(handler)` wrapper in `src/lib/request-log.ts`, which also activates the request context for the handler's duration and returns the handler's `Response` unchanged. **This is the standard for new and edited routes:** wrap the exported handler, e.g. `export const POST = withRequestLog(createThing);`. Coverage is incremental, not a retrofit; currently applied to the fault-prone / high-traffic routes (`/api/tickets`, `/api/workspace-tasks`, `/api/jira/sync-incremental`, `/api/client-error`).
+
+Log lines are prefixed with their level token (`DEBUG`/`INFO`/`WARN`/`ERROR`) so `grep ERROR` returns only errors. High-frequency Jira warnings are throttled: the "Approaching Jira API rate limit" warn is aggregated over a 60s window instead of firing per call, and the static `fields=` list is collapsed to a count in log lines (see `redactJiraPath` in `src/lib/jira-client.ts`).
+
+### Slow-Query Visibility (BRDG-404)
+
+Queries are timed automatically at the central DB layer, not by hand-instrumenting routes. `src/lib/db-query-instrumentation.ts` wraps the `better-sqlite3` `Database` in `src/db/index.ts` so every `prepare(sql)` returns a Proxy'd statement whose execution methods (`.run()`/`.get()`/`.all()`/`.iterate()`) are timed and recorded. The full statement API is preserved (`.raw()`, `.pluck()`, `.expand()`, `.bind()`, `.columns()`, the `.source`/`.reader`/`.busy` properties, and method chaining), so Drizzle is unaffected; chainable methods re-wrap their return value so a `.raw().all()` chain stays timed. A handle without a real `prepare` (a test stub) is returned untouched.
+
+The recorded identity is the statement's **parameterized SQL text** (`statement.source`, whitespace-collapsed and truncated to 200 chars) — `?` placeholders only. **Bound parameter values are never recorded or logged**, so no PII/secrets leak. Aggregates live in `src/lib/query-timer.ts` (`recordQuery`/`getQueryStats`, in-memory, capped at 200 labels, reset on restart). A query over the threshold logs one `[slow-query]` warn carrying the SQL identity. Threshold defaults to 100ms, overridable via the `QUERY_SLOW_MS` env var. The existing `timedQuery` higher-level usages still work (different labels).
+
+`GET /api/dev/query-stats` (dev-gated, 404 in production, mirroring `/api/dev/bypass`) returns `{ thresholdMs, queries }`. The diagnostics widget (`src/components/settings/QueryStatsWidget.tsx`) renders the slowest queries (avg/max/slowCount/lastAt) on the **Settings → Integrations** page.

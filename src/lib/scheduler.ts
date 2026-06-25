@@ -60,6 +60,23 @@ export interface TickResult {
   checked: number;
 }
 
+/**
+ * Compact, one-line outcome for a task run, used in the per-task scheduler log.
+ * A task that returned `{ skipped: true, reason }` (the convention in
+ * scheduled-tasks.ts) is reported as `skipped:<reason>`; a task that returned
+ * `{ error }` as `error`; everything else as `ran`. WHY a summary instead of
+ * dumping the whole result: a slow or silently-skipped task was invisible
+ * before (BRDG-402), and the raw result objects are large and noisy.
+ */
+function summariseResult(result: TaskResult): string {
+  if (result.skipped === true) {
+    const reason = typeof result.reason === "string" ? result.reason : "unspecified";
+    return `skipped:${reason}`;
+  }
+  if (typeof result.error === "string") return "error";
+  return "ran";
+}
+
 // ---------------------------------------------------------------------------
 // Registry
 // ---------------------------------------------------------------------------
@@ -168,6 +185,7 @@ export async function tick(): Promise<TickResult> {
   tickRunning = true;
   const ran: string[] = [];
   const results: Record<string, TaskResult> = {};
+  let skippedDue = 0;
 
   try {
     for (const task of tasks) {
@@ -178,14 +196,30 @@ export async function tick(): Promise<TickResult> {
 
       if (elapsed >= task.intervalMs) {
         await setLastRun(task.name);
+        // Date.now() bounds the run; this is normal app code so a wall clock is
+        // fine here. The duration turns a "the sync stalled" report from guesswork
+        // into a number that is greppable per task (BRDG-402).
+        const startedAtMs = Date.now();
         try {
           const result = await task.handler();
           ran.push(task.name);
           results[task.name] = result;
           await setLastResult(task.name, result);
+          logger.info("scheduler", `task "${task.name}" ${summariseResult(result)}`, {
+            event: "scheduler_task_ran",
+            task: task.name,
+            durationMs: Date.now() - startedAtMs,
+            outcome: summariseResult(result),
+          });
         } catch (err) {
           const errMsg = err instanceof Error ? err.message : "Unknown error";
           logger.error("scheduler", `task "${task.name}" failed:`, err);
+          logger.info("scheduler", `task "${task.name}" error`, {
+            event: "scheduler_task_ran",
+            task: task.name,
+            durationMs: Date.now() - startedAtMs,
+            outcome: "error",
+          });
           await setLastResult(task.name, { error: errMsg });
           createNotification(
             "scheduler",
@@ -193,11 +227,23 @@ export async function tick(): Promise<TickResult> {
             { category: "scheduler" },
           );
         }
+      } else {
+        skippedDue++;
       }
     }
   } finally {
     tickRunning = false;
   }
+
+  // One debug line per tick so the cadence is observable without flooding info
+  // when nothing is due (the common case): how many tasks were checked, how many
+  // actually ran, how many were not yet due.
+  logger.debug("scheduler", "tick complete", {
+    event: "scheduler_tick",
+    checked: tasks.length,
+    ran: ran.length,
+    notDue: skippedDue,
+  });
 
   return { ran, results, checked: tasks.length };
 }
@@ -217,6 +263,10 @@ export async function runTaskNow(name: string): Promise<TaskResult | null> {
     return result;
   } catch (err) {
     const errMsg = err instanceof Error ? err.message : "Unknown error";
+    // Mirror tick()'s catch (BRDG-401): a manually triggered run that fails must
+    // leave a server-side trace, not just a stored error result the route used to
+    // report back as a 200 "ran:true".
+    logger.error("scheduler", `task "${task.name}" failed on manual run:`, err);
     const errResult = { error: errMsg };
     await setLastResult(task.name, errResult);
     return errResult;

@@ -11,7 +11,7 @@ import {
   ticket, activityLog, alert, appSetting,
   ticketMetadata, ticketSubtask, ticketLink, ticketAttachment,
   ticketLocalEdit, poComment, jiraComment, storyVersion, storedReview,
-  storyWriterSession,
+  storyWriterSession, workspaceTask,
 } from "@/db/schema";
 import { eq, inArray, and, isNotNull, isNull, or, lt, desc, notInArray } from "drizzle-orm";
 import { FINISHED_STATUSES, EXCLUDED_SCAN_TYPES } from "@/lib/ticket-status";
@@ -65,6 +65,13 @@ const STALENESS_SCAN_CURSOR_KEY = "scheduler:deprecation-staleness-scan:cursor";
 // Tier-2 deep-dive runner (BRDG-284). Small batch per tick keeps agent load low
 // per the epic's "small batches, never all at once" constraint.
 const DEEP_SCAN_BATCH_SIZE = 5;
+
+// Stuck-task reconciler (BRDG-402). A workspaceTask still "running" past this age
+// is presumed dead and flipped to "failed". CRITICAL: this MUST sit safely above
+// the background stream's own 10-minute timeout (STREAM_TIMEOUT_MS in
+// task-stream-handler.ts) so the reconciler can never kill a task that is still
+// legitimately streaming. 30 minutes leaves a wide margin.
+const STUCK_TASK_THRESHOLD_MS = 30 * 60 * 1000;
 
 // ---------------------------------------------------------------------------
 // Task: Incremental Jira Sync (every 120s)
@@ -330,6 +337,64 @@ export async function cleanupOldNotifications(): Promise<TaskResult> {
   const cutoff = new Date(Date.now() - NOTIFICATION_RETENTION_MS).toISOString();
   await db.delete(alert).where(lt(alert.createdAt, cutoff));
   return { cutoff };
+}
+
+// ---------------------------------------------------------------------------
+// Task: Reconcile stuck workspace tasks (every 10 minutes)
+// ---------------------------------------------------------------------------
+
+/**
+ * Flips workspaceTask rows stuck in "running" past STUCK_TASK_THRESHOLD_MS to
+ * "failed" (BRDG-402). The after()-spawned captureTaskStream has its own safety
+ * net, but a hard crash between the leading insert and any later write (process
+ * killed, OOM, the DB write itself failing) can still strand a row at "running"
+ * forever; this is the final backstop so the UI does not show a perpetual spinner.
+ *
+ * Safety: the threshold (30m) is far above the stream handler's 10m timeout, so a
+ * task that is genuinely still streaming is never touched. Rows with a null
+ * startedAt are skipped (no reliable age), not blindly failed.
+ */
+export async function reconcileStuckTasks(): Promise<TaskResult> {
+  const cutoff = new Date(Date.now() - STUCK_TASK_THRESHOLD_MS).toISOString();
+
+  const stuck = await db
+    .select({ id: workspaceTask.id, skillName: workspaceTask.skillName, startedAt: workspaceTask.startedAt })
+    .from(workspaceTask)
+    .where(
+      and(
+        eq(workspaceTask.status, "running"),
+        isNotNull(workspaceTask.startedAt),
+        lt(workspaceTask.startedAt, cutoff),
+      ),
+    );
+
+  if (stuck.length === 0) {
+    return { reconciled: 0 };
+  }
+
+  await db
+    .update(workspaceTask)
+    .set({
+      status: "failed",
+      completedAt: new Date().toISOString(),
+      error: `Task stuck in running for over ${Math.round(STUCK_TASK_THRESHOLD_MS / 60000)} minutes; marked failed by reconciler`,
+    })
+    .where(
+      and(
+        eq(workspaceTask.status, "running"),
+        isNotNull(workspaceTask.startedAt),
+        lt(workspaceTask.startedAt, cutoff),
+      ),
+    );
+
+  const keys = stuck.map((t) => t.id);
+  logger.warn("scheduled-tasks", "reconciled_stuck_tasks", {
+    event: "stuck_tasks_reconciled",
+    count: stuck.length,
+    taskIds: keys,
+  });
+
+  return { reconciled: stuck.length, taskIds: keys };
 }
 
 // ---------------------------------------------------------------------------
@@ -721,6 +786,14 @@ export function registerScheduledTasks() {
     "Removes read and unread notifications older than 30 days to keep the notification list manageable.",
     60 * 60 * 1000,
     cleanupOldNotifications,
+  );
+
+  defineTask(
+    "reconcile-stuck-tasks",
+    "Reconcile Stuck Tasks",
+    "Marks workspace tasks stuck in 'running' for over 30 minutes as 'failed'. Backstop for background captures that crashed before recording an outcome; the 30-minute threshold stays well above the 10-minute stream timeout so live tasks are never touched.",
+    10 * 60 * 1000,
+    reconcileStuckTasks,
   );
 
   defineTask(

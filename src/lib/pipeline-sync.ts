@@ -127,17 +127,35 @@ export async function classifyRunDeployment(repoSlug: string, buildNumber: numbe
   let stepsRes: BbPaginatedResponse<BbPipelineStep> | null;
   try {
     stepsRes = await bbFetch<BbPaginatedResponse<BbPipelineStep>>(repoSlug, path);
-  } catch {
+  } catch (err) {
     // Single in-cycle retry on a network throw before deferring to the backfill safety net.
     try {
       stepsRes = await bbFetch<BbPaginatedResponse<BbPipelineStep>>(repoSlug, path);
-    } catch {
+    } catch (retryErr) {
+      // The double-throw was swallowed before (BRDG-402), so a repeatedly failing
+      // deploy classification was invisible. A network throw is always transient
+      // (bbFetch throws only on status 0); auth (401/403) returns null and is
+      // handled on the !stepsRes path below.
+      logger.warn("pipeline-sync", "deploy classify: steps fetch failed (network)", {
+        repoSlug,
+        buildNumber,
+        cause: retryErr instanceof Error ? retryErr.message : String(retryErr),
+        firstCause: err instanceof Error ? err.message : String(err),
+      });
       return "transient-error";
     }
   }
-  // bbFetch returns null on HTTP error (incl. 429 rate-limit); treat as transient so backfill
-  // retries (deployCheckedAt is left null, keeping the run eligible for a future scan).
-  if (!stepsRes) return "transient-error";
+  // bbFetch returns null on HTTP error (incl. 401/403 auth and 429 rate-limit); treat as
+  // transient so backfill retries (deployCheckedAt is left null, keeping the run eligible).
+  // A sustained null here on auth is surfaced as a distinct "auth failing" warning by bbFetch
+  // itself (code AUTH); this records that classification deferred for this run.
+  if (!stepsRes) {
+    logger.warn("pipeline-sync", "deploy classify: steps fetch returned no data (HTTP error)", {
+      repoSlug,
+      buildNumber,
+    });
+    return "transient-error";
+  }
 
   const now = new Date().toISOString();
   const detectedEnv = classifyStepsForDeployment(stepsRes.values ?? []);

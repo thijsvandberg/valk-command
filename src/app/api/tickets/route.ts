@@ -10,10 +10,11 @@ import { enqueue as enqueueForRevalidation } from "@/lib/revalidation-queue";
 import { errorResponse } from "@/lib/api-response";
 import { parseJsonBody } from "@/lib/request-parser";
 import { logger } from "@/lib/logger";
+import { withRequestLog } from "@/lib/request-log";
 import { createTicketWithJira, CREATABLE_TYPES } from "@/lib/create-ticket";
 import { buildAssignee } from "@/lib/user-utils";
 
-export async function GET(request: Request) {
+async function getTickets(request: Request) {
   const { searchParams } = new URL(request.url);
   const sprintId = searchParams.get("sprintId");
 
@@ -173,7 +174,7 @@ export async function GET(request: Request) {
 // landing it in a sprint and/or under an epic. Mirrors the epic-children create
 // route, minus the epic-parent requirement, so the board can create tickets that
 // are not children of an epic.
-export async function POST(request: Request) {
+async function createTicket(request: Request) {
   const parsed = await parseJsonBody(request);
   if ("error" in parsed) return parsed.error;
   const body = parsed.data as { title?: string; issueType?: string; sprintId?: string; epicKey?: string };
@@ -213,3 +214,7 @@ export async function POST(request: Request) {
     assignee: null,
   });
 }
+
+// One access-log line per request (BRDG-400); see src/lib/request-log.ts.
+export const GET = withRequestLog(getTickets);
+export const POST = withRequestLog(createTicket);

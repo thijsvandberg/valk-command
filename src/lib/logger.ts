@@ -1,7 +1,18 @@
 import "server-only";
 
+import { getRequestId } from "@/lib/request-context";
+
 const LEVELS = { debug: 0, info: 1, warn: 2, error: 3 } as const;
 type Level = keyof typeof LEVELS;
+
+// Uppercase token placed in every line so a level is greppable from the text
+// alone (`grep ERROR`), not just inferable from which console method fired.
+const LEVEL_TOKEN: Record<Level, string> = {
+  debug: "DEBUG",
+  info: "INFO",
+  warn: "WARN",
+  error: "ERROR",
+};
 
 // Read once at module init; runtime changes have no effect
 function resolveLevel(): number {
@@ -27,7 +38,12 @@ function timestamp(): string {
 
 function log(method: Level, tag: string, message: string, ...args: unknown[]) {
   if (LEVELS[method] < currentLevel) return;
-  const prefix = `${timestamp()} [${tag}] ${message}`;
+  // Append the correlation id when a request context is active so an error line
+  // can be tied back to its access-log line; outside a request it is omitted and
+  // the line reads exactly as before.
+  const reqId = getRequestId();
+  const suffix = reqId ? ` reqId=${reqId}` : "";
+  const prefix = `${timestamp()} ${LEVEL_TOKEN[method]} [${tag}] ${message}${suffix}`;
   switch (method) {
     case "debug": console.debug(prefix, ...args); break;
     case "info":  console.log(prefix, ...args);   break;

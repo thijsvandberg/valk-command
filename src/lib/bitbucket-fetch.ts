@@ -35,6 +35,17 @@ function repoUrl(repoSlug: string, path: string): string {
   return `https://api.bitbucket.org/2.0/repositories/${cfg.workspace}/${repoSlug}${path}`;
 }
 
+// Keep enough of Bitbucket's error body to identify the cause (e.g. its JSON
+// {"error":{"message":...}}) without bloating the log. The body never contains
+// our credentials — auth rides in the Authorization header, which is never logged.
+const MAX_BB_BODY_LEN = 300;
+
+function truncateBbBody(body: string | undefined): string {
+  if (!body) return "";
+  const trimmed = body.trim();
+  return trimmed.length > MAX_BB_BODY_LEN ? `${trimmed.slice(0, MAX_BB_BODY_LEN)}...` : trimmed;
+}
+
 /**
  * Fetch a Bitbucket resource. Returns the parsed body, or `null` on an HTTP error
  * (logged unless it is a silenced 404). A network error or timeout is re-thrown so
@@ -50,12 +61,20 @@ export async function bbFetch<T>(repoSlug: string, path: string, silent404 = fal
   if (result.ok) return result.data;
   if (result.status === 0) throw new Error(result.error.message);
   if (!(silent404 && result.status === 404)) {
-    logger.info("bitbucket", `bbFetch ${result.status} for ${path} on ${repoSlug}`);
+    // Raised from info to warn (BRDG-402): a non-2xx here means a Bitbucket call
+    // failed silently in a background sync. A 401/403 (code AUTH) is the tell for
+    // an expired app-password and must stand out from a transient 5xx/429. The
+    // body carries Bitbucket's own explanation; credentials live only in the
+    // (never-logged) Authorization header.
+    logger.warn("bitbucket", `bbFetch ${result.status} for ${path} on ${repoSlug}`, {
+      code: result.error.code,
+      body: truncateBbBody(result.error.body),
+    });
   }
   return null;
 }
 
-/** Absolute-URL variant for paginated `next` links. Same error semantics as bbFetch (sans logging). */
+/** Absolute-URL variant for paginated `next` links. Same error semantics as bbFetch. */
 export async function bbFetchUrl<T>(url: string): Promise<T | null> {
   const result = await httpFetch<T>(url, {
     init: { redirect: "follow" },
@@ -64,6 +83,13 @@ export async function bbFetchUrl<T>(url: string): Promise<T | null> {
   });
   if (result.ok) return result.data;
   if (result.status === 0) throw new Error(result.error.message);
+  // Paginated follow-up calls were silent before (BRDG-402); a non-2xx here
+  // truncated attribution with no trace. The full URL is not logged (it can carry
+  // query secrets) — http-client already logged the host.
+  logger.warn("bitbucket", `bbFetchUrl ${result.status}`, {
+    code: result.error.code,
+    body: truncateBbBody(result.error.body),
+  });
   return null;
 }
 
@@ -80,6 +106,15 @@ export async function bbFetchStatus<T>(repoSlug: string, path: string): Promise<
     onRequest: () => trackOutboundCall("bitbucket"),
   });
   if (result.ok) return { status: result.status, data: result.data };
+  // Warn on non-2xx (BRDG-402). The caller keeps acting on the returned status;
+  // this only adds a trace. Note a 404 is often expected here (force-pushed
+  // commits 404 permanently), but the transient codes (0/401/403/429/5xx,
+  // isTransientStatus) are the actionable ones a reader is hunting for.
+  logger.warn("bitbucket", `bbFetchStatus ${result.status} for ${path} on ${repoSlug}`, {
+    code: result.error.code,
+    transient: isTransientStatus(result.status),
+    body: truncateBbBody(result.error.body),
+  });
   return { status: result.status, data: null };
 }
 

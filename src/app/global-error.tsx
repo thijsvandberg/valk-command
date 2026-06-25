@@ -2,6 +2,8 @@
 
 import { useEffect } from "react";
 import { Button } from "@/components/ui/Button";
+import { reportClientError } from "@/lib/client-error";
+import { ErrorDigest } from "@/components/ErrorDigest";
 
 export default function GlobalError({
   error,
@@ -12,6 +14,14 @@ export default function GlobalError({
 }) {
   useEffect(() => {
     console.error("[global error]", error);
+
+    // Forward to the server sink (BRDG-398) so even a root-level crash lands in
+    // the prod log; pass the digest so a dev can tie this screen to the matching
+    // server line. reportClientError is throttled and never throws.
+    reportClientError("global-error-boundary", error, {
+      digest: error.digest,
+      source: "global-error-boundary",
+    });
   }, [error]);
 
   return (
@@ -25,6 +35,7 @@ export default function GlobalError({
           <Button variant="ghost" size="lg" onClick={reset}>
             Try again
           </Button>
+          <ErrorDigest digest={error.digest} />
         </div>
       </body>
     </html>

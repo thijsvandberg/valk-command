@@ -4,6 +4,7 @@ import { ActivityToast } from "@/components/sync/SyncToast";
 import { SWRProvider } from "@/components/SWRProvider";
 import { FocusModeWrapper } from "@/components/FocusModeWrapper";
 import { EpicColorProvider } from "@/components/shared/EpicColorProvider";
+import { ClientErrorReporter } from "@/components/ClientErrorReporter";
 
 const CommandPalette = dynamic(
   () => import("@/components/command-palette").then((m) => ({ default: m.CommandPalette })),
@@ -24,6 +25,7 @@ const TaskCompletionNotifier = dynamic(
 export default function AppLayout({ children }: { children: React.ReactNode }) {
   return (
     <SWRProvider>
+    <ClientErrorReporter />
     <ActivityProvider>
       <EpicColorProvider>
       <FocusModeWrapper>

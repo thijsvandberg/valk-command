@@ -4,6 +4,7 @@ import { resolveDraftKey } from "@/lib/draft-sync";
 import { db } from "@/db";
 import { storyWriterExecutionLog } from "@/db/schema";
 import { eq } from "drizzle-orm";
+import { logger } from "@/lib/logger";
 
 type RouteContext = { params: Promise<{ key: string; taskId: string }> };
 
@@ -28,7 +29,8 @@ export async function GET(_request: Request, { params }: RouteContext) {
   let log: unknown;
   try {
     log = JSON.parse(row.log);
-  } catch {
+  } catch (err) {
+    logger.error("story-writer-logs", `malformed log data for task ${taskId}`, err);
     return NextResponse.json({ error: "Malformed log data" }, { status: 500 });
   }
 

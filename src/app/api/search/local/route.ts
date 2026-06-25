@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { executeLocalSearch } from "@/lib/local-search-engine";
+import { logger } from "@/lib/logger";
 
 export type { LocalSearchResult, ConversationSearchResult, CommentSearchResult, GroupedSearchResponse } from "@/lib/local-search-engine";
 
@@ -39,7 +40,8 @@ export async function GET(request: Request) {
     return NextResponse.json(result, {
       headers: { "Cache-Control": "private, no-store" },
     });
-  } catch {
+  } catch (err) {
+    logger.error("search-local", "local search failed", err);
     return NextResponse.json({ error: "Search failed" }, { status: 500 });
   }
 }

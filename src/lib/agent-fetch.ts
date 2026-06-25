@@ -29,19 +29,34 @@ const DEFAULT_STREAM_TIMEOUT_MS = 60_000;
 const RETRYABLE_STATUSES = new Set([502, 503, 504]);
 const NON_RETRYABLE_STATUSES = new Set([400, 401, 403, 404, 409, 422]);
 
+// Upstream error bodies can be a full HTML page or a long stack; keep just enough
+// to identify the failure without bloating the log or the persisted error.
+const MAX_BODY_LEN = 500;
+
+function truncateBody(body: string): string {
+  const trimmed = body.trim();
+  return trimmed.length > MAX_BODY_LEN ? `${trimmed.slice(0, MAX_BODY_LEN)}...` : trimmed;
+}
+
 function classifyHttpError(status: number, body: string): AgentError {
   if (status === 401 || status === 403) {
     return { error: "Authentication with the workspace failed", code: "AUTH" };
   }
-  if (status >= 500) {
-    let message = `Workspace returned ${status}`;
+  // Prefer the agent's own explanation for ANY non-2xx (BRDG-402): a 4xx used to
+  // collapse to a bare "Workspace returned 4xx", discarding the reason (bad skill
+  // arg, validation message). Parse a JSON {error}; otherwise fall back to a
+  // truncated raw body so the proxy can still surface what went wrong.
+  let message = `Workspace returned ${status}`;
+  if (body) {
     try {
       const parsed = JSON.parse(body);
       if (typeof parsed.error === "string") message = parsed.error;
-    } catch { /* use default */ }
-    return { error: message, code: "SERVER_ERROR" };
+    } catch {
+      const truncated = truncateBody(body);
+      if (truncated) message = `Workspace returned ${status}: ${truncated}`;
+    }
   }
-  return { error: `Workspace returned ${status}`, code: "SERVER_ERROR" };
+  return { error: message, code: "SERVER_ERROR" };
 }
 
 function classifyNetworkError(err: unknown): AgentError {
@@ -148,7 +163,10 @@ async function singleFetch<T>(
       return { ok: false, error: classifyHttpError(res.status, ""), status: res.status };
     }
 
-    if (res.status >= 500) {
+    // Read the body for ANY non-ok status (not just >=500) so the agent's
+    // explanation survives classification. classifyHttpError prefers a JSON
+    // {error} and falls back to a truncated raw body (BRDG-402).
+    if (!res.ok) {
       const text = await res.text().catch(() => "");
       return { ok: false, error: classifyHttpError(res.status, text), status: res.status };
     }
@@ -164,20 +182,19 @@ async function singleFetch<T>(
       };
     }
 
-    if (!res.ok) {
-      const errMsg = typeof (data as Record<string, unknown>)?.error === "string"
-        ? (data as Record<string, unknown>).error as string
-        : `Workspace returned ${res.status}`;
-      return {
-        ok: false,
-        error: { error: errMsg, code: "SERVER_ERROR" },
-        status: res.status,
-      };
-    }
-
     return { ok: true, data, status: res.status };
   } catch (err) {
-    return { ok: false, error: classifyNetworkError(err), status: 0 };
+    const error = classifyNetworkError(err);
+    // Log the transport cause BEFORE returning the classified error: the
+    // discriminated-union result keeps only a generic code/message, so without
+    // this the underlying reason (DNS failure, connection refused, the exact
+    // abort) never reaches the log (BRDG-402). Shape of the return is unchanged.
+    logger.warn("agent-fetch", "terminal failure", {
+      path,
+      code: error.code,
+      cause: err instanceof Error ? err.message : String(err),
+    });
+    return { ok: false, error, status: 0 };
   }
 }
 
@@ -216,6 +233,12 @@ export async function agentFetchStream(
 
     return { ok: true, data: res, status: res.status, retryCount: 0 };
   } catch (err) {
-    return { ok: false, error: classifyNetworkError(err), status: 0, retryCount: 0 };
+    const error = classifyNetworkError(err);
+    logger.warn("agent-fetch", "terminal failure", {
+      path,
+      code: error.code,
+      cause: err instanceof Error ? err.message : String(err),
+    });
+    return { ok: false, error, status: 0, retryCount: 0 };
   }
 }

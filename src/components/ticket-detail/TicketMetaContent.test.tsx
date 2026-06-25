@@ -29,7 +29,9 @@ vi.mock("next/navigation", () => ({
 const updateStoryPoints = vi.fn().mockResolvedValue({});
 const updateMetadata = vi.fn().mockResolvedValue({});
 const updateEpic = vi.fn().mockResolvedValue({});
+const updateLabels = vi.fn().mockResolvedValue({});
 const moveSprint = vi.fn().mockResolvedValue({});
+const assign = vi.fn().mockResolvedValue({});
 const apiFetch = vi.fn().mockResolvedValue({});
 vi.mock("@/lib/api-client", () => ({
   apiFetch: (...args: unknown[]) => apiFetch(...args),
@@ -37,9 +39,9 @@ vi.mock("@/lib/api-client", () => ({
     updateStoryPoints: (...args: unknown[]) => updateStoryPoints(...args),
     updateMetadata: (...args: unknown[]) => updateMetadata(...args),
     updateEpic: (...args: unknown[]) => updateEpic(...args),
-    updateLabels: vi.fn().mockResolvedValue({}),
+    updateLabels: (...args: unknown[]) => updateLabels(...args),
   },
-  jira: { assign: vi.fn().mockResolvedValue({}), moveSprint: (...args: unknown[]) => moveSprint(...args) },
+  jira: { assign: (...args: unknown[]) => assign(...args), moveSprint: (...args: unknown[]) => moveSprint(...args) },
 }));
 
 vi.mock("@/hooks/useSprintBoard", () => ({
@@ -49,6 +51,29 @@ vi.mock("@/hooks/useSprintBoard", () => ({
 }));
 
 vi.mock("@/hooks/useTicketSessionMap", () => ({ useTicketSessionMap: () => ({ ticketSessionMap: new Map() }) }));
+
+// BRDG-401: a failed sidebar edit must report to the server sink and toast the
+// PO (mirroring the board), while keeping the optimistic rollback.
+const reportClientError = vi.fn();
+vi.mock("@/lib/client-error", () => ({
+  reportClientError: (...args: unknown[]) => reportClientError(...args),
+}));
+
+// Back useToast with a module-level spy + a live message ref so a real <Toast>
+// (stubbed below) renders the text and the spy can be asserted directly.
+const showToast = vi.fn();
+let lastToast: React.ReactNode = null;
+vi.mock("@/hooks/useToast", () => ({
+  useToast: () => ({
+    toast: lastToast,
+    toastLoading: false,
+    showToast: (msg: React.ReactNode) => { lastToast = msg; showToast(msg); },
+    dismissToast: () => { lastToast = null; },
+  }),
+}));
+vi.mock("@/components/ui/Toast", () => ({
+  Toast: ({ toast }: { toast: React.ReactNode }) => (toast ? <div role="status">{toast}</div> : null),
+}));
 
 vi.mock("@/components/shared/TicketStatusPill", () => ({
   TicketStatusPill: ({ ticketKey, jiraStatus, onJiraStatusChange }: { ticketKey: string; jiraStatus?: string; onJiraStatusChange?: (s: string) => void }) =>
@@ -80,7 +105,7 @@ vi.mock("@/lib/ticket-cache", () => ({
   patchTicketDetailCache: (...args: unknown[]) => patchTicketDetailCache(...args),
   moveTicketSprintCaches: (...args: unknown[]) => moveTicketSprintCaches(...args),
 }));
-vi.mock("@/components/shared/LabelPicker", () => ({ LabelPicker: ({ value }: { value: string[] }) => <span data-testid="label-picker">{value.join(",")}</span> }));
+vi.mock("@/components/shared/LabelPicker", () => ({ LabelPicker: ({ value, onChange }: { value: string[]; onChange?: (v: string[]) => void }) => <button data-testid="label-picker" onClick={() => onChange?.(["frontend", "urgent"])}>{value.join(",")}</button> }));
 vi.mock("@/components/sprint-board/TicketTable", () => ({ QualityBadge: ({ score }: { score: number | null }) => <span data-testid="quality-badge">{score}</span> }));
 vi.mock("@/components/sprint-board/SprintListModal", () => ({
   SprintListModal: ({ onSelect }: { onSelect: (id: string) => void }) => (
@@ -135,6 +160,17 @@ describe("TicketMetaContent", () => {
     __resetPendingEdits();
     patchTicketCaches.mockClear();
     patchTicketDetailCache.mockClear();
+    reportClientError.mockClear();
+    showToast.mockClear();
+    lastToast = null;
+    // The handlers reject once per failure test; reset to the resolved default.
+    updateMetadata.mockResolvedValue({});
+    updateStoryPoints.mockResolvedValue({});
+    updateEpic.mockResolvedValue({});
+    updateLabels.mockResolvedValue({});
+    moveSprint.mockResolvedValue({});
+    assign.mockResolvedValue({});
+    apiFetch.mockResolvedValue({});
   });
 
   it("renders story points and business value", () => {
@@ -293,6 +329,111 @@ describe("TicketMetaContent", () => {
       name: "Bob Jones",
       initials: userInitials("Bob Jones"),
       color: userColor("Bob Jones"),
+    });
+  });
+
+  // BRDG-401: the 8 edit handlers used to console.error + roll back silently. They
+  // must now report the failure to the server sink and show a "Change reverted"
+  // toast (board parity), while keeping the optimistic rollback intact.
+  describe("edit failures report + toast while rolling back (BRDG-401)", () => {
+    async function expectRevertedToastAndReport(operationFragment: string) {
+      await waitFor(() => expect(showToast).toHaveBeenCalled());
+      expect(showToast).toHaveBeenCalledWith("Failed to update PROJ-42. Change reverted.");
+      // The "Change reverted" toast is actually rendered to the PO.
+      expect(screen.getByRole("status")).toHaveTextContent("Failed to update PROJ-42. Change reverted.");
+      // The failure is forwarded to the server sink with the operation + key in the
+      // context label, and no edited value is passed as a free field.
+      expect(reportClientError).toHaveBeenCalledTimes(1);
+      const [context, , extra] = reportClientError.mock.calls[0];
+      expect(context).toContain(operationFragment);
+      expect(context).toContain("PROJ-42");
+      expect(extra).toEqual({ source: "ticket-detail" });
+    }
+
+    it("story points: toasts + reports + clears the pending edit on failure", async () => {
+      updateStoryPoints.mockRejectedValueOnce(new Error("boom"));
+      render(<TicketMetaContent ticket={makeTicket()} detail={detail} onMutate={vi.fn()} />);
+      fireEvent.click(screen.getByTestId("sp-picker"));
+      await expectRevertedToastAndReport("story-points");
+      // Rollback: the overlay edit is cleared so the row falls back to server data.
+      expect(hasPendingEdit("PROJ-42", "storyPoints")).toBe(false);
+      // Rollback: the detail cache is restored to the previous value (5).
+      expect(patchTicketDetailCache).toHaveBeenLastCalledWith("PROJ-42", { storyPoints: 5 });
+    });
+
+    it("business value: toasts + reports + clears the pending edit on failure", async () => {
+      updateMetadata.mockRejectedValueOnce(new Error("boom"));
+      render(<TicketMetaContent ticket={makeTicket()} detail={detail} onMutate={vi.fn()} />);
+      fireEvent.click(screen.getByTestId("bv-picker"));
+      await expectRevertedToastAndReport("business-value");
+      expect(hasPendingEdit("PROJ-42", "businessValue")).toBe(false);
+      expect(patchTicketDetailCache).toHaveBeenLastCalledWith("PROJ-42", { businessValue: 3 });
+    });
+
+    it("jira status: toasts + reports + clears the pending edit on failure", async () => {
+      apiFetch.mockRejectedValueOnce(new Error("boom"));
+      render(<TicketMetaContent ticket={makeTicket()} detail={detail} onMutate={vi.fn()} />);
+      fireEvent.click(screen.getByTestId("status-pill"));
+      await expectRevertedToastAndReport("jira-status");
+      expect(hasPendingEdit("PROJ-42", "jiraStatus")).toBe(false);
+      expect(patchTicketDetailCache).toHaveBeenLastCalledWith("PROJ-42", { jiraStatus: "IN PROGRESS" });
+    });
+
+    it("assignee: toasts + reports + clears the pending edit on failure", async () => {
+      assign.mockRejectedValueOnce(new Error("boom"));
+      render(<TicketMetaContent ticket={makeTicket()} detail={detail} onMutate={vi.fn()} />);
+      fireEvent.click(screen.getByTestId("assignee-picker"));
+      await expectRevertedToastAndReport("assignee");
+      expect(hasPendingEdit("PROJ-42", "assignee")).toBe(false);
+    });
+
+    it("epic: toasts + reports + clears both pending edits on failure", async () => {
+      updateEpic.mockRejectedValueOnce(new Error("boom"));
+      render(<TicketMetaContent ticket={makeTicket({ epic: null, epicKey: null })} detail={detail} onMutate={vi.fn()} />);
+      fireEvent.click(screen.getByTestId("epic-picker"));
+      await expectRevertedToastAndReport("epic");
+      expect(hasPendingEdit("PROJ-42", "epic")).toBe(false);
+      expect(hasPendingEdit("PROJ-42", "epicKey")).toBe(false);
+    });
+
+    it("sprint: toasts + reports + restores the sprint caches on failure", async () => {
+      moveSprint.mockRejectedValueOnce(new Error("boom"));
+      render(<TicketMetaContent ticket={makeTicket()} detail={detail} onMutate={vi.fn()} />);
+      fireEvent.click(screen.getByTitle("Sprint: Sprint 1"));
+      fireEvent.click(screen.getByTestId("sprint-select"));
+      await expectRevertedToastAndReport("sprint");
+      // Rollback: the row is moved back to its previous sprint ("1").
+      expect(moveTicketSprintCaches).toHaveBeenLastCalledWith(expect.objectContaining({ key: "PROJ-42" }), "1");
+    });
+
+    it("labels: toasts + reports + restores the label cache on failure", async () => {
+      updateLabels.mockRejectedValueOnce(new Error("boom"));
+      render(<TicketMetaContent ticket={makeTicket({ qualityScore: null })} detail={detail} onMutate={vi.fn()} />);
+      fireEvent.click(screen.getByText("More details"));
+      fireEvent.click(screen.getByTestId("label-picker"));
+      await expectRevertedToastAndReport("labels");
+      // Rollback: labels restored to the detail-provided value (["frontend"]).
+      expect(patchTicketCaches).toHaveBeenLastCalledWith("PROJ-42", { labels: ["frontend"] });
+    });
+
+    it("PO notes: toasts + reports + restores the note cache on failure", async () => {
+      updateMetadata.mockRejectedValueOnce(new Error("boom"));
+      render(<TicketMetaContent ticket={makeTicket()} detail={detail} onMutate={vi.fn()} />);
+      // Expand the PO Note section, then blur the textarea to trigger the save.
+      fireEvent.click(screen.getByText("PO Note"));
+      const textarea = screen.getByPlaceholderText("Quick annotation...");
+      fireEvent.blur(textarea, { target: { value: "new note" } });
+      await expectRevertedToastAndReport("po-notes");
+      // Rollback: notes restored to the previous value.
+      expect(patchTicketCaches).toHaveBeenLastCalledWith("PROJ-42", { notes: "PO notes here" });
+    });
+
+    it("does NOT toast or report when the edit succeeds", async () => {
+      render(<TicketMetaContent ticket={makeTicket()} detail={detail} onMutate={vi.fn()} />);
+      fireEvent.click(screen.getByTestId("sp-picker"));
+      await waitFor(() => expect(updateStoryPoints).toHaveBeenCalled());
+      expect(showToast).not.toHaveBeenCalled();
+      expect(reportClientError).not.toHaveBeenCalled();
     });
   });
 

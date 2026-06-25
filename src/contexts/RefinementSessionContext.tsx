@@ -2,6 +2,7 @@
 
 import { createContext, useContext, useState, useCallback, useEffect, useMemo, useRef, type ReactNode } from "react";
 import { refinementSessions as refinementSessionsApi } from "@/lib/api-client";
+import { reportClientError } from "@/lib/client-error";
 
 export interface QueueTicketMeta {
   key: string;
@@ -182,7 +183,11 @@ export function RefinementSessionProvider({ children }: { children: ReactNode })
           currentIndex,
           ...(generalComment !== undefined ? { generalComment } : {}),
         })
-        .catch(() => {});
+        // A failed status write used to be swallowed (BRDG-401): the session
+        // would stay at the wrong status with no trace. The modal navigates away
+        // right after this resolves, so a toast here would not be seen; forward
+        // the failure to the server log instead (sessionId only, no field values).
+        .catch((err) => reportClientError(`refinement save-session session=${savedSessionId}`, err, { source: "refinement" }));
     }
     setState((prev) => ({ ...prev, sessionActive: false, showingEndModal: false }));
   }, []);
@@ -196,7 +201,10 @@ export function RefinementSessionProvider({ children }: { children: ReactNode })
           currentIndex,
           ...(generalComment !== undefined ? { generalComment } : {}),
         })
-        .catch(() => {});
+        // Swallowing this left the session eternally in_progress with no trace
+        // (BRDG-401). Navigation follows immediately, so report server-side
+        // rather than toast (sessionId only, no field values).
+        .catch((err) => reportClientError(`refinement finish-session session=${savedSessionId}`, err, { source: "refinement" }));
     }
     setState((prev) => ({ ...prev, sessionActive: false, showingEndModal: false }));
   }, []);

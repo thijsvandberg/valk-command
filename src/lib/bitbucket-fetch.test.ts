@@ -14,6 +14,11 @@ vi.mock("@/lib/env", () => ({
 
 vi.mock("@/lib/rate-limiter", () => ({ trackOutboundCall: vi.fn() }));
 
+const loggerWarn = vi.fn();
+vi.mock("@/lib/logger", () => ({
+  logger: { debug: vi.fn(), info: vi.fn(), warn: (...a: unknown[]) => loggerWarn(...a), error: vi.fn() },
+}));
+
 const mockFetch = vi.fn();
 vi.stubGlobal("fetch", mockFetch);
 
@@ -67,5 +72,59 @@ describe("bitbucket-fetch", () => {
     const res = await bbFetchStatus("valk-repo", "/gone");
     expect(res.status).toBe(404);
     expect(res.data).toBeNull();
+  });
+
+  // BRDG-402: Bitbucket failures were silent or only info-level, so an expired
+  // app-password looked identical to a transient blip. Now non-2xx is warned with
+  // a code (AUTH vs other) and a truncated body, and secrets never appear.
+  describe("non-2xx logging (BRDG-402)", () => {
+    it("bbFetch warns on a non-2xx with the AUTH code and a truncated body", async () => {
+      mockFetch.mockResolvedValue(httpError(403, "x".repeat(500)));
+      await bbFetch("valk-repo", "/protected");
+
+      const call = loggerWarn.mock.calls.find((c) => String(c[1]).startsWith("bbFetch "));
+      expect(call).toBeDefined();
+      const ctx = call![2] as Record<string, unknown>;
+      expect(ctx.code).toBe("AUTH");
+      expect((ctx.body as string).length).toBeLessThanOrEqual(303); // 300 + "..."
+    });
+
+    it("bbFetch stays silent on a silenced 404", async () => {
+      mockFetch.mockResolvedValue(httpError(404));
+      await bbFetch("valk-repo", "/maybe-gone", true);
+      const call = loggerWarn.mock.calls.find((c) => String(c[1]).startsWith("bbFetch "));
+      expect(call).toBeUndefined();
+    });
+
+    it("bbFetchUrl warns on a non-2xx", async () => {
+      mockFetch.mockResolvedValue(httpError(500, "server boom"));
+      await bbFetchUrl("https://api.bitbucket.org/2.0/x?page=2");
+
+      const call = loggerWarn.mock.calls.find((c) => String(c[1]).startsWith("bbFetchUrl "));
+      expect(call).toBeDefined();
+      expect((call![2] as Record<string, unknown>).code).toBe("SERVER_ERROR");
+    });
+
+    it("bbFetchStatus warns on a non-2xx and flags transient classification", async () => {
+      mockFetch.mockResolvedValue(httpError(429, "rate limited"));
+      await bbFetchStatus("valk-repo", "/busy");
+
+      const call = loggerWarn.mock.calls.find((c) => String(c[1]).startsWith("bbFetchStatus "));
+      expect(call).toBeDefined();
+      const ctx = call![2] as Record<string, unknown>;
+      expect(ctx.transient).toBe(true);
+    });
+
+    it("never logs the Authorization header or the app-password token", async () => {
+      mockFetch.mockResolvedValue(httpError(401, "denied"));
+      await bbFetch("valk-repo", "/protected");
+      await bbFetchUrl("https://api.bitbucket.org/2.0/y");
+
+      const serialized = JSON.stringify(loggerWarn.mock.calls);
+      // "token" is the BITBUCKET_APP_PASSWORD value in this test's env mock.
+      expect(serialized).not.toContain("token");
+      expect(serialized).not.toContain("Authorization");
+      expect(serialized).not.toContain("Basic ");
+    });
   });
 });

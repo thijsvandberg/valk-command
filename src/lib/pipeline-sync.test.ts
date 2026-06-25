@@ -25,6 +25,11 @@ vi.mock("@/lib/env", () => ({
   },
 }));
 
+const loggerWarn = vi.fn();
+vi.mock("@/lib/logger", () => ({
+  logger: { debug: vi.fn(), info: vi.fn(), warn: (...a: unknown[]) => loggerWarn(...a), error: vi.fn() },
+}));
+
 import {
   processStateChanges,
   processPRNotifications,
@@ -429,6 +434,56 @@ describe("classifyRunDeployment (idempotent, retrying)", () => {
 
     expect(result).toBe("transient-error");
     expect(fetchMock).toHaveBeenCalledTimes(2);
+  });
+
+  // BRDG-402: classifyRunDeployment swallowed its failures silently, so a
+  // repeatedly failing classification (e.g. bad Bitbucket auth) was invisible.
+  it("logs the swallowed network throw with repoSlug and buildNumber when both attempts fail", async () => {
+    loggerWarn.mockClear();
+    insertRun({ id: "valk-repo:7", buildNumber: 7, isDeployment: false });
+    fetchMock.mockRejectedValue(new Error("ECONNRESET"));
+
+    await classifyRunDeployment("valk-repo", 7, "valk-repo:7");
+
+    const call = loggerWarn.mock.calls.find(
+      (c) => c[0] === "pipeline-sync" && String(c[1]).includes("network"),
+    );
+    expect(call).toBeDefined();
+    const ctx = call![2] as Record<string, unknown>;
+    expect(ctx.repoSlug).toBe("valk-repo");
+    expect(ctx.buildNumber).toBe(7);
+    // bbFetch re-throws a classified message ("Cannot reach host") on a network
+    // error, so that is what propagates into classifyRunDeployment's catch.
+    expect(typeof ctx.cause).toBe("string");
+    expect(ctx.cause as string).toBeTruthy();
+  });
+
+  it("logs the deferred classification when the steps fetch returns an HTTP error", async () => {
+    loggerWarn.mockClear();
+    insertRun({ id: "valk-repo:8", buildNumber: 8, isDeployment: false });
+    fetchMock.mockResolvedValue(jsonResponse(null, false));
+
+    await classifyRunDeployment("valk-repo", 8, "valk-repo:8");
+
+    const call = loggerWarn.mock.calls.find(
+      (c) => c[0] === "pipeline-sync" && String(c[1]).includes("HTTP error"),
+    );
+    expect(call).toBeDefined();
+    const ctx = call![2] as Record<string, unknown>;
+    expect(ctx.repoSlug).toBe("valk-repo");
+    expect(ctx.buildNumber).toBe(8);
+  });
+
+  it("never logs the Bitbucket token or Authorization header on failure", async () => {
+    loggerWarn.mockClear();
+    insertRun({ id: "valk-repo:9", buildNumber: 9, isDeployment: false });
+    fetchMock.mockRejectedValue(new Error("boom"));
+
+    await classifyRunDeployment("valk-repo", 9, "valk-repo:9");
+
+    const serialized = JSON.stringify(loggerWarn.mock.calls);
+    expect(serialized).not.toContain("token");
+    expect(serialized).not.toContain("Authorization");
   });
 });
 

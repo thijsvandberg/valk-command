@@ -29,6 +29,20 @@ export const ISSUE_FIELDS = [
   "attachment", "subtasks", "issuelinks", "comment",
 ].join(",");
 
+/**
+ * Collapse a long, static `fields=...` query value (the ~400-char ISSUE_FIELDS
+ * list, repeated per request) down to a count for log lines, so the real error
+ * detail in a Jira log line is not buried under the same field list every time.
+ * The full path is still preserved on JiraApiError for callers that need it.
+ */
+export function redactJiraPath(path: string): string {
+  return path.replace(/(fields=)([^&]+)/i, (_match, prefix: string, value: string) => {
+    const decoded = decodeURIComponent(value);
+    const count = decoded.split(",").filter(Boolean).length;
+    return count > 3 ? `${prefix}<${count} fields>` : `${prefix}${value}`;
+  });
+}
+
 // ---------------------------------------------------------------------------
 // Jira API response types (subset we care about)
 // ---------------------------------------------------------------------------
@@ -230,12 +244,53 @@ async function throttle(): Promise<void> {
   trackOutboundCall("jira");
 
   if (isOutboundLimitApproaching("jira")) {
-    logger.warn("jira-client", "Approaching Jira API rate limit (80%+)");
+    noteRateLimitApproaching();
   }
 }
 
+// The rate-limit warn used to fire on every throttled call (~150 identical
+// lines in a busy sync), burying real stacktraces. Instead we count hits over a
+// window and emit at most one aggregated line per window, reporting how many
+// calls crossed the threshold.
+const RATE_WARN_WINDOW_MS = 60_000;
+// -Infinity means "no window open yet", so the first hit always opens one and
+// warns immediately rather than being folded into a count.
+let rateWarnWindowStart = Number.NEGATIVE_INFINITY;
+let rateWarnCount = 0;
+
+function noteRateLimitApproaching(now: number = Date.now()): void {
+  if (now - rateWarnWindowStart >= RATE_WARN_WINDOW_MS) {
+    // First hit of a new window: warn immediately so it is never silent, then
+    // suppress the rest of the window and fold them into a count.
+    rateWarnWindowStart = now;
+    rateWarnCount = 1;
+    logger.warn("jira-client", "Approaching Jira API rate limit (80%+)");
+    return;
+  }
+  rateWarnCount += 1;
+  if (rateWarnCount % RATE_WARN_BATCH === 0) {
+    logger.warn(
+      "jira-client",
+      `Approaching Jira API rate limit (80%+) x${rateWarnCount} in the last ${Math.round((now - rateWarnWindowStart) / 1000)}s`,
+    );
+  }
+}
+
+// Emit a follow-up aggregate line every Nth suppressed hit so a sustained
+// overload is still visible without one-line-per-call spam.
+const RATE_WARN_BATCH = 25;
+
 // Exported for testing
 export { requestTimestamps as _requestTimestamps };
+
+// Exported for test isolation only: resets the rate-limit-warn aggregation
+// window so a test can assert dedup behavior deterministically.
+export function _resetRateWarn(): void {
+  rateWarnWindowStart = Number.NEGATIVE_INFINITY;
+  rateWarnCount = 0;
+}
+
+export { noteRateLimitApproaching as _noteRateLimitApproaching };
 
 // ---------------------------------------------------------------------------
 // Retry logic: exponential backoff for transient errors
@@ -282,6 +337,9 @@ async function withRetry<T>(
   signal?: AbortSignal,
 ): Promise<T> {
   let lastError: Error | undefined;
+  // Log lines use the redacted path so the static fields= list does not bury
+  // the real error; JiraApiError below still carries the full, unredacted path.
+  const logPath = redactJiraPath(path);
 
   for (let attempt = 0; attempt <= MAX_RETRIES; attempt++) {
     if (signal?.aborted) {
@@ -306,13 +364,13 @@ async function withRetry<T>(
           delayMs = INITIAL_BACKOFF_MS * 2 ** attempt;
         }
         delayMs = Math.min(delayMs, MAX_RETRY_DELAY_MS);
-        logger.warn("jira-client", `API ${res.status} on ${path}, retrying in ${delayMs}ms (attempt ${attempt + 1}/${MAX_RETRIES})`);
+        logger.warn("jira-client", `API ${res.status} on ${logPath}, retrying in ${delayMs}ms (attempt ${attempt + 1}/${MAX_RETRIES})`);
         await new Promise((resolve) => setTimeout(resolve, delayMs));
         continue;
       }
 
       const body = await res.text().catch(() => "");
-      logger.error("jira-client", `API error: ${res.status} ${res.statusText} path=${path} body=${body}`);
+      logger.error("jira-client", `API error: ${res.status} ${res.statusText} path=${logPath} body=${body}`);
       throw new JiraApiError(res.status, res.statusText, body, path);
     } catch (err) {
       if (err instanceof DOMException && err.name === "AbortError") throw err;
@@ -321,7 +379,7 @@ async function withRetry<T>(
       // Network errors / timeouts are retryable
       if (attempt < MAX_RETRIES) {
         const delayMs = INITIAL_BACKOFF_MS * 2 ** attempt;
-        logger.warn("jira-client", `network error on ${path}: ${err instanceof Error ? err.message : err}, retrying in ${delayMs}ms (attempt ${attempt + 1}/${MAX_RETRIES})`);
+        logger.warn("jira-client", `network error on ${logPath}: ${err instanceof Error ? err.message : err}, retrying in ${delayMs}ms (attempt ${attempt + 1}/${MAX_RETRIES})`);
         await new Promise((resolve) => setTimeout(resolve, delayMs));
         lastError = err instanceof Error ? err : new Error(String(err));
         continue;

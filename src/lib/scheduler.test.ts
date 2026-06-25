@@ -17,6 +17,18 @@ vi.mock("@/lib/notifications", () => ({
   createNotification: vi.fn(),
 }));
 
+const loggerError = vi.fn();
+const loggerInfo = vi.fn();
+const loggerDebug = vi.fn();
+vi.mock("@/lib/logger", () => ({
+  logger: {
+    debug: (...a: unknown[]) => loggerDebug(...a),
+    info: (...a: unknown[]) => loggerInfo(...a),
+    warn: vi.fn(),
+    error: (...a: unknown[]) => loggerError(...a),
+  },
+}));
+
 import { defineTask, getRegisteredTasks, tick, runTaskNow, setTaskEnabled, getTaskStatuses } from "./scheduler";
 import { createNotification } from "@/lib/notifications";
 
@@ -194,6 +206,96 @@ describe("scheduler", () => {
     });
   });
 
+  // BRDG-402: the scheduler was invisible — no per-task start/end/duration line and
+  // no log when a task skipped itself. These cover the timeline logging.
+  describe("tick logging (BRDG-402)", () => {
+    function findTaskRanCall(taskName: string) {
+      return loggerInfo.mock.calls.find(
+        (c) => c[0] === "scheduler" && c[2] && (c[2] as Record<string, unknown>).task === taskName,
+      );
+    }
+
+    it("logs an info line per task that ran with its name, duration, and a 'ran' outcome", async () => {
+      const name = uniqueName();
+      defineTask(name, "Logged Task", "Desc", 0, async () => ({ done: true }));
+
+      await tick();
+
+      const call = findTaskRanCall(name);
+      expect(call).toBeDefined();
+      const [tag, message, context] = call!;
+      expect(tag).toBe("scheduler");
+      expect(message).toContain(name);
+      const ctx = context as Record<string, unknown>;
+      expect(ctx.event).toBe("scheduler_task_ran");
+      expect(ctx.outcome).toBe("ran");
+      expect(typeof ctx.durationMs).toBe("number");
+      expect(ctx.durationMs as number).toBeGreaterThanOrEqual(0);
+    });
+
+    it("logs the skip reason for a task that returns { skipped, reason }", async () => {
+      const name = uniqueName();
+      defineTask(name, "Skipping Task", "Desc", 0, async () => ({
+        skipped: true,
+        reason: "Jira not configured",
+      }));
+
+      await tick();
+
+      const call = findTaskRanCall(name);
+      expect(call).toBeDefined();
+      const [, message, context] = call!;
+      // The reason must appear both in the human message and the structured outcome.
+      expect(message).toContain("skipped:Jira not configured");
+      expect((context as Record<string, unknown>).outcome).toBe("skipped:Jira not configured");
+    });
+
+    it("logs an error outcome line (with duration) when the handler throws", async () => {
+      const name = uniqueName();
+      vi.mocked(createNotification).mockImplementation(() => undefined);
+      defineTask(name, "Throwing Task", "Desc", 0, async () => {
+        throw new Error("kaboom");
+      });
+
+      await tick();
+
+      const call = findTaskRanCall(name);
+      expect(call).toBeDefined();
+      const ctx = call![2] as Record<string, unknown>;
+      expect(ctx.outcome).toBe("error");
+      expect(typeof ctx.durationMs).toBe("number");
+    });
+
+    it("emits one debug tick-summary line with checked/ran/notDue", async () => {
+      const name = uniqueName();
+      defineTask(name, "Counted Task", "Desc", 0, async () => ({}));
+
+      await tick();
+
+      const summary = loggerDebug.mock.calls.find(
+        (c) => c[0] === "scheduler" && c[1] === "tick complete",
+      );
+      expect(summary).toBeDefined();
+      const ctx = summary![2] as Record<string, unknown>;
+      expect(ctx.event).toBe("scheduler_tick");
+      expect(typeof ctx.checked).toBe("number");
+      expect((ctx.ran as number)).toBeGreaterThanOrEqual(1);
+    });
+
+    it("does not log a per-task line for a task that was not due", async () => {
+      const name = uniqueName();
+      defineTask(name, "Not Due", "Desc", 999_999_999, async () => ({}));
+      testDb.insert(appSetting).values({
+        key: `scheduler:${name}:last_run`,
+        value: new Date().toISOString(),
+      }).run();
+
+      await tick();
+
+      expect(findTaskRanCall(name)).toBeUndefined();
+    });
+  });
+
   describe("setTaskEnabled", () => {
     it("persists the override and reflects it in getTaskStatuses", async () => {
       const name = uniqueName();
@@ -242,6 +344,32 @@ describe("scheduler", () => {
 
       expect(result).toEqual({ manual: true });
       expect(handler).toHaveBeenCalled();
+    });
+
+    // BRDG-401: a failed manual run used to be swallowed (only stored as an error
+    // result), so it left no server-side trace, unlike tick()'s catch.
+    it("returns an { error } result AND logs the failure when the handler throws", async () => {
+      const name = uniqueName();
+      defineTask(name, "Failing Manual", "Desc", 999_999_999, async () => {
+        throw new Error("boom");
+      });
+
+      const result = await runTaskNow(name);
+
+      expect(result).toEqual({ error: "boom" });
+      expect(loggerError).toHaveBeenCalledTimes(1);
+      const [tag, message] = loggerError.mock.calls[0];
+      expect(tag).toBe("scheduler");
+      expect(message).toContain(name);
+    });
+
+    it("does not log on a successful manual run", async () => {
+      const name = uniqueName();
+      defineTask(name, "OK Manual", "Desc", 999_999_999, async () => ({ ok: true }));
+
+      await runTaskNow(name);
+
+      expect(loggerError).not.toHaveBeenCalled();
     });
   });
 
