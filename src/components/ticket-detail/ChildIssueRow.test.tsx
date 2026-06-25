@@ -315,28 +315,29 @@ describe("ChildIssueRow", () => {
   });
 
   describe("active (open-in-sidebar) state", () => {
-    it("applies the active highlight when isActive", () => {
+    it("applies the active highlight + brand left accent when isActive", () => {
+      // BRDG-390: the accent is now the shared border-l (was an inset box-shadow).
       const { container } = render(<ChildIssueRow item={baseSub} isLast={false} isActive />);
       expect(container.firstChild).toHaveClass("bg-[var(--color-brand-600)]/12");
-      expect(container.firstChild).toHaveClass("shadow-[inset_3px_0_0_0_var(--color-brand-300)]");
+      expect(container.firstChild).toHaveClass("border-l-[var(--color-brand-300)]");
     });
 
     it("applies the lighter checked highlight (not the active one) when only isChecked", () => {
       const { container } = render(<ChildIssueRow item={baseSub} isLast={false} isChecked />);
-      expect(container.firstChild).toHaveClass("bg-[var(--color-brand-500)]/[0.06]");
+      expect(container.firstChild).toHaveClass("bg-[var(--color-brand-500)]/6");
       expect(container.firstChild).not.toHaveClass("bg-[var(--color-brand-600)]/12");
     });
 
     it("lets active win over checked when a row is both", () => {
       const { container } = render(<ChildIssueRow item={baseSub} isLast={false} isActive isChecked />);
       expect(container.firstChild).toHaveClass("bg-[var(--color-brand-600)]/12");
-      expect(container.firstChild).not.toHaveClass("bg-[var(--color-brand-500)]/[0.06]");
+      expect(container.firstChild).not.toHaveClass("bg-[var(--color-brand-500)]/6");
     });
 
     it("has neither highlight when inactive and unchecked", () => {
       const { container } = render(<ChildIssueRow item={baseSub} isLast={false} />);
       expect(container.firstChild).not.toHaveClass("bg-[var(--color-brand-600)]/12");
-      expect(container.firstChild).not.toHaveClass("bg-[var(--color-brand-500)]/[0.06]");
+      expect(container.firstChild).not.toHaveClass("bg-[var(--color-brand-500)]/6");
     });
 
     it("drops the generic hover background on the active row so its tint stays stable", () => {
@@ -387,6 +388,14 @@ describe("ChildIssueRow", () => {
   it("does not fade non-deprecated rows", () => {
     const { container } = render(<ChildIssueRow item={baseSub} isLast={false} />);
     expect(container.firstChild).not.toHaveClass("opacity-60");
+  });
+
+  it("fades pending rows with opacity-70 to match the sprint board (BRDG-390)", () => {
+    // Was opacity-50; the shared surface uses the board's opacity-70 for in-flight rows.
+    const pending = { ...baseSub, key: "pending-1" };
+    const { container } = render(<ChildIssueRow item={pending} isLast={false} isPending />);
+    expect(container.firstChild).toHaveClass("opacity-70");
+    expect(container.firstChild).not.toHaveClass("opacity-50");
   });
 
   describe("flagged (sprint-board parity)", () => {

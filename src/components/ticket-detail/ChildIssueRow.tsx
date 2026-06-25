@@ -8,6 +8,8 @@ import { Checkbox } from "@/components/shared/Checkbox";
 import type { AssignableUser } from "@/components/shared/AssigneePicker";
 import type { EpicOption } from "@/components/shared/EpicPicker";
 import { useTicketHoverData } from "@/hooks/useTicketHoverData";
+import { useLiveTicketChange } from "@/hooks/useLiveTicketChange";
+import { rowSurfaceClasses } from "@/components/sprint-board/row-surface";
 import { Loader2, Flag } from "lucide-react";
 
 interface ChildIssueRowProps {
@@ -135,6 +137,8 @@ export function ChildIssueRow({
   dndProps,
 }: ChildIssueRowProps) {
   const getHoverData = useTicketHoverData();
+  // BRDG-338 parity: pulse the row when this ticket changed elsewhere (another tab / an agent).
+  const liveChangeKinds = useLiveTicketChange(item.key);
 
   const handleClick = (e: React.MouseEvent) => {
     if (isPending || !onSelect) return;
@@ -160,16 +164,21 @@ export function ChildIssueRow({
       data-ticket-key={item.key}
       style={style}
       className={`group/row relative flex items-center gap-2 ${spacious ? "py-[10px]" : "py-[7px]"} pl-4 pr-3 ${
-        onSelect && !isPending ? (isActive || isChecked || flagged ? "cursor-pointer" : "cursor-pointer hover:bg-overlay-subtle") : ""
-      } ${isPending ? "opacity-50" : isDeprecated ? "opacity-60" : ""} ${
-        isActive
-          ? "bg-[var(--color-brand-600)]/12 shadow-[inset_3px_0_0_0_var(--color-brand-300)]"
-          : isChecked
-          ? "bg-[var(--color-brand-500)]/[0.06]"
-          : flagged
-          ? "bg-[color-mix(in_srgb,var(--color-status-error)_6%,transparent)] hover:bg-[color-mix(in_srgb,var(--color-status-error)_8%,transparent)] shadow-[inset_3px_0_0_0_var(--color-status-error)]"
-          : ""
-      } ${roundTop ? "rounded-t-[11px]" : ""} ${roundBottom ? "rounded-b-[11px]" : ""} ${className}`}
+        onSelect && !isPending ? "cursor-pointer" : ""
+      } ${rowSurfaceClasses({
+        selected: isActive,
+        contextTarget: false,
+        checked: isChecked,
+        flagged,
+        focused: false,
+        removed: false,
+        deprecated: isDeprecated,
+        inflight: isPending,
+        lastInCard: roundBottom,
+        firstInCard: roundTop,
+        hideAccent: false,
+        livePulse: liveChangeKinds.size > 0,
+      })} ${className}`}
       onClick={handleClick}
       onContextMenu={onContextMenu}
       onMouseEnter={onMouseEnter}
@@ -178,7 +187,7 @@ export function ChildIssueRow({
       {/* Drag handle sits in the left gutter, over the row's leading edge (Jira-style),
           so it never pushes the content right. Hidden during multiselect. */}
       {dragHandleSlot && !someChecked && (
-        <span className="absolute left-0 top-1/2 z-10 flex h-6 w-[18px] -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-md border border-border-subtle bg-[var(--color-surface-elevated)] text-text-tertiary opacity-0 shadow-[var(--shadow-sm)] transition-opacity duration-150 group-hover/row:opacity-100 focus-within:opacity-100">
+        <span className="absolute -left-[3px] top-1/2 z-10 flex h-6 w-[18px] -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-md border border-border-subtle bg-[var(--color-surface-elevated)] text-text-tertiary opacity-0 shadow-[var(--shadow-sm)] transition-opacity duration-150 group-hover/row:opacity-100 focus-within:opacity-100">
           {dragHandleSlot}
         </span>
       )}

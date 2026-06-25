@@ -91,19 +91,20 @@ If a future need makes full merge worthwhile, it is a separate decision; this st
 
 ## Phase 2: Point `ChildIssueRow` at the same surface
 
-- [ ] Re-point `ChildIssueRow`'s surface `<div>` at `rowSurfaceClasses`, standardising on the shared accent (drop the inset-shadow accent).
-- [ ] Verify subtasks (`SubtasksSection`) and linked issues (`LinkedIssuesSection`): all surface states (selected / context-target / checked / flagged / focus / hover / deprecated / removed / inflight / last-in-card rounding) now match the board, while Edit/Delete, inline rename, drag-reorder, unlink and relation-change behave exactly as before.
-- [ ] Update the affected tests; `npm run verify` + `npm run build` green; PO visual check of the ticket-detail subtasks + linked-issues lists.
+- [x] Re-point `ChildIssueRow`'s surface `<div>` at `rowSurfaceClasses`, standardising on the shared accent (drop the inset-shadow accent). <!-- + useLiveTicketChange for live-pulse parity; drag-handle moved to -left-[3px] to straddle the border; cursor/hover logic consolidated (resting hover now from the helper) -->
+- [x] Verify subtasks (`SubtasksSection`) and linked issues (`LinkedIssuesSection`): all surface states now match the board, while Edit/Delete, inline rename, drag-reorder, unlink and relation-change behave exactly as before. <!-- host suites green (52 tests); e2e DOM check confirmed the live subtask row renders BoardRow's exact resting surface, inset-shadow gone -->
+- [x] Update the affected tests; `npm run verify` + `npm run build` green; PO visual check of the ticket-detail subtasks + linked-issues lists. <!-- 6520 tests + build green; before/after shots in docs/investigations/BRDG-390-baseline/ (VPL-45945) -->
+
 
 ## Acceptance Criteria
 
-- [ ] One shared source (`rowSurfaceClasses` or equivalent) defines the row surface state machine, consumed by both `BoardRow` and `ChildIssueRow`.
-- [ ] Subtasks and linked-issues rows visually match the board rows across all surface states; a surface change made once applies to both.
-- [ ] `ChildIssueRow` keeps its slots, inline rename, lazy hover-data and relation handling; subtasks/linked behaviour is unchanged.
-- [ ] A drift-guard test prevents the two surfaces from diverging again.
-- [ ] No regression on any `BoardRow` host.
-- [ ] `npm run verify` and `npm run build` pass.
-- [ ] Explicitly out: subtasks/linked are **not** moved onto `BoardRow`, and `ChildIssueRow` is **not** deleted.
+- [x] One shared source (`rowSurfaceClasses`) defines the row surface state machine, consumed by both `BoardRow` and `ChildIssueRow`.
+- [x] Subtasks and linked-issues rows visually match the board rows across all surface states; a surface change made once applies to both.
+- [x] `ChildIssueRow` keeps its slots, inline rename, lazy hover-data and relation handling; subtasks/linked behaviour is unchanged.
+- [x] A drift-guard test prevents the two surfaces from diverging again. <!-- row-surface.drift.test.tsx (both rows agree per state) + row-surface.test.ts (helper pin) -->
+- [x] No regression on any `BoardRow` host. <!-- full suite green; new surface props were a pure extraction (identical class strings) -->
+- [x] `npm run verify` and `npm run build` pass.
+- [x] Explicitly out: subtasks/linked are **not** moved onto `BoardRow`, and `ChildIssueRow` is **not** deleted.
 
 ## Out of scope
 
