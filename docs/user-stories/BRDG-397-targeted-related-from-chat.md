@@ -155,7 +155,7 @@ Foundation (1-3) → D2 (4) → D1 server (5-6) → D1 client (7) → D3 (8-9) �
 - [x] Related candidate cards show the **sprint name on hover**; absent gracefully when not yet synced and fills in after the background sync. <!-- enrichCandidatesWithSprintName + hover merge -->
 - [x] No regression to the existing button-triggered find-related and the link-toggle flow. <!-- button path uses buildFindRelatedTaskBody; existing tests green -->
 - [x] Tests cover: fuzzy sprint resolution (incl. "139" -> "BT: 139", prefix override, active/future/closed preference); related-request tag parsing; auto-chain dispatch with scoping args; sprint-name enrichment in apply-related; card renders sprint name on hover and hides when absent.
-- [ ] `npm run lint`, `npm run typecheck`, `npm run test`, and `npm run build` pass.
+- [x] `npm run lint`, `npm run typecheck`, `npm run test`, and `npm run build` pass.
 
 ## References
 

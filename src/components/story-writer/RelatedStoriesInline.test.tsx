@@ -3,9 +3,11 @@ import { describe, it, expect, vi } from "vitest";
 import { RelatedStoriesInline } from "./ChatMessageParts";
 import type { RelatedStoryCandidate } from "@/types/story-writer";
 
-const ticketsGet = vi.fn(() => Promise.resolve(null as unknown));
+const { ticketsGet } = vi.hoisted(() => ({
+  ticketsGet: vi.fn((..._args: unknown[]) => Promise.resolve(null as unknown)),
+}));
 vi.mock("@/lib/api-client", () => ({
-  tickets: { get: (...args: unknown[]) => ticketsGet(...args) },
+  tickets: { get: ticketsGet },
 }));
 
 vi.mock("@/components/shared/TicketStatusPill", () => ({
