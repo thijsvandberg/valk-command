@@ -111,6 +111,12 @@ export function RefinementPageContent({
   const sprintNameMap = useMemo(() => Object.fromEntries((sprints ?? []).map((s) => [String(s.id), s.name])), [sprints]);
   const pinnedSprintIds = useMemo(() => new Set((sprintSlots ?? []).map((s) => s.sprintId)), [sprintSlots]);
 
+  // Deliberate whole-pool fetch: the refinement prep board lets the PO browse,
+  // search and filter ANY ticket to build a session, so it needs the full
+  // candidate pool (an explicit browse-all view, like the board "All view"
+  // exception). BRDG-411 already dropped its 60s poll. Narrowing this to a
+  // server-side searched/paged endpoint is tracked separately, not part of the
+  // BRDG-412 hover refactor (which scoped the bounded refinement callers).
   const { data: tickets, mutate: mutateTickets, isValidating: ticketsValidating } = useTickets("__all__");
 
   // A ticket added to a session can drop out of the board feed (/api/tickets

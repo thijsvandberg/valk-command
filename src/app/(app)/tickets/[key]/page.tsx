@@ -72,7 +72,7 @@ import { ConfirmDialog } from "@/components/shared/ConfirmDialog";
 import { useLocalStorage } from "@/hooks/useLocalStorage";
 import { useTicketDetailPage } from "@/hooks/useTicketDetailPage";
 import { useTicketDetail } from "@/hooks/useSprintBoard";
-import { useTicketHoverData } from "@/hooks/useTicketHoverData";
+import { useHoverData } from "@/hooks/useTicketHoverData";
 import type { Ticket } from "@/types/ticket";
 import { saveTicketMetadata } from "@/components/sprint-board/sprint-board-utils";
 import { useRefinementSessions } from "@/hooks/useRefinementSessions";
@@ -121,10 +121,10 @@ export default function TicketDetailPage({
   );
   const pageTitle = usePageTitle(h.apiData ? `${key} - ${h.apiData.title}` : key);
 
-  // Same editable hover card the sprint board shows on the key pill, sourced from
-  // the shared /api/tickets cache. Returns undefined for Jira-only/removed tickets
-  // not in that list, in which case the pill simply renders no card.
-  const getHoverData = useTicketHoverData();
+  // Same editable hover card the sprint board shows on the key pill, resolved
+  // on-demand for just this ticket (BRDG-412). Returns undefined for
+  // Jira-only/removed tickets, in which case the pill simply renders no card.
+  const getHoverData = useHoverData(key ? [key] : []);
 
   const [chatPaneOpen, setChatPaneOpen] = useState(false);
   const [chatPaneWidth, setChatPaneWidth] = useState(() => {

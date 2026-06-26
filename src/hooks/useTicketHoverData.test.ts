@@ -1,5 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { renderHook } from "@testing-library/react";
+import { renderHook, waitFor } from "@testing-library/react";
+import { SWRConfig } from "swr";
+import { createElement, type ReactNode } from "react";
 import type { Ticket } from "@/types/ticket";
 
 // Controls the mocked single-ticket detail fetch. `detailKey` records the key
@@ -15,7 +17,7 @@ vi.mock("@/hooks/useSprintBoard", () => ({
   },
 }));
 
-import { buildTicketHoverData, useLinkedTicketData } from "./useTicketHoverData";
+import { buildTicketHoverData, useLinkedTicketData, useHoverData, useTicketHoverData, HoverDataProvider } from "./useTicketHoverData";
 
 const base = {
   key: "VPL-1",
@@ -64,6 +66,70 @@ describe("buildTicketHoverData (BRDG-276 enrichment)", () => {
     const d = buildTicketHoverData({ ...base, sprintId: undefined } as Ticket);
     expect(d.sprintId).toBeNull();
     expect(d.sprintName).toBeNull();
+  });
+});
+
+function swrWrapper({ children }: { children: ReactNode }) {
+  return createElement(
+    SWRConfig,
+    { value: { provider: () => new Map(), dedupingInterval: 0 } },
+    children,
+  );
+}
+
+describe("useHoverData (BRDG-412)", () => {
+  beforeEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  it("fetches hover data for the bounded keys via /api/tickets/hover", async () => {
+    vi.spyOn(global, "fetch").mockResolvedValue({
+      ok: true,
+      json: async () => ({ "VPL-1": { title: "One" }, "VPL-2": { title: "Two" } }),
+    } as Response);
+
+    const { result } = renderHook(() => useHoverData(["VPL-2", "VPL-1"]), { wrapper: swrWrapper });
+
+    await waitFor(() => expect(result.current("VPL-1")).toBeDefined());
+    expect(result.current("VPL-1")!.title).toBe("One");
+    expect(result.current("VPL-2")!.title).toBe("Two");
+
+    // One bounded request, with the keys sorted in the URL (stable SWR key).
+    const url = (fetch as ReturnType<typeof vi.fn>).mock.calls[0][0] as string;
+    expect(decodeURIComponent(url)).toContain("/api/tickets/hover?keys=VPL-1,VPL-2");
+  });
+
+  it("does not fetch when there are no keys", () => {
+    vi.spyOn(global, "fetch");
+
+    const { result } = renderHook(() => useHoverData([]), { wrapper: swrWrapper });
+
+    expect(result.current("VPL-1")).toBeUndefined();
+    expect(fetch).not.toHaveBeenCalled();
+  });
+
+  it("feeds useTicketHoverData consumers through HoverDataProvider", async () => {
+    vi.spyOn(global, "fetch").mockResolvedValue({
+      ok: true,
+      json: async () => ({ "VPL-9": { title: "Nine" } }),
+    } as Response);
+
+    const wrapper = ({ children }: { children: ReactNode }) =>
+      createElement(
+        SWRConfig,
+        { value: { provider: () => new Map(), dedupingInterval: 0 } },
+        createElement(HoverDataProvider, { keys: ["VPL-9"] }, children),
+      );
+
+    const { result } = renderHook(() => useTicketHoverData(), { wrapper });
+
+    await waitFor(() => expect(result.current("VPL-9")).toBeDefined());
+    expect(result.current("VPL-9")!.title).toBe("Nine");
+  });
+
+  it("useTicketHoverData returns undefined for every key without a provider", () => {
+    const { result } = renderHook(() => useTicketHoverData());
+    expect(result.current("VPL-1")).toBeUndefined();
   });
 });
 

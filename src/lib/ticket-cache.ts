@@ -1,13 +1,16 @@
 import { mutate as globalMutate } from "swr";
 
 // Every SWR cache that can hold a ticket: the board list, a sprint-scoped list,
-// or the per-key detail. Patching all of them keeps any open list, hover card,
-// or detail panel in sync without each consumer wiring its own handlers.
+// the per-key detail, or a bounded by-keys list (useTicketsByKeys, e.g. the
+// refinement wrap-up and linked-issue views, BRDG-412). Patching all of them
+// keeps any open list, hover card, or detail panel in sync without each consumer
+// wiring its own handlers. The board's pending-edits self-heal keys off the
+// "/api/tickets" list, not "ticketsByKeys:", so patching the latter is safe.
 function ticketCacheMatcher(ticketKey: string) {
   const detailKey = `/api/tickets/${encodeURIComponent(ticketKey)}`;
   return (k: unknown) =>
     typeof k === "string" &&
-    (k === "/api/tickets" || k.startsWith("/api/tickets?") || k === detailKey);
+    (k === "/api/tickets" || k.startsWith("/api/tickets?") || k === detailKey || k.startsWith("ticketsByKeys:"));
 }
 
 // Optimistically merge `patch` into every cached copy of the ticket (list

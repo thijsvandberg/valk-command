@@ -4,7 +4,7 @@ import { useState, useCallback, useEffect, useRef, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import { useRefinementSession } from "@/contexts/RefinementSessionContext";
 import { useRefinementSessions } from "@/hooks/useRefinementSessions";
-import { useTickets } from "@/hooks/useSprintBoard";
+import { useTicketsByKeys } from "@/hooks/useSprintBoard";
 import { refinementSessions as refinementSessionsApi } from "@/lib/api-client";
 import type { RefinementSessionTicketNoteResponse } from "@/lib/api-client";
 import { Button } from "@/components/ui/Button";
@@ -48,7 +48,9 @@ export function SessionEndModal() {
     finishSession,
   } = useRefinementSession();
 
-  const { data: allTickets } = useTickets("__all__");
+  // Resolve only the session's own tickets (BRDG-412), not the whole backlog:
+  // every lookup below is keyed by a queue member.
+  const allTickets = useTicketsByKeys(queue);
   const { sessions, mutate: mutateSessions } = useRefinementSessions();
   const { toast, showToast, dismissToast } = useToast();
 
@@ -139,7 +141,7 @@ export function SessionEndModal() {
   // they are visible and editable here. Runs once after both sources load.
   const seededPoNotesRef = useRef(false);
   useEffect(() => {
-    if (seededPoNotesRef.current || !commentLoaded || !allTickets) return;
+    if (seededPoNotesRef.current || !commentLoaded || allTickets.length === 0) return;
     seededPoNotesRef.current = true;
     const additions: Record<string, string> = {};
     for (const key of queue) {
@@ -248,7 +250,7 @@ export function SessionEndModal() {
   // the heuristic reads real estimates/subtask counts. Pre-checks every row the
   // session did not finish refining; the PO can override freely from there.
   useEffect(() => {
-    if (carrySeededRef.current || !allTickets) return;
+    if (carrySeededRef.current || allTickets.length === 0) return;
     carrySeededRef.current = true;
     const initial = new Set<string>();
     for (const row of ticketRows) {
@@ -386,9 +388,9 @@ export function SessionEndModal() {
     closeEndModal();
   }, [closeEndModal]);
 
-  // Handlers for inline status changes via the pill. Rows read from the
-  // "__all__" tickets SWR cache, which only refreshes on its 60s interval, so
-  // each change patches that cache optimistically and rolls back on failure.
+  // Handlers for inline status changes via the pill. Rows read from the bounded
+  // by-keys ticket cache (BRDG-412); each change patches the shared ticket caches
+  // optimistically (patchTicketCaches now covers that cache) and rolls back on failure.
   const handleJiraStatusChange = useCallback(async (key: string, status: JiraStatus) => {
     const prev = allTickets?.find((t) => t.key === key);
     patchTicketCaches(key, { jiraStatus: status });

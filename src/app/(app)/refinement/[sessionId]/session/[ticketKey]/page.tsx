@@ -5,8 +5,8 @@ import { useOutsideClick } from "@/hooks/useOutsideClick";
 import { useRouter } from "next/navigation";
 import { usePageTitle } from "@/hooks/usePageTitle";
 import { useRefinementSession } from "@/contexts/RefinementSessionContext";
-import { useTicketDetail, useTickets } from "@/hooks/useSprintBoard";
-import { useTicketHoverData } from "@/hooks/useTicketHoverData";
+import { useTicketDetail, useTicketsByKeys } from "@/hooks/useSprintBoard";
+import { useHoverData } from "@/hooks/useTicketHoverData";
 import { refinementSessions as refinementSessionsApi } from "@/lib/api-client";
 import { SessionTicketView, SessionMetadataPanel } from "@/components/refinement-session/SessionTicketView";
 import { TicketStatusPill } from "@/components/shared/TicketStatusPill";
@@ -81,41 +81,40 @@ export default function RefinementSessionTicketPage({
   const [zoomLevel, setZoomLevel] = useLocalStorage<110 | 130>("bridge:refinement-zoom-v2", 110);
   const zoomFactor = zoomLevel / 100;
 
-  // Re-hydrate session from DB when context is empty (page refresh)
+  // Re-hydrate session from DB when context is empty (page refresh). BRDG-412:
+  // resolve titles for only the session's own keys (the single-ticket endpoint,
+  // tolerating 404s) instead of pulling the whole backlog via "__all__".
   const [rehydrating, setRehydrating] = useState(false);
   const rehydratedRef = useRef(false);
-  const { data: allTickets } = useTickets("__all__");
 
   useEffect(() => {
-    if (queue.length > 0 || rehydratedRef.current || rehydrating) return;
-    if (!allTickets || allTickets.length === 0) return;
+    if (queue.length > 0 || rehydratedRef.current) return;
 
     rehydratedRef.current = true;
     setRehydrating(true);
 
-    refinementSessionsApi.get(sessionId).then((session) => {
+    (async () => {
+      const session = await refinementSessionsApi.get(sessionId).catch(() => null);
       if (!session || session.ticketKeys.length === 0) {
         router.replace(`/refinement/${sessionId}`);
         return;
       }
 
-      const meta = session.ticketKeys.map((key) => {
-        const t = allTickets.find((ticket) => ticket.key === key);
-        return { key, title: t?.title ?? key };
-      });
+      const resolved = await Promise.all(
+        session.ticketKeys.map((key) => tickets.get(key).catch(() => null)),
+      );
+      const titleByKey = new Map(
+        resolved
+          .filter((t): t is NonNullable<typeof t> => t != null)
+          .map((t) => [t.key, t.title] as const),
+      );
+      const meta = session.ticketKeys.map((key) => ({ key, title: titleByKey.get(key) ?? key }));
 
       const startIdx = session.ticketKeys.indexOf(ticketKeyFromUrl);
-      startSession(
-        session.ticketKeys,
-        meta,
-        sessionId,
-        startIdx >= 0 ? startIdx : 0,
-      );
+      startSession(session.ticketKeys, meta, sessionId, startIdx >= 0 ? startIdx : 0);
       setRehydrating(false);
-    }).catch(() => {
-      router.replace(`/refinement/${sessionId}`);
-    });
-  }, [queue.length, rehydrating, allTickets, sessionId, ticketKeyFromUrl, startSession, router]);
+    })();
+  }, [queue.length, sessionId, ticketKeyFromUrl, startSession, router]);
 
   // Sync context index when URL ticketKey doesn't match current queue position
   const urlSyncedRef = useRef(false);
@@ -165,6 +164,10 @@ export default function RefinementSessionTicketPage({
   const currentKey = queue[currentIndex] ?? null;
   const isLastTicket = currentIndex >= queue.length - 1;
 
+  // Resolve type/status for the queue items, scoped to the session keys only
+  // (BRDG-412), feeding SessionNavigation's pills without the whole backlog.
+  const queueTickets = useTicketsByKeys(queue);
+
   const { data: ticketData, mutate } = useTicketDetail(currentKey);
 
   // Entering a ticket in the session counts as viewing it (BRDG-330).
@@ -173,9 +176,10 @@ export default function RefinementSessionTicketPage({
     if (currentKey && ticketTitle !== undefined) recordTicketView(currentKey, ticketTitle);
   }, [currentKey, ticketTitle]);
 
-  // Hover-card data for the header ticket pill, resolved from the shared board
-  // list so the header gets the same info tooltip as rows on the sprint board.
-  const getHoverData = useTicketHoverData();
+  // Hover-card data for the header ticket pill, resolved on-demand for just the
+  // current ticket (BRDG-412) so the header gets the same info tooltip as the
+  // sprint board without loading the whole backlog.
+  const getHoverData = useHoverData(currentKey ? [currentKey] : []);
   const headerHoverData = currentKey ? getHoverData(currentKey) : undefined;
 
   // Force a Jira sync when entering a ticket in the refinement session
@@ -531,7 +535,7 @@ export default function RefinementSessionTicketPage({
             currentIndex={currentIndex}
             queue={queue}
             queueMeta={queueMeta}
-            allTickets={allTickets}
+            allTickets={queueTickets}
             isLastTicket={isLastTicket}
             storyPoints={storyPoints}
             onStoryPointsChange={handleStoryPointsChange}

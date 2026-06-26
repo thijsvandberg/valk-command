@@ -129,6 +129,8 @@ vi.mock("@/components/shared/TicketStatusPill", () => ({
 const { hoverDataSpy } = vi.hoisted(() => ({ hoverDataSpy: vi.fn() }));
 vi.mock("@/hooks/useTicketHoverData", () => ({
   useTicketHoverData: () => hoverDataSpy,
+  // The page now resolves its header pill's hover data on-demand (BRDG-412).
+  useHoverData: () => hoverDataSpy,
 }));
 vi.mock("@/components/ticket-detail/TicketTabContent", () => ({
   // Expose buttons that drive the child-select and tab-change callbacks so the

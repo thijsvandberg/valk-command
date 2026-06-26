@@ -22,6 +22,7 @@ import {
 } from "@dnd-kit/sortable";
 import { SessionQueueItem } from "./SessionQueueItem";
 import { StoryPointPicker } from "@/components/shared/StoryPointPicker";
+import { HoverDataProvider } from "@/hooks/useTicketHoverData";
 import type { Ticket } from "@/types/ticket";
 
 export interface SessionNavigationProps {
@@ -177,26 +178,30 @@ export function SessionNavigation({
               Queue
             </div>
             <div className="max-h-[320px] overflow-y-auto" style={{ scrollbarWidth: "thin" }}>
-              <DndContext sensors={queueSensors} collisionDetection={closestCenter} onDragEnd={handleQueueDragEnd}>
-                <SortableContext items={queue} strategy={verticalListSortingStrategy}>
-                  {queue.map((key, idx) => {
-                    const meta = queueMeta.find((m) => m.key === key);
-                    const t = allTickets?.find((ticket) => ticket.key === key);
-                    return (
-                      <SessionQueueItem
-                        key={key}
-                        ticketKey={key}
-                        title={meta?.title ?? key}
-                        isCurrent={idx === currentIndex}
-                        isRefined={idx < currentIndex}
-                        issueType={t?.type}
-                        jiraStatus={t?.jiraStatus}
-                        onClick={() => { onGoToTicket(idx); setNavDropdownOpen(false); }}
-                      />
-                    );
-                  })}
-                </SortableContext>
-              </DndContext>
+              {/* Batch the queue's hover-card data in one bounded fetch (BRDG-412)
+                  so each queue item resolves its tooltip without the whole backlog. */}
+              <HoverDataProvider keys={queue}>
+                <DndContext sensors={queueSensors} collisionDetection={closestCenter} onDragEnd={handleQueueDragEnd}>
+                  <SortableContext items={queue} strategy={verticalListSortingStrategy}>
+                    {queue.map((key, idx) => {
+                      const meta = queueMeta.find((m) => m.key === key);
+                      const t = allTickets?.find((ticket) => ticket.key === key);
+                      return (
+                        <SessionQueueItem
+                          key={key}
+                          ticketKey={key}
+                          title={meta?.title ?? key}
+                          isCurrent={idx === currentIndex}
+                          isRefined={idx < currentIndex}
+                          issueType={t?.type}
+                          jiraStatus={t?.jiraStatus}
+                          onClick={() => { onGoToTicket(idx); setNavDropdownOpen(false); }}
+                        />
+                      );
+                    })}
+                  </SortableContext>
+                </DndContext>
+              </HoverDataProvider>
             </div>
           </div>
         )}

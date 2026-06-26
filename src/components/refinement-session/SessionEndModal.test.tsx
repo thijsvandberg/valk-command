@@ -48,6 +48,9 @@ const mockTickets = [
 
 vi.mock("@/hooks/useSprintBoard", () => ({
   useTickets: () => ({ data: mockTickets }),
+  // SessionEndModal resolves only the session's own keys now (BRDG-412); the
+  // mock returns the same fixtures the lookups expect.
+  useTicketsByKeys: () => mockTickets,
 }));
 
 // Mutable across tests; the hook factory reads the current value at render.

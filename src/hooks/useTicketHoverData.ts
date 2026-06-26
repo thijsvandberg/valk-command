@@ -1,60 +1,75 @@
 "use client";
 
-import { useMemo, useCallback } from "react";
-import { useTickets, useJiraSprints, useTicketDetail } from "@/hooks/useSprintBoard";
+import { useMemo, useCallback, useContext, createContext, createElement, type ReactNode } from "react";
+import useSWR from "swr";
+import { useJiraSprints, useTicketDetail } from "@/hooks/useSprintBoard";
+import { swrFetcher } from "@/lib/api-client";
+import { buildTicketHoverData } from "@/lib/ticket-hover";
 import type { Ticket, IssueType, JiraStatus, Assignee } from "@/types/ticket";
 import type { TicketPillHoverData } from "@/components/shared/TicketStatusPill";
+
+// Re-exported for the existing client importers (RecentlyViewedView,
+// TicketRefPill, useLinkedTicketData below). The implementation lives in a
+// server-safe lib so the hover endpoint can build the same shape (BRDG-412).
+export { buildTicketHoverData };
 
 // Subtask Jira statuses that count as closed when deriving open/total counts.
 const DONE_LIKE_STATUSES = new Set(["DONE", "DEPRECATED"]);
 
-// Maps a full board ticket to the hover-card shape. The card is editable by
-// default (BRDG-276), so sprintId is carried through for the Sprint picker, and
-// the PO signals (readiness, quality, notes, edit state) are included so the
-// reference cards report the full set. sprintNames resolves the raw sprint id to
-// its display name (e.g. "BT: 137").
-export function buildTicketHoverData(t: Ticket, sprintNames: Record<string, string> = {}): TicketPillHoverData {
-  return {
-    title: t.title,
-    storyPoints: t.storyPoints,
-    businessValue: t.businessValue,
-    sprintId: t.sprintId ?? null,
-    sprintName: t.sprintId ? (sprintNames[t.sprintId] ?? t.sprintId) : null,
-    epicKey: t.epicKey,
-    epic: t.epic,
-    assignee: t.assignee ?? null,
-    reporter: t.reporter ?? null,
-    openSubtaskCount: t.openSubtaskCount ?? 0,
-    totalSubtaskCount: t.totalSubtaskCount ?? 0,
-    flagged: t.flagged,
-    readiness: t.readiness,
-    qualityScore: t.qualityScore,
-    notes: t.notes || null,
-    editState: t.editState && t.editState !== "clean" ? t.editState : null,
-  };
+// Resolve the hover lookup for an explicit, bounded set of keys instead of the
+// whole backlog. Keys are batched per request (the server caps each call), so a
+// container with many reference rows still issues one fetch, not one per row.
+const HOVER_BATCH_SIZE = 100;
+const NO_HOVER_DATA = (): TicketPillHoverData | undefined => undefined;
+
+async function fetchHoverData(keys: string[]): Promise<Record<string, TicketPillHoverData>> {
+  const out: Record<string, TicketPillHoverData> = {};
+  for (let i = 0; i < keys.length; i += HOVER_BATCH_SIZE) {
+    const chunk = keys.slice(i, i + HOVER_BATCH_SIZE);
+    const part = await swrFetcher<Record<string, TicketPillHoverData>>(
+      `/api/tickets/hover?keys=${encodeURIComponent(chunk.join(","))}`,
+    );
+    Object.assign(out, part);
+  }
+  return out;
 }
 
 /**
- * Returns a lookup that resolves a ticket key to hover-card data from the
- * shared `/api/tickets` list (SWR-cached, deduped app-wide). Used by reference
- * rows (epic children, link results, refinement queue) that don't carry the
- * rich fields themselves. Returns undefined for keys not in the list (e.g.
- * subtasks and Jira-only issues), so those simply render no card.
+ * On-demand hover-card lookup for a bounded set of ticket keys (BRDG-412).
+ * Fetches only the visible reference keys via GET /api/tickets/hover (batched,
+ * deduped, SWR-cached on the sorted keys), instead of pulling the whole backlog.
+ * Returns undefined for keys with no card (subtasks, Jira-only issues, etc.).
+ */
+export function useHoverData(keys: string[]): (key: string) => TicketPillHoverData | undefined {
+  const sortedKeys = useMemo(() => Array.from(new Set(keys)).sort(), [keys]);
+  const swrKey = sortedKeys.length > 0 ? `hoverData:${sortedKeys.join(",")}` : null;
+  const { data } = useSWR<Record<string, TicketPillHoverData>>(
+    swrKey,
+    () => fetchHoverData(sortedKeys),
+    { revalidateOnFocus: true, dedupingInterval: 15000 },
+  );
+  return useCallback((key: string) => data?.[key], [data]);
+}
+
+// Context that carries a per-container hover lookup down to the reference rows
+// (ChildIssueRow, LinkSearchResultRow, SessionQueueItem). The container collects
+// its visible keys and wraps its rows in <HoverDataProvider>, so the rows keep
+// calling useTicketHoverData() unchanged but read batched, on-demand data.
+const HoverDataContext = createContext<((key: string) => TicketPillHoverData | undefined) | null>(null);
+
+export function HoverDataProvider({ keys, children }: { keys: string[]; children?: ReactNode }) {
+  const lookup = useHoverData(keys);
+  return createElement(HoverDataContext.Provider, { value: lookup }, children);
+}
+
+/**
+ * Returns the hover-card lookup provided by the nearest <HoverDataProvider>.
+ * Reference rows call this to resolve their key to a card. Without a provider
+ * (or for keys outside the provider's set) it returns undefined, so the row
+ * simply renders no card. Replaces the old whole-backlog lookup (BRDG-412).
  */
 export function useTicketHoverData(): (key: string) => TicketPillHoverData | undefined {
-  const { data } = useTickets("__all__");
-  const { sprints } = useJiraSprints();
-  const sprintNames = useMemo(() => {
-    const m: Record<string, string> = {};
-    sprints.forEach((s) => { m[s.id] = s.name; });
-    return m;
-  }, [sprints]);
-  const map = useMemo(() => {
-    const m = new Map<string, TicketPillHoverData>();
-    (data ?? []).forEach((t) => m.set(t.key, buildTicketHoverData(t, sprintNames)));
-    return m;
-  }, [data, sprintNames]);
-  return useCallback((key: string) => map.get(key), [map]);
+  return useContext(HoverDataContext) ?? NO_HOVER_DATA;
 }
 
 /** Live data resolved for a linked-issue row: the hover-card payload plus the

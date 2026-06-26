@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/Button";
 import { useLinkIssueSearch } from "@/hooks/useLinkIssueSearch";
 import type { LinkSearchResult } from "@/lib/api-client";
 import { LinkSearchResultRow } from "./LinkSearchResultRow";
+import { HoverDataProvider } from "@/hooks/useTicketHoverData";
 import { LinkIssueFilterBar } from "./LinkIssueFilterBar";
 import { ScrollSentinel } from "./ScrollSentinel";
 import { tickets } from "@/lib/api-client";
@@ -313,7 +314,7 @@ export function LinkIssueDialog({
           {search.showResults || search.filteredResults.length > 0 || search.isSearching ? (
             <>
               {search.filteredResults.length > 0 ? (
-                <>
+                <HoverDataProvider keys={search.filteredResults.map((r) => r.key)}>
                   {search.filteredResults.map((r, idx) => (
                     <LinkSearchResultRow
                       key={r.key}
@@ -327,7 +328,7 @@ export function LinkIssueDialog({
                     onIntersect={search.loadMore}
                     disabled={!search.hasMore || search.isLoadingMore}
                   />
-                </>
+                </HoverDataProvider>
               ) : search.query.length >= 2 && !search.isSearching ? (
                 <div className="px-3 py-2.5 text-body-sm text-text-muted">
                   No issues found for &ldquo;{search.query}&rdquo;
@@ -353,15 +354,17 @@ export function LinkIssueDialog({
                       Recently updated
                     </span>
                   </div>
-                  {search.recentResults.map((r, idx) => (
-                    <LinkSearchResultRow
-                      key={r.key}
-                      result={r}
-                      highlighted={idx === search.highlightIndex}
-                      onSelect={handleSelect}
-                      onHover={() => search.setHighlightIndex(idx)}
-                    />
-                  ))}
+                  <HoverDataProvider keys={search.recentResults.map((r) => r.key)}>
+                    {search.recentResults.map((r, idx) => (
+                      <LinkSearchResultRow
+                        key={r.key}
+                        result={r}
+                        highlighted={idx === search.highlightIndex}
+                        onSelect={handleSelect}
+                        onHover={() => search.setHighlightIndex(idx)}
+                      />
+                    ))}
+                  </HoverDataProvider>
                 </>
               )}
             </>

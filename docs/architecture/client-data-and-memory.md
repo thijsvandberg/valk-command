@@ -62,13 +62,29 @@ anti-pattern. Fetch only what the screen needs:
 - For a **bounded, known set of keys**, use
   [`useTicketsByKeys(keys)`](../../src/hooks/useSprintBoard.ts) (resolves each via
   the single-ticket endpoint, tolerates 404s).
+- For **hover-card data on reference rows** (epic children, linked issues, link
+  search, refinement queue), use the on-demand
+  [`useHoverData(keys)`](../../src/hooks/useTicketHoverData.ts) +
+  `<HoverDataProvider keys={…}>` pattern: the container collects its visible keys
+  and one batched `GET /api/tickets/hover?keys=…` resolves just those, returning
+  only the `buildTicketHoverData` shape. Reference rows keep calling
+  `useTicketHoverData()` unchanged; it now reads the provider's bounded lookup
+  instead of the whole backlog (BRDG-412).
 - For **search/browse over the whole pool**, add a server-side filtered/searched
   endpoint and page the results; do not load everything and filter on the client.
 
-The remaining `__all__` sites were reviewed in
-[BRDG-391](../user-stories/completed/BRDG-391-scope-remaining-all-tickets-fetches.md)
-and not pursued: the cap already bounds memory, and they cannot be removed in safe
-pieces (the shared `useTicketHoverData` keeps `__all__` alive on the same pages).
+[BRDG-412](../user-stories/completed/BRDG-412-hover-lookup-on-demand.md) removed
+the app-wide `useTickets("__all__")` that the shared hover lookup used to keep
+alive on every ticket-detail page (the change BRDG-391 could not make in safe
+pieces). The only remaining `__all__` callers are deliberate **browse-all views**
+where the PO explicitly asks for every ticket: the board "All view"
+([SprintBoard.tsx](../../src/components/sprint-board/SprintBoard.tsx)) and the
+refinement prep board
+([RefinementPageContent.tsx](../../src/components/refinement-session/RefinementPageContent.tsx),
+which searches/filters the full candidate pool to build a session). Narrowing the
+prep board to a server-side searched endpoint is a separate follow-up. BRDG-411
+already dropped the 60s auto-refresh on the `__all__` key, so these views fetch
+once per load, not on a poll.
 
 ### 3. Virtualize every growable list
 
