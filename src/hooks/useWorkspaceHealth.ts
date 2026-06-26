@@ -51,10 +51,23 @@ export function useWorkspaceHealth(pollInterval = 30_000): WorkspaceHealth {
       if (mountedRef.current) setHealth(result);
     });
 
-    const id = setInterval(check, pollInterval);
+    const id = setInterval(() => {
+      // Don't poll a hidden tab; resume on the next visibilitychange instead.
+      if (typeof document !== "undefined" && document.hidden) return;
+      check();
+    }, pollInterval);
+
+    // Re-check immediately when the tab becomes visible so a long-hidden tab is
+    // not left showing stale health until the next interval tick.
+    const onVisible = () => {
+      if (!document.hidden) check();
+    };
+    document.addEventListener("visibilitychange", onVisible);
+
     return () => {
       mountedRef.current = false;
       clearInterval(id);
+      document.removeEventListener("visibilitychange", onVisible);
     };
   }, [check, pollInterval]);
 

@@ -153,8 +153,12 @@ export function useStakeholderAnalysis(sprintId: number | null) {
     // Try to re-attach to the SSE stream
     attachStreamRef.current(runningRow.id, taskId, type);
 
+    // Clear any prior interval before claiming pollRef so a re-run (rows
+    // revalidates) cannot orphan an un-clearable interval.
+    if (pollRef.current) clearInterval(pollRef.current);
+
     // Also poll as fallback in case SSE is already closed
-    pollRef.current = setInterval(async () => {
+    const interval = setInterval(async () => {
       try {
         const task = await workspaceTasksApi.get(taskId) as Record<string, unknown>;
         if (task.status === "completed" && task.output) {
@@ -168,6 +172,15 @@ export function useStakeholderAnalysis(sprintId: number | null) {
         // ignore transient errors
       }
     }, 4000);
+    pollRef.current = interval;
+
+    // Clear only the interval THIS effect created. Using the captured local (not
+    // pollRef.current) means a later generate()-created poll is never clobbered when
+    // rows revalidates: we null pollRef only if it still points at our interval.
+    return () => {
+      clearInterval(interval);
+      if (pollRef.current === interval) pollRef.current = null;
+    };
   }, [rows]);
 
   const generate = useCallback(async (

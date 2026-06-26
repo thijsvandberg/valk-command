@@ -1,4 +1,4 @@
-import { useEffect, type RefObject } from "react";
+import { useEffect, useRef, type RefObject } from "react";
 
 type SingleOrMultipleRefs =
   | RefObject<HTMLElement | null>
@@ -22,21 +22,31 @@ export function useOutsideClick(
 ): void {
   const { enabled = true, escapeClose = true } = options;
 
+  // Hold the latest refs/onClose so the listeners (subscribed once per
+  // enabled/escapeClose change) always read current values. Callers pass inline
+  // `refs` arrays and `onClose` closures, so depending on them directly
+  // re-subscribed the document listeners on every render.
+  const refsRef = useRef(refs);
+  const onCloseRef = useRef(onClose);
+  useEffect(() => {
+    refsRef.current = refs;
+    onCloseRef.current = onClose;
+  });
+
   useEffect(() => {
     if (!enabled) return;
 
-    const refArray = Array.isArray(refs) ? refs : [refs];
-
     function handleMouseDown(e: MouseEvent) {
+      const refArray = Array.isArray(refsRef.current) ? refsRef.current : [refsRef.current];
       const target = e.target as Node;
       const isInside = refArray.some(
         (ref) => ref.current?.contains(target),
       );
-      if (!isInside) onClose();
+      if (!isInside) onCloseRef.current();
     }
 
     function handleKeyDown(e: KeyboardEvent) {
-      if (e.key === "Escape") onClose();
+      if (e.key === "Escape") onCloseRef.current();
     }
 
     document.addEventListener("mousedown", handleMouseDown);
@@ -50,5 +60,5 @@ export function useOutsideClick(
         document.removeEventListener("keydown", handleKeyDown);
       }
     };
-  }, [refs, onClose, enabled, escapeClose]);
+  }, [enabled, escapeClose]);
 }

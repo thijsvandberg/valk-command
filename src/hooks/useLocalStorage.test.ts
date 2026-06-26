@@ -85,6 +85,28 @@ describe("useLocalStorage", () => {
     expect(result.current[0]).toBe("from-other-tab");
   });
 
+  it("still syncs across tabs when the default is an object literal (no listener churn)", () => {
+    // A fresh object default each render previously re-subscribed the storage
+    // listener every render; the sync must keep working after the dep change.
+    const { result, rerender } = renderHook(() =>
+      useLocalStorage("obj-key", { status: [] as string[] }),
+    );
+
+    rerender();
+
+    act(() => {
+      mockStorage["obj-key"] = JSON.stringify({ status: ["open"] });
+      window.dispatchEvent(
+        new StorageEvent("storage", {
+          key: "obj-key",
+          newValue: JSON.stringify({ status: ["open"] }),
+        }),
+      );
+    });
+
+    expect(result.current[0]).toEqual({ status: ["open"] });
+  });
+
   it("ignores storage events for other keys", () => {
     const { result } = renderHook(() => useLocalStorage("my-key", "initial"));
 

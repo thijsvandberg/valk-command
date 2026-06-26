@@ -46,6 +46,22 @@ export function dequeue(limit: number): string[] {
 }
 
 /**
+ * Drop `lastChecked` entries whose cooldown has fully elapsed. Such an entry no
+ * longer changes `enqueue`'s decision (the key is re-checkable once
+ * `now - checked >= COOLDOWN_MS`), so pruning it is behaviour-preserving and keeps
+ * the Map from accumulating one permanent entry per ticket ever viewed.
+ *
+ * Iterates a SNAPSHOT array, never the live Map's iterator: deleting while iterating
+ * a Map's own iterator is what caused the BRDG-387 LRU-provider freeze. The snapshot
+ * decouples iteration from mutation.
+ */
+function pruneExpired(now: number): void {
+  for (const [key, checked] of [...lastChecked]) {
+    if (now - checked >= COOLDOWN_MS) lastChecked.delete(key);
+  }
+}
+
+/**
  * Mark keys as successfully checked (resets their cooldown).
  */
 export function markChecked(keys: string[]): void {
@@ -53,6 +69,7 @@ export function markChecked(keys: string[]): void {
   for (const key of keys) {
     lastChecked.set(key, now);
   }
+  pruneExpired(now);
 }
 
 /**

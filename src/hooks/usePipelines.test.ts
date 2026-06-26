@@ -102,6 +102,29 @@ describe("usePipelines", () => {
     );
   });
 
+  it("does not poll on a hidden tab and resumes when visible", async () => {
+    let hidden = true;
+    Object.defineProperty(document, "hidden", { configurable: true, get: () => hidden });
+    mockFetcher.mockResolvedValue({ runs: [], hasRunning: false });
+
+    renderHook(() => usePipelines(), { wrapper: swrWrapper });
+
+    // Flush the initial SWR fetch.
+    await act(async () => { await vi.advanceTimersByTimeAsync(0); });
+    expect(mockFetcher).toHaveBeenCalledTimes(1);
+
+    // A 5-min idle tick while hidden must not refetch (single poll source, gated).
+    await act(async () => { await vi.advanceTimersByTimeAsync(5 * 60 * 1000); });
+    expect(mockFetcher).toHaveBeenCalledTimes(1);
+
+    // Once visible, the next tick refetches.
+    hidden = false;
+    await act(async () => { await vi.advanceTimersByTimeAsync(5 * 60 * 1000); });
+    expect(mockFetcher).toHaveBeenCalledTimes(2);
+
+    Object.defineProperty(document, "hidden", { configurable: true, get: () => false });
+  });
+
   it("refresh calls pipelinesApi.refresh", async () => {
     mockFetcher.mockResolvedValue({ runs: [], hasRunning: false });
     mockRefresh.mockResolvedValue({});

@@ -153,6 +153,42 @@ describe("useStakeholderAnalysis", () => {
     expect(stakeholderApi.createAnalysis).not.toHaveBeenCalled();
   });
 
+  it("recover-effect runs a single fallback poll and clears it on unmount", async () => {
+    // Real timers so the async SWR fetch + recover-effect settle via waitFor; we
+    // only need the 4s interval to be CREATED and CLEARED, never to fire.
+    vi.useRealTimers();
+
+    const runningRow = {
+      id: "a1",
+      sprintId: 100,
+      type: "brief" as const,
+      status: "running",
+      workspaceTaskId: "t1",
+      snapshotDonePoints: 0,
+      snapshotTodoCount: 0,
+      output: null,
+      createdAt: new Date(0).toISOString(),
+    };
+    vi.mocked(swrFetcher).mockResolvedValue([runningRow]);
+
+    const setIntervalSpy = vi.spyOn(global, "setInterval");
+    const clearIntervalSpy = vi.spyOn(global, "clearInterval");
+
+    const { unmount } = renderHook(() => useStakeholderAnalysis(100), { wrapper });
+
+    // Wait until the recover-effect has engaged its 4s fallback poll.
+    await waitFor(() =>
+      expect(setIntervalSpy.mock.calls.filter((c) => c[1] === 4000).length).toBe(1),
+    );
+
+    const pollIdx = setIntervalSpy.mock.calls.findIndex((c) => c[1] === 4000);
+    const pollId = setIntervalSpy.mock.results[pollIdx].value;
+
+    unmount();
+
+    expect(clearIntervalSpy).toHaveBeenCalledWith(pollId);
+  });
+
   it("generate handles API errors gracefully", async () => {
     vi.mocked(stakeholderApi.createAnalysis).mockRejectedValue(new Error("API fail"));
 

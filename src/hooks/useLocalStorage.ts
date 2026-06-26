@@ -45,15 +45,18 @@ export function useLocalStorage<T>(
     [key],
   );
 
-  // Sync across tabs via storage event
+  // Sync across tabs via storage event. Read the default from the ref and depend
+  // only on `key`: depending on `defaultValue` re-subscribed the listener on every
+  // render for callers passing an object/array literal (a fresh reference each time),
+  // which `defaultValueRef` already exists to avoid.
   useEffect(() => {
     function handleStorage(e: StorageEvent) {
       if (e.key !== key) return;
-      setStoredValue(e.newValue === null ? defaultValue : readValue(key, defaultValue));
+      setStoredValue(e.newValue === null ? defaultValueRef.current : readValue(key, defaultValueRef.current));
     }
     window.addEventListener("storage", handleStorage);
     return () => window.removeEventListener("storage", handleStorage);
-  }, [key, defaultValue]);
+  }, [key]);
 
   return [storedValue, setValue];
 }

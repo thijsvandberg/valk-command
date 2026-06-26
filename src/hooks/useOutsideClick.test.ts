@@ -101,6 +101,26 @@ describe("useOutsideClick", () => {
     expect(onClose).not.toHaveBeenCalled();
   });
 
+  it("calls the latest onClose after a re-render (stable listeners, fresh callback)", () => {
+    const firstOnClose = vi.fn();
+    const secondOnClose = vi.fn();
+    const ref = createRef(container);
+
+    const { rerender } = renderHook(
+      ({ onClose }) => useOutsideClick(ref, onClose),
+      { initialProps: { onClose: firstOnClose } },
+    );
+
+    // Re-render with a brand-new callback (the inline-closure case). The listener
+    // is not re-subscribed, but it must invoke the latest onClose via the ref.
+    rerender({ onClose: secondOnClose });
+
+    outside.dispatchEvent(new MouseEvent("mousedown", { bubbles: true }));
+
+    expect(firstOnClose).not.toHaveBeenCalled();
+    expect(secondOnClose).toHaveBeenCalledTimes(1);
+  });
+
   it("cleans up listeners on unmount", () => {
     const onClose = vi.fn();
     const { unmount } = renderHook(() =>

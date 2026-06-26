@@ -147,6 +147,33 @@ describe("useWorkspaceHealth", () => {
     expect(fetch).toHaveBeenCalledTimes(1);
   });
 
+  it("does not poll while the tab is hidden, and re-checks on becoming visible", async () => {
+    let hidden = true;
+    Object.defineProperty(document, "hidden", { configurable: true, get: () => hidden });
+
+    const fetchSpy = vi.spyOn(global, "fetch").mockResolvedValue({
+      ok: true,
+      status: 200,
+      json: async () => ({ status: "ok", auth: { status: "valid", tokenExpiresAt: null } }),
+    } as Response);
+
+    renderHook(() => useWorkspaceHealth(5_000));
+
+    // The initial mount check always runs (so the UI is never stuck on "checking").
+    await waitFor(() => expect(fetchSpy).toHaveBeenCalledTimes(1));
+
+    // Interval ticks are skipped while hidden.
+    await vi.advanceTimersByTimeAsync(15_000);
+    expect(fetchSpy).toHaveBeenCalledTimes(1);
+
+    // Becoming visible triggers one immediate re-check.
+    hidden = false;
+    document.dispatchEvent(new Event("visibilitychange"));
+    await waitFor(() => expect(fetchSpy).toHaveBeenCalledTimes(2));
+
+    Object.defineProperty(document, "hidden", { configurable: true, get: () => false });
+  });
+
   it("reports expired claude credentials", async () => {
     vi.spyOn(global, "fetch").mockResolvedValue({
       ok: true,

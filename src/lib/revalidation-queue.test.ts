@@ -74,4 +74,37 @@ describe("revalidation-queue", () => {
   it("returns empty array when queue is empty", () => {
     expect(dequeue(10)).toEqual([]);
   });
+
+  it("prunes lastChecked entries past the cooldown so cooldownSize stays bounded", () => {
+    vi.useFakeTimers();
+
+    // Check 50 distinct keys; all sit in the cooldown map.
+    for (let i = 0; i < 50; i++) markChecked([`VPL-${i}`]);
+    expect(stats().cooldownSize).toBe(50);
+
+    // Advance past the 24h cooldown; the next markChecked prunes the expired batch
+    // (those keys are re-checkable again, so dropping them changes nothing).
+    vi.advanceTimersByTime(25 * 60 * 60 * 1000);
+    markChecked(["VPL-new"]);
+    expect(stats().cooldownSize).toBe(1);
+
+    vi.useRealTimers();
+  });
+
+  it("stays bounded across many markChecked cycles spanning past the cooldown", () => {
+    vi.useFakeTimers();
+
+    // 20 cycles of 100 distinct keys, each a full cooldown apart. Without pruning
+    // this Map would hold 2000 permanent entries; with age-based prune only the
+    // most recent batch survives.
+    for (let cycle = 0; cycle < 20; cycle++) {
+      const keys = Array.from({ length: 100 }, (_, i) => `C${cycle}-${i}`);
+      markChecked(keys);
+      vi.advanceTimersByTime(25 * 60 * 60 * 1000);
+    }
+
+    expect(stats().cooldownSize).toBeLessThanOrEqual(100);
+
+    vi.useRealTimers();
+  });
 });

@@ -40,10 +40,12 @@ export function usePipelines(filters?: {
 
   const key = `/api/pipelines${params.toString() ? `?${params}` : ""}`;
 
+  // The adaptive manual interval below is the SINGLE poll source. SWR's own
+  // `refreshInterval` was dropped: at idle both fired, causing two refetches per
+  // cycle for the same key.
   const swr = useSWR<PipelineResponse>(key, swrFetcher, {
     revalidateOnFocus: false,
     dedupingInterval: 15000,
-    refreshInterval: IDLE_INTERVAL,
   });
 
   // Adaptive polling: speed up when pipelines are running
@@ -57,6 +59,8 @@ export function usePipelines(filters?: {
 
     const interval = hasRunning ? ACTIVE_INTERVAL : IDLE_INTERVAL;
     intervalRef.current = setInterval(() => {
+      // Skip the refetch on a hidden tab: a background dashboard need not poll.
+      if (typeof document !== "undefined" && document.hidden) return;
       swrMutate();
     }, interval);
 

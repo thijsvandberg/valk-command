@@ -115,6 +115,18 @@ export function useLinkIssueSearch(ticketKey: string): UseLinkIssueSearchReturn 
     };
   }
 
+  // Clear pending debounce timers and abort any in-flight request on unmount.
+  // Without this, closing the popover while a debounce is pending fires
+  // searchForLink/setResults on an unmounted component and leaks the fetch
+  // (resetSearch only runs on explicit reset, not on unmount).
+  useEffect(() => {
+    return () => {
+      if (debounceRef.current) clearTimeout(debounceRef.current);
+      if (jiraDebounceRef.current) clearTimeout(jiraDebounceRef.current);
+      if (abortRef.current) abortRef.current.abort();
+    };
+  }, []);
+
   // Fetch recently updated tickets on mount. This also seeds the filter facets
   // (type/project/assignee option lists) so the dropdowns are populated before
   // the first search.
