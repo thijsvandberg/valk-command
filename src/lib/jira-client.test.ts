@@ -65,6 +65,21 @@ describe("JiraClient (unconfigured mode)", () => {
   it("removeWatcher throws when not configured", async () => {
     await expect(client.removeWatcher("VPL-100", "acc-1")).rejects.toThrow("not configured");
   });
+
+  // BRDG-409: rank methods interpolate keys into a `key NOT IN (...)` JQL clause.
+  // A malformed key is rejected before the clause is built (defense in depth),
+  // independent of whether Jira is configured.
+  it("rankToTopOfSprint rejects a malformed issue key", async () => {
+    await expect(client.rankToTopOfSprint(["VPL-1", "bad) OR 1=1"], 134)).rejects.toThrow(/Invalid Jira issue key/);
+  });
+
+  it("rankToBottomOfBacklog rejects a malformed issue key", async () => {
+    await expect(client.rankToBottomOfBacklog(["../secret"])).rejects.toThrow(/Invalid Jira issue key/);
+  });
+
+  it("rank methods are a safe no-op for valid keys when unconfigured", async () => {
+    await expect(client.rankToTopOfSprint(["VPL-1"], 134)).resolves.toBeUndefined();
+  });
 });
 
 describe("issuePath", () => {

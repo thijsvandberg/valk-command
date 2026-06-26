@@ -10,7 +10,13 @@ vi.mock("@/lib/logger", () => ({
   },
 }));
 
-import { validatePathParam, escapeLikePattern, safeJsonParse } from "./api-validation";
+import {
+  validatePathParam,
+  validateNumericId,
+  validateAgentTaskId,
+  escapeLikePattern,
+  safeJsonParse,
+} from "./api-validation";
 import { logger } from "@/lib/logger";
 
 describe("validatePathParam", () => {
@@ -49,6 +55,46 @@ describe("validatePathParam", () => {
     const result = validatePathParam("a".repeat(300));
     const body = await result!.json();
     expect(body.error).toBe("Invalid parameter");
+  });
+});
+
+describe("validateNumericId", () => {
+  it("returns null for bare numeric ids", () => {
+    expect(validateNumericId("123")).toBeNull();
+    expect(validateNumericId("0")).toBeNull();
+    expect(validateNumericId("9".repeat(32))).toBeNull();
+  });
+
+  it("rejects ids carrying query/path/fragment injection", () => {
+    // The decoded route param a hostile `123%3Fbody-format=storage` becomes.
+    expect(validateNumericId("123?body-format=storage")).not.toBeNull();
+    expect(validateNumericId("123/secret")).not.toBeNull();
+    expect(validateNumericId("123#frag")).not.toBeNull();
+    expect(validateNumericId("../123")).not.toBeNull();
+    expect(validateNumericId("12 3")).not.toBeNull();
+  });
+
+  it("rejects empty, non-numeric, and over-long ids", () => {
+    expect(validateNumericId("")!.status).toBe(400);
+    expect(validateNumericId("abc")!.status).toBe(400);
+    expect(validateNumericId("9".repeat(33))!.status).toBe(400);
+  });
+});
+
+describe("validateAgentTaskId", () => {
+  it("returns null for url-safe ids (uuid-shaped, slugs)", () => {
+    expect(validateAgentTaskId("550e8400-e29b-41d4-a716-446655440000")).toBeNull();
+    expect(validateAgentTaskId("task_42-abc")).toBeNull();
+    expect(validateAgentTaskId("ABC123")).toBeNull();
+  });
+
+  it("rejects ids that could alter the upstream agent path", () => {
+    expect(validateAgentTaskId("abc/stream")).not.toBeNull();
+    expect(validateAgentTaskId("abc?x=y")).not.toBeNull();
+    expect(validateAgentTaskId("..")).not.toBeNull();
+    expect(validateAgentTaskId("a b")).not.toBeNull();
+    expect(validateAgentTaskId("")!.status).toBe(400);
+    expect(validateAgentTaskId("a".repeat(129))!.status).toBe(400);
   });
 });
 

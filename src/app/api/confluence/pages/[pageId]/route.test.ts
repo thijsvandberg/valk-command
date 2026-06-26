@@ -56,6 +56,30 @@ describe("GET /api/confluence/pages/[pageId]", () => {
     expect(res.status).toBe(503);
   });
 
+  it("rejects a query-bearing pageId with 400 and never calls the upstream client", async () => {
+    // A hostile `42%3Fbody-format=storage` route param decodes to this; it must
+    // not be able to override the upstream Confluence query (BRDG-409).
+    const res = await callGET("42?body-format=storage");
+    expect(res.status).toBe(400);
+    expect(confluenceClient.getPage).not.toHaveBeenCalled();
+  });
+
+  it("rejects a non-numeric pageId with 400", async () => {
+    const res = await callGET("../../secret");
+    expect(res.status).toBe(400);
+    expect(confluenceClient.getPage).not.toHaveBeenCalled();
+  });
+
+  it("accepts a numeric pageId and fetches that exact page", async () => {
+    vi.mocked(confluenceClient.getPage).mockResolvedValue({
+      ...MOCK_PAGE,
+      bodyHtml: "<p>Short content.</p>",
+    });
+    const res = await callGET("42");
+    expect(res.status).toBe(200);
+    expect(confluenceClient.getPage).toHaveBeenCalledWith("42");
+  });
+
   it("returns 400 for invalid format", async () => {
     const res = await callGET("42", "?format=xml");
     expect(res.status).toBe(400);

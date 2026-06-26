@@ -134,4 +134,20 @@ describe("POST /api/story-writer/create-draft", () => {
     expect(data.key).toMatch(/^DRAFT-/);
     expect(data.key).not.toBe("NOT-A-DRAFT");
   });
+
+  it("rejects a DRAFT-prefixed key with an out-of-shape suffix and mints a fresh one", async () => {
+    // Before BRDG-409 only the `DRAFT-` prefix was checked, so the suffix was
+    // unbounded. These all match the prefix but not the bounded shape.
+    for (const bad of ["DRAFT-../../etc", "DRAFT-a b", "DRAFT-x", "DRAFT-" + "a".repeat(20)]) {
+      const res = await POST(new Request(BASE, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ title: "Bad suffix", draftKey: bad }),
+      }));
+      expect(res.status).toBe(201);
+      const data = await res.json();
+      expect(data.key).not.toBe(bad);
+      expect(data.key).toMatch(/^DRAFT-[A-Za-z0-9]{4,16}$/);
+    }
+  });
 });

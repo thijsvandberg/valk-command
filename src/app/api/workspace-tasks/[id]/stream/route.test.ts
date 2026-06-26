@@ -37,6 +37,32 @@ describe("GET /api/workspace-tasks/[id]/stream", () => {
     loggerWarn.mockReset();
   });
 
+  it("rejects a path-bearing task id with 400 and never calls the agent", async () => {
+    const request = new Request("http://localhost:3100/api/workspace-tasks/x/stream");
+    const response = await GET(request, makeParams("task/../secret"));
+    expect(response.status).toBe(400);
+    expect(agentFetchStream).not.toHaveBeenCalled();
+  });
+
+  it("rejects a query-bearing task id with 400 and never calls the agent", async () => {
+    const request = new Request("http://localhost:3100/api/workspace-tasks/x/stream");
+    const response = await GET(request, makeParams("task-1?foo=bar"));
+    expect(response.status).toBe(400);
+    expect(agentFetchStream).not.toHaveBeenCalled();
+  });
+
+  it("forwards a valid task id to the agent stream path", async () => {
+    vi.mocked(agentFetchStream).mockResolvedValue({
+      ok: false,
+      error: { error: "Agent unreachable", code: "UNREACHABLE" },
+      status: 502,
+      retryCount: 0,
+    });
+    const request = new Request("http://localhost:3100/api/workspace-tasks/task-1/stream");
+    await GET(request, makeParams("task-1"));
+    expect(agentFetchStream).toHaveBeenCalledWith("/api/tasks/task-1/stream");
+  });
+
   it("returns error response when agentFetchStream returns error", async () => {
     vi.mocked(agentFetchStream).mockResolvedValue({
       ok: false,

@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse, after } from "next/server";
+import { z } from "zod";
 import { db } from "@/db";
 import { appSetting, ticket } from "@/db/schema";
 import { eq, and, notInArray, sql } from "drizzle-orm";
@@ -119,13 +120,19 @@ export async function GET() {
  * Updates the hidden_sprints list.
  * Body: { hiddenIds: number[] }
  */
+const hiddenIdsSchema = z.object({
+  hiddenIds: z.array(z.number()).optional(),
+});
+
 export async function PUT(request: NextRequest) {
   const limited = await applyRateLimit("write");
   if (limited) return limited;
 
+  const parsed = await parseJsonBody(request, hiddenIdsSchema);
+  if ("error" in parsed) return parsed.error;
+  const hiddenIds: number[] = parsed.data.hiddenIds ?? [];
+
   try {
-    const body = await request.json();
-    const hiddenIds: number[] = body.hiddenIds ?? [];
     const payload = JSON.stringify(hiddenIds);
 
     const existing = await db.query.appSetting.findFirst({

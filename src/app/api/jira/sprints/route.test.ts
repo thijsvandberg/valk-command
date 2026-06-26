@@ -71,7 +71,7 @@ import { jiraClient, JiraApiError } from "@/lib/jira-client";
 import { cache } from "@/lib/cache";
 import { after } from "next/server";
 import { ensureSprintsCached } from "@/lib/sprint-cache";
-import { GET, POST } from "./route";
+import { GET, POST, PUT } from "./route";
 import { appSetting, ticket } from "@/db/schema";
 
 describe("GET /api/jira/sprints", () => {
@@ -157,6 +157,54 @@ function makePostRequest(body: unknown): NextRequest {
     headers: { "Content-Type": "application/json" },
   });
 }
+
+function makePutRequest(body: unknown): NextRequest {
+  return new NextRequest("http://localhost/api/jira/sprints", {
+    method: "PUT",
+    body: typeof body === "string" ? body : JSON.stringify(body),
+    headers: { "Content-Type": "application/json" },
+  });
+}
+
+describe("PUT /api/jira/sprints", () => {
+  beforeEach(() => {
+    testDb = createTestDb();
+    vi.resetAllMocks();
+  });
+
+  it("persists a valid number[] hiddenIds list", async () => {
+    const response = await PUT(makePutRequest({ hiddenIds: [1, 2, 3] }));
+    expect(response.status).toBe(200);
+    const data = await response.json();
+    expect(data.count).toBe(3);
+
+    const row = testDb.select().from(appSetting).all().find((r) => r.key === "hidden_sprints");
+    expect(JSON.parse(row!.value)).toEqual([1, 2, 3]);
+  });
+
+  it("treats a missing hiddenIds as an empty list", async () => {
+    const response = await PUT(makePutRequest({}));
+    expect(response.status).toBe(200);
+    const data = await response.json();
+    expect(data.count).toBe(0);
+  });
+
+  it("returns 400 when hiddenIds is not a number[] and persists nothing", async () => {
+    const response = await PUT(makePutRequest({ hiddenIds: "all of them" }));
+    expect(response.status).toBe(400);
+    expect(testDb.select().from(appSetting).all().find((r) => r.key === "hidden_sprints")).toBeUndefined();
+  });
+
+  it("returns 400 when hiddenIds contains non-numbers", async () => {
+    const response = await PUT(makePutRequest({ hiddenIds: [1, "2", 3] }));
+    expect(response.status).toBe(400);
+  });
+
+  it("returns 400 on malformed JSON body", async () => {
+    const response = await PUT(makePutRequest("not json"));
+    expect(response.status).toBe(400);
+  });
+});
 
 describe("POST /api/jira/sprints", () => {
   beforeEach(() => {

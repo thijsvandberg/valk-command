@@ -28,6 +28,19 @@ export function isValidJiraKey(key: string | null | undefined): boolean {
   return typeof key === "string" && JIRA_KEY_RE.test(key);
 }
 
+/**
+ * Assert every key is a well-formed Jira issue key before it is interpolated as a
+ * bare (unquoted) JQL identifier (e.g. `key NOT IN (...)`). Keys are internal today,
+ * so this is defense in depth: a malformed key throws instead of silently producing
+ * a broken/injectable clause.
+ */
+export function assertValidJiraKeys(keys: string[]): void {
+  const bad = keys.find((k) => !isValidJiraKey(k));
+  if (bad !== undefined) {
+    throw new Error(`Invalid Jira issue key: ${JSON.stringify(bad)}`);
+  }
+}
+
 /** Issue types this project recognises; used to validate the search filter. */
 export const KNOWN_ISSUE_TYPES = [
   "Story",

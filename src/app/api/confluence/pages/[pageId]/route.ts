@@ -3,7 +3,7 @@ import { confluenceClient } from "@/lib/confluence-client";
 import { logger } from "@/lib/logger";
 import { applyRateLimit } from "@/lib/rate-limiter";
 import DOMPurify from "isomorphic-dompurify";
-import { validatePathParam } from "@/lib/api-validation";
+import { validateNumericId } from "@/lib/api-validation";
 
 type RouteParams = { params: Promise<{ pageId: string }> };
 
@@ -95,7 +95,7 @@ export async function GET(req: NextRequest, { params }: RouteParams) {
   if (limited) return limited;
 
   const { pageId } = await params;
-  const invalid = validatePathParam(pageId);
+  const invalid = validateNumericId(pageId);
   if (invalid) return invalid;
 
   const sp = new URL(req.url).searchParams;

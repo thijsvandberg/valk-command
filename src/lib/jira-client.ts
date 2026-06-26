@@ -10,7 +10,7 @@
 import { env } from "@/lib/env";
 import { logger } from "@/lib/logger";
 import { trackOutboundCall, isOutboundLimitApproaching } from "@/lib/rate-limiter";
-import { isValidJiraKey, escapeJql } from "@/lib/jql";
+import { isValidJiraKey, escapeJql, assertValidJiraKeys } from "@/lib/jql";
 
 // ---------------------------------------------------------------------------
 // Custom field IDs for new-story.atlassian.net (must match jira-mcp config)
@@ -1131,6 +1131,7 @@ export class JiraClient {
    * no other issues - the moved ones are already at the top.
    */
   async rankToTopOfSprint(issueKeys: string[], sprintId: number, signal?: AbortSignal): Promise<void> {
+    assertValidJiraKeys(issueKeys);
     if (!isConfigured() || issueKeys.length === 0) return;
     const exclude = ` AND key NOT IN (${issueKeys.join(",")})`;
     const top = await this.searchIssues(`sprint = ${sprintId}${exclude} ORDER BY rank ASC`, ["summary"], 1, signal);
@@ -1142,6 +1143,7 @@ export class JiraClient {
    * the backlog's current highest-ranked issue. A no-op when the backlog is otherwise empty.
    */
   async rankToTopOfBacklog(issueKeys: string[], signal?: AbortSignal): Promise<void> {
+    assertValidJiraKeys(issueKeys);
     if (!isConfigured() || issueKeys.length === 0) return;
     const cfg = getConfig();
     const exclude = ` AND key NOT IN (${issueKeys.join(",")})`;
@@ -1157,6 +1159,7 @@ export class JiraClient {
    * issues remain, and is a no-op when the sprint has no other issues.
    */
   async rankToBottomOfSprint(issueKeys: string[], sprintId: number, signal?: AbortSignal): Promise<void> {
+    assertValidJiraKeys(issueKeys);
     if (!isConfigured() || issueKeys.length === 0) return;
     const exclude = ` AND key NOT IN (${issueKeys.join(",")})`;
     // statusCategory = Done covers the green "finished" statuses (Done/Closed/Resolved and
@@ -1186,6 +1189,7 @@ export class JiraClient {
    * the backlog's current lowest-ranked issue. A no-op when the backlog is otherwise empty.
    */
   async rankToBottomOfBacklog(issueKeys: string[], signal?: AbortSignal): Promise<void> {
+    assertValidJiraKeys(issueKeys);
     if (!isConfigured() || issueKeys.length === 0) return;
     const cfg = getConfig();
     const exclude = ` AND key NOT IN (${issueKeys.join(",")})`;

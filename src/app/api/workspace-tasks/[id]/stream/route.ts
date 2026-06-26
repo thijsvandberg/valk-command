@@ -1,5 +1,5 @@
 import { agentFetchStream } from "@/lib/agent-fetch";
-import { validatePathParam } from "@/lib/api-validation";
+import { validateAgentTaskId } from "@/lib/api-validation";
 import { logger } from "@/lib/logger";
 
 const INACTIVITY_TIMEOUT_MS = 180_000;
@@ -29,10 +29,10 @@ export async function GET(
   { params }: { params: Promise<{ id: string }> }
 ) {
   const { id } = await params;
-  const invalid = validatePathParam(id);
+  const invalid = validateAgentTaskId(id);
   if (invalid) return invalid;
 
-  const result = await agentFetchStream(`/api/tasks/${id}/stream`);
+  const result = await agentFetchStream(`/api/tasks/${encodeURIComponent(id)}/stream`);
 
   if (!result.ok) {
     return new Response(

@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
+import { z } from "zod";
 import { validatePathParam } from "@/lib/api-validation";
+import { parseJsonBody } from "@/lib/request-parser";
 import { db } from "@/db";
 import { ticketConfluenceLink } from "@/db/schema";
 import { eq, and } from "drizzle-orm";
@@ -7,6 +9,19 @@ import { randomUUID } from "crypto";
 import { applyRateLimit } from "@/lib/rate-limiter";
 
 type RouteParams = { params: Promise<{ key: string }> };
+
+const createLinkSchema = z.object({
+  pageId: z.string().min(1),
+  pageTitle: z.string().min(1),
+  pageUrl: z.string().min(1),
+  lastModifiedAt: z.string().optional(),
+  lastModifiedBy: z.string().optional(),
+  source: z.enum(["manual", "auto-detected"]).optional(),
+});
+
+const deleteLinkSchema = z.object({
+  linkId: z.string().min(1),
+});
 
 /**
  * GET /api/tickets/[key]/confluence-links
@@ -39,18 +54,10 @@ export async function POST(req: NextRequest, { params }: RouteParams) {
   const { key } = await params;
   const invalid = validatePathParam(key);
   if (invalid) return invalid;
-  const body = await req.json() as {
-    pageId: string;
-    pageTitle: string;
-    pageUrl: string;
-    lastModifiedAt?: string;
-    lastModifiedBy?: string;
-    source?: "manual" | "auto-detected";
-  };
 
-  if (!body.pageId || !body.pageTitle || !body.pageUrl) {
-    return NextResponse.json({ error: "pageId, pageTitle, and pageUrl are required" }, { status: 400 });
-  }
+  const parsed = await parseJsonBody(req, createLinkSchema);
+  if ("error" in parsed) return parsed.error;
+  const body = parsed.data;
 
   // Idempotent: skip if this page is already linked to this ticket
   const existing = await db.query.ticketConfluenceLink.findFirst({
@@ -86,11 +93,10 @@ export async function DELETE(req: NextRequest, { params }: RouteParams) {
   const { key } = await params;
   const invalid = validatePathParam(key);
   if (invalid) return invalid;
-  const body = await req.json() as { linkId: string };
 
-  if (!body.linkId) {
-    return NextResponse.json({ error: "linkId is required" }, { status: 400 });
-  }
+  const parsed = await parseJsonBody(req, deleteLinkSchema);
+  if ("error" in parsed) return parsed.error;
+  const body = parsed.data;
 
   await db.delete(ticketConfluenceLink).where(
     and(

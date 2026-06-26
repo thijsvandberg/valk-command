@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { escapeJql, escapeCql, isValidJiraKey, isKnownIssueType } from "./jql";
+import { escapeJql, escapeCql, isValidJiraKey, isKnownIssueType, assertValidJiraKeys } from "./jql";
 
 describe("escapeJql", () => {
   it("leaves ordinary text untouched", () => {
@@ -44,6 +44,19 @@ describe("isValidJiraKey", () => {
     expect(isValidJiraKey("VPL")).toBe(false);
     expect(isValidJiraKey("")).toBe(false);
     expect(isValidJiraKey(null)).toBe(false);
+  });
+});
+
+describe("assertValidJiraKeys", () => {
+  it("passes for a list of well-formed keys (and an empty list)", () => {
+    expect(() => assertValidJiraKeys([])).not.toThrow();
+    expect(() => assertValidJiraKeys(["VPL-1", "ABC1-42"])).not.toThrow();
+  });
+
+  it("throws when any key is malformed (defense before key NOT IN)", () => {
+    expect(() => assertValidJiraKeys(["VPL-1", "VPL-2) OR 1=1"])).toThrow(/Invalid Jira issue key/);
+    expect(() => assertValidJiraKeys(["../secret"])).toThrow(/Invalid Jira issue key/);
+    expect(() => assertValidJiraKeys([""])).toThrow(/Invalid Jira issue key/);
   });
 });
 

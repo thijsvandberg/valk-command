@@ -28,7 +28,10 @@ export async function POST(request: Request) {
 
   const issueType = body.issueType ?? "story";
   const sprintId = body.sprintId;
-  const draftKey = body.draftKey?.startsWith("DRAFT-")
+  // Accept a client-supplied draftKey only if it matches the generated shape
+  // (DRAFT- followed by 4-16 alphanumerics); otherwise mint a fresh one. The
+  // insert is parameterized (no SQLi), but the key shape must stay bounded.
+  const draftKey = body.draftKey && /^DRAFT-[A-Za-z0-9]{4,16}$/.test(body.draftKey)
     ? body.draftKey
     : `DRAFT-${randomUUID().slice(0, 8)}`;
 

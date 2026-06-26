@@ -22,6 +22,38 @@ export function validatePathParam(
 }
 
 /**
+ * Validate a path param that must be a bare numeric id (e.g. a Confluence pageId).
+ * Stricter than validatePathParam: rejects anything carrying `? # / ..` so a route
+ * param cannot inject/override upstream query params once interpolated into an
+ * external API path. Returns a 400 NextResponse if invalid, or null if valid.
+ */
+export function validateNumericId(value: string): NextResponse | null {
+  if (!value || value.length > 32 || !/^\d+$/.test(value)) {
+    return NextResponse.json(
+      { error: "Invalid parameter" },
+      { status: 400 },
+    );
+  }
+  return null;
+}
+
+/**
+ * Validate a path param that identifies an agent task/session id interpolated into
+ * the upstream agent path. Allows only URL-safe id characters (alphanumerics, `_`,
+ * `-`) so `/ ? ..` cannot alter the upstream path shape. Returns a 400 NextResponse
+ * if invalid, or null if valid.
+ */
+export function validateAgentTaskId(value: string): NextResponse | null {
+  if (!value || value.length > 128 || !/^[A-Za-z0-9_-]+$/.test(value)) {
+    return NextResponse.json(
+      { error: "Invalid parameter" },
+      { status: 400 },
+    );
+  }
+  return null;
+}
+
+/**
  * Escape SQL LIKE wildcard characters (%, _) in user-provided values.
  */
 export function escapeLikePattern(value: string): string {

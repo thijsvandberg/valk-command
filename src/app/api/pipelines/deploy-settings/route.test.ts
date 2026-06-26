@@ -100,4 +100,37 @@ describe("PUT /api/pipelines/deploy-settings", () => {
     const data = await response.json();
     expect(data).toEqual(settings);
   });
+
+  it("returns 400 on malformed JSON body (not 500) and persists nothing", async () => {
+    const request = new Request("http://localhost:3100/api/pipelines/deploy-settings", {
+      method: "PUT",
+      body: "not json",
+      headers: { "Content-Type": "application/json" },
+    });
+    const response = await PUT(request);
+    expect(response.status).toBe(400);
+    expect(testDb.select().from(appSetting).all()).toHaveLength(0);
+  });
+
+  it("returns 400 on a structurally invalid body and persists nothing", async () => {
+    const request = new Request("http://localhost:3100/api/pipelines/deploy-settings", {
+      method: "PUT",
+      body: JSON.stringify({ enabled: "yes", environments: {} }),
+      headers: { "Content-Type": "application/json" },
+    });
+    const response = await PUT(request);
+    expect(response.status).toBe(400);
+    expect(testDb.select().from(appSetting).all()).toHaveLength(0);
+  });
+
+  it("rejects an arbitrary blob with no schema-matching fields", async () => {
+    const request = new Request("http://localhost:3100/api/pipelines/deploy-settings", {
+      method: "PUT",
+      body: JSON.stringify({ junk: true }),
+      headers: { "Content-Type": "application/json" },
+    });
+    const response = await PUT(request);
+    expect(response.status).toBe(400);
+    expect(testDb.select().from(appSetting).all()).toHaveLength(0);
+  });
 });

@@ -29,13 +29,13 @@ describe("rankToBottomOfSprint places above the finished block (BRDG-315/371)", 
       .mockResolvedValue([{ key: "VPL-ACTIVE" }] as never);
     const rank = vi.spyOn(client, "rankIssues").mockResolvedValue(undefined as never);
 
-    await client.rankToBottomOfSprint(["VPL-NEW"], 42);
+    await client.rankToBottomOfSprint(["VPL-100"], 42);
 
     const jql = search.mock.calls[0][0];
     expect(jql).toContain("statusCategory != Done");
     expect(jql).toContain("ORDER BY rank DESC");
-    expect(jql).toContain("key NOT IN (VPL-NEW)");
-    expect(rank).toHaveBeenCalledWith(["VPL-NEW"], undefined, "VPL-ACTIVE", undefined);
+    expect(jql).toContain("key NOT IN (VPL-100)");
+    expect(rank).toHaveBeenCalledWith(["VPL-100"], undefined, "VPL-ACTIVE", undefined);
   });
 
   it("falls back to ranking above the finished block when no active issues remain", async () => {
@@ -45,17 +45,17 @@ describe("rankToBottomOfSprint places above the finished block (BRDG-315/371)", 
       .mockResolvedValueOnce([{ key: "VPL-DONE" }] as never); // first finished issue
     const rank = vi.spyOn(client, "rankIssues").mockResolvedValue(undefined as never);
 
-    await client.rankToBottomOfSprint(["VPL-NEW"], 42);
+    await client.rankToBottomOfSprint(["VPL-100"], 42);
 
     expect(search.mock.calls[1][0]).toContain("ORDER BY rank ASC");
-    expect(rank).toHaveBeenCalledWith(["VPL-NEW"], "VPL-DONE", undefined, undefined);
+    expect(rank).toHaveBeenCalledWith(["VPL-100"], "VPL-DONE", undefined, undefined);
   });
 
   it("does nothing when the sprint has no other issues", async () => {
     vi.spyOn(client, "searchIssues").mockResolvedValue([] as never);
     const rank = vi.spyOn(client, "rankIssues").mockResolvedValue(undefined as never);
 
-    await client.rankToBottomOfSprint(["VPL-NEW"], 42);
+    await client.rankToBottomOfSprint(["VPL-100"], 42);
 
     expect(rank).not.toHaveBeenCalled();
   });

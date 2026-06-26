@@ -165,7 +165,7 @@ class ConfluenceClient {
       title: string;
       _links: { webui: string };
       version: { when: string; by: { displayName: string } };
-    }>(`/wiki/api/v2/pages/${pageId}?version-metadata=true`);
+    }>(`/wiki/api/v2/pages/${encodeURIComponent(pageId)}?version-metadata=true`);
 
     return {
       pageId: data.id,
@@ -183,7 +183,7 @@ class ConfluenceClient {
       _links: { webui: string };
       version: { when: string; by: { displayName: string } };
       body: { view: { value: string } };
-    }>(`/wiki/api/v2/pages/${pageId}?body-format=view&version-metadata=true`);
+    }>(`/wiki/api/v2/pages/${encodeURIComponent(pageId)}?body-format=view&version-metadata=true`);
 
     return {
       pageId: data.id,

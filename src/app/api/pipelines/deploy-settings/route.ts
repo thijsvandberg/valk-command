@@ -1,8 +1,10 @@
 import { NextResponse } from "next/server";
+import { z } from "zod";
 import { db } from "@/db";
 import { appSetting } from "@/db/schema";
 import { eq } from "drizzle-orm";
 import { applyRateLimit } from "@/lib/rate-limiter";
+import { parseJsonBody } from "@/lib/request-parser";
 
 const SETTINGS_KEY = "deploy-notification-settings";
 
@@ -10,6 +12,11 @@ export interface DeployNotificationSettings {
   enabled: boolean;
   environments: Record<string, boolean>;
 }
+
+const settingsSchema = z.object({
+  enabled: z.boolean(),
+  environments: z.record(z.string(), z.boolean()),
+});
 
 const DEFAULTS: DeployNotificationSettings = {
   enabled: true,
@@ -45,7 +52,9 @@ export async function PUT(request: Request) {
   const limited = await applyRateLimit("write");
   if (limited) return limited;
 
-  const body = await request.json() as DeployNotificationSettings;
+  const parsed = await parseJsonBody(request, settingsSchema);
+  if ("error" in parsed) return parsed.error;
+  const body = parsed.data;
 
   const existing = db.select().from(appSetting).where(eq(appSetting.key, SETTINGS_KEY)).get();
   const value = JSON.stringify(body);

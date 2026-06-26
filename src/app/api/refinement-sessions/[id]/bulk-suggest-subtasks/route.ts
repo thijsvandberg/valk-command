@@ -3,7 +3,7 @@ import { db } from "@/db";
 import { refinementSession, ticket, ticketSubtask, subtaskSuggestion, conversation, message } from "@/db/schema";
 import { eq, inArray, sql } from "drizzle-orm";
 import { randomUUID } from "crypto";
-import { validatePathParam } from "@/lib/api-validation";
+import { validateAgentTaskId } from "@/lib/api-validation";
 import { applyRateLimit } from "@/lib/rate-limiter";
 import { agentFetch } from "@/lib/agent-fetch";
 import { agentUrl, agentHeaders } from "@/lib/agent-proxy";
@@ -43,7 +43,7 @@ async function captureSubtaskResult(taskId: string): Promise<{ output: string | 
     const headers = agentHeaders();
     delete headers["Content-Type"];
 
-    const res = await fetch(agentUrl(`/api/tasks/${taskId}/stream`), {
+    const res = await fetch(agentUrl(`/api/tasks/${encodeURIComponent(taskId)}/stream`), {
       headers,
       signal: abortController.signal,
     });
@@ -123,7 +123,7 @@ export async function POST(request: Request, { params }: RouteContext) {
   if (limited) return limited;
 
   const { id } = await params;
-  const invalid = validatePathParam(id);
+  const invalid = validateAgentTaskId(id);
   if (invalid) return invalid;
 
   const session = await db.query.refinementSession.findFirst({
@@ -351,7 +351,7 @@ export async function POST(request: Request, { params }: RouteContext) {
  */
 export async function GET(_request: Request, { params }: RouteContext) {
   const { id } = await params;
-  const invalid = validatePathParam(id);
+  const invalid = validateAgentTaskId(id);
   if (invalid) return invalid;
 
   const convId = conversationIdForSession(id);
