@@ -1,8 +1,55 @@
 # BRDG-406: Finish the row-actions convergence (board adopts the shared module)
 
-**Status:** Not Started
+**Status:** Partially delivered (correctness/perf/robustness fixes shipped; structural board-glue
+convergence + menu-file split + selection-pruning deferred)
 **Priority:** High
 **Type:** Structure / Stability — sprint board, multiselect + context menu
+
+## Status
+
+Shipped 2026-06-26 — the isolated, lower-risk dispatch-layer fixes:
+
+- **#2 Unstable `currentSprintName` (perf):** the callback now depends on
+  `opts.currentSprintName`, not the whole `opts` literal, so `quickMovesFor` /
+  `currentSprintIdsFor` keep a stable identity across renders. Tested.
+- **#4 Bulk label "add" dupes:** added `mergeLabels` (trim + case-insensitive dedupe, first-seen
+  casing). The per-key detail GET is kept deliberately — the list payload omits `labels` (the
+  list-vs-detail split), so the adapter cannot supply them and the GET is the authoritative source;
+  documented inline. Tested (`"bug"`/`"Bug "` no longer accumulate).
+- **#5 Bulk assignee avatar:** threaded `avatar` through `AssigneeSubPanel` → `onUpdateAssignee` →
+  `bulkUpdateAssignee` → `jira.assign`, matching the single-row path so bulk-reassigned rows show
+  the avatar immediately. Tested.
+- **#6 Inbox `flagSource`:** production now passes `"mixed"` (the inbox row does not track real Jira
+  flag state), aligning impl + adapter doc + test. Verified live: the inbox menu now offers both
+  Flag and Remove flag.
+- **#8 Dispatch robustness:** `bulkSetReadiness` wraps its work in `try/finally` so a throw cannot
+  leave a key stuck in `inflightKeys` (a permanently spinning pill); documented the `Promise.allSettled`
+  index-order guarantee that confirm/revert attribution relies on. Tested.
+
+Verified: full suite green (6896 tests; 7 new), lint/typecheck/build clean, and E2E in Chrome — the
+board's right-click menu renders every action (status, assignee, epic, quick-moves, flag, labels)
+with no console errors, and the inbox menu shows both flag actions.
+
+### Deferred (with reasons) — remaining work
+
+- **#1 Route the board through the hook's glue (the headline).** Not done. The board's
+  `rowMenu`/`handleRowContextMenu`, `quickMovesFor`/`currentSprintIdsFor`/`handleQuickMove`,
+  `computeFlagState`, copy, refine and create-sprint are still local copies. Converging them safely
+  needs hook extensions for board-specific behaviour the hook does not yet model: the right-click
+  side-panel clear, the rich move toast + capacity-meter refresh (partly covered by the existing
+  `onMove` option), `handleRankToEdge` (move-to-top/bottom, not in the hook at all), and the
+  **pin+navigate** create-sprint flow (the hook's `confirmQuickCreate` does `injectSprint` + move,
+  which is different). This is a large, high-regression-risk refactor of a 1254-line component that
+  the sibling **BRDG-405** also edits; deferred to avoid destabilising that file mid-sprint. The
+  no-drift guarantee already holds for the bulk write primitives + move + flag (all routed through
+  the hook); the remaining gap is the menu/quick-move/create glue.
+- **#3 Split `ticket-action-menu.tsx` (840 lines).** Deferred — a large mechanical, behaviour-neutral
+  restructure (Medium priority); higher value to land #1's hook extensions first so the split lines
+  up with the converged surface.
+- **#7 Selection pruning.** Deferred — Low severity (no crash; vanished keys are filtered by
+  `getTicket`, only the "N selected" count drifts), and the only React-Compiler-legal implementation
+  is an adjust-state-during-render prune in each host, which adds render-time `setState` to
+  `SprintBoard.tsx` right before BRDG-405's render-performance work. Better landed alongside that.
 
 ## Description
 
@@ -81,26 +128,30 @@ the dispatch-layer bugs the re-audit surfaced. The dispatch primitives are corre
 
 - [ ] The board uses the shared module for `rowMenu`/context-menu targeting, flag-state, quick-moves,
       copy, review/generate, refine, and create-sprint — the local re-implementations are gone.
+      _(Deferred — see Status #1.)_
 - [ ] A change to any of those behaviours is made in exactly one place and applies to board + inbox +
-      epic identically.
-- [ ] Quick-move derivations are no longer recomputed every render (`currentSprintName` stable).
-- [ ] Bulk label "add" does not fan out one detail GET per key, and does not create case/whitespace
-      duplicate labels.
-- [ ] Bulk re-assign shows the avatar immediately, matching the single-row path.
-- [ ] Inbox flag behaviour, its adapter doc, and its test agree.
-- [ ] The selection count matches the visible rows after refresh/filter/move.
-- [ ] No regression in board/inbox/epic context-menu, bulk-bar, quick-move, or optimistic behaviour.
+      epic identically. _(Holds for the bulk write/move/flag primitives; the board's menu/quick-move/
+      create glue is still a second copy — deferred.)_
+- [x] Quick-move derivations are no longer recomputed every render (`currentSprintName` stable).
+- [x] Bulk label "add" does not fan out one detail GET per key, and does not create case/whitespace
+      duplicate labels. _(Dedupe done; the GET is kept by necessity — the list omits labels — and
+      documented.)_
+- [x] Bulk re-assign shows the avatar immediately, matching the single-row path.
+- [x] Inbox flag behaviour, its adapter doc, and its test agree.
+- [ ] The selection count matches the visible rows after refresh/filter/move. _(Deferred — see Status #7.)_
+- [x] No regression in board/inbox/epic context-menu, bulk-bar, quick-move, or optimistic behaviour.
 
 ## Tests
 
 - [ ] Board context-menu / bulk-bar / quick-move tests pass against the shared module (board no
-      longer has its own copies).
-- [ ] `currentSprintName` stability: `quickMovesFor` identity is stable across renders that don't
+      longer has its own copies). _(Deferred with #1; board copies remain.)_
+- [x] `currentSprintName` stability: `quickMovesFor` identity is stable across renders that don't
       change the sprint name.
-- [ ] Bulk label "add" issues no per-key detail GET (or reads from the adapter) and dedupes labels.
-- [ ] Bulk assignee dispatch includes `avatar`.
-- [ ] Selection pruning: dropping a visible row removes its key from the selection/count.
-- [ ] Existing `useRowActions` / `useTicketActions` / `ticket-action-menu` / inbox tests stay green.
+- [x] Bulk label "add" issues no per-key detail GET (or reads from the adapter) and dedupes labels.
+      _(GET kept by necessity; dedupe tested.)_
+- [x] Bulk assignee dispatch includes `avatar`.
+- [ ] Selection pruning: dropping a visible row removes its key from the selection/count. _(Deferred.)_
+- [x] Existing `useRowActions` / `useTicketActions` / `ticket-action-menu` / inbox tests stay green.
 
 ## Open Questions
 

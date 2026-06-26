@@ -1149,7 +1149,7 @@ export function EpicChildrenSection({
             quickMoves={ra.quickMovesFor(rowMenu.targets)}
             currentSprintIds={ra.currentSprintIdsFor(rowMenu.targets)}
             onQuickMove={(opt) => ra.handleQuickMove(opt, rowMenu.targets)}
-            onUpdateAssignee={(accountId, name) => ra.bulkUpdateAssignee(accountId, name, rowMenu.targets)}
+            onUpdateAssignee={(accountId, name, avatar) => ra.bulkUpdateAssignee(accountId, name, avatar, rowMenu.targets)}
             onUpdateLabel={(labels, mode) => ra.bulkUpdateLabels(labels, mode, rowMenu.targets)}
             onSetFlagged={(flagged) => ra.bulkSetFlagged(flagged, null, rowMenu.targets)}
             flagState={ra.computeFlagState(rowMenu.targets)}

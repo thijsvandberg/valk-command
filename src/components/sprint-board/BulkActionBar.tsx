@@ -178,7 +178,7 @@ export function BulkActionBar({
   /** The selection's current sprint id(s); excluded from the Move dropdown's "More sprints". */
   currentSprintIds?: string[];
   onQuickMove?: (opt: QuickMoveOption) => void;
-  onUpdateAssignee?: (accountId: string | null, name: string | null) => void;
+  onUpdateAssignee?: (accountId: string | null, name: string | null, avatar: string | null) => void;
   onUpdateLabel?: (labels: string[], mode: "add" | "set") => void;
   onSetFlagged?: (flagged: boolean) => void;
   flagState?: FlagState;

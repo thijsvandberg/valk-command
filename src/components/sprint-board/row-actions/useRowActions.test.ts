@@ -1,7 +1,7 @@
 import { renderHook, act } from "@testing-library/react";
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import type { Ticket } from "@/types/ticket";
-import { useRowActions } from "./useRowActions";
+import type { Ticket, Sprint } from "@/types/ticket";
+import { useRowActions, mergeLabels } from "./useRowActions";
 import { makeBoardAdapter, makeBoardDispatchAdapter } from "./adapter";
 import {
   applyPendingEdits,
@@ -182,6 +182,81 @@ describe("useRowActions - bulkSetReadiness", () => {
     expect(hasPendingEdit("A-1", "readiness")).toBe(true);
     expect(setReadinessMap).toHaveBeenCalled();
     expect(showToast).toHaveBeenLastCalledWith("Readiness set for 1 issue");
+  });
+});
+
+describe("mergeLabels (BRDG-406)", () => {
+  it("trims and dedupes case-insensitively, keeping first-seen casing", () => {
+    expect(mergeLabels(["Bug ", "existing"], ["bug", "  New "])).toEqual(["Bug", "existing", "New"]);
+  });
+  it("drops blank labels", () => {
+    expect(mergeLabels([], ["  ", "x", ""])).toEqual(["x"]);
+  });
+});
+
+describe("useRowActions - bulkUpdateLabels add dedupe (BRDG-406)", () => {
+  beforeEach(() => { apiFetch.mockReset(); updateLabels.mockReset().mockResolvedValue({}); __resetPendingEdits(); });
+
+  it("reads current labels via the detail GET and writes a trimmed, case-deduped set", async () => {
+    apiFetch.mockResolvedValue({ labels: ["Bug ", "existing"] });
+    const { result } = setup([makeTicket("A-1", false)]);
+    await act(async () => { await result.current.bulkUpdateLabels(["bug", "New"], "add", new Set(["A-1"])); });
+
+    expect(apiFetch).toHaveBeenCalledWith("/api/tickets/A-1");
+    expect(updateLabels).toHaveBeenCalledWith("A-1", ["Bug", "existing", "New"]);
+  });
+
+  it("set mode dedupes the incoming labels and does not GET", async () => {
+    const { result } = setup([makeTicket("A-1", false)]);
+    await act(async () => { await result.current.bulkUpdateLabels(["Bug ", "bug", "x"], "set", new Set(["A-1"])); });
+
+    expect(apiFetch).not.toHaveBeenCalled();
+    expect(updateLabels).toHaveBeenCalledWith("A-1", ["Bug", "x"]);
+  });
+});
+
+describe("useRowActions - bulkUpdateAssignee avatar (BRDG-406)", () => {
+  beforeEach(() => { assign.mockReset().mockResolvedValue({}); __resetPendingEdits(); });
+
+  it("threads the avatar through to jira.assign like the single-row path", async () => {
+    const { result } = setup([makeTicket("A-1", false)]);
+    await act(async () => { await result.current.bulkUpdateAssignee("acc-1", "Alice", "https://avatar/alice.png", new Set(["A-1"])); });
+
+    expect(assign).toHaveBeenCalledWith({ issueKey: "A-1", accountId: "acc-1", name: "Alice", avatar: "https://avatar/alice.png" });
+  });
+});
+
+describe("useRowActions - bulkSetReadiness inflight cleanup (BRDG-406)", () => {
+  beforeEach(() => { updateMetadata.mockReset(); __resetPendingEdits(); });
+
+  it("clears inflightKeys even when the metadata write rejects", async () => {
+    updateMetadata.mockRejectedValue(new Error("boom"));
+    const { result } = setup([makeTicket("A-1", false)]);
+    await act(async () => { await result.current.bulkSetReadiness("ready_to_refine", new Set(["A-1"])); });
+
+    expect(result.current.inflightKeys.has("A-1")).toBe(false);
+  });
+});
+
+describe("useRowActions - currentSprintName stability (BRDG-406)", () => {
+  beforeEach(() => { __resetPendingEdits(); });
+
+  it("keeps quickMovesFor identity stable across renders when inputs are unchanged", () => {
+    const apiTickets = [makeTicket("A-1", false, "200")];
+    const base = makeBoardAdapter(apiTickets, vi.fn(), null, { "200": "BT: 200" });
+    const adapter = makeBoardDispatchAdapter(base, { setReadinessMap: vi.fn(), prevRef: { current: {} } });
+    // Stable field references; only the opts LITERAL is new each render (the realistic
+    // board case). Before the fix, depending on the whole opts object recreated
+    // currentSprintName -> quickMovesFor every render.
+    const selectedKeys = new Set<string>();
+    const sprints: Sprint[] = [];
+    const showToast = vi.fn();
+    const { result, rerender } = renderHook(() =>
+      useRowActions({ adapter, selectedKeys, sprints, pinnedSprintIds: [], backlogTargetName: "BT: Backlog", showToast, flagSource: "ticket" }),
+    );
+    const first = result.current.quickMovesFor;
+    rerender();
+    expect(result.current.quickMovesFor).toBe(first);
   });
 });
 

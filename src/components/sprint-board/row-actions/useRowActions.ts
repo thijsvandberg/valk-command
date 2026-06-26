@@ -16,6 +16,22 @@ import type { RowActionsAdapter } from "@/components/sprint-board/row-actions/ad
 /** Outcome of a sprint move, so a host can render richer feedback (sprint name + link). */
 export interface MoveResult { ok: boolean; count: number; destName: string }
 
+/**
+ * Trim and case-insensitively dedupe a label set (existing + additions), keeping the
+ * first-seen casing. Prevents `"bug"` and `"Bug "` from accumulating as distinct
+ * labels on a bulk "add" (BRDG-406).
+ */
+export function mergeLabels(existing: string[], adding: string[]): string[] {
+  const seen = new Map<string, string>();
+  for (const raw of [...existing, ...adding]) {
+    const label = raw.trim();
+    if (!label) continue;
+    const key = label.toLowerCase();
+    if (!seen.has(key)) seen.set(key, label);
+  }
+  return [...seen.values()];
+}
+
 interface UseRowActionsOpts {
   /** Optimistic display + revalidation for the active surface. */
   adapter: RowActionsAdapter;
@@ -52,13 +68,18 @@ interface UseRowActionsOpts {
 export function useRowActions(opts: UseRowActionsOpts) {
   const { adapter, selectedKeys, sprints, pinnedSprintIds, backlogTargetName, showToast, injectSprint, flagSource, onMove, onMoveError } = opts;
   const { sprintNameMap } = adapter;
+  // Depend on opts.currentSprintName (a callback the host should memoize), NOT the
+  // whole opts literal: opts is a new object every render, so depending on it
+  // recreated this callback each render and defeated the memoization of
+  // quickMovesFor / currentSprintIdsFor downstream (BRDG-406).
+  const optsCurrentSprintName = opts.currentSprintName;
   const currentSprintName = useCallback(
     (key: string): string | null => {
-      if (opts.currentSprintName) return opts.currentSprintName(key);
+      if (optsCurrentSprintName) return optsCurrentSprintName(key);
       const t = adapter.getTicket(key);
       return t?.sprintId ? (sprintNameMap[t.sprintId] ?? null) : null;
     },
-    [opts, adapter, sprintNameMap],
+    [optsCurrentSprintName, adapter, sprintNameMap],
   );
 
   const [rowMenu, setRowMenu] = useState<{ x: number; y: number; targets: Set<string> } | null>(null);
@@ -90,6 +111,9 @@ export function useRowActions(opts: UseRowActionsOpts) {
     ) => {
       if (keys.length === 0) return;
       adapter.beginEdit(keys, field, value);
+      // Promise.allSettled preserves input order, so results[i] is the outcome of
+      // write(keys[i]). This index alignment is load-bearing for attributing
+      // confirm vs revert per key; do not switch to an unordered settle.
       const results = await Promise.allSettled(keys.map(write));
       const ok: string[] = [];
       const failed: string[] = [];
@@ -116,8 +140,13 @@ export function useRowActions(opts: UseRowActionsOpts) {
     async (readiness: TicketReadiness | null, keys: Set<string> = selectedKeys) => {
       const list = [...keys];
       setInflightKeys((prev) => { const next = new Set(prev); list.forEach((k) => next.add(k)); return next; });
-      await runFieldEdit("readiness", readiness, list, (k) => ticketsApi.updateMetadata(k, { readiness }), "Readiness set for");
-      setInflightKeys((prev) => { const next = new Set(prev); list.forEach((k) => next.delete(k)); return next; });
+      // try/finally so a throw inside runFieldEdit cannot leave a key stuck in the
+      // in-flight set (a permanently spinning readiness pill).
+      try {
+        await runFieldEdit("readiness", readiness, list, (k) => ticketsApi.updateMetadata(k, { readiness }), "Readiness set for");
+      } finally {
+        setInflightKeys((prev) => { const next = new Set(prev); list.forEach((k) => next.delete(k)); return next; });
+      }
     },
     [runFieldEdit, selectedKeys],
   );
@@ -129,20 +158,25 @@ export function useRowActions(opts: UseRowActionsOpts) {
   );
 
   const bulkUpdateAssignee = useCallback(
-    (accountId: string | null, name: string | null, keys: Set<string> = selectedKeys) =>
-      runFieldEdit("assignee", null, [...keys], (k) => jira.assign({ issueKey: k, accountId, name }), "Assignee updated for"),
+    (accountId: string | null, name: string | null, avatar: string | null = null, keys: Set<string> = selectedKeys) =>
+      // Send `avatar` like the single-row path (useTicketActions) so bulk-reassigned
+      // rows show the avatar immediately instead of initials until the next
+      // revalidation (BRDG-406).
+      runFieldEdit("assignee", null, [...keys], (k) => jira.assign({ issueKey: k, accountId, name, avatar }), "Assignee updated for"),
     [runFieldEdit, selectedKeys],
   );
 
   const bulkUpdateLabels = useCallback(
     (labels: string[], mode: "add" | "set", keys: Set<string> = selectedKeys) =>
       runFieldEdit("labels", null, [...keys], async (k) => {
-        let finalLabels = labels;
-        if (mode === "add") {
-          const detail = await apiFetch<{ labels?: string[] }>(`/api/tickets/${encodeURIComponent(k)}`);
-          finalLabels = [...new Set([...(detail?.labels ?? []), ...labels])];
-        }
-        return ticketsApi.updateLabels(k, finalLabels);
+        if (mode === "set") return ticketsApi.updateLabels(k, mergeLabels([], labels));
+        // "add" merges with the ticket's current labels. The list payload omits
+        // labels (the list-vs-detail split, see client-data-and-memory.md), so the
+        // adapter cannot supply them and a per-key detail read is the authoritative
+        // source. mergeLabels trims and dedupes case-insensitively so "bug" / "Bug "
+        // no longer accumulate as distinct labels.
+        const detail = await apiFetch<{ labels?: string[] }>(`/api/tickets/${encodeURIComponent(k)}`);
+        return ticketsApi.updateLabels(k, mergeLabels(detail?.labels ?? [], labels));
       }, "Labels updated for"),
     [runFieldEdit, selectedKeys],
   );

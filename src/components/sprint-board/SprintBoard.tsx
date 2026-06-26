@@ -830,7 +830,7 @@ export default function SprintBoard() {
     if (opt.createName) { setQuickCreate({ name: opt.createName, targets: new Set(targets) }); return; }
     if (opt.targetSprintId) void handleBulkMoveSprint(opt.targetSprintId, targets);
   }, [checkedTickets, handleBulkMoveSprint]);
-  const handleBulkUpdateAssignee = useCallback(async (accountId: string | null, name: string | null, targets: Set<string> = checkedTickets) => { await ra.bulkUpdateAssignee(accountId, name, targets); }, [ra, checkedTickets]);
+  const handleBulkUpdateAssignee = useCallback(async (accountId: string | null, name: string | null, avatar: string | null = null, targets: Set<string> = checkedTickets) => { await ra.bulkUpdateAssignee(accountId, name, avatar, targets); }, [ra, checkedTickets]);
   const handleBulkUpdateLabels = useCallback(async (labels: string[], mode: "add" | "set", targets: Set<string> = checkedTickets) => { await ra.bulkUpdateLabels(labels, mode, targets); }, [ra, checkedTickets]);
   const handleBulkGenerateSubtasks = useCallback(async (targets: Set<string> = checkedTickets) => { const keys = Array.from(targets); setBulkGenerating(true); showToast(`Generating subtasks for ${keys.length} ticket${keys.length === 1 ? "" : "s"}...`); try { const { succeeded, failed } = await bulkGenerateSubtasks(keys); if (failed > 0) { showToast(`Generated subtasks for ${succeeded} ticket${succeeded === 1 ? "" : "s"}, ${failed} failed`); } else { showToast(`Subtask suggestions sent for ${succeeded} ticket${succeeded === 1 ? "" : "s"}`); } mutateTickets(); } finally { setBulkGenerating(false); } }, [checkedTickets, showToast, mutateTickets]);
   // Flag: "Flag" opens a reason dialog (reason synced to Jira as a comment); "Remove flag" is immediate.
@@ -1213,7 +1213,7 @@ export default function SprintBoard() {
             onQuickMove={(opt) => handleQuickMove(opt, rowMenu.targets)}
             onMoveToTop={!isAllView && f.sortField === "rank" ? () => handleRankToEdge(rowMenu.targets, "top") : undefined}
             onMoveToBottom={!isAllView && f.sortField === "rank" ? () => handleRankToEdge(rowMenu.targets, "bottom") : undefined}
-            onUpdateAssignee={(accountId, name) => handleBulkUpdateAssignee(accountId, name, rowMenu.targets)}
+            onUpdateAssignee={(accountId, name, avatar) => handleBulkUpdateAssignee(accountId, name, avatar, rowMenu.targets)}
             onUpdateLabel={(labels, mode) => handleBulkUpdateLabels(labels, mode, rowMenu.targets)}
             onSetFlagged={(flagged) => handleSetFlagged(flagged, rowMenu.targets)}
             flagState={computeFlagState(rowMenu.targets)}

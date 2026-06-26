@@ -446,7 +446,7 @@ interface AssignableUser {
   avatarUrl: string | null;
 }
 
-function AssigneeSubPanel({ onSelect }: { onSelect: (accountId: string | null, name: string | null) => void }) {
+function AssigneeSubPanel({ onSelect }: { onSelect: (accountId: string | null, name: string | null, avatar: string | null) => void }) {
   const { data } = useSWR<{ users: AssignableUser[] }>("/api/jira/assignable-users", swrFetcher);
   const [query, setQuery] = useState("");
   const users = useMemo(() => data?.users ?? [], [data?.users]);
@@ -473,7 +473,7 @@ function AssigneeSubPanel({ onSelect }: { onSelect: (accountId: string | null, n
       </div>
       <button
         type="button"
-        onClick={() => onSelect(null, null)}
+        onClick={() => onSelect(null, null, null)}
         className="flex w-full items-center gap-2.5 px-3 py-1.5 text-body-sm text-text-tertiary cursor-pointer hover:bg-hover-list-item active:bg-overlay-default"
       >
         Unassigned
@@ -483,7 +483,7 @@ function AssigneeSubPanel({ onSelect }: { onSelect: (accountId: string | null, n
           <button
             key={user.accountId}
             type="button"
-            onClick={() => onSelect(user.accountId, user.displayName)}
+            onClick={() => onSelect(user.accountId, user.displayName, user.avatarUrl)}
             className="flex w-full items-center gap-2.5 px-3 py-1.5 text-body-sm text-text-secondary cursor-pointer hover:bg-hover-list-item active:bg-overlay-default"
           >
             {user.displayName}
@@ -633,7 +633,7 @@ export function TicketActionMenuContent({
   /** One-click move destinations shown above "Move to Sprint" (BRDG-369). */
   quickMoves?: QuickMoveOption[];
   onQuickMove?: (opt: QuickMoveOption) => void;
-  onUpdateAssignee?: (accountId: string | null, name: string | null) => void;
+  onUpdateAssignee?: (accountId: string | null, name: string | null, avatar: string | null) => void;
   onUpdateLabel?: (labels: string[], mode: "add" | "set") => void;
   /** When supplied, renders Flag / Remove flag items. `true` flags, `false` unflags. */
   onSetFlagged?: (flagged: boolean) => void;
@@ -738,7 +738,7 @@ export function TicketActionMenuContent({
       )}
       {onUpdateAssignee && (
         <Flyout label="Update Assignee" width="w-[240px]">
-          <AssigneeSubPanel onSelect={(accountId, name) => { onUpdateAssignee?.(accountId, name); close(); }} />
+          <AssigneeSubPanel onSelect={(accountId, name, avatar) => { onUpdateAssignee?.(accountId, name, avatar); close(); }} />
         </Flyout>
       )}
       {onUpdateLabel && (

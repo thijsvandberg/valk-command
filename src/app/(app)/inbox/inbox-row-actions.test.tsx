@@ -105,8 +105,8 @@ describe("inbox row actions on the shared dispatch (BRDG-374)", () => {
     expect(updateMetadata).toHaveBeenCalledWith("VPL-1", { readiness: "ready_to_refine" });
     await act(async () => { await result.current.ra.bulkSetEpic("VPL-10", null, keys); });
     expect(updateEpic).toHaveBeenCalledWith("VPL-1", "VPL-10");
-    await act(async () => { await result.current.ra.bulkUpdateAssignee("acc-1", "Alice", keys); });
-    expect(assign).toHaveBeenCalledWith({ issueKey: "VPL-1", accountId: "acc-1", name: "Alice" });
+    await act(async () => { await result.current.ra.bulkUpdateAssignee("acc-1", "Alice", null, keys); });
+    expect(assign).toHaveBeenCalledWith({ issueKey: "VPL-1", accountId: "acc-1", name: "Alice", avatar: null });
     await act(async () => { await result.current.ra.bulkSetFlagged(true, null, keys); });
     expect(toggleFlag).toHaveBeenCalledWith("VPL-1", true, undefined);
     expect(mutateList).toHaveBeenCalled();

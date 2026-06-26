@@ -157,9 +157,11 @@ export default function InboxPage() {
     pinnedSprintIds,
     backlogTargetName,
     showToast,
-    // Inbox rows are unflagged new stories (rowToTicket carries flagged:false), so the
-    // menu offers only "Flag" - "Remove flag" appears only once a row is actually flagged.
-    flagSource: "ticket",
+    // The inbox row model does not track the real Jira flag state (rowToTicket hardcodes
+    // flagged:false), so we cannot assume a row is unflagged. "mixed" offers both Flag and
+    // Remove flag rather than guessing, matching adapter.ts's contract and the row-actions
+    // test (BRDG-406: impl/doc/test now agree).
+    flagSource: "mixed",
     currentSprintName: (key) => (key in localMoves ? localMoves[key] : (rows.find((r) => r.key === key)?.sprintName ?? null)),
     injectSprint: (sprint) =>
       mutateSprints(
@@ -598,7 +600,7 @@ export default function InboxPage() {
             quickMoves={ra.quickMovesFor(rowMenu.targets)}
             currentSprintIds={ra.currentSprintIdsFor(rowMenu.targets)}
             onQuickMove={(opt) => ra.handleQuickMove(opt, rowMenu.targets)}
-            onUpdateAssignee={(accountId, name) => ra.bulkUpdateAssignee(accountId, name, rowMenu.targets)}
+            onUpdateAssignee={(accountId, name, avatar) => ra.bulkUpdateAssignee(accountId, name, avatar, rowMenu.targets)}
             onUpdateLabel={(labels, mode) => ra.bulkUpdateLabels(labels, mode, rowMenu.targets)}
             onSetFlagged={(flagged) => ra.bulkSetFlagged(flagged, null, rowMenu.targets)}
             flagState={ra.computeFlagState(rowMenu.targets)}
