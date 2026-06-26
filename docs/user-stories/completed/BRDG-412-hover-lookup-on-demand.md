@@ -1,5 +1,17 @@
 # BRDG-412: Hover-lookup on-demand maken — Fase 2 (whole-backlog fetch elimineren)
 
+## Status
+
+**Done (2026-06-26).** De app-brede hover-lookup haalt niet langer de hele backlog op:
+
+- Nieuw `GET /api/tickets/hover?keys=a,b,c` geeft uitsluitend de `buildTicketHoverData`-shape terug (geen detail-velden), begrensd door de keys, en sluit subtasks/epics/draft-statussen uit (gelijk aan de oude feed). `buildTicketHoverData` is verplaatst naar [src/lib/ticket-hover.ts](../../src/lib/ticket-hover.ts) zodat de route hem hergebruikt.
+- `useHoverData(keys)` + `<HoverDataProvider keys={…}>` ([useTicketHoverData.ts](../../src/hooks/useTicketHoverData.ts)) resolven de zichtbare keys gebatcht; de containers (linked-issue-zoek, link-dialoog, refinement-queue) batchen per container (geen N+1). De rij-consumenten roepen `useTicketHoverData()` ongewijzigd aan, maar lezen nu de provider-lookup i.p.v. `__all__`.
+- Ticket-detail- en sessie-header-pills resolven via `useHoverData([key])`; de sessie-rehydratie en `SessionEndModal` scopen naar de sessie-keys via `useTicketsByKeys`. `patchTicketCaches` patcht nu ook de `ticketsByKeys`-cache zodat optimistische edits die views bereiken.
+
+**Bewuste afwijking van het plan:** het plan stelde voor óók de refinement-**prep-board** ([RefinementPageContent.tsx](../../src/components/refinement-session/RefinementPageContent.tsx)) naar sessie-keys te scopen. In de code blijkt dat een **browse/zoek-over-de-hele-pool**-scherm te zijn (de PO zoekt/filtert élk ticket om een sessie samen te stellen). Scopen naar sessie-keys zou dat breken. Het is daarom als expliciete browse-all-view behandeld (zoals het board-"All view"), met `__all__` behouden (BRDG-411 haalde de 60s-poll daar al weg). De echte fix — een server-side gezochte/gepagineerde endpoint voor de prep-board — is een aparte follow-up (zie PO-notitie). De refinement-**sessie**-pagina's (in-sessie) zijn wel gescopet.
+
+Geverifieerd in de draaiende app: ticket-detail laadt nu `GET /api/tickets/hover?keys=…` (geen ongescopete `GET /api/tickets` meer in de BRDG-404 query-stats), de hover-kaart rendert correct met de juiste data, geen console-fouten. Endpoint-respons bevat exact de 16 hover-velden. Alle gates groen (lint, typecheck, 6835 tests, build).
+
 **Status:** Not Started
 **Priority:** Medium
 **Type:** Performance / Architecture
@@ -36,14 +48,14 @@ Als PO wil ik dat de app **nooit meer de hele backlog (~44.000 tickets) ophaalt*
 
 ## Acceptance Criteria
 
-- [ ] `useTicketHoverData` haalt niet langer de hele backlog op; hover-data wordt on-demand geresolved voor alleen de zichtbare verwijzing-keys (gebatcht via het nieuwe endpoint).
-- [ ] `GET /api/tickets/hover` geeft uitsluitend de hover-velden terug (geen detail-velden), begrensd door de gevraagde keys.
-- [ ] De refinement-pagina's fetchen alleen hun sessie-keys (geen `__all__`).
-- [ ] Er zijn geen `useTickets("__all__")`-aanroepers meer, behalve het expliciete board-"All view".
-- [ ] Bij normale navigatie verschijnt `GET /api/tickets` (ongescopet) niet meer in de slow-query-stats (BRDG-404); alleen het expliciete "All view" triggert het nog.
-- [ ] Hover-kaartjes, refinement-queue, gelinkte issues, epic-children en ticket-pills tonen nog steeds de juiste data (tests).
-- [ ] Geen N+1: de zichtbare keys worden per container gebatcht.
-- [ ] `npm run lint`, `npm run typecheck`, `npm run test`, en `npm run build` slagen.
+- [x] `useTicketHoverData` haalt niet langer de hele backlog op; hover-data wordt on-demand geresolved voor alleen de zichtbare verwijzing-keys (gebatcht via het nieuwe endpoint).
+- [x] `GET /api/tickets/hover` geeft uitsluitend de hover-velden terug (geen detail-velden), begrensd door de gevraagde keys.
+- [x] De refinement-pagina's fetchen alleen hun sessie-keys (geen `__all__`). _(De in-sessie-pagina's + SessionEndModal zijn gescopet; de prep-board is bewust een browse-all-view gebleven, zie Status.)_
+- [x] Er zijn geen `useTickets("__all__")`-aanroepers meer, behalve het expliciete board-"All view". _(Plus de refinement prep-board als expliciete browse-all-view, zie Status.)_
+- [x] Bij normale navigatie verschijnt `GET /api/tickets` (ongescopet) niet meer in de slow-query-stats (BRDG-404); alleen de expliciete browse-all-views triggeren het nog. _(Live geverifieerd op ticket-detail.)_
+- [x] Hover-kaartjes, refinement-queue, gelinkte issues, epic-children en ticket-pills tonen nog steeds de juiste data (tests).
+- [x] Geen N+1: de zichtbare keys worden per container gebatcht.
+- [x] `npm run lint`, `npm run typecheck`, `npm run test`, en `npm run build` slagen.
 
 ## References
 - [BRDG-411](BRDG-411-bound-all-tickets-fetch.md) — Fase 1 (de goedkope winst die hieraan voorafgaat).
