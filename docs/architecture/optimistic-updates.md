@@ -106,9 +106,8 @@ self-defeating in exactly the way the sidebar section describes: the client-side
 makes the list look like the server caught up, so the self-heal clears the overlay early and
 the next stale refetch wins (the value snaps back). The board handlers therefore call the
 helpers with `{ patchList: false }`; the overlay is the only display mechanism. The detail-cache
-patch stays (the sidebar re-seed). `MultiSprintView` does **not** use the overlay yet, so it
-keeps the default (`patchList: true`) for its own optimism - which is why removing the patch
-outright was not an option.
+patch stays (the sidebar re-seed). `MultiSprintView` (Compare view) now also rides the overlay
+(BRDG-407) and likewise calls these helpers with `{ patchList: false }`.
 
 ## Adding a new editable board field (checklist)
 
@@ -147,10 +146,18 @@ handlers moved into `useRowActions`. The board's quick-move + create-sprint (it 
 navigates) and the flag-reason dialog stay in `SprintBoard`; the epic's DnD move/reorder and
 create-zone plan-sprint stay in `EpicChildrenSection`.
 
-## Known follow-up
+## Compare view (MultiSprintView) — migrated (BRDG-407)
 
-`MultiSprintView.tsx` has its own duplicated optimistic maps and does not yet use this
-overlay; it should be migrated so the multi-column view gets the same guarantee.
+The two-column Compare view now uses this overlay for its field edits (`title`, `jiraStatus`,
+`type`, `storyPoints`, `businessValue`) instead of the old per-handler
+`mutate(..., { revalidate:false })` patches, so those edits no longer snap back. It keeps a
+self-heal effect (gated on `confirmed`, like the board) that skips tickets currently held by a
+move override. Drag moves still use a per-column whole-list override (the view fetches each sprint
+separately, so the board's `pendingSprintMoves` does not map cleanly), but the override is now held
+for `MOVE_OVERRIDE_TTL_MS` rather than dropped immediately, so a concurrent refetch can't revert a
+move before the server-confirmed state propagates. `readiness`/`poStatus` stay as local React maps:
+they are never reconciled from a server read in this view, and `poStatus` has no server-persist path,
+so the overlay's TTL semantics would be wrong for them.
 
 ## History
 

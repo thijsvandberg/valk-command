@@ -1,7 +1,15 @@
 "use client";
 
-import { useState, useMemo, useCallback, useRef } from "react";
+import { useState, useMemo, useCallback, useRef, useEffect } from "react";
 import type { Ticket, Sprint, POStatus, TicketReadiness, JiraStatus, IssueType } from "@/types/ticket";
+import {
+  usePendingTicketEdits,
+  applyPendingEdits,
+  registerPendingEdit,
+  confirmPendingEdit,
+  clearPendingEdit,
+  valuesMatch,
+} from "./pendingTicketEdits";
 import { IssueTypeIcon } from "@/components/shared/IssueTypeIcon";
 import { ViewHeader, ViewHeaderTitle, ViewHeaderDivider } from "@/components/shared/ViewHeader";
 import { SidePanel } from "./SidePanel";
@@ -35,6 +43,14 @@ import {
 } from "@dnd-kit/core";
 import { arrayMove } from "@dnd-kit/sortable";
 import { loadSplitRatio, saveSplitRatio } from "./multi-sprint-utils";
+
+// A drag (reorder/move) optimistically holds the affected column(s) as a whole-list
+// override. It is held until the server-confirmed data can have propagated (the move/
+// rank routes update the local mirror synchronously, but the /api/tickets response
+// cache + an in-flight 60s poll/focus revalidation can still serve pre-move data for a
+// short window), then dropped so fresh server data flows back in. This mirrors the
+// overlay's TTL safety net and is what stops a concurrent refetch from reverting the move.
+const MOVE_OVERRIDE_TTL_MS = 30_000;
 
 // Prefer the most specific droppable (ticket row) over the large column container.
 // Ticket rows are checked first with pointerWithin; if the pointer is between rows or
@@ -79,14 +95,62 @@ export function MultiSprintView({
   const [leftOverride, setLeftOverride] = useState<{ sprintId: string; tickets: Ticket[] } | null>(null);
   const [rightOverride, setRightOverride] = useState<{ sprintId: string; tickets: Ticket[] } | null>(null);
 
-  const leftTickets = useMemo(
-    () => (leftOverride?.sprintId === leftSprint ? leftOverride.tickets : null) ?? leftApiTickets ?? [],
-    [leftOverride, leftSprint, leftApiTickets],
-  );
-  const rightTickets = useMemo(
-    () => (rightOverride?.sprintId === rightSprint ? rightOverride.tickets : null) ?? rightApiTickets ?? [],
-    [rightOverride, rightSprint, rightApiTickets],
-  );
+  // Field edits (title/status/type/SP/BV) ride the shared optimistic overlay so a
+  // background revalidation / focus refetch cannot snap them back (BRDG-407). This
+  // replaces the old per-handler `mutate(..., { revalidate:false })` patches, which
+  // survived exactly one revalidation. See docs/architecture/optimistic-updates.md.
+  const pendingEdits = usePendingTicketEdits();
+
+  const leftTickets = useMemo(() => {
+    const base = (leftOverride?.sprintId === leftSprint ? leftOverride.tickets : null) ?? leftApiTickets ?? [];
+    return applyPendingEdits(base, pendingEdits, Date.now()) ?? base;
+  }, [leftOverride, leftSprint, leftApiTickets, pendingEdits]);
+  const rightTickets = useMemo(() => {
+    const base = (rightOverride?.sprintId === rightSprint ? rightOverride.tickets : null) ?? rightApiTickets ?? [];
+    return applyPendingEdits(base, pendingEdits, Date.now()) ?? base;
+  }, [rightOverride, rightSprint, rightApiTickets, pendingEdits]);
+
+  // Timers that drop a move override after MOVE_OVERRIDE_TTL_MS. Tracked so they are
+  // cleared on unmount (and re-armed per move) rather than leaking.
+  const overrideTimers = useRef<{ left: ReturnType<typeof setTimeout> | null; right: ReturnType<typeof setTimeout> | null }>({ left: null, right: null });
+  useEffect(() => {
+    const timers = overrideTimers.current;
+    return () => {
+      if (timers.left) clearTimeout(timers.left);
+      if (timers.right) clearTimeout(timers.right);
+    };
+  }, []);
+  const scheduleOverrideClear = useCallback((side: "left" | "right") => {
+    const timers = overrideTimers.current;
+    if (timers[side]) clearTimeout(timers[side]!);
+    timers[side] = setTimeout(() => {
+      if (side === "left") setLeftOverride(null);
+      else setRightOverride(null);
+      timers[side] = null;
+    }, MOVE_OVERRIDE_TTL_MS);
+  }, []);
+
+  // Self-heal field edits: drop a confirmed overlay edit once the server list reflects
+  // it (gating on `confirmed`, like the board, so an in-flight revalidation can't clear
+  // it before the write lands). A ticket currently held by a move override is skipped:
+  // its display comes from the override snapshot, so clearing the overlay there could
+  // reveal a stale snapshot value until the override's TTL drops it. The overlay's own
+  // TTL is the safety net if the server never catches up. clearPendingEdit writes the
+  // external store (not React state), so this is safe inside an effect.
+  useEffect(() => {
+    const all = [...(leftApiTickets ?? []), ...(rightApiTickets ?? [])];
+    if (all.length === 0) return;
+    const overridden = new Set<string>([
+      ...(leftOverride?.sprintId === leftSprint ? leftOverride.tickets : []).map((t) => t.key),
+      ...(rightOverride?.sprintId === rightSprint ? rightOverride.tickets : []).map((t) => t.key),
+    ]);
+    const byKey = new Map(all.map((t) => [t.key, t as unknown as Record<string, unknown>]));
+    pendingEdits.forEach((edit) => {
+      if (!edit.confirmed || overridden.has(edit.key)) return;
+      const server = byKey.get(edit.key);
+      if (server && valuesMatch(server[edit.field], edit.value)) clearPendingEdit(edit.key, edit.field);
+    });
+  }, [leftApiTickets, rightApiTickets, leftOverride, rightOverride, leftSprint, rightSprint, pendingEdits]);
 
   const [checkedKeys, setCheckedKeys] = useState<Set<string>>(new Set());
   const [selectedKey, setSelectedKey] = useState<string | null>(null);
@@ -119,9 +183,7 @@ export function MultiSprintView({
   const [splitRatio, setSplitRatio] = useState(() => loadSplitRatio());
   const splitContainerRef = useRef<HTMLDivElement>(null);
 
-  const getMutateForKey = useCallback((key: string) => {
-    return leftTickets.some((t) => t.key === key) ? mutateLeft : mutateRight;
-  }, [leftTickets, mutateLeft, mutateRight]);
+  const { toast, toastLoading, showToast, dismissToast } = useToast();
 
   const getListKeyForTicket = useCallback((key: string) => {
     const sprintId = leftTickets.some((t) => t.key === key) ? leftSprint : rightSprint;
@@ -129,37 +191,42 @@ export function MultiSprintView({
   }, [leftTickets, leftSprint, rightSprint]);
 
   const handleTitleChange = useCallback(async (key: string, title: string) => {
-    const inLeft = leftTickets.some((t) => t.key === key);
-    const sourceTickets = inLeft ? leftTickets : rightTickets;
-    const mutate = inLeft ? mutateLeft : mutateRight;
-    const prev = sourceTickets.find((t) => t.key === key)?.title;
-    mutate((data) => data?.map((t) => t.key === key ? { ...t, title } : t), { revalidate: false });
+    registerPendingEdit(key, "title", title, Date.now());
     try {
       await apiFetch(`/api/tickets/${encodeURIComponent(key)}/summary`, { method: "PUT", body: { title } });
+      confirmPendingEdit(key, "title");
     } catch {
-      if (prev !== undefined) {
-        mutate((data) => data?.map((t) => t.key === key ? { ...t, title: prev } : t), { revalidate: false });
-      }
+      clearPendingEdit(key, "title");
+      showToast("Failed to update title. Reverted.");
     }
-  }, [leftTickets, rightTickets, mutateLeft, mutateRight]);
+  }, [showToast]);
 
   const handleBusinessValueChange = useCallback((key: string, value: number | null) => {
-    saveTicketMetadata(key, { businessValue: value }, getListKeyForTicket(key));
+    // Overlay owns board display (BRDG-407); pass patchList:false so the helper does
+    // not also patch the list cache (which would let the self-heal clear early).
+    registerPendingEdit(key, "businessValue", value, Date.now());
+    saveTicketMetadata(key, { businessValue: value }, getListKeyForTicket(key), { patchList: false }).then((ok) => {
+      if (ok) confirmPendingEdit(key, "businessValue");
+      else clearPendingEdit(key, "businessValue");
+    });
   }, [getListKeyForTicket]);
 
   const handleStoryPointsChange = useCallback((key: string, value: number | null) => {
+    registerPendingEdit(key, "storyPoints", value, Date.now());
     // Mirror the server rule: estimating a ticket at "Ready to Refine" advances
-    // it to "Ready for Development". The readiness pill reads this optimistic
-    // map, which the SP save would not refresh, so update it here (revert on fail).
-    if (value != null && (readinessMap[key] ?? null) === "ready_to_refine") {
-      const prev = readinessMap[key];
-      setReadinessMap((m) => ({ ...m, [key]: null }));
-      saveStoryPoints(key, value, getListKeyForTicket(key)).then((ok) => {
-        if (!ok) setReadinessMap((m) => ({ ...m, [key]: prev }));
-      });
-      return;
-    }
-    saveStoryPoints(key, value, getListKeyForTicket(key));
+    // it to "Ready for Development". The readiness pill reads the local map, which
+    // the SP save would not refresh, so update it here (revert on fail).
+    const advancing = value != null && (readinessMap[key] ?? null) === "ready_to_refine";
+    const prevReadiness = readinessMap[key];
+    if (advancing) setReadinessMap((m) => ({ ...m, [key]: null }));
+    saveStoryPoints(key, value, getListKeyForTicket(key), { patchList: false }).then((ok) => {
+      if (ok) {
+        confirmPendingEdit(key, "storyPoints");
+      } else {
+        clearPendingEdit(key, "storyPoints");
+        if (advancing) setReadinessMap((m) => ({ ...m, [key]: prevReadiness }));
+      }
+    });
   }, [readinessMap, getListKeyForTicket]);
 
   const handleReadinessChange = useCallback((key: string, readiness: TicketReadiness | null) => {
@@ -171,34 +238,26 @@ export function MultiSprintView({
   }, [readinessMap, getListKeyForTicket]);
 
   const handleJiraStatusChange = useCallback(async (key: string, status: JiraStatus) => {
-    const mutate = getMutateForKey(key);
-    const allTickets = [...leftTickets, ...rightTickets];
-    const prev = allTickets.find((t) => t.key === key)?.jiraStatus;
-    mutate((data) => data?.map((t) => t.key === key ? { ...t, jiraStatus: status } : t), { revalidate: false });
+    registerPendingEdit(key, "jiraStatus", status, Date.now());
     try {
       await apiFetch(`/api/tickets/${encodeURIComponent(key)}/status`, { method: "PUT", body: { status } });
+      confirmPendingEdit(key, "jiraStatus");
     } catch {
-      if (prev !== undefined) {
-        mutate((data) => data?.map((t) => t.key === key ? { ...t, jiraStatus: prev } : t), { revalidate: false });
-      }
+      clearPendingEdit(key, "jiraStatus");
+      showToast("Failed to update status. Reverted.");
     }
-  }, [leftTickets, rightTickets, getMutateForKey]);
+  }, [showToast]);
 
   const handleIssueTypeChange = useCallback(async (key: string, type: IssueType) => {
-    const mutate = getMutateForKey(key);
-    const allTickets = [...leftTickets, ...rightTickets];
-    const prev = allTickets.find((t) => t.key === key)?.type;
-    mutate((data) => data?.map((t) => t.key === key ? { ...t, type } : t), { revalidate: false });
+    registerPendingEdit(key, "type", type, Date.now());
     try {
       await apiFetch(`/api/tickets/${encodeURIComponent(key)}`, { method: "PATCH", body: { type } });
+      confirmPendingEdit(key, "type");
     } catch {
-      if (prev !== undefined) {
-        mutate((data) => data?.map((t) => t.key === key ? { ...t, type: prev } : t), { revalidate: false });
-      }
+      clearPendingEdit(key, "type");
+      showToast("Failed to update issue type. Reverted.");
     }
-  }, [leftTickets, rightTickets, getMutateForKey]);
-
-  const { toast, toastLoading, showToast, dismissToast } = useToast();
+  }, [showToast]);
 
   const handleCopyToClipboard = useCallback(() => {
     const allTickets = [...leftTickets, ...rightTickets];
@@ -270,14 +329,16 @@ export function MultiSprintView({
 
         try {
           await jira.rank({ issueKeys: [draggedKey], rankBeforeKey, rankAfterKey });
-          // Update SWR cache with the reordered list without triggering a refetch.
-          // An immediate refetch would race against Jira's processing and return the old order.
+          // Patch the SWR cache with the reordered list without triggering a refetch,
+          // and KEEP the override until MOVE_OVERRIDE_TTL_MS passes (BRDG-407). Dropping
+          // it immediately let an in-flight poll/focus refetch (or the ~30s response
+          // cache) serve the pre-reorder order and snap the row back.
           if (sourceColumnId === "left") {
             await mutateLeft(reordered, { revalidate: false });
-            setLeftOverride(null);
+            scheduleOverrideClear("left");
           } else {
             await mutateRight(reordered, { revalidate: false });
-            setRightOverride(null);
+            scheduleOverrideClear("right");
           }
         } catch {
           setLeftOverride(prevLeftOverride);
@@ -344,7 +405,10 @@ export function MultiSprintView({
           await jira.moveSprint({ issueKeys: keysToMove, targetSprintId, topKeys });
         }
         showToast(`Moved ${keysToMove.length} ticket${keysToMove.length === 1 ? "" : "s"} to ${targetName}`);
-        // Update SWR caches with the optimistic state; skip refetch to avoid racing Jira.
+        // Patch both SWR caches with the optimistic state; skip the refetch. KEEP both
+        // overrides until MOVE_OVERRIDE_TTL_MS passes (BRDG-407) so a concurrent
+        // poll/focus refetch (or the ~30s response cache) cannot revert the move before
+        // the server-confirmed membership has propagated back.
         if (sourceColumnId === "left") {
           await mutateLeft(newSource, { revalidate: false });
           await mutateRight(newTarget, { revalidate: false });
@@ -352,15 +416,15 @@ export function MultiSprintView({
           await mutateRight(newSource, { revalidate: false });
           await mutateLeft(newTarget, { revalidate: false });
         }
-        setLeftOverride(null);
-        setRightOverride(null);
+        scheduleOverrideClear("left");
+        scheduleOverrideClear("right");
       } catch {
         setLeftOverride(prevLeftOverride);
         setRightOverride(prevRightOverride);
         showToast("Failed to move tickets. Changes reverted.");
       }
     },
-    [checkedKeys, leftTickets, rightTickets, leftSprint, rightSprint, sprints, showToast, leftOverride, rightOverride, mutateLeft, mutateRight],
+    [checkedKeys, leftTickets, rightTickets, leftSprint, rightSprint, sprints, showToast, leftOverride, rightOverride, mutateLeft, mutateRight, scheduleOverrideClear],
   );
 
   const selectedTicket = useMemo(

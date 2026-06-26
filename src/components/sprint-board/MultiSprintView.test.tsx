@@ -2,6 +2,7 @@ import { render, screen, act } from "@testing-library/react";
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import type { DragEndEvent } from "@dnd-kit/core";
 import { MultiSprintView } from "./MultiSprintView";
+import { __resetPendingEdits } from "./pendingTicketEdits";
 import type { Ticket, Sprint } from "@/types/ticket";
 
 // Capture the DnD callbacks MultiSprintView wires so the test can drive a drag
@@ -109,7 +110,9 @@ describe("MultiSprintView (BRDG-388 BoardRow migration)", () => {
     mutateLeft.mockClear();
     mutateRight.mockClear();
     setStoredTags.mockClear();
+    jiraMock.syncTickets.mockClear();
     dnd.onDragEnd = undefined;
+    __resetPendingEdits();
   });
 
   it("renders both sprint columns", () => {
@@ -172,5 +175,77 @@ describe("MultiSprintView (BRDG-388 BoardRow migration)", () => {
     expect(jiraMock.moveSprint).toHaveBeenCalledWith(
       expect.objectContaining({ issueKeys: ["K-0"], targetSprintId: "s2" }),
     );
+  });
+
+  // --- BRDG-407: optimistic overlay (no snap-back) ---
+
+  const leftTicketsNow = () => columnProps.filter((p) => p.columnId === "left").at(-1)!.tickets as Ticket[];
+  const rightTicketsNow = () => columnProps.filter((p) => p.columnId === "right").at(-1)!.tickets as Ticket[];
+
+  it("keeps a status edit after a revalidation (overlay, no snap-back)", async () => {
+    const { rerender } = renderView();
+    const onJiraStatusChange = columnProps.find((p) => p.columnId === "left")!.onJiraStatusChange as (k: string, s: string) => Promise<void>;
+
+    await act(async () => {
+      await onJiraStatusChange("K-0", "DONE");
+    });
+
+    // The overlay drives the displayed status immediately...
+    expect(leftTicketsNow().find((t) => t.key === "K-0")?.jiraStatus).toBe("DONE");
+
+    // ...and a revalidation that returns the pre-edit base data does NOT snap it back.
+    rerender(<MultiSprintView initialLeft="s1" initialRight="s2" sprints={sprints} onClose={vi.fn()} />);
+    expect(leftTicketsNow().find((t) => t.key === "K-0")?.jiraStatus).toBe("DONE");
+  });
+
+  it("keeps a title edit after a revalidation", async () => {
+    const { rerender } = renderView();
+    const onTitleChange = columnProps.find((p) => p.columnId === "left")!.onTitleChange as (k: string, t: string) => Promise<void>;
+
+    await act(async () => {
+      await onTitleChange("K-1", "Renamed");
+    });
+    expect(leftTicketsNow().find((t) => t.key === "K-1")?.title).toBe("Renamed");
+
+    rerender(<MultiSprintView initialLeft="s1" initialRight="s2" sprints={sprints} onClose={vi.fn()} />);
+    expect(leftTicketsNow().find((t) => t.key === "K-1")?.title).toBe("Renamed");
+  });
+
+  it("keeps a cross-column move through a revalidation (override held, not dropped)", async () => {
+    jiraMock.moveSprint.mockResolvedValue(undefined);
+    const { rerender } = renderView();
+
+    await act(async () => {
+      await dnd.onDragEnd!({
+        active: { id: "K-0", data: { current: { columnId: "left" } } },
+        over: { id: "right", data: { current: {} } },
+      } as unknown as DragEndEvent);
+    });
+
+    // Optimistic move applied: K-0 left the left column, joined the right.
+    expect(leftTicketsNow().some((t) => t.key === "K-0")).toBe(false);
+    expect(rightTicketsNow().some((t) => t.key === "K-0")).toBe(true);
+
+    // A revalidation returning the pre-move base must not revert it (the override is
+    // held until its TTL rather than dropped immediately after the write).
+    rerender(<MultiSprintView initialLeft="s1" initialRight="s2" sprints={sprints} onClose={vi.fn()} />);
+    expect(leftTicketsNow().some((t) => t.key === "K-0")).toBe(false);
+    expect(rightTicketsNow().some((t) => t.key === "K-0")).toBe(true);
+  });
+
+  it("reverts a cross-column move when the server write fails", async () => {
+    jiraMock.moveSprint.mockRejectedValueOnce(new Error("move failed"));
+    renderView();
+
+    await act(async () => {
+      await dnd.onDragEnd!({
+        active: { id: "K-0", data: { current: { columnId: "left" } } },
+        over: { id: "right", data: { current: {} } },
+      } as unknown as DragEndEvent);
+    });
+
+    // The move failed: K-0 is back in the left column.
+    expect(leftTicketsNow().some((t) => t.key === "K-0")).toBe(true);
+    expect(rightTicketsNow().some((t) => t.key === "K-0")).toBe(false);
   });
 });
