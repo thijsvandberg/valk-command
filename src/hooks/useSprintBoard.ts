@@ -55,7 +55,12 @@ export function useTickets(sprintId: string | null) {
       : sprintId
       ? `/api/tickets?sprintId=${encodeURIComponent(sprintId)}`
       : null;
-  const swr = useSWR<Ticket[]>(key, swrFetcher, { revalidateOnFocus: true, dedupingInterval: 15000, refreshInterval: 60000 });
+  // The ungscoped "__all__" feed is the whole backlog (~44k tickets); polling it
+  // every 60s is pure server/browser overhead and grows with the project. It
+  // stays fresh via revalidateOnFocus + the shared SSE event bus, so we drop the
+  // poll there. Scoped sprint fetches keep the 60s refresh. (BRDG-411)
+  const refreshInterval = sprintId === "__all__" ? 0 : 60000;
+  const swr = useSWR<Ticket[]>(key, swrFetcher, { revalidateOnFocus: true, dedupingInterval: 15000, refreshInterval });
   const { mutate } = swr;
 
   const syncedRef = useRef<string | null>(null);
@@ -152,6 +157,31 @@ export function useTicketsByKeys(keys: string[]) {
       return results.filter((t): t is Ticket & TicketDetail => t != null);
     },
     { revalidateOnFocus: false, dedupingInterval: 30000 },
+  );
+  return data ?? EMPTY_TICKETS;
+}
+
+// Fetches and merges tickets for an explicit set of sprint ids, each via the
+// scoped /api/tickets?sprintId=X endpoint. Used by views that show several
+// selected sprints at once (e.g. Pipelines multi-sprint) so they never pull the
+// whole backlog via "__all__" and filter client-side. Dedups by key since a
+// ticket can be a member of more than one sprint. (BRDG-411)
+export function useTicketsForSprints(sprintIds: string[]) {
+  const sortedIds = useMemo(() => [...sprintIds].sort(), [sprintIds]);
+  const swrKey = sortedIds.length > 0 ? `ticketsForSprints:${sortedIds.join(",")}` : null;
+  const { data } = useSWR<Ticket[]>(
+    swrKey,
+    async () => {
+      const lists = await Promise.all(
+        sortedIds.map((id) => swrFetcher<Ticket[]>(`/api/tickets?sprintId=${encodeURIComponent(id)}`)),
+      );
+      const byKey = new Map<string, Ticket>();
+      for (const list of lists) {
+        for (const t of list ?? []) byKey.set(t.key, t);
+      }
+      return Array.from(byKey.values());
+    },
+    { revalidateOnFocus: true, dedupingInterval: 15000 },
   );
   return data ?? EMPTY_TICKETS;
 }

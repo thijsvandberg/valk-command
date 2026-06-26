@@ -5,7 +5,7 @@ import { GitBranch, RefreshCw, Unlink } from "lucide-react";
 import { ViewHeader, ViewHeaderTitle } from "@/components/shared/ViewHeader";
 import { Button } from "@/components/ui/Button";
 import { usePipelines } from "@/hooks/usePipelines";
-import { useJiraSprints, useTickets } from "@/hooks/useSprintBoard";
+import { useJiraSprints, useTicketsForSprints } from "@/hooks/useSprintBoard";
 import { useMigratedAccountSetting } from "@/hooks/useMigratedAccountSetting";
 import {
   PAGE_SIZE,
@@ -96,25 +96,11 @@ export default function PipelinesPage() {
     setCreatorFilters((prev) => prev.includes(name) ? prev.filter((c) => c !== name) : [...prev, name]);
   }, [setCreatorFilters]);
 
-  // For ticket fetching: use first selected sprint (useTickets takes single ID)
-  // When multiple sprints: fetch __all__ and filter client-side
-  const sprintTicketFetchKey = sprintFilters.length === 1 ? sprintFilters[0] : sprintFilters.length > 1 ? "__all__" : null;
-  const { data: sprintTickets } = useTickets(sprintTicketFetchKey);
-
-  // Filter tickets to selected sprints when multi-select
-  const filteredSprintTickets = useMemo(() => {
-    if (!sprintTickets || sprintFilters.length === 0) return sprintTickets ?? null;
-    if (sprintFilters.length === 1) return sprintTickets;
-    // Multi-sprint: need to match by sprint name
-    const sprintNames = new Set<string>();
-    if (sprints) {
-      for (const sf of sprintFilters) {
-        const s = sprints.find((sp) => String(sp.id) === sf);
-        if (s) sprintNames.add(s.name);
-      }
-    }
-    return sprintTickets.filter((t) => t.sprintId && sprintNames.has(t.sprintId));
-  }, [sprintTickets, sprintFilters, sprints]);
+  // Fetch only the selected sprints, scoped per sprint, never the whole backlog.
+  // The merged result is already exactly the tickets in those sprints, so no
+  // client-side sprint-name filtering is needed. (BRDG-411)
+  const sprintTickets = useTicketsForSprints(sprintFilters);
+  const filteredSprintTickets = sprintFilters.length > 0 ? sprintTickets : null;
 
   const sprintTicketKeys = sprintFilters.length > 0 && filteredSprintTickets
     ? filteredSprintTickets.map((t) => t.key)

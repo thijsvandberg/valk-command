@@ -6,6 +6,7 @@ import {
   useTickets,
   useTicketDetail,
   useTicketsByKeys,
+  useTicketsForSprints,
   useJiraSprints,
   useTicketReviews,
 } from "./useSprintBoard";
@@ -140,6 +141,107 @@ describe("useTickets", () => {
     // swrFetcher throws on !ok, SWR catches and sets error
     await waitFor(() => expect(result.current.error).toBeTruthy());
     expect(result.current.data).toBeUndefined();
+  });
+});
+
+// ---------------------------------------------------------------------------
+// useTickets refreshInterval (BRDG-411)
+// ---------------------------------------------------------------------------
+describe("useTickets refreshInterval (BRDG-411)", () => {
+  const ticketsCalls = (url: string) =>
+    (fetch as ReturnType<typeof vi.fn>).mock.calls
+      .map((c) => (typeof c[0] === "string" ? c[0] : c[0].toString()))
+      .filter((u) => u === url).length;
+
+  it("keeps polling a scoped sprint fetch (~60s)", async () => {
+    vi.useFakeTimers();
+    vi.spyOn(global, "fetch").mockResolvedValue({
+      ok: true,
+      json: async () => [mockTicket],
+    } as Response);
+
+    renderHook(() => useTickets("sprint-1"), { wrapper: swrWrapper });
+
+    // Let the initial fetch (and the mount background sync + its mutate) settle.
+    await vi.advanceTimersByTimeAsync(50);
+    const afterInitial = ticketsCalls("/api/tickets?sprintId=sprint-1");
+    expect(afterInitial).toBeGreaterThanOrEqual(1);
+
+    // The 60s poll fires another revalidation of the scoped key.
+    await vi.advanceTimersByTimeAsync(65000);
+    expect(ticketsCalls("/api/tickets?sprintId=sprint-1")).toBeGreaterThan(afterInitial);
+  });
+
+  it("does not poll the ungscoped __all__ feed", async () => {
+    vi.useFakeTimers();
+    vi.spyOn(global, "fetch").mockResolvedValue({
+      ok: true,
+      json: async () => [mockTicket],
+    } as Response);
+
+    renderHook(() => useTickets("__all__"), { wrapper: swrWrapper });
+
+    await vi.advanceTimersByTimeAsync(50);
+    const afterInitial = ticketsCalls("/api/tickets");
+    expect(afterInitial).toBe(1);
+
+    // Past two 60s windows: refreshInterval is 0 for __all__, so no extra fetch.
+    await vi.advanceTimersByTimeAsync(130000);
+    expect(ticketsCalls("/api/tickets")).toBe(afterInitial);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// useTicketsForSprints (BRDG-411)
+// ---------------------------------------------------------------------------
+describe("useTicketsForSprints (BRDG-411)", () => {
+  const allCalls = () =>
+    (fetch as ReturnType<typeof vi.fn>).mock.calls.map((c) =>
+      typeof c[0] === "string" ? c[0] : c[0].toString(),
+    );
+
+  it("fetches each selected sprint scoped and merges them (never __all__)", async () => {
+    vi.spyOn(global, "fetch").mockImplementation(async (url) => {
+      const u = typeof url === "string" ? url : url.toString();
+      if (u === "/api/tickets?sprintId=100") return { ok: true, json: async () => [{ ...mockTicket, key: "A-1" }] } as Response;
+      if (u === "/api/tickets?sprintId=200") return { ok: true, json: async () => [{ ...mockTicket, key: "A-2" }] } as Response;
+      return { ok: false, status: 500, json: async () => null } as Response;
+    });
+
+    const { result } = renderHook(() => useTicketsForSprints(["200", "100"]), { wrapper: swrWrapper });
+
+    await waitFor(() => expect(result.current.length).toBe(2));
+    expect(result.current.map((t) => t.key).sort()).toEqual(["A-1", "A-2"]);
+
+    const calls = allCalls();
+    expect(calls).toContain("/api/tickets?sprintId=100");
+    expect(calls).toContain("/api/tickets?sprintId=200");
+    // The whole-backlog endpoint is never hit.
+    expect(calls).not.toContain("/api/tickets");
+  });
+
+  it("dedups a ticket that is a member of more than one selected sprint", async () => {
+    vi.spyOn(global, "fetch").mockImplementation(async (url) => {
+      const u = typeof url === "string" ? url : url.toString();
+      if (u === "/api/tickets?sprintId=100" || u === "/api/tickets?sprintId=200") {
+        return { ok: true, json: async () => [mockTicket] } as Response;
+      }
+      return { ok: false, status: 500, json: async () => null } as Response;
+    });
+
+    const { result } = renderHook(() => useTicketsForSprints(["100", "200"]), { wrapper: swrWrapper });
+
+    await waitFor(() => expect(result.current.length).toBe(1));
+    expect(result.current[0].key).toBe(mockTicket.key);
+  });
+
+  it("does not fetch when no sprints are selected", () => {
+    vi.spyOn(global, "fetch");
+
+    const { result } = renderHook(() => useTicketsForSprints([]), { wrapper: swrWrapper });
+
+    expect(result.current).toEqual([]);
+    expect(fetch).not.toHaveBeenCalled();
   });
 });
 
