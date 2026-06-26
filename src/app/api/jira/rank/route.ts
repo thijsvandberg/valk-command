@@ -6,7 +6,7 @@ import { jiraClient } from "@/lib/jira-client";
 import { applyRateLimit } from "@/lib/rate-limiter";
 import { cache } from "@/lib/cache";
 import { logger } from "@/lib/logger";
-import { syncJiraTimestamp } from "@/lib/sync-jira-timestamp";
+import { syncJiraTimestamps } from "@/lib/sync-jira-timestamp";
 import { errorResponse } from "@/lib/api-response";
 import { parseJsonBody } from "@/lib/request-parser";
 
@@ -41,9 +41,9 @@ export async function POST(request: Request) {
 
   try {
     await jiraClient.rankIssues(issueKeys, rankBeforeKey, rankAfterKey);
-    for (const k of issueKeys) {
-      await syncJiraTimestamp(k);
-    }
+    // One bulk fetch to refresh jiraUpdatedAt for the whole batch, instead of a
+    // serialized getIssue per moved key (BRDG-408).
+    await syncJiraTimestamps(issueKeys);
   } catch (err) {
     const message = err instanceof Error ? err.message : "Unknown error";
     logger.error("jira", "Failed to rank issues", message);

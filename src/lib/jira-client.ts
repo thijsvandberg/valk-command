@@ -29,6 +29,10 @@ export const ISSUE_FIELDS = [
   "attachment", "subtasks", "issuelinks", "comment",
 ].join(",");
 
+// Max issue keys per `key in (...)` JQL query. Reconcile callers can pass up to
+// ~2000 keys; chunking keeps the JQL/URL within Jira's accepted size (BRDG-408).
+const KEY_QUERY_CHUNK_SIZE = 100;
+
 /**
  * Collapse a long, static `fields=...` query value (the ~400-char ISSUE_FIELDS
  * list, repeated per request) down to a count for log lines, so the real error
@@ -990,20 +994,24 @@ export class JiraClient {
       return [];
     }
 
-    const jql = `key in (${keys.join(",")})`;
     const expand = expandChangelog ? "&expand=changelog" : "";
-    let all: JiraIssue[] = [];
-    let pageToken: string | undefined;
+    const all: JiraIssue[] = [];
 
-    while (true) {
-      const tokenParam = pageToken ? `&nextPageToken=${encodeURIComponent(pageToken)}` : "";
-      const result = await jiraFetch<JiraSearchResponse>(
-        `/rest/api/3/search/jql?jql=${encodeURIComponent(jql)}&fields=${ISSUE_FIELDS}&maxResults=100${expand}${tokenParam}`,
-        signal,
-      );
-      all = all.concat(result.issues);
-      if (result.isLast !== false || !result.nextPageToken) break;
-      pageToken = result.nextPageToken;
+    // Chunk the key list so a large caller never builds an oversized `key in (...)`
+    // JQL/URL that Jira rejects; each chunk still pages internally (BRDG-408).
+    for (let i = 0; i < keys.length; i += KEY_QUERY_CHUNK_SIZE) {
+      const jql = `key in (${keys.slice(i, i + KEY_QUERY_CHUNK_SIZE).join(",")})`;
+      let pageToken: string | undefined;
+      while (true) {
+        const tokenParam = pageToken ? `&nextPageToken=${encodeURIComponent(pageToken)}` : "";
+        const result = await jiraFetch<JiraSearchResponse>(
+          `/rest/api/3/search/jql?jql=${encodeURIComponent(jql)}&fields=${ISSUE_FIELDS}&maxResults=100${expand}${tokenParam}`,
+          signal,
+        );
+        all.push(...result.issues);
+        if (result.isLast !== false || !result.nextPageToken) break;
+        pageToken = result.nextPageToken;
+      }
     }
 
     return all;
@@ -1015,19 +1023,22 @@ export class JiraClient {
   async getIssueLinksByKeys(keys: string[], signal?: AbortSignal): Promise<JiraIssue[]> {
     if (!isConfigured() || keys.length === 0) return [];
 
-    const jql = `key in (${keys.join(",")})`;
-    let all: JiraIssue[] = [];
-    let pageToken: string | undefined;
+    const all: JiraIssue[] = [];
 
-    while (true) {
-      const tokenParam = pageToken ? `&nextPageToken=${encodeURIComponent(pageToken)}` : "";
-      const result = await jiraFetch<JiraSearchResponse>(
-        `/rest/api/3/search/jql?jql=${encodeURIComponent(jql)}&fields=issuelinks&maxResults=100${tokenParam}`,
-        signal,
-      );
-      all = all.concat(result.issues);
-      if (result.isLast !== false || !result.nextPageToken) break;
-      pageToken = result.nextPageToken;
+    // Chunked for the same oversized-JQL reason as getIssuesByKeys (BRDG-408).
+    for (let i = 0; i < keys.length; i += KEY_QUERY_CHUNK_SIZE) {
+      const jql = `key in (${keys.slice(i, i + KEY_QUERY_CHUNK_SIZE).join(",")})`;
+      let pageToken: string | undefined;
+      while (true) {
+        const tokenParam = pageToken ? `&nextPageToken=${encodeURIComponent(pageToken)}` : "";
+        const result = await jiraFetch<JiraSearchResponse>(
+          `/rest/api/3/search/jql?jql=${encodeURIComponent(jql)}&fields=issuelinks&maxResults=100${tokenParam}`,
+          signal,
+        );
+        all.push(...result.issues);
+        if (result.isLast !== false || !result.nextPageToken) break;
+        pageToken = result.nextPageToken;
+      }
     }
 
     return all;

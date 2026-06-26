@@ -19,7 +19,10 @@ vi.mock("server-only", () => ({}));
 vi.mock("@/lib/rate-limiter", () => ({ applyRateLimit: vi.fn().mockReturnValue(null) }));
 vi.mock("@/lib/logger", () => ({ logger: { info: vi.fn(), warn: vi.fn(), error: vi.fn() } }));
 vi.mock("@/lib/cache", () => ({ cache: { get: vi.fn(), set: vi.fn(), invalidate: vi.fn() } }));
-vi.mock("@/lib/sync-jira-timestamp", () => ({ syncJiraTimestamp: vi.fn().mockResolvedValue(undefined) }));
+vi.mock("@/lib/sync-jira-timestamp", () => ({
+  syncJiraTimestamp: vi.fn().mockResolvedValue(undefined),
+  syncJiraTimestamps: vi.fn().mockResolvedValue(undefined),
+}));
 
 vi.mock("@/lib/jira-client", () => ({
   jiraClient: {
@@ -29,6 +32,7 @@ vi.mock("@/lib/jira-client", () => ({
 
 import { POST } from "./route";
 import { jiraClient } from "@/lib/jira-client";
+import { syncJiraTimestamps } from "@/lib/sync-jira-timestamp";
 
 function makeRequest(body: unknown): Request {
   return new Request("http://localhost:3100/api/jira/rank", {
@@ -70,6 +74,16 @@ describe("POST /api/jira/rank", () => {
     expect(vi.mocked(jiraClient.rankIssues)).toHaveBeenCalledWith(
       ["VPL-1"], "VPL-2", undefined,
     );
+  });
+
+  it("refreshes timestamps with one bulk call for the whole batch, not one per key (BRDG-408)", async () => {
+    const res = await POST(makeRequest({
+      issueKeys: ["VPL-1", "VPL-2", "VPL-3"],
+      rankBeforeKey: "VPL-9",
+    }));
+    expect(res.status).toBe(200);
+    expect(vi.mocked(syncJiraTimestamps)).toHaveBeenCalledTimes(1);
+    expect(vi.mocked(syncJiraTimestamps)).toHaveBeenCalledWith(["VPL-1", "VPL-2", "VPL-3"]);
   });
 
   it("ranks with rankAfterKey", async () => {

@@ -1,6 +1,6 @@
 # BRDG-378: Speed up sync (N+1 Jira fetches → bulk)
 
-**Status:** Substantially Delivered (one item remaining → [[BRDG-408-finish-jira-sync-n-plus-one]])
+**Status:** Delivered (remainder closed by [[BRDG-408-finish-jira-sync-n-plus-one]] on 2026-06-26)
 **Priority:** Medium
 **Type:** Performance — Jira sync
 
@@ -12,6 +12,12 @@
 > tranche group-sync path (`syncIndividualTickets`) still fetches one issue per key, plus
 > `getIssuesByKeys` chunking and the rank/burnup per-key loops — tracked in
 > [[BRDG-408-finish-jira-sync-n-plus-one]].
+>
+> **2026-06-26 closeout (BRDG-408):** The tranche path (`syncIndividualTickets`) now does one bulk
+> `getIssuesByKeys` with a single-fetch 404 fallback; `getIssuesByKeys`/`getIssueLinksByKeys` chunk
+> internally (100-key slices); and the `rank` route refreshes timestamps via one bulk
+> `syncJiraTimestamps`. The burnup-seed per-ticket changelog loop is the only remaining N+1 and was
+> consciously left as-is (Low, on-demand) — see BRDG-408's status note.
 
 ## Description
 

@@ -86,22 +86,45 @@ export async function syncIndividualTickets(ticketKeys: string[], requestSignal?
 
     const results = [];
     const seenSprintIds = new Set<string>();
+
+    // One bulk fetch for the whole tranche instead of a serialized getIssue per
+    // key (BRDG-408): a 100-ticket sync drops from ~100 sequential Jira calls to a
+    // handful of paged bulk calls. expand=changelog lets upsertIssue read the
+    // change author inline, so it skips the per-issue getLastChangeAuthor fallback
+    // — same resolved mirror state, fewer calls.
+    const bulkIssues = ticketKeys.length > 0
+      ? await jiraClient.getIssuesByKeys(ticketKeys, controller.signal, true)
+      : [];
+    const bulkMap = new Map(bulkIssues.map((iss) => [iss.key, iss]));
+
+    const ingestOne = async (issue: JiraIssue, key: string) => {
+      const sprint = extractSprint(issue.fields);
+      const sprintName = sprint ? String(sprint.id) : "";
+      if (sprint) cacheSprintName(String(sprint.id), sprint.name);
+      if (sprintName) seenSprintIds.add(sprintName);
+      const info = await upsertIssue(issue, sprintName, controller.signal);
+      if (removedMap.get(key)) {
+        await db.update(ticket)
+          .set({ removedFromJiraAt: null })
+          .where(eq(ticket.jiraKey, key));
+      }
+      results.push(info);
+    };
+
+    // Preserve the original per-key order (downstream callers index by it).
     for (const key of ticketKeys) {
+      const bulkIssue = bulkMap.get(key);
+      if (bulkIssue) {
+        await ingestOne(bulkIssue, key);
+        continue;
+      }
+      // Absent from the bulk result: confirm with a single fetch. A real 404 means
+      // the ticket is gone (mark removedFromJiraAt); a permissions/transient error
+      // rethrows exactly as the old per-key path did. This keeps 404 handling and
+      // mirror state identical while the happy path stays bulk.
       try {
-        const issue = await jiraClient.getIssue(key, controller.signal);
-        const sprint = extractSprint(issue.fields);
-        const sprintName = sprint ? String(sprint.id) : "";
-        if (sprint) cacheSprintName(String(sprint.id), sprint.name);
-        if (sprintName) seenSprintIds.add(sprintName);
-        const info = await upsertIssue(issue, sprintName, controller.signal);
-
-        if (removedMap.get(key)) {
-          await db.update(ticket)
-            .set({ removedFromJiraAt: null })
-            .where(eq(ticket.jiraKey, key));
-        }
-
-        results.push(info);
+        const single = await jiraClient.getIssue(key, controller.signal);
+        await ingestOne(single, key);
       } catch (err) {
         if (err instanceof JiraApiError && err.status === 404) {
           await db.update(ticket)

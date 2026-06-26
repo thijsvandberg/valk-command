@@ -149,6 +149,44 @@ describe("syncIndividualTickets", () => {
     expect(row).toBeTruthy();
     expect(JSON.parse(row!.value).map((s: { id: number }) => s.id)).toContain(42);
   });
+
+  // BRDG-408: the tranche path now fetches the whole batch in one bulk call.
+  it("fetches the whole tranche in one getIssuesByKeys and upserts each (no per-key getIssue)", async () => {
+    vi.mocked(jiraClient.getIssuesByKeys).mockResolvedValue([makeIssue("VPL-1"), makeIssue("VPL-2"), makeIssue("VPL-3")]);
+
+    const result = await syncIndividualTickets(["VPL-1", "VPL-2", "VPL-3"]);
+
+    expect(jiraClient.getIssuesByKeys).toHaveBeenCalledTimes(1);
+    expect(jiraClient.getIssuesByKeys).toHaveBeenCalledWith(["VPL-1", "VPL-2", "VPL-3"], expect.anything(), true);
+    expect(jiraClient.getIssue).not.toHaveBeenCalled();
+    expect(upsertIssue).toHaveBeenCalledTimes(3);
+    expect(result.count).toBe(3);
+  });
+
+  it("treats a key absent from the bulk result as a 404 (marks removedFromJiraAt)", async () => {
+    seedTicket(testDb, { jiraKey: "VPL-2" });
+    // VPL-1 present in bulk; VPL-2 absent -> confirm fetch -> 404 -> removed.
+    vi.mocked(jiraClient.getIssuesByKeys).mockResolvedValue([makeIssue("VPL-1")]);
+    vi.mocked(jiraClient.getIssue).mockRejectedValue(new JiraApiError(404, "Not Found", "", ""));
+
+    const result = await syncIndividualTickets(["VPL-1", "VPL-2"]);
+
+    expect(jiraClient.getIssue).toHaveBeenCalledTimes(1);
+    expect(jiraClient.getIssue).toHaveBeenCalledWith("VPL-2", expect.anything());
+    expect(result.count).toBe(2);
+    const t = testDb.select().from(ticket).where(eq(ticket.jiraKey, "VPL-2")).get();
+    expect(t!.removedFromJiraAt).toBeTruthy();
+  });
+
+  it("preserves the input key order even when the bulk result is unordered", async () => {
+    // Bulk returns the issues out of order; processing must follow ticketKeys.
+    vi.mocked(jiraClient.getIssuesByKeys).mockResolvedValue([makeIssue("VPL-3"), makeIssue("VPL-1"), makeIssue("VPL-2")]);
+
+    await syncIndividualTickets(["VPL-1", "VPL-2", "VPL-3"]);
+
+    const upsertedOrder = vi.mocked(upsertIssue).mock.calls.map((c) => (c[0] as { key: string }).key);
+    expect(upsertedOrder).toEqual(["VPL-1", "VPL-2", "VPL-3"]);
+  });
 });
 
 describe("syncSprint", () => {
