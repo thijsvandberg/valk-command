@@ -19,10 +19,15 @@ Primary table for Jira tickets synced into the local database.
 | `status` | text | Current Jira status |
 | `assignee` | text | Display name |
 | `assignee_avatar` | text | Avatar URL |
+| `assignee_account_id` | text | Stable Jira accountId for the assignee, harvested from issue data during sync |
+| `assignee_email` | text | Secondary human-readable key for the assignee (label; can change/be hidden) |
 | `epic` | text | Epic name |
 | `epic_key` | text | Epic Jira key |
 | `flagged` | boolean | Jira flagged state |
 | `reporter` | text | Reporter display name |
+| `reporter_account_id` | text | Stable reporter accountId, mirroring the assignee trio (BRDG-360) |
+| `reporter_avatar` | text | Reporter avatar URL |
+| `reporter_email` | text | Reporter email (label, not stable) |
 | `description` | text | ADF JSON |
 | `acceptance_criteria` | text | ADF JSON (custom field) |
 | `story_points` | real | Estimated points |
@@ -32,11 +37,68 @@ Primary table for Jira tickets synced into the local database.
 | `priority` | text | Jira priority name |
 | `components` | text | Comma-separated components |
 | `jira_created_at` | text | ISO timestamp from Jira |
+| `jira_rank` | integer | Jira rank for ordering (lex rank captured during sync) |
 | `jira_updated_at` | text | ISO timestamp from Jira (used for sync watermark comparison) |
 | `last_synced_at` | text | When this ticket was last synced |
 | `removed_from_jira_at` | text | Set when ticket disappears from Jira; cleaned up after 7 days |
+| `summary` | text | AI-generated short summary of the ticket |
+| `summary_updated_at` | text | ISO timestamp the summary was last regenerated |
 
-**Indexes:** `sprint_name`
+**Indexes:** `sprint_name`, `status`, `assignee`, `type`, `epic_key`, `(sprint_name, status)`
+
+#### `jira_user`
+
+Canonical Jira person directory (BRDG-363), keyed on the stable accountId. Single source of truth for a person's label: a rename in Jira updates one row here instead of every denormalized copy. Populated during sync from every person seen on an issue (reporter, assignee, comment author, subtask/link assignee). The denormalized name on the ticket row is kept as a fallback for people without an accountId, so a missing id never blanks out a name.
+
+| Column | Type | Notes |
+|--------|------|-------|
+| `account_id` | text PK | Stable Jira accountId |
+| `display_name` | text | Current display name |
+| `email` | text | Email (label, can change/be hidden) |
+| `avatar` | text | Avatar URL |
+| `updated_at` | text | When this directory row was last refreshed |
+
+#### `ticket_sprint`
+
+Indexed projection of `ticket.sprint_ids`: one row per (ticket, sprint) membership. `sprint_ids` stays the source of truth on the ticket row; this bridge exists purely so "which tickets are in sprint X" is an indexed lookup instead of a `json_each` scan over every ticket. Kept in sync via `syncTicketSprints` on every `sprint_ids` write (see `src/lib/sprint-membership.ts`).
+
+| Column | Type | Notes |
+|--------|------|-------|
+| `ticket_key` | text FK -> ticket | Part of composite PK; cascade delete |
+| `sprint_id` | text | Jira sprint ID; part of composite PK |
+
+Primary key is `(ticket_key, sprint_id)`. **Indexes:** `sprint_id`
+
+#### `ticket_status_change`
+
+Status transitions recorded during sync or backfilled from the Jira changelog. Feeds burndown/throughput analytics.
+
+| Column | Type | Notes |
+|--------|------|-------|
+| `id` | text PK | |
+| `ticket_key` | text FK -> ticket | |
+| `from_status` | text | Status before the transition (nullable) |
+| `to_status` | text | Status after the transition |
+| `changed_at` | text | ISO timestamp of the transition |
+| `sprint_name` | text | Sprint context at the time of change (nullable) |
+
+**Indexes:** `ticket_key`, `(sprint_name, changed_at)`
+
+#### `ticket_scope_change`
+
+Tracks tickets joining or leaving a sprint, powering the burnup scope line. No FK on `ticket_key` (scope events can outlive a removed ticket).
+
+| Column | Type | Notes |
+|--------|------|-------|
+| `id` | text PK | |
+| `ticket_key` | text | Jira ticket key |
+| `sprint_name` | text | Sprint the ticket joined/left |
+| `action` | enum | `added` or `removed` |
+| `story_points` | real | Points at time of change (nullable) |
+| `business_value` | integer | Business value at time of change (nullable) |
+| `changed_at` | text | ISO timestamp |
+
+**Indexes:** `(sprint_name, changed_at)`
 
 #### `ticket_metadata`
 
@@ -214,8 +276,11 @@ Chat conversations (both regular chat and story writer sessions).
 |--------|------|-------|
 | `id` | text PK | UUID |
 | `title` | text | |
+| `type` | enum | `chat` (default) or `investigation` |
 | `created_at` | text | |
 | `related_ticket` | text | Optional linked ticket key |
+| `metadata` | text | Optional JSON metadata blob |
+| `pinned` | boolean | Whether the conversation is pinned (default false) |
 | `read_at` | text | NULL = unread, ISO timestamp = read |
 
 #### `message`
@@ -232,6 +297,8 @@ Messages within conversations.
 | `workspace_task_id` | text | Links to workspace task that produced this message |
 | `status` | enum | `pending`, `sent`, `failed` (default: `sent`) |
 | `content_hash` | text | SHA-256 hash for dedup (conversationId + normalized content) |
+| `sequence` | integer | Stable ordering within a conversation (indexed with `conversation_id`) |
+| `cancelled` | boolean | Whether the message was cancelled (default false) |
 
 ### Story Writer
 
@@ -378,6 +445,26 @@ Simple lookup cache mapping Jira sprint IDs to display names.
 | `sprint_id` | text PK | Jira sprint ID |
 | `display_name` | text | Human-readable sprint name |
 
+#### `missing_sprint`
+
+Negative cache of sprint IDs Jira reported as 404 ("deleted", BRDG-351). Without this, a sprint ID still carried on an orphaned, closed ticket is re-fetched on every read-path backfill pass, 404ing forever and burning Jira API budget. A row suppresses re-fetch for `MISSING_SPRINT_TTL_MS`; the timestamp gives a path back (expiry re-probes), so it is a suppression window, not a permanent blacklist. Strictly local; never reflects a Jira write.
+
+| Column | Type | Notes |
+|--------|------|-------|
+| `sprint_id` | text PK | Jira sprint ID that 404'd |
+| `missing_at` | text | ISO timestamp the 404 was recorded (drives TTL expiry) |
+
+#### `epic_metadata`
+
+Bridge-owned per-epic metadata, keyed by epic key. Shared store for PO metadata that Jira does not hold (team assignments, epic color). No FK to `ticket.jira_key`: an epic may not have a synced epic row yet, and the PO can assign teams before the epic syncs.
+
+| Column | Type | Notes |
+|--------|------|-------|
+| `epic_key` | text PK | Epic Jira key |
+| `teams` | text | JSON array of team codes (BT/BM/BO/GXP/HT); default `[]` |
+| `color` | text | PO-assigned base color (hex from the curated palette); null = deterministic default from the epic name/key |
+| `updated_at` | text | ISO timestamp, updated on every change |
+
 #### `sprint_pencil_capacity`
 
 Forward-planning pencil capacity (BRDG-303): the PO's rough story-point capacity
@@ -447,6 +534,18 @@ Per-account key-value store for settings/preferences that should follow the logg
 
 Primary key is `(user_id, key)`, so the same key is independent per account.
 
+#### `new_story_read`
+
+Per-user read state for the New-story inbox (BRDG-359). Re-scopes the read flag that BRDG-356 stored globally on `ticket_metadata.new_story_read_at`: marking a story read records a row keyed on the acting Clerk user, so a different user still sees it as unread. A dedicated table (not a JSON blob in `user_setting`) because a user may accumulate thousands of read entries and the inbox list/count filters against them on every load. No FK on `ticket_key` (the mark-read path validates keys before writing; the lazy legacy backfill copies rows in without ordering against ticket lifecycle).
+
+| Column | Type | Notes |
+|--------|------|-------|
+| `user_id` | text | Clerk user id; part of composite PK |
+| `ticket_key` | text | Jira ticket key marked read; part of composite PK |
+| `read_at` | text | ISO timestamp the story was marked read |
+
+Primary key is `(user_id, ticket_key)`.
+
 #### `deprecation_scan_queue`
 
 Persisted Tier-2 deep-dive queue for the [Backlog Deprecation Review epic](../plans/2026-06-04-backlog-deprecation-review-epic.md) (BRDG-284). Durable so the background runner resumes across restarts. See [scheduler.md](scheduler.md#backlog-deep-scan-every-2m).
@@ -488,6 +587,7 @@ Saved refinement sessions with persisted ticket queues. Created in advance and s
 | `ticket_keys` | text | JSON array of ticket keys |
 | `status` | text | `draft`, `in_progress`, or `completed` |
 | `general_comment` | text | Session-level PO comment (nullable) |
+| `scheduled_for` | text | Date-only (YYYY-MM-DD); nullable so unscheduled sessions keep working |
 | `current_index` | integer | Last viewed ticket index for resume (default 0) |
 | `created_at` | text | ISO timestamp |
 | `updated_at` | text | ISO timestamp, updated on every change |
@@ -640,6 +740,48 @@ User preference for which sprints to receive UAT deploy notifications about.
 | `sprint_name` | text PK | Sprint name (used as identifier, not Jira sprint ID) |
 | `created_at` | text | |
 
+### People & Users
+
+#### `favorite_user`
+
+Pinned users that appear at the top of assignee pickers.
+
+| Column | Type | Notes |
+|--------|------|-------|
+| `id` | text PK | |
+| `display_name` | text | User display name |
+| `account_id` | text | Stable Jira accountId (BRDG-364): match key so a favourite survives a Jira rename. Nullable; display name is the fallback |
+| `created_at` | text | ISO timestamp |
+
+**Indexes:** unique(`display_name`)
+
+#### `po_user`
+
+People flagged as Product Owners (BRDG-372). Used by the inbox's "Relevance" grouping to sink stories created by another PO to the bottom. Independent of `favorite_user`; mirrors its accountId-first match (BRDG-364).
+
+| Column | Type | Notes |
+|--------|------|-------|
+| `id` | text PK | |
+| `display_name` | text | User display name |
+| `account_id` | text | Stable Jira accountId; match key so the flag survives a rename. Nullable; display name is the fallback |
+| `created_at` | text | ISO timestamp |
+
+**Indexes:** unique(`display_name`)
+
+#### `user_team_assignment`
+
+Maps users to fixed teams (BT, BM, BO, GXP, HT).
+
+| Column | Type | Notes |
+|--------|------|-------|
+| `id` | text PK | |
+| `display_name` | text | User display name |
+| `account_id` | text | Stable Jira accountId (BRDG-364): match key so a team mapping survives a rename. Nullable; display name is the fallback |
+| `team` | text | Team code (BT/BM/BO/GXP/HT) |
+| `created_at` | text | ISO timestamp |
+
+**Indexes:** unique(`display_name`, `team`), `team`
+
 ## Relationships
 
 ```
@@ -700,7 +842,7 @@ Indexed on `ticket_key`.
 
 ## Migrations
 
-44 migration files in `drizzle/` (0000–0043). Managed via:
+88 migration files in `drizzle/` (0000–0086). Managed via:
 
 - `npm run db:generate` - Generate new migration from schema changes
 - `npm run db:push` - Push schema directly to DB (development)

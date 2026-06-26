@@ -8,15 +8,21 @@ Single-user web app for the Product Owner of Valk Platform. Chat-driven interfac
 
 ### Views
 
+Primary nav views (`src/components/nav/NavPanel.tsx`); root `/` redirects to `/sprint-board`.
+
 | View | Purpose |
 |------|---------|
-| Dashboard | Widgets: morning brief, pulse, sprint progress, velocity |
+| Sprint Board | Jira tickets + PO metadata (readiness, scores, notes); primary view |
 | Chat | Primary interaction with the workspace |
-| Sprint Board | Jira tickets + PO metadata (readiness, scores, notes) |
-| Test Center | Test status, execution, reports |
+| Story Writer | AI-assisted story authoring, split mode, related stories |
 | Refinement | Prep view + fullscreen refinement mode |
-| Scheduled Jobs | Manage recurring workspace tasks |
+| Inbox | New/changed tickets and relevance grouping |
+| Epics | Epic overview with progress, colors, team assignment |
+| Pipelines | Bitbucket pipeline / PR health |
 | Stakeholder | Read-only external view for non-technical stakeholders |
+| Cleanup | Deprecated-area and housekeeping actions |
+
+Other pages (not in the primary nav): Test Center (`/test-center`), Activity Log (`/activity-log`), and Settings (`/settings/*`, incl. Jobs, Scheduler, People, Prompts, Integrations, Notifications).
 
 ### Integrations
 
@@ -28,9 +34,13 @@ Single-user web app for the Product Owner of Valk Platform. Chat-driven interfac
 
 ## Stack
 
-- Next.js 15 (App Router) + TypeScript + Tailwind CSS v4
+- Next.js 15 (App Router) + React 19 + TypeScript + Tailwind CSS v4
+- Auth: Clerk (`@clerk/nextjs`)
+- Client data: SWR (bounded LRU cache, see Client Data & Memory doc)
+- Rich text: Tiptap; markdown: `marked`; drag-and-drop: `@dnd-kit`; list virtualization: `@tanstack/react-virtual`; runtime validation: Zod
+- UI components are custom Tailwind (`src/components/ui/`); no shadcn/Radix
 - Dev server: `npm run dev` (port 3100). Runs `tools/scripts/dev-with-memory-guard.sh`, which kills any existing process on port 3100, starts `next dev --turbopack`, and auto-restarts it whenever its memory (read via `footprint` phys_footprint) crosses `DEV_MEM_LIMIT_MB` (default 4096MB) — Turbopack leaks memory over long sessions. Every restart is appended to a changelog at `tools/scripts/dev-guard-restarts.log` (gitignored) with timestamp, memory at the time, and uptime, so you can spot a too-tight limit. Flap protection: if the server crosses the limit within `DEV_FLAP_WINDOW` seconds of starting (default 60), the guard stops instead of restarting (it would otherwise loop without ever serving). Tunables (env): `DEV_PORT`, `DEV_MEM_LIMIT_MB`, `DEV_MEM_INTERVAL`, `DEV_FLAP_WINDOW`, `DEV_GUARD_LOG`. Use `npm run dev:plain` for the raw `next dev` without the guard. When restarting manually, always kill port 3100 first: `lsof -ti:3100 | xargs kill -9 2>/dev/null`
-- Database: SQLite + Drizzle ORM. Schema in `src/db/schema.ts`, migrations in `drizzle/`
+- Database: SQLite (`better-sqlite3`) + Drizzle ORM. Schema in `src/db/schema.ts`, migrations in `drizzle/`
 - Environment: copy `.env.example` to `.env.local`
 
 ## Architecture Docs
@@ -38,13 +48,14 @@ Single-user web app for the Product Owner of Valk Platform. Chat-driven interfac
 Detailed technical documentation lives in `docs/architecture/`:
 
 - [Database Schema](docs/architecture/database-schema.md) - All tables, relationships, conventions
-- [API Routes](docs/architecture/api-routes.md) - Complete endpoint reference (60+ routes)
+- [API Routes](docs/architecture/api-routes.md) - Complete endpoint reference (~190 route files)
 - [Jira Sync](docs/architecture/jira-sync.md) - Sync strategies, watermark system, data flow
 - [Workspace Integration](docs/architecture/workspace-integration.md) - Agent proxy, SSE, skills, Bitbucket
 - [Story Writer](docs/architecture/story-writer.md) - AI-assisted editing, split mode, related stories
 - [Scheduler](docs/architecture/scheduler.md) - Lazy-cron pattern, background tasks
 - [Optimistic Updates](docs/architecture/optimistic-updates.md) - Pending-edits overlay that prevents board edits from "snapping back" to stale data. READ THIS before adding or changing any editable board field.
 - [Client Data & Memory](docs/architecture/client-data-and-memory.md) - Bounded SWR cache, no whole-backlog fetches, virtualize growable lists, list-vs-detail payload split. READ THIS before adding a client fetch, a list view, or a field to the ticket payload.
+- [Filter Persistence](docs/architecture/filter-persistence.md) - How board/view filters persist via localStorage + recently-viewed store.
 
 ## Project Structure
 

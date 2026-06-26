@@ -27,13 +27,21 @@ Sync engine for pulling Jira data into the local SQLite database. See [jira-sync
 | `/api/jira/sync-tickets` | POST | Full sprint sync. `?strategy=bulk\|timestamp-first`. Body `{ ticketKeys }` syncs specific keys (max 100). `?mode=plan&sprintId=X\|&epicKey=Y` returns `{ keys }` (current Jira membership, rank-ordered). `?mode=reconcile&sprintId=X\|&epicKey=Y` + body `{ keys }` restores rank order and reconciles tickets that left the sprint/epic. Used by the tranched per-group sync (BRDG-282) |
 | `/api/jira/sync-sprints` | POST | Fetch and cache sprint list from Jira |
 | `/api/jira/sync-comments` | POST | Sync comments for a specific ticket |
+| `/api/jira/sync-epics` | POST | Paginate Jira for all epics and refresh the local epic cache |
+| `/api/jira/sync-links` | POST | Sync issue links from Jira, preserving locally-created links (`jiraLinkId IS NULL`) |
 | `/api/jira/check-updated` | GET | Lightweight freshness check for a single ticket |
 | `/api/jira/health` | GET | Verify Jira connectivity |
 | `/api/jira/watchers` | GET | List the current watchers of an issue (`?issueKey=X`). Fetched on demand; not persisted locally |
 | `/api/jira/watchers` | POST | Add a watcher. Body: `{ issueKey, accountId }` |
 | `/api/jira/watchers` | DELETE | Remove a watcher (`?issueKey=X&accountId=Y`) |
 | `/api/jira/watcher-candidates` | GET | Assignable users from Jira (real accountIds) for the watcher picker, enriched with favorites/teams |
+| `/api/jira/assign` | POST | Assign/unassign an issue. Body: `{ issueKey, accountId, name? }`. Requires a real Jira accountId; rejects a name without an id; null accountId + null name unassigns |
+| `/api/jira/assignable-users` | GET | Distinct assignable users (one per display name), preferring rows that carry a sync-harvested Jira accountId |
+| `/api/jira/labels` | GET | All available labels from the Jira instance |
+| `/api/jira/link-types` | GET | Jira issue link types, with a hardcoded fallback when Jira is unreachable |
+| `/api/jira/sprints` | GET | List cached sprints |
 | `/api/jira/sprints` | POST | Create a new sprint in Jira and add to local cache |
+| `/api/jira/sprints` | PUT | Update sprint metadata in the local cache |
 | `/api/jira/sprints/[id]` | PUT | Update sprint metadata (goal, dates) via Jira Agile API |
 | `/api/jira/sprints/[id]/close` | POST | Close (finish) an active sprint via Jira Agile API; flips cached state to `closed` |
 | `/api/jira/sprints/[id]/start` | POST | Start (activate) a future sprint via Jira Agile API; flips cached state to `active`. Body: `{ startDate?, endDate }` (endDate required). Prefers the given start date, falls back to "now" if Jira rejects it |
@@ -45,7 +53,14 @@ Sync engine for pulling Jira data into the local SQLite database. See [jira-sync
 | Route | Method | Purpose |
 |-------|--------|---------|
 | `/api/epics` | GET | List all epics with summary, child count, staleness |
+| `/api/epics` | POST | Create a new epic in Jira and mirror it locally |
+| `/api/epics/progress` | GET | Per-epic progress rollups (excludes deprecated work and transient story-writer drafts) |
 | `/api/epics/[key]/summary` | PATCH | Update epic summary manually. Body: `{ summary }` |
+| `/api/epics/[key]/color` | GET | Get the epic's display color (null = derived default) |
+| `/api/epics/[key]/color` | PUT | Set/clear the epic's display color. `null` resets to the derived default; non-null is validated against the curated palette |
+| `/api/epics/[key]/teams` | GET | Get the epic's assigned teams (empty when unset) |
+| `/api/epics/[key]/teams` | PUT | Set the epic's assigned teams |
+| `/api/epics/[key]/tickets` | GET | List the epic's child tickets (excludes deprecated/drafting statuses) with assignee/metadata |
 | `/api/epics/generate-summaries` | POST | Invoke workspace `summarize-epics` skill to generate summaries for all epics |
 
 ### Epic Writer
@@ -94,32 +109,50 @@ CRUD operations on locally stored tickets and their metadata.
 | `/api/tickets` | GET | List tickets. `?sprintId=X` filters by sprint |
 | `/api/tickets` | POST | Create a story/task/bug in Jira and mirror it locally. Body: `{ title, issueType?, sprintId?, epicKey? }`. `issueType` defaults to `Story`; `sprintId` lands it in a sprint (via the same field-edit path as drag-to-sprint, applied after create); `epicKey` links it under an epic. New tickets start at readiness `drafting`. Used by the Sprint Board inline "Add story" composer (single sprint and per-sprint group in the All view). |
 | `/api/tickets/[key]` | GET | Get single ticket with metadata, subtasks, links, local edits |
-| `/api/tickets/[key]` | PUT | Update ticket fields |
 | `/api/tickets/[key]` | PATCH | Partial update: `flagged` (+ optional `flagReason`, synced to Jira as a comment), `labels`, `epicKey`, `type`, `storyPoints`. Setting `storyPoints` to any value (including `0`/"-") auto-advances a ticket at readiness `ready_to_refine` to Ready for Development (`readiness = null`); other readiness states are left untouched. Bulk flag from the Sprint Board fans out one PATCH per ticket. |
-| `/api/tickets/[key]/metadata` | GET | Get PO metadata |
+| `/api/tickets/[key]/status` | PUT | Transition a ticket to a new Jira status; flushes the parent's cached detail when called for a subtask |
+| `/api/tickets/[key]/summary` | PUT | Save a PO summary for the ticket; pushed to Jira in the background |
 | `/api/tickets/[key]/metadata` | PUT | Update PO metadata (readiness, scores, notes, business value, guestimation) |
+| `/api/tickets/[key]/chat` | GET | Get (or lazily create) the ticket's chat conversation |
+| `/api/tickets/[key]/chat` | POST | Send a chat message about the ticket; optional codebase-research hint is sent to the agent only, not persisted |
+| `/api/tickets/[key]/children` | POST | Create a child story/task in Jira under this parent. Body: optional target sprint (blank = backlog) |
+| `/api/tickets/[key]/jira-comments` | POST | Post a comment to Jira on this ticket; other open views pick it up live |
 | `/api/tickets/[key]/comments` | GET | List Jira + PO comments |
 | `/api/tickets/[key]/comments` | POST | Create PO comment |
 | `/api/tickets/[key]/comments/[id]` | DELETE | Delete PO comment |
 | `/api/tickets/[key]/attachments` | GET | List attachments |
-| `/api/tickets/[key]/attachments` | POST | Upload attachment metadata |
 | `/api/tickets/[key]/local-edits` | GET | Get local edits for a ticket |
 | `/api/tickets/[key]/local-edits` | POST | Save a local edit (title or description) |
+| `/api/tickets/[key]/local-edits` | PUT | Upsert local edits |
+| `/api/tickets/[key]/local-edits` | PATCH | Partially update local edits |
+| `/api/tickets/[key]/local-edits` | DELETE | Discard local edits |
+| `/api/tickets/[key]/links` | POST | Create an issue link to another ticket (Jira + local) |
+| `/api/tickets/[key]/links` | PATCH | Update an existing link |
+| `/api/tickets/[key]/links` | DELETE | Remove a link. Body: `{ jiraLinkId }` |
 | `/api/tickets/[key]/versions` | GET | List story version history |
-| `/api/tickets/[key]/versions` | POST | Create manual version snapshot |
-| `/api/tickets/[key]/versions/[id]` | DELETE | Delete a version |
+| `/api/tickets/[key]/versions/[id]` | GET | Get a single version |
+| `/api/tickets/[key]/versions/import` | POST | Import external version snapshots, deduplicating by content hash |
 | `/api/tickets/[key]/reviews` | GET | List stored reviews |
 | `/api/tickets/[key]/reviews` | POST | Store a review result |
+| `/api/tickets/[key]/reviews/[id]` | DELETE | Delete a stored review |
+| `/api/tickets/[key]/reviews/generate` | POST | Invoke the workspace review skill to generate a new review |
 | `/api/tickets/[key]/pull-from-jira` | POST | Force refresh single ticket from Jira |
 | `/api/tickets/[key]/push-to-jira` | POST | Push local edits to Jira |
 | `/api/tickets/[key]/dev-info` | GET | Bitbucket development info (branches, PRs, pipelines) |
 | `/api/tickets/[key]/related-suggestions` | GET | Return cached AI-suggested related issues |
 | `/api/tickets/[key]/related-suggestions` | POST | Discover related issues via workspace `find-related` skill (cached 30 min) |
+| `/api/tickets/[key]/related-suggestions` | PUT | Parse workspace output (`{ output }`), dedupe against existing links, rank and cap, and replace the cached suggestions |
 | `/api/tickets/[key]/related-suggestions` | DELETE | Clear cached suggestions for this ticket |
 | `/api/tickets/[key]/suggest-epic` | POST | Invoke workspace `suggest-epic` skill. Returns `{ taskId, streamUrl }` |
 | `/api/tickets/[key]/subtask-suggestions` | GET | Return persisted pending AI subtask suggestions |
 | `/api/tickets/[key]/subtask-suggestions` | PUT | Parse and persist suggestions (replaces existing). Body: `{ suggestions: string[] }` or `{ output: string }` |
 | `/api/tickets/[key]/subtask-suggestions` | DELETE | Remove single suggestion (`{ id }`) or all for ticket |
+| `/api/tickets/[key]/suggest-subtasks` | POST | Gather ticket context + existing subtasks and invoke the workspace `suggest-subtasks` skill. Returns `{ taskId }` for streaming |
+| `/api/tickets/[key]/subtasks` | GET | List the ticket's subtasks |
+| `/api/tickets/[key]/subtasks` | POST | Create a subtask in Jira under the ticket |
+| `/api/tickets/[key]/subtasks/rank` | POST | Re-rank subtasks relative to one another via Jira Agile rank |
+| `/api/tickets/[key]/subtasks/[subtaskKey]` | PATCH | Update a subtask (title, etc.) in Jira and locally |
+| `/api/tickets/[key]/subtasks/[subtaskKey]` | DELETE | Delete a subtask |
 | `/api/tickets/[key]/subtasks/close` | POST | Bulk-close all open subtasks (requires parent DONE/DEPRECATED) |
 | `/api/tickets/[key]/subtasks/[subtaskKey]/close` | POST | Close a single subtask (transition to DONE; no parent guard) |
 
@@ -134,13 +167,30 @@ AI-assisted story editing sessions. See [story-writer.md](story-writer.md) for a
 | `/api/tickets/[key]/story-writer` | PATCH | Update session (drafts, titles, status) |
 | `/api/tickets/[key]/story-writer` | DELETE | Close/discard session |
 | `/api/tickets/[key]/story-writer/messages` | POST | Send message (invokes workspace skill) |
+| `/api/tickets/[key]/story-writer/messages` | DELETE | Delete the session's failed messages (`?failed=true` required) |
 | `/api/tickets/[key]/story-writer/apply-draft` | POST | Extract and persist AI drafts from task output |
 | `/api/tickets/[key]/story-writer/apply-draft` | DELETE | Dismiss a specific AI draft |
 | `/api/tickets/[key]/story-writer/apply-related` | GET | List related story candidates |
 | `/api/tickets/[key]/story-writer/apply-related` | POST | Parse and store AI-found related stories |
 | `/api/tickets/[key]/story-writer/apply-related` | PATCH | Toggle link state for a related candidate |
 | `/api/tickets/[key]/story-writer/split` | POST | Activate split mode (link or create target ticket) |
+| `/api/tickets/[key]/story-writer/related-request` | POST | Auto-chained from chat when the compose skill emits `<related-request>`; dispatches a targeted find-related into the active session (BRDG-397) |
+| `/api/tickets/[key]/story-writer/logs` | GET | List execution logs for the ticket's active session |
 | `/api/tickets/[key]/story-writer/logs/[taskId]` | GET | Fetch execution logs for a task |
+
+### Story Writer (global)
+
+Draft-ticket creation flow that runs outside a specific ticket key (DRAFT-xxx tickets that later swap to a real Jira key). See [story-writer.md](story-writer.md).
+
+| Route | Method | Purpose |
+|-------|--------|---------|
+| `/api/story-writer/active-sessions` | GET | List active story-writer sessions (joined with ticket data) |
+| `/api/story-writer/active-sessions` | DELETE | Close/discard active sessions |
+| `/api/story-writer/create` | POST | Create a new story-writer session for a fresh draft ticket |
+| `/api/story-writer/create-draft` | POST | Create a DRAFT-xxx placeholder ticket while Jira creation runs in the background |
+| `/api/story-writer/draft-status` | GET | Poll a draft's sync status (`DRAFTING` / `REPLACED` / `DRAFT_FAILED`). `?key=DRAFT-...` |
+| `/api/story-writer/finalize-draft` | POST | Swap a finalized DRAFT-xxx key for its real Jira key. Body: `{ draftKey, realKey, sprintName? }` |
+| `/api/story-writer/retry-draft` | POST | Retry a failed draft (resets to `DRAFTING` and re-runs Jira creation) |
 
 ## Conversations & Chat
 
@@ -151,11 +201,11 @@ General-purpose chat conversations with the workspace.
 | `/api/conversations` | GET | List all conversations |
 | `/api/conversations` | POST | Create new conversation |
 | `/api/conversations/[id]` | GET | Get conversation details |
-| `/api/conversations/[id]` | PUT | Update conversation (title, related ticket) |
+| `/api/conversations/[id]` | PATCH | Update conversation (title, related ticket) |
 | `/api/conversations/[id]` | DELETE | Delete conversation and messages |
 | `/api/conversations/bulk` | PATCH | Bulk operations: delete, markRead, markUnread. Body: `{ ids: string[], action }` |
-| `/api/conversations/[id]/messages` | GET | List messages in conversation |
 | `/api/conversations/[id]/messages` | POST | Add message to conversation |
+| `/api/conversations/[id]/chat-messages` | POST | Send a chat turn to the agent; optional codebase-research hint is sent to the agent only, kept out of the persisted user message |
 
 ## Workspace Tasks
 
@@ -168,7 +218,9 @@ Proxy layer to the valk-agent backend. See [workspace-integration.md](workspace-
 | `/api/workspace-tasks/[id]` | GET | Get task status |
 | `/api/workspace-tasks/[id]` | DELETE | Delete/cancel task |
 | `/api/workspace-tasks/[id]/stream` | GET | SSE stream of task progress |
+| `/api/workspace-tasks/[id]/cancel` | POST | Best-effort cancel of a running task on the agent side |
 | `/api/workspace-tasks/health` | GET | Agent health check |
+| `/api/workspace-tasks/skills` | GET | List available agent skills (proxied from the agent's `/api/skills`) |
 
 ## Search
 
@@ -176,14 +228,15 @@ Proxy layer to the valk-agent backend. See [workspace-integration.md](workspace-
 |-------|--------|---------|
 | `/api/search/local` | GET | Fuzzy search local DB via Fuse.js. `?q=text`. Wrapping the query in double quotes (`?q="exact phrase"`) switches to a literal, case-insensitive phrase match (no fuzzy). |
 | `/api/search/local/keys` | GET | Inline sprint-board deep-field match (BRDG-345). `?q=text` returns `{ keys: string[] }` for every ticket matching across description, acceptance criteria, labels, notes and PO/Jira comments (substring, no rank/cap). The board intersects these with its filtered rows. |
+| `/api/search/local/filter-options` | GET | Distinct option lists (epics, sprints, etc.) for the search/filter dropdowns |
 | `/api/search/jira` | GET | Live Jira search. `?q=text` or `?jql=...` |
+| `/api/tickets/search` | GET | Search local tickets (subtasks hidden by default) |
 
 ## Activity Log
 
 | Route | Method | Purpose |
 |-------|--------|---------|
 | `/api/activity-log` | GET | Query activity log. `?limit=N` |
-| `/api/activity-log` | POST | Create activity log entry |
 | `/api/activity-log/[id]/acknowledge` | POST | Mark entry as read |
 | `/api/activity-log/[id]/cancel` | POST | Cancel a running operation |
 | `/api/activity-log/acknowledge-all` | POST | Mark all entries as read |
@@ -215,6 +268,9 @@ Proxy layer to the valk-agent backend. See [workspace-integration.md](workspace-
 | `/api/refinement-sessions/[id]` | DELETE | Delete session |
 | `/api/refinement-sessions/[id]/ticket-notes` | GET | List per-ticket PO notes for a session |
 | `/api/refinement-sessions/[id]/ticket-notes` | PUT | Upsert a ticket note (`ticketKey`, `content`); empty content deletes |
+| `/api/refinement-sessions/[id]/bulk-suggest-subtasks` | GET | Status of the session's bulk subtask-suggestion run |
+| `/api/refinement-sessions/[id]/bulk-suggest-subtasks` | POST | Kick off subtask suggestions for all tickets in the session |
+| `/api/refinement-sessions/[id]/suggestion-counts` | GET | Subtask-suggestion counts per ticket in the session (`{ counts }`) |
 
 ## Live Events (SSE)
 
@@ -228,16 +284,56 @@ Proxy layer to the valk-agent backend. See [workspace-integration.md](workspace-
 |-------|--------|---------|
 | `/api/config` | GET | App configuration (next sprint ID) |
 | `/api/settings/column-widths` | GET | Get saved column widths |
-| `/api/settings/column-widths` | POST | Save column widths |
+| `/api/settings/column-widths` | PUT | Save column widths |
 | `/api/settings/quick-prompts` | GET | Get quick prompt templates |
-| `/api/settings/quick-prompts` | POST | Save quick prompt templates |
+| `/api/settings/quick-prompts` | PUT | Save quick prompt templates |
 | `/api/settings/section-visibility` | GET | Get field visibility for a section (`?section=epic-children\|subtasks`) |
 | `/api/settings/section-visibility` | PUT | Save field visibility for a section |
 | `/api/settings/saved-views` | GET | Get the account's saved sprint-board views (per-user `user_setting`, BRDG-343) |
 | `/api/settings/saved-views` | PUT | Save the account's saved views `{ value: SavedView[] }` |
 | `/api/sprint-slots` | GET | Get sprint slot assignments |
-| `/api/sprint-slots` | POST | Save sprint slot assignments |
+| `/api/sprint-slots` | PUT | Save sprint slot assignments |
 | `/api/dev/query-stats` | GET | Slow-query aggregates for the diagnostics widget (dev-only, 404 in prod; BRDG-404) |
+| `/api/dev/bypass` | GET | Dev-only: set the `dev_bypass` cookie and redirect to `/` (404 in prod) |
+| `/api/dev/bypass` | DELETE | Dev-only: clear the `dev_bypass` cookie (called by logout) |
+
+### Account-scoped settings (BRDG-343)
+
+Per-account preferences stored in `user_setting` via the `createUserJsonSettingRoute` factory unless noted; each exposes GET (read, seeded from any legacy global value) + PUT (write). See `src/lib/user-settings.ts`.
+
+| Route | Method | Purpose |
+|-------|--------|---------|
+| `/api/settings/column-config` | GET / PUT | Sprint-board column config; partial PUTs merge onto the current value |
+| `/api/settings/default-sprint` | GET / PUT | The PO's default sprint id |
+| `/api/settings/default-team` | GET / PUT | The PO's own team (BT/BM/BO/GXP/HT), or null; source of truth for "my team" (BRDG-357) |
+| `/api/settings/my-jira-identity` | GET / PUT | Maps the Clerk user to their stable Jira accountId for "me" comparisons (BRDG-360) |
+| `/api/settings/saved-searches` | GET / PUT | The account's saved searches (`{ searches }`) |
+| `/api/settings/subscribed-teams` | GET / PUT | Subscribed teams (also returns the available-team list) |
+| `/api/settings/user-teams` | GET / PUT | The account's team membership rows (keyed on Jira accountId, BRDG-364) |
+| `/api/settings/notification-preferences` | GET / PUT | Notification delivery preferences (intentionally global, not per-account) |
+| `/api/settings/activity-status` | GET / PUT | Activity-log status filter ("" = all) |
+| `/api/settings/activity-types` | GET / PUT | Activity-log type filter |
+| `/api/settings/chat-filters` | GET / PUT | Chat conversation-category filters |
+| `/api/settings/sidebar-groups-collapsed` | GET / PUT | Collapsed chat-sidebar group labels |
+| `/api/settings/sprint-board-filters` | GET / PUT | Sprint-view filter set |
+| `/api/settings/sprint-board-all-filters` | GET / PUT | All-view filter set |
+| `/api/settings/sprint-board-sort` | GET / PUT | Sprint-board sort (field + direction) |
+| `/api/settings/sprint-board-row-fields` | GET / PUT | Sprint-board inline row fields |
+| `/api/settings/sprint-board-po-priority` | GET / PUT | PO priority order per sprint (sprint id -> ordered ticket keys) |
+| `/api/settings/compare-row-fields` | GET / PUT | Compare-view inline row fields (independent of the main board) |
+| `/api/settings/backlog-drop-target` | GET / PUT | Chosen backlog drop target, stored as a sprint name |
+| `/api/settings/epic-filters` | GET / PUT | `/epics` filter bar selection |
+| `/api/settings/epic-children-view` | GET / PUT | Epic children list/sprint view toggle |
+| `/api/settings/epic-stats-metric` | GET / PUT | Epic stats metric toggle (items / story points / business value) |
+| `/api/settings/inbox-filters` | GET / PUT | New-story inbox filter set (BRDG-357) |
+| `/api/settings/inbox-row-fields` | GET / PUT | New-story inbox inline row fields (BRDG-357) |
+| `/api/settings/pipeline-filters` | GET / PUT | `/pipelines` filter bar selection |
+| `/api/settings/subtask-status-filter` | GET / PUT | Subtask status filter ("all" or a Jira status) |
+| `/api/settings/subtask-hide-deprecated` | GET / PUT | "Hide deprecated subtasks" toggle |
+| `/api/settings/stakeholder-sprint` | GET / PUT | Stakeholder-view sprint selection (null = none) |
+| `/api/settings/stakeholder-team` | GET / PUT | Stakeholder-view team selection (null = none) |
+| `/api/settings/favorite-users` | GET / POST / DELETE | Favorite users (keyed on Jira accountId, BRDG-364) |
+| `/api/settings/po-users` | GET / POST / DELETE | PO users (keyed on Jira accountId, BRDG-364) |
 
 ## Pipelines (BRDG-078)
 
@@ -249,6 +345,7 @@ CI/CD pipeline feed with Bitbucket integration, notifications, and deploy tracki
 | `/api/pipelines` | POST | Force refresh from Bitbucket |
 | `/api/pipelines/tick` | POST | Independent lazy-cron tick (5 min interval) |
 | `/api/pipelines/last-deployed` | GET | Last deployment per ticket key |
+| `/api/pipelines/health` | GET | Aggregate pipeline health per ticket |
 | `/api/pipelines/deploy-settings` | GET | Get deploy notification settings |
 | `/api/pipelines/deploy-settings` | PUT | Update deploy notification settings |
 | `/api/followed-tickets` | GET | List followed ticket keys |
@@ -258,7 +355,9 @@ CI/CD pipeline feed with Bitbucket integration, notifications, and deploy tracki
 | `/api/followed-sprints` | POST | Follow a sprint. Body: `{ sprintName }` |
 | `/api/followed-sprints` | DELETE | Unfollow. `?sprintName=X` |
 | `/api/notifications` | GET | List notifications. `?unread=true&limit=N` |
+| `/api/notifications` | POST | Create a notification |
 | `/api/notifications` | PATCH | Mark read. Body: `{ id }` or `{ markAll: true }` |
+| `/api/notifications` | DELETE | Delete a notification |
 
 ## Cleanup / Backlog Deprecation Review (BRDG-283)
 
@@ -442,6 +541,43 @@ component the sprint board uses, per BRDG-281/275) for full ticket management.
 | Route | Method | Purpose |
 |-------|--------|---------|
 | `/api/attachments/[id]` | GET | Proxy attachment download from Jira |
+
+## Dashboard & Metrics
+
+| Route | Method | Purpose |
+|-------|--------|---------|
+| `/api/burnup` | GET | Burnup chart data for a sprint (sprint dates from the cached sprint list) |
+| `/api/burnup/seed` | POST | Seed historical burnup snapshots (idempotent; skips if already seeded) |
+| `/api/velocity` | GET | Velocity per completed sprint from cached sprint metadata |
+
+## New Stories Inbox (BRDG-356)
+
+Unread, recently-created stories for the review inbox. Read state and self-exclusion are per-user (BRDG-359).
+
+| Route | Method | Purpose |
+|-------|--------|---------|
+| `/api/new-stories` | GET | List unread, recently-created stories for the inbox |
+| `/api/new-stories/count` | GET | Unread count for the nav badge |
+| `/api/new-stories/read` | PUT | Mark a single ticket read/unread for the acting user. Body: `{ key, read }` |
+| `/api/new-stories/read` | POST | Bulk mark read/unread. Body: `{ keys: string[], read }` |
+
+## Stakeholder
+
+| Route | Method | Purpose |
+|-------|--------|---------|
+| `/api/stakeholder/analysis` | GET | Get the stakeholder analysis conversation for a sprint |
+| `/api/stakeholder/analysis` | POST | Generate/refresh the stakeholder analysis for a sprint (posts to the conversation) |
+| `/api/stakeholder/analysis` | DELETE | Delete the stakeholder analysis conversation |
+| `/api/stakeholder/analysis/[id]` | PATCH | Post an assistant message to the analysis conversation |
+
+## Infrastructure & Diagnostics
+
+| Route | Method | Purpose |
+|-------|--------|---------|
+| `/api/client-error` | POST | Client-side error sink (BRDG-398): bounded, validated payload routed to the production log |
+| `/api/cache/stats` | GET | In-memory cache stats |
+| `/api/cache/flush` | POST | Flush the in-memory cache |
+| `/api/fix-epic-types` | POST | One-off maintenance: normalize epic issue types for tickets referencing existing epicKeys |
 
 ## Common Patterns
 

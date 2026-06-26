@@ -21,9 +21,10 @@ PO Command Center for Valk Platform.
 
 - [Jira Sync](architecture/jira-sync.md) - Sync strategies, watermark system, data flow
 - [Database Schema](architecture/database-schema.md) - All tables, relationships, conventions
-- [API Routes](architecture/api-routes.md) - Complete API endpoint reference (60+ routes)
+- [API Routes](architecture/api-routes.md) - Complete API endpoint reference (~190 route files)
 - [Workspace Integration](architecture/workspace-integration.md) - Agent proxy, SSE streaming, skill invocation, Bitbucket integration
 - [Story Writer](architecture/story-writer.md) - AI-assisted story editing, split mode, related stories
 - [Scheduler](architecture/scheduler.md) - Lazy-cron pattern, task registry, background sync
 - [Optimistic Updates](architecture/optimistic-updates.md) - Pending-edits overlay; read before adding any editable board field
 - [Client Data & Memory](architecture/client-data-and-memory.md) - SWR cache cap, no whole-backlog fetches, virtualize growable lists; read before adding a fetch, a list view, or a ticket-payload field
+- [Filter Persistence](architecture/filter-persistence.md) - Board/view filter persistence via localStorage + recently-viewed store

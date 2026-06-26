@@ -130,23 +130,21 @@ React Context that provides sync state to the entire app:
 - `lastEntry`: most recent activity log entry
 - `unacknowledgedErrors`: failed operations that haven't been dismissed
 - `jiraOnline`: whether the health check is passing
-- `incrementalSyncRemaining`: tickets still catching up (from useIncrementalSync)
+- `incrementalSyncRemaining`: tickets still catching up (from useSchedulerTick)
 - `incrementalSyncLastAt`: when the last incremental check ran
 - `incrementalSyncLastCount`: how many tickets were synced in the last run
 - `toasts`: failed sync entries shown as toast notifications. Successful and cancelled runs never toast (most are background syncs: scheduler, hover prefetch, auto-fetch on ticket open). A successful retry from a failure toast pushes a local confirmation toast.
 - `triggerSync(type, scope)`: manually trigger a sync
 - `acknowledgeError(id)`: dismiss a failed sync entry
 
-### Incremental Sync Hook (`src/hooks/useIncrementalSync.ts`)
+### Scheduler Tick Hook (`src/hooks/useSchedulerTick.ts`)
 
-Client-side hook that drives the incremental sync polling:
+Client-side hook that drives background polling. Incremental sync is now one of the tasks run by the lazy-cron scheduler tick rather than a dedicated hook (see [scheduler.md](scheduler.md)).
 
-- Calls `POST /api/jira/sync-incremental` every 150 seconds
-- Runs immediately on mount, then on interval
-- Pauses when tab is hidden; triggers an immediate sync on `visibilitychange` when the tab becomes visible again
-- Returns `{ remaining, lastSyncAt, lastSyncCount }` for UI display
-- Uses a stable ref for the callback to avoid effect re-mounting loops
-- Revalidates SWR ticket caches when changes are found
+- Calls `POST /api/scheduler/tick` every 30 seconds (`TICK_INTERVAL_MS`)
+- Runs immediately on mount, then on interval, and again on `visibilitychange` when the tab becomes visible
+- Returns `{ remaining, lastSyncAt, lastSyncCount }` for UI display (sourced from the tick's incremental-sync result)
+- Revalidates SWR `/api/tickets` and `/api/activity-log` caches when changes are found
 
 ### UI Components (`src/components/sync/`)
 
@@ -154,7 +152,6 @@ Client-side hook that drives the incremental sync polling:
 |-----------|----------|---------|
 | `SyncIndicator` | Sidebar footer | Shows sync state with three modes: checking (spinner), catching up (cloud icon + count), up to date (checkmark). Expandable panel with activity history. |
 | `SyncToast` | Bottom-right overlay | Error toasts (persist until dismissed, with retry); retry-success confirmations auto-dismiss after 3s. Routine sync successes do not toast. |
-| `OfflineBanner` | Top of main content area | Shown when Jira health check fails, with retry button |
 
 **SyncIndicator states:**
 1. **Checking** (before first sync completes): spinning icon, "Checking..."
