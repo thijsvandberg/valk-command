@@ -1,8 +1,37 @@
 # BRDG-407: Compare view adopts the optimistic-edit overlay (stop snap-back)
 
-**Status:** Not Started
+**Status:** Completed
 **Priority:** Medium
 **Type:** Stability — sprint board (Compare / MultiSprintView)
+
+## Status
+
+Shipped 2026-06-26. Isolated to `MultiSprintView.tsx`.
+
+- **Field edits migrated to the shared `pendingTicketEdits` overlay.** `title`, `jiraStatus`,
+  `type`, `storyPoints` and `businessValue` now `registerPendingEdit` → API → `confirmPendingEdit`
+  /`clearPendingEdit`, and the lists render through `applyPendingEdits`. The old per-handler
+  `mutate(..., { revalidate:false })` patches (which survived exactly one revalidation) are gone.
+  `saveStoryPoints`/`saveTicketMetadata` are now called with `{ patchList:false }` (BRDG-383). A
+  self-heal effect clears confirmed edits once the server reflects them (gated on `confirmed`, like
+  the board), skipping tickets currently held by a move override so it cannot reveal a stale snapshot.
+- **Moves no longer drop the override before the server has propagated.** The within-column reorder
+  and cross-column move keep their column override and clear it after `MOVE_OVERRIDE_TTL_MS` (30s, a
+  ref-tracked timer cleared on unmount) instead of immediately, so a concurrent 60s poll / focus
+  revalidation (or the ~30s `/api/tickets` response cache) cannot revert the move mid-flight.
+- **`readiness` / `poStatus` kept as local maps** — they are never reconciled from a server read in
+  this view (no `syncFromApiTickets`), so they already persist and do not snap back; `poStatus` here
+  has no server-persist path, so the overlay (with its TTL) would be wrong for it. Not a duplicate of
+  the overlay's purpose.
+
+Chose a focused overlay migration over a full `RowActionsAdapter` (Open Question): it deletes the
+divergent field-edit copies — the actual snap-back source — without rebuilding the column components.
+
+Verified: full suite green (6889 tests; 4 new MultiSprintView tests), lint/typecheck/build clean, and
+E2E in Chrome — the Compare view renders with the two-column layout intact, a `businessValue` edit
+(safe, local PO metadata) held through a focus-triggered revalidation (no snap-back), and no console
+errors. Status/title/type are real Jira writes so were not mutated on live production tickets; their
+no-snap-back is covered by the unit tests, which model the exact stale-revalidation scenario.
 
 ## Description
 
@@ -43,19 +72,19 @@ is preferred because it deletes the divergent copy.
 
 ## Acceptance Criteria
 
-- [ ] An edit (title, status, issue type, readiness, PO status) in the Compare view persists through a
+- [x] An edit (title, status, issue type, readiness, PO status) in the Compare view persists through a
       background revalidation / window refocus — it does not snap back.
-- [ ] A move in the Compare view is not reverted by a concurrent refetch before the server confirms.
-- [ ] The Compare view no longer maintains its own optimistic-state maps that duplicate
+- [x] A move in the Compare view is not reverted by a concurrent refetch before the server confirms.
+- [x] The Compare view no longer maintains its own optimistic-state maps that duplicate
       `pendingTicketEdits` (or, if the minimal fix is taken, the maps are `hasPendingEdit`-guarded).
-- [ ] No regression in the two-column Compare layout or its existing behaviour.
+- [x] No regression in the two-column Compare layout or its existing behaviour.
 
 ## Tests
 
-- [ ] A Compare-view edit followed by a simulated revalidation keeps the edited value.
-- [ ] A Compare-view move followed by a simulated refetch keeps the moved state until server confirm,
+- [x] A Compare-view edit followed by a simulated revalidation keeps the edited value.
+- [x] A Compare-view move followed by a simulated refetch keeps the moved state until server confirm,
       and reverts correctly on failure.
-- [ ] Existing `MultiSprintView` tests stay green.
+- [x] Existing `MultiSprintView` tests stay green.
 
 ## Open Questions
 

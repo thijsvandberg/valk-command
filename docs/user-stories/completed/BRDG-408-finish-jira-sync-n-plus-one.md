@@ -1,8 +1,34 @@
 # BRDG-408: Finish the Jira sync N+1 cleanup (close out BRDG-378)
 
-**Status:** Not Started
+**Status:** Completed
 **Priority:** Medium
 **Type:** Performance — Jira sync
+
+## Status
+
+Shipped 2026-06-26.
+
+- **Tranche bulk path:** `syncIndividualTickets` now does one `getIssuesByKeys(keys, signal, true)`
+  for the whole tranche, builds a key→issue map, and upserts in input order; a key absent from the
+  bulk result is confirmed with a single `getIssue` (real 404 → `removedFromJiraAt`, non-404
+  rethrows — identical to the old per-key path). `expand=changelog` lets `upsertIssue` read the
+  change author inline, skipping its per-issue `getLastChangeAuthor` fallback (same mirror state,
+  fewer calls).
+- **Chunking:** `getIssuesByKeys` and `getIssueLinksByKeys` slice the key list into 100-key chunks
+  so a large reconcile (up to ~2000 keys) never builds an oversized `key in (...)` JQL/URL.
+- **Rank timestamp refresh:** new bulk `syncJiraTimestamps(keys)` (one `getIssuesByKeys` + one
+  transaction) replaces the per-key `syncJiraTimestamp` loop in the `rank` route.
+- **BRDG-378 checklist:** reconciled — its status note now records this closeout.
+
+**Descoped / flagged:** the burnup-seed per-ticket `getBurnupChangelog` loop (Low, on-demand) was
+left as-is. It is not in this story's acceptance criteria or tests, and bounding its concurrency
+means restructuring a loop that interleaves fetches with per-key DB writes — too much regression
+risk for a Low item without a dedicated test. Noted as the only remaining N+1.
+
+Verified: full suite green (6885 tests), lint/typecheck/build clean, and the bulk tranche path
+exercised live (`POST /api/jira/sync-tickets` with 3 keys → 200, correct data, single request, no
+server errors). The rank route is unit-tested rather than live-triggered (it re-ranks the real Jira
+board).
 
 ## Description
 
@@ -51,21 +77,21 @@ This changes sync timing/ordering internally but **not** the resulting mirror st
 
 ## Acceptance Criteria
 
-- [ ] A tranche/group sync of N tickets issues a bounded number of Jira calls (bulk), not N
+- [x] A tranche/group sync of N tickets issues a bounded number of Jira calls (bulk), not N
       sequential `getIssue` calls; 404s still mark `removedFromJiraAt`.
-- [ ] A large reconcile (hundreds of departed keys) no longer fails on an oversized JQL/URL.
-- [ ] The `rank` route refreshes timestamps with a bounded number of calls.
-- [ ] The synced mirror state is identical to before (same tickets, sprints, comments).
-- [ ] BRDG-378's checklist is reconciled to reflect what is delivered vs. what this story closes.
+- [x] A large reconcile (hundreds of departed keys) no longer fails on an oversized JQL/URL.
+- [x] The `rank` route refreshes timestamps with a bounded number of calls.
+- [x] The synced mirror state is identical to before (same tickets, sprints, comments).
+- [x] BRDG-378's checklist is reconciled to reflect what is delivered vs. what this story closes.
 
 ## Tests
 
-- [ ] `syncIndividualTickets` multi-key test triggers a single `getIssuesByKeys` and upserts correct
+- [x] `syncIndividualTickets` multi-key test triggers a single `getIssuesByKeys` and upserts correct
       results; a key absent from the bulk result is treated as 404 (`removedFromJiraAt`).
-- [ ] `getIssuesByKeys` chunking test: >100 keys produces multiple bounded queries and concatenated
+- [x] `getIssuesByKeys` chunking test: >100 keys produces multiple bounded queries and concatenated
       results.
-- [ ] `rank` route test: timestamp refresh issues one bulk fetch, not one per key.
-- [ ] Existing sync / rank / burnup tests stay green.
+- [x] `rank` route test: timestamp refresh issues one bulk fetch, not one per key.
+- [x] Existing sync / rank / burnup tests stay green.
 
 ## Open Questions
 

@@ -1,8 +1,33 @@
 # BRDG-409: Route input-validation hardening (dynamic path params + ad-hoc bodies)
 
-**Status:** Not Started
+**Status:** Completed
 **Priority:** Medium
 **Type:** Security / Stability — API routes
+
+## Status
+
+Shipped 2026-06-26. Added two shared helpers in `api-validation.ts` (`validateNumericId`
+for the Confluence `pageId`, `validateAgentTaskId` for agent task/session ids) and
+`assertValidJiraKeys` in `jql.ts`. Wired them in:
+
+- Confluence `pageId` now `^\d+$` at the route AND `encodeURIComponent` inside
+  `confluence-client` (both `getPage`/`getPageMetadata`).
+- Agent task `id` guarded with `^[A-Za-z0-9_-]+$` in the stream + bulk-suggest routes;
+  the agent path is also `encodeURIComponent`-wrapped.
+- `confluence-links` (POST/DELETE) and `deploy-settings` (PUT) switched to
+  `parseJsonBody(request, zodSchema)` → clean 400 on malformed/invalid bodies, validate
+  before persisting.
+- `assertValidJiraKeys` runs before every `key NOT IN (...)` clause in the four rank
+  methods (ahead of the `isConfigured` guard so a malformed key always throws; all real
+  callers already wrap rank calls in try/catch, so no behaviour change for valid input).
+- `hiddenIds` validated with `z.array(z.number())`; `draftKey` constrained to
+  `^DRAFT-[A-Za-z0-9]{4,16}$`.
+
+Verified: full suite green (6866 tests), lint/typecheck/build clean, and exercised
+against the running dev server (injected pageId/agent-id → 400; malformed bodies → 400
+not 500; valid pageId reaches upstream; valid settings persist). One existing rank-test
+fixture used the non-Jira-shaped placeholder `VPL-NEW`; corrected to a numeric key
+(`VPL-100`) — ranking-behaviour intent unchanged.
 
 ## Description
 
@@ -61,21 +86,21 @@ No behaviour change for legitimate input; only malformed/hostile input is reject
 
 ## Acceptance Criteria
 
-- [ ] A non-numeric / query-bearing `pageId` is rejected (or encoded) and cannot alter the upstream
+- [x] A non-numeric / query-bearing `pageId` is rejected (or encoded) and cannot alter the upstream
       Confluence request shape.
-- [ ] A `/ ? ..`-bearing agent task `id` cannot alter the upstream agent path.
-- [ ] `confluence-links` (POST/DELETE) and `deploy-settings` (PUT) return a clean 400 on malformed
+- [x] A `/ ? ..`-bearing agent task `id` cannot alter the upstream agent path.
+- [x] `confluence-links` (POST/DELETE) and `deploy-settings` (PUT) return a clean 400 on malformed
       bodies and validate before persisting.
-- [ ] `key NOT IN (...)` rejects non-Jira-key inputs.
-- [ ] `hiddenIds` and `draftKey` are validated before persistence.
-- [ ] No regression for valid pageIds, task ids, bodies, keys, or settings.
+- [x] `key NOT IN (...)` rejects non-Jira-key inputs.
+- [x] `hiddenIds` and `draftKey` are validated before persistence.
+- [x] No regression for valid pageIds, task ids, bodies, keys, or settings.
 
 ## Tests
 
-- [ ] Confluence route: a `pageId` like `1?x=y` is rejected/encoded; a numeric pageId still works.
-- [ ] Agent stream route: a malformed `id` is rejected; a valid id streams.
-- [ ] `confluence-links` / `deploy-settings`: malformed body → 400 (not 500); valid body persists.
-- [ ] `jira-client`: `key NOT IN` throws/early-returns on an invalid key.
+- [x] Confluence route: a `pageId` like `1?x=y` is rejected/encoded; a numeric pageId still works.
+- [x] Agent stream route: a malformed `id` is rejected; a valid id streams.
+- [x] `confluence-links` / `deploy-settings`: malformed body → 400 (not 500); valid body persists.
+- [x] `jira-client`: `key NOT IN` throws/early-returns on an invalid key.
 
 ## Open Questions
 

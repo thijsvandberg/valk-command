@@ -1,8 +1,42 @@
 # BRDG-410: Polling and memory hygiene (timers, visibility, unbounded maps)
 
-**Status:** Not Started
+**Status:** Completed
 **Priority:** Medium
 **Type:** Stability / Performance — hooks, contexts, lib
+
+## Status
+
+Shipped 2026-06-26. All five acceptance-criteria items done plus two of the safe minor edges:
+
+- `revalidation-queue`: `markChecked` now prunes `lastChecked` entries past the cooldown over a
+  SNAPSHOT (`[...lastChecked]`), never the live Map's iterator (avoids the BRDG-387 freeze class).
+  Age-based prune chosen per the Open Question recommendation. Verified live: triggering
+  `revalidate-deleted-tickets` returned `cooldownSize: 25` (bounded to the fresh batch).
+- `useStakeholderAnalysis`: recover-effect captures its interval in a local, clears any prior one
+  before claiming `pollRef`, and returns a cleanup that clears only its own interval (so a later
+  `generate()` poll is never clobbered when `rows` revalidates).
+- `useLinkIssueSearch`: added an unmount effect clearing both debounce timers and aborting the
+  in-flight request.
+- `usePipelines`: dropped SWR's static `refreshInterval` (the adaptive manual interval is now the
+  single poll source) and gated the manual tick on `!document.hidden`.
+- `useWorkspaceHealth`: skips the interval tick while hidden; re-checks once on `visibilitychange`.
+- Minor edges: `useLocalStorage` storage-sync effect now depends only on `[key]` and reads
+  `defaultValueRef.current` (no listener churn for object/array defaults); `useOutsideClick` holds
+  `refs`/`onClose` in refs so the document listeners are not re-subscribed every render.
+
+**Descoped / flagged (intentionally not changed):**
+- `useConversations`/`useMessages` SWR migration — larger change; Open Question recommends a
+  follow-up. Left as-is.
+- `RefinementSessionContext` index-persist timer — its post-unmount write persists the session
+  position, which is *wanted*; clearing it on unmount would risk dropping that save. Left as-is per
+  the story's own "where the post-unmount write is unwanted" qualifier.
+- `event-bus` BroadcastChannel-without-WebLocks double-dispatch — cross-tab leadership code, rare
+  fallback, no test; too risky to touch without a dedicated repro. Left as-is.
+
+Verified: full suite green (6875 tests), lint/typecheck/build clean, live endpoints (tickets,
+scheduler run, pipelines, workspace health) all 200 with no server errors, and the Pipelines view
+rendered with `usePipelines` data (the only console errors are a pre-existing nested-`<a>` hydration
+warning in `PipelineRow`, unrelated to this story).
 
 ## Description
 
@@ -80,22 +114,22 @@ background traffic.
 
 ## Acceptance Criteria
 
-- [ ] `revalidation-queue` memory stays bounded over a long session (old `lastChecked` entries are
+- [x] `revalidation-queue` memory stays bounded over a long session (old `lastChecked` entries are
       pruned), implemented without iterating-and-mutating the live Map.
-- [ ] `useStakeholderAnalysis` never leaves an orphaned poll interval and never runs two for one task.
-- [ ] `useLinkIssueSearch` performs no setState/fetch after unmount; pending aborts fire on close.
-- [ ] `usePipelines` makes one refetch per idle cycle and does not poll on hidden tabs.
-- [ ] `useWorkspaceHealth` does not poll on hidden tabs.
-- [ ] No regression in stakeholder analysis, link search, pipelines, or workspace health.
+- [x] `useStakeholderAnalysis` never leaves an orphaned poll interval and never runs two for one task.
+- [x] `useLinkIssueSearch` performs no setState/fetch after unmount; pending aborts fire on close.
+- [x] `usePipelines` makes one refetch per idle cycle and does not poll on hidden tabs.
+- [x] `useWorkspaceHealth` does not poll on hidden tabs.
+- [x] No regression in stakeholder analysis, link search, pipelines, or workspace health.
 
 ## Tests
 
-- [ ] `revalidation-queue` test asserts `cooldownSize` stays bounded after many `markChecked` calls
+- [x] `revalidation-queue` test asserts `cooldownSize` stays bounded after many `markChecked` calls
       spanning past `COOLDOWN_MS`.
-- [ ] `useStakeholderAnalysis` test: a `rows` change during a live poll does not create a second
+- [x] `useStakeholderAnalysis` test: a `rows` change during a live poll does not create a second
       interval; unmount clears it.
-- [ ] `useLinkIssueSearch` test: unmount with a pending debounce fires no setState and aborts.
-- [ ] `usePipelines` / `useWorkspaceHealth` tests: no poll when `document.hidden`.
+- [x] `useLinkIssueSearch` test: unmount with a pending debounce fires no setState and aborts.
+- [x] `usePipelines` / `useWorkspaceHealth` tests: no poll when `document.hidden`.
 
 ## Open Questions
 
