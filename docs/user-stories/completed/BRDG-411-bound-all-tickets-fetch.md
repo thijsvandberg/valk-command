@@ -1,5 +1,9 @@
 # BRDG-411: Whole-backlog `/api/tickets`-kost verlagen — Fase 1 (goedkope winst)
 
+## Status
+
+**Done (2026-06-26).** `useTickets` zet `refreshInterval` op `0` voor de `__all__`-sleutel en houdt `60000` voor gescopete sprints ([useSprintBoard.ts](../../src/hooks/useSprintBoard.ts)). De pipelines multi-sprint-view gebruikt nu `useTicketsForSprints(ids)` (fetcht per geselecteerde sprint gescopet + merge/dedup), nooit meer `__all__` + client-side filteren. Geverifieerd in de draaiende app via de BRDG-404 slow-query-stats (`/api/dev/query-stats`): op een rustige ticket-detailpagina blijft de ongescopete `GET /api/tickets` op count 1 over een idle-venster van >80s (geen 60s-poll meer); de pipelines-view triggert alleen `GET /api/tickets?sprintId=...`. Tests toegevoegd (refreshInterval-poll-gedrag + `useTicketsForSprints`). Alle gates groen (lint, typecheck, 6823 tests, build).
+
 **Status:** Not Started
 **Priority:** Medium
 **Type:** Performance
@@ -36,12 +40,12 @@ Het is dus een **achtergrond-/schaalbaarheidskost** (serverlast + browsergeheuge
 
 ## Acceptance Criteria
 
-- [ ] De `__all__`-fetch (`/api/tickets` zonder `sprintId`) ververst niet meer automatisch elke 60s; de gescopete sprint-fetches behouden hun 60s-refresh.
-- [ ] Op een rustige pagina met hover-rijen verdwijnt het **terugkerende** `GET /api/tickets` (~1s) uit de slow-query-stats (meetbaar via het BRDG-404-widget / `/api/dev/query-stats`); er blijft hooguit één fetch per paginaload over.
-- [ ] De pipelines multi-sprint-view haalt alleen de geselecteerde sprints op (geen `__all__`) en toont dezelfde resultaten als voorheen.
-- [ ] Hover-kaartjes blijven correct werken (de lijst wordt nog wel één keer geladen).
-- [ ] Tests dekken: `refreshInterval` is uit voor `__all__` en aan voor een gescopete sprint; de pipelines-view fetcht de geselecteerde sprints i.p.v. `__all__`.
-- [ ] `npm run lint`, `npm run typecheck`, `npm run test`, en `npm run build` slagen.
+- [x] De `__all__`-fetch (`/api/tickets` zonder `sprintId`) ververst niet meer automatisch elke 60s; de gescopete sprint-fetches behouden hun 60s-refresh.
+- [x] Op een rustige pagina met hover-rijen verdwijnt het **terugkerende** `GET /api/tickets` (~1s) uit de slow-query-stats (meetbaar via het BRDG-404-widget / `/api/dev/query-stats`); er blijft hooguit één fetch per paginaload over.
+- [x] De pipelines multi-sprint-view haalt alleen de geselecteerde sprints op (geen `__all__`) en toont dezelfde resultaten als voorheen.
+- [x] Hover-kaartjes blijven correct werken (de lijst wordt nog wel één keer geladen).
+- [x] Tests dekken: `refreshInterval` is uit voor `__all__` en aan voor een gescopete sprint; de pipelines-view fetcht de geselecteerde sprints i.p.v. `__all__`.
+- [x] `npm run lint`, `npm run typecheck`, `npm run test`, en `npm run build` slagen.
 
 ## References
 - [Logging-audit](../investigations/2026-06-25-logging-audit.md) — Thema F (de vondst).
