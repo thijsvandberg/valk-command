@@ -1,8 +1,17 @@
 # BRDG-378: Speed up sync (N+1 Jira fetches → bulk)
 
-**Status:** Not Started
+**Status:** Substantially Delivered (one item remaining → [[BRDG-408-finish-jira-sync-n-plus-one]])
 **Priority:** Medium
 **Type:** Performance — Jira sync
+
+> **2026-06-25 reconciliation:** The 2026-06-25 re-audit found this story was substantially
+> implemented despite the old "Not Started" label. Delivered: departed-ticket reconcile loops now
+> use `getIssuesByKeys` (`sync-tickets-service.ts:255,392,541`); `sync-comments` preloads a Map +
+> `onConflictDoUpdate`; the unique index on `jira_comment.jiraCommentId` exists (migration 0086);
+> `getSprints` enrichment is parallelized and skipped when `goal` is known. **Remaining:** the
+> tranche group-sync path (`syncIndividualTickets`) still fetches one issue per key, plus
+> `getIssuesByKeys` chunking and the rank/burnup per-key loops — tracked in
+> [[BRDG-408-finish-jira-sync-n-plus-one]].
 
 ## Description
 
