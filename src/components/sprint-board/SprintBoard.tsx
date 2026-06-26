@@ -85,7 +85,13 @@ export default function SprintBoard() {
   const { ticketSessionMap, sessions: refinementSessionList, mutate: mutateRefinementSessions } = useTicketSessionMap();
   const searchParams = useSearchParams();
   const router = useRouter();
-  setRouterPrefetch((url) => router.prefetch(url));
+  // Register the router-prefetch bridge in an effect, not in render: writing a new
+  // closure into module state on every render is a render-time side effect the
+  // compiler cannot reason about and that misbehaves under double/concurrent render
+  // (BRDG-405).
+  useEffect(() => {
+    setRouterPrefetch((url) => router.prefetch(url));
+  }, [router]);
 
   // The board is path-based (BRDG-270): `/sprint-board/<sprint-slug>/<ticket>`.
   // The sprint slug and open ticket are read from the URL; the URL is the source

@@ -119,7 +119,15 @@ export function usePendingTicketEdits(): Map<string, PendingEdit> {
 export function valuesMatch(a: unknown, b: unknown): boolean {
   if (a === b) return true;
   if (a == null || b == null) return false;
-  if (typeof a === "object" || typeof b === "object") {
+  if (typeof a === "object" && typeof b === "object") {
+    // `assignee` is the only object-valued overlay field. The optimistic value
+    // ({name, initials, color}) and the server value (which also carries avatar /
+    // accountId) differ in shape, so a full-object stringify — itself key-order
+    // fragile — never matched and the overlay lingered to its 30s TTL (BRDG-405).
+    // Compare the meaningful identity (the display name) instead.
+    const aName = (a as { name?: unknown }).name;
+    const bName = (b as { name?: unknown }).name;
+    if (typeof aName === "string" || typeof bName === "string") return aName === bName;
     return JSON.stringify(a) === JSON.stringify(b);
   }
   return false;

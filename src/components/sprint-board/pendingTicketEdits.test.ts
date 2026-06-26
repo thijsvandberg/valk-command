@@ -113,4 +113,13 @@ describe("pendingTicketEdits - valuesMatch", () => {
     expect(valuesMatch({ name: "Frank", initials: "F" }, { name: "Frank", initials: "F" })).toBe(true);
     expect(valuesMatch({ name: "Frank" }, { name: "Jane" })).toBe(false);
   });
+
+  it("matches an assignee by name even when the server object has extra fields / different key order (BRDG-405)", () => {
+    // Optimistic value vs the richer server value: the old full-object stringify never
+    // matched, so the overlay lingered to its 30s TTL. Now they match on name.
+    const optimistic = { name: "Frank", initials: "F", color: "hsl(1, 50%, 50%)" };
+    const server = { accountId: "acc-1", avatar: "https://a/f.png", name: "Frank", initials: "F", color: "hsl(1, 50%, 50%)" };
+    expect(valuesMatch(optimistic, server)).toBe(true);
+    expect(valuesMatch(optimistic, { ...server, name: "Frances" })).toBe(false);
+  });
 });

@@ -1,8 +1,49 @@
 # BRDG-405: Sprint board render performance + drag correctness
 
-**Status:** Not Started
+**Status:** Partially delivered (two of three High items + the overlay-equality fix shipped; the
+per-row render fan-out (#1), virtualizer offset (#4), and header extract (#5) deferred)
 **Priority:** High
 **Type:** Performance / Stability — sprint board
+
+## Status
+
+Shipped 2026-06-26 — the two High *stability* items plus the overlay-equality fix:
+
+- **#2 Render-time side effect (High):** `setRouterPrefetch((url) => router.prefetch(url))` moved out
+  of the component body into a `useEffect` keyed on `router`. No more writing a closure into module
+  state on every render. Verified live: the board renders and navigates with no console errors.
+- **#3 Drag-end index race (High):** `handleBoardDragStart` now snapshots the operative (visible)
+  list into a ref, and the intra-group rank reorder computes `oldIndex`/`overIndex`/`placeAbove`
+  against that snapshot rather than the live `tickets` prop. A poll/focus revalidation that shifts
+  the list mid-drag can no longer flip the committed rank direction. Tested (a mid-drag list reversal
+  still commits the snapshot's direction).
+- **#6 Overlay equality (Low):** `valuesMatch` compares the `assignee` (the only object-valued
+  overlay field) by its display `name` instead of a key-order-fragile full-object `JSON.stringify`,
+  so the assignee overlay self-heals as soon as the server reflects it instead of lingering to its
+  30s TTL. Tested (optimistic vs richer server object now match on name).
+
+Verified: full suite green (6898 tests; 2 new + existing valuesMatch/drag tests extended),
+lint/typecheck/build clean, board healthy live (renders, no console errors).
+
+### Deferred (with reasons) — remaining work
+
+- **#1 Per-row prop fan-out (High, perf — the headline).** Not done. On inspection the situation is
+  more nuanced than "every row always re-renders": `BoardRow` is already `memo()` (shallow) and
+  `makeRowProps` already passes **individual derived booleans** (`isChecked`/`isSelected`/`isFocused`/
+  `isContextTarget`), not the Sets — so for a single-row select/check (with `someChecked` unchanged)
+  the unchanged rows' props are shallow-equal and the memo should hold. The genuine board-wide
+  re-renders are `someChecked` crossing 0↔1 and `isDragActive` toggling, which are legitimate. The
+  remaining work is to **measure** with a render-count harness and stabilise any unstable map/handler
+  prop the profiler surfaces — not to apply the audit's suggested "pass the Sets down", which would
+  make it *worse* (a new Set identity each toggle breaks `BoardRow`'s shallow memo for all rows).
+  Deferred to be done against a profiler rather than speculatively, and to avoid a risky `BoardRow`
+  prop-contract change.
+- **#4 Virtualizer ref-in-render (Medium).** Deferred — moving `offsetTop` into a layout-effect-backed
+  state touches the perf-critical `@tanstack/react-virtual` setup, where a mistake (mis-positioned or
+  jumping virtual window) is worse than the current one-frame jump. Lower risk to land with #1's
+  measurement harness in place.
+- **#5 Extract `<SingleSprintHeader/>` (Low).** Deferred — a behaviour-neutral mechanical extraction;
+  no correctness/perf payload on its own.
 
 ## Description
 
@@ -66,21 +107,22 @@ No user-facing behaviour change beyond a smoother board and a correct drag-drop 
 
 ## Acceptance Criteria
 
-- [ ] Selecting / checking / hover-focusing a single row does not re-render the other visible rows
-      (verified by a render-count test or profiler assertion).
-- [ ] No render-time side effects on the board (`setRouterPrefetch` runs in an effect).
-- [ ] A drag that completes while the list revalidates lands the row at the intended rank.
+- [ ] Selecting / checking / hover-focusing a single row does not re-render the other visible rows.
+      _(Deferred — see Status #1; per-row props are already booleans + `BoardRow` is memo'd, so this
+      is largely structural already; needs a profiler to confirm/stabilise.)_
+- [x] No render-time side effects on the board (`setRouterPrefetch` runs in an effect).
+- [x] A drag that completes while the list revalidates lands the row at the intended rank.
 - [ ] The virtual window is correctly positioned on first paint even when content sits above the
-      table (analytics panel open).
-- [ ] The single-sprint header is a component; no behavioural change.
-- [ ] No regression in board selection, drag-drop, optimistic edits, or grouped/All views.
+      table (analytics panel open). _(Deferred — see Status #4.)_
+- [ ] The single-sprint header is a component; no behavioural change. _(Deferred — see Status #5.)_
+- [x] No regression in board selection, drag-drop, optimistic edits, or grouped/All views.
 
 ## Tests
 
-- [ ] Render-count test: toggling one row's checkbox/selection re-renders only that row.
-- [ ] Drag test: a list mutation between drag-start and drop still commits the correct insert index.
-- [ ] Existing `SprintBoard` / `BoardRow` / drag-drop / moveMeter tests stay green.
-- [ ] Overlay equality test: an assignee whose server object differs only in key order clears the
+- [ ] Render-count test: toggling one row's checkbox/selection re-renders only that row. _(Deferred with #1.)_
+- [x] Drag test: a list mutation between drag-start and drop still commits the correct insert index.
+- [x] Existing `SprintBoard` / `BoardRow` / drag-drop / moveMeter tests stay green.
+- [x] Overlay equality test: an assignee whose server object differs only in key order clears the
       overlay without waiting for TTL.
 
 ## Open Questions

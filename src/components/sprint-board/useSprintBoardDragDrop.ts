@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback, useMemo } from "react";
+import { useState, useCallback, useMemo, useRef } from "react";
 import type { Ticket } from "@/types/ticket";
 import type { SortField } from "@/components/sprint-board/FilterBar";
 import type { GroupByOption } from "@/components/sprint-board/useGroupBy";
@@ -53,6 +53,12 @@ export function useSprintBoardDragDrop(deps: DragDropDeps) {
   const [boardOverId, setBoardOverId] = useState<string | null>(null);
   const [boardDragTargetSprintId, setBoardDragTargetSprintId] = useState<string | null>(null);
 
+  // The operative (visible, filtered) list as it was when the drag began. Drag-end
+  // index math runs against THIS snapshot, not the live `tickets` prop, so a poll /
+  // focus revalidation or optimistic edit that shifts the list mid-drag cannot move
+  // the computed insert index out from under the user (BRDG-405).
+  const dragListSnapshotRef = useRef<Ticket[]>([]);
+
   // DnD (rank reorder + cross-sprint drop) is available whenever rank sort is the
   // active order and we are not in a saved view. It no longer depends on list size:
   // large lists stay virtualized (TicketTable owns that, for perf) but their rows
@@ -72,7 +78,10 @@ export function useSprintBoardDragDrop(deps: DragDropDeps) {
   const handleBoardDragStart = useCallback((event: DragStartEvent) => {
     setBoardActiveDragId(event.active.id as string);
     setBoardDragTargetSprintId(null);
-  }, []);
+    // Capture the list the user is dragging against (an event handler, not render,
+    // so writing the ref here is fine).
+    dragListSnapshotRef.current = tickets;
+  }, [tickets]);
 
   const handleBoardDragOver = useCallback((event: DragOverEvent) => {
     const { active, over } = event;
@@ -256,8 +265,10 @@ export function useSprintBoardDragDrop(deps: DragDropDeps) {
       return;
     }
 
-    // Intra-group / same-sprint rank reorder
-    const currentTickets = tickets;
+    // Intra-group / same-sprint rank reorder. Use the drag-start snapshot (not the
+    // live `tickets`) so a mid-drag list shift cannot land the row at the wrong rank
+    // (BRDG-405). Fall back to the live list if no snapshot was captured.
+    const currentTickets = dragListSnapshotRef.current.length > 0 ? dragListSnapshotRef.current : tickets;
     const oldIndex = currentTickets.findIndex((t) => t.key === activeKey);
     const overIndex = currentTickets.findIndex((t) => t.key === overId);
 

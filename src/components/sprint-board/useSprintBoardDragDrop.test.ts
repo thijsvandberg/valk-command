@@ -1,7 +1,8 @@
 import { renderHook, act, waitFor } from "@testing-library/react";
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import type { DragEndEvent } from "@dnd-kit/core";
+import type { DragEndEvent, DragStartEvent } from "@dnd-kit/core";
 import { useSprintBoardDragDrop } from "./useSprintBoardDragDrop";
+import { jira } from "@/lib/api-client";
 import type { Ticket } from "@/types/ticket";
 
 const moveSprint = vi.fn().mockResolvedValue({});
@@ -222,6 +223,34 @@ describe("useSprintBoardDragDrop - jiraRankDndEnabled (no longer size-gated, BRD
 
     const byBv = renderHook(() => useSprintBoardDragDrop(makeDeps({ sortField: "bv" })));
     expect(byBv.result.current.jiraRankDndEnabled).toBe(false);
+  });
+});
+
+describe("useSprintBoardDragDrop - drag-start list snapshot (BRDG-405)", () => {
+  it("computes the rank direction against the drag-start snapshot, not a list that shifted mid-drag", async () => {
+    vi.mocked(jira.rank).mockClear().mockResolvedValue({} as never);
+
+    const startList = [makeTicket("A", "todo"), makeTicket("B", "todo"), makeTicket("C", "todo")];
+    const { result, rerender } = renderHook((p: ReturnType<typeof makeDeps>) => useSprintBoardDragDrop(p), {
+      initialProps: makeDeps({ tickets: startList, apiTickets: startList }),
+    });
+
+    // Drag begins against [A, B, C]: A is ABOVE C.
+    act(() => {
+      result.current.handleBoardDragStart({ active: { id: "A" } } as unknown as DragStartEvent);
+    });
+
+    // A revalidation reorders the live list so A now sits BELOW C; without the
+    // snapshot the drag-end math would read the opposite direction.
+    const shifted = [makeTicket("C", "todo"), makeTicket("B", "todo"), makeTicket("A", "todo")];
+    rerender(makeDeps({ tickets: shifted, apiTickets: shifted }));
+
+    await act(async () => {
+      await result.current.handleBoardDragEnd(dropEvent("A", "C"));
+    });
+
+    // Snapshot direction (A above C, dragged down onto C) => rank AFTER C.
+    expect(vi.mocked(jira.rank)).toHaveBeenCalledWith({ issueKeys: ["A"], rankBeforeKey: undefined, rankAfterKey: "C", sprintId: "todo" });
   });
 });
 
