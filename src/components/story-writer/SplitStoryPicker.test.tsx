@@ -156,4 +156,15 @@ describe("SplitStoryPicker", () => {
 
     expect(onClose).toHaveBeenCalled();
   });
+
+  // BRDG-422: routed through the shared Modal, so it inherits dialog semantics
+  // and keyboard close.
+  it("exposes a dialog role and closes on Escape (via shared Modal)", () => {
+    const onClose = vi.fn();
+    render(<SplitStoryPicker {...makeDefaultProps({ onClose })} />);
+
+    expect(screen.getByRole("dialog")).toBeInTheDocument();
+    fireEvent.keyDown(document, { key: "Escape" });
+    expect(onClose).toHaveBeenCalled();
+  });
 });

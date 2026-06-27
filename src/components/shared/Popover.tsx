@@ -35,7 +35,7 @@ export function Popover({
   return (
     <div
       ref={ref}
-      className={`absolute top-full z-50 ${alignClass} ${offsetClass} overflow-hidden rounded-xl border border-border-strong bg-[var(--color-surface-floating)] shadow-[var(--shadow-xl)]${className ? ` ${className}` : ""}`}
+      className={`absolute top-full z-dropdown ${alignClass} ${offsetClass} overflow-hidden rounded-xl border border-border-strong bg-[var(--color-surface-floating)] shadow-[var(--shadow-popover)]${className ? ` ${className}` : ""}`}
       {...rest}
     >
       {children}

@@ -1,9 +1,10 @@
 "use client";
 
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect } from "react";
 import { Scissors, X, Plus, Link, ChevronDown } from "lucide-react";
 import { sprintSlots as sprintSlotsApi } from "@/lib/api-client";
 import { Button } from "@/components/ui/Button";
+import { Modal } from "@/components/shared/Modal";
 
 interface SprintSlot {
   slotIndex: number;
@@ -30,7 +31,6 @@ export function SplitStoryPicker({ open, originalTitle, originalSprintId, onConf
   const [error, setError] = useState<string | null>(null);
   const [sprints, setSprints] = useState<SprintSlot[]>([]);
   const [selectedSprintId, setSelectedSprintId] = useState<string>("");
-  const mouseDownOnOverlay = useRef(false);
 
   useEffect(() => {
     if (!open) return;
@@ -68,12 +68,8 @@ export function SplitStoryPicker({ open, originalTitle, originalSprintId, onConf
   };
 
   return (
-    <div
-      className="fixed inset-0 z-modal flex items-center justify-center bg-black/60 backdrop-blur-sm"
-      onMouseDown={(e) => { mouseDownOnOverlay.current = e.target === e.currentTarget; }}
-      onClick={(e) => { if (e.target === e.currentTarget && mouseDownOnOverlay.current) onClose(); }}
-    >
-      <div className="w-full max-w-md rounded-xl border border-border-strong bg-[var(--color-surface-elevated)] shadow-[var(--shadow-2xl)] p-6">
+    <Modal open={open} onClose={onClose} aria-label="Split story">
+      <div className="w-full max-w-md rounded-xl border border-border-strong bg-[var(--color-surface-elevated)] shadow-[var(--shadow-modal)] p-6">
         {/* Header */}
         <div className="mb-5 flex items-start justify-between">
           <div className="flex items-center gap-2.5">
@@ -236,6 +232,6 @@ export function SplitStoryPicker({ open, originalTitle, originalSprintId, onConf
           </Button>
         </div>
       </div>
-    </div>
+    </Modal>
   );
 }

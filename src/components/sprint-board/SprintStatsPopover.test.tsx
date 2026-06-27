@@ -162,7 +162,7 @@ describe("SprintStatsPopover", () => {
     const anchorRef = createAnchorRef();
     render(<SprintStatsPopover allTickets={TICKETS} onClose={onClose} anchorRef={anchorRef} />);
 
-    const popover = screen.getByRole("button", { name: /Sprint Statistics/i }).closest("div.fixed.z-50")!;
+    const popover = screen.getByRole("button", { name: /Sprint Statistics/i }).closest("div.fixed.z-modal")!;
     fireEvent.click(popover);
     expect(onClose).not.toHaveBeenCalled();
   });

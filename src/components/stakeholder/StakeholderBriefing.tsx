@@ -119,14 +119,14 @@ export function StakeholderBriefing({
     <>
       {/* Backdrop */}
       <div
-        className="fixed inset-0 z-[200] bg-black/30"
+        className="fixed inset-0 z-modal bg-black/30"
         onClick={onClose}
         aria-hidden
       />
       {/* Panel */}
       <div
         ref={drawerRef}
-        className="fixed right-0 top-0 bottom-0 z-[201] flex flex-col border-l border-border-default bg-[var(--color-surface-elevated)]"
+        className="fixed right-0 top-0 bottom-0 z-modal flex flex-col border-l border-border-default bg-[var(--color-surface-elevated)]"
         style={{ width: drawerWidth, maxWidth: "90vw", boxShadow: "-8px 0 32px rgba(0,0,0,0.5)" }}
       >
         {/* Resize handle */}

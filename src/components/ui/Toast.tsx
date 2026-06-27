@@ -16,7 +16,7 @@ interface ToastProps {
 export function Toast({ toast, loading = false, onDismiss }: ToastProps) {
   if (toast == null) return null;
   return (
-    <div role="status" className="pointer-events-auto fixed right-6 bottom-6 z-50 flex items-center gap-2 rounded-lg border border-border-strong bg-[var(--color-surface-floating)] px-4 py-2.5 shadow-[var(--shadow-lg)]" style={{ animation: "fadeInUp 0.2s ease-out" }}>
+    <div role="status" className="pointer-events-auto fixed right-6 bottom-6 z-notification flex items-center gap-2 rounded-lg border border-border-strong bg-[var(--color-surface-floating)] px-4 py-2.5 shadow-[var(--shadow-lg)]" style={{ animation: "fadeInUp 0.2s ease-out" }}>
       {loading
         ? <Loader2 className="h-4 w-4 shrink-0 animate-spin text-text-tertiary" strokeWidth={1.5} />
         : <Check className="h-4 w-4 shrink-0 text-[var(--color-brand-400)]" strokeWidth={1.5} />}

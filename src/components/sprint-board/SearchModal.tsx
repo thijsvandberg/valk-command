@@ -155,7 +155,8 @@ export function SearchModal({ open, initialQuery = "", onClose, onSelectTicket, 
   const isCurrentSearchSaved = mode === "local" && query.trim().length >= 2 && savedSearches.some((s) => s.query === query.trim() && JSON.stringify(serializeFilters(s.filters)) === JSON.stringify(serializeFilters(filters)));
 
   return (
-    <div className="fixed inset-0 z-modal flex items-start justify-center px-4 pt-[12vh]" style={{ backgroundColor: "color-mix(in srgb, black 55%, transparent)" }} onMouseDown={(e) => { if (e.target === e.currentTarget) onClose(); }}>
+    <div className="fixed inset-0 z-modal flex items-start justify-center px-4 pt-[12vh]" style={{ backgroundColor: "color-mix(in srgb, black 55%, transparent)" }} onMouseDown={(e) => { if (e.target === e.currentTarget) onClose(); }} role="dialog" aria-modal="true" aria-label="Search">
+
       <div className="pointer-events-none absolute inset-0 backdrop-blur-sm" />
       <div className="relative z-10 w-full max-w-[1200px] overflow-hidden rounded-xl" style={{ backgroundColor: "var(--color-surface-floating)", boxShadow: "0 8px 40px rgba(0,0,0,0.6), 0 2px 12px rgba(0,0,0,0.4), 0 0 0 1px var(--color-overlay-default)", animation: "searchModalIn 0.15s cubic-bezier(0.16, 1, 0.3, 1)" }} onKeyDown={handleKeyDown}>
         <SearchModalHeader mode={mode} query={query} jiraQuery={jiraQuery} setQuery={setQuery} setJiraQuery={setJiraQuery} setMode={setMode} setActiveIdx={setActiveIdx} showFilters={showFilters} openFilters={handleOpenFilters} filters={filters} onClose={onClose} inputRef={inputRef} />

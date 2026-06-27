@@ -22,7 +22,7 @@ export function ActivityToast() {
   if (visibleToasts.length === 0) return null;
 
   return (
-    <div className="fixed bottom-4 right-4 z-modal flex flex-col gap-2 pointer-events-none">
+    <div className="fixed bottom-4 right-4 z-notification flex flex-col gap-2 pointer-events-none">
       {visibleToasts.map((toast) => {
         // Push failures carry the raw Jira reason; map it to clean toast copy
         // (without the "Trim it" instruction) and link to the Bridge ticket so the

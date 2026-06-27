@@ -53,8 +53,11 @@ export function CommandPalette() {
 
   return createPortal(
     <div
-      className={`fixed inset-0 z-tooltip flex items-start justify-center px-4 pt-[15vh] ${closing ? "cmd-palette-backdrop-out" : "cmd-palette-backdrop-in"}`}
+      className={`fixed inset-0 z-modal flex items-start justify-center px-4 pt-[15vh] ${closing ? "cmd-palette-backdrop-out" : "cmd-palette-backdrop-in"}`}
       onMouseDown={(e) => { if (e.target === e.currentTarget) handleClose(); }}
+      role="dialog"
+      aria-modal="true"
+      aria-label="Command palette"
     >
       {/* Backdrop blur layer */}
       <div className="pointer-events-none absolute inset-0 backdrop-blur-[6px]" />

@@ -260,9 +260,12 @@ export function StoryWriterLauncherModal({ open, onClose }: StoryWriterLauncherM
   return createPortal(
     <div
       className="fixed inset-0 z-modal flex items-center justify-center bg-black/55 backdrop-blur-[3px]"
-      onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}
+      role="dialog"
+      aria-modal="true"
+      aria-label="Story Writer launcher"
+      onMouseDown={(e) => { if (e.target === e.currentTarget) onClose(); }}
     >
-      <div className="w-full max-w-[560px] rounded-2xl border border-border-default bg-[var(--color-surface-elevated)] shadow-[var(--shadow-2xl)]">
+      <div className="w-full max-w-[560px] rounded-2xl border border-border-default bg-[var(--color-surface-elevated)] shadow-[var(--shadow-modal)]">
 
         {/* ── Header ── */}
         <div className="flex items-center justify-between px-5 pt-5 pb-4">

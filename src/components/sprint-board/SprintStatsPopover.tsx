@@ -220,7 +220,7 @@ export function SprintStatsPopover({
     <>
       {/* Backdrop */}
       <div
-        className="fixed inset-0 z-40"
+        className="fixed inset-0 z-modal"
         style={{
           backgroundColor: "color-mix(in srgb, black 25%, transparent)",
           opacity: mounted ? 1 : 0,
@@ -229,17 +229,21 @@ export function SprintStatsPopover({
         onClick={onClose}
       />
 
-      {/* Modal */}
+      {/* Modal. Kept as a hand-rolled centered dialog (not shared/Modal) to preserve
+          its scale-in entrance animation, but now at the z-modal layer with the
+          dialog role/aria-modal the shared Modal provides (BRDG-422). */}
       <div
         ref={popoverRef}
-        className="fixed z-50 overflow-y-auto rounded-xl border border-border-strong bg-[var(--color-surface-floating)]"
+        role="dialog"
+        aria-modal="true"
+        aria-label="Sprint statistics"
+        className="fixed z-modal overflow-y-auto rounded-xl border border-border-strong bg-[var(--color-surface-floating)] shadow-[var(--shadow-modal)]"
         style={{
           top: "50%",
           left: "50%",
           transform: mounted ? "translate(-50%, -50%) scale(1)" : "translate(-50%, -50%) scale(0.97)",
           width: "min(760px, calc(100vw - 48px))",
           maxHeight: "min(85vh, 680px)",
-          boxShadow: "0 16px 64px rgba(0,0,0,0.35), 0 4px 16px rgba(0,0,0,0.2)",
           opacity: mounted ? 1 : 0,
           transition: "opacity 180ms ease-out, transform 180ms ease-out",
         }}
