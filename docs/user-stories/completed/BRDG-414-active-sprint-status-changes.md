@@ -125,9 +125,20 @@ Risks: accountId unavailable from changelog (name-based compare); inline-changel
 - [x] A change marked seen stays cleared, but a later transition of the same ticket produces a new unseen item. <!-- status_change_seen keyed on statusChangeId; status-changes-query.test.ts -->
 - [x] "New" comment/story signal respects the 24h window and excludes the current user's own activity. <!-- status-changes-query.test.ts -->
 
+## UI as shipped (post-review refinements)
+
+The status-change line in `StatusChangeLine.tsx` was refined through PO review into its final form:
+- It renders as the **second block inside the row's surface** (`BoardRow.tsx`), so the hover/selection tint + left accent cover the whole row+update unit (one element, not a detached strip), pulled tight to the row.
+- A **single elbow connector** (no arrow icon) whose vertical is centred under the row's issue-type icon and curves into the line, marking it as a child of the row above.
+- The summary is **one uniform sentence** (same font/size/colour): "Updated from In Progress to Test [by Name] 4d ago", with the relative time woven in and the exact timestamp on hover.
+- **Test** rows show the UAT deploy as a tinted **badge** (pipeline-failure signal dropped); **Done/Deprecated** rows reuse the existing `OpenSubtasksIndicator` ("N open subtasks" badge → the shared "N of M open" popup with "Close all subtasks").
+- Actions are **text-only, left-aligned**: "Move to bottom" (Done/Dep, when not already filed) / inert "Generate test prompt" (Test) + an icon-only dismiss check.
+- The header bell toggle uses **BellDot**; the permanent **"Finished work" divider** shares the ticket-line background.
+- Demo data was seeded in the dev DB for review (cleared on the next Jira sync); fabricated changelog authors were removed (real "by" comes from the captured changelog).
+
 ## Related
 
-- Prototype: `src/app/dev/exploration/status-changes/page.tsx` (variant 1 chosen; 2/3 kept for comparison) and the `/dev/exploration` hub entry.
+- Prototype: `src/app/dev/exploration/status-changes/page.tsx` (variant 1 chosen; 2/3 kept for comparison), `src/app/dev/exploration/status-change-linking/page.tsx` (line-binding + toggle-icon study), and the `/dev/exploration` hub entry.
 - [[BRDG-426-generate-test-prompt]] — follow-up that makes the inert "Generate test prompt" button real (agent skill + `/api/tickets/[key]/generate-test-prompt`).
 - Builds on: `src/lib/sprint-insert-position.ts` (`trailingDoneDepStart`, `spliceKeyIntoOrder`), `docs/architecture/optimistic-updates.md`, `docs/architecture/jira-sync.md`, `new_story_read` read-state pattern, `usePipelines` signals.
 - [[BRDG-039-test-center]] — test status (`testStatus`, `lastTestRunAt`) overlaps with the Test-row signals.
