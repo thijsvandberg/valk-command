@@ -584,3 +584,18 @@ Replaced the hard-coded `BT: Backlog` drop tile with a per-account "default back
 
 Key bottlenecks / lessons:
 - **Same dirty-shared-tree hazard as BRDG-347/352/343** (`jira/sprints`, `push-to-jira`, `ChatLayout`). Confirmed external by stashing only the parallel sprint-cache/route files (`jira/sprints` then passed) and reading the `push-to-jira` failure (a parallel 3rd-arg `pushToJira` signature change with a stale test). None touch this story; my files are isolated and green.
+
+## BRDG-413 — inbox new-ticket digest (twice-daily weekday banner) (2026-06-27)
+
+Per-user inbox digest: a pure computation lib (`inbox-digest.ts` — Amsterdam-tz/weekday/due-window helpers + `computeInboxDigest` reusing `listNewStories` + `classifyInboxRelevance`), a lazy evaluate-on-read delivery store (`inbox-digest-store.ts`, ≤2 weekday windows, per-day cap), `GET/DELETE /api/inbox/digest`, a persistent server-backed banner in the app shell, and flipping the inbox group-by default to Relevance. 4 new test files + 1 edited (39 new tests). All 6951 suite tests green at clean HEAD; build green; banner visually verified live.
+
+| Phase | Notes |
+|---|---|
+| Plan (Opus) | High-value: verified the draft plan against the codebase and caught three real corrections before any code — `listNewStories` needs a full `NewStoryQueryCtx` (not a bare userId), `classifyInboxRelevance` needs `poNames` (4th input the draft omitted), and no tz util exists (use `Intl.DateTimeFormat`). Zero rework during impl |
+| Implement | Clean, lint/typecheck green per checkbox; added `parseStamp` to compare SQLite space-format `readAt` against ISO `jiraCreatedAt` (naive string compare misfires within a day) |
+| Verify | Cost was entirely environmental, not the code (see below) |
+
+Key bottlenecks / lessons:
+- **The postToolUse test hook collided with manual test runs, producing phantom failures.** `npm run verify` and isolated runs reported `TicketTable.test.tsx` + `sync-incremental` failures that did NOT reproduce in a clean single-process run (final clean full suite: 616 files / 6951 tests / 0 failures). A 6-commit `git worktree` bisect proved every "failure" was concurrent-vitest resource contention on the 16GB box — exactly the "ONE test process at a time" rule in CLAUDE.md. Lesson: on a flaky-looking suite, run ONE clean full suite before bisecting; the hook + a manual run = two processes.
+- **`npm run build` corrupted the dev server (`.next`), and a fresh dev compile then 500'd on every route** due to Tailwind v4 scanning `docs/` and generating invalid `var(--color-surface-*)` CSS from parallel-session planning docs (BRDG-418/424 + performance-log). Production build tolerates it; Turbopack dev does not. Unblocked visual verification by temporarily moving the offending docs out of scan + `rm -rf .next` + restart, then restored them. Documented in `docs/investigations/2026-06-27-dev-server-500-tailwind-scans-docs.md`; underlying token hygiene tracked by BRDG-418. Lesson: `rm -rf .next` before restarting dev after a build, not just a restart.
+- **Weekend + lazy evaluator meant the banner can't appear naturally on a Saturday.** Seeded an active digest row for the dev-bypass user (`global`) directly in `sqlite.db` (the weekend code path returns an already-active digest unchanged), screenshotted, then removed the seed.
