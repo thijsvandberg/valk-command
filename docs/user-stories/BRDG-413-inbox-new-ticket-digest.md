@@ -133,8 +133,8 @@ In `useInboxGroupBy.ts` change the default from `"date"` to `"relevance"`. Exist
 
 ## Acceptance Criteria
 
-- [ ] On weekdays I receive at most two inbox digests per day (morning ~09:00 and early afternoon ~13:00); none on weekends. <!-- evaluateInboxDigest windows + cap -->
-- [ ] A window's digest is delivered at the first moment I am active at/after its due time (e.g. active at 09:30 → morning digest at 09:30), not only at the exact clock time. <!-- lazy evaluate-on-read -->
+- [x] On weekdays I receive at most two inbox digests per day (morning ~09:00 and early afternoon ~13:00); none on weekends. <!-- evaluateInboxDigest windows + cap -->
+- [x] A window's digest is delivered at the first moment I am active at/after its due time (e.g. active at 09:30 → morning digest at 09:30), not only at the exact clock time. <!-- lazy evaluate-on-read -->
 - [x] The digest counts only tickets that arrived in the inbox since the last time I marked something read (not since I opened /inbox); with no prior read action it counts the whole current unread inbox. <!-- baseline = MAX(readAt), jiraCreatedAt > baseline -->
 - [x] The digest is per-user (my baseline and counts are mine). <!-- userId-scoped throughout -->
 - [x] The digest shows the total and how many new tickets landed in each relevance bucket (non-empty buckets, in ladder order with their labels); with no default team it shows the total only. <!-- classifyInboxRelevance reuse -->
@@ -145,8 +145,8 @@ In `useInboxGroupBy.ts` change the default from `"date"` to `"relevance"`. Exist
 
 - [x] Baseline selection: latest `readAt` wins; `null` when the user has never read; opening the inbox does not change it. <!-- inbox-digest.test -->
 - [x] New-since-baseline filtering and per-bucket counts are correct, including total-only fallback when no default team. <!-- inbox-digest.test -->
-- [ ] Window/cap logic: weekend yields nothing; morning delivers at 09:30; ≤2 deliveries/weekday; arriving at 14:00 shows one fresh banner and consumes both slots; an empty digest leaves the slot open; day rollover resets bookkeeping. <!-- inbox-digest-store.test -->
-- [ ] `GET /api/inbox/digest` evaluates + returns per user; `DELETE` clears `active` but preserves `deliveredWindows`. <!-- route.test -->
+- [x] Window/cap logic: weekend yields nothing; morning delivers at 09:30; ≤2 deliveries/weekday; arriving at 14:00 shows one fresh banner and consumes both slots; an empty digest leaves the slot open; day rollover resets bookkeeping. <!-- inbox-digest-store.test -->
+- [x] `GET /api/inbox/digest` evaluates + returns per user; `DELETE` clears `active` but preserves `deliveredWindows`. <!-- route.test -->
 - [ ] Inbox group-by default is `relevance` and still falls back to date when no default team is set. <!-- useInboxGroupBy.test -->
 
 ## Related

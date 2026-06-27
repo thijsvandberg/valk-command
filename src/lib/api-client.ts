@@ -1005,6 +1005,37 @@ export const notifications = {
 };
 
 // ---------------------------------------------------------------------------
+// Inbox digest (BRDG-413) - twice-daily new-ticket digest banner
+// ---------------------------------------------------------------------------
+
+export interface InboxDigestBucket {
+  key: string;
+  label: string;
+  count: number;
+}
+
+export interface ActiveInboxDigest {
+  id: string;
+  generatedAt: string;
+  baselineAt: string | null;
+  total: number;
+  buckets: InboxDigestBucket[];
+}
+
+export interface InboxDigestResponse {
+  active: ActiveInboxDigest | null;
+}
+
+export const inboxDigest = {
+  url: () => "/api/inbox/digest" as const,
+
+  get: (signal?: AbortSignal) =>
+    apiFetch<InboxDigestResponse>("/api/inbox/digest", { signal }),
+  dismiss: (signal?: AbortSignal) =>
+    apiFetch<{ ok: boolean }>("/api/inbox/digest", { method: "DELETE", signal }),
+};
+
+// ---------------------------------------------------------------------------
 // Confluence
 // ---------------------------------------------------------------------------
 
