@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef, useCallback, useMemo, useEffect, type ReactNode } from "react";
+import { useState, useRef, useCallback, useMemo, useEffect, Fragment, type ReactNode } from "react";
 import type { Ticket, POStatus, TicketReadiness, IssueType, JiraStatus, Sprint, PlaceholderTicket } from "@/types/ticket";
 import { PlaceholderRow } from "@/components/sprint-board/PlaceholderRow";
 import type { AssignableUser } from "@/components/shared/AssigneePicker";
@@ -9,7 +9,7 @@ import type { SortField, SortDir, InlineTagId } from "@/components/sprint-board/
 import { IssueTypeIcon } from "@/components/shared/IssueTypeIcon";
 import { EmptyState } from "@/components/shared/EmptyState";
 import { ChildIssueComposer } from "@/components/ticket-detail/ChildIssueComposer";
-import { Sheet, Inbox, Plus } from "lucide-react";
+import { Sheet, Inbox, Plus, CheckCheck } from "lucide-react";
 import { GroupStatBar, type StatCriterion } from "@/components/sprint-board/GroupStatBar";
 import { matchesWarningFilter, ticketWarnings } from "@/components/sprint-board/warning-filter";
 import { GroupCard, GROUP_CARD_CLASS } from "@/components/sprint-board/GroupCard";
@@ -38,6 +38,7 @@ import { BoardRow, SortableBoardRow } from "@/components/sprint-board/BoardRow";
 import type { TicketSessionEntry } from "@/hooks/useTicketSessionMap";
 import type { RefinementCardTicketInfo } from "@/components/sprint-board/RefinementGemHoverCard";
 import { useFollowedTickets, useFollowTicket, useLastDeployed, usePipelineHealth } from "@/hooks/usePipelines";
+import type { StatusChangeItem } from "@/lib/status-changes-query";
 import { POStatusCell, QualityBadge, POStatusIcon, EditStateDot, getJiraUrl } from "@/components/sprint-board/TicketTableCells";
 
 export { POStatusCell, QualityBadge, POStatusIcon, EditStateDot, getJiraUrl };
@@ -54,6 +55,26 @@ const TOTAL_COLSPAN = 1;
 // Elevated surface for the ungrouped list. Grouped cards use the shared GroupCard
 // component so the board and the epic "By sprint" view stay visually in sync.
 const CARD_CLASS = GROUP_CARD_CLASS;
+
+// BRDG-414: a permanent boundary between active work and confirmed-done work in a sprint
+// group. Nothing auto-moves below it; the PO files a finished ticket here by hand (the
+// "Move to bottom" action), which is the confirmation it's truly done.
+function FinishedWorkDividerRow() {
+  return (
+    <tr aria-hidden>
+      <td colSpan={TOTAL_COLSPAN} className="p-0">
+        <div className="flex items-center gap-2 bg-overlay-subtle/40 px-3 py-1">
+          <span className="h-px flex-1 bg-border-subtle" />
+          <span className="inline-flex items-center gap-1 text-[10px] uppercase tracking-wider text-text-muted">
+            <CheckCheck className="h-3 w-3" strokeWidth={1.75} />
+            finished work
+          </span>
+          <span className="h-px flex-1 bg-border-subtle" />
+        </div>
+      </td>
+    </tr>
+  );
+}
 
 // Droppable zone rendered inside empty sprint groups during an active drag.
 function DroppableGroupZone({ groupKey }: { groupKey: string }) {
@@ -167,6 +188,9 @@ export function TicketTable({
   onViewRefinement,
   onCreateTicket,
   freshlyCreatedKeys,
+  statusChangeMap,
+  onStatusChangeSeen,
+  onStatusChangeMoveToBottom,
   flatCreateTarget,
   flatComposerOpen = false,
   onCloseFlatComposer,
@@ -273,6 +297,10 @@ export function TicketTable({
   /** BRDG-395: keys created via the inline quick-add this session; the matching row shows
    *  the "Open in Story Writer" pill. Absent on hosts without inline create. */
   freshlyCreatedKeys?: Set<string>;
+  /** BRDG-414: ticket-key -> latest unseen status change, for the review line beneath the row. */
+  statusChangeMap?: Map<string, StatusChangeItem>;
+  onStatusChangeSeen?: (id: string) => void;
+  onStatusChangeMoveToBottom?: (ticketKey: string, statusChangeId: string) => void;
   /** Target for the ungrouped list's composer. When set, the header "+" can open the inline composer. */
   flatCreateTarget?: { sprintId: string | null };
   /** Whether the flat (single-sprint) composer is open. Toggled by the "+" in the single-sprint header. */
@@ -445,6 +473,9 @@ export function TicketTable({
     unfollowTicket,
     lastDeployedMap,
     healthMap,
+    statusChange: statusChangeMap?.get(ticket.key) ?? null,
+    onStatusChangeSeen,
+    onStatusChangeMoveToBottom,
     selectedTicket,
     onSelectTicket,
     onRowContextMenu,
@@ -474,7 +505,7 @@ export function TicketTable({
     onRemoveFromRefinement,
     onViewRefinement,
     showStoryWriterLink: freshlyCreatedKeys?.has(ticket.key) ?? false,
-  }), [checkedTickets, selectedTicket, focusedTicketIdx, someChecked, activeDragId, visibleTags, hideEpic, hideRowAccent, showSprint, sprintNameMap, poStatuses, readinessMap, inflightKeys, contextMenuKeys, onSelectTicket, onRowContextMenu, handleCheckboxClick, onPoStatusChange, onReadinessChange, onBusinessValueChange, onStoryPointsChange, planningOn, onGuestimationChange, onJiraStatusChange, onIssueTypeChange, onTitleChange, onAssigneeChange, onEpicChange, onSprintChange, sprints, onCloseSubtasks, onSubtasksAdded, editingTitleKey, reviewPopoverKey, handleToggleReviewPopover, onRunReview, followedKeys, followTicket, unfollowTicket, lastDeployedMap, healthMap, refinementSessionMap, ticketInfoMap, onRemoveFromRefinement, onViewRefinement, freshlyCreatedKeys]);
+  }), [checkedTickets, selectedTicket, focusedTicketIdx, someChecked, activeDragId, visibleTags, hideEpic, hideRowAccent, showSprint, sprintNameMap, poStatuses, readinessMap, inflightKeys, contextMenuKeys, onSelectTicket, onRowContextMenu, handleCheckboxClick, onPoStatusChange, onReadinessChange, onBusinessValueChange, onStoryPointsChange, planningOn, onGuestimationChange, onJiraStatusChange, onIssueTypeChange, onTitleChange, onAssigneeChange, onEpicChange, onSprintChange, sprints, onCloseSubtasks, onSubtasksAdded, editingTitleKey, reviewPopoverKey, handleToggleReviewPopover, onRunReview, followedKeys, followTicket, unfollowTicket, lastDeployedMap, healthMap, refinementSessionMap, ticketInfoMap, onRemoveFromRefinement, onViewRefinement, freshlyCreatedKeys, statusChangeMap, onStatusChangeSeen, onStatusChangeMoveToBottom]);
 
   // Placeholder rows (BRDG-304) render inside a table tbody as a single-cell row,
   // mirroring BoardRow's <tr><td> shape so they sit in the same column flow.
@@ -765,6 +796,13 @@ export function TicketTable({
             : [];
         const hasPlaceholders = groupPlaceholders.length > 0;
 
+        // BRDG-414: a permanent "Finished work" divider in sprint groups marks the boundary
+        // of the trailing DONE/DEPRECATED block. Shown even when that block is empty (anchored
+        // at the bottom). Nothing auto-moves below it.
+        const dividerIdx = isSprintGroup
+          ? trailingDoneDepStart(visibleGroupTickets.map((t) => ({ jiraStatus: t.jiraStatus })))
+          : -1;
+
         const ticketRows = !isCollapsed && visibleGroupTickets.map((ticket, groupIdx) => {
           const flatIdx = tickets.findIndex((t) => t.key === ticket.key);
           let insertLine: "above" | "below" | undefined;
@@ -778,7 +816,7 @@ export function TicketTable({
           // placeholders follow the tickets, the last placeholder rounds instead, so a ticket
           // is never the visual final row in that case.
           const isLastInCard = groupIdx === visibleGroupTickets.length - 1 && !hasPlaceholders;
-          return externalDnd ? (
+          const rowEl = externalDnd ? (
             <SortableBoardRow
               key={ticket.key}
               {...makeRowProps(ticket, flatIdx)}
@@ -794,16 +832,36 @@ export function TicketTable({
               warnings={warnings}
             />
           );
+          // Divider renders just above the first finished row.
+          if (dividerIdx > 0 && groupIdx === dividerIdx) {
+            return (
+              <Fragment key={`div-${ticket.key}`}>
+                <FinishedWorkDividerRow />
+                {rowEl}
+              </Fragment>
+            );
+          }
+          return rowEl;
         });
+
+        // No finished block yet: anchor the divider at the bottom of the group's tickets.
+        const trailingDivider =
+          !isCollapsed && dividerIdx >= 0 && dividerIdx === visibleGroupTickets.length && visibleGroupTickets.length > 0;
 
         const groupRows = externalDnd ? (
           <SortableContext items={groupTicketIds} strategy={() => null}>
             {ticketRows}
+            {trailingDivider && <FinishedWorkDividerRow />}
             {!isCollapsed && group.tickets.length === 0 && (
               <DroppableGroupZone groupKey={group.key} />
             )}
           </SortableContext>
-        ) : ticketRows;
+        ) : (
+          <>
+            {ticketRows}
+            {trailingDivider && <FinishedWorkDividerRow />}
+          </>
+        );
 
         // Always-on create action, sized to match the warning/menu icons so the
         // header cluster reads as "warning | + | ...".

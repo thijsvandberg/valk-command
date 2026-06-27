@@ -17,6 +17,8 @@ import { type WarningKind } from "@/components/sprint-board/warning-filter";
 import type { TicketSessionEntry } from "@/hooks/useTicketSessionMap";
 import { RefinementGemTrigger, type RefinementCardTicketInfo } from "@/components/sprint-board/RefinementGemHoverCard";
 import type { PipelineHealthEntry, LastDeployedInfo } from "@/hooks/usePipelines";
+import type { StatusChangeItem } from "@/lib/status-changes-query";
+import { StatusChangeLine } from "@/components/sprint-board/StatusChangeLine";
 import { useSortable } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import { EditStateDot, QualityBadge } from "@/components/sprint-board/TicketTableCells";
@@ -151,6 +153,14 @@ export interface BoardRowBaseProps {
   sessionTimeAgo?: string;
   sessionJiraChanged?: boolean;
   splitTarget?: string | null;
+  /**
+   * Sprint board status-change review queue (BRDG-414): the latest unseen status change
+   * for this ticket on the active sprint. Renders a quiet line beneath the row with the
+   * transition + signals + contextual action. Absent (board-only) elsewhere.
+   */
+  statusChange?: StatusChangeItem | null;
+  onStatusChangeSeen?: (id: string) => void;
+  onStatusChangeMoveToBottom?: (ticketKey: string, statusChangeId: string) => void;
   /** Drop the leading selection-checkbox gutter (views without bulk selection, e.g. the
    *  Story Writer landing). Off by default so the board keeps its checkbox. */
   hideCheckbox?: boolean;
@@ -263,6 +273,9 @@ export const BoardRow = memo(forwardRef<HTMLTableRowElement, BoardRowBaseProps>(
     sessionTimeAgo,
     sessionJiraChanged = false,
     splitTarget,
+    statusChange,
+    onStatusChangeSeen,
+    onStatusChangeMoveToBottom,
     hideCheckbox = false,
     hideAssigneeUntilHover = false,
     isLastInCard = false,
@@ -961,6 +974,17 @@ export const BoardRow = memo(forwardRef<HTMLTableRowElement, BoardRowBaseProps>(
             </div>
           )}
         </div>
+        {/* BRDG-414: the status-change review line stacks beneath the row surface, inside the
+            same <td>, so the virtualizer keeps measuring the full row height. */}
+        {statusChange && onStatusChangeSeen && onStatusChangeMoveToBottom && (
+          <StatusChangeLine
+            change={statusChange}
+            deploy={lastDeploy}
+            health={health}
+            onSeen={() => onStatusChangeSeen(statusChange.id)}
+            onMoveToBottom={() => onStatusChangeMoveToBottom(statusChange.ticketKey, statusChange.id)}
+          />
+        )}
       </td>
     </tr>
   );

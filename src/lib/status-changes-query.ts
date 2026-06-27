@@ -46,10 +46,12 @@ function parseDbTime(s: string): number {
 
 export async function listUnseenStatusChanges(
   ctx: StatusChangeQueryCtx,
-  sprintIds: string[],
+  // Scoped by the active sprint's ticket keys (robust: ticketStatusChange.sprintName is
+  // stored inconsistently as a name or id across sync paths).
+  ticketKeys: string[],
   nowMs: number = Date.now(),
 ): Promise<StatusChangeItem[]> {
-  if (sprintIds.length === 0) return [];
+  if (ticketKeys.length === 0) return [];
 
   const unseenByUser = notExists(
     db
@@ -78,7 +80,7 @@ export async function listUnseenStatusChanges(
     })
     .from(ticketStatusChange)
     .innerJoin(ticket, eq(ticket.jiraKey, ticketStatusChange.ticketKey))
-    .where(and(inArray(ticketStatusChange.sprintName, sprintIds), isNull(ticket.removedFromJiraAt), unseenByUser))
+    .where(and(inArray(ticketStatusChange.ticketKey, ticketKeys), isNull(ticket.removedFromJiraAt), unseenByUser))
     .orderBy(desc(ticketStatusChange.changedAt));
 
   // One line per ticket: the most recent unseen change (rows are already newest-first).

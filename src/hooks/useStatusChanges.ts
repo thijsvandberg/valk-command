@@ -17,13 +17,14 @@ interface StatusChangesResponse {
 }
 
 /**
- * The active-sprint status-change review queue for the given sprint(s). SWR with a 60s
- * poll fallback, plus a live revalidation on the shared ticket-event bus. Exposes the
+ * The active-sprint status-change review queue, scoped to the given ticket keys. SWR with
+ * a 60s poll fallback, plus a live revalidation on the shared ticket-event bus. Exposes the
  * rows, a by-ticket-key map for the board, and optimistic markSeen / markAllSeen.
  */
-export function useStatusChanges(sprintIds: string[]) {
-  const sortedIds = useMemo(() => [...sprintIds].sort(), [sprintIds]);
-  const key = sortedIds.length > 0 ? `/api/status-changes?sprintIds=${encodeURIComponent(sortedIds.join(","))}` : null;
+export function useStatusChanges(ticketKeys: string[]) {
+  // Sort so the SWR key is stable across reorders (only membership changes refetch).
+  const sortedKeys = useMemo(() => [...ticketKeys].sort(), [ticketKeys]);
+  const key = sortedKeys.length > 0 ? `/api/status-changes?keys=${encodeURIComponent(sortedKeys.join(","))}` : null;
 
   const { data, mutate, isLoading } = useSWR<StatusChangesResponse>(key, swrFetcher, {
     revalidateOnFocus: false,

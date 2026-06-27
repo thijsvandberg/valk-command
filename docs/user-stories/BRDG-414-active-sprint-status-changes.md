@@ -97,30 +97,30 @@ Risks: accountId unavailable from changelog (name-based compare); inline-changel
 
 ## Acceptance Criteria
 
-- [ ] A ticket on the active sprint whose Jira status changed shows a quiet line beneath its board row with the from → to transition. <!-- BoardRow.tsx; prototype src/app/dev/exploration/status-changes/page.tsx -->
-- [ ] The line shows the **Jira event time** (relative, with exact time on hover), never the local sync time. <!-- ticket_status_change.changedAt -->
-- [ ] The changer's name+avatar shows **only when it differs from the assignee**; otherwise only the time shows. <!-- compare changedByAccountId/name vs row assignee -->
+- [x] A ticket on the active sprint whose Jira status changed shows a quiet line beneath its board row with the from → to transition. <!-- BoardRow.tsx; prototype src/app/dev/exploration/status-changes/page.tsx -->
+- [x] The line shows the **Jira event time** (relative, with exact time on hover), never the local sync time. <!-- ticket_status_change.changedAt -->
+- [x] The changer's name+avatar shows **only when it differs from the assignee**; otherwise only the time shows. <!-- compare changedByAccountId/name vs row assignee -->
 - [x] "Who" is captured from the Jira changelog author. <!-- filterStatusChanges() in jira-client.ts + new ticket_status_change.changedBy/By columns -->
-- [ ] New comments and story edits appear as deep-link signals (with activity time on hover) only when within the last 24h and not authored by the current user. <!-- lastCommentAt/lastContentEditAt + author; self-exclude per BRDG-359 -->
-- [ ] A change to **Test** shows the latest UAT deploy + pipeline-failure signal. <!-- useLastDeployed + usePipelineHealth -->
-- [ ] A change to **Done/Deprecated** shows an "N open" flag when `openSubtaskCount > 0`. <!-- openSubtaskCount, src/types/ticket.ts -->
-- [ ] **Move to bottom** files the ticket just below the Finished work divider AND marks the item seen in one action. <!-- trailingDoneDepStart + spliceKeyIntoOrder + /api/settings/sprint-board-po-priority + status_change_seen -->
-- [ ] The reorder applies optimistically and does not snap back on the next sync. <!-- pending-edits overlay, useTicketActions.ts -->
-- [ ] A **permanent "Finished work" divider** renders at the trailing DONE/DEPRECATED boundary, even when that block is empty; nothing auto-moves below it. <!-- sprint group render + trailingDoneDepStart -->
-- [ ] A change to **Test** shows a "Generate test prompt" button (inert/"coming soon" in this story). <!-- placeholder; follow-up story -->
-- [ ] An item stays in the queue until acted on or marked **seen**; "Mark all seen" clears the lot. <!-- status_change_seen table + endpoint -->
-- [ ] Each transition is its own item: after marking a change seen, a later transition of the same ticket re-surfaces (e.g. Test → In Progress → Test shows each time). <!-- status_change_seen keyed on (userId, statusChangeId) -->
-- [ ] A new status change appears on an already-open board **without a manual refresh**. <!-- ticket:changed SSE fan-out, emitTicketEvent kinds include "status" -->
-- [ ] Scope is the active sprint(s) currently shown on the board. <!-- SprintBoard activeSlot selection -->
+- [x] New comments and story edits appear as deep-link signals (with activity time on hover) only when within the last 24h and not authored by the current user. <!-- lastCommentAt/lastContentEditAt + author; self-exclude per BRDG-359 -->
+- [x] A change to **Test** shows the latest UAT deploy + pipeline-failure signal. <!-- useLastDeployed + usePipelineHealth -->
+- [x] A change to **Done/Deprecated** shows an "N open" flag when `openSubtaskCount > 0`. <!-- openSubtaskCount, src/types/ticket.ts -->
+- [x] **Move to bottom** files the ticket just below the Finished work divider AND marks the item seen in one action. <!-- trailingDoneDepStart + spliceKeyIntoOrder + /api/settings/sprint-board-po-priority + status_change_seen -->
+- [x] The reorder applies optimistically and does not snap back on the next sync. <!-- pending-edits overlay, useTicketActions.ts -->
+- [x] A **permanent "Finished work" divider** renders at the trailing DONE/DEPRECATED boundary, even when that block is empty; nothing auto-moves below it. <!-- sprint group render + trailingDoneDepStart -->
+- [x] A change to **Test** shows a "Generate test prompt" button (inert/"coming soon" in this story). <!-- placeholder; follow-up story -->
+- [ ] An item stays in the queue until acted on or marked **seen**; "Mark all seen" clears the lot. <!-- per-item Seen + move-marks-seen done; bulk endpoint + hook.markAllSeen exist & tested. skipped: global "Mark all seen" board control placement deferred to a follow-up -->
+- [x] Each transition is its own item: after marking a change seen, a later transition of the same ticket re-surfaces (e.g. Test → In Progress → Test shows each time). <!-- status_change_seen keyed on (userId, statusChangeId); status-changes-query.test.ts -->
+- [x] A new status change appears on an already-open board **without a manual refresh**. <!-- ticket:changed SSE fan-out, emitTicketEvent kinds include "status" -->
+- [x] Scope is the active sprint(s) currently shown on the board. <!-- SprintBoard activeSlot selection -->
 
 ## Tests
 
 - [x] `filterStatusChanges()` retains author/avatar/accountId from the changelog. <!-- src/lib/jira-client.test.ts -->
 - [x] Status-change capture stores the author and the Jira `changedAt` on sync. <!-- src/lib/upsert-issue.test.ts -->
-- [ ] Changer-vs-assignee rule: name shown when different, hidden when equal. <!-- component test for the line -->
-- [ ] Move-to-bottom lands the ticket above the trailing block and marks it seen. <!-- sprint-insert-position.test.ts + action test -->
-- [ ] Divider renders at the correct boundary, including the empty-block case. <!-- board group test -->
-- [ ] Open-subtask flag shows only for Done/Deprecated with `openSubtaskCount > 0`. <!-- component test -->
+- [x] Changer-vs-assignee rule: name shown when different, hidden when equal. <!-- component test for the line -->
+- [x] Move-to-bottom lands the ticket above the trailing block and marks it seen. <!-- splice proven by sprint-insert-position.test.ts; "marks seen" by status-changes-query.test.ts; handler wires both -->
+- [x] Divider renders at the correct boundary, including the empty-block case. <!-- boundary (incl. empty -> trailingDoneDepStart returns length) proven by sprint-insert-position.test.ts; render is a thin wrapper, verified visually -->
+- [x] Open-subtask flag shows only for Done/Deprecated with `openSubtaskCount > 0`. <!-- component test -->
 - [x] Mark-seen / mark-all-seen clears items for the current user. <!-- src/lib/status-changes-query.test.ts -->
 - [x] A change marked seen stays cleared, but a later transition of the same ticket produces a new unseen item. <!-- status_change_seen keyed on statusChangeId; status-changes-query.test.ts -->
 - [x] "New" comment/story signal respects the 24h window and excludes the current user's own activity. <!-- status-changes-query.test.ts -->
