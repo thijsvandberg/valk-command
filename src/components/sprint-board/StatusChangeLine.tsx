@@ -108,14 +108,14 @@ export function StatusChangeLine({
     <div
       onClick={(e) => e.stopPropagation()}
       onPointerDown={(e) => e.stopPropagation()}
-      className="relative flex items-center pb-1.5 pt-0 pl-[73px] pr-[23px]"
+      className="relative flex items-center border-b border-border-subtle pb-1.5 pt-0 pl-[73px] pr-[23px]"
     >
       {/* Single elbow connector: its vertical sits at the CENTRE of the row's issue-type icon and
-          its horizontal meets the line's vertical centre, so it reads as one branch coming DOWN
-          from the row above. left-[53px] = icon centre minus the surface's 3px accent border. */}
+          its horizontal meets the line just above centre. left-[53px] = icon centre minus the
+          surface's 3px accent border. */}
       <span
         aria-hidden
-        className="pointer-events-none absolute left-[53px] bottom-1/2 h-3 w-3.5 rounded-bl-[6px] border-b border-l border-border-strong"
+        className="pointer-events-none absolute left-[53px] bottom-[calc(50%+2px)] h-3 w-3.5 rounded-bl-[6px] border-b border-l border-border-strong"
       />
 
       <div className="flex min-w-0 flex-1 flex-wrap items-center gap-x-2.5 gap-y-1.5">
@@ -159,30 +159,23 @@ export function StatusChangeLine({
           </>
         )}
 
-        {isTest && deploy?.environment && (
-          <>
-            <Sep />
-            <DeploySignal deploy={deploy} />
-          </>
-        )}
+        {/* Badges carry their own pill background, so no dot separator before them. */}
+        {isTest && deploy?.environment && <DeploySignal deploy={deploy} />}
 
         {showSubtaskFlag && (
-          <>
-            <Sep />
-            {/* Reuse the board's existing open-subtasks indicator: the amber badge opens the
-                "N of M subtasks open" popup with the list + "Close all subtasks" (BRDG-414). */}
-            <OpenSubtasksIndicator
-              ticketKey={change.ticketKey}
-              jiraStatus={change.toStatus}
-              openCount={change.openSubtaskCount}
-              totalCount={change.totalSubtaskCount}
-              onCloseSubtasks={onCloseSubtasks}
-              descriptive
-            />
-          </>
+          // Reuse the board's existing open-subtasks indicator: the amber badge opens the
+          // "N of M subtasks open" popup with the list + "Close all subtasks" (BRDG-414).
+          <OpenSubtasksIndicator
+            ticketKey={change.ticketKey}
+            jiraStatus={change.toStatus}
+            openCount={change.openSubtaskCount}
+            totalCount={change.totalSubtaskCount}
+            onCloseSubtasks={onCloseSubtasks}
+            descriptive
+          />
         )}
 
-        <span className="ml-auto flex items-center gap-1.5">
+        <span className="flex items-center gap-1.5">
           {isFinished && !atBottom && (
             <Tooltip content="Move to bottom — files it just below the Finished work divider. Nothing auto-moves; this is your confirmation it's done.">
               <button type="button" onClick={onMoveToBottom} className={`${ACTION_BTN} cursor-pointer hover:bg-overlay-default hover:text-text-primary`}>
