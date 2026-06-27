@@ -103,38 +103,48 @@ In `useInboxGroupBy.ts` change the default from `"date"` to `"relevance"`. Exist
 
 ## Implementation Plan
 
-**Phase 1 — digest computation (pure + query)**
-1. `src/lib/inbox-digest.ts` (new) — `WINDOWS` (morning 09:00 / afternoon 13:00), `TIMEZONE`, weekday + due-window helpers, and `computeInboxDigest(userId, now)` that: reads baseline = `MAX(readAt)` from `new_story_read`; reuses the `listNewStories` unread/self-exclude path to get candidate rows; filters `jiraCreatedAt > baseline`; classifies via `classifyInboxRelevance` using default team + `buildTeamMap` + `poAccountIds`; returns `{ total, buckets }`. No default team → `{ total, buckets: [] }`.
-2. Reuse, do not duplicate: relevance classifier + labels (`new-stories-grouping.ts`), unread query (`new-stories-query.ts`), read store (`new-story-read-store.ts`), default-team / team-map / po-user stores.
+> Verified against the codebase before implementation. Key corrections vs. the original draft:
+> - `listNewStories` takes a full `NewStoryQueryCtx = { userId, jiraAccountId, jiraName }`, not a bare `userId`. The acting Jira identity is resolved server-side by the existing `resolveNewStoryQueryCtx()` (`src/lib/new-stories-ctx.ts`) — reuse it so the digest sees the exact same candidate set as the inbox.
+> - `classifyInboxRelevance` needs **four** inputs: `{ myTeam, teamMap, poAccountIds, poNames }` (the draft omitted `poNames`).
+> - No timezone util exists. Use `Intl.DateTimeFormat` with `timeZone: "Europe/Amsterdam"` to derive local weekday / HH:mm / YYYY-MM-DD from a passed-in `now: Date` (DST-correct, no new deps, testable).
+> - `default_team` is stored JSON-encoded (`createUserJsonSettingRoute` does `JSON.stringify`), so read it via `readUserSetting("default_team", userId)` + `JSON.parse`.
+> - `GET /api/inbox/digest` mutates (consumes windows), so it must NOT use the read-through `cache` and must return `Cache-Control: private, no-store`.
+
+**Phase 1 — digest computation (pure + query)** · `src/lib/inbox-digest.ts` (new)
+1. Constants: `TIMEZONE = "Europe/Amsterdam"`, `WINDOWS = [{ key: "morning", hour: 9, minute: 0 }, { key: "afternoon", hour: 13, minute: 0 }]`, `DigestWindowKey = "morning" | "afternoon"`.
+2. Pure tz helpers over `now: Date` via `Intl.DateTimeFormat`: `localDateKey(now)` → `YYYY-MM-DD`; `isWeekday(now)`; `dueWindows(now)` → window keys whose local HH:mm ≤ now.
+3. `getInboxBaseline(userId)` → `MAX(newStoryRead.readAt)` for the user (new small query); `null` when never read.
+4. `computeInboxDigest(ctx: NewStoryQueryCtx, now)` → baseline; `listNewStories(ctx)` candidates; keep rows where `baseline == null || jiraCreatedAt == null || jiraCreatedAt > baseline`; read `default_team` (null → `{ total, buckets: [] }`); else build `teamMap` from `userTeamAssignment` + `poAccountIds`/`poNames` from `poUser`, classify each new row, emit non-empty buckets in `RELEVANCE_BUCKETS` order. Returns `{ total, baselineAt, buckets }`.
+5. Reuse, do not duplicate: `classifyInboxRelevance` / `RELEVANCE_BUCKETS` / `RELEVANCE_BUCKET_LABELS` / `buildTeamMap` (`new-stories-grouping.ts`), `listNewStories` (`new-stories-query.ts`), `resolveNewStoryQueryCtx` (`new-stories-ctx.ts`), `readUserSetting` (`user-settings.ts`).
 
 **Phase 2 — digest state + route (lazy evaluate-on-read)**
-3. `src/lib/inbox-digest-store.ts` (new) — read/write the `inbox_digest` `userSetting` JSON; `evaluateInboxDigest(userId, now)` implementing windows + per-day cap (steps 1–7 above); `clearActiveDigest(userId)`.
-4. `src/app/api/inbox/digest/route.ts` (new) — `GET` resolves `userId`, calls `evaluateInboxDigest`, returns `{ active }`; `DELETE` calls `clearActiveDigest`. Rate-limit + zod consistent with sibling routes.
-5. `src/lib/api-client.ts` — add an `inboxDigest` helper (`get`, `dismiss`).
+6. `src/lib/inbox-digest-store.ts` (new) — `InboxDigestState` type matching the story shape; `readDigestState`/`writeDigestState` over `readUserSetting`/`writeUserSetting` key `"inbox_digest"`; `evaluateInboxDigest(ctx, now)` implementing steps 1–7 (day reset, weekend short-circuit, `dueWindows − deliveredWindows`, compute only when unconsumed non-empty AND total > 0, mark all unconsumed consumed, else leave active); `clearActiveDigest(userId)` (active → null, keep deliveredWindows).
+7. `src/app/api/inbox/digest/route.ts` (new) — `GET`: `resolveNewStoryQueryCtx()` → `evaluateInboxDigest(ctx, new Date())` → `{ active }` with `Cache-Control: private, no-store`, no read-through cache. `DELETE`: `applyRateLimit("delete")` → `resolveUserId()` → `clearActiveDigest`. Patterns copied from `new-stories/read/route.ts` + `po-users/route.ts`.
+8. `src/lib/api-client.ts` — add `inboxDigest` helper (`url()`, `get`, `dismiss`).
 
 **Phase 3 — banner UI**
-6. `src/components/notifications/InboxDigestBanner.tsx` (new) — SWR read (`refreshInterval` ~60s, `revalidateOnFocus`), renders total + non-empty buckets, **Open inbox** / **Dismiss** actions; hidden when `active` is null. Persistent card styling.
-7. `src/app/(app)/layout.tsx` — mount the banner in the app shell.
+9. `src/components/notifications/InboxDigestBanner.tsx` (new) — `useSWR(inboxDigest.url(), swrFetcher, { refreshInterval: 60000, revalidateOnFocus: true, dedupingInterval: 30000 })`; null when `active` is null; persistent card with total + non-empty bucket lines, **Open inbox** (dismiss + set `sessionStorage["inbox-group-by"]="relevance"` + `router.push("/inbox")`) / **Dismiss** (dismiss + mutate). Calls `DELETE /api/inbox/digest`.
+10. `src/app/(app)/layout.tsx` — mount as a dynamic sibling of `DeployNotifier` inside `ActivityProvider`.
 
 **Phase 4 — inbox default grouping**
-8. `src/components/sprint-board/useInboxGroupBy.ts` — default `"date"` → `"relevance"` (fallback behaviour unchanged).
+11. `src/components/sprint-board/useInboxGroupBy.ts` — default `"date"` → `"relevance"` (existing `effectiveGroupBy` fallback to date with no team is unchanged; persisted explicit choice still respected).
 
-**Tests:** `src/lib/inbox-digest.test.ts` (baseline selection incl. null; new-since-baseline filtering; per-bucket counts; no-team total-only), `src/lib/inbox-digest-store.test.ts` (weekday/weekend gating; 09:30 morning delivery; ≤2/day cap; arrive-at-14:00 consumes both windows with one banner; day rollover reset; empty digest does not spend a slot; dismiss clears active but not bookkeeping), `src/app/api/inbox/digest/route.test.ts` (GET evaluate + DELETE clear, per-user), `src/components/sprint-board/useInboxGroupBy.test.ts` (default now relevance, still falls back to date with no team).
+**Tests:** `src/lib/inbox-digest.test.ts` (tz/weekday/due-window helpers incl. DST + weekend; baseline incl. null & null createdAt; per-bucket counts; no-team total-only), `src/lib/inbox-digest-store.test.ts` (weekday/weekend gating; 09:30 morning delivery; ≤2/day cap; arrive-at-14:00 consumes both windows with one banner; day rollover reset; empty digest does not spend a slot; dismiss clears active but not bookkeeping), `src/app/api/inbox/digest/route.test.ts` (GET evaluate + DELETE clear, per-user), `src/components/sprint-board/useInboxGroupBy.test.ts` (default now relevance, still falls back to date with no team).
 
 ## Acceptance Criteria
 
 - [ ] On weekdays I receive at most two inbox digests per day (morning ~09:00 and early afternoon ~13:00); none on weekends. <!-- evaluateInboxDigest windows + cap -->
 - [ ] A window's digest is delivered at the first moment I am active at/after its due time (e.g. active at 09:30 → morning digest at 09:30), not only at the exact clock time. <!-- lazy evaluate-on-read -->
-- [ ] The digest counts only tickets that arrived in the inbox since the last time I marked something read (not since I opened /inbox); with no prior read action it counts the whole current unread inbox. <!-- baseline = MAX(readAt), jiraCreatedAt > baseline -->
-- [ ] The digest is per-user (my baseline and counts are mine). <!-- userId-scoped throughout -->
-- [ ] The digest shows the total and how many new tickets landed in each relevance bucket (non-empty buckets, in ladder order with their labels); with no default team it shows the total only. <!-- classifyInboxRelevance reuse -->
+- [x] The digest counts only tickets that arrived in the inbox since the last time I marked something read (not since I opened /inbox); with no prior read action it counts the whole current unread inbox. <!-- baseline = MAX(readAt), jiraCreatedAt > baseline -->
+- [x] The digest is per-user (my baseline and counts are mine). <!-- userId-scoped throughout -->
+- [x] The digest shows the total and how many new tickets landed in each relevance bucket (non-empty buckets, in ladder order with their labels); with no default team it shows the total only. <!-- classifyInboxRelevance reuse -->
 - [ ] The notification is a persistent in-app banner/card (not a red dot); it survives reload, and I can Open inbox (jump to Inbox in Relevance grouping) or Dismiss it. <!-- InboxDigestBanner + server-backed state -->
 - [ ] The Inbox defaults to Relevance grouping (falling back to date rendering only when no default team is set). <!-- useInboxGroupBy default -->
 
 ## Tests
 
-- [ ] Baseline selection: latest `readAt` wins; `null` when the user has never read; opening the inbox does not change it. <!-- inbox-digest.test -->
-- [ ] New-since-baseline filtering and per-bucket counts are correct, including total-only fallback when no default team. <!-- inbox-digest.test -->
+- [x] Baseline selection: latest `readAt` wins; `null` when the user has never read; opening the inbox does not change it. <!-- inbox-digest.test -->
+- [x] New-since-baseline filtering and per-bucket counts are correct, including total-only fallback when no default team. <!-- inbox-digest.test -->
 - [ ] Window/cap logic: weekend yields nothing; morning delivers at 09:30; ≤2 deliveries/weekday; arriving at 14:00 shows one fresh banner and consumes both slots; an empty digest leaves the slot open; day rollover resets bookkeeping. <!-- inbox-digest-store.test -->
 - [ ] `GET /api/inbox/digest` evaluates + returns per user; `DELETE` clears `active` but preserves `deliveredWindows`. <!-- route.test -->
 - [ ] Inbox group-by default is `relevance` and still falls back to date when no default team is set. <!-- useInboxGroupBy.test -->
