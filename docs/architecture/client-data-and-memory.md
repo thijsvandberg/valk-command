@@ -97,6 +97,25 @@ above 40 rows. The grouped Sprint Board
 the Inbox, and the Refinement queue still render all rows; virtualizing them was
 reviewed and not pursued (memory is bounded by the cap, so it is a perf nice-to-have).
 
+## Surfacing fetch errors (every SWR surface)
+
+SWR does not throw, so a failed fetch never reaches the `error.tsx` /
+`ErrorBoundary` layer. A surface that ignores SWR's `error` renders a permanent
+blank/empty screen with no retry. Every primary data view must read `error` and
+render the shared
+[`DataErrorState`](../../src/components/shared/DataErrorState.tsx)
+([BRDG-423](../user-stories/completed/BRDG-423-data-state-coverage.md)):
+
+- `variant="inline"` (default) — a banner over content that is still shown (cached
+  or partial data); use when `error && data`.
+- `variant="full"` — a centered retry screen that replaces an empty view; use when
+  `error && !data`.
+
+Both take `onRetry` (wire it to the hook's `mutate`) and compose the existing
+`EmptyState` / `InlineAlert` primitives as-is. Do **not** swallow failures in a
+fetcher (`.catch(() => null/[])`): that makes a real error indistinguishable from
+"no data". The reference pattern is `chat/ConversationList.tsx`.
+
 ## The list-vs-detail payload split (invariant)
 
 The `/api/tickets` **list** payload carries summary fields only (the `Ticket`
