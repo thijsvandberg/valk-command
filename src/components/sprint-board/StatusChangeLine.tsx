@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { ArrowDownToLine, Check, Clock, CornerDownRight, GitBranch, ListChecks, MessageSquare, Rocket, Sparkles } from "lucide-react";
+import { ArrowDownToLine, Check, Clock, GitBranch, ListChecks, MessageSquare, Rocket, Sparkles } from "lucide-react";
 import type { JiraStatus } from "@/types/ticket";
 import type { StatusChangeItem } from "@/lib/status-changes-query";
 import type { LastDeployedInfo, PipelineHealthEntry } from "@/hooks/usePipelines";
@@ -119,12 +119,11 @@ export function StatusChangeLine({
     <div
       onClick={(e) => e.stopPropagation()}
       onPointerDown={(e) => e.stopPropagation()}
-      className="flex items-center gap-1.5 bg-[var(--color-surface-base)]/40 py-1.5 pl-5 pr-[23px]"
+      className="flex items-center gap-2 bg-[var(--color-surface-base)]/40 py-1.5 pl-10 pr-[23px]"
     >
-      {/* Elbow connector: the line branches from the row ABOVE (its parent), so it never reads
-          as belonging to the row below. */}
-      <span className="mb-2 h-3 w-4 shrink-0 rounded-bl-[6px] border-b border-l border-border-strong" aria-hidden />
-      <CornerDownRight className="h-3.5 w-3.5 shrink-0 text-text-muted" strokeWidth={1.75} aria-hidden />
+      {/* Single elbow connector, aligned under the row's issue-type icon (gutter = pl-4 + w-3.5
+          checkbox + gap-2 ≈ 38px), so the line clearly branches from the row ABOVE (its parent). */}
+      <span className="mb-2 h-3 w-3.5 shrink-0 rounded-bl-[6px] border-b border-l border-border-strong" aria-hidden />
 
       <div className="flex min-w-0 flex-1 flex-wrap items-center gap-x-2.5 gap-y-1.5">
         <span className="text-caption text-text-tertiary">
