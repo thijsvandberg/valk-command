@@ -63,7 +63,7 @@ function FinishedWorkDividerRow() {
   return (
     <tr aria-hidden>
       <td colSpan={TOTAL_COLSPAN} className="p-0">
-        <div className="flex items-center gap-2 bg-overlay-subtle/40 px-3 py-1">
+        <div className="flex items-center gap-2 px-3 py-1">
           <span className="h-px flex-1 bg-border-subtle" />
           <span className="inline-flex items-center gap-1 text-[10px] uppercase tracking-wider text-text-muted">
             <CheckCheck className="h-3 w-3" strokeWidth={1.75} />
