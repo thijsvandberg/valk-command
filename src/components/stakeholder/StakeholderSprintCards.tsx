@@ -7,10 +7,14 @@ import { SprintOverviewCard } from "./SprintOverviewCard";
 import { SprintHealthBanner } from "./SprintHealthBanner";
 import { VelocitySparkline } from "./VelocitySparkline";
 import { LoadingState } from "@/components/shared/LoadingState";
+import { EmptyState } from "@/components/shared/EmptyState";
+import { DataErrorState } from "@/components/shared/DataErrorState";
 import type { VelocityPoint } from "@/hooks/useVelocityData";
 
 export interface StakeholderSprintCardsProps {
   isLoading: boolean;
+  error?: unknown;
+  onRetry?: () => void;
   rawTickets: Ticket[] | undefined;
   stakeholderSprint: StakeholderSprint | null;
   isCompareMode: boolean;
@@ -38,6 +42,8 @@ export interface StakeholderSprintCardsProps {
 
 export function StakeholderSprintCards({
   isLoading,
+  error,
+  onRetry,
   rawTickets,
   stakeholderSprint,
   isCompareMode,
@@ -64,10 +70,17 @@ export function StakeholderSprintCards({
 }: StakeholderSprintCardsProps) {
   return (
     <div className="px-6 py-10 sm:px-8 lg:px-12 xl:px-16">
-      {isLoading || !rawTickets ? (
+      {Boolean(error) && rawTickets && (
+        <DataErrorState error={error} onRetry={onRetry} className="mx-auto mb-6 max-w-7xl" />
+      )}
+      {Boolean(error) && !rawTickets ? (
+        // A failed fetch must not look like an empty sprint on the external view.
+        <DataErrorState variant="full" error={error} onRetry={onRetry} className="py-16" />
+      ) : isLoading || !rawTickets ? (
         <LoadingState label="Loading sprint data..." variant="spinner" />
       ) : !stakeholderSprint ? (
-        <LoadingState label="No sprint selected" />
+        // Not a loading condition: there is simply no sprint to show.
+        <EmptyState title="No sprint selected" className="py-16" />
       ) : (
         <div className="mx-auto max-w-7xl space-y-10">
           {/* Sprint heading + health + goal + sparkline */}

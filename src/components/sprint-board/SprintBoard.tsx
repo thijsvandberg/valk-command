@@ -64,6 +64,7 @@ const CreateSprintModal = dynamic(() => import("@/components/sprint-board/Create
 const SprintListModal = dynamic(() => import("@/components/sprint-board/SprintListModal").then((m) => ({ default: m.SprintListModal })), { ssr: false });
 const FinishSprintModal = dynamic(() => import("@/components/sprint-board/FinishSprintModal").then((m) => ({ default: m.FinishSprintModal })), { ssr: false });
 import { LoadingState } from "@/components/shared/LoadingState";
+import { DataErrorState } from "@/components/shared/DataErrorState";
 import { useColumnConfig } from "@/hooks/useColumnConfig";
 import { useTicketEventsStream } from "@/hooks/useTicketEventsStream";
 import { useStatusChanges } from "@/hooks/useStatusChanges";
@@ -267,7 +268,7 @@ export default function SprintBoard() {
     setPoPriorityMap((prev) => { if (order === null) { const n = { ...prev }; delete n[activeSprintId]; return n; } return { ...prev, [activeSprintId]: order }; });
   }, [activeSprintId, setPoPriorityMap]);
 
-  const { data: apiTickets, isLoading: ticketsLoading, mutate: mutateTickets } = useTickets(activeSprintId || null);
+  const { data: apiTickets, isLoading: ticketsLoading, error: ticketsError, mutate: mutateTickets } = useTickets(activeSprintId || null);
   // In-flight sprint moves: keep a moved row visible in its destination list (and
   // out of its origin) until the slow Jira round-trip resolves and the server list
   // reflects it, so a mid-move revalidation does not make it flicker away.
@@ -1123,6 +1124,16 @@ export default function SprintBoard() {
         {dnd.jiraRankDndEnabled && dnd.boardActiveDragId && <SprintDropZoneBar sprints={sprints} pillSlotSprints={pillSlotSprints} activeSprintId={activeSprintId} allActive={isAllView && !f.activeViewId} backlogTargetName={backlogTargetName} />}
       </div>
       <div ref={contentScrollRef} className="min-h-0 flex-1 overflow-y-auto">
+        {/* A failed ticket fetch is otherwise invisible (SWR does not throw): the
+            board would just show a stale or empty list. Surface it as an inline,
+            retryable banner above the still-visible content (BRDG-423). */}
+        {ticketsError && !ticketsLoading && (
+          <div className="px-4 pt-3">
+            <div className={boardMaxW}>
+              <DataErrorState error={ticketsError} onRetry={() => mutateTickets()} />
+            </div>
+          </div>
+        )}
         {!ticketsLoading && analyticsVisible && <SprintAnalytics tickets={allTickets} onClose={() => setAnalyticsVisible(false)} sprintId={activeSprintId} />}
         {ticketsLoading && <LoadingState variant="spinner" label="Loading tickets..." className="min-h-[200px]" />}
         {!ticketsLoading && (

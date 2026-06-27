@@ -6,13 +6,14 @@ import type { NewStoriesResponse } from "@/lib/new-stories-types";
 // --- Mocks ---
 
 let listData: NewStoriesResponse | undefined;
+let listError: Error | undefined;
 const listMutate = vi.fn();
 const globalMutateSpy = vi.fn();
 
 vi.mock("swr", () => ({
   default: (key: string | null) => {
     if (key === "/api/new-stories") {
-      return { data: listData, isLoading: false, mutate: listMutate };
+      return { data: listData, isLoading: false, error: listError, mutate: listMutate };
     }
     // Settings + assignable-user lookups: untouched defaults.
     return { data: undefined, isLoading: false, mutate: vi.fn() };
@@ -118,9 +119,19 @@ function row(key: string, title: string) {
 describe("InboxPage (BRDG-357)", () => {
   beforeEach(() => {
     listData = { rows: [row("VPL-1", "First story"), row("VPL-2", "Second story")] };
+    listError = undefined;
     listMutate.mockClear();
     globalMutateSpy.mockClear();
     fetchMock.mockClear();
+  });
+
+  it("surfaces a fetch failure with a retry affordance instead of a blank inbox (BRDG-423)", () => {
+    listData = undefined;
+    listError = new Error("Inbox feed is down");
+    render(<InboxPage />);
+    expect(screen.getByText("Inbox feed is down")).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: /try again/i }));
+    expect(listMutate).toHaveBeenCalled();
   });
 
   it("renders rows through BoardRow with the inbox default tags (key is a pill)", () => {

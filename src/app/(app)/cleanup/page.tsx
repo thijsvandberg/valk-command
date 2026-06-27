@@ -8,6 +8,7 @@ import { Trash2, Telescope, Clock, Flame, Check, BellOff, TrendingUp, Sparkles, 
 import { usePageTitle } from "@/hooks/usePageTitle";
 import { Button } from "@/components/ui/Button";
 import { ViewHeader, ViewHeaderTitle } from "@/components/shared/ViewHeader";
+import { DataErrorState } from "@/components/shared/DataErrorState";
 import { Tooltip } from "@/components/shared/Tooltip";
 import { Checkbox } from "@/components/shared/Checkbox";
 import { FilterDropdown } from "@/components/shared/FilterDropdown";
@@ -265,7 +266,7 @@ export default function CleanupPage() {
   if (filters.minOverall > 0) params.set("minOverall", String(filters.minOverall));
 
   const cleanupKey = `/api/cleanup?${params.toString()}`;
-  const { data, isLoading, mutate: mutateCleanup } = useSWR<CleanupResponse>(cleanupKey);
+  const { data, isLoading, error, mutate: mutateCleanup } = useSWR<CleanupResponse>(cleanupKey);
 
   // Refresh the list (badges) plus any open breakdown drawer after a disposition
   // write. Both the explicit list key and the drawer's detail key are revalidated.
@@ -766,7 +767,14 @@ export default function CleanupPage() {
                 DispositionPanel drawer. */}
             <div ref={scrollRef} className="relative flex-1 overflow-y-auto px-8 py-5">
               <div className={CONTENT_MAX}>
-              {isLoading && !data ? (
+              {/* A failed fetch is otherwise invisible (SWR does not throw): the
+                  list would just read "Nothing scanned yet" (BRDG-423). */}
+              {error && data && (
+                <DataErrorState error={error} onRetry={() => void mutateCleanup()} className="mb-3" />
+              )}
+              {error && !data ? (
+                <DataErrorState variant="full" error={error} onRetry={() => void mutateCleanup()} className="py-24" />
+              ) : isLoading && !data ? (
                 <div className="space-y-2">
                   {Array.from({ length: 6 }).map((_, i) => (
                     <div key={i} className="h-12 animate-pulse rounded-xl bg-overlay-subtle" style={{ opacity: 1 - i * 0.1 }} />

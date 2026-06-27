@@ -98,6 +98,21 @@ describe("EpicsPage", () => {
     expect(screen.getByText(/no epics with tickets/i)).toBeInTheDocument();
   });
 
+  it("surfaces a fetch failure with a retry affordance instead of looking empty (BRDG-423)", () => {
+    const mutate = vi.fn();
+    mockUseEpicProgress.mockReturnValue({
+      data: undefined,
+      isLoading: false,
+      error: new Error("Epics endpoint failed"),
+      mutate,
+    });
+    render(<EpicsPage />);
+    expect(screen.getByText("Epics endpoint failed")).toBeInTheDocument();
+    expect(screen.queryByText(/no epics with tickets/i)).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: /try again/i }));
+    expect(mutate).toHaveBeenCalled();
+  });
+
   it("filters epics by team", () => {
     mockUseEpicProgress.mockReturnValue({
       data: [

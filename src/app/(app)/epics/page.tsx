@@ -3,6 +3,7 @@
 import { useCallback, useMemo, useState } from "react";
 import { Zap, Plus } from "lucide-react";
 import { ViewHeader, ViewHeaderTitle } from "@/components/shared/ViewHeader";
+import { DataErrorState } from "@/components/shared/DataErrorState";
 import { Button } from "@/components/ui/Button";
 import { Toast } from "@/components/ui/Toast";
 import { useToast } from "@/hooks/useToast";
@@ -24,7 +25,7 @@ import { CreateEpicModal } from "./CreateEpicModal";
 const EMPTY_EPIC_FILTERS: PersistedEpicFilters = {};
 
 export default function EpicsPage() {
-  const { data: epics, isLoading } = useEpicProgress();
+  const { data: epics, isLoading, error, mutate } = useEpicProgress();
   const { sprints } = useJiraSprints();
   const { toast, toastLoading, showToast, dismissToast } = useToast();
   const [createOpen, setCreateOpen] = useState(false);
@@ -122,7 +123,15 @@ export default function EpicsPage() {
             />
           </div>
 
-          {isLoading ? (
+          {/* A failed fetch is otherwise invisible (SWR does not throw): the page
+              would show the "no epics" empty state and look like clean data. */}
+          {error && epics && (
+            <DataErrorState error={error} onRetry={() => void mutate()} className="mb-4" />
+          )}
+
+          {error && !epics ? (
+            <DataErrorState variant="full" error={error} onRetry={() => void mutate()} className="py-16" />
+          ) : isLoading ? (
             <EpicListSkeleton />
           ) : filtered && filtered.length > 0 ? (
             <div className="flex flex-col gap-2.5">

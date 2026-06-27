@@ -3,6 +3,7 @@
 import { useState, useMemo, useCallback, useEffect } from "react";
 import { GitBranch, RefreshCw, Unlink } from "lucide-react";
 import { ViewHeader, ViewHeaderTitle } from "@/components/shared/ViewHeader";
+import { DataErrorState } from "@/components/shared/DataErrorState";
 import { Button } from "@/components/ui/Button";
 import { usePipelines } from "@/hooks/usePipelines";
 import { useJiraSprints, useTicketsForSprints } from "@/hooks/useSprintBoard";
@@ -115,7 +116,7 @@ export default function PipelinesPage() {
     return map;
   }, [filteredSprintTickets]);
 
-  const { runs, hasRunning, syncing, syncStatus, isLoading, refresh } = usePipelines({
+  const { runs, hasRunning, syncing, syncStatus, isLoading, error, mutate, refresh } = usePipelines({
     limit: 200,
     sprintTickets: showUnlinked ? undefined : sprintTicketKeys,
     unlinked: showUnlinked,
@@ -283,8 +284,16 @@ export default function PipelinesPage() {
 
       <div className="flex-1 overflow-y-auto px-6 lg:px-8 pt-6 pb-20">
         <div className="max-w-6xl">
+          {/* A failed fetch is otherwise invisible (SWR does not throw): the page
+              would just render empty metrics. Surface it as a retryable banner
+              over cached runs, or a full retry screen when nothing loaded. */}
+          {error && runs.length > 0 && (
+            <DataErrorState error={error} onRetry={() => void mutate()} className="mb-4" />
+          )}
           {isLoading ? (
             <PipelineSkeleton />
+          ) : error && runs.length === 0 ? (
+            <DataErrorState variant="full" error={error} onRetry={() => void mutate()} className="py-16" />
           ) : (
             <>
               <SyncStatusBanner syncStatus={syncStatus} syncing={syncing && runs.length === 0} />

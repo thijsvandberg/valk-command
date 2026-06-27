@@ -5,6 +5,9 @@ import { Star, BadgeCheck, Search } from "lucide-react";
 import useSWR from "swr";
 import { swrFetcher, favoriteUsers, poUsers, userTeams } from "@/lib/api-client";
 import { Avatar } from "@/components/shared/Avatar";
+import { LoadingState } from "@/components/shared/LoadingState";
+import { EmptyState } from "@/components/shared/EmptyState";
+import { DataErrorState } from "@/components/shared/DataErrorState";
 import { TEAMS } from "@/lib/sprint-utils";
 import type { Assignee } from "@/types/ticket";
 
@@ -29,7 +32,7 @@ export default function PeoplePage() {
   const [query, setQuery] = useState("");
   const [teamFilter, setTeamFilter] = useState<string | null>(null);
 
-  const { data, mutate } = useSWR<{ users: AssignableUser[] }>(
+  const { data, isLoading, error, mutate } = useSWR<{ users: AssignableUser[] }>(
     "/api/jira/assignable-users",
     swrFetcher,
     { revalidateOnFocus: false },
@@ -152,14 +155,17 @@ export default function PeoplePage() {
         ))}
       </div>
 
-      {sorted.length === 0 && !data && (
-        <p className="py-6 text-center text-body-lg text-text-muted">Loading...</p>
-      )}
-      {sorted.length === 0 && data && (
-        <p className="py-6 text-center text-body-lg text-text-muted">No people found</p>
+      {error && data && (
+        <DataErrorState error={error} onRetry={() => void mutate()} className="mb-4" />
       )}
 
-      {sorted.length > 0 && (
+      {error && !data ? (
+        <DataErrorState variant="full" error={error} onRetry={() => void mutate()} className="py-12" />
+      ) : isLoading && !data ? (
+        <LoadingState className="py-12" />
+      ) : sorted.length === 0 ? (
+        <EmptyState title="No people found" className="py-12" />
+      ) : (
         <div className="flex flex-col divide-y divide-border-subtle rounded-xl border border-border-default bg-overlay-subtle overflow-hidden">
           {sorted.map((user) => {
             const assignee: Assignee = {

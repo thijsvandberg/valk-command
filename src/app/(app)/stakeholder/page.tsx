@@ -48,7 +48,9 @@ function useCarryOver(
   }, [currentTickets, prevTickets]);
 }
 
-const fetcher = <T,>(url: string) => swrFetcher<T>(url).catch(() => null as T);
+// Do NOT swallow errors here: a failed fetch must stay distinguishable from "no
+// data" so the external-facing view can show a real error state (BRDG-423).
+const fetcher = swrFetcher;
 const REFRESH_INTERVAL = 5 * 60 * 1000;
 const LS_KEY_TEAM = "bridge:stakeholder-team";
 const LS_KEY_SPRINT = "bridge:stakeholder-sprint";
@@ -206,7 +208,7 @@ function StakeholderView() {
   const ticketKey = currentSprint
     ? `/api/tickets?sprintId=${encodeURIComponent(String(currentSprint.id))}`
     : null;
-  const { data: rawTickets, isLoading } = useSWR<Ticket[]>(ticketKey, fetcher, {
+  const { data: rawTickets, isLoading, error: ticketsError, mutate: mutateTickets } = useSWR<Ticket[]>(ticketKey, fetcher, {
     refreshInterval: REFRESH_INTERVAL,
     revalidateOnFocus: false,
     onSuccess: () => {
@@ -506,6 +508,8 @@ function StakeholderView() {
 
       <StakeholderSprintCards
         isLoading={isLoading}
+        error={ticketsError}
+        onRetry={() => void mutateTickets()}
         rawTickets={rawTickets}
         stakeholderSprint={stakeholderSprint}
         isCompareMode={isCompareMode}

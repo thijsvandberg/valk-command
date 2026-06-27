@@ -1,7 +1,11 @@
 import { swrFetcher } from "@/lib/api-client";
 import type { ActivityLogEntry } from "@/types/ticket";
 
-export const fetcher = <T,>(url: string) => swrFetcher<T>(url).catch(() => [] as unknown as T);
+// The entries fetcher must NOT swallow failures: surfacing SWR's `error` is how
+// the Activity Log shows a visible, recoverable error instead of a blank table
+// (BRDG-423). Stats remain best-effort (the dashboards above the table are
+// secondary), so statsFetcher keeps its soft fallback.
+export const fetcher = swrFetcher;
 export const statsFetcher = <T,>(url: string) => swrFetcher<T>(url).catch(() => null as unknown as T);
 
 export const TYPE_OPTIONS: { value: string; label: string }[] = [

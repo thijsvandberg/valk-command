@@ -79,4 +79,25 @@ describe("ActivityLogPage", () => {
       expect(screen.getByText("Sprint Alpha")).toBeInTheDocument();
     });
   });
+
+  it("surfaces a fetch failure as a recoverable banner instead of a blank table (BRDG-423)", async () => {
+    vi.spyOn(global, "fetch").mockImplementation(async (input: RequestInfo | URL) => {
+      const url = typeof input === "string" ? input : input.toString();
+      if (url.includes("include=stats")) {
+        return { ok: true, status: 200, json: async () => ({ stats: null }) } as Response;
+      }
+      if (url.includes("/api/jira/sprints")) {
+        return { ok: true, status: 200, json: async () => SPRINTS_RESPONSE } as Response;
+      }
+      if (url.includes("/api/activity-log")) {
+        return { ok: false, status: 500, json: async () => ({ error: "Activity log is down" }) } as Response;
+      }
+      return { ok: true, status: 200, json: async () => [] } as Response;
+    });
+    renderPage();
+    await waitFor(() => {
+      expect(screen.getByRole("alert")).toHaveTextContent("Activity log is down");
+    });
+    expect(screen.getByRole("button", { name: /retry/i })).toBeInTheDocument();
+  });
 });

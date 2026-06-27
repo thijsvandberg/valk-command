@@ -8,12 +8,14 @@ import type { CleanupResponse } from "@/lib/cleanup-types";
 
 let swrData: CleanupResponse | undefined;
 let swrLoading = false;
+let swrError: Error | undefined;
 const swrSpy = vi.fn();
+const cleanupMutate = vi.fn();
 
 vi.mock("swr", () => ({
   default: (key: string | null) => {
     swrSpy(key);
-    return { data: swrData, isLoading: swrLoading, mutate: vi.fn() };
+    return { data: swrData, isLoading: swrLoading, error: swrError, mutate: cleanupMutate };
   },
   mutate: vi.fn(),
 }));
@@ -204,7 +206,9 @@ describe("CleanupPage", () => {
   beforeEach(() => {
     swrData = undefined;
     swrLoading = false;
+    swrError = undefined;
     swrSpy.mockClear();
+    cleanupMutate.mockClear();
     mockVirtualItems = [];
     mockTotalSize = 0;
   });
@@ -214,6 +218,16 @@ describe("CleanupPage", () => {
     render(<CleanupPage />);
     expect(screen.getByText("Nothing scanned yet")).toBeInTheDocument();
     expect(screen.getByText(/Tier-1 staleness runs in the background/i)).toBeInTheDocument();
+  });
+
+  it("surfaces a fetch failure with a retry affordance instead of the empty state (BRDG-423)", () => {
+    swrData = undefined;
+    swrError = new Error("Cleanup endpoint failed");
+    render(<CleanupPage />);
+    expect(screen.getByText("Cleanup endpoint failed")).toBeInTheDocument();
+    expect(screen.queryByText("Nothing scanned yet")).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: /try again/i }));
+    expect(cleanupMutate).toHaveBeenCalled();
   });
 
   // --- Virtualization (BRDG-393) ---

@@ -6,6 +6,7 @@ import dynamic from "next/dynamic";
 import { Inbox, Undo2 } from "lucide-react";
 import { usePageTitle } from "@/hooks/usePageTitle";
 import { ViewHeader, ViewHeaderTitle } from "@/components/shared/ViewHeader";
+import { DataErrorState } from "@/components/shared/DataErrorState";
 import { Toast } from "@/components/ui/Toast";
 import { useToast } from "@/hooks/useToast";
 import { useTicketDetail, useJiraSprints, useSprintSlots } from "@/hooks/useSprintBoard";
@@ -84,7 +85,7 @@ export default function InboxPage() {
   const pageTitle = usePageTitle("Inbox");
   const { toast, showToast, dismissToast } = useToast();
 
-  const { data, isLoading, mutate: mutateList } = useSWR<NewStoriesResponse>(LIST_KEY);
+  const { data, isLoading, error, mutate: mutateList } = useSWR<NewStoriesResponse>(LIST_KEY);
 
   const [checkedKeys, setCheckedKeys] = useState<Set<string>>(new Set());
   const [selectedKey, setSelectedKey] = useState<string | null>(null);
@@ -442,7 +443,15 @@ export default function InboxPage() {
           <div className="flex min-w-0 flex-1 flex-col overflow-hidden">
             <div className={`flex-1 overflow-y-auto px-8 py-5 ${checkedKeys.size > 0 ? "pb-28" : ""}`}>
               <div className={CONTENT_MAX}>
-                {isLoading && !data ? (
+                {/* A failed fetch is otherwise invisible (SWR does not throw): the
+                    inbox would just look empty. Surface it as a retryable banner
+                    above cached rows, or a full retry screen when nothing loaded. */}
+                {error && data && (
+                  <DataErrorState error={error} onRetry={() => void mutateList()} className="mb-3" />
+                )}
+                {error && !data ? (
+                  <DataErrorState variant="full" error={error} onRetry={() => void mutateList()} className="py-24" />
+                ) : isLoading && !data ? (
                   <div className="space-y-2">
                     {Array.from({ length: 6 }).map((_, i) => (
                       <div

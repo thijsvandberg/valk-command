@@ -15,6 +15,7 @@ import {
 import { Button } from "@/components/ui/Button";
 import { activityLog } from "@/lib/api-client";
 import { ViewHeader, ViewHeaderTitle } from "@/components/shared/ViewHeader";
+import { DataErrorState } from "@/components/shared/DataErrorState";
 import type {
   ActivityLogEntry,
   ActivityLogStatsResponse,
@@ -73,7 +74,7 @@ export default function ActivityLogPage() {
     return map;
   }, [sprints]);
 
-  const { data: entries, isLoading, mutate } = useSWR<ActivityLogEntry[]>(
+  const { data: entries, isLoading, error, mutate } = useSWR<ActivityLogEntry[]>(
     `/api/activity-log?${params.toString()}`,
     fetcher,
     { refreshInterval: 10000 },
@@ -240,6 +241,13 @@ export default function ActivityLogPage() {
             )}
           </div>
         </div>
+
+        {/* A failed fetch is otherwise invisible (SWR does not throw): the table
+            would just read "No activity entries found". Surface it as a retryable
+            banner above whatever is still shown (BRDG-423). */}
+        {error && (
+          <DataErrorState error={error} onRetry={() => void mutate()} className="mb-4" />
+        )}
 
         <ActivityTable
           entries={entries}
