@@ -167,7 +167,7 @@ export function ScanControls({ onRan }: ScanControlsProps) {
       <Popover open={open} onClose={() => setOpen(false)} align="right" className="w-[360px]">
         <div role="dialog" aria-label="Scan controls" className="flex flex-col">
           <div className="border-b border-border-subtle px-4 py-3">
-            <h3 className="text-body-sm font-semibold text-text-primary">Scans</h3>
+            <h3 className="font-[var(--font-display)] text-body-sm font-semibold text-text-primary">Scans</h3>
             <p className="mt-0.5 text-label leading-relaxed text-text-tertiary">
               Off by default. Turn one on to run it on a schedule, or use Run now for a one-off pass.
             </p>

@@ -143,7 +143,7 @@ export function DeploySettingsPanel() {
           <div className="absolute right-0 top-full mt-1 z-50 w-[260px] rounded-lg border border-border-strong bg-[var(--color-surface-floating)] shadow-[var(--shadow-lg)] overflow-hidden">
             {/* Header */}
             <div className="px-4 pt-3.5 pb-2.5">
-              <h3 className="text-body-sm font-semibold text-text-secondary">Deploy notifications</h3>
+              <h3 className="font-[var(--font-display)] text-body-sm font-semibold text-text-secondary">Deploy notifications</h3>
               <p className="text-label text-text-muted mt-0.5">
                 Browser alerts when deployments complete for followed tickets.
               </p>

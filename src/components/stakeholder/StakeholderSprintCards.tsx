@@ -92,7 +92,7 @@ export function StakeholderSprintCards({
               <>
                 {/* Title row: name + health + sparkline */}
                 <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
-                  <h1 className="text-3xl font-semibold tracking-tight text-text-primary leading-none">
+                  <h1 className="font-[var(--font-display)] text-3xl font-semibold tracking-tight text-text-primary leading-none">
                     {stakeholderSprint.name}
                   </h1>
                   {showHealthBadge && (
@@ -129,7 +129,7 @@ export function StakeholderSprintCards({
           {isCompareMode && prevStakeholderSprint ? (
             <div className="grid grid-cols-1 gap-10 lg:grid-cols-2">
               <div className="space-y-6 overflow-auto">
-                <h2 className="text-heading font-semibold tracking-tight text-text-secondary">
+                <h2 className="font-[var(--font-display)] text-heading font-semibold tracking-tight text-text-secondary">
                   {prevStakeholderSprint.name}
                   <span className="ml-2 text-body-sm font-normal text-text-muted">Previous</span>
                 </h2>
@@ -147,7 +147,7 @@ export function StakeholderSprintCards({
                 )}
               </div>
               <div className="space-y-6 overflow-auto">
-                <h2 className="text-heading font-semibold tracking-tight text-text-primary">
+                <h2 className="font-[var(--font-display)] text-heading font-semibold tracking-tight text-text-primary">
                   {stakeholderSprint.name}
                   <span className="ml-2 text-body-sm font-normal text-text-muted">Current</span>
                 </h2>

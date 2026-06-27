@@ -147,7 +147,7 @@ export function DeepScanQueuePanel({ queue, onMutate }: DeepScanQueuePanelProps)
         <div role="dialog" aria-label="Deep-scan queue" className="flex max-h-[60vh] flex-col">
           <div className="flex items-center justify-between gap-2 border-b border-border-subtle px-4 py-3">
             <div>
-              <h3 className="text-body-sm font-semibold text-text-primary">Deep-scan queue</h3>
+              <h3 className="font-[var(--font-display)] text-body-sm font-semibold text-text-primary">Deep-scan queue</h3>
               <p className="mt-0.5 text-label tabular-nums text-text-tertiary">
                 {queue?.pending ?? 0} pending · {queue?.running ?? 0} running · {queue?.done ?? 0} done
                 {(queue?.error ?? 0) > 0 ? ` · ${queue?.error} error` : ""}

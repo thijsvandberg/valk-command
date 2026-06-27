@@ -64,7 +64,7 @@ function SectionHeader({ icon, title, count }: { icon: React.ReactNode; title: s
   return (
     <div className="flex items-center gap-2 pb-3">
       <span className="text-text-muted">{icon}</span>
-      <h3 className="text-body-lg font-semibold text-text-secondary">{title}</h3>
+      <h3 className="font-[var(--font-display)] text-body-lg font-semibold text-text-secondary">{title}</h3>
       {count !== undefined && count > 0 && (
         <span className="rounded-md bg-overlay-default px-1.5 py-0.5 text-label tabular-nums text-text-tertiary">{count}</span>
       )}

@@ -77,7 +77,7 @@ export function SplitStoryPicker({ open, originalTitle, originalSprintId, onConf
               <Scissors size={15} strokeWidth={1.5} className="text-[var(--color-brand-400)]" />
             </div>
             <div>
-              <h2 className="text-body-lg font-semibold text-text-primary">Split story</h2>
+              <h2 className="font-[var(--font-display)] text-body-lg font-semibold text-text-primary">Split story</h2>
               <p className="text-label text-text-tertiary mt-0.5">Select or create the target story</p>
             </div>
           </div>
