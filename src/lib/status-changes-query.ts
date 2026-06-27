@@ -80,7 +80,17 @@ export async function listUnseenStatusChanges(
     })
     .from(ticketStatusChange)
     .innerJoin(ticket, eq(ticket.jiraKey, ticketStatusChange.ticketKey))
-    .where(and(inArray(ticketStatusChange.ticketKey, ticketKeys), isNull(ticket.removedFromJiraAt), unseenByUser))
+    .where(
+      and(
+        inArray(ticketStatusChange.ticketKey, ticketKeys),
+        isNull(ticket.removedFromJiraAt),
+        // Only the transition that led to the CURRENT status. A later transition (e.g.
+        // Done -> In Progress) supersedes an earlier "-> Done", so a stale change whose
+        // toStatus no longer matches the ticket is not shown (BRDG-414).
+        eq(ticketStatusChange.toStatus, ticket.status),
+        unseenByUser,
+      ),
+    )
     .orderBy(desc(ticketStatusChange.changedAt));
 
   // One line per ticket: the most recent unseen change (rows are already newest-first).

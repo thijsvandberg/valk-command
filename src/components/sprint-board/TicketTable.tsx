@@ -639,6 +639,7 @@ export function TicketTable({
               {...makeRowProps(ticket, ticketIdx)}
               isLastInCard={ticketIdx === tickets.length - 1 && !flatComposerAtEnd}
               warnings={warningLensActive ? ticketWarnings(ticket, warningLensActiveSprint) : undefined}
+              statusChangeAtBottom={flatDividerIdx >= 0 && ticketIdx >= flatDividerIdx}
             />
           );
           const out = ticketIdx === flatInsertIdx ? [flatComposerRow, row] : [row];
@@ -670,6 +671,7 @@ export function TicketTable({
               insertLine={insertLine}
               isLastInCard={ticketIdx === tickets.length - 1 && !flatComposerAtEnd}
               warnings={warningLensActive ? ticketWarnings(ticket, warningLensActiveSprint) : undefined}
+              statusChangeAtBottom={flatDividerIdx >= 0 && ticketIdx >= flatDividerIdx}
             />
           );
           const out = ticketIdx === flatInsertIdx ? [flatComposerRow, row] : [row];

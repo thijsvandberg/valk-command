@@ -82,16 +82,22 @@ describe("StatusChangeLine (BRDG-414)", () => {
     expect(screen.queryByText("3 open")).not.toBeInTheDocument();
   });
 
-  it("shows Move to bottom for a finished change and Seen otherwise", () => {
+  it("shows Move to bottom for a finished change plus a dismiss check; only the check otherwise", () => {
     const { rerender } = render(
       <StatusChangeLine change={makeChange({ toStatus: "DONE" })} onSeen={noop} onMoveToBottom={noop} />,
     );
     expect(screen.getByText("Move to bottom")).toBeInTheDocument();
-    expect(screen.queryByText("Seen")).not.toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Mark as seen" })).toBeInTheDocument();
 
     rerender(<StatusChangeLine change={makeChange({ toStatus: "IN PROGRESS" })} onSeen={noop} onMoveToBottom={noop} />);
-    expect(screen.getByText("Seen")).toBeInTheDocument();
     expect(screen.queryByText("Move to bottom")).not.toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Mark as seen" })).toBeInTheDocument();
+  });
+
+  it("hides Move to bottom when the ticket is already filed at the bottom", () => {
+    render(<StatusChangeLine change={makeChange({ toStatus: "DONE" })} atBottom onSeen={noop} onMoveToBottom={noop} />);
+    expect(screen.queryByText("Move to bottom")).not.toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Mark as seen" })).toBeInTheDocument();
   });
 
   it("shows a new-comment count link when there are recent comments", () => {

@@ -51,11 +51,11 @@ describe("listUnseenStatusChanges (BRDG-414)", () => {
   });
 
   it("lists unseen changes scoped to the given ticket keys, latest per ticket", async () => {
-    addTicket("VPL-1");
-    addTicket("VPL-2");
-    addTicket("VPL-3", { status: "TO DO" });
-    addChange("sc-1a", "VPL-1", "TEST", "2026-06-27T09:00:00.000Z");
-    addChange("sc-1b", "VPL-1", "DONE", "2026-06-27T10:00:00.000Z"); // newer for same ticket
+    addTicket("VPL-1", { status: "DONE" });
+    addTicket("VPL-2", { status: "TEST" });
+    addTicket("VPL-3", { status: "TEST" });
+    addChange("sc-1a", "VPL-1", "TEST", "2026-06-27T09:00:00.000Z"); // superseded (not current status)
+    addChange("sc-1b", "VPL-1", "DONE", "2026-06-27T10:00:00.000Z"); // matches current status
     addChange("sc-2", "VPL-2", "TEST", "2026-06-27T08:00:00.000Z");
     addChange("sc-3", "VPL-3", "TEST", "2026-06-27T08:00:00.000Z"); // not in the scope keys
 
@@ -70,23 +70,24 @@ describe("listUnseenStatusChanges (BRDG-414)", () => {
     expect(v1?.assignee?.name).toBe("Dan Mol");
   });
 
-  it("hides a change once seen, but a later transition of the same ticket re-surfaces", async () => {
-    addTicket("VPL-1");
+  it("hides a change once seen, but a later transition into the same status re-surfaces", async () => {
+    // Test -> In Progress -> Test: each landing on TEST is its own item.
+    addTicket("VPL-1", { status: "TEST" });
     addChange("sc-old", "VPL-1", "TEST", "2026-06-27T09:00:00.000Z");
 
     await markStatusChangeSeen(CTX.userId, "sc-old", true);
     expect(await listUnseenStatusChanges(CTX, ["VPL-1"], NOW)).toHaveLength(0);
 
-    // The ticket transitions again — a new id, so it surfaces despite the earlier "seen".
-    addChange("sc-new", "VPL-1", "DONE", "2026-06-27T11:00:00.000Z");
+    // The ticket lands on TEST again — a new id, so it surfaces despite the earlier "seen".
+    addChange("sc-new", "VPL-1", "TEST", "2026-06-27T11:00:00.000Z");
     const rows = await listUnseenStatusChanges(CTX, ["VPL-1"], NOW);
     expect(rows).toHaveLength(1);
     expect(rows[0].id).toBe("sc-new");
   });
 
   it("bulk mark-all-seen clears the queue", async () => {
-    addTicket("VPL-1");
-    addTicket("VPL-2");
+    addTicket("VPL-1", { status: "TEST" });
+    addTicket("VPL-2", { status: "DONE" });
     addChange("sc-1", "VPL-1", "TEST", "2026-06-27T09:00:00.000Z");
     addChange("sc-2", "VPL-2", "DONE", "2026-06-27T09:00:00.000Z");
 
@@ -108,7 +109,7 @@ describe("listUnseenStatusChanges (BRDG-414)", () => {
 
   describe("what's-new (24h, not me)", () => {
     it("counts only comments in the last 24h that are not mine", async () => {
-      addTicket("VPL-1");
+      addTicket("VPL-1", { status: "TEST" });
       addChange("sc-1", "VPL-1", "TEST", "2026-06-27T09:00:00.000Z");
       testDb.insert(jiraComment).values([
         { id: "c1", ticketKey: "VPL-1", jiraCommentId: "j1", authorName: "Carol Smit", content: "x", createdAt: "2026-06-27T08:00:00.000Z" }, // recent, not me
@@ -123,7 +124,7 @@ describe("listUnseenStatusChanges (BRDG-414)", () => {
     });
 
     it("flags a recent story edit by someone else, ignoring my own and old edits (SQLite-format timestamps)", async () => {
-      addTicket("VPL-1");
+      addTicket("VPL-1", { status: "TEST" });
       addChange("sc-1", "VPL-1", "TEST", "2026-06-27T09:00:00.000Z");
       // storyVersion.createdAt uses the SQLite default format ("YYYY-MM-DD HH:MM:SS", UTC).
       testDb.insert(storyVersion).values([
