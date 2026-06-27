@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { ArrowDownToLine, Check, MessageSquare, Rocket, Sparkles } from "lucide-react";
+import { Check, MessageSquare, Rocket, Sparkles } from "lucide-react";
 import type { JiraStatus } from "@/types/ticket";
 import type { StatusChangeItem } from "@/lib/status-changes-query";
 import type { LastDeployedInfo } from "@/hooks/usePipelines";
@@ -108,7 +108,7 @@ export function StatusChangeLine({
     <div
       onClick={(e) => e.stopPropagation()}
       onPointerDown={(e) => e.stopPropagation()}
-      className="relative flex items-center border-b border-border-subtle pb-1.5 pt-0 pl-[73px] pr-[23px]"
+      className="relative flex items-center pb-2.5 pt-0 pl-[73px] pr-[23px]"
     >
       {/* Single elbow connector: its vertical sits at the CENTRE of the row's issue-type icon and
           its horizontal meets the line just above centre. left-[53px] = icon centre minus the
@@ -179,7 +179,6 @@ export function StatusChangeLine({
           {isFinished && !atBottom && (
             <Tooltip content="Move to bottom — files it just below the Finished work divider. Nothing auto-moves; this is your confirmation it's done.">
               <button type="button" onClick={onMoveToBottom} className={`${ACTION_BTN} cursor-pointer hover:bg-overlay-default hover:text-text-primary focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-[var(--color-brand-400)]`}>
-                <ArrowDownToLine className="h-3.5 w-3.5" strokeWidth={1.75} />
                 Move to bottom
               </button>
             </Tooltip>
@@ -187,7 +186,6 @@ export function StatusChangeLine({
           {isTest && (
             <Tooltip content="Generate a test prompt from the story, comments and changes (coming soon)">
               <button type="button" className={`${ACTION_BTN} cursor-pointer hover:bg-overlay-default hover:text-text-primary focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-[var(--color-brand-400)]`}>
-                <Sparkles className="h-3.5 w-3.5" strokeWidth={1.75} />
                 Generate test prompt
               </button>
             </Tooltip>
