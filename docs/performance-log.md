@@ -1,5 +1,19 @@
 # Implementation Performance Log
 
+## BRDG-414 — Status changes on the active sprint board (2026-06-27)
+
+Eight phases, 5 commits: schema + migration (author columns on `ticket_status_change` + `status_change_seen` table), changelog-author capture in sync (`extractLastStatusChangeAuthor`), read endpoint + per-user seen store + `useStatusChanges` live hook, derived "what's new (24h, not me)" in the query, the `StatusChangeLine` board UI (ported from the variant-1 prototype), a permanent "Finished work" divider in `TicketTable`, and the optimistic move-to-bottom (reusing `spliceKeyIntoOrder` against `poPriorityOrder`, marking seen in the same gesture). Full suite green (6,951) + production build green.
+
+| Phase | Notes |
+|---|---|
+| Plan (Opus) | Strong. Caught three things that shaped the build: the changelog author shape lacks `accountId` (so changer-vs-assignee is name-based with accountId as refinement — though Jira Cloud does send it, so I added it optionally); the line must stack INSIDE the row's single `<td>` (not a 2nd `<tr>`) or the virtualizer's per-row height desyncs; deploy/pipeline maps + `openSubtaskCount` already reach the row, so no new fetch |
+| Implement | Mostly clean. One scoping pivot: `ticket_status_change.sprintName` is stored inconsistently (a name from incremental sync, an id from sprint sync), so I scoped the queue by the active sprint's ticket KEYS instead — robust and exactly "the sprint shown". Mixed timestamp formats (jiraComment ISO vs storyVersion SQLite-default) handled with a coarse date-prefix SQL filter + precise JS 24h refine |
+| Verify | Two rounds of test-mock breakage (expected when adding a jira-client export): the new `extractLastStatusChangeAuthor` had to be registered in `upsert-issue.test`, the inline `sync-incremental` mock, and the shared `src/test/mocks/jira-client.ts`; the new `CheckCheck` icon in `TicketTable.test`'s lucide mock. All fixed; suite green |
+
+Key bottlenecks / lessons:
+- **Adding an export to `@/lib/jira-client` breaks every test that mocks it.** Three mock sites (one shared, two inline) plus a lucide-mock for the one new icon. Grep `extractLastChangeAuthor:` across tests to find the sibling mocks before running the full suite.
+- **Live visual check was BLOCKED by an environmental dev CSS error unrelated to this story.** Untracked parallel-work docs (`BRDG-418`, `BRDG-424`) contain the literal string `bg-[var(--color-surface-*)]` in prose; Tailwind v4's content scanner reads `.md` files and generates an invalid `var(--color-surface-*)` rule, which Turbopack dev refuses to parse (production `build` tolerates it, so the build passed). Clearing `.next` doesn't help — Tailwind re-scans the docs. Tracked by the pre-existing BRDG-418. Did not touch the parallel files. Relied on the component render test + production build + the earlier in-browser prototype render for visual confidence.
+
 ## BRDG-396 — Filters for the Link issue modal (2026-06-25)
 
 Added server-side filters (issue type w/ default subtask exclusion, sprint-with-state, epic, last-updated, project, assignee + same-epic/same-sprint presets) to `/api/tickets/search`, threaded through the api-client and `useLinkIssueSearch`, and built `LinkIssueFilterBar` reusing the board's `FilterDropdown`/`FilterChip`. Fixed a latent bug: the subtask exclusion compared `'sub-task'` but the type is `'Subtask'`, so subtasks were leaking in. 4 commits + archive; isolated full suite (6,597) + build green.
