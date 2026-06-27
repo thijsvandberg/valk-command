@@ -2,7 +2,7 @@
 
 import { useState, useRef, useEffect, useCallback, useMemo, type ReactNode } from "react";
 import { mutate as globalMutate } from "swr";
-import { Inbox, Plus, Bell, BellOff } from "lucide-react";
+import { Inbox, Plus, Bell, BellDot } from "lucide-react";
 import { trailingDoneDepStart, interpolateRank, spliceKeyIntoOrder } from "@/lib/sprint-insert-position";
 import { GroupStatBar, type StatCriterion } from "@/components/sprint-board/GroupStatBar";
 import { matchesWarningFilter } from "@/components/sprint-board/warning-filter";
@@ -985,7 +985,7 @@ export default function SprintBoard() {
             : "text-text-muted hover:bg-overlay-default hover:text-text-secondary"
         }`}
       >
-        {updatesOpen ? <Bell size={14} strokeWidth={2} aria-hidden /> : <BellOff size={14} strokeWidth={2} aria-hidden />}
+        {updatesOpen ? <BellDot size={14} strokeWidth={2} aria-hidden /> : <Bell size={14} strokeWidth={2} aria-hidden />}
       </button>
     ) : undefined;
     return (

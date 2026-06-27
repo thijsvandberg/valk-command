@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { ArrowDownToLine, Check, Clock, GitBranch, Info, ListChecks, MessageSquare, Rocket, Sparkles } from "lucide-react";
+import { ArrowDownToLine, Check, Clock, CornerDownRight, GitBranch, ListChecks, MessageSquare, Rocket, Sparkles } from "lucide-react";
 import type { JiraStatus } from "@/types/ticket";
 import type { StatusChangeItem } from "@/lib/status-changes-query";
 import type { LastDeployedInfo, PipelineHealthEntry } from "@/hooks/usePipelines";
@@ -119,14 +119,12 @@ export function StatusChangeLine({
     <div
       onClick={(e) => e.stopPropagation()}
       onPointerDown={(e) => e.stopPropagation()}
-      className="flex items-center gap-2 border-t border-border-subtle bg-[var(--color-surface-base)]/40 py-1.5 pl-4 pr-[23px]"
+      className="flex items-center gap-1.5 bg-[var(--color-surface-base)]/40 py-1.5 pl-5 pr-[23px]"
     >
-      {/* Info marker, aligned with the row's checkbox gutter. */}
-      <Tooltip content="Status change on this ticket">
-        <span className="grid h-4 w-4 shrink-0 place-items-center text-text-muted">
-          <Info className="h-3.5 w-3.5" strokeWidth={1.75} />
-        </span>
-      </Tooltip>
+      {/* Elbow connector: the line branches from the row ABOVE (its parent), so it never reads
+          as belonging to the row below. */}
+      <span className="mb-2 h-3 w-4 shrink-0 rounded-bl-[6px] border-b border-l border-border-strong" aria-hidden />
+      <CornerDownRight className="h-3.5 w-3.5 shrink-0 text-text-muted" strokeWidth={1.75} aria-hidden />
 
       <div className="flex min-w-0 flex-1 flex-wrap items-center gap-x-2.5 gap-y-1.5">
         <span className="text-caption text-text-tertiary">
