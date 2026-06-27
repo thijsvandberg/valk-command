@@ -689,13 +689,16 @@ describe("BoardRow (headerless, BRDG-239)", () => {
     const contentDiv = (container: HTMLElement) => container.querySelector("td > div") as HTMLElement;
 
     it("uses the default tight padding and switches to relaxed padding when spacious", () => {
+      // BRDG-414: row padding lives on the inner row div; the outer group/row div is the
+      // surface wrapper (it shares its tint/accent with the status-change line below).
+      const rowInner = (c: HTMLElement) => c.querySelector("td > div > div") as HTMLElement;
       const { container: tight } = renderRow();
-      expect(contentDiv(tight).className).toContain("py-[7px]");
-      expect(contentDiv(tight).className).not.toContain("py-[10px]");
+      expect(rowInner(tight).className).toContain("py-[7px]");
+      expect(rowInner(tight).className).not.toContain("py-[10px]");
 
       const { container: relaxed } = renderRow({ spacious: true });
-      expect(contentDiv(relaxed).className).toContain("py-[10px]");
-      expect(contentDiv(relaxed).className).not.toContain("py-[7px]");
+      expect(rowInner(relaxed).className).toContain("py-[10px]");
+      expect(rowInner(relaxed).className).not.toContain("py-[7px]");
     });
 
     it("keeps the checkbox always visible (no hover) when inlineCheckbox is set, with no selection active", () => {
