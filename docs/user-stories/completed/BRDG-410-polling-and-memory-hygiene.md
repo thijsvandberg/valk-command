@@ -24,7 +24,8 @@ Shipped 2026-06-26. All five acceptance-criteria items done plus two of the safe
   `defaultValueRef.current` (no listener churn for object/array defaults); `useOutsideClick` holds
   `refs`/`onClose` in refs so the document listeners are not re-subscribed every render.
 
-**Descoped / flagged (intentionally not changed):**
+**Descoped / flagged (intentionally not changed)** — all three tracked in
+[[BRDG-417-reaudit-longtail-sync-polling-hygiene]]:
 - `useConversations`/`useMessages` SWR migration — larger change; Open Question recommends a
   follow-up. Left as-is.
 - `RefinementSessionContext` index-persist timer — its post-unmount write persists the session

@@ -23,7 +23,8 @@ Shipped 2026-06-26.
 **Descoped / flagged:** the burnup-seed per-ticket `getBurnupChangelog` loop (Low, on-demand) was
 left as-is. It is not in this story's acceptance criteria or tests, and bounding its concurrency
 means restructuring a loop that interleaves fetches with per-key DB writes — too much regression
-risk for a Low item without a dedicated test. Noted as the only remaining N+1.
+risk for a Low item without a dedicated test. Noted as the only remaining N+1; tracked in
+[[BRDG-417-reaudit-longtail-sync-polling-hygiene]].
 
 Verified: full suite green (6885 tests), lint/typecheck/build clean, and the bulk tranche path
 exercised live (`POST /api/jira/sync-tickets` with 3 keys → 200, correct data, single request, no

@@ -32,6 +32,9 @@ with no console errors, and the inbox menu shows both flag actions.
 
 ### Deferred (with reasons) — remaining work
 
+> Tracked as a dedicated follow-up: [[BRDG-415-finish-board-row-actions-glue-convergence]]
+> (full trade-offs + approach there).
+
 - **#1 Route the board through the hook's glue (the headline).** Not done. The board's
   `rowMenu`/`handleRowContextMenu`, `quickMovesFor`/`currentSprintIdsFor`/`handleQuickMove`,
   `computeFlagState`, copy, refine and create-sprint are still local copies. Converging them safely

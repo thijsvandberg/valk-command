@@ -27,6 +27,9 @@ lint/typecheck/build clean, board healthy live (renders, no console errors).
 
 ### Deferred (with reasons) — remaining work
 
+> Tracked as a dedicated follow-up: [[BRDG-416-board-render-fanout-and-virtualizer]]
+> (full trade-offs + approach there).
+
 - **#1 Per-row prop fan-out (High, perf — the headline).** Not done. On inspection the situation is
   more nuanced than "every row always re-renders": `BoardRow` is already `memo()` (shallow) and
   `makeRowProps` already passes **individual derived booleans** (`isChecked`/`isSelected`/`isFocused`/
