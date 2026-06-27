@@ -117,9 +117,9 @@ export function ScoreBadge({ score }: { score: number }) {
   }
 
   const color = score >= 80
-    ? "bg-emerald-500/15 text-emerald-400"
+    ? "bg-[var(--color-status-success)]/15 text-[var(--color-status-success)]"
     : score >= 60
-      ? "bg-amber-500/15 text-amber-400"
+      ? "bg-[var(--color-status-warning)]/15 text-[var(--color-status-warning)]"
       : "bg-overlay-default text-text-tertiary";
 
   return (
@@ -151,7 +151,7 @@ export function LinkButton({
       <button
         type="button"
         onClick={onLink}
-        className="shrink-0 text-caption font-medium text-red-400 cursor-pointer hover:text-red-300 transition-colors duration-150"
+        className="shrink-0 text-caption font-medium text-[var(--color-status-error)] cursor-pointer hover:text-[var(--color-status-error)] transition-colors duration-150"
       >
         Retry
       </button>
@@ -165,7 +165,7 @@ export function LinkButton({
           type="button"
           onClick={onUnlink}
           disabled={loading}
-          className="shrink-0 rounded-md px-2.5 py-1 text-caption font-medium bg-[var(--color-brand-500)]/[0.1] text-[var(--color-brand-500)] cursor-pointer hover:bg-red-500/10 hover:text-red-400 transition-colors duration-150 disabled:opacity-50"
+          className="shrink-0 rounded-md px-2.5 py-1 text-caption font-medium bg-[var(--color-brand-500)]/[0.1] text-[var(--color-brand-500)] cursor-pointer hover:bg-[var(--color-status-error)]/10 hover:text-[var(--color-status-error)] transition-colors duration-150 disabled:opacity-50"
         >
           {loading && <Loader2 size={10} className="inline animate-spin mr-1" />}
           Linked

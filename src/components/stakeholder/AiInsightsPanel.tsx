@@ -138,7 +138,7 @@ export function AiInsightsPanel({
               </span>
             )}
             {isStale && hasResult && !isRunning && (
-              <span className="shrink-0 rounded-sm bg-amber-400/10 px-1 py-px text-caption text-amber-400/60">
+              <span className="shrink-0 rounded-sm bg-[var(--color-status-warning)]/10 px-1 py-px text-caption text-[var(--color-status-warning)]/60">
                 data changed
               </span>
             )}
@@ -149,7 +149,7 @@ export function AiInsightsPanel({
               <button
                 type="button"
                 onClick={onRetry}
-                className="flex items-center gap-1.5 rounded-md px-2.5 py-1 text-body-sm text-amber-400/70 bg-amber-400/[0.08] border border-amber-400/20 cursor-pointer hover:bg-amber-400/[0.14] hover:text-amber-400/90 transition-colors duration-150 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)]"
+                className="flex items-center gap-1.5 rounded-md px-2.5 py-1 text-body-sm text-[var(--color-status-warning)]/70 bg-[var(--color-status-warning)]/[0.08] border border-[var(--color-status-warning)]/20 cursor-pointer hover:bg-[var(--color-status-warning)]/[0.14] hover:text-[var(--color-status-warning)]/90 transition-colors duration-150 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)]"
               >
                 <RotateCcw size={11} strokeWidth={1.5} />
                 Re-run
@@ -182,8 +182,8 @@ export function AiInsightsPanel({
               <div className="space-y-2 pt-1">
                 {displayRisks.map((risk, i) => (
                   <div key={i} className="flex items-start gap-2">
-                    <AlertTriangle size={13} strokeWidth={1.5} className="mt-[3px] shrink-0 text-amber-400/60" />
-                    <p className="text-amber-400/60" style={{ fontSize: "1rem" }}>{risk}</p>
+                    <AlertTriangle size={13} strokeWidth={1.5} className="mt-[3px] shrink-0 text-[var(--color-status-warning)]/60" />
+                    <p className="text-[var(--color-status-warning)]/60" style={{ fontSize: "1rem" }}>{risk}</p>
                   </div>
                 ))}
               </div>
@@ -197,7 +197,7 @@ export function AiInsightsPanel({
 
         {hasFailed && (
           <div className="flex items-center justify-between gap-3 mt-2">
-            <p className="text-body-sm text-red-400/70">{live.error ?? "Failed to generate"}</p>
+            <p className="text-body-sm text-[var(--color-status-error)]/70">{live.error ?? "Failed to generate"}</p>
             <button
               type="button"
               onClick={onRetry}
@@ -251,7 +251,7 @@ export function AiInsightsPanel({
               </span>
             )}
             {isStale && hasResult && !isRunning && (
-              <span className="shrink-0 rounded-sm bg-amber-400/10 px-1 py-px text-caption text-amber-400/60">
+              <span className="shrink-0 rounded-sm bg-[var(--color-status-warning)]/10 px-1 py-px text-caption text-[var(--color-status-warning)]/60">
                 data changed
               </span>
             )}
@@ -264,7 +264,7 @@ export function AiInsightsPanel({
                 type="button"
                 onClick={onRetry}
                 title="Re-run analysis"
-                className="flex items-center gap-1 rounded px-1.5 py-1 text-caption text-amber-400/50 cursor-pointer hover:bg-amber-400/[0.08] hover:text-amber-400/80 transition-colors duration-150 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)]"
+                className="flex items-center gap-1 rounded px-1.5 py-1 text-caption text-[var(--color-status-warning)]/50 cursor-pointer hover:bg-[var(--color-status-warning)]/[0.08] hover:text-[var(--color-status-warning)]/80 transition-colors duration-150 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)]"
               >
                 <RotateCcw size={10} strokeWidth={1.5} />
                 Re-run
@@ -319,8 +319,8 @@ export function AiInsightsPanel({
                   <div className="space-y-1.5 pt-1">
                     {displayRisks.map((risk, i) => (
                       <div key={i} className="flex items-start gap-2">
-                        <AlertTriangle size={12} strokeWidth={1.5} className="mt-0.5 shrink-0 text-amber-400/60" />
-                        <p className="text-body-sm text-amber-400/60 max-w-prose">{risk}</p>
+                        <AlertTriangle size={12} strokeWidth={1.5} className="mt-0.5 shrink-0 text-[var(--color-status-warning)]/60" />
+                        <p className="text-body-sm text-[var(--color-status-warning)]/60 max-w-prose">{risk}</p>
                       </div>
                     ))}
                   </div>
@@ -338,7 +338,7 @@ export function AiInsightsPanel({
             {/* Error state */}
             {hasFailed && (
               <div className="flex items-center justify-between gap-3 mt-2">
-                <p className="text-body-sm text-red-400/70">{live.error ?? "Failed to generate"}</p>
+                <p className="text-body-sm text-[var(--color-status-error)]/70">{live.error ?? "Failed to generate"}</p>
                 <button
                   type="button"
                   onClick={onRetry}

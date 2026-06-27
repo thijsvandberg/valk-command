@@ -253,7 +253,7 @@ export function FinishSprintModal({
         {/* Body */}
         <div className="min-h-0 flex-1 space-y-3 overflow-y-auto px-5 py-4">
           {earlyClose && (
-            <div className="flex items-start gap-2 rounded-lg border border-amber-500/25 bg-amber-500/[0.07] px-3 py-2.5">
+            <div className="flex items-start gap-2 rounded-lg border border-[var(--color-status-caution)]/25 bg-[var(--color-status-caution)]/[0.07] px-3 py-2.5">
               <AlertTriangle size={14} strokeWidth={1.75} className="mt-px shrink-0 text-[var(--color-status-caution)]" />
               <p className="text-body-sm leading-relaxed text-text-secondary">
                 This sprint&rsquo;s end date has not passed yet. Finishing now closes it early.
@@ -263,8 +263,8 @@ export function FinishSprintModal({
 
           {/* Blocker A: incomplete stories */}
           {incompleteStories.length > 0 && (
-            <section className="overflow-hidden rounded-lg border border-red-500/20">
-              <div className="flex min-h-10 items-center gap-2 border-b border-red-500/15 bg-red-500/[0.06] px-3 py-2">
+            <section className="overflow-hidden rounded-lg border border-[var(--color-status-error)]/20">
+              <div className="flex min-h-10 items-center gap-2 border-b border-[var(--color-status-error)]/15 bg-[var(--color-status-error)]/[0.06] px-3 py-2">
                 <CircleAlert size={13} strokeWidth={1.75} className="shrink-0 text-[var(--color-status-error)]" />
                 <span className="text-body-sm font-medium text-text-primary">
                   {incompleteStories.length} {incompleteStories.length === 1 ? "story is" : "stories are"} not done
@@ -295,8 +295,8 @@ export function FinishSprintModal({
 
           {/* Blocker B: done stories with open subtasks */}
           {blockerBStories.length > 0 && (
-            <section className="overflow-hidden rounded-lg border border-amber-500/20">
-              <div className="flex min-h-10 items-center justify-between gap-2 border-b border-amber-500/15 bg-amber-500/[0.06] px-3 py-1.5">
+            <section className="overflow-hidden rounded-lg border border-[var(--color-status-caution)]/20">
+              <div className="flex min-h-10 items-center justify-between gap-2 border-b border-[var(--color-status-caution)]/15 bg-[var(--color-status-caution)]/[0.06] px-3 py-1.5">
                 <div className="flex items-center gap-2">
                   <AlertTriangle size={13} strokeWidth={1.75} className="shrink-0 text-[var(--color-status-caution)]" />
                   <span className="text-body-sm font-medium text-text-primary">
@@ -311,7 +311,7 @@ export function FinishSprintModal({
                       type="button"
                       onClick={handleCopyReport}
                       aria-label="Copy open-subtasks list"
-                      className="inline-flex items-center gap-1.5 rounded-md bg-amber-500/15 px-2 py-1 text-[11px] font-medium text-text-secondary cursor-pointer hover:bg-amber-500/25 hover:text-text-primary active:bg-amber-500/30 transition-colors duration-150"
+                      className="inline-flex items-center gap-1.5 rounded-md bg-[var(--color-status-caution)]/15 px-2 py-1 text-[11px] font-medium text-text-secondary cursor-pointer hover:bg-[var(--color-status-caution)]/25 hover:text-text-primary active:bg-[var(--color-status-caution)]/30 transition-colors duration-150"
                     >
                       <Copy size={11} strokeWidth={1.75} />
                       Copy list
@@ -321,7 +321,7 @@ export function FinishSprintModal({
                       onClick={closeAllSubtasks}
                       disabled={busyStories.size > 0}
                       aria-label="Close all open subtasks"
-                      className="inline-flex items-center gap-1.5 rounded-md bg-amber-500/15 px-2 py-1 text-[11px] font-medium text-text-secondary cursor-pointer hover:bg-amber-500/25 hover:text-text-primary active:bg-amber-500/30 disabled:opacity-50 disabled:cursor-not-allowed transition-colors duration-150"
+                      className="inline-flex items-center gap-1.5 rounded-md bg-[var(--color-status-caution)]/15 px-2 py-1 text-[11px] font-medium text-text-secondary cursor-pointer hover:bg-[var(--color-status-caution)]/25 hover:text-text-primary active:bg-[var(--color-status-caution)]/30 disabled:opacity-50 disabled:cursor-not-allowed transition-colors duration-150"
                     >
                       <CheckCheck size={11} strokeWidth={1.75} />
                       Close all
@@ -361,7 +361,7 @@ export function FinishSprintModal({
                             type="button"
                             onClick={() => closeAllForStory(story.key)}
                             disabled={storyBusy}
-                            className="inline-flex shrink-0 items-center gap-1 rounded-md px-1.5 py-1 text-[11px] font-medium text-text-secondary cursor-pointer hover:bg-amber-500/15 hover:text-text-primary active:bg-amber-500/20 disabled:opacity-50 disabled:cursor-not-allowed transition-colors duration-150"
+                            className="inline-flex shrink-0 items-center gap-1 rounded-md px-1.5 py-1 text-[11px] font-medium text-text-secondary cursor-pointer hover:bg-[var(--color-status-caution)]/15 hover:text-text-primary active:bg-[var(--color-status-caution)]/20 disabled:opacity-50 disabled:cursor-not-allowed transition-colors duration-150"
                           >
                             {storyBusy
                               ? <Loader2 size={11} strokeWidth={1.75} className="animate-spin" />
@@ -429,8 +429,8 @@ export function FinishSprintModal({
 
           {/* Ready state */}
           {ready && (
-            <div className="flex items-center gap-3 rounded-lg border border-green-500/25 bg-green-500/[0.06] px-3.5 py-3">
-              <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-green-500/12 text-[var(--color-status-success)]">
+            <div className="flex items-center gap-3 rounded-lg border border-[var(--color-status-success)]/25 bg-[var(--color-status-success)]/[0.06] px-3.5 py-3">
+              <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-[var(--color-status-success)]/12 text-[var(--color-status-success)]">
                 <PartyPopper size={16} strokeWidth={1.75} />
               </span>
               <div className="min-w-0">
@@ -453,7 +453,7 @@ export function FinishSprintModal({
 
           {/* Finish error */}
           {finishError && (
-            <div className="flex items-start gap-2 rounded-lg border border-red-500/20 bg-red-500/[0.06] px-3 py-2.5">
+            <div className="flex items-start gap-2 rounded-lg border border-[var(--color-status-error)]/20 bg-[var(--color-status-error)]/[0.06] px-3 py-2.5">
               <AlertTriangle size={13} strokeWidth={1.5} className="mt-px shrink-0 text-[var(--color-status-error)]" />
               <p className="text-body-sm leading-relaxed text-text-primary">{finishError}</p>
             </div>

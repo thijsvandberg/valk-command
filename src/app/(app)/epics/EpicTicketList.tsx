@@ -15,7 +15,7 @@ interface SprintMeta {
 
 const GROUPS: { category: ProgressCategory; label: string; color: string }[] = [
   { category: "in-progress", label: "In Progress", color: "var(--color-status-progress)" },
-  { category: "todo", label: "To Do", color: "var(--color-status-neutral)" },
+  { category: "todo", label: "To Do", color: "var(--color-status-todo)" },
   { category: "done", label: "Done", color: "var(--color-status-done)" },
 ];
 

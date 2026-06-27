@@ -11,6 +11,7 @@ import { tickets, jira, apiFetch } from "@/lib/api-client";
 import { patchTicketCaches, patchTicketDetailCache, moveTicketSprintCaches } from "@/lib/ticket-cache";
 import { registerPendingEdit, confirmPendingEdit, clearPendingEdit } from "@/components/sprint-board/pendingTicketEdits";
 import { reportClientError } from "@/lib/client-error";
+import { getScoreColor } from "@/lib/status-colors";
 import { Toast } from "@/components/ui/Toast";
 import { useToast } from "@/hooks/useToast";
 import { userInitials, userColor } from "@/lib/user-utils";
@@ -677,7 +678,7 @@ export function TicketMetaContent({
                       className="h-full rounded-full"
                       style={{
                         width: `${ticket.qualityScore}%`,
-                        backgroundColor: ticket.qualityScore < 60 ? "var(--color-status-error)" : ticket.qualityScore < 75 ? "var(--color-status-warning)" : ticket.qualityScore < 90 ? "var(--color-status-caution)" : "var(--color-status-success)",
+                        backgroundColor: getScoreColor(ticket.qualityScore),
                         transition: "width 0.4s ease",
                       }}
                     />

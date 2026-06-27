@@ -308,7 +308,7 @@ export function StoryWriterLayout({ ticketKey, draftTitle, draftType }: StoryWri
                           }}
                           className="flex w-full items-center gap-2.5 px-3 py-2 text-body-sm text-text-secondary cursor-pointer hover:bg-hover-interactive hover:text-text-primary transition-colors duration-150"
                         >
-                          <Flag size={13} strokeWidth={1.5} className={`shrink-0 ${ticketData.flagged ? "text-red-400" : ""}`} />
+                          <Flag size={13} strokeWidth={1.5} className={`shrink-0 ${ticketData.flagged ? "text-[var(--color-status-error)]" : ""}`} />
                           <span>{ticketData.flagged ? "Remove flag" : "Flag issue"}</span>
                         </button>
                       </>
@@ -371,7 +371,7 @@ export function StoryWriterLayout({ ticketKey, draftTitle, draftType }: StoryWri
                       <button
                         type="button"
                         onClick={() => { actions.handleDelete(true); actions.setShowMoreMenu(false); }}
-                        className="flex w-full items-center gap-2.5 px-3 py-2 text-body-sm text-text-tertiary cursor-pointer hover:bg-red-500/[0.06] hover:text-red-400/80 transition-colors duration-150"
+                        className="flex w-full items-center gap-2.5 px-3 py-2 text-body-sm text-text-tertiary cursor-pointer hover:bg-[var(--color-status-error)]/[0.06] hover:text-[var(--color-status-error)]/80 transition-colors duration-150"
                       >
                         <Trash2 size={13} strokeWidth={1.5} className="shrink-0" />
                         <span>Discard draft</span>
@@ -382,7 +382,7 @@ export function StoryWriterLayout({ ticketKey, draftTitle, draftType }: StoryWri
                       <button
                         type="button"
                         onClick={() => { actions.setShowDeleteConfirm(true); actions.setShowMoreMenu(false); }}
-                        className="flex w-full items-center gap-2.5 px-3 py-2 text-body-sm text-text-tertiary cursor-pointer hover:bg-red-500/[0.06] hover:text-red-400/80 transition-colors duration-150"
+                        className="flex w-full items-center gap-2.5 px-3 py-2 text-body-sm text-text-tertiary cursor-pointer hover:bg-[var(--color-status-error)]/[0.06] hover:text-[var(--color-status-error)]/80 transition-colors duration-150"
                       >
                         <Trash2 size={13} strokeWidth={1.5} className="shrink-0" />
                         <span>Delete session</span>
@@ -402,7 +402,7 @@ export function StoryWriterLayout({ ticketKey, draftTitle, draftType }: StoryWri
                 return (
                   <>
                     <span className="flex items-center gap-1.5 rounded-md bg-overlay-default px-2.5 py-1 text-label font-medium text-text-tertiary">
-                      <span className="h-2 w-2 rounded-full bg-amber-400/60 animate-pulse" />
+                      <span className="h-2 w-2 rounded-full bg-[var(--color-status-warning)]/60 animate-pulse" />
                       Syncing to Jira...
                     </span>
                     <span className="min-w-0 flex-1 truncate font-[var(--font-display)] text-heading-sm font-semibold tracking-tight text-text-primary">
@@ -449,26 +449,26 @@ export function StoryWriterLayout({ ticketKey, draftTitle, draftType }: StoryWri
 
           {/* Push error */}
           {actions.pushError && (
-            <div className="border-b border-red-500/20 bg-red-500/[0.04] px-4 py-2 text-body-sm text-red-400">
+            <div className="border-b border-[var(--color-status-error)]/20 bg-[var(--color-status-error)]/[0.04] px-4 py-2 text-body-sm text-[var(--color-status-error)]">
               {actions.pushError}
             </div>
           )}
 
           {/* Cross-tab draft conflict: autosave is paused until resolved */}
           {writer.draftConflict && (
-            <div className="flex items-center gap-3 border-b border-amber-500/20 bg-amber-500/[0.04] px-4 py-2 text-body-sm text-amber-400">
+            <div className="flex items-center gap-3 border-b border-[var(--color-status-warning)]/20 bg-[var(--color-status-warning)]/[0.04] px-4 py-2 text-body-sm text-[var(--color-status-warning)]">
               <span className="flex-1">This draft was changed in another tab. Autosave is paused.</span>
               <button
                 type="button"
                 onClick={() => writer.resolveDraftConflict("reload")}
-                className="shrink-0 rounded-md border border-amber-500/20 bg-amber-500/10 px-2.5 py-1 text-body-sm font-medium text-amber-400 cursor-pointer hover:bg-amber-500/20 transition-colors duration-150"
+                className="shrink-0 rounded-md border border-[var(--color-status-warning)]/20 bg-[var(--color-status-warning)]/10 px-2.5 py-1 text-body-sm font-medium text-[var(--color-status-warning)] cursor-pointer hover:bg-[var(--color-status-warning)]/20 transition-colors duration-150"
               >
                 Reload draft
               </button>
               <button
                 type="button"
                 onClick={() => writer.resolveDraftConflict("overwrite")}
-                className="shrink-0 rounded-md border border-amber-500/20 px-2.5 py-1 text-body-sm font-medium text-amber-400/80 cursor-pointer hover:bg-amber-500/10 transition-colors duration-150"
+                className="shrink-0 rounded-md border border-[var(--color-status-warning)]/20 px-2.5 py-1 text-body-sm font-medium text-[var(--color-status-warning)]/80 cursor-pointer hover:bg-[var(--color-status-warning)]/10 transition-colors duration-150"
               >
                 Overwrite
               </button>
@@ -477,12 +477,12 @@ export function StoryWriterLayout({ ticketKey, draftTitle, draftType }: StoryWri
 
           {/* Draft sync error */}
           {draftSync.syncStatus === "error" && (
-            <div className="flex items-center gap-3 border-b border-amber-500/20 bg-amber-500/[0.04] px-4 py-2 text-body-sm text-amber-400">
+            <div className="flex items-center gap-3 border-b border-[var(--color-status-warning)]/20 bg-[var(--color-status-warning)]/[0.04] px-4 py-2 text-body-sm text-[var(--color-status-warning)]">
               <span className="flex-1">Failed to create in Jira: {draftSync.error}. Your draft is saved locally.</span>
               <button
                 type="button"
                 onClick={draftSync.retry}
-                className="shrink-0 rounded-md border border-amber-500/20 bg-amber-500/10 px-2.5 py-1 text-body-sm font-medium text-amber-400 cursor-pointer hover:bg-amber-500/20 transition-colors duration-150"
+                className="shrink-0 rounded-md border border-[var(--color-status-warning)]/20 bg-[var(--color-status-warning)]/10 px-2.5 py-1 text-body-sm font-medium text-[var(--color-status-warning)] cursor-pointer hover:bg-[var(--color-status-warning)]/20 transition-colors duration-150"
               >
                 Retry
               </button>
@@ -499,7 +499,7 @@ export function StoryWriterLayout({ ticketKey, draftTitle, draftType }: StoryWri
             title="Delete session?"
             description="This will discard the current drafts and AI suggestions. You can optionally keep the conversation history."
             confirmLabel="Delete everything"
-            confirmClassName="bg-red-500/10 border border-red-500/20 hover:bg-red-500/20"
+            confirmClassName="bg-[var(--color-status-error)]/10 border border-[var(--color-status-error)]/20 hover:bg-[var(--color-status-error)]/20"
             onConfirm={() => actions.handleDelete(true)}
             extraActions={
               <Button variant="ghost" size="md" onClick={() => actions.handleDelete(false)}>

@@ -482,16 +482,16 @@ export function StoryWriterChat({
               />
               {msg.role === "user" && msg.status === "failed" && (
                 <div className="flex justify-end mt-1">
-                  <div className="flex items-center gap-2 px-2 py-1 rounded-md bg-red-500/[0.06] border border-red-500/10">
-                    <AlertCircle size={11} className="shrink-0 text-red-400/60" strokeWidth={1.5} />
-                    <span className="text-caption text-red-300/60">Message could not be sent.</span>
+                  <div className="flex items-center gap-2 px-2 py-1 rounded-md bg-[var(--color-status-error)]/[0.06] border border-[var(--color-status-error)]/10">
+                    <AlertCircle size={11} className="shrink-0 text-[var(--color-status-error)]/60" strokeWidth={1.5} />
+                    <span className="text-caption text-[var(--color-status-error)]/60">Message could not be sent.</span>
                     <Button
                       variant="ghost"
                       size="sm"
                       icon={<RotateCcw size={9} strokeWidth={2} />}
                       onClick={() => onRetry?.(msg.id)}
                       disabled={isBusy}
-                      className="text-caption text-red-300/70 hover:text-red-200/90 cursor-pointer"
+                      className="text-caption text-[var(--color-status-error)]/70 hover:text-[var(--color-status-error)]/90 cursor-pointer"
                     >
                       Tap to retry
                     </Button>
@@ -501,7 +501,7 @@ export function StoryWriterChat({
               {msg.role === "user" && msg.status === "pending" && !isStreaming && status === "ready" && (
                 <div className="flex justify-end mt-1">
                   <div className="flex items-center gap-1.5 px-2 py-1">
-                    <AlertCircle size={10} className="shrink-0 text-amber-500/40" strokeWidth={1.5} />
+                    <AlertCircle size={10} className="shrink-0 text-[var(--color-status-warning)]/40" strokeWidth={1.5} />
                     <span className="text-caption text-text-tertiary">Not sent</span>
                   </div>
                 </div>
@@ -523,7 +523,7 @@ export function StoryWriterChat({
               {idx === unansweredIdx && (
                 <div className="flex justify-end mt-1">
                   <div className="flex items-center gap-2 px-2 py-1">
-                    <AlertCircle size={11} className="shrink-0 text-amber-500/50" strokeWidth={1.5} />
+                    <AlertCircle size={11} className="shrink-0 text-[var(--color-status-warning)]/50" strokeWidth={1.5} />
                     <span className="text-caption text-text-tertiary">No response received</span>
                     <Button
                       variant="ghost"
@@ -550,14 +550,14 @@ export function StoryWriterChat({
       )}
 
       {streamError && (
-        <div className="border-t border-red-500/20 px-4 py-2">
-          <span className="text-body-sm text-red-400">{streamError}</span>
+        <div className="border-t border-[var(--color-status-error)]/20 px-4 py-2">
+          <span className="text-body-sm text-[var(--color-status-error)]">{streamError}</span>
         </div>
       )}
 
       {dupWarning && (
-        <div className="border-t border-amber-500/20 px-4 py-2">
-          <span className="text-body-sm text-amber-400">Duplicate message blocked</span>
+        <div className="border-t border-[var(--color-status-warning)]/20 px-4 py-2">
+          <span className="text-body-sm text-[var(--color-status-warning)]">Duplicate message blocked</span>
         </div>
       )}
 
@@ -699,7 +699,7 @@ export function StoryWriterChat({
                     iconOnly
                     icon={<Square className="h-3 w-3" strokeWidth={2} fill="currentColor" />}
                     onClick={onCancel}
-                    className="text-red-400 hover:text-red-300 hover:bg-red-500/10 cursor-pointer"
+                    className="text-[var(--color-status-error)] hover:text-[var(--color-status-error)] hover:bg-[var(--color-status-error)]/10 cursor-pointer"
                     aria-label="Stop generating"
                     data-testid="cancel-button"
                   />

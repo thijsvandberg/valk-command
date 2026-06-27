@@ -1,11 +1,15 @@
 import type { ReactNode, HTMLAttributes } from "react";
 
+// Colors derive from app tokens, not the raw Tailwind palette (BRDG-419). The
+// status-meaning colors map onto --color-status-* (blue->info, amber->warning,
+// red->error); `purple` (the "AI" content tag) has no status equivalent, so it
+// routes through the app's single defined purple token (--color-icon-epic).
 const COLOR_CLASSES = {
   brand: "bg-[var(--color-brand-500)]/15 text-[var(--color-brand-400)]",
-  blue: "bg-blue-500/15 text-blue-400",
-  purple: "bg-purple-500/15 text-purple-400",
-  amber: "bg-amber-500/15 text-amber-400",
-  red: "bg-red-500/15 text-red-400",
+  blue: "bg-[var(--color-status-info-subtle)] text-[var(--color-status-info)]",
+  purple: "bg-[var(--color-icon-epic)]/15 text-[var(--color-icon-epic)]",
+  amber: "bg-[var(--color-status-warning-subtle)] text-[var(--color-status-warning)]",
+  red: "bg-[var(--color-status-error-subtle)] text-[var(--color-status-error)]",
   neutral: "bg-overlay-default text-text-tertiary",
 } as const;
 

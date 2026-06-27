@@ -30,15 +30,15 @@ export function OutdatedBanner({ onViewDifference, onTakeJiraVersion }: Outdated
   return (
     <div
       role="status"
-      className="flex shrink-0 flex-wrap items-center gap-x-4 gap-y-2 border-b border-amber-200 bg-amber-50 px-4 py-2.5"
+      className="flex shrink-0 flex-wrap items-center gap-x-4 gap-y-2 border-b border-[var(--color-status-warning)]/20 bg-[var(--color-status-warning-subtle)] px-4 py-2.5"
     >
       <div className="flex min-w-0 flex-1 items-center gap-2.5">
         <AlertTriangle
           size={15}
           strokeWidth={2}
-          className="shrink-0 text-amber-600"
+          className="shrink-0 text-[var(--color-status-warning)]"
         />
-        <span className="min-w-0 text-body-sm leading-snug text-amber-900">
+        <span className="min-w-0 text-body-sm leading-snug text-text-primary">
           Jira changed after this draft started; your draft may be out of date.
         </span>
       </div>
@@ -47,7 +47,7 @@ export function OutdatedBanner({ onViewDifference, onTakeJiraVersion }: Outdated
           <button
             type="button"
             onClick={onViewDifference}
-            className="flex shrink-0 items-center gap-1.5 rounded-md border border-amber-300 bg-white px-2.5 py-1.5 text-body-sm font-medium text-amber-800 cursor-pointer transition-colors duration-150 hover:bg-amber-100 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-amber-500 active:scale-[0.98]"
+            className="flex shrink-0 items-center gap-1.5 rounded-md border border-[var(--color-status-warning)]/30 px-2.5 py-1.5 text-body-sm font-medium text-[var(--color-status-warning)] cursor-pointer transition-colors duration-150 hover:bg-[var(--color-status-warning)]/10 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-status-warning)] active:scale-[0.98]"
           >
             <GitCompare size={13} strokeWidth={1.75} />
             View difference
@@ -57,7 +57,7 @@ export function OutdatedBanner({ onViewDifference, onTakeJiraVersion }: Outdated
           type="button"
           onClick={handleTake}
           disabled={taking}
-          className="flex shrink-0 items-center gap-1.5 rounded-md border border-amber-600 bg-amber-600 px-2.5 py-1.5 text-body-sm font-medium text-white cursor-pointer transition-colors duration-150 hover:bg-amber-700 hover:border-amber-700 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-amber-500 active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-60"
+          className="flex shrink-0 items-center gap-1.5 rounded-md border border-[var(--color-status-warning)] bg-[var(--color-status-warning)] px-2.5 py-1.5 text-body-sm font-medium text-white cursor-pointer transition-colors duration-150 hover:brightness-110 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-status-warning)] active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-60"
         >
           {taking
             ? <Loader2 size={13} className="animate-spin" />

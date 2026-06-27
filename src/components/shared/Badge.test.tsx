@@ -21,22 +21,31 @@ describe("Badge", () => {
     expect(el.className).toContain("text-[var(--color-brand-400)]");
   });
 
-  it("applies success variant classes", () => {
+  it("applies success variant classes from status tokens", () => {
     const { container } = render(<Badge variant="success">1</Badge>);
     const el = container.firstChild as HTMLElement;
-    expect(el.className).toContain("text-emerald-400");
+    expect(el.className).toContain("text-[var(--color-status-success)]");
   });
 
-  it("applies warning variant classes", () => {
+  it("applies warning variant classes from status tokens", () => {
     const { container } = render(<Badge variant="warning">!</Badge>);
     const el = container.firstChild as HTMLElement;
-    expect(el.className).toContain("text-amber-400");
+    expect(el.className).toContain("text-[var(--color-status-warning)]");
   });
 
-  it("applies danger variant classes", () => {
+  it("applies danger variant classes from status tokens", () => {
     const { container } = render(<Badge variant="danger">9+</Badge>);
     const el = container.firstChild as HTMLElement;
-    expect(el.className).toContain("text-red-400");
+    expect(el.className).toContain("text-[var(--color-status-error)]");
+  });
+
+  // BRDG-419 guard: no raw status-palette utilities in any variant.
+  it("uses no raw red/amber/emerald/green palette utilities", () => {
+    for (const variant of ["default", "brand", "success", "warning", "danger"] as const) {
+      const { container } = render(<Badge variant={variant}>x</Badge>);
+      const cls = (container.firstChild as HTMLElement).className;
+      expect(cls).not.toMatch(/(?:bg|text|border)-(?:red|amber|emerald|green)-\d/);
+    }
   });
 
   it("applies sm size classes", () => {

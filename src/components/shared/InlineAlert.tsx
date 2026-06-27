@@ -1,9 +1,12 @@
 import type { ReactNode } from "react";
 
+// Colors derive from the theme-aware --color-status-* tokens (BRDG-419) so a
+// future status retune propagates here automatically. The `-subtle` fills are
+// pre-tuned transparent mixes that composite over either light or dark surface.
 const VARIANT_CLASSES = {
-  error: "border-red-500/20 bg-red-500/10 text-red-400",
-  warning: "border-amber-500/20 bg-amber-500/10 text-amber-400",
-  info: "border-blue-500/20 bg-blue-500/10 text-blue-400",
+  error: "border-[var(--color-status-error)]/20 bg-[var(--color-status-error-subtle)] text-[var(--color-status-error)]",
+  warning: "border-[var(--color-status-warning)]/20 bg-[var(--color-status-warning-subtle)] text-[var(--color-status-warning)]",
+  info: "border-[var(--color-status-info)]/20 bg-[var(--color-status-info-subtle)] text-[var(--color-status-info)]",
 } as const;
 
 type AlertVariant = keyof typeof VARIANT_CLASSES;

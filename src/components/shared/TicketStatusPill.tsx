@@ -14,6 +14,7 @@ import {
   READINESS_OPTIONS,
 } from "@/types/ticket";
 import { ISSUE_TYPE_COLORS } from "@/components/shared/IssueTypeIcon";
+import { getScoreColor } from "@/lib/status-colors";
 import { getJiraUrl } from "@/lib/jira-url";
 import { IssueTypeIcon } from "@/components/shared/IssueTypeIcon";
 import { formatTicketShare } from "@/lib/ticket-share";
@@ -40,14 +41,6 @@ function ReadinessIcon({ value, size = 12, strokeWidth = 1.75 }: { value: Ticket
     case "ready_to_refine":      return <CheckCircle2 {...props} />;
     case "on_hold":              return <Ban {...props} />;
   }
-}
-
-// Quality Score color ramp, mirroring QualityBadge so the card reads consistently (BRDG-239).
-function qualityColor(score: number): string {
-  if (score < 60) return "var(--color-status-error)";
-  if (score < 75) return "var(--color-status-warning)";
-  if (score < 90) return "var(--color-status-caution)";
-  return "var(--color-status-success)";
 }
 
 // Local edit-state display config. Kept here (not imported from sprint-board cells) so the shared
@@ -591,10 +584,10 @@ function TicketHoverCard({
               aria-label="Pipeline health"
               className={`inline-flex h-7 items-center gap-1.5 rounded-lg px-2.5 text-body-sm font-medium tabular-nums ${
                 data.pipelineHealth.status === "green"
-                  ? "bg-emerald-500/10 text-emerald-500"
+                  ? "bg-[var(--color-status-success)]/10 text-[var(--color-status-success)]"
                   : data.pipelineHealth.status === "red"
-                  ? "bg-red-500/10 text-red-500"
-                  : "bg-amber-500/10 text-amber-500"
+                  ? "bg-[var(--color-status-error)]/10 text-[var(--color-status-error)]"
+                  : "bg-[var(--color-status-warning)]/10 text-[var(--color-status-warning)]"
               }`}
             >
               <GitBranch size={13} strokeWidth={2} aria-hidden />
@@ -613,9 +606,9 @@ function TicketHoverCard({
               aria-label="Last deploy"
               className={`inline-flex h-7 items-center gap-1.5 rounded-lg px-2.5 text-body-sm font-medium uppercase tracking-wide ${
                 data.lastDeploy.state === "SUCCESSFUL"
-                  ? "bg-emerald-500/10 text-emerald-500"
+                  ? "bg-[var(--color-status-success)]/10 text-[var(--color-status-success)]"
                   : data.lastDeploy.state === "FAILED"
-                  ? "bg-red-500/10 text-red-500"
+                  ? "bg-[var(--color-status-error)]/10 text-[var(--color-status-error)]"
                   : "bg-overlay-subtle text-text-secondary"
               }`}
             >
@@ -689,8 +682,8 @@ function TicketHoverCard({
 
         <InfoRow icon={<Gauge size={12} strokeWidth={1.75} />} label="Quality">
           {data.qualityScore != null ? (
-            <span className="flex items-center gap-1.5 tabular-nums" style={{ color: qualityColor(data.qualityScore) }}>
-              <span className="h-1.5 w-1.5 rounded-full" style={{ backgroundColor: qualityColor(data.qualityScore) }} />
+            <span className="flex items-center gap-1.5 tabular-nums" style={{ color: getScoreColor(data.qualityScore) }}>
+              <span className="h-1.5 w-1.5 rounded-full" style={{ backgroundColor: getScoreColor(data.qualityScore) }} />
               {data.qualityScore}/100
             </span>
           ) : runReview ? (

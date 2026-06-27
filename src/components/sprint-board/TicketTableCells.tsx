@@ -8,6 +8,7 @@ import { PO_STATUS_COLORS } from "@/components/sprint-board/FilterBar";
 import { Minus, Sparkles, Pencil, CircleDot, Check, Pause, Clock } from "lucide-react";
 import { ReviewPopover } from "@/components/sprint-board/ReviewPopover";
 import { Tooltip } from "@/components/shared/Tooltip";
+import { getScoreColor } from "@/lib/status-colors";
 
 type EditState = "local_edits" | "conflict";
 
@@ -64,13 +65,7 @@ export function QualityBadge({
   isPopoverOpen?: boolean;
   onTogglePopover?: () => void;
 }) {
-  let color: string | undefined;
-  if (score !== null) {
-    if (score < 60) color = "var(--color-status-error)";
-    else if (score < 75) color = "var(--color-status-warning)";
-    else if (score < 90) color = "var(--color-status-caution)";
-    else color = "var(--color-status-success)";
-  }
+  const color: string | undefined = score !== null ? getScoreColor(score) : undefined;
 
   const content = score === null ? (
     <span className="inline-block h-[3px] w-[3px] rounded-full bg-[var(--color-text-muted)]/40 leading-none" />

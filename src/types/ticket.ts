@@ -3,6 +3,7 @@
 
 import { getStoredEpicBase } from "@/lib/epic-color-registry";
 import { deriveEpicColor } from "@/lib/epic-palette";
+import { JIRA_STATUS_STYLES } from "@/lib/status-colors";
 
 export type IssueType = "task" | "bug" | "story" | "subtask" | "spike" | "epic";
 export type JiraStatus = "TO DO" | "IN PROGRESS" | "TEST" | "DONE" | "DEPRECATED";
@@ -54,20 +55,13 @@ export const PO_STATUS_OPTIONS: { value: POStatus; label: string }[] = [
   { value: "On Hold", label: "On Hold" },
 ];
 
-// Shared with the sprint-board status pills via the --sp-* theme variables
-// (defined in globals.css) so every ticket-status surface uses one fresh,
-// light-mode-aware palette. The BRDG-322 set is collision-free with the
-// BRDG-321 row markers (no teal/slate/violet). DEPRECATED is muted zinc and
-// DELETED (a derived soft-delete, not a real JiraStatus) is muted rose; both
-// are struck through at the call sites. Kept in lockstep with JIRA_STATUS_STYLES.
-export const JIRA_STATUS_COLORS: Record<JiraStatus | "DELETED", { bg: string; text: string }> = {
-  "TO DO": { bg: "var(--sp-todo-bg)", text: "var(--sp-todo-text)" },
-  "IN PROGRESS": { bg: "var(--sp-prog-bg)", text: "var(--sp-prog-text)" },
-  TEST: { bg: "var(--sp-test-bg)", text: "var(--sp-test-text)" },
-  DONE: { bg: "var(--sp-done-bg)", text: "var(--sp-done-text)" },
-  DEPRECATED: { bg: "var(--color-status-deprecated-subtle)", text: "var(--color-status-deprecated)" },
-  DELETED: { bg: "var(--color-status-deleted-subtle)", text: "var(--color-status-deleted)" },
-};
+// Single source of truth for the Jira-status colour map is JIRA_STATUS_STYLES in
+// lib/status-colors.ts (BRDG-419). This alias is kept so existing call sites that
+// import JIRA_STATUS_COLORS from @/types/ticket keep working without a second,
+// hand-synced copy. The BRDG-322 set is collision-free with the BRDG-321 row
+// markers (no teal/slate/violet); DEPRECATED/DELETED are struck through at the
+// call sites.
+export const JIRA_STATUS_COLORS: Record<JiraStatus | "DELETED", { bg: string; text: string }> = JIRA_STATUS_STYLES;
 
 export interface EpicColor {
   bg: string;
@@ -120,6 +114,13 @@ export interface MetricTone {
 
 // SP = neutral slate (effort "recedes"); BV = violet ("premium/value"). Off the
 // traffic-light hues (no amber/green/red) so neither borrows a status meaning.
+//
+// SINGLE HOME for the metric tones (BRDG-419 decision): these hexes live here, in
+// the data layer, NOT in globals.css. Rationale: they are not status colors (the
+// status single-source is globals.css `--color-status-*`); they are a distinct
+// metadata family consumed via getSpColor / getBvColor / getGuestimationColor.
+// Consumers must call those helpers (or the `--meta-*-fg` theme vars) rather than
+// re-inlining the hexes, so this file stays the only place the values appear.
 const SP_TONE: MetricTone = { text: "var(--meta-sp-fg)", bg: "color-mix(in srgb, #64748b 18%, transparent)", solid: "#64748b" };
 const BV_TONE: MetricTone = { text: "var(--meta-bv-fg)", bg: "color-mix(in srgb, #8b5cf6 18%, transparent)", solid: "#8b5cf6" };
 // N/A (value 0) stays a neutral grey: it is a distinct semantic, not a magnitude.

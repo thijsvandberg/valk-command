@@ -1,11 +1,14 @@
 import type { HTMLAttributes, ReactNode } from "react";
 
+// Status variants derive from the --color-status-* tokens (BRDG-419); the
+// `-subtle` fills are pre-tuned per theme. `brand` stays on the brand accent
+// (not a status meaning).
 const VARIANT_CLASSES = {
   default: "bg-overlay-default text-text-tertiary",
   brand: "bg-[var(--color-brand-500)]/15 text-[var(--color-brand-400)]",
-  success: "bg-emerald-500/15 text-emerald-400",
-  warning: "bg-amber-500/15 text-amber-400",
-  danger: "bg-red-500/15 text-red-400",
+  success: "bg-[var(--color-status-success-subtle)] text-[var(--color-status-success)]",
+  warning: "bg-[var(--color-status-warning-subtle)] text-[var(--color-status-warning)]",
+  danger: "bg-[var(--color-status-error-subtle)] text-[var(--color-status-error)]",
 } as const;
 
 const SIZE_CLASSES = {

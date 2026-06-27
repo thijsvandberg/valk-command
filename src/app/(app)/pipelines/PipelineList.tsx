@@ -21,15 +21,15 @@ import { formatTimeAgo, formatDuration } from "./pipeline-helpers";
 function stateIcon(state: PipelineRunPayload["state"], size = 13) {
   switch (state) {
     case "SUCCESSFUL":
-      return <CheckCircle2 size={size} strokeWidth={2} className="text-emerald-400" />;
+      return <CheckCircle2 size={size} strokeWidth={2} className="text-[var(--color-status-success)]" />;
     case "FAILED":
-      return <XCircle size={size} strokeWidth={2} className="text-red-400" />;
+      return <XCircle size={size} strokeWidth={2} className="text-[var(--color-status-error)]" />;
     case "IN_PROGRESS":
       return <Loader2 size={size} strokeWidth={2} className="text-[var(--color-brand-400)] animate-spin" />;
     case "PAUSED":
-      return <Pause size={size} strokeWidth={2} className="text-amber-400" />;
+      return <Pause size={size} strokeWidth={2} className="text-[var(--color-status-warning)]" />;
     case "STOPPED":
-      return <OctagonX size={size} strokeWidth={2} className="text-amber-400/70" />;
+      return <OctagonX size={size} strokeWidth={2} className="text-[var(--color-status-warning)]/70" />;
   }
 }
 
@@ -49,7 +49,7 @@ export function RunningSection({ runs }: { runs: PipelineRunPayload[] }) {
   return (
     <div className="mb-6">
       <div className="flex items-center gap-2 mb-3">
-        <div className={`h-2 w-2 rounded-full ${runningCount > 0 ? "bg-[var(--color-brand-400)] animate-pulse" : "bg-amber-400"}`} />
+        <div className={`h-2 w-2 rounded-full ${runningCount > 0 ? "bg-[var(--color-brand-400)] animate-pulse" : "bg-[var(--color-status-warning)]"}`} />
         <span className="text-body-sm font-medium text-text-secondary uppercase tracking-wider">
           Active ({label})
         </span>
@@ -66,12 +66,12 @@ export function RunningSection({ runs }: { runs: PipelineRunPayload[] }) {
 function RunningCard({ run }: { run: PipelineRunPayload }) {
   const isPaused = run.state === "PAUSED";
   return (
-    <Card className={`relative overflow-hidden px-4 py-3 ${isPaused ? "border-amber-500/20" : "border-[var(--color-brand-500)]/20"}`}>
+    <Card className={`relative overflow-hidden px-4 py-3 ${isPaused ? "border-[var(--color-status-warning)]/20" : "border-[var(--color-brand-500)]/20"}`}>
       <div className={`pointer-events-none absolute inset-0 ${isPaused ? "bg-[radial-gradient(ellipse_at_top_left,color-mix(in_srgb,var(--color-status-caution)_6%,transparent),transparent_70%)]" : "bg-[radial-gradient(ellipse_at_top_left,color-mix(in_srgb,var(--color-brand-500)_8%,transparent),transparent_70%)]"}`} />
       <div className="relative flex items-center justify-between gap-2">
         <div className="flex items-center gap-2 min-w-0">
           {isPaused ? (
-            <Pause size={14} strokeWidth={2} className="shrink-0 text-amber-400" />
+            <Pause size={14} strokeWidth={2} className="shrink-0 text-[var(--color-status-warning)]" />
           ) : (
             <Loader2 size={14} strokeWidth={2} className="shrink-0 text-[var(--color-brand-400)] animate-spin" />
           )}
@@ -112,10 +112,10 @@ function RunningCard({ run }: { run: PipelineRunPayload }) {
 
 export function StatusPill({ state }: { state: PipelineRunPayload["state"] }) {
   const config = {
-    SUCCESSFUL: { bg: "bg-emerald-500/10", text: "text-emerald-400/80", label: "Passed" },
-    FAILED:     { bg: "bg-red-500/10", text: "text-red-400/80", label: "Failed" },
+    SUCCESSFUL: { bg: "bg-[var(--color-status-success)]/10", text: "text-[var(--color-status-success)]/80", label: "Passed" },
+    FAILED:     { bg: "bg-[var(--color-status-error)]/10", text: "text-[var(--color-status-error)]/80", label: "Failed" },
     IN_PROGRESS:{ bg: "bg-[var(--color-brand-500)]/10", text: "text-[var(--color-brand-400)]", label: "Running" },
-    PAUSED:     { bg: "bg-amber-500/10", text: "text-amber-400/70", label: "Paused" },
+    PAUSED:     { bg: "bg-[var(--color-status-warning)]/10", text: "text-[var(--color-status-warning)]/70", label: "Paused" },
     STOPPED:    { bg: "bg-overlay-subtle", text: "text-text-tertiary", label: "Stopped" },
   }[state];
 
@@ -140,7 +140,7 @@ function PipelineRow({ run, ticketTitleMap }: { run: PipelineRunPayload; ticketT
       target="_blank"
       rel="noopener noreferrer"
       className={`group block border-b border-border-subtle last:border-b-0 transition-colors duration-150 hover:bg-overlay-subtle ${
-        isFailed ? "bg-red-500/[0.02]" : ""
+        isFailed ? "bg-[var(--color-status-error)]/[0.02]" : ""
       }`}
     >
       {/* Primary row */}
@@ -332,12 +332,12 @@ export function GroupedByTicketView({
               )}
               <div className="ml-auto flex items-center gap-3 text-label">
                 {passCount > 0 && (
-                  <span className="flex items-center gap-1 text-emerald-400/70">
+                  <span className="flex items-center gap-1 text-[var(--color-status-success)]/70">
                     <CheckCircle2 size={11} strokeWidth={2} /> {passCount}
                   </span>
                 )}
                 {failCount > 0 && (
-                  <span className="flex items-center gap-1 text-red-400/70">
+                  <span className="flex items-center gap-1 text-[var(--color-status-error)]/70">
                     <XCircle size={11} strokeWidth={2} /> {failCount}
                   </span>
                 )}
@@ -350,7 +350,7 @@ export function GroupedByTicketView({
               <div
                 key={run.id}
                 className={`flex items-center gap-3 px-4 py-2 border-b border-border-subtle last:border-b-0 transition-colors duration-150 hover:bg-overlay-subtle ${
-                  run.state === "FAILED" ? "bg-red-500/[0.03]" : ""
+                  run.state === "FAILED" ? "bg-[var(--color-status-error)]/[0.03]" : ""
                 }`}
               >
                 {stateIcon(run.state)}
