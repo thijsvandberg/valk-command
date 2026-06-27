@@ -92,6 +92,8 @@ export interface GroupStatBarProps {
   syncKind?: "sprint" | "epic";
   /** Action pinned into the right cluster between the warning and the "..." menu (e.g. a create "+"). */
   createAction?: ReactNode;
+  /** Subtle toggle pinned into the right cluster (BRDG-414: open/close all status-change lines). */
+  updatesAction?: ReactNode;
   /**
    * Forward-planning mode (BRDG-303). When on, the bar shows a fullness meter
    * (effective points / pencil capacity). Only meaningful for real sprint groups;
@@ -216,6 +218,7 @@ export const GroupStatBar = memo(function GroupStatBar({
   onSync,
   syncKind,
   createAction,
+  updatesAction,
   planningOn = false,
   capacityMeterShown = false,
   onToggleCapacityMeter,
@@ -577,6 +580,7 @@ export const GroupStatBar = memo(function GroupStatBar({
             </span>
           </Tooltip>
         )}
+        {updatesAction}
         {createAction}
         {showSprintMenu && (
           <div className="relative">
