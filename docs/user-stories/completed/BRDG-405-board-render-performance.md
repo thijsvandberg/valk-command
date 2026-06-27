@@ -1,7 +1,8 @@
 # BRDG-405: Sprint board render performance + drag correctness
 
-**Status:** Partially delivered (two of three High items + the overlay-equality fix shipped; the
-per-row render fan-out (#1), virtualizer offset (#4), and header extract (#5) deferred)
+**Status:** Delivered & archived — the two High stability fixes + the overlay-equality fix shipped and
+are verified; the render remainder (per-row fan-out, virtualizer offset, header extract) is re-homed
+in [[BRDG-416-board-render-fanout-and-virtualizer]], so this story carries no open work.
 **Priority:** High
 **Type:** Performance / Stability — sprint board
 

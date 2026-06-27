@@ -1,7 +1,8 @@
 # BRDG-406: Finish the row-actions convergence (board adopts the shared module)
 
-**Status:** Partially delivered (correctness/perf/robustness fixes shipped; structural board-glue
-convergence + menu-file split + selection-pruning deferred)
+**Status:** Delivered & archived — the dispatch-layer fixes shipped and are verified; the structural
+remainder (board-glue convergence, menu-file split, selection-pruning) is re-homed in
+[[BRDG-415-finish-board-row-actions-glue-convergence]], so this story carries no open work.
 **Priority:** High
 **Type:** Structure / Stability — sprint board, multiselect + context menu
 
