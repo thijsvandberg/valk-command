@@ -80,6 +80,21 @@ The **permanent "Finished work" divider** and its **move-to-bottom** ordering be
 - Comment/story-only changes (no status change) creating their own queue entries — the queue is **status-change-driven**; comment/story are secondary signals on a status-change line.
 - Real-time push: changes surface on the existing ~150s sync cadence; no webhook.
 
+## Implementation Plan
+
+Verified findings that shape the plan: the main sync already fetches `expand=changelog`, but the changelog author shape carries only `displayName` + `avatarUrls` (**no accountId**) — so `changedByAccountId` is usually null and the changer-vs-assignee compare is **name-based** with accountId as optional refinement. The board row is a `<tr>` with one `<td>`; the quiet line must stack **inside that `<td>`** (not a second `<tr>`) so the virtualizer's per-row height stays correct. Test deploy/pipeline maps already reach `BoardRow` via `makeRowProps`, and `openSubtaskCount` is already on the board ticket — no new fetch. The board's SSE bus (`subscribeEvents`) is the live-update hook.
+
+1. **Schema + migration** (`src/db/schema.ts`, new `drizzle/*.sql`): add `changedBy` / `changedByAccountId` / `changedByAvatar` (nullable) to `ticketStatusChange`; add `status_change_seen` table keyed `(userId, statusChangeId)` mirroring `newStoryRead`.
+2. **Capture who + accurate transitions** (`jira-client.ts`, `upsert-issue.ts`, `burnup/seed/route.ts`): extend `StatusChange`/`filterStatusChanges()` with author fields; rewrite the capture block to read the inline changelog (fallback `getStatusChangelog(key)` only for changed tickets, server-side/background) and write per-transition rows with deterministic ids (`onConflictDoNothing`); backfill writes the new columns.
+3. **Read endpoint + seen store + live hook** (new `status-change-seen-store.ts`, `status-changes-query.ts`, `GET /api/status-changes`, `PUT|POST /api/status-changes/seen`, `useStatusChanges` hook): mirror `new-stories-query` + `new-story-read` patterns; scope by `sprintName IN (active sprint ids)`; hook revalidates on the `ticket:changed` bus (kinds status/comment/content) → no manual refresh.
+4. **"What's new (24h, not me)"**: derive in the query from existing `jiraComment.createdAt`/`authorName` and `storyVersion.createdAt`/`updatedBy` (24h window + self-exclude by display name, mirroring the inbox name-match). No new sync capture unless name-match proves too brittle.
+5. **Quiet inline line UI** (new `StatusChangeLine.tsx`, port variant 1 from the prototype; wire into `BoardRow.tsx` stacked inside the `<td>`, pass through `TicketTable.tsx` `makeRowProps`): sentence + Jira-time tooltip + bare signals + actions; test signals read existing maps; changer shown only when ≠ assignee.
+6. **Permanent "Finished work" divider** (`TicketTable.tsx`): render at `trailingDoneDepStart()` per sprint group, pinned at the bottom when the block is empty; sprint groups only.
+7. **Move-to-bottom action** (`SprintBoard.tsx` + `useTicketActions.ts`): reuse the create-flow `spliceKeyIntoOrder` against `poPriorityOrder`, persist via `/api/settings/sprint-board-po-priority`, mark seen in the same gesture; optimistic via the existing overlay (client-persisted setting → no snap-back). Plus Seen / Mark-all-seen wiring.
+8. **Tests** alongside each phase (see Tests section): `jira-client.test.ts`, `upsert-issue.test.ts`, `StatusChangeLine.test.tsx`, `sprint-insert-position.test.ts`, `TicketTable.test.tsx`, `status-changes-query.test.ts`, `status-changes/seen/route.test.ts`.
+
+Risks: accountId unavailable from changelog (name-based compare); inline-changelog truncation (changelog fallback for changed tickets only); self-exclude by display name only (single-PO app, acceptable). Order: 1 → 2 → 3 (+4) → 5/6 → 7, tests per phase.
+
 ## Acceptance Criteria
 
 - [ ] A ticket on the active sprint whose Jira status changed shows a quiet line beneath its board row with the from → to transition. <!-- BoardRow.tsx; prototype src/app/dev/exploration/status-changes/page.tsx -->

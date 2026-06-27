@@ -894,12 +894,32 @@ export const ticketStatusChange = sqliteTable("ticket_status_change", {
   toStatus: text("to_status").notNull(),
   changedAt: text("changed_at").notNull(),
   sprintName: text("sprint_name"),
+  // BRDG-414: who made the change, from the Jira changelog author. accountId is
+  // usually null (the changelog author shape carries only displayName + avatar).
+  changedBy: text("changed_by"),
+  changedByAccountId: text("changed_by_account_id"),
+  changedByAvatar: text("changed_by_avatar"),
 }, (table) => [
   index("ticket_status_change_ticket_key_idx").on(table.ticketKey),
   index("ticket_status_change_sprint_changed_idx").on(table.sprintName, table.changedAt),
 ]);
 
 export type TicketStatusChange = typeof ticketStatusChange.$inferSelect;
+
+// BRDG-414: per-user "seen" state for the status-change review queue, mirroring
+// `newStoryRead`. Keyed on the individual status-change id (not ticketKey) so every
+// transition is its own item: marking one seen never suppresses a LATER transition
+// of the same ticket (Test -> In Progress -> Test re-surfaces each time). No FK on
+// statusChangeId (consistent with newStoryRead): the queue only lists ids that exist.
+export const statusChangeSeen = sqliteTable("status_change_seen", {
+  userId: text("user_id").notNull(),
+  statusChangeId: text("status_change_id").notNull(),
+  seenAt: text("seen_at").notNull().default(sql`(datetime('now'))`),
+}, (table) => [
+  primaryKey({ columns: [table.userId, table.statusChangeId] }),
+]);
+
+export type StatusChangeSeen = typeof statusChangeSeen.$inferSelect;
 
 // Scope changes: when tickets join or leave a sprint (for burnup scope line)
 export const ticketScopeChange = sqliteTable("ticket_scope_change", {

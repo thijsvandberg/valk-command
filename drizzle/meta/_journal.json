@@ -610,6 +610,13 @@
       "when": 1782196489360,
       "tag": "0086_faulty_khan",
       "breakpoints": true
+    },
+    {
+      "idx": 87,
+      "version": "6",
+      "when": 1782548604800,
+      "tag": "0087_wet_tempest",
+      "breakpoints": true
     }
   ]
 }
