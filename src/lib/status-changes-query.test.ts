@@ -105,6 +105,7 @@ describe("listUnseenStatusChanges (BRDG-414)", () => {
 
     const rows = await listUnseenStatusChanges(CTX, ["VPL-1"], NOW);
     expect(rows[0].openSubtaskCount).toBe(1);
+    expect(rows[0].totalSubtaskCount).toBe(2);
   });
 
   describe("what's-new (24h, not me)", () => {

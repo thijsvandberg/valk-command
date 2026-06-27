@@ -22,6 +22,7 @@ function makeChange(overrides: Partial<StatusChangeItem> = {}): StatusChangeItem
     changedByAvatar: null,
     assignee: DAN,
     openSubtaskCount: 0,
+    totalSubtaskCount: 0,
     newCommentCount: 0,
     lastCommentAt: null,
     storyEditedAt: null,
@@ -59,27 +60,27 @@ describe("StatusChangeLine (BRDG-414)", () => {
     expect(screen.queryByText("Dan Mol")).not.toBeInTheDocument();
   });
 
-  it("flags open subtasks only for Done/Deprecated with openSubtaskCount > 0", () => {
+  it("flags open subtasks only for Done/Deprecated with openSubtaskCount > 0 (reuses OpenSubtasksIndicator)", () => {
     const { rerender } = render(
       <StatusChangeLine
-        change={makeChange({ toStatus: "DONE", openSubtaskCount: 2 })}
+        change={makeChange({ toStatus: "DONE", openSubtaskCount: 2, totalSubtaskCount: 3 })}
         onSeen={noop}
         onMoveToBottom={noop}
       />,
     );
-    expect(screen.getByText("2 open")).toBeInTheDocument();
+    expect(screen.getByTitle("2 of 3 subtasks still open")).toBeInTheDocument();
 
-    // Done but no open subtasks -> no flag.
+    // Done but no open subtasks -> no indicator.
     rerender(
-      <StatusChangeLine change={makeChange({ toStatus: "DONE", openSubtaskCount: 0 })} onSeen={noop} onMoveToBottom={noop} />,
+      <StatusChangeLine change={makeChange({ toStatus: "DONE", openSubtaskCount: 0, totalSubtaskCount: 0 })} onSeen={noop} onMoveToBottom={noop} />,
     );
-    expect(screen.queryByText(/open$/)).not.toBeInTheDocument();
+    expect(screen.queryByTitle(/subtasks still open/)).not.toBeInTheDocument();
 
-    // Test status with open subtasks -> no flag (only Done/Deprecated).
+    // Test status with open subtasks -> no indicator (only Done/Deprecated).
     rerender(
-      <StatusChangeLine change={makeChange({ toStatus: "TEST", openSubtaskCount: 3 })} onSeen={noop} onMoveToBottom={noop} />,
+      <StatusChangeLine change={makeChange({ toStatus: "TEST", openSubtaskCount: 3, totalSubtaskCount: 4 })} onSeen={noop} onMoveToBottom={noop} />,
     );
-    expect(screen.queryByText("3 open")).not.toBeInTheDocument();
+    expect(screen.queryByTitle(/subtasks still open/)).not.toBeInTheDocument();
   });
 
   it("shows Move to bottom for a finished change plus a dismiss check; only the check otherwise", () => {

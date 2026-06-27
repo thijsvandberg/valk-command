@@ -30,6 +30,7 @@ export interface StatusChangeItem {
   changedByAvatar: string | null;
   assignee: Assignee | null;
   openSubtaskCount: number;
+  totalSubtaskCount: number;
   newCommentCount: number;
   lastCommentAt: string | null;
   storyEditedAt: string | null;
@@ -105,11 +106,13 @@ export async function listUnseenStatusChanges(
     .select({
       ticketKey: ticketSubtask.ticketKey,
       open: sql<number>`SUM(CASE WHEN ${ticketSubtask.status} NOT IN ('DONE', 'DEPRECATED') THEN 1 ELSE 0 END)`.as("open"),
+      total: sql<number>`COUNT(*)`.as("total"),
     })
     .from(ticketSubtask)
     .where(inArray(ticketSubtask.ticketKey, keys))
     .groupBy(ticketSubtask.ticketKey);
   const openByKey = new Map(subRows.map((r) => [r.ticketKey, r.open ?? 0]));
+  const totalByKey = new Map(subRows.map((r) => [r.ticketKey, r.total ?? 0]));
 
   // Coarse date-prefix pre-filter (format-agnostic); JS refines to the exact 24h window.
   const floorDate = new Date(nowMs - WINDOW_MS).toISOString().slice(0, 10);
@@ -169,6 +172,7 @@ export async function listUnseenStatusChanges(
       changedByAvatar: r.changedByAvatar,
       assignee: buildAssignee(r.assignee, r.assigneeAccountId),
       openSubtaskCount: openByKey.get(r.ticketKey) ?? 0,
+      totalSubtaskCount: totalByKey.get(r.ticketKey) ?? 0,
       newCommentCount: c?.count ?? 0,
       lastCommentAt: c?.lastRaw ?? null,
       storyEditedAt: v?.lastRaw ?? null,

@@ -1,12 +1,13 @@
 "use client";
 
 import Link from "next/link";
-import { ArrowDownToLine, Check, Clock, GitBranch, ListChecks, MessageSquare, Rocket, Sparkles } from "lucide-react";
+import { ArrowDownToLine, Check, Clock, GitBranch, MessageSquare, Rocket, Sparkles } from "lucide-react";
 import type { JiraStatus } from "@/types/ticket";
 import type { StatusChangeItem } from "@/lib/status-changes-query";
 import type { LastDeployedInfo, PipelineHealthEntry } from "@/hooks/usePipelines";
 import { Avatar } from "@/components/shared/Avatar";
 import { Tooltip } from "@/components/shared/Tooltip";
+import { OpenSubtasksIndicator } from "@/components/sprint-board/OpenSubtasksIndicator";
 import { buildAssignee } from "@/lib/user-utils";
 import { relativeDate, formatAbsoluteDate } from "@/lib/date-utils";
 import { buildTicketDetailUrl } from "@/lib/ticket-detail-url";
@@ -99,6 +100,7 @@ export function StatusChangeLine({
   atBottom = false,
   onSeen,
   onMoveToBottom,
+  onCloseSubtasks,
 }: {
   change: StatusChangeItem;
   deploy?: LastDeployedInfo;
@@ -107,6 +109,7 @@ export function StatusChangeLine({
   atBottom?: boolean;
   onSeen: () => void;
   onMoveToBottom: () => void;
+  onCloseSubtasks?: (key: string) => Promise<void>;
 }) {
   const isFinished = change.toStatus === "DONE" || change.toStatus === "DEPRECATED";
   const isTest = change.toStatus === "TEST";
@@ -119,11 +122,15 @@ export function StatusChangeLine({
     <div
       onClick={(e) => e.stopPropagation()}
       onPointerDown={(e) => e.stopPropagation()}
-      className="flex items-center gap-2 bg-[var(--color-surface-base)]/40 py-1.5 pl-[45px] pr-[23px]"
+      className="relative flex items-center bg-[var(--color-surface-base)]/40 py-1.5 pl-[76px] pr-[23px]"
     >
-      {/* Single elbow connector whose vertical lines up with the row's issue-type icon (~48px
-          from the row's left edge), so the line clearly branches DOWN from the row above. */}
-      <span className="mb-2 h-3 w-3.5 shrink-0 rounded-bl-[6px] border-b border-l border-border-strong" aria-hidden />
+      {/* Single elbow connector: its vertical sits at the CENTRE of the row's issue-type icon
+          (~56px from the row's left edge) and its horizontal meets the line's vertical centre, so
+          it reads as one branch coming DOWN from the row above into this line. */}
+      <span
+        aria-hidden
+        className="pointer-events-none absolute left-[56px] bottom-1/2 h-3 w-3.5 rounded-bl-[6px] border-b border-l border-border-strong"
+      />
 
       <div className="flex min-w-0 flex-1 flex-wrap items-center gap-x-2.5 gap-y-1.5">
         <span className="text-caption text-text-tertiary">
@@ -180,12 +187,15 @@ export function StatusChangeLine({
         {showSubtaskFlag && (
           <>
             <Sep />
-            <Tooltip content={`${change.openSubtaskCount} subtask${change.openSubtaskCount === 1 ? "" : "s"} still open — may not be done yet`}>
-              <span className={`${SIGNAL} text-amber-500`}>
-                <ListChecks className="h-3 w-3 shrink-0" strokeWidth={1.75} />
-                {change.openSubtaskCount} open
-              </span>
-            </Tooltip>
+            {/* Reuse the board's existing open-subtasks indicator: the amber badge opens the
+                "N of M subtasks open" popup with the list + "Close all subtasks" (BRDG-414). */}
+            <OpenSubtasksIndicator
+              ticketKey={change.ticketKey}
+              jiraStatus={change.toStatus}
+              openCount={change.openSubtaskCount}
+              totalCount={change.totalSubtaskCount}
+              onCloseSubtasks={onCloseSubtasks}
+            />
           </>
         )}
 
@@ -200,7 +210,7 @@ export function StatusChangeLine({
           )}
           {isTest && (
             <Tooltip content="Generate a test prompt from the story, comments and changes (coming soon)">
-              <button type="button" disabled className={`${ACTION_BTN} cursor-not-allowed opacity-60`}>
+              <button type="button" className={`${ACTION_BTN} cursor-pointer hover:bg-overlay-default hover:text-text-primary`}>
                 <Sparkles className="h-3.5 w-3.5" strokeWidth={1.75} />
                 Generate test prompt
               </button>

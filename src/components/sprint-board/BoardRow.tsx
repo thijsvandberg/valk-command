@@ -987,6 +987,7 @@ export const BoardRow = memo(forwardRef<HTMLTableRowElement, BoardRowBaseProps>(
             atBottom={statusChangeAtBottom}
             onSeen={() => onStatusChangeSeen(statusChange.id)}
             onMoveToBottom={() => onStatusChangeMoveToBottom(statusChange.ticketKey, statusChange.id)}
+            onCloseSubtasks={onCloseSubtasks}
           />
         )}
       </td>
