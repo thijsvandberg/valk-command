@@ -503,7 +503,7 @@ export default function RefinementSessionTicketPage({
                 aria-label="Open navigation"
                 className="group -ml-1.5 flex items-center gap-2 rounded-lg px-1.5 py-1 cursor-pointer transition-colors duration-150 hover:bg-hover-interactive focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)]"
               >
-                <span className="font-[family-name:var(--font-space-mono)] text-[19px] font-bold lowercase tracking-[-0.02em] text-text-primary">
+                <span className="font-space-mono text-[19px] font-bold lowercase tracking-[-0.02em] text-text-primary">
                   bridge<span className="bridge-caret text-[var(--color-brand-400)]">_</span>
                 </span>
               </button>

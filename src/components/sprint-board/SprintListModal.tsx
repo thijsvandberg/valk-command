@@ -133,7 +133,7 @@ function SectionHeader({
     <button
       type="button"
       onClick={onToggle}
-      className="flex w-full items-center gap-1.5 px-3 pt-2 pb-0.5 text-[10px] font-semibold uppercase tracking-wider text-text-muted cursor-pointer hover:text-text-tertiary focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-[var(--color-brand-400)]"
+      className="flex w-full items-center gap-1.5 px-3 pt-2 pb-0.5 text-caption font-semibold uppercase tracking-wider text-text-muted cursor-pointer hover:text-text-tertiary focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-[var(--color-brand-400)]"
     >
       <ChevronRight
         size={9}
@@ -566,7 +566,7 @@ export function SprintListModal({
                   <Inbox className="h-3.5 w-3.5 shrink-0 text-text-muted" strokeWidth={1.5} />
                   <span>Backlog</span>
                   {backlogCount > 0 && (
-                    <span className="rounded-full bg-overlay-default px-1.5 py-0.5 text-[10px] font-medium leading-none text-text-muted">
+                    <span className="rounded-full bg-overlay-default px-1.5 py-0.5 text-caption font-medium leading-none text-text-muted">
                       {backlogCount}
                     </span>
                   )}
@@ -607,7 +607,7 @@ export function SprintListModal({
       {!isSearching && (
         <div className="flex items-center justify-center border-t border-border-default px-3 py-1.5">
           {syncError ? (
-            <span className="flex items-center gap-1.5 text-[11px] text-red-400">
+            <span className="flex items-center gap-1.5 text-label text-red-400">
               <AlertCircle size={11} strokeWidth={1.5} />
               Sync failed
               <button type="button" onClick={handleSync} className="cursor-pointer underline underline-offset-2 hover:text-red-300 focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-[var(--color-brand-400)]">retry</button>
@@ -617,7 +617,7 @@ export function SprintListModal({
               type="button"
               onClick={handleSync}
               disabled={syncing}
-              className="flex items-center gap-1.5 text-[11px] text-text-muted cursor-pointer hover:text-text-secondary disabled:opacity-50 disabled:cursor-not-allowed focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-[var(--color-brand-400)]"
+              className="flex items-center gap-1.5 text-label text-text-muted cursor-pointer hover:text-text-secondary disabled:opacity-50 disabled:cursor-not-allowed focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-[var(--color-brand-400)]"
             >
               {syncDone ? (
                 <>

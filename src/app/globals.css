@@ -12,7 +12,15 @@
 @theme {
   --font-display: "Bricolage Grotesque", "Georgia", sans-serif;
   --font-body: "Inter", "Segoe UI", system-ui, sans-serif;
+  /* Console-style monospace for the bridge_ wordmark. The Next.js font loader sets
+     --font-space-mono on <body> (layout.tsx) under this exact name, so that value
+     flows straight through this token on every descendant — no @layer base bridge
+     is needed (unlike --font-display/--font-bricolage, whose names differ). This
+     declaration just registers the token so `font-space-mono` is a first-class
+     utility instead of the arbitrary font-[family-name:var(--font-space-mono)] form. */
+  --font-space-mono: "Space Mono", ui-monospace, "SFMono-Regular", monospace;
 
+  --text-micro: 9px;
   --text-caption: 10px;
   --text-label: 11px;
   --text-body-sm: 12px;

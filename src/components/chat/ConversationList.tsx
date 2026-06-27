@@ -295,7 +295,7 @@ export default function ConversationList({
       <button
         type="button"
         onClick={() => toggleGroup(label)}
-        className="sticky top-0 z-[5] flex w-full items-center gap-1.5 bg-[var(--color-surface-elevated)] px-2.5 py-1.5 text-[10px] font-semibold uppercase tracking-widest text-text-muted cursor-pointer hover:text-text-tertiary transition-colors duration-150 focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-[var(--color-brand-400)]"
+        className="sticky top-0 z-[5] flex w-full items-center gap-1.5 bg-[var(--color-surface-elevated)] px-2.5 py-1.5 text-caption font-semibold uppercase tracking-widest text-text-muted cursor-pointer hover:text-text-tertiary transition-colors duration-150 focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-[var(--color-brand-400)]"
         data-testid={`group-header-${label}`}
       >
         <ChevronRight
@@ -396,7 +396,7 @@ export default function ConversationList({
           {/* Pin hint when no conversations are pinned */}
           {!hasPinnedConversations && conversations.length > 0 && (
             <p
-              className="mt-1.5 text-[10px] leading-tight text-text-muted"
+              className="mt-1.5 text-caption leading-tight text-text-muted"
               data-testid="pin-hint"
             >
               Right-click or use the menu to pin conversations

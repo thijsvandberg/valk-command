@@ -10,7 +10,7 @@ import { getSpColor, getBvColor } from "@/types/ticket";
 import { useEpicColor } from "@/hooks/useEpicColor";
 import { Tooltip } from "@/components/shared/Tooltip";
 
-const CHIP = "inline-flex h-5 shrink-0 items-center rounded-md px-1.5 text-[11px] font-medium leading-none";
+const CHIP = "inline-flex h-5 shrink-0 items-center rounded-md px-1.5 text-label font-medium leading-none";
 
 // The single source of truth for the colored epic chip. `className` controls its
 // width behavior so it can both cap (default list rows) and shrink (dense board

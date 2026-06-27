@@ -39,7 +39,7 @@ function DeleteButton({ onClick }: { onClick: () => void }) {
     <button
       type="button"
       onClick={(e) => { e.stopPropagation(); onClick(); }}
-      className="flex shrink-0 cursor-pointer items-center gap-1 rounded-md px-2 py-1 text-[11px] font-medium text-text-muted hover:bg-red-500/10 hover:text-red-500 focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-[var(--color-brand-400)] active:bg-red-500/15"
+      className="flex shrink-0 cursor-pointer items-center gap-1 rounded-md px-2 py-1 text-label font-medium text-text-muted hover:bg-red-500/10 hover:text-red-500 focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-[var(--color-brand-400)] active:bg-red-500/15"
       style={{ transition: "background-color 0.15s ease, color 0.15s ease" }}
       title="Remove link"
     >
@@ -56,7 +56,7 @@ function ChangeTypeButton({ onClick, active, disabled }: { onClick: () => void; 
       onClick={(e) => { e.stopPropagation(); onClick(); }}
       disabled={disabled}
       aria-pressed={active}
-      className={`flex shrink-0 cursor-pointer items-center gap-1 rounded-md px-2 py-1 text-[11px] font-medium focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-[var(--color-brand-400)] disabled:cursor-not-allowed disabled:opacity-60 ${
+      className={`flex shrink-0 cursor-pointer items-center gap-1 rounded-md px-2 py-1 text-label font-medium focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-[var(--color-brand-400)] disabled:cursor-not-allowed disabled:opacity-60 ${
         active
           ? "bg-[var(--color-brand-500)]/[0.08] text-[var(--color-brand-400)]"
           : "text-text-muted hover:bg-overlay-subtle hover:text-text-secondary active:bg-overlay-default"
@@ -552,7 +552,7 @@ export function LinkedIssuesSection({ issues, ticketKey, onMutate, onSelectTicke
             )}
             <span>Find related issues with AI</span>
             {suggestions.length > 0 ? (
-              <span className="ml-auto flex h-4 min-w-4 items-center justify-center rounded-full bg-[var(--color-brand-500)] px-1 text-[10px] font-semibold text-white">
+              <span className="ml-auto flex h-4 min-w-4 items-center justify-center rounded-full bg-[var(--color-brand-500)] px-1 text-caption font-semibold text-white">
                 {suggestions.length}
               </span>
             ) : null}
@@ -677,7 +677,7 @@ export function LinkedIssuesSection({ issues, ticketKey, onMutate, onSelectTicke
             {(search.isSearchingJira || search.isLoadingMore) && (
               <div className="flex items-center gap-2 border-t border-border-default px-3 py-2">
                 <Loader2 size={11} className="animate-spin text-text-muted" />
-                <span className="text-[11px] text-text-muted">
+                <span className="text-label text-text-muted">
                   {search.isSearchingJira ? "Searching Jira..." : "Loading more..."}
                 </span>
               </div>
@@ -695,7 +695,7 @@ export function LinkedIssuesSection({ issues, ticketKey, onMutate, onSelectTicke
           >
             <div className="flex items-center gap-1.5 px-3 py-1.5">
               <Clock size={11} className="text-text-muted" strokeWidth={1.5} />
-              <span className="text-[10px] font-medium uppercase tracking-widest text-text-muted">
+              <span className="text-caption font-medium uppercase tracking-widest text-text-muted">
                 Recently updated
               </span>
             </div>

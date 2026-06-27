@@ -82,7 +82,7 @@ export function EpicWriterLayout({ epicKey }: EpicWriterLayoutProps) {
         <ViewHeaderDivider />
         <Link
           href={`/tickets/${epicKey}`}
-          className="font-mono text-[11px] text-text-muted transition-colors duration-150 cursor-pointer hover:text-[var(--color-brand-400)]"
+          className="font-mono text-label text-text-muted transition-colors duration-150 cursor-pointer hover:text-[var(--color-brand-400)]"
         >
           {epicKey}
         </Link>

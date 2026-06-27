@@ -36,7 +36,7 @@ export function PhaseRail({ current, onSelect }: PhaseRailProps) {
                 : "text-text-tertiary hover:bg-hover-interactive hover:text-text-secondary"
             }`}
           >
-            <span className="font-mono text-[10px] tabular-nums opacity-70">{idx + 1}</span>
+            <span className="font-mono text-caption tabular-nums opacity-70">{idx + 1}</span>
             <span>{EPIC_WRITER_PHASE_LABELS[phase]}</span>
           </button>
         );

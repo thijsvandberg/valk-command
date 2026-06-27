@@ -134,7 +134,7 @@ export function StoryPointPicker({
             transition: "opacity 0.15s ease",
           }}
         >
-          {showMetricIcon ? <Hash size={13} strokeWidth={2} aria-hidden /> : <span className="text-[10px] font-semibold uppercase tracking-wider opacity-60">SP</span>}
+          {showMetricIcon ? <Hash size={13} strokeWidth={2} aria-hidden /> : <span className="text-caption font-semibold uppercase tracking-wider opacity-60">SP</span>}
           <span className="text-body-sm font-semibold tabular-nums">{displayLabel ?? "?"}</span>
         </button>
       ) : (
@@ -146,7 +146,7 @@ export function StoryPointPicker({
           onMouseLeave={handleMouseLeave}
           title={richTooltip ? undefined : titleText}
           aria-label={titleText}
-          className={`flex items-center rounded-md border border-transparent cursor-pointer transition-colors duration-150 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)] active:opacity-60 font-medium tabular-nums ${dense ? "h-5 text-[11px] leading-none" : "h-6 text-body-sm"} ${showMetricIcon ? "gap-1 px-1.5 min-w-[2.25rem] justify-start" : "min-w-[24px] justify-center"}`}
+          className={`flex items-center rounded-md border border-transparent cursor-pointer transition-colors duration-150 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)] active:opacity-60 font-medium tabular-nums ${dense ? "h-5 text-label leading-none" : "h-6 text-body-sm"} ${showMetricIcon ? "gap-1 px-1.5 min-w-[2.25rem] justify-start" : "min-w-[24px] justify-center"}`}
           style={{
             // Slate family tone (BRDG-321/323). Empty keeps the slate hue, a bit
             // muted, so the placeholder reads as SP. Subtle contexts stay neutral.
@@ -193,7 +193,7 @@ export function StoryPointPicker({
         >
           {isLg ? (
             <>
-              <div className="mb-2 text-[10px] font-semibold uppercase tracking-wider text-text-muted">Story Points</div>
+              <div className="mb-2 text-caption font-semibold uppercase tracking-wider text-text-muted">Story Points</div>
               <div className="flex items-center gap-1.5">
                 <button type="button" onClick={() => { onChange(0); handleClose(); }} title="Not applicable" className="flex h-10 w-10 items-center justify-center rounded-md cursor-pointer transition-colors duration-100 hover:opacity-80 active:opacity-60 focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-[var(--color-brand-400)]" style={{ color: isNA ? "#fff" : "#555a64", backgroundColor: isNA ? "#555a64" : "color-mix(in srgb, #555a64 8%, transparent)", boxShadow: isNA ? "0 0 0 1px color-mix(in srgb, #555a64 40%, transparent)" : undefined }}>
                   <Minus size={14} strokeWidth={1.5} />

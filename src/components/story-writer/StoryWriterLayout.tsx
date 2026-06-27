@@ -157,10 +157,10 @@ export function StoryWriterLayout({ ticketKey, draftTitle, draftType }: StoryWri
 
                   {actions.showWrapUpMenu && (
                     <div className="absolute right-0 top-full z-30 mt-2 w-[320px] rounded-2xl border border-border-strong bg-[var(--color-surface-floating)] p-2 shadow-[var(--shadow-lg)]">
-                      <p className="px-2 pb-0.5 pt-1 text-[10px] font-semibold uppercase tracking-[0.14em] text-text-muted">
+                      <p className="px-2 pb-0.5 pt-1 text-caption font-semibold uppercase tracking-[0.14em] text-text-muted">
                         Wrap up this story
                       </p>
-                      <p className="px-2 pb-2 text-[11px] leading-[1.5] text-text-tertiary">
+                      <p className="px-2 pb-2 text-label leading-[1.5] text-text-tertiary">
                         Pushes to Jira &amp; closes the editor.
                       </p>
                       <button
@@ -173,7 +173,7 @@ export function StoryWriterLayout({ ticketKey, draftTitle, draftType }: StoryWri
                         </span>
                         <span className="flex min-w-0 flex-col gap-0.5">
                           <span className="text-body-sm font-semibold text-text-primary">Ready to refine</span>
-                          <span className="text-[11px] leading-[1.55] text-text-tertiary">
+                          <span className="text-label leading-[1.55] text-text-tertiary">
                             Marks the story Ready to refine. The chat session is kept for later.
                           </span>
                         </span>
@@ -188,7 +188,7 @@ export function StoryWriterLayout({ ticketKey, draftTitle, draftType }: StoryWri
                         </span>
                         <span className="flex min-w-0 flex-col gap-0.5">
                           <span className="text-body-sm font-semibold text-text-primary">Ready to refine + clear session</span>
-                          <span className="text-[11px] leading-[1.55] text-text-tertiary">
+                          <span className="text-label leading-[1.55] text-text-tertiary">
                             Same, but also archives this chat. The story is fully done.
                           </span>
                         </span>
@@ -204,7 +204,7 @@ export function StoryWriterLayout({ ticketKey, draftTitle, draftType }: StoryWri
                         </span>
                         <span className="flex min-w-0 flex-col gap-0.5">
                           <span className="text-body-sm font-semibold text-text-primary">Close as-is</span>
-                          <span className="text-[11px] leading-[1.55] text-text-tertiary">
+                          <span className="text-label leading-[1.55] text-text-tertiary">
                             Leaves readiness untouched. The story is parked, not flagged for refinement.
                           </span>
                         </span>

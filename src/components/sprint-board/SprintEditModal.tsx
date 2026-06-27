@@ -403,7 +403,7 @@ export function SprintEditModal({ sprint, tickets, onClose, showToast, autoSugge
                 type="button"
                 onClick={() => setEndDate(suggestedEnd)}
                 title="Set end date to the conventional sprint end"
-                className="flex items-center gap-1.5 rounded-md px-2 py-1 text-[11px] font-medium cursor-pointer
+                className="flex items-center gap-1.5 rounded-md px-2 py-1 text-label font-medium cursor-pointer
                   text-[var(--color-brand-400)]
                   hover:bg-[var(--color-brand-500)]/10
                   active:bg-[var(--color-brand-500)]/15
@@ -426,7 +426,7 @@ export function SprintEditModal({ sprint, tickets, onClose, showToast, autoSugge
                 type="button"
                 onClick={handleSuggestGoal}
                 disabled={suggesting || tickets.length === 0}
-                className="flex items-center gap-1.5 rounded-md px-2 py-1 text-[11px] font-medium cursor-pointer
+                className="flex items-center gap-1.5 rounded-md px-2 py-1 text-label font-medium cursor-pointer
                   text-[var(--color-brand-400)]
                   hover:bg-[var(--color-brand-500)]/10
                   active:bg-[var(--color-brand-500)]/15
@@ -458,11 +458,11 @@ export function SprintEditModal({ sprint, tickets, onClose, showToast, autoSugge
           {/* AI suggestion inline */}
           {(suggestion || suggesting) && (
             <div className="rounded-lg border border-[var(--color-brand-500)]/20 bg-[var(--color-brand-500)]/[0.06] p-3 space-y-2">
-              <div className="flex items-center gap-1.5 text-[11px] font-medium text-[var(--color-brand-400)]">
+              <div className="flex items-center gap-1.5 text-label font-medium text-[var(--color-brand-400)]">
                 <Sparkles size={10} strokeWidth={1.5} />
                 <span>AI suggestion</span>
                 {suggestionDate && (
-                  <span className="ml-auto text-[10px] font-normal text-text-muted">
+                  <span className="ml-auto text-caption font-normal text-text-muted">
                     {new Date(suggestionDate).toLocaleDateString("en-GB", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" })}
                   </span>
                 )}
@@ -480,7 +480,7 @@ export function SprintEditModal({ sprint, tickets, onClose, showToast, autoSugge
                     <button
                       type="button"
                       onClick={handleAcceptSuggestion}
-                      className="flex items-center gap-1 rounded-md px-2 py-1 text-[11px] font-medium cursor-pointer
+                      className="flex items-center gap-1 rounded-md px-2 py-1 text-label font-medium cursor-pointer
                         text-[var(--color-brand-400)] bg-[var(--color-brand-500)]/10
                         hover:bg-[var(--color-brand-500)]/20
                         active:bg-[var(--color-brand-500)]/25
@@ -492,7 +492,7 @@ export function SprintEditModal({ sprint, tickets, onClose, showToast, autoSugge
                     <button
                       type="button"
                       onClick={handleDismissSuggestion}
-                      className="flex items-center gap-1 rounded-md px-2 py-1 text-[11px] font-medium cursor-pointer
+                      className="flex items-center gap-1 rounded-md px-2 py-1 text-label font-medium cursor-pointer
                         text-text-muted
                         hover:text-text-secondary hover:bg-overlay-default
                         transition-colors duration-100 focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-[var(--color-brand-400)]"
@@ -523,7 +523,7 @@ export function SprintEditModal({ sprint, tickets, onClose, showToast, autoSugge
               </Button>
             )}
             {canStartSprint && startBlockReason && !starting && (
-              <span className="truncate text-[11px] text-text-muted">{startBlockReason}</span>
+              <span className="truncate text-label text-text-muted">{startBlockReason}</span>
             )}
           </div>
           <div className="flex shrink-0 items-center gap-2">

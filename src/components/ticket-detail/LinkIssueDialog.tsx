@@ -163,7 +163,7 @@ export function LinkIssueDialog({
 
         {/* Relation type */}
         <div className="mt-4">
-          <label className="mb-1.5 block text-[11px] font-medium uppercase tracking-wider text-text-muted">
+          <label className="mb-1.5 block text-label font-medium uppercase tracking-wider text-text-muted">
             Relation type
           </label>
           <div ref={relationRef} className="relative">
@@ -260,7 +260,7 @@ export function LinkIssueDialog({
 
         {/* Issue search */}
         <div className="mt-4">
-          <label className="mb-1.5 block text-[11px] font-medium uppercase tracking-wider text-text-muted">
+          <label className="mb-1.5 block text-label font-medium uppercase tracking-wider text-text-muted">
             Issue
           </label>
           <div className="relative">
@@ -338,7 +338,7 @@ export function LinkIssueDialog({
               {(search.isSearchingJira || search.isLoadingMore) && (
                 <div className="flex items-center gap-2 border-t border-border-default px-3 py-2">
                   <Loader2 size={11} className="animate-spin text-text-muted" />
-                  <span className="text-[11px] text-text-muted">
+                  <span className="text-label text-text-muted">
                     {search.isSearchingJira ? "Searching Jira..." : "Loading more..."}
                   </span>
                 </div>
@@ -350,7 +350,7 @@ export function LinkIssueDialog({
                 <>
                   <div className="flex items-center gap-1.5 px-3 py-1.5">
                     <Clock size={11} className="text-text-muted" strokeWidth={1.5} />
-                    <span className="text-[10px] font-medium uppercase tracking-widest text-text-muted">
+                    <span className="text-caption font-medium uppercase tracking-widest text-text-muted">
                       Recently updated
                     </span>
                   </div>

@@ -215,7 +215,7 @@ function JiraStatusDropdown({ currentValue, onChange, onClose, skipRef }: JiraDr
         return (
           <MenuItem key={status} active={isActive} onClick={() => { onChange(status); onClose(); }}>
             <span
-              className="shrink-0 rounded px-1.5 py-0.5 font-mono text-[10px] font-semibold tracking-wide"
+              className="shrink-0 rounded px-1.5 py-0.5 font-mono text-caption font-semibold tracking-wide"
               style={{ backgroundColor: colors.bg, color: colors.text }}
             >
               {JIRA_STATUS_ABBREVIATIONS[status]}
@@ -935,7 +935,7 @@ export function TicketStatusPill({
   // so give it extra size. A bolder stroke keeps it prominent in both variants.
   const typeIconSize = elevated ? (size === "sm" ? 13 : iconSize) + 4 : iconSize + 3;
   const typeStrokeWidth = 2.0;
-  const textSize = size === "sm" ? "text-[10px]" : size === "lg" ? "text-body-sm" : "text-label";
+  const textSize = size === "sm" ? "text-caption" : size === "lg" ? "text-body-sm" : "text-label";
   // Every elevated chip gets an optical vertical nudge (verified in-browser): the
   // all-caps key has no descenders, so its ink box reads high next to the icon and
   // status badge even when geometrically centered. leading-none makes the line box
@@ -948,7 +948,7 @@ export function TicketStatusPill({
   // The Jira status badge stays compact at sm/md (dense table rows); at lg it
   // grows to match a sibling control like the Epic pill (px-2 py-0.5 text-label)
   // so they line up at the same height in the ticket sidebar.
-  const statusBadgePad = size === "lg" ? "px-2 py-0.5 text-label" : "px-1.5 py-0.5 text-[10px]";
+  const statusBadgePad = size === "lg" ? "px-2 py-0.5 text-label" : "px-1.5 py-0.5 text-caption";
   const statusDotSize = size === "lg" ? "h-2 w-2" : "h-1.5 w-1.5";
   const statusRounded = elevated ? "rounded-full" : size === "lg" ? "rounded-md" : "rounded";
 
@@ -1094,7 +1094,7 @@ export function TicketStatusPill({
         // DELETED is a derived soft-delete state (not a JiraStatus): muted rose
         // + strikethrough, sitting outside the lifecycle set (BRDG-322).
         <span
-          className="inline-flex items-center gap-1 whitespace-nowrap rounded px-1.5 py-0.5 font-mono text-[10px] font-semibold line-through"
+          className="inline-flex items-center gap-1 whitespace-nowrap rounded px-1.5 py-0.5 font-mono text-caption font-semibold line-through"
           style={{ backgroundColor: JIRA_STATUS_COLORS.DELETED.bg, color: JIRA_STATUS_COLORS.DELETED.text }}
         >
           <span className="shrink-0 h-1.5 w-1.5 rounded-full opacity-70" style={{ backgroundColor: JIRA_STATUS_COLORS.DELETED.text }} />

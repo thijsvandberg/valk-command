@@ -21,7 +21,7 @@ function Stat({ label, value }: { label: string; value: string }) {
   return (
     <div className="flex flex-col items-end leading-tight">
       <span className="font-mono text-body-sm font-semibold tabular-nums text-text-primary">{value}</span>
-      <span className="text-[10px] uppercase tracking-wide text-text-muted">{label}</span>
+      <span className="text-caption uppercase tracking-wide text-text-muted">{label}</span>
     </div>
   );
 }
@@ -60,7 +60,7 @@ export function EpicRow({ epic, sprints }: { epic: EpicProgressItem; sprints: Sp
             href={`/tickets/${epic.key}`}
             onClick={(e) => e.stopPropagation()}
             title={`Open ${epic.key}`}
-            className="inline-flex items-center gap-1 rounded font-mono text-[11px] text-text-muted transition-colors duration-150 cursor-pointer hover:text-[var(--color-brand-400)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)]"
+            className="inline-flex items-center gap-1 rounded font-mono text-label text-text-muted transition-colors duration-150 cursor-pointer hover:text-[var(--color-brand-400)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)]"
           >
             {epic.key}
             <ArrowUpRight size={11} strokeWidth={2} className="opacity-0 transition-opacity duration-150 group-hover:opacity-100" />
@@ -85,7 +85,7 @@ export function EpicRow({ epic, sprints }: { epic: EpicProgressItem; sprints: Sp
             href={`/epics/${epic.key}/write`}
             onClick={(e) => e.stopPropagation()}
             title="Work out Epic"
-            className="inline-flex h-7 items-center gap-1.5 rounded-md px-2 text-[11px] font-medium text-text-tertiary transition-colors duration-150 cursor-pointer hover:bg-hover-interactive hover:text-[var(--color-brand-400)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)]"
+            className="inline-flex h-7 items-center gap-1.5 rounded-md px-2 text-label font-medium text-text-tertiary transition-colors duration-150 cursor-pointer hover:bg-hover-interactive hover:text-[var(--color-brand-400)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)]"
           >
             <NotebookPen size={13} strokeWidth={1.5} />
             <span className="hidden sm:inline">Work out Epic</span>
@@ -98,7 +98,7 @@ export function EpicRow({ epic, sprints }: { epic: EpicProgressItem; sprints: Sp
       {/* Expanded detail */}
       {expanded && (
         <div className="border-t border-border-subtle bg-surface-base/40 px-4 pb-3 pt-3">
-          <div className="mb-1 px-2 text-[10px] font-semibold uppercase tracking-wider text-text-muted">
+          <div className="mb-1 px-2 text-caption font-semibold uppercase tracking-wider text-text-muted">
             Across recent sprints
           </div>
           <div className="mb-2 px-2">

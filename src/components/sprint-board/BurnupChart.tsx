@@ -294,7 +294,7 @@ export function BurnupChart({
               x={xStart - 4}
               y={toY(pct) + 3}
               textAnchor="end"
-              className="text-[8px]"
+              className="text-micro"
               fill={COLORS.gridLabel}
             >
               {pct}%
@@ -312,7 +312,7 @@ export function BurnupChart({
             x={l.x}
             y={yBottom + 16}
             textAnchor={i === 0 ? "start" : i === xLabels.length - 1 ? "end" : "middle"}
-            className="text-[9px]"
+            className="text-micro"
             fill={COLORS.gridLabel}
           >
             {formatShortDate(l.date)}
@@ -404,7 +404,7 @@ export function BurnupChart({
               x={todayX}
               y={yTop - 4}
               textAnchor="middle"
-              className="text-[9px]"
+              className="text-micro"
               fill="var(--color-text-tertiary)"
             >
               Today

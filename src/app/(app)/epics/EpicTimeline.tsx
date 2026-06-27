@@ -62,7 +62,7 @@ export function EpicTimeline({ epic, sprints }: { epic: EpicProgressItem; sprint
               }`}
             >
               <span
-                className={`truncate text-[10px] font-medium uppercase tracking-wide ${
+                className={`truncate text-caption font-medium uppercase tracking-wide ${
                   spans ? "text-text-secondary" : "text-text-muted"
                 }`}
               >

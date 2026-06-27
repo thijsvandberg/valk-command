@@ -32,7 +32,7 @@ function PhActionButton({
       title={title}
       onClick={(e) => { e.stopPropagation(); onClick(); }}
       style={{ transition: "background-color 0.15s ease, color 0.15s ease" }}
-      className={`flex shrink-0 cursor-pointer items-center gap-1 rounded-md px-2 py-1 text-[11px] font-medium text-text-muted focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-[var(--color-brand-400)] ${
+      className={`flex shrink-0 cursor-pointer items-center gap-1 rounded-md px-2 py-1 text-label font-medium text-text-muted focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-[var(--color-brand-400)] ${
         tone === "danger"
           ? "hover:bg-red-500/10 hover:text-red-500 active:bg-red-500/15"
           : "hover:bg-overlay-subtle hover:text-text-secondary active:bg-overlay-subtle/80"
@@ -241,14 +241,14 @@ export const PlaceholderRow = memo(function PlaceholderRow({
             <button
               type="button"
               onClick={save}
-              className="flex h-6 items-center gap-1 rounded border border-border-strong bg-[var(--color-surface-elevated)] px-2 text-[11px] font-medium text-text-secondary transition-colors duration-100 hover:text-text-primary cursor-pointer focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-[var(--color-brand-400)]"
+              className="flex h-6 items-center gap-1 rounded border border-border-strong bg-[var(--color-surface-elevated)] px-2 text-label font-medium text-text-secondary transition-colors duration-100 hover:text-text-primary cursor-pointer focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-[var(--color-brand-400)]"
             >
               <Check size={12} strokeWidth={2} /> Save
             </button>
             <button
               type="button"
               onClick={cancel}
-              className="flex h-6 items-center gap-1 rounded px-2 text-[11px] text-text-muted transition-colors duration-100 hover:text-text-secondary cursor-pointer focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-[var(--color-brand-400)]"
+              className="flex h-6 items-center gap-1 rounded px-2 text-label text-text-muted transition-colors duration-100 hover:text-text-secondary cursor-pointer focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-[var(--color-brand-400)]"
             >
               <X size={12} strokeWidth={2} /> Cancel
             </button>
@@ -273,7 +273,7 @@ export const PlaceholderRow = memo(function PlaceholderRow({
 
           {showSprint && placeholder.sprintId && (
             <span
-              className="inline-flex h-5 min-w-0 shrink items-center gap-1 truncate whitespace-nowrap rounded-md px-1.5 text-[11px] leading-none text-text-tertiary"
+              className="inline-flex h-5 min-w-0 shrink items-center gap-1 truncate whitespace-nowrap rounded-md px-1.5 text-label leading-none text-text-tertiary"
               style={{ backgroundColor: "var(--color-overlay-subtle)" }}
               title={sprintNameMap[placeholder.sprintId] ?? placeholder.sprintName ?? placeholder.sprintId}
             >

@@ -67,7 +67,7 @@ function EditButton({ onClick }: { onClick: () => void }) {
     <button
       type="button"
       onClick={(e) => { e.stopPropagation(); onClick(); }}
-      className="flex shrink-0 cursor-pointer items-center gap-1 rounded-md px-2 py-1 text-[11px] font-medium text-text-muted hover:bg-overlay-subtle hover:text-text-secondary focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-[var(--color-brand-400)] active:bg-overlay-subtle/80"
+      className="flex shrink-0 cursor-pointer items-center gap-1 rounded-md px-2 py-1 text-label font-medium text-text-muted hover:bg-overlay-subtle hover:text-text-secondary focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-[var(--color-brand-400)] active:bg-overlay-subtle/80"
       style={{ transition: "background-color 0.15s ease, color 0.15s ease" }}
       title="Rename subtask"
     >
@@ -82,7 +82,7 @@ function DeleteButton({ onClick }: { onClick: () => void }) {
     <button
       type="button"
       onClick={(e) => { e.stopPropagation(); onClick(); }}
-      className="flex shrink-0 cursor-pointer items-center gap-1 rounded-md px-2 py-1 text-[11px] font-medium text-text-muted hover:bg-red-500/10 hover:text-red-500 focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-[var(--color-brand-400)] active:bg-red-500/15"
+      className="flex shrink-0 cursor-pointer items-center gap-1 rounded-md px-2 py-1 text-label font-medium text-text-muted hover:bg-red-500/10 hover:text-red-500 focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-[var(--color-brand-400)] active:bg-red-500/15"
       style={{ transition: "background-color 0.15s ease, color 0.15s ease" }}
       title="Delete subtask"
     >
@@ -793,7 +793,7 @@ export function SubtasksSection({
         )}
       </button>
       {suggestions.length > 0 && !suggestLoading && (
-        <span className="absolute -top-1 -right-1 flex h-3.5 min-w-3.5 items-center justify-center rounded-full bg-[var(--color-brand-500)] px-0.5 text-[9px] font-semibold text-white">
+        <span className="absolute -top-1 -right-1 flex h-3.5 min-w-3.5 items-center justify-center rounded-full bg-[var(--color-brand-500)] px-0.5 text-micro font-semibold text-white">
           {suggestions.length}
         </span>
       )}

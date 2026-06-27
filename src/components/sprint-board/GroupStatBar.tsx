@@ -170,7 +170,7 @@ function metricActionTooltip(label: string, total: number, avg: string | null, s
           {`Average ${avg} ${suffix}`}
         </span>
       )}
-      <span className="mt-0.5 border-t border-border-subtle pt-1.5 text-[11px] leading-relaxed text-text-tertiary">
+      <span className="mt-0.5 border-t border-border-subtle pt-1.5 text-label leading-relaxed text-text-tertiary">
         {hidden ? "Click to sort and show the column" : "Click to sort · double-click to hide the column"}
       </span>
     </div>
@@ -182,7 +182,7 @@ function metricActionTooltip(label: string, total: number, avg: string | null, s
 function goalTooltip(goal: string): ReactNode {
   return (
     <div className="flex max-w-[18rem] flex-col gap-1">
-      <span className="text-[11px] font-semibold uppercase tracking-wide text-text-tertiary">Sprint goal</span>
+      <span className="text-label font-semibold uppercase tracking-wide text-text-tertiary">Sprint goal</span>
       <span className="whitespace-pre-line text-text-primary">{goal}</span>
     </div>
   );

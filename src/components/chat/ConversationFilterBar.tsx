@@ -74,7 +74,7 @@ export default function ConversationFilterBar({
             <span>{config.label}</span>
             <span
               className={[
-                "rounded-full px-1 py-px text-[10px] leading-tight tabular-nums",
+                "rounded-full px-1 py-px text-caption leading-tight tabular-nums",
                 isActive ? "opacity-70" : "bg-overlay-default",
               ].join(" ")}
               style={isActive ? {

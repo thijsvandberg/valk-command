@@ -24,14 +24,14 @@ export function ChildIssueStatusFilter({
             key={opt.value}
             type="button"
             onClick={() => setFilter(opt.value)}
-            className={`cursor-pointer flex items-center gap-1.5 rounded-md px-2.5 py-1 text-[11px] font-medium transition-colors duration-150 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)] ${
+            className={`cursor-pointer flex items-center gap-1.5 rounded-md px-2.5 py-1 text-label font-medium transition-colors duration-150 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)] ${
               isActive
                 ? "bg-[var(--color-surface-elevated)] text-text-primary shadow-[0_1px_3px_rgba(0,0,0,0.08)]"
                 : "text-text-tertiary hover:text-text-secondary"
             }`}
           >
             {opt.label}
-            <span className={`tabular-nums text-[10px] ${isActive ? "text-text-secondary" : "text-text-muted"}`}>
+            <span className={`tabular-nums text-caption ${isActive ? "text-text-secondary" : "text-text-muted"}`}>
               {count}
             </span>
           </button>

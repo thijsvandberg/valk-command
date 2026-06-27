@@ -28,7 +28,7 @@ export function DragGhostOverlay({ dragTicket, draggedKeys, tickets, targetSprin
         )}
         <div className={`relative rounded-lg border bg-[var(--color-surface-elevated)] shadow-[var(--shadow-lg)] ${isMulti ? "border-[var(--color-brand-500)]/30" : "border-[var(--color-brand-500)]/20"}`}>
           {isMulti && (
-            <div className="absolute -top-2.5 -right-2.5 flex h-6 min-w-6 items-center justify-center rounded-full bg-[var(--color-brand-500)] px-1.5 text-[11px] font-semibold text-white shadow-sm">
+            <div className="absolute -top-2.5 -right-2.5 flex h-6 min-w-6 items-center justify-center rounded-full bg-[var(--color-brand-500)] px-1.5 text-label font-semibold text-white shadow-sm">
               {draggedKeys.length}
             </div>
           )}

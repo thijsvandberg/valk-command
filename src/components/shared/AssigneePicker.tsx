@@ -155,7 +155,7 @@ function AssigneePickerInner({
             <button
               type="button"
               onClick={() => setTeamFilter(null)}
-              className={`shrink-0 rounded-md px-2 py-0.5 text-[10px] font-semibold tracking-wide cursor-pointer active:opacity-60 ${
+              className={`shrink-0 rounded-md px-2 py-0.5 text-caption font-semibold tracking-wide cursor-pointer active:opacity-60 ${
                 teamFilter === null
                   ? "bg-[var(--color-brand-500)]/15 text-[var(--color-brand-400)]"
                   : "text-text-muted hover:text-text-tertiary"
@@ -168,7 +168,7 @@ function AssigneePickerInner({
                 key={team}
                 type="button"
                 onClick={() => setTeamFilter(teamFilter === team ? null : team)}
-                className={`shrink-0 rounded-md px-2 py-0.5 text-[10px] font-semibold tracking-wide cursor-pointer active:opacity-60 ${
+                className={`shrink-0 rounded-md px-2 py-0.5 text-caption font-semibold tracking-wide cursor-pointer active:opacity-60 ${
                   teamFilter === team
                     ? "bg-[var(--color-brand-500)]/15 text-[var(--color-brand-400)]"
                     : "text-text-muted hover:text-text-tertiary"

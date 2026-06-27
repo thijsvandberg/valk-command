@@ -37,7 +37,7 @@ function TicketRow({ ticket, sprintName }: { ticket: EpicChildTicket; sprintName
       <div className="flex shrink-0 items-center gap-3">
         <MetricBadge metric="sp" value={ticket.storyPoints} />
         {sprintName && (
-          <span className="hidden rounded bg-overlay-subtle px-1.5 py-0.5 text-[10px] font-medium text-text-tertiary sm:inline">
+          <span className="hidden rounded bg-overlay-subtle px-1.5 py-0.5 text-caption font-medium text-text-tertiary sm:inline">
             {sprintName}
           </span>
         )}
@@ -89,10 +89,10 @@ export function EpicTicketList({ epicKey, sprints }: { epicKey: string; sprints:
           <div key={group.category} className="flex flex-col gap-0.5">
             <div className="flex items-center gap-2 px-2 pb-1">
               <span className="h-1.5 w-1.5 rounded-full" style={{ backgroundColor: group.color }} />
-              <span className="text-[10px] font-semibold uppercase tracking-wider text-text-tertiary">
+              <span className="text-caption font-semibold uppercase tracking-wider text-text-tertiary">
                 {group.label}
               </span>
-              <span className="text-[10px] font-medium tabular-nums text-text-muted">{items.length}</span>
+              <span className="text-caption font-medium tabular-nums text-text-muted">{items.length}</span>
             </div>
             {items.map((t) => (
               <TicketRow key={t.key} ticket={t} sprintName={t.sprintId ? sprintNameById.get(t.sprintId) ?? null : "Backlog"} />

@@ -67,7 +67,7 @@ export function EpicColorPicker({ epicKey, name, color }: EpicColorPickerProps) 
             className="fixed z-[9999] w-[180px] overflow-hidden rounded-lg border border-border-strong py-2"
             style={getPopoverStyle()}
           >
-            <div className="px-3 pb-1.5 text-[10px] font-semibold uppercase tracking-wider text-text-muted">
+            <div className="px-3 pb-1.5 text-caption font-semibold uppercase tracking-wider text-text-muted">
               Epic color
             </div>
             <div className="grid grid-cols-5 gap-1.5 px-3 pb-1">

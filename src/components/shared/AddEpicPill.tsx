@@ -11,7 +11,7 @@ import { EpicPicker, type EpicOption } from "@/components/shared/EpicPicker";
 // Relies on the surrounding row exposing a `group/row` (both BoardRow and
 // ChildIssueRow do) for the hover reveal.
 const GHOST_TRIGGER =
-  "inline-flex items-center gap-1 rounded-md border border-dashed border-border-default px-1.5 py-0.5 text-[11px] font-medium text-text-muted opacity-0 cursor-pointer " +
+  "inline-flex items-center gap-1 rounded-md border border-dashed border-border-default px-1.5 py-0.5 text-label font-medium text-text-muted opacity-0 cursor-pointer " +
   "transition-[opacity,color,background-color,border-color] duration-150 " +
   "group-hover/row:opacity-100 focus-visible:opacity-100 " +
   "hover:border-[var(--color-icon-epic)]/50 hover:bg-[color-mix(in_srgb,var(--color-icon-epic)_8%,transparent)] hover:text-[var(--color-icon-epic)] " +

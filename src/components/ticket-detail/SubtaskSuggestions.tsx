@@ -107,7 +107,7 @@ export function SubtaskSuggestions({
           AI Suggestions
         </span>
         {suggestions.length > 0 && !isLoading && (
-          <span className="rounded-full bg-[var(--color-brand-500)]/10 px-1.5 py-0.5 text-[10px] font-medium tabular-nums text-[var(--color-brand-400)]">
+          <span className="rounded-full bg-[var(--color-brand-500)]/10 px-1.5 py-0.5 text-caption font-medium tabular-nums text-[var(--color-brand-400)]">
             {suggestions.length}
           </span>
         )}
@@ -178,7 +178,7 @@ export function SubtaskSuggestions({
                   {isAdding ? (
                     <Loader2 size={11} className="shrink-0 animate-spin text-[var(--color-brand-400)]" />
                   ) : (
-                    <span className="flex h-4 w-4 shrink-0 items-center justify-center rounded bg-[var(--color-brand-500)]/[0.08] text-[9px] font-semibold tabular-nums text-[var(--color-brand-400)]">
+                    <span className="flex h-4 w-4 shrink-0 items-center justify-center rounded bg-[var(--color-brand-500)]/[0.08] text-micro font-semibold tabular-nums text-[var(--color-brand-400)]">
                       {idx + 1}
                     </span>
                   )}
@@ -198,11 +198,11 @@ export function SubtaskSuggestions({
                           cancelEditing();
                         }
                       }}
-                      className="min-w-0 flex-1 rounded-md border border-[var(--color-brand-500)]/20 bg-white px-2 py-1 text-[13px] leading-snug text-text-secondary outline-none focus:border-[var(--color-brand-400)] focus:ring-1 focus:ring-[var(--color-brand-400)]/30 dark:bg-surface-base"
+                      className="min-w-0 flex-1 rounded-md border border-[var(--color-brand-500)]/20 bg-white px-2 py-1 text-body leading-snug text-text-secondary outline-none focus:border-[var(--color-brand-400)] focus:ring-1 focus:ring-[var(--color-brand-400)]/30 dark:bg-surface-base"
                       aria-label={`Edit suggestion: ${suggestion.title}`}
                     />
                   ) : (
-                    <span className="min-w-0 flex-1 truncate text-[13px] leading-snug text-text-secondary">
+                    <span className="min-w-0 flex-1 truncate text-body leading-snug text-text-secondary">
                       {suggestion.title}
                     </span>
                   )}
@@ -218,7 +218,7 @@ export function SubtaskSuggestions({
                       <button
                         type="button"
                         onClick={() => isEditing ? confirmEdit(idx) : onAdd(idx)}
-                        className="flex cursor-pointer items-center gap-1 rounded-md px-2 py-1 text-[11px] font-medium text-text-muted hover:bg-[var(--color-brand-500)]/10 hover:text-[var(--color-brand-500)] focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-[var(--color-brand-400)] active:bg-[var(--color-brand-500)]/15"
+                        className="flex cursor-pointer items-center gap-1 rounded-md px-2 py-1 text-label font-medium text-text-muted hover:bg-[var(--color-brand-500)]/10 hover:text-[var(--color-brand-500)] focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-[var(--color-brand-400)] active:bg-[var(--color-brand-500)]/15"
                         style={{ transition: "background-color 0.15s ease, color 0.15s ease" }}
                         aria-label={`Accept subtask: ${suggestion.title}`}
                       >
@@ -228,7 +228,7 @@ export function SubtaskSuggestions({
                       <button
                         type="button"
                         onClick={() => isEditing ? cancelEditing() : onDismiss(idx)}
-                        className="flex cursor-pointer items-center gap-1 rounded-md px-2 py-1 text-[11px] font-medium text-text-muted hover:bg-red-500/10 hover:text-red-500 focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-[var(--color-brand-400)] active:bg-red-500/15"
+                        className="flex cursor-pointer items-center gap-1 rounded-md px-2 py-1 text-label font-medium text-text-muted hover:bg-red-500/10 hover:text-red-500 focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-[var(--color-brand-400)] active:bg-red-500/15"
                         style={{ transition: "background-color 0.15s ease, color 0.15s ease" }}
                         aria-label={isEditing ? "Cancel editing" : `Decline subtask: ${suggestion.title}`}
                       >
@@ -239,7 +239,7 @@ export function SubtaskSuggestions({
                         <button
                           type="button"
                           onClick={() => startEditing(idx)}
-                          className="flex cursor-pointer items-center gap-1 rounded-md px-2 py-1 text-[11px] font-medium text-text-muted hover:bg-overlay-subtle hover:text-text-secondary focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-[var(--color-brand-400)] active:bg-overlay-subtle/80"
+                          className="flex cursor-pointer items-center gap-1 rounded-md px-2 py-1 text-label font-medium text-text-muted hover:bg-overlay-subtle hover:text-text-secondary focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-[var(--color-brand-400)] active:bg-overlay-subtle/80"
                           style={{ transition: "background-color 0.15s ease, color 0.15s ease" }}
                           aria-label={`Edit subtask: ${suggestion.title}`}
                         >

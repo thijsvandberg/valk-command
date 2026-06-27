@@ -85,7 +85,7 @@ export function WatchersRow({ ticketKey, align = "right" }: { ticketKey: string;
           })}
           {overflow > 0 && (
             <div
-              className="flex items-center justify-center rounded-full bg-overlay-subtle text-[10px] font-semibold text-text-muted"
+              className="flex items-center justify-center rounded-full bg-overlay-subtle text-caption font-semibold text-text-muted"
               style={{ width: 20, height: 20, marginLeft: -6, boxShadow: "0 0 0 2px var(--color-surface-elevated)" }}
               title={watchers.slice(MAX_VISIBLE).map((w) => w.displayName).join(", ")}
             >

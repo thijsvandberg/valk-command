@@ -258,7 +258,7 @@ function StatusSubPanel({ onSelect }: { onSelect: (status: JiraStatus) => void }
         return (
           <MenuItem key={status} onClick={() => onSelect(status)}>
             <span
-              className="shrink-0 rounded px-1.5 py-0.5 font-mono text-[10px] font-semibold tracking-wide"
+              className="shrink-0 rounded px-1.5 py-0.5 font-mono text-caption font-semibold tracking-wide"
               style={{ backgroundColor: colors.bg, color: colors.text }}
             >
               {JIRA_STATUS_ABBREVIATIONS[status]}

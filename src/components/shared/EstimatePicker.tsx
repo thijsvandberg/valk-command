@@ -193,7 +193,7 @@ export function EstimatePicker({
       onMouseLeave={() => setHovered(false)}
       title={richTooltip ? undefined : titleText}
       aria-label={titleText}
-      className={`flex items-center rounded-md border cursor-pointer transition-colors duration-150 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)] active:opacity-60 font-medium tabular-nums ${dense ? "h-5 text-[11px] leading-none" : "h-6 text-body-sm"} ${showMetricIcon ? "gap-1 px-1.5 min-w-[2.25rem] justify-start" : "min-w-[24px] justify-center px-1"} ${shown?.dashed ? "border-dashed" : "border-transparent"}`}
+      className={`flex items-center rounded-md border cursor-pointer transition-colors duration-150 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)] active:opacity-60 font-medium tabular-nums ${dense ? "h-5 text-label leading-none" : "h-6 text-body-sm"} ${showMetricIcon ? "gap-1 px-1.5 min-w-[2.25rem] justify-start" : "min-w-[24px] justify-center px-1"} ${shown?.dashed ? "border-dashed" : "border-transparent"}`}
       style={{
         // Carry the slate tone even when empty so the "#" reads as the SP/guess
         // slot, not a generic grey button (BRDG-323). A guess stays fill-less +
@@ -237,7 +237,7 @@ export function EstimatePicker({
             onPointerDown={(e) => e.stopPropagation()}
             onClick={(e) => e.stopPropagation()}
           >
-            <div className="mb-2 flex items-baseline gap-1 px-0.5 text-[9px] font-semibold uppercase tracking-wider text-text-muted">
+            <div className="mb-2 flex items-baseline gap-1 px-0.5 text-micro font-semibold uppercase tracking-wider text-text-muted">
               <span>{committed ? "Story points" : "Guestimate"}</span>
               {/* Skip the guess entirely on a fresh row: jump straight to story-point
                   entry. Only offered while there is no guess yet to commit. */}
@@ -359,7 +359,7 @@ export function EstimatePicker({
               <button
                 type="button"
                 onClick={commit}
-                className="group/commit mt-1.5 flex w-full items-center justify-center gap-1.5 rounded-md px-2 py-1.5 text-[11px] font-medium transition-colors duration-100 hover:bg-[color-mix(in_srgb,var(--color-brand-500)_10%,transparent)] active:opacity-70 cursor-pointer focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-[var(--color-brand-400)]"
+                className="group/commit mt-1.5 flex w-full items-center justify-center gap-1.5 rounded-md px-2 py-1.5 text-label font-medium transition-colors duration-100 hover:bg-[color-mix(in_srgb,var(--color-brand-500)_10%,transparent)] active:opacity-70 cursor-pointer focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-[var(--color-brand-400)]"
                 style={{ color: "var(--color-brand-400)" }}
               >
                 Commit as story points
@@ -374,7 +374,7 @@ export function EstimatePicker({
 
             {/* Revert a committed SP back to the preserved prior guess. */}
             {showGuessActions && committed && guestimation != null && !customMode && (
-              <div className="mt-1.5 flex justify-end border-t border-border-subtle pt-1.5 text-[10px] text-text-tertiary">
+              <div className="mt-1.5 flex justify-end border-t border-border-subtle pt-1.5 text-caption text-text-tertiary">
                 <button
                   type="button"
                   onClick={backToGuess}

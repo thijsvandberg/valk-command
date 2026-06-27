@@ -572,7 +572,7 @@ export const BoardRow = memo(forwardRef<HTMLTableRowElement, BoardRowBaseProps>(
               kept theme-aware via --meta-bv-fg. Inert on the board (splitTarget absent). */}
           {isSplit && (
             <span
-              className="inline-flex h-5 shrink-0 items-center gap-1 whitespace-nowrap rounded-md px-1.5 text-[11px] font-medium leading-none"
+              className="inline-flex h-5 shrink-0 items-center gap-1 whitespace-nowrap rounded-md px-1.5 text-label font-medium leading-none"
               style={{ color: "var(--meta-bv-fg)", backgroundColor: "color-mix(in srgb, #8b5cf6 14%, transparent)" }}
             >
               <Scissors size={10} strokeWidth={2} className="shrink-0 opacity-80" aria-hidden />
@@ -742,7 +742,7 @@ export const BoardRow = memo(forwardRef<HTMLTableRowElement, BoardRowBaseProps>(
                   status-warning chip treatment as the per-row warning labels. Inert on
                   the board (sessionJiraChanged absent). */}
               {sessionJiraChanged && (
-                <span className="inline-flex h-5 shrink-0 items-center gap-1 whitespace-nowrap rounded-md px-2 text-[11px] leading-none text-[color-mix(in_srgb,var(--color-status-warning)_80%,var(--color-text-secondary))] bg-[color-mix(in_srgb,var(--color-status-warning)_6%,transparent)]">
+                <span className="inline-flex h-5 shrink-0 items-center gap-1 whitespace-nowrap rounded-md px-2 text-label leading-none text-[color-mix(in_srgb,var(--color-status-warning)_80%,var(--color-text-secondary))] bg-[color-mix(in_srgb,var(--color-status-warning)_6%,transparent)]">
                   <AlertTriangle size={11} strokeWidth={2} className="shrink-0 opacity-70" aria-hidden />
                   Jira changed
                 </span>
@@ -774,7 +774,7 @@ export const BoardRow = memo(forwardRef<HTMLTableRowElement, BoardRowBaseProps>(
               {/* Sprint name — only when several sprints are visible at once (All view / saved view). */}
               {showSprint && ticket.sprintId && (
                 <span
-                  className="inline-flex h-5 min-w-0 shrink items-center gap-1 truncate whitespace-nowrap rounded-md px-1.5 text-[11px] leading-none text-text-tertiary"
+                  className="inline-flex h-5 min-w-0 shrink items-center gap-1 truncate whitespace-nowrap rounded-md px-1.5 text-label leading-none text-text-tertiary"
                   style={{ backgroundColor: "var(--color-overlay-subtle)" }}
                   title={sprintNameMap[ticket.sprintId] ?? ticket.sprintId}
                 >
@@ -865,7 +865,7 @@ export const BoardRow = memo(forwardRef<HTMLTableRowElement, BoardRowBaseProps>(
                   so it is never mistaken for the editable assignee. */}
               {tags.has("creator") && ticket.reporter && (
                 <span
-                  className="inline-flex h-5 min-w-0 max-w-[140px] shrink-0 items-center gap-1 whitespace-nowrap rounded-md px-1.5 text-[11px] leading-none text-text-tertiary"
+                  className="inline-flex h-5 min-w-0 max-w-[140px] shrink-0 items-center gap-1 whitespace-nowrap rounded-md px-1.5 text-label leading-none text-text-tertiary"
                   style={{ backgroundColor: "var(--color-overlay-subtle)" }}
                   title={`Reported by ${ticket.reporter.name}`}
                 >
@@ -951,7 +951,7 @@ export const BoardRow = memo(forwardRef<HTMLTableRowElement, BoardRowBaseProps>(
                 title="Clear session"
                 onPointerDown={(e) => e.stopPropagation()}
                 onClick={(e) => { e.stopPropagation(); onDiscard(ticket.key); }}
-                className="flex shrink-0 cursor-pointer items-center gap-1 rounded-md px-2 py-1 text-[11px] font-medium text-text-muted transition-[background-color,color] duration-150 hover:bg-[color-mix(in_srgb,var(--color-status-error)_12%,transparent)] hover:text-[var(--color-status-error)] focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-[var(--color-brand-400)] active:bg-[color-mix(in_srgb,var(--color-status-error)_18%,transparent)]"
+                className="flex shrink-0 cursor-pointer items-center gap-1 rounded-md px-2 py-1 text-label font-medium text-text-muted transition-[background-color,color] duration-150 hover:bg-[color-mix(in_srgb,var(--color-status-error)_12%,transparent)] hover:text-[var(--color-status-error)] focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-[var(--color-brand-400)] active:bg-[color-mix(in_srgb,var(--color-status-error)_18%,transparent)]"
               >
                 <X size={14} strokeWidth={2} />
                 <span>Clear session</span>
@@ -972,7 +972,7 @@ export const BoardRow = memo(forwardRef<HTMLTableRowElement, BoardRowBaseProps>(
                 aria-label="Mark as read"
                 onPointerDown={(e) => e.stopPropagation()}
                 onClick={(e) => { e.stopPropagation(); onMarkRead(ticket.key); }}
-                className="flex shrink-0 cursor-pointer items-center gap-1 rounded-md px-2 py-1 text-[11px] font-medium text-text-muted transition-[background-color,color] duration-150 hover:bg-[var(--color-brand-subtle)] hover:text-[var(--color-brand-300)] focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-[var(--color-brand-400)] active:bg-[color-mix(in_srgb,var(--color-brand-500)_18%,transparent)]"
+                className="flex shrink-0 cursor-pointer items-center gap-1 rounded-md px-2 py-1 text-label font-medium text-text-muted transition-[background-color,color] duration-150 hover:bg-[var(--color-brand-subtle)] hover:text-[var(--color-brand-300)] focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-[var(--color-brand-400)] active:bg-[color-mix(in_srgb,var(--color-brand-500)_18%,transparent)]"
               >
                 <Check size={14} strokeWidth={2} />
                 <span>Mark read</span>

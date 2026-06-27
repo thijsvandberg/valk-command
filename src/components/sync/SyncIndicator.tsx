@@ -276,7 +276,7 @@ export function SyncIndicator({
         <button
           type="button"
           onClick={(e) => { e.stopPropagation(); if (!expanded) computePos(); setExpanded((v) => !v); }}
-          className="flex items-center gap-1.5 rounded-md px-1 py-0.5 -mx-1 text-[11px] text-text-tertiary cursor-pointer hover:text-text-secondary focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)] transition-colors duration-150"
+          className="flex items-center gap-1.5 rounded-md px-1 py-0.5 -mx-1 text-label text-text-tertiary cursor-pointer hover:text-text-secondary focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)] transition-colors duration-150"
           aria-label="Activity status"
         >
           <span className={`h-1.5 w-1.5 shrink-0 rounded-full ${headerDotClass(activityState, errorCount, incrementalSyncRemaining, hasChecked)}`} />

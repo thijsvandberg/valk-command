@@ -235,7 +235,7 @@ function TipLabel({ label, shortcut }: { label: string; shortcut?: string }) {
     <span className="flex items-center gap-2">
       <span>{label}</span>
       {shortcut && (
-        <kbd className="rounded border border-border-default bg-overlay-default px-1.5 py-0.5 text-[11px] font-medium text-text-tertiary">
+        <kbd className="rounded border border-border-default bg-overlay-default px-1.5 py-0.5 text-label font-medium text-text-tertiary">
           {shortcut}
         </kbd>
       )}

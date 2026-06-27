@@ -72,7 +72,7 @@ export function RefinementHistoryList({ sessions, onMutate }: RefinementHistoryL
                   {sessionLabel(session)}
                 </span>
                 {isInProgress && (
-                  <span className="flex shrink-0 items-center rounded-md bg-amber-500/10 px-1.5 py-0.5 text-[10px] font-medium text-amber-400/80">
+                  <span className="flex shrink-0 items-center rounded-md bg-amber-500/10 px-1.5 py-0.5 text-caption font-medium text-amber-400/80">
                     In Progress
                   </span>
                 )}

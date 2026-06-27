@@ -141,7 +141,7 @@ export default function StoryWriterLandingPage() {
                 <h2 className="font-[var(--font-display)] text-body-sm font-semibold tracking-[-0.01em] text-text-secondary">
                   Continue Story Writer session
                 </h2>
-                <span className="inline-flex items-center rounded-full bg-overlay-subtle px-2 py-0.5 text-[11px] font-medium text-text-tertiary">
+                <span className="inline-flex items-center rounded-full bg-overlay-subtle px-2 py-0.5 text-label font-medium text-text-tertiary">
                   {sessionCount} session{sessionCount === 1 ? "" : "s"}
                 </span>
               </div>

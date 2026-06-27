@@ -155,7 +155,7 @@ function SprintStateChip({ state, className = "" }: { state: Sprint["state"]; cl
   const chip = STATE_CHIP[state];
   if (!chip) return null;
   return (
-    <span className={`rounded px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide ${chip.cls} ${className}`}>
+    <span className={`rounded px-1.5 py-0.5 text-caption font-semibold uppercase tracking-wide ${chip.cls} ${className}`}>
       {chip.label}
     </span>
   );
@@ -644,7 +644,7 @@ export function EpicChildrenBySprint({
     const composerRendered = isComposerOpen && !!onCreateChild;
 
     const headerExtras = isCreateZone ? (
-      <span className="rounded px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-[var(--color-brand-300)] bg-[var(--color-brand-500)]/15">
+      <span className="rounded px-1.5 py-0.5 text-caption font-semibold uppercase tracking-wide text-[var(--color-brand-300)] bg-[var(--color-brand-500)]/15">
         New sprint
       </span>
     ) : group.state || group.dateRange ? (
@@ -653,7 +653,7 @@ export function EpicChildrenBySprint({
               item count + scores stay readable (the @container is GroupCard's header row). */}
           {group.state && <SprintStateChip state={group.state} className="hidden @xl:inline-block" />}
           {group.dateRange && (
-            <span className="flex items-center gap-1 text-[11px] text-text-muted">
+            <span className="flex items-center gap-1 text-label text-text-muted">
               <CalendarRange size={11} strokeWidth={1.5} /> {group.dateRange}
             </span>
           )}

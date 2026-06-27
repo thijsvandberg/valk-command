@@ -126,7 +126,7 @@ export function UserProfilePopover({
           <div className="truncate text-body-lg font-medium text-text-primary">
             {user?.fullName ?? "User"}
           </div>
-          <div className="truncate text-[11px] text-text-tertiary">
+          <div className="truncate text-label text-text-tertiary">
             {user?.primaryEmailAddress?.emailAddress ?? ""}
           </div>
         </div>
@@ -159,7 +159,7 @@ export function UserProfilePopover({
             </span>
             <span className="flex-1 text-left">{item.label}</span>
             {item.secondaryLabel && (
-              <span className="text-[10px] text-text-muted">
+              <span className="text-caption text-text-muted">
                 {item.secondaryLabel}
               </span>
             )}

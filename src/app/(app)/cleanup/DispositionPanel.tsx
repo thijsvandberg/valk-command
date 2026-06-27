@@ -330,7 +330,7 @@ export function DispositionPanel({
                   Worth pulling up
                   {data.revivalScore != null && data.revivalScore >= REVIVAL_CANDIDATE_THRESHOLD && (
                     <span
-                      className="rounded-full px-1.5 py-0.5 text-[10px] font-semibold tabular-nums"
+                      className="rounded-full px-1.5 py-0.5 text-caption font-semibold tabular-nums"
                       style={{ color: "var(--color-status-success)", backgroundColor: "var(--color-status-success-subtle)" }}
                     >
                       Revival candidate

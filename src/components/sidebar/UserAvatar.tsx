@@ -50,7 +50,7 @@ export const UserAvatar = forwardRef<HTMLButtonElement, UserAvatarProps>(
               referrerPolicy="no-referrer"
             />
           ) : initials ? (
-            <span className="text-[10px] font-semibold tracking-wide text-[var(--color-brand-300)]">
+            <span className="text-caption font-semibold tracking-wide text-[var(--color-brand-300)]">
               {initials}
             </span>
           ) : (

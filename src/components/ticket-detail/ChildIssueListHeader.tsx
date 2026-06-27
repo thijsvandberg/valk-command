@@ -325,7 +325,7 @@ export function ChildIssueListHeader({
                     )}
                     <span>Suggest subtasks with AI</span>
                     {suggestCount ? (
-                      <span className="ml-auto flex h-4 min-w-4 items-center justify-center rounded-full bg-[var(--color-brand-500)] px-1 text-[10px] font-semibold text-white">
+                      <span className="ml-auto flex h-4 min-w-4 items-center justify-center rounded-full bg-[var(--color-brand-500)] px-1 text-caption font-semibold text-white">
                         {suggestCount}
                       </span>
                     ) : null}

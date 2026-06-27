@@ -509,17 +509,17 @@ export function SessionEndModal() {
                       {row.title}
                     </span>
                     {row.storyPoints != null && row.storyPoints > 0 && (
-                      <span className="flex h-5 min-w-5 items-center justify-center rounded-md bg-overlay-subtle px-1.5 font-mono text-[10px] font-semibold tabular-nums text-text-muted">
+                      <span className="flex h-5 min-w-5 items-center justify-center rounded-md bg-overlay-subtle px-1.5 font-mono text-caption font-semibold tabular-nums text-text-muted">
                         {row.storyPoints}
                       </span>
                     )}
                     {!row.isSpike && (row.storyPoints == null || row.storyPoints === 0) && (
-                      <span className="flex h-5 items-center rounded-md bg-amber-500/10 px-1.5 text-[10px] font-medium text-amber-400/80">
+                      <span className="flex h-5 items-center rounded-md bg-amber-500/10 px-1.5 text-caption font-medium text-amber-400/80">
                         No estimate
                       </span>
                     )}
                     {row.subtaskCount === 0 && (
-                      <span className="flex h-5 items-center gap-1 rounded-md bg-amber-500/10 px-1.5 text-[10px] font-medium text-amber-400/80">
+                      <span className="flex h-5 items-center gap-1 rounded-md bg-amber-500/10 px-1.5 text-caption font-medium text-amber-400/80">
                         <IssueTypeIcon type="subtask" size={10} />
                         No subtasks
                       </span>
@@ -624,7 +624,7 @@ export function SessionEndModal() {
                     hideTime
                     minDate={todayLocalDate()}
                   />
-                  <p className="mt-1.5 text-[11px] text-text-muted">
+                  <p className="mt-1.5 text-label text-text-muted">
                     Named <span className="font-medium text-text-tertiary">Refinement {targetDate || todayLocalDate()}</span>
                   </p>
                 </div>

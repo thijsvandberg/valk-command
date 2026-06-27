@@ -107,7 +107,7 @@ export function ChildStoryCard({
     <article className="rounded-lg border border-border-subtle bg-surface-elevated/60 p-3.5 shadow-[0_1px_2px_rgba(0,0,0,0.04)]">
       <header className="flex items-start justify-between gap-2">
         <div className="flex min-w-0 items-center gap-2">
-          <span className="font-mono text-[10px] tabular-nums text-text-muted">
+          <span className="font-mono text-caption tabular-nums text-text-muted">
             {card.cardIndex + 1}
           </span>
           <h3 className="min-w-0 truncate text-body-sm font-semibold text-text-primary">
@@ -240,7 +240,7 @@ export function ChildStoryCard({
       <footer className="mt-3 flex items-center justify-between gap-2">
         {isCreated ? (
           <span className="flex min-w-0 items-center gap-2">
-            <span className="font-mono text-[10px] text-[var(--color-brand-400)]">
+            <span className="font-mono text-caption text-[var(--color-brand-400)]">
               {card.jiraKey}
             </span>
             {/* Live sprint of the created issue (null id = backlog). Shows the

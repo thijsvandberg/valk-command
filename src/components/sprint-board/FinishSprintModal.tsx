@@ -237,7 +237,7 @@ export function FinishSprintModal({
               <h2 className="font-[var(--font-display)] text-body-lg font-semibold leading-tight text-text-primary">
                 Finish sprint
               </h2>
-              <p className="truncate text-[11px] text-text-muted">{sprint.name}</p>
+              <p className="truncate text-label text-text-muted">{sprint.name}</p>
             </div>
           </div>
           <button
@@ -270,7 +270,7 @@ export function FinishSprintModal({
                   {incompleteStories.length} {incompleteStories.length === 1 ? "story is" : "stories are"} not done
                 </span>
               </div>
-              <p className="px-3 pt-2 text-[11px] leading-relaxed text-text-muted">
+              <p className="px-3 pt-2 text-label leading-relaxed text-text-muted">
                 Complete or move these on the board before finishing. They cannot be closed from here.
               </p>
               <ul className="max-h-44 overflow-y-auto px-1.5 py-1.5">
@@ -311,7 +311,7 @@ export function FinishSprintModal({
                       type="button"
                       onClick={handleCopyReport}
                       aria-label="Copy open-subtasks list"
-                      className="inline-flex items-center gap-1.5 rounded-md bg-[var(--color-status-caution)]/15 px-2 py-1 text-[11px] font-medium text-text-secondary cursor-pointer hover:bg-[var(--color-status-caution)]/25 hover:text-text-primary active:bg-[var(--color-status-caution)]/30 transition-colors duration-150 focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-[var(--color-brand-400)]"
+                      className="inline-flex items-center gap-1.5 rounded-md bg-[var(--color-status-caution)]/15 px-2 py-1 text-label font-medium text-text-secondary cursor-pointer hover:bg-[var(--color-status-caution)]/25 hover:text-text-primary active:bg-[var(--color-status-caution)]/30 transition-colors duration-150 focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-[var(--color-brand-400)]"
                     >
                       <Copy size={11} strokeWidth={1.75} />
                       Copy list
@@ -321,7 +321,7 @@ export function FinishSprintModal({
                       onClick={closeAllSubtasks}
                       disabled={busyStories.size > 0}
                       aria-label="Close all open subtasks"
-                      className="inline-flex items-center gap-1.5 rounded-md bg-[var(--color-status-caution)]/15 px-2 py-1 text-[11px] font-medium text-text-secondary cursor-pointer hover:bg-[var(--color-status-caution)]/25 hover:text-text-primary active:bg-[var(--color-status-caution)]/30 disabled:opacity-50 disabled:cursor-not-allowed transition-colors duration-150 focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-[var(--color-brand-400)]"
+                      className="inline-flex items-center gap-1.5 rounded-md bg-[var(--color-status-caution)]/15 px-2 py-1 text-label font-medium text-text-secondary cursor-pointer hover:bg-[var(--color-status-caution)]/25 hover:text-text-primary active:bg-[var(--color-status-caution)]/30 disabled:opacity-50 disabled:cursor-not-allowed transition-colors duration-150 focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-[var(--color-brand-400)]"
                     >
                       <CheckCheck size={11} strokeWidth={1.75} />
                       Close all
@@ -353,7 +353,7 @@ export function FinishSprintModal({
                           <span className="min-w-0 flex-1 truncate text-body-sm text-text-primary">{story.title}</span>
                         </div>
                         {resolved ? (
-                          <span className="inline-flex shrink-0 items-center gap-1 text-[11px] font-medium text-[var(--color-status-success)]">
+                          <span className="inline-flex shrink-0 items-center gap-1 text-label font-medium text-[var(--color-status-success)]">
                             <CircleCheckBig size={12} strokeWidth={1.75} /> Done
                           </span>
                         ) : open.length > 0 ? (
@@ -361,7 +361,7 @@ export function FinishSprintModal({
                             type="button"
                             onClick={() => closeAllForStory(story.key)}
                             disabled={storyBusy}
-                            className="inline-flex shrink-0 items-center gap-1 rounded-md px-1.5 py-1 text-[11px] font-medium text-text-secondary cursor-pointer hover:bg-[var(--color-status-caution)]/15 hover:text-text-primary active:bg-[var(--color-status-caution)]/20 disabled:opacity-50 disabled:cursor-not-allowed transition-colors duration-150 focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-[var(--color-brand-400)]"
+                            className="inline-flex shrink-0 items-center gap-1 rounded-md px-1.5 py-1 text-label font-medium text-text-secondary cursor-pointer hover:bg-[var(--color-status-caution)]/15 hover:text-text-primary active:bg-[var(--color-status-caution)]/20 disabled:opacity-50 disabled:cursor-not-allowed transition-colors duration-150 focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-[var(--color-brand-400)]"
                           >
                             {storyBusy
                               ? <Loader2 size={11} strokeWidth={1.75} className="animate-spin" />
@@ -372,12 +372,12 @@ export function FinishSprintModal({
                       </div>
 
                       {loading && (
-                        <div className="flex items-center gap-1.5 px-2.5 pb-2 text-[11px] text-text-muted">
+                        <div className="flex items-center gap-1.5 px-2.5 pb-2 text-label text-text-muted">
                           <Loader2 size={11} strokeWidth={1.75} className="animate-spin" /> Loading subtasks&hellip;
                         </div>
                       )}
                       {errored && (
-                        <div className="flex items-center justify-between gap-2 px-2.5 pb-2 text-[11px] text-[var(--color-status-error)]">
+                        <div className="flex items-center justify-between gap-2 px-2.5 pb-2 text-label text-[var(--color-status-error)]">
                           <span>Failed to load subtasks</span>
                           <button
                             type="button"
@@ -403,12 +403,12 @@ export function FinishSprintModal({
                                   showKey
                                   showStatus
                                 />
-                                <span className="min-w-0 flex-1 truncate text-[12px] text-text-secondary">{sub.title}</span>
+                                <span className="min-w-0 flex-1 truncate text-body-sm text-text-secondary">{sub.title}</span>
                                 <button
                                   type="button"
                                   onClick={() => closeOneSubtask(story.key, sub.key)}
                                   disabled={subBusy || storyBusy}
-                                  className="inline-flex shrink-0 items-center gap-1 rounded-md px-1.5 py-1 text-[10px] font-medium text-text-secondary cursor-pointer hover:bg-overlay-default hover:text-text-primary active:bg-overlay-strong disabled:opacity-50 disabled:cursor-not-allowed transition-colors duration-100 focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-[var(--color-brand-400)]"
+                                  className="inline-flex shrink-0 items-center gap-1 rounded-md px-1.5 py-1 text-caption font-medium text-text-secondary cursor-pointer hover:bg-overlay-default hover:text-text-primary active:bg-overlay-strong disabled:opacity-50 disabled:cursor-not-allowed transition-colors duration-100 focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-[var(--color-brand-400)]"
                                 >
                                   {subBusy
                                     ? <Loader2 size={10} strokeWidth={1.75} className="animate-spin" />
@@ -436,7 +436,7 @@ export function FinishSprintModal({
               <div className="min-w-0">
                 <p className="text-body-sm font-medium text-text-primary">Everything is done. Ready to finish.</p>
                 {readySummary && (
-                  <p className="mt-0.5 truncate text-[11px] text-text-muted">{readySummary}</p>
+                  <p className="mt-0.5 truncate text-label text-text-muted">{readySummary}</p>
                 )}
               </div>
             </div>
@@ -462,7 +462,7 @@ export function FinishSprintModal({
 
         {/* Footer */}
         <div className="flex items-center justify-between gap-3 border-t border-border-default px-5 py-3">
-          <span className="min-w-0 truncate text-[11px] text-text-muted">
+          <span className="min-w-0 truncate text-label text-text-muted">
             {blocked && !finishing ? blockReason : ""}
           </span>
           <div className="flex shrink-0 items-center gap-2">

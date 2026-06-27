@@ -201,7 +201,7 @@ export function RefinementTicketList({
         >
           <ListFilter size={15} strokeWidth={1.5} />
           {filters.activeFilterCount > 0 && !filters.filtersOpen && (
-            <span className="absolute -top-1 -right-1 flex h-3.5 min-w-3.5 items-center justify-center rounded-full bg-[var(--color-brand-500)] px-0.5 text-[9px] font-semibold text-white">
+            <span className="absolute -top-1 -right-1 flex h-3.5 min-w-3.5 items-center justify-center rounded-full bg-[var(--color-brand-500)] px-0.5 text-micro font-semibold text-white">
               {filters.activeFilterCount}
             </span>
           )}
@@ -230,7 +230,7 @@ export function RefinementTicketList({
                 {showSubtasks && <SubtaskCountBadge open={ticket.openSubtaskCount ?? 0} total={ticket.totalSubtaskCount ?? 0} />}
                 <InRefinementBadge sessionNames={sessionNames} />
                 {isChecked && isOtherSession && (
-                  <span className="shrink-0 text-[11px] leading-none text-amber-400/70">In other session</span>
+                  <span className="shrink-0 text-label leading-none text-amber-400/70">In other session</span>
                 )}
                 {showSprint && <SprintBadge name={sprintName} />}
                 {showBv && ticket.businessValue != null && (

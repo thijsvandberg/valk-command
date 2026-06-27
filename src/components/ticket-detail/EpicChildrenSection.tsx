@@ -944,7 +944,7 @@ export function EpicChildrenSection({
               <span className="min-w-0 flex-1 truncate text-body-lg text-text-secondary">{r.title}</span>
               <StatusBadge status={(r.status || "TO DO") as JiraStatus} />
               {r.source === "jira" && (
-                <span className="rounded bg-overlay-subtle px-1.5 py-0.5 text-[10px] font-medium text-text-muted">Jira</span>
+                <span className="rounded bg-overlay-subtle px-1.5 py-0.5 text-caption font-medium text-text-muted">Jira</span>
               )}
             </button>
           ))}

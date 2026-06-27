@@ -133,7 +133,7 @@ export function SprintSelector({
                 <span className="truncate">Backlog</span>
               </span>
               {backlogCount > 0 && (
-                <span className="ml-3 shrink-0 rounded-full bg-overlay-default px-1.5 py-0.5 text-[10px] font-medium leading-none text-text-muted">
+                <span className="ml-3 shrink-0 rounded-full bg-overlay-default px-1.5 py-0.5 text-caption font-medium leading-none text-text-muted">
                   {backlogCount}
                 </span>
               )}

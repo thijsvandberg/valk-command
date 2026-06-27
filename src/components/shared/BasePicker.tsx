@@ -416,7 +416,7 @@ function Section({ children, icon, className }: SectionProps) {
   return (
     <div className={`flex items-center gap-1.5 px-3 pt-1.5 pb-0.5${className ? ` ${className}` : ""}`}>
       {icon}
-      <span className="text-[10px] font-medium uppercase tracking-[0.06em] text-text-muted">
+      <span className="text-caption font-medium uppercase tracking-[0.06em] text-text-muted">
         {children}
       </span>
     </div>

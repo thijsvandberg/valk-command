@@ -88,7 +88,7 @@ export function RelatedSuggestions({
           AI Suggestions
         </span>
         {suggestions.length > 0 && !isLoading && (
-          <span className="rounded-full bg-[var(--color-brand-500)]/10 px-1.5 py-0.5 text-[10px] font-medium tabular-nums text-[var(--color-brand-400)]">
+          <span className="rounded-full bg-[var(--color-brand-500)]/10 px-1.5 py-0.5 text-caption font-medium tabular-nums text-[var(--color-brand-400)]">
             {suggestions.length}
           </span>
         )}
@@ -161,7 +161,7 @@ export function RelatedSuggestions({
                     )}
 
                     <span className="shrink-0 font-mono text-body-sm text-[var(--color-brand-400)]">{s.key}</span>
-                    <span className="min-w-0 flex-1 truncate text-[13px] leading-snug text-text-secondary">{s.title}</span>
+                    <span className="min-w-0 flex-1 truncate text-body leading-snug text-text-secondary">{s.title}</span>
 
                     <div className="flex shrink-0 items-center gap-1">
                       <div className="h-1.5 w-10 overflow-hidden rounded-full bg-overlay-default">
@@ -170,10 +170,10 @@ export function RelatedSuggestions({
                           style={{ width: `${Math.round(s.relevance * 100)}%` }}
                         />
                       </div>
-                      <span className="text-[10px] tabular-nums text-text-muted">{Math.round(s.relevance * 100)}%</span>
+                      <span className="text-caption tabular-nums text-text-muted">{Math.round(s.relevance * 100)}%</span>
                     </div>
 
-                    <span className="shrink-0 rounded bg-overlay-default px-1.5 py-0.5 text-[10px] font-medium text-text-muted">
+                    <span className="shrink-0 rounded bg-overlay-default px-1.5 py-0.5 text-caption font-medium text-text-muted">
                       {s.suggestedRelation}
                     </span>
 
@@ -188,7 +188,7 @@ export function RelatedSuggestions({
                         <button
                           type="button"
                           onClick={() => onAccept(s)}
-                          className="flex cursor-pointer items-center gap-1 rounded-md px-2 py-1 text-[11px] font-medium text-text-muted hover:bg-[var(--color-brand-500)]/10 hover:text-[var(--color-brand-500)] focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-[var(--color-brand-400)] active:bg-[var(--color-brand-500)]/15"
+                          className="flex cursor-pointer items-center gap-1 rounded-md px-2 py-1 text-label font-medium text-text-muted hover:bg-[var(--color-brand-500)]/10 hover:text-[var(--color-brand-500)] focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-[var(--color-brand-400)] active:bg-[var(--color-brand-500)]/15"
                           style={{ transition: "background-color 0.15s ease, color 0.15s ease" }}
                           aria-label={`Accept and link ${s.key}`}
                         >
@@ -198,7 +198,7 @@ export function RelatedSuggestions({
                         <button
                           type="button"
                           onClick={() => onDecline(s)}
-                          className="flex cursor-pointer items-center gap-1 rounded-md px-2 py-1 text-[11px] font-medium text-text-muted hover:bg-red-500/10 hover:text-red-500 focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-[var(--color-brand-400)] active:bg-red-500/15"
+                          className="flex cursor-pointer items-center gap-1 rounded-md px-2 py-1 text-label font-medium text-text-muted hover:bg-red-500/10 hover:text-red-500 focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-[var(--color-brand-400)] active:bg-red-500/15"
                           style={{ transition: "background-color 0.15s ease, color 0.15s ease" }}
                           aria-label={`Decline ${s.key}`}
                         >
@@ -209,7 +209,7 @@ export function RelatedSuggestions({
                     )}
 
                     {s.reason && (
-                      <p className="absolute left-[42px] top-full -mt-0.5 text-[10px] leading-relaxed text-text-muted sr-only group-hover:not-sr-only">
+                      <p className="absolute left-[42px] top-full -mt-0.5 text-caption leading-relaxed text-text-muted sr-only group-hover:not-sr-only">
                         {s.reason}
                       </p>
                     )}

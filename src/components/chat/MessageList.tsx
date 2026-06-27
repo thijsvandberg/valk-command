@@ -286,10 +286,10 @@ export default function MessageList({ messages, loading, error, conversation, sh
                 </div>
                 <div className="mt-1 flex items-center gap-2">
                   {message.cancelled && (
-                    <span className="text-[10px] font-medium text-red-400/60 uppercase tracking-wider select-none">Cancelled</span>
+                    <span className="text-caption font-medium text-red-400/60 uppercase tracking-wider select-none">Cancelled</span>
                   )}
                   {ts && (
-                    <span className={`text-[10px] text-text-muted tabular-nums select-none transition-opacity duration-150 ${isLast ? "opacity-100" : "opacity-0 group-hover/msg:opacity-100"}`}>
+                    <span className={`text-caption text-text-muted tabular-nums select-none transition-opacity duration-150 ${isLast ? "opacity-100" : "opacity-0 group-hover/msg:opacity-100"}`}>
                       {ts}
                     </span>
                   )}

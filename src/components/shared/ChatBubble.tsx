@@ -52,13 +52,13 @@ export function ChatBubble({
       </div>
       <div className={`mt-1 flex items-center gap-2 ${isUser ? "flex-row-reverse" : ""}`}>
         {cancelled && (
-          <span className="text-[10px] font-medium text-red-400/60 uppercase tracking-wider select-none" data-testid="cancelled-badge">
+          <span className="text-caption font-medium text-red-400/60 uppercase tracking-wider select-none" data-testid="cancelled-badge">
             Cancelled
           </span>
         )}
         {timestamp && (
           <span
-            className={`text-[10px] text-text-muted tabular-nums select-none transition-opacity duration-150 ${
+            className={`text-caption text-text-muted tabular-nums select-none transition-opacity duration-150 ${
               showTimestamp === "always"
                 ? "opacity-100"
                 : "opacity-0 group-hover/msg:opacity-100"

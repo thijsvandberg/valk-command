@@ -432,7 +432,7 @@ export default function TicketDetailPage({
                       }
                     }
                   }}
-                  className="flex cursor-pointer items-center gap-1.5 rounded-md border border-[var(--color-status-error)]/25 bg-[var(--color-status-error)]/10 px-2 py-0.5 text-[11px] font-semibold text-[var(--color-status-error)] hover:bg-[var(--color-status-error)]/20 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-status-error)]/40 active:scale-[0.97]"
+                  className="flex cursor-pointer items-center gap-1.5 rounded-md border border-[var(--color-status-error)]/25 bg-[var(--color-status-error)]/10 px-2 py-0.5 text-label font-semibold text-[var(--color-status-error)] hover:bg-[var(--color-status-error)]/20 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-status-error)]/40 active:scale-[0.97]"
                   style={{ transition: "background-color 0.15s ease, transform 0.1s ease" }}
                 >
                   <Flag size={11} strokeWidth={1.5} fill="var(--color-status-error)" />

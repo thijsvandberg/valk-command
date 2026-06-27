@@ -596,7 +596,7 @@ export function ChatMessage({
       )}
     </div>
     {isCancelled && (
-      <span className={`mt-1 text-[10px] font-medium text-red-400/60 uppercase tracking-wider select-none ${isUser ? "mr-1" : "ml-[34px]"}`} data-testid="cancelled-badge">
+      <span className={`mt-1 text-caption font-medium text-red-400/60 uppercase tracking-wider select-none ${isUser ? "mr-1" : "ml-[34px]"}`} data-testid="cancelled-badge">
         Cancelled
       </span>
     )}

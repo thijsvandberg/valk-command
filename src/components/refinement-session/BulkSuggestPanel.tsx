@@ -91,9 +91,9 @@ function LogEntryRow({ entry }: { entry: LogEntry }) {
       : <AlertCircle size={12} strokeWidth={2} className="shrink-0 text-red-400" />;
 
   const badge = entry.type === "generated" && entry.count != null
-    ? <span className="shrink-0 text-[10px] tabular-nums text-emerald-400">{entry.count} subtask{entry.count !== 1 ? "s" : ""}</span>
+    ? <span className="shrink-0 text-caption tabular-nums text-emerald-400">{entry.count} subtask{entry.count !== 1 ? "s" : ""}</span>
     : entry.type === "skipped"
-      ? <span className="shrink-0 text-[10px] text-text-muted">up to date</span>
+      ? <span className="shrink-0 text-caption text-text-muted">up to date</span>
       : null;
 
   return (
@@ -188,13 +188,13 @@ export function BulkSuggestPanel({
         </span>
 
         {isComplete && !effectiveRunning && (
-          <span className="rounded-full bg-emerald-500/10 px-1.5 py-0.5 text-[10px] font-medium text-emerald-400">
+          <span className="rounded-full bg-emerald-500/10 px-1.5 py-0.5 text-caption font-medium text-emerald-400">
             Done
           </span>
         )}
 
         {totalCount > 0 && (
-          <span className="ml-auto text-[10px] tabular-nums text-text-muted">
+          <span className="ml-auto text-caption tabular-nums text-text-muted">
             {generatedCount} of {totalCount}
           </span>
         )}
@@ -207,7 +207,7 @@ export function BulkSuggestPanel({
           {effectiveRunning && (
             <div className="flex items-start gap-2 border-b border-border-subtle bg-[var(--color-brand-500)]/[0.03] px-3 py-2">
               <Info size={12} strokeWidth={1.5} className="mt-0.5 shrink-0 text-text-muted" />
-              <p className="text-[11px] leading-relaxed text-text-muted">
+              <p className="text-label leading-relaxed text-text-muted">
                 This runs in the background. You can close this page and come back later.
               </p>
             </div>
@@ -236,7 +236,7 @@ export function BulkSuggestPanel({
           {/* Summary */}
           {isComplete && summaryEntry && (
             <div className="border-t border-border-subtle px-3 py-2">
-              <p className="text-[11px] text-text-muted">
+              <p className="text-label text-text-muted">
                 {summaryEntry.raw.replace("Bulk suggestion complete. ", "")}
               </p>
             </div>

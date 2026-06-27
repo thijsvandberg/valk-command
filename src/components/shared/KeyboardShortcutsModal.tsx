@@ -6,7 +6,7 @@ import { KEYBOARD_SHORTCUTS } from "@/lib/keyboard-shortcuts";
 
 function Kbd({ children }: { children: string }) {
   return (
-    <kbd className="inline-flex min-w-[24px] items-center justify-center rounded-md border border-border-strong bg-overlay-subtle px-1.5 py-0.5 font-mono text-[11px] font-medium text-text-secondary shadow-[0_1px_0_1px_var(--color-overlay-default)]">
+    <kbd className="inline-flex min-w-[24px] items-center justify-center rounded-md border border-border-strong bg-overlay-subtle px-1.5 py-0.5 font-mono text-label font-medium text-text-secondary shadow-[0_1px_0_1px_var(--color-overlay-default)]">
       {children}
     </kbd>
   );
@@ -37,7 +37,7 @@ export function KeyboardShortcutsModal() {
         <div className="max-h-[60vh] overflow-y-auto px-5 pb-5">
           {KEYBOARD_SHORTCUTS.map((group, gi) => (
             <div key={group.scope} className={gi > 0 ? "mt-4" : ""}>
-              <h3 className="mb-2 text-[10px] font-semibold uppercase tracking-wider text-text-muted">
+              <h3 className="mb-2 text-caption font-semibold uppercase tracking-wider text-text-muted">
                 {group.scope}
               </h3>
               <div className="space-y-1.5">

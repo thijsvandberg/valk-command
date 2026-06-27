@@ -28,7 +28,7 @@ function MetaRow({ label, children }: { label: string; children: React.ReactNode
 function MetaSection({ title, children }: { title: string; children: React.ReactNode }) {
   return (
     <div>
-      <h3 className="mb-1 text-[10px] font-semibold uppercase tracking-[0.08em] text-text-muted">{title}</h3>
+      <h3 className="mb-1 text-caption font-semibold uppercase tracking-[0.08em] text-text-muted">{title}</h3>
       <div className="rounded-lg border border-border-subtle bg-[var(--color-surface-elevated)] px-3.5 py-1">
         {children}
       </div>
@@ -132,7 +132,7 @@ export function MetaApp() {
 
       {/* Scoring */}
       <div>
-        <h3 className="mb-1 text-[10px] font-semibold uppercase tracking-[0.08em] text-text-muted">Scoring</h3>
+        <h3 className="mb-1 text-caption font-semibold uppercase tracking-[0.08em] text-text-muted">Scoring</h3>
         <div className="grid grid-cols-2 gap-2">
           <div
             className="rounded-lg border border-border-subtle px-3 py-2"

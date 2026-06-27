@@ -123,7 +123,7 @@ export function ScoreBadge({ score }: { score: number }) {
       : "bg-overlay-default text-text-tertiary";
 
   return (
-    <span className={`flex size-5 shrink-0 items-center justify-center rounded-full text-[10px] font-bold tabular-nums leading-none ${color}`}>
+    <span className={`flex size-5 shrink-0 items-center justify-center rounded-full text-caption font-bold tabular-nums leading-none ${color}`}>
       {score}
     </span>
   );

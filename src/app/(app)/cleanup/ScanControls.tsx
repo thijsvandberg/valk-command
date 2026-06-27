@@ -168,7 +168,7 @@ export function ScanControls({ onRan }: ScanControlsProps) {
         <div role="dialog" aria-label="Scan controls" className="flex flex-col">
           <div className="border-b border-border-subtle px-4 py-3">
             <h3 className="text-body-sm font-semibold text-text-primary">Scans</h3>
-            <p className="mt-0.5 text-[11px] leading-relaxed text-text-tertiary">
+            <p className="mt-0.5 text-label leading-relaxed text-text-tertiary">
               Off by default. Turn one on to run it on a schedule, or use Run now for a one-off pass.
             </p>
           </div>
@@ -198,7 +198,7 @@ export function ScanControls({ onRan }: ScanControlsProps) {
                 onRun={() => void runNow(autoTask.name)}
                 trailing={
                   autoTask.enabled && autoSettings ? (
-                    <label className="mt-2 flex items-center gap-1.5 text-[11px] text-text-tertiary">
+                    <label className="mt-2 flex items-center gap-1.5 text-label text-text-tertiary">
                       <span>Up to</span>
                       <input
                         type="number"
@@ -258,7 +258,7 @@ function TaskRow({
             {busy && <Loader2 size={11} className="animate-spin text-text-muted" />}
           </div>
           {meta?.help && (
-            <p className="mt-0.5 text-[11px] leading-relaxed text-text-tertiary">{meta.help}</p>
+            <p className="mt-0.5 text-label leading-relaxed text-text-tertiary">{meta.help}</p>
           )}
           {trailing}
         </div>

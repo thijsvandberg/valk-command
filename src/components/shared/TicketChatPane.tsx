@@ -263,7 +263,7 @@ function PaneHeader({ onClose, isStreaming }: {
           </div>
           <span className="text-body-sm font-medium text-text-primary">Chat</span>
           {isStreaming && (
-            <span className="text-[10px] font-medium uppercase tracking-[0.08em] text-text-muted">thinking</span>
+            <span className="text-caption font-medium uppercase tracking-[0.08em] text-text-muted">thinking</span>
           )}
         </div>
         {onClose && (

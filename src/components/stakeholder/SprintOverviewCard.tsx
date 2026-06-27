@@ -253,7 +253,7 @@ function TopValueItems({ tickets }: { tickets: StakeholderTicket[] }) {
           return (
             <li key={i} className="flex items-center gap-2 text-body-lg">
               <span
-                className="inline-flex h-[18px] min-w-[18px] items-center justify-center rounded px-1 text-[10px] font-semibold tabular-nums shrink-0"
+                className="inline-flex h-[18px] min-w-[18px] items-center justify-center rounded px-1 text-caption font-semibold tabular-nums shrink-0"
                 style={{ color: bvColor.text, backgroundColor: bvColor.bg }}
               >
                 {t.businessValue}

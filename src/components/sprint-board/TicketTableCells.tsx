@@ -34,8 +34,8 @@ export function EditStateDot({ state }: { state: EditState }) {
       delay={300}
       content={
         <span className="flex flex-col gap-1" style={{ maxWidth: 210 }}>
-          <span className="text-[13px] font-semibold text-text-primary">{cfg.label}</span>
-          <span className="text-[12px] leading-relaxed text-text-tertiary">{cfg.description}</span>
+          <span className="text-body font-semibold text-text-primary">{cfg.label}</span>
+          <span className="text-body-sm leading-relaxed text-text-tertiary">{cfg.description}</span>
         </span>
       }
     >

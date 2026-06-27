@@ -170,7 +170,7 @@ export function SavedSessionList({
               {/* Ticket count badge — hidden while dragging so the drop tile reads
                   as cleanly as the sprint board's (just name + arrow cue). */}
               {!isDropTarget && (
-                <span className={`flex h-4 min-w-4 items-center justify-center rounded-full px-1 text-[10px] tabular-nums ${
+                <span className={`flex h-4 min-w-4 items-center justify-center rounded-full px-1 text-caption tabular-nums ${
                   isActive
                     ? "bg-overlay-strong text-text-secondary"
                     : "bg-overlay-default text-text-tertiary"

@@ -159,7 +159,7 @@ export function EpicFilterBar({
               return (
                 <CheckRow key={status} checked={statusFilter.includes(status)} onClick={() => onToggleStatus(status)}>
                   <span
-                    className="rounded px-1.5 py-0.5 text-[10px] font-semibold tracking-wide"
+                    className="rounded px-1.5 py-0.5 text-caption font-semibold tracking-wide"
                     style={{ backgroundColor: c.bg, color: c.text }}
                   >
                     {JIRA_STATUS_ABBREVIATIONS[status]}

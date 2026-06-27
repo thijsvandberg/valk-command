@@ -57,7 +57,7 @@ export function EpicProgressBar({ epic }: { epic: EpicProgressItem }) {
         </span>
         {!pointsBased && (
           <Tooltip content="No story-point estimates on this epic — progress is based on ticket count">
-            <span className="rounded bg-overlay-default px-1.5 py-0.5 text-[10px] font-medium uppercase tracking-wide text-text-muted">
+            <span className="rounded bg-overlay-default px-1.5 py-0.5 text-caption font-medium uppercase tracking-wide text-text-muted">
               by count
             </span>
           </Tooltip>

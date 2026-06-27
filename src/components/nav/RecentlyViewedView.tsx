@@ -113,7 +113,7 @@ function RecentRow({
       {isCurrent ? (
         <CurrentDot />
       ) : (
-        <span className="shrink-0 font-mono text-[10px] text-text-muted/70">{agoLabel(entry.viewedAt)}</span>
+        <span className="shrink-0 font-mono text-caption text-text-muted/70">{agoLabel(entry.viewedAt)}</span>
       )}
       <ChevronRight className="h-4 w-4 shrink-0 text-text-muted opacity-0 transition-opacity duration-150 group-hover:opacity-100" strokeWidth={1.5} />
     </div>
@@ -158,8 +158,8 @@ export function RecentlyViewedView({
           <span className="grid h-9 w-9 place-items-center rounded-full bg-overlay-default">
             <History className="h-4 w-4 text-text-muted" strokeWidth={1.5} />
           </span>
-          <p className="text-[12px] text-text-muted">No recently viewed tickets yet</p>
-          <p className="max-w-[240px] text-[11px] leading-[1.6] text-text-muted/70">
+          <p className="text-body-sm text-text-muted">No recently viewed tickets yet</p>
+          <p className="max-w-[240px] text-label leading-[1.6] text-text-muted/70">
             Tickets you open on the board, in refinement or on their page show up here.
           </p>
         </div>
@@ -171,7 +171,7 @@ export function RecentlyViewedView({
               if (group.length === 0) return null;
               return (
                 <div key={bucket}>
-                  <p className="px-1 pb-1 pt-3 font-mono text-[10px] uppercase tracking-[0.14em] text-text-muted first:pt-1.5">
+                  <p className="px-1 pb-1 pt-3 font-mono text-caption uppercase tracking-[0.14em] text-text-muted first:pt-1.5">
                     {bucket}
                   </p>
                   {group.map((entry) => (
@@ -191,13 +191,13 @@ export function RecentlyViewedView({
             })}
           </div>
           <div className="mt-1 flex items-center justify-between border-t border-border-subtle px-1.5 pt-2">
-            <span className="font-mono text-[10px] uppercase tracking-[0.12em] text-text-muted">
+            <span className="font-mono text-caption uppercase tracking-[0.12em] text-text-muted">
               Last {entries.length} tickets
             </span>
             <button
               type="button"
               onClick={clearRecentlyViewed}
-              className="flex cursor-pointer items-center gap-1 rounded px-1 py-0.5 text-[11px] text-text-muted transition-colors duration-150 hover:text-text-secondary active:text-text-primary focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)]"
+              className="flex cursor-pointer items-center gap-1 rounded px-1 py-0.5 text-label text-text-muted transition-colors duration-150 hover:text-text-secondary active:text-text-primary focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)]"
             >
               <Eraser className="h-3 w-3" strokeWidth={1.5} />
               Clear

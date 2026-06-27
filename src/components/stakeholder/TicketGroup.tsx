@@ -43,7 +43,7 @@ function AssigneeAvatar({ assignee }: { assignee: { name: string; initials: stri
   return (
     <span
       title={assignee.name}
-      className={`shrink-0 inline-flex h-5 w-5 items-center justify-center rounded-full text-[9px] font-semibold uppercase tracking-wide ${colorClass}`}
+      className={`shrink-0 inline-flex h-5 w-5 items-center justify-center rounded-full text-micro font-semibold uppercase tracking-wide ${colorClass}`}
     >
       {assignee.initials}
     </span>

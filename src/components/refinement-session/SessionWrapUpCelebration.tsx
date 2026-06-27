@@ -167,7 +167,7 @@ export function SessionWrapUpCelebration({ children }: { children: React.ReactNo
           <Sparkles size={17} strokeWidth={2} className="text-[var(--color-brand-400)]" />
           Queue cleared
         </p>
-        <p className="text-[12px] text-text-tertiary">
+        <p className="text-body-sm text-text-tertiary">
           {queue.length} ticket{queue.length !== 1 ? "s" : ""} refined · {totalPoints} points
           {durationMin != null && (
             <> · {durationMin} minute{durationMin !== 1 ? "s" : ""}</>

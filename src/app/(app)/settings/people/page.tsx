@@ -191,7 +191,7 @@ export default function PeoplePage() {
                         key={team}
                         type="button"
                         onClick={() => handleToggleTeam(user, team)}
-                        className={`rounded-md px-2 py-0.5 text-[10px] font-semibold tracking-wide cursor-pointer focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-[var(--color-brand-400)] active:opacity-60 ${
+                        className={`rounded-md px-2 py-0.5 text-caption font-semibold tracking-wide cursor-pointer focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-[var(--color-brand-400)] active:opacity-60 ${
                           active
                             ? "bg-[var(--color-brand-500)]/15 text-[var(--color-brand-400)] border border-[var(--color-brand-500)]/25"
                             : "bg-transparent text-text-muted border border-border-subtle hover:border-border-default hover:text-text-tertiary"

@@ -198,7 +198,7 @@ export function LinkIssueFilterBar({
 
       {/* Last updated: single-pick buckets ("within X"). */}
       <div className="flex items-center gap-1">
-        <span className="text-[11px] text-text-muted">Updated</span>
+        <span className="text-label text-text-muted">Updated</span>
         {UPDATED_BUCKETS.map((b) => (
           <FilterChip
             key={b.value}

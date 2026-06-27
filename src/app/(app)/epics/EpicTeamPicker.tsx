@@ -78,14 +78,14 @@ export function EpicTeamPicker({ epicKey, teams }: { epicKey: string; teams: Tea
           current.map((team) => (
             <span
               key={team}
-              className="rounded border px-1.5 py-0.5 text-[10px] font-semibold tabular-nums tracking-wide"
+              className="rounded border px-1.5 py-0.5 text-caption font-semibold tabular-nums tracking-wide"
               style={chipStyle(team)}
             >
               {team}
             </span>
           ))
         ) : (
-          <span className="flex items-center gap-1 text-[11px] font-medium text-text-muted transition-colors duration-150 group-hover/teams:text-text-tertiary">
+          <span className="flex items-center gap-1 text-label font-medium text-text-muted transition-colors duration-150 group-hover/teams:text-text-tertiary">
             <Plus size={11} strokeWidth={2} />
             Team
           </span>
@@ -101,7 +101,7 @@ export function EpicTeamPicker({ epicKey, teams }: { epicKey: string; teams: Tea
             className="fixed z-[9999] min-w-[160px] overflow-hidden rounded-lg border border-border-strong py-1"
             style={getPopoverStyle()}
           >
-            <div className="px-3 pb-1 pt-1 text-[10px] font-semibold uppercase tracking-wider text-text-muted">
+            <div className="px-3 pb-1 pt-1 text-caption font-semibold uppercase tracking-wider text-text-muted">
               Teams
             </div>
             {TEAMS.map((team) => {

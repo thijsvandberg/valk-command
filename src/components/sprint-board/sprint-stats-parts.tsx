@@ -5,13 +5,13 @@ export function SummaryCard({ label, value, sub, metric }: { label: string; valu
   const Icon = metric === "sp" ? Hash : metric === "bv" ? TrendingUp : null;
   return (
     <div className="rounded-lg px-3.5 py-3" style={{ backgroundColor: "var(--color-overlay-subtle)" }}>
-      <div className="flex items-center gap-1.5 text-[10px] uppercase tracking-wider text-text-muted font-medium mb-1.5">
+      <div className="flex items-center gap-1.5 text-caption uppercase tracking-wider text-text-muted font-medium mb-1.5">
         {Icon && <Icon size={12} strokeWidth={2} aria-hidden />}
         {label}
       </div>
       <div className="flex items-baseline gap-2">
         <span className="text-heading font-semibold text-text-primary tabular-nums leading-none">{value}</span>
-        {sub && <span className="text-[10px] text-text-muted">{sub}</span>}
+        {sub && <span className="text-caption text-text-muted">{sub}</span>}
       </div>
     </div>
   );
@@ -19,7 +19,7 @@ export function SummaryCard({ label, value, sub, metric }: { label: string; valu
 
 export function SectionLabel({ children }: { children: React.ReactNode }) {
   return (
-    <div className="text-[10px] uppercase tracking-wider text-text-muted font-medium mb-3">{children}</div>
+    <div className="text-caption uppercase tracking-wider text-text-muted font-medium mb-3">{children}</div>
   );
 }
 
@@ -41,7 +41,7 @@ export function FilterRow({ children, onClick, accentColor }: { children: React.
 
 export function RowMetrics({ count, sp, bv }: { count: number; sp: number; bv: number }) {
   return (
-    <div className="flex items-baseline gap-2.5 text-[11px] tabular-nums shrink-0 ml-3">
+    <div className="flex items-baseline gap-2.5 text-label tabular-nums shrink-0 ml-3">
       <span className="font-semibold text-text-primary min-w-[14px] text-right">{count}</span>
       {sp > 0 && <MetricChip value={sp} unit="SP" />}
       {bv > 0 && <MetricChip value={bv} unit="BV" />}

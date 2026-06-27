@@ -138,7 +138,7 @@ export function CreateSprintModal({
 
           {/* Context: the regular sprint this one follows (BRDG-305 follow-up) */}
           {previousSprintName && (
-            <p className="-mt-2 flex items-center gap-1.5 text-[11px] text-text-muted">
+            <p className="-mt-2 flex items-center gap-1.5 text-label text-text-muted">
               <CornerDownRight size={11} strokeWidth={1.5} className="shrink-0" />
               <span>
                 Follows <span className="font-semibold text-text-secondary">{previousSprintName}</span>
@@ -184,7 +184,7 @@ export function CreateSprintModal({
                   type="button"
                   onClick={() => setEndDate(suggestedEnd)}
                   title="Set end date to the conventional sprint end"
-                  className="flex items-center gap-1.5 rounded-md px-2 py-1 text-[11px] font-medium cursor-pointer
+                  className="flex items-center gap-1.5 rounded-md px-2 py-1 text-label font-medium cursor-pointer
                     text-[var(--color-brand-400)]
                     hover:bg-[var(--color-brand-500)]/10
                     active:bg-[var(--color-brand-500)]/15
@@ -195,7 +195,7 @@ export function CreateSprintModal({
                 </button>
               )}
               {durationDays !== null && (
-                <span className="px-2 text-[11px] text-text-muted">
+                <span className="px-2 text-label text-text-muted">
                   This sprint runs for{" "}
                   <span className="font-semibold text-text-secondary">{durationDays}</span>{" "}
                   {durationDays === 1 ? "day" : "days"}

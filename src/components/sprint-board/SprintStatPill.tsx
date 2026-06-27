@@ -68,7 +68,7 @@ const SIZE = {
   },
   sm: {
     pill: "px-1.5 py-0.5",
-    text: "text-[10px]",   // matches --text-caption (10px)
+    text: "text-caption",   // matches --text-caption (10px)
     dot: "h-1.5 w-1.5",
     gap: "gap-1",
     radius: "rounded",
@@ -204,7 +204,7 @@ export function StatusCount({
     <button
       type="button"
       onClick={onClick}
-      className="inline-flex items-center justify-center min-w-[22px] h-[22px] rounded px-1.5 text-[11px] font-semibold tabular-nums shrink-0 select-none cursor-pointer transition-colors duration-100 hover:opacity-80 active:opacity-60 focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-[var(--color-brand-400)]"
+      className="inline-flex items-center justify-center min-w-[22px] h-[22px] rounded px-1.5 text-label font-semibold tabular-nums shrink-0 select-none cursor-pointer transition-colors duration-100 hover:opacity-80 active:opacity-60 focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-[var(--color-brand-400)]"
       style={style}
     >
       {count}
@@ -225,7 +225,7 @@ interface SprintStatsProps {
 export function SprintStats({ totalItems, totalSp, totalBv, className = "" }: SprintStatsProps) {
   return (
     <div className={`flex items-center gap-2 text-body-sm tabular-nums ${className}`}>
-      <span className="text-text-tertiary">{totalItems} <span className="text-[10px]">{pluralize(totalItems, "item")}</span></span>
+      <span className="text-text-tertiary">{totalItems} <span className="text-caption">{pluralize(totalItems, "item")}</span></span>
       {totalSp > 0 && (
         <div className="flex items-center gap-1">
           <MetricBadge metric="sp" value={totalSp} tinted />
@@ -338,7 +338,7 @@ export function SprintCompletionBar(props: SprintCompletionBarProps) {
             key={m.key}
             type="button"
             onClick={(e) => { e.stopPropagation(); setMode(m.key); }}
-            className="px-1.5 h-full text-[9px] font-semibold uppercase tracking-wide cursor-pointer transition-colors duration-100 focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-[var(--color-brand-400)]"
+            className="px-1.5 h-full text-micro font-semibold uppercase tracking-wide cursor-pointer transition-colors duration-100 focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-[var(--color-brand-400)]"
             style={{
               color: mode === m.key ? "var(--color-text-primary)" : "var(--color-text-muted)",
               backgroundColor: mode === m.key ? "var(--color-overlay-strong)" : "transparent",
@@ -370,7 +370,7 @@ export function SprintCompletionBar(props: SprintCompletionBarProps) {
           )}
         </div>
         {/* Counts positioned under their segments */}
-        <div className="absolute left-0 right-0 text-[9px] tabular-nums text-text-muted leading-none" style={{ top: LABEL_TOP }}>
+        <div className="absolute left-0 right-0 text-micro tabular-nums text-text-muted leading-none" style={{ top: LABEL_TOP }}>
           {done > 0 && (
             <span className="absolute flex items-center gap-0.5" style={{ left: `${donePct / 2}%`, transform: "translateX(-50%)" }}>
               <span className="h-1 w-1 rounded-full shrink-0" style={{ backgroundColor: doneColor }} />
@@ -393,7 +393,7 @@ export function SprintCompletionBar(props: SprintCompletionBarProps) {
       </div>
 
       {/* Percentage */}
-      <span className={`text-[10px] font-medium tabular-nums text-text-tertiary${gridLayout ? " text-right" : ""}`}>{completePct}%</span>
+      <span className={`text-caption font-medium tabular-nums text-text-tertiary${gridLayout ? " text-right" : ""}`}>{completePct}%</span>
 
       {/* Time bar + label, hidden on narrow screens */}
       {hasTime && !hideTime && (
@@ -408,7 +408,7 @@ export function SprintCompletionBar(props: SprintCompletionBarProps) {
               }}
             />
           </div>
-          <span className={`absolute text-[10px] tabular-nums whitespace-nowrap leading-none ${workingDaysRemaining! <= 2 ? "text-amber-400/70" : "text-text-muted"}`} style={{ top: LABEL_TOP, left: 9 }}>
+          <span className={`absolute text-caption tabular-nums whitespace-nowrap leading-none ${workingDaysRemaining! <= 2 ? "text-amber-400/70" : "text-text-muted"}`} style={{ top: LABEL_TOP, left: 9 }}>
             {workingDaysRemaining === 0 ? "ended" : workingDaysRemaining === 1 ? "last day" : `day ${daysElapsed}/${totalWorkingDays}`}
           </span>
         </div>

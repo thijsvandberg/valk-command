@@ -60,7 +60,7 @@ export const LinkSearchResultRow = memo(function LinkSearchResultRow({
       )}
       {result.source === "jira" && (
         <span
-          className="inline-flex shrink-0 items-center gap-1 rounded px-1.5 py-0.5 text-[10px] font-medium"
+          className="inline-flex shrink-0 items-center gap-1 rounded px-1.5 py-0.5 text-caption font-medium"
           style={{ backgroundColor: "color-mix(in srgb, var(--color-status-info) 10%, transparent)", color: "color-mix(in srgb, #93c5fd 80%, transparent)" }}
         >
           <Cloud size={9} strokeWidth={2} />

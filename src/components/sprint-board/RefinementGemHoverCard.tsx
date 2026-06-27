@@ -63,7 +63,7 @@ function SessionSection({
       <div className="flex items-center gap-2 px-3.5 py-2.5">
         <Boxes size={13} strokeWidth={1.5} className="shrink-0" style={{ color: "var(--meta-refine-fg)" }} />
         <span className="min-w-0 flex-1 truncate text-body-sm font-medium text-text-primary">{session.name}</span>
-        <span className="shrink-0 text-[11px] tabular-nums text-text-muted">{count} {pluralize(count, "item")}</span>
+        <span className="shrink-0 text-label tabular-nums text-text-muted">{count} {pluralize(count, "item")}</span>
       </div>
 
       <ul className="max-h-[260px] overflow-y-auto pb-1">
@@ -89,7 +89,7 @@ function SessionSection({
                 />
               </span>
               {info?.title && (
-                <span className="min-w-0 flex-1 truncate text-[12px] text-text-secondary">{info.title}</span>
+                <span className="min-w-0 flex-1 truncate text-body-sm text-text-secondary">{info.title}</span>
               )}
               {onRemoveFromRefinement && (
                 <button
@@ -121,7 +121,7 @@ function SessionSection({
                   onViewRefinement(session.id);
                 }
               }}
-              className="cursor-pointer text-[11px] font-medium text-[var(--color-brand-300)] hover:text-[var(--color-brand-200)] focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-[var(--color-brand-400)] [transition:color_.15s_ease]"
+              className="cursor-pointer text-label font-medium text-[var(--color-brand-300)] hover:text-[var(--color-brand-200)] focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-[var(--color-brand-400)] [transition:color_.15s_ease]"
             >
               +{overflow} more in this refinement
             </a>

@@ -18,7 +18,7 @@ interface WarningBadgeProps {
 // (BRDG-313/366). Contrast bumped over the old muted amber so the text reads clearly
 // against the row (BRDG-366). Interactive kinds layer hover/focus/active on top.
 const BADGE_BASE =
-  "inline-flex h-5 items-center gap-1 whitespace-nowrap rounded-md px-2 text-[11px] font-medium leading-none " +
+  "inline-flex h-5 items-center gap-1 whitespace-nowrap rounded-md px-2 text-label font-medium leading-none " +
   "text-[color-mix(in_srgb,var(--color-status-warning)_82%,var(--color-text-primary))] " +
   "bg-[color-mix(in_srgb,var(--color-status-warning)_14%,transparent)]";
 

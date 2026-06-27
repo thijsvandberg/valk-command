@@ -95,7 +95,7 @@ export function BusinessValuePicker({
             transition: "opacity 0.15s ease",
           }}
         >
-          {showMetricIcon ? <TrendingUp size={13} strokeWidth={2} aria-hidden /> : <span className="text-[10px] font-semibold uppercase tracking-wider opacity-60">BV</span>}
+          {showMetricIcon ? <TrendingUp size={13} strokeWidth={2} aria-hidden /> : <span className="text-caption font-semibold uppercase tracking-wider opacity-60">BV</span>}
           <span className="text-body-sm font-semibold tabular-nums">{displayLabel ?? "?"}</span>
         </button>
       ) : (
@@ -107,7 +107,7 @@ export function BusinessValuePicker({
           onMouseLeave={handleMouseLeave}
           title={richTooltip ? undefined : titleText}
           aria-label={titleText}
-          className={`flex items-center rounded-md border border-transparent cursor-pointer transition-colors duration-150 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)] active:opacity-60 font-medium tabular-nums ${dense ? "h-5 text-[11px] leading-none" : "h-6 text-body-sm"} ${showMetricIcon ? "gap-1 px-1.5 min-w-[2.25rem] justify-start" : "min-w-[24px] justify-center"}`}
+          className={`flex items-center rounded-md border border-transparent cursor-pointer transition-colors duration-150 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)] active:opacity-60 font-medium tabular-nums ${dense ? "h-5 text-label leading-none" : "h-6 text-body-sm"} ${showMetricIcon ? "gap-1 px-1.5 min-w-[2.25rem] justify-start" : "min-w-[24px] justify-center"}`}
           style={{
             color: color?.text ?? emptyTone.text,
             backgroundColor: showBg ? (color?.bg ?? emptyTone.bg) : "transparent",
@@ -152,7 +152,7 @@ export function BusinessValuePicker({
           className="fixed z-[9999] rounded-lg border border-border-default p-1.5"
           style={getPopoverStyle()}
         >
-          <div className="mb-2 px-0.5 text-[9px] font-semibold uppercase tracking-wider text-text-muted">
+          <div className="mb-2 px-0.5 text-micro font-semibold uppercase tracking-wider text-text-muted">
             Business value
           </div>
           <div className="flex items-center gap-1">

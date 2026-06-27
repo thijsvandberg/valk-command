@@ -74,7 +74,7 @@ export function SprintGoalActions({ content, metadata, showToast }: SprintGoalAc
           type="button"
           onClick={handleAccept}
           disabled={accepting}
-          className="flex items-center gap-1.5 rounded-md px-2 py-1 text-[11px] font-medium cursor-pointer
+          className="flex items-center gap-1.5 rounded-md px-2 py-1 text-label font-medium cursor-pointer
             text-[var(--color-brand-400)] bg-[var(--color-brand-500)]/10
             hover:bg-[var(--color-brand-500)]/20
             active:bg-[var(--color-brand-500)]/25
@@ -88,7 +88,7 @@ export function SprintGoalActions({ content, metadata, showToast }: SprintGoalAc
           type="button"
           onClick={handleEdit}
           disabled={loadingEdit}
-          className="flex items-center gap-1.5 rounded-md px-2 py-1 text-[11px] font-medium cursor-pointer
+          className="flex items-center gap-1.5 rounded-md px-2 py-1 text-label font-medium cursor-pointer
             text-text-muted
             hover:text-text-secondary hover:bg-overlay-default
             disabled:opacity-40 disabled:cursor-not-allowed

@@ -292,7 +292,7 @@ export function SprintStatsPopover({
                         )}
                         <span className="truncate">{s.name}</span>
                         {s.state === "closed" && (
-                          <span className="text-[10px] text-text-muted ml-auto shrink-0">closed</span>
+                          <span className="text-caption text-text-muted ml-auto shrink-0">closed</span>
                         )}
                       </button>
                     );
@@ -302,7 +302,7 @@ export function SprintStatsPopover({
             </div>
 
             {workingDaysRemaining != null && totalWorkingDays != null && totalWorkingDays > 0 && (
-              <div className={`flex items-center gap-1.5 rounded-md px-2 py-0.5 text-[11px] font-medium ${isLastDays ? "text-amber-400/90" : "text-text-muted"}`} style={{ backgroundColor: isLastDays ? "color-mix(in srgb, var(--color-status-caution) 8%, transparent)" : "var(--color-overlay-subtle)" }}>
+              <div className={`flex items-center gap-1.5 rounded-md px-2 py-0.5 text-label font-medium ${isLastDays ? "text-amber-400/90" : "text-text-muted"}`} style={{ backgroundColor: isLastDays ? "color-mix(in srgb, var(--color-status-caution) 8%, transparent)" : "var(--color-overlay-subtle)" }}>
                 <Calendar size={11} strokeWidth={1.5} />
                 <span className="tabular-nums">
                   {workingDaysRemaining === 0 ? "Last day" : `${workingDaysRemaining} day${workingDaysRemaining !== 1 ? "s" : ""} left`}
@@ -316,7 +316,7 @@ export function SprintStatsPopover({
                 href={stakeholderHref}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="flex items-center gap-1.5 rounded-md px-2 py-1 text-[11px] font-medium text-text-muted cursor-pointer hover:text-text-secondary hover:bg-overlay-default active:bg-overlay-strong transition-colors duration-100"
+                className="flex items-center gap-1.5 rounded-md px-2 py-1 text-label font-medium text-text-muted cursor-pointer hover:text-text-secondary hover:bg-overlay-default active:bg-overlay-strong transition-colors duration-100"
               >
                 <Users size={12} strokeWidth={1.5} />
                 <span>Stakeholder View</span>
@@ -351,7 +351,7 @@ export function SprintStatsPopover({
                       }}
                     />
                   </div>
-                  <span className={`text-[10px] tabular-nums text-right ${isLastDays ? "text-amber-400/60" : "text-text-muted"}`}>
+                  <span className={`text-caption tabular-nums text-right ${isLastDays ? "text-amber-400/60" : "text-text-muted"}`}>
                     day {daysElapsed}/{totalWorkingDays}
                   </span>
                 </>
@@ -398,7 +398,7 @@ export function SprintStatsPopover({
                 <SummaryCard label="Business Value" value={stats.totalBv} sub={stats.bvAvg ? `avg ${stats.bvAvg}` : undefined} metric="bv" />
               </div>
               {stats.noPointsCount > 0 && (
-                <div className="flex items-center gap-1.5 mt-3 text-[11px]">
+                <div className="flex items-center gap-1.5 mt-3 text-label">
                   <AlertTriangle size={11} strokeWidth={2} className="text-amber-400/70 shrink-0" />
                   <span className="text-amber-400/70">{stats.noPointsCount} ticket{stats.noPointsCount > 1 ? "s" : ""} without estimate</span>
                 </div>
@@ -426,7 +426,7 @@ export function SprintStatsPopover({
                         <div className="flex items-center justify-between mb-1.5">
                           <div className="flex items-center gap-2">
                             <span className="h-2 w-2 rounded-full shrink-0" style={{ backgroundColor: barColor }} />
-                            <span className="text-[11px] font-medium text-text-secondary">{STATUS_LABELS[status] ?? status}</span>
+                            <span className="text-label font-medium text-text-secondary">{STATUS_LABELS[status] ?? status}</span>
                           </div>
                           <RowMetrics count={ss.count} sp={ss.sp} bv={ss.bv} />
                         </div>
@@ -456,7 +456,7 @@ export function SprintStatsPopover({
                           <div className="flex items-center justify-between mb-1.5">
                             <div className="flex items-center gap-2">
                               <IssueTypeIcon type={typeName} size={13} />
-                              <span className="text-[11px] font-medium text-text-secondary capitalize">{typeName}</span>
+                              <span className="text-label font-medium text-text-secondary capitalize">{typeName}</span>
                             </div>
                             <RowMetrics count={data.count} sp={data.sp} bv={data.bv} />
                           </div>
@@ -468,7 +468,7 @@ export function SprintStatsPopover({
                     })}
                   </div>
                 ) : (
-                  <span className="text-[11px] text-text-muted">No data</span>
+                  <span className="text-label text-text-muted">No data</span>
                 )}
               </div>
             </div>
@@ -491,7 +491,7 @@ export function SprintStatsPopover({
                         <div className="flex items-center justify-between mb-1.5">
                           <div className="flex items-center gap-2 min-w-0">
                             <span className="h-2 w-2 rounded-full shrink-0" style={{ backgroundColor: epicColor.text }} />
-                            <span className="text-[11px] font-medium text-text-secondary truncate">{epicName}</span>
+                            <span className="text-label font-medium text-text-secondary truncate">{epicName}</span>
                           </div>
                           <RowMetrics count={data.count} sp={data.sp} bv={data.bv} />
                         </div>

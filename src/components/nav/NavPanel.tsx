@@ -83,7 +83,7 @@ function HeaderAvatar({ size = 34 }: { size?: number }) {
         // eslint-disable-next-line @next/next/no-img-element
         <img src={user!.imageUrl} alt="" className="h-full w-full object-cover" referrerPolicy="no-referrer" />
       ) : initials ? (
-        <span className="text-[11px] font-semibold tracking-wide text-[var(--color-brand-300)]">{initials}</span>
+        <span className="text-label font-semibold tracking-wide text-[var(--color-brand-300)]">{initials}</span>
       ) : (
         <User className="h-4 w-4 text-[var(--color-brand-300)]" strokeWidth={1.5} />
       )}
@@ -154,7 +154,7 @@ export function NavPanel({ open, onClose }: { open: boolean; onClose: () => void
           <HeaderAvatar />
           <div className="min-w-0 flex-1 leading-tight">
             <p className="truncate text-body-sm font-medium text-text-primary">{user?.fullName ?? "User"}</p>
-            <p className="truncate text-[11px] text-text-tertiary">
+            <p className="truncate text-label text-text-tertiary">
               {user?.primaryEmailAddress?.emailAddress ?? ""}
             </p>
             <span className="mt-0.5 block">
@@ -220,18 +220,18 @@ function NavigationView({
         </span>
         <div className="min-w-0 flex-1">
           <div className="flex items-baseline gap-2">
-            <p className="font-display text-[18px] font-semibold tracking-[-0.02em] text-text-primary">Sprint Board</p>
-            {hero?.sprintKey && <span className="font-mono text-[10px] text-text-muted">{hero.sprintKey}</span>}
+            <p className="font-display text-heading font-semibold tracking-[-0.02em] text-text-primary">Sprint Board</p>
+            {hero?.sprintKey && <span className="font-mono text-caption text-text-muted">{hero.sprintKey}</span>}
           </div>
           {hero ? (
-            <p className="mt-0.5 text-[11px] text-text-tertiary">
+            <p className="mt-0.5 text-label text-text-tertiary">
               {hero.todo} to do &middot; {hero.inProgress} in progress &middot; {hero.done} done
               {hero.dayX != null && hero.dayY != null && (
                 <span className="text-text-muted"> &middot; day {hero.dayX}/{hero.dayY}</span>
               )}
             </p>
           ) : (
-            <p className="mt-0.5 text-[11px] text-text-muted">View the active sprint</p>
+            <p className="mt-0.5 text-label text-text-muted">View the active sprint</p>
           )}
         </div>
         <ChevronRight className="h-5 w-5 shrink-0 text-text-muted transition-transform duration-200 group-hover:translate-x-0.5" strokeWidth={1.5} />
@@ -268,8 +268,8 @@ function NavigationView({
               </span>
               {hasCount && (
                 <>
-                  <span className="font-display text-[15px] font-semibold tabular-nums text-text-secondary">{info!.count}</span>
-                  <span className="w-20 text-right text-[11px] text-text-muted">{info!.note}</span>
+                  <span className="font-display text-heading-sm font-semibold tabular-nums text-text-secondary">{info!.count}</span>
+                  <span className="w-20 text-right text-label text-text-muted">{info!.note}</span>
                 </>
               )}
             </Link>
@@ -296,7 +296,7 @@ function NavigationView({
 
       {/* Rare views as a faint "More" footer */}
       <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 border-t border-border-subtle px-1 pt-3" style={revealStyle(open, 5)}>
-        <span className="text-[10px] font-semibold uppercase tracking-[0.12em] text-text-muted">More</span>
+        <span className="text-caption font-semibold uppercase tracking-[0.12em] text-text-muted">More</span>
         {RARE.map((item) => {
           const on = isActive(item.href);
           return (
@@ -306,7 +306,7 @@ function NavigationView({
               prefetch
               onClick={onNavigate}
               aria-current={on ? "page" : undefined}
-              className={`rounded text-[11px] transition-colors duration-150 cursor-pointer focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)] ${on ? "font-medium text-[var(--color-brand-300)]" : "text-text-muted hover:text-text-secondary"}`}
+              className={`rounded text-label transition-colors duration-150 cursor-pointer focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)] ${on ? "font-medium text-[var(--color-brand-300)]" : "text-text-muted hover:text-text-secondary"}`}
             >
               {item.label}
             </Link>
@@ -339,7 +339,7 @@ function AccountView({
         >
           <span className="text-text-tertiary">{item.icon}</span>
           <span className="flex-1 text-left">{item.label}</span>
-          {item.secondaryLabel && <span className="text-[12px] text-text-muted">{item.secondaryLabel}</span>}
+          {item.secondaryLabel && <span className="text-body-sm text-text-muted">{item.secondaryLabel}</span>}
         </button>
       ))}
       <div className="my-1 h-px bg-border-subtle" />

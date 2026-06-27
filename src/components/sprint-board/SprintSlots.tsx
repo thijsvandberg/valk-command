@@ -197,7 +197,7 @@ function BacklogsDropdown({
       >
         {showIcon && <Inbox className="h-3.5 w-3.5 shrink-0 text-text-secondary" strokeWidth={1.5} />}
         <span className="flex-1 truncate">{s.name}</span>
-        {s.ticketCount > 0 && <span className="text-[11px] tabular-nums text-text-muted">{s.ticketCount}</span>}
+        {s.ticketCount > 0 && <span className="text-label tabular-nums text-text-muted">{s.ticketCount}</span>}
         {isActive && <Check className="h-3.5 w-3.5 shrink-0 text-[var(--color-brand-400)]" strokeWidth={2} />}
       </button>
     );

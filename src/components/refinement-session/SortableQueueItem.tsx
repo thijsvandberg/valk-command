@@ -76,7 +76,7 @@ export function SortableQueueItem({
       {/* Subtask suggestion count badge */}
       {suggestionCount != null && suggestionCount > 0 && (
         <span
-          className="flex shrink-0 items-center gap-0.5 rounded-md bg-[var(--color-brand-500)]/[0.08] px-1.5 py-0.5 text-[10px] font-medium tabular-nums text-[var(--color-brand-400)]"
+          className="flex shrink-0 items-center gap-0.5 rounded-md bg-[var(--color-brand-500)]/[0.08] px-1.5 py-0.5 text-caption font-medium tabular-nums text-[var(--color-brand-400)]"
           title={`${suggestionCount} subtask suggestion${suggestionCount !== 1 ? "s" : ""}`}
         >
           <Sparkles size={9} strokeWidth={2.5} />
@@ -100,7 +100,7 @@ export function SortableQueueItem({
             <button
               type="button"
               onClick={() => setMenuOpen(!menuOpen)}
-              className="flex shrink-0 cursor-pointer items-center gap-1 rounded-md px-2 py-1 text-[11px] font-medium text-text-muted hover:bg-overlay-subtle hover:text-text-secondary focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-[var(--color-brand-400)] active:bg-overlay-subtle/80"
+              className="flex shrink-0 cursor-pointer items-center gap-1 rounded-md px-2 py-1 text-label font-medium text-text-muted hover:bg-overlay-subtle hover:text-text-secondary focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-[var(--color-brand-400)] active:bg-overlay-subtle/80"
               style={{ transition: "background-color 0.15s ease, color 0.15s ease" }}
               aria-label="Move to another session"
             >
@@ -109,7 +109,7 @@ export function SortableQueueItem({
             </button>
             {menuOpen && (
               <div className="absolute right-0 top-full z-30 mt-1 min-w-[180px] rounded-lg border border-border-strong bg-[var(--color-surface-elevated)] py-1 shadow-[var(--shadow-lg)]">
-                <div className="px-3 py-1.5 text-[10px] font-semibold uppercase tracking-wider text-text-muted">
+                <div className="px-3 py-1.5 text-caption font-semibold uppercase tracking-wider text-text-muted">
                   Move to
                 </div>
                 {otherSessions.map((s) => (
@@ -123,7 +123,7 @@ export function SortableQueueItem({
                     className="flex w-full cursor-pointer items-center gap-2 px-3 py-1.5 text-left text-body-sm text-text-secondary hover:bg-overlay-subtle focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-[var(--color-brand-400)]"
                   >
                     <span className="min-w-0 flex-1 truncate">{sessionLabel(s)}</span>
-                    <span className="shrink-0 text-[10px] tabular-nums text-text-muted">{s.ticketCount}</span>
+                    <span className="shrink-0 text-caption tabular-nums text-text-muted">{s.ticketCount}</span>
                   </button>
                 ))}
               </div>
@@ -134,7 +134,7 @@ export function SortableQueueItem({
         <button
           type="button"
           onClick={() => onRemove(ticket.key)}
-          className="flex shrink-0 cursor-pointer items-center gap-1 rounded-md px-2 py-1 text-[11px] font-medium text-text-muted hover:bg-red-500/10 hover:text-red-500 focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-[var(--color-brand-400)] active:bg-red-500/15"
+          className="flex shrink-0 cursor-pointer items-center gap-1 rounded-md px-2 py-1 text-label font-medium text-text-muted hover:bg-red-500/10 hover:text-red-500 focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-[var(--color-brand-400)] active:bg-red-500/15"
           style={{ transition: "background-color 0.15s ease, color 0.15s ease" }}
           aria-label={`Remove ${ticket.key} from queue`}
         >

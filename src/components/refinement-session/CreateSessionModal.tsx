@@ -100,7 +100,7 @@ function CreateSessionForm({
       <div className="mt-5 flex items-center justify-between gap-2">
         <span
           aria-live="polite"
-          className={`text-[11px] text-text-muted ${canSubmit ? "invisible" : ""}`}
+          className={`text-label text-text-muted ${canSubmit ? "invisible" : ""}`}
         >
           Give it a name or pick a date
         </span>

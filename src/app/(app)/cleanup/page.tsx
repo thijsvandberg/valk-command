@@ -118,7 +118,7 @@ const QUICK_TOP_X = 10;
 
 // Shared 18px-high chip geometry, matching IssueMetaBadges so the trailing
 // cleanup badges line up with the rest of the app's list rows.
-const CLEANUP_CHIP = "inline-flex h-5 shrink-0 items-center gap-1 rounded-md px-1.5 text-[11px] font-medium leading-none tabular-nums";
+const CLEANUP_CHIP = "inline-flex h-5 shrink-0 items-center gap-1 rounded-md px-1.5 text-label font-medium leading-none tabular-nums";
 
 // Compact deprecation-likelihood badge: collapses the former per-topic score
 // columns into one chip on the row (full breakdown lives in the drawer). Uses the
@@ -178,7 +178,7 @@ function RationaleLine({ rationale, onClick }: { rationale: string; onClick: () 
           strokeWidth={1.75}
           className="mt-[2px] shrink-0 text-text-muted transition-colors duration-150 group-hover/rationale:text-[var(--color-brand-400)]"
         />
-        <span className="min-w-0 flex-1 truncate text-[12px] leading-snug text-text-muted transition-colors duration-150 group-hover/rationale:text-text-tertiary">
+        <span className="min-w-0 flex-1 truncate text-body-sm leading-snug text-text-muted transition-colors duration-150 group-hover/rationale:text-text-tertiary">
           {rationale}
         </span>
       </button>
@@ -433,14 +433,14 @@ export default function CleanupPage() {
         <DeprecationScoreBadge score={row.scanOverall} />
         {badge && (
           <span
-            className="inline-flex h-5 shrink-0 items-center rounded-md px-1.5 text-[11px] font-medium leading-none"
+            className="inline-flex h-5 shrink-0 items-center rounded-md px-1.5 text-label font-medium leading-none"
             style={{ color: badge.color, backgroundColor: badge.bg }}
           >
             {badge.label}
           </span>
         )}
         <span
-          className="shrink-0 text-[11px] tabular-nums text-text-muted"
+          className="shrink-0 text-label tabular-nums text-text-muted"
           title={row.lastScannedAt ? `Last scanned ${formatAbsoluteDate(row.lastScannedAt)}` : "Never scanned"}
         >
           {row.lastScannedAt ? relativeDate(row.lastScannedAt) : "never"}

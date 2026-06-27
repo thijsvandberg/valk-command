@@ -144,7 +144,7 @@ function CollapsibleComments({
                   referrerPolicy="no-referrer"
                 />
               ) : (
-                <span className="text-[10px] font-semibold text-white">
+                <span className="text-caption font-semibold text-white">
                   {userInitials}
                 </span>
               )}

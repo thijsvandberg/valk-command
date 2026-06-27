@@ -118,7 +118,7 @@ export function AddToRefinementModal({
                   <div className="truncate text-body-lg font-medium text-text-primary">
                     {sessionLabel(session)}
                   </div>
-                  <div className="text-[11px] text-text-muted">
+                  <div className="text-label text-text-muted">
                     {session.ticketCount} ticket{session.ticketCount !== 1 ? "s" : ""}
                     {overlap > 0 && (
                       <span className="ml-1 text-text-tertiary">

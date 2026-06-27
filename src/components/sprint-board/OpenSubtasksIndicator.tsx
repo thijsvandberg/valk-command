@@ -151,7 +151,7 @@ export function IndicatorPopover({
                   <Circle size={12} strokeWidth={1.75} className="text-amber-400/90 shrink-0 mt-0.5" />
                   <div className="min-w-0">
                     <span className="text-body-sm text-text-primary leading-snug line-clamp-2">{sub.title}</span>
-                    <span className="block text-[10px] text-text-muted mt-0.5">{sub.key} · {sub.status}</span>
+                    <span className="block text-caption text-text-muted mt-0.5">{sub.key} · {sub.status}</span>
                   </div>
                 </div>
               ))}
@@ -167,7 +167,7 @@ export function IndicatorPopover({
                   <CircleCheckBig size={12} strokeWidth={1.5} className="text-green-400/70 shrink-0 mt-0.5" />
                   <div className="min-w-0">
                     <span className="text-body-sm text-text-primary leading-snug line-clamp-2">{sub.title}</span>
-                    <span className="block text-[10px] text-text-muted mt-0.5">{sub.key}</span>
+                    <span className="block text-caption text-text-muted mt-0.5">{sub.key}</span>
                   </div>
                 </div>
               ))}
@@ -229,7 +229,7 @@ export function OpenSubtasksIndicator({
           setPopoverOpen((o) => !o);
         }}
         onPointerDown={(e) => e.stopPropagation()}
-        className="inline-flex items-center justify-center gap-1 rounded px-1.5 py-1 text-[10px] font-medium tabular-nums leading-none transition-colors duration-150 cursor-pointer bg-amber-500/15 text-amber-400 hover:bg-amber-500/25 hover:text-amber-300 active:bg-amber-500/30 focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-[var(--color-brand-400)]"
+        className="inline-flex items-center justify-center gap-1 rounded px-1.5 py-1 text-caption font-medium tabular-nums leading-none transition-colors duration-150 cursor-pointer bg-amber-500/15 text-amber-400 hover:bg-amber-500/25 hover:text-amber-300 active:bg-amber-500/30 focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-[var(--color-brand-400)]"
         title={`${openCount} of ${totalCount} subtasks still open`}
       >
         <AlertTriangle size={10} strokeWidth={1.75} className="shrink-0" />

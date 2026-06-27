@@ -148,7 +148,7 @@ export function DeepScanQueuePanel({ queue, onMutate }: DeepScanQueuePanelProps)
           <div className="flex items-center justify-between gap-2 border-b border-border-subtle px-4 py-3">
             <div>
               <h3 className="text-body-sm font-semibold text-text-primary">Deep-scan queue</h3>
-              <p className="mt-0.5 text-[11px] tabular-nums text-text-tertiary">
+              <p className="mt-0.5 text-label tabular-nums text-text-tertiary">
                 {queue?.pending ?? 0} pending · {queue?.running ?? 0} running · {queue?.done ?? 0} done
                 {(queue?.error ?? 0) > 0 ? ` · ${queue?.error} error` : ""}
               </p>
@@ -169,7 +169,7 @@ export function DeepScanQueuePanel({ queue, onMutate }: DeepScanQueuePanelProps)
 
           <div className="min-h-0 flex-1 overflow-y-auto">
             {items.length === 0 ? (
-              <p className="px-4 py-6 text-center text-[11px] text-text-tertiary">The queue is empty.</p>
+              <p className="px-4 py-6 text-center text-label text-text-tertiary">The queue is empty.</p>
             ) : (
               <ul>
                 {items.map((item) => (
@@ -218,10 +218,10 @@ function QueueRow({
 
       <StatusChip status={item.status} treatment={treatment} error={item.error} />
 
-      <span className="shrink-0 text-[11px] text-text-muted" title={`Source: ${SOURCE_LABEL[item.source] ?? item.source}`}>
+      <span className="shrink-0 text-label text-text-muted" title={`Source: ${SOURCE_LABEL[item.source] ?? item.source}`}>
         {SOURCE_LABEL[item.source] ?? item.source}
       </span>
-      <span className="flex shrink-0 items-center gap-1 text-[11px] tabular-nums text-text-muted" title={`Enqueued ${item.enqueuedAt}`}>
+      <span className="flex shrink-0 items-center gap-1 text-label tabular-nums text-text-muted" title={`Enqueued ${item.enqueuedAt}`}>
         <Clock size={10} strokeWidth={1.75} className="opacity-70" />
         {relativeDate(item.enqueuedAt)}
       </span>
@@ -263,7 +263,7 @@ function StatusChip({
 }) {
   const chip = (
     <span
-      className="inline-flex h-5 shrink-0 items-center gap-1 rounded-md px-1.5 text-[11px] font-medium leading-none"
+      className="inline-flex h-5 shrink-0 items-center gap-1 rounded-md px-1.5 text-label font-medium leading-none"
       style={{ color: treatment.color, backgroundColor: treatment.bg }}
     >
       {status === "running" && <Loader2 size={10} className="animate-spin" />}
