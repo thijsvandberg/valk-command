@@ -88,7 +88,7 @@ export function SprintSelectDropdown({
               <input ref={searchRef} type="text" value={search}
                 onChange={(e) => { setSearch(e.target.value); setFocused(0); }}
                 onKeyDown={nav}
-                className="w-full rounded bg-overlay-subtle py-1 pl-6 pr-2 text-body-sm text-text-secondary placeholder-text-muted focus:outline-none focus:bg-overlay-default"
+                className="w-full rounded bg-overlay-subtle py-1 pl-6 pr-2 text-body-sm text-text-secondary placeholder-text-muted focus:outline-none focus-visible:ring-1 focus-visible:ring-inset focus-visible:ring-[var(--color-brand-500)]/50 focus:bg-overlay-default"
                 placeholder="Search sprints..."
                 style={{ transition: "background-color 80ms" }}
               />

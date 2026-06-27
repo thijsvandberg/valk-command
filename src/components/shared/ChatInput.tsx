@@ -194,7 +194,7 @@ export function ChatInput({
               placeholder={placeholder}
               disabled={isBusy}
               rows={1}
-              className="w-full resize-none bg-transparent py-2.5 pl-3.5 pr-12 font-[var(--font-body)] text-body-lg leading-[1.6] text-text-primary placeholder-text-tertiary focus:outline-none disabled:opacity-50"
+              className="w-full resize-none bg-transparent py-2.5 pl-3.5 pr-12 font-[var(--font-body)] text-body-lg leading-[1.6] text-text-primary placeholder-text-tertiary focus:outline-none focus-visible:ring-1 focus-visible:ring-inset focus-visible:ring-[var(--color-brand-500)]/50 disabled:opacity-50"
               aria-label={ariaLabel}
             />
             <div className="absolute bottom-1.5 right-1.5">{sendButton}</div>
@@ -236,7 +236,7 @@ export function ChatInput({
               placeholder={placeholder}
               disabled={isBusy}
               rows={1}
-              className={`w-full resize-none bg-transparent px-3.5 pt-2.5 pb-1 font-[var(--font-body)] text-body-lg leading-[1.7] text-text-primary placeholder-text-tertiary focus:outline-none disabled:opacity-50 ${manualHeight ? "h-full" : ""}`}
+              className={`w-full resize-none bg-transparent px-3.5 pt-2.5 pb-1 font-[var(--font-body)] text-body-lg leading-[1.7] text-text-primary placeholder-text-tertiary focus:outline-none focus-visible:ring-1 focus-visible:ring-inset focus-visible:ring-[var(--color-brand-500)]/50 disabled:opacity-50 ${manualHeight ? "h-full" : ""}`}
               aria-label={ariaLabel}
             />
           </div>

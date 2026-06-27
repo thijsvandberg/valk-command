@@ -978,7 +978,7 @@ function LabeledSelect({
       <select
         value={value}
         onChange={(e) => onChange(e.target.value)}
-        className="cursor-pointer appearance-none bg-transparent pr-1 text-label font-medium text-text-secondary focus:outline-none"
+        className="cursor-pointer appearance-none bg-transparent pr-1 text-label font-medium text-text-secondary focus:outline-none focus-visible:ring-1 focus-visible:ring-inset focus-visible:ring-[var(--color-brand-500)]/50"
       >
         {options.map((o) => (
           <option key={String(o.value)} value={o.value === null ? "none" : String(o.value)}>

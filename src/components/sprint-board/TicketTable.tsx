@@ -1012,7 +1012,7 @@ export function TicketTable({
     <div
       ref={tableContainerRef}
       className={scrollContainerRef
-        ? "min-w-0 focus:outline-none"
+        ? "min-w-0 focus:outline-none focus-visible:ring-1 focus-visible:ring-inset focus-visible:ring-[var(--color-brand-500)]/50"
         : "flex-1 min-w-0 min-h-0 overflow-y-auto focus:outline-none"}
       tabIndex={0}
       onKeyDown={onTableKeyDown}

@@ -102,7 +102,7 @@ export function CommandPalette() {
               value={query}
               onChange={(e) => setQuery(e.target.value)}
               placeholder={epicMode ? "Search epics..." : "Search pages, tickets, or actions..."}
-              className="flex-1 bg-transparent text-heading-sm text-text-primary placeholder-text-muted focus:outline-none font-[var(--font-body)]"
+              className="flex-1 bg-transparent text-heading-sm text-text-primary placeholder-text-muted focus:outline-none focus-visible:ring-1 focus-visible:ring-inset focus-visible:ring-[var(--color-brand-500)]/50 font-[var(--font-body)]"
               spellCheck={false}
               autoComplete="off"
             />

@@ -364,7 +364,7 @@ export function RichEditor({
                 }
               }}
               placeholder={placeholder}
-              className={`w-full bg-transparent ${fullWidthToolbar ? "py-3" : "px-4 py-3"} font-mono text-body-lg text-text-primary placeholder:text-text-muted focus:outline-none ${borderless ? "min-h-full resize-none" : "resize-y"}`}
+              className={`w-full bg-transparent ${fullWidthToolbar ? "py-3" : "px-4 py-3"} font-mono text-body-lg text-text-primary placeholder:text-text-muted focus:outline-none focus-visible:ring-1 focus-visible:ring-inset focus-visible:ring-[var(--color-brand-500)]/50 ${borderless ? "min-h-full resize-none" : "resize-y"}`}
               style={borderless ? undefined : { minHeight: `${minHeight}px` }}
               spellCheck={false}
             />

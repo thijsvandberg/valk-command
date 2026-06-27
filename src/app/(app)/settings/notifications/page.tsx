@@ -4,6 +4,7 @@ import { useNotification } from "@/hooks/useNotification";
 import { Bell, BellOff, ShieldCheck, ShieldX, GitBranch, Rocket, GitPullRequest, RefreshCw, BookOpen, Info, Zap, Bot, Timer, Users } from "lucide-react";
 import useSWR from "swr";
 import { swrFetcher, settings } from "@/lib/api-client";
+import { ToggleSwitch } from "@/components/shared/ToggleSwitch";
 import type { NotificationCategory, NotificationPreferences } from "@/lib/notification-preferences";
 
 type CategoryMeta = {
@@ -72,26 +73,10 @@ const CATEGORY_ORDER: NotificationCategory[] = [
   "system",
 ];
 
-function Toggle({ enabled, onChange }: { enabled: boolean; onChange: (v: boolean) => void }) {
-  return (
-    <button
-      type="button"
-      role="switch"
-      aria-checked={enabled}
-      onClick={() => onChange(!enabled)}
-      className={`relative inline-flex h-6 w-11 shrink-0 items-center rounded-full border transition-colors duration-200 cursor-pointer focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)] ${
-        enabled
-          ? "border-[var(--color-brand-500)] bg-[var(--color-brand-500)]"
-          : "border-border-strong bg-overlay-default"
-      }`}
-    >
-      <span
-        className={`inline-block h-4 w-4 rounded-full bg-white shadow-sm transition-transform duration-200 ${
-          enabled ? "translate-x-[1.375rem]" : "translate-x-1"
-        }`}
-      />
-    </button>
-  );
+// Thin wrapper over the canonical ToggleSwitch (BRDG-420) so the notifications
+// rows use the one app-wide switch instead of the old oversized bg-white knob.
+function Toggle({ enabled, onChange, ariaLabel }: { enabled: boolean; onChange: (v: boolean) => void; ariaLabel: string }) {
+  return <ToggleSwitch checked={enabled} onChange={onChange} ariaLabel={ariaLabel} />;
 }
 
 export default function NotificationsPage() {
@@ -248,6 +233,7 @@ export default function NotificationsPage() {
                   <Toggle
                     enabled={isSubscribed}
                     onChange={(v) => handleTeamToggle(team, v)}
+                    ariaLabel={`Notifications for ${team}`}
                   />
                 </div>
               );
@@ -283,6 +269,7 @@ export default function NotificationsPage() {
               <Toggle
                 enabled={isEnabled}
                 onChange={(v) => handleCategoryToggle(category, v)}
+                ariaLabel={`${meta.label} notifications`}
               />
             </div>
           );

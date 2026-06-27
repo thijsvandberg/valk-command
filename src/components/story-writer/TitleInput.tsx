@@ -82,7 +82,7 @@ export function TitleInput({
           if (e.key === "Enter") e.preventDefault();
         }}
         placeholder={placeholder}
-        className="min-w-0 flex-1 resize-none overflow-hidden bg-transparent font-[var(--font-display)] text-[1.35rem] font-semibold leading-snug tracking-tight text-text-primary placeholder:text-text-muted focus:outline-none"
+        className="min-w-0 flex-1 resize-none overflow-hidden bg-transparent font-[var(--font-display)] text-[1.35rem] font-semibold leading-snug tracking-tight text-text-primary placeholder:text-text-muted focus:outline-none focus-visible:ring-1 focus-visible:ring-inset focus-visible:ring-[var(--color-brand-500)]/50"
       />
       {onSuggest && (
         <Tooltip content="Suggest titles" delay={250} className="ml-2 mt-1 shrink-0">

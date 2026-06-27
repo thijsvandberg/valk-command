@@ -643,7 +643,7 @@ export function StoryWriterChat({
                 onKeyDown={handleKeyDown}
                 placeholder="Describe what to improve..."
                 rows={1}
-                className={`w-full resize-none bg-transparent px-3.5 pt-1 pb-1 font-[var(--font-body)] text-body-lg leading-[1.7] text-text-primary placeholder-text-tertiary focus:outline-none disabled:opacity-50 ${manualInputHeight ? "h-full" : ""}`}
+                className={`w-full resize-none bg-transparent px-3.5 pt-1 pb-1 font-[var(--font-body)] text-body-lg leading-[1.7] text-text-primary placeholder-text-tertiary focus:outline-none focus-visible:ring-1 focus-visible:ring-inset focus-visible:ring-[var(--color-brand-500)]/50 disabled:opacity-50 ${manualInputHeight ? "h-full" : ""}`}
               />
             </div>
             <div className="flex items-center justify-between px-2 pb-2 pt-0.5">

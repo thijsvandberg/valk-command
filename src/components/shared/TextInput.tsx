@@ -22,7 +22,7 @@ export const TextInput = forwardRef<HTMLInputElement, TextInputProps>(
         )}
         <input
           ref={ref}
-          className={`w-full rounded-lg border border-border-strong bg-overlay-subtle text-text-primary placeholder-text-muted focus:outline-none focus:border-[var(--color-brand-500)]/40 transition-colors duration-150 ${sizeClass}${icon ? " pl-8" : ""}${className ? ` ${className}` : ""}`}
+          className={`w-full rounded-lg border border-border-strong bg-overlay-subtle text-text-primary placeholder:text-text-muted focus:outline-none focus:border-[var(--color-brand-500)] focus:ring-1 focus:ring-[var(--color-brand-500)]/30 disabled:cursor-not-allowed disabled:opacity-50 transition-[color,background-color,border-color,box-shadow] duration-150 ${sizeClass}${icon ? " pl-8" : ""}${className ? ` ${className}` : ""}`}
           {...rest}
         />
       </div>

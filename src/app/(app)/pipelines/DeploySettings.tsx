@@ -167,11 +167,13 @@ export function DeploySettingsPanel() {
                   <span className="ml-1.5 text-caption text-text-muted">{enabledEnvCount}/{totalEnvCount}</span>
                 )}
               </span>
-              <span className={`relative inline-flex items-center h-5 w-8 rounded-full transition-colors duration-150 ${
-                settings.enabled ? "bg-[var(--color-brand-500)]" : "bg-overlay-strong"
+              {/* Visual switch matching the canonical ToggleSwitch look (BRDG-420);
+                  kept as a span since the whole row is the clickable button. */}
+              <span className={`relative inline-flex items-center h-4 w-7 shrink-0 rounded-full border transition-colors duration-150 ${
+                settings.enabled ? "border-[var(--color-brand-500)]/50 bg-[var(--color-brand-500)]/25" : "border-border-default bg-overlay-subtle"
               }`}>
-                <span className={`absolute h-3.5 w-3.5 rounded-full bg-white shadow-sm transition-transform duration-150 ${
-                  settings.enabled ? "translate-x-[14px]" : "translate-x-[3px]"
+                <span className={`absolute h-2.5 w-2.5 rounded-full transition-[transform,background-color] duration-150 ${
+                  settings.enabled ? "translate-x-[14px] bg-[var(--color-brand-400)]" : "translate-x-[1px] bg-text-muted"
                 }`} />
               </span>
             </button>
