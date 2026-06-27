@@ -983,7 +983,6 @@ export const BoardRow = memo(forwardRef<HTMLTableRowElement, BoardRowBaseProps>(
           <StatusChangeLine
             change={statusChange}
             deploy={lastDeploy}
-            health={health}
             atBottom={statusChangeAtBottom}
             onSeen={() => onStatusChangeSeen(statusChange.id)}
             onMoveToBottom={() => onStatusChangeMoveToBottom(statusChange.ticketKey, statusChange.id)}

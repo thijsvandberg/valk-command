@@ -18,6 +18,8 @@ interface OpenSubtasksIndicatorProps {
   openCount: number;
   totalCount: number;
   onCloseSubtasks?: (key: string) => Promise<void>;
+  /** Spell out "N open subtasks" instead of the bare count (BRDG-414 status-change line). */
+  descriptive?: boolean;
 }
 
 const DONE_STATUSES = new Set(["DONE", "DEPRECATED", "Done", "Closed"]);
@@ -208,6 +210,7 @@ export function OpenSubtasksIndicator({
   openCount,
   totalCount,
   onCloseSubtasks,
+  descriptive = false,
 }: OpenSubtasksIndicatorProps) {
   const [popoverOpen, setPopoverOpen] = useState(false);
   const triggerRef = useRef<HTMLButtonElement>(null);
@@ -230,7 +233,7 @@ export function OpenSubtasksIndicator({
         title={`${openCount} of ${totalCount} subtasks still open`}
       >
         <AlertTriangle size={10} strokeWidth={1.75} className="shrink-0" />
-        <span>{openCount}</span>
+        <span>{descriptive ? `${openCount} open subtask${openCount === 1 ? "" : "s"}` : openCount}</span>
       </button>
       {popoverOpen && (
         <IndicatorPopover

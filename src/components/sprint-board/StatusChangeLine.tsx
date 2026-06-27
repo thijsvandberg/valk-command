@@ -1,10 +1,10 @@
 "use client";
 
 import Link from "next/link";
-import { ArrowDownToLine, Check, Clock, GitBranch, MessageSquare, Rocket, Sparkles } from "lucide-react";
+import { ArrowDownToLine, Check, MessageSquare, Rocket, Sparkles } from "lucide-react";
 import type { JiraStatus } from "@/types/ticket";
 import type { StatusChangeItem } from "@/lib/status-changes-query";
-import type { LastDeployedInfo, PipelineHealthEntry } from "@/hooks/usePipelines";
+import type { LastDeployedInfo } from "@/hooks/usePipelines";
 import { Avatar } from "@/components/shared/Avatar";
 import { Tooltip } from "@/components/shared/Tooltip";
 import { OpenSubtasksIndicator } from "@/components/sprint-board/OpenSubtasksIndicator";
@@ -64,19 +64,6 @@ function DeploySignal({ deploy }: { deploy: LastDeployedInfo }) {
   );
 }
 
-function PipelineSignal({ health }: { health: PipelineHealthEntry }) {
-  if (health.status === "gray" || health.recentTotal === 0) return null;
-  const failed = health.recentFails > 0;
-  return (
-    <Tooltip content={`Pipeline: ${health.recentFails} failure${health.recentFails === 1 ? "" : "s"} in the last ${health.recentTotal} runs`}>
-      <span className={`${SIGNAL} ${failed ? "text-red-500" : "text-emerald-500"}`}>
-        <GitBranch className="h-3 w-3 shrink-0" strokeWidth={2} />
-        {failed ? `${health.recentFails}/${health.recentTotal} failed` : `${health.recentTotal} green`}
-      </span>
-    </Tooltip>
-  );
-}
-
 // Icon-only "mark seen / dismiss" checkmark.
 function DismissButton({ onClick }: { onClick: () => void }) {
   return (
@@ -96,7 +83,6 @@ function DismissButton({ onClick }: { onClick: () => void }) {
 export function StatusChangeLine({
   change,
   deploy,
-  health,
   atBottom = false,
   onSeen,
   onMoveToBottom,
@@ -104,7 +90,6 @@ export function StatusChangeLine({
 }: {
   change: StatusChangeItem;
   deploy?: LastDeployedInfo;
-  health?: PipelineHealthEntry;
   /** This ticket already sits in the trailing done/dep block, so "Move to bottom" is pointless. */
   atBottom?: boolean;
   onSeen: () => void;
@@ -122,7 +107,7 @@ export function StatusChangeLine({
     <div
       onClick={(e) => e.stopPropagation()}
       onPointerDown={(e) => e.stopPropagation()}
-      className="relative flex items-center bg-[var(--color-surface-base)]/40 py-1.5 pl-[76px] pr-[23px]"
+      className="relative flex items-center border-b border-border-subtle py-1.5 pl-[76px] pr-[23px]"
     >
       {/* Single elbow connector: its vertical sits at the CENTRE of the row's issue-type icon
           (~56px from the row's left edge) and its horizontal meets the line's vertical centre, so
@@ -144,15 +129,12 @@ export function StatusChangeLine({
               </span>
             </>
           )}
+          {" "}
+          {/* Relative time woven into the sentence; hover shows the exact Jira event time. */}
+          <Tooltip content={`Jira event time: ${formatAbsoluteDate(change.changedAt)} (not the local sync time)`}>
+            <span className="cursor-default text-text-muted">{relativeDate(change.changedAt)}</span>
+          </Tooltip>
         </span>
-
-        <Sep />
-        <Tooltip content={`Jira event time: ${formatAbsoluteDate(change.changedAt)} (not the local sync time)`}>
-          <span className="inline-flex cursor-default items-center gap-1 text-caption text-text-muted">
-            <Clock className="h-3 w-3 shrink-0" strokeWidth={1.75} />
-            {relativeDate(change.changedAt)}
-          </span>
-        </Tooltip>
 
         {hasNew && (
           <>
@@ -176,11 +158,10 @@ export function StatusChangeLine({
           </>
         )}
 
-        {isTest && (deploy?.environment || (health && health.status !== "gray" && health.recentTotal > 0)) && (
+        {isTest && deploy?.environment && (
           <>
             <Sep />
-            {deploy && <DeploySignal deploy={deploy} />}
-            {health && <PipelineSignal health={health} />}
+            <DeploySignal deploy={deploy} />
           </>
         )}
 
@@ -195,6 +176,7 @@ export function StatusChangeLine({
               openCount={change.openSubtaskCount}
               totalCount={change.totalSubtaskCount}
               onCloseSubtasks={onCloseSubtasks}
+              descriptive
             />
           </>
         )}
