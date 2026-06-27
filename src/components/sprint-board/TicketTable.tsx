@@ -191,6 +191,7 @@ export function TicketTable({
   statusChangeMap,
   onStatusChangeSeen,
   onStatusChangeMoveToBottom,
+  showFinishedDivider = false,
   flatCreateTarget,
   flatComposerOpen = false,
   onCloseFlatComposer,
@@ -301,6 +302,8 @@ export function TicketTable({
   statusChangeMap?: Map<string, StatusChangeItem>;
   onStatusChangeSeen?: (id: string) => void;
   onStatusChangeMoveToBottom?: (ticketKey: string, statusChangeId: string) => void;
+  /** BRDG-414: render the permanent "Finished work" divider in the flat list (active-sprint view). */
+  showFinishedDivider?: boolean;
   /** Target for the ungrouped list's composer. When set, the header "+" can open the inline composer. */
   flatCreateTarget?: { sprintId: string | null };
   /** Whether the flat (single-sprint) composer is open. Toggled by the "+" in the single-sprint header. */
@@ -597,6 +600,9 @@ export function TicketTable({
     (flatCreateTarget.sprintId === null ||
       isBacklogSprintName(sprintNameMap?.[flatCreateTarget.sprintId] ?? ""));
   const flatInsertIdx = !flatComposerActive ? -1 : flatIsBacklog ? 0 : trailingDoneDepStart(tickets);
+  // BRDG-414: index of the trailing DONE/DEPRECATED block in the flat (active-sprint) list,
+  // where the permanent "Finished work" divider renders. -1 disables it.
+  const flatDividerIdx = showFinishedDivider ? trailingDoneDepStart(tickets) : -1;
   // When the composer is appended after the last ticket it becomes the visual last row, so
   // the last ticket should not round its bottom corners (the card edge sits below the composer).
   const flatComposerAtEnd = flatComposerActive && flatInsertIdx === tickets.length;
@@ -635,9 +641,13 @@ export function TicketTable({
               warnings={warningLensActive ? ticketWarnings(ticket, warningLensActiveSprint) : undefined}
             />
           );
-          return ticketIdx === flatInsertIdx ? [flatComposerRow, row] : [row];
+          const out = ticketIdx === flatInsertIdx ? [flatComposerRow, row] : [row];
+          return flatDividerIdx > 0 && ticketIdx === flatDividerIdx
+            ? [<FinishedWorkDividerRow key="fw-divider" />, ...out]
+            : out;
         })}
         {flatInsertIdx === tickets.length && flatComposerRow}
+        {flatDividerIdx >= 0 && flatDividerIdx === tickets.length && tickets.length > 0 && <FinishedWorkDividerRow />}
       </tbody>
     </table>
   );
@@ -662,9 +672,13 @@ export function TicketTable({
               warnings={warningLensActive ? ticketWarnings(ticket, warningLensActiveSprint) : undefined}
             />
           );
-          return ticketIdx === flatInsertIdx ? [flatComposerRow, row] : [row];
+          const out = ticketIdx === flatInsertIdx ? [flatComposerRow, row] : [row];
+          return flatDividerIdx > 0 && ticketIdx === flatDividerIdx
+            ? [<FinishedWorkDividerRow key="fw-divider" />, ...out]
+            : out;
         })}
         {flatInsertIdx === tickets.length && flatComposerRow}
+        {flatDividerIdx >= 0 && flatDividerIdx === tickets.length && tickets.length > 0 && <FinishedWorkDividerRow />}
       </tbody>
     </SortableContext>
   );
