@@ -9,6 +9,8 @@ import { usePageTitle } from "@/hooks/usePageTitle";
 import { Button } from "@/components/ui/Button";
 import { ViewHeader, ViewHeaderTitle } from "@/components/shared/ViewHeader";
 import { DataErrorState } from "@/components/shared/DataErrorState";
+import { EmptyState } from "@/components/shared/EmptyState";
+import { SkeletonRow } from "@/components/shared/Skeleton";
 import { Tooltip } from "@/components/shared/Tooltip";
 import { Checkbox } from "@/components/shared/Checkbox";
 import { FilterDropdown } from "@/components/shared/FilterDropdown";
@@ -777,11 +779,11 @@ export default function CleanupPage() {
               ) : isLoading && !data ? (
                 <div className="space-y-2">
                   {Array.from({ length: 6 }).map((_, i) => (
-                    <div key={i} className="h-12 animate-pulse rounded-xl bg-overlay-subtle" style={{ opacity: 1 - i * 0.1 }} />
+                    <SkeletonRow key={i} index={i} className="h-12" />
                   ))}
                 </div>
               ) : rows.length === 0 ? (
-                <EmptyState hasData={Boolean(data && data.total > 0)} />
+                <CleanupEmptyState hasData={Boolean(data && data.total > 0)} />
               ) : (
                 <div className="overflow-clip rounded-xl border border-border-subtle bg-[var(--color-surface-elevated)] shadow-[var(--shadow-sm)]">
                   <table ref={tableRef} className="w-full table-fixed border-collapse text-body-lg">
@@ -988,23 +990,17 @@ function LabeledSelect({
   );
 }
 
-function EmptyState({ hasData }: { hasData: boolean }) {
+function CleanupEmptyState({ hasData }: { hasData: boolean }) {
   return (
-    <div className="flex flex-col items-center justify-center py-24 text-center">
-      <div
-        className="mb-4 flex h-14 w-14 items-center justify-center rounded-2xl"
-        style={{ backgroundColor: "var(--color-brand-subtle)", boxShadow: "var(--shadow-sm)" }}
-      >
-        <Trash2 size={22} strokeWidth={1.5} className="text-[var(--color-brand-400)]" />
-      </div>
-      <h2 className="font-[var(--font-display)] text-heading-sm font-semibold text-text-primary">
-        {hasData ? "No tickets match these filters" : "Nothing scanned yet"}
-      </h2>
-      <p className="mt-1.5 max-w-sm text-body-sm leading-relaxed text-text-tertiary">
-        {hasData
+    <EmptyState
+      icon={<Trash2 size={22} strokeWidth={1.5} className="text-[var(--color-brand-400)]" />}
+      title={hasData ? "No tickets match these filters" : "Nothing scanned yet"}
+      description={
+        hasData
           ? "Loosen the filters above to see more of the backlog."
-          : "Tier-1 staleness runs in the background. Scored tickets will appear here as they are evaluated."}
-      </p>
-    </div>
+          : "Tier-1 staleness runs in the background. Scored tickets will appear here as they are evaluated."
+      }
+      className="py-24"
+    />
   );
 }

@@ -17,6 +17,7 @@ import {
 import { useDevInfo } from "@/hooks/useSprintBoard";
 import { usePipelines } from "@/hooks/usePipelines";
 import { Activity } from "lucide-react";
+import { EmptyState as SharedEmptyState } from "@/components/shared/EmptyState";
 import type {
   DevInfoPayload,
   DevPullRequest,
@@ -268,11 +269,12 @@ function BranchRow({ branch }: { branch: DevBranch }) {
 
 function EmptyState() {
   return (
-    <div className="flex flex-col items-center justify-center py-16 text-center">
-      <GitCommit size={32} strokeWidth={1} className="text-text-muted" />
-      <p className="mt-3 text-body-lg text-text-muted">No development activity linked to this ticket</p>
-      <p className="mt-1 text-body-sm text-text-muted">Branches, pull requests, and deployments will appear here when linked via the ticket key.</p>
-    </div>
+    <SharedEmptyState
+      icon={<GitCommit size={22} strokeWidth={1.5} className="text-text-muted" />}
+      title="No development activity linked to this ticket"
+      description="Branches, pull requests, and deployments will appear here when linked via the ticket key."
+      className="py-16"
+    />
   );
 }
 

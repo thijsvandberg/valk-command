@@ -4,6 +4,7 @@ import { useCallback, useMemo, useState } from "react";
 import { Zap, Plus } from "lucide-react";
 import { ViewHeader, ViewHeaderTitle } from "@/components/shared/ViewHeader";
 import { DataErrorState } from "@/components/shared/DataErrorState";
+import { EmptyState } from "@/components/shared/EmptyState";
 import { Button } from "@/components/ui/Button";
 import { Toast } from "@/components/ui/Toast";
 import { useToast } from "@/hooks/useToast";
@@ -140,25 +141,23 @@ export default function EpicsPage() {
               ))}
             </div>
           ) : anyFilterActive ? (
-            <div className="flex flex-col items-center justify-center rounded-xl border border-dashed border-border-default py-16 text-center">
-              <Zap size={28} strokeWidth={1.5} className="mb-3 text-text-muted" />
-              <p className="text-body text-text-secondary">No epics match the current filters.</p>
-              <button
-                type="button"
-                onClick={clearAll}
-                className="mt-2 rounded-md px-2 py-1 text-body-sm text-[var(--color-brand-400)] cursor-pointer transition-colors duration-150 hover:bg-[var(--color-brand-500)]/10 focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-[var(--color-brand-400)]"
-              >
-                Clear filters
-              </button>
-            </div>
+            <EmptyState
+              icon={<Zap size={22} strokeWidth={1.5} className="text-text-muted" />}
+              title="No epics match the current filters"
+              action={
+                <Button variant="ghost" size="sm" onClick={clearAll}>
+                  Clear filters
+                </Button>
+              }
+              className="py-16"
+            />
           ) : (
-            <div className="flex flex-col items-center justify-center rounded-xl border border-dashed border-border-default py-16 text-center">
-              <Zap size={28} strokeWidth={1.5} className="mb-3 text-text-muted" />
-              <p className="text-body text-text-secondary">No epics with tickets in the recent sprints.</p>
-              <p className="mt-1 text-body-sm text-text-muted">
-                Use the team or status filters to browse all epics, including done and deprecated ones.
-              </p>
-            </div>
+            <EmptyState
+              icon={<Zap size={22} strokeWidth={1.5} className="text-text-muted" />}
+              title="No epics with tickets in the recent sprints"
+              description="Use the team or status filters to browse all epics, including done and deprecated ones."
+              className="py-16"
+            />
           )}
         </div>
       </div>

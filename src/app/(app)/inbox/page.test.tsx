@@ -134,6 +134,12 @@ describe("InboxPage (BRDG-357)", () => {
     expect(listMutate).toHaveBeenCalled();
   });
 
+  it("shows the shared empty state when there are no stories (BRDG-423)", () => {
+    listData = { rows: [] };
+    render(<InboxPage />);
+    expect(screen.getByText("Inbox zero")).toBeInTheDocument();
+  });
+
   it("renders rows through BoardRow with the inbox default tags (key is a pill)", () => {
     render(<InboxPage />);
     const pills = screen.getAllByTestId("pill");

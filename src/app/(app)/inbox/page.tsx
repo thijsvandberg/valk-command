@@ -7,6 +7,8 @@ import { Inbox, Undo2 } from "lucide-react";
 import { usePageTitle } from "@/hooks/usePageTitle";
 import { ViewHeader, ViewHeaderTitle } from "@/components/shared/ViewHeader";
 import { DataErrorState } from "@/components/shared/DataErrorState";
+import { EmptyState } from "@/components/shared/EmptyState";
+import { SkeletonRow } from "@/components/shared/Skeleton";
 import { Toast } from "@/components/ui/Toast";
 import { useToast } from "@/hooks/useToast";
 import { useTicketDetail, useJiraSprints, useSprintSlots } from "@/hooks/useSprintBoard";
@@ -454,17 +456,21 @@ export default function InboxPage() {
                 ) : isLoading && !data ? (
                   <div className="space-y-2">
                     {Array.from({ length: 6 }).map((_, i) => (
-                      <div
-                        key={i}
-                        className="h-11 animate-pulse rounded-xl bg-overlay-subtle"
-                        style={{ opacity: 1 - i * 0.12 }}
-                      />
+                      <SkeletonRow key={i} index={i} className="h-11" />
                     ))}
                   </div>
                 ) : rows.length === 0 ? (
-                  <EmptyState />
+                  <EmptyState
+                    icon={<Inbox size={22} strokeWidth={1.5} className="text-[var(--color-brand-400)]" />}
+                    title="Inbox zero"
+                    description="No unread stories. Newly created stories appear here for review; mark them as read to clear them."
+                    className="py-24"
+                  />
                 ) : filteredRows.length === 0 ? (
-                  <NoMatchState />
+                  <EmptyState
+                    title="No stories match the current filters"
+                    className="py-24"
+                  />
                 ) : (
                   <div className="space-y-3">
                     {groups.map((group) => {
@@ -648,34 +654,5 @@ export default function InboxPage() {
 
       <Toast toast={toast} onDismiss={dismissToast} />
     </>
-  );
-}
-
-function EmptyState() {
-  return (
-    <div className="flex flex-col items-center justify-center py-24 text-center">
-      <div
-        className="mb-4 flex h-14 w-14 items-center justify-center rounded-2xl"
-        style={{ backgroundColor: "var(--color-brand-subtle)", boxShadow: "var(--shadow-sm)" }}
-      >
-        <Inbox size={22} strokeWidth={1.5} className="text-[var(--color-brand-400)]" />
-      </div>
-      <h2 className="font-[var(--font-display)] text-heading-sm font-semibold text-text-primary">
-        Inbox zero
-      </h2>
-      <p className="mt-1.5 max-w-sm text-body-sm leading-relaxed text-text-tertiary">
-        No unread stories. Newly created stories appear here for review; mark them as read to clear them.
-      </p>
-    </div>
-  );
-}
-
-function NoMatchState() {
-  return (
-    <div className="flex flex-col items-center justify-center py-24 text-center">
-      <p className="text-body-sm leading-relaxed text-text-tertiary">
-        No stories match the current filters.
-      </p>
-    </div>
   );
 }

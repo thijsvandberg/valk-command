@@ -1,5 +1,46 @@
 import { Card } from "./Card";
 
+// Single source of truth for the per-row opacity falloff so every list skeleton
+// fades identically (BRDG-423). Previously four list skeletons each hand-rolled
+// their own constant (0.12 / 0.1 / 0.07 / 0.14).
+export const SKELETON_ROW_FADE = 0.12;
+
+// Opacity for the nth skeleton row. Floored so a long list never fades fully out.
+export function skeletonRowOpacity(index: number): number {
+  return Math.max(0.2, 1 - index * SKELETON_ROW_FADE);
+}
+
+interface SkeletonProps {
+  className?: string;
+}
+
+// A bare pulsing block. Caller supplies size and corner radius via className.
+export function Skeleton({ className }: SkeletonProps) {
+  return (
+    <div
+      className={`animate-pulse bg-overlay-subtle${className ? ` ${className}` : ""}`}
+      aria-hidden="true"
+    />
+  );
+}
+
+interface SkeletonRowProps {
+  index?: number;
+  className?: string;
+}
+
+// One full-width pulsing list row, faded by its position. The common shape for a
+// loading list (inbox, cleanup); rounded-xl by default to match the row cards.
+export function SkeletonRow({ index = 0, className }: SkeletonRowProps) {
+  return (
+    <div
+      className={`animate-pulse rounded-xl bg-overlay-subtle${className ? ` ${className}` : ""}`}
+      style={{ opacity: skeletonRowOpacity(index) }}
+      aria-hidden="true"
+    />
+  );
+}
+
 interface SkeletonLineProps {
   width?: string;
   height?: string;

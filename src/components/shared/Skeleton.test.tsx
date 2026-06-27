@@ -1,6 +1,45 @@
 import { render } from "@testing-library/react";
 import { describe, it, expect } from "vitest";
-import { SkeletonLine, SkeletonCard, SkeletonTable } from "./Skeleton";
+import {
+  SkeletonLine,
+  SkeletonCard,
+  SkeletonTable,
+  Skeleton,
+  SkeletonRow,
+  skeletonRowOpacity,
+  SKELETON_ROW_FADE,
+} from "./Skeleton";
+
+describe("skeletonRowOpacity", () => {
+  it("fades each row by the single shared constant", () => {
+    expect(skeletonRowOpacity(0)).toBe(1);
+    expect(skeletonRowOpacity(1)).toBeCloseTo(1 - SKELETON_ROW_FADE);
+    expect(skeletonRowOpacity(2)).toBeCloseTo(1 - 2 * SKELETON_ROW_FADE);
+  });
+
+  it("floors the opacity so long lists never fade fully out", () => {
+    expect(skeletonRowOpacity(100)).toBe(0.2);
+  });
+});
+
+describe("Skeleton", () => {
+  it("renders a pulsing aria-hidden block and merges className", () => {
+    const { container } = render(<Skeleton className="h-4 w-16 rounded" />);
+    const el = container.firstChild as HTMLElement;
+    expect(el).toHaveClass("animate-pulse");
+    expect(el).toHaveAttribute("aria-hidden", "true");
+    expect(el.className).toContain("h-4");
+  });
+});
+
+describe("SkeletonRow", () => {
+  it("applies the shared fade for its index", () => {
+    const { container } = render(<SkeletonRow index={2} className="h-11" />);
+    const el = container.firstChild as HTMLElement;
+    expect(el).toHaveClass("animate-pulse");
+    expect(el.style.opacity).toBe(String(skeletonRowOpacity(2)));
+  });
+});
 
 describe("SkeletonLine", () => {
   it("renders with animate-pulse class", () => {
