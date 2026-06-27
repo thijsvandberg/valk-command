@@ -1,6 +1,6 @@
 # BRDG-422: Unify overlays on the shared Modal/Popover and apply the z-index scale
 
-**Status:** Partially Completed (core slice shipped; broad sweep deferred)
+**Status:** Completed (core slice shipped; remainder split into BRDG-428/429/430/431)
 **Priority:** High
 **Type:** Consistency + accessibility — modals, popovers, layering
 
@@ -27,23 +27,16 @@ Shipped the safe, high-value slice; deferred the broad/high-risk sweep.
   semantics; SplitStoryPicker Escape test added. lint/typecheck/vitest (7023)/build
   all green.
 
-**Deferred (high-risk / broad, deliberately not done this pass):**
-- *Full `Modal` migration of `CommandPalette` / `SearchModal` palettes*: `Modal`
-  unmounts children immediately on close, which would kill their exit/entrance
-  animations, and its Tab-trap could fight their arrow-key result navigation. The
-  user-visible inversion is already fixed via the z change.
-- *Full `Modal` migration of `StoryWriterLauncherModal`*: it embeds a nested
-  `ConfirmDialog` (itself a `Modal`); a second focus-trap on the same document would
-  conflict. Left with role/aria + drag-safe close instead.
-- *The blanket `z-50` → `z-dropdown` / `z-[9999]` → token sweep across the ~50
-  anchored pickers*: value-preserving but broad, and the pickers use `z-[9999]`
-  precisely to float **above** modals when opened from inside one — a naive map to
-  `z-dropdown` (50, below `z-modal` 60) would hide them. Needs per-case care; the
-  layering *inversions* that caused bugs are already resolved.
-- *One anchored-panel primitive; one tooltip; one toast* — the large framework
-  consolidation (4 tooltip + 4 toast + 5 anchored-panel impls) is a separate slice.
-- Backdrop opacity/blur + radius/max-width scale unified only on the touched modals,
-  not app-wide.
+**Remaining work split into per-concern follow-ups (per PO request):**
+- [[BRDG-428-zindex-scale-authoritative-on-anchored-overlays]] — the blanket `z-50` /
+  `z-[9999]` → token sweep across the ~50 anchored pickers (with the picker-above-modal
+  caveat). Includes the app-wide backdrop/radius scale.
+- [[BRDG-429-converge-anchored-floating-panels]] — one anchored-panel primitive
+  (Popover/BasePicker/AnchoredMenu/CursorMenu/per-file dropdowns → one).
+- [[BRDG-430-unify-tooltip-and-toast]] — 4 tooltip + 4 toast implementations → one each.
+- [[BRDG-431-migrate-palettes-and-launcher-onto-modal]] — full `Modal` migration of
+  CommandPalette / SearchModal (animation + arrow-nav) and StoryWriterLauncherModal
+  (nested-ConfirmDialog focus-trap), once `Modal` gains exit-animation + nesting-safe trapping.
 
 ## Description
 

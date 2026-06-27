@@ -1,6 +1,6 @@
 # BRDG-420: Consolidate form controls on shared primitives (inputs, one toggle, universal focus rings)
 
-**Status:** Partially Completed (headline criteria shipped; broad input-adoption deferred)
+**Status:** Completed (core shipped; remaining input-adoption split into [[BRDG-427-migrate-form-fields-onto-primitives]])
 **Priority:** High
 **Type:** Consistency + accessibility — form controls
 
@@ -25,16 +25,11 @@ The two headline, accessibility-critical criteria are fully shipped; the broad
 - Tests: `ToggleSwitch.test.tsx`, `Select.test.tsx`, the focus-ring guard; lint/
   typecheck/vitest (7032)/build all green.
 
-**Partial / deferred:**
-- *Migrating the ~43 hand-rolled `<input>` / ~23 `<textarea>` onto `TextInput`/
-  `TextArea`/`Select`*: the canonical recipe + focus rings are in place everywhere,
-  but most fields are not yet swapped to the shared component. Lower-value, broad,
-  low-risk follow-up.
-- *A `Field` wrapper carrying label + error + disabled state* and the shared
-  field-level error styling: not added (no error-state render path yet).
-- *App-wide placeholder-syntax + single disabled-opacity sweep*: standardized in the
-  primitives (`placeholder:text-text-muted`, `disabled:opacity-50`) but not swept
-  across every call site.
+**Remaining work split into a follow-up (per PO request):**
+- [[BRDG-427-migrate-form-fields-onto-primitives]] — swap the hand-rolled modal/settings
+  `<input>`/`<textarea>`/`<select>` onto `TextInput`/`TextArea`/`Select`, add a `Field`
+  wrapper (label + error + disabled), and finish the placeholder/disabled sweep. Carries
+  a small per-form visual shift (the unified look), so it was kept separate for PO review.
 
 Note for the PO: the notifications switch is now the smaller, on-brand size (a
 visible shrink, pre-approved in the audit). A pre-existing hydration warning on the
