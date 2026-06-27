@@ -27,9 +27,9 @@ const STATUS_LABEL: Record<JiraStatus, string> = {
 
 const Sep = () => <span className="text-text-muted">&middot;</span>;
 
-// Plain text (no per-status colour) — the words are the signal, not their colour.
+// Plain text — inherits the sentence's font/size/colour so the whole line reads uniform.
 function StatusWord({ status }: { status: JiraStatus }) {
-  return <span className="font-medium text-text-secondary">{STATUS_LABEL[status] ?? status}</span>;
+  return <>{STATUS_LABEL[status] ?? status}</>;
 }
 
 // Show the changer only when it differs from the assignee. Prefer the stable accountId.
@@ -73,7 +73,7 @@ function DismissButton({ onClick }: { onClick: () => void }) {
         type="button"
         onClick={onClick}
         aria-label="Mark as seen"
-        className="grid h-7 w-7 shrink-0 cursor-pointer place-items-center rounded-md text-text-muted transition-colors duration-150 hover:bg-overlay-default hover:text-text-secondary"
+        className="grid h-7 w-7 shrink-0 cursor-pointer place-items-center rounded-md text-text-muted transition-colors duration-150 hover:bg-overlay-default hover:text-text-secondary focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-[var(--color-brand-400)]"
       >
         <Check className="h-3.5 w-3.5" strokeWidth={2} />
       </button>
@@ -126,14 +126,14 @@ export function StatusChangeLine({
               {" by "}
               <span className="inline-flex items-center gap-1 align-middle">
                 <Avatar assignee={buildAssignee(change.changedBy, change.changedByAccountId)} size={14} />
-                <span className="font-medium text-text-secondary">{change.changedBy}</span>
+                {change.changedBy}
               </span>
             </>
           )}
           {" "}
-          {/* Relative time woven into the sentence; hover shows the exact Jira event time. */}
-          <Tooltip content={`Jira event time: ${formatAbsoluteDate(change.changedAt)} (not the local sync time)`}>
-            <span className="cursor-default text-text-muted">{relativeDate(change.changedAt)}</span>
+          {/* Relative time woven into the sentence (uniform with the rest); hover shows the exact time. */}
+          <Tooltip content={formatAbsoluteDate(change.changedAt)}>
+            <span className="cursor-default">{relativeDate(change.changedAt)}</span>
           </Tooltip>
         </span>
 
@@ -178,7 +178,7 @@ export function StatusChangeLine({
         <span className="flex items-center gap-1.5">
           {isFinished && !atBottom && (
             <Tooltip content="Move to bottom — files it just below the Finished work divider. Nothing auto-moves; this is your confirmation it's done.">
-              <button type="button" onClick={onMoveToBottom} className={`${ACTION_BTN} cursor-pointer hover:bg-overlay-default hover:text-text-primary`}>
+              <button type="button" onClick={onMoveToBottom} className={`${ACTION_BTN} cursor-pointer hover:bg-overlay-default hover:text-text-primary focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-[var(--color-brand-400)]`}>
                 <ArrowDownToLine className="h-3.5 w-3.5" strokeWidth={1.75} />
                 Move to bottom
               </button>
@@ -186,7 +186,7 @@ export function StatusChangeLine({
           )}
           {isTest && (
             <Tooltip content="Generate a test prompt from the story, comments and changes (coming soon)">
-              <button type="button" className={`${ACTION_BTN} cursor-pointer hover:bg-overlay-default hover:text-text-primary`}>
+              <button type="button" className={`${ACTION_BTN} cursor-pointer hover:bg-overlay-default hover:text-text-primary focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-[var(--color-brand-400)]`}>
                 <Sparkles className="h-3.5 w-3.5" strokeWidth={1.75} />
                 Generate test prompt
               </button>

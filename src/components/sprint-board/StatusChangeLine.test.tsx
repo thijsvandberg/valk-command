@@ -33,10 +33,9 @@ function makeChange(overrides: Partial<StatusChangeItem> = {}): StatusChangeItem
 describe("StatusChangeLine (BRDG-414)", () => {
   const noop = () => {};
 
-  it("renders the from -> to transition", () => {
+  it("renders the from -> to transition as one uniform sentence", () => {
     render(<StatusChangeLine change={makeChange()} onSeen={noop} onMoveToBottom={noop} />);
-    expect(screen.getByText("In Progress")).toBeInTheDocument();
-    expect(screen.getByText("Test")).toBeInTheDocument();
+    expect(screen.getByText(/Updated from In Progress to Test/)).toBeInTheDocument();
   });
 
   it("shows the changer only when it differs from the assignee", () => {
