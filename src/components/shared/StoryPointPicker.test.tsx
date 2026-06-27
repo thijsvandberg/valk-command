@@ -314,5 +314,26 @@ describe("StoryPointPicker", () => {
       fireEvent.keyDown(input, { key: "Enter" });
       expect(onChange).toHaveBeenCalledWith(13);
     });
+
+    it("gives the lg inline custom input a defined surface background (BRDG-418)", () => {
+      render(<StoryPointPicker value={null} onChange={() => {}} size="lg" />);
+      fireEvent.click(screen.getByRole("button"));
+      const input = screen.getByPlaceholderText("#");
+      expect(input.className).toContain("bg-surface-base");
+      expect(input.className).not.toContain("surface-default");
+    });
+  });
+
+  // An undefined token (var(--color-surface-default)) renders transparent; the
+  // custom input must carry a defined surface token so it reads as an inset field.
+  describe("field background (BRDG-418)", () => {
+    it("gives the compact custom input a defined surface background, not a transparent fallback", () => {
+      render(<StoryPointPicker value={null} onChange={() => {}} />);
+      fireEvent.click(screen.getByRole("button"));
+      fireEvent.click(screen.getByTitle("Custom value"));
+      const input = screen.getByPlaceholderText("SP");
+      expect(input.className).toContain("bg-surface-base");
+      expect(input.className).not.toContain("surface-default");
+    });
   });
 });

@@ -190,3 +190,16 @@ describe("EstimatePicker — committed (story-point) phase", () => {
     expect(screen.queryByRole("button", { name: /back to guestimate/i })).not.toBeInTheDocument();
   });
 });
+
+describe("EstimatePicker — field background (BRDG-418)", () => {
+  // An undefined token (var(--color-surface-default)) renders transparent; the
+  // field must carry a defined surface token so it reads as an inset control.
+  it("gives the custom-value input a defined surface background, not a transparent fallback", () => {
+    setup();
+    fireEvent.click(screen.getByRole("button", { name: "Set guestimate or story points" }));
+    fireEvent.click(screen.getByTitle("Custom value (13, 21, ...)"));
+    const input = screen.getByPlaceholderText("13");
+    expect(input.className).toContain("bg-surface-base");
+    expect(input.className).not.toContain("surface-default");
+  });
+});

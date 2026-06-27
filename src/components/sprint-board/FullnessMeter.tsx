@@ -157,7 +157,7 @@ export function FullnessMeter({
           // brand ring. field-sizing:content makes the field hug its value so the
           // hover/focus chip wraps the number tightly (min/max-w bound the non-Chrome
           // fallback) instead of floating in a fixed-width box.
-          className="h-5 min-w-[1.5ch] max-w-[3.5ch] box-border px-1 cursor-text select-text rounded text-center font-medium tabular-nums outline-none transition-colors duration-100 [field-sizing:content] text-[color-mix(in_srgb,currentColor_80%,transparent)] hover:bg-[color-mix(in_srgb,currentColor_12%,transparent)] focus:bg-[var(--color-surface-default)] focus:text-text-primary focus:shadow-[0_0_0_2px_var(--color-brand-400)] placeholder:font-normal placeholder:text-text-muted [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
+          className="h-5 min-w-[1.5ch] max-w-[3.5ch] box-border px-1 cursor-text select-text rounded text-center font-medium tabular-nums outline-none transition-colors duration-100 [field-sizing:content] text-[color-mix(in_srgb,currentColor_80%,transparent)] hover:bg-[color-mix(in_srgb,currentColor_12%,transparent)] focus:bg-surface-base focus:text-text-primary focus:shadow-[0_0_0_2px_var(--color-brand-400)] placeholder:font-normal placeholder:text-text-muted [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
         />
       </div>
     </Tooltip>

@@ -319,4 +319,23 @@ describe("LinkIssueDialog", () => {
       expect(mockSearch.setFilter).not.toHaveBeenCalled();
     });
   });
+
+  // An undefined token (var(--color-surface-default)) renders transparent; these
+  // inset fields must carry a defined surface token against the elevated modal.
+  describe("field backgrounds (BRDG-418)", () => {
+    it("gives the search input a defined surface background, not a transparent fallback", () => {
+      renderDialog();
+      const input = screen.getByPlaceholderText("Search by key or title...");
+      expect(input.className).toContain("bg-surface-base");
+      expect(input.className).not.toContain("surface-default");
+    });
+
+    it("gives the relation filter input a defined surface background", () => {
+      renderDialog();
+      fireEvent.click(screen.getByText("Relates to"));
+      const input = screen.getByPlaceholderText("Filter...");
+      expect(input.className).toContain("bg-surface-base");
+      expect(input.className).not.toContain("surface-default");
+    });
+  });
 });

@@ -65,7 +65,7 @@ export function RelationPicker({
             }
           }}
           placeholder="Filter..."
-          className="w-full rounded-md border border-border-default bg-[var(--color-surface-default)] px-2 py-1 text-body-sm text-text-primary placeholder:text-text-muted outline-none focus:border-[var(--color-brand-500)]/50"
+          className="w-full rounded-md border border-border-default bg-surface-base px-2 py-1 text-body-sm text-text-primary placeholder:text-text-muted outline-none focus:border-[var(--color-brand-500)]/50"
         />
       </div>
       <div

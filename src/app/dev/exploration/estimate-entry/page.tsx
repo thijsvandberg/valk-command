@@ -322,7 +322,7 @@ function EstimateRow({
             }
           }}
           placeholder="13"
-          className="h-7 w-16 rounded-md border border-border-default bg-[var(--color-surface-default)] px-2 text-center text-[12px] font-medium tabular-nums text-text-primary outline-none focus:border-[var(--color-brand-400)] [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+          className="h-7 w-16 rounded-md border border-border-default bg-surface-base px-2 text-center text-[12px] font-medium tabular-nums text-text-primary outline-none focus:border-[var(--color-brand-400)] [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
         />
         <button
           type="button"

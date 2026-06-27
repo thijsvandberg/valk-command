@@ -179,7 +179,7 @@ export function LinkIssueDialog({
                   return !v;
                 });
               }}
-              className="flex w-full cursor-pointer items-center justify-between rounded-lg border border-border-default bg-[var(--color-surface-default)] px-3 py-1.5 text-body-lg text-text-primary outline-none hover:border-border-strong focus-visible:border-[var(--color-brand-500)]/50 focus-visible:ring-1 focus-visible:ring-[var(--color-brand-500)]/25"
+              className="flex w-full cursor-pointer items-center justify-between rounded-lg border border-border-default bg-surface-base px-3 py-1.5 text-body-lg text-text-primary outline-none hover:border-border-strong focus-visible:border-[var(--color-brand-500)]/50 focus-visible:ring-1 focus-visible:ring-[var(--color-brand-500)]/25"
               style={{ transition: "border-color 120ms" }}
             >
               <span>{linkTypes.find((o) => o.value === relation)?.label ?? relation}</span>
@@ -221,7 +221,7 @@ export function LinkIssueDialog({
                       }
                     }}
                     placeholder="Filter..."
-                    className="w-full rounded-md border border-border-default bg-[var(--color-surface-default)] px-2.5 py-1 text-body-sm text-text-primary placeholder:text-text-muted outline-none focus:border-[var(--color-brand-500)]/50"
+                    className="w-full rounded-md border border-border-default bg-surface-base px-2.5 py-1 text-body-sm text-text-primary placeholder:text-text-muted outline-none focus:border-[var(--color-brand-500)]/50"
                   />
                 </div>
                 <div
@@ -281,7 +281,7 @@ export function LinkIssueDialog({
               }}
               onKeyDown={handleKeyDown}
               placeholder="Search by key or title..."
-              className="w-full rounded-lg border border-border-default bg-[var(--color-surface-default)] py-1.5 pl-9 pr-3 text-body-lg text-text-primary placeholder:text-text-muted outline-none focus:border-[var(--color-brand-500)]/50 focus:ring-1 focus:ring-[var(--color-brand-500)]/25"
+              className="w-full rounded-lg border border-border-default bg-surface-base py-1.5 pl-9 pr-3 text-body-lg text-text-primary placeholder:text-text-muted outline-none focus:border-[var(--color-brand-500)]/50 focus:ring-1 focus:ring-[var(--color-brand-500)]/25"
             />
           </div>
 

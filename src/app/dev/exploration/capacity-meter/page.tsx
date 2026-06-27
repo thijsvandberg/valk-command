@@ -44,15 +44,15 @@ const INPUT_BY_TREATMENT: Record<Treatment, string> = {
   // Quiet: at rest it looks like plain muted text (no border, no underline). Hover
   // reveals a faint chip; focus gives a clear surface + brand ring.
   quiet:
-    "text-[color-mix(in_srgb,currentColor_80%,transparent)] hover:bg-[color-mix(in_srgb,currentColor_12%,transparent)] focus:bg-[var(--color-surface-default)] focus:text-text-primary focus:shadow-[0_0_0_2px_var(--color-brand-400)]",
+    "text-[color-mix(in_srgb,currentColor_80%,transparent)] hover:bg-[color-mix(in_srgb,currentColor_12%,transparent)] focus:bg-surface-base focus:text-text-primary focus:shadow-[0_0_0_2px_var(--color-brand-400)]",
   // Underline: refined version of the shipped one - a lighter dotted underline hints
   // editability at rest, cleared on focus.
   underline:
-    "underline decoration-dotted decoration-[color-mix(in_srgb,currentColor_30%,transparent)] underline-offset-[3px] text-[color-mix(in_srgb,currentColor_80%,transparent)] hover:bg-[color-mix(in_srgb,currentColor_12%,transparent)] focus:no-underline focus:bg-[var(--color-surface-default)] focus:text-text-primary focus:shadow-[0_0_0_2px_var(--color-brand-400)] placeholder:no-underline",
+    "underline decoration-dotted decoration-[color-mix(in_srgb,currentColor_30%,transparent)] underline-offset-[3px] text-[color-mix(in_srgb,currentColor_80%,transparent)] hover:bg-[color-mix(in_srgb,currentColor_12%,transparent)] focus:no-underline focus:bg-surface-base focus:text-text-primary focus:shadow-[0_0_0_2px_var(--color-brand-400)] placeholder:no-underline",
   // Dashed chip: a dashed outline reads as a "pencil" estimate (the capacity is the
   // PO's pencil number); solidifies on focus.
   dashed:
-    "border border-dashed border-[color-mix(in_srgb,currentColor_30%,transparent)] text-[color-mix(in_srgb,currentColor_80%,transparent)] hover:bg-[color-mix(in_srgb,currentColor_8%,transparent)] focus:border-transparent focus:bg-[var(--color-surface-default)] focus:text-text-primary focus:shadow-[0_0_0_2px_var(--color-brand-400)]",
+    "border border-dashed border-[color-mix(in_srgb,currentColor_30%,transparent)] text-[color-mix(in_srgb,currentColor_80%,transparent)] hover:bg-[color-mix(in_srgb,currentColor_8%,transparent)] focus:border-transparent focus:bg-surface-base focus:text-text-primary focus:shadow-[0_0_0_2px_var(--color-brand-400)]",
 };
 
 // ---- Interactive meter ---------------------------------------------------------------
@@ -151,7 +151,7 @@ function MiniPill({ icon: Icon, value, color }: { icon: typeof Gauge; value: num
 
 function HeaderRow({ children, note }: { children: React.ReactNode; note: string }) {
   return (
-    <div className="flex items-center gap-2 rounded-lg bg-[var(--color-surface-default)] px-3 py-2.5 ring-1 ring-border-default">
+    <div className="flex items-center gap-2 rounded-lg bg-surface-elevated px-3 py-2.5 ring-1 ring-border-default">
       <Zap size={15} strokeWidth={2} className="shrink-0 text-[var(--color-brand-400)]" aria-hidden />
       <span className="h-2 w-2 shrink-0 rounded-full bg-[var(--color-status-done)]" aria-hidden />
       <span className="shrink-0 font-semibold text-text-secondary">BT: 139</span>

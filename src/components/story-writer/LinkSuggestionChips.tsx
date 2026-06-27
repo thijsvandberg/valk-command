@@ -145,7 +145,7 @@ export function LinkSuggestionChips({ suggestions, linkedIssueKeys, onLink, mess
         const relationLabel = RELATION_LABELS[relation] ?? relation;
         return (
           <div key={relation}>
-            <div className="flex items-center gap-1.5 px-3 py-1.5 bg-surface-primary border-b border-border-subtle">
+            <div className="flex items-center gap-1.5 px-3 py-1.5 bg-surface-elevated border-b border-border-subtle">
               <span className="text-caption text-text-muted">{relationLabel}</span>
             </div>
             {items.map((s) => {
@@ -171,7 +171,7 @@ export function LinkSuggestionChips({ suggestions, linkedIssueKeys, onLink, mess
                     <span className="min-w-0 flex-1 truncate text-label text-text-secondary">{info.title}</span>
                   ) : (
                     <span className="min-w-0 flex-1">
-                      <span className="block h-3.5 w-3/4 rounded bg-surface-secondary animate-pulse" />
+                      <span className="block h-3.5 w-3/4 rounded bg-overlay-subtle animate-pulse" />
                     </span>
                   )}
                   <LinkButton
