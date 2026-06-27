@@ -161,24 +161,12 @@ export default function NotificationsPage() {
             </div>
           </div>
 
-          <button
-            type="button"
-            role="switch"
-            aria-checked={enabled}
-            onClick={handleBrowserToggle}
+          <ToggleSwitch
+            checked={enabled}
+            onChange={() => handleBrowserToggle()}
             disabled={permissionDenied}
-            className={`relative inline-flex h-6 w-11 shrink-0 items-center rounded-full border transition-colors duration-200 cursor-pointer focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)] disabled:cursor-not-allowed disabled:opacity-40 ${
-              enabled
-                ? "border-[var(--color-brand-500)] bg-[var(--color-brand-500)]"
-                : "border-border-strong bg-overlay-default"
-            }`}
-          >
-            <span
-              className={`inline-block h-4 w-4 rounded-full bg-white shadow-sm transition-transform duration-200 ${
-                enabled ? "translate-x-[1.375rem]" : "translate-x-1"
-              }`}
-            />
-          </button>
+            ariaLabel="Browser notifications"
+          />
         </div>
 
         {/* Permission status */}
