@@ -1,6 +1,6 @@
 # BRDG-418: Fix undefined surface tokens rendering transparent backgrounds
 
-**Status:** Not Started
+**Status:** Completed
 **Priority:** High
 **Type:** Bug — design tokens (UI audit, quick win)
 
