@@ -8,7 +8,7 @@
  */
 
 import Link from "next/link";
-import { ArrowUpRight, LayoutGrid, Rows3, FlaskConical, Shapes, MousePointerClick, Type, PanelTop, PanelTopDashed, AppWindow, ListChecks, Gem, Gauge, Hash, SendHorizontal, BarChart3, History as HistoryIcon, Sparkles, RefreshCw, Target, PanelsTopLeft, SlidersHorizontal, SquareStack } from "lucide-react";
+import { ArrowUpRight, LayoutGrid, Rows3, FlaskConical, Shapes, MousePointerClick, Type, PanelTop, PanelTopDashed, AppWindow, ListChecks, Gem, Gauge, Hash, SendHorizontal, BarChart3, History as HistoryIcon, Sparkles, RefreshCw, Target, PanelsTopLeft, SlidersHorizontal, SquareStack, Bell } from "lucide-react";
 
 type Exploration = {
   slug: string;
@@ -22,6 +22,15 @@ type Exploration = {
 const ICON = "h-5 w-5";
 
 const EXPLORATIONS: Exploration[] = [
+  {
+    slug: "status-changes",
+    title: "Status changes on the active sprint",
+    blurb:
+      "Models BRDG-414: surface, for a ticket on your team's active sprint that changed Jira status, the from -> to transition, the Jira event time (not the local sync time) and who made the change — shown only when the changer differs from the assignee. Each change also hints at what else is new (comments, story edits) as links whose hover reveals when, for Test rows where it deployed (UAT) + pipeline failures, and for Done/Deprecated any open subtasks (reusing the project's LastDeployedInfo + PipelineHealthEntry + subtask counts). Action per new status: Done/Deprecated -> Move to bottom, which files it below a permanent 'Finished work' divider AND marks it seen (nothing auto-moves; the move is the PO's confirmation, using the real trailingDoneDepStart rule); Test -> generate test prompt (stub). A review queue. Chosen: variant 1, a quiet sentence-style line ('Updated from In Progress to Test by Frank') over a faithful, board-like slice (elevated status pill, readiness, epic/SP/BV/assignee); variants 2 (on-row icons) and 3 (grouped chips) kept for comparison. Spec'd as BRDG-414.",
+    status: "Chosen",
+    ticket: "BRDG-414",
+    icon: <Bell className={ICON} strokeWidth={1.5} />,
+  },
   {
     slug: "row-actions",
     title: "Row actions — shared groups",
