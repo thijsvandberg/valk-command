@@ -52,7 +52,7 @@ function TicketContextSidebar({ ticketKey }: { ticketKey: string }) {
           )}
         </div>
 
-        <div className="rounded-lg border border-border-default bg-overlay-subtle p-3 text-body-sm leading-[1.6] text-text-tertiary">
+        <div className="rounded-lg border border-border-default bg-overlay-subtle p-3 text-body-sm leading-body text-text-tertiary">
           {descSnippet}
         </div>
 

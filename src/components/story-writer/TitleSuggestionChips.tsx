@@ -31,7 +31,7 @@ export function TitleSuggestionChips({ titles, onApply, currentTitle }: TitleSug
         className="flex min-h-8 w-full items-center gap-1.5 px-3 py-1.5 bg-overlay-subtle border-b border-border-default cursor-pointer hover:bg-overlay-default transition-colors duration-150 focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-[var(--color-brand-400)]"
       >
         <Type size={10} strokeWidth={1.5} className="text-text-muted" />
-        <span className="text-caption font-medium uppercase tracking-[0.06em] text-text-tertiary">
+        <span className="text-caption font-medium uppercase tracking-label text-text-tertiary">
           Title suggestions
         </span>
         {hasApplied && <span className="ml-auto flex items-center mr-1.5"><AppliedBadge /></span>}
@@ -65,7 +65,7 @@ export function TitleSuggestionChips({ titles, onApply, currentTitle }: TitleSug
                   : <span className="tabular-nums">{i + 1}</span>}
               </span>
               <span
-                className={`flex-1 text-body-sm leading-[1.6] ${
+                className={`flex-1 text-body-sm leading-body ${
                   isSelected ? "text-text-primary" : "text-text-secondary"
                 }`}
               >

@@ -27,7 +27,7 @@ function GeneratePrompt({
     <div className="rounded-xl border border-border-default bg-overlay-subtle px-4 py-4 space-y-3">
       <div className="flex items-center gap-2">
         <Icon size={13} strokeWidth={1.5} className="text-[var(--color-brand-400)]/50 shrink-0" />
-        <span className="text-body-sm font-semibold uppercase tracking-[0.12em] text-[var(--color-brand-400)]/50">
+        <span className="text-body-sm font-semibold uppercase tracking-label text-[var(--color-brand-400)]/50">
           AI {label}
         </span>
       </div>
@@ -138,7 +138,7 @@ export function StakeholderBriefing({
 
         {/* Drawer header */}
         <div className="flex shrink-0 items-center justify-between gap-3 border-b border-border-default px-5 py-3.5">
-          <span className="text-body-sm font-semibold uppercase tracking-[0.12em] text-text-tertiary">
+          <span className="text-body-sm font-semibold uppercase tracking-label text-text-tertiary">
             AI Analysis
           </span>
           <button

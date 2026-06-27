@@ -6,10 +6,10 @@ export const metadata: Metadata = { title: "Workspace Jobs - Settings" };
 export default function WorkspaceJobsPage() {
   return (
     <>
-      <h2 className="text-body-sm font-medium text-text-secondary uppercase tracking-[0.06em] mb-2">
+      <h2 className="text-body-sm font-medium text-text-secondary uppercase tracking-label mb-2">
         Workspace Jobs
       </h2>
-      <p className="text-body-sm text-text-tertiary mb-6 leading-[1.6]">
+      <p className="text-body-sm text-text-tertiary mb-6 leading-body">
         Recurring jobs that run on a cron schedule and trigger skills on the remote workspace agent.
       </p>
       <JobsPanel />

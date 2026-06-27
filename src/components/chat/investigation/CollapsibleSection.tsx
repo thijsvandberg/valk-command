@@ -44,7 +44,7 @@ export function CollapsibleSection({
         />
       </button>
       {open && (
-        <div className="pb-2 text-body-lg leading-[1.7] text-text-secondary font-[var(--font-body)]">
+        <div className="pb-2 text-body-lg leading-prose text-text-secondary font-[var(--font-body)]">
           {children}
           {copyContent && (
             <CopyActions content={copyContent} className="mt-2 pt-1.5 border-t border-border-subtle" />

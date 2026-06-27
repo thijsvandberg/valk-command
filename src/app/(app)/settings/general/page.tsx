@@ -50,7 +50,7 @@ export default function GeneralSettingsPage() {
 
   return (
     <>
-      <h2 className="mb-5 text-body-sm font-medium uppercase tracking-[0.06em] text-text-secondary">
+      <h2 className="mb-5 text-body-sm font-medium uppercase tracking-label text-text-secondary">
         Story Writer Defaults
       </h2>
 
@@ -107,7 +107,7 @@ export default function GeneralSettingsPage() {
         This setting only affects new stories created from the command palette. The sprint list is sourced from your configured sprint slots.
       </p>
 
-      <h2 className="mb-5 mt-10 text-body-sm font-medium uppercase tracking-[0.06em] text-text-secondary">
+      <h2 className="mb-5 mt-10 text-body-sm font-medium uppercase tracking-label text-text-secondary">
         Sprint Board
       </h2>
 
@@ -162,7 +162,7 @@ export default function GeneralSettingsPage() {
         The generic project backlog stays reachable through the Backlogs dropdown; this setting only governs the drag-overlay drop tile.
       </p>
 
-      <h2 className="mb-5 mt-10 text-body-sm font-medium uppercase tracking-[0.06em] text-text-secondary">
+      <h2 className="mb-5 mt-10 text-body-sm font-medium uppercase tracking-label text-text-secondary">
         Teams
       </h2>
 

@@ -40,7 +40,7 @@ export function ConfirmDialog({
         <h3 className="font-[var(--font-display)] text-body-lg font-semibold text-text-primary">
           {title}
         </h3>
-        <p className="mt-2 text-body-sm leading-[1.7] text-text-secondary">{description}</p>
+        <p className="mt-2 text-body-sm leading-prose text-text-secondary">{description}</p>
         {extra && <div className="mt-3">{extra}</div>}
         <div className="mt-5 flex items-center justify-end gap-2">
           {extraActions}

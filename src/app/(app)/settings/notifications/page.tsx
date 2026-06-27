@@ -140,7 +140,7 @@ export default function NotificationsPage() {
 
   return (
     <>
-      <h2 className="mb-5 text-body-sm font-medium uppercase tracking-[0.06em] text-text-secondary">
+      <h2 className="mb-5 text-body-sm font-medium uppercase tracking-label text-text-secondary">
         Browser Notifications
       </h2>
 
@@ -203,7 +203,7 @@ export default function NotificationsPage() {
 
       {availableTeams.length > 0 && (
         <>
-          <h2 className="mb-5 mt-10 text-body-sm font-medium uppercase tracking-[0.06em] text-text-secondary">
+          <h2 className="mb-5 mt-10 text-body-sm font-medium uppercase tracking-label text-text-secondary">
             Subscribed Teams
           </h2>
 
@@ -234,7 +234,7 @@ export default function NotificationsPage() {
         </>
       )}
 
-      <h2 className="mb-5 mt-10 text-body-sm font-medium uppercase tracking-[0.06em] text-text-secondary">
+      <h2 className="mb-5 mt-10 text-body-sm font-medium uppercase tracking-label text-text-secondary">
         Notification Categories
       </h2>
 

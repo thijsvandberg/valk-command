@@ -128,7 +128,7 @@ export function AiInsightsPanel({
         <div className="flex items-center justify-between gap-2 mb-4">
           <div className="flex min-w-0 flex-1 items-center gap-2">
             <Icon size={13} strokeWidth={1.5} className="text-[var(--color-brand-400)]/70 shrink-0" />
-            <span className="text-body-sm font-semibold uppercase tracking-[0.12em] text-[var(--color-brand-400)]/60">
+            <span className="text-body-sm font-semibold uppercase tracking-label text-[var(--color-brand-400)]/60">
               AI {label}
             </span>
             {generatedAt && hasResult && (
@@ -241,7 +241,7 @@ export function AiInsightsPanel({
             disabled={!hasResult || isRunning}
           >
             <Icon size={13} strokeWidth={1.5} className="text-[var(--color-brand-400)]/70 shrink-0" />
-            <span className="text-body-sm font-semibold uppercase tracking-[0.12em] text-[var(--color-brand-400)]/60">
+            <span className="text-body-sm font-semibold uppercase tracking-label text-[var(--color-brand-400)]/60">
               AI {label}
             </span>
             {generatedAt && hasResult && (

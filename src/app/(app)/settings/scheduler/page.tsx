@@ -132,10 +132,10 @@ export default function SchedulerPage() {
 
   return (
     <>
-      <h2 className="text-body-sm font-medium text-text-secondary uppercase tracking-[0.06em] mb-2">
+      <h2 className="text-body-sm font-medium text-text-secondary uppercase tracking-label mb-2">
         Scheduled Tasks
       </h2>
-      <p className="text-body-sm text-text-tertiary mb-6 leading-[1.6]">
+      <p className="text-body-sm text-text-tertiary mb-6 leading-body">
         Tasks run automatically during normal app usage. The scheduler checks for due tasks
         on every page load and every 30 seconds.
       </p>

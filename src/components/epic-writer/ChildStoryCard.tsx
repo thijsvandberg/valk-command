@@ -126,7 +126,7 @@ export function ChildStoryCard({
       {bullets.length > 0 && (
         <ul className="mt-2.5 space-y-1">
           {bullets.map((bullet, i) => (
-            <li key={i} className="flex gap-1.5 text-body-sm leading-[1.6] text-text-secondary">
+            <li key={i} className="flex gap-1.5 text-body-sm leading-body text-text-secondary">
               <span className="mt-[0.45rem] h-1 w-1 shrink-0 rounded-full bg-text-muted" />
               <span className="min-w-0">{bullet}</span>
             </li>
@@ -159,7 +159,7 @@ export function ChildStoryCard({
                   onChange={(e) => setDraft(e.target.value)}
                   onBlur={commitEdit}
                   rows={Math.min(16, Math.max(4, draft.split("\n").length + 1))}
-                  className="w-full resize-y rounded-md border border-border-default bg-surface-base px-2.5 py-2 text-body-sm leading-[1.6] text-text-secondary focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-[var(--color-brand-400)]"
+                  className="w-full resize-y rounded-md border border-border-default bg-surface-base px-2.5 py-2 text-body-sm leading-body text-text-secondary focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-[var(--color-brand-400)]"
                 />
               </div>
             ) : (
@@ -174,7 +174,7 @@ export function ChildStoryCard({
                   }
                 }}
                 title={onEditBody ? "Click to edit" : undefined}
-                className={`mt-1.5 whitespace-pre-wrap rounded-md bg-overlay-subtle px-2.5 py-2 text-body-sm leading-[1.6] text-text-secondary ${onEditBody ? "cursor-text" : ""}`}
+                className={`mt-1.5 whitespace-pre-wrap rounded-md bg-overlay-subtle px-2.5 py-2 text-body-sm leading-body text-text-secondary ${onEditBody ? "cursor-text" : ""}`}
               >
                 {card.body}
               </div>

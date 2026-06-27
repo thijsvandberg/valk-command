@@ -53,7 +53,7 @@ export function SuggestionCard({
         className="flex min-h-8 w-full items-center gap-1.5 px-3 py-1.5 bg-overlay-subtle border-b border-border-default cursor-pointer hover:bg-overlay-default transition-colors duration-150 focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-[var(--color-brand-400)]"
       >
         {icon}
-        <span className="text-caption font-medium uppercase tracking-[0.06em] text-text-tertiary">
+        <span className="text-caption font-medium uppercase tracking-label text-text-tertiary">
           {title}
         </span>
         {headerRight && <span className="ml-auto flex items-center mr-1.5">{headerRight}</span>}
@@ -74,7 +74,7 @@ export function SuggestionCard({
 
 export function AppliedBadge() {
   return (
-    <span className="inline-flex items-center gap-1 text-caption font-medium uppercase tracking-[0.06em] text-text-muted">
+    <span className="inline-flex items-center gap-1 text-caption font-medium uppercase tracking-label text-text-muted">
       <Check size={11} strokeWidth={2} className="shrink-0" />
       Applied
     </span>

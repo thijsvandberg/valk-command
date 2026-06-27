@@ -159,7 +159,7 @@ export function RecentlyViewedView({
             <History className="h-4 w-4 text-text-muted" strokeWidth={1.5} />
           </span>
           <p className="text-body-sm text-text-muted">No recently viewed tickets yet</p>
-          <p className="max-w-[240px] text-label leading-[1.6] text-text-muted/70">
+          <p className="max-w-[240px] text-label leading-body text-text-muted/70">
             Tickets you open on the board, in refinement or on their page show up here.
           </p>
         </div>
@@ -171,7 +171,7 @@ export function RecentlyViewedView({
               if (group.length === 0) return null;
               return (
                 <div key={bucket}>
-                  <p className="px-1 pb-1 pt-3 font-mono text-caption uppercase tracking-[0.14em] text-text-muted first:pt-1.5">
+                  <p className="px-1 pb-1 pt-3 font-mono text-caption uppercase tracking-label text-text-muted first:pt-1.5">
                     {bucket}
                   </p>
                   {group.map((entry) => (
@@ -191,7 +191,7 @@ export function RecentlyViewedView({
             })}
           </div>
           <div className="mt-1 flex items-center justify-between border-t border-border-subtle px-1.5 pt-2">
-            <span className="font-mono text-caption uppercase tracking-[0.12em] text-text-muted">
+            <span className="font-mono text-caption uppercase tracking-label text-text-muted">
               Last {entries.length} tickets
             </span>
             <button

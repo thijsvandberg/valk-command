@@ -208,7 +208,7 @@ export function MessageInfoButton({
         >
           <div className="space-y-2.5">
             <div className="flex items-center justify-between gap-3">
-              <span className="text-caption font-medium uppercase tracking-[0.06em] text-text-tertiary">Sent</span>
+              <span className="text-caption font-medium uppercase tracking-label text-text-tertiary">Sent</span>
               <span className="text-label tabular-nums text-text-secondary">{formatTimestamp(message.timestamp)}</span>
             </div>
 
@@ -488,10 +488,10 @@ export function ChatMessage({
               className="flex min-h-8 items-center gap-1.5 px-3 py-1 bg-overlay-subtle border-b border-border-default cursor-pointer hover:bg-overlay-default transition-colors duration-150"
             >
               <FileText size={11} strokeWidth={1.5} className="shrink-0 text-text-muted" />
-              <span className="text-caption font-medium uppercase tracking-[0.06em] text-text-tertiary">Draft updated</span>
+              <span className="text-caption font-medium uppercase tracking-label text-text-tertiary">Draft updated</span>
               {draftAccepted && (
                 <span className="ml-auto flex items-center mr-1.5">
-                  <span className="inline-flex h-5 items-center gap-1 text-caption font-medium uppercase tracking-[0.06em] text-text-muted">
+                  <span className="inline-flex h-5 items-center gap-1 text-caption font-medium uppercase tracking-label text-text-muted">
                     <Check size={11} strokeWidth={2} className="shrink-0" />
                     Accepted
                   </span>
@@ -550,7 +550,7 @@ export function ChatMessage({
                         : 300,
                     }}
                   >
-                    <div className="description-content chat-markdown text-body-sm leading-[1.7] text-text-secondary">
+                    <div className="description-content chat-markdown text-body-sm leading-prose text-text-secondary">
                       {renderMarkdown(draftContent, { linkifyRefs: true })}
                     </div>
                   </div>
@@ -639,7 +639,7 @@ export function DraftCard({ content }: { content: string }) {
           <div className="relative">
             <div
               ref={contentRef}
-              className={`description-content chat-markdown text-body-sm leading-[1.7] text-text-secondary overflow-hidden ${
+              className={`description-content chat-markdown text-body-sm leading-prose text-text-secondary overflow-hidden ${
                 !isOverflowing ? "" : ""
               }`}
               style={isOverflowing ? { maxHeight: "none" } : undefined}

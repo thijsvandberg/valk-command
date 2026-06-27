@@ -38,7 +38,7 @@ export function TypeSuggestionChip({ type, onApply, currentType }: TypeSuggestio
         className="flex w-full items-center gap-1.5 px-3 py-1.5 bg-overlay-subtle border-b border-border-default cursor-pointer hover:bg-overlay-default transition-colors duration-150 focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-[var(--color-brand-400)]"
       >
         <ArrowRight size={10} strokeWidth={1.5} className="text-text-muted" />
-        <span className="text-caption font-medium uppercase tracking-[0.06em] text-text-tertiary">
+        <span className="text-caption font-medium uppercase tracking-label text-text-tertiary">
           Type change
         </span>
         {applied && <span className="ml-auto"><AppliedBadge /></span>}

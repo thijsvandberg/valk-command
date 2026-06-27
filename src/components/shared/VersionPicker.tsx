@@ -151,7 +151,7 @@ function VersionPickerInner({
             <div key={name}>
               {(gi > 0 || ungrouped.length > 0) && <div className="mx-3.5 border-t border-border-default" />}
               <div className="px-3.5 pb-1 pt-2.5">
-                <span className="text-caption font-medium uppercase tracking-[0.07em] text-text-tertiary">{name}</span>
+                <span className="text-caption font-medium uppercase tracking-label text-text-tertiary">{name}</span>
               </div>
               {options.filter((o) => o.group === name).map((o) => (
                 <VersionPickerItem

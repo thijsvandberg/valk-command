@@ -256,7 +256,7 @@ function TicketDetail({
               {data.title}
             </h3>
             {data.description ? (
-              <div className="description-content text-body-sm leading-[1.7] text-text-secondary">
+              <div className="description-content text-body-sm leading-prose text-text-secondary">
                 {renderMarkdown(data.description, { linkifyRefs: true })}
               </div>
             ) : (

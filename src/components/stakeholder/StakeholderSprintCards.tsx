@@ -85,7 +85,7 @@ export function StakeholderSprintCards({
         <div className="mx-auto max-w-7xl space-y-10">
           {/* Sprint heading + health + goal + sparkline */}
           <div className="space-y-3">
-            <p className="text-body-sm font-semibold uppercase tracking-[0.14em] text-text-muted">
+            <p className="text-body-sm font-semibold uppercase tracking-label text-text-muted">
               Sprint overview
             </p>
             {!isCompareMode && (

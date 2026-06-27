@@ -75,10 +75,10 @@ export default function DeprecatedAreasPage() {
   return (
     <>
       <div className="mb-5">
-        <h2 className="text-body-sm font-medium text-text-secondary uppercase tracking-[0.06em]">
+        <h2 className="text-body-sm font-medium text-text-secondary uppercase tracking-label">
           Deprecated Areas
         </h2>
-        <p className="text-body-sm text-text-tertiary mt-2 leading-[1.7]">
+        <p className="text-body-sm text-text-tertiary mt-2 leading-prose">
           Retired product or tech areas. The backlog deep scan flags tickets that are about one of
           these as likely obsolete. Add a term plus any alternate spellings (comma-separated).
         </p>
@@ -242,7 +242,7 @@ function DeprecatedAreaRow({
           )}
         </div>
         {area.note && (
-          <p className="text-body-sm text-text-tertiary mt-1 leading-[1.6]">{area.note}</p>
+          <p className="text-body-sm text-text-tertiary mt-1 leading-body">{area.note}</p>
         )}
       </button>
       <Button

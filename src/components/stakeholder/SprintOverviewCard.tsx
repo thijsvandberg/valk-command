@@ -35,20 +35,20 @@ function formatDate(iso: string | null): string {
 function SprintStateBadge({ state }: { state: string }) {
   if (state === "active") {
     return (
-      <span className="inline-flex items-center rounded-full bg-[var(--color-brand-500)]/15 px-2 py-0.5 text-caption font-semibold uppercase tracking-[0.1em] text-[var(--color-brand-400)]/80">
+      <span className="inline-flex items-center rounded-full bg-[var(--color-brand-500)]/15 px-2 py-0.5 text-caption font-semibold uppercase tracking-label text-[var(--color-brand-400)]/80">
         Active
       </span>
     );
   }
   if (state === "closed") {
     return (
-      <span className="inline-flex items-center rounded-full bg-[var(--color-secondary-400)]/10 px-2 py-0.5 text-caption font-semibold uppercase tracking-[0.1em] text-[var(--color-secondary-400)]/60">
+      <span className="inline-flex items-center rounded-full bg-[var(--color-secondary-400)]/10 px-2 py-0.5 text-caption font-semibold uppercase tracking-label text-[var(--color-secondary-400)]/60">
         History
       </span>
     );
   }
   return (
-    <span className="inline-flex items-center rounded-full bg-overlay-default px-2 py-0.5 text-caption font-semibold uppercase tracking-[0.1em] text-text-tertiary">
+    <span className="inline-flex items-center rounded-full bg-overlay-default px-2 py-0.5 text-caption font-semibold uppercase tracking-label text-text-tertiary">
       Planned
     </span>
   );
@@ -91,7 +91,7 @@ function SectionHeader({
   }[color];
 
   return (
-    <h3 className={`mb-4 flex items-center gap-2 text-body-sm font-semibold uppercase tracking-[0.1em] ${styles.heading}`}>
+    <h3 className={`mb-4 flex items-center gap-2 text-body-sm font-semibold uppercase tracking-label ${styles.heading}`}>
       <span className={`h-px flex-1 ${styles.line}`} />
       {label}
       <span className={`rounded-full px-1.5 py-0.5 text-caption tabular-nums ${styles.badge}`}>
@@ -235,7 +235,7 @@ function TopValueItems({ tickets }: { tickets: StakeholderTicket[] }) {
     >
       <div className="flex items-center gap-2">
         <span
-          className="text-caption font-semibold uppercase tracking-[0.12em]"
+          className="text-caption font-semibold uppercase tracking-label"
           style={{ color: highColor.text }}
         >
           Top value items

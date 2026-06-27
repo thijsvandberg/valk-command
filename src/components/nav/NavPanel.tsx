@@ -296,7 +296,7 @@ function NavigationView({
 
       {/* Rare views as a faint "More" footer */}
       <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 border-t border-border-subtle px-1 pt-3" style={revealStyle(open, 5)}>
-        <span className="text-caption font-semibold uppercase tracking-[0.12em] text-text-muted">More</span>
+        <span className="text-caption font-semibold uppercase tracking-label text-text-muted">More</span>
         {RARE.map((item) => {
           const on = isActive(item.href);
           return (

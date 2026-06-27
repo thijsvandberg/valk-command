@@ -95,7 +95,7 @@ export function TicketGroup({ tickets, showKeys = false, showAssignee = false, c
     <div className="space-y-5">
       {groups.map(([epic, items]) => (
         <div key={epic}>
-          <div className="mb-2 text-caption font-semibold uppercase tracking-[0.12em] text-text-tertiary">
+          <div className="mb-2 text-caption font-semibold uppercase tracking-label text-text-tertiary">
             {epic}
           </div>
           <ul className="space-y-1.5">

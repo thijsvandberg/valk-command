@@ -209,7 +209,7 @@ function CollapsibleComments({
                     {new Date(comment.createdAt).toLocaleString("nl-NL", { hour12: false })}
                   </span>
                 </div>
-                <div className="description-content mt-1 text-body-sm leading-[1.7] text-text-tertiary">
+                <div className="description-content mt-1 text-body-sm leading-prose text-text-tertiary">
                   {renderMarkdown(comment.content, { linkifyRefs: true })}
                 </div>
               </div>

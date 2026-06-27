@@ -160,7 +160,7 @@ export function CommandPalette() {
               return (
                 <div key={`${group.category}-${sectionStartIdx}`}>
                   {/* Section header */}
-                  <div className="px-5 pt-3 pb-1.5 text-caption font-semibold uppercase tracking-[0.08em] text-text-muted font-[var(--font-body)]">
+                  <div className="px-5 pt-3 pb-1.5 text-caption font-semibold uppercase tracking-label text-text-muted font-[var(--font-body)]">
                     {CATEGORY_LABELS[group.category]}
                   </div>
 

@@ -30,6 +30,16 @@
   --text-heading: 18px;
   --text-heading-lg: 24px;
 
+  /* Uppercase micro-label letter-spacing. The UI had five near-identical values
+     (0.06-0.14em) scattered across uppercase eyebrow labels; this is the single
+     authoritative one so they read as one family. */
+  --tracking-label: 0.06em;
+
+  /* Body line-height tokens for prose-like running text (the two dominant
+     long-form values; one-off line-heights for tight UI rows stay local). */
+  --leading-body: 1.6;
+  --leading-prose: 1.7;
+
   /* Palette tokens: Ocean Teal */
   --color-brand-50: #e6f7f7;
   --color-brand-100: #b3eae9;

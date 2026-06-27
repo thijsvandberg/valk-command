@@ -113,7 +113,7 @@ export default function IntegrationsPage() {
 
   return (
     <>
-      <h2 className="mb-5 text-body-sm font-medium uppercase tracking-[0.06em] text-text-secondary">
+      <h2 className="mb-5 text-body-sm font-medium uppercase tracking-label text-text-secondary">
         Integrations
       </h2>
 

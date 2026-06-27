@@ -36,7 +36,7 @@ export function InvestigationResult({ data, rawContent }: InvestigationResultPro
             Finding
           </span>
         </div>
-        <div className="text-body-lg leading-[1.7] text-text-primary font-[var(--font-body)]">
+        <div className="text-body-lg leading-prose text-text-primary font-[var(--font-body)]">
           <ReactMarkdown remarkPlugins={[remarkGfm]} components={markdownComponents}>
             {data.finding}
           </ReactMarkdown>

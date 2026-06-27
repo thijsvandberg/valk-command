@@ -58,7 +58,7 @@ export function QueryStatsWidget() {
       <div className="mb-3 flex items-center justify-between">
         <div className="flex items-center gap-2">
           <Database size={14} strokeWidth={1.5} className="text-text-tertiary" />
-          <h3 className="text-body-sm font-medium uppercase tracking-[0.06em] text-text-secondary">
+          <h3 className="text-body-sm font-medium uppercase tracking-label text-text-secondary">
             Slow queries
           </h3>
           {data && (

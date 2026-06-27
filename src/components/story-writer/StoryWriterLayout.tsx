@@ -157,7 +157,7 @@ export function StoryWriterLayout({ ticketKey, draftTitle, draftType }: StoryWri
 
                   {actions.showWrapUpMenu && (
                     <div className="absolute right-0 top-full z-30 mt-2 w-[320px] rounded-2xl border border-border-strong bg-[var(--color-surface-floating)] p-2 shadow-[var(--shadow-lg)]">
-                      <p className="px-2 pb-0.5 pt-1 text-caption font-semibold uppercase tracking-[0.14em] text-text-muted">
+                      <p className="px-2 pb-0.5 pt-1 text-caption font-semibold uppercase tracking-label text-text-muted">
                         Wrap up this story
                       </p>
                       <p className="px-2 pb-2 text-label leading-[1.5] text-text-tertiary">
