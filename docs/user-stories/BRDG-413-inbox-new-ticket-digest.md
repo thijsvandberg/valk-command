@@ -138,7 +138,7 @@ In `useInboxGroupBy.ts` change the default from `"date"` to `"relevance"`. Exist
 - [x] The digest counts only tickets that arrived in the inbox since the last time I marked something read (not since I opened /inbox); with no prior read action it counts the whole current unread inbox. <!-- baseline = MAX(readAt), jiraCreatedAt > baseline -->
 - [x] The digest is per-user (my baseline and counts are mine). <!-- userId-scoped throughout -->
 - [x] The digest shows the total and how many new tickets landed in each relevance bucket (non-empty buckets, in ladder order with their labels); with no default team it shows the total only. <!-- classifyInboxRelevance reuse -->
-- [ ] The notification is a persistent in-app banner/card (not a red dot); it survives reload, and I can Open inbox (jump to Inbox in Relevance grouping) or Dismiss it. <!-- InboxDigestBanner + server-backed state -->
+- [x] The notification is a persistent in-app banner/card (not a red dot); it survives reload, and I can Open inbox (jump to Inbox in Relevance grouping) or Dismiss it. <!-- InboxDigestBanner + server-backed state -->
 - [ ] The Inbox defaults to Relevance grouping (falling back to date rendering only when no default team is set). <!-- useInboxGroupBy default -->
 
 ## Tests

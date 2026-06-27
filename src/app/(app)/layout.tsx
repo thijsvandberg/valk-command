@@ -21,6 +21,9 @@ const KeyboardShortcutsModal = dynamic(
 const TaskCompletionNotifier = dynamic(
   () => import("@/components/chat/TaskCompletionNotifier").then((m) => ({ default: m.TaskCompletionNotifier })),
 );
+const InboxDigestBanner = dynamic(
+  () => import("@/components/notifications/InboxDigestBanner").then((m) => ({ default: m.InboxDigestBanner })),
+);
 
 export default function AppLayout({ children }: { children: React.ReactNode }) {
   return (
@@ -38,6 +41,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
       <GlobalSearch />
       <KeyboardShortcutsModal />
       <DeployNotifier />
+      <InboxDigestBanner />
     </ActivityProvider>
     </SWRProvider>
   );
