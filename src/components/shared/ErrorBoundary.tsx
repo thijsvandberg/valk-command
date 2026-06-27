@@ -3,6 +3,7 @@
 import { Component } from "react";
 import type { ReactNode, ErrorInfo } from "react";
 import { Button } from "@/components/ui/Button";
+import { ERROR_BOUNDARY_TITLE, ERROR_BOUNDARY_MESSAGE } from "./error-copy";
 
 interface ErrorBoundaryProps {
   children: ReactNode;
@@ -43,10 +44,10 @@ export class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundarySt
         <div className="flex h-full min-h-[200px] items-center justify-center">
           <div className="text-center">
             <h2 className="font-[var(--font-display)] text-heading font-semibold text-text-secondary">
-              Something went wrong
+              {ERROR_BOUNDARY_TITLE}
             </h2>
             <p className="mt-2 text-body-lg text-text-tertiary">
-              An unexpected error occurred in this section.
+              {ERROR_BOUNDARY_MESSAGE}
             </p>
             <Button variant="primary" size="lg" onClick={this.handleRetry} className="mt-4">
               Try again

@@ -4,6 +4,7 @@ import { useEffect } from "react";
 import { Button } from "@/components/ui/Button";
 import { reportClientError } from "@/lib/client-error";
 import { ErrorDigest } from "@/components/ErrorDigest";
+import { ERROR_BOUNDARY_TITLE, ERROR_BOUNDARY_MESSAGE } from "@/components/shared/error-copy";
 
 export default function AppError({
   error,
@@ -34,9 +35,9 @@ export default function AppError({
 
   return (
     <div className="flex min-h-[60vh] flex-col items-center justify-center gap-4 text-text-secondary">
-      <h2 className="font-[var(--font-display)] text-heading font-semibold tracking-[-0.02em] text-text-primary">Something went wrong</h2>
+      <h2 className="font-[var(--font-display)] text-heading font-semibold tracking-[-0.02em] text-text-primary">{ERROR_BOUNDARY_TITLE}</h2>
       <p className="max-w-md text-center text-body-lg">
-        An unexpected error occurred. You can try again or navigate to a different page.
+        {ERROR_BOUNDARY_MESSAGE}
       </p>
       <Button variant="ghost" size="lg" onClick={reset}>
         Try again

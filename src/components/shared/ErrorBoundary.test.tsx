@@ -1,6 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { render, screen, fireEvent } from "@testing-library/react";
 import { ErrorBoundary } from "./ErrorBoundary";
+import { ERROR_BOUNDARY_MESSAGE } from "./error-copy";
 
 let shouldThrow = false;
 
@@ -32,6 +33,7 @@ describe("ErrorBoundary", () => {
       </ErrorBoundary>
     );
     expect(screen.getByText("Something went wrong")).toBeDefined();
+    expect(screen.getByText(ERROR_BOUNDARY_MESSAGE)).toBeDefined();
     expect(screen.getByText("Try again")).toBeDefined();
   });
 
