@@ -121,9 +121,9 @@ Risks: accountId unavailable from changelog (name-based compare); inline-changel
 - [ ] Move-to-bottom lands the ticket above the trailing block and marks it seen. <!-- sprint-insert-position.test.ts + action test -->
 - [ ] Divider renders at the correct boundary, including the empty-block case. <!-- board group test -->
 - [ ] Open-subtask flag shows only for Done/Deprecated with `openSubtaskCount > 0`. <!-- component test -->
-- [ ] Mark-seen / mark-all-seen clears items for the current user. <!-- status_change_seen route test -->
-- [ ] A change marked seen stays cleared, but a later transition of the same ticket produces a new unseen item. <!-- status_change_seen keyed on statusChangeId -->
-- [ ] "New" comment/story signal respects the 24h window and excludes the current user's own activity. <!-- lastCommentAt/lastContentEditAt + self-exclude -->
+- [x] Mark-seen / mark-all-seen clears items for the current user. <!-- src/lib/status-changes-query.test.ts -->
+- [x] A change marked seen stays cleared, but a later transition of the same ticket produces a new unseen item. <!-- status_change_seen keyed on statusChangeId; status-changes-query.test.ts -->
+- [x] "New" comment/story signal respects the 24h window and excludes the current user's own activity. <!-- status-changes-query.test.ts -->
 
 ## Related
 
