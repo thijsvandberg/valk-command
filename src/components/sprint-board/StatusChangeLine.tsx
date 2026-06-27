@@ -119,10 +119,10 @@ export function StatusChangeLine({
     <div
       onClick={(e) => e.stopPropagation()}
       onPointerDown={(e) => e.stopPropagation()}
-      className="flex items-center gap-2 bg-[var(--color-surface-base)]/40 py-1.5 pl-10 pr-[23px]"
+      className="flex items-center gap-2 bg-[var(--color-surface-base)]/40 py-1.5 pl-[45px] pr-[23px]"
     >
-      {/* Single elbow connector, aligned under the row's issue-type icon (gutter = pl-4 + w-3.5
-          checkbox + gap-2 ≈ 38px), so the line clearly branches from the row ABOVE (its parent). */}
+      {/* Single elbow connector whose vertical lines up with the row's issue-type icon (~48px
+          from the row's left edge), so the line clearly branches DOWN from the row above. */}
       <span className="mb-2 h-3 w-3.5 shrink-0 rounded-bl-[6px] border-b border-l border-border-strong" aria-hidden />
 
       <div className="flex min-w-0 flex-1 flex-wrap items-center gap-x-2.5 gap-y-1.5">
