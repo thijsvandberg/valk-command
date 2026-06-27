@@ -139,7 +139,7 @@ In `useInboxGroupBy.ts` change the default from `"date"` to `"relevance"`. Exist
 - [x] The digest is per-user (my baseline and counts are mine). <!-- userId-scoped throughout -->
 - [x] The digest shows the total and how many new tickets landed in each relevance bucket (non-empty buckets, in ladder order with their labels); with no default team it shows the total only. <!-- classifyInboxRelevance reuse -->
 - [x] The notification is a persistent in-app banner/card (not a red dot); it survives reload, and I can Open inbox (jump to Inbox in Relevance grouping) or Dismiss it. <!-- InboxDigestBanner + server-backed state -->
-- [ ] The Inbox defaults to Relevance grouping (falling back to date rendering only when no default team is set). <!-- useInboxGroupBy default -->
+- [x] The Inbox defaults to Relevance grouping (falling back to date rendering only when no default team is set). <!-- useInboxGroupBy default -->
 
 ## Tests
 
@@ -147,7 +147,7 @@ In `useInboxGroupBy.ts` change the default from `"date"` to `"relevance"`. Exist
 - [x] New-since-baseline filtering and per-bucket counts are correct, including total-only fallback when no default team. <!-- inbox-digest.test -->
 - [x] Window/cap logic: weekend yields nothing; morning delivers at 09:30; ≤2 deliveries/weekday; arriving at 14:00 shows one fresh banner and consumes both slots; an empty digest leaves the slot open; day rollover resets bookkeeping. <!-- inbox-digest-store.test -->
 - [x] `GET /api/inbox/digest` evaluates + returns per user; `DELETE` clears `active` but preserves `deliveredWindows`. <!-- route.test -->
-- [ ] Inbox group-by default is `relevance` and still falls back to date when no default team is set. <!-- useInboxGroupBy.test -->
+- [x] Inbox group-by default is `relevance` and still falls back to date when no default team is set. <!-- useInboxGroupBy.test -->
 
 ## Related
 

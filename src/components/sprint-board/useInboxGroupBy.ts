@@ -18,7 +18,10 @@ const GROUP_BY_KEY = "inbox-group-by";
 const COLLAPSED_KEY = "inbox-collapsed-groups";
 
 export function useInboxGroupBy(rows: NewStoryRow[], relevance?: RelevanceOptions) {
-  const [groupBy, setGroupBy] = useSessionStorage<InboxGroupBy>(GROUP_BY_KEY, "date");
+  // Default to Relevance (BRDG-413). effectiveGroupBy below transparently falls
+  // back to date rendering when no default team is set, so this is safe with or
+  // without a team; a previously persisted explicit choice still wins.
+  const [groupBy, setGroupBy] = useSessionStorage<InboxGroupBy>(GROUP_BY_KEY, "relevance");
   const [collapsedArr, setCollapsedArr] = useSessionStorage<string[]>(COLLAPSED_KEY, []);
 
   const collapsedGroups = useMemo(() => new Set(collapsedArr), [collapsedArr]);

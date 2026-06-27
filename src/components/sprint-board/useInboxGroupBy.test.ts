@@ -37,7 +37,14 @@ describe("useInboxGroupBy", () => {
     sessionStorage.clear();
   });
 
-  it("defaults to date grouping", () => {
+  it("defaults to relevance grouping when a default team is set (BRDG-413)", () => {
+    const rows = [row({ key: "BT-1", sprintName: "BT: 138", reporter: { name: "Bob", initials: "B", color: "#000" } })];
+    const { result } = renderHook(() => useInboxGroupBy(rows, relevanceOpts("BT" as Team)));
+    expect(result.current.groupBy).toBe("relevance");
+    expect(result.current.groups[0].label).toBe("On your team's board");
+  });
+
+  it("renders date grouping by default when no team is set (relevance fallback, BRDG-413)", () => {
     const { result } = renderHook(() => useInboxGroupBy([row({ key: "A-1" })]));
     expect(result.current.groupBy).toBe("date");
     expect(result.current.groups[0].key).toBe("today");
