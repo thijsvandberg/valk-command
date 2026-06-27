@@ -161,6 +161,10 @@ export async function POST(request: Request) {
             toStatus: normalizeStatus(change.toStatus),
             changedAt: change.changedAt,
             sprintName: sprintId,
+            // BRDG-414: carry the changelog author through the backfill too.
+            changedBy: change.author,
+            changedByAccountId: change.authorAccountId,
+            changedByAvatar: change.authorAvatar,
           }))
           .filter((row) => !existingStatusSet.has(`${row.ticketKey}:${row.changedAt}`));
 

@@ -107,7 +107,7 @@ export interface JiraIssueFields {
 }
 
 export interface JiraChangelogEntry {
-  author: { displayName: string; avatarUrls?: Record<string, string> };
+  author: { displayName: string; accountId?: string; avatarUrls?: Record<string, string> };
   created: string;
   items: Array<{ field: string; fromString?: string; toString?: string }>;
 }
@@ -648,6 +648,29 @@ export function extractLastChangeAuthor(issue: JiraIssue): { name: string; avata
     name: latest.author.displayName,
     avatar: latest.author.avatarUrls?.["48x48"] ?? null,
   };
+}
+
+/**
+ * Extract the author + Jira event time of the most recent STATUS transition from an
+ * issue's inline changelog (BRDG-414). Histories are newest-first, so the first entry
+ * carrying a status item is the latest transition. Returns null when the issue was
+ * fetched without expand=changelog or has no status history inline.
+ */
+export function extractLastStatusChangeAuthor(
+  issue: JiraIssue,
+): { name: string; accountId: string | null; avatar: string | null; changedAt: string } | null {
+  const histories = issue.changelog?.histories;
+  if (!histories || histories.length === 0) return null;
+  for (const h of histories) {
+    if (!h.author || !h.items?.some((it) => it.field === "status")) continue;
+    return {
+      name: h.author.displayName,
+      accountId: h.author.accountId ?? null,
+      avatar: h.author.avatarUrls?.["48x48"] ?? null,
+      changedAt: h.created,
+    };
+  }
+  return null;
 }
 
 // ---------------------------------------------------------------------------
@@ -1837,7 +1860,7 @@ export class JiraClient {
 // ---------------------------------------------------------------------------
 
 export interface ChangelogEntry {
-  author: { displayName: string; avatarUrls?: Record<string, string> };
+  author: { displayName: string; accountId?: string; avatarUrls?: Record<string, string> };
   created: string;
   items: Array<{
     field: string;
@@ -1876,6 +1899,11 @@ export interface StatusChange {
   fromStatus: string | null;
   toStatus: string;
   changedAt: string;
+  // BRDG-414: who made the change. accountId is present on Jira Cloud changelog
+  // authors but may be absent for some instances/older entries.
+  author: string | null;
+  authorAccountId: string | null;
+  authorAvatar: string | null;
 }
 
 /** Filter raw Jira changelog entries to only status field changes. */
@@ -1888,6 +1916,9 @@ export function filterStatusChanges(entries: ChangelogEntry[]): StatusChange[] {
           fromStatus: item.fromString,
           toStatus: item.toString,
           changedAt: entry.created,
+          author: entry.author?.displayName ?? null,
+          authorAccountId: entry.author?.accountId ?? null,
+          authorAvatar: entry.author?.avatarUrls?.["48x48"] ?? null,
         });
       }
     }

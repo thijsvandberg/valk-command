@@ -100,7 +100,7 @@ Risks: accountId unavailable from changelog (name-based compare); inline-changel
 - [ ] A ticket on the active sprint whose Jira status changed shows a quiet line beneath its board row with the from → to transition. <!-- BoardRow.tsx; prototype src/app/dev/exploration/status-changes/page.tsx -->
 - [ ] The line shows the **Jira event time** (relative, with exact time on hover), never the local sync time. <!-- ticket_status_change.changedAt -->
 - [ ] The changer's name+avatar shows **only when it differs from the assignee**; otherwise only the time shows. <!-- compare changedByAccountId/name vs row assignee -->
-- [ ] "Who" is captured from the Jira changelog author. <!-- filterStatusChanges() in jira-client.ts + new ticket_status_change.changedBy/By columns -->
+- [x] "Who" is captured from the Jira changelog author. <!-- filterStatusChanges() in jira-client.ts + new ticket_status_change.changedBy/By columns -->
 - [ ] New comments and story edits appear as deep-link signals (with activity time on hover) only when within the last 24h and not authored by the current user. <!-- lastCommentAt/lastContentEditAt + author; self-exclude per BRDG-359 -->
 - [ ] A change to **Test** shows the latest UAT deploy + pipeline-failure signal. <!-- useLastDeployed + usePipelineHealth -->
 - [ ] A change to **Done/Deprecated** shows an "N open" flag when `openSubtaskCount > 0`. <!-- openSubtaskCount, src/types/ticket.ts -->
@@ -115,8 +115,8 @@ Risks: accountId unavailable from changelog (name-based compare); inline-changel
 
 ## Tests
 
-- [ ] `filterStatusChanges()` retains author/avatar/accountId from the changelog. <!-- src/lib/jira-client.test.ts -->
-- [ ] Status-change capture stores the author and the Jira `changedAt` on sync. <!-- src/lib/upsert-issue.test.ts -->
+- [x] `filterStatusChanges()` retains author/avatar/accountId from the changelog. <!-- src/lib/jira-client.test.ts -->
+- [x] Status-change capture stores the author and the Jira `changedAt` on sync. <!-- src/lib/upsert-issue.test.ts -->
 - [ ] Changer-vs-assignee rule: name shown when different, hidden when equal. <!-- component test for the line -->
 - [ ] Move-to-bottom lands the ticket above the trailing block and marks it seen. <!-- sprint-insert-position.test.ts + action test -->
 - [ ] Divider renders at the correct boundary, including the empty-block case. <!-- board group test -->

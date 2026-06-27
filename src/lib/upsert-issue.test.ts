@@ -3,7 +3,7 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 import { createTestDb } from "@/db/test-utils";
 import type { BetterSQLite3Database } from "drizzle-orm/better-sqlite3";
 import type * as schema from "@/db/schema";
-import { ticket, ticketSubtask, ticketMetadata, storyVersion, storyWriterSession, conversation, ticketSprint, jiraUser } from "@/db/schema";
+import { ticket, ticketSubtask, ticketMetadata, storyVersion, storyWriterSession, conversation, ticketSprint, jiraUser, ticketStatusChange } from "@/db/schema";
 import { eq, asc } from "drizzle-orm";
 
 let testDb: BetterSQLite3Database<typeof schema>;
@@ -33,6 +33,7 @@ vi.mock("@/lib/jira-client", () => ({
   extractEpicLink: vi.fn().mockReturnValue(null),
   extractAcceptanceCriteria: vi.fn().mockReturnValue(null),
   extractLastChangeAuthor: vi.fn().mockReturnValue(null),
+  extractLastStatusChangeAuthor: vi.fn().mockReturnValue(null),
   FLAGGED_FIELD: "customfield_10002",
 }));
 
@@ -45,7 +46,7 @@ vi.mock("@/lib/ticket-events", () => ({
 }));
 
 import { normalizeIssueType, normalizeStatus, userColor, upsertIssue } from "./upsert-issue";
-import { extractSprints, extractStoryPoints, extractLastChangeAuthor } from "@/lib/jira-client";
+import { extractSprints, extractStoryPoints, extractLastChangeAuthor, extractLastStatusChangeAuthor } from "@/lib/jira-client";
 import { emitTicketEvent } from "@/lib/ticket-events";
 import type { JiraIssue, JiraSprint } from "@/lib/jira-client";
 
@@ -639,5 +640,53 @@ describe("atomic upsert hardening (BRDG-376)", () => {
     expect(versions).toHaveLength(2);
     const hashes = new Set(versions.map((v) => v.contentHash));
     expect(hashes.size).toBe(2);
+  });
+});
+
+describe("status change capture (BRDG-414)", () => {
+  beforeEach(() => {
+    testDb = createTestDb();
+    vi.mocked(extractSprints).mockReturnValue([]);
+    vi.mocked(extractStoryPoints).mockReturnValue(null);
+    vi.mocked(extractLastStatusChangeAuthor).mockReturnValue(null);
+  });
+
+  it("stores the changelog author and the Jira event time on a status change", async () => {
+    await upsertIssue(makeIssue(), "Sprint 1");
+    vi.mocked(extractLastStatusChangeAuthor).mockReturnValue({
+      name: "Carol Smit",
+      accountId: "acc-carol",
+      avatar: "carol.png",
+      changedAt: "2024-02-02T10:00:00.000Z",
+    });
+
+    await upsertIssue(makeIssue({ status: { name: "In Progress" } }), "Sprint 1");
+
+    const rows = testDb.select().from(ticketStatusChange).all();
+    expect(rows).toHaveLength(1);
+    expect(rows[0].fromStatus).toBe("TO DO");
+    expect(rows[0].toStatus).toBe("IN PROGRESS");
+    expect(rows[0].changedBy).toBe("Carol Smit");
+    expect(rows[0].changedByAccountId).toBe("acc-carol");
+    expect(rows[0].changedByAvatar).toBe("carol.png");
+    // The Jira event time, not the local sync time.
+    expect(rows[0].changedAt).toBe("2024-02-02T10:00:00.000Z");
+  });
+
+  it("falls back to fields.updated and null author when the changelog has no status entry", async () => {
+    await upsertIssue(makeIssue(), "Sprint 1");
+    await upsertIssue(makeIssue({ status: { name: "Done" }, updated: "2024-03-03T12:00:00.000Z" }), "Sprint 1");
+
+    const rows = testDb.select().from(ticketStatusChange).all();
+    expect(rows).toHaveLength(1);
+    expect(rows[0].toStatus).toBe("DONE");
+    expect(rows[0].changedBy).toBeNull();
+    expect(rows[0].changedAt).toBe("2024-03-03T12:00:00.000Z");
+  });
+
+  it("does not record a row when the status is unchanged", async () => {
+    await upsertIssue(makeIssue(), "Sprint 1");
+    await upsertIssue(makeIssue({ summary: "Renamed" }), "Sprint 1");
+    expect(testDb.select().from(ticketStatusChange).all()).toHaveLength(0);
   });
 });

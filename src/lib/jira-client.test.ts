@@ -1,6 +1,6 @@
 // @vitest-environment node
 import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
-import { JiraClient, issuePath, JiraApiError, _requestTimestamps, filterDescriptionChanges, extractSprint, extractSprints, selectPrimarySprint, SPRINT_FIELD, ISSUE_FIELDS, redactJiraPath, _noteRateLimitApproaching, _resetRateWarn, type ChangelogEntry, type JiraSprint, type JiraIssueFields } from "./jira-client";
+import { JiraClient, issuePath, JiraApiError, _requestTimestamps, filterDescriptionChanges, filterStatusChanges, extractLastStatusChangeAuthor, extractSprint, extractSprints, selectPrimarySprint, SPRINT_FIELD, ISSUE_FIELDS, redactJiraPath, _noteRateLimitApproaching, _resetRateWarn, type ChangelogEntry, type JiraSprint, type JiraIssueFields, type JiraIssue } from "./jira-client";
 
 describe("JiraClient (unconfigured mode)", () => {
   const client = new JiraClient();
@@ -183,6 +183,95 @@ describe("filterDescriptionChanges", () => {
 
   it("returns empty array for empty input", () => {
     expect(filterDescriptionChanges([])).toEqual([]);
+  });
+});
+
+describe("filterStatusChanges (BRDG-414)", () => {
+  it("retains the author, accountId and avatar of each status change", () => {
+    const entries: ChangelogEntry[] = [
+      {
+        author: { displayName: "Carol Smit", accountId: "acc-carol", avatarUrls: { "48x48": "https://example.com/carol.png" } },
+        created: "2026-01-15T10:00:00.000+0000",
+        items: [
+          { field: "status", fieldtype: "jira", fromString: "To Do", toString: "In Progress" },
+          { field: "description", fieldtype: "jira", fromString: "a", toString: "b" },
+        ],
+      },
+      {
+        // No accountId on this author (older entry / hidden user).
+        author: { displayName: "Bob" },
+        created: "2026-01-16T12:00:00.000+0000",
+        items: [{ field: "status", fieldtype: "jira", fromString: "In Progress", toString: "Done" }],
+      },
+    ];
+
+    const result = filterStatusChanges(entries);
+
+    expect(result).toHaveLength(2);
+    expect(result[0]).toEqual({
+      fromStatus: "To Do",
+      toStatus: "In Progress",
+      changedAt: "2026-01-15T10:00:00.000+0000",
+      author: "Carol Smit",
+      authorAccountId: "acc-carol",
+      authorAvatar: "https://example.com/carol.png",
+    });
+    expect(result[1].author).toBe("Bob");
+    expect(result[1].authorAccountId).toBeNull();
+    expect(result[1].authorAvatar).toBeNull();
+  });
+
+  it("ignores non-status changes", () => {
+    const entries: ChangelogEntry[] = [
+      {
+        author: { displayName: "Alice" },
+        created: "2026-01-15T10:00:00.000+0000",
+        items: [{ field: "summary", fieldtype: "jira", fromString: "x", toString: "y" }],
+      },
+    ];
+    expect(filterStatusChanges(entries)).toEqual([]);
+  });
+});
+
+describe("extractLastStatusChangeAuthor (BRDG-414)", () => {
+  function issueWith(histories: NonNullable<JiraIssue["changelog"]>["histories"]): JiraIssue {
+    return { id: "1", key: "VPL-1", fields: {} as JiraIssueFields, changelog: { histories } };
+  }
+
+  it("returns the latest status transition (histories are newest-first)", () => {
+    const issue = issueWith([
+      {
+        author: { displayName: "Carol Smit", accountId: "acc-carol", avatarUrls: { "48x48": "carol.png" } },
+        created: "2026-02-02T10:00:00.000+0000",
+        items: [{ field: "status", fromString: "In Progress", toString: "Test" }],
+      },
+      {
+        author: { displayName: "Dan" },
+        created: "2026-02-01T09:00:00.000+0000",
+        items: [{ field: "status", fromString: "To Do", toString: "In Progress" }],
+      },
+    ]);
+    expect(extractLastStatusChangeAuthor(issue)).toEqual({
+      name: "Carol Smit",
+      accountId: "acc-carol",
+      avatar: "carol.png",
+      changedAt: "2026-02-02T10:00:00.000+0000",
+    });
+  });
+
+  it("skips non-status histories and returns null when there is no status change", () => {
+    const issue = issueWith([
+      {
+        author: { displayName: "Dan" },
+        created: "2026-02-01T09:00:00.000+0000",
+        items: [{ field: "assignee", fromString: null as unknown as string, toString: "Dan" }],
+      },
+    ]);
+    expect(extractLastStatusChangeAuthor(issue)).toBeNull();
+  });
+
+  it("returns null when there is no changelog", () => {
+    expect(extractLastStatusChangeAuthor({ id: "1", key: "VPL-1", fields: {} as JiraIssueFields })).toBeNull();
   });
 });
 

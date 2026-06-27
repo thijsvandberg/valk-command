@@ -1,7 +1,7 @@
 import { db } from "@/db";
 import { ticket, ticketMetadata, storyVersion, ticketAttachment, ticketSubtask, ticketLink, jiraComment, sprintNameCache, ticketStatusChange, storyWriterSession, jiraUser } from "@/db/schema";
 import { eq, and, isNotNull, isNull, desc } from "drizzle-orm";
-import { jiraClient, extractStoryPoints, extractSprints, extractEpicLink, extractAcceptanceCriteria, extractLastChangeAuthor, FLAGGED_FIELD, type JiraIssue, type JiraAttachment, type JiraUser } from "@/lib/jira-client";
+import { jiraClient, extractStoryPoints, extractSprints, extractEpicLink, extractAcceptanceCriteria, extractLastChangeAuthor, extractLastStatusChangeAuthor, FLAGGED_FIELD, type JiraIssue, type JiraAttachment, type JiraUser } from "@/lib/jira-client";
 import { adfToMarkdown } from "@/lib/adf-to-markdown";
 import { markdownEqualIgnoringSpacing } from "@/lib/normalize-markdown";
 import { emitTicketEvent, type TicketChangeKind } from "@/lib/ticket-events";
@@ -128,6 +128,9 @@ export async function upsertIssue(
   // a no-op sync does not trigger a needless Jira call — the authoritative
   // new-version decision is re-made inside the transaction against committed state.
   const inlineChangeAuthor = extractLastChangeAuthor(issue);
+  // BRDG-414: who made the latest status transition + its real Jira event time,
+  // from the inline changelog (expand=changelog). Synchronous; no extra API call.
+  const statusChangeMeta = extractLastStatusChangeAuthor(issue);
   const preLatestVersion = await db.query.storyVersion.findFirst({
     where: (sv, { eq: eqFn }) => eqFn(sv.jiraKey, issue.key),
     orderBy: (sv, { desc }) => [desc(sv.createdAt)],
@@ -368,16 +371,23 @@ export async function upsertIssue(
       }
     }
 
-    // Record status transition for burnup chart
+    // Record status transition for burnup chart + the BRDG-414 review queue. Use the
+    // changelog entry's author + its real Jira event time when available (falling back
+    // to fields.updated). Deterministic id keyed on the event time + onConflictDoNothing
+    // dedupes against the burnup-seed backfill, which uses the same scheme.
     if (statusChanged) {
+      const changedAt = statusChangeMeta?.changedAt ?? fields.updated ?? now;
       tx.insert(ticketStatusChange).values({
-        id: `sc-${issue.key}-${randomUUID()}`,
+        id: `sc-${issue.key}-${new Date(changedAt).getTime()}`,
         ticketKey: issue.key,
         fromStatus: existing!.status,
         toStatus: ticketData.status,
-        changedAt: fields.updated ?? now,
+        changedAt,
         sprintName,
-      }).run();
+        changedBy: statusChangeMeta?.name ?? null,
+        changedByAccountId: statusChangeMeta?.accountId ?? null,
+        changedByAvatar: statusChangeMeta?.avatar ?? null,
+      }).onConflictDoNothing().run();
     }
 
     // Metadata
