@@ -452,9 +452,7 @@ export const BoardRow = memo(forwardRef<HTMLTableRowElement, BoardRowBaseProps>(
             <tr>: a div honours border-radius, so the last row can round its bottom corners to
             the card edge. A <tr>/<td> with border-collapse ignores radius, which is why the
             hover fill used to bleed square into the card's rounded corners. */}
-        <div className={`group/row @container/boardrow relative flex items-center gap-2 ${spacious ? "py-[10px]" : "py-[7px]"} pl-4 pr-[23px] transition-colors duration-100 ${
-          dragListeners ? "cursor-grab active:cursor-grabbing select-none" : "cursor-pointer"
-        } ${rowSurfaceClasses({
+        <div className={`group/row @container/boardrow relative flex flex-col transition-colors duration-100 ${rowSurfaceClasses({
           selected: isSelected,
           contextTarget: isContextTarget,
           checked: isChecked,
@@ -468,6 +466,11 @@ export const BoardRow = memo(forwardRef<HTMLTableRowElement, BoardRowBaseProps>(
           hideAccent: hideRowAccent,
           livePulse: liveChangeKinds.size > 0,
         })}`}>
+          {/* Row content. The status-change line (if any) renders as a second block below, inside
+              this surface, so the hover/selection tint + left accent cover the whole row+update unit. */}
+          <div className={`relative flex items-center gap-2 ${spacious ? "py-[10px]" : "py-[7px]"} pl-4 pr-[23px] ${
+            dragListeners ? "cursor-grab active:cursor-grabbing select-none" : "cursor-pointer"
+          }`}>
           {/* Drag affordance in the left gutter (Jira-style). Visual only: the whole row is the
               drag activator, so this never needs its own listeners. Shown only when reordering
               is possible (dragListeners present) and never during multiselect. Suppressed when a
@@ -976,19 +979,20 @@ export const BoardRow = memo(forwardRef<HTMLTableRowElement, BoardRowBaseProps>(
               </button>
             </div>
           )}
+          </div>
+          {/* BRDG-414: the status-change line is the second block INSIDE the row surface, so the
+              hover/selection tint + left accent cover the whole row+update unit. */}
+          {statusChange && onStatusChangeSeen && onStatusChangeMoveToBottom && (
+            <StatusChangeLine
+              change={statusChange}
+              deploy={lastDeploy}
+              atBottom={statusChangeAtBottom}
+              onSeen={() => onStatusChangeSeen(statusChange.id)}
+              onMoveToBottom={() => onStatusChangeMoveToBottom(statusChange.ticketKey, statusChange.id)}
+              onCloseSubtasks={onCloseSubtasks}
+            />
+          )}
         </div>
-        {/* BRDG-414: the status-change review line stacks beneath the row surface, inside the
-            same <td>, so the virtualizer keeps measuring the full row height. */}
-        {statusChange && onStatusChangeSeen && onStatusChangeMoveToBottom && (
-          <StatusChangeLine
-            change={statusChange}
-            deploy={lastDeploy}
-            atBottom={statusChangeAtBottom}
-            onSeen={() => onStatusChangeSeen(statusChange.id)}
-            onMoveToBottom={() => onStatusChangeMoveToBottom(statusChange.ticketKey, statusChange.id)}
-            onCloseSubtasks={onCloseSubtasks}
-          />
-        )}
       </td>
     </tr>
   );

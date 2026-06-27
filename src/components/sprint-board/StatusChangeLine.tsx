@@ -49,13 +49,14 @@ const ACTION_BTN =
 
 function DeploySignal({ deploy }: { deploy: LastDeployedInfo }) {
   if (!deploy.environment) return null;
+  // A tinted badge (pill) matching the row's other meta badges.
   const tone =
-    deploy.state === "SUCCESSFUL" ? "text-emerald-500"
-    : deploy.state === "FAILED" ? "text-red-500"
-    : "text-amber-500";
+    deploy.state === "SUCCESSFUL" ? "bg-emerald-500/10 text-emerald-500"
+    : deploy.state === "FAILED" ? "bg-red-500/10 text-red-500"
+    : "bg-amber-500/10 text-amber-500";
   return (
     <Tooltip content={`Last deploy: ${deploy.environment} — ${deploy.state}${deploy.completedAt ? ` (${formatAbsoluteDate(deploy.completedAt)})` : ""}`}>
-      <span className={`${SIGNAL} ${tone}`}>
+      <span className={`inline-flex items-center gap-1 rounded-md px-1.5 py-0.5 text-caption font-medium ${tone}`}>
         <Rocket className="h-3 w-3 shrink-0" strokeWidth={2} />
         {deploy.environment}
         {deploy.state === "FAILED" ? " failed" : ""}
@@ -107,14 +108,14 @@ export function StatusChangeLine({
     <div
       onClick={(e) => e.stopPropagation()}
       onPointerDown={(e) => e.stopPropagation()}
-      className="relative flex items-center border-b border-border-subtle py-1.5 pl-[76px] pr-[23px]"
+      className="relative flex items-center pb-1.5 pt-0 pl-[73px] pr-[23px]"
     >
-      {/* Single elbow connector: its vertical sits at the CENTRE of the row's issue-type icon
-          (~56px from the row's left edge) and its horizontal meets the line's vertical centre, so
-          it reads as one branch coming DOWN from the row above into this line. */}
+      {/* Single elbow connector: its vertical sits at the CENTRE of the row's issue-type icon and
+          its horizontal meets the line's vertical centre, so it reads as one branch coming DOWN
+          from the row above. left-[53px] = icon centre minus the surface's 3px accent border. */}
       <span
         aria-hidden
-        className="pointer-events-none absolute left-[56px] bottom-1/2 h-3 w-3.5 rounded-bl-[6px] border-b border-l border-border-strong"
+        className="pointer-events-none absolute left-[53px] bottom-1/2 h-3 w-3.5 rounded-bl-[6px] border-b border-l border-border-strong"
       />
 
       <div className="flex min-w-0 flex-1 flex-wrap items-center gap-x-2.5 gap-y-1.5">
