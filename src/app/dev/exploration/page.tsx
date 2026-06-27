@@ -8,7 +8,7 @@
  */
 
 import Link from "next/link";
-import { ArrowUpRight, LayoutGrid, Rows3, FlaskConical, Shapes, MousePointerClick, Type, PanelTop, PanelTopDashed, AppWindow, ListChecks, Gem, Gauge, Hash, SendHorizontal, BarChart3, History as HistoryIcon, Sparkles, RefreshCw, Target, PanelsTopLeft, SlidersHorizontal, SquareStack, Bell } from "lucide-react";
+import { ArrowUpRight, LayoutGrid, Rows3, FlaskConical, Shapes, MousePointerClick, Type, PanelTop, PanelTopDashed, AppWindow, ListChecks, Gem, Gauge, Hash, SendHorizontal, BarChart3, History as HistoryIcon, Sparkles, RefreshCw, Target, PanelsTopLeft, SlidersHorizontal, SquareStack, Bell, CornerDownRight } from "lucide-react";
 
 type Exploration = {
   slug: string;
@@ -22,6 +22,15 @@ type Exploration = {
 const ICON = "h-5 w-5";
 
 const EXPLORATIONS: Exploration[] = [
+  {
+    slug: "status-change-linking",
+    title: "Linking the update line to its row",
+    blurb:
+      "BRDG-414 follow-up: the status-change update line sits between two rows and reads ambiguously (above or below?). Trials five ways to bind it to its parent (= above) row — A connector elbow, B shared surface, C left rail, D tight + divider-below, E caption indent — over a mock active sprint. Plus a gallery of notification-toggle icons (Bell/BellOff, BellRing, Eye, Megaphone, Message, collapse chevrons, Activity, History, Inbox, Info) previewed in a sprint-header mock, and an optional per-line mute toggle.",
+    status: "Exploration",
+    ticket: "BRDG-414",
+    icon: <CornerDownRight className={ICON} strokeWidth={1.5} />,
+  },
   {
     slug: "status-changes",
     title: "Status changes on the active sprint",
