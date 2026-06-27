@@ -100,7 +100,7 @@ export function EpicColorPicker({ epicKey, name, color }: EpicColorPickerProps) 
                   type="button"
                   role="menuitem"
                   onClick={() => commit(null)}
-                  className="flex w-full items-center gap-1.5 px-3 py-1.5 text-left text-body-sm text-text-tertiary cursor-pointer transition-colors duration-150 hover:bg-hover-list-item hover:text-text-secondary"
+                  className="flex w-full items-center gap-1.5 px-3 py-1.5 text-left text-body-sm text-text-tertiary cursor-pointer transition-colors duration-150 hover:bg-hover-list-item hover:text-text-secondary focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-[var(--color-brand-400)]"
                 >
                   <RotateCcw size={12} strokeWidth={2} />
                   Reset to default

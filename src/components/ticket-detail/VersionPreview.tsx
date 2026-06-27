@@ -45,7 +45,7 @@ export function VersionPreview({
         <div className="flex items-center gap-3">
           <button
             onClick={onBack}
-            className="flex h-7 w-7 items-center justify-center rounded-md text-text-tertiary hover:bg-overlay-default hover:text-text-secondary cursor-pointer"
+            className="flex h-7 w-7 items-center justify-center rounded-md text-text-tertiary hover:bg-overlay-default hover:text-text-secondary cursor-pointer focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-[var(--color-brand-400)]"
             style={{ transition: "background-color 0.15s ease, color 0.15s ease" }}
             title="Back to version list"
           >

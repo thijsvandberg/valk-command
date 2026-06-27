@@ -241,14 +241,14 @@ export const PlaceholderRow = memo(function PlaceholderRow({
             <button
               type="button"
               onClick={save}
-              className="flex h-6 items-center gap-1 rounded border border-border-strong bg-[var(--color-surface-elevated)] px-2 text-[11px] font-medium text-text-secondary transition-colors duration-100 hover:text-text-primary cursor-pointer"
+              className="flex h-6 items-center gap-1 rounded border border-border-strong bg-[var(--color-surface-elevated)] px-2 text-[11px] font-medium text-text-secondary transition-colors duration-100 hover:text-text-primary cursor-pointer focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-[var(--color-brand-400)]"
             >
               <Check size={12} strokeWidth={2} /> Save
             </button>
             <button
               type="button"
               onClick={cancel}
-              className="flex h-6 items-center gap-1 rounded px-2 text-[11px] text-text-muted transition-colors duration-100 hover:text-text-secondary cursor-pointer"
+              className="flex h-6 items-center gap-1 rounded px-2 text-[11px] text-text-muted transition-colors duration-100 hover:text-text-secondary cursor-pointer focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-[var(--color-brand-400)]"
             >
               <X size={12} strokeWidth={2} /> Cancel
             </button>
@@ -259,7 +259,7 @@ export const PlaceholderRow = memo(function PlaceholderRow({
           <button
             type="button"
             onClick={openEditor}
-            className="min-w-0 flex-1 truncate text-left text-body-lg text-text-secondary cursor-pointer"
+            className="min-w-0 flex-1 truncate text-left text-body-lg text-text-secondary cursor-pointer focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-[var(--color-brand-400)]"
             title="Edit placeholder"
           >
             {placeholder.title}

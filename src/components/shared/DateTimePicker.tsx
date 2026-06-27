@@ -218,7 +218,7 @@ export function DateTimePicker({ value, onChange, ariaLabel, placeholder = "Sele
           transition-colors duration-100
           ${open
             ? "border-[var(--color-brand-500)]/50 ring-1 ring-[var(--color-brand-500)]/30"
-            : "border-border-default hover:border-border-strong"}`}
+            : "border-border-default hover:border-border-strong"} focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-[var(--color-brand-400)]`}
       >
         <Calendar
           size={13}
@@ -252,7 +252,7 @@ export function DateTimePicker({ value, onChange, ariaLabel, placeholder = "Sele
               type="button"
               onClick={goPrevMonth}
               aria-label="Previous month"
-              className="rounded-md p-1 text-text-muted cursor-pointer hover:text-text-secondary hover:bg-overlay-default transition-colors duration-100"
+              className="rounded-md p-1 text-text-muted cursor-pointer hover:text-text-secondary hover:bg-overlay-default transition-colors duration-100 focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-[var(--color-brand-400)]"
             >
               <ChevronLeft size={15} strokeWidth={1.5} />
             </button>
@@ -263,7 +263,7 @@ export function DateTimePicker({ value, onChange, ariaLabel, placeholder = "Sele
               type="button"
               onClick={goNextMonth}
               aria-label="Next month"
-              className="rounded-md p-1 text-text-muted cursor-pointer hover:text-text-secondary hover:bg-overlay-default transition-colors duration-100"
+              className="rounded-md p-1 text-text-muted cursor-pointer hover:text-text-secondary hover:bg-overlay-default transition-colors duration-100 focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-[var(--color-brand-400)]"
             >
               <ChevronRight size={15} strokeWidth={1.5} />
             </button>
@@ -305,7 +305,7 @@ export function DateTimePicker({ value, onChange, ariaLabel, placeholder = "Sele
                         ? "bg-[var(--color-brand-500)] font-semibold text-white cursor-pointer"
                         : inMonth
                           ? "text-text-secondary hover:bg-overlay-default hover:text-text-primary cursor-pointer"
-                          : "text-text-muted/60 hover:bg-overlay-default hover:text-text-secondary cursor-pointer"}`}
+                          : "text-text-muted/60 hover:bg-overlay-default hover:text-text-secondary cursor-pointer"} focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-[var(--color-brand-400)]`}
                 >
                   {day.getDate()}
                   {isToday && !isSelected && !dayMarkers?.length && (
@@ -355,7 +355,7 @@ export function DateTimePicker({ value, onChange, ariaLabel, placeholder = "Sele
                   type="button"
                   onClick={clearTime}
                   aria-label="Clear time"
-                  className="absolute -right-1 -top-1 rounded-full bg-[var(--color-surface-floating)] p-0.5 text-text-muted cursor-pointer hover:text-text-secondary transition-colors duration-100"
+                  className="absolute -right-1 -top-1 rounded-full bg-[var(--color-surface-floating)] p-0.5 text-text-muted cursor-pointer hover:text-text-secondary transition-colors duration-100 focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-[var(--color-brand-400)]"
                 >
                   <X size={10} strokeWidth={2} />
                 </button>
@@ -369,7 +369,7 @@ export function DateTimePicker({ value, onChange, ariaLabel, placeholder = "Sele
             <button
               type="button"
               onClick={selectToday}
-              className="rounded-md px-2 py-1 text-[11px] font-medium text-[var(--color-brand-400)] cursor-pointer hover:bg-[var(--color-brand-500)]/10 transition-colors duration-100"
+              className="rounded-md px-2 py-1 text-[11px] font-medium text-[var(--color-brand-400)] cursor-pointer hover:bg-[var(--color-brand-500)]/10 transition-colors duration-100 focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-[var(--color-brand-400)]"
             >
               Today
             </button>
@@ -377,7 +377,7 @@ export function DateTimePicker({ value, onChange, ariaLabel, placeholder = "Sele
               <button
                 type="button"
                 onClick={clearAll}
-                className="rounded-md px-2 py-1 text-[11px] font-medium text-text-muted cursor-pointer hover:text-text-secondary hover:bg-overlay-default transition-colors duration-100"
+                className="rounded-md px-2 py-1 text-[11px] font-medium text-text-muted cursor-pointer hover:text-text-secondary hover:bg-overlay-default transition-colors duration-100 focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-[var(--color-brand-400)]"
               >
                 Clear
               </button>

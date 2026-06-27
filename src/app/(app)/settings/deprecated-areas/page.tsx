@@ -230,7 +230,7 @@ function DeprecatedAreaRow({
     <div className="rounded-xl border border-border-default bg-overlay-subtle p-4 flex items-start gap-3">
       <button
         onClick={() => setEditing(true)}
-        className="flex-1 text-left cursor-pointer group"
+        className="flex-1 text-left cursor-pointer group focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-[var(--color-brand-400)]"
         aria-label={`Edit ${area.term}`}
       >
         <div className="flex items-baseline gap-2 flex-wrap">

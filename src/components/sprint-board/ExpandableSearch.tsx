@@ -65,7 +65,7 @@ export function ExpandableSearch({
               onChange("");
               inputRef.current?.focus();
             }}
-            className="absolute right-2.5 flex h-4 w-4 items-center justify-center rounded-full text-text-tertiary hover:text-text-secondary cursor-pointer"
+            className="absolute right-2.5 flex h-4 w-4 items-center justify-center rounded-full text-text-tertiary hover:text-text-secondary cursor-pointer focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-[var(--color-brand-400)]"
             style={{ backgroundColor: "var(--color-overlay-default)" }}
           >
             <X className="h-2.5 w-2.5" strokeWidth={2} />

@@ -95,7 +95,7 @@ export function QuickActionsPopover({
                     action.enabled
                       ? "cursor-pointer text-text-secondary group-hover/row:text-text-primary"
                       : "cursor-not-allowed text-text-muted"
-                  }`}
+                  } focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-[var(--color-brand-400)]`}
                 >
                   <Icon size={14} strokeWidth={1.5} className="shrink-0" />
                   <span className="truncate">{action.label}</span>

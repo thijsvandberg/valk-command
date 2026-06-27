@@ -140,7 +140,7 @@ export function RefinementTicketList({
         <Search size={14} strokeWidth={1.5} className="shrink-0 text-text-muted" />
         <input type="text" value={searchQuery} onChange={(e) => onSearchChange(e.target.value)} placeholder="Search tickets..." className="min-w-0 flex-1 bg-transparent text-body-lg text-text-primary placeholder:text-text-muted outline-none" />
         {searchQuery && (
-          <button type="button" onClick={() => onSearchChange("")} className="cursor-pointer text-text-muted hover:text-text-secondary">
+          <button type="button" onClick={() => onSearchChange("")} className="cursor-pointer text-text-muted hover:text-text-secondary focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-[var(--color-brand-400)]">
             <X size={13} strokeWidth={2} />
           </button>
         )}
@@ -171,7 +171,7 @@ export function RefinementTicketList({
                     key={field.id}
                     type="button"
                     onClick={() => togglePillField(field.id, !isVisible)}
-                    className="flex w-full cursor-pointer items-center gap-2.5 px-3 py-[7px] text-body-sm hover:bg-hover-list-item active:bg-overlay-default"
+                    className="flex w-full cursor-pointer items-center gap-2.5 px-3 py-[7px] text-body-sm hover:bg-hover-list-item active:bg-overlay-default focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-[var(--color-brand-400)]"
                   >
                     <span
                       className={`flex h-3.5 w-3.5 shrink-0 items-center justify-center rounded border ${

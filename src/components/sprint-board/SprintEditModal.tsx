@@ -344,7 +344,7 @@ export function SprintEditModal({ sprint, tickets, onClose, showToast, autoSugge
           <button
             type="button"
             onClick={onClose}
-            className="rounded-md p-1 text-text-muted cursor-pointer hover:text-text-secondary hover:bg-overlay-default transition-colors duration-100"
+            className="rounded-md p-1 text-text-muted cursor-pointer hover:text-text-secondary hover:bg-overlay-default transition-colors duration-100 focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-[var(--color-brand-400)]"
           >
             <X size={14} strokeWidth={1.5} />
           </button>
@@ -407,7 +407,7 @@ export function SprintEditModal({ sprint, tickets, onClose, showToast, autoSugge
                   text-[var(--color-brand-400)]
                   hover:bg-[var(--color-brand-500)]/10
                   active:bg-[var(--color-brand-500)]/15
-                  transition-colors duration-100"
+                  transition-colors duration-100 focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-[var(--color-brand-400)]"
               >
                 <CornerDownRight size={11} strokeWidth={1.5} />
                 End on {formatDateTimeLabel(suggestedEnd)}
@@ -431,7 +431,7 @@ export function SprintEditModal({ sprint, tickets, onClose, showToast, autoSugge
                   hover:bg-[var(--color-brand-500)]/10
                   active:bg-[var(--color-brand-500)]/15
                   disabled:opacity-40 disabled:cursor-not-allowed
-                  transition-colors duration-100"
+                  transition-colors duration-100 focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-[var(--color-brand-400)]"
                 title={tickets.length === 0 ? "No tickets to analyze" : "Generate goal suggestion from sprint tickets"}
               >
                 {suggesting ? (
@@ -484,7 +484,7 @@ export function SprintEditModal({ sprint, tickets, onClose, showToast, autoSugge
                         text-[var(--color-brand-400)] bg-[var(--color-brand-500)]/10
                         hover:bg-[var(--color-brand-500)]/20
                         active:bg-[var(--color-brand-500)]/25
-                        transition-colors duration-100"
+                        transition-colors duration-100 focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-[var(--color-brand-400)]"
                     >
                       <Check size={10} strokeWidth={2} />
                       Accept
@@ -495,7 +495,7 @@ export function SprintEditModal({ sprint, tickets, onClose, showToast, autoSugge
                       className="flex items-center gap-1 rounded-md px-2 py-1 text-[11px] font-medium cursor-pointer
                         text-text-muted
                         hover:text-text-secondary hover:bg-overlay-default
-                        transition-colors duration-100"
+                        transition-colors duration-100 focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-[var(--color-brand-400)]"
                     >
                       <X size={10} strokeWidth={2} />
                       Dismiss

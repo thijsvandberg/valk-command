@@ -213,7 +213,7 @@ export default function ConversationList({
             <button
               type="button"
               onClick={() => onToggleSelect(conversation.id)}
-              className="shrink-0 flex items-center justify-center w-6 h-6 ml-1 cursor-pointer"
+              className="shrink-0 flex items-center justify-center w-6 h-6 ml-1 cursor-pointer focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-[var(--color-brand-400)]"
               aria-label={isSelected ? `Deselect ${conversation.title}` : `Select ${conversation.title}`}
             >
               <span className={`flex h-4 w-4 items-center justify-center rounded border transition-colors duration-150 ${
@@ -295,7 +295,7 @@ export default function ConversationList({
       <button
         type="button"
         onClick={() => toggleGroup(label)}
-        className="sticky top-0 z-[5] flex w-full items-center gap-1.5 bg-[var(--color-surface-elevated)] px-2.5 py-1.5 text-[10px] font-semibold uppercase tracking-widest text-text-muted cursor-pointer hover:text-text-tertiary transition-colors duration-150"
+        className="sticky top-0 z-[5] flex w-full items-center gap-1.5 bg-[var(--color-surface-elevated)] px-2.5 py-1.5 text-[10px] font-semibold uppercase tracking-widest text-text-muted cursor-pointer hover:text-text-tertiary transition-colors duration-150 focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-[var(--color-brand-400)]"
         data-testid={`group-header-${label}`}
       >
         <ChevronRight
@@ -386,7 +386,7 @@ export default function ConversationList({
               <button
                 type="button"
                 onClick={clearSearch}
-                className="absolute right-2 top-1/2 -translate-y-1/2 text-text-muted cursor-pointer hover:text-text-secondary transition-colors duration-150"
+                className="absolute right-2 top-1/2 -translate-y-1/2 text-text-muted cursor-pointer hover:text-text-secondary transition-colors duration-150 focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-[var(--color-brand-400)]"
                 aria-label="Clear search"
               >
                 <X size={12} strokeWidth={1.5} />
@@ -476,7 +476,7 @@ export default function ConversationList({
                 onTogglePin(contextMenu.conversationId, !contextMenu.pinned);
                 setContextMenu(null);
               }}
-              className="flex w-full items-center gap-2 px-3 py-1.5 text-body-sm text-text-secondary cursor-pointer hover:bg-hover-list-item hover:text-text-primary transition-colors duration-150"
+              className="flex w-full items-center gap-2 px-3 py-1.5 text-body-sm text-text-secondary cursor-pointer hover:bg-hover-list-item hover:text-text-primary transition-colors duration-150 focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-[var(--color-brand-400)]"
             >
               <Pin size={12} strokeWidth={1.5} />
               {contextMenu.pinned ? "Unpin conversation" : "Pin conversation"}
@@ -489,7 +489,7 @@ export default function ConversationList({
                 onToggleRead(contextMenu.conversationId, contextMenu.readAt === null);
                 setContextMenu(null);
               }}
-              className="flex w-full items-center gap-2 px-3 py-1.5 text-body-sm text-text-secondary cursor-pointer hover:bg-hover-list-item hover:text-text-primary transition-colors duration-150"
+              className="flex w-full items-center gap-2 px-3 py-1.5 text-body-sm text-text-secondary cursor-pointer hover:bg-hover-list-item hover:text-text-primary transition-colors duration-150 focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-[var(--color-brand-400)]"
               data-testid="context-menu-toggle-read"
             >
               {contextMenu.readAt === null ? (
@@ -514,7 +514,7 @@ export default function ConversationList({
               onDelete(contextMenu.conversationId);
               setContextMenu(null);
             }}
-            className="flex w-full items-center gap-2 px-3 py-1.5 text-body-sm text-[var(--color-danger-400)] cursor-pointer hover:bg-hover-list-item hover:text-[var(--color-danger-300)] transition-colors duration-150"
+            className="flex w-full items-center gap-2 px-3 py-1.5 text-body-sm text-[var(--color-danger-400)] cursor-pointer hover:bg-hover-list-item hover:text-[var(--color-danger-300)] transition-colors duration-150 focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-[var(--color-brand-400)]"
             data-testid="context-menu-delete"
           >
             <Trash2 size={12} strokeWidth={1.5} />

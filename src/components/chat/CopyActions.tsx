@@ -36,7 +36,7 @@ export function CopyActions({ content, className, label }: CopyActionsProps) {
       <button
         type="button"
         onClick={handleCopyMd}
-        className="flex items-center gap-1 rounded px-1.5 py-0.5 text-caption text-text-tertiary cursor-pointer hover:text-text-secondary hover:bg-hover-list-item active:bg-overlay-default transition-colors duration-100"
+        className="flex items-center gap-1 rounded px-1.5 py-0.5 text-caption text-text-tertiary cursor-pointer hover:text-text-secondary hover:bg-hover-list-item active:bg-overlay-default transition-colors duration-100 focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-[var(--color-brand-400)]"
         title="Copy as Markdown"
       >
         {copiedMd ? <Check size={11} strokeWidth={2} /> : <Copy size={11} strokeWidth={1.5} />}
@@ -45,7 +45,7 @@ export function CopyActions({ content, className, label }: CopyActionsProps) {
       <button
         type="button"
         onClick={handleCopyRtf}
-        className="flex items-center gap-1 rounded px-1.5 py-0.5 text-caption text-text-tertiary cursor-pointer hover:text-text-secondary hover:bg-hover-list-item active:bg-overlay-default transition-colors duration-100"
+        className="flex items-center gap-1 rounded px-1.5 py-0.5 text-caption text-text-tertiary cursor-pointer hover:text-text-secondary hover:bg-hover-list-item active:bg-overlay-default transition-colors duration-100 focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-[var(--color-brand-400)]"
         title="Copy as formatted text"
       >
         {copiedRtf ? <Check size={11} strokeWidth={2} /> : <FileText size={11} strokeWidth={1.5} />}

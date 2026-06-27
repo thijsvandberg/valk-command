@@ -78,7 +78,7 @@ export function ChatApp() {
               !showLogs
                 ? "text-text-secondary bg-overlay-default"
                 : "text-text-tertiary hover:text-text-secondary hover:bg-hover-list-item"
-            }`}
+            } focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-[var(--color-brand-400)]`}
           >
             Chat
           </button>
@@ -89,7 +89,7 @@ export function ChatApp() {
               showLogs
                 ? "text-text-secondary bg-overlay-default"
                 : "text-text-tertiary hover:text-text-secondary hover:bg-hover-list-item"
-            }`}
+            } focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-[var(--color-brand-400)]`}
           >
             <ScrollText size={10} strokeWidth={1.5} />
             Logs

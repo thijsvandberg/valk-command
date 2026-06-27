@@ -87,7 +87,7 @@ describe("BRDG-421: focusless-button ratchet", () => {
   // drops; it must never rise. (Heuristic: counts a raw <button> whose opening
   // tag has no `focus` token — className-via-const buttons may over-count, which
   // only makes the ceiling conservative.)
-  const BASELINE = 249;
+  const BASELINE = 16;
   it(`does not exceed ${BASELINE} focusless raw buttons in src/components`, () => {
     let focusless = 0;
     for (const f of nonTestFiles) {

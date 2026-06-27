@@ -47,7 +47,7 @@ export function DeploymentTimeline({ runs }: { runs: PipelineRunPayload[] }) {
       <button
         type="button"
         onClick={() => setCollapsed(!collapsed)}
-        className="flex items-center gap-2 mb-3 cursor-pointer group"
+        className="flex items-center gap-2 mb-3 cursor-pointer group focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-[var(--color-brand-400)]"
       >
         <Rocket size={14} strokeWidth={1.5} className="text-violet-400/60" />
         <span className="text-body-sm font-medium text-text-secondary uppercase tracking-wider group-hover:text-text-secondary transition-colors duration-150">
@@ -159,7 +159,7 @@ export function DeploySettingsPanel() {
             <button
               type="button"
               onClick={toggleEnabled}
-              className="w-full flex items-center justify-between px-4 py-2 cursor-pointer hover:bg-overlay-subtle transition-colors duration-150"
+              className="w-full flex items-center justify-between px-4 py-2 cursor-pointer hover:bg-overlay-subtle transition-colors duration-150 focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-[var(--color-brand-400)]"
             >
               <span className="text-body-sm text-text-secondary">
                 {settings.enabled ? "Enabled" : "Disabled"}
@@ -186,7 +186,7 @@ export function DeploySettingsPanel() {
                     key={env}
                     type="button"
                     onClick={() => toggleEnvironment(env)}
-                    className="w-full flex items-center gap-2.5 px-4 py-1.5 cursor-pointer hover:bg-overlay-subtle transition-colors duration-150"
+                    className="w-full flex items-center gap-2.5 px-4 py-1.5 cursor-pointer hover:bg-overlay-subtle transition-colors duration-150 focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-[var(--color-brand-400)]"
                   >
                     <span className={`flex items-center justify-center h-3.5 w-3.5 rounded border text-caption shrink-0 ${
                       on ? "border-[var(--color-brand-400)] bg-[var(--color-brand-500)]/20 text-[var(--color-brand-400)]" : "border-border-strong"

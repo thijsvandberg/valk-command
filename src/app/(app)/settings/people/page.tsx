@@ -133,7 +133,7 @@ export default function PeoplePage() {
             teamFilter === null
               ? "bg-[var(--color-brand-500)]/15 text-[var(--color-brand-400)]"
               : "text-text-muted hover:text-text-tertiary"
-          }`}
+          } focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-[var(--color-brand-400)]`}
           style={{ transition: "color 0.15s ease" }}
         >
           All
@@ -147,7 +147,7 @@ export default function PeoplePage() {
               teamFilter === team
                 ? "bg-[var(--color-brand-500)]/15 text-[var(--color-brand-400)]"
                 : "text-text-muted hover:text-text-tertiary"
-            }`}
+            } focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-[var(--color-brand-400)]`}
             style={{ transition: "color 0.15s ease" }}
           >
             {team}

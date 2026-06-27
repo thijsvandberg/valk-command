@@ -179,7 +179,7 @@ export function POStatusCell({
                 }}
                 className={`flex w-full items-center gap-2.5 px-3 py-1.5 text-body-sm cursor-pointer hover:bg-hover-list-item active:bg-overlay-default ${
                   opt.value === value ? "text-text-primary" : "text-text-secondary"
-                }`}
+                } focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-[var(--color-brand-400)]`}
               >
                 <span style={{ color: optColors?.text || "var(--color-text-muted)" }}>
                   <POStatusIcon status={opt.value} size={13} />

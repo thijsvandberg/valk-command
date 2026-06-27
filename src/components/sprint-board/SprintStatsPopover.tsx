@@ -257,7 +257,7 @@ export function SprintStatsPopover({
               <button
                 type="button"
                 onClick={() => setDropdownOpen((v) => !v)}
-                className="flex items-center gap-1.5 text-body-lg font-semibold text-text-primary tracking-tight cursor-pointer rounded-md px-1.5 py-0.5 -mx-1.5 hover:bg-overlay-default active:bg-overlay-strong transition-colors duration-100"
+                className="flex items-center gap-1.5 text-body-lg font-semibold text-text-primary tracking-tight cursor-pointer rounded-md px-1.5 py-0.5 -mx-1.5 hover:bg-overlay-default active:bg-overlay-strong transition-colors duration-100 focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-[var(--color-brand-400)]"
               >
                 <span className="truncate max-w-[280px]">{currentSprintName}</span>
                 <ChevronDown size={12} strokeWidth={2} className={`shrink-0 text-text-muted transition-transform duration-150 ${dropdownOpen ? "rotate-180" : ""}`} />
@@ -282,7 +282,7 @@ export function SprintStatsPopover({
                           isActive
                             ? "bg-overlay-default text-text-primary"
                             : "text-text-secondary hover:bg-hover-interactive hover:text-text-primary"
-                        }`}
+                        } focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-[var(--color-brand-400)]`}
                       >
                         {s.state === "active" && (
                           <span className="relative inline-flex h-1.5 w-1.5 shrink-0">
@@ -325,7 +325,7 @@ export function SprintStatsPopover({
             <button
               type="button"
               onClick={onClose}
-              className="rounded-md p-1.5 text-text-muted cursor-pointer hover:text-text-secondary hover:bg-overlay-default active:bg-overlay-strong transition-colors duration-100"
+              className="rounded-md p-1.5 text-text-muted cursor-pointer hover:text-text-secondary hover:bg-overlay-default active:bg-overlay-strong transition-colors duration-100 focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-[var(--color-brand-400)]"
             >
               <X size={14} strokeWidth={1.5} />
             </button>

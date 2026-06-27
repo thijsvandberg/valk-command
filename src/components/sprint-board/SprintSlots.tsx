@@ -136,7 +136,7 @@ function GroupByDropdown({ value, onChange }: { value: GroupByOption; onChange: 
               onClick={() => { onChange(opt.value); setOpen(false); }}
               className={`flex w-full items-center gap-2 px-3 py-1.5 text-body-sm cursor-pointer hover:bg-hover-list-item ${
                 opt.value === value ? "text-text-primary bg-overlay-subtle" : "text-text-secondary"
-              }`}
+              } focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-[var(--color-brand-400)]`}
             >
               <span className={`h-1.5 w-1.5 rounded-full ${opt.value === value ? "bg-[var(--color-brand-400)]" : "opacity-0"}`} />
               {opt.label}
@@ -193,7 +193,7 @@ function BacklogsDropdown({
         onClick={() => { onSelect(s.id); setOpen(false); }}
         className={`flex w-full items-center gap-2 rounded-md px-2.5 py-1.5 text-left text-body-sm cursor-pointer hover:bg-hover-list-item ${
           isActive ? "text-text-primary" : showIcon ? "font-medium text-text-secondary" : "text-text-tertiary"
-        }`}
+        } focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-[var(--color-brand-400)]`}
       >
         {showIcon && <Inbox className="h-3.5 w-3.5 shrink-0 text-text-secondary" strokeWidth={1.5} />}
         <span className="flex-1 truncate">{s.name}</span>
@@ -241,7 +241,7 @@ function BacklogsDropdown({
                     if (r) onOpenSprintList({ top: r.bottom + 6, left: Math.max(8, Math.min(r.left, window.innerWidth - 384 - 8)) });
                     setOpen(false);
                   }}
-                  className="flex w-full items-center gap-2 rounded-md px-2.5 py-1.5 text-left text-body-sm text-text-secondary cursor-pointer hover:bg-hover-list-item hover:text-text-primary"
+                  className="flex w-full items-center gap-2 rounded-md px-2.5 py-1.5 text-left text-body-sm text-text-secondary cursor-pointer hover:bg-hover-list-item hover:text-text-primary focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-[var(--color-brand-400)]"
                 >
                   <Waypoints className="h-4 w-4 shrink-0 text-text-tertiary" strokeWidth={1.5} />
                   Sprint list
@@ -251,7 +251,7 @@ function BacklogsDropdown({
                 <button
                   type="button"
                   onClick={() => { onCreateSprint(); setOpen(false); }}
-                  className="flex w-full items-center gap-2 rounded-md px-2.5 py-1.5 text-left text-body-sm text-text-secondary cursor-pointer hover:bg-hover-list-item hover:text-text-primary"
+                  className="flex w-full items-center gap-2 rounded-md px-2.5 py-1.5 text-left text-body-sm text-text-secondary cursor-pointer hover:bg-hover-list-item hover:text-text-primary focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-[var(--color-brand-400)]"
                 >
                   <Plus className="h-4 w-4 shrink-0 text-text-tertiary" strokeWidth={1.5} />
                   New sprint
@@ -326,7 +326,7 @@ function SavedViewsMenu({
                 key={view.id}
                 type="button"
                 onClick={() => { onViewClick?.(view); setOpen(false); }}
-                className={`flex w-full items-center gap-2 rounded-md px-2.5 py-1.5 text-left text-body-sm cursor-pointer hover:bg-hover-list-item ${isActive ? "text-text-primary" : "text-text-secondary"}`}
+                className={`flex w-full items-center gap-2 rounded-md px-2.5 py-1.5 text-left text-body-sm cursor-pointer hover:bg-hover-list-item ${isActive ? "text-text-primary" : "text-text-secondary"} focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-[var(--color-brand-400)]`}
               >
                 <Bookmark className="h-3.5 w-3.5 shrink-0 text-text-tertiary" strokeWidth={1.5} />
                 <span className="flex-1 truncate">{view.title}</span>
@@ -351,7 +351,7 @@ function SavedViewsMenu({
                 <button
                   type="button"
                   onClick={() => setNaming(true)}
-                  className="flex w-full items-center gap-2 rounded-md px-2.5 py-1.5 text-left text-body-sm text-text-secondary cursor-pointer hover:bg-hover-list-item hover:text-text-primary"
+                  className="flex w-full items-center gap-2 rounded-md px-2.5 py-1.5 text-left text-body-sm text-text-secondary cursor-pointer hover:bg-hover-list-item hover:text-text-primary focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-[var(--color-brand-400)]"
                 >
                   <Plus className="h-3.5 w-3.5 shrink-0 text-text-tertiary" strokeWidth={1.5} />
                   Save current view…
@@ -584,7 +584,7 @@ export function SprintSlots({
               ephemeralIsActive
                 ? "text-text-secondary"
                 : "text-text-muted hover:text-text-secondary"
-            }`}
+            } focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-[var(--color-brand-400)]`}
             style={{ transition: "color 120ms" }}
           >
             {eSprint.state === "active" && (

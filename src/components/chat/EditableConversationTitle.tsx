@@ -92,7 +92,7 @@ export function EditableConversationTitle({
     <button
       type="button"
       onClick={startEditing}
-      className="group/title flex min-w-0 items-center gap-1.5 font-[var(--font-display)] text-heading-sm font-semibold tracking-tight text-text-primary cursor-pointer hover:text-text-secondary transition-colors duration-150"
+      className="group/title flex min-w-0 items-center gap-1.5 font-[var(--font-display)] text-heading-sm font-semibold tracking-tight text-text-primary cursor-pointer hover:text-text-secondary transition-colors duration-150 focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-[var(--color-brand-400)]"
       data-testid="editable-title"
     >
       <span className="truncate">{title}</span>

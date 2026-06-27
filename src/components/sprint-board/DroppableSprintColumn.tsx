@@ -237,7 +237,7 @@ export function DroppableSprintColumn({
             <button
               type="button"
               onClick={() => setSearchQuery("")}
-              className="absolute right-1.5 top-1/2 -translate-y-1/2 text-text-muted cursor-pointer hover:text-text-secondary"
+              className="absolute right-1.5 top-1/2 -translate-y-1/2 text-text-muted cursor-pointer hover:text-text-secondary focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-[var(--color-brand-400)]"
             >
               <X className="h-2.5 w-2.5" strokeWidth={1.5} />
             </button>

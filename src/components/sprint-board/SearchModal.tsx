@@ -168,7 +168,7 @@ export function SearchModal({ open, initialQuery = "", onClose, onSelectTicket, 
           </div>
         )}
         {detectedKey && (
-          <button type="button" onClick={() => !fetchingKey && navigateToKey(detectedKey, false)} disabled={fetchingKey} className="w-full flex items-center gap-2.5 border-b border-border-default px-5 py-2 text-left cursor-pointer disabled:cursor-default" style={{ backgroundColor: "color-mix(in srgb, var(--color-status-success) 7%, transparent)" }}>
+          <button type="button" onClick={() => !fetchingKey && navigateToKey(detectedKey, false)} disabled={fetchingKey} className="w-full flex items-center gap-2.5 border-b border-border-default px-5 py-2 text-left cursor-pointer disabled:cursor-default focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-[var(--color-brand-400)]" style={{ backgroundColor: "color-mix(in srgb, var(--color-status-success) 7%, transparent)" }}>
             <span className="shrink-0 rounded px-1.5 py-0.5 font-mono text-label font-semibold" style={{ backgroundColor: "var(--color-brand-subtle-hover)", color: "var(--color-brand-400)" }}>{detectedKey}</span>
             <span className="text-label text-text-tertiary">{fetchingKey ? "Downloading from Jira..." : "Press Enter to open directly"}</span>
           </button>

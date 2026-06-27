@@ -566,7 +566,7 @@ export function StoryWriterChat({
           <button
             type="button"
             onClick={onClearFailed}
-            className="text-caption text-text-tertiary hover:text-text-secondary cursor-pointer"
+            className="text-caption text-text-tertiary hover:text-text-secondary cursor-pointer focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-[var(--color-brand-400)]"
           >
             Clear failed messages
           </button>
@@ -596,7 +596,7 @@ export function StoryWriterChat({
                       fillInput(s.text);
                     }}
                     disabled={isBusy}
-                    className="px-2.5 py-1.5 text-label font-medium text-text-secondary cursor-pointer hover:text-text-primary transition-colors duration-150 disabled:opacity-40 disabled:cursor-not-allowed"
+                    className="px-2.5 py-1.5 text-label font-medium text-text-secondary cursor-pointer hover:text-text-primary transition-colors duration-150 disabled:opacity-40 disabled:cursor-not-allowed focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-[var(--color-brand-400)]"
                   >
                     {s.label}
                   </button>
@@ -610,7 +610,7 @@ export function StoryWriterChat({
                       handleDirectSend(s.text, s.enableCodebase === true);
                     }}
                     disabled={isBusy || !!inputValue.trim()}
-                    className="flex items-center justify-center border-l border-border-default px-2 text-text-muted cursor-pointer hover:bg-[var(--color-brand-500)]/[0.12] hover:text-[var(--color-brand-400)] transition-colors duration-150 disabled:opacity-30 disabled:cursor-not-allowed"
+                    className="flex items-center justify-center border-l border-border-default px-2 text-text-muted cursor-pointer hover:bg-[var(--color-brand-500)]/[0.12] hover:text-[var(--color-brand-400)] transition-colors duration-150 disabled:opacity-30 disabled:cursor-not-allowed focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-[var(--color-brand-400)]"
                     title="Submit immediately"
                   >
                     <SendHorizontal size={9} strokeWidth={2} />

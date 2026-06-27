@@ -43,7 +43,7 @@ export default function BulkActionBar({
         <button
           type="button"
           onClick={allSelected ? onDeselectAll : onSelectAll}
-          className="text-body-sm text-[var(--color-brand-400)] cursor-pointer hover:underline transition-colors duration-150 whitespace-nowrap"
+          className="text-body-sm text-[var(--color-brand-400)] cursor-pointer hover:underline transition-colors duration-150 whitespace-nowrap focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-[var(--color-brand-400)]"
           data-testid="bulk-select-all-toggle"
         >
           {allSelected ? "Deselect all" : `Select all (${totalCount})`}

@@ -923,7 +923,7 @@ export function EpicChildrenSection({
       <button
         type="button"
         onClick={closeSearch}
-        className="cursor-pointer text-body-sm text-text-muted transition-colors duration-150 hover:text-text-secondary"
+        className="cursor-pointer text-body-sm text-text-muted transition-colors duration-150 hover:text-text-secondary focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-[var(--color-brand-400)]"
       >
         Cancel
       </button>
@@ -1084,7 +1084,7 @@ export function EpicChildrenSection({
         <div className="mt-2 flex items-center gap-2 rounded-md border border-amber-500/20 bg-amber-500/5 px-3 py-2 text-body-sm text-amber-300/90">
           <AlertTriangle size={14} className="shrink-0" />
           <span className="flex-1">{jiraWarning}</span>
-          <button type="button" onClick={() => setJiraWarning(null)} className="shrink-0 text-amber-400/60 hover:text-amber-300 cursor-pointer">
+          <button type="button" onClick={() => setJiraWarning(null)} className="shrink-0 text-amber-400/60 hover:text-amber-300 cursor-pointer focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-[var(--color-brand-400)]">
             &times;
           </button>
         </div>

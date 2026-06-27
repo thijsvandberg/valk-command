@@ -50,7 +50,7 @@ export function SuggestionCard({
       <button
         type="button"
         onClick={toggle}
-        className="flex min-h-8 w-full items-center gap-1.5 px-3 py-1.5 bg-overlay-subtle border-b border-border-default cursor-pointer hover:bg-overlay-default transition-colors duration-150"
+        className="flex min-h-8 w-full items-center gap-1.5 px-3 py-1.5 bg-overlay-subtle border-b border-border-default cursor-pointer hover:bg-overlay-default transition-colors duration-150 focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-[var(--color-brand-400)]"
       >
         {icon}
         <span className="text-caption font-medium uppercase tracking-[0.06em] text-text-tertiary">
@@ -151,7 +151,7 @@ export function LinkButton({
       <button
         type="button"
         onClick={onLink}
-        className="shrink-0 text-caption font-medium text-[var(--color-status-error)] cursor-pointer hover:text-[var(--color-status-error)] transition-colors duration-150"
+        className="shrink-0 text-caption font-medium text-[var(--color-status-error)] cursor-pointer hover:text-[var(--color-status-error)] transition-colors duration-150 focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-[var(--color-brand-400)]"
       >
         Retry
       </button>
@@ -165,7 +165,7 @@ export function LinkButton({
           type="button"
           onClick={onUnlink}
           disabled={loading}
-          className="shrink-0 rounded-md px-2.5 py-1 text-caption font-medium bg-[var(--color-brand-500)]/[0.1] text-[var(--color-brand-500)] cursor-pointer hover:bg-[var(--color-status-error)]/10 hover:text-[var(--color-status-error)] transition-colors duration-150 disabled:opacity-50"
+          className="shrink-0 rounded-md px-2.5 py-1 text-caption font-medium bg-[var(--color-brand-500)]/[0.1] text-[var(--color-brand-500)] cursor-pointer hover:bg-[var(--color-status-error)]/10 hover:text-[var(--color-status-error)] transition-colors duration-150 disabled:opacity-50 focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-[var(--color-brand-400)]"
         >
           {loading && <Loader2 size={10} className="inline animate-spin mr-1" />}
           Linked
@@ -184,7 +184,7 @@ export function LinkButton({
       type="button"
       onClick={onLink}
       disabled={loading}
-      className="shrink-0 rounded-md px-2.5 py-1 text-caption font-medium text-text-muted border border-border-default cursor-pointer hover:border-[var(--color-brand-500)]/25 hover:text-[var(--color-brand-500)] hover:bg-[var(--color-brand-500)]/[0.04] active:bg-[var(--color-brand-500)]/[0.08] transition-colors duration-150 disabled:opacity-50"
+      className="shrink-0 rounded-md px-2.5 py-1 text-caption font-medium text-text-muted border border-border-default cursor-pointer hover:border-[var(--color-brand-500)]/25 hover:text-[var(--color-brand-500)] hover:bg-[var(--color-brand-500)]/[0.04] active:bg-[var(--color-brand-500)]/[0.08] transition-colors duration-150 disabled:opacity-50 focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-[var(--color-brand-400)]"
     >
       {loading ? <Loader2 size={10} className="animate-spin" /> : "Link"}
     </button>

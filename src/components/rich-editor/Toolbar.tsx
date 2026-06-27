@@ -370,7 +370,7 @@ function ColorButton({ editor }: { editor: Editor }) {
                 type="button"
                 onClick={() => setColor(c.color)}
                 title={c.label}
-                className="h-6 w-6 cursor-pointer rounded transition-opacity hover:opacity-80 active:scale-[0.97]"
+                className="h-6 w-6 cursor-pointer rounded transition-opacity hover:opacity-80 active:scale-[0.97] focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-[var(--color-brand-400)]"
                 style={{ backgroundColor: c.color }}
               />
             ))}
@@ -378,7 +378,7 @@ function ColorButton({ editor }: { editor: Editor }) {
           <button
             type="button"
             onClick={clearColor}
-            className="cursor-pointer w-full rounded px-2 py-1 text-label text-text-tertiary transition-colors hover:bg-hover-interactive hover:text-text-secondary"
+            className="cursor-pointer w-full rounded px-2 py-1 text-label text-text-tertiary transition-colors hover:bg-hover-interactive hover:text-text-secondary focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-[var(--color-brand-400)]"
           >
             Remove color
           </button>
@@ -428,7 +428,7 @@ function CalloutDropdown({ editor }: { editor: Editor }) {
               key={opt.type}
               type="button"
               onClick={() => insertCallout(opt.type)}
-              className="cursor-pointer flex w-full items-center gap-2.5 px-3 py-1.5 text-body-sm text-text-secondary transition-colors duration-150 hover:bg-hover-interactive hover:text-text-primary"
+              className="cursor-pointer flex w-full items-center gap-2.5 px-3 py-1.5 text-body-sm text-text-secondary transition-colors duration-150 hover:bg-hover-interactive hover:text-text-primary focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-[var(--color-brand-400)]"
             >
               <span className="h-2.5 w-2.5 rounded-full" style={{ backgroundColor: opt.color }} />
               {opt.label}
@@ -498,7 +498,7 @@ function ExpandButton({ editor }: { editor: Editor }) {
           <button
             type="button"
             onClick={insert}
-            className="cursor-pointer w-full rounded bg-overlay-strong px-3 py-1.5 text-body-sm font-medium text-text-secondary transition-colors hover:bg-overlay-strong hover:text-text-primary active:scale-[0.97]"
+            className="cursor-pointer w-full rounded bg-overlay-strong px-3 py-1.5 text-body-sm font-medium text-text-secondary transition-colors hover:bg-overlay-strong hover:text-text-primary active:scale-[0.97] focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-[var(--color-brand-400)]"
           >
             Insert
           </button>
@@ -581,7 +581,7 @@ function EmojiButton({ editor }: { editor: Editor }) {
                 type="button"
                 onClick={() => insertEmoji(emoji)}
                 title={shortname}
-                className="cursor-pointer flex h-7 w-7 items-center justify-center rounded text-heading-sm transition-colors hover:bg-overlay-strong active:scale-[0.97]"
+                className="cursor-pointer flex h-7 w-7 items-center justify-center rounded text-heading-sm transition-colors hover:bg-overlay-strong active:scale-[0.97] focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-[var(--color-brand-400)]"
               >
                 {emoji}
               </button>

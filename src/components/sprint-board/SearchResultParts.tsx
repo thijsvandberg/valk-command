@@ -473,7 +473,7 @@ export function EmptyState({ query, mode, onSwitchToJira }: { query: string; mod
         <button
           type="button"
           onClick={onSwitchToJira}
-          className="rounded-full px-3 py-1.5 text-body-sm font-medium cursor-pointer"
+          className="rounded-full px-3 py-1.5 text-body-sm font-medium cursor-pointer focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-[var(--color-brand-400)]"
           style={{
             backgroundColor: "var(--color-brand-subtle)",
             color: "var(--color-brand-400)",

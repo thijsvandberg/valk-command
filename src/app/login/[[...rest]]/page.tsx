@@ -61,7 +61,7 @@ export default function LoginPage() {
           <button
             type="button"
             onClick={() => signOut({ redirectUrl: "/login" })}
-            className="h-10 w-full cursor-pointer rounded-lg border border-border-strong bg-overlay-subtle text-body-lg text-text-secondary transition-colors duration-150 hover:bg-overlay-default hover:text-text-primary"
+            className="h-10 w-full cursor-pointer rounded-lg border border-border-strong bg-overlay-subtle text-body-lg text-text-secondary transition-colors duration-150 hover:bg-overlay-default hover:text-text-primary focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-[var(--color-brand-400)]"
           >
             Sign out
           </button>

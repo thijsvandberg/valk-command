@@ -437,7 +437,7 @@ export function SidePanel({
             {!isSubtask && (
               <button
                 onClick={() => { setMoreMenuOpen(false); handleTabChange("review"); }}
-                className="flex w-full cursor-pointer items-center gap-2.5 px-3 py-2 text-body-sm text-text-secondary hover:bg-overlay-default active:bg-overlay-strong"
+                className="flex w-full cursor-pointer items-center gap-2.5 px-3 py-2 text-body-sm text-text-secondary hover:bg-overlay-default active:bg-overlay-strong focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-[var(--color-brand-400)]"
                 style={{ transition: "background-color 0.1s ease" }}
               >
                 <ClipboardCheck size={13} strokeWidth={1.5} className={activeTab === "review" ? "text-[var(--color-brand-400)]" : "text-text-muted"} />
@@ -452,7 +452,7 @@ export function SidePanel({
             <div className="mx-2 my-1 h-px bg-overlay-default" />
             <button
               onClick={() => { setMoreMenuOpen(false); h.isFollowed ? h.unfollow(ticket.key) : h.follow(ticket.key); }}
-              className="flex w-full cursor-pointer items-center gap-2.5 px-3 py-2 text-body-sm text-text-secondary hover:bg-overlay-default active:bg-overlay-strong"
+              className="flex w-full cursor-pointer items-center gap-2.5 px-3 py-2 text-body-sm text-text-secondary hover:bg-overlay-default active:bg-overlay-strong focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-[var(--color-brand-400)]"
               style={{ transition: "background-color 0.1s ease" }}
             >
               <Star size={13} strokeWidth={1.5} className={h.isFollowed ? "text-amber-400 fill-amber-400" : "text-text-muted"} />
@@ -460,7 +460,7 @@ export function SidePanel({
             </button>
             <button
               onClick={() => { setMoreMenuOpen(false); h.handleCopyLink(); }}
-              className="flex w-full cursor-pointer items-center gap-2.5 px-3 py-2 text-body-sm text-text-secondary hover:bg-overlay-default active:bg-overlay-strong"
+              className="flex w-full cursor-pointer items-center gap-2.5 px-3 py-2 text-body-sm text-text-secondary hover:bg-overlay-default active:bg-overlay-strong focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-[var(--color-brand-400)]"
               style={{ transition: "background-color 0.1s ease" }}
             >
               {h.linkCopied
@@ -471,7 +471,7 @@ export function SidePanel({
             <button
               onClick={() => { setMoreMenuOpen(false); h.handleRefreshFromJira(); }}
               disabled={h.isRefreshing}
-              className="flex w-full cursor-pointer items-center gap-2.5 px-3 py-2 text-body-sm text-text-secondary hover:bg-overlay-default active:bg-overlay-strong disabled:opacity-50 disabled:cursor-not-allowed"
+              className="flex w-full cursor-pointer items-center gap-2.5 px-3 py-2 text-body-sm text-text-secondary hover:bg-overlay-default active:bg-overlay-strong disabled:opacity-50 disabled:cursor-not-allowed focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-[var(--color-brand-400)]"
               style={{ transition: "background-color 0.1s ease" }}
             >
               <CloudDownload size={13} strokeWidth={1.5} className="text-text-muted" />
@@ -480,7 +480,7 @@ export function SidePanel({
             {!h.isFlagged ? (
               <button
                 onClick={() => { setMoreMenuOpen(false); setShowFlagDialog(true); }}
-                className="flex w-full cursor-pointer items-center gap-2.5 px-3 py-2 text-body-sm text-text-secondary hover:bg-overlay-default active:bg-overlay-strong"
+                className="flex w-full cursor-pointer items-center gap-2.5 px-3 py-2 text-body-sm text-text-secondary hover:bg-overlay-default active:bg-overlay-strong focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-[var(--color-brand-400)]"
                 style={{ transition: "background-color 0.1s ease" }}
               >
                 <Flag size={13} strokeWidth={1.5} className="text-text-muted" />
@@ -489,7 +489,7 @@ export function SidePanel({
             ) : (
               <button
                 onClick={() => { setMoreMenuOpen(false); h.handleUnflag(); }}
-                className="flex w-full cursor-pointer items-center gap-2.5 px-3 py-2 text-body-sm text-text-secondary hover:bg-overlay-default active:bg-overlay-strong"
+                className="flex w-full cursor-pointer items-center gap-2.5 px-3 py-2 text-body-sm text-text-secondary hover:bg-overlay-default active:bg-overlay-strong focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-[var(--color-brand-400)]"
                 style={{ transition: "background-color 0.1s ease" }}
               >
                 <Flag size={13} strokeWidth={1.5} className="text-[var(--color-status-error)]" fill="var(--color-status-error)" />
@@ -502,7 +502,7 @@ export function SidePanel({
             {refineEligible && (
               <button
                 onClick={() => { setMoreMenuOpen(false); setShowAddToRefinement(true); }}
-                className="flex w-full cursor-pointer items-center gap-2.5 px-3 py-2 text-body-sm text-text-secondary hover:bg-overlay-default active:bg-overlay-strong"
+                className="flex w-full cursor-pointer items-center gap-2.5 px-3 py-2 text-body-sm text-text-secondary hover:bg-overlay-default active:bg-overlay-strong focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-[var(--color-brand-400)]"
                 style={{ transition: "background-color 0.1s ease" }}
               >
                 <Boxes size={13} strokeWidth={1.5} className="text-text-muted" />
@@ -513,7 +513,7 @@ export function SidePanel({
               <button
                 onClick={(e) => { setMoreMenuOpen(false); h.handleDeleteSession(e); }}
                 disabled={h.isDeletingSession}
-                className="flex w-full cursor-pointer items-center gap-2.5 px-3 py-2 text-body-sm text-text-secondary hover:bg-overlay-default active:bg-overlay-strong disabled:opacity-50"
+                className="flex w-full cursor-pointer items-center gap-2.5 px-3 py-2 text-body-sm text-text-secondary hover:bg-overlay-default active:bg-overlay-strong disabled:opacity-50 focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-[var(--color-brand-400)]"
                 style={{ transition: "background-color 0.1s ease" }}
               >
                 <Trash2 size={13} strokeWidth={1.5} className="text-text-muted" />
@@ -535,7 +535,7 @@ export function SidePanel({
                 <div className="px-3 pt-1 pb-0.5 text-caption font-medium uppercase tracking-wider text-text-muted">Epic</div>
                 <button
                   onClick={() => { setMoreMenuOpen(false); epicActions.onShowOnly(t.title); }}
-                  className="flex w-full cursor-pointer items-center gap-2.5 px-3 py-2 text-body-sm text-text-secondary hover:bg-overlay-default active:bg-overlay-strong"
+                  className="flex w-full cursor-pointer items-center gap-2.5 px-3 py-2 text-body-sm text-text-secondary hover:bg-overlay-default active:bg-overlay-strong focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-[var(--color-brand-400)]"
                   style={{ transition: "background-color 0.1s ease" }}
                 >
                   <Filter size={13} strokeWidth={1.5} className="text-text-muted" />
@@ -543,7 +543,7 @@ export function SidePanel({
                 </button>
                 <button
                   onClick={() => { setMoreMenuOpen(false); epicActions.onShowAcrossAllSprints(t.title); }}
-                  className="flex w-full cursor-pointer items-center gap-2.5 px-3 py-2 text-body-sm text-text-secondary hover:bg-overlay-default active:bg-overlay-strong"
+                  className="flex w-full cursor-pointer items-center gap-2.5 px-3 py-2 text-body-sm text-text-secondary hover:bg-overlay-default active:bg-overlay-strong focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-[var(--color-brand-400)]"
                   style={{ transition: "background-color 0.1s ease" }}
                 >
                   <Layers size={13} strokeWidth={1.5} className="text-text-muted" />
@@ -552,7 +552,7 @@ export function SidePanel({
                 {epicActions.isFiltered && (
                   <button
                     onClick={() => { setMoreMenuOpen(false); epicActions.onClear(); }}
-                    className="flex w-full cursor-pointer items-center gap-2.5 px-3 py-2 text-body-sm text-text-secondary hover:bg-overlay-default active:bg-overlay-strong"
+                    className="flex w-full cursor-pointer items-center gap-2.5 px-3 py-2 text-body-sm text-text-secondary hover:bg-overlay-default active:bg-overlay-strong focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-[var(--color-brand-400)]"
                     style={{ transition: "background-color 0.1s ease" }}
                   >
                     <FilterX size={13} strokeWidth={1.5} className="text-text-muted" />

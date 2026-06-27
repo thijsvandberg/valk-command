@@ -338,7 +338,7 @@ export function NotificationBell() {
                         <button
                           type="button"
                           onClick={() => markRead(n.id)}
-                          className="group/dot flex h-6 w-6 items-center justify-center rounded-md cursor-pointer hover:bg-hover-interactive transition-colors duration-150"
+                          className="group/dot flex h-6 w-6 items-center justify-center rounded-md cursor-pointer hover:bg-hover-interactive transition-colors duration-150 focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-[var(--color-brand-400)]"
                           title="Mark as read"
                         >
                           {/* Dot at rest, check on hover */}
@@ -350,7 +350,7 @@ export function NotificationBell() {
                       <button
                         type="button"
                         onClick={() => dismissOne(n.id)}
-                        className="flex h-6 w-6 items-center justify-center rounded-md cursor-pointer text-transparent group-hover:text-text-tertiary hover:!text-text-secondary hover:bg-hover-interactive transition-colors duration-150"
+                        className="flex h-6 w-6 items-center justify-center rounded-md cursor-pointer text-transparent group-hover:text-text-tertiary hover:!text-text-secondary hover:bg-hover-interactive transition-colors duration-150 focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-[var(--color-brand-400)]"
                         title="Dismiss"
                       >
                         <X size={11} strokeWidth={2} />

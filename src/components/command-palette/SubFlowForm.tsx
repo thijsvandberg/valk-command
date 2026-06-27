@@ -37,7 +37,7 @@ export function SubFlowForm({
             subFlow.mode === "create"
               ? "bg-[var(--color-surface-floating)] text-text-primary shadow-sm"
               : "text-text-tertiary hover:text-text-secondary"
-          }`}
+          } focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-[var(--color-brand-400)]`}
         >
           <Plus size={12} strokeWidth={2} />
           Create new
@@ -49,7 +49,7 @@ export function SubFlowForm({
             subFlow.mode === "existing"
               ? "bg-[var(--color-surface-floating)] text-text-primary shadow-sm"
               : "text-text-tertiary hover:text-text-secondary"
-          }`}
+          } focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-[var(--color-brand-400)]`}
         >
           <Link size={12} strokeWidth={2} />
           Use existing
@@ -137,7 +137,7 @@ export function SubFlowForm({
           type="button"
           onClick={onCancel}
           disabled={subFlow.loading}
-          className="px-3 py-1.5 text-body-lg text-text-tertiary hover:text-text-secondary disabled:opacity-40 transition-colors duration-150 cursor-pointer"
+          className="px-3 py-1.5 text-body-lg text-text-tertiary hover:text-text-secondary disabled:opacity-40 transition-colors duration-150 cursor-pointer focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-[var(--color-brand-400)]"
         >
           Cancel
         </button>
@@ -145,7 +145,7 @@ export function SubFlowForm({
           type="button"
           onClick={onConfirm}
           disabled={subFlow.loading}
-          className="flex items-center gap-1.5 rounded-md bg-[var(--color-brand-600)] px-4 py-1.5 text-body-lg font-medium text-white hover:bg-[var(--color-brand-500)] disabled:opacity-50 transition-colors duration-150 cursor-pointer"
+          className="flex items-center gap-1.5 rounded-md bg-[var(--color-brand-600)] px-4 py-1.5 text-body-lg font-medium text-white hover:bg-[var(--color-brand-500)] disabled:opacity-50 transition-colors duration-150 cursor-pointer focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-[var(--color-brand-400)]"
         >
           {subFlow.loading ? (
             <span className="inline-block h-3.5 w-3.5 rounded-full border-2 border-border-strong border-t-white/80 animate-spin" />

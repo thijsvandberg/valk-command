@@ -25,7 +25,7 @@ function ModeToggle({ explainMode, onChange }: { explainMode: boolean; onChange:
             !explainMode
               ? "bg-[var(--color-brand-600)]/20 text-[var(--color-brand-400)] shadow-[var(--shadow-sm)]"
               : "text-text-tertiary hover:text-text-secondary"
-          }`}
+          } focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-[var(--color-brand-400)]`}
         >
           Tech
         </button>
@@ -36,7 +36,7 @@ function ModeToggle({ explainMode, onChange }: { explainMode: boolean; onChange:
             explainMode
               ? "bg-[var(--color-brand-600)]/20 text-[var(--color-brand-400)] shadow-[var(--shadow-sm)]"
               : "text-text-tertiary hover:text-text-secondary"
-          }`}
+          } focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-[var(--color-brand-400)]`}
         >
           Explain
         </button>

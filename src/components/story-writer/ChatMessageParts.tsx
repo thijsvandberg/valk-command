@@ -195,7 +195,7 @@ export function MessageInfoButton({
           open
             ? "border-border-strong bg-overlay-strong text-text-secondary"
             : "border-border-strong bg-overlay-subtle text-text-tertiary hover:border-border-strong hover:bg-overlay-strong hover:text-text-secondary"
-        }`}
+        } focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-[var(--color-brand-400)]`}
       >
         <Info size={11} strokeWidth={1.5} />
       </button>
@@ -218,7 +218,7 @@ export function MessageInfoButton({
                 <button
                   type="button"
                   onClick={() => { onOpenLogs(logsTaskId); setOpen(false); }}
-                  className="flex w-full items-center gap-2 rounded-lg px-2 py-1.5 text-label text-text-secondary hover:text-text-primary hover:bg-hover-interactive cursor-pointer transition-colors duration-150"
+                  className="flex w-full items-center gap-2 rounded-lg px-2 py-1.5 text-label text-text-secondary hover:text-text-primary hover:bg-hover-interactive cursor-pointer transition-colors duration-150 focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-[var(--color-brand-400)]"
                 >
                   <ExternalLink size={11} strokeWidth={1.5} className="shrink-0" />
                   View execution logs
@@ -443,7 +443,7 @@ export function ChatMessage({
               <button
                 type="button"
                 onClick={() => setExpanded((v) => !v)}
-                className="mt-2 inline-flex items-center gap-1 rounded-full border border-border-default bg-overlay-subtle px-2.5 py-0.5 text-label text-text-tertiary cursor-pointer hover:text-text-secondary hover:border-border-strong hover:bg-overlay-default active:bg-overlay-strong transition-colors duration-150"
+                className="mt-2 inline-flex items-center gap-1 rounded-full border border-border-default bg-overlay-subtle px-2.5 py-0.5 text-label text-text-tertiary cursor-pointer hover:text-text-secondary hover:border-border-strong hover:bg-overlay-default active:bg-overlay-strong transition-colors duration-150 focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-[var(--color-brand-400)]"
               >
                 {expanded ? <ChevronUp size={10} /> : <ChevronDown size={10} />}
                 {expanded ? "Show less" : "Show more"}
@@ -504,7 +504,7 @@ export function ChatMessage({
                   setDraftExpanded((v) => !v);
                 }}
                 aria-label={draftExpanded ? "Collapse draft" : "Expand draft"}
-                className={`${!draftAccepted ? "ml-auto " : ""}flex items-center justify-center shrink-0 cursor-pointer text-text-muted hover:text-text-secondary transition-colors duration-150`}
+                className={`${!draftAccepted ? "ml-auto " : ""}flex items-center justify-center shrink-0 cursor-pointer text-text-muted hover:text-text-secondary transition-colors duration-150 focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-[var(--color-brand-400)]`}
               >
                 <ChevronDown
                   size={12}
@@ -622,7 +622,7 @@ export function DraftCard({ content }: { content: string }) {
       <button
         type="button"
         onClick={() => setExpanded((v) => !v)}
-        className="flex w-full items-center gap-2 px-3 py-2 cursor-pointer hover:bg-overlay-subtle transition-colors duration-150"
+        className="flex w-full items-center gap-2 px-3 py-2 cursor-pointer hover:bg-overlay-subtle transition-colors duration-150 focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-[var(--color-brand-400)]"
       >
         <FileText size={12} strokeWidth={1.5} className="text-text-tertiary shrink-0" />
         <span className="text-label font-medium text-text-tertiary">Current draft</span>
@@ -745,7 +745,7 @@ export function RelatedStoriesInline({
                 }}
                 title="Open in side panel"
                 aria-label="Open in side panel"
-                className="flex size-5 items-center justify-center rounded text-text-tertiary hover:text-text-secondary cursor-pointer transition-colors duration-150"
+                className="flex size-5 items-center justify-center rounded text-text-tertiary hover:text-text-secondary cursor-pointer transition-colors duration-150 focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-[var(--color-brand-400)]"
               >
                 <PanelRight size={13} strokeWidth={1.5} />
               </button>

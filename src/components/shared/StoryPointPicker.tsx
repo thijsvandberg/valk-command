@@ -195,20 +195,20 @@ export function StoryPointPicker({
             <>
               <div className="mb-2 text-[10px] font-semibold uppercase tracking-wider text-text-muted">Story Points</div>
               <div className="flex items-center gap-1.5">
-                <button type="button" onClick={() => { onChange(0); handleClose(); }} title="Not applicable" className="flex h-10 w-10 items-center justify-center rounded-md cursor-pointer transition-colors duration-100 hover:opacity-80 active:opacity-60" style={{ color: isNA ? "#fff" : "#555a64", backgroundColor: isNA ? "#555a64" : "color-mix(in srgb, #555a64 8%, transparent)", boxShadow: isNA ? "0 0 0 1px color-mix(in srgb, #555a64 40%, transparent)" : undefined }}>
+                <button type="button" onClick={() => { onChange(0); handleClose(); }} title="Not applicable" className="flex h-10 w-10 items-center justify-center rounded-md cursor-pointer transition-colors duration-100 hover:opacity-80 active:opacity-60 focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-[var(--color-brand-400)]" style={{ color: isNA ? "#fff" : "#555a64", backgroundColor: isNA ? "#555a64" : "color-mix(in srgb, #555a64 8%, transparent)", boxShadow: isNA ? "0 0 0 1px color-mix(in srgb, #555a64 40%, transparent)" : undefined }}>
                   <Minus size={14} strokeWidth={1.5} />
                 </button>
                 {SP_PRESET_OPTIONS.map((n) => {
                   const c = getSpColor(n);
                   const isActive = n === value;
                   return (
-                    <button key={n} type="button" onClick={() => { onChange(n); handleClose(); }} className="flex h-10 w-10 items-center justify-center rounded-md text-body-lg font-semibold tabular-nums cursor-pointer transition-colors duration-100 hover:opacity-80 active:opacity-60" style={{ color: isActive ? "#fff" : c.text, backgroundColor: isActive ? c.solid : c.bg, boxShadow: isActive ? `0 0 0 1px color-mix(in srgb, ${c.solid} 40%, transparent)` : undefined }}>
+                    <button key={n} type="button" onClick={() => { onChange(n); handleClose(); }} className="flex h-10 w-10 items-center justify-center rounded-md text-body-lg font-semibold tabular-nums cursor-pointer transition-colors duration-100 hover:opacity-80 active:opacity-60 focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-[var(--color-brand-400)]" style={{ color: isActive ? "#fff" : c.text, backgroundColor: isActive ? c.solid : c.bg, boxShadow: isActive ? `0 0 0 1px color-mix(in srgb, ${c.solid} 40%, transparent)` : undefined }}>
                       {n}
                     </button>
                   );
                 })}
                 <input ref={lgCustomInputRef} type="number" min="1" max="999" value={lgCustomInput} onChange={(e) => setLgCustomInput(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); handleLgCustomSubmit(); } if (e.key === "Escape") { e.preventDefault(); handleClose(); } }} placeholder="#" className="h-10 w-10 rounded-md border border-border-default bg-surface-base text-center text-body-lg font-medium tabular-nums text-text-primary placeholder:text-text-muted outline-none focus:border-[var(--color-brand-400)] [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none" style={{ transition: "border-color 0.15s ease" }} />
-                <button type="button" onClick={() => { onChange(null); handleClose(); }} title="Clear story points" className={`flex h-10 w-10 items-center justify-center rounded-md text-text-muted cursor-pointer hover:bg-overlay-default hover:text-text-secondary transition-colors duration-100 active:opacity-60 ${value == null ? "opacity-30 pointer-events-none" : ""}`} disabled={value == null}>
+                <button type="button" onClick={() => { onChange(null); handleClose(); }} title="Clear story points" className={`flex h-10 w-10 items-center justify-center rounded-md text-text-muted cursor-pointer hover:bg-overlay-default hover:text-text-secondary transition-colors duration-100 active:opacity-60 ${value == null ? "opacity-30 pointer-events-none" : ""} focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-[var(--color-brand-400)]`} disabled={value == null}>
                   <X size={14} strokeWidth={1.5} />
                 </button>
               </div>
@@ -216,28 +216,28 @@ export function StoryPointPicker({
           ) : customMode ? (
             <div className="flex items-center gap-1">
               <input ref={customInputRef} type="number" min="1" max="999" value={customInput} onChange={(e) => setCustomInput(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); handleCustomSubmit(); } if (e.key === "Escape") { e.preventDefault(); e.nativeEvent.stopImmediatePropagation(); setCustomMode(false); setCustomInput(""); } }} placeholder="SP" className={`${customInputH} rounded-md border border-border-default bg-surface-base px-2 text-center ${customInputText} tabular-nums text-text-primary outline-none focus:border-[var(--color-brand-400)]`} />
-              <button type="button" onClick={handleCustomSubmit} className={`flex ${btnSize} items-center justify-center rounded-md text-text-muted cursor-pointer hover:bg-overlay-default hover:text-text-secondary transition-colors duration-100 active:opacity-60`}>
+              <button type="button" onClick={handleCustomSubmit} className={`flex ${btnSize} items-center justify-center rounded-md text-text-muted cursor-pointer hover:bg-overlay-default hover:text-text-secondary transition-colors duration-100 active:opacity-60 focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-[var(--color-brand-400)]`}>
                 <Hash size={iconSize} strokeWidth={1.5} />
               </button>
             </div>
           ) : (
             <div className="flex items-center gap-1">
-              <button type="button" onClick={() => { onChange(0); handleClose(); }} title="Not applicable" className={`flex ${btnSize} items-center justify-center rounded-md cursor-pointer transition-colors duration-100 hover:opacity-80 active:opacity-60`} style={{ color: isNA ? "#fff" : "#555a64", backgroundColor: isNA ? "#555a64" : "color-mix(in srgb, #555a64 8%, transparent)", boxShadow: isNA ? "0 0 0 1px color-mix(in srgb, #555a64 40%, transparent)" : undefined }}>
+              <button type="button" onClick={() => { onChange(0); handleClose(); }} title="Not applicable" className={`flex ${btnSize} items-center justify-center rounded-md cursor-pointer transition-colors duration-100 hover:opacity-80 active:opacity-60 focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-[var(--color-brand-400)]`} style={{ color: isNA ? "#fff" : "#555a64", backgroundColor: isNA ? "#555a64" : "color-mix(in srgb, #555a64 8%, transparent)", boxShadow: isNA ? "0 0 0 1px color-mix(in srgb, #555a64 40%, transparent)" : undefined }}>
                 <Minus size={iconSize} strokeWidth={1.5} />
               </button>
               {SP_PRESET_OPTIONS.map((n) => {
                 const c = getSpColor(n);
                 const isActive = n === value;
                 return (
-                  <button key={n} type="button" onClick={() => { onChange(n); handleClose(); }} className={`flex ${btnSize} items-center justify-center rounded-md ${btnText} tabular-nums cursor-pointer transition-colors duration-100 hover:opacity-80 active:opacity-60`} style={{ color: isActive ? "#fff" : c.text, backgroundColor: isActive ? c.solid : c.bg, boxShadow: isActive ? `0 0 0 1px color-mix(in srgb, ${c.solid} 40%, transparent)` : undefined }}>
+                  <button key={n} type="button" onClick={() => { onChange(n); handleClose(); }} className={`flex ${btnSize} items-center justify-center rounded-md ${btnText} tabular-nums cursor-pointer transition-colors duration-100 hover:opacity-80 active:opacity-60 focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-[var(--color-brand-400)]`} style={{ color: isActive ? "#fff" : c.text, backgroundColor: isActive ? c.solid : c.bg, boxShadow: isActive ? `0 0 0 1px color-mix(in srgb, ${c.solid} 40%, transparent)` : undefined }}>
                     {n}
                   </button>
                 );
               })}
-              <button type="button" onClick={() => setCustomMode(true)} title="Custom value" className={`flex ${btnSize} items-center justify-center rounded-md cursor-pointer transition-colors duration-100 hover:opacity-80 active:opacity-60`} style={{ color: isCustomValue ? "#fff" : "var(--color-text-muted)", backgroundColor: isCustomValue ? (color?.solid ?? "var(--color-overlay-default)") : "var(--color-overlay-subtle)", boxShadow: isCustomValue ? `0 0 0 1px color-mix(in srgb, ${color?.solid ?? "var(--color-text-muted)"} 40%, transparent)` : undefined }}>
+              <button type="button" onClick={() => setCustomMode(true)} title="Custom value" className={`flex ${btnSize} items-center justify-center rounded-md cursor-pointer transition-colors duration-100 hover:opacity-80 active:opacity-60 focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-[var(--color-brand-400)]`} style={{ color: isCustomValue ? "#fff" : "var(--color-text-muted)", backgroundColor: isCustomValue ? (color?.solid ?? "var(--color-overlay-default)") : "var(--color-overlay-subtle)", boxShadow: isCustomValue ? `0 0 0 1px color-mix(in srgb, ${color?.solid ?? "var(--color-text-muted)"} 40%, transparent)` : undefined }}>
                 <Hash size={11} strokeWidth={1.5} />
               </button>
-              <button type="button" onClick={() => { onChange(null); handleClose(); }} title="Clear story points" className={`flex ${btnSize} items-center justify-center rounded-md text-text-muted cursor-pointer hover:bg-overlay-default hover:text-text-secondary transition-colors duration-100 active:opacity-60 ${value == null ? "opacity-30 pointer-events-none" : ""}`} disabled={value == null}>
+              <button type="button" onClick={() => { onChange(null); handleClose(); }} title="Clear story points" className={`flex ${btnSize} items-center justify-center rounded-md text-text-muted cursor-pointer hover:bg-overlay-default hover:text-text-secondary transition-colors duration-100 active:opacity-60 ${value == null ? "opacity-30 pointer-events-none" : ""} focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-[var(--color-brand-400)]`} disabled={value == null}>
                 <X size={iconSize} strokeWidth={1.5} />
               </button>
             </div>

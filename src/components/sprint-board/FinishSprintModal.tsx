@@ -243,7 +243,7 @@ export function FinishSprintModal({
           <button
             type="button"
             onClick={onClose}
-            className="rounded-md p-1 text-text-muted cursor-pointer hover:text-text-secondary hover:bg-overlay-default transition-colors duration-100"
+            className="rounded-md p-1 text-text-muted cursor-pointer hover:text-text-secondary hover:bg-overlay-default transition-colors duration-100 focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-[var(--color-brand-400)]"
             aria-label="Close dialog"
           >
             <X size={14} strokeWidth={1.5} />
@@ -311,7 +311,7 @@ export function FinishSprintModal({
                       type="button"
                       onClick={handleCopyReport}
                       aria-label="Copy open-subtasks list"
-                      className="inline-flex items-center gap-1.5 rounded-md bg-[var(--color-status-caution)]/15 px-2 py-1 text-[11px] font-medium text-text-secondary cursor-pointer hover:bg-[var(--color-status-caution)]/25 hover:text-text-primary active:bg-[var(--color-status-caution)]/30 transition-colors duration-150"
+                      className="inline-flex items-center gap-1.5 rounded-md bg-[var(--color-status-caution)]/15 px-2 py-1 text-[11px] font-medium text-text-secondary cursor-pointer hover:bg-[var(--color-status-caution)]/25 hover:text-text-primary active:bg-[var(--color-status-caution)]/30 transition-colors duration-150 focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-[var(--color-brand-400)]"
                     >
                       <Copy size={11} strokeWidth={1.75} />
                       Copy list
@@ -321,7 +321,7 @@ export function FinishSprintModal({
                       onClick={closeAllSubtasks}
                       disabled={busyStories.size > 0}
                       aria-label="Close all open subtasks"
-                      className="inline-flex items-center gap-1.5 rounded-md bg-[var(--color-status-caution)]/15 px-2 py-1 text-[11px] font-medium text-text-secondary cursor-pointer hover:bg-[var(--color-status-caution)]/25 hover:text-text-primary active:bg-[var(--color-status-caution)]/30 disabled:opacity-50 disabled:cursor-not-allowed transition-colors duration-150"
+                      className="inline-flex items-center gap-1.5 rounded-md bg-[var(--color-status-caution)]/15 px-2 py-1 text-[11px] font-medium text-text-secondary cursor-pointer hover:bg-[var(--color-status-caution)]/25 hover:text-text-primary active:bg-[var(--color-status-caution)]/30 disabled:opacity-50 disabled:cursor-not-allowed transition-colors duration-150 focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-[var(--color-brand-400)]"
                     >
                       <CheckCheck size={11} strokeWidth={1.75} />
                       Close all
@@ -361,7 +361,7 @@ export function FinishSprintModal({
                             type="button"
                             onClick={() => closeAllForStory(story.key)}
                             disabled={storyBusy}
-                            className="inline-flex shrink-0 items-center gap-1 rounded-md px-1.5 py-1 text-[11px] font-medium text-text-secondary cursor-pointer hover:bg-[var(--color-status-caution)]/15 hover:text-text-primary active:bg-[var(--color-status-caution)]/20 disabled:opacity-50 disabled:cursor-not-allowed transition-colors duration-150"
+                            className="inline-flex shrink-0 items-center gap-1 rounded-md px-1.5 py-1 text-[11px] font-medium text-text-secondary cursor-pointer hover:bg-[var(--color-status-caution)]/15 hover:text-text-primary active:bg-[var(--color-status-caution)]/20 disabled:opacity-50 disabled:cursor-not-allowed transition-colors duration-150 focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-[var(--color-brand-400)]"
                           >
                             {storyBusy
                               ? <Loader2 size={11} strokeWidth={1.75} className="animate-spin" />
@@ -382,7 +382,7 @@ export function FinishSprintModal({
                           <button
                             type="button"
                             onClick={() => loadStory(story.key)}
-                            className="rounded px-1.5 py-0.5 font-medium text-[var(--color-brand-400)] cursor-pointer hover:bg-[var(--color-brand-500)]/10 transition-colors duration-100"
+                            className="rounded px-1.5 py-0.5 font-medium text-[var(--color-brand-400)] cursor-pointer hover:bg-[var(--color-brand-500)]/10 transition-colors duration-100 focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-[var(--color-brand-400)]"
                           >
                             Retry
                           </button>
@@ -408,7 +408,7 @@ export function FinishSprintModal({
                                   type="button"
                                   onClick={() => closeOneSubtask(story.key, sub.key)}
                                   disabled={subBusy || storyBusy}
-                                  className="inline-flex shrink-0 items-center gap-1 rounded-md px-1.5 py-1 text-[10px] font-medium text-text-secondary cursor-pointer hover:bg-overlay-default hover:text-text-primary active:bg-overlay-strong disabled:opacity-50 disabled:cursor-not-allowed transition-colors duration-100"
+                                  className="inline-flex shrink-0 items-center gap-1 rounded-md px-1.5 py-1 text-[10px] font-medium text-text-secondary cursor-pointer hover:bg-overlay-default hover:text-text-primary active:bg-overlay-strong disabled:opacity-50 disabled:cursor-not-allowed transition-colors duration-100 focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-[var(--color-brand-400)]"
                                 >
                                   {subBusy
                                     ? <Loader2 size={10} strokeWidth={1.75} className="animate-spin" />

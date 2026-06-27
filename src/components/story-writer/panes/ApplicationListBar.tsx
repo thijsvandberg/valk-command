@@ -93,7 +93,7 @@ export function ApplicationListBar() {
                   isActive
                     ? "bg-[var(--color-brand-500)]/10 text-[var(--color-brand-400)]"
                     : "text-text-tertiary hover:text-text-secondary hover:bg-overlay-subtle"
-                }`}
+                } focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-[var(--color-brand-400)]`}
                 style={{ transition: "color 120ms, background-color 120ms" }}
               >
                 <span className={isActive ? "text-[var(--color-brand-400)]" : "text-text-muted"}>

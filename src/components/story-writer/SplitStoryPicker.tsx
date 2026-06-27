@@ -100,7 +100,7 @@ export function SplitStoryPicker({ open, originalTitle, originalSprintId, onConf
               mode === "create"
                 ? "bg-[var(--color-surface-floating)] text-text-primary shadow-sm"
                 : "text-text-tertiary hover:text-text-secondary"
-            }`}
+            } focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-[var(--color-brand-400)]`}
           >
             <Plus size={12} strokeWidth={2} />
             Create new story
@@ -112,7 +112,7 @@ export function SplitStoryPicker({ open, originalTitle, originalSprintId, onConf
               mode === "existing"
                 ? "bg-[var(--color-surface-floating)] text-text-primary shadow-sm"
                 : "text-text-tertiary hover:text-text-secondary"
-            }`}
+            } focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-[var(--color-brand-400)]`}
           >
             <Link size={12} strokeWidth={2} />
             Use existing story

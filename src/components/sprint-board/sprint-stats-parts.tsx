@@ -29,7 +29,7 @@ export function FilterRow({ children, onClick, accentColor }: { children: React.
     <button
       type="button"
       onClick={onClick}
-      className="group w-full text-left rounded-md -mx-2 px-2 py-1.5 cursor-pointer transition-colors duration-100 hover:bg-[var(--color-overlay-subtle)]"
+      className="group w-full text-left rounded-md -mx-2 px-2 py-1.5 cursor-pointer transition-colors duration-100 hover:bg-[var(--color-overlay-subtle)] focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-[var(--color-brand-400)]"
       style={{ borderLeft: "2px solid transparent" }}
       onMouseEnter={(e) => { if (accentColor) e.currentTarget.style.borderLeftColor = accentColor; }}
       onMouseLeave={(e) => { e.currentTarget.style.borderLeftColor = "transparent"; }}

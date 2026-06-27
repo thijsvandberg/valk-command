@@ -93,7 +93,7 @@ export function RefinementFilters({
                   filters.lastUpdatedFilter === opt.value
                     ? "font-medium text-text-primary"
                     : "text-text-secondary"
-                }`}
+                } focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-[var(--color-brand-400)]`}
                 style={{ transition: "background-color 80ms" }}
               >
                 <span className="flex h-3.5 w-3.5 shrink-0 items-center justify-center">

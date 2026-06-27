@@ -79,7 +79,7 @@ export function SprintGoalActions({ content, metadata, showToast }: SprintGoalAc
             hover:bg-[var(--color-brand-500)]/20
             active:bg-[var(--color-brand-500)]/25
             disabled:opacity-40 disabled:cursor-not-allowed
-            transition-colors duration-100"
+            transition-colors duration-100 focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-[var(--color-brand-400)]"
         >
           {accepting ? <Loader2 size={10} strokeWidth={2} className="animate-spin" /> : <Check size={10} strokeWidth={2} />}
           Accept
@@ -92,7 +92,7 @@ export function SprintGoalActions({ content, metadata, showToast }: SprintGoalAc
             text-text-muted
             hover:text-text-secondary hover:bg-overlay-default
             disabled:opacity-40 disabled:cursor-not-allowed
-            transition-colors duration-100"
+            transition-colors duration-100 focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-[var(--color-brand-400)]"
         >
           {loadingEdit ? <Loader2 size={10} strokeWidth={2} className="animate-spin" /> : <Pencil size={10} strokeWidth={2} />}
           Edit

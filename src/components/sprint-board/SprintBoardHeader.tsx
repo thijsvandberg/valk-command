@@ -155,7 +155,7 @@ export function SprintBoardHeader(props: SprintBoardHeaderProps) {
                       isSprintFollowed
                         ? "text-[var(--color-brand-400)] bg-[var(--color-brand-500)]/[0.08]"
                         : "text-text-secondary hover:bg-hover-interactive hover:text-text-primary"
-                    }`}
+                    } focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-[var(--color-brand-400)]`}
                     title={isSprintFollowed ? "Stop UAT deploy notifications" : "Get UAT deploy notifications"}
                   >
                     {isSprintFollowed
@@ -174,7 +174,7 @@ export function SprintBoardHeader(props: SprintBoardHeaderProps) {
                     analyticsVisible
                       ? "text-[var(--color-brand-400)] bg-[var(--color-brand-500)]/[0.08]"
                       : "text-text-secondary hover:bg-hover-interactive hover:text-text-primary"
-                  }`}
+                  } focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-[var(--color-brand-400)]`}
                 >
                   <BarChart2 size={13} strokeWidth={1.5} className="shrink-0" />
                   <span>Analytics</span>
@@ -186,7 +186,7 @@ export function SprintBoardHeader(props: SprintBoardHeaderProps) {
                     planningVisible
                       ? "text-[var(--color-brand-400)] bg-[var(--color-brand-500)]/[0.08]"
                       : "text-text-secondary hover:bg-hover-interactive hover:text-text-primary"
-                  }`}
+                  } focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-[var(--color-brand-400)]`}
                 >
                   <Pencil size={13} strokeWidth={1.5} className="shrink-0" />
                   <span>Planning</span>
@@ -248,7 +248,7 @@ export function SprintBoardHeader(props: SprintBoardHeaderProps) {
               type="button"
               onClick={() => setDetailsPopoverOpen((v) => !v)}
               className="cursor-pointer rounded-md px-1 -mx-1 transition-colors duration-100
-                hover:bg-overlay-default active:bg-overlay-strong"
+                hover:bg-overlay-default active:bg-overlay-strong focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-[var(--color-brand-400)]"
             >
               {activeSprint.name}
             </button>

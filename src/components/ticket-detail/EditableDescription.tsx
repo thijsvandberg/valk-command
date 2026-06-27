@@ -409,7 +409,7 @@ export function EditableDescription({
             <button
               type="button"
               onClick={() => { saver.clearConflict(); void onConflictReload(); }}
-              className="shrink-0 rounded-md border border-amber-500/20 bg-amber-500/10 px-2.5 py-1 text-body-sm font-medium text-amber-400 cursor-pointer hover:bg-amber-500/20 transition-colors duration-150"
+              className="shrink-0 rounded-md border border-amber-500/20 bg-amber-500/10 px-2.5 py-1 text-body-sm font-medium text-amber-400 cursor-pointer hover:bg-amber-500/20 transition-colors duration-150 focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-[var(--color-brand-400)]"
             >
               Reload draft
             </button>
@@ -417,7 +417,7 @@ export function EditableDescription({
           <button
             type="button"
             onClick={() => { void saver.overwrite().catch(() => {}); }}
-            className="shrink-0 rounded-md border border-amber-500/20 px-2.5 py-1 text-body-sm font-medium text-amber-400/80 cursor-pointer hover:bg-amber-500/10 transition-colors duration-150"
+            className="shrink-0 rounded-md border border-amber-500/20 px-2.5 py-1 text-body-sm font-medium text-amber-400/80 cursor-pointer hover:bg-amber-500/10 transition-colors duration-150 focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-[var(--color-brand-400)]"
           >
             Overwrite
           </button>

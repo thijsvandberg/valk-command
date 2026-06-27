@@ -133,7 +133,7 @@ function SectionHeader({
     <button
       type="button"
       onClick={onToggle}
-      className="flex w-full items-center gap-1.5 px-3 pt-2 pb-0.5 text-[10px] font-semibold uppercase tracking-wider text-text-muted cursor-pointer hover:text-text-tertiary"
+      className="flex w-full items-center gap-1.5 px-3 pt-2 pb-0.5 text-[10px] font-semibold uppercase tracking-wider text-text-muted cursor-pointer hover:text-text-tertiary focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-[var(--color-brand-400)]"
     >
       <ChevronRight
         size={9}
@@ -205,7 +205,7 @@ function TeamFilterDropdown({
             onClick={() => { onToggle(null); setOpen(false); }}
             className={`flex w-full items-center gap-2 px-3 py-1 text-body-sm cursor-pointer hover:bg-hover-list-item ${
               !active ? "text-text-primary font-medium" : "text-text-secondary"
-            }`}
+            } focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-[var(--color-brand-400)]`}
           >
             <span className={`h-1.5 w-1.5 rounded-full ${!active ? "bg-[var(--color-brand-400)]" : "opacity-0"}`} />
             All teams
@@ -217,7 +217,7 @@ function TeamFilterDropdown({
               onClick={() => { onToggle(active === t ? null : t); setOpen(false); }}
               className={`flex w-full items-center gap-2 px-3 py-1 text-body-sm cursor-pointer hover:bg-hover-list-item ${
                 active === t ? "text-text-primary font-medium" : "text-text-secondary"
-              }`}
+              } focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-[var(--color-brand-400)]`}
             >
               <span className={`h-1.5 w-1.5 rounded-full ${active === t ? "bg-[var(--color-brand-400)]" : "opacity-0"}`} />
               {t}
@@ -509,7 +509,7 @@ export function SprintListModal({
                       <AlertCircle className="mt-0.5 h-3 w-3 shrink-0" strokeWidth={1.5} />
                       <span>
                         {syncError}{" "}
-                        <button type="button" onClick={handleSync} className="cursor-pointer text-red-300 underline underline-offset-2 hover:text-red-200">Retry</button>
+                        <button type="button" onClick={handleSync} className="cursor-pointer text-red-300 underline underline-offset-2 hover:text-red-200 focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-[var(--color-brand-400)]">Retry</button>
                       </span>
                     </div>
                   ) : (
@@ -517,7 +517,7 @@ export function SprintListModal({
                       type="button"
                       onClick={handleSync}
                       disabled={syncing}
-                      className="mt-2 inline-flex items-center gap-1 text-body-sm text-text-muted cursor-pointer hover:text-text-secondary disabled:opacity-50 disabled:cursor-not-allowed"
+                      className="mt-2 inline-flex items-center gap-1 text-body-sm text-text-muted cursor-pointer hover:text-text-secondary disabled:opacity-50 disabled:cursor-not-allowed focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-[var(--color-brand-400)]"
                     >
                       <RefreshCw className={`h-3 w-3 ${syncing ? "animate-spin" : ""}`} strokeWidth={1.5} />
                       {syncing ? "Syncing..." : "Sync from Jira"}
@@ -610,14 +610,14 @@ export function SprintListModal({
             <span className="flex items-center gap-1.5 text-[11px] text-red-400">
               <AlertCircle size={11} strokeWidth={1.5} />
               Sync failed
-              <button type="button" onClick={handleSync} className="cursor-pointer underline underline-offset-2 hover:text-red-300">retry</button>
+              <button type="button" onClick={handleSync} className="cursor-pointer underline underline-offset-2 hover:text-red-300 focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-[var(--color-brand-400)]">retry</button>
             </span>
           ) : (
             <button
               type="button"
               onClick={handleSync}
               disabled={syncing}
-              className="flex items-center gap-1.5 text-[11px] text-text-muted cursor-pointer hover:text-text-secondary disabled:opacity-50 disabled:cursor-not-allowed"
+              className="flex items-center gap-1.5 text-[11px] text-text-muted cursor-pointer hover:text-text-secondary disabled:opacity-50 disabled:cursor-not-allowed focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-[var(--color-brand-400)]"
             >
               {syncDone ? (
                 <>

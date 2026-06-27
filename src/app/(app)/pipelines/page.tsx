@@ -274,7 +274,7 @@ export default function PipelinesPage() {
               setRepoFilter(null);
               setShowUnlinked(false);
             }}
-            className="ml-2 rounded-md bg-overlay-default px-2 py-0.5 text-caption font-medium text-text-tertiary cursor-pointer hover:bg-overlay-strong hover:text-text-secondary transition-colors duration-150"
+            className="ml-2 rounded-md bg-overlay-default px-2 py-0.5 text-caption font-medium text-text-tertiary cursor-pointer hover:bg-overlay-strong hover:text-text-secondary transition-colors duration-150 focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-[var(--color-brand-400)]"
             title="Clear all filters"
           >
             {activeFilterCount} filter{activeFilterCount > 1 ? "s" : ""} active &times;

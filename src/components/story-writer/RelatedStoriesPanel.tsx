@@ -124,7 +124,7 @@ function CandidateCard({
               candidate.isLinked
                 ? "border-[var(--color-brand-500)]/30 bg-[var(--color-brand-500)]/10 text-[var(--color-brand-400)] hover:bg-red-500/10 hover:border-red-500/20 hover:text-red-400"
                 : "border-border-strong bg-overlay-subtle text-text-tertiary hover:border-[var(--color-brand-500)]/25 hover:bg-[var(--color-brand-500)]/08 hover:text-[var(--color-brand-400)]"
-            }`}
+            } focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-[var(--color-brand-400)]`}
           >
             {linking ? (
               <Loader2 size={10} className="animate-spin" />
@@ -310,14 +310,14 @@ export function RelatedStoriesPanel({ candidates, onLink, onClose, selectedKey, 
                   <button
                     type="button"
                     onClick={onPrefillFindRelated}
-                    className="px-2.5 py-1 text-label font-medium text-text-secondary cursor-pointer hover:text-text-primary transition-colors duration-150"
+                    className="px-2.5 py-1 text-label font-medium text-text-secondary cursor-pointer hover:text-text-primary transition-colors duration-150 focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-[var(--color-brand-400)]"
                   >
                     Find related stories
                   </button>
                   <button
                     type="button"
                     onClick={onFindRelated}
-                    className="flex items-center justify-center border-l border-border-default px-2 text-text-muted cursor-pointer hover:bg-[var(--color-brand-500)]/[0.12] hover:text-[var(--color-brand-400)] transition-colors duration-150"
+                    className="flex items-center justify-center border-l border-border-default px-2 text-text-muted cursor-pointer hover:bg-[var(--color-brand-500)]/[0.12] hover:text-[var(--color-brand-400)] transition-colors duration-150 focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-[var(--color-brand-400)]"
                     title="Send immediately"
                   >
                     <SendHorizontal size={9} strokeWidth={2} />
@@ -346,14 +346,14 @@ export function RelatedStoriesPanel({ candidates, onLink, onClose, selectedKey, 
                     <button
                       type="button"
                       onClick={onPrefillFindRelated}
-                      className="px-2.5 py-1 text-label font-medium text-text-secondary cursor-pointer hover:text-text-primary transition-colors duration-150"
+                      className="px-2.5 py-1 text-label font-medium text-text-secondary cursor-pointer hover:text-text-primary transition-colors duration-150 focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-[var(--color-brand-400)]"
                     >
                       Find more
                     </button>
                     <button
                       type="button"
                       onClick={onFindRelated}
-                      className="flex items-center justify-center border-l border-border-default px-2 text-text-muted cursor-pointer hover:bg-[var(--color-brand-500)]/[0.12] hover:text-[var(--color-brand-400)] transition-colors duration-150"
+                      className="flex items-center justify-center border-l border-border-default px-2 text-text-muted cursor-pointer hover:bg-[var(--color-brand-500)]/[0.12] hover:text-[var(--color-brand-400)] transition-colors duration-150 focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-[var(--color-brand-400)]"
                       title="Send immediately"
                     >
                       <SendHorizontal size={9} strokeWidth={2} />

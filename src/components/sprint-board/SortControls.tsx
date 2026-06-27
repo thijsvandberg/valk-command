@@ -66,7 +66,7 @@ export function SortDropdown({
               }}
               className={`flex w-full items-center justify-between px-3 py-1.5 text-body-sm cursor-pointer hover:bg-hover-list-item ${
                 opt.field === field ? "text-text-primary bg-overlay-subtle" : "text-text-secondary"
-              }`}
+              } focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-[var(--color-brand-400)]`}
             >
               <span className="flex items-center gap-2">
                 {opt.field === field && (
@@ -90,7 +90,7 @@ export function SortDropdown({
                   onChange(defaultField, options.find((o) => o.field === defaultField)?.defaultDir ?? "asc");
                   setOpen(false);
                 }}
-                className="flex w-full items-center px-3 py-1.5 text-body-sm text-text-tertiary cursor-pointer hover:bg-hover-list-item hover:text-text-secondary"
+                className="flex w-full items-center px-3 py-1.5 text-body-sm text-text-tertiary cursor-pointer hover:bg-hover-list-item hover:text-text-secondary focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-[var(--color-brand-400)]"
               >
                 Reset to default
               </button>

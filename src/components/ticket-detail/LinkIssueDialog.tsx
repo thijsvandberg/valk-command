@@ -242,7 +242,7 @@ export function LinkIssueDialog({
                           : opt.value === relation
                             ? "text-[var(--color-brand-400)]"
                             : "text-text-secondary hover:bg-overlay-default hover:text-text-primary"
-                      }`}
+                      } focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-[var(--color-brand-400)]`}
                       style={{ transition: "background-color 80ms, color 80ms" }}
                     >
                       <Check

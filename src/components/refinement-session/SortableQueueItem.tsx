@@ -120,7 +120,7 @@ export function SortableQueueItem({
                       setMenuOpen(false);
                       onMoveToSession?.(ticket.key, s.id);
                     }}
-                    className="flex w-full cursor-pointer items-center gap-2 px-3 py-1.5 text-left text-body-sm text-text-secondary hover:bg-overlay-subtle"
+                    className="flex w-full cursor-pointer items-center gap-2 px-3 py-1.5 text-left text-body-sm text-text-secondary hover:bg-overlay-subtle focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-[var(--color-brand-400)]"
                   >
                     <span className="min-w-0 flex-1 truncate">{sessionLabel(s)}</span>
                     <span className="shrink-0 text-[10px] tabular-nums text-text-muted">{s.ticketCount}</span>

@@ -182,7 +182,7 @@ export function IndicatorPopover({
               type="button"
               onClick={handleClose}
               disabled={closing}
-              className="flex w-full items-center justify-center gap-1.5 rounded-md px-3 py-1.5 text-body-sm font-semibold transition-colors duration-150 cursor-pointer text-[color-mix(in_srgb,var(--color-status-warning)_78%,var(--color-text-primary))] bg-[color-mix(in_srgb,var(--color-status-warning)_16%,transparent)] hover:bg-[color-mix(in_srgb,var(--color-status-warning)_26%,transparent)] active:bg-[color-mix(in_srgb,var(--color-status-warning)_32%,transparent)] disabled:opacity-50 disabled:cursor-not-allowed"
+              className="flex w-full items-center justify-center gap-1.5 rounded-md px-3 py-1.5 text-body-sm font-semibold transition-colors duration-150 cursor-pointer text-[color-mix(in_srgb,var(--color-status-warning)_78%,var(--color-text-primary))] bg-[color-mix(in_srgb,var(--color-status-warning)_16%,transparent)] hover:bg-[color-mix(in_srgb,var(--color-status-warning)_26%,transparent)] active:bg-[color-mix(in_srgb,var(--color-status-warning)_32%,transparent)] disabled:opacity-50 disabled:cursor-not-allowed focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-[var(--color-brand-400)]"
             >
               {closing ? (
                 <>
@@ -229,7 +229,7 @@ export function OpenSubtasksIndicator({
           setPopoverOpen((o) => !o);
         }}
         onPointerDown={(e) => e.stopPropagation()}
-        className="inline-flex items-center justify-center gap-1 rounded px-1.5 py-1 text-[10px] font-medium tabular-nums leading-none transition-colors duration-150 cursor-pointer bg-amber-500/15 text-amber-400 hover:bg-amber-500/25 hover:text-amber-300 active:bg-amber-500/30"
+        className="inline-flex items-center justify-center gap-1 rounded px-1.5 py-1 text-[10px] font-medium tabular-nums leading-none transition-colors duration-150 cursor-pointer bg-amber-500/15 text-amber-400 hover:bg-amber-500/25 hover:text-amber-300 active:bg-amber-500/30 focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-[var(--color-brand-400)]"
         title={`${openCount} of ${totalCount} subtasks still open`}
       >
         <AlertTriangle size={10} strokeWidth={1.75} className="shrink-0" />

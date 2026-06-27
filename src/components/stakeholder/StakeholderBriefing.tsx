@@ -145,7 +145,7 @@ export function StakeholderBriefing({
             type="button"
             onClick={onClose}
             aria-label="Close AI analysis"
-            className="rounded p-1 text-text-muted cursor-pointer hover:bg-overlay-default hover:text-text-secondary transition-colors duration-150"
+            className="rounded p-1 text-text-muted cursor-pointer hover:bg-overlay-default hover:text-text-secondary transition-colors duration-150 focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-[var(--color-brand-400)]"
           >
             <X size={14} strokeWidth={1.5} />
           </button>

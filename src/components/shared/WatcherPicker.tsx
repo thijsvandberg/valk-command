@@ -116,7 +116,7 @@ function WatcherPickerInner({
                 teamFilter === null
                   ? "bg-[var(--color-brand-500)]/15 text-[var(--color-brand-400)]"
                   : "text-text-muted hover:text-text-tertiary"
-              }`}
+              } focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-[var(--color-brand-400)]`}
             >
               All
             </button>
@@ -129,7 +129,7 @@ function WatcherPickerInner({
                   teamFilter === team
                     ? "bg-[var(--color-brand-500)]/15 text-[var(--color-brand-400)]"
                     : "text-text-muted hover:text-text-tertiary"
-                }`}
+                } focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-[var(--color-brand-400)]`}
               >
                 {team}
               </button>

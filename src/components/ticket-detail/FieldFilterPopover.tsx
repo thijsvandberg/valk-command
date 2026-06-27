@@ -118,7 +118,7 @@ export function FieldFilterSections({
                 key={opt.value}
                 type="button"
                 onClick={() => setFilter(opt.value)}
-                className="flex w-full cursor-pointer items-center gap-2.5 px-3 py-[7px] text-body-sm hover:bg-hover-list-item active:bg-overlay-default"
+                className="flex w-full cursor-pointer items-center gap-2.5 px-3 py-[7px] text-body-sm hover:bg-hover-list-item active:bg-overlay-default focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-[var(--color-brand-400)]"
               >
                 <span className={isActive ? "font-medium text-text-primary" : "text-text-secondary"}>
                   {opt.label}
@@ -137,7 +137,7 @@ export function FieldFilterSections({
           <button
             type="button"
             onClick={() => onToggleHideDeprecated!(!hideDeprecated)}
-            className="flex w-full cursor-pointer items-center gap-2.5 px-3 py-[7px] text-body-sm hover:bg-hover-list-item active:bg-overlay-default"
+            className="flex w-full cursor-pointer items-center gap-2.5 px-3 py-[7px] text-body-sm hover:bg-hover-list-item active:bg-overlay-default focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-[var(--color-brand-400)]"
           >
             <Checkbox checked={Boolean(hideDeprecated)} />
             <span className="text-text-secondary">Hide deprecated</span>
@@ -162,7 +162,7 @@ export function FieldFilterSections({
                 key={field.id}
                 type="button"
                 onClick={() => onToggleField(field.id, !isVisible)}
-                className="flex w-full cursor-pointer items-center gap-2.5 px-3 py-[7px] text-body-sm hover:bg-hover-list-item active:bg-overlay-default"
+                className="flex w-full cursor-pointer items-center gap-2.5 px-3 py-[7px] text-body-sm hover:bg-hover-list-item active:bg-overlay-default focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-[var(--color-brand-400)]"
               >
                 <Checkbox checked={isVisible} />
                 <span className="text-text-secondary">

@@ -65,7 +65,7 @@ function SortablePromptRow({
         <button
           {...attributes}
           {...listeners}
-          className="text-text-muted hover:text-text-secondary cursor-grab active:cursor-grabbing transition-colors duration-150 touch-none"
+          className="text-text-muted hover:text-text-secondary cursor-grab active:cursor-grabbing transition-colors duration-150 touch-none focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-[var(--color-brand-400)]"
           tabIndex={-1}
         >
           <GripVertical size={14} strokeWidth={1.5} />

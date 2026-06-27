@@ -161,7 +161,7 @@ export function SavedSessionList({
                     setEditingId(session.id);
                     setEditValue(session.name ?? "");
                   }}
-                  className="max-w-[160px] cursor-pointer truncate bg-transparent text-left"
+                  className="max-w-[160px] cursor-pointer truncate bg-transparent text-left focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-[var(--color-brand-400)]"
                 >
                   {sessionLabel(session)}
                 </button>

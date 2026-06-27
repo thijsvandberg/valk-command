@@ -526,7 +526,7 @@ export function LinkedIssuesSection({ issues, ticketKey, onMutate, onSelectTicke
             title="Link an issue"
             className={`flex w-full cursor-pointer items-center gap-2.5 rounded-md px-2.5 py-2 text-body-sm transition-colors duration-150 hover:bg-hover-list-item ${
               composerAt === "__bottom__" ? "text-[var(--color-brand-400)]" : "text-text-secondary hover:text-text-primary"
-            }`}
+            } focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-[var(--color-brand-400)]`}
           >
             <Plus size={14} strokeWidth={2} className="shrink-0 text-[var(--color-brand-400)]" />
             <span>Link an issue</span>
@@ -543,7 +543,7 @@ export function LinkedIssuesSection({ issues, ticketKey, onMutate, onSelectTicke
             title={suggestions.length > 0 ? `${suggestions.length} pending AI suggestions` : "Find related issues with AI"}
             className={`flex w-full cursor-pointer items-center gap-2.5 rounded-md px-2.5 py-2 text-body-sm transition-colors duration-150 hover:bg-hover-list-item disabled:cursor-not-allowed disabled:opacity-60 ${
               suggestions.length > 0 ? "text-[var(--color-brand-400)]" : "text-text-secondary hover:text-text-primary"
-            }`}
+            } focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-[var(--color-brand-400)]`}
           >
             {suggestLoading ? (
               <Loader2 size={14} strokeWidth={1.5} className="shrink-0 animate-spin text-[var(--color-brand-400)]" />
@@ -572,7 +572,7 @@ export function LinkedIssuesSection({ issues, ticketKey, onMutate, onSelectTicke
             <button
               type="button"
               onClick={() => setInlineRelationOpen((v) => !v)}
-              className="flex items-center gap-1 rounded-md border border-border-default bg-overlay-subtle px-2 py-1 text-label font-medium text-text-secondary cursor-pointer hover:bg-overlay-default hover:border-border-strong active:bg-overlay-strong transition-colors duration-150"
+              className="flex items-center gap-1 rounded-md border border-border-default bg-overlay-subtle px-2 py-1 text-label font-medium text-text-secondary cursor-pointer hover:bg-overlay-default hover:border-border-strong active:bg-overlay-strong transition-colors duration-150 focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-[var(--color-brand-400)]"
             >
               <Link2 size={11} strokeWidth={1.5} className="shrink-0 text-text-muted" />
               <span className="max-w-[100px] truncate">

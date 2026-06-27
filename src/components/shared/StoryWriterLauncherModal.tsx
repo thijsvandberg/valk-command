@@ -297,7 +297,7 @@ export function StoryWriterLauncherModal({ open, onClose }: StoryWriterLauncherM
                   mode === m
                     ? "bg-overlay-default text-text-primary shadow-[var(--shadow-sm)]"
                     : "text-text-tertiary hover:text-text-secondary"
-                }`}
+                } focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-[var(--color-brand-400)]`}
               >
                 {m === "new"      && <Plus size={11} strokeWidth={2.5} />}
                 {m === "session"  && <History size={11} strokeWidth={2} />}
@@ -338,7 +338,7 @@ export function StoryWriterLauncherModal({ open, onClose }: StoryWriterLauncherM
                     const color  = ISSUE_TYPE_COLORS[value];
                     return (
                       <button key={value} type="button" onClick={() => setIssueType(value)}
-                        className="flex flex-1 items-center justify-center gap-1 rounded-md border py-1.5 cursor-pointer transition-colors duration-120"
+                        className="flex flex-1 items-center justify-center gap-1 rounded-md border py-1.5 cursor-pointer transition-colors duration-120 focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-[var(--color-brand-400)]"
                         style={{
                           borderColor: active ? `${color}45` : "var(--color-overlay-default)",
                           backgroundColor: active ? `${color}12` : "transparent",
@@ -557,7 +557,7 @@ export function StoryWriterLauncherModal({ open, onClose }: StoryWriterLauncherM
                           type="button"
                           onClick={() => { setSelectedTicket(r); setSearchQuery(`${r.key} — ${r.summary}`); setShowDropdown(false); }}
                           onMouseEnter={() => setFocusedSearch(i)}
-                          className="flex w-full items-start gap-3 px-3.5 py-2.5 text-left cursor-pointer"
+                          className="flex w-full items-start gap-3 px-3.5 py-2.5 text-left cursor-pointer focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-[var(--color-brand-400)]"
                           style={{ backgroundColor: isFoc ? "var(--color-overlay-default)" : "transparent", transition: "background-color 60ms" }}
                         >
                           <span className="mt-px shrink-0 font-mono text-label font-medium text-[var(--color-brand-400)]/75" style={{ color: isFoc ? undefined : undefined }}>

@@ -78,7 +78,7 @@ export function CommandPalette() {
             <button
               type="button"
               onClick={() => { setSubFlow({ kind: "none" }); requestAnimationFrame(() => inputRef.current?.focus()); }}
-              className="flex items-center justify-center h-[18px] w-[18px] shrink-0 text-text-tertiary hover:text-text-secondary transition-colors duration-75 cursor-pointer"
+              className="flex items-center justify-center h-[18px] w-[18px] shrink-0 text-text-tertiary hover:text-text-secondary transition-colors duration-75 cursor-pointer focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-[var(--color-brand-400)]"
               aria-label="Back to palette"
             >
               <ChevronLeft className="h-[18px] w-[18px]" strokeWidth={1.5} />

@@ -156,7 +156,7 @@ export function LinkPopover({ editor, open, onClose }: LinkPopoverProps) {
               setError("");
               urlInputRef.current?.focus();
             }}
-            className="absolute right-2 top-1/2 -translate-y-1/2 cursor-pointer rounded p-0.5 text-text-muted transition-colors duration-150 hover:text-text-secondary"
+            className="absolute right-2 top-1/2 -translate-y-1/2 cursor-pointer rounded p-0.5 text-text-muted transition-colors duration-150 hover:text-text-secondary focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-[var(--color-brand-400)]"
             aria-label="Clear URL"
           >
             <X size={12} strokeWidth={2} />
@@ -187,14 +187,14 @@ export function LinkPopover({ editor, open, onClose }: LinkPopoverProps) {
             onClose();
             editor.chain().focus().run();
           }}
-          className="cursor-pointer rounded px-3 py-1.5 text-body-sm text-text-tertiary transition-colors duration-150 hover:text-text-secondary"
+          className="cursor-pointer rounded px-3 py-1.5 text-body-sm text-text-tertiary transition-colors duration-150 hover:text-text-secondary focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-[var(--color-brand-400)]"
         >
           Cancel
         </button>
         <button
           type="button"
           onClick={handleApply}
-          className="cursor-pointer rounded bg-overlay-strong px-3 py-1.5 text-body-sm font-medium text-text-secondary transition-colors duration-150 hover:bg-overlay-strong hover:text-text-primary active:scale-[0.97]"
+          className="cursor-pointer rounded bg-overlay-strong px-3 py-1.5 text-body-sm font-medium text-text-secondary transition-colors duration-150 hover:bg-overlay-strong hover:text-text-primary active:scale-[0.97] focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-[var(--color-brand-400)]"
         >
           Apply
         </button>

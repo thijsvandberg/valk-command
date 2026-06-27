@@ -26,7 +26,7 @@ export function CollapsibleSection({
       <button
         type="button"
         onClick={() => setOpen((prev) => !prev)}
-        className="flex w-full items-center gap-2 py-2 cursor-pointer group"
+        className="flex w-full items-center gap-2 py-2 cursor-pointer group focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-[var(--color-brand-400)]"
         aria-expanded={open}
       >
         <Icon

@@ -22,7 +22,7 @@ export function Toast({ toast, loading = false, onDismiss }: ToastProps) {
         : <Check className="h-4 w-4 shrink-0 text-[var(--color-brand-400)]" strokeWidth={1.5} />}
       <span className="text-body-lg text-text-secondary">{toast}</span>
       {!loading && (
-        <button type="button" onClick={onDismiss} aria-label="Dismiss" className="ml-1 shrink-0 cursor-pointer text-text-muted hover:text-text-secondary"><X className="h-3.5 w-3.5" strokeWidth={2} /></button>
+        <button type="button" onClick={onDismiss} aria-label="Dismiss" className="ml-1 shrink-0 cursor-pointer text-text-muted hover:text-text-secondary focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-[var(--color-brand-400)]"><X className="h-3.5 w-3.5" strokeWidth={2} /></button>
       )}
     </div>
   );

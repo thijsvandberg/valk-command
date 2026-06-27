@@ -204,7 +204,7 @@ export function StatusCount({
     <button
       type="button"
       onClick={onClick}
-      className="inline-flex items-center justify-center min-w-[22px] h-[22px] rounded px-1.5 text-[11px] font-semibold tabular-nums shrink-0 select-none cursor-pointer transition-colors duration-100 hover:opacity-80 active:opacity-60"
+      className="inline-flex items-center justify-center min-w-[22px] h-[22px] rounded px-1.5 text-[11px] font-semibold tabular-nums shrink-0 select-none cursor-pointer transition-colors duration-100 hover:opacity-80 active:opacity-60 focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-[var(--color-brand-400)]"
       style={style}
     >
       {count}
@@ -338,7 +338,7 @@ export function SprintCompletionBar(props: SprintCompletionBarProps) {
             key={m.key}
             type="button"
             onClick={(e) => { e.stopPropagation(); setMode(m.key); }}
-            className="px-1.5 h-full text-[9px] font-semibold uppercase tracking-wide cursor-pointer transition-colors duration-100"
+            className="px-1.5 h-full text-[9px] font-semibold uppercase tracking-wide cursor-pointer transition-colors duration-100 focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-[var(--color-brand-400)]"
             style={{
               color: mode === m.key ? "var(--color-text-primary)" : "var(--color-text-muted)",
               backgroundColor: mode === m.key ? "var(--color-overlay-strong)" : "transparent",
@@ -485,7 +485,7 @@ export function StatusPill({
       type="button"
       onClick={onClick}
       aria-pressed={active}
-      className={`${base} cursor-pointer transition-colors duration-100 hover:opacity-80 active:opacity-60 ${className}`}
+      className={`${base} cursor-pointer transition-colors duration-100 hover:opacity-80 active:opacity-60 ${className} focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-[var(--color-brand-400)]`}
       style={style}
     >
       {content}

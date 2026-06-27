@@ -182,7 +182,7 @@ export default function SchedulerPage() {
                     <button
                       onClick={() => handleRunNow(task.name)}
                       disabled={running[task.name]}
-                      className="flex items-center gap-1 rounded-md border border-border-strong bg-overlay-subtle px-2 py-0.5 text-caption font-medium text-text-secondary transition-colors hover:border-border-strong hover:bg-overlay-strong hover:text-text-primary disabled:cursor-not-allowed disabled:opacity-40"
+                      className="flex items-center gap-1 rounded-md border border-border-strong bg-overlay-subtle px-2 py-0.5 text-caption font-medium text-text-secondary transition-colors hover:border-border-strong hover:bg-overlay-strong hover:text-text-primary disabled:cursor-not-allowed disabled:opacity-40 focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-[var(--color-brand-400)]"
                     >
                       <Play size={8} strokeWidth={2} className={running[task.name] ? "animate-pulse" : ""} />
                       {running[task.name] ? "Running..." : "Run now"}

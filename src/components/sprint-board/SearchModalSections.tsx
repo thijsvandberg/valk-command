@@ -279,7 +279,7 @@ export function SearchHistoryPanel({
         <button
           type="button"
           onClick={clearHistory}
-          className="text-caption cursor-pointer"
+          className="text-caption cursor-pointer focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-[var(--color-brand-400)]"
           style={{ color: "var(--color-text-muted)", transition: "color 100ms" }}
           onMouseEnter={(e) => (e.currentTarget.style.color = "var(--color-text-secondary)")}
           onMouseLeave={(e) => (e.currentTarget.style.color = "var(--color-text-muted)")}

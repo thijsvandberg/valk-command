@@ -76,7 +76,7 @@ export function SessionSelectDropdown({
                     type="button"
                     onClick={() => { onChange(opt.value); setOpen(false); }}
                     onMouseEnter={() => setFocused(fi)}
-                    className="flex w-full items-start gap-2.5 px-3 py-2 text-left cursor-pointer"
+                    className="flex w-full items-start gap-2.5 px-3 py-2 text-left cursor-pointer focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-[var(--color-brand-400)]"
                     style={{ backgroundColor: isFoc ? "var(--color-overlay-default)" : "transparent", transition: "background-color 60ms" }}
                   >
                     <Checkbox checked={isSel} className="mt-0.5" />

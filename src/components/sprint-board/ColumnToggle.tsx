@@ -177,7 +177,7 @@ export function ColumnToggle({
               <button
                 type="button"
                 onClick={() => { onReset(); setOpen(false); }}
-                className="flex w-full items-center px-3.5 py-1.5 text-body-sm text-text-tertiary cursor-pointer hover:bg-hover-list-item hover:text-text-secondary"
+                className="flex w-full items-center px-3.5 py-1.5 text-body-sm text-text-tertiary cursor-pointer hover:bg-hover-list-item hover:text-text-secondary focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-[var(--color-brand-400)]"
               >
                 Reset to default
               </button>

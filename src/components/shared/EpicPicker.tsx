@@ -285,7 +285,7 @@ export function EpicPickerBody({
             key={`suggest-${s.key}`}
             type="button"
             onClick={() => { onChange({ key: s.key, name: s.name }); onClose(); }}
-            className="flex w-full items-start gap-2.5 px-3 py-[7px] text-body-sm cursor-pointer hover:bg-[color-mix(in_srgb,var(--color-icon-epic)_8%,transparent)] active:bg-[color-mix(in_srgb,var(--color-icon-epic)_12%,transparent)]"
+            className="flex w-full items-start gap-2.5 px-3 py-[7px] text-body-sm cursor-pointer hover:bg-[color-mix(in_srgb,var(--color-icon-epic)_8%,transparent)] active:bg-[color-mix(in_srgb,var(--color-icon-epic)_12%,transparent)] focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-[var(--color-brand-400)]"
           >
             <span className="flex w-4 items-center justify-center shrink-0 mt-0.5 text-[var(--color-icon-epic)]">
               <Sparkles size={10} strokeWidth={1.5} />

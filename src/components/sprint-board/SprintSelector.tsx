@@ -81,7 +81,7 @@ export function SprintSelector({
                 teamFilter === team
                   ? "bg-[var(--color-brand-500)]/20 text-[var(--color-brand-400)] ring-1 ring-[var(--color-brand-500)]/30"
                   : "bg-overlay-default text-text-tertiary hover:bg-overlay-strong hover:text-text-secondary"
-              }`}
+              } focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-[var(--color-brand-400)]`}
             >
               {team}
             </button>
@@ -146,7 +146,7 @@ export function SprintSelector({
             <button
               type="button"
               onClick={() => setShowClosed(!showClosed)}
-              className="flex w-full items-center gap-1.5 px-3 py-2 text-body-sm text-text-tertiary cursor-pointer hover:text-text-secondary"
+              className="flex w-full items-center gap-1.5 px-3 py-2 text-body-sm text-text-tertiary cursor-pointer hover:text-text-secondary focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-[var(--color-brand-400)]"
             >
               <ChevronRight
                 className={`h-3 w-3 transition-transform duration-150 ${showClosed ? "rotate-90" : ""}`}

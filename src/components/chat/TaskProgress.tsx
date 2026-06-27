@@ -65,7 +65,7 @@ export default function TaskProgress({
             <button
               type="button"
               onClick={onCancel}
-              className="flex items-center gap-1 rounded-md px-2 py-0.5 text-caption text-text-tertiary cursor-pointer hover:text-red-400 hover:bg-red-500/10 transition-colors duration-150"
+              className="flex items-center gap-1 rounded-md px-2 py-0.5 text-caption text-text-tertiary cursor-pointer hover:text-red-400 hover:bg-red-500/10 transition-colors duration-150 focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-[var(--color-brand-400)]"
               aria-label="Cancel task"
               data-testid="task-progress-cancel"
             >

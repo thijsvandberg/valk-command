@@ -42,7 +42,7 @@ function VersionPickerItem({
       onClick={onSelect}
       className={`flex w-full items-start gap-3 border-b border-border-subtle px-3.5 py-2.5 text-left cursor-pointer transition-colors duration-150 last:border-0 ${
         selected ? "bg-overlay-default" : "hover:bg-overlay-subtle"
-      }`}
+      } focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-[var(--color-brand-400)]`}
     >
       <div className="mt-0.5 shrink-0">
         {hasAvatar ? (

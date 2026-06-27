@@ -485,7 +485,7 @@ export default function TicketDetailPage({
                 <div className="min-w-[220px] py-1">
                   <button
                     onClick={() => { setMoreMenuOpen(false); setChatPaneOpen((v) => !v); }}
-                    className="flex w-full cursor-pointer items-center gap-2.5 px-3 py-2 text-body-sm text-text-secondary hover:bg-overlay-default active:bg-overlay-strong"
+                    className="flex w-full cursor-pointer items-center gap-2.5 px-3 py-2 text-body-sm text-text-secondary hover:bg-overlay-default active:bg-overlay-strong focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-[var(--color-brand-400)]"
                     style={{ transition: "background-color 0.1s ease" }}
                   >
                     <MessageSquareText
@@ -498,7 +498,7 @@ export default function TicketDetailPage({
                   <div className="mx-2 my-1 h-px bg-overlay-default" />
                   <button
                     onClick={() => { setMoreMenuOpen(false); h.isFollowed ? h.unfollow(key) : h.follow(key); }}
-                    className="flex w-full cursor-pointer items-center gap-2.5 px-3 py-2 text-body-sm text-text-secondary hover:bg-overlay-default active:bg-overlay-strong"
+                    className="flex w-full cursor-pointer items-center gap-2.5 px-3 py-2 text-body-sm text-text-secondary hover:bg-overlay-default active:bg-overlay-strong focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-[var(--color-brand-400)]"
                     style={{ transition: "background-color 0.1s ease" }}
                   >
                     <Star
@@ -511,7 +511,7 @@ export default function TicketDetailPage({
                   <div className="mx-2 my-1 h-px bg-overlay-default" />
                   <button
                     onClick={() => { setMoreMenuOpen(false); h.handleCopyLink(); }}
-                    className="flex w-full cursor-pointer items-center gap-2.5 px-3 py-2 text-body-sm text-text-secondary hover:bg-overlay-default active:bg-overlay-strong"
+                    className="flex w-full cursor-pointer items-center gap-2.5 px-3 py-2 text-body-sm text-text-secondary hover:bg-overlay-default active:bg-overlay-strong focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-[var(--color-brand-400)]"
                     style={{ transition: "background-color 0.1s ease" }}
                   >
                     {h.linkCopied
@@ -523,7 +523,7 @@ export default function TicketDetailPage({
                   <button
                     onClick={() => { setMoreMenuOpen(false); h.handleRefreshFromJira(); }}
                     disabled={h.isRefreshing}
-                    className="flex w-full cursor-pointer items-center gap-2.5 px-3 py-2 text-body-sm text-text-secondary hover:bg-overlay-default active:bg-overlay-strong disabled:opacity-50 disabled:cursor-not-allowed"
+                    className="flex w-full cursor-pointer items-center gap-2.5 px-3 py-2 text-body-sm text-text-secondary hover:bg-overlay-default active:bg-overlay-strong disabled:opacity-50 disabled:cursor-not-allowed focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-[var(--color-brand-400)]"
                     style={{ transition: "background-color 0.1s ease" }}
                   >
                     <CloudDownload size={13} strokeWidth={1.5} className="text-text-muted" />
@@ -532,7 +532,7 @@ export default function TicketDetailPage({
                   {!h.isFlagged ? (
                     <button
                       onClick={() => { setMoreMenuOpen(false); setShowFlagDialog(true); }}
-                      className="flex w-full cursor-pointer items-center gap-2.5 px-3 py-2 text-body-sm text-text-secondary hover:bg-overlay-default active:bg-overlay-strong"
+                      className="flex w-full cursor-pointer items-center gap-2.5 px-3 py-2 text-body-sm text-text-secondary hover:bg-overlay-default active:bg-overlay-strong focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-[var(--color-brand-400)]"
                       style={{ transition: "background-color 0.1s ease" }}
                     >
                       <Flag size={13} strokeWidth={1.5} className="text-text-muted" />
@@ -541,7 +541,7 @@ export default function TicketDetailPage({
                   ) : (
                     <button
                       onClick={() => { setMoreMenuOpen(false); h.handleUnflag(); }}
-                      className="flex w-full cursor-pointer items-center gap-2.5 px-3 py-2 text-body-sm text-text-secondary hover:bg-overlay-default active:bg-overlay-strong"
+                      className="flex w-full cursor-pointer items-center gap-2.5 px-3 py-2 text-body-sm text-text-secondary hover:bg-overlay-default active:bg-overlay-strong focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-[var(--color-brand-400)]"
                       style={{ transition: "background-color 0.1s ease" }}
                     >
                       <Flag size={13} strokeWidth={1.5} className="text-[var(--color-status-error)]" fill="var(--color-status-error)" />
@@ -551,7 +551,7 @@ export default function TicketDetailPage({
                   <div className="mx-2 my-1 h-px bg-overlay-default" />
                   <button
                     onClick={() => { setMoreMenuOpen(false); setShowAddToRefinement(true); }}
-                    className="flex w-full cursor-pointer items-center gap-2.5 px-3 py-2 text-body-sm text-text-secondary hover:bg-overlay-default active:bg-overlay-strong"
+                    className="flex w-full cursor-pointer items-center gap-2.5 px-3 py-2 text-body-sm text-text-secondary hover:bg-overlay-default active:bg-overlay-strong focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-[var(--color-brand-400)]"
                     style={{ transition: "background-color 0.1s ease" }}
                   >
                     <Boxes size={13} strokeWidth={1.5} className="text-text-muted" />

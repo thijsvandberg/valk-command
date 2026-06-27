@@ -45,7 +45,7 @@ function CollapsibleText({ label, text, mono = true, defaultOpen = false }: { la
       <button
         type="button"
         onClick={() => setOpen((v) => !v)}
-        className="flex w-full items-start gap-1.5 text-left cursor-pointer hover:text-text-primary transition-colors duration-100"
+        className="flex w-full items-start gap-1.5 text-left cursor-pointer hover:text-text-primary transition-colors duration-100 focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-[var(--color-brand-400)]"
       >
         {open
           ? <ChevronDown size={12} className="mt-0.5 shrink-0 text-text-secondary" />
@@ -219,7 +219,7 @@ function TaskLogRow({ log, ticketKey }: { log: LogMeta; ticketKey: string }) {
       <button
         type="button"
         onClick={() => setExpanded((v) => !v)}
-        className="flex w-full items-center gap-2.5 px-3 py-3 text-left cursor-pointer hover:bg-hover-interactive transition-colors duration-100"
+        className="flex w-full items-center gap-2.5 px-3 py-3 text-left cursor-pointer hover:bg-hover-interactive transition-colors duration-100 focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-[var(--color-brand-400)]"
       >
         {expanded
           ? <ChevronDown size={13} className="shrink-0 text-text-secondary" />

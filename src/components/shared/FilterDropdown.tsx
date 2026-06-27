@@ -110,7 +110,7 @@ export function FilterDropdown({
             <button
               type="button"
               onClick={() => { setSearch(""); searchRef.current?.focus(); }}
-              className="flex h-4 w-4 shrink-0 items-center justify-center rounded-full text-text-muted cursor-pointer hover:text-text-secondary"
+              className="flex h-4 w-4 shrink-0 items-center justify-center rounded-full text-text-muted cursor-pointer hover:text-text-secondary focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-[var(--color-brand-400)]"
             >
               <X className="h-2.5 w-2.5" strokeWidth={2} />
             </button>
@@ -123,7 +123,7 @@ export function FilterDropdown({
         <button
           type="button"
           onClick={() => onChange(new Set())}
-          className="flex w-full items-center gap-2 border-b border-border-default px-3 py-1.5 text-label font-medium text-text-tertiary cursor-pointer hover:bg-overlay-subtle hover:text-text-secondary"
+          className="flex w-full items-center gap-2 border-b border-border-default px-3 py-1.5 text-label font-medium text-text-tertiary cursor-pointer hover:bg-overlay-subtle hover:text-text-secondary focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-[var(--color-brand-400)]"
           style={{ transition: "background-color 80ms, color 80ms" }}
         >
           <X className="h-2.5 w-2.5" strokeWidth={2} />

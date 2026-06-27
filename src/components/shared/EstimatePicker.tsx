@@ -247,7 +247,7 @@ export function EstimatePicker({
                   onClick={() => setSkipToSp(true)}
                   aria-label="skip to story points"
                   title="Skip to story points"
-                  className="text-text-muted/60 transition-colors duration-100 hover:text-text-secondary cursor-pointer"
+                  className="text-text-muted/60 transition-colors duration-100 hover:text-text-secondary cursor-pointer focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-[var(--color-brand-400)]"
                 >
                   / SP
                 </button>
@@ -282,7 +282,7 @@ export function EstimatePicker({
                   type="button"
                   onClick={handleCustomSubmit}
                   title="Set value"
-                  className={`flex ${btnSize} items-center justify-center rounded-md cursor-pointer transition-[opacity] duration-100 hover:opacity-80 active:opacity-60`}
+                  className={`flex ${btnSize} items-center justify-center rounded-md cursor-pointer transition-[opacity] duration-100 hover:opacity-80 active:opacity-60 focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-[var(--color-brand-400)]`}
                   style={{ color: "#fff", background: SLATE }}
                 >
                   <Check size={13} strokeWidth={2.2} />
@@ -294,7 +294,7 @@ export function EstimatePicker({
                   type="button"
                   onClick={() => setValue(0)}
                   title="Not applicable"
-                  className={`flex ${btnSize} items-center justify-center rounded-md cursor-pointer transition-colors duration-100 hover:opacity-80 active:opacity-60 ${committed ? "" : "border border-dashed"}`}
+                  className={`flex ${btnSize} items-center justify-center rounded-md cursor-pointer transition-colors duration-100 hover:opacity-80 active:opacity-60 ${committed ? "" : "border border-dashed"} focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-[var(--color-brand-400)]`}
                   style={{
                     color: activeValue === 0 ? "#fff" : "#555a64",
                     backgroundColor: activeValue === 0 ? "#555a64" : "color-mix(in srgb, #555a64 8%, transparent)",
@@ -311,7 +311,7 @@ export function EstimatePicker({
                       key={n}
                       type="button"
                       onClick={() => setValue(n)}
-                      className={`flex ${btnSize} items-center justify-center rounded-md text-body-sm font-semibold tabular-nums cursor-pointer transition-colors duration-100 hover:opacity-80 active:opacity-60 ${committed ? "" : "border border-dashed"}`}
+                      className={`flex ${btnSize} items-center justify-center rounded-md text-body-sm font-semibold tabular-nums cursor-pointer transition-colors duration-100 hover:opacity-80 active:opacity-60 ${committed ? "" : "border border-dashed"} focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-[var(--color-brand-400)]`}
                       style={{
                         color: isActive ? "#fff" : SLATE_FG,
                         backgroundColor: isActive ? SLATE : TONE.bg,
@@ -330,7 +330,7 @@ export function EstimatePicker({
                     setCustomMode(true);
                   }}
                   title="Custom value (13, 21, ...)"
-                  className={`flex ${btnSize} items-center justify-center rounded-md text-body-sm font-semibold tabular-nums cursor-pointer transition-colors duration-100 hover:opacity-80 active:opacity-60 ${!committed && !isCustomActive ? "border border-dashed" : ""}`}
+                  className={`flex ${btnSize} items-center justify-center rounded-md text-body-sm font-semibold tabular-nums cursor-pointer transition-colors duration-100 hover:opacity-80 active:opacity-60 ${!committed && !isCustomActive ? "border border-dashed" : ""} focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-[var(--color-brand-400)]`}
                   style={{
                     color: isCustomActive ? "#fff" : SLATE_FG,
                     backgroundColor: isCustomActive ? SLATE : TONE.bg,
@@ -345,7 +345,7 @@ export function EstimatePicker({
                   onClick={() => setValue(null)}
                   disabled={activeValue == null}
                   title="Clear (not set)"
-                  className={`flex ${btnSize} items-center justify-center rounded-md text-text-muted cursor-pointer transition-colors duration-100 hover:bg-overlay-default hover:text-text-secondary active:opacity-60 ${activeValue == null ? "opacity-30 pointer-events-none" : ""}`}
+                  className={`flex ${btnSize} items-center justify-center rounded-md text-text-muted cursor-pointer transition-colors duration-100 hover:bg-overlay-default hover:text-text-secondary active:opacity-60 ${activeValue == null ? "opacity-30 pointer-events-none" : ""} focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-[var(--color-brand-400)]`}
                 >
                   <X size={13} strokeWidth={1.5} />
                 </button>
@@ -359,7 +359,7 @@ export function EstimatePicker({
               <button
                 type="button"
                 onClick={commit}
-                className="group/commit mt-1.5 flex w-full items-center justify-center gap-1.5 rounded-md px-2 py-1.5 text-[11px] font-medium transition-colors duration-100 hover:bg-[color-mix(in_srgb,var(--color-brand-500)_10%,transparent)] active:opacity-70 cursor-pointer"
+                className="group/commit mt-1.5 flex w-full items-center justify-center gap-1.5 rounded-md px-2 py-1.5 text-[11px] font-medium transition-colors duration-100 hover:bg-[color-mix(in_srgb,var(--color-brand-500)_10%,transparent)] active:opacity-70 cursor-pointer focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-[var(--color-brand-400)]"
                 style={{ color: "var(--color-brand-400)" }}
               >
                 Commit as story points
@@ -378,7 +378,7 @@ export function EstimatePicker({
                 <button
                   type="button"
                   onClick={backToGuess}
-                  className="transition-colors duration-100 hover:text-text-secondary cursor-pointer"
+                  className="transition-colors duration-100 hover:text-text-secondary cursor-pointer focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-[var(--color-brand-400)]"
                 >
                   back to guestimate{" "}
                   <span className="font-semibold text-text-secondary">{guestimation === 0 ? "(N/A)" : `(# ${guestimation})`}</span>

@@ -77,25 +77,25 @@ export function RefinementQueuePanel({
               </button>
               {bulk.bulkSuggestMenuOpen && (
                 <div className="absolute right-0 top-full z-30 mt-1 min-w-[200px] rounded-lg border border-border-strong bg-[var(--color-surface-floating)] py-1 shadow-[var(--shadow-popover)]">
-                  <button type="button" onClick={() => bulk.handleBulkSuggest(false)} disabled={bulk.bulkSuggestRunning} className="flex w-full cursor-pointer items-center gap-2 px-3 py-1.5 text-left text-body-sm text-text-secondary hover:bg-hover-list-item hover:text-text-primary disabled:cursor-default disabled:opacity-40" style={{ transition: "background-color 0.15s ease, color 0.15s ease" }}>
+                  <button type="button" onClick={() => bulk.handleBulkSuggest(false)} disabled={bulk.bulkSuggestRunning} className="flex w-full cursor-pointer items-center gap-2 px-3 py-1.5 text-left text-body-sm text-text-secondary hover:bg-hover-list-item hover:text-text-primary disabled:cursor-default disabled:opacity-40 focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-[var(--color-brand-400)]" style={{ transition: "background-color 0.15s ease, color 0.15s ease" }}>
                     <Sparkles size={12} strokeWidth={1.5} className="shrink-0 text-[var(--color-brand-400)]" />Suggest subtasks
                   </button>
-                  <button type="button" onClick={() => bulk.handleBulkSuggest(true)} disabled={bulk.bulkSuggestRunning} className="flex w-full cursor-pointer items-center gap-2 px-3 py-1.5 text-left text-body-sm text-text-secondary hover:bg-hover-list-item hover:text-text-primary disabled:cursor-default disabled:opacity-40" style={{ transition: "background-color 0.15s ease, color 0.15s ease" }}>
+                  <button type="button" onClick={() => bulk.handleBulkSuggest(true)} disabled={bulk.bulkSuggestRunning} className="flex w-full cursor-pointer items-center gap-2 px-3 py-1.5 text-left text-body-sm text-text-secondary hover:bg-hover-list-item hover:text-text-primary disabled:cursor-default disabled:opacity-40 focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-[var(--color-brand-400)]" style={{ transition: "background-color 0.15s ease, color 0.15s ease" }}>
                     <Sparkles size={12} strokeWidth={1.5} className="shrink-0 text-amber-400" />Regenerate all
                   </button>
                   {bulk.bulkSuggestConvId && !bulk.bulkSuggestVisible && (
-                    <button type="button" onClick={() => { bulk.setBulkSuggestVisible(true); bulk.setBulkSuggestPanelCollapsed(false); bulk.setBulkSuggestMenuOpen(false); }} className="flex w-full cursor-pointer items-center gap-2 px-3 py-1.5 text-left text-body-sm text-text-secondary hover:bg-hover-list-item hover:text-text-primary" style={{ transition: "background-color 0.15s ease, color 0.15s ease" }}>
+                    <button type="button" onClick={() => { bulk.setBulkSuggestVisible(true); bulk.setBulkSuggestPanelCollapsed(false); bulk.setBulkSuggestMenuOpen(false); }} className="flex w-full cursor-pointer items-center gap-2 px-3 py-1.5 text-left text-body-sm text-text-secondary hover:bg-hover-list-item hover:text-text-primary focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-[var(--color-brand-400)]" style={{ transition: "background-color 0.15s ease, color 0.15s ease" }}>
                       <Eye size={12} strokeWidth={1.5} className="shrink-0 text-text-tertiary" />Show suggestions
                     </button>
                   )}
                   <div className="my-1 border-t border-border-subtle" />
-                  <button type="button" onClick={bulk.handleCopyStories} className="flex w-full cursor-pointer items-center gap-2 px-3 py-1.5 text-left text-body-sm text-text-secondary hover:bg-hover-list-item hover:text-text-primary" style={{ transition: "background-color 0.15s ease, color 0.15s ease" }}>
+                  <button type="button" onClick={bulk.handleCopyStories} className="flex w-full cursor-pointer items-center gap-2 px-3 py-1.5 text-left text-body-sm text-text-secondary hover:bg-hover-list-item hover:text-text-primary focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-[var(--color-brand-400)]" style={{ transition: "background-color 0.15s ease, color 0.15s ease" }}>
                     <Copy size={12} strokeWidth={1.5} className="shrink-0 text-text-tertiary" />Copy stories + titles
                   </button>
                   {onRefreshEditStates && (
                     <>
                       <div className="my-1 border-t border-border-subtle" />
-                      <button type="button" onClick={() => { onRefreshEditStates(); setBulkSuggestMenuOpen(false); }} className="flex w-full cursor-pointer items-center gap-2 px-3 py-1.5 text-left text-body-sm text-text-secondary hover:bg-hover-list-item hover:text-text-primary" style={{ transition: "background-color 0.15s ease, color 0.15s ease" }}>
+                      <button type="button" onClick={() => { onRefreshEditStates(); setBulkSuggestMenuOpen(false); }} className="flex w-full cursor-pointer items-center gap-2 px-3 py-1.5 text-left text-body-sm text-text-secondary hover:bg-hover-list-item hover:text-text-primary focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-[var(--color-brand-400)]" style={{ transition: "background-color 0.15s ease, color 0.15s ease" }}>
                         <RefreshCw size={12} strokeWidth={1.5} className={`shrink-0 text-text-tertiary ${ticketsValidating ? "animate-spin" : ""}`} />Refresh edit states
                       </button>
                     </>

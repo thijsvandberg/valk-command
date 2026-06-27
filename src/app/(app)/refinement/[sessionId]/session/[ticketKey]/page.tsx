@@ -659,7 +659,7 @@ export default function RefinementSessionTicketPage({
                       onClick={() => { toggleSidebarPanel("chat"); setOverflowOpen(false); }}
                       className={`flex w-full cursor-pointer items-center gap-2.5 px-3 py-[7px] text-body-sm hover:bg-hover-list-item active:bg-overlay-default ${
                         activeSidebarPanel === "chat" ? "text-[#a78bfa]" : "text-text-secondary"
-                      }`}
+                      } focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-[var(--color-brand-400)]`}
                     >
                       <MessageSquareText size={13} strokeWidth={1.5} />
                       Chat
@@ -672,7 +672,7 @@ export default function RefinementSessionTicketPage({
                       onClick={() => { toggleSidebarPanel("subtasks"); setOverflowOpen(false); }}
                       className={`flex w-full cursor-pointer items-center gap-2.5 px-3 py-[7px] text-body-sm hover:bg-hover-list-item active:bg-overlay-default ${
                         activeSidebarPanel === "subtasks" ? "text-[var(--color-brand-400)]" : "text-text-secondary"
-                      }`}
+                      } focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-[var(--color-brand-400)]`}
                     >
                       <SquareMinus size={13} strokeWidth={1.5} />
                       Subtasks
@@ -685,7 +685,7 @@ export default function RefinementSessionTicketPage({
                       onClick={() => { toggleSidebarPanel("notes"); setOverflowOpen(false); }}
                       className={`flex w-full cursor-pointer items-center gap-2.5 px-3 py-[7px] text-body-sm hover:bg-hover-list-item active:bg-overlay-default ${
                         activeSidebarPanel === "notes" ? "text-[var(--color-brand-400)]" : "text-text-secondary"
-                      }`}
+                      } focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-[var(--color-brand-400)]`}
                     >
                       <StickyNote size={13} strokeWidth={1.5} />
                       Notes
@@ -698,7 +698,7 @@ export default function RefinementSessionTicketPage({
                       onClick={() => { toggleSidebarPanel("info"); setOverflowOpen(false); }}
                       className={`flex w-full cursor-pointer items-center gap-2.5 px-3 py-[7px] text-body-sm hover:bg-hover-list-item active:bg-overlay-default ${
                         activeSidebarPanel === "info" ? "text-[var(--color-brand-400)]" : "text-text-secondary"
-                      }`}
+                      } focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-[var(--color-brand-400)]`}
                     >
                       <Info size={13} strokeWidth={1.5} />
                       Info
@@ -711,7 +711,7 @@ export default function RefinementSessionTicketPage({
                       setZoomLevel(zoomLevel === 130 ? 110 : 130);
                       setOverflowOpen(false);
                     }}
-                    className="flex w-full cursor-pointer items-center gap-2.5 px-3 py-[7px] text-body-sm text-text-secondary hover:bg-hover-list-item active:bg-overlay-default"
+                    className="flex w-full cursor-pointer items-center gap-2.5 px-3 py-[7px] text-body-sm text-text-secondary hover:bg-hover-list-item active:bg-overlay-default focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-[var(--color-brand-400)]"
                   >
                     {zoomLevel === 130 ? <ZoomOut size={13} strokeWidth={1.5} /> : <ZoomIn size={13} strokeWidth={1.5} />}
                     {zoomLevel === 130 ? "Zoom 110%" : "Zoom 130%"}
@@ -723,7 +723,7 @@ export default function RefinementSessionTicketPage({
                       setOverflowOpen(false);
                       handleExitSession();
                     }}
-                    className="flex w-full cursor-pointer items-center gap-2.5 px-3 py-[7px] text-body-sm text-text-secondary hover:bg-hover-list-item active:bg-overlay-default"
+                    className="flex w-full cursor-pointer items-center gap-2.5 px-3 py-[7px] text-body-sm text-text-secondary hover:bg-hover-list-item active:bg-overlay-default focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-[var(--color-brand-400)]"
                   >
                     <LogOut size={13} strokeWidth={1.5} />
                     Exit session

@@ -108,7 +108,7 @@ export function CreateSprintModal({
           <button
             type="button"
             onClick={onClose}
-            className="rounded-md p-1 text-text-muted cursor-pointer hover:text-text-secondary hover:bg-overlay-default transition-colors duration-100"
+            className="rounded-md p-1 text-text-muted cursor-pointer hover:text-text-secondary hover:bg-overlay-default transition-colors duration-100 focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-[var(--color-brand-400)]"
           >
             <X size={14} strokeWidth={1.5} />
           </button>
@@ -188,7 +188,7 @@ export function CreateSprintModal({
                     text-[var(--color-brand-400)]
                     hover:bg-[var(--color-brand-500)]/10
                     active:bg-[var(--color-brand-500)]/15
-                    transition-colors duration-100"
+                    transition-colors duration-100 focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-[var(--color-brand-400)]"
                 >
                   <CornerDownRight size={11} strokeWidth={1.5} />
                   End on {formatDateTimeLabel(suggestedEnd)}

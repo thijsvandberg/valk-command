@@ -340,7 +340,7 @@ export function FilterControlsPanel(props: FilterControlsPanelProps) {
             <button
               type="button"
               onClick={props.onColumnReset}
-              className="text-caption font-medium text-text-tertiary cursor-pointer hover:text-text-primary"
+              className="text-caption font-medium text-text-tertiary cursor-pointer hover:text-text-primary focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-[var(--color-brand-400)]"
               style={{ transition: "color 120ms" }}
             >
               Reset
@@ -350,7 +350,7 @@ export function FilterControlsPanel(props: FilterControlsPanelProps) {
               type="button"
               onClick={props.onClearAll}
               disabled={total === 0}
-              className="text-caption font-medium text-text-tertiary cursor-pointer enabled:hover:text-text-primary disabled:cursor-default disabled:opacity-40"
+              className="text-caption font-medium text-text-tertiary cursor-pointer enabled:hover:text-text-primary disabled:cursor-default disabled:opacity-40 focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-[var(--color-brand-400)]"
               style={{ transition: "color 120ms" }}
             >
               Clear all
@@ -375,7 +375,7 @@ export function FilterControlsPanel(props: FilterControlsPanelProps) {
                   onClick={() => { setActiveKey(c.key); setSearch(""); }}
                   className={`flex w-full items-center justify-between rounded-md px-2.5 py-2 text-left text-body-sm cursor-pointer hover:bg-hover-list-item ${
                     isActive ? "bg-overlay-default font-medium text-text-primary" : "text-text-secondary"
-                  }`}
+                  } focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-[var(--color-brand-400)]`}
                   style={{ transition: "background-color 120ms, color 120ms" }}
                 >
                   <span className="flex items-center gap-2">
@@ -404,7 +404,7 @@ export function FilterControlsPanel(props: FilterControlsPanelProps) {
                   <button
                     type="button"
                     onClick={() => setSearch("")}
-                    className="grid h-4 w-4 place-items-center rounded-full text-text-muted cursor-pointer hover:text-text-secondary"
+                    className="grid h-4 w-4 place-items-center rounded-full text-text-muted cursor-pointer hover:text-text-secondary focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-[var(--color-brand-400)]"
                   >
                     <X className="h-2.5 w-2.5" strokeWidth={2} />
                   </button>
@@ -429,7 +429,7 @@ export function FilterControlsPanel(props: FilterControlsPanelProps) {
                         onClick={() => toggleOption(active, opt.value)}
                         className={`flex w-full items-center gap-2.5 rounded-md px-2 py-1.5 text-left text-body-sm cursor-pointer hover:bg-hover-list-item ${
                           on ? "text-text-primary" : "text-text-secondary"
-                        }`}
+                        } focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-[var(--color-brand-400)]`}
                       >
                         <Checkbox checked={on} />
                         <span className="inline-block h-2 w-2 shrink-0 rounded-full" style={{ backgroundColor: opt.dot ?? "var(--color-status-neutral)" }} />
@@ -449,7 +449,7 @@ export function FilterControlsPanel(props: FilterControlsPanelProps) {
                       key={opt}
                       type="button"
                       onClick={() => toggleOption(active, opt)}
-                      className="flex w-full items-center gap-2.5 rounded-md px-2 py-1.5 text-left text-body-sm cursor-pointer hover:bg-hover-list-item"
+                      className="flex w-full items-center gap-2.5 rounded-md px-2 py-1.5 text-left text-body-sm cursor-pointer hover:bg-hover-list-item focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-[var(--color-brand-400)]"
                     >
                       <Checkbox checked={on} />
                       {active.renderOption(opt)}

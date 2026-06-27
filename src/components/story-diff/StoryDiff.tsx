@@ -754,7 +754,7 @@ export const StoryDiff = forwardRef<StoryDiffHandle, StoryDiffProps>(function St
             showLineNumbers
               ? "text-text-secondary bg-overlay-strong border-border-strong"
               : "text-text-tertiary border-border-strong hover:text-text-secondary hover:border-border-strong hover:bg-hover-list-item"
-          }`}
+          } focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-[var(--color-brand-400)]`}
         >
           #
         </button>

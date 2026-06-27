@@ -157,7 +157,7 @@ export function VersionList({
                   e.stopPropagation();
                   onPreviewClick(version.versionNumber);
                 }}
-                className="flex h-6 w-6 shrink-0 items-center justify-center rounded text-text-muted hover:bg-overlay-default hover:text-text-secondary cursor-pointer"
+                className="flex h-6 w-6 shrink-0 items-center justify-center rounded text-text-muted hover:bg-overlay-default hover:text-text-secondary cursor-pointer focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-[var(--color-brand-400)]"
                 style={{ transition: "background-color 0.15s ease, color 0.15s ease" }}
                 title="Preview version"
               >

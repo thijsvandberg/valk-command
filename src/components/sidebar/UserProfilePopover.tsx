@@ -152,7 +152,7 @@ export function UserProfilePopover({
                 : activeIdx === idx
                   ? "bg-hover-list-item text-text-secondary"
                   : "text-text-secondary hover:bg-hover-list-item hover:text-text-secondary"
-            }`}
+            } focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-[var(--color-brand-400)]`}
           >
             <span className={item.disabled ? "text-text-muted" : "text-text-tertiary"}>
               {item.icon}
@@ -182,7 +182,7 @@ export function UserProfilePopover({
             activeIdx === SIGN_OUT_IDX
               ? "bg-red-500/8 text-red-400/90"
               : "text-red-400/60 hover:bg-red-500/8 hover:text-red-400/90"
-          }`}
+          } focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-[var(--color-brand-400)]`}
         >
           <span>{signOutItem.icon}</span>
           <span>{signOutItem.label}</span>

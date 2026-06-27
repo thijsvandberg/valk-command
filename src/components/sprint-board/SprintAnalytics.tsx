@@ -247,7 +247,7 @@ export const SprintAnalytics = memo(function SprintAnalytics({ tickets, onClose,
               <button
                 type="button"
                 onClick={() => setAssigneesExpanded(!assigneesExpanded)}
-                className="mb-1.5 flex items-center gap-1 text-caption uppercase tracking-wider text-text-muted cursor-pointer hover:text-text-tertiary"
+                className="mb-1.5 flex items-center gap-1 text-caption uppercase tracking-wider text-text-muted cursor-pointer hover:text-text-tertiary focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-[var(--color-brand-400)]"
               >
                 <ChevronRight
                   className={`h-2.5 w-2.5 transition-transform duration-150 ${assigneesExpanded ? "rotate-90" : ""}`}

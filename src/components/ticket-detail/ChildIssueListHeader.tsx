@@ -170,7 +170,7 @@ export function ChildIssueListHeader({
                       active
                         ? "bg-[var(--color-surface-floating)] font-medium text-[var(--color-brand-400)] shadow-[0_1px_2px_rgba(0,0,0,0.06)]"
                         : "text-text-muted hover:text-text-secondary"
-                    }`}
+                    } focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-[var(--color-brand-400)]`}
                   >
                     <Icon size={14} strokeWidth={1.5} />
                     {label}
@@ -193,7 +193,7 @@ export function ChildIssueListHeader({
                           role="radio"
                           aria-checked={active}
                           onClick={() => onViewModeChange!(mode)}
-                          className={`${ROW} ${active ? "bg-[var(--color-brand-500)]/[0.06]" : ""}`}
+                          className={`${ROW} ${active ? "bg-[var(--color-brand-500)]/[0.06]" : ""} focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-[var(--color-brand-400)]`}
                         >
                           <Radio checked={active} />
                           <Icon
@@ -277,7 +277,7 @@ export function ChildIssueListHeader({
                       onToggleSummary();
                       setOpen(false);
                     }}
-                    className="flex w-full cursor-pointer items-center gap-2.5 rounded-md px-2.5 py-2 text-body-sm text-text-secondary transition-colors duration-150 hover:bg-hover-list-item hover:text-text-primary"
+                    className="flex w-full cursor-pointer items-center gap-2.5 rounded-md px-2.5 py-2 text-body-sm text-text-secondary transition-colors duration-150 hover:bg-hover-list-item hover:text-text-primary focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-[var(--color-brand-400)]"
                   >
                     {summaryHidden ? (
                       <Eye size={14} strokeWidth={1.5} className="shrink-0 text-text-tertiary" />
@@ -298,7 +298,7 @@ export function ChildIssueListHeader({
                     title="Create child issue"
                     className={`flex w-full cursor-pointer items-center gap-2.5 rounded-md px-2.5 py-2 text-body-sm transition-colors duration-150 hover:bg-hover-list-item ${
                       createOpen ? "text-[var(--color-brand-400)]" : "text-text-secondary hover:text-text-primary"
-                    }`}
+                    } focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-[var(--color-brand-400)]`}
                   >
                     <Plus size={14} strokeWidth={2} className="shrink-0 text-[var(--color-brand-400)]" />
                     <span>New child issue</span>
@@ -316,7 +316,7 @@ export function ChildIssueListHeader({
                     title={suggestCount ? `${suggestCount} pending AI suggestions` : "Suggest subtasks with AI"}
                     className={`flex w-full cursor-pointer items-center gap-2.5 rounded-md px-2.5 py-2 text-body-sm transition-colors duration-150 hover:bg-hover-list-item disabled:cursor-not-allowed disabled:opacity-60 ${
                       suggestCount ? "text-[var(--color-brand-400)]" : "text-text-secondary hover:text-text-primary"
-                    }`}
+                    } focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-[var(--color-brand-400)]`}
                   >
                     {suggestLoading ? (
                       <Loader2 size={14} strokeWidth={1.5} className="shrink-0 animate-spin text-[var(--color-brand-400)]" />

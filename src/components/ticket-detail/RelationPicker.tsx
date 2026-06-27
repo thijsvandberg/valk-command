@@ -87,7 +87,7 @@ export function RelationPicker({
                 : value === opt.value
                   ? "text-[var(--color-brand-400)]"
                   : "text-text-secondary hover:bg-hover-interactive hover:text-text-primary"
-            }`}
+            } focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-[var(--color-brand-400)]`}
           >
             {opt.label}
           </button>

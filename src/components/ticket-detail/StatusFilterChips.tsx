@@ -28,7 +28,7 @@ export const StatusFilterChips = memo(function StatusFilterChips({
           activeStatuses.size === 0
             ? "bg-[var(--color-brand-500)]/15 text-[var(--color-brand-400)]"
             : "text-text-muted hover:bg-overlay-subtle hover:text-text-secondary"
-        }`}
+        } focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-[var(--color-brand-400)]`}
       >
         All
       </button>
@@ -43,7 +43,7 @@ export const StatusFilterChips = memo(function StatusFilterChips({
             key={status}
             type="button"
             onMouseDown={(e) => { e.preventDefault(); onToggle(status); }}
-            className="cursor-pointer rounded px-1.5 py-0.5 text-caption font-medium tracking-wide transition-colors duration-100"
+            className="cursor-pointer rounded px-1.5 py-0.5 text-caption font-medium tracking-wide transition-colors duration-100 focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-[var(--color-brand-400)]"
             style={{
               backgroundColor: isActive ? color.bg : undefined,
               color: isActive ? color.text : "var(--color-text-muted)",

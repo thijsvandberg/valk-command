@@ -838,7 +838,7 @@ export default function CleanupPage() {
                     type="button"
                     onClick={toggleAllVisible}
                     aria-label={allVisibleChecked ? "Deselect all" : "Select all visible"}
-                    className="flex shrink-0 items-center justify-center cursor-pointer"
+                    className="flex shrink-0 items-center justify-center cursor-pointer focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-[var(--color-brand-400)]"
                   >
                     <Checkbox checked={allVisibleChecked} indeterminate={!allVisibleChecked} />
                   </button>

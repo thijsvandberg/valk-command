@@ -213,7 +213,7 @@ function CommandItem({ cmd, isActive, onMouseEnter, onSelect, ref }: CommandItem
         e.preventDefault();
         onSelect();
       }}
-      className={`slash-command-item${isActive ? " slash-command-item--active" : ""}`}
+      className={`slash-command-item${isActive ? " slash-command-item--active" : ""} focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-[var(--color-brand-400)]`}
     >
       <span className="slash-command-icon">
         <Icon size={13} strokeWidth={1.5} />

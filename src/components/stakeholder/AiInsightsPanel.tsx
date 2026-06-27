@@ -237,7 +237,7 @@ export function AiInsightsPanel({
           <button
             type="button"
             onClick={() => hasResult && setCollapsed((c) => !c)}
-            className={`flex min-w-0 flex-1 items-center gap-2 ${hasResult && !isRunning ? "cursor-pointer" : "cursor-default"}`}
+            className={`flex min-w-0 flex-1 items-center gap-2 ${hasResult && !isRunning ? "cursor-pointer" : "cursor-default"} focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-[var(--color-brand-400)]`}
             disabled={!hasResult || isRunning}
           >
             <Icon size={13} strokeWidth={1.5} className="text-[var(--color-brand-400)]/70 shrink-0" />

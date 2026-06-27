@@ -56,7 +56,7 @@ function GroupDropdown({
       type="button"
       aria-label={label}
       onClick={() => setOpen((v) => !v)}
-      className="flex h-9 cursor-pointer items-center gap-0.5 rounded-lg pl-2 pr-1.5 text-text-secondary transition-colors duration-150 hover:bg-overlay-default hover:text-text-primary"
+      className="flex h-9 cursor-pointer items-center gap-0.5 rounded-lg pl-2 pr-1.5 text-text-secondary transition-colors duration-150 hover:bg-overlay-default hover:text-text-primary focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-[var(--color-brand-400)]"
     >
       {busy ? (
         <Loader2 className="h-[18px] w-[18px] animate-spin" strokeWidth={1.5} />
@@ -98,7 +98,7 @@ function IconAction({
         aria-label={label}
         onClick={onClick}
         disabled={disabled || busy}
-        className="grid h-9 w-9 cursor-pointer place-items-center rounded-lg text-text-secondary transition-colors duration-150 hover:bg-overlay-default hover:text-text-primary disabled:cursor-not-allowed disabled:opacity-40"
+        className="grid h-9 w-9 cursor-pointer place-items-center rounded-lg text-text-secondary transition-colors duration-150 hover:bg-overlay-default hover:text-text-primary disabled:cursor-not-allowed disabled:opacity-40 focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-[var(--color-brand-400)]"
       >
         {busy ? (
           <Loader2 className="h-[18px] w-[18px] animate-spin" strokeWidth={1.5} />
@@ -231,7 +231,7 @@ export function BulkActionBar({
         <button
           type="button"
           onClick={onToggleAll}
-          className="flex shrink-0 items-center justify-center cursor-pointer"
+          className="flex shrink-0 items-center justify-center cursor-pointer focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-[var(--color-brand-400)]"
           title={allChecked ? "Deselect all" : "Select all"}
         >
           <Checkbox checked={!!allChecked} indeterminate={!allChecked} />
