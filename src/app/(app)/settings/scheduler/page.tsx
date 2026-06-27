@@ -3,6 +3,9 @@
 import { useState, useEffect, useCallback } from "react";
 import { scheduler } from "@/lib/api-client";
 import { Clock, RefreshCw, CheckCircle2, XCircle, AlertTriangle, Play } from "lucide-react";
+import { LoadingState } from "@/components/shared/LoadingState";
+import { EmptyState } from "@/components/shared/EmptyState";
+import { DataErrorState } from "@/components/shared/DataErrorState";
 
 interface TaskStatus {
   name: string;
@@ -93,15 +96,22 @@ function formatResult(task: TaskStatus): { text: string; isError: boolean } | nu
 export default function SchedulerPage() {
   const [tasks, setTasks] = useState<TaskStatus[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<unknown>(null);
   const [running, setRunning] = useState<Record<string, boolean>>({});
 
   const fetchTasks = useCallback(() => {
     (scheduler.status() as Promise<{ tasks: TaskStatus[] }>)
       .then((data) => {
         setTasks(data.tasks ?? []);
+        setError(null);
         setLoading(false);
       })
-      .catch(() => setLoading(false));
+      .catch((err) => {
+        // Surface the failure instead of leaving a permanent "No scheduled
+        // tasks" that is indistinguishable from a real empty list (BRDG-423).
+        setError(err);
+        setLoading(false);
+      });
   }, []);
 
   useEffect(() => {
@@ -130,10 +140,16 @@ export default function SchedulerPage() {
         on every page load and every 30 seconds.
       </p>
 
-      {loading ? (
-        <div className="text-body-lg text-text-tertiary">Loading...</div>
+      {error && tasks.length > 0 && (
+        <DataErrorState error={error} onRetry={fetchTasks} className="mb-4" />
+      )}
+
+      {error && tasks.length === 0 ? (
+        <DataErrorState variant="full" error={error} onRetry={fetchTasks} className="py-12" />
+      ) : loading ? (
+        <LoadingState className="py-12" />
       ) : tasks.length === 0 ? (
-        <div className="text-body-lg text-text-tertiary">No scheduled tasks registered.</div>
+        <EmptyState title="No scheduled tasks registered" className="py-12" />
       ) : (
         <div className="flex flex-col gap-3">
           {tasks.map((task) => {

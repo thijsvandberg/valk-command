@@ -4,6 +4,9 @@ import { useState, useEffect, useCallback } from "react";
 import { Plus, Trash2, Check, X } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import { TextInput } from "@/components/shared/TextInput";
+import { LoadingState } from "@/components/shared/LoadingState";
+import { EmptyState } from "@/components/shared/EmptyState";
+import { DataErrorState } from "@/components/shared/DataErrorState";
 import { deprecatedAreas, type DeprecatedAreaItem } from "@/lib/api-client";
 
 /**
@@ -14,18 +17,32 @@ import { deprecatedAreas, type DeprecatedAreaItem } from "@/lib/api-client";
 export default function DeprecatedAreasPage() {
   const [areas, setAreas] = useState<DeprecatedAreaItem[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<unknown>(null);
   const [busy, setBusy] = useState(false);
   const [draft, setDraft] = useState({ term: "", aliases: "", note: "" });
 
+  const loadAreas = useCallback((signal?: AbortSignal) => {
+    setLoading(true);
+    deprecatedAreas
+      .list(signal)
+      .then((data) => {
+        setAreas(data.areas);
+        setError(null);
+      })
+      .catch((err) => {
+        // Ignore unmount aborts; surface real failures instead of a silent empty
+        // list that looks like a valid "no areas yet" state (BRDG-423).
+        if (err?.name === "AbortError") return;
+        setError(err);
+      })
+      .finally(() => setLoading(false));
+  }, []);
+
   useEffect(() => {
     const controller = new AbortController();
-    deprecatedAreas
-      .list(controller.signal)
-      .then((data) => setAreas(data.areas))
-      .catch(() => {})
-      .finally(() => setLoading(false));
+    loadAreas(controller.signal);
     return () => controller.abort();
-  }, []);
+  }, [loadAreas]);
 
   const add = useCallback(async () => {
     const term = draft.term.trim();
@@ -67,12 +84,14 @@ export default function DeprecatedAreasPage() {
         </p>
       </div>
 
-      {loading ? (
-        <div className="text-body-lg text-text-tertiary">Loading...</div>
+      {error ? (
+        <DataErrorState variant="full" error={error} onRetry={() => loadAreas()} className="py-12" />
+      ) : loading ? (
+        <LoadingState className="py-12" />
       ) : (
         <div className="flex flex-col gap-3">
           {areas.length === 0 && (
-            <p className="text-body-lg text-text-tertiary py-1">No deprecated areas yet.</p>
+            <EmptyState title="No deprecated areas yet" className="py-6" />
           )}
 
           {areas.map((area) => (

@@ -23,6 +23,9 @@ import { IssueTypeIcon } from "@/components/shared/IssueTypeIcon";
 import { TextInput } from "@/components/shared/TextInput";
 import { TextArea } from "@/components/shared/TextArea";
 import { TabBar, Tab } from "@/components/shared/TabBar";
+import { LoadingState } from "@/components/shared/LoadingState";
+import { EmptyState } from "@/components/shared/EmptyState";
+import { DataErrorState } from "@/components/shared/DataErrorState";
 import type { IssueType } from "@/types/ticket";
 import type { QuickPrompt, QuickPromptsConfig } from "@/app/api/settings/quick-prompts/route";
 
@@ -107,19 +110,31 @@ export default function PromptsPage() {
   const [config, setConfig] = useState<QuickPromptsConfig>({});
   const [activeType, setActiveType] = useState<IssueType>("story");
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<unknown>(null);
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
 
   const sensors = useSensors(useSensor(PointerSensor));
 
-  useEffect(() => {
+  const loadPrompts = useCallback(() => {
+    setLoading(true);
     (settings.getQuickPrompts() as Promise<{ prompts: QuickPromptsConfig }>)
       .then((data) => {
         setConfig(data.prompts ?? {});
+        setError(null);
         setLoading(false);
       })
-      .catch(() => setLoading(false));
+      .catch((err) => {
+        // Surface the failure instead of an empty editor that looks like a
+        // valid "no prompts" state (BRDG-423).
+        setError(err);
+        setLoading(false);
+      });
   }, []);
+
+  useEffect(() => {
+    loadPrompts();
+  }, [loadPrompts]);
 
   const prompts = config[activeType] ?? [];
 
@@ -210,14 +225,17 @@ export default function PromptsPage() {
         ))}
       </TabBar>
 
-      {loading ? (
-        <div className="text-body-lg text-text-tertiary">Loading...</div>
+      {error ? (
+        <DataErrorState variant="full" error={error} onRetry={loadPrompts} className="py-12" />
+      ) : loading ? (
+        <LoadingState className="py-12" />
       ) : (
         <div className="flex flex-col gap-3">
           {prompts.length === 0 && (
-            <p className="text-body-lg text-text-tertiary py-1">
-              No quick prompts configured for this issue type.
-            </p>
+            <EmptyState
+              title="No quick prompts configured for this issue type"
+              className="py-6"
+            />
           )}
 
           <DndContext
