@@ -128,6 +128,6 @@ Risks: accountId unavailable from changelog (name-based compare); inline-changel
 ## Related
 
 - Prototype: `src/app/dev/exploration/status-changes/page.tsx` (variant 1 chosen; 2/3 kept for comparison) and the `/dev/exploration` hub entry.
-- Follow-up story (to create): **Generate test prompt** — agent skill + `/api/tickets/[key]/generate-test-prompt` that builds a test prompt from story + comments + changes, following the `suggest-subtasks` / `suggest-epic` workspace-task pattern (`docs/architecture/workspace-integration.md`).
+- [[BRDG-426-generate-test-prompt]] — follow-up that makes the inert "Generate test prompt" button real (agent skill + `/api/tickets/[key]/generate-test-prompt`).
 - Builds on: `src/lib/sprint-insert-position.ts` (`trailingDoneDepStart`, `spliceKeyIntoOrder`), `docs/architecture/optimistic-updates.md`, `docs/architecture/jira-sync.md`, `new_story_read` read-state pattern, `usePipelines` signals.
 - [[BRDG-039-test-center]] — test status (`testStatus`, `lastTestRunAt`) overlaps with the Test-row signals.
