@@ -3,6 +3,10 @@
 **Date:** 2026-06-27
 **Found during:** BRDG-413 final verification (needed the live app to screenshot the inbox digest banner).
 **Severity:** High for local DX (every route 500s in `next dev`), zero for production.
+**Status:** RESOLVED — applied fix (1) below: `@source not "../../docs";` in `src/app/globals.css`
+(commit `ecdb0c88`). Verified `next dev` returns 200 with the docs in place and `npm run build`
+stays green. The companion BRDG-418 fix (`f39f3999`) separately removed the undefined
+`--color-surface-default` usages from real components and added a guard test.
 
 ## Symptom
 
