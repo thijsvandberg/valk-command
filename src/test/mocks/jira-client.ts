@@ -96,6 +96,7 @@ export function createJiraClientMock(overrides?: {
     extractEpicLink: vi.fn().mockReturnValue(null),
     extractAcceptanceCriteria: vi.fn().mockReturnValue(null),
     extractLastChangeAuthor: vi.fn().mockReturnValue(null),
+    extractLastStatusChangeAuthor: vi.fn().mockReturnValue(null),
     filterDescriptionChanges: vi.fn().mockReturnValue([]),
     filterStatusChanges: vi.fn().mockReturnValue([]),
     filterSprintChanges: vi.fn().mockReturnValue([]),

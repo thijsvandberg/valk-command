@@ -32,6 +32,7 @@ vi.mock("@/lib/jira-client", () => ({
   extractEpicLink: () => null,
   extractAcceptanceCriteria: () => null,
   extractLastChangeAuthor: () => null,
+  extractLastStatusChangeAuthor: () => null,
   FLAGGED_FIELD: "customfield_10002",
 }));
 

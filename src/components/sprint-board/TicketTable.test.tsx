@@ -13,6 +13,7 @@ vi.mock("lucide-react", () => {
     Inbox: stub("inbox"),
     Plus: stub("plus"),
     ChevronDown: stub("chevron-down"),
+    CheckCheck: stub("check-check"),
   };
 });
 
