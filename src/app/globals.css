@@ -1,6 +1,14 @@
 @import "tailwindcss";
 @import "../components/rich-editor/editor-styles.css";
 
+/* Keep markdown docs out of Tailwind's automatic content scan. They are prose,
+   not source: illustrative class literals like `bg-[var(--color-surface-*)]` in
+   design/spec docs would otherwise be emitted as real utilities, producing
+   invalid CSS (`var(--color-surface-*)`) that Turbopack's dev parser rejects and
+   500s every route on. The production build tolerated it, so this only bit
+   `next dev`. See docs/investigations/2026-06-27-dev-server-500-tailwind-scans-docs.md. */
+@source not "../../docs";
+
 @theme {
   --font-display: "Bricolage Grotesque", "Georgia", sans-serif;
   --font-body: "Inter", "Segoe UI", system-ui, sans-serif;
