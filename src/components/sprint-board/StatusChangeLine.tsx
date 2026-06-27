@@ -108,7 +108,7 @@ export function StatusChangeLine({
     <div
       onClick={(e) => e.stopPropagation()}
       onPointerDown={(e) => e.stopPropagation()}
-      className="relative flex items-center pb-2.5 pt-0 pl-[73px] pr-[23px]"
+      className="relative -mt-1 flex items-center pb-2.5 pt-0 pl-[73px] pr-[23px]"
     >
       {/* Single elbow connector: its vertical sits at the CENTRE of the row's issue-type icon and
           its horizontal meets the line just above centre. left-[53px] = icon centre minus the
