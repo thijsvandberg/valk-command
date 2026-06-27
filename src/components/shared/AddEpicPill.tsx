@@ -15,7 +15,7 @@ const GHOST_TRIGGER =
   "transition-[opacity,color,background-color,border-color] duration-150 " +
   "group-hover/row:opacity-100 focus-visible:opacity-100 " +
   "hover:border-[var(--color-icon-epic)]/50 hover:bg-[color-mix(in_srgb,var(--color-icon-epic)_8%,transparent)] hover:text-[var(--color-icon-epic)] " +
-  "focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-[var(--color-brand-400)] active:scale-[0.98]";
+  "focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-[var(--color-brand-400)] active:scale-[0.97]";
 
 export function AddEpicPill({
   ticketKey,

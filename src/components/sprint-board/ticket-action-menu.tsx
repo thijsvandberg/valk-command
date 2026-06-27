@@ -18,6 +18,7 @@ import { ReadinessIcon } from "@/components/shared/ReadinessCell";
 import { useOutsideClick } from "@/hooks/useOutsideClick";
 import { Card } from "@/components/shared/Card";
 import { Checkbox } from "@/components/shared/Checkbox";
+import { MenuItem } from "@/components/shared/MenuItem";
 import { EpicPickerBody, type EpicOption } from "@/components/shared/EpicPicker";
 
 // ---------------------------------------------------------------------------
@@ -149,32 +150,13 @@ export function CursorMenu({
 }
 
 // ---------------------------------------------------------------------------
-// Dropdown menu item
+// Dropdown menu item — now the shared primitive (BRDG-421) so the context menu,
+// the bulk-action bar and every other menu share one row recipe (incl. the
+// focus-visible ring). Re-exported so existing importers (e.g. BulkActionBar)
+// keep resolving it from here.
 // ---------------------------------------------------------------------------
 
-export function MenuItem({
-  children,
-  onClick,
-  disabled,
-  icon,
-}: {
-  children: ReactNode;
-  onClick: () => void;
-  disabled?: boolean;
-  icon?: ReactNode;
-}) {
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      disabled={disabled}
-      className="flex w-full items-center gap-2.5 px-3 py-1.5 text-body-sm text-text-secondary cursor-pointer hover:bg-hover-list-item active:bg-overlay-default disabled:opacity-40 disabled:cursor-not-allowed"
-    >
-      {icon && <span className="shrink-0 h-4 w-4 flex items-center justify-center text-text-tertiary">{icon}</span>}
-      {children}
-    </button>
-  );
-}
+export { MenuItem };
 
 // Floating-card styling shared by the hover flyouts and the menu surfaces.
 const FLYOUT_PANEL = "rounded-xl border border-border-default bg-[var(--color-surface-floating)] shadow-[var(--shadow-lg)]";
@@ -244,7 +226,7 @@ function Flyout({ icon, label, width = "w-[240px]", nested = false, children }: 
     <div ref={outerRef} className="relative" onPointerEnter={() => setOpen(true)} onPointerLeave={() => { setOpen(false); setTopShift(0); }}>
       <button
         type="button"
-        className={`flex w-full items-center gap-2.5 px-3 py-1.5 text-body-sm text-text-secondary cursor-pointer hover:bg-hover-list-item ${open ? "bg-hover-list-item" : ""}`}
+        className={`flex w-full items-center gap-2.5 px-3 py-1.5 text-body-sm text-text-secondary cursor-pointer hover:bg-hover-list-item focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-[var(--color-brand-400)] ${open ? "bg-hover-list-item" : ""}`}
       >
         {icon && <span className="flex h-4 w-4 shrink-0 items-center justify-center text-text-tertiary">{icon}</span>}
         {label}
@@ -274,20 +256,15 @@ function StatusSubPanel({ onSelect }: { onSelect: (status: JiraStatus) => void }
       {JIRA_STATUS_ORDER.map((status) => {
         const colors = JIRA_STATUS_COLORS[status];
         return (
-          <button
-            key={status}
-            type="button"
-            onClick={() => onSelect(status)}
-            className="flex w-full items-center gap-2.5 px-3 py-1.5 text-body-sm cursor-pointer hover:bg-hover-list-item active:bg-overlay-default"
-          >
+          <MenuItem key={status} onClick={() => onSelect(status)}>
             <span
               className="shrink-0 rounded px-1.5 py-0.5 font-mono text-[10px] font-semibold tracking-wide"
               style={{ backgroundColor: colors.bg, color: colors.text }}
             >
               {JIRA_STATUS_ABBREVIATIONS[status]}
             </span>
-            <span className="text-text-secondary">{status}</span>
-          </button>
+            <span>{status}</span>
+          </MenuItem>
         );
       })}
     </div>
@@ -304,23 +281,23 @@ function ReadinessSubPanel({ onSelect }: { onSelect: (readiness: TicketReadiness
       {READINESS_OPTIONS.map((opt) => {
         const cfg = opt.value ? READINESS_CONFIG[opt.value] : null;
         return (
-          <button
+          <MenuItem
             key={opt.label}
-            type="button"
             onClick={() => onSelect(opt.value)}
-            className="flex w-full items-center gap-2.5 px-3 py-1.5 text-body-sm text-text-secondary cursor-pointer hover:bg-hover-list-item active:bg-overlay-default"
+            icon={
+              <span
+                className="flex h-4 w-4 items-center justify-center rounded-full"
+                style={{
+                  color: cfg?.color ?? "var(--color-text-muted)",
+                  backgroundColor: cfg?.bg ?? "var(--color-overlay-default)",
+                }}
+              >
+                {opt.value && <ReadinessIcon value={opt.value} size={10} />}
+              </span>
+            }
           >
-            <span
-              className="shrink-0 flex h-4 w-4 items-center justify-center rounded-full"
-              style={{
-                color: cfg?.color ?? "var(--color-text-muted)",
-                backgroundColor: cfg?.bg ?? "var(--color-overlay-default)",
-              }}
-            >
-              {opt.value && <ReadinessIcon value={opt.value} size={10} />}
-            </span>
             {opt.label}
-          </button>
+          </MenuItem>
         );
       })}
     </div>
@@ -400,33 +377,14 @@ function SprintSubPanel({
       </div>
       <div className="max-h-[240px] overflow-y-auto">
         {showBacklog && (
-          <button
-            type="button"
-            onClick={() => onSelect("__backlog__")}
-            className="flex w-full items-center gap-2.5 px-3 py-1.5 text-body-sm text-text-tertiary cursor-pointer hover:bg-hover-list-item active:bg-overlay-default"
-          >
-            Backlog
-          </button>
+          <MenuItem onClick={() => onSelect("__backlog__")}>Backlog</MenuItem>
         )}
         {showOverall && overall && (
-          <button
-            type="button"
-            onClick={() => onSelect(overall.id)}
-            className="flex w-full items-center gap-2.5 px-3 py-1.5 text-body-sm text-text-tertiary cursor-pointer hover:bg-hover-list-item active:bg-overlay-default"
-          >
-            {overall.name}
-          </button>
+          <MenuItem onClick={() => onSelect(overall.id)}>{overall.name}</MenuItem>
         )}
         {hasTopBuckets && filtered.length > 0 && <div className="mx-2 my-0.5 h-px bg-overlay-strong" />}
         {filtered.map((s) => (
-          <button
-            key={s.id}
-            type="button"
-            onClick={() => onSelect(s.id)}
-            className="flex w-full items-center gap-2.5 px-3 py-1.5 text-body-sm text-text-secondary cursor-pointer hover:bg-hover-list-item active:bg-overlay-default"
-          >
-            {s.name}
-          </button>
+          <MenuItem key={s.id} onClick={() => onSelect(s.id)}>{s.name}</MenuItem>
         ))}
         {filtered.length === 0 && !hasTopBuckets && (
           <div className="px-3 py-2 text-body-sm text-text-tertiary">{query ? "No sprints found" : "No sprints available"}</div>
@@ -471,23 +429,12 @@ function AssigneeSubPanel({ onSelect }: { onSelect: (accountId: string | null, n
           />
         </div>
       </div>
-      <button
-        type="button"
-        onClick={() => onSelect(null, null, null)}
-        className="flex w-full items-center gap-2.5 px-3 py-1.5 text-body-sm text-text-tertiary cursor-pointer hover:bg-hover-list-item active:bg-overlay-default"
-      >
-        Unassigned
-      </button>
+      <MenuItem onClick={() => onSelect(null, null, null)}>Unassigned</MenuItem>
       <div className="max-h-[200px] overflow-y-auto">
         {filtered.map((user) => (
-          <button
-            key={user.accountId}
-            type="button"
-            onClick={() => onSelect(user.accountId, user.displayName, user.avatarUrl)}
-            className="flex w-full items-center gap-2.5 px-3 py-1.5 text-body-sm text-text-secondary cursor-pointer hover:bg-hover-list-item active:bg-overlay-default"
-          >
+          <MenuItem key={user.accountId} onClick={() => onSelect(user.accountId, user.displayName, user.avatarUrl)}>
             {user.displayName}
-          </button>
+          </MenuItem>
         ))}
         {!data && <div className="px-3 py-2 text-body-sm text-text-tertiary">Loading...</div>}
         {data && filtered.length === 0 && <div className="px-3 py-2 text-body-sm text-text-tertiary">No users found</div>}
@@ -536,15 +483,10 @@ function LabelSubPanel({ onSelect }: { onSelect: (labels: string[], mode: "add" 
       </div>
       <div className="max-h-[200px] overflow-y-auto">
         {filtered.map((label) => (
-          <button
-            key={label}
-            type="button"
-            onClick={() => toggle(label)}
-            className="flex w-full items-center gap-2.5 px-3 py-1.5 text-body-sm text-text-secondary cursor-pointer hover:bg-hover-list-item active:bg-overlay-default"
-          >
+          <MenuItem key={label} onClick={() => toggle(label)}>
             <Checkbox checked={selected.has(label)} />
             {label}
-          </button>
+          </MenuItem>
         ))}
         {!data && <div className="px-3 py-2 text-body-sm text-text-tertiary">Loading...</div>}
         {data && filtered.length === 0 && <div className="px-3 py-2 text-body-sm text-text-tertiary">No labels found</div>}
@@ -555,14 +497,14 @@ function LabelSubPanel({ onSelect }: { onSelect: (labels: string[], mode: "add" 
           <button
             type="button"
             onClick={() => onSelect([...selected], "add")}
-            className="flex w-full items-center justify-center gap-1.5 px-3 py-1.5 text-body-sm font-medium text-[var(--color-brand-400)] cursor-pointer hover:bg-hover-list-item"
+            className="flex w-full items-center justify-center gap-1.5 px-3 py-1.5 text-body-sm font-medium text-[var(--color-brand-400)] cursor-pointer hover:bg-hover-list-item focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-[var(--color-brand-400)]"
           >
             Add {selected.size} label{selected.size === 1 ? "" : "s"}
           </button>
           <button
             type="button"
             onClick={() => onSelect([...selected], "set")}
-            className="flex w-full items-center justify-center gap-1.5 px-3 py-1.5 text-body-sm text-text-tertiary cursor-pointer hover:bg-hover-list-item"
+            className="flex w-full items-center justify-center gap-1.5 px-3 py-1.5 text-body-sm text-text-tertiary cursor-pointer hover:bg-hover-list-item focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-[var(--color-brand-400)]"
           >
             Replace all labels
           </button>

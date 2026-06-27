@@ -194,7 +194,7 @@ export function LinkPopover({ editor, open, onClose }: LinkPopoverProps) {
         <button
           type="button"
           onClick={handleApply}
-          className="cursor-pointer rounded bg-overlay-strong px-3 py-1.5 text-body-sm font-medium text-text-secondary transition-colors duration-150 hover:bg-overlay-strong hover:text-text-primary active:scale-[0.98]"
+          className="cursor-pointer rounded bg-overlay-strong px-3 py-1.5 text-body-sm font-medium text-text-secondary transition-colors duration-150 hover:bg-overlay-strong hover:text-text-primary active:scale-[0.97]"
         >
           Apply
         </button>

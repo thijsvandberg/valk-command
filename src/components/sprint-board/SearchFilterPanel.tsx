@@ -264,7 +264,7 @@ export function SearchFilterPanel({ filters, onChange, filterOptions, sectionCou
             key={opt.value}
             type="button"
             onClick={() => setDateRange(selectedDateOption === opt.value ? null : opt.value)}
-            className="rounded-md border px-2 py-1 text-label font-medium cursor-pointer focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)] active:scale-[0.98] whitespace-nowrap"
+            className="rounded-md border px-2 py-1 text-label font-medium cursor-pointer focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)] active:scale-[0.97] whitespace-nowrap"
             style={{
               backgroundColor:
                 selectedDateOption === opt.value
@@ -325,7 +325,7 @@ export function SearchFilterPanel({ filters, onChange, filterOptions, sectionCou
             onClick={() => toggleSection(s.key)}
             aria-label={`Filter by ${s.label}`}
             aria-pressed={isActive}
-            className="flex items-center gap-1.5 rounded-md border px-2 py-1 text-label font-medium cursor-pointer focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)] active:scale-[0.98] whitespace-nowrap shrink-0"
+            className="flex items-center gap-1.5 rounded-md border px-2 py-1 text-label font-medium cursor-pointer focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)] active:scale-[0.97] whitespace-nowrap shrink-0"
             style={{
               backgroundColor: isActive ? "color-mix(in srgb, var(--color-status-success) 12%, transparent)" : "var(--color-overlay-subtle)",
               borderColor: isActive ? "color-mix(in srgb, var(--color-status-success) 35%, transparent)" : "var(--color-overlay-default)",

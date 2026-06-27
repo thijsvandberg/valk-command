@@ -123,7 +123,7 @@ export function Toolbar({ editor, mode, beforeMore, endContent, notice }: Toolba
             className={`cursor-pointer flex items-center justify-center rounded h-7 min-w-7 px-1.5 text-body transition-colors duration-150 focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-[var(--color-brand-400)] ${
               moreOpen
                 ? "bg-overlay-strong text-text-primary"
-                : "text-text-secondary hover:bg-hover-interactive hover:text-text-primary active:scale-95"
+                : "text-text-secondary hover:bg-hover-interactive hover:text-text-primary active:scale-[0.97]"
             }`}
           >
             <MoreHorizontal size={14} strokeWidth={1.5} />
@@ -268,7 +268,7 @@ function FormatButton({
         className={`cursor-pointer flex items-center justify-center rounded h-7 min-w-7 px-1.5 text-body transition-colors duration-150 focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-[var(--color-brand-400)] ${
           active
             ? "bg-overlay-strong text-text-primary"
-            : "text-text-secondary hover:bg-hover-interactive hover:text-text-primary active:scale-95"
+            : "text-text-secondary hover:bg-hover-interactive hover:text-text-primary active:scale-[0.97]"
         }`}
       >
         {children}
@@ -370,7 +370,7 @@ function ColorButton({ editor }: { editor: Editor }) {
                 type="button"
                 onClick={() => setColor(c.color)}
                 title={c.label}
-                className="h-6 w-6 cursor-pointer rounded transition-opacity hover:opacity-80 active:scale-90"
+                className="h-6 w-6 cursor-pointer rounded transition-opacity hover:opacity-80 active:scale-[0.97]"
                 style={{ backgroundColor: c.color }}
               />
             ))}
@@ -413,7 +413,7 @@ function CalloutDropdown({ editor }: { editor: Editor }) {
           aria-label="Insert callout"
           aria-expanded={open}
           className={`cursor-pointer flex items-center gap-1 rounded h-7 min-w-7 px-1.5 text-body transition-colors duration-150 focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-[var(--color-brand-400)] ${
-            open ? "bg-overlay-strong text-text-primary" : "text-text-secondary hover:bg-hover-interactive hover:text-text-primary active:scale-95"
+            open ? "bg-overlay-strong text-text-primary" : "text-text-secondary hover:bg-hover-interactive hover:text-text-primary active:scale-[0.97]"
           }`}
         >
           <Info size={14} strokeWidth={1.5} />
@@ -471,7 +471,7 @@ function ExpandButton({ editor }: { editor: Editor }) {
           className={`cursor-pointer flex items-center justify-center rounded h-7 min-w-7 px-1.5 text-body transition-colors duration-150 focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-[var(--color-brand-400)] ${
             open || editor.isActive("expand")
               ? "bg-overlay-strong text-text-primary"
-              : "text-text-secondary hover:bg-hover-interactive hover:text-text-primary active:scale-95"
+              : "text-text-secondary hover:bg-hover-interactive hover:text-text-primary active:scale-[0.97]"
           }`}
         >
           <ChevronRight size={14} strokeWidth={1.5} />
@@ -498,7 +498,7 @@ function ExpandButton({ editor }: { editor: Editor }) {
           <button
             type="button"
             onClick={insert}
-            className="cursor-pointer w-full rounded bg-overlay-strong px-3 py-1.5 text-body-sm font-medium text-text-secondary transition-colors hover:bg-overlay-strong hover:text-text-primary active:scale-[0.98]"
+            className="cursor-pointer w-full rounded bg-overlay-strong px-3 py-1.5 text-body-sm font-medium text-text-secondary transition-colors hover:bg-overlay-strong hover:text-text-primary active:scale-[0.97]"
           >
             Insert
           </button>
@@ -565,7 +565,7 @@ function EmojiButton({ editor }: { editor: Editor }) {
           aria-label="Insert emoji"
           aria-expanded={open}
           className={`cursor-pointer flex items-center justify-center rounded h-7 min-w-7 px-1.5 text-body transition-colors duration-150 focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-[var(--color-brand-400)] ${
-            open ? "bg-overlay-strong text-text-primary" : "text-text-secondary hover:bg-hover-interactive hover:text-text-primary active:scale-95"
+            open ? "bg-overlay-strong text-text-primary" : "text-text-secondary hover:bg-hover-interactive hover:text-text-primary active:scale-[0.97]"
           }`}
         >
           <Smile size={14} strokeWidth={1.5} />
@@ -581,7 +581,7 @@ function EmojiButton({ editor }: { editor: Editor }) {
                 type="button"
                 onClick={() => insertEmoji(emoji)}
                 title={shortname}
-                className="cursor-pointer flex h-7 w-7 items-center justify-center rounded text-heading-sm transition-colors hover:bg-overlay-strong active:scale-90"
+                className="cursor-pointer flex h-7 w-7 items-center justify-center rounded text-heading-sm transition-colors hover:bg-overlay-strong active:scale-[0.97]"
               >
                 {emoji}
               </button>

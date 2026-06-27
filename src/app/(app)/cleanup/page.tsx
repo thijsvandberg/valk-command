@@ -745,7 +745,7 @@ export default function CleanupPage() {
                     aria-pressed={filters.revivalOnly}
                     onClick={() => setFilters((f) => ({ ...f, revivalOnly: !f.revivalOnly }))}
                     className={[
-                      "flex h-7 cursor-pointer items-center gap-1.5 rounded-lg border px-2.5 text-label font-medium transition-colors duration-150 active:scale-[0.98]",
+                      "flex h-7 cursor-pointer items-center gap-1.5 rounded-lg border px-2.5 text-label font-medium transition-colors duration-150 active:scale-[0.97]",
                       "focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-[var(--color-status-success)]",
                       filters.revivalOnly
                         ? "border-[var(--color-status-success)]/50 text-[var(--color-status-success)]"

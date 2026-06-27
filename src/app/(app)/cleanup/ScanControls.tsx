@@ -144,7 +144,7 @@ export function ScanControls({ onRan }: ScanControlsProps) {
           aria-expanded={open}
           onClick={() => setOpen((v) => !v)}
           className={[
-            "flex h-7 cursor-pointer items-center gap-1.5 rounded-lg border px-2.5 text-label font-medium transition-colors duration-150 active:scale-[0.98]",
+            "flex h-7 cursor-pointer items-center gap-1.5 rounded-lg border px-2.5 text-label font-medium transition-colors duration-150 active:scale-[0.97]",
             "focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-[var(--color-brand-400)]",
             anyEnabled
               ? "border-[var(--color-brand-500)]/50 text-[var(--color-brand-400)]"

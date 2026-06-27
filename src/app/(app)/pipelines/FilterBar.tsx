@@ -48,7 +48,7 @@ export function StatusFilter({
                 key={opt.value}
                 type="button"
                 onClick={() => { onSelect(opt.value); setOpen(false); }}
-                className={`w-full px-3 py-1.5 text-left text-body-sm cursor-pointer transition-colors duration-150 ${
+                className={`w-full px-3 py-1.5 text-left text-body-sm cursor-pointer transition-colors duration-150 focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-[var(--color-brand-400)] ${
                   selected === opt.value ? "text-[var(--color-brand-400)] bg-[var(--color-brand-500)]/10" : "text-text-secondary hover:bg-hover-list-item"
                 }`}
               >
@@ -104,7 +104,7 @@ export function DateRangeFilter({
                 key={opt.value}
                 type="button"
                 onClick={() => { onSelect(opt.value); setOpen(false); }}
-                className={`w-full px-3 py-1.5 text-left text-body-sm cursor-pointer transition-colors duration-150 ${
+                className={`w-full px-3 py-1.5 text-left text-body-sm cursor-pointer transition-colors duration-150 focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-[var(--color-brand-400)] ${
                   selected === opt.value ? "text-[var(--color-brand-400)] bg-[var(--color-brand-500)]/10" : "text-text-secondary hover:bg-hover-list-item"
                 }`}
               >
@@ -183,7 +183,7 @@ export function CreatorFilter({
                 <button
                   type="button"
                   onClick={() => { onClear(); }}
-                  className="w-full px-3 py-1.5 text-left text-body-sm cursor-pointer transition-colors duration-150 text-text-tertiary hover:bg-hover-list-item"
+                  className="w-full px-3 py-1.5 text-left text-body-sm cursor-pointer transition-colors duration-150 text-text-tertiary hover:bg-hover-list-item focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-[var(--color-brand-400)]"
                 >
                   Clear selection
                 </button>
@@ -195,7 +195,7 @@ export function CreatorFilter({
                     key={name}
                     type="button"
                     onClick={() => onToggle(name)}
-                    className={`w-full flex items-center gap-2 px-3 py-1.5 text-left text-body-sm cursor-pointer transition-colors duration-150 ${
+                    className={`w-full flex items-center gap-2 px-3 py-1.5 text-left text-body-sm cursor-pointer transition-colors duration-150 focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-[var(--color-brand-400)] ${
                       isChecked ? "text-[var(--color-brand-400)] bg-[var(--color-brand-500)]/10" : "text-text-secondary hover:bg-hover-list-item"
                     }`}
                   >
@@ -251,7 +251,7 @@ export function RepoFilter({
             <button
               type="button"
               onClick={() => { onSelect(null); setOpen(false); }}
-              className={`w-full px-3 py-1.5 text-left text-body-sm cursor-pointer transition-colors duration-150 ${
+              className={`w-full px-3 py-1.5 text-left text-body-sm cursor-pointer transition-colors duration-150 focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-[var(--color-brand-400)] ${
                 !selected ? "text-[var(--color-brand-400)] bg-[var(--color-brand-500)]/10" : "text-text-secondary hover:bg-hover-list-item"
               }`}
             >
@@ -262,7 +262,7 @@ export function RepoFilter({
                 key={repo}
                 type="button"
                 onClick={() => { onSelect(repo); setOpen(false); }}
-                className={`w-full px-3 py-1.5 text-left text-body-sm cursor-pointer transition-colors duration-150 ${
+                className={`w-full px-3 py-1.5 text-left text-body-sm cursor-pointer transition-colors duration-150 focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-[var(--color-brand-400)] ${
                   selected === repo ? "text-[var(--color-brand-400)] bg-[var(--color-brand-500)]/10" : "text-text-secondary hover:bg-hover-list-item"
                 }`}
               >
@@ -325,7 +325,7 @@ export function SprintFilter({
         key={s.id}
         type="button"
         onClick={() => onToggle(id)}
-        className={`w-full flex items-center gap-2 px-3 py-1.5 text-left text-body-sm cursor-pointer transition-colors duration-150 ${
+        className={`w-full flex items-center gap-2 px-3 py-1.5 text-left text-body-sm cursor-pointer transition-colors duration-150 focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-[var(--color-brand-400)] ${
           isChecked ? "text-[var(--color-brand-400)] bg-[var(--color-brand-500)]/10" : dimmed ? "text-text-tertiary hover:bg-hover-list-item" : "text-text-secondary hover:bg-hover-list-item"
         }`}
       >
@@ -377,7 +377,7 @@ export function SprintFilter({
                 <button
                   type="button"
                   onClick={() => { onClear(); }}
-                  className="w-full px-3 py-1.5 text-left text-body-sm cursor-pointer transition-colors duration-150 text-text-tertiary hover:bg-hover-list-item"
+                  className="w-full px-3 py-1.5 text-left text-body-sm cursor-pointer transition-colors duration-150 text-text-tertiary hover:bg-hover-list-item focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-[var(--color-brand-400)]"
                 >
                   Clear selection
                 </button>

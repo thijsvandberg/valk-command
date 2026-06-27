@@ -100,8 +100,8 @@ export function SprintPlacementMenu({
         aria-expanded={open}
         className={
           isReassign
-            ? "flex items-center gap-1 rounded-md border border-border-default bg-overlay-subtle px-2 py-0.5 text-label font-medium text-text-secondary cursor-pointer transition-colors duration-150 hover:bg-hover-list-item focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)] active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-50"
-            : "flex items-center gap-1 rounded-md border border-[var(--color-brand-400)]/40 bg-[var(--color-brand-400)]/10 px-2 py-0.5 text-label font-medium text-[var(--color-brand-400)] cursor-pointer transition-colors duration-150 hover:bg-[var(--color-brand-400)]/20 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)] active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-50"
+            ? "flex items-center gap-1 rounded-md border border-border-default bg-overlay-subtle px-2 py-0.5 text-label font-medium text-text-secondary cursor-pointer transition-colors duration-150 hover:bg-hover-list-item focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)] active:scale-[0.97] disabled:cursor-not-allowed disabled:opacity-50"
+            : "flex items-center gap-1 rounded-md border border-[var(--color-brand-400)]/40 bg-[var(--color-brand-400)]/10 px-2 py-0.5 text-label font-medium text-[var(--color-brand-400)] cursor-pointer transition-colors duration-150 hover:bg-[var(--color-brand-400)]/20 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)] active:scale-[0.97] disabled:cursor-not-allowed disabled:opacity-50"
         }
         title={isReassign ? "Move this story to a different sprint" : "Create this story in Jira under the epic"}
       >

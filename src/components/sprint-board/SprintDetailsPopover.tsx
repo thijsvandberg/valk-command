@@ -5,6 +5,7 @@ import { createPortal } from "react-dom";
 import type { Sprint } from "@/types/ticket";
 import type { GroupSyncProgress, GroupSyncResult, GroupSyncState } from "@/lib/group-sync";
 import { Popover } from "@/components/shared/Popover";
+import { MenuItem } from "@/components/shared/MenuItem";
 import { useOutsideClick } from "@/hooks/useOutsideClick";
 import { Sparkles, ExternalLink, CircleCheck, Play, RefreshCw, Check, Settings2, Gauge } from "lucide-react";
 import Link from "next/link";
@@ -96,12 +97,12 @@ export function SprintDetailsPopover({
           ? `Syncing ${syncProgress.done} of ${syncProgress.total}`
           : "";
 
-  // Item geometry matches the board's regular "More options" menu: full-width rows,
-  // tight px-3 py-2 padding (no nested padding layer), 13px icons.
-  const rowBase = "flex w-full items-center gap-2.5 px-3 py-2 text-body-sm cursor-pointer transition-colors duration-150";
-  const neutralRow = `${rowBase} text-text-secondary hover:bg-hover-interactive hover:text-text-primary`;
-  const brandRow = `${rowBase} text-[var(--color-brand-400)] hover:bg-[var(--color-brand-500)]/10 hover:text-[var(--color-brand-300)]`;
-  const activeToggleRow = `${rowBase} text-[var(--color-brand-400)] bg-[var(--color-brand-500)]/[0.08] hover:bg-[var(--color-brand-500)]/[0.12]`;
+  // Rows now use the shared MenuItem primitive (BRDG-421). The two specials that
+  // can't be a plain MenuItem — the multi-line sync button (with progress bar) and
+  // the AI-suggestion Next <Link> (kept for client-side nav) — carry the same row
+  // recipe + focus-visible ring inline.
+  const brandLinkRow =
+    "flex w-full items-center gap-2.5 px-3 py-1.5 text-body-sm cursor-pointer transition-colors duration-150 text-[var(--color-brand-400)] hover:bg-[var(--color-brand-500)]/10 hover:text-[var(--color-brand-300)] focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-[var(--color-brand-400)]";
 
   const items: ReactNode[] = [];
 
@@ -112,8 +113,9 @@ export function SprintDetailsPopover({
         type="button"
         onClick={() => onRunSync?.()}
         disabled={syncState === "running"}
-        className={`flex w-full flex-col gap-1.5 px-3 py-2 text-body-sm text-text-secondary cursor-pointer
-          hover:bg-hover-interactive hover:text-text-primary
+        className={`flex w-full flex-col gap-1.5 px-3 py-1.5 text-body-sm text-text-secondary cursor-pointer
+          hover:bg-hover-list-item hover:text-text-primary
+          focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-[var(--color-brand-400)]
           disabled:cursor-default disabled:hover:bg-transparent
           transition-colors duration-150`}
       >
@@ -153,10 +155,9 @@ export function SprintDetailsPopover({
   // is intentionally not shown here; it lives in that modal.
   if (onEdit) {
     items.push(
-      <button key="settings" type="button" onClick={() => { onClose(); onEdit(); }} className={neutralRow}>
-        <Settings2 size={13} strokeWidth={1.5} className="shrink-0" />
+      <MenuItem key="settings" onClick={() => { onClose(); onEdit(); }} icon={<Settings2 size={13} strokeWidth={1.5} />}>
         <span>Sprint settings</span>
-      </button>,
+      </MenuItem>,
     );
   }
 
@@ -164,16 +165,16 @@ export function SprintDetailsPopover({
   // sprints (it's just committed-load noise once a sprint is running); this re-shows it.
   if (onToggleCapacityMeter && sprint?.state === "active") {
     items.push(
-      <button
+      <MenuItem
         key="capacity-meter"
-        type="button"
+        tone={capacityMeterShown ? "brand" : "default"}
+        className={capacityMeterShown ? "bg-[var(--color-brand-500)]/[0.08]" : undefined}
         onClick={onToggleCapacityMeter}
-        className={capacityMeterShown ? activeToggleRow : neutralRow}
+        icon={<Gauge size={13} strokeWidth={1.5} />}
       >
-        <Gauge size={13} strokeWidth={1.5} className="shrink-0" />
         <span>{capacityMeterShown ? "Hide capacity meter" : "Show capacity meter"}</span>
         {capacityMeterShown && <Check size={13} strokeWidth={2} className="ml-auto shrink-0" />}
-      </button>,
+      </MenuItem>,
     );
   }
 
@@ -181,16 +182,15 @@ export function SprintDetailsPopover({
   // a goal, or a link to a ready suggestion. No goal text is rendered.
   if (onSuggestGoal && !hasGoal && !goalSuggestionUrl) {
     items.push(
-      <button key="suggest" type="button" onClick={() => { onClose(); onSuggestGoal(); }} className={brandRow}>
-        <Sparkles size={13} strokeWidth={1.5} className="shrink-0" />
+      <MenuItem key="suggest" tone="brand" onClick={() => { onClose(); onSuggestGoal(); }} icon={<Sparkles size={13} strokeWidth={1.5} />}>
         <span>Suggest goal with AI</span>
-      </button>,
+      </MenuItem>,
     );
   }
   if (goalSuggestionUrl) {
     items.push(
-      <Link key="ai" href={goalSuggestionUrl} onClick={onClose} className={brandRow}>
-        <Sparkles size={13} strokeWidth={1.5} className="shrink-0" />
+      <Link key="ai" href={goalSuggestionUrl} onClick={onClose} className={brandLinkRow}>
+        <span className="flex h-4 w-4 shrink-0 items-center justify-center"><Sparkles size={13} strokeWidth={1.5} /></span>
         <span>AI suggestion available</span>
         <ExternalLink size={11} strokeWidth={1.5} className="ml-auto shrink-0 opacity-60" />
       </Link>,
@@ -199,32 +199,24 @@ export function SprintDetailsPopover({
 
   if (onStartSprint && sprint?.state === "future") {
     items.push(
-      <button key="start" type="button" onClick={() => { onClose(); onStartSprint(); }} className={brandRow}>
-        <Play size={13} strokeWidth={1.5} className="shrink-0" />
+      <MenuItem key="start" tone="brand" onClick={() => { onClose(); onStartSprint(); }} icon={<Play size={13} strokeWidth={1.5} />}>
         <span>Start sprint</span>
-      </button>,
+      </MenuItem>,
     );
   }
   if (onCloseSprint && sprint?.state === "active") {
     items.push(
-      <button
-        key="close"
-        type="button"
-        onClick={() => { onClose(); onCloseSprint(); }}
-        className={`${rowBase} text-[var(--color-status-warning)] hover:bg-[var(--color-status-warning-subtle)]`}
-      >
-        <CircleCheck size={13} strokeWidth={1.5} className="shrink-0" />
+      <MenuItem key="close" tone="warning" onClick={() => { onClose(); onCloseSprint(); }} icon={<CircleCheck size={13} strokeWidth={1.5} />}>
         <span>Close sprint</span>
-      </button>,
+      </MenuItem>,
     );
   }
 
   if (jiraUrl) {
     items.push(
-      <a key="jira" href={jiraUrl} target="_blank" rel="noopener noreferrer" onClick={onClose} className={neutralRow}>
-        <ExternalLink size={13} strokeWidth={1.5} className="shrink-0" />
+      <MenuItem key="jira" href={jiraUrl} target="_blank" rel="noopener noreferrer" onClick={onClose} icon={<ExternalLink size={13} strokeWidth={1.5} />}>
         <span>Open in Jira</span>
-      </a>,
+      </MenuItem>,
     );
   }
 

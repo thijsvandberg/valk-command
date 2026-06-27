@@ -79,7 +79,7 @@ function ToolbarAction({
       onClick={onClick}
       aria-label={label}
       title={label}
-      className="cursor-pointer flex items-center justify-center rounded h-7 w-7 text-text-secondary transition-colors duration-150 hover:bg-hover-interactive hover:text-text-primary active:scale-95 focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-[var(--color-brand-400)]"
+      className="cursor-pointer flex items-center justify-center rounded h-7 w-7 text-text-secondary transition-colors duration-150 hover:bg-hover-interactive hover:text-text-primary active:scale-[0.97] focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-[var(--color-brand-400)]"
     >
       {children}
     </button>

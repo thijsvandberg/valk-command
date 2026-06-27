@@ -879,7 +879,7 @@ export const BoardRow = memo(forwardRef<HTMLTableRowElement, BoardRowBaseProps>(
                   href={`/tickets/${ticket.key}/write`}
                   onPointerDown={(e) => e.stopPropagation()}
                   onClick={(e) => e.stopPropagation()}
-                  className="inline-flex shrink-0 cursor-pointer items-center gap-1.5 rounded-full bg-[var(--color-brand-500)]/[0.1] px-3 py-1 text-body-sm font-medium leading-none text-[var(--color-brand-500)] transition-[opacity,transform] duration-150 hover:bg-[var(--color-brand-500)]/[0.16] hover:text-[var(--color-brand-400)] focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-[var(--color-brand-400)] active:scale-95"
+                  className="inline-flex shrink-0 cursor-pointer items-center gap-1.5 rounded-full bg-[var(--color-brand-500)]/[0.1] px-3 py-1 text-body-sm font-medium leading-none text-[var(--color-brand-500)] transition-[opacity,transform] duration-150 hover:bg-[var(--color-brand-500)]/[0.16] hover:text-[var(--color-brand-400)] focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-[var(--color-brand-400)] active:scale-[0.97]"
                   title="Open in Story Writer"
                 >
                   <NotebookPen size={13} strokeWidth={1.75} aria-hidden />

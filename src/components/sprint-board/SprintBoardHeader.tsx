@@ -7,6 +7,7 @@ import type { Sprint, Ticket } from "@/types/ticket";
 import type { SprintStats } from "@/components/sprint-board/sprint-board-utils";
 import type { SortField, SortDir, SavedView } from "@/components/sprint-board/FilterBar";
 import { ViewHeader, ViewHeaderTitle, ViewHeaderDivider } from "@/components/shared/ViewHeader";
+import { MenuItem } from "@/components/shared/MenuItem";
 import { Button } from "@/components/ui/Button";
 import { SprintCompletionBar, SprintStats as SprintStatsComponent } from "@/components/sprint-board/SprintStatPill";
 import { SprintStatsPopover } from "@/components/sprint-board/SprintStatsPopover";
@@ -191,41 +192,35 @@ export function SprintBoardHeader(props: SprintBoardHeaderProps) {
                   <span>Planning</span>
                 </button>
                 {!isAllView && !activeView && (
-                  <button
-                    type="button"
+                  <MenuItem
                     onClick={() => {
                       const leftSprint = slotSprints[activeSlot] ?? slotSprints[0] ?? "";
                       const rightSprint = slotSprints.find((_, i) => i !== activeSlot) ?? slotSprints[1] ?? "";
                       router.push(`/sprint-board/compare?left=${encodeURIComponent(leftSprint)}&right=${encodeURIComponent(rightSprint)}`);
                       setHeaderMenuOpen(false);
                     }}
-                    className="flex w-full items-center gap-2.5 px-3 py-2 text-body-sm text-text-secondary cursor-pointer hover:bg-hover-interactive hover:text-text-primary transition-colors duration-150"
+                    icon={<Columns2 size={13} strokeWidth={1.5} />}
                   >
-                    <Columns2 size={13} strokeWidth={1.5} className="shrink-0" />
                     <span>Compare</span>
-                  </button>
+                  </MenuItem>
                 )}
-                <button
-                  type="button"
+                <MenuItem
                   onClick={() => { setSprintsModalOpen(true); setHeaderMenuOpen(false); }}
-                  className="flex w-full items-center gap-2.5 px-3 py-2 text-body-sm text-text-secondary cursor-pointer hover:bg-hover-interactive hover:text-text-primary transition-colors duration-150"
+                  icon={<List size={13} strokeWidth={1.5} />}
                 >
-                  <List size={13} strokeWidth={1.5} className="shrink-0" />
                   <span>Sprints</span>
-                </button>
+                </MenuItem>
                 {!isAllView && !activeView && activeSprint && (
-                  <button
-                    type="button"
+                  <MenuItem
                     onClick={() => {
                       const team = activeSprint.name.match(/^([A-Z]+)[: ]/)?.[1] ?? "";
                       router.push(`/stakeholder?team=${team}&sprintId=${activeSprint.id}`);
                       setHeaderMenuOpen(false);
                     }}
-                    className="flex w-full items-center gap-2.5 px-3 py-2 text-body-sm text-text-secondary cursor-pointer hover:bg-hover-interactive hover:text-text-primary transition-colors duration-150"
+                    icon={<Users size={13} strokeWidth={1.5} />}
                   >
-                    <Users size={13} strokeWidth={1.5} className="shrink-0" />
                     <span>Stakeholder View</span>
-                  </button>
+                  </MenuItem>
                 )}
               </div>
             )}

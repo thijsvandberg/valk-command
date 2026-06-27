@@ -568,7 +568,7 @@ export default function ChatLayout({ conversationId }: ChatLayoutProps) {
           <div className="border-b border-border-default px-6 py-2">
             <Link
               href={`/tickets/${effectiveConv.relatedTicket}/write`}
-              className="inline-flex items-center gap-1.5 rounded-md border border-[var(--color-brand-500)]/20 bg-[var(--color-brand-500)]/[0.06] px-3 py-1.5 text-body-sm font-medium text-[var(--color-brand-400)] cursor-pointer hover:bg-[var(--color-brand-500)]/[0.10] active:scale-[0.98] transition-colors duration-150"
+              className="inline-flex items-center gap-1.5 rounded-md border border-[var(--color-brand-500)]/20 bg-[var(--color-brand-500)]/[0.06] px-3 py-1.5 text-body-sm font-medium text-[var(--color-brand-400)] cursor-pointer hover:bg-[var(--color-brand-500)]/[0.10] active:scale-[0.97] transition-colors duration-150"
             >
               <PenLine size={13} strokeWidth={1.5} />
               Open Story Writer for {effectiveConv.relatedTicket}

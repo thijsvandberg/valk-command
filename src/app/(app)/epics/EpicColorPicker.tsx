@@ -82,7 +82,7 @@ export function EpicColorPicker({ epicKey, name, color }: EpicColorPickerProps) 
                     aria-label={swatch.label}
                     title={swatch.label}
                     onClick={() => commit(swatch.base)}
-                    className="flex h-6 w-6 items-center justify-center rounded-full transition-transform duration-150 cursor-pointer hover:scale-110 focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-[var(--color-brand-400)] active:scale-95"
+                    className="flex h-6 w-6 items-center justify-center rounded-full transition-transform duration-150 cursor-pointer hover:scale-110 focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-[var(--color-brand-400)] active:scale-[0.97]"
                     style={{
                       backgroundColor: swatch.base,
                       boxShadow: selected ? `0 0 0 2px var(--color-surface-floating), 0 0 0 3.5px ${swatch.base}` : undefined,

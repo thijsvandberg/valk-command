@@ -47,7 +47,7 @@ export function OutdatedBanner({ onViewDifference, onTakeJiraVersion }: Outdated
           <button
             type="button"
             onClick={onViewDifference}
-            className="flex shrink-0 items-center gap-1.5 rounded-md border border-[var(--color-status-warning)]/30 px-2.5 py-1.5 text-body-sm font-medium text-[var(--color-status-warning)] cursor-pointer transition-colors duration-150 hover:bg-[var(--color-status-warning)]/10 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-status-warning)] active:scale-[0.98]"
+            className="flex shrink-0 items-center gap-1.5 rounded-md border border-[var(--color-status-warning)]/30 px-2.5 py-1.5 text-body-sm font-medium text-[var(--color-status-warning)] cursor-pointer transition-colors duration-150 hover:bg-[var(--color-status-warning)]/10 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-status-warning)] active:scale-[0.97]"
           >
             <GitCompare size={13} strokeWidth={1.75} />
             View difference
@@ -57,7 +57,7 @@ export function OutdatedBanner({ onViewDifference, onTakeJiraVersion }: Outdated
           type="button"
           onClick={handleTake}
           disabled={taking}
-          className="flex shrink-0 items-center gap-1.5 rounded-md border border-[var(--color-status-warning)] bg-[var(--color-status-warning)] px-2.5 py-1.5 text-body-sm font-medium text-white cursor-pointer transition-colors duration-150 hover:brightness-110 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-status-warning)] active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-60"
+          className="flex shrink-0 items-center gap-1.5 rounded-md border border-[var(--color-status-warning)] bg-[var(--color-status-warning)] px-2.5 py-1.5 text-body-sm font-medium text-white cursor-pointer transition-colors duration-150 hover:brightness-110 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-status-warning)] active:scale-[0.97] disabled:cursor-not-allowed disabled:opacity-60"
         >
           {taking
             ? <Loader2 size={13} className="animate-spin" />

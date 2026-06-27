@@ -121,7 +121,7 @@ export function DeepScanQueuePanel({ queue, onMutate }: DeepScanQueuePanelProps)
           aria-expanded={open}
           onClick={() => setOpen((v) => !v)}
           className={[
-            "flex h-7 cursor-pointer items-center gap-2 rounded-lg border border-border-default px-2.5 text-label tabular-nums font-medium text-text-tertiary transition-colors duration-150 active:scale-[0.98]",
+            "flex h-7 cursor-pointer items-center gap-2 rounded-lg border border-border-default px-2.5 text-label tabular-nums font-medium text-text-tertiary transition-colors duration-150 active:scale-[0.97]",
             "hover:border-border-strong hover:text-text-secondary",
             "focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-[var(--color-brand-400)]",
           ].join(" ")}

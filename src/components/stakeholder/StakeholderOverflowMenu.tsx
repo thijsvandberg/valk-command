@@ -12,6 +12,7 @@ import {
 } from "lucide-react";
 import { buildMarkdownSummary, buildPlainTextSummary } from "@/lib/stakeholder-data";
 import type { StakeholderSprint, StakeholderTicket } from "@/lib/stakeholder-data";
+import { MenuItem } from "@/components/shared/MenuItem";
 
 const navBtnClass =
   "flex items-center rounded-md p-1.5 text-text-tertiary cursor-pointer hover:bg-hover-interactive hover:text-text-secondary disabled:opacity-25 disabled:cursor-not-allowed transition-colors duration-150 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)]";
@@ -74,9 +75,6 @@ export function StakeholderOverflowMenu({
     } catch {}
   }
 
-  const itemClass =
-    "flex w-full items-center gap-2.5 px-3 py-2 text-body-sm text-text-secondary cursor-pointer hover:bg-overlay-default hover:text-text-primary transition-colors duration-150 disabled:opacity-40 disabled:cursor-not-allowed";
-
   return (
     <div ref={containerRef} className="relative">
       <button
@@ -94,77 +92,53 @@ export function StakeholderOverflowMenu({
 
       {open && (
         <div className="absolute right-0 top-full mt-1.5 z-50 min-w-[188px] rounded-lg border border-border-strong bg-[var(--color-surface-floating)] py-1 shadow-[var(--shadow-popover)]">
-          <button
-            type="button"
+          <MenuItem
             onClick={() => { onSyncSprint(); setOpen(false); }}
             disabled={isSyncing || syncDisabled}
-            className={itemClass}
+            icon={<CloudDownload size={12} strokeWidth={1.5} className={isSyncing ? "animate-spin" : ""} />}
           >
-            <CloudDownload size={12} strokeWidth={1.5} className={isSyncing ? "animate-spin" : ""} />
             Sync current sprint
-          </button>
-          <button
-            type="button"
+          </MenuItem>
+          <MenuItem
             onClick={() => { onSyncHistory(); setOpen(false); }}
             disabled={isSyncingHistory || syncDisabled}
-            className={itemClass}
+            icon={<History size={12} strokeWidth={1.5} className={isSyncingHistory ? "animate-spin" : ""} />}
           >
-            <History size={12} strokeWidth={1.5} className={isSyncingHistory ? "animate-spin" : ""} />
             Sync history
-          </button>
+          </MenuItem>
 
           {hasPreviousSprint && (
             <>
               <div className="my-1 h-px bg-overlay-default" />
-              <button
-                type="button"
+              <MenuItem
                 onClick={() => { onToggleCompare(); setOpen(false); }}
-                className={itemClass}
+                icon={<Columns2 size={12} strokeWidth={1.5} />}
               >
-                <Columns2 size={12} strokeWidth={1.5} />
                 <span className="flex-1 text-left">Compare sprints</span>
                 {isCompareMode && <Check size={10} strokeWidth={2} className="text-[var(--color-brand-400)]/70" />}
-              </button>
+              </MenuItem>
             </>
           )}
 
           {sprint && (
             <>
               <div className="my-1 h-px bg-overlay-default" />
-              <button
-                type="button"
+              <MenuItem
                 onClick={handleCopy}
-                className={itemClass}
+                icon={copied
+                  ? <Check size={12} strokeWidth={2} className="text-[var(--color-status-success)]" />
+                  : <Copy size={12} strokeWidth={1.5} />}
               >
-                {copied ? (
-                  <>
-                    <Check size={12} strokeWidth={2} className="text-emerald-400" />
-                    <span className="text-emerald-400">Copied</span>
-                  </>
-                ) : (
-                  <>
-                    <Copy size={12} strokeWidth={1.5} />
-                    Copy as Markdown
-                  </>
-                )}
-              </button>
-              <button
-                type="button"
+                {copied ? <span className="text-[var(--color-status-success)]">Copied</span> : "Copy as Markdown"}
+              </MenuItem>
+              <MenuItem
                 onClick={handleCopyPlain}
-                className={itemClass}
+                icon={copiedPlain
+                  ? <Check size={12} strokeWidth={2} className="text-[var(--color-status-success)]" />
+                  : <Copy size={12} strokeWidth={1.5} />}
               >
-                {copiedPlain ? (
-                  <>
-                    <Check size={12} strokeWidth={2} className="text-emerald-400" />
-                    <span className="text-emerald-400">Copied</span>
-                  </>
-                ) : (
-                  <>
-                    <Copy size={12} strokeWidth={1.5} />
-                    Copy as plain text
-                  </>
-                )}
-              </button>
+                {copiedPlain ? <span className="text-[var(--color-status-success)]">Copied</span> : "Copy as plain text"}
+              </MenuItem>
             </>
           )}
         </div>

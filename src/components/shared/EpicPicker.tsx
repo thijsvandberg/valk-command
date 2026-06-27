@@ -102,13 +102,13 @@ function EpicPickerInner({
         title={value ? `Epic: ${value.name}` : emptyLabel}
         className={
           value
-            ? `inline-flex min-w-0 max-w-full items-center rounded-md cursor-pointer transition-[box-shadow,transform] duration-150 hover:ring-1 hover:ring-inset hover:ring-border-default focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)] active:scale-[0.98]${triggerClassName ? ` ${triggerClassName}` : ""}`
+            ? `inline-flex min-w-0 max-w-full items-center rounded-md cursor-pointer transition-[box-shadow,transform] duration-150 hover:ring-1 hover:ring-inset hover:ring-border-default focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)] active:scale-[0.97]${triggerClassName ? ` ${triggerClassName}` : ""}`
             : emptyTriggerClassName
               // Keep the override visible while its popover is open, otherwise a
               // hover-reveal ghost trigger vanishes the moment the cursor leaves
               // the row to enter the popover.
               ? `${emptyTriggerClassName}${open ? " opacity-100" : ""}`
-              : `inline-flex items-center gap-1.5 rounded-md bg-overlay-default px-2 py-0.5 ${textClass} font-medium text-text-muted cursor-pointer hover:bg-overlay-strong transition-colors duration-150 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)] active:scale-[0.98]`
+              : `inline-flex items-center gap-1.5 rounded-md bg-overlay-default px-2 py-0.5 ${textClass} font-medium text-text-muted cursor-pointer hover:bg-overlay-strong transition-colors duration-150 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)] active:scale-[0.97]`
         }
       >
         {value ? (
@@ -372,7 +372,7 @@ export function EpicPickerBody({
                 onClick={() => { onViewInSidebar(); onClose(); }}
                 title="View epic in the side panel"
                 aria-label={`View epic ${value.name} in the side panel`}
-                className="flex flex-1 items-center justify-center gap-1.5 rounded-lg px-2.5 py-1.5 text-body-sm font-semibold text-[var(--color-icon-epic)] cursor-pointer hover:bg-[color-mix(in_srgb,var(--color-icon-epic)_16%,transparent)] focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-[var(--color-brand-400)] active:scale-[0.98]"
+                className="flex flex-1 items-center justify-center gap-1.5 rounded-lg px-2.5 py-1.5 text-body-sm font-semibold text-[var(--color-icon-epic)] cursor-pointer hover:bg-[color-mix(in_srgb,var(--color-icon-epic)_16%,transparent)] focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-[var(--color-brand-400)] active:scale-[0.97]"
                 style={{ backgroundColor: "color-mix(in srgb, var(--color-icon-epic) 10%, transparent)", transition: "background-color 0.15s ease, transform 0.15s ease" }}
               >
                 <PanelRight size={13} strokeWidth={2.25} className="shrink-0" />
@@ -385,7 +385,7 @@ export function EpicPickerBody({
                 onClick={onClose}
                 title={`Open epic ${value.key} in a new tab`}
                 aria-label={`Open epic ${value.name} in a new tab`}
-                className="flex items-center justify-center rounded-lg px-2 py-1.5 text-text-muted cursor-pointer hover:bg-overlay-default hover:text-text-secondary focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-[var(--color-brand-400)] active:scale-[0.98]"
+                className="flex items-center justify-center rounded-lg px-2 py-1.5 text-text-muted cursor-pointer hover:bg-overlay-default hover:text-text-secondary focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-[var(--color-brand-400)] active:scale-[0.97]"
                 style={{ transition: "background-color 0.15s ease, color 0.15s ease, transform 0.15s ease" }}
               >
                 <ExternalLink size={13} strokeWidth={1.75} className="shrink-0" />
@@ -395,7 +395,7 @@ export function EpicPickerBody({
                 onClick={() => { onChange(null); onClose(); }}
                 title="Unlink this epic from the ticket"
                 aria-label="Unlink epic"
-                className="flex items-center justify-center rounded-lg px-2 py-1.5 text-text-muted cursor-pointer hover:bg-overlay-default hover:text-text-secondary focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-[var(--color-brand-400)] active:scale-[0.98]"
+                className="flex items-center justify-center rounded-lg px-2 py-1.5 text-text-muted cursor-pointer hover:bg-overlay-default hover:text-text-secondary focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-[var(--color-brand-400)] active:scale-[0.97]"
                 style={{ transition: "background-color 0.15s ease, color 0.15s ease, transform 0.15s ease" }}
               >
                 <X size={13} strokeWidth={1.75} className="shrink-0" />
@@ -408,7 +408,7 @@ export function EpicPickerBody({
                 onClick={onClose}
                 title={`View epic ${value.key}`}
                 aria-label={`View epic ${value.name}`}
-                className="flex flex-1 items-center justify-center gap-1.5 rounded-lg px-2.5 py-1.5 text-body-sm font-semibold text-[var(--color-icon-epic)] cursor-pointer hover:bg-[color-mix(in_srgb,var(--color-icon-epic)_16%,transparent)] focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-[var(--color-brand-400)] active:scale-[0.98]"
+                className="flex flex-1 items-center justify-center gap-1.5 rounded-lg px-2.5 py-1.5 text-body-sm font-semibold text-[var(--color-icon-epic)] cursor-pointer hover:bg-[color-mix(in_srgb,var(--color-icon-epic)_16%,transparent)] focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-[var(--color-brand-400)] active:scale-[0.97]"
                 style={{ backgroundColor: "color-mix(in srgb, var(--color-icon-epic) 10%, transparent)", transition: "background-color 0.15s ease, transform 0.15s ease" }}
               >
                 <ArrowUpRight size={13} strokeWidth={2.25} className="shrink-0" />
@@ -418,7 +418,7 @@ export function EpicPickerBody({
                 type="button"
                 onClick={() => { onChange(null); onClose(); }}
                 title="Unlink this epic from the ticket"
-                className="flex items-center justify-center gap-1.5 rounded-lg px-2.5 py-1.5 text-body-sm text-text-muted cursor-pointer hover:bg-overlay-default hover:text-text-secondary focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-[var(--color-brand-400)] active:scale-[0.98]"
+                className="flex items-center justify-center gap-1.5 rounded-lg px-2.5 py-1.5 text-body-sm text-text-muted cursor-pointer hover:bg-overlay-default hover:text-text-secondary focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-[var(--color-brand-400)] active:scale-[0.97]"
                 style={{ transition: "background-color 0.15s ease, color 0.15s ease, transform 0.15s ease" }}
               >
                 <X size={12} strokeWidth={1.5} className="shrink-0" />
@@ -438,7 +438,7 @@ export function EpicPickerBody({
             onClick={() => { onChange(null); onClose(); }}
             title="Remove the epic from the selected tickets"
             aria-label="Remove epic"
-            className="flex flex-1 items-center justify-center gap-1.5 rounded-lg px-2.5 py-1.5 text-body-sm text-text-muted cursor-pointer hover:bg-overlay-default hover:text-text-secondary focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-[var(--color-brand-400)] active:scale-[0.98]"
+            className="flex flex-1 items-center justify-center gap-1.5 rounded-lg px-2.5 py-1.5 text-body-sm text-text-muted cursor-pointer hover:bg-overlay-default hover:text-text-secondary focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-[var(--color-brand-400)] active:scale-[0.97]"
             style={{ transition: "background-color 0.15s ease, color 0.15s ease, transform 0.15s ease" }}
           >
             <X size={12} strokeWidth={1.5} className="shrink-0" />

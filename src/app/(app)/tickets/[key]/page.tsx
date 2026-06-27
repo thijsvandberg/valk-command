@@ -374,7 +374,7 @@ export default function TicketDetailPage({
               <p className="mt-2 text-body-lg text-text-tertiary">No ticket with key &quot;{key}&quot; exists in Jira or the local data.</p>
               <Link
                 href="/sprint-board"
-                className="mt-4 inline-block rounded-md bg-[var(--color-brand-600)] px-4 py-2 text-body-lg font-medium text-white cursor-pointer hover:bg-[var(--color-brand-500)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)] active:scale-[0.98]"
+                className="mt-4 inline-block rounded-md bg-[var(--color-brand-600)] px-4 py-2 text-body-lg font-medium text-white cursor-pointer hover:bg-[var(--color-brand-500)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)] active:scale-[0.97]"
               >
                 Back to Sprint Board
               </Link>
@@ -461,7 +461,7 @@ export default function TicketDetailPage({
             {!ticket.removedFromJiraAt && ticket.jiraStatus !== "DONE" && ticket.jiraStatus !== "DEPRECATED" && ticket.readiness === "ready_to_refine" && !isInRefinementSession && (
               <button
                 onClick={() => setShowAddToRefinement(true)}
-                className="flex h-7 items-center gap-1.5 rounded-md border border-[var(--color-brand-500)]/25 bg-[var(--color-brand-500)]/10 px-2.5 text-body-sm font-medium text-[var(--color-brand-400)] cursor-pointer hover:bg-[var(--color-brand-500)]/20 hover:border-[var(--color-brand-500)]/40 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)] active:scale-[0.98]"
+                className="flex h-7 items-center gap-1.5 rounded-md border border-[var(--color-brand-500)]/25 bg-[var(--color-brand-500)]/10 px-2.5 text-body-sm font-medium text-[var(--color-brand-400)] cursor-pointer hover:bg-[var(--color-brand-500)]/20 hover:border-[var(--color-brand-500)]/40 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)] active:scale-[0.97]"
                 style={{ transition: "background-color 0.15s ease, border-color 0.15s ease, transform 0.1s ease" }}
               >
                 <Boxes size={13} strokeWidth={1.5} />
@@ -567,7 +567,7 @@ export default function TicketDetailPage({
               >
                 <Link
                   href={writeHref}
-                  className="flex h-7 items-center gap-1.5 rounded-l-md px-2.5 text-body-sm font-medium text-[var(--color-brand-400)] cursor-pointer hover:bg-[var(--color-brand-500)]/20 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)] active:scale-[0.98]"
+                  className="flex h-7 items-center gap-1.5 rounded-l-md px-2.5 text-body-sm font-medium text-[var(--color-brand-400)] cursor-pointer hover:bg-[var(--color-brand-500)]/20 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)] active:scale-[0.97]"
                   style={{ transition: "background-color 0.15s ease, transform 0.1s ease" }}
                 >
                   <span className="relative flex h-2 w-2 shrink-0">
@@ -595,7 +595,7 @@ export default function TicketDetailPage({
             ) : (
               <Link
                 href={writeHref}
-                className="flex h-7 items-center gap-1.5 rounded-md border border-[var(--color-brand-500)]/25 bg-[var(--color-brand-500)]/10 px-2.5 text-body-sm font-medium text-[var(--color-brand-400)] cursor-pointer hover:bg-[var(--color-brand-500)]/20 hover:border-[var(--color-brand-500)]/40 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)] active:scale-[0.98] shadow-[0_2px_8px_color-mix(in_srgb,var(--color-brand-600)_12%,transparent)]"
+                className="flex h-7 items-center gap-1.5 rounded-md border border-[var(--color-brand-500)]/25 bg-[var(--color-brand-500)]/10 px-2.5 text-body-sm font-medium text-[var(--color-brand-400)] cursor-pointer hover:bg-[var(--color-brand-500)]/20 hover:border-[var(--color-brand-500)]/40 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)] active:scale-[0.97] shadow-[0_2px_8px_color-mix(in_srgb,var(--color-brand-600)_12%,transparent)]"
                 style={{ transition: "background-color 0.15s ease, border-color 0.15s ease, transform 0.1s ease" }}
               >
                 <NotebookPen size={13} strokeWidth={1.5} />

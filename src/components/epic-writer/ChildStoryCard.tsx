@@ -218,7 +218,7 @@ export function ChildStoryCard({
                         setLinkingKey(null);
                       }
                     }}
-                    className="flex shrink-0 items-center gap-1 rounded border border-border-default bg-surface-base px-1.5 py-0.5 font-medium text-text-secondary cursor-pointer transition-colors duration-150 hover:bg-hover-list-item focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)] active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-50"
+                    className="flex shrink-0 items-center gap-1 rounded border border-border-default bg-surface-base px-1.5 py-0.5 font-medium text-text-secondary cursor-pointer transition-colors duration-150 hover:bg-hover-list-item focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)] active:scale-[0.97] disabled:cursor-not-allowed disabled:opacity-50"
                     title={
                       canConfirm
                         ? "Create this link in Jira"
@@ -285,7 +285,7 @@ export function ChildStoryCard({
               type="button"
               disabled={busy}
               onClick={() => void onDeepen(card.cardIndex, card.title)}
-              className="flex items-center gap-1 rounded-md border border-border-default bg-overlay-subtle px-2 py-0.5 text-label font-medium text-text-secondary cursor-pointer transition-colors duration-150 hover:bg-hover-list-item focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)] active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-50"
+              className="flex items-center gap-1 rounded-md border border-border-default bg-overlay-subtle px-2 py-0.5 text-label font-medium text-text-secondary cursor-pointer transition-colors duration-150 hover:bg-hover-list-item focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)] active:scale-[0.97] disabled:cursor-not-allowed disabled:opacity-50"
               title={hasBody ? "Refine the worked-out story" : "Work this story out in full"}
             >
               {busy ? (

@@ -31,7 +31,7 @@ export function ErrorDigest({ digest }: { digest?: string }) {
       type="button"
       onClick={copy}
       title="Copy error reference"
-      className="group inline-flex cursor-pointer items-center gap-1.5 rounded-md border border-border-default bg-overlay-subtle px-2 py-1 font-mono text-label text-text-tertiary transition-colors duration-150 hover:border-border-strong hover:text-text-secondary focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)] active:scale-[0.98]"
+      className="group inline-flex cursor-pointer items-center gap-1.5 rounded-md border border-border-default bg-overlay-subtle px-2 py-1 font-mono text-label text-text-tertiary transition-colors duration-150 hover:border-border-strong hover:text-text-secondary focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)] active:scale-[0.97]"
     >
       <span className="text-text-tertiary">Ref</span>
       <span className="select-all text-text-secondary">{digest}</span>

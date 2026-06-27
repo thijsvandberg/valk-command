@@ -4,6 +4,7 @@ import { useState, useRef, useEffect, useCallback, useLayoutEffect } from "react
 import { createPortal } from "react-dom";
 import { useOutsideClick } from "@/hooks/useOutsideClick";
 import { MoreHorizontal, Pencil, CheckCircle2, RotateCcw, Trash2 } from "lucide-react";
+import { MenuItem } from "@/components/shared/MenuItem";
 
 interface RefinementSessionMenuProps {
   sessionName: string;
@@ -87,9 +88,6 @@ export function RefinementSessionMenu({
   const showFinish = onFinish && !isCompleted;
   const showReopen = onReopen && isCompleted;
 
-  const itemClass =
-    "flex w-full items-center gap-2 px-3 py-1.5 text-body-sm text-text-secondary cursor-pointer hover:bg-hover-list-item hover:text-text-primary transition-colors duration-150";
-
   const run = useCallback(
     (action: () => void) => (e: React.MouseEvent) => {
       e.stopPropagation();
@@ -134,24 +132,21 @@ export function RefinementSessionMenu({
             role="menu"
           >
             {onRename && (
-              <button type="button" role="menuitem" onClick={run(onRename)} className={itemClass}>
-                <Pencil size={12} strokeWidth={1.5} className="shrink-0 text-text-tertiary" />
+              <MenuItem role="menuitem" onClick={run(onRename)} icon={<Pencil size={12} strokeWidth={1.5} />}>
                 Rename
-              </button>
+              </MenuItem>
             )}
 
             {showFinish && (
-              <button type="button" role="menuitem" onClick={run(onFinish)} className={itemClass}>
-                <CheckCircle2 size={12} strokeWidth={1.5} className="shrink-0 text-[var(--color-brand-400)]" />
+              <MenuItem role="menuitem" onClick={run(onFinish)} icon={<CheckCircle2 size={12} strokeWidth={1.5} className="text-[var(--color-brand-400)]" />}>
                 Finish refinement
-              </button>
+              </MenuItem>
             )}
 
             {showReopen && (
-              <button type="button" role="menuitem" onClick={run(onReopen)} className={itemClass}>
-                <RotateCcw size={12} strokeWidth={1.5} className="shrink-0 text-text-tertiary" />
+              <MenuItem role="menuitem" onClick={run(onReopen)} icon={<RotateCcw size={12} strokeWidth={1.5} />}>
                 Re-open refinement
-              </button>
+              </MenuItem>
             )}
 
             {onDelete && (onRename || showFinish || showReopen) && (
@@ -159,15 +154,9 @@ export function RefinementSessionMenu({
             )}
 
             {onDelete && (
-              <button
-                type="button"
-                role="menuitem"
-                onClick={run(onDelete)}
-                className={`${itemClass} text-[var(--color-danger-400)] hover:text-[var(--color-danger-300)]`}
-              >
-                <Trash2 size={12} strokeWidth={1.5} className="shrink-0" />
+              <MenuItem role="menuitem" tone="danger" onClick={run(onDelete)} icon={<Trash2 size={12} strokeWidth={1.5} />}>
                 Delete
-              </button>
+              </MenuItem>
             )}
           </div>,
           document.body,

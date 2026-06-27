@@ -226,7 +226,7 @@ export function LinkIssueFilterBar({
         <button
           type="button"
           onClick={clearFilters}
-          className="flex cursor-pointer items-center gap-1 rounded-md px-1.5 py-1 text-label text-text-muted transition-[color,transform] duration-150 hover:text-text-secondary focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-[var(--color-brand-400)] active:scale-95"
+          className="flex cursor-pointer items-center gap-1 rounded-md px-1.5 py-1 text-label text-text-muted transition-[color,transform] duration-150 hover:text-text-secondary focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-[var(--color-brand-400)] active:scale-[0.97]"
           title="Clear all filters"
         >
           <X size={11} strokeWidth={1.5} /> Clear

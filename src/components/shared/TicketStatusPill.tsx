@@ -15,6 +15,7 @@ import {
 } from "@/types/ticket";
 import { ISSUE_TYPE_COLORS } from "@/components/shared/IssueTypeIcon";
 import { getScoreColor } from "@/lib/status-colors";
+import { MenuItem } from "@/components/shared/MenuItem";
 import { getJiraUrl } from "@/lib/jira-url";
 import { IssueTypeIcon } from "@/components/shared/IssueTypeIcon";
 import { formatTicketShare } from "@/lib/ticket-share";
@@ -80,20 +81,18 @@ function IssueTypeDropdown({ currentValue, onChange, onClose, skipRef }: IssueTy
         const isActive = type === currentValue;
         const color = ISSUE_TYPE_COLORS[type];
         return (
-          <button
+          <MenuItem
             key={type}
-            type="button"
             onClick={() => { onChange(type); onClose(); }}
-            className="flex w-full items-center gap-2.5 px-3 py-1.5 text-body-sm cursor-pointer hover:bg-hover-list-item active:bg-overlay-default"
+            icon={<IssueTypeIcon type={type} size={15} strokeWidth={2.0} />}
           >
-            <IssueTypeIcon type={type} size={15} strokeWidth={2.0} />
             <span className={isActive ? "font-medium" : ""} style={{ color: isActive ? color : "var(--color-text-secondary)" }}>
               {TYPE_LABELS[type]}
             </span>
             {isActive && (
               <span className="ml-auto h-1.5 w-1.5 rounded-full shrink-0" style={{ background: color }} />
             )}
-          </button>
+          </MenuItem>
         );
       })}
     </div>
@@ -142,58 +141,46 @@ function KeyDropdown({ jiraUrl, ticketKey, title, onClose, skipRef }: KeyDropdow
     }
   }
 
-  const itemClass =
-    "flex w-full items-center gap-2.5 px-3 py-1.5 text-body-sm cursor-pointer hover:bg-hover-list-item active:bg-overlay-default text-text-secondary";
-  const iconClass = "shrink-0 text-text-tertiary";
-
   return (
     <div
       ref={ref}
       className="absolute top-full left-0 z-50 mt-1 min-w-[188px] rounded-lg border border-border-default bg-[var(--color-surface-floating)] py-1 shadow-[var(--shadow-popover)]"
     >
-      <a
+      <MenuItem
         href={jiraUrl}
         target="_blank"
         rel="noopener noreferrer"
         onClick={onClose}
-        className={itemClass}
+        icon={<ExternalLink size={12} strokeWidth={1.5} />}
       >
-        <ExternalLink size={12} strokeWidth={1.5} className={iconClass} />
         Open in Jira
-      </a>
-      <button
-        type="button"
+      </MenuItem>
+      <MenuItem
         onClick={() => copyToClipboard(jiraUrl, "url")}
-        className={itemClass}
+        icon={<Copy size={12} strokeWidth={1.5} />}
       >
-        <Copy size={12} strokeWidth={1.5} className={iconClass} />
         {copied === "url" ? "Copied!" : "Copy Jira URL"}
-      </button>
+      </MenuItem>
       {title && (
-        <button
-          type="button"
+        <MenuItem
           onClick={() => copyToClipboard(formatTicketShare(title, ticketKey), "titled")}
-          className={itemClass}
+          icon={<ClipboardList size={12} strokeWidth={1.5} />}
         >
-          <ClipboardList size={12} strokeWidth={1.5} className={iconClass} />
           {copied === "titled" ? "Copied!" : "Copy with title"}
-        </button>
+        </MenuItem>
       )}
       {!onStoryWriter && (
-        <button
-          type="button"
+        <MenuItem
           onClick={() => { window.open(writePath, "_blank"); onClose(); }}
-          className={itemClass}
+          icon={<PenLine size={12} strokeWidth={1.5} />}
         >
-          <PenLine size={12} strokeWidth={1.5} className={iconClass} />
           Open Story Writer
-        </button>
+        </MenuItem>
       )}
       {!onTicketView && (
-        <a href={ticketPath} onClick={onClose} className={itemClass}>
-          <Eye size={12} strokeWidth={1.5} className={iconClass} />
+        <MenuItem href={ticketPath} onClick={onClose} icon={<Eye size={12} strokeWidth={1.5} />}>
           View ticket
-        </a>
+        </MenuItem>
       )}
     </div>
   );
@@ -226,20 +213,15 @@ function JiraStatusDropdown({ currentValue, onChange, onClose, skipRef }: JiraDr
         const colors = JIRA_STATUS_COLORS[status];
         const isActive = status === currentValue;
         return (
-          <button
-            key={status}
-            type="button"
-            onClick={() => { onChange(status); onClose(); }}
-            className="flex w-full items-center gap-2.5 px-3 py-1.5 text-body-sm cursor-pointer hover:bg-hover-list-item active:bg-overlay-default"
-          >
+          <MenuItem key={status} active={isActive} onClick={() => { onChange(status); onClose(); }}>
             <span
               className="shrink-0 rounded px-1.5 py-0.5 font-mono text-[10px] font-semibold tracking-wide"
               style={{ backgroundColor: colors.bg, color: colors.text }}
             >
               {JIRA_STATUS_ABBREVIATIONS[status]}
             </span>
-            <span className={isActive ? "text-text-primary" : "text-text-secondary"}>{status}</span>
-          </button>
+            <span>{status}</span>
+          </MenuItem>
         );
       })}
     </div>
@@ -271,20 +253,18 @@ function ReadinessDropdown({ currentValue, onChange, onClose, skipRef }: Readine
         const isActive = opt.value === currentValue;
         const cfg = opt.value ? READINESS_CONFIG[opt.value] : null;
         return (
-          <button
+          <MenuItem
             key={opt.label}
-            type="button"
+            active={isActive}
             onClick={() => { onChange(opt.value); onClose(); }}
-            className="flex w-full items-center gap-2.5 px-3 py-[7px] text-body-sm cursor-pointer hover:bg-hover-list-item active:bg-overlay-default"
+            icon={
+              <span className="flex items-center justify-center" style={{ color: cfg?.color ?? "var(--color-text-muted)" }}>
+                {opt.value ? <ReadinessIcon value={opt.value} size={15} strokeWidth={2} /> : <span className="h-1.5 w-1.5 rounded-full bg-overlay-strong" />}
+              </span>
+            }
           >
-            <span
-              className="shrink-0 w-4 flex items-center justify-center"
-              style={{ color: cfg?.color ?? "var(--color-text-muted)" }}
-            >
-              {opt.value ? <ReadinessIcon value={opt.value} size={15} strokeWidth={2} /> : <span className="h-1.5 w-1.5 rounded-full bg-overlay-strong" />}
-            </span>
-            <span className={isActive ? "text-text-primary font-medium" : "text-text-secondary"}>{opt.label}</span>
-          </button>
+            {opt.label}
+          </MenuItem>
         );
       })}
     </div>
@@ -548,7 +528,7 @@ function TicketHoverCard({
               aria-pressed={followed}
               onClick={toggleFollow}
               disabled={!toggleFollow}
-              className={`-mr-0.5 -mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-md transition-colors duration-150 ${
+              className={`-mr-0.5 -mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-md transition-colors duration-150 focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-[var(--color-brand-400)] ${
                 toggleFollow ? "cursor-pointer hover:bg-overlay-default" : "cursor-default"
               }`}
             >
@@ -691,7 +671,7 @@ function TicketHoverCard({
               type="button"
               onClick={handleRunReview}
               disabled={reviewing}
-              className="flex items-center gap-1.5 rounded-md border border-border-default px-2 py-1 text-label font-medium text-text-secondary transition-colors duration-150 hover:bg-overlay-default hover:text-text-primary disabled:cursor-not-allowed disabled:opacity-60"
+              className="flex items-center gap-1.5 rounded-md border border-border-default px-2 py-1 text-label font-medium text-text-secondary transition-colors duration-150 hover:bg-overlay-default hover:text-text-primary focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-[var(--color-brand-400)] disabled:cursor-not-allowed disabled:opacity-60"
             >
               {reviewing ? (
                 <>
@@ -1040,7 +1020,7 @@ export function TicketStatusPill({
               aria-label={issueTypeTip}
               onClick={canChangeType ? () => setIssueTypeDropdownOpen((o) => !o) : undefined}
               disabled={!canChangeType}
-              className={`flex items-center justify-center rounded p-1 transition-colors duration-150 ${
+              className={`flex items-center justify-center rounded p-1 transition-colors duration-150 focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-[var(--color-brand-400)] ${
                 canChangeType ? "cursor-pointer hover:bg-overlay-default" : "cursor-default"
               }`}
             >
@@ -1128,7 +1108,7 @@ export function TicketStatusPill({
             aria-label={statusTip}
             onClick={onJiraStatusChange ? () => setJiraDropdownOpen((o) => !o) : undefined}
             disabled={!onJiraStatusChange}
-            className={`flex items-center gap-1 ${statusBadgePad} font-mono font-medium tracking-wide transition-colors duration-150 ${statusRounded} ${jiraStatus === "DEPRECATED" ? "line-through" : ""} ${onJiraStatusChange ? "cursor-pointer hover:brightness-110" : "cursor-default"}`}
+            className={`flex items-center gap-1 ${statusBadgePad} font-mono font-medium tracking-wide transition-colors duration-150 focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-[var(--color-brand-400)] ${statusRounded} ${jiraStatus === "DEPRECATED" ? "line-through" : ""} ${onJiraStatusChange ? "cursor-pointer hover:brightness-110" : "cursor-default"}`}
             style={{ backgroundColor: jiraColors.bg, color: jiraColors.text, opacity: elevated ? 1 : 0.85 }}
           >
             <span className={`shrink-0 ${statusDotSize} rounded-full opacity-70`} style={{ backgroundColor: jiraColors.text }} />
@@ -1156,7 +1136,7 @@ export function TicketStatusPill({
             aria-label={readinessTip}
             onClick={onReadinessChange ? () => setReadinessDropdownOpen((o) => !o) : undefined}
             disabled={!onReadinessChange}
-            className={`flex items-center justify-center rounded transition-colors duration-150 ${
+            className={`flex items-center justify-center rounded transition-colors duration-150 focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-[var(--color-brand-400)] ${
               onReadinessChange ? "cursor-pointer hover:bg-overlay-default" : "cursor-default"
             }`}
             style={{ color: readinessCfg?.color ?? "var(--color-text-muted)", width: iconSize + 8, height: iconSize + 8 }}

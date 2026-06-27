@@ -67,7 +67,7 @@ export function ImageLightbox({ src, alt, className, style, loading, children }:
           <button
             type="button"
             onClick={close}
-            className="absolute top-4 right-4 z-10 flex h-10 w-10 items-center justify-center rounded-full bg-white/10 text-white/80 hover:bg-white/20 hover:text-white active:scale-95 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white/60"
+            className="absolute top-4 right-4 z-10 flex h-10 w-10 items-center justify-center rounded-full bg-white/10 text-white/80 hover:bg-white/20 hover:text-white active:scale-[0.97] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white/60"
             style={{ transition: "background-color 0.15s ease, color 0.15s ease, transform 0.1s ease" }}
             aria-label="Close lightbox"
           >

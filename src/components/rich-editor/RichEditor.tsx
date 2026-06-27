@@ -388,7 +388,7 @@ function ModeToggle({
       <button
         type="button"
         onClick={() => onToggle(isRich ? "markdown" : "rich")}
-        className="cursor-pointer shrink-0 flex items-center rounded h-7 px-2.5 text-body-sm font-medium text-text-tertiary transition-colors duration-150 hover:bg-hover-interactive hover:text-text-secondary active:scale-95"
+        className="cursor-pointer shrink-0 flex items-center rounded h-7 px-2.5 text-body-sm font-medium text-text-tertiary transition-colors duration-150 hover:bg-hover-interactive hover:text-text-secondary active:scale-[0.97]"
       >
         {isRich ? "Markdown" : "Rich Text"}
       </button>

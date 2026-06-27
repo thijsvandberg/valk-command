@@ -112,7 +112,7 @@ export function RefinementFilters({
       <button
         type="button"
         onClick={() => filters.setHideEstimated(!filters.hideEstimated)}
-        className={`flex cursor-pointer items-center gap-1.5 rounded-md border px-2 py-1 text-label font-medium focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)] active:scale-[0.98] ${
+        className={`flex cursor-pointer items-center gap-1.5 rounded-md border px-2 py-1 text-label font-medium focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)] active:scale-[0.97] ${
           filters.hideEstimated
             ? "border-[var(--color-brand-500)]/35 bg-[var(--color-brand-500)]/10 text-[var(--color-brand-300)]"
             : "border-border-default bg-overlay-subtle text-text-secondary hover:bg-hover-interactive hover:border-border-strong"

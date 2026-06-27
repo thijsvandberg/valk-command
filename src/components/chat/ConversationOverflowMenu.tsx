@@ -3,6 +3,7 @@
 import { useState, useRef, useEffect, useCallback } from "react";
 import { useOutsideClick } from "@/hooks/useOutsideClick";
 import { MoreHorizontal, Pin, Trash2, MailOpen, Mail } from "lucide-react";
+import { MenuItem } from "@/components/shared/MenuItem";
 
 interface ConversationOverflowMenuProps {
   conversationId: string;
@@ -56,9 +57,6 @@ export default function ConversationOverflowMenu({
     return () => document.removeEventListener("keydown", handleKeyDown);
   }, [open, close]);
 
-  const itemClass =
-    "flex w-full items-center gap-2 px-3 py-1.5 text-body-sm text-text-secondary cursor-pointer hover:bg-hover-list-item hover:text-text-primary transition-colors duration-150";
-
   return (
     <div className="relative" ref={ref}>
       <button
@@ -87,66 +85,54 @@ export default function ConversationOverflowMenu({
           data-testid="conversation-overflow-menu"
         >
           {onTogglePin && (
-            <button
-              type="button"
+            <MenuItem
               role="menuitem"
+              icon={<Pin size={12} strokeWidth={1.5} />}
               onClick={(e) => {
                 e.stopPropagation();
                 onTogglePin(conversationId, !pinned);
                 close();
               }}
-              className={itemClass}
               data-testid="overflow-pin"
             >
-              <Pin size={12} strokeWidth={1.5} className="shrink-0 text-text-tertiary" />
               {pinned ? "Unpin conversation" : "Pin conversation"}
-            </button>
+            </MenuItem>
           )}
 
           {onToggleRead && (
-            <button
-              type="button"
+            <MenuItem
               role="menuitem"
+              icon={isUnread
+                ? <MailOpen size={12} strokeWidth={1.5} />
+                : <Mail size={12} strokeWidth={1.5} />}
               onClick={(e) => {
                 e.stopPropagation();
                 onToggleRead(conversationId, isUnread);
                 close();
               }}
-              className={itemClass}
               data-testid="overflow-toggle-read"
             >
-              {isUnread ? (
-                <>
-                  <MailOpen size={12} strokeWidth={1.5} className="shrink-0 text-text-tertiary" />
-                  Mark as read
-                </>
-              ) : (
-                <>
-                  <Mail size={12} strokeWidth={1.5} className="shrink-0 text-text-tertiary" />
-                  Mark as unread
-                </>
-              )}
-            </button>
+              {isUnread ? "Mark as read" : "Mark as unread"}
+            </MenuItem>
           )}
 
           {(onTogglePin || onToggleRead) && (
             <div className="my-1 border-t border-border-default" role="separator" />
           )}
 
-          <button
-            type="button"
+          <MenuItem
             role="menuitem"
+            tone="danger"
+            icon={<Trash2 size={12} strokeWidth={1.5} />}
             onClick={(e) => {
               e.stopPropagation();
               onDelete(conversationId);
               close();
             }}
-            className={`${itemClass} text-[var(--color-danger-400)] hover:text-[var(--color-danger-300)]`}
             data-testid="overflow-delete"
           >
-            <Trash2 size={12} strokeWidth={1.5} className="shrink-0" />
             Delete conversation
-          </button>
+          </MenuItem>
         </div>
       )}
     </div>

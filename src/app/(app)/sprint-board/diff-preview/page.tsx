@@ -61,7 +61,7 @@ function DiffPreviewContent() {
         <button
           type="button"
           onClick={() => setView("panel")}
-          className={`rounded-md px-3 py-1.5 text-body-sm cursor-pointer focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)] active:scale-95 ${
+          className={`rounded-md px-3 py-1.5 text-body-sm cursor-pointer focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)] active:scale-[0.97] ${
             view === "panel"
               ? "bg-overlay-strong text-text-primary"
               : "text-text-tertiary hover:text-text-secondary hover:bg-hover-list-item"
@@ -73,7 +73,7 @@ function DiffPreviewContent() {
         <button
           type="button"
           onClick={() => setView("raw")}
-          className={`rounded-md px-3 py-1.5 text-body-sm cursor-pointer focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)] active:scale-95 ${
+          className={`rounded-md px-3 py-1.5 text-body-sm cursor-pointer focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)] active:scale-[0.97] ${
             view === "raw"
               ? "bg-overlay-strong text-text-primary"
               : "text-text-tertiary hover:text-text-secondary hover:bg-hover-list-item"

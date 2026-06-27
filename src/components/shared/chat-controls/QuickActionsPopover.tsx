@@ -114,7 +114,7 @@ export function QuickActionsPopover({
                     disabled={disabled}
                     title="Send now"
                     aria-label={`Send "${action.label}" now`}
-                    className="mr-1.5 flex shrink-0 cursor-pointer items-center justify-center rounded-md p-1.5 text-text-tertiary opacity-0 transition-[opacity,color,background-color] duration-150 hover:bg-overlay-strong hover:text-[var(--color-brand-400)] focus-visible:opacity-100 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)] active:scale-[0.94] group-hover/row:opacity-100 disabled:cursor-not-allowed disabled:opacity-40"
+                    className="mr-1.5 flex shrink-0 cursor-pointer items-center justify-center rounded-md p-1.5 text-text-tertiary opacity-0 transition-[opacity,color,background-color] duration-150 hover:bg-overlay-strong hover:text-[var(--color-brand-400)] focus-visible:opacity-100 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)] active:scale-[0.97] group-hover/row:opacity-100 disabled:cursor-not-allowed disabled:opacity-40"
                   >
                     <SendHorizontal size={13} strokeWidth={1.75} />
                   </button>

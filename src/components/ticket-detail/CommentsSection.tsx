@@ -291,7 +291,7 @@ function JiraCommentsSection({
                   type="button"
                   onClick={handlePostJiraComment}
                   disabled={posting}
-                  className="absolute right-2 bottom-2 flex h-6 w-6 cursor-pointer items-center justify-center rounded-md bg-[var(--color-brand-600)] text-white hover:bg-[var(--color-brand-500)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)] active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="absolute right-2 bottom-2 flex h-6 w-6 cursor-pointer items-center justify-center rounded-md bg-[var(--color-brand-600)] text-white hover:bg-[var(--color-brand-500)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)] active:scale-[0.97] disabled:opacity-50 disabled:cursor-not-allowed"
                   style={{ transition: "background-color 0.15s ease, transform 0.1s ease" }}
                   title="Post to Jira (Cmd+Enter)"
                   aria-label="Post comment to Jira"

@@ -234,7 +234,7 @@ export default function ActivityLogPage() {
               <button
                 type="button"
                 onClick={() => { setStoredTypes([]); setOffset(0); }}
-                className="px-2.5 py-1 rounded-md text-label font-[var(--font-body)] text-text-muted cursor-pointer hover:text-text-tertiary focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-[var(--color-brand-400)] active:scale-95 transition-colors duration-150"
+                className="px-2.5 py-1 rounded-md text-label font-[var(--font-body)] text-text-muted cursor-pointer hover:text-text-tertiary focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-[var(--color-brand-400)] active:scale-[0.97] transition-colors duration-150"
               >
                 Clear
               </button>

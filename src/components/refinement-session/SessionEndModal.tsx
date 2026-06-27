@@ -483,7 +483,7 @@ export function SessionEndModal() {
                         aria-checked={carriedKeys.has(row.key)}
                         aria-label={`Carry ${row.key} to next refinement`}
                         onClick={() => toggleCarried(row.key)}
-                        className={`flex h-[18px] w-[18px] flex-none cursor-pointer items-center justify-center rounded-[5px] border focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)] active:scale-90 ${
+                        className={`flex h-[18px] w-[18px] flex-none cursor-pointer items-center justify-center rounded-[5px] border focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)] active:scale-[0.97] ${
                           carriedKeys.has(row.key)
                             ? "border-[var(--color-brand-500)] bg-[var(--color-brand-500)] text-white shadow-[0_1px_3px_color-mix(in_srgb,var(--color-brand-500)_45%,transparent)]"
                             : "border-border-strong text-transparent hover:border-[var(--color-brand-400)]"

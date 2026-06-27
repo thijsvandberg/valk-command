@@ -105,7 +105,7 @@ export function ViewHeader({ icon, children, actions, className, hideNotificatio
               onClick={toggleFocusMode}
               title="Focus mode"
               aria-label="Toggle focus mode"
-              className="inline-flex h-7 w-0 ml-0 shrink-0 items-center justify-center overflow-hidden rounded-lg cursor-pointer text-text-tertiary bg-transparent border border-transparent opacity-0 group-hover/corner:w-7 group-hover/corner:ml-1 group-hover/corner:opacity-100 focus-visible:w-7 focus-visible:ml-1 focus-visible:opacity-100 hover:bg-hover-interactive hover:text-text-secondary focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)] active:scale-[0.95] transition-[width,margin,opacity,background-color,color,transform] duration-200 ease-out"
+              className="inline-flex h-7 w-0 ml-0 shrink-0 items-center justify-center overflow-hidden rounded-lg cursor-pointer text-text-tertiary bg-transparent border border-transparent opacity-0 group-hover/corner:w-7 group-hover/corner:ml-1 group-hover/corner:opacity-100 focus-visible:w-7 focus-visible:ml-1 focus-visible:opacity-100 hover:bg-hover-interactive hover:text-text-secondary focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)] active:scale-[0.97] transition-[width,margin,opacity,background-color,color,transform] duration-200 ease-out"
             >
               <Minimize2 className="h-3.5 w-3.5 shrink-0" strokeWidth={2} />
             </button>
@@ -120,7 +120,7 @@ export function ViewHeader({ icon, children, actions, className, hideNotificatio
                 onClick={toggleFocusMode}
                 title="Focus mode"
                 aria-label="Toggle focus mode"
-                className="inline-flex h-7 w-0 ml-0 shrink-0 items-center justify-center overflow-hidden rounded-lg cursor-pointer text-text-tertiary bg-transparent border border-transparent opacity-0 group-hover/corner:w-7 group-hover/corner:ml-2 group-hover/corner:opacity-100 focus-visible:w-7 focus-visible:ml-2 focus-visible:opacity-100 hover:bg-hover-interactive hover:text-text-secondary focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)] active:scale-[0.95] transition-[width,margin,opacity,background-color,color,transform] duration-200 ease-out"
+                className="inline-flex h-7 w-0 ml-0 shrink-0 items-center justify-center overflow-hidden rounded-lg cursor-pointer text-text-tertiary bg-transparent border border-transparent opacity-0 group-hover/corner:w-7 group-hover/corner:ml-2 group-hover/corner:opacity-100 focus-visible:w-7 focus-visible:ml-2 focus-visible:opacity-100 hover:bg-hover-interactive hover:text-text-secondary focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)] active:scale-[0.97] transition-[width,margin,opacity,background-color,color,transform] duration-200 ease-out"
               >
                 <Minimize2 className="h-3.5 w-3.5 shrink-0" strokeWidth={2} />
               </button>
