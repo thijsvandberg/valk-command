@@ -24,7 +24,7 @@ import { useToast } from "@/hooks/useToast";
 import { useRefinementDragDrop, NEW_SESSION_HINT_ID } from "@/hooks/useRefinementDragDrop";
 import { snapToPointer } from "@/components/sprint-board/SprintBoardDragDrop";
 import { DragGhostOverlay } from "@/components/sprint-board/DragGhostOverlay";
-import { TicketDragHandle, PlanSessionDropZone } from "./RefinementDragDrop";
+import { PlanSessionDropZone } from "./RefinementDragDrop";
 import { CARRY_OVER_TOAST_KEY } from "./SessionEndModal";
 import { ViewHeader, ViewHeaderTitle } from "@/components/shared/ViewHeader";
 import { Button } from "@/components/ui/Button";
@@ -641,13 +641,6 @@ export function RefinementPageContent({
               onMutate={() => mutateTickets()}
               onSelectTicket={setPreviewTicketKey}
               adjacentKeys={previewAdjacentKeys}
-              dragHandle={
-                <TicketDragHandle
-                  ticketKey={previewTicketKey}
-                  source="panel"
-                  className="flex h-7 w-7 shrink-0 cursor-grab items-center justify-center rounded-md text-text-muted hover:bg-overlay-default hover:text-text-secondary focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)] active:cursor-grabbing"
-                />
-              }
             />
           </div>
         )}
