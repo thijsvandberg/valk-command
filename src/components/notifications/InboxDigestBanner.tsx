@@ -1,14 +1,36 @@
 "use client";
 
-import { useCallback } from "react";
+import { useCallback, useState } from "react";
 import useSWR from "swr";
 import { useRouter } from "next/navigation";
-import { Inbox, ArrowRight } from "lucide-react";
+import { Inbox, ArrowRight, Minus } from "lucide-react";
 import { inboxDigest, swrFetcher, type InboxDigestResponse } from "@/lib/api-client";
 
 // Mirrors useInboxGroupBy's session key so "Open inbox" lands in Relevance
 // grouping regardless of a previously persisted choice (BRDG-413 AC).
 const GROUP_BY_KEY = "inbox-group-by";
+
+// Collapsing the banner to a bubble is a client-only UI preference, so it lives
+// in localStorage rather than the server-backed digest state. We key it by the
+// active digest's id so a brand-new digest re-expands instead of staying hidden.
+const COLLAPSE_KEY = "inbox-digest-collapsed-id";
+
+function readCollapsedId(): string | null {
+  try {
+    return localStorage.getItem(COLLAPSE_KEY);
+  } catch {
+    return null;
+  }
+}
+
+function writeCollapsedId(id: string | null): void {
+  try {
+    if (id === null) localStorage.removeItem(COLLAPSE_KEY);
+    else localStorage.setItem(COLLAPSE_KEY, id);
+  } catch {
+    // Storage unavailable; the collapse preference stays in-memory this session.
+  }
+}
 
 /**
  * Persistent, server-backed inbox digest banner (BRDG-413). Polls
@@ -25,6 +47,22 @@ export function InboxDigestBanner() {
   });
 
   const active = data?.active ?? null;
+
+  // Collapsed state is derived (not an effect) so it survives reloads via
+  // localStorage yet automatically resets when a digest with a new id arrives.
+  const [collapsedId, setCollapsedId] = useState<string | null>(() => readCollapsedId());
+  const isCollapsed = active != null && collapsedId === active.id;
+
+  const minimize = useCallback(() => {
+    if (!active) return;
+    writeCollapsedId(active.id);
+    setCollapsedId(active.id);
+  }, [active]);
+
+  const expand = useCallback(() => {
+    writeCollapsedId(null);
+    setCollapsedId(null);
+  }, []);
 
   // Optimistically hide, then clear on the server (next poll reconciles if the
   // request fails). Both Open inbox and Dismiss clear the active digest.
@@ -50,6 +88,27 @@ export function InboxDigestBanner() {
   if (!active) return null;
 
   const ticketWord = active.total === 1 ? "ticket" : "tickets";
+
+  if (isCollapsed) {
+    return (
+      <button
+        type="button"
+        onClick={expand}
+        aria-label={`Open inbox digest: ${active.total} new ${ticketWord}`}
+        className="pointer-events-auto fixed bottom-6 left-6 z-40 flex h-8 w-8 items-center justify-center rounded-full bg-[var(--color-brand-500)] cursor-pointer transition-[background-color,transform] duration-150 hover:bg-[var(--color-brand-400)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)] active:scale-[0.97]"
+        style={{ animation: "fadeInUp 0.24s ease-out", boxShadow: "var(--shadow-lg)" }}
+      >
+        <Inbox size={14} strokeWidth={2} className="text-white" />
+        <span
+          aria-hidden
+          className="absolute -right-1 -top-1 flex h-3.5 min-w-3.5 items-center justify-center rounded-full bg-white px-0.5 text-micro font-semibold leading-none tabular-nums text-[var(--color-brand-600)]"
+          style={{ boxShadow: "var(--shadow-sm)" }}
+        >
+          {active.total > 99 ? "99+" : active.total}
+        </span>
+      </button>
+    );
+  }
 
   return (
     <section
@@ -84,6 +143,15 @@ export function InboxDigestBanner() {
           </h2>
           <p className="mt-0.5 text-label text-text-tertiary">Since you last reviewed your inbox</p>
         </div>
+
+        <button
+          type="button"
+          onClick={minimize}
+          aria-label="Minimize"
+          className="-mr-1 -mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-lg text-text-tertiary cursor-pointer transition-colors duration-150 hover:bg-overlay-subtle hover:text-text-secondary focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)]"
+        >
+          <Minus size={16} strokeWidth={2} />
+        </button>
       </div>
 
       {active.buckets.length > 0 && (

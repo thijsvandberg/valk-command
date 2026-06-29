@@ -11,10 +11,10 @@ If `$ARGUMENTS` is empty: list the work items you detect in this thread and ask 
 
 ## What this command does
 
-1. **Find the proposed work in this thread.** Identify the concrete items this conversation produced or discussed: user stories (`docs/user-stories/BRDG-XXX-*.md`), phases of a plan, or a task list. Prefer items that exist as files on disk.
+1. **Find the proposed work in this thread.** Identify the concrete items this conversation produced or discussed: user stories (`docs/user-stories/BRDG-XXX-*.md`), phases of a plan, or a task list. Prefer items that exist as files on disk. A phase selector like `fase 1` may map to a phase defined in a recent audit report (`docs/investigations/YYYY-MM-DD-audit-*.md`) — read that report to resolve the phase's stories and order.
 2. **Resolve the scope** from `$ARGUMENTS` to a concrete, ordered list of items with their file paths. If a selector is ambiguous (e.g. "phase 1" was never defined), ask the PO to clarify rather than inventing scope.
 3. **Order them** lowest-risk / fewest-dependencies first, and note any coupling (e.g. two stories editing the same file → must be sequential, never parallel) and any thread-specific cautions (e.g. "do not touch the X fix").
-4. **Generate the prompt** by filling the template below with the resolved scope, the item list + paths, the order, and the cautions. Save it to `docs/prompts/YYYY-MM-DD-<slug>.md` with the prompt inside a single fenced ```text block so it copy-pastes cleanly. (Get the date from the environment; never invent it.)
+4. **Generate the prompt** by filling the template below with the resolved scope, the item list + paths, the order, and the cautions. Save it to `docs/prompts/YYYY-MM-DD-<slug>.md` with the prompt inside a single fenced ```text block so it copy-pastes cleanly. (Get the date from the environment; never invent it.) Bake this saved path into the template's "When every item is done" step so the agent can archive the prompt itself.
 5. **Report back** (see "After saving").
 
 ## The prompt template (fill the {{placeholders}}; keep everything else)
@@ -57,6 +57,8 @@ Write this into the file, wrapped in a ```text fence:
 > **Ask the PO sparingly:** decide for yourself using the item's recommended defaults and the tests. Only ask when something is genuinely unverifiable by tests or Chrome (a subjective product/visual call, a wrong default that changes scope, or you can't authenticate Chrome). BATCH questions into one message; keep working on anything unblocked; never ask permission to start/continue.
 >
 > **Pause, don't thrash:** if after a couple of honest attempts an item won't go green, or a shared-file change regresses unrelated tests and the fix is non-obvious, STOP that item, leave the tree committed-or-clean (never a half-applied broken edit), note where you're stuck, and continue with the next INDEPENDENT item. Report blocked items at the end. Never loop indefinitely on the same failure.
+>
+> **When every item is done:** archive this handoff prompt itself — `git mv {{this prompt's own path, e.g. docs/prompts/2026-06-27-<slug>.md}} docs/user-stories/completed/` and commit `chore: archive handoff prompt {{slug}}`. This keeps `docs/prompts/` to active handoffs only. Skip this if any item is still blocked (leave the prompt in place so the next run can pick it up).
 >
 > **At the end, report a summary in Dutch, understandable for a technical PO, concise and to the point:** which items shipped (with commit hashes), which are blocked and why, anything deferred or worth the PO's attention. No long prose.
 

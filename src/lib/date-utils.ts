@@ -21,15 +21,23 @@ export function relativeDate(iso: string | null | undefined): string {
   return `${Math.floor(months / 12)}y ago`;
 }
 
-export function formatAbsoluteDate(iso: string | null | undefined): string {
+// Two-letter weekday codes (Mo, Tu, ...). Intl only offers 3-letter ("short") or an
+// ambiguous 1-letter ("narrow"), so the compact form is mapped by getDay() (0 = Sunday).
+const WEEKDAY_SHORT = ["Su", "Mo", "Tu", "We", "Th", "Fr", "Sa"];
+
+export function formatAbsoluteDate(
+  iso: string | null | undefined,
+  opts?: { weekday?: boolean },
+): string {
   if (!iso) return "";
   const d = new Date(iso);
   if (isNaN(d.getTime())) return "";
-  return d.toLocaleDateString("en-GB", {
+  const base = d.toLocaleDateString("en-GB", {
     day: "numeric",
     month: "short",
     year: "numeric",
     hour: "2-digit",
     minute: "2-digit",
   });
+  return opts?.weekday ? `${WEEKDAY_SHORT[d.getDay()]} ${base}` : base;
 }

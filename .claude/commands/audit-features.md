@@ -17,8 +17,18 @@ Audit the application from a product perspective. Analyze what exists, what is i
 
 ## Output
 
-- Create user stories. Combine related small items. Keep new feature stories focused on one capability.
-- **Summary**: when done, present a prioritized overview of stories created (impact vs effort).
+This audit ends with a concrete, phased implementation proposal — not just a list of ideas.
+
+1. **Bundle findings into user stories**: combine related small items; keep each new-feature story focused on one capability (`docs/user-stories/BRDG-XXX-*.md`). Be specific — what the feature does and which existing code/data enables it — so it's ready to hand off. Pick the next free BRDG number by scanning BOTH `docs/user-stories/` and `docs/user-stories/completed/`.
+2. **Group into phases**: order the stories into numbered phases (Fase 1, Fase 2, …) by impact vs effort and dependency (quick wins and unblockers first). Each phase should be independently shippable. Name them plainly ("Fase 1") so `/handoff fase 1` resolves them directly.
+3. **Record the plan**: write the phased proposal to `docs/investigations/YYYY-MM-DD-audit-features.md` — the phases, the stories per phase (ID + one-line goal + file path), and the ordering rationale. (Date from the environment; never invent it.)
+
+## Report (in chat)
+
+Report in Dutch, understandable for a technical PO, concise and to the point:
+- The phased proposal: each phase and its stories, prioritized (impact vs effort).
+- One line: run `/handoff fase 1` to hand the first phase to a fresh agent.
+No long prose; do not paste story bodies into chat.
 
 ## Rules
 

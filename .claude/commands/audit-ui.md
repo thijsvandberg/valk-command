@@ -17,8 +17,18 @@ Audit the entire frontend for UI/UX consistency. Inventory all components, then 
 
 ## Output
 
-- Create user stories for improvements. Group related items (e.g. one story for "standardize all button variants", not five separate ones).
-- **Summary**: when done, present a concise overview of findings and stories created.
+This audit ends with a concrete, phased implementation proposal — not just a list of findings.
+
+1. **Bundle findings into user stories**: group related items into focused stories (`docs/user-stories/BRDG-XXX-*.md`) — e.g. one story for "standardize all button variants", not five separate ones. For each, sketch the fix approach (canonical component, which tokens to use) so it's ready to hand off. Pick the next free BRDG number by scanning BOTH `docs/user-stories/` and `docs/user-stories/completed/`.
+2. **Group into phases**: order the stories into numbered phases (Fase 1, Fase 2, …) by user-facing impact (frequently seen views > settings > edge cases) and dependency. Each phase must be independently shippable; avoid two phases editing the same component. Name them plainly ("Fase 1") so `/handoff fase 1` resolves them directly.
+3. **Record the plan**: write the phased proposal to `docs/investigations/YYYY-MM-DD-audit-ui.md` — the phases, the stories per phase (ID + one-line goal + file path), and the ordering rationale. (Date from the environment; never invent it.)
+
+## Report (in chat)
+
+Report in Dutch, understandable for a technical PO, concise and to the point:
+- The phased proposal: each phase and its stories, prioritized (impact vs effort).
+- One line: run `/handoff fase 1` to hand the first phase to a fresh agent.
+No long prose; do not paste story bodies into chat.
 
 ## Rules
 

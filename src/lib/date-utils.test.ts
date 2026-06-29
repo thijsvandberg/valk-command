@@ -68,4 +68,15 @@ describe("formatAbsoluteDate", () => {
     expect(result).toContain("2026");
     expect(result).toContain("Jan");
   });
+
+  it("prefixes a two-letter weekday code when requested", () => {
+    const result = formatAbsoluteDate("2026-06-25T13:58:00Z", { weekday: true });
+    expect(result).toMatch(/^(Mo|Tu|We|Th|Fr|Sa|Su) /);
+    expect(result).toContain("Jun 2026");
+  });
+
+  it("omits the weekday by default", () => {
+    const result = formatAbsoluteDate("2026-06-25T13:58:00Z");
+    expect(result).not.toMatch(/^(Mo|Tu|We|Th|Fr|Sa|Su) /);
+  });
 });
