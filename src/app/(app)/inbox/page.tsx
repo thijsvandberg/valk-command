@@ -499,6 +499,7 @@ export default function InboxPage() {
                               selectAllChecked={selectAllChecked}
                               selectAllIndeterminate={selectAllIndeterminate}
                               selectionActive={checkedKeys.size > 0}
+                              onMarkGroupRead={() => void markRead(groupKeys)}
                               sortField={sortField}
                               sortDir={sortDir}
                               spColumnHidden={!visibleTags.has("storyPoints")}

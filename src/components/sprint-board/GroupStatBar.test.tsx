@@ -842,4 +842,37 @@ describe("GroupStatBar", () => {
       expect(parentClick).not.toHaveBeenCalled();
     });
   });
+
+  describe("mark-all-in-group-as-read button", () => {
+    it("renders no button when onMarkGroupRead is omitted", () => {
+      render(<GroupStatBar tickets={TICKETS} label="From other POs" />);
+      expect(screen.queryByRole("button", { name: /mark all read/i })).toBeNull();
+    });
+
+    it("renders the labelled button and fires onMarkGroupRead on click", () => {
+      const onMarkGroupRead = vi.fn();
+      render(<GroupStatBar tickets={TICKETS} label="From other POs" onMarkGroupRead={onMarkGroupRead} />);
+      const btn = screen.getByRole("button", { name: "Mark all read" });
+      fireEvent.click(btn);
+      expect(onMarkGroupRead).toHaveBeenCalledTimes(1);
+    });
+
+    it("stops the click from bubbling to the collapsible header wrapper", () => {
+      const parentClick = vi.fn();
+      const onMarkGroupRead = vi.fn();
+      render(
+        <div onClick={parentClick}>
+          <GroupStatBar
+            tickets={TICKETS}
+            label="From other POs"
+            onToggleCollapse={() => {}}
+            onMarkGroupRead={onMarkGroupRead}
+          />
+        </div>,
+      );
+      fireEvent.click(screen.getByRole("button", { name: "Mark all read" }));
+      expect(onMarkGroupRead).toHaveBeenCalledTimes(1);
+      expect(parentClick).not.toHaveBeenCalled();
+    });
+  });
 });

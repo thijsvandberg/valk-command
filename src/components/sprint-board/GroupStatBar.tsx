@@ -6,7 +6,7 @@ import type { SortField, SortDir } from "@/components/sprint-board/filter-bar-ty
 import type { GroupSyncProgress, GroupSyncResult, GroupSyncState } from "@/lib/group-sync";
 import { getSpColor, getBvColor, effectivePoints } from "@/types/ticket";
 import { FullnessMeter } from "./FullnessMeter";
-import { ChevronRight, ChevronDown, Pin, AlertTriangle, MoreHorizontal, RefreshCw } from "lucide-react";
+import { ChevronRight, ChevronDown, Pin, AlertTriangle, MoreHorizontal, RefreshCw, CheckCheck } from "lucide-react";
 import { StatPill, StatusPill } from "./SprintStatPill";
 import { MetricBadge } from "@/components/shared/MetricBadge";
 import { Tooltip } from "@/components/shared/Tooltip";
@@ -35,6 +35,12 @@ export interface GroupStatBarProps {
   selectAllIndeterminate?: boolean;
   /** A selection exists somewhere; keeps the select-all checkbox visible (not hover-gated). */
   selectionActive?: boolean;
+  /**
+   * When provided, a hover-revealed "mark all in this group as read" icon button is
+   * rendered in the trailing controls. Used by the inbox to clear a whole section at
+   * once; the consumer wires it to the same bulk mark-read path (with its undo toast).
+   */
+  onMarkGroupRead?: () => void;
   activeCriterion?: StatCriterion | null;
   /**
    * Multi-select status filter: when provided, the four status pills derive their
@@ -196,6 +202,7 @@ export const GroupStatBar = memo(function GroupStatBar({
   selectAllChecked = false,
   selectAllIndeterminate = false,
   selectionActive = false,
+  onMarkGroupRead,
   activeCriterion = null,
   activeCriteria,
   onFilterChange,
@@ -539,6 +546,17 @@ export const GroupStatBar = memo(function GroupStatBar({
         </div>
       )}
       <div className="ml-auto flex shrink-0 items-center gap-1">
+        {onMarkGroupRead && (
+          <button
+            type="button"
+            onClick={(e) => { e.stopPropagation(); onMarkGroupRead(); }}
+            className="flex h-6 shrink-0 items-center gap-1.5 rounded-md px-2 text-label font-medium text-text-muted opacity-0 cursor-pointer hover:bg-overlay-default hover:text-text-secondary focus-visible:opacity-100 focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-[var(--color-brand-400)] group-hover/grouprow:opacity-100"
+            style={{ transition: "opacity 120ms, background-color 0.12s ease, color 0.12s ease" }}
+          >
+            <CheckCheck size={13} strokeWidth={2} aria-hidden />
+            Mark all read
+          </button>
+        )}
         {warningLabel && (
           <Tooltip
             content={
