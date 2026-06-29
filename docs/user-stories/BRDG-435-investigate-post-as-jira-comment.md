@@ -71,11 +71,15 @@ Reuse the existing suggestion pattern end-to-end; only the comment-posting accep
 
 ## Implementation Plan
 
-1. **Prompt/skill wiring** — add the "Investigate" quick prompt; extend the `write-story-draft` skill prompt so investigation requests emit `<investigation>`. Files: `src/app/api/settings/quick-prompts/route.ts`, `src/lib/story-writer-messages.ts` (and the corresponding workspace skill prompt).
-2. **Parse + strip the tag** — `src/components/story-writer/ChatMessageParts.tsx`.
-3. **Card component** — `src/components/story-writer/InvestigationSuggestionCard.tsx` (editable body, char-count guard, Post button, posted state).
-4. **Wire accept handler** — thread `onPostComment` through `StoryWriterChat.tsx`, `ChatApp.tsx`, `useStoryWriterActions.ts`; POST to `/api/tickets/[key]/jira-comments` and refresh the ticket.
-5. **Markdown -> ADF in comments** — replace the plain-paragraph split in `jiraClient.addComment` (`src/lib/jira-client.ts`) with `markdownToAdf()` (`src/lib/markdown-to-adf.ts`), with a plain-paragraph fallback on converter error.
+Order is by isolation: ADF first (independent), then parser, card, threading, finally the quick prompt + free-form wiring.
+
+1. **ADF formatting (AC6).** Swap the manual paragraph-split in `jiraClient.addComment` (`src/lib/jira-client.ts:860`) for `markdownToAdf(bodyText)` (`src/lib/markdown-to-adf.ts:48`, already returns a `{type:"doc",version:1}` root), with a plain-paragraph fallback if it throws. `addFlagComment` untouched. Test: extend `src/lib/jira-client.test.ts` (mock `global.fetch`) to assert heading/bulletList/codeBlock nodes.
+2. **Parser + strip (AC2 render-side, AC3).** Add `parseInvestigation` / `stripInvestigationTags` to `ChatMessageParts.tsx` (mirror `parseEpicSuggestions`/`stripEpicSuggestionTags`), add the tag to the `baseContent` strip chain, parse `investigationResult` from the original `message.content`. Test in `ChatMessageParts.test.tsx`.
+3. **Card (AC3, AC4, AC5, AC7, AC8).** New `InvestigationSuggestionCard.tsx` on the shared `SuggestionCard` shell: editable textarea (init from `result`), live char counter, guard at `JIRA_COMMENT_LIMIT` (new export in `src/lib/jira-content-limits.ts`, value 10000), "Post as comment" button with posting/posted/error state machine (model on `CommentsSection.tsx:191`). Test: new `InvestigationSuggestionCard.test.tsx`.
+4. **Thread the post handler (AC5, AC8).** Add `onPostInvestigation?: (text) => Promise<void>` prop drilled `ChatApp` -> `StoryWriterChat` -> `ChatMessage`, exactly like `onApplyTitle`. `ChatApp` builds the handler from `tickets.addJiraComment(writer.ticketKey, { content })` (`src/lib/api-client.ts:212`) + `writer.mutateTicket()`. Test in `ChatApp.test.tsx`.
+5. **Quick prompt + free-form (AC1, AC2).** Add an "Investigate" entry (`enableCodebase: true`) to `DEFAULT_PROMPTS` (`quick-prompts/route.ts`) whose text instructs wrapping the report in `<investigation>...</investigation>` — this fully delivers AC1 + the button path of AC2 in-repo (instruction travels in the message text). Append an investigation tag-contract sentence to `story-writer-messages.ts` for free-form. Tests: `quick-prompts/route.test.ts` + `story-writer-messages.test.ts`.
+
+**Cross-repo caveat:** free-form reliability (AC2 free-form) depends on the `write-story-draft` skill system prompt on the remote `valk-remote-workspace` (not this repo) honoring the `<investigation>` contract instead of coercing into `<story-draft>`. The button path is fully self-contained; free-form instruction injection is best-effort in-repo and flagged as workspace-dependent.
 
 ## Acceptance Criteria
 
@@ -84,7 +88,7 @@ Reuse the existing suggestion pattern end-to-end; only the comment-posting accep
 - [ ] The chat renders the investigation result as a suggestion card (shared `SuggestionCard` shell), not as raw text, and the raw `<investigation>` tag is stripped from the plain message. <!-- src/components/story-writer/ChatMessageParts.tsx + InvestigationSuggestionCard.tsx -->
 - [ ] The card shows the result in an **editable** field; edits are preserved when posting. <!-- InvestigationSuggestionCard.tsx -->
 - [ ] Clicking **"Post as comment"** posts the (edited) text to `/api/tickets/[key]/jira-comments`; the comment appears on the ticket and the card shows a posted state. <!-- useStoryWriterActions onPostComment + jira-comments route -->
-- [ ] The posted comment preserves markdown formatting in Jira (headings, bullet lists, code blocks) via `markdownToAdf`, matching a story description's richness. <!-- jiraClient.addComment using markdownToAdf -->
+- [x] The posted comment preserves markdown formatting in Jira (headings, bullet lists, code blocks) via `markdownToAdf`, matching a story description's richness. <!-- jiraClient.addComment using markdownToAdf -->
 - [ ] Content over 10000 chars is blocked client-side with a clear message before any request is sent. <!-- InvestigationSuggestionCard.tsx guard mirroring route limit -->
 - [ ] A failed post surfaces an inline error and leaves the text editable for retry; it does not lose the investigation. <!-- InvestigationSuggestionCard.tsx error state -->
 
@@ -93,7 +97,7 @@ Reuse the existing suggestion pattern end-to-end; only the comment-posting accep
 - [ ] Parser test: a message containing `<investigation>...</investigation>` yields the investigation result and strips the tag from the displayed text. <!-- ChatMessageParts.test.tsx -->
 - [ ] Card test: renders the editable body, edits update the value, the char-count guard blocks > 10000 chars, and "Post as comment" calls `onPostComment` with the current (edited) text. <!-- InvestigationSuggestionCard.test.tsx -->
 - [ ] Handler test: `onPostComment` POSTs to `/api/tickets/[key]/jira-comments` and shows posted/error states. <!-- useStoryWriterActions.test.tsx or ChatApp.test.tsx -->
-- [ ] ADF test: `addComment` converts markdown (heading + list + code) to the expected ADF nodes, not flat paragraphs. <!-- jira-client.test.ts / markdown-to-adf coverage -->
+- [x] ADF test: `addComment` converts markdown (heading + list + code) to the expected ADF nodes, not flat paragraphs. <!-- src/lib/jira-client.add-comment.test.ts -->
 
 ## Related
 

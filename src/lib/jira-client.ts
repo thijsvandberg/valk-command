@@ -11,6 +11,7 @@ import { env } from "@/lib/env";
 import { logger } from "@/lib/logger";
 import { trackOutboundCall, isOutboundLimitApproaching } from "@/lib/rate-limiter";
 import { isValidJiraKey, escapeJql, assertValidJiraKeys } from "@/lib/jql";
+import { markdownToAdf } from "@/lib/markdown-to-adf";
 
 // ---------------------------------------------------------------------------
 // Custom field IDs for new-story.atlassian.net (must match jira-mcp config)
@@ -862,20 +863,27 @@ export class JiraClient {
       throw new Error("Jira is not configured");
     }
 
-    const paragraphs = bodyText.split("\n\n").map((block) => ({
-      type: "paragraph" as const,
-      content: [{ type: "text" as const, text: block }],
-    }));
+    // Render markdown to ADF so a comment carries the same rich formatting
+    // (headings, lists, code blocks) as a story description (BRDG-435). Fall
+    // back to plain paragraphs if the converter ever throws on odd input, so a
+    // comment is never lost to a formatting edge case.
+    let body: unknown;
+    try {
+      body = markdownToAdf(bodyText);
+    } catch {
+      body = {
+        type: "doc",
+        version: 1,
+        content: bodyText.split("\n\n").map((block) => ({
+          type: "paragraph" as const,
+          content: [{ type: "text" as const, text: block }],
+        })),
+      };
+    }
 
     return jiraPost<JiraComment>(
       issuePath(key, `/comment`),
-      {
-        body: {
-          type: "doc",
-          version: 1,
-          content: paragraphs,
-        },
-      },
+      { body },
       signal,
     );
   }
