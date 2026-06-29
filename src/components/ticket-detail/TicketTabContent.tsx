@@ -213,7 +213,7 @@ export function TicketTabContent({
             panel passes its header buttons via tabBarActions so the whole merged
             bar scrolls away, leaving a floating close behind. */}
         {renderTabBar && (
-          <div className={`flex h-[44px] shrink-0 items-stretch gap-1 border-b border-border-default ${railClass}`}>
+          <div role="tablist" aria-label="Ticket sections" className={`flex h-[44px] shrink-0 items-stretch gap-1 border-b border-border-default ${railClass}`}>
             {([
                 ...(isEpic ? [{ id: "children" as const, label: "Child issues", badge: (detail?.epicChildren.length || undefined) as number | undefined, badgeHighlight: false }] : []),
                 { id: "content" as const, label: isSubtask ? "Subtask" : "Content", badge: undefined as number | undefined, badgeHighlight: false },
@@ -248,7 +248,7 @@ export function TicketTabContent({
           className={`sticky top-0 z-10 border-b border-border-default bg-surface-elevated empty:hidden ${railClass}`}
         />
 
-        <div className={`${railClass} ${activeTab === "history" ? "pt-6 pb-4" : "py-6"}`}>
+        <div role="tabpanel" aria-label="Ticket section content" className={`${railClass} ${activeTab === "history" ? "pt-6 pb-4" : "py-6"}`}>
 
           {/* Conflict warning */}
           {showConflictWarning && (
