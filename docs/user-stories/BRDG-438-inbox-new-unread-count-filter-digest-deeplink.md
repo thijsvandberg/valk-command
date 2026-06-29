@@ -71,10 +71,10 @@ Per the PO, there is ONE definition of "new" everywhere: **new since you last ma
 
 ## Tests
 - [x] `/api/new-stories` returns `baselineAt` = `MAX(readAt)` for the user (null when nothing read). <!-- new-stories route test -->
-- [ ] `newOnly` filtering: a rows fixture with mixed `jiraCreatedAt` yields the correct new subset and new-count for a given `baselineAt`. <!-- isNewSinceLastViewed derive test -->
-- [ ] Header renders "N new" only when newCount > 0; clicking it toggles `newOnly`. <!-- inbox header unit test -->
-- [ ] select-all over the new-filtered list checks exactly the new keys. <!-- toggleAll over displayRows test -->
-- [ ] `?new=1` initialises the list in new-only mode. <!-- useSearchParams init test -->
+- [x] `newOnly` filtering: a rows fixture with mixed `jiraCreatedAt` yields the correct new subset and new-count for a given `baselineAt`. <!-- isNewSinceLastViewed derive test -->
+- [x] Header renders "N new" only when newCount > 0; clicking it toggles `newOnly`. <!-- inbox header unit test -->
+- [x] select-all over the new-filtered list checks exactly the new keys. <!-- toggleAll over displayRows test -->
+- [x] `?new=1` initialises the list in new-only mode. <!-- useSearchParams init test -->
 - [x] Banner "Open inbox" routes to `/inbox?new=1`. <!-- InboxDigestBanner.test -->
 
 ## Related

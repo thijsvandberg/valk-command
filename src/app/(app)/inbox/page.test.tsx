@@ -290,3 +290,71 @@ describe("InboxPage group select-all (BRDG-358)", () => {
     expect(screen.getByRole("button", { name: /Mark 1 as read/ })).toBeInTheDocument();
   });
 });
+
+describe("InboxPage new-only filter (BRDG-438)", () => {
+  // One row created after the baseline (new) and one before (not new).
+  const NEW_KEY = "VPL-NEW";
+  const OLD_KEY = "VPL-OLD";
+  function mixedRows() {
+    return [
+      { ...row(NEW_KEY, "New story"), jiraCreatedAt: "2026-06-25T00:00:00.000Z" },
+      { ...row(OLD_KEY, "Old story"), jiraCreatedAt: "2026-06-10T00:00:00.000Z" },
+    ];
+  }
+  const BASELINE = "2026-06-20T00:00:00.000Z"; // between the two -> exactly one new
+
+  beforeEach(() => {
+    listData = { rows: mixedRows(), baselineAt: BASELINE };
+    searchParamsMock = new URLSearchParams();
+    listMutate.mockClear();
+    globalMutateSpy.mockClear();
+    fetchMock.mockClear();
+    sessionStorage.clear();
+    // ViewHeader (which hosts the count chip) renders through a portal into
+    // #view-header-portal; provide the target so the header is in the DOM.
+    if (!document.getElementById("view-header-portal")) {
+      const portal = document.createElement("div");
+      portal.id = "view-header-portal";
+      document.body.appendChild(portal);
+    }
+  });
+
+  it("shows a 'N new' chip with the count of rows newer than the baseline", () => {
+    render(<InboxPage />);
+    expect(screen.getByRole("button", { name: /1 new/ })).toBeInTheDocument();
+    // Both rows visible until the chip is clicked.
+    expect(screen.getByText("New story")).toBeInTheDocument();
+    expect(screen.getByText("Old story")).toBeInTheDocument();
+  });
+
+  it("hides the chip when nothing is new (future baseline)", () => {
+    listData = { rows: mixedRows(), baselineAt: "2099-01-01T00:00:00.000Z" };
+    render(<InboxPage />);
+    expect(screen.queryByRole("button", { name: /new$/ })).toBeNull();
+  });
+
+  it("clicking the chip filters to only new rows; clicking the total restores all", () => {
+    render(<InboxPage />);
+    fireEvent.click(screen.getByRole("button", { name: /1 new/ }));
+    expect(screen.getByText("New story")).toBeInTheDocument();
+    expect(screen.queryByText("Old story")).toBeNull();
+
+    fireEvent.click(screen.getByTitle("Show all unread"));
+    expect(screen.getByText("Old story")).toBeInTheDocument();
+  });
+
+  it("initialises in new-only mode from the digest deep-link ?new=1", () => {
+    searchParamsMock = new URLSearchParams("new=1");
+    render(<InboxPage />);
+    expect(screen.getByText("New story")).toBeInTheDocument();
+    expect(screen.queryByText("Old story")).toBeNull();
+  });
+
+  it("select-all over the new-filtered list selects exactly the new rows", async () => {
+    searchParamsMock = new URLSearchParams("new=1");
+    render(<InboxPage />);
+    // Only the new row is in the group, so selecting all yields a single mark-read target.
+    fireEvent.click(screen.getByRole("checkbox", { name: "Select all items in this group" }));
+    expect(await screen.findByRole("button", { name: /Mark 1 as read/ })).toBeInTheDocument();
+  });
+});
