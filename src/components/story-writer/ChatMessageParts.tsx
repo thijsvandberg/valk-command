@@ -517,7 +517,7 @@ export function ChatMessage({
               <>
                 <div className="relative">
                   {(onViewDraft || onFocusDraft) && (
-                    <div className="absolute right-2 top-2 z-10 flex items-center gap-0.5 rounded-md border border-border-default bg-surface-floating p-0.5 opacity-0 shadow-[0_4px_14px_-4px_rgba(0,0,0,0.18)] transition-opacity duration-150 group-hover/draft:opacity-100 focus-within:opacity-100">
+                    <div className="absolute right-2 top-2 z-10 flex items-center gap-0.5 rounded-md border border-border-default bg-surface-floating p-0.5 opacity-0 shadow-md transition-opacity duration-150 group-hover/draft:opacity-100 focus-within:opacity-100">
                       {onViewDraft && (
                         <button
                           type="button"

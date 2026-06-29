@@ -104,7 +104,7 @@ export function ChildStoryCard({
   };
 
   return (
-    <article className="rounded-lg border border-border-subtle bg-surface-elevated/60 p-3.5 shadow-[0_1px_2px_rgba(0,0,0,0.04)]">
+    <article className="rounded-lg border border-border-subtle bg-surface-elevated/60 p-3.5 shadow-sm">
       <header className="flex items-start justify-between gap-2">
         <div className="flex min-w-0 items-center gap-2">
           <span className="font-mono text-caption tabular-nums text-text-muted">

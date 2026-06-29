@@ -119,7 +119,7 @@ export function SprintPlacementMenu({
       {open && (
         <div
           role="menu"
-          className="absolute right-0 z-20 mt-1 w-56 overflow-hidden rounded-lg border border-border-default bg-surface-elevated py-1 shadow-[0_8px_24px_rgba(0,0,0,0.18)]"
+          className="absolute right-0 z-20 mt-1 w-56 overflow-hidden rounded-lg border border-border-default bg-surface-elevated py-1 shadow-popover"
         >
           <button
             type="button"

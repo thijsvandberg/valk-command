@@ -32,7 +32,7 @@ export function EpicRow({ epic, sprints }: { epic: EpicProgressItem; sprints: Sp
 
   return (
     <div
-      className="overflow-hidden rounded-xl border border-border-default bg-surface-elevated shadow-[0_1px_3px_rgba(0,0,0,0.18)] transition-colors duration-150"
+      className="overflow-hidden rounded-xl border border-border-default bg-surface-elevated shadow-sm transition-colors duration-150"
       style={{ borderLeft: `3px solid ${color.text}` }}
     >
       {/* Header row — expand button + team picker as siblings (no nested buttons) */}

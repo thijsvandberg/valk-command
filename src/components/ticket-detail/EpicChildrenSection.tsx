@@ -929,7 +929,7 @@ export function EpicChildrenSection({
       </button>
 
       {searchResults.length > 0 && (
-        <div className="absolute top-full left-0 right-0 z-20 mt-1 max-h-56 overflow-y-auto rounded-lg border border-border-default bg-surface-elevated shadow-[0_4px_12px_rgba(0,0,0,0.12),0_1px_3px_rgba(0,0,0,0.08)]">
+        <div className="absolute top-full left-0 right-0 z-20 mt-1 max-h-56 overflow-y-auto rounded-lg border border-border-default bg-surface-elevated shadow-popover">
           {searchResults.map((r, idx) => (
             <button
               key={r.key}

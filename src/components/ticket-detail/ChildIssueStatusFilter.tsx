@@ -26,7 +26,7 @@ export function ChildIssueStatusFilter({
             onClick={() => setFilter(opt.value)}
             className={`cursor-pointer flex items-center gap-1.5 rounded-md px-2.5 py-1 text-label font-medium transition-colors duration-150 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)] ${
               isActive
-                ? "bg-surface-elevated text-text-primary shadow-[0_1px_3px_rgba(0,0,0,0.08)]"
+                ? "bg-surface-elevated text-text-primary shadow-sm"
                 : "text-text-tertiary hover:text-text-secondary"
             }`}
           >

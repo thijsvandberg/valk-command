@@ -974,8 +974,8 @@ export function TicketStatusPill({
               onHeader ? "" : "bg-surface-elevated"
             } ${
               size === "lg"
-                ? "px-2.5 py-1.5 shadow-[0_1px_3px_rgba(0,0,0,0.16)]"
-                : "px-1.5 py-[3px] shadow-[0_1px_2px_rgba(0,0,0,0.14)]"
+                ? "px-2.5 py-1.5 shadow-sm"
+                : "px-1.5 py-[3px] shadow-sm"
             }`
           : "relative flex shrink-0 items-center gap-1.5"
       }
@@ -995,7 +995,7 @@ export function TicketStatusPill({
         <span
           aria-live="polite"
           style={{ animation: "copyConfirmInOut 1500ms ease-out both" }}
-          className={`pointer-events-none absolute inset-0 z-20 flex items-center justify-center gap-1 whitespace-nowrap rounded-md bg-surface-floating px-2 tracking-tight text-text-primary ring-1 ring-inset ring-border-default shadow-[0_1px_4px_rgba(0,0,0,0.12)] ${
+          className={`pointer-events-none absolute inset-0 z-20 flex items-center justify-center gap-1 whitespace-nowrap rounded-md bg-surface-floating px-2 tracking-tight text-text-primary ring-1 ring-inset ring-border-default shadow-sm ${
             elevated ? "text-body-sm font-semibold" : "text-label font-medium"
           }`}
         >

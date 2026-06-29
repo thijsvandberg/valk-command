@@ -54,7 +54,7 @@ function FocusModeLayout({ children }: { children: ReactNode }) {
           hover:text-text-primary hover:bg-surface-elevated
           focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)]
           active:scale-[0.97]
-          shadow-[0_2px_8px_rgba(0,0,0,0.15),0_0_1px_rgba(0,0,0,0.1)]
+          shadow-md
           transition-[opacity,transform] duration-200
           ${isDragging ? "cursor-grabbing" : ""}
           ${focusMode
