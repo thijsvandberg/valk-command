@@ -7,7 +7,7 @@ import { useTicketEvents } from "@/hooks/useTicketEvents";
 import type { TicketEvent } from "@/lib/ticket-events";
 import { useNotification } from "@/hooks/useNotification";
 import { PAGE_TITLE_SUFFIX } from "@/hooks/usePageTitle";
-import { ApiError, apiFetch, jira, tickets } from "@/lib/api-client";
+import { ApiError, apiFetch, jira, tickets, refinementSessions } from "@/lib/api-client";
 import type { EpicOption } from "@/components/shared/EpicPicker";
 import type { WriterContextValue } from "./panes/WriterContext";
 import type { TicketReadiness, IssueType, JiraStatus, Ticket } from "@/types/ticket";
@@ -285,9 +285,25 @@ export function useStoryWriterActions({
       }
       if (opts.readiness) {
         // Offer adding the ticket to a refinement before leaving; the dialog's
-        // close (Skip or Add) performs the deferred navigation.
-        setWrapUpNavPending(true);
-        setShowAddToRefinement(true);
+        // close (Skip or Add) performs the deferred navigation. But when the
+        // ticket already belongs to an active session, the prompt is pointless,
+        // so we skip it and navigate straight away. A failed membership lookup
+        // falls back to showing the prompt rather than swallowing the wrap-up.
+        let alreadyInSession = false;
+        try {
+          const sessions = await refinementSessions.list();
+          alreadyInSession = sessions.some(
+            (s) => s.status !== "completed" && s.ticketKeys.includes(ticketKey),
+          );
+        } catch {
+          // Ignore: fall back to showing the prompt.
+        }
+        if (alreadyInSession) {
+          router.push(`/tickets/${encodeURIComponent(ticketKey)}`);
+        } else {
+          setWrapUpNavPending(true);
+          setShowAddToRefinement(true);
+        }
       } else {
         router.push(`/tickets/${encodeURIComponent(ticketKey)}`);
       }

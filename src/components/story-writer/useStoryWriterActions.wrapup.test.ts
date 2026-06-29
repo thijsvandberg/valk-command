@@ -18,10 +18,13 @@ vi.mock("@/lib/api-client", () => ({
     pullFromJira: vi.fn().mockResolvedValue({}),
     updateMetadata: vi.fn().mockResolvedValue({}),
   },
+  refinementSessions: {
+    list: vi.fn().mockResolvedValue([]),
+  },
 }));
 
 import { useStoryWriterActions } from "./useStoryWriterActions";
-import { tickets } from "@/lib/api-client";
+import { tickets, refinementSessions } from "@/lib/api-client";
 
 const TICKET_KEY = "VPL-1";
 
@@ -86,6 +89,38 @@ describe("useStoryWriterActions wrap-up flows (BRDG-339)", () => {
     });
     expect(result.current.showAddToRefinement).toBe(false);
     expect(routerPush).toHaveBeenCalledWith(`/tickets/${TICKET_KEY}`);
+  });
+
+  it("Ready to refine: skips the Add-to-refinement dialog when the ticket is already in an active session", async () => {
+    vi.mocked(refinementSessions.list).mockResolvedValueOnce([
+      { id: "s1", status: "draft", ticketKeys: [TICKET_KEY] },
+    ] as never);
+    const writer = makeWriter({ success: true, conflict: false, contentChanged: false });
+    const { result } = renderActions(writer);
+
+    await act(async () => {
+      await result.current.handleWrapUpReady();
+    });
+
+    expect(tickets.updateMetadata).toHaveBeenCalledWith(TICKET_KEY, { readiness: "ready_to_refine" });
+    // Dialog is skipped; navigation happens immediately.
+    expect(result.current.showAddToRefinement).toBe(false);
+    expect(routerPush).toHaveBeenCalledWith(`/tickets/${TICKET_KEY}`);
+  });
+
+  it("Ready to refine: still prompts when the ticket is only in a completed session", async () => {
+    vi.mocked(refinementSessions.list).mockResolvedValueOnce([
+      { id: "s1", status: "completed", ticketKeys: [TICKET_KEY] },
+    ] as never);
+    const writer = makeWriter({ success: true, conflict: false, contentChanged: false });
+    const { result } = renderActions(writer);
+
+    await act(async () => {
+      await result.current.handleWrapUpReady();
+    });
+
+    expect(result.current.showAddToRefinement).toBe(true);
+    expect(routerPush).not.toHaveBeenCalled();
   });
 
   it("Ready to refine + clear session: additionally deletes the session", async () => {
