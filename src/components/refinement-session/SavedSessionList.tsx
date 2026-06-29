@@ -142,6 +142,7 @@ export function SavedSessionList({
 
               {editingId === session.id ? (
                 <input
+                  aria-label="Session name"
                   ref={inputRef}
                   type="text"
                   value={editValue}

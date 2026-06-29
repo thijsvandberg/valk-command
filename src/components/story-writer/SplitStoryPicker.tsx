@@ -141,6 +141,7 @@ export function SplitStoryPicker({ open, originalTitle, originalSprintId, onConf
                 </label>
                 <div className="relative">
                   <select
+                    aria-label="Issue type"
                     value={selectedIssueType}
                     onChange={(e) => setSelectedIssueType(e.target.value)}
                     className="w-full appearance-none rounded-md border border-border-strong bg-surface-floating px-3 py-2 pr-8 text-body-lg text-text-primary focus:border-[var(--color-brand-500)]/40 focus:outline-none transition-colors duration-150 cursor-pointer"
@@ -159,6 +160,7 @@ export function SplitStoryPicker({ open, originalTitle, originalSprintId, onConf
                 </label>
                 <div className="relative">
                   <select
+                    aria-label="Target sprint"
                     value={selectedSprintId}
                     onChange={(e) => setSelectedSprintId(e.target.value)}
                     className="w-full appearance-none rounded-md border border-border-strong bg-surface-floating px-3 py-2 pr-8 text-body-lg text-text-primary focus:border-[var(--color-brand-500)]/40 focus:outline-none transition-colors duration-150 cursor-pointer"

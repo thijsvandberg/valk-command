@@ -196,6 +196,7 @@ export default function ActivityLogPage() {
           <div className="flex items-center gap-3">
             <Filter className="h-3.5 w-3.5 text-text-muted" strokeWidth={2} />
             <SelectFilter
+              ariaLabel="Filter by status"
               value={statusFilter}
               options={STATUS_OPTIONS}
               onChange={handleStatusChange}

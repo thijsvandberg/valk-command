@@ -79,14 +79,17 @@ export function SelectFilter({
   value,
   options,
   onChange,
+  ariaLabel,
 }: {
   value: string;
   options: { value: string; label: string }[];
   onChange: (e: React.ChangeEvent<HTMLSelectElement>) => void;
+  ariaLabel?: string;
 }) {
   return (
     <div className="relative">
       <select
+        aria-label={ariaLabel}
         value={value}
         onChange={onChange}
         className="appearance-none rounded-lg border border-border-default bg-surface-elevated px-3 py-1.5 pr-7 text-body-sm text-text-secondary font-[var(--font-body)] cursor-pointer hover:border-border-strong focus:outline-none focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-[var(--color-brand-400)] transition-colors duration-150"

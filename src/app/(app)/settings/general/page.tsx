@@ -65,6 +65,7 @@ export default function GeneralSettingsPage() {
 
           <div className="relative shrink-0">
             <select
+              aria-label="Default sprint"
               value={currentSprintId}
               onChange={(e) => handleChange(e.target.value)}
               className="appearance-none rounded-md border border-border-strong bg-surface-floating py-1.5 pl-3 pr-8 text-body-lg text-text-primary transition-colors duration-150 cursor-pointer focus:border-[var(--color-brand-500)]/40 focus:outline-none hover:border-[var(--color-brand-500)]/30"
@@ -122,6 +123,7 @@ export default function GeneralSettingsPage() {
 
           <div className="relative shrink-0">
             <select
+              aria-label="Default backlog team"
               value={backlogTargetName}
               onChange={(e) => setBacklogTargetName(e.target.value)}
               className="appearance-none rounded-md border border-border-strong bg-surface-floating py-1.5 pl-3 pr-8 text-body-lg text-text-primary transition-colors duration-150 cursor-pointer focus:border-[var(--color-brand-500)]/40 focus:outline-none hover:border-[var(--color-brand-500)]/30"
@@ -177,6 +179,7 @@ export default function GeneralSettingsPage() {
 
           <div className="relative shrink-0">
             <select
+              aria-label="Default team"
               value={defaultTeam ?? ""}
               onChange={(e) => setDefaultTeam(e.target.value === "" ? null : (e.target.value as (typeof TEAMS)[number]))}
               className="appearance-none rounded-md border border-border-strong bg-surface-floating py-1.5 pl-3 pr-8 text-body-lg text-text-primary transition-colors duration-150 cursor-pointer focus:border-[var(--color-brand-500)]/40 focus:outline-none hover:border-[var(--color-brand-500)]/30"

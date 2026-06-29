@@ -78,6 +78,7 @@ export function SubFlowForm({
             </label>
             <div className="relative">
               <select
+                aria-label="Sprint"
                 value={subFlow.sprintId}
                 onChange={(e) => onSprintChange(e.target.value)}
                 className="w-full appearance-none rounded-md border border-border-strong bg-surface-floating px-3 py-2 pr-8 text-body-lg text-text-primary focus:border-[var(--color-brand-500)]/40 focus:outline-none transition-colors duration-150 cursor-pointer"
