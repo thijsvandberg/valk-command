@@ -25,7 +25,7 @@ export function ViewHeader({ icon, children, actions, className, hideNotificatio
   const { toggleFocusMode } = useFocusModeContext();
   const [target, setTarget] = useState<HTMLElement | null>(null);
   const [menuOpen, setMenuOpen] = useState(false);
-  const menuRef = useRef<HTMLDivElement>(null);
+  const menuRef = useRef<HTMLElement>(null);
 
   // useLayoutEffect fires after DOM commit, before the browser paints, so there
   // is no visible flash. It is not called server-side, which means both server
@@ -64,8 +64,10 @@ export function ViewHeader({ icon, children, actions, className, hideNotificatio
       {/* Command capsule: the wordmark menu trigger + view context grouped into
           one brand-tinted console unit, distinct from the right-side tools. */}
       <div className="relative flex min-w-0 items-center gap-3 py-1.5 pr-3.5">
-        {/* Trigger + dropdown live in one wrapper so outside-click ignores both. */}
-        <div ref={menuRef} className="relative shrink-0">
+        {/* Trigger + dropdown live in one wrapper so outside-click ignores both.
+            This is the persistent primary-navigation landmark (BRDG-425); the
+            expanded panel itself is a role="dialog" popover. */}
+        <nav ref={menuRef} aria-label="Primary" className="relative shrink-0">
           <button
             type="button"
             onClick={() => setMenuOpen((v) => !v)}
@@ -81,7 +83,7 @@ export function ViewHeader({ icon, children, actions, className, hideNotificatio
           {/* Mounted only while open: keeps the nav's data hooks off every page
               that merely renders the header, and lets it animate in fresh. */}
           {menuOpen && <NavPanel open onClose={closeMenu} />}
-        </div>
+        </nav>
 
         {(icon || children) && !hideContextDivider && (
           <span className="h-5 w-px shrink-0 bg-gradient-to-b from-transparent via-border-strong to-transparent" aria-hidden />
@@ -135,10 +137,13 @@ export function ViewHeader({ icon, children, actions, className, hideNotificatio
 }
 
 export function ViewHeaderTitle({ children }: { children: ReactNode }) {
+  // Real <h1> so every primary view exposes a single top-level heading (BRDG-425).
+  // Tailwind preflight zeroes the h1 margin/size, so it renders identically to the
+  // span it replaced; the className still drives every visual.
   return (
-    <span className="font-[var(--font-display)] text-heading-sm font-semibold tracking-tight text-text-primary">
+    <h1 className="font-[var(--font-display)] text-heading-sm font-semibold tracking-tight text-text-primary">
       {children}
-    </span>
+    </h1>
   );
 }
 

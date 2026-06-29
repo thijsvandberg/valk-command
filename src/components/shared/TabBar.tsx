@@ -14,7 +14,7 @@ const inactiveClass =
 
 export function TabBar({ children, className }: { children: React.ReactNode; className?: string }) {
   return (
-    <BarContainer className={`items-stretch gap-0 ${className ?? ""}`}>
+    <BarContainer role="tablist" className={`items-stretch gap-0 ${className ?? ""}`}>
       {children}
     </BarContainer>
   );
@@ -41,6 +41,8 @@ export function Tab({ active, onClick, icon, label, badge, badgeHighlight }: Tab
   return (
     <button
       type="button"
+      role="tab"
+      aria-selected={active}
       onClick={onClick}
       className={`${baseClass} ${active ? activeClass : inactiveClass}`}
     >
@@ -57,6 +59,8 @@ export function TabLink({ active, href, icon, label, badge, badgeHighlight }: Ta
   return (
     <Link
       href={href}
+      role="tab"
+      aria-selected={active}
       className={`${baseClass} ${active ? activeClass : inactiveClass}`}
     >
       {icon}

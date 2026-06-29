@@ -13,6 +13,9 @@ interface BarContainerProps {
   /** Border position. Default "bottom". */
   borderPosition?: "bottom" | "top";
   className?: string;
+  /** ARIA role for the bar (e.g. "tablist" from TabBar). Default none. */
+  role?: string;
+  "aria-label"?: string;
 }
 
 export function BarContainer({
@@ -21,6 +24,8 @@ export function BarContainer({
   border = true,
   borderPosition = "bottom",
   className,
+  role,
+  "aria-label": ariaLabel,
 }: BarContainerProps) {
   const borderClass = border
     ? borderPosition === "top"
@@ -30,7 +35,7 @@ export function BarContainer({
   const paddingClass = padding === "none" ? "px-0" : padding === "compact" ? "px-3" : "px-4";
 
   return (
-    <div className={`flex h-[44px] shrink-0 items-center ${paddingClass} ${borderClass} ${className ?? ""}`}>
+    <div role={role} aria-label={ariaLabel} className={`flex h-[44px] shrink-0 items-center ${paddingClass} ${borderClass} ${className ?? ""}`}>
       {children}
     </div>
   );

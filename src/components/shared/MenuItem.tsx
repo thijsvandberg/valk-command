@@ -9,9 +9,10 @@ import {
 // and — critically — a keyboard focus-visible ring that the hand-rolled copies
 // lacked. Renders an <a> when `href` is set, otherwise a <button>.
 //
-// Widget roles (role="menuitem") are intentionally NOT defaulted here; they are
-// added deliberately per BRDG-425. Callers that already pass `role` keep it via
-// the spread.
+// Widget roles default to role="menuitem" (BRDG-425) so every menu row is
+// announced; MenuList defaults to role="menu". Both come before the prop spread,
+// so a caller that needs a different role (e.g. "option" in a listbox) overrides
+// it via the spread.
 
 const base =
   "flex w-full items-center gap-2.5 px-3 py-1.5 text-body-sm cursor-pointer transition-colors duration-150 hover:bg-hover-list-item active:bg-overlay-default focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-[var(--color-brand-400)] disabled:opacity-40 disabled:cursor-not-allowed disabled:pointer-events-none";
@@ -78,7 +79,7 @@ export function MenuItem(props: MenuItemProps) {
 
   if (rest.href !== undefined) {
     return (
-      <a className={classes} {...(rest as AnchorHTMLAttributes<HTMLAnchorElement>)}>
+      <a role="menuitem" className={classes} {...(rest as AnchorHTMLAttributes<HTMLAnchorElement>)}>
         {content}
       </a>
     );
@@ -87,7 +88,7 @@ export function MenuItem(props: MenuItemProps) {
   const { type = "button", ...buttonRest } =
     rest as ButtonHTMLAttributes<HTMLButtonElement>;
   return (
-    <button type={type} className={classes} {...buttonRest}>
+    <button type={type} role="menuitem" className={classes} {...buttonRest}>
       {content}
     </button>
   );
@@ -108,7 +109,7 @@ export function MenuList({ className, children, ...rest }: MenuListProps) {
     .filter(Boolean)
     .join(" ");
   return (
-    <div className={classes} {...rest}>
+    <div role="menu" className={classes} {...rest}>
       {children}
     </div>
   );

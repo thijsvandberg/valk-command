@@ -124,7 +124,7 @@ describe("StakeholderPage", () => {
   it("renders the active sprint name by default", async () => {
     render(<StakeholderPage />);
     await waitFor(() => {
-      expect(screen.getByRole("heading", { level: 1 })).toHaveTextContent("BM: 135");
+      expect(screen.getByRole("heading", { name: "BM: 135" })).toBeInTheDocument();
     });
   });
 
@@ -164,7 +164,7 @@ describe("StakeholderPage", () => {
     mockSearchParams = new URLSearchParams("team=GXP&sprintId=20");
     render(<StakeholderPage />);
     await waitFor(() => {
-      expect(screen.getByRole("heading", { level: 1 })).toHaveTextContent("GXP: 135");
+      expect(screen.getByRole("heading", { name: "GXP: 135" })).toBeInTheDocument();
     });
   });
 
@@ -233,7 +233,7 @@ describe("StakeholderPage", () => {
     });
     fireEvent.click(screen.getByRole("button", { name: /more options/i }));
     await waitFor(() => {
-      expect(screen.getByRole("button", { name: /copy as markdown/i })).toBeInTheDocument();
+      expect(screen.getByRole("menuitem", { name: /copy as markdown/i })).toBeInTheDocument();
     });
   });
 

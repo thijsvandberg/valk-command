@@ -23,9 +23,9 @@ export function StoryPreviewApp() {
   return (
     <div className="flex h-full flex-col overflow-y-auto p-4">
       {title && (
-        <h1 className="mb-4 font-[var(--font-display)] text-heading font-semibold text-text-primary tracking-tight">
+        <h2 className="mb-4 font-[var(--font-display)] text-heading font-semibold text-text-primary tracking-tight">
           {title}
-        </h1>
+        </h2>
       )}
       <div className="description-content">
         {content ? renderMarkdown(content, { linkifyRefs: true }) : (

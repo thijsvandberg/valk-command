@@ -11,7 +11,7 @@ describe("MenuItem", () => {
 
   it("carries the canonical hover / active-press / focus-visible classes", () => {
     render(<MenuItem>Item</MenuItem>);
-    const el = screen.getByRole("button");
+    const el = screen.getByRole("menuitem");
     expect(el.className).toContain("hover:bg-hover-list-item");
     expect(el.className).toContain("active:bg-overlay-default");
     expect(el.className).toContain("focus-visible:outline-2");
@@ -21,7 +21,7 @@ describe("MenuItem", () => {
   it("renders a button by default and fires onClick", () => {
     const onClick = vi.fn();
     render(<MenuItem onClick={onClick}>Go</MenuItem>);
-    const el = screen.getByRole("button");
+    const el = screen.getByRole("menuitem");
     expect(el.tagName).toBe("BUTTON");
     fireEvent.click(el);
     expect(onClick).toHaveBeenCalledTimes(1);
@@ -29,7 +29,7 @@ describe("MenuItem", () => {
 
   it("renders an anchor when href is provided", () => {
     render(<MenuItem href="/tickets/ABC-1">Open</MenuItem>);
-    const el = screen.getByRole("link");
+    const el = screen.getByRole("menuitem");
     expect(el.tagName).toBe("A");
     expect(el).toHaveAttribute("href", "/tickets/ABC-1");
     expect(el.className).toContain("focus-visible:outline-2");
@@ -37,13 +37,13 @@ describe("MenuItem", () => {
 
   it("applies the danger tone", () => {
     render(<MenuItem tone="danger">Delete</MenuItem>);
-    const el = screen.getByRole("button");
+    const el = screen.getByRole("menuitem");
     expect(el.className).toContain("text-[var(--color-status-error)]");
   });
 
   it("marks an active row", () => {
     render(<MenuItem active>Current</MenuItem>);
-    const el = screen.getByRole("button");
+    const el = screen.getByRole("menuitem");
     expect(el.className).toContain("font-medium");
     expect(el.className).toContain("text-text-primary");
   });
@@ -51,7 +51,7 @@ describe("MenuItem", () => {
   it("supports disabled", () => {
     const onClick = vi.fn();
     render(<MenuItem disabled onClick={onClick}>Nope</MenuItem>);
-    const el = screen.getByRole("button") as HTMLButtonElement;
+    const el = screen.getByRole("menuitem") as HTMLButtonElement;
     expect(el.disabled).toBe(true);
     expect(el.className).toContain("disabled:opacity-40");
   });

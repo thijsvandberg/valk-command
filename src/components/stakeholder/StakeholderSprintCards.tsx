@@ -92,9 +92,9 @@ export function StakeholderSprintCards({
               <>
                 {/* Title row: name + health + sparkline */}
                 <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
-                  <h1 className="font-[var(--font-display)] text-3xl font-semibold tracking-tight text-text-primary leading-none">
+                  <h2 className="font-[var(--font-display)] text-3xl font-semibold tracking-tight text-text-primary leading-none">
                     {stakeholderSprint.name}
-                  </h1>
+                  </h2>
                   {showHealthBadge && (
                     <SprintHealthBanner
                       sprint={stakeholderSprint}
