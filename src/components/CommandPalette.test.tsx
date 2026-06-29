@@ -112,6 +112,18 @@ describe("CommandPalette", () => {
     expect(screen.getByPlaceholderText(/search pages/i)).toBeInTheDocument();
   });
 
+  it("exposes combobox/listbox/option roles (BRDG-425)", async () => {
+    render(<CommandPalette />);
+    await act(async () => {
+      fireEvent.keyDown(window, { key: "k", metaKey: true });
+    });
+    const input = screen.getByPlaceholderText(/search pages/i);
+    expect(input).toHaveAttribute("role", "combobox");
+    expect(input).toHaveAttribute("aria-controls", "command-palette-listbox");
+    expect(screen.getByRole("listbox")).toHaveAttribute("id", "command-palette-listbox");
+    expect(screen.getAllByRole("option").length).toBeGreaterThan(0);
+  });
+
   it("shows page results by default when open", async () => {
     render(<CommandPalette />);
     await act(async () => {

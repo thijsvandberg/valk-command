@@ -1,6 +1,6 @@
 import { render, screen, fireEvent } from "@testing-library/react";
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
-import { ViewHeader } from "./ViewHeader";
+import { ViewHeader, ViewHeaderTitle } from "./ViewHeader";
 
 // Focus mode context — only toggleFocusMode is consumed.
 const mockToggleFocusMode = vi.fn();
@@ -48,6 +48,16 @@ describe("ViewHeader command bar", () => {
     const { container } = renderHeader();
     expect(container).toBeEmptyDOMElement();
     expect(screen.queryByRole("button", { name: "Open navigation" })).not.toBeInTheDocument();
+  });
+
+  it("renders the page title as a single <h1> (BRDG-425)", () => {
+    render(<ViewHeaderTitle>Sprint Board</ViewHeaderTitle>);
+    expect(screen.getByRole("heading", { level: 1, name: "Sprint Board" })).toBeInTheDocument();
+  });
+
+  it("wraps the persistent nav trigger in a primary <nav> landmark (BRDG-425)", () => {
+    renderHeader();
+    expect(screen.getByRole("navigation", { name: "Primary" })).toBeInTheDocument();
   });
 
   it("renders the wordmark trigger, view context and right-side actions", () => {

@@ -3,14 +3,14 @@ import { describe, it, expect, vi } from "vitest";
 import { TabBar, Tab, TabLink } from "./TabBar";
 
 vi.mock("next/link", () => ({
-  default: ({ href, children, className }: { href: string; children: React.ReactNode; className?: string }) => (
-    <a href={href} className={className}>{children}</a>
+  default: ({ href, children, ...rest }: { href: string; children: React.ReactNode } & Record<string, unknown>) => (
+    <a href={href} {...rest}>{children}</a>
   ),
 }));
 
 vi.mock("./BarContainer", () => ({
-  BarContainer: ({ children, className }: { children: React.ReactNode; className?: string }) => (
-    <div data-testid="bar-container" className={className}>{children}</div>
+  BarContainer: ({ children, className, role }: { children: React.ReactNode; className?: string; role?: string }) => (
+    <div data-testid="bar-container" role={role} className={className}>{children}</div>
   ),
 }));
 
@@ -19,6 +19,11 @@ describe("TabBar", () => {
     render(<TabBar><span>child</span></TabBar>);
     expect(screen.getByTestId("bar-container")).toBeInTheDocument();
     expect(screen.getByText("child")).toBeInTheDocument();
+  });
+
+  it("exposes the tablist role (BRDG-425)", () => {
+    render(<TabBar><Tab active label="A" onClick={vi.fn()} /></TabBar>);
+    expect(screen.getByRole("tablist")).toBeInTheDocument();
   });
 });
 
@@ -49,6 +54,13 @@ describe("Tab", () => {
     render(<Tab active={false} label="Home" icon={<span data-testid="icon" />} onClick={vi.fn()} />);
     expect(screen.getByTestId("icon")).toBeInTheDocument();
   });
+
+  it("exposes role=tab and reflects selection via aria-selected (BRDG-425)", () => {
+    const { rerender } = render(<Tab active label="Overview" onClick={vi.fn()} />);
+    expect(screen.getByRole("tab", { selected: true })).toHaveTextContent("Overview");
+    rerender(<Tab active={false} label="Overview" onClick={vi.fn()} />);
+    expect(screen.getByRole("tab", { selected: false })).toBeInTheDocument();
+  });
 });
 
 describe("TabLink", () => {
@@ -61,5 +73,10 @@ describe("TabLink", () => {
   it("renders badge with highlight styling", () => {
     render(<TabLink active={false} label="Alerts" badge={3} badgeHighlight href="/alerts" />);
     expect(screen.getByText("3")).toBeInTheDocument();
+  });
+
+  it("exposes role=tab + aria-selected (BRDG-425)", () => {
+    render(<TabLink active label="Sprint" href="/sprint" />);
+    expect(screen.getByRole("tab", { selected: true })).toHaveTextContent("Sprint");
   });
 });

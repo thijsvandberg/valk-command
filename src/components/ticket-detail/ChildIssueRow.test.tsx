@@ -69,6 +69,24 @@ describe("ChildIssueRow", () => {
     expect(onSelect).not.toHaveBeenCalled();
   });
 
+  it("is a keyboard-operable button when selectable: role, tab order, Enter/Space (BRDG-425)", () => {
+    const onSelect = vi.fn();
+    const { container } = render(<ChildIssueRow item={baseSub} isLast={false} onSelect={onSelect} />);
+    const row = container.firstChild as HTMLElement;
+    expect(row).toHaveAttribute("role", "button");
+    expect(row).toHaveAttribute("tabindex", "0");
+    fireEvent.keyDown(row, { key: "Enter" });
+    fireEvent.keyDown(row, { key: " " });
+    expect(onSelect).toHaveBeenCalledTimes(2);
+    expect(onSelect).toHaveBeenCalledWith("VPL-100", expect.anything());
+  });
+
+  it("is not focusable / not a button when not selectable (BRDG-425)", () => {
+    const { container } = render(<ChildIssueRow item={baseSub} isLast={false} />);
+    expect(container.firstChild).not.toHaveAttribute("role", "button");
+    expect(container.firstChild).not.toHaveAttribute("tabindex");
+  });
+
   it("rounds top corners only when roundTop is set, so a colored background cannot bleed past the card's rounded corner", () => {
     const { container, rerender } = render(<ChildIssueRow item={baseSub} isLast={false} />);
     const row = () => container.querySelector('[data-ticket-key="VPL-100"]') as HTMLElement;
