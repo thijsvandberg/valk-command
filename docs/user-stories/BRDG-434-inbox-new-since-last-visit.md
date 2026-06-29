@@ -56,14 +56,14 @@ Add an opt-in prop `hideEmptyAssignee?: boolean` to `BoardRow` (default `false`)
 4. **Collapse empty assignee.** Add the `hideEmptyAssignee` prop to `BoardRow`; pass it from the inbox only.
 
 ## Acceptance Criteria
-- [ ] On reopening `/inbox`, stories created after the previous visit show a subtle brand-accent dot at the row's leading edge; older unread stories do not. <!-- BoardRow isNewSinceLastViewed prop + inbox baseline compare -->
-- [ ] The last-viewed baseline is stored per user server-side and is carried across devices/browsers (not device-local). <!-- /api/settings/inbox-last-viewed via createUserJsonSettingRoute -->
-- [ ] The baseline advances on each visit: items dotted on one visit are no longer dotted on the next visit (unless newer items arrived). <!-- capture+freeze after load, then setValue(now) -->
-- [ ] First-ever visit (no stored value) shows no dots. <!-- baseline == null => isNew false -->
-- [ ] The dot is shown correctly regardless of group-by mode (relevance / date / epic / creator / sprint) and active filters. <!-- compare is purely jiraCreatedAt vs baseline -->
+- [x] On reopening `/inbox`, stories created after the previous visit show a subtle brand-accent dot at the row's leading edge; older unread stories do not. <!-- BoardRow isNewSinceLastViewed prop + inbox baseline compare -->
+- [x] The last-viewed baseline is stored per user server-side and is carried across devices/browsers (not device-local). <!-- /api/settings/inbox-last-viewed via createUserJsonSettingRoute -->
+- [x] The baseline advances on each visit: items dotted on one visit are no longer dotted on the next visit (unless newer items arrived). <!-- capture+freeze after load, then setValue(now) -->
+- [x] First-ever visit (no stored value) shows no dots. <!-- baseline == null => isNew false -->
+- [x] The dot is shown correctly regardless of group-by mode (relevance / date / epic / creator / sprint) and active filters. <!-- compare is purely jiraCreatedAt vs baseline -->
 - [x] The dot has a hover tooltip ("New since your last visit") and a non-colour-only accessible label. <!-- Tooltip + sr-only text -->
 - [x] Reserving/painting the dot does not shift ticket keys between new and non-new rows. <!-- fixed-width leading slot -->
-- [ ] In the inbox, unassigned rows render no avatar gap; rows with an assignee still show the avatar. <!-- hideEmptyAssignee in BoardRow.tsx:899-932 -->
+- [x] In the inbox, unassigned rows render no avatar gap; rows with an assignee still show the avatar. <!-- hideEmptyAssignee in BoardRow.tsx:899-932 -->
 - [x] The sprint board's assignee rendering and hover-reveal behaviour are unchanged. <!-- hideEmptyAssignee default false, not passed by the board -->
 
 ## Tests

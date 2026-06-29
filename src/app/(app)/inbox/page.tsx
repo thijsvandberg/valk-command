@@ -35,8 +35,10 @@ import { poUsers, userTeams, refinementSessions } from "@/lib/api-client";
 import { useRefinementSessions } from "@/hooks/useRefinementSessions";
 import { sessionLabel, compareSessions } from "@/components/refinement-session/refinement-utils";
 import { useDefaultTeam } from "@/hooks/useDefaultTeam";
+import { useAccountSetting } from "@/hooks/useAccountSetting";
 import { CONTENT_MAX } from "@/lib/layout";
 import { relativeDate } from "@/lib/date-utils";
+import { isNewSinceLastViewed } from "@/lib/inbox-last-viewed";
 import type { Team } from "@/lib/sprint-utils";
 import type { JiraStatus, Ticket } from "@/types/ticket";
 import type { NewStoriesResponse, NewStoryRow } from "@/lib/new-stories-types";
@@ -93,6 +95,25 @@ export default function InboxPage() {
   const [selectedKey, setSelectedKey] = useState<string | null>(null);
 
   const rows = useMemo(() => data?.rows ?? [], [data]);
+
+  // "New since last visit" baseline (BRDG-434). Persisted per user so the markers
+  // follow the account across devices. Freeze the previous-visit timestamp ONCE,
+  // after it has loaded, as this visit's comparison baseline (adjust-state-during-
+  // render, so it never re-freezes); then re-stamp "now" in an effect so the next
+  // visit compares against this one. `undefined` = not yet frozen -> no dots while
+  // loading or on the first-ever visit (null baseline marks nothing new).
+  const { value: lastViewed, setValue: setLastViewed, isLoading: lastViewedLoading } =
+    useAccountSetting<string | null>("/api/settings/inbox-last-viewed", null);
+  const [visitBaseline, setVisitBaseline] = useState<string | null | undefined>(undefined);
+  if (visitBaseline === undefined && !lastViewedLoading) {
+    setVisitBaseline(lastViewed ?? null);
+  }
+  const restampedRef = useRef(false);
+  useEffect(() => {
+    if (visitBaseline === undefined || restampedRef.current) return;
+    restampedRef.current = true;
+    setLastViewed(new Date().toISOString());
+  }, [visitBaseline, setLastViewed]);
 
   // Sprint metadata for the move actions + the quick-move / create-sprint pickers.
   const { sprints: rawSprints, mutate: mutateSprints } = useJiraSprints();
@@ -531,6 +552,8 @@ export default function InboxPage() {
                                     handleRowCheckbox(group.key, groupKeys, key, clickIdx, shiftKey)
                                   }
                                   createdAtLabel={groupBy !== "date" ? relativeDate(row.jiraCreatedAt) : undefined}
+                                  isNewSinceLastViewed={isNewSinceLastViewed(row.jiraCreatedAt, visitBaseline ?? null)}
+                                  hideEmptyAssignee
                                   onMarkRead={(key) => void markRead([key])}
                                   isLastInCard={idx === group.rows.length - 1}
                                 />
