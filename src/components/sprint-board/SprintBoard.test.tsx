@@ -80,6 +80,7 @@ vi.mock("@/components/sprint-board/sprint-board-utils", () => ({
   bulkGenerateSubtasks: vi.fn(),
   computeSprintStats: () => ({ totalPoints: 10, donePoints: 3, todoPoints: 7 }),
   computeSprintWorkDays: () => ({ elapsed: 5, total: 10 }),
+  scopePlaceholdersToSprintFilter: (placeholders: unknown[]) => placeholders,
 }));
 
 vi.mock("@/components/sprint-board/SprintSlots", () => ({

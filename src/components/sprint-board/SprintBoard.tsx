@@ -32,7 +32,7 @@ import { useSprintUsedPoints } from "@/hooks/useSprintUsedPoints";
 import { usePlaceholders } from "@/hooks/usePlaceholders";
 import { useExportTask } from "@/hooks/useExportTask";
 import { usePageTitle } from "@/hooks/usePageTitle";
-import { mapJiraSprints, saveSprintSlots, saveTicketMetadata, bulkReviewStories, bulkGenerateSubtasks, computeSprintStats, computeSprintWorkDays } from "@/components/sprint-board/sprint-board-utils";
+import { mapJiraSprints, saveSprintSlots, saveTicketMetadata, bulkReviewStories, bulkGenerateSubtasks, computeSprintStats, computeSprintWorkDays, scopePlaceholdersToSprintFilter } from "@/components/sprint-board/sprint-board-utils";
 import { sprintToSlug, slugToSprintId, buildBoardUrl, nextSprintName, latestRegularSprint, isBacklogSprintName, isOverallRefinementSprint } from "@/lib/sprint-utils";
 import type { SavedView, InlineTagId } from "@/components/sprint-board/filter-bar-types";
 import { cycleMetricSort, DEFAULT_SORT } from "@/components/sprint-board/filter-bar-types";
@@ -344,13 +344,6 @@ export default function SprintBoard() {
       .then((r) => { mutateTickets(); refreshMeter(); showToast(`Promoted to ${r.key}`); })
       .catch(() => showToast("Failed to promote placeholder"));
   }, [promotePlaceholderApi, mutateTickets, refreshMeter, showToast]);
-  // Sprint ids that carry placeholders, so the grouped view shows a group even for a
-  // future sprint that has no real tickets yet.
-  const placeholderSprintIds = useMemo(
-    () => Array.from(new Set(allPlaceholders.map((p) => p.sprintId).filter((s): s is string => !!s))),
-    [allPlaceholders],
-  );
-
   // Sprint id -> display name. The cached sprint list omits older closed sprints,
   // so fall back to the per-ticket name resolved from the sprint_name_cache; this
   // keeps group headers and row labels from showing raw numeric sprint ids (BRDG-239).
@@ -401,6 +394,27 @@ export default function SprintBoard() {
     return [preset, ...f.savedViews];
   }, [overallRefinementSprint, f.savedViews]);
   const tickets = f.sortedTickets;
+  // Placeholders honour the active sprint scope exactly like tickets do (BRDG-304): when a
+  // sprint filter is active in the All view, only placeholders whose sprint is in scope
+  // surface. Without this a forward-planning placeholder from another sprint seeds a stray
+  // group (e.g. opening the sprint-scoped "Overall refinement" preset still showed an
+  // unrelated sprint group carrying that sprint's placeholder).
+  const scopedPlaceholders = useMemo(
+    () =>
+      scopePlaceholdersToSprintFilter(allPlaceholders, {
+        active: isAllView && f.sprintFilter.size > 0,
+        selectedSprintIds: f.selectedSprintIds,
+        selectedSprintStates: f.selectedSprintStates,
+        sprintStateMap,
+      }),
+    [isAllView, f.sprintFilter, f.selectedSprintIds, f.selectedSprintStates, sprintStateMap, allPlaceholders],
+  );
+  // Sprint ids that carry placeholders, so the grouped view shows a group even for a
+  // future sprint that has no real tickets yet.
+  const placeholderSprintIds = useMemo(
+    () => Array.from(new Set(scopedPlaceholders.map((p) => p.sprintId).filter((s): s is string => !!s))),
+    [scopedPlaceholders],
+  );
   // Search has its own segment in the unified cluster (BRDG-344), so the filter
   // badge counts active filter categories only -- not the search query.
   const activeFilterCount = useMemo(() =>
@@ -431,8 +445,8 @@ export default function SprintBoard() {
       const target = activeSprintId === "__backlog__" ? null : (activeSprintId ?? null);
       return allPlaceholders.filter((p) => (p.sprintId ?? null) === target);
     }
-    return allPlaceholders;
-  }, [planningVisible, isFlatView, activeSprintId, allPlaceholders]);
+    return scopedPlaceholders;
+  }, [planningVisible, isFlatView, activeSprintId, allPlaceholders, scopedPlaceholders]);
   // Only the unpointed problem depends on the sprint being active (others always apply).
   const flatIsActiveSprint = activeSprintId !== "__backlog__" && activeSprint?.state === "active";
   const displayTickets = useMemo(

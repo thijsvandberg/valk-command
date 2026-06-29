@@ -18,6 +18,31 @@ export function mapJiraSprints(raw: { id: number; name: string; state: string; s
   });
 }
 
+/**
+ * Restrict forward-planning placeholders to the active sprint scope, mirroring how tickets are
+ * scoped on the All view (BRDG-304). When a sprint filter is active a placeholder surfaces only
+ * if its sprint is explicitly selected by id, or its sprint's state matches a selected bucket;
+ * backlog placeholders (no sprint) drop out of any sprint scope. When the scope is inactive the
+ * original array is returned unchanged so downstream memo identity is preserved.
+ */
+export function scopePlaceholdersToSprintFilter<T extends { sprintId: string | null }>(
+  placeholders: T[],
+  scope: {
+    active: boolean;
+    selectedSprintIds: ReadonlySet<string>;
+    selectedSprintStates: ReadonlySet<string>;
+    sprintStateMap: Record<string, string>;
+  },
+): T[] {
+  if (!scope.active) return placeholders;
+  return placeholders.filter((p) => {
+    const sid = p.sprintId;
+    if (!sid) return false;
+    const state = scope.sprintStateMap[sid] ?? "closed";
+    return scope.selectedSprintIds.has(sid) || scope.selectedSprintStates.has(state);
+  });
+}
+
 export async function saveSprintSlots(slotSprints: string[], sprints: Sprint[]) {
   const slots = slotSprints.map((sprintId, idx) => {
     const sprint = sprints.find((s) => s.id === sprintId);

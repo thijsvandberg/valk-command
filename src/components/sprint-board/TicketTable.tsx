@@ -63,7 +63,7 @@ function FinishedWorkDividerRow() {
   return (
     <tr aria-hidden>
       <td colSpan={TOTAL_COLSPAN} className="p-0">
-        <div className="flex items-center gap-2 px-3 py-2.5">
+        <div className="flex items-center gap-2 px-3 pt-5 pb-2.5">
           <span className="h-px flex-1 bg-border-subtle" />
           <span className="inline-flex items-center gap-1 text-caption uppercase tracking-wider text-text-muted">
             <CheckCheck className="h-3 w-3" strokeWidth={1.75} />
@@ -601,7 +601,8 @@ export function TicketTable({
       isBacklogSprintName(sprintNameMap?.[flatCreateTarget.sprintId] ?? ""));
   const flatInsertIdx = !flatComposerActive ? -1 : flatIsBacklog ? 0 : trailingDoneDepStart(tickets);
   // BRDG-414: index of the trailing DONE/DEPRECATED block in the flat (active-sprint) list,
-  // where the permanent "Finished work" divider renders. -1 disables it.
+  // above which the "Finished work" divider renders. Only shown when such a block exists, so a
+  // sprint with no finished work shows no divider. -1 disables it.
   const flatDividerIdx = showFinishedDivider ? trailingDoneDepStart(tickets) : -1;
   // When the composer is appended after the last ticket it becomes the visual last row, so
   // the last ticket should not round its bottom corners (the card edge sits below the composer).
@@ -648,7 +649,6 @@ export function TicketTable({
             : out;
         })}
         {flatInsertIdx === tickets.length && flatComposerRow}
-        {flatDividerIdx >= 0 && flatDividerIdx === tickets.length && tickets.length > 0 && <FinishedWorkDividerRow />}
       </tbody>
     </table>
   );
@@ -680,7 +680,6 @@ export function TicketTable({
             : out;
         })}
         {flatInsertIdx === tickets.length && flatComposerRow}
-        {flatDividerIdx >= 0 && flatDividerIdx === tickets.length && tickets.length > 0 && <FinishedWorkDividerRow />}
       </tbody>
     </SortableContext>
   );
@@ -812,9 +811,9 @@ export function TicketTable({
             : [];
         const hasPlaceholders = groupPlaceholders.length > 0;
 
-        // BRDG-414: a permanent "Finished work" divider in sprint groups marks the boundary
-        // of the trailing DONE/DEPRECATED block. Shown even when that block is empty (anchored
-        // at the bottom). Nothing auto-moves below it.
+        // BRDG-414: the "Finished work" divider in sprint groups marks the top of the trailing
+        // DONE/DEPRECATED block. It renders only when such a block is actually present, so an
+        // empty or refinement sprint (no finished work) shows no divider.
         const dividerIdx = isSprintGroup
           ? trailingDoneDepStart(visibleGroupTickets.map((t) => ({ jiraStatus: t.jiraStatus })))
           : -1;
@@ -860,14 +859,9 @@ export function TicketTable({
           return rowEl;
         });
 
-        // No finished block yet: anchor the divider at the bottom of the group's tickets.
-        const trailingDivider =
-          !isCollapsed && dividerIdx >= 0 && dividerIdx === visibleGroupTickets.length && visibleGroupTickets.length > 0;
-
         const groupRows = externalDnd ? (
           <SortableContext items={groupTicketIds} strategy={() => null}>
             {ticketRows}
-            {trailingDivider && <FinishedWorkDividerRow />}
             {!isCollapsed && group.tickets.length === 0 && (
               <DroppableGroupZone groupKey={group.key} />
             )}
@@ -875,7 +869,6 @@ export function TicketTable({
         ) : (
           <>
             {ticketRows}
-            {trailingDivider && <FinishedWorkDividerRow />}
           </>
         );
 

@@ -536,6 +536,8 @@ export function useSprintBoardFilters(
     setSprintFilter,
     includeClosedSprints,
     forceShowSprintIds,
+    selectedSprintIds,
+    selectedSprintStates,
     teamFilter,
     setTeamFilter,
     teamOptions,

@@ -310,3 +310,78 @@ describe("TicketTable collapsed-group drop target", () => {
 // not unit-tested here because this file stubs GroupStatBar (and thus the "+" trigger)
 // to null, so the grouped composer can't be opened. The flat-composer tests above cover
 // the backlog-top placement, and the grouped path uses the same isBacklogGroup predicate.
+
+describe("TicketTable grouped Finished work divider (BRDG-414)", () => {
+  const base = {
+    selectedTicket: null,
+    onSelectTicket: vi.fn(),
+    visibleTags: new Set<InlineTagId>(DEFAULT_VISIBLE_TAGS),
+    checkedTickets: new Set<string>(),
+    focusedTicketIdx: -1,
+    someChecked: false,
+    allChecked: false,
+    onToggleCheck: vi.fn(),
+    onRangeCheck: vi.fn(),
+    onToggleAll: vi.fn(),
+    onPoStatusChange: vi.fn(),
+    onTableKeyDown: vi.fn(),
+    poStatuses: {},
+    readinessMap: {},
+    sortField: "rank" as const,
+    sortDir: "asc" as const,
+    groupBy: "sprint" as const,
+    collapsedGroups: new Set<string>(),
+    onToggleCollapse: vi.fn(),
+  };
+
+  it("renders no divider in a sprint group without finished work", () => {
+    const tickets = [makeTicket("T-1", "A", "TO DO"), makeTicket("T-2", "B", "IN PROGRESS")];
+    render(<TicketTable {...base} tickets={tickets} groups={[{ key: "S1", label: "Sprint 1", tickets, sortOrder: 0 }]} />);
+    expect(screen.queryByText(/finished work/i)).toBeNull();
+  });
+
+  it("renders the divider above the trailing DONE/DEPRECATED block", () => {
+    const tickets = [makeTicket("T-1", "A", "TO DO"), makeTicket("T-2", "Done", "DONE")];
+    render(<TicketTable {...base} tickets={tickets} groups={[{ key: "S1", label: "Sprint 1", tickets, sortOrder: 0 }]} />);
+    expect(screen.getByText(/finished work/i)).toBeInTheDocument();
+  });
+});
+
+describe("TicketTable flat Finished work divider (BRDG-414)", () => {
+  const base = {
+    selectedTicket: null,
+    onSelectTicket: vi.fn(),
+    visibleTags: new Set<InlineTagId>(DEFAULT_VISIBLE_TAGS),
+    checkedTickets: new Set<string>(),
+    focusedTicketIdx: -1,
+    someChecked: false,
+    allChecked: false,
+    onToggleCheck: vi.fn(),
+    onRangeCheck: vi.fn(),
+    onToggleAll: vi.fn(),
+    onPoStatusChange: vi.fn(),
+    onTableKeyDown: vi.fn(),
+    poStatuses: {},
+    readinessMap: {},
+    sortField: "rank" as const,
+    sortDir: "asc" as const,
+  };
+
+  it("renders no divider when the active sprint has no finished work", () => {
+    const tickets = [makeTicket("T-1", "A", "TO DO"), makeTicket("T-2", "B", "IN PROGRESS")];
+    render(<TicketTable {...base} tickets={tickets} showFinishedDivider />);
+    expect(screen.queryByText(/finished work/i)).toBeNull();
+  });
+
+  it("renders the divider above the trailing finished block in the active sprint", () => {
+    const tickets = [makeTicket("T-1", "A", "TO DO"), makeTicket("T-2", "Done", "DONE")];
+    render(<TicketTable {...base} tickets={tickets} showFinishedDivider />);
+    expect(screen.getByText(/finished work/i)).toBeInTheDocument();
+  });
+
+  it("never renders the divider when showFinishedDivider is off, even with finished work", () => {
+    const tickets = [makeTicket("T-1", "A", "TO DO"), makeTicket("T-2", "Done", "DONE")];
+    render(<TicketTable {...base} tickets={tickets} showFinishedDivider={false} />);
+    expect(screen.queryByText(/finished work/i)).toBeNull();
+  });
+});
