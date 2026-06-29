@@ -91,7 +91,7 @@ export function SessionNavigation({
         type="button"
         onClick={onPrev}
         disabled={currentIndex === 0}
-        className="flex cursor-pointer items-center justify-center rounded-md p-1 text-text-muted hover:bg-overlay-subtle hover:text-text-secondary disabled:cursor-default disabled:opacity-30 disabled:hover:bg-transparent focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)]"
+        className="flex h-7 w-7 cursor-pointer items-center justify-center rounded-md text-text-muted hover:bg-overlay-subtle hover:text-text-secondary disabled:cursor-default disabled:opacity-30 disabled:hover:bg-transparent focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)]"
         style={{ transition: "background-color 0.15s ease, color 0.15s ease, opacity 0.15s ease" }}
         aria-label="Previous ticket"
       >
@@ -130,13 +130,13 @@ export function SessionNavigation({
       <button
         type="button"
         onClick={onNext}
-        className={`flex cursor-pointer items-center justify-center rounded-md focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)] ${
+        className={`flex h-7 cursor-pointer items-center justify-center rounded-md focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)] ${
           storyPoints != null
             ? "gap-1 bg-[var(--color-brand-600)] text-white hover:bg-[var(--color-brand-500)] active:bg-[var(--color-brand-700)]"
-            : "text-text-muted hover:bg-overlay-subtle hover:text-text-secondary"
+            : "w-7 text-text-muted hover:bg-overlay-subtle hover:text-text-secondary"
         }`}
         style={{
-          padding: storyPoints != null ? "4px 10px" : "4px",
+          padding: storyPoints != null ? "0 10px" : "0",
           transition: "background-color 0.25s ease, color 0.25s ease, padding 0.3s cubic-bezier(0.34, 1.56, 0.64, 1), box-shadow 0.25s ease",
           boxShadow: storyPoints != null ? "0 2px 8px color-mix(in srgb, var(--color-brand-500) 30%, transparent)" : "none",
         }}
