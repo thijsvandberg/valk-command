@@ -1,6 +1,6 @@
 # BRDG-434: Inbox "new since last visit" marker + tidy unassigned rows
 
-**Status:** To Do
+**Status:** Done
 **Priority:** Medium
 **Type:** Feature
 
