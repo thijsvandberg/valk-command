@@ -1,8 +1,30 @@
 # BRDG-433: Surface already-referenced tickets in the Link-issue picker
 
-**Status:** To Do
+**Status:** Done
 **Priority:** Medium
 **Type:** Feature
+
+## Status
+
+Implemented and shipped to `dev`. New pure helper `extractIssueKeys`, new
+`GET /api/tickets/[key]/referenced-issues` endpoint, `tickets.referencedIssues`
+client + `referencedResults` in `useLinkIssueSearch`, and a `REFERENCED IN THIS
+TICKET` section above `RECENTLY UPDATED` in `LinkIssueDialog` (de-duped, with
+keyboard traversal spanning both lists). Section label kept as drafted
+(`REFERENCED IN THIS TICKET`).
+
+`npm run lint`, `npm run typecheck` and `npm run build` are green; the full
+`npx vitest run` suite passes except one pre-existing, unrelated failure
+(`focus-ring-guard` flags `StoryWriterChat.tsx`, introduced by an earlier
+story-writer commit and untouched here). E2E-verified in the running app on the
+test story VPL-1337: the referenced section renders above recently-updated, a
+ticket present in both lists shows only once (referenced wins), already-linked
+and unknown keys are excluded, and clicking a referenced row creates the link.
+
+Note for the PO: the picker auto-applies your default Team filter on open, which
+(as for `RECENTLY UPDATED`) hides the referenced section until filters are
+cleared. This is pre-existing picker behaviour; the referenced section follows
+the same visibility rule as recently-updated.
 
 ## Description
 
@@ -82,21 +104,22 @@ In [LinkIssueDialog.tsx](src/components/ticket-detail/LinkIssueDialog.tsx), insi
 
 ## Acceptance Criteria
 
-- [ ] Opening the Link-issue picker on a ticket whose description mentions `VPL-XXXX` shows that ticket under a `REFERENCED IN THIS TICKET` heading above `RECENTLY UPDATED`. <!-- LinkIssueDialog.tsx default branch + new endpoint -->
-- [ ] Issues mentioned only in a Jira comment or a PO comment are also surfaced. <!-- endpoint scans jiraComment + poComment -->
-- [ ] Both bare keys (`VPL-47038`) and Jira browse URLs (`.../browse/VPL-47038`) are detected. <!-- extractIssueKeys global regex -->
-- [ ] An issue that is already formally linked (`ticketLink`) does NOT appear in the referenced section. <!-- endpoint excludes existing links -->
-- [ ] The ticket's own key never appears, and mentioned keys with no known local ticket are silently dropped. <!-- endpoint self-exclude + resolve-or-drop -->
-- [ ] When there are no resolvable references, the section is not rendered (no empty header). <!-- conditional render, mirrors recentResults -->
-- [ ] A ticket that is both referenced and recently-updated appears only in the referenced section, not in "Recently updated". <!-- de-dupe filter on recentResults -->
-- [ ] Clicking a referenced row creates the formal link via the existing flow, exactly like a recently-updated row. <!-- reuse handleSelect/handleSubmit -->
-- [ ] Keyboard up/down highlight traverses referenced rows then recent rows in visual order. <!-- highlightIndex spans both lists -->
+- [x] Opening the Link-issue picker on a ticket whose description mentions `VPL-XXXX` shows that ticket under a `REFERENCED IN THIS TICKET` heading above `RECENTLY UPDATED`. <!-- LinkIssueDialog.tsx default branch + new endpoint -->
+- [x] Issues mentioned only in a Jira comment or a PO comment are also surfaced. <!-- endpoint scans jiraComment + poComment -->
+- [x] Both bare keys (`VPL-47038`) and Jira browse URLs (`.../browse/VPL-47038`) are detected. <!-- extractIssueKeys global regex -->
+- [x] An issue that is already formally linked (`ticketLink`) does NOT appear in the referenced section. <!-- endpoint excludes existing links -->
+- [x] The ticket's own key never appears, and mentioned keys with no known local ticket are silently dropped. <!-- endpoint self-exclude + resolve-or-drop -->
+- [x] When there are no resolvable references, the section is not rendered (no empty header). <!-- conditional render, mirrors recentResults -->
+- [x] A ticket that is both referenced and recently-updated appears only in the referenced section, not in "Recently updated". <!-- de-dupe filter on recentResults -->
+- [x] Clicking a referenced row creates the formal link via the existing flow, exactly like a recently-updated row. <!-- reuse handleSelect/handleSubmit -->
+- [x] Keyboard up/down highlight traverses referenced rows then recent rows in visual order. <!-- highlightIndex spans both lists -->
 
 ## Tests
 
-- [ ] `extractIssueKeys` unit: bare keys, URLs, mixed case, dedupe, order, no-match. <!-- src/lib/issue-keys.test.ts -->
-- [ ] Endpoint: pulls keys from description, Jira comment, and PO comment; excludes already-linked; excludes self; drops unknown keys; returns `LinkSearchResult` shape. <!-- src/app/api/tickets/[key]/referenced-issues/route.test.ts -->
-- [ ] Dialog render: referenced section appears above recently-updated when `referencedResults` is non-empty and is absent when empty; a ticket in both lists is rendered only in the referenced section. <!-- LinkIssueDialog test -->
+- [x] `extractIssueKeys` unit: bare keys, URLs, mixed case, dedupe, order, no-match. <!-- src/lib/issue-keys.test.ts -->
+- [x] Endpoint: pulls keys from description, Jira comment, and PO comment; excludes already-linked; excludes self; drops unknown keys; returns `LinkSearchResult` shape. <!-- src/app/api/tickets/[key]/referenced-issues/route.test.ts -->
+- [x] Dialog render: referenced section appears above recently-updated when `referencedResults` is non-empty and is absent when empty; a ticket in both lists is rendered only in the referenced section. <!-- LinkIssueDialog test -->
+- [x] Hook: `referencedResults` populated from the endpoint on mount; stays empty on fetch failure. <!-- useLinkIssueSearch.test.ts -->
 
 ## Related
 - [LinkIssueDialog.tsx](src/components/ticket-detail/LinkIssueDialog.tsx), [useLinkIssueSearch.ts](src/hooks/useLinkIssueSearch.ts), [LinkSearchResultRow.tsx](src/components/ticket-detail/LinkSearchResultRow.tsx) — the picker this extends.
