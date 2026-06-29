@@ -70,7 +70,7 @@ Per the PO, there is ONE definition of "new" everywhere: **new since you last ma
 - [ ] Clearing the new filter (or navigating in without `?new=1`) shows all unread again. <!-- newOnly default false -->
 
 ## Tests
-- [ ] `/api/new-stories` returns `baselineAt` = `MAX(readAt)` for the user (null when nothing read). <!-- new-stories route test -->
+- [x] `/api/new-stories` returns `baselineAt` = `MAX(readAt)` for the user (null when nothing read). <!-- new-stories route test -->
 - [ ] `newOnly` filtering: a rows fixture with mixed `jiraCreatedAt` yields the correct new subset and new-count for a given `baselineAt`. <!-- isNewSinceLastViewed derive test -->
 - [ ] Header renders "N new" only when newCount > 0; clicking it toggles `newOnly`. <!-- inbox header unit test -->
 - [ ] select-all over the new-filtered list checks exactly the new keys. <!-- toggleAll over displayRows test -->

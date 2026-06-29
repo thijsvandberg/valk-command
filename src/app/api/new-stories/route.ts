@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { cache } from "@/lib/cache";
 import { listNewStories } from "@/lib/new-stories-query";
+import { getInboxBaseline } from "@/lib/inbox-digest";
 import { resolveNewStoryQueryCtx } from "@/lib/new-stories-ctx";
 import { backfillLegacyNewStoryReads } from "@/lib/new-story-read-store";
 import type { NewStoriesResponse } from "@/lib/new-stories-types";
@@ -21,8 +22,15 @@ export async function GET() {
     });
   }
 
-  const rows = await listNewStories(ctx);
-  const result: NewStoriesResponse = { rows };
+  // baselineAt is computed in the same GET (and cached with the rows) so the inbox
+  // can mark "new" rows + count them client-side against the same read-based
+  // baseline the digest uses (BRDG-438). The mark-read path invalidates the
+  // /api/new-stories prefix, so the high-water-mark advances on the next fetch.
+  const [rows, baselineAt] = await Promise.all([
+    listNewStories(ctx),
+    getInboxBaseline(ctx.userId),
+  ]);
+  const result: NewStoriesResponse = { rows, baselineAt };
   cache.set(cacheKey, result, 30_000);
 
   return NextResponse.json(result, { headers: { "Cache-Control": "no-store" } });

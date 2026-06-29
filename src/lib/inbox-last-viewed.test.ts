@@ -1,15 +1,15 @@
 import { describe, it, expect } from "vitest";
 import { isNewSinceLastViewed } from "./inbox-last-viewed";
 
-describe("isNewSinceLastViewed (BRDG-434)", () => {
+describe("isNewSinceLastViewed (BRDG-434 / BRDG-438 shared predicate)", () => {
   const baseline = "2026-06-20T12:00:00.000Z";
 
-  it("returns false when there is no baseline (first-ever visit)", () => {
-    expect(isNewSinceLastViewed("2026-06-25T00:00:00.000Z", null)).toBe(false);
+  it("treats everything as new when there is no baseline (never triaged)", () => {
+    expect(isNewSinceLastViewed("2026-06-25T00:00:00.000Z", null)).toBe(true);
   });
 
-  it("returns false when the created timestamp is missing", () => {
-    expect(isNewSinceLastViewed(null, baseline)).toBe(false);
+  it("treats a missing created timestamp as new (never silently dropped)", () => {
+    expect(isNewSinceLastViewed(null, baseline)).toBe(true);
   });
 
   it("returns true when created strictly after the baseline", () => {
@@ -24,11 +24,17 @@ describe("isNewSinceLastViewed (BRDG-434)", () => {
     expect(isNewSinceLastViewed(baseline, baseline)).toBe(false);
   });
 
-  it("returns false for an unparseable created timestamp", () => {
-    expect(isNewSinceLastViewed("not-a-date", baseline)).toBe(false);
+  it("normalizes a SQLite space-separated baseline as UTC (matches the digest)", () => {
+    // "2026-06-20 12:00:00" must read as UTC, equal to the ISO baseline above.
+    expect(isNewSinceLastViewed("2026-06-20T12:00:00.001Z", "2026-06-20 12:00:00")).toBe(true);
+    expect(isNewSinceLastViewed("2026-06-20T11:59:59.000Z", "2026-06-20 12:00:00")).toBe(false);
   });
 
-  it("returns false for an unparseable baseline", () => {
-    expect(isNewSinceLastViewed("2026-06-25T00:00:00.000Z", "garbage")).toBe(false);
+  it("treats an unparseable created timestamp as new", () => {
+    expect(isNewSinceLastViewed("not-a-date", baseline)).toBe(true);
+  });
+
+  it("treats an unparseable baseline as no baseline (everything new)", () => {
+    expect(isNewSinceLastViewed("2026-06-25T00:00:00.000Z", "garbage")).toBe(true);
   });
 });

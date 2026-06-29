@@ -22,4 +22,11 @@ export interface NewStoryRow {
 
 export interface NewStoriesResponse {
   rows: NewStoryRow[];
+  /**
+   * The user's "new" baseline: `MAX(newStoryRead.readAt)`, or null when they have
+   * never marked anything read (BRDG-438). A row is new when `jiraCreatedAt` is
+   * after this, via the shared `isNewSinceLastViewed` predicate. Shared with the
+   * 2x/day digest so the inbox's "N new" count matches the digest banner.
+   */
+  baselineAt: string | null;
 }

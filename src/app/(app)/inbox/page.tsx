@@ -319,7 +319,7 @@ export default function InboxPage() {
       const removing = new Set(keys);
       // Optimistic: drop the rows immediately so the list never stalls.
       await mutateList(
-        (cur) => (cur ? { rows: cur.rows.filter((r) => !removing.has(r.key)) } : cur),
+        (cur) => (cur ? { ...cur, rows: cur.rows.filter((r) => !removing.has(r.key)) } : cur),
         { revalidate: false },
       );
       setCheckedKeys((prev) => {

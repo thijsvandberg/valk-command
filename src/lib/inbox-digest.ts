@@ -3,6 +3,7 @@ import { newStoryRead, poUser, userTeamAssignment } from "@/db/schema";
 import { eq, sql } from "drizzle-orm";
 import { listNewStories, type NewStoryQueryCtx } from "@/lib/new-stories-query";
 import { readUserSetting } from "@/lib/user-settings";
+import { isNewSinceLastViewed } from "@/lib/inbox-last-viewed";
 import {
   buildTeamMap,
   classifyInboxRelevance,
@@ -104,16 +105,6 @@ export function dueWindows(now: Date): DigestWindowKey[] {
   return WINDOWS.filter((w) => w.hour * 60 + w.minute <= nowMinutes).map((w) => w.key);
 }
 
-// Normalizes a stored timestamp to epoch ms. jiraCreatedAt is ISO-8601 (has a
-// "T"); newStoryRead.readAt can be SQLite's `datetime('now')` form
-// ("YYYY-MM-DD HH:MM:SS", UTC, no zone) when written by a live read action. A
-// naive string comparison of the two formats misfires within the same day
-// (" " < "T"), so normalize both to ms before comparing. Returns NaN on garbage.
-function parseStamp(value: string): number {
-  const iso = value.includes("T") ? value : `${value.replace(" ", "T")}Z`;
-  return new Date(iso).getTime();
-}
-
 // Baseline = the last time this user took an explicit read action. Null when they
 // have never marked anything read, in which case the whole current unread inbox
 // counts as new (first-ever digest). Opening /inbox does not write a read row, so
@@ -171,17 +162,11 @@ export async function computeInboxDigest(
   const baseline = await getInboxBaseline(ctx.userId);
   const candidates = await listNewStories(ctx);
 
-  // A row with no (or unparseable) createdAt has no comparable arrival time;
-  // treat it as new so it is never silently dropped (matches the inbox's
-  // "unknown date sinks to Older" tolerance). When baseline is null the whole
-  // unread inbox is new.
-  const baselineMs = baseline === null ? null : parseStamp(baseline);
-  const newRows = candidates.filter((r) => {
-    if (baselineMs === null || Number.isNaN(baselineMs)) return true;
-    if (r.jiraCreatedAt === null) return true;
-    const createdMs = parseStamp(r.jiraCreatedAt);
-    return Number.isNaN(createdMs) || createdMs > baselineMs;
-  });
+  // "New" = created after the user last marked something read. Uses the shared
+  // isNewSinceLastViewed predicate so the digest, the inbox count/filter and the
+  // per-row dot never diverge (BRDG-438). Permissive on a null baseline (never
+  // triaged -> whole inbox new) and on a missing/unparseable createdAt.
+  const newRows = candidates.filter((r) => isNewSinceLastViewed(r.jiraCreatedAt, baseline));
 
   const myTeam = await readDefaultTeam(ctx.userId);
   if (!myTeam) {

@@ -118,7 +118,7 @@ function row(key: string, title: string) {
 
 describe("InboxPage (BRDG-357)", () => {
   beforeEach(() => {
-    listData = { rows: [row("VPL-1", "First story"), row("VPL-2", "Second story")] };
+    listData = { rows: [row("VPL-1", "First story"), row("VPL-2", "Second story")], baselineAt: null };
     listError = undefined;
     listMutate.mockClear();
     globalMutateSpy.mockClear();
@@ -135,7 +135,7 @@ describe("InboxPage (BRDG-357)", () => {
   });
 
   it("shows the shared empty state when there are no stories (BRDG-423)", () => {
-    listData = { rows: [] };
+    listData = { rows: [], baselineAt: null };
     render(<InboxPage />);
     expect(screen.getByText("Inbox zero")).toBeInTheDocument();
   });
@@ -248,7 +248,7 @@ describe("InboxPage (BRDG-357)", () => {
 describe("InboxPage group select-all (BRDG-358)", () => {
   beforeEach(() => {
     // Both rows created "now" land in a single Today group under the default date grouping.
-    listData = { rows: [row("VPL-1", "First story"), row("VPL-2", "Second story")] };
+    listData = { rows: [row("VPL-1", "First story"), row("VPL-2", "Second story")], baselineAt: null };
     listMutate.mockClear();
     globalMutateSpy.mockClear();
     fetchMock.mockClear();
