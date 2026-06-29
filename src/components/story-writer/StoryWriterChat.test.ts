@@ -99,6 +99,24 @@ describe("getVisibleChips", () => {
     expect(chips.filter((c) => !c.id.startsWith("ctx-")).length).toBe(4);
   });
 
+  it("keeps the Investigate chip visible under the cap when ranked second (BRDG-435)", () => {
+    // Mirrors the default order: Investigate sits right after the Improve prompt so
+    // it survives the 5-chip cap even with the leading Find-related chip present.
+    const prompts: QuickPrompt[] = [
+      { id: "d-story-0", label: "Improve story", text: "..." },
+      { id: "d-story-5", label: "Investigate", text: "...", enableCodebase: true },
+      { id: "d-story-4", label: "Make more concise", text: "..." },
+      { id: "d-story-1", label: "Add test scenarios", text: "..." },
+      { id: "d-story-2", label: "Technical analysis", text: "...", enableCodebase: true },
+      { id: "d-story-3", label: "Suggest title", text: "..." },
+    ];
+    const ctx = { ...DEFAULT_CTX, hasTitle: true };
+    const chips = getVisibleChips(prompts, ctx);
+    expect(chips.length).toBe(5);
+    expect(chips[0].id).toBe("ctx-find-related");
+    expect(chips.find((c) => c.label === "Investigate")).toBeDefined();
+  });
+
   it("handles empty API prompts", () => {
     const ctx = { ...DEFAULT_CTX, hasTitle: true };
     const chips = getVisibleChips([], ctx);

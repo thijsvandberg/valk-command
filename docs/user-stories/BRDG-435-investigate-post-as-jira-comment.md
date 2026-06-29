@@ -83,7 +83,8 @@ Order is by isolation: ADF first (independent), then parser, card, threading, fi
 
 ## Acceptance Criteria
 
-- [x] An **"Investigate"** quick-prompt button is available in the Story Writer chat for relevant issue types, with codebase research enabled. <!-- DEFAULT_PROMPTS in src/app/api/settings/quick-prompts/route.ts -->
+- [x] An **"Investigate"** quick-prompt button is available in the Story Writer chat for relevant issue types, with codebase research enabled. <!-- DEFAULT_PROMPTS in src/app/api/settings/quick-prompts/route.ts; ranked 2nd (after "Improve") so it survives the 5-chip cap even with the "Find related" lead chip -->
+<!-- NOTE: the chips come from /api/settings/quick-prompts, which returns a PO's STORED custom prompts when set (defaults are only used when no override exists). A PO who has previously customized their quick prompts must add "Investigate" via Settings > Prompts, or reset to defaults, to see the chip. -->
 - [x] Asking for an investigation (button or free-form) makes the AI return an `<investigation>` block. <!-- button: quick-prompt text carries the tag; free-form: INVESTIGATION_INSTRUCTION in src/lib/story-writer-messages.ts. NOTE: free-form reliability depends on the workspace write-story-draft skill prompt honoring the contract (see Cross-repo caveat). -->
 - [x] The chat renders the investigation result as a suggestion card (shared `SuggestionCard` shell), not as raw text, and the raw `<investigation>` tag is stripped from the plain message. <!-- src/components/story-writer/ChatMessageParts.tsx + InvestigationSuggestionCard.tsx -->
 - [x] The card shows the result in an **editable** field; edits are preserved when posting. <!-- InvestigationSuggestionCard.tsx -->
