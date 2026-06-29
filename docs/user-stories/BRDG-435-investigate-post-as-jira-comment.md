@@ -85,18 +85,18 @@ Order is by isolation: ADF first (independent), then parser, card, threading, fi
 
 - [ ] An **"Investigate"** quick-prompt button is available in the Story Writer chat for relevant issue types, with codebase research enabled. <!-- DEFAULT_PROMPTS in src/app/api/settings/quick-prompts/route.ts -->
 - [ ] Asking for an investigation (button or free-form) makes the AI return an `<investigation>` block. <!-- write-story-draft skill prompt + src/lib/story-writer-messages.ts -->
-- [ ] The chat renders the investigation result as a suggestion card (shared `SuggestionCard` shell), not as raw text, and the raw `<investigation>` tag is stripped from the plain message. <!-- src/components/story-writer/ChatMessageParts.tsx + InvestigationSuggestionCard.tsx -->
-- [ ] The card shows the result in an **editable** field; edits are preserved when posting. <!-- InvestigationSuggestionCard.tsx -->
-- [ ] Clicking **"Post as comment"** posts the (edited) text to `/api/tickets/[key]/jira-comments`; the comment appears on the ticket and the card shows a posted state. <!-- useStoryWriterActions onPostComment + jira-comments route -->
+- [x] The chat renders the investigation result as a suggestion card (shared `SuggestionCard` shell), not as raw text, and the raw `<investigation>` tag is stripped from the plain message. <!-- src/components/story-writer/ChatMessageParts.tsx + InvestigationSuggestionCard.tsx -->
+- [x] The card shows the result in an **editable** field; edits are preserved when posting. <!-- InvestigationSuggestionCard.tsx -->
+- [x] Clicking **"Post as comment"** posts the (edited) text to `/api/tickets/[key]/jira-comments`; the comment appears on the ticket and the card shows a posted state. <!-- ChatApp.handlePostInvestigation -> tickets.addJiraComment -->
 - [x] The posted comment preserves markdown formatting in Jira (headings, bullet lists, code blocks) via `markdownToAdf`, matching a story description's richness. <!-- jiraClient.addComment using markdownToAdf -->
-- [ ] Content over 10000 chars is blocked client-side with a clear message before any request is sent. <!-- InvestigationSuggestionCard.tsx guard mirroring route limit -->
-- [ ] A failed post surfaces an inline error and leaves the text editable for retry; it does not lose the investigation. <!-- InvestigationSuggestionCard.tsx error state -->
+- [x] Content over 10000 chars is blocked client-side with a clear message before any request is sent. <!-- InvestigationSuggestionCard.tsx guard mirroring JIRA_COMMENT_LIMIT -->
+- [x] A failed post surfaces an inline error and leaves the text editable for retry; it does not lose the investigation. <!-- InvestigationSuggestionCard.tsx error state -->
 
 ## Tests
 
-- [ ] Parser test: a message containing `<investigation>...</investigation>` yields the investigation result and strips the tag from the displayed text. <!-- ChatMessageParts.test.tsx -->
-- [ ] Card test: renders the editable body, edits update the value, the char-count guard blocks > 10000 chars, and "Post as comment" calls `onPostComment` with the current (edited) text. <!-- InvestigationSuggestionCard.test.tsx -->
-- [ ] Handler test: `onPostComment` POSTs to `/api/tickets/[key]/jira-comments` and shows posted/error states. <!-- useStoryWriterActions.test.tsx or ChatApp.test.tsx -->
+- [x] Parser test: a message containing `<investigation>...</investigation>` yields the investigation result and strips the tag from the displayed text. <!-- ChatMessageParts.test.tsx -->
+- [x] Card test: renders the editable body, edits update the value, the char-count guard blocks > 10000 chars, and "Post as comment" calls `onPostComment` with the current (edited) text. <!-- InvestigationSuggestionCard.test.tsx -->
+- [x] Handler test: `onPostComment` POSTs to `/api/tickets/[key]/jira-comments` and shows posted/error states. <!-- ChatApp.test.tsx -->
 - [x] ADF test: `addComment` converts markdown (heading + list + code) to the expected ADF nodes, not flat paragraphs. <!-- src/lib/jira-client.add-comment.test.ts -->
 
 ## Related

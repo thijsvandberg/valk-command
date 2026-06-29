@@ -22,6 +22,13 @@ export const JIRA_DESCRIPTION_LIMIT = 32767;
 /** Documented Jira limit for the summary (title) field - plain string. */
 export const JIRA_TITLE_LIMIT = 255;
 
+/**
+ * Bridge's own cap on a posted Jira comment (BRDG-435). Jira itself allows more
+ * (~JIRA_DESCRIPTION_LIMIT), but the jira-comments route enforces this limit, so
+ * the investigation card guards against it client-side before any request.
+ */
+export const JIRA_COMMENT_LIMIT = 10000;
+
 /** Show the live counter once content reaches this fraction of the limit. */
 export const NEAR_LIMIT_RATIO = 0.9;
 

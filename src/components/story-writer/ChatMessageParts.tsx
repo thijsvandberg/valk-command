@@ -26,6 +26,7 @@ import { TitleSuggestionChips } from "@/components/story-writer/TitleSuggestionC
 import { TypeSuggestionChip } from "@/components/story-writer/TypeSuggestionChip";
 import { LinkSuggestionChips, type LinkSuggestion } from "@/components/story-writer/LinkSuggestionChips";
 import { EpicSuggestionCard, type EpicSuggestion } from "@/components/story-writer/EpicSuggestionCard";
+import { InvestigationSuggestionCard } from "@/components/story-writer/InvestigationSuggestionCard";
 import { SuggestionCard, SuggestionRow, ScoreBadge, LinkButton, AppliedBadge } from "@/components/story-writer/SuggestionCard";
 import { TicketStatusPill, type TicketPillHoverData } from "@/components/shared/TicketStatusPill";
 import { tickets } from "@/lib/api-client";
@@ -152,6 +153,20 @@ export function parseEpicSuggestions(content: string): EpicSuggestion[] {
   return results;
 }
 
+// BRDG-435: an investigation result the AI wraps in <investigation>...</investigation>
+// so it can be surfaced as a card and posted as a Jira comment, instead of leaking
+// into the plain chat text.
+export function parseInvestigation(content: string): string | null {
+  const match = content.match(/<investigation>([\s\S]*?)<\/investigation>/);
+  if (!match) return null;
+  const inner = match[1].trim();
+  return inner.length > 0 ? inner : null;
+}
+
+export function stripInvestigationTags(content: string): string {
+  return content.replace(/<investigation>[\s\S]*?<\/investigation>/g, "");
+}
+
 export function stripEpicSuggestionTags(content: string): string {
   let result = content.replace(/<epic-suggestion>[\s\S]*?<\/epic-suggestion>/g, "");
   // Only strip <json-output> blocks that contain epic suggestion data (have "confidence" key)
@@ -249,6 +264,7 @@ export function ChatMessage({
   onCreateLink,
   linkedIssueKeys,
   onApplyEpic,
+  onPostInvestigation,
   currentEpicKey,
   currentTitle,
   currentType,
@@ -271,6 +287,7 @@ export function ChatMessage({
   onCreateLink?: (targetKey: string, relation: string) => Promise<void>;
   linkedIssueKeys?: Set<string>;
   onApplyEpic?: (epicKey: string) => Promise<void>;
+  onPostInvestigation?: (text: string) => Promise<void>;
   currentEpicKey?: string | null;
   currentTitle?: string;
   currentType?: string;
@@ -334,6 +351,7 @@ export function ChatMessage({
           .replace(/<html-report>[\s\S]*?<\/html-report>/g, "")
           .replace(/<summary>[\s\S]*?<\/summary>/g, "")
           .replace(/<type-suggestion>[\s\S]*?<\/type-suggestion>/g, "")
+          .replace(/<investigation>[\s\S]*?<\/investigation>/g, "")
           .replace(/\[codebase-research:\s*(?:on|off)\]\s*/g, "");
         // When the message contained related-stories results, strip the verbose
         // scoring breakdown since the card already displays all candidates.
@@ -348,6 +366,10 @@ export function ChatMessage({
   const epicSuggestions = message.role === "assistant"
     ? parseEpicSuggestions(message.content)
     : [];
+
+  const investigationResult = message.role === "assistant"
+    ? parseInvestigation(message.content)
+    : null;
 
   const typeSuggestion = (() => {
     if (message.role !== "assistant") return null;
@@ -471,6 +493,12 @@ export function ChatMessage({
             currentEpicKey={currentEpicKey ?? null}
             onApply={onApplyEpic}
             messageId={message.id}
+          />
+        )}
+        {investigationResult && onPostInvestigation && (
+          <InvestigationSuggestionCard
+            result={investigationResult}
+            onPostComment={onPostInvestigation}
           />
         )}
         {contentAfter && (

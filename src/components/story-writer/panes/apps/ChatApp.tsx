@@ -5,6 +5,7 @@ import { ScrollText } from "lucide-react";
 import type { IssueType } from "@/types/ticket";
 import { StoryWriterChat } from "@/components/story-writer/StoryWriterChat";
 import { ExecutionLogViewer } from "@/components/story-writer/ExecutionLogViewer";
+import { tickets } from "@/lib/api-client";
 import { useWriterContext } from "../WriterContext";
 import { usePaneContext } from "../PaneContext";
 
@@ -55,6 +56,15 @@ export function ChatApp() {
 
   const handleFindRelated = async () => {
     await writer.onSend("Find related stories", "find-related");
+  };
+
+  // BRDG-435: post an investigation result straight to Jira as a comment. The
+  // card owns the posting/posted/error state, so this just performs the write
+  // (letting a rejection propagate) and refreshes the ticket so the comment
+  // shows live on the detail view.
+  const handlePostInvestigation = async (text: string) => {
+    await tickets.addJiraComment(writer.ticketKey, { content: text });
+    writer.mutateTicket();
   };
 
   const handleOpenRelatedPanel = () => {
@@ -152,6 +162,7 @@ export function ChatApp() {
           onCreateLink={writer.onCreateLink}
           linkedIssueKeys={writer.linkedIssueKeys}
           onApplyEpic={writer.onApplyEpic}
+          onPostInvestigation={handlePostInvestigation}
           currentEpicKey={writer.currentEpicKey}
           issueType={writer.ticketData?.type ?? "story"}
           currentTitle={writer.session?.localTitle ?? writer.ticketData?.title ?? undefined}

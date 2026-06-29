@@ -66,6 +66,7 @@ interface StoryWriterChatProps {
   onCreateLink?: (targetKey: string, relation: string) => Promise<void>;
   linkedIssueKeys?: Set<string>;
   onApplyEpic?: (epicKey: string) => Promise<void>;
+  onPostInvestigation?: (text: string) => Promise<void>;
   currentEpicKey?: string | null;
   issueType?: IssueType;
   currentTitle?: string;
@@ -221,6 +222,7 @@ export function StoryWriterChat({
   onCreateLink,
   linkedIssueKeys,
   onApplyEpic,
+  onPostInvestigation,
   currentEpicKey,
   issueType = "story",
   currentTitle,
@@ -478,6 +480,7 @@ export function StoryWriterChat({
                 onCreateLink={onCreateLink}
                 linkedIssueKeys={linkedIssueKeys}
                 onApplyEpic={onApplyEpic}
+                onPostInvestigation={onPostInvestigation}
                 currentEpicKey={currentEpicKey}
               />
               {msg.role === "user" && msg.status === "failed" && (

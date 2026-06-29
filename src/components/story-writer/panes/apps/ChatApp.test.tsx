@@ -1,4 +1,4 @@
-import { render, screen, fireEvent } from "@testing-library/react";
+import { render, screen, fireEvent, waitFor } from "@testing-library/react";
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { ChatApp } from "./ChatApp";
 
@@ -10,9 +10,18 @@ vi.mock("../PaneContext", () => ({
   usePaneContext: vi.fn(),
 }));
 
+vi.mock("@/lib/api-client", () => ({
+  tickets: { addJiraComment: vi.fn().mockResolvedValue({}) },
+}));
+
 vi.mock("@/components/story-writer/StoryWriterChat", () => ({
   StoryWriterChat: (props: Record<string, unknown>) => (
-    <div data-testid="story-writer-chat" data-message-count={String((props.messages as unknown[])?.length ?? 0)} />
+    <div data-testid="story-writer-chat" data-message-count={String((props.messages as unknown[])?.length ?? 0)}>
+      <button
+        data-testid="trigger-post-investigation"
+        onClick={() => (props.onPostInvestigation as (t: string) => Promise<void>)?.("posted text")}
+      />
+    </div>
   ),
 }));
 
@@ -24,6 +33,7 @@ vi.mock("@/components/story-writer/ExecutionLogViewer", () => ({
 
 import { useWriterContext } from "../WriterContext";
 import { usePaneContext } from "../PaneContext";
+import { tickets } from "@/lib/api-client";
 
 function makeWriterCtx(overrides = {}) {
   return {
@@ -57,6 +67,7 @@ function makeWriterCtx(overrides = {}) {
     onApplyEpic: vi.fn().mockResolvedValue(undefined),
     onLinkCandidate: vi.fn().mockResolvedValue(undefined),
     onTitleChange: vi.fn(),
+    mutateTicket: vi.fn(),
     ...overrides,
   };
 }
@@ -151,6 +162,22 @@ describe("ChatApp", () => {
     // Just verify it renders without errors with draft data
     render(<ChatApp />);
     expect(screen.getByTestId("story-writer-chat")).toBeInTheDocument();
+  });
+
+  it("posts an investigation result to Jira as a comment and refreshes the ticket (BRDG-435)", async () => {
+    const mutateTicket = vi.fn();
+    (useWriterContext as ReturnType<typeof vi.fn>).mockReturnValue(
+      makeWriterCtx({ ticketKey: "VPL-42", mutateTicket })
+    );
+    (usePaneContext as ReturnType<typeof vi.fn>).mockReturnValue(makePaneCtx());
+
+    render(<ChatApp />);
+    fireEvent.click(screen.getByTestId("trigger-post-investigation"));
+
+    await waitFor(() => {
+      expect(tickets.addJiraComment).toHaveBeenCalledWith("VPL-42", { content: "posted text" });
+    });
+    expect(mutateTicket).toHaveBeenCalled();
   });
 
   it("does not auto-send a title-suggestion message for an untitled draft with no messages", () => {

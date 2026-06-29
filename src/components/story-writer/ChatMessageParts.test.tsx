@@ -1,7 +1,7 @@
 import { describe, it, expect, vi } from "vitest";
 import { render, screen, fireEvent } from "@testing-library/react";
 import type { Message } from "@/types/chat";
-import { parseLinkSuggestions, stripLinkSuggestionTags, parseEpicSuggestions, stripEpicSuggestionTags, ChatMessage, DraftCard } from "./ChatMessageParts";
+import { parseLinkSuggestions, stripLinkSuggestionTags, parseEpicSuggestions, stripEpicSuggestionTags, parseInvestigation, stripInvestigationTags, ChatMessage, DraftCard } from "./ChatMessageParts";
 
 // Capture the linkifyRefs option so call-site tests can assert the flag is
 // threaded into the body vs. left off the draft preview. The pill rendering
@@ -20,11 +20,17 @@ vi.mock("./TitleSuggestionChips", () => ({ TitleSuggestionChips: () => <div /> }
 vi.mock("./TypeSuggestionChip", () => ({ TypeSuggestionChip: () => <div /> }));
 vi.mock("./LinkSuggestionChips", () => ({ LinkSuggestionChips: () => <div /> }));
 vi.mock("./EpicSuggestionCard", () => ({ EpicSuggestionCard: () => <div /> }));
+vi.mock("./InvestigationSuggestionCard", () => ({
+  InvestigationSuggestionCard: ({ result }: { result: string }) => (
+    <div data-testid="investigation-card">{result}</div>
+  ),
+}));
 vi.mock("./SuggestionCard", () => ({
   SuggestionCard: () => <div />,
   SuggestionRow: () => <div />,
   ScoreBadge: () => <div />,
   LinkButton: () => <div />,
+  AppliedBadge: () => <div />,
 }));
 
 function makeMessage(overrides: Partial<Message> = {}): Message {
@@ -242,6 +248,68 @@ describe("parseEpicSuggestions", () => {
     const result = parseEpicSuggestions(content);
     expect(result).toHaveLength(1);
     expect(result[0].key).toBe("VPL-1");
+  });
+});
+
+describe("parseInvestigation (BRDG-435)", () => {
+  it("extracts the inner investigation result", () => {
+    const content = "Here are my findings.\n<investigation>## Findings\n\n- one\n- two</investigation>\nDone.";
+    expect(parseInvestigation(content)).toBe("## Findings\n\n- one\n- two");
+  });
+
+  it("returns null when there is no investigation tag", () => {
+    expect(parseInvestigation("Just some text without a tag.")).toBeNull();
+  });
+
+  it("returns null for an empty investigation block", () => {
+    expect(parseInvestigation("<investigation>   </investigation>")).toBeNull();
+  });
+});
+
+describe("stripInvestigationTags (BRDG-435)", () => {
+  it("removes the investigation block", () => {
+    const input = "before <investigation>secret report</investigation> after";
+    expect(stripInvestigationTags(input)).toBe("before  after");
+  });
+
+  it("returns content unchanged when no tag present", () => {
+    expect(stripInvestigationTags("No tags here.")).toBe("No tags here.");
+  });
+});
+
+describe("ChatMessage investigation rendering (BRDG-435)", () => {
+  it("strips the raw <investigation> tag from the displayed message body", () => {
+    render(
+      <ChatMessage
+        message={makeMessage({
+          content: "Looking into it. <investigation>## Findings\n\nDetails here</investigation> Done.",
+        })}
+      />,
+    );
+    const body = screen.getByTestId("markdown");
+    expect(body.textContent).not.toContain("investigation");
+    expect(body.textContent).not.toContain("Details here");
+    expect(body.textContent).toContain("Looking into it.");
+    expect(body.textContent).toContain("Done.");
+  });
+
+  it("renders the investigation result as a suggestion card when a post handler is provided", () => {
+    render(
+      <ChatMessage
+        message={makeMessage({ content: "<investigation>## Findings\n\nDetails here</investigation>" })}
+        onPostInvestigation={async () => {}}
+      />,
+    );
+    expect(screen.getByTestId("investigation-card")).toHaveTextContent("Details here");
+  });
+
+  it("does not render the card without a post handler", () => {
+    render(
+      <ChatMessage
+        message={makeMessage({ content: "<investigation>## Findings</investigation>" })}
+      />,
+    );
+    expect(screen.queryByTestId("investigation-card")).toBeNull();
   });
 });
 
