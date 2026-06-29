@@ -174,6 +174,22 @@ export interface BoardRowBaseProps {
    */
   hideAssigneeUntilHover?: boolean;
   /**
+   * Inbox "new since last visit" marker (BRDG-434). When defined, a fixed-width
+   * slot is reserved at the row's leading edge so ticket keys stay aligned across
+   * new and non-new rows; the brand-accent dot is painted only when `true`. Left
+   * undefined by every other host (board / Story Writer / epic children), which
+   * keeps them inert — no slot, no dot.
+   */
+  isNewSinceLastViewed?: boolean;
+  /**
+   * Inbox-only (BRDG-434): drop the reserved 26px assignee slot entirely on an
+   * unassigned, read-only row instead of rendering an empty spacer, so an
+   * assignee-less row leaves no trailing gap. A present assignee still shows its
+   * avatar. Off by default so the board (which reserves the width for its
+   * hover-reveal, BRDG-368) and other hosts are unchanged.
+   */
+  hideEmptyAssignee?: boolean;
+  /**
    * Last row in its card: rounds the row surface's bottom corners so the hover/selection
    * fill follows the card's rounded edge instead of bleeding square into the corners. The
    * card lets content bleed past its edge (overflow-clip-margin) so the drag handle can
@@ -281,6 +297,8 @@ export const BoardRow = memo(forwardRef<HTMLTableRowElement, BoardRowBaseProps>(
     onStatusChangeMoveToBottom,
     hideCheckbox = false,
     hideAssigneeUntilHover = false,
+    isNewSinceLastViewed,
+    hideEmptyAssignee = false,
     isLastInCard = false,
     isFirstInCard = false,
     rowStyle,
@@ -338,6 +356,12 @@ export const BoardRow = memo(forwardRef<HTMLTableRowElement, BoardRowBaseProps>(
   // hover/focus; active-status assigned rows keep the avatar always visible.
   const isTerminalStatus = ["DONE", "DEPRECATED"].includes(normalizeEpicStatus(ticket.jiraStatus));
   const hideAssignee = hideAssigneeUntilHover && (isTerminalStatus || !ticket.assignee);
+  // BRDG-434: collapse the trailing assignee slot only when the inbox opted in,
+  // the row is unassigned, and assignment is read-only here (the inbox edits
+  // assignees via its row-action menu, not an inline picker). An editable or
+  // assigned row keeps the avatar exactly as before.
+  const assigneeEditable = Boolean(onAssigneeChange) && !isRemoved;
+  const collapseAssignee = hideEmptyAssignee && !ticket.assignee && !assigneeEditable;
 
   // Epic / SP / BV placement (BRDG-310): everything that is *set* renders in its
   // natural slot; the still-empty (but applicable) planning fields reserve no space and
@@ -519,6 +543,25 @@ export const BoardRow = memo(forwardRef<HTMLTableRowElement, BoardRowBaseProps>(
             >
               {checkbox}
             </div>
+          )}
+
+          {/* "New since last visit" marker (BRDG-434), at the row's leading edge just
+              before the status pill. The slot is reserved whenever the inbox opts in (the
+              prop is defined) so keys stay aligned whether or not a row is new; the dot
+              is painted only when this row is new. Inert elsewhere (prop undefined). */}
+          {isNewSinceLastViewed !== undefined && (
+            <span className="flex w-2 shrink-0 items-center justify-center" aria-hidden={!isNewSinceLastViewed}>
+              {isNewSinceLastViewed && (
+                <Tooltip content="New since your last visit">
+                  <span
+                    className="block h-1.5 w-1.5 rounded-full bg-[var(--color-brand-500)]"
+                    style={{ boxShadow: "0 0 0 2.5px color-mix(in srgb, var(--color-brand-500) 16%, transparent)" }}
+                  >
+                    <span className="sr-only">New since your last visit</span>
+                  </span>
+                </Tooltip>
+              )}
+            </span>
           )}
 
           <div className="relative flex shrink-0 items-center gap-1.5" style={{ fontVariantNumeric: "tabular-nums" }}>
@@ -897,8 +940,10 @@ export const BoardRow = memo(forwardRef<HTMLTableRowElement, BoardRowBaseProps>(
               )}
 
               {/* Assignee — right-aligned. Clickable avatar opens the people
-                  picker inline, mirroring the ticket sidebar. */}
-              {tags.has("assignee") && (
+                  picker inline, mirroring the ticket sidebar. BRDG-434: the inbox
+                  collapses this slot entirely on an unassigned read-only row
+                  (collapseAssignee) so no empty 26px gap is reserved. */}
+              {tags.has("assignee") && !collapseAssignee && (
                 <div
                   // The wrapper always reserves the 26px avatar width (BRDG-325), so
                   // fading the avatar in/out via opacity never shifts the row (BRDG-368).

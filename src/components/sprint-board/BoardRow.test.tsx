@@ -66,6 +66,7 @@ vi.mock("@/components/shared/TicketStatusPill", () => ({
 }));
 
 vi.mock("@/components/shared/Avatar", () => ({ Avatar: () => <span data-testid="avatar" /> }));
+vi.mock("@/components/shared/AssigneePicker", () => ({ AssigneePicker: () => <span data-testid="assignee-picker" /> }));
 // BRDG-323: SP + guess are one unified chip; "sp" testid now marks that estimate
 // chip. Clicking it reports the popover as open (onOpenChange) so slot-freeze can
 // be exercised.
@@ -679,6 +680,55 @@ describe("BoardRow (headerless, BRDG-239)", () => {
       // Terminal + unassigned, the worst case, still shows because the host did not opt in.
       const { container } = renderRow({ ticket: makeTicket({ jiraStatus: "DONE", assignee: null }) });
       expect(wrapper(container).className).not.toContain("opacity-0");
+    });
+  });
+
+  // BRDG-434: inbox "new since last visit" leading-edge dot.
+  describe("new-since-last-visit marker (BRDG-434)", () => {
+    const DOT = "New since your last visit"; // Tooltip is mocked to passthrough; sr-only text identifies the dot.
+
+    it("paints the dot when the row is new", () => {
+      renderRow({ isNewSinceLastViewed: true });
+      expect(screen.getByText(DOT)).toBeInTheDocument();
+    });
+
+    it("reserves the slot but paints no dot when the row is not new", () => {
+      const { container } = renderRow({ isNewSinceLastViewed: false });
+      expect(screen.queryByText(DOT)).toBeNull();
+      // The fixed-width slot is still present so keys stay aligned with new rows.
+      expect(container.querySelector("span.w-2")).toBeInTheDocument();
+    });
+
+    it("renders neither slot nor dot when the prop is absent (inert on the board)", () => {
+      const { container } = renderRow();
+      expect(screen.queryByText(DOT)).toBeNull();
+      expect(container.querySelector("span.w-2")).toBeNull();
+    });
+  });
+
+  // BRDG-434: inbox collapses the empty assignee slot on unassigned read-only rows.
+  describe("collapse empty assignee (BRDG-434)", () => {
+    const ASSIGNED = { name: "Jane", initials: "J", color: "#000" };
+    const wrapper = (container: HTMLElement) => container.querySelector("div.ml-1\\.5");
+
+    it("drops the assignee slot when opted in, unassigned and read-only", () => {
+      const { container } = renderRow({ ticket: makeTicket({ assignee: null }), hideEmptyAssignee: true });
+      expect(wrapper(container)).toBeNull();
+    });
+
+    it("still shows the avatar when an assignee is present", () => {
+      renderRow({ ticket: makeTicket({ assignee: ASSIGNED }), hideEmptyAssignee: true });
+      expect(screen.getByTestId("avatar")).toBeInTheDocument();
+    });
+
+    it("keeps the slot for an editable unassigned row (picker must stay reachable)", () => {
+      const { container } = renderRow({ ticket: makeTicket({ assignee: null }), hideEmptyAssignee: true, onAssigneeChange: vi.fn() });
+      expect(wrapper(container)).toBeInTheDocument();
+    });
+
+    it("keeps the empty spacer when the prop is omitted (board / other hosts unchanged)", () => {
+      const { container } = renderRow({ ticket: makeTicket({ assignee: null }) });
+      expect(wrapper(container)).toBeInTheDocument();
     });
   });
 

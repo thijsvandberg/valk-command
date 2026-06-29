@@ -61,16 +61,16 @@ Add an opt-in prop `hideEmptyAssignee?: boolean` to `BoardRow` (default `false`)
 - [ ] The baseline advances on each visit: items dotted on one visit are no longer dotted on the next visit (unless newer items arrived). <!-- capture+freeze after load, then setValue(now) -->
 - [ ] First-ever visit (no stored value) shows no dots. <!-- baseline == null => isNew false -->
 - [ ] The dot is shown correctly regardless of group-by mode (relevance / date / epic / creator / sprint) and active filters. <!-- compare is purely jiraCreatedAt vs baseline -->
-- [ ] The dot has a hover tooltip ("New since your last visit") and a non-colour-only accessible label. <!-- Tooltip + sr-only text -->
-- [ ] Reserving/painting the dot does not shift ticket keys between new and non-new rows. <!-- fixed-width leading slot -->
+- [x] The dot has a hover tooltip ("New since your last visit") and a non-colour-only accessible label. <!-- Tooltip + sr-only text -->
+- [x] Reserving/painting the dot does not shift ticket keys between new and non-new rows. <!-- fixed-width leading slot -->
 - [ ] In the inbox, unassigned rows render no avatar gap; rows with an assignee still show the avatar. <!-- hideEmptyAssignee in BoardRow.tsx:899-932 -->
-- [ ] The sprint board's assignee rendering and hover-reveal behaviour are unchanged. <!-- hideEmptyAssignee default false, not passed by the board -->
+- [x] The sprint board's assignee rendering and hover-reveal behaviour are unchanged. <!-- hideEmptyAssignee default false, not passed by the board -->
 
 ## Tests
 - [x] `isNewSinceLastViewed` returns `false` for null baseline, null `jiraCreatedAt`, and equal timestamps; `true` when `jiraCreatedAt > baseline`. <!-- src/lib/inbox-last-viewed.test.ts -->
 - [x] Setting route: `GET` returns `null` by default; after a `PUT` of an ISO timestamp, `GET` returns it; a non-datetime value is rejected by the Zod schema. <!-- src/app/api/settings/inbox-last-viewed/route.test.ts -->
-- [ ] `BoardRow` renders the dot when `isNewSinceLastViewed` is true and not when false/absent. <!-- src/components/sprint-board/BoardRow.test.tsx -->
-- [ ] `BoardRow` renders no assignee slot when `hideEmptyAssignee` is set and the ticket is unassigned, and still renders the avatar when assigned. <!-- src/components/sprint-board/BoardRow.test.tsx -->
+- [x] `BoardRow` renders the dot when `isNewSinceLastViewed` is true and not when false/absent. <!-- src/components/sprint-board/BoardRow.test.tsx -->
+- [x] `BoardRow` renders no assignee slot when `hideEmptyAssignee` is set and the ticket is unassigned, and still renders the avatar when assigned. <!-- src/components/sprint-board/BoardRow.test.tsx -->
 
 ## Related
 - [[BRDG-359-per-user-new-story-read-state]] — the per-user unread model this builds on; the visit baseline is persisted per user the same way.
