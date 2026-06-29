@@ -1,11 +1,11 @@
-import { CheckSquare, Bug, Bookmark, SquareMinus, HelpCircle, Zap } from "lucide-react";
+import { CheckSquare, Bug, Bookmark, CornerDownRight, HelpCircle, Zap } from "lucide-react";
 import type { IssueType } from "@/types/ticket";
 
 const ICON_MAP: Record<IssueType, { Icon: React.ComponentType<{ size?: number; strokeWidth?: number; className?: string }>; color: string }> = {
   task:    { Icon: CheckSquare,  color: "text-[var(--color-icon-task)]" },
   bug:     { Icon: Bug,          color: "text-[var(--color-status-error)]" },
   story:   { Icon: Bookmark,     color: "text-[var(--color-status-success)]" },
-  subtask: { Icon: SquareMinus,  color: "text-[var(--color-icon-task)]" },
+  subtask: { Icon: CornerDownRight,  color: "text-[var(--color-icon-task)]" },
   spike:   { Icon: HelpCircle,   color: "text-[var(--color-status-warning)]" },
   epic:    { Icon: Zap,          color: "text-[var(--color-icon-epic)]" },
 };

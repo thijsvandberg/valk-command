@@ -28,7 +28,7 @@ import {
   MoreHorizontal,
   LogOut,
   StickyNote,
-  SquareMinus,
+  CornerDownRight,
   Info,
   MessageSquareText,
   ZoomIn,
@@ -582,7 +582,7 @@ export default function RefinementSessionTicketPage({
                 style={{ transition: "background-color 0.15s ease, color 0.15s ease" }}
                 title="Toggle subtasks pane"
               >
-                <SquareMinus size={13} strokeWidth={1.5} />
+                <CornerDownRight size={13} strokeWidth={1.5} />
                 Subtasks
                 {subtaskCount > 0 && (
                   <span className={`flex h-4 min-w-4 items-center justify-center rounded-full px-1 text-caption tabular-nums ${
@@ -674,7 +674,7 @@ export default function RefinementSessionTicketPage({
                         activeSidebarPanel === "subtasks" ? "text-[var(--color-brand-400)]" : "text-text-secondary"
                       } focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-[var(--color-brand-400)]`}
                     >
-                      <SquareMinus size={13} strokeWidth={1.5} />
+                      <CornerDownRight size={13} strokeWidth={1.5} />
                       Subtasks
                       {subtaskCount > 0 && (
                         <span className="ml-auto text-caption tabular-nums text-text-tertiary">{subtaskCount}</span>

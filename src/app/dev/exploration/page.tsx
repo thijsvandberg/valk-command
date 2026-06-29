@@ -8,7 +8,7 @@
  */
 
 import Link from "next/link";
-import { ArrowUpRight, LayoutGrid, Rows3, FlaskConical, Shapes, MousePointerClick, Type, PanelTop, PanelTopDashed, AppWindow, ListChecks, Gem, Gauge, Hash, SendHorizontal, BarChart3, History as HistoryIcon, Sparkles, RefreshCw, Target, PanelsTopLeft, SlidersHorizontal, SquareStack, Bell, CornerDownRight } from "lucide-react";
+import { ArrowUpRight, LayoutGrid, Rows3, FlaskConical, Shapes, MousePointerClick, Type, PanelTop, PanelTopDashed, AppWindow, ListChecks, Gem, Gauge, Hash, SendHorizontal, BarChart3, History as HistoryIcon, Sparkles, RefreshCw, Target, PanelsTopLeft, SlidersHorizontal, SquareStack, Bell, CornerDownRight, ListTree } from "lucide-react";
 
 type Exploration = {
   slug: string;
@@ -22,6 +22,14 @@ type Exploration = {
 const ICON = "h-5 w-5";
 
 const EXPLORATIONS: Exploration[] = [
+  {
+    slug: "subtask-icon",
+    title: "Subtask icon — distinct from task",
+    blurb:
+      "Today task uses CheckSquare and subtask uses SquareMinus, both painted the same blue (--color-icon-task), so the two issue types blur together in lists like the ticket-detail Subtasks panel. Compares the current collision (Today vs Proposed, side by side over a real Subtasks panel with a parent Task row for contrast) against candidate child/sub glyphs — CornerDownRight (recommended), ListTree, GitBranch, Workflow, IndentIncrease — plus a Jira-like set of linked/stacked squares (Copy, SquareSquare, BringToFront, Group, SquareStack, Layers, PictureInPicture2, Blocks…) and extras, with an optional distinct subtask colour. Centralised in IssueTypeIcon.tsx.",
+    status: "Exploration",
+    icon: <ListTree className={ICON} strokeWidth={1.5} />,
+  },
   {
     slug: "status-change-linking",
     title: "Linking the update line to its row",
