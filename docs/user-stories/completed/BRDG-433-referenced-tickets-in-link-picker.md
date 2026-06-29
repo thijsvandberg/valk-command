@@ -21,10 +21,17 @@ test story VPL-1337: the referenced section renders above recently-updated, a
 ticket present in both lists shows only once (referenced wins), already-linked
 and unknown keys are excluded, and clicking a referenced row creates the link.
 
-Note for the PO: the picker auto-applies your default Team filter on open, which
-(as for `RECENTLY UPDATED`) hides the referenced section until filters are
-cleared. This is pre-existing picker behaviour; the referenced section follows
-the same visibility rule as recently-updated.
+Note for the PO: in the expanded modal the picker auto-applies your default Team
+filter on open, which (as for `RECENTLY UPDATED`) hides the referenced section
+until filters are cleared. This is pre-existing picker behaviour.
+
+**Follow-up (PO request after first ship):** the section was also mirrored into
+the **inline composer** in `LinkedIssuesSection` (the dropdown that expands under
+"Linked Issues"), since that is where the PO actually links. Same behaviour
+(referenced above recently-updated, de-duped, keyboard traversal), and the inline
+composer applies no default-team filter, so it shows immediately on focus.
+E2E-verified on VPL-46442 (referenced VPL-46339/VPL-46340, already-linked
+VPL-46337 excluded).
 
 ## Description
 
