@@ -1,7 +1,11 @@
 import { render, screen, fireEvent } from "@testing-library/react";
-import { describe, it, expect, vi } from "vitest";
+import { describe, it, expect, vi, beforeEach } from "vitest";
 import { AttachmentsSection } from "./AttachmentsSection";
 import type { Attachment } from "@/types/ticket";
+
+// Records the props each ImageLightbox receives so the gallery-wiring tests can
+// assert the ordered image list and per-thumbnail index.
+const lightboxProps: Array<{ src: string; alt?: string; gallery?: unknown; galleryIndex?: number }> = [];
 
 vi.mock("@/components/shared/SectionHeader", () => ({
   SectionHeader: ({
@@ -23,9 +27,21 @@ vi.mock("@/components/shared/SectionHeader", () => ({
 }));
 
 vi.mock("@/components/shared/ImageLightbox", () => ({
-  ImageLightbox: ({ children }: { children: React.ReactNode }) => (
-    <div data-testid="image-lightbox">{children}</div>
-  ),
+  ImageLightbox: (props: {
+    src: string;
+    alt?: string;
+    gallery?: unknown;
+    galleryIndex?: number;
+    children: React.ReactNode;
+  }) => {
+    lightboxProps.push({
+      src: props.src,
+      alt: props.alt,
+      gallery: props.gallery,
+      galleryIndex: props.galleryIndex,
+    });
+    return <div data-testid="image-lightbox">{props.children}</div>;
+  },
 }));
 
 function makeAttachment(overrides: Partial<Attachment> = {}): Attachment {
@@ -43,6 +59,10 @@ function makeAttachment(overrides: Partial<Attachment> = {}): Attachment {
 }
 
 describe("AttachmentsSection", () => {
+  beforeEach(() => {
+    lightboxProps.length = 0;
+  });
+
   it("renders nothing when the list is empty", () => {
     const { container } = render(<AttachmentsSection attachments={[]} />);
     expect(container).toBeEmptyDOMElement();
@@ -149,5 +169,55 @@ describe("AttachmentsSection", () => {
     fireEvent.click(screen.getByText("Show less"));
     expect(screen.queryByText("file-20.png")).not.toBeInTheDocument();
     expect(screen.getByText("Show all 21 (18 more)")).toBeInTheDocument();
+  });
+
+  // --- Gallery wiring (BRDG-432) ---
+
+  it("passes the ordered image list and per-thumbnail index to each lightbox", () => {
+    const attachments = [
+      makeAttachment({ id: "a", filename: "alpha.png" }),
+      makeAttachment({ id: "b", filename: "bravo.png" }),
+      makeAttachment({ id: "c", filename: "charlie.png" }),
+    ];
+    render(<AttachmentsSection attachments={attachments} />);
+
+    expect(lightboxProps).toHaveLength(3);
+    const expectedGallery = [
+      { src: "/api/attachments/a", alt: "alpha.png" },
+      { src: "/api/attachments/b", alt: "bravo.png" },
+      { src: "/api/attachments/c", alt: "charlie.png" },
+    ];
+    lightboxProps.forEach((p) => expect(p.gallery).toEqual(expectedGallery));
+    // Opening the 2nd thumbnail starts the gallery at index 1.
+    expect(lightboxProps.map((p) => p.galleryIndex)).toEqual([0, 1, 2]);
+  });
+
+  it("excludes non-image and cleaned attachments from the gallery", () => {
+    // Images first so both stay within the 3-item collapse window; the pdf and
+    // the cleaned image must still be filtered out of the gallery list.
+    const attachments = [
+      makeAttachment({ id: "a", filename: "alpha.png" }),
+      makeAttachment({ id: "b", filename: "bravo.png" }),
+      makeAttachment({ id: "d", filename: "doc.pdf", mimeType: "application/pdf" }),
+      makeAttachment({ id: "e", filename: "echo.png", cleaned: true, cleanedAt: "2024-02-01T00:00:00Z" }),
+    ];
+    render(<AttachmentsSection attachments={attachments} />);
+
+    // Only the two viewable images get a lightbox; the gallery omits the pdf and
+    // the cleaned image.
+    expect(lightboxProps).toHaveLength(2);
+    const expectedGallery = [
+      { src: "/api/attachments/a", alt: "alpha.png" },
+      { src: "/api/attachments/b", alt: "bravo.png" },
+    ];
+    lightboxProps.forEach((p) => expect(p.gallery).toEqual(expectedGallery));
+    expect(lightboxProps.map((p) => p.galleryIndex)).toEqual([0, 1]);
+  });
+
+  it("leaves the gallery undefined when there is only one image", () => {
+    render(<AttachmentsSection attachments={[makeAttachment({ id: "solo", filename: "solo.png" })]} />);
+    expect(lightboxProps).toHaveLength(1);
+    expect(lightboxProps[0].gallery).toBeUndefined();
+    expect(lightboxProps[0].galleryIndex).toBe(0);
   });
 });

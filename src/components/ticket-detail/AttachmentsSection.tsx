@@ -5,11 +5,13 @@ import type { Attachment } from "@/types/ticket";
 import { File, FileMinus, ChevronDown, ChevronUp } from "lucide-react";
 import { SectionHeader } from "@/components/shared/SectionHeader";
 import { SECTION_KEYS } from "@/lib/section-collapse-store";
-import { ImageLightbox } from "@/components/shared/ImageLightbox";
+import { ImageLightbox, type GalleryImage } from "@/components/shared/ImageLightbox";
 
 // Collapse long attachment lists to the first row of the 3-column grid;
 // reviewing a ticket shouldn't mean scrolling past 20+ thumbnails.
 const COLLAPSED_COUNT = 3;
+
+const isViewableImage = (att: Attachment) => att.mimeType.startsWith("image/") && !att.cleaned;
 
 export function AttachmentsSection({ attachments }: { attachments: Attachment[] }) {
   const [expanded, setExpanded] = useState(false);
@@ -22,6 +24,16 @@ export function AttachmentsSection({ attachments }: { attachments: Attachment[] 
   const isCollapsible = attachments.length > COLLAPSED_COUNT;
   const visible = isCollapsible && !expanded ? attachments.slice(0, COLLAPSED_COUNT) : attachments;
   const hiddenCount = attachments.length - COLLAPSED_COUNT;
+
+  // Ordered gallery across every viewable image so the lightbox can browse all
+  // of them, including images still hidden behind the collapse. Only enable
+  // navigation when there's more than one image to move between.
+  const imageAttachments = attachments.filter(isViewableImage);
+  const gallery: GalleryImage[] | undefined =
+    imageAttachments.length > 1
+      ? imageAttachments.map((att) => ({ src: `/api/attachments/${att.id}`, alt: att.filename }))
+      : undefined;
+  const galleryIndexById = new Map(imageAttachments.map((att, i) => [att.id, i]));
 
   return (
     <div className="mt-8">
@@ -49,6 +61,8 @@ export function AttachmentsSection({ attachments }: { attachments: Attachment[] 
                 <ImageLightbox
                   src={`/api/attachments/${att.id}`}
                   alt={att.filename}
+                  gallery={gallery}
+                  galleryIndex={galleryIndexById.get(att.id) ?? 0}
                 >
                   {/* Plain <img>, not next/image: the optimizer fetches the
                       cookie-protected /api/attachments route server-side
