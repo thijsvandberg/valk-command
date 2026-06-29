@@ -5,10 +5,8 @@ import { Check, MessageSquare, Rocket, Sparkles } from "lucide-react";
 import type { JiraStatus } from "@/types/ticket";
 import type { StatusChangeItem } from "@/lib/status-changes-query";
 import type { LastDeployedInfo } from "@/hooks/usePipelines";
-import { Avatar } from "@/components/shared/Avatar";
 import { Tooltip } from "@/components/shared/Tooltip";
 import { OpenSubtasksIndicator } from "@/components/sprint-board/OpenSubtasksIndicator";
-import { buildAssignee } from "@/lib/user-utils";
 import { relativeDate, formatAbsoluteDate } from "@/lib/date-utils";
 import { buildTicketDetailUrl } from "@/lib/ticket-detail-url";
 
@@ -32,20 +30,27 @@ function StatusWord({ status }: { status: JiraStatus }) {
   return <>{STATUS_LABEL[status] ?? status}</>;
 }
 
-// Show the changer only when it differs from the assignee. Prefer the stable accountId.
-function changerDiffersFromAssignee(change: StatusChangeItem): boolean {
-  if (!change.changedBy) return false;
-  if (!change.assignee) return true;
-  if (change.changedByAccountId && change.assignee.accountId) {
-    return change.changedByAccountId !== change.assignee.accountId;
-  }
-  return change.changedBy !== change.assignee.name;
-}
-
 const SIGNAL = "inline-flex items-center gap-1 text-caption font-medium";
 // Move-to-bottom and Generate-test-prompt share one quiet, neutral outline style.
 const ACTION_BTN =
   "inline-flex shrink-0 items-center gap-1.5 rounded-md border border-border-default px-2 py-1 text-caption font-medium text-text-secondary transition-colors duration-150";
+
+// A plain-language, one-sentence summary of the most recent deploy for the tooltip.
+export function describeDeploy(deploy: LastDeployedInfo): string {
+  const env = deploy.environment;
+  // Absolute date with the relative "xx ago" appended in parentheses for quick orientation.
+  const stamp = deploy.completedAt
+    ? `${formatAbsoluteDate(deploy.completedAt, { weekday: true })} (${relativeDate(deploy.completedAt)})`
+    : null;
+  if (deploy.state === "SUCCESSFUL") {
+    return `Last deployed to ${env} successfully${stamp ? ` on ${stamp}` : ""}.`;
+  }
+  if (deploy.state === "FAILED") {
+    return `The last deploy to ${env} failed${stamp ? ` on ${stamp}` : ""}.`;
+  }
+  const status = deploy.state.toLowerCase().replace(/_/g, " ").replace("inprogress", "in progress");
+  return `Deploy to ${env} is ${status}${stamp ? `, as of ${stamp}` : ""}.`;
+}
 
 function DeploySignal({ deploy }: { deploy: LastDeployedInfo }) {
   if (!deploy.environment) return null;
@@ -55,7 +60,7 @@ function DeploySignal({ deploy }: { deploy: LastDeployedInfo }) {
     : deploy.state === "FAILED" ? "bg-red-500/10 text-red-500"
     : "bg-amber-500/10 text-amber-500";
   return (
-    <Tooltip content={`Last deploy: ${deploy.environment} — ${deploy.state}${deploy.completedAt ? ` (${formatAbsoluteDate(deploy.completedAt)})` : ""}`}>
+    <Tooltip content={describeDeploy(deploy)}>
       <span className={`inline-flex items-center gap-1 rounded-md px-1.5 py-0.5 text-caption font-medium ${tone}`}>
         <Rocket className="h-3 w-3 shrink-0" strokeWidth={2} />
         {deploy.environment}
@@ -99,7 +104,8 @@ export function StatusChangeLine({
 }) {
   const isFinished = change.toStatus === "DONE" || change.toStatus === "DEPRECATED";
   const isTest = change.toStatus === "TEST";
-  const showChanger = changerDiffersFromAssignee(change);
+  // Show the last-deploy badge once work is testable or actively in progress.
+  const showsDeploy = isTest || change.toStatus === "IN PROGRESS";
   const hasNew = change.newCommentCount > 0 || !!change.storyEditedAt;
   const showSubtaskFlag = isFinished && change.openSubtaskCount > 0;
 
@@ -108,11 +114,11 @@ export function StatusChangeLine({
     <div
       onClick={(e) => e.stopPropagation()}
       onPointerDown={(e) => e.stopPropagation()}
-      className="relative -mt-1 flex items-center pb-2.5 pt-0 pl-[73px] pr-[23px]"
+      className="relative -mt-1.5 flex items-center pb-1 pt-0 pl-[73px] pr-[23px]"
     >
       {/* Single elbow connector: its vertical sits at the CENTRE of the row's issue-type icon and
-          its horizontal meets the line just above centre. left-[53px] = icon centre minus the
-          surface's 3px accent border. */}
+          its horizontal meets the vertical middle of the status-line text. left-[53px] = icon
+          centre minus the surface's 3px accent border. */}
       <span
         aria-hidden
         className="pointer-events-none absolute left-[53px] bottom-[calc(50%+2px)] h-3 w-3.5 rounded-bl-[6px] border-b border-l border-border-strong"
@@ -121,18 +127,15 @@ export function StatusChangeLine({
       <div className="flex min-w-0 flex-1 flex-wrap items-center gap-x-2.5 gap-y-1.5">
         <span className="text-caption text-text-tertiary">
           Updated from <StatusWord status={change.fromStatus as JiraStatus} /> to <StatusWord status={change.toStatus} />
-          {showChanger && (
+          {change.changedBy && (
             <>
               {" by "}
-              <span className="inline-flex items-center gap-1 align-middle">
-                <Avatar assignee={buildAssignee(change.changedBy, change.changedByAccountId)} size={14} />
-                {change.changedBy}
-              </span>
+              {change.changedBy}
             </>
           )}
           {" "}
           {/* Relative time woven into the sentence (uniform with the rest); hover shows the exact time. */}
-          <Tooltip content={formatAbsoluteDate(change.changedAt)}>
+          <Tooltip content={formatAbsoluteDate(change.changedAt, { weekday: true })}>
             <span className="cursor-default">{relativeDate(change.changedAt)}</span>
           </Tooltip>
         </span>
@@ -160,7 +163,7 @@ export function StatusChangeLine({
         )}
 
         {/* Badges carry their own pill background, so no dot separator before them. */}
-        {isTest && deploy?.environment && <DeploySignal deploy={deploy} />}
+        {showsDeploy && deploy?.environment && <DeploySignal deploy={deploy} />}
 
         {showSubtaskFlag && (
           // Reuse the board's existing open-subtasks indicator: the amber badge opens the

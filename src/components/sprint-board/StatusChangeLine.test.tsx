@@ -1,7 +1,8 @@
 import { render, screen } from "@testing-library/react";
 import { describe, it, expect, vi } from "vitest";
-import { StatusChangeLine } from "./StatusChangeLine";
+import { StatusChangeLine, describeDeploy } from "./StatusChangeLine";
 import type { StatusChangeItem } from "@/lib/status-changes-query";
+import type { LastDeployedInfo } from "@/hooks/usePipelines";
 import type { Assignee } from "@/types/ticket";
 
 vi.mock("next/link", () => ({
@@ -38,7 +39,7 @@ describe("StatusChangeLine (BRDG-414)", () => {
     expect(screen.getByText(/Updated from In Progress to Test/)).toBeInTheDocument();
   });
 
-  it("shows the changer only when it differs from the assignee", () => {
+  it("always shows the changer name, even when it matches the assignee", () => {
     const { rerender } = render(
       <StatusChangeLine
         change={makeChange({ changedBy: "Carol Smit", changedByAccountId: "acc-carol" })}
@@ -46,9 +47,9 @@ describe("StatusChangeLine (BRDG-414)", () => {
         onMoveToBottom={noop}
       />,
     );
-    expect(screen.getByText("Carol Smit")).toBeInTheDocument();
+    expect(screen.getByText(/by Carol Smit/)).toBeInTheDocument();
 
-    // Same person as the assignee (matched by accountId) -> no "by <name>".
+    // Same person as the assignee (matched by accountId) -> still shown.
     rerender(
       <StatusChangeLine
         change={makeChange({ changedBy: "Dan Mol", changedByAccountId: "acc-dan" })}
@@ -56,7 +57,7 @@ describe("StatusChangeLine (BRDG-414)", () => {
         onMoveToBottom={noop}
       />,
     );
-    expect(screen.queryByText("Dan Mol")).not.toBeInTheDocument();
+    expect(screen.getByText(/by Dan Mol/)).toBeInTheDocument();
   });
 
   it("flags open subtasks only for Done/Deprecated with openSubtaskCount > 0 (reuses OpenSubtasksIndicator)", () => {
@@ -109,5 +110,40 @@ describe("StatusChangeLine (BRDG-414)", () => {
       />,
     );
     expect(screen.getByText("3")).toBeInTheDocument();
+  });
+
+  const deploy: LastDeployedInfo = { environment: "UAT3", state: "SUCCESSFUL", completedAt: "2026-06-25T13:58:00.000Z" };
+
+  it("shows the deploy badge on In Progress changes, not only on Test", () => {
+    render(<StatusChangeLine change={makeChange({ toStatus: "IN PROGRESS" })} deploy={deploy} onSeen={noop} onMoveToBottom={noop} />);
+    expect(screen.getByText("UAT3")).toBeInTheDocument();
+  });
+
+  it("omits the deploy badge when there is no deploy info", () => {
+    render(<StatusChangeLine change={makeChange({ toStatus: "IN PROGRESS" })} onSeen={noop} onMoveToBottom={noop} />);
+    expect(screen.queryByText("UAT3")).not.toBeInTheDocument();
+  });
+
+  it("hides the deploy badge on To Do changes", () => {
+    render(<StatusChangeLine change={makeChange({ fromStatus: "TO DO", toStatus: "TO DO" })} deploy={deploy} onSeen={noop} onMoveToBottom={noop} />);
+    expect(screen.queryByText("UAT3")).not.toBeInTheDocument();
+  });
+});
+
+describe("describeDeploy", () => {
+  it("phrases a successful deploy as a sentence with a relative 'xx ago' suffix", () => {
+    const r = describeDeploy({ environment: "UAT3", state: "SUCCESSFUL", completedAt: "2026-06-25T13:58:00.000Z" });
+    expect(r).toMatch(/^Last deployed to UAT3 successfully on .+ \(.+ ago\)\.$/);
+    expect(r).not.toContain("SUCCESSFUL");
+  });
+
+  it("phrases a failed deploy as a sentence with a relative 'xx ago' suffix", () => {
+    const r = describeDeploy({ environment: "UAT3", state: "FAILED", completedAt: "2026-06-25T13:58:00.000Z" });
+    expect(r).toMatch(/^The last deploy to UAT3 failed on .+ \(.+ ago\)\.$/);
+  });
+
+  it("phrases an in-progress deploy readably and drops the date when missing", () => {
+    const r = describeDeploy({ environment: "UAT3", state: "INPROGRESS", completedAt: null });
+    expect(r).toBe("Deploy to UAT3 is in progress.");
   });
 });
