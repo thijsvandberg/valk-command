@@ -67,8 +67,8 @@ Add an opt-in prop `hideEmptyAssignee?: boolean` to `BoardRow` (default `false`)
 - [ ] The sprint board's assignee rendering and hover-reveal behaviour are unchanged. <!-- hideEmptyAssignee default false, not passed by the board -->
 
 ## Tests
-- [ ] `isNewSinceLastViewed` returns `false` for null baseline, null `jiraCreatedAt`, and equal timestamps; `true` when `jiraCreatedAt > baseline`. <!-- src/lib/inbox-last-viewed.test.ts -->
-- [ ] Setting route: `GET` returns `null` by default; after a `PUT` of an ISO timestamp, `GET` returns it; a non-datetime value is rejected by the Zod schema. <!-- src/app/api/settings/inbox-last-viewed/route.test.ts -->
+- [x] `isNewSinceLastViewed` returns `false` for null baseline, null `jiraCreatedAt`, and equal timestamps; `true` when `jiraCreatedAt > baseline`. <!-- src/lib/inbox-last-viewed.test.ts -->
+- [x] Setting route: `GET` returns `null` by default; after a `PUT` of an ISO timestamp, `GET` returns it; a non-datetime value is rejected by the Zod schema. <!-- src/app/api/settings/inbox-last-viewed/route.test.ts -->
 - [ ] `BoardRow` renders the dot when `isNewSinceLastViewed` is true and not when false/absent. <!-- src/components/sprint-board/BoardRow.test.tsx -->
 - [ ] `BoardRow` renders no assignee slot when `hideEmptyAssignee` is set and the ticket is unassigned, and still renders the avatar when assigned. <!-- src/components/sprint-board/BoardRow.test.tsx -->
 
