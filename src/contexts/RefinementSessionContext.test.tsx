@@ -280,6 +280,33 @@ describe("RefinementSessionContext", () => {
     expect(state.sessionEstimates).toEqual({});
   });
 
+  it("records readiness per ticket, including the cleared (Ready for Development) value", () => {
+    let state!: ReturnType<typeof useRefinementSession>;
+    renderWithProvider((s) => { state = s; });
+
+    act(() => { state.startSession(["VPL-1", "VPL-2"]); });
+    expect(state.sessionReadiness).toEqual({});
+
+    act(() => { state.recordReadiness("VPL-1", null); });
+    act(() => { state.recordReadiness("VPL-2", "ready_to_refine"); });
+    expect(state.sessionReadiness).toEqual({ "VPL-1": null, "VPL-2": "ready_to_refine" });
+
+    act(() => { state.recordReadiness("VPL-2", "drafting"); });
+    expect(state.sessionReadiness).toEqual({ "VPL-1": null, "VPL-2": "drafting" });
+  });
+
+  it("clears recorded readiness when a new session starts", () => {
+    let state!: ReturnType<typeof useRefinementSession>;
+    renderWithProvider((s) => { state = s; });
+
+    act(() => { state.startSession(["VPL-1"]); });
+    act(() => { state.recordReadiness("VPL-1", null); });
+    expect(state.sessionReadiness).toEqual({ "VPL-1": null });
+
+    act(() => { state.startSession(["VPL-2"]); });
+    expect(state.sessionReadiness).toEqual({});
+  });
+
   // BRDG-401: the status write used to be `.catch(() => {})`, so a failure left
   // the session at the wrong status with no trace. It must now report server-side
   // (sessionId in the context, no field values), without breaking the local state

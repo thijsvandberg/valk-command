@@ -22,9 +22,11 @@ const mockContext = {
   savedSessionId: "session-abc",
   sessionEstimates: {} as Record<string, number | null>,
   sessionSubtaskCounts: {} as Record<string, number>,
+  sessionReadiness: {} as Record<string, string | null>,
   startSession: vi.fn(),
   recordEstimate: vi.fn(),
   recordSubtaskCount: vi.fn(),
+  recordReadiness: vi.fn(),
   nextTicket: vi.fn(),
   prevTicket: vi.fn(),
   goToTicket: vi.fn(),
@@ -148,6 +150,7 @@ describe("SessionEndModal", () => {
     vi.clearAllMocks();
     mockContext.sessionEstimates = {};
     mockContext.sessionSubtaskCounts = {};
+    mockContext.sessionReadiness = {};
     mockContext.currentIndex = 2;
     mockSessions = [];
     lastToast = null;
@@ -186,6 +189,13 @@ describe("SessionEndModal", () => {
   it("shows unestimated indicator for tickets without story points", () => {
     render(<SessionEndModal />);
     expect(screen.getByText("No estimate")).toBeInTheDocument();
+  });
+
+  it("renders story points using the shared SP metric chip (hash glyph), matching the board", () => {
+    const { container } = render(<SessionEndModal />);
+    // VPL-1 has 3 SP; the regular MetricChip renders a hash glyph rather than the
+    // old hand-rolled plain number, so the wrap-up matches the board badges.
+    expect(container.querySelector(".lucide-hash")).toBeInTheDocument();
   });
 
   it("prefers estimates recorded during the session over the (stale) ticket cache", () => {
@@ -393,6 +403,31 @@ describe("SessionEndModal", () => {
       expect(carryCheckbox("VPL-1")).toHaveAttribute("aria-checked", "false");
       expect(carryCheckbox("VPL-2")).toHaveAttribute("aria-checked", "true");
       expect(carryCheckbox("VPL-3")).toHaveAttribute("aria-checked", "true");
+    });
+
+    // The wrap-up used to read readiness only from the (lagging) list cache, so a
+    // ticket just estimated on the last step still showed "ready_to_refine" and was
+    // wrongly carried over. Readiness recorded during the session now wins.
+    it("does not carry over a ticket the session advanced past Ready to Refine, even when the cache still reports it (race fix)", () => {
+      const original = mockTickets[0].readiness;
+      mockTickets[0].readiness = "ready_to_refine"; // stale list cache
+      mockContext.sessionReadiness = { "VPL-1": null }; // session saw the advance
+      try {
+        render(<SessionEndModal />);
+        // VPL-1 has SP + subtasks; with the session's null readiness it is fully
+        // handled and must not be pre-checked for carry-over.
+        expect(carryCheckbox("VPL-1")).toHaveAttribute("aria-checked", "false");
+      } finally {
+        mockTickets[0].readiness = original;
+      }
+    });
+
+    it("still flags a ticket the session sees at Ready to Refine, even when the cache cleared it", () => {
+      // Cache readiness is null (would read as handled); the session observed it
+      // still at ready_to_refine, so it must be pre-checked for carry-over.
+      mockContext.sessionReadiness = { "VPL-1": "ready_to_refine" };
+      render(<SessionEndModal />);
+      expect(carryCheckbox("VPL-1")).toHaveAttribute("aria-checked", "true");
     });
 
     it("updates the carry-over count as rows are toggled", () => {

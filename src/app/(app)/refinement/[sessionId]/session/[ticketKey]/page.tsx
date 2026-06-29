@@ -65,6 +65,7 @@ export default function RefinementSessionTicketPage({
     reorderQueue,
     recordEstimate,
     recordSubtaskCount,
+    recordReadiness,
     openEndModal,
     closeEndModal,
     saveSession,
@@ -306,14 +307,30 @@ export default function RefinementSessionTicketPage({
     if (ticketData?.key) recordSubtaskCount(ticketData.key, ticketData.subtasks?.length ?? 0);
   }, [ticketData?.key, ticketData?.subtasks?.length, recordSubtaskCount]);
 
+  // Mirror the live readiness into the session for the same reason: the wrap-up
+  // reads readiness from the shared list cache, which lags behind the server's
+  // "estimated -> Ready for Development" advance. Without this the just-refined
+  // last ticket reads as still "Ready to Refine" and gets carried over.
+  useEffect(() => {
+    if (ticketData?.key) recordReadiness(ticketData.key, ticketData.readiness ?? null);
+  }, [ticketData?.key, ticketData?.readiness, recordReadiness]);
+
   const handleStoryPointsChange = useCallback(
     async (v: number | null) => {
       const prev = storyPoints;
+      const prevReadiness = ticketData?.readiness ?? null;
       setStoryPoints(v);
       // Record the choice in the session context (the wrap-up modal reads it
       // from there, immune to stale list refetches) and patch the shared
       // ticket caches so open lists show it immediately too.
       recordEstimate(currentKey!, v);
+      // Mirror the server rule (ticket-detail-builder): estimating with any
+      // value advances a "Ready to Refine" ticket to "Ready for Development"
+      // (readiness null). Recording it now closes the race where the wrap-up,
+      // opened immediately after, would still read "ready_to_refine" from the
+      // lagging list cache and carry the just-estimated last ticket over.
+      const advancesReadiness = v != null && prevReadiness === "ready_to_refine";
+      if (advancesReadiness) recordReadiness(currentKey!, null);
       patchTicketCaches(currentKey!, { storyPoints: v });
       try {
         // The "set SP -> advance Ready-to-Refine to Ready-for-Development"
@@ -327,23 +344,29 @@ export default function RefinementSessionTicketPage({
         console.error("Failed to update story points:", err);
         setStoryPoints(prev);
         recordEstimate(currentKey!, prev);
+        if (advancesReadiness) recordReadiness(currentKey!, prevReadiness);
         patchTicketCaches(currentKey!, { storyPoints: prev });
       }
     },
-    [currentKey, storyPoints, mutate, recordEstimate],
+    [currentKey, storyPoints, ticketData?.readiness, mutate, recordEstimate, recordReadiness],
   );
 
   const handleReadinessChange = useCallback(
     async (v: TicketReadiness | null) => {
       if (!currentKey) return;
+      // Record into the session so the wrap-up reads the chosen readiness, not
+      // the lagging list cache (same rationale as estimates/subtasks).
+      const prevReadiness = ticketData?.readiness ?? null;
+      recordReadiness(currentKey, v);
       try {
         await tickets.updateMetadata(currentKey, { readiness: v });
         mutate();
       } catch (err) {
         console.error("Failed to update readiness:", err);
+        recordReadiness(currentKey, prevReadiness);
       }
     },
-    [currentKey, mutate],
+    [currentKey, ticketData?.readiness, mutate, recordReadiness],
   );
 
   const handleJiraStatusChange = useCallback(

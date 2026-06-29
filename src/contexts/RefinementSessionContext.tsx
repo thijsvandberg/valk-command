@@ -3,6 +3,7 @@
 import { createContext, useContext, useState, useCallback, useEffect, useMemo, useRef, type ReactNode } from "react";
 import { refinementSessions as refinementSessionsApi } from "@/lib/api-client";
 import { reportClientError } from "@/lib/client-error";
+import type { TicketReadiness } from "@/types/ticket";
 
 export interface QueueTicketMeta {
   key: string;
@@ -29,6 +30,13 @@ interface RefinementSessionState {
   // are not yet reflected in the shared ticket cache, so the last ticket would
   // otherwise show "No subtasks" despite having them.
   sessionSubtaskCounts: Record<string, number>;
+  // Readiness observed during this session, keyed by ticket. Same reason as
+  // sessionEstimates: estimating a ticket advances "Ready to Refine" -> "Ready
+  // for Development" (readiness null) server-side, but the shared list cache the
+  // wrap-up reads can still hold the pre-session "ready_to_refine" value. Without
+  // this mirror the just-estimated last ticket reads as "not ready" and gets
+  // wrongly pre-checked for carry-over when you go straight to wrap-up.
+  sessionReadiness: Record<string, TicketReadiness | null>;
 }
 
 interface RefinementSessionActions {
@@ -40,6 +48,7 @@ interface RefinementSessionActions {
   reorderQueue: (fromIndex: number, toIndex: number) => void;
   recordEstimate: (ticketKey: string, storyPoints: number | null) => void;
   recordSubtaskCount: (ticketKey: string, count: number) => void;
+  recordReadiness: (ticketKey: string, readiness: TicketReadiness | null) => void;
   openEndModal: () => void;
   closeEndModal: () => void;
   saveSession: (generalComment?: string | null) => void;
@@ -61,6 +70,7 @@ const INITIAL_STATE: RefinementSessionState = {
   savedSessionId: null,
   sessionEstimates: {},
   sessionSubtaskCounts: {},
+  sessionReadiness: {},
 };
 
 const INDEX_PERSIST_DELAY = 400;
@@ -92,6 +102,7 @@ export function RefinementSessionProvider({ children }: { children: ReactNode })
       savedSessionId: savedSessionId ?? null,
       sessionEstimates: {},
       sessionSubtaskCounts: {},
+      sessionReadiness: {},
     });
   }, []);
 
@@ -108,6 +119,16 @@ export function RefinementSessionProvider({ children }: { children: ReactNode })
       return {
         ...prev,
         sessionSubtaskCounts: { ...prev.sessionSubtaskCounts, [ticketKey]: count },
+      };
+    });
+  }, []);
+
+  const recordReadiness = useCallback((ticketKey: string, readiness: TicketReadiness | null) => {
+    setState((prev) => {
+      if (prev.sessionReadiness[ticketKey] === readiness) return prev;
+      return {
+        ...prev,
+        sessionReadiness: { ...prev.sessionReadiness, [ticketKey]: readiness },
       };
     });
   }, []);
@@ -222,6 +243,7 @@ export function RefinementSessionProvider({ children }: { children: ReactNode })
       reorderQueue,
       recordEstimate,
       recordSubtaskCount,
+      recordReadiness,
       openEndModal,
       closeEndModal,
       saveSession,
@@ -237,6 +259,7 @@ export function RefinementSessionProvider({ children }: { children: ReactNode })
       reorderQueue,
       recordEstimate,
       recordSubtaskCount,
+      recordReadiness,
       openEndModal,
       closeEndModal,
       saveSession,

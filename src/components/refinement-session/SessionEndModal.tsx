@@ -9,6 +9,7 @@ import { refinementSessions as refinementSessionsApi } from "@/lib/api-client";
 import type { RefinementSessionTicketNoteResponse } from "@/lib/api-client";
 import { Button } from "@/components/ui/Button";
 import { TicketStatusPill } from "@/components/shared/TicketStatusPill";
+import { MetricChip } from "@/components/shared/IssueMetaBadges";
 import { DateTimePicker, todayLocalDate } from "@/components/shared/DateTimePicker";
 import { sessionLabel, compareSessions } from "./refinement-utils";
 import { tickets, apiFetch } from "@/lib/api-client";
@@ -42,6 +43,7 @@ export function SessionEndModal() {
     savedSessionId,
     sessionEstimates,
     sessionSubtaskCounts,
+    sessionReadiness,
     closeEndModal,
     saveSession,
     finishSession,
@@ -218,7 +220,11 @@ export function SessionEndModal() {
       const ticket = allTickets?.find((t) => t.key === key);
       const isSpike = ticket?.type === "spike";
       const storyPoints = key in sessionEstimates ? sessionEstimates[key] : ticket?.storyPoints ?? null;
-      const readiness = (ticket?.readiness ?? null) as TicketReadiness | null;
+      // Readiness recorded during the session wins over the shared list cache,
+      // which lags behind the server's "estimated -> Ready for Development"
+      // advance (same reason as storyPoints/subtaskCount). Without this the
+      // just-refined last ticket reads "ready_to_refine" and is carried over.
+      const readiness = (key in sessionReadiness ? sessionReadiness[key] : ticket?.readiness ?? null) as TicketReadiness | null;
       const subtaskCount = key in sessionSubtaskCounts ? sessionSubtaskCounts[key] : ticket?.totalSubtaskCount ?? 0;
 
       // "Unhandled" = anything the session did not actually finish refining.
@@ -243,7 +249,7 @@ export function SessionEndModal() {
         isUnhandled: neverReached || noEstimate || noSubtasks || notReady,
       };
     });
-  }, [queue, queueMeta, allTickets, sessionEstimates, sessionSubtaskCounts, currentIndex]);
+  }, [queue, queueMeta, allTickets, sessionEstimates, sessionSubtaskCounts, sessionReadiness, currentIndex]);
 
   // Seed the carry-over selection once, after the ticket cache has loaded so
   // the heuristic reads real estimates/subtask counts. Pre-checks every row the
@@ -508,9 +514,7 @@ export function SessionEndModal() {
                       {row.title}
                     </span>
                     {row.storyPoints != null && row.storyPoints > 0 && (
-                      <span className="flex h-5 min-w-5 items-center justify-center rounded-md bg-overlay-subtle px-1.5 font-mono text-caption font-semibold tabular-nums text-text-muted">
-                        {row.storyPoints}
-                      </span>
+                      <MetricChip metric="sp" value={row.storyPoints} />
                     )}
                     {!row.isSpike && (row.storyPoints == null || row.storyPoints === 0) && (
                       <span className="flex h-5 items-center rounded-md bg-amber-500/10 px-1.5 text-caption font-medium text-amber-400/80">
