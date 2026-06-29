@@ -346,7 +346,8 @@ export function LocalResultRow({
   // Sprint Board row, where the pill's interactive segments stop event propagation (BRDG-324).
   return (
     <div
-      role="link"
+      role="option"
+      aria-selected={active}
       aria-label={result.summary}
       onClick={(e) => {
         const newTab = e.metaKey || e.ctrlKey;
@@ -402,6 +403,8 @@ export function JiraResultRow({
 }) {
   return (
     <a
+      role="option"
+      aria-selected={active}
       href={`/tickets/${issue.key}`}
       onClick={(e) => {
         const newTab = e.metaKey || e.ctrlKey;
@@ -594,6 +597,8 @@ export function ConversationResultRow({
 }) {
   return (
     <a
+      role="option"
+      aria-selected={active}
       href={`/chat/${result.id}`}
       onClick={(e) => {
         const newTab = e.metaKey || e.ctrlKey;
@@ -646,6 +651,8 @@ export function CommentResultRow({
 }) {
   return (
     <a
+      role="option"
+      aria-selected={active}
       href={`/tickets/${result.ticketKey}`}
       onClick={(e) => {
         const newTab = e.metaKey || e.ctrlKey;

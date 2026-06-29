@@ -29,6 +29,10 @@ export function SearchModalHeader({
       <input
         ref={inputRef}
         type="text"
+        role="combobox"
+        aria-autocomplete="list"
+        aria-controls="search-modal-listbox"
+        aria-expanded={true}
         value={mode === "local" ? query : (jiraQuery || query)}
         onChange={(e) => { if (mode === "local") setQuery(e.target.value); else setJiraQuery(e.target.value); }}
         placeholder={mode === "local" ? "Search tickets..." : "Search Jira..."}

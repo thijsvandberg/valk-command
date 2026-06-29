@@ -105,6 +105,11 @@ export function CommandPalette() {
               className="flex-1 bg-transparent text-heading-sm text-text-primary placeholder-text-muted focus:outline-none focus-visible:ring-1 focus-visible:ring-inset focus-visible:ring-[var(--color-brand-500)]/50 font-[var(--font-body)]"
               spellCheck={false}
               autoComplete="off"
+              role="combobox"
+              aria-autocomplete="list"
+              aria-controls="command-palette-listbox"
+              aria-expanded={allResults.length > 0}
+              aria-activedescendant={allResults[activeIdx] ? `cmdk-option-${allResults[activeIdx].id}` : undefined}
             />
             {isLoading && (
               <div className="h-4 w-4 shrink-0 animate-spin rounded-full border-2 border-border-strong border-t-white/40" />
@@ -141,6 +146,9 @@ export function CommandPalette() {
         ) : (
           <div
             ref={listRef}
+            id="command-palette-listbox"
+            role="listbox"
+            aria-label="Search results"
             className="overflow-y-auto py-2"
             style={{
               maxHeight: 380,
@@ -171,6 +179,9 @@ export function CommandPalette() {
                     return (
                       <div
                         key={result.id}
+                        id={`cmdk-option-${result.id}`}
+                        role="option"
+                        aria-selected={isActive}
                         data-palette-row=""
                         onMouseEnter={() => setActiveIdx(idx)}
                         onClick={() => executeResult(result)}
