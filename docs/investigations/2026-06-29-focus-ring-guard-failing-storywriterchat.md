@@ -40,3 +40,23 @@ container likely renders the focus treatment instead. Either:
 
 Left for the Story Writer owner to resolve; flagged here so the red guard test on
 `dev` is not mistaken for BRDG-434 fallout.
+
+## Update (BRDG-438 verification, same day): a second red guard
+
+A full-suite run during BRDG-438 found a **second** pre-existing guard failure,
+also unrelated to the inbox work:
+
+```
+src/components/shared/menu-button-guard.test.ts
+- offender: src/components/nav/NavPanel.tsx: active:scale-95
+```
+
+`BRDG-421` standardised the press-scale on `active:scale-[0.97]`; `NavPanel.tsx`
+uses `active:scale-95`. It was introduced by `2803cfa7 feat(nav): add New story
+launcher to the nav dropdown` (a parallel session's commit), not by BRDG-434/438.
+
+So `dev` currently has **two** red guard tests, both from other work:
+`focus-ring-guard` (StoryWriterChat) and `menu-button-guard` (NavPanel). The
+BRDG-438 suite is otherwise green (7187 passing) and its `inbox/page.tsx` is not
+an offender in either guard. Fix: change NavPanel's `active:scale-95` to
+`active:scale-[0.97]` (owner of the nav-launcher feature).
