@@ -42,7 +42,7 @@ export function LinkFloatingToolbar({ editor }: LinkFloatingToolbarProps) {
       shouldShow={({ editor: ed }) => ed.isActive("link")}
       options={{ placement: "bottom-start" }}
     >
-      <div className="flex items-center gap-0.5 rounded-lg border border-border-strong bg-[var(--color-surface-floating)] p-1 shadow-lg shadow-black/40">
+      <div className="flex items-center gap-0.5 rounded-lg border border-border-strong bg-surface-floating p-1 shadow-lg shadow-black/40">
         <ToolbarAction label="Edit link" onClick={handleEdit}>
           <Pencil size={13} strokeWidth={1.5} />
         </ToolbarAction>

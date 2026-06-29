@@ -80,7 +80,7 @@ export function SprintSelectDropdown({
 
       {open && (
         <div ref={panelRef} style={panelStyle} onKeyDown={nav}
-          className="overflow-hidden rounded-xl border border-border-strong bg-[var(--color-surface-floating)] shadow-[var(--shadow-modal)]"
+          className="overflow-hidden rounded-xl border border-border-strong bg-surface-floating shadow-modal"
         >
           <div className="border-b border-border-subtle px-2 py-1.5">
             <div className="relative">

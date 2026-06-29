@@ -841,7 +841,7 @@ export function EpicChildrenBySprint({
           {list}
           <DragOverlay dropAnimation={null}>
             {activeChild ? (
-              <div className="flex items-center gap-2 rounded-lg border border-border-default bg-[var(--color-surface-elevated)] px-3 py-2 text-body-lg text-text-primary shadow-[var(--shadow-lg)]">
+              <div className="flex items-center gap-2 rounded-lg border border-border-default bg-surface-elevated px-3 py-2 text-body-lg text-text-primary shadow-lg">
                 <GripVertical size={12} strokeWidth={1.5} className="text-text-muted" />
                 <span className="truncate">{activeChild.title}</span>
               </div>

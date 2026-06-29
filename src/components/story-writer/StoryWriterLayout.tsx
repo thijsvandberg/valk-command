@@ -156,7 +156,7 @@ export function StoryWriterLayout({ ticketKey, draftTitle, draftType }: StoryWri
                   </Button>
 
                   {actions.showWrapUpMenu && (
-                    <div className="absolute right-0 top-full z-30 mt-2 w-[320px] rounded-2xl border border-border-strong bg-[var(--color-surface-floating)] p-2 shadow-[var(--shadow-lg)]">
+                    <div className="absolute right-0 top-full z-30 mt-2 w-[320px] rounded-2xl border border-border-strong bg-surface-floating p-2 shadow-lg">
                       <p className="px-2 pb-0.5 pt-1 text-caption font-semibold uppercase tracking-label text-text-muted">
                         Wrap up this story
                       </p>
@@ -226,7 +226,7 @@ export function StoryWriterLayout({ ticketKey, draftTitle, draftType }: StoryWri
                 />
 
                 {actions.showMoreMenu && (
-                  <div className="absolute right-0 top-full z-30 mt-1.5 w-56 rounded-xl border border-border-strong bg-[var(--color-surface-floating)] py-1.5 shadow-[var(--shadow-lg)]">
+                  <div className="absolute right-0 top-full z-30 mt-1.5 w-56 rounded-xl border border-border-strong bg-surface-floating py-1.5 shadow-lg">
                     {writer.session && (
                       <button
                         type="button"

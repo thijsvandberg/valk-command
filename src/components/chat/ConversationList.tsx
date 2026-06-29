@@ -295,7 +295,7 @@ export default function ConversationList({
       <button
         type="button"
         onClick={() => toggleGroup(label)}
-        className="sticky top-0 z-[5] flex w-full items-center gap-1.5 bg-[var(--color-surface-elevated)] px-2.5 py-1.5 text-caption font-semibold uppercase tracking-widest text-text-muted cursor-pointer hover:text-text-tertiary transition-colors duration-150 focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-[var(--color-brand-400)]"
+        className="sticky top-0 z-[5] flex w-full items-center gap-1.5 bg-surface-elevated px-2.5 py-1.5 text-caption font-semibold uppercase tracking-widest text-text-muted cursor-pointer hover:text-text-tertiary transition-colors duration-150 focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-[var(--color-brand-400)]"
         data-testid={`group-header-${label}`}
       >
         <ChevronRight
@@ -310,7 +310,7 @@ export default function ConversationList({
   }
 
   return (
-    <div className="flex h-full flex-col bg-[var(--color-surface-elevated)]" data-testid="conversation-list">
+    <div className="flex h-full flex-col bg-surface-elevated" data-testid="conversation-list">
       {/* Header */}
       <div className={`flex items-center ${collapsed ? "justify-center px-1 pt-3 pb-2" : "justify-between px-4 pt-4 pb-3"}`}>
         {!collapsed && (
@@ -378,7 +378,7 @@ export default function ConversationList({
               onChange={(e) => setSearchQuery(e.target.value)}
               onKeyDown={handleSearchKeyDown}
               placeholder="Search conversations..."
-              className="w-full rounded-md border border-border-default bg-[var(--color-surface-base)] py-1.5 pl-8 pr-7 text-body-sm text-text-primary placeholder:text-text-muted focus:border-[var(--color-brand-400)]/40 focus:outline-none transition-colors duration-150"
+              className="w-full rounded-md border border-border-default bg-surface-base py-1.5 pl-8 pr-7 text-body-sm text-text-primary placeholder:text-text-muted focus:border-[var(--color-brand-400)]/40 focus:outline-none transition-colors duration-150"
               aria-label="Search conversations"
               data-testid="conversation-search"
             />
@@ -465,7 +465,7 @@ export default function ConversationList({
       {contextMenu && createPortal(
         <div
           ref={contextMenuRef}
-          className="fixed z-[100] min-w-[160px] rounded-lg border border-border-strong bg-[var(--color-surface-floating)] py-1 shadow-[var(--shadow-popover)]"
+          className="fixed z-[100] min-w-[160px] rounded-lg border border-border-strong bg-surface-floating py-1 shadow-popover"
           style={{ left: contextMenu.x, top: contextMenu.y }}
           data-testid="conversation-context-menu"
         >

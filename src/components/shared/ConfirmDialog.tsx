@@ -36,7 +36,7 @@ export function ConfirmDialog({
 }: ConfirmDialogProps) {
   return (
     <Modal open={open} onClose={onClose}>
-      <div className="w-full max-w-sm rounded-xl border border-border-strong bg-[var(--color-surface-elevated)] p-6 shadow-[var(--shadow-2xl)]">
+      <div className="w-full max-w-sm rounded-xl border border-border-strong bg-surface-elevated p-6 shadow-2xl">
         <h3 className="font-[var(--font-display)] text-body-lg font-semibold text-text-primary">
           {title}
         </h3>

@@ -222,8 +222,8 @@ export function BulkActionBar({
       borderPosition="top"
       className={
         floating
-          ? "bulk-bar-enter sticky bottom-3 z-50 -mx-3 mt-3 gap-2 rounded-xl border border-border-default bg-[var(--color-surface-floating)] shadow-[var(--shadow-lg)] sm:-mx-4 sm:gap-2.5"
-          : "bulk-bar-enter sticky bottom-0 z-50 gap-2 bg-[var(--color-surface-base)] sm:gap-2.5"
+          ? "bulk-bar-enter sticky bottom-3 z-50 -mx-3 mt-3 gap-2 rounded-xl border border-border-default bg-surface-floating shadow-lg sm:-mx-4 sm:gap-2.5"
+          : "bulk-bar-enter sticky bottom-0 z-50 gap-2 bg-surface-base sm:gap-2.5"
       }
     >
       {/* Select all / deselect all checkbox */}

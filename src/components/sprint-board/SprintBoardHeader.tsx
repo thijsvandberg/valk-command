@@ -146,7 +146,7 @@ export function SprintBoardHeader(props: SprintBoardHeaderProps) {
               className={`border-0 bg-transparent ${headerMenuOpen ? "bg-overlay-strong text-text-secondary" : ""}`}
             />
             {headerMenuOpen && (
-              <div className="absolute right-0 top-full z-30 mt-1.5 w-44 rounded-xl border border-border-strong bg-[var(--color-surface-floating)] py-1.5 shadow-[var(--shadow-lg)]">
+              <div className="absolute right-0 top-full z-30 mt-1.5 w-44 rounded-xl border border-border-strong bg-surface-floating py-1.5 shadow-lg">
                 {!isAllView && !activeView && activeSprint && (
                   <button
                     type="button"

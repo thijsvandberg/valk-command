@@ -135,9 +135,9 @@ export default function StoryWriterLandingPage() {
             // Plain overflow-hidden card (not the board's GROUP_CARD_CLASS, whose
             // overflow-clip-margin lets the heading background bleed past the rounded
             // corner): this list has no drag handle that needs to straddle the edge.
-            <div className="overflow-hidden rounded-xl border border-border-subtle bg-[var(--color-surface-elevated)] shadow-[var(--shadow-sm)]">
+            <div className="overflow-hidden rounded-xl border border-border-subtle bg-surface-elevated shadow-sm">
               {/* Card heading (BRDG-325): "Continue session" with the count as a badge. */}
-              <div className="flex items-center gap-2 border-b border-border-subtle bg-[var(--color-surface-chrome)]/30 px-4 py-2.5">
+              <div className="flex items-center gap-2 border-b border-border-subtle bg-surface-chrome/30 px-4 py-2.5">
                 <h2 className="font-[var(--font-display)] text-body-sm font-semibold tracking-[-0.01em] text-text-secondary">
                   Continue Story Writer session
                 </h2>

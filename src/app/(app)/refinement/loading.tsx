@@ -32,7 +32,7 @@ export default function RefinementLoading() {
         </div>
 
         {/* Queue panel skeleton */}
-        <div className="w-72 shrink-0 border-l border-border-default bg-[var(--color-surface-chrome)] p-4">
+        <div className="w-72 shrink-0 border-l border-border-default bg-surface-chrome p-4">
           <div className="mb-3 h-4 w-20 animate-pulse rounded bg-overlay-strong" />
           {Array.from({ length: 3 }, (_, i) => (
             <div key={i} className="mb-2 rounded-md border border-border-subtle p-3">

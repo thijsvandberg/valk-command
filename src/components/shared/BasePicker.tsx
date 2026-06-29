@@ -268,7 +268,7 @@ function PickerPopover({ children, width = "w-[240px]", className, style, header
   const content = (
     <div
       ref={popoverRef}
-      className={`${portal ? "fixed z-[9999]" : `absolute top-full ${align === "left" ? "left-0" : "right-0"} z-50 mt-1.5`} ${width} rounded-xl border border-border-default bg-[var(--color-surface-floating)]${className ? ` ${className}` : ""}`}
+      className={`${portal ? "fixed z-[9999]" : `absolute top-full ${align === "left" ? "left-0" : "right-0"} z-50 mt-1.5`} ${width} rounded-xl border border-border-default bg-surface-floating${className ? ` ${className}` : ""}`}
       style={portal ? { ...getPopoverStyle(), ...style } : style}
     >
       {header}

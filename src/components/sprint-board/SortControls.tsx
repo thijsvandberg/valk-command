@@ -41,7 +41,7 @@ export function SortDropdown({
           <span className="relative flex items-center justify-center">
             <ArrowUpDown className="h-3.5 w-3.5" strokeWidth={1.5} />
             {isActive && (
-              <span className="absolute -top-0.5 -right-1 h-[6px] w-[6px] rounded-full bg-[var(--color-brand-400)] ring-2 ring-[var(--color-surface-base)]" />
+              <span className="absolute -top-0.5 -right-1 h-[6px] w-[6px] rounded-full bg-[var(--color-brand-400)] ring-2 ring-surface-base" />
             )}
           </span>
         }
@@ -51,7 +51,7 @@ export function SortDropdown({
       />
 
       {open && (
-        <div className="absolute top-full right-0 z-50 mt-1 w-52 rounded-lg border border-border-strong bg-[var(--color-surface-floating)] py-1 shadow-[var(--shadow-lg)]">
+        <div className="absolute top-full right-0 z-50 mt-1 w-52 rounded-lg border border-border-strong bg-surface-floating py-1 shadow-lg">
           {options.map((opt) => (
             <button
               key={opt.field}

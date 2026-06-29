@@ -24,7 +24,7 @@ function TicketContextSidebar({ ticketKey }: { ticketKey: string }) {
     : "No description available.";
 
   return (
-    <div className="border-l border-border-default bg-[var(--color-surface-elevated)] p-4 w-72 shrink-0 overflow-y-auto">
+    <div className="border-l border-border-default bg-surface-elevated p-4 w-72 shrink-0 overflow-y-auto">
       <div className="mb-3 text-label font-semibold uppercase tracking-wider text-text-muted">
         Ticket Context
       </div>

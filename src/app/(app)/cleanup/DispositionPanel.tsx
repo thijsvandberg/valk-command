@@ -210,7 +210,7 @@ export function DispositionPanel({
 
   return (
     <aside
-      className="flex w-[420px] shrink-0 flex-col overflow-hidden border-l border-border-default bg-[var(--color-surface-base)]"
+      className="flex w-[420px] shrink-0 flex-col overflow-hidden border-l border-border-default bg-surface-base"
       style={{ boxShadow: "var(--shadow-lg)" }}
     >
       {/* Header */}
@@ -250,7 +250,7 @@ export function DispositionPanel({
         ) : (
           <>
             {/* Overall + scan timestamps */}
-            <div className="mb-4 flex items-center justify-between rounded-xl border border-border-subtle bg-[var(--color-surface-elevated)] px-4 py-3">
+            <div className="mb-4 flex items-center justify-between rounded-xl border border-border-subtle bg-surface-elevated px-4 py-3">
               <div>
                 <span className="text-label uppercase tracking-wider text-text-muted">Overall</span>
                 <div className="mt-1">
@@ -281,7 +281,7 @@ export function DispositionPanel({
                 {scoredTopics.map((t) => (
                   <li
                     key={t.key}
-                    className="rounded-xl border border-border-subtle bg-[var(--color-surface-elevated)] px-4 py-3"
+                    className="rounded-xl border border-border-subtle bg-surface-elevated px-4 py-3"
                   >
                     <div className="flex items-center justify-between gap-3">
                       <span className="text-body-sm font-medium text-text-secondary">
@@ -398,7 +398,7 @@ export function DispositionPanel({
           placeholder="Optional note (e.g. why this is a false positive)…"
           rows={2}
           maxLength={500}
-          className="mb-3 w-full resize-none rounded-lg border border-border-default bg-[var(--color-surface-elevated)] px-3 py-2 text-body-sm text-text-secondary placeholder:text-text-muted focus-visible:border-[var(--color-brand-500)]/40 focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-[var(--color-brand-400)]"
+          className="mb-3 w-full resize-none rounded-lg border border-border-default bg-surface-elevated px-3 py-2 text-body-sm text-text-secondary placeholder:text-text-muted focus-visible:border-[var(--color-brand-500)]/40 focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-[var(--color-brand-400)]"
         />
         <div className="flex items-center gap-2">
           <Button

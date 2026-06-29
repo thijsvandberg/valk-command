@@ -137,7 +137,7 @@ function VersionPickerInner({
         />
       </BasePicker.Trigger>
 
-      <BasePicker.Popover width="w-72" className="overflow-hidden shadow-[var(--shadow-modal)] border-border-strong">
+      <BasePicker.Popover width="w-72" className="overflow-hidden shadow-modal border-border-strong">
         <div className="max-h-[340px] overflow-y-auto">
           {ungrouped.map((o) => (
             <VersionPickerItem

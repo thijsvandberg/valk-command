@@ -63,7 +63,7 @@ export function SessionSelectDropdown({
 
       {open && (
         <div ref={panelRef} style={panelStyle} onKeyDown={nav}
-          className="overflow-hidden rounded-xl border border-border-strong bg-[var(--color-surface-floating)] shadow-[var(--shadow-modal)] py-1.5"
+          className="overflow-hidden rounded-xl border border-border-strong bg-surface-floating shadow-modal py-1.5"
         >
           <div className="max-h-52 overflow-y-auto">
             {options.length === 0

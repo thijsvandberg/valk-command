@@ -49,13 +49,13 @@ export function SortableQueueItem({
       style={style}
       className={`group flex items-center gap-3 rounded-lg px-3 py-2.5 ${
         isDragging
-          ? "bg-[var(--color-surface-floating)] shadow-[var(--shadow-lg)]"
+          ? "bg-surface-floating shadow-lg"
           : "bg-overlay-subtle hover:bg-overlay-default"
       }`}
     >
       {/* Drag handle floats in the left gutter, half outside the row (mirrors ChildIssueRow),
           so it never pushes the content right and only appears on hover. */}
-      <span className="absolute left-0 top-1/2 z-10 flex h-6 w-[18px] -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-md border border-border-subtle bg-[var(--color-surface-elevated)] text-text-tertiary opacity-0 shadow-[var(--shadow-sm)] transition-opacity duration-150 group-hover:opacity-100 focus-within:opacity-100">
+      <span className="absolute left-0 top-1/2 z-10 flex h-6 w-[18px] -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-md border border-border-subtle bg-surface-elevated text-text-tertiary opacity-0 shadow-sm transition-opacity duration-150 group-hover:opacity-100 focus-within:opacity-100">
         <span
           className="flex cursor-grab items-center hover:!opacity-100 focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-[var(--color-brand-400)] active:cursor-grabbing"
           {...attributes}
@@ -108,7 +108,7 @@ export function SortableQueueItem({
               <span>Move</span>
             </button>
             {menuOpen && (
-              <div className="absolute right-0 top-full z-30 mt-1 min-w-[180px] rounded-lg border border-border-strong bg-[var(--color-surface-elevated)] py-1 shadow-[var(--shadow-lg)]">
+              <div className="absolute right-0 top-full z-30 mt-1 min-w-[180px] rounded-lg border border-border-strong bg-surface-elevated py-1 shadow-lg">
                 <div className="px-3 py-1.5 text-caption font-semibold uppercase tracking-wider text-text-muted">
                   Move to
                 </div>

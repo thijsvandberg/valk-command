@@ -705,7 +705,7 @@ export function TicketTable({
         {activeTicket && (
           <table className="w-full border-collapse text-body-lg">
             <tbody>
-              <tr className="bg-[var(--color-surface-elevated)] shadow-[var(--shadow-lg)] rounded-lg border border-border-strong">
+              <tr className="bg-surface-elevated shadow-lg rounded-lg border border-border-strong">
                 <td className="p-0">
                   <div className="flex items-center gap-2 py-2 pl-2 pr-3">
                     <IssueTypeIcon type={activeTicket.type} />
@@ -1020,7 +1020,7 @@ export function TicketTable({
       {isGrouped ? groupedTable : ((flatHeader || tickets.length > 0 || flatComposerActive) && (
         <div className={CARD_CLASS}>
           {flatHeader && (
-            <div className="@container relative flex items-center gap-3 bg-[var(--color-surface-chrome)]/30 px-3 py-[9px] rounded-t-xl border-b border-border-subtle">
+            <div className="@container relative flex items-center gap-3 bg-surface-chrome/30 px-3 py-[9px] rounded-t-xl border-b border-border-subtle">
               <div className="min-w-0 flex-1">{flatHeader}</div>
             </div>
           )}

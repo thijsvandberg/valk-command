@@ -503,7 +503,7 @@ export default function ChatLayout({ conversationId }: ChatLayoutProps) {
         {/* Conversation sidebar */}
         <aside
           data-testid="chat-sidebar"
-          className={`fixed top-0 right-0 z-40 h-full border-l border-border-default bg-[var(--color-surface-elevated)] transition-[transform,width] duration-200 ease-[cubic-bezier(0.34,1.56,0.64,1)] lg:relative lg:z-auto lg:order-first lg:border-l-0 lg:border-r lg:translate-x-0 ${
+          className={`fixed top-0 right-0 z-40 h-full border-l border-border-default bg-surface-elevated transition-[transform,width] duration-200 ease-[cubic-bezier(0.34,1.56,0.64,1)] lg:relative lg:z-auto lg:order-first lg:border-l-0 lg:border-r lg:translate-x-0 ${
             sidebarOpen ? "translate-x-0" : "translate-x-full"
           }`}
           style={{ width: sidebarOpen ? 288 : sidebar.effectiveWidth }}

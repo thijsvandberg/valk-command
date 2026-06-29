@@ -88,7 +88,7 @@ export function BoardFieldToggle({
         className="border-0 bg-transparent text-text-tertiary hover:bg-hover-list-item hover:text-text-secondary"
       />
       {open && (
-        <div className="absolute top-full right-0 z-50 mt-1.5 flex w-56 flex-col overflow-hidden rounded-xl border border-border-strong bg-[var(--color-surface-floating)] shadow-[var(--shadow-xl)]">
+        <div className="absolute top-full right-0 z-50 mt-1.5 flex w-56 flex-col overflow-hidden rounded-xl border border-border-strong bg-surface-floating shadow-xl">
           <BoardFieldList
             visible={visible}
             onChange={onChange}

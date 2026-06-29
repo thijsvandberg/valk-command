@@ -79,7 +79,7 @@ export function AddSubtasksModal({ open, ticketKey, ticketTitle, onClose, onCrea
 
   return (
     <Modal open={open} onClose={handleClose} aria-label={`Add subtasks to ${ticketKey}`}>
-      <div className="w-full max-w-[540px] overflow-hidden rounded-2xl border border-border-default bg-[var(--color-surface-elevated)] shadow-[var(--shadow-2xl)]">
+      <div className="w-full max-w-[540px] overflow-hidden rounded-2xl border border-border-default bg-surface-elevated shadow-2xl">
         {/* Header */}
         <div className="flex items-center justify-between gap-3 border-b border-border-subtle px-5 py-4">
           <div className="flex min-w-0 items-center gap-3">
@@ -107,7 +107,7 @@ export function AddSubtasksModal({ open, ticketKey, ticketTitle, onClose, onCrea
 
         {/* Body */}
         <div className="px-5 py-4">
-          <div className="overflow-clip rounded-xl border border-border-default bg-[var(--color-surface-base)] focus-within:border-[var(--color-brand-500)]/45 [transition:border-color_.15s_ease]">
+          <div className="overflow-clip rounded-xl border border-border-default bg-surface-base focus-within:border-[var(--color-brand-500)]/45 [transition:border-color_.15s_ease]">
             {created.map((sub) => {
               const isPending = sub.key.startsWith("pending-");
               return (

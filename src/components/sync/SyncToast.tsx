@@ -92,10 +92,10 @@ function ToastItem({
   return (
     <div
       ref={ref}
-      className={`pointer-events-auto flex items-start gap-2.5 rounded-lg border px-3.5 py-2.5 shadow-[var(--shadow-md)] backdrop-blur-sm max-w-[340px] ${
+      className={`pointer-events-auto flex items-start gap-2.5 rounded-lg border px-3.5 py-2.5 shadow-md backdrop-blur-sm max-w-[340px] ${
         isError
-          ? "border-amber-500/20 bg-[var(--color-surface-floating)]/95"
-          : "border-[var(--color-brand-500)]/15 bg-[var(--color-surface-floating)]/95"
+          ? "border-amber-500/20 bg-surface-floating/95"
+          : "border-[var(--color-brand-500)]/15 bg-surface-floating/95"
       }`}
       role="alert"
     >

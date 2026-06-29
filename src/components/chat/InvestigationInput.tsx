@@ -17,13 +17,13 @@ interface InvestigationInputProps {
 function ModeToggle({ explainMode, onChange }: { explainMode: boolean; onChange: (v: boolean) => void }) {
   return (
     <div className="flex items-center">
-      <div className="flex items-center rounded-lg border border-border-strong bg-[var(--color-surface-floating)] p-0.5">
+      <div className="flex items-center rounded-lg border border-border-strong bg-surface-floating p-0.5">
         <button
           type="button"
           onClick={() => onChange(false)}
           className={`rounded-md px-3 py-1 text-body-sm font-medium font-[var(--font-body)] cursor-pointer transition-colors duration-150 ${
             !explainMode
-              ? "bg-[var(--color-brand-600)]/20 text-[var(--color-brand-400)] shadow-[var(--shadow-sm)]"
+              ? "bg-[var(--color-brand-600)]/20 text-[var(--color-brand-400)] shadow-sm"
               : "text-text-tertiary hover:text-text-secondary"
           } focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-[var(--color-brand-400)]`}
         >
@@ -34,7 +34,7 @@ function ModeToggle({ explainMode, onChange }: { explainMode: boolean; onChange:
           onClick={() => onChange(true)}
           className={`rounded-md px-3 py-1 text-body-sm font-medium font-[var(--font-body)] cursor-pointer transition-colors duration-150 ${
             explainMode
-              ? "bg-[var(--color-brand-600)]/20 text-[var(--color-brand-400)] shadow-[var(--shadow-sm)]"
+              ? "bg-[var(--color-brand-600)]/20 text-[var(--color-brand-400)] shadow-sm"
               : "text-text-tertiary hover:text-text-secondary"
           } focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-[var(--color-brand-400)]`}
         >

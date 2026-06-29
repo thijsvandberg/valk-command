@@ -87,7 +87,7 @@ export function TaskCompletionNotifier() {
       {toasts.slice(-3).map((toast) => (
         <div
           key={toast.id}
-          className="pointer-events-auto flex items-start gap-2.5 rounded-lg border border-[var(--color-brand-500)]/15 bg-[var(--color-surface-floating)]/95 px-3.5 py-2.5 shadow-[var(--shadow-md)] backdrop-blur-sm max-w-[320px]"
+          className="pointer-events-auto flex items-start gap-2.5 rounded-lg border border-[var(--color-brand-500)]/15 bg-surface-floating/95 px-3.5 py-2.5 shadow-md backdrop-blur-sm max-w-[320px]"
           role="alert"
         >
           <CheckCircle2 className="h-4 w-4 shrink-0 mt-0.5 text-[var(--color-brand-400)]" strokeWidth={2} />

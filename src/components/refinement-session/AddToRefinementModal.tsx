@@ -88,7 +88,7 @@ export function AddToRefinementModal({
   return (
     <>
     <Modal open={open && !showCreate} onClose={onClose}>
-      <div className="w-full max-w-sm rounded-xl border border-border-strong bg-[var(--color-surface-elevated)] p-5 shadow-[var(--shadow-2xl)]">
+      <div className="w-full max-w-sm rounded-xl border border-border-strong bg-surface-elevated p-5 shadow-2xl">
         <div className="flex items-center gap-2">
           <Boxes size={16} strokeWidth={1.5} className="text-[var(--color-brand-400)]" />
           <h3 className="font-[var(--font-display)] text-body-lg font-semibold text-text-primary">

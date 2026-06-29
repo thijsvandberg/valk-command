@@ -35,7 +35,7 @@ export function SubFlowForm({
           onClick={() => onModeChange("create")}
           className={`flex flex-1 items-center justify-center gap-1.5 rounded-md py-1.5 text-body-sm font-medium cursor-pointer transition-colors duration-150 ${
             subFlow.mode === "create"
-              ? "bg-[var(--color-surface-floating)] text-text-primary shadow-sm"
+              ? "bg-surface-floating text-text-primary shadow-sm"
               : "text-text-tertiary hover:text-text-secondary"
           } focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-[var(--color-brand-400)]`}
         >
@@ -47,7 +47,7 @@ export function SubFlowForm({
           onClick={() => onModeChange("existing")}
           className={`flex flex-1 items-center justify-center gap-1.5 rounded-md py-1.5 text-body-sm font-medium cursor-pointer transition-colors duration-150 ${
             subFlow.mode === "existing"
-              ? "bg-[var(--color-surface-floating)] text-text-primary shadow-sm"
+              ? "bg-surface-floating text-text-primary shadow-sm"
               : "text-text-tertiary hover:text-text-secondary"
           } focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-[var(--color-brand-400)]`}
         >
@@ -68,7 +68,7 @@ export function SubFlowForm({
               type="text"
               value={subFlow.title}
               onChange={(e) => onTitleChange(e.target.value)}
-              className="w-full rounded-md border border-border-strong bg-[var(--color-surface-floating)] px-3 py-2 text-body-lg text-text-primary placeholder-text-muted focus:border-[var(--color-brand-500)]/40 focus:outline-none transition-colors duration-150"
+              className="w-full rounded-md border border-border-strong bg-surface-floating px-3 py-2 text-body-lg text-text-primary placeholder-text-muted focus:border-[var(--color-brand-500)]/40 focus:outline-none transition-colors duration-150"
               placeholder="Story title (optional, AI will suggest)"
             />
           </div>
@@ -80,7 +80,7 @@ export function SubFlowForm({
               <select
                 value={subFlow.sprintId}
                 onChange={(e) => onSprintChange(e.target.value)}
-                className="w-full appearance-none rounded-md border border-border-strong bg-[var(--color-surface-floating)] px-3 py-2 pr-8 text-body-lg text-text-primary focus:border-[var(--color-brand-500)]/40 focus:outline-none transition-colors duration-150 cursor-pointer"
+                className="w-full appearance-none rounded-md border border-border-strong bg-surface-floating px-3 py-2 pr-8 text-body-lg text-text-primary focus:border-[var(--color-brand-500)]/40 focus:outline-none transition-colors duration-150 cursor-pointer"
               >
                 {subFlow.loadingSprints ? (
                   <option value="">Loading sprints...</option>
@@ -115,7 +115,7 @@ export function SubFlowForm({
             type="text"
             value={subFlow.existingKey}
             onChange={(e) => onExistingKeyChange(e.target.value.toUpperCase())}
-            className="w-full rounded-md border border-border-strong bg-[var(--color-surface-floating)] px-3 py-2 font-mono text-body-lg text-text-primary placeholder-text-muted focus:border-[var(--color-brand-500)]/40 focus:outline-none transition-colors duration-150"
+            className="w-full rounded-md border border-border-strong bg-surface-floating px-3 py-2 font-mono text-body-lg text-text-primary placeholder-text-muted focus:border-[var(--color-brand-500)]/40 focus:outline-none transition-colors duration-150"
             placeholder="VPL-123"
           />
           <p className="mt-1.5 text-label text-text-tertiary">

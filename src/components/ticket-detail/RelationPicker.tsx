@@ -41,7 +41,7 @@ export function RelationPicker({
   );
 
   return (
-    <div className={`rounded-lg border border-border-strong bg-[var(--color-surface-elevated)] shadow-[var(--shadow-lg)] ${className}`}>
+    <div className={`rounded-lg border border-border-strong bg-surface-elevated shadow-lg ${className}`}>
       <div className="px-2 pt-2 pb-1">
         <input
           ref={filterRef}

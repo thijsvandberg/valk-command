@@ -279,7 +279,7 @@ export default function MessageList({ messages, loading, error, conversation, sh
             return (
               <div key={message.id} className="group/msg flex flex-col items-start">
                 <div
-                  className={`chat-bubble-assistant w-full rounded-xl border border-border-default bg-[var(--color-surface-floating)] px-5 py-4 text-body-lg leading-prose font-[var(--font-body)] text-text-primary ${isSending ? "opacity-60" : ""} ${message.cancelled ? "opacity-40" : ""}`}
+                  className={`chat-bubble-assistant w-full rounded-xl border border-border-default bg-surface-floating px-5 py-4 text-body-lg leading-prose font-[var(--font-body)] text-text-primary ${isSending ? "opacity-60" : ""} ${message.cancelled ? "opacity-40" : ""}`}
                   data-testid="message-investigation"
                 >
                   <MessageContent content={message.content} />

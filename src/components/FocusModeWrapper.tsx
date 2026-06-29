@@ -13,7 +13,7 @@ function FocusModeLayout({ children }: { children: ReactNode }) {
   });
 
   return (
-    <div className="flex flex-col h-screen bg-[var(--color-surface-base)] text-text-primary">
+    <div className="flex flex-col h-screen bg-surface-base text-text-primary">
       <a
         href="#main-content"
         className="sr-only focus:not-sr-only focus:fixed focus:top-4 focus:left-4 focus:z-[200] focus:rounded-lg focus:bg-[var(--color-brand-600)] focus:px-4 focus:py-2 focus:text-white focus:text-body-lg focus:shadow-lg focus:outline-none focus-visible:ring-1 focus-visible:ring-inset focus-visible:ring-[var(--color-brand-500)]/50"
@@ -36,7 +36,7 @@ function FocusModeLayout({ children }: { children: ReactNode }) {
       <div className="flex flex-1 min-h-0">
         <main
           id="main-content"
-          className="flex-1 overflow-auto isolate bg-[var(--color-surface-elevated)]"
+          className="flex-1 overflow-auto isolate bg-surface-elevated"
         >
           {children}
         </main>
@@ -49,9 +49,9 @@ function FocusModeLayout({ children }: { children: ReactNode }) {
         aria-label="Exit focus mode"
         style={style}
         className={`fixed ${CORNER_CLASSES[corner]} z-[100] flex h-8 w-8 items-center justify-center rounded-lg cursor-pointer touch-none
-          bg-[var(--color-surface-floating)] border border-border-default
+          bg-surface-floating border border-border-default
           text-text-tertiary
-          hover:text-text-primary hover:bg-[var(--color-surface-elevated)]
+          hover:text-text-primary hover:bg-surface-elevated
           focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)]
           active:scale-[0.97]
           shadow-[0_2px_8px_rgba(0,0,0,0.15),0_0_1px_rgba(0,0,0,0.1)]

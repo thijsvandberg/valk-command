@@ -645,7 +645,7 @@ export function MultiSprintView({
             const extraCount = sameColumnChecked.length > 1 ? sameColumnChecked.length - 1 : 0;
             return (
               <div
-                className="rounded-md border border-[var(--color-brand-500)]/20 bg-[var(--color-surface-elevated)] px-3 py-2 shadow-[var(--shadow-lg)]"
+                className="rounded-md border border-[var(--color-brand-500)]/20 bg-surface-elevated px-3 py-2 shadow-lg"
                 style={{ opacity: 0.95 }}
               >
                 <div className="flex items-center gap-2">

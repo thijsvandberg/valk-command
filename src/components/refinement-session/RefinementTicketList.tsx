@@ -158,7 +158,7 @@ export function RefinementTicketList({
           </button>
           {pillSettingsOpen && (
             <div
-              className="absolute top-full right-0 z-50 mt-1 min-w-[160px] rounded-xl border border-border-default bg-[var(--color-surface-floating)] py-1 shadow-[var(--shadow-popover)]"
+              className="absolute top-full right-0 z-50 mt-1 min-w-[160px] rounded-xl border border-border-default bg-surface-floating py-1 shadow-popover"
               style={{ animation: "fadeInUp 0.1s ease" }}
             >
               <div className="px-3 py-1.5 text-caption font-semibold uppercase tracking-wider text-text-muted">
@@ -212,7 +212,7 @@ export function RefinementTicketList({
 
       {/* Ticket list — unified through the shared sprint-board BoardRow (BRDG-389). */}
       {availableTickets.length > 0 ? (
-        <div ref={listRef} className="overflow-clip [overflow-clip-margin:14px] rounded-xl border border-border-subtle bg-[var(--color-surface-elevated)] shadow-[var(--shadow-sm)]">
+        <div ref={listRef} className="overflow-clip [overflow-clip-margin:14px] rounded-xl border border-border-subtle bg-surface-elevated shadow-sm">
           <table className="w-full table-fixed border-collapse text-body-lg">
             <tbody>
           {availableTickets.map((ticket, idx) => {

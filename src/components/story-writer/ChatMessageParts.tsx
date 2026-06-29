@@ -202,7 +202,7 @@ export function MessageInfoButton({
 
       {open && (
         <div
-          className={`absolute bottom-full mb-2 w-52 rounded-xl border border-border-strong bg-[var(--color-surface-floating)] shadow-[var(--shadow-lg)] z-20 p-3 ${
+          className={`absolute bottom-full mb-2 w-52 rounded-xl border border-border-strong bg-surface-floating shadow-lg z-20 p-3 ${
             isUser ? "left-0" : "right-0"
           }`}
         >
@@ -428,7 +428,7 @@ export function ChatMessage({
             ? ""
             : isUser
               ? "px-4 py-3 rounded-2xl rounded-br-lg bg-[var(--color-brand-600)]/[0.18] text-text-primary border border-[var(--color-brand-500)]/[0.18] shadow-sm"
-              : "px-4 py-3 rounded-2xl rounded-bl-lg bg-[var(--color-surface-floating)] text-text-primary border border-border-default shadow-sm"
+              : "px-4 py-3 rounded-2xl rounded-bl-lg bg-surface-floating text-text-primary border border-border-default shadow-sm"
         } ${isCancelled ? "opacity-40" : ""}`}
       >
         {displayContent && (
@@ -517,7 +517,7 @@ export function ChatMessage({
               <>
                 <div className="relative">
                   {(onViewDraft || onFocusDraft) && (
-                    <div className="absolute right-2 top-2 z-10 flex items-center gap-0.5 rounded-md border border-border-default bg-[var(--color-surface-floating)] p-0.5 opacity-0 shadow-[0_4px_14px_-4px_rgba(0,0,0,0.18)] transition-opacity duration-150 group-hover/draft:opacity-100 focus-within:opacity-100">
+                    <div className="absolute right-2 top-2 z-10 flex items-center gap-0.5 rounded-md border border-border-default bg-surface-floating p-0.5 opacity-0 shadow-[0_4px_14px_-4px_rgba(0,0,0,0.18)] transition-opacity duration-150 group-hover/draft:opacity-100 focus-within:opacity-100">
                       {onViewDraft && (
                         <button
                           type="button"

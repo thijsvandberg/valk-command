@@ -35,7 +35,7 @@ export function TimeAgo({ createdAt, eventAt }: { createdAt: string; eventAt?: s
         </span>
         {visible && (
           <span
-            className={`pointer-events-none absolute right-0 z-tooltip whitespace-nowrap rounded-md border border-border-strong bg-[var(--color-surface-floating)] px-2.5 py-1.5 text-label text-text-secondary shadow-[var(--shadow-md)] ${
+            className={`pointer-events-none absolute right-0 z-tooltip whitespace-nowrap rounded-md border border-border-strong bg-surface-floating px-2.5 py-1.5 text-label text-text-secondary shadow-md ${
               pos === "above" ? "bottom-full mb-1.5" : "top-full mt-1.5"
             }`}
           >
@@ -55,7 +55,7 @@ export function TimeAgo({ createdAt, eventAt }: { createdAt: string; eventAt?: s
           </span>
           {syncVisible && (
             <span
-              className={`pointer-events-none absolute right-0 z-tooltip whitespace-nowrap rounded-md border border-border-strong bg-[var(--color-surface-floating)] px-2.5 py-1.5 text-label text-text-secondary shadow-[var(--shadow-md)] ${
+              className={`pointer-events-none absolute right-0 z-tooltip whitespace-nowrap rounded-md border border-border-strong bg-surface-floating px-2.5 py-1.5 text-label text-text-secondary shadow-md ${
                 pos === "above" ? "bottom-full mb-1.5" : "top-full mt-1.5"
               }`}
             >

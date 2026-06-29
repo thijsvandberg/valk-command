@@ -83,7 +83,7 @@ export function VelocitySparkline({ data, isLoading }: VelocitySparklineProps) {
         {/* Tooltip */}
         {tooltip !== null && activePoint && (
           <div
-            className="pointer-events-none absolute z-10 -translate-x-1/2 whitespace-nowrap rounded bg-[var(--color-surface-floating)] border border-border-strong px-2 py-1 shadow-[var(--shadow-md)]"
+            className="pointer-events-none absolute z-10 -translate-x-1/2 whitespace-nowrap rounded bg-surface-floating border border-border-strong px-2 py-1 shadow-md"
             style={{
               left: activePoint.x,
               top: activePoint.y - HEIGHT - 4,

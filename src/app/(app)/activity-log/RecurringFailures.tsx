@@ -35,7 +35,7 @@ export function RecurringFailures({
   }
 
   return (
-    <Card className="mb-5 overflow-hidden border-amber-400/[0.12] shadow-[var(--shadow-sm)]">
+    <Card className="mb-5 overflow-hidden border-amber-400/[0.12] shadow-sm">
       <div className="border-b border-border-subtle bg-amber-400/[0.03] px-4 py-3">
         <PanelHeader
           icon={<RepeatIcon className="h-3.5 w-3.5" strokeWidth={1.5} />}

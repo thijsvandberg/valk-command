@@ -46,7 +46,7 @@ export function ViewHeader({ icon, children, actions, className, hideNotificatio
   if (!target) return null;
 
   return createPortal(
-    <div className={`relative flex bg-[var(--color-surface-chrome)] px-8 py-3.5${className ? ` ${className}` : ""}`}>
+    <div className={`relative flex bg-surface-chrome px-8 py-3.5${className ? ` ${className}` : ""}`}>
       {/* Top accent gradient */}
       <div className="pointer-events-none absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-[var(--color-brand-glow)] to-transparent" />
       {/* Bottom seam: a faint fading hairline instead of a hard rule, so the header

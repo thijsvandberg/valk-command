@@ -29,7 +29,7 @@ function MetaSection({ title, children }: { title: string; children: React.React
   return (
     <div>
       <h3 className="mb-1 text-caption font-semibold uppercase tracking-label text-text-muted">{title}</h3>
-      <div className="rounded-lg border border-border-subtle bg-[var(--color-surface-elevated)] px-3.5 py-1">
+      <div className="rounded-lg border border-border-subtle bg-surface-elevated px-3.5 py-1">
         {children}
       </div>
     </div>

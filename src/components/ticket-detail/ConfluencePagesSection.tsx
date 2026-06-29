@@ -159,7 +159,7 @@ function SearchPopover({
   return (
     <div
       ref={containerRef}
-      className="absolute left-0 right-0 top-full z-50 mt-1 rounded-xl border border-border-strong bg-[var(--color-surface-floating)] shadow-[var(--shadow-xl)]"
+      className="absolute left-0 right-0 top-full z-50 mt-1 rounded-xl border border-border-strong bg-surface-floating shadow-xl"
       style={{ minWidth: 240 }}
     >
       {/* Search input */}

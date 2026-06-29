@@ -183,7 +183,7 @@ export const PlaceholderRow = memo(function PlaceholderRow({
       {/* Drag handle in the left gutter (epic view), over the leading edge so it never
           pushes content right; revealed on hover. Mirrors ChildIssueRow. */}
       {dragHandleSlot && (
-        <span className="absolute left-0 top-1/2 z-10 flex h-6 w-[18px] -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-md border border-border-subtle bg-[var(--color-surface-elevated)] text-text-tertiary opacity-0 shadow-[var(--shadow-sm)] transition-opacity duration-150 group-hover/row:opacity-100 focus-within:opacity-100">
+        <span className="absolute left-0 top-1/2 z-10 flex h-6 w-[18px] -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-md border border-border-subtle bg-surface-elevated text-text-tertiary opacity-0 shadow-sm transition-opacity duration-150 group-hover/row:opacity-100 focus-within:opacity-100">
           {dragHandleSlot}
         </span>
       )}
@@ -227,7 +227,7 @@ export const PlaceholderRow = memo(function PlaceholderRow({
             }}
             rows={1}
             placeholder="Placeholder title"
-            className="min-w-0 resize-none overflow-hidden rounded border border-[var(--color-brand-500)]/40 bg-[var(--color-surface-elevated)] px-1.5 py-1 text-body-lg leading-snug text-text-primary outline-none focus:border-[var(--color-brand-500)]/70"
+            className="min-w-0 resize-none overflow-hidden rounded border border-[var(--color-brand-500)]/40 bg-surface-elevated px-1.5 py-1 text-body-lg leading-snug text-text-primary outline-none focus:border-[var(--color-brand-500)]/70"
           />
           <textarea
             value={descDraft}
@@ -235,13 +235,13 @@ export const PlaceholderRow = memo(function PlaceholderRow({
             onKeyDown={(e) => { if (e.key === "Escape") cancel(); }}
             rows={2}
             placeholder="Notes / description (optional)"
-            className="min-w-0 resize-y rounded border border-border-default bg-[var(--color-surface-elevated)] px-1.5 py-1 text-body-sm leading-relaxed text-text-secondary outline-none focus:border-[var(--color-brand-500)]/60"
+            className="min-w-0 resize-y rounded border border-border-default bg-surface-elevated px-1.5 py-1 text-body-sm leading-relaxed text-text-secondary outline-none focus:border-[var(--color-brand-500)]/60"
           />
           <div className="flex items-center gap-1.5">
             <button
               type="button"
               onClick={save}
-              className="flex h-6 items-center gap-1 rounded border border-border-strong bg-[var(--color-surface-elevated)] px-2 text-label font-medium text-text-secondary transition-colors duration-100 hover:text-text-primary cursor-pointer focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-[var(--color-brand-400)]"
+              className="flex h-6 items-center gap-1 rounded border border-border-strong bg-surface-elevated px-2 text-label font-medium text-text-secondary transition-colors duration-100 hover:text-text-primary cursor-pointer focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-[var(--color-brand-400)]"
             >
               <Check size={12} strokeWidth={2} /> Save
             </button>

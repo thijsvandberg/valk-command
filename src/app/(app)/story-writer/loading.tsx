@@ -22,7 +22,7 @@ export default function StoryWriterLoading() {
             {Array.from({ length: 4 }, (_, i) => (
               <div
                 key={i}
-                className="rounded-lg border border-border-default bg-[var(--color-surface-elevated)] p-4"
+                className="rounded-lg border border-border-default bg-surface-elevated p-4"
                 style={{ minHeight: 120 }}
               >
                 <div className="flex items-center justify-between gap-2">

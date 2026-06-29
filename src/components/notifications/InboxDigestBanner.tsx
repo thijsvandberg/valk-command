@@ -56,7 +56,7 @@ export function InboxDigestBanner() {
       role="status"
       aria-live="polite"
       aria-label="New inbox tickets"
-      className="pointer-events-auto fixed bottom-6 left-6 z-40 w-[340px] max-w-[calc(100vw-3rem)] overflow-hidden rounded-2xl border border-border-default bg-[var(--color-surface-floating)]"
+      className="pointer-events-auto fixed bottom-6 left-6 z-40 w-[340px] max-w-[calc(100vw-3rem)] overflow-hidden rounded-2xl border border-border-default bg-surface-floating"
       style={{ animation: "fadeInUp 0.24s ease-out", boxShadow: "var(--shadow-xl)" }}
     >
       {/* Brand hairline accent: a thin teal-to-transparent strip pinned to the top

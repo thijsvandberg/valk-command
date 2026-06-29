@@ -43,7 +43,7 @@ export function ChatBubble({
         className={`max-w-[75%] overflow-x-auto [overflow-wrap:anywhere] rounded-2xl px-4 py-3 text-body-lg leading-prose font-[var(--font-body)] shadow-sm ${
           isUser
             ? "rounded-br-lg bg-[var(--color-brand-600)]/[0.18] text-text-primary border border-[var(--color-brand-500)]/[0.18]"
-            : "rounded-bl-lg bg-[var(--color-surface-floating)] text-text-primary border border-border-default"
+            : "rounded-bl-lg bg-surface-floating text-text-primary border border-border-default"
         } ${dimmed ? "opacity-60" : ""} ${cancelled ? "opacity-40" : ""} ${className ?? ""}`}
         data-testid={testId ?? `message-${role}`}
       >

@@ -513,7 +513,7 @@ export function LinkedIssuesSection({ issues, ticketKey, onMutate, onSelectTicke
       {headerMenuOpen && (
         <div
           role="menu"
-          className="absolute top-full right-0 z-50 mt-1 w-[232px] overflow-hidden rounded-xl border border-border-default bg-[var(--color-surface-floating)] p-1 shadow-[var(--shadow-popover)]"
+          className="absolute top-full right-0 z-50 mt-1 w-[232px] overflow-hidden rounded-xl border border-border-default bg-surface-floating p-1 shadow-popover"
           style={{ animation: "fadeInUp 0.1s ease" }}
         >
           <button
@@ -565,8 +565,8 @@ export function LinkedIssuesSection({ issues, ticketKey, onMutate, onSelectTicke
   // The link composer (one shared instance) renders under whichever group's "+" is active, or at
   // the bottom when opened from the header "+" — styled as the shared raised inset bar (BRDG-315).
   const linkComposer = (
-      <div ref={composerRef} className="mt-3 rounded-lg bg-[var(--color-surface-chrome)]/40 p-3 lg:p-4">
-      <div className="relative rounded-lg border border-border-default bg-[var(--color-surface-elevated)] shadow-[var(--shadow-sm)]">
+      <div ref={composerRef} className="mt-3 rounded-lg bg-surface-chrome/40 p-3 lg:p-4">
+      <div className="relative rounded-lg border border-border-default bg-surface-elevated shadow-sm">
         <div className="flex items-center gap-3 px-3 py-2">
           <div ref={inlineRelationRef} className="relative shrink-0">
             <button
@@ -643,7 +643,7 @@ export function LinkedIssuesSection({ issues, ticketKey, onMutate, onSelectTicke
             ref={inlineDropdownRef}
             onMouseDown={() => { interactingWithDropdownRef.current = true; }}
             onMouseUp={() => { setTimeout(() => { interactingWithDropdownRef.current = false; }, 300); }}
-            className="absolute left-0 right-0 top-full z-50 mt-1 max-h-72 overflow-y-auto rounded-lg border border-border-strong bg-[var(--color-surface-elevated)] shadow-[var(--shadow-lg)]"
+            className="absolute left-0 right-0 top-full z-50 mt-1 max-h-72 overflow-y-auto rounded-lg border border-border-strong bg-surface-elevated shadow-lg"
             style={{ scrollbarWidth: "thin", scrollbarColor: "var(--color-overlay-strong) transparent" }}
           >
             <StatusFilterChips
@@ -690,7 +690,7 @@ export function LinkedIssuesSection({ issues, ticketKey, onMutate, onSelectTicke
           <div
             onMouseDown={() => { interactingWithDropdownRef.current = true; }}
             onMouseUp={() => { setTimeout(() => { interactingWithDropdownRef.current = false; }, 300); }}
-            className="absolute left-0 right-0 top-full z-50 mt-1 max-h-72 overflow-y-auto rounded-lg border border-border-strong bg-[var(--color-surface-elevated)] py-1 shadow-[var(--shadow-lg)]"
+            className="absolute left-0 right-0 top-full z-50 mt-1 max-h-72 overflow-y-auto rounded-lg border border-border-strong bg-surface-elevated py-1 shadow-lg"
             style={{ scrollbarWidth: "thin", scrollbarColor: "var(--color-overlay-strong) transparent" }}
           >
             <div className="flex items-center gap-1.5 px-3 py-1.5">
@@ -791,7 +791,7 @@ export function LinkedIssuesSection({ issues, ticketKey, onMutate, onSelectTicke
                 const editingItem = items.find((i) => `${i.key}:${i.relation}` === editingKey);
                 if (!editingItem) return null;
                 return (
-                  <div ref={editPanelRef} className="mt-2 rounded-lg bg-[var(--color-surface-chrome)]/40 p-3">
+                  <div ref={editPanelRef} className="mt-2 rounded-lg bg-surface-chrome/40 p-3">
                     <div className="mb-1.5 flex items-center gap-1.5 text-label font-medium uppercase tracking-wider text-text-muted">
                       <ArrowLeftRight size={11} strokeWidth={1.5} />
                       <span>Change link type for <span className="font-mono normal-case text-text-secondary">{editingItem.key}</span></span>

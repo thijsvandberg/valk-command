@@ -187,19 +187,19 @@ function TeamFilterDropdown({
         className={`flex h-7 w-7 items-center justify-center rounded-lg border cursor-pointer transition-colors duration-100 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)] ${
           active
             ? "border-[var(--color-brand-500)]/30 bg-[var(--color-brand-500)]/8 text-[var(--color-brand-400)]"
-            : "border-border-default bg-[var(--color-surface-elevated)] text-text-muted hover:text-text-tertiary hover:border-border-strong"
+            : "border-border-default bg-surface-elevated text-text-muted hover:text-text-tertiary hover:border-border-strong"
         }`}
         title={active ? `Team: ${active}` : "Filter by team"}
       >
         <span className="relative flex items-center justify-center">
           <ListFilter size={14} strokeWidth={1.5} />
           {active && (
-            <span className="absolute -top-1 -right-1.5 h-[6px] w-[6px] rounded-full bg-[var(--color-brand-400)] ring-2 ring-[var(--color-surface-floating)]" />
+            <span className="absolute -top-1 -right-1.5 h-[6px] w-[6px] rounded-full bg-[var(--color-brand-400)] ring-2 ring-surface-floating" />
           )}
         </span>
       </button>
       {open && (
-        <div className="absolute top-full right-0 z-50 mt-1 w-28 rounded-lg border border-border-strong bg-[var(--color-surface-floating)] py-1 shadow-[var(--shadow-lg)]">
+        <div className="absolute top-full right-0 z-50 mt-1 w-28 rounded-lg border border-border-strong bg-surface-floating py-1 shadow-lg">
           <button
             type="button"
             onClick={() => { onToggle(null); setOpen(false); }}
@@ -459,7 +459,7 @@ export function SprintListModal({
   const content = (
     <div
       ref={ref}
-      className={portalAnchor ? "fixed z-[9999] w-96 rounded-lg border border-border-strong bg-[var(--color-surface-floating)]" : `absolute top-full z-50 mt-1.5 w-96 rounded-lg border border-border-strong bg-[var(--color-surface-floating)] shadow-[var(--shadow-popover)] ${alignLeft ? "left-0" : "right-0"}`}
+      className={portalAnchor ? "fixed z-[9999] w-96 rounded-lg border border-border-strong bg-surface-floating" : `absolute top-full z-50 mt-1.5 w-96 rounded-lg border border-border-strong bg-surface-floating shadow-popover ${alignLeft ? "left-0" : "right-0"}`}
       style={portalAnchor ? {
         top: portalAnchor.top,
         left: portalAnchor.left,

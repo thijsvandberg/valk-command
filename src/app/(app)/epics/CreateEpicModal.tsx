@@ -54,7 +54,7 @@ export function CreateEpicModal({ onClose, showToast }: CreateEpicModalProps) {
 
   return (
     <Modal open onClose={onClose} aria-label="Create epic">
-      <div className="w-full max-w-md rounded-xl border border-border-strong bg-[var(--color-surface-floating)] shadow-[var(--shadow-xl)]">
+      <div className="w-full max-w-md rounded-xl border border-border-strong bg-surface-floating shadow-xl">
         {/* Header */}
         <div className="flex items-center justify-between border-b border-border-default px-5 py-3.5">
           <h2 className="font-[var(--font-display)] text-body-lg font-semibold text-text-primary">
@@ -84,7 +84,7 @@ export function CreateEpicModal({ onClose, showToast }: CreateEpicModalProps) {
               onChange={(e) => { setTitle(e.target.value); setError(null); }}
               onKeyDown={(e) => { if (e.key === "Enter" && title.trim() && !creating) handleCreate(); }}
               placeholder="e.g. Booking calendar revamp"
-              className="w-full rounded-lg border border-border-default bg-[var(--color-surface-elevated)] px-3 py-2 text-body-sm text-text-primary
+              className="w-full rounded-lg border border-border-default bg-surface-elevated px-3 py-2 text-body-sm text-text-primary
                 placeholder:text-text-muted
                 focus:border-[var(--color-brand-500)]/50 focus:outline-none focus:ring-1 focus:ring-[var(--color-brand-500)]/30
                 transition-colors duration-100"
@@ -103,7 +103,7 @@ export function CreateEpicModal({ onClose, showToast }: CreateEpicModalProps) {
               onChange={(e) => setDescription(e.target.value)}
               placeholder="What is this epic about? You can flesh this out later..."
               rows={4}
-              className="w-full rounded-lg border border-border-default bg-[var(--color-surface-elevated)] px-3 py-2 text-body-sm leading-relaxed text-text-primary
+              className="w-full rounded-lg border border-border-default bg-surface-elevated px-3 py-2 text-body-sm leading-relaxed text-text-primary
                 placeholder:text-text-muted resize-none
                 focus:border-[var(--color-brand-500)]/50 focus:outline-none focus:ring-1 focus:ring-[var(--color-brand-500)]/30
                 transition-colors duration-100"

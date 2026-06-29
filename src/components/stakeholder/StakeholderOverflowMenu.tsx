@@ -91,7 +91,7 @@ export function StakeholderOverflowMenu({
       </button>
 
       {open && (
-        <div className="absolute right-0 top-full mt-1.5 z-50 min-w-[188px] rounded-lg border border-border-strong bg-[var(--color-surface-floating)] py-1 shadow-[var(--shadow-popover)]">
+        <div className="absolute right-0 top-full mt-1.5 z-50 min-w-[188px] rounded-lg border border-border-strong bg-surface-floating py-1 shadow-popover">
           <MenuItem
             onClick={() => { onSyncSprint(); setOpen(false); }}
             disabled={isSyncing || syncDisabled}

@@ -165,7 +165,7 @@ export function NotificationBell() {
           ref={dropdownRef}
           style={{ position: "fixed", top: dropdownPos.top, left: dropdownPos.left, zIndex: "var(--z-notification)" }}
         >
-          <Card variant="floating" className="w-[360px] shadow-[var(--shadow-xl)]">
+          <Card variant="floating" className="w-[360px] shadow-xl">
           {/* Header */}
           <div className="flex items-center justify-between border-b border-border-default px-4 py-3">
             <span className="font-[var(--font-display)] text-body font-semibold text-text-secondary">

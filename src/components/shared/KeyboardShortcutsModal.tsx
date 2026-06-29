@@ -27,7 +27,7 @@ export function KeyboardShortcutsModal() {
 
   return (
     <Modal open={open} onClose={handleClose} aria-label="Keyboard shortcuts">
-      <div className="w-full max-w-md rounded-xl border border-border-strong bg-[var(--color-surface-elevated)] shadow-[var(--shadow-2xl)]">
+      <div className="w-full max-w-md rounded-xl border border-border-strong bg-surface-elevated shadow-2xl">
         <div className="px-5 pt-5 pb-3">
           <h2 className="font-[var(--font-display)] text-body-lg font-semibold text-text-primary">
             Keyboard shortcuts

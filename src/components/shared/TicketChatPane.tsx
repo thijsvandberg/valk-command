@@ -258,7 +258,7 @@ function PaneHeader({ onClose, isStreaming }: {
           <div className="relative flex h-6 w-6 items-center justify-center rounded-lg bg-[var(--color-brand-500)]/[0.1] border border-[var(--color-brand-500)]/[0.18]">
             <MessageSquareText size={13} strokeWidth={1.5} className="text-[var(--color-brand-400)]" />
             {isStreaming && (
-              <span className="absolute -top-1 -right-1 h-2 w-2 rounded-full bg-[var(--color-brand-400)] ring-2 ring-[var(--color-surface-elevated)] animate-pulse" />
+              <span className="absolute -top-1 -right-1 h-2 w-2 rounded-full bg-[var(--color-brand-400)] ring-2 ring-surface-elevated animate-pulse" />
             )}
           </div>
           <span className="text-body-sm font-medium text-text-primary">Chat</span>

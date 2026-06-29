@@ -166,7 +166,7 @@ export function POStatusCell({
       </button>
 
       {open && (
-        <div className="absolute top-full right-0 z-50 mt-1 w-52 rounded-lg border border-border-strong bg-[var(--color-surface-floating)] py-1 shadow-[var(--shadow-lg)]">
+        <div className="absolute top-full right-0 z-50 mt-1 w-52 rounded-lg border border-border-strong bg-surface-floating py-1 shadow-lg">
           {PO_STATUS_OPTIONS.map((opt) => {
             const optColors = opt.value ? PO_STATUS_COLORS[opt.value] : null;
             return (

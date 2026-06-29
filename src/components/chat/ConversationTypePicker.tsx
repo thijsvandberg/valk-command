@@ -53,7 +53,7 @@ function ConversationTypePickerInner({ onCreate }: { onCreate: (type: Conversati
         )}
       </BasePicker.Trigger>
 
-      <BasePicker.Popover width="min-w-[180px]" className="rounded-lg border-border-strong shadow-[var(--shadow-lg)]">
+      <BasePicker.Popover width="min-w-[180px]" className="rounded-lg border-border-strong shadow-lg">
         <div className="p-1" role="menu">
           {options.map((opt) => (
             <button

@@ -156,7 +156,7 @@ export function SyncIndicator({
   const syncPanel = panelPos ? (
     <div
       ref={panelRef}
-      className="rounded-lg border border-border-default bg-[var(--color-surface-floating)] shadow-[var(--shadow-popover)] overflow-hidden"
+      className="rounded-lg border border-border-default bg-surface-floating shadow-popover overflow-hidden"
       style={{ position: "fixed", bottom: panelPos.bottom, left: panelPos.left, width: panelPos.width, zIndex: "var(--z-notification)" }}
     >
       <div className="px-3 py-2.5 border-b border-border-default flex items-center justify-between">

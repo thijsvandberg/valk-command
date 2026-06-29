@@ -105,7 +105,7 @@ export function ChildIssueComposer({
           <div
             ref={popoverRef}
             // surface-elevated (not literal white) so the popover is opaque in both themes (BRDG-315).
-            className="fixed z-[9999] min-w-[160px] overflow-hidden rounded-lg border border-border-default bg-[var(--color-surface-elevated)] shadow-[var(--shadow-popover)]"
+            className="fixed z-[9999] min-w-[160px] overflow-hidden rounded-lg border border-border-default bg-surface-elevated shadow-popover"
             style={getPopoverStyle()}
           >
             {CHILD_ISSUE_TYPES.map((opt) => (
@@ -175,15 +175,15 @@ export function ChildIssueComposer({
     // Raised inset bar floating in a faint footer strip (the chosen B3d treatment).
     return (
       <div
-        className={`bg-[var(--color-surface-chrome)]/40 p-3 lg:p-4 ${className}`}
+        className={`bg-surface-chrome/40 p-3 lg:p-4 ${className}`}
         onClick={(e) => e.stopPropagation()}
       >
-        <div className="relative flex items-center gap-3 rounded-lg border border-border-default bg-[var(--color-surface-elevated)] px-3 py-2 shadow-[var(--shadow-sm)]">
+        <div className="relative flex items-center gap-3 rounded-lg border border-border-default bg-surface-elevated px-3 py-2 shadow-sm">
           <button
             ref={triggerRef}
             type="button"
             onClick={() => (open ? handleClose() : handleOpen())}
-            className={`flex shrink-0 cursor-pointer items-center gap-1.5 rounded-full border bg-[var(--color-surface-elevated)] px-2.5 py-1 text-text-secondary transition-colors duration-150 hover:border-[var(--color-brand-400)] focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-[var(--color-brand-400)] ${isPlaceholder ? "border-dashed border-border-strong" : "border-border-default"}`}
+            className={`flex shrink-0 cursor-pointer items-center gap-1.5 rounded-full border bg-surface-elevated px-2.5 py-1 text-text-secondary transition-colors duration-150 hover:border-[var(--color-brand-400)] focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-[var(--color-brand-400)] ${isPlaceholder ? "border-dashed border-border-strong" : "border-border-default"}`}
           >
             {isPlaceholder ? <Pencil size={13} strokeWidth={2} /> : <IssueTypeIcon type={selectedType} size={13} strokeWidth={2} />}
             <span className="text-body-sm font-medium">{isPlaceholder ? "Placeholder" : currentTypeConfig.label}</span>

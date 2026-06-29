@@ -245,7 +245,7 @@ export function TicketTabContent({
             keeps it out of the layout until the editor mounts its toolbar. */}
         <div
           id={toolbarPortalId}
-          className={`sticky top-0 z-10 border-b border-border-default bg-[var(--color-surface-elevated)] empty:hidden ${railClass}`}
+          className={`sticky top-0 z-10 border-b border-border-default bg-surface-elevated empty:hidden ${railClass}`}
         />
 
         <div className={`${railClass} ${activeTab === "history" ? "pt-6 pb-4" : "py-6"}`}>

@@ -197,7 +197,7 @@ export function DiffViewer({
       {/* Action footer: portaled to sit outside max-w container, full-width sticky */}
       {showFooter && portalTarget && createPortal(
         <div
-          className={`diff-action-footer flex flex-wrap items-center gap-x-3 gap-y-2 border-t border-border-default bg-[var(--color-surface-elevated)]/95 backdrop-blur-sm ${compact ? "px-5 py-2.5" : "px-8 py-4"}`}
+          className={`diff-action-footer flex flex-wrap items-center gap-x-3 gap-y-2 border-t border-border-default bg-surface-elevated/95 backdrop-blur-sm ${compact ? "px-5 py-2.5" : "px-8 py-4"}`}
         >
           {mergeResult !== null && !showConflictActions && (
             <span className="min-w-0 flex-1 text-body-sm text-text-secondary">

@@ -72,7 +72,7 @@ export function QuickActionsPopover({
       />
 
       {open && (
-        <div className="absolute bottom-full left-0 mb-1.5 w-52 rounded-lg border border-border-strong bg-[var(--color-surface-floating)] py-1 shadow-xl shadow-black/30">
+        <div className="absolute bottom-full left-0 mb-1.5 w-52 rounded-lg border border-border-strong bg-surface-floating py-1 shadow-xl shadow-black/30">
           {actions.map((action) => {
             const Icon = action.icon;
             const showSend =

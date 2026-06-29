@@ -126,7 +126,7 @@ export function StakeholderBriefing({
       {/* Panel */}
       <div
         ref={drawerRef}
-        className="fixed right-0 top-0 bottom-0 z-modal flex flex-col border-l border-border-default bg-[var(--color-surface-elevated)]"
+        className="fixed right-0 top-0 bottom-0 z-modal flex flex-col border-l border-border-default bg-surface-elevated"
         style={{ width: drawerWidth, maxWidth: "90vw", boxShadow: "-8px 0 32px rgba(0,0,0,0.5)" }}
       >
         {/* Resize handle */}

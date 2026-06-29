@@ -185,7 +185,7 @@ export function ChatInput({
         )}
 
         <div className={`px-3 pb-3 pt-2.5 ${contentClassName ?? ""}`}>
-          <div className="relative flex rounded-2xl border border-border-strong bg-[var(--color-surface-elevated)] focus-within:border-[var(--color-brand-500)]/40 focus-within:shadow-[0_0_0_3px_color-mix(in_srgb,var(--color-brand-500)_8%,transparent)] transition-[border-color,box-shadow] duration-150">
+          <div className="relative flex rounded-2xl border border-border-strong bg-surface-elevated focus-within:border-[var(--color-brand-500)]/40 focus-within:shadow-[0_0_0_3px_color-mix(in_srgb,var(--color-brand-500)_8%,transparent)] transition-[border-color,box-shadow] duration-150">
             <textarea
               ref={textareaRef}
               value={value}
@@ -213,7 +213,7 @@ export function ChatInput({
       )}
 
       <div className={`px-3 pb-2.5 pt-1 ${contentClassName ?? ""}`}>
-        <div className="flex flex-col rounded-2xl border border-border-strong bg-[var(--color-surface-elevated)] focus-within:border-[var(--color-brand-500)]/30 transition-colors duration-150">
+        <div className="flex flex-col rounded-2xl border border-border-strong bg-surface-elevated focus-within:border-[var(--color-brand-500)]/30 transition-colors duration-150">
           {resizable && (
             <div
               onMouseDown={handleResizeMouseDown}

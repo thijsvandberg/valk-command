@@ -201,7 +201,7 @@ function SortableSubtaskRow({
       }
       dragHandleSlot={dragHandle}
       style={style}
-      className={isDragging ? "bg-[var(--color-surface-elevated)] shadow-[var(--shadow-lg)] rounded-lg" : ""}
+      className={isDragging ? "bg-surface-elevated shadow-lg rounded-lg" : ""}
       dndProps={showDragHandle ? {} : { ...attributes, ...listeners }}
     />
   );

@@ -44,7 +44,7 @@ export default function TicketDetailLoading() {
         </div>
 
         {/* Sidebar skeleton */}
-        <div className="w-[320px] shrink-0 border-l border-border-default bg-[var(--color-surface-chrome)]">
+        <div className="w-[320px] shrink-0 border-l border-border-default bg-surface-chrome">
           <div className="p-5 space-y-5">
             {[1, 2, 3, 4].map((i) => (
               <div key={i} className="space-y-2">

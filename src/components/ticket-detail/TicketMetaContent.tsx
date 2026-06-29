@@ -695,7 +695,7 @@ export function TicketMetaContent({
       <div className="min-h-4 flex-1" />
 
       {/* Footer sections: pushed to bottom, scrolls with the host */}
-      <div className="-mx-5 -mb-4 border-t border-border-default bg-[var(--color-surface-elevated)] px-5 pt-3 pb-4 space-y-3">
+      <div className="-mx-5 -mb-4 border-t border-border-default bg-surface-elevated px-5 pt-3 pb-4 space-y-3">
         {/* PO Note */}
         <div>
           <button

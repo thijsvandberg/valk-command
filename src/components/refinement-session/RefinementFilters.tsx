@@ -80,7 +80,7 @@ export function RefinementFilters({
           />
         </button>
         {filters.lastUpdatedOpen && (
-          <div className="absolute left-0 top-full z-50 mt-1.5 w-40 rounded-xl border border-border-strong bg-[var(--color-surface-floating)] py-1 shadow-[var(--shadow-lg)]">
+          <div className="absolute left-0 top-full z-50 mt-1.5 w-40 rounded-xl border border-border-strong bg-surface-floating py-1 shadow-lg">
             {LAST_UPDATED_OPTIONS.map((opt) => (
               <button
                 key={opt.value}

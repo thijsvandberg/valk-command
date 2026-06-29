@@ -159,7 +159,7 @@ export function CursorMenu({
 export { MenuItem };
 
 // Floating-card styling shared by the hover flyouts and the menu surfaces.
-const FLYOUT_PANEL = "rounded-xl border border-border-default bg-[var(--color-surface-floating)] shadow-[var(--shadow-lg)]";
+const FLYOUT_PANEL = "rounded-xl border border-border-default bg-surface-floating shadow-lg";
 
 // Per-destination icons for the inline quick-moves (BRDG-374): active = a dot, next =
 // arrow-right, backlog = inbox. "More sprints" uses the move (arrow-left-right) icon.
@@ -363,7 +363,7 @@ function SprintSubPanel({
   return (
     <div className="py-1">
       <div className="px-2 pb-1">
-        <div className="flex items-center gap-1.5 rounded-md border border-border-default bg-[var(--color-surface-base)] px-2 py-1">
+        <div className="flex items-center gap-1.5 rounded-md border border-border-default bg-surface-base px-2 py-1">
           <Search className="h-3 w-3 shrink-0 text-text-muted" strokeWidth={1.5} />
           <input
             type="text"
@@ -417,7 +417,7 @@ function AssigneeSubPanel({ onSelect }: { onSelect: (accountId: string | null, n
   return (
     <div className="py-1">
       <div className="px-2 pb-1">
-        <div className="flex items-center gap-1.5 rounded-md border border-border-default bg-[var(--color-surface-base)] px-2 py-1">
+        <div className="flex items-center gap-1.5 rounded-md border border-border-default bg-surface-base px-2 py-1">
           <Search className="h-3 w-3 shrink-0 text-text-muted" strokeWidth={1.5} />
           <input
             type="text"
@@ -469,7 +469,7 @@ function LabelSubPanel({ onSelect }: { onSelect: (labels: string[], mode: "add" 
   return (
     <div className="py-1">
       <div className="px-2 pb-1">
-        <div className="flex items-center gap-1.5 rounded-md border border-border-default bg-[var(--color-surface-base)] px-2 py-1">
+        <div className="flex items-center gap-1.5 rounded-md border border-border-default bg-surface-base px-2 py-1">
           <Search className="h-3 w-3 shrink-0 text-text-muted" strokeWidth={1.5} />
           <input
             type="text"

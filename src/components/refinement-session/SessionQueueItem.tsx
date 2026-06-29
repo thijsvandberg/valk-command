@@ -47,7 +47,7 @@ export function SessionQueueItem({
       style={style}
       className={`flex w-full items-center gap-2 px-3 py-2 hover:bg-hover-list-item active:bg-overlay-default ${
         isCurrent ? "bg-overlay-subtle" : ""
-      } ${isDragging ? "bg-[var(--color-surface-elevated)] shadow-[var(--shadow-lg)] rounded-lg" : ""} ${
+      } ${isDragging ? "bg-surface-elevated shadow-lg rounded-lg" : ""} ${
         isRefined ? "opacity-80" : ""
       }`}
     >

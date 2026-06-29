@@ -102,7 +102,7 @@ interface MenuListProps extends React.HTMLAttributes<HTMLDivElement> {
 
 export function MenuList({ className, children, ...rest }: MenuListProps) {
   const classes = [
-    "min-w-[180px] rounded-lg border border-border-default bg-[var(--color-surface-floating)] py-1 shadow-[var(--shadow-popover)]",
+    "min-w-[180px] rounded-lg border border-border-default bg-surface-floating py-1 shadow-popover",
     className,
   ]
     .filter(Boolean)

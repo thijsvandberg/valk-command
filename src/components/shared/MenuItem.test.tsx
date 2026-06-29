@@ -81,8 +81,8 @@ describe("MenuList", () => {
       </MenuList>,
     );
     const el = container.firstChild as HTMLElement;
-    expect(el.className).toContain("shadow-[var(--shadow-popover)]");
-    expect(el.className).toContain("bg-[var(--color-surface-floating)]");
+    expect(el.className).toContain("shadow-popover");
+    expect(el.className).toContain("bg-surface-floating");
     expect(el.className).toContain("absolute");
   });
 });

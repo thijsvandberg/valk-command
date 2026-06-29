@@ -212,7 +212,7 @@ export function ScanControls({ onRan }: ScanControlsProps) {
                         }}
                         aria-label="Auto scan daily count"
                         className={[
-                          "h-6 w-12 rounded-md border border-border-default bg-[var(--color-surface-elevated)]",
+                          "h-6 w-12 rounded-md border border-border-default bg-surface-elevated",
                           "px-1.5 text-center text-label tabular-nums text-text-secondary",
                           "focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-[var(--color-brand-400)]",
                           "[appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none",

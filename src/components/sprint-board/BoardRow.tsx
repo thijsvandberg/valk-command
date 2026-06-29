@@ -482,7 +482,7 @@ export const BoardRow = memo(forwardRef<HTMLTableRowElement, BoardRowBaseProps>(
               // edge, so without this its half would pass the cursor through to the
               // background and the row would drop its hover. As a row descendant its
               // pointer events bubble to the row's own drag listeners.
-              className="absolute -left-[3px] top-1/2 flex h-6 w-[18px] -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-md border border-border-subtle bg-[var(--color-surface-elevated)] text-text-tertiary opacity-0 shadow-[var(--shadow-sm)] transition-opacity duration-150 group-hover/row:opacity-100"
+              className="absolute -left-[3px] top-1/2 flex h-6 w-[18px] -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-md border border-border-subtle bg-surface-elevated text-text-tertiary opacity-0 shadow-sm transition-opacity duration-150 group-hover/row:opacity-100"
             >
               <GripVertical size={12} strokeWidth={1.5} />
             </span>
@@ -493,7 +493,7 @@ export const BoardRow = memo(forwardRef<HTMLTableRowElement, BoardRowBaseProps>(
               native grip and is hidden during multiselect, so the inline checkbox + handle can
               coexist while rows are checked. Mirrors the ChildIssueRow gutter treatment. */}
           {dragHandleSlot && !someChecked && (
-            <span className="absolute -left-[3px] top-1/2 z-10 flex h-6 w-[18px] -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-md border border-border-subtle bg-[var(--color-surface-elevated)] text-text-tertiary opacity-0 shadow-[var(--shadow-sm)] transition-opacity duration-150 group-hover/row:opacity-100 focus-within:opacity-100">
+            <span className="absolute -left-[3px] top-1/2 z-10 flex h-6 w-[18px] -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-md border border-border-subtle bg-surface-elevated text-text-tertiary opacity-0 shadow-sm transition-opacity duration-150 group-hover/row:opacity-100 focus-within:opacity-100">
               {dragHandleSlot}
             </span>
           )}
@@ -597,7 +597,7 @@ export const BoardRow = memo(forwardRef<HTMLTableRowElement, BoardRowBaseProps>(
                   }
                 }}
                 rows={1}
-                className="min-w-0 flex-1 resize-none overflow-hidden rounded border border-[var(--color-brand-500)]/40 bg-[var(--color-surface-elevated)] px-1.5 py-1 text-body-lg leading-snug text-text-primary shadow-[var(--shadow-lg)] outline-none focus:border-[var(--color-brand-500)]/70"
+                className="min-w-0 flex-1 resize-none overflow-hidden rounded border border-[var(--color-brand-500)]/40 bg-surface-elevated px-1.5 py-1 text-body-lg leading-snug text-text-primary shadow-lg outline-none focus:border-[var(--color-brand-500)]/70"
               />
               <button
                 type="button"
@@ -606,7 +606,7 @@ export const BoardRow = memo(forwardRef<HTMLTableRowElement, BoardRowBaseProps>(
                   if (trimmed && trimmed !== ticket.title) onTitleChange?.(ticket.key, trimmed);
                   onEditingTitleKeyChange?.(null);
                 }}
-                className="flex h-7 w-7 shrink-0 cursor-pointer items-center justify-center rounded border border-border-strong bg-[var(--color-surface-elevated)] text-text-tertiary shadow-[var(--shadow-lg)] transition-colors duration-100 hover:text-text-secondary focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-[var(--color-brand-400)]"
+                className="flex h-7 w-7 shrink-0 cursor-pointer items-center justify-center rounded border border-border-strong bg-surface-elevated text-text-tertiary shadow-lg transition-colors duration-100 hover:text-text-secondary focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-[var(--color-brand-400)]"
                 title="Save"
               >
                 <Check size={14} strokeWidth={1.5} />
@@ -614,7 +614,7 @@ export const BoardRow = memo(forwardRef<HTMLTableRowElement, BoardRowBaseProps>(
               <button
                 type="button"
                 onClick={() => onEditingTitleKeyChange?.(null)}
-                className="flex h-7 w-7 shrink-0 cursor-pointer items-center justify-center rounded border border-border-strong bg-[var(--color-surface-elevated)] text-text-tertiary shadow-[var(--shadow-lg)] transition-colors duration-100 hover:text-text-secondary focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-[var(--color-brand-400)]"
+                className="flex h-7 w-7 shrink-0 cursor-pointer items-center justify-center rounded border border-border-strong bg-surface-elevated text-text-tertiary shadow-lg transition-colors duration-100 hover:text-text-secondary focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-[var(--color-brand-400)]"
                 title="Cancel"
               >
                 <X size={14} strokeWidth={1.5} />

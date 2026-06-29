@@ -86,7 +86,7 @@ export function UserProfilePopover({
       role="menu"
       tabIndex={-1}
       onKeyDown={keyNavHandlers.onKeyDown}
-      className="fixed w-64 rounded-xl border border-border-strong bg-[var(--color-surface-floating)] shadow-[var(--shadow-xl)]"
+      className="fixed w-64 rounded-xl border border-border-strong bg-surface-floating shadow-xl"
       style={{
         zIndex: 60,
         bottom: pos.bottom,

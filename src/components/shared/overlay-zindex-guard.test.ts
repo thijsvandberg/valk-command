@@ -39,7 +39,7 @@ describe("BRDG-422: z-index inversions are fixed", () => {
   it("the shared Popover uses token z + popover shadow", () => {
     const src = read("src/components/shared/Popover.tsx");
     expect(src).toContain("z-dropdown");
-    expect(src).toContain("shadow-[var(--shadow-popover)]");
+    expect(src).toContain("shadow-popover");
   });
 });
 
@@ -62,6 +62,6 @@ describe("BRDG-422: hand-rolled overlays expose dialog semantics", () => {
     const src = read("src/components/story-writer/SplitStoryPicker.tsx");
     expect(src).toContain('import { Modal }');
     expect(src).toContain("<Modal");
-    expect(src).toContain("shadow-[var(--shadow-modal)]");
+    expect(src).toContain("shadow-modal");
   });
 });

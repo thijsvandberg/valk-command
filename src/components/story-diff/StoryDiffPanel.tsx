@@ -174,7 +174,7 @@ export function StoryDiffPanel({ versions, onBack }: StoryDiffPanelProps) {
         {isFirstVersion ? (
           <div>
             <p className="mb-2 text-body-sm font-medium text-text-tertiary">Initial version</p>
-            <div className="max-h-[70vh] overflow-y-auto rounded-lg border border-border-default bg-[var(--color-surface-elevated)] p-5 font-[var(--font-body)] text-body-lg leading-prose text-text-primary whitespace-pre-wrap">
+            <div className="max-h-[70vh] overflow-y-auto rounded-lg border border-border-default bg-surface-elevated p-5 font-[var(--font-body)] text-body-lg leading-prose text-text-primary whitespace-pre-wrap">
               {current.content || <span className="text-text-tertiary">No content</span>}
             </div>
           </div>

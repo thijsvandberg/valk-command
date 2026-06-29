@@ -153,7 +153,7 @@ export function LinkIssueDialog({
 
   return (
     <Modal open={open} onClose={onClose} aria-label="Link issue">
-      <div className="flex w-full max-w-2xl flex-col rounded-xl border border-border-strong bg-[var(--color-surface-elevated)] p-6 shadow-[var(--shadow-2xl)]" style={{ maxHeight: "min(80vh, 700px)" }}>
+      <div className="flex w-full max-w-2xl flex-col rounded-xl border border-border-strong bg-surface-elevated p-6 shadow-2xl" style={{ maxHeight: "min(80vh, 700px)" }}>
         <h3 className="font-[var(--font-display)] text-body-lg font-semibold text-text-primary">
           Link issue
         </h3>
@@ -191,7 +191,7 @@ export function LinkIssueDialog({
             </button>
             {relationOpen && (
               <div
-                className="absolute inset-x-0 top-full z-50 mt-1 rounded-lg border border-border-strong bg-[var(--color-surface-elevated)] shadow-[var(--shadow-lg)]"
+                className="absolute inset-x-0 top-full z-50 mt-1 rounded-lg border border-border-strong bg-surface-elevated shadow-lg"
               >
                 <div className="px-2 pt-2 pb-1">
                   <input

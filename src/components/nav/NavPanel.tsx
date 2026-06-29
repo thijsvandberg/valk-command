@@ -126,7 +126,7 @@ export function NavPanel({ open, onClose }: { open: boolean; onClose: () => void
       role="dialog"
       aria-label="Navigation"
       data-testid="nav-panel"
-      className={`nav-panel-enter absolute left-0 top-[calc(100%+10px)] z-50 max-w-[calc(100vw-2rem)] overflow-hidden rounded-2xl bg-[var(--color-surface-floating)]/95 ${PANEL_SHADOW} ring-1 ring-border-strong backdrop-blur-2xl transition-[width] duration-200 ${recentOpen ? "w-[640px]" : "w-[360px]"}`}
+      className={`nav-panel-enter absolute left-0 top-[calc(100%+10px)] z-50 max-w-[calc(100vw-2rem)] overflow-hidden rounded-2xl bg-surface-floating/95 ${PANEL_SHADOW} ring-1 ring-border-strong backdrop-blur-2xl transition-[width] duration-200 ${recentOpen ? "w-[640px]" : "w-[360px]"}`}
     >
       {/* Top accent gradient + soft brand glow */}
       <span className="pointer-events-none absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-[var(--color-brand-glow)] to-transparent" />

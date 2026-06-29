@@ -48,7 +48,7 @@ const SidePanel = dynamic(
     // width before the panel mounts. Warm-cache opens never show this.
     loading: () => (
       <div
-        className="h-full shrink-0 border-l border-border-default bg-[var(--color-surface-elevated)]"
+        className="h-full shrink-0 border-l border-border-default bg-surface-elevated"
         style={{ width: readSidebarWidth() }}
       />
     ),
@@ -311,7 +311,7 @@ export default function TicketDetailPage({
                 </div>
               </div>
             </div>
-            <div className="w-[320px] shrink-0 border-l border-border-default bg-[var(--color-surface-chrome)]">
+            <div className="w-[320px] shrink-0 border-l border-border-default bg-surface-chrome">
               <div className="p-5 space-y-5">
                 {[1, 2, 3, 4].map((i) => (
                   <div key={i} className="space-y-2">
@@ -354,7 +354,7 @@ export default function TicketDetailPage({
                   </div>
                 </div>
               </div>
-              <div className="w-[320px] shrink-0 border-l border-border-default bg-[var(--color-surface-chrome)]" />
+              <div className="w-[320px] shrink-0 border-l border-border-default bg-surface-chrome" />
             </div>
           </div>
         </>
@@ -685,7 +685,7 @@ export default function TicketDetailPage({
 
       {chatPaneOpen && ticket && (
         <div
-          className="relative shrink-0 border-l border-border-default bg-[var(--color-surface-elevated)] overflow-hidden"
+          className="relative shrink-0 border-l border-border-default bg-surface-elevated overflow-hidden"
           style={{ width: `${chatPaneWidth}px`, animation: "fadeInUp 0.15s ease" }}
         >
           {/* Resize drag handle on the left edge */}
@@ -754,7 +754,7 @@ export default function TicketDetailPage({
           placeholder="Reason (optional)..."
           rows={3}
           maxLength={2000}
-          className="w-full resize-none rounded-lg border border-border-default bg-[var(--color-surface-base)] px-3 py-2 text-body-sm leading-relaxed text-text-primary placeholder:text-text-muted focus:border-[var(--color-brand-400)] focus:outline-none"
+          className="w-full resize-none rounded-lg border border-border-default bg-surface-base px-3 py-2 text-body-sm leading-relaxed text-text-primary placeholder:text-text-muted focus:border-[var(--color-brand-400)] focus:outline-none"
         />
       }
     />

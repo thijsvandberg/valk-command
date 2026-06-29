@@ -25,7 +25,7 @@ describe("Card", () => {
   it("applies floating variant classes", () => {
     const { container } = render(<Card variant="floating">Content</Card>);
     const el = container.firstChild as HTMLElement;
-    expect(el.className).toContain("bg-[var(--color-surface-floating)]");
+    expect(el.className).toContain("bg-surface-floating");
     expect(el.className).toContain("shadow-");
   });
 

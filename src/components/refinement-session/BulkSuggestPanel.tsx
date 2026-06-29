@@ -161,7 +161,7 @@ export function BulkSuggestPanel({
   }, [resultEntries.length]);
 
   return (
-    <div className="mt-3 overflow-hidden rounded-xl border border-border-default bg-[var(--color-surface-elevated)]">
+    <div className="mt-3 overflow-hidden rounded-xl border border-border-default bg-surface-elevated">
       {/* Header */}
       <button
         type="button"

@@ -89,7 +89,7 @@ export function SelectFilter({
       <select
         value={value}
         onChange={onChange}
-        className="appearance-none rounded-lg border border-border-default bg-[var(--color-surface-elevated)] px-3 py-1.5 pr-7 text-body-sm text-text-secondary font-[var(--font-body)] cursor-pointer hover:border-border-strong focus:outline-none focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-[var(--color-brand-400)] transition-colors duration-150"
+        className="appearance-none rounded-lg border border-border-default bg-surface-elevated px-3 py-1.5 pr-7 text-body-sm text-text-secondary font-[var(--font-body)] cursor-pointer hover:border-border-strong focus:outline-none focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-[var(--color-brand-400)] transition-colors duration-150"
       >
         {options.map((opt) => (
           <option key={opt.value} value={opt.value}>
@@ -129,7 +129,7 @@ export function ActivityTable({
 }) {
   return (
     <>
-      <div className="rounded-xl border border-border-default bg-[var(--color-surface-elevated)] overflow-hidden shadow-[var(--shadow-sm)]">
+      <div className="rounded-xl border border-border-default bg-surface-elevated overflow-hidden shadow-sm">
         {/* Header row */}
         <div className="grid grid-cols-[20px_1fr_140px_150px_84px_104px] gap-3 px-4 py-2.5 border-b border-border-default bg-overlay-subtle">
           <span />
@@ -241,7 +241,7 @@ export function ActivityTable({
               {/* Expanded detail panel */}
               {isExpanded && (
                 <div className={`px-4 pb-3 bg-overlay-subtle ${i < (entries.length - 1) ? "border-b border-border-subtle" : ""}`}>
-                  <div className="ml-8 rounded-lg border border-border-subtle bg-[var(--color-surface-elevated)] px-4 py-3">
+                  <div className="ml-8 rounded-lg border border-border-subtle bg-surface-elevated px-4 py-3">
                     {entry.summary && (
                       <div className={entry.errorDetail ? "mb-2" : ""}>
                         <span className="text-caption uppercase tracking-wide font-semibold text-text-muted font-[var(--font-body)]">Summary</span>

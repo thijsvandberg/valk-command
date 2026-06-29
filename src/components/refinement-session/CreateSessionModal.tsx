@@ -59,7 +59,7 @@ function CreateSessionForm({
   }
 
   return (
-    <div className="w-full max-w-sm rounded-xl border border-border-strong bg-[var(--color-surface-elevated)] p-6 shadow-[var(--shadow-2xl)]">
+    <div className="w-full max-w-sm rounded-xl border border-border-strong bg-surface-elevated p-6 shadow-2xl">
       <h3 className="font-[var(--font-display)] text-body-lg font-semibold text-text-primary">
         New refinement session
       </h3>

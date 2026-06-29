@@ -127,7 +127,7 @@ export function ColumnToggle({
         className="border-0 bg-transparent text-text-tertiary hover:bg-hover-list-item hover:text-text-secondary"
       />
       {open && (
-        <div className="absolute top-full right-0 z-50 mt-1.5 w-56 rounded-xl border border-border-strong bg-[var(--color-surface-floating)] shadow-[var(--shadow-xl)] overflow-hidden flex flex-col">
+        <div className="absolute top-full right-0 z-50 mt-1.5 w-56 rounded-xl border border-border-strong bg-surface-floating shadow-xl overflow-hidden flex flex-col">
           <div className="overflow-y-auto max-h-[70vh] py-1.5">
             <DndContext
               sensors={sensors}

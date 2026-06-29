@@ -554,7 +554,7 @@ function SplitDiff({
 
   return (
     <div className="overflow-hidden rounded-lg border" style={{ borderColor: C.border }}>
-      <div className="sticky top-0 z-10 grid grid-cols-2 bg-[var(--color-surface-elevated)]" style={{ borderBottom: `1px solid ${C.border}` }}>
+      <div className="sticky top-0 z-10 grid grid-cols-2 bg-surface-elevated" style={{ borderBottom: `1px solid ${C.border}` }}>
         <div className="px-4 py-2 text-body-sm font-medium text-text-tertiary" style={{ borderRight: `1px solid ${C.border}` }}>{oldLabel ?? "Old"}</div>
         <div className="px-4 py-2 text-body-sm font-medium text-text-tertiary">{newLabel ?? "New"}</div>
       </div>
@@ -713,7 +713,7 @@ export const StoryDiff = forwardRef<StoryDiffHandle, StoryDiffProps>(function St
 
   if (oldText === "" && newText === "") {
     return (
-      <div data-testid="story-diff-empty" className="rounded-lg border border-border-default bg-[var(--color-surface-elevated)] p-5">
+      <div data-testid="story-diff-empty" className="rounded-lg border border-border-default bg-surface-elevated p-5">
         <p className="font-[var(--font-body)] text-body-lg text-text-tertiary">No content in either version.</p>
       </div>
     );
@@ -721,7 +721,7 @@ export const StoryDiff = forwardRef<StoryDiffHandle, StoryDiffProps>(function St
 
   if (oldText === newText) {
     return (
-      <div data-testid="story-diff-identical" className="rounded-lg border border-border-default bg-[var(--color-surface-elevated)] p-5">
+      <div data-testid="story-diff-identical" className="rounded-lg border border-border-default bg-surface-elevated p-5">
         <p className="font-[var(--font-body)] text-body-lg text-text-tertiary">No changes between versions.</p>
       </div>
     );

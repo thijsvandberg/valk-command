@@ -152,7 +152,7 @@ export function ChildIssueListHeader({
       {open && (
         <div
           role="menu"
-          className="absolute top-full right-0 z-50 mt-1 w-[420px] overflow-hidden rounded-xl border border-border-default bg-[var(--color-surface-floating)] shadow-[var(--shadow-popover)]"
+          className="absolute top-full right-0 z-50 mt-1 w-[420px] overflow-hidden rounded-xl border border-border-default bg-surface-floating shadow-popover"
           style={{ animation: "fadeInUp 0.1s ease" }}
         >
           <div className="flex">
@@ -168,7 +168,7 @@ export function ChildIssueListHeader({
                     aria-pressed={active}
                     className={`mb-0.5 flex w-full cursor-pointer items-center gap-2 rounded-md px-2 py-2 text-body-sm transition-colors duration-150 ${
                       active
-                        ? "bg-[var(--color-surface-floating)] font-medium text-[var(--color-brand-400)] shadow-[0_1px_2px_rgba(0,0,0,0.06)]"
+                        ? "bg-surface-floating font-medium text-[var(--color-brand-400)] shadow-[0_1px_2px_rgba(0,0,0,0.06)]"
                         : "text-text-muted hover:text-text-secondary"
                     } focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-[var(--color-brand-400)]`}
                   >

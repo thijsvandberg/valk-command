@@ -48,7 +48,7 @@ export function InboxGroupByDropdown({
         icon={
           <span className="relative flex items-center justify-center">
             <Layers className="h-3.5 w-3.5" strokeWidth={1.5} />
-            <span className="absolute -top-0.5 -right-1 h-[6px] w-[6px] rounded-full bg-[var(--color-brand-400)] ring-2 ring-[var(--color-surface-base)]" />
+            <span className="absolute -top-0.5 -right-1 h-[6px] w-[6px] rounded-full bg-[var(--color-brand-400)] ring-2 ring-surface-base" />
           </span>
         }
         title={`Group by: ${activeLabel}`}
@@ -60,7 +60,7 @@ export function InboxGroupByDropdown({
       {open && (
         <div
           role="menu"
-          className="absolute top-full right-0 z-50 mt-1 w-36 rounded-lg border border-border-strong bg-[var(--color-surface-floating)] py-1 shadow-[var(--shadow-lg)]"
+          className="absolute top-full right-0 z-50 mt-1 w-36 rounded-lg border border-border-strong bg-surface-floating py-1 shadow-lg"
         >
           {options.map((opt) => (
             <button

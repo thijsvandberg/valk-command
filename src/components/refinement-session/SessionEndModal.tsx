@@ -429,7 +429,7 @@ export function SessionEndModal() {
     <>
     <div className="flex h-full items-start justify-center overflow-y-auto py-12 px-4">
       <div
-        className="w-full max-w-2xl rounded-2xl border border-border-default bg-[var(--color-surface-elevated)] shadow-[0_8px_40px_rgba(0,0,0,0.25),0_2px_12px_color-mix(in_srgb,var(--color-brand-500)_8%,transparent)]"
+        className="w-full max-w-2xl rounded-2xl border border-border-default bg-surface-elevated shadow-[0_8px_40px_rgba(0,0,0,0.25),0_2px_12px_color-mix(in_srgb,var(--color-brand-500)_8%,transparent)]"
         style={{ animation: "fadeInUp 0.2s cubic-bezier(0.34, 1.56, 0.64, 1)" }}
       >
         {/* Header */}

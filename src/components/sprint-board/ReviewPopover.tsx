@@ -158,7 +158,7 @@ export function ReviewPopover({
   return (
     <div
       ref={popoverRef}
-      className="fixed z-50 max-w-96 max-h-[70vh] overflow-y-auto rounded-lg border border-border-strong bg-[var(--color-surface-floating)] shadow-[var(--shadow-popover)]"
+      className="fixed z-50 max-w-96 max-h-[70vh] overflow-y-auto rounded-lg border border-border-strong bg-surface-floating shadow-popover"
       style={{ top: pos.top, bottom: pos.bottom, left: pos.left, width: pos.width }}
       onClick={(e) => e.stopPropagation()}
     >

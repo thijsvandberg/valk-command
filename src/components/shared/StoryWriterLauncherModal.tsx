@@ -265,7 +265,7 @@ export function StoryWriterLauncherModal({ open, onClose }: StoryWriterLauncherM
       aria-label="Story Writer launcher"
       onMouseDown={(e) => { if (e.target === e.currentTarget) onClose(); }}
     >
-      <div className="w-full max-w-[560px] rounded-2xl border border-border-default bg-[var(--color-surface-elevated)] shadow-[var(--shadow-modal)]">
+      <div className="w-full max-w-[560px] rounded-2xl border border-border-default bg-surface-elevated shadow-modal">
 
         {/* ── Header ── */}
         <div className="flex items-center justify-between px-5 pt-5 pb-4">
@@ -295,7 +295,7 @@ export function StoryWriterLauncherModal({ open, onClose }: StoryWriterLauncherM
               <button type="button" onClick={() => setMode(m)}
                 className={`flex w-full items-center justify-center gap-1.5 rounded-[7px] py-[7px] text-body-sm font-medium cursor-pointer transition-colors duration-150 ${
                   mode === m
-                    ? "bg-overlay-default text-text-primary shadow-[var(--shadow-sm)]"
+                    ? "bg-overlay-default text-text-primary shadow-sm"
                     : "text-text-tertiary hover:text-text-secondary"
                 } focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-[var(--color-brand-400)]`}
               >
@@ -547,7 +547,7 @@ export function StoryWriterLauncherModal({ open, onClose }: StoryWriterLauncherM
 
                 {showDropdown && searchResults.length > 0 && (
                   <div ref={dropdownRef}
-                    className="absolute left-0 right-0 top-[calc(100%+4px)] z-50 overflow-hidden rounded-xl border border-border-strong bg-[var(--color-surface-floating)] shadow-[var(--shadow-modal)]"
+                    className="absolute left-0 right-0 top-[calc(100%+4px)] z-50 overflow-hidden rounded-xl border border-border-strong bg-surface-floating shadow-modal"
                   >
                     {searchResults.map((r, i) => {
                       const isFoc = i === focusedSearch;

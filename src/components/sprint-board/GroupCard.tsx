@@ -9,7 +9,7 @@ import { type ReactNode } from "react";
 // row drag handle straddle the left border by a few px instead of being cut off (it would be
 // with plain overflow-hidden). The margin is small so nothing else can visibly escape the card.
 export const GROUP_CARD_CLASS =
-  "overflow-clip [overflow-clip-margin:0.75rem] rounded-xl border border-border-subtle bg-[var(--color-surface-elevated)] shadow-[var(--shadow-sm)]";
+  "overflow-clip [overflow-clip-margin:0.75rem] rounded-xl border border-border-subtle bg-surface-elevated shadow-sm";
 
 interface GroupCardProps {
   /** The GroupStatBar (or equivalent) shown in the clickable header zone. */
@@ -48,8 +48,8 @@ export function GroupCard({
     <div className={GROUP_CARD_CLASS}>
       <div
         onClick={onToggleCollapse}
-        className={`group/grouprow @container relative flex select-none items-center gap-3 bg-[var(--color-surface-chrome)]/30 px-3 py-[9px] [transition:background-color_.12s_ease] ${
-          collapsible ? "cursor-pointer hover:bg-[var(--color-surface-chrome)]/50" : ""
+        className={`group/grouprow @container relative flex select-none items-center gap-3 bg-surface-chrome/30 px-3 py-[9px] [transition:background-color_.12s_ease] ${
+          collapsible ? "cursor-pointer hover:bg-surface-chrome/50" : ""
         } ${
           collapsed ? "rounded-xl" : "rounded-t-xl border-b border-border-subtle"
         }`}

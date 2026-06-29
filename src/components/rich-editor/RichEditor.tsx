@@ -302,11 +302,11 @@ export function RichEditor({
     ? `rich-editor-root flex h-full flex-col overflow-hidden ${className}`
     : fullWidthToolbar
       ? `rich-editor-root ${className}`
-      : `rich-editor-root rounded-lg border border-border-strong bg-[var(--color-surface-elevated)] ${stickyToolbar ? "" : "overflow-hidden"} ${className}`;
+      : `rich-editor-root rounded-lg border border-border-strong bg-surface-elevated ${stickyToolbar ? "" : "overflow-hidden"} ${className}`;
 
   const toolbarWrapperClasses = stickyToolbar
-    ? `sticky top-0 z-10 border-b border-border-default bg-[var(--color-surface-elevated)]${fullWidthToolbar ? "" : " rounded-t-lg"}`
-    : `border-b border-border-default bg-[var(--color-surface-elevated)]${borderless ? " px-2" : ""}`;
+    ? `sticky top-0 z-10 border-b border-border-default bg-surface-elevated${fullWidthToolbar ? "" : " rounded-t-lg"}`
+    : `border-b border-border-default bg-surface-elevated${borderless ? " px-2" : ""}`;
 
   const toolbarContent = (
     <Toolbar

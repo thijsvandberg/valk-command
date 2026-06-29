@@ -242,7 +242,7 @@ export function PaneArea() {
           >
             {/* Drop overlay rendered above app content so it's visible during drag */}
             {showDropOverlay && (
-              <div className="pointer-events-none absolute inset-0 z-20 flex items-center justify-center bg-[var(--color-surface-base)]/75 backdrop-blur-sm">
+              <div className="pointer-events-none absolute inset-0 z-20 flex items-center justify-center bg-surface-base/75 backdrop-blur-sm">
                 <span className="rounded-lg border border-[var(--color-brand-500)]/40 bg-[var(--color-brand-500)]/15 px-4 py-2 text-label font-medium text-[var(--color-brand-400)] shadow-lg shadow-black/20">
                   Drop here
                 </span>

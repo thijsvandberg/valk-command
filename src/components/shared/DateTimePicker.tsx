@@ -214,7 +214,7 @@ export function DateTimePicker({ value, onChange, ariaLabel, placeholder = "Sele
         aria-haspopup="dialog"
         aria-expanded={open}
         onClick={() => setOpen((o) => !o)}
-        className={`group flex w-full items-center gap-2 rounded-lg border bg-[var(--color-surface-elevated)] px-3 py-2 text-left text-body-sm cursor-pointer
+        className={`group flex w-full items-center gap-2 rounded-lg border bg-surface-elevated px-3 py-2 text-left text-body-sm cursor-pointer
           transition-colors duration-100
           ${open
             ? "border-[var(--color-brand-500)]/50 ring-1 ring-[var(--color-brand-500)]/30"
@@ -244,7 +244,7 @@ export function DateTimePicker({ value, onChange, ariaLabel, placeholder = "Sele
             zIndex: 9999,
             animation: "fadeInUp 0.12s ease",
           }}
-          className="rounded-xl border border-border-strong bg-[var(--color-surface-floating)] p-3 shadow-[var(--shadow-popover)]"
+          className="rounded-xl border border-border-strong bg-surface-floating p-3 shadow-popover"
         >
           {/* Month navigation */}
           <div className="mb-2 flex items-center justify-between">
@@ -344,7 +344,7 @@ export function DateTimePicker({ value, onChange, ariaLabel, placeholder = "Sele
                     commitTime();
                   }
                 }}
-                className="w-20 rounded-md border border-border-default bg-[var(--color-surface-elevated)] px-2 py-1 text-center text-body-sm tabular-nums text-text-primary
+                className="w-20 rounded-md border border-border-default bg-surface-elevated px-2 py-1 text-center text-body-sm tabular-nums text-text-primary
                   placeholder:text-text-muted
                   focus:border-[var(--color-brand-500)]/50 focus:outline-none focus:ring-1 focus:ring-[var(--color-brand-500)]/30
                   disabled:opacity-40 disabled:cursor-not-allowed
@@ -355,7 +355,7 @@ export function DateTimePicker({ value, onChange, ariaLabel, placeholder = "Sele
                   type="button"
                   onClick={clearTime}
                   aria-label="Clear time"
-                  className="absolute -right-1 -top-1 rounded-full bg-[var(--color-surface-floating)] p-0.5 text-text-muted cursor-pointer hover:text-text-secondary transition-colors duration-100 focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-[var(--color-brand-400)]"
+                  className="absolute -right-1 -top-1 rounded-full bg-surface-floating p-0.5 text-text-muted cursor-pointer hover:text-text-secondary transition-colors duration-100 focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-[var(--color-brand-400)]"
                 >
                   <X size={10} strokeWidth={2} />
                 </button>

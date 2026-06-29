@@ -198,7 +198,7 @@ export function EditableDescription({
     </div>
   ) : descSize.state === "near" ? (
     <div
-      className="flex items-center gap-2.5 border-t border-border-default bg-[var(--color-surface-base)] px-3.5 py-2.5"
+      className="flex items-center gap-2.5 border-t border-border-default bg-surface-base px-3.5 py-2.5"
       style={{ animation: "fadeInUp 0.18s ease-out" }}
       title={APPROX_TITLE}
     >
@@ -489,7 +489,7 @@ export function EditableDescription({
                 )}
               </div>
               {/* Sticky so the resolve actions stay reachable while scrolling a long diff. */}
-              <div className="sticky bottom-0 z-10 flex items-center justify-end gap-1 rounded-b-lg border-t border-border-default bg-[var(--color-surface-elevated)]/95 px-3 py-3 backdrop-blur-sm">
+              <div className="sticky bottom-0 z-10 flex items-center justify-end gap-1 rounded-b-lg border-t border-border-default bg-surface-elevated/95 px-3 py-3 backdrop-blur-sm">
                 {pushError && (
                   <span className="mr-auto text-label text-[var(--color-status-error)]">{pushError}</span>
                 )}

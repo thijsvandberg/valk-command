@@ -191,7 +191,7 @@ export function ChildIssueRow({
       {/* Drag handle sits in the left gutter, over the row's leading edge (Jira-style),
           so it never pushes the content right. Hidden during multiselect. */}
       {dragHandleSlot && !someChecked && (
-        <span className="absolute -left-[3px] top-1/2 z-10 flex h-6 w-[18px] -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-md border border-border-subtle bg-[var(--color-surface-elevated)] text-text-tertiary opacity-0 shadow-[var(--shadow-sm)] transition-opacity duration-150 group-hover/row:opacity-100 focus-within:opacity-100">
+        <span className="absolute -left-[3px] top-1/2 z-10 flex h-6 w-[18px] -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-md border border-border-subtle bg-surface-elevated text-text-tertiary opacity-0 shadow-sm transition-opacity duration-150 group-hover/row:opacity-100 focus-within:opacity-100">
           {dragHandleSlot}
         </span>
       )}

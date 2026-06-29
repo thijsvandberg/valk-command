@@ -47,7 +47,7 @@ function MetricToggle({ metric, setMetric }: { metric: Metric; setMetric: (m: Me
             onClick={() => setMetric(m.key)}
             className={`rounded-lg px-2.5 py-1 text-caption font-medium uppercase tracking-wide cursor-pointer transition-[background-color,color] duration-150 focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-[var(--color-brand-400)] ${
               active
-                ? "bg-[var(--color-surface-elevated)] shadow-[var(--shadow-sm)] text-text-primary"
+                ? "bg-surface-elevated shadow-sm text-text-primary"
                 : "text-text-muted hover:text-text-secondary"
             }`}
           >

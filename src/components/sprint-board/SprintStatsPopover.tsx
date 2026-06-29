@@ -237,7 +237,7 @@ export function SprintStatsPopover({
         role="dialog"
         aria-modal="true"
         aria-label="Sprint statistics"
-        className="fixed z-modal overflow-y-auto rounded-xl border border-border-strong bg-[var(--color-surface-floating)] shadow-[var(--shadow-modal)]"
+        className="fixed z-modal overflow-y-auto rounded-xl border border-border-strong bg-surface-floating shadow-modal"
         style={{
           top: "50%",
           left: "50%",
@@ -265,7 +265,7 @@ export function SprintStatsPopover({
 
               {dropdownOpen && (
                 <div
-                  className="absolute left-0 top-full mt-1 z-60 w-72 max-h-64 overflow-y-auto rounded-lg border border-border-strong bg-[var(--color-surface-floating)] py-1"
+                  className="absolute left-0 top-full mt-1 z-60 w-72 max-h-64 overflow-y-auto rounded-lg border border-border-strong bg-surface-floating py-1"
                   style={{ boxShadow: "0 8px 32px rgba(0,0,0,0.25)" }}
                 >
                   {visibleSprints.map((s) => {

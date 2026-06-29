@@ -312,14 +312,14 @@ export function SidePanel({
       onNavigateToDev={() => setActiveTab("development")}
       onMutate={handleMutate}
       className={metaMode === "column"
-        ? "h-full overflow-y-auto bg-[var(--color-surface-elevated)] py-5 px-5"
+        ? "h-full overflow-y-auto bg-surface-elevated py-5 px-5"
         // Stacked: a self-contained card lifts the meta off the surrounding
         // content/comments. overflow-hidden clips the full-bleed footer (PO Note /
         // Confluence / Development) to the rounded corners so the bottom edge
         // follows the card's radius and shadow instead of poking past them. The
         // field pickers render their dropdowns through a portal, so clipping the
         // card does not cut them off.
-        : "overflow-hidden rounded-2xl border border-border-default bg-[var(--color-surface-elevated)] px-5 pt-5 pb-4"}
+        : "overflow-hidden rounded-2xl border border-border-default bg-surface-elevated px-5 pt-5 pb-4"}
       style={metaMode === "column"
         ? { opacity: isMetaDragging ? 0.7 : 1, transition: isMetaDragging ? "none" : "opacity 150ms ease" }
         : { boxShadow: "var(--shadow-md)" }}
@@ -346,7 +346,7 @@ export function SidePanel({
       <button
         type="button"
         onClick={() => setMetaCollapsed(true)}
-        className="absolute left-0 top-1/2 z-30 -translate-x-1/2 -translate-y-1/2 flex h-6 w-6 items-center justify-center rounded-full border border-border-default bg-[var(--color-surface-elevated)] text-text-muted cursor-pointer opacity-0 group-hover/meta:opacity-100 hover:text-text-secondary hover:border-[var(--color-brand-500)]/40 focus-visible:opacity-100 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)]"
+        className="absolute left-0 top-1/2 z-30 -translate-x-1/2 -translate-y-1/2 flex h-6 w-6 items-center justify-center rounded-full border border-border-default bg-surface-elevated text-text-muted cursor-pointer opacity-0 group-hover/meta:opacity-100 hover:text-text-secondary hover:border-[var(--color-brand-500)]/40 focus-visible:opacity-100 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)]"
         style={{ transition: "opacity 0.15s ease, color 0.15s ease, border-color 0.15s ease" }}
         aria-label="Collapse sidebar"
         title="Collapse sidebar"
@@ -625,7 +625,7 @@ export function SidePanel({
   return (
     <div
       ref={panelRef}
-      className="relative z-10 flex h-full shrink-0 flex-col border-l border-border-default bg-[var(--color-surface-elevated)]"
+      className="relative z-10 flex h-full shrink-0 flex-col border-l border-border-default bg-surface-elevated"
       style={{ width: `${panelWidth}px`, minWidth: MIN_PANEL_WIDTH }}
     >
       {/* Resize drag handle */}
@@ -644,7 +644,7 @@ export function SidePanel({
           type="button"
           onClick={onClose}
           aria-label="Close panel"
-          className={`absolute right-3 top-3 z-30 flex h-7 w-7 items-center justify-center rounded-full border border-border-default bg-[var(--color-surface-elevated)] text-text-muted cursor-pointer hover:text-text-secondary hover:border-[var(--color-brand-500)]/40 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)] ${scrolled && !h.isDescEditing && !h.isTitleEditing ? "opacity-100" : "pointer-events-none opacity-0"}`}
+          className={`absolute right-3 top-3 z-30 flex h-7 w-7 items-center justify-center rounded-full border border-border-default bg-surface-elevated text-text-muted cursor-pointer hover:text-text-secondary hover:border-[var(--color-brand-500)]/40 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)] ${scrolled && !h.isDescEditing && !h.isTitleEditing ? "opacity-100" : "pointer-events-none opacity-0"}`}
           style={{ transition: "opacity 0.2s ease, color 0.15s ease, border-color 0.15s ease", boxShadow: "0 6px 16px -4px rgba(15, 23, 42, 0.20)" }}
         >
           <X className="h-3.5 w-3.5" strokeWidth={2} />
@@ -678,7 +678,7 @@ export function SidePanel({
             placeholder="Reason (optional)..."
             rows={3}
             maxLength={2000}
-            className="w-full resize-none rounded-lg border border-border-default bg-[var(--color-surface-base)] px-3 py-2 text-body-sm leading-relaxed text-text-primary placeholder:text-text-muted focus:border-[var(--color-brand-400)] focus:outline-none"
+            className="w-full resize-none rounded-lg border border-border-default bg-surface-base px-3 py-2 text-body-sm leading-relaxed text-text-primary placeholder:text-text-muted focus:border-[var(--color-brand-400)] focus:outline-none"
           />
         }
       />

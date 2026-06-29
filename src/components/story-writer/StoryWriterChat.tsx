@@ -622,7 +622,7 @@ export function StoryWriterChat({
         </div>
 
         <div className="px-3 pb-2.5 pt-1">
-          <div className="flex flex-col rounded-2xl border border-border-strong bg-[var(--color-surface-elevated)] focus-within:border-[var(--color-brand-500)]/30 transition-colors duration-150">
+          <div className="flex flex-col rounded-2xl border border-border-strong bg-surface-elevated focus-within:border-[var(--color-brand-500)]/30 transition-colors duration-150">
             <div
               onMouseDown={handleResizeMouseDown}
               className="flex h-2.5 cursor-row-resize items-center justify-center opacity-0 hover:opacity-50 transition-opacity duration-150"

@@ -39,7 +39,7 @@ export function SubtasksPaneResizable({ children, width, onWidthChange, zoom = 1
   return (
     <div
       ref={paneRef}
-      className="group/pane relative shrink-0 overflow-y-auto border-l border-border-subtle bg-[var(--color-surface-elevated)] px-6 pt-4 pb-6"
+      className="group/pane relative shrink-0 overflow-y-auto border-l border-border-subtle bg-surface-elevated px-6 pt-4 pb-6"
       style={{
         width,
         animation: isDragging ? undefined : "fadeInUp 0.15s ease",

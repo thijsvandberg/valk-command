@@ -335,7 +335,7 @@ export function SprintEditModal({ sprint, tickets, onClose, showToast, autoSugge
 
   return (
     <Modal open onClose={onClose} aria-label="Edit sprint details">
-      <div className="w-full max-w-md rounded-xl border border-border-strong bg-[var(--color-surface-floating)] shadow-[var(--shadow-xl)]">
+      <div className="w-full max-w-md rounded-xl border border-border-strong bg-surface-floating shadow-xl">
         {/* Header */}
         <div className="flex items-center justify-between border-b border-border-default px-5 py-3.5">
           <h2 className="font-[var(--font-display)] text-body-lg font-semibold text-text-primary">
@@ -360,7 +360,7 @@ export function SprintEditModal({ sprint, tickets, onClose, showToast, autoSugge
               value={name}
               onChange={(e) => setName(e.target.value)}
               placeholder="Sprint name"
-              className="w-full rounded-lg border border-border-default bg-[var(--color-surface-elevated)] px-3 py-2 text-body-sm text-text-primary
+              className="w-full rounded-lg border border-border-default bg-surface-elevated px-3 py-2 text-body-sm text-text-primary
                 placeholder:text-text-muted
                 focus:border-[var(--color-brand-500)]/50 focus:outline-none focus:ring-1 focus:ring-[var(--color-brand-500)]/30
                 transition-colors duration-100"
@@ -448,7 +448,7 @@ export function SprintEditModal({ sprint, tickets, onClose, showToast, autoSugge
               onChange={(e) => setGoal(e.target.value)}
               placeholder="Describe the sprint's primary objective..."
               rows={3}
-              className="w-full rounded-lg border border-border-default bg-[var(--color-surface-elevated)] px-3 py-2 text-body-sm leading-relaxed text-text-primary
+              className="w-full rounded-lg border border-border-default bg-surface-elevated px-3 py-2 text-body-sm leading-relaxed text-text-primary
                 placeholder:text-text-muted resize-none
                 focus:border-[var(--color-brand-500)]/50 focus:outline-none focus:ring-1 focus:ring-[var(--color-brand-500)]/30
                 transition-colors duration-100"

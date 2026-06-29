@@ -1140,7 +1140,7 @@ export default function SprintBoard() {
     <>
       {/* The views bar shares the header's chrome tint so the two rows read as one
           continuous console, joined only by the header's faint seam (BRDG-344). */}
-      <div className={`${dnd.jiraRankDndEnabled ? "relative " : ""}bg-[var(--color-surface-chrome)]`}>
+      <div className={`${dnd.jiraRankDndEnabled ? "relative " : ""}bg-surface-chrome`}>
         {/* During a ticket drag the real bar is hidden and the (transparent) drop
             overlay takes over, so the drop tiles sit on the page background —
             matching the refinement bar's in-place drag treatment. */}
@@ -1165,7 +1165,7 @@ export default function SprintBoard() {
         {!ticketsLoading && (
           // The list sits on a white surface; TicketTable renders the bordered card(s) itself —
           // one card when ungrouped, one per group when grouped (BRDG-239, BRDG-267).
-          <div className="min-h-full bg-[var(--color-surface-elevated)] px-4 pb-20 pt-3">
+          <div className="min-h-full bg-surface-elevated px-4 pb-20 pt-3">
           <div className={boardMaxW}>
           <TicketTable tickets={displayTickets} hideRowAccent warningLensActive={warningLensActive} warningLensActiveSprint={!!flatIsActiveSprint} filterSignature={filterSignature} searchActive={f.searchQuery.trim().length >= 2} checkedTickets={checkedTickets} selectedTicket={selectedTicket} focusedTicketIdx={focusedTicketIdx} someChecked={someChecked} allChecked={allChecked} visibleTags={f.visibleTags} hideEpic={hideEpicChip} showSprint={showSprintOnRow} sprintNameMap={sprintNameMap} poStatuses={poStatuses} readinessMap={readinessMap} inflightKeys={inflightKeys} onToggleCheck={toggleCheck} onRangeCheck={handleRangeCheck} onToggleAll={toggleAll} onSelectTicket={setSelectedTicket} onRowContextMenu={handleRowContextMenu} contextMenuKeys={rowMenu?.targets} onPoStatusChange={ta.handlePoStatusChange} onReadinessChange={ta.handleReadinessChange} onBusinessValueChange={ta.handleBusinessValueChange} onStoryPointsChange={ta.handleStoryPointsChange} planningOn={planningVisible} onGuestimationChange={ta.handleGuestimationChange} pencilCapacityMap={pencilCapacityMap} onPencilCapacityChange={setPencilCapacity} sprintUsedMap={sprintUsedMap} onJiraStatusChange={ta.handleJiraStatusChange} onIssueTypeChange={ta.handleIssueTypeChange} onTitleChange={ta.handleTitleChange} onAssigneeChange={ta.handleAssigneeChange} onEpicChange={ta.handleEpicChange} onSprintChange={ta.handleSprintChange} sprints={sprints} onCloseSubtasks={ta.handleCloseSubtasks} onSubtasksAdded={ta.handleSubtasksAdded} onTableKeyDown={handleTableKeyDown} onRunReview={(key) => handleBulkReviewStory(new Set([key]))} sortField={f.sortField} sortDir={f.sortDir} onMetricSort={handleMetricSort} onMetricToggleColumn={handleMetricToggleColumn} groups={groups} flatHeader={singleSprintHeader} collapsedGroups={collapsedGroups} onToggleCollapse={toggleCollapse} groupBy={groupBy} pinnedSprintIds={slotSprintsSet} onPinSprint={handleAddSlotWithSprint} onEditSprint={handleEditSprintFromGroup} onCloseSprint={handleCloseSprintFromGroup} onSyncGroup={handleSyncGroup} onCreateTicket={handleCreateTicket} freshlyCreatedKeys={freshlyCreatedKeys} statusChangeMap={statusChangeMapForTable} onStatusChangeSeen={markStatusChangeSeen} onStatusChangeMoveToBottom={handleStatusChangeMoveToBottom} showFinishedDivider={!!flatIsActiveSprint} flatCreateTarget={flatCreateTarget} flatComposerOpen={flatComposerOpen} onCloseFlatComposer={closeFlatComposer} scrollContainerRef={contentScrollRef} refinementSessionMap={ticketSessionMap} onRemoveFromRefinement={handleRemoveFromRefinement} onViewRefinement={handleViewRefinement} placeholders={placeholdersForTable} onPlaceholderUpdate={handlePlaceholderUpdate} onPlaceholderDelete={handlePlaceholderDelete} onPlaceholderPromote={handlePlaceholderPromote} onPlaceholderCreate={planningVisible ? handlePlaceholderCreate : undefined} {...(dnd.jiraRankDndEnabled ? { externalDnd: true as const, externalActiveDragId: dnd.boardActiveDragId, dragOverKey: dnd.boardOverId } : { onReorder: f.sortField === "rank" && !f.activeViewId ? handleReorder : undefined })} />
           </div>
@@ -1314,7 +1314,7 @@ export default function SprintBoard() {
             placeholder="Reason (optional)..."
             rows={3}
             maxLength={2000}
-            className="w-full resize-none rounded-lg border border-border-default bg-[var(--color-surface-base)] px-3 py-2 text-body-sm leading-relaxed text-text-primary placeholder:text-text-muted focus:border-[var(--color-brand-400)] focus:outline-none"
+            className="w-full resize-none rounded-lg border border-border-default bg-surface-base px-3 py-2 text-body-sm leading-relaxed text-text-primary placeholder:text-text-muted focus:border-[var(--color-brand-400)] focus:outline-none"
           />
         }
       />

@@ -22,11 +22,11 @@ export function DragGhostOverlay({ dragTicket, draggedKeys, tickets, targetSprin
       <div className="relative">
         {isMulti && (
           <>
-            <div className="absolute inset-0 translate-y-1.5 translate-x-1.5 rounded-lg border border-border-subtle bg-[var(--color-surface-elevated)]" style={{ opacity: 0.4 }} />
-            <div className="absolute inset-0 translate-y-[5px] translate-x-[5px] rounded-lg border border-border-subtle bg-[var(--color-surface-elevated)]" style={{ opacity: 0.2 }} />
+            <div className="absolute inset-0 translate-y-1.5 translate-x-1.5 rounded-lg border border-border-subtle bg-surface-elevated" style={{ opacity: 0.4 }} />
+            <div className="absolute inset-0 translate-y-[5px] translate-x-[5px] rounded-lg border border-border-subtle bg-surface-elevated" style={{ opacity: 0.2 }} />
           </>
         )}
-        <div className={`relative rounded-lg border bg-[var(--color-surface-elevated)] shadow-[var(--shadow-lg)] ${isMulti ? "border-[var(--color-brand-500)]/30" : "border-[var(--color-brand-500)]/20"}`}>
+        <div className={`relative rounded-lg border bg-surface-elevated shadow-lg ${isMulti ? "border-[var(--color-brand-500)]/30" : "border-[var(--color-brand-500)]/20"}`}>
           {isMulti && (
             <div className="absolute -top-2.5 -right-2.5 flex h-6 min-w-6 items-center justify-center rounded-full bg-[var(--color-brand-500)] px-1.5 text-label font-semibold text-white shadow-sm">
               {draggedKeys.length}
@@ -49,7 +49,7 @@ export function DragGhostOverlay({ dragTicket, draggedKeys, tickets, targetSprin
         </div>
       </div>
       {targetSprintId && (
-        <div className="mt-1.5 rounded-md border border-[var(--color-brand-500)]/30 bg-[var(--color-surface-elevated)] px-2 py-1 text-label text-[var(--color-brand-300)]">
+        <div className="mt-1.5 rounded-md border border-[var(--color-brand-500)]/30 bg-surface-elevated px-2 py-1 text-label text-[var(--color-brand-300)]">
           Move to {sprintNameMap[targetSprintId] ?? targetSprintId}
         </div>
       )}

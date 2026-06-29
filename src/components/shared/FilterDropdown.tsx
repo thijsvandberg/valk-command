@@ -86,7 +86,7 @@ export function FilterDropdown({
   const dropdownPanel = (
     <div
       ref={dropdownRef}
-      className={`fixed ${widthClass} rounded-xl border border-border-strong bg-[var(--color-surface-floating)] shadow-[var(--shadow-xl)]`}
+      className={`fixed ${widthClass} rounded-xl border border-border-strong bg-surface-floating shadow-xl`}
       style={{
         zIndex: "var(--z-notification)",
         top: dropdownPos.top,

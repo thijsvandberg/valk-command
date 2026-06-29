@@ -39,7 +39,7 @@ export function EventTimeline({
   }).filter(Boolean) as { label: string; pct: number }[];
 
   return (
-    <Card className="mb-5 px-4 py-4 shadow-[var(--shadow-sm)]">
+    <Card className="mb-5 px-4 py-4 shadow-sm">
       <PanelHeader
         icon={<Activity className="h-3.5 w-3.5" strokeWidth={1.5} />}
         label="Last 24 Hours"
@@ -128,7 +128,7 @@ export function EventTimeline({
       {/* Floating tooltip */}
       {tooltip && (
         <div
-          className="pointer-events-none fixed z-tooltip rounded-lg border border-border-strong bg-[var(--color-surface-floating)] px-3 py-2 shadow-[var(--shadow-md)]"
+          className="pointer-events-none fixed z-tooltip rounded-lg border border-border-strong bg-surface-floating px-3 py-2 shadow-md"
           style={{
             top: tooltip.y - 8,
             left: tooltip.x,

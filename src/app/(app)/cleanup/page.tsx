@@ -785,7 +785,7 @@ export default function CleanupPage() {
               ) : rows.length === 0 ? (
                 <CleanupEmptyState hasData={Boolean(data && data.total > 0)} />
               ) : (
-                <div className="overflow-clip rounded-xl border border-border-subtle bg-[var(--color-surface-elevated)] shadow-[var(--shadow-sm)]">
+                <div className="overflow-clip rounded-xl border border-border-subtle bg-surface-elevated shadow-sm">
                   <table ref={tableRef} className="w-full table-fixed border-collapse text-body-lg">
                   {enableVirtualization ? (
                     // Windowed: only the visible rows mount. Each row is its own
@@ -829,7 +829,7 @@ export default function CleanupPage() {
               <BarContainer
                 border
                 borderPosition="top"
-                className="bulk-bar-enter sticky bottom-0 z-50 bg-[var(--color-surface-base)] px-8"
+                className="bulk-bar-enter sticky bottom-0 z-50 bg-surface-base px-8"
               >
                 <div className={`${CONTENT_MAX} flex items-center gap-2 sm:gap-3`}>
                 {/* Select all / deselect all visible rows (mirrors the board's toggle). */}

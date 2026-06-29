@@ -226,7 +226,7 @@ export function FinishSprintModal({
 
   return (
     <Modal open onClose={onClose} aria-label="Finish sprint">
-      <div className="flex max-h-[82vh] w-full max-w-2xl flex-col rounded-xl border border-border-strong bg-[var(--color-surface-floating)] shadow-[var(--shadow-xl)]">
+      <div className="flex max-h-[82vh] w-full max-w-2xl flex-col rounded-xl border border-border-strong bg-surface-floating shadow-xl">
         {/* Header */}
         <div className="flex items-center justify-between border-b border-border-default px-5 py-3.5">
           <div className="flex min-w-0 items-center gap-2.5">
@@ -337,7 +337,7 @@ export function FinishSprintModal({
                   const loading = !subtasksByStory[story.key] && !errored;
                   const storyBusy = busyStories.has(story.key);
                   return (
-                    <li key={story.key} className="rounded-md border border-border-subtle bg-[var(--color-surface-elevated)]/40">
+                    <li key={story.key} className="rounded-md border border-border-subtle bg-surface-elevated/40">
                       <div className="flex items-center justify-between gap-2 px-2.5 py-2">
                         <div className="flex min-w-0 flex-1 items-center gap-2">
                           <TicketStatusPill

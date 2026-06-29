@@ -67,7 +67,7 @@ export default function GeneralSettingsPage() {
             <select
               value={currentSprintId}
               onChange={(e) => handleChange(e.target.value)}
-              className="appearance-none rounded-md border border-border-strong bg-[var(--color-surface-floating)] py-1.5 pl-3 pr-8 text-body-lg text-text-primary transition-colors duration-150 cursor-pointer focus:border-[var(--color-brand-500)]/40 focus:outline-none hover:border-[var(--color-brand-500)]/30"
+              className="appearance-none rounded-md border border-border-strong bg-surface-floating py-1.5 pl-3 pr-8 text-body-lg text-text-primary transition-colors duration-150 cursor-pointer focus:border-[var(--color-brand-500)]/40 focus:outline-none hover:border-[var(--color-brand-500)]/30"
             >
               <option value="">Backlog (default)</option>
               {slots.map((s) => (
@@ -124,7 +124,7 @@ export default function GeneralSettingsPage() {
             <select
               value={backlogTargetName}
               onChange={(e) => setBacklogTargetName(e.target.value)}
-              className="appearance-none rounded-md border border-border-strong bg-[var(--color-surface-floating)] py-1.5 pl-3 pr-8 text-body-lg text-text-primary transition-colors duration-150 cursor-pointer focus:border-[var(--color-brand-500)]/40 focus:outline-none hover:border-[var(--color-brand-500)]/30"
+              className="appearance-none rounded-md border border-border-strong bg-surface-floating py-1.5 pl-3 pr-8 text-body-lg text-text-primary transition-colors duration-150 cursor-pointer focus:border-[var(--color-brand-500)]/40 focus:outline-none hover:border-[var(--color-brand-500)]/30"
             >
               {/* Keep the configured target selectable even when it is missing
                   from the live list, so the choice is not silently rewritten. */}
@@ -179,7 +179,7 @@ export default function GeneralSettingsPage() {
             <select
               value={defaultTeam ?? ""}
               onChange={(e) => setDefaultTeam(e.target.value === "" ? null : (e.target.value as (typeof TEAMS)[number]))}
-              className="appearance-none rounded-md border border-border-strong bg-[var(--color-surface-floating)] py-1.5 pl-3 pr-8 text-body-lg text-text-primary transition-colors duration-150 cursor-pointer focus:border-[var(--color-brand-500)]/40 focus:outline-none hover:border-[var(--color-brand-500)]/30"
+              className="appearance-none rounded-md border border-border-strong bg-surface-floating py-1.5 pl-3 pr-8 text-body-lg text-text-primary transition-colors duration-150 cursor-pointer focus:border-[var(--color-brand-500)]/40 focus:outline-none hover:border-[var(--color-brand-500)]/30"
             >
               <option value="">None</option>
               {TEAMS.map((team) => (

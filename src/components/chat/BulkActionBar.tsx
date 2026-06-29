@@ -33,7 +33,7 @@ export default function BulkActionBar({
   return (
     <>
       <div
-        className="bulk-bar-enter sticky bottom-0 z-10 flex items-center gap-2 border-t border-border-default bg-[var(--color-surface-floating)] px-3 py-2 shadow-[var(--shadow-lg)]"
+        className="bulk-bar-enter sticky bottom-0 z-10 flex items-center gap-2 border-t border-border-default bg-surface-floating px-3 py-2 shadow-lg"
         data-testid="bulk-action-bar"
       >
         <span className="text-body-sm font-medium text-text-secondary tabular-nums whitespace-nowrap">
