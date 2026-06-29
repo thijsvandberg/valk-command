@@ -1,5 +1,21 @@
 # Implementation Performance Log
 
+## BRDG-438 — Inbox new-unread count, all/new filter, digest deep-link (2026-06-29)
+
+Five commits across five checkboxes: `baselineAt` (`MAX(readAt)`) added to the `/api/new-stories` response + route test; the BRDG-434 visit baseline retired (route moved to `deleted/`); `isNewSinceLastViewed` unified into the single shared predicate (digest + dot + count/filter); `newOnly`/`displayRows`/`newCount` wiring + select-all/empty-state repointed; the brand "N new" header chip; `InboxDigestBanner` "Open inbox" → `/inbox?new=1` behind a Suspense boundary. Clean-worktree verify: lint 0 errors, typecheck clean, build green, 7187/7189 tests pass. Browser-verified the chip and the `?new=1` deep-link (chip `aria-pressed=true`, brand-500 fill) in the real app.
+
+| Phase | Notes |
+|---|---|
+| Plan (Opus) | High value. Surfaced the load-bearing risk before any code: the dot/filter predicate used plain `new Date()` while the digest normalised SQLite `datetime('now')` via `parseStamp`, AND the two disagreed on null-baseline/null-created. Left unfixed, the chip count would not match the digest banner (an explicit AC). |
+| Implement | Resolved that risk by collapsing both into ONE dependency-free predicate (`isNewSinceLastViewed`, permissive + UTC-normalised) and having `computeInboxDigest` delegate to it — server and client can no longer drift. Net deletion in the digest (its inline `parseStamp` filter went away). |
+| Verify | Two harness snags (below), no product bugs. |
+
+Key bottlenecks / lessons:
+- **`ViewHeader` renders through a portal (`createPortal` into `#view-header-portal`), so it returns `null` in jsdom.** The header-chip tests failed with "unable to find button /1 new/" until the test seeded `<div id="view-header-portal">` in `beforeEach`. Lesson: any test asserting on `ViewHeader` content must provide the portal target; existing inbox tests silently never asserted header content, which hid this.
+- **Adding `useSearchParams` forced a Suspense split + a `next/navigation` mock.** App Router fails the build if `useSearchParams()` isn't under `<Suspense>`, and the existing inbox tests didn't mock `next/navigation`, so every test would have thrown. Both were one-liners once anticipated (the Plan flagged them).
+- **Parallel-session contamination, again.** The shared tree had uncommitted work from another session, and that session's committed `2803cfa7 feat(nav): add New story launcher` left a second red guard (`menu-button-guard`: NavPanel `active:scale-95`) on `dev`, on top of the pre-existing `focus-ring-guard`/StoryWriterChat one. Verified BRDG-438 in a throwaway `git worktree add HEAD` (node_modules symlinked) so neither the uncommitted files nor the unrelated red guards muddied the signal; both failures are logged in `docs/investigations/2026-06-29-focus-ring-guard-failing-storywriterchat.md`. The worktree-at-HEAD pattern is now the reliable way to get a true verify on this machine.
+- **Dev data can't demo a small "N new".** The dev-bypass user has 9076 unread and `baselineAt=null` (never triaged), so every row is "new" → chip read "9076 new". A narrow creator filter kept the (non-virtualised) rendered list small for the screenshot while the chip still counted the full unread set; baseline is `MAX(readAt)`, so a realistic small count can't be staged without bulk-marking reads.
+
 ## BRDG-434 — Inbox "new since last visit" marker + tidy unassigned rows (2026-06-29)
 
 Four commits across three checkboxes: per-user `inbox_last_viewed` setting route (`createUserJsonSettingRoute`) + pure `isNewSinceLastViewed` helper; two opt-in `BoardRow` props (`isNewSinceLastViewed` dot in a reserved leading slot, `hideEmptyAssignee` collapse); inbox wiring (freeze baseline once via adjust-state-during-render, re-stamp `now` in an effect). Helper + route + BoardRow unit tests green; production build green; browser-verified the dot, the advance-on-revisit cycle, and the collapsed assignee gap.
