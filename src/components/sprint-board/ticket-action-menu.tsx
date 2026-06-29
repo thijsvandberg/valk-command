@@ -74,7 +74,7 @@ export function AnchoredMenu({
 
   if (!pos) return null;
   return createPortal(
-    <div ref={menuRef} className="fixed z-[9999]" style={{ left: pos.left, top: pos.top, bottom: pos.bottom }}>
+    <div ref={menuRef} role="menu" className="fixed z-[9999]" style={{ left: pos.left, top: pos.top, bottom: pos.bottom }}>
       <Card variant="floating" className={`${width} overflow-visible py-1`} style={{ maxHeight: pos.maxHeight }}>
         {children}
       </Card>
@@ -138,6 +138,7 @@ export function CursorMenu({
   return createPortal(
     <div
       ref={ref}
+      role="menu"
       className="fixed z-[9999]"
       style={{ left: pos?.left ?? x, top: pos?.top ?? y, visibility: pos ? "visible" : "hidden" }}
     >
@@ -226,6 +227,8 @@ function Flyout({ icon, label, width = "w-[240px]", nested = false, children }: 
     <div ref={outerRef} className="relative" onPointerEnter={() => setOpen(true)} onPointerLeave={() => { setOpen(false); setTopShift(0); }}>
       <button
         type="button"
+        aria-haspopup="menu"
+        aria-expanded={open}
         className={`flex w-full items-center gap-2.5 px-3 py-1.5 text-body-sm text-text-secondary cursor-pointer hover:bg-hover-list-item focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-[var(--color-brand-400)] ${open ? "bg-hover-list-item" : ""}`}
       >
         {icon && <span className="flex h-4 w-4 shrink-0 items-center justify-center text-text-tertiary">{icon}</span>}
@@ -238,7 +241,7 @@ function Flyout({ icon, label, width = "w-[240px]", nested = false, children }: 
         style={{ top: topShift }}
         className={`absolute z-20 transition-opacity duration-100 ${open ? "visible opacity-100" : "invisible opacity-0"} ${side === "left" ? "right-full pr-1" : "left-full pl-1"}`}
       >
-        <div ref={panelRef} className={`${FLYOUT_PANEL} ${width} ${nested ? "overflow-visible" : "max-h-[min(70vh,440px)] overflow-y-auto"} py-1`}>{children}</div>
+        <div ref={panelRef} role="menu" className={`${FLYOUT_PANEL} ${width} ${nested ? "overflow-visible" : "max-h-[min(70vh,440px)] overflow-y-auto"} py-1`}>{children}</div>
       </div>
     </div>
   );
