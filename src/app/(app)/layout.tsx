@@ -4,6 +4,7 @@ import { ActivityToast } from "@/components/sync/SyncToast";
 import { SWRProvider } from "@/components/SWRProvider";
 import { FocusModeWrapper } from "@/components/FocusModeWrapper";
 import { EpicColorProvider } from "@/components/shared/EpicColorProvider";
+import { StoryLauncherProvider } from "@/contexts/StoryLauncherContext";
 import { ClientErrorReporter } from "@/components/ClientErrorReporter";
 
 const CommandPalette = dynamic(
@@ -31,9 +32,11 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
     <ClientErrorReporter />
     <ActivityProvider>
       <EpicColorProvider>
+      <StoryLauncherProvider>
       <FocusModeWrapper>
         {children}
       </FocusModeWrapper>
+      </StoryLauncherProvider>
       </EpicColorProvider>
       <ActivityToast />
       <TaskCompletionNotifier />

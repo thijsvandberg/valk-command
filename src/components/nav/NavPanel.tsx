@@ -20,8 +20,10 @@ import {
   History,
   LogOut,
   User,
+  Plus,
 } from "lucide-react";
 import { SyncIndicator } from "@/components/sync/SyncIndicator";
+import { useStoryLauncher } from "@/contexts/StoryLauncherContext";
 import { useAccountMenuItems } from "@/components/sidebar/accountMenuItems";
 import { useSidebarData, type SidebarCount, type SidebarHeroData } from "@/hooks/useSidebarData";
 import { RecentlyViewedView } from "@/components/nav/RecentlyViewedView";
@@ -107,6 +109,7 @@ export function NavPanel({ open, onClose }: { open: boolean; onClose: () => void
   const [accountOpen, setAccountOpen] = useState(false);
   const [recentOpen, setRecentOpen] = useState(false);
   const data = useSidebarData();
+  const { openLauncher } = useStoryLauncher();
 
   const { menuItems, signOutItem } = useAccountMenuItems({
     onClose,
@@ -179,6 +182,7 @@ export function NavPanel({ open, onClose }: { open: boolean; onClose: () => void
             isActive={isActive}
             onNavigate={onClose}
             onOpenRecent={() => setRecentOpen(true)}
+            onNewStory={() => { onClose(); openLauncher(); }}
             counts={{ chat: data.chat, storyWriter: data.storyWriter, refinement: data.refinement, newStories: data.newStories }}
           />
         )}
@@ -194,6 +198,7 @@ function NavigationView({
   isActive,
   onNavigate,
   onOpenRecent,
+  onNewStory,
   counts,
 }: {
   open: boolean;
@@ -202,6 +207,7 @@ function NavigationView({
   isActive: (href: string) => boolean;
   onNavigate: () => void;
   onOpenRecent: () => void;
+  onNewStory: () => void;
   counts: Record<DataKey, SidebarCount>;
 }) {
   return (
@@ -251,6 +257,58 @@ function NavigationView({
           const on = isActive(item.href);
           const info = item.dataKey ? counts[item.dataKey] : undefined;
           const hasCount = info != null && info.count != null;
+
+          const iconSpan = (
+            <span className={`shrink-0 transition-colors ${on ? "text-[var(--color-brand-300)]" : "text-text-tertiary group-hover:text-text-secondary"}`}>
+              {item.icon}
+            </span>
+          );
+          const labelSpan = (
+            <span className={`flex-1 text-body-sm transition-colors ${on ? "font-medium text-text-primary" : "text-text-secondary group-hover:text-text-primary"}`}>
+              {item.label}
+            </span>
+          );
+          const countSpan = hasCount ? (
+            <span className="font-display text-heading-sm font-semibold tabular-nums text-text-secondary">{info!.count}</span>
+          ) : null;
+
+          // Story Writer keeps the identical resting layout as every other row, then
+          // swaps its note for a "+" launcher on hover/focus: the button is absolutely
+          // positioned in the note's right-aligned slot, so it lines up with the other
+          // rows' chevrons and adds no width — the row never shifts. Sibling of the Link
+          // (not nested) keeps the markup valid: a button cannot live inside an anchor.
+          if (item.href === "/story-writer") {
+            return (
+              <div key={item.href} className="group relative border-t border-border-subtle first:border-t-0">
+                <Link
+                  href={item.href}
+                  prefetch
+                  onClick={onNavigate}
+                  aria-current={on ? "page" : undefined}
+                  className="flex items-center gap-3 py-3 text-left transition-colors duration-150 cursor-pointer focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)]"
+                >
+                  {iconSpan}
+                  {labelSpan}
+                  {countSpan}
+                  {hasCount && (
+                    <span className="w-20 text-right text-label text-text-muted transition-opacity duration-150 group-hover:opacity-0 group-focus-within:opacity-0">
+                      {info!.note}
+                    </span>
+                  )}
+                </Link>
+                <button
+                  type="button"
+                  onClick={onNewStory}
+                  aria-label="New story"
+                  title="New story"
+                  className="absolute right-0 top-1/2 grid h-7 w-7 -translate-y-1/2 place-items-center rounded-lg text-[var(--color-brand-300)] opacity-0 pointer-events-none transition-[opacity,background-color,transform] duration-150 cursor-pointer hover:bg-[var(--color-brand-500)]/14 active:scale-95 group-hover:opacity-100 group-hover:pointer-events-auto focus-visible:opacity-100 focus-visible:pointer-events-auto focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)]"
+                >
+                  <Plus className="h-[15px] w-[15px]" strokeWidth={2} />
+                </button>
+              </div>
+            );
+          }
+
           return (
             <Link
               key={item.href}
@@ -260,17 +318,11 @@ function NavigationView({
               aria-current={on ? "page" : undefined}
               className="group flex items-center gap-3 border-t border-border-subtle py-3 text-left transition-colors duration-150 cursor-pointer first:border-t-0 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)]"
             >
-              <span className={`shrink-0 transition-colors ${on ? "text-[var(--color-brand-300)]" : "text-text-tertiary group-hover:text-text-secondary"}`}>
-                {item.icon}
-              </span>
-              <span className={`flex-1 text-body-sm transition-colors ${on ? "font-medium text-text-primary" : "text-text-secondary group-hover:text-text-primary"}`}>
-                {item.label}
-              </span>
+              {iconSpan}
+              {labelSpan}
+              {countSpan}
               {hasCount && (
-                <>
-                  <span className="font-display text-heading-sm font-semibold tabular-nums text-text-secondary">{info!.count}</span>
-                  <span className="w-20 text-right text-label text-text-muted">{info!.note}</span>
-                </>
+                <span className="w-20 text-right text-label text-text-muted">{info!.note}</span>
               )}
             </Link>
           );

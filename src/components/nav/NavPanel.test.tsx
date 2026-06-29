@@ -55,6 +55,12 @@ vi.mock("@/hooks/useSidebarData", () => ({
   useSidebarData: () => sidebarData,
 }));
 
+// Story launcher opener — spy so we can assert the "+" wiring without the modal.
+const mockOpenLauncher = vi.fn();
+vi.mock("@/contexts/StoryLauncherContext", () => ({
+  useStoryLauncher: () => ({ openLauncher: mockOpenLauncher }),
+}));
+
 // The flip-view has its own suite (RecentlyViewedView.test.tsx); a light
 // stand-in keeps this suite's api-client mock minimal.
 const mockOnBack = vi.fn();
@@ -228,6 +234,28 @@ describe("NavPanel (header navigation dropdown)", () => {
       const hero = screen.getByRole("link", { name: /Sprint Board/ });
       expect(within(hero).queryByText(/to do/)).not.toBeInTheDocument();
       expect(within(hero).queryByText("BT: 140")).not.toBeInTheDocument();
+    });
+  });
+
+  describe("new story launcher", () => {
+    it("renders a New story '+' on the Story Writer row", () => {
+      renderOpen();
+      expect(screen.getByRole("button", { name: /New story/i })).toBeInTheDocument();
+    });
+
+    it("opens the launcher and closes the panel without navigating", () => {
+      const onClose = renderOpen();
+      fireEvent.click(screen.getByRole("button", { name: /New story/i }));
+      expect(mockOpenLauncher).toHaveBeenCalledTimes(1);
+      expect(onClose).toHaveBeenCalled();
+      expect(mockPush).not.toHaveBeenCalled();
+    });
+
+    it("keeps the Story Writer row a navigable link distinct from the '+'", () => {
+      const onClose = renderOpen();
+      fireEvent.click(screen.getByRole("link", { name: /Story Writer/ }));
+      expect(onClose).toHaveBeenCalled();
+      expect(mockOpenLauncher).not.toHaveBeenCalled();
     });
   });
 
