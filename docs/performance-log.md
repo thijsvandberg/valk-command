@@ -1,6 +1,18 @@
 # Implementation Performance Log
 
-## BRDG-414 — Status changes on the active sprint board (2026-06-27)
+## BRDG-434 — Inbox "new since last visit" marker + tidy unassigned rows (2026-06-29)
+
+Four commits across three checkboxes: per-user `inbox_last_viewed` setting route (`createUserJsonSettingRoute`) + pure `isNewSinceLastViewed` helper; two opt-in `BoardRow` props (`isNewSinceLastViewed` dot in a reserved leading slot, `hideEmptyAssignee` collapse); inbox wiring (freeze baseline once via adjust-state-during-render, re-stamp `now` in an effect). Helper + route + BoardRow unit tests green; production build green; browser-verified the dot, the advance-on-revisit cycle, and the collapsed assignee gap.
+
+| Phase | Notes |
+|---|---|
+| Plan (Opus) | Confirmed the authored plan and pinned the details that mattered: `createUserJsonSettingRoute` returns 400 on schema mismatch (route-test assertion), the dot slot must sit OUTSIDE the tabular-nums pill div, and the inbox passes no `onAssigneeChange` so unassigned rows hit the read-only spacer the collapse targets. |
+| Implement | Smooth. One deliberate design call: reserve the dot slot whenever the prop is *defined* (inbox passes a boolean per row) so keys align across new/non-new rows, while leaving it `undefined` keeps the board fully inert — no extra host flag needed. |
+| Verify | The blocker was environmental, not the code (see below). |
+
+Key bottlenecks / lessons:
+- **Shared dirty tree from a parallel session broke `eslint .` and the full suite signal.** A parallel session's churn produced a transient lint `ENOENT` and its committed `8dcc6aed` left `focus-ring-guard.test.ts` red on `StoryWriterChat.tsx` (unrelated to this story). Verified my work in a throwaway `git worktree add HEAD` (clean of the parallel session's uncommitted files) with `node_modules` symlinked: full lint 0 errors, typecheck clean, 7145/7146 tests pass (the 1 failure pre-exists on dev — logged in `docs/investigations/2026-06-29-focus-ring-guard-failing-storywriterchat.md`), build green. Lesson: when the tree carries parallel work, a worktree at HEAD is the only trustworthy `verify`/`build` signal.
+- **Dev-bypass user has ~9075 unread inbox rows and the inbox list is NOT virtualized**, so a naive `/inbox` screenshot risks hanging the page. Set a narrow `inbox_filters` creator list (and an old `inbox_last_viewed` baseline so every row dots) via the settings API with the bypass cookie, screenshotted an 8-row set, then reset the filters. Lesson: stage a small filtered set before screenshotting data-heavy non-virtualized lists.
 
 Eight phases, 5 commits: schema + migration (author columns on `ticket_status_change` + `status_change_seen` table), changelog-author capture in sync (`extractLastStatusChangeAuthor`), read endpoint + per-user seen store + `useStatusChanges` live hook, derived "what's new (24h, not me)" in the query, the `StatusChangeLine` board UI (ported from the variant-1 prototype), a permanent "Finished work" divider in `TicketTable`, and the optimistic move-to-bottom (reusing `spliceKeyIntoOrder` against `poPriorityOrder`, marking seen in the same gesture). Full suite green (6,951) + production build green.
 
