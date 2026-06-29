@@ -9,7 +9,6 @@ import { refinementSessions as refinementSessionsApi } from "@/lib/api-client";
 import type { RefinementSessionTicketNoteResponse } from "@/lib/api-client";
 import { Button } from "@/components/ui/Button";
 import { TicketStatusPill } from "@/components/shared/TicketStatusPill";
-import { IssueTypeIcon } from "@/components/shared/IssueTypeIcon";
 import { DateTimePicker, todayLocalDate } from "@/components/shared/DateTimePicker";
 import { sessionLabel, compareSessions } from "./refinement-utils";
 import { tickets, apiFetch } from "@/lib/api-client";
@@ -519,8 +518,7 @@ export function SessionEndModal() {
                       </span>
                     )}
                     {row.subtaskCount === 0 && (
-                      <span className="flex h-5 items-center gap-1 rounded-md bg-amber-500/10 px-1.5 text-caption font-medium text-amber-400/80">
-                        <IssueTypeIcon type="subtask" size={10} />
+                      <span className="flex h-5 items-center rounded-md bg-amber-500/10 px-1.5 text-caption font-medium text-amber-400/80">
                         No subtasks
                       </span>
                     )}
