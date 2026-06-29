@@ -426,7 +426,7 @@ export function StoryWriterLauncherModal({ open, onClose }: StoryWriterLauncherM
                             </span>
                             {s.targetTicketKey && (
                               <>
-                                <Scissors size={9} strokeWidth={2} style={{ color: "color-mix(in srgb, #a78bfa 60%, transparent)", flexShrink: 0 }} />
+                                <Scissors size={9} strokeWidth={2} style={{ color: "color-mix(in srgb, var(--color-chat-accent) 60%, transparent)", flexShrink: 0 }} />
                                 <span className="font-mono font-medium text-text-secondary">{s.targetTicketKey}</span>
                                 <span className="rounded px-1 py-px text-caption font-medium bg-violet-500/10 text-violet-400/80">Split</span>
                               </>
@@ -494,7 +494,7 @@ export function StoryWriterLauncherModal({ open, onClose }: StoryWriterLauncherM
                             </span>
                             {selectedSession.targetTicketKey && (
                               <>
-                                <Scissors size={9} strokeWidth={2} style={{ color: "color-mix(in srgb, #a78bfa 60%, transparent)", flexShrink: 0 }} />
+                                <Scissors size={9} strokeWidth={2} style={{ color: "color-mix(in srgb, var(--color-chat-accent) 60%, transparent)", flexShrink: 0 }} />
                                 <span className="font-mono font-medium text-text-secondary">{selectedSession.targetTicketKey}</span>
                                 <span className="rounded px-1 py-px text-caption font-medium bg-violet-500/10 text-violet-400/80">Split</span>
                               </>

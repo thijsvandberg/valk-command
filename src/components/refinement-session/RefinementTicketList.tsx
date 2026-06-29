@@ -124,7 +124,7 @@ export function RefinementTicketList({
             onClick={queueHook.handleToggleReadyToRefine}
             className={`shrink-0 cursor-pointer rounded-full px-2 py-0.5 text-caption font-medium focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-status-done)] active:opacity-70 ${
               queueHook.allReadySelected
-                ? "bg-[var(--color-status-done)] text-white hover:bg-[#1ea34d]"
+                ? "bg-[var(--color-status-done)] text-white hover:bg-[var(--color-status-done-hover)]"
                 : "bg-[var(--color-status-done-subtle)] text-[var(--color-status-done)] hover:bg-[color-mix(in_srgb,var(--color-status-done)_20%,transparent)]"
             }`}
             style={{ transition: "background-color 0.15s ease, color 0.15s ease, opacity 0.1s ease" }}

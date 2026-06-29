@@ -307,7 +307,7 @@ export function EpicPickerBody({
   const staleFooter = staleCount > 0 && !query.trim() ? (
     <div className="border-t border-border-subtle px-3 py-1.5 flex items-center justify-between">
       <span className="text-caption text-text-muted">{staleCount} stale {staleCount === 1 ? "summary" : "summaries"}</span>
-      <button type="button" onClick={handleGenerateSummaries} disabled={syncing} className="text-caption text-[var(--color-icon-epic)] cursor-pointer hover:text-[#b48ee6] focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-[var(--color-brand-400)] disabled:opacity-40" style={{ transition: "color 0.15s ease" }}>Refresh</button>
+      <button type="button" onClick={handleGenerateSummaries} disabled={syncing} className="text-caption text-[var(--color-icon-epic)] cursor-pointer hover:text-[var(--color-icon-epic-hover)] focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-[var(--color-brand-400)] disabled:opacity-40" style={{ transition: "color 0.15s ease" }}>Refresh</button>
     </div>
   ) : null;
 
@@ -327,7 +327,7 @@ export function EpicPickerBody({
           className="flex-1 bg-transparent text-body-sm text-text-secondary placeholder:text-text-muted focus:outline-none focus-visible:ring-1 focus-visible:ring-inset focus-visible:ring-[var(--color-brand-500)]/50"
         />
         {ticketKey && (
-          <button type="button" onClick={handleSuggestEpic} disabled={suggesting} title="Suggest epic with AI" aria-label="Suggest epic with AI" className="shrink-0 rounded p-0.5 text-[var(--color-icon-epic)] cursor-pointer hover:text-[#b48ee6] hover:bg-[color-mix(in_srgb,var(--color-icon-epic)_8%,transparent)] focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-[var(--color-brand-400)] disabled:opacity-40" style={{ transition: "color 0.15s ease, background-color 0.15s ease" }}>
+          <button type="button" onClick={handleSuggestEpic} disabled={suggesting} title="Suggest epic with AI" aria-label="Suggest epic with AI" className="shrink-0 rounded p-0.5 text-[var(--color-icon-epic)] cursor-pointer hover:text-[var(--color-icon-epic-hover)] hover:bg-[color-mix(in_srgb,var(--color-icon-epic)_8%,transparent)] focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-[var(--color-brand-400)] disabled:opacity-40" style={{ transition: "color 0.15s ease, background-color 0.15s ease" }}>
             <Sparkles size={11} strokeWidth={1.5} className={suggesting ? "animate-pulse" : ""} />
           </button>
         )}

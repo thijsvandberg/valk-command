@@ -56,7 +56,7 @@ export function ResultIcon({ result, isActive }: { result: PaletteResult; isActi
       );
     case "epic":
       return (
-        <span className={`${base} ${isActive ? "bg-[#9b6cd4]/15 text-[#9b6cd4]" : "bg-overlay-subtle text-text-tertiary"}`}>
+        <span className={`${base} ${isActive ? "bg-[var(--color-icon-epic)]/15 text-[var(--color-icon-epic)]" : "bg-overlay-subtle text-text-tertiary"}`}>
           <Gem className="h-4 w-4" strokeWidth={1.5} />
         </span>
       );

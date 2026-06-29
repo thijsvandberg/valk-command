@@ -387,7 +387,7 @@ export function TicketReview({ ticketKey }: { ticketKey: string }) {
         title="Delete review?"
         description="This will permanently remove this review from the history. The quality score will update to reflect the most recent remaining review."
         confirmLabel="Delete"
-        confirmClassName="!bg-[var(--color-status-error)] !text-white hover:!bg-[#d04840]"
+        confirmClassName="!bg-[var(--color-status-error)] !text-white hover:!bg-[var(--color-status-error-hover)]"
         onConfirm={handleConfirmDelete}
       />
     </div>

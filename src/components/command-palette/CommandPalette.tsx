@@ -92,7 +92,7 @@ export function CommandPalette() {
           <div className="flex items-center gap-3 px-5 py-4">
             <Search className="h-[18px] w-[18px] shrink-0 text-text-muted" strokeWidth={1.5} />
             {epicMode && (
-              <span className="shrink-0 rounded-md bg-[#9b6cd4]/15 px-2 py-0.5 text-caption font-semibold text-[#9b6cd4] tracking-wide">
+              <span className="shrink-0 rounded-md bg-[var(--color-icon-epic)]/15 px-2 py-0.5 text-caption font-semibold text-[var(--color-icon-epic)] tracking-wide">
                 Epics
               </span>
             )}

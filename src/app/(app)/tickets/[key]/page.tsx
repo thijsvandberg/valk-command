@@ -491,7 +491,7 @@ export default function TicketDetailPage({
                     <MessageSquareText
                       size={13}
                       strokeWidth={1.5}
-                      className={chatPaneOpen ? "text-[#a78bfa]" : "text-text-muted"}
+                      className={chatPaneOpen ? "text-[var(--color-chat-accent)]" : "text-text-muted"}
                     />
                     {chatPaneOpen ? "Close ticket chat" : "Open ticket chat"}
                   </button>

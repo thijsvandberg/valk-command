@@ -194,8 +194,18 @@
 
   /* Decorative icon tokens */
   --color-icon-epic: #9b6cd4;
+  --color-icon-epic-hover: #b48ee6;
   --color-icon-sprint: #d4904a;
   --color-icon-task: #4a90d9;
+
+  /* Violet AI/chat accent (chat sidebar toggle, split-story scissors). Was the
+     raw #a78bfa repeated across the ticket-detail and refinement chat panels. */
+  --color-chat-accent: #a78bfa;
+
+  /* Hover/active shades for solid status buttons. These were hardcoded one-off
+     hexes (a darker red / green than the resting status color) with no token. */
+  --color-status-error-hover: #d04840;
+  --color-status-done-hover: #1ea34d;
 
   /* Brand accent subtle (search highlights, active filter bgs) */
   --color-brand-subtle: rgba(74, 170, 96, 0.10);
