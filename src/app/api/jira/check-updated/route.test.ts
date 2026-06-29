@@ -21,6 +21,17 @@ vi.mock("@/lib/jira-client", () => ({
   },
 }));
 
+// Mirrors the canonical mapping (unit-tested in upsert-issue.test.ts) without
+// pulling the heavy module under these partial mocks.
+vi.mock("@/lib/upsert-issue", () => ({
+  normalizeStatus: (name: string) => {
+    const u = name.toUpperCase();
+    if (u.includes("PROGRESS")) return "IN PROGRESS";
+    if (u === "DONE" || u === "CLOSED" || u === "RESOLVED") return "DONE";
+    return u;
+  },
+}));
+
 import { GET } from "./route";
 
 function makeRequest(params: Record<string, string>): Request {
@@ -67,5 +78,31 @@ describe("GET /api/jira/check-updated", () => {
     expect(data.stale).toBe(true);
     expect(data.key).toBe("VPL-123");
     expect(mockGetIssue).toHaveBeenCalledWith("VPL-123");
+  });
+
+  it("reports stale on a status drift even when the updated timestamp matches", async () => {
+    mockFindFirst.mockResolvedValue({ jiraUpdatedAt: "2026-01-01T00:00:00Z", status: "DONE" });
+    mockGetIssue.mockResolvedValue({
+      fields: { updated: "2026-01-01T00:00:00Z", status: { name: "In Progress" } },
+    });
+
+    const res = await GET(makeRequest({ key: "VPL-123" }));
+    expect(res.status).toBe(200);
+    const data = await res.json();
+    expect(data.stale).toBe(true);
+    expect(data.localStatus).toBe("DONE");
+    expect(data.remoteStatus).toBe("IN PROGRESS");
+  });
+
+  it("is not stale when timestamp and status both match", async () => {
+    mockFindFirst.mockResolvedValue({ jiraUpdatedAt: "2026-01-01T00:00:00Z", status: "IN PROGRESS" });
+    mockGetIssue.mockResolvedValue({
+      fields: { updated: "2026-01-01T00:00:00Z", status: { name: "In Progress" } },
+    });
+
+    const res = await GET(makeRequest({ key: "VPL-123" }));
+    expect(res.status).toBe(200);
+    const data = await res.json();
+    expect(data.stale).toBe(false);
   });
 });

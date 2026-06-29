@@ -5,7 +5,7 @@ import { validatePathParam } from "@/lib/api-validation";
 import { db } from "@/db";
 import { ticket, ticketSubtask } from "@/db/schema";
 import { eq } from "drizzle-orm";
-import { jiraClient } from "@/lib/jira-client";
+import { jiraClient, JiraApiError } from "@/lib/jira-client";
 import { logActivity } from "@/lib/activity-logger";
 import { logger } from "@/lib/logger";
 import { cache } from "@/lib/cache";
@@ -17,6 +17,19 @@ import { emitTicketEvent, originFromRequest } from "@/lib/ticket-events";
 type RouteContext = { params: Promise<{ key: string }> };
 
 const VALID_STATUSES: JiraStatus[] = ["TO DO", "IN PROGRESS", "TEST", "DONE", "DEPRECATED"];
+
+/**
+ * A rejection is Jira reachable but refusing the transition: a 4xx
+ * (validation/permission/conflict) or no matching transition offered at all
+ * (transitionIssue throws "No available transition ..." — e.g. Done blocked while
+ * subtasks are open). This is distinct from Jira being unreachable (5xx / network /
+ * not configured), which we still apply locally as before.
+ */
+function isTransitionRejection(err: unknown): boolean {
+  if (err instanceof JiraApiError) return err.status >= 400 && err.status < 500;
+  if (err instanceof Error && err.message.startsWith("No available transition")) return true;
+  return false;
+}
 
 export async function PUT(request: Request, { params }: RouteContext) {
   const limited = await applyRateLimit("write");
@@ -43,12 +56,32 @@ export async function PUT(request: Request, { params }: RouteContext) {
   }
 
   let jiraError: string | undefined;
+  let rejected = false;
   try {
     await jiraClient.transitionIssue(key, status);
     await syncJiraTimestamp(key);
   } catch (err) {
     jiraError = err instanceof Error ? err.message : String(err);
-    logger.warn("ticket-status", `Jira transition failed for ${key} (updating locally anyway): ${jiraError}`);
+    rejected = isTransitionRejection(err);
+    logger.warn(
+      "ticket-status",
+      `Jira transition failed for ${key} (${rejected ? "rejected, not applying locally" : "updating locally anyway"}): ${jiraError}`,
+    );
+  }
+
+  // Jira refused the transition (e.g. Done blocked by open subtasks): Jira will never
+  // reflect this status, so applying it locally would strand a wrong status that no
+  // sync can reconcile (jira_updated_at still matches Jira). Refuse instead; the
+  // caller reverts its optimistic edit and surfaces the error.
+  if (rejected) {
+    await logActivity({
+      type: "metadata-update",
+      scope: key,
+      status: "failed",
+      summary: `Jira rejected status change to ${status}`,
+      errorDetail: jiraError,
+    });
+    return errorResponse(`Jira rejected the transition to ${status}`, 409);
   }
 
   await db.update(ticket).set({ status }).where(eq(ticket.jiraKey, key));

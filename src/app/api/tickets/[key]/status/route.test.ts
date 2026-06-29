@@ -31,8 +31,14 @@ vi.mock("@/lib/logger", () => ({
 }));
 
 import { PUT } from "./route";
-import { jiraClient } from "@/lib/jira-client";
+import { jiraClient, JiraApiError } from "@/lib/jira-client";
 import { cache } from "@/lib/cache";
+import { ticket } from "@/db/schema";
+import { eq } from "drizzle-orm";
+
+function ticketStatus(key: string): string | undefined {
+  return testDb.select().from(ticket).where(eq(ticket.jiraKey, key)).all()[0]?.status;
+}
 
 function makeParams(key: string): { params: Promise<{ key: string }> } {
   return { params: Promise.resolve({ key }) };
@@ -127,8 +133,8 @@ describe("PUT /api/tickets/[key]/status", () => {
     expect(cache.invalidate).toHaveBeenCalledWith("/api/epics/progress");
   });
 
-  it("returns jiraWarning if Jira transition fails", async () => {
-    seedTicket(testDb, { jiraKey: "BRDG-1" });
+  it("applies locally with a jiraWarning when Jira is unreachable (transient)", async () => {
+    seedTicket(testDb, { jiraKey: "BRDG-1", status: "IN PROGRESS" });
     vi.mocked(jiraClient.transitionIssue).mockRejectedValueOnce(
       new Error("Jira unavailable"),
     );
@@ -142,5 +148,52 @@ describe("PUT /api/tickets/[key]/status", () => {
     expect(response.status).toBe(200);
     expect(data.status).toBe("DONE");
     expect(data.jiraWarning).toBe("Jira update failed");
+    expect(ticketStatus("BRDG-1")).toBe("DONE");
+  });
+
+  it("returns 409 and does NOT change local status when Jira offers no matching transition", async () => {
+    seedTicket(testDb, { jiraKey: "BRDG-1", status: "IN PROGRESS" });
+    vi.mocked(jiraClient.transitionIssue).mockRejectedValueOnce(
+      new Error('No available transition to "DONE" for issue BRDG-1'),
+    );
+
+    const response = await PUT(
+      putRequest("BRDG-1", { status: "DONE" }),
+      makeParams("BRDG-1"),
+    );
+
+    expect(response.status).toBe(409);
+    // Jira refused, so the local status must stay as Jira has it — never stranded.
+    expect(ticketStatus("BRDG-1")).toBe("IN PROGRESS");
+  });
+
+  it("returns 409 and does NOT change local status on a 4xx Jira rejection", async () => {
+    seedTicket(testDb, { jiraKey: "BRDG-1", status: "IN PROGRESS" });
+    vi.mocked(jiraClient.transitionIssue).mockRejectedValueOnce(
+      new JiraApiError(400, "Bad Request", "transition not valid", "/transitions"),
+    );
+
+    const response = await PUT(
+      putRequest("BRDG-1", { status: "DONE" }),
+      makeParams("BRDG-1"),
+    );
+
+    expect(response.status).toBe(409);
+    expect(ticketStatus("BRDG-1")).toBe("IN PROGRESS");
+  });
+
+  it("still applies locally on a 5xx Jira error (treated as transient, self-heals on next sync)", async () => {
+    seedTicket(testDb, { jiraKey: "BRDG-1", status: "IN PROGRESS" });
+    vi.mocked(jiraClient.transitionIssue).mockRejectedValueOnce(
+      new JiraApiError(503, "Service Unavailable", "", "/transitions"),
+    );
+
+    const response = await PUT(
+      putRequest("BRDG-1", { status: "DONE" }),
+      makeParams("BRDG-1"),
+    );
+
+    expect(response.status).toBe(200);
+    expect(ticketStatus("BRDG-1")).toBe("DONE");
   });
 });

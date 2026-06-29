@@ -60,7 +60,13 @@ This is read-path enrichment only; it does not change how `sprintName` / `sprint
 
 ### Single-ticket Sync
 
-Triggered on ticket detail open. `useTicketDetail` returns cached data immediately, then runs a background freshness check via `/api/jira/check-updated`. If stale, triggers a single-ticket sync.
+Triggered on ticket detail open. `useTicketDetail` returns cached data immediately, then re-syncs the ticket from Jira in the background (`syncTickets({ ticketKeys: [key] })`, which `upsertIssue`s unconditionally) and revalidates. This is the self-heal path: opening a ticket always reconciles its fields with Jira, even when the `updated` timestamp matches.
+
+**Freshness is not timestamp-only.** `/api/jira/check-updated` compares both the `updated` timestamp **and** the normalized `status`. A field can drift from Jira while `jira_updated_at` still matches it (e.g. a local status write Jira never accepted, or seeded data), and a timestamp-only check would treat such a ticket as fresh forever. Comparing status too means the drift is still reported as `stale` so it gets re-synced. Note the **incremental** sync (`getUpdatedSince`) is still timestamp-only by design (1 lightweight call), so the board does not self-correct a timestamp-matching drift until the ticket is opened.
+
+#### Status writes only persist when Jira accepts them
+
+`PUT /api/tickets/[key]/status` pushes the transition to Jira first. If Jira **rejects** it (a 4xx, or no matching transition offered — e.g. *Done* blocked while subtasks are open), the route returns `409` and does **not** write the local status: applying it would strand a wrong status that no sync can reconcile (the timestamp still matches Jira). Callers revert their optimistic edit and surface the error. A **transient/unreachable** Jira error (5xx / network / not configured) still applies locally with a `jiraWarning` as before, and self-heals on the next single-ticket sync.
 
 ## Components
 

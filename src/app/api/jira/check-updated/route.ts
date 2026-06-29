@@ -3,6 +3,7 @@ import { db } from "@/db";
 import { ticket } from "@/db/schema";
 import { eq } from "drizzle-orm";
 import { jiraClient, JiraApiError } from "@/lib/jira-client";
+import { normalizeStatus } from "@/lib/upsert-issue";
 import { isValidJiraKey } from "@/lib/jql";
 import { logger } from "@/lib/logger";
 
@@ -38,16 +39,28 @@ export async function GET(request: Request) {
     });
 
     const localUpdated = local?.jiraUpdatedAt ?? null;
+    const localStatus = local?.status ?? null;
 
     const issue = await jiraClient.getIssue(key);
     const remoteUpdated = issue.fields.updated;
+    const remoteStatus = issue.fields.status?.name
+      ? normalizeStatus(issue.fields.status.name)
+      : null;
 
-    const stale = !localUpdated || localUpdated !== remoteUpdated;
+    // Status can drift from Jira while the `updated` timestamp still matches (e.g. a
+    // local status write Jira never accepted). Comparing status too means such drift
+    // is still reported as stale and re-synced, instead of being masked by an equal
+    // timestamp.
+    const statusDrift =
+      localStatus != null && remoteStatus != null && localStatus !== remoteStatus;
+    const stale = !localUpdated || localUpdated !== remoteUpdated || statusDrift;
 
     return NextResponse.json({
       stale,
       localUpdated,
       remoteUpdated,
+      localStatus,
+      remoteStatus,
       key,
     });
   } catch (err) {
