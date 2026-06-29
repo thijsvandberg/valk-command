@@ -392,6 +392,66 @@ describe("LinkedIssuesSection", () => {
     expect(document.querySelector('[data-ticket-key="VPL-200"]')).toBeInTheDocument();
   });
 
+  // BRDG-433: the inline composer surfaces tickets referenced in the description/
+  // comments above the recently-updated picks.
+  describe("referenced in this ticket (BRDG-433)", () => {
+    it("shows the referenced section above recently updated in the inline composer", async () => {
+      mockReferencedIssues.mockResolvedValue({ results: [
+        { key: "VPL-300", title: "Referenced issue", type: "story", status: "TO DO" },
+      ] });
+      mockRecentlyUpdated.mockResolvedValue({ results: [
+        { key: "VPL-400", title: "Recent issue", type: "task", status: "TO DO" },
+      ], hasMore: false });
+
+      renderSection();
+      fireEvent.focus(screen.getByPlaceholderText("Link issue..."));
+
+      await waitFor(() => {
+        expect(screen.getByText("Referenced in this ticket")).toBeInTheDocument();
+      });
+      const referencedHeader = screen.getByText("Referenced in this ticket");
+      const recentHeader = screen.getByText("Recently updated");
+      expect(
+        referencedHeader.compareDocumentPosition(recentHeader) & Node.DOCUMENT_POSITION_FOLLOWING,
+      ).toBeTruthy();
+      expect(screen.getByText("VPL-300")).toBeInTheDocument();
+    });
+
+    it("shows a ticket present in both lists only once (referenced wins)", async () => {
+      mockReferencedIssues.mockResolvedValue({ results: [
+        { key: "VPL-300", title: "In both lists", type: "story", status: "TO DO" },
+      ] });
+      mockRecentlyUpdated.mockResolvedValue({ results: [
+        { key: "VPL-300", title: "In both lists", type: "story", status: "TO DO" },
+        { key: "VPL-400", title: "Recent only", type: "task", status: "TO DO" },
+      ], hasMore: false });
+
+      renderSection();
+      fireEvent.focus(screen.getByPlaceholderText("Link issue..."));
+
+      await waitFor(() => {
+        expect(screen.getByText("Referenced in this ticket")).toBeInTheDocument();
+      });
+      expect(screen.getAllByText("VPL-300")).toHaveLength(1);
+      expect(screen.getByText("VPL-400")).toBeInTheDocument();
+    });
+
+    it("does not render the referenced header when there are no references", async () => {
+      mockReferencedIssues.mockResolvedValue({ results: [] });
+      mockRecentlyUpdated.mockResolvedValue({ results: [
+        { key: "VPL-400", title: "Recent issue", type: "task", status: "TO DO" },
+      ], hasMore: false });
+
+      renderSection();
+      fireEvent.focus(screen.getByPlaceholderText("Link issue..."));
+
+      await waitFor(() => {
+        expect(screen.getByText("Recently updated")).toBeInTheDocument();
+      });
+      expect(screen.queryByText("Referenced in this ticket")).not.toBeInTheDocument();
+    });
+  });
+
   // BRDG-332: linked-issue rows open in the SidePanel like subtasks/epic children.
   describe("row selection (BRDG-332)", () => {
     it("calls onSelectTicket with the row key when a linked-issue row is clicked", () => {

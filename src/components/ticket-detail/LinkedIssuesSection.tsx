@@ -431,7 +431,12 @@ export function LinkedIssuesSection({ issues, ticketKey, onMutate, onSelectTicke
       return;
     }
 
-    const activeList = search.showResults ? search.filteredResults : (search.query.length < 2 ? search.recentResults : []);
+    // Default view lists referenced rows first, then recently-updated rows with
+    // any referenced key removed (BRDG-433), so keyboard order matches the render.
+    const referencedKeys = new Set(search.referencedResults.map((r) => r.key));
+    const dedupedRecent = search.recentResults.filter((r) => !referencedKeys.has(r.key));
+    const defaultList = [...search.referencedResults, ...dedupedRecent];
+    const activeList = search.showResults ? search.filteredResults : (search.query.length < 2 ? defaultList : []);
     if (activeList.length === 0) return;
 
     if (e.key === "ArrowDown") {
@@ -487,7 +492,17 @@ export function LinkedIssuesSection({ issues, ticketKey, onMutate, onSelectTicke
     if (expandedEmpty) setComposerAt((prev) => prev ?? "__bottom__");
   }
 
-  const showRecentPicks = inlineFocused && search.query.length < 2 && !search.showResults && search.recentResults.length > 0;
+  // Referenced section (BRDG-433) wins over the recent list: a ticket in both is
+  // shown only once, at the top. The de-duped recent list feeds both the render
+  // and the keyboard highlight indexing in handleInlineKeyDown.
+  const referencedPicks = search.referencedResults;
+  const referencedPickKeys = new Set(referencedPicks.map((r) => r.key));
+  const dedupedRecentPicks = search.recentResults.filter((r) => !referencedPickKeys.has(r.key));
+  const showRecentPicks =
+    inlineFocused &&
+    search.query.length < 2 &&
+    !search.showResults &&
+    (referencedPicks.length > 0 || dedupedRecentPicks.length > 0);
 
   const headerActiveState = headerMenuOpen || composerAt === "__bottom__" || suggestions.length > 0;
 
@@ -693,23 +708,51 @@ export function LinkedIssuesSection({ issues, ticketKey, onMutate, onSelectTicke
             className="absolute left-0 right-0 top-full z-50 mt-1 max-h-72 overflow-y-auto rounded-lg border border-border-strong bg-surface-elevated py-1 shadow-lg"
             style={{ scrollbarWidth: "thin", scrollbarColor: "var(--color-overlay-strong) transparent" }}
           >
-            <div className="flex items-center gap-1.5 px-3 py-1.5">
-              <Clock size={11} className="text-text-muted" strokeWidth={1.5} />
-              <span className="text-caption font-medium uppercase tracking-widest text-text-muted">
-                Recently updated
-              </span>
-            </div>
-            <HoverDataProvider keys={search.recentResults.map((r) => r.key)}>
-              {search.recentResults.map((r, idx) => (
-                <LinkSearchResultRow
-                  key={r.key}
-                  result={r}
-                  highlighted={idx === search.highlightIndex}
-                  onSelect={handleInlineLink}
-                  onHover={() => search.setHighlightIndex(idx)}
-                />
-              ))}
-            </HoverDataProvider>
+            {referencedPicks.length > 0 && (
+              <>
+                <div className="flex items-center gap-1.5 px-3 py-1.5">
+                  <Link2 size={11} className="text-text-muted" strokeWidth={1.5} />
+                  <span className="text-caption font-medium uppercase tracking-widest text-text-muted">
+                    Referenced in this ticket
+                  </span>
+                </div>
+                <HoverDataProvider keys={referencedPicks.map((r) => r.key)}>
+                  {referencedPicks.map((r, idx) => (
+                    <LinkSearchResultRow
+                      key={r.key}
+                      result={r}
+                      highlighted={idx === search.highlightIndex}
+                      onSelect={handleInlineLink}
+                      onHover={() => search.setHighlightIndex(idx)}
+                    />
+                  ))}
+                </HoverDataProvider>
+              </>
+            )}
+            {dedupedRecentPicks.length > 0 && (
+              <>
+                <div className="flex items-center gap-1.5 px-3 py-1.5">
+                  <Clock size={11} className="text-text-muted" strokeWidth={1.5} />
+                  <span className="text-caption font-medium uppercase tracking-widest text-text-muted">
+                    Recently updated
+                  </span>
+                </div>
+                <HoverDataProvider keys={dedupedRecentPicks.map((r) => r.key)}>
+                  {dedupedRecentPicks.map((r, idx) => {
+                    const highlightIdx = referencedPicks.length + idx;
+                    return (
+                      <LinkSearchResultRow
+                        key={r.key}
+                        result={r}
+                        highlighted={highlightIdx === search.highlightIndex}
+                        onSelect={handleInlineLink}
+                        onHover={() => search.setHighlightIndex(highlightIdx)}
+                      />
+                    );
+                  })}
+                </HoverDataProvider>
+              </>
+            )}
           </div>
         )}
 
