@@ -311,6 +311,10 @@ export const tickets = {
     apiFetch<LinkSearchResponse>(`/api/tickets/search${qs({ q: query, exclude: excludeKey, offset: offset ? String(offset) : undefined, ...linkFilterParams(filters) })}`, { signal }),
   recentlyUpdated: (excludeKey?: string, offset?: number, filters?: LinkSearchFilters, signal?: AbortSignal) =>
     apiFetch<LinkSearchResponse>(`/api/tickets/search${qs({ recent: "1", exclude: excludeKey, offset: offset ? String(offset) : undefined, ...linkFilterParams(filters) })}`, { signal }),
+  // Issues mentioned in this ticket's description/comments but not yet formally
+  // linked (BRDG-433); shaped like the search rows so the picker renders them as-is.
+  referencedIssues: (key: string, signal?: AbortSignal) =>
+    apiFetch<{ results: LinkSearchResult[] }>(`/api/tickets/${enc(key)}/referenced-issues`, { signal }),
 
   suggestSubtasks: (ticketKey: string, signal?: AbortSignal) =>
     apiFetch<{ taskId: string; streamUrl: string }>(

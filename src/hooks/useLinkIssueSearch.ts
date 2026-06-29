@@ -62,6 +62,7 @@ export interface UseLinkIssueSearchReturn {
   loadMore: () => void;
   isLoadingMore: boolean;
   recentResults: LinkSearchResult[];
+  referencedResults: LinkSearchResult[];
   availableStatuses: Array<{ status: string; count: number }>;
   activeStatuses: Set<string>;
   toggleStatus: (status: string) => void;
@@ -87,6 +88,7 @@ export function useLinkIssueSearch(ticketKey: string): UseLinkIssueSearchReturn 
   const [isSearchingJira, setIsSearchingJira] = useState(false);
   const [isLoadingMore, setIsLoadingMore] = useState(false);
   const [recentResults, setRecentResults] = useState<LinkSearchResult[]>([]);
+  const [referencedResults, setReferencedResults] = useState<LinkSearchResult[]>([]);
   const [activeStatuses, setActiveStatuses] = useState<Set<string>>(new Set());
   const [showResults, setShowResults] = useState(false);
   const [highlightIndex, setHighlightIndex] = useState(-1);
@@ -136,6 +138,18 @@ export function useLinkIssueSearch(ticketKey: string): UseLinkIssueSearchReturn 
       if (cancelled) return;
       setRecentResults(data.results);
       if (data.facets) setFacets(data.facets);
+    }).catch(() => {});
+    return () => { cancelled = true; };
+  }, [ticketKey]);
+
+  // Issues already referenced in this ticket's description/comments (BRDG-433),
+  // fetched in parallel with the recent list so the picker can show a dedicated
+  // "Referenced in this ticket" section above "Recently updated".
+  useEffect(() => {
+    let cancelled = false;
+    tickets.referencedIssues(ticketKey).then((data) => {
+      if (cancelled) return;
+      setReferencedResults(data.results);
     }).catch(() => {});
     return () => { cancelled = true; };
   }, [ticketKey]);
@@ -330,6 +344,7 @@ export function useLinkIssueSearch(ticketKey: string): UseLinkIssueSearchReturn 
     loadMore,
     isLoadingMore,
     recentResults,
+    referencedResults,
     availableStatuses,
     activeStatuses,
     toggleStatus,

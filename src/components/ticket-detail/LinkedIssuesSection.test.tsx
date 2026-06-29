@@ -18,6 +18,7 @@ const mockCreateLink = vi.fn();
 const mockDeleteLink = vi.fn();
 const mockChangeLinkType = vi.fn();
 const mockRecentlyUpdated = vi.fn();
+const mockReferencedIssues = vi.fn();
 const mockGetRelatedSuggestions = vi.fn();
 vi.mock("@/lib/api-client", () => ({
   tickets: {
@@ -27,6 +28,7 @@ vi.mock("@/lib/api-client", () => ({
     deleteLink: (...args: unknown[]) => mockDeleteLink(...args),
     changeLinkType: (...args: unknown[]) => mockChangeLinkType(...args),
     recentlyUpdated: (...args: unknown[]) => mockRecentlyUpdated(...args),
+    referencedIssues: (...args: unknown[]) => mockReferencedIssues(...args),
     getRelatedSuggestions: (...args: unknown[]) => mockGetRelatedSuggestions(...args),
   },
   jira: {
@@ -112,6 +114,7 @@ describe("LinkedIssuesSection", () => {
     vi.clearAllMocks();
     __resetSectionCollapseStore();
     mockRecentlyUpdated.mockResolvedValue({ results: [], hasMore: false });
+    mockReferencedIssues.mockResolvedValue({ results: [] });
     mockSearchForLinkWithJira.mockResolvedValue({ results: [], hasMore: false });
     mockGetRelatedSuggestions.mockResolvedValue({ suggestions: [], cachedAt: null });
   });

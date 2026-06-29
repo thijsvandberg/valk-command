@@ -2,12 +2,14 @@ import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { renderHook, act } from "@testing-library/react";
 
 const recentlyUpdated = vi.fn();
+const referencedIssues = vi.fn();
 const searchForLink = vi.fn();
 const searchForLinkWithJira = vi.fn();
 
 vi.mock("@/lib/api-client", () => ({
   tickets: {
     recentlyUpdated: (...args: unknown[]) => recentlyUpdated(...args),
+    referencedIssues: (...args: unknown[]) => referencedIssues(...args),
     searchForLink: (...args: unknown[]) => searchForLink(...args),
     searchForLinkWithJira: (...args: unknown[]) => searchForLinkWithJira(...args),
   },
@@ -20,6 +22,7 @@ describe("useLinkIssueSearch unmount hygiene (BRDG-410)", () => {
     vi.clearAllMocks();
     vi.useFakeTimers();
     recentlyUpdated.mockResolvedValue({ results: [], hasMore: false });
+    referencedIssues.mockResolvedValue({ results: [] });
   });
 
   afterEach(() => {
@@ -77,5 +80,37 @@ describe("useLinkIssueSearch unmount hygiene (BRDG-410)", () => {
       resolveSearch?.({ results: [{ key: "VPL-2" }], hasMore: false });
       await Promise.resolve();
     });
+  });
+});
+
+describe("useLinkIssueSearch referenced issues (BRDG-433)", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    recentlyUpdated.mockResolvedValue({ results: [], hasMore: false });
+  });
+
+  it("populates referencedResults from the referenced-issues endpoint on mount", async () => {
+    referencedIssues.mockResolvedValue({ results: [{ key: "VPL-100", title: "Referenced" }] });
+
+    const { result } = renderHook(() => useLinkIssueSearch("VPL-1"));
+
+    await act(async () => {
+      await Promise.resolve();
+    });
+
+    expect(referencedIssues).toHaveBeenCalledWith("VPL-1");
+    expect(result.current.referencedResults.map((r) => r.key)).toEqual(["VPL-100"]);
+  });
+
+  it("leaves referencedResults empty when the fetch fails", async () => {
+    referencedIssues.mockRejectedValue(new Error("boom"));
+
+    const { result } = renderHook(() => useLinkIssueSearch("VPL-1"));
+
+    await act(async () => {
+      await Promise.resolve();
+    });
+
+    expect(result.current.referencedResults).toEqual([]);
   });
 });

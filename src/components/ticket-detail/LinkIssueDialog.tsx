@@ -13,7 +13,7 @@ import { ScrollSentinel } from "./ScrollSentinel";
 import { tickets } from "@/lib/api-client";
 import { useLinkTypes } from "@/hooks/useLinkTypes";
 import { useDefaultTeam } from "@/hooks/useDefaultTeam";
-import { Loader2, Search, ChevronDown, Check, Clock } from "lucide-react";
+import { Loader2, Search, ChevronDown, Check, Clock, Link2 } from "lucide-react";
 
 interface LinkIssueDialogProps {
   open: boolean;
@@ -120,8 +120,13 @@ export function LinkIssueDialog({
   }, [selected, search.query, relation, isSubmitting, ticketKey, onLinked, linkTypes]);
 
   const handleKeyDown = useCallback((e: React.KeyboardEvent) => {
-    const showingRecent = !search.showResults && search.query.length < 2 && search.recentResults.length > 0;
-    const activeList = search.showResults ? search.filteredResults : showingRecent ? search.recentResults : [];
+    // Default view lists referenced rows first, then recently-updated rows with
+    // any referenced key removed, so keyboard traversal matches the visual order.
+    const referencedKeys = new Set(search.referencedResults.map((r) => r.key));
+    const dedupedRecent = search.recentResults.filter((r) => !referencedKeys.has(r.key));
+    const defaultList = [...search.referencedResults, ...dedupedRecent];
+    const showingDefault = !search.showResults && search.query.length < 2 && defaultList.length > 0;
+    const activeList = search.showResults ? search.filteredResults : showingDefault ? defaultList : [];
 
     if (activeList.length === 0) {
       if (e.key === "Enter" && (selected || search.query.trim())) {
@@ -150,6 +155,13 @@ export function LinkIssueDialog({
   if (!open) return null;
 
   const showRecentPicks = search.query.length < 2 && !selected && search.recentResults.length > 0;
+
+  // Referenced section wins over the recent list: a ticket that would appear in
+  // both is shown only once, at the top (BRDG-433). The de-duped recent list
+  // feeds both the render and the keyboard highlight indexing below.
+  const referencedResults = search.referencedResults;
+  const referencedKeys = new Set(referencedResults.map((r) => r.key));
+  const dedupedRecent = search.recentResults.filter((r) => !referencedKeys.has(r.key));
 
   return (
     <Modal open={open} onClose={onClose} aria-label="Link issue">
@@ -346,16 +358,16 @@ export function LinkIssueDialog({
             </>
           ) : (
             <>
-              {search.recentResults.length > 0 && (
+              {referencedResults.length > 0 && (
                 <>
                   <div className="flex items-center gap-1.5 px-3 py-1.5">
-                    <Clock size={11} className="text-text-muted" strokeWidth={1.5} />
+                    <Link2 size={11} className="text-text-muted" strokeWidth={1.5} />
                     <span className="text-caption font-medium uppercase tracking-widest text-text-muted">
-                      Recently updated
+                      Referenced in this ticket
                     </span>
                   </div>
-                  <HoverDataProvider keys={search.recentResults.map((r) => r.key)}>
-                    {search.recentResults.map((r, idx) => (
+                  <HoverDataProvider keys={referencedResults.map((r) => r.key)}>
+                    {referencedResults.map((r, idx) => (
                       <LinkSearchResultRow
                         key={r.key}
                         result={r}
@@ -364,6 +376,30 @@ export function LinkIssueDialog({
                         onHover={() => search.setHighlightIndex(idx)}
                       />
                     ))}
+                  </HoverDataProvider>
+                </>
+              )}
+              {dedupedRecent.length > 0 && (
+                <>
+                  <div className="flex items-center gap-1.5 px-3 py-1.5">
+                    <Clock size={11} className="text-text-muted" strokeWidth={1.5} />
+                    <span className="text-caption font-medium uppercase tracking-widest text-text-muted">
+                      Recently updated
+                    </span>
+                  </div>
+                  <HoverDataProvider keys={dedupedRecent.map((r) => r.key)}>
+                    {dedupedRecent.map((r, idx) => {
+                      const highlightIdx = referencedResults.length + idx;
+                      return (
+                        <LinkSearchResultRow
+                          key={r.key}
+                          result={r}
+                          highlighted={highlightIdx === search.highlightIndex}
+                          onSelect={handleSelect}
+                          onHover={() => search.setHighlightIndex(highlightIdx)}
+                        />
+                      );
+                    })}
                   </HoverDataProvider>
                 </>
               )}

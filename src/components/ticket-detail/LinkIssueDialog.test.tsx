@@ -40,6 +40,7 @@ const mockSearch = {
   hasMore: false,
   highlightIndex: -1,
   setHighlightIndex: vi.fn(),
+  referencedResults: [],
   availableStatuses: [],
   activeStatuses: [],
   toggleStatus: vi.fn(),
@@ -137,6 +138,7 @@ describe("LinkIssueDialog", () => {
     mockSearch.query = "";
     mockSearch.filteredResults = [];
     mockSearch.recentResults = [];
+    mockSearch.referencedResults = [];
     mockSearch.showResults = false;
     mockSearch.isSearching = false;
   });
@@ -298,6 +300,55 @@ describe("LinkIssueDialog", () => {
     mockSearch.isSearching = false;
     renderDialog();
     expect(screen.getByText(/No issues found for/)).toBeInTheDocument();
+  });
+
+  describe("referenced in this ticket (BRDG-433)", () => {
+    it("renders the referenced section above recently updated when there are references", () => {
+      mockSearch.referencedResults = [
+        { key: "VPL-100", title: "Referenced issue" } as never,
+      ];
+      mockSearch.recentResults = [
+        { key: "VPL-50", title: "Recent issue" } as never,
+      ];
+      renderDialog();
+
+      const referencedHeader = screen.getByText("Referenced in this ticket");
+      const recentHeader = screen.getByText("Recently updated");
+      expect(referencedHeader).toBeInTheDocument();
+      expect(recentHeader).toBeInTheDocument();
+      // Referenced heading must precede the recently-updated heading in the DOM.
+      expect(
+        referencedHeader.compareDocumentPosition(recentHeader) &
+          Node.DOCUMENT_POSITION_FOLLOWING,
+      ).toBeTruthy();
+      expect(screen.getByTestId("result-VPL-100")).toBeInTheDocument();
+    });
+
+    it("does not render the referenced header when there are no references", () => {
+      mockSearch.referencedResults = [];
+      mockSearch.recentResults = [
+        { key: "VPL-50", title: "Recent issue" } as never,
+      ];
+      renderDialog();
+
+      expect(screen.queryByText("Referenced in this ticket")).not.toBeInTheDocument();
+      expect(screen.getByText("Recently updated")).toBeInTheDocument();
+    });
+
+    it("shows a ticket present in both lists only once, in the referenced section", () => {
+      mockSearch.referencedResults = [
+        { key: "VPL-100", title: "In both lists" } as never,
+      ];
+      mockSearch.recentResults = [
+        { key: "VPL-100", title: "In both lists" } as never,
+        { key: "VPL-50", title: "Recent only" } as never,
+      ];
+      renderDialog();
+
+      // De-duped: the shared key renders a single row, and the recent-only row stays.
+      expect(screen.getAllByTestId("result-VPL-100")).toHaveLength(1);
+      expect(screen.getByTestId("result-VPL-50")).toBeInTheDocument();
+    });
   });
 
   describe("default team (BRDG-396)", () => {
