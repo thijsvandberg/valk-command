@@ -130,6 +130,7 @@ CRUD operations on locally stored tickets and their metadata.
 | `/api/tickets/[key]/links` | POST | Create an issue link to another ticket (Jira + local) |
 | `/api/tickets/[key]/links` | PATCH | Update an existing link |
 | `/api/tickets/[key]/links` | DELETE | Remove a link. Body: `{ jiraLinkId }` |
+| `/api/tickets/[key]/referenced-issues` | GET | Issues mentioned in this ticket's description/comments but not yet formally linked (BRDG-433). Scans description + Jira + PO comments via `extractIssueKeys`, drops the ticket's own key, already-linked keys and unresolvable keys, and returns `{ results: LinkSearchResult[] }` (search row shape) for the link-issue picker |
 | `/api/tickets/[key]/versions` | GET | List story version history |
 | `/api/tickets/[key]/versions/[id]` | GET | Get a single version |
 | `/api/tickets/[key]/versions/import` | POST | Import external version snapshots, deduplicating by content hash |
