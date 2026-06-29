@@ -1,0 +1,1 @@
+CREATE INDEX `ticket_sprint_epic_key_idx` ON `ticket` (`sprint_name`,`epic_key`);

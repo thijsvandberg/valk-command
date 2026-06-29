@@ -617,6 +617,13 @@
       "when": 1782548604800,
       "tag": "0087_wet_tempest",
       "breakpoints": true
+    },
+    {
+      "idx": 88,
+      "version": "6",
+      "when": 1782754268055,
+      "tag": "0088_unknown_rogue",
+      "breakpoints": true
     }
   ]
 }

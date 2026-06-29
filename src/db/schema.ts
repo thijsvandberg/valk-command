@@ -88,6 +88,8 @@ export const ticket = sqliteTable("ticket", {
   index("ticket_type_idx").on(table.type),
   index("ticket_epic_key_idx").on(table.epicKey),
   index("ticket_sprint_status_idx").on(table.sprintName, table.status),
+  // Speeds up the epic-progress aggregation (filter by sprint window, GROUP BY epic_key).
+  index("ticket_sprint_epic_key_idx").on(table.sprintName, table.epicKey),
 ]);
 
 // Canonical Jira person directory (BRDG-363), keyed on the stable accountId.
