@@ -344,14 +344,14 @@ interface ItemProps {
   onSelect: () => void;
   className?: string;
   style?: CSSProperties;
-  // Render as a div with button semantics instead of a real <button>. Use when
-  // the item embeds its own interactive elements (e.g. a link), since a nested
-  // <a> inside a <button> is invalid HTML.
+  // Render as a div with button semantics instead of a real button element. Use
+  // when the item embeds its own interactive elements (e.g. a link), since a
+  // nested anchor inside a button is invalid HTML.
   asDiv?: boolean;
 }
 
 function Item({ children, selected, onSelect, className, style, asDiv }: ItemProps) {
-  const cls = `flex w-full items-center gap-2.5 px-3 py-[7px] text-body-sm cursor-pointer hover:bg-hover-list-item active:bg-overlay-default${className ? ` ${className}` : ""}`;
+  const cls = `flex w-full items-center gap-2.5 px-3 py-[7px] text-body-sm cursor-pointer hover:bg-hover-list-item active:bg-overlay-default focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-[var(--color-brand-400)]${className ? ` ${className}` : ""}`;
   const inner = (
     <>
       {children}

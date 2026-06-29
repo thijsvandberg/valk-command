@@ -40,7 +40,7 @@ export function EpicFilterChips({
         type="button"
         onClick={onClearAll}
         className={[
-          "rounded-full px-2.5 py-1 text-body-sm transition-colors duration-100 cursor-pointer",
+          "rounded-full px-2.5 py-1 text-body-sm transition-colors duration-100 cursor-pointer focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-[var(--color-brand-400)]",
           isAllActive
             ? "bg-[var(--color-brand-400)]/15 text-[var(--color-brand-400)]/80"
             : "bg-overlay-subtle text-text-tertiary hover:bg-hover-interactive hover:text-text-secondary",
@@ -63,7 +63,7 @@ export function EpicFilterChips({
                 : undefined
             }
             className={[
-              "flex items-center gap-1.5 rounded-full px-2.5 py-1 text-body-sm transition-colors duration-100 cursor-pointer",
+              "flex items-center gap-1.5 rounded-full px-2.5 py-1 text-body-sm transition-colors duration-100 cursor-pointer focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-[var(--color-brand-400)]",
               isActive
                 ? ""
                 : "bg-overlay-subtle text-text-tertiary hover:bg-hover-interactive hover:text-text-secondary",

@@ -81,13 +81,16 @@ describe("BRDG-421: migrated menus carry focus-visible on every button", () => {
 });
 
 describe("BRDG-421: focusless-button ratchet", () => {
-  // The full button population (~497 non-test) still carries a long tail of raw
-  // buttons without a focus ring; BRDG-421 materially reduces it and this ceiling
-  // prevents regressions while the tail is chipped away. Lower the number when it
-  // drops; it must never rise. (Heuristic: counts a raw <button> whose opening
-  // tag has no `focus` token — className-via-const buttons may over-count, which
-  // only makes the ceiling conservative.)
-  const BASELINE = 16;
+  // BRDG-425 fixed the remaining conditional-/const-className buttons that truly
+  // lacked a focus ring (ChildIssueListHeader ROW, BasePicker Item, SessionTicket
+  // itemClass, EpicFilterChips chips), dropping this ceiling from 16 to 7. The 7
+  // that remain are heuristic false positives, not real misses: the button has a
+  // focus ring that this scanner cannot see — either via a string-concatenated
+  // const (WarningBadge's BADGE_INTERACTIVE), via `className={classes}` indirection
+  // (MenuItem, ui/Button), beyond the 900-char opening-tag slice (DateTimePicker
+  // day, GroupStatBar), or supplied by the caller through `{...rest}` (BasePicker
+  // trigger). Lower the number when it drops; it must never rise.
+  const BASELINE = 7;
   it(`does not exceed ${BASELINE} focusless raw buttons in src/components`, () => {
     let focusless = 0;
     for (const f of nonTestFiles) {

@@ -481,7 +481,7 @@ export function HeaderOverflowMenu({
   useOutsideClick(ref, () => setOpen(false), { enabled: open });
 
   const itemClass =
-    "flex w-full items-center gap-2.5 px-3 py-[7px] text-body-sm cursor-pointer hover:bg-hover-list-item active:bg-overlay-default text-text-secondary";
+    "flex w-full items-center gap-2.5 px-3 py-[7px] text-body-sm cursor-pointer hover:bg-hover-list-item active:bg-overlay-default text-text-secondary focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-[var(--color-brand-400)]";
 
   return (
     <div className="relative" ref={ref}>

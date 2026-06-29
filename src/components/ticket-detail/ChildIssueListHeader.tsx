@@ -79,7 +79,7 @@ const VIEW_MODES: { mode: ChildIssueViewMode; label: string; Icon: LucideIcon }[
 type Pane = "view" | "filter" | "columns";
 
 const ROW =
-  "flex w-full cursor-pointer items-center gap-2.5 rounded-md px-2.5 py-[7px] text-body-sm hover:bg-hover-list-item active:bg-overlay-default";
+  "flex w-full cursor-pointer items-center gap-2.5 rounded-md px-2.5 py-[7px] text-body-sm hover:bg-hover-list-item active:bg-overlay-default focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-[var(--color-brand-400)]";
 
 export function ChildIssueListHeader({
   title,
