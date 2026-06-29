@@ -105,7 +105,7 @@ describe("InboxDigestBanner (BRDG-413)", () => {
     fireEvent.click(screen.getByRole("button", { name: /Open inbox/ }));
 
     expect(sessionStorage.getItem("inbox-group-by")).toBe(JSON.stringify("relevance"));
-    expect(h.push).toHaveBeenCalledWith("/inbox");
+    expect(h.push).toHaveBeenCalledWith("/inbox?new=1");
     await waitFor(() => expect(h.dismiss).toHaveBeenCalledTimes(1));
   });
 

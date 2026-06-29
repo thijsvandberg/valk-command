@@ -82,7 +82,9 @@ export function InboxDigestBanner() {
       // Storage unavailable; the inbox default is relevance anyway (Phase 4).
     }
     void clear();
-    router.push("/inbox");
+    // Deep-link to the new-only view so the inbox lands pre-filtered to exactly
+    // the digest's new items (shared read-based baseline, BRDG-438).
+    router.push("/inbox?new=1");
   }, [clear, router]);
 
   if (!active) return null;

@@ -1,8 +1,9 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { Suspense, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import useSWR, { mutate as globalMutate } from "swr";
 import dynamic from "next/dynamic";
+import { useSearchParams } from "next/navigation";
 import { Inbox, Undo2 } from "lucide-react";
 import { usePageTitle } from "@/hooks/usePageTitle";
 import { ViewHeader, ViewHeaderTitle } from "@/components/shared/ViewHeader";
@@ -35,7 +36,6 @@ import { poUsers, userTeams, refinementSessions } from "@/lib/api-client";
 import { useRefinementSessions } from "@/hooks/useRefinementSessions";
 import { sessionLabel, compareSessions } from "@/components/refinement-session/refinement-utils";
 import { useDefaultTeam } from "@/hooks/useDefaultTeam";
-import { useAccountSetting } from "@/hooks/useAccountSetting";
 import { CONTENT_MAX } from "@/lib/layout";
 import { relativeDate } from "@/lib/date-utils";
 import { isNewSinceLastViewed } from "@/lib/inbox-last-viewed";
@@ -85,9 +85,10 @@ function rowToTicket(row: NewStoryRow, effectiveSprintName: string | null = row.
   };
 }
 
-export default function InboxPage() {
+function InboxView() {
   const pageTitle = usePageTitle("Inbox");
   const { toast, showToast, dismissToast } = useToast();
+  const searchParams = useSearchParams();
 
   const { data, isLoading, error, mutate: mutateList } = useSWR<NewStoriesResponse>(LIST_KEY);
 
@@ -96,24 +97,15 @@ export default function InboxPage() {
 
   const rows = useMemo(() => data?.rows ?? [], [data]);
 
-  // "New since last visit" baseline (BRDG-434). Persisted per user so the markers
-  // follow the account across devices. Freeze the previous-visit timestamp ONCE,
-  // after it has loaded, as this visit's comparison baseline (adjust-state-during-
-  // render, so it never re-freezes); then re-stamp "now" in an effect so the next
-  // visit compares against this one. `undefined` = not yet frozen -> no dots while
-  // loading or on the first-ever visit (null baseline marks nothing new).
-  const { value: lastViewed, setValue: setLastViewed, isLoading: lastViewedLoading } =
-    useAccountSetting<string | null>("/api/settings/inbox-last-viewed", null);
-  const [visitBaseline, setVisitBaseline] = useState<string | null | undefined>(undefined);
-  if (visitBaseline === undefined && !lastViewedLoading) {
-    setVisitBaseline(lastViewed ?? null);
-  }
-  const restampedRef = useRef(false);
-  useEffect(() => {
-    if (visitBaseline === undefined || restampedRef.current) return;
-    restampedRef.current = true;
-    setLastViewed(new Date().toISOString());
-  }, [visitBaseline, setLastViewed]);
+  // "New" baseline (BRDG-438): the moment the user last marked something read,
+  // computed server-side as MAX(newStoryRead.readAt) and returned with the list.
+  // Shared with the 2x/day digest so the counts always agree. A row is new via the
+  // isNewSinceLastViewed predicate; a null baseline (never triaged) marks all new.
+  const baselineAt = data?.baselineAt ?? null;
+  const isNew = useCallback(
+    (r: NewStoryRow) => isNewSinceLastViewed(r.jiraCreatedAt, baselineAt),
+    [baselineAt],
+  );
 
   // Sprint metadata for the move actions + the quick-move / create-sprint pickers.
   const { sprints: rawSprints, mutate: mutateSprints } = useJiraSprints();
@@ -242,6 +234,17 @@ export default function InboxPage() {
     filterProps,
   } = useInboxFilters(rows);
 
+  // "New" subset (BRDG-438). newCount is over the full unread list (rows) so it
+  // matches the digest banner; the newOnly toggle filters the *displayed* list
+  // (still within any active filter-bar filters). Initialised once from ?new=1
+  // (the digest deep-link) via a lazy initializer - no effect, no ref-in-render.
+  const newCount = useMemo(() => rows.filter(isNew).length, [rows, isNew]);
+  const [newOnly, setNewOnly] = useState(() => searchParams.get("new") === "1");
+  const displayRows = useMemo(
+    () => (newOnly ? filteredRows.filter(isNew) : filteredRows),
+    [newOnly, filteredRows, isNew],
+  );
+
   // The right-clicked row's current epic (single target only), so the Set Epic
   // panel shows the checkmark + Unlink like the sidebar (BRDG-381).
   const rowMenuEpic = useMemo<EpicOption | null>(() => {
@@ -273,7 +276,7 @@ export default function InboxPage() {
   // Configurable grouping over the already filtered + sorted rows, so search /
   // filter / sort still apply within each group (BRDG-358).
   const { groupBy, setGroupBy, groups, collapsedGroups, toggleCollapse } = useInboxGroupBy(
-    filteredRows,
+    displayRows,
     relevanceOptions,
   );
 
@@ -396,13 +399,13 @@ export default function InboxPage() {
     [],
   );
 
-  const allChecked = filteredRows.length > 0 && filteredRows.every((r) => checkedKeys.has(r.key));
+  const allChecked = displayRows.length > 0 && displayRows.every((r) => checkedKeys.has(r.key));
   const toggleAll = useCallback(() => {
     setCheckedKeys((prev) => {
-      const all = filteredRows.length > 0 && filteredRows.every((r) => prev.has(r.key));
-      return all ? new Set() : new Set(filteredRows.map((r) => r.key));
+      const all = displayRows.length > 0 && displayRows.every((r) => prev.has(r.key));
+      return all ? new Set() : new Set(displayRows.map((r) => r.key));
     });
-  }, [filteredRows]);
+  }, [displayRows]);
 
   // Per-group select-all: toggles exactly that group's keys in the shared
   // checkedKeys set, feeding the same mark-as-read bulk action (BRDG-358).
@@ -456,9 +459,36 @@ export default function InboxPage() {
         >
           <ViewHeaderTitle>Inbox</ViewHeaderTitle>
           {data && (
-            <span className="ml-2 rounded-full bg-overlay-subtle px-2 py-0.5 text-label tabular-nums text-text-tertiary">
-              {rows.length}
-            </span>
+            <>
+              {/* Total unread: clicking it clears the new-only filter (BRDG-438). */}
+              <button
+                type="button"
+                onClick={() => setNewOnly(false)}
+                aria-pressed={!newOnly}
+                title="Show all unread"
+                className="ml-2 cursor-pointer rounded-full bg-overlay-subtle px-2 py-0.5 text-label tabular-nums text-text-tertiary transition-colors duration-150 hover:text-text-secondary focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-[var(--color-brand-400)]"
+              >
+                {rows.length}
+              </button>
+              {/* "N new" since the last read action: toggles the new-only filter. The
+                  dot echoes the per-row marker; brand-toned, theme-aware. */}
+              {newCount > 0 && (
+                <button
+                  type="button"
+                  onClick={() => setNewOnly((v) => !v)}
+                  aria-pressed={newOnly}
+                  title="Show only new since you last cleared your inbox"
+                  className={`ml-1.5 inline-flex cursor-pointer items-center gap-1 rounded-full px-2 py-0.5 text-label font-medium tabular-nums transition-colors duration-150 focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-[var(--color-brand-400)] ${
+                    newOnly
+                      ? "bg-[var(--color-brand-500)] text-white"
+                      : "bg-[var(--color-brand-subtle)] text-[var(--color-brand-300)] hover:bg-[color-mix(in_srgb,var(--color-brand-500)_18%,transparent)]"
+                  }`}
+                >
+                  <span className="h-1.5 w-1.5 rounded-full bg-current opacity-80" aria-hidden />
+                  {newCount} new
+                </button>
+              )}
+            </>
           )}
         </ViewHeader>
 
@@ -487,9 +517,9 @@ export default function InboxPage() {
                     description="No unread stories. Newly created stories appear here for review; mark them as read to clear them."
                     className="py-24"
                   />
-                ) : filteredRows.length === 0 ? (
+                ) : displayRows.length === 0 ? (
                   <EmptyState
-                    title="No stories match the current filters"
+                    title={newOnly ? "No new stories since you last cleared your inbox" : "No stories match the current filters"}
                     className="py-24"
                   />
                 ) : (
@@ -552,7 +582,7 @@ export default function InboxPage() {
                                     handleRowCheckbox(group.key, groupKeys, key, clickIdx, shiftKey)
                                   }
                                   createdAtLabel={groupBy !== "date" ? relativeDate(row.jiraCreatedAt) : undefined}
-                                  isNewSinceLastViewed={isNewSinceLastViewed(row.jiraCreatedAt, visitBaseline ?? null)}
+                                  isNewSinceLastViewed={isNew(row)}
                                   hideEmptyAssignee
                                   onMarkRead={(key) => void markRead([key])}
                                   isLastInCard={idx === group.rows.length - 1}
@@ -577,7 +607,7 @@ export default function InboxPage() {
                   <BulkActionBar
                     floating
                     count={checkedKeys.size}
-                    totalCount={filteredRows.length}
+                    totalCount={displayRows.length}
                     allChecked={allChecked}
                     onToggleAll={toggleAll}
                     onClear={() => setCheckedKeys(new Set())}
@@ -678,5 +708,15 @@ export default function InboxPage() {
 
       <Toast toast={toast} onDismiss={dismissToast} />
     </>
+  );
+}
+
+// useSearchParams (digest deep-link ?new=1) requires a Suspense boundary in the
+// App Router, so the page body lives in InboxView and the route wraps it.
+export default function InboxPage() {
+  return (
+    <Suspense fallback={null}>
+      <InboxView />
+    </Suspense>
   );
 }

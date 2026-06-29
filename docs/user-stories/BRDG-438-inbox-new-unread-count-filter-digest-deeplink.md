@@ -60,14 +60,14 @@ Per the PO, there is ONE definition of "new" everywhere: **new since you last ma
 5. **Deep-link.** `useSearchParams()` → initialise `newOnly` from `?new=1`; update `InboxDigestBanner` "Open inbox" to route to `/inbox?new=1`.
 
 ## Acceptance Criteria
-- [ ] "New" is defined once everywhere as `jiraCreatedAt > MAX(readAt)`; the banner count, the on-page chip, and the per-row dot use this same baseline. <!-- getInboxBaseline + baselineAt on NewStoriesResponse -->
-- [ ] The inbox header shows the total unread count and, when > 0, a "N new" count beside it. <!-- page.tsx:457-462; newCount from rows + baselineAt -->
-- [ ] Clicking "N new" filters the list to only new items; clicking the total / All restores all unread. <!-- newOnly state + displayRows -->
-- [ ] With the list filtered to new, select-all selects exactly the new unreads. <!-- allChecked/toggleAll over displayRows -->
-- [ ] The digest banner "Open inbox" lands on `/inbox?new=1` pre-filtered to new, matching the banner count without carrying a baseline. <!-- InboxDigestBanner -> /inbox?new=1 ; shared read baseline -->
-- [ ] Marking an item read advances the baseline so already-seen items drop out of "new" (high-water mark). <!-- MAX(readAt) baseline -->
-- [ ] The visit-baseline wiring (`inbox_last_viewed` setting + freeze/re-stamp) is removed and its route moved to `deleted/`. <!-- supersedes BRDG-434 visit baseline -->
-- [ ] Clearing the new filter (or navigating in without `?new=1`) shows all unread again. <!-- newOnly default false -->
+- [x] "New" is defined once everywhere as `jiraCreatedAt > MAX(readAt)`; the banner count, the on-page chip, and the per-row dot use this same baseline. <!-- getInboxBaseline + baselineAt on NewStoriesResponse + shared isNewSinceLastViewed -->
+- [x] The inbox header shows the total unread count and, when > 0, a "N new" count beside it. <!-- page header chip; newCount from rows + baselineAt -->
+- [x] Clicking "N new" filters the list to only new items; clicking the total / All restores all unread. <!-- newOnly state + displayRows -->
+- [x] With the list filtered to new, select-all selects exactly the new unreads. <!-- allChecked/toggleAll over displayRows -->
+- [x] The digest banner "Open inbox" lands on `/inbox?new=1` pre-filtered to new, matching the banner count without carrying a baseline. <!-- InboxDigestBanner -> /inbox?new=1 ; shared read baseline -->
+- [x] Marking an item read advances the baseline so already-seen items drop out of "new" (high-water mark). <!-- MAX(readAt) baseline + mark-read invalidates /api/new-stories -->
+- [x] The visit-baseline wiring (`inbox_last_viewed` setting + freeze/re-stamp) is removed and its route moved to `deleted/`. <!-- supersedes BRDG-434 visit baseline -->
+- [x] Clearing the new filter (or navigating in without `?new=1`) shows all unread again. <!-- newOnly default false -->
 
 ## Tests
 - [x] `/api/new-stories` returns `baselineAt` = `MAX(readAt)` for the user (null when nothing read). <!-- new-stories route test -->
@@ -75,7 +75,7 @@ Per the PO, there is ONE definition of "new" everywhere: **new since you last ma
 - [ ] Header renders "N new" only when newCount > 0; clicking it toggles `newOnly`. <!-- inbox header unit test -->
 - [ ] select-all over the new-filtered list checks exactly the new keys. <!-- toggleAll over displayRows test -->
 - [ ] `?new=1` initialises the list in new-only mode. <!-- useSearchParams init test -->
-- [ ] Banner "Open inbox" routes to `/inbox?new=1`. <!-- InboxDigestBanner.test -->
+- [x] Banner "Open inbox" routes to `/inbox?new=1`. <!-- InboxDigestBanner.test -->
 
 ## Related
 - [[BRDG-434-inbox-new-since-last-visit]] — provides the per-row dot, the collapse-empty-assignee opt-in, and `isNewSinceLastViewed`; this story supersedes its visit-baseline wiring (`inbox_last_viewed`) in favour of the shared read-based baseline.

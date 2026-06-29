@@ -21,6 +21,13 @@ vi.mock("swr", () => ({
   mutate: (...args: unknown[]) => globalMutateSpy(...args),
 }));
 
+// Inbox reads ?new=1 (digest deep-link, BRDG-438) via useSearchParams; drive it per test.
+let searchParamsMock = new URLSearchParams();
+vi.mock("next/navigation", () => ({
+  useSearchParams: () => searchParamsMock,
+  useRouter: () => ({ push: vi.fn() }),
+}));
+
 vi.mock("@/hooks/usePageTitle", () => ({ usePageTitle: () => null }));
 vi.mock("@/hooks/useSprintBoard", () => ({
   useTicketDetail: () => ({ data: null }),
@@ -118,7 +125,10 @@ function row(key: string, title: string) {
 
 describe("InboxPage (BRDG-357)", () => {
   beforeEach(() => {
-    listData = { rows: [row("VPL-1", "First story"), row("VPL-2", "Second story")], baselineAt: null };
+    // Future baseline => no rows are "new", so the default fixtures behave exactly
+    // as before (no "N new" chip). New-filter tests below set their own baseline.
+    listData = { rows: [row("VPL-1", "First story"), row("VPL-2", "Second story")], baselineAt: "2099-01-01T00:00:00.000Z" };
+    searchParamsMock = new URLSearchParams();
     listError = undefined;
     listMutate.mockClear();
     globalMutateSpy.mockClear();
@@ -248,7 +258,10 @@ describe("InboxPage (BRDG-357)", () => {
 describe("InboxPage group select-all (BRDG-358)", () => {
   beforeEach(() => {
     // Both rows created "now" land in a single Today group under the default date grouping.
-    listData = { rows: [row("VPL-1", "First story"), row("VPL-2", "Second story")], baselineAt: null };
+    // Future baseline => no rows are "new", so the default fixtures behave exactly
+    // as before (no "N new" chip). New-filter tests below set their own baseline.
+    listData = { rows: [row("VPL-1", "First story"), row("VPL-2", "Second story")], baselineAt: "2099-01-01T00:00:00.000Z" };
+    searchParamsMock = new URLSearchParams();
     listMutate.mockClear();
     globalMutateSpy.mockClear();
     fetchMock.mockClear();
