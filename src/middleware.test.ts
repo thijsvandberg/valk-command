@@ -6,12 +6,19 @@ import { NextRequest } from "next/server";
 // runner that invokes cb with a controllable auth() and the incoming request,
 // so we exercise the request-id wiring without a live Clerk session.
 let authResult: { userId: string | null; orgId?: string | null } = { userId: "user_123" };
+// When true, the mocked auth() rejects, simulating an unconfigured Clerk so the
+// dev-bypass branch must fall back to the anonymous owner.
+let authThrows = false;
 
 vi.mock("@clerk/nextjs/server", () => ({
   clerkMiddleware: (
     cb: (auth: () => Promise<typeof authResult>, req: NextRequest) => unknown,
   ) => {
-    return (req: NextRequest) => cb(async () => authResult, req);
+    return (req: NextRequest) =>
+      cb(async () => {
+        if (authThrows) throw new Error("Clerk not configured");
+        return authResult;
+      }, req);
   },
   // The public-route matcher is irrelevant to these cases (they hit API/auth
   // paths); a matcher that never matches keeps the auth branch active.
@@ -183,5 +190,49 @@ describe("middleware rejection logging", () => {
     expect(line.toLowerCase()).not.toContain("bearer");
     expect(line.toLowerCase()).not.toContain("authorization");
     expect(line.toLowerCase()).not.toContain("password");
+  });
+});
+
+describe("middleware dev bypass identity", () => {
+  const ORIGINAL_NODE_ENV = process.env.NODE_ENV;
+
+  // NextResponse.next encodes forwarded request headers under this key.
+  const FORWARDED_USER = "x-middleware-request-x-bridge-user-id";
+
+  // NODE_ENV is typed read-only; the cast lets the test drive the dev-only branch.
+  const env = process.env as Record<string, string | undefined>;
+
+  beforeEach(() => {
+    authResult = { userId: "user_123" };
+    authThrows = false;
+    env.NODE_ENV = "development";
+  });
+
+  afterEach(() => {
+    authThrows = false;
+    env.NODE_ENV = ORIGINAL_NODE_ENV ?? "test";
+  });
+
+  function bypassReq(path: string): NextRequest {
+    return makeReq(path, { headers: { cookie: "dev_bypass=1" } });
+  }
+
+  it("forwards the real Clerk user id when a session exists under the bypass cookie", async () => {
+    authResult = { userId: "user_real" };
+    const res = await run(bypassReq("/api/new-stories/count"));
+    expect(res.headers.get(FORWARDED_USER)).toBe("user_real");
+  });
+
+  it("forwards no user id when the bypass cookie is set but no Clerk session exists", async () => {
+    authResult = { userId: null };
+    const res = await run(bypassReq("/api/new-stories/count"));
+    // Stripped header => resolveUserId() falls back to the anonymous "global" owner.
+    expect(res.headers.get(FORWARDED_USER)).toBeNull();
+  });
+
+  it("falls back to anonymous when auth() throws (Clerk unconfigured)", async () => {
+    authThrows = true;
+    const res = await run(bypassReq("/api/new-stories/count"));
+    expect(res.headers.get(FORWARDED_USER)).toBeNull();
   });
 });

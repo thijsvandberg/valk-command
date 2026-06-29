@@ -72,12 +72,24 @@ export default clerkMiddleware(async (auth, req) => {
     }
   }
 
-  // Dev-only: honor cookie set by GET /api/dev/bypass
+  // Dev-only: honor cookie set by GET /api/dev/bypass. The bypass lets a request
+  // through without requiring a Clerk login, but if a real Clerk session DOES
+  // exist we forward that user id so per-user server state (inbox read-state,
+  // settings) matches the signed-in identity the UI already shows. Without this a
+  // logged-in dev with the bypass cookie is resolved as the anonymous "global"
+  // user and every story reads as unread. auth() can throw when Clerk is
+  // unconfigured (pure-bypass dev), so fall back to anonymous on any failure.
   if (
     process.env.NODE_ENV === "development" &&
     req.cookies.get("dev_bypass")?.value === "1"
   ) {
-    return forwardWithUser(req, undefined, requestId);
+    let devUserId: string | undefined;
+    try {
+      devUserId = (await auth()).userId ?? undefined;
+    } catch {
+      devUserId = undefined;
+    }
+    return forwardWithUser(req, devUserId, requestId);
   }
 
   if (isPublicRoute(req)) return forwardWithUser(req, undefined, requestId);
