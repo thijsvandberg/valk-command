@@ -41,7 +41,7 @@ export function StatusFilter({
 
       {open && (
         <>
-          <div className="fixed inset-0 z-40" onClick={() => setOpen(false)} />
+          <div aria-hidden className="fixed inset-0 z-40" onClick={() => setOpen(false)} />
           <div className="absolute right-0 top-full mt-1 z-50 min-w-[170px] rounded-lg border border-border-strong bg-surface-floating shadow-lg py-1">
             {options.map((opt) => (
               <button
@@ -97,7 +97,7 @@ export function DateRangeFilter({
 
       {open && (
         <>
-          <div className="fixed inset-0 z-40" onClick={() => setOpen(false)} />
+          <div aria-hidden className="fixed inset-0 z-40" onClick={() => setOpen(false)} />
           <div className="absolute right-0 top-full mt-1 z-50 min-w-[150px] rounded-lg border border-border-strong bg-surface-floating shadow-lg py-1">
             {options.map((opt) => (
               <button
@@ -161,7 +161,7 @@ export function CreatorFilter({
 
       {open && (
         <>
-          <div className="fixed inset-0 z-40" onClick={() => { setOpen(false); setSearch(""); }} />
+          <div aria-hidden className="fixed inset-0 z-40" onClick={() => { setOpen(false); setSearch(""); }} />
           <div className="absolute right-0 top-full mt-1 z-50 min-w-[200px] rounded-lg border border-border-strong bg-surface-floating shadow-lg overflow-hidden">
             {/* Search */}
             <div className="px-2 py-2 border-b border-border-default">
@@ -246,7 +246,7 @@ export function RepoFilter({
 
       {open && (
         <>
-          <div className="fixed inset-0 z-40" onClick={() => setOpen(false)} />
+          <div aria-hidden className="fixed inset-0 z-40" onClick={() => setOpen(false)} />
           <div className="absolute right-0 top-full mt-1 z-50 min-w-[160px] rounded-lg border border-border-strong bg-surface-floating shadow-lg py-1">
             <button
               type="button"
@@ -354,7 +354,7 @@ export function SprintFilter({
 
       {open && (
         <>
-          <div className="fixed inset-0 z-40" onClick={() => { setOpen(false); setSearch(""); }} />
+          <div aria-hidden className="fixed inset-0 z-40" onClick={() => { setOpen(false); setSearch(""); }} />
           <div className="absolute right-0 top-full mt-1 z-50 min-w-[220px] rounded-lg border border-border-strong bg-surface-floating shadow-lg overflow-hidden">
             {/* Search */}
             <div className="px-2 py-2 border-b border-border-default">

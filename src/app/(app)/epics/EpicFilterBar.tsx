@@ -42,7 +42,7 @@ function Dropdown({
 
       {open && (
         <>
-          <div className="fixed inset-0 z-40" onClick={() => setOpen(false)} />
+          <div aria-hidden className="fixed inset-0 z-40" onClick={() => setOpen(false)} />
           <div className="absolute left-0 top-full z-50 mt-1 min-w-[200px] overflow-hidden rounded-lg border border-border-strong bg-surface-floating py-1 shadow-lg">
             {children(() => setOpen(false))}
           </div>

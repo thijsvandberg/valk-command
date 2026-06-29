@@ -154,6 +154,9 @@ export function ChildIssueRow({
     onSelect(item.key, e);
   };
 
+  // The row is a real activation target only when it can be selected.
+  const interactive = Boolean(onSelect) && !isPending;
+
   const hasPill = (showTypeIcon || showKey || showStatus) && !isPending;
   const showCheckbox = selectable && !isPending;
   // Deprecated children fade like the sprint board (BoardRow) so the two views match.
@@ -168,7 +171,7 @@ export function ChildIssueRow({
       data-ticket-key={item.key}
       style={style}
       className={`group/row relative flex items-center gap-2 ${spacious ? "py-[10px]" : "py-[7px]"} pl-4 pr-3 ${
-        onSelect && !isPending ? "cursor-pointer" : ""
+        interactive ? "cursor-pointer focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-[var(--color-brand-400)]" : ""
       } ${rowSurfaceClasses({
         selected: isActive,
         contextTarget: false,
@@ -186,6 +189,22 @@ export function ChildIssueRow({
       onClick={handleClick}
       onContextMenu={onContextMenu}
       onMouseEnter={onMouseEnter}
+      role={interactive ? "button" : undefined}
+      tabIndex={interactive ? 0 : undefined}
+      aria-label={interactive ? (item.title ? `${item.key}: ${item.title}` : item.key) : undefined}
+      onKeyDown={
+        interactive
+          ? (e) => {
+              // Only the row itself activates; let inline editors / child controls
+              // handle their own keys (BRDG-425).
+              if (e.target !== e.currentTarget) return;
+              if (e.key === "Enter" || e.key === " ") {
+                e.preventDefault();
+                handleClick(e as unknown as React.MouseEvent);
+              }
+            }
+          : undefined
+      }
       {...(dndProps ?? {})}
     >
       {/* Drag handle sits in the left gutter, over the row's leading edge (Jira-style),

@@ -415,6 +415,12 @@ export const BoardRow = memo(forwardRef<HTMLTableRowElement, BoardRowBaseProps>(
       ref={ref}
       data-index={dataIndex}
       data-ticket-key={dataTicketKey}
+      // Keyboard a11y: the board is a roving-focus grid, not a wall of tab stops.
+      // TicketTable is tabIndex=0; Arrow keys move the focused row (isFocused) and
+      // Enter opens it (useSprintBoardShortcuts). aria-selected + a concise label
+      // announce the row and its selection state to assistive tech (BRDG-425).
+      aria-selected={isSelected}
+      aria-label={ticket.title ? `${ticket.key}: ${ticket.title}` : ticket.key}
       style={{
         ...style,
         ...(isEditingTitle ? { position: "relative" as const, zIndex: 5 } : {}),

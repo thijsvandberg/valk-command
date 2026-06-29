@@ -624,8 +624,16 @@ export function EditableDescription({
         </div>
       ) : (
         <p
-          className="mt-3 text-body-lg text-text-muted cursor-pointer"
+          className="mt-3 text-body-lg text-text-muted cursor-pointer rounded focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)]"
+          role="button"
+          tabIndex={0}
           onClick={() => setEditingState(true)}
+          onKeyDown={(e) => {
+            if (e.key === "Enter" || e.key === " ") {
+              e.preventDefault();
+              setEditingState(true);
+            }
+          }}
           title="Click to edit"
         >
           No description
