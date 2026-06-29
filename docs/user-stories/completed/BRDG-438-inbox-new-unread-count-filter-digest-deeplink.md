@@ -1,6 +1,6 @@
 # BRDG-438: Inbox new-unread count, all/new filter, and digest deep-link
 
-**Status:** To Do
+**Status:** Done
 **Priority:** Medium
 **Type:** Feature
 
