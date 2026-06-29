@@ -79,7 +79,7 @@ export function InvestigationSuggestionCard({
               type="button"
               onClick={handlePost}
               disabled={!canPost}
-              className="inline-flex shrink-0 items-center gap-1.5 rounded-md bg-[var(--color-brand-600)] px-3 py-1.5 text-caption font-medium text-white cursor-pointer hover:bg-[var(--color-brand-500)] active:scale-[0.98] transition-[background-color,transform] duration-150 disabled:cursor-not-allowed disabled:opacity-50 disabled:active:scale-100 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)]"
+              className="inline-flex shrink-0 items-center gap-1.5 rounded-md bg-[var(--color-brand-600)] px-3 py-1.5 text-caption font-medium text-white cursor-pointer hover:bg-[var(--color-brand-500)] active:scale-[0.97] transition-[background-color,transform] duration-150 disabled:cursor-not-allowed disabled:opacity-50 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)]"
             >
               {posting && <Loader2 size={11} className="animate-spin" />}
               Post as comment
