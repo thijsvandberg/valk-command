@@ -23,6 +23,15 @@ import { resolveSprintMention } from "@/lib/sprint-utils";
 // This is the single biggest lever on find-related latency (BRDG-397).
 export const FIND_RELATED_MODEL = "claude-haiku-4-5";
 
+// BRDG-435: contract that lets a chat investigation be surfaced as a postable
+// Jira comment. When the PO asks to investigate/research (rather than edit the
+// story), the result must come back wrapped in <investigation> so Bridge renders
+// it as a card instead of folding it into a <story-draft>.
+export const INVESTIGATION_INSTRUCTION =
+  `If the user asks you to investigate or research (rather than edit the story), do NOT return a <story-draft>; ` +
+  `instead return your findings wrapped in a single <investigation>...</investigation> block, formatted as markdown ` +
+  `(headings, lists, code) so it can be posted as a Jira comment. Keep any short commentary outside the tag.`;
+
 export interface FindRelatedArgs {
   key: string;
   // Topic to search for. When set, find-related runs a targeted search instead of a
@@ -507,7 +516,8 @@ export async function buildFirstMessageBody(
     `${researchFlag}\n\nUser request: ${content}\n\n` +
     `Important: Besides the <story-draft> block, always include a brief commentary outside the tags explaining what you changed and why. When relevant, end with a follow-up question to guide the next iteration.${titleInstruction}${epicInstruction}\n` +
     `If the content clearly fits a different issue type (story, bug, task, spike), include a <type-suggestion>type</type-suggestion> tag to suggest changing it. Only suggest when it is clearly warranted.\n` +
-    `When you mention or discover related issues that should be linked to this ticket, include link suggestions using: <link-suggestion key="ISSUE-KEY" relation="relates to" /> (or for multiple: <link-suggestions><link key="..." relation="..." /></link-suggestions>). Valid relations: "relates to", "blocks", "is blocked by", "clones", "is cloned by", "duplicates", "is duplicated by". Proactively suggest links during story review when you identify issues that should be connected.`
+    `When you mention or discover related issues that should be linked to this ticket, include link suggestions using: <link-suggestion key="ISSUE-KEY" relation="relates to" /> (or for multiple: <link-suggestions><link key="..." relation="..." /></link-suggestions>). Valid relations: "relates to", "blocks", "is blocked by", "clones", "is cloned by", "duplicates", "is duplicated by". Proactively suggest links during story review when you identify issues that should be connected.\n` +
+    INVESTIGATION_INSTRUCTION
   );
 
   return {
@@ -574,8 +584,8 @@ export function buildFollowUpContent(
     : "";
 
   const instructions = isEdit
-    ? `[Remember: besides the <story-draft> block, include a brief commentary explaining what you changed. When relevant, end with a follow-up question. If the content clearly fits a different issue type (story, bug, task, spike), include a <type-suggestion>type</type-suggestion> tag. When you mention or discover related issues, include <link-suggestion key="ISSUE-KEY" relation="relates to" /> tags to suggest linking them.${titleReminder}]`
-    : `[If your answer requires editing the story, include a <story-draft> block.${titleReminder}]`;
+    ? `[Remember: besides the <story-draft> block, include a brief commentary explaining what you changed. When relevant, end with a follow-up question. If the content clearly fits a different issue type (story, bug, task, spike), include a <type-suggestion>type</type-suggestion> tag. When you mention or discover related issues, include <link-suggestion key="ISSUE-KEY" relation="relates to" /> tags to suggest linking them.${titleReminder} ${INVESTIGATION_INSTRUCTION}]`
+    : `[If your answer requires editing the story, include a <story-draft> block.${titleReminder} ${INVESTIGATION_INSTRUCTION}]`;
 
   return {
     content: `${researchFlag}${draftContext}\n\n${content}${splitReminder}\n\n${instructions}`,

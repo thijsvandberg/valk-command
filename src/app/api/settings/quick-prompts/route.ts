@@ -17,6 +17,12 @@ export type QuickPromptsConfig = Record<string, QuickPrompt[]>;
 
 const SETTING_KEY = "story_writer_quick_prompts";
 
+// BRDG-435: the result is wrapped in <investigation> so Bridge surfaces it as a
+// card the PO can edit and post as a Jira comment. The tag instruction lives in
+// the prompt text itself, so the button works without a workspace skill change.
+const INVESTIGATE_PROMPT_TEXT =
+  "Investigate this ticket: research the relevant codebase and the ticket's context, then write a thorough findings report (root cause or current behaviour, affected areas, risks, and a recommendation). Wrap the final report in a single <investigation>...</investigation> block, formatted as markdown (headings, lists, code) so it can be posted as a Jira comment. Keep any short commentary outside the tag.";
+
 const DEFAULT_PROMPTS: QuickPromptsConfig = {
   story: [
     {
@@ -36,6 +42,7 @@ const DEFAULT_PROMPTS: QuickPromptsConfig = {
       text: "Do a technical analysis of this story. Identify affected code areas, dependencies, and potential risks.",
       enableCodebase: true,
     },
+    { id: "d-story-5", label: "Investigate", text: INVESTIGATE_PROMPT_TEXT, enableCodebase: true },
     {
       id: "d-story-3",
       label: "Suggest title",
@@ -60,6 +67,7 @@ const DEFAULT_PROMPTS: QuickPromptsConfig = {
       text: "Analyze the root cause of this bug. Identify the affected code, why it fails, and suggest a fix approach.",
       enableCodebase: true,
     },
+    { id: "d-bug-5", label: "Investigate", text: INVESTIGATE_PROMPT_TEXT, enableCodebase: true },
     {
       id: "d-bug-3",
       label: "Suggest title",
@@ -78,6 +86,7 @@ const DEFAULT_PROMPTS: QuickPromptsConfig = {
       text: "Make this task more concise. Cut redundancy and filler and tighten the wording, while keeping the goal and definition of done intact.",
     },
     { id: "d-task-1", label: "Add test scenarios", text: "Add test scenarios" },
+    { id: "d-task-4", label: "Investigate", text: INVESTIGATE_PROMPT_TEXT, enableCodebase: true },
     {
       id: "d-task-2",
       label: "Suggest title",
@@ -112,6 +121,7 @@ const DEFAULT_PROMPTS: QuickPromptsConfig = {
       label: "Structure investigation",
       text: "Structure this spike as an investigation with clear questions to answer, approach, and definition of done.",
     },
+    { id: "d-spike-4", label: "Investigate", text: INVESTIGATE_PROMPT_TEXT, enableCodebase: true },
     {
       id: "d-spike-3",
       label: "Make more concise",

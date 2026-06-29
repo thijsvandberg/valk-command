@@ -150,4 +150,11 @@ describe("buildFollowUpContent", () => {
     const result = buildFollowUpContent(session, "VPL-1", "just a question", false);
     expect(result.content).not.toContain("title-suggestions");
   });
+
+  it("instructs wrapping an investigation in an <investigation> block (BRDG-435)", () => {
+    const edit = buildFollowUpContent(baseSession, "VPL-1", "rewrite the AC", false);
+    expect(edit.content).toContain("<investigation>");
+    const question = buildFollowUpContent(baseSession, "VPL-1", "investigate the login flow", false);
+    expect(question.content).toContain("<investigation>");
+  });
 });

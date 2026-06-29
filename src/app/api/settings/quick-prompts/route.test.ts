@@ -29,6 +29,22 @@ describe("GET /api/settings/quick-prompts", () => {
     expect(Array.isArray(data.prompts.story)).toBe(true);
   });
 
+  it("includes an Investigate prompt (codebase on, wraps result in <investigation>) for relevant types (BRDG-435)", async () => {
+    const response = await GET();
+    const data = await response.json();
+
+    for (const type of ["story", "bug", "task", "spike"]) {
+      const investigate = data.prompts[type].find((p: { label: string }) => p.label === "Investigate");
+      expect(investigate, `Investigate prompt missing for ${type}`).toBeDefined();
+      expect(investigate.enableCodebase).toBe(true);
+      expect(investigate.text).toContain("<investigation>");
+    }
+
+    // Subtasks are excluded from the investigate flow.
+    const subtaskInvestigate = data.prompts.subtask.find((p: { label: string }) => p.label === "Investigate");
+    expect(subtaskInvestigate).toBeUndefined();
+  });
+
   it("returns stored prompts when setting exists", async () => {
     const custom = { story: [{ id: "custom-1", label: "My prompt", text: "Do something" }] };
     testDb.insert(appSetting).values({
