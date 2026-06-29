@@ -35,20 +35,36 @@ async function fetchHoverData(keys: string[]): Promise<Record<string, TicketPill
 }
 
 /**
- * On-demand hover-card lookup for a bounded set of ticket keys (BRDG-412).
- * Fetches only the visible reference keys via GET /api/tickets/hover (batched,
- * deduped, SWR-cached on the sorted keys), instead of pulling the whole backlog.
- * Returns undefined for keys with no card (subtasks, Jira-only issues, etc.).
+ * On-demand hover-card lookup for a bounded set of ticket keys (BRDG-412),
+ * exposing the SWR loading state alongside the lookup so a caller can show a
+ * spinner while the first fetch is in flight. Fetches only the given keys via
+ * GET /api/tickets/hover (batched, deduped, SWR-cached on the sorted keys),
+ * instead of pulling the whole backlog. The lookup returns undefined for keys
+ * with no card (subtasks, Jira-only issues, etc.).
  */
-export function useHoverData(keys: string[]): (key: string) => TicketPillHoverData | undefined {
+export function useHoverLookup(keys: string[]): {
+  lookup: (key: string) => TicketPillHoverData | undefined;
+  isLoading: boolean;
+} {
   const sortedKeys = useMemo(() => Array.from(new Set(keys)).sort(), [keys]);
   const swrKey = sortedKeys.length > 0 ? `hoverData:${sortedKeys.join(",")}` : null;
-  const { data } = useSWR<Record<string, TicketPillHoverData>>(
+  const { data, isLoading } = useSWR<Record<string, TicketPillHoverData>>(
     swrKey,
     () => fetchHoverData(sortedKeys),
     { revalidateOnFocus: true, dedupingInterval: 15000 },
   );
-  return useCallback((key: string) => data?.[key], [data]);
+  const lookup = useCallback((key: string) => data?.[key], [data]);
+  // isLoading is true only on the first load (no cached data yet); revalidation
+  // over cached data does not flip it, so a reopened card never re-spins.
+  return { lookup, isLoading: swrKey != null && isLoading };
+}
+
+/**
+ * Lookup-only form of {@link useHoverLookup}, kept for the existing reference-row
+ * callers that do not need the loading state.
+ */
+export function useHoverData(keys: string[]): (key: string) => TicketPillHoverData | undefined {
+  return useHoverLookup(keys).lookup;
 }
 
 // Context that carries a per-container hover lookup down to the reference rows

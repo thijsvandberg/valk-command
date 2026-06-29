@@ -348,6 +348,12 @@ function DropdownPortal({
 
 export interface TicketPillHoverData {
   title: string;
+  /** Issue type and Jira status, so a list-variant pill built from this payload
+   *  (not just the rich tooltip) can paint its type icon and status segment.
+   *  Optional because the link-snapshot builders construct this shape too and do
+   *  not carry them; the /api/tickets/hover endpoint always sets both. */
+  type?: IssueType;
+  jiraStatus?: JiraStatus;
   storyPoints: number | null;
   businessValue: number | null;
   sprintId: string | null;

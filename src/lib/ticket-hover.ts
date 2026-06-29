@@ -14,6 +14,8 @@ import type { TicketPillHoverData } from "@/components/shared/TicketStatusPill";
 export function buildTicketHoverData(t: Ticket, sprintNames: Record<string, string> = {}): TicketPillHoverData {
   return {
     title: t.title,
+    type: t.type,
+    jiraStatus: t.jiraStatus,
     storyPoints: t.storyPoints,
     businessValue: t.businessValue,
     sprintId: t.sprintId ?? null,

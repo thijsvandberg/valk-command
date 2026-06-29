@@ -14,8 +14,9 @@ import { withRequestLog } from "@/lib/request-log";
 // On-demand hover-card data for a bounded, explicit set of ticket keys (BRDG-412).
 // Replaces the app-wide useTickets("__all__") feed that the shared hover lookup
 // used to pull just to render reference-row tooltips. Returns ONLY the
-// buildTicketHoverData shape (a strict subset of the list summary, no detail
-// fields), keyed by ticket key. Keys that are not found, or that the board feed
+// buildTicketHoverData shape (a light subset of the list summary, no heavy detail
+// fields; type/jiraStatus are included so a list-variant pill can paint from it),
+// keyed by ticket key. Keys that are not found, or that the board feed
 // would exclude (subtasks, epics, draft/replaced statuses), are simply omitted,
 // matching the old lookup's "no card" behaviour for those.
 const MAX_KEYS = 200;

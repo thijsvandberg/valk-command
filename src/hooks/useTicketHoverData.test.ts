@@ -17,7 +17,7 @@ vi.mock("@/hooks/useSprintBoard", () => ({
   },
 }));
 
-import { buildTicketHoverData, useLinkedTicketData, useHoverData, useTicketHoverData, HoverDataProvider } from "./useTicketHoverData";
+import { buildTicketHoverData, useLinkedTicketData, useHoverData, useHoverLookup, useTicketHoverData, HoverDataProvider } from "./useTicketHoverData";
 
 const base = {
   key: "VPL-1",
@@ -51,6 +51,12 @@ describe("buildTicketHoverData (BRDG-276 enrichment)", () => {
     expect(d.readiness).toBe("drafting");
     expect(d.qualityScore).toBe(80);
     expect(d.notes).toBe("a note");
+  });
+
+  it("carries type and jiraStatus so a list-variant pill can paint from it", () => {
+    const d = buildTicketHoverData(base);
+    expect(d.type).toBe("story");
+    expect(d.jiraStatus).toBe("TO DO");
   });
 
   it("maps a clean edit state to null but keeps real ones", () => {
@@ -106,6 +112,24 @@ describe("useHoverData (BRDG-412)", () => {
 
     expect(result.current("VPL-1")).toBeUndefined();
     expect(fetch).not.toHaveBeenCalled();
+  });
+
+  it("useHoverLookup exposes the loading state until the first fetch resolves", async () => {
+    vi.spyOn(global, "fetch").mockResolvedValue({
+      ok: true,
+      json: async () => ({ "VPL-1": { title: "One" } }),
+    } as Response);
+
+    const { result } = renderHook(() => useHoverLookup(["VPL-1"]), { wrapper: swrWrapper });
+
+    expect(result.current.isLoading).toBe(true);
+    await waitFor(() => expect(result.current.isLoading).toBe(false));
+    expect(result.current.lookup("VPL-1")!.title).toBe("One");
+  });
+
+  it("useHoverLookup is never loading when there are no keys", () => {
+    const { result } = renderHook(() => useHoverLookup([]), { wrapper: swrWrapper });
+    expect(result.current.isLoading).toBe(false);
   });
 
   it("feeds useTicketHoverData consumers through HoverDataProvider", async () => {

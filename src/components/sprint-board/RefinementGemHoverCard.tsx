@@ -6,11 +6,13 @@ import {
   useEffect,
   useLayoutEffect,
   useCallback,
+  useMemo,
   type ReactNode,
 } from "react";
 import { createPortal } from "react-dom";
-import { Boxes, X, ArrowRight } from "lucide-react";
+import { Boxes, X, ArrowRight, Loader2 } from "lucide-react";
 import { useOutsideClick } from "@/hooks/useOutsideClick";
+import { useHoverLookup } from "@/hooks/useTicketHoverData";
 import type { TicketSessionEntry } from "@/hooks/useTicketSessionMap";
 import { TicketStatusPill } from "@/components/shared/TicketStatusPill";
 import { Button } from "@/components/ui/Button";
@@ -34,11 +36,24 @@ export interface RefinementCardTicketInfo {
 interface CardActions {
   /** The ticket whose gem opened the card (highlighted in each section). */
   currentKey: string;
-  /** Resolve sibling ticket detail from already-loaded board data (key-only fallback). */
+  /** Resolve sibling ticket detail from already-loaded board data. Members not on
+   *  the current board are fetched on demand by the card (BRDG-265 follow-up). */
   ticketInfoMap?: Map<string, RefinementCardTicketInfo>;
   /** Remove a ticket from a session (optimistic PATCH lives in the parent). */
   onRemoveFromRefinement?: (sessionId: string, ticketKey: string) => void;
   /** Navigate to a refinement session (client-side router lives in the parent). */
+  onViewRefinement?: (sessionId: string) => void;
+}
+
+/** A resolved row: either its detail, or a flag that the detail is still loading. */
+type RowInfo = { info?: RefinementCardTicketInfo; loading: boolean };
+
+/** What a section needs once the card has wired up its on-demand row lookup. */
+interface SectionProps {
+  session: TicketSessionEntry;
+  currentKey: string;
+  resolveRow: (key: string) => RowInfo;
+  onRemoveFromRefinement?: (sessionId: string, ticketKey: string) => void;
   onViewRefinement?: (sessionId: string) => void;
 }
 
@@ -49,10 +64,10 @@ function stop(e: React.SyntheticEvent) {
 function SessionSection({
   session,
   currentKey,
-  ticketInfoMap,
+  resolveRow,
   onRemoveFromRefinement,
   onViewRefinement,
-}: { session: TicketSessionEntry } & CardActions) {
+}: SectionProps) {
   const count = session.ticketCount ?? session.ticketKeys.length;
   const visible = session.ticketKeys.slice(0, MAX_VISIBLE_ROWS);
   const overflow = session.ticketKeys.length - visible.length;
@@ -69,7 +84,7 @@ function SessionSection({
       <ul className="max-h-[260px] overflow-y-auto pb-1">
         {visible.map((key) => {
           const current = key === currentKey;
-          const info = ticketInfoMap?.get(key);
+          const { info, loading } = resolveRow(key);
           return (
             <li
               key={key}
@@ -88,9 +103,13 @@ function SessionSection({
                   showReadiness={!!info}
                 />
               </span>
-              {info?.title && (
+              {info?.title ? (
                 <span className="min-w-0 flex-1 truncate text-body-sm text-text-secondary">{info.title}</span>
-              )}
+              ) : loading ? (
+                <span className="flex items-center gap-1.5 text-text-muted" role="status" aria-label={`Loading ${key}`}>
+                  <Loader2 size={12} className="animate-spin" />
+                </span>
+              ) : null}
               {onRemoveFromRefinement && (
                 <button
                   type="button"
@@ -161,11 +180,49 @@ function HoverCard({
   onMouseEnter,
   onMouseLeave,
   onClose,
-  ...actions
+  currentKey,
+  ticketInfoMap,
+  onRemoveFromRefinement,
+  onViewRefinement,
 }: HoverCardProps) {
   const cardRef = useRef<HTMLDivElement>(null);
   const [pos, setPos] = useState<{ left: number; top: number; openUp: boolean } | null>(null);
   const [shown, setShown] = useState(false);
+
+  // Members not already on the board (no ticketInfoMap entry) are fetched on
+  // demand once the card opens. Only the visible rows are fetched; overflow rows
+  // sit behind the "+N more" link and never paint here. The card mounts only on
+  // hover, so the fetch is lazy and the result is shared via the SWR cache.
+  const missingKeys = useMemo(() => {
+    const out: string[] = [];
+    const seen = new Set<string>();
+    for (const s of sessions) {
+      for (const key of s.ticketKeys.slice(0, MAX_VISIBLE_ROWS)) {
+        if (seen.has(key) || ticketInfoMap?.has(key)) continue;
+        seen.add(key);
+        out.push(key);
+      }
+    }
+    return out;
+  }, [sessions, ticketInfoMap]);
+
+  const { lookup: hoverLookup, isLoading } = useHoverLookup(missingKeys);
+
+  const resolveRow = useCallback(
+    (key: string): RowInfo => {
+      const board = ticketInfoMap?.get(key);
+      if (board) return { info: board, loading: false };
+      const hover = hoverLookup(key);
+      if (hover && hover.type && hover.jiraStatus) {
+        return {
+          info: { title: hover.title, type: hover.type, jiraStatus: hover.jiraStatus, readiness: hover.readiness ?? null },
+          loading: false,
+        };
+      }
+      return { loading: isLoading };
+    },
+    [ticketInfoMap, hoverLookup, isLoading],
+  );
 
   useOutsideClick([cardRef, triggerRef], onClose);
 
@@ -217,7 +274,14 @@ function HoverCard({
       }}
     >
       {sessions.map((session) => (
-        <SessionSection key={session.id} session={session} {...actions} />
+        <SessionSection
+          key={session.id}
+          session={session}
+          currentKey={currentKey}
+          resolveRow={resolveRow}
+          onRemoveFromRefinement={onRemoveFromRefinement}
+          onViewRefinement={onViewRefinement}
+        />
       ))}
     </div>,
     document.body,

@@ -2,9 +2,22 @@ import { render, screen, fireEvent, act } from "@testing-library/react";
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { RefinementGemTrigger, type RefinementCardTicketInfo } from "./RefinementGemHoverCard";
 import type { TicketSessionEntry } from "@/hooks/useTicketSessionMap";
+import type { TicketPillHoverData } from "@/components/shared/TicketStatusPill";
 
 vi.mock("next/navigation", () => ({
   usePathname: vi.fn(() => "/sprint-board"),
+}));
+
+// Controls the on-demand lookup the card uses for members not on the board.
+// Default: nothing extra resolves and nothing is loading, so a missing key keeps
+// its key-only fallback (preserving the original behaviour the suite asserts).
+const hoverState = vi.hoisted(() => ({
+  lookup: (_key: string) => undefined as TicketPillHoverData | undefined,
+  isLoading: false,
+}));
+
+vi.mock("@/hooks/useTicketHoverData", () => ({
+  useHoverLookup: (_keys: string[]) => ({ lookup: hoverState.lookup, isLoading: hoverState.isLoading }),
 }));
 
 function session(over: Partial<TicketSessionEntry> = {}): TicketSessionEntry {
@@ -45,7 +58,11 @@ function open(trigger: HTMLElement) {
 }
 
 describe("RefinementGemTrigger", () => {
-  beforeEach(() => vi.useFakeTimers());
+  beforeEach(() => {
+    vi.useFakeTimers();
+    hoverState.lookup = () => undefined;
+    hoverState.isLoading = false;
+  });
   afterEach(() => { vi.useRealTimers(); vi.clearAllMocks(); });
 
   it("does not render the card until hovered", () => {
@@ -65,6 +82,27 @@ describe("RefinementGemTrigger", () => {
     expect(screen.getByText("Hold inventory on quote")).toBeInTheDocument();
     // No board info for VPL-484 -> the pill still renders the key (once), no title text.
     expect(screen.getAllByText("VPL-484")).toHaveLength(1);
+  });
+
+  it("paints a member not on the board from the on-demand lookup", () => {
+    hoverState.lookup = (key) =>
+      key === "VPL-484"
+        ? ({ title: "Fetched off-board ticket", type: "task", jiraStatus: "In Progress", readiness: null } as unknown as TicketPillHoverData)
+        : undefined;
+    const { trigger } = renderTrigger();
+    open(trigger);
+    // The off-board member now paints its title from the fetched hover data.
+    expect(screen.getByText("Fetched off-board ticket")).toBeInTheDocument();
+  });
+
+  it("shows a spinner for a member still being fetched", () => {
+    hoverState.isLoading = true;
+    const { trigger } = renderTrigger();
+    open(trigger);
+    // VPL-484 has no board info and the fetch is in flight -> a loading indicator.
+    expect(screen.getByLabelText("Loading VPL-484")).toBeInTheDocument();
+    // Board-resolved rows are unaffected.
+    expect(screen.getByText("Hold inventory on quote")).toBeInTheDocument();
   });
 
   it("opens on keyboard focus too", () => {

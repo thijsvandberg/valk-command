@@ -73,11 +73,13 @@ describe("GET /api/tickets/hover (BRDG-412)", () => {
       expect(card).not.toHaveProperty(heavy);
     }
     // Strictly the hover subset: no summary-only fields the card never shows.
-    for (const nonHover of ["key", "type", "jiraStatus", "poStatus", "jiraRank", "sprintIds"]) {
+    // (type/jiraStatus are now included so the list-variant pill can paint its
+    // type icon and status segment from this payload, BRDG-265 follow-up.)
+    for (const nonHover of ["key", "poStatus", "jiraRank", "sprintIds"]) {
       expect(card).not.toHaveProperty(nonHover);
     }
     // The hover fields are present.
-    for (const field of ["title", "storyPoints", "businessValue", "sprintId", "sprintName", "readiness", "qualityScore", "notes", "editState"]) {
+    for (const field of ["title", "type", "jiraStatus", "storyPoints", "businessValue", "sprintId", "sprintName", "readiness", "qualityScore", "notes", "editState"]) {
       expect(card).toHaveProperty(field);
     }
   });
