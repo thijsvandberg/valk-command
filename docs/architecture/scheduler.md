@@ -22,6 +22,7 @@ Scheduler (src/lib/scheduler.ts)
     +-- deprecation-auto-enqueue (every 10m, opt-in)
     +-- reconcile-stuck-tasks (every 10m)
     +-- cleanup-removed-tickets (every 24h)
+    +-- prune-story-versions (every 24h)
     |
     v
 Results returned to frontend -> SWR cache invalidation
@@ -211,6 +212,10 @@ Deletes tickets that have been absent from Jira for more than 7 days:
 1. Finds tickets where `removed_from_jira_at` is older than 7 days
 2. Deletes all related data (metadata, subtasks, links, attachments, edits, comments, versions, reviews) in a transaction
 3. Invalidates search cache
+
+#### Prune Story Versions (every 24h)
+
+Caps the growth of the `story_version` table (BRDG-436). A story is "settled" once its newest version is older than `STORY_VERSION_RETENTION_MS` (42 days, 6 weeks); for settled stories every version except the latest is deleted, while stories edited within the window keep their full history (the diff/compare views need recent versions). A single set-based `DELETE` with a `ROW_NUMBER() OVER (PARTITION BY jira_key ORDER BY created_at DESC, id DESC)` window guarantees exactly one row survives per settled story even on a timestamp tie. Returns `{ deleted }`. Broader retention of the other history tables is tracked in BRDG-437.
 
 ### Tick API Route (`src/app/api/scheduler/tick/route.ts`)
 

@@ -58,11 +58,11 @@ vi.mock("@/db", () => ({
   },
 }));
 
-import { cleanupActivityLog, cleanupOldNotifications, revalidateDeletedTickets, runDeprecationStalenessScan, runAutoEnqueue, reconcileStuckTasks } from "./scheduled-tasks";
+import { cleanupActivityLog, cleanupOldNotifications, revalidateDeletedTickets, runDeprecationStalenessScan, runAutoEnqueue, reconcileStuckTasks, pruneStoryVersions } from "./scheduled-tasks";
 import { jiraClient, JiraApiError } from "@/lib/jira-client";
 import { logger } from "@/lib/logger";
 import { enqueue, _reset as resetQueue } from "@/lib/revalidation-queue";
-import { activityLog, alert, ticket, appSetting, workspaceTask } from "@/db/schema";
+import { activityLog, alert, ticket, appSetting, workspaceTask, storyVersion } from "@/db/schema";
 import { eq } from "drizzle-orm";
 
 describe("cleanupActivityLog", () => {
@@ -426,5 +426,110 @@ describe("reconcileStuckTasks", () => {
     const ctx = call![2] as Record<string, unknown>;
     expect(ctx.count).toBe(2);
     expect(ctx.taskIds).toEqual(expect.arrayContaining(["stuck-a", "stuck-b"]));
+  });
+});
+
+describe("pruneStoryVersions", () => {
+  const DAY = 24 * 60 * 60 * 1000;
+
+  function daysAgo(n: number): string {
+    return new Date(Date.now() - n * DAY).toISOString();
+  }
+
+  function insertStory(key: string) {
+    testDb.insert(ticket).values({ jiraKey: key, title: `Ticket ${key}`, status: "To Do" }).run();
+  }
+
+  function insertVersion(key: string, id: string, createdAt: string) {
+    testDb.insert(storyVersion).values({
+      id,
+      jiraKey: key,
+      description: `body ${id}`,
+      contentHash: id,
+      createdAt,
+    }).run();
+  }
+
+  function versionsFor(key: string) {
+    return testDb.select().from(storyVersion).where(eq(storyVersion.jiraKey, key)).all();
+  }
+
+  beforeEach(() => {
+    testDb = createTestDb();
+  });
+
+  it("collapses a settled story to only its latest version", async () => {
+    insertStory("VPL-1");
+    insertVersion("VPL-1", "v-old", daysAgo(200));
+    insertVersion("VPL-1", "v-mid", daysAgo(150));
+    insertVersion("VPL-1", "v-latest", daysAgo(100)); // last change > 3 months ago
+
+    const result = await pruneStoryVersions();
+
+    const remaining = versionsFor("VPL-1");
+    expect(remaining).toHaveLength(1);
+    expect(remaining[0].id).toBe("v-latest");
+    expect(result).toMatchObject({ deleted: 2 });
+  });
+
+  it("keeps full history for a story changed within the retention window", async () => {
+    insertStory("VPL-2");
+    insertVersion("VPL-2", "a", daysAgo(200));
+    insertVersion("VPL-2", "b", daysAgo(150));
+    insertVersion("VPL-2", "c", daysAgo(30)); // last change < 6 weeks ago
+
+    await pruneStoryVersions();
+
+    expect(versionsFor("VPL-2")).toHaveLength(3);
+  });
+
+  it("collapses a story whose last change is just past the 6-week window", async () => {
+    insertStory("VPL-6w");
+    insertVersion("VPL-6w", "p1", daysAgo(120));
+    insertVersion("VPL-6w", "p2", daysAgo(50)); // settled under 6 weeks (42d); would survive a 3-month rule
+
+    const result = await pruneStoryVersions();
+
+    const remaining = versionsFor("VPL-6w");
+    expect(remaining).toHaveLength(1);
+    expect(remaining[0].id).toBe("p2");
+    expect(result).toMatchObject({ deleted: 1 });
+  });
+
+  it("leaves a settled story that already has a single version untouched", async () => {
+    insertStory("VPL-3");
+    insertVersion("VPL-3", "only", daysAgo(300));
+
+    const result = await pruneStoryVersions();
+
+    expect(versionsFor("VPL-3")).toHaveLength(1);
+    expect(result).toMatchObject({ deleted: 0 });
+  });
+
+  it("keeps exactly one version when the newest timestamps tie", async () => {
+    insertStory("VPL-4");
+    const tied = daysAgo(120);
+    insertVersion("VPL-4", "older", daysAgo(200));
+    insertVersion("VPL-4", "tie-a", tied);
+    insertVersion("VPL-4", "tie-b", tied);
+
+    await pruneStoryVersions();
+
+    expect(versionsFor("VPL-4")).toHaveLength(1);
+  });
+
+  it("prunes only settled stories in a mixed set", async () => {
+    insertStory("VPL-settled");
+    insertVersion("VPL-settled", "s1", daysAgo(200));
+    insertVersion("VPL-settled", "s2", daysAgo(120));
+    insertStory("VPL-active");
+    insertVersion("VPL-active", "a1", daysAgo(200));
+    insertVersion("VPL-active", "a2", daysAgo(10));
+
+    const result = await pruneStoryVersions();
+
+    expect(versionsFor("VPL-settled")).toHaveLength(1);
+    expect(versionsFor("VPL-active")).toHaveLength(2);
+    expect(result).toMatchObject({ deleted: 1 });
   });
 });

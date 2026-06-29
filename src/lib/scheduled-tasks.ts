@@ -13,7 +13,7 @@ import {
   ticketLocalEdit, poComment, jiraComment, storyVersion, storedReview,
   storyWriterSession, workspaceTask,
 } from "@/db/schema";
-import { eq, inArray, and, isNotNull, isNull, or, lt, desc, notInArray } from "drizzle-orm";
+import { eq, inArray, and, isNotNull, isNull, or, lt, desc, notInArray, sql } from "drizzle-orm";
 import { FINISHED_STATUSES, EXCLUDED_SCAN_TYPES } from "@/lib/ticket-status";
 import { jiraClient, JiraApiError, extractSprint } from "@/lib/jira-client";
 import { upsertIssue, cacheSprintName } from "@/lib/upsert-issue";
@@ -53,6 +53,14 @@ const WATERMARK_KEY = "jira_sync_watermark";
 const BATCH_LIMIT = 50;
 const REMOVED_TICKET_TTL_MS = 7 * 24 * 60 * 60 * 1000; // 7 days
 const REVALIDATION_BATCH_SIZE = 25;
+
+// Story-version retention (BRDG-436). A story whose newest version is older than
+// this is considered "settled": its history collapses to just that latest
+// snapshot. WHY keep full history while a story is still being edited: the
+// version-compare views (diff-preview, Story Writer) need the recent versions;
+// only once a story has been quiet for 6 weeks do the intermediate snapshots
+// stop being useful and become unbounded growth.
+const STORY_VERSION_RETENTION_MS = 42 * 24 * 60 * 60 * 1000; // 6 weeks
 
 // Tier-1 deprecation staleness scan (BRDG-297).
 const STALENESS_SCAN_BATCH_SIZE = 25;
@@ -225,6 +233,40 @@ async function cleanupRemovedTickets(): Promise<TaskResult> {
   invalidateSearchCache();
 
   return { deleted: keys.length, keys };
+}
+
+// ---------------------------------------------------------------------------
+// Task: Prune story versions (every 24h)
+// ---------------------------------------------------------------------------
+
+/**
+ * Collapses each settled story's version history down to its single latest
+ * snapshot. A story is "settled" when its most recent version is older than
+ * STORY_VERSION_RETENTION_MS; until then its full history is kept so the
+ * version-compare views still work. The latest version is always preserved,
+ * even for long-untouched stories, so the current content stays available.
+ *
+ * The ROW_NUMBER tiebreaker on id guarantees exactly one row survives per story
+ * even when two versions share the same second-resolution created_at.
+ */
+export async function pruneStoryVersions(): Promise<TaskResult> {
+  const cutoff = new Date(Date.now() - STORY_VERSION_RETENTION_MS).toISOString();
+
+  const res = db.run(sql`
+    DELETE FROM story_version
+    WHERE id IN (
+      SELECT id FROM (
+        SELECT
+          id,
+          ROW_NUMBER() OVER (PARTITION BY jira_key ORDER BY created_at DESC, id DESC) AS rn,
+          MAX(created_at) OVER (PARTITION BY jira_key) AS last_change
+        FROM story_version
+      )
+      WHERE rn > 1 AND last_change < ${cutoff}
+    )
+  `);
+
+  return { deleted: res.changes ?? 0 };
 }
 
 // ---------------------------------------------------------------------------
@@ -770,6 +812,14 @@ export function registerScheduledTasks() {
     "Permanently deletes tickets removed from Jira more than 7 days ago, including all related data (comments, metadata, attachments, reviews).",
     24 * 60 * 60 * 1000,
     cleanupRemovedTickets,
+  );
+
+  defineTask(
+    "prune-story-versions",
+    "Story Version Retention",
+    "Collapses a story's saved-version history down to just the latest snapshot once it has had no new version for 6 weeks. Stories edited within the last 6 weeks keep their full history so version comparison still works.",
+    24 * 60 * 60 * 1000,
+    pruneStoryVersions,
   );
 
   defineTask(
