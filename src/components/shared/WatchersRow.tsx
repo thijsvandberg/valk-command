@@ -6,6 +6,7 @@ import { Avatar } from "@/components/shared/Avatar";
 import { WatcherPicker } from "@/components/shared/WatcherPicker";
 import type { AssignableUser } from "@/components/shared/AssigneePicker";
 import { swrFetcher, jira } from "@/lib/api-client";
+import { isDraftKey } from "@/lib/draft-key";
 import { userInitials, userColor } from "@/lib/user-display";
 import { useToast } from "@/hooks/useToast";
 import { Toast } from "@/components/ui/Toast";
@@ -25,8 +26,10 @@ interface WatchersResponse {
  */
 export function WatchersRow({ ticketKey, align = "right" }: { ticketKey: string; align?: "left" | "right" }) {
   const { toast, toastLoading, showToast, dismissToast } = useToast();
+  // A draft ticket has no Jira issue yet, so it has no watchers to fetch; skip the
+  // request entirely (the server would otherwise reject the synthetic DRAFT key).
   const { data, mutate } = useSWR<WatchersResponse>(
-    ticketKey ? jira.watchersUrl(ticketKey) : null,
+    ticketKey && !isDraftKey(ticketKey) ? jira.watchersUrl(ticketKey) : null,
     swrFetcher,
     { revalidateOnFocus: false },
   );

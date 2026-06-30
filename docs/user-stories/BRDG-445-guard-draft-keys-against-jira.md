@@ -132,24 +132,29 @@ cleanup candidate to route through `isDraftKey`.
 
 ## Acceptance Criteria
 
-- [ ] Opening a draft ticket (DRAFT-xxx) no longer fires `GET /api/jira/watchers`;
-      the watchers control renders empty without a network error.
+- [x] Opening a draft ticket (DRAFT-xxx) no longer fires `GET /api/jira/watchers`;
+      the watchers control renders empty without a network error. (`WatchersRow`
+      SWR key is `null` for a draft key.)
 - [x] `POST /api/tickets/DRAFT-xxx/pull-from-jira` never produces an
       `unhandled error` / `JiraApiError` in the server logs. A finalized draft
       resolves to its real key and pulls normally; a pending draft returns a clean,
       handled response. (`pullFromJira` resolves + throws `DraftNotFinalizedError`
       (409) for a pending draft, handled by `handleServiceError`.)
-- [ ] No `Invalid Jira issue key: DRAFT-...` `400`s appear in the logs during a
-      normal draft-create -> finalize flow.
+- [x] No `Invalid Jira issue key: DRAFT-...` `400`s appear in the logs during a
+      normal draft-create -> finalize flow. (Both paths covered: client no longer
+      fires the watchers request for a draft, and the server short-circuits before
+      any Jira call on watchers + pull-from-jira.)
 - [x] A shared `isDraftKey()` helper exists and the inline `startsWith("DRAFT-")`
       checks reuse it. (`src/lib/draft-key.ts`; `resolveDraftKey` now uses it. The
       ~9 other inline sites are an out-of-scope follow-up, noted above.)
-- [ ] Sibling Jira-bound routes reviewed; any that pass an unresolved DRAFT key to
-      Jira are guarded the same way (or explicitly noted as not applicable).
+- [x] Sibling Jira-bound routes reviewed; any that pass an unresolved DRAFT key to
+      Jira are guarded the same way (or explicitly noted as not applicable). (See
+      the sweep in the Implementation Plan: `links` already resolves, `check-updated`
+      already rejects via `isValidJiraKey`, `rank`/`sync-links` are N/A.)
 
 ## Tests
 
-- [ ] `WatchersRow`: SWR key is `null` for a DRAFT key; non-null for a real key.
+- [x] `WatchersRow`: SWR key is `null` for a DRAFT key; non-null for a real key.
 - [x] `pull-from-jira` route/service: pending DRAFT key returns the handled
       response and does not call `jiraClient.getIssue`; finalized DRAFT key resolves
       to the real key and proceeds.

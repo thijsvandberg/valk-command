@@ -6,11 +6,13 @@ const h = vi.hoisted(() => ({
   watchers: [] as { accountId: string; displayName: string; avatarUrl: string | null }[],
   candidates: [] as { accountId: string; displayName: string; avatarUrl: string | null; isFavorite?: boolean; teams?: string[] }[],
   mutate: vi.fn(),
+  keys: [] as (string | null)[],
 }));
 
 vi.mock("swr", () => ({
   __esModule: true,
   default: (key: string | null) => {
+    h.keys.push(key);
     if (!key) return { data: undefined, mutate: vi.fn() };
     if (key.startsWith("/api/jira/watchers?")) return { data: { watchers: h.watchers }, mutate: h.mutate };
     if (key === "/api/jira/watcher-candidates") return { data: { users: h.candidates }, mutate: vi.fn() };
@@ -43,12 +45,26 @@ describe("WatchersRow", () => {
       { accountId: "acc-bob", displayName: "Bob", avatarUrl: null, isFavorite: false, teams: [] },
     ];
     h.mutate = vi.fn();
+    h.keys = [];
     addWatcher.mockClear().mockResolvedValue({ ok: true });
     removeWatcher.mockClear().mockResolvedValue({ ok: true });
   });
 
   it("renders the empty state when there are no watchers", () => {
     render(<WatchersRow ticketKey="VPL-100" />);
+    expect(screen.getByText("No watchers")).toBeInTheDocument();
+  });
+
+  it("fetches watchers with the issue URL for a real Jira key", () => {
+    render(<WatchersRow ticketKey="VPL-100" />);
+    expect(h.keys).toContain("/api/jira/watchers?issueKey=VPL-100");
+  });
+
+  it("does not fetch watchers for a draft ticket", () => {
+    render(<WatchersRow ticketKey="DRAFT-748b82f8" />);
+    // The watchers SWR key is null for a draft, so no watchers URL is ever built.
+    expect(h.keys.some((k) => typeof k === "string" && k.includes("DRAFT-"))).toBe(false);
+    expect(h.keys.some((k) => typeof k === "string" && k.includes("/api/jira/watchers"))).toBe(false);
     expect(screen.getByText("No watchers")).toBeInTheDocument();
   });
 
