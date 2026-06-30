@@ -25,8 +25,9 @@ src/components/shared/menu-button-guard.test.ts
 - Introduced by commit `2803cfa7` (2026-06-29, "feat(nav): add New story
   launcher to the nav dropdown").
 
-Fix is a one-token change (`active:scale-95` -> `active:scale-[0.97]`), but it is
-UI work outside BRDG-442's scope, so it is left for the PO to schedule.
+**Resolved (2026-06-30):** fixed at the PO's request in a follow-up commit
+(`active:scale-95` -> `active:scale-[0.97]` on NavPanel's New story button); the
+guard test is green again.
 
 ## 2. Typecheck red: useTicketDetailPage test
 
