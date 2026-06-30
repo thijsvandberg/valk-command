@@ -97,10 +97,26 @@ export function StatusChangeLine({
   // present it leads the sentence and supplies the attribution (a drag-into-sprint is one
   // Jira action). The status affordances above are null-safe, so a sprint-only line shows
   // none of them.
+  // BRDG-446: a third reason — a fresh UAT deploy. A deploy-only line (no status, no sprint-add)
+  // leads with "New version on UAT" and has no actor; the status affordances stay suppressed
+  // because isFinished/isTest are false when toStatus is null.
   const sprintAdd = change.sprintAdded;
+  const deployAdded = change.deployAdded;
   const hasStatus = change.id != null && change.toStatus != null;
+  const deployOnly = !hasStatus && !sprintAdd && !!deployAdded;
   const attribution = sprintAdd ? sprintAdd.changedBy : change.changedBy;
-  const attributionAt = sprintAdd ? sprintAdd.changedAt : change.changedAt;
+  const attributionAt = deployOnly && deployAdded ? deployAdded.completedAt : sprintAdd ? sprintAdd.changedAt : change.changedAt;
+
+  // Single deploy-badge slot: the ambient last-deploy badge (case 1, unchanged) when the line
+  // shows it, otherwise the fresh UAT deploy carried on the line itself (a deploy-only line, or
+  // a status line whose ambient last-deploy is stale/absent). Exactly one can render, so the
+  // status sentence never carries two badges.
+  const badgeDeploy: LastDeployedInfo | null =
+    showsDeploy && deploy?.environment
+      ? deploy
+      : deployAdded
+        ? { environment: deployAdded.environment, completedAt: deployAdded.completedAt, state: deployAdded.state }
+        : null;
 
   return (
     // Isolated from the row's click/drag so acting on the line never selects or drags the row.
@@ -119,7 +135,9 @@ export function StatusChangeLine({
 
       <div className="flex min-w-0 flex-1 flex-wrap items-center gap-x-2.5 gap-y-1.5">
         <span className="text-caption text-text-tertiary">
-          {sprintAdd && hasStatus ? (
+          {deployOnly ? (
+            <>New version on UAT</>
+          ) : sprintAdd && hasStatus ? (
             <>
               Added to sprint and moved from <StatusWord status={change.fromStatus as JiraStatus} /> to{" "}
               <StatusWord status={change.toStatus as JiraStatus} />
@@ -168,7 +186,7 @@ export function StatusChangeLine({
         )}
 
         {/* Badges carry their own pill background, so no dot separator before them. */}
-        {showsDeploy && deploy?.environment && <DeploySignal deploy={deploy} />}
+        {badgeDeploy && <DeploySignal deploy={badgeDeploy} />}
 
         {showSubtaskFlag && (
           // Reuse the board's existing open-subtasks indicator: the amber badge opens the

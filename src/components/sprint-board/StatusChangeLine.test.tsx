@@ -28,6 +28,7 @@ function makeChange(overrides: Partial<StatusChangeItem> = {}): StatusChangeItem
     lastCommentAt: null,
     storyEditedAt: null,
     sprintAdded: null,
+    deployAdded: null,
     ...overrides,
   };
 }
@@ -164,5 +165,49 @@ describe("StatusChangeLine (BRDG-414)", () => {
   it("hides the deploy badge on To Do changes", () => {
     render(<StatusChangeLine change={makeChange({ fromStatus: "TO DO", toStatus: "TO DO" })} deploy={deploy} onSeen={noop} onMoveToBottom={noop} />);
     expect(screen.queryByText("UAT3")).not.toBeInTheDocument();
+  });
+
+  describe("deploy-only line (BRDG-446)", () => {
+    const deployAdded = { id: "deploy:VPL-1:run-5", environment: "UAT2", completedAt: "2026-06-27T09:00:00.000Z", state: "SUCCESSFUL" };
+
+    it("renders 'New version on UAT' with the badge and no status affordances when only deployAdded is set", () => {
+      render(
+        <StatusChangeLine
+          change={makeChange({ id: null, fromStatus: null, toStatus: null, changedBy: null, deployAdded })}
+          onSeen={noop}
+          onMoveToBottom={noop}
+        />,
+      );
+      expect(screen.getByText(/New version on UAT/)).toBeInTheDocument();
+      expect(screen.getByText("UAT2")).toBeInTheDocument();
+      // No status transition copy and no status-only affordances.
+      expect(screen.queryByText(/Updated from/)).not.toBeInTheDocument();
+      expect(screen.queryByText("Move to bottom")).not.toBeInTheDocument();
+      expect(screen.queryByText("Generate test prompt")).not.toBeInTheDocument();
+      // Dismiss check is still offered.
+      expect(screen.getByRole("button", { name: "Mark as seen" })).toBeInTheDocument();
+    });
+
+    it("keeps a single badge on a status+deploy line: the ambient UAT badge wins (case 1 preserved)", () => {
+      render(
+        <StatusChangeLine
+          change={makeChange({ toStatus: "IN PROGRESS", deployAdded })}
+          deploy={deploy}
+          onSeen={noop}
+          onMoveToBottom={noop}
+        />,
+      );
+      // Ambient last-deploy (UAT3) renders; the line's own deployAdded (UAT2) is not also shown.
+      expect(screen.getByText("UAT3")).toBeInTheDocument();
+      expect(screen.queryByText("UAT2")).not.toBeInTheDocument();
+      expect(screen.getByText(/Updated from In Progress to In Progress/)).toBeInTheDocument();
+    });
+
+    it("folds the line's deployAdded badge into a status sentence when the ambient deploy is absent", () => {
+      render(
+        <StatusChangeLine change={makeChange({ toStatus: "IN PROGRESS", deployAdded })} onSeen={noop} onMoveToBottom={noop} />,
+      );
+      expect(screen.getByText("UAT2")).toBeInTheDocument();
+    });
   });
 });

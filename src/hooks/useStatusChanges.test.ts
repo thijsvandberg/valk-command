@@ -39,13 +39,15 @@ function item(overrides: Partial<StatusChangeItem> = {}): StatusChangeItem {
     lastCommentAt: null,
     storyEditedAt: null,
     sprintAdded: null,
+    deployAdded: null,
     ...overrides,
   };
 }
 
 const SPRINT_ADD = { id: "scope-1", changedBy: "Frank", changedByAccountId: null, changedByAvatar: null, changedAt: "x" };
+const DEPLOY_ADD = { id: "deploy:VPL-1:run-5", environment: "UAT3", completedAt: "2026-06-27T09:00:00.000Z", state: "SUCCESSFUL" };
 
-describe("useStatusChanges.markSeen (BRDG-439)", () => {
+describe("useStatusChanges.markSeen (BRDG-439/446)", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     apiFetch.mockResolvedValue({});
@@ -74,5 +76,21 @@ describe("useStatusChanges.markSeen (BRDG-439)", () => {
       await result.current.markSeen(item({ id: "sc-7", sprintAdded: null }));
     });
     expect(apiFetch).toHaveBeenCalledWith("/api/status-changes/seen", { method: "POST", body: { ids: ["sc-7"] } });
+  });
+
+  it("marks just the deploy seen-key for a deploy-only line (BRDG-446)", async () => {
+    const { result } = renderHook(() => useStatusChanges(["VPL-1"]), { wrapper });
+    await act(async () => {
+      await result.current.markSeen(item({ id: null, toStatus: null, sprintAdded: null, deployAdded: DEPLOY_ADD }));
+    });
+    expect(apiFetch).toHaveBeenCalledWith("/api/status-changes/seen", { method: "POST", body: { ids: ["deploy:VPL-1:run-5"] } });
+  });
+
+  it("marks the status-change id AND the deploy seen-key for a combined status+deploy line (BRDG-446)", async () => {
+    const { result } = renderHook(() => useStatusChanges(["VPL-1"]), { wrapper });
+    await act(async () => {
+      await result.current.markSeen(item({ id: "sc-3", deployAdded: DEPLOY_ADD }));
+    });
+    expect(apiFetch).toHaveBeenCalledWith("/api/status-changes/seen", { method: "POST", body: { ids: ["sc-3", "deploy:VPL-1:run-5"] } });
   });
 });

@@ -60,11 +60,12 @@ export function useStatusChanges(ticketKeys: string[]) {
   }, [rows]);
 
   const markSeen = useCallback(
-    // BRDG-439: one line can carry both a status-change id and a sprint-add id; dismissing
-    // marks both, so the combined line never leaves a half-line behind. Drop by ticketKey
-    // (a sprint-only line has a null status-change id) and POST the id set in one request.
+    // BRDG-439/446: one line can carry a status-change id, a sprint-add id, and/or a deploy
+    // seen-key; dismissing marks all of them, so the combined line never leaves a half-line
+    // behind. Drop by ticketKey (a sprint-/deploy-only line has a null status-change id) and
+    // POST the id set in one request.
     async (item: StatusChangeItem) => {
-      const ids = [item.id, item.sprintAdded?.id].filter((x): x is string => !!x);
+      const ids = [item.id, item.sprintAdded?.id, item.deployAdded?.id].filter((x): x is string => !!x);
       if (ids.length === 0) return;
       await mutate((cur) => (cur ? { rows: cur.rows.filter((r) => r.ticketKey !== item.ticketKey) } : cur), { revalidate: false });
       try {
@@ -77,7 +78,7 @@ export function useStatusChanges(ticketKeys: string[]) {
   );
 
   const markAllSeen = useCallback(async () => {
-    const ids = (data?.rows ?? []).flatMap((r) => [r.id, r.sprintAdded?.id]).filter((x): x is string => !!x);
+    const ids = (data?.rows ?? []).flatMap((r) => [r.id, r.sprintAdded?.id, r.deployAdded?.id]).filter((x): x is string => !!x);
     if (ids.length === 0) return;
     await mutate({ rows: [] }, { revalidate: false });
     try {

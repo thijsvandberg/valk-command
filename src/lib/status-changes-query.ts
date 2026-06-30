@@ -1,7 +1,8 @@
 import { db } from "@/db";
-import { ticket, ticketStatusChange, ticketScopeChange, statusChangeSeen, jiraComment, storyVersion, ticketSubtask } from "@/db/schema";
+import { ticket, ticketStatusChange, ticketScopeChange, statusChangeSeen, jiraComment, storyVersion, ticketSubtask, pipelineRun } from "@/db/schema";
 import { and, eq, ne, isNull, isNotNull, inArray, notExists, desc, sql } from "drizzle-orm";
 import { buildAssignee } from "@/lib/user-utils";
+import { isInFlightStatus } from "@/lib/ticket-status";
 import type { Assignee, JiraStatus } from "@/types/ticket";
 
 // BRDG-414: the active-sprint status-change review queue. Returns the latest UNSEEN
@@ -33,6 +34,24 @@ export interface SprintAddInfo {
   changedAt: string;
 }
 
+// BRDG-446: a fresh UAT deploy on an in-flight ticket. Attached to the line when present;
+// when it is the ONLY reason the row surfaces, the line reads "New version on UAT".
+export interface DeployAddInfo {
+  // Synthesized per-ticket seen-key (see deploySeenKey); dismissal keys on this.
+  id: string;
+  environment: string;
+  completedAt: string;
+  state: string;
+}
+
+// BRDG-446: synthesized per-ticket seen-key for a deploy line. Per-ticket (not per pipeline
+// run) so dismissing one ticket's deploy never dismisses another ticket that shares the same
+// multi-ticket deploy (ticketKeys fan-out, BRDG-269). Reuses statusChangeSeen, whose
+// statusChangeId has no FK, so any opaque string is a valid id (same trick as sprint-adds).
+export function deploySeenKey(ticketKey: string, pipelineRunId: string): string {
+  return `deploy:${ticketKey}:${pipelineRunId}`;
+}
+
 export interface StatusChangeItem {
   // Status-change id; null for a sprint-add-only line (no status transition).
   id: string | null;
@@ -51,6 +70,7 @@ export interface StatusChangeItem {
   lastCommentAt: string | null;
   storyEditedAt: string | null;
   sprintAdded: SprintAddInfo | null;
+  deployAdded: DeployAddInfo | null;
 }
 
 // jiraComment.createdAt is Jira ISO (with `T`); storyVersion.createdAt uses the SQLite
@@ -70,6 +90,11 @@ export async function listUnseenStatusChanges(
   nowMs: number = Date.now(),
 ): Promise<StatusChangeItem[]> {
   if (ticketKeys.length === 0) return [];
+
+  // Coarse date-prefix pre-filter (format-agnostic); JS refines to the exact 24h window.
+  // Used by the deploy reason (below) and the what's-new comment/version aggregation.
+  const floorDate = new Date(nowMs - WINDOW_MS).toISOString().slice(0, 10);
+  const cutoff = nowMs - WINDOW_MS;
 
   const unseenByUser = notExists(
     db
@@ -159,8 +184,89 @@ export async function listUnseenStatusChanges(
   const latestSprintByKey = new Map<string, (typeof sprintRows)[number]>();
   for (const r of sprintRows) if (!latestSprintByKey.has(r.ticketKey)) latestSprintByKey.set(r.ticketKey, r);
 
-  // A ticket gets a line if it has an unseen status change OR an unseen sprint-add.
-  const keys = [...new Set<string>([...latestByKey.keys(), ...latestSprintByKey.keys()])];
+  // BRDG-446: a row also surfaces when an in-flight ticket got a fresh UAT deploy with no
+  // unseen status change. UAT == Bitbucket environmentType "Staging" (covers UAT1/2/3); only
+  // SUCCESSFUL deploys, and only within the SAME recency window as the comment/version
+  // signals (the status change itself is not window-bounded, but a deploy must be — otherwise
+  // every in-flight ticket would light up on its last deploy). A deploy attributed to several
+  // tickets (ticketKeys, BRDG-269) surfaces on each in-scope key independently.
+  const deployRows = await db
+    .select({
+      id: pipelineRun.id,
+      ticketKey: pipelineRun.ticketKey,
+      ticketKeys: pipelineRun.ticketKeys,
+      environment: pipelineRun.environment,
+      completedAt: pipelineRun.completedAt,
+      state: pipelineRun.state,
+    })
+    .from(pipelineRun)
+    .where(
+      and(
+        eq(pipelineRun.isDeployment, true),
+        eq(pipelineRun.environmentType, "Staging"),
+        eq(pipelineRun.state, "SUCCESSFUL"),
+        isNotNull(pipelineRun.environment),
+        isNotNull(pipelineRun.completedAt),
+        sql`substr(${pipelineRun.completedAt}, 1, 10) >= ${floorDate}`,
+      ),
+    )
+    .orderBy(desc(pipelineRun.completedAt));
+
+  const scopeSet = new Set(ticketKeys);
+  // Latest in-window UAT deploy per in-scope ticket key (rows are already newest-first).
+  const latestDeployByKey = new Map<string, { pipelineRunId: string; environment: string; completedAt: string; state: string }>();
+  for (const row of deployRows) {
+    if (!row.completedAt || parseDbTime(row.completedAt) < cutoff) continue;
+    const keysForRow = new Set<string>();
+    if (row.ticketKey) keysForRow.add(row.ticketKey);
+    if (row.ticketKeys) {
+      try {
+        for (const k of JSON.parse(row.ticketKeys) as string[]) keysForRow.add(k);
+      } catch {
+        // Malformed JSON: fall back to the primary key already added.
+      }
+    }
+    for (const key of keysForRow) {
+      if (!scopeSet.has(key) || latestDeployByKey.has(key)) continue;
+      latestDeployByKey.set(key, {
+        pipelineRunId: row.id,
+        environment: row.environment ?? "",
+        completedAt: row.completedAt,
+        state: row.state,
+      });
+    }
+  }
+
+  // In-flight gate: deploy-only keys are absent from latestByKey, so their status is unknown
+  // here. Fetch the candidates' status and drop any not actively in flight (Test / In Progress).
+  const deployCandidateKeys = [...latestDeployByKey.keys()];
+  if (deployCandidateKeys.length > 0) {
+    const statusRows = await db
+      .select({ jiraKey: ticket.jiraKey, status: ticket.status })
+      .from(ticket)
+      .where(and(inArray(ticket.jiraKey, deployCandidateKeys), isNull(ticket.removedFromJiraAt)));
+    const statusByKey = new Map(statusRows.map((r) => [r.jiraKey, r.status]));
+    for (const key of deployCandidateKeys) {
+      if (!isInFlightStatus(statusByKey.get(key))) latestDeployByKey.delete(key);
+    }
+  }
+
+  // Unseen gate: a deploy line is dismissed via its synthesized per-ticket seen-key.
+  const remainingDeployKeys = [...latestDeployByKey.keys()];
+  if (remainingDeployKeys.length > 0) {
+    const seenKeys = remainingDeployKeys.map((key) => deploySeenKey(key, latestDeployByKey.get(key)!.pipelineRunId));
+    const seenRows = await db
+      .select({ statusChangeId: statusChangeSeen.statusChangeId })
+      .from(statusChangeSeen)
+      .where(and(eq(statusChangeSeen.userId, ctx.userId), inArray(statusChangeSeen.statusChangeId, seenKeys)));
+    const seenSet = new Set(seenRows.map((r) => r.statusChangeId));
+    for (const key of remainingDeployKeys) {
+      if (seenSet.has(deploySeenKey(key, latestDeployByKey.get(key)!.pipelineRunId))) latestDeployByKey.delete(key);
+    }
+  }
+
+  // A ticket gets a line if it has an unseen status change OR sprint-add OR fresh UAT deploy.
+  const keys = [...new Set<string>([...latestByKey.keys(), ...latestSprintByKey.keys(), ...latestDeployByKey.keys()])];
   if (keys.length === 0) return [];
 
   // Open subtask count (same rule as the board payload): non-DONE/DEPRECATED subtasks.
@@ -175,10 +281,6 @@ export async function listUnseenStatusChanges(
     .groupBy(ticketSubtask.ticketKey);
   const openByKey = new Map(subRows.map((r) => [r.ticketKey, r.open ?? 0]));
   const totalByKey = new Map(subRows.map((r) => [r.ticketKey, r.total ?? 0]));
-
-  // Coarse date-prefix pre-filter (format-agnostic); JS refines to the exact 24h window.
-  const floorDate = new Date(nowMs - WINDOW_MS).toISOString().slice(0, 10);
-  const cutoff = nowMs - WINDOW_MS;
 
   const commentRows = await db
     .select({ ticketKey: jiraComment.ticketKey, authorName: jiraComment.authorName, createdAt: jiraComment.createdAt })
@@ -223,6 +325,7 @@ export async function listUnseenStatusChanges(
   return keys.map((key) => {
     const s = latestByKey.get(key);
     const sa = latestSprintByKey.get(key);
+    const d = latestDeployByKey.get(key);
     const c = commentAgg.get(key);
     const v = versionAgg.get(key);
     // Both rows join the same ticket; either source supplies the assignee.
@@ -233,7 +336,8 @@ export async function listUnseenStatusChanges(
       ticketKey: key,
       fromStatus: s?.fromStatus ?? null,
       toStatus: (s?.toStatus ?? null) as JiraStatus | null,
-      changedAt: s?.changedAt ?? sa?.changedAt ?? "",
+      // Deploy-only line: fall back to the deploy time so the row is never timeless.
+      changedAt: s?.changedAt ?? sa?.changedAt ?? d?.completedAt ?? "",
       changedBy: s?.changedBy ?? null,
       changedByAccountId: s?.changedByAccountId ?? null,
       changedByAvatar: s?.changedByAvatar ?? null,
@@ -250,6 +354,14 @@ export async function listUnseenStatusChanges(
             changedByAccountId: sa.changedByAccountId,
             changedByAvatar: sa.changedByAvatar,
             changedAt: sa.changedAt,
+          }
+        : null,
+      deployAdded: d
+        ? {
+            id: deploySeenKey(key, d.pipelineRunId),
+            environment: d.environment,
+            completedAt: d.completedAt,
+            state: d.state,
           }
         : null,
     };

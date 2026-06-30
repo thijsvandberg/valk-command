@@ -3,7 +3,7 @@ import { describe, it, expect, beforeEach, vi } from "vitest";
 import { createTestDb } from "@/db/test-utils";
 import type { BetterSQLite3Database } from "drizzle-orm/better-sqlite3";
 import type * as schema from "@/db/schema";
-import { ticket, ticketStatusChange, ticketScopeChange, jiraComment, storyVersion, ticketSubtask } from "@/db/schema";
+import { ticket, ticketStatusChange, ticketScopeChange, jiraComment, storyVersion, ticketSubtask, pipelineRun } from "@/db/schema";
 
 let testDb: BetterSQLite3Database<typeof schema>;
 
@@ -13,7 +13,7 @@ vi.mock("@/db", () => ({
   },
 }));
 
-import { listUnseenStatusChanges } from "./status-changes-query";
+import { listUnseenStatusChanges, deploySeenKey } from "./status-changes-query";
 import { markStatusChangeSeen, bulkMarkStatusChangesSeen } from "./status-change-seen-store";
 
 const NOW = Date.parse("2026-06-27T12:00:00.000Z");
@@ -55,6 +55,23 @@ function addScopeChange(id: string, key: string, changedAt: string, overrides: P
     changedBy: "Frank van den Nouland",
     changedByAccountId: "acc-frank",
     changedByAvatar: null,
+    ...overrides,
+  }).run();
+}
+
+function addDeploy(id: string, key: string | null, completedAt: string, overrides: Partial<typeof pipelineRun.$inferInsert> = {}) {
+  testDb.insert(pipelineRun).values({
+    id,
+    repo: "valk-app",
+    buildNumber: 1,
+    branchName: "staging/uat",
+    ticketKey: key,
+    state: "SUCCESSFUL",
+    pipelineUrl: "https://bitbucket.org/x/pipelines/1",
+    isDeployment: true,
+    environment: "UAT3",
+    environmentType: "Staging",
+    completedAt,
     ...overrides,
   }).run();
 }
@@ -205,6 +222,102 @@ describe("listUnseenStatusChanges (BRDG-414)", () => {
       addScopeChange("scope-VPL-1-add-1", "VPL-1", "2026-06-27T10:00:00.000Z");
 
       expect(await listUnseenStatusChanges(CTX, ["VPL-1"], NOW)).toHaveLength(0);
+    });
+  });
+
+  describe("UAT deploy lines (BRDG-446)", () => {
+    it("surfaces a fresh UAT deploy as a deploy-only line for an in-flight ticket with no status change", async () => {
+      addTicket("VPL-1", { status: "TEST" });
+      addDeploy("run-1", "VPL-1", "2026-06-27T09:00:00.000Z");
+
+      const rows = await listUnseenStatusChanges(CTX, ["VPL-1"], NOW);
+      expect(rows).toHaveLength(1);
+      expect(rows[0].id).toBeNull();
+      expect(rows[0].toStatus).toBeNull();
+      expect(rows[0].deployAdded?.id).toBe(deploySeenKey("VPL-1", "run-1"));
+      expect(rows[0].deployAdded?.environment).toBe("UAT3");
+      expect(rows[0].deployAdded?.state).toBe("SUCCESSFUL");
+      expect(rows[0].deployAdded?.completedAt).toBe("2026-06-27T09:00:00.000Z");
+    });
+
+    it("folds a fresh UAT deploy into a status-change line for the same ticket (one combined line)", async () => {
+      addTicket("VPL-1", { status: "TEST" });
+      addChange("sc-1", "VPL-1", "TEST", "2026-06-27T10:00:00.000Z");
+      addDeploy("run-1", "VPL-1", "2026-06-27T09:00:00.000Z");
+
+      const rows = await listUnseenStatusChanges(CTX, ["VPL-1"], NOW);
+      expect(rows).toHaveLength(1);
+      expect(rows[0].id).toBe("sc-1");
+      expect(rows[0].toStatus).toBe("TEST");
+      expect(rows[0].deployAdded?.id).toBe(deploySeenKey("VPL-1", "run-1"));
+    });
+
+    it("ignores Production and Test deploys (only Staging/UAT surfaces)", async () => {
+      addTicket("VPL-1", { status: "TEST" });
+      addTicket("VPL-2", { status: "TEST" });
+      addDeploy("run-prod", "VPL-1", "2026-06-27T09:00:00.000Z", { environment: "Production", environmentType: "Production" });
+      addDeploy("run-test", "VPL-2", "2026-06-27T09:00:00.000Z", { environment: "Test", environmentType: "Test" });
+
+      expect(await listUnseenStatusChanges(CTX, ["VPL-1", "VPL-2"], NOW)).toHaveLength(0);
+    });
+
+    it("does not surface a UAT deploy for a ticket that is not in flight (Done / To Do)", async () => {
+      addTicket("VPL-1", { status: "DONE" });
+      addTicket("VPL-2", { status: "TO DO" });
+      addDeploy("run-1", "VPL-1", "2026-06-27T09:00:00.000Z");
+      addDeploy("run-2", "VPL-2", "2026-06-27T09:00:00.000Z");
+
+      expect(await listUnseenStatusChanges(CTX, ["VPL-1", "VPL-2"], NOW)).toHaveLength(0);
+    });
+
+    it("does not surface a UAT deploy outside the 24h recency window", async () => {
+      addTicket("VPL-1", { status: "TEST" });
+      addDeploy("run-old", "VPL-1", "2026-06-25T09:00:00.000Z");
+
+      expect(await listUnseenStatusChanges(CTX, ["VPL-1"], NOW)).toHaveLength(0);
+    });
+
+    it("does not surface a FAILED UAT deploy", async () => {
+      addTicket("VPL-1", { status: "TEST" });
+      addDeploy("run-fail", "VPL-1", "2026-06-27T09:00:00.000Z", { state: "FAILED" });
+
+      expect(await listUnseenStatusChanges(CTX, ["VPL-1"], NOW)).toHaveLength(0);
+    });
+
+    it("fans a multi-ticket UAT deploy out to each in-scope in-flight ticket, excluding off-scope keys", async () => {
+      addTicket("VPL-1", { status: "TEST" });
+      addTicket("VPL-2", { status: "IN PROGRESS" });
+      addTicket("VPL-3", { status: "TEST" });
+      addDeploy("run-1", "VPL-1", "2026-06-27T09:00:00.000Z", { ticketKeys: JSON.stringify(["VPL-1", "VPL-2", "VPL-3"]) });
+
+      const rows = await listUnseenStatusChanges(CTX, ["VPL-1", "VPL-2"], NOW);
+      expect(rows.map((r) => r.ticketKey).sort()).toEqual(["VPL-1", "VPL-2"]);
+      expect(rows.find((r) => r.ticketKey === "VPL-1")?.deployAdded?.id).toBe(deploySeenKey("VPL-1", "run-1"));
+      expect(rows.find((r) => r.ticketKey === "VPL-2")?.deployAdded?.id).toBe(deploySeenKey("VPL-2", "run-1"));
+    });
+
+    it("hides a deploy-only line once its synthesized seen-key is marked seen", async () => {
+      addTicket("VPL-1", { status: "TEST" });
+      addDeploy("run-1", "VPL-1", "2026-06-27T09:00:00.000Z");
+
+      await markStatusChangeSeen(CTX.userId, deploySeenKey("VPL-1", "run-1"), true);
+      expect(await listUnseenStatusChanges(CTX, ["VPL-1"], NOW)).toHaveLength(0);
+    });
+
+    it("marking the deploy seen drops only the deploy reason, leaving the status change for the same ticket", async () => {
+      addTicket("VPL-1", { status: "TEST" });
+      addChange("sc-1", "VPL-1", "TEST", "2026-06-27T10:00:00.000Z");
+      addDeploy("run-1", "VPL-1", "2026-06-27T09:00:00.000Z");
+
+      let rows = await listUnseenStatusChanges(CTX, ["VPL-1"], NOW);
+      expect(rows).toHaveLength(1);
+      expect(rows[0].deployAdded?.id).toBe(deploySeenKey("VPL-1", "run-1"));
+
+      await markStatusChangeSeen(CTX.userId, deploySeenKey("VPL-1", "run-1"), true);
+      rows = await listUnseenStatusChanges(CTX, ["VPL-1"], NOW);
+      expect(rows).toHaveLength(1);
+      expect(rows[0].id).toBe("sc-1");
+      expect(rows[0].deployAdded).toBeNull();
     });
   });
 });
