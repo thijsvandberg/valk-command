@@ -1,9 +1,19 @@
 import useSWR, { mutate as globalMutate, useSWRConfig } from "swr";
-import { useRef, useMemo, useEffect, useCallback } from "react";
+import { useRef, useMemo, useEffect, useCallback, useState } from "react";
 import type { Ticket, TicketDetail, StoredReview, StoryVersion } from "@/types/ticket";
 import type { DevInfoPayload } from "@/lib/bitbucket-client";
 import { swrFetcher, tickets as ticketsApi, jira as jiraApi } from "@/lib/api-client";
+import { handleSwrError } from "@/lib/swr-error";
 export { useDebouncedCallback } from "./useDebouncedCallback";
+
+// A single transient ticket fetch failure (e.g. a prod restart, a poll landing
+// mid-deploy) should not flash the board error banner; only surface it once the
+// failure is no longer plausibly a one-off (BRDG-448).
+const FETCH_FAILURE_THRESHOLD = 2;
+// Base interval for SWR's built-in exponential-backoff retry, so a brief outage
+// self-heals without the user clicking Retry. SWR scales this by 2^retryCount
+// with jitter; errorRetryCount stays unbounded so a longer restart still recovers.
+const ERROR_RETRY_INTERVAL_MS = 3000;
 
 // Fetches saved sprint slot configuration with SWR caching
 export function useSprintSlots() {
@@ -60,7 +70,29 @@ export function useTickets(sprintId: string | null) {
   // stays fresh via revalidateOnFocus + the shared SSE event bus, so we drop the
   // poll there. Scoped sprint fetches keep the 60s refresh. (BRDG-411)
   const refreshInterval = sprintId === "__all__" ? 0 : 60000;
-  const swr = useSWR<Ticket[]>(key, swrFetcher, { revalidateOnFocus: true, dedupingInterval: 15000, refreshInterval });
+
+  // Count consecutive failures so the banner only shows after the streak crosses
+  // the threshold; any success resets it. Updated in SWR's fetch-lifecycle
+  // callbacks (not render/effects), so it stays clear of the React Compiler
+  // setState-in-effect / ref-in-render rules. (BRDG-448)
+  const [failureCount, setFailureCount] = useState(0);
+
+  const swr = useSWR<Ticket[]>(key, swrFetcher, {
+    revalidateOnFocus: true,
+    dedupingInterval: 15000,
+    refreshInterval,
+    shouldRetryOnError: true,
+    errorRetryInterval: ERROR_RETRY_INTERVAL_MS,
+    // A per-hook onError overrides the global one, so re-forward to keep the
+    // BRDG-398 fetch-failure log intact.
+    onError: (err, errKey) => {
+      setFailureCount((n) => n + 1);
+      handleSwrError(err, errKey);
+    },
+    // Identity-return when already 0 so the 60s poll's steady-state success path
+    // does not trigger a needless re-render.
+    onSuccess: () => setFailureCount((n) => (n === 0 ? n : 0)),
+  });
   const { mutate } = swr;
 
   const syncedRef = useRef<string | null>(null);
@@ -80,7 +112,10 @@ export function useTickets(sprintId: string | null) {
     return () => { cancelled = true; };
   }, [sprintId, mutate]);
 
-  return swr;
+  // Suppress the error until the failure streak crosses the threshold. The
+  // underlying data/mutate are unchanged; keepPreviousData keeps the last-loaded
+  // list visible during the silent first failure. (BRDG-448)
+  return { ...swr, error: failureCount >= FETCH_FAILURE_THRESHOLD ? swr.error : undefined };
 }
 
 // Fetches full ticket detail with background staleness check.

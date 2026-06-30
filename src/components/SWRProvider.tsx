@@ -2,9 +2,9 @@
 
 import { SWRConfig } from "swr";
 import { TicketSyncBridge } from "@/components/TicketSyncBridge";
-import { ApiError, swrFetcher } from "@/lib/api-client";
+import { swrFetcher } from "@/lib/api-client";
 import { createLruProvider } from "@/lib/swr-lru-provider";
-import { reportClientError } from "@/lib/client-error";
+import { handleSwrError } from "@/lib/swr-error";
 
 // Bound the global SWR cache so long-lived tabs cannot grow without limit
 // (BRDG-387). The default provider is an unbounded Map; this swaps in an
@@ -26,18 +26,10 @@ function describeKey(key: unknown): string {
   return "unknown-key";
 }
 
-// Central SWR fetch-failure forwarder (BRDG-398). Every keyed fetch that throws
-// (the shared fetcher throws ApiError on a non-ok response) routes here, so a
-// failed load is recorded once with its key + HTTP status. The key and status
-// are folded into the reported context so they appear in the [client] log line
-// (the forwarded payload itself stays a bounded set of scalars). Throttling
-// lives in reportClientError, so a key that retries on a loop cannot flood the
-// log. Exported so it can be unit-tested without rendering an SWR tree.
-export function handleSwrError(error: unknown, key: string): void {
-  const status = error instanceof ApiError ? error.status : undefined;
-  const context = `swr ${key}${status !== undefined ? ` status=${status}` : ""}`;
-  reportClientError(context, error, { source: "swr" });
-}
+// Re-exported so the existing onError-forwarding test keeps importing it from
+// here; the implementation now lives in @/lib/swr-error so data hooks can reuse
+// it without pulling in this provider component (BRDG-398, BRDG-448).
+export { handleSwrError };
 
 export function SWRProvider({ children }: { children: React.ReactNode }) {
   return (

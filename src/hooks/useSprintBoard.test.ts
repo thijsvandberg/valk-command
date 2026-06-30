@@ -2,6 +2,11 @@ import { renderHook, act, waitFor } from "@testing-library/react";
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { SWRConfig } from "swr";
 import { createElement, type ReactNode } from "react";
+
+// Stub the BRDG-398 fetch-failure forwarder so the error-debounce tests can
+// assert useTickets still routes failures to it (BRDG-448).
+vi.mock("@/lib/swr-error", () => ({ handleSwrError: vi.fn() }));
+
 import {
   useTickets,
   useTicketDetail,
@@ -10,6 +15,7 @@ import {
   useJiraSprints,
   useTicketReviews,
 } from "./useSprintBoard";
+import { handleSwrError } from "@/lib/swr-error";
 
 // Fresh SWR cache per test to avoid cross-test pollution
 function swrWrapper({ children }: { children: ReactNode }) {
@@ -129,8 +135,8 @@ describe("useTickets", () => {
     expect(fetch).not.toHaveBeenCalled();
   });
 
-  it("sets error when fetch fails", async () => {
-    vi.spyOn(global, "fetch").mockResolvedValueOnce({
+  it("does not surface the error on a single transient failure (BRDG-448)", async () => {
+    vi.spyOn(global, "fetch").mockResolvedValue({
       ok: false,
       status: 500,
       json: async () => null,
@@ -138,9 +144,86 @@ describe("useTickets", () => {
 
     const { result } = renderHook(() => useTickets("sprint-1"), { wrapper: swrWrapper });
 
-    // swrFetcher throws on !ok, SWR catches and sets error
-    await waitFor(() => expect(result.current.error).toBeTruthy());
+    // The first failed fetch settles (isLoading clears) but the error stays gated.
+    await waitFor(() => expect(result.current.isLoading).toBe(false));
+    expect(result.current.error).toBeUndefined();
     expect(result.current.data).toBeUndefined();
+  });
+});
+
+// ---------------------------------------------------------------------------
+// useTickets error debounce (BRDG-448)
+// ---------------------------------------------------------------------------
+describe("useTickets error debounce (BRDG-448)", () => {
+  it("surfaces the error only after two consecutive failed fetches", async () => {
+    vi.spyOn(global, "fetch").mockResolvedValue({
+      ok: false,
+      status: 500,
+      json: async () => null,
+    } as Response);
+
+    const { result } = renderHook(() => useTickets("sprint-1"), { wrapper: swrWrapper });
+
+    // First failure stays silent.
+    await waitFor(() => expect(result.current.isLoading).toBe(false));
+    expect(result.current.error).toBeUndefined();
+
+    // A second consecutive failure crosses the threshold and surfaces the banner.
+    await act(async () => {
+      await result.current.mutate().catch(() => {});
+    });
+    await waitFor(() => expect(result.current.error).toBeTruthy());
+  });
+
+  it("clears the banner on a successful retry and resets the streak", async () => {
+    let failing = true;
+    vi.spyOn(global, "fetch").mockImplementation(async () =>
+      failing
+        ? ({ ok: false, status: 500, json: async () => null } as Response)
+        : ({ ok: true, json: async () => [mockTicket] } as Response),
+    );
+
+    const { result } = renderHook(() => useTickets("sprint-1"), { wrapper: swrWrapper });
+
+    // Two failures -> banner shows.
+    await waitFor(() => expect(result.current.isLoading).toBe(false));
+    await act(async () => {
+      await result.current.mutate().catch(() => {});
+    });
+    await waitFor(() => expect(result.current.error).toBeTruthy());
+
+    // A successful retry clears the banner without manual intervention.
+    failing = false;
+    await act(async () => {
+      await result.current.mutate().catch(() => {});
+    });
+    await waitFor(() => expect(result.current.error).toBeUndefined());
+    expect(result.current.data).toEqual([mockTicket]);
+
+    // Streak reset: a later lone failure is silent again.
+    failing = true;
+    await act(async () => {
+      await result.current.mutate().catch(() => {});
+    });
+    await waitFor(() => expect(result.current.isValidating).toBe(false));
+    expect(result.current.error).toBeUndefined();
+  });
+
+  it("forwards every failure to handleSwrError so BRDG-398 logging stays intact", async () => {
+    vi.mocked(handleSwrError).mockClear();
+    vi.spyOn(global, "fetch").mockResolvedValue({
+      ok: false,
+      status: 500,
+      json: async () => null,
+    } as Response);
+
+    const { result } = renderHook(() => useTickets("sprint-1"), { wrapper: swrWrapper });
+
+    await waitFor(() => expect(handleSwrError).toHaveBeenCalled());
+    expect(vi.mocked(handleSwrError)).toHaveBeenCalledWith(
+      expect.anything(),
+      "/api/tickets?sprintId=sprint-1",
+    );
   });
 });
 

@@ -42,18 +42,32 @@ Keep the existing SWR retry/backoff; add a small consecutive-failure gate inside
 - Any change to the 60s `refreshInterval`, `dedupingInterval`, or `keepPreviousData`.
 - Adding a "refreshing…" / "last updated" indicator during the silent first-failure window (kept fully silent by design — that is the point).
 
+## Implementation Plan
+
+All behaviour change is confined to `useTickets`; `SprintBoard` keeps reading `.error` unchanged.
+
+1. **Extract `handleSwrError` to a client-safe lib.** Move `handleSwrError` from `src/components/SWRProvider.tsx` into a new `src/lib/swr-error.ts` (imports only `reportClientError` from `@/lib/client-error` and `ApiError` from `@/lib/api-client`). `SWRProvider` imports it from there and **re-exports** it (`export { handleSwrError }`) so `SWRProvider.test.tsx` and the global `onError` keep working. This avoids importing a React component module (and its module-level `createLruProvider()` + `TicketSyncBridge`) into a data hook. `describeKey` stays in `SWRProvider`.
+2. **Failure counter in `useTickets`** (`src/hooks/useSprintBoard.ts`). Add `useState` to the react import and `handleSwrError` from `@/lib/swr-error`. Module-level `const FETCH_FAILURE_THRESHOLD = 2;` and `const ERROR_RETRY_INTERVAL_MS = 3000;`. Inside the hook: `const [failureCount, setFailureCount] = useState(0);`.
+3. **Wire SWR lifecycle callbacks** on the `useTickets` `useSWR` options:
+   - `onError: (err, key) => { setFailureCount((n) => n + 1); handleSwrError(err, key); }` (re-call to preserve BRDG-398, since a per-hook `onError` overrides the global one).
+   - `onSuccess: () => setFailureCount((n) => (n === 0 ? n : 0))` (identity-return when already 0 so the 60s poll path stays render-free).
+   - `shouldRetryOnError: true`, `errorRetryInterval: ERROR_RETRY_INTERVAL_MS` (explicit; SWR still applies exponential backoff + jitter on top). Leave `errorRetryCount` unset (unbounded self-heal).
+   - Keep `revalidateOnFocus`, `dedupingInterval: 15000`, `refreshInterval`.
+4. **Gate the surfaced error.** Return `{ ...swr, error: failureCount >= FETCH_FAILURE_THRESHOLD ? swr.error : undefined }` (mirrors the existing `useJiraSprints` spread pattern; counter uses functional updaters so no React Compiler `setState-in-effect` / `ref-in-render` violation — callbacks run in SWR's fetch lifecycle, not render).
+5. **Tests** (`src/hooks/useSprintBoard.test.ts`): repurpose the existing single-failure test to assert silence on one failure; add a debounce describe block for the 2-failure surface, success-resets-streak, and `handleSwrError` still called. Mock `@/lib/swr-error` `handleSwrError` for the logging assertion.
+
 ## Acceptance Criteria
-- [ ] A single transient ticket-fetch failure does **not** show the "Failed to fetch" banner; the last-loaded ticket list stays visible. <!-- useTickets failure gate: failureCount < 2 returns error: undefined -->
-- [ ] After 2 consecutive failed ticket fetches, the banner appears. <!-- useTickets: error surfaced when failureCount >= 2 -->
-- [ ] When a retry succeeds, the banner clears automatically without the PO clicking Retry. <!-- onSuccess resets failureCount; SWR error retry with backoff -->
-- [ ] Failed ticket fetches are still retried automatically with exponential backoff. <!-- explicit shouldRetryOnError + errorRetryInterval on useTickets -->
-- [ ] Fetch failures are still forwarded to the server-side client-error log (BRDG-398 unaffected). <!-- per-hook onError calls handleSwrError -->
-- [ ] The manual Retry button still forces an immediate refetch and clears the banner on success. <!-- mutateTickets() onRetry; onSuccess reset -->
+- [x] A single transient ticket-fetch failure does **not** show the "Failed to fetch" banner; the last-loaded ticket list stays visible. <!-- useTickets failure gate: failureCount < 2 returns error: undefined -->
+- [x] After 2 consecutive failed ticket fetches, the banner appears. <!-- useTickets: error surfaced when failureCount >= 2 -->
+- [x] When a retry succeeds, the banner clears automatically without the PO clicking Retry. <!-- onSuccess resets failureCount; SWR error retry with backoff -->
+- [x] Failed ticket fetches are still retried automatically with exponential backoff. <!-- explicit shouldRetryOnError + errorRetryInterval on useTickets -->
+- [x] Fetch failures are still forwarded to the server-side client-error log (BRDG-398 unaffected). <!-- per-hook onError calls handleSwrError -->
+- [x] The manual Retry button still forces an immediate refetch and clears the banner on success. <!-- mutateTickets() onRetry; onSuccess reset -->
 
 ## Tests
-- [ ] `useTickets` does not surface an error on the first failure and surfaces it on the second consecutive failure. <!-- src/hooks/useSprintBoard.test.ts(x) -->
-- [ ] A successful fetch after failures resets the counter so a later single failure is again silent. <!-- src/hooks/useSprintBoard.test.ts(x) -->
-- [ ] The hook's `onError` still calls `handleSwrError` so BRDG-398 logging fires. <!-- spy on handleSwrError / reportClientError -->
+- [x] `useTickets` does not surface an error on the first failure and surfaces it on the second consecutive failure. <!-- src/hooks/useSprintBoard.test.ts -->
+- [x] A successful fetch after failures resets the counter so a later single failure is again silent. <!-- src/hooks/useSprintBoard.test.ts -->
+- [x] The hook's `onError` still calls `handleSwrError` so BRDG-398 logging fires. <!-- src/hooks/useSprintBoard.test.ts (vi.mock @/lib/swr-error) -->
 
 ## Related
 - [[project_sync_freshness_and_status_writes]] — board freshness model this fetch participates in.
