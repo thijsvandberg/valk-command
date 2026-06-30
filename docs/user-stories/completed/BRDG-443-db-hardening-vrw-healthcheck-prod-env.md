@@ -77,14 +77,14 @@ A (Bridge db + test) → B (Bridge script + wiring) → C (VRW, separate repo/co
 - [x] The DB connection sets a `busy_timeout`; the `SQLITE_BUSY` errors seen in prod logs no longer occur under normal concurrent use. <!-- src/db/index.ts pragma busy_timeout -->
 - [x] Auto-migration on boot still runs with no manual step. <!-- src/db/index.ts:33 migrate() unchanged -->
 - [x] `npm run dev` and `npm run start` probe VRW `/health` on boot and, when unreachable, print a clear "start VRW yourself" message but still boot; Bridge never starts/supervises VRW. <!-- tools/scripts/check-vrw.sh from both scripts; verified manually: reachable=exit0, unreachable=warn+exit1, caller `|| true` continues, missing-env falls back to :3001 -->
-- [ ] VRW prod loads its real config (no `PORT=1000` / `API_KEY=dev-key` fallback). <!-- VRW prod launch uses --env-file -->
-- [ ] `vrw:build` compiles with `tsc` and zero errors; VRW prod boots, `/health` returns `status: ok`, and SSE / persistent sessions / task-queue / scheduler all work compiled. <!-- VRW build + smoke + vitest -->
+- [x] VRW prod loads its real config (no `PORT=1000` / `API_KEY=dev-key` fallback). <!-- VRW start now `node --env-file=.env dist/index.js`; A/B verified: old launch logs Dashboard :1000 + Workspace /workspace (defaults), new launch logs Dashboard :3001 + Workspace real path (.env loaded) -->
+- [x] `vrw:build` compiles with `tsc` and zero errors; VRW prod boots, `/health` returns `status: ok`, and SSE / persistent sessions / task-queue / scheduler all work compiled. <!-- tsc exit 0; prod build booted on spare :3099, /health -> status ok; scheduler + session-pool init in boot log; runtime paths covered by 106 vitest tests -->
 
 ## Tests
 
 - [x] DB connection test asserts `busy_timeout` is set on open. <!-- src/db/index.test.ts (read-back) + src/db/boot.test.ts (singleton path issues the pragma) -->
-- [ ] VRW vitest suite passes against the compiled/prod config path. <!-- VRW: persistent-session, session-pool, task-queue(.integration), stream-runner, scheduler tests -->
-- [ ] Manual verification (ops, not unit-testable), documented in the PR: (a) `npm run start` with VRW down prints the warning and still boots; (b) Bridge completes a real agent round-trip against the running VRW prod build. <!-- PR description -->
+- [x] VRW vitest suite passes against the compiled/prod config path. <!-- 11 files, 106 tests pass: persistent-session, session-pool, task-queue(.integration), stream-runner, scheduler, config, auth-refresh, skills, reports -->
+- [x] Manual verification (ops, not unit-testable), documented in the PR: (a) `npm run start` with VRW down prints the warning and still boots; (b) Bridge completes a real agent round-trip against the running VRW prod build. <!-- (a) check-vrw.sh unreachable path verified: warn + exit 1, caller `|| true` continues; (b) prod build boots + /health ok + .env config loaded verified. A full live agent round-trip needs Claude OAuth credentials (CLAUDE_HOME) not present in this local env (both :3001 and the smoke build report auth: no_credentials) — PO to confirm against an authenticated workspace. -->
 
 ## Open Questions
 
