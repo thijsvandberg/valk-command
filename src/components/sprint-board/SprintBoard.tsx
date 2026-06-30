@@ -12,7 +12,7 @@ import { SprintSlots } from "@/components/sprint-board/SprintSlots";
 import type { FilterControlsPanelProps } from "@/components/sprint-board/FilterControlsPanel";
 import { TicketTable } from "@/components/sprint-board/TicketTable";
 import { BulkActionBar } from "@/components/sprint-board/BulkActionBar";
-import { CursorMenu, TicketActionMenuContent, type FlagState } from "@/components/sprint-board/ticket-action-menu";
+import { CursorMenu, TicketActionMenuContent } from "@/components/sprint-board/ticket-action-menu";
 import type { EpicOption } from "@/components/shared/EpicPicker";
 import { ConfirmDialog } from "@/components/shared/ConfirmDialog";
 import { SidePanel } from "@/components/sprint-board/SidePanel";
@@ -22,7 +22,6 @@ const SearchModal = dynamic(() => import("@/components/sprint-board/SearchModal"
 const AddToRefinementModal = dynamic(() => import("@/components/refinement-session/AddToRefinementModal").then((m) => ({ default: m.AddToRefinementModal })), { ssr: false });
 import { useJiraSprints, useTickets, useTicketDetail } from "@/hooks/useSprintBoard";
 import { useBacklogDropTarget } from "@/hooks/useBacklogDropTarget";
-import { computeQuickMoves, type QuickMoveOption } from "@/lib/quick-moves";
 import { useTicketSessionMap } from "@/hooks/useTicketSessionMap";
 import { sessionLabel, compareSessions } from "@/components/refinement-session/refinement-utils";
 import { useLocalStorage } from "@/hooks/useLocalStorage";
@@ -39,7 +38,6 @@ import { cycleMetricSort, DEFAULT_SORT } from "@/components/sprint-board/filter-
 import { startDateFromPreviousEnd } from "@/lib/sprint-dates";
 import { BOARD_CONTENT_MAX } from "@/lib/layout";
 import { prefetchTicketList, setRouterPrefetch } from "@/lib/prefetch";
-import { getJiraUrl } from "@/components/sprint-board/TicketTableCells";
 import { apiFetch, jira, tickets as ticketsApi, refinementSessions as refinementSessionsApi } from "@/lib/api-client";
 import { syncGroupInTranches, type GroupSyncTarget, type GroupSyncProgress } from "@/lib/group-sync";
 import { useSprintBoardFilters } from "@/components/sprint-board/useSprintBoardFilters";
@@ -61,6 +59,7 @@ import { useToast } from "@/hooks/useToast";
 import { DndContext, DragOverlay, MeasuringStrategy } from "@dnd-kit/core";
 const SprintEditModal = dynamic(() => import("@/components/sprint-board/SprintEditModal").then((m) => ({ default: m.SprintEditModal })), { ssr: false });
 const CreateSprintModal = dynamic(() => import("@/components/sprint-board/CreateSprintModal").then((m) => ({ default: m.CreateSprintModal })), { ssr: false });
+import type { CreatedSprint } from "@/components/sprint-board/CreateSprintModal";
 const SprintListModal = dynamic(() => import("@/components/sprint-board/SprintListModal").then((m) => ({ default: m.SprintListModal })), { ssr: false });
 const FinishSprintModal = dynamic(() => import("@/components/sprint-board/FinishSprintModal").then((m) => ({ default: m.FinishSprintModal })), { ssr: false });
 import { LoadingState } from "@/components/shared/LoadingState";
@@ -204,9 +203,6 @@ export default function SprintBoard() {
   const [editModalOpen, setEditModalOpen] = useState(false);
   const [autoSuggest, setAutoSuggest] = useState(false);
   const [createSprintModalOpen, setCreateSprintModalOpen] = useState(false);
-  // Quick-move auto-create (BRDG-369): when "Move to next sprint" targets a sprint that
-  // does not exist yet, open the create modal prefilled, then move these targets into it.
-  const [quickCreate, setQuickCreate] = useState<{ name: string; targets: Set<string> } | null>(null);
   // Sprint overview opened from the views bar's overflow menu (BRDG-319); the header
   // keeps its own entry, so this is a separate instance with its own open state. The
   // anchor positions the popover beneath the overflow (⋯) button.
@@ -226,10 +222,6 @@ export default function SprintBoard() {
   const [finishSprintId, setFinishSprintId] = useState<string | null>(null);
   const [bulkRefreshing, setBulkRefreshing] = useState(false);
   const [bulkGenerating, setBulkGenerating] = useState(false);
-  const [refineModalOpen, setRefineModalOpen] = useState(false);
-  const [refineKeys, setRefineKeys] = useState<string[] | null>(null);
-  // Board-level right-click quick-actions menu (one instance, positioned at the cursor).
-  const [rowMenu, setRowMenu] = useState<{ x: number; y: number; targets: Set<string> } | null>(null);
   const [flagDialog, setFlagDialog] = useState<{ targets: Set<string> } | null>(null);
   const [flagReason, setFlagReason] = useState("");
   const headerMenuRef = useRef<HTMLDivElement>(null);
@@ -483,6 +475,40 @@ export default function SprintBoard() {
   // Shared bulk dispatch (BRDG-374). The board keeps its own quick-move / create-sprint
   // (it pins + navigates) and flag dialog, so it consumes only the bulk handlers, which
   // flow through the board dispatch adapter's overlay optimism.
+  // BRDG-415: host glue handed to the shared useRowActions so the board no longer keeps
+  // its own copies of the context-menu / quick-move / create-sprint glue. The move and
+  // create handlers are defined further down and reached here through refs, because
+  // handleBulkMoveSprint itself calls ra.bulkMoveSprint (a cycle otherwise).
+  const bulkMoveRef = useRef<((sprintId: string, targets: Set<string>) => void | Promise<void>) | null>(null);
+  const sprintCreatedRef = useRef<((sprint: CreatedSprint) => void) | null>(null);
+  // Overlay-aware current-sprint name so the shared quick-move options match the row chip.
+  const currentSprintName = useCallback(
+    (key: string): string | null => {
+      const t = displayTickets.find((d) => d.key === key);
+      return t?.sprintId ? (sprintNameMap[t.sprintId] ?? null) : null;
+    },
+    [displayTickets, sprintNameMap],
+  );
+  // Right-click clears the previously selected row so only the menu target stays
+  // highlighted, but keeps the side panel open when right-clicking the active row.
+  const handleContextMenuOpen = useCallback(
+    (key: string) => { if (key !== selectedTicket) setSelectedTicket(null); },
+    [selectedTicket, setSelectedTicket],
+  );
+  const handleBoardMove = useCallback(
+    (sprintId: string, targets: Set<string>) => bulkMoveRef.current?.(sprintId, targets),
+    [],
+  );
+  // Quick-move auto-create: the board pins + navigates rather than injecting into a cache.
+  // Move first so the pending-move overlay keeps rows visible across the slot-add navigation.
+  const handleConfirmQuickCreate = useCallback(
+    (sprint: CreatedSprint, keys: Set<string>) => {
+      void bulkMoveRef.current?.(String(sprint.id), keys);
+      sprintCreatedRef.current?.(sprint);
+    },
+    [],
+  );
+
   const ra = useRowActions({
     adapter: boardDispatchAdapter,
     selectedKeys: checkedTickets,
@@ -491,8 +517,20 @@ export default function SprintBoard() {
     backlogTargetName,
     showToast,
     flagSource: "ticket",
+    currentSprintName,
+    onMove: handleBoardMove,
+    onContextMenuOpen: handleContextMenuOpen,
+    onConfirmQuickCreate: handleConfirmQuickCreate,
   });
-  const { inflightKeys } = ra;
+  // The board consumes the shared glue directly (BRDG-415); these are the hook's own
+  // context-menu / quick-move / create-sprint / copy / refine exports, not board copies.
+  const {
+    inflightKeys, rowMenu, setRowMenu, quickMovesFor, currentSprintIdsFor,
+    handleQuickMove, computeFlagState, openRefine, handleRowContextMenu, copySelected,
+    refineModalOpen, setRefineModalOpen, refineKeys,
+    quickCreate, closeQuickCreate, confirmQuickCreate, planPrevSprint,
+  } = ra;
+  const handleCopyToClipboard = useCallback(() => copySelected(checkedTickets), [copySelected, checkedTickets]);
   // The right-clicked row's current epic (single target only), read from the
   // overlay-aware list so the Set Epic panel's checkmark + Unlink match the chip.
   const rowMenuEpic = useMemo<EpicOption | null>(() => {
@@ -727,16 +765,6 @@ export default function SprintBoard() {
   const toggleCheck = useCallback((key: string) => { setCheckedTickets((prev) => { const next = new Set(prev); if (next.has(key)) next.delete(key); else next.add(key); return next; }); }, []);
   const toggleAll = useCallback(() => { setCheckedTickets(allChecked ? new Set() : new Set(tickets.map((t) => t.key))); }, [allChecked, tickets]);
   const handleRangeCheck = useCallback((keys: string[], checked: boolean) => { setCheckedTickets((prev) => { const next = new Set(prev); if (checked) keys.forEach((k) => next.add(k)); else keys.forEach((k) => next.delete(k)); return next; }); }, []);
-  // Selection-aware: act on the whole selection when right-clicking a selected row,
-  // otherwise act on just that row without disturbing the current selection.
-  const handleRowContextMenu = useCallback((key: string, e: React.MouseEvent) => {
-    const targets = checkedTickets.has(key) && checkedTickets.size > 0 ? new Set(checkedTickets) : new Set([key]);
-    // Clear the previously selected row so only the context-menu target stays
-    // highlighted, but keep the side panel open when right-clicking the row
-    // that is already active.
-    if (key !== selectedTicket) setSelectedTicket(null);
-    setRowMenu({ x: e.clientX, y: e.clientY, targets });
-  }, [checkedTickets, selectedTicket, setSelectedTicket]);
   const handleReorder = useCallback((activeKey: string, overKey: string) => {
     const order = poPriorityOrder ?? tickets.map((t) => t.key); const oi = order.indexOf(activeKey); const ni = order.indexOf(overKey);
     if (oi === -1 || ni === -1) return; const next = [...order]; next.splice(oi, 1); next.splice(ni, 0, activeKey); setPoPriorityOrder(next);
@@ -775,9 +803,7 @@ export default function SprintBoard() {
   const handleBulkSetReadiness = useCallback(async (readiness: TicketReadiness | null, targets: Set<string> = checkedTickets) => { await ra.bulkSetReadiness(readiness, targets); }, [ra, checkedTickets]);
   const handleBulkRefresh = useCallback(async () => { setBulkRefreshing(true); try { await jira.syncTickets({ sprintId: slotSprints[activeSlot] }); showToast(`Refreshed ${checkedTickets.size} ticket${checkedTickets.size === 1 ? "" : "s"} from Jira`); } finally { setBulkRefreshing(false); } }, [slotSprints, activeSlot, checkedTickets.size, showToast]);
   const handleBulkReviewStory = useCallback(async (targets: Set<string> = checkedTickets) => { const keys = Array.from(targets); showToast(`Reviewing ${keys.length} ticket${keys.length === 1 ? "" : "s"}...`); await bulkReviewStories(keys); mutateTickets(); showToast(`Reviewed ${keys.length} ticket${keys.length === 1 ? "" : "s"}`); }, [checkedTickets, showToast, mutateTickets]);
-  const handleCopyToClipboard = useCallback(() => { const sel = tickets.filter((t) => checkedTickets.has(t.key)); navigator.clipboard.writeText(sel.map((t) => `${t.title} - ${getJiraUrl(t.key)}`).join("\n")).then(() => showToast(`Copied ${sel.length} ticket${sel.length === 1 ? "" : "s"} to clipboard`)).catch(() => showToast("Failed to copy to clipboard")); }, [tickets, checkedTickets, showToast]);
   const handleExportForStakeholders = useCallback(async () => { const sel = tickets.filter((t) => checkedTickets.has(t.key)); if (!sel.length) return; await exportTask.startExport({ sprintName: activeSprint?.name ?? "Selected work", tickets: JSON.stringify(sel.map((t) => ({ key: t.key, summary: t.title, points: t.storyPoints ?? null, epic: t.epic ?? null }))) }); }, [tickets, checkedTickets, activeSprint, exportTask]);
-  const openRefine = useCallback((keys: string[]) => { if (keys.length > 0) { setRefineKeys(keys); setRefineModalOpen(true); } }, []);
   // Gem hover card (BRDG-265): jump to a session, or remove a ticket from one.
   const handleViewRefinement = useCallback((sessionId: string) => { router.push(`/refinement/${sessionId}`); }, [router]);
   const handleRemoveFromRefinement = useCallback(async (sessionId: string, ticketKey: string) => {
@@ -861,29 +887,12 @@ export default function SprintBoard() {
       0,
     );
   }, [ra, checkedTickets, sprintNameMap, handleSprintListSelect, showToast, dismissToast, refreshMeter]);
-  // Quick-move options (BRDG-369) for a given target set: resolve each target's current
-  // sprint name, then derive next/active/backlog destinations.
-  const quickMovesFor = useCallback((targets: Set<string>): QuickMoveOption[] => {
-    const currentSprintNames = [...targets].map((key) => {
-      const t = displayTickets.find((d) => d.key === key);
-      return t?.sprintId ? (sprintNameMap[t.sprintId] ?? null) : null;
-    });
-    return computeQuickMoves({ currentSprintNames, sprints, backlogTargetName });
-  }, [displayTickets, sprintNameMap, sprints, backlogTargetName]);
-  // The selection's current sprint id, excluded from "More sprints" - only when every
-  // target shares the same sprint (a mixed selection excludes nothing). The board's
-  // ticket.sprintId already IS the sprint id keyed by sprintNameMap (BRDG-374).
-  const currentSprintIdsFor = useCallback((targets: Set<string>): string[] => {
-    const ids = new Set([...targets].map((key) => displayTickets.find((d) => d.key === key)?.sprintId ?? null));
-    if (ids.size !== 1) return [];
-    const id = [...ids][0];
-    return id ? [id] : [];
-  }, [displayTickets]);
-  const handleQuickMove = useCallback((opt: QuickMoveOption, targets: Set<string> = checkedTickets) => {
-    if (targets.size === 0) return;
-    if (opt.createName) { setQuickCreate({ name: opt.createName, targets: new Set(targets) }); return; }
-    if (opt.targetSprintId) void handleBulkMoveSprint(opt.targetSprintId, targets);
-  }, [checkedTickets, handleBulkMoveSprint]);
+  // Keep the refs the shared hook reaches through pointed at the latest move/create
+  // handlers (declared above `ra` to break the dependency cycle).
+  useEffect(() => {
+    bulkMoveRef.current = handleBulkMoveSprint;
+    sprintCreatedRef.current = handleSprintCreated;
+  }, [handleBulkMoveSprint, handleSprintCreated]);
   const handleBulkUpdateAssignee = useCallback(async (accountId: string | null, name: string | null, avatar: string | null = null, targets: Set<string> = checkedTickets) => { await ra.bulkUpdateAssignee(accountId, name, avatar, targets); }, [ra, checkedTickets]);
   const handleBulkUpdateLabels = useCallback(async (labels: string[], mode: "add" | "set", targets: Set<string> = checkedTickets) => { await ra.bulkUpdateLabels(labels, mode, targets); }, [ra, checkedTickets]);
   const handleBulkGenerateSubtasks = useCallback(async (targets: Set<string> = checkedTickets) => { const keys = Array.from(targets); setBulkGenerating(true); showToast(`Generating subtasks for ${keys.length} ticket${keys.length === 1 ? "" : "s"}...`); try { const { succeeded, failed } = await bulkGenerateSubtasks(keys); if (failed > 0) { showToast(`Generated subtasks for ${succeeded} ticket${succeeded === 1 ? "" : "s"}, ${failed} failed`); } else { showToast(`Subtask suggestions sent for ${succeeded} ticket${succeeded === 1 ? "" : "s"}`); } mutateTickets(); } finally { setBulkGenerating(false); } }, [checkedTickets, showToast, mutateTickets]);
@@ -893,14 +902,6 @@ export default function SprintBoard() {
     if (flagged) { setFlagReason(""); setFlagDialog({ targets }); }
     else { void ra.bulkSetFlagged(false, null, targets); }
   }, [ra, checkedTickets]);
-  const computeFlagState = useCallback((keys: Set<string>): FlagState => {
-    const sel = tickets.filter((t) => keys.has(t.key));
-    if (sel.length === 0) return "mixed";
-    const flaggedCount = sel.filter((t) => t.flagged).length;
-    if (flaggedCount === 0) return "unflagged";
-    if (flaggedCount === sel.length) return "flagged";
-    return "mixed";
-  }, [tickets]);
   const handleSyncGroup = useCallback(async (target: GroupSyncTarget, onProgress: (p: GroupSyncProgress) => void) => {
     try {
       const result = await syncGroupInTranches(target, onProgress);
@@ -1250,21 +1251,13 @@ export default function SprintBoard() {
       {createSprintModalOpen && <CreateSprintModal onClose={() => setCreateSprintModalOpen(false)} onCreated={handleSprintCreated} showToast={showToast} suggestedName={suggestedSprintName} suggestedStartDate={suggestedSprintStartDate} previousSprintName={latestRegular?.sprint.name} previousSprintEndIso={latestRegular?.sprint.endDate ?? null} />}
       {quickCreate && (
         <CreateSprintModal
-          onClose={() => setQuickCreate(null)}
-          onCreated={(sprint) => {
-            const id = String(sprint.id);
-            const targets = quickCreate.targets;
-            setQuickCreate(null);
-            // Move the selection in first so the pending-move overlay keeps the rows
-            // visible across the navigation the slot-add triggers, then pin + navigate.
-            void handleBulkMoveSprint(id, targets);
-            handleSprintCreated(sprint);
-          }}
+          onClose={closeQuickCreate}
+          onCreated={confirmQuickCreate}
           showToast={showToast}
           suggestedName={quickCreate.name}
-          suggestedStartDate={suggestedSprintStartDate}
-          previousSprintName={latestRegular?.sprint.name}
-          previousSprintEndIso={latestRegular?.sprint.endDate ?? null}
+          suggestedStartDate={startDateFromPreviousEnd(planPrevSprint?.endDate)}
+          previousSprintName={planPrevSprint?.name}
+          previousSprintEndIso={planPrevSprint?.endDate ?? null}
         />
       )}
       {barSprintListAnchor && <SprintListModal onClose={() => setBarSprintListAnchor(null)} onSelect={handleSprintListSelect} onPin={handleAddSlotWithSprint} pinnedIds={slotSprintsSet} portalAnchor={barSprintListAnchor} />}
@@ -1280,7 +1273,7 @@ export default function SprintBoard() {
           onFinished={() => { mutateTickets(); }}
         />
       )}
-      <AddToRefinementModal open={refineModalOpen} onClose={() => { setRefineModalOpen(false); setRefineKeys(null); }} ticketKeys={refineKeys ?? Array.from(checkedTickets)} onAdded={(id, name) => showToast(<span>Added to &ldquo;{name}&rdquo;{" "}<a href={`/refinement/${id}`} onClick={(e) => { e.preventDefault(); router.push(`/refinement/${id}`); }} className="font-medium text-[var(--color-brand-400)] underline underline-offset-2 hover:text-[var(--color-brand-300)]">Open refinement</a></span>, 5000)} />
+      <AddToRefinementModal open={refineModalOpen} onClose={() => setRefineModalOpen(false)} ticketKeys={refineKeys.length ? refineKeys : Array.from(checkedTickets)} onAdded={(id, name) => showToast(<span>Added to &ldquo;{name}&rdquo;{" "}<a href={`/refinement/${id}`} onClick={(e) => { e.preventDefault(); router.push(`/refinement/${id}`); }} className="font-medium text-[var(--color-brand-400)] underline underline-offset-2 hover:text-[var(--color-brand-300)]">Open refinement</a></span>, 5000)} />
 
       {rowMenu && (
         <CursorMenu x={rowMenu.x} y={rowMenu.y} onClose={() => setRowMenu(null)}>

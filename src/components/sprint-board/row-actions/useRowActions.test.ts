@@ -1,5 +1,6 @@
 import { renderHook, act } from "@testing-library/react";
 import { describe, it, expect, vi, beforeEach } from "vitest";
+import type React from "react";
 import type { Ticket, Sprint } from "@/types/ticket";
 import { useRowActions, mergeLabels } from "./useRowActions";
 import { makeBoardAdapter, makeBoardDispatchAdapter } from "./adapter";
@@ -337,5 +338,63 @@ describe("useRowActions - bulkMoveSprint (board overlay + dest-cache injection)"
 
     expect(outcome).toEqual({ ok: false, count: 1, destName: "BT: 200" });
     expect(globalMutate).not.toHaveBeenCalled();
+  });
+});
+
+// BRDG-415: the two host hooks the board uses to swap in its own behaviours so it can
+// drop its local copies of the glue.
+describe("useRowActions - host glue hooks (BRDG-415)", () => {
+  beforeEach(() => { __resetPendingEdits(); moveSprint.mockReset().mockResolvedValue(undefined); });
+
+  function setupWithHooks(extra: Partial<Parameters<typeof useRowActions>[0]>) {
+    const base = makeBoardAdapter([makeTicket("A-1", false, "200")], vi.fn(), null, { "200": "BT: 200" });
+    const adapter = makeBoardDispatchAdapter(base, { setReadinessMap: vi.fn(), prevRef: { current: {} } });
+    const { result } = renderHook(() =>
+      useRowActions({
+        adapter,
+        selectedKeys: new Set<string>(),
+        sprints: [],
+        pinnedSprintIds: [],
+        backlogTargetName: "BT: Backlog",
+        showToast: vi.fn(),
+        flagSource: "ticket",
+        ...extra,
+      }),
+    );
+    return result;
+  }
+
+  it("calls onContextMenuOpen with the right-clicked key before opening the menu", () => {
+    const onContextMenuOpen = vi.fn();
+    const result = setupWithHooks({ onContextMenuOpen });
+
+    act(() => {
+      result.current.handleRowContextMenu("A-1", { clientX: 12, clientY: 34 } as React.MouseEvent);
+    });
+
+    expect(onContextMenuOpen).toHaveBeenCalledWith("A-1");
+    expect(result.current.rowMenu).toEqual({ x: 12, y: 34, targets: new Set(["A-1"]) });
+  });
+
+  it("routes quick-move auto-create through onConfirmQuickCreate instead of the default move", () => {
+    const onConfirmQuickCreate = vi.fn();
+    const injectSprint = vi.fn();
+    const onMove = vi.fn();
+    const result = setupWithHooks({ onConfirmQuickCreate, injectSprint, onMove });
+
+    // A quick-move that needs a new sprint raises the quickCreate signal...
+    act(() => {
+      result.current.handleQuickMove({ label: "Move to next", createName: "BT: 201" } as never, new Set(["A-1"]));
+    });
+    expect(result.current.quickCreate).toEqual({ name: "BT: 201", keys: new Set(["A-1"]) });
+
+    // ...and confirming it hands off to the host override, not injectSprint + move.
+    const sprint = { id: 201, name: "BT: 201", state: "future", startDate: null, endDate: null, goal: null };
+    act(() => { result.current.confirmQuickCreate(sprint); });
+
+    expect(onConfirmQuickCreate).toHaveBeenCalledWith(sprint, new Set(["A-1"]));
+    expect(injectSprint).not.toHaveBeenCalled();
+    expect(onMove).not.toHaveBeenCalled();
+    expect(result.current.quickCreate).toBeNull();
   });
 });

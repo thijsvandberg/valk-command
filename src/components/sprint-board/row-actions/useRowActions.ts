@@ -55,6 +55,13 @@ interface UseRowActionsOpts {
   onMove?: (targetSprintId: string, keys: Set<string>) => void | Promise<void>;
   /** Surfaces that report move failures in a banner (epic) instead of a toast. */
   onMoveError?: (message: string) => void;
+  /** Called inside `handleRowContextMenu` with the right-clicked key before the menu
+   *  opens, so a host can react (the board clears its side panel). */
+  onContextMenuOpen?: (key: string) => void;
+  /** Overrides the default create-sprint-then-move on quick-move auto-create. The board
+   *  pins + navigates to the new sprint instead of injecting it into a cache. When given,
+   *  the hook calls this instead of `injectSprint` + `move`. */
+  onConfirmQuickCreate?: (sprint: CreatedSprint, keys: Set<string>) => void;
 }
 
 /**
@@ -66,7 +73,7 @@ interface UseRowActionsOpts {
  * the change in its own optimism model; nothing else differs.
  */
 export function useRowActions(opts: UseRowActionsOpts) {
-  const { adapter, selectedKeys, sprints, pinnedSprintIds, backlogTargetName, showToast, injectSprint, flagSource, onMove, onMoveError } = opts;
+  const { adapter, selectedKeys, sprints, pinnedSprintIds, backlogTargetName, showToast, injectSprint, flagSource, onMove, onMoveError, onContextMenuOpen, onConfirmQuickCreate } = opts;
   const { sprintNameMap } = adapter;
   // Depend on opts.currentSprintName (a callback the host should memoize), NOT the
   // whole opts literal: opts is a new object every render, so depending on it
@@ -288,11 +295,17 @@ export function useRowActions(opts: UseRowActionsOpts) {
     (sprint: CreatedSprint) => {
       const keys = quickCreate?.keys ?? new Set<string>();
       closeQuickCreate();
+      // A host that owns its create flow (the board pins + navigates) takes over here;
+      // otherwise inject the sprint into the cache and move the targets in.
+      if (onConfirmQuickCreate) {
+        onConfirmQuickCreate(sprint, keys);
+        return;
+      }
       injectSprint?.(sprint);
       void move(String(sprint.id), keys);
       showToast(`Created ${sprint.name} and moved ${keys.size} issue${keys.size === 1 ? "" : "s"} in`);
     },
-    [quickCreate, closeQuickCreate, injectSprint, move, showToast],
+    [quickCreate, closeQuickCreate, onConfirmQuickCreate, injectSprint, move, showToast],
   );
 
   // --- AI assist + list ops ---
@@ -350,9 +363,10 @@ export function useRowActions(opts: UseRowActionsOpts) {
   const handleRowContextMenu = useCallback(
     (key: string, e: React.MouseEvent) => {
       const targets = selectedKeys.has(key) && selectedKeys.size > 0 ? new Set(selectedKeys) : new Set([key]);
+      onContextMenuOpen?.(key);
       setRowMenu({ x: e.clientX, y: e.clientY, targets });
     },
-    [selectedKeys],
+    [selectedKeys, onContextMenuOpen],
   );
 
   const computeFlagState = useCallback(

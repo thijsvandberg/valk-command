@@ -147,7 +147,7 @@ vi.mock("@/components/sprint-board/row-actions/useRowActions", () => ({
     rowMenu: null, setRowMenu: vi.fn(), handleRowContextMenu: vi.fn(), computeFlagState: () => "unflagged",
     bulkSetStatus: vi.fn(), bulkSetReadiness: vi.fn(), bulkSetEpic: vi.fn(),
     bulkUpdateAssignee: vi.fn(), bulkUpdateLabels: vi.fn(), bulkSetFlagged: vi.fn(),
-    bulkMoveSprint, moveSprint: vi.fn(), quickMovesFor: () => [], handleQuickMove: vi.fn(),
+    bulkMoveSprint, moveSprint: vi.fn(), quickMovesFor: () => [], currentSprintIdsFor: () => [], handleQuickMove: vi.fn(),
     inflightKeys: new Set(), handleBulkReview: vi.fn(), handleBulkGenerate: vi.fn(),
     isGeneratingSubtasks: false, copySelected: vi.fn(), openRefine: vi.fn(),
     refineModalOpen: false, setRefineModalOpen: vi.fn(), refineKeys: [],
