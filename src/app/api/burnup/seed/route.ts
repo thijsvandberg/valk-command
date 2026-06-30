@@ -9,6 +9,11 @@ import { applyRateLimit } from "@/lib/rate-limiter";
 import { cache } from "@/lib/cache";
 import { logger } from "@/lib/logger";
 import { safeJsonParse } from "@/lib/api-validation";
+import { mapWithConcurrency } from "@/lib/concurrency";
+
+// Bound the on-demand seed's Jira fan-out: fetch changelogs in parallel batches
+// instead of one sequential call per ticket (a 100-ticket sprint was 100 round-trips).
+const BURNUP_CHANGELOG_CONCURRENCY = 5;
 
 /**
  * POST /api/burnup/seed?sprintId=X
@@ -147,9 +152,28 @@ export async function POST(request: Request) {
 
     let changeCount = 0;
 
-    for (const key of allKeys) {
+    // Fetch every ticket's changelog with bounded concurrency. Per-ticket fetch
+    // failures resolve to null so one bad ticket cannot abort the batch (matching
+    // the previous per-ticket try/catch). The DB writes and shared counters/sets
+    // below still run strictly in key order, so the seeded rows are unchanged.
+    const changelogs = await mapWithConcurrency(
+      allKeys,
+      BURNUP_CHANGELOG_CONCURRENCY,
+      async (key) => {
+        try {
+          return await jiraClient.getBurnupChangelog(key);
+        } catch {
+          return null;
+        }
+      },
+    );
+
+    for (let i = 0; i < allKeys.length; i++) {
+      const key = allKeys[i];
+      const changelog = changelogs[i];
+      if (!changelog) continue;
       try {
-        const { statusChanges, sprintChanges } = await jiraClient.getBurnupChangelog(key);
+        const { statusChanges, sprintChanges } = changelog;
         const vals = valueMap.get(key) ?? { sp: 0, bv: 0 };
 
         // Status changes

@@ -18,6 +18,7 @@ import {
   shortRepoName,
 } from "@/lib/bitbucket-deploy-heuristics";
 import { eq, and, isNull, isNotNull, gte, lt, inArray, like, desc } from "drizzle-orm";
+import { mapWithConcurrency } from "@/lib/concurrency";
 
 // Re-exported so the existing test suite keeps importing these from this module.
 export { inferEnvironmentFromBranch, classifyStepsForDeployment, detectEnvironment };
@@ -83,20 +84,6 @@ interface BbPaginatedResponse<T> { values: T[]; next?: string }
 // -- Deployment detection (shared, idempotent) --
 
 const DEPLOY_CONCURRENCY = 5;
-
-/** Bounded-concurrency map: runs at most `limit` tasks at once, preserves order. */
-async function mapWithConcurrency<T, R>(items: T[], limit: number, fn: (item: T) => Promise<R>): Promise<R[]> {
-  const results: R[] = new Array(items.length);
-  let next = 0;
-  async function worker() {
-    while (next < items.length) {
-      const idx = next++;
-      results[idx] = await fn(items[idx]);
-    }
-  }
-  await Promise.all(Array.from({ length: Math.min(limit, items.length) }, () => worker()));
-  return results;
-}
 
 type DeployClassifyResult = "flagged" | "not-deployment" | "transient-error";
 
