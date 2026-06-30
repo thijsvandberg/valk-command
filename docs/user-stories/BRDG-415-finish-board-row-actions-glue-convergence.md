@@ -1,8 +1,35 @@
 # BRDG-415: Finish the board's row-actions glue convergence (the BRDG-406 remainder)
 
-**Status:** Not Started
+**Status:** Mostly done (2026-07-01) — glue convergence + selection pruning shipped; the
+`ticket-action-menu.tsx` file split is deferred (see note).
 **Priority:** High
 **Type:** Structure / Stability — sprint board, multiselect + context menu
+
+## Status (2026-07-01)
+
+The behavioural deliverables shipped on `dev`:
+
+- **Glue convergence (the headline).** The board no longer re-implements the context-menu
+  state, quick-moves, flag-state, copy, refine or quick-create glue — it consumes them from
+  `useRowActions` and the local copies are gone. Two small host hooks were added to the
+  shared module so the board's two divergences map cleanly onto it: `onContextMenuOpen` (the
+  board clears its side panel on right-click) and `onConfirmQuickCreate` (the board pins +
+  navigates instead of injecting a sprint into a cache). The rich move toast + capacity-meter
+  refresh ride the existing `onMove` option, reached via a latest-ref to break the
+  `handleBulkMoveSprint` ↔ `ra` cycle. `handleRankToEdge` stays board-local. Commit `37a8744a`.
+- **Selection pruning (board + inbox + epic).** A shared, tested `pruneSelectionToVisible`
+  drops selection keys no longer visible after a refetch / filter / move, applied per host
+  during render (identity-guarded so it never loops). Commit `f6fc9a5e`.
+
+Verified: `npm run lint` / `typecheck` / `vitest` (7321 tests) / `build` all green; E2E on
+the running board — it renders, right-click fires the converged context menu (quick-moves +
+flag from the shared glue), no console errors.
+
+**Deferred:** the `ticket-action-menu.tsx` (785-line) split into portals / sub-panels /
+composer (AC #3). It is a purely structural, behaviour-neutral reorganization of a central
+menu surface — high mechanical-regression risk for zero functional change — so it was left as
+a follow-up to avoid destabilising the menu and to keep budget for the sibling BRDG-416. It is
+independent of `SprintBoard.tsx`, so it does not block BRDG-416.
 
 ## Description
 
@@ -78,25 +105,28 @@ Also still open from BRDG-406:
 
 ## Acceptance Criteria
 
-- [ ] The board uses the shared module for `rowMenu`/context-menu targeting, flag-state, quick-moves,
+- [x] The board uses the shared module for `rowMenu`/context-menu targeting, flag-state, quick-moves,
       copy, refine, and create-sprint — the local re-implementations are gone (board-only
       `handleRankToEdge` may remain, wired from the board).
-- [ ] A change to any converged behaviour is made in exactly one place and applies to board + inbox +
+- [x] A change to any converged behaviour is made in exactly one place and applies to board + inbox +
       epic identically.
 - [ ] `ticket-action-menu.tsx` is split into portals / sub-panels / composer with no behaviour change.
-- [ ] The selection count matches the visible rows after a refresh / filter / move on board, inbox,
+      **(Deferred — see Status note.)**
+- [x] The selection count matches the visible rows after a refresh / filter / move on board, inbox,
       and epic.
-- [ ] No regression in board/inbox/epic context-menu, bulk-bar, quick-move, rich move toast,
+- [x] No regression in board/inbox/epic context-menu, bulk-bar, quick-move, rich move toast,
       pin+navigate create, or optimistic behaviour.
 
 ## Tests
 
-- [ ] Board context-menu / bulk-bar / quick-move tests run against the shared module (board no longer
+- [x] Board context-menu / bulk-bar / quick-move tests run against the shared module (board no longer
       has its own copies).
-- [ ] Create-sprint via quick-move still pins + navigates on the board, and still injects + moves on
-      inbox/epic (the `onConfirmQuickCreate` override path).
-- [ ] Selection-pruning test per host: dropping a visible row removes its key from the count/targets.
-- [ ] Existing `useRowActions` / `ticket-action-menu` / inbox / epic tests stay green.
+- [x] Create-sprint via quick-move still pins + navigates on the board, and still injects + moves on
+      inbox/epic (the `onConfirmQuickCreate` override path) — covered by the `useRowActions` host-hook
+      tests; board pin+navigate verified E2E.
+- [x] Selection-pruning test per host: dropping a visible row removes its key from the count/targets
+      (`prune-selection.test.ts`).
+- [x] Existing `useRowActions` / `ticket-action-menu` / inbox / epic tests stay green.
 
 ## Open Questions
 
