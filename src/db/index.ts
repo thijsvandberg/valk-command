@@ -8,7 +8,7 @@ import { env } from "@/lib/env";
 import { logger } from "@/lib/logger";
 import { instrumentDatabase } from "@/lib/db-query-instrumentation";
 
-const VACUUM_THRESHOLD_MB = 100;
+const VACUUM_THRESHOLD_MB = 150;
 
 let _db: BetterSQLite3Database<typeof schema> | null = null;
 
