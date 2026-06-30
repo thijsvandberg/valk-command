@@ -50,6 +50,7 @@ import { useSprintBoardShortcuts } from "@/components/sprint-board/useSprintBoar
 import { useTicketActions } from "@/components/sprint-board/useTicketActions";
 import { makeBoardAdapter, makeBoardDispatchAdapter } from "@/components/sprint-board/row-actions/adapter";
 import { useRowActions } from "@/components/sprint-board/row-actions/useRowActions";
+import { pruneSelectionToVisible } from "@/components/sprint-board/row-actions/prune-selection";
 import { SprintBoardHeader } from "@/components/sprint-board/SprintBoardHeader";
 import { DragGhostOverlay } from "@/components/sprint-board/DragGhostOverlay";
 import { SprintDropZoneBar, snapToPointer, boardCollisionDetection } from "@/components/sprint-board/SprintBoardDragDrop";
@@ -386,6 +387,12 @@ export default function SprintBoard() {
     return [preset, ...f.savedViews];
   }, [overallRefinementSprint, f.savedViews]);
   const tickets = f.sortedTickets;
+  // BRDG-415: keep the multi-select to the visible rows. Pruning during render (a
+  // setState-in-effect is build-blocking) and only when a stale key is present (the
+  // helper returns the same Set otherwise) keeps it from looping or churning renders.
+  const visibleKeySet = useMemo(() => new Set(tickets.map((t) => t.key)), [tickets]);
+  const prunedSelection = pruneSelectionToVisible(checkedTickets, visibleKeySet);
+  if (prunedSelection !== checkedTickets) setCheckedTickets(prunedSelection);
   // Placeholders honour the active sprint scope exactly like tickets do (BRDG-304): when a
   // sprint filter is active in the All view, only placeholders whose sprint is in scope
   // surface. Without this a forward-planning placeholder from another sprint seeds a stray

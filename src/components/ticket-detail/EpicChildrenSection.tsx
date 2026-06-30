@@ -20,6 +20,7 @@ import { BulkActionBar } from "@/components/sprint-board/BulkActionBar";
 import { CursorMenu, TicketActionMenuContent } from "@/components/sprint-board/ticket-action-menu";
 import { CreateSprintModal, type CreatedSprint } from "@/components/sprint-board/CreateSprintModal";
 import { useRowActions } from "@/components/sprint-board/row-actions/useRowActions";
+import { pruneSelectionToVisible } from "@/components/sprint-board/row-actions/prune-selection";
 import { makeEpicDispatchAdapter, type RowDataAdapter } from "@/components/sprint-board/row-actions/adapter";
 import { AddToRefinementModal } from "@/components/refinement-session/AddToRefinementModal";
 import { nextSprintName, latestRegularSprint } from "@/lib/sprint-utils";
@@ -738,6 +739,12 @@ export function EpicChildrenSection({
     }
     return base.map((i) => i.key);
   }, [filtered, localMoves, localOrder, viewMode, sprints]);
+
+  // BRDG-415: prune the selection to the visible children (see prune-selection.ts) so
+  // a child dropped by a filter / move / refetch leaves the "N selected" count.
+  const visibleChildKeys = useMemo(() => new Set(orderedVisibleKeys), [orderedVisibleKeys]);
+  const prunedCheckedKeys = pruneSelectionToVisible(checkedKeys, visibleChildKeys);
+  if (prunedCheckedKeys !== checkedKeys) setCheckedKeys(prunedCheckedKeys);
 
   // The selection-checkbox column is itself a toggleable "field"; when hidden,
   // rows lose their checkbox and bulk selection is suppressed.

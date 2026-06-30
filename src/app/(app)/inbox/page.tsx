@@ -16,6 +16,7 @@ import { useTicketDetail, useJiraSprints, useSprintSlots } from "@/hooks/useSpri
 import { useBacklogDropTarget } from "@/hooks/useBacklogDropTarget";
 import { useRowActions } from "@/components/sprint-board/row-actions/useRowActions";
 import { makeInboxDispatchAdapter, type RowDataAdapter } from "@/components/sprint-board/row-actions/adapter";
+import { pruneSelectionToVisible } from "@/components/sprint-board/row-actions/prune-selection";
 import { BoardRow } from "@/components/sprint-board/BoardRow";
 import { Checkbox } from "@/components/shared/Checkbox";
 import type { EpicOption } from "@/components/shared/EpicPicker";
@@ -245,6 +246,12 @@ function InboxView() {
     () => (newOnly ? filteredRows.filter(isNew) : filteredRows),
     [newOnly, filteredRows, isNew],
   );
+
+  // BRDG-415: prune the selection to the visible rows (see prune-selection.ts) so a row
+  // dropped by a filter / refetch leaves the "N selected" count and bulk targets.
+  const visibleInboxKeys = useMemo(() => new Set(displayRows.map((r) => r.key)), [displayRows]);
+  const prunedCheckedKeys = pruneSelectionToVisible(checkedKeys, visibleInboxKeys);
+  if (prunedCheckedKeys !== checkedKeys) setCheckedKeys(prunedCheckedKeys);
 
   // The right-clicked row's current epic (single target only), so the Set Epic
   // panel shows the checkmark + Unlink like the sidebar (BRDG-381).
