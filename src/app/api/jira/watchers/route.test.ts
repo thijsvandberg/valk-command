@@ -14,6 +14,10 @@ vi.mock("@/lib/jira-client", () => ({
   },
 }));
 
+// Mock draft resolution (identity) so the route does not pull @/db into this
+// node test. isDraftKey stays real (pure), so a DRAFT-xxx key still trips the guard.
+vi.mock("@/lib/draft-sync", () => ({ resolveDraftKey: (k: string) => k }));
+
 import { GET, POST, DELETE } from "./route";
 import { jiraClient } from "@/lib/jira-client";
 import { syncJiraTimestamp } from "@/lib/sync-jira-timestamp";
@@ -61,6 +65,14 @@ describe("/api/jira/watchers", () => {
       const res = await GET(getRequest("?issueKey=VPL-100"));
       expect(res.status).toBe(500);
     });
+
+    it("returns an empty list for a draft key without calling Jira", async () => {
+      const res = await GET(getRequest("?issueKey=DRAFT-748b82f8"));
+      const data = await res.json();
+      expect(res.status).toBe(200);
+      expect(data.watchers).toEqual([]);
+      expect(vi.mocked(jiraClient.getWatchers)).not.toHaveBeenCalled();
+    });
   });
 
   describe("POST", () => {
@@ -88,6 +100,12 @@ describe("/api/jira/watchers", () => {
       const res = await POST(postRequest({ issueKey: "VPL-100", accountId: "acc-1" }));
       expect(res.status).toBe(500);
     });
+
+    it("returns 409 for a draft key without calling Jira", async () => {
+      const res = await POST(postRequest({ issueKey: "DRAFT-748b82f8", accountId: "acc-1" }));
+      expect(res.status).toBe(409);
+      expect(vi.mocked(jiraClient.addWatcher)).not.toHaveBeenCalled();
+    });
   });
 
   describe("DELETE", () => {
@@ -114,6 +132,12 @@ describe("/api/jira/watchers", () => {
       vi.mocked(jiraClient.removeWatcher).mockRejectedValueOnce(new Error("Jira down"));
       const res = await DELETE(deleteRequest("?issueKey=VPL-100&accountId=acc-1"));
       expect(res.status).toBe(500);
+    });
+
+    it("returns 409 for a draft key without calling Jira", async () => {
+      const res = await DELETE(deleteRequest("?issueKey=DRAFT-748b82f8&accountId=acc-1"));
+      expect(res.status).toBe(409);
+      expect(vi.mocked(jiraClient.removeWatcher)).not.toHaveBeenCalled();
     });
   });
 });

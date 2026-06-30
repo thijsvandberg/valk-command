@@ -5,6 +5,8 @@ import { logger } from "@/lib/logger";
 import { syncJiraTimestamp } from "@/lib/sync-jira-timestamp";
 import { errorResponse } from "@/lib/api-response";
 import { parseJsonBody } from "@/lib/request-parser";
+import { resolveDraftKey } from "@/lib/draft-sync";
+import { isDraftKey } from "@/lib/draft-key";
 
 /**
  * Watchers are not persisted locally (decided in BRDG-264): they are fetched
@@ -23,8 +25,17 @@ export async function GET(request: Request) {
     return errorResponse("issueKey is required", 400);
   }
 
+  // A draft ticket carries a synthetic DRAFT-xxx key with no Jira issue, so it has
+  // no watchers. Short-circuit instead of letting Jira reject the synthetic key.
+  const resolvedKey = resolveDraftKey(issueKey);
+  if (isDraftKey(resolvedKey)) {
+    return NextResponse.json({ watchers: [] }, {
+      headers: { "Cache-Control": "private, no-store" },
+    });
+  }
+
   try {
-    const watchers = await jiraClient.getWatchers(issueKey);
+    const watchers = await jiraClient.getWatchers(resolvedKey);
     return NextResponse.json({ watchers }, {
       headers: { "Cache-Control": "private, no-store" },
     });
@@ -59,9 +70,14 @@ export async function POST(request: Request) {
     return errorResponse("accountId is required", 400);
   }
 
+  const resolvedKey = resolveDraftKey(issueKey);
+  if (isDraftKey(resolvedKey)) {
+    return errorResponse("Cannot modify watchers on a draft ticket", 409);
+  }
+
   try {
-    await jiraClient.addWatcher(issueKey, accountId);
-    await syncJiraTimestamp(issueKey);
+    await jiraClient.addWatcher(resolvedKey, accountId);
+    await syncJiraTimestamp(resolvedKey);
   } catch (err) {
     const message = err instanceof Error ? err.message : "Unknown error";
     logger.error("jira", "Failed to add watcher", message);
@@ -91,9 +107,14 @@ export async function DELETE(request: Request) {
     return errorResponse("accountId is required", 400);
   }
 
+  const resolvedKey = resolveDraftKey(issueKey);
+  if (isDraftKey(resolvedKey)) {
+    return errorResponse("Cannot modify watchers on a draft ticket", 409);
+  }
+
   try {
-    await jiraClient.removeWatcher(issueKey, accountId);
-    await syncJiraTimestamp(issueKey);
+    await jiraClient.removeWatcher(resolvedKey, accountId);
+    await syncJiraTimestamp(resolvedKey);
   } catch (err) {
     const message = err instanceof Error ? err.message : "Unknown error";
     logger.error("jira", "Failed to remove watcher", message);

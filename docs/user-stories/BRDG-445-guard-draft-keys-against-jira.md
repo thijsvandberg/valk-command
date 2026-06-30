@@ -153,8 +153,8 @@ cleanup candidate to route through `isDraftKey`.
 - [x] `pull-from-jira` route/service: pending DRAFT key returns the handled
       response and does not call `jiraClient.getIssue`; finalized DRAFT key resolves
       to the real key and proceeds.
-- [ ] `watchers` GET route: pending DRAFT key returns `{ watchers: [] }` `200`
-      without calling Jira.
+- [x] `watchers` GET route: pending DRAFT key returns `{ watchers: [] }` `200`
+      without calling Jira. (Plus POST/DELETE return a handled `409` for a draft.)
 - [x] `isDraftKey()` unit test (DRAFT-xxx true, VPL-xxx false, empty false).
 
 ## Out of Scope
