@@ -1,8 +1,38 @@
 # BRDG-417: Re-audit long-tail — deferred sync/polling hygiene follow-ups
 
-**Status:** Not Started
+**Status:** Completed (2026-07-01)
 **Priority:** Low
 **Type:** Performance / Stability — sync, polling, contexts
+
+## Status (2026-07-01)
+
+All three independent items shipped on `dev`:
+
+1. **Burnup-seed N+1** — the per-ticket sequential `getBurnupChangelog` loop now
+   fetches with bounded concurrency (5 at a time) and processes the results
+   strictly in key order, so the seeded status/scope rows are unchanged. The
+   worker-pool helper was extracted from `pipeline-sync.ts` into a shared, tested
+   `@/lib/concurrency` (`mapWithConcurrency`). Commit `79822f87`.
+2. **`useConversations` / `useMessages` → SWR** — both hooks back onto SWR
+   (dedupe, hidden-tab pause, LRU-bounded provider). `useConversations` uses
+   SWR `refreshInterval`; `useMessages` keeps its idle-gated adaptive poll driven
+   through `swr.mutate()` (mirrors `usePipelines`) with optimistic sends in local
+   state merged over server data. Read/unread patches skip the optimistic mutate
+   until the list is loaded, so an in-flight initial fetch is not discarded by SWR.
+   `useMessages` reuses the canonical `/api/conversations/:id` key that prefetch
+   and `useRefinementStream` already target. Commit `8849d332`.
+3. **event-bus + RefinementSessionContext** — only the elected leader now
+   rebroadcasts on the BroadcastChannel, fixing the double-dispatch in the
+   no-Web-Locks fallback (focused test added). The RefinementSessionContext
+   index-persist timer is **kept un-cleared on unmount** by decision: it is a
+   fire-and-forget write (no setState) that saves your place in the refinement
+   queue; clearing it would silently drop that last position. Documented in code.
+   Commit `ea6b8734`.
+
+Verified: full `npm run lint` / `typecheck` / `vitest` (7315 tests) / `build`
+green. E2E on the running dev server — burnup-seed route loads + validates,
+`/api/conversations` returns data, and the Chat view renders the conversation
+list and an opened conversation's messages with no console errors.
 
 ## Description
 
@@ -61,20 +91,20 @@ pause on hidden tabs.
 
 ## Acceptance Criteria
 
-- [ ] Burnup seed issues a bounded number of Jira calls (bulk or bounded-concurrency), not one
+- [x] Burnup seed issues a bounded number of Jira calls (bulk or bounded-concurrency), not one
       `getBurnupChangelog` per ticket; the seeded status/scope changes are identical to before.
-- [ ] `useConversations` / `useMessages` are SWR-backed: deduped across consumers, hidden-tab-paused,
+- [x] `useConversations` / `useMessages` are SWR-backed: deduped across consumers, hidden-tab-paused,
       LRU-bounded; chat optimistic create/delete/mark-read still work.
-- [ ] The event-bus no-WebLocks fallback does not double-dispatch an event.
-- [ ] A decision is recorded for the RefinementSessionContext timer (kept-as-wanted, or cleared with
+- [x] The event-bus no-WebLocks fallback does not double-dispatch an event.
+- [x] A decision is recorded for the RefinementSessionContext timer (kept-as-wanted, or cleared with
       a reason).
 
 ## Tests
 
-- [ ] Burnup seed test: a multi-ticket seed triggers bounded fetches and records the same rows.
-- [ ] Conversations/messages SWR test: two mounts dedupe to one request; an optimistic op reflects
+- [x] Burnup seed test: a multi-ticket seed triggers bounded fetches and records the same rows.
+- [x] Conversations/messages SWR test: two mounts dedupe to one request; an optimistic op reflects
       immediately and rolls back on failure.
-- [ ] event-bus test: the no-WebLocks fallback dispatches each event exactly once.
+- [x] event-bus test: the no-WebLocks fallback dispatches each event exactly once.
 
 ## Open Questions
 
