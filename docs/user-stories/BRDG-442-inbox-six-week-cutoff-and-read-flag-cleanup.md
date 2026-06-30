@@ -1,6 +1,6 @@
 # BRDG-442: Inbox 6-week age cutoff + auto-cleanup of read-flags
 
-**Status:** To Do
+**Status:** Done
 **Priority:** Low
 **Type:** Chore
 
@@ -104,21 +104,43 @@ invariant above.
   could backfill `jira_created_at` / `jira_updated_at` from Jira for these so they
   are dated correctly rather than blanket-hidden. Not required for this story.
 
+## Implementation Plan
+
+Backend/library only; no UI, no schema change, no migration, no backfill.
+
+1. **Shared constant + inbox age filter (AC1, AC2, AC3)** — `src/lib/new-stories-query.ts`
+   - Export `INBOX_AGE_WINDOW_MS = 42 * 24 * 60 * 60 * 1000` (6 weeks) with a comment documenting the shared-window safety invariant (cleanup retention window == inbox age window by construction).
+   - Add `gte` to the `drizzle-orm` import.
+   - In `newStoriesWhere`, compute `cutoff = new Date(Date.now() - INBOX_AGE_WINDOW_MS).toISOString()` and add `gte(ticket.jiraCreatedAt, cutoff)` to the `and(...)`. A bare `gte` drops null `jiraCreatedAt` rows (`NULL >= x` is false in SQL) — exactly the desired behaviour (AC3). Both `listNewStories` and `countNewStories` inherit it, so list and badge stay consistent (AC2).
+   - Note on comparison: stored `jiraCreatedAt` is Jira offset form (`...+0100/+0200`), cutoff is `...Z`. String `gte` is correct at day granularity with at most a few hours of boundary slop; acceptable for a 6-week hygiene filter. Documented in a code comment.
+
+2. **Read-flag cleanup task (AC4, AC5)** — `src/lib/scheduled-tasks.ts`
+   - Import `INBOX_AGE_WINDOW_MS` from `@/lib/new-stories-query` (no circular import) and add `newStoryRead` to the schema import.
+   - Add `cleanupReadStoryFlags()`: `cutoff = now - INBOX_AGE_WINDOW_MS`, `db.delete(newStoryRead).where(lt(newStoryRead.readAt, cutoff))`, return `{ deleted, cutoff }`. Mirrors `cleanupOldNotifications`.
+   - Register via `defineTask("cleanup-read-story-flags", "Read-Flag Cleanup", "<desc>", 60 * 60 * 1000, cleanupReadStoryFlags)` next to the other cleanup tasks (enabled by default).
+
+3. **Safety invariant (AC6)** — proven in two parts: the cleanup task deletes only aged rows (scheduled-tasks.test.ts) and an aged-out ticket stays absent from `listNewStories` even after its read-flag is gone (new-stories-query.test.ts).
+
+4. **Tests**
+   - `new-stories-query.test.ts`: convert fixed-date seeds to `Date.now()`-relative offsets (house style, no time-bombs); add (a) >6w hidden / <6w kept, (b) null `jiraCreatedAt` excluded, (c) invariant regression (delete the read-flag, ticket still absent). Seed one realistic offset-format date to exercise production-shaped data.
+   - `scheduled-tasks.test.ts`: add `cleanupReadStoryFlags` block mirroring `cleanupOldNotifications` (relative dates).
+   - `inbox-digest.test.ts`: the digest reuses `listNewStories`, so it inherits the filter. Freeze time in the `computeInboxDigest` block (kills the existing fixed-date time-bombs) and update the "null createdAt counts as new" test — null-dated rows are now dropped before the digest sees them (consistent with the inbox).
+
 ## Acceptance Criteria
 
-- [ ] The `/inbox` New stories list excludes stories whose `jiraCreatedAt` is more than 6 weeks ago. <!-- newStoriesWhere in src/lib/new-stories-query.ts -->
-- [ ] The inbox badge count matches the filtered list (no stale count for aged-out stories). <!-- countNewStories reuses newStoriesWhere -->
-- [ ] Stories with a null `jiraCreatedAt` are excluded from the inbox (treated as outside the window). <!-- bare gte(ticket.jiraCreatedAt, cutoff) drops nulls -->
-- [ ] A scheduled task deletes `new_story_read` rows older than 6 weeks and is registered in System Tasks. <!-- cleanupReadStoryFlags + defineTask in src/lib/scheduled-tasks.ts -->
-- [ ] The inbox age window and the cleanup retention window are driven by a single shared 6-week constant. <!-- shared const imported by both files -->
-- [ ] Deleting an aged-out read-flag does not cause its ticket to reappear in the inbox (the safety invariant holds). <!-- covered by the age filter -->
+- [x] The `/inbox` New stories list excludes stories whose `jiraCreatedAt` is more than 6 weeks ago. <!-- newStoriesWhere in src/lib/new-stories-query.ts -->
+- [x] The inbox badge count matches the filtered list (no stale count for aged-out stories). <!-- countNewStories reuses newStoriesWhere -->
+- [x] Stories with a null `jiraCreatedAt` are excluded from the inbox (treated as outside the window). <!-- bare gte(ticket.jiraCreatedAt, cutoff) drops nulls -->
+- [x] A scheduled task deletes `new_story_read` rows older than 6 weeks and is registered in System Tasks. <!-- cleanupReadStoryFlags + defineTask in src/lib/scheduled-tasks.ts -->
+- [x] The inbox age window and the cleanup retention window are driven by a single shared 6-week constant. <!-- shared const imported by both files -->
+- [x] Deleting an aged-out read-flag does not cause its ticket to reappear in the inbox (the safety invariant holds). <!-- covered by the age filter -->
 
 ## Tests
 
-- [ ] Inbox query hides a ticket created >6 weeks ago and keeps one created <6 weeks ago. <!-- src/lib/new-stories-query.test.ts -->
-- [ ] Inbox query excludes a ticket with null `jiraCreatedAt`. <!-- src/lib/new-stories-query.test.ts -->
-- [ ] `cleanupReadStoryFlags` deletes only rows with `read_at` older than the cutoff and leaves recent rows. <!-- src/lib/scheduled-tasks.test.ts -->
-- [ ] Regression: after cleanup, an aged-out ticket is still absent from `listNewStories` (invariant proof). <!-- src/lib/new-stories-query.test.ts -->
+- [x] Inbox query hides a ticket created >6 weeks ago and keeps one created <6 weeks ago. <!-- src/lib/new-stories-query.test.ts -->
+- [x] Inbox query excludes a ticket with null `jiraCreatedAt`. <!-- src/lib/new-stories-query.test.ts -->
+- [x] `cleanupReadStoryFlags` deletes only rows with `read_at` older than the cutoff and leaves recent rows. <!-- src/lib/scheduled-tasks.test.ts -->
+- [x] Regression: after cleanup, an aged-out ticket is still absent from `listNewStories` (invariant proof). <!-- src/lib/new-stories-query.test.ts -->
 
 ## Related
 

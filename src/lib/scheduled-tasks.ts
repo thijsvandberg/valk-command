@@ -11,7 +11,7 @@ import {
   ticket, activityLog, alert, appSetting,
   ticketMetadata, ticketSubtask, ticketLink, ticketAttachment,
   ticketLocalEdit, poComment, jiraComment, storyVersion, storedReview,
-  storyWriterSession, workspaceTask,
+  storyWriterSession, workspaceTask, newStoryRead,
 } from "@/db/schema";
 import { eq, inArray, and, isNotNull, isNull, or, lt, desc, notInArray, sql } from "drizzle-orm";
 import { FINISHED_STATUSES, EXCLUDED_SCAN_TYPES } from "@/lib/ticket-status";
@@ -20,6 +20,7 @@ import { upsertIssue, cacheSprintName } from "@/lib/upsert-issue";
 import { invalidateSearchCache } from "@/lib/search-index-cache";
 import { upsertSetting } from "@/lib/upsert-setting";
 import { defineTask, type TaskResult } from "@/lib/scheduler";
+import { INBOX_AGE_WINDOW_MS } from "@/lib/new-stories-query";
 import { logger } from "@/lib/logger";
 import { registerSync, unregisterSync } from "@/lib/sync-abort";
 import { createNotification } from "@/lib/notifications";
@@ -379,6 +380,30 @@ export async function cleanupOldNotifications(): Promise<TaskResult> {
   const cutoff = new Date(Date.now() - NOTIFICATION_RETENTION_MS).toISOString();
   await db.delete(alert).where(lt(alert.createdAt, cutoff));
   return { cutoff };
+}
+
+// ---------------------------------------------------------------------------
+// Task: Cleanup read-story flags (every 60 minutes) (BRDG-442)
+// ---------------------------------------------------------------------------
+
+/**
+ * Prunes new_story_read rows whose read_at is older than the inbox age window.
+ * The table grows by one row per ticket-marked-read per user and is otherwise
+ * never bounded; with multiple Bridge users that is rows = tickets x users.
+ *
+ * Safety: this shares INBOX_AGE_WINDOW_MS with the inbox age filter
+ * (newStoriesWhere in new-stories-query.ts) on purpose. A flag is only deleted
+ * when read_at < now-6w, and read_at >= the ticket's creation time, so any
+ * ticket whose flag is deleted was itself created more than 6 weeks ago and so
+ * already fails the inbox age filter — deleting the flag cannot make it reappear
+ * in the inbox. The two windows MUST stay equal; one shared constant guarantees
+ * it. Deleting flags WITHOUT the age filter would be actively harmful (the inbox
+ * treats a missing row as unread), which is why the two changes ship together.
+ */
+export async function cleanupReadStoryFlags(): Promise<TaskResult> {
+  const cutoff = new Date(Date.now() - INBOX_AGE_WINDOW_MS).toISOString();
+  const res = await db.delete(newStoryRead).where(lt(newStoryRead.readAt, cutoff));
+  return { deleted: (res as { changes?: number }).changes ?? 0, cutoff };
 }
 
 // ---------------------------------------------------------------------------
@@ -836,6 +861,14 @@ export function registerScheduledTasks() {
     "Removes read and unread notifications older than 30 days to keep the notification list manageable.",
     60 * 60 * 1000,
     cleanupOldNotifications,
+  );
+
+  defineTask(
+    "cleanup-read-story-flags",
+    "Read-Flag Cleanup",
+    "Deletes inbox read-flags (new_story_read rows) older than 6 weeks. The table grows one row per ticket-marked-read per user and is otherwise unbounded. Safe because it shares the 6-week window with the inbox age filter: a ticket whose flag is old enough to delete is already too old to reappear in the inbox.",
+    60 * 60 * 1000,
+    cleanupReadStoryFlags,
   );
 
   defineTask(

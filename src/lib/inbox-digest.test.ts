@@ -1,5 +1,5 @@
 // @vitest-environment node
-import { describe, it, expect, beforeEach, vi } from "vitest";
+import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
 import { createTestDb } from "@/db/test-utils";
 import type { BetterSQLite3Database } from "drizzle-orm/better-sqlite3";
 import type * as schema from "@/db/schema";
@@ -132,6 +132,15 @@ describe("computeInboxDigest (BRDG-413)", () => {
 
   beforeEach(() => {
     testDb = createTestDb();
+    // listNewStories applies the 6-week age filter against Date.now() (BRDG-442);
+    // freeze the clock to NOW so the fixed seed dates below stay inside the window
+    // deterministically (only the Date is faked, so timers/microtasks are intact).
+    vi.useFakeTimers({ toFake: ["Date"] });
+    vi.setSystemTime(NOW);
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
   });
 
   it("counts only rows created after the last read action, bucketed by relevance", async () => {
@@ -168,14 +177,18 @@ describe("computeInboxDigest (BRDG-413)", () => {
     expect(digest.total).toBe(2);
   });
 
-  it("counts rows with no createdAt as new (never silently dropped)", async () => {
+  it("excludes rows with no createdAt (BRDG-442 age filter drops nulls upstream)", async () => {
+    // Since BRDG-442 the inbox query hides null-dated tickets, so they never reach
+    // the digest. This reverses the pre-BRDG-442 behaviour (null counted as new):
+    // the digest mirrors exactly what the inbox shows, and the inbox no longer
+    // shows undated skeleton rows.
     setDefaultTeam("user-a", "BT");
     seedTicket("VPL-READ", { createdAt: "2026-06-10T10:00:00Z" });
     markRead("user-a", "VPL-READ", "2026-06-24T10:00:00Z");
     seedTicket("VPL-NULL", { createdAt: null, reporter: "X", sprintName: null });
 
     const digest = await computeInboxDigest(CTX, NOW);
-    expect(digest.total).toBe(1);
+    expect(digest.total).toBe(0);
   });
 
   it("returns the total only (no buckets) when no default team is set", async () => {

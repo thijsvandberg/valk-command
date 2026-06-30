@@ -1,6 +1,6 @@
 import { db } from "@/db";
 import { ticket, newStoryRead, sprintNameCache } from "@/db/schema";
-import { and, or, eq, ne, isNull, inArray, notInArray, notExists, desc, sql } from "drizzle-orm";
+import { and, or, eq, ne, gte, isNull, inArray, notInArray, notExists, desc, sql } from "drizzle-orm";
 import { buildAssignee } from "@/lib/user-utils";
 import type { IssueType, JiraStatus } from "@/types/ticket";
 import type { NewStoryRow } from "@/lib/new-stories-types";
@@ -9,6 +9,17 @@ import type { NewStoryRow } from "@/lib/new-stories-types";
 // (BRDG-356); epics ARE included, which is why this cannot reuse /api/tickets
 // (that route drops epics).
 const ALLOWED_TYPES: IssueType[] = ["story", "bug", "task", "epic", "spike"];
+
+// Inbox age window (BRDG-442): the inbox only shows stories created within the
+// last 6 weeks; older stories age out even if never read. This is the SAME
+// constant the read-flag cleanup task uses for its retention window
+// (cleanupReadStoryFlags in scheduled-tasks.ts), and that shared value is what
+// makes deleting old read-flags provably safe: a flag is only deleted when
+// readAt < now-6w, and readAt >= the ticket's creation time, so any ticket whose
+// flag is old enough to delete was itself created more than 6 weeks ago and so
+// already fails this age filter — it cannot reappear in the inbox. The two
+// windows MUST stay equal; sharing one constant guarantees it.
+export const INBOX_AGE_WINDOW_MS = 42 * 24 * 60 * 60 * 1000;
 
 // Drafting/replaced/failed tickets are not real, reviewable stories yet.
 const EXCLUDED_STATUSES = ["DRAFTING", "REPLACED", "DRAFT_FAILED"];
@@ -38,9 +49,10 @@ function selfExclusion(ctx: NewStoryQueryCtx) {
   return undefined;
 }
 
-// Shared filter: unread for THIS user (no read row), still present in Jira, a
-// reviewable status, a non-subtask type (a null type is treated as a story,
-// matching the rest of the app), and not authored by this user.
+// Shared filter: unread for THIS user (no read row), created within the inbox
+// age window, still present in Jira, a reviewable status, a non-subtask type (a
+// null type is treated as a story, matching the rest of the app), and not
+// authored by this user.
 function newStoriesWhere(ctx: NewStoryQueryCtx) {
   const unreadByUser = notExists(
     db
@@ -54,8 +66,17 @@ function newStoriesWhere(ctx: NewStoryQueryCtx) {
       ),
   );
 
+  // Drop stories older than the age window. A bare gte also drops rows with a
+  // null jiraCreatedAt (NULL >= x is false in SQL), which is intended (BRDG-442):
+  // undated skeleton rows should not linger in the inbox. Comparison is a string
+  // compare between Jira's offset form (...+0100/+0200) and a ...Z cutoff; it is
+  // correct at day granularity with at most a few hours of boundary slop, which
+  // does not matter for a 6-week hygiene filter.
+  const cutoff = new Date(Date.now() - INBOX_AGE_WINDOW_MS).toISOString();
+
   return and(
     unreadByUser,
+    gte(ticket.jiraCreatedAt, cutoff),
     isNull(ticket.removedFromJiraAt),
     notInArray(ticket.status, EXCLUDED_STATUSES),
     or(inArray(ticket.type, ALLOWED_TYPES), isNull(ticket.type)),

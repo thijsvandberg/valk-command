@@ -58,11 +58,11 @@ vi.mock("@/db", () => ({
   },
 }));
 
-import { cleanupActivityLog, cleanupOldNotifications, revalidateDeletedTickets, runDeprecationStalenessScan, runAutoEnqueue, reconcileStuckTasks, pruneStoryVersions } from "./scheduled-tasks";
+import { cleanupActivityLog, cleanupOldNotifications, cleanupReadStoryFlags, revalidateDeletedTickets, runDeprecationStalenessScan, runAutoEnqueue, reconcileStuckTasks, pruneStoryVersions } from "./scheduled-tasks";
 import { jiraClient, JiraApiError } from "@/lib/jira-client";
 import { logger } from "@/lib/logger";
 import { enqueue, _reset as resetQueue } from "@/lib/revalidation-queue";
-import { activityLog, alert, ticket, appSetting, workspaceTask, storyVersion } from "@/db/schema";
+import { activityLog, alert, ticket, appSetting, workspaceTask, storyVersion, newStoryRead } from "@/db/schema";
 import { eq } from "drizzle-orm";
 
 describe("cleanupActivityLog", () => {
@@ -193,6 +193,64 @@ describe("cleanupOldNotifications", () => {
 
     const remaining = testDb.select().from(alert).all();
     expect(remaining).toHaveLength(1);
+  });
+});
+
+// BRDG-442: prune inbox read-flags older than 6 weeks. The retention window is
+// the SAME constant as the inbox age filter, so a deleted flag can never bring
+// its ticket back into the inbox (the ticket is already too old to show).
+describe("cleanupReadStoryFlags", () => {
+  const DAY = 24 * 60 * 60 * 1000;
+  const SIX_WEEKS = 42 * DAY;
+
+  beforeEach(() => {
+    testDb = createTestDb();
+  });
+
+  function seedRead(userId: string, ticketKey: string, readAt: string) {
+    testDb.insert(newStoryRead).values({ userId, ticketKey, readAt }).run();
+  }
+
+  function remainingKeys() {
+    return testDb.select().from(newStoryRead).all().map((r) => r.ticketKey).sort();
+  }
+
+  it("deletes read-flags older than 6 weeks and keeps recent ones", async () => {
+    seedRead("user-a", "VPL-OLD", new Date(Date.now() - SIX_WEEKS - 3 * DAY).toISOString());
+    seedRead("user-a", "VPL-RECENT", new Date(Date.now() - 5 * DAY).toISOString());
+
+    const result = await cleanupReadStoryFlags();
+
+    expect((result as { deleted: number }).deleted).toBe(1);
+    expect(remainingKeys()).toEqual(["VPL-RECENT"]);
+  });
+
+  it("keeps a flag still inside the window and drops one just outside it", async () => {
+    seedRead("user-a", "VPL-INSIDE", new Date(Date.now() - (SIX_WEEKS - 2 * DAY)).toISOString());
+    seedRead("user-a", "VPL-OUTSIDE", new Date(Date.now() - (SIX_WEEKS + 2 * DAY)).toISOString());
+
+    await cleanupReadStoryFlags();
+
+    expect(remainingKeys()).toEqual(["VPL-INSIDE"]);
+  });
+
+  it("deletes per-user rows independently (keyed on read_at, not user)", async () => {
+    seedRead("user-a", "VPL-1", new Date(Date.now() - SIX_WEEKS - DAY).toISOString());
+    seedRead("user-b", "VPL-1", new Date(Date.now() - DAY).toISOString());
+
+    const result = await cleanupReadStoryFlags();
+
+    expect((result as { deleted: number }).deleted).toBe(1);
+    const rows = testDb.select().from(newStoryRead).all();
+    expect(rows).toHaveLength(1);
+    expect(rows[0].userId).toBe("user-b");
+  });
+
+  it("is a no-op when nothing is old enough", async () => {
+    seedRead("user-a", "VPL-1", new Date(Date.now() - DAY).toISOString());
+    const result = await cleanupReadStoryFlags();
+    expect((result as { deleted: number }).deleted).toBe(0);
+    expect(remainingKeys()).toEqual(["VPL-1"]);
   });
 });
 
