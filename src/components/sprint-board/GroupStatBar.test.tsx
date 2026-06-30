@@ -854,6 +854,9 @@ describe("GroupStatBar", () => {
       const aligned = screen.getByRole("checkbox", { name: "Select all items in this group" });
       expect(aligned.className).toContain("w-3.5");
       expect(aligned.className).not.toContain("w-5");
+      // The label zone carries the leading pad that aligns the glyph to a BoardRow
+      // checkbox (3px row-accent border + pl-4, minus GroupCard's px-3).
+      expect(aligned.parentElement?.className).toContain("pl-[calc(0.25rem+3px)]");
     });
   });
 

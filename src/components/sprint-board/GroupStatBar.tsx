@@ -390,10 +390,11 @@ export const GroupStatBar = memo(function GroupStatBar({
     <div className="@container flex w-full items-center gap-2">
       {/* Fixed-width label zone so the stats (item count onward) start at the same x
           across every group row, regardless of sprint name length (BRDG-239). When
-          aligning to the rows (BRDG-441), `pl-1` lifts the leading inset to the row's
-          `pl-4` equivalent (GroupCard already contributes `px-3`) so the checkbox glyph
-          shares the row checkbox's x. */}
-      <div className={`flex shrink-0 items-center gap-2 ${alignSelectAllToRows ? "pl-1" : ""} ${label ? `${labelWidthClass} min-w-0` : ""}`}>
+          aligning to the rows (BRDG-441), the leading pad lifts the checkbox glyph to
+          the row checkbox's x. A BoardRow checkbox sits at `3px row-accent border + pl-4`
+          from the card's content edge; GroupCard already gives this header `px-3`, so the
+          remainder is `(pl-4 - px-3) + 3px = 0.25rem + 3px`. */}
+      <div className={`flex shrink-0 items-center gap-2 ${alignSelectAllToRows ? "pl-[calc(0.25rem+3px)]" : ""} ${label ? `${labelWidthClass} min-w-0` : ""}`}>
         {/* Select-all-in-group checkbox: stops propagation so it never toggles the
             header's collapse. Mirrors the row checkbox visibility (hidden until the
             header is hovered, unless a selection is already active). When aligned, it
