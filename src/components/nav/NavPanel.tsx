@@ -301,7 +301,7 @@ function NavigationView({
                   onClick={onNewStory}
                   aria-label="New story"
                   title="New story"
-                  className="absolute right-0 top-1/2 grid h-7 w-7 -translate-y-1/2 place-items-center rounded-lg text-[var(--color-brand-300)] opacity-0 pointer-events-none transition-[opacity,background-color,transform] duration-150 cursor-pointer hover:bg-[var(--color-brand-500)]/14 active:scale-95 group-hover:opacity-100 group-hover:pointer-events-auto focus-visible:opacity-100 focus-visible:pointer-events-auto focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)]"
+                  className="absolute right-0 top-1/2 grid h-7 w-7 -translate-y-1/2 place-items-center rounded-lg text-[var(--color-brand-300)] opacity-0 pointer-events-none transition-[opacity,background-color,transform] duration-150 cursor-pointer hover:bg-[var(--color-brand-500)]/14 active:scale-[0.97] group-hover:opacity-100 group-hover:pointer-events-auto focus-visible:opacity-100 focus-visible:pointer-events-auto focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)]"
                 >
                   <Plus className="h-[15px] w-[15px]" strokeWidth={2} />
                 </button>
