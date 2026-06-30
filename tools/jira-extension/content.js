@@ -3,100 +3,117 @@
 // parse-key.js (loaded first in the manifest's content_scripts list).
 
 (function () {
-  const BUTTON_ID = "bridge-open-button";
-  const STYLE_ID = "bridge-open-button-style";
+  const HOST_ID = "bridge-open-button";
   const DEFAULT_PORT = 3101;
   const DEBOUNCE_MS = 200;
+  // Stable testid for the issue summary heading; the toolbar (+ / apps / AI
+  // buttons) sits in the row directly below it. Anchoring to the heading avoids
+  // Jira's hashed emotion class names, which change between releases.
+  const TITLE_SELECTOR = '[data-testid="issue.views.issue-base.foundation.summary.heading"]';
+  // Below this viewport y the toolbar is behind Jira's top nav; float instead.
+  const TOP_NAV_GUARD = 60;
 
+  let host = null;
   let debounceTimer = null;
 
   function currentKey() {
     return typeof resolveJiraKey === "function" ? resolveJiraKey(window.location) : null;
   }
 
-  // :hover/:focus-visible/:active can't live on an inline style attribute, so the
-  // button's interactive states are injected once as a stylesheet.
-  function ensureStyle() {
-    if (document.getElementById(STYLE_ID)) return;
-    const style = document.createElement("style");
-    style.id = STYLE_ID;
-    style.textContent = `
-#${BUTTON_ID} {
-  position: fixed;
-  right: 20px;
-  bottom: 20px;
-  z-index: 2147483647;
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-  padding: 10px 16px;
-  border: none;
-  border-radius: 10px;
-  background: #0e8e88;
-  color: #ffffff;
-  font: 600 13px/1 -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif;
-  letter-spacing: 0.01em;
-  cursor: pointer;
-  box-shadow: 0 6px 18px rgba(5, 64, 61, 0.28), 0 1px 2px rgba(5, 64, 61, 0.20);
-  transition: transform 120ms cubic-bezier(0.34, 1.56, 0.64, 1), background-color 120ms ease, box-shadow 120ms ease;
-}
-#${BUTTON_ID}:hover {
-  background: #0a736e;
-  transform: translateY(-1px);
-  box-shadow: 0 10px 24px rgba(5, 64, 61, 0.32), 0 1px 2px rgba(5, 64, 61, 0.20);
-}
-#${BUTTON_ID}:focus-visible {
-  outline: 2px solid #6dd4d1;
-  outline-offset: 2px;
-}
-#${BUTTON_ID}:active {
-  transform: translateY(0);
-  background: #075854;
-  box-shadow: 0 4px 12px rgba(5, 64, 61, 0.28);
-}
-#${BUTTON_ID}::before {
-  content: "";
-  width: 8px;
-  height: 8px;
-  border-radius: 50%;
-  background: #6dd4d1;
-}`;
-    document.documentElement.appendChild(style);
+  // The right edge + top of the issue-header toolbar cluster (the +, apps and AI
+  // buttons), found by walking the contiguous run of buttons just below the
+  // title. Returns null when the header/toolbar is not on the page. The cluster
+  // walk stops at the first big horizontal gap so far-right header actions (watch,
+  // share, ...) are excluded, and the button's own host is skipped to avoid a
+  // feedback loop where it keeps pushing its own anchor rightward.
+  function toolbarAnchor() {
+    const title = document.querySelector(TITLE_SELECTOR);
+    if (!title) return null;
+    const below = title.getBoundingClientRect().bottom;
+    const rects = Array.from(document.querySelectorAll("button"))
+      .map((b) => b.getBoundingClientRect())
+      .filter((r) => r.width > 0 && r.top > below - 6 && r.top < below + 60)
+      .sort((a, b) => a.left - b.left);
+    if (!rects.length) return null;
+    let right = rects[0].right;
+    const top = rects[0].top;
+    const height = rects[0].height;
+    for (let i = 1; i < rects.length; i++) {
+      if (rects[i].left - right <= 20) right = Math.max(right, rects[i].right);
+      else break;
+    }
+    return { right, top, height };
+  }
+
+  function ensureHost() {
+    if (host && document.body.contains(host)) return host;
+    host = document.createElement("div");
+    host.id = HOST_ID;
+    host.style.cssText = "position:fixed;z-index:2147483646;margin:0;padding:0;border:0";
+    // Shadow DOM isolates the button from Jira's aggressive global `button {}`
+    // rules (which otherwise force display/width and break the layout).
+    const shadow = host.attachShadow({ mode: "open" });
+    shadow.innerHTML =
+      "<style>" +
+      ":host{all:initial}" +
+      "button{display:inline-flex;align-items:center;gap:7px;height:32px;padding:0 13px;" +
+      "border:1px solid #6dd4d1;border-radius:8px;background:#0e8e88;color:#fff;" +
+      'font:600 13px/1 -apple-system,BlinkMacSystemFont,"Segoe UI",system-ui,sans-serif;' +
+      "letter-spacing:.01em;cursor:pointer;white-space:nowrap;" +
+      "box-shadow:0 2px 8px rgba(5,64,61,.28);" +
+      "transition:background-color 120ms ease,transform 120ms cubic-bezier(.34,1.56,.64,1),box-shadow 120ms ease}" +
+      "button:hover{background:#0a736e;transform:translateY(-1px);box-shadow:0 6px 16px rgba(5,64,61,.32)}" +
+      "button:focus-visible{outline:2px solid #6dd4d1;outline-offset:2px}" +
+      "button:active{background:#075854;transform:translateY(0)}" +
+      "i{width:7px;height:7px;border-radius:50%;background:#6dd4d1}" +
+      "</style>" +
+      '<button type="button"><i></i>Open in Bridge</button>';
+    const btn = shadow.querySelector("button");
+    btn.addEventListener("click", () => openInBridge(currentKey()));
+    document.body.appendChild(host);
+    return host;
   }
 
   function openInBridge(key) {
     if (!key) return;
     chrome.storage.sync.get({ port: DEFAULT_PORT }, (res) => {
-      const port = res && res.port ? res.port : DEFAULT_PORT;
+      const port = (res && res.port) || DEFAULT_PORT;
       window.open(`http://localhost:${port}/tickets/${key}`, "_blank", "noopener");
     });
   }
 
-  function render(key) {
-    ensureStyle();
-    let btn = document.getElementById(BUTTON_ID);
-    if (!btn) {
-      btn = document.createElement("button");
-      btn.id = BUTTON_ID;
-      btn.type = "button";
-      btn.textContent = "Open in Bridge";
-      // Read the key at click time so SPA updates never fire a stale target.
-      btn.addEventListener("click", () => openInBridge(btn.dataset.key));
-      document.body.appendChild(btn);
+  // Place the button next to the header toolbar when it is found and clear of
+  // Jira's top nav; otherwise fall back to a fixed bottom-right floating button so
+  // it is always reachable even when Jira's DOM shifts.
+  function place(h) {
+    const a = toolbarAnchor();
+    if (a && a.top >= TOP_NAV_GUARD) {
+      h.style.top = `${a.top}px`;
+      h.style.left = `${a.right + 8}px`;
+      h.style.right = "auto";
+      h.style.bottom = "auto";
+    } else {
+      h.style.top = "auto";
+      h.style.left = "auto";
+      h.style.right = "20px";
+      h.style.bottom = "20px";
     }
-    btn.dataset.key = key;
-    btn.title = `Open ${key} in Bridge`;
   }
 
-  function removeButton() {
-    const btn = document.getElementById(BUTTON_ID);
-    if (btn) btn.remove();
+  function removeHost() {
+    if (host) host.remove();
+    host = null;
   }
 
   function sync() {
     const key = currentKey();
-    if (key) render(key);
-    else removeButton();
+    if (key) {
+      const h = ensureHost();
+      h.shadowRoot.querySelector("button").title = `Open ${key} in Bridge`;
+      place(h);
+    } else {
+      removeHost();
+    }
   }
 
   function scheduleSync() {
@@ -119,6 +136,13 @@
   }
 
   patchHistory();
+  // Re-place on scroll/resize so the button stays glued to the toolbar. Capture
+  // phase catches Jira's inner scroll containers, not just the window.
+  const reposition = () => {
+    if (host) place(host);
+  };
+  window.addEventListener("scroll", reposition, true);
+  window.addEventListener("resize", reposition, true);
 
   const start = () => {
     new MutationObserver(scheduleSync).observe(document.body, { childList: true, subtree: true });

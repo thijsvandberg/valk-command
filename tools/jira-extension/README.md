@@ -22,10 +22,14 @@ from Bridge's lint/typecheck/build.
 
 - `parse-key.js` resolves the current Jira key from the URL (`selectedIssue` query
   param, `/browse/<KEY>`, or a generic `PROJECT-123` match). Pure and unit-tested.
-- `content.js` injects a fixed bottom-right button, reads the configured port from
-  `chrome.storage.sync`, and opens `http://localhost:<port>/tickets/<KEY>` in a new
-  tab. It re-detects the key on Jira's SPA navigations (patched `history` + debounced
-  `MutationObserver`) and removes the button on non-ticket pages.
+- `content.js` injects the button into the issue header, next to the +/apps/AI
+  action buttons under the title (anchored by tracking that toolbar's position; it
+  lives in a Shadow DOM so Jira's global CSS can't touch it). If that toolbar can't
+  be found it falls back to a fixed bottom-right floating button. It reads the
+  configured port from `chrome.storage.sync` and opens
+  `http://localhost:<port>/tickets/<KEY>` in a new tab, re-detects the key on Jira's
+  SPA navigations (patched `history` + debounced `MutationObserver`), repositions on
+  scroll/resize, and removes the button on non-ticket pages.
 - `popup.html` / `popup.js` store the port.
 
 ## Manual verification
@@ -34,7 +38,8 @@ Automated coverage is limited to the key parser (`parse-key.test.js`, run via
 `npm run test`). The DOM/extension glue is verified manually:
 
 1. Load unpacked, then open a ticket: `https://new-story.atlassian.net/browse/VPL-47093`.
-   The "Open in Bridge" button appears bottom-right.
+   The "Open in Bridge" button appears in the header, next to the +/apps/AI buttons
+   under the title.
 2. Click it: a new tab opens `http://localhost:<port>/tickets/VPL-47093`.
 3. Navigate to another issue without reloading (click a linked ticket, or use a board
    and select a different card). The button stays and targets the new key.
