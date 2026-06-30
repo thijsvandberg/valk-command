@@ -24,7 +24,9 @@ export function HistoryApp() {
 
   return (
     <div className="flex h-full flex-col overflow-y-auto">
-      <TicketHistory ticket={writer.ticketData} embedded />
+      {/* The editor reads from session state, not local-edits, so feed the restored
+          content straight into the working draft to refresh it immediately. */}
+      <TicketHistory ticket={writer.ticketData} embedded onRestored={writer.onDraftChange} />
     </div>
   );
 }

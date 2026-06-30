@@ -135,7 +135,7 @@ Confirmation reuses `ConfirmDialog` (`src/components/shared/ConfirmDialog.tsx`).
 - [x] The single-version preview shows a "Restore this version" action next to Compare. <!-- VersionPreview.tsx header -->
 - [x] Restoring loads the version's content into the editable local draft via the existing local-edits path (does not write to Jira). <!-- TicketHistory.tsx doRestore -> tickets.saveLocalEdit -->
 - [x] After restoring in the ticket single view, the content view shows the restored draft (switches to Content tab). <!-- TicketTabContent.tsx:430 onConflictResolved (unchanged) -->
-- [ ] After restoring in Story Writer, the editor shows the restored draft. <!-- HistoryApp.tsx passes onRestored={writer.onDraftChange} -->
+- [x] After restoring in Story Writer, the editor shows the restored draft. <!-- HistoryApp.tsx passes onRestored={writer.onDraftChange} -->
 - [x] A confirmation is shown only when an unsaved local draft exists that differs from the version being restored; otherwise restore happens directly. <!-- TicketHistory.tsx handleRestore, compares the label==="draft" row -->
 - [x] The Restore action is hidden/disabled on the active local-draft version (it is already the working copy). <!-- VersionPreview.tsx, version.label === "draft" -->
 - [x] The existing Compare-view "Revert to v{X}" button still works unchanged. <!-- DiffViewer.tsx:243, handleRevertTo left intact -->
@@ -144,7 +144,7 @@ Confirmation reuses `ConfirmDialog` (`src/components/shared/ConfirmDialog.tsx`).
 - [x] Preview renders the Restore button and clicking it calls saveLocalEdit with the version's content. <!-- src/components/ticket-detail/VersionPreview.test.tsx -->
 - [x] TicketHistory restore: direct restore when no differing draft; confirm step when a differing draft exists. <!-- src/components/ticket-detail/TicketHistory.test.tsx -->
 - [x] Restore is hidden/disabled on the local-draft version. <!-- VersionPreview.test.tsx -->
-- [ ] HistoryApp passes an onRestored that triggers an editor refresh in Story Writer. <!-- src/components/story-writer/panes/apps/HistoryApp.test.tsx (new) -->
+- [x] HistoryApp passes an onRestored that triggers an editor refresh in Story Writer. <!-- src/components/story-writer/panes/apps/HistoryApp.test.tsx -->
 
 ## Related
 - Builds on the existing Compare/diff `Revert to v{X}` flow (`DiffViewer.tsx`, `TicketHistory.handleRevertTo`).
