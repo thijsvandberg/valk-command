@@ -54,16 +54,19 @@ Non-goals: changing `@/lib/jira-client` itself; collapsing tests that mock jira-
 
 ## Implementation Plan
 
-1. **A1** — `tools/scripts/run-tests.sh` lock wrapper; wire `npm run test` and the `PostToolUse` hook to it.
-2. **A2** — `vitest.config.ts`: drop `bail`, add worker cap.
-3. **B1** — completeness guard test (red until B2 lands).
-4. **B2** — migrate the 51 inline mocks to `createJiraClientMock`, file by file; guard goes green.
+Order is chosen to avoid a self-referential deadlock: the currently-loaded PostToolUse hook fires `npm run test` on every `.ts` edit this session and cannot be reloaded mid-session, so all `.ts`-heavy work happens while `npm run test` is still plain `vitest run`, and the test-runner plumbing is swapped **last**.
+
+1. **A2 — `vitest.config.ts`**: remove `bail`, add `poolOptions.forks.maxForks` (start at 4). Config-only; old hook still runs plain `vitest run`.
+2. **Extend the factory** `src/test/mocks/jira-client.ts`: add the **7** real exports it currently omits (`redactJiraPath`, `_resetRateWarn`, `_requestTimestamps`, `_noteRateLimitApproaching`, `issuePath`, `selectPrimarySprint`, `JiraClient`) as inert/safe stubs; make `jiraClient.isLive` a writable data property (not a getter) so runtime reassignment in tests works; widen `overrides` to accept top-level helper overrides (not just `jiraClient`/`isLive`).
+3. **B2 — migrate the 52 inline-mock files** to `createJiraClientMock({...})` in directory batches (`api/jira/*`, `api/tickets/**`, `api/*`, `lib/*`, `services/*`); the 5 field-const files + `ticket-detail-builder.test.ts` (custom `undefined`/fake-field values) get a careful batch. One scoped `npx vitest run <batch>` per batch, never two runs at once.
+4. **B1 — completeness guard** `src/test/mocks/jira-client.guard.test.ts`: dynamic `import * as real` superset check (factory keys ⊇ every runtime export, underscore hooks included); no instance-method reflection. Plus the **AC5 source-scan guard** (every `*.test.*` that mocks `@/lib/jira-client` references `createJiraClientMock`, explicit `ALLOWED` exceptions).
+5. **A1 — plumbing, LAST**: `tools/scripts/run-tests.sh` (lock `/tmp/valk-vitest.lock` — distinct name avoids this-session reentrancy; `skip` mode for hook, `wait` mode for manual; mkdir lock, stale-clear >1min, exit-code passthrough); repoint `package.json` `"test"` → wrapper `wait`; rewrite the `.claude/settings.json` hook → wrapper `skip` with `vitest related <edited file>` + full-suite fallback. After this, make no further `.ts` edits; run final verify as a single manual run.
 
 ## Acceptance Criteria
 
 - [ ] A hook-triggered test run and a manual `npm run test` cannot run two `vitest` processes at once (both serialize through one lock). <!-- tools/scripts/run-tests.sh + .claude/settings.json:53 + package.json:14 -->
-- [ ] A failing full run reports all failures, not the first five. <!-- vitest.config.ts: bail removed/raised -->
-- [ ] Heavy jsdom files no longer OOM/hang a full local run on the 16GB machine. <!-- vitest.config.ts: worker cap -->
+- [x] A failing full run reports all failures, not the first five. <!-- vitest.config.ts: bail removed -->
+- [x] Heavy jsdom files no longer OOM/hang a full local run on the 16GB machine. <!-- vitest.config.ts: maxWorkers: 4 (vitest 4 top-level option; poolOptions.forks shape changed) -->
 - [ ] Adding a new export to `@/lib/jira-client` fails a single named guard test that points at `src/test/mocks/jira-client.ts`, and no other test file. <!-- src/test/mocks/jira-client-guard.test.ts -->
 - [ ] Every test file that mocks `@/lib/jira-client` uses `createJiraClientMock` (zero remaining roll-their-own inline mocks). <!-- grep -rln 'vi.mock("@/lib/jira-client"' src | xargs grep -L createJiraClientMock  → empty -->
 

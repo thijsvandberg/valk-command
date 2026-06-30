@@ -9,7 +9,11 @@ export default defineConfig({
     setupFiles: ["./vitest.setup.ts"],
     include: ["**/*.test.ts", "**/*.test.tsx", "**/*.test.js"],
     exclude: ["node_modules", "deleted"],
-    bail: 5,
+    // No `bail`: a failing run must report every failure so session-vs-parallel
+    // breakage can be attributed (BRDG-450). bail:5 repeatedly masked the true
+    // blast radius (BRDG-338/320/343/438).
+    // Cap workers so heavy jsdom files cannot exhaust a 16GB machine (BRDG-343).
+    maxWorkers: 4,
     coverage: {
       provider: "v8",
       reporter: ["text-summary", "json-summary"],
