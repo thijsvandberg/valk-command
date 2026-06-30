@@ -63,6 +63,18 @@ vi.mock("@clerk/nextjs", () => ({
   useUser: () => ({ user: { firstName: "Test", lastName: "User", imageUrl: null } }),
 }));
 
+// Expose the tooltip content so we can assert the exact date hides behind the hover.
+vi.mock("@/components/shared/Tooltip", () => ({
+  Tooltip: ({ content, children }: { content: React.ReactNode; children: React.ReactNode }) => (
+    <span data-tooltip={typeof content === "string" ? content : undefined}>{children}</span>
+  ),
+}));
+
+vi.mock("@/lib/date-utils", () => ({
+  relativeDate: () => "2h ago",
+  formatAbsoluteDate: () => "30 Jun 2026, 10:03",
+}));
+
 function makeJiraComment(overrides: Partial<JiraComment> = {}): JiraComment {
   return {
     id: "jc-1",
@@ -284,6 +296,19 @@ describe("CommentsSection", () => {
     const comments = [makeJiraComment({ authorName: "John Smith" })];
     renderSection(comments);
     expect(screen.getByText("John Smith")).toBeInTheDocument();
+  });
+
+  it("renders the Jira comment timestamp as relative time", () => {
+    renderSection([makeJiraComment({ createdAt: "2026-06-30T10:03:29Z" })]);
+    expect(screen.getByText("2h ago")).toBeInTheDocument();
+  });
+
+  it("exposes the exact Jira comment date via a tooltip", () => {
+    renderSection([makeJiraComment({ createdAt: "2026-06-30T10:03:29Z" })]);
+    expect(screen.getByText("2h ago").closest("[data-tooltip]")).toHaveAttribute(
+      "data-tooltip",
+      "30 Jun 2026, 10:03",
+    );
   });
 
   it("shows 'No Jira comments' when none exist", () => {

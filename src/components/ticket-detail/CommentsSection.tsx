@@ -5,6 +5,8 @@ import { useUser } from "@clerk/nextjs";
 import type { TicketDetail } from "@/types/ticket";
 import { Trash2, Flag, Send, Check, User } from "lucide-react";
 import { SectionHeader } from "@/components/shared/SectionHeader";
+import { Tooltip } from "@/components/shared/Tooltip";
+import { relativeDate, formatAbsoluteDate } from "@/lib/date-utils";
 import { SECTION_KEYS } from "@/lib/section-collapse-store";
 import { Button } from "@/components/ui/Button";
 import { tickets } from "@/lib/api-client";
@@ -229,7 +231,9 @@ function JiraCommentsSection({
               <div className="min-w-0 flex-1">
                 <div className="flex items-center gap-2">
                   <span className="text-body-sm font-medium text-text-secondary">{comment.authorName}</span>
-                  <span className="text-caption text-text-muted">{new Date(comment.createdAt).toLocaleString("nl-NL", { hour12: false })}</span>
+                  <Tooltip content={formatAbsoluteDate(comment.createdAt)}>
+                    <span className="text-caption text-text-muted">{relativeDate(comment.createdAt)}</span>
+                  </Tooltip>
                   {isFlagComment && (
                     <Flag size={11} strokeWidth={1.5} className="text-[var(--color-status-error)]" fill="var(--color-status-error)" />
                   )}
