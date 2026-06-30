@@ -324,7 +324,7 @@ export function EpicPickerBody({
           value={query}
           onChange={(e) => { setQuery(e.target.value); handleSearchChange(e.target.value); }}
           placeholder="Search epics..."
-          className="flex-1 bg-transparent text-body-sm text-text-secondary placeholder:text-text-muted focus:outline-none focus-visible:ring-1 focus-visible:ring-inset focus-visible:ring-[var(--color-brand-500)]/50"
+          className="flex-1 bg-transparent text-body-sm text-text-secondary placeholder:text-text-muted focus:outline-none"
         />
         {ticketKey && (
           <button type="button" onClick={handleSuggestEpic} disabled={suggesting} title="Suggest epic with AI" aria-label="Suggest epic with AI" className="shrink-0 rounded p-0.5 text-[var(--color-icon-epic)] cursor-pointer hover:text-[var(--color-icon-epic-hover)] hover:bg-[color-mix(in_srgb,var(--color-icon-epic)_8%,transparent)] focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-[var(--color-brand-400)] disabled:opacity-40" style={{ transition: "color 0.15s ease, background-color 0.15s ease" }}>

@@ -362,8 +362,7 @@ export function SprintEditModal({ sprint, tickets, onClose, showToast, autoSugge
               placeholder="Sprint name"
               className="w-full rounded-lg border border-border-default bg-surface-elevated px-3 py-2 text-body-sm text-text-primary
                 placeholder:text-text-muted
-                focus:border-[var(--color-brand-500)]/50 focus:outline-none focus:ring-1 focus:ring-[var(--color-brand-500)]/30
-                transition-colors duration-100"
+                focus:border-[var(--color-brand-500)]/50 focus:outline-none transition-colors duration-100"
             />
           </label>
 
@@ -450,8 +449,7 @@ export function SprintEditModal({ sprint, tickets, onClose, showToast, autoSugge
               rows={3}
               className="w-full rounded-lg border border-border-default bg-surface-elevated px-3 py-2 text-body-sm leading-relaxed text-text-primary
                 placeholder:text-text-muted resize-none
-                focus:border-[var(--color-brand-500)]/50 focus:outline-none focus:ring-1 focus:ring-[var(--color-brand-500)]/30
-                transition-colors duration-100"
+                focus:border-[var(--color-brand-500)]/50 focus:outline-none transition-colors duration-100"
             />
           </div>
 

@@ -171,7 +171,7 @@ function SearchPopover({
           value={query}
           onChange={(e) => setQuery(e.target.value)}
           placeholder="Search Confluence pages..."
-          className="flex-1 bg-transparent text-body-lg text-text-secondary placeholder:text-text-muted focus:outline-none focus-visible:ring-1 focus-visible:ring-inset focus-visible:ring-[var(--color-brand-500)]/50"
+          className="flex-1 bg-transparent text-body-lg text-text-secondary placeholder:text-text-muted focus:outline-none"
         />
         {isLoading && (
           <Loader2 size={12} strokeWidth={1.5} className="shrink-0 animate-spin text-text-muted" />

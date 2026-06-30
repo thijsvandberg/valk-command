@@ -121,7 +121,7 @@ export default function PeoplePage() {
           value={query}
           onChange={(e) => setQuery(e.target.value)}
           placeholder="Search people..."
-          className="flex-1 bg-transparent text-body-lg text-text-secondary placeholder:text-text-muted focus:outline-none focus-visible:ring-1 focus-visible:ring-inset focus-visible:ring-[var(--color-brand-500)]/50"
+          className="flex-1 bg-transparent text-body-lg text-text-secondary placeholder:text-text-muted focus:outline-none"
         />
       </div>
 

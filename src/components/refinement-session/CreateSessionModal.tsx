@@ -79,7 +79,7 @@ function CreateSessionForm({
           }
         }}
         placeholder="Name (optional)"
-        className="mt-4 w-full rounded-lg border border-border-default bg-overlay-subtle px-3 py-2 text-body-lg text-text-primary placeholder:text-text-muted outline-none focus:border-[var(--color-brand-500)] focus:ring-1 focus:ring-[var(--color-brand-500)]/30"
+        className="mt-4 w-full rounded-lg border border-border-default bg-overlay-subtle px-3 py-2 text-body-lg text-text-primary placeholder:text-text-muted outline-none focus:border-[var(--color-brand-500)]/40"
         style={{ transition: "border-color 0.15s ease, box-shadow 0.15s ease" }}
         data-testid="create-session-name-input"
       />

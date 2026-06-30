@@ -36,7 +36,7 @@ export function SearchModalHeader({
         value={mode === "local" ? query : (jiraQuery || query)}
         onChange={(e) => { if (mode === "local") setQuery(e.target.value); else setJiraQuery(e.target.value); }}
         placeholder={mode === "local" ? "Search tickets..." : "Search Jira..."}
-        className="flex-1 bg-transparent text-heading-sm text-text-primary placeholder-text-muted focus:outline-none focus-visible:ring-1 focus-visible:ring-inset focus-visible:ring-[var(--color-brand-500)]/50"
+        className="flex-1 bg-transparent text-heading-sm text-text-primary placeholder-text-muted focus:outline-none"
       />
       <div className="flex items-center gap-0.5 rounded-full p-0.5" style={{ backgroundColor: "var(--color-overlay-default)" }}>
         <button type="button" onClick={() => { setMode("local"); setActiveIdx(-1); }} className="rounded-full px-3 py-1 text-body-sm font-medium cursor-pointer focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-[var(--color-brand-400)]" style={{ backgroundColor: mode === "local" ? "var(--color-brand-500)" : "transparent", color: mode === "local" ? "#fff" : "var(--color-text-tertiary)", transition: "background-color 100ms, color 100ms" }}>Local</button>

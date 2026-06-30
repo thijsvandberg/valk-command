@@ -309,7 +309,7 @@ function PickerSearch({ placeholder = "Search...", actions, onChange }: SearchPr
           onChange?.(e.target.value);
         }}
         placeholder={placeholder}
-        className="flex-1 bg-transparent text-body-sm text-text-secondary placeholder:text-text-muted focus:outline-none focus-visible:ring-1 focus-visible:ring-inset focus-visible:ring-[var(--color-brand-500)]/50"
+        className="flex-1 bg-transparent text-body-sm text-text-secondary placeholder:text-text-muted focus:outline-none"
       />
       {actions}
     </div>

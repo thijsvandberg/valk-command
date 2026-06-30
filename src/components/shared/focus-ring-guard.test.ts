@@ -2,9 +2,12 @@ import { describe, it, expect } from "vitest";
 import { readFileSync, readdirSync } from "fs";
 import { join } from "path";
 
-// BRDG-420 guard: every interactive field that kills the native outline must
-// supply its own focus indicator, so keyboard focus is never invisible. Scans the
-// real UI (dev/exploration sandboxes and test files excluded).
+// Focus-styling guard. Non-text interactive controls (buttons, clickable rows,
+// custom widgets) that kill the native outline must still declare their own focus
+// indicator, so keyboard focus is never invisible. Text-editing fields are exempt:
+// the native text caret already marks focus, and the PO asked for no extra
+// ring/glow around inputs, so they intentionally carry only `focus:outline-none`
+// (or a subtle border). Scans the real UI (dev/exploration and test files excluded).
 
 function walk(dir: string): string[] {
   const out: string[] = [];
@@ -24,12 +27,20 @@ function classNameChunks(src: string): string[] {
   return src.match(/className=(?:"[^"]*"|\{`[^`]*`\}|\{[^}]*\})/g) ?? [];
 }
 
-describe("BRDG-420: no focusless focus:outline-none", () => {
-  it("every focus:outline-none className also declares a focus ring/border", () => {
+// A text-editing field shows focus via the native caret, so it needs no CSS ring.
+// `placeholder` in the class list is the reliable static signal for input/textarea.
+const isTextField = (chunk: string) => chunk.includes("placeholder");
+
+describe("focus guard: non-text controls keep a focus indicator", () => {
+  it("every focus:outline-none className declares an indicator or is a text field", () => {
     const offenders: string[] = [];
     for (const file of [...walk("src/components"), ...walk("src/app")]) {
       for (const chunk of classNameChunks(readFileSync(file, "utf8"))) {
-        if (chunk.includes("focus:outline-none") && !INDICATOR.test(chunk)) {
+        if (
+          chunk.includes("focus:outline-none") &&
+          !INDICATOR.test(chunk) &&
+          !isTextField(chunk)
+        ) {
           offenders.push(`${file}`);
         }
       }
@@ -38,17 +49,17 @@ describe("BRDG-420: no focusless focus:outline-none", () => {
   });
 });
 
-describe("BRDG-420: canonical field recipe carries a visible focus ring", () => {
-  it("TextInput and TextArea use focus ring + brand border + disabled state", () => {
+describe("canonical field recipe: subtle focus border, no ring/glow", () => {
+  it("TextInput/TextArea/Select use a subtle brand border, a disabled state, and no ring", () => {
     for (const rel of [
       "src/components/shared/TextInput.tsx",
       "src/components/shared/TextArea.tsx",
       "src/components/shared/Select.tsx",
     ]) {
       const src = readFileSync(join(process.cwd(), rel), "utf8");
-      expect(src).toContain("focus:ring-1");
-      expect(src).toContain("focus:border-[var(--color-brand-500)]");
+      expect(src).toContain("focus:border-[var(--color-brand-500)]/40");
       expect(src).toContain("disabled:opacity-50");
+      expect(src).not.toContain("focus:ring");
     }
   });
 });

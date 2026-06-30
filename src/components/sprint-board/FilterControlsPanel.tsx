@@ -398,7 +398,7 @@ export function FilterControlsPanel(props: FilterControlsPanelProps) {
                   value={search}
                   onChange={(e) => setSearch(e.target.value)}
                   placeholder={active.searchPlaceholder ?? "Search..."}
-                  className="min-w-0 flex-1 bg-transparent text-body-sm text-text-primary placeholder:text-text-muted focus:outline-none focus-visible:ring-1 focus-visible:ring-inset focus-visible:ring-[var(--color-brand-500)]/50"
+                  className="min-w-0 flex-1 bg-transparent text-body-sm text-text-primary placeholder:text-text-muted focus:outline-none"
                 />
                 {search && (
                   <button

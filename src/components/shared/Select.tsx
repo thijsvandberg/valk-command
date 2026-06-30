@@ -9,8 +9,8 @@ interface SelectProps
 
 /**
  * Canonical form select (BRDG-420). Shares the TextInput/TextArea recipe — one
- * border, one surface, one radius, the same visible focus ring — so selects stop
- * being hand-rolled per form. A native <select> keeps it accessible by default;
+ * border, one surface, one radius, the same subtle focus border (no ring) — so
+ * selects stop being hand-rolled per form. A native <select> keeps it accessible;
  * the chevron is decorative.
  */
 export const Select = forwardRef<HTMLSelectElement, SelectProps>(
@@ -24,7 +24,7 @@ export const Select = forwardRef<HTMLSelectElement, SelectProps>(
       <div className="relative">
         <select
           ref={ref}
-          className={`w-full appearance-none rounded-lg border border-border-strong bg-overlay-subtle text-text-primary focus:outline-none focus:border-[var(--color-brand-500)] focus:ring-1 focus:ring-[var(--color-brand-500)]/30 disabled:cursor-not-allowed disabled:opacity-50 transition-[color,background-color,border-color,box-shadow] duration-150 ${sizeClass}${className ? ` ${className}` : ""}`}
+          className={`w-full appearance-none rounded-lg border border-border-strong bg-overlay-subtle text-text-primary focus:outline-none focus:border-[var(--color-brand-500)]/40 disabled:cursor-not-allowed disabled:opacity-50 transition-colors duration-150 ${sizeClass}${className ? ` ${className}` : ""}`}
           {...rest}
         >
           {children}

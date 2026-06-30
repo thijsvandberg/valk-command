@@ -14,7 +14,7 @@ describe("Select", () => {
     expect(select.value).toBe("b");
   });
 
-  it("carries the canonical recipe with a visible focus ring", () => {
+  it("carries the canonical recipe with a subtle focus border, no ring", () => {
     render(
       <Select aria-label="Pick">
         <option value="a">A</option>
@@ -22,8 +22,8 @@ describe("Select", () => {
     );
     const select = screen.getByRole("combobox");
     expect(select.className).toContain("border-border-strong");
-    expect(select.className).toContain("focus:ring-1");
-    expect(select.className).toContain("focus:border-[var(--color-brand-500)]");
+    expect(select.className).toContain("focus:border-[var(--color-brand-500)]/40");
+    expect(select.className).not.toContain("focus:ring");
     expect(select.className).toContain("disabled:opacity-50");
   });
 
