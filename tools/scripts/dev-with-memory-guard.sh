@@ -84,6 +84,9 @@ trap cleanup INT TERM
 echo "[dev-guard] watching :$PORT — restart above ${THRESHOLD_MB}MB, checking every ${CHECK_INTERVAL}s (flap-stop under ${FLAP_WINDOW}s)"
 log_event "guard started (limit=${THRESHOLD_MB}MB interval=${CHECK_INTERVAL}s flap-window=${FLAP_WINDOW}s)"
 
+# Probe VRW once at startup; warn-and-continue so Bridge boots even if it is down.
+bash "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/check-vrw.sh" || true
+
 while true; do
   port_listeners | xargs kill -9 2>/dev/null
   next dev --turbopack --port "$PORT" &

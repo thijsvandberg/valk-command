@@ -34,6 +34,9 @@ LOG_FILE="$LOG_DIR/prod-$STAMP.log"
 # hold :PORT and the new one would fail with EADDRINUSE.
 lsof -ti:"$PORT" | xargs kill -9 2>/dev/null
 
+# Probe VRW once at startup; warn-and-continue so Bridge boots even if it is down.
+bash "$ROOT/tools/scripts/check-vrw.sh" || true
+
 echo "[start-prod] logging to $LOG_FILE (keeping last $KEEP, max ${MAX_AGE_DAYS}d)"
 echo "[start-prod] $(date '+%Y-%m-%d %H:%M:%S') starting next start --port $PORT" >"$LOG_FILE"
 

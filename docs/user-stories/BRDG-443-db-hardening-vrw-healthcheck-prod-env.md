@@ -76,7 +76,7 @@ A (Bridge db + test) → B (Bridge script + wiring) → C (VRW, separate repo/co
 
 - [x] The DB connection sets a `busy_timeout`; the `SQLITE_BUSY` errors seen in prod logs no longer occur under normal concurrent use. <!-- src/db/index.ts pragma busy_timeout -->
 - [x] Auto-migration on boot still runs with no manual step. <!-- src/db/index.ts:33 migrate() unchanged -->
-- [ ] `npm run dev` and `npm run start` probe VRW `/health` on boot and, when unreachable, print a clear "start VRW yourself" message but still boot; Bridge never starts/supervises VRW. <!-- tools/scripts/check-vrw.sh from both scripts -->
+- [x] `npm run dev` and `npm run start` probe VRW `/health` on boot and, when unreachable, print a clear "start VRW yourself" message but still boot; Bridge never starts/supervises VRW. <!-- tools/scripts/check-vrw.sh from both scripts; verified manually: reachable=exit0, unreachable=warn+exit1, caller `|| true` continues, missing-env falls back to :3001 -->
 - [ ] VRW prod loads its real config (no `PORT=1000` / `API_KEY=dev-key` fallback). <!-- VRW prod launch uses --env-file -->
 - [ ] `vrw:build` compiles with `tsc` and zero errors; VRW prod boots, `/health` returns `status: ok`, and SSE / persistent sessions / task-queue / scheduler all work compiled. <!-- VRW build + smoke + vitest -->
 
