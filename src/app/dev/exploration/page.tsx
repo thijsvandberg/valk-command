@@ -23,6 +23,15 @@ const ICON = "h-5 w-5";
 
 const EXPLORATIONS: Exploration[] = [
   {
+    slug: "inbox-counts",
+    title: "Inbox counts & checkbox alignment",
+    blurb:
+      "Two inbox fixes. (1) The group-header 'select all' checkbox and the row checkboxes don't sit on one vertical line (header = w-5 button at px-3, rows = w-3.5 gutter at pl-4); 'Today' vs 'Aligned' cards with a guide line show them sharing one x. (2) The unclear `9 · 4 new` count pills, replaced by a control that makes filtering AND selecting obvious — three live directions: A segmented All/New + Select-all (recommended), B underline filter tabs, C labelled counts + 'Select all new'. Follow-up on BRDG-438.",
+    status: "Exploration",
+    ticket: "BRDG-438",
+    icon: <ListChecks className={ICON} strokeWidth={1.5} />,
+  },
+  {
     slug: "subtask-icon",
     title: "Subtask icon — distinct from task",
     blurb:
