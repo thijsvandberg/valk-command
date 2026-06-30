@@ -1,5 +1,6 @@
 // @vitest-environment node
 import { describe, it, expect, vi, beforeEach } from "vitest";
+import { createJiraClientMock } from "@/test/mocks";
 import { createTestDb } from "@/db/test-utils";
 import type { BetterSQLite3Database } from "drizzle-orm/better-sqlite3";
 import type * as schema from "@/db/schema";
@@ -16,7 +17,7 @@ vi.mock("@/db", () => ({
 const mockGetDescriptionChangelog = vi.fn();
 const mockIsLive = vi.fn(() => true);
 
-vi.mock("@/lib/jira-client", () => ({
+vi.mock("@/lib/jira-client", () => createJiraClientMock({
   jiraClient: {
     getDescriptionChangelog: (...args: unknown[]) => mockGetDescriptionChangelog(...args),
     get isLive() {

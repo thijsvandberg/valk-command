@@ -1,5 +1,6 @@
 // @vitest-environment node
 import { describe, it, expect, vi, beforeEach } from "vitest";
+import { createJiraClientMock } from "@/test/mocks";
 import { createTestDb } from "@/db/test-utils";
 import type { BetterSQLite3Database } from "drizzle-orm/better-sqlite3";
 import type * as schema from "@/db/schema";
@@ -19,7 +20,7 @@ vi.mock("@/lib/activity-logger", () => ({ logActivity: vi.fn().mockResolvedValue
 vi.mock("@/lib/sprint-membership", () => ({ syncTicketSprints: vi.fn() }));
 vi.mock("@/lib/cache", () => ({ cache: { invalidate: vi.fn() } }));
 
-vi.mock("@/lib/jira-client", () => ({
+vi.mock("@/lib/jira-client", () => createJiraClientMock({
   jiraClient: {
     createIssue: vi.fn().mockResolvedValue({ key: "VPL-999" }),
     moveToSprint: vi.fn().mockResolvedValue(undefined),

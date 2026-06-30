@@ -1,5 +1,6 @@
 // @vitest-environment node
 import { describe, it, expect, vi, beforeEach } from "vitest";
+import { createJiraClientMock } from "@/test/mocks";
 import { createTestDb } from "@/db/test-utils";
 import type { BetterSQLite3Database } from "drizzle-orm/better-sqlite3";
 import type * as schema from "@/db/schema";
@@ -24,7 +25,7 @@ vi.mock("@/lib/adf-to-markdown", () => ({
   adfToMarkdown: vi.fn().mockReturnValue("converted markdown"),
 }));
 
-vi.mock("@/lib/jira-client", () => ({
+vi.mock("@/lib/jira-client", () => createJiraClientMock({
   jiraClient: {
     getComments: vi.fn().mockResolvedValue([]),
   },

@@ -1,5 +1,6 @@
 // @vitest-environment node
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
+import { createJiraClientMock } from "@/test/mocks";
 import { createTestDb } from "@/db/test-utils";
 import type { BetterSQLite3Database } from "drizzle-orm/better-sqlite3";
 import type * as schema from "@/db/schema";
@@ -9,7 +10,7 @@ const { mockGetIssuesByKeys, mockGetIssue } = vi.hoisted(() => ({
   mockGetIssue: vi.fn(),
 }));
 
-vi.mock("@/lib/jira-client", () => ({
+vi.mock("@/lib/jira-client", () => createJiraClientMock({
   jiraClient: {
     isLive: false,
     getUpdatedSince: vi.fn(),

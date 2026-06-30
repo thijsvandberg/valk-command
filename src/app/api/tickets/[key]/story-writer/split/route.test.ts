@@ -1,5 +1,6 @@
 // @vitest-environment node
 import { describe, it, expect, vi, beforeEach } from "vitest";
+import { createJiraClientMock } from "@/test/mocks";
 import { createTestDb } from "@/db/test-utils";
 import type { BetterSQLite3Database } from "drizzle-orm/better-sqlite3";
 import type * as schema from "@/db/schema";
@@ -27,7 +28,7 @@ vi.mock("@/lib/draft-sync", () => ({
   resolveDraftKey: vi.fn((key: string) => key),
 }));
 
-vi.mock("@/lib/jira-client", () => ({
+vi.mock("@/lib/jira-client", () => createJiraClientMock({
   jiraClient: {
     createIssue: vi.fn().mockResolvedValue({ key: "VPL-NEW" }),
   },

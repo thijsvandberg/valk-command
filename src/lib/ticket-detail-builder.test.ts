@@ -1,4 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
+import { createJiraClientMock } from "@/test/mocks";
 import { createTestDb } from "@/db/test-utils";
 import type { BetterSQLite3Database } from "drizzle-orm/better-sqlite3";
 import type * as schema from "@/db/schema";
@@ -15,7 +16,7 @@ vi.mock("@/db", () => ({
 
 vi.mock("server-only", () => ({}));
 vi.mock("@/lib/logger", () => ({ logger: { info: vi.fn(), warn: vi.fn(), error: vi.fn() } }));
-vi.mock("@/lib/jira-client", () => ({
+vi.mock("@/lib/jira-client", () => createJiraClientMock({
   jiraClient: { getIssue: vi.fn(), updateIssue: vi.fn().mockResolvedValue(undefined) },
   STORY_POINTS_FIELD: "customfield_sp",
   FLAGGED_FIELD: "customfield_flag",

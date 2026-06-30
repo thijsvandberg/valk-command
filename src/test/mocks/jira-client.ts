@@ -23,12 +23,11 @@ export function createJiraClientMock(overrides?: {
   } = overrides ?? {};
   const isLive = isLiveOverride ?? false;
 
-  return {
-    jiraClient: {
-      // A writable data property (not a getter) so a test can reassign
-      // jiraClient.isLive at runtime without a TypeError in strict-mode ESM.
-      isLive,
-      getSprints: vi.fn().mockResolvedValue([]),
+  const jiraClient: Record<string, unknown> = {
+    // A writable data property (not a getter) so a test can reassign
+    // jiraClient.isLive at runtime without a TypeError in strict-mode ESM.
+    isLive,
+    getSprints: vi.fn().mockResolvedValue([]),
       getSprintsLightweight: vi.fn().mockResolvedValue([]),
       getSprintIssues: vi.fn().mockResolvedValue([]),
       getSprint: vi.fn().mockResolvedValue({ id: 0, name: "Sprint", state: "future" }),
@@ -91,8 +90,21 @@ export function createJiraClientMock(overrides?: {
         .fn()
         .mockResolvedValue({ statusChanges: [], sprintChanges: [] }),
       getLabels: vi.fn().mockResolvedValue([]),
-      ...jiraClientOverrides,
-    },
+  };
+
+  // Copy overrides as property *descriptors*, not by spread: spreading would
+  // eagerly evaluate a `get isLive()` override that reads a not-yet-initialized
+  // top-level test variable (vi.mock factories run during import hoisting).
+  // defineProperties keeps getters lazy, matching the old inline-mock timing.
+  if (jiraClientOverrides) {
+    Object.defineProperties(
+      jiraClient,
+      Object.getOwnPropertyDescriptors(jiraClientOverrides),
+    );
+  }
+
+  return {
+    jiraClient,
     ISSUE_FIELDS: "summary,issuetype,status,priority,assignee",
     SPRINT_FIELD: "customfield_10007",
     STORY_POINTS_FIELD: "customfield_11909",

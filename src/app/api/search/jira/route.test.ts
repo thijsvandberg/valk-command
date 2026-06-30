@@ -1,8 +1,9 @@
 // @vitest-environment node
 import { describe, it, expect, vi, beforeEach, type Mock } from "vitest";
+import { createJiraClientMock } from "@/test/mocks";
 import { GET } from "./route";
 
-vi.mock("@/lib/jira-client", () => ({
+vi.mock("@/lib/jira-client", () => createJiraClientMock({
   jiraClient: {
     searchIssues: vi.fn(),
   },

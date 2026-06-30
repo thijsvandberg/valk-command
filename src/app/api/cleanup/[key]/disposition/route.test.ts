@@ -1,5 +1,6 @@
 // @vitest-environment node
 import { describe, it, expect, vi, beforeEach } from "vitest";
+import { createJiraClientMock } from "@/test/mocks";
 import { createTestDb } from "@/db/test-utils";
 import type { BetterSQLite3Database } from "drizzle-orm/better-sqlite3";
 import type * as schema from "@/db/schema";
@@ -16,7 +17,7 @@ vi.mock("@/db", () => ({
 
 // No disposition path may reach Jira (epic hard constraint).
 const jiraSpies = { updateIssue: vi.fn(), addComment: vi.fn(), transitionIssue: vi.fn() };
-vi.mock("@/lib/jira-client", () => ({
+vi.mock("@/lib/jira-client", () => createJiraClientMock({
   jiraClient: jiraSpies,
   JiraApiError: class extends Error {},
   extractSprint: vi.fn(),

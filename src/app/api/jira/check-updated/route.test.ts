@@ -1,5 +1,6 @@
 // @vitest-environment node
 import { describe, it, expect, vi, beforeEach } from "vitest";
+import { createJiraClientMock } from "@/test/mocks";
 
 const mockFindFirst = vi.fn();
 const mockGetIssue = vi.fn();
@@ -11,7 +12,7 @@ vi.mock("@/db", () => ({
   },
 }));
 
-vi.mock("@/lib/jira-client", () => ({
+vi.mock("@/lib/jira-client", () => createJiraClientMock({
   jiraClient: {
     get isLive() { return true; },
     getIssue: (...args: unknown[]) => mockGetIssue(...args),

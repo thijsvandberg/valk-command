@@ -1,5 +1,6 @@
 // @vitest-environment node
 import { describe, it, expect, vi, beforeEach } from "vitest";
+import { createJiraClientMock } from "@/test/mocks";
 import { createTestDb } from "@/db/test-utils";
 import type { BetterSQLite3Database } from "drizzle-orm/better-sqlite3";
 import type * as schema from "@/db/schema";
@@ -20,7 +21,7 @@ const mockRankToTopOfBacklog = vi.fn().mockResolvedValue(undefined);
 const mockRankToBottomOfSprint = vi.fn().mockResolvedValue(undefined);
 const mockRankToBottomOfBacklog = vi.fn().mockResolvedValue(undefined);
 
-vi.mock("@/lib/jira-client", () => ({
+vi.mock("@/lib/jira-client", () => createJiraClientMock({
   jiraClient: {
     moveToSprint: (...args: unknown[]) => mockMoveToSprint(...args),
     moveToBacklog: (...args: unknown[]) => mockMoveToBacklog(...args),
