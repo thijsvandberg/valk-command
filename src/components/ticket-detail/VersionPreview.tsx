@@ -67,7 +67,7 @@ export function VersionPreview({
           {/* The active local draft is already the working copy, so restoring it is meaningless. */}
           {version.label !== "draft" && (
             <Button
-              variant="primary"
+              variant="soft"
               size="sm"
               icon={<RotateCcw size={13} strokeWidth={1.5} />}
               disabled={restoring || loadingContent || !version.content}
