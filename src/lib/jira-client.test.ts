@@ -1,6 +1,6 @@
 // @vitest-environment node
 import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
-import { JiraClient, issuePath, JiraApiError, _requestTimestamps, filterDescriptionChanges, filterStatusChanges, extractLastStatusChangeAuthor, extractSprint, extractSprints, selectPrimarySprint, SPRINT_FIELD, ISSUE_FIELDS, redactJiraPath, _noteRateLimitApproaching, _resetRateWarn, type ChangelogEntry, type JiraSprint, type JiraIssueFields, type JiraIssue } from "./jira-client";
+import { JiraClient, issuePath, JiraApiError, _requestTimestamps, filterDescriptionChanges, filterStatusChanges, extractLastStatusChangeAuthor, extractLastSprintChangeAuthor, extractSprint, extractSprints, selectPrimarySprint, SPRINT_FIELD, ISSUE_FIELDS, redactJiraPath, _noteRateLimitApproaching, _resetRateWarn, type ChangelogEntry, type JiraSprint, type JiraIssueFields, type JiraIssue } from "./jira-client";
 
 describe("JiraClient (unconfigured mode)", () => {
   const client = new JiraClient();
@@ -272,6 +272,77 @@ describe("extractLastStatusChangeAuthor (BRDG-414)", () => {
 
   it("returns null when there is no changelog", () => {
     expect(extractLastStatusChangeAuthor({ id: "1", key: "VPL-1", fields: {} as JiraIssueFields })).toBeNull();
+  });
+});
+
+describe("extractLastSprintChangeAuthor (BRDG-439)", () => {
+  function issueWith(histories: NonNullable<JiraIssue["changelog"]>["histories"]): JiraIssue {
+    return { id: "1", key: "VPL-1", fields: {} as JiraIssueFields, changelog: { histories } };
+  }
+
+  it("returns the latest sprint ADD (histories are newest-first)", () => {
+    const issue = issueWith([
+      {
+        author: { displayName: "Frank van den Nouland", accountId: "acc-frank", avatarUrls: { "48x48": "frank.png" } },
+        created: "2026-02-02T10:00:00.000+0000",
+        items: [{ field: "Sprint", fromString: "", toString: "Sprint 14" }],
+      },
+      {
+        author: { displayName: "Dan" },
+        created: "2026-02-01T09:00:00.000+0000",
+        items: [{ field: "Sprint", fromString: "Sprint 13", toString: "" }],
+      },
+    ]);
+    expect(extractLastSprintChangeAuthor(issue)).toEqual({
+      name: "Frank van den Nouland",
+      accountId: "acc-frank",
+      avatar: "frank.png",
+      changedAt: "2026-02-02T10:00:00.000+0000",
+    });
+  });
+
+  it("detects an add when joining a second sprint and ignores reorders/removals", () => {
+    const removalOnly = issueWith([
+      {
+        author: { displayName: "Dan" },
+        created: "2026-02-03T09:00:00.000+0000",
+        items: [{ field: "Sprint", fromString: "Sprint 14", toString: "" }],
+      },
+    ]);
+    expect(extractLastSprintChangeAuthor(removalOnly)).toBeNull();
+
+    const secondSprint = issueWith([
+      {
+        author: { displayName: "Eve", accountId: "acc-eve" },
+        created: "2026-02-04T09:00:00.000+0000",
+        items: [{ field: "Sprint", fromString: "Sprint 13", toString: "Sprint 13, Sprint 14" }],
+      },
+    ]);
+    expect(extractLastSprintChangeAuthor(secondSprint)?.name).toBe("Eve");
+  });
+
+  it("does not treat a substring match as an existing sprint", () => {
+    // "Sprint 1" must not be considered already-present when only "Sprint 10" was.
+    const issue = issueWith([
+      {
+        author: { displayName: "Gwen" },
+        created: "2026-02-05T09:00:00.000+0000",
+        items: [{ field: "Sprint", fromString: "Sprint 10", toString: "Sprint 10, Sprint 1" }],
+      },
+    ]);
+    expect(extractLastSprintChangeAuthor(issue)?.name).toBe("Gwen");
+  });
+
+  it("returns null when there is no Sprint history and when there is no changelog", () => {
+    const statusOnly = issueWith([
+      {
+        author: { displayName: "Dan" },
+        created: "2026-02-01T09:00:00.000+0000",
+        items: [{ field: "status", fromString: "To Do", toString: "In Progress" }],
+      },
+    ]);
+    expect(extractLastSprintChangeAuthor(statusOnly)).toBeNull();
+    expect(extractLastSprintChangeAuthor({ id: "1", key: "VPL-1", fields: {} as JiraIssueFields })).toBeNull();
   });
 });
 

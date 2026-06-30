@@ -674,6 +674,46 @@ export function extractLastStatusChangeAuthor(
   return null;
 }
 
+// Jira's Sprint changelog stores a comma-separated list of sprint NAMES in
+// from/to-String. Split into a trimmed set so "added a sprint" is a true set
+// difference, not a substring test ("Sprint 1" must not match "Sprint 10").
+function sprintNameSet(s: string | undefined): Set<string> {
+  if (!s) return new Set();
+  return new Set(
+    s.split(",").map((n) => n.trim()).filter((n) => n.length > 0),
+  );
+}
+
+/**
+ * Extract the author + Jira event time of the most recent SPRINT ADD from an issue's
+ * inline changelog (BRDG-439). Histories are newest-first, so the first entry whose
+ * "Sprint" item adds a sprint the previous value lacked is the latest add. Returns null
+ * when the issue was fetched without expand=changelog, has no Sprint history, or the
+ * latest Sprint change only removed/reordered sprints (no net addition).
+ */
+export function extractLastSprintChangeAuthor(
+  issue: JiraIssue,
+): { name: string; accountId: string | null; avatar: string | null; changedAt: string } | null {
+  const histories = issue.changelog?.histories;
+  if (!histories || histories.length === 0) return null;
+  for (const h of histories) {
+    if (!h.author) continue;
+    const sprintItem = h.items?.find((it) => it.field === "Sprint");
+    if (!sprintItem) continue;
+    const from = sprintNameSet(sprintItem.fromString);
+    const to = sprintNameSet(sprintItem.toString);
+    const added = [...to].some((name) => !from.has(name));
+    if (!added) continue;
+    return {
+      name: h.author.displayName,
+      accountId: h.author.accountId ?? null,
+      avatar: h.author.avatarUrls?.["48x48"] ?? null,
+      changedAt: h.created,
+    };
+  }
+  return null;
+}
+
 // ---------------------------------------------------------------------------
 // Client class
 // ---------------------------------------------------------------------------

@@ -624,6 +624,13 @@
       "when": 1782754268055,
       "tag": "0088_unknown_rogue",
       "breakpoints": true
+    },
+    {
+      "idx": 89,
+      "version": "6",
+      "when": 1782806134084,
+      "tag": "0089_certain_darkstar",
+      "breakpoints": true
     }
   ]
 }

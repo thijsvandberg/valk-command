@@ -33,6 +33,7 @@ vi.mock("@/lib/jira-client", () => ({
   extractAcceptanceCriteria: () => null,
   extractLastChangeAuthor: () => null,
   extractLastStatusChangeAuthor: () => null,
+  extractLastSprintChangeAuthor: () => null,
   FLAGGED_FIELD: "customfield_10002",
 }));
 

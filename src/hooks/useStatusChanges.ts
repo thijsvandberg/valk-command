@@ -9,7 +9,7 @@ import type { StatusChangeItem } from "@/lib/status-changes-query";
 // Ticket-event kinds that can change the status-change queue: a new transition, or new
 // "what's new" activity. A relevant event revalidates the queue so it updates on an
 // already-open board without a manual refresh (BRDG-414).
-const REVALIDATE_KINDS = new Set(["status", "comment", "content"]);
+const REVALIDATE_KINDS = new Set(["status", "comment", "content", "sprint"]);
 const EMPTY: StatusChangeItem[] = [];
 
 interface StatusChangesResponse {
@@ -60,10 +60,15 @@ export function useStatusChanges(ticketKeys: string[]) {
   }, [rows]);
 
   const markSeen = useCallback(
-    async (id: string) => {
-      await mutate((cur) => (cur ? { rows: cur.rows.filter((r) => r.id !== id) } : cur), { revalidate: false });
+    // BRDG-439: one line can carry both a status-change id and a sprint-add id; dismissing
+    // marks both, so the combined line never leaves a half-line behind. Drop by ticketKey
+    // (a sprint-only line has a null status-change id) and POST the id set in one request.
+    async (item: StatusChangeItem) => {
+      const ids = [item.id, item.sprintAdded?.id].filter((x): x is string => !!x);
+      if (ids.length === 0) return;
+      await mutate((cur) => (cur ? { rows: cur.rows.filter((r) => r.ticketKey !== item.ticketKey) } : cur), { revalidate: false });
       try {
-        await apiFetch("/api/status-changes/seen", { method: "PUT", body: { id, seen: true } });
+        await apiFetch("/api/status-changes/seen", { method: "POST", body: { ids } });
       } finally {
         void mutate();
       }
@@ -72,7 +77,7 @@ export function useStatusChanges(ticketKeys: string[]) {
   );
 
   const markAllSeen = useCallback(async () => {
-    const ids = (data?.rows ?? []).map((r) => r.id);
+    const ids = (data?.rows ?? []).flatMap((r) => [r.id, r.sprintAdded?.id]).filter((x): x is string => !!x);
     if (ids.length === 0) return;
     await mutate({ rows: [] }, { revalidate: false });
     try {

@@ -97,6 +97,7 @@ export function createJiraClientMock(overrides?: {
     extractAcceptanceCriteria: vi.fn().mockReturnValue(null),
     extractLastChangeAuthor: vi.fn().mockReturnValue(null),
     extractLastStatusChangeAuthor: vi.fn().mockReturnValue(null),
+    extractLastSprintChangeAuthor: vi.fn().mockReturnValue(null),
     filterDescriptionChanges: vi.fn().mockReturnValue([]),
     filterStatusChanges: vi.fn().mockReturnValue([]),
     filterSprintChanges: vi.fn().mockReturnValue([]),

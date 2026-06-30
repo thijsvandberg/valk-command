@@ -1,6 +1,6 @@
 import { db } from "@/db";
-import { ticket, ticketStatusChange, statusChangeSeen, jiraComment, storyVersion, ticketSubtask } from "@/db/schema";
-import { and, eq, ne, isNull, inArray, notExists, desc, sql } from "drizzle-orm";
+import { ticket, ticketStatusChange, ticketScopeChange, statusChangeSeen, jiraComment, storyVersion, ticketSubtask } from "@/db/schema";
+import { and, eq, ne, isNull, isNotNull, inArray, notExists, desc, sql } from "drizzle-orm";
 import { buildAssignee } from "@/lib/user-utils";
 import type { Assignee, JiraStatus } from "@/types/ticket";
 
@@ -9,6 +9,11 @@ import type { Assignee, JiraStatus } from "@/types/ticket";
 // who/when, what else is new (comments / story edits in the last 24h, not by me), and
 // the open-subtask count (for the Done/Deprecated flag). Deploy/pipeline signals are
 // NOT joined here — the board already has those maps client-side.
+//
+// BRDG-439: the same line also surfaces "added to sprint" events. A ticket qualifies for
+// a line if it has an unseen status change OR an unseen sprint-add (or both, combined into
+// one line). Sprint-adds come from ticketScopeChange rows that carry an actor — the burnup
+// backfill leaves changedBy null, so this read ignores those and never shows synthetic adds.
 
 const WINDOW_MS = 24 * 60 * 60 * 1000;
 
@@ -19,11 +24,22 @@ export interface StatusChangeQueryCtx {
   jiraName: string | null;
 }
 
-export interface StatusChangeItem {
+// BRDG-439: who moved the ticket into the sprint + when. Attached to the line when present.
+export interface SprintAddInfo {
   id: string;
+  changedBy: string | null;
+  changedByAccountId: string | null;
+  changedByAvatar: string | null;
+  changedAt: string;
+}
+
+export interface StatusChangeItem {
+  // Status-change id; null for a sprint-add-only line (no status transition).
+  id: string | null;
   ticketKey: string;
   fromStatus: string | null;
-  toStatus: JiraStatus;
+  // null for a sprint-add-only line.
+  toStatus: JiraStatus | null;
   changedAt: string;
   changedBy: string | null;
   changedByAccountId: string | null;
@@ -34,6 +50,7 @@ export interface StatusChangeItem {
   newCommentCount: number;
   lastCommentAt: string | null;
   storyEditedAt: string | null;
+  sprintAdded: SprintAddInfo | null;
 }
 
 // jiraComment.createdAt is Jira ISO (with `T`); storyVersion.createdAt uses the SQLite
@@ -97,9 +114,54 @@ export async function listUnseenStatusChanges(
   // One line per ticket: the most recent unseen change (rows are already newest-first).
   const latestByKey = new Map<string, (typeof rows)[number]>();
   for (const r of rows) if (!latestByKey.has(r.ticketKey)) latestByKey.set(r.ticketKey, r);
-  const items = [...latestByKey.values()];
-  if (items.length === 0) return [];
-  const keys = items.map((r) => r.ticketKey);
+
+  // BRDG-439: the latest UNSEEN "added to sprint" per ticket. Only rows with a known actor
+  // (changedBy) — the burnup backfill writes actor-less rows we must not surface — and only
+  // while the ticket is still in a sprint (sprintName set). Reuses statusChangeSeen on the
+  // opaque scope-change id, so dismissing marks it seen the same way as a status change.
+  const sprintUnseenByUser = notExists(
+    db
+      .select({ one: sql`1` })
+      .from(statusChangeSeen)
+      .where(
+        and(
+          eq(statusChangeSeen.userId, ctx.userId),
+          eq(statusChangeSeen.statusChangeId, ticketScopeChange.id),
+        ),
+      ),
+  );
+
+  const sprintRows = await db
+    .select({
+      id: ticketScopeChange.id,
+      ticketKey: ticketScopeChange.ticketKey,
+      changedAt: ticketScopeChange.changedAt,
+      changedBy: ticketScopeChange.changedBy,
+      changedByAccountId: ticketScopeChange.changedByAccountId,
+      changedByAvatar: ticketScopeChange.changedByAvatar,
+      assignee: ticket.assignee,
+      assigneeAccountId: ticket.assigneeAccountId,
+    })
+    .from(ticketScopeChange)
+    .innerJoin(ticket, eq(ticket.jiraKey, ticketScopeChange.ticketKey))
+    .where(
+      and(
+        inArray(ticketScopeChange.ticketKey, ticketKeys),
+        eq(ticketScopeChange.action, "added"),
+        isNotNull(ticketScopeChange.changedBy),
+        isNull(ticket.removedFromJiraAt),
+        sql`${ticket.sprintName} is not null and ${ticket.sprintName} != ''`,
+        sprintUnseenByUser,
+      ),
+    )
+    .orderBy(desc(ticketScopeChange.changedAt));
+
+  const latestSprintByKey = new Map<string, (typeof sprintRows)[number]>();
+  for (const r of sprintRows) if (!latestSprintByKey.has(r.ticketKey)) latestSprintByKey.set(r.ticketKey, r);
+
+  // A ticket gets a line if it has an unseen status change OR an unseen sprint-add.
+  const keys = [...new Set<string>([...latestByKey.keys(), ...latestSprintByKey.keys()])];
+  if (keys.length === 0) return [];
 
   // Open subtask count (same rule as the board payload): non-DONE/DEPRECATED subtasks.
   const subRows = await db
@@ -158,24 +220,38 @@ export async function listUnseenStatusChanges(
     if (!cur || t >= cur.lastMs) versionAgg.set(v.jiraKey, { lastMs: t, lastRaw: v.createdAt });
   }
 
-  return items.map((r) => {
-    const c = commentAgg.get(r.ticketKey);
-    const v = versionAgg.get(r.ticketKey);
+  return keys.map((key) => {
+    const s = latestByKey.get(key);
+    const sa = latestSprintByKey.get(key);
+    const c = commentAgg.get(key);
+    const v = versionAgg.get(key);
+    // Both rows join the same ticket; either source supplies the assignee.
+    const assigneeName = s?.assignee ?? sa?.assignee ?? null;
+    const assigneeAccountId = s?.assigneeAccountId ?? sa?.assigneeAccountId ?? null;
     return {
-      id: r.id,
-      ticketKey: r.ticketKey,
-      fromStatus: r.fromStatus,
-      toStatus: (r.toStatus ?? "TO DO") as JiraStatus,
-      changedAt: r.changedAt,
-      changedBy: r.changedBy,
-      changedByAccountId: r.changedByAccountId,
-      changedByAvatar: r.changedByAvatar,
-      assignee: buildAssignee(r.assignee, r.assigneeAccountId),
-      openSubtaskCount: openByKey.get(r.ticketKey) ?? 0,
-      totalSubtaskCount: totalByKey.get(r.ticketKey) ?? 0,
+      id: s?.id ?? null,
+      ticketKey: key,
+      fromStatus: s?.fromStatus ?? null,
+      toStatus: (s?.toStatus ?? null) as JiraStatus | null,
+      changedAt: s?.changedAt ?? sa?.changedAt ?? "",
+      changedBy: s?.changedBy ?? null,
+      changedByAccountId: s?.changedByAccountId ?? null,
+      changedByAvatar: s?.changedByAvatar ?? null,
+      assignee: buildAssignee(assigneeName, assigneeAccountId),
+      openSubtaskCount: openByKey.get(key) ?? 0,
+      totalSubtaskCount: totalByKey.get(key) ?? 0,
       newCommentCount: c?.count ?? 0,
       lastCommentAt: c?.lastRaw ?? null,
       storyEditedAt: v?.lastRaw ?? null,
+      sprintAdded: sa
+        ? {
+            id: sa.id,
+            changedBy: sa.changedBy,
+            changedByAccountId: sa.changedByAccountId,
+            changedByAvatar: sa.changedByAvatar,
+            changedAt: sa.changedAt,
+          }
+        : null,
     };
   });
 }

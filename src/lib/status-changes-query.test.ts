@@ -3,7 +3,7 @@ import { describe, it, expect, beforeEach, vi } from "vitest";
 import { createTestDb } from "@/db/test-utils";
 import type { BetterSQLite3Database } from "drizzle-orm/better-sqlite3";
 import type * as schema from "@/db/schema";
-import { ticket, ticketStatusChange, jiraComment, storyVersion, ticketSubtask } from "@/db/schema";
+import { ticket, ticketStatusChange, ticketScopeChange, jiraComment, storyVersion, ticketSubtask } from "@/db/schema";
 
 let testDb: BetterSQLite3Database<typeof schema>;
 
@@ -41,6 +41,20 @@ function addChange(id: string, key: string, to: string, changedAt: string, sprin
     changedBy: "Carol Smit",
     changedByAccountId: "acc-carol",
     changedByAvatar: "carol.png",
+    ...overrides,
+  }).run();
+}
+
+function addScopeChange(id: string, key: string, changedAt: string, overrides: Partial<typeof ticketScopeChange.$inferInsert> = {}) {
+  testDb.insert(ticketScopeChange).values({
+    id,
+    ticketKey: key,
+    sprintName: "S1",
+    action: "added",
+    changedAt,
+    changedBy: "Frank van den Nouland",
+    changedByAccountId: "acc-frank",
+    changedByAvatar: null,
     ...overrides,
   }).run();
 }
@@ -136,6 +150,61 @@ describe("listUnseenStatusChanges (BRDG-414)", () => {
 
       const rows = await listUnseenStatusChanges(CTX, ["VPL-1"], NOW);
       expect(rows[0].storyEditedAt).toBe("2026-06-27 06:00:00");
+    });
+  });
+
+  describe("sprint-add lines (BRDG-439)", () => {
+    it("surfaces a sprint-add-only ticket (no status change) with the mover's name", async () => {
+      addTicket("VPL-1", { status: "TO DO", sprintName: "S1" });
+      addScopeChange("scope-VPL-1-add-1", "VPL-1", "2026-06-27T10:00:00.000Z");
+
+      const rows = await listUnseenStatusChanges(CTX, ["VPL-1"], NOW);
+      expect(rows).toHaveLength(1);
+      expect(rows[0].id).toBeNull();
+      expect(rows[0].toStatus).toBeNull();
+      expect(rows[0].sprintAdded?.id).toBe("scope-VPL-1-add-1");
+      expect(rows[0].sprintAdded?.changedBy).toBe("Frank van den Nouland");
+      expect(rows[0].assignee?.name).toBe("Dan Mol");
+    });
+
+    it("combines a sprint-add with a status change on the same ticket into one item", async () => {
+      addTicket("VPL-1", { status: "IN PROGRESS", sprintName: "S1" });
+      addChange("sc-1", "VPL-1", "IN PROGRESS", "2026-06-27T10:00:00.000Z");
+      addScopeChange("scope-VPL-1-add-1", "VPL-1", "2026-06-27T10:00:00.000Z");
+
+      const rows = await listUnseenStatusChanges(CTX, ["VPL-1"], NOW);
+      expect(rows).toHaveLength(1);
+      expect(rows[0].id).toBe("sc-1");
+      expect(rows[0].toStatus).toBe("IN PROGRESS");
+      expect(rows[0].sprintAdded?.id).toBe("scope-VPL-1-add-1");
+    });
+
+    it("ignores actor-less backfill rows (synthetic / burnup) and 'removed' rows", async () => {
+      addTicket("VPL-1", { status: "TO DO", sprintName: "S1" });
+      addTicket("VPL-2", { status: "TO DO", sprintName: "S1" });
+      addScopeChange("scope-VPL-1-add-synthetic", "VPL-1", "2026-06-20T10:00:00.000Z", {
+        changedBy: null,
+        changedByAccountId: null,
+        changedByAvatar: null,
+      });
+      addScopeChange("scope-VPL-2-rm-1", "VPL-2", "2026-06-27T10:00:00.000Z", { action: "removed" });
+
+      expect(await listUnseenStatusChanges(CTX, ["VPL-1", "VPL-2"], NOW)).toHaveLength(0);
+    });
+
+    it("hides the sprint-add once seen", async () => {
+      addTicket("VPL-1", { status: "TO DO", sprintName: "S1" });
+      addScopeChange("scope-VPL-1-add-1", "VPL-1", "2026-06-27T10:00:00.000Z");
+
+      await markStatusChangeSeen(CTX.userId, "scope-VPL-1-add-1", true);
+      expect(await listUnseenStatusChanges(CTX, ["VPL-1"], NOW)).toHaveLength(0);
+    });
+
+    it("hides the sprint-add once the ticket has left the sprint", async () => {
+      addTicket("VPL-1", { status: "TO DO", sprintName: "" });
+      addScopeChange("scope-VPL-1-add-1", "VPL-1", "2026-06-27T10:00:00.000Z");
+
+      expect(await listUnseenStatusChanges(CTX, ["VPL-1"], NOW)).toHaveLength(0);
     });
   });
 });

@@ -3,7 +3,7 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 import { createTestDb } from "@/db/test-utils";
 import type { BetterSQLite3Database } from "drizzle-orm/better-sqlite3";
 import type * as schema from "@/db/schema";
-import { ticket, ticketSubtask, ticketMetadata, storyVersion, storyWriterSession, conversation, ticketSprint, jiraUser, ticketStatusChange } from "@/db/schema";
+import { ticket, ticketSubtask, ticketMetadata, storyVersion, storyWriterSession, conversation, ticketSprint, jiraUser, ticketStatusChange, ticketScopeChange } from "@/db/schema";
 import { eq, asc } from "drizzle-orm";
 
 let testDb: BetterSQLite3Database<typeof schema>;
@@ -34,6 +34,7 @@ vi.mock("@/lib/jira-client", () => ({
   extractAcceptanceCriteria: vi.fn().mockReturnValue(null),
   extractLastChangeAuthor: vi.fn().mockReturnValue(null),
   extractLastStatusChangeAuthor: vi.fn().mockReturnValue(null),
+  extractLastSprintChangeAuthor: vi.fn().mockReturnValue(null),
   FLAGGED_FIELD: "customfield_10002",
 }));
 
@@ -46,7 +47,7 @@ vi.mock("@/lib/ticket-events", () => ({
 }));
 
 import { normalizeIssueType, normalizeStatus, userColor, upsertIssue } from "./upsert-issue";
-import { extractSprints, extractStoryPoints, extractLastChangeAuthor, extractLastStatusChangeAuthor } from "@/lib/jira-client";
+import { extractSprints, extractStoryPoints, extractLastChangeAuthor, extractLastStatusChangeAuthor, extractLastSprintChangeAuthor } from "@/lib/jira-client";
 import { emitTicketEvent } from "@/lib/ticket-events";
 import type { JiraIssue, JiraSprint } from "@/lib/jira-client";
 
@@ -688,5 +689,71 @@ describe("status change capture (BRDG-414)", () => {
     await upsertIssue(makeIssue(), "Sprint 1");
     await upsertIssue(makeIssue({ summary: "Renamed" }), "Sprint 1");
     expect(testDb.select().from(ticketStatusChange).all()).toHaveLength(0);
+  });
+});
+
+describe("sprint-add capture (BRDG-439)", () => {
+  beforeEach(() => {
+    testDb = createTestDb();
+    vi.mocked(extractSprints).mockReturnValue([]);
+    vi.mocked(extractStoryPoints).mockReturnValue(null);
+    vi.mocked(extractLastStatusChangeAuthor).mockReturnValue(null);
+    vi.mocked(extractLastSprintChangeAuthor).mockReturnValue(null);
+  });
+
+  it("records an 'added' scope change with the Sprint changelog author when a ticket gains a sprint", async () => {
+    // First sync: not in any sprint -> no add event.
+    await upsertIssue(makeIssue(), "");
+    expect(testDb.select().from(ticketScopeChange).all()).toHaveLength(0);
+
+    // Second sync: dragged into sprint 200 by Frank.
+    vi.mocked(extractSprints).mockReturnValue([{ id: 200, name: "Sprint X", state: "active" }] as JiraSprint[]);
+    vi.mocked(extractLastSprintChangeAuthor).mockReturnValue({
+      name: "Frank van den Nouland",
+      accountId: "acc-frank",
+      avatar: "frank.png",
+      changedAt: "2026-06-27T10:00:00.000Z",
+    });
+    await upsertIssue(makeIssue(), "200");
+
+    const rows = testDb.select().from(ticketScopeChange).all();
+    expect(rows).toHaveLength(1);
+    expect(rows[0].action).toBe("added");
+    expect(rows[0].ticketKey).toBe("VPL-1");
+    expect(rows[0].sprintName).toBe("200");
+    expect(rows[0].changedBy).toBe("Frank van den Nouland");
+    expect(rows[0].changedByAccountId).toBe("acc-frank");
+    expect(rows[0].id).toBe(`scope-VPL-1-add-${new Date("2026-06-27T10:00:00.000Z").getTime()}`);
+  });
+
+  it("falls back to the reporter + created time for a ticket created straight into a sprint", async () => {
+    vi.mocked(extractSprints).mockReturnValue([{ id: 200, name: "Sprint X", state: "active" }] as JiraSprint[]);
+    vi.mocked(extractLastSprintChangeAuthor).mockReturnValue(null); // no Sprint changelog on a fresh ticket
+    const issue = makeIssue({
+      reporter: { accountId: "acc-rep", displayName: "Thijs van den Berg", avatarUrls: { "48x48": "thijs.png" } },
+      created: "2026-06-26T08:00:00.000Z",
+    });
+    await upsertIssue(issue, "200");
+
+    const rows = testDb.select().from(ticketScopeChange).all();
+    expect(rows).toHaveLength(1);
+    expect(rows[0].changedBy).toBe("Thijs van den Berg");
+    expect(rows[0].changedByAccountId).toBe("acc-rep");
+    expect(rows[0].changedAt).toBe("2026-06-26T08:00:00.000Z");
+  });
+
+  it("does not duplicate the 'added' row on a re-sync that keeps the ticket in the sprint", async () => {
+    vi.mocked(extractSprints).mockReturnValue([{ id: 200, name: "Sprint X", state: "active" }] as JiraSprint[]);
+    vi.mocked(extractLastSprintChangeAuthor).mockReturnValue({
+      name: "Frank", accountId: null, avatar: null, changedAt: "2026-06-27T10:00:00.000Z",
+    });
+    await upsertIssue(makeIssue(), "200");
+    await upsertIssue(makeIssue({ summary: "Renamed" }), "200");
+    expect(testDb.select().from(ticketScopeChange).all()).toHaveLength(1);
+  });
+
+  it("does not record an add for a ticket that is in no sprint", async () => {
+    await upsertIssue(makeIssue(), "");
+    expect(testDb.select().from(ticketScopeChange).all()).toHaveLength(0);
   });
 });

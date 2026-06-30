@@ -300,8 +300,8 @@ export function TicketTable({
   freshlyCreatedKeys?: Set<string>;
   /** BRDG-414: ticket-key -> latest unseen status change, for the review line beneath the row. */
   statusChangeMap?: Map<string, StatusChangeItem>;
-  onStatusChangeSeen?: (id: string) => void;
-  onStatusChangeMoveToBottom?: (ticketKey: string, statusChangeId: string) => void;
+  onStatusChangeSeen?: (item: StatusChangeItem) => void;
+  onStatusChangeMoveToBottom?: (item: StatusChangeItem) => void;
   /** BRDG-414: render the permanent "Finished work" divider in the flat list (active-sprint view). */
   showFinishedDivider?: boolean;
   /** Target for the ungrouped list's composer. When set, the header "+" can open the inline composer. */

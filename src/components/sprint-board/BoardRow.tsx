@@ -161,8 +161,8 @@ export interface BoardRowBaseProps {
   statusChange?: StatusChangeItem | null;
   /** This ticket already sits in the trailing done/dep block, so "Move to bottom" is hidden. */
   statusChangeAtBottom?: boolean;
-  onStatusChangeSeen?: (id: string) => void;
-  onStatusChangeMoveToBottom?: (ticketKey: string, statusChangeId: string) => void;
+  onStatusChangeSeen?: (item: StatusChangeItem) => void;
+  onStatusChangeMoveToBottom?: (item: StatusChangeItem) => void;
   /** Drop the leading selection-checkbox gutter (views without bulk selection, e.g. the
    *  Story Writer landing). Off by default so the board keeps its checkbox. */
   hideCheckbox?: boolean;
@@ -1038,8 +1038,8 @@ export const BoardRow = memo(forwardRef<HTMLTableRowElement, BoardRowBaseProps>(
               change={statusChange}
               deploy={lastDeploy}
               atBottom={statusChangeAtBottom}
-              onSeen={() => onStatusChangeSeen(statusChange.id)}
-              onMoveToBottom={() => onStatusChangeMoveToBottom(statusChange.ticketKey, statusChange.id)}
+              onSeen={() => onStatusChangeSeen(statusChange)}
+              onMoveToBottom={() => onStatusChangeMoveToBottom(statusChange)}
               onCloseSubtasks={onCloseSubtasks}
             />
           )}

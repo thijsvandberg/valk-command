@@ -1,6 +1,6 @@
 # BRDG-439: "Added to sprint" statusline on the board row
 
-**Status:** To Do
+**Status:** Done
 **Priority:** Medium
 **Type:** Feature
 
@@ -76,29 +76,41 @@ Treat "added to active sprint" as a second kind of review-queue item that merges
 
 ## Implementation Plan
 
-1. **Schema + author extractor.** Add actor columns to `ticketScopeChange` (+ migration); add `extractLastSprintChangeAuthor()` to `jira-client.ts` with a unit test.
-2. **Write side.** In `upsert-issue.ts`, write the `ticketScopeChange` "added" row (with actor / reporter fallback) on sprint-add for both existing and new tickets; dedupe via deterministic id + `onConflictDoNothing`.
-3. **Read side.** Extend `status-changes-query.ts` to attach `sprintAdded` per ticket and qualify tickets with only a sprint-add; thread the type through `StatusChangeItem`.
-4. **Render + dismiss.** Update `StatusChangeLine.tsx` for the three sentence variants; extend `useStatusChanges.ts` + `seen` API so one dismiss clears both ids; add `"sprint"` to `REVALIDATE_KINDS`.
+Verified against the code; the key facts that shaped it:
+- `ticket.sprintName` and `ticketScopeChange.sprintName` both store the **sprint id** (not the name) — see `sync-tickets-service.ts:244/273/291` and the burnup read `burnup/route.ts:127`. So the new write stays consistent by storing the sprint id.
+- `ticketScopeChange.storyPoints`/`businessValue` are **nullable**; burnup-seed fills them with numbers. The new write supplies the ticket's current SP + BV (default 0) for burnup consistency.
+- **Burnup-seed never sets an actor** (its "added" + synthetic rows have `changedBy = null`). The board read therefore filters `changedBy IS NOT NULL`, which cleanly excludes all backfill/synthetic rows and produces **no first-rollout noise** (existing tickets already in a sprint never get a new add-row, since the write only fires on a *newly gained* sprint).
+- The queue is already scoped to the active sprint only (`SprintBoard.tsx:459-465`), so the read needs no active-sprint logic — just the passed ticket keys.
+
+**Phase 1 — Capture actor (write side).**
+1. `jira-client.ts`: add `extractLastSprintChangeAuthor(issue)` next to `extractLastStatusChangeAuthor` (~:660) — walk `changelog.histories` newest-first, return the first entry with a `field === "Sprint"` item whose comma-split `toString` set adds a sprint the `fromString` set lacked → `{ name, accountId, avatar, changedAt }`, else null (set-diff, not substring, to avoid "Sprint 1" vs "Sprint 10").
+2. `schema.ts`: add nullable `changedBy` / `changedByAccountId` / `changedByAvatar` to `ticketScopeChange` (:927) + `index(ticketKey, action)`. Generate the migration with `npm run db:generate` (auto-applies at startup; do not hand-write).
+3. `upsert-issue.ts`: resolve `sprintChangeMeta = extractLastSprintChangeAuthor(issue)` up front (~:133). Inside the tx, compute `gainedIds = sprintIdList \ parsed(existing.sprintIds)` (for `!existing`, all of `sprintIdList`). When non-empty, insert a `ticketScopeChange` `action:"added"` row: id `scope-<key>-add-<changedAtMs>` (matches burnup-seed exactly) + `onConflictDoNothing`; `sprintName = sprintName ?? gainedIds[0]`; SP from `storyPoints`, BV from `meta?.businessValue`; actor from `sprintChangeMeta`, else reporter + `fields.created` (fallback for created-into-sprint tickets).
+
+**Phase 2 — Read side.** `status-changes-query.ts`: relax `StatusChangeItem` (`id: string | null`, `toStatus: JiraStatus | null`) and add `sprintAdded: { id; changedBy; changedByAccountId; changedByAvatar; changedAt } | null`. Add a second fetch: latest **unseen** `ticketScopeChange` (`action="added"`, `changedBy IS NOT NULL`, ticket not removed, `ticket.sprintName` non-empty, reusing the `statusChangeSeen` notExists on the opaque id). Build items from the **union** of keys with a status change OR a sprint-add; a sprint-only key gets a synthetic base (`id:null`, `toStatus:null`, assignee from the joined `ticket`). Extend the comment/version/subtask enrichment `keys` to the union.
+
+**Phase 3 — Render.** `StatusChangeLine.tsx`: branch the lead sentence — sprint-only → `Added to sprint by {actor} {time}`; status-only → unchanged; both → `Added to sprint and moved from {from} to {to} by {actor} {time}` (sprint-led, attribution + time from `sprintAdded`). Null-guard `isFinished`/`isTest`/`showsDeploy` so sprint-only rows skip the status-only affordances.
+
+**Phase 4 — Dismiss + live update.** `useStatusChanges.ts`: add `"sprint"` to `REVALIDATE_KINDS`; change `markSeen` to take the `StatusChangeItem`, collect `[id, sprintAdded?.id]`, optimistically drop the row by **ticketKey**, and POST `{ ids }` (the existing bulk seen path — no server change). Update `markAllSeen` to include sprint-add ids. Thread the `onStatusChangeSeen` / `onStatusChangeMoveToBottom` callbacks from `(id)` → `(item)` through `TicketTable.tsx` → `BoardRow.tsx` → `SprintBoard.tsx` (`handleStatusChangeMoveToBottom` uses `item.ticketKey` + `markStatusChangeSeen(item)`).
 
 ## Acceptance Criteria
 
-- [ ] A ticket newly in the active sprint shows a board line `Added to sprint by <actor> <relative-time>`, regardless of its current status. <!-- StatusChangeLine.tsx sprint-only variant; status-changes-query.ts qualifies sprint-add-only tickets -->
-- [ ] When the same move also changed status, the line reads `Added to sprint and moved from <from> to <to> by <actor> <relative-time>` (one combined, sprint-led line — not two lines). <!-- StatusChangeLine.tsx combined variant -->
-- [ ] Newly-created tickets that land directly in the active sprint also show the line, attributed to the reporter at the created time when no Sprint changelog entry exists. <!-- upsert-issue.ts new-ticket path + reporter/jiraCreatedAt fallback -->
-- [ ] The actor name for a moved ticket comes from the Jira "Sprint" changelog entry's author. <!-- extractLastSprintChangeAuthor() in jira-client.ts -->
-- [ ] The single dismiss checkmark marks the whole line seen (both the status-change and sprint-add ids); the line does not reappear and no half-line remains. <!-- useStatusChanges.markSeen + /api/status-changes/seen -->
-- [ ] The line appears on an already-open board without a manual refresh when a sprint event arrives. <!-- "sprint" added to REVALIDATE_KINDS in useStatusChanges.ts -->
-- [ ] The line only shows while the ticket is still in the active sprint, and only for the active sprint's tickets. <!-- status-changes-query.ts scope: active-sprint keys + join on ticket.sprintName -->
-- [ ] The burnup scope line and its backfill are unchanged apart from the new (nullable) actor columns. <!-- ticketScopeChange columns are additive; burnup/seed/route.ts unaffected -->
+- [x] A ticket newly in the active sprint shows a board line `Added to sprint by <actor> <relative-time>`, regardless of its current status. <!-- StatusChangeLine.tsx sprint-only variant; status-changes-query.ts qualifies sprint-add-only tickets -->
+- [x] When the same move also changed status, the line reads `Added to sprint and moved from <from> to <to> by <actor> <relative-time>` (one combined, sprint-led line — not two lines). <!-- StatusChangeLine.tsx combined variant -->
+- [x] Newly-created tickets that land directly in the active sprint also show the line, attributed to the reporter at the created time when no Sprint changelog entry exists. <!-- upsert-issue.ts new-ticket path + reporter/jiraCreatedAt fallback -->
+- [x] The actor name for a moved ticket comes from the Jira "Sprint" changelog entry's author. <!-- extractLastSprintChangeAuthor() in jira-client.ts -->
+- [x] The single dismiss checkmark marks the whole line seen (both the status-change and sprint-add ids); the line does not reappear and no half-line remains. <!-- useStatusChanges.markSeen + /api/status-changes/seen -->
+- [x] The line appears on an already-open board without a manual refresh when a sprint event arrives. <!-- "sprint" added to REVALIDATE_KINDS in useStatusChanges.ts -->
+- [x] The line only shows while the ticket is still in the active sprint, and only for the active sprint's tickets. <!-- status-changes-query.ts scope: active-sprint keys + join on ticket.sprintName -->
+- [x] The burnup scope line and its backfill are unchanged apart from the new (nullable) actor columns. <!-- ticketScopeChange columns are additive; burnup/seed/route.ts unaffected -->
 
 ## Tests
 
-- [ ] `extractLastSprintChangeAuthor` returns the author/time of the latest Sprint-add changelog entry and null when none/created-without-changelog. <!-- src/lib/jira-client.test.ts -->
-- [ ] `upsert-issue` writes a `ticketScopeChange` "added" row with the changelog actor on a sprint-add for an existing ticket, and with the reporter fallback for a new ticket; re-running the same sync does not duplicate it. <!-- src/lib/upsert-issue.test.ts -->
-- [ ] `listUnseenStatusChanges` attaches `sprintAdded` and qualifies a ticket that has only an unseen sprint-add; hides it once seen or once the ticket leaves the sprint. <!-- src/lib/status-changes-query.test.ts -->
-- [ ] `StatusChangeLine` renders the sprint-only, status-only, and combined sentences correctly. <!-- src/components/sprint-board/StatusChangeLine.test.tsx -->
-- [ ] Dismissing a combined line marks both ids seen. <!-- useStatusChanges test + seen route test -->
+- [x] `extractLastSprintChangeAuthor` returns the author/time of the latest Sprint-add changelog entry and null when none/created-without-changelog. <!-- src/lib/jira-client.test.ts -->
+- [x] `upsert-issue` writes a `ticketScopeChange` "added" row with the changelog actor on a sprint-add for an existing ticket, and with the reporter fallback for a new ticket; re-running the same sync does not duplicate it. <!-- src/lib/upsert-issue.test.ts -->
+- [x] `listUnseenStatusChanges` attaches `sprintAdded` and qualifies a ticket that has only an unseen sprint-add; hides it once seen or once the ticket leaves the sprint. <!-- src/lib/status-changes-query.test.ts -->
+- [x] `StatusChangeLine` renders the sprint-only, status-only, and combined sentences correctly. <!-- src/components/sprint-board/StatusChangeLine.test.tsx -->
+- [x] Dismissing a combined line marks both ids seen. <!-- useStatusChanges test + seen route test -->
 
 ## Related
 

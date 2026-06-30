@@ -468,15 +468,15 @@ export default function SprintBoard() {
   const [updatesOpen, setUpdatesOpen] = useState(true);
   const statusChangeMapForTable = updatesOpen ? statusChangeMap : EMPTY_STATUS_CHANGE_MAP;
   const handleStatusChangeMoveToBottom = useCallback(
-    (ticketKey: string, statusChangeId: string) => {
+    (item: StatusChangeItem) => {
       // File the ticket just above the trailing done/dep block via the manual PO order,
       // then mark the change seen in the same gesture. Reuses the create-flow splice rule;
       // the change is client-persisted (account setting), so it does not snap back on sync.
       const displayKeys = tickets.map((t) => t.key);
       const insertIdx = trailingDoneDepStart(tickets);
-      const base = (poPriorityOrder ?? displayKeys).filter((k) => k !== ticketKey);
-      setPoPriorityOrder(spliceKeyIntoOrder(base, displayKeys, insertIdx, ticketKey));
-      markStatusChangeSeen(statusChangeId);
+      const base = (poPriorityOrder ?? displayKeys).filter((k) => k !== item.ticketKey);
+      setPoPriorityOrder(spliceKeyIntoOrder(base, displayKeys, insertIdx, item.ticketKey));
+      markStatusChangeSeen(item);
     },
     [tickets, poPriorityOrder, setPoPriorityOrder, markStatusChangeSeen],
   );

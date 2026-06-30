@@ -932,8 +932,16 @@ export const ticketScopeChange = sqliteTable("ticket_scope_change", {
   storyPoints: real("story_points"),
   businessValue: integer("business_value"),
   changedAt: text("changed_at").notNull(),
+  // BRDG-439: who moved the ticket into the sprint, from the Jira "Sprint" changelog
+  // author (or the reporter for a ticket created straight into a sprint). The burnup
+  // backfill leaves these null, so the board's "Added to sprint" line reads only rows
+  // with a known actor and never surfaces synthetic/historical backfill events.
+  changedBy: text("changed_by"),
+  changedByAccountId: text("changed_by_account_id"),
+  changedByAvatar: text("changed_by_avatar"),
 }, (table) => [
   index("ticket_scope_change_sprint_idx").on(table.sprintName, table.changedAt),
+  index("ticket_scope_change_ticket_action_idx").on(table.ticketKey, table.action),
 ]);
 
 // Cached AI-suggested related issues for the ticket detail view (independent of story writer sessions)

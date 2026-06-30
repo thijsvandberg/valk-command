@@ -1,11 +1,12 @@
 import { db } from "@/db";
-import { ticket, ticketMetadata, storyVersion, ticketAttachment, ticketSubtask, ticketLink, jiraComment, sprintNameCache, ticketStatusChange, storyWriterSession, jiraUser } from "@/db/schema";
+import { ticket, ticketMetadata, storyVersion, ticketAttachment, ticketSubtask, ticketLink, jiraComment, sprintNameCache, ticketStatusChange, ticketScopeChange, storyWriterSession, jiraUser } from "@/db/schema";
 import { eq, and, isNotNull, isNull, desc } from "drizzle-orm";
-import { jiraClient, extractStoryPoints, extractSprints, extractEpicLink, extractAcceptanceCriteria, extractLastChangeAuthor, extractLastStatusChangeAuthor, FLAGGED_FIELD, type JiraIssue, type JiraAttachment, type JiraUser } from "@/lib/jira-client";
+import { jiraClient, extractStoryPoints, extractSprints, extractEpicLink, extractAcceptanceCriteria, extractLastChangeAuthor, extractLastStatusChangeAuthor, extractLastSprintChangeAuthor, FLAGGED_FIELD, type JiraIssue, type JiraAttachment, type JiraUser } from "@/lib/jira-client";
 import { adfToMarkdown } from "@/lib/adf-to-markdown";
 import { markdownEqualIgnoringSpacing } from "@/lib/normalize-markdown";
 import { emitTicketEvent, type TicketChangeKind } from "@/lib/ticket-events";
 import { syncTicketSprints } from "@/lib/sprint-membership";
+import { safeJsonParse } from "@/lib/api-validation";
 import { createHash, randomUUID } from "crypto";
 
 export function normalizeIssueType(name: string): string {
@@ -131,6 +132,8 @@ export async function upsertIssue(
   // BRDG-414: who made the latest status transition + its real Jira event time,
   // from the inline changelog (expand=changelog). Synchronous; no extra API call.
   const statusChangeMeta = extractLastStatusChangeAuthor(issue);
+  // BRDG-439: who moved the ticket into a sprint + when, from the same inline changelog.
+  const sprintChangeMeta = extractLastSprintChangeAuthor(issue);
   const preLatestVersion = await db.query.storyVersion.findFirst({
     where: (sv, { eq: eqFn }) => eqFn(sv.jiraKey, issue.key),
     orderBy: (sv, { desc }) => [desc(sv.createdAt)],
@@ -387,6 +390,37 @@ export async function upsertIssue(
         changedBy: statusChangeMeta?.name ?? null,
         changedByAccountId: statusChangeMeta?.accountId ?? null,
         changedByAvatar: statusChangeMeta?.avatar ?? null,
+      }).onConflictDoNothing().run();
+    }
+
+    // BRDG-439: record an "added to sprint" event for the board's review-queue line.
+    // Fires only when the ticket NEWLY gained a sprint (a brand-new ticket created into a
+    // sprint counts as gaining all of its sprints). The actor comes from the Jira "Sprint"
+    // changelog author, falling back to the reporter + created time for tickets created
+    // straight into a sprint (no changelog entry). Deterministic id + onConflictDoNothing
+    // matches the burnup-seed scheme so the two writers dedupe. sprintName stores the sprint
+    // id (consistent with ticket.sprintName and the burnup read). Unlike burnup-seed, this
+    // write sets an actor, which is how the board tells real-time adds from backfill rows.
+    const prevSprintIds = safeJsonParse<string[]>(existing?.sprintIds, []);
+    const gainedIds = sprintIdList.filter((id) => !prevSprintIds.includes(id));
+    if (gainedIds.length > 0) {
+      const addActor = sprintChangeMeta ?? (reporterName
+        ? { name: reporterName, accountId: reporterAccountId, avatar: reporterAvatar, changedAt: fields.created ?? now }
+        : null);
+      const addedAt = sprintChangeMeta?.changedAt ?? fields.created ?? now;
+      tx.insert(ticketScopeChange).values({
+        id: `scope-${issue.key}-add-${new Date(addedAt).getTime()}`,
+        ticketKey: issue.key,
+        sprintName: sprintName ?? gainedIds[0],
+        action: "added",
+        // Same defaulting as the burnup writers (sync-tickets-service / burnup-seed): the
+        // two dedupe on this id, so these values must match what burnup expects to sum.
+        storyPoints: storyPoints ?? 0,
+        businessValue: (meta?.businessValue != null && meta.businessValue >= 1) ? meta.businessValue : 0,
+        changedAt: addedAt,
+        changedBy: addActor?.name ?? null,
+        changedByAccountId: addActor?.accountId ?? null,
+        changedByAvatar: addActor?.avatar ?? null,
       }).onConflictDoNothing().run();
     }
 

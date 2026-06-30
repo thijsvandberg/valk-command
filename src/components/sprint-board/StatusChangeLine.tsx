@@ -109,6 +109,15 @@ export function StatusChangeLine({
   const hasNew = change.newCommentCount > 0 || !!change.storyEditedAt;
   const showSubtaskFlag = isFinished && change.openSubtaskCount > 0;
 
+  // BRDG-439: a row can carry a status change, a sprint-add, or both. When a sprint-add is
+  // present it leads the sentence and supplies the attribution (a drag-into-sprint is one
+  // Jira action). The status affordances above are null-safe, so a sprint-only line shows
+  // none of them.
+  const sprintAdd = change.sprintAdded;
+  const hasStatus = change.id != null && change.toStatus != null;
+  const attribution = sprintAdd ? sprintAdd.changedBy : change.changedBy;
+  const attributionAt = sprintAdd ? sprintAdd.changedAt : change.changedAt;
+
   return (
     // Isolated from the row's click/drag so acting on the line never selects or drags the row.
     <div
@@ -126,17 +135,29 @@ export function StatusChangeLine({
 
       <div className="flex min-w-0 flex-1 flex-wrap items-center gap-x-2.5 gap-y-1.5">
         <span className="text-caption text-text-tertiary">
-          Updated from <StatusWord status={change.fromStatus as JiraStatus} /> to <StatusWord status={change.toStatus} />
-          {change.changedBy && (
+          {sprintAdd && hasStatus ? (
+            <>
+              Added to sprint and moved from <StatusWord status={change.fromStatus as JiraStatus} /> to{" "}
+              <StatusWord status={change.toStatus as JiraStatus} />
+            </>
+          ) : sprintAdd ? (
+            <>Added to sprint</>
+          ) : (
+            <>
+              Updated from <StatusWord status={change.fromStatus as JiraStatus} /> to{" "}
+              <StatusWord status={change.toStatus as JiraStatus} />
+            </>
+          )}
+          {attribution && (
             <>
               {" by "}
-              {change.changedBy}
+              {attribution}
             </>
           )}
           {" "}
           {/* Relative time woven into the sentence (uniform with the rest); hover shows the exact time. */}
-          <Tooltip content={formatAbsoluteDate(change.changedAt, { weekday: true })}>
-            <span className="cursor-default">{relativeDate(change.changedAt)}</span>
+          <Tooltip content={formatAbsoluteDate(attributionAt, { weekday: true })}>
+            <span className="cursor-default">{relativeDate(attributionAt)}</span>
           </Tooltip>
         </span>
 
@@ -170,7 +191,8 @@ export function StatusChangeLine({
           // "N of M subtasks open" popup with the list + "Close all subtasks" (BRDG-414).
           <OpenSubtasksIndicator
             ticketKey={change.ticketKey}
-            jiraStatus={change.toStatus}
+            // showSubtaskFlag implies isFinished, so toStatus is a non-null DONE/DEPRECATED here.
+            jiraStatus={change.toStatus as JiraStatus}
             openCount={change.openSubtaskCount}
             totalCount={change.totalSubtaskCount}
             onCloseSubtasks={onCloseSubtasks}

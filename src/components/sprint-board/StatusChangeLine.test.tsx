@@ -27,9 +27,18 @@ function makeChange(overrides: Partial<StatusChangeItem> = {}): StatusChangeItem
     newCommentCount: 0,
     lastCommentAt: null,
     storyEditedAt: null,
+    sprintAdded: null,
     ...overrides,
   };
 }
+
+const SPRINT_ADD = {
+  id: "scope-VPL-1-add-1",
+  changedBy: "Frank van den Nouland",
+  changedByAccountId: "acc-frank",
+  changedByAvatar: null,
+  changedAt: "2026-06-27T10:00:00.000Z",
+};
 
 describe("StatusChangeLine (BRDG-414)", () => {
   const noop = () => {};
@@ -37,6 +46,34 @@ describe("StatusChangeLine (BRDG-414)", () => {
   it("renders the from -> to transition as one uniform sentence", () => {
     render(<StatusChangeLine change={makeChange()} onSeen={noop} onMoveToBottom={noop} />);
     expect(screen.getByText(/Updated from In Progress to Test/)).toBeInTheDocument();
+  });
+
+  it("renders a sprint-add-only line led by 'Added to sprint' with the mover's name (BRDG-439)", () => {
+    render(
+      <StatusChangeLine
+        change={makeChange({ id: null, fromStatus: null, toStatus: null, changedBy: null, sprintAdded: SPRINT_ADD })}
+        onSeen={noop}
+        onMoveToBottom={noop}
+      />,
+    );
+    expect(screen.getByText(/Added to sprint by Frank van den Nouland/)).toBeInTheDocument();
+    expect(screen.queryByText(/Updated from/)).not.toBeInTheDocument();
+    expect(screen.queryByText(/moved from/)).not.toBeInTheDocument();
+  });
+
+  it("combines a sprint-add with a status change into one sprint-led sentence (BRDG-439)", () => {
+    render(
+      <StatusChangeLine
+        change={makeChange({ fromStatus: "TO DO", toStatus: "IN PROGRESS", changedBy: "Dan Mol", sprintAdded: SPRINT_ADD })}
+        onSeen={noop}
+        onMoveToBottom={noop}
+      />,
+    );
+    // One combined line; attribution comes from the sprint-add actor, not the status author.
+    expect(
+      screen.getByText(/Added to sprint and moved from To Do to In Progress by Frank van den Nouland/),
+    ).toBeInTheDocument();
+    expect(screen.queryByText(/^Updated from/)).not.toBeInTheDocument();
   });
 
   it("always shows the changer name, even when it matches the assignee", () => {
