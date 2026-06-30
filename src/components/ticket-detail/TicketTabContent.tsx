@@ -98,6 +98,8 @@ export interface TicketTabContentProps {
   onSubtaskStatusOptimistic?: (childKey: string, status: JiraStatus) => void;
   onEpicChildOptimistic?: (childKey: string, patch: Partial<EpicChild>) => void;
   onConflictResolved: () => Promise<void>;
+  /** Reload the working copy after a version is restored from History (BRDG-440). */
+  onRestored?: (content: string) => Promise<void> | void;
   onSelectTicket: (key: string) => void;
   /** Readiness change from the epic Meta info tab; same handler the sidebar uses. */
   onReadinessChange?: (v: TicketReadiness | null) => void;
@@ -153,6 +155,7 @@ export function TicketTabContent({
   onSubtaskStatusOptimistic,
   onEpicChildOptimistic,
   onConflictResolved,
+  onRestored,
   onSelectTicket,
   onReadinessChange,
   activeChildKey,
@@ -429,6 +432,10 @@ export function TicketTabContent({
               resetKey={historyResetKey}
               onConflictResolved={async (): Promise<void> => {
                 await onConflictResolved();
+                onActiveTabChange("content");
+              }}
+              onRestored={(content: string): void => {
+                void onRestored?.(content);
                 onActiveTabChange("content");
               }}
             />

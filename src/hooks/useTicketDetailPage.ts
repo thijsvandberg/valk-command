@@ -411,6 +411,34 @@ export function useTicketDetailPage(key: string) {
     setDraftDiscardKey((k) => k + 1);
   }, [mutateTicket]);
 
+  // Restoring a version writes a new local edit server-side, then surfaces it as
+  // the working copy. Like the push handler (BRDG-340), patch the cache
+  // client-side and do NOT revalidate immediately: a dev-mode refetch can return
+  // the pre-restore payload and clobber the patch, which is the "old version
+  // until refresh" bug. Setting localEdits.description (not clearing it) is what
+  // makes the remounted editor show the restored content right away.
+  const handleRestored = useCallback(async (content: string) => {
+    setShowConflictDiff(false);
+    setMetadataOnlyConflict(false);
+    setHasLocalDescEdit(true);
+    await mutateTicket(
+      (prev) => {
+        if (!prev) return prev;
+        const prevEdits = (prev as unknown as Record<string, unknown>).localEdits as
+          | Record<string, { value: string; isDraft: boolean; modifiedAt?: string }>
+          | undefined;
+        return {
+          ...prev,
+          editState: "local_edits",
+          localEdits: { ...(prevEdits ?? {}), description: { value: content, isDraft: false } },
+        };
+      },
+      { revalidate: false },
+    );
+    setDraftDiscardKey((k) => k + 1);
+    syncEditState(key, "local_edits");
+  }, [key, mutateTicket, syncEditState]);
+
   return {
     ticket,
     detail,
@@ -502,5 +530,8 @@ export function useTicketDetailPage(key: string) {
 
     // Conflict resolution
     handleConflictResolved,
+
+    // Version restore (BRDG-440)
+    handleRestored,
   };
 }

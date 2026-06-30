@@ -257,6 +257,26 @@ describe("useTicketDetailPage", () => {
     expect(optimisticCall![1]).toMatchObject({ revalidate: false });
   });
 
+  it("restore loads the version as a local edit without revalidating, and remounts (BRDG-440)", async () => {
+    const { result } = renderHook(() => useTicketDetailPage("VPL-42"));
+    const keyBefore = result.current.draftDiscardKey;
+
+    await act(async () => { await result.current.handleRestored("Restored content"); });
+
+    // The cache is patched client-side so the remounted editor shows the restored
+    // content immediately, instead of the pre-restore state until a manual refresh.
+    const optimisticCall = mutateFn.mock.calls.find((c) => typeof c[0] === "function");
+    expect(optimisticCall).toBeDefined();
+    const updater = optimisticCall![0] as (prev: typeof mockApiData) => typeof mockApiData;
+    const patched = updater({ ...mockApiData, editState: "clean", localEdits: {} });
+    expect(patched.editState).toBe("local_edits");
+    expect(patched.localEdits.description).toMatchObject({ value: "Restored content", isDraft: false });
+    // Same dev-mode-stale guard as push: do not revalidate immediately (BRDG-340).
+    expect(optimisticCall![1]).toMatchObject({ revalidate: false });
+    // Remount the editor so it reads the restored local edit.
+    expect(result.current.draftDiscardKey).toBe(keyBefore + 1);
+  });
+
   it("push to Jira does not clear draft state on conflict", async () => {
     vi.mocked(tickets.pushToJira).mockResolvedValue({ conflict: true, contentChanged: true });
 

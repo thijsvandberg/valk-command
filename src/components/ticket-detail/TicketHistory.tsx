@@ -297,24 +297,16 @@ export function TicketHistory({ ticket, showConflictDiff, metadataOnlyConflict, 
     }
   }, [ticket.key, mergeResult, onConflictResolved]);
 
-  const handleRevertTo = useCallback(async (version: StoryVersion) => {
-    setResolving(true);
-    try {
-      await tickets.saveLocalEdit(ticket.key, { field: "description", localValue: version.content });
-      onConflictResolved?.("keep");
-    } catch (err) {
-      console.error("Failed to create revert edit:", err);
-    } finally {
-      setResolving(false);
-    }
-  }, [ticket.key, onConflictResolved]);
-
+  // Restore (preview button) and the diff-view "Revert to" share this: both write
+  // the version's content as a local edit, then refresh the working copy. Prefer
+  // onRestored, which reloads without clearing the just-written edit; onConflictResolved
+  // is the fallback for hosts that don't wire onRestored (it would clear the edit).
   const doRestore = useCallback(async (version: StoryVersion) => {
     setResolving(true);
     try {
       await tickets.saveLocalEdit(ticket.key, { field: "description", localValue: version.content });
-      onConflictResolved?.("keep");
-      onRestored?.(version.content);
+      if (onRestored) onRestored(version.content);
+      else onConflictResolved?.("keep");
     } catch (err) {
       console.error("Failed to restore version:", err);
     } finally {
@@ -443,7 +435,7 @@ export function TicketHistory({ ticket, showConflictDiff, metadataOnlyConflict, 
           onForcePush={handleForcePush}
           onDiscardLocal={handleDiscardLocal}
           onSaveMerge={handleSaveMerge}
-          onRevertTo={handleRevertTo}
+          onRevertTo={doRestore}
           onPreview={handlePreviewClick}
         />
       ) : (
