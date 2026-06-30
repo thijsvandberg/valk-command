@@ -1,6 +1,6 @@
 # BRDG-450: Eliminate phantom test failures + jira-client mock fragility
 
-**Status:** To Do
+**Status:** Done
 **Priority:** Medium
 **Type:** Chore (test/DX tooling)
 
@@ -74,7 +74,7 @@ Order is chosen to avoid a self-referential deadlock: the currently-loaded PostT
 
 - [x] Guard test: `createJiraClientMock()` covers every `@/lib/jira-client` runtime export. <!-- src/test/mocks/jira-client.guard.test.ts. Scoped to top-level exports (the BRDG-414/439/413 break class), not jiraClient instance methods — those are mostly private and reflecting over them is brittle (per plan). -->
 - [x] Lock wrapper: a second invocation while the lock is held behaves per the decided default (skip/wait) and never starts a parallel `vitest`. <!-- verified via shell assertion: skip mode with lock held prints "skipped"/exit 0 and runs no vitest; wait mode blocks until release then runs. Bash lock logic is not unit-tested in vitest by design. -->
-- [ ] Full suite + build stay green after the migration (regression gate; the migration must not change any test's behaviour). <!-- npm run test && npm run build -->
+- [x] Full suite + build stay green after the migration (regression gate; the migration must not change any test's behaviour). <!-- npm run verify: 645 files / 7304 tests pass via the wrapper; npm run build green -->
 
 ## Related
 
