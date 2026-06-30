@@ -40,22 +40,38 @@ Align the `GroupStatBar` select-all checkbox glyph to the row checkbox glyph x (
 - **Alignment scope: inbox-only or global?** Recommended default: **fix it where the select-all renders** (a shared `GroupStatBar`/`GroupCard` tweak), since the only two select-all surfaces — inbox and epic-children-by-sprint — are both `BoardRow`-based and benefit identically, and the sprint board renders no group select-all so its checkbox column is unaffected. Require visually verifying the sprint board + epic-children group headers don't shift. If the shared change nudges the board's chevron/label inset undesirably, fall back to an opt-in prop (e.g. `alignSelectAllToRows`) that the inbox + epic host pass.
 
 ## Implementation Plan
-1. **Header control.** Swap the two count badges in `page.tsx` for the segmented All/New control + the Select-all button, wired to existing `newOnly`/`newCount`/`allChecked`/`toggleAll`/`displayRows`.
-2. **Checkbox alignment.** Adjust the `GroupStatBar` select-all (and, if needed, the `GroupCard` header inset) so its glyph shares the row checkbox's x; verify inbox, epic-children, and sprint board.
-3. **Tests + visual check.** Update/extend the inbox page tests for the segmented control + select-all; browser-verify alignment on all three surfaces.
+(Detailed plan from the Opus planning pass; the two parts are independent.)
+
+### Part 1 — Header control (`src/app/(app)/inbox/page.tsx`, the `{data && (...)}` block after `ViewHeaderTitle`)
+- Replace the total-unread badge button + the `newCount > 0` "N new" chip with **variant-A** markup wired to existing state (no new logic).
+- **Segmented control (only when `newCount > 0`):** a `rounded-full bg-overlay-subtle p-0.5` track with two buttons. `All {rows.length}` → `setNewOnly(false)`, active when `!newOnly` (active = `bg-surface-floating text-text-primary shadow-sm`). `New {newCount}` (brand dot) → `setNewOnly(true)`, active when `newOnly` (active = `bg-[var(--color-brand-500)] text-white`; dot `bg-white`/`bg-current`).
+- **Fallback (`newCount === 0`):** render a plain static `All {rows.length}` count pill (the old `bg-overlay-subtle rounded-full` style), not a one-button track.
+- **Select-all button (only when `displayRows.length > 0`):** `<Checkbox checked={allChecked} />` + label `Select all{newOnly ? " new" : ""}` + muted `({displayRows.length})`; `onClick={toggleAll}`. `aria-pressed={allChecked}`. It is a labelled button, not `role="checkbox"`; no `stopPropagation` needed (it lives in ViewHeader, not a GroupCard).
+- Keep `title="Show all unread"` on the All segment (test-stable). Add `focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-[var(--color-brand-400)]` to all three buttons. `transition-colors` only.
+- `?new=1` deep-link: unchanged (`newOnly` still lazy-inits from the query param), so the New segment renders active on mount.
+
+### Part 2 — Checkbox alignment (`src/components/sprint-board/GroupStatBar.tsx`)
+- Add an explicit `alignSelectAllToRows?: boolean` prop (default `false`). The **inbox passes it**; epic-children and the board do not (board never passes `onSelectAll`, so it is byte-for-byte unchanged; epic-children stays neutral — its rows lack the `w-2` new-dot slot, so the chevron-lane treatment is inbox-only).
+- When the prop is set: prepend `pl-1` to the label zone; change the select-all box from `h-5 w-5 rounded` to `h-5 w-3.5` (14px gutter, preserves vertical hit target, glyph centers at 23px from card edge given GroupCard's `px-3`); wrap the collapse chevron in a `flex w-2 shrink-0 items-center justify-center` lane so the label also aligns with the row's issue-icon column.
+- Preserve `role="checkbox"`, `aria-checked`, `aria-label`, `stopPropagation`, opacity/hover-reveal, focus ring.
+
+### Part 3 — Tests + visual check
+- Update the BRDG-438 header tests in `page.test.tsx` (the New chip is now `New {n}`; the zero-new case has no New segment but a static All pill; All segment keeps `title="Show all unread"`). Add: segmented render + counts, click All/New toggles filter, header Select-all selects the shown set + label switches to "Select all new" + second click clears, `?new=1` lands with New active.
+- Add a `GroupStatBar` test that `alignSelectAllToRows` renders the `w-3.5` gutter (not `h-5 w-5`).
+- Browser-verify alignment on inbox / sprint board / epic-children-by-sprint.
 
 ## Acceptance Criteria
-- [ ] The header shows a segmented All/New control: `All {total}` + `New {newCount}` (brand dot on New), active segment filled; the New segment is hidden when `newCount` is 0. <!-- page.tsx header; newOnly/newCount -->
-- [ ] Clicking All shows all unread; clicking New filters to new — driven by the existing `newOnly`/`displayRows`. <!-- setNewOnly + displayRows -->
-- [ ] A Select-all button beside the control selects exactly the shown set and toggles off when all shown are selected; its label reads "Select all new" while New is active. <!-- toggleAll over displayRows; allChecked -->
-- [ ] On the inbox, the group-header select-all checkbox and the row checkboxes sit on one vertical column. <!-- GroupStatBar select-all aligned to BoardRow pl-4/w-3.5 -->
-- [ ] The sprint board group headers and the epic-children-by-sprint group headers are visually unchanged (or improved) — no regression from the shared change. <!-- verify GroupStatBar/GroupCard consumers -->
-- [ ] `?new=1` (digest deep-link) still lands with the New segment active. <!-- newOnly init unchanged -->
+- [x] The header shows a segmented All/New control: `All {total}` + `New {newCount}` (brand dot on New), active segment filled; the New segment is hidden when `newCount` is 0. <!-- page.tsx header; newOnly/newCount -->
+- [x] Clicking All shows all unread; clicking New filters to new — driven by the existing `newOnly`/`displayRows`. <!-- setNewOnly + displayRows -->
+- [x] A Select-all button beside the control selects exactly the shown set and toggles off when all shown are selected; its label reads "Select all new" while New is active. <!-- toggleAll over displayRows; allChecked -->
+- [x] On the inbox, the group-header select-all checkbox and the row checkboxes sit on one vertical column. <!-- GroupStatBar select-all aligned to BoardRow pl-4/w-3.5 -->
+- [x] The sprint board group headers and the epic-children-by-sprint group headers are visually unchanged (or improved) — no regression from the shared change. <!-- verify GroupStatBar/GroupCard consumers -->
+- [x] `?new=1` (digest deep-link) still lands with the New segment active. <!-- newOnly init unchanged -->
 
 ## Tests
-- [ ] Header renders the segmented control with the right counts; the New segment is absent when `newCount` is 0; clicking All/New toggles `newOnly`. <!-- src/app/(app)/inbox/page.test.tsx -->
-- [ ] Select-all checks exactly the shown keys and its label switches to "Select all new" under `newOnly`; a second click clears. <!-- src/app/(app)/inbox/page.test.tsx -->
-- [ ] Checkbox alignment is visual: verified via build + browser screenshots on inbox / board / epic-children (noted, not unit-tested). <!-- manual/visual -->
+- [x] Header renders the segmented control with the right counts; the New segment is absent when `newCount` is 0; clicking All/New toggles `newOnly`. <!-- src/app/(app)/inbox/page.test.tsx -->
+- [x] Select-all checks exactly the shown keys and its label switches to "Select all new" under `newOnly`; a second click clears. <!-- src/app/(app)/inbox/page.test.tsx -->
+- [x] Checkbox alignment is visual: verified via build + browser screenshots on inbox / board / epic-children (noted, not unit-tested). <!-- manual/visual -->
 
 ## Related
 - [[BRDG-438-inbox-new-unread-count-filter-digest-deeplink]] — provides `newOnly`, `displayRows`, `newCount`, `allChecked`, `toggleAll`; this restyles the header that story shipped.
