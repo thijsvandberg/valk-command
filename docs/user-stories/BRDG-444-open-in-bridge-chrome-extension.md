@@ -106,18 +106,59 @@ bundler.
   ticket page lazy-sync on 404 (`POST /api/jira/sync-tickets` with the key) so any
   Jira ticket opens cleanly.
 
+## Implementation Plan
+
+Self-contained Manifest V3 extension under `tools/jira-extension/`, 100% plain JS so
+it stays invisible to `tsc`/`next build`. Two supporting config edits.
+
+**Files to create (all under `tools/jira-extension/`):**
+1. `parse-key.js` — pure `resolveJiraKey(loc)`. Priority: `selectedIssue` query param,
+   then `/browse/<KEY>`, then a generic `[A-Z][A-Z0-9]+-\d+` match, else `null`. UMD
+   dual-export (window global for the classic content script + `module.exports` for vitest).
+2. `parse-key.test.js` — vitest unit tests for the parser (browse URL, selectedIssue,
+   board URL with param, non-VPL key, non-ticket URL -> null, priority order, null input).
+3. `content.js` — injects the "Open in Bridge" button (floating bottom-right, robust to
+   Jira DOM churn), reads port from `chrome.storage.sync`, opens
+   `http://localhost:<port>/tickets/<KEY>` in a new tab. SPA re-injection via patched
+   `history.pushState`/`replaceState` + `popstate` + debounced `MutationObserver`. Removes
+   the button when no key is present.
+4. `popup.html` + `popup.js` — one numeric port input (default `3101`, validated 1-65535)
+   persisted to `chrome.storage.sync`.
+5. `manifest.json` — MV3; content scripts `["parse-key.js","content.js"]` (parser first)
+   matched to `https://new-story.atlassian.net/*`; `action` popup; `storage` permission.
+6. `README.md` — load-unpacked steps + manual-verification checklist.
+
+**Config edits (two):**
+- `eslint.config.mjs`: add `tools/jira-extension/**` to `ignores` (lint unaffected).
+- `vitest.config.ts`: add `**/*.test.js` to `include` so `parse-key.test.js` runs.
+- No `tsconfig` change: `.js` files are already outside `include`, so typecheck/build are
+  untouched (the reason the folder is kept all-JS).
+
+**Order:** parser -> vitest-glob edit -> parser test -> manifest -> content.js ->
+popup -> eslint ignore -> README. Final: `npm run verify` + `npm run build`.
+
+**Decision (open question):** use the **generic key match**, not VPL-only. Bridge's
+`/tickets/[key]` route is project-agnostic; restricting to VPL would silently hide the
+button on other projects. Generic matching is a superset that still passes the VPL cases.
+
+**Decision (host):** target is fixed to `http://localhost:<port>` per AC3 ("prod" =
+locally-run production build on 3101); no remote-host field (out of level-0 scope).
+
+**Non-automated coverage:** button injection, SPA re-injection, and popup persistence are
+DOM/extension glue verified manually in Chrome per the README; noted in the PR.
+
 ## Acceptance Criteria
-- [ ] An "Open in Bridge" button appears on a Jira ticket page at `new-story.atlassian.net`. <!-- tools/jira-extension/content.js injection -->
-- [ ] The button resolves the current ticket key from both `/browse/VPL-XXXX` URLs and `?selectedIssue=VPL-XXXX` URLs. <!-- tools/jira-extension/parse-key.js -->
-- [ ] Clicking the button opens `http://localhost:<port>/tickets/<KEY>` in a new tab. <!-- content.js window.open; deep-link served by src/app/(app)/tickets/[key]/page.tsx -->
-- [ ] The button re-appears and targets the right key after navigating between tickets without a page reload (SPA navigation). <!-- content.js history-patch + MutationObserver -->
-- [ ] The target port is configurable via the extension popup and persists, defaulting to `3101`. <!-- tools/jira-extension/popup.js + chrome.storage.sync -->
-- [ ] The button is absent on non-ticket Jira pages (no key present). <!-- content.js: remove when parse-key returns null -->
-- [ ] `npm run lint`, `npm run typecheck`, and `npm run build` are unaffected by the new folder. <!-- eslint.config ignores tools/jira-extension/**; no .ts files so tsconfig skips it -->
+- [x] An "Open in Bridge" button appears on a Jira ticket page at `new-story.atlassian.net`. <!-- tools/jira-extension/content.js injection -->
+- [x] The button resolves the current ticket key from both `/browse/VPL-XXXX` URLs and `?selectedIssue=VPL-XXXX` URLs. <!-- tools/jira-extension/parse-key.js -->
+- [x] Clicking the button opens `http://localhost:<port>/tickets/<KEY>` in a new tab. <!-- content.js window.open; deep-link served by src/app/(app)/tickets/[key]/page.tsx -->
+- [x] The button re-appears and targets the right key after navigating between tickets without a page reload (SPA navigation). <!-- content.js history-patch + MutationObserver -->
+- [x] The target port is configurable via the extension popup and persists, defaulting to `3101`. <!-- tools/jira-extension/popup.js + chrome.storage.sync -->
+- [x] The button is absent on non-ticket Jira pages (no key present). <!-- content.js: remove when parse-key returns null -->
+- [x] `npm run lint`, `npm run typecheck`, and `npm run build` are unaffected by the new folder. <!-- eslint.config ignores tools/jira-extension/**; no .ts files so tsconfig skips it. Verified in a clean worktree (pre-existing parallel-work type errors in src/ are unrelated). -->
 
 ## Tests
-- [ ] Unit test for the key parser: `/browse/VPL-47093`, `?selectedIssue=VPL-47093`, a board URL with the param, and a non-ticket URL (expect `null`). <!-- tools/jira-extension/parse-key.test.js (vitest) -->
-- [ ] The rest (button injection, SPA re-injection, popup persistence) is DOM/extension glue verified manually in Chrome per the README; note this in the PR.
+- [x] Unit test for the key parser: `/browse/VPL-47093`, `?selectedIssue=VPL-47093`, a board URL with the param, and a non-ticket URL (expect `null`). <!-- tools/jira-extension/parse-key.test.js (vitest), 8 cases pass -->
+- [x] The rest (button injection, SPA re-injection, popup persistence) is DOM/extension glue verified manually in Chrome per the README; note this in the PR. <!-- manual steps documented in tools/jira-extension/README.md; Chrome load-unpacked check is a user step -->
 
 ## Related
 - [[BRDG-440-restore-version-from-history]] — establishes the local-edits / version

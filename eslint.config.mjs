@@ -42,7 +42,7 @@ const noRawTextSizesRule = {
 const eslintConfig = [
   ...nextConfig,
   {
-    ignores: ["deleted/**", ".next-build/**"],
+    ignores: ["deleted/**", ".next-build/**", "tools/jira-extension/**"],
   },
   {
     plugins: {
