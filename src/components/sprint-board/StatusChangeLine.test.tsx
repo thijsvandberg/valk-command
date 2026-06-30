@@ -139,15 +139,35 @@ describe("StatusChangeLine (BRDG-414)", () => {
     expect(screen.getByRole("button", { name: "Mark as seen" })).toBeInTheDocument();
   });
 
-  it("shows a new-comment count link when there are recent comments", () => {
-    render(
+  it("weaves the new-comment signal into the sentence as flowing text (pluralised), not an icon badge", () => {
+    const { rerender } = render(
       <StatusChangeLine
         change={makeChange({ newCommentCount: 3, lastCommentAt: "2026-06-27T09:00:00.000Z" })}
         onSeen={noop}
         onMoveToBottom={noop}
       />,
     );
-    expect(screen.getByText("3")).toBeInTheDocument();
+    expect(screen.getByText(/3 new comments/)).toBeInTheDocument();
+
+    rerender(
+      <StatusChangeLine
+        change={makeChange({ newCommentCount: 1, lastCommentAt: "2026-06-27T09:00:00.000Z" })}
+        onSeen={noop}
+        onMoveToBottom={noop}
+      />,
+    );
+    expect(screen.getByText(/1 new comment$/)).toBeInTheDocument();
+  });
+
+  it("weaves the story-edited signal into the sentence as flowing text", () => {
+    render(
+      <StatusChangeLine
+        change={makeChange({ storyEditedAt: "2026-06-27 06:00:00" })}
+        onSeen={noop}
+        onMoveToBottom={noop}
+      />,
+    );
+    expect(screen.getByText("story edited")).toBeInTheDocument();
   });
 
   const deploy: LastDeployedInfo = { environment: "UAT3", state: "SUCCESSFUL", completedAt: "2026-06-25T13:58:00.000Z" };

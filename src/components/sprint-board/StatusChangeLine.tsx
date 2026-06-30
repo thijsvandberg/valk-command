@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { Check, MessageSquare, Rocket, Sparkles } from "lucide-react";
+import { Check, Rocket } from "lucide-react";
 import type { JiraStatus } from "@/types/ticket";
 import type { StatusChangeItem } from "@/lib/status-changes-query";
 import type { LastDeployedInfo } from "@/hooks/usePipelines";
@@ -31,7 +31,6 @@ function StatusWord({ status }: { status: JiraStatus }) {
   return <>{STATUS_LABEL[status] ?? status}</>;
 }
 
-const SIGNAL = "inline-flex items-center gap-1 text-caption font-medium";
 // Move-to-bottom and Generate-test-prompt share one quiet, neutral outline style.
 const ACTION_BTN =
   "inline-flex shrink-0 items-center gap-1.5 rounded-md border border-border-default px-2 py-1 text-caption font-medium text-text-secondary transition-colors duration-150";
@@ -90,7 +89,6 @@ export function StatusChangeLine({
   const isTest = change.toStatus === "TEST";
   // Show the last-deploy badge once work is testable or actively in progress.
   const showsDeploy = isTest || change.toStatus === "IN PROGRESS";
-  const hasNew = change.newCommentCount > 0 || !!change.storyEditedAt;
   const showSubtaskFlag = isFinished && change.openSubtaskCount > 0;
 
   // BRDG-439: a row can carry a status change, a sprint-add, or both. When a sprint-add is
@@ -117,6 +115,15 @@ export function StatusChangeLine({
       : deployAdded
         ? { environment: deployAdded.environment, completedAt: deployAdded.completedAt, state: deployAdded.state }
         : null;
+
+  // storyVersion.createdAt is stored in SQLite UTC format ("YYYY-MM-DD HH:MM:SS", no zone);
+  // normalise to a real UTC instant so the woven-in relative/absolute time isn't skewed by the
+  // viewer's timezone. The comment timestamp is already a zoned Jira ISO, so it passes through.
+  const storyEditedIso = change.storyEditedAt
+    ? change.storyEditedAt.includes("T")
+      ? change.storyEditedAt
+      : `${change.storyEditedAt.replace(" ", "T")}Z`
+    : null;
 
   return (
     // Isolated from the row's click/drag so acting on the line never selects or drags the row.
@@ -161,29 +168,31 @@ export function StatusChangeLine({
           <Tooltip content={formatAbsoluteDate(attributionAt, { weekday: true })}>
             <span className="cursor-default">{relativeDate(attributionAt)}</span>
           </Tooltip>
-        </span>
 
-        {hasNew && (
-          <>
-            <Sep />
-            {change.newCommentCount > 0 && (
-              <Tooltip content={`${change.newCommentCount} new comment${change.newCommentCount === 1 ? "" : "s"}${change.lastCommentAt ? ` · last ${relativeDate(change.lastCommentAt)}` : ""} — open comments`}>
-                <Link href={buildTicketDetailUrl(change.ticketKey)} className={`${SIGNAL} text-[var(--color-brand-300)] hover:underline`}>
-                  <MessageSquare className="h-3 w-3 shrink-0" strokeWidth={1.75} />
-                  {change.newCommentCount}
+          {/* New-comment and story-edited signals read as part of the running sentence (BRDG-446):
+              plain inline links, not icon badges, each with a hover tooltip carrying the exact
+              timestamp + relative "ago". */}
+          {change.newCommentCount > 0 && (
+            <>
+              {" "}<Sep />{" "}
+              <Tooltip content={`${change.newCommentCount} new comment${change.newCommentCount === 1 ? "" : "s"}${change.lastCommentAt ? ` · last ${formatAbsoluteDate(change.lastCommentAt, { weekday: true })} (${relativeDate(change.lastCommentAt)})` : ""} — open comments`}>
+                <Link href={buildTicketDetailUrl(change.ticketKey)} className="cursor-pointer text-[var(--color-brand-300)] hover:underline">
+                  {change.newCommentCount} new comment{change.newCommentCount === 1 ? "" : "s"}
                 </Link>
               </Tooltip>
-            )}
-            {change.storyEditedAt && (
-              <Tooltip content={`Story edited · ${formatAbsoluteDate(change.storyEditedAt)} — open history`}>
-                <Link href={buildTicketDetailUrl(change.ticketKey, { tab: "history" })} className={`${SIGNAL} text-text-tertiary hover:underline`}>
-                  <Sparkles className="h-3 w-3 shrink-0" strokeWidth={1.75} aria-hidden />
-                  Story edited
+            </>
+          )}
+          {storyEditedIso && (
+            <>
+              {" "}<Sep />{" "}
+              <Tooltip content={`Story edited · ${formatAbsoluteDate(storyEditedIso, { weekday: true })} (${relativeDate(storyEditedIso)}) — open history`}>
+                <Link href={buildTicketDetailUrl(change.ticketKey, { tab: "history" })} className="cursor-pointer text-text-tertiary hover:underline">
+                  story edited
                 </Link>
               </Tooltip>
-            )}
-          </>
-        )}
+            </>
+          )}
+        </span>
 
         {/* Badges carry their own pill background, so no dot separator before them. */}
         {badgeDeploy && <DeploySignal deploy={badgeDeploy} />}
