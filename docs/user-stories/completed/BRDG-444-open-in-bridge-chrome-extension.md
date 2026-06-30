@@ -1,8 +1,25 @@
 # BRDG-444: "Open in Bridge" Chrome extension for Jira tickets
 
-**Status:** To Do
+**Status:** Done
 **Priority:** Low
 **Type:** Feature
+
+## Post-delivery refinements (PO feedback)
+
+- **Button placement.** Moved from a fixed bottom-right floating button to the issue
+  header, next to the +/apps/AI buttons under the title. Jira's toolbar containers
+  use hashed emotion classes and React relocates/removes injected nodes, so the
+  button is a Shadow-DOM host positioned (`position: fixed`) by tracking the
+  toolbar's live rect (anchored to the stable
+  `issue.views.issue-base.foundation.summary.heading` testid; contiguity walk to the
+  toolbar's right edge), repositioned on scroll/resize. Floating bottom-right remains
+  the fallback when the toolbar isn't found. Validated live on `VPL-45607`.
+- **Deep-link through login.** Opening `/tickets/<KEY>` while signed out of the
+  target port previously landed on the sprint board after login. Bridge now preserves
+  the destination: the middleware adds `?redirect_url=<path>` on its `/login`
+  redirects and the login page returns the user there (sanitised via
+  `src/lib/safe-redirect.ts`). This is a small general Bridge change (helps every
+  deep-link), slightly beyond the original "no backend change" scope.
 
 ## Description
 While viewing a Jira ticket (e.g. `https://new-story.atlassian.net/browse/VPL-47093`),
