@@ -1,0 +1,18 @@
+{
+  "manifest_version": 3,
+  "name": "Open in Bridge",
+  "version": "1.0.0",
+  "description": "Adds an \"Open in Bridge\" button to Jira ticket pages that deep-links the ticket into the local Bridge app.",
+  "permissions": ["storage"],
+  "action": {
+    "default_popup": "popup.html",
+    "default_title": "Open in Bridge settings"
+  },
+  "content_scripts": [
+    {
+      "matches": ["https://new-story.atlassian.net/*"],
+      "js": ["parse-key.js", "content.js"],
+      "run_at": "document_idle"
+    }
+  ]
+}
