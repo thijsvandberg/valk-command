@@ -64,7 +64,7 @@ Order is chosen to avoid a self-referential deadlock: the currently-loaded PostT
 
 ## Acceptance Criteria
 
-- [ ] A hook-triggered test run and a manual `npm run test` cannot run two `vitest` processes at once (both serialize through one lock). <!-- tools/scripts/run-tests.sh + .claude/settings.json:53 + package.json:14 -->
+- [x] A hook-triggered test run and a manual `npm run test` cannot run two `vitest` processes at once (both serialize through one lock). <!-- tools/scripts/run-tests.sh (lock /tmp/valk-vitest.lock): hook = skip mode, `npm run test` = wait mode. Hook now runs `vitest run --changed` (scoped), not the full suite. -->
 - [x] A failing full run reports all failures, not the first five. <!-- vitest.config.ts: bail removed -->
 - [x] Heavy jsdom files no longer OOM/hang a full local run on the 16GB machine. <!-- vitest.config.ts: maxWorkers: 4 (vitest 4 top-level option; poolOptions.forks shape changed) -->
 - [x] Adding a new export to `@/lib/jira-client` fails a single named guard test that points at `src/test/mocks/jira-client.ts`, and no other test file. <!-- src/test/mocks/jira-client.guard.test.ts: superset check via `import * as real` -->
@@ -73,7 +73,7 @@ Order is chosen to avoid a self-referential deadlock: the currently-loaded PostT
 ## Tests
 
 - [x] Guard test: `createJiraClientMock()` covers every `@/lib/jira-client` runtime export. <!-- src/test/mocks/jira-client.guard.test.ts. Scoped to top-level exports (the BRDG-414/439/413 break class), not jiraClient instance methods — those are mostly private and reflecting over them is brittle (per plan). -->
-- [ ] Lock wrapper: a second invocation while the lock is held behaves per the decided default (skip/wait) and never starts a parallel `vitest`. <!-- tools/scripts/ test or a bats/shell assertion -->
+- [x] Lock wrapper: a second invocation while the lock is held behaves per the decided default (skip/wait) and never starts a parallel `vitest`. <!-- verified via shell assertion: skip mode with lock held prints "skipped"/exit 0 and runs no vitest; wait mode blocks until release then runs. Bash lock logic is not unit-tested in vitest by design. -->
 - [ ] Full suite + build stay green after the migration (regression gate; the migration must not change any test's behaviour). <!-- npm run test && npm run build -->
 
 ## Related
