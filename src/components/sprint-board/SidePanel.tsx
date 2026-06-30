@@ -286,8 +286,11 @@ export function SidePanel({
   const isEditing = h.isTitleEditing || h.isDescEditing;
   const showPushButton = hasLocalEdits && !h.showConflictWarning && !isEditing;
 
+  // Availability mirrors the board row / bulk menus: offer refinement for any
+  // live ticket not already in a session. Readiness is not a gate here -- a PO
+  // often wants to queue a not-yet-ready ticket precisely so it gets refined.
   const refineEligible = !t.removedFromJiraAt && t.jiraStatus !== "DONE" && t.jiraStatus !== "DEPRECATED"
-    && t.readiness === "ready_to_refine" && !isInRefinementSession;
+    && !isInRefinementSession;
 
   const handleSelectTicket = useCallback((key: string) => {
     if (onSelectTicket) onSelectTicket(key);

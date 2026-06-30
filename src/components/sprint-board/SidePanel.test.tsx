@@ -87,8 +87,9 @@ vi.mock("@/hooks/useTicketDetailPage", () => ({
   useTicketDetailPage: () => hookValue,
 }));
 
+let refinementSessionsValue: Array<{ id: string; status: string; ticketKeys: string[] }> = [];
 vi.mock("@/hooks/useRefinementSessions", () => ({
-  useRefinementSessions: () => ({ sessions: [] }),
+  useRefinementSessions: () => ({ sessions: refinementSessionsValue }),
 }));
 
 vi.mock("@/lib/prefetch", () => ({ prefetchTicketPage: vi.fn() }));
@@ -168,6 +169,7 @@ describe("SidePanel", () => {
 
   beforeEach(() => {
     hookValue = makeHook();
+    refinementSessionsValue = [];
     window.localStorage.clear();
   });
 
@@ -245,6 +247,35 @@ describe("SidePanel", () => {
     expect(menu).toHaveTextContent("Follow ticket");
     expect(menu).toHaveTextContent("Pull from Jira");
     expect(menu).toHaveTextContent("Flag this ticket");
+  });
+
+  describe("add-to-refinement visibility", () => {
+    // Availability mirrors the board row / bulk menus: any live ticket not
+    // already in a session, regardless of readiness.
+    it("offers add-to-refinement for a not-yet-ready ticket", () => {
+      render(<SidePanel {...defaultProps} ticket={makeTicket({ readiness: "drafting", jiraStatus: "IN PROGRESS" })} />);
+      fireEvent.click(screen.getByLabelText("More actions"));
+      expect(screen.getByTestId("more-menu")).toHaveTextContent("Add to refinement");
+    });
+
+    it.each(["DONE", "DEPRECATED"] as const)("hides add-to-refinement for %s tickets", (jiraStatus) => {
+      render(<SidePanel {...defaultProps} ticket={makeTicket({ jiraStatus })} />);
+      fireEvent.click(screen.getByLabelText("More actions"));
+      expect(screen.getByTestId("more-menu")).not.toHaveTextContent("Add to refinement");
+    });
+
+    it("hides add-to-refinement for a ticket removed from Jira", () => {
+      render(<SidePanel {...defaultProps} ticket={makeTicket({ removedFromJiraAt: "2026-06-01" })} />);
+      fireEvent.click(screen.getByLabelText("More actions"));
+      expect(screen.getByTestId("more-menu")).not.toHaveTextContent("Add to refinement");
+    });
+
+    it("hides add-to-refinement when the ticket is already in an active session", () => {
+      refinementSessionsValue = [{ id: "s1", status: "draft", ticketKeys: ["PROJ-42"] }];
+      render(<SidePanel {...defaultProps} ticket={makeTicket({ key: "PROJ-42" })} />);
+      fireEvent.click(screen.getByLabelText("More actions"));
+      expect(screen.getByTestId("more-menu")).not.toHaveTextContent("Add to refinement");
+    });
   });
 
   it("omits the Review item from the more-menu for subtasks (BRDG-333)", () => {
