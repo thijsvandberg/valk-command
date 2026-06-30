@@ -1,6 +1,6 @@
 import { render, screen } from "@testing-library/react";
 import { describe, it, expect, vi } from "vitest";
-import { StatusChangeLine, describeDeploy } from "./StatusChangeLine";
+import { StatusChangeLine } from "./StatusChangeLine";
 import type { StatusChangeItem } from "@/lib/status-changes-query";
 import type { LastDeployedInfo } from "@/hooks/usePipelines";
 import type { Assignee } from "@/types/ticket";
@@ -164,23 +164,5 @@ describe("StatusChangeLine (BRDG-414)", () => {
   it("hides the deploy badge on To Do changes", () => {
     render(<StatusChangeLine change={makeChange({ fromStatus: "TO DO", toStatus: "TO DO" })} deploy={deploy} onSeen={noop} onMoveToBottom={noop} />);
     expect(screen.queryByText("UAT3")).not.toBeInTheDocument();
-  });
-});
-
-describe("describeDeploy", () => {
-  it("phrases a successful deploy as a sentence with a relative 'xx ago' suffix", () => {
-    const r = describeDeploy({ environment: "UAT3", state: "SUCCESSFUL", completedAt: "2026-06-25T13:58:00.000Z" });
-    expect(r).toMatch(/^Last deployed to UAT3 successfully on .+ \(.+ ago\)\.$/);
-    expect(r).not.toContain("SUCCESSFUL");
-  });
-
-  it("phrases a failed deploy as a sentence with a relative 'xx ago' suffix", () => {
-    const r = describeDeploy({ environment: "UAT3", state: "FAILED", completedAt: "2026-06-25T13:58:00.000Z" });
-    expect(r).toMatch(/^The last deploy to UAT3 failed on .+ \(.+ ago\)\.$/);
-  });
-
-  it("phrases an in-progress deploy readably and drops the date when missing", () => {
-    const r = describeDeploy({ environment: "UAT3", state: "INPROGRESS", completedAt: null });
-    expect(r).toBe("Deploy to UAT3 is in progress.");
   });
 });

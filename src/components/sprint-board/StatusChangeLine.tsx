@@ -8,6 +8,7 @@ import type { LastDeployedInfo } from "@/hooks/usePipelines";
 import { Tooltip } from "@/components/shared/Tooltip";
 import { OpenSubtasksIndicator } from "@/components/sprint-board/OpenSubtasksIndicator";
 import { relativeDate, formatAbsoluteDate } from "@/lib/date-utils";
+import { describeDeploy } from "@/lib/deploy-describe";
 import { buildTicketDetailUrl } from "@/lib/ticket-detail-url";
 
 // BRDG-414: the chosen "quiet line" beneath a changed board row. A grey info marker sits in
@@ -34,23 +35,6 @@ const SIGNAL = "inline-flex items-center gap-1 text-caption font-medium";
 // Move-to-bottom and Generate-test-prompt share one quiet, neutral outline style.
 const ACTION_BTN =
   "inline-flex shrink-0 items-center gap-1.5 rounded-md border border-border-default px-2 py-1 text-caption font-medium text-text-secondary transition-colors duration-150";
-
-// A plain-language, one-sentence summary of the most recent deploy for the tooltip.
-export function describeDeploy(deploy: LastDeployedInfo): string {
-  const env = deploy.environment;
-  // Absolute date with the relative "xx ago" appended in parentheses for quick orientation.
-  const stamp = deploy.completedAt
-    ? `${formatAbsoluteDate(deploy.completedAt, { weekday: true })} (${relativeDate(deploy.completedAt)})`
-    : null;
-  if (deploy.state === "SUCCESSFUL") {
-    return `Last deployed to ${env} successfully${stamp ? ` on ${stamp}` : ""}.`;
-  }
-  if (deploy.state === "FAILED") {
-    return `The last deploy to ${env} failed${stamp ? ` on ${stamp}` : ""}.`;
-  }
-  const status = deploy.state.toLowerCase().replace(/_/g, " ").replace("inprogress", "in progress");
-  return `Deploy to ${env} is ${status}${stamp ? `, as of ${stamp}` : ""}.`;
-}
 
 function DeploySignal({ deploy }: { deploy: LastDeployedInfo }) {
   if (!deploy.environment) return null;

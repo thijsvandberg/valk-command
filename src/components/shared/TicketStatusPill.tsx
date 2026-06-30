@@ -20,6 +20,7 @@ import { getJiraUrl } from "@/lib/jira-url";
 import { IssueTypeIcon } from "@/components/shared/IssueTypeIcon";
 import { formatTicketShare } from "@/lib/ticket-share";
 import { Tooltip } from "@/components/shared/Tooltip";
+import { describeDeploy } from "@/lib/deploy-describe";
 import { StoryPointPicker } from "@/components/shared/StoryPointPicker";
 import { BusinessValuePicker } from "@/components/shared/BusinessValuePicker";
 import { MetricBadge } from "@/components/shared/MetricBadge";
@@ -585,9 +586,7 @@ function TicketHoverCard({
         )}
 
         {data.lastDeploy && (
-          <Tooltip
-            content={`Deploy: ${data.lastDeploy.environment ?? "unknown"} — ${data.lastDeploy.state}${data.lastDeploy.completedAt ? ` (${new Date(data.lastDeploy.completedAt).toLocaleString("en-GB")})` : ""}`}
-          >
+          <Tooltip content={describeDeploy(data.lastDeploy)}>
             <span
               aria-label="Last deploy"
               className={`inline-flex h-7 items-center gap-1.5 rounded-lg px-2.5 text-body-sm font-medium uppercase tracking-wide ${
