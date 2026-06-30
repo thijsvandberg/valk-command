@@ -5,14 +5,17 @@ import { syncTicketSprints } from "@/lib/sprint-membership";
 import { landNewTicket } from "@/lib/sprint-rank";
 import { cache } from "@/lib/cache";
 import { logger } from "@/lib/logger";
+import { isDraftKey } from "@/lib/draft-key";
 import { eq } from "drizzle-orm";
+
+export { isDraftKey };
 
 /**
  * Resolves a DRAFT-xxx key to its real Jira key if the draft has been finalized.
  * Returns the input key unchanged for non-draft keys or still-pending drafts.
  */
 export function resolveDraftKey(key: string): string {
-  if (!key.startsWith("DRAFT-")) return key;
+  if (!isDraftKey(key)) return key;
   const row = db.select().from(ticket).where(eq(ticket.jiraKey, key)).get();
   if (row?.status === "REPLACED" && row.description) return row.description;
   return key;
