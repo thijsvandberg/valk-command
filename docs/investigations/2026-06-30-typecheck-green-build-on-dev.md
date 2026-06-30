@@ -39,12 +39,17 @@ and `npm run verify` run) checks **every** file in the tsconfig `include`
   red typecheck that has nothing to do with their change, which is noisy and erodes
   trust in the gate.
 
-## Suggested follow-up (not done here)
+## Resolution (2026-06-30)
 
-- Fix the `useTicketDetailPage.test.ts:271` fixture to include the required
-  `description` field (a one-line test fixture fix).
-- Optionally make CI run `npm run typecheck` (not just `build`) as a required check
-  so stale test types are caught before merge.
+- Fixed: `useTicketDetailPage.test.ts`'s `mockApiData.localEdits` is now widened to
+  the real `Record<string, {...}>` shape (it was inferred as a narrow literal that
+  forced the `description` key), so modelling the empty "no local edits" state as
+  `localEdits: {}` type-checks. `npm run typecheck` is green again.
+
+## Suggested follow-up (still open)
+- CI's `build` job already runs `npm run typecheck` as a step, so it *would* have
+  caught this — but `dev` is ~175 commits ahead of origin and unpushed, so CI never
+  ran on it. Pushing more often (or before relying on "green") closes the real gap.
 
 ## Note on parallel work
 

@@ -78,9 +78,12 @@ const mockApiData = {
   linkedIssues: [],
   jiraComments: [],
   epicChildren: [],
+  // Widen to the real localEdits shape (Record<string, edit>) so tests can model
+  // the "no local edits" state as `localEdits: {}` — the inferred literal type
+  // would otherwise lock the key set to `description`.
   localEdits: {
     description: { value: "Pushed new description", isDraft: true, modifiedAt: "2026-06-12T10:00:00.000Z" },
-  },
+  } as Record<string, { value: string; isDraft: boolean; modifiedAt: string }>,
 };
 
 const mutateFn = vi.fn().mockResolvedValue(undefined);
