@@ -1,7 +1,8 @@
 "use client";
 
 import { SignIn, useAuth, useOrganizationList, useClerk } from "@clerk/nextjs";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
+import { safeRedirectPath } from "@/lib/safe-redirect";
 
 const BRIDGE_ORG_ID = process.env.NEXT_PUBLIC_CLERK_ORG_ID;
 
@@ -10,14 +11,25 @@ export default function LoginPage() {
   const { setActive, isLoaded: orgListLoaded } = useOrganizationList();
   const { signOut } = useClerk();
   const [accessDenied, setAccessDenied] = useState(false);
+  // Captured once on mount, before Clerk's sign-in flow can rewrite the URL, so a
+  // deep-link round-tripped through the middleware (?redirect_url=/tickets/<KEY>)
+  // survives to the post-login redirect instead of defaulting to home.
+  const destRef = useRef("/");
+  const destCaptured = useRef(false);
 
   useEffect(() => {
+    if (!destCaptured.current) {
+      destCaptured.current = true;
+      destRef.current = safeRedirectPath(
+        new URLSearchParams(window.location.search).get("redirect_url"),
+      );
+    }
     if (!isLoaded || !orgListLoaded) return;
     if (!isSignedIn) return;
 
-    // Already in the right org — go home
+    // Already in the right org — go to the captured destination
     if (orgId === BRIDGE_ORG_ID) {
-      window.location.href = "/";
+      window.location.href = destRef.current;
       return;
     }
 
@@ -26,7 +38,7 @@ export default function LoginPage() {
       setActive({ organization: BRIDGE_ORG_ID })
         .then(() => {
           // Hard reload so the middleware reads the updated session cookie
-          window.location.href = "/";
+          window.location.href = destRef.current;
         })
         .catch(() => {
           // User is logged in but not a member of the Bridge org

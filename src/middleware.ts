@@ -47,6 +47,18 @@ function forwardWithUser(req: Request, userId: string | undefined, requestId: st
   return res;
 }
 
+// Build the /login redirect, preserving the originally-requested path+search as
+// `redirect_url` so the login page can return the user to a deep-link (e.g. a
+// /tickets/<KEY> link opened from the Jira extension) instead of dropping them on
+// the default home view. The path comes from the trusted req URL; the login page
+// re-validates it (see src/lib/safe-redirect.ts) before using it.
+function loginRedirectUrl(req: { url: string; nextUrl: { pathname: string; search: string } }) {
+  const url = new URL("/login", req.url);
+  const dest = req.nextUrl.pathname + req.nextUrl.search;
+  if (dest && dest !== "/") url.searchParams.set("redirect_url", dest);
+  return url;
+}
+
 export default clerkMiddleware(async (auth, req) => {
   // One correlation id per request, generated as early as possible so every
   // path below (including the rejections) can echo it on the response and the
@@ -106,7 +118,7 @@ export default clerkMiddleware(async (auth, req) => {
       );
     }
     logRejection("redirect to /login (no authenticated user)", req);
-    return NextResponse.redirect(new URL("/login", req.url));
+    return NextResponse.redirect(loginRedirectUrl(req));
   }
 
   // Restrict access to the Bridge Clerk org when CLERK_ORG_ID is configured.
@@ -126,7 +138,7 @@ export default clerkMiddleware(async (auth, req) => {
         );
       }
       logRejection(`redirect to /login (org mismatch: ${mismatch})`, req);
-      return NextResponse.redirect(new URL("/login", req.url));
+      return NextResponse.redirect(loginRedirectUrl(req));
     }
   }
 

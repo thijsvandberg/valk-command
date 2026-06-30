@@ -174,6 +174,40 @@ describe("middleware rejection logging", () => {
     expect(line).toContain("orgId=none");
   });
 
+  it("preserves the requested path as redirect_url on the /login redirect", async () => {
+    authResult = { userId: null };
+    const res = await run(makeReq("/tickets/VPL-47093", { method: "GET" }));
+    expect(res.status).toBe(307);
+    const location = new URL(res.headers.get("location") as string);
+    expect(location.pathname).toBe("/login");
+    expect(location.searchParams.get("redirect_url")).toBe("/tickets/VPL-47093");
+  });
+
+  it("includes the query string in the preserved redirect_url", async () => {
+    authResult = { userId: null };
+    const res = await run(makeReq("/tickets/VPL-1?tab=links", { method: "GET" }));
+    const location = new URL(res.headers.get("location") as string);
+    expect(location.searchParams.get("redirect_url")).toBe("/tickets/VPL-1?tab=links");
+  });
+
+  it("omits redirect_url when the requested page is the root", async () => {
+    authResult = { userId: null };
+    const res = await run(makeReq("/", { method: "GET" }));
+    const location = new URL(res.headers.get("location") as string);
+    expect(location.pathname).toBe("/login");
+    expect(location.searchParams.has("redirect_url")).toBe(false);
+  });
+
+  it("preserves redirect_url on a page org mismatch too", async () => {
+    process.env.CLERK_ORG_ID = "org_required";
+    authResult = { userId: "user_123", orgId: null };
+    const res = await run(makeReq("/tickets/VPL-9", { method: "GET" }));
+    expect(res.status).toBe(307);
+    const location = new URL(res.headers.get("location") as string);
+    expect(location.pathname).toBe("/login");
+    expect(location.searchParams.get("redirect_url")).toBe("/tickets/VPL-9");
+  });
+
   it("does not log on an allowed authenticated request", async () => {
     const res = await run(makeReq("/api/tickets", { method: "GET" }));
     expect(res.status).not.toBe(401);
