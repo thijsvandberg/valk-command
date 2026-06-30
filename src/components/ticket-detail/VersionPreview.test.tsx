@@ -1,4 +1,4 @@
-import { render, screen } from "@testing-library/react";
+import { render, screen, fireEvent } from "@testing-library/react";
 import { describe, it, expect, vi } from "vitest";
 import type { StoryVersion } from "@/types/ticket";
 import { VersionPreview } from "./VersionPreview";
@@ -20,7 +20,19 @@ vi.mock("@/components/shared/VersionPicker", () => ({
 }));
 
 vi.mock("@/components/ui/Button", () => ({
-  Button: ({ children }: { children?: React.ReactNode }) => <button>{children}</button>,
+  Button: ({
+    children,
+    onClick,
+    disabled,
+  }: {
+    children?: React.ReactNode;
+    onClick?: () => void;
+    disabled?: boolean;
+  }) => (
+    <button onClick={onClick} disabled={disabled}>
+      {children}
+    </button>
+  ),
 }));
 
 function makeVersion(overrides: Partial<StoryVersion> = {}): StoryVersion {
@@ -47,9 +59,84 @@ describe("VersionPreview ticket-reference linkification", () => {
         onVersionChange={vi.fn()}
         onBack={vi.fn()}
         onOpenDiff={vi.fn()}
+        onRestore={vi.fn()}
+        restoring={false}
       />
     );
 
     expect(screen.getByText("Compare with VPL-222")).toHaveAttribute("data-linkify", "true");
+  });
+});
+
+describe("VersionPreview restore action (BRDG-440)", () => {
+  it("renders a Restore button and calls onRestore with the version on click", () => {
+    const onRestore = vi.fn();
+    const version = makeVersion();
+    render(
+      <VersionPreview
+        version={version}
+        versionOptions={[]}
+        loadingContent={false}
+        onVersionChange={vi.fn()}
+        onBack={vi.fn()}
+        onOpenDiff={vi.fn()}
+        onRestore={onRestore}
+        restoring={false}
+      />
+    );
+
+    fireEvent.click(screen.getByText("Restore this version"));
+    expect(onRestore).toHaveBeenCalledWith(version);
+  });
+
+  it("hides the Restore button on the active local draft version", () => {
+    render(
+      <VersionPreview
+        version={makeVersion({ label: "draft" })}
+        versionOptions={[]}
+        loadingContent={false}
+        onVersionChange={vi.fn()}
+        onBack={vi.fn()}
+        onOpenDiff={vi.fn()}
+        onRestore={vi.fn()}
+        restoring={false}
+      />
+    );
+
+    expect(screen.queryByText("Restore this version")).not.toBeInTheDocument();
+  });
+
+  it("disables the Restore button while content is still loading", () => {
+    render(
+      <VersionPreview
+        version={makeVersion({ content: "" })}
+        versionOptions={[]}
+        loadingContent={true}
+        onVersionChange={vi.fn()}
+        onBack={vi.fn()}
+        onOpenDiff={vi.fn()}
+        onRestore={vi.fn()}
+        restoring={false}
+      />
+    );
+
+    expect(screen.getByText("Restore this version").closest("button")).toBeDisabled();
+  });
+
+  it("shows a busy label while restoring", () => {
+    render(
+      <VersionPreview
+        version={makeVersion()}
+        versionOptions={[]}
+        loadingContent={false}
+        onVersionChange={vi.fn()}
+        onBack={vi.fn()}
+        onOpenDiff={vi.fn()}
+        onRestore={vi.fn()}
+        restoring={true}
+      />
+    );
+
+    expect(screen.getByText("Restoring...")).toBeInTheDocument();
   });
 });

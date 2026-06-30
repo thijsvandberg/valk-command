@@ -1,7 +1,7 @@
 "use client";
 
 import type { StoryVersion } from "@/types/ticket";
-import { ArrowLeft } from "lucide-react";
+import { ArrowLeft, RotateCcw } from "lucide-react";
 import Image from "next/image";
 import { Button } from "@/components/ui/Button";
 import { Tag } from "@/components/shared/Tag";
@@ -17,6 +17,10 @@ export interface VersionPreviewProps {
   onVersionChange: (versionNumber: number) => void;
   onBack: () => void;
   onOpenDiff: (versionNumber: number) => void;
+  /** Load this version back into the editable working copy. */
+  onRestore: (version: StoryVersion) => void;
+  /** True while a restore is in flight (disables the button). */
+  restoring: boolean;
 }
 
 export function VersionPreview({
@@ -26,6 +30,8 @@ export function VersionPreview({
   onVersionChange,
   onBack,
   onOpenDiff,
+  onRestore,
+  restoring,
 }: VersionPreviewProps) {
   usePrismLanguages(version.content);
   const isFirst = version.versionNumber === 1;
@@ -57,13 +63,27 @@ export function VersionPreview({
             onSelect={(id) => onVersionChange(Number(id))}
           />
         </div>
-        <Button
-          variant="ghost"
-          size="sm"
-          onClick={() => onOpenDiff(version.versionNumber)}
-        >
-          Compare
-        </Button>
+        <div className="flex items-center gap-2">
+          {/* The active local draft is already the working copy, so restoring it is meaningless. */}
+          {version.label !== "draft" && (
+            <Button
+              variant="primary"
+              size="sm"
+              icon={<RotateCcw size={13} strokeWidth={1.5} />}
+              disabled={restoring || loadingContent || !version.content}
+              onClick={() => onRestore(version)}
+            >
+              {restoring ? "Restoring..." : "Restore this version"}
+            </Button>
+          )}
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => onOpenDiff(version.versionNumber)}
+          >
+            Compare
+          </Button>
+        </div>
       </div>
 
       {/* Version metadata */}
