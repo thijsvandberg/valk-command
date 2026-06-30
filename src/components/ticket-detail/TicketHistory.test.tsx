@@ -1,4 +1,4 @@
-import { render, screen, waitFor } from "@testing-library/react";
+import { render, screen, waitFor, fireEvent } from "@testing-library/react";
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { TicketHistory } from "./TicketHistory";
 import type { Ticket } from "@/types/ticket";
@@ -31,6 +31,7 @@ vi.mock("./VersionList", () => ({
   VersionList: ({
     sorted,
     onVersionClick,
+    onPreviewClick,
   }: {
     sorted: Array<{ versionNumber: number; updatedBy: string; date: string; label?: string }>;
     onVersionClick: (versionNumber: number) => void;
@@ -48,20 +49,71 @@ vi.mock("./VersionList", () => ({
   }) => (
     <div data-testid="version-list">
       {sorted.map((v) => (
-        <button
-          key={v.versionNumber}
-          data-testid={`version-${v.versionNumber}`}
-          onClick={() => onVersionClick(v.versionNumber)}
-        >
-          v{v.versionNumber} - {v.updatedBy}
-        </button>
+        <div key={v.versionNumber}>
+          <button
+            data-testid={`version-${v.versionNumber}`}
+            onClick={() => onVersionClick(v.versionNumber)}
+          >
+            v{v.versionNumber} - {v.updatedBy}
+          </button>
+          <button
+            data-testid={`preview-${v.versionNumber}`}
+            onClick={() => onPreviewClick(v.versionNumber)}
+          >
+            preview v{v.versionNumber}
+          </button>
+        </div>
       ))}
     </div>
   ),
 }));
 
 vi.mock("./VersionPreview", () => ({
-  VersionPreview: () => <div data-testid="version-preview" />,
+  VersionPreview: ({
+    version,
+    onRestore,
+  }: {
+    version: { versionNumber: number; content: string };
+    onRestore: (v: unknown) => void;
+  }) => (
+    <div data-testid="version-preview">
+      <span data-testid="preview-version-number">{version.versionNumber}</span>
+      <button data-testid="preview-restore" onClick={() => onRestore(version)}>
+        Restore this version
+      </button>
+    </div>
+  ),
+}));
+
+vi.mock("@/components/shared/ConfirmDialog", () => ({
+  ConfirmDialog: ({
+    open,
+    title,
+    onConfirm,
+    onClose,
+  }: {
+    open: boolean;
+    title: string;
+    onConfirm: () => void;
+    onClose: () => void;
+  }) =>
+    open ? (
+      <div data-testid="confirm-dialog">
+        <span>{title}</span>
+        <button
+          data-testid="confirm-restore"
+          onClick={() => {
+            onConfirm();
+            onClose();
+          }}
+        >
+          Confirm
+        </button>
+        <button data-testid="confirm-cancel" onClick={onClose}>
+          Cancel
+        </button>
+      </div>
+    ) : null,
 }));
 
 // DiffViewer is dynamically imported — mock next/dynamic to return a stub
@@ -256,6 +308,71 @@ describe("TicketHistory", () => {
 
     await waitFor(() => {
       expect(screen.getByTestId("section-header")).toHaveTextContent("History");
+    });
+  });
+
+  describe("restore from preview (BRDG-440)", () => {
+    it("restores directly via saveLocalEdit when no local draft exists", async () => {
+      mockApiFetch.mockResolvedValueOnce(makeVersionData(3));
+      mockApiFetch.mockResolvedValueOnce({ aiDrafts: [] });
+
+      render(<TicketHistory ticket={makeTicket()} />);
+
+      await waitFor(() => expect(screen.getByTestId("version-list")).toBeInTheDocument());
+
+      fireEvent.click(screen.getByTestId("preview-2"));
+      fireEvent.click(await screen.findByTestId("preview-restore"));
+
+      await waitFor(() =>
+        expect(mockSaveLocalEdit).toHaveBeenCalledWith("VPL-1", {
+          field: "description",
+          localValue: "Version 2 content",
+        }),
+      );
+      expect(screen.queryByTestId("confirm-dialog")).not.toBeInTheDocument();
+    });
+
+    it("calls onRestored with the restored content", async () => {
+      mockApiFetch.mockResolvedValueOnce(makeVersionData(3));
+      mockApiFetch.mockResolvedValueOnce({ aiDrafts: [] });
+
+      const onRestored = vi.fn();
+      render(<TicketHistory ticket={makeTicket()} onRestored={onRestored} />);
+
+      await waitFor(() => expect(screen.getByTestId("version-list")).toBeInTheDocument());
+
+      fireEvent.click(screen.getByTestId("preview-1"));
+      fireEvent.click(await screen.findByTestId("preview-restore"));
+
+      await waitFor(() => expect(onRestored).toHaveBeenCalledWith("Version 1 content"));
+    });
+
+    it("asks for confirmation when an unsaved draft differs, and restores only after confirm", async () => {
+      mockApiFetch.mockResolvedValueOnce(makeVersionData(2));
+      mockApiFetch.mockResolvedValueOnce({ aiDrafts: [] });
+      mockGetLocalEdits.mockResolvedValue([
+        { field: "description", localValue: "My different draft", modifiedAt: new Date().toISOString() },
+      ]);
+
+      render(<TicketHistory ticket={makeTicket()} />);
+
+      await waitFor(() => expect(screen.getByTestId("version-list")).toBeInTheDocument());
+
+      fireEvent.click(screen.getByTestId("preview-1"));
+      fireEvent.click(await screen.findByTestId("preview-restore"));
+
+      // Confirmation appears; nothing written yet.
+      expect(await screen.findByTestId("confirm-dialog")).toBeInTheDocument();
+      expect(mockSaveLocalEdit).not.toHaveBeenCalled();
+
+      fireEvent.click(screen.getByTestId("confirm-restore"));
+
+      await waitFor(() =>
+        expect(mockSaveLocalEdit).toHaveBeenCalledWith("VPL-1", {
+          field: "description",
+          localValue: "Version 1 content",
+        }),
+      );
     });
   });
 });

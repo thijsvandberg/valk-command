@@ -10,6 +10,7 @@ import type { DiffStats } from "./DiffViewer";
 import dynamic from "next/dynamic";
 const DiffViewer = dynamic(() => import("./DiffViewer").then((m) => ({ default: m.DiffViewer })), { ssr: false });
 import { VersionPreview } from "./VersionPreview";
+import { ConfirmDialog } from "@/components/shared/ConfirmDialog";
 
 export interface TicketHistoryProps {
   ticket: Ticket;
@@ -28,9 +29,13 @@ export interface TicketHistoryProps {
   /** Id of the portal the diff footer renders into. Override so a panel instance
    * does not target the full page's footer when both render at once. */
   diffFooterPortalId?: string;
+  /** Called with the restored content after a version is restored into the working copy.
+   * The ticket single view refreshes via onConflictResolved; the Story Writer editor
+   * reads from session state and needs this to reflect the restored draft immediately. */
+  onRestored?: (content: string) => void;
 }
 
-export function TicketHistory({ ticket, showConflictDiff, metadataOnlyConflict, onConflictResolved, resetKey, onVersionsLoaded, embedded, diffFooterPortalId }: TicketHistoryProps) {
+export function TicketHistory({ ticket, showConflictDiff, metadataOnlyConflict, onConflictResolved, resetKey, onVersionsLoaded, embedded, diffFooterPortalId, onRestored }: TicketHistoryProps) {
   const [ticketVersions, setTicketVersions] = useState<StoryVersion[]>([]);
   const [loading, setLoading] = useState(true);
   const [loadingContent, setLoadingContent] = useState(false);
@@ -48,6 +53,7 @@ export function TicketHistory({ ticket, showConflictDiff, metadataOnlyConflict, 
   const [savingMerge, setSavingMerge] = useState(false);
   const [diffStats, setDiffStats] = useState<DiffStats | null>(null);
   const [previewVersion, setPreviewVersion] = useState<number | null>(null);
+  const [pendingRestore, setPendingRestore] = useState<StoryVersion | null>(null);
   const [importing, setImporting] = useState(false);
   const [importResult, setImportResult] = useState<{ imported: number; skipped: number; total: number } | null>(null);
 
@@ -303,6 +309,31 @@ export function TicketHistory({ ticket, showConflictDiff, metadataOnlyConflict, 
     }
   }, [ticket.key, onConflictResolved]);
 
+  const doRestore = useCallback(async (version: StoryVersion) => {
+    setResolving(true);
+    try {
+      await tickets.saveLocalEdit(ticket.key, { field: "description", localValue: version.content });
+      onConflictResolved?.("keep");
+      onRestored?.(version.content);
+    } catch (err) {
+      console.error("Failed to restore version:", err);
+    } finally {
+      setResolving(false);
+    }
+  }, [ticket.key, onConflictResolved, onRestored]);
+
+  // Restoring overwrites the current working copy. Confirm only when an unsaved
+  // local draft exists that differs from the version being restored; otherwise
+  // restore directly (matches the PO's chosen UX for BRDG-440).
+  const handleRestore = (version: StoryVersion) => {
+    const existingDraft = sorted.find((v) => v.label === "draft");
+    if (existingDraft && existingDraft.content !== version.content) {
+      setPendingRestore(version);
+    } else {
+      void doRestore(version);
+    }
+  };
+
   const handleImportHistory = useCallback(async () => {
     setImporting(true);
     setImportResult(null);
@@ -385,6 +416,8 @@ export function TicketHistory({ ticket, showConflictDiff, metadataOnlyConflict, 
           onVersionChange={(num) => setPreviewVersion(num)}
           onBack={() => setPreviewVersion(null)}
           onOpenDiff={handlePreviewOpenDiff}
+          onRestore={handleRestore}
+          restoring={resolving}
         />
       ) : showingDiff && compareOldVersion && compareNewVersion && compareOld !== compareNew ? (
         <DiffViewer
@@ -430,6 +463,18 @@ export function TicketHistory({ ticket, showConflictDiff, metadataOnlyConflict, 
           onImportHistory={handleImportHistory}
         />
       )}
+
+      <ConfirmDialog
+        open={pendingRestore !== null}
+        onClose={() => setPendingRestore(null)}
+        title="Replace your unsaved draft?"
+        description="Restoring this version overwrites your current unsaved draft. You can still review and edit it before pushing to Jira."
+        confirmLabel="Restore"
+        confirmVariant="primary"
+        onConfirm={() => {
+          if (pendingRestore) void doRestore(pendingRestore);
+        }}
+      />
     </div>
   );
 }
