@@ -159,7 +159,7 @@ describe("StatusChangeLine (BRDG-414)", () => {
     expect(screen.getByText(/1 new comment$/)).toBeInTheDocument();
   });
 
-  it("weaves the story-edited signal into the sentence as flowing text", () => {
+  it("weaves the story-edited signal into the sentence as a natural clause", () => {
     render(
       <StatusChangeLine
         change={makeChange({ storyEditedAt: "2026-06-27 06:00:00" })}
@@ -167,7 +167,7 @@ describe("StatusChangeLine (BRDG-414)", () => {
         onMoveToBottom={noop}
       />,
     );
-    expect(screen.getByText("story edited")).toBeInTheDocument();
+    expect(screen.getByText("a story edit")).toBeInTheDocument();
   });
 
   const deploy: LastDeployedInfo = { environment: "UAT3", state: "SUCCESSFUL", completedAt: "2026-06-25T13:58:00.000Z" };

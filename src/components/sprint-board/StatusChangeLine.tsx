@@ -24,8 +24,6 @@ const STATUS_LABEL: Record<JiraStatus, string> = {
   DEPRECATED: "Deprecated",
 };
 
-const Sep = () => <span className="text-text-muted">&middot;</span>;
-
 // Plain text — inherits the sentence's font/size/colour so the whole line reads uniform.
 function StatusWord({ status }: { status: JiraStatus }) {
   return <>{STATUS_LABEL[status] ?? status}</>;
@@ -164,32 +162,38 @@ export function StatusChangeLine({
             </>
           )}
           {" "}
-          {/* Relative time woven into the sentence (uniform with the rest); hover shows the exact time. */}
+          {/* Relative time woven into the sentence; hover shows the exact time. */}
           <Tooltip content={formatAbsoluteDate(attributionAt, { weekday: true })}>
             <span className="cursor-default">{relativeDate(attributionAt)}</span>
           </Tooltip>
 
-          {/* New-comment and story-edited signals read as part of the running sentence (BRDG-446):
-              plain inline links, not icon badges, each with a hover tooltip carrying the exact
-              timestamp + relative "ago". */}
-          {change.newCommentCount > 0 && (
+          {/* What's new since reads as a natural clause continuing the sentence, in the SAME tone
+              as the rest (no separate colour) so the whole line is one quiet sentence. Each part
+              links out, with a fluent hover tooltip carrying the relative + exact time (BRDG-446). */}
+          {(change.newCommentCount > 0 || storyEditedIso) && (
             <>
-              {" "}<Sep />{" "}
-              <Tooltip content={`${change.newCommentCount} new comment${change.newCommentCount === 1 ? "" : "s"}${change.lastCommentAt ? ` · last ${formatAbsoluteDate(change.lastCommentAt, { weekday: true })} (${relativeDate(change.lastCommentAt)})` : ""} — open comments`}>
-                <Link href={buildTicketDetailUrl(change.ticketKey)} className="cursor-pointer text-[var(--color-brand-300)] hover:underline">
-                  {change.newCommentCount} new comment{change.newCommentCount === 1 ? "" : "s"}
-                </Link>
-              </Tooltip>
-            </>
-          )}
-          {storyEditedIso && (
-            <>
-              {" "}<Sep />{" "}
-              <Tooltip content={`Story edited · ${formatAbsoluteDate(storyEditedIso, { weekday: true })} (${relativeDate(storyEditedIso)}) — open history`}>
-                <Link href={buildTicketDetailUrl(change.ticketKey, { tab: "history" })} className="cursor-pointer text-text-tertiary hover:underline">
-                  story edited
-                </Link>
-              </Tooltip>
+              {", with "}
+              {change.newCommentCount > 0 && (
+                <Tooltip
+                  content={`${change.newCommentCount} new comment${change.newCommentCount === 1 ? "" : "s"}${
+                    change.lastCommentAt
+                      ? `, last ${relativeDate(change.lastCommentAt)} on ${formatAbsoluteDate(change.lastCommentAt, { weekday: true })}`
+                      : ""
+                  }. Click to open the comments.`}
+                >
+                  <Link href={buildTicketDetailUrl(change.ticketKey)} className="cursor-pointer underline-offset-2 hover:text-text-secondary hover:underline">
+                    {change.newCommentCount} new comment{change.newCommentCount === 1 ? "" : "s"}
+                  </Link>
+                </Tooltip>
+              )}
+              {change.newCommentCount > 0 && storyEditedIso && " and "}
+              {storyEditedIso && (
+                <Tooltip content={`The story was edited ${relativeDate(storyEditedIso)}, on ${formatAbsoluteDate(storyEditedIso, { weekday: true })}. Click to open the history.`}>
+                  <Link href={buildTicketDetailUrl(change.ticketKey, { tab: "history" })} className="cursor-pointer underline-offset-2 hover:text-text-secondary hover:underline">
+                    a story edit
+                  </Link>
+                </Tooltip>
+              )}
             </>
           )}
         </span>
