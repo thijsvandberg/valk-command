@@ -1,5 +1,5 @@
 import { Suspense, type ReactNode } from "react";
-import { render, screen, fireEvent, act, cleanup } from "@testing-library/react";
+import { render, screen, fireEvent, act, cleanup, within } from "@testing-library/react";
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import type { TicketReadiness } from "@/types/ticket";
 import TicketDetailPage from "./page";
@@ -29,6 +29,10 @@ function resetHook(readiness: TicketReadiness | null, overrides: Record<string, 
     detail: null,
     localEdits: null,
     apiData: { title: baseTicket.title },
+    // The real hook always returns an effectiveTitle (BRDG-449); default it to the
+    // Jira title so the header keeps rendering the Jira title unless a test overrides.
+    effectiveTitle: baseTicket.title,
+    liveTitleValue: null,
     ticketLoading: false,
     jiraCheckState: "found",
     mutateTicket: vi.fn(),
@@ -102,7 +106,15 @@ let mockSessions: Array<{ ticketKeys: string[]; status: string }> = [];
 vi.mock("@/hooks/useRefinementSessions", () => ({
   useRefinementSessions: () => ({ sessions: mockSessions, mutate: vi.fn(), isLoading: false }),
 }));
-vi.mock("@/hooks/usePageTitle", () => ({ usePageTitle: () => null }));
+// Capture the title string the page hands to usePageTitle so the browser-tab-title
+// behavior (BRDG-449) is assertable; the hook itself renders nothing in the test.
+const { pageTitleSpy } = vi.hoisted(() => ({ pageTitleSpy: vi.fn() }));
+vi.mock("@/hooks/usePageTitle", () => ({
+  usePageTitle: (title: string) => {
+    pageTitleSpy(title);
+    return null;
+  },
+}));
 // page.tsx only reads SIDEBAR_COLLAPSED_KEY via useLocalStorage; expose the
 // value so a test can simulate a collapsed sidebar (BRDG-386).
 const { localStorageState } = vi.hoisted(() => ({ localStorageState: { sidebarCollapsed: false } }));
@@ -298,6 +310,53 @@ describe("TicketDetailPage header - Add to refinement button", () => {
       expect(screen.queryByText("Add to refinement")).not.toBeInTheDocument();
     },
   );
+});
+
+describe("TicketDetailPage header - title reflects local edit (BRDG-449)", () => {
+  beforeEach(() => {
+    resetHook(null);
+    mockSessions = [];
+    pageTitleSpy.mockClear();
+  });
+
+  afterEach(() => {
+    cleanup();
+  });
+
+  it("renders the raw Jira title in the header when there is no local edit", async () => {
+    await renderPage();
+    expect(
+      within(screen.getByTestId("view-header")).getByText(baseTicket.title),
+    ).toBeInTheDocument();
+  });
+
+  it("renders the effective (local-edit) title in the header, not the raw Jira title", async () => {
+    resetHook(null, {
+      effectiveTitle: "Locally edited title",
+      localEdits: { title: { value: "Locally edited title", isDraft: true } },
+    });
+    await renderPage();
+    expect(
+      within(screen.getByTestId("view-header")).getByText("Locally edited title"),
+    ).toBeInTheDocument();
+    expect(
+      within(screen.getByTestId("view-header")).queryByText(baseTicket.title),
+    ).not.toBeInTheDocument();
+  });
+
+  it("hands the effective title to the browser tab title", async () => {
+    resetHook(null, { effectiveTitle: "Locally edited title" });
+    await renderPage();
+    expect(pageTitleSpy).toHaveBeenLastCalledWith("VPL-100 - Locally edited title");
+  });
+
+  it("falls back to the raw Jira title for the tab when no effective title is set", async () => {
+    // Simulates the real hook returning undefined effectiveTitle (e.g. mid-load
+    // once apiData exists); the page must not render "undefined" in the tab.
+    resetHook(null, { effectiveTitle: undefined });
+    await renderPage();
+    expect(pageTitleSpy).toHaveBeenLastCalledWith(`VPL-100 - ${baseTicket.title}`);
+  });
 });
 
 describe("TicketDetailPage - child preview side panel", () => {

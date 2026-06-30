@@ -119,7 +119,7 @@ export default function TicketDetailPage({
   const isInRefinementSession = refinementSessions.some(
     (s) => s.status !== "completed" && s.ticketKeys.includes(key),
   );
-  const pageTitle = usePageTitle(h.apiData ? `${key} - ${h.apiData.title}` : key);
+  const pageTitle = usePageTitle(h.apiData ? `${key} - ${h.effectiveTitle ?? h.apiData.title}` : key);
 
   // Same editable hover card the sprint board shows on the key pill, resolved
   // on-demand for just this ticket (BRDG-412). Returns undefined for
@@ -635,7 +635,7 @@ export default function TicketDetailPage({
           />
         </span>
         <span className="min-w-0 flex-1 truncate font-[var(--font-display)] text-heading-sm font-semibold tracking-tight text-text-primary">
-          {ticket.title}
+          {h.effectiveTitle ?? ticket.title}
         </span>
       </ViewHeader>
 

@@ -61,6 +61,17 @@ export function useTicketDetailPage(key: string) {
   const localEdits: Record<string, { value: string; isDraft: boolean; modifiedAt?: string }> | undefined =
     (apiData as Record<string, unknown> | undefined)?.localEdits as Record<string, { value: string; isDraft: boolean; modifiedAt?: string }> | undefined;
 
+  // Live local title edit, surfaced as state below; declared here so effectiveTitle
+  // can read it. See handleTitleLocalEdit / the draft-end reset handlers (BRDG-449).
+  const [liveTitleValue, setLiveTitleValue] = useState<string | null>(null);
+
+  // The title the PO should see in the persistent header and browser tab: the live
+  // local edit first, then the persisted draft from the payload, then the raw Jira
+  // title. The detail payload's `title` is never overlaid with local edits (that
+  // separation drives the diff/conflict/push machinery), so the header must overlay
+  // it here for display only (BRDG-449). Undefined while the ticket is still loading.
+  const effectiveTitle: string | undefined = liveTitleValue ?? localEdits?.title?.value ?? ticket?.title;
+
   // Auto-fetch from Jira when ticket is not in local DB
   const [jiraCheckState, setJiraCheckState] = useState<"idle" | "checking" | "not-found">("idle");
   const jiraCheckStarted = useRef(false);
@@ -172,9 +183,15 @@ export function useTicketDetailPage(key: string) {
   // post-push cache patch shows the just-typed title without a refetch, mirroring
   // how the description value is handed in (the SWR cache does not track drafts).
   const latestTitleEditRef = useRef<string | null>(null);
+  // liveTitleValue (declared above, near localEdits) mirrors the ref as state so the
+  // page header and browser tab title re-render with the live local edit (a ref
+  // cannot drive a re-render). Reset wherever a draft ends (discard/push/conflict/
+  // restore) so the header falls back to the effective title from the payload.
   const handleTitleLocalEdit = useCallback((has: boolean, value?: string | null) => {
     setHasLocalTitleEdit(has);
-    latestTitleEditRef.current = has ? (value ?? null) : null;
+    const next = has ? (value ?? null) : null;
+    latestTitleEditRef.current = next;
+    setLiveTitleValue(next);
   }, []);
   const handleDescLocalEdit = useCallback((has: boolean) => setHasLocalDescEdit(has), []);
 
@@ -270,6 +287,7 @@ export function useTicketDetailPage(key: string) {
       setHasLocalTitleEdit(false);
       setHasLocalDescEdit(false);
       latestTitleEditRef.current = null;
+      setLiveTitleValue(null);
       setPushError(null);
       setOverrideConfirmed(false);
       setShowConflictDiff(false);
@@ -307,6 +325,7 @@ export function useTicketDetailPage(key: string) {
         // does not track autosaved drafts.
         const pushedTitle = latestTitleEditRef.current ?? localEdits?.title?.value;
         latestTitleEditRef.current = null;
+        setLiveTitleValue(null);
         const pushedDescription = pushed?.description ?? localEdits?.description?.value;
         await mutateTicket(
           (prev) => prev ? {
@@ -403,6 +422,7 @@ export function useTicketDetailPage(key: string) {
     setHasLocalTitleEdit(false);
     setHasLocalDescEdit(false);
     latestTitleEditRef.current = null;
+    setLiveTitleValue(null);
     setDiscardError(null);
     await mutateTicket(
       (prev) => prev ? { ...prev, editState: "clean", localEdits: {} } : prev,
@@ -421,6 +441,10 @@ export function useTicketDetailPage(key: string) {
     setShowConflictDiff(false);
     setMetadataOnlyConflict(false);
     setHasLocalDescEdit(true);
+    // Restore only writes the description, but it bumps draftDiscardKey and remounts
+    // the title editor; clear the live title overlay so the header re-derives from
+    // the payload rather than holding a stale optimistic value (BRDG-449).
+    setLiveTitleValue(null);
     await mutateTicket(
       (prev) => {
         if (!prev) return prev;
@@ -444,6 +468,9 @@ export function useTicketDetailPage(key: string) {
     detail,
     localEdits,
     apiData,
+    // Title overlaid with the live/persisted local edit, for the header + tab title.
+    effectiveTitle,
+    liveTitleValue,
     ticketLoading,
     jiraCheckState,
     mutateTicket: handleMutate,

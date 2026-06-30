@@ -150,6 +150,77 @@ describe("useTicketDetailPage", () => {
     expect(result.current.pushError).toBeNull();
   });
 
+  describe("effectiveTitle (BRDG-449)", () => {
+    it("is the raw Jira title when there is no local title edit", () => {
+      const { result } = renderHook(() => useTicketDetailPage("VPL-42"));
+      expect(result.current.effectiveTitle).toBe("Test ticket");
+    });
+
+    it("is the persisted local title draft when one exists in the payload", () => {
+      vi.mocked(useTicketDetail).mockReturnValue({
+        data: {
+          ...mockApiData,
+          localEdits: {
+            ...mockApiData.localEdits,
+            title: { value: "Persisted draft title", isDraft: true, modifiedAt: "2026-06-12T10:00:00.000Z" },
+          },
+        },
+        isLoading: false,
+        mutate: mutateFn,
+        isValidating: false,
+        error: undefined,
+      } as never);
+
+      const { result } = renderHook(() => useTicketDetailPage("VPL-42"));
+      expect(result.current.effectiveTitle).toBe("Persisted draft title");
+    });
+
+    it("reflects the live typed value the moment the editor reports it", () => {
+      const { result } = renderHook(() => useTicketDetailPage("VPL-42"));
+      act(() => { result.current.handleTitleLocalEdit(true, "Live typed title"); });
+      expect(result.current.effectiveTitle).toBe("Live typed title");
+    });
+
+    it("prefers the live typed value over the persisted draft", () => {
+      vi.mocked(useTicketDetail).mockReturnValue({
+        data: {
+          ...mockApiData,
+          localEdits: {
+            ...mockApiData.localEdits,
+            title: { value: "Persisted draft title", isDraft: true, modifiedAt: "2026-06-12T10:00:00.000Z" },
+          },
+        },
+        isLoading: false,
+        mutate: mutateFn,
+        isValidating: false,
+        error: undefined,
+      } as never);
+
+      const { result } = renderHook(() => useTicketDetailPage("VPL-42"));
+      act(() => { result.current.handleTitleLocalEdit(true, "Live typed title"); });
+      expect(result.current.effectiveTitle).toBe("Live typed title");
+    });
+
+    it("clears the live title back to the Jira title on discard", async () => {
+      const { result } = renderHook(() => useTicketDetailPage("VPL-42"));
+      act(() => { result.current.handleTitleLocalEdit(true, "Live typed title"); });
+      expect(result.current.effectiveTitle).toBe("Live typed title");
+
+      await act(async () => { await result.current.handleDiscardDraft(); });
+      expect(result.current.effectiveTitle).toBe("Test ticket");
+    });
+
+    it("clears the live title on a successful push", async () => {
+      vi.mocked(tickets.pushToJira).mockResolvedValue({ success: true });
+      const { result } = renderHook(() => useTicketDetailPage("VPL-42"));
+      act(() => { result.current.handleTitleLocalEdit(true, "Live typed title"); });
+      expect(result.current.effectiveTitle).toBe("Live typed title");
+
+      await act(async () => { await result.current.handlePushToJira(); });
+      expect(result.current.liveTitleValue).toBeNull();
+    });
+  });
+
   it("surfaces the Jira content-limit reason in the toolbar banner (BRDG-349)", async () => {
     vi.mocked(tickets.pushToJira).mockRejectedValue(
       new ApiError(502, {

@@ -77,7 +77,7 @@ export interface TicketTabContentProps {
   isDescEditing: boolean;
   onTitleEditingChange: (editing: boolean) => void;
   onDescEditingChange: (editing: boolean) => void;
-  onTitleLocalEdit: (has: boolean) => void;
+  onTitleLocalEdit: (has: boolean, value?: string | null) => void;
   onDescLocalEdit: (has: boolean) => void;
   // Conflict
   showConflictWarning: boolean;
@@ -194,7 +194,9 @@ export function TicketTabContent({
   }
   const handleTitleLocalEdit = useCallback((has: boolean, value?: string | null) => {
     setLiveTitle(has ? (value ?? null) : null);
-    onTitleLocalEdit(has);
+    // Forward the typed value (not just the flag) so the page header and browser
+    // tab title can show the live local edit in lockstep with the body heading.
+    onTitleLocalEdit(has, value);
   }, [onTitleLocalEdit]);
   const titleLocalValue = liveTitle ?? localEdits?.title?.value ?? null;
 

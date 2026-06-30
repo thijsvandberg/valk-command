@@ -330,6 +330,13 @@ describe("TicketTabContent", () => {
       expect(screen.getByTestId("desc-title-local-value")).toHaveTextContent("New live title");
     });
 
+    it("forwards the title's just-typed value (not just the flag) to onTitleLocalEdit so the page header can show it (BRDG-449)", () => {
+      const onTitleLocalEdit = vi.fn();
+      renderContent("content", { onTitleLocalEdit });
+      fireEvent.click(screen.getByTestId("title-edit-trigger"));
+      expect(onTitleLocalEdit).toHaveBeenCalledWith(true, "New live title");
+    });
+
     it("renders attachments section on content tab", () => {
       renderContent("content");
       expect(screen.getByTestId("attachments-section")).toBeInTheDocument();
