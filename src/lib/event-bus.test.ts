@@ -247,6 +247,33 @@ describe("subscribeEvents (single tab)", () => {
 
     expect(MockEventSource.instances).toHaveLength(1);
   });
+
+  it("dispatches each event exactly once in the no-Web-Locks fallback", async () => {
+    // BroadcastChannel is available but Web Locks is not, so there is no leader
+    // election: every tab connects its own EventSource. The server pushes the
+    // same envelope to each tab's stream, so each tab must dispatch it once and
+    // never re-dispatch a peer's rebroadcast.
+    vi.stubGlobal("navigator", {});
+
+    const tabA = await openTab();
+    const tabB = await openTab();
+    const handlerA = vi.fn();
+    const handlerB = vi.fn();
+    tabA.subscribeEvents(handlerA);
+    tabB.subscribeEvents(handlerB);
+    await flushMicrotasks();
+
+    // Each tab gets its own direct connection in the fallback.
+    expect(MockEventSource.instances).toHaveLength(2);
+    const [esA, esB] = MockEventSource.instances;
+
+    // The server delivers the same envelope to both streams.
+    esA.emit(JSON.stringify(envelope("VPL-42")));
+    esB.emit(JSON.stringify(envelope("VPL-42")));
+
+    expect(handlerA).toHaveBeenCalledTimes(1);
+    expect(handlerB).toHaveBeenCalledTimes(1);
+  });
 });
 
 describe("subscribeEvents (cross-tab leadership)", () => {

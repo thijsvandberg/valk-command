@@ -86,6 +86,11 @@ export function RefinementSessionProvider({ children }: { children: ReactNode })
   const persistCurrentIndex = useCallback((sessionId: string, index: number) => {
     if (indexTimerRef.current) clearTimeout(indexTimerRef.current);
     indexTimerRef.current = setTimeout(() => {
+      // BRDG-417: intentionally NOT cleared on unmount. This is a fire-and-forget
+      // API write (no setState, so no post-unmount setState warning) that persists
+      // where you are in the refinement queue. Navigating away within the debounce
+      // window should still save your place so resuming lands on the same ticket;
+      // clearing the timer on unmount would silently drop that last position.
       refinementSessionsApi.update(sessionId, { currentIndex: index }).catch(() => {});
     }, INDEX_PERSIST_DELAY);
   }, []);

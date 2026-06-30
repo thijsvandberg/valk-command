@@ -32,6 +32,10 @@ let reconnectAttempts = 0;
 let channel: BroadcastChannel | null = null;
 let lockAbort: AbortController | null = null;
 let releaseLeadership: (() => void) | null = null;
+// Only the Web Locks leader rebroadcasts onto the channel. In the no-Web-Locks
+// fallback every tab connects its own EventSource, so rebroadcasting there would
+// make each tab re-dispatch its peers' copies on top of its own delivery.
+let isLeader = false;
 
 function dispatch(envelope: BridgeEventEnvelope) {
   for (const handler of Array.from(handlers)) handler(envelope);
@@ -57,10 +61,12 @@ function connect() {
     }
     if (!isBridgeEventEnvelope(parsed)) return;
     dispatch(parsed);
-    // The spec excludes the posting channel object from delivery, and this
-    // module holds exactly one channel per tab, so the leader never
-    // double-dispatches to itself.
-    channel?.postMessage(parsed);
+    // Rebroadcast only when this tab is the elected leader (the sole tab with an
+    // EventSource). The spec excludes the posting channel from delivery, so the
+    // leader never double-dispatches to itself; gating on `isLeader` also stops
+    // the no-Web-Locks fallback — where every tab has its own EventSource — from
+    // dispatching each event once per peer.
+    if (isLeader) channel?.postMessage(parsed);
   });
 
   source.onerror = () => {
@@ -97,6 +103,7 @@ function start() {
         // The grant can race a teardown: returning immediately releases the
         // lock to the next waiting tab instead of holding it forever.
         if (!started) return;
+        isLeader = true;
         connect();
         // Hold the lock (= leadership) until this tab stops; resolving hands
         // the connection to the next waiting tab.
@@ -114,6 +121,7 @@ function start() {
 
 function stop() {
   started = false;
+  isLeader = false;
   reconnectAttempts = 0;
   if (reconnectTimer) {
     clearTimeout(reconnectTimer);
