@@ -22,16 +22,19 @@ from Bridge's lint/typecheck/build.
 
 - `parse-key.js` resolves the current Jira key from the URL (`selectedIssue` query
   param, `/browse/<KEY>`, or a generic `PROJECT-123` match). Pure and unit-tested.
-- `content.js` injects the button into the issue header, next to the +/apps/AI
-  action buttons under the title (anchored by tracking that toolbar's position; it
-  lives in a Shadow DOM so Jira's global CSS can't touch it, and is styled to match
-  Jira's subtle outlined toolbar buttons with a Bridge-teal accent). If that toolbar
-  can't be found it falls back to a fixed bottom-right floating button. It is a real
+- `content.js` injects the button **inline into the issue-header toolbar's flex
+  row**, next to the +/apps/AI action buttons under the title. Because it is part of
+  the page flow it rides Jira's native scroll (no `position:fixed`, no scroll
+  handler, so no jitter). It lives in a Shadow DOM so Jira's global CSS can't touch
+  it, and is styled to match Jira's subtle outlined toolbar buttons with a
+  Bridge-teal accent. If the toolbar can't be found it falls back to a fixed
+  bottom-right floating button. It is a real
   `<a href="http://localhost:<port>/tickets/<KEY>" target="_blank">` link (so
   middle-click / cmd-click / copy-link work), with the port read from
-  `chrome.storage.sync`. It re-detects the key on Jira's SPA navigations (patched
-  `history` + debounced `MutationObserver`), repositions on scroll/resize, updates
-  the href when the port changes, and removes the button on non-ticket pages.
+  `chrome.storage.sync`. A debounced `MutationObserver` plus patched
+  `history`/`popstate` re-detect the key and re-insert the button on Jira's SPA
+  navigations and toolbar re-renders; it updates the href when the port changes and
+  removes the button on non-ticket pages.
 - `popup.html` / `popup.js` store the port.
 
 ## Manual verification

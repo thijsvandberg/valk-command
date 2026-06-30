@@ -6,12 +6,10 @@
   const HOST_ID = "bridge-open-button";
   const DEFAULT_PORT = 3101;
   const DEBOUNCE_MS = 200;
-  // Stable testid for the issue summary heading; the toolbar (+ / apps / AI
-  // buttons) sits in the row directly below it. Anchoring to the heading avoids
-  // Jira's hashed emotion class names, which change between releases.
-  const TITLE_SELECTOR = '[data-testid="issue.views.issue-base.foundation.summary.heading"]';
-  // Below this viewport y the toolbar is behind Jira's top nav; float instead.
-  const TOP_NAV_GUARD = 60;
+  // Stable testid prefix for the issue-header "+/apps/AI" quick-add buttons. Their
+  // flex-row container is the toolbar we insert into; anchoring here avoids Jira's
+  // hashed emotion class names, which change between releases.
+  const QUICK_ADD_SELECTOR = '[data-testid^="issue-view-foundation.quick-add"]';
 
   let host = null;
   let port = DEFAULT_PORT;
@@ -21,42 +19,44 @@
     return typeof resolveJiraKey === "function" ? resolveJiraKey(window.location) : null;
   }
 
-  // The right edge + top of the issue-header toolbar cluster (the +, apps and AI
-  // buttons), found by walking the contiguous run of buttons just below the
-  // title. Returns null when the header/toolbar is not on the page. The cluster
-  // walk stops at the first big horizontal gap so far-right header actions (watch,
-  // share, ...) are excluded.
-  function toolbarAnchor() {
-    const title = document.querySelector(TITLE_SELECTOR);
-    if (!title) return null;
-    const below = title.getBoundingClientRect().bottom;
-    const rects = Array.from(document.querySelectorAll("button"))
-      .map((b) => b.getBoundingClientRect())
-      .filter((r) => r.width > 0 && r.top > below - 6 && r.top < below + 60)
-      .sort((a, b) => a.left - b.left);
-    if (!rects.length) return null;
-    let right = rects[0].right;
-    const top = rects[0].top;
-    for (let i = 1; i < rects.length; i++) {
-      if (rects[i].left - right <= 20) right = Math.max(right, rects[i].right);
-      else break;
+  function isFlexRow(el) {
+    const c = getComputedStyle(el);
+    return (c.display === "flex" || c.display === "inline-flex") && c.flexDirection === "row";
+  }
+
+  // The flex row holding the header toolbar buttons. We climb from a quick-add
+  // button to its nearest flex-row ancestor, then keep climbing while the parent
+  // is still a small flex row, to land on the row that holds the whole cluster
+  // (+/apps/AI). Inserting here means the button is part of the page flow and
+  // scrolls natively with the toolbar (no position:fixed, no scroll-tracking, no
+  // jitter). Returns null on non-ticket pages where there is no toolbar.
+  function toolbarRow() {
+    const anchor = document.querySelector(QUICK_ADD_SELECTOR);
+    if (!anchor) return null;
+    let row = anchor.parentElement;
+    while (row && !isFlexRow(row)) row = row.parentElement;
+    if (!row) return null;
+    while (
+      row.parentElement &&
+      isFlexRow(row.parentElement) &&
+      row.parentElement.querySelectorAll("button").length <= 8
+    ) {
+      row = row.parentElement;
     }
-    return { right, top };
+    return row;
   }
 
   function ensureHost() {
-    if (host && document.body.contains(host)) return host;
+    if (host && host.isConnected) return host;
     host = document.createElement("div");
     host.id = HOST_ID;
-    host.style.cssText =
-      "position:fixed;z-index:2147483646;display:inline-block;width:max-content;height:max-content;margin:0;padding:0;border:0";
-    // Shadow DOM isolates the button from Jira's aggressive global `button {}`
-    // rules (which otherwise force display/width and break the layout). The look
-    // mirrors Jira's subtle outlined toolbar buttons, tinted with the Bridge teal.
+    // Shadow DOM isolates the button from Jira's aggressive global `button {}` /
+    // layout rules. The look mirrors Jira's subtle outlined toolbar buttons, tinted
+    // with the Bridge teal.
     const shadow = host.attachShadow({ mode: "open" });
     shadow.innerHTML =
       "<style>" +
-      ":host{all:initial}" +
+      ":host{all:initial;display:inline-flex;align-items:center}" +
       "a{display:inline-flex;align-items:center;gap:7px;height:32px;padding:0 11px;box-sizing:border-box;" +
       "border:1px solid rgba(14,142,136,.32);border-radius:3px;background:transparent;color:#0a736e;text-decoration:none;" +
       'font:500 14px/1 "Atlassian Sans",ui-sans-serif,-apple-system,BlinkMacSystemFont,"Segoe UI",system-ui,sans-serif;' +
@@ -67,26 +67,7 @@
       "i{width:7px;height:7px;border-radius:50%;background:#0e8e88;flex:none}" +
       "</style>" +
       '<a target="_blank" rel="noopener"><i></i>Open in Bridge</a>';
-    document.body.appendChild(host);
     return host;
-  }
-
-  // Place the button next to the header toolbar when it is found and clear of
-  // Jira's top nav; otherwise fall back to a fixed bottom-right floating button so
-  // it is always reachable even when Jira's DOM shifts.
-  function place(h) {
-    const a = toolbarAnchor();
-    if (a && a.top >= TOP_NAV_GUARD) {
-      h.style.top = `${a.top}px`;
-      h.style.left = `${a.right + 8}px`;
-      h.style.right = "auto";
-      h.style.bottom = "auto";
-    } else {
-      h.style.top = "auto";
-      h.style.left = "auto";
-      h.style.right = "20px";
-      h.style.bottom = "20px";
-    }
   }
 
   function removeHost() {
@@ -94,19 +75,39 @@
     host = null;
   }
 
-  // A real anchor (not window.open) so middle-click / cmd-click / "copy link" all
-  // work; the href carries the configured port and the current key.
+  // Inline in the toolbar row when present; otherwise a fixed bottom-right floating
+  // button so it stays reachable on layouts where the toolbar can't be found. Both
+  // are static once placed (the inline one rides the page's native scroll), so
+  // neither jitters.
+  function placeInline(h, row) {
+    if (h.parentElement === row && h.dataset.mode === "inline") return;
+    h.dataset.mode = "inline";
+    h.style.cssText = "margin-left:6px;align-self:center";
+    row.appendChild(h);
+  }
+
+  function placeFloating(h) {
+    if (h.parentElement === document.body && h.dataset.mode === "float") return;
+    h.dataset.mode = "float";
+    h.style.cssText =
+      "position:fixed;right:20px;bottom:20px;z-index:2147483646;" +
+      "background:#fff;border-radius:3px;box-shadow:0 2px 8px rgba(5,64,61,.28)";
+    document.body.appendChild(h);
+  }
+
   function sync() {
     const key = currentKey();
-    if (key) {
-      const h = ensureHost();
-      const a = h.shadowRoot.querySelector("a");
-      a.href = `http://localhost:${port}/tickets/${key}`;
-      a.title = `Open ${key} in Bridge`;
-      place(h);
-    } else {
+    if (!key) {
       removeHost();
+      return;
     }
+    const h = ensureHost();
+    const a = h.shadowRoot.querySelector("a");
+    a.href = `http://localhost:${port}/tickets/${key}`;
+    a.title = `Open ${key} in Bridge`;
+    const row = toolbarRow();
+    if (row) placeInline(h, row);
+    else placeFloating(h);
   }
 
   function scheduleSync() {
@@ -114,8 +115,11 @@
     debounceTimer = setTimeout(sync, DEBOUNCE_MS);
   }
 
-  // Jira is a SPA: route changes don't reload. Patch history + popstate, with a
-  // debounced MutationObserver as a fallback for navigations that bypass both.
+  // Jira is a SPA: route changes don't reload, and it re-renders the toolbar (which
+  // drops our injected node). Patch history + popstate and run a debounced
+  // MutationObserver so the button is re-detected and re-inserted on navigation and
+  // on toolbar re-renders. Re-insertion only happens on actual DOM changes, not on
+  // scroll, so there is no scroll jitter.
   function patchHistory() {
     const wrap = (original) =>
       function () {
@@ -129,13 +133,6 @@
   }
 
   patchHistory();
-  // Re-place on scroll/resize so the button stays glued to the toolbar. Capture
-  // phase catches Jira's inner scroll containers, not just the window.
-  const reposition = () => {
-    if (host) place(host);
-  };
-  window.addEventListener("scroll", reposition, true);
-  window.addEventListener("resize", reposition, true);
 
   // Read the configured port, then keep it in sync if the popup changes it.
   chrome.storage.sync.get({ port: DEFAULT_PORT }, (res) => {
