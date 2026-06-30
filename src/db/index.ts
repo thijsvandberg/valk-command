@@ -25,6 +25,10 @@ function getDb() {
       const sqlite = new Database(env.DB_PATH);
       sqlite.pragma("journal_mode = WAL");
       sqlite.pragma("foreign_keys = ON");
+      // Wait up to 5s for a held write lock instead of failing immediately
+      // (default is 0). SSE + cron + requests contend on one file; without this
+      // the background sync write transaction occasionally hit SQLITE_BUSY.
+      sqlite.pragma("busy_timeout = 5000");
       // Instrument at the central DB layer so every prepared query is timed
       // automatically (BRDG-404), instead of hand-instrumenting call sites.
       instrumentDatabase(sqlite);

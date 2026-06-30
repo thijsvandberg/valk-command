@@ -70,6 +70,17 @@ describe("db boot visibility", () => {
     expect(logger.info).toHaveBeenCalledWith("db", "ready (migrations applied)");
   });
 
+  it("sets busy_timeout = 5000 on open so writers wait instead of failing", async () => {
+    const { initDb } = await loadDb();
+    initDb();
+
+    // The hardening pragma must be issued on the production open path, alongside
+    // the existing WAL / foreign_keys pragmas (BRDG-443).
+    expect(pragma).toHaveBeenCalledWith("journal_mode = WAL");
+    expect(pragma).toHaveBeenCalledWith("foreign_keys = ON");
+    expect(pragma).toHaveBeenCalledWith("busy_timeout = 5000");
+  });
+
   it("logs the ready line only once even across repeated access", async () => {
     const { db, initDb } = await loadDb();
     initDb();

@@ -87,4 +87,17 @@ describe("db with file-based sqlite", () => {
 
     sqlite.close();
   });
+
+  it("honors busy_timeout = 5000 on a real connection (read-back)", () => {
+    const sqlite = new Database(TEST_DB_PATH);
+    sqlite.pragma("journal_mode = WAL");
+    sqlite.pragma("foreign_keys = ON");
+    sqlite.pragma("busy_timeout = 5000");
+
+    // Round-trip read-back proves SQLite accepted the value (guards against a
+    // typo in the pragma string), not just that our code called pragma().
+    expect(sqlite.pragma("busy_timeout", { simple: true })).toBe(5000);
+
+    sqlite.close();
+  });
 });
