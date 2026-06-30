@@ -1,5 +1,7 @@
 import { render, screen, fireEvent, waitFor } from "@testing-library/react";
 import { describe, it, expect, vi, beforeEach } from "vitest";
+import React from "react";
+import { SWRConfig } from "swr";
 import ChatLayout from "./ChatLayout";
 
 const mockPush = vi.fn();
@@ -63,23 +65,54 @@ const mockMessages = [
   },
 ];
 
-function mockFetchSequence(responses: Array<{ ok: boolean; data?: unknown; status?: number }>) {
-  const queue = [...responses];
-  const mocked = vi.spyOn(global, "fetch").mockImplementation(async (input) => {
+function ok(data: unknown): Response {
+  return { ok: true, status: 200, json: async () => data } as Response;
+}
+
+interface ChatFetchOptions {
+  conversations?: unknown; // GET /api/conversations
+  conversationsStatus?: number; // GET /api/conversations failure status
+  detail?: unknown; // GET /api/conversations/:id
+  created?: unknown; // POST /api/conversations
+  saved?: unknown; // POST /api/conversations/:id/messages
+}
+
+// Route by URL + method so the assertions no longer depend on the order in which
+// SWR happens to fire the conversation-list vs conversation-detail fetches.
+function setupFetch(opts: ChatFetchOptions = {}) {
+  return vi.spyOn(global, "fetch").mockImplementation(async (input, init) => {
     const url = typeof input === "string" ? input : input instanceof URL ? input.href : (input as Request).url;
-    // Running tasks poll should always return empty so it doesn't consume sequenced responses
-    if (url.includes("workspace-tasks?status=running")) {
-      return { ok: true, status: 200, json: async () => [] } as Response;
+    const method = (init?.method ?? "GET").toUpperCase();
+
+    if (url.includes("workspace-tasks?status=running")) return ok([]);
+
+    if (url.endsWith("/api/conversations") && method === "POST") return ok(opts.created ?? null);
+    if (url.endsWith("/api/conversations")) {
+      if (opts.conversationsStatus && opts.conversationsStatus >= 400) {
+        return { ok: false, status: opts.conversationsStatus, json: async () => { throw new Error("no json"); } } as unknown as Response;
+      }
+      return ok(opts.conversations ?? []);
     }
-    const response = queue.shift();
-    if (!response) return { ok: true, status: 200, json: async () => null } as Response;
-    return {
-      ok: response.ok,
-      status: response.status ?? (response.ok ? 200 : 500),
-      json: async () => response.data,
-    } as Response;
+
+    if (/\/api\/conversations\/[^/]+\/messages$/.test(url) && method === "POST") return ok(opts.saved ?? null);
+    if (/\/api\/conversations\/[^/]+$/.test(url) && method === "DELETE") {
+      return { ok: true, status: 204, json: async () => null } as Response;
+    }
+    if (/\/api\/conversations\/[^/]+$/.test(url)) return ok(opts.detail ?? null);
+
+    return ok(null);
   });
-  return mocked;
+}
+
+// Fresh SWR cache per render so a key populated by one test cannot leak into the next.
+function renderChat(ui: React.ReactElement) {
+  return render(
+    React.createElement(
+      SWRConfig,
+      { value: { provider: () => new Map(), dedupingInterval: 0 } },
+      ui,
+    ),
+  );
 }
 
 beforeEach(() => {
@@ -90,9 +123,9 @@ beforeEach(() => {
 
 describe("ChatLayout", () => {
   it("shows empty state when no conversations exist", async () => {
-    mockFetchSequence([{ ok: true, data: [] }]);
+    setupFetch({ conversations: [] });
 
-    render(<ChatLayout />);
+    renderChat(<ChatLayout />);
 
     await waitFor(() => {
       expect(screen.getByText("No conversations yet")).toBeInTheDocument();
@@ -101,9 +134,9 @@ describe("ChatLayout", () => {
   });
 
   it("loads and displays conversation list", async () => {
-    mockFetchSequence([{ ok: true, data: [mockConversation] }]);
+    setupFetch({ conversations: [mockConversation] });
 
-    render(<ChatLayout />);
+    renderChat(<ChatLayout />);
 
     await waitFor(() => {
       expect(screen.getByText("Test conversation")).toBeInTheDocument();
@@ -113,12 +146,9 @@ describe("ChatLayout", () => {
   it("creates a new conversation and navigates to it", async () => {
     const newConv = { ...mockConversation, id: "conv-new", title: "New conversation" };
 
-    mockFetchSequence([
-      { ok: true, data: [] },
-      { ok: true, data: newConv },
-    ]);
+    setupFetch({ conversations: [], created: newConv });
 
-    render(<ChatLayout />);
+    renderChat(<ChatLayout />);
 
     await waitFor(() => {
       expect(screen.getByText("No conversations yet")).toBeInTheDocument();
@@ -133,12 +163,12 @@ describe("ChatLayout", () => {
   });
 
   it("shows messages when rendered with a conversationId", async () => {
-    mockFetchSequence([
-      { ok: true, data: [mockConversation] },
-      { ok: true, data: { ...mockConversation, messages: mockMessages } },
-    ]);
+    setupFetch({
+      conversations: [mockConversation],
+      detail: { ...mockConversation, messages: mockMessages },
+    });
 
-    render(<ChatLayout conversationId="conv-1" />);
+    renderChat(<ChatLayout conversationId="conv-1" />);
 
     await waitFor(() => {
       expect(screen.getByText("Hello there")).toBeInTheDocument();
@@ -156,13 +186,13 @@ describe("ChatLayout", () => {
       workspaceTaskId: null,
     };
 
-    mockFetchSequence([
-      { ok: true, data: [mockConversation] },
-      { ok: true, data: { ...mockConversation, messages: [] } },
-      { ok: true, data: savedMsg },
-    ]);
+    setupFetch({
+      conversations: [mockConversation],
+      detail: { ...mockConversation, messages: [] },
+      saved: savedMsg,
+    });
 
-    render(<ChatLayout conversationId="conv-1" />);
+    renderChat(<ChatLayout conversationId="conv-1" />);
 
     await waitFor(() => {
       expect(screen.getByLabelText("Message input")).toBeInTheDocument();
@@ -178,13 +208,12 @@ describe("ChatLayout", () => {
   });
 
   it("deletes the active conversation and navigates to /chat", async () => {
-    mockFetchSequence([
-      { ok: true, data: [mockConversation] },
-      { ok: true, data: { ...mockConversation, messages: mockMessages } },
-      { ok: true, status: 204, data: null },
-    ]);
+    setupFetch({
+      conversations: [mockConversation],
+      detail: { ...mockConversation, messages: mockMessages },
+    });
 
-    render(<ChatLayout conversationId="conv-1" />);
+    renderChat(<ChatLayout conversationId="conv-1" />);
 
     await waitFor(() => {
       expect(screen.getAllByText("Test conversation").length).toBeGreaterThan(0);
@@ -200,9 +229,9 @@ describe("ChatLayout", () => {
   });
 
   it("navigates to conversation URL when clicking a conversation", async () => {
-    mockFetchSequence([{ ok: true, data: [mockConversation] }]);
+    setupFetch({ conversations: [mockConversation] });
 
-    render(<ChatLayout />);
+    renderChat(<ChatLayout />);
 
     await waitFor(() => {
       expect(screen.getByText("Test conversation")).toBeInTheDocument();
@@ -214,9 +243,9 @@ describe("ChatLayout", () => {
   });
 
   it("shows error when conversation load fails", async () => {
-    mockFetchSequence([{ ok: false, status: 500 }]);
+    setupFetch({ conversationsStatus: 500 });
 
-    render(<ChatLayout />);
+    renderChat(<ChatLayout />);
 
     await waitFor(() => {
       expect(screen.getByText("Request failed (500)")).toBeInTheDocument();
@@ -224,17 +253,17 @@ describe("ChatLayout", () => {
   });
 
   it("renders mobile sidebar toggle button", async () => {
-    mockFetchSequence([{ ok: true, data: [] }]);
+    setupFetch({ conversations: [] });
 
-    render(<ChatLayout />);
+    renderChat(<ChatLayout />);
 
     expect(screen.getByLabelText("Open conversations")).toBeInTheDocument();
   });
 
   it("shows overlay and close button when mobile sidebar is opened", async () => {
-    mockFetchSequence([{ ok: true, data: [] }]);
+    setupFetch({ conversations: [] });
 
-    render(<ChatLayout />);
+    renderChat(<ChatLayout />);
 
     fireEvent.click(screen.getByLabelText("Open conversations"));
 
@@ -243,9 +272,9 @@ describe("ChatLayout", () => {
   });
 
   it("closes mobile sidebar when overlay is clicked", async () => {
-    mockFetchSequence([{ ok: true, data: [] }]);
+    setupFetch({ conversations: [] });
 
-    const { container } = render(<ChatLayout />);
+    const { container } = renderChat(<ChatLayout />);
 
     fireEvent.click(screen.getByLabelText("Open conversations"));
 

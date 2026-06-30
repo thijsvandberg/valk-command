@@ -1,5 +1,7 @@
 import { renderHook, act, waitFor } from "@testing-library/react";
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
+import React from "react";
+import { SWRConfig } from "swr";
 import { useMessages } from "./useMessages";
 
 const mockMessages = [
@@ -21,6 +23,15 @@ const mockMessages = [
   },
 ];
 
+// Fresh SWR cache per test so a key populated by one test does not leak.
+function wrapper({ children }: { children: React.ReactNode }) {
+  return React.createElement(
+    SWRConfig,
+    { value: { provider: () => new Map(), dedupingInterval: 0 } },
+    children,
+  );
+}
+
 beforeEach(() => {
   vi.restoreAllMocks();
 });
@@ -28,7 +39,7 @@ beforeEach(() => {
 describe("useMessages", () => {
   it("does not fetch when conversationId is null", () => {
     vi.spyOn(global, "fetch");
-    const { result } = renderHook(() => useMessages(null));
+    const { result } = renderHook(() => useMessages(null), { wrapper });
 
     expect(result.current.messages).toEqual([]);
     expect(result.current.loading).toBe(false);
@@ -48,7 +59,7 @@ describe("useMessages", () => {
       }),
     } as Response);
 
-    const { result } = renderHook(() => useMessages("conv-1"));
+    const { result } = renderHook(() => useMessages("conv-1"), { wrapper });
 
     expect(result.current.loading).toBe(true);
 
@@ -65,7 +76,7 @@ describe("useMessages", () => {
       json: async () => { throw new Error("no json"); },
     } as unknown as Response);
 
-    const { result } = renderHook(() => useMessages("conv-1"));
+    const { result } = renderHook(() => useMessages("conv-1"), { wrapper });
 
     await waitFor(() => expect(result.current.loading).toBe(false));
 
@@ -92,7 +103,7 @@ describe("useMessages", () => {
         json: async () => ({ id: "conv-1", messages: [savedMsg] }),
       } as Response);
 
-    const { result } = renderHook(() => useMessages("conv-1"));
+    const { result } = renderHook(() => useMessages("conv-1"), { wrapper });
     await waitFor(() => expect(result.current.loading).toBe(false));
 
     (fetch as ReturnType<typeof vi.fn>).mockResolvedValueOnce({
@@ -120,7 +131,7 @@ describe("useMessages", () => {
         json: async () => ({ id: "conv-1", messages: [] }),
       } as Response);
 
-    const { result } = renderHook(() => useMessages("conv-1"));
+    const { result } = renderHook(() => useMessages("conv-1"), { wrapper });
     await waitFor(() => expect(result.current.loading).toBe(false));
 
     (fetch as ReturnType<typeof vi.fn>).mockResolvedValueOnce({
@@ -158,7 +169,7 @@ describe("useMessages", () => {
 
     const { result, rerender } = renderHook(
       ({ id }) => useMessages(id),
-      { initialProps: { id: "conv-1" as string | null } },
+      { initialProps: { id: "conv-1" as string | null }, wrapper },
     );
 
     // Switch to conv-2 while conv-1's fetch is still in flight.
@@ -190,7 +201,7 @@ describe("useMessages", () => {
 
     const { result, rerender } = renderHook(
       ({ id }) => useMessages(id),
-      { initialProps: { id: "conv-1" as string | null } }
+      { initialProps: { id: "conv-1" as string | null }, wrapper },
     );
 
     await waitFor(() => expect(result.current.messages).toEqual(msgs1));
@@ -226,8 +237,9 @@ describe("useMessages polling", () => {
         json: async () => ({ id: "conv-1", messages: mockMessages }),
       } as Response);
 
-    const { result } = renderHook(() =>
-      useMessages("conv-1", { hasRunningTask: true })
+    const { result } = renderHook(
+      () => useMessages("conv-1", { hasRunningTask: true }),
+      { wrapper },
     );
 
     // Flush initial fetch
@@ -261,17 +273,15 @@ describe("useMessages polling", () => {
         json: async () => ({ id: "conv-1", messages: mockMessages }),
       } as Response);
 
-    renderHook(() =>
-      useMessages("conv-1", { hasRunningTask: false })
+    renderHook(
+      () => useMessages("conv-1", { hasRunningTask: false }),
+      { wrapper },
     );
 
     // Flush initial fetch
     await act(async () => {
       await vi.advanceTimersByTimeAsync(10);
     });
-
-    // Count calls during the first 60 seconds (within idle window)
-    const callsAfterMount = fetchSpy.mock.calls.length;
 
     // Advance past idle timeout to 61 seconds
     await act(async () => {

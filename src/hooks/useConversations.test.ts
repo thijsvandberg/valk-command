@@ -1,5 +1,7 @@
 import { renderHook, act, waitFor } from "@testing-library/react";
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
+import React from "react";
+import { SWRConfig } from "swr";
 import { useConversations } from "./useConversations";
 
 const mockConversation = {
@@ -10,6 +12,16 @@ const mockConversation = {
   metadata: null,
   pinned: false,
 };
+
+// Each test gets its own SWR cache so a populated key from a prior test cannot
+// leak into the next one.
+function wrapper({ children }: { children: React.ReactNode }) {
+  return React.createElement(
+    SWRConfig,
+    { value: { provider: () => new Map(), dedupingInterval: 0 } },
+    children,
+  );
+}
 
 beforeEach(() => {
   vi.restoreAllMocks();
@@ -22,7 +34,7 @@ describe("useConversations", () => {
       json: async () => [mockConversation],
     } as Response);
 
-    const { result } = renderHook(() => useConversations());
+    const { result } = renderHook(() => useConversations(), { wrapper });
 
     expect(result.current.loading).toBe(true);
 
@@ -39,12 +51,32 @@ describe("useConversations", () => {
       json: async () => { throw new Error("no json"); },
     } as unknown as Response);
 
-    const { result } = renderHook(() => useConversations());
+    const { result } = renderHook(() => useConversations(), { wrapper });
 
     await waitFor(() => expect(result.current.loading).toBe(false));
 
     expect(result.current.error).toBe("Request failed (500)");
     expect(result.current.conversations).toEqual([]);
+  });
+
+  it("dedupes the request when two consumers mount together", async () => {
+    const fetchSpy = vi.spyOn(global, "fetch").mockResolvedValue({
+      ok: true,
+      json: async () => [mockConversation],
+    } as Response);
+
+    // Two consumers of the same key in one tree must dedupe to a single fetch.
+    const { result } = renderHook(
+      () => {
+        useConversations();
+        return useConversations();
+      },
+      { wrapper },
+    );
+
+    await waitFor(() => expect(result.current.conversations).toEqual([mockConversation]));
+
+    expect(fetchSpy).toHaveBeenCalledTimes(1);
   });
 
   it("creates a conversation and prepends it to the list", async () => {
@@ -58,7 +90,7 @@ describe("useConversations", () => {
         json: async () => [],
       } as Response);
 
-    const { result } = renderHook(() => useConversations());
+    const { result } = renderHook(() => useConversations(), { wrapper });
     await waitFor(() => expect(result.current.loading).toBe(false));
 
     (fetch as ReturnType<typeof vi.fn>).mockResolvedValueOnce({
@@ -86,7 +118,7 @@ describe("useConversations", () => {
         json: async () => [mockConversation],
       } as Response);
 
-    const { result } = renderHook(() => useConversations());
+    const { result } = renderHook(() => useConversations(), { wrapper });
     await waitFor(() => expect(result.current.conversations).toHaveLength(1));
 
     (fetch as ReturnType<typeof vi.fn>).mockResolvedValueOnce({
@@ -114,7 +146,7 @@ describe("useConversations", () => {
         json: async () => [mockConversation],
       } as Response);
 
-    const { result } = renderHook(() => useConversations());
+    const { result } = renderHook(() => useConversations(), { wrapper });
     await waitFor(() => expect(result.current.conversations).toHaveLength(1));
 
     (fetch as ReturnType<typeof vi.fn>).mockResolvedValueOnce({
@@ -151,7 +183,7 @@ describe("useConversations polling", () => {
         json: async () => [mockConversation],
       } as Response);
 
-    const { result } = renderHook(() => useConversations());
+    const { result } = renderHook(() => useConversations(), { wrapper });
 
     // Flush initial fetch
     await act(async () => {
@@ -182,7 +214,7 @@ describe("useConversations polling", () => {
       json: async () => [mockConversation],
     } as Response);
 
-    const { result } = renderHook(() => useConversations());
+    const { result } = renderHook(() => useConversations(), { wrapper });
 
     await act(async () => {
       await vi.advanceTimersByTimeAsync(10);
