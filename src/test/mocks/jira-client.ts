@@ -12,14 +12,22 @@ import { vi } from "vitest";
 export function createJiraClientMock(overrides?: {
   jiraClient?: Record<string, unknown>;
   isLive?: boolean;
+  // Any top-level export can be overridden per test (e.g. extractSprint),
+  // not just the jiraClient instance. These spread over the defaults below.
+  [key: string]: unknown;
 }) {
-  const isLive = overrides?.isLive ?? false;
+  const {
+    jiraClient: jiraClientOverrides,
+    isLive: isLiveOverride,
+    ...topLevelOverrides
+  } = overrides ?? {};
+  const isLive = isLiveOverride ?? false;
 
   return {
     jiraClient: {
-      get isLive() {
-        return isLive;
-      },
+      // A writable data property (not a getter) so a test can reassign
+      // jiraClient.isLive at runtime without a TypeError in strict-mode ESM.
+      isLive,
       getSprints: vi.fn().mockResolvedValue([]),
       getSprintsLightweight: vi.fn().mockResolvedValue([]),
       getSprintIssues: vi.fn().mockResolvedValue([]),
@@ -83,7 +91,7 @@ export function createJiraClientMock(overrides?: {
         .fn()
         .mockResolvedValue({ statusChanges: [], sprintChanges: [] }),
       getLabels: vi.fn().mockResolvedValue([]),
-      ...overrides?.jiraClient,
+      ...jiraClientOverrides,
     },
     ISSUE_FIELDS: "summary,issuetype,status,priority,assignee",
     SPRINT_FIELD: "customfield_10007",
@@ -101,6 +109,15 @@ export function createJiraClientMock(overrides?: {
     filterDescriptionChanges: vi.fn().mockReturnValue([]),
     filterStatusChanges: vi.fn().mockReturnValue([]),
     filterSprintChanges: vi.fn().mockReturnValue([]),
+    // Pure helpers / test hooks. Stubbed so a full module mock never leaves a
+    // real export undefined; safe defaults that no current test depends on.
+    redactJiraPath: vi.fn((path: string) => path),
+    issuePath: vi.fn((key: string, suffix = "") => `/rest/api/3/issue/${key}${suffix}`),
+    selectPrimarySprint: vi.fn().mockReturnValue(null),
+    _resetRateWarn: vi.fn(),
+    _noteRateLimitApproaching: vi.fn(),
+    _requestTimestamps: [] as number[],
+    JiraClient: class JiraClient {},
     JiraApiError: class JiraApiError extends Error {
       status: number;
       statusText: string;
@@ -120,5 +137,7 @@ export function createJiraClientMock(overrides?: {
         this.path = path;
       }
     },
+    // Per-test overrides of top-level exports win over the defaults above.
+    ...topLevelOverrides,
   };
 }
