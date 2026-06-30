@@ -134,10 +134,11 @@ cleanup candidate to route through `isDraftKey`.
 
 - [ ] Opening a draft ticket (DRAFT-xxx) no longer fires `GET /api/jira/watchers`;
       the watchers control renders empty without a network error.
-- [ ] `POST /api/tickets/DRAFT-xxx/pull-from-jira` never produces an
+- [x] `POST /api/tickets/DRAFT-xxx/pull-from-jira` never produces an
       `unhandled error` / `JiraApiError` in the server logs. A finalized draft
       resolves to its real key and pulls normally; a pending draft returns a clean,
-      handled response.
+      handled response. (`pullFromJira` resolves + throws `DraftNotFinalizedError`
+      (409) for a pending draft, handled by `handleServiceError`.)
 - [ ] No `Invalid Jira issue key: DRAFT-...` `400`s appear in the logs during a
       normal draft-create -> finalize flow.
 - [x] A shared `isDraftKey()` helper exists and the inline `startsWith("DRAFT-")`
@@ -149,7 +150,7 @@ cleanup candidate to route through `isDraftKey`.
 ## Tests
 
 - [ ] `WatchersRow`: SWR key is `null` for a DRAFT key; non-null for a real key.
-- [ ] `pull-from-jira` route/service: pending DRAFT key returns the handled
+- [x] `pull-from-jira` route/service: pending DRAFT key returns the handled
       response and does not call `jiraClient.getIssue`; finalized DRAFT key resolves
       to the real key and proceeds.
 - [ ] `watchers` GET route: pending DRAFT key returns `{ watchers: [] }` `200`

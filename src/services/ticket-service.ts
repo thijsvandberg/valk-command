@@ -13,6 +13,8 @@ import { logger } from "@/lib/logger";
 import { cache } from "@/lib/cache";
 import { emitTicketEvent } from "@/lib/ticket-events";
 import { computeTicketEditState } from "@/lib/ticket-state";
+import { resolveDraftKey } from "@/lib/draft-sync";
+import { isDraftKey } from "@/lib/draft-key";
 import {
   markNewStoryRead as storeMarkNewStoryRead,
   bulkMarkNewStoriesRead as storeBulkMarkNewStoriesRead,
@@ -20,6 +22,7 @@ import {
 import type { TicketEditState } from "@/types/ticket";
 import {
   ConflictError,
+  DraftNotFinalizedError,
   JiraUnavailableError,
   NotFoundError,
   ValidationError,
@@ -256,7 +259,15 @@ export async function pushToJira(
 // ---------------------------------------------------------------------------
 
 export async function pullFromJira(key: string): Promise<{ description: string; title: string }> {
-  const issue = await jiraClient.getIssue(key);
+  // A draft ticket carries a synthetic DRAFT-xxx key with no Jira issue behind it.
+  // Resolve a finalized draft to its real key; reject a still-pending draft cleanly
+  // instead of letting Jira reject the synthetic key as an unhandled error.
+  const resolvedKey = resolveDraftKey(key);
+  if (isDraftKey(resolvedKey)) {
+    throw new DraftNotFinalizedError(resolvedKey);
+  }
+
+  const issue = await jiraClient.getIssue(resolvedKey);
   const fields = issue.fields;
   const description =
     typeof fields.description === "string"
@@ -269,7 +280,7 @@ export async function pullFromJira(key: string): Promise<{ description: string; 
   await db.update(ticket).set({
     flagged: isFlagged,
     title: fields.summary,
-  }).where(eq(ticket.jiraKey, key));
+  }).where(eq(ticket.jiraKey, resolvedKey));
 
   return { description: description ?? "", title: fields.summary ?? "" };
 }

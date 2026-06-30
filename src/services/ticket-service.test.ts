@@ -78,6 +78,7 @@ import {
   NotFoundError,
   JiraUnavailableError,
   JiraOperationError,
+  DraftNotFinalizedError,
 } from "./errors";
 import { jiraClient } from "@/lib/jira-client";
 import { JIRA_DESCRIPTION_LIMIT } from "@/lib/jira-content-limits";
@@ -461,6 +462,48 @@ describe("pullFromJira", () => {
     } as never);
     const result = await pullFromJira("VPL-1");
     expect(result.description).toBe("");
+  });
+
+  it("rejects a still-pending draft without calling Jira", async () => {
+    testDb
+      .insert(ticket)
+      .values({ jiraKey: "DRAFT-pending", title: "Draft", status: "DRAFTING" })
+      .run();
+
+    await expect(pullFromJira("DRAFT-pending")).rejects.toBeInstanceOf(
+      DraftNotFinalizedError,
+    );
+    expect(vi.mocked(jiraClient.getIssue)).not.toHaveBeenCalled();
+  });
+
+  it("resolves a finalized draft to its real key before hitting Jira", async () => {
+    testDb
+      .insert(ticket)
+      .values({
+        jiraKey: "DRAFT-done",
+        title: "Draft",
+        status: "REPLACED",
+        description: "VPL-900",
+      })
+      .run();
+    testDb
+      .insert(ticket)
+      .values({ jiraKey: "VPL-900", title: "Real", status: "TO DO" })
+      .run();
+    vi.mocked(jiraClient.getIssue).mockResolvedValue({
+      fields: { description: "pulled", summary: "Real title" },
+    } as never);
+
+    const result = await pullFromJira("DRAFT-done");
+
+    expect(vi.mocked(jiraClient.getIssue)).toHaveBeenCalledWith("VPL-900");
+    expect(result.title).toBe("Real title");
+    const updated = testDb
+      .select()
+      .from(ticket)
+      .where(eq(ticket.jiraKey, "VPL-900"))
+      .get();
+    expect(updated?.title).toBe("Real title");
   });
 });
 

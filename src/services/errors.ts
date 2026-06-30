@@ -33,6 +33,17 @@ export class ConflictError extends ServiceError {
   }
 }
 
+export class DraftNotFinalizedError extends ServiceError {
+  constructor(key: string) {
+    super(
+      "DRAFT_NOT_FINALIZED",
+      `Draft ${key} has not been finalized to a Jira issue yet`,
+      409,
+    );
+    this.name = "DraftNotFinalizedError";
+  }
+}
+
 export class JiraUnavailableError extends ServiceError {
   constructor() {
     super("JIRA_UNAVAILABLE", "Jira is not configured", 503);
