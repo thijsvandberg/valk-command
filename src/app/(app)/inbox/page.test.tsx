@@ -319,23 +319,28 @@ describe("InboxPage new-only filter (BRDG-438)", () => {
     }
   });
 
-  it("shows a 'N new' chip with the count of rows newer than the baseline", () => {
+  it("shows the New segment with the count of rows newer than the baseline (BRDG-441)", () => {
     render(<InboxPage />);
-    expect(screen.getByRole("button", { name: /1 new/ })).toBeInTheDocument();
-    // Both rows visible until the chip is clicked.
+    expect(screen.getByRole("button", { name: /New 1/ })).toBeInTheDocument();
+    // The All segment carries the total unread.
+    expect(screen.getByRole("button", { name: /All 2/ })).toBeInTheDocument();
+    // Both rows visible until the New segment is clicked.
     expect(screen.getByText("New story")).toBeInTheDocument();
     expect(screen.getByText("Old story")).toBeInTheDocument();
   });
 
-  it("hides the chip when nothing is new (future baseline)", () => {
+  it("collapses the segmented control to a plain total badge when nothing is new (future baseline) (BRDG-441)", () => {
     listData = { rows: mixedRows(), baselineAt: "2099-01-01T00:00:00.000Z" };
     render(<InboxPage />);
-    expect(screen.queryByRole("button", { name: /new$/ })).toBeNull();
+    // No New segment when newCount is 0.
+    expect(screen.queryByRole("button", { name: /New \d/ })).toBeNull();
+    // The plain total badge remains (clears the filter).
+    expect(screen.getByTitle("Show all unread")).toBeInTheDocument();
   });
 
-  it("clicking the chip filters to only new rows; clicking the total restores all", () => {
+  it("clicking New filters to only new rows; clicking All restores all (BRDG-441)", () => {
     render(<InboxPage />);
-    fireEvent.click(screen.getByRole("button", { name: /1 new/ }));
+    fireEvent.click(screen.getByRole("button", { name: /New 1/ }));
     expect(screen.getByText("New story")).toBeInTheDocument();
     expect(screen.queryByText("Old story")).toBeNull();
 
@@ -343,11 +348,14 @@ describe("InboxPage new-only filter (BRDG-438)", () => {
     expect(screen.getByText("Old story")).toBeInTheDocument();
   });
 
-  it("initialises in new-only mode from the digest deep-link ?new=1", () => {
+  it("initialises in new-only mode from the digest deep-link ?new=1, with the New segment active (BRDG-441)", () => {
     searchParamsMock = new URLSearchParams("new=1");
     render(<InboxPage />);
     expect(screen.getByText("New story")).toBeInTheDocument();
     expect(screen.queryByText("Old story")).toBeNull();
+    // The New segment reflects the active filter.
+    expect(screen.getByRole("button", { name: /New 1/ })).toHaveAttribute("aria-pressed", "true");
+    expect(screen.getByRole("button", { name: /All 2/ })).toHaveAttribute("aria-pressed", "false");
   });
 
   it("select-all over the new-filtered list selects exactly the new rows", async () => {
@@ -355,6 +363,25 @@ describe("InboxPage new-only filter (BRDG-438)", () => {
     render(<InboxPage />);
     // Only the new row is in the group, so selecting all yields a single mark-read target.
     fireEvent.click(screen.getByRole("checkbox", { name: "Select all items in this group" }));
+    expect(await screen.findByRole("button", { name: /Mark 1 as read/ })).toBeInTheDocument();
+  });
+
+  it("the header Select-all checks exactly the shown set and clears on a second click (BRDG-441)", async () => {
+    render(<InboxPage />);
+    // All mode: both shown rows. The header button is the only one matching /Select all/
+    // (the bulk bar's toggle reads "Deselect all" once everything is checked).
+    fireEvent.click(screen.getByRole("button", { name: /Select all/ }));
+    expect(await screen.findByRole("button", { name: /Mark 2 as read/ })).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: /Select all/ }));
+    await waitFor(() =>
+      expect(screen.queryByRole("button", { name: /Mark 2 as read/ })).toBeNull(),
+    );
+  });
+
+  it("the header Select-all reads 'Select all new' and selects only new rows while New is active (BRDG-441)", async () => {
+    render(<InboxPage />);
+    fireEvent.click(screen.getByRole("button", { name: /New 1/ }));
+    fireEvent.click(screen.getByRole("button", { name: /Select all new/ }));
     expect(await screen.findByRole("button", { name: /Mark 1 as read/ })).toBeInTheDocument();
   });
 });

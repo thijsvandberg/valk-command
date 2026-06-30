@@ -841,6 +841,20 @@ describe("GroupStatBar", () => {
       expect(onSelectAll).toHaveBeenCalledTimes(1);
       expect(parentClick).not.toHaveBeenCalled();
     });
+
+    it("uses the wider w-5 box by default and the row-aligned w-3.5 gutter when alignSelectAllToRows (BRDG-441)", () => {
+      const { rerender } = render(
+        <GroupStatBar tickets={TICKETS} label="BT: 138" onSelectAll={() => {}} />,
+      );
+      const def = screen.getByRole("checkbox", { name: "Select all items in this group" });
+      expect(def.className).toContain("w-5");
+      expect(def.className).not.toContain("w-3.5");
+
+      rerender(<GroupStatBar tickets={TICKETS} label="BT: 138" onSelectAll={() => {}} alignSelectAllToRows />);
+      const aligned = screen.getByRole("checkbox", { name: "Select all items in this group" });
+      expect(aligned.className).toContain("w-3.5");
+      expect(aligned.className).not.toContain("w-5");
+    });
   });
 
   describe("mark-all-in-group-as-read button", () => {

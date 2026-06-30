@@ -17,6 +17,7 @@ import { useBacklogDropTarget } from "@/hooks/useBacklogDropTarget";
 import { useRowActions } from "@/components/sprint-board/row-actions/useRowActions";
 import { makeInboxDispatchAdapter, type RowDataAdapter } from "@/components/sprint-board/row-actions/adapter";
 import { BoardRow } from "@/components/sprint-board/BoardRow";
+import { Checkbox } from "@/components/shared/Checkbox";
 import type { EpicOption } from "@/components/shared/EpicPicker";
 import { GroupCard } from "@/components/sprint-board/GroupCard";
 import { GroupStatBar } from "@/components/sprint-board/GroupStatBar";
@@ -460,32 +461,69 @@ function InboxView() {
           <ViewHeaderTitle>Inbox</ViewHeaderTitle>
           {data && (
             <>
-              {/* Total unread: clicking it clears the new-only filter (BRDG-438). */}
-              <button
-                type="button"
-                onClick={() => setNewOnly(false)}
-                aria-pressed={!newOnly}
-                title="Show all unread"
-                className="ml-2 cursor-pointer rounded-full bg-overlay-subtle px-2 py-0.5 text-label tabular-nums text-text-tertiary transition-colors duration-150 hover:text-text-secondary focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-[var(--color-brand-400)]"
-              >
-                {rows.length}
-              </button>
-              {/* "N new" since the last read action: toggles the new-only filter. The
-                  dot echoes the per-row marker; brand-toned, theme-aware. */}
-              {newCount > 0 && (
+              {/* Segmented All / New filter (BRDG-441, variant A): replaces the two
+                  count pills so filtering is obvious — the active segment is filled.
+                  The New segment carries the brand dot + the new-since-last-cleared
+                  count; the All segment the total unread. When nothing is new the
+                  segmented track collapses to the plain total badge (no dead toggle). */}
+              {newCount > 0 ? (
+                <div
+                  role="group"
+                  aria-label="Filter inbox"
+                  className="inline-flex items-center rounded-full bg-overlay-subtle p-0.5 text-label font-medium"
+                >
+                  <button
+                    type="button"
+                    onClick={() => setNewOnly(false)}
+                    aria-pressed={!newOnly}
+                    title="Show all unread"
+                    className={`cursor-pointer rounded-full px-2.5 py-1 tabular-nums transition-colors duration-150 focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-[var(--color-brand-400)] ${
+                      !newOnly
+                        ? "bg-surface-floating text-text-primary shadow-sm"
+                        : "text-text-tertiary hover:text-text-secondary"
+                    }`}
+                  >
+                    All {rows.length}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setNewOnly(true)}
+                    aria-pressed={newOnly}
+                    title="Show only new since you last cleared your inbox"
+                    className={`inline-flex cursor-pointer items-center gap-1.5 rounded-full px-2.5 py-1 tabular-nums transition-colors duration-150 focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-[var(--color-brand-400)] ${
+                      newOnly
+                        ? "bg-[var(--color-brand-500)] text-white"
+                        : "text-[var(--color-brand-300)] hover:bg-[var(--color-brand-subtle)]"
+                    }`}
+                  >
+                    <span className={`h-1.5 w-1.5 rounded-full ${newOnly ? "bg-white" : "bg-current"}`} aria-hidden />
+                    New {newCount}
+                  </button>
+                </div>
+              ) : (
                 <button
                   type="button"
-                  onClick={() => setNewOnly((v) => !v)}
-                  aria-pressed={newOnly}
-                  title="Show only new since you last cleared your inbox"
-                  className={`ml-1.5 inline-flex cursor-pointer items-center gap-1 rounded-full px-2 py-0.5 text-label font-medium tabular-nums transition-colors duration-150 focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-[var(--color-brand-400)] ${
-                    newOnly
-                      ? "bg-[var(--color-brand-500)] text-white"
-                      : "bg-[var(--color-brand-subtle)] text-[var(--color-brand-300)] hover:bg-[color-mix(in_srgb,var(--color-brand-500)_18%,transparent)]"
-                  }`}
+                  onClick={() => setNewOnly(false)}
+                  title="Show all unread"
+                  className="cursor-pointer rounded-full bg-overlay-subtle px-2 py-0.5 text-label tabular-nums text-text-tertiary transition-colors duration-150 hover:text-text-secondary focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-[var(--color-brand-400)]"
                 >
-                  <span className="h-1.5 w-1.5 rounded-full bg-current opacity-80" aria-hidden />
-                  {newCount} new
+                  {rows.length}
+                </button>
+              )}
+              {/* Select all the shown set, right beside the filter so filtering AND
+                  selecting both live in the header. Reuses allChecked/toggleAll over
+                  displayRows: it checks exactly what is visible and clears on re-click.
+                  Reads "Select all new" while the New segment is active. */}
+              {displayRows.length > 0 && (
+                <button
+                  type="button"
+                  onClick={toggleAll}
+                  aria-pressed={allChecked}
+                  className="inline-flex cursor-pointer items-center gap-1.5 rounded-md px-2 py-1 text-label font-medium text-text-secondary ring-1 ring-border-default transition-colors duration-150 hover:bg-overlay-default focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-[var(--color-brand-400)]"
+                >
+                  <Checkbox checked={allChecked} />
+                  Select all{newOnly ? " new" : ""}
+                  <span className="tabular-nums text-text-muted">({displayRows.length})</span>
                 </button>
               )}
             </>
@@ -550,6 +588,7 @@ function InboxView() {
                               selectAllChecked={selectAllChecked}
                               selectAllIndeterminate={selectAllIndeterminate}
                               selectionActive={checkedKeys.size > 0}
+                              alignSelectAllToRows
                               onMarkGroupRead={() => void markRead(groupKeys)}
                               sortField={sortField}
                               sortDir={sortDir}

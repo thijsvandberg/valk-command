@@ -36,6 +36,16 @@ export interface GroupStatBarProps {
   /** A selection exists somewhere; keeps the select-all checkbox visible (not hover-gated). */
   selectionActive?: boolean;
   /**
+   * Align the select-all checkbox glyph to the row checkbox column (BRDG-441). When
+   * set, the leading anatomy mirrors a BoardRow: the checkbox sits in a `w-3.5` gutter
+   * at a `pl-4`-equivalent inset (here `pl-1` on top of GroupCard's `px-3`) and the
+   * collapse chevron moves into the `w-2` lane the per-row new-dot occupies, so the
+   * header checkbox + label line up with the rows. Inbox-only: the sprint board never
+   * passes `onSelectAll`, and epic-children rows have no new-dot lane, so they keep the
+   * default (wider) box. No effect unless `onSelectAll` is also provided.
+   */
+  alignSelectAllToRows?: boolean;
+  /**
    * When provided, a hover-revealed "mark all in this group as read" icon button is
    * rendered in the trailing controls. Used by the inbox to clear a whole section at
    * once; the consumer wires it to the same bulk mark-read path (with its undo toast).
@@ -202,6 +212,7 @@ export const GroupStatBar = memo(function GroupStatBar({
   selectAllChecked = false,
   selectAllIndeterminate = false,
   selectionActive = false,
+  alignSelectAllToRows = false,
   onMarkGroupRead,
   activeCriterion = null,
   activeCriteria,
@@ -378,11 +389,15 @@ export const GroupStatBar = memo(function GroupStatBar({
   return (
     <div className="@container flex w-full items-center gap-2">
       {/* Fixed-width label zone so the stats (item count onward) start at the same x
-          across every group row, regardless of sprint name length (BRDG-239). */}
-      <div className={`flex shrink-0 items-center gap-2 ${label ? `${labelWidthClass} min-w-0` : ""}`}>
+          across every group row, regardless of sprint name length (BRDG-239). When
+          aligning to the rows (BRDG-441), `pl-1` lifts the leading inset to the row's
+          `pl-4` equivalent (GroupCard already contributes `px-3`) so the checkbox glyph
+          shares the row checkbox's x. */}
+      <div className={`flex shrink-0 items-center gap-2 ${alignSelectAllToRows ? "pl-1" : ""} ${label ? `${labelWidthClass} min-w-0` : ""}`}>
         {/* Select-all-in-group checkbox: stops propagation so it never toggles the
             header's collapse. Mirrors the row checkbox visibility (hidden until the
-            header is hovered, unless a selection is already active). */}
+            header is hovered, unless a selection is already active). When aligned, it
+            uses the same `w-3.5` gutter as the row checkbox (vs the default `w-5` box). */}
         {onSelectAll && (
           <button
             type="button"
@@ -390,7 +405,9 @@ export const GroupStatBar = memo(function GroupStatBar({
             aria-checked={selectAllChecked ? "true" : selectAllIndeterminate ? "mixed" : "false"}
             aria-label="Select all items in this group"
             onClick={(e) => { e.stopPropagation(); onSelectAll(); }}
-            className={`flex h-5 w-5 shrink-0 cursor-pointer items-center justify-center rounded focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-[var(--color-brand-400)] [transition:opacity_.12s_ease] ${
+            className={`flex h-5 shrink-0 cursor-pointer items-center justify-center focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-[var(--color-brand-400)] [transition:opacity_.12s_ease] ${
+              alignSelectAllToRows ? "w-3.5" : "w-5 rounded"
+            } ${
               selectAllChecked || selectAllIndeterminate || selectionActive
                 ? "opacity-100"
                 : "opacity-0 group-hover/grouprow:opacity-100"
@@ -400,9 +417,19 @@ export const GroupStatBar = memo(function GroupStatBar({
           </button>
         )}
         {isCollapsible && (
-          isCollapsed
-            ? <ChevronRight className="h-3 w-3 shrink-0 text-text-tertiary" strokeWidth={1.5} />
-            : <ChevronDown className="h-3 w-3 shrink-0 text-text-tertiary" strokeWidth={1.5} />
+          alignSelectAllToRows ? (
+            // Chevron in the row's `w-2` new-dot lane so the label aligns with the
+            // issue-icon column, mirroring the BoardRow anatomy (BRDG-441).
+            <span className="flex w-2 shrink-0 items-center justify-center">
+              {isCollapsed
+                ? <ChevronRight className="h-3 w-3 shrink-0 text-text-tertiary" strokeWidth={1.5} />
+                : <ChevronDown className="h-3 w-3 shrink-0 text-text-tertiary" strokeWidth={1.5} />}
+            </span>
+          ) : (
+            isCollapsed
+              ? <ChevronRight className="h-3 w-3 shrink-0 text-text-tertiary" strokeWidth={1.5} />
+              : <ChevronDown className="h-3 w-3 shrink-0 text-text-tertiary" strokeWidth={1.5} />
+          )
         )}
         {/* Pin sits before the label (BRDG-239); it reserves its slot so labels stay aligned. */}
         {onPin && (
