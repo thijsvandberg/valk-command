@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Runs the production server (`next start`) on :3101 with two things the raw
+# Runs the production server (`next start`) on :3100 with two things the raw
 # command lacks: it frees the port first, and it captures all output to a
 # timestamped log file. WHY: `next start` keeps no log of its own, so when the
 # process exits mid-use (e.g. an unhandled error in a route) the stacktrace
@@ -13,7 +13,7 @@
 set -uo pipefail
 
 ROOT=$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)
-PORT=${PROD_PORT:-3101}
+PORT=${PROD_PORT:-3100}
 LOG_DIR=${PROD_LOG_DIR:-"$ROOT/logs"}
 KEEP=${PROD_LOG_KEEP:-15}
 MAX_AGE_DAYS=${PROD_LOG_MAX_AGE_DAYS:-14}

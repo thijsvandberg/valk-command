@@ -1,4 +1,4 @@
-Read the production logs (logs/prod-*.log, the :3101 server), assess them, and surface the points that matter most for a Product Owner. Report in Dutch, understandable for a technical PO.
+Read the production logs (logs/prod-*.log, the :3100 server), assess them, and surface the points that matter most for a Product Owner. Report in Dutch, understandable for a technical PO.
 
 ## How to run
 

@@ -31,7 +31,7 @@ The server-side stream (`captureTaskStream`) is independent of the browser conne
 
 Server-side helper that constructs agent URLs and auth headers.
 
-- `VALK_AGENT_URL`: Base URL of the agent (default: `http://localhost:3001`)
+- `VALK_AGENT_URL`: Base URL of the agent (default: `http://localhost:3110`, VRW prod; dev VRW is 3111)
 - `VALK_AGENT_KEY`: Bearer token for agent authentication
 - `agentUrl(path)`: Builds full URL
 - `agentHeaders()`: Returns `Authorization: Bearer ...` and `Content-Type: application/json`
@@ -228,7 +228,7 @@ Run VRW tests from its project root: `cd /path/to/valk-remote-workspace && npm r
 
 | Variable | Required | Purpose |
 |----------|----------|---------|
-| `VALK_AGENT_URL` | No | Agent base URL (default: `http://localhost:3001`) |
+| `VALK_AGENT_URL` | No | Agent base URL (default: `http://localhost:3110`, VRW prod; dev VRW is 3111) |
 | `VALK_AGENT_KEY` | Yes* | Bearer token for agent auth (* required when agent is active) |
 | `BITBUCKET_WORKSPACE` | No | Bitbucket Cloud workspace slug |
 | `BITBUCKET_REPO_SLUG` | No | Comma-separated repo slugs to search |

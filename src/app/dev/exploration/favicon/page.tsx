@@ -9,9 +9,9 @@
  * "b" and/or the teal underscore caret. No aperture/lens mark.
  *
  * Two were chosen and shipped as env-aware dynamic icons (src/lib/app-icon.tsx):
- *   - prod (port 3101): "b _ lockup · dark"  — white b on the dark teal tile.
- *   - dev  (port 3100): "b _ lockup · light" — black b on a light tile.
- * Both keep the teal underscore so a 3100 tab is instantly distinct from a 3101 tab.
+ *   - prod (port 3100): "b _ lockup · dark"  — white b on the dark teal tile.
+ *   - dev  (port 3101): "b _ lockup · light" — black b on a light tile.
+ * Both keep the teal underscore so a 3101 tab is instantly distinct from a 3100 tab.
  *
  * Reachable at /dev/exploration/favicon.
  */
@@ -75,7 +75,7 @@ const OPTIONS: Option[] = [
     id: "f",
     title: "b _ lockup · light",
     chosen: "dev",
-    note: "Shipped for dev (port 3100): the bridge_ crop on a light tile with a black b and the teal underscore trailing beside it. Light chrome instantly separates a 3100 tab from prod.",
+    note: "Shipped for dev (port 3101): the bridge_ crop on a light tile with a black b and the teal underscore trailing beside it. Light chrome instantly separates a 3101 tab from prod.",
     render: (px) => (
       <svg width={px} height={px} viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
         <Tile fill="#f4f5f5" />
@@ -91,7 +91,7 @@ const OPTIONS: Option[] = [
     id: "f-dark",
     title: "b _ lockup · dark",
     chosen: "prod",
-    note: "Shipped for prod (port 3101): the same wordmark crop on the dark teal tile — white b, teal trailing underscore. Mirrors how bridge_ sits in the app's dark header.",
+    note: "Shipped for prod (port 3100): the same wordmark crop on the dark teal tile — white b, teal trailing underscore. Mirrors how bridge_ sits in the app's dark header.",
     render: (px) => (
       <svg width={px} height={px} viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
         <Tile fill={T.b950} />
@@ -169,8 +169,8 @@ const rank = (o: Option) => (o.chosen === "prod" ? 0 : o.chosen === "dev" ? 1 : 
 const ORDERED = OPTIONS.slice().sort((a, b) => rank(a) - rank(b));
 const CHOSEN = ORDERED.filter((o) => o.chosen);
 const SCENARIO_LABEL: Record<NonNullable<Option["chosen"]>, string> = {
-  prod: "prod · port 3101",
-  dev: "dev · port 3100",
+  prod: "prod · port 3100",
+  dev: "dev · port 3101",
 };
 
 export default function FaviconExplorationPage() {

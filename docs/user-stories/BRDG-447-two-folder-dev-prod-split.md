@@ -1,9 +1,11 @@
 # BRDG-447: Two-folder dev/prod split — prod-first ports, shared DB relocation, env badge, cutover (the double bridge instance)
 
-**Status:** Deferred (not now)
+**Status:** Partially done — Part B (prod-first port scheme) pulled forward and shipped 2026-06-30; Parts A/C/D still deferred
 **Priority:** Medium
 **Type:** Chore
 **Depends on:** [[BRDG-443]] (DB busy_timeout, VRW startup health-check, VRW prod env loading)
+
+> **Update 2026-06-30:** The PO asked to swap the ports ahead of the rest. **Part B (prod-first port scheme) is now done** — Bridge prod 3100 / dev 3101, VRW prod 3110 / dev 3111, with all script/`package.json`/`env.ts`/`.env.example`/`.env.local`/doc/comment/jira-extension references updated and `src/lib/env.test.ts` adjusted. See [[project_port_scheme_deferred]]. **Still deferred:** Part A (two-folder layout + cutover), Part C (shared-DB relocation), Part D (env badge). NOTE: until Part A lands, the single checkout can only run dev OR prod at a time (shared `.next`), so the AC "prod and dev run simultaneously unaffected" is not yet met.
 
 ## Description
 
@@ -94,16 +96,16 @@ This spans **two repos**: Bridge (this repo, `valk-command`) and VRW (`/Users/th
 
 ## Acceptance Criteria
 
-- [ ] Bridge prod runs on 3100, Bridge dev on 3101; VRW prod on 3110, VRW dev on 3111. <!-- start-prod.sh PROD_PORT=3100, dev-with-memory-guard.sh DEV_PORT=3101; VRW .env PORT=3111, .env.production PORT=3110 -->
+- [x] Bridge prod runs on 3100, Bridge dev on 3101; VRW prod on 3110, VRW dev on 3111. <!-- DONE 2026-06-30 (Part B pulled forward): start-prod.sh PROD_PORT=3100, dev-with-memory-guard.sh DEV_PORT=3101; VRW .env PORT=3111, `npm start` overrides PORT=3110. Verified live: Bridge prod on :3100, VRW prod on :3110. NOTE: running both simultaneously still needs Part A (two folders). -->
 - [ ] A `next build` or crash in the dev folder leaves the running prod folder server unaffected. <!-- separate checkouts: own build output + process -->
 - [ ] Both folders use one shared DB via an absolute `DB_PATH`; background sync runs once across instances; ad-hoc enrichment runs once. <!-- shared DB + appSetting last_run watermark de-dup -->
 - [ ] A visible DEV / PROD / PROD-TEST badge is shown in the app shell, driven by `NEXT_PUBLIC_APP_ENV`. <!-- badge in (app)/layout.tsx or NavPanel.tsx + env.ts -->
-- [ ] Bridge's default `VALK_AGENT_URL` points at VRW prod (`http://localhost:3110`). <!-- src/lib/env.ts:20 + .env.example -->
-- [ ] Port references in `CLAUDE.md`, `.claude/commands/prod-logs.md`, `.claude/commands/handoff.md`, and the `src/app/manifest.ts` comment match the new scheme. <!-- docs/comment sync -->
+- [x] Bridge's default `VALK_AGENT_URL` points at VRW prod (`http://localhost:3110`). <!-- DONE: src/lib/env.ts + .env.example + .env.local -->
+- [x] Port references in `CLAUDE.md`, `.claude/commands/prod-logs.md`, `.claude/commands/handoff.md`, and the `src/app/manifest.ts` comment match the new scheme. <!-- DONE: also app-icon.tsx, jira-extension popup.js/content.js/README, workspace-integration.md, dev/exploration pages -->
 
 ## Tests
 
-- [ ] `src/lib/env.test.ts`: `VALK_AGENT_URL` default is `http://localhost:3110` and `NEXT_PUBLIC_APP_URL` default is `http://localhost:3101`. <!-- src/lib/env.test.ts -->
+- [x] `src/lib/env.test.ts`: `VALK_AGENT_URL` default is `http://localhost:3110` and `NEXT_PUBLIC_APP_URL` default is `http://localhost:3101`. <!-- DONE: env.test.ts updated + asserts both defaults -->
 - [ ] `src/lib/env.test.ts`: `APP_ENV` parses to `prod`/`dev`/`prod-test` and rejects other values. <!-- env.ts APP_ENV schema -->
 - [ ] Env-badge component test renders the correct label/treatment per `NEXT_PUBLIC_APP_ENV`. <!-- new badge component test -->
 - [ ] Manual verification (ops, not unit-testable), documented in the PR: (a) a `next build` in dev does not disturb running prod; (b) sync fires once across both instances; (c) Bridge prod (3100) completes a real agent round-trip against VRW prod (3110). <!-- PR description -->

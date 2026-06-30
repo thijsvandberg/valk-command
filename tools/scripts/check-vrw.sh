@@ -5,7 +5,7 @@
 # the launcher calls it with `|| true` and starts Bridge regardless. It never
 # starts, restarts, or supervises VRW — that is the user's job.
 #
-# Reads VALK_AGENT_URL from .env.local (fallback .env, fallback localhost:3001)
+# Reads VALK_AGENT_URL from .env.local (fallback .env, fallback localhost:3110)
 # and probes "<url>/health", which VRW exempts from auth so no API key is needed.
 set -uo pipefail
 
@@ -23,7 +23,7 @@ read_env_var() { # $1=varname $2=file
 VALK_AGENT_URL=""
 [ -f "$ROOT/.env.local" ] && VALK_AGENT_URL=$(read_env_var VALK_AGENT_URL "$ROOT/.env.local")
 [ -z "$VALK_AGENT_URL" ] && [ -f "$ROOT/.env" ] && VALK_AGENT_URL=$(read_env_var VALK_AGENT_URL "$ROOT/.env")
-[ -z "$VALK_AGENT_URL" ] && VALK_AGENT_URL="http://localhost:3001"
+[ -z "$VALK_AGENT_URL" ] && VALK_AGENT_URL="http://localhost:3110"
 
 if curl -fsS -m 3 "$VALK_AGENT_URL/health" >/dev/null 2>&1; then
   echo "[check-vrw] VRW reachable at $VALK_AGENT_URL"

@@ -48,7 +48,7 @@ Write this into the file, wrapped in a ```text fence:
 > **Hard rules (non-negotiable):**
 > - TESTS: `npx vitest run` in the FOREGROUND, ONE process at a time, no pipes, no background, no sleep+cat polling. 16GB machine — concurrent vitest thrashes swap. A postToolUse hook may auto-run tests after edits; let it finish, don't overlap it.
 > - Run lint + typecheck + test + build before EVERY commit.
-> - DEV SERVER on port 3100 for Chrome checks: `curl -s localhost:3100` to see if it's up before starting; never start a second instance; never background it with `&`. After any `npm run build`, RESTART it (`lsof -ti:3100 | xargs kill -9 2>/dev/null` then `npm run dev`).
+> - DEV SERVER on port 3101 for Chrome checks (prod is 3100): `curl -s localhost:3101` to see if it's up before starting; never start a second instance; never background it with `&`. After any `npm run build`, RESTART it (`lsof -ti:3101 | xargs kill -9 2>/dev/null` then `npm run dev`).
 > - BRANCHES: do NOT create/switch branches (a PreToolUse hook blocks it). Commit directly to `dev`. No PR unless asked.
 > - Conventional commits, English only, no emojis, no "Co-Authored-By". Update `/docs` when behaviour/architecture changes.
 >

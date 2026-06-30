@@ -173,7 +173,7 @@ const EXPLORATIONS: Exploration[] = [
     slug: "favicon",
     title: "Favicon directions",
     blurb:
-      "Favicons built from the bridge_ wordmark instead of the rejected aperture mark. The b _ lockup shipped as env-aware dynamic icons: dark tile for prod (3101), light tile for dev (3100), both with the teal underscore.",
+      "Favicons built from the bridge_ wordmark instead of the rejected aperture mark. The b _ lockup shipped as env-aware dynamic icons: dark tile for prod (3100), light tile for dev (3101), both with the teal underscore.",
     status: "Shipped",
     icon: <AppWindow className={ICON} strokeWidth={1.5} />,
   },

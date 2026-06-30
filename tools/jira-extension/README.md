@@ -14,8 +14,8 @@ from Bridge's lint/typecheck/build.
 1. Open `chrome://extensions`.
 2. Toggle **Developer mode** on (top-right).
 3. Click **Load unpacked** and select this folder (`tools/jira-extension/`).
-4. (Optional) Click the extension icon to set the **Bridge port**. Default is `3101`
-   (the local production build, `npm start`); use `3100` for the dev server
+4. (Optional) Click the extension icon to set the **Bridge port**. Default is `3100`
+   (the local production build, `npm start`); use `3101` for the dev server
    (`npm run dev`).
 
 ## How it works

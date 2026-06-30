@@ -1,7 +1,7 @@
 import type { MetadataRoute } from "next";
 
 export default function manifest(): MetadataRoute.Manifest {
-  // Dev (port 3100) and prod (port 3101) run the same checkout; branch the
+  // Dev (port 3101) and prod (port 3100) run the same checkout; branch the
   // installed-app name and colours so the two PWAs are distinguishable.
   const isDev = process.env.NODE_ENV !== "production";
   const name = isDev ? "Bridge (dev)" : "Bridge";

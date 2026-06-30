@@ -4,7 +4,7 @@
 
 (function () {
   const HOST_ID = "bridge-open-button";
-  const DEFAULT_PORT = 3101;
+  const DEFAULT_PORT = 3100;
   const DEBOUNCE_MS = 200;
   // Stable testid prefix for the issue-header "+/apps/AI" quick-add buttons. Their
   // flex-row container is the toolbar we insert into; anchoring here avoids Jira's

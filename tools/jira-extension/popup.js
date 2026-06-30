@@ -1,7 +1,7 @@
-// Persists the target Bridge port to chrome.storage.sync. Default 3101 (the local
-// production build); 3100 is the dev server.
+// Persists the target Bridge port to chrome.storage.sync. Default 3100 (the local
+// production build); 3101 is the dev server.
 
-const DEFAULT_PORT = 3101;
+const DEFAULT_PORT = 3100;
 
 const portInput = document.getElementById("port");
 const statusEl = document.getElementById("status");

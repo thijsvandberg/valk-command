@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Runs `next dev` (Turbopack) on :3100 and restarts it whenever the server
+# Runs `next dev` (Turbopack) on :3101 and restarts it whenever the server
 # process crosses a memory ceiling. WHY: Turbopack leaks memory over long dev
 # sessions and can balloon to many GB, starving a 16GB machine. A graceful
 # auto-restart keeps the footprint bounded without manual babysitting.
@@ -12,7 +12,7 @@
 # DEV_GUARD_LOG.
 set -uo pipefail
 
-PORT=${DEV_PORT:-3100}
+PORT=${DEV_PORT:-3101}
 THRESHOLD_MB=${DEV_MEM_LIMIT_MB:-4096}
 CHECK_INTERVAL=${DEV_MEM_INTERVAL:-30}
 # If a server crosses the limit within this many seconds of starting, restarting
@@ -28,7 +28,7 @@ log_event() {
 
 # The PID(s) bound to the port as a LISTEN socket — i.e. the actual dev server.
 # WHY: a plain `lsof -ti:PORT` also returns processes that merely have a
-# *connection* to the port (e.g. a browser tab open on localhost:3100). Picking
+# *connection* to the port (e.g. a browser tab open on localhost:3101). Picking
 # one of those by `head -1` made the guard measure a 66MB browser helper instead
 # of the 7GB server, so it never restarted. Restricting to LISTEN owners targets
 # the server itself and frees the port without SIGKILLing connected browser tabs.

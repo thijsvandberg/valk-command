@@ -8,14 +8,14 @@ import { join } from "node:path";
  * wordmark distilled to what survives at 16px: a white mono "b" with the teal
  * underscore caret trailing beside it on a dark tile (exploration option F-dark).
  *
- * Why generated instead of static PNGs: dev (`next dev`, port 3100) and prod
- * (`next start`, port 3101) run the same checkout, so the only way to give them
+ * Why generated instead of static PNGs: dev (`next dev`, port 3101) and prod
+ * (`next start`, port 3100) run the same checkout, so the only way to give them
  * distinct favicons is to branch on NODE_ENV at request time.
  */
 
-// Dev (port 3100) gets a light tile with a black b; prod (3101) keeps the dark
-// brand tile with a white b. Both share the teal underscore caret, so a 3100 tab
-// is instantly distinguishable from a 3101 tab in the browser strip.
+// Dev (port 3101) gets a light tile with a black b; prod (3100) keeps the dark
+// brand tile with a white b. Both share the teal underscore caret, so a 3101 tab
+// is instantly distinguishable from a 3100 tab in the browser strip.
 const isDev = process.env.NODE_ENV !== "production";
 const BG = isDev ? "#f4f5f5" : "#021a19"; // dev: light surface · prod: brand teal-950
 const ACCENT = isDev ? "#14a8a3" : "#3bbfbe"; // teal underscore (brand-400 reads better on light)

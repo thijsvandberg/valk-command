@@ -16,8 +16,8 @@ const envSchema = z.object({
   NEXT_PUBLIC_JIRA_PROJECT_KEY: z.string().default("VPL"),
   NEXT_PUBLIC_JIRA_BOARD_ID: z.string().default(""),
 
-  // Workspace Agent
-  VALK_AGENT_URL: z.string().url().default("http://localhost:3001"),
+  // Workspace Agent (VRW prod default port; dev VRW runs on 3111)
+  VALK_AGENT_URL: z.string().url().default("http://localhost:3110"),
   VALK_AGENT_KEY: z.string().default(""),
 
   // Confluence Integration
@@ -33,8 +33,8 @@ const envSchema = z.object({
   BITBUCKET_APP_PASSWORD: z.string().default(""),
   BITBUCKET_API_TOKEN: z.string().default(""),
 
-  // App
-  NEXT_PUBLIC_APP_URL: z.string().default("http://localhost:3100"),
+  // App (Bridge dev port; prod runs on 3100)
+  NEXT_PUBLIC_APP_URL: z.string().default("http://localhost:3101"),
   BT_NEXT_SPRINT_ID: z.string().default(""),
   DB_PATH: z.string().default("sqlite.db"),
 

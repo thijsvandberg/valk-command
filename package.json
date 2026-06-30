@@ -5,10 +5,10 @@
   "type": "module",
   "scripts": {
     "dev": "bash tools/scripts/dev-with-memory-guard.sh",
-    "dev:plain": "lsof -ti:3100 | xargs kill -9 2>/dev/null; next dev --turbopack --port 3100",
+    "dev:plain": "lsof -ti:3101 | xargs kill -9 2>/dev/null; next dev --turbopack --port 3101",
     "build": "next build",
     "start": "bash tools/scripts/start-prod.sh",
-    "start:plain": "next start --port 3101",
+    "start:plain": "next start --port 3100",
     "lint": "eslint .",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
