@@ -38,11 +38,32 @@ Components / pages:
 4. **Guard against regression** with a lint rule in `eslint.config.mjs` (`no-restricted-imports` on the `mutate` named import from `"swr"` for `src/**`, allowing test files), so the pattern cannot silently return.
 5. **Resolve the BRDG-417 caveat**: `project_swr_mutate_discards_inflight` implies an optimistic global mutate DID affect chat data. Determine why (bound `configMutate`? outside provider? predates provider?) and record the answer in the investigation doc — it determines whether any "actually works" classifications are safe.
 
+## Implementation Plan
+
+Findings that shape the plan (from the planning pass over the actual code):
+- `SWRProvider` mounts only in `src/app/(app)/layout.tsx`; the root layout has no provider. Every suspect renders under `(app)`, so **no usage can be "actually-works because it mounts outside the provider"**.
+- **BRDG-417 caveat resolved:** the chat empty-list bug lived in `src/hooks/useConversations.ts`, which uses the hook's own bound `mutate` (never the global). It does not contradict the no-op thesis; bound-mutator classifications are safe.
+- **Grep drift — 3 extra broken files** not in the original list: `src/hooks/useEpics.ts`, `src/hooks/useBulkSuggest.ts`, `src/hooks/useSavedSearches.ts` (each patches a key read via a provider hook).
+- One genuine ambiguity: `cleanup/page.tsx` disposition-key mutate may have no reader (harmless-dead) — resolve during audit, not by assumption.
+- Threading style for non-hook modules: explicit parameter (matches the `adapter.mutate()` precedent); reject a module-level registry.
+
+Phases (order matters; tests must be repaired before the lint rule):
+1. **Phase 0 — Audit table + BRDG-417 resolution** into the investigation doc (verify the ambiguous cases first).
+2. **Phase 1 — Non-hook shared modules** (highest blast radius, thread a bound mutator parameter): `src/lib/ticket-cache.ts` (+~7 caller files), `src/components/sprint-board/sprint-board-utils.ts` (+~8 callers), `src/components/sprint-board/row-actions/adapter.ts` (`confirmMove` surgery), `src/lib/prefetch.ts` (`seedTicketDetailCache`; also verify `preload` behaves under the provider).
+3. **Phase 2 — Hooks** (swap `globalMutate` → `useSWRConfig().mutate`): `useEpics`, `usePipelines`, `usePencilCapacity`, `useSchedulerTick`, `usePipelineTick`, `useStoryWriterDrafts`, `useRefinementStream`, `useBulkSuggest`, `useSavedSearches`, plus the one broken line in `useSprintBoard.ts` `useTicketReviews`.
+4. **Phase 3 — Components/pages** (same swap): `useStoryWriterActions.ts`, `TicketReview.tsx`, `EpicChildrenSection.tsx` (refreshMeter twin), `SprintGoalActions.tsx`, `StoryWriterLauncherModal.tsx`, `CreateSprintModal.tsx`, `SprintEditModal.tsx`, `FinishSprintModal.tsx`, `CreateEpicModal.tsx`, `inbox/page.tsx`, `cleanup/page.tsx`.
+5. **Phase 4 — Tests**: convert false-positive global-mutate spies to the `SprintBoard.moveMeter.test.tsx` `vi.hoisted` + `useSWRConfig` pattern (`useSchedulerTick`, `usePipelineTick`, `useRefinementStream`, `StoryWriterLauncherModal`, `CreateSprintModal`, `SprintEditModal`, `FinishSprintModal`, `CreateEpicModal` tests) and cover the new threaded signatures.
+6. **Phase 5 — Live browser verification** of the top 3 highest-impact fixes via subagents (network capture on :3101, dev bypass auth): ticket-cache patch path, used-points refresh from EpicChildrenSection, `/api/jira/sprints` refresh from a sprint modal.
+7. **Phase 6 — Lint rule**: `no-restricted-imports` banning the `mutate` named import from `"swr"` in `src/**`, test files exempt; fix whatever it still surfaces.
+8. **Phase 7 — Architecture docs** update.
+
+Key risks: overlay double-application once `revalidate:false` patches actually start working (BRDG-383 guards must hold); refetch volume from tick hooks' predicate mutates once they genuinely revalidate; large threading fan-out in a shared working tree (stage explicit paths only).
+
 ## Checklist
-- [ ] Audit every top-level `swr` mutate usage in the suspect files; record per-usage classification (broken / harmless / works + why) in the investigation doc
+- [x] Audit every top-level `swr` mutate usage in the suspect files; record per-usage classification (broken / harmless / works + why) in the investigation doc
 - [ ] Fix all **broken** usages with provider-bound mutators (hook `mutate` or `useSWRConfig().mutate`; threaded in for non-hook modules)
 - [ ] Remove or annotate **harmless** dead calls (no silent leftovers)
-- [ ] Resolve the BRDG-417 chat-SWR caveat and document the answer
+- [x] Resolve the BRDG-417 chat-SWR caveat and document the answer (useConversations uses the bound hook mutate; no contradiction)
 - [ ] Live browser verification (network capture) for the top 3 highest-impact fixes
 - [ ] Update/extend tests for fixed call sites; ensure no test asserts on the global mutate spy for provider-backed behaviour (false positives, like the old `SprintBoard.moveMeter.test.tsx`)
 - [ ] Add the `no-restricted-imports` lint rule banning top-level `mutate` from `"swr"` in `src/**` (tests exempt) and fix any remaining violations it surfaces

@@ -1,7 +1,54 @@
 # Top-level `swr` `mutate` is a no-op against the custom cache provider — audit needed
 
-**Date:** 2026-07-01
+**Date:** 2026-07-01 (audit completed same day under BRDG-458)
 **Trigger:** BRDG-455 (guesstimate/BV/SP score edits blinked out ~30s after entry).
+
+## Audit result (BRDG-458)
+
+**Mounting analysis:** `SWRProvider` mounts only in `src/app/(app)/layout.tsx`, wrapping every app page, the command palette, global search, and launcher modals. The root `src/app/layout.tsx` has no provider. Every suspect file renders under `(app)`, so no usage is saved by "mounts outside the provider" — the top-level `mutate` is a no-op at every one of these call sites.
+
+**BRDG-417 caveat — resolved.** The chat "optimistic mutate discards in-flight fetch" bug (memory `project_swr_mutate_discards_inflight`) lives in `src/hooks/useConversations.ts`, which uses the **hook's own bound `mutate`** from `useSWR<Conversation[]>` (line 30) — never the top-level global. So that observation does not contradict the no-op thesis; bound-mutator behaviour ("actually-works" classifications) is safe to trust.
+
+**Grep drift:** three additional broken files beyond the original list, using the `import useSWR, { mutate } from "swr"` form the first grep missed: `src/hooks/useEpics.ts`, `src/hooks/useBulkSuggest.ts`, `src/hooks/useSavedSearches.ts`.
+
+### Per-usage classification
+
+**BROKEN** (top-level mutate targeting a key read through a provider-backed hook; the intended revalidation/patch never happened):
+
+| File | Usage | Intended effect / reader |
+|------|-------|--------------------------|
+| `src/lib/ticket-cache.ts` | all exported patch/revalidate helpers | `/api/tickets*` + detail keys, read by `useTickets` / `useTicketDetail` / `useTicketsByKeys`; ~7 caller modules |
+| `src/components/sprint-board/sprint-board-utils.ts` | `saveTicketMetadata` / `saveStoryPoints` detail+list patches and failure revalidation; `saveSprintSlots` `/api/sprint-slots` patch | detail cache re-seed for the sidebar; sprint slots read by `useSprintSlots` |
+| `src/components/sprint-board/row-actions/adapter.ts` | `makeBoardDispatchAdapter.confirmMove` list surgery | `/api/tickets` + `/api/tickets?sprintId=` destination-cache injection (BRDG-271) |
+| `src/lib/prefetch.ts` | `seedTicketDetailCache` `globalMutate(detailKey, ticket, {revalidate:true})` | pre-seed + background refresh of the detail cache |
+| `src/hooks/useEpics.ts` | `useSetEpicTeams` / `useSetEpicColor` patch `/api/epics/progress` | read by `useEpicProgress` |
+| `src/hooks/usePipelines.ts` | `useFollowTicket` revalidates followed-tickets list | read by `useFollowedTickets` |
+| `src/hooks/usePencilCapacity.ts` | optimistic patch + rollback of `/api/sprints/pencil-capacity` | the hook's own key |
+| `src/hooks/useSchedulerTick.ts` | predicate revalidation of `/api/tickets*`, `/api/activity-log` after sync/cleanup | board/activity refresh |
+| `src/hooks/usePipelineTick.ts` | revalidation of `/api/pipelines*`, `/api/notifications?limit=50` | pipelines + notifications refresh |
+| `src/hooks/useStoryWriterDrafts.ts` | post-`pushToJira` revalidation of detail + list keys | ticket data refresh after push |
+| `src/hooks/useRefinementStream.ts` | refinement sessions, suggestion counts, bulk-suggest status, conversation, tickets keys | live refinement UI refresh |
+| `src/hooks/useBulkSuggest.ts` | optimistic patch of its own `statusUrl` | read by its own `useSWR` |
+| `src/hooks/useSavedSearches.ts` | optimistic add/remove patch of `SWR_KEY` | read by its own `useSWR` |
+| `src/hooks/useSprintBoard.ts` | ONE line in `useTicketReviews`: trailing `globalMutate(detailUrl)` | detail refresh after review save/delete (the `swr.mutate()` beside it works) |
+| `src/components/story-writer/useStoryWriterActions.ts` | active-sessions revalidation on delete/wrap-up | read by `useActiveWriterSessions` |
+| `src/components/ticket-detail/TicketReview.tsx` | detail + list revalidation after agent review | ticket data refresh |
+| `src/components/ticket-detail/EpicChildrenSection.tsx` | `refreshMeter` used-points revalidation | broken twin of the `SprintBoard.refreshMeter` fixed in BRDG-455 |
+| `src/components/chat/SprintGoalActions.tsx` | `/api/jira/sprints` revalidation after goal write | read by `useJiraSprints` |
+| `src/components/shared/StoryWriterLauncherModal.tsx` | optimistic patch + rollback of active-sessions | read by `useActiveWriterSessions` |
+| `src/components/sprint-board/CreateSprintModal.tsx` | `/api/jira/sprints` revalidation on create | read by `useJiraSprints` |
+| `src/components/sprint-board/SprintEditModal.tsx` | `/api/jira/sprints` `revalidate:false` patches (save + start) | read by `useJiraSprints` |
+| `src/components/sprint-board/FinishSprintModal.tsx` | `/api/jira/sprints` `revalidate:false` patch on finish | read by `useJiraSprints` |
+| `src/app/(app)/epics/CreateEpicModal.tsx` | `/api/epics/progress` revalidation on create | read by `useEpicProgress` |
+| `src/app/(app)/inbox/page.tsx` | `refreshCount` of `/api/new-stories/count` | read by `useSidebarData` (the inbox list itself already uses its bound `mutateList` — fine) |
+| `src/app/(app)/cleanup/page.tsx` | disposition-key revalidation after bulk disposition | **verified read** by `DispositionPanel.tsx` `useSWR` (provider-backed) — broken, not harmless |
+| `src/app/(app)/refinement/[sessionId]/session/[ticketKey]/page.tsx` | via `ticket-cache.ts` helpers | covered by the ticket-cache fix |
+
+**HARMLESS:** none found — every audited call targeted a key that is genuinely read through a provider-backed hook.
+
+**ACTUALLY-WORKS (bound mutators; leave as-is):** `useConversations.ts` / `useMessages.ts` (hook `mutate`), `SprintBoard.tsx` `refreshMeter` + score handlers (fixed in BRDG-455), `useSprintBoard.ts` `configMutate` in `useTicketDetail` and `swr.mutate()` in `useTicketReviews`, `adapter.ts` `mutate()` field (the board list's `KeyedMutator`).
+
+**Note on `preload`:** `src/lib/prefetch.ts` also imports SWR's top-level `preload`. `preload` writes into SWR's PRELOAD map (module-level, provider-independent), which `useSWR` consults on mount regardless of provider — unlike global `mutate` it is not silently broken, so it stays.
 
 ## Finding
 
