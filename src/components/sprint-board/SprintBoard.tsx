@@ -1067,6 +1067,15 @@ export default function SprintBoard() {
       : {}),
   };
 
+  // Drag-and-drop droppable measuring strategy. The flat list is virtualized (few rows
+  // mounted), so MeasuringStrategy.Always is cheap and needed there — rows mount/unmount
+  // on scroll during a drag and must be re-measured (BRDG-347). The grouped All view is
+  // NOT virtualized: every ticket across every sprint is a droppable, so Always re-measured
+  // hundreds of rects on every idle render, saturating the main thread so a drag could not
+  // even start. There, measure only WhileDragging (dnd-kit's default) — during a drag the
+  // set is stable (no unmounting), so no positions are missed.
+  const dndMeasuringStrategy = groups.length > 0 ? MeasuringStrategy.WhileDragging : MeasuringStrategy.Always;
+
   // Shared board content rendered once, conditionally wrapped in DndContext.
   // The list would otherwise span the full viewport, stranding the right-hand metadata far from
   // the title on wide screens (BRDG-315). Cap the inner content of the toolbar, the filter bar,
@@ -1140,7 +1149,7 @@ export default function SprintBoard() {
         />
 
         {dnd.jiraRankDndEnabled ? (
-          <DndContext sensors={dnd.boardSensors} collisionDetection={boardCollisionDetection} measuring={{ droppable: { strategy: MeasuringStrategy.Always } }} autoScroll={{ acceleration: 25, threshold: { x: 0, y: 0.2 } }} onDragStart={dnd.handleBoardDragStart} onDragOver={dnd.handleBoardDragOver} onDragEnd={dnd.handleBoardDragEnd}>
+          <DndContext sensors={dnd.boardSensors} collisionDetection={boardCollisionDetection} measuring={{ droppable: { strategy: dndMeasuringStrategy } }} autoScroll={{ acceleration: 25, threshold: { x: 0, y: 0.2 } }} onDragStart={dnd.handleBoardDragStart} onDragOver={dnd.handleBoardDragOver} onDragEnd={dnd.handleBoardDragEnd}>
             {boardContent}
             <DragOverlay dropAnimation={null} modifiers={[snapToPointer]}>
               {dnd.boardActiveDragTicket && <DragGhostOverlay dragTicket={dnd.boardActiveDragTicket} draggedKeys={dnd.boardDraggedKeys} tickets={tickets} targetSprintId={dnd.boardDragTargetSprintId} sprintNameMap={sprintNameMap} />}

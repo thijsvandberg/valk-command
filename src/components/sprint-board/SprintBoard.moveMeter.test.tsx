@@ -21,6 +21,7 @@ vi.mock("next/dynamic", () => ({ default: () => () => null }));
 vi.mock("@dnd-kit/core", () => ({
   DndContext: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
   DragOverlay: () => null,
+  MeasuringStrategy: { Always: "always", WhileDragging: "while-dragging", BeforeDragging: "before-dragging" },
 }));
 
 vi.mock("@/hooks/useSprintBoard", () => ({

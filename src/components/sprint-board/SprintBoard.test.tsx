@@ -23,6 +23,7 @@ vi.mock("lucide-react", async (importOriginal) => {
 vi.mock("@dnd-kit/core", () => ({
   DndContext: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
   DragOverlay: () => null,
+  MeasuringStrategy: { Always: "always", WhileDragging: "while-dragging", BeforeDragging: "before-dragging" },
 }));
 
 vi.mock("@/hooks/useSprintBoard", () => ({
