@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useCallback } from "react";
-import { mutate as globalMutate } from "swr";
+import { useSWRConfig } from "swr";
 import type { POStatus, TicketReadiness, Ticket, IssueType, JiraStatus, Assignee } from "@/types/ticket";
 import { saveTicketMetadata, saveStoryPoints } from "@/components/sprint-board/sprint-board-utils";
 import { apiFetch, jira } from "@/lib/api-client";
@@ -24,7 +24,13 @@ interface TicketActionsDeps {
 
 export function useTicketActions(deps: TicketActionsDeps) {
   const { adapter, showToast } = deps;
-  const { activeListKey, sprintNameMap } = adapter;
+  const { activeListKey, sprintNameMap, mutate: mutateList } = adapter;
+  // The app wraps SWR in a custom cache provider (SWRProvider's lruProvider), so the
+  // top-level `mutate` imported from "swr" operates on SWR's default cache and is a
+  // NO-OP against the board's hooks. Revalidate through the provider-bound mutators:
+  // `mutateList` (the board list's KeyedMutator) and this useSWRConfig() mutate for
+  // other keys like the capacity meter (BRDG-455).
+  const { mutate: swrMutate } = useSWRConfig();
 
   // Resolve a move target id to the destination sprint NAME for the placement
   // rule. The generic backlog sentinel and unknown ids resolve to null (treated
@@ -79,10 +85,10 @@ export function useTicketActions(deps: TicketActionsDeps) {
   const handleBusinessValueChange = useCallback((key: string, value: number | null) => {
     registerPendingEdit(key, "businessValue", value, Date.now());
     saveTicketMetadata(key, { businessValue: value }, activeListKey, { patchList: false }).then((ok) => {
-      if (ok) { confirmPendingEdit(key, "businessValue"); if (activeListKey) globalMutate(activeListKey); }
+      if (ok) { confirmPendingEdit(key, "businessValue"); void mutateList(); }
       else clearPendingEdit(key, "businessValue");
     });
-  }, [activeListKey]);
+  }, [activeListKey, mutateList]);
 
   const handleGuestimationChange = useCallback((key: string, value: number | null) => {
     registerPendingEdit(key, "guestimation", value, Date.now());
@@ -92,11 +98,11 @@ export function useTicketActions(deps: TicketActionsDeps) {
     saveTicketMetadata(key, { guestimation: value }, activeListKey, { patchList: false }).then((ok) => {
       if (ok) {
         confirmPendingEdit(key, "guestimation");
-        globalMutate("/api/sprints/used-points");
-        if (activeListKey) globalMutate(activeListKey);
+        void swrMutate("/api/sprints/used-points");
+        void mutateList();
       } else clearPendingEdit(key, "guestimation");
     });
-  }, [activeListKey]);
+  }, [activeListKey, mutateList, swrMutate]);
 
   const handleStoryPointsChange = useCallback((key: string, value: number | null) => {
     registerPendingEdit(key, "storyPoints", value, Date.now());
@@ -114,9 +120,9 @@ export function useTicketActions(deps: TicketActionsDeps) {
       if (ok) {
         confirmPendingEdit(key, "storyPoints");
         if (advancesReadiness) confirmPendingEdit(key, "readiness");
-        globalMutate("/api/sprints/used-points");
+        void swrMutate("/api/sprints/used-points");
         // Revalidate the list so the overlay self-heals (see handleBusinessValueChange).
-        if (activeListKey) globalMutate(activeListKey);
+        void mutateList();
       } else {
         clearPendingEdit(key, "storyPoints");
         if (advancesReadiness) {
@@ -125,7 +131,7 @@ export function useTicketActions(deps: TicketActionsDeps) {
         }
       }
     });
-  }, [activeListKey, readinessMap]);
+  }, [activeListKey, readinessMap, mutateList, swrMutate]);
 
   // All these edits go through the pendingTicketEdits overlay (BRDG-357): register
   // the optimistic value, call the API, then confirm on success / clear on failure.

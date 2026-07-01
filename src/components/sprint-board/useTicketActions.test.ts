@@ -15,7 +15,10 @@ import {
 const toggleFlag = vi.fn();
 const moveSprint = vi.fn();
 const assign = vi.fn();
-const globalMutate = vi.fn();
+// Provider-bound mutate from useSWRConfig(). The app uses a custom SWR cache
+// provider, so the handlers revalidate through this (not the top-level "swr" mutate,
+// which is a no-op against that provider) - see BRDG-455.
+const swrConfigMutate = vi.fn();
 
 vi.mock("@/lib/api-client", () => ({
   apiFetch: vi.fn(),
@@ -32,7 +35,7 @@ vi.mock("@/components/sprint-board/sprint-board-utils", () => ({
 
 const saveStoryPointsMock = vi.mocked(saveStoryPoints);
 vi.mock("swr", () => ({
-  mutate: (...args: unknown[]) => globalMutate(...args),
+  useSWRConfig: () => ({ mutate: (...args: unknown[]) => swrConfigMutate(...args) }),
 }));
 vi.mock("@/components/sprint-board/pendingSprintMoves", () => ({
   registerPendingMove: vi.fn(),
@@ -118,7 +121,7 @@ describe("useTicketActions - handleStoryPointsChange readiness transition", () =
 describe("useTicketActions - capacity meter refresh on estimate change", () => {
   const saveTicketMetadataMock = vi.mocked(saveTicketMetadata);
   beforeEach(() => {
-    globalMutate.mockReset();
+    swrConfigMutate.mockReset();
     saveStoryPointsMock.mockReset().mockResolvedValue(true);
     saveTicketMetadataMock.mockReset().mockResolvedValue(true);
     __resetPendingEdits();
@@ -134,20 +137,20 @@ describe("useTicketActions - capacity meter refresh on estimate change", () => {
   it("refreshes the meter after a story-points change", async () => {
     const { result } = setup();
     await act(async () => { result.current.handleStoryPointsChange("A-1", 5); });
-    expect(globalMutate).toHaveBeenCalledWith("/api/sprints/used-points");
+    expect(swrConfigMutate).toHaveBeenCalledWith("/api/sprints/used-points");
   });
 
   it("refreshes the meter after a guestimation change", async () => {
     const { result } = setup();
     await act(async () => { result.current.handleGuestimationChange("A-1", 3); });
-    expect(globalMutate).toHaveBeenCalledWith("/api/sprints/used-points");
+    expect(swrConfigMutate).toHaveBeenCalledWith("/api/sprints/used-points");
   });
 
   it("does not refresh the meter when the story-points save fails", async () => {
     saveStoryPointsMock.mockResolvedValue(false);
     const { result } = setup();
     await act(async () => { result.current.handleStoryPointsChange("A-1", 5); });
-    expect(globalMutate).not.toHaveBeenCalledWith("/api/sprints/used-points");
+    expect(swrConfigMutate).not.toHaveBeenCalledWith("/api/sprints/used-points");
   });
 });
 
@@ -155,47 +158,50 @@ describe("useTicketActions - capacity meter refresh on estimate change", () => {
 // TTL. The overlay only hands off cleanly once the loaded list reflects the value,
 // but nothing refetched the list (the All view has no background poll), so the value
 // blinked out at ~30s and reappeared on a later focus/poll. The confirmed save must
-// revalidate the list so the overlay self-heals off fresh data (BRDG-455).
+// revalidate the list so the overlay self-heals off fresh data. Because the app uses a
+// custom SWR cache provider, that revalidation must go through the board list's
+// provider-bound KeyedMutator (adapter.mutate), NOT the top-level "swr" mutate which
+// is a no-op against that provider (BRDG-455).
 describe("useTicketActions - list revalidation on confirmed score save", () => {
   const saveTicketMetadataMock = vi.mocked(saveTicketMetadata);
   const listKey = "/api/tickets?sprintId=200";
   beforeEach(() => {
-    globalMutate.mockReset();
     saveStoryPointsMock.mockReset().mockResolvedValue(true);
     saveTicketMetadataMock.mockReset().mockResolvedValue(true);
     __resetPendingEdits();
   });
 
   function setup() {
+    const mutateTickets = vi.fn();
     const { result } = renderHook(() =>
-      useTicketActions({ adapter: makeBoardAdapter([], vi.fn(), listKey, {}), showToast: vi.fn() }),
+      useTicketActions({ adapter: makeBoardAdapter([], mutateTickets, listKey, {}), showToast: vi.fn() }),
     );
-    return { result };
+    return { result, mutateTickets };
   }
 
   it("revalidates the list after a guestimation change", async () => {
-    const { result } = setup();
+    const { result, mutateTickets } = setup();
     await act(async () => { result.current.handleGuestimationChange("A-1", 3); });
-    expect(globalMutate).toHaveBeenCalledWith(listKey);
+    expect(mutateTickets).toHaveBeenCalled();
   });
 
   it("revalidates the list after a business-value change", async () => {
-    const { result } = setup();
+    const { result, mutateTickets } = setup();
     await act(async () => { result.current.handleBusinessValueChange("A-1", 5); });
-    expect(globalMutate).toHaveBeenCalledWith(listKey);
+    expect(mutateTickets).toHaveBeenCalled();
   });
 
   it("revalidates the list after a story-points change", async () => {
-    const { result } = setup();
+    const { result, mutateTickets } = setup();
     await act(async () => { result.current.handleStoryPointsChange("A-1", 8); });
-    expect(globalMutate).toHaveBeenCalledWith(listKey);
+    expect(mutateTickets).toHaveBeenCalled();
   });
 
   it("does not revalidate the list when the save fails", async () => {
     saveTicketMetadataMock.mockResolvedValue(false);
-    const { result } = setup();
+    const { result, mutateTickets } = setup();
     await act(async () => { result.current.handleGuestimationChange("A-1", 3); });
-    expect(globalMutate).not.toHaveBeenCalledWith(listKey);
+    expect(mutateTickets).not.toHaveBeenCalled();
   });
 });
 

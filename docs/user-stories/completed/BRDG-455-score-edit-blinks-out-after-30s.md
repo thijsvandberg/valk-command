@@ -22,16 +22,24 @@ On the **All / backlog view** — where forward-planning guesstimates are entere
 - **later**: a window refocus / navigation (or, on a sprint view, the 60s poll) refetches the list → the persisted value → **reappears**.
 
 ## Fix
-On a confirmed save, `globalMutate(activeListKey)` in each of the three handlers so a fresh list read lands and the self-heal clears the overlay cleanly, before its TTL fires. Safe because the metadata / story-points write reliably invalidates the `/api/tickets` response cache (the `cache` store is a `globalThis` singleton, so cross-route `cache.invalidate` works in dev too), so the refetch returns the new value rather than the pre-write snapshot. This brings the score handlers in line with the Jira-field handlers (status/epic/assignee), which already revalidate on confirm via the row-actions dispatch.
+On a confirmed save, revalidate the list in each of the three handlers so a fresh read lands and the self-heal clears the overlay cleanly, before its TTL fires. Safe because the metadata / story-points write reliably invalidates the `/api/tickets` response cache (the `cache` store is a `globalThis` singleton, so cross-route `cache.invalidate` works in dev too), so the refetch returns the new value rather than the pre-write snapshot. This brings the score handlers in line with the Jira-field handlers (status/epic/assignee), which already revalidate on confirm via the row-actions dispatch.
+
+### IMPORTANT follow-up: the first fix was a silent no-op (custom SWR cache provider)
+The initial fix used `globalMutate(activeListKey)` (the top-level `mutate` imported from `"swr"`). **It did nothing** — verified live in the browser: after the `PUT`, no `GET /api/tickets` fired and the value still blinked out. Root cause: the app wraps SWR in a **custom cache provider** (`SWRProvider`'s `lruProvider`, BRDG-387). The top-level `swr` `mutate` operates on SWR's *default* cache, so it never reaches the board's hooks. The pre-existing `globalMutate("/api/sprints/used-points")` meter refresh (in these handlers **and** in `SprintBoard.refreshMeter`) was broken the same way.
+
+Corrected fix: revalidate through **provider-bound** mutators — `adapter.mutate()` (the board list's `KeyedMutator`) for the ticket list, and `useSWRConfig().mutate("/api/sprints/used-points")` for the capacity meter. Verified live: the `GET /api/tickets?sprintId=…` now fires ~1.7s after the `PUT`, well within the 30s TTL, so the value persists.
 
 ## Checklist
-- [x] Revalidate `activeListKey` on confirmed save in `handleGuestimationChange`
+- [x] Revalidate the list on confirmed save in `handleGuestimationChange` (via `adapter.mutate()`)
 - [x] Same for `handleBusinessValueChange`
 - [x] Same for `handleStoryPointsChange`
-- [x] Tests: list is revalidated on confirmed save (all three), and not on failure (`useTicketActions.test.ts`)
-- [x] Docs: `docs/architecture/optimistic-updates.md` (new section + checklist item)
+- [x] Fix the capacity-meter refresh to use the provider-bound mutate (`useSWRConfig().mutate`) in the handlers and `SprintBoard.refreshMeter`
+- [x] Tests: list is revalidated (via `adapter.mutate`) and meter refreshed (via `useSWRConfig().mutate`) on confirmed save (all three), and neither on failure (`useTicketActions.test.ts`); `SprintBoard.moveMeter.test.tsx` now asserts the provider-bound mutate
+- [x] Docs: `docs/architecture/optimistic-updates.md` (new section + checklist item, incl. the provider-bound-mutate rule)
+- [x] Verified live in the browser (network shows the confirm-triggered refetch)
 
 ## Out of scope / non-goals
 - No change to the overlay TTL or the `/api/tickets` cache TTL.
 - No change to poStatus/readiness handlers (map-rendered, reconciled via `hasPendingEdit`, no server blink).
 - No change to the sidebar or Compare-view edit paths.
+- Did not audit every other top-level `swr` `mutate` usage in the codebase (only the board score/meter paths this bug touched); a broader sweep is worth a separate story.

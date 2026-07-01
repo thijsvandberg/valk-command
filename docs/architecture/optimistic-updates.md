@@ -123,13 +123,27 @@ never the ticket list. On the **All view** there is no background poll (`refresh
 in `useSprintBoard.ts`), so nothing refetched the list until a window refocus, and the score
 disappeared for the gap between the 30s TTL and that refetch.
 
-Fix: on a confirmed save, `globalMutate(activeListKey)` so a fresh list read lands and the
-self-heal clears the overlay cleanly. This is safe because the metadata/story-points write
-reliably invalidates the `/api/tickets` response cache (the `cache` store is a `globalThis`
-singleton, so cross-route `cache.invalidate` works in dev too), so the refetch returns the
-new value — not the stale snapshot that a mid-write revalidation would. The Jira-field
-handlers (status/epic/assignee) already revalidate on confirm via the row-actions dispatch;
-this brings the score handlers in line.
+Fix: on a confirmed save, revalidate the list so a fresh read lands and the self-heal clears
+the overlay cleanly. This is safe because the metadata/story-points write reliably invalidates
+the `/api/tickets` response cache (the `cache` store is a `globalThis` singleton, so cross-route
+`cache.invalidate` works in dev too), so the refetch returns the new value — not the stale
+snapshot that a mid-write revalidation would. The Jira-field handlers (status/epic/assignee)
+already revalidate on confirm via the row-actions dispatch; this brings the score handlers in line.
+
+**Use the PROVIDER-BOUND mutate, not the top-level `swr` `mutate`.** The app wraps SWR in a
+custom cache provider (`SWRProvider`'s `lruProvider`, BRDG-387). The `mutate` imported directly
+from `"swr"` operates on SWR's *default* cache and is a **silent no-op** against every hook that
+lives in the provider's cache. The first attempt at this fix used `globalMutate(activeListKey)`
+and did nothing — the network showed no refetch after the `PUT`, and the value still blinked out.
+(The pre-existing `globalMutate("/api/sprints/used-points")` meter refresh was broken the same way,
+including `SprintBoard`'s `refreshMeter`.) Revalidate through provider-bound mutators instead:
+- **the ticket list** via the board's `KeyedMutator`, exposed as `adapter.mutate()` (which calls
+  `useTickets(...).mutate`);
+- **any other key** (e.g. the capacity meter) via `useSWRConfig().mutate("...")`.
+
+Rule of thumb: anywhere you're tempted to `import { mutate } from "swr"` in a component, use
+`useSWRConfig().mutate` (or a hook's own `mutate`) instead — the global import will not reach
+this app's cache.
 
 ## Adding a new editable board field (checklist)
 
@@ -142,10 +156,11 @@ this brings the score handlers in line.
    so the helper does not patch the list cache either (BRDG-383).
 4. If the field renders from a separate map (like poStatus/readiness) rather than the
    list object, guard its reconciliation with `hasPendingEdit`.
-5. On a confirmed save, `globalMutate(activeListKey)` so the loaded list is refetched and
-   the self-heal can clear the overlay before its 30s TTL evicts the value — the write
-   invalidates the `/api/tickets` cache, so the refetch is fresh (BRDG-455). Skip only if a
-   forced revalidation already happens elsewhere (e.g. the row-actions dispatch).
+5. On a confirmed save, revalidate the loaded list via the **provider-bound** mutator
+   (`adapter.mutate()`, never the top-level `swr` `mutate` — it is a no-op against the custom
+   cache provider) so the self-heal can clear the overlay before its 30s TTL evicts the value.
+   The write invalidates the `/api/tickets` cache, so the refetch is fresh (BRDG-455). Skip only
+   if a forced revalidation already happens elsewhere (e.g. the row-actions dispatch).
 6. Add a test asserting the value survives a stale refetch (see
    `pendingTicketEdits.test.ts` and the handler tests in `useTicketActions.test.ts`).
 

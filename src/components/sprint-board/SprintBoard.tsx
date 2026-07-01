@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useRef, useEffect, useCallback, useMemo, type ReactNode } from "react";
-import { mutate as globalMutate } from "swr";
+import { useSWRConfig } from "swr";
 import { trailingDoneDepStart, interpolateRank, spliceKeyIntoOrder } from "@/lib/sprint-insert-position";
 import { matchesWarningFilter } from "@/components/sprint-board/warning-filter";
 import { useSearchParams, useRouter, usePathname } from "next/navigation";
@@ -322,7 +322,11 @@ export default function SprintBoard() {
     remove: removePlaceholderApi,
     promote: promotePlaceholderApi,
   } = usePlaceholders(planningVisible);
-  const refreshMeter = useCallback(() => { globalMutate("/api/sprints/used-points"); }, []);
+  // Provider-bound mutate: the top-level "swr" `mutate` is a no-op against the app's
+  // custom SWR cache provider (see useTicketActions / SWRProvider), so refreshing the
+  // capacity meter must go through useSWRConfig().mutate (BRDG-455).
+  const { mutate: swrMutate } = useSWRConfig();
+  const refreshMeter = useCallback(() => { void swrMutate("/api/sprints/used-points"); }, [swrMutate]);
   const handlePlaceholderUpdate = useCallback((id: string, patch: Partial<PlaceholderTicket>) => {
     updatePlaceholderApi(id, patch).then(refreshMeter).catch(() => showToast("Failed to update placeholder"));
   }, [updatePlaceholderApi, refreshMeter, showToast]);

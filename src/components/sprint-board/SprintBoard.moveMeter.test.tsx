@@ -1,12 +1,15 @@
 import { render, screen, waitFor, fireEvent } from "@testing-library/react";
 import { describe, it, expect, vi } from "vitest";
-import { mutate } from "swr";
 
 // Keep useSWR real (the hooks SprintBoard mounts rely on it) but spy the
-// global `mutate` so we can assert the capacity meter refresh fires.
+// PROVIDER-BOUND mutate (useSWRConfig().mutate) so we can assert the capacity meter
+// refresh fires. The app wraps SWR in a custom cache provider, so the meter refresh
+// goes through useSWRConfig().mutate; the top-level "swr" mutate is a no-op there
+// and asserting on it gave a false positive (BRDG-455).
+const { meterMutate } = vi.hoisted(() => ({ meterMutate: vi.fn() }));
 vi.mock("swr", async (importOriginal) => {
   const actual = await importOriginal<typeof import("swr")>();
-  return { ...actual, mutate: vi.fn() };
+  return { ...actual, useSWRConfig: () => ({ ...actual.useSWRConfig(), mutate: meterMutate }) };
 });
 
 vi.mock("next/navigation", () => ({
@@ -169,6 +172,6 @@ describe("SprintBoard bulk move capacity meter", () => {
     fireEvent.click(await screen.findByTestId("move-sprint"));
 
     await waitFor(() => expect(bulkMoveSprint).toHaveBeenCalled());
-    expect(mutate).toHaveBeenCalledWith("/api/sprints/used-points");
+    expect(meterMutate).toHaveBeenCalledWith("/api/sprints/used-points");
   });
 });
