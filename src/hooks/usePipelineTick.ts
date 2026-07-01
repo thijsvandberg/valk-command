@@ -1,7 +1,9 @@
 "use client";
 
 import { useEffect, useRef, useCallback } from "react";
-import { mutate as globalMutate } from "swr";
+// useSWRConfig, not the top-level "swr" mutate: the app's custom cache provider
+// makes the global mutate a silent no-op for provider-backed keys (BRDG-458).
+import { useSWRConfig } from "swr";
 import { pipelines as pipelinesApi } from "@/lib/api-client";
 
 const TICK_INTERVAL_MS = 60_000;
@@ -18,6 +20,7 @@ export function usePipelineTick() {
   const runningRef = useRef(false);
   const mountedRef = useRef(true);
 
+  const { mutate } = useSWRConfig();
   const runTick = useCallback(async () => {
     if (runningRef.current) return;
     if (typeof document !== "undefined" && document.visibilityState !== "visible") return;
@@ -32,17 +35,17 @@ export function usePipelineTick() {
       const prSync = data.prSync as Record<string, number> | undefined;
       const hasNewPrData = (prSync?.newOpened ?? 0) > 0 || (prSync?.newMerged ?? 0) > 0;
       if (data.ran && (hasNewPipelineData || hasNewPrData)) {
-        globalMutate((key: unknown) =>
+        void mutate((key: unknown) =>
           typeof key === "string" && key.startsWith("/api/pipelines"),
         );
-        globalMutate("/api/notifications?limit=50");
+        void mutate("/api/notifications?limit=50");
       }
     } catch {
       // Background tick, fail silently
     } finally {
       runningRef.current = false;
     }
-  }, []);
+  }, [mutate]);
 
   useEffect(() => {
     mountedRef.current = true;

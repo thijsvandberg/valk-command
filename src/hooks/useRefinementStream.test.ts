@@ -3,9 +3,14 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 import type { BridgeEventEnvelope } from "@/lib/event-envelope";
 import { useRefinementStream } from "./useRefinementStream";
 
-vi.mock("swr", () => ({
-  mutate: vi.fn(),
-}));
+// The hook mutates through the provider-bound useSWRConfig().mutate (the
+// top-level "swr" mutate misses the custom cache provider, BRDG-458). Expose
+// the same spy on both so the existing assertions target the path the hook
+// actually uses.
+vi.mock("swr", () => {
+  const mutate = vi.fn();
+  return { mutate, useSWRConfig: () => ({ mutate }) };
+});
 
 const { busHandlers } = vi.hoisted(() => ({
   busHandlers: new Set<(envelope: unknown) => void>(),

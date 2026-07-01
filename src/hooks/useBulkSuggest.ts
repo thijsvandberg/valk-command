@@ -1,5 +1,7 @@
 import { useState, useCallback, useEffect, useRef } from "react";
-import useSWR, { mutate } from "swr";
+// useSWRConfig, not the top-level "swr" mutate: the app's custom cache provider
+// makes the global mutate a silent no-op for provider-backed keys (BRDG-458).
+import useSWR, { useSWRConfig } from "swr";
 import { refinementSessions as refinementSessionsApi, swrFetcher } from "@/lib/api-client";
 import { getJiraUrl } from "@/lib/jira-url";
 import type { Ticket } from "@/types/ticket";
@@ -60,6 +62,7 @@ export function useBulkSuggest(opts: {
     setBulkSuggestMenuOpen(false);
   }, [queueTickets]);
 
+  const { mutate } = useSWRConfig();
   const handleBulkSuggest = useCallback(async (force?: boolean) => {
     if (!resolvedSessionId || bulkSuggestRunning) return;
     setBulkSuggestMenuOpen(false);
@@ -68,11 +71,11 @@ export function useBulkSuggest(opts: {
     try {
       const result = await refinementSessionsApi.bulkSuggestSubtasks(resolvedSessionId, force ? { force: true } : undefined);
       // Optimistically mark as running so UI reacts immediately
-      mutate(statusUrl, { conversationId: result.conversationId, hasRun: true, isRunning: true }, false);
+      void mutate(statusUrl, { conversationId: result.conversationId, hasRun: true, isRunning: true }, false);
     } catch {
       // SSE will update the status
     }
-  }, [resolvedSessionId, bulkSuggestRunning, statusUrl]);
+  }, [resolvedSessionId, bulkSuggestRunning, statusUrl, mutate]);
 
   return {
     bulkSuggestConvId,

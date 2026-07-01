@@ -1,7 +1,9 @@
 "use client";
 
 import { useEffect, useRef } from "react";
-import { mutate } from "swr";
+// useSWRConfig, not the top-level "swr" mutate: the app's custom cache provider
+// makes the global mutate a silent no-op for provider-backed keys (BRDG-458).
+import { useSWRConfig } from "swr";
 import { subscribeEvents } from "@/lib/event-bus";
 
 /**
@@ -10,6 +12,7 @@ import { subscribeEvents } from "@/lib/event-bus";
  * refinement data changes.
  */
 export function useRefinementStream(sessionId: string | null) {
+  const { mutate } = useSWRConfig();
   const sessionIdRef = useRef(sessionId);
   useEffect(() => {
     sessionIdRef.current = sessionId;
@@ -53,5 +56,5 @@ export function useRefinementStream(sessionId: string | null) {
     });
 
     return unsubscribe;
-  }, []);
+  }, [mutate]);
 }

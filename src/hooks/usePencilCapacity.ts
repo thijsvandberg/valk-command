@@ -1,7 +1,9 @@
 "use client";
 
 import { useCallback, useMemo } from "react";
-import useSWR, { mutate as globalMutate } from "swr";
+// useSWRConfig, not the top-level "swr" mutate: the app's custom cache provider
+// makes the global mutate a silent no-op for provider-backed keys (BRDG-458).
+import useSWR, { useSWRConfig } from "swr";
 import { swrFetcher, apiFetch } from "@/lib/api-client";
 
 // Forward-planning pencil capacity (BRDG-303). Server-persisted per sprint and
@@ -26,8 +28,9 @@ export function usePencilCapacity(enabled = true) {
     return map;
   }, [data]);
 
+  const { mutate } = useSWRConfig();
   const setCapacity = useCallback(async (sprintId: string, capacity: number | null) => {
-    globalMutate(
+    void mutate(
       KEY,
       (current: CapacityRow[] | undefined) => {
         const next = (current ?? []).filter((r) => r.sprintId !== sprintId);
@@ -40,9 +43,9 @@ export function usePencilCapacity(enabled = true) {
       await apiFetch(KEY, { method: "PUT", body: { sprintId, capacity } });
     } catch (err) {
       console.error("Failed to save pencil capacity:", err);
-      globalMutate(KEY);
+      void mutate(KEY);
     }
-  }, []);
+  }, [mutate]);
 
   return { capacityMap, setCapacity };
 }

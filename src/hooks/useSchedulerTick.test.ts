@@ -2,9 +2,14 @@ import { renderHook, act, waitFor } from "@testing-library/react";
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { useSchedulerTick } from "./useSchedulerTick";
 
-vi.mock("swr", () => ({
-  mutate: vi.fn(),
-}));
+// The hook mutates through the provider-bound useSWRConfig().mutate (the
+// top-level "swr" mutate misses the custom cache provider, BRDG-458). Expose
+// the same spy on both so the existing assertions target the path the hook
+// actually uses.
+vi.mock("swr", () => {
+  const mutate = vi.fn();
+  return { mutate, useSWRConfig: () => ({ mutate }) };
+});
 
 vi.mock("@/lib/api-client", () => ({
   scheduler: {

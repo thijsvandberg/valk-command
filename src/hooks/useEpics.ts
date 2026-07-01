@@ -1,5 +1,7 @@
 import { useCallback } from "react";
-import useSWR, { mutate } from "swr";
+// useSWRConfig, not the top-level "swr" mutate: the app's custom cache provider
+// makes the global mutate a silent no-op for provider-backed keys (BRDG-458).
+import useSWR, { useSWRConfig } from "swr";
 import { epics, swrFetcher } from "@/lib/api-client";
 import type { EpicProgressItem } from "@/app/api/epics/progress/route";
 import type { EpicChildTicket } from "@/app/api/epics/[key]/tickets/route";
@@ -20,6 +22,7 @@ export function useEpicProgress() {
 // PUT response is the value we just wrote (authoritative), and a refetch could
 // momentarily return a stale cached aggregate.
 export function useSetEpicTeams() {
+  const { mutate } = useSWRConfig();
   return useCallback(async (epicKey: string, teams: Team[]) => {
     await epics.setTeams(epicKey, teams);
     await mutate<EpicProgressItem[]>(
@@ -27,7 +30,7 @@ export function useSetEpicTeams() {
       (prev) => prev?.map((e) => (e.key === epicKey ? { ...e, teams } : e)),
       { revalidate: false },
     );
-  }, []);
+  }, [mutate]);
 }
 
 // Returns a mutator that sets (or clears, with null) an epic's color. Patches
@@ -35,6 +38,7 @@ export function useSetEpicTeams() {
 // the cached progress list in place (same authoritative-write reasoning as
 // useSetEpicTeams). `name` feeds the registry's name index for name-only surfaces.
 export function useSetEpicColor() {
+  const { mutate } = useSWRConfig();
   return useCallback(async (epicKey: string, name: string, color: string | null) => {
     setEpicColorOverride(epicKey, name, color);
     await epics.setColor(epicKey, color);
@@ -43,7 +47,7 @@ export function useSetEpicColor() {
       (prev) => prev?.map((e) => (e.key === epicKey ? { ...e, color } : e)),
       { revalidate: false },
     );
-  }, []);
+  }, [mutate]);
 }
 
 // Lazily fetches an epic's child tickets — only when `enabled` (i.e. the row is expanded).

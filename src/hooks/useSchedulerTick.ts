@@ -1,7 +1,9 @@
 "use client";
 
 import { useEffect, useRef, useState, useCallback } from "react";
-import { mutate as globalMutate } from "swr";
+// useSWRConfig, not the top-level "swr" mutate: the app's custom cache provider
+// makes the global mutate a silent no-op for provider-backed keys (BRDG-458).
+import { useSWRConfig } from "swr";
 import { scheduler as schedulerApi } from "@/lib/api-client";
 
 const TICK_INTERVAL_MS = 30_000;
@@ -32,6 +34,7 @@ export function useSchedulerTick(onSyncComplete?: () => void) {
   const mountedRef = useRef(true);
   const abortRef = useRef<AbortController | null>(null);
 
+  const { mutate } = useSWRConfig();
   const runTick = useCallback(async () => {
     if (runningRef.current) return;
     if (document.visibilityState !== "visible") return;
@@ -57,7 +60,7 @@ export function useSchedulerTick(onSyncComplete?: () => void) {
           typeof syncResult.count === "number" &&
           syncResult.count > 0
         ) {
-          globalMutate((key: unknown) =>
+          void mutate((key: unknown) =>
             typeof key === "string" &&
             (key.startsWith("/api/tickets") ||
               key.startsWith("/api/activity-log")),
@@ -68,7 +71,7 @@ export function useSchedulerTick(onSyncComplete?: () => void) {
 
       // If cleanup ran, also invalidate ticket caches
       if (data.ran.includes("cleanup-removed-tickets")) {
-        globalMutate((key: unknown) =>
+        void mutate((key: unknown) =>
           typeof key === "string" && key.startsWith("/api/tickets"),
         );
       }
@@ -77,7 +80,7 @@ export function useSchedulerTick(onSyncComplete?: () => void) {
     } finally {
       runningRef.current = false;
     }
-  }, []);
+  }, [mutate]);
 
   useEffect(() => {
     mountedRef.current = true;

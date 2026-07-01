@@ -1,4 +1,4 @@
-import useSWR, { mutate as globalMutate, useSWRConfig } from "swr";
+import useSWR, { useSWRConfig } from "swr";
 import { useRef, useMemo, useEffect, useCallback, useState } from "react";
 import type { Ticket, TicketDetail, StoredReview, StoryVersion } from "@/types/ticket";
 import type { DevInfoPayload } from "@/lib/bitbucket-client";
@@ -293,6 +293,9 @@ export function useConflictCheck(ticketKey: string | null) {
 
 // Fetches stored reviews for a ticket, including current version hash for freshness check
 export function useTicketReviews(ticketKey: string | null) {
+  // Provider-bound mutate for the detail-key revalidation below; the top-level
+  // "swr" mutate misses the custom cache provider (BRDG-458).
+  const { mutate: configMutate } = useSWRConfig();
   const swr = useSWR<{ reviews: StoredReview[]; currentVersionHash: string | null }>(
     ticketKey ? `/api/tickets/${encodeURIComponent(ticketKey)}/reviews` : null,
     swrFetcher,
@@ -311,10 +314,10 @@ export function useTicketReviews(ticketKey: string | null) {
       const saved = await ticketsApi.createReview(ticketKey, review) as StoredReview;
       // Revalidate reviews list and ticket detail (qualityScore updated on server)
       swr.mutate();
-      globalMutate(ticketsApi.detailUrl(ticketKey));
+      void configMutate(ticketsApi.detailUrl(ticketKey));
       return saved;
     },
-    [ticketKey, swr],
+    [ticketKey, swr, configMutate],
   );
 
   const deleteReview = useCallback(
@@ -322,10 +325,10 @@ export function useTicketReviews(ticketKey: string | null) {
       if (!ticketKey) return false;
       await ticketsApi.deleteReview(ticketKey, reviewId);
       swr.mutate();
-      globalMutate(ticketsApi.detailUrl(ticketKey));
+      void configMutate(ticketsApi.detailUrl(ticketKey));
       return true;
     },
-    [ticketKey, swr],
+    [ticketKey, swr, configMutate],
   );
 
   return { ...swr, saveReview, deleteReview };

@@ -1,4 +1,6 @@
-import useSWR, { mutate as globalMutate } from "swr";
+// useSWRConfig, not the top-level "swr" mutate: the app's custom cache provider
+// makes the global mutate a silent no-op for provider-backed keys (BRDG-458).
+import useSWR, { useSWRConfig } from "swr";
 import { useCallback, useRef, useEffect } from "react";
 import type { PipelineRunPayload } from "@/app/api/pipelines/route";
 import {
@@ -93,15 +95,16 @@ export function useFollowedTickets() {
 }
 
 export function useFollowTicket() {
+  const { mutate } = useSWRConfig();
   const follow = useCallback(async (ticketKey: string) => {
     await followedTicketsApi.follow(ticketKey);
-    globalMutate(followedTicketsApi.listUrl());
-  }, []);
+    void mutate(followedTicketsApi.listUrl());
+  }, [mutate]);
 
   const unfollow = useCallback(async (ticketKey: string) => {
     await followedTicketsApi.unfollow(ticketKey);
-    globalMutate(followedTicketsApi.listUrl());
-  }, []);
+    void mutate(followedTicketsApi.listUrl());
+  }, [mutate]);
 
   return { follow, unfollow };
 }

@@ -1,6 +1,8 @@
 "use client";
 
-import useSWR, { mutate } from "swr";
+// useSWRConfig, not the top-level "swr" mutate: the app's custom cache provider
+// makes the global mutate a silent no-op for provider-backed keys (BRDG-458).
+import useSWR, { useSWRConfig } from "swr";
 import { useCallback } from "react";
 import {
   serializeFilters,
@@ -36,6 +38,7 @@ function fromSerialized(s: SerializedSavedSearch): SavedSearch {
 }
 
 export function useSavedSearches() {
+  const { mutate } = useSWRConfig();
   const { data, isLoading } = useSWR<{ searches: SerializedSavedSearch[] }>(SWR_KEY, swrFetcher, {
     revalidateOnFocus: false,
     dedupingInterval: 30000,
@@ -63,7 +66,7 @@ export function useSavedSearches() {
         { revalidate: false },
       );
     },
-    [data],
+    [data, mutate],
   );
 
   const deleteSearch = useCallback(
@@ -76,7 +79,7 @@ export function useSavedSearches() {
         { revalidate: false },
       );
     },
-    [data],
+    [data, mutate],
   );
 
   return {

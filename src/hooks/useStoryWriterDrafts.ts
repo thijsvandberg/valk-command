@@ -1,7 +1,9 @@
 "use client";
 
 import { useCallback, useRef, useEffect, useState } from "react";
-import { mutate as globalMutate } from "swr";
+// useSWRConfig, not the top-level "swr" mutate: the app's custom cache provider
+// makes the global mutate a silent no-op for provider-backed keys (BRDG-458).
+import { useSWRConfig } from "swr";
 import type { StoryWriterSessionRow, StoryWriterDraftRow } from "@/db/schema";
 import { storyWriter as storyWriterApi, tickets as ticketsApi, apiFetch } from "@/lib/api-client";
 import { useLocalEditSaver, type LocalEditField } from "@/lib/local-edit-saver";
@@ -25,6 +27,7 @@ function patchSession(ticketKey: string, data: Record<string, unknown>) {
 export function useStoryWriterDrafts(options: DraftOptions) {
   const { ticketKey, sessionRef, unmountedRef, setSession, setAllDrafts, refreshSession } = options;
 
+  const { mutate } = useSWRConfig();
   const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const titleSaveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const targetSaveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -251,8 +254,8 @@ export function useStoryWriterDrafts(options: DraftOptions) {
       const keys = [ticketKey];
       if (targetKey) keys.push(targetKey);
       await Promise.all([
-        ...keys.map((k) => globalMutate(`/api/tickets/${encodeURIComponent(k)}`)),
-        globalMutate(
+        ...keys.map((k) => mutate(`/api/tickets/${encodeURIComponent(k)}`)),
+        mutate(
           (key) => typeof key === "string" && key.startsWith("/api/tickets?"),
           undefined,
           { revalidate: true },
@@ -261,7 +264,7 @@ export function useStoryWriterDrafts(options: DraftOptions) {
     }
 
     return result;
-  }, [ticketKey, saveDraft, refreshSession, setAutosavePaused]);
+  }, [ticketKey, saveDraft, refreshSession, setAutosavePaused, mutate]);
 
   // Flush pending edits when the tab loses focus; fire-and-forget beacon on
   // unload (the beacon cannot carry the 409 handshake, so it saves blind —
