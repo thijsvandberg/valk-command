@@ -4,7 +4,7 @@ import { Suspense, useCallback, useEffect, useMemo, useRef, useState } from "rea
 import useSWR, { mutate as globalMutate } from "swr";
 import dynamic from "next/dynamic";
 import { useSearchParams } from "next/navigation";
-import { Inbox, Undo2 } from "lucide-react";
+import { Inbox, Undo2, CheckCircle2 } from "lucide-react";
 import { usePageTitle } from "@/hooks/usePageTitle";
 import { ViewHeader, ViewHeaderTitle } from "@/components/shared/ViewHeader";
 import { DataErrorState } from "@/components/shared/DataErrorState";
@@ -242,9 +242,15 @@ function InboxView() {
   // (the digest deep-link) via a lazy initializer - no effect, no ref-in-render.
   const newCount = useMemo(() => rows.filter(isNew).length, [rows, isNew]);
   const [newOnly, setNewOnly] = useState(() => searchParams.get("new") === "1");
+  // When nothing is new the All/New toggle collapses to a plain total badge (see
+  // the header), so a newOnly view would strand the user on an empty screen with
+  // no obvious way back — most visibly when the digest deep-links to ?new=1 but
+  // the new count is 0. Treat newOnly as inactive whenever the new count is zero
+  // so the inbox falls back to All instead of a dead end (BRDG-453).
+  const effectiveNewOnly = newOnly && newCount > 0;
   const displayRows = useMemo(
-    () => (newOnly ? filteredRows.filter(isNew) : filteredRows),
-    [newOnly, filteredRows, isNew],
+    () => (effectiveNewOnly ? filteredRows.filter(isNew) : filteredRows),
+    [effectiveNewOnly, filteredRows, isNew],
   );
 
   // BRDG-415: prune the selection to the visible rows (see prune-selection.ts) so a row
@@ -529,7 +535,7 @@ function InboxView() {
                   className="inline-flex cursor-pointer items-center gap-1.5 rounded-md px-2 py-1 text-label font-medium text-text-secondary ring-1 ring-border-default transition-colors duration-150 hover:bg-overlay-default focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-[var(--color-brand-400)]"
                 >
                   <Checkbox checked={allChecked} />
-                  Select all{newOnly ? " new" : ""}
+                  Select all{effectiveNewOnly ? " new" : ""}
                   <span className="tabular-nums text-text-muted">({displayRows.length})</span>
                 </button>
               )}
@@ -564,11 +570,31 @@ function InboxView() {
                   />
                 ) : displayRows.length === 0 ? (
                   <EmptyState
-                    title={newOnly ? "No new stories since you last cleared your inbox" : "No stories match the current filters"}
+                    title={effectiveNewOnly ? "No new stories since you last cleared your inbox" : "No stories match the current filters"}
                     className="py-24"
                   />
                 ) : (
                   <div className="space-y-3">
+                    {/* Arrived intending "new" (digest ?new=1 or the New segment)
+                        but nothing is new: confirm that explicitly rather than
+                        silently showing All, so the fallback is understood
+                        (BRDG-453). */}
+                    {newOnly && newCount === 0 && (
+                      <div
+                        role="status"
+                        className="flex items-center gap-2 rounded-lg bg-[var(--color-brand-subtle)] px-3 py-2 text-body-sm text-text-secondary"
+                      >
+                        <CheckCircle2
+                          size={15}
+                          strokeWidth={2}
+                          className="shrink-0 text-[var(--color-brand-400)]"
+                          aria-hidden
+                        />
+                        <span>
+                          No new stories since you last cleared your inbox. Showing all unread instead.
+                        </span>
+                      </div>
+                    )}
                     {groups.map((group) => {
                       const groupKeys = group.rows.map((r) => r.key);
                       const selectAllChecked =

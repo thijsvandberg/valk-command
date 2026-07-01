@@ -14,7 +14,7 @@ const USER_HEADER = "x-bridge-user-id";
 // Reserved owner for settings written without a resolvable session (dev bypass,
 // unit tests, or outside a request scope). Mirrors the rate-limiter's fallback
 // so callers never have to special-case the absence of a Clerk user.
-const GLOBAL_USER = "global";
+export const GLOBAL_USER = "global";
 
 /**
  * Resolve the owning account for a user-scoped setting. The authenticated user

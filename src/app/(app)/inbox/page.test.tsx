@@ -358,6 +358,25 @@ describe("InboxPage new-only filter (BRDG-438)", () => {
     expect(screen.getByRole("button", { name: /All 2/ })).toHaveAttribute("aria-pressed", "false");
   });
 
+  it("falls back to All (not a dead-end empty screen) when ?new=1 but nothing is new (BRDG-453)", () => {
+    // Digest deep-link lands on ?new=1, but for this identity the new count is 0
+    // (future baseline). The New segment is hidden, so a newOnly view would strand
+    // the user on an empty screen; instead the inbox shows all unread rows.
+    listData = { rows: mixedRows(), baselineAt: "2099-01-01T00:00:00.000Z" };
+    searchParamsMock = new URLSearchParams("new=1");
+    render(<InboxPage />);
+    expect(screen.getByText("New story")).toBeInTheDocument();
+    expect(screen.getByText("Old story")).toBeInTheDocument();
+    // Not the empty dead-end state...
+    expect(screen.queryByText(/No new stories .* your inbox$/)).toBeNull();
+    // ...but an explicit notice that there is nothing new and we fell back to All.
+    expect(
+      screen.getByText(/No new stories since you last cleared your inbox\. Showing all unread instead\./),
+    ).toBeInTheDocument();
+    // Still recoverable: the plain total badge (Show all unread) is present.
+    expect(screen.getByTitle("Show all unread")).toBeInTheDocument();
+  });
+
   it("select-all over the new-filtered list selects exactly the new rows", async () => {
     searchParamsMock = new URLSearchParams("new=1");
     render(<InboxPage />);

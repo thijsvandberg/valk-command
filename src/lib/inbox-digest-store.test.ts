@@ -132,6 +132,20 @@ describe("evaluateInboxDigest (BRDG-413)", () => {
     expect(state.deliveredWindows).toEqual(["morning"]);
   });
 
+  it("never delivers a digest for the anonymous global fallback (BRDG-453)", async () => {
+    computeMock.mockResolvedValue(digest(322));
+    const active = await evaluateInboxDigest(
+      { userId: "global", jiraAccountId: null, jiraName: null },
+      MORNING_0930,
+    );
+    // The global identity has no read history (null baseline), so a digest would
+    // announce the entire unread inbox as new. Suppress it entirely: null result,
+    // nothing computed, no state written.
+    expect(active).toBeNull();
+    expect(computeMock).not.toHaveBeenCalled();
+    expect(await storedState("global")).toBeNull();
+  });
+
   it("is per-user (a delivery to one user does not consume another's slot)", async () => {
     computeMock.mockResolvedValue(digest(2));
     await evaluateInboxDigest(CTX, MORNING_0930);

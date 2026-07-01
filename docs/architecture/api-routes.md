@@ -562,6 +562,8 @@ Unread, recently-created stories for the review inbox. Read state and self-exclu
 | `/api/new-stories/count` | GET | Unread count for the nav badge |
 | `/api/new-stories/read` | PUT | Mark a single ticket read/unread for the acting user. Body: `{ key, read }` |
 | `/api/new-stories/read` | POST | Bulk mark read/unread. Body: `{ keys: string[], read }` |
+| `/api/inbox/digest` | GET | Lazily evaluate + return the acting user's 2x/day weekday inbox digest, or `null` (BRDG-413). Never delivered for the anonymous `global` fallback identity, which has no read history and would report the whole unread inbox as new (BRDG-453). |
+| `/api/inbox/digest` | DELETE | Dismiss the active digest (Open inbox / Dismiss); the per-day delivery cap is preserved server-side |
 
 ## Stakeholder
 

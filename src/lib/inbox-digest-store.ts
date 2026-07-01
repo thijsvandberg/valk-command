@@ -1,4 +1,4 @@
-import { readUserSetting, writeUserSetting } from "@/lib/user-settings";
+import { readUserSetting, writeUserSetting, GLOBAL_USER } from "@/lib/user-settings";
 import {
   computeInboxDigest,
   dueWindows,
@@ -70,6 +70,15 @@ export async function evaluateInboxDigest(
   ctx: NewStoryQueryCtx,
   now: Date,
 ): Promise<ActiveDigest | null> {
+  // Never deliver a digest for the anonymous "global" fallback (BRDG-453). That
+  // identity carries no per-user read state, so its baseline is always null and
+  // the digest would announce the entire unread inbox as "new" — the misleading
+  // "hundreds of new" banner seen when a dev-bypass request resolves to global
+  // while real read-state lives under the signed-in Clerk user. Production always
+  // forwards a real user id (middleware 401s otherwise), so this only ever
+  // suppresses the meaningless global digest in dev.
+  if (ctx.userId === GLOBAL_USER) return null;
+
   const today = localDateKey(now);
   let state = (await readDigestState(ctx.userId)) ?? emptyState(today);
   let changed = false;
