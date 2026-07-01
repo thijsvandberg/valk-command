@@ -52,6 +52,35 @@ const eslintConfig = [
       "typography/no-raw-text-sizes": "warn",
     },
   },
+  // The app wraps SWR in a custom cache provider (SWRProvider's lruProvider), so
+  // the top-level "swr" `mutate` targets the default cache and is a silent no-op
+  // for every provider-backed key. Mutate through useSWRConfig().mutate, a hook's
+  // own mutate, or scopedMutate (non-hook modules). See BRDG-458 and
+  // docs/architecture/optimistic-updates.md.
+  {
+    files: ["src/**/*.{ts,tsx}"],
+    rules: {
+      "no-restricted-imports": [
+        "error",
+        {
+          paths: [
+            {
+              name: "swr",
+              importNames: ["mutate"],
+              message:
+                "Top-level swr mutate is a no-op against the custom cache provider; use useSWRConfig().mutate, a hook's own mutate, or scopedMutate (BRDG-458).",
+            },
+          ],
+        },
+      ],
+    },
+  },
+  {
+    files: ["src/**/*.test.{ts,tsx}", "src/lib/swr-scoped-mutate.ts"],
+    rules: {
+      "no-restricted-imports": "off",
+    },
+  },
 ];
 
 export default eslintConfig;
