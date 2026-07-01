@@ -29,7 +29,7 @@ Extend the same display-gating pattern (`hidden` + `@[Xrem]/boardrow:*`) into on
 
 | Element | Gate | Where |
 |---------|------|-------|
-| Assignee avatar | `hidden @[44rem]/boardrow:block` | `BoardRow.tsx` assignee wrapper div |
+| Assignee avatar | `hidden @[48rem]/boardrow:flex` | `BoardRow.tsx` assignee wrapper div |
 | Refinement | `@[40rem]` (existing) | BRDG-451 |
 | BV | `@[34rem]` (existing) | BRDG-451 |
 | SP | `@[30rem]` (existing) | BRDG-451 |
@@ -38,6 +38,8 @@ Extend the same display-gating pattern (`hidden` + `@[Xrem]/boardrow:*`) into on
 | Ticket key | `hidden @[18rem]/boardrow:flex` | via new opt-in prop on `TicketStatusPill` |
 
 Rationale: the right-hand cluster (avatar, badges) causes the overflow, so it sheds first. The leading checkbox and key are tiny and only trimmed at extreme narrow, keeping the ticket identifiable as long as possible. The status pill and issue-type icon always stay; the title keeps `min-w-0 flex-1 truncate` and yields first.
+
+NOTE (verification gotcha): container-query gates evaluate against the row's **content inline-size**, which is a couple of rem narrower than the row's measured (border-box) width because of the reserved 3px accent border and insets (see [[project_boardrow_accent_border_offset]]). So a gate at `N`rem visually activates when the *measured* row is a bit wider than `N`. Don't assume `rem == getBoundingClientRect width` when calibrating; verify against the real container. (The avatar uses 48rem rather than a tighter value partly for this headroom.)
 
 **Ticket key gating (shared component):** add an optional `keyGateClassName?: string` prop to `TicketStatusPill`, appended to the key wrapper div's className. Default undefined = key always shown (unchanged everywhere else). The board passes `keyGateClassName="hidden @[18rem]/boardrow:flex"`; the container-query variant only resolves inside the board's `@container/boardrow`, so other views are unaffected.
 
@@ -49,19 +51,19 @@ Rationale: the right-hand cluster (avatar, badges) causes the overflow, so it sh
 
 ## Implementation Plan
 1. **Checkbox gutter** (`BoardRow.tsx`): change the gutter div className `flex w-3.5 shrink-0 ...` -> `hidden w-3.5 shrink-0 ... @[22rem]/boardrow:flex`. Pure width gate (hides even while `someChecked`, per PO).
-2. **Assignee** (`BoardRow.tsx`): prepend `hidden` and add `@[44rem]/boardrow:block` to the wrapper div's base className (keep the existing conditional opacity/focus-within classes for the terminal-ticket fade).
+2. **Assignee** (`BoardRow.tsx`): add `hidden ... @[48rem]/boardrow:flex` to the wrapper div's className (keep the conditional hover-fade classes).
 3. **Ticket key** (`TicketStatusPill.tsx`): add `keyGateClassName?: string` to props + destructure; append it to the key wrapper div (`:1050`). In `BoardRow.tsx` pass `keyGateClassName="hidden @[18rem]/boardrow:flex"` to the pill.
 4. **Tests:** update the BRDG-451 checkbox test (it asserted no width gate — now reversed); add gate assertions for checkbox (22), avatar (44); add a `TicketStatusPill` test for `keyGateClassName` (present when passed, absent by default).
 
 ## Acceptance Criteria
-- [x] Assignee avatar is hidden below ~44rem and reserves no space when hidden. <!-- BoardRow.tsx assignee wrapper: hidden @[44rem]/boardrow:block -->
+- [x] Assignee avatar is hidden below ~48rem and reserves no space when hidden. <!-- BoardRow.tsx assignee wrapper: hidden @[48rem]/boardrow:flex -->
 - [x] Selection checkbox gutter is hidden below ~22rem, including while a selection is active. <!-- BoardRow.tsx checkbox gutter: hidden @[22rem]/boardrow:flex -->
 - [x] Ticket key (`VPL-xxxxx`) is hidden below ~18rem on the board only; other views keep the key at all widths. <!-- TicketStatusPill keyGateClassName opt-in prop -->
 - [x] Status pill, issue-type icon and title remain visible at every width; title still truncates first. <!-- unchanged -->
-- [x] Full drop ladder is strictly staggered: avatar 44 > refinement 40 > BV 34 > SP 30 > epic 26 > checkbox 22 > key 18. <!-- gate thresholds -->
+- [x] Full drop ladder is strictly staggered: avatar 48 > refinement 40 > BV 34 > SP 30 > epic 26 > checkbox 22 > key 18. <!-- gate thresholds -->
 
 ## Tests
-- [x] `BoardRow.test.tsx`: checkbox gutter carries `hidden` + `@[22rem]/boardrow:flex`; assignee wrapper carries `hidden` + `@[44rem]/boardrow:block`. <!-- updated the old "never width-gates the checkbox" test -->
+- [x] `BoardRow.test.tsx`: checkbox gutter carries `hidden` + `@[22rem]/boardrow:flex`; assignee wrapper carries `hidden` + `@[48rem]/boardrow:flex`. <!-- updated the old "never width-gates the checkbox" test -->
 - [x] `TicketStatusPill.test.tsx`: key wrapper carries a passed `keyGateClassName`; without the prop the key has no `@[`/`hidden` gate. <!-- opt-in guard -->
 
 ## Related

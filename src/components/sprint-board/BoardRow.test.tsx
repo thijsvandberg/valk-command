@@ -610,11 +610,11 @@ describe("BoardRow (headerless, BRDG-239)", () => {
 
     // BRDG-453 extends the ladder: avatar (widest) drops first, then the badges, then the
     // leading checkbox gutter (22rem) and ticket key (18rem, gated inside TicketStatusPill).
-    it("gates the assignee avatar with hidden + @[44rem]/boardrow:block (drops first)", () => {
+    it("gates the assignee avatar with hidden + @[48rem]/boardrow:flex (drops first)", () => {
       renderRow({ onAssigneeChange: vi.fn() });
       const gate = screen.getByTestId("assignee-picker").parentElement!;
       expect(gate.className).toContain("hidden");
-      expect(gate.className).toContain("@[44rem]/boardrow:block");
+      expect(gate.className).toContain("@[48rem]/boardrow:flex");
     });
 
     it("width-gates the selection checkbox gutter with hidden + @[22rem]/boardrow:flex (BRDG-453)", () => {

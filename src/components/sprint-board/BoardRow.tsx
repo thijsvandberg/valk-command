@@ -971,9 +971,9 @@ export const BoardRow = memo(forwardRef<HTMLTableRowElement, BoardRowBaseProps>(
                   // keyboard/focus-visible access to the picker. BRDG-453: the avatar is the
                   // first element to drop as the column narrows (widest gate of the ladder),
                   // display-gated so it reserves no space when hidden.
-                  className={`hidden ml-1.5 shrink-0 @[44rem]/boardrow:block${
+                  className={`hidden ml-1.5 shrink-0 @[48rem]/boardrow:flex ${
                     hideAssignee && !assigneePickerOpen
-                      ? " opacity-0 transition-opacity duration-150 group-hover/row:opacity-100 focus-within:opacity-100"
+                      ? "opacity-0 transition-opacity duration-150 group-hover/row:opacity-100 focus-within:opacity-100"
                       : ""
                   }`}
                   onPointerDown={(e) => e.stopPropagation()}
