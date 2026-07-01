@@ -1,7 +1,9 @@
 "use client";
 
 import { useState, useCallback, useRef, useEffect } from "react";
-import { mutate } from "swr";
+// useSWRConfig, not the top-level "swr" mutate: the app's custom cache provider
+// makes the global mutate a silent no-op for provider-backed keys (BRDG-458).
+import { useSWRConfig } from "swr";
 import { useRouter } from "next/navigation";
 import { Modal } from "@/components/shared/Modal";
 import { Button } from "@/components/ui/Button";
@@ -14,6 +16,7 @@ interface CreateEpicModalProps {
 }
 
 export function CreateEpicModal({ onClose, showToast }: CreateEpicModalProps) {
+  const { mutate } = useSWRConfig();
   const router = useRouter();
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
@@ -50,7 +53,7 @@ export function CreateEpicModal({ onClose, showToast }: CreateEpicModalProps) {
       setError(msg);
       setCreating(false);
     }
-  }, [title, description, router, showToast]);
+  }, [title, description, router, showToast, mutate]);
 
   return (
     <Modal open onClose={onClose} aria-label="Create epic">

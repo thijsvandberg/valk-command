@@ -10,6 +10,8 @@ let listError: Error | undefined;
 const listMutate = vi.fn();
 const globalMutateSpy = vi.fn();
 
+// The page mutates through the provider-bound useSWRConfig().mutate (BRDG-458);
+// route it to the same spy the old global-mutate assertions use.
 vi.mock("swr", () => ({
   default: (key: string | null) => {
     if (key === "/api/new-stories") {
@@ -19,6 +21,7 @@ vi.mock("swr", () => ({
     return { data: undefined, isLoading: false, mutate: vi.fn() };
   },
   mutate: (...args: unknown[]) => globalMutateSpy(...args),
+  useSWRConfig: () => ({ mutate: (...args: unknown[]) => globalMutateSpy(...args) }),
 }));
 
 // Inbox reads ?new=1 (digest deep-link, BRDG-438) via useSearchParams; drive it per test.

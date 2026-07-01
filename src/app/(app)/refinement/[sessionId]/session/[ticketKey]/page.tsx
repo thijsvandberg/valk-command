@@ -20,7 +20,9 @@ import { tickets, apiFetch, jira as jiraApi } from "@/lib/api-client";
 import { recordTicketView } from "@/lib/recently-viewed-store";
 import { CONTENT_MAX } from "@/lib/layout";
 import { patchTicketCaches, revalidateTicketCaches } from "@/lib/ticket-cache";
-import { mutate as globalMutate } from "swr";
+// useSWRConfig, not the top-level "swr" mutate: the app's custom cache provider
+// makes the global mutate a silent no-op for provider-backed keys (BRDG-458).
+import { useSWRConfig } from "swr";
 import type { TicketReadiness, IssueType, JiraStatus } from "@/types/ticket";
 import { useLocalStorage } from "@/hooks/useLocalStorage";
 import { NavPanel } from "@/components/nav/NavPanel";
@@ -49,6 +51,7 @@ export default function RefinementSessionTicketPage({
   const ticketKeyFromUrl = decodeURIComponent(rawTicketKey);
   const pageTitle = usePageTitle("Refinement Session");
   const router = useRouter();
+  const { mutate: swrMutate } = useSWRConfig();
   const {
     queue,
     queueMeta,
@@ -276,7 +279,7 @@ export default function RefinementSessionTicketPage({
         );
         setDraftDiscardKey((k) => k + 1);
         // Invalidate list caches so sprint board reflects any changes
-        await globalMutate(
+        await swrMutate(
           (key) => typeof key === "string" && key.startsWith("/api/tickets?"),
           undefined,
           { revalidate: true },
@@ -289,7 +292,7 @@ export default function RefinementSessionTicketPage({
     } finally {
       setIsPushing(false);
     }
-  }, [currentKey, mutate, localEdits]);
+  }, [currentKey, mutate, localEdits, swrMutate]);
 
   // Header state
   const [storyPoints, setStoryPoints] = useState<number | null>(ticketData?.storyPoints ?? null);

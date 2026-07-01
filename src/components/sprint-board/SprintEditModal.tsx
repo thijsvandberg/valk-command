@@ -1,7 +1,9 @@
 "use client";
 
 import { useState, useCallback, useRef, useEffect } from "react";
-import { mutate } from "swr";
+// useSWRConfig, not the top-level "swr" mutate: the app's custom cache provider
+// makes the global mutate a silent no-op for provider-backed keys (BRDG-458).
+import { useSWRConfig } from "swr";
 import type { Sprint, Ticket } from "@/types/ticket";
 import { Modal } from "@/components/shared/Modal";
 import { DateTimePicker, formatDateTimeLabel } from "@/components/shared/DateTimePicker";
@@ -55,6 +57,7 @@ function clearStoredTask(sprintId: string) {
 }
 
 export function SprintEditModal({ sprint, tickets, onClose, showToast, autoSuggest }: SprintEditModalProps) {
+  const { mutate } = useSWRConfig();
   const [name, setName] = useState(sprint.name);
   const [startDate, setStartDate] = useState(toInputDateTime(sprint.startDate));
   const [endDate, setEndDate] = useState(toInputDateTime(sprint.endDate));
@@ -201,7 +204,7 @@ export function SprintEditModal({ sprint, tickets, onClose, showToast, autoSugge
     } finally {
       setSaving(false);
     }
-  }, [collectChangedFields, sprint.id, onClose, showToast]);
+  }, [collectChangedFields, sprint.id, onClose, showToast, mutate]);
 
   // Starting is only offered for a future sprint, and only once Jira's
   // preconditions are met: an end date that carries a time and lies in the
@@ -265,7 +268,7 @@ export function SprintEditModal({ sprint, tickets, onClose, showToast, autoSugge
     } finally {
       setStarting(false);
     }
-  }, [startReady, collectChangedFields, sprint.id, sprint.name, name, startDate, endDate, onClose, showToast]);
+  }, [startReady, collectChangedFields, sprint.id, sprint.name, name, startDate, endDate, onClose, showToast, mutate]);
 
   const handleSuggestGoal = useCallback(async () => {
     abortRef.current?.abort();

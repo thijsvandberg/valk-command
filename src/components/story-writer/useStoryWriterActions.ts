@@ -1,7 +1,9 @@
 import { useState, useRef, useCallback, useEffect, useMemo } from "react";
 import { useOutsideClick } from "@/hooks/useOutsideClick";
 import { useRouter } from "next/navigation";
-import { mutate as globalMutate } from "swr";
+// useSWRConfig, not the top-level "swr" mutate: the app's custom cache provider
+// makes the global mutate a silent no-op for provider-backed keys (BRDG-458).
+import { useSWRConfig } from "swr";
 import { useStoryWriter } from "@/hooks/useStoryWriter";
 import { useTicketEvents } from "@/hooks/useTicketEvents";
 import type { TicketEvent } from "@/lib/ticket-events";
@@ -37,6 +39,7 @@ export function useStoryWriterActions({
 }: UseStoryWriterActionsArgs) {
   const router = useRouter();
   const { notify } = useNotification();
+  const { mutate: swrMutate } = useSWRConfig();
 
   const [pushing, setPushing] = useState(false);
   const [pulling, setPulling] = useState(false);
@@ -227,10 +230,10 @@ export function useStoryWriterActions({
 
   const handleDelete = useCallback(async (deleteConversation: boolean) => {
     await writer.deleteSession(deleteConversation);
-    await globalMutate("/api/story-writer/active-sessions");
+    await swrMutate("/api/story-writer/active-sessions");
     setShowDeleteConfirm(false);
     window.history.back();
-  }, [writer]);
+  }, [writer, swrMutate]);
 
   const handleDraftChange = useCallback((content: string) => {
     editVersionRef.current += 1;
@@ -281,7 +284,7 @@ export function useStoryWriterActions({
       }
       if (opts.clearSession) {
         await writer.deleteSession(true);
-        await globalMutate("/api/story-writer/active-sessions");
+        await swrMutate("/api/story-writer/active-sessions");
       }
       if (opts.readiness) {
         // Offer adding the ticket to a refinement before leaving; the dialog's
@@ -313,7 +316,7 @@ export function useStoryWriterActions({
     } finally {
       setPushing(false);
     }
-  }, [writer, handleReadinessChange, router, ticketKey]);
+  }, [writer, handleReadinessChange, router, ticketKey, swrMutate]);
 
   const handleWrapUpReady = useCallback(
     () => performWrapUp({ readiness: true, clearSession: false }),

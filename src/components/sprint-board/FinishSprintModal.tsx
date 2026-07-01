@@ -1,7 +1,9 @@
 "use client";
 
 import { useState, useCallback, useEffect, useMemo } from "react";
-import { mutate } from "swr";
+// useSWRConfig, not the top-level "swr" mutate: the app's custom cache provider
+// makes the global mutate a silent no-op for provider-backed keys (BRDG-458).
+import { useSWRConfig } from "swr";
 import { Modal } from "@/components/shared/Modal";
 import { Button } from "@/components/ui/Button";
 import { jira, tickets as ticketsApi } from "@/lib/api-client";
@@ -51,6 +53,7 @@ export function FinishSprintModal({
   showToast,
   onFinished,
 }: FinishSprintModalProps) {
+  const { mutate } = useSWRConfig();
   // Blocker A: parent stories that are not yet DONE. Resolved on the board, not here.
   const incompleteStories = useMemo(
     () => tickets.filter((t) => t.jiraStatus !== "DONE" && t.jiraStatus !== "DEPRECATED"),
@@ -199,7 +202,7 @@ export function FinishSprintModal({
     } finally {
       setFinishing(false);
     }
-  }, [blocked, sprint.id, sprint.name, showToast, onFinished, onClose]);
+  }, [blocked, sprint.id, sprint.name, showToast, onFinished, onClose, mutate]);
 
   const blockReason = (() => {
     const parts: string[] = [];

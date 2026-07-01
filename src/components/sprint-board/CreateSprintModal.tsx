@@ -1,7 +1,9 @@
 "use client";
 
 import { useState, useCallback, useRef, useEffect } from "react";
-import { mutate } from "swr";
+// useSWRConfig, not the top-level "swr" mutate: the app's custom cache provider
+// makes the global mutate a silent no-op for provider-backed keys (BRDG-458).
+import { useSWRConfig } from "swr";
 import { Modal } from "@/components/shared/Modal";
 import { DateTimePicker, formatDateTimeLabel } from "@/components/shared/DateTimePicker";
 import { Button } from "@/components/ui/Button";
@@ -42,6 +44,7 @@ export function CreateSprintModal({
   previousSprintName,
   previousSprintEndIso,
 }: CreateSprintModalProps) {
+  const { mutate } = useSWRConfig();
   const [name, setName] = useState(suggestedName);
   const [startDate, setStartDate] = useState(suggestedStartDate);
   // Prefill the conventional end so the PO can create in one click; empty when
@@ -88,7 +91,7 @@ export function CreateSprintModal({
     } finally {
       setCreating(false);
     }
-  }, [name, startDate, endDate, goal, onClose, onCreated, showToast]);
+  }, [name, startDate, endDate, goal, onClose, onCreated, showToast, mutate]);
 
   const suggestedEnd = sprintEndFromStart(startDate);
   // Date-only label for the previous sprint's end (drop the stored 17:00).

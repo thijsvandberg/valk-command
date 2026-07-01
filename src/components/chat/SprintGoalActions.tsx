@@ -2,7 +2,9 @@
 
 import { useState, useCallback } from "react";
 import { Check, Pencil, Loader2 } from "lucide-react";
-import { mutate } from "swr";
+// useSWRConfig, not the top-level "swr" mutate: the app's custom cache provider
+// makes the global mutate a silent no-op for provider-backed keys (BRDG-458).
+import { useSWRConfig } from "swr";
 import { jira, tickets as ticketsApi } from "@/lib/api-client";
 import type { SprintGoalMetadata } from "@/types/chat";
 import type { Sprint, Ticket } from "@/types/ticket";
@@ -15,6 +17,7 @@ interface SprintGoalActionsProps {
 }
 
 export function SprintGoalActions({ content, metadata, showToast }: SprintGoalActionsProps) {
+  const { mutate } = useSWRConfig();
   const [accepting, setAccepting] = useState(false);
   const [accepted, setAccepted] = useState(false);
   const [loadingEdit, setLoadingEdit] = useState(false);
@@ -34,7 +37,7 @@ export function SprintGoalActions({ content, metadata, showToast }: SprintGoalAc
     } finally {
       setAccepting(false);
     }
-  }, [content, metadata.sprintId, showToast]);
+  }, [content, metadata.sprintId, showToast, mutate]);
 
   const handleEdit = useCallback(async () => {
     setLoadingEdit(true);

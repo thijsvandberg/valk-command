@@ -14,9 +14,12 @@ vi.mock("next/navigation", () => ({
   useRouter: () => ({ push: vi.fn() }),
 }));
 
-vi.mock("swr", () => ({
-  mutate: vi.fn(),
-}));
+// The modal mutates through the provider-bound useSWRConfig().mutate (BRDG-458);
+// expose the same spy on both paths so the existing assertions stay meaningful.
+vi.mock("swr", () => {
+  const mutate = vi.fn();
+  return { mutate, useSWRConfig: () => ({ mutate }) };
+});
 
 vi.mock("@/lib/api-client", () => ({
   apiFetch: vi.fn(),

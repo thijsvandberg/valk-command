@@ -10,7 +10,9 @@ import {
 } from "lucide-react";
 import { IssueTypeIcon, ISSUE_TYPE_COLORS } from "@/components/shared/IssueTypeIcon";
 import { apiFetch, jira, sprintSlots, config as configApi, storyWriter, settings } from "@/lib/api-client";
-import { mutate as globalMutate } from "swr";
+// useSWRConfig, not the top-level "swr" mutate: the app's custom cache provider
+// makes the global mutate a silent no-op for provider-backed keys (BRDG-458).
+import { useSWRConfig } from "swr";
 import { Button } from "@/components/ui/Button";
 import { TextInput } from "@/components/shared/TextInput";
 import { StatusBadge } from "@/components/shared/StatusBadge";
@@ -62,6 +64,7 @@ function resolveSprintName(raw: string | null, options: { value: string; label: 
 // ---------------------------------------------------------------------------
 
 export function StoryWriterLauncherModal({ open, onClose }: StoryWriterLauncherModalProps) {
+  const { mutate: swrMutate } = useSWRConfig();
   const router = useRouter();
   const [mode, setMode] = useState<LauncherMode>("new");
 
@@ -210,7 +213,7 @@ export function StoryWriterLauncherModal({ open, onClose }: StoryWriterLauncherM
     // The sidebar session list and the ticket-detail "active session" badge read the
     // active-sessions SWR key; patch it so they drop the deleted session immediately
     // instead of showing it until their next remount.
-    globalMutate(
+    void swrMutate(
       "/api/story-writer/active-sessions",
       (current: { sessionId: string }[] | undefined) => current?.filter((s) => s.sessionId !== sessionId) ?? [],
       { revalidate: false },
@@ -219,7 +222,7 @@ export function StoryWriterLauncherModal({ open, onClose }: StoryWriterLauncherM
       await apiFetch(`/api/story-writer/active-sessions?sessionId=${encodeURIComponent(sessionId)}`, { method: "DELETE" });
     } catch {
       // Roll back the optimistic removal by refetching the real list.
-      globalMutate("/api/story-writer/active-sessions");
+      void swrMutate("/api/story-writer/active-sessions");
     }
   };
 

@@ -8,7 +8,10 @@ vi.mock("@/hooks/useOutsideClick", () => ({ useOutsideClick: vi.fn() }));
 
 const routerPush = vi.fn();
 vi.mock("next/navigation", () => ({ useRouter: () => ({ push: routerPush }) }));
-vi.mock("swr", () => ({ mutate: vi.fn() }));
+vi.mock("swr", () => {
+  const mutate = vi.fn();
+  return { mutate, useSWRConfig: () => ({ mutate }) };
+});
 vi.mock("@/lib/api-client", () => ({
   ApiError: class ApiError extends Error {},
   apiFetch: vi.fn().mockResolvedValue({}),

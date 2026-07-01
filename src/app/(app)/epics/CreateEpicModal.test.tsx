@@ -2,9 +2,12 @@ import { render, screen, fireEvent, waitFor } from "@testing-library/react";
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { CreateEpicModal } from "./CreateEpicModal";
 
-vi.mock("swr", () => ({
-  mutate: vi.fn().mockResolvedValue(undefined),
-}));
+// The modal mutates through the provider-bound useSWRConfig().mutate (BRDG-458);
+// expose the same spy on both paths.
+vi.mock("swr", () => {
+  const mutate = vi.fn().mockResolvedValue(undefined);
+  return { mutate, useSWRConfig: () => ({ mutate }) };
+});
 
 const push = vi.fn();
 vi.mock("next/navigation", () => ({

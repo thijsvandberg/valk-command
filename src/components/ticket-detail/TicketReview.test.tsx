@@ -8,8 +8,11 @@ const mockDeleteReview = vi.fn();
 const mockStreamTaskAsPromise = vi.fn();
 const mockGlobalMutate = vi.fn();
 
+// The component mutates through the provider-bound useSWRConfig().mutate
+// (BRDG-458); route it to the same spy the old global-mutate assertions use.
 vi.mock("swr", () => ({
   mutate: (...args: unknown[]) => mockGlobalMutate(...args),
+  useSWRConfig: () => ({ mutate: (...args: unknown[]) => mockGlobalMutate(...args) }),
 }));
 
 vi.mock("@/hooks/useSprintBoard", () => ({

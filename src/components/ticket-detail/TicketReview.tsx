@@ -1,7 +1,9 @@
 "use client";
 
 import { useState, useCallback } from "react";
-import { mutate as globalMutate } from "swr";
+// useSWRConfig, not the top-level "swr" mutate: the app's custom cache provider
+// makes the global mutate a silent no-op for provider-backed keys (BRDG-458).
+import { useSWRConfig } from "swr";
 import { Loader2, Sparkles, CheckCircle2, AlertTriangle, Trash2, ChevronDown, ChevronUp } from "lucide-react";
 import { useTicketReviews } from "@/hooks/useSprintBoard";
 import { SectionHeader } from "@/components/shared/SectionHeader";
@@ -260,6 +262,7 @@ function ReviewHistoryItem({
 
 
 export function TicketReview({ ticketKey }: { ticketKey: string }) {
+  const { mutate: swrMutate } = useSWRConfig();
   const { data, saveReview, deleteReview, mutate: mutateReviews } = useTicketReviews(ticketKey);
   const reviews = data?.reviews ?? [];
   const currentVersionHash = data?.currentVersionHash ?? null;
@@ -285,8 +288,8 @@ export function TicketReview({ ticketKey }: { ticketKey: string }) {
 
       mutateReviews();
       // Revalidate ticket data so sidebar quality score updates
-      globalMutate(`/api/tickets/${encodeURIComponent(ticketKey)}`);
-      globalMutate((key) => typeof key === "string" && key.startsWith("/api/tickets?"), undefined, { revalidate: true });
+      void swrMutate(`/api/tickets/${encodeURIComponent(ticketKey)}`);
+      void swrMutate((key) => typeof key === "string" && key.startsWith("/api/tickets?"), undefined, { revalidate: true });
     } catch (err) {
       if (err instanceof ApiError) {
         setReviewError(err.body?.error ?? `Review failed (${err.status})`);

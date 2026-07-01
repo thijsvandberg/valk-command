@@ -3,11 +3,17 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 import { SprintEditModal } from "./SprintEditModal";
 import type { Sprint, Ticket } from "@/types/ticket";
 
-vi.mock("swr", () => ({
-  __esModule: true,
-  default: () => ({ data: undefined }),
-  mutate: vi.fn(),
-}));
+// The modal mutates through the provider-bound useSWRConfig().mutate (BRDG-458);
+// expose the same spy on both paths so the existing assertions stay meaningful.
+vi.mock("swr", () => {
+  const mutate = vi.fn();
+  return {
+    __esModule: true,
+    default: () => ({ data: undefined }),
+    mutate,
+    useSWRConfig: () => ({ mutate }),
+  };
+});
 
 vi.mock("@/lib/api-client", () => ({
   jira: {

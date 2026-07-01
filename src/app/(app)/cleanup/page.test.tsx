@@ -12,13 +12,18 @@ let swrError: Error | undefined;
 const swrSpy = vi.fn();
 const cleanupMutate = vi.fn();
 
-vi.mock("swr", () => ({
-  default: (key: string | null) => {
-    swrSpy(key);
-    return { data: swrData, isLoading: swrLoading, error: swrError, mutate: cleanupMutate };
-  },
-  mutate: vi.fn(),
-}));
+// The page mutates through the provider-bound useSWRConfig().mutate (BRDG-458).
+vi.mock("swr", () => {
+  const mutate = vi.fn();
+  return {
+    default: (key: string | null) => {
+      swrSpy(key);
+      return { data: swrData, isLoading: swrLoading, error: swrError, mutate: cleanupMutate };
+    },
+    mutate,
+    useSWRConfig: () => ({ mutate }),
+  };
+});
 
 // Drive the virtualizer deterministically: jsdom has no layout, so we control
 // exactly which rows are "in the window" to assert the windowed render path.

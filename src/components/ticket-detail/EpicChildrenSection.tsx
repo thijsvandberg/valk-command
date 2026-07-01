@@ -1,7 +1,9 @@
 "use client";
 
 import { useState, useRef, useCallback, useEffect, useMemo } from "react";
-import { mutate as globalMutate } from "swr";
+// useSWRConfig, not the top-level "swr" mutate: the app's custom cache provider
+// makes the global mutate a silent no-op for provider-backed keys (BRDG-458).
+import { useSWRConfig } from "swr";
 import { useOutsideClick } from "@/hooks/useOutsideClick";
 import type { TicketDetail, JiraStatus, TicketReadiness, Subtask, EpicChild, IssueType, PlaceholderTicket, Ticket } from "@/types/ticket";
 import { usePlaceholders } from "@/hooks/usePlaceholders";
@@ -157,7 +159,8 @@ export function EpicChildrenSection({
     promote: promotePlaceholderApi,
     reorder: reorderPlaceholdersApi,
   } = usePlaceholders(planningOn, { epicKey: ticketKey });
-  const refreshMeter = useCallback(() => { globalMutate("/api/sprints/used-points"); }, []);
+  const { mutate: swrMutate } = useSWRConfig();
+  const refreshMeter = useCallback(() => { void swrMutate("/api/sprints/used-points"); }, [swrMutate]);
   const handlePlaceholderUpdate = useCallback((id: string, patch: Partial<PlaceholderTicket>) => {
     updatePlaceholderApi(id, patch).then(refreshMeter).catch(() => showToast("Failed to update placeholder"));
   }, [updatePlaceholderApi, refreshMeter, showToast]);
