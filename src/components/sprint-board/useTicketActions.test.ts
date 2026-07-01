@@ -151,6 +151,54 @@ describe("useTicketActions - capacity meter refresh on estimate change", () => {
   });
 });
 
+// A score edit rides the pendingTicketEdits overlay, which self-clears after a 30s
+// TTL. The overlay only hands off cleanly once the loaded list reflects the value,
+// but nothing refetched the list (the All view has no background poll), so the value
+// blinked out at ~30s and reappeared on a later focus/poll. The confirmed save must
+// revalidate the list so the overlay self-heals off fresh data (BRDG-455).
+describe("useTicketActions - list revalidation on confirmed score save", () => {
+  const saveTicketMetadataMock = vi.mocked(saveTicketMetadata);
+  const listKey = "/api/tickets?sprintId=200";
+  beforeEach(() => {
+    globalMutate.mockReset();
+    saveStoryPointsMock.mockReset().mockResolvedValue(true);
+    saveTicketMetadataMock.mockReset().mockResolvedValue(true);
+    __resetPendingEdits();
+  });
+
+  function setup() {
+    const { result } = renderHook(() =>
+      useTicketActions({ adapter: makeBoardAdapter([], vi.fn(), listKey, {}), showToast: vi.fn() }),
+    );
+    return { result };
+  }
+
+  it("revalidates the list after a guestimation change", async () => {
+    const { result } = setup();
+    await act(async () => { result.current.handleGuestimationChange("A-1", 3); });
+    expect(globalMutate).toHaveBeenCalledWith(listKey);
+  });
+
+  it("revalidates the list after a business-value change", async () => {
+    const { result } = setup();
+    await act(async () => { result.current.handleBusinessValueChange("A-1", 5); });
+    expect(globalMutate).toHaveBeenCalledWith(listKey);
+  });
+
+  it("revalidates the list after a story-points change", async () => {
+    const { result } = setup();
+    await act(async () => { result.current.handleStoryPointsChange("A-1", 8); });
+    expect(globalMutate).toHaveBeenCalledWith(listKey);
+  });
+
+  it("does not revalidate the list when the save fails", async () => {
+    saveTicketMetadataMock.mockResolvedValue(false);
+    const { result } = setup();
+    await act(async () => { result.current.handleGuestimationChange("A-1", 3); });
+    expect(globalMutate).not.toHaveBeenCalledWith(listKey);
+  });
+});
+
 describe("useTicketActions - handleAssigneeChange", () => {
   beforeEach(() => {
     assign.mockReset();

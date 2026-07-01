@@ -109,6 +109,28 @@ helpers with `{ patchList: false }`; the overlay is the only display mechanism. 
 patch stays (the sidebar re-seed). `MultiSprintView` (Compare view) now also rides the overlay
 (BRDG-407) and likewise calls these helpers with `{ patchList: false }`.
 
+### On confirm, revalidate the list so the overlay can self-heal (BRDG-455)
+
+`patchList: false` means nothing writes the new value into the loaded list. The overlay
+must therefore hand off to a **server** read: the self-heal clears the overlay only once
+`apiTickets` reflects the value. If no refetch is triggered, the loaded list never catches
+up and the overlay's 30s TTL evicts the value first — the row shows the edit, blinks out at
+~30s, then reappears on the next natural refetch.
+
+This bit the three PO-score handlers (`guestimation`, `businessValue`, `storyPoints`). They
+confirmed the overlay edit but only revalidated the capacity meter (`/api/sprints/used-points`),
+never the ticket list. On the **All view** there is no background poll (`refreshInterval = 0`
+in `useSprintBoard.ts`), so nothing refetched the list until a window refocus, and the score
+disappeared for the gap between the 30s TTL and that refetch.
+
+Fix: on a confirmed save, `globalMutate(activeListKey)` so a fresh list read lands and the
+self-heal clears the overlay cleanly. This is safe because the metadata/story-points write
+reliably invalidates the `/api/tickets` response cache (the `cache` store is a `globalThis`
+singleton, so cross-route `cache.invalidate` works in dev too), so the refetch returns the
+new value — not the stale snapshot that a mid-write revalidation would. The Jira-field
+handlers (status/epic/assignee) already revalidate on confirm via the row-actions dispatch;
+this brings the score handlers in line.
+
 ## Adding a new editable board field (checklist)
 
 1. Add the field name to `EditableField` in `pendingTicketEdits.ts`.
@@ -120,7 +142,11 @@ patch stays (the sidebar re-seed). `MultiSprintView` (Compare view) now also rid
    so the helper does not patch the list cache either (BRDG-383).
 4. If the field renders from a separate map (like poStatus/readiness) rather than the
    list object, guard its reconciliation with `hasPendingEdit`.
-5. Add a test asserting the value survives a stale refetch (see
+5. On a confirmed save, `globalMutate(activeListKey)` so the loaded list is refetched and
+   the self-heal can clear the overlay before its 30s TTL evicts the value — the write
+   invalidates the `/api/tickets` cache, so the refetch is fresh (BRDG-455). Skip only if a
+   forced revalidation already happens elsewhere (e.g. the row-actions dispatch).
+6. Add a test asserting the value survives a stale refetch (see
    `pendingTicketEdits.test.ts` and the handler tests in `useTicketActions.test.ts`).
 
 ## Shared row-actions dispatch + per-surface adapters (BRDG-374)

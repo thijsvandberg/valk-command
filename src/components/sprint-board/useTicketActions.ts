@@ -71,10 +71,15 @@ export function useTicketActions(deps: TicketActionsDeps) {
     });
   }, [readinessMap, activeListKey, showToast]);
 
+  // On a confirmed save, revalidate the list so the overlay self-heals off fresh
+  // server data. The save reliably clears the /api/tickets response cache, so the
+  // refetch returns the new value. Without it the overlay's 30s TTL evicts the value
+  // before any refetch lands (the All view has no background poll, refreshInterval=0),
+  // so the score blinks out at ~30s and only reappears on a later focus/poll (BRDG-455).
   const handleBusinessValueChange = useCallback((key: string, value: number | null) => {
     registerPendingEdit(key, "businessValue", value, Date.now());
     saveTicketMetadata(key, { businessValue: value }, activeListKey, { patchList: false }).then((ok) => {
-      if (ok) confirmPendingEdit(key, "businessValue");
+      if (ok) { confirmPendingEdit(key, "businessValue"); if (activeListKey) globalMutate(activeListKey); }
       else clearPendingEdit(key, "businessValue");
     });
   }, [activeListKey]);
@@ -83,9 +88,13 @@ export function useTicketActions(deps: TicketActionsDeps) {
     registerPendingEdit(key, "guestimation", value, Date.now());
     // The capacity meter reads a server-computed effective-points total (real SP
     // or guestimation), separate from the ticket list, so refresh it after the save.
+    // Revalidate the list too so the overlay self-heals (see handleBusinessValueChange).
     saveTicketMetadata(key, { guestimation: value }, activeListKey, { patchList: false }).then((ok) => {
-      if (ok) { confirmPendingEdit(key, "guestimation"); globalMutate("/api/sprints/used-points"); }
-      else clearPendingEdit(key, "guestimation");
+      if (ok) {
+        confirmPendingEdit(key, "guestimation");
+        globalMutate("/api/sprints/used-points");
+        if (activeListKey) globalMutate(activeListKey);
+      } else clearPendingEdit(key, "guestimation");
     });
   }, [activeListKey]);
 
@@ -106,6 +115,8 @@ export function useTicketActions(deps: TicketActionsDeps) {
         confirmPendingEdit(key, "storyPoints");
         if (advancesReadiness) confirmPendingEdit(key, "readiness");
         globalMutate("/api/sprints/used-points");
+        // Revalidate the list so the overlay self-heals (see handleBusinessValueChange).
+        if (activeListKey) globalMutate(activeListKey);
       } else {
         clearPendingEdit(key, "storyPoints");
         if (advancesReadiness) {
