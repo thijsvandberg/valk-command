@@ -358,6 +358,15 @@ export function TicketTable({
   const { data: healthMap } = usePipelineHealth();
 
   const lastCheckRef = useRef<{ idx: number; checked: boolean } | null>(null);
+  // BRDG-416: read `tickets`/`checkedTickets` through latest-refs so handleCheckboxClick
+  // keeps a stable identity. Depending on them recreated the handler on every check /
+  // refetch, and since it is passed to every row it re-rendered the whole visible set.
+  const ticketsRef = useRef(tickets);
+  const checkedRef = useRef(checkedTickets);
+  useEffect(() => {
+    ticketsRef.current = tickets;
+    checkedRef.current = checkedTickets;
+  }, [tickets, checkedTickets]);
 
   // A per-group narrowing: either a multi-select set of status criteria, or the single
   // "unpointed" warning lens (mutually exclusive with statuses, mirroring the flat view).
@@ -387,14 +396,14 @@ export function TicketTable({
     if (shiftKey && anchor !== null) {
       const from = Math.min(anchor.idx, idx);
       const to = Math.max(anchor.idx, idx);
-      const rangeKeys = tickets.slice(from, to + 1).map((t) => t.key);
+      const rangeKeys = ticketsRef.current.slice(from, to + 1).map((t) => t.key);
       onRangeCheck(rangeKeys, anchor.checked);
     } else {
-      const willBeChecked = !checkedTickets.has(key);
+      const willBeChecked = !checkedRef.current.has(key);
       lastCheckRef.current = { idx, checked: willBeChecked };
       onToggleCheck(key);
     }
-  }, [tickets, checkedTickets, onToggleCheck, onRangeCheck]);
+  }, [onToggleCheck, onRangeCheck]);
 
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
@@ -479,7 +488,6 @@ export function TicketTable({
     statusChange: statusChangeMap?.get(ticket.key) ?? null,
     onStatusChangeSeen,
     onStatusChangeMoveToBottom,
-    selectedTicket,
     onSelectTicket,
     onRowContextMenu,
     onCheckboxClick: handleCheckboxClick,

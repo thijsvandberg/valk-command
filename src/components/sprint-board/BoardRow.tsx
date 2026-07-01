@@ -82,7 +82,10 @@ export interface BoardRowBaseProps {
   unfollowTicket?: (key: string) => void;
   lastDeployedMap?: Record<string, LastDeployedInfo>;
   healthMap?: Record<string, PipelineHealthEntry>;
-  selectedTicket: string | null;
+  // BRDG-416: the row's selected state is conveyed by `isSelected`; the raw selected
+  // key is no longer needed (and passing it to every row broke memo on selection
+  // change). Kept optional so existing callers compile unchanged.
+  selectedTicket?: string | null;
   onSelectTicket: (key: string | null) => void;
   onCheckboxClick: (key: string, idx: number, shiftKey: boolean) => void;
   onRowContextMenu?: (key: string, e: React.MouseEvent) => void;
@@ -255,7 +258,6 @@ export const BoardRow = memo(forwardRef<HTMLTableRowElement, BoardRowBaseProps>(
     unfollowTicket: unfollow,
     lastDeployedMap,
     healthMap,
-    selectedTicket,
     onSelectTicket,
     onCheckboxClick,
     onRowContextMenu,
@@ -468,7 +470,7 @@ export const BoardRow = memo(forwardRef<HTMLTableRowElement, BoardRowBaseProps>(
           onActivate(ticket.key);
           return;
         }
-        onSelectTicket(ticket.key === selectedTicket ? null : ticket.key);
+        onSelectTicket(isSelected ? null : ticket.key);
       }}
       {...dragListeners}
       {...dragAttributes}
