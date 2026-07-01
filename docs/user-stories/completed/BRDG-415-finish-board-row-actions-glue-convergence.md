@@ -1,7 +1,6 @@
 # BRDG-415: Finish the board's row-actions glue convergence (the BRDG-406 remainder)
 
-**Status:** Mostly done (2026-07-01) — glue convergence + selection pruning shipped; the
-`ticket-action-menu.tsx` file split is deferred (see note).
+**Status:** Completed (2026-07-01)
 **Priority:** High
 **Type:** Structure / Stability — sprint board, multiselect + context menu
 
@@ -25,11 +24,14 @@ Verified: `npm run lint` / `typecheck` / `vitest` (7321 tests) / `build` all gre
 the running board — it renders, right-click fires the converged context menu (quick-moves +
 flag from the shared glue), no console errors.
 
-**Deferred:** the `ticket-action-menu.tsx` (785-line) split into portals / sub-panels /
-composer (AC #3). It is a purely structural, behaviour-neutral reorganization of a central
-menu surface — high mechanical-regression risk for zero functional change — so it was left as
-a follow-up to avoid destabilising the menu and to keep budget for the sibling BRDG-416. It is
-independent of `SprintBoard.tsx`, so it does not block BRDG-416.
+- **Menu split (`ticket-action-menu.tsx`).** The 785-line file is split into
+  `ticket-action-menu-portals.tsx` (AnchoredMenu / CursorMenu / Flyout / QUICK_MOVE_ICON),
+  `ticket-action-menu-sub-panels.tsx` (the five data-fetching pickers), and the composer
+  (`TicketActionMenuContent`) which stays in `ticket-action-menu.tsx` and re-exports
+  AnchoredMenu / CursorMenu / MenuItem so every consumer is unchanged. Code was moved
+  byte-exact (via `sed`, not retyped) so it is behaviour-neutral; verified E2E — the
+  right-click menu renders its full structure (quick-moves, Update/Assist flyouts, sub-panels)
+  with no console errors. Commit `d3f2c097`.
 
 ## Description
 
@@ -110,8 +112,7 @@ Also still open from BRDG-406:
       `handleRankToEdge` may remain, wired from the board).
 - [x] A change to any converged behaviour is made in exactly one place and applies to board + inbox +
       epic identically.
-- [ ] `ticket-action-menu.tsx` is split into portals / sub-panels / composer with no behaviour change.
-      **(Deferred — see Status note.)**
+- [x] `ticket-action-menu.tsx` is split into portals / sub-panels / composer with no behaviour change.
 - [x] The selection count matches the visible rows after a refresh / filter / move on board, inbox,
       and epic.
 - [x] No regression in board/inbox/epic context-menu, bulk-bar, quick-move, rich move toast,

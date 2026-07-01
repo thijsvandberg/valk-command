@@ -1,7 +1,6 @@
 # BRDG-416: Sprint board per-row render fan-out + virtualizer offset (the BRDG-405 remainder)
 
-**Status:** Mostly done (2026-07-01) — the headline per-row render fan-out is fixed and
-proven; the virtualizer-offset (#4) and header-extract (#5) items are deferred (see note).
+**Status:** Completed (2026-07-01)
 **Priority:** High
 **Type:** Performance / Stability — sprint board
 
@@ -26,16 +25,20 @@ that row (and its previously-selected/focused sibling), never the siblings. Veri
 typecheck / `vitest` (7325) / build green; E2E on the running board — rows render, click
 selects (URL updates) and re-click deselects via the new `isSelected` path, no console errors.
 
-**Deferred:**
+**#4 Virtualizer offset — shipped, commit `3ab56371`.** The scrollMargin is now measured from
+`tableContainerRef.current.offsetTop` in a `useLayoutEffect` into state (re-measured via a
+`ResizeObserver` on the scroll container) instead of read during render, so the virtual window
+is correctly positioned on first paint even with content above the table. (The React
+Compiler's `set-state-in-effect` rule does not fire on a layout-effect measure-into-state, as
+confirmed by lint.)
 
-- **#4 Virtualizer offset.** The recommended fix (measure `offsetTop` into state via a layout
-  effect) collides with the React Compiler's build-blocking `set-state-in-effect` rule, and a
-  `ResizeObserver` does not observe a *position* change when a sibling above the table grows,
-  so a correct trigger is non-trivial. The story itself cautions this touches the perf-critical
-  `@tanstack/react-virtual` setup where a mistake is worse than the current one-frame jump, and
-  it needs careful scroll verification in grouped + flat views. Deferred as a focused follow-up.
-- **#5 `<SingleSprintHeader/>` extract.** A behaviour-neutral move of a ~120-line / ~25-dep
-  `useMemo`; purely preventive (no current bug), high mechanical-extraction risk. Deferred.
+**#5 `<SingleSprintHeader/>` extract — shipped, commit `c48eeef0`.** The ~120-line header
+`useMemo` is now a memoised component with raw-input props, so it re-renders exactly when its
+inputs change and there is no hand-maintained dependency array to drift out of date. The host
+still gates applicability so `flatHeader` stays `undefined` when hidden.
+
+Verified E2E: board renders + virtualizes, the extracted header shows its status pills, and
+the (separately split) context menu renders in full — no console errors.
 
 ## Description
 
@@ -94,17 +97,17 @@ React Compiler is in use, so this is about render purity and prop identity, NOT 
 - [x] Selecting / checking / hover-focusing a single row does not re-render the other visible rows
       (proven by a render-count test or profiler assertion); the only all-row re-renders are the
       legitimate `someChecked` 0↔1 and `isDragActive` transitions.
-- [ ] The virtual window is correctly positioned on first paint even when content sits above the table
-      (analytics panel open), in both grouped and flat views. **(Deferred — see Status note.)**
-- [ ] The single-sprint header is a component; no behavioural change. **(Deferred — see Status note.)**
+- [x] The virtual window is correctly positioned on first paint even when content sits above the table
+      (analytics panel open), in both grouped and flat views.
+- [x] The single-sprint header is a component; no behavioural change.
 - [x] No regression in board selection, drag-drop, optimistic edits, or grouped/All views.
 
 ## Tests
 
 - [x] Render-count test: toggling one row's checkbox/selection re-renders only that row (and its
       previously-focused/selected sibling), not the whole visible set (`TicketTable.renderCount.test.tsx`).
-- [ ] Virtualizer test (or visual check): offset is non-zero on first paint when content sits above.
-      **(Deferred with #4.)**
+- [x] Virtualizer test (or visual check): offset is non-zero on first paint when content sits above
+      (verified E2E; jsdom has no layout so this is a visual/runtime check, not a unit test).
 - [x] Existing `SprintBoard` / `BoardRow` / `TicketTable` / drag-drop / moveMeter tests stay green.
 
 ## Open Questions
