@@ -1,4 +1,7 @@
-import { mutate as globalMutate, type KeyedMutator } from "swr";
+import type { KeyedMutator } from "swr";
+// scopedMutate, not the top-level "swr" mutate: the app's custom cache provider
+// makes the global mutate a silent no-op for every provider-backed key (BRDG-458).
+import { scopedMutate } from "@/lib/swr-scoped-mutate";
 import type { Ticket } from "@/types/ticket";
 import {
   registerPendingEdit,
@@ -157,14 +160,14 @@ export function makeBoardDispatchAdapter(base: RowDataAdapter, readiness: BoardR
       // sprintId (grouping follows them); in a per-sprint or backlog source view they leave.
       // Skip when the active list IS the destination (a no-op move within the same view).
       if (activeListKey === "/api/tickets") {
-        void globalMutate<Ticket[]>(activeListKey, (data) => data?.map((t) => (checked.has(t.key) ? { ...t, sprintId: newSprintId } : t)), { revalidate: false });
+        void scopedMutate<Ticket[]>(activeListKey, (data) => data?.map((t) => (checked.has(t.key) ? { ...t, sprintId: newSprintId } : t)), { revalidate: false });
       } else if (activeListKey !== destKey) {
-        void globalMutate<Ticket[]>(activeListKey, (data) => data?.filter((t) => !checked.has(t.key)), { revalidate: false });
+        void scopedMutate<Ticket[]>(activeListKey, (data) => data?.filter((t) => !checked.has(t.key)), { revalidate: false });
       }
       // Inject the moved tickets at the TOP of the destination cache (de-duplicated); the
       // list sorts by jiraRank ascending, so they get a rank below the current minimum.
       if (destKey !== activeListKey) {
-        void globalMutate<Ticket[]>(
+        void scopedMutate<Ticket[]>(
           destKey,
           (current) => {
             const cur = current ?? [];

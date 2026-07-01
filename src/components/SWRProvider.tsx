@@ -1,10 +1,26 @@
 "use client";
 
-import { SWRConfig } from "swr";
+import { useEffect } from "react";
+import { SWRConfig, useSWRConfig } from "swr";
 import { TicketSyncBridge } from "@/components/TicketSyncBridge";
 import { swrFetcher } from "@/lib/api-client";
 import { createLruProvider } from "@/lib/swr-lru-provider";
 import { handleSwrError } from "@/lib/swr-error";
+import { registerScopedMutate } from "@/lib/swr-scoped-mutate";
+
+// Expose the provider-bound mutator to non-hook modules (ticket-cache,
+// sprint-board-utils, prefetch, row-actions adapter). The top-level "swr"
+// `mutate` targets the default cache and silently misses the lruProvider, so
+// anything outside a hook must mutate through this registration (BRDG-458).
+// Rendered as the first child of SWRConfig so its effect runs before any page
+// effect can call scopedMutate.
+function ScopedMutateBridge() {
+  const { mutate } = useSWRConfig();
+  useEffect(() => {
+    registerScopedMutate(mutate);
+  }, [mutate]);
+  return null;
+}
 
 // Bound the global SWR cache so long-lived tabs cannot grow without limit
 // (BRDG-387). The default provider is an unbounded Map; this swaps in an
@@ -49,6 +65,7 @@ export function SWRProvider({ children }: { children: React.ReactNode }) {
         keepPreviousData: true,
       }}
     >
+      <ScopedMutateBridge />
       <TicketSyncBridge />
       {children}
     </SWRConfig>

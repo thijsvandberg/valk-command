@@ -1,5 +1,7 @@
 import type { POStatus, TicketReadiness, Sprint, Ticket } from "@/types/ticket";
-import { mutate as globalMutate } from "swr";
+// scopedMutate, not the top-level "swr" mutate: the app's custom cache provider
+// makes the global mutate a silent no-op for every provider-backed key (BRDG-458).
+import { scopedMutate } from "@/lib/swr-scoped-mutate";
 import { apiFetch, tickets as ticketsApi, workspaceTasks } from "@/lib/api-client";
 
 export function mapJiraSprints(raw: { id: number; name: string; state: string; startDate: string | null; endDate: string | null; goal?: string | null }[] | undefined): Sprint[] {
@@ -53,7 +55,7 @@ export async function saveSprintSlots(slotSprints: string[], sprints: Sprint[]) 
     };
   });
 
-  globalMutate("/api/sprint-slots", slots, false);
+  scopedMutate("/api/sprint-slots", slots, false);
 
   try {
     await apiFetch("/api/sprint-slots", { method: "PUT", body: slots });
@@ -88,13 +90,13 @@ export async function saveTicketMetadata(
 
   // Optimistically update only the active ticket list (not all sprint lists)
   if (activeListKey && patchList) {
-    globalMutate(
+    scopedMutate(
       activeListKey,
       (current: Ticket[] | undefined) => current?.map((t) => t.key === jiraKey ? updateTicket(t) : t),
       { revalidate: false },
     );
   }
-  globalMutate(
+  scopedMutate(
     detailKey,
     (current: Record<string, unknown> | undefined) => current ? {
       ...current,
@@ -113,8 +115,8 @@ export async function saveTicketMetadata(
     return true;
   } catch (err) {
     console.error("Failed to save ticket metadata:", err);
-    if (activeListKey && patchList) globalMutate(activeListKey);
-    globalMutate(detailKey);
+    if (activeListKey && patchList) scopedMutate(activeListKey);
+    scopedMutate(detailKey);
     return false;
   }
 }
@@ -130,13 +132,13 @@ export async function saveStoryPoints(
   const detailKey = `/api/tickets/${encodeURIComponent(jiraKey)}`;
 
   if (activeListKey && patchList) {
-    globalMutate(
+    scopedMutate(
       activeListKey,
       (current: Ticket[] | undefined) => current?.map((t) => t.key === jiraKey ? { ...t, storyPoints } : t),
       { revalidate: false },
     );
   }
-  globalMutate(
+  scopedMutate(
     detailKey,
     (current: Record<string, unknown> | undefined) => current ? { ...current, storyPoints } : current,
     { revalidate: false },
@@ -147,8 +149,8 @@ export async function saveStoryPoints(
     return true;
   } catch (err) {
     console.error("Failed to save story points:", err);
-    if (activeListKey && patchList) globalMutate(activeListKey);
-    globalMutate(detailKey);
+    if (activeListKey && patchList) scopedMutate(activeListKey);
+    scopedMutate(detailKey);
     return false;
   }
 }

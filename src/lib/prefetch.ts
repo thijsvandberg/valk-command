@@ -1,5 +1,10 @@
-import { preload, mutate as globalMutate } from "swr";
+// `preload` is safe as a top-level import: SWR keys its PRELOAD map off the
+// default cache's global state on both the write and read side, so it works
+// under the custom provider. The top-level `mutate` is NOT (silent no-op against
+// provider-backed keys, BRDG-458) — cache seeding goes through scopedMutate.
+import { preload } from "swr";
 import { fetcher } from "@/components/SWRProvider";
+import { scopedMutate } from "@/lib/swr-scoped-mutate";
 import type { Ticket } from "@/types/ticket";
 
 const MAX_CONCURRENT = 3;
@@ -64,5 +69,5 @@ export function prefetchConversation(id: string): void {
 // Uses `revalidate: true` so SWR immediately fires the real fetch in the background.
 export function seedTicketDetailCache(ticket: Ticket): void {
   const detailKey = `/api/tickets/${encodeURIComponent(ticket.key)}`;
-  globalMutate(detailKey, ticket, { revalidate: true });
+  void scopedMutate(detailKey, ticket, { revalidate: true });
 }

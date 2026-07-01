@@ -1,4 +1,6 @@
-import { mutate as globalMutate } from "swr";
+// scopedMutate, not the top-level "swr" mutate: the app's custom cache provider
+// makes the global mutate a silent no-op for every provider-backed key (BRDG-458).
+import { scopedMutate } from "@/lib/swr-scoped-mutate";
 
 // Every SWR cache that can hold a ticket: the board list, a sprint-scoped list,
 // the per-key detail, or a bounded by-keys list (useTicketsByKeys, e.g. the
@@ -18,7 +20,7 @@ function ticketCacheMatcher(ticketKey: string) {
 // is unreliable in dev, so list/panel UI must be patched client-side to update
 // immediately rather than waiting on a revalidation that returns stale data.
 export function patchTicketCaches(ticketKey: string, patch: Record<string, unknown>) {
-  return globalMutate(
+  return scopedMutate(
     ticketCacheMatcher(ticketKey),
     (current: unknown) => {
       if (Array.isArray(current)) {
@@ -47,7 +49,7 @@ export function patchTicketCaches(ticketKey: string, patch: Record<string, unkno
 // from the detail object, so that cache still needs the immediate patch.
 export function patchTicketDetailCache(ticketKey: string, patch: Record<string, unknown>) {
   const detailKey = `/api/tickets/${encodeURIComponent(ticketKey)}`;
-  return globalMutate(
+  return scopedMutate(
     detailKey,
     (current: unknown) =>
       current && typeof current === "object" && (current as { key?: string }).key === ticketKey
@@ -80,7 +82,7 @@ export function moveTicketSprintCaches(
   const moved = { ...ticket, sprintId: newSprintId };
 
   // Drop the ticket from any other per-sprint/backlog list it currently sits in.
-  void globalMutate(
+  void scopedMutate(
     (k) => typeof k === "string" && k.startsWith("/api/tickets?sprintId=") && k !== destKey,
     (current: unknown) =>
       Array.isArray(current) ? current.filter((t) => (t as { key?: string }).key !== ticket.key) : current,
@@ -89,7 +91,7 @@ export function moveTicketSprintCaches(
 
   // Ensure it appears in the destination list (de-duplicated). The list is sorted
   // by jiraRank ascending, so a rank below the current minimum sorts it to the top.
-  void globalMutate(
+  void scopedMutate(
     destKey,
     (current: unknown) => {
       const base = Array.isArray(current) ? (current as Array<{ key?: string; jiraRank?: number | null }>) : [];
@@ -107,7 +109,7 @@ export function moveTicketSprintCaches(
   );
 
   // The All view keeps the row; only its sprintId changes (so grouping follows).
-  void globalMutate(
+  void scopedMutate(
     "/api/tickets",
     (current: unknown) =>
       Array.isArray(current)
@@ -117,7 +119,7 @@ export function moveTicketSprintCaches(
   );
 
   // Keep the open detail panel in sync too.
-  return globalMutate(
+  return scopedMutate(
     detailKey,
     (current: unknown) =>
       current && typeof current === "object" && (current as { key?: string }).key === ticket.key
@@ -140,18 +142,18 @@ export function revalidateMovedSprintLists(sprintIds: Array<string | null | unde
   for (const id of sprintIds) {
     keys.add(`/api/tickets?sprintId=${encodeURIComponent(id ?? BACKLOG_TARGET)}`);
   }
-  return Promise.all([...keys].map((k) => globalMutate(k)));
+  return Promise.all([...keys].map((k) => scopedMutate(k)));
 }
 
 // Revalidate every ticket-related cache (list, sprint lists, all details) so a
 // change to a child also refreshes the parent epic's child list, etc.
 export function revalidateTicketCaches() {
-  return globalMutate((k) => typeof k === "string" && k.startsWith("/api/tickets"));
+  return scopedMutate((k) => typeof k === "string" && k.startsWith("/api/tickets"));
 }
 
 // Revalidate only the caches that can hold this ticket: the lists plus its own
 // detail. Used by the live ticket-events stream so one changed ticket does not
 // refetch every open detail panel.
 export function revalidateTicketCachesFor(ticketKey: string) {
-  return globalMutate(ticketCacheMatcher(ticketKey));
+  return scopedMutate(ticketCacheMatcher(ticketKey));
 }
