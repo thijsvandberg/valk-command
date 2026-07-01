@@ -950,6 +950,7 @@ export default function CleanupPage() {
               onShowToast={() => {}}
               onSelectTicket={setSelectedKey}
               adjacentKeys={adjacentKeys}
+              enableBackNavigation
             />
           )}
         </div>

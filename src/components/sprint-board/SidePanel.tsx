@@ -31,6 +31,7 @@ import {
   MessageSquare,
   Loader2,
   Trash2,
+  ChevronLeft,
   ChevronRight,
   PanelRightClose,
   Filter,
@@ -75,6 +76,7 @@ export function SidePanel({
   storageKey,
   epicActions,
   dragHandle,
+  enableBackNavigation = false,
 }: {
   ticket: Ticket;
   poStatus: POStatus;
@@ -103,13 +105,37 @@ export function SidePanel({
       open ticket onto a refinement session). The host page owns the DndContext
       and the draggable, keeping this panel dnd-agnostic. */
   dragHandle?: React.ReactNode;
+  /** When true, drilling into a linked/child/related item opens it inside this
+      same panel and pushes a back-stack entry, instead of bubbling the key to
+      the host. A back control then returns to the previous item; Close still
+      dismisses the whole panel. Hosts where "select" means "open here" (board,
+      inbox, cleanup) opt in; hosts where it means "navigate elsewhere" (full
+      ticket page, refinement preview) leave it off. */
+  enableBackNavigation?: boolean;
 }) {
   const router = useRouter();
 
+  // Back-stack for in-panel drill-down (BRDG-456). Internal navigation keeps the
+  // host's selection at the entry point, so the panel can walk into linked items
+  // and step back without the host swapping (and remounting) the panel. Only the
+  // top of the stack is displayed. The stack resets when the host opens a
+  // different ticket (external key change); internal drill-downs never touch the
+  // `ticket` prop, so this guard fires only on genuine external changes.
+  const [navStack, setNavStack] = useState<string[]>([ticket.key]);
+  const [rootKey, setRootKey] = useState(ticket.key);
+  if (ticket.key !== rootKey) {
+    setRootKey(ticket.key);
+    setNavStack([ticket.key]);
+  }
+  const currentKey = navStack[navStack.length - 1];
+  const canGoBack = navStack.length > 1;
+  const previousKey = canGoBack ? navStack[navStack.length - 2] : null;
+
   // All ticket state and handlers come from the same hook the full ticket page
   // uses, so behaviour (editing, conflict, push, flag, follow, review/versions,
-  // status/type) stays identical to /tickets/[key].
-  const h = useTicketDetailPage(ticket.key);
+  // status/type) stays identical to /tickets/[key]. Keyed on the currently
+  // displayed item so drill-down/back re-fetch the right ticket.
+  const h = useTicketDetailPage(currentKey);
   const t = h.ticket ?? ticket;
   const detail = h.detail;
   // Subtasks have no review workflow, so the panel's "..." menu omits the Review entry (BRDG-333).
@@ -124,7 +150,7 @@ export function SidePanel({
   // Refinement eligibility for the "Add to refinement" shortcut.
   const { sessions: refinementSessions } = useRefinementSessions();
   const isInRefinementSession = refinementSessions.some(
-    (s) => s.status !== "completed" && s.ticketKeys.includes(ticket.key),
+    (s) => s.status !== "completed" && s.ticketKeys.includes(currentKey),
   );
 
   // Readiness flows through the board (optimistic row update + persist); we then
@@ -141,10 +167,11 @@ export function SidePanel({
   }, [adjacentKeys]);
 
   // This panel opening IS the "ticket viewed" moment, both for board selection
-  // and for child/linked previews on the ticket detail page (BRDG-330).
+  // and for child/linked previews on the ticket detail page (BRDG-330). Records
+  // the currently displayed item so in-panel drill-downs count as views too.
   useEffect(() => {
-    recordTicketView(ticket.key, ticket.title);
-  }, [ticket.key, ticket.title]);
+    recordTicketView(currentKey, t.title);
+  }, [currentKey, t.title]);
 
   // -- Panel width / resize --
   const widthKey = storageKey ?? PANEL_STORAGE_KEY;
@@ -293,9 +320,20 @@ export function SidePanel({
     && !isInRefinementSession;
 
   const handleSelectTicket = useCallback((key: string) => {
+    // In back-navigation mode, drilling stays inside this panel: push the key so
+    // it becomes the displayed item and a step-back is possible. Clicking the
+    // already-open item is a no-op rather than a duplicate stack entry.
+    if (enableBackNavigation) {
+      setNavStack((s) => (s[s.length - 1] === key ? s : [...s, key]));
+      return;
+    }
     if (onSelectTicket) onSelectTicket(key);
     else router.push(`/tickets/${key}`);
-  }, [onSelectTicket, router]);
+  }, [enableBackNavigation, onSelectTicket, router]);
+
+  const handleBack = useCallback(() => {
+    setNavStack((s) => (s.length > 1 ? s.slice(0, -1) : s));
+  }, []);
 
   // Transparent icon buttons keep the header bar light; the boxed "ghost"
   // Button (persistent bg + border) reads as cluttered when several sit
@@ -360,6 +398,23 @@ export function SidePanel({
     </div>
   );
 
+  // In-panel back control (BRDG-456): steps one item up the drill-down stack.
+  // Rendered at the start of the tab bar, so it scrolls away with it; the
+  // floating back button below keeps it reachable once the bar clears the top.
+  const backControl = canGoBack ? (
+    <Tooltip content={`Back to ${previousKey}`}>
+      <button
+        type="button"
+        onClick={handleBack}
+        aria-label={`Back to ${previousKey}`}
+        className="inline-flex h-7 max-w-[8rem] items-center gap-1 rounded-lg pl-1 pr-2 text-caption font-medium text-text-muted cursor-pointer hover:bg-overlay-subtle hover:text-text-secondary focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)] active:scale-[0.97] transition-colors duration-150"
+      >
+        <ChevronLeft className="h-4 w-4 shrink-0" strokeWidth={2} />
+        <span className="truncate">{previousKey}</span>
+      </button>
+    </Tooltip>
+  ) : null;
+
   // Action buttons live on the right of the (scrolling) tab bar. They scroll
   // away with it; the floating close below keeps the panel dismissable.
   const headerActions = (
@@ -416,7 +471,7 @@ export function SidePanel({
             {/* Anchor (not a button) so cmd/ctrl/middle-click opens the full ticket
                 in a new tab; plain click stays a client-side navigation. */}
             <Link
-              href={`/tickets/${ticket.key}`}
+              href={`/tickets/${currentKey}`}
               className="flex w-full cursor-pointer items-center gap-2.5 px-3 py-2 text-body-sm text-text-secondary hover:bg-overlay-default active:bg-overlay-strong"
               style={{ transition: "background-color 0.1s ease" }}
             >
@@ -424,7 +479,7 @@ export function SidePanel({
               Open full view
             </Link>
             <a
-              href={`/tickets/${ticket.key}/write`}
+              href={`/tickets/${currentKey}/write`}
               className="flex w-full cursor-pointer items-center gap-2.5 px-3 py-2 text-body-sm text-text-secondary hover:bg-overlay-default active:bg-overlay-strong"
               style={{ transition: "background-color 0.1s ease" }}
             >
@@ -454,7 +509,7 @@ export function SidePanel({
             )}
             <div className="mx-2 my-1 h-px bg-overlay-default" />
             <button
-              onClick={() => { setMoreMenuOpen(false); h.isFollowed ? h.unfollow(ticket.key) : h.follow(ticket.key); }}
+              onClick={() => { setMoreMenuOpen(false); h.isFollowed ? h.unfollow(currentKey) : h.follow(currentKey); }}
               className="flex w-full cursor-pointer items-center gap-2.5 px-3 py-2 text-body-sm text-text-secondary hover:bg-overlay-default active:bg-overlay-strong focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-[var(--color-brand-400)]"
               style={{ transition: "background-color 0.1s ease" }}
             >
@@ -525,7 +580,7 @@ export function SidePanel({
             )}
             <div className="mx-2 my-1 h-px bg-overlay-default" />
             <a
-              href={`/chat?ticket=${ticket.key}`}
+              href={`/chat?ticket=${currentKey}`}
               className="flex w-full cursor-pointer items-center gap-2.5 px-3 py-2 text-body-sm text-text-secondary hover:bg-overlay-default active:bg-overlay-strong"
               style={{ transition: "background-color 0.1s ease" }}
             >
@@ -586,10 +641,11 @@ export function SidePanel({
       layout="panel"
       renderTabBar={true}
       reviewInMenu={true}
+      tabBarLeading={backControl}
       tabBarActions={headerActions}
       onScrolledChange={setScrolled}
       metaContent={metaMode === "stacked" ? metaContent : undefined}
-      ticketKey={ticket.key}
+      ticketKey={currentKey}
       ticket={t}
       detail={detail}
       localEdits={h.localEdits}
@@ -638,6 +694,24 @@ export function SidePanel({
         className="absolute top-0 left-0 z-20 h-full w-1 cursor-col-resize hover:bg-[var(--color-brand-500)]/30 active:bg-[var(--color-brand-500)]/50"
         style={isDragging ? { backgroundColor: "var(--color-drag-active)" } : {}}
       />
+
+      {/* Floating back: mirrors the floating close, but top-left, so stepping
+          back up the drill-down stack stays reachable once the in-bar back has
+          scrolled away. Same visibility gate as the floating close. */}
+      {canGoBack && (
+        <Tooltip content={`Back to ${previousKey}`}>
+          <button
+            type="button"
+            onClick={handleBack}
+            aria-label={`Back to ${previousKey}`}
+            className={`absolute left-3 top-3 z-30 inline-flex h-7 max-w-[9rem] items-center gap-1 rounded-full border border-border-default bg-surface-elevated pl-2 pr-3 text-caption font-medium text-text-muted cursor-pointer hover:text-text-secondary hover:border-[var(--color-brand-500)]/40 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand-400)] ${scrolled && !h.isDescEditing && !h.isTitleEditing ? "opacity-100" : "pointer-events-none opacity-0"}`}
+            style={{ transition: "opacity 0.2s ease, color 0.15s ease, border-color 0.15s ease", boxShadow: "0 6px 16px -4px rgba(15, 23, 42, 0.20)" }}
+          >
+            <ChevronLeft className="h-3.5 w-3.5 shrink-0" strokeWidth={2} />
+            <span className="truncate">{previousKey}</span>
+          </button>
+        </Tooltip>
+      )}
 
       {/* Floating close: the in-bar close scrolls away with the merged tab bar,
           so this fades in once the bar clears the top to keep the panel
@@ -690,7 +764,7 @@ export function SidePanel({
       <AddToRefinementModal
         open={showAddToRefinement}
         onClose={() => setShowAddToRefinement(false)}
-        ticketKeys={[ticket.key]}
+        ticketKeys={[currentKey]}
       />
     </div>
   );

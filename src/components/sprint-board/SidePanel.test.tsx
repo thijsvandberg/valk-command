@@ -100,10 +100,14 @@ vi.mock("@/lib/prefetch", () => ({ prefetchTicketPage: vi.fn() }));
 // live inside this component and only render when SidePanel passes them via
 // `renderTabBar` / `tabBarActions`.
 vi.mock("@/components/ticket-detail/TicketTabContent", () => ({
-  TicketTabContent: ({ activeTab, metaContent, renderTabBar, tabBarActions }: { activeTab: string; metaContent?: React.ReactNode; renderTabBar?: boolean; tabBarActions?: React.ReactNode }) => (
+  TicketTabContent: ({ activeTab, metaContent, renderTabBar, tabBarActions, tabBarLeading, ticketKey, onSelectTicket }: { activeTab: string; metaContent?: React.ReactNode; renderTabBar?: boolean; tabBarActions?: React.ReactNode; tabBarLeading?: React.ReactNode; ticketKey?: string; onSelectTicket?: (key: string) => void }) => (
     <div data-testid="tab-content">
       <span data-testid="active-tab">{activeTab}</span>
+      <span data-testid="current-key">{ticketKey}</span>
+      {/* Stand-in for a linked/child row: lets tests drive an in-panel drill-down. */}
+      <button data-testid="drill" onClick={() => onSelectTicket?.("PROJ-99")}>drill</button>
       {renderTabBar && ["Content", "History", "Review", "Development"].map((label) => <span key={label}>{label}</span>)}
+      {renderTabBar && tabBarLeading}
       {renderTabBar && tabBarActions}
       {metaContent != null && <span data-testid="tab-has-meta" />}
       {metaContent}
@@ -468,6 +472,67 @@ describe("SidePanel", () => {
       fireEvent.mouseMove(document, { clientX: 100 });
       fireEvent.mouseUp(document);
       expect(window.localStorage.getItem("sprintBoardMetaWidth")).toBe("280");
+    });
+  });
+
+  describe("in-panel back navigation (BRDG-456)", () => {
+    it("drills into a linked item in place and reveals a back control to the previous item", () => {
+      render(<SidePanel {...defaultProps} enableBackNavigation ticket={makeTicket({ key: "PROJ-42" })} />);
+      // No back affordance until the user has drilled in.
+      expect(screen.queryByLabelText(/^Back to/)).not.toBeInTheDocument();
+      expect(screen.getByTestId("current-key")).toHaveTextContent("PROJ-42");
+
+      fireEvent.click(screen.getByTestId("drill"));
+
+      // The panel now shows the drilled item and offers a step back to the origin.
+      expect(screen.getByTestId("current-key")).toHaveTextContent("PROJ-99");
+      expect(screen.getAllByLabelText("Back to PROJ-42").length).toBeGreaterThan(0);
+    });
+
+    it("steps back to the previous item and hides the back control at the root", () => {
+      render(<SidePanel {...defaultProps} enableBackNavigation ticket={makeTicket({ key: "PROJ-42" })} />);
+      fireEvent.click(screen.getByTestId("drill"));
+      expect(screen.getByTestId("current-key")).toHaveTextContent("PROJ-99");
+
+      fireEvent.click(screen.getAllByLabelText("Back to PROJ-42")[0]);
+
+      expect(screen.getByTestId("current-key")).toHaveTextContent("PROJ-42");
+      expect(screen.queryByLabelText(/^Back to/)).not.toBeInTheDocument();
+    });
+
+    it("keeps Close dismissing the whole panel even after drilling in", () => {
+      const onClose = vi.fn();
+      render(<SidePanel {...defaultProps} onClose={onClose} enableBackNavigation ticket={makeTicket({ key: "PROJ-42" })} />);
+      fireEvent.click(screen.getByTestId("drill"));
+      fireEvent.click(screen.getAllByLabelText("Close panel")[0]);
+      expect(onClose).toHaveBeenCalledTimes(1);
+    });
+
+    it("does not drill in place when back navigation is off (host owns selection)", () => {
+      const onSelectTicket = vi.fn();
+      render(<SidePanel {...defaultProps} onSelectTicket={onSelectTicket} ticket={makeTicket({ key: "PROJ-42" })} />);
+      fireEvent.click(screen.getByTestId("drill"));
+      // The key is delegated to the host; the panel neither swaps nor shows a back control.
+      expect(onSelectTicket).toHaveBeenCalledWith("PROJ-99");
+      expect(screen.getByTestId("current-key")).toHaveTextContent("PROJ-42");
+      expect(screen.queryByLabelText(/^Back to/)).not.toBeInTheDocument();
+    });
+
+    it("resets the back-stack when the host opens a different ticket", () => {
+      const { rerender } = render(<SidePanel {...defaultProps} enableBackNavigation ticket={makeTicket({ key: "PROJ-42" })} />);
+      fireEvent.click(screen.getByTestId("drill"));
+      expect(screen.getAllByLabelText("Back to PROJ-42").length).toBeGreaterThan(0);
+
+      // Host selects a new entry point: the drill-down history is discarded.
+      rerender(<SidePanel {...defaultProps} enableBackNavigation ticket={makeTicket({ key: "PROJ-7" })} />);
+      expect(screen.getByTestId("current-key")).toHaveTextContent("PROJ-7");
+      expect(screen.queryByLabelText(/^Back to/)).not.toBeInTheDocument();
+    });
+
+    it("records the drilled item as viewed", () => {
+      render(<SidePanel {...defaultProps} enableBackNavigation ticket={makeTicket({ key: "PROJ-42" })} />);
+      fireEvent.click(screen.getByTestId("drill"));
+      expect(readRecentlyViewed()[0]).toMatchObject({ key: "PROJ-99" });
     });
   });
 

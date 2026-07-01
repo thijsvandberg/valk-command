@@ -54,6 +54,9 @@ export interface TicketTabContentProps {
   // passes its header buttons here so the whole bar (tabs + actions) scrolls
   // with the content instead of staying pinned.
   tabBarActions?: React.ReactNode;
+  // Optional node rendered at the very start of the tab bar row, before the
+  // tabs. The side panel uses this for the in-panel back control (BRDG-456).
+  tabBarLeading?: React.ReactNode;
   // Fires when the scroll container crosses the tab-bar height, i.e. once the
   // tab bar has scrolled out of view. The side panel uses this to reveal a
   // floating close button.
@@ -121,6 +124,7 @@ export interface TicketTabContentProps {
 export function TicketTabContent({
   layout = "page",
   renderTabBar = true,
+  tabBarLeading,
   reviewInMenu = false,
   tabBarActions,
   onScrolledChange,
@@ -219,6 +223,9 @@ export function TicketTabContent({
             bar scrolls away, leaving a floating close behind. */}
         {renderTabBar && (
           <div role="tablist" aria-label="Ticket sections" className={`flex h-[44px] shrink-0 items-stretch gap-1 border-b border-border-default ${railClass}`}>
+            {tabBarLeading && (
+              <div className="flex shrink-0 items-center pr-0.5">{tabBarLeading}</div>
+            )}
             {([
                 ...(isEpic ? [{ id: "children" as const, label: "Child issues", badge: (detail?.epicChildren.length || undefined) as number | undefined, badgeHighlight: false }] : []),
                 { id: "content" as const, label: isSubtask ? "Subtask" : "Content", badge: undefined as number | undefined, badgeHighlight: false },

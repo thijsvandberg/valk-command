@@ -726,6 +726,7 @@ function InboxView() {
               onClose={() => setSelectedKey(null)}
               onShowToast={() => {}}
               onSelectTicket={setSelectedKey}
+              enableBackNavigation
             />
           )}
         </div>
