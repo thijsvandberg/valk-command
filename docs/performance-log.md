@@ -1,5 +1,21 @@
 # Implementation Performance Log
 
+## BRDG-458 — audit and fix top-level swr mutate no-ops app-wide (2026-07-01)
+
+27 files audited (every one broken, none harmless), fixed via `useSWRConfig().mutate` in hooks/components and a new `scopedMutate` registry for the 4 non-hook cache modules; 14 false-positive test mocks converted; lint guard added and probe-verified; 3 live browser verifications by subagents (2x sonnet, 1x opus), all PASS. 7 logical commits; full suite 7365 green; build green.
+
+| Phase | Notes |
+|---|---|
+| Plan (Opus) | High-value: resolved the BRDG-417 caveat by reading `useConversations` (bound mutate — no contradiction), found 3 drift files the original grep missed (`import useSWR, { mutate }` form), and correctly predicted every test-mock breakage |
+| Implement | Registry pattern over per-call threading avoided ~15 caller-signature changes in a parallel-dirty tree; mechanical per-file swaps otherwise |
+| Verify (subagents) | Follow/unfollow PASS (+275ms refetch); inbox count PASS after redesign (see below); pencil capacity PASS (instant optimistic render, PUT-only wire). All test data restored by the agents |
+
+Key bottlenecks / lessons:
+- **First inbox verification FAILED on a too-strict expectation, not a bad fix.** The count key's only subscriber (NavPanel) mounts on open, and SWR's bare `mutate(key)` fires no fetch with zero mounted hooks — so "expect an immediate GET" was the wrong assertion. Reading the installed SWR source settled it: an unmounted-key mutate still deletes the FETCH dedup marker, so the *next mount* refetches even inside `dedupingInterval: 30000`. The re-run with a control leg (reopen-within-30s deduped; post-mark-read open fetches) passed. Lesson: for revalidation fixes, design the assertion around the subscriber's mount lifecycle, and when a verification fails, check the expectation against library semantics before touching the fix.
+- **Surgical hunk staging worked for the shared tree.** `inbox/page.tsx` + `cleanup/page.tsx` carried one foreign uncommitted hunk each (BRDG-456 parallel work); a python-filtered `git diff | git apply --cached` staged only my hunks. The parallel session's commit later confirmed zero collateral.
+- **evaluate_js promise quirk cost the sonnet agents retries** (results stashed on `window` + synchronous reads is the reliable pattern — worth putting in every browser-verification prompt, which I did after the first agent hit it).
+- Verification 2's treatment GET landed ~350ms past the dedupe window, so that leg alone is marginal; the control leg + source reading + the two unambiguous PASSes carry the verdict.
+
 ## BRDG-451 + BRDG-453 — progressive board-row badge/chrome hiding on narrow columns (2026-07-01)
 
 Two stacked stories: 451 staggers the four trailing badges (refinement 40 / BV 34 / SP 30 / epic 26) via `@container/boardrow` display-gates; 453 extends the ladder to avatar (48), checkbox gutter (22) and the ticket key (18, opt-in `keyGateClassName` on the shared `TicketStatusPill`). Both mechanical once the pattern was set. Full suite green (7337), build green, verified live via computed-`display` sweeps across window widths.
