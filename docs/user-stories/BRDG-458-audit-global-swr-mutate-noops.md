@@ -61,13 +61,16 @@ Key risks: overlay double-application once `revalidate:false` patches actually s
 
 ## Checklist
 - [x] Audit every top-level `swr` mutate usage in the suspect files; record per-usage classification (broken / harmless / works + why) in the investigation doc
-- [ ] Fix all **broken** usages with provider-bound mutators (hook `mutate` or `useSWRConfig().mutate`; threaded in for non-hook modules)
-- [ ] Remove or annotate **harmless** dead calls (no silent leftovers)
+- [x] Fix all **broken** usages with provider-bound mutators (hook `mutate` or `useSWRConfig().mutate`; non-hook modules go through the `scopedMutate` registry that `SWRProvider` fills on mount, a lighter equivalent of per-call threading)
+- [x] Remove or annotate **harmless** dead calls (audit found none: every call targeted a genuinely provider-read key)
 - [x] Resolve the BRDG-417 chat-SWR caveat and document the answer (useConversations uses the bound hook mutate; no contradiction)
-- [ ] Live browser verification (network capture) for the top 3 highest-impact fixes
-- [ ] Update/extend tests for fixed call sites; ensure no test asserts on the global mutate spy for provider-backed behaviour (false positives, like the old `SprintBoard.moveMeter.test.tsx`)
-- [ ] Add the `no-restricted-imports` lint rule banning top-level `mutate` from `"swr"` in `src/**` (tests exempt) and fix any remaining violations it surfaces
-- [ ] Update `docs/architecture/optimistic-updates.md` and/or `docs/architecture/client-data-and-memory.md` with the final rule of thumb
+- [x] Live browser verification (network capture) for the top 3 highest-impact fixes, run by browser subagents:
+  1. **Follow/unfollow ticket** (`usePipelines`, mounted-subscriber revalidation): PASS — `GET /api/followed-tickets` fired ~275ms after both the POST and the DELETE; state restored.
+  2. **Inbox mark-read → nav count** (`inbox refreshCount`, unmounted-subscriber dedup-bust): PASS — control leg confirmed the 30s dedupe suppresses a nav-reopen refetch; after mark-read the count GET fired on the next nav open. (SWR-source-verified mechanism: a bare provider-bound `mutate(key)` deletes the dedup marker even with no mounted hook. Timing on the treatment leg was marginal — GET landed ~350ms past the window — so this leg leans on the control + source evidence.) Stories restored to unread.
+  3. **Pencil capacity** (`usePencilCapacity`, optimistic `revalidate:false` patch): PASS — meter updated immediately from the patch (20 → 40), wire showed PUTs only, zero GETs; restored to 20.
+- [x] Update/extend tests for fixed call sites; ensure no test asserts on the global mutate spy for provider-backed behaviour (14 test files converted to spy `useSWRConfig().mutate`; new tests for the scoped-mutate registry + SWRProvider registration)
+- [x] Add the `no-restricted-imports` lint rule banning top-level `mutate` from `"swr"` in `src/**` (tests + the registry module exempt); verified it fires; zero remaining violations
+- [x] Update `docs/architecture/optimistic-updates.md` and/or `docs/architecture/client-data-and-memory.md` with the final rule of thumb (both updated: scopedMutate registry, lint rule, preload note, dedup-marker internals fact)
 
 ## Out of scope / non-goals
 - No behaviour changes beyond making existing intended refreshes/patches actually work.

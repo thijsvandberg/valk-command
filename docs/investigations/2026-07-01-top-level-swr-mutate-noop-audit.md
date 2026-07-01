@@ -81,6 +81,17 @@ Note: `src/hooks/useSprintBoard.ts` also correctly uses `useSWRConfig()` in plac
 
 `project_swr_mutate_discards_inflight` (BRDG-417) implies optimistic mutate *does* affect data in the chat surface. Either that path used the bound `configMutate`, or chat is not under the same provider, or that observation predates the provider. Worth resolving during the audit — it determines whether the global-mutate no-op is truly universal or context-dependent.
 
-## Recommendation
+## Resolution (BRDG-458, 2026-07-01)
 
-Open a dedicated cleanup story to audit each suspect: confirm whether the call reaches the intended hook, and replace real no-ops with `useSWRConfig().mutate` / the hook's own `mutate`. A lint rule banning `import { mutate } from "swr"` in `src/**` (allow only `useSWRConfig`) would prevent regressions.
+All broken usages fixed:
+- **Hooks/components/pages**: swapped to `useSWRConfig().mutate` (dep arrays updated).
+- **Non-hook modules** (`ticket-cache.ts`, `sprint-board-utils.ts`, `row-actions/adapter.ts`, `prefetch.ts`): mutate through a new `scopedMutate` registry (`src/lib/swr-scoped-mutate.ts`) that `SWRProvider` fills with its provider-bound mutator on mount — a lighter equivalent of per-call-site parameter threading (no signature churn across ~15 callers). Unregistered (tests, pre-mount) it falls back to the default mutate, matching the old inert behaviour, with a dev-only warning.
+- **Tests**: 14 test files spied the global mutate (false positives); their swr mocks now expose the same spy via `useSWRConfig` so assertions target the real path. New tests cover the registry and the SWRProvider registration.
+- **Lint guard**: `no-restricted-imports` errors on the `mutate` named import from `swr` in `src/**` (tests + the registry module exempt). Verified it fires.
+- **`preload` note**: verified against the installed SWR source — both `preload` and its consuming middleware key the PRELOAD map off default-cache global state, so `preload` works under the provider and stays a top-level import.
+
+Live browser verification (three mechanisms, all PASS): follow/unfollow revalidation (GET ~275ms after write), inbox count dedup-bust on unmounted key (control leg proved dedupe, count GET fired on next nav open after mark-read), pencil-capacity optimistic patch (immediate DOM update, PUT-only wire).
+
+**Useful SWR internals fact (source-verified):** a bare provider-bound `mutate(key)` on a key with NO mounted hook still deletes SWR's FETCH dedup marker, so the next mount refetches even inside `dedupingInterval`. That is exactly the semantics the inbox count refresh needs (its NavPanel subscriber mounts on open).
+
+**Pre-existing quirk found in passing (not fixed here):** FullnessMeter's capacity editor double-commits (Enter calls commit, then blur commits again) producing two identical idempotent PUTs to `/api/sprints/pencil-capacity`. Harmless; candidate for a small cleanup.

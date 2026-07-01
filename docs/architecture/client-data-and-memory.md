@@ -54,6 +54,14 @@ The only trade-off is UX, not correctness: returning to a view whose key was
 already evicted shows a brief loading flash instead of `keepPreviousData`'s instant
 swap. Sizing the cap above the working set avoids it in practice.
 
+**Custom-provider corollary (BRDG-458):** because the cache is a custom provider,
+the `mutate` imported directly from `"swr"` targets SWR's *default* cache and is a
+silent no-op against every hook here. Always mutate through `useSWRConfig().mutate`,
+a hook's own `mutate`, or — in non-hook modules — `scopedMutate` from
+[swr-scoped-mutate.ts](../../src/lib/swr-scoped-mutate.ts) (registered by
+`SWRProvider` on mount). A lint rule enforces this;
+see [optimistic-updates.md](optimistic-updates.md) for the full story.
+
 ### 2. Never fetch the whole backlog client-side
 
 `useTickets("__all__")` pulls every ticket into the browser. It is an

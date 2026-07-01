@@ -145,6 +145,22 @@ Rule of thumb: anywhere you're tempted to `import { mutate } from "swr"` in a co
 `useSWRConfig().mutate` (or a hook's own `mutate`) instead — the global import will not reach
 this app's cache.
 
+**BRDG-458 closed this app-wide.** Every top-level `mutate` usage was audited and fixed (see
+`docs/investigations/2026-07-01-top-level-swr-mutate-noop-audit.md` for the per-usage table):
+- Hooks/components use `useSWRConfig().mutate`.
+- **Non-hook modules** (`ticket-cache.ts`, `sprint-board-utils.ts`, `row-actions/adapter.ts`,
+  `prefetch.ts`) cannot call hooks; they mutate through `scopedMutate`
+  (`src/lib/swr-scoped-mutate.ts`), a registry `SWRProvider` fills with its provider-bound
+  mutator on mount. New non-hook cache helpers should import `scopedMutate` from there —
+  never `mutate` from `"swr"`.
+- A lint rule (`no-restricted-imports` in `eslint.config.mjs`) errors on the top-level
+  `mutate` import anywhere in `src/**` (tests exempt), so the pattern cannot silently return.
+- SWR's `preload` is fine as a top-level import (its PRELOAD handshake is keyed off
+  default-cache global state on both sides, provider-independent).
+- Useful internals fact: a bare provider-bound `mutate(key)` with NO mounted hook still
+  deletes SWR's dedup marker, so the next mount refetches even inside `dedupingInterval`
+  (this is how the inbox's nav-count refresh works — its NavPanel subscriber mounts on open).
+
 ## Adding a new editable board field (checklist)
 
 1. Add the field name to `EditableField` in `pendingTicketEdits.ts`.
