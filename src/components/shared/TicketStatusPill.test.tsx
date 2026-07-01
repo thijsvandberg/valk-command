@@ -59,6 +59,20 @@ describe("TicketStatusPill", () => {
     expect(link?.getAttribute("href")).toBe("/tickets/VPL-123");
   });
 
+  it("applies keyGateClassName to the key wrapper (opt-in width gate, BRDG-453)", () => {
+    render(<TicketStatusPill ticketKey="VPL-123" jiraStatus="TO DO" keyGateClassName="hidden @[18rem]/boardrow:flex" />);
+    const wrapper = screen.getByText("VPL-123").closest("a")!.parentElement!;
+    expect(wrapper.className).toContain("hidden");
+    expect(wrapper.className).toContain("@[18rem]/boardrow:flex");
+  });
+
+  it("does not gate the key when keyGateClassName is omitted (other views keep the key)", () => {
+    render(<TicketStatusPill ticketKey="VPL-123" jiraStatus="TO DO" />);
+    const wrapper = screen.getByText("VPL-123").closest("a")!.parentElement!;
+    expect(wrapper.className).not.toContain("@[");
+    expect(wrapper.className).not.toContain("hidden");
+  });
+
   it("renders abbreviated Jira status text", () => {
     render(<TicketStatusPill ticketKey="VPL-1" jiraStatus="IN PROGRESS" />);
     expect(screen.getByText("PROG")).toBeTruthy();

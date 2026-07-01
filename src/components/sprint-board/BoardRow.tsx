@@ -530,13 +530,16 @@ export const BoardRow = memo(forwardRef<HTMLTableRowElement, BoardRowBaseProps>(
             </span>
           )}
 
-          {/* Dedicated checkbox gutter on every row: always reserves space so content never
+          {/* Dedicated checkbox gutter on every row: reserves space so content never
               shifts. The checkbox itself stays hidden until row hover (or when a selection is
               active) - see the `checkbox` definition above. Dropped entirely on views with no
-              bulk selection (hideCheckbox), e.g. the Story Writer landing (BRDG-325). */}
+              bulk selection (hideCheckbox), e.g. the Story Writer landing (BRDG-325).
+              BRDG-453: on a narrow list column the whole gutter is display-gated away (even
+              while a selection is active) so the title reclaims the space; multiselect returns
+              once the column is wide enough again. */}
           {!hideCheckbox && (
             <div
-              className="flex w-3.5 shrink-0 cursor-pointer items-center justify-center"
+              className="hidden w-3.5 shrink-0 cursor-pointer items-center justify-center @[22rem]/boardrow:flex"
               role="checkbox"
               aria-checked={isChecked}
               aria-label={`Select ${ticket.key}`}
@@ -581,6 +584,10 @@ export const BoardRow = memo(forwardRef<HTMLTableRowElement, BoardRowBaseProps>(
                 variant="list"
                 size="lg"
                 showKey={showKey}
+                // BRDG-453: drop the ticket key only at the very narrowest step of the
+                // row ladder, so the title keeps the most room. Gated to the board's
+                // @container/boardrow, so other TicketStatusPill usages keep the key.
+                keyGateClassName="hidden @[18rem]/boardrow:flex"
                 showStatus={showStatus}
                 removedFromJira={isRemoved}
                 onStoryPointsChange={isRemoved ? undefined : (onStoryPointsChange ? (v) => onStoryPointsChange(ticket.key, v) : undefined)}
@@ -958,11 +965,13 @@ export const BoardRow = memo(forwardRef<HTMLTableRowElement, BoardRowBaseProps>(
                   (collapseAssignee) so no empty 26px gap is reserved. */}
               {tags.has("assignee") && !collapseAssignee && (
                 <div
-                  // The wrapper always reserves the 26px avatar width (BRDG-325), so
-                  // fading the avatar in/out via opacity never shifts the row (BRDG-368).
-                  // Opacity-only transition, matching the row's other hover overlays;
-                  // focus-within keeps keyboard/focus-visible access to the picker.
-                  className={`ml-1.5 shrink-0${
+                  // The wrapper reserves the 26px avatar width (BRDG-325), so fading the
+                  // avatar in/out via opacity never shifts the row (BRDG-368). Opacity-only
+                  // transition, matching the row's other hover overlays; focus-within keeps
+                  // keyboard/focus-visible access to the picker. BRDG-453: the avatar is the
+                  // first element to drop as the column narrows (widest gate of the ladder),
+                  // display-gated so it reserves no space when hidden.
+                  className={`hidden ml-1.5 shrink-0 @[44rem]/boardrow:block${
                     hideAssignee && !assigneePickerOpen
                       ? " opacity-0 transition-opacity duration-150 group-hover/row:opacity-100 focus-within:opacity-100"
                       : ""

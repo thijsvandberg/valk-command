@@ -750,6 +750,10 @@ export interface TicketStatusPillProps {
   removedFromJira?: boolean;
   /** Hide the ticket key segment (default: true) */
   showKey?: boolean;
+  /** Extra className applied to the ticket-key wrapper. Opt-in per usage; the board
+   *  passes a container-query gate (`hidden @[18rem]/boardrow:flex`) so the key drops
+   *  only on a very narrow list column, without affecting other views (BRDG-453). */
+  keyGateClassName?: string;
   /** Hide the jira status segment (default: true) */
   showStatus?: boolean;
   /** Show the readiness segment (default: true). Set false for read-only reference pills. */
@@ -795,6 +799,7 @@ export function TicketStatusPill({
   variant,
   removedFromJira,
   showKey = true,
+  keyGateClassName,
   showStatus = true,
   showReadiness = true,
   onHeader = false,
@@ -1047,7 +1052,7 @@ export function TicketStatusPill({
 
       {/* Key */}
       {showKey && (
-        <div className={`relative flex shrink-0 ${issueType && (!elevated || size === "sm") ? "-ml-1" : ""}`}>
+        <div className={`relative flex shrink-0 ${keyGateClassName ?? ""} ${issueType && (!elevated || size === "sm") ? "-ml-1" : ""}`}>
           {isPending ? (
             <span
               className={`flex items-center font-mono ${textSize} text-text-muted`}

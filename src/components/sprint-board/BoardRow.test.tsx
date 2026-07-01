@@ -544,7 +544,7 @@ describe("BoardRow (headerless, BRDG-239)", () => {
   describe("progressive badge hiding on narrow columns (BRDG-451)", () => {
     // Walk up from a badge's leaf to the nearest ancestor carrying a `@[Nrem]/boardrow`
     // gate, returning that element (robust to how deeply the badge nests its own markup).
-    const GATE_RE = /@\[(\d+)rem\]\/boardrow:(?:inline-)?flex/;
+    const GATE_RE = /@\[(\d+)rem\]\/boardrow:(?:inline-flex|flex|block)/;
     function gateOf(leaf: HTMLElement | null): HTMLElement {
       let cur = leaf;
       while (cur) {
@@ -608,13 +608,39 @@ describe("BoardRow (headerless, BRDG-239)", () => {
       expect(sp).toBeGreaterThan(epic);
     });
 
-    it("never width-gates the selection checkbox (core interaction stays at any width)", () => {
+    // BRDG-453 extends the ladder: avatar (widest) drops first, then the badges, then the
+    // leading checkbox gutter (22rem) and ticket key (18rem, gated inside TicketStatusPill).
+    it("gates the assignee avatar with hidden + @[44rem]/boardrow:block (drops first)", () => {
+      renderRow({ onAssigneeChange: vi.fn() });
+      const gate = screen.getByTestId("assignee-picker").parentElement!;
+      expect(gate.className).toContain("hidden");
+      expect(gate.className).toContain("@[44rem]/boardrow:block");
+    });
+
+    it("width-gates the selection checkbox gutter with hidden + @[22rem]/boardrow:flex (BRDG-453)", () => {
       const { container } = renderRow();
       const gutter = container.querySelector("div.w-3\\.5")!;
-      expect(gutter.className).not.toContain("@[");
-      const box = gutter.querySelector("span")!;
-      // The box fades in on hover via opacity, not display-gating on width.
-      expect(box.className).not.toContain("@[");
+      expect(gutter.className).toContain("hidden");
+      expect(gutter.className).toContain("@[22rem]/boardrow:flex");
+    });
+
+    it("hides the checkbox gutter even while a selection is active (per PO)", () => {
+      const { container } = renderRow({ someChecked: true });
+      const gutter = container.querySelector("div.w-3\\.5")!;
+      expect(gutter.className).toContain("hidden");
+      expect(gutter.className).toContain("@[22rem]/boardrow:flex");
+    });
+
+    it("keeps the avatar gate wider than the badge gates so it drops first", () => {
+      renderRow({
+        ticket: makeTicket({ storyPoints: 5, businessValue: 8 }),
+        refinementSessions: [{ name: "Refine A" } as never],
+        onEpicChange: vi.fn(),
+        onAssigneeChange: vi.fn(),
+      });
+      const avatar = remOf(screen.getByTestId("assignee-picker").parentElement!);
+      const refine = remOf(gateOf(screen.getByTestId("icon-boxes")));
+      expect(avatar).toBeGreaterThan(refine); // 44 > 40
     });
   });
 
